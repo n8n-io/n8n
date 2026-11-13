@@ -1,0 +1,20 @@
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  h_52a137d26d774c 83,396
+packages/cli/src/__tests__/workflow-runner.test.ts
+  h_52a137d26d774c 1141
+packages/cli/src/push/__tests__/push-routing.test.ts
+  h_52a137d26d774c 13
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  h_52a137d26d774c 163,307-311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f03d7381e34311ffefacc874c60964382b9b6269",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

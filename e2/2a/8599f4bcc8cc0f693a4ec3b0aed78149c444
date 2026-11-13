@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-sandbox.service.test.ts
+  s_c7dd453c2b098d::t_6e40c8645f3a23 517
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e22a8599f4bcc8cc0f693a4ec3b0aed78149c444",
+  "prompts": {},
+  "sessions": {
+    "s_c7dd453c2b098d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56e882fa-167c-40fe-888e-0255550ae798",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

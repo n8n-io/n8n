@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/app/extractionRatchet.test.ts
+  s_0b781284f62570::t_3daea5415afc4d 1,63-64
+  s_0b781284f62570::t_dc3895ca35783b 6-7,12,15-23,32,42,45-57,59,62,65-66,77
+  s_0b781284f62570::t_8808f398a8094b 67-69
+packages/frontend/editor-ui/package.json
+  s_0b781284f62570::t_796cc458b361f6 15-16,71
+  s_0b781284f62570::t_521c570b1b8ccc 174
+packages/quality/policy/code-health/src/rules/lint-config-layering.rule.ts
+  s_0b781284f62570::t_3e636abb787a00 16
+packages/frontend/editor-ui/oxlint.config.mts
+  s_0b781284f62570::t_0b7c87e54a8c25 123-126
+  s_0b781284f62570::t_29c001c34c32e8 1-2,46-49,221
+  s_0b781284f62570::t_0e69f956f26a59 12-14,50-76,78,85-116,118-120,122,206-220
+  s_0b781284f62570::t_dbd4a3ede9c23d 127-205
+.code-health-baseline.json
+  s_0b781284f62570::t_cff9e1c634bce5 1723-1873
+  s_68552a9f52920e::t_72cb4a3b04b933 1874
+packages/frontend/editor-ui/vize-lint.config.mjs
+  s_0b781284f62570::t_bf61f5ea6e848e 1-16
+pnpm-lock.yaml
+  s_0b781284f62570::t_025ecb517b64fd 6822-6824,7131-7133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fd824fbba8eb18ac7e5c0afa759e2eb3c3992cd6",
+  "prompts": {},
+  "sessions": {
+    "s_0b781284f62570": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eaab1da1-72d1-4e3e-8b6e-2e3b0da59f40",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

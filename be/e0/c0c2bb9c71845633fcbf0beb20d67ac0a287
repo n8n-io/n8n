@@ -1,0 +1,55 @@
+packages/cli/src/telemetry/index.ts
+  s_1002c4e88ae523::t_7ae87606999c5c 295
+  s_1002c4e88ae523::t_8c438f6bb0a411 61-62,68-73,79
+  s_1002c4e88ae523::t_3dba045b68ab8d 569,576,583,588,591-592,598-606
+  s_1002c4e88ae523::t_fce2bcb4ebfbfb 30
+  s_1002c4e88ae523::t_633b1e95d2cfbd 607-608
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_1002c4e88ae523::t_319b1b6a11eed2 297-328,333-462
+  s_1002c4e88ae523::t_75b99b4b3e2196 329-332
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_1002c4e88ae523::t_1036473e51d7d7 1998-1999,2009-2010
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_1002c4e88ae523::t_44ad8ddc7056c9 1093-1094,1101-1102
+packages/cli/src/public-api/public-api-result.ts
+  s_1002c4e88ae523::t_acf612024c8431 1-8
+packages/cli/test/integration/public-api/workflow-route-order.test.ts
+  s_1002c4e88ae523::t_26e0d627312326 87-90
+  s_1002c4e88ae523::t_e0948ec3e2d060 122-134
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_1002c4e88ae523::t_3394cc94c28180 178
+  s_1002c4e88ae523::t_76467035010d54 253
+  s_1002c4e88ae523::t_dbb7a03f5a0603 344,360,362,373-383
+  s_1002c4e88ae523::t_58789590ad2e2c 52
+  s_1002c4e88ae523::t_6398dc5d8747c6 83-86
+  s_1002c4e88ae523::t_29b6179b970c21 44,49
+  s_1002c4e88ae523::t_b7b963418c1b18 82
+  s_1002c4e88ae523::t_b799ef37b916ce 384-385
+packages/cli/src/public-api/__tests__/public-api-result.test.ts
+  s_1002c4e88ae523::t_1ab04e398b590c 1-19
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_1002c4e88ae523::t_ea87fabefd391a 11
+  s_1002c4e88ae523::t_90a594d6d045dc 1731-1733,1735-1738
+  s_1002c4e88ae523::t_ea020cdf64ff35 1695-1696,1710,1717-1730,1734,1739-1740
+  s_1002c4e88ae523::t_e2aa7c87a62be0 1098,1103-1104,1112-1113,1121-1122,1139-1173,1177-1178,1192-1193,1201-1202,1219-1220,1227-1228,1235-1236,1252-1255,1268-1269,1741
+  s_1002c4e88ae523::t_04f3274a89b28a 1742
+packages/cli/src/events/maps/relay.event-map.ts
+  s_1002c4e88ae523::t_a740dde9101c8f 59
+  s_1002c4e88ae523::t_c59e52c018debf 516-518
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bee0c0c2bb9c71845633fcbf0beb20d67ac0a287",
+  "prompts": {},
+  "sessions": {
+    "s_1002c4e88ae523": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fc1200c-7bf7-4cbf-886d-8c6a5681056f",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

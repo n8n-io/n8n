@@ -1,0 +1,82 @@
+packages/cli/src/modules/agent-evals/__tests__/agent-evals.controller.test.ts
+  s_1cfc31402a4d82::t_1894cc9003304d 207
+packages/cli/src/modules/agent-evals/agent-evals.controller.ts
+  s_1cfc31402a4d82::t_75640b18efd9d4 126
+  s_1cfc31402a4d82::t_720aea1fd2e4f8 44,121-125,127-141,143
+  s_1cfc31402a4d82::t_f6e6fe0de007af 142
+  s_1cfc31402a4d82::t_9e23506f683b5f 144-145
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_1cfc31402a4d82::t_c9928dcb091261 2,1729-1741,1745-1748,1750-1752,1757-1758
+  s_1cfc31402a4d82::t_6695bdd84786d6 1727,1742-1744,1754,1756
+  s_1cfc31402a4d82::t_0ace925df24482 851-852,1316
+  s_1cfc31402a4d82::t_3f9428ccee9166 1759-1760
+  s_1cfc31402a4d82::t_e6dc2a9883d22a 1753,1755,2069
+  s_1cfc31402a4d82::t_1461517cb0597c 1530-1532
+  s_1cfc31402a4d82::t_6efa05665c88e9 1749
+packages/frontend/editor-ui/src/features/agents/components/AgentTestsList.vue
+  s_1cfc31402a4d82::t_9d33505f641a3c 77-78,219-221
+  s_1cfc31402a4d82::t_41f30eb385844c 80
+  s_1cfc31402a4d82::t_8cecffc5c21812 222-223,225
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_1cfc31402a4d82::t_e24c939ab46b02 26-30,313-331
+  s_1cfc31402a4d82::t_37808ad882cc33 332-361
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestsList.test.ts
+  s_1cfc31402a4d82::t_56cb6531131337 95-97,99-103,105-106,109-111,114-115
+  s_1cfc31402a4d82::t_3c40bd471a8049 104,108
+  s_1cfc31402a4d82::t_15a3e641db7765 98,107,112-113
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestModeChat.test.ts
+  s_1cfc31402a4d82::t_20c43cb87fba65 4,117
+  s_1cfc31402a4d82::t_9ca68d0d2abb34 112-116,118-127,129-133
+  s_1cfc31402a4d82::t_7cfa1cb0d5b11b 128
+packages/cli/src/modules/agent-evals/agent-test-mode.service.ts
+  s_1cfc31402a4d82::t_d6355c63c3014e 26,81-85,211,269-270
+  s_1cfc31402a4d82::t_b74f3d3f2436a3 16,51,151,175
+  s_1cfc31402a4d82::t_851663e614d7fd 1,172-173,180-181,206
+  s_1cfc31402a4d82::t_26f445b4366d14 11-14,27-45,47-50,52-61,148,150,153-162,164-165,168-171,174,176-179,182-183,209-210,215-221,223-225,238,241,248
+  s_1cfc31402a4d82::t_395a4482ba0f4d 46
+  s_1cfc31402a4d82::t_eff883e2c96bd3 86-88
+  s_1cfc31402a4d82::t_1e890b4a4801df 145-147
+  s_1cfc31402a4d82::t_b90317a54b7a56 166-167
+  s_1cfc31402a4d82::t_87f49b6c928d19 184-186,203-205
+  s_1cfc31402a4d82::t_6ce7bd7b4961ad 207-208
+  s_1cfc31402a4d82::t_10c34d09a2ab37 212-214
+  s_1cfc31402a4d82::t_b26aaeff3e4611 222
+  s_1cfc31402a4d82::t_d7b14acb841c5e 226-228
+  s_1cfc31402a4d82::t_97a268698b4315 235-237
+  s_1cfc31402a4d82::t_f0eb973335bd65 239-240
+  s_1cfc31402a4d82::t_1dec844285632f 242-247
+  s_1cfc31402a4d82::t_b033ce69ebe5f3 266-268
+  s_1cfc31402a4d82::t_c84307cf7bdd32 89-106,108-126,128-144,187-202,229-232,250-265
+packages/frontend/editor-ui/src/features/agents/components/TestModeBar.vue
+  s_1cfc31402a4d82::t_0371f67e3ceb50 2,20,30-32
+  s_1cfc31402a4d82::t_c34f747d0357e0 33-36
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_1cfc31402a4d82::t_829a69bdebbe14 83
+  s_1cfc31402a4d82::t_b48ab808dc3d03 336-337,354
+  s_1cfc31402a4d82::t_6a508f4dfa35f6 84-91,355
+packages/frontend/editor-ui/src/features/agents/agentTestMode.types.ts
+  s_1cfc31402a4d82::t_f9e76f6dd49c04 4-5
+packages/frontend/editor-ui/src/features/agents/components/AgentTestChatPage.vue
+  s_1cfc31402a4d82::t_16c3c9ae8be9f7 80,97,225
+packages/cli/src/modules/agent-evals/__tests__/agent-test-mode.service.test.ts
+  s_1cfc31402a4d82::t_e056194eaa2695 22-25
+  s_1cfc31402a4d82::t_c90aa5c824fe08 256-276
+  s_1cfc31402a4d82::t_3df00f4abc4723 169-174,176-185,189-193,195-197,199-209,212-219,221-230,233-240,244-249,251-252,254-255,277-280,282-286,288-291,293-298,301-304,306-308,310-311,314-315,319
+  s_1cfc31402a4d82::t_3b9e79c890c290 175,186-188,194,198,210-211,220,231-232,241-243,250,253,281,287,292,299-300,305,309,312-313,316-318,320-337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "03154b6b982cf3fb451e308a32401dafe22d3c50",
+  "prompts": {},
+  "sessions": {
+    "s_1cfc31402a4d82": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18e0b-98de-71df-9e22-818c5a5a5933",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

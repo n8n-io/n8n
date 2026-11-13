@@ -1,0 +1,46 @@
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_40f8b037f3bcf9::t_a4d8c992974e0e 33,35-42
+  s_40f8b037f3bcf9::t_a7a67e9f0aab65 15
+packages/cli/test/integration/workflows/workflow-publication-retry.test.ts
+  s_40f8b037f3bcf9::t_e0854ea2ece95b 156-168
+  s_40f8b037f3bcf9::t_43de0da1046aa9 111-112
+  s_40f8b037f3bcf9::t_7182a7cff5ecc9 296-306
+  s_40f8b037f3bcf9::t_4241063dac5774 408
+  s_40f8b037f3bcf9::t_3a65b8858f0053 392-401
+  s_40f8b037f3bcf9::t_f76119d29927f2 15
+  s_40f8b037f3bcf9::t_3c3a22c0b00a16 119-120
+  s_40f8b037f3bcf9::t_d30a907f7b949f 386-388,390-391
+packages/cli/test/migration/1794320866222-add-retry-delay-to-workflow-publication-retry-state.test.ts
+  s_40f8b037f3bcf9::t_3f3233fffc0619 10
+  s_40f8b037f3bcf9::t_ff92895b11ccf8 128-136
+  s_40f8b037f3bcf9::t_afdf3d7fe51605 178
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  s_40f8b037f3bcf9::t_f3ae2178635397 804-813
+  s_a33bd96b88f1be::t_c1fa4b6afdcaba 803
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_40f8b037f3bcf9::t_db0717c084d7bf 625-626
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba1ba8e126e515973f58363904db3e65c19911d4",
+  "prompts": {},
+  "sessions": {
+    "s_40f8b037f3bcf9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66c65aaf-9fbc-4586-9b3f-bc033bff0f2a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_a33bd96b88f1be": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca81bcdb-1431-4bfb-b4d2-0d9820a14661",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

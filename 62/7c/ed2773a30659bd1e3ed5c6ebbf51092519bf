@@ -1,0 +1,25 @@
+packages/cli/src/modules/agent-evals/__tests__/agent-test-mode.checkpoint.integration.test.ts
+  s_ee852ab0af0158::t_d4b6e4e2daafff 1-84,86,88-92
+  s_ee852ab0af0158::t_56e28a26b613fb 85,87
+  s_ee852ab0af0158::t_d2b9c5e3cef4ab 93-123
+packages/cli/src/modules/agents/__tests__/agent-test-run.checkpoint.integration.test.ts
+  s_ee852ab0af0158::t_b8232407b5716a 149-173,176-178
+  s_ee852ab0af0158::t_7152843a278f2d 12,15,174-175
+  s_ee852ab0af0158::t_5bd0e402932a85 179-189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "627ced2773a30659bd1e3ed5c6ebbf51092519bf",
+  "prompts": {},
+  "sessions": {
+    "s_ee852ab0af0158": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18e33-d963-71df-9e22-818fd31f4b32",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

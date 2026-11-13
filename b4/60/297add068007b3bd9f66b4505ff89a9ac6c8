@@ -1,0 +1,30 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_8a472ace01776f 9735
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalTryRow.test.ts
+  h_8a472ace01776f 343-395
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalChecksPanel.vue
+  h_8a472ace01776f 13,27,91-92,112,524
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalExpectations.vue
+  h_8a472ace01776f 3,6-8,11-15,19-21,25,28-40,45-55,76-77,82-93
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalTryRow.vue
+  h_8a472ace01776f 13-18,37,62-63,185-186,188-190,194-200,203,255,257,303,308-314,316,333-342,348
+packages/frontend/editor-ui/src/features/agents/components/firstAssignment/AssignmentScorecard.vue
+  h_8a472ace01776f 3-4,7,10-11,32,38-43,52-66
+packages/frontend/editor-ui/src/features/agents/components/scorecard/AgentScorecardRows.vue
+  h_8a472ace01776f 1-67
+packages/frontend/editor-ui/src/features/agents/components/scorecard/scorecardStatus.ts
+  h_8a472ace01776f 8
+packages/frontend/editor-ui/src/features/agents/utils/agent-eval-review.ts
+  h_8a472ace01776f 1,133-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b460297add068007b3bd9f66b4505ff89a9ac6c8",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
