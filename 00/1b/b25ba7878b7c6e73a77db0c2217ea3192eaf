@@ -1,0 +1,39 @@
+packages/@n8n/api-types/src/index.ts
+  s_9af1b09aa006a5::t_37f8fd73fab0f4 1094,1096,1102,1104
+packages/@n8n/api-types/src/schemas/agent-safe-testing.schema.ts
+  s_9af1b09aa006a5::t_347d66c6f17cf7 48-51,62-72
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_9af1b09aa006a5::t_acef3e4e36b25d 158-159
+packages/cli/src/modules/agents/simulation/__tests__/simulated-write-sends-nothing.test.ts
+  s_9af1b09aa006a5::t_cf35650d854fac 110
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.service.test.ts
+  s_9af1b09aa006a5::t_b4c332917a68c9 14-18,91-97,154-194
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_9af1b09aa006a5::t_4566a596be217f 2,20-25,65,85,117,136,154,173,193,209,224,248-269,275-283,306,311,318,320-325,327-330
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_9af1b09aa006a5::t_04009887c4c43c 1-2,10,20,62-65,69-71,81,96,106-112,117-122,124,127-141,143-150,153-224
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_9af1b09aa006a5::t_33ff23424d801e 10-15,100-101,122,140,148-152,211-227
+packages/cli/src/modules/agents/simulation/tool-simulation.contracts.ts
+  s_9af1b09aa006a5::t_86e44593fdfaad 1,17-19
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-mock-simulation-backend.test.ts
+  s_9af1b09aa006a5::t_62442e233a8ff5 40-54
+packages/cli/src/modules/instance-ai/eval/llm-mock-simulation-backend.ts
+  s_9af1b09aa006a5::t_1d48b12a08cfa6 3,22-23,35-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "001bb25ba7878b7c6e73a77db0c2217ea3192eaf",
+  "prompts": {},
+  "sessions": {
+    "s_9af1b09aa006a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1eb6b7e9-1b4b-40b6-a96a-2131e0d0c9cf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

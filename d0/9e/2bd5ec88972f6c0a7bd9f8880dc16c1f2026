@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/simulation/__tests__/node-network-imports.test.ts
+  s_9af1b09aa006a5::t_cc16fb334c0878 1-249
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.service.test.ts
+  s_9af1b09aa006a5::t_d6714a67ade690 86,230-241
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_9af1b09aa006a5::t_166e4943af56a1 379-455
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_9af1b09aa006a5::t_6ebf649b728bf2 54,64,94
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_9af1b09aa006a5::t_59b00a9bcdab8e 98-99,116-117,134,207-213,215,332-337,339,341-348,350
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d09e2bd5ec88972f6c0a7bd9f8880dc16c1f2026",
+  "prompts": {},
+  "sessions": {
+    "s_9af1b09aa006a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1eb6b7e9-1b4b-40b6-a96a-2131e0d0c9cf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

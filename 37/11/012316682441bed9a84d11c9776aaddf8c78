@@ -1,0 +1,77 @@
+packages/@n8n/api-types/src/schemas/__tests__/agent-evals.schema.test.ts
+  s_dd7e80244d88e6::t_b6a74eb05aa0b6 16-23,26
+  s_dd7e80244d88e6::t_432f975be21ad8 24-25,27-31
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_dd7e80244d88e6::t_f05296011c9323 26-27
+packages/@n8n/api-types/src/schemas/__tests__/agent-eval-checks.schema.test.ts
+  s_dd7e80244d88e6::t_2b53960cacff9f 5,9-17
+  s_dd7e80244d88e6::t_b53a30cf1d63c9 21-23
+  s_dd7e80244d88e6::t_feaab83c74b524 18-20,24
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-checks-verdict.test.ts
+  s_dd7e80244d88e6::t_3f2ebd8fb0240b 1-18
+  s_dd7e80244d88e6::t_d2586cd4e1e42b 19-42
+packages/cli/src/modules/agent-evals/__tests__/agent-eval-runner.service.test.ts
+  s_dd7e80244d88e6::t_288086b64478c4 197-200,249-250,252
+  s_dd7e80244d88e6::t_8f86ee07c70bd7 58-60,181,247-248,251,253-281,288-294,306,312,326
+  s_dd7e80244d88e6::t_b544b2305b64c6 282-287
+  s_dd7e80244d88e6::t_c13f54007083e9 295-305,307-311,313-325,327-329
+packages/cli/src/modules/agent-evals/agent-chat-tests.repository.ts
+  s_dd7e80244d88e6::t_613a3bccb9304e 1-71
+  s_dd7e80244d88e6::t_8b0d5925dd589a 72-138
+packages/frontend/editor-ui/src/features/agents/agentEvals.store.ts
+  s_dd7e80244d88e6::t_451cf034ad4d82 2,178-184,187
+  s_dd7e80244d88e6::t_0a27443b09618d 185-186,188-193,1325
+packages/frontend/editor-ui/src/features/agents/agentEvals.api.ts
+  s_dd7e80244d88e6::t_fae39b8fc69fd9 3-4,47-49
+  s_dd7e80244d88e6::t_33beb001b4a307 50-60
+packages/cli/src/modules/agent-evals/agent-evals.controller.ts
+  s_dd7e80244d88e6::t_00f04deefaedf8 4-5,52,87,119-124,132
+  s_dd7e80244d88e6::t_a9d3474befe84c 125-131,133-135
+packages/@n8n/api-types/src/schemas/agent-eval-checks.schema.ts
+  s_dd7e80244d88e6::t_54cf4f32b32841 67-81
+packages/cli/src/modules/agent-evals/__tests__/agent-evals.controller.test.ts
+  s_dd7e80244d88e6::t_2a20a358f4fb25 23-24,54,76,83,87-98
+  s_dd7e80244d88e6::t_acd95e3028ab61 99-104,201
+packages/@n8n/api-types/src/index.ts
+  s_dd7e80244d88e6::t_502d8504fad24b 891-893
+packages/cli/src/modules/agent-evals/agent-eval-runner.service.ts
+  s_dd7e80244d88e6::t_815979d50caef5 1,706-707,713,715-728,757,803,840-841
+  s_dd7e80244d88e6::t_dc342e3b293d27 248-249
+  s_dd7e80244d88e6::t_072da447ff4b93 2-6,41-42,245-247,250-254,662-667,852-862
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_dd7e80244d88e6::t_6fea04320282f0 268-273,3878
+  s_dd7e80244d88e6::t_f6ed8a704c5f2b 99,267,3728
+packages/frontend/editor-ui/src/features/agents/__tests__/agentEvals.store.test.ts
+  s_dd7e80244d88e6::t_d5399a9208c1fc 13,32,53,207-229,240
+  s_dd7e80244d88e6::t_8551a51995d00c 230-239,241-245
+packages/cli/src/modules/agent-evals/__tests__/agent-chat-tests.repository.integration.test.ts
+  s_dd7e80244d88e6::t_699ed61f6021fe 24
+  s_dd7e80244d88e6::t_ba516732f2d476 1-23,25-55
+  s_dd7e80244d88e6::t_ea8a7008c041a3 56-87
+packages/@n8n/api-types/src/schemas/agent-evals.schema.ts
+  s_dd7e80244d88e6::t_f7a0bb071d8082 38-39
+packages/cli/src/modules/agent-evals/__tests__/agent-chat-tests.service.test.ts
+  s_dd7e80244d88e6::t_fd54dc053d9424 1-65
+  s_dd7e80244d88e6::t_06797386211e89 66-101
+packages/cli/src/modules/agent-evals/agent-chat-tests.service.ts
+  s_dd7e80244d88e6::t_f989727540365d 1-45
+  s_dd7e80244d88e6::t_8338fc7db91a81 46-61
+packages/cli/src/modules/agent-evals/agent-eval-checks-verdict.ts
+  s_dd7e80244d88e6::t_86697effca174f 1-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3711012316682441bed9a84d11c9776aaddf8c78",
+  "prompts": {},
+  "sessions": {
+    "s_dd7e80244d88e6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18cf2-d4b8-71df-9e22-8184693749a1",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    }
+  }
+}

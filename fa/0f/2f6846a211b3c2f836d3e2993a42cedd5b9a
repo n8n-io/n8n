@@ -1,0 +1,35 @@
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_f8edc9206cd25c::t_f738b1f53739c5 528-567
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_f8edc9206cd25c::t_847793fa3a1907 747-750
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_f8edc9206cd25c::t_ded207bed10131 506-507
+packages/cli/src/modules/agents/simulation/__tests__/outbound-redaction.test.ts
+  s_f8edc9206cd25c::t_a20575799ef137 1-84
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.service.test.ts
+  s_f8edc9206cd25c::t_b8a20f3739054f 15,265-296
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_f8edc9206cd25c::t_100ab6987a2a32 5-10,197-200,290-294,301,317,357-394
+packages/cli/src/modules/agents/simulation/outbound-redaction.ts
+  s_f8edc9206cd25c::t_74c1f483e0dd18 1-101
+packages/cli/src/modules/agents/simulation/simulation-session.service.ts
+  s_f8edc9206cd25c::t_a37e3145dacf63 7,99-101,114,118-121
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_f8edc9206cd25c::t_882e2df95cd4d0 22,80-84,105-106,130-131,134-135,145,223,294-301,345,364,392,410-415
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa0f2f6846a211b3c2f836d3e2993a42cedd5b9a",
+  "prompts": {},
+  "sessions": {
+    "s_f8edc9206cd25c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_f8edc9206cd25c",
+        "model": "unknown"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/agents/testRunTools.types.ts
+  s_9af1b09aa006a5::t_cd7ac134e9be2f 1-38
+packages/frontend/editor-ui/src/features/agents/components/AgentTestRunToolsNotice.vue
+  s_9af1b09aa006a5::t_6a8282050345e3 1-275
+  s_9af1b09aa006a5::t_fbff25dbc3aa06 276-292
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9af1b09aa006a5::t_6ea5396decb7a2 9309-9333
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentNewTestRun.test.ts
+  s_9af1b09aa006a5::t_cc81da12cdd002 1-115
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestRunToolsNotice.test.ts
+  s_9af1b09aa006a5::t_b3bb8d77e76705 1-221
+packages/frontend/editor-ui/src/features/agents/components/AgentNewTestRunButton.vue
+  s_9af1b09aa006a5::t_738128a6954cc5 1-75
+packages/frontend/editor-ui/src/features/agents/components/AgentNewTestRunModal.vue
+  s_9af1b09aa006a5::t_db4750b3204c42 1-66
+packages/frontend/editor-ui/src/features/agents/components/AgentTestRunChangesNote.vue
+  s_9af1b09aa006a5::t_59416d0124d4c7 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f73065697bd4b737afbdb0662bfddca25f1555c",
+  "prompts": {},
+  "sessions": {
+    "s_9af1b09aa006a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1eb6b7e9-1b4b-40b6-a96a-2131e0d0c9cf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
