@@ -324,6 +324,31 @@ describe('SimulationSessionService', () => {
 		});
 	});
 
+	it('marks the execution as simulated when the turn is admitted, after the marker', async () => {
+		const { service, threadRepository, executionRepository } = setup({ backend: llmBackend() });
+		const session = await service.openForDraftRun(openInput);
+
+		await session!.markTestChat('execution-7');
+
+		expect(threadRepository.update).toHaveBeenCalledOnce();
+		expect(executionRepository.update).toHaveBeenCalledExactlyOnceWith(
+			{ id: 'execution-7' },
+			{ simulated: true },
+		);
+		expect(threadRepository.update.mock.invocationCallOrder[0]).toBeLessThan(
+			executionRepository.update.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('does not mark the execution when the test chat marker fails', async () => {
+		const { service, threadRepository, executionRepository } = setup();
+		threadRepository.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+		const session = await service.openForDraftRun(openInput);
+
+		await expect(session!.markTestChat('execution-7')).rejects.toThrow();
+		expect(executionRepository.update).not.toHaveBeenCalled();
+	});
+
 	it('fails the turn when the test chat marker matches no thread', async () => {
 		const { service, threadRepository } = setup();
 		threadRepository.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });

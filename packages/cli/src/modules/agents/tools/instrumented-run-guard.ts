@@ -44,3 +44,6 @@ export function assertInstrumentedRunStaysOnMain(
 /** A paused run resumes later without its hooks, so an instrumented run must not pause. */
 export const PAUSED_INSTRUMENTED_RUN_MESSAGE =
 	'This workflow paused to wait. A paused workflow resumes outside the test run, so it was stopped.';
+
+/** Custom data on a workflow execution that an instrumented tool started. */
+export const SIMULATED_RUN_METADATA: Readonly<Record<string, string>> = { simulated: 'true' };

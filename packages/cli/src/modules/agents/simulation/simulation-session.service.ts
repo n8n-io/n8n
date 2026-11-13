@@ -110,7 +110,11 @@ export class SimulationSessionService {
 			world,
 			unavailableDetail,
 			capabilities,
-			recordTestChat: async (current) => await this.saveTestChat(current),
+			recordTestChat: async (current, executionId) => {
+				await this.saveTestChat(current);
+				// Before the agent runs, so the execution is a test run even if the turn never ends.
+				if (executionId) await this.markExecutionSimulated(executionId);
+			},
 			queueMode: this.executionsConfig.mode === 'queue',
 			previousWorld: savedWorld,
 		});
