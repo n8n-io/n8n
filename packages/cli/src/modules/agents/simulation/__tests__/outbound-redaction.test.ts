@@ -82,6 +82,20 @@ describe('OutboundRedactor', () => {
 		expect(wrapped.getParentTypes('x')).toEqual(['base']);
 	});
 
+	it('removes a secret with spaces from a form-encoded body and query', async () => {
+		const { redactor } = await redactorWithCredential({ password: 'my real password' });
+
+		const request = redactor.redact({
+			protocol: 'http',
+			method: 'POST',
+			url: 'https://example.com/login?note=my+real+password',
+			body: new URLSearchParams({ pass: 'my real password' }),
+		});
+
+		expect(JSON.stringify(request)).not.toContain('my+real+password');
+		expect(JSON.stringify(request)).not.toContain('my real password');
+	});
+
 	it('removes a short password from the URL path and a free-form body', async () => {
 		const { redactor } = await redactorWithCredential({ password: 'pw4567' });
 
@@ -193,6 +207,13 @@ describe('redactMcpUrl', () => {
 		expect(redactMcpUrl('https://user:pw@mcp.example.com/mcp?key=s3cret&team=t1')).toBe(
 			'https://mcp.example.com/mcp?key=%5BREDACTED%5D&team=%5BREDACTED%5D',
 		);
+	});
+
+	it('removes a token in the path and the fragment, and keeps plain segments', () => {
+		expect(redactMcpUrl('https://mcp.zapier.com/api/mcp/s/aB3dE9xYz71QwErT/mcp#frag')).toBe(
+			'https://mcp.zapier.com/api/mcp/s/[REDACTED]/mcp',
+		);
+		expect(redactMcpUrl('https://api.example.com/v2/sse')).toBe('https://api.example.com/v2/sse');
 	});
 
 	it('leaves a URL without a query as it is', () => {
