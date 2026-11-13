@@ -8,14 +8,18 @@
 
 The editor shows node and credential icons on a white node background in the light theme and on a dark gray (`#2b2b2b`) node background in the dark theme. An icon that has the same color as the background is invisible.
 
-This rule renders each SVG or PNG icon on the background of the theme that shows it:
+This rule reads paint declarations from each SVG icon and checks the theme that shows it:
 
 - A `{ light, dark }` icon: the light file on the light background, the dark file on the dark background.
 - A single icon file: on both backgrounds.
 
-A pixel of the icon is visible when its contrast with the background reaches the `minimum` option (default 1.5:1). The rule warns when less than 10% of the icon's pixels are visible. Because the rule renders the icon, it sees what the editor shows: CSS classes, opacity, gradients, and masks all apply.
+The rule collects `fill`, `stroke`, and `stop-color` from attributes, inline styles, and `<style>` blocks. It parses CSS colors with `culori` and compares the best color with the node background. The default minimum is 1.5:1. A black glyph scores 1.48:1 on the dark background, so the warning shows two decimal places.
 
-The rule skips icons that are not SVG or PNG files, files that do not exist (the `icon-validation` rule reports those), and files that paint no pixels. Text in an icon does not count, because system fonts differ between machines.
+An SVG with no fill uses black. Because file icons render in an `<img>`, `currentColor` uses black and `var()` uses its fallback or black. Color alpha is composited with the theme background.
+
+The rule skips PNG files, embedded images, invalid SVG or CSS, and `url()` paint that does not refer to a local gradient with stops. Local gradient `href` and `xlink:href` chains are supported. It also skips missing files (`icon-validation` reports those) and icons with no visible paint.
+
+The rule reads declarations. It does not rasterize the SVG or apply the CSS cascade. It cannot judge shape size, overlap, masks, or separate opacity properties.
 
 ## Options
 
@@ -23,7 +27,7 @@ The rule skips icons that are not SVG or PNG files, files that do not exist (the
 '@n8n/community-nodes/icon-contrast': ['warn', { minimum: 3 }]
 ```
 
-`minimum` sets the contrast ratio at which a pixel counts as visible. WCAG 2.1 asks for 3:1 for graphical objects.
+`minimum` sets the lowest contrast ratio that the best paint color must reach. It defaults to 1.5. Use 3 for the WCAG contrast value for graphical objects.
 
 ## Examples
 
