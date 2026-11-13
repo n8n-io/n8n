@@ -12,6 +12,7 @@ import {
 	type IBinaryKeyData,
 	NodeConnectionTypes,
 	NodeOperationError,
+	requestPath,
 } from 'n8n-workflow';
 
 import { downloadFile, getChannelInfo, getUserInfo, verifySignature } from './SlackTriggerHelpers';

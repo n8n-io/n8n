@@ -413,7 +413,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentSetupCompletionService>(),
 			mock<N8nChatFlagService>(),
 			mock<AgentDefinitionService>(),
-			mock<GlobalConfig>({ tags: { disabled: false } }),
 			mock<TagService>(),
 			mock<AgentServiceAccountService>(),
 		);
