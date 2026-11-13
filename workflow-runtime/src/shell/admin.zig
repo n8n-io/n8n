@@ -170,7 +170,8 @@ pub fn manualEvent(gpa: std.mem.Allocator, body: []const u8, test_clock: bool) B
     errdefer out.deinit(gpa);
     // The offset goes first, on its own line: the trigger can hold newlines,
     // so it must stay last (CLOCK-OFFSET).
-    if (clock_offset_ms != 0) try out.print(gpa, "{s}{d}\n", .{ core.clock_offset_prefix, clock_offset_ms });
+    // Always written, so a workflow id can never be read as the clock line.
+    try out.print(gpa, "{s}{d}\n", .{ core.clock_offset_prefix, clock_offset_ms });
     try out.print(gpa, "{s}\n{s}\n{s}", .{ wf, version, if (trigger.len == 0) "null" else trigger });
     return .{ .exec_id = exec_id, .flags = if (boolField(o, "trace")) heap.exec_flag_trace else 0, .payload = try out.toOwnedSlice(gpa), .clock_offset_ms = clock_offset_ms };
 }
@@ -662,10 +663,10 @@ test "manual event" {
     try std.testing.expectEqual(@as(u64, 1234) | core.given_id_flag, m.exec_id);
     try std.testing.expectEqual(heap.exec_flag_trace, m.flags);
     try std.testing.expectEqual(@as(i64, 0), m.clock_offset_ms);
-    try std.testing.expectEqualStrings("wf1\n\n{\"n\":1.50}", m.payload);
+    try std.testing.expectEqualStrings("clock:0\nwf1\n\n{\"n\":1.50}", m.payload);
     const n = try manualEvent(gpa, "{\"workflowId\":\"wf1\",\"versionId\":\"v1\",\"executionId\":77}", true);
     defer gpa.free(n.payload);
-    try std.testing.expectEqualStrings("wf1\nv1\nnull", n.payload);
+    try std.testing.expectEqualStrings("clock:0\nwf1\nv1\nnull", n.payload);
     try std.testing.expectError(error.BadExecutionId, manualEvent(gpa, "{\"workflowId\":\"wf1\",\"executionId\":\"wfrt-3\"}", true));
     try std.testing.expectError(error.BadExecutionId, manualEvent(gpa, "{\"workflowId\":\"wf1\",\"executionId\":\"abc\"}", true));
 }
@@ -683,7 +684,7 @@ test "manual event: the clock offset of a test run" {
         const m = try manualEvent(gpa, clockBody("0"), true);
         defer gpa.free(m.payload);
         try std.testing.expectEqual(@as(i64, 0), m.clock_offset_ms);
-        try std.testing.expectEqualStrings("wf1\n\nnull", m.payload);
+        try std.testing.expectEqualStrings("clock:0\nwf1\n\nnull", m.payload);
     }
     // A negative and a positive offset go on the first line of the payload.
     {
