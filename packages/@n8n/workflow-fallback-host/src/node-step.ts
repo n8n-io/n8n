@@ -766,6 +766,13 @@ export class NodeStepRunner {
 		);
 	}
 
+	/**
+	 * The run clock of the step (`CLOCK-OFFSET`, spec 9) reaches the expressions
+	 * of a node through Luxon's `Settings.now` (`expression-engine.ts`). A node
+	 * that reads the global `Date` reads the real clock: the steps of several
+	 * executions interleave in one worker (`step-worker.ts`), so the host cannot
+	 * shift a process-wide clock for one step.
+	 */
 	async run(args: NodeStepArgs, meta: NodeStepMeta): Promise<JsonObject[]> {
 		if (args.type === CONTEXT_TYPE) return [instanceData(args.parameters, meta)];
 		if (args.type === SCHEDULE_TYPE) return [scheduleItem(args.parameters)];

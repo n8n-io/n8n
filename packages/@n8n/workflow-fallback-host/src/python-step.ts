@@ -21,7 +21,7 @@
  */
 import { spawnSync } from 'node:child_process';
 
-import { CodeStepError } from './code-step';
+import { clockOffsetMs, CodeStepError } from './code-step';
 import { toResultItems } from './items';
 import type { JsonObject } from './protocol';
 
@@ -57,6 +57,53 @@ req = json.loads(sys.stdin.read())
 stdlib_allow = set(req["stdlibAllow"])
 external_allow = set(req["externalAllow"])
 real_import = builtins.__import__
+
+# The run clock of the step (CLOCK-OFFSET, spec 9): the code reads the datetime
+# and time modules at now + offset. Timers (monotonic, sleep) stay on real time.
+offset_ms = req.get("clockOffsetMs") or 0
+if offset_ms:
+    import datetime as _datetime
+    import time as _time
+    import types as _types
+    offset_s = offset_ms / 1000.0
+    offset_ns = offset_ms * 1000000
+
+    class _ShiftedDateTime(_datetime.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls.fromtimestamp(_datetime.datetime.now(tz).timestamp() + offset_s, tz)
+
+        @classmethod
+        def utcnow(cls):
+            return cls.fromtimestamp(
+                _datetime.datetime.now(_datetime.timezone.utc).timestamp() + offset_s,
+                _datetime.timezone.utc,
+            ).replace(tzinfo=None)
+
+        @classmethod
+        def today(cls):
+            return cls.fromtimestamp(_datetime.datetime.now().timestamp() + offset_s)
+
+    class _ShiftedDate(_datetime.date):
+        @classmethod
+        def today(cls):
+            return cls.fromtimestamp(_datetime.datetime.now().timestamp() + offset_s)
+
+    _module = _types.ModuleType("datetime")
+    for _name, _value in vars(_datetime).items():
+        setattr(_module, _name, _value)
+    _module.datetime = _ShiftedDateTime
+    _module.date = _ShiftedDate
+    sys.modules["datetime"] = _module
+
+    _real_time = _time.time
+    _real_time_ns = _time.time_ns
+    _real_localtime = _time.localtime
+    _real_gmtime = _time.gmtime
+    _time.time = lambda: _real_time() + offset_s
+    _time.time_ns = lambda: _real_time_ns() + offset_ns
+    _time.localtime = lambda secs=None: _real_localtime(_real_time() + offset_s if secs is None else secs)
+    _time.gmtime = lambda secs=None: _real_gmtime(_real_time() + offset_s if secs is None else secs)
 
 def safe_import(name, globals=None, locals=None, fromlist=(), level=0):
     if level == 0:
@@ -112,6 +159,7 @@ export function runPythonStep(
 	const input = JSON.stringify({
 		code: args.code,
 		items: args.items,
+		clockOffsetMs: clockOffsetMs(),
 		deny: DENIED_BUILTINS,
 		stdlibAllow: allowList(process.env.WF_FALLBACK_PYTHON_STDLIB_ALLOW),
 		externalAllow: allowList(process.env.WF_FALLBACK_PYTHON_EXTERNAL_ALLOW),

@@ -29,7 +29,10 @@ export interface StepRequest {
 	credential?: FrameCredential;
 	/** Credentials by slot, for steps that name more than one slot (AI clusters). */
 	credentials?: Record<string, FrameCredential>;
-	/** The execution of the step: `{ id, mode, resumeUrl, resumeFormUrl }` (spec 9.4). */
+	/**
+	 * The execution of the step: `{ id, mode, resumeUrl, resumeFormUrl, clockOffsetMs }`
+	 * (spec 9.4). `clockOffsetMs` comes only when it is not 0.
+	 */
 	execution?: JsonObject;
 }
 
@@ -153,6 +156,16 @@ export class FrameDecoder {
 
 export function isJsonObject(value: unknown): value is JsonObject {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * The run clock offset of a step, in milliseconds (`execution.clockOffsetMs`,
+ * spec 9). A step with an offset reads `now + offset`. Without an offset it
+ * reads the real clock, so the result is 0.
+ */
+export function readClockOffset(execution: JsonObject | undefined): number {
+	const value = execution?.clockOffsetMs;
+	return typeof value === 'number' && Number.isInteger(value) && value !== 0 ? value : 0;
 }
 
 /** Parses and validates one request body. Throws `ProtocolError` on a bad request. */
