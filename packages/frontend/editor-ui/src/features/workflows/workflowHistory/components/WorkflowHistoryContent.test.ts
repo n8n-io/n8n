@@ -123,7 +123,7 @@ describe('WorkflowHistoryContent', () => {
 		expect(button.className).toContain('loading');
 		expect(button).toHaveTextContent('Actions');
 		expect(button.querySelector('[data-icon="chevron-down"]')).toBeInTheDocument();
-		expect(button.querySelector('[data-icon="loader"]')).toBeInTheDocument();
+		expect(button.querySelector('[data-spinner="grid"]')).toBeInTheDocument();
 
 		await rerender({ ...props, pendingVersionId: null });
 
@@ -133,7 +133,7 @@ describe('WorkflowHistoryContent', () => {
 		expect(idleButton.className).not.toContain('loading');
 		expect(idleButton).toHaveTextContent('Actions');
 		expect(idleButton.querySelector('[data-icon="chevron-down"]')).toBeInTheDocument();
-		expect(idleButton.querySelector('[data-icon="loader"]')).not.toBeInTheDocument();
+		expect(idleButton.querySelector('[data-spinner="grid"]')).not.toBeInTheDocument();
 	});
 
 	it('keeps the actions button idle when a different version is pending', () => {
