@@ -886,7 +886,7 @@ describe('InstanceAiInput', () => {
 	});
 
 	it('submits typed text and attachments from the send button', async () => {
-		const { container, emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
+		const { container, emitted, getByRole, getByTestId } = renderComponent({
 			props: {
 				isStreaming: false,
 				suggestions,
@@ -925,7 +925,7 @@ describe('InstanceAiInput', () => {
 			],
 		]);
 		expect(textbox).toHaveValue('');
-		expect(queryByTestId('chat-file')).not.toBeInTheDocument();
+		expect(container.querySelector('.n8n-attachment')).not.toBeInTheDocument();
 
 		const restoreDraft = emittedArgument(emitted().submit?.[0], 2);
 		expect(restoreDraft).toBeTypeOf('function');
@@ -933,7 +933,7 @@ describe('InstanceAiInput', () => {
 		expect(restoreDraft()).toBe(true);
 		await waitFor(() => {
 			expect(textbox).toHaveValue('Please send this with context');
-			expect(getByTestId('chat-file')).toBeInTheDocument();
+			expect(container.querySelector('.n8n-attachment')).toBeInTheDocument();
 		});
 	});
 
@@ -970,7 +970,7 @@ describe('InstanceAiInput', () => {
 	});
 
 	it('does not restore a submitted draft over newer composer content', async () => {
-		const { container, emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
+		const { container, emitted, getByRole, getByTestId } = renderComponent({
 			props: { isStreaming: false },
 		});
 		const textbox = getByRole('textbox');
@@ -981,7 +981,7 @@ describe('InstanceAiInput', () => {
 			configurable: true,
 		});
 		await fireEvent.change(fileInput);
-		await waitFor(() => expect(getByTestId('chat-file')).toBeInTheDocument());
+		await waitFor(() => expect(container.querySelector('.n8n-attachment')).toBeInTheDocument());
 		await userEvent.click(getByTestId('instance-ai-send-button'));
 		await waitFor(() => expect(emitted().submit?.[0]).toBeDefined());
 
@@ -992,7 +992,7 @@ describe('InstanceAiInput', () => {
 
 		expect(restoreDraft()).toBe(false);
 		expect(textbox).toHaveValue('New message');
-		expect(queryByTestId('chat-file')).not.toBeInTheDocument();
+		expect(container.querySelector('.n8n-attachment')).not.toBeInTheDocument();
 	});
 
 	it('opens quick examples and inserts an example without submitting', async () => {
@@ -1063,10 +1063,10 @@ describe('InstanceAiInput', () => {
 		});
 
 		await waitFor(() => {
-			expect(getByTestId('attachment-preview-remove')).toBeInTheDocument();
+			expect(getByTestId('attachment-remove')).toBeInTheDocument();
 		});
 
-		await userEvent.click(getByTestId('attachment-preview-remove'));
+		await userEvent.click(getByTestId('attachment-remove'));
 
 		await waitFor(() => {
 			expect(getByTestId('instance-ai-suggestion-build-workflow')).toBeInTheDocument();

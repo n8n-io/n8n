@@ -5,6 +5,8 @@ import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import AttachmentPreview from './AttachmentPreview.vue';
+import { N8nAttachment, N8nAttachmentGroup } from '@n8n/design-system';
+import { useAttachmentPreviews } from '@/features/ai/shared/composables/useAttachmentPreviews';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
 import InstanceAiInputMenu from './InstanceAiInputMenu.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
@@ -165,9 +167,34 @@ const mentionTelemetry = useAssistantAtMentionsTelemetry({
 const instanceAiStore = useInstanceAiStore();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
+const removingFiles = ref(new Set<File>());
+
+/** Clear stale removal state only after the draft file list changes. */
+watch(
+	() => [...attachedFiles.value],
+	(files) => {
+		for (const file of removingFiles.value) {
+			if (!files.includes(file)) removingFiles.value.delete(file);
+		}
+	},
+);
+
+const { previewUrl } = useAttachmentPreviews(() => attachedFiles.value);
+const fileIds = new WeakMap<File, number>();
+let nextFileId = 0;
+
+function getFileId(file: File): number {
+	let id = fileIds.get(file);
+	if (id === undefined) {
+		id = nextFileId++;
+		fileIds.set(file, id);
+	}
+	return id;
+}
 const attachedResources = ref<InstanceAiResourceAttachment[]>([]);
 const isPreparingSubmission = ref(false);
 const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
+const attachmentGroupRef = ref<InstanceType<typeof N8nAttachmentGroup> | null>(null);
 const mentionPickerRef = ref<InstanceType<typeof AssistantAtMentionPicker> | null>(null);
 const composerRef = ref<HTMLElement | null>(null);
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
@@ -507,7 +534,7 @@ function resetDraftComposer() {
 
 /** The single submission gate — `canSubmit` is this predicate over the draft. */
 function canSubmitMessage(message: string, attachmentCount = 0) {
-	if (props.isOutOfCredits) return false;
+	if (props.isOutOfCredits || removingFiles.value.size > 0) return false;
 	if (isBusy.value || isGatedBySetup.value) return false;
 	return message.length > 0 || attachmentCount > 0;
 }
@@ -700,7 +727,31 @@ function handleStop() {
 }
 
 function handleComposerKeydown(event: KeyboardEvent): void {
-	if (!mentionMenuOpen.value) return;
+	if (!mentionMenuOpen.value) {
+		/** Keep text navigation, modified shortcuts, and composition unchanged. */
+		if (
+			event.key === 'ArrowUp' &&
+			event.target instanceof HTMLTextAreaElement &&
+			event.target === chatInputRef.value?.getInputElement() &&
+			!event.target.value &&
+			!event.defaultPrevented &&
+			!event.altKey &&
+			!event.ctrlKey &&
+			!event.metaKey &&
+			!event.shiftKey &&
+			!event.isComposing &&
+			event.keyCode !== IME_COMPOSITION_KEYCODE &&
+			!event.repeat &&
+			attachedFiles.value.length > 0 &&
+			removingFiles.value.size === 0
+		) {
+			event.preventDefault();
+			event.stopPropagation();
+			attachmentGroupRef.value?.focus();
+			return;
+		}
+		return;
+	}
 	const handled = mentionPickerRef.value?.handleExternalKeydown(event) ?? false;
 	const hasModifier = event.shiftKey || event.ctrlKey || event.metaKey || event.altKey;
 	const isComposing = event.isComposing || event.keyCode === IME_COMPOSITION_KEYCODE;
@@ -899,15 +950,24 @@ const resizable = computed(() => {
 						@update:attachment="mentionAttachments.updateResource(index, $event)"
 					/>
 				</div>
-				<div v-if="attachedFiles.length > 0" :class="$style.attachments">
-					<AttachmentPreview
-						v-for="(file, index) in attachedFiles"
-						:key="index"
-						:file="file"
+				<N8nAttachmentGroup
+					v-if="attachedFiles.length > 0"
+					ref="attachmentGroupRef"
+					:class="$style.attachmentGroup"
+				>
+					<N8nAttachment
+						v-for="file in attachedFiles"
+						:key="getFileId(file)"
+						:file-name="file.name"
+						:mime-type="file.type"
+						:size-bytes="file.size"
+						:src="previewUrl(file)"
 						:is-removable="true"
-						@remove="handleFileRemove"
+						@remove-start="removingFiles.add(file)"
+						@remove="handleFileRemove(file)"
+						@remove-end="removingFiles.delete(file)"
 					/>
-				</div>
+				</N8nAttachmentGroup>
 			</template>
 			<template
 				v-if="$slots['footer-start'] || props.attachOnlyMimeTypes === undefined"
@@ -1011,5 +1071,9 @@ const resizable = computed(() => {
 :global(.suggestions-fade-leave-to) {
 	opacity: 0;
 	transform: translateY(4px);
+}
+
+.attachmentGroup {
+	margin-block-start: calc(var(--spacing--4xs) * -1);
 }
 </style>

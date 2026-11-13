@@ -120,7 +120,7 @@ describe('InstanceAiConversation — unsent draft during floating confirmations'
 	function expectDraft(view: ReturnType<typeof renderConversation>, draftText: string) {
 		expect(view.getByRole('textbox')).toHaveValue(draftText);
 		expect(view.getByTestId('attachment-preview-resource')).toHaveTextContent('Orders');
-		expect(view.getByText('orders.csv')).toBeInTheDocument();
+		expect(view.getByTitle('orders.csv')).toBeInTheDocument();
 	}
 
 	it('keeps the same composer and its draft through a floating approval', async () => {
@@ -171,6 +171,6 @@ describe('InstanceAiConversation — unsent draft during floating confirmations'
 
 		expect(secondView.getByRole('textbox')).toHaveValue('');
 		expect(secondView.queryByTestId('attachment-preview-resource')).not.toBeInTheDocument();
-		expect(secondView.queryByText('orders.csv')).not.toBeInTheDocument();
+		expect(secondView.queryByTitle('orders.csv')).not.toBeInTheDocument();
 	});
 });

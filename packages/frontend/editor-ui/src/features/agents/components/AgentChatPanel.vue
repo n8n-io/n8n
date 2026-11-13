@@ -15,6 +15,8 @@ import {
 } from 'vue';
 import {
 	N8nAiActivityStepGroup,
+	N8nAttachment,
+	N8nAttachmentGroup,
 	N8nButton,
 	N8nCallout,
 	N8nIcon,
@@ -52,7 +54,7 @@ import type {
 	ChatMessageQueueSteerAction,
 	ChatMessageQueueItem,
 } from '@/features/ai/shared/components/chatMessageQueue.types';
-import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
+import { useAttachmentPreviews } from '@/features/ai/shared/composables/useAttachmentPreviews';
 import InstanceAiResourceChip from '@/features/ai/instanceAi/components/InstanceAiResourceChip.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import {
@@ -103,6 +105,8 @@ import {
 } from '../composables/useAgentApi';
 import { AGENT_ATTACHMENT_URL_KEY } from './agentChatInjectionKeys';
 import ToolApprovalCard from '@/features/ai/shared/components/ToolApprovalCard.vue';
+
+const IME_COMPOSITION_KEYCODE = 229;
 
 const props = withDefaults(
 	defineProps<{
@@ -437,6 +441,29 @@ async function startQueueEdit(item: AgentChatQueueItem) {
 
 /** Allows Option/Alt + Up to edit the last sent queued message */
 function onChatInputKeydown(event: KeyboardEvent) {
+	/** Keep text navigation, modified shortcuts, and composition unchanged. */
+	if (
+		event.key === 'ArrowUp' &&
+		event.target instanceof HTMLTextAreaElement &&
+		event.target === chatInput.value?.getInputElement() &&
+		!event.target.value &&
+		!event.defaultPrevented &&
+		!event.altKey &&
+		!event.ctrlKey &&
+		!event.metaKey &&
+		!event.shiftKey &&
+		!event.isComposing &&
+		event.keyCode !== IME_COMPOSITION_KEYCODE &&
+		!event.repeat &&
+		attachedFiles.value.length > 0 &&
+		removingFiles.value.size === 0
+	) {
+		event.preventDefault();
+		event.stopPropagation();
+		attachmentGroupRef.value?.focus();
+		return;
+	}
+
 	if (
 		!(event.target instanceof HTMLTextAreaElement) ||
 		event.key !== 'ArrowUp' ||
@@ -724,11 +751,37 @@ const backgroundElapsed = computed(() => {
 });
 
 const attachedFiles = ref<File[]>([]);
-// Host chips for the next message. They do not make a draft: a message still
-// needs text or files.
+const removingFiles = ref(new Set<File>());
+
+/** Clear stale removal state only after the draft file list changes. */
+watch(
+	() => [...attachedFiles.value],
+	(files) => {
+		for (const file of removingFiles.value) {
+			if (!files.includes(file)) removingFiles.value.delete(file);
+		}
+	},
+);
+
+const { previewUrl } = useAttachmentPreviews(() => attachedFiles.value);
+const draftFileKeys = new WeakMap<File, number>();
+let nextDraftFileKey = 0;
+
+function draftFileKey(file: File): number {
+	let key = draftFileKeys.get(file);
+	if (key === undefined) {
+		key = nextDraftFileKey++;
+		draftFileKeys.set(file, key);
+	}
+	return key;
+}
+
+/** Host chips need text or files before the message can be sent. */
 const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
 const composerChips = computed(() => composerAttachments.value.map(({ chip }) => chip));
 const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
+const attachmentGroupRef =
+	useTemplateRef<InstanceType<typeof N8nAttachmentGroup>>('attachmentGroupRef');
 const backgroundJobCard = useTemplateRef<HTMLDivElement>('backgroundJobCard');
 const backgroundJobStopButton =
 	useTemplateRef<InstanceType<typeof N8nButton>>('backgroundJobStopButton');
@@ -1011,6 +1064,7 @@ const budgetIncreasePending = ref(false);
 const isRetrying = ref(false);
 const isSubmissionBlocked = computed(
 	() =>
+		removingFiles.value.size > 0 ||
 		isRetrying.value ||
 		!!editingQueueId.value ||
 		isPreparingToSend.value ||
@@ -2006,7 +2060,10 @@ onBeforeUnmount(() => {
 						"
 						#attachments
 					>
-						<div :class="$style.attachmentsStrip">
+						<div
+							v-if="composerAttachments.length > 0 || $slots['composer-attachments']"
+							:class="$style.attachmentsStrip"
+						>
 							<slot
 								name="composer-attachments"
 								:chips="composerChips"
@@ -2028,14 +2085,25 @@ onBeforeUnmount(() => {
 									@remove="removeComposerAttachment(chip.id)"
 								/>
 							</slot>
-							<AttachmentPreview
-								v-for="(file, index) in attachedFiles"
-								:key="`${file.name}-${index}`"
-								:file="file"
-								is-removable
-								@remove="handleFileRemove"
-							/>
 						</div>
+						<N8nAttachmentGroup
+							v-if="attachedFiles.length > 0"
+							ref="attachmentGroupRef"
+							:class="$style.attachmentGroup"
+						>
+							<N8nAttachment
+								v-for="file in attachedFiles"
+								:key="draftFileKey(file)"
+								:file-name="file.name"
+								:mime-type="file.type"
+								:size-bytes="file.size"
+								:src="previewUrl(file)"
+								:is-removable="true"
+								@remove-start="removingFiles.add(file)"
+								@remove="handleFileRemove(file)"
+								@remove-end="removingFiles.delete(file)"
+							/>
+						</N8nAttachmentGroup>
 					</template>
 					<template #footer-start>
 						<slot name="composer-start" />
@@ -2292,5 +2360,8 @@ onBeforeUnmount(() => {
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
 	word-break: break-word;
+}
+.attachmentGroup {
+	margin-block-start: calc(var(--spacing--4xs) * -1);
 }
 </style>

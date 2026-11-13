@@ -1,5 +1,5 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern: @vue/test-utils is a transitive devDep */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import type { ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
 import AgentChatMessageAttachments from '../components/AgentChatMessageAttachments.vue';
@@ -34,6 +34,10 @@ const imageAttachment: ChatMessageAttachment = {
 	sizeBytes: 1024,
 };
 
+afterEach(() => {
+	vi.unstubAllGlobals();
+});
+
 describe('AgentChatMessageAttachments', () => {
 	it('renders a linked thumbnail for a server-backed image', () => {
 		const wrapper = renderComponent([imageAttachment]);
@@ -63,21 +67,22 @@ describe('AgentChatMessageAttachments', () => {
 		expect(link.text()).toContain('report.pdf');
 	});
 
-	it('swaps a thumbnail whose bytes are gone for an unavailable chip', async () => {
+	it('disables a server-backed image link when its preview is unavailable', async () => {
 		const wrapper = renderComponent([imageAttachment]);
 
 		await wrapper.find('img').trigger('error');
 
 		expect(wrapper.find('img').exists()).toBe(false);
-		const chip = wrapper.find('[data-testid="agent-chat-attachment-unavailable"]');
-		expect(chip.exists()).toBe(true);
-		expect(chip.text()).toContain('photo.png');
-		expect(chip.text()).toContain('agents.chat.attachments.unavailable');
+		const attachment = wrapper.find('figure.n8n-attachment');
+		expect(attachment.exists()).toBe(true);
+		expect(attachment.text()).toContain('photo.png');
+		expect(wrapper.find('a').exists()).toBe(false);
 	});
 
-	it('keeps local-only image previews even if the object URL errors', async () => {
+	it('keeps a local attachment when its preview URL errors', async () => {
 		const createObjectURL = vi.fn(() => 'blob:local-1');
-		vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL: vi.fn() });
+		const revokeObjectURL = vi.fn();
+		vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL });
 		const wrapper = renderComponent([
 			{
 				fileName: 'local.png',
@@ -87,11 +92,13 @@ describe('AgentChatMessageAttachments', () => {
 			},
 		]);
 
-		// No server href — an error on a local preview is not a pruned attachment.
+		// A local preview error keeps the attachment in the message.
 		await wrapper.find('img').trigger('error');
 
-		expect(wrapper.find('img').exists()).toBe(true);
+		expect(wrapper.find('img').exists()).toBe(false);
+		expect(wrapper.find('figure.n8n-attachment').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-chat-attachment-unavailable"]').exists()).toBe(false);
-		vi.unstubAllGlobals();
+		wrapper.unmount();
+		expect(revokeObjectURL).toHaveBeenCalledWith('blob:local-1');
 	});
 });
