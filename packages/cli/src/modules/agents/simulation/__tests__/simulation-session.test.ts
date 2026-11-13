@@ -8,6 +8,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 
+import { InstrumentedRunUnsupportedError } from '../../tools/instrumented-run-guard';
 import { SimulationBlockedError, SimulationSession } from '../simulation-session';
 import type { SimulatedReply, SimulationWorld } from '../tool-simulation.contracts';
 
@@ -291,6 +292,28 @@ describe('SimulationSession', () => {
 		).rejects.toThrow(SimulationBlockedError);
 		expect(handler).not.toHaveBeenCalled();
 		expect(session.takeDecision('tc-1')).toMatchObject({ reason: 'not_simulatable' });
+	});
+
+	it('blocks a workflow tool whose run would leave this process or paused', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const session = new SimulationSession({ testChatId: 't', world });
+		const handler = vi.fn(async () => {
+			throw new InstrumentedRunUnsupportedError('This workflow runs on Engine v2.');
+		});
+
+		await expect(
+			runTool(session, {
+				name: 'notify',
+				description: '',
+				metadata: { kind: 'workflow' },
+				handler,
+			}),
+		).rejects.toThrow(SimulationBlockedError);
+		expect(session.takeDecision('tc-1')).toEqual({
+			route: 'blocked',
+			reason: 'not_simulatable',
+			detail: 'This workflow runs on Engine v2.',
+		});
 	});
 
 	it('keeps a decrypted credential out of the request the world receives', async () => {
