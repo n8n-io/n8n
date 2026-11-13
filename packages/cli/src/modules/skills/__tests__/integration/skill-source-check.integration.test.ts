@@ -596,6 +596,39 @@ describe('Skill source checks', () => {
 				expect((await sourceOf(sourceId)).lastCheckedAt?.getTime()).toBe(later.getTime());
 			});
 
+			it.each([
+				{ earlierReason: 'unreachable', newerReason: null },
+				{ earlierReason: null, newerReason: 'unreachable' },
+			])(
+				'stores a newer $newerReason result after an earlier $earlierReason result',
+				async ({ earlierReason, newerReason }) => {
+					const { sourceId } = await importAll();
+					await age(sourceId);
+					await db().update(
+						SkillSourceConnection,
+						{ id: sourceId },
+						{ lastErrorReason: newerReason },
+					);
+					if (newerReason) github.failWith = 500;
+					const recordCheck = repository().recordCheck.bind(repository());
+					vi.spyOn(repository(), 'recordCheck').mockImplementationOnce(async (id, result) => {
+						// Both checks read the same health. The earlier check finishes first.
+						expect(
+							await recordCheck(id, {
+								checkedAt: new Date(result.checkedAt.getTime() - 1),
+								errorReason: earlierReason,
+								credentialId: result.credentialId,
+							}),
+						).toBe(true);
+						return await recordCheck(id, result);
+					});
+
+					await sync().checkAll();
+
+					expect(await sourceOf(sourceId)).toMatchObject({ lastErrorReason: newerReason });
+				},
+			);
+
 			it('lets one Check now claim the minute', async () => {
 				const { sourceId } = await importAll();
 				await age(sourceId);
@@ -637,6 +670,34 @@ describe('Skill source checks', () => {
 				expect((await sourceOf(sourceId)).probeCursor).toBeNull();
 				await sync().checkAll();
 				expect((await linkOf(docx)).pendingContent).toMatchObject({ instructions: 'v2' });
+			});
+
+			it('retries availability when another check changed an otherwise unchanged link', async () => {
+				const { sourceId, docx } = await importAll();
+				pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
+				await sync().checkAll();
+				const pendingHash = (await linkOf(docx)).pendingContentHash;
+				const revision = pushChange({ 'README.md': '# Changed\n' });
+				const findLinks = repository().findLinksBySource.bind(repository());
+				vi.spyOn(repository(), 'findLinksBySource').mockImplementationOnce(async (id) => {
+					const links = await findLinks(id);
+					await repository().setLinkAvailability(await linkOf(docx), true);
+					return links;
+				});
+
+				await sync().checkAll();
+
+				expect((await sourceOf(sourceId)).probeCursor).toBeNull();
+				expect(await linkOf(docx)).toMatchObject({
+					state: 'source_unavailable',
+					pendingContentHash: pendingHash,
+				});
+				await sync().checkAll();
+				expect((await sourceOf(sourceId)).probeCursor).toBe(revision);
+				expect(await linkOf(docx)).toMatchObject({
+					state: 'update_available',
+					pendingContentHash: pendingHash,
+				});
 			});
 		});
 

@@ -304,7 +304,6 @@ export class SkillSyncService {
 		const written = await this.sourceRepository.recordCheck(source.id, {
 			...result,
 			credentialId: source.credentialId,
-			previousErrorReason: source.lastErrorReason,
 		});
 		if (written) await this.trackHealthChange(source, result.errorReason);
 	}

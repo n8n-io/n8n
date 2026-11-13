@@ -4117,7 +4117,7 @@
 	"settings.context.skills.sources.updates": "{count} update | {count} updates",
 	"settings.context.skills.sources.actions": "Actions for {source}",
 	"settings.context.skills.sources.health.connected": "Connected",
-	"settings.context.skills.sources.health.credential_issue": "Credential expired",
+	"settings.context.skills.sources.health.credential_issue": "Credential issue",
 	"settings.context.skills.sources.health.source_unavailable": "Source unavailable",
 	"settings.context.skills.sources.health.delayed": "Checking delayed",
 	"settings.context.skills.sources.health.credential_issue.description": "n8n can't use this source's credential.",

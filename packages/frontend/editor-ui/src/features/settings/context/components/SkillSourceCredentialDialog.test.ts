@@ -49,9 +49,8 @@ describe('SkillSourceCredentialDialog', () => {
 
 	async function pick(view: ReturnType<typeof render>, name: string) {
 		await waitFor(() =>
-			expect(view.getByTestId('skill-source-credential-select')).toHaveAttribute(
-				'disabled',
-				'false',
+			expect(view.getByTestId('skill-source-credential-select')).not.toHaveAttribute(
+				'data-disabled',
 			),
 		);
 		await userEvent.click(view.getByTestId('skill-source-credential-select'));

@@ -15,7 +15,7 @@ describe('SkillSourceHealth', () => {
 		{ health: 'connected', label: 'Connected', description: 'Not checked yet.' },
 		{
 			health: 'credential_issue',
-			label: 'Credential expired',
+			label: 'Credential issue',
 			description: "n8n can't use this source's credential.",
 		},
 		{

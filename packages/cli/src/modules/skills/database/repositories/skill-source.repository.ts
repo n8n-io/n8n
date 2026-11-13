@@ -192,16 +192,14 @@ export class SkillSourceRepository {
 				: link.pendingScan?.verdict === 'blocked'
 					? 'update_blocked'
 					: 'update_available';
-		if (state === link.state) return true;
-		const result = await this.links.managerFor({}).update(
-			SkillSourceLink,
-			{
-				skillId: link.skillId,
-				state: link.state,
-				pendingContentHash: link.pendingContentHash ?? IsNull(),
-			},
-			{ state },
-		);
+		const manager = this.links.managerFor({});
+		const read = {
+			skillId: link.skillId,
+			state: link.state,
+			pendingContentHash: link.pendingContentHash ?? IsNull(),
+		};
+		if (state === link.state) return await manager.existsBy(SkillSourceLink, read);
+		const result = await manager.update(SkillSourceLink, read, { state });
 		return (result.affected ?? 0) > 0;
 	}
 
@@ -406,7 +404,6 @@ export class SkillSourceRepository {
 			probeCursor?: { from: string | null; to: string | null };
 			/** A result from an old credential must not overwrite its replacement. */
 			credentialId?: string | null;
-			previousErrorReason?: string | null;
 		},
 	): Promise<boolean> {
 		const manager = this.sources.managerFor({});
@@ -418,9 +415,6 @@ export class SkillSourceRepository {
 				lastCheckedAt: Or(IsNull(), LessThanOrEqual(checkedAt)),
 				...(result.credentialId !== undefined
 					? { credentialId: result.credentialId ?? IsNull() }
-					: {}),
-				...(result.previousErrorReason !== undefined
-					? { lastErrorReason: result.previousErrorReason ?? IsNull() }
 					: {}),
 			},
 			{ lastCheckedAt: checkedAt, lastErrorReason: errorReason },
