@@ -4,7 +4,11 @@ import { z } from 'zod';
 
 import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
-import { promotionCommitMessageSchema, promotionSelectedIdsSchema } from './promotion-common.dto';
+import {
+	expectedPreviewRevisionSchema,
+	promotionCommitMessageSchema,
+	promotionSelectedIdsSchema,
+} from './promotion-common.dto';
 
 /**
  * A Promote always writes the project itself, so a request without workflows and folders
@@ -17,6 +21,7 @@ export const promoteRequestSchema = z.object({
 			'Folders of the project to promote. Promote writes a selected folder with its current name and place, even when it is empty.',
 	}),
 	commitMessage: promotionCommitMessageSchema,
+	expectedPreviewRevision: expectedPreviewRevisionSchema,
 });
 
 export type PromoteRequest = z.infer<typeof promoteRequestSchema>;

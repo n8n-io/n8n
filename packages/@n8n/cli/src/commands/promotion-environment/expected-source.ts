@@ -57,11 +57,11 @@ export function expectedSourceFlags({ required }: { required: boolean }) {
 
 const PREVIEW_REVISION = /^[0-9a-f]{64}$/;
 
-/** Pins Apply to the reviewed preview. Apply stops when the preview changed since then. */
+/** Pins Promote or Apply to the reviewed preview. They stop when the preview changed since then. */
 export const expectedPreviewRevisionFlag = {
 	expectedPreviewRevision: Flags.string({
 		description:
-			'Revision of the reviewed Apply preview, from `list-changes <projectId> apply --json`',
+			'Revision of the reviewed preview, from `list-changes <projectId> <promote|apply> --json`',
 		aliases: ['expected-preview-revision'],
 		parse: async (input: string) => {
 			if (!PREVIEW_REVISION.test(input)) {

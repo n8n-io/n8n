@@ -14,6 +14,7 @@ import {
 	MAX_PROMOTION_DISCOVERY_ITEMS_PER_PAGE,
 	PromotePackageDto,
 	PromotePackageResultDto,
+	PromoteSelectionResultDto,
 	PromoteSelectionRequestDto,
 	PromotionCheckoutPublicDto,
 	PromotionEnvironmentListPublicDto,
@@ -644,7 +645,7 @@ export class PromotionsPublicController {
 	@ApiSummary('Beta: Preview the changes of a project in one direction')
 	@ApiDescription(
 		BETA_NOTE +
-			'Compares a team project on this instance with the branch of its promotion environment for that direction. For `promote` the preview is what a promotion sends to the branch, and the key needs the promotions:promote scope. For `apply` the preview is what applying the branch changes on this instance, and the key needs the promotions:apply scope. `resources` lists the changed projects, folders, workflows, credentials, data tables, variables and tags, each with its `key`, `type`, `id`, `change` and the `parentKey` of the project or folder that holds it. It also lists unchanged resources that give context, such as parent folders. Select the workflows and folders where `selectable` is true by `workflowIds` and `folderIds`; the project itself is always included. `dependencies` links each workflow to the resources it uses; selecting the workflow sends a dependency when `included` is true. A deleted promote workflow with `movedToProject`, or an added one with `movedFromProject`, moved between projects; promoting it is refused until it moves back. `blocker` is set when an open review holds the changes of a Promote. For `apply`, `check` lists what blocks the Apply, and `revision` identifies this preview: send it as expectedPreviewRevision. `commitSha` is the commit the preview was read from. Requires the environment to be connected first.',
+			'Compares a team project on this instance with the branch of its promotion environment for that direction. For `promote` the preview is what a promotion sends to the branch, and the key needs the promotions:promote scope. For `apply` the preview is what applying the branch changes on this instance, and the key needs the promotions:apply scope. `resources` lists the changed projects, folders, workflows, credentials, data tables, variables and tags, each with its `key`, `type`, `id`, `change` and the `parentKey` of the project or folder that holds it. It also lists unchanged resources that give context, such as parent folders. Select the workflows and folders where `selectable` is true by `workflowIds` and `folderIds`; the project itself is always included. `dependencies` links each workflow to the resources it uses; selecting the workflow sends a dependency when `included` is true. A deleted promote workflow with `movedToProject`, or an added one with `movedFromProject`, moved between projects; promoting it is refused until it moves back. `blocker` is set when an open review holds the changes of a Promote. For `apply`, `check` lists what blocks the Apply. `revision` identifies this preview: send it as expectedPreviewRevision with Promote or Apply. `commitSha` is the commit the preview was read from. Requires the environment to be connected first.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, PromotionPreviewDto)
@@ -705,10 +706,10 @@ export class PromotionsPublicController {
 	@ApiSummary("Beta: Promote a selection of a project's workflows and folders")
 	@ApiDescription(
 		BETA_NOTE +
-			"Promotes a chosen set of a team project's workflows and folders to the branch of the project's Promote environment. The project's own details (name, icon, description and telemetry tags) are always written, so a request without workflowIds and folderIds promotes only the project. A selected folder is written with the folders above it; a renamed or moved folder moves the workflows inside it on the branch, without changing their content. Status 400 with 'Nothing to promote' means the branch already matches the selection. Send ids only; the server reads each one now, so the push carries the current state. Live and archived workflows the project owns are exported, so an archived id stays on the branch as archived; an id whose workflow is gone from the instance leaves the branch, matching the project's change list. A workflow that moved into or out of the project since the branch was written is refused with 400; move it back first. A deletion the branch does not hold under this project rejects the whole request before any write. Requires a Promote environment to resolve for the project (its own Promote environment, otherwise the instance Promote environment), and requires it to be connected first. The API key also needs variable:list when the workflows reference variables. Another operation on the same environment returns 423.",
+			"Promotes a chosen set of a team project's workflows and folders to the branch of the project's Promote environment. The project's own details (name, icon, description and telemetry tags) are always written, so a request without workflowIds and folderIds promotes only the project. A selected folder is written with the folders above it; a renamed or moved folder moves the workflows inside it on the branch, without changing their content. Status 400 with 'Nothing to promote' means the branch already matches the selection. Send ids only; the server reads each one now, so the push carries the current state. Live and archived workflows the project owns are exported, so an archived id stays on the branch as archived; an id whose workflow is gone from the instance leaves the branch, matching the project's change list. A workflow that moved into or out of the project since the branch was written is refused with 400; move it back first. A deletion the branch does not hold under this project rejects the whole request before any write. Requires a Promote environment to resolve for the project (its own Promote environment, otherwise the instance Promote environment), and requires it to be connected first. The API key also needs variable:list when the workflows reference variables. Optionally send expectedPreviewRevision with the revision of the reviewed Promote preview. Status `preview-changed` means the project on this instance or its branch changed since that review, and nothing was pushed. Status `promoted` includes counts and git. Inspect status before reading counts. Another operation on the same environment returns 423.",
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, PromotePackageResultDto)
+	@ApiResponse(200, PromoteSelectionResultDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
@@ -719,7 +720,7 @@ export class PromotionsPublicController {
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
 		@Body input: PromoteSelectionRequestDto,
-	): Promise<PromotePackageResultDto> {
+	): Promise<PromoteSelectionResultDto> {
 		return await (await this.promotionsService()).promoteProjectSelection(projectId, req.user, {
 			...input,
 			// Variable values only travel when the key may list them.
