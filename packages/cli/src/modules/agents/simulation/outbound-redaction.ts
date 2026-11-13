@@ -225,9 +225,97 @@ function parseJsonObject(text: string): unknown {
 	}
 }
 
+const REDACTED_MCP_URL = '[REDACTED MCP URL]';
+
+// Path segments that are plain structure. Anything else, such as the token in
+// `/api/mcp/s/<token>/mcp`, may be a credential, however word-like it looks.
+const STRUCTURAL_MCP_PATH_SEGMENTS: ReadonlySet<string> = new Set([
+	'api',
+	'mcp',
+	'sse',
+	'stream',
+	'streamable',
+	'http',
+	'message',
+	'messages',
+	'rpc',
+	'jsonrpc',
+	'server',
+	'servers',
+	'remote',
+	'public',
+]);
+const SHORT_MCP_PATH_SEGMENT = /^(?:[a-z]|v\d{1,2})$/;
+
+/** Structural words, single letters, versions, and labels of the URL's own host stay. */
+function isSafeMcpPathSegment(segment: string, hostLabels: ReadonlySet<string>): boolean {
+	const lower = segment.toLowerCase();
+	return (
+		STRUCTURAL_MCP_PATH_SEGMENTS.has(lower) ||
+		SHORT_MCP_PATH_SEGMENT.test(lower) ||
+		hostLabels.has(lower)
+	);
+}
+
+/**
+ * An MCP server URL with its user info, fragment, query and every path segment that is not
+ * plain structure removed. MCP servers take a key in the query (`?key=`, `?apiKey=`)
+ * or the path (`/s/<token>/mcp`), and their credential is never decrypted where the redactor
+ * sees it. The host and plain segments stay, so the simulator can tell servers apart.
+ */
+export function redactMcpUrl(url: string): string {
+	let parsed: URL;
+	try {
+		parsed = new URL(url);
+	} catch {
+		// Without a parsed URL its user info cannot be told apart, so nothing of it is kept.
+		return REDACTED_MCP_URL;
+	}
+	// Other schemes (`user:pw@host`) parse as opaque URLs that keep their user info.
+	if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return REDACTED_MCP_URL;
+	parsed.username = '';
+	parsed.password = '';
+	parsed.hash = '';
+	// The whole query goes: a parameter name can be the token too (`?secret-access-token`).
+	parsed.search = '';
+	const hostLabels = new Set(parsed.hostname.toLowerCase().split('.'));
+	parsed.pathname = parsed.pathname
+		.split('/')
+		.map((segment) =>
+			segment === '' || isSafeMcpPathSegment(segment, hostLabels) ? segment : PLACEHOLDER,
+		)
+		.join('/');
+	return parsed.toString();
+}
+
 function isPlainObject(value: object): boolean {
 	const prototype: unknown = Object.getPrototypeOf(value);
 	return prototype === Object.prototype || prototype === null;
+}
+
+/**
+ * The URL the simulator sees for each MCP server, by server name. Servers whose redacted URLs
+ * are the same (one endpoint, two keys) get the server name added, so their requests stay apart.
+ */
+export function simulatorMcpUrls(
+	servers: Array<{ name: string; url: string }>,
+): Map<string, string> {
+	const redacted = servers.map((server) => ({ ...server, redacted: redactMcpUrl(server.url) }));
+	const counts = new Map<string, number>();
+	for (const { redacted: url } of redacted) counts.set(url, (counts.get(url) ?? 0) + 1);
+	return new Map(
+		redacted.map(({ name, redacted: url }) => [
+			name,
+			(counts.get(url) ?? 0) > 1 ? withServerName(url, name) : url,
+		]),
+	);
+}
+
+function withServerName(url: string, name: string): string {
+	if (url === REDACTED_MCP_URL) return `mcp-server://${encodeURIComponent(name)}`;
+	const parsed = new URL(url);
+	parsed.searchParams.set('n8n_mcp_server', name);
+	return parsed.toString();
 }
 
 function safeDecode(text: string): string {

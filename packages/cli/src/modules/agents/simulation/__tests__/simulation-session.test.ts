@@ -278,36 +278,227 @@ describe('SimulationSession', () => {
 		});
 	});
 
-	it('blocks MCP tools and refuses every MCP connection', async () => {
-		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+	it('sends MCP traffic to the world and returns its reply as an HTTP response', async () => {
+		const world = makeWorld({
+			outcome: 'served',
+			source: 'made_up',
+			status: 200,
+			body: { jsonrpc: '2.0', id: 1, result: { content: [] } },
+		});
 		const session = new SimulationSession({
 			testChatId: 't',
 			world,
-			capabilities: [
-				{
-					toolName: 'linear',
-					kind: 'mcp',
-					testability: 'blocked',
-					reason: 'not_simulatable',
-					detail: 'MCP servers cannot run in a test run yet.',
-				},
+			capabilities: [{ toolName: 'linear', kind: 'mcp', testability: 'simulated' }],
+			mcpServers: [
+				{ name: 'linear', url: 'https://mcp.linear.app/mcp' },
+				{ name: 'linear-two', url: 'https://mcp.linear.app/mcp-two' },
 			],
 		});
-		const handler = vi.fn();
+		const mcpFetch = session.instrumentation().mcpFetch!;
 		const tool: BuiltTool = {
 			name: 'linear_create_issue',
 			description: '',
 			mcpTool: true,
 			mcpServerName: 'linear',
-			handler,
+			handler: async () => {
+				const response = await mcpFetch('https://mcp.linear.app/mcp', {
+					method: 'POST',
+					body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call' }),
+				});
+				return await response.json();
+			},
 		};
 
-		await expect(runTool(session, tool)).rejects.toThrow(SimulationBlockedError);
-		expect(handler).not.toHaveBeenCalled();
-		await expect(
-			session.instrumentation().mcpFetch!('https://mcp.linear.app/mcp', { method: 'POST' }),
-		).rejects.toThrow(SimulationBlockedError);
-		expect(world.handleRequest).not.toHaveBeenCalled();
+		await expect(runTool(session, tool)).resolves.toMatchObject({ result: { content: [] } });
+		expect(world.handleRequest).toHaveBeenCalledWith(
+			expect.objectContaining({
+				protocol: 'mcp',
+				body: expect.objectContaining({ method: 'tools/call' }),
+			}),
+			expect.objectContaining({ mcpServerName: 'linear', toolCallId: 'tc-1' }),
+		);
+		expect(session.takeDecision('tc-1')).toMatchObject({ route: 'simulated_made_up' });
+	});
+
+	it('keeps a key in the MCP server URL away from the world, and still names the server', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const serverUrl = 'https://mcp.example.com/mcp?key=s3cret-mcp-key';
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [{ toolName: 'docs', kind: 'mcp', testability: 'simulated' }],
+			mcpServers: [{ name: 'docs', url: serverUrl }],
+		});
+		const mcpFetch = session.instrumentation().mcpFetch!;
+		const tool: BuiltTool = {
+			name: 'docs_search',
+			description: '',
+			mcpTool: true,
+			mcpServerName: 'docs',
+			handler: async () =>
+				await mcpFetch(serverUrl, {
+					method: 'POST',
+					body: JSON.stringify({ jsonrpc: '2.0', id: 1, params: { password: 's3cret-mcp-key' } }),
+				}),
+		};
+
+		await runTool(session, tool);
+
+		const [request, call] = world.handleRequest.mock.calls[0];
+		expect(JSON.stringify(request)).not.toContain('s3cret-mcp-key');
+		expect(request.url).toBe('https://mcp.example.com/mcp');
+		expect(call).toMatchObject({ mcpServerName: 'docs' });
+	});
+
+	it('keeps two MCP servers on one endpoint apart, by name and by the URL the world sees', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const servers = [
+			{
+				name: 'acct_a',
+				url: 'https://mcp.example.com/mcp?key=key-a',
+				simulatorUrl: 'https://mcp.example.com/mcp?n8n_mcp_server=acct_a',
+			},
+			{
+				name: 'acct_b',
+				url: 'https://mcp.example.com/mcp?key=key-b',
+				simulatorUrl: 'https://mcp.example.com/mcp?n8n_mcp_server=acct_b',
+			},
+		];
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: servers.map((server) => ({
+				toolName: server.name,
+				kind: 'mcp' as const,
+				testability: 'simulated' as const,
+			})),
+			mcpServers: servers,
+		});
+		const mcpFetch = session.instrumentation().mcpFetch!;
+		const call = (server: (typeof servers)[number]): BuiltTool => ({
+			name: `${server.name}_search`,
+			description: '',
+			mcpTool: true,
+			mcpServerName: server.name,
+			handler: async () => await mcpFetch(server.url, { method: 'POST', body: '{}' }),
+		});
+
+		await runTool(session, call(servers[0]), 'tc-a');
+		await runTool(session, call(servers[1]), 'tc-b');
+
+		const [[first, firstCall], [second, secondCall]] = world.handleRequest.mock.calls;
+		expect(first.url).toBe(servers[0].simulatorUrl);
+		expect(second.url).toBe(servers[1].simulatorUrl);
+		expect(firstCall).toMatchObject({ mcpServerName: 'acct_a' });
+		expect(secondCall).toMatchObject({ mcpServerName: 'acct_b' });
+		expect(JSON.stringify(world.handleRequest.mock.calls)).not.toMatch(/key-a|key-b/);
+	});
+
+	it('names the server of a Request whose URL the platform normalised', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const servers = [
+			{
+				name: 'acct_a',
+				url: 'https://mcp.example.com?key=key-a',
+				simulatorUrl: 'https://mcp.example.com/?n8n_mcp_server=acct_a',
+			},
+			{
+				name: 'acct_b',
+				url: 'https://mcp.example.com?key=key-b',
+				simulatorUrl: 'https://mcp.example.com/?n8n_mcp_server=acct_b',
+			},
+		];
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: servers.map((server) => ({
+				toolName: server.name,
+				kind: 'mcp' as const,
+				testability: 'simulated' as const,
+			})),
+			mcpServers: servers,
+		});
+		const mcpFetch = session.instrumentation().mcpFetch!;
+
+		await mcpFetch(new Request(servers[1].url, { method: 'POST', body: '{}' }));
+
+		const [[request, call]] = world.handleRequest.mock.calls;
+		expect(request.url).toBe(servers[1].simulatorUrl);
+		expect(call).toMatchObject({ mcpServerName: 'acct_b' });
+	});
+
+	it('routes a call to the server of its tool when two servers share one URL', async () => {
+		const world = makeWorld({ outcome: 'served', source: 'made_up', status: 200, body: {} });
+		const servers = ['acct_a', 'acct_b'].map((name) => ({
+			name,
+			url: 'https://mcp.example.com/mcp',
+			simulatorUrl: `https://mcp.example.com/mcp?n8n_mcp_server=${name}`,
+		}));
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: servers.map((server) => ({
+				toolName: server.name,
+				kind: 'mcp' as const,
+				testability: 'simulated' as const,
+			})),
+			mcpServers: servers,
+		});
+		const mcpFetch = session.instrumentation().mcpFetch!;
+
+		await runTool(session, {
+			name: 'acct_b_search',
+			description: '',
+			mcpTool: true,
+			mcpServerName: 'acct_b',
+			handler: async () => await mcpFetch('https://mcp.example.com/mcp', { method: 'POST' }),
+		});
+		await mcpFetch('https://mcp.example.com/mcp', { method: 'POST' }).catch(() => undefined);
+
+		const [[toolRequest, toolCall], [discovery, discoveryCall]] = world.handleRequest.mock.calls;
+		expect(toolRequest.url).toBe('https://mcp.example.com/mcp?n8n_mcp_server=acct_b');
+		expect(toolCall).toMatchObject({ mcpServerName: 'acct_b' });
+		// Outside a tool call the URL fits both servers, so neither is named.
+		expect(discovery.url).toBe('https://mcp.example.com/mcp');
+		expect(discoveryCall.mcpServerName).toBeUndefined();
+	});
+
+	it('leaves out provider tools and serves the fallback web search from the world', async () => {
+		const world = makeWorld({
+			outcome: 'served',
+			source: 'made_up',
+			status: 200,
+			body: { results: [{ title: 'n8n', url: 'https://n8n.io', snippet: 'Workflows' }] },
+		});
+		const session = new SimulationSession({
+			testChatId: 't',
+			world,
+			capabilities: [{ toolName: 'web_search', kind: 'web_search', testability: 'simulated' }],
+		});
+		const instrumentation = session.instrumentation();
+		const tool: BuiltTool = {
+			name: 'web_search',
+			description: '',
+			handler: async (input) =>
+				await instrumentation.webSearch!(
+					input as Parameters<NonNullable<typeof instrumentation.webSearch>>[0],
+				),
+		};
+
+		const result = await session.interceptor(
+			{ tool, toolCallId: 'tc-1', input: { query: 'n8n' } },
+			async () => await tool.handler!({ query: 'n8n' }, {}),
+		);
+
+		expect(instrumentation.disableProviderTools).toBe(true);
+		expect(world.handleRequest).toHaveBeenCalledWith(
+			expect.objectContaining({ protocol: 'web_search', body: { query: 'n8n' } }),
+			expect.objectContaining({ toolName: 'web_search', toolCallId: 'tc-1' }),
+		);
+		expect(result).toEqual({
+			results: [{ title: 'n8n', url: 'https://n8n.io', snippet: 'Workflows' }],
+		});
+		expect(session.takeDecision('tc-1')).toMatchObject({ route: 'simulated_made_up' });
 	});
 
 	it('keeps the world state for the test chat', () => {

@@ -22,6 +22,7 @@ import { AgentRepository } from '../repositories/agent.repository';
 import { getIntegrationToolConnectionDescriptors } from '../integrations/integration-tool-factory';
 import { findWorkflowToolWorkflows } from '../tools/workflow-tool-workflow-resolver';
 import { nodeSimulationGap } from './non-http-node-types';
+import { simulatorMcpUrls } from './outbound-redaction';
 import { SafeTestingFlagGate } from './safe-testing-flag-gate';
 import { SimulationBackendRegistry } from './simulation-backend-registry';
 import { SimulationSession } from './simulation-session';
@@ -116,7 +117,11 @@ export class SimulationSessionService {
 			try {
 				world = await backend.openWorld({
 					testChatId: input.testChatId,
-					agent,
+					// Tools n8n blocks (SSE MCP servers, custom code) stay out of the world too.
+					agent: {
+						...agent,
+						tools: agent.tools.filter((tool) => !described.hostGaps.has(tool.toolName)),
+					},
 					firstMessage: input.message,
 					...(savedWorld?.backend === backend.id ? { saved: savedWorld.state } : {}),
 				});
@@ -133,6 +138,8 @@ export class SimulationSessionService {
 			world,
 			unavailableDetail,
 			capabilities,
+			// Real URLs, to name the server of each request; the simulator gets its own URL.
+			mcpServers: described.mcpServers,
 			recordTestChat: async (current, executionId) => {
 				await this.saveTestChat(current);
 				// Before the agent runs, so the execution is a test run even if the turn never ends.
@@ -211,6 +218,7 @@ export class SimulationSessionService {
 		const hostGaps = new Map<string, string>();
 
 		const tools: SimulatedTool[] = [];
+		const mcpUrls = simulatorMcpUrls(config.mcpServers ?? []);
 		// The runtime leaves disabled tools out, so the list does too.
 		const enabledConfig = {
 			...config,
@@ -218,14 +226,33 @@ export class SimulationSessionService {
 		};
 		for (const tool of summarizeTools(enabledConfig, saved.tools ?? {}, sanitizeToolName)) {
 			const kind = tool.kind === 'other' && tool.name === 'web_search' ? 'web_search' : tool.kind;
+			const server =
+				kind === 'mcp' ? config.mcpServers?.find((entry) => entry.name === tool.name) : undefined;
+			const simulatorUrl = server ? mcpUrls.get(server.name) : undefined;
+			// A server without a description is described by its URL, which can carry a key.
+			const description =
+				server && simulatorUrl && tool.description
+					? tool.description.split(server.url).join(simulatorUrl)
+					: tool.description;
 			tools.push({
 				toolName: tool.name,
 				kind,
-				...(tool.description ? { description: tool.description } : {}),
+				...(description ? { description } : {}),
 				...(tool.nodeType ? { nodeType: tool.nodeType } : {}),
+				// The simulator matches requests to servers by this URL; the session sends the same one.
+				...(simulatorUrl ? { url: simulatorUrl } : {}),
 			});
-			const gap = this.hostGap(kind);
+			const gap = this.hostGap(kind, server?.transport);
 			if (gap) hostGaps.set(tool.name, gap);
+		}
+		// Test runs leave out the provider's native search and attach the fallback tool,
+		// which summarizeTools does not list when native search is configured.
+		if (config.config?.webSearch?.enabled && !tools.some((tool) => tool.kind === 'web_search')) {
+			tools.push({
+				toolName: 'web_search',
+				kind: 'web_search',
+				description: 'Web search returning {title, url, snippet} result lists',
+			});
 		}
 		for (const ref of config.tools ?? []) {
 			if (ref.type !== 'node' || ref.enabled === false) continue;
@@ -252,6 +279,11 @@ export class SimulationSessionService {
 				instructions: config.instructions ?? '',
 				tools,
 			},
+			mcpServers: (config.mcpServers ?? []).map((server) => ({
+				name: server.name,
+				url: server.url,
+				simulatorUrl: mcpUrls.get(server.name) ?? '',
+			})),
 			hostGaps,
 		};
 	}
@@ -280,7 +312,7 @@ export class SimulationSessionService {
 		return gaps;
 	}
 
-	private hostGap(kind: SimulatedTool['kind']): string | undefined {
+	private hostGap(kind: SimulatedTool['kind'], mcpTransport?: string): string | undefined {
 		switch (kind) {
 			case 'custom':
 				return 'Custom code tools can reach any service, so they cannot run in a test run yet.';
@@ -292,9 +324,9 @@ export class SimulationSessionService {
 					? 'Workflow tools cannot run in a test run in queue mode yet.'
 					: undefined;
 			case 'mcp':
-				return 'MCP servers cannot run in a test run yet.';
-			case 'web_search':
-				return 'Web search cannot run in a test run yet.';
+				return mcpTransport === 'sse'
+					? 'MCP servers that use the SSE transport cannot run in a test run yet.'
+					: undefined;
 			default:
 				return undefined;
 		}
@@ -354,6 +386,8 @@ export class SimulationSessionService {
 
 interface DescribedAgent {
 	agent: SimulatedAgent;
+	/** Configured MCP servers with their real URL and the URL the simulator sees. */
+	mcpServers: Array<{ name: string; url: string; simulatorUrl: string }>;
 	/** Tools that n8n blocks before any backend sees them, with the reason. */
 	hostGaps: Map<string, string>;
 }

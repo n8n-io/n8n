@@ -885,6 +885,47 @@ describe('buildFromJson()', () => {
 		expect(getProviderToolNames(agent)).toContain(expectedTool);
 	});
 
+	it('leaves out provider tools and attaches the fallback search when they are disabled', async () => {
+		const fallbackWebSearch = vi.fn().mockResolvedValue({ results: [] });
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'anthropic/claude-sonnet-4-5',
+				config: { webSearch: { enabled: true } },
+				providerTools: { 'anthropic.web_search': { maxUses: 3 } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				fallbackWebSearch,
+				disableProviderTools: true,
+			},
+		);
+
+		expect(getProviderToolNames(agent)).toEqual([]);
+		expect(agent.declaredTools.map((tool) => tool.name)).toContain('web_search');
+	});
+
+	it('keeps native web search when an eval only replaces the fallback search', async () => {
+		const agent = await buildFromJson(
+			makeConfig({
+				model: 'anthropic/claude-sonnet-4-5',
+				config: { webSearch: { enabled: true } },
+			}),
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				fallbackWebSearch: vi.fn(),
+			},
+		);
+
+		expect(getProviderToolNames(agent)).toContain('anthropic.web_search_20250305');
+		expect(agent.declaredTools.map((tool) => tool.name)).not.toContain('web_search');
+	});
+
 	it('rejects native web search config for unsupported providers without fallback settings', async () => {
 		const rejected = buildFromJson(
 			makeConfig({

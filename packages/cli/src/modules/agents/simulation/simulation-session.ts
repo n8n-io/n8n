@@ -21,7 +21,7 @@ import type { IHttpRequestOptions } from 'n8n-workflow';
 import type { AgentRuntimeInstrumentation } from '../evaluation/agent-evaluation.contracts';
 import { InstrumentedRunUnsupportedError } from '../tools/instrumented-run-guard';
 import { nodeSimulationGap } from './non-http-node-types';
-import { OutboundRedactor } from './outbound-redaction';
+import { OutboundRedactor, redactMcpUrl } from './outbound-redaction';
 import type {
 	OutboundRequest,
 	SimulatedReply,
@@ -79,11 +79,21 @@ export class SimulationBlockedError extends Error {
 	}
 }
 
+interface McpServerRef {
+	name: string;
+	/** The real URL, to name the server of each request. Never sent to the simulator. */
+	url: string;
+	/** The redacted URL the simulator knows this server by. */
+	simulatorUrl?: string;
+}
+
 type ReplySource = 'world_state' | 'made_up';
 
 interface ActiveToolCall {
 	toolCallId: string;
 	toolName: string;
+	/** The MCP server of the tool, which tells servers on one URL apart. */
+	mcpServerName?: string;
 	sources: ReplySource[];
 	blocked?: ToolCallSimulation;
 }
@@ -106,6 +116,8 @@ export interface SimulationSessionInit {
 	unavailableDetail?: string;
 	/** Keyed by tool name (MCP: server name). */
 	capabilities: ToolTestCapability[];
+	/** Configured MCP servers, to name the server of each MCP request. */
+	mcpServers?: McpServerRef[];
 	/** Stores the test chat marker. Runs before each turn starts. */
 	recordTestChat?: (session: SimulationSession, executionId?: string) => Promise<void>;
 	/** The tool hooks do not reach queue workers, so workflow tools are blocked. */
@@ -137,6 +149,8 @@ export class SimulationSession {
 	// A cached runtime keeps this session's hooks, so a replacement session needs its own runtime.
 	private readonly instanceId = randomUUID();
 
+	private readonly mcpServers: McpServerRef[];
+
 	private readonly activeCalls = new AsyncLocalStorage<ActiveToolCall>();
 
 	private readonly redactor = new OutboundRedactor();
@@ -150,6 +164,7 @@ export class SimulationSession {
 		this.backend = init.world?.backend;
 		this.unavailableDetail = init.unavailableDetail ?? 'The simulator is not available.';
 		this.capabilities = new Map(init.capabilities.map((tool) => [tool.toolName, tool]));
+		this.mcpServers = init.mcpServers ?? [];
 		this.recordTestChat = init.recordTestChat;
 		this.queueMode = init.queueMode ?? false;
 		this.previousWorld = init.previousWorld;
@@ -202,7 +217,12 @@ export class SimulationSession {
 			throw new SimulationBlockedError(preflight);
 		}
 
-		const active: ActiveToolCall = { toolCallId, toolName: tool.name, sources: [] };
+		const active: ActiveToolCall = {
+			toolCallId,
+			toolName: tool.name,
+			...(classification.kind === 'mcp' ? { mcpServerName: classification.key } : {}),
+			sources: [],
+		};
 		let output: unknown;
 		try {
 			output = await this.activeCalls.run(active, run);
@@ -234,6 +254,10 @@ export class SimulationSession {
 			toolCallInterceptor: this.interceptor,
 			simulatedRun: true,
 			mcpFetch: this.mcpFetch,
+			// Provider tools (native web search included) would run for real where no seam
+			// sees them. The fallback search tool runs through the interceptor instead.
+			webSearch: this.webSearch,
+			disableProviderTools: true,
 			configureToolAdditionalData: (additionalData, context) => {
 				additionalData.credentialsHelper = this.redactor.wrap(additionalData.credentialsHelper);
 				additionalData.evalLlmMockHandler = this.createHttpHandler(context.toolName);
@@ -281,7 +305,10 @@ export class SimulationSession {
 		return undefined;
 	}
 
-	private async ask(request: OutboundRequest, extra: { nodeType?: string }) {
+	private async ask(
+		request: OutboundRequest,
+		extra: { nodeType?: string; mcpServerName?: string },
+	) {
 		const active = this.activeCalls.getStore();
 		let reply: SimulatedReply;
 		if (!this.world) {
@@ -342,12 +369,47 @@ export class SimulationSession {
 		throw new SimulationBlockedError(decision);
 	};
 
-	// MCP is not simulated yet: refuse every connection so no request reaches a real server.
-	private readonly mcpFetch: FetchFn = async () => {
-		throw new SimulationBlockedError(
-			blocked('not_simulatable', 'MCP servers cannot run in a test run yet.'),
-		);
+	private readonly mcpFetch: FetchFn = async (input, init) => {
+		const url = input instanceof Request ? input.url : String(input);
+		const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
+		const rawBody =
+			init?.body ?? (input instanceof Request ? await input.clone().text() : undefined);
+		const body = typeof rawBody === 'string' ? parseJson(rawBody) : rawBody;
+		// Named from the real URL; the simulator only sees the redacted URL it knows the server by.
+		const server = this.mcpServerFor(url);
+		const simulatorUrl =
+			server?.simulatorUrl && redactMcpUrl(url) === redactMcpUrl(server.url)
+				? server.simulatorUrl
+				: redactMcpUrl(url);
+		const request = this.redactor.redact({ protocol: 'mcp', method, url: simulatorUrl, body });
+		const reply = await this.ask(request, { mcpServerName: server?.name });
+		if (reply.outcome !== 'served') throw new UnexpectedError('Unexpected MCP reply');
+		const payload = typeof reply.body === 'string' ? reply.body : JSON.stringify(reply.body);
+		return new Response(reply.status === 204 ? null : payload, {
+			status: reply.status,
+			headers: { 'content-type': 'application/json', ...(reply.headers ?? {}) },
+		});
 	};
+
+	private readonly webSearch = async (args: Record<string, unknown>) => {
+		const reply = await this.ask(
+			{ protocol: 'web_search', method: 'POST', url: 'simulation://web-search', body: args },
+			{},
+		);
+		return reply.body;
+	};
+
+	/**
+	 * The server of an MCP request. Several servers can share one URL (with different auth), so
+	 * a tool call names its own server. A request outside a tool call (tool discovery) is
+	 * named only when its URL fits one server; otherwise the simulator gets no name.
+	 */
+	private mcpServerFor(url: string): McpServerRef | undefined {
+		const candidates = this.mcpServers.filter((server) => urlIsUnder(url, server.url));
+		const active = this.activeCalls.getStore()?.mcpServerName;
+		if (active !== undefined) return candidates.find((server) => server.name === active);
+		return candidates.length === 1 ? candidates[0] : undefined;
+	}
 }
 
 function classifyTool(tool: BuiltTool): ToolClassification {
@@ -428,4 +490,38 @@ function stringHeaders(headers: IHttpRequestOptions['headers']): Record<string, 
 			result[name] = value.filter((part) => typeof part === 'string').join(', ');
 	}
 	return result;
+}
+
+function parseJson(text: string): unknown {
+	try {
+		return JSON.parse(text) as unknown;
+	} catch {
+		return text;
+	}
+}
+
+/** `url` is `base` or below it on a path boundary (`/mcp` does not match `/mcp-two`). */
+function urlIsUnder(rawUrl: string, rawBase: string): boolean {
+	// Compared as parsed URLs: a `Request` writes `https://host?x` as `https://host/?x`.
+	const url = normalizeUrl(rawUrl);
+	const base = normalizeUrl(rawBase);
+	const root = base.replace(/\/+$/, '');
+	const rootWithoutSlashBeforeQuery = base.replace(/\/\?/, '?');
+	return (
+		url === base ||
+		url === root ||
+		url === rootWithoutSlashBeforeQuery ||
+		url.startsWith(`${root}/`) ||
+		url.startsWith(`${root}?`)
+	);
+}
+
+function normalizeUrl(url: string): string {
+	try {
+		const parsed = new URL(url);
+		parsed.hash = '';
+		return parsed.toString();
+	} catch {
+		return url;
+	}
 }

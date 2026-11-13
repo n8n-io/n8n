@@ -3,7 +3,7 @@ import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 import type { ICredentialsHelper, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
-import { OutboundRedactor } from '../outbound-redaction';
+import { OutboundRedactor, redactMcpUrl, simulatorMcpUrls } from '../outbound-redaction';
 
 const telegramToken = '123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw';
 
@@ -329,5 +329,59 @@ describe('OutboundRedactor', () => {
 		});
 
 		expect(request.url).toBe('https://acme.atlassian.net/rest/api/3/issue/ABC-1');
+	});
+});
+
+describe('redactMcpUrl', () => {
+	it('removes the query, including a token used as a parameter name', () => {
+		expect(redactMcpUrl('https://example.com/mcp?secret-access-token')).toBe(
+			'https://example.com/mcp',
+		);
+	});
+
+	it('removes the query and the user info, and keeps the path', () => {
+		expect(redactMcpUrl('https://user:pw@mcp.example.com/mcp?key=s3cret&team=t1')).toBe(
+			'https://mcp.example.com/mcp',
+		);
+	});
+
+	it('removes a token in the path and the fragment, and keeps plain segments', () => {
+		expect(redactMcpUrl('https://mcp.zapier.com/api/mcp/s/aB3dE9xYz71QwErT/mcp#frag')).toBe(
+			'https://mcp.zapier.com/api/mcp/s/[REDACTED]/mcp',
+		);
+		expect(redactMcpUrl('https://api.example.com/v2/sse')).toBe('https://api.example.com/v2/sse');
+		expect(redactMcpUrl('https://mcp.example.com/s/xqjvnmksrptzbcdfghwy/mcp')).toBe(
+			'https://mcp.example.com/s/[REDACTED]/mcp',
+		);
+		expect(redactMcpUrl('https://tools.acme.dev/acme/mcp')).toBe('https://tools.acme.dev/acme/mcp');
+	});
+
+	it('leaves a URL without a query as it is', () => {
+		expect(redactMcpUrl('https://mcp.linear.app/mcp')).toBe('https://mcp.linear.app/mcp');
+	});
+
+	it.each(['user:pw@mcp.example.com/mcp?token=abc', 'mcp.example.com/mcp?token=abc'])(
+		'keeps nothing of a URL that is not a parsed HTTP URL: %s',
+		(url) => {
+			expect(redactMcpUrl(url)).toBe('[REDACTED MCP URL]');
+		},
+	);
+
+	it('keeps nothing of a URL it cannot parse', () => {
+		expect(redactMcpUrl('http://[bad')).toBe('[REDACTED MCP URL]');
+	});
+});
+
+describe('simulatorMcpUrls', () => {
+	it('adds the server name only when two redacted URLs are the same', () => {
+		const urls = simulatorMcpUrls([
+			{ name: 'acct_a', url: 'https://mcp.example.com/mcp?key=key-a' },
+			{ name: 'acct_b', url: 'https://mcp.example.com/mcp?key=key-b' },
+			{ name: 'linear', url: 'https://mcp.linear.app/mcp' },
+		]);
+
+		expect(urls.get('acct_a')).toBe('https://mcp.example.com/mcp?n8n_mcp_server=acct_a');
+		expect(urls.get('acct_b')).toBe('https://mcp.example.com/mcp?n8n_mcp_server=acct_b');
+		expect(urls.get('linear')).toBe('https://mcp.linear.app/mcp');
 	});
 });

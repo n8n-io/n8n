@@ -56,7 +56,8 @@ export interface SimulationWorld {
 }
 
 export interface OutboundRequest {
-	protocol: 'http';
+	/** `mcp`: JSON-RPC to the server at `url`. `web_search`: `body` holds the search arguments. */
+	protocol: 'http' | 'mcp' | 'web_search';
 	method: string;
 	url: string;
 	/** Auth headers are removed. */
@@ -69,6 +70,8 @@ export interface ToolCallContext {
 	toolName: string;
 	/** For example `n8n-nodes-base.slack`. */
 	nodeType?: string;
+	/** For MCP requests: the configured server name. */
+	mcpServerName?: string;
 }
 
 export type SimulatedReply =
@@ -100,4 +103,6 @@ export interface SimulatedTool {
 	kind: ToolTestKind;
 	description?: string;
 	nodeType?: string;
+	/** For an MCP server: its URL. */
+	url?: string;
 }
