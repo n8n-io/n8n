@@ -304,10 +304,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				);
 				// A new session's history holds its first message only after its run starts.
 				const early = earlySend.value?.message;
-				messages.value =
-					early && !history.some((message) => message.role === CHAT_MESSAGE_ROLE.USER)
-						? [...history, early]
-						: history;
+				const hasRun = history.some((message) => message.role === CHAT_MESSAGE_ROLE.USER);
+				messages.value = early && !hasRun ? [...history, early] : history;
+				if (hasRun) earlySend.value = undefined;
 				isRecovering.value = false;
 				if (runningExecutionId !== undefined) activeExecutionId.value = runningExecutionId;
 				if (isCancelling.value) reconcileStop();
@@ -1907,6 +1906,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 		return await new Promise<'sent' | 'busy'>((resolve) => {
 			let released = false;
+			let detached = false;
 			const release = (outcome: 'sent' | 'busy' = 'sent') => {
 				if (released) return;
 				released = true;
@@ -1924,6 +1924,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				clientContext,
 			)
 				.then(({ outcome }) => {
+					detached = outcome === 'detached';
 					release(outcome === 'busy' ? 'busy' : 'sent');
 				})
 				.catch((error: unknown) => {
@@ -1932,8 +1933,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				})
 				.finally(() => {
 					// A send that did not start a run shows what history and the queue hold.
+					// An accepted message whose stream dropped still runs, so it stays until
+					// history holds it.
 					const early = earlySend.value;
-					if (early?.message === userMessage) {
+					if (early?.message === userMessage && !(detached && early.queueId)) {
 						earlySend.value = undefined;
 						const index = indexOfMessage(userMessage);
 						if (index >= 0) messages.value.splice(index, 1);

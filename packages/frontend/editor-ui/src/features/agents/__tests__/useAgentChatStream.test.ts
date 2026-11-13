@@ -6104,7 +6104,7 @@ describe('useAgentChatStream — first message of a new session', () => {
 		hook.detachStream();
 	});
 
-	it('moves the message to the queue when the stream ends before its run starts', async () => {
+	it('keeps an accepted message when the stream drops before its run starts', async () => {
 		let stream!: ReturnType<typeof makeControllableSseResponse>;
 		vi.stubGlobal(
 			'fetch',
@@ -6126,14 +6126,66 @@ describe('useAgentChatStream — first message of a new session', () => {
 		stream.emit([{ type: 'message-queued', queueId: 'q-1', sessionId: 'thread-new' }]);
 		await sending;
 		await flushPromises();
-		expect(hook.queuedMessages.value).toEqual([]);
 
 		stream.close();
 		await flushPromises();
+		expect(hook.messages.value.map(({ content }) => content)).toEqual(['Hello']);
+		expect(hook.queuedMessages.value).toEqual([]);
+		expect(hook.messagingState.value).toBe('waitingFirstChunk');
+
+		// The run starts on the server, and a push refresh brings its history.
+		getChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'server-id',
+					role: 'user',
+					content: [{ type: 'text', text: 'Hello' }],
+					executionId: 'A',
+				},
+			],
+			openSuspensions: [],
+			activeExecutionId: null,
+		});
+		getAgentChatQueueMock.mockResolvedValue({ items: [] });
+		for (const listener of [...pushListeners]) {
+			listener({
+				type: 'agentExecutionUpdated',
+				data: { projectId: 'p1', agentId: 'a1', threadId: 'thread-new', executionId: 'A' },
+			});
+		}
+		await flushPromises();
+
+		expect(hook.messages.value).toEqual([
+			expect.objectContaining({ id: 'server-id', content: 'Hello' }),
+		]);
+		expect(hook.messagingState.value).toBe('idle');
+		hook.detachStream();
+	});
+
+	it('removes the message when the stream drops before the server accepts it', async () => {
+		let stream!: ReturnType<typeof makeControllableSseResponse>;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async (_url, init: RequestInit) => {
+				stream = makeControllableSseResponse([], init.signal ?? null);
+				return stream.response;
+			}),
+		);
+		getChatMessagesMock.mockResolvedValue({
+			messages: [],
+			openSuspensions: [],
+			activeExecutionId: null,
+		});
+		getAgentChatQueueMock.mockResolvedValue({ items: [] });
+		const hook = buildHook('thread-new', { newSession: ref(true) });
+
+		const sending = hook.sendMessage('Hello');
+		stream.close();
+		await sending;
+		await flushPromises();
 
 		expect(hook.messages.value).toEqual([]);
-		expect(hook.queuedMessages.value).toEqual([expect.objectContaining({ id: 'q-1' })]);
-		hook.detachStream();
+		expect(hook.messagingState.value).toBe('idle');
 	});
 
 	it.each([
