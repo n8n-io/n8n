@@ -49,14 +49,21 @@ export async function postWithFileGroups<T>(
 	post: (message: OutboundPostable) => Promise<T>,
 	message: OutboundPostable,
 	groups: OutboundFileGroup[],
-	limits: { maxCaptionLength?: number; maxMessageLength?: number } = {},
+	limits: {
+		maxCaptionLength?: number;
+		maxMessageLength?: number;
+		/** The platform escapes Markdown as Telegram MarkdownV2 before it cuts the caption. */
+		escapesMarkdownV2?: boolean;
+	} = {},
 ): Promise<T> {
 	const [loadFirstGroup, ...otherGroups] = groups;
 	if (!loadFirstGroup) return await post(message);
 	const text = postableText(message);
-	const { maxCaptionLength, maxMessageLength } = limits;
+	const { maxCaptionLength, maxMessageLength, escapesMarkdownV2 } = limits;
 	const captionLimit = Math.min(maxCaptionLength ?? Infinity, maxMessageLength ?? Infinity);
-	if (text !== undefined && captionLength(message, text) > captionLimit) {
+	const length =
+		text !== undefined && escapesMarkdownV2 ? markdownV2Length(message, text) : text?.length;
+	if (text !== undefined && length !== undefined && length > captionLimit) {
 		const parts = maxMessageLength === undefined ? [text] : splitMessage(text, maxMessageLength);
 		let first: T | undefined;
 		for (const part of parts) {
@@ -79,11 +86,11 @@ export async function postWithFileGroups<T>(
 const MARKDOWN_V2_SPECIAL_CHARS = /[_*[\]()~`>#+\-=|{}.!\\]/g;
 
 /**
- * The adapter cuts a caption after it renders Markdown, and escaping makes the
- * text longer. Count each special character twice, so a caption that can grow
- * past the limit is posted as its own message and nothing is cut.
+ * The Telegram adapter cuts a caption after it renders Markdown, and escaping
+ * makes the text longer. Count each special character twice, so a caption that
+ * can grow past the limit is posted as its own message and nothing is cut.
  */
-function captionLength(message: OutboundPostable, text: string): number {
+function markdownV2Length(message: OutboundPostable, text: string): number {
 	if (typeof message === 'string' || !('markdown' in message)) return text.length;
 	return text.length + (text.match(MARKDOWN_V2_SPECIAL_CHARS)?.length ?? 0);
 }
@@ -265,6 +272,7 @@ export function captionLimits(integration: AgentChatIntegration | undefined) {
 	return {
 		maxCaptionLength: integration?.fileUploadLimits?.maxCaptionLength,
 		maxMessageLength: integration?.maxMessageLength,
+		escapesMarkdownV2: integration?.type === 'telegram',
 	};
 }
 

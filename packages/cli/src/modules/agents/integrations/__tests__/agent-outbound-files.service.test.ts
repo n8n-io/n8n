@@ -264,6 +264,20 @@ describe('AgentOutboundFiles.postReplyFiles', () => {
 		});
 	});
 
+	it('keeps Discord reply text near the message limit with the files', async () => {
+		const { service, thread } = createService();
+		// 1,900 characters: at the Discord limit. Only Telegram counts Markdown escaping.
+		const caption = 'a'.repeat(1800) + '.'.repeat(100);
+
+		await service.postReplyFiles(thread, 'discord', { fileIds: ['file-1'], caption, scope });
+
+		expect(thread.post).toHaveBeenCalledTimes(1);
+		expect(thread.post).toHaveBeenCalledWith({
+			markdown: caption,
+			files: [{ data: Buffer.from('png'), filename: 'chart.png', mimeType: 'image/png' }],
+		});
+	});
+
 	it('posts mixed Slack files in one message', async () => {
 		const { service, thread } = createService();
 
