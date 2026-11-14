@@ -1,7 +1,14 @@
 import { computed, defineComponent, h, nextTick, provide } from 'vue';
 import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { useUIStore } from '@/app/stores/ui.store';
-import { AutoSaveState, DEBOUNCE_TIME, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import {
+	AGENT_NODE_TYPE,
+	AutoSaveState,
+	DEBOUNCE_TIME,
+	MODAL_CANCEL,
+	MODAL_CONFIRM,
+	VIEWS,
+} from '@/app/constants';
 import {
 	EditorEnabledFeaturesKey,
 	WorkflowIdKey,
@@ -619,6 +626,48 @@ describe('useWorkflowSaving', () => {
 			expect(workflow.nodes![1].parameters.path).not.toBe(staticPath);
 			expect(workflow.nodes![1].parameters.path).toBe(workflow.nodes![1].webhookId);
 		});
+
+		it.each([3, 3.1])(
+			'remaps Agent V%s tool availability rules when duplicating a workflow',
+			async (typeVersion) => {
+				const tool = createTestNode({ id: 'tool', name: 'Calculator' });
+				const agent = createTestNode({
+					id: 'agent',
+					name: 'AI Agent',
+					type: AGENT_NODE_TYPE,
+					typeVersion,
+					parameters: {
+						toolAvailability: {
+							rules: [{ sourceNodeId: 'tool', available: '={{ $json.allowTool }}' }],
+						},
+					},
+				});
+				const originalParameters = agent.parameters;
+				const workflow: WorkflowDataUpdate = {
+					name: 'Agent workflow',
+					nodes: [agent, tool],
+					connections: {
+						Calculator: {
+							ai_tool: [[{ node: agent.name, type: NodeConnectionTypes.AiTool, index: 0 }]],
+						},
+					},
+				};
+
+				await useWorkflowSaving({ router }).saveAsNewWorkflow({
+					data: workflow,
+					resetNodeIds: true,
+				});
+
+				expect(tool.id).not.toBe('tool');
+				expect(agent.parameters.toolAvailability).toEqual({
+					rules: [{ sourceNodeId: tool.id, available: '={{ $json.allowTool }}' }],
+				});
+				expect(workflowsStore.createNewWorkflow).toHaveBeenCalledWith(workflow);
+				expect(originalParameters.toolAvailability).toEqual({
+					rules: [{ sourceNodeId: 'tool', available: '={{ $json.allowTool }}' }],
+				});
+			},
+		);
 
 		it('should remap nodeGroups nodeIds when resetNodeIds is true', async () => {
 			const oldId1 = 'old-id-1';

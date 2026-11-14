@@ -25,6 +25,7 @@ import {
 } from '@/__tests__/mocks';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
+	NodeConnectionTypes,
 	type INode,
 	type INodeParameterResourceLocator,
 	type INodeProperties,
@@ -267,6 +268,58 @@ describe('ParameterInput.vue', () => {
 		await userEvent.click(options[1]);
 
 		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'append' })]);
+	});
+
+	test('lists direct tool sources by name and saves their stable IDs', async () => {
+		const calculator = reactive({ id: 'calculator-id', name: 'Calculator' });
+		const disabledTool = { id: 'disabled-id', name: 'Disabled Tool', disabled: true };
+		const getParentNodes = vi.fn().mockReturnValue([calculator.name, disabledTool.name]);
+		const documentStore = {
+			getParentNodes,
+			getNodeByName: (name: string) =>
+				[calculator, disabledTool].find((node) => node.name === name),
+		};
+		const { container, baseElement, emitted } = renderComponent({
+			props: {
+				path: 'parameters.toolAvailability.rules[0].sourceNodeId',
+				parameter: createTestNodeProperties({
+					name: 'sourceNodeId',
+					type: 'options',
+					noDataExpression: true,
+					typeOptions: { connectedNodeOptions: NodeConnectionTypes.AiTool },
+					options: [],
+				}),
+				modelValue: 'calculator-id',
+			},
+			global: {
+				provide: { [WorkflowDocumentStoreKey as symbol]: shallowRef(documentStore) },
+			},
+		});
+
+		expect(getParentNodes).toHaveBeenCalledWith(
+			mockNdvState.activeNode?.name,
+			NodeConnectionTypes.AiTool,
+			1,
+		);
+		await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+		const options = baseElement.querySelectorAll('.list-option');
+		expect(Array.from(options, (option) => option.textContent)).toEqual([
+			'Calculator',
+			'Disabled Tool',
+		]);
+		await userEvent.click(options[1]);
+		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'disabled-id' })]);
+
+		calculator.name = 'Renamed Calculator';
+		getParentNodes.mockReturnValue([calculator.name, disabledTool.name]);
+		await nextTick();
+		await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+		const renamedOption = Array.from(baseElement.querySelectorAll('.list-option')).find(
+			(option) => option.textContent === calculator.name,
+		);
+		expect(renamedOption).toBeDefined();
+		await userEvent.click(renamedOption!);
+		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'calculator-id' })]);
 	});
 
 	test('should clamp long multi-option descriptions without truncating their content', async () => {

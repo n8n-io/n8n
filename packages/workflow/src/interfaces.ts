@@ -2128,6 +2128,7 @@ export interface INodePropertyTypeOptions {
 	loadOptionsDependsOn?: string[]; // Supported by: options
 	loadOptionsMethod?: string; // Supported by: options
 	loadOptions?: ILoadOptions; // Supported by: options
+	connectedNodeOptions?: NodeConnectionType; // Supported by: options. Use direct source node IDs as values.
 	maxValue?: number; // Supported by: number
 	minValue?: number; // Supported by: number
 	multipleValues?: boolean; // Supported by: <All>

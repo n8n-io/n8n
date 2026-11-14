@@ -365,7 +365,18 @@ const hasRemoteMethod = computed<boolean>(() => {
 	return !!getTypeOption('loadOptionsMethod') || !!getTypeOption('loadOptions');
 });
 
-const parameterOptions = computed(() => {
+const parameterOptions = computed<INodePropertyOptions[]>(() => {
+	const connectionType = getTypeOption('connectedNodeOptions');
+	if (connectionType) {
+		if (!node.value) return [];
+		return workflowDocumentStore.value
+			.getParentNodes(node.value.name, connectionType, 1)
+			.flatMap((name) => {
+				const source = workflowDocumentStore.value.getNodeByName(name);
+				return source ? [{ name: source.name, value: source.id }] : [];
+			});
+	}
+
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
 

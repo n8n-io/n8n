@@ -126,6 +126,41 @@ export class AgentV3 implements INodeType {
 						},
 					},
 				},
+				{
+					displayName: 'Tool Availability',
+					name: 'toolAvailability',
+					type: 'fixedCollection',
+					placeholder: 'Add Rule',
+					default: {},
+					typeOptions: { multipleValues: true },
+					description: 'Control which connected tools the model can use for each input item',
+					options: [
+						{
+							name: 'rules',
+							displayName: 'Rule',
+							values: [
+								{
+									displayName: 'Tool',
+									name: 'sourceNodeId',
+									type: 'options',
+									default: '',
+									noDataExpression: true,
+									typeOptions: { connectedNodeOptions: NodeConnectionTypes.AiTool },
+									options: [],
+									description:
+										'The connected tool source. A rule applies to all tools from this node.',
+								},
+								{
+									displayName: 'Available',
+									name: 'available',
+									type: 'boolean',
+									default: true,
+									description: 'Whether the model can use this tool for the current input item',
+								},
+							],
+						},
+					],
+				},
 				toolsAgentProperties,
 			],
 			hints: [
