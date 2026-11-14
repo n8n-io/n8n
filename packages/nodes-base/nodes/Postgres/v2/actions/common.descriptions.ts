@@ -361,6 +361,51 @@ export const sortFixedCollection: INodeProperties = {
 	],
 };
 
+export const startAfterFixedCollection: INodeProperties = {
+	displayName: 'Start After',
+	name: 'startAfter',
+	type: 'fixedCollection',
+	placeholder: 'Add Cursor',
+	default: {},
+	description:
+		'Return rows after a given value of a unique column, so a large table can be read page by page',
+	displayOptions: {
+		show: {
+			returnAll: [false],
+		},
+	},
+	options: [
+		{
+			displayName: 'Values',
+			name: 'values',
+			values: [
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+					displayName: 'Column',
+					name: 'column',
+					type: 'options',
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+					description:
+						'Unique column to page by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>.',
+					default: '',
+					typeOptions: {
+						loadOptionsMethod: 'getColumns',
+						loadOptionsDependsOn: ['schema.value', 'table.value'],
+					},
+				},
+				{
+					displayName: 'Value',
+					name: 'value',
+					type: 'string',
+					default: '',
+					description:
+						'Value of the column in the last row of the previous page, leave empty for the first page',
+				},
+			],
+		},
+	],
+};
+
 export const combineConditionsCollection: INodeProperties = {
 	displayName: 'Combine Conditions',
 	name: 'combineConditions',

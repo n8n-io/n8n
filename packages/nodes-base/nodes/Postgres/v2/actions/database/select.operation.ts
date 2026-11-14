@@ -1,3 +1,4 @@
+import memoize from 'lodash/memoize';
 import {
 	tryToParseNumber,
 	type IDataObject,
@@ -6,6 +7,12 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
+import {
+	addCursorPredicate,
+	addCursorSortRule,
+	assertUniqueCursorColumn,
+	getStartAfter,
+} from '@utils/sql-keyset-paging';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import type {
@@ -19,6 +26,7 @@ import type {
 import {
 	addSortRules,
 	addWhereClauses,
+	getUniqueKeyColumns,
 	getWhereClauses,
 	replaceEmptyStringsByNulls,
 } from '../../helpers/utils';
@@ -26,6 +34,7 @@ import {
 	combineConditionsCollection,
 	optionsCollection,
 	sortFixedCollection,
+	startAfterFixedCollection,
 	whereFixedCollection,
 } from '../common.descriptions';
 
@@ -58,6 +67,7 @@ const properties: INodeProperties[] = [
 			},
 		},
 	},
+	startAfterFixedCollection,
 	whereFixedCollection,
 	combineConditionsCollection,
 	sortFixedCollection,
@@ -81,11 +91,15 @@ export async function execute(
 	runQueries: QueriesRunner,
 	items: INodeExecutionData[],
 	nodeOptions: PostgresNodeOptions,
-	_db?: PgpDatabase,
+	db: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
 
 	const queries: QueryWithValues[] = [];
+	const uniqueColumnsOf = memoize(
+		async (schema: string, table: string) => await getUniqueKeyColumns(db, schema, table),
+		(schema, table) => `${schema}.${table}`,
+	);
 
 	for (let i = 0; i < items.length; i++) {
 		const schema = this.getNodeParameter('schema', i, undefined, {
@@ -113,6 +127,7 @@ export async function execute(
 
 		const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
 
+		const base = query;
 		[query, values] = addWhereClauses(
 			this.getNode(),
 			i,
@@ -124,10 +139,28 @@ export async function execute(
 
 		const sortRules =
 			((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];
-
-		[query, values] = addSortRules(query, sortRules, values);
+		let rules = sortRules;
 
 		const returnAll = this.getNodeParameter('returnAll', i, false);
+		if (!returnAll) {
+			const { column, value } = getStartAfter(this, i);
+
+			if (column !== '') {
+				const uniqueColumns = await uniqueColumnsOf(schema, table);
+				assertUniqueCursorColumn(this.getNode(), i, uniqueColumns, column, table);
+
+				if (value !== '') {
+					values.push(column, value);
+					const predicate = `$${values.length - 1}:name > $${values.length}`;
+					query = addCursorPredicate(base, query, predicate);
+				}
+
+				rules = addCursorSortRule(sortRules, column);
+			}
+		}
+
+		[query, values] = addSortRules(query, rules, values);
+
 		if (!returnAll) {
 			const limitRaw = this.getNodeParameter('limit', i, 50);
 			const limit = tryToParseNumber(limitRaw);
