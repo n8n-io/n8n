@@ -193,14 +193,13 @@ async function startPlannedChange(
 	apps: InstanceAiAppService,
 	appId: string,
 	plan: AppPlan,
-	theme: AppBlueprint['theme'],
 ) {
 	const opened = await open(context, workspace, apps, appId);
 	await writeAppFile(workspace, appId, 'public/plan.json', JSON.stringify(plan, null, 2) + '\n');
 	await writeAppFile(workspace, appId, 'src/plan/wireframe.css', WIREFRAME_CSS);
 	return {
 		...opened,
-		placeholders: renderPlanPlaceholders(plan, theme),
+		placeholders: renderPlanPlaceholders(plan),
 		nextStep:
 			"Import './plan/wireframe.css' once in `src/main.js`, unless the app imports it already. Put each placeholder where its part goes in the app, keep its `data-plan-id`, and `commit`. " +
 			'Then build the parts in `buildOrder`: call `progress` with the plan id, replace its placeholder with the real component, set its `status` to `built` in `public/plan.json`, and `commit`.',
@@ -406,7 +405,6 @@ export function createAppsTool(context: InstanceAiContext) {
 							apps,
 							input.appId,
 							resumeData.blueprint.plan,
-							resumeData.blueprint.theme,
 						)),
 					};
 				}

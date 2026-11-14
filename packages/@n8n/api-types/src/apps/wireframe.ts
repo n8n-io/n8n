@@ -189,8 +189,12 @@ function blockBody(component: AppPlanComponent, plan: AppPlan): string {
 export interface WireframeRenderOptions {
 	/** Adds `v-pre` to each block so the HTML is a valid Vue template. */
 	vue?: boolean;
-	/** The app theme. `both` follows the color scheme of the browser. Defaults to `both`. */
-	theme?: 'light' | 'dark' | 'both';
+	/**
+	 * The app theme. `both` follows the color scheme of the browser. `inherit` takes the
+	 * colors from the text color around the block, for blocks inside an existing app.
+	 * Defaults to `both`.
+	 */
+	theme?: 'light' | 'dark' | 'both' | 'inherit';
 }
 
 /** One planned block. Its root carries `data-plan-id`. */
@@ -438,6 +442,11 @@ export const WIREFRAME_CSS = `
   --wf-ink: #ececea; --wf-ink-soft: #a9a9a6; --wf-ink-faint: #6f6f6c;
   --wf-paper: #1c1c1b; --wf-panel: #252524; --wf-line: #ececea; --wf-line-soft: #4a4a48; --wf-wash: #30302e;
   --wf-mid-filter: grayscale(1) invert(0.86) hue-rotate(180deg); }
+.wf-theme-inherit {
+  --wf-ink: currentColor; --wf-ink-soft: color-mix(in srgb, currentColor 65%, transparent);
+  --wf-ink-faint: color-mix(in srgb, currentColor 40%, transparent); --wf-paper: transparent; --wf-panel: transparent;
+  --wf-line: color-mix(in srgb, currentColor 70%, transparent); --wf-line-soft: color-mix(in srgb, currentColor 25%, transparent);
+  --wf-wash: color-mix(in srgb, currentColor 10%, transparent); }
 .wf-app { font-family: var(--wf-font); font-weight: 400; font-size: 13px; color: var(--wf-ink); background: var(--wf-paper);
   min-height: 100vh; display: flex; flex-direction: column; }
 .wf-app.wf-layout-sidebar { flex-direction: row; }
@@ -1212,10 +1221,7 @@ export function planBuildOrder(plan: AppPlan): string[] {
  * the app, then replaces one block at a time. A part inside another new part comes
  * with its container.
  */
-export function renderPlanPlaceholders(
-	plan: AppPlan,
-	theme: WireframeRenderOptions['theme'] = 'both',
-): Record<string, string> {
+export function renderPlanPlaceholders(plan: AppPlan): Record<string, string> {
 	// Only new parts, without detail: the build does not add the detail module to an existing app,
 	// and an existing part inside a new container is already in the app.
 	const strip = (c: AppPlanComponent) => ({ ...c, detail: undefined });
@@ -1232,7 +1238,8 @@ export function renderPlanPlaceholders(
 	return Object.fromEntries(
 		all
 			.filter((c) => !c.inside || !ids.has(c.inside))
-			.map((c) => [c.id, renderWireframeBlock(c, newParts, { vue: true, theme })]),
+			// The app has its own theme, so the blocks take its colors instead of a guessed one.
+			.map((c) => [c.id, renderWireframeBlock(c, newParts, { vue: true, theme: 'inherit' })]),
 	);
 }
 

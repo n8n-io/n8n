@@ -395,6 +395,8 @@ describe('plan of a change to an existing app', () => {
 		const placeholders = renderPlanPlaceholders(change);
 		expect(Object.keys(placeholders).sort()).toEqual(['approve', 'drafts']);
 		expect(placeholders.drafts).toContain(' v-pre>');
+		// The app around the block decides its colors.
+		expect(placeholders.drafts).toContain('wf-theme-inherit');
 	});
 
 	it('leaves existing parts out of the placeholder of a new container', () => {
