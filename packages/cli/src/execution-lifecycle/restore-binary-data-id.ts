@@ -7,7 +7,9 @@ import type { IBinaryData, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 /**
  * Whenever the execution ID is not available to the binary data service at the
  * time of writing a binary data file, its name is missing the execution ID.
- * This function restores the ID in the file name and run data reference.
+ * This function moves the file under the execution. For blob storage, this also
+ * restores the ID in the file name and run data reference. Database IDs remain
+ * unchanged because ownership is stored separately from the file ID.
  *
  * This edge case can happen only for a Webhook node that accepts binary data,
  * when the binary data manager is set to persist this binary data.
@@ -18,17 +20,19 @@ import type { IBinaryData, IRun, WorkflowExecuteMode } from 'n8n-workflow';
  *
  * s3:workflows/123/executions/temp/binary_data/69055-83c4-4493-876a-9092c4708b9b ->
  * s3:workflows/123/executions/390/binary_data/69055-83c4-4493-876a-9092c4708b9b
+ *
+ * database:69055-83c4-4493-876a-9092c4708b9b keeps its ID while its source ID
+ * changes from `temp` to `390`.
  * ```
  */
-type RenameEntry = {
+type RestoreEntry = {
 	binaryDataRefs: IBinaryData[];
 	mode: BinaryData.StoredMode;
 	fileId: string;
-	correctFileId: string;
 };
 
-function collectRenameEntries(run: IRun, executionId: string): RenameEntry[] {
-	const entriesByFileId = new Map<string, RenameEntry>();
+function collectRestoreEntries(run: IRun): RestoreEntry[] {
+	const entriesByFileId = new Map<string, RestoreEntry>();
 
 	for (const nodeRuns of Object.values(run.data.resultData.runData)) {
 		for (const nodeRun of nodeRuns ?? []) {
@@ -39,7 +43,7 @@ function collectRenameEntries(run: IRun, executionId: string): RenameEntry[] {
 						if (!binaryDataId) continue;
 
 						const [mode, fileId] = binaryDataId.split(':') as [BinaryData.StoredMode, string];
-						if (!fileId.includes(`/${TEMP_EXECUTION_ID}/`)) continue;
+						if (mode !== 'database' && !fileId.includes(`/${TEMP_EXECUTION_ID}/`)) continue;
 
 						const existing = entriesByFileId.get(fileId);
 						if (existing) {
@@ -49,7 +53,6 @@ function collectRenameEntries(run: IRun, executionId: string): RenameEntry[] {
 								binaryDataRefs: [binaryData],
 								mode,
 								fileId,
-								correctFileId: fileId.replace(`/${TEMP_EXECUTION_ID}/`, `/${executionId}/`),
 							});
 						}
 					}
@@ -71,20 +74,20 @@ export async function restoreBinaryDataId(
 	}
 
 	try {
-		const entries = collectRenameEntries(run, executionId);
+		const entries = collectRestoreEntries(run);
 
 		await Promise.all(
-			entries.map(
-				async ({ fileId, correctFileId }) =>
-					await Container.get(BinaryDataService).rename(fileId, correctFileId),
-			),
-		);
+			entries.map(async (entry) => {
+				const claimedFileId = await Container.get(BinaryDataService).claimForExecution(
+					entry.fileId,
+					executionId,
+				);
 
-		for (const { binaryDataRefs, mode, correctFileId } of entries) {
-			for (const binaryData of binaryDataRefs) {
-				binaryData.id = `${mode}:${correctFileId}`;
-			}
-		}
+				for (const binaryData of entry.binaryDataRefs) {
+					binaryData.id = `${entry.mode}:${claimedFileId}`;
+				}
+			}),
+		);
 	} catch (e) {
 		const error = e instanceof Error ? e : new Error(`${e}`);
 		const logger = Container.get(Logger);

@@ -2,7 +2,12 @@ import { testDb } from '@n8n/backend-test-utils';
 import { BinaryDataRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { BinaryDataConfig } from 'n8n-core';
-import { FileTooLargeError, InvalidSourceTypeError, MissingSourceIdError } from 'n8n-core';
+import {
+	FileTooLargeError,
+	InvalidSourceTypeError,
+	MissingSourceIdError,
+	TEMP_EXECUTION_ID,
+} from 'n8n-core';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -220,6 +225,47 @@ it('should throw `BinaryDataFileNotFoundError` when renaming non-existent file',
 	const promise = dbManager.rename(nonExistentFileId, newFileId);
 
 	await expect(promise).rejects.toThrow('Binary data file not found');
+});
+
+it('should claim a temporary execution file without changing its ID', async () => {
+	const { fileId } = await dbManager.store(
+		{ type: 'execution', workflowId, executionId: '' },
+		buffer,
+		{},
+	);
+
+	expect(await repository.findSourceByFileId(fileId)).toEqual({
+		sourceType: 'execution',
+		sourceId: TEMP_EXECUTION_ID,
+	});
+
+	await expect(dbManager.claimForExecution(fileId, executionId)).resolves.toBe(fileId);
+	expect(await repository.findSourceByFileId(fileId)).toEqual({
+		sourceType: 'execution',
+		sourceId: executionId,
+	});
+});
+
+it('should leave a file that is already owned by an execution unchanged', async () => {
+	const { fileId } = await dbManager.store(
+		{ type: 'execution', workflowId, executionId: 'original-execution' },
+		buffer,
+		{},
+	);
+
+	await expect(dbManager.claimForExecution(fileId, executionId)).resolves.toBe(fileId);
+	expect(await repository.findSourceByFileId(fileId)).toEqual({
+		sourceType: 'execution',
+		sourceId: 'original-execution',
+	});
+});
+
+it('should throw `BinaryDataFileNotFoundError` when claiming a non-existent file', async () => {
+	const nonExistentFileId = uuid();
+
+	await expect(dbManager.claimForExecution(nonExistentFileId, executionId)).rejects.toThrow(
+		'Binary data file not found',
+	);
 });
 
 it('should throw `BinaryDataFileNotFoundError` when copying non-existent file', async () => {

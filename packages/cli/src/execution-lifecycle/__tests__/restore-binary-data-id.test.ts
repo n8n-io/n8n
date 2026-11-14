@@ -29,6 +29,9 @@ function getDataId(run: IRun, kind: 'binary' | 'json') {
 }
 
 const binaryDataService = mockInstance(BinaryDataService);
+binaryDataService.claimForExecution.mockImplementation(async (fileId, executionId) =>
+	fileId.replace('/temp/', `/${executionId}/`),
+);
 
 for (const mode of ['filesystem', 's3'] as const) {
 	describe(`on ${mode} mode`, () => {
@@ -58,7 +61,10 @@ for (const mode of ['filesystem', 's3'] as const) {
 			const correctFileId = incorrectFileId.replace('temp', executionId);
 			const correctBinaryDataId = `s3:${correctFileId}`;
 
-			expect(binaryDataService.rename).toHaveBeenCalledWith(incorrectFileId, correctFileId);
+			expect(binaryDataService.claimForExecution).toHaveBeenCalledWith(
+				incorrectFileId,
+				executionId,
+			);
 			expect(getDataId(run, 'binary')).toBe(correctBinaryDataId);
 		});
 
@@ -80,7 +86,10 @@ for (const mode of ['filesystem', 's3'] as const) {
 			const correctFileId = incorrectFileId.replace('temp', executionId);
 			const correctBinaryDataId = `s3:${correctFileId}`;
 
-			expect(binaryDataService.rename).toHaveBeenCalledWith(incorrectFileId, correctFileId);
+			expect(binaryDataService.claimForExecution).toHaveBeenCalledWith(
+				incorrectFileId,
+				executionId,
+			);
 			expect(getDataId(run, 'binary')).toBe(correctBinaryDataId);
 		});
 
@@ -103,7 +112,7 @@ for (const mode of ['filesystem', 's3'] as const) {
 
 			await restoreBinaryDataId(run, executionId, 'webhook');
 
-			expect(binaryDataService.rename).not.toHaveBeenCalled();
+			expect(binaryDataService.claimForExecution).not.toHaveBeenCalled();
 			expect(getDataId(run, 'binary')).toBe(binaryDataId);
 		});
 
@@ -119,7 +128,7 @@ for (const mode of ['filesystem', 's3'] as const) {
 
 			await restoreBinaryDataId(run, executionId, 'webhook');
 
-			expect(binaryDataService.rename).not.toHaveBeenCalled();
+			expect(binaryDataService.claimForExecution).not.toHaveBeenCalled();
 			expect(getDataId(run, 'json')).toBe(dataId);
 		});
 
@@ -130,7 +139,7 @@ for (const mode of ['filesystem', 's3'] as const) {
 
 			await expect(promise).resolves.not.toThrow();
 
-			expect(binaryDataService.rename).not.toHaveBeenCalled();
+			expect(binaryDataService.claimForExecution).not.toHaveBeenCalled();
 		});
 
 		it('should do nothing if data is undefined', async () => {
@@ -146,7 +155,7 @@ for (const mode of ['filesystem', 's3'] as const) {
 
 			await expect(promise).resolves.not.toThrow();
 
-			expect(binaryDataService.rename).not.toHaveBeenCalled();
+			expect(binaryDataService.claimForExecution).not.toHaveBeenCalled();
 		});
 
 		it('should do nothing if workflow execution mode is not `webhook`', async () => {
@@ -162,7 +171,7 @@ for (const mode of ['filesystem', 's3'] as const) {
 
 			await expect(promise).resolves.not.toThrow();
 
-			expect(binaryDataService.rename).not.toHaveBeenCalled();
+			expect(binaryDataService.claimForExecution).not.toHaveBeenCalled();
 		});
 
 		it('should ignore error thrown on renaming', async () => {
@@ -178,13 +187,13 @@ for (const mode of ['filesystem', 's3'] as const) {
 				},
 			});
 
-			binaryDataService.rename.mockRejectedValueOnce(new Error('ENOENT'));
+			binaryDataService.claimForExecution.mockRejectedValueOnce(new Error('ENOENT'));
 
 			const promise = restoreBinaryDataId(run, executionId, 'webhook');
 
 			await expect(promise).resolves.not.toThrow();
 
-			expect(binaryDataService.rename).toHaveBeenCalled();
+			expect(binaryDataService.claimForExecution).toHaveBeenCalled();
 		});
 
 		it('should restore all binary fields in a single item', async () => {
@@ -205,13 +214,13 @@ for (const mode of ['filesystem', 's3'] as const) {
 
 			await restoreBinaryDataId(run, executionId, 'webhook');
 
-			expect(binaryDataService.rename).toHaveBeenCalledWith(
+			expect(binaryDataService.claimForExecution).toHaveBeenCalledWith(
 				incorrectFileId1,
-				incorrectFileId1.replace('temp', executionId),
+				executionId,
 			);
-			expect(binaryDataService.rename).toHaveBeenCalledWith(
+			expect(binaryDataService.claimForExecution).toHaveBeenCalledWith(
 				incorrectFileId2,
-				incorrectFileId2.replace('temp', executionId),
+				executionId,
 			);
 		});
 
@@ -247,13 +256,13 @@ for (const mode of ['filesystem', 's3'] as const) {
 
 			await restoreBinaryDataId(run, executionId, 'webhook');
 
-			expect(binaryDataService.rename).toHaveBeenCalledWith(
+			expect(binaryDataService.claimForExecution).toHaveBeenCalledWith(
 				incorrectFileId1,
-				incorrectFileId1.replace('temp', executionId),
+				executionId,
 			);
-			expect(binaryDataService.rename).toHaveBeenCalledWith(
+			expect(binaryDataService.claimForExecution).toHaveBeenCalledWith(
 				incorrectFileId2,
-				incorrectFileId2.replace('temp', executionId),
+				executionId,
 			);
 		});
 
@@ -281,13 +290,13 @@ for (const mode of ['filesystem', 's3'] as const) {
 
 			await restoreBinaryDataId(run, executionId, 'webhook');
 
-			expect(binaryDataService.rename).toHaveBeenCalledWith(
+			expect(binaryDataService.claimForExecution).toHaveBeenCalledWith(
 				incorrectFileId1,
-				incorrectFileId1.replace('temp', executionId),
+				executionId,
 			);
-			expect(binaryDataService.rename).toHaveBeenCalledWith(
+			expect(binaryDataService.claimForExecution).toHaveBeenCalledWith(
 				incorrectFileId2,
-				incorrectFileId2.replace('temp', executionId),
+				executionId,
 			);
 		});
 	});
@@ -309,6 +318,30 @@ describe('on default mode', () => {
 
 		await expect(promise).resolves.not.toThrow();
 
-		expect(binaryDataService.rename).not.toHaveBeenCalled();
+		expect(binaryDataService.claimForExecution).not.toHaveBeenCalled();
+	});
+});
+
+describe('on database mode', () => {
+	beforeAll(() => {
+		Container.get(BinaryDataConfig).mode = 'database';
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('should assign temporary binary data to the execution without changing its ID', async () => {
+		const executionId = '999';
+		const fileId = 'a5c3f1ed-9d59-4155-bc68-9a370b3c51f6';
+		const binaryDataId = `database:${fileId}`;
+		const run = toIRun({ binary: { data: { id: binaryDataId } } });
+
+		binaryDataService.claimForExecution.mockResolvedValueOnce(fileId);
+
+		await restoreBinaryDataId(run, executionId, 'webhook');
+
+		expect(binaryDataService.claimForExecution).toHaveBeenCalledWith(fileId, executionId);
+		expect(getDataId(run, 'binary')).toBe(binaryDataId);
 	});
 });
