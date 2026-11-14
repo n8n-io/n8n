@@ -827,6 +827,35 @@ describe('registerSubAgentJob', () => {
 	});
 });
 
+describe('stopLocalRuns', () => {
+	it('fails each local job, then stops it, also when one settle write fails', async () => {
+		const { service } = setup();
+		const first = new AbortController();
+		const second = new AbortController();
+		service.registerAbortController('job-1', first);
+		service.registerAbortController('job-2', second);
+		const settle = vi
+			.spyOn(service, 'settle')
+			.mockRejectedValueOnce(new Error('database closed'))
+			.mockResolvedValueOnce(true);
+
+		await expect(service.stopLocalRuns('shut down')).resolves.toBe(1);
+
+		expect(settle).toHaveBeenCalledWith(
+			'job-1',
+			{ status: 'failed', error: 'shut down' },
+			{ status: 'running' },
+		);
+		expect(settle).toHaveBeenCalledWith(
+			'job-2',
+			{ status: 'failed', error: 'shut down' },
+			{ status: 'running' },
+		);
+		expect(first.signal.aborted).toBe(true);
+		expect(second.signal.aborted).toBe(true);
+	});
+});
+
 describe('settle', () => {
 	afterEach(() => {
 		Container.reset();

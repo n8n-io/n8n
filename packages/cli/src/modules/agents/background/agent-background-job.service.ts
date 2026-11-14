@@ -810,6 +810,32 @@ export class AgentBackgroundJobService {
 
 	private localRunsListener?: (count: number) => void;
 
+	/**
+	 * Fails the background sub-agents that still run in this process, then stops
+	 * them. The shutdown drain calls this when the jobs do not finish in time, so
+	 * that no job row stays `running` after the process exits. Returns the count
+	 * of rows that this call settled.
+	 */
+	async stopLocalRuns(error: string): Promise<number> {
+		let settled = 0;
+		for (const [jobId, controller] of [...this.abortControllers]) {
+			try {
+				if (await this.settle(jobId, { status: 'failed', error }, { status: 'running' })) {
+					settled++;
+				}
+			} catch (settleError) {
+				// The orphan check fails the job later, from the status of its child execution.
+				this.logger.warn('Failed to settle a background job on shutdown', {
+					jobId,
+					error: settleError,
+				});
+			} finally {
+				controller.abort();
+			}
+		}
+		return settled;
+	}
+
 	private localRunsChanged(): void {
 		try {
 			this.localRunsListener?.(this.abortControllers.size);
