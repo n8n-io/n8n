@@ -5,6 +5,62 @@ import { z } from 'zod';
 import type { BrowserUseState } from '../../../src/types';
 import type { DiscoveryMcpState } from '../../discovery/stub-mcp-registry';
 import type { DiscoveryConfirmations, DiscoveryTestCase } from '../../discovery/types';
+import { CaseSeedSchema, type CaseSeed } from '../../harness/schema';
+
+/** Inline seed slots the stub instance cannot create. A case that declares one
+ *  would run without that state, so the loader rejects it. */
+const UNSUPPORTED_INLINE_SEED_SLOTS = ['folders', 'projects', 'recordedRuns'] as const;
+
+/** The stub instance serves inline seeds only; a replay seed needs a real thread. */
+const inlineSeedSchema = CaseSeedSchema.refine(
+	(seed): seed is Extract<CaseSeed, { mode: 'inline' }> => seed.mode === 'inline',
+	{ message: 'discovery cases support only an inline seed' },
+).superRefine((seed, ctx) => {
+	if (seed.mode !== 'inline') return;
+	for (const slot of UNSUPPORTED_INLINE_SEED_SLOTS) {
+		if ((seed[slot]?.length ?? 0) > 0) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: [slot],
+				message: `the discovery stub instance cannot seed ${slot}`,
+			});
+		}
+	}
+	// The stub has no folders, so it would show a folder-placed workflow at the root.
+	seed.workflows.forEach((workflow, index) => {
+		if (workflow.parentFolderId !== undefined) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['workflows', index, 'parentFolderId'],
+				message: 'the discovery stub instance cannot place a workflow in a folder',
+			});
+		}
+	});
+	// An empty seed restores nothing, so the case would run against an unseeded instance.
+	if (
+		seed.messages.length === 0 &&
+		seed.workflows.length === 0 &&
+		seed.dataTables.length === 0 &&
+		seed.agents.length === 0
+	) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message:
+				'an inline seed must carry something the stub instance serves — messages, workflows, dataTables, or agents',
+		});
+	}
+	// A prior run must name a seeded workflow, so a priorRuns-only seed is never valid.
+	const declared = new Set(seed.workflows.map((workflow) => workflow.id));
+	(seed.priorRuns ?? []).forEach((run, index) => {
+		if (!declared.has(run.workflow)) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['priorRuns', index, 'workflow'],
+				message: `priorRuns names workflow id ${run.workflow}, which this seed does not declare`,
+			});
+		}
+	});
+});
 
 const forbiddenToolCallSchema = z
 	.object({
@@ -84,6 +140,7 @@ export const discoveryTestCaseSchema = z
 			.strict()
 			.optional(),
 		confirmations: confirmationsSchema.optional(),
+		seed: inlineSeedSchema.optional(),
 		expectedToolInvocations: z
 			.object({
 				// min(1) on every list: an empty expectation array is dead config that
