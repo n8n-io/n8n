@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { join } from 'node:path';
 import { defineCommand } from 'citty';
 import pc from 'picocolors';
 
@@ -16,7 +17,8 @@ import { formatValue } from '../env/dotenv';
 import { RigError } from '../errors';
 import { execInService, type ServiceName } from '../services/compose';
 import { requiredServices } from '../config/env-yaml';
-import { userCwd } from '../source';
+import { CLI_DIR, userCwd } from '../source';
+import type { ProcessComponent } from '../topology/components';
 import { ui } from '../ui/output';
 import { envArg, loadEnv } from './common';
 
@@ -51,12 +53,56 @@ function shellQuote(value: string): string {
 	return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
+const N8N_COMMANDS: Record<ProcessComponent['role'], string> = {
+	main: 'start',
+	worker: 'worker',
+	engine: 'engine',
+};
+
+/** A VS Code launch configuration that runs the component, and one that attaches to `--inspect`. */
+export function vscodeConfigurations(
+	envName: string,
+	component: ProcessComponent,
+	repoRoot: string,
+	env: Record<string, string>,
+): Array<Record<string, unknown>> {
+	const common = {
+		type: 'node',
+		skipFiles: ['<node_internals>/**'],
+		outFiles: [join(repoRoot, 'packages/**/dist/**/*.js'), '!**/node_modules/**'],
+	};
+	return [
+		{
+			...common,
+			name: `rig: ${envName} ${component.name}`,
+			request: 'launch',
+			cwd: join(repoRoot, CLI_DIR),
+			program: join(repoRoot, CLI_DIR, 'bin/n8n'),
+			args: [N8N_COMMANDS[component.role]],
+			env,
+			console: 'integratedTerminal',
+		},
+		{
+			...common,
+			name: `rig: attach ${envName} ${component.name}`,
+			request: 'attach',
+			address: '127.0.0.1',
+			port: component.ports.inspect,
+			restart: true,
+		},
+	];
+}
+
 export const printCommand = defineCommand({
 	meta: { name: 'print', description: 'Print the resolved env of a component' },
 	args: {
 		...envArg,
 		component: { type: 'positional', required: true, description: 'Component' },
-		format: { type: 'string', description: 'shell, dotenv, or json', default: 'shell' },
+		format: {
+			type: 'string',
+			description: 'shell, dotenv, json, or vscode (a launch and an attach configuration)',
+			default: 'shell',
+		},
 		all: { type: 'boolean', description: 'Also print keys from the parent shell' },
 	},
 	run({ args }) {
@@ -80,8 +126,28 @@ export const printCommand = defineCommand({
 			case 'shell':
 				for (const [key, value] of entries) console.log(`export ${key}=${shellQuote(value)}`);
 				return;
+			case 'vscode': {
+				if (component.kind !== 'process') {
+					throw new RigError(
+						'The vscode format is for n8n processes: mains, workers, and the engine.',
+					);
+				}
+				const configurations = vscodeConfigurations(
+					env.name,
+					component,
+					env.requireRepoRoot(),
+					Object.fromEntries(entries),
+				);
+				console.log(JSON.stringify(configurations, null, '\t'));
+				console.error(
+					pc.dim(
+						'Add these to "configurations" in .vscode/launch.json. The env contains secrets, so keep the file out of git. Use the attach configuration with `rig run --inspect`.',
+					),
+				);
+				return;
+			}
 			default:
-				throw new RigError(`Unknown format "${args.format}". Use shell, dotenv, or json.`);
+				throw new RigError(`Unknown format "${args.format}". Use shell, dotenv, json, or vscode.`);
 		}
 	},
 });

@@ -83,7 +83,7 @@ export async function restartComponents(
 	supervisor: Supervisor,
 	components: Component[],
 ): Promise<void> {
-	for (const stage of startStages(components)) {
+	for (const stage of startStages(supervisor.env.withDependentRunners(components))) {
 		await Promise.all(
 			stage.map(async (component) => {
 				ui.info(`Restarting ${component.name}`);

@@ -6,7 +6,7 @@ workers, task runners, and engine v2. `rig` runs the services (Postgres,
 Redis) in containers. It runs the n8n components as local processes from the
 monorepo.
 
-Status: phases 1 (MVP) and 2 (global install) implemented. Phases 3 and 4 are open.
+Status: phases 1 (MVP), 2 (global install), and 3 (developer experience) implemented. Phase 4 is open.
 
 ## Goals
 
@@ -75,8 +75,8 @@ flowchart TD
 ```
 ~/.config/rig/
   config.yaml                # global settings
-  profiles/<name>.env        # reusable env snippets (phase 3)
-  secrets.env                # global secrets, mode 0600 (phase 3)
+  profiles/<name>.env        # reusable env snippets
+  secrets.env                # global secrets, mode 0600
 
 ~/.local/share/rig/
   current                    # name of the default environment
@@ -99,6 +99,7 @@ flowchart TD
     logs/<component>.1.log   # previous run
     state/<component>.json   # runtime state of a running component
     postgres-init.sql        # generated, creates the engine database
+    engine-tls/              # CA and plane certificates with engineTls (keys 0600)
 
 ~/.cache/rig/
   launcher/<version>/task-runner-launcher   # downloaded or built launcher releases
@@ -167,9 +168,10 @@ mains: 2
 workers: 2
 runners:
   mode: external            # internal | external
-  via: launcher             # launcher | direct (direct: phase 3)
+  via: launcher             # launcher | direct
   languages: [js, python]
 engine: off                 # off | in-process | remote
+engineTls: false            # mutual TLS between main and engine (engine: remote)
 tunnel: off                 # off | cloudflare, or the long form (see Public URL)
 services:
   postgres:
@@ -178,7 +180,8 @@ services:
   redis:
     image: auto
     port: 6379
-profiles: []                # phase 3
+slot: 0                     # port slot 0 to 9, see Ports
+profiles: []                # profiles from ~/.config/rig/profiles, a later one wins
 ```
 
 Validate `env.yaml` with a Zod schema. Report errors with the file path, the
@@ -200,8 +203,8 @@ are in phase 1.
 | `rig use <name>` | Set the default environment |
 | `rig reset [name] [--db] [--data]` | Delete data. Keep the configuration |
 | `rig destroy <name>` | Stop everything. Delete containers, volumes, and the directory |
-| `rig clone <src> <dst>` (phase 3) | Copy the configuration with fresh data |
-| `rig import <dir>` (phase 3) | Create an environment from a directory of shell scripts that use `export` |
+| `rig create … --slot <n\|auto> --engine-tls --runners direct` | Port slot, engine TLS, direct runners |
+| `rig clone <src> <dst> [--slot]` | Copy env.yaml, the `env/` files, and own secrets (generated secrets are new). The copy starts with fresh data and, by default, the lowest free slot |
 
 The environment is selected in this order: the `--env <name>` flag, the
 `RIG_ENV` env var, the `current` file, then the only environment if there is
@@ -222,8 +225,10 @@ not start with `-` as the command.
 | `rig logs [component] [-f]` | Show or follow log files |
 | `rig open [main-N] [--public]` | Open the editor, or the public URL of the tunnel, in the browser |
 | `rig psql`, `rig redis-cli` | Open a shell in the service container |
-| `rig up --split` (phase 3) | Open one tmux pane for each component. Each pane runs `rig run` |
-| `rig run <component> --inspect` (phase 3) | Start Node with the inspector on an allocated port |
+| `rig up --split` | Open one tmux pane for each n8n process. Each pane runs `rig run <process> --no-services --wait-deps` |
+| `rig run\|up --inspect`, `--inspect-brk` | Start the n8n processes (for `run`: the named ones) with the Node inspector at port block +5 |
+| `rig run --wait-deps`, `--no-services` | Wait for dependencies without a prompt. Do not start the services |
+| `rig logs --raw` | Show JSON log lines as they are |
 
 ### Env vars
 
@@ -235,9 +240,10 @@ not start with `-` as the command.
 | `rig env edit [--on …]` | Open the layer file in `$EDITOR` |
 | `rig env ls [component]` | Show the resolved env and the layer of each key |
 | `rig env explain KEY --on <component>` | Show every layer that sets the key, and which layer wins |
-| `rig env diff <a> <b>` (phase 3) | Compare the resolved env of two components |
-| `rig env set KEY=VAL --secret` (phase 3) | Write to `secrets.env` |
-| `rig profile on\|off\|ls <name>` (phase 3) | Turn profiles on or off |
+| `rig env diff <a> <b>` | Compare the resolved env of two components. `<env>:<component>` names a component of another environment |
+| `rig env set KEY=VAL --secret` | Write to `secrets.env`. `--on global-secrets` writes to `~/.config/rig/secrets.env` |
+| `rig env set\|unset\|edit --on profile:<name>` | Change a profile. The first value creates it |
+| `rig profile on\|off <name…>`, `rig profile ls` | Turn profiles on or off. `on` moves a profile to the end, so it wins |
 
 ### Integrations
 
@@ -245,7 +251,7 @@ not start with `-` as the command.
 |---|---|
 | `rig exec <component> -- <cmd…>` | Run a command with the resolved env of a component |
 | `rig print <component> --format shell\|dotenv\|json` | Print the resolved env |
-| `rig print <component> --format vscode` (phase 3) | Print a VS Code launch configuration |
+| `rig print <component> --format vscode` | Print a launch and an attach configuration for VS Code (n8n processes only). The env contains secrets |
 | `rig config get [key]`, `rig config set <key> <value>`, `rig config unset <key>` | Read and change the global config |
 | `rig doctor [--env <name>]` | Check Node, pnpm, Docker, the checkout and its build, the launcher, Go, `uv`, the ports of the environment, and the global install. Exit code 1 on a problem |
 | `rig install-global [--from <path>] [--force]` | Build and install the global `rig` |
@@ -263,12 +269,15 @@ The wizard uses arrow-key prompts from `@clack/prompts` (the version that
    - Postgres only: execution mode, regular or queue.
    - Queue only: mains (1 to 4, more than 1 needs a license) and workers (0 to 4).
    - Postgres in regular mode only: engine v2, off, in-process, or remote.
-   - Task runners: external (launcher) or internal. For external, the
-     languages (space bar toggles).
+     Remote only: TLS between the main and the engine, off or on.
+   - Task runners: external via the launcher, external direct (runner
+     components), or internal. For external, the languages (space bar toggles).
 3. **Public HTTPS URL**: no, or a Cloudflare quick tunnel.
-4. **Name**: the default is the preset name, or `local`, with a number when
+4. **Ports**: only when another environment uses slot 0. The default ports
+   (slot 0), or own ports (the lowest free slot).
+5. **Name**: the default is the preset name, or `local`, with a number when
    the name exists. An existing name is rejected.
-5. **Summary**: the topology and the components with their ports, then a
+6. **Summary**: the topology and the components with their ports, then a
    confirmation.
 
 Ctrl+C cancels without changes. A name argument skips the name question.
@@ -341,11 +350,22 @@ The editor:
 | `worker-N` | `worker` | `node bin/n8n worker` | `packages/cli` |
 | `engine` | `engine` | `node bin/n8n engine` | `packages/cli` |
 | `launcher@<host>` | `launcher` | `<launcher-binary> javascript python` | env directory |
-| `runner-js@<host>` (phase 3, `via: direct`) | `runner-js` | `node dist/start.js` | `packages/@n8n/task-runner` |
-| `runner-py@<host>` (phase 3, `via: direct`) | `runner-py` | `uv run python src/main.py` | `packages/@n8n/task-runner-python` |
+| `runner-js@<host>` (`via: direct`) | `runner-js` | `node dist/start.js` | `packages/@n8n/task-runner` |
+| `runner-py@<host>` (`via: direct`) | `runner-py` | `uv run python src/main.py` | `packages/@n8n/task-runner-python` |
 
 `<host>` is the n8n process that owns the broker, for example
 `launcher@worker-1`.
+
+### Direct runners
+
+With `runners.via: direct`, the processes that would get a launcher get one
+runner component for each language instead. Before each start, `rig` asks the
+broker of the host for a grant token (`POST /runners/auth` with
+`N8N_RUNNERS_AUTH_TOKEN`), as the launcher does, and passes it as
+`N8N_RUNNERS_GRANT_TOKEN`. The token is single-use and is not part of the env
+hash. A restart of a process also restarts its direct runners, because their
+broker connection ends. Readiness is the runner health server
+(`N8N_RUNNERS_HEALTH_CHECK_SERVER_*` at offset +3 or +4).
 
 ### Which processes get a launcher
 
@@ -354,8 +374,11 @@ that runs tasks:
 
 - In regular mode: each main.
 - In queue mode: each worker.
-- In queue mode: each main too, unless the resolved env of the main sets
-  `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true`.
+- In queue mode: no main by default. `rig` sets the default
+  `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true` on every n8n process in every
+  environment (n8n reads it only in queue mode), so the workers run manual
+  executions too. A main gets a launcher when its resolved
+  env sets the var to `false`.
 - With `engine: remote`: the engine. The engine hosts its own task broker.
 
 The launcher list is derived from the resolved env, so a change of
@@ -372,7 +395,7 @@ and their launchers.
 
 ## Ports
 
-Phase 1 uses fixed ports. Only one environment can run at a time.
+Ports are fixed for each slot (see below).
 
 Each n8n process gets a block of 10 ports:
 
@@ -383,7 +406,7 @@ Each n8n process gets a block of 10 ports:
 | +2 | Launcher health (`N8N_RUNNERS_LAUNCHER_HEALTH_CHECK_PORT`) |
 | +3 | JS runner health |
 | +4 | Python runner health |
-| +5 | Node inspector (phase 3) |
+| +5 | Node inspector (`--inspect`) |
 
 | Process | Block base |
 |---|---|
@@ -393,11 +416,18 @@ Each n8n process gets a block of 10 ports:
 
 Limit: 10 mains and 10 workers.
 
-Phase 3 adds slots. Slot `k` adds `1000 * k` to every n8n port, and `k` to
-the Postgres and Redis ports. `rig ls` shows the slot of each environment.
+Slots: `slot: k` (0 to 9) adds `1000 * k` to the port blocks, `10 * k` to the
+engine ports (3000 + 10k, 3001 + 10k), and `k` to the Postgres, Redis, and
+tunnel metrics ports. A step of 1000 for the engine would reach port 5000,
+which macOS uses for AirPlay. Environments with different slots run at the
+same time. `rig ls` shows a slot other than 0. `rig create --slot auto` and
+`rig clone` take the lowest slot that no other environment uses. The wizard
+asks only when another environment uses slot 0. `rig create` warns when
+another environment has the same slot.
 
 Before a component starts, `rig` checks that its ports are free. If a port is
-in use, `rig` names the process that holds it.
+in use by a running component of another environment, `rig` names it and
+suggests a free slot. Otherwise it names the process that holds the port.
 
 ## Env resolution
 
@@ -408,11 +438,11 @@ The resolved env of a component merges these layers. A later layer wins.
 | 0 | Shell | Safe keys from the parent shell (see below) |
 | 1a | Default | Developer defaults from `rig`. Layer files override them without a warning |
 | 1b | Managed | Wiring derived from the topology by `rig`. `rig env set` warns before it overrides a key |
-| 2 | Profiles (phase 3) | `~/.config/rig/profiles/<name>.env`, in the order of `profiles` |
+| 2 | Profiles | `~/.config/rig/profiles/<name>.env`, in the order of `profiles` |
 | 3 | Shared | `env/shared.env` |
 | 4 | Role | `env/<role>.env` |
 | 5 | Component | `env/<component>.env` |
-| 6 | Secrets | `~/.config/rig/secrets.env` (phase 3), then `secrets.env` |
+| 6 | Secrets | `~/.config/rig/secrets.env`, then `secrets.env`. Both mode 0600 |
 | 7 | One-off | `rig run -e KEY=VAL` |
 
 The resolved env starts from an empty object plus `PATH`, `HOME`, `TERM`,
@@ -422,6 +452,14 @@ not leak into components. `rig run --inherit-env` turns this off.
 The runner `env-overrides` of a launcher use their own layers: default,
 managed, `env/runner-js.env` (or `runner-py.env`), then
 `env/runner-js@<host>.env`. They do not get `shared.env` or secrets.
+
+A direct runner gets what a launcher would pass it: the keys in the
+`allowed-env` list of its language from the launcher defaults, profiles, and
+`shared.env`, then the runner defaults, the managed wiring, `env/runner-js.env`
+(or `runner-py.env`), and `env/runner-js@<host>.env`. No secrets.
+
+The engine rules for `shared.env` also apply to profiles and to the global
+secrets.
 
 The engine does not get control-plane-only keys (`DB_*`,
 `N8N_ENCRYPTION_KEY`) from `shared.env` and secrets. A main in engine remote
@@ -442,7 +480,7 @@ pasted.
 
 | Condition | Vars |
 |---|---|
-| Always (default) | `N8N_DIAGNOSTICS_ENABLED=false`, `N8N_LOG_LEVEL=info` |
+| Always (default) | `N8N_DIAGNOSTICS_ENABLED=false`, `N8N_LOG_LEVEL=info`, `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true` (in queue mode, mains need no launcher) |
 | Always | `N8N_USER_FOLDER=data/<component>`, `N8N_RUNNERS_BROKER_PORT`, `N8N_RUNNERS_MODE` |
 | `main-N` | `N8N_PORT` |
 | `worker-N` | `QUEUE_HEALTH_CHECK_ACTIVE=true`, `QUEUE_HEALTH_CHECK_PORT` |
@@ -472,8 +510,15 @@ compose file creates this database with an init script.
 Paths in managed vars are absolute. The table shows them relative to the
 environment directory.
 
-TLS between the engine planes is off in phase 1. Phase 3 can add
-`engine.tls: true` and reuse `helpers/tls-certs.ts`.
+With `engineTls: true` (needs `engine: remote`), `rig` creates a CA and a
+certificate for each plane in `engine-tls/` with `generateTlsCerts` from
+`n8n-containers/helpers/tls-certs`. Both certificates name `localhost` and
+`127.0.0.1`. The CA key is deleted after signing. The certificates last 30
+days. `rig` renews them when they expire within two days. The main gets
+`N8N_ENGINE_BASE_URL=https://…` and its files. The engine gets
+`N8N_ENGINE_CONTROL_PLANE_BASE_URL=https://…` and its files. Neither gets
+`N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP`. The engine readiness probe uses
+HTTPS with the CA, because the engine serves `/healthz` on its TLS port.
 
 ### Guardrails
 
@@ -589,14 +634,16 @@ main-1 is not running.
     Abort
 ```
 
-`--yes` picks the first option. `--no-deps` skips the check.
+`--yes` picks the first option. `--wait-deps` picks the second option without a
+prompt. `--no-deps` skips the check.
 
 ### Runtime state
 
 `state/<component>.json` holds: `pid`, `ownerPid` (the `rig` process that
 shows the logs and stops the component on exit, or `null` in the background),
-`ownerTty`, `startedAt`, `processStart`, `ports`, `source`, and `envHash` (a
-hash of the resolved env and, for launchers, the launcher config).
+`ownerTty`, `startedAt`, `processStart`, `ports`, `source`, `inspect` (so a
+restart from any terminal keeps the inspector), and `envHash` (a hash of the
+resolved env and, for launchers, the launcher config).
 
 - A component writes its output to its log file, not to a terminal. Each
   component runs in its own process group (`detached`).
@@ -633,8 +680,10 @@ name, so it shows the output of the new process.
 - The monitor checks components every second with `kill(pid, 0)`. It runs `ps`
   only once for each new pid, to confirm the start time.
 - The owner terminal also prints the output with a colored prefix.
-- Phase 3: when `N8N_LOG_FORMAT=json`, the terminal shows a readable form.
-  The file keeps the raw lines.
+- A JSON log line (`N8N_LOG_FORMAT=json`) shows as `time level message
+  [scopes] key=value`, without `file` and `function`. A multi-line message gets
+  the prefix on each line. The file keeps the raw lines. `rig logs` formats
+  only for a terminal, and `--raw` turns it off.
 
 ### Env drift and restarts
 
@@ -658,21 +707,28 @@ name, so it shows the output of the new process.
 ### `rig up` screen
 
 ```
- rig · mm · postgres+queue · 2 mains · 2 workers · launcher
- ● postgres :5432  ● redis :6379  ● main-1 :5678  ● main-2 :5688  ● worker-1  ◌ worker-2
-──────────────────────────────────────────────────────────────────────────────
+rig · mm · postgres · queue · 2 mains · 2 workers · runners: js via launcher
 main-1    │ Editor is now accessible via: http://localhost:5678
 worker-1  │ n8n worker is now ready
-launcher@worker-1 │ Registered runner "javascript"
-──────────────────────────────────────────────────────────────────────────────
- [o] open http://localhost:5678/  [r] restart drifted  [R] restart all  [q] quit
+── [o] open http://localhost:5678/  [r] restart drifted  [R] restart all  [1-6] show only some logs [0] all  [q] quit ──
+ 1● main-1  2● main-2  3● worker-1  4◌ worker-2⟳  5● launcher@worker-1 …  │ ? keys
 ```
 
-Phase 1 has the prefixed logs and the keys `o`, `p` (public URL), `r`, `R`, and `q`. `o` opens
-the editor URL of `main-1` in the browser, the same as `rig open`. The URL is
-`N8N_EDITOR_BASE_URL` when a layer sets it. Otherwise `rig` builds it from
-`N8N_PROTOCOL`, `N8N_PORT`, and `N8N_PATH`. The status line and a log filter
-key are phase 3.
+- The last row is a status line: one entry for each component of the
+  terminal, with its number, `●` ready, `◌` starting, `✖` exited, `○` stopped,
+  and `⟳` for env drift. The rows above are a scroll region (`DECSTBM`), so the
+  logs scroll and the line stays. `rig` resets the region on exit and on a
+  resize redraws the line. No status line without a terminal, or with fewer
+  than 8 rows.
+- Keys: `o` opens the editor URL of `main-1` (`N8N_EDITOR_BASE_URL` when a
+  layer sets it, else built from `N8N_PROTOCOL`, `N8N_PORT`, and `N8N_PATH`),
+  `p` the public URL, `r` restarts drifted components, `R` all, `1`–`9` add or
+  remove a component from the log filter, `0` clears the filter, `?` prints
+  the keys, `q` quits. Events (ready, exited, restarting) always show.
+- The monitor probes readiness once a second for components that this
+  terminal did not start, so the status line is right after an adoption.
+- Without a terminal, a failed start ends the session with exit code 1,
+  because nobody can press `R`.
 
 When the terminal closes during a shutdown, writes to it fail. `rig` ignores
 these errors, so the shutdown still stops every component.
@@ -799,6 +855,8 @@ packages/quality/environments/rig/
       layers.ts             # layer names, layer files, managed key conflicts
       tools.ts              # exec, print, psql, redis-cli, config
       doctor.ts             # rig doctor
+      profile.ts            # profile ls, on, off
+      clone.ts              # clone
       self.ts               # install-global, self-update, --version
       wizard.ts             # interactive rig create
     config/
@@ -807,7 +865,8 @@ packages/quality/environments/rig/
       env-yaml.ts           # Zod schema for env.yaml
       presets.ts
     topology/
-      components.ts         # components, port blocks, start stages
+      components.ts         # components (with direct runners), port blocks, slots, start stages
+      slots.ts              # free slots, the environment that holds a port
       validate.ts
     env-catalog/
       extract.ts            # @Env discovery with the TypeScript compiler API
@@ -820,6 +879,8 @@ packages/quality/environments/rig/
       secrets.ts
     services/
       compose.ts            # compose.yaml generation, docker compose calls
+      tunnel.ts             # Cloudflare tunnel URL and token
+      engine-tls.ts         # engine TLS certificates
     runtime/
       preflight.ts          # validation, build checks, launcher build, services
       session.ts            # foreground session: start order, keys, drift, monitor
@@ -827,6 +888,7 @@ packages/quality/environments/rig/
       state.ts              # state files, stale detection
       health.ts             # readiness probes, port checks
       logs.ts               # log rotation, tail, file follower
+      split.ts              # rig up --split with tmux
     launcher/
       binary.ts             # launcher source: checkout build, release download or source build
       config.ts             # launcher-config.json generation
@@ -837,6 +899,8 @@ packages/quality/environments/rig/
     ui/
       output.ts             # messages, prefixed lines, tables
       prompt.ts             # @clack/prompts wrappers (select, multiselect, text, confirm)
+      status-line.ts        # the status line at the bottom of rig up
+      log-format.ts         # readable JSON log lines
   test/
 ```
 
@@ -905,6 +969,26 @@ same key, `rig env set` uncomments and updates that line.
   Ctrl+C through shim, bundle, and checkout rig. The Linux download ran in a
   `node:24-slim` container: download, checksum, cache hit, and an unknown
   version.
+- Phase 3 unit tests: `test/layers.test.ts` (profile order, profiles that are
+  off, new profile targets, global and local secrets, mode 0600, `env diff`),
+  `test/slots.test.ts` (ports of slot 2 for n8n, engine, and services, compose
+  ports, free slots), `test/runners.test.ts` (no launchers or runners for
+  mains in the queue presets, the `false` override, direct runner components, roles, affected
+  layers, restart with the host, runner env, engine TLS env and HTTPS probe,
+  inspector ports, VS Code configurations), `test/log-format.test.ts` (JSON
+  lines, the status line cut). `test/setup.ts` points `RIG_*_DIR` at a
+  temporary directory, so no test reads the real `~/.config/rig`.
+- Manual for phase 3, in a sandbox: profiles, global secrets, `--secret`,
+  `env diff` across environments, `clone` with an automatic slot; direct JS and Python runners registered with the broker, a runner
+  restart from another terminal, a main restart that restarts its runners;
+  `--inspect` (`/json/list` answered, kept after a restart); JSON log lines;
+  the status line and the filter keys in a pseudo-terminal, rendered with
+  `pyte` (logs scroll above a fixed last row); engine TLS on slot 2 (health
+  over HTTPS, 401 without a client certificate); two environments in parallel
+  and the port conflict hint; a failed start without a terminal exits with 1.
+  `--split` ran against a fake `tmux` that records its arguments, and one pane
+  command ran by hand (it waited for `main-1`). Not done: a run with real tmux,
+  because tmux is not installed on the test machine.
 - Not done: an automated integration test with Docker.
 
 ## Implementation TODO
@@ -941,7 +1025,7 @@ same key, `rig env set` uncomments and updates that line.
 - [x] `rig run` also runs the launchers of its processes, `--no-launcher` (added during implementation)
 - [x] Owner adoption of components without a live owner (added during implementation)
 - [x] `rig env browse`: interactive editor with the env var catalog from `@Env` (added after the MVP)
-- [ ] Readable output for `N8N_LOG_FORMAT=json` in the terminal (moved to phase 3)
+- [x] Readable output for `N8N_LOG_FORMAT=json` in the terminal (done in phase 3)
 
 ### Phase 2: global install
 
@@ -957,19 +1041,19 @@ same key, `rig env set` uncomments and updates that line.
 
 ### Phase 3: developer experience
 
-- [ ] `rig up` status line and the other keys
-- [ ] Readable output for `N8N_LOG_FORMAT=json`
-- [ ] `rig up --split` with tmux
-- [ ] `--inspect` with allocated ports
-- [ ] `runners.via: direct` with `runner-js@<host>` and `runner-py@<host>`
-- [ ] `rig print --format vscode`
-- [ ] Profiles and `rig profile on|off|ls`
-- [ ] Global secrets and `rig env set --secret`
-- [ ] `rig env diff`
-- [ ] `rig clone`
-- [ ] `rig import` for shell scripts
-- [ ] Port slots for parallel environments
-- [ ] Optional TLS between engine planes
+- [x] `rig up` status line and the other keys (filter `1`–`9`/`0`, `?`)
+- [x] Readable output for `N8N_LOG_FORMAT=json`
+- [x] `rig up --split` with tmux (not tested with real tmux)
+- [x] `--inspect` and `--inspect-brk` with the port at block +5
+- [x] `runners.via: direct` with `runner-js@<host>` and `runner-py@<host>`
+- [x] `rig print --format vscode`
+- [x] Profiles and `rig profile on|off|ls`
+- [x] Global secrets and `rig env set --secret`
+- [x] `rig env diff`
+- [x] `rig clone`
+- [x] Mains in queue mode get no launcher: `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true` by default in every environment (added after phase 3)
+- [x] Port slots for parallel environments
+- [x] Optional TLS between engine planes (`engineTls`)
 
 ### Phase 4: more sources and services
 

@@ -54,7 +54,7 @@ export function buildCompose(envName: string, topology: Topology): Record<string
 				POSTGRES_PASSWORD,
 				POSTGRES_DB: POSTGRES_DATABASE,
 			},
-			ports: [`127.0.0.1:${topology.services.postgres.port}:5432`],
+			ports: [`127.0.0.1:${servicePort(topology, 'postgres')}:5432`],
 			volumes: [
 				`pgdata:${postgresDataMount(postgresImage)}`,
 				'./postgres-init.sql:/docker-entrypoint-initdb.d/rig-init.sql:ro',
@@ -74,7 +74,7 @@ export function buildCompose(envName: string, topology: Topology): Record<string
 			image: image(topology.services.redis.image, TEST_CONTAINER_IMAGES.redis),
 			container_name: `${projectName(envName)}-redis`,
 			labels,
-			ports: [`127.0.0.1:${topology.services.redis.port}:6379`],
+			ports: [`127.0.0.1:${servicePort(topology, 'redis')}:6379`],
 			healthcheck: {
 				test: ['CMD', 'redis-cli', 'ping'],
 				interval: '1s',
@@ -87,7 +87,8 @@ export function buildCompose(envName: string, topology: Topology): Record<string
 	if (needed.includes('tunnel')) {
 		const { tunnel } = topology;
 		const target = processComponents(topology).find((c) => c.name === tunnel.target);
-		const metrics = ['--metrics', `0.0.0.0:${tunnel.metricsPort}`];
+		const metricsPort = servicePort(topology, 'tunnel');
+		const metrics = ['--metrics', `0.0.0.0:${metricsPort}`];
 		services.tunnel = {
 			image: image(tunnel.image, TEST_CONTAINER_IMAGES.cloudflared),
 			container_name: `${projectName(envName)}-tunnel`,
@@ -104,7 +105,7 @@ export function buildCompose(envName: string, topology: Topology): Record<string
 					],
 			// rig passes the token in the environment of `docker compose`, so it stays out of this file.
 			...(tunnel.hostname ? { environment: [`TUNNEL_TOKEN=\${${TUNNEL_TOKEN_KEY}}`] } : {}),
-			ports: [`127.0.0.1:${tunnel.metricsPort}:${tunnel.metricsPort}`],
+			ports: [`127.0.0.1:${metricsPort}:${metricsPort}`],
 			// Docker Desktop and OrbStack define this host. Linux needs the mapping.
 			extra_hosts: ['host.docker.internal:host-gateway'],
 		};

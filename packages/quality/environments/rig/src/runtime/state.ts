@@ -17,6 +17,8 @@ const stateSchema = z.object({
 	/** Start time of the process from `ps`. Detects a reused pid. n8n changes its own command line. */
 	processStart: z.string(),
 	source: z.string().nullable(),
+	/** The Node inspector flag, so a restart from any terminal keeps it. */
+	inspect: z.enum(['inspect', 'inspect-brk']).optional(),
 });
 
 export type ComponentState = z.infer<typeof stateSchema>;

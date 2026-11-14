@@ -1,5 +1,6 @@
 import { type CommandDef, defineCommand, runCommand as runCitty, runMain, showUsage } from 'citty';
 
+import { cloneCommand } from './commands/clone';
 import { doctorCommand } from './commands/doctor';
 import { envCommand } from './commands/env';
 import {
@@ -26,6 +27,7 @@ import {
 	psqlCommand,
 	redisCliCommand,
 } from './commands/tools';
+import { profileCommand } from './commands/profile';
 import { installGlobalCommand, printVersion, selfUpdateCommand } from './commands/self';
 import { RigError } from './errors';
 import { runningVersion } from './self/build-info';
@@ -44,6 +46,7 @@ const rig = defineCommand({
 		use: useCommand,
 		reset: resetCommand,
 		destroy: destroyCommand,
+		clone: cloneCommand,
 		up: upCommand,
 		run: runCommand,
 		stop: stopCommand,
@@ -53,6 +56,7 @@ const rig = defineCommand({
 		open: openCommand,
 		services: servicesCommand,
 		env: envCommand,
+		profile: profileCommand,
 		exec: execCommand,
 		print: printCommand,
 		psql: psqlCommand,

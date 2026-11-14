@@ -59,7 +59,7 @@ function isRunnerLayer(layer: string): boolean {
 }
 
 function layerValues(env: RigEnv, layer: string): Map<string, string> {
-	return new Map(readDotenv(env.paths.layerFile(layer)).map((entry) => [entry.key, entry.value]));
+	return new Map(readDotenv(env.layerFile(layer)).map((entry) => [entry.key, entry.value]));
 }
 
 /** The value that running components get, for a few components that the layer affects. */
@@ -111,7 +111,7 @@ function details(
 	if (info.defaultValue !== undefined)
 		lines.push(`Default:  ${truncate(info.defaultValue, 60) || '""'}`);
 	lines.push(
-		`In env/${layer}.env: ${current === undefined ? pc.dim('not set') : pc.green(truncate(current, 60))}`,
+		`In ${env.layerLabel(layer)}: ${current === undefined ? pc.dim('not set') : pc.green(truncate(current, 60))}`,
 	);
 	const effective = effectiveValues(env, layer, info.name);
 	if (effective.length > 0) {
@@ -317,7 +317,7 @@ export const browseCommand = defineCommand({
 			let pick: Pick;
 			try {
 				pick = await search(
-					`Env var to set in ${pc.cyan(`env/${layer}.env`)} ${pc.dim(`(${values.size} set · type to search)`)}`,
+					`Env var to set in ${pc.cyan(env.layerLabel(layer))} ${pc.dim(`(${values.size} set · type to search)`)}`,
 					(term) => {
 						if (!term.trim()) return [...actions, ...setFirst.map(choiceFor)];
 						const matches = rankVars(all, term).map(choiceFor);
@@ -369,13 +369,13 @@ export const browseCommand = defineCommand({
 				if (answer.type === 'back') continue;
 
 				if (answer.type === 'unset') {
-					unsetInDotenvFile(env.paths.layerFile(layer), info.name);
-					log.success(`${info.name} removed from env/${layer}.env`);
+					unsetInDotenvFile(env.layerFile(layer), info.name);
+					log.success(`${info.name} removed from ${env.layerLabel(layer)}`);
 				} else {
 					if (answer.value === current) continue;
 					if (!(await passesGuardrails(env, layer, info.name))) continue;
 					setInDotenvFile(ensureLayerFile(env, layer), info.name, answer.value);
-					log.success(`${info.name}=${truncate(answer.value, 60)} in env/${layer}.env`);
+					log.success(`${info.name}=${truncate(answer.value, 60)} in ${env.layerLabel(layer)}`);
 				}
 				changed.add(layer);
 			} catch (error) {

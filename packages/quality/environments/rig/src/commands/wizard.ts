@@ -11,9 +11,10 @@ import {
 } from '../config/env-yaml';
 import { isPresetName, PRESETS, type PresetName } from '../config/presets';
 import { envPaths } from '../environment';
-import { launcherComponents, processComponents } from '../topology/components';
+import { launcherComponents, processComponents, runnerComponents } from '../topology/components';
 import { validateTopology } from '../topology/validate';
 import { ask, type Choice, confirm, intro, multiselect, note, outro, select } from '../ui/prompt';
+import { freeSlot, slotsInUse } from '../topology/slots';
 
 type Start = PresetName | 'custom';
 
@@ -58,15 +59,26 @@ async function customTopology(): Promise<Omit<TopologyInput, 'name'>> {
 		{ value: 'in-process', label: 'In-process', hint: 'the data plane runs in the main' },
 		{ value: 'remote', label: 'Remote', hint: 'separate `n8n engine` process, adds Redis' },
 	]);
-	return { db, queue, engine, ...(await runnerSetup()) };
+	const engineTls =
+		engine === 'remote' &&
+		(await select('TLS between the main and the engine', [
+			{ value: false, label: 'Off', hint: 'plain HTTP on 127.0.0.1' },
+			{ value: true, label: 'On', hint: 'mutual TLS with certificates from rig, needs openssl' },
+		]));
+	return { db, queue, engine, engineTls, ...(await runnerSetup()) };
 }
 
 async function runnerSetup(): Promise<Pick<TopologyInput, 'runners'>> {
-	const mode = await select<'external' | 'internal'>('Task runners', [
-		{ value: 'external', label: 'External', hint: 'launcher, like production' },
+	const choice = await select<'launcher' | 'direct' | 'internal'>('Task runners', [
+		{ value: 'launcher', label: 'External via launcher', hint: 'like production' },
+		{
+			value: 'direct',
+			label: 'External, direct',
+			hint: 'rig runs each runner as a component, no launcher',
+		},
 		{ value: 'internal', label: 'Internal', hint: 'n8n starts the runners itself' },
 	]);
-	if (mode === 'internal') return { runners: { mode } };
+	if (choice === 'internal') return { runners: { mode: 'internal' } };
 	const languages = await multiselect<Language>(
 		'Runner languages (space to toggle)',
 		[
@@ -75,7 +87,7 @@ async function runnerSetup(): Promise<Pick<TopologyInput, 'runners'>> {
 		],
 		['js', 'python'],
 	);
-	return { runners: { mode, languages } };
+	return { runners: { mode: 'external', via: choice, languages } };
 }
 
 function freeName(base: string): string {
@@ -95,7 +107,12 @@ function validateName(name: string): string | undefined {
 function summary(input: TopologyInput): string {
 	const topology = parseTopology(input);
 	const processes = processComponents(topology);
-	const components = [...processes, ...launcherComponents(topology, processes, () => false)];
+	const components = [
+		...processes,
+		// The env does not exist yet. rig sets OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true by default.
+		...launcherComponents(topology, processes, () => true),
+		...runnerComponents(topology, processes, () => true),
+	];
 	return [
 		describeTopology(topology),
 		'',
@@ -127,6 +144,22 @@ export async function wizard(givenName?: string): Promise<TopologyInput | undefi
 		},
 	]);
 	if (tunnel) topology.tunnel = { provider: 'cloudflare' };
+	const sharing = slotsInUse().get(0);
+	if (sharing) {
+		const slot = freeSlot();
+		topology.slot = await select('Ports', [
+			{
+				value: 0,
+				label: 'Default ports (slot 0)',
+				hint: `same as ${sharing.join(', ')}: they cannot run at the same time`,
+			},
+			{
+				value: slot,
+				label: `Own ports (slot ${slot})`,
+				hint: `runs next to other environments, editor on port ${5678 + 1000 * slot}`,
+			},
+		]);
+	}
 	const name =
 		givenName ??
 		(await ask('Environment name', {

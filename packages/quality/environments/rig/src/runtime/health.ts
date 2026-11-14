@@ -1,4 +1,6 @@
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { request } from 'node:https';
 import { createServer } from 'node:net';
 
 import type { Component } from '../topology/components';
@@ -8,12 +10,54 @@ export function readinessUrl(component: Component, healthPath = '/healthz'): str
 	if (component.kind === 'launcher') {
 		return `http://127.0.0.1:${component.host.ports.launcherHealth}/healthz`;
 	}
+	if (component.kind === 'runner') {
+		const { ports } = component.host;
+		return `http://127.0.0.1:${component.language === 'js' ? ports.jsHealth : ports.pyHealth}/healthz`;
+	}
 	if (component.role === 'engine') return `http://127.0.0.1:${component.ports.http}/healthz`;
 	const path = healthPath.startsWith('/') ? healthPath : `/${healthPath}`;
 	return `http://127.0.0.1:${component.ports.http}${path}/readiness`;
 }
 
-export async function isReady(url: string): Promise<boolean> {
+/** A readiness check: a URL, and the CA for an HTTPS URL with a private CA. */
+export interface Probe {
+	url: string;
+	caFile?: string;
+}
+
+/**
+ * The readiness check of a component with its resolved env. With engine TLS,
+ * the engine serves `/healthz` over HTTPS with the CA of rig.
+ */
+export function readinessProbe(component: Component, env: Record<string, string>): Probe {
+	const url = readinessUrl(component, env.N8N_ENDPOINT_HEALTH);
+	if (component.kind === 'process' && component.role === 'engine' && env.N8N_ENGINE_TLS_CA_FILE) {
+		return { url: url.replace(/^http:/, 'https:'), caFile: env.N8N_ENGINE_TLS_CA_FILE };
+	}
+	return { url };
+}
+
+async function isHttpsReady(url: string, caFile: string): Promise<boolean> {
+	let ca: Buffer;
+	try {
+		ca = readFileSync(caFile);
+	} catch {
+		return false;
+	}
+	return await new Promise((resolve) => {
+		const req = request(url, { ca, timeout: 1000 }, (res) => {
+			res.resume();
+			resolve(res.statusCode !== undefined && res.statusCode >= 200 && res.statusCode < 300);
+		});
+		req.on('timeout', () => req.destroy());
+		req.on('error', () => resolve(false));
+		req.end();
+	});
+}
+
+export async function isReady(probe: Probe | string): Promise<boolean> {
+	const { url, caFile } = typeof probe === 'string' ? { url: probe, caFile: undefined } : probe;
+	if (caFile) return await isHttpsReady(url, caFile);
 	try {
 		const response = await fetch(url, { signal: AbortSignal.timeout(1000) });
 		return response.ok;
@@ -23,7 +67,7 @@ export async function isReady(url: string): Promise<boolean> {
 }
 
 export async function waitUntilReady(options: {
-	url: string;
+	probe: Probe;
 	isRunning: () => boolean;
 	timeoutMs: number;
 	signal?: AbortSignal;
@@ -32,7 +76,7 @@ export async function waitUntilReady(options: {
 	while (Date.now() < deadline) {
 		if (options.signal?.aborted) return 'aborted';
 		if (!options.isRunning()) return 'exited';
-		if (await isReady(options.url)) return 'ready';
+		if (await isReady(options.probe)) return 'ready';
 		await new Promise((resolve) => setTimeout(resolve, 500));
 	}
 	return 'timeout';

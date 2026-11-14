@@ -3,16 +3,22 @@ import { closeSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { sleep } from '@n8n/utils/sleep';
 import pc from 'picocolors';
+import { z } from 'zod';
 
 import type { RigEnv } from '../environment';
 import type { ResolveContext } from '../env/resolve';
 import { RigError } from '../errors';
 import { ensureLauncherBinary } from '../launcher/binary';
-import { nodeBinary, writeLauncherConfig } from '../launcher/config';
+import { nodeBinary, runnerCommand, writeLauncherConfig } from '../launcher/config';
 import { CLI_DIR } from '../source';
-import { type Component, portsOf, type ProcessComponent } from '../topology/components';
+import {
+	type Component,
+	portsOf,
+	type ProcessComponent,
+	type RunnerComponent,
+} from '../topology/components';
 import type { PrefixPrinter } from '../ui/output';
-import { isPortFree, isReady, portOwner, readinessUrl, waitUntilReady } from './health';
+import { isPortFree, isReady, portOwner, readinessProbe, waitUntilReady } from './health';
 import { LogFollower, openNewLog } from './logs';
 import {
 	clearState,
@@ -24,6 +30,7 @@ import {
 	writeState,
 } from './state';
 import { RIG } from '../self/build-info';
+import { componentUsingPort, freeSlot } from '../topology/slots';
 
 /** Who owns a started component. */
 export type Owner = 'self' | 'background' | { pid: number | null; tty: string | null };
@@ -39,6 +46,8 @@ const READY_TIMEOUT_MS: Record<Component['role'], number> = {
 	worker: 5 * 60_000,
 	engine: 5 * 60_000,
 	launcher: 2 * 60_000,
+	'runner-js': 2 * 60_000,
+	'runner-py': 2 * 60_000,
 };
 
 interface Command {
@@ -47,17 +56,27 @@ interface Command {
 	cwd: string;
 }
 
+export type InspectMode = 'inspect' | 'inspect-brk';
+
 export interface SupervisorOptions {
 	env: RigEnv;
 	printer: PrefixPrinter;
 	/** Overrides for `rig run -e` and `--inherit-env`. */
 	resolveOverrides?: Partial<ResolveContext>;
+	/** Starts these n8n processes with the Node inspector. */
+	inspect?: { mode: InspectMode; components: Set<string> };
+}
+
+/** The inspector address of a process. Each process uses offset +5 of its port block. */
+export function inspectAddress(component: ProcessComponent): string {
+	return `127.0.0.1:${component.ports.inspect}`;
 }
 
 export class Supervisor {
 	env: RigEnv;
 	private readonly printer: PrefixPrinter;
 	private readonly resolveOverrides: Partial<ResolveContext>;
+	private readonly inspect?: SupervisorOptions['inspect'];
 	private readonly children = new Map<number, ChildProcess>();
 	private readonly exitCodes = new Map<number, string>();
 	private readonly followers = new Map<string, LogFollower>();
@@ -68,6 +87,14 @@ export class Supervisor {
 		this.env = options.env;
 		this.printer = options.printer;
 		this.resolveOverrides = options.resolveOverrides ?? {};
+		this.inspect = options.inspect;
+	}
+
+	private inspectMode(component: Component): InspectMode | undefined {
+		if (component.kind !== 'process' || !this.inspect?.components.has(component.name)) {
+			return undefined;
+		}
+		return this.inspect.mode;
 	}
 
 	setEnv(env: RigEnv): void {
@@ -78,7 +105,11 @@ export class Supervisor {
 		return this.env.componentHash(component, this.resolveOverrides);
 	}
 
-	private async command(component: Component, repoRoot: string): Promise<Command> {
+	private async command(
+		component: Component,
+		repoRoot: string,
+		inspect: InspectMode | undefined,
+	): Promise<Command> {
 		if (component.kind === 'launcher') {
 			const binary = await ensureLauncherBinary(this.env.launcherSource(), (message) =>
 				this.printer.event(component.name, message),
@@ -88,17 +119,29 @@ export class Supervisor {
 			);
 			return { command: binary, args: runnerTypes, cwd: this.env.paths.root };
 		}
+		if (component.kind === 'runner') return runnerCommand(component.language, repoRoot);
 		const subcommand = N8N_SUBCOMMANDS[component.role];
 		return {
 			command: nodeBinary(),
-			args: ['bin/n8n', subcommand],
+			args: [
+				...(inspect ? [`--${inspect}=${inspectAddress(component)}`] : []),
+				'bin/n8n',
+				subcommand,
+			],
 			cwd: join(repoRoot, CLI_DIR),
 		};
 	}
 
-	private async assertPortsFree(component: Component): Promise<void> {
-		for (const port of portsOf(component, this.env.topology)) {
+	private async assertPortsFree(component: Component, ports: number[]): Promise<void> {
+		for (const port of ports) {
 			if (await isPortFree(port)) continue;
+			const other = componentUsingPort(port, this.env.name);
+			if (other) {
+				throw new RigError(
+					`Port ${port} of ${component.name} is in use by ${other.component} of the environment ${other.env}.`,
+					`Stop it with \`${RIG} stop --env ${other.env}\`, or set \`slot: ${freeSlot(this.env.name)}\` in ${this.env.paths.envYaml} to run both.`,
+				);
+			}
 			const owner = portOwner(port);
 			throw new RigError(
 				`Port ${port} of ${component.name} is in use${owner ? ` by ${owner}` : ''}.`,
@@ -108,7 +151,11 @@ export class Supervisor {
 	}
 
 	/** Starts a component. Returns the pid. */
-	async start(component: Component, owner: Owner): Promise<number> {
+	async start(
+		component: Component,
+		owner: Owner,
+		options: { inspect?: InspectMode } = {},
+	): Promise<number> {
 		const running = liveState(this.env.paths, component.name);
 		if (running) {
 			throw new RigError(
@@ -118,9 +165,16 @@ export class Supervisor {
 		}
 
 		const repoRoot = this.env.requireRepoRoot();
-		await this.assertPortsFree(component);
+		const inspect = options.inspect ?? this.inspectMode(component);
+		const ports = portsOf(component, this.env.topology);
+		if (inspect && component.kind === 'process') ports.push(component.ports.inspect);
+		await this.assertPortsFree(component, ports);
 		const { env } = this.env.resolve(component, this.resolveOverrides);
-		const command = await this.command(component, repoRoot);
+		const command = await this.command(component, repoRoot, inspect);
+		if (component.kind === 'runner') {
+			// The token is single-use, so it is not part of the env hash.
+			env.N8N_RUNNERS_GRANT_TOKEN = await this.grantToken(component);
+		}
 
 		if (component.kind === 'launcher') {
 			writeLauncherConfig(
@@ -168,9 +222,10 @@ export class Supervisor {
 			ownerTty,
 			startedAt: new Date().toISOString(),
 			envHash: this.hash(component),
-			ports: portsOf(component, this.env.topology),
+			ports,
 			processStart: processStartTime(pid),
 			source: repoRoot,
+			...(inspect ? { inspect } : {}),
 		};
 		writeState(this.env.paths, state);
 
@@ -181,14 +236,43 @@ export class Supervisor {
 			clearState(this.env.paths, component.name, pid);
 		});
 		if (owner !== 'self') child.unref();
+		if (inspect && component.kind === 'process') {
+			this.printer.event(
+				component.name,
+				`inspector on ${pc.bold(`ws://${inspectAddress(component)}`)}${inspect === 'inspect-brk' ? ' · waits for a debugger' : ''} · attach from chrome://inspect or VS Code`,
+			);
+		}
 
 		return pid;
+	}
+
+	/** Asks the task broker of the host for a grant token, as the launcher does. */
+	private async grantToken(component: RunnerComponent): Promise<string> {
+		const { env: hostEnv } = this.env.resolve(component.host, this.resolveOverrides);
+		const url = `http://127.0.0.1:${component.host.ports.broker}/runners/auth`;
+		try {
+			const response = await fetch(url, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ token: hostEnv.N8N_RUNNERS_AUTH_TOKEN ?? '' }),
+				signal: AbortSignal.timeout(5000),
+			});
+			if (!response.ok) throw new Error(`HTTP ${response.status}`);
+			const body = grantTokenSchema.safeParse(await response.json());
+			if (!body.success) throw new Error('the response has no token');
+			return body.data.data.token;
+		} catch (error) {
+			throw new RigError(
+				`Cannot get a grant token for ${component.name} from ${component.host.name}: ${error instanceof Error ? error.message : String(error)}`,
+				`Start ${component.host.name} first. Its task broker listens on port ${component.host.ports.broker}.`,
+			);
+		}
 	}
 
 	async waitReady(component: Component, pid: number, signal?: AbortSignal) {
 		const { env } = this.env.resolve(component, this.resolveOverrides);
 		return await waitUntilReady({
-			url: readinessUrl(component, env.N8N_ENDPOINT_HEALTH),
+			probe: readinessProbe(component, env),
 			isRunning: () => isPidAlive(pid),
 			timeoutMs: READY_TIMEOUT_MS[component.role],
 			signal,
@@ -197,7 +281,7 @@ export class Supervisor {
 
 	async isComponentReady(component: Component): Promise<boolean> {
 		const { env } = this.env.resolve(component, this.resolveOverrides);
-		return await isReady(readinessUrl(component, env.N8N_ENDPOINT_HEALTH));
+		return await isReady(readinessProbe(component, env));
 	}
 
 	/** Stops a component, whoever owns it. Returns false when it was not running. */
@@ -235,7 +319,7 @@ export class Supervisor {
 				: previous?.ownerPid && isPidAlive(previous.ownerPid)
 					? { pid: previous.ownerPid, tty: previous.ownerTty }
 					: 'background');
-		return await this.start(component, keepOwner);
+		return await this.start(component, keepOwner, { inspect: previous?.inspect });
 	}
 
 	/** Makes this process the owner of a component that has no live owner. */
@@ -275,6 +359,8 @@ export class Supervisor {
 	}
 }
 
+const grantTokenSchema = z.object({ data: z.object({ token: z.string() }) });
+
 function positiveSeconds(value: string | undefined, fallback: number): number {
 	const parsed = Number(value);
 	return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
@@ -288,6 +374,10 @@ function shutdownSeconds(component: Component, env: Record<string, string>): num
 		const grace = positiveSeconds(env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT, 30);
 		const margin = positiveSeconds(env.N8N_RUNNERS_SHUTDOWN_FORCE_KILL_MARGIN, 10);
 		return grace + 2 * margin;
+	}
+	if (component.kind === 'runner') {
+		const grace = positiveSeconds(env.N8N_RUNNERS_GRACEFUL_SHUTDOWN_TIMEOUT, 30);
+		return grace + positiveSeconds(env.N8N_RUNNERS_SHUTDOWN_FORCE_KILL_MARGIN, 10);
 	}
 	return positiveSeconds(env.N8N_GRACEFUL_SHUTDOWN_TIMEOUT, 30);
 }

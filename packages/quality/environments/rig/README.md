@@ -70,11 +70,22 @@ pnpm rig up                          # services + all components, merged logs
 choose `custom` to pick the database, execution mode, mains, workers, engine
 v2, and runners one by one.
 
-In `rig up` and `rig run`, press `o` to open the editor in the browser, `p` to
-open the public URL (see below), `r` to
-restart components with changed env vars, `R` to restart all of them, and `q`
-to quit. Quitting stops the
-components of that terminal. The containers keep running.
+In `rig up` and `rig run`, the last line of the terminal shows the state of
+each component (`●` ready, `◌` starting, `✖` exited, `⟳` env drift). Keys:
+
+| Key | Action |
+|---|---|
+| `o` | Open the editor in the browser |
+| `p` | Open the public URL (see below) |
+| `r` / `R` | Restart the components with changed env vars / all components |
+| `1`–`9`, `0` | Show only the logs of the numbered components (a key adds or removes one), `0` shows all |
+| `?` | Show the keys |
+| `q` | Quit. This stops the components of the terminal. The containers keep running |
+
+With `N8N_LOG_FORMAT=json`, the terminal shows each line in a readable form.
+The log files keep the raw lines, and `rig logs --raw` shows them.
+
+`pnpm rig clone <env> <new>` copies an environment with fresh data.
 
 ## Public HTTPS URL
 
@@ -114,24 +125,63 @@ pnpm rig run worker          # all workers and their launchers
 ```
 
 When a dependency is not running, `rig run` asks you to start it in the
-background or to wait for it. `--yes` starts it in the background.
+background or to wait for it. `--yes` starts it in the background, and
+`--wait-deps` waits for another terminal.
+
+`pnpm rig up --split` opens one tmux pane for each n8n process. Each pane runs
+`rig run <process>` with its launcher or runners. Inside tmux, `rig` adds a
+window. Outside, it creates the session `rig-<env>` and attaches to it.
 
 | Topology | Components |
 |---|---|
 | Regular mode | `main-1`, `launcher@main-1` |
-| Queue mode | `main-N`, `worker-N`, a launcher for each worker, and for each main that does not offload manual executions |
+| Queue mode | `main-N`, `worker-N`, and a launcher for each worker. Mains offload manual executions to the workers, so they get no launcher. `rig` sets `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true` by default in every environment; n8n reads it only in queue mode. Set it to `false` on a main to give that main a launcher |
 | Engine v2 remote | `main-1`, `engine`, `launcher@main-1`, `launcher@engine` |
+| `runners.via: direct` | No launchers: `runner-js@<host>` and `runner-py@<host>` for each process that runs tasks |
+
+With `runners.via: direct` (`--runners direct`, or the wizard), `rig` runs each
+task runner as its own component and gets its grant token from the broker, as
+the launcher does. Use it to debug a runner, or to see its logs on their own.
+A restart of a process also restarts its runners.
+
+## Debugging
+
+```bash
+pnpm rig run main-1 --inspect          # Node inspector on port block +5: 127.0.0.1:5683
+pnpm rig run worker-1 --inspect-brk    # wait for the debugger before the first line
+pnpm rig print main-1 --format vscode  # a launch and an attach configuration for .vscode/launch.json
+```
+
+Attach from `chrome://inspect` or with the attach configuration. A restart
+keeps the inspector. `rig status` shows the inspector port.
+
+## Parallel environments
+
+Each environment has a port slot (`slot` in env.yaml, default 0). Slot `k`
+adds `1000 * k` to the n8n ports, `10 * k` to the engine ports, and `k` to the
+Postgres, Redis, and tunnel ports. Environments with different slots run at the
+same time. `rig create --slot auto` and `rig clone` pick a free slot. When a
+port is in use by another environment, `rig` names it and suggests a free slot.
+
+## Engine TLS
+
+`engineTls: true` (`--engine-tls`, or the wizard) turns on mutual TLS between
+the main and the engine in `engine: remote`. `rig` creates a CA and a
+certificate for each plane in `engine-tls/` with openssl, and renews them
+before they expire.
 
 ## Env vars
 
 Env vars come from layers. A later layer wins:
 
 1. Defaults and wiring from `rig` (ports, database, Redis, engine URLs)
-2. `env/shared.env`
-3. `env/<role>.env`: `main`, `worker`, `engine`, `launcher`
-4. `env/<component>.env`, for example `env/worker-2.env`
-5. `secrets.env` (mode 0600)
-6. `rig run -e KEY=VALUE` (not saved)
+2. Profiles that the environment turns on, in order (see below)
+3. `env/shared.env`
+4. `env/<role>.env`: `main`, `worker`, `engine`, `launcher`
+5. `env/<component>.env`, for example `env/worker-2.env`
+6. `~/.config/rig/secrets.env` (global), then the `secrets.env` of the
+   environment. Both have mode 0600
+7. `rig run -e KEY=VALUE` (not saved)
 
 The runners of a launcher get `env/runner-js.env` or `env/runner-py.env`, then
 `env/runner-js@<host>.env`.
@@ -144,6 +194,21 @@ pnpm rig env set NODE_FUNCTION_ALLOW_EXTERNAL=lodash --on runner-js
 pnpm rig env edit --on main                        # opens $EDITOR
 pnpm rig env ls worker-1                           # resolved env with sources
 pnpm rig env explain N8N_LOG_LEVEL --on worker-2   # every layer that sets the key
+pnpm rig env diff main-1 worker-1                  # keys that differ, also <env>:<component>
+pnpm rig env set MY_API_KEY=… --secret             # secrets.env of the environment
+pnpm rig env set N8N_LICENSE_CERT=… --on global-secrets   # every environment
+```
+
+### Profiles
+
+A profile is a reusable env file in `~/.config/rig/profiles/<name>.env`. Any
+environment can turn it on.
+
+```bash
+pnpm rig env set N8N_LOG_LEVEL=debug --on profile:debug   # creates the profile
+pnpm rig profile on debug                                 # this environment uses it
+pnpm rig profile ls
+pnpm rig profile off debug
 ```
 
 After a change, `rig` lists the running components that the change affects and
@@ -174,12 +239,13 @@ changes. `--refresh` reads the source again.
 
 | Command | Function |
 |---|---|
-| `create`, `ls`, `use`, `reset`, `destroy` | Manage environments |
+| `create`, `ls`, `use`, `reset`, `destroy`, `clone` | Manage environments |
 | `up`, `run`, `stop`, `restart`, `status`, `logs`, `open` | Run components |
 | `services up\|down` | Start or stop only the containers |
-| `env browse\|set\|unset\|edit\|ls\|explain` | Read and change env vars |
+| `env browse\|set\|unset\|edit\|ls\|explain\|diff` | Read and change env vars |
+| `profile ls\|on\|off` | Turn profiles on or off |
 | `exec <component> -- <cmd>` | Run a command with the env of a component |
-| `print <component> --format shell\|dotenv\|json` | Print the resolved env |
+| `print <component> --format shell\|dotenv\|json\|vscode` | Print the resolved env, or VS Code launch configurations |
 | `psql`, `redis-cli` | Open a shell in a service container |
 | `config get\|set\|unset` | Read and change the global config: `launcher.path`, `launcher.version`, `repo` |
 | `doctor` | Check Docker, Node, Go, `uv`, the checkout and its build, the launcher, ports, and the global install |
@@ -193,6 +259,8 @@ Add `--env <name>` after a command to select an environment. Without it,
 | Path | Content |
 |---|---|
 | `~/.config/rig/config.yaml` | Global config |
+| `~/.config/rig/profiles/<name>.env` | Profiles |
+| `~/.config/rig/secrets.env` | Global secrets |
 | `~/.local/share/rig/envs/<name>/env.yaml` | Topology |
 | `~/.local/share/rig/envs/<name>/env/*.env` | Env layers |
 | `~/.local/share/rig/envs/<name>/secrets.env` | Generated and own secrets |

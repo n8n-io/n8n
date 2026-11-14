@@ -3,12 +3,13 @@ import pc from 'picocolors';
 
 import { describeTopology, requiredServices } from '../config/env-yaml';
 import { RigError } from '../errors';
-import { isReady, readinessUrl } from '../runtime/health';
+import { isReady, readinessProbe } from '../runtime/health';
 import { LogFollower, tailLines } from '../runtime/logs';
 import { preflight } from '../runtime/preflight';
 import { type DependencyMode, Session } from '../runtime/session';
+import { openSplit, splitPanes } from '../runtime/split';
 import { liveState } from '../runtime/state';
-import { Supervisor } from '../runtime/supervisor';
+import { type InspectMode, Supervisor } from '../runtime/supervisor';
 import { serviceAddress, servicesDown, servicesStatus, servicesUp } from '../services/compose';
 import { type Component, portsOf } from '../topology/components';
 import { validateTopology } from '../topology/validate';
@@ -25,18 +26,51 @@ import {
 } from './common';
 import { RIG } from '../self/build-info';
 
+function inspectOption(
+	args: { inspect?: boolean; 'inspect-brk'?: boolean },
+	components: Component[],
+): { mode: InspectMode; components: Set<string> } | undefined {
+	const mode: InspectMode | undefined = args['inspect-brk']
+		? 'inspect-brk'
+		: args.inspect
+			? 'inspect'
+			: undefined;
+	if (!mode) return undefined;
+	return { mode, components: new Set(components.map((c) => c.name)) };
+}
+
 export const upCommand = defineCommand({
 	meta: { name: 'up', description: 'Start the services and all components, and show their logs' },
 	args: {
 		...envArg,
 		'auto-restart': { type: 'boolean', description: 'Restart components when their env changes' },
+		split: {
+			type: 'boolean',
+			description: 'Open one tmux pane for each n8n process. Each pane runs `rig run`',
+		},
+		inspect: {
+			type: 'boolean',
+			description: 'Start the n8n processes with the Node inspector (port block +5)',
+		},
+		'inspect-brk': {
+			type: 'boolean',
+			description: 'Like --inspect, and wait for a debugger before the first line',
+		},
 	},
 	async run({ args }) {
 		const env = loadEnv(args.env);
 		const targets = env.components();
 		await preflight(env, targets);
+		if (args.split) {
+			const extra = [
+				...(args['auto-restart'] ? ['--auto-restart'] : []),
+				...(args['inspect-brk'] ? ['--inspect-brk'] : args.inspect ? ['--inspect'] : []),
+			];
+			openSplit(env, splitPanes(env, extra));
+			return;
+		}
 		const printer = new PrefixPrinter();
-		const supervisor = new Supervisor({ env, printer });
+		const supervisor = new Supervisor({ env, printer, inspect: inspectOption(args, targets) });
 		await new Session({
 			env,
 			supervisor,
@@ -72,37 +106,63 @@ export const runCommand = defineCommand({
 			default: true,
 			description: 'Check dependencies. Use --no-deps to skip',
 		},
+		'wait-deps': {
+			type: 'boolean',
+			description: 'Wait for missing dependencies to start elsewhere, without a prompt',
+		},
+		services: {
+			type: 'boolean',
+			default: true,
+			description: 'Start the services. Use --no-services when they run already',
+		},
 		launcher: {
 			type: 'boolean',
 			default: true,
-			description: 'Also run the launcher of each process. Use --no-launcher to skip',
+			description:
+				'Also run the launcher (or the direct runners) of each process. Use --no-launcher to skip',
 		},
 		'inherit-env': {
 			type: 'boolean',
 			description: 'Pass the full parent shell env to the components',
 		},
 		'auto-restart': { type: 'boolean', description: 'Restart components when their env changes' },
+		inspect: {
+			type: 'boolean',
+			description: 'Start the n8n processes with the Node inspector (port block +5)',
+		},
+		'inspect-brk': {
+			type: 'boolean',
+			description: 'Like --inspect, and wait for a debugger before the first line',
+		},
 	},
 	async run({ args, rawArgs }) {
 		const env = loadEnv(args.env);
 		const names = positionals(args);
 		const selected = names.flatMap((name) => env.select(name));
 		if (args.launcher) {
-			// A process without its launcher cannot run Code nodes, so its launcher comes along.
+			// A process without its launcher or runners cannot run Code nodes, so they come along.
 			const hosts = new Set(selected.map((c) => c.name));
-			selected.push(...env.launchers().filter((l) => hosts.has(l.host.name)));
+			selected.push(...env.runnerHosts().filter((l) => hosts.has(l.host.name)));
 		}
 		const targets = [...new Map(selected.map((c) => [c.name, c])).values()];
 		const oneOff = parseAssignments(repeatedFlag(rawArgs, ['-e']));
 
-		await preflight(env, targets);
+		await preflight(env, targets, { services: args.services });
 		const printer = new PrefixPrinter();
 		const supervisor = new Supervisor({
 			env,
 			printer,
 			resolveOverrides: { oneOff, inheritEnv: Boolean(args['inherit-env']) },
+			// Only the named components get the inspector, not the launchers or dependencies.
+			inspect: inspectOption(args, selected),
 		});
-		const dependencies: DependencyMode = !args.deps ? 'none' : args.yes ? 'background' : 'prompt';
+		const dependencies: DependencyMode = !args.deps
+			? 'none'
+			: args['wait-deps']
+				? 'wait'
+				: args.yes
+					? 'background'
+					: 'prompt';
 		await new Session({
 			env,
 			supervisor,
@@ -232,7 +292,7 @@ export const statusCommand = defineCommand({
 				const state = liveState(env.paths, component.name);
 				if (!state) return { component, state, ready: false, drift: false };
 				const { env: resolved } = env.resolve(component);
-				const ready = await isReady(readinessUrl(component, resolved.N8N_ENDPOINT_HEALTH));
+				const ready = await isReady(readinessProbe(component, resolved));
 				let drift = false;
 				try {
 					drift = supervisor.hash(component) !== state.envHash;
@@ -252,7 +312,9 @@ export const statusCommand = defineCommand({
 				component.name,
 				ready ? pc.green('ready') : pc.yellow('starting'),
 				String(state.pid),
-				ports,
+				state.inspect && component.kind === 'process'
+					? `${ports} ${pc.cyan(`debug:${component.ports.inspect}`)}`
+					: ports,
 				uptime(state.startedAt),
 				state.ownerPid === null
 					? pc.dim('background')
@@ -278,13 +340,17 @@ export const logsCommand = defineCommand({
 		target: { type: 'positional', required: false, description: 'Component or role' },
 		follow: { type: 'boolean', alias: 'f', description: 'Follow new lines' },
 		lines: { type: 'string', alias: 'n', description: 'Number of lines to show', default: '100' },
+		raw: {
+			type: 'boolean',
+			description: 'Show JSON log lines as they are. Default when the output is not a terminal',
+		},
 	},
 	async run({ args }) {
 		const env = loadEnv(args.env);
 		const components = args.target
 			? positionals(args).flatMap((name) => env.select(name))
 			: env.components();
-		const printer = new PrefixPrinter();
+		const printer = new PrefixPrinter(!args.raw && process.stdout.isTTY);
 		printer.register(components.map((c) => c.name));
 		const count = Number(args.lines) || 100;
 		for (const component of components) {

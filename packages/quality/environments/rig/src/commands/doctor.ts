@@ -360,7 +360,8 @@ export const doctorCommand = defineCommand({
 		const components = env?.components() ?? [];
 		const needsLauncher = components.some((c) => c.kind === 'launcher');
 		const needsPython =
-			needsLauncher && (env?.topology.runners.languages.includes('python') ?? false);
+			(needsLauncher && (env?.topology.runners.languages.includes('python') ?? false)) ||
+			components.some((c) => c.kind === 'runner' && c.language === 'python');
 
 		console.log(`rig ${runningVersion()}`);
 		const sections: Array<[string, Check[]]> = [

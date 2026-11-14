@@ -17,10 +17,21 @@ import { ensureLayerFile, managedConflicts, resolveLayer } from './layers';
 const onArg = {
 	on: {
 		type: 'string',
-		description: 'Layer: shared (default), a role, a component, or runner-js / runner-py',
+		description:
+			'Layer: shared (default), a role, a component, runner-js / runner-py, secrets, global-secrets, or profile:<name>',
 		valueHint: 'layer',
 	},
+	secret: { type: 'boolean', description: 'Short for --on secrets' },
 } as const;
+
+function layerOf(env: RigEnv, args: { on?: string; secret?: boolean }): string {
+	if (args.secret && args.on && args.on !== 'secrets' && args.on !== 'global-secrets') {
+		throw new RigError(
+			'--secret writes to secrets.env. Use --on global-secrets for every environment.',
+		);
+	}
+	return resolveLayer(env, args.secret && !args.on ? 'secrets' : args.on);
+}
 
 const restartArg = {
 	restart: {
@@ -43,7 +54,7 @@ const setCommand = defineCommand({
 	},
 	async run({ args }) {
 		const env = loadEnv(args.env);
-		const layer = resolveLayer(env, args.on);
+		const layer = layerOf(env, args);
 		const assignments = parseAssignments(positionals(args));
 
 		for (const [key] of Object.entries(assignments)) {
@@ -66,7 +77,7 @@ const setCommand = defineCommand({
 		const file = ensureLayerFile(env, layer);
 		for (const [key, value] of Object.entries(assignments)) {
 			setInDotenvFile(file, key, value);
-			ui.success(`${key} set in ${pc.bold(`env/${layer}.env`)}`);
+			ui.success(`${key} set in ${pc.bold(env.layerLabel(layer))}`);
 		}
 		await offerRestart(env, layer, args.restart);
 	},
@@ -82,11 +93,11 @@ const unsetCommand = defineCommand({
 	},
 	async run({ args }) {
 		const env = loadEnv(args.env);
-		const layer = resolveLayer(env, args.on);
+		const layer = layerOf(env, args);
 		for (const key of positionals(args)) {
-			const removed = unsetInDotenvFile(env.paths.layerFile(layer), key);
-			if (removed > 0) ui.success(`${key} removed from ${pc.bold(`env/${layer}.env`)}`);
-			else ui.warn(`${key} is not set in env/${layer}.env`);
+			const removed = unsetInDotenvFile(env.layerFile(layer), key);
+			if (removed > 0) ui.success(`${key} removed from ${pc.bold(env.layerLabel(layer))}`);
+			else ui.warn(`${key} is not set in ${env.layerLabel(layer)}`);
 		}
 		await offerRestart(env, layer, args.restart);
 	},
@@ -97,8 +108,8 @@ const editCommand = defineCommand({
 	args: { ...envArg, ...onArg, ...restartArg },
 	async run({ args }) {
 		const env = loadEnv(args.env);
-		const layer = args.on === 'secrets' ? 'secrets' : resolveLayer(env, args.on);
-		const file = layer === 'secrets' ? env.paths.secrets : ensureLayerFile(env, layer);
+		const layer = layerOf(env, args);
+		const file = ensureLayerFile(env, layer);
 		const editor = process.env.VISUAL ?? process.env.EDITOR ?? 'vi';
 		const result = spawnSync(editor, [file], { stdio: 'inherit', shell: true });
 		if (result.status !== 0) throw new RigError(`${editor} exited with code ${result.status}.`);
@@ -112,7 +123,8 @@ function isSecret(source: EnvSource | undefined): boolean {
 
 function resolvedFor(env: RigEnv, target: string): { name: string; resolved: ResolvedEnv } {
 	const runner = RUNNER_LAYERS.find((layer) => target.startsWith(`${layer}@`));
-	if (runner) {
+	// A direct runner is a component. Otherwise the name means the runner env of a launcher.
+	if (runner && !env.component(target)) {
 		const host = target.slice(runner.length + 1);
 		return { name: target, resolved: resolveRunnerEnv(env.context(), host, runner) };
 	}
@@ -195,6 +207,89 @@ const explainCommand = defineCommand({
 	},
 });
 
+interface DiffSide {
+	label: string;
+	resolved: ResolvedEnv;
+}
+
+/** A component, or `<env>:<component>` for a component of another environment. */
+function diffSide(env: RigEnv, target: string): DiffSide {
+	const separator = target.indexOf(':');
+	if (separator === -1) {
+		const { name, resolved } = resolvedFor(env, target);
+		return { label: name, resolved };
+	}
+	const other = loadEnv(target.slice(0, separator));
+	const { name, resolved } = resolvedFor(other, target.slice(separator + 1));
+	return { label: `${other.name}:${name}`, resolved };
+}
+
+export interface EnvDifference {
+	key: string;
+	a?: EnvSource;
+	b?: EnvSource;
+}
+
+/** Keys whose values differ, including keys that only one side has. Shell keys do not count. */
+export function diffResolved(
+	a: ResolvedEnv,
+	b: ResolvedEnv,
+	includeShell = false,
+): EnvDifference[] {
+	const winner = (resolved: ResolvedEnv, key: string) => resolved.trace.get(key)?.at(-1);
+	const keys = [...new Set([...Object.keys(a.env), ...Object.keys(b.env)])].sort();
+	const differences: EnvDifference[] = [];
+	for (const key of keys) {
+		const left = winner(a, key);
+		const right = winner(b, key);
+		if (left?.value === right?.value) continue;
+		if (
+			!includeShell &&
+			(left?.layer ?? 'shell') === 'shell' &&
+			(right?.layer ?? 'shell') === 'shell'
+		) {
+			continue;
+		}
+		differences.push({ key, a: left, b: right });
+	}
+	return differences;
+}
+
+const diffCommand = defineCommand({
+	meta: {
+		name: 'diff',
+		description:
+			'Compare the resolved env of two components. Use <env>:<component> for another environment',
+	},
+	args: {
+		...envArg,
+		a: { type: 'positional', required: true, description: 'Component' },
+		b: { type: 'positional', required: true, description: 'Component' },
+		all: { type: 'boolean', description: 'Also compare keys from the parent shell' },
+		'show-secrets': { type: 'boolean', description: 'Show secret values' },
+	},
+	run({ args }) {
+		const env = loadEnv(args.env);
+		const a = diffSide(env, args.a);
+		const b = diffSide(env, args.b);
+		const differences = diffResolved(a.resolved, b.resolved, args.all);
+		if (differences.length === 0) {
+			ui.success(`${a.label} and ${b.label} have the same env.`);
+			return;
+		}
+		const show = (source: EnvSource | undefined) => {
+			if (!source) return pc.dim('(not set)');
+			const value = isSecret(source) && !args['show-secrets'] ? '••••••' : source.value;
+			return `${value} ${pc.dim(source.label)}`;
+		};
+		const rows = [[pc.dim('KEY'), pc.dim(a.label), pc.dim(b.label)]];
+		for (const { key, a: left, b: right } of differences)
+			rows.push([pc.bold(key), show(left), show(right)]);
+		console.log(table(rows));
+		ui.step(`${differences.length} key${differences.length === 1 ? '' : 's'} differ.`);
+	},
+});
+
 export const envCommand = defineCommand({
 	meta: { name: 'env', description: 'Read and change env vars' },
 	subCommands: {
@@ -203,6 +298,7 @@ export const envCommand = defineCommand({
 		edit: editCommand,
 		ls: lsCommand,
 		explain: explainCommand,
+		diff: diffCommand,
 		browse: browseCommand,
 	},
 });
