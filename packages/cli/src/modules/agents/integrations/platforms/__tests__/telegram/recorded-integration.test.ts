@@ -424,9 +424,57 @@ describe('Telegram recorded integration replay', () => {
 					target: { type: 'dm', userId: '123456', threadId: 'telegram:123456' },
 				},
 			});
-			expect(ctx.lastApiCall('sendMessage')?.body).toMatchObject({
+			expect(ctx.lastApiCall('sendRichMessage')?.body).toMatchObject({
 				chat_id: '123456',
-				text: 'DM from agent',
+				rich_message: { markdown: 'DM from agent' },
+			});
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('sends send_dm text as Markdown', async () => {
+		const ctx = await createTelegramReplayContext(telegramFixtures);
+		try {
+			await ctx.actionExecutor.execute({
+				descriptor: ctx.descriptor,
+				action: 'send_dm',
+				input: { userId: '123456', message: { text: '**Headline**\nAT&T <ok>' } },
+				awaitResponse: false,
+			});
+
+			expect(ctx.lastApiCall('sendMessage')).toBeUndefined();
+			expect(ctx.lastApiCall('sendRichMessage')?.body).toMatchObject({
+				chat_id: '123456',
+				rich_message: { markdown: '**Headline**\nAT&T <ok>' },
+			});
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('edits messages with text as Markdown', async () => {
+		const ctx = await createTelegramReplayContext(telegramFixtures);
+		try {
+			const sent = await ctx.actionExecutor.execute({
+				descriptor: ctx.descriptor,
+				action: 'send_dm',
+				input: { userId: '123456', message: { text: 'Draft' } },
+				awaitResponse: false,
+			});
+			if (!sent.ok || !sent.messageContext) throw new Error('send_dm failed');
+
+			await ctx.actionExecutor.execute({
+				descriptor: ctx.descriptor,
+				action: 'edit_message',
+				input: { messageId: sent.messageContext.messageId, message: { text: '**Final**' } },
+				currentMessageContext: sent.messageContext,
+				awaitResponse: false,
+			});
+
+			expect(ctx.lastApiCall('editMessageText')?.body).toMatchObject({
+				chat_id: '123456',
+				rich_message: { markdown: '**Final**' },
 			});
 		} finally {
 			await ctx.shutdown();
