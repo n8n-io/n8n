@@ -222,6 +222,33 @@ export class AgentApiHelper {
 		return (await response.json()).data;
 	}
 
+	/** Connect an integration to the agent, e.g. the Responses API webhook channel. */
+	async connectIntegration(
+		projectId: string,
+		agentId: string,
+		integration: { type: string; credentialId: string; settings?: Record<string, unknown> },
+	): Promise<void> {
+		const response = await this.api.request.post(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/integrations/connect`,
+			{ data: integration },
+		);
+		if (!response.ok())
+			throw new TestError(`Failed to connect integration: ${await response.text()}`);
+	}
+
+	async createTask(
+		projectId: string,
+		agentId: string,
+		task: { name: string; objective: string; cronExpression: string; timezone?: string },
+	): Promise<{ id: string }> {
+		const response = await this.api.request.post(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/tasks`,
+			{ data: { ...task, enabled: true } },
+		);
+		if (!response.ok()) throw new TestError(`Failed to create task: ${await response.text()}`);
+		return (await response.json()).data;
+	}
+
 	/** Fetch exposes SSE before the response ends. Playwright buffers the response. */
 	async openChat(
 		baseUrl: string,
@@ -229,21 +256,38 @@ export class AgentApiHelper {
 		agentId: string,
 		payload: AgentChatMessageDto,
 	) {
+		return await this.openStream(
+			`${baseUrl}/rest/projects/${projectId}/agents/v2/${agentId}/chat`,
+			payload,
+		);
+	}
+
+	/** Answer a suspended tool call in the agent chat, e.g. approve a tool. */
+	async openResume(
+		baseUrl: string,
+		projectId: string,
+		agentId: string,
+		payload: { runId: string; toolCallId: string; resumeData: unknown },
+	) {
+		return await this.openStream(
+			`${baseUrl}/rest/projects/${projectId}/agents/v2/${agentId}/chat/resume`,
+			payload,
+		);
+	}
+
+	private async openStream(url: string, payload: object) {
 		const { cookies } = await this.api.request.storageState();
 		const cookie = cookies.find((entry) => entry.name === N8N_AUTH_COOKIE);
 		if (!cookie) throw new TestError('Missing authentication cookie');
 		const controller = new AbortController();
-		const response = await fetch(
-			`${baseUrl}/rest/projects/${projectId}/agents/v2/${agentId}/chat`,
-			{
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json', Cookie: `${cookie.name}=${cookie.value}` },
-				body: JSON.stringify(payload),
-				signal: AbortSignal.any([controller.signal, AbortSignal.timeout(360_000)]),
-			},
-		);
+		const response = await fetch(url, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json', Cookie: `${cookie.name}=${cookie.value}` },
+			body: JSON.stringify(payload),
+			signal: AbortSignal.any([controller.signal, AbortSignal.timeout(360_000)]),
+		});
 		if (!response.ok || !response.body)
-			throw new TestError(`Chat returned HTTP ${response.status}`);
+			throw new TestError(`Chat returned HTTP ${response.status}: ${await response.text()}`);
 		const events: AgentSseEvent[] = [];
 		const done = this.readEvents(response.body, events).catch((error: unknown) => {
 			if (!controller.signal.aborted) return String(error);
