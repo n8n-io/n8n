@@ -1221,7 +1221,7 @@ export function renderPlanPlaceholders(
 	const strip = (c: AppPlanComponent) => ({ ...c, detail: undefined });
 	const newParts: AppPlan = {
 		...plan,
-		nav: plan.nav && !plan.nav.existing ? strip(plan.nav) : undefined,
+		nav: plan.nav && !plan.nav.existing ? { ...plan.nav, detail: undefined } : undefined,
 		screens: plan.screens.map((s) => ({
 			...s,
 			components: s.components.filter((c) => !c.existing).map(strip),
