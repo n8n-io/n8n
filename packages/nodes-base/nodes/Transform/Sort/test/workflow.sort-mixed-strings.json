@@ -1,0 +1,106 @@
+{
+	"name": "Sort mixed strings",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "4f1d0e4c-1f4b-4d1e-9b0a-0d9c0f4a2e01",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [200, 300]
+		},
+		{
+			"parameters": {
+				"data": [
+					{ "id": 1, "amount": "96.74" },
+					{ "id": 2, "amount": "83.28" },
+					{ "id": 3, "amount": "apple" }
+				]
+			},
+			"id": "4f1d0e4c-1f4b-4d1e-9b0a-0d9c0f4a2e02",
+			"name": "Test Data",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
+			"position": [420, 300]
+		},
+		{
+			"parameters": {
+				"type": "simple",
+				"sortFieldsUi": {
+					"sortField": [
+						{
+							"fieldName": "amount",
+							"order": "descending"
+						}
+					]
+				}
+			},
+			"id": "4f1d0e4c-1f4b-4d1e-9b0a-0d9c0f4a2e03",
+			"name": "Sort v1 descending",
+			"type": "n8n-nodes-base.sort",
+			"typeVersion": 1,
+			"position": [640, 160]
+		},
+		{
+			"parameters": {
+				"type": "simple",
+				"sortFieldsUi": {
+					"sortField": [
+						{
+							"fieldName": "amount",
+							"order": "descending"
+						}
+					]
+				}
+			},
+			"id": "4f1d0e4c-1f4b-4d1e-9b0a-0d9c0f4a2e04",
+			"name": "Sort v1.1 descending",
+			"type": "n8n-nodes-base.sort",
+			"typeVersion": 1.1,
+			"position": [640, 300]
+		}
+	],
+	"pinData": {
+		"Sort v1 descending": [
+			{ "json": { "id": 3, "amount": "apple" } },
+			{ "json": { "id": 1, "amount": "96.74" } },
+			{ "json": { "id": 2, "amount": "83.28" } }
+		],
+		"Sort v1.1 descending": [
+			{ "json": { "id": 3, "amount": "apple" } },
+			{ "json": { "id": 1, "amount": "96.74" } },
+			{ "json": { "id": 2, "amount": "83.28" } }
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Test Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Test Data": {
+			"main": [
+				[
+					{
+						"node": "Sort v1 descending",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Sort v1.1 descending",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {}
+}
