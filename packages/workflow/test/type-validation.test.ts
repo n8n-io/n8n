@@ -4,6 +4,7 @@ import {
 	getValueDescription,
 	tryToParseDateTime,
 	tryToParseJsonToFormFields,
+	tryToParseObject,
 	tryToParseUrl,
 	validateFieldType,
 } from '../src/type-validation';
@@ -219,6 +220,11 @@ describe('Type Validation', () => {
 		INVALID_OBJECTS.forEach((value) =>
 			expect(validateFieldType('json', value, 'object').valid).toEqual(false),
 		);
+	});
+
+	it('should reject the JSON literal null instead of returning it as an object', () => {
+		expect(() => tryToParseObject('null')).toThrow('Value is not a valid object');
+		expect(validateFieldType('json', 'null', 'object').valid).toBe(false);
 	});
 
 	it('should validate and cast arrays properly', () => {
