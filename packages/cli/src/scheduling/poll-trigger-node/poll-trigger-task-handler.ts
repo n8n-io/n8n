@@ -26,6 +26,7 @@ import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 import { resolveTaskTriggerNode } from '../resolve-task-trigger-node';
+import { ScheduledJobCrashJournal } from '../scheduled-job-crash-journal';
 import {
 	isPollTriggerTaskPayload,
 	POLL_TRIGGER_TASK_TYPE,
@@ -58,6 +59,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		private readonly errorReporter: ErrorReporter,
 		private readonly pollBackoffService: PollBackoffService,
 		private readonly eventService: EventService,
+		private readonly crashJournal: ScheduledJobCrashJournal,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
@@ -149,7 +151,10 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// it settles on its own, and its outcome is discarded. The cursor never moves
 				// on that path (it only moves through the staged commit or __emit below), so
 				// an abandoned tick leaves the poll window untouched for the next occurrence.
+				// The poll stays in flight in the crash journal until it settles, even after a timeout abandons it.
+				const settle = this.crashJournal.recordStart(task);
 				const poll = this.triggersAndPollers.runPollFunction(workflow, node, pollFunctions);
+				void poll.then(settle, settle);
 				await Promise.race([poll, aborted(leaseSignal, pollFunctions)]);
 				if (leaseSignal.reason instanceof TaskTimeoutError) {
 					await this.recordPollTimeout(logContext, node.type, state);
@@ -160,6 +165,8 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				leaseSignal.throwIfAborted();
 				const pollResponse = await poll;
 				polled = true;
+				// Only a returned poll ends a crash streak: a skipped or abandoned one fetched nothing to completion.
+				this.crashJournal.recordCompletion(task.payload);
 
 				await this.pollBackoffService.recordSuccess({ workflowId, nodeId, state });
 				leaseSignal.throwIfAborted();

@@ -709,6 +709,32 @@ describe('ExecutionRecoveryService', () => {
 				expect(deactivateSpy).toHaveBeenCalledWith(workflow.id, 'crash-recovery');
 			});
 
+			test('should deactivate a workflow on request without checking its executions', async () => {
+				/**
+				 * Arrange
+				 */
+				const workflow = await createActiveWorkflow({ ...OOM_WORKFLOW });
+				mockOwnershipForDeactivation();
+
+				/**
+				 * Act
+				 */
+				const workflowExists = await executionRecoveryService.autoDeactivateWorkflow(workflow.id);
+
+				/**
+				 * Assert
+				 */
+				expect(workflowExists).toBe(true);
+				const updatedWorkflow = await getWorkflowById(workflow.id);
+				expect(updatedWorkflow?.activeVersionId).toBeNull();
+			});
+
+			test('should report a missing workflow on request', async () => {
+				const workflowExists = await executionRecoveryService.autoDeactivateWorkflow('missing');
+
+				expect(workflowExists).toBe(false);
+			});
+
 			test('should deactivate workflow if the last crashed executions were not saved', async () => {
 				/**
 				 * Arrange

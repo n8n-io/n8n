@@ -42,6 +42,8 @@ function formatRevokedBy(user: User): string {
 	return fullName || email || '';
 }
 
+export type AutodeactivationReason = 'crashes' | 'trigger-crashes' | 'memory-pressure';
+
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName =
 	| 'user-invited'
@@ -340,7 +342,7 @@ export class UserManagementMailer {
 	}: {
 		recipient: User;
 		workflow: IWorkflowBase;
-		reason?: 'crashes' | 'memory-pressure';
+		reason?: AutodeactivationReason;
 	}): Promise<SendEmailResult> {
 		const recipients = await this.personRepository.getEmailsByIds([recipient.id]);
 		const baseUrl = this.urlService.getInstanceBaseUrl();
@@ -349,6 +351,11 @@ export class UserManagementMailer {
 				reason: 'its executions repeatedly crashed',
 				nextStep:
 					'Please review its recent executions and resolve any issues before reactivating it.',
+			},
+			'trigger-crashes': {
+				reason: 'n8n repeatedly crashed while its trigger was running',
+				nextStep:
+					'This often happens when a trigger fetches more data than fits in memory. Reduce how much data the trigger fetches at once before reactivating it.',
 			},
 			'memory-pressure': {
 				reason:
