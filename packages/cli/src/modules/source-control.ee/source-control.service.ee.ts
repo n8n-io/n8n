@@ -280,11 +280,15 @@ export class SourceControlService {
 		if (!this.gitService.git) {
 			await this.initGitService();
 		}
+		// Check out the branch before persisting it, so a failed switch (for example a
+		// remote branch that no longer exists) never leaves the stored preferences
+		// pointing at a branch this instance is not on.
+		const result = await this.gitService.setBranch(branch);
 		await this.sourceControlPreferencesService.setPreferences({
 			branchName: branch,
 			connected: branch?.length > 0,
 		});
-		return await this.gitService.setBranch(branch);
+		return result;
 	}
 
 	// will reset the branch to the remote branch and pull

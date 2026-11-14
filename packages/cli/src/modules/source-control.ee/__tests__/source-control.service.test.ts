@@ -1596,6 +1596,43 @@ describe('SourceControlService', () => {
 		});
 	});
 
+// 追加单测：packages/cli/src/modules/source-control.ee/__tests__/source-control.service.test.ts
+// 插入位置：describe('initializeRepository', ...) 块之后、describe('sanityCheck', ...) 之前
+// （本包 vitest globals 已启用；preferencesService/gitService/sourceControlService 为该文件既有的套件级对象）
+
+	describe('setBranch', () => {
+		beforeEach(() => {
+			gitService.setBranch.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+			preferencesService.setPreferences = vi.fn().mockResolvedValue(undefined);
+		});
+
+		it('persists the branch preference only after the checkout succeeded', async () => {
+			await sourceControlService.setBranch('feature-branch');
+
+			expect(gitService.setBranch).toHaveBeenCalledWith('feature-branch');
+			expect(preferencesService.setPreferences).toHaveBeenCalledWith({
+				branchName: 'feature-branch',
+				connected: true,
+			});
+			// The checkout must happen before the preference write is persisted.
+			expect(gitService.setBranch.mock.invocationCallOrder[0]).toBeLessThan(
+				preferencesService.setPreferences.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not persist the branch preference when the checkout fails', async () => {
+			gitService.setBranch.mockRejectedValue(
+				new Error("fatal: Couldn't find remote ref refs/remotes/origin/feature-branch"),
+			);
+
+			await expect(sourceControlService.setBranch('feature-branch')).rejects.toThrow(
+				/feature-branch/,
+			);
+
+			expect(preferencesService.setPreferences).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('sanityCheck', () => {
 		beforeEach(() => {
 			// Restore the actual sanityCheck implementation for these tests
