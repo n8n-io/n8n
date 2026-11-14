@@ -989,11 +989,7 @@ export class WorkflowService {
 		ctx: OperationContext = {},
 		{ propagateVersionHistoryErrors = false }: { propagateVersionHistoryErrors?: boolean } = {},
 	) {
-<<<<<<< HEAD
-		const { user, changes, updatePayload, cleared, saveNewVersion } = prepared;
-=======
-		const { user, updatePayload, cleared, saveNewVersion, tagsDisabled } = prepared;
->>>>>>> 5ee5c2bf152c1a5c6eb0c1183a8d4c9b202ed4bf
+		const { user, updatePayload, cleared, saveNewVersion } = prepared;
 		const workflowId = prepared.workflow.id;
 		const { tagIds, autosaved, source, versionName, versionDescription } = prepared.options;
 		if (saveNewVersion) {

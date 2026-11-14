@@ -975,32 +975,6 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 	}
 }
 
-<<<<<<< HEAD
-=======
-async function onImportWorkflowUrlEvent(data: IDataObject) {
-	const workflowData = await fetchWorkflowDataFromUrl(data.url as string);
-	if (!workflowData) {
-		return;
-	}
-
-	const originWorkflowId = workflowId.value;
-	const importUrl = async () => {
-		if (!isStillOnWorkflow(originWorkflowId)) {
-			return;
-		}
-
-		await importWorkflowData(workflowData, 'url', {
-			viewport: viewportBoundaries.value,
-			warnRestrictedNodes: true,
-		});
-
-		canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);
-	};
-
-	await mcpJsonNudgeTrigger.gate('import_url', importUrl);
-}
-
->>>>>>> 5ee5c2bf152c1a5c6eb0c1183a8d4c9b202ed4bf
 function addImportEventBindings() {
 	nodeViewEventBus.on('importWorkflowData', onImportWorkflowDataEvent);
 	nodeViewEventBus.on('openChat', onOpenChat);

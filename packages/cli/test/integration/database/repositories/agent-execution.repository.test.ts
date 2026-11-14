@@ -12,11 +12,7 @@ import {
 	type CredentialProvider,
 } from '@n8n/agents';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
-<<<<<<< HEAD
 import { AgentsConfig, AiConfig } from '@n8n/config';
-import { SettingsRepository, UserRepository, type OperationContext, type User } from '@n8n/db';
-=======
-import { AgentsConfig, AiConfig, GlobalConfig } from '@n8n/config';
 import {
 	ServiceAccountRepository,
 	SettingsRepository,
@@ -24,7 +20,6 @@ import {
 	type OperationContext,
 	type User,
 } from '@n8n/db';
->>>>>>> 5ee5c2bf152c1a5c6eb0c1183a8d4c9b202ed4bf
 import { Container } from '@n8n/di';
 import { DataSource, EntityManager, type Repository } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -267,18 +262,9 @@ describe('AgentExecutionRepository', () => {
 			executions,
 			executionService,
 			checkpointStorage,
-<<<<<<< HEAD
-			connection ? new AgentRepository(connection, txRunner) : agentRepo,
-=======
 			connection
-				? new AgentRepository(
-						connection,
-						txRunner,
-						Container.get(GlobalConfig),
-						Container.get(ServiceAccountRepository),
-					)
+				? new AgentRepository(connection, txRunner, Container.get(ServiceAccountRepository))
 				: agentRepo,
->>>>>>> 5ee5c2bf152c1a5c6eb0c1183a8d4c9b202ed4bf
 			attachmentService,
 			queueUpdates,
 			messageRepository,

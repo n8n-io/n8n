@@ -30,12 +30,7 @@ import { LmChatXAiGrok } from '../../nodes/llms/LmChatXAiGrok/LmChatXAiGrok.node
 import { EmbeddingsAzureOpenAi } from '../../nodes/embeddings/EmbeddingsAzureOpenAi/EmbeddingsAzureOpenAi.node';
 import { MemoryXata } from '../../nodes/memory/MemoryXata/MemoryXata.node';
 import { RerankerCohere } from '../../nodes/rerankers/RerankerCohere/RerankerCohere.node';
-<<<<<<< HEAD
-=======
-import { ToolSerpApi } from '../../nodes/tools/ToolSerpApi/ToolSerpApi.node';
 import { VectorStoreChromaDB } from '../../nodes/vector_store/VectorStoreChromaDB/VectorStoreChromaDB.node';
-import { VectorStoreZep } from '../../nodes/vector_store/VectorStoreZep/VectorStoreZep.node';
->>>>>>> 5ee5c2bf152c1a5c6eb0c1183a8d4c9b202ed4bf
 import * as assistantMessage from '../../nodes/vendors/OpenAi/v1/actions/assistant/message.operation';
 
 type Run = (ctx: ISupplyDataFunctions & IExecuteFunctions) => Promise<unknown>;
@@ -86,9 +81,6 @@ const nodes: Array<[string, Run]> = [
 	['MemoryXata', supplyData(MemoryXata)],
 	['OpenAI assistant message', async (ctx) => await assistantMessage.execute.call(ctx, 0)],
 	['RerankerCohere', supplyData(RerankerCohere)],
-<<<<<<< HEAD
-=======
-	['ToolSerpApi', supplyData(ToolSerpApi)],
 	[
 		'VectorStoreChromaDB (cloud, collection list)',
 		chromaCloud(
@@ -98,14 +90,15 @@ const nodes: Array<[string, Run]> = [
 				),
 		),
 	],
-	['VectorStoreChromaDB (cloud, retrieve)', chromaCloud(supplyData(VectorStoreChromaDB))],
+	[
+		'VectorStoreChromaDB (cloud, retrieve)',
+		chromaCloud(supplyData(VectorStoreChromaDB), { mode: 'retrieve' }),
+	],
 	['VectorStoreChromaDB (cloud, load)', chromaCloud(chromaExecute, { mode: 'load' })],
 	[
 		'VectorStoreChromaDB (cloud, insert with Clear Collection)',
 		chromaCloud(chromaExecute, { mode: 'insert', options: { clearCollection: true } }),
 	],
-	['VectorStoreZep (cloud)', supplyData(VectorStoreZep)],
->>>>>>> 5ee5c2bf152c1a5c6eb0c1183a8d4c9b202ed4bf
 ];
 
 const node: INode = {

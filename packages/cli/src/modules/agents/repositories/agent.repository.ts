@@ -76,16 +76,11 @@ export type AgentSummaryFilters = {
 
 @Service()
 export class AgentRepository extends BaseRepository<Agent> {
-<<<<<<< HEAD
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
-=======
 	constructor(
 		dataSource: DataSource,
 		transactionRunner: TransactionRunner,
-		private readonly globalConfig: GlobalConfig,
 		private readonly serviceAccountRepository: ServiceAccountRepository,
 	) {
->>>>>>> 5ee5c2bf152c1a5c6eb0c1183a8d4c9b202ed4bf
 		super(Agent, dataSource.manager, transactionRunner);
 	}
 

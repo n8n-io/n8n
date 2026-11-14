@@ -1,16 +1,11 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
-<<<<<<< HEAD
-import { AgentTagMapping, LIKE_ESCAPE_CLAUSE, type TransactionRunner } from '@n8n/db';
-=======
-import type { GlobalConfig } from '@n8n/config';
 import {
 	AgentTagMapping,
 	LIKE_ESCAPE_CLAUSE,
 	type ServiceAccountRepository,
 	type TransactionRunner,
 } from '@n8n/db';
->>>>>>> 5ee5c2bf152c1a5c6eb0c1183a8d4c9b202ed4bf
 import { In } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
@@ -27,17 +22,11 @@ describe('AgentRepository', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-<<<<<<< HEAD
-		repository = new AgentRepository(mockDataSource as never, mock<TransactionRunner>());
-=======
-		globalConfig.tags.disabled = false;
 		repository = new AgentRepository(
 			mockDataSource as never,
 			mock<TransactionRunner>(),
-			globalConfig,
 			mock<ServiceAccountRepository>(),
 		);
->>>>>>> 5ee5c2bf152c1a5c6eb0c1183a8d4c9b202ed4bf
 	});
 
 	describe('findByIdAndProjectId', () => {
@@ -306,19 +295,6 @@ describe('AgentRepository', () => {
 			expect(mockQb.leftJoinAndSelect).toHaveBeenCalledWith('agent.tags', 'tags');
 		});
 
-<<<<<<< HEAD
-=======
-		it('skips the tags join when tags are disabled', async () => {
-			globalConfig.tags.disabled = true;
-			const mockQb = makePaginationQb();
-			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
-
-			await repository.findByProjectIdsPaginated(['p1'], { offset: 0, limit: 10 });
-
-			expect(mockQb.leftJoinAndSelect).not.toHaveBeenCalledWith('agent.tags', 'tags');
-		});
-
->>>>>>> 5ee5c2bf152c1a5c6eb0c1183a8d4c9b202ed4bf
 		it('filters agents that carry all the requested tag ids', async () => {
 			const mockQb = makePaginationQb();
 			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
@@ -519,16 +495,11 @@ describe('AgentRepository', () => {
 
 		it('replaces the mappings in one runner transaction, deduping ids', async () => {
 			const transactionRunner = makeTransactionRunner();
-<<<<<<< HEAD
-			const repository = new AgentRepository(mockDataSource as never, transactionRunner);
-=======
 			const repository = new AgentRepository(
 				mockDataSource as never,
 				transactionRunner,
-				globalConfig,
 				mock<ServiceAccountRepository>(),
 			);
->>>>>>> 5ee5c2bf152c1a5c6eb0c1183a8d4c9b202ed4bf
 
 			await repository.overwriteTagMappings('agent-1', ['tag-1', 'tag-1', 'tag-2']);
 
@@ -544,16 +515,11 @@ describe('AgentRepository', () => {
 		});
 
 		it('only deletes when the new tag list is empty', async () => {
-<<<<<<< HEAD
-			const repository = new AgentRepository(mockDataSource as never, makeTransactionRunner());
-=======
 			const repository = new AgentRepository(
 				mockDataSource as never,
 				makeTransactionRunner(),
-				globalConfig,
 				mock<ServiceAccountRepository>(),
 			);
->>>>>>> 5ee5c2bf152c1a5c6eb0c1183a8d4c9b202ed4bf
 
 			await repository.overwriteTagMappings('agent-1', []);
 
