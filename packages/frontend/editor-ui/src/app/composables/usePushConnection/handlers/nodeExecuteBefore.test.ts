@@ -40,11 +40,12 @@ describe('nodeExecuteBefore', () => {
 		workflowExecutionStateStore.setActiveExecutionId('exec-1');
 	});
 
-	it('adds the executing node with its sequence number when the execution id matches', async () => {
+	it('adds the executing node with its execution id and sequence number when the execution id matches', async () => {
 		await nodeExecuteBefore(makeEvent('exec-1', 4), options);
 
 		expect(workflowExecutionStateStore.executingNode.addExecutingNode).toHaveBeenCalledWith(
 			'Test Node',
+			'exec-1',
 			4,
 			0,
 		);

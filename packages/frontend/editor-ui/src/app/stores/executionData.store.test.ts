@@ -330,6 +330,176 @@ describe('executionData.store', () => {
 		});
 	});
 
+	describe('fillTrimmedNodeRunData', () => {
+		const trimmedData = { main: [[{ json: { __isTrimmedManualExecutionDataItem: true } }]] };
+		const fullData = { main: [[{ json: { value: 1 } }]] };
+
+		function setUpLiveRuns(runData: Record<string, unknown[]>) {
+			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+			store.setExecution(createTestExecution({ data: { resultData: { runData } } as never }));
+			return store;
+		}
+
+		function liveRun(overrides: Record<string, unknown> = {}) {
+			return {
+				executionIndex: 3,
+				startTime: 100,
+				executionTime: 5,
+				executionStatus: 'success',
+				source: [{ previousNode: 'Trigger' }],
+				data: trimmedData,
+				...overrides,
+			};
+		}
+
+		function fetchedRun(overrides: Record<string, unknown> = {}) {
+			return {
+				executionIndex: 0,
+				startTime: 999,
+				executionTime: 7,
+				executionStatus: 'success',
+				source: [],
+				data: fullData,
+				...overrides,
+			} as never;
+		}
+
+		it('copies the fetched data into a trimmed run and keeps the live fields', () => {
+			const store = setUpLiveRuns({ NodeA: [liveRun()] });
+
+			store.fillTrimmedNodeRunData('NodeA', [fetchedRun()]);
+
+			const run = store.execution?.data?.resultData.runData.NodeA[0];
+			expect(run?.data).toEqual(fullData);
+			expect(run?.executionIndex).toBe(3);
+			expect(run?.startTime).toBe(100);
+			expect(run?.source).toEqual([{ previousNode: 'Trigger' }]);
+		});
+
+		it('copies the fetched error into a trimmed run', () => {
+			const store = setUpLiveRuns({ NodeA: [liveRun()] });
+			const error = { message: 'Failed' };
+
+			store.fillTrimmedNodeRunData('NodeA', [fetchedRun({ error })]);
+
+			expect(store.execution?.data?.resultData.runData.NodeA[0].error).toEqual(error);
+		});
+
+		it('keeps a run that already has its data', () => {
+			const ownData = { main: [[{ json: { value: 'live' } }]] };
+			const store = setUpLiveRuns({ NodeA: [liveRun({ data: ownData })] });
+
+			store.fillTrimmedNodeRunData('NodeA', [fetchedRun()]);
+
+			expect(store.execution?.data?.resultData.runData.NodeA[0].data).toEqual(ownData);
+		});
+
+		it('does not touch other nodes', () => {
+			const store = setUpLiveRuns({ NodeA: [liveRun()], NodeB: [liveRun()] });
+
+			store.fillTrimmedNodeRunData('NodeA', [fetchedRun()]);
+
+			expect(store.execution?.data?.resultData.runData.NodeB[0].data).toEqual(trimmedData);
+		});
+
+		it('leaves the run as it was and commits nothing when the fetched run is trimmed', () => {
+			const store = setUpLiveRuns({ NodeA: [liveRun()] });
+			const onChange = vi.fn();
+			store.onExecutionDataChange(onChange);
+			const otherTrimmedData = {
+				main: [[{ json: { __isTrimmedManualExecutionDataItem: true, value: 2 } }]],
+			};
+
+			store.fillTrimmedNodeRunData('NodeA', [fetchedRun({ data: otherTrimmedData })]);
+
+			expect(store.execution?.data?.resultData.runData.NodeA[0]).toStrictEqual(liveRun());
+			expect(onChange).not.toHaveBeenCalled();
+		});
+
+		it('commits the change when a run is filled', () => {
+			const store = setUpLiveRuns({ NodeA: [liveRun()] });
+			const onChange = vi.fn();
+			store.onExecutionDataChange(onChange);
+
+			store.fillTrimmedNodeRunData('NodeA', [fetchedRun()]);
+
+			expect(onChange).toHaveBeenCalledTimes(1);
+			expect(onChange).toHaveBeenCalledWith({
+				action: 'update',
+				payload: { executionId: 'exec-1', nodeName: 'NodeA' },
+			});
+		});
+
+		it('adds no error key for a successful fetched run and drops a stale one', () => {
+			const store = setUpLiveRuns({ NodeA: [liveRun({ error: { message: 'Stale' } })] });
+
+			store.fillTrimmedNodeRunData('NodeA', [fetchedRun()]);
+
+			const run = store.execution?.data?.resultData.runData.NodeA[0];
+			expect(run?.data).toEqual(fullData);
+			expect(Object.hasOwn(run ?? {}, 'error')).toBe(false);
+		});
+
+		it('copies only the error when the fetched run failed without output', () => {
+			const store = setUpLiveRuns({ NodeA: [liveRun()] });
+			const error = { message: 'Failed' };
+
+			store.fillTrimmedNodeRunData('NodeA', [fetchedRun({ data: undefined, error })]);
+
+			const run = store.execution?.data?.resultData.runData.NodeA[0];
+			expect(run?.error).toEqual(error);
+			expect(run?.data).toBeUndefined();
+		});
+
+		it('leaves the run as it was when the fetched run is missing or has no output', () => {
+			const store = setUpLiveRuns({ NodeA: [liveRun()] });
+			const onChange = vi.fn();
+			store.onExecutionDataChange(onChange);
+
+			store.fillTrimmedNodeRunData('NodeA', undefined);
+			store.fillTrimmedNodeRunData('NodeA', []);
+			store.fillTrimmedNodeRunData('NodeA', [fetchedRun({ data: undefined })]);
+			store.fillTrimmedNodeRunData('NodeB', [fetchedRun()]);
+
+			expect(store.execution?.data?.resultData.runData.NodeA[0]).toStrictEqual(liveRun());
+			expect(store.execution?.data?.resultData.runData.NodeB).toBeUndefined();
+			expect(onChange).not.toHaveBeenCalled();
+		});
+
+		it('leaves a node with two live runs as it was, even when the fetched runs hold data', () => {
+			// Two parallel runs of one node that finished out of order: the live
+			// runs are in completion order, the fetched runs in iteration order.
+			const liveRuns = [liveRun({ executionIndex: 5 }), liveRun({ executionIndex: 4 })];
+			const store = setUpLiveRuns({ NodeA: liveRuns });
+			const onChange = vi.fn();
+			store.onExecutionDataChange(onChange);
+			const otherData = { main: [[{ json: { value: 2 } }]] };
+
+			store.fillTrimmedNodeRunData('NodeA', [
+				fetchedRun({ executionIndex: 4 }),
+				fetchedRun({ executionIndex: 5, data: otherData }),
+			]);
+			store.fillTrimmedNodeRunData('NodeA', [fetchedRun()]);
+
+			expect(store.execution?.data?.resultData.runData.NodeA).toStrictEqual([
+				liveRun({ executionIndex: 5 }),
+				liveRun({ executionIndex: 4 }),
+			]);
+			expect(onChange).not.toHaveBeenCalled();
+		});
+
+		it('leaves a node with one live run and two fetched runs as it was', () => {
+			const store = setUpLiveRuns({ NodeA: [liveRun()] });
+			const onChange = vi.fn();
+			store.onExecutionDataChange(onChange);
+
+			store.fillTrimmedNodeRunData('NodeA', [fetchedRun(), fetchedRun({ executionIndex: 1 })]);
+
+			expect(store.execution?.data?.resultData.runData.NodeA[0]).toStrictEqual(liveRun());
+			expect(onChange).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('clearNodeExecutionData', () => {
 		it('removes the named node from runData', () => {
 			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
@@ -664,7 +834,15 @@ describe('executionData.store', () => {
 					data: {
 						resultData: {
 							runData: {
-								NodeA: [{ executionIndex: 0, executionStatus: 'running', source: [] } as never],
+								NodeA: [
+									{
+										executionIndex: 0,
+										executionStatus: 'running',
+										source: [],
+										// Trimmed, so `fillTrimmedNodeRunData` has a run to fill.
+										data: { main: [[{ json: { __isTrimmedManualExecutionDataItem: true } }]] },
+									} as never,
+								],
 								NodeB: [{ executionIndex: 1, executionStatus: 'success', source: [] } as never],
 							},
 						},
@@ -707,6 +885,16 @@ describe('executionData.store', () => {
 			{
 				name: 'updateNodeExecutionRunData',
 				mutate: (store) => store.updateNodeExecutionRunData(createNodeExecuteAfterDataPayload()),
+				action: 'update',
+				nodeName: 'NodeA',
+				changedNode: 'NodeA',
+			},
+			{
+				name: 'fillTrimmedNodeRunData',
+				mutate: (store) =>
+					store.fillTrimmedNodeRunData('NodeA', [
+						createTestTaskData({ data: { main: [[{ json: { value: 1 } }]] } }),
+					]),
 				action: 'update',
 				nodeName: 'NodeA',
 				changedNode: 'NodeA',
@@ -975,6 +1163,33 @@ describe('executionData.store', () => {
 				},
 			},
 			{
+				name: 'fillTrimmedNodeRunData',
+				execution: () => {
+					const execution = createSeedExecution();
+					execution.data?.resultData.runData.NodeB.splice(
+						0,
+						1,
+						createTestTaskData({
+							executionIndex: 2,
+							executionStatus: 'success',
+							source: [{ previousNode: 'NodeA' }],
+							data: { main: [[{ json: { __isTrimmedManualExecutionDataItem: true } }]] },
+						}),
+					);
+					return execution;
+				},
+				mutate: (store) =>
+					store.fillTrimmedNodeRunData('NodeB', [
+						createTestTaskData({ data: { main: [[{ json: { value: 1 } }]] } }),
+					]),
+				verify: (store) => {
+					expect(store.executionRunData?.NodeB[0].data).toEqual({
+						main: [[{ json: { value: 1 } }]],
+					});
+					expect(store.executionRunData?.NodeB[0].executionIndex).toBe(2);
+				},
+			},
+			{
 				name: 'clearNodeExecutionData',
 				mutate: (store) => store.clearNodeExecutionData('NodeA'),
 				verify: (store) => {
@@ -1029,17 +1244,20 @@ describe('executionData.store', () => {
 			},
 		];
 
-		it.each(cases)('$name never writes into a frozen execution', ({ mutate, verify }) => {
-			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
-			store.setExecution(deepFreeze(createSeedExecution()));
+		it.each(cases)(
+			'$name never writes into a frozen execution',
+			({ execution, mutate, verify }) => {
+				const store = useExecutionDataStore(createExecutionDataId('exec-1'));
+				store.setExecution(deepFreeze((execution ?? createSeedExecution)()));
 
-			expect(() => mutate(store)).not.toThrow();
-			verify(store);
-		});
+				expect(() => mutate(store)).not.toThrow();
+				verify(store);
+			},
+		);
 
-		it.each(cases)('$name leaves no Vue proxy in the payload', ({ mutate }) => {
+		it.each(cases)('$name leaves no Vue proxy in the payload', ({ execution, mutate }) => {
 			const store = useExecutionDataStore(createExecutionDataId('exec-1'));
-			store.setExecution(createSeedExecution());
+			store.setExecution((execution ?? createSeedExecution)());
 
 			mutate(store);
 
