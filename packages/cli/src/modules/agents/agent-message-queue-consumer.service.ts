@@ -180,7 +180,14 @@ export class AgentMessageQueueConsumer {
 
 				const claimed = await this.queue.claimNext(threadId, async (item, thread, ctx) => {
 					if (this.stopped) return false;
-					if (!(await this.placement.mayClaim(item.payload.kind, item.createdAt))) return false;
+					// An integration message stores its chat platform as the origin source.
+					const platform =
+						item.payload.kind === 'integration'
+							? (item.message.origin?.source ?? undefined)
+							: undefined;
+					if (!(await this.placement.mayClaim(item.payload.kind, item.createdAt, platform))) {
+						return false;
+					}
 					if (item.payload.kind !== 'integration') return true;
 
 					const source = item.message.origin?.source;
@@ -199,11 +206,19 @@ export class AgentMessageQueueConsumer {
 					// Removed connections fail the item. A missing or closing bridge leaves it pending.
 					if (!connection) return true;
 
-					lease = this.integrations.acquireQueueBridge(
-						thread.agentId,
-						source,
-						item.payload.credentialId,
-					);
+					// A worker has no ingress connection. It builds a send-only one the
+					// first time, which can take a platform call while the claim waits.
+					lease = this.cluster.isWorker
+						? await this.integrations.acquireSendOnlyBridge(
+								thread.agentId,
+								thread.projectId,
+								connection,
+							)
+						: this.integrations.acquireQueueBridge(
+								thread.agentId,
+								source,
+								item.payload.credentialId,
+							);
 
 					return lease !== undefined;
 				});

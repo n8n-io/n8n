@@ -220,6 +220,44 @@ describe('AgentMessageQueueConsumer', () => {
 			expect(turnQueue.enqueueDrain).toHaveBeenCalledWith('session');
 		});
 
+		it('runs an integration turn on a worker over a send-only bridge', async () => {
+			Object.assign(cluster, { isWorker: true });
+			const item = claim('session', true);
+			const bridge = mock<AgentChatBridge>();
+			const release = vi.fn();
+			const connection = mock<AgentIntegrationConfig>({
+				type: 'slack',
+				credentialId: 'credential',
+			});
+			repository.findPublishedConnection.mockResolvedValue(connection);
+			integrations.acquireSendOnlyBridge.mockResolvedValue({ bridge, release });
+			queue.claimNext
+				.mockImplementationOnce(async (_threadId, canConsume) => {
+					expect(await canConsume(item.item, item.thread, {})).toBe(true);
+					return item;
+				})
+				.mockResolvedValue(null);
+
+			consumer.startOnWorker();
+			await consumer.drainForJob('session');
+
+			expect(placement.mayClaim).toHaveBeenCalledWith('integration', expect.anything(), 'slack');
+			expect(integrations.acquireSendOnlyBridge).toHaveBeenCalledWith(
+				'agent',
+				'project',
+				connection,
+			);
+			expect(integrations.acquireQueueBridge).not.toHaveBeenCalled();
+			await vi.waitFor(() => expect(release).toHaveBeenCalledOnce());
+			expect(bridge.consumeQueuedMessage).toHaveBeenCalledWith(
+				item.payload,
+				item.thread.id,
+				item.admission,
+				expect.any(AbortSignal),
+				connection,
+			);
+		});
+
 		it('ignores drain jobs after shutdown starts', async () => {
 			consumer.startOnWorker();
 			consumer.stop();

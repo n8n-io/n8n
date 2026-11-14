@@ -820,6 +820,74 @@ describe('ChatIntegrationService — outbound Preview connections', () => {
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 
+	it('builds one send-only bridge for concurrent worker turns and closes it when idle', async () => {
+		const createAdapter = vi.fn().mockResolvedValue({ name: 'slack' });
+		const onBeforeConnect = vi.fn().mockResolvedValue(undefined);
+		const integration = new FakeIntegration('slack', false);
+		(integration as unknown as { createAdapter: typeof createAdapter }).createAdapter =
+			createAdapter;
+		(integration as unknown as { onBeforeConnect: typeof onBeforeConnect }).onBeforeConnect =
+			onBeforeConnect;
+		const registry = new ChatIntegrationRegistry();
+		registry.register(integration);
+		const credentialsService = mock<CredentialsService>();
+		mockProjectCredential(credentialsService, { id: 'cred-1' } as CredentialsEntity);
+		const chatSubscriptionStateService = mock<AgentChatSubscriptionStateService>();
+		const memoryState = mock<StateAdapter>();
+		memoryState.disconnect.mockResolvedValue(undefined);
+		vi.spyOn(esmLoader, 'loadMemoryState').mockResolvedValue({
+			createMemoryState: () => memoryState,
+		} as never);
+		const chatInstance = {
+			initialize: vi.fn().mockResolvedValue(undefined),
+			shutdown: vi.fn().mockResolvedValue(undefined),
+		};
+		const Chat = vi.fn(function ChatMock() {
+			return chatInstance;
+		});
+		vi.spyOn(esmLoader, 'loadChatSdk').mockResolvedValue({ Chat } as never);
+		const bridge = mock<AgentChatBridge>();
+		vi.spyOn(AgentChatBridge, 'create').mockResolvedValue(bridge);
+		Container.set(AgentExecutionOrchestratorService, mock());
+		const { service, logger } = buildServiceWith({
+			registry,
+			credentialsService,
+			chatSubscriptionStateService,
+		});
+
+		const [first, second] = await Promise.all([
+			service.acquireSendOnlyBridge('agent-1', 'project-1', slackIntegration),
+			service.acquireSendOnlyBridge('agent-1', 'project-1', slackIntegration),
+		]);
+
+		expect(logger.warn).not.toHaveBeenCalled();
+		expect(first?.bridge).toBe(bridge);
+		expect(second?.bridge).toBe(bridge);
+		expect(Chat).toHaveBeenCalledTimes(1);
+		expect(createAdapter).toHaveBeenCalledWith(expect.objectContaining({ ingressEnabled: false }));
+		expect(onBeforeConnect).not.toHaveBeenCalled();
+		expect(chatSubscriptionStateService.createStateAdapter).not.toHaveBeenCalled();
+		expect(service.getBridge('agent-1', 'slack', 'cred-1')).toBe(bridge);
+
+		vi.useFakeTimers();
+		try {
+			first?.release();
+			second?.release();
+			await vi.advanceTimersByTimeAsync(ChatIntegrationService.SEND_ONLY_IDLE_MS);
+			expect(chatInstance.shutdown).toHaveBeenCalledOnce();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('does not build a send-only bridge during shutdown', async () => {
+		const { service } = buildServiceWith();
+		await service.disconnectAll();
+		await expect(
+			service.acquireSendOnlyBridge('agent-1', 'project-1', slackIntegration),
+		).resolves.toBeUndefined();
+	});
+
 	it('does not create an outbound fallback for a published agent', async () => {
 		const agentRepository = mock<AgentRepository>();
 		agentRepository.findOne.mockResolvedValue(

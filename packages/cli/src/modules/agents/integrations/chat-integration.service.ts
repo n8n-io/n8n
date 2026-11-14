@@ -84,6 +84,8 @@ interface ChatAgentConnection {
 	bridge?: AgentChatBridge;
 	disconnecting?: boolean;
 	queueConsumers?: Set<Promise<void>>;
+	/** Closes a worker's send-only connection after it has been idle for a while. */
+	idleTimer?: NodeJS.Timeout;
 	/**
 	 * Which channel this connection is. The map key encodes the same thing, but
 	 * as one string — this keeps callers that need the parts from parsing it back.
@@ -100,6 +102,11 @@ interface ChatAgentConnection {
 
 interface ConnectOptions {
 	ingressEnabled?: boolean;
+	/**
+	 * Build a reply bridge for an outbound connection. A worker uses this to run
+	 * chat platform turns: it sends replies but never receives platform events.
+	 */
+	withBridge?: boolean;
 	skipExternalHooks?: boolean;
 	settings?: AgentIntegrationSettings;
 }
@@ -184,6 +191,9 @@ export class ChatIntegrationService {
 
 	/** One-way: set when shutdown starts, and this main connects nothing after. */
 	private shuttingDown = false;
+
+	/** A worker closes a send-only connection that no turn used for this long. */
+	static readonly SEND_ONLY_IDLE_MS = 10 * 60 * 1_000;
 
 	constructor(
 		private readonly logger: Logger,
@@ -672,8 +682,9 @@ export class ChatIntegrationService {
 		// connections on one platform would otherwise reply into the wrong workspace.
 		// No fallback in that case, for the same reason.
 		if (credentialId !== undefined) {
-			return this.connections.get(agentChannelKey({ agentId, integrationType, credentialId }))
-				?.bridge;
+			const key = agentChannelKey({ agentId, integrationType, credentialId });
+			// Only a worker's send-only connection carries a bridge without ingress.
+			return this.connections.get(key)?.bridge ?? this.outboundConnections.get(key)?.bridge;
 		}
 		return this.findConnection(agentId, integrationType, (c) => c.bridge !== undefined)?.bridge;
 	}
@@ -694,6 +705,81 @@ export class ChatIntegrationService {
 				done.resolve();
 			},
 		};
+	}
+
+	/**
+	 * Keep a send-only bridge alive from queue admission through response
+	 * delivery. Workers use this: they have no ingress connection, so they build
+	 * an outbound one with a bridge on first use and keep it until it is idle.
+	 * Returns `undefined` when the connection cannot be built, so the message
+	 * stays pending and a main runs it after the fallback wait.
+	 */
+	async acquireSendOnlyBridge(
+		agentId: string,
+		projectId: string,
+		integration: AgentIntegrationConfig,
+	): Promise<ReturnType<ChatIntegrationService['acquireQueueBridge']>> {
+		if (this.shuttingDown || !hasChannelRuntime(integration)) return undefined;
+		const key = agentChannelKey(agentChannelRef(agentId, integration));
+
+		let connection = this.outboundConnections.get(key);
+		if (!connection?.bridge || connection.disconnecting) {
+			await this.initializeSendOnlyConnection(key, agentId, projectId, integration);
+			connection = this.outboundConnections.get(key);
+		}
+		if (!connection?.bridge || connection.disconnecting) return undefined;
+
+		clearTimeout(connection.idleTimer);
+		connection.idleTimer = undefined;
+		const done = createDeferredPromise();
+		const consumers = (connection.queueConsumers ??= new Set());
+		consumers.add(done.promise);
+		const leased = connection;
+		return {
+			bridge: connection.bridge,
+			release: () => {
+				consumers.delete(done.promise);
+				done.resolve();
+				if (consumers.size > 0 || leased.disconnecting) return;
+				leased.idleTimer = setTimeout(() => {
+					if (this.outboundConnections.get(key) !== leased || consumers.size > 0) return;
+					void this.disposeOutboundConnection(key);
+				}, ChatIntegrationService.SEND_ONLY_IDLE_MS);
+				leased.idleTimer.unref?.();
+			},
+		};
+	}
+
+	private async initializeSendOnlyConnection(
+		key: string,
+		agentId: string,
+		projectId: string,
+		integration: AgentIntegrationConfig,
+	): Promise<void> {
+		const pending = this.outboundConnectionInitializations.get(key);
+		if (pending) {
+			await pending;
+			if (this.outboundConnections.get(key)?.bridge) return;
+		}
+
+		// Register the attempt before the first await, so concurrent turns share it.
+		const initialization = (async () => {
+			// A connection without a bridge, or one closing, cannot carry a turn.
+			await this.disposeOutboundConnection(key);
+			await this.connectLocal(agentId, integration, projectId, {
+				ingressEnabled: false,
+				withBridge: true,
+			});
+			return this.outboundConnections.get(key)?.chat;
+		})().catch((error: unknown) => this.reportOutboundError(agentId, integration, error));
+		this.outboundConnectionInitializations.set(key, initialization);
+		try {
+			await initialization;
+		} finally {
+			if (this.outboundConnectionInitializations.get(key) === initialization) {
+				this.outboundConnectionInitializations.delete(key);
+			}
+		}
 	}
 
 	/** First live connection for an agent, optionally pinned to one platform. */
@@ -758,7 +844,8 @@ export class ChatIntegrationService {
 			!agent ||
 			!isProjectAgent(agent) ||
 			!persistedIntegration ||
-			(agent.activeVersionId !== null && !ingressOwnedByLeader)
+			// A worker never holds ingress, so its outbound connection is the only one.
+			(agent.activeVersionId !== null && !ingressOwnedByLeader && !this.cluster.isWorker)
 		) {
 			await this.disconnectOutboundOne(key);
 			return undefined;
@@ -908,6 +995,19 @@ export class ChatIntegrationService {
 	}
 
 	/**
+	 * A worker holds only send-only connections, built on demand. When a channel
+	 * changes, close the one for it, so the next turn builds it again from the
+	 * saved settings and credential.
+	 */
+	@OnPubSubEvent('agent-chat-integration-changed', { instanceType: 'worker' })
+	async handleIntegrationChangedOnWorker(
+		payload: PubSubCommandMap['agent-chat-integration-changed'],
+	): Promise<void> {
+		const key = agentChannelKey(agentChannelRef(payload.agentId, payload.integration));
+		await this.disconnectOutboundOne(key);
+	}
+
+	/**
 	 * Execute a leader-only channel operation another main asked us to run, and
 	 * acknowledge the outcome so that main can report it to the user.
 	 *
@@ -1047,7 +1147,11 @@ export class ChatIntegrationService {
 
 	private async disposeOutboundConnection(key: string): Promise<void> {
 		const conn = this.outboundConnections.get(key);
-		if (!conn) return;
+		if (!conn || conn.disconnecting) return;
+		conn.disconnecting = true;
+		clearTimeout(conn.idleTimer);
+		// A worker turn can still be replying through this connection's bridge.
+		if (conn.queueConsumers) await Promise.all(conn.queueConsumers);
 
 		try {
 			await conn.chat.shutdown();
@@ -1232,7 +1336,7 @@ export class ChatIntegrationService {
 				...streamingOptionsFor(integration.type),
 			});
 
-			if (ingressEnabled) bridge = await this.createChatBridge(chat, ctx);
+			if (ingressEnabled || options.withBridge) bridge = await this.createChatBridge(chat, ctx);
 
 			initializeStarted = true;
 			await chat.initialize();

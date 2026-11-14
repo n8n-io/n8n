@@ -13,6 +13,13 @@ export type QueuedTurnKind = AgentQueueDispatch['kind'];
 const WORKER_KINDS: ReadonlySet<QueuedTurnKind> = new Set(['preview', 'n8n_chat']);
 
 /**
+ * Chat platforms whose replies a worker can send over a send-only connection.
+ * Discord needs the Gateway connection hook of a main, and WhatsApp keeps its
+ * send rate guard for each connection, so their turns stay on mains.
+ */
+const WORKER_PLATFORMS: ReadonlySet<string> = new Set(['slack', 'teams', 'telegram', 'linear']);
+
+/**
  * Decides where a queued agent turn runs.
  *
  * Mains send worker kinds to workers when the flag is on and a worker with
@@ -59,7 +66,9 @@ export class AgentTurnPlacement {
 		);
 	}
 
-	isWorkerKind(kind: QueuedTurnKind): boolean {
+	/** `platform` is the chat platform of an `integration` turn. */
+	isWorkerKind(kind: QueuedTurnKind, platform?: string): boolean {
+		if (kind === 'integration') return platform !== undefined && WORKER_PLATFORMS.has(platform);
 		return WORKER_KINDS.has(kind);
 	}
 
@@ -85,9 +94,9 @@ export class AgentTurnPlacement {
 	}
 
 	/** Whether this process may claim a queued message now. */
-	async mayClaim(kind: QueuedTurnKind, queuedAt: Date): Promise<boolean> {
-		if (this.cluster.isWorker) return this.runsTurnsOnWorker && this.isWorkerKind(kind);
-		if (!this.isWorkerKind(kind) || !(await this.workersAvailable())) return true;
+	async mayClaim(kind: QueuedTurnKind, queuedAt: Date, platform?: string): Promise<boolean> {
+		if (this.cluster.isWorker) return this.runsTurnsOnWorker && this.isWorkerKind(kind, platform);
+		if (!this.isWorkerKind(kind, platform) || !(await this.workersAvailable())) return true;
 		if (Date.now() - queuedAt.getTime() < AgentTurnPlacement.FALLBACK_WAIT_MS) return false;
 		this.fallbackClaims++;
 		return true;

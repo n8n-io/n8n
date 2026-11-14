@@ -105,10 +105,17 @@ describe('AgentTurnPlacement', () => {
 			expect(placement.fallbackCount).toBe(0);
 		});
 
-		it('keeps system and integration turns on mains', async () => {
+		it('keeps system turns and turns of main-only platforms on mains', async () => {
 			const { placement } = setup({ instances: [agentWorker] });
 			expect(await placement.mayClaim('system', recent())).toBe(true);
-			expect(await placement.mayClaim('integration', recent())).toBe(true);
+			expect(await placement.mayClaim('integration', recent(), 'discord')).toBe(true);
+			expect(await placement.mayClaim('integration', recent(), 'whatsapp')).toBe(true);
+		});
+
+		it('leaves recent turns of send-only platforms to workers', async () => {
+			const { placement } = setup({ instances: [agentWorker] });
+			expect(await placement.mayClaim('integration', recent(), 'slack')).toBe(false);
+			expect(await placement.mayClaim('integration', recent(), 'telegram')).toBe(false);
 		});
 	});
 
@@ -121,6 +128,14 @@ describe('AgentTurnPlacement', () => {
 			expect(await placement.mayClaim('n8n_chat', recent())).toBe(true);
 			expect(await placement.mayClaim('system', recent())).toBe(false);
 			expect(await placement.mayClaim('integration', recent())).toBe(false);
+			expect(await placement.mayClaim('integration', recent(), 'discord')).toBe(false);
+		});
+
+		it('claims integration turns of send-only platforms', async () => {
+			const { placement } = setup({ cluster: worker });
+			for (const platform of ['slack', 'teams', 'telegram', 'linear']) {
+				expect(await placement.mayClaim('integration', recent(), platform)).toBe(true);
+			}
 		});
 
 		it('claims nothing with the worker flag off', async () => {
