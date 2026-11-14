@@ -64,6 +64,15 @@ describe('getMcpClientCatalog', () => {
 		expect(params.get('server_url')).toBe(SERVER_URL);
 	});
 
+	it('should prefill the server URL in the Claude.ai custom connector link', () => {
+		const claude = clients.find((client) => client.id === 'claude-ai');
+		const url = new URL(claude!.addUrl!);
+		expect(`${url.origin}${url.pathname}`).toBe('https://claude.ai/customize/connectors');
+		expect(url.searchParams.get('modal')).toBe('add-custom-connector');
+		expect(url.searchParams.get('connectorName')).toBe('n8n');
+		expect(url.searchParams.get('connectorUrl')).toBe(SERVER_URL);
+	});
+
 	it('should give web connector URLs as https and every CLI an install command', () => {
 		const web = catalog.find((group) => group.id === 'web')!;
 		// A one-click connector URL is optional per web client, but when present it must be https.

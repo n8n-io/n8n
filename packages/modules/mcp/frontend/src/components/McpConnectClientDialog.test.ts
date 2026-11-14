@@ -40,9 +40,14 @@ describe('McpConnectClientDialog', () => {
 		});
 		expect(body().getByTestId('mcp-connect-client-picker-trigger')).toHaveTextContent('Claude.ai');
 		// Web client: one-click connector + mandatory server URL, no CLI/auth steps.
-		expect(body().getByTestId('mcp-connect-one-click')).toHaveAttribute(
-			'href',
-			'https://claude.ai/directory/connectors/n8n',
+		const href = body().getByTestId('mcp-connect-one-click').getAttribute('href');
+		const oneClickUrl = new URL(href!);
+		expect(`${oneClickUrl.origin}${oneClickUrl.pathname}`).toBe(
+			'https://claude.ai/customize/connectors',
+		);
+		expect(oneClickUrl.searchParams.get('modal')).toBe('add-custom-connector');
+		expect(oneClickUrl.searchParams.get('connectorUrl')).toBe(
+			'https://acme.app.n8n.cloud/mcp-server/http',
 		);
 		expect(body().getByText('Server URL')).toBeInTheDocument();
 		expect(body().queryByText('Or configure manually')).not.toBeInTheDocument();
