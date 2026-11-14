@@ -236,9 +236,7 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 }));
 
 vi.mock('@/app/composables/useNodeHelpers', () => ({
-	useNodeHelpers: vi.fn().mockReturnValue({
-		updateNodesExecutionIssues: vi.fn(),
-	}),
+	useNodeHelpers: vi.fn().mockReturnValue({}),
 }));
 
 vi.mock('@n8n/chat/event-buses', () => ({

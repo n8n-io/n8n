@@ -1,5 +1,4 @@
 import { useI18n } from '@n8n/i18n';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { VIEWS } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -49,7 +48,6 @@ export function useChatState(
 	const rootStore = useRootStore();
 	const logsStore = useLogsStore();
 	const router = useRouter();
-	const nodeHelpers = useNodeHelpers();
 	const nodeTypesStore = useNodeTypesStore();
 	const pushConnectionStore = usePushConnectionStore();
 	const { runWorkflow } = useRunWorkflow({ router });
@@ -328,7 +326,6 @@ export function useChatState(
 
 	function refreshSession() {
 		workflowExecutionState.value.setWorkflowExecutionData(null);
-		nodeHelpers.updateNodesExecutionIssues();
 		logsStore.resetChatSessionId();
 		logsStore.resetMessages();
 		// Clear partial execution destination to allow full workflow execution

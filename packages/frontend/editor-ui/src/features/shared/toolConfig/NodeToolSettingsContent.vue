@@ -180,7 +180,7 @@ const hasCredentialIssues = computed(() => {
 		nodeTypeDescription.value,
 		node.value,
 		{ getNode: () => node.value } as unknown as Workflow,
-		['parameters', 'execution', 'typeUnknown', 'input'],
+		['parameters', 'typeUnknown', 'input'],
 	);
 
 	return Object.keys(credentialIssues?.credentials ?? {}).length > 0;

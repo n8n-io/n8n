@@ -9,7 +9,6 @@ import {
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
 	createLogTree,
 	findSubExecutionLocator,
@@ -33,7 +32,6 @@ interface UseLogsExecutionDataOptions {
 }
 
 export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionDataOptions = {}) {
-	const nodeHelpers = useNodeHelpers();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -119,7 +117,6 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	function resetExecutionData() {
 		state.value = undefined;
 		workflowExecutionStateStore.value.setWorkflowExecutionData(null);
-		nodeHelpers.updateNodesExecutionIssues();
 		// Clear partial execution destination to allow full workflow execution
 		workflowExecutionStateStore.value.setChatPartialExecutionDestinationNode(null);
 		void workflowsStore.fetchLastSuccessfulExecution();

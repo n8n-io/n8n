@@ -75,7 +75,6 @@ const nodeInputIssues = computed(() => {
 				'typeUnknown',
 				'parameters',
 				'credentials',
-				'execution',
 			])
 		: undefined;
 	return issues?.input ?? {};
