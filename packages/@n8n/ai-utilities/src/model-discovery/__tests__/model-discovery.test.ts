@@ -421,6 +421,7 @@ describe('model-discovery', () => {
 			'mistral',
 			'moonshotai',
 			'nvidia',
+			'ollama',
 			'openai',
 			'openrouter',
 			'vercel',

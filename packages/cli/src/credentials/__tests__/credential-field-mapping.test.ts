@@ -84,6 +84,28 @@ describe('mapCredentialForProvider', () => {
 			});
 		});
 	});
+	describe('ollama', () => {
+		it('maps the credential baseUrl onto baseURL', () => {
+			expect(
+				mapCredentialForProvider('ollama', {
+					apiKey: 'test-key',
+					baseUrl: 'http://localhost:11434',
+				}),
+			).toEqual({ apiKey: 'test-key', baseURL: 'http://localhost:11434' });
+		});
+
+		it('passes through when the optional apiKey is unset', () => {
+			expect(mapCredentialForProvider('ollama', { baseUrl: 'http://srv:11434' })).toEqual({
+				apiKey: undefined,
+				baseURL: 'http://srv:11434',
+			});
+		});
+
+		it('is a supported agent provider', () => {
+			expect(isSupportedAgentProvider('ollama')).toBe(true);
+			expect(SUPPORTED_AGENT_PROVIDERS).toContain('ollama');
+		});
+	});
 
 	it('passes an unmapped provider through unchanged', () => {
 		const raw = { apiKey: 'key', url: 'https://example.com', someOtherField: 'kept' };
