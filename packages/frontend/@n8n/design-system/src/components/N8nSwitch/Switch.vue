@@ -111,7 +111,6 @@ const getRootAttrs = () => {
 		left var(--duration--snappy) var(--easing--ease-out),
 		width var(--duration--snappy) var(--easing--ease-out);
 	will-change: left, width;
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 /*
