@@ -557,8 +557,14 @@ export class ScalingService {
 			if (!this.isJobMessage(msg)) return;
 
 			if (msg.kind === 'abort-job') this.jobProcessor.stopJob(jobId);
-			// A worker can also wait for a job it enqueued
-			else if (msg.kind === 'job-finished') this.recordJobFinished(queue.name, jobId, msg);
+			// A worker can also wait for a job it enqueued, e.g. the workflow tool of an
+			// agent turn that runs on this worker. It needs the Respond to Webhook body too.
+			else if (msg.kind === 'respond-to-webhook') {
+				this.activeExecutions.resolveResponsePromise(
+					msg.executionId,
+					decodeBufferBody(msg.response),
+				);
+			} else if (msg.kind === 'job-finished') this.recordJobFinished(queue.name, jobId, msg);
 			else if (msg.kind === 'job-failed') this.recordJobFailed(queue.name, jobId, msg);
 		});
 

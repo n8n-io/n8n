@@ -169,10 +169,12 @@ describe('AgentWorkflowToolResumeService production n8n Chat', () => {
 function afterContext(
 	status: IRun['status'],
 	parentAgentRun?: RelatedAgentRun,
+	executedInThisProcess = true,
 ): WorkflowExecuteAfterContext {
 	const data = createRunExecutionData({ resultData: { runData: {} } });
 	return mock<WorkflowExecuteAfterContext>({
 		executionId: 'exec-1',
+		executedInThisProcess,
 		runData: {
 			status,
 			// The engine stamps this only on runs that ended without error or wait.
@@ -183,6 +185,16 @@ function afterContext(
 }
 
 describe('AgentWorkflowToolResumeService → lifecycle wiring', () => {
+	it('does nothing on the process that only enqueued the sub-workflow', async () => {
+		const { service, bridge, chatIntegrationService, backgroundJobService } = setup();
+		chatIntegrationService.getBridge.mockReturnValue(bridge);
+
+		await service.handleWorkflowExecuteAfter(afterContext('success', agentRun, false));
+
+		expect(bridge.resumeInAgentThread).not.toHaveBeenCalled();
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).not.toHaveBeenCalled();
+	});
+
 	it('resumes the agent run once the sub-workflow finishes', async () => {
 		const { service, bridge, chatIntegrationService } = setup();
 		chatIntegrationService.getBridge.mockReturnValue(bridge);

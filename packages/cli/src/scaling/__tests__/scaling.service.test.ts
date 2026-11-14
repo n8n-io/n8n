@@ -236,6 +236,26 @@ describe('ScalingService', () => {
 				expect(registerWorkerListenersSpy).toHaveBeenCalled();
 				expect(registerMainOrWebhookListenersSpy).not.toHaveBeenCalled();
 			});
+
+			it('passes a Respond to Webhook body to a run that this worker enqueued', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+				await scalingService.setupQueue();
+
+				const onProgress = queue.on.mock.calls.find(
+					([event]) => event === 'global:progress',
+				)?.[1] as unknown as (jobId: string, msg: unknown) => void;
+				onProgress('job-1', {
+					kind: 'respond-to-webhook',
+					executionId: 'exec-1',
+					response: { body: { ok: true } },
+					workerId: 'worker-2',
+				});
+
+				expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith('exec-1', {
+					body: { ok: true },
+				});
+			});
 		});
 
 		describe('webhook', () => {

@@ -67,6 +67,9 @@ export class AgentWorkflowToolResumeService {
 	async handleWorkflowExecuteAfter(ctx: WorkflowExecuteAfterContext): Promise<void> {
 		const agentRun = ctx.runData.data.parentAgentRun;
 		if (!agentRun) return; // Not a sub-execution started by an agent workflow tool.
+		// In queue mode the process that enqueued the run gets this hook too. Only
+		// the process that ran it settles and resumes, so the resume runs once.
+		if (!ctx.executedInThisProcess) return;
 		// Parked at a Wait node, so the workflow has not finished.
 		if (ctx.runData.status === 'waiting') return;
 
