@@ -9,6 +9,10 @@ import {
 
 import AgentSkillViewer from '../components/AgentSkillViewer.vue';
 
+vi.mock('@tiptap/vue-3/menus', () => ({
+	BubbleMenu: { template: '<div><slot /></div>' },
+}));
+
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
@@ -47,6 +51,40 @@ const N8nFormInputStub = defineComponent({
 });
 
 describe('AgentSkillViewer', () => {
+	it.each(['SKILL.md', 'references/guide.md'])(
+		'keeps identifiers and placeholders when editing %s',
+		async (selectedPath) => {
+			const instructions =
+				'Call detect_anomalies(as_of) for github_* and custom:<metric_id> & report results';
+			const wrapper = mountViewer(
+				{
+					skill: {
+						name: 'Research',
+						description: 'Use for research',
+						instructions,
+						references: [{ path: 'references/guide.md', content: instructions }],
+					},
+					selectedPath,
+				},
+				{ realEditor: true },
+			);
+			await vi.waitFor(() => {
+				expect(wrapper.find('[data-test-id="n8n-markdown-editor-content"] p').exists()).toBe(true);
+			});
+			const paragraph = wrapper.get('[data-test-id="n8n-markdown-editor-content"] p');
+			expect(paragraph.text()).toBe(instructions);
+			paragraph.element.textContent = `${instructions}.`;
+
+			await vi.waitFor(() => {
+				expect(wrapper.emitted('update:skill')?.at(-1)).toEqual([
+					selectedPath === 'SKILL.md'
+						? { instructions: `${instructions}.` }
+						: { references: [{ path: selectedPath, content: `${instructions}.` }] },
+				]);
+			});
+		},
+	);
+
 	it('renames the selected reference without changing its directory', async () => {
 		const wrapper = mountViewer({
 			skill: {
@@ -224,7 +262,10 @@ describe('AgentSkillViewer', () => {
 	});
 });
 
-function mountViewer(props: Partial<InstanceType<typeof AgentSkillViewer>['$props']> = {}) {
+function mountViewer(
+	props: Partial<InstanceType<typeof AgentSkillViewer>['$props']> = {},
+	{ realEditor = false } = {},
+) {
 	return mount(AgentSkillViewer, {
 		props: {
 			skill: {
@@ -248,7 +289,9 @@ function mountViewer(props: Partial<InstanceType<typeof AgentSkillViewer>['$prop
 				N8nIcon: { template: '<i />' },
 				N8nText: { template: '<span><slot /></span>' },
 				N8nTooltip: { template: '<span><slot /></span>' },
-				MarkdownEditor: { props: ['modelValue'], template: '<textarea :value="modelValue" />' },
+				MarkdownEditor: realEditor
+					? false
+					: { props: ['modelValue'], template: '<textarea :value="modelValue" />' },
 			},
 		},
 	});

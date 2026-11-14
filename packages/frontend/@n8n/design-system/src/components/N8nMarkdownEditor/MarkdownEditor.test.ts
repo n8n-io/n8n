@@ -225,6 +225,81 @@ describe('components/N8nMarkdownEditor', () => {
 		},
 	);
 
+	it('preserves instruction text after a one-character edit', async () => {
+		// AGENT-1109: A UI edit must not change identifiers or placeholders.
+		const instructions =
+			'Call detect_anomalies(as_of) for github_* and custom:<metric_id> & report results';
+		const { wrapper } = await renderEditor(instructions);
+		const paragraph = getEditorElement(wrapper.container)!.querySelector('p')!;
+		const updatedInstructions = `${instructions}.`;
+
+		expect(paragraph).toHaveTextContent(instructions);
+		expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+
+		// Browser typing changes the DOM before ProseMirror reads the new text.
+		paragraph.textContent = updatedInstructions;
+
+		await waitFor(() => expect(wrapper.emitted('update:modelValue')).toBeDefined());
+
+		expect(paragraph).toHaveTextContent(updatedInstructions);
+		expect(wrapper.emitted<string[]>('update:modelValue').at(-1)?.[0]).toBe(updatedInstructions);
+	});
+
+	it.each([
+		'Use C:\\reports\\daily, an unmatched `, github_*, [metric_id], a~b, <x> & > 0',
+		'Use **detect_anomalies(as_of)** for github_* and custom:<metric_id> & report results',
+		'Use `github_* &lt;metric_id&gt;`\n\n```text\nC:\\reports\\daily github_* <metric_id> &lt; &\n```\n\nFinish',
+	])('keeps literal characters and code after repeated edits: %s', async (instructions) => {
+		const { wrapper, editor } = await renderEditor(instructions);
+
+		for (const suffix of ['.', '..']) {
+			editor.commands.insertContentAt(editor.state.doc.content.size - 1, '.');
+			const updatedInstructions = `${instructions}${suffix}`;
+			expect(wrapper.emitted<string[]>('update:modelValue').at(-1)?.[0]).toBe(updatedInstructions);
+			await wrapper.rerender({ modelValue: updatedInstructions, showToolbar: 'never' });
+			editor.commands.setContent(updatedInstructions, {
+				contentType: 'markdown',
+				emitUpdate: false,
+			});
+			expect(editor.getMarkdown()).toBe(updatedInstructions);
+		}
+	});
+
+	it.each([
+		'Use \\*literal\\* and \\`ticks\\` with identifier_a',
+		'\\* item with identifier_a',
+		'Before\n\\* item with identifier_a',
+		'Before\n  \\* item with identifier_a',
+		'\\* **item** with identifier_a',
+		'**github_\\*** and identifier_a',
+		'**github_\\*\\*** and identifier_a',
+		'Use [run_bigquery](https://example.com/run_bigquery) with identifier_a',
+		'Use [a\\]b](https://example.com) with identifier_a',
+		'[a\\]b identifier_a](https://example.com)',
+		'[a\\]b\\]](https://example.com) with identifier_a',
+		'[\\]a](https://example.com) with identifier_a',
+		'[**a\\]b**](https://example.com) with identifier_a',
+		'[<metric_id> a\\]b](https://example.com) with identifier_a',
+		'[a\\\\\\]b](https://example.com) with identifier_a',
+		'\\> literal quote with identifier_a',
+		'Use <metric>**literal**</metric> with identifier_a',
+		'| Key | Value |\n| --- | --- |\n| metric_id | A & <metric_id> |\n\nFinish identifier_a',
+	])('keeps Markdown structure after saving and loading: %s', async (instructions) => {
+		const { editor } = await renderEditor(instructions);
+
+		for (let edit = 0; edit < 2; edit++) {
+			editor.commands.insertContentAt(editor.state.doc.content.size - 1, '.');
+			const document = editor.getJSON();
+			const markdown = editor.getMarkdown();
+
+			editor.commands.setContent(markdown, { contentType: 'markdown' });
+
+			expect(editor.getJSON()).toEqual(document);
+			expect(editor.getMarkdown()).toBe(markdown);
+			expect(markdown).toContain('identifier_a.');
+		}
+	});
+
 	it('does not show the collapse control by default', async () => {
 		const wrapper = render(N8nMarkdownEditor, {
 			props: {
