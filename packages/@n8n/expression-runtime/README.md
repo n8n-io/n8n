@@ -311,10 +311,10 @@ See the main n8n repository for contribution guidelines.
 
 ## License
 
-See [LICENSE.md](../../LICENSE.md) in the n8n repository root.
+See [LICENSE.md](../../../LICENSE.md) in the n8n repository root.
 
 ## Related
 
-- [n8n workflow package](../workflow/)
+- [n8n workflow package](../../workflow/)
 - [isolated-vm](https://github.com/laverdet/isolated-vm)
 - [@n8n/tournament](https://github.com/n8n-io/tournament)
