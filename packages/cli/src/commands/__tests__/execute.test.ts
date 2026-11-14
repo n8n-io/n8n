@@ -1,4 +1,5 @@
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { CodeSandboxModule } from '@n8n/backend-module-code-sandbox';
 import { PostHogClient } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
@@ -37,6 +38,7 @@ import { BaseCommand } from '../base-command';
 import { Execute } from '../execute';
 
 const taskRunnerModule = mockInstance(TaskRunnerModule);
+const codeSandboxModule = mockInstance(CodeSandboxModule);
 const workflowRepository = mockInstance(WorkflowRepository);
 const ownershipService = mockInstance(OwnershipService);
 const workflowRunner = mockInstance(WorkflowRunner);
@@ -136,6 +138,45 @@ test('should start a task runner and the policy modules', async () => {
 		'type-availability-policies',
 	]);
 	expect(initModules).toHaveBeenCalledWith(expect.anything(), ['execution-ledger']);
+});
+
+describe('code execution backend', () => {
+	class CodeExecutionCommand extends BaseCommand {
+		override needsCodeExecution = true;
+	}
+
+	test('should start the code sandbox and not the task runner when the backend is sandbox', async () => {
+		Container.set(
+			GlobalConfig,
+			mock<GlobalConfig>({
+				taskRunners: {},
+				codeExecution: {
+					backend: 'sandbox',
+					sandbox: { url: 'https://code-sandbox.example.com', apiKey: 'secret' },
+				},
+				nodes: {},
+				expressionEngine: { engine: 'legacy' },
+				generic: { gracefulShutdownTimeout: 30 },
+			}),
+		);
+		codeSandboxModule.start.mockClear();
+		taskRunnerModule.start.mockClear();
+
+		await new CodeExecutionCommand().init();
+
+		expect(codeSandboxModule.start).toHaveBeenCalledTimes(1);
+		expect(taskRunnerModule.start).not.toHaveBeenCalled();
+	});
+
+	test('should start the task runner and not the code sandbox by default', async () => {
+		codeSandboxModule.start.mockClear();
+		taskRunnerModule.start.mockClear();
+
+		await new CodeExecutionCommand().init();
+
+		expect(taskRunnerModule.start).toHaveBeenCalledTimes(1);
+		expect(codeSandboxModule.start).not.toHaveBeenCalled();
+	});
 });
 
 test('should not seed the instance identity and should tolerate deployment key read errors', async () => {
