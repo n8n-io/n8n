@@ -508,6 +508,7 @@
 	"appPlan.overlay.allBuilt": "All {total} parts built",
 	"instanceAi.appBlueprint.title": "Review the plan",
 	"instanceAi.appBlueprint.changeTitle": "Review the planned change",
+	"instanceAi.appBlueprint.revised": "Plan revised: {feedback}",
 	"instanceAi.appPlan.title": "Plan: {name}",
 	"instanceAi.appPlan.hint": "Hover a part to see its data. Select a part and tell the Assistant what to change.",
 	"instanceAi.appPlan.select": "Select a part",

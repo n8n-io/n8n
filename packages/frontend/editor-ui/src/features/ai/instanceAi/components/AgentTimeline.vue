@@ -7,6 +7,7 @@ import {
 	type InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject } from 'vue';
 import {
@@ -283,6 +284,15 @@ function hasAppCreateError(tc: InstanceAiToolCallState): boolean {
 	return isRecord(tc.result) && tc.result.approved === true && typeof tc.result.error === 'string';
 }
 
+/**
+ * The change the user asked for on a blueprint card. The agent answers with a new
+ * card, so the old one collapses to this line and only the latest card stays open.
+ */
+function planRevision(tc: InstanceAiToolCallState): string | undefined {
+	if (!isRecord(tc.result) || tc.result.revisionRequested !== true) return undefined;
+	return typeof tc.result.feedback === 'string' ? tc.result.feedback : '';
+}
+
 function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefined {
 	if (isRecord(tc.result)) {
 		const parsed = appBlueprintSchema.safeParse(tc.result.blueprint);
@@ -340,6 +350,23 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 						:read-only="isCardReadOnly(block.toolCall)"
 						:expired="block.toolCall.confirmation.expired"
 					/>
+
+					<div
+						v-else-if="block.type === 'app-blueprint' && planRevision(block.toolCall) !== undefined"
+						:key="`revised-${block.toolCall.toolCallId}`"
+						:class="$style.planRevision"
+						:title="planRevision(block.toolCall)"
+						data-test-id="instance-ai-app-blueprint-revised"
+					>
+						<N8nIcon icon="pencil" size="small" color="text-light" />
+						<N8nText size="small" color="text-light" :class="$style.planRevisionText">
+							{{
+								i18n.baseText('instanceAi.appBlueprint.revised', {
+									interpolate: { feedback: planRevision(block.toolCall) ?? '' },
+								})
+							}}
+						</N8nText>
+					</div>
 
 					<InstanceAiAppBlueprint
 						v-else-if="block.type === 'app-blueprint' && block.toolCall.confirmation?.appBlueprint"
@@ -405,5 +432,18 @@ function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefi
 	&:last-child {
 		margin-bottom: 0;
 	}
+}
+
+.planRevision {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+.planRevisionText {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 </style>
