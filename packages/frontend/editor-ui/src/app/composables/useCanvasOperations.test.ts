@@ -1613,6 +1613,207 @@ describe('useCanvasOperations', () => {
 			expect(addNodeSpy).not.toHaveBeenCalled();
 			expect(useUIStore().resetLastInteractedWith).toHaveBeenCalled();
 		});
+
+		describe('Agent prompt defaults', () => {
+			beforeEach(() => {
+				useNodeTypesStore().nodeTypes = {
+					[AGENT_NODE_TYPE]: {
+						3.1: {
+							...mockNodeTypeDescription({ name: AGENT_NODE_TYPE, version: 3.1 }),
+							properties: [
+								createTestNodeProperties({
+									name: 'promptType',
+									type: 'options',
+									default: 'auto',
+									options: [
+										{ name: 'Connected Chat Trigger Node', value: 'auto' },
+										{ name: 'Define below', value: 'define' },
+									],
+								}),
+								createTestNodeProperties({
+									name: 'text',
+									type: 'string',
+									default: '={{ $json.chatInput }}',
+									displayOptions: { show: { promptType: ['auto'] } },
+								}),
+								createTestNodeProperties({
+									name: 'text',
+									type: 'string',
+									default: '',
+									displayOptions: { show: { promptType: ['define'] } },
+								}),
+							],
+						},
+					},
+				};
+				const addedNodes: INodeUi[] = [];
+				vi.mocked(workflowDocumentStoreInstance.addNode).mockImplementation((node) => {
+					addedNodes.push(node);
+				});
+				vi.mocked(workflowDocumentStoreInstance.getNodeById).mockImplementation((id) =>
+					addedNodes.find((node) => node.id === id),
+				);
+				vi.mocked(
+					workflowDocumentStoreInstance.checkIfNodeHasChatOrManualChatParent,
+				).mockReturnValue(false);
+			});
+
+			afterEach(() => {
+				expect(useToast().showError).not.toHaveBeenCalled();
+			});
+
+			it('should initialize an editable prompt without the chat input expression when no chat trigger is connected', async () => {
+				await useCanvasOperations().addNodesAndConnections([{ type: AGENT_NODE_TYPE }], [], {});
+
+				const historyStore = useHistoryStore();
+				expect(workflowDocumentStoreInstance.setNodeParameters).toHaveBeenCalledWith({
+					name: expect.any(String),
+					value: { promptType: 'define', text: '' },
+				});
+				expect(historyStore.pushCommandToUndo).toHaveBeenCalledWith(
+					expect.any(ReplaceNodeParametersCommand),
+				);
+				expect(historyStore.startRecordingUndo).toHaveBeenCalledTimes(1);
+				expect(historyStore.stopRecordingUndo).toHaveBeenCalledTimes(1);
+			});
+
+			it('should keep the chat prompt default when a chat trigger is connected', async () => {
+				vi.mocked(
+					workflowDocumentStoreInstance.checkIfNodeHasChatOrManualChatParent,
+				).mockReturnValue(true);
+
+				const { addedNodes } = await useCanvasOperations().addNodesAndConnections(
+					[{ type: AGENT_NODE_TYPE }],
+					[],
+					{},
+				);
+
+				expect(addedNodes[0].parameters).toEqual({
+					promptType: 'auto',
+					text: '={{ $json.chatInput }}',
+				});
+				expect(workflowDocumentStoreInstance.setNodeParameters).not.toHaveBeenCalled();
+			});
+
+			it('should initialize the prompt before opening the node editor', async () => {
+				const openEditor = vi.spyOn(
+					useNDVStore(workflowDocumentStoreInstance.documentId),
+					'setActiveNodeName',
+				);
+
+				await useCanvasOperations().addNodesAndConnections(
+					[{ type: AGENT_NODE_TYPE, openDetail: true }],
+					[],
+					{},
+				);
+				await nextTick();
+
+				expect(openEditor).toHaveBeenCalled();
+				expect(workflowDocumentStoreInstance.setNodeParameters).toHaveBeenCalledBefore(openEditor);
+			});
+
+			it.each([
+				['node positioning', 'getParentNodesByDepth'],
+				['prompt initialization', 'checkIfNodeHasChatOrManualChatParent'],
+			] as const)(
+				'should finish setup for each added node when %s fails',
+				async (_stage, action) => {
+					const error = new Error('Node initialization failed');
+					vi.mocked(workflowDocumentStoreInstance[action]).mockImplementationOnce(() => {
+						throw error;
+					});
+					const openEditor = vi.spyOn(
+						useNDVStore(workflowDocumentStoreInstance.documentId),
+						'setActiveNodeName',
+					);
+					const updateNodeParameterIssues = vi.fn();
+					const nodeHelpersOriginal = nodeHelpers.useNodeHelpers();
+					vi.spyOn(nodeHelpers, 'useNodeHelpers').mockReturnValue({
+						...nodeHelpersOriginal,
+						updateNodeParameterIssues,
+					});
+					const nodes = [
+						{ type: AGENT_NODE_TYPE, name: 'Agent 1' },
+						{ type: AGENT_NODE_TYPE, name: 'Agent 2', openDetail: true },
+					];
+
+					await expect(useCanvasOperations().addNodesAndConnections(nodes, [], {})).rejects.toBe(
+						error,
+					);
+					await nextTick();
+
+					const historyStore = useHistoryStore();
+					expect(historyStore.startRecordingUndo).toHaveBeenCalledTimes(1);
+					expect(historyStore.stopRecordingUndo).toHaveBeenCalledTimes(1);
+					expect(historyStore.stopRecordingUndo).toHaveBeenCalledBefore(openEditor);
+					for (const { name } of nodes) {
+						expect(workflowDocumentStoreInstance.setNodePristine).toHaveBeenCalledWith(name, true);
+						expect(updateNodeParameterIssues).toHaveBeenCalledWith(
+							expect.objectContaining({ name }),
+						);
+					}
+					expect(openEditor).toHaveBeenCalledWith('Agent 2', 'added_new_node');
+				},
+			);
+
+			it.each([{ trackHistory: false }, { trackBulk: false }])(
+				'should leave undo recording to the caller when prompt initialization fails with %j',
+				async (options) => {
+					const error = new Error('Prompt initialization failed');
+					vi.mocked(
+						workflowDocumentStoreInstance.checkIfNodeHasChatOrManualChatParent,
+					).mockImplementationOnce(() => {
+						throw error;
+					});
+
+					await expect(
+						useCanvasOperations().addNodesAndConnections([{ type: AGENT_NODE_TYPE }], [], options),
+					).rejects.toBe(error);
+					await nextTick();
+
+					const historyStore = useHistoryStore();
+					expect(historyStore.startRecordingUndo).not.toHaveBeenCalled();
+					expect(historyStore.stopRecordingUndo).not.toHaveBeenCalled();
+				},
+			);
+
+			it.each(['auto', 'define'])(
+				'should keep an explicit %s prompt source',
+				async (promptType) => {
+					const { addedNodes } = await useCanvasOperations().addNodesAndConnections(
+						[{ type: AGENT_NODE_TYPE, parameters: { promptType, text: 'A saved prompt' } }],
+						[],
+						{},
+					);
+
+					expect(addedNodes[0].parameters).toEqual({ promptType, text: 'A saved prompt' });
+					expect(workflowDocumentStoreInstance.setNodeParameters).not.toHaveBeenCalled();
+				},
+			);
+
+			it('should keep supplied prompt text when it changes the default source', async () => {
+				await useCanvasOperations().addNodesAndConnections(
+					[{ type: AGENT_NODE_TYPE, parameters: { text: 'A supplied prompt' } }],
+					[],
+					{},
+				);
+
+				expect(workflowDocumentStoreInstance.setNodeParameters).toHaveBeenCalledWith({
+					name: expect.any(String),
+					value: { promptType: 'define', text: 'A supplied prompt' },
+				});
+			});
+
+			it('should keep imported Agent parameters', async () => {
+				const addedNodes = await useCanvasOperations().addNodes([{ type: AGENT_NODE_TYPE }]);
+
+				expect(addedNodes[0].parameters).toEqual({
+					promptType: 'auto',
+					text: '={{ $json.chatInput }}',
+				});
+				expect(workflowDocumentStoreInstance.setNodeParameters).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('addNodes', () => {
