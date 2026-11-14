@@ -1,4 +1,9 @@
-import type { CommandResult, WorkspaceFilesystem, WorkspaceSandbox } from '@n8n/agents/sandbox';
+import type {
+	CommandResult,
+	SandboxProvider,
+	WorkspaceFilesystem,
+	WorkspaceSandbox,
+} from '@n8n/agents/sandbox';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
@@ -48,7 +53,7 @@ describe('AgentKnowledgeSandboxProvider', () => {
 		});
 
 		it('acquires the knowledge sandbox of the scope and returns the runtime handle untouched', async () => {
-			const runtime = mock<AgentSandboxRuntime>({
+			const runtime = mock<AgentSandboxRuntime<SandboxProvider>>({
 				provider: 'daytona',
 				cacheKey: 'daytona:knowledge:sandbox-1',
 			});
@@ -119,6 +124,7 @@ describe('AgentKnowledgeSandboxProvider', () => {
 						sandboxSnapshot: '',
 						sandboxTimeout: 300_000,
 						sandboxEphemeral: false,
+						sandboxProvider: '',
 					} as AgentsConfig,
 					mock<Logger>(),
 					mock<InstanceSettings>({ instanceId: 'instance-1' }),
