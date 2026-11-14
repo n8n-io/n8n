@@ -129,7 +129,7 @@ export const APPS_TELEMETRY = defineTelemetryEvents({
 		description:
 			'A user answered the plan of an app in the n8n Assistant: approved it, asked for a change, or cancelled. Fires once per answer, so one plan can fire several revisions before its approval. Covers new apps and changes to existing apps.',
 		properties: z.object({
-			thread_id: z.string(),
+			thread_id: z.string().optional().describe('The n8n Assistant thread of the plan'),
 			app_id: z.string().optional().describe('Only for a change to an existing app'),
 			is_change: z.boolean().describe('True for a change to an existing app, false for a new app'),
 			outcome: z.enum(['approved', 'revised', 'cancelled']),

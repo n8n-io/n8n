@@ -476,6 +476,7 @@ describe('sanitizeDetailHtml', () => {
 		expect(clean).toContain('class="kpi"');
 		expect(clean).toMatch(/<svg viewBox="0 0 10 10">/i);
 		expect(clean).toContain('d="M0 0L10 10"');
+		expect(sanitizeDetailHtml('<linearGradient id="g"></linearGradient>')).toContain('id="g"');
 	});
 
 	it('removes scripts, handlers and unsafe links, also when encoded', () => {

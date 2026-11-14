@@ -17,7 +17,7 @@ import {
 	renderPlanPlaceholders,
 	WIREFRAME_CSS,
 } from '@n8n/api-types';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -217,15 +217,18 @@ function trackPlanReview(
 	const plan = resume.blueprint.plan;
 	if (!plan) return;
 	const parts = listPlanComponents(plan);
-	context.trackTelemetry?.(TELEMETRY_EVENT.APPS.USER_REVIEWED_APP_PLAN.name, {
-		thread_id: context.threadId,
+	const event = TELEMETRY_EVENT.APPS.USER_REVIEWED_APP_PLAN;
+	// Typed against the registry schema: the context only takes an event name and a property bag.
+	const properties: InferTelemetryProps<typeof event> = {
+		...(context.threadId ? { thread_id: context.threadId } : {}),
 		...(appId ? { app_id: appId } : {}),
 		is_change: appId !== undefined,
 		outcome: resume.approved ? 'approved' : resume.revise ? 'revised' : 'cancelled',
 		part_count: parts.length,
 		new_part_count: parts.filter((part) => !part.existing).length,
 		...(resume.revise ? { selected_part_count: resume.revise.planIds?.length ?? 0 } : {}),
-	});
+	};
+	context.trackTelemetry?.(event.name, properties);
 }
 
 async function commit(
@@ -417,7 +420,7 @@ export function createAppsTool(context: InstanceAiContext) {
 						return { approved: false, blueprint: resumeData.blueprint };
 					}
 					if (!resumeData.blueprint.plan) {
-						return { approved: true, error: 'The approved blueprint has no `plan`.' };
+						return { error: 'The approved blueprint has no `plan`.' };
 					}
 					return {
 						approved: true,

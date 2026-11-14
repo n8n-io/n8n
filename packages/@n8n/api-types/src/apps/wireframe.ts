@@ -222,6 +222,7 @@ const SVG_ATTRIBUTES = [
 	'stroke-width',
 	'stroke-dasharray',
 	'stroke-linecap',
+	'id',
 	'opacity',
 	'transform',
 	'text-anchor',
@@ -399,7 +400,7 @@ export function renderWireframeBlock(
 	if (component.detail && !component.existing) {
 		// In the app the host stays empty: `mountPlanDetails()` attaches the content.
 		return [
-			`<div class="wf-block wf-hifi wf-k-${component.kind}${component.existing ? ' wf-existing' : ''} wf-theme-${options.theme ?? 'both'}" data-plan-id="${component.id}" data-plan-kind="${component.kind}"`,
+			`<div class="wf-block wf-hifi wf-k-${component.kind} wf-theme-${options.theme ?? 'both'}" data-plan-id="${component.id}" data-plan-kind="${component.kind}"`,
 			component.kind === 'nav' ? '' : ` style="grid-column: span ${component.span ?? 12}"`,
 			component.opens ? ` data-plan-opens="${component.opens}"` : '',
 			options.vue ? ' v-pre>' : '>',
@@ -705,7 +706,7 @@ export const PLAN_OVERLAY_CSS = `
 
 /**
  * The text of the plan overlay, in English. `{name}` marks a value. The editor sends
- * translations with a `labels` message. A published app has no editor, so it keeps these.
+ * translations with a `labels` message. Without an editor, as in the MCP App, the overlay keeps these.
  */
 export const PLAN_OVERLAY_LABELS = {
 	shell: 'Layout and theme',
@@ -1158,11 +1159,25 @@ export function planOverlayMain(
 		window.clearTimeout(switchTimer);
 		if (tip && !pinned) hideTimer = window.setTimeout(hideTip, 400);
 	});
+	// Set while Escape moves focus back to a block, so that focus does not open the card again.
+	let restoringFocus = false;
+	function pin(target: Element) {
+		pinned = true;
+		tip?.classList.add('pinned');
+		// A pinned card holds buttons, so it is a dialog, not a tooltip.
+		tip?.setAttribute('role', 'dialog');
+		tip?.setAttribute('aria-label', target.getAttribute('aria-label') ?? '');
+	}
 	doc.addEventListener('keydown', (event) => {
 		if (event.key === 'Escape') {
 			const back = tipFor;
+			const focusInCard = !!tip && tip.contains(doc.activeElement);
 			hideTip();
-			if (back instanceof HTMLElement) back.focus();
+			if (focusInCard && back instanceof HTMLElement) {
+				restoringFocus = true;
+				back.focus();
+				restoringFocus = false;
+			}
 			return;
 		}
 		// Enter and Space act like a click on a focused wireframe block or page link.
@@ -1174,19 +1189,21 @@ export function planOverlayMain(
 		) {
 			event.preventDefault();
 			target.click();
+			// The card sits at the end of the page, so move focus into it to reach its buttons.
+			if (pinned && tipFor === target) tip?.querySelector<HTMLElement>('button, a')?.focus();
 		}
 	});
 	// Keyboard users get the same card as pointer users when they tab to a planned block.
 	doc.addEventListener('focusin', (event) => {
 		const target = event.target instanceof Element ? event.target : null;
-		if (!target || pinned || tip?.contains(target)) return;
+		if (!target || restoringFocus || pinned || tip?.contains(target)) return;
 		const id = target.getAttribute('data-plan-id');
 		if (id && byId[id]) showTip(target, id);
 	});
 
 	doc.addEventListener('focusout', (event) => {
 		const next = event.relatedTarget instanceof Element ? event.relatedTarget : null;
-		if (pinned || (next && (tip?.contains(next) || next.hasAttribute('data-plan-id')))) return;
+		if (next && (tip?.contains(next) || next === tipFor)) return;
 		hideTip();
 	});
 
@@ -1196,7 +1213,8 @@ export function planOverlayMain(
 			if (node.hasAttribute('data-plan-ov-focus')) return;
 			node.setAttribute('data-plan-ov-focus', '');
 			node.setAttribute('tabindex', '0');
-			node.setAttribute('role', 'button');
+			// A detailed block can hold form controls, which a button must not contain.
+			node.setAttribute('role', node.classList.contains('wf-hifi') ? 'group' : 'button');
 			const id = node.getAttribute('data-plan-id');
 			const label = id ? byId[id]?.label : undefined;
 			if (label && !node.hasAttribute('aria-label')) node.setAttribute('aria-label', label);
@@ -1232,8 +1250,7 @@ export function planOverlayMain(
 		const id = node?.getAttribute('data-plan-id');
 		if (node && id && byId[id]) {
 			showTip(node, id);
-			pinned = true;
-			tip?.classList.add('pinned');
+			pin(node);
 		} else {
 			hideTip();
 		}
