@@ -3,7 +3,6 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { BinaryDataConfig } from 'n8n-core';
 
-import { ActiveExecutions } from '@/active-executions';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
@@ -38,7 +37,7 @@ export class Webhook extends BaseCommand {
 		try {
 			await this.externalHooks?.run('n8n.stop');
 
-			await Container.get(ActiveExecutions).shutdown();
+			await this.drainInFlightWork();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}

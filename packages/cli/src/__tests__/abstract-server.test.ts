@@ -172,7 +172,7 @@ describe('AbstractServer', () => {
 
 			await testServer.init();
 
-			expect(mockApp.use).toHaveBeenNthCalledWith(1, hosting.dispatch);
+			expect(mockApp.use).toHaveBeenNthCalledWith(2, hosting.dispatch);
 
 			await testServer.start();
 
@@ -223,7 +223,7 @@ describe('AbstractServer', () => {
 			await testServer.init();
 			await testServer.start();
 
-			expect(mockApp.use).toHaveBeenNthCalledWith(1, hosting.dispatch);
+			expect(mockApp.use).toHaveBeenNthCalledWith(2, hosting.dispatch);
 			expect(moduleRegistry.isActive).toHaveBeenCalledWith('apps');
 			expect(router.use).toHaveBeenCalledOnce();
 			expect(controllers.activate).not.toHaveBeenCalled();
@@ -288,6 +288,121 @@ describe('AbstractServer', () => {
 
 			expect(res.status).toHaveBeenCalledWith(503);
 			expect(res.send).toHaveBeenCalledWith({ status: 'error' });
+		});
+	});
+
+	describe('shutdown', () => {
+		type Middleware = (req: express.Request, res: express.Response, next: () => void) => void;
+
+		const shutdownGate = () => mockApp.use.mock.calls[0][0] as unknown as Middleware;
+
+		const admitRequest = (headersSent = false) => {
+			const res = mock<express.Response>({ headersSent });
+			res.status.mockReturnValue(res);
+			let emitClose = () => {};
+			res.once.mockImplementation((event: string | symbol, listener: () => void) => {
+				if (event === 'close') emitClose = listener;
+				return res;
+			});
+			const next = vi.fn();
+			shutdownGate()(mock<express.Request>(), res, next);
+			return { res, next, emitClose: () => emitClose() };
+		};
+
+		const trackSettled = (promise: Promise<void>) => {
+			const state = { settled: false };
+			void promise.then(() => {
+				state.settled = true;
+			});
+			return state;
+		};
+
+		it('should stop accepting connections when told to', async () => {
+			await testServer.init();
+
+			testServer.stopAcceptingRequests();
+
+			expect(mockServer.close).toHaveBeenCalledOnce();
+		});
+
+		it('should reject requests on open connections with 503 once it stops accepting requests', async () => {
+			await testServer.init();
+			const admitted = admitRequest();
+			expect(admitted.next).toHaveBeenCalledOnce();
+
+			testServer.stopAcceptingRequests();
+			const rejected = admitRequest();
+
+			expect(rejected.next).not.toHaveBeenCalled();
+			expect(rejected.res.setHeader).toHaveBeenCalledWith('Connection', 'close');
+			expect(rejected.res.status).toHaveBeenCalledWith(503);
+			expect(rejected.res.json).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'n8n is shutting down' }),
+			);
+		});
+
+		describe('waitForRequests', () => {
+			beforeEach(() => {
+				vi.useFakeTimers();
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			it('should wait until every admitted request has a response', async () => {
+				await testServer.init();
+				const { res } = admitRequest();
+				testServer.stopAcceptingRequests();
+
+				const waiting = testServer.waitForRequests(Date.now() + 10_000);
+				const state = trackSettled(waiting);
+				await vi.advanceTimersByTimeAsync(1_000);
+				expect(state.settled).toBe(false);
+
+				Object.assign(res, { headersSent: true });
+				await vi.advanceTimersByTimeAsync(100);
+
+				expect(state.settled).toBe(true);
+			});
+
+			it('should stop waiting for a request that closes without a response', async () => {
+				await testServer.init();
+				const { emitClose } = admitRequest();
+
+				const state = trackSettled(testServer.waitForRequests(Date.now() + 10_000));
+				emitClose();
+				await vi.advanceTimersByTimeAsync(100);
+
+				expect(state.settled).toBe(true);
+			});
+
+			it('should give up at the deadline', async () => {
+				await testServer.init();
+				admitRequest();
+
+				const state = trackSettled(testServer.waitForRequests(Date.now() + 2_000));
+				await vi.advanceTimersByTimeAsync(1_900);
+				expect(state.settled).toBe(false);
+
+				await vi.advanceTimersByTimeAsync(100);
+				expect(state.settled).toBe(true);
+			});
+
+			it('should not wait for streams that already sent their response headers', async () => {
+				await testServer.init();
+				admitRequest(true);
+
+				await expect(testServer.waitForRequests(Date.now() + 10_000)).resolves.toBeUndefined();
+			});
+		});
+
+		it('should close the connections that are still open', async () => {
+			await testServer.init();
+
+			testServer.closeConnections();
+
+			expect(mockServer.closeAllConnections).toHaveBeenCalledOnce();
 		});
 	});
 });

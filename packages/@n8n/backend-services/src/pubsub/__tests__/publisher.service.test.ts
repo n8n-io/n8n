@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Redis as SingleNodeClient } from 'ioredis';
@@ -6,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { RedisClientService } from '../../services/redis-client.service';
 import { Publisher } from '../publisher.service';
+import { PUBLISHER_SHUTDOWN_TIMEOUT_MS } from '../pubsub.constants';
 import type { PubSub } from '../pubsub.types';
 
 describe('Publisher', () => {
@@ -45,16 +47,76 @@ describe('Publisher', () => {
 	});
 
 	describe('shutdown', () => {
-		it('should disconnect Redis client', () => {
-			const publisher = new Publisher(
-				logger,
+		const scopedLogger = mock<Logger>();
+		const createPublisher = () =>
+			new Publisher(
+				mock<Logger>({ scoped: () => scopedLogger }),
 				redisClientService,
 				instanceSettings,
 				executionsConfig,
 				globalConfig,
 			);
-			publisher.shutdown();
-			expect(client.disconnect).toHaveBeenCalled();
+
+		beforeEach(() => {
+			client.quit.mockReset();
+			client.disconnect.mockReset();
+			scopedLogger.warn.mockReset();
+		});
+
+		it('should wait for pending commands before it disconnects', async () => {
+			let finishQuit = () => {};
+			client.quit.mockReturnValue(
+				new Promise<'OK'>((resolve) => {
+					finishQuit = () => resolve('OK');
+				}),
+			);
+
+			const shuttingDown = createPublisher().shutdown();
+			await Promise.resolve();
+
+			expect(client.quit).toHaveBeenCalledOnce();
+			expect(client.disconnect).not.toHaveBeenCalled();
+
+			finishQuit();
+			await shuttingDown;
+
+			expect(client.disconnect).toHaveBeenCalledOnce();
+			expect(scopedLogger.warn).not.toHaveBeenCalled();
+		});
+
+		it('should disconnect when pending commands do not finish in time', async () => {
+			vi.useFakeTimers();
+			try {
+				client.quit.mockReturnValue(new Promise<'OK'>(() => {}));
+
+				const shuttingDown = createPublisher().shutdown();
+				await vi.advanceTimersByTimeAsync(PUBLISHER_SHUTDOWN_TIMEOUT_MS - 1);
+				expect(client.disconnect).not.toHaveBeenCalled();
+				expect(scopedLogger.warn).not.toHaveBeenCalled();
+
+				await vi.advanceTimersByTimeAsync(1);
+				await shuttingDown;
+
+				expect(client.disconnect).toHaveBeenCalledOnce();
+				expect(scopedLogger.warn).toHaveBeenCalledWith(
+					`Pubsub publisher did not finish its pending commands within ${PUBLISHER_SHUTDOWN_TIMEOUT_MS}ms, disconnecting`,
+				);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should log the failure and disconnect when quit fails', async () => {
+			const error = new Error('Connection is closed.');
+			client.quit.mockRejectedValue(error);
+
+			await expect(createPublisher().shutdown()).resolves.toBeUndefined();
+
+			expect(scopedLogger.warn).toHaveBeenCalledWith(
+				'Failed to quit the pubsub publisher cleanly',
+				{ error },
+			);
+			expect(client.disconnect).toHaveBeenCalledOnce();
 		});
 	});
 

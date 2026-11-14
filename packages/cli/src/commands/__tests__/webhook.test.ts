@@ -1,9 +1,12 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import { BinaryDataConfig } from 'n8n-core';
 import type { Mock, MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import { ActiveExecutions } from '@/active-executions';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
@@ -66,6 +69,45 @@ describe('Webhook', () => {
 			await new Webhook().initOrchestration();
 
 			expect(initSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('stopProcess', () => {
+		it('should drain in-flight work, then close MCP sessions and open connections', async () => {
+			const activeExecutions = mockInstance(ActiveExecutions);
+			activeExecutions.shutdown.mockResolvedValue(undefined);
+			mockWebhookServer.waitForRequests.mockResolvedValue(undefined);
+			const mcpServer = mock<McpServer>();
+			let settleToolCalls = () => {};
+			mcpServer.settleToolCalls.mockReturnValue(
+				new Promise<void>((resolve) => {
+					settleToolCalls = resolve;
+				}),
+			);
+			mcpServer.closeSessions.mockResolvedValue(undefined);
+			const instance = vi.spyOn(McpServer, 'instance').mockReturnValue(mcpServer);
+			const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+			try {
+				const webhook = Object.assign(new Webhook(), { dbConnection });
+				const stopping = webhook.stopProcess();
+
+				await vi.waitFor(() => expect(mcpServer.settleToolCalls).toHaveBeenCalled());
+				expect(mockWebhookServer.waitForRequests).toHaveBeenCalledOnce();
+				expect(activeExecutions.shutdown).toHaveBeenCalledOnce();
+				expect(mcpServer.closeSessions).not.toHaveBeenCalled();
+				expect(exitSpy).not.toHaveBeenCalled();
+
+				settleToolCalls();
+				await stopping;
+
+				expect(mcpServer.closeSessions).toHaveBeenCalledOnce();
+				expect(mockWebhookServer.closeConnections).toHaveBeenCalledOnce();
+				expect(exitSpy).toHaveBeenCalledOnce();
+			} finally {
+				exitSpy.mockRestore();
+				instance.mockRestore();
+			}
 		});
 	});
 

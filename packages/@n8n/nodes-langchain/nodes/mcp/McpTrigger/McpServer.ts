@@ -16,6 +16,7 @@ import type { IncomingMessage } from 'http';
 import type { CredentialCheckResult, Logger } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import { OperationalError } from '@n8n/errors';
+import { raceAbort } from '@n8n/utils/race-abort';
 
 import { ExecutionCoordinator } from './execution/ExecutionCoordinator';
 import type { ExecutionStrategy } from './execution/ExecutionStrategy';
@@ -43,6 +44,8 @@ import { TransportFactory } from './transport/TransportFactory';
  * flow, so this is generous relative to the SDK's default request timeout.
  */
 const ELICITATION_TIMEOUT_MS = 300_000;
+
+const SHUTDOWN_GRACE_MS = 1_000;
 
 function toolDescriptors(tools: Tool[]) {
 	return tools.map((tool) => ({
@@ -88,6 +91,10 @@ export class McpServer {
 	private idleTtlMs: number;
 	private sweepIntervalMs: number;
 	private sweepTimer?: ReturnType<typeof setInterval>;
+
+	private activeToolCalls = 0;
+	private toolCallsIdleWaiters: Array<() => void> = [];
+	private readonly toolCallCancellation = new AbortController();
 
 	private constructor(logger: Logger) {
 		this.logger = logger;
@@ -140,7 +147,7 @@ export class McpServer {
 					await this.sessionManager.registerSession(sessionId, server, transport, tools);
 					transport.onclose = async () => {
 						this.logger.debug(`Deleting transport for ${sessionId}`);
-						await this.cleanupSession(sessionId);
+						await this.releaseSession(sessionId);
 					};
 				},
 			},
@@ -467,6 +474,67 @@ export class McpServer {
 		return this.pendingCallsManager;
 	}
 
+	async settleToolCalls(deadline: number): Promise<void> {
+		this.stopSweep();
+		if (this.activeToolCalls > 0) {
+			this.logger.info(`Waiting for ${this.activeToolCalls} MCP tool calls to finish...`);
+			if (!(await this.waitForToolCalls(deadline))) {
+				this.logger.warn(
+					`Cancelling ${this.activeToolCalls} MCP tool calls that did not finish before shutdown`,
+				);
+			}
+		}
+
+		this.toolCallCancellation.abort();
+		await this.waitForToolCalls(Date.now() + SHUTDOWN_GRACE_MS);
+	}
+
+	async closeSessions(): Promise<void> {
+		const closing = Promise.all(
+			this.sessionManager.getSessionIds().map(async (sessionId) => {
+				if (this.sessionManager.getTransport(sessionId)?.transportType === 'sse') {
+					await this.releaseSession(sessionId);
+				} else {
+					await this.sessionManager.detachSession(sessionId);
+				}
+			}),
+		);
+
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		await Promise.race([
+			closing,
+			new Promise<void>((resolve) => {
+				timer = setTimeout(resolve, SHUTDOWN_GRACE_MS);
+			}),
+		]);
+		clearTimeout(timer);
+	}
+
+	private async waitForToolCalls(deadline: number): Promise<boolean> {
+		if (this.activeToolCalls === 0) return true;
+
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const settled = await new Promise<boolean>((resolve) => {
+			this.toolCallsIdleWaiters.push(() => resolve(true));
+			timer = setTimeout(() => resolve(false), Math.max(0, deadline - Date.now()));
+		});
+		clearTimeout(timer);
+		return settled;
+	}
+
+	private finishToolCall(): void {
+		this.activeToolCalls--;
+		if (this.activeToolCalls > 0) return;
+		for (const notifyIdle of this.toolCallsIdleWaiters.splice(0)) notifyIdle();
+	}
+
+	private async cancellable<T>(run: () => Promise<T>): Promise<T> {
+		const { signal } = this.toolCallCancellation;
+		const shutdownError = () => new OperationalError('n8n is shutting down');
+		if (signal.aborted) throw shutdownError();
+		return await raceAbort(run(), signal, shutdownError);
+	}
+
 	private createServer(serverName: string, instructions?: string): Server {
 		return new Server(
 			{ name: serverName, version: '0.1.0' },
@@ -487,7 +555,7 @@ export class McpServer {
 
 		resp.on('close', async () => {
 			this.logger.debug(`Deleting transport for ${sessionId}`);
-			await this.cleanupSession(sessionId);
+			await this.releaseSession(sessionId);
 		});
 
 		await server.connect(transport);
@@ -510,6 +578,18 @@ export class McpServer {
 		await this.sessionManager.destroySession(sessionId);
 	}
 
+	private async releaseSession(sessionId: string): Promise<void> {
+		if (!this.hasSession(sessionId)) return;
+
+		try {
+			await this.cleanupSession(sessionId);
+		} catch (error) {
+			this.logger.warn(
+				`Failed to release MCP session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
 	private async recreateStreamableHttpTransport(
 		sessionId: string,
 		serverName: string,
@@ -530,7 +610,7 @@ export class McpServer {
 
 		transport.onclose = async () => {
 			this.logger.debug(`Deleting recreated transport for ${sessionId}`);
-			await this.cleanupSession(sessionId);
+			await this.releaseSession(sessionId);
 		};
 
 		this.setupHandlers(server);
@@ -571,14 +651,17 @@ export class McpServer {
 			try {
 				const outcomes: CredentialGateElicitationOutcome[] = [];
 				for (const cred of connectable) {
-					const { action } = await server.elicitInput(
-						{
-							mode: 'url',
-							elicitationId: randomUUID(),
-							url: cred.authorizationUrl!,
-							message: `Connect ${cred.credentialName} (${cred.credentialType}) to run this tool.`,
-						},
-						{ timeout: ELICITATION_TIMEOUT_MS },
+					const { action } = await this.cancellable(
+						async () =>
+							await server.elicitInput(
+								{
+									mode: 'url',
+									elicitationId: randomUUID(),
+									url: cred.authorizationUrl!,
+									message: `Connect ${cred.credentialName} (${cred.credentialType}) to run this tool.`,
+								},
+								{ timeout: ELICITATION_TIMEOUT_MS },
+							),
 					);
 					outcomes.push({
 						credentialName: cred.credentialName,
@@ -620,6 +703,7 @@ export class McpServer {
 
 			const callId = extra.requestId ? `${extra.sessionId}_${extra.requestId}` : extra.sessionId;
 
+			this.activeToolCalls++;
 			try {
 				if (!request.params?.name || !request.params?.arguments) {
 					throw new OperationalError('Require a name and arguments for the tool call');
@@ -658,10 +742,10 @@ export class McpServer {
 						}
 
 						const strategy = this.executionCoordinator.getStrategy() as QueuedExecutionStrategy;
-						const result = await strategy.executeTool(requestedTool, toolArguments, {
-							sessionId: extra.sessionId,
-							messageId: requestId,
-						});
+						const context = { sessionId: extra.sessionId, messageId: requestId };
+						const result = await this.cancellable(
+							async () => await strategy.executeTool(requestedTool, toolArguments, context),
+						);
 
 						return MessageFormatter.formatToolResult(
 							result,
@@ -670,10 +754,11 @@ export class McpServer {
 						);
 					}
 
-					const result = await this.executionCoordinator.executeTool(requestedTool, toolArguments, {
-						sessionId: extra.sessionId,
-						messageId: extra.requestId?.toString(),
-					});
+					const context = { sessionId: extra.sessionId, messageId: extra.requestId?.toString() };
+					const result = await this.cancellable(
+						async () =>
+							await this.executionCoordinator.executeTool(requestedTool, toolArguments, context),
+					);
 
 					return MessageFormatter.formatToolResult(
 						result,
@@ -690,6 +775,7 @@ export class McpServer {
 			} finally {
 				// No-op when already resolved (queue mode, credential gate, non-SSE).
 				this.resolveFunctions[callId]?.();
+				this.finishToolCall();
 			}
 		});
 
