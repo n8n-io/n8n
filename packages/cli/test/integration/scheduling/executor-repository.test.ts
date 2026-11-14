@@ -1039,6 +1039,28 @@ describe('ScheduledTaskRepository executor methods', () => {
 		});
 	});
 
+	describe('task id reuse after deleting the newest task', () => {
+		it('does not let a claim on a deleted task act on a task inserted after it', async () => {
+			await createTask();
+			const [stale] = await taskRepository.claimDueTasks(claimOpts({ host: HOST_A }));
+			await taskRepository.delete({ id: stale.id });
+
+			await createTask();
+			const [fresh] = await taskRepository.claimDueTasks(claimOpts({ host: HOST_A }));
+			expect(fresh.leaseEpoch).toBe(stale.leaseEpoch);
+
+			expect(Number(fresh.id)).toBeGreaterThan(Number(stale.id));
+			expect(
+				await taskRepository.completeTask({
+					host: HOST_A,
+					id: stale.id,
+					claimedEpoch: stale.leaseEpoch,
+				}),
+			).toBe(0);
+			expect((await reload(fresh.id)).status).toBe('running');
+		});
+	});
+
 	describe('reaper primitives', () => {
 		// A `running` row with an already-past lease: what the reaper sweep recovers.
 		// The running-lease CHECK only requires a lease to be present, not future.
