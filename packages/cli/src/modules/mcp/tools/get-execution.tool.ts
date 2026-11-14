@@ -1,13 +1,14 @@
 import { type ExecutionRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import type { IPinData, IRunData, IRunExecutionData, ITaskDataConnections } from 'n8n-workflow';
+import type { IRunExecutionData } from 'n8n-workflow';
 import { jsonStringify, replaceCircularReferences } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import { filterExecutionData } from './execution-data-filter';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -217,54 +218,3 @@ export const createGetExecutionTool = (
 	},
 });
 
-function filterExecutionData(
-	data: IRunExecutionData,
-	nodeNames?: string[],
-	truncateData?: number,
-): IRunExecutionData {
-	// Shallow clone is sufficient — the result is serialized immediately and never mutated
-	const filtered = { ...data, resultData: { ...data.resultData } };
-
-	let runData = filtered.resultData.runData ?? {};
-
-	if (nodeNames !== undefined) {
-		const filteredRunData: IRunData = {};
-		for (const name of nodeNames) {
-			if (name in runData) {
-				filteredRunData[name] = runData[name];
-			}
-		}
-		runData = filteredRunData;
-
-		if (filtered.resultData.pinData) {
-			const filteredPinData: IPinData = {};
-			for (const name of nodeNames) {
-				if (name in filtered.resultData.pinData) {
-					filteredPinData[name] = filtered.resultData.pinData[name];
-				}
-			}
-			filtered.resultData.pinData = filteredPinData;
-		}
-	}
-
-	if (truncateData) {
-		const truncated: IRunData = {};
-		for (const [nodeName, taskDataArray] of Object.entries(runData)) {
-			truncated[nodeName] = taskDataArray.map((taskData) => {
-				if (!taskData.data) return taskData;
-				const truncatedConnections: ITaskDataConnections = {};
-				for (const [connType, outputs] of Object.entries(taskData.data)) {
-					truncatedConnections[connType] = outputs.map((items) =>
-						items ? items.slice(0, truncateData) : items,
-					);
-				}
-				return { ...taskData, data: truncatedConnections };
-			});
-		}
-		runData = truncated;
-	}
-
-	filtered.resultData.runData = runData;
-
-	return filtered;
-}
