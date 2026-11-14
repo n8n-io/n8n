@@ -413,6 +413,7 @@ describe('requestWithAuthentication (legacy) — preAuthentication retry', () =>
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockNode.name = 'test-node';
+		mockThis.getNode.mockReturnValue(mockNode);
 		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
 		mockThis.getCredentials.mockResolvedValue({ accessToken: 'stale' });
 		mockAdditionalData.credentialsHelper.preAuthentication.mockResolvedValue({
@@ -441,6 +442,61 @@ describe('requestWithAuthentication (legacy) — preAuthentication retry', () =>
 		expect(result).toEqual({ ok: true });
 		expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(2);
 	});
+
+	test.each([304, 403, 404, 500])(
+		'does not refresh after %i when the caller selects 401 retries',
+		async (statusCode) => {
+			const requestError = Object.assign(new Error('Request failed'), { statusCode });
+			proxyRequestToAxiosMock.mockRejectedValueOnce(requestError);
+
+			await expect(
+				requestWithAuthentication.call(
+					mockThis,
+					'testPreAuth',
+					{ method: 'GET', uri: 'https://api.example.com/items' },
+					mockWorkflow,
+					mockNode,
+					mockAdditionalData,
+					{ preAuthenticationRetryStatusCode: 401 },
+				),
+			).rejects.toSatisfy(
+				(thrown: unknown) => thrown instanceof NodeApiError && thrown.cause === requestError,
+			);
+
+			expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(1);
+			expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenCalledTimes(1);
+		},
+	);
+
+	test.each([{ retryStatusCode: 401 }, { retryStatusCode: [401] }])(
+		'refreshes after a selected status (%j)',
+		async ({ retryStatusCode }) => {
+			const requestError = Object.assign(new Error('Token expired'), { statusCode: 401 });
+			proxyRequestToAxiosMock
+				.mockRejectedValueOnce(requestError)
+				.mockResolvedValueOnce({ ok: true });
+
+			expect(
+				await requestWithAuthentication.call(
+					mockThis,
+					'testPreAuth',
+					{ method: 'GET', uri: 'https://api.example.com/items' },
+					mockWorkflow,
+					mockNode,
+					mockAdditionalData,
+					{ preAuthenticationRetryStatusCode: retryStatusCode },
+				),
+			).toEqual({ ok: true });
+			expect(proxyRequestToAxiosMock).toHaveBeenCalledTimes(2);
+			expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenLastCalledWith(
+				{ helpers: mockThis.helpers },
+				expect.anything(),
+				'testPreAuth',
+				mockNode,
+				true,
+			);
+		},
+	);
 
 	test('refreshes but does NOT resend a drained stream body; the original error surfaces', async () => {
 		const requestError = Object.assign(new Error('401 - token expired'), {

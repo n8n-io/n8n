@@ -54,9 +54,9 @@ export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
 	credentialsDecrypted?: ICredentialsDecrypted;
 	/**
-	 * Status code(s) that trigger the generic preAuthentication refresh-and-resend in
-	 * `httpRequestWithAuthentication` (non-OAuth1/OAuth2 credentials only). Defaults to 401;
-	 * override when a gateway signals an expired token with a different status.
+	 * Status codes that trigger a preAuthentication retry for non-OAuth credentials.
+	 * `httpRequestWithAuthentication` defaults to 401. The legacy `requestWithAuthentication`
+	 * retries all errors unless this option is set.
 	 */
 	preAuthenticationRetryStatusCode?: number | number[];
 	/**
@@ -698,6 +698,8 @@ export interface IRequestOptions {
 	rejectUnauthorized?: boolean;
 	proxy?: string | AxiosProxyConfig;
 	simple?: boolean;
+	/** HTTP status codes to accept in addition to 2xx responses. */
+	acceptedStatusCodes?: number[];
 	gzip?: boolean;
 	resolveWithFullResponse?: boolean;
 

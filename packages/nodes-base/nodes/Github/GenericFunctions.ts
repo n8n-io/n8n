@@ -9,7 +9,9 @@ import type {
 	RequestPath,
 	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
+import { deepCopy, NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
+
+import { pullRequestCache } from './pull-request-cache';
 
 /**
  * Make an API request to Github
@@ -51,6 +53,61 @@ export async function githubApiRequest(
 
 		if (Object.keys(option).length !== 0) {
 			Object.assign(options, option);
+		}
+
+		const credentialId =
+			method === 'GET' &&
+			options.json !== false &&
+			/^\/repos\/[^/]+\/[^/]+\/pulls(?:\/\d+)?$/.test(String(endpoint))
+				? this.getNode().credentials?.[credentialType]?.id
+				: undefined;
+		if (credentialId) {
+			const key = JSON.stringify([
+				credentialType,
+				credentialId,
+				options.uri.value,
+				query,
+				options.headers,
+			]);
+			const cached = pullRequestCache.get(key);
+			if (cached) {
+				options.headers = { ...options.headers, 'If-None-Match': cached.etag };
+			}
+
+			// Treat cached revalidation as a data fetch. Refresh credentials only after a 401.
+			const response: {
+				statusCode: number;
+				headers: IDataObject;
+				body: IDataObject | IDataObject[];
+			} = await this.helpers.requestWithAuthentication.call(
+				this,
+				credentialType,
+				{
+					...options,
+					resolveWithFullResponse: true,
+					acceptedStatusCodes: cached ? [304] : undefined,
+				},
+				{ preAuthenticationRetryStatusCode: 401 },
+			);
+
+			if (response.statusCode === 304 && cached) {
+				return deepCopy(
+					option.resolveWithFullResponse
+						? { statusCode: 200, headers: cached.headers, body: cached.body }
+						: cached.body,
+				);
+			}
+
+			if (response.statusCode === 200 && typeof response.headers.etag === 'string') {
+				pullRequestCache.set(key, {
+					etag: response.headers.etag,
+					headers: deepCopy(response.headers),
+					body: deepCopy(response.body),
+				});
+			} else {
+				pullRequestCache.delete(key);
+			}
+			return option.resolveWithFullResponse ? response : response.body;
 		}
 
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
