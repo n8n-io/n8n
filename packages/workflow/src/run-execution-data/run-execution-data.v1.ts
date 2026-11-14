@@ -15,6 +15,7 @@ import type {
 	RelatedExecution,
 	StartNodeData,
 } from '..';
+import type { FailedBeforeStartMarker } from '../execution-blocked-reason';
 import type { IRunExecutionDataV0 } from './run-execution-data.v0';
 import type { SubWorkflowOutputPolicy } from '../sub-workflow-output';
 
@@ -55,7 +56,8 @@ export interface IRunExecutionDataV1 {
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
 		metadata?: Record<string, string>;
-		failedBeforeStart?: true;
+		/** Set when the run stopped before its first node. Holds the reason. */
+		failedBeforeStart?: FailedBeforeStartMarker;
 	};
 	executionData?: {
 		contextData: IExecuteContextData;

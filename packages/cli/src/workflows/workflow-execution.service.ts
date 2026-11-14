@@ -677,6 +677,7 @@ export class WorkflowExecutionService {
 						errorWorkflowPermissionError,
 						initialNode,
 					);
+					fakeExecution.data.resultData.failedBeforeStart = 'callerPolicy';
 
 					const fullExecutionData: CreateExecutionPayload = {
 						data: fakeExecution.data,

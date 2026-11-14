@@ -326,6 +326,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		{
 			cause: 'an unusable credential',
 			error: 'Credential not usable',
+			reason: 'credentialAccess',
 			workflowFixture: createSimpleWorkflowFixture,
 			fail: () =>
 				vi
@@ -335,6 +336,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		{
 			cause: 'an execution context failure',
 			error: 'No identity',
+			reason: 'contextHook',
 			workflowFixture: createSimpleWorkflowFixture,
 			fail: () =>
 				vi.spyOn(core, 'establishExecutionContext').mockRejectedValue(new Error('No identity')),
@@ -342,6 +344,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		{
 			cause: 'a missing required parameter',
 			error: "The 'HTTP Request' node has issues",
+			reason: 'invalidWorkflow',
 			workflowFixture: () => {
 				const fixture = createSimpleWorkflowFixture();
 				return {
@@ -354,7 +357,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		},
 	])(
 		'should count runs refused by $cause as failures but not as billable',
-		async ({ error, workflowFixture, fail }) => {
+		async ({ error, reason, workflowFixture, fail }) => {
 			const blockedCount = 3;
 			const blockedWorkflow = await createWorkflow(
 				{ name: 'Refused before start', ...workflowFixture() },
@@ -401,7 +404,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 				{ includeData: true, unflattenData: true },
 			);
 			expect(refused.data.resultData.error?.message).toContain(error);
-			expect(refused.data.resultData.failedBeforeStart).toBe(true);
+			expect(refused.data.resultData.failedBeforeStart).toBe(reason);
 
 			const compactedInsights = await getCompactedInsightsByWorkflow(blockedWorkflow.id);
 			const sum = (type: string) =>

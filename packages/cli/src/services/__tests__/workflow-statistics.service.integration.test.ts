@@ -271,7 +271,7 @@ describe('WorkflowStatisticsService', () => {
 		test('should count a run that failed before start as a production error, but not in `rootCount`', async () => {
 			// ARRANGE
 			const data = createEmptyRunExecutionData();
-			data.resultData.failedBeforeStart = true;
+			data.resultData.failedBeforeStart = 'startFailed';
 			const runData: IRun = {
 				finished: false,
 				status: 'error',

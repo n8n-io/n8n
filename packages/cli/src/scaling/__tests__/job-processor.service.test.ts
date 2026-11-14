@@ -35,6 +35,7 @@ import {
 	type IRunExecutionData,
 	type WorkflowExecuteMode,
 	type ExecutionError,
+	type ExecutionBlockedReason,
 	WorkflowExpression,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
@@ -766,7 +767,7 @@ describe('JobProcessor', () => {
 	});
 
 	// A plain run, since a deep mock answers every flag with a truthy function.
-	test.each([true as const, undefined])(
+	test.each(['callerPolicy', 'startFailed', undefined] as const)(
 		'should report failedBeforeStart=%s in job-finished',
 		async (flag) => {
 			const executionPersistence = mock<ExecutionPersistence>();
@@ -807,7 +808,7 @@ describe('JobProcessor', () => {
 			await jobProcessor.processJob(job);
 
 			const finished = job.progress.mock.calls
-				.map(([msg]) => msg as { kind: string; failedBeforeStart?: true })
+				.map(([msg]) => msg as { kind: string; failedBeforeStart?: ExecutionBlockedReason })
 				.find((msg) => msg.kind === 'job-finished');
 			expect(finished?.failedBeforeStart).toBe(flag);
 		},

@@ -289,7 +289,7 @@ describe('workflowExecuteAfterHandler', () => {
 	test('stores a failure but no billable event for a run that failed before start', async () => {
 		const ctx = createCtx({ workflow });
 		const data = createEmptyRunExecutionData();
-		data.resultData.failedBeforeStart = true;
+		data.resultData.failedBeforeStart = 'startFailed';
 		ctx.runData = {
 			mode: 'webhook',
 			status: 'error',
