@@ -22,6 +22,14 @@ export class Example implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		usableAsTool: true,
 		properties: [
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				options: [{ name: 'Append', value: 'append', action: 'Append text to each item' }],
+				default: 'append',
+			},
 			// Node properties which the user gets displayed and
 			// can change on the node.
 			{
@@ -41,6 +49,7 @@ export class Example implements INodeType {
 	// You can make async calls and use `await`.
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const inputItemCount = items.length;
 
 		let item: INodeExecutionData;
 		let myString: string;
@@ -48,8 +57,17 @@ export class Example implements INodeType {
 		// Iterates over all input items and add the key "myString" with the
 		// value the parameter "myString" resolves to.
 		// (This could be a different value for each item in case it contains an expression)
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+		for (let itemIndex = 0; itemIndex < inputItemCount; itemIndex++) {
 			try {
+				// The "operation" parameter lets a node expose more than one action.
+				// Branch on it here as you add more options.
+				const operation = this.getNodeParameter('operation', itemIndex) as string;
+				if (operation !== 'append') {
+					throw new NodeOperationError(this.getNode(), `Unknown operation: ${operation}`, {
+						itemIndex,
+					});
+				}
+
 				myString = this.getNodeParameter('myString', itemIndex, '') as string;
 				item = items[itemIndex];
 
@@ -58,7 +76,7 @@ export class Example implements INodeType {
 				// This node should never fail but we want to showcase how
 				// to handle errors.
 				if (this.continueOnFail()) {
-					items.push({ json: this.getInputData(itemIndex)[0].json, error, pairedItem: itemIndex });
+					items.push({ json: { ...items[itemIndex].json }, error, pairedItem: itemIndex });
 				} else {
 					// Adding `itemIndex` allows other workflows to handle this error
 					if (error.context) {

@@ -3,9 +3,11 @@ import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
 import {
 	isNodeTypeClass,
-	findClassProperty,
 	findObjectProperty,
 	getStringLiteralValue,
+	isTriggerNode,
+	isAiOnlyNode,
+	findNodeDescriptionObject,
 	createRule,
 } from '../utils/index.js';
 
@@ -17,6 +19,8 @@ export const ResourceOperationPatternRule = createRule({
 			description: 'Enforce proper resource/operation pattern for better UX in n8n nodes',
 		},
 		messages: {
+			missingActions:
+				'Add an Operation with an action for each option to give the node explicit action labels.',
 			tooManyOperationsWithoutResources:
 				'Node has {{ operationCount }} operations without resources. Use resources to organize operations when there are more than 5 operations.',
 		},
@@ -24,11 +28,10 @@ export const ResourceOperationPatternRule = createRule({
 	},
 	defaultOptions: [],
 	create(context) {
-		const analyzeNodeDescription = (descriptionValue: TSESTree.Expression | null): void => {
-			if (descriptionValue?.type !== AST_NODE_TYPES.ObjectExpression) {
-				return;
-			}
-
+		const analyzeNodeDescription = (
+			descriptionValue: TSESTree.ObjectExpression,
+			checkActions: boolean,
+		): void => {
 			const propertiesProperty = findObjectProperty(descriptionValue, 'properties');
 			if (propertiesProperty?.value?.type !== AST_NODE_TYPES.ArrayExpression) {
 				return;
@@ -38,9 +41,12 @@ export const ResourceOperationPatternRule = createRule({
 			let hasResources = false;
 			let operationCount = 0;
 			let operationNode: TSESTree.Node | null = null;
+			let hasUnknownProperties = false;
+			const operationOptions: TSESTree.ArrayExpression[] = [];
 
 			for (const property of propertiesArray.elements) {
 				if (property?.type !== AST_NODE_TYPES.ObjectExpression) {
+					hasUnknownProperties = true;
 					continue;
 				}
 
@@ -51,6 +57,7 @@ export const ResourceOperationPatternRule = createRule({
 				const type = typeProperty ? getStringLiteralValue(typeProperty.value) : null;
 
 				if (!name || !type) {
+					hasUnknownProperties = true;
 					continue;
 				}
 
@@ -63,6 +70,44 @@ export const ResourceOperationPatternRule = createRule({
 					const optionsProperty = findObjectProperty(property, 'options');
 					if (optionsProperty?.value?.type === AST_NODE_TYPES.ArrayExpression) {
 						operationCount = optionsProperty.value.elements.length;
+						operationOptions.push(optionsProperty.value);
+					}
+				}
+			}
+
+			if (checkActions && !hasUnknownProperties) {
+				if (!operationNode) {
+					context.report({ node: descriptionValue, messageId: 'missingActions' });
+				} else {
+					for (const options of operationOptions) {
+						if (
+							options.elements.some((option) => option?.type !== AST_NODE_TYPES.ObjectExpression)
+						) {
+							continue;
+						}
+						for (const option of options.elements) {
+							if (option?.type !== AST_NODE_TYPES.ObjectExpression) continue;
+							if (
+								option.properties.some(
+									(entry) =>
+										entry.type === AST_NODE_TYPES.SpreadElement ||
+										(entry.type === AST_NODE_TYPES.Property &&
+											entry.computed &&
+											entry.key.type !== AST_NODE_TYPES.Literal),
+								)
+							) {
+								continue;
+							}
+							const action = findObjectProperty(option, 'action');
+							if (
+								!action ||
+								(action.value.type === AST_NODE_TYPES.Literal &&
+									(typeof action.value.value !== 'string' ||
+										action.value.value.trim().length === 0))
+							) {
+								context.report({ node: option, messageId: 'missingActions' });
+							}
+						}
 					}
 				}
 			}
@@ -84,12 +129,15 @@ export const ResourceOperationPatternRule = createRule({
 					return;
 				}
 
-				const descriptionProperty = findClassProperty(node, 'description');
-				if (!descriptionProperty) {
+				const description = findNodeDescriptionObject(node);
+				if (!description) {
 					return;
 				}
 
-				analyzeNodeDescription(descriptionProperty.value);
+				analyzeNodeDescription(
+					description,
+					!isTriggerNode(node, description) && !isAiOnlyNode(description),
+				);
 			},
 		};
 	},
