@@ -1,5 +1,5 @@
 import type { RuntimeSkillSource } from '@n8n/agents';
-import type { InstanceAiBuildMode, InstanceAiPromptConfiguration } from '@n8n/api-types';
+import type { InstanceAiPromptConfiguration } from '@n8n/api-types';
 import { UnexpectedError, UserError } from '@n8n/errors';
 
 import { CONCISE_COMMUNICATION_STYLE_SECTION } from '../agent/communication-style.prompt';
@@ -8,43 +8,25 @@ import type { SkillVariant } from '../skills/skill-variants';
 
 export interface PromptProfile {
 	version: string;
-	mode: InstanceAiBuildMode;
 	systemPromptVersion: string;
 	variants: readonly SkillVariant[];
 }
 
 export const DEFAULT_PROMPT_VERSION = 'default@1';
-export const PROGRESSIVE_PROMPT_VERSION = 'progressive@1';
 export const CONCISE_PROMPT_VERSION = 'concise@1';
 
 const SYSTEM_PROMPT_VERSION = 'instance-agent@1';
 const CONCISE_SYSTEM_PROMPT_VERSION = 'instance-agent-concise@1';
 
-const progressiveBuilding: SkillVariant = {
-	id: 'progressive-building@1',
-	changes: [
-		{ skillId: 'workflow-builder', appendFrom: 'progressive-building', useDescription: true },
-		{ skillId: 'post-build-flow', appendFrom: 'progressive-building' },
-	],
-};
-
 /** Published versions are immutable. Add a new entry to change a profile. */
 export const INSTANCE_AI_PROMPT_PROFILES: readonly PromptProfile[] = [
 	{
 		version: DEFAULT_PROMPT_VERSION,
-		mode: 'default',
 		systemPromptVersion: SYSTEM_PROMPT_VERSION,
 		variants: [],
 	},
 	{
-		version: PROGRESSIVE_PROMPT_VERSION,
-		mode: 'progressive',
-		systemPromptVersion: SYSTEM_PROMPT_VERSION,
-		variants: [progressiveBuilding],
-	},
-	{
 		version: CONCISE_PROMPT_VERSION,
-		mode: 'default',
 		systemPromptVersion: CONCISE_SYSTEM_PROMPT_VERSION,
 		variants: [],
 	},
@@ -66,15 +48,13 @@ export function assertInstanceAiPromptVersion(version: string): void {
 
 /** Explicit versions take precedence. Retired persisted versions recover with the default profile. */
 export function resolvePromptProfile(
-	selection: { version?: string; mode?: InstanceAiBuildMode },
+	selection: { version?: string },
 	profiles: readonly PromptProfile[] = INSTANCE_AI_PROMPT_PROFILES,
 ): { profile: PromptProfile; fallbackFrom?: string } {
 	if (new Set(profiles.map((profile) => profile.version)).size !== profiles.length) {
 		throw new UnexpectedError('Prompt profile versions must be unique');
 	}
-	const version =
-		selection.version ??
-		(selection.mode === 'progressive' ? PROGRESSIVE_PROMPT_VERSION : DEFAULT_PROMPT_VERSION);
+	const version = selection.version ?? DEFAULT_PROMPT_VERSION;
 	const selected = profiles.find((profile) => profile.version === version);
 	if (selected) return { profile: selected };
 	const fallback = profiles.find((profile) => profile.version === DEFAULT_PROMPT_VERSION);

@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { loginIdOf } from '@/events/login-id';
 
 import { buildImportResult, toPackageSummary } from './engine/import-result';
 import { assertPackageImportApiKeyScopes, packageImportScopes } from './engine/import-gates';
@@ -123,6 +124,7 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	| 'projectId'
 	| 'folderId'
 	| 'apiKeyScopes'
+	| 'publicApi'
 	| 'bindings'
 	| 'selection'
 	| 'overwriteDeletionPolicy'
@@ -174,6 +176,7 @@ export class N8nPackagesService {
 			counts: result.counts,
 			credentialExportPolicy: result.credentialExportPolicy,
 			includeArchived: result.includeArchived,
+			loginId: loginIdOf(request.ctx),
 		});
 
 		return { stream, counts: result.counts };
@@ -703,6 +706,8 @@ export class N8nPackagesService {
 
 		return {
 			user: request.user,
+			publicApi: request.publicApi,
+			...(request.ctx !== undefined ? { ctx: request.ctx } : {}),
 			...(request.apiKeyScopes !== undefined ? { apiKeyScopes: request.apiKeyScopes } : {}),
 			...(request.bindings !== undefined ? { bindings: request.bindings } : {}),
 			...CHERRY_PICK_IMPORT_POLICY,

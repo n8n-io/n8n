@@ -1,5 +1,5 @@
 import type { VueWrapper } from '@vue/test-utils';
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { useChat } from '@n8n/chat/composables';
@@ -103,6 +103,56 @@ describe('MessageActions', () => {
 		await copyIcon.trigger('click');
 
 		expect(vi.mocked(chatEventBus.emit)).toHaveBeenCalledWith('setInputValue', 'Hello, world!');
+	});
+
+	it('should set up the websocket when reposting starts an execution', async () => {
+		const mockSendMessage = vi.fn().mockResolvedValue({
+			executionStarted: true,
+			executionId: 'exec-1',
+			resumeToken: 'token-1',
+		});
+		vi.mocked(useChat).mockReturnValue({
+			sendMessage: mockSendMessage,
+		} as unknown as ReturnType<typeof useChat>);
+
+		wrapper = mount(MessageActions, {
+			props: {
+				message: userMessage,
+			},
+		});
+
+		await wrapper.find('[icon="redo-2"]').trigger('click');
+		await flushPromises();
+
+		expect(mockSendMessage).toHaveBeenCalledWith('Hello, world!', []);
+		expect(vi.mocked(chatEventBus.emit)).toHaveBeenCalledWith('setupWebsocket', {
+			executionId: 'exec-1',
+			resumeToken: 'token-1',
+		});
+	});
+
+	it('should not set up the websocket when reposting does not start an execution', async () => {
+		const mockSendMessage = vi.fn().mockResolvedValue({
+			executionStarted: false,
+			executionId: 'exec-1',
+		});
+		vi.mocked(useChat).mockReturnValue({
+			sendMessage: mockSendMessage,
+		} as unknown as ReturnType<typeof useChat>);
+
+		wrapper = mount(MessageActions, {
+			props: {
+				message: userMessage,
+			},
+		});
+
+		await wrapper.find('[icon="redo-2"]').trigger('click');
+		await flushPromises();
+
+		expect(vi.mocked(chatEventBus.emit)).not.toHaveBeenCalledWith(
+			'setupWebsocket',
+			expect.anything(),
+		);
 	});
 
 	it('should handle messages with files when reposting', async () => {

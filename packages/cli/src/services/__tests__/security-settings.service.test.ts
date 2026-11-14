@@ -1,6 +1,7 @@
 import { EventService, RoleService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import {
+	type OperationContext,
 	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -9,7 +10,9 @@ import {
 import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
+	type SecurityContext,
 } from '@n8n/permissions';
+import { mock } from 'vitest-mock-extended';
 
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 
@@ -432,6 +435,41 @@ describe('SecuritySettingsService', () => {
 			});
 			expect(settingsRepository.upsert).toHaveBeenCalledTimes(1);
 			expect(instanceRedactionEnforcementService.set).toHaveBeenCalledTimes(1);
+		});
+
+		describe('login id on the audit events', () => {
+			const updateEverything = async (ctx?: OperationContext) => {
+				instanceRedactionEnforcementService.get.mockResolvedValue('off');
+				await securitySettingsService.updateSecuritySettings(
+					{
+						personalSpacePublishing: true,
+						personalSpaceSharing: true,
+						redactionEnforcement: { floor: 'all' },
+					},
+					actor,
+					ctx,
+				);
+			};
+
+			test('passes the login id of the operation context to every emitted event', async () => {
+				await updateEverything({
+					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+				});
+
+				expect(eventService.emit).toHaveBeenCalledTimes(4);
+				for (const [, payload] of eventService.emit.mock.calls) {
+					expect(payload).toMatchObject({ loginId: 'login-1' });
+				}
+			});
+
+			test('emits no login id without an operation context', async () => {
+				await updateEverything();
+
+				expect(eventService.emit).toHaveBeenCalledTimes(4);
+				for (const [, payload] of eventService.emit.mock.calls) {
+					expect(payload).toMatchObject({ loginId: undefined });
+				}
+			});
 		});
 	});
 });

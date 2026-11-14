@@ -151,6 +151,7 @@ export class NodeTypePoliciesPublicController {
 			{ rules: dto.rules, defaultAction: dto.defaultAction },
 			dto.version,
 			req.user.id,
+			req.ctx,
 		);
 
 		return {
@@ -212,6 +213,7 @@ export class NodeTypePoliciesPublicController {
 			{ rules: dto.rules, defaultAction: dto.defaultAction },
 			dto.version,
 			req.user.id,
+			req.ctx,
 		);
 
 		return {
@@ -273,6 +275,7 @@ export class NodeTypePoliciesPublicController {
 			NODE_TYPES_KIND,
 			dto.rules,
 			req.user.id,
+			req.ctx,
 		);
 
 		return { policy: toPublicDocument(policy), warnings: [...warnings] };
@@ -326,6 +329,7 @@ export class NodeTypePoliciesPublicController {
 			dto.rules,
 			dto.version,
 			req.user.id,
+			req.ctx,
 		);
 
 		return { policy: toPublicDocument(policy), warnings: [...warnings] };
@@ -349,7 +353,12 @@ export class NodeTypePoliciesPublicController {
 		_res: Response,
 		@Param('policyId', nodeTypePolicyIdParamSchema) policyId: string,
 	): Promise<void> {
-		await (await this.service()).deletePolicyDocument(NODE_TYPES_KIND, policyId, req.user.id);
+		await (await this.service()).deletePolicyDocument(
+			NODE_TYPES_KIND,
+			policyId,
+			req.user.id,
+			req.ctx,
+		);
 	}
 
 	@Get('/scopes/:scopeId/attachments')
@@ -399,6 +408,7 @@ export class NodeTypePoliciesPublicController {
 			dto.attachments,
 			dto.version,
 			req.user.id,
+			req.ctx,
 		);
 
 		return toPublicAttachments(result);

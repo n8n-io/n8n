@@ -14,7 +14,7 @@ import {
 } from '../instance-ai-skills.service';
 
 const openScope: InstanceAiSkillScope = {
-	profile: resolvePromptProfile({ mode: 'default' }).profile,
+	profile: resolvePromptProfile({}).profile,
 	flags: { configEvalsEnabled: true, instanceContextEnabled: true },
 	agentBuildingEnabled: true,
 	appBuildingEnabled: true,
@@ -49,15 +49,6 @@ describe('InstanceAiSkillsService', () => {
 	});
 
 	describe('loadSkills', () => {
-		it('returns no disabled tools for the progressive profile', async () => {
-			const skills = await service.loadSkills({
-				...openScope,
-				profile: resolvePromptProfile({ mode: 'progressive' }).profile,
-			});
-
-			expect(skills.disabledTools).toEqual([]);
-		});
-
 		it.each(gatedSkills)('removes the skills that %s turns off', async (_, scope, skillIds) => {
 			const on = await service.loadSkills(openScope);
 			const off = await service.loadSkills(scope);

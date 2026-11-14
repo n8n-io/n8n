@@ -55,10 +55,6 @@ export class AgentProjectDeletionRepository {
 		});
 	}
 
-	async assertWritable(projectId: string): Promise<void> {
-		await this.withWritableProject(projectId, async () => {});
-	}
-
 	/** Keep the read lock until the write finishes. Deletion waits for these operations. */
 	async withWritableProject<T>(
 		projectId: string,

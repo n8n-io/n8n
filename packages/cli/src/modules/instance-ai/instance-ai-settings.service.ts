@@ -1314,9 +1314,9 @@ export class InstanceAiSettingsService {
 		return this.config.model.trim();
 	}
 
-	/** Model name for the Observer and Reflector memory tasks; empty when unset. */
-	getConfiguredMemoryModelName(): string {
-		return this.config.memoryModel.trim();
+	/** Model name for background and helper tasks; empty when unset. */
+	getConfiguredUtilityModelName(): string {
+		return this.config.utilityModel.trim();
 	}
 
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */

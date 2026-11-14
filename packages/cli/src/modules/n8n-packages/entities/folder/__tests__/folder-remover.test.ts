@@ -1,4 +1,5 @@
 import type { Project, User } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import type { FolderService } from '@/services/folder.service';
@@ -9,7 +10,7 @@ import { FolderRemover } from '../folder-remover';
 import type { ImportContext } from '../../../n8n-packages.types';
 
 const user = mock<User>({ id: 'user-1' });
-const context: ImportContext = { user, projectId: 'proj-1', folderId: null };
+const context: ImportContext = { user, projectId: 'proj-1', folderId: null, publicApi: false };
 
 type Placement = { id: string; name: string; parentFolderId: string | null };
 
@@ -235,10 +236,28 @@ describe('FolderRemover.apply', () => {
 			failures: [],
 		});
 
-		expect(folderService.deleteFolder).toHaveBeenCalledExactlyOnceWith(user, 'stale', 'proj-1', {});
+		expect(folderService.deleteFolder).toHaveBeenCalledExactlyOnceWith(
+			user,
+			'stale',
+			'proj-1',
+			{},
+			undefined,
+		);
 		expect(summaries).toEqual([
 			{ folderId: 'stale', name: 'Stale', projectId: 'proj-1', parentFolderId: 'top' },
 		]);
+	});
+
+	it('passes the operation context of the import to the folder deletion', async () => {
+		const { remover, folderService } = makeRemover([]);
+		const ctx = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
+
+		await remover.apply(
+			{ ...context, ctx },
+			{ removals: [{ id: 'stale', name: 'Stale', parentFolderId: 'top', depth: 1 }], failures: [] },
+		);
+
+		expect(folderService.deleteFolder).toHaveBeenCalledWith(user, 'stale', 'proj-1', {}, ctx);
 	});
 
 	it('writes nothing when the plan is empty', async () => {

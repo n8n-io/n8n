@@ -11,7 +11,7 @@ import {
 	userUuidParamSchema,
 } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
-import { isPerson, type AuthenticatedRequest, type User } from '@n8n/db';
+import { isPerson, type User } from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -40,6 +40,7 @@ import {
 } from '@/public-api/v1/shared/services/pagination.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
 
 const tags = ['User'];
 
@@ -84,7 +85,7 @@ export class UsersPublicController {
 	@ApiResponse(200, UserListPublicDto)
 	@ApiErrorResponse(404, { description: 'The given `projectId` does not exist.' })
 	async getUsers(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Query query: ListUsersQueryDto,
 	): Promise<UserListPublicDto> {
@@ -105,7 +106,7 @@ export class UsersPublicController {
 
 		this.eventService.emit('user-retrieved-all-users', {
 			userId: req.user.id,
-			publicApi: true,
+			publicApi: req.publicApiClient,
 		});
 
 		return {
@@ -123,7 +124,7 @@ export class UsersPublicController {
 	@ApiResponse(200, UserPublicDto)
 	@ApiErrorResponse(404, { description: 'No user with that ID or email.' })
 	async getUser(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('userId', userIdentifierParamSchema) userId: string,
 		@Query query: GetUserQueryDto,
@@ -137,7 +138,7 @@ export class UsersPublicController {
 
 		this.eventService.emit('user-retrieved-user', {
 			userId: req.user.id,
-			publicApi: true,
+			publicApi: req.publicApiClient,
 		});
 
 		return toPublicApiUser(user, { includeRole });
@@ -150,11 +151,11 @@ export class UsersPublicController {
 	@ApiTags(tags)
 	@ApiResponse(201, InvitedUsersPublicDto)
 	async createUser(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Body body: CreateUsersPublicDto,
 	): Promise<InvitedUsersPublicDto> {
-		return await this.userService.inviteUser(req.user, body);
+		return await this.userService.inviteUser(req.user, body, req.publicApiClient, req.ctx);
 	}
 
 	@Delete('/:userId')
@@ -165,12 +166,18 @@ export class UsersPublicController {
 	@ApiResponse(204)
 	@ApiErrorResponse(404)
 	async deleteUser(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('userId', userUuidParamSchema) userId: string,
 		@Query query: DeleteUserQueryPublicDto,
 	): Promise<void> {
-		await this.userService.deleteUser(req.user, userId, query.transferId);
+		await this.userService.deleteUser(
+			req.user,
+			userId,
+			query.transferId,
+			req.publicApiClient,
+			req.ctx,
+		);
 	}
 
 	@Patch('/:userId/role')
@@ -182,11 +189,11 @@ export class UsersPublicController {
 	@ApiResponse(204)
 	@ApiErrorResponse(404)
 	async changeRole(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Param('userId', userUuidParamSchema) userId: string,
 		@Body body: RoleChangeRequestDto,
 	): Promise<void> {
-		await this.userService.changeGlobalRole(req.user, userId, body);
+		await this.userService.changeGlobalRole(req.user, userId, body, req.publicApiClient);
 	}
 }

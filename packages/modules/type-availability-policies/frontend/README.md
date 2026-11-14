@@ -58,6 +58,8 @@ admins when a project admin can lift it, otherwise the instance owners. The surf
 as a sibling of their own content, so a popover that closes never unmounts the open dialog.
 `RestrictedNodePopover` is the explanation for a row in a list: the lock trigger, the hover-opened
 popover and the dialog. The caller passes the row element and whether the row is keyboard-active.
+`RestrictedMenuItemMarker` puts that popover in a dropdown menu row. It finds the row itself, and
+the caller owns the dialog because the menu closes when the action is pressed.
 `RestrictedNodePanel` is the builder-facing explanation of a blocked node in the NDV, with the
 contact and replace actions. The shell renders the popover and the panel where a restricted node
 appears; the module owns their copy and behaviour.

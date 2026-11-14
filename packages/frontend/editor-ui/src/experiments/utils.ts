@@ -54,7 +54,6 @@ export const enum TemplateClickSource {
 	emptyWorkflowLink = 'empty_workflow_link',
 	emptyInstanceCard = 'empty_instance_card',
 	sidebarButton = 'sidebar_button',
-	instanceAiSplitEmptyState = 'instance_ai_split_empty_state',
 }
 
 export const getTemplatePathByRole = (role: string | null | undefined) => {

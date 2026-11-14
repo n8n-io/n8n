@@ -93,13 +93,17 @@ export class VariablesPublicController {
 	): Promise<void> {
 		const { key, value, projectId } = payload;
 
-		await this.variablesService.create(req.user, {
-			key,
-			value,
-			// The public spec marks `type` read-only, so the caller never sends it.
-			type: VARIABLE_TYPE_DEFAULT,
-			projectId,
-		});
+		await this.variablesService.create(
+			req.user,
+			{
+				key,
+				value,
+				// The public spec marks `type` read-only, so the caller never sends it.
+				type: VARIABLE_TYPE_DEFAULT,
+				projectId,
+			},
+			req.ctx,
+		);
 	}
 
 	@Put('/:id')
@@ -118,11 +122,16 @@ export class VariablesPublicController {
 	): Promise<void> {
 		const { key, value, projectId } = payload;
 
-		await this.variablesService.update(req.user, id, {
-			key,
-			value,
-			projectId,
-		});
+		await this.variablesService.update(
+			req.user,
+			id,
+			{
+				key,
+				value,
+				projectId,
+			},
+			req.ctx,
+		);
 	}
 
 	@Delete('/:id')
@@ -138,6 +147,6 @@ export class VariablesPublicController {
 		_res: Response,
 		@Param('id', variableIdParamSchema) id: string,
 	): Promise<void> {
-		await this.variablesService.deleteForUser(req.user, id);
+		await this.variablesService.deleteForUser(req.user, id, req.ctx);
 	}
 }

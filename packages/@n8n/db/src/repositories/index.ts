@@ -120,6 +120,7 @@ export {
 export {
 	WorkflowPublishedVersionRepository,
 	type PublishedWorkflowDataForExecution,
+	type PublishedVersionForExecution,
 } from './workflow-published-version.repository';
 export {
 	WorkflowPublishHistoryRepository,

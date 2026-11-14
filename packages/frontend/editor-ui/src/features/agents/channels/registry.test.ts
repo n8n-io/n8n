@@ -148,6 +148,21 @@ describe('agent channel platform registry', () => {
 		expect(presentation).toBeNull();
 	});
 
+	it.each(['slack', 'telegram', 'teams', 'whatsapp', 'discord', 'linear', 'webhook'])(
+		'describes %s in the channel list',
+		(type) => {
+			expect(getAgentChannelPlatform(type).getListDescription?.({ text })).toBe(
+				`agents.channels.${type}.listDescription`,
+			);
+		},
+	);
+
+	it('describes n8n Chat in the channel list', () => {
+		expect(getAgentChannelPlatform('n8n_chat').getListDescription?.({ text })).toBe(
+			'agents.channels.n8nChat.listDescription',
+		);
+	});
+
 	it('registers n8n Chat with its "Make available" connect action', () => {
 		const platform = getAgentChannelPlatform('n8n_chat');
 		const action = platform.getConnectAction(

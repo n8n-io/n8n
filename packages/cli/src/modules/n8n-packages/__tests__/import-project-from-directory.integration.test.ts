@@ -34,6 +34,7 @@ let owner: User;
 let sourceDir: string;
 
 const importPolicy: Omit<ImportRequest, 'user'> = {
+	publicApi: false,
 	projectConflictPolicy: 'overwrite',
 	conflictPolicy: 'new-version',
 	idPolicy: 'source',

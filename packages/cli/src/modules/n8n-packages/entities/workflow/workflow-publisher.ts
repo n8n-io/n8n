@@ -1,10 +1,11 @@
 import { Logger } from '@n8n/backend-common';
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { OperationContext, User, WorkflowEntity } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { ProjectService } from '@/services/project.service.ee';
 import { WEBHOOK_CONFLICT_MESSAGE } from '@/webhooks/constants';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -31,6 +32,9 @@ export type PackagePublishingResults = ReadonlyMap<string, WorkflowPublishingRes
 
 export interface PackagePublishingRequest {
 	user: User;
+	publicApi: PublicApiCaller;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	/** Every workflow the package wrote, across all of its projects. */
 	persisted: PersistedWorkflowOutcome[];
 	policy: WorkflowPublishingPolicy;
@@ -62,6 +66,8 @@ export class WorkflowPublisher {
 	 */
 	async applyToPackage({
 		user,
+		publicApi,
+		ctx,
 		persisted,
 		subWorkflowRequirements,
 	}: PackagePublishingRequest): Promise<PackagePublishingResults> {
@@ -79,6 +85,8 @@ export class WorkflowPublisher {
 				outcome.workflow,
 				outcome.blockedFromPublish,
 				webhookKeys.some((key) => claimedPaths.has(key)),
+				publicApi,
+				ctx,
 			);
 
 			if (result.publishing.state === 'published') {
@@ -160,6 +168,8 @@ export class WorkflowPublisher {
 		workflow: WorkflowEntity,
 		blockedReason?: WorkflowPublishingBlockedReason,
 		webhookContested = false,
+		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
 	): Promise<WorkflowPublishingResult> {
 		const action = item.publishingAction;
 
@@ -181,18 +191,23 @@ export class WorkflowPublisher {
 		try {
 			if (action === 'publish') {
 				return {
-					workflow: await this.workflowService.activateWorkflow(user, workflow.id, {
-						versionId: workflow.versionId,
-						source: 'import',
-					}),
+					workflow: await this.workflowService.activateWorkflow(
+						user,
+						workflow.id,
+						{ versionId: workflow.versionId, source: 'import', publicApi },
+						ctx,
+					),
 					publishing: { state: 'published' },
 				};
 			}
 
 			return {
-				workflow: await this.workflowService.deactivateWorkflow(user, workflow.id, {
-					source: 'import',
-				}),
+				workflow: await this.workflowService.deactivateWorkflow(
+					user,
+					workflow.id,
+					{ source: 'import', publicApi },
+					ctx,
+				),
 				publishing: { state: 'unpublished' },
 			};
 		} catch (error) {

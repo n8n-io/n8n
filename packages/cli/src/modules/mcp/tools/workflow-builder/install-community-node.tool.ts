@@ -1,5 +1,5 @@
 import { packagePolicyRestrictionsSchema, type PackagePolicyRestrictions } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import z from 'zod';
 
@@ -96,6 +96,7 @@ export const createInstallCommunityNodeTool = (
 	communityPackagesLifecycleService: CommunityPackagesLifecycleService,
 	nodeTypes: INodeTypes,
 	telemetry: Telemetry,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof inputSchema> => ({
 	name: INSTALL_COMMUNITY_NODE_TOOL.toolName,
 	config: {
@@ -210,6 +211,7 @@ export const createInstallCommunityNodeTool = (
 					{ name: packageName },
 					user,
 					'mcp',
+					ctx,
 				);
 			} catch (error) {
 				// Class name only. The message is built around the `execFile`

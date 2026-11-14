@@ -1,5 +1,5 @@
 {
-	"issues": 86,
+	"issues": 78,
 	"entries": [
 		"packages/@n8n/agents/eslint.config.mjs -> @n8n/eslint-config/backend [undeclared-dependency]",
 		"packages/@n8n/agents/eslint.config.mjs -> eslint/config [undeclared-dependency]",
@@ -64,14 +64,6 @@
 		"packages/core/test/helpers/constants.ts -> ../../../nodes-base/dist/nodes/NoOp/NoOp.node [leaves-package]",
 		"packages/core/test/helpers/constants.ts -> ../../../nodes-base/dist/nodes/Set/Set.node [leaves-package]",
 		"packages/core/test/helpers/constants.ts -> ../../../nodes-base/dist/nodes/SplitInBatches/SplitInBatches.node [leaves-package]",
-		"packages/frontend/@n8n/chat/eslint.config.mjs -> eslint/config [undeclared-dependency]",
-		"packages/frontend/@n8n/composables/eslint.config.mjs -> eslint/config [undeclared-dependency]",
-		"packages/frontend/@n8n/design-system/eslint.config.mjs -> eslint/config [undeclared-dependency]",
-		"packages/frontend/@n8n/frontend-utils/eslint.config.mjs -> eslint/config [undeclared-dependency]",
-		"packages/frontend/@n8n/i18n/eslint.config.mjs -> eslint/config [undeclared-dependency]",
-		"packages/frontend/@n8n/rest-api-client/eslint.config.mjs -> eslint/config [undeclared-dependency]",
-		"packages/frontend/@n8n/stores/eslint.config.mjs -> eslint/config [undeclared-dependency]",
-		"packages/frontend/@n8n/storybook/eslint.config.mjs -> eslint/config [undeclared-dependency]",
 		"packages/frontend/@n8n/storybook/vite.config.ts -> ../design-system/src/icons/lucide/vite [leaves-package]",
 		"packages/frontend/editor-ui/src/app/composables/useToolParameters.ts -> json-schema [type-only-import]",
 		"packages/node-dev/eslint.config.mjs -> eslint/config [undeclared-dependency]",

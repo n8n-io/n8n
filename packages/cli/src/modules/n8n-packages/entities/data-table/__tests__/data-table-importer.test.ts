@@ -20,6 +20,7 @@ const context: ImportContext = {
 	user: mock<User>({ id: 'user-1' }),
 	projectId: 'project-1',
 	folderId: null,
+	publicApi: false,
 };
 
 function makeImporter() {

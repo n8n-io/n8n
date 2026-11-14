@@ -6,6 +6,7 @@ import { TypeOrmExecutionViewStore } from './typeorm-execution-view-store';
 import { TypeOrmStepStore } from './typeorm-step-store';
 import type { ExecutionStore } from '../execution/execution-store';
 import type { ExecutionViewStore } from '../execution/execution-view-store';
+import type { StalenessThresholds } from '../execution/staleness';
 import type { StepStore } from '../execution/step-store';
 
 /** The engine's own persistence, for hosts that must read the data it writes. */
@@ -16,12 +17,15 @@ export interface EngineStores {
 	executionViewStore: ExecutionViewStore;
 }
 
-export function createStores(dataSource: DataSource): EngineStores {
+export function createStores(
+	dataSource: DataSource,
+	staleness?: StalenessThresholds,
+): EngineStores {
 	const executions = dataSource.getRepository(WorkflowExecution);
 	const steps = dataSource.getRepository(WorkflowStepExecution);
 	return {
-		executionStore: new TypeOrmExecutionStore(executions),
-		stepStore: new TypeOrmStepStore(steps),
+		executionStore: new TypeOrmExecutionStore(executions, staleness),
+		stepStore: new TypeOrmStepStore(steps, staleness),
 		executionViewStore: new TypeOrmExecutionViewStore(executions, steps),
 	};
 }

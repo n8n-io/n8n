@@ -135,7 +135,7 @@ export class AssistantAgentFactory {
 				user,
 				threadId,
 				runId,
-				environment.memoryModelId,
+				environment.utilityModelId,
 				runtime.turnState.getObserverThresholdTokens(),
 				generateTitle,
 			),
@@ -300,16 +300,16 @@ export class AssistantAgentFactory {
 		user: User,
 		threadId: string,
 		runId: string,
-		memoryModelId: ModelConfig | undefined,
+		utilityModelId: ModelConfig | undefined,
 		observerThresholdTokens: number | undefined,
 		generateTitle = false,
 	): InstanceAiMemoryConfig {
 		return {
-			// Titles run on the memory model, like the observer and the reflector.
+			// Titles run on the utility model, like the observer and the reflector.
 			...(generateTitle
 				? {
 						titleGeneration: {
-							...(memoryModelId ? { model: memoryModelId } : {}),
+							...(utilityModelId ? { model: utilityModelId } : {}),
 							// The host copies the title to the thread list when the run ends, so the
 							// title must be saved by then to show after the first turn.
 							sync: true,
@@ -317,7 +317,7 @@ export class AssistantAgentFactory {
 					}
 				: {}),
 			observationalMemory: {
-				model: memoryModelId,
+				model: utilityModelId,
 				observerThresholdTokens:
 					observerThresholdTokens ?? this.instanceAiConfig.observerMessageTokens,
 				// Only a set value replaces the SDK's reflect share.

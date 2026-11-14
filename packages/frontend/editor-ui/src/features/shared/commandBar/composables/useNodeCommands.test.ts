@@ -15,6 +15,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { createTestNode } from '@/__tests__/mocks';
 import type { CommandBarLocalSource, CommandBarSearchRequest } from '../types';
+import CommandBarRestrictedNode from '../components/CommandBarRestrictedNode.vue';
 
 vi.mock('@/app/composables/useWorkflowId', async () => {
 	const { computed } = await import('vue');
@@ -463,6 +464,28 @@ describe('useNodeCommands', () => {
 				['n8n-nodes-base.slack', true],
 			]);
 		});
+
+		it.each(['instance', 'project'] as const)(
+			'should explain a node type restricted in the %s scope at the end of its row',
+			(scope) => {
+				setMergedNodes([
+					createMockNodeType('n8n-nodes-base.httpRequest', 'HTTP Request'),
+					createMockNodeType('n8n-nodes-base.slack', 'Slack'),
+				]);
+				mockRestrictedNodeTypes({ 'n8n-nodes-base.slack': scope });
+
+				const { items } = searchNodes();
+
+				expect(items[0].trailing).toBeUndefined();
+				expect(items[1].trailing).toEqual({
+					component: CommandBarRestrictedNode,
+					props: {
+						nodeTypeName: 'Slack',
+						restriction: expect.objectContaining({ scope }),
+					},
+				});
+			},
+		);
 	});
 
 	describe('pagination', () => {

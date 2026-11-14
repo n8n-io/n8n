@@ -1,4 +1,4 @@
-import type { User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonStringify } from 'n8n-workflow';
 import z from 'zod';
@@ -35,6 +35,7 @@ export const createUnpublishWorkflowTool = (
 	workflowService: WorkflowService,
 	telemetry: Telemetry,
 	collaborationService: CollaborationService,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'unpublish_workflow',
 	config: {
@@ -62,9 +63,7 @@ export const createUnpublishWorkflowTool = (
 
 			await collaborationService.ensureWorkflowEditable(workflowId);
 
-			await workflowService.deactivateWorkflow(user, workflowId, {
-				source: 'n8n-mcp',
-			});
+			await workflowService.deactivateWorkflow(user, workflowId, { source: 'n8n-mcp' }, ctx);
 
 			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 

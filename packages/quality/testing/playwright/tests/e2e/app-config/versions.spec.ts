@@ -54,6 +54,27 @@ const requirements: TestRequirements = {
 				},
 			],
 		},
+		// One article, so the What's new row opens the modal that carries the update nudge.
+		whatsNew: {
+			url: '**/api/whats-new**',
+			response: {
+				title: "What's new",
+				calloutText: '',
+				footer: '',
+				createdAt: '2025-06-30T00:00:00Z',
+				updatedAt: null,
+				items: [
+					{
+						id: 1,
+						title: 'Version 1.0.2 is out',
+						content: 'Release notes',
+						createdAt: '2025-06-30T00:00:00Z',
+						updatedAt: null,
+						publishedAt: '2025-06-30T00:00:00Z',
+					},
+				],
+			},
+		},
 	},
 };
 
@@ -63,11 +84,14 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Cloud Growth' }],
 	},
 	() => {
-		test('should show updates in help section', async ({ n8n, setupRequirements }) => {
+		test("should show updates from the account menu's What's new", async ({
+			n8n,
+			setupRequirements,
+		}) => {
 			await setupRequirements(requirements);
 			await n8n.goHome();
 			await n8n.sideBar.expand();
-			await n8n.sideBar.clickHelpMenuItem();
+			await n8n.sideBar.clickWhatsNewMenuItem();
 			await expect(n8n.sideBar.getVersionUpdateItem()).toContainText('Update (2 versions behind)');
 		});
 	},

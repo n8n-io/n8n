@@ -3,10 +3,12 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { N8nButton, N8nInlineTextEdit } from '@n8n/design-system';
+import { RestrictedTypeCallout } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
 import type { INode } from 'n8n-workflow';
 import { ref } from 'vue';
 import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
+import { useChatToolRestriction } from '@/features/ai/chatHub/composables/useChatToolRestriction';
 
 const props = defineProps<{
 	modalName: string;
@@ -19,6 +21,8 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+
+const { isRestricted, restriction, typeName } = useChatToolRestriction(() => props.data.node?.type);
 
 const contentRef = ref<InstanceType<typeof NodeToolSettingsContent> | null>(null);
 const isValid = ref(false);
@@ -68,6 +72,7 @@ function handleNodeNameUpdate(name: string) {
 				/>
 				<N8nInlineTextEdit
 					:model-value="nodeName"
+					:read-only="isRestricted"
 					:max-width="400"
 					:class="$style.title"
 					@update:model-value="handleChangeName"
@@ -76,10 +81,18 @@ function handleNodeNameUpdate(name: string) {
 		</template>
 		<template #content>
 			<div :class="$style.contentWrapper">
+				<RestrictedTypeCallout
+					v-if="isRestricted"
+					surface="chatTool"
+					:type-name="typeName"
+					:restriction="restriction"
+					:class="$style.callout"
+				/>
 				<NodeToolSettingsContent
 					ref="contentRef"
 					:initial-node="data.node"
 					:existing-tool-names="data.existingToolNames"
+					:read-only="isRestricted"
 					@update:valid="handleValidUpdate"
 					@update:node-name="handleNodeNameUpdate"
 				/>
@@ -90,7 +103,12 @@ function handleNodeNameUpdate(name: string) {
 				<N8nButton variant="outline" @click="handleCancel">
 					{{ i18n.baseText('chatHub.toolSettings.cancel') }}
 				</N8nButton>
-				<N8nButton variant="solid" :disabled="!isValid" @click="handleConfirm">
+				<N8nButton
+					variant="solid"
+					:disabled="!isValid || isRestricted"
+					data-test-id="chat-tool-settings-save"
+					@click="handleConfirm"
+				>
 					{{ i18n.baseText('chatHub.toolSettings.confirm') }}
 				</N8nButton>
 			</div>
@@ -124,6 +142,12 @@ function handleNodeNameUpdate(name: string) {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--2xs);
+}
+
+.callout {
+	flex-shrink: 0;
+	margin-right: var(--spacing--lg);
+	margin-bottom: var(--spacing--sm);
 }
 
 .contentWrapper {

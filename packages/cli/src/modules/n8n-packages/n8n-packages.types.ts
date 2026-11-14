@@ -1,7 +1,9 @@
 import type { AgentImportIssue } from './entities/agent/agent-import.types';
 import type { ImportedAgentChannel, PolicyViolation } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import type { Readable } from 'node:stream';
+
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 
 import type {
 	CredentialConflict,
@@ -261,6 +263,8 @@ export type TagConflictPolicy = (typeof TagConflictPolicy)[keyof typeof TagConfl
 
 export interface ExportPackageRequest {
 	user: User;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	agentIds?: string[];
 	workflowIds?: string[];
 	folderIds?: string[];
@@ -289,10 +293,13 @@ export type PackageImportSource = 'package-import' | 'git-pull';
 
 export type ImportRequest = {
 	user: User;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	projectId?: string;
 	folderId?: string;
 	bindings?: Partial<Pick<PackageImportBindings, 'credentials'>>;
 	apiKeyScopes?: string[];
+	publicApi: PublicApiCaller;
 	/** Omit to import the whole package. */
 	selection?: ImportSelection;
 } & ImportCredentialProperties &
@@ -336,7 +343,10 @@ export interface ImportSelection {
  */
 export type ImportSelectionRequest = {
 	user: User;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	apiKeyScopes?: string[];
+	publicApi: PublicApiCaller;
 	bindings?: Partial<Pick<PackageImportBindings, 'credentials'>>;
 	conflictPolicy?: ImportConflictPolicy;
 	idPolicy?: WorkflowIdPolicy;
@@ -450,8 +460,11 @@ export type ImportTagProperties = {
  */
 export interface ImportContext {
 	user: User;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	projectId: string;
 	folderId: string | null;
+	publicApi: PublicApiCaller;
 }
 
 export type ImportPackageEventOptions = Required<ImportCredentialProperties> &

@@ -20,6 +20,7 @@ import {
 } from '@n8n/design-system';
 import { formatTimestamp, getVersionLabel } from '@/features/workflows/workflowHistory/utils';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
+import WorkflowVersionEngineBadge from './WorkflowVersionEngineBadge.vue';
 import omit from 'lodash/omit';
 
 const i18n = useI18n();
@@ -31,6 +32,7 @@ const props = defineProps<{
 	isPublished?: boolean;
 	isListLoading?: boolean;
 	isFirstItemShown?: boolean;
+	pendingVersionId?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -110,6 +112,11 @@ const actions = computed(() => {
 	return filteredActions;
 });
 
+const isLoading = computed(
+	() =>
+		Boolean(props.pendingVersionId) && props.pendingVersionId === props.workflowVersion?.versionId,
+);
+
 const onAction = (value: string) => {
 	if (!props.workflowVersion) {
 		return;
@@ -148,9 +155,15 @@ watch(
 						<template #content>
 							{{ formattedCreatedAt }}
 						</template>
-						<N8nText :class="$style.mainLine" bold color="text-dark">{{
-							versionNameDisplay
-						}}</N8nText>
+						<div :class="$style.titleRow">
+							<N8nText :class="$style.mainLine" bold color="text-dark">{{
+								versionNameDisplay
+							}}</N8nText>
+							<WorkflowVersionEngineBadge
+								:settings="props.workflowVersion.settings"
+								size="xxsmall"
+							/>
+						</div>
 					</N8nTooltip>
 					<N8nText v-if="description" size="small" color="text-base">
 						{{ displayDescription }}
@@ -170,7 +183,12 @@ watch(
 					data-test-id="workflow-history-content-actions"
 					@action="onAction"
 				>
-					<N8nButton variant="outline" size="large" data-test-id="action-toggle-button">
+					<N8nButton
+						variant="outline"
+						size="large"
+						:loading="isLoading"
+						data-test-id="action-toggle-button"
+					>
 						{{ i18n.baseText('workflowHistory.content.actions') }}
 						<N8nIcon class="ml-3xs" icon="chevron-down" size="small" />
 					</N8nButton>
@@ -220,6 +238,13 @@ $descriptionBoxMaxWidth: 330px;
 	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius);
 	background-color: var(--color--background--light-3);
+}
+
+.titleRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
 }
 
 .mainLine {

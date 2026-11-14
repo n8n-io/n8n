@@ -1,7 +1,9 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { User, WorkflowEntity } from '@n8n/db';
+import { type OperationContext, User, WorkflowEntity } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import type { INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
@@ -43,7 +45,7 @@ describe('restore-workflow-version MCP tool', () => {
 		});
 	});
 
-	const buildTool = () =>
+	const buildTool = (ctx?: OperationContext) =>
 		createRestoreWorkflowVersionTool(
 			user,
 			workflowFinderService,
@@ -51,6 +53,7 @@ describe('restore-workflow-version MCP tool', () => {
 			workflowService,
 			telemetry,
 			collaborationService,
+			ctx,
 		);
 
 	const callContext = {} as Parameters<ReturnType<typeof buildTool>['handler']>[1];
@@ -78,6 +81,7 @@ describe('restore-workflow-version MCP tool', () => {
 					nodes: versionNodes,
 					connections: { Set: { main: [] } },
 					nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-1'] }],
+					settings: { engineType: 'v2' },
 				}),
 			);
 			(workflowService.update as Mock).mockResolvedValue({
@@ -100,7 +104,12 @@ describe('restore-workflow-version MCP tool', () => {
 				connections: { Set: { main: [] } },
 				nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-1'] }],
 			});
-			expect(updateOptions).toMatchObject({ forceSave: true, source: 'n8n-mcp' });
+			expect(updateOptions).toMatchObject({
+				forceSave: true,
+				source: 'n8n-mcp',
+				restoredVersionSettings: { engineType: 'v2' },
+			});
+			expect(updateOptions).not.toHaveProperty('restoredFromVersionId');
 
 			expect(result.structuredContent).toMatchObject({
 				success: true,
@@ -109,6 +118,21 @@ describe('restore-workflow-version MCP tool', () => {
 				newVersionId: 'new-version-id',
 			});
 			expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
+		});
+
+		test('passes the operation context to the workflow service', async () => {
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(createWorkflow());
+			(workflowHistoryService.getVersion as Mock).mockResolvedValue(
+				createWorkflowHistoryVersion({ workflowId: 'wf-1', versionId: 'v1', nodes: versionNodes }),
+			);
+			(workflowService.update as Mock).mockResolvedValue({ id: 'wf-1', versionId: 'v2' });
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await buildTool(ctx).handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext);
+
+			expect((workflowService.update as Mock).mock.calls[0][4]).toBe(ctx);
 		});
 
 		test('names the new version after the restored version', async () => {

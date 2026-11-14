@@ -158,6 +158,7 @@ describe('WorkflowHistoryService', () => {
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved: false,
+				settings: { engineType: 'v1' },
 			});
 		});
 
@@ -182,6 +183,7 @@ describe('WorkflowHistoryService', () => {
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved: false,
+				settings: { engineType: 'v1' },
 			});
 		});
 
@@ -205,6 +207,7 @@ describe('WorkflowHistoryService', () => {
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved: true,
+				settings: { engineType: 'v1' },
 			});
 		});
 
@@ -228,7 +231,21 @@ describe('WorkflowHistoryService', () => {
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved: false,
+				settings: { engineType: 'v1' },
 			});
+		});
+
+		it('should store only the version-scoped settings', async () => {
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			workflow.connections = {};
+			workflow.versionId = '456';
+			workflow.settings = { engineType: 'v2', availableInMCP: true };
+
+			await workflowHistoryService.saveVersion(testPerson, workflow, '123');
+
+			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith(
+				expect.objectContaining({ settings: { engineType: 'v2' } }),
+			);
 		});
 
 		it('should annotate authors with "(via MCP)" when source is n8n-mcp', async () => {
@@ -610,7 +627,7 @@ describe('WorkflowHistoryService', () => {
 					createdAt,
 					userId: null,
 					user: null,
-					workflowHistory: { name: 'Release 1' } as WorkflowHistory,
+					workflowHistory: { name: 'Release 1', settings: { engineType: 'v2' } } as WorkflowHistory,
 				},
 				{
 					id: 2,
@@ -640,6 +657,7 @@ describe('WorkflowHistoryService', () => {
 					createdAt,
 					user: null,
 					versionName: 'Release 1',
+					settings: { engineType: 'v2' },
 				},
 				{
 					id: 2,
@@ -649,6 +667,7 @@ describe('WorkflowHistoryService', () => {
 					createdAt,
 					user: null,
 					versionName: null,
+					settings: null,
 				},
 			]);
 			expect(workflowPublishHistoryRepository.findTimelinePage).toHaveBeenCalledWith(workflowId, {
@@ -721,6 +740,7 @@ describe('WorkflowHistoryService', () => {
 			workflow.versionId = 'wfv-fresh';
 			workflow.connections = {};
 			workflow.nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['uuid-1234'] }];
+			workflow.settings = { engineType: 'v2' };
 			workflowRepository.findOneBy.mockResolvedValueOnce(workflow);
 			// First findOne: no existing history row → insert path.
 			// Second findOne: post-save verification that the row now exists.
@@ -740,6 +760,7 @@ describe('WorkflowHistoryService', () => {
 					nodes: workflow.nodes,
 					connections: workflow.connections,
 					nodeGroups: workflow.nodeGroups,
+					settings: { engineType: 'v2' },
 				}),
 			);
 		});
