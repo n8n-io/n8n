@@ -1077,7 +1077,7 @@ export async function executeWebhook(
 	});
 
 	const {
-		responseMode,
+		responseMode: configuredResponseMode,
 		responseCode,
 		responseData,
 		checkAllMainOutputs,
@@ -1085,6 +1085,7 @@ export async function executeWebhook(
 		responseContentType,
 		responseBinaryPropertyName,
 	} = evaluateResponseOptions(context, req);
+	let responseMode = configuredResponseMode;
 
 	if (!SUPPORTED_RESPONSE_MODES.has(responseMode)) {
 		// If the mode is not known we error. Is probably best like that instead of using
@@ -1142,6 +1143,16 @@ export async function executeWebhook(
 			executionMode,
 			additionalKeys,
 		);
+
+		// The widget loads history from one JSON response.
+		if (
+			workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE &&
+			isRecord(req.body) &&
+			req.body.action === 'loadPreviousSession' &&
+			(responseMode === 'streaming' || responseMode === 'hostedChat')
+		) {
+			responseMode = 'lastNode';
+		}
 
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
 		if (
