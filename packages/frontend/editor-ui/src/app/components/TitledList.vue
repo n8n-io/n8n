@@ -25,6 +25,11 @@ defineProps<{
 		&::before {
 			content: '- ';
 		}
+
+		:deep(ol),
+		:deep(ul) {
+			padding-inline-start: var(--spacing--md);
+		}
 	}
 }
 </style>
