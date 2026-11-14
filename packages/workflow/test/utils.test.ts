@@ -593,6 +593,19 @@ describe('hasKey', () => {
 		expect(result).toEqual(false);
 	});
 
+	it('should return true for an own key on a null-prototype object', () => {
+		const x = Object.create(null) as Record<string, unknown>;
+		x.key = 'value';
+
+		expect(hasKey(x, 'key')).toEqual(true);
+	});
+
+	it('should return false for a missing key on a null-prototype object', () => {
+		const x = Object.create(null) as Record<string, unknown>;
+
+		expect(hasKey(x, 'missing')).toEqual(false);
+	});
+
 	it('should provide a type guard', () => {
 		const x: unknown = { a: 3 };
 		if (hasKey(x, '0')) {
