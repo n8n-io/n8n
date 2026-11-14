@@ -442,6 +442,26 @@ describe('deepCopy', () => {
 		expect(copy.body.id).toBeUndefined();
 		expect(Object.getPrototypeOf(copy.body)).toBe(Object.prototype);
 	});
+
+	it('should keep shared array references shared in the copy', () => {
+		const shared = [1, 2];
+		const source = { a: shared, b: shared };
+
+		const copy = deepCopy(source);
+
+		expect(copy.a).toBe(copy.b);
+		expect(copy.a).not.toBe(shared);
+	});
+
+	it('should not overflow the stack on a circular array', () => {
+		const source: unknown[] = [1];
+		source.push(source);
+
+		const copy = deepCopy(source);
+
+		expect(copy).not.toBe(source);
+		expect(copy[1]).toBe(copy);
+	});
 });
 
 describe('fileTypeFromMimeType', () => {

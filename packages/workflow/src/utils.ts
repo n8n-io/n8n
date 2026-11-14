@@ -75,6 +75,7 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 	// Array
 	if (Array.isArray(source)) {
 		const clone = [];
+		hash.set(source, clone);
 		const len = source.length;
 		for (let i = 0; i < len; i++) {
 			clone[i] = deepCopy(source[i], hash, path + `[${i}]`);
