@@ -1,7 +1,7 @@
 import type { RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService, CredentialsFinderService } from '@n8n/backend-services';
-import type { EntityManager, User, Project, Folder } from '@n8n/db';
+import type { EntityManager, User, Project, Folder, OperationContext } from '@n8n/db';
 import {
 	ProjectRepository,
 	SharedWorkflow,

@@ -13,7 +13,13 @@ import {
 } from '@n8n/agents';
 import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
 import { AgentsConfig, AiConfig } from '@n8n/config';
-import { SettingsRepository, UserRepository, type OperationContext, type User } from '@n8n/db';
+import {
+	ServiceAccountRepository,
+	SettingsRepository,
+	UserRepository,
+	type OperationContext,
+	type User,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, EntityManager, type Repository } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -256,7 +262,9 @@ describe('AgentExecutionRepository', () => {
 			executions,
 			executionService,
 			checkpointStorage,
-			connection ? new AgentRepository(connection, txRunner) : agentRepo,
+			connection
+				? new AgentRepository(connection, txRunner, Container.get(ServiceAccountRepository))
+				: agentRepo,
 			attachmentService,
 			queueUpdates,
 			messageRepository,

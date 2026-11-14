@@ -30,6 +30,7 @@ import { LmChatXAiGrok } from '../../nodes/llms/LmChatXAiGrok/LmChatXAiGrok.node
 import { EmbeddingsAzureOpenAi } from '../../nodes/embeddings/EmbeddingsAzureOpenAi/EmbeddingsAzureOpenAi.node';
 import { MemoryXata } from '../../nodes/memory/MemoryXata/MemoryXata.node';
 import { RerankerCohere } from '../../nodes/rerankers/RerankerCohere/RerankerCohere.node';
+import { VectorStoreChromaDB } from '../../nodes/vector_store/VectorStoreChromaDB/VectorStoreChromaDB.node';
 import * as assistantMessage from '../../nodes/vendors/OpenAi/v1/actions/assistant/message.operation';
 
 type Run = (ctx: ISupplyDataFunctions & IExecuteFunctions) => Promise<unknown>;
@@ -80,6 +81,24 @@ const nodes: Array<[string, Run]> = [
 	['MemoryXata', supplyData(MemoryXata)],
 	['OpenAI assistant message', async (ctx) => await assistantMessage.execute.call(ctx, 0)],
 	['RerankerCohere', supplyData(RerankerCohere)],
+	[
+		'VectorStoreChromaDB (cloud, collection list)',
+		chromaCloud(
+			async (ctx) =>
+				await new VectorStoreChromaDB().methods!.listSearch!.chromaCollectionsSearch.call(
+					ctx as unknown as ILoadOptionsFunctions,
+				),
+		),
+	],
+	[
+		'VectorStoreChromaDB (cloud, retrieve)',
+		chromaCloud(supplyData(VectorStoreChromaDB), { mode: 'retrieve' }),
+	],
+	['VectorStoreChromaDB (cloud, load)', chromaCloud(chromaExecute, { mode: 'load' })],
+	[
+		'VectorStoreChromaDB (cloud, insert with Clear Collection)',
+		chromaCloud(chromaExecute, { mode: 'insert', options: { clearCollection: true } }),
+	],
 ];
 
 const node: INode = {

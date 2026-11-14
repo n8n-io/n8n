@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
-import { AgentTagMapping, LIKE_ESCAPE_CLAUSE, type TransactionRunner } from '@n8n/db';
+import {
+	AgentTagMapping,
+	LIKE_ESCAPE_CLAUSE,
+	type ServiceAccountRepository,
+	type TransactionRunner,
+} from '@n8n/db';
 import { In } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
@@ -17,7 +22,11 @@ describe('AgentRepository', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		repository = new AgentRepository(mockDataSource as never, mock<TransactionRunner>());
+		repository = new AgentRepository(
+			mockDataSource as never,
+			mock<TransactionRunner>(),
+			mock<ServiceAccountRepository>(),
+		);
 	});
 
 	describe('findByIdAndProjectId', () => {
@@ -486,7 +495,11 @@ describe('AgentRepository', () => {
 
 		it('replaces the mappings in one runner transaction, deduping ids', async () => {
 			const transactionRunner = makeTransactionRunner();
-			const repository = new AgentRepository(mockDataSource as never, transactionRunner);
+			const repository = new AgentRepository(
+				mockDataSource as never,
+				transactionRunner,
+				mock<ServiceAccountRepository>(),
+			);
 
 			await repository.overwriteTagMappings('agent-1', ['tag-1', 'tag-1', 'tag-2']);
 
@@ -502,7 +515,11 @@ describe('AgentRepository', () => {
 		});
 
 		it('only deletes when the new tag list is empty', async () => {
-			const repository = new AgentRepository(mockDataSource as never, makeTransactionRunner());
+			const repository = new AgentRepository(
+				mockDataSource as never,
+				makeTransactionRunner(),
+				mock<ServiceAccountRepository>(),
+			);
 
 			await repository.overwriteTagMappings('agent-1', []);
 
