@@ -3,9 +3,12 @@ import { z } from 'zod';
 /** Compiled files the hooks patch, as path suffixes inside the n8n image. */
 export const FILES = {
 	jobProcessor: 'n8n/dist/scaling/job-processor.js',
+	scalingService: 'n8n/dist/scaling/scaling.service.js',
+	executionPersistence: 'n8n/dist/executions/execution-persistence.js',
 	taskRequester: 'n8n/dist/task-runners/task-managers/task-requester.js',
 	taskBroker: 'n8n/dist/task-runners/task-broker/task-broker.service.js',
 	workflowExecute: 'n8n-core/dist/execution-engine/workflow-execute.js',
+	bullQueue: 'bull/lib/queue.js',
 	bullJob: 'bull/lib/job.js',
 	bullScripts: 'bull/lib/scripts.js',
 } as const;
