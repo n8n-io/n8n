@@ -105,7 +105,7 @@ export class EngineV2Runtime {
 	}
 
 	private async initDb(): Promise<void> {
-		const { databaseUrl } = this.engineConfig;
+		const { databaseUrl, databasePoolSize, databaseConnectionTimeoutMs } = this.engineConfig;
 
 		if (!databaseUrl) {
 			throw new UserError(
@@ -113,7 +113,10 @@ export class EngineV2Runtime {
 			);
 		}
 
-		this.dataSource = createDataSource(databaseUrl);
+		this.dataSource = createDataSource(databaseUrl, {
+			poolSize: databasePoolSize,
+			connectTimeoutMS: databaseConnectionTimeoutMs,
+		});
 		await this.dataSource.initialize();
 		await this.dataSource.runMigrations();
 	}
@@ -133,6 +136,10 @@ export class EngineV2Runtime {
 			logger: this.logger,
 			responseSender,
 			resumeSecret: this.engineConfig.resumeSecret,
+			concurrency: {
+				step: this.engineConfig.stepConcurrency,
+				orchestration: this.engineConfig.orchestrationConcurrency,
+			},
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				lifecycleEventCallback: lifecycleEventSender
 					? async (events, signal) => await lifecycleEventSender.send(events, signal)
