@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 
 import {
 	askUserContent,
@@ -11,9 +12,8 @@ import {
 	toolRowContent,
 	userContent,
 } from '../../__tests__/conversation-history-content.fixtures';
-import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
+import { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
 import { InstanceAiConversationHistoryRepository } from '../instance-ai-conversation-history.repository';
-import { InstanceAiMessageRepository } from '../instance-ai-message.repository';
 import { InstanceAiThreadRepository } from '../instance-ai-thread.repository';
 
 const USER_ID = 'user-1';
@@ -23,7 +23,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 	let repository: InstanceAiConversationHistoryRepository;
 	// Entity repositories are fixture setup only — the reads under test all
 	// belong to the conversation-history repository.
-	let messageRepository: InstanceAiMessageRepository;
+	let messageRepository: Repository<InstanceAiMessage>;
 	let threadRepository: InstanceAiThreadRepository;
 	let project: Project;
 	let otherProject: Project;
@@ -36,7 +36,7 @@ describe('InstanceAiConversationHistoryRepository', () => {
 		await testModules.loadModules(['instance-ai']);
 		await testDb.init();
 		repository = Container.get(InstanceAiConversationHistoryRepository);
-		messageRepository = Container.get(InstanceAiMessageRepository);
+		messageRepository = Container.get(DataSource).getRepository(InstanceAiMessage);
 		threadRepository = Container.get(InstanceAiThreadRepository);
 		project = await createTeamProject();
 		otherProject = await createTeamProject();

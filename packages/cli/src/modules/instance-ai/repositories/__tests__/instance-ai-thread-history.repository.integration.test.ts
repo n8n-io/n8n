@@ -3,7 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 
+import { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
 import { TypeORMAgentMemory } from '../../storage/typeorm-agent-memory';
 import { InstanceAiMessageRepository } from '../instance-ai-message.repository';
 import { InstanceAiObservationCursorRepository } from '../instance-ai-observation-cursor.repository';
@@ -107,7 +109,7 @@ describe('Instance AI thread history', () => {
 	});
 
 	it('pages messages with a timestamp and id cursor across rows written in the same millisecond', async () => {
-		await Container.get(InstanceAiMessageRepository).delete({ threadId: ids[3] });
+		await Container.get(DataSource).getRepository(InstanceAiMessage).delete({ threadId: ids[3] });
 		const messageIds = ['a1', 'a2', 'a3', 'a4', 'a5'].map((suffix) => ids[0].slice(0, -2) + suffix);
 		await memory.saveMessages({
 			threadId: ids[3],
