@@ -179,6 +179,10 @@ export class AgentsConfig {
 	 * In queue mode, lets main instances send agent turns to workers that have
 	 * `N8N_AGENTS_WORKER_ENABLED` set. Use the same value on every main instance.
 	 * When no agent worker is running, main instances run the turns themselves.
+	 *
+	 * Turns from n8n Assistant, Discord, and WhatsApp always run on main
+	 * instances. Use database or S3 binary data storage so that workers can read
+	 * agent files.
 	 */
 	@Env('N8N_AGENTS_QUEUE_MODE_ENABLED')
 	queueModeEnabled: boolean = false;

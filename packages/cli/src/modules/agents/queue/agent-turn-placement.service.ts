@@ -9,7 +9,14 @@ import type { AgentQueueDispatch } from '../types/agent-queued-message';
 
 export type QueuedTurnKind = AgentQueueDispatch['kind'];
 
-/** Turn kinds that a worker can run. The rest stay on mains. */
+/**
+ * Turn kinds that a worker can run. The rest stay on mains.
+ *
+ * `integration` turns go to workers only for `WORKER_PLATFORMS`. `system` turns
+ * (n8n Assistant) always stay on mains: the Assistant registers its provider,
+ * workspace lease and tool closures only on main instances, so a worker cannot
+ * build the runtime of a system turn.
+ */
 const WORKER_KINDS: ReadonlySet<QueuedTurnKind> = new Set(['preview', 'n8n_chat']);
 
 /**
