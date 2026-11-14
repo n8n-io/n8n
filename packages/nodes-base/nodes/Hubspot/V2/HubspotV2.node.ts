@@ -569,12 +569,12 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getDealStages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = requestPath`/crm-pipelines/v1/pipelines/deals`;
+				const endpoint = requestPath`/crm/v3/pipelines/deals`;
 				let stages = await hubspotApiRequest.call(this, 'GET', endpoint, {});
 				stages = stages.results[0].stages;
 				for (const stage of stages) {
 					const stageName = stage.label;
-					const stageId = stage.stageId;
+					const stageId = stage.id;
 					returnData.push({
 						name: stageName,
 						value: stageId,
@@ -729,11 +729,11 @@ export class HubspotV2 implements INodeType {
 			// select them easily
 			async getTicketPipelines(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = requestPath`/crm-pipelines/v1/pipelines/tickets`;
+				const endpoint = requestPath`/crm/v3/pipelines/tickets`;
 				const { results } = await hubspotApiRequest.call(this, 'GET', endpoint, {});
 				for (const pipeline of results) {
 					const pipelineName = pipeline.label;
-					const pipelineId = pipeline.pipelineId;
+					const pipelineId = pipeline.id;
 					returnData.push({
 						name: pipelineName,
 						value: pipelineId,
@@ -826,13 +826,13 @@ export class HubspotV2 implements INodeType {
 					currentPipelineId = this.getNodeParameter('updateFields.pipelineId', '') as string;
 				}
 				const returnData: INodePropertyOptions[] = [];
-				const endpoint = requestPath`/crm-pipelines/v1/pipelines/tickets`;
+				const endpoint = requestPath`/crm/v3/pipelines/tickets`;
 				const { results } = await hubspotApiRequest.call(this, 'GET', endpoint, {});
 				for (const pipeline of results) {
-					if (currentPipelineId === pipeline.pipelineId) {
+					if (currentPipelineId === pipeline.id) {
 						for (const stage of pipeline.stages) {
 							const stageName = stage.label;
-							const stageId = stage.stageId;
+							const stageId = stage.id;
 							returnData.push({
 								name: stageName,
 								value: stageId,
