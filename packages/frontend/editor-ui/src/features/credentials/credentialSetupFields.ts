@@ -115,7 +115,7 @@ export function groupCredentialSetupFields(
 		// Keep optional controls with the fields and notices they enable.
 		// A false condition can expose core setup, such as PostgreSQL SSL.
 		const followsAdvancedControl = Object.entries(field.displayOptions?.show ?? {}).some(
-			([name, values]) => advancedNames.has(name) && values?.includes(true),
+			([name, values]) => advancedNames.has(name) && values?.some((value) => value === true),
 		);
 		(advancedNames.has(field.name) || followsAdvancedControl ? advanced : inline).push(field);
 	}
