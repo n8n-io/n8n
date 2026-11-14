@@ -250,8 +250,6 @@ export interface WorkflowTestCase {
 	executionScenarios?: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
-	/** Optional case override. Unset cases use the suite mode or control. */
-	buildMode?: 'progressive' | 'default';
 	promptVersion?: string;
 	/** Enable the user-run action for credential-free execution cases. */
 	allowUserExecution?: boolean;

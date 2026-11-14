@@ -91,12 +91,14 @@ component_management:
         - packages/@n8n/extension-sdk/**
         - packages/@n8n/imap/**
         - packages/@n8n/inbound-auth/**
+        - packages/@n8n/leases/**
         - packages/@n8n/permissions/**
         - packages/@n8n/scan-community-package/**
         - packages/@n8n/syslog-client/**
         - packages/@n8n/task-runner/**
         - packages/@n8n/task-runner-python/**
         - packages/@n8n/tournament/**
+        - packages/@n8n/workflow-engine-check/**
         - packages/@n8n/workflow-sdk/**
     - component_id: frontend_packages
       name: Frontend

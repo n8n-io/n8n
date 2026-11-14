@@ -12,6 +12,8 @@ export { ASSISTANT_MENTION_QUERY_TEXT_MAX_LENGTH, ASSISTANT_RUNTIMES } from './e
 export type { AssistantRuntime } from './events/instance-ai';
 export { POLICY_KINDS } from './events/type-availability-policies';
 export type { PolicyKind } from './events/type-availability-policies';
+export { findPageHideEvent, PAGE_HIDE_EVENTS } from './page-hide-events';
+export type { PageHideEvent } from './page-hide-events';
 export { redactTelemetryProperties, redactTelemetryText } from './redaction';
 export type { TelemetryTextOptions } from './redaction';
 export { collectDuplicateNames, validateEntrySchemas } from './registry-checks';

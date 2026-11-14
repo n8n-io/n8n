@@ -6,7 +6,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { EventService, Publisher } from '@n8n/backend-services';
 import { GlobalConfig, PublicApiRateLimitConfig } from '@n8n/config';
-import { SettingsRepository } from '@n8n/db';
+import { SettingsRepository, type OperationContext } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
@@ -14,6 +14,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
+import { loginIdOf } from '@/events/login-id';
 import type { UserLike } from '@/types/user-like.types';
 
 export const PUBLIC_API_RATE_LIMIT_SETTINGS_KEY = 'features.publicApiRateLimit';
@@ -79,6 +80,7 @@ export class PublicApiRateLimitSettingsService {
 	async saveSettings(
 		incoming: PublicApiRateLimitSettings,
 		actor: UserLike,
+		ctx: OperationContext = {},
 	): Promise<PublicApiRateLimitSettingsResponse> {
 		const settings = this.mergeWithEnvAndConfig(incoming);
 
@@ -97,12 +99,26 @@ export class PublicApiRateLimitSettingsService {
 		this.loaded = settings;
 		this.notifyOtherMains();
 
+		const { id, email, firstName, lastName, role } = actor;
+		const user = { id, email, firstName, lastName, role };
+
 		if (settings.enabled !== previous.enabled) {
-			const { id, email, firstName, lastName, role } = actor;
 			this.eventService.emit('instance-policies-updated', {
-				user: { id, email, firstName, lastName, role },
+				user,
 				settingName: 'public_api_rate_limit',
 				value: settings.enabled,
+				loginId: loginIdOf(ctx),
+			});
+		}
+
+		const changed = FIELDS.filter(
+			(field) => field !== 'enabled' && settings[field] !== previous[field],
+		);
+		if (changed.length > 0) {
+			this.eventService.emit('public-api-rate-limit-updated', {
+				user,
+				before: Object.fromEntries(changed.map((field) => [field, previous[field]])),
+				after: Object.fromEntries(changed.map((field) => [field, settings[field]])),
 			});
 		}
 

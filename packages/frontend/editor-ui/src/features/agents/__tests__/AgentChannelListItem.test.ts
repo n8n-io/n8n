@@ -17,7 +17,7 @@ const integration = {
 function mountItem(
 	configured: boolean,
 	connected: boolean,
-	extra: { notRunning?: boolean; runtimeError?: string } = {},
+	extra: { notRunning?: boolean; runtimeError?: string; description?: string } = {},
 ) {
 	return mount(AgentChannelListItem, {
 		props: {
@@ -59,6 +59,22 @@ describe('AgentChannelListItem', () => {
 		if (configured) {
 			expect(wrapper.find('[data-icon="check"]').exists()).toBe(true);
 		}
+	});
+
+	it('shows the description under the name', () => {
+		const wrapper = mountItem(false, false, {
+			description: 'agents.channels.slack.listDescription',
+		});
+
+		expect(wrapper.get('[data-testid="agent-channel-description"]').text()).toBe(
+			'agents.channels.slack.listDescription',
+		);
+	});
+
+	it('leaves the description out when the channel has none', () => {
+		const wrapper = mountItem(false, false);
+
+		expect(wrapper.find('[data-testid="agent-channel-description"]').exists()).toBe(false);
 	});
 
 	describe('a channel that failed to start', () => {

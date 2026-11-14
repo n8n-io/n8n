@@ -1,11 +1,13 @@
 import type { EventService } from '@n8n/backend-services';
 import { QueryFailedError } from '@n8n/typeorm';
+import type { SecurityContext } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import { RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import type { UserLike } from '@/events/maps/relay.event-map';
 import type {
+	OperationContext,
 	Project,
 	ProjectRepository,
 	Role,
@@ -1101,5 +1103,89 @@ describe('RoleMappingRuleService', () => {
 			// Instance sequence has gap [0, 2] — transaction called once
 			expect(transactionSpy).toHaveBeenCalledTimes(1);
 		});
+	});
+
+	describe('login id on the audit events', () => {
+		const rule = {
+			id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+			expression: 'true',
+			role: globalRole,
+			type: 'instance',
+			order: 0,
+			projects: [],
+			createdAt: new Date('2025-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+		} as unknown as RoleMappingRule;
+
+		beforeEach(() => {
+			roleRepository.findOne.mockResolvedValue(globalRole);
+			roleMappingRuleRepository.findOne.mockResolvedValue({ ...rule } as RoleMappingRule);
+			roleMappingRuleRepository.find.mockResolvedValue([rule]);
+			roleMappingRuleRepository.save.mockResolvedValue({ ...rule } as RoleMappingRule);
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue({ ...rule } as RoleMappingRule);
+			roleMappingRuleRepository.remove.mockResolvedValue(rule);
+		});
+
+		type Case = {
+			write: string;
+			event: string;
+			act: (ctx?: OperationContext) => Promise<unknown>;
+		};
+
+		const user = { userId: testUser.id, userEmail: testUser.email };
+		const serviceAccountCtx: OperationContext = {
+			security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+		};
+
+		const cases: Case[] = [
+			{
+				write: 'create',
+				event: 'role-mapping-rule-created',
+				act: async (ctx) =>
+					await service.create(
+						{ expression: 'true', role: globalRole.slug, type: 'instance' },
+						testUser,
+						ctx,
+					),
+			},
+			{
+				write: 'patch',
+				event: 'role-mapping-rule-updated',
+				act: async (ctx) =>
+					await service.patch({ id: rule.id, dto: { expression: 'false' }, ...user }, ctx),
+			},
+			{
+				write: 'move',
+				event: 'role-mapping-rule-updated',
+				act: async (ctx) => await service.move({ id: rule.id, targetIndex: 0, ...user }, ctx),
+			},
+			{
+				write: 'delete',
+				event: 'role-mapping-rule-deleted',
+				act: async (ctx) => await service.delete({ id: rule.id, ...user }, ctx),
+			},
+		];
+
+		it.each(cases)(
+			'$write passes the login id of the operation context to $event',
+			async ({ act, event }) => {
+				await act(serviceAccountCtx);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					event,
+					expect.objectContaining({ loginId: 'login-1' }),
+				);
+			},
+		);
+
+		it.each(cases)(
+			'$write emits no login id without an operation context',
+			async ({ act, event }) => {
+				await act();
+
+				const call = eventService.emit.mock.calls.find(([name]) => name === event);
+				expect(call?.[1]).toMatchObject({ loginId: undefined });
+			},
+		);
 	});
 });

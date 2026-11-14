@@ -255,7 +255,7 @@ export class FoldersPublicController {
 		]);
 
 		try {
-			await this.folderService.deleteFolder(req.user, folderId, resolvedProjectId, query);
+			await this.folderService.deleteFolder(req.user, folderId, resolvedProjectId, query, req.ctx);
 		} catch (error) {
 			return handleError(error);
 		}

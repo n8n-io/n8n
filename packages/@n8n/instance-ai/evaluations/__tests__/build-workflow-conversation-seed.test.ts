@@ -670,17 +670,6 @@ describe('buildWorkflow with scenario seed data tables', () => {
 		},
 	);
 
-	it('rejects an invalid mode before creating a thread', async () => {
-		vi.stubEnv('N8N_EVAL_BUILD_MODE', 'progresssive');
-		try {
-			const client = makeClient(vi.fn());
-			await expect(buildWorkflow({ ...baseConfig, client })).rejects.toThrow('N8N_EVAL_BUILD_MODE');
-			expect(client.ensureThread).not.toHaveBeenCalled();
-		} finally {
-			vi.unstubAllEnvs();
-		}
-	});
-
 	it('creates the table under a per-run name and tells the agent THAT name', async () => {
 		// The name is project-unique, so a per-run suffix is what lets two iterations of
 		// one case coexist. The agent binds by discovery, so it has to be told the real

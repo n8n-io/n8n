@@ -286,33 +286,44 @@ export class WorkflowImporter {
 
 		if (item.action === 'create') {
 			const entity = prepareEntityForPersist(item.entity, bindings, item.decidedId);
-			return await this.workflowCreationService.createWorkflow(context.user, entity, {
-				projectId: context.projectId,
-				parentFolderId: item.parentFolderId ?? context.folderId ?? undefined,
-				publicApi: true,
-				source: 'import',
-				sourceWorkflowId: item.sourceWorkflowId,
-				...(batchContext ? { batchContext } : {}),
-				...(tagIds !== undefined ? { tagIds } : {}),
-			});
+			return await this.workflowCreationService.createWorkflow(
+				context.user,
+				entity,
+				{
+					projectId: context.projectId,
+					parentFolderId: item.parentFolderId ?? context.folderId ?? undefined,
+					publicApi: context.publicApi,
+					source: 'import',
+					sourceWorkflowId: item.sourceWorkflowId,
+					...(batchContext ? { batchContext } : {}),
+					...(tagIds !== undefined ? { tagIds } : {}),
+				},
+				context.ctx,
+			);
 		}
 
 		const entity = prepareEntityForPersist(item.entity, bindings);
 
-		const updated = await this.workflowService.update(context.user, entity, item.existing.id, {
-			publicApi: true,
-			source: 'import',
-			allowArchivedUpdate: item.existing.isArchived,
-			...(item.moveToFolderId !== undefined
-				? { parentFolderId: item.moveToFolderId ?? PROJECT_ROOT }
-				: {}),
-			// `settings.errorWorkflow` is a package reference this importer rebinds. The
-			// handler it now points at can still be unwritten (later in this loop) and is
-			// unpublished until the package-wide sweep, so the write-time check on that
-			// reference cannot apply here.
-			allowUnresolvedErrorWorkflow: true,
-			...(tagIds !== undefined ? { tagIds } : {}),
-		});
+		const updated = await this.workflowService.update(
+			context.user,
+			entity,
+			item.existing.id,
+			{
+				publicApi: context.publicApi,
+				source: 'import',
+				allowArchivedUpdate: item.existing.isArchived,
+				...(item.moveToFolderId !== undefined
+					? { parentFolderId: item.moveToFolderId ?? PROJECT_ROOT }
+					: {}),
+				// `settings.errorWorkflow` is a package reference this importer rebinds. The
+				// handler it now points at can still be unwritten (later in this loop) and is
+				// unpublished until the package-wide sweep, so the write-time check on that
+				// reference cannot apply here.
+				allowUnresolvedErrorWorkflow: true,
+				...(tagIds !== undefined ? { tagIds } : {}),
+			},
+			context.ctx,
+		);
 
 		if (item.archiveTransition !== null) {
 			return await this.transitionArchive(context, item, item.archiveTransition);
@@ -328,13 +339,18 @@ export class WorkflowImporter {
 	): Promise<WorkflowEntity> {
 		const workflow =
 			transition === 'archive'
-				? await this.workflowService.archive(context.user, item.existing.id, {
-						skipArchived: true,
-						publicApi: true,
-					})
-				: await this.workflowService.unarchive(context.user, item.existing.id, {
-						publicApi: true,
-					});
+				? await this.workflowService.archive(
+						context.user,
+						item.existing.id,
+						{ skipArchived: true, publicApi: context.publicApi },
+						context.ctx,
+					)
+				: await this.workflowService.unarchive(
+						context.user,
+						item.existing.id,
+						{ publicApi: context.publicApi },
+						context.ctx,
+					);
 
 		// The plan already checked `workflow:delete`; this only trips if access changed since.
 		if (!workflow) {

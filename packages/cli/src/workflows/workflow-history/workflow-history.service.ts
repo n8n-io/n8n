@@ -12,8 +12,9 @@ import {
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { pickVersionedSettings } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
@@ -30,6 +31,8 @@ type WorkflowHistoryVersionInput = {
 		nodes: IWorkflowBase['nodes'];
 		connections: IWorkflowBase['connections'];
 		nodeGroups?: IWorkflowBase['nodeGroups'];
+		/** The row stores only the version-scoped settings. */
+		settings?: IWorkflowSettings;
 	};
 	workflowId: string;
 	autosaved?: boolean;
@@ -77,6 +80,7 @@ export class WorkflowHistoryService {
 				'name',
 				'description',
 				'autosaved',
+				'settings',
 			],
 			order: { createdAt: 'DESC', versionId: 'ASC' },
 		});
@@ -144,6 +148,15 @@ export class WorkflowHistoryService {
 		});
 	}
 
+	/** Reads only the version-scoped settings of a version, not its nodes. */
+	async findVersionSettings(workflowId: string, versionId: string) {
+		const version = await this.workflowHistoryRepository.findOne({
+			where: { workflowId, versionId },
+			select: ['settings'],
+		});
+		return version?.settings;
+	}
+
 	/**
 	 * Ensure a {@link WorkflowHistory} row exists for the workflow's *current*
 	 * draft state and return its `versionId`. Used by the eval-collections
@@ -176,6 +189,7 @@ export class WorkflowHistoryService {
 				nodes: workflow.nodes,
 				connections: workflow.connections,
 				nodeGroups: workflow.nodeGroups,
+				settings: workflow.settings,
 			},
 			workflowId,
 		);
@@ -266,6 +280,7 @@ export class WorkflowHistoryService {
 			versionId: workflow.versionId,
 			workflowId,
 			autosaved,
+			settings: pickVersionedSettings(workflow.settings),
 			...(versionMetadata?.name ? { name: versionMetadata.name } : {}),
 			...(versionMetadata?.description ? { description: versionMetadata.description } : {}),
 		};
@@ -381,6 +396,7 @@ export class WorkflowHistoryService {
 			createdAt: e.createdAt,
 			user: e.user,
 			versionName: e.workflowHistory?.name ?? null,
+			settings: e.workflowHistory?.settings ?? null,
 		}));
 	}
 }

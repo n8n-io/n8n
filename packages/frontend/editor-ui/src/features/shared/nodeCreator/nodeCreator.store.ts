@@ -66,6 +66,8 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const isCreateNodeActive = ref<boolean>(false);
 
 	const openingContext = ref<null | 'replacement'>(null);
+	/** True when the setup panel started the replacement, so the creator opens beside it. */
+	const isReplacingFromSetupPanel = ref(false);
 	const pendingInitialViewStack = ref<ViewStack | null>(null);
 
 	const nodePanelSessionId = ref<string>('');
@@ -491,6 +493,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	return {
 		isCreateNodeActive,
 		openingContext,
+		isReplacingFromSetupPanel,
 		openSource,
 		selectedView,
 		mergedNodes,

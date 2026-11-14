@@ -41,7 +41,7 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import { initializeExpressionEngine } from '@/app/init/expressionEngine';
 import {
 	initializeQuickJsExpressionShadow,
-	notifyQuickJsShadowEditorReady,
+	preloadQuickJsExpressionShadow,
 	stopQuickJsExpressionShadow,
 } from '@/experiments/quickjsExpressionShadow/init';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -106,13 +106,12 @@ export async function initializeCore() {
 		showStartupErrorToast();
 	}
 
-	// Must run before any view renders: expressions evaluate as soon as workflow
-	// data is displayed, and the engine has to be in place by then.
-	try {
-		await initializeExpressionEngine(settingsStore.settings.expressionEngine);
-	} catch (error) {
+	// Not awaited here, so the engine files download while the user and the full settings load.
+	const expressionEngineStart = initializeExpressionEngine(
+		settingsStore.settings.expressionEngine,
+	).catch((error) => {
 		console.error('Failed to initialize the expression engine', error);
-	}
+	});
 
 	ssoStore.initialize({
 		authenticationMethod: settingsStore.userManagement.authenticationMethod as AuthenticationMethod,
@@ -127,6 +126,14 @@ export async function initializeCore() {
 
 	if (!settingsStore.isPreviewMode) {
 		await usersStore.initialize();
+	}
+
+	// Expressions evaluate as soon as workflow data is displayed, so the engine must
+	// be in place before such a view renders. A page without a signed-in user shows
+	// no workflow data, and the login hook waits for the engine after sign-in.
+	const showsWorkflowData = settingsStore.isPreviewMode || usersStore.currentUser !== null;
+	if (showsWorkflowData) {
+		await expressionEngineStart;
 	}
 
 	void useExternalHooks().run('app.mount');
@@ -306,7 +313,6 @@ export async function initializeAuthenticatedFeatures(
 	});
 
 	authenticatedFeaturesInitialized = true;
-	notifyQuickJsShadowEditorReady();
 }
 
 function registerAuthenticationHooks() {
@@ -323,11 +329,11 @@ function registerAuthenticationHooks() {
 	const favoritesStore = useFavoritesStore();
 
 	usersStore.registerLoginHook(async (user) => {
+		// Before the settings request, so the QuickJS files download while the settings load.
+		preloadQuickJsExpressionShadow(user.featureFlags);
 		await loadFullSettings();
 
-		// Start the expression engine now if the app booted unauthenticated.
-		// Public settings omit the engine, so `initializeCore` left the legacy
-		// evaluator in place; this is the first point where the choice is known.
+		// Start the expression engine now if the boot could not read the settings.
 		// Nothing evaluates an expression before login, so this is early enough.
 		try {
 			await initializeExpressionEngine(settingsStore.settings.expressionEngine);

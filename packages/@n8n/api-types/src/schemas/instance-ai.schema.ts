@@ -1761,14 +1761,6 @@ export type InstanceAiThreadArtifactsContext = z.infer<
 	typeof instanceAiThreadArtifactsContextSchema
 >;
 
-/**
- * Build style for a run. `progressive` makes the agent build a minimal working
- * slice first, gate increments on real executions, and extend on actual
- * execution data. `default` uses the standard building policy.
- */
-export const instanceAiBuildModeSchema = z.enum(['default', 'progressive']);
-export type InstanceAiBuildMode = z.infer<typeof instanceAiBuildModeSchema>;
-
 export const instanceAiPromptConfigurationSchema = z.object({
 	version: z.string(),
 	systemPromptVersion: z.string(),
@@ -1779,6 +1771,9 @@ export const instanceAiPromptConfigurationSchema = z.object({
 export type InstanceAiPromptConfiguration = z.infer<typeof instanceAiPromptConfigurationSchema>;
 
 export const MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE = 10;
+
+// Shared by the send-message request and the eval overrides of an Assistant agent thread.
+const instanceAiPromptVersionSchema = z.string().trim().min(1).max(128);
 
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
@@ -1795,10 +1790,8 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	 *  user. Its device support is only visible there. Omit to advertise none.
 	 *  The backend still applies the admin switch, so this can only narrow. */
 	browserUseAvailable: z.boolean().optional(),
-	/** Explicit override for evals. Omit to use the backend experiment assignment. */
-	mode: instanceAiBuildModeSchema.optional(),
-	/** Pin a published prompt profile. Takes precedence over mode. */
-	promptVersion: z.string().trim().min(1).max(128).optional(),
+	/** Pin a published prompt profile. Omit to use the backend experiment assignment. */
+	promptVersion: instanceAiPromptVersionSchema.optional(),
 	/** Eval override: observer threshold for THIS thread, so driving compaction
 	 *  for one case does not lower it for every conversation on the instance. */
 	observerThresholdTokens: z.number().int().min(1000).max(1_000_000).optional(),
@@ -1841,7 +1834,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'canvas_action_button',
 	'canvas_choice_prompt',
 	'node_error_view',
-	'workflow_error_nudge', // Experiment cleanup (119_surface_assistant_on_workflow_error)
+	'workflow_error_nudge',
 	'credential_edit',
 	'credentials_list',
 	'agent_builder_page',
@@ -2873,9 +2866,6 @@ export const INSTANCE_AI_CONVERSATION_HISTORY_FLAG = '109_instance_ai_conversati
 
 export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
 
-export const INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG = '111_instance_ai_progressive_building';
-export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
-
 /**
  * Selects the concise reply style (`concise@1`) for Instance AI runs. Off by
  * default. `N8N_INSTANCE_AI_PROMPT_VERSION` pins a profile for the whole
@@ -3099,6 +3089,26 @@ export class InstanceAiEvalCredentialTestTargetRequest extends Z.class({
 	baseUrl: z.string().url(),
 	/** Credential field the stand-in URL is written into. */
 	urlField: z.string().min(1),
+}) {}
+
+/**
+ * Creates an Assistant agent thread before its first message, so the eval
+ * harness can set up the thread before the first turn.
+ */
+export class InstanceAiAssistantEvalCreateThreadRequest extends Z.class({
+	threadId: z.string().uuid(),
+	projectId: z.string().min(1),
+	/** Where the thread comes from. The route stores it in the thread metadata for the trace. */
+	source: z.enum(INSTANCE_AI_THREAD_SOURCES).optional(),
+	sourceContext: instanceAiSourceContextSchema.optional(),
+}) {}
+
+/**
+ * The turn overrides of an Assistant agent thread. The request replaces all
+ * overrides of the thread, so an omitted field clears its override.
+ */
+export class InstanceAiAssistantEvalThreadOverridesRequest extends Z.class({
+	promptVersion: instanceAiPromptVersionSchema.optional(),
 }) {}
 
 /** The id an authored seed gives a data table, agent or folder. ≥8 chars: the

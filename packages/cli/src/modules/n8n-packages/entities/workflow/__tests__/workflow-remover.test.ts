@@ -1,4 +1,5 @@
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { OperationContext, User, WorkflowEntity } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import { ConflictError } from '@n8n/errors';
@@ -11,7 +12,12 @@ import { WorkflowRemover } from '../workflow-remover';
 import type { ImportContext, OverwriteDeletionPolicy } from '../../../n8n-packages.types';
 
 const user = mock<User>({ id: 'user-1' });
-const context: ImportContext = { user, projectId: 'proj-1', folderId: null };
+const context: ImportContext = {
+	user,
+	projectId: 'proj-1',
+	folderId: null,
+	publicApi: 'editor_ui',
+};
 
 type Placement = { id: string; name: string; parentFolderId: string | null; isArchived?: boolean };
 
@@ -495,6 +501,8 @@ describe('WorkflowRemover.apply', () => {
 		deletionPolicy,
 		occupiedFolderIds: [],
 	});
+	const ctx: OperationContext = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
+	const contextWithLogin: ImportContext = { ...context, ctx };
 	const summaryOf = (deletion: 'archived' | 'deleted') => [
 		{ workflowId: 'stale', name: 'Stale', projectId: 'proj-1', parentFolderId: 'F1', deletion },
 	];
@@ -502,11 +510,14 @@ describe('WorkflowRemover.apply', () => {
 	it('archives without deleting under archive', async () => {
 		const { remover, workflowService } = makeRemover([]);
 
-		const summaries = await remover.apply(context, planWith('archive'));
+		const summaries = await remover.apply(contextWithLogin, planWith('archive'));
 
-		expect(workflowService.archive).toHaveBeenCalledExactlyOnceWith(user, 'stale', {
-			skipArchived: true,
-		});
+		expect(workflowService.archive).toHaveBeenCalledExactlyOnceWith(
+			user,
+			'stale',
+			{ skipArchived: true, publicApi: 'editor_ui' },
+			ctx,
+		);
 		expect(workflowService.delete).not.toHaveBeenCalled();
 		expect(summaries).toEqual(summaryOf('archived'));
 	});
@@ -514,13 +525,22 @@ describe('WorkflowRemover.apply', () => {
 	it('archives then deletes under hard-delete', async () => {
 		const { remover, workflowService } = makeRemover([]);
 
-		const summaries = await remover.apply(context, planWith('hard-delete'));
+		const summaries = await remover.apply(contextWithLogin, planWith('hard-delete'));
 
 		// Archive first: it is the step that unpublishes, and `delete` refuses a published workflow.
-		expect(workflowService.archive).toHaveBeenCalledExactlyOnceWith(user, 'stale', {
-			skipArchived: true,
-		});
-		expect(workflowService.delete).toHaveBeenCalledExactlyOnceWith(user, 'stale');
+		expect(workflowService.archive).toHaveBeenCalledExactlyOnceWith(
+			user,
+			'stale',
+			{ skipArchived: true, publicApi: 'editor_ui' },
+			ctx,
+		);
+		expect(workflowService.delete).toHaveBeenCalledExactlyOnceWith(
+			user,
+			'stale',
+			false,
+			{ publicApi: 'editor_ui' },
+			ctx,
+		);
 		expect(summaries).toEqual(summaryOf('deleted'));
 	});
 

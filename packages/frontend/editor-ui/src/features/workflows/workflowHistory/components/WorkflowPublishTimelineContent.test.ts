@@ -9,6 +9,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
 import WorkflowPublishTimelineContent from './WorkflowPublishTimelineContent.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { PublishTimelineEvent } from '@n8n/rest-api-client/api/workflowHistory';
 
 const workflowId = 'wf-1';
@@ -22,6 +23,7 @@ const buildEvent = (overrides: Partial<PublishTimelineEvent> = {}): PublishTimel
 	userId: null,
 	user: null,
 	versionName: null,
+	settings: null,
 	...overrides,
 });
 
@@ -29,12 +31,16 @@ const renderComponent = createComponentRenderer(WorkflowPublishTimelineContent);
 
 type RenderOptions = {
 	adoptionDate?: string | null;
+	engineV2ModuleActive?: boolean;
 };
 
 const renderWithEvents = (events: PublishTimelineEvent[], options: RenderOptions = {}) => {
-	const { adoptionDate = null } = options;
+	const { adoptionDate = null, engineV2ModuleActive = false } = options;
 	const pinia = createTestingPinia({ stubActions: false });
 	const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
+	mockedStore(useSettingsStore).isModuleActive.mockImplementation(
+		(name: string) => engineV2ModuleActive && name === 'engine-v2',
+	);
 
 	workflowHistoryStore.getPublishTimeline.mockResolvedValue(events);
 	workflowHistoryStore.getVersionFirstAdoptionDate.mockResolvedValue(adoptionDate);
@@ -74,6 +80,65 @@ describe('WorkflowPublishTimelineContent', () => {
 		]);
 
 		expect(await findByText('Published Release 1')).toBeInTheDocument();
+	});
+
+	it('should show the engine on every entry that still has its version', async () => {
+		const now = Date.now();
+		const { findByText, getAllByTestId } = renderWithEvents(
+			[
+				buildEvent({
+					id: 1,
+					event: 'activated',
+					versionName: 'Release 1',
+					settings: { engineType: 'v2' },
+					createdAt: new Date(now - 30_000).toISOString(),
+				}),
+				buildEvent({
+					id: 2,
+					event: 'deactivated',
+					versionName: 'Release 1',
+					settings: { engineType: 'v2' },
+					createdAt: new Date(now - 20_000).toISOString(),
+				}),
+				// A deleted version: its engine is unknown.
+				buildEvent({
+					id: 3,
+					event: 'activated',
+					versionId: null,
+					createdAt: new Date(now - 10_000).toISOString(),
+				}),
+				buildEvent({
+					id: 4,
+					event: 'deactivated',
+					versionId: null,
+					createdAt: new Date(now).toISOString(),
+				}),
+			],
+			{ engineV2ModuleActive: true },
+		);
+
+		await findByText('Unpublished Release 1');
+		const badges = getAllByTestId('workflow-history-engine-badge');
+		expect(badges).toHaveLength(2);
+		badges.forEach((badge) => expect(badge).toHaveTextContent('Engine v2'));
+	});
+
+	it('should emit selectVersion when clicking an unpublished version', async () => {
+		const now = Date.now();
+		const { findByText, emitted } = renderWithEvents([
+			buildEvent({ id: 1, versionId: 'v7', createdAt: new Date(now - 10_000).toISOString() }),
+			buildEvent({
+				id: 2,
+				event: 'deactivated',
+				versionId: 'v7',
+				versionName: 'Release 7',
+				createdAt: new Date(now).toISOString(),
+			}),
+		]);
+
+		await userEvent.click(await findByText('Unpublished Release 7'));
+
+		expect(emitted().selectVersion).toEqual([['v7']]);
 	});
 
 	it('should render a deactivated entry', async () => {

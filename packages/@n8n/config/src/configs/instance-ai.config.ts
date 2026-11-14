@@ -89,12 +89,12 @@ export class InstanceAiConfig {
 	observerMessageTokens: number = 30_000;
 
 	/**
-	 * Model for the background tasks that summarize n8n Assistant conversations into memory, in the same `provider/model` format as `N8N_INSTANCE_AI_MODEL`, for example `anthropic/claude-haiku-4-5`.
+	 * Smaller model for n8n Assistant background tasks, such as conversation memory, thread titles, and the test data for workflow verification. Use the same `provider/model` format as `N8N_INSTANCE_AI_MODEL`, for example `anthropic/claude-haiku-5-5`.
 	 * It uses the same provider and credentials as the main model, so set a model that provider offers.
-	 * When unset, or when the main model can't switch models, n8n uses the main model.
+	 * When unset, n8n uses `claude-haiku-5-5` for Anthropic and `gpt-6-luna` for OpenAI. With other providers, or with a custom base URL, it uses the main model.
 	 */
-	@Env('N8N_INSTANCE_AI_MEMORY_MODEL')
-	memoryModel: string = '';
+	@Env('N8N_INSTANCE_AI_UTILITY_MODEL')
+	utilityModel: string = '';
 
 	/**
 	 * Token threshold for the Reflector to condense observations.
@@ -299,10 +299,8 @@ export class InstanceAiConfig {
 	 * prompt cache within one instance. A request-level `promptVersion` and a
 	 * value already selected for the thread both still win, so an eval keeps the
 	 * profile it pinned. Checkpoints do not store this pin, so a suspended run
-	 * that resumes after you change it uses the new value. Profiles are keyed by
-	 * build mode, so pinning a `default`-mode profile also overrides a
-	 * progressive building assignment. An unknown version fails the run, and n8n
-	 * keeps serving everything else.
+	 * that resumes after you change it uses the new value. An unknown version
+	 * fails the run, and n8n keeps serving everything else.
 	 */
 	@Env('N8N_INSTANCE_AI_PROMPT_VERSION')
 	promptVersion: string = '';

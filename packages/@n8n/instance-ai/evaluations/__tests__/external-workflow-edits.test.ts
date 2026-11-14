@@ -88,6 +88,7 @@ async function runLoop(options: RunOptions): Promise<RunRecord> {
 		}),
 		getThreadStatus: vi.fn().mockResolvedValue({ backgroundTasks: [] }),
 		cancelRun: vi.fn().mockResolvedValue(undefined),
+		assistantAgents: () => undefined,
 	} as unknown as N8nClient;
 
 	const logger = {

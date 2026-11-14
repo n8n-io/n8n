@@ -7,25 +7,22 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-function mountConfirmation(loading = false) {
+function mountConfirmation(props = { open: true, loading: false }) {
 	return mount(AgentChannelTeamsRemoveConfirmation, {
-		props: { open: true, loading },
+		props,
 		global: {
 			stubs: {
-				Dialog: {
-					props: ['open', 'showCloseButton'],
-					emits: ['update:open'],
-					template:
-						'<div v-if="open"><button data-testid="close" @click="$emit(\'update:open\', false)" /><slot /></div>',
-				},
-				DialogHeader: { template: '<header><slot /></header>' },
-				DialogTitle: { template: '<h2><slot /></h2>' },
-				DialogDescription: { template: '<p><slot /></p>' },
-				DialogFooter: { template: '<footer><slot /></footer>' },
-				N8nText: { template: '<span><slot /></span>' },
-				N8nButton: {
-					emits: ['click'],
-					template: '<button @click="$emit(\'click\')"><slot /></button>',
+				AgentChannelRemoveConfirmation: {
+					props: ['open', 'loading', 'title', 'description', 'confirmLabel', 'confirmTestId'],
+					emits: ['cancel', 'confirm'],
+					template: `
+						<div :data-open="open" :data-loading="loading">
+							<h2>{{ title }}</h2>
+							<p>{{ description }}</p>
+							<button :data-testid="confirmTestId" @click="$emit('confirm')">{{ confirmLabel }}</button>
+							<button data-testid="cancel" @click="$emit('cancel')" />
+						</div>
+					`,
 				},
 			},
 		},
@@ -33,7 +30,24 @@ function mountConfirmation(loading = false) {
 }
 
 describe('AgentChannelTeamsRemoveConfirmation', () => {
-	it('confirms the removal', async () => {
+	it('shows the Teams removal copy', () => {
+		const wrapper = mountConfirmation();
+
+		expect(wrapper.get('h2').text()).toBe('agents.channels.teams.remove.title');
+		expect(wrapper.get('p').text()).toBe('agents.channels.teams.remove.description');
+		expect(wrapper.get('[data-testid="teams-remove-confirm"]').text()).toBe(
+			'agents.channels.teams.remove.confirm',
+		);
+	});
+
+	it('passes on whether it is open and loading', () => {
+		const wrapper = mountConfirmation({ open: true, loading: true });
+
+		expect(wrapper.attributes('data-open')).toBe('true');
+		expect(wrapper.attributes('data-loading')).toBe('true');
+	});
+
+	it('confirms the removal without an external resource to delete', async () => {
 		const wrapper = mountConfirmation();
 
 		await wrapper.get('[data-testid="teams-remove-confirm"]').trigger('click');
@@ -41,13 +55,11 @@ describe('AgentChannelTeamsRemoveConfirmation', () => {
 		expect(wrapper.emitted('confirm')).toEqual([[false]]);
 	});
 
-	it('cancels on close, but not while the removal runs', async () => {
-		const idle = mountConfirmation();
-		await idle.get('[data-testid="close"]').trigger('click');
-		expect(idle.emitted('cancel')).toHaveLength(1);
+	it('passes on a cancel', async () => {
+		const wrapper = mountConfirmation();
 
-		const busy = mountConfirmation(true);
-		await busy.get('[data-testid="close"]').trigger('click');
-		expect(busy.emitted('cancel')).toBeUndefined();
+		await wrapper.get('[data-testid="cancel"]').trigger('click');
+
+		expect(wrapper.emitted('cancel')).toHaveLength(1);
 	});
 });

@@ -13,6 +13,7 @@ import {
 	CredentialsRepository,
 	ProjectRepository,
 	ProjectRelationRepository,
+	type OperationContext,
 	type Project,
 	type User,
 } from '@n8n/db';
@@ -26,8 +27,10 @@ import {
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { ConflictError, ForbiddenError } from '@n8n/errors';
+import type { SecurityContext } from '@n8n/permissions';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { DataSource } from '@n8n/typeorm';
+import { mock } from 'vitest-mock-extended';
 import { ExecuteWorkflowTrigger } from 'n8n-nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger/ExecuteWorkflowTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 
@@ -282,7 +285,12 @@ async function planFor(input: AgentPackageFixture, overrides: Partial<ResolvedIm
 	const parser = Container.get(N8nPackageParser);
 	const options = request(overrides);
 	return await orchestrator.plan({
-		context: { user: options.user, projectId: options.projectId!, folderId: null },
+		context: {
+			user: options.user,
+			projectId: options.projectId!,
+			folderId: null,
+			publicApi: false,
+		},
 		agents: await parser.getAgents(reader),
 		skills: await parser.getSkills(reader),
 		folders: [],
@@ -904,8 +912,14 @@ it('archives and restores a matched Agent to match the package', async () => {
 	expect(published.agentOutcomes[0].agent).toMatchObject({ isArchived: false });
 	expect(published.agentOutcomes[0].agent.activeVersionId).not.toBeNull();
 
+	const publishService = Container.get(AgentPublishService);
+	const archiveSpy = vi.spyOn(publishService, 'archiveAgent');
+	const unarchiveSpy = vi.spyOn(publishService, 'unarchiveAgent');
+	const ctx: OperationContext = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
+
 	source(input).isArchived = true;
-	const archived = await importSelected(input, { publishingPolicy: 'match-source' });
+	const archived = await importSelected(input, { publishingPolicy: 'match-source', ctx });
+	expect(archiveSpy.mock.calls[0][5]).toBe(ctx);
 	expect(archived.agentOutcomes[0]).toMatchObject({
 		status: 'updated',
 		agent: { isArchived: true, activeVersionId: null },
@@ -918,7 +932,11 @@ it('archives and restores a matched Agent to match the package', async () => {
 	expect(updated.agentOutcomes[0].agent).toMatchObject({ isArchived: true });
 
 	source(input).isArchived = false;
-	const restored = await importSelected(input, { publishingPolicy: 'preserve-published-state' });
+	const restored = await importSelected(input, {
+		publishingPolicy: 'preserve-published-state',
+		ctx,
+	});
+	expect(unarchiveSpy.mock.calls[0][4]).toBe(ctx);
 	expect(restored.agentOutcomes[0].agent).toMatchObject({
 		isArchived: false,
 		activeVersionId: null,
@@ -1161,6 +1179,7 @@ it.each(['publish', 'unpublish'] as const)(
 		const before = await agents.findByProjectId(project.id);
 		const result = await orchestrator.publishPackage({
 			user: member,
+			publicApi: false,
 			content: [content],
 			policy,
 			subWorkflowRequirements: undefined,
@@ -1189,6 +1208,7 @@ it.each(['publish', 'unpublish'] as const)(
 		const before = await agents.findById(current.id);
 		const result = await orchestrator.publishPackage({
 			user: owner,
+			publicApi: false,
 			content: [content],
 			policy,
 			subWorkflowRequirements: undefined,
@@ -1227,6 +1247,7 @@ it.each(['validation', 'policy', 'post-commit'] as const)(
 			});
 		const result = await orchestrator.publishPackage({
 			user: owner,
+			publicApi: false,
 			content: [content],
 			policy: 'publish-all',
 			subWorkflowRequirements: undefined,

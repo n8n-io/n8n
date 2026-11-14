@@ -18,4 +18,6 @@ export type InboxItemChange = {
 	state?: InboxState;
 	decision?: WorkflowReviewRequestDecision;
 	updatedAt?: string;
+	/** Select the next open item instead of following the closed item to Closed. */
+	advance?: boolean;
 };

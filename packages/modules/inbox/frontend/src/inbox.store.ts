@@ -1,4 +1,5 @@
 import type {
+	SelfHealingStatusDto,
 	InboxCategory,
 	InboxItem,
 	InboxSourceType,
@@ -14,6 +15,7 @@ import { computed, reactive, ref } from 'vue';
 import { fetchInbox, fetchInboxSummary } from './inbox.api';
 import { INBOX_PAGE_LIMIT, type InboxItemChange, type InboxSectionKey } from './inbox.constants';
 import { toError } from './reviews/workflowReviews.utils';
+import { fetchSelfHealingStatus } from './self-healing/selfHealingResults.api';
 
 const sourceTypes: InboxSourceType[] = [
 	'workflow_review',
@@ -61,6 +63,7 @@ export function createInboxListSlice(
 		partial: false,
 	});
 	let requestSeq = 0;
+	let pageRequest: Promise<void> | null = null;
 
 	function applyResponse(page: ListInboxResponse, append: boolean) {
 		onPage?.(page, append);
@@ -74,6 +77,7 @@ export function createInboxListSlice(
 
 	async function fetchList() {
 		const seq = ++requestSeq;
+		pageRequest = null;
 		state.items = [];
 		state.nextCursor = null;
 		state.hasMore = false;
@@ -94,14 +98,13 @@ export function createInboxListSlice(
 		}
 	}
 
-	async function loadMore() {
-		if (state.loading || state.loadingMore || !state.hasMore || !state.nextCursor) return;
+	async function loadPage(cursor: string) {
 		const seq = ++requestSeq;
 		state.loadingMore = true;
 		state.error = null;
 		state.failedRequest = null;
 		try {
-			const page = await requestPage(state.nextCursor);
+			const page = await requestPage(cursor);
 			if (seq === requestSeq) applyResponse(page, true);
 		} catch (error) {
 			if (seq !== requestSeq) return;
@@ -113,12 +116,26 @@ export function createInboxListSlice(
 		}
 	}
 
+	async function loadMore() {
+		// A second caller waits for the page that already loads.
+		if (pageRequest) return await pageRequest;
+		if (state.loading || !state.hasMore || !state.nextCursor) return;
+		const request = loadPage(state.nextCursor);
+		pageRequest = request;
+		try {
+			await request;
+		} finally {
+			if (pageRequest === request) pageRequest = null;
+		}
+	}
+
 	function removeSources(types: InboxSourceType[]) {
 		state.items = state.items.filter((item) => !types.includes(item.type));
 	}
 
 	function reset() {
 		requestSeq++;
+		pageRequest = null;
 		state.items = [];
 		state.hasLoaded = false;
 		state.nextCursor = null;
@@ -142,6 +159,12 @@ export function createInboxListSlice(
 	});
 }
 
+export type InboxEmptyKind =
+	| 'reviews'
+	| 'reviewsAndSelfHealing'
+	| 'selfHealing'
+	| 'selfHealingSetup';
+
 export const useInboxStore = defineStore('inbox', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
@@ -151,6 +174,19 @@ export const useInboxStore = defineStore('inbox', () => {
 	const disabledSources = ref<InboxSourceType[]>([]);
 	const enabled = computed(() => settingsStore.settings.inbox?.enabled === true);
 	let summaryRequestSeq = 0;
+	// Unknown until loaded. A failed request keeps it unknown, so the Inbox shows no setup prompt.
+	const selfHealingStatus = ref<SelfHealingStatusDto | null>(null);
+	const selfHealingStatusLoading = ref(false);
+	let selfHealingStatusRequestSeq = 0;
+	// Self-healing decides the copy only when it is the one source that the Inbox shows.
+	const showsSelfHealingEmptyState = computed(() => {
+		const disabled = disabledSources.value;
+		return (
+			disabled.includes('workflow_review') &&
+			disabled.includes('promotion_review') &&
+			!disabled.includes('self_healing_result')
+		);
+	});
 
 	function removeDisabledSources(types: InboxSourceType[]) {
 		if (types.length === 0) return;
@@ -238,13 +274,48 @@ export const useInboxStore = defineStore('inbox', () => {
 		}
 	}
 
+	async function loadSelfHealingStatus() {
+		// Only the self-healing empty state reads the status.
+		if (!enabled.value || !showsSelfHealingEmptyState.value) return;
+		const seq = ++selfHealingStatusRequestSeq;
+		selfHealingStatusLoading.value = true;
+		try {
+			const status = await fetchSelfHealingStatus(rootStore.restApiContext);
+			if (seq === selfHealingStatusRequestSeq) selfHealingStatus.value = status;
+		} catch {
+			if (seq === selfHealingStatusRequestSeq) selfHealingStatus.value = null;
+		} finally {
+			if (seq === selfHealingStatusRequestSeq) selfHealingStatusLoading.value = false;
+		}
+	}
+
+	/** Picks the empty state copy. The setup prompt shows on the Open tab only. */
+	const emptyKind = computed<InboxEmptyKind>(() => {
+		if (!showsSelfHealingEmptyState.value) {
+			return disabledSources.value.includes('self_healing_result')
+				? 'reviews'
+				: 'reviewsAndSelfHealing';
+		}
+		const status = selfHealingStatus.value;
+		return activeTab.value === 'open' && status?.isReviewer === false && status.setupProjectId
+			? 'selfHealingSetup'
+			: 'selfHealing';
+	});
+	// The Open empty state waits for the status, so its copy does not change after it renders.
+	const emptyKindPending = computed(
+		() =>
+			activeTab.value === 'open' &&
+			showsSelfHealingEmptyState.value &&
+			selfHealingStatusLoading.value,
+	);
+
 	async function fetchActiveTab() {
 		if (!enabled.value) return;
 		await Promise.all(activeLists.value.map(async (list) => await list.fetchList()));
 	}
 
 	async function refreshListAndSummary() {
-		await Promise.all([fetchActiveTab(), fetchSummary()]);
+		await Promise.all([fetchActiveTab(), fetchSummary(), loadSelfHealingStatus()]);
 	}
 
 	function reconcileItemChange(change: InboxItemChange) {
@@ -279,6 +350,9 @@ export const useInboxStore = defineStore('inbox', () => {
 
 	function reset() {
 		summaryRequestSeq++;
+		selfHealingStatusRequestSeq++;
+		selfHealingStatus.value = null;
+		selfHealingStatusLoading.value = false;
 		for (const list of Object.values(lists)) list.reset();
 		openCount.value = null;
 		closedCount.value = null;
@@ -301,6 +375,9 @@ export const useInboxStore = defineStore('inbox', () => {
 		openCount,
 		closedCount,
 		disabledSources,
+		selfHealingStatus,
+		emptyKind,
+		emptyKindPending,
 		fetchSummary,
 		fetchActiveTab,
 		refreshListAndSummary,

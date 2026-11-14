@@ -679,6 +679,101 @@ describe('ToolsManagerModal', () => {
 			expect(getToggle(configured)).toBeTruthy();
 		});
 
+		it('lets the user turn off a restricted tool that is on', async () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.toolA': 'instance' });
+			chatStore.configuredTools = [createMockToolDto({ id: 'tool-on' }, true)];
+
+			const { container } = renderComponent({ props: defaultProps() });
+
+			const toggle = getToggle(getConfiguredItems(container)[0]);
+			expect(toggle).toBeEnabled();
+			expect(toggle.getAttribute('aria-label')).toContain('Configured Tool A');
+			expect(toggle.getAttribute('aria-label')).toContain(
+				'typeAvailabilityPolicies.restrictedNode.chatTool.instance',
+			);
+			await fireEvent.click(toggle);
+
+			await waitFor(() => {
+				expect(chatStore.toggleToolEnabled).toHaveBeenCalledWith('tool-on', false);
+			});
+		});
+
+		it('does not let the user turn on a restricted tool that is off', async () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.toolA': 'instance' });
+			chatStore.configuredTools = [createMockToolDto({ id: 'tool-off' }, false)];
+
+			const { container } = renderComponent({ props: defaultProps() });
+
+			const toggle = getToggle(getConfiguredItems(container)[0]);
+			expect(toggle).toBeDisabled();
+			await fireEvent.click(toggle);
+
+			expect(chatStore.toggleToolEnabled).not.toHaveBeenCalled();
+		});
+
+		it('opens the settings of a restricted configured tool read-only, with the callout', async () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.toolA': 'instance' });
+			chatStore.configuredTools = [createMockToolDto()];
+
+			const { container, getByTestId } = renderComponent({ props: defaultProps() });
+
+			const [configureBtn] = getActionButtons(getConfiguredItems(container)[0]);
+			await userEvent.click(configureBtn);
+
+			await waitFor(() => {
+				expect(getByTestId('tool-settings-content').dataset.readOnly).toBe('true');
+			});
+			expect(getByTestId('restricted-chatTool-callout').textContent).toContain(
+				'typeAvailabilityPolicies.restrictedNode.chatTool.instance',
+			);
+			expect(container.querySelector('[data-readonly]')).toBeTruthy();
+
+			const saveButton = getByTestId('chat-tool-settings-save');
+			expect(saveButton).toBeDisabled();
+			await userEvent.click(saveButton);
+			expect(chatStore.updateConfiguredTool).not.toHaveBeenCalled();
+		});
+
+		it('removes a restricted configured tool', async () => {
+			mockRestrictedNodeTypes({ 'n8n-nodes-base.toolA': 'instance' });
+			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+			chatStore.configuredTools = [createMockToolDto()];
+
+			const { container } = renderComponent({ props: defaultProps() });
+
+			const [, removeBtn] = getActionButtons(getConfiguredItems(container)[0]);
+			await userEvent.click(removeBtn);
+
+			await waitFor(() => {
+				expect(chatStore.removeConfiguredTool).toHaveBeenCalledWith('tool-1');
+			});
+		});
+
+		it('keeps the toggle and the settings editable when the tool is not restricted', async () => {
+			mockRestrictedNodeTypes();
+			chatStore.configuredTools = [createMockToolDto()];
+
+			const { container, getByTestId, queryByTestId } = renderComponent({
+				props: defaultProps(),
+			});
+
+			const [configured] = getConfiguredItems(container);
+			expect(getToggle(configured)).not.toBeDisabled();
+			expect(getToggle(configured).getAttribute('aria-label')).toContain(
+				'chatHub.toolsManager.disableTool',
+			);
+
+			const [configureBtn] = getActionButtons(configured);
+			await userEvent.click(configureBtn);
+
+			await waitFor(() => {
+				expect(getByTestId('tool-settings-content').dataset.readOnly).toBe('false');
+			});
+			expect(queryByTestId('restricted-chatTool-callout')).toBeNull();
+			expect(container.querySelector('[data-readonly]')).toBeNull();
+			expect(getByTestId('chat-tool-settings-save')).not.toBeDisabled();
+		});
+
 		it('keeps the list as it is when nothing is restricted', () => {
 			mockRestrictedNodeTypes();
 

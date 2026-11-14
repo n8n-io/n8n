@@ -662,6 +662,7 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		const result = await importWorkflowData(workflowData, 'paste', {
 			importTags: false,
 			viewport: viewportBoundaries.value,
+			warnRestrictedNodes: true,
 		});
 		const ids = result.nodes?.map((node) => node.id) ?? [];
 
@@ -952,6 +953,7 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 		regenerateIds: data.regenerateIds === true || data.regenerateIds === undefined,
 		trackEvents,
 		setStateDirty,
+		warnRestrictedNodes: data.warnRestrictedNodes === true,
 	});
 
 	await nextTick();
@@ -976,11 +978,13 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 function addImportEventBindings() {
 	nodeViewEventBus.on('importWorkflowData', onImportWorkflowDataEvent);
 	nodeViewEventBus.on('openChat', onOpenChat);
+	nodeViewEventBus.on('replaceNode', onReplaceNodeEvent);
 }
 
 function removeImportEventBindings() {
 	nodeViewEventBus.off('importWorkflowData', onImportWorkflowDataEvent);
 	nodeViewEventBus.off('openChat', onOpenChat);
+	nodeViewEventBus.off('replaceNode', onReplaceNodeEvent);
 }
 
 /**
@@ -1205,7 +1209,13 @@ function onClickConnectionAdd(connection: Connection) {
 	}
 }
 
-function onClickReplaceNode(nodeId: string) {
+/** The bus reaches every mounted NodeView, previews too, so only an editable canvas replaces. */
+function onReplaceNodeEvent(nodeId: string) {
+	if (isCanvasReadOnly.value) return;
+	onClickReplaceNode(nodeId, { fromSetupPanel: true });
+}
+
+function onClickReplaceNode(nodeId: string, { fromSetupPanel = false } = {}) {
 	const node = workflowDocumentStore?.value?.getNodeById(nodeId);
 	const expression = workflowDocumentStore?.value?.getExpressionHandler();
 	if (!node || !expression) return;
@@ -1214,6 +1224,7 @@ function onClickReplaceNode(nodeId: string) {
 
 	nodeCreatorReplaceTargetId.value = nodeId;
 	nodeCreatorStore.openingContext = 'replacement';
+	nodeCreatorStore.isReplacingFromSetupPanel = fromSetupPanel;
 	if (isTriggerNode(nodeType)) {
 		nodeCreatorStore.openNodeCreatorForTriggerNodes(
 			workflowId.value,
@@ -1855,11 +1866,8 @@ function unregisterCustomActions() {
 
 function showAddFirstStepIfEnabled() {
 	if (uiStore.addFirstStepOnLoad) {
-		void onOpenNodeCreatorForTriggerNodes(
-			uiStore.addFirstStepOnLoadSource ?? NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON,
-		);
+		void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON);
 		uiStore.addFirstStepOnLoad = false;
-		uiStore.addFirstStepOnLoadSource = undefined;
 	}
 }
 

@@ -48,6 +48,11 @@ const stepFailed: LifecycleEvent = {
 	...stepFields,
 	type: 'step:failed',
 	at: '2026-08-25T10:00:01.500Z',
+	error: {
+		name: 'NodeOperationError',
+		message: 'Node execution failed',
+		details: { description: 'Check the credentials', context: { itemIndex: 2 } },
+	},
 };
 
 const stepWaiting: LifecycleEvent = {
@@ -332,14 +337,19 @@ describe('EngineLifecycleEventPushRelay', () => {
 			expect(sentOfType('nodeExecuteAfterData')).toHaveLength(0);
 		});
 
-		it('sends an error that survives the wire', () => {
+		it('sends the recorded error with its details, in a shape that survives the wire', () => {
 			// A plain `Error` would serialize to `{}`.
 			register();
 
 			relay.relay([stepStarted, stepFailed]);
 
 			const { error } = sentOfType('nodeExecuteAfter')[0].data.data;
-			expect(JSON.stringify(error)).toContain('Node execution failed');
+			expect(error?.toJSON?.()).toMatchObject({
+				name: 'NodeOperationError',
+				message: 'Node execution failed',
+				description: 'Check the credentials',
+				context: { itemIndex: 2 },
+			});
 		});
 	});
 

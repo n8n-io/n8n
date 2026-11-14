@@ -44,8 +44,8 @@ export function useN8nChatAgents(options: UseN8nChatAgentsOptions) {
 		try {
 			const result = await listN8nChatAgents(rootStore.restApiContext, {
 				query,
-				skip: (page - 1) * pageSize,
-				take: pageSize,
+				offset: (page - 1) * pageSize,
+				limit: pageSize,
 				sortBy: 'usage:desc',
 			});
 			if (version !== requestVersion) return;
