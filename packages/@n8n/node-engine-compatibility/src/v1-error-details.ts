@@ -1,7 +1,7 @@
 import type { JsonValue } from '@n8n/engine';
 import { isRecord } from '@n8n/utils/is-record';
 import type { ExecutionError } from 'n8n-workflow';
-import { ExecutionBaseError, jsonParse, jsonStringify, WorkflowOperationError } from 'n8n-workflow';
+import { ExecutionBaseError, WorkflowOperationError } from 'n8n-workflow';
 
 /**
  * The details of a v1 error: what `ExecutionBaseError.toJSON` serializes, and
@@ -14,9 +14,18 @@ export function toV1ErrorDetails(error: unknown): JsonValue | undefined {
 
 	// The step error carries the name and message itself.
 	const { name: _name, message: _message, ...details } = error.toJSON();
-	// The round trip is what persistence does to the details anyway, and it drops
-	// what JSON cannot carry before the engine sees it.
-	return jsonParse<JsonValue>(jsonStringify(details));
+	return asStoredJson(details);
+}
+
+/**
+ * The value as it comes back from JSON storage. A JSON round trip drops what
+ * JSON cannot carry: `undefined` members, functions, symbols. The data plane
+ * stores the details as JSON, so this is the shape every later read gets. It
+ * is not a clone: `deepCopy` keeps those members, so it is not a substitute.
+ */
+function asStoredJson(value: object): JsonValue {
+	// eslint-disable-next-line n8n-local-rules/no-json-parse-json-stringify -- the round trip is the point, not a clone
+	return JSON.parse(JSON.stringify(value)) as JsonValue;
 }
 
 /**
