@@ -8,6 +8,8 @@ import {
 } from 'reka-ui';
 import { computed, ref, nextTick, useCssModule, type Ref } from 'vue';
 
+import { useScrollEdges } from '../../composables/useScrollEdges';
+
 /** Viewport edge, or axis, that fades out. Matches the `scroll-mask` mixin. */
 export type ScrollAreaEdgeFade = 'top' | 'bottom' | 'left' | 'right' | 'y' | 'x';
 
@@ -49,9 +51,10 @@ export interface Props {
 	 */
 	asChild?: boolean;
 	/**
-	 * Fade the content out at this edge of the viewport, or at both edges of this axis, as a
-	 * hint that more of it scrolls into view. The fade is a CSS mask, so it works on any
-	 * background. Set `--scroll-area--fade-size` on the component to change its depth.
+	 * Fade the content out at this edge of the viewport, or at both edges of this axis, while
+	 * content is still hidden past that edge. The fade hides once you reach it, so the last
+	 * item stays solid. The fade is a CSS mask, so it works on any background. Set
+	 * `--scroll-area--fade-size` on the component to change its depth.
 	 */
 	edgeFade?: ScrollAreaEdgeFade;
 }
@@ -108,17 +111,40 @@ function getViewportElement(): HTMLElement | undefined {
 	return undefined;
 }
 
+const fadeTarget = computed(() => (props.edgeFade ? (getViewportElement() ?? null) : null));
+const verticalEdges = useScrollEdges(fadeTarget, { axis: 'vertical' });
+const horizontalEdges = useScrollEdges(fadeTarget, { axis: 'horizontal' });
+
+function isHorizontalFade(edge: ScrollAreaEdgeFade): boolean {
+	return edge === 'left' || edge === 'right' || edge === 'x';
+}
+
 const edgeFadeClass = computed(() => {
-	if (!props.edgeFade) return undefined;
-	const classes: Record<ScrollAreaEdgeFade, string> = {
-		top: $style.fadeTop,
-		bottom: $style.fadeBottom,
-		left: $style.fadeLeft,
-		right: $style.fadeRight,
-		y: $style.fadeY,
-		x: $style.fadeX,
-	};
-	return classes[props.edgeFade];
+	const edge = props.edgeFade;
+	if (!edge) return undefined;
+
+	const horizontal = isHorizontalFade(edge);
+	const canScrollStart = horizontal
+		? horizontalEdges.canScrollLeft.value
+		: verticalEdges.canScrollTop.value;
+	const canScrollEnd = horizontal
+		? horizontalEdges.canScrollRight.value
+		: verticalEdges.canScrollBottom.value;
+
+	if (edge === 'top') return canScrollStart ? $style.fadeTop : undefined;
+	if (edge === 'bottom') return canScrollEnd ? $style.fadeBottom : undefined;
+	if (edge === 'left') return canScrollStart ? $style.fadeLeft : undefined;
+	if (edge === 'right') return canScrollEnd ? $style.fadeRight : undefined;
+	if (edge === 'y') {
+		if (canScrollStart && canScrollEnd) return $style.fadeY;
+		if (canScrollStart) return $style.fadeTop;
+		if (canScrollEnd) return $style.fadeBottom;
+		return undefined;
+	}
+	if (canScrollStart && canScrollEnd) return $style.fadeX;
+	if (canScrollStart) return $style.fadeLeft;
+	if (canScrollEnd) return $style.fadeRight;
+	return undefined;
 });
 
 /**
@@ -244,26 +270,34 @@ defineExpose({
 $fade-size: var(--scroll-area--fade-size, var(--spacing--sm));
 
 .fadeTop {
+	scroll-padding-top: $fade-size;
 	@include mixins.scroll-mask(top, $fade-size);
 }
 
 .fadeBottom {
+	scroll-padding-bottom: $fade-size;
 	@include mixins.scroll-mask(bottom, $fade-size);
 }
 
 .fadeLeft {
+	scroll-padding-left: $fade-size;
 	@include mixins.scroll-mask(left, $fade-size);
 }
 
 .fadeRight {
+	scroll-padding-right: $fade-size;
 	@include mixins.scroll-mask(right, $fade-size);
 }
 
 .fadeY {
+	scroll-padding-top: $fade-size;
+	scroll-padding-bottom: $fade-size;
 	@include mixins.scroll-mask(y, $fade-size);
 }
 
 .fadeX {
+	scroll-padding-left: $fade-size;
+	scroll-padding-right: $fade-size;
 	@include mixins.scroll-mask(x, $fade-size);
 }
 

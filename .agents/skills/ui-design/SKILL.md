@@ -28,6 +28,7 @@ Comprehensive guide for building, styling, and using components in the frontend.
 - ALWAYS prefer using existing components from `packages/frontend/@n8n/design-system/src/components`. Prefer components that aren't marked `@deprecated`.
 - If you need to add hover/active alpha behavior to solid components, prefer `color-mix()` with explicit percentages.
 - When working with animations or transitions, ALWAYS prefer using mixins from `packages/frontend/@n8n/design-system/src/css/mixins/motion.scss`
+- A scroll fade hides once that edge has no hidden content. Measure the scroller with `useScrollEdges` from `@n8n/design-system/composables/useScrollEdges`. For a bottom fade, set `data-scroll-mask-bottom` from `canScrollBottom` and include `scroll-mask-when-bottom` from `packages/frontend/@n8n/design-system/src/css/mixins/mixins.scss`. For another edge, include `scroll-mask()` for that edge while the matching `canScroll*` ref is true. `N8nScrollArea` does this when you set `edgeFade`. Use `scroll-mask()` on its own for a clip that does not scroll, such as a collapsed preview.
 
 ## Components
 Use existing `design-system` components over creating custom implementations:

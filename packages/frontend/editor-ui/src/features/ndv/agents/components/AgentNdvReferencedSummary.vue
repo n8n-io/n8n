@@ -7,9 +7,10 @@
  * Deliberately not the disabled editing panels: a disabled form reads as "no
  * permission" and mounts modal/credential machinery a summary never needs.
  */
-import { computed, inject, watch } from 'vue';
+import { computed, inject, ref, watch } from 'vue';
 import type { AgentCapabilitySummary } from '@n8n/api-types';
 import { N8nLoading, N8nMarkdown, N8nText, N8nButton } from '@n8n/design-system';
+import { useScrollEdges } from '@n8n/design-system/composables/useScrollEdges';
 import { useI18n } from '@n8n/i18n';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -32,6 +33,9 @@ const props = defineProps<{ isReadOnly?: boolean }>();
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const { catalog: modelCatalog, ensureLoaded: ensureModelsLoaded } = useModelCatalog();
+
+const configContentRef = ref<HTMLElement | null>(null);
+const { canScrollBottom } = useScrollEdges(configContentRef, { axis: 'vertical' });
 
 const ndv = inject(NdvAgentConfigKey);
 const referenced = ndv?.referenced;
@@ -144,7 +148,11 @@ async function onEditInBuilder() {
 
 		<template v-else-if="config">
 			<div :class="$style.config">
-				<div :class="$style.configContent">
+				<div
+					ref="configContentRef"
+					:class="$style.configContent"
+					:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
+				>
 					<N8nButton
 						v-if="!isUnavailable && !props.isReadOnly"
 						size="small"
@@ -235,13 +243,7 @@ async function onEditInBuilder() {
 	scrollbar-gutter: stable;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
-	mask-image: linear-gradient(
-		to bottom,
-		black 0,
-		black calc(100% - var(--spacing--sm)),
-		transparent 100%
-	);
-
+	@include scrollbar-mixins.scroll-mask-when-bottom;
 	@include scrollbar-mixins.scroll-bar;
 }
 

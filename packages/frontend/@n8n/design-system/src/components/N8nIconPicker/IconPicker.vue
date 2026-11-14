@@ -3,6 +3,7 @@ import { isEmojiSupported } from 'is-emoji-supported';
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
+import { useScrollEdges } from '../../composables/useScrollEdges';
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
@@ -98,6 +99,8 @@ const iconsLoading = ref(false);
 const emojisLoaded = ref(false);
 const emojisLoading = ref(false);
 const popupVisible = ref(false);
+const scrollAreaRef = ref<HTMLElement | null>(null);
+const { canScrollBottom } = useScrollEdges(scrollAreaRef, { axis: 'vertical' });
 
 const selectedTab = ref<TabType>(getDefaultTab());
 const searchQuery = ref('');
@@ -617,9 +620,11 @@ function handlePickerKeyup(event: KeyboardEvent) {
 					<div
 						v-if="visibleRows.length > 0"
 						id="icon-picker-options"
+						ref="scrollAreaRef"
 						role="grid"
 						:class="$style.scrollArea"
 						data-icon-picker-scroll-area
+						:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
 					>
 						<template v-for="(item, rowIndex) in visibleRows" :key="item.id">
 							<div v-if="item.type === 'header'" :class="$style.sectionHeaderRow">
@@ -666,9 +671,11 @@ function handlePickerKeyup(event: KeyboardEvent) {
 					<div
 						v-if="visibleRows.length > 0"
 						id="icon-picker-options"
+						ref="scrollAreaRef"
 						role="grid"
 						:class="$style.scrollArea"
 						data-icon-picker-scroll-area
+						:data-scroll-mask-bottom="canScrollBottom ? '' : undefined"
 					>
 						<template v-for="(item, rowIndex) in visibleRows" :key="item.id">
 							<div v-if="item.type === 'header'" :class="$style.sectionHeaderRow">
@@ -822,7 +829,7 @@ function handlePickerKeyup(event: KeyboardEvent) {
 		padding: 0 var(--spacing--2xs);
 		overflow-x: hidden;
 		overflow-y: auto;
-		@include scrollbar-mixins.scroll-mask(bottom);
+		@include scrollbar-mixins.scroll-mask-when-bottom;
 		@include scrollbar-mixins.hoverable-scroll-bar;
 	}
 
