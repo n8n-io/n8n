@@ -42,9 +42,12 @@ export interface SourceControlGetStatusVerboseResult {
 	sourceControlledFiles: SourceControlledFile[];
 }
 
-function booleanFromString(value: string | boolean): boolean {
+function booleanFromString(value: string | boolean | undefined): boolean | undefined {
 	if (typeof value === 'boolean') {
 		return value;
+	}
+	if (value === undefined) {
+		return undefined;
 	}
 	return value === 'true';
 }
@@ -66,11 +69,11 @@ export class SourceControlGetStatus {
 
 	constructor(values: {
 		direction: 'push' | 'pull';
-		preferLocalVersion: string | boolean;
-		verbose: string | boolean;
+		preferLocalVersion: string | boolean | undefined;
+		verbose: string | boolean | undefined;
 	}) {
 		this.direction = values.direction || 'push';
-		this.preferLocalVersion = booleanFromString(values.preferLocalVersion) || true;
+		this.preferLocalVersion = booleanFromString(values.preferLocalVersion) ?? true;
 		this.verbose = booleanFromString(values.verbose) || false;
 		// Never read from `values`, an untrusted query parameter must not be propagated through.
 		this.publicApi = false;
