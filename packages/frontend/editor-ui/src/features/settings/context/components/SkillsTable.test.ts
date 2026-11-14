@@ -390,6 +390,7 @@ describe('SkillsTable', () => {
 			health: 'connected',
 			lastCheckedAt: null,
 			canReview: true,
+			canMove: true,
 			canDelete: true,
 			...overrides,
 		});
@@ -519,7 +520,9 @@ describe('SkillsTable', () => {
 
 		it('shows no update badge to a user who cannot review, and only Open in GitHub', async () => {
 			const { getByTestId, queryByTestId } = renderGrouped({
-				sources: [source({ updatesAvailable: 2, canReview: false, canDelete: false })],
+				sources: [
+					source({ updatesAvailable: 2, canReview: false, canMove: false, canDelete: false }),
+				],
 			});
 
 			expect(queryByTestId('skill-group-updates')).toBeNull();
@@ -529,6 +532,7 @@ describe('SkillsTable', () => {
 			);
 			expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeNull();
 			expect(document.querySelector('[data-test-id="action-deleteSource"]')).toBeNull();
+			expect(document.querySelector('[data-test-id="action-changeScope"]')).toBeNull();
 		});
 
 		it('offers Delete source with delete permission even without update permission', async () => {
@@ -563,6 +567,26 @@ describe('SkillsTable', () => {
 			await userEvent.click(document.querySelector('[data-test-id="action-checkNow"]')!);
 
 			expect(emitted('checkSource')).toEqual([[source()]]);
+		});
+
+		it('offers Change scope based on move permission, independently of review permission', async () => {
+			const item = source({ canReview: false, canMove: true });
+			const { getByTestId, emitted } = renderGrouped({ sources: [item] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-changeScope"]')).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-changeScope"]')!);
+			expect(emitted('moveSource')).toEqual([[item]]);
+		});
+
+		it('hides Change scope when the source cannot be moved', async () => {
+			const { getByTestId } = renderGrouped({ sources: [source({ canMove: false })] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-openInGitHub"]')).toBeInTheDocument(),
+			);
+			expect(document.querySelector('[data-test-id="action-changeScope"]')).not.toBeInTheDocument();
 		});
 
 		it('opens the repository in GitHub', async () => {

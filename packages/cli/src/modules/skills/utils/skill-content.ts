@@ -74,6 +74,8 @@ export type SkillSaveResult = {
 };
 
 export type SkillMoveOptions = {
+	/** Only the source move passes this. The skill must still belong to this source. */
+	movingSourceId?: string;
 	/** The name the skill has after this request, when the same request renames it. */
 	nameAfterMove?: string;
 	/** The scope `assertCanMove` checked. The move is refused if the skill left it since. */

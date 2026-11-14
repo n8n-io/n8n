@@ -97,6 +97,21 @@ export function describeSkillUsageContract(subject: () => SkillUsageSubject) {
 				);
 			});
 
+			it('groups distinct agents by skill and omits unused skills', async () => {
+				const { usage, seed } = subject();
+				const ids = await seed(world);
+				const using = await usage.findUsingAgentIdsBySkill(
+					[ids.skillId('voice'), ids.skillId('tone'), ids.skillId('unused'), ids.skillId('voice')],
+					ctx,
+				);
+				expect(using.size).toBe(2);
+				expect(using.get(ids.skillId('voice'))?.sort()).toEqual(
+					[ids.agentId('drafted'), ids.agentId('pinned'), ids.agentId('both')].sort(),
+				);
+				expect(using.get(ids.skillId('tone'))).toEqual([ids.agentId('other')]);
+				expect(await usage.findUsingAgentIdsBySkill([], ctx)).toEqual(new Map());
+			});
+
 			it('counts the distinct agents of each skill and leaves out unused skills', async () => {
 				const { usage, seed } = subject();
 				const ids = await seed(world);

@@ -80,6 +80,15 @@ export class FakeSkillUsage extends SkillUsage {
 		]);
 	}
 
+	async findUsingAgentIdsBySkill(skillIds: string[]): Promise<Map<string, string[]>> {
+		const using = new Map<string, string[]>();
+		for (const skillId of unique(skillIds)) {
+			const agents = await this.findUsingAgentIds(skillId);
+			if (agents.length > 0) using.set(skillId, agents);
+		}
+		return using;
+	}
+
 	async findSkillIdsUsedByAgent(agentId: string): Promise<string[]> {
 		return unique([
 			...this.world.drafts.filter((ref) => ref.agent === agentId).map((ref) => ref.skill),

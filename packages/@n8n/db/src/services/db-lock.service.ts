@@ -25,6 +25,7 @@ export const enum DbLock {
 	/** Unscoped for quota reservations; scoped by app for storage mutations. */
 	APPS_STORAGE = 1010,
 	EXECUTION_LEDGER_FOLD = 1011,
+	SKILL_NAMES = 1012,
 	/** Reserved for integration tests — never use in production code */
 	TEST = 9999,
 }

@@ -1,6 +1,7 @@
 import type { SkillScope } from '@n8n/api-types';
 import {
 	BaseRepository,
+	DbLock,
 	LIKE_ESCAPE_CLAUSE,
 	Project,
 	TransactionRunner,
@@ -624,6 +625,16 @@ export class SkillRepository {
 	 */
 	async lockForEdit(skillIds: string[], ctx: OperationContext = {}): Promise<void> {
 		await this.lock(skillIds, 'pessimistic_write', ctx);
+	}
+
+	/** Serialize name checks and writes. Take all existing skill row locks before this lock. */
+	async lockNames(ctx: OperationContext): Promise<void> {
+		if (!ctx.trx) throw new UnexpectedError('Skill name locks need a transaction');
+		// SQLite serializes write transactions. PostgreSQL needs a lock without a schema change.
+		if (this.table.manager.connection.options.type !== 'postgres') return;
+		await this.table
+			.managerFor(ctx)
+			.query('SELECT pg_advisory_xact_lock($1)', [DbLock.SKILL_NAMES]);
 	}
 
 	/** Shared lock: publishes run side by side, a save waits for them. */

@@ -29,6 +29,12 @@ export abstract class SkillUsage {
 	/** The agents that use the skill: a draft ref or a published pin. */
 	abstract findUsingAgentIds(skillId: string, ctx: OperationContext): Promise<string[]>;
 
+	/** Distinct agents per skill, including draft refs and published pins. Unused skills are absent. */
+	abstract findUsingAgentIdsBySkill(
+		skillIds: string[],
+		ctx: OperationContext,
+	): Promise<Map<string, string[]>>;
+
 	/** The skills the agent uses: a draft ref or a published pin. */
 	abstract findSkillIdsUsedByAgent(agentId: string, ctx: OperationContext): Promise<string[]>;
 

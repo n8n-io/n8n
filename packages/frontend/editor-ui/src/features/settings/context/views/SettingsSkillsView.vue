@@ -60,6 +60,7 @@ import type {
 	AgentSkillModalScopeOption,
 } from '@/features/agents/components/AgentSkillModal.vue';
 
+import SkillSourceMoveDialog from '../components/SkillSourceMoveDialog.vue';
 import SkillSourceConnectDialog, {
 	type SkillSourceConnected,
 } from '../components/SkillSourceConnectDialog.vue';
@@ -114,6 +115,7 @@ const { scopeDisplay } = useSkillScopeDisplay();
 const { failedSkillReason, reasonText } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const connectOpen = ref(false);
+const movingSource = ref<SkillSourceListItem | null>(null);
 const sourceToDelete = ref<SkillSourceListItem>();
 
 const tableOptions = ref<TableOptions>({
@@ -870,6 +872,15 @@ async function onCheckSource(source: SkillSourceListItem) {
 	});
 }
 
+async function onSourceMoved(sourceId: string) {
+	movingSource.value = null;
+	showMessage({
+		title: i18n.baseText('settings.context.skills.moveSource.success'),
+		type: 'success',
+	});
+	await onOpenSource(sourceId);
+}
+
 async function onOpenSource(sourceId: string) {
 	connectOpen.value = false;
 	search.value = '';
@@ -1062,6 +1073,7 @@ onMounted(async () => {
 			@download="onDownload"
 			@toggle-source="onToggleSource"
 			@check-source="onCheckSource"
+			@move-source="movingSource = $event"
 			@delete-source="sourceToDelete = $event"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
@@ -1102,6 +1114,14 @@ onMounted(async () => {
 			</template>
 		</SkillsTable>
 
+		<SkillSourceMoveDialog
+			v-if="skillSyncEnabled && movingSource"
+			:open="true"
+			:source="movingSource"
+			:scope-options="scopeOptions"
+			@update:open="!$event && (movingSource = null)"
+			@moved="onSourceMoved"
+		/>
 		<SkillSourceConnectDialog
 			v-if="skillSyncEnabled"
 			v-model:open="connectOpen"

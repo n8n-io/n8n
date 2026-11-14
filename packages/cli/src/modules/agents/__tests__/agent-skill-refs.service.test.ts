@@ -912,6 +912,15 @@ describe('AgentSkillRefsService attach check', () => {
 	});
 
 	describe('checkRefs', () => {
+		it('checks the current scope after waiting for an attach lock', async () => {
+			skillRuntime.findTargets
+				.mockResolvedValueOnce(new Map([['skill_new', { projectId: null }]]))
+				.mockResolvedValueOnce(new Map([['skill_new', { projectId: 'other-project' }]]));
+			await expect(
+				service.checkRefs({ id: 'agent', projectId: 'p1' }, [{ id: 'skill_new' }], TX_CTX),
+			).rejects.toThrow('is not available to this agent');
+		});
+
 		const agent = { id: 'agent-1', projectId: PROJECT };
 
 		function givenAgentRefs(refs: Array<{ skillId: string; versionId?: string }>) {
