@@ -95,10 +95,9 @@ export function findClassProperty(
 }
 
 /**
- * Returns the object literal behind an expression, and looks through the type
- * assertions node authors write, e.g. `{ … } as INodeTypeDescription`.
+ * Returns the expression behind TypeScript assertions and non-null assertions.
  */
-function asObjectExpression(node: TSESTree.Node | null): TSESTree.ObjectExpression | null {
+export function unwrapExpression(node: TSESTree.Node | null): TSESTree.Node | null {
 	let current = node;
 	while (
 		current?.type === AST_NODE_TYPES.TSAsExpression ||
@@ -109,6 +108,11 @@ function asObjectExpression(node: TSESTree.Node | null): TSESTree.ObjectExpressi
 		current = current.expression;
 	}
 
+	return current;
+}
+
+function asObjectExpression(node: TSESTree.Node | null): TSESTree.ObjectExpression | null {
+	const current = unwrapExpression(node);
 	return current?.type === AST_NODE_TYPES.ObjectExpression ? current : null;
 }
 
