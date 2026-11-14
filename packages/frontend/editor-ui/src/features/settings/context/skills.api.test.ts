@@ -5,7 +5,9 @@ import {
 	connectSkillSource,
 	discoverSkillSource,
 	getSkillSourceCredentials,
+	getSkillSourceReplacementCredentials,
 	getSkillSourceRepositories,
+	replaceSkillSourceCredential,
 } from './skills.api';
 
 vi.mock('@n8n/rest-api-client', () => ({
@@ -57,6 +59,18 @@ describe('skills.api', () => {
 		expect(makeRestApiRequest).toHaveBeenNthCalledWith(2, context, 'POST', '/skill-sources', {
 			...target,
 			skillKeys: ['skills/pdf'],
+		});
+	});
+
+	it.each([
+		['a project source', 'p1', '/projects/p1/skill-sources/s1'],
+		['a Global source', null, '/skill-sources/s1'],
+	])('sends credential replacement for %s to its scope', async (_name, projectId, path) => {
+		await getSkillSourceReplacementCredentials(context, { id: 's1', projectId });
+		await replaceSkillSourceCredential(context, { id: 's1', projectId }, 'c1');
+		expect(makeRestApiRequest).toHaveBeenNthCalledWith(1, context, 'GET', `${path}/credentials`);
+		expect(makeRestApiRequest).toHaveBeenNthCalledWith(2, context, 'POST', `${path}/credential`, {
+			credentialId: 'c1',
 		});
 	});
 });

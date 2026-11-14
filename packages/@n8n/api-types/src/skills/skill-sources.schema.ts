@@ -226,6 +226,11 @@ export type SkillSyncedFrom = {
 /** The credentials that can read a private source in a scope, for the credential select. */
 export class ListSkillSourceCredentialsQueryDto extends Z.class(skillSourceScope) {}
 
+/** Replaces the credential only after n8n verifies that it can read the source. */
+export class ReplaceSkillSourceCredentialDto extends Z.class({
+	credentialId: z.string().min(1).max(36),
+}) {}
+
 /** A credential that a source in the scope accepts and that the user can use. */
 export type SkillSourceCredentialOption = { id: string; name: string; type: string };
 
@@ -265,13 +270,7 @@ export type SkillSourceRepositoryList = {
 };
 
 /** Health of a source, based on its latest check result. */
-export type SkillSourceHealth =
-	| 'connected'
-	| 'credential_issue'
-	| 'source_unavailable'
-	| 'unreachable'
-	| 'delayed'
-	| 'check_failed';
+export type SkillSourceHealth = 'connected' | 'credential_issue' | 'source_unavailable' | 'delayed';
 
 /** One connected source, for its group row in the skills table. */
 export type SkillSourceListItem = {
@@ -297,6 +296,10 @@ export type SkillSourceListItem = {
 	updatesBlocked: number;
 	health: SkillSourceHealth;
 	lastCheckedAt: string | null;
+	/** Names of synced skills whose folders are gone. Their saved versions still work. */
+	missingSkills: string[];
+	/** Whether the user may replace the credential of this source. */
+	canReplaceCredential: boolean;
 	/** Whether the user may review updates and check the source now. */
 	canReview: boolean;
 	/** Whether the user may delete the source and its synced skills. */

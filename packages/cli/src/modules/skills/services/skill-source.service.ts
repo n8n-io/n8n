@@ -19,12 +19,21 @@ import {
 import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	NotFoundError,
+	UnexpectedError,
+} from '@n8n/errors';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v7 as uuidv7, validate as isUuid } from 'uuid';
 
-import type { SkillSourceType } from '../database/entities/skill-source-connection.entity';
+import type {
+	SkillSourceConnection,
+	SkillSourceType,
+} from '../database/entities/skill-source-connection.entity';
 import {
 	DuplicateSkillSourceError,
 	SkillSourceRepository,
@@ -53,7 +62,7 @@ import {
 } from '../utils/skill-content';
 import { skillContentHash } from '../utils/skill-content-hash';
 import { skillPreview } from '../utils/skill-preview';
-import { skillSourceHealth } from '../utils/skill-source-health';
+import { canTakeCredential, skillSourceHealth } from '../utils/skill-source-health';
 import { countSkippedFiles } from '../utils/skipped-files';
 import { SkillAccessService } from './skill-access.service';
 import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
@@ -240,6 +249,12 @@ export class SkillSourceService {
 			this.skillAccess.accessCheck(user, 'update'),
 			this.skillAccess.accessCheck(user, 'delete'),
 		]);
+		const missingLinks = await this.sourceRepository.findMissingLinks(
+			shown.map(({ source }) => source.id),
+		);
+		const missingNames = await this.skillRepository.findLatestSummaries(
+			missingLinks.map(({ skillId }) => skillId),
+		);
 		return shown.map(({ source, client }) => {
 			const project = source.projectId ? projects.get(source.projectId) : undefined;
 			const count = counts.get(source.id) ?? { skills: 0, available: 0, blocked: 0 };
@@ -255,12 +270,92 @@ export class SkillSourceService {
 				skillCount: count.skills,
 				updatesAvailable: canReview(source) ? count.available : 0,
 				updatesBlocked: canReview(source) ? count.blocked : 0,
-				health: skillSourceHealth(source.lastErrorReason),
+				health: skillSourceHealth(
+					source.credentialRequired && !source.credentialId
+						? 'credential_missing'
+						: source.lastErrorReason,
+				),
 				lastCheckedAt: source.lastCheckedAt?.toISOString() ?? null,
+				missingSkills: missingLinks
+					.filter(({ sourceId }) => sourceId === source.id)
+					.flatMap(({ skillId }) => missingNames.get(skillId)?.name ?? []),
+				canReplaceCredential: canReview(source) && canTakeCredential(source),
 				canReview: canReview(source),
 				canDelete: canDelete(source),
 			};
 		});
+	}
+
+	/** Lists usable replacements without requiring permission to create a source. */
+	async listReplacementCredentials(user: User, sourceId: string, projectId: string | null) {
+		const { source, client } = await this.requireCredentialChange(user, sourceId, projectId);
+		return await this.credentials.listUsable(user, source.projectId, client.credentialTypes);
+	}
+
+	/** Verifies the new credential before replacing the stored access. Saved skills do not change. */
+	async replaceCredential(
+		user: User,
+		sourceId: string,
+		credentialId: string,
+		projectId: string | null,
+	): Promise<void> {
+		const { source, client } = await this.requireCredentialChange(user, sourceId, projectId);
+		try {
+			const credential = await this.resolveCredential(user, credentialId, source.projectId, client);
+			const auth = client.authFrom(credential);
+			if (client.probe) await client.probe(source.locator, auth);
+			else await client.discover(source.locator, auth);
+			if (!(await this.sourceRepository.replaceCredential(source, credentialId))) {
+				throw new ConflictError('The source changed. Reload it and try again.');
+			}
+		} catch (error) {
+			await this.skillsTelemetry.updatedSourceCredential(
+				{ provider: source.type, status: 'failure', reason: telemetryReasonOf(error) },
+				user.id,
+			);
+			throw toSkillSourceRequestError(error);
+		}
+		await this.skillsTelemetry.updatedSourceCredential(
+			{ provider: source.type, status: 'success' },
+			user.id,
+		);
+		const previous = skillSourceHealth(
+			source.credentialRequired && !source.credentialId
+				? 'credential_missing'
+				: source.lastErrorReason,
+		);
+		if (previous !== 'connected') {
+			await this.skillsTelemetry.sourceHealthChanged({
+				provider: source.type,
+				previous_health: previous,
+				health: 'connected',
+			});
+		}
+	}
+
+	private async requireCredentialChange(
+		user: User,
+		sourceId: string,
+		projectId: string | null,
+	): Promise<{ source: SkillSourceConnection; client: SkillSourceClient }> {
+		await this.flagGate.assertEnabled(user);
+		const source = isUuid(sourceId) ? await this.sourceRepository.findById(sourceId) : null;
+		const client = source && this.clients.get(source.type);
+		if (
+			!source ||
+			!client ||
+			source.projectId !== projectId ||
+			!(await this.skillAccess.canOnSource(user, source, 'view'))
+		) {
+			throw new NotFoundError('Source not found');
+		}
+		if (!(await this.skillAccess.canOnSource(user, source, 'replaceCredential'))) {
+			throw new ForbiddenError('You are not allowed to replace the credential of this source.');
+		}
+		if (!canTakeCredential(source)) {
+			throw new BadRequestError('This source reads a public repository and needs no credential.');
+		}
+		return { source, client };
 	}
 
 	/** Deletes a source and all its synced skills, only when no agent uses any of them. */
