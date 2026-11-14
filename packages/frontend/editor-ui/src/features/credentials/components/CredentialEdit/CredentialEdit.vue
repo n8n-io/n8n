@@ -25,6 +25,8 @@ import CredentialConfig from './CredentialConfig.vue';
 import CredentialInfo from './CredentialInfo.vue';
 import CredentialSharing from './CredentialSharing.ee.vue';
 import SaveButton from '@/app/components/SaveButton.vue';
+import DependencyPill from '@/app/components/DependencyPill.vue';
+import { useDependencies } from '@/app/composables/useDependencies';
 import { useMessage } from '@/app/composables/useMessage';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@n8n/composables/useToast';
@@ -183,6 +185,7 @@ const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 const { getQuickConnectOption, connect: quickConnect } = useQuickConnect();
 const aiGateway = useAiGateway();
 const aiGatewayStore = useAiGatewayStore();
+const { fetchDependencyCounts, hasDependencies } = useDependencies();
 const isQuickConnectMode = ref(false);
 const activeTab = ref('connection');
 const modalBus = ref(createEventBus());
@@ -408,6 +411,10 @@ const showSaveButton = computed(() => {
 	return true;
 });
 
+const credentialHasDependents = computed(
+	() => !!credentialId.value && hasDependencies(credentialId.value, 'credential'),
+);
+
 const showHeaderSaveButton = computed(
 	() =>
 		showSaveButton.value &&
@@ -516,6 +523,7 @@ onMounted(async () => {
 			const cred = currentCredential.value;
 			isSharedGlobally.value =
 				!!cred && 'isGlobal' in cred && typeof cred.isGlobal === 'boolean' ? cred.isGlobal : false;
+			if (credentialId.value) void fetchDependencyCounts([credentialId.value], 'credential');
 		}
 
 		// Default to quick connect mode for new credentials when available and not forced to manual
@@ -1704,6 +1712,14 @@ const { width } = useElementSize(credNameRef);
 					</div>
 				</N8nDialogTitle>
 				<div :class="$style.credActions">
+					<DependencyPill
+						v-if="credentialHasDependents"
+						resource-type="credential"
+						:resource-id="credentialId"
+						source="credential_modal"
+						in-dialog
+						data-test-id="credential-edit-dependents"
+					/>
 					<SaveButton
 						v-if="showHeaderSaveButton"
 						:class="$style.saveButton"

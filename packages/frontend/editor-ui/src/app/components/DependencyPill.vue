@@ -10,7 +10,11 @@ import { useDependencyMenu } from '@/app/composables/useDependencyMenu';
 
 const MIN_ITEMS_FOR_SEARCH = 6;
 
-type DependencyPillSource = 'workflow_card' | 'credential_card' | 'data_table_card';
+type DependencyPillSource =
+	| 'workflow_card'
+	| 'credential_card'
+	| 'credential_modal'
+	| 'data_table_card';
 type DependencyPillResourceType = 'workflow' | 'credential' | 'dataTable';
 
 const props = defineProps<{
@@ -19,22 +23,20 @@ const props = defineProps<{
 	totalCount?: number;
 	source: DependencyPillSource;
 	dataTestId?: string;
+	/** Keeps the menu above the dialog that holds the pill. */
+	inDialog?: boolean;
 }>();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const { getDependencies, fetchDependencies, getTotalCount } = useDependencies();
+const { getDependencies, fetchDependencies, getDependencyCount } = useDependencies();
 const { buildDependencyMenuItems, resolveDependencyMenuId, openDependency } = useDependencyMenu();
 
 const isLoadingDetails = ref(false);
 
 const depsResult = computed(() => getDependencies(props.resourceId, props.resourceType));
 
-const effectiveCount = computed(() => {
-	const result = depsResult.value;
-	if (result) return result.dependencies.length + result.inaccessibleCount;
-	return getTotalCount(props.resourceId, props.resourceType) ?? 0;
-});
+const effectiveCount = computed(() => getDependencyCount(props.resourceId, props.resourceType));
 
 const hasHiddenDeps = computed(() => (depsResult.value?.inaccessibleCount ?? 0) > 0);
 
@@ -98,7 +100,7 @@ async function onDropdownToggle(open: boolean) {
 		:loading="isLoadingDetails"
 		:loading-item-count="1"
 		:searchable="showSearch"
-		extra-popper-class="dependency-pill-dropdown"
+		:extra-popper-class="inDialog ? undefined : 'dependency-pill-dropdown'"
 		:search-placeholder="i18n.baseText('workflows.dependencies.search.placeholder')"
 		:max-height="280"
 		:data-test-id="dataTestId"
