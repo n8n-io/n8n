@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import { HOOKED_METHODS, olderThan } from './catalogue';
 import { FILES } from './spec';
+import { CHAOS_HOOKS } from '../chaos/run';
 import { PLAYWRIGHT_DIR, SPEC_DIR } from '../cli/manifest';
 import { LEADER_HOOKS } from '../multi-main';
 
@@ -28,6 +29,10 @@ describe('HOOKED_METHODS', () => {
 
 	it('lists every method the leader hooks use', () => {
 		expect(LEADER_HOOKS.map(refOf).filter((ref) => !listed.has(ref))).toEqual([]);
+	});
+
+	it('lists every method the chaos hooks use', () => {
+		expect(CHAOS_HOOKS.map(refOf).filter((ref) => !listed.has(ref))).toEqual([]);
 	});
 });
 
