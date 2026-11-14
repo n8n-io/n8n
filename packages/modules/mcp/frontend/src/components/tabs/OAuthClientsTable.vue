@@ -357,6 +357,7 @@ function onRevoke(item: OAuthClientResponseDto) {
 			v-model:open="detailsOpen"
 			:client="detailsClient"
 			@revoke="onRevoke"
+			@updated="detailsClient = $event"
 		/>
 	</div>
 </template>

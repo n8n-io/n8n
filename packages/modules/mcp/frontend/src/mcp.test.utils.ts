@@ -46,6 +46,7 @@ export const createOAuthClient = (
 ): OAuthClientResponseDto => ({
 	id: 'client-1',
 	name: 'Test Client',
+	description: null,
 	createdAt: '2025-09-09T14:14:04.155Z',
 	updatedAt: '2025-09-09T14:14:04.155Z',
 	redirectUris: [],

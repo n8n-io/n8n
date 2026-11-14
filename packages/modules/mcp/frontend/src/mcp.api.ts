@@ -5,6 +5,7 @@ import type {
 	DeleteOAuthClientResponseDto,
 	McpClientConnectedPeriod,
 	McpClientTypeFilter,
+	UpdateOAuthClientResponseDto,
 } from '@n8n/api-types';
 import type { McpAgent, McpWorkflow } from './mcp.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -127,6 +128,19 @@ export async function deleteOAuthClient(
 		'DELETE',
 		`/mcp/oauth-clients/${encodeURIComponent(clientId)}`,
 		userId ? { userId } : undefined,
+	);
+}
+
+export async function updateOAuthClient(
+	context: IRestApiContext,
+	clientId: string,
+	details: { name?: string; description?: string | null },
+): Promise<UpdateOAuthClientResponseDto> {
+	return await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/mcp/oauth-clients/${encodeURIComponent(clientId)}`,
+		details,
 	);
 }
 

@@ -70,6 +70,7 @@ erDiagram
   varchar_255_ clientSecret
   bigint clientSecretExpiresAt
   timestamp_3__with_time_zone createdAt
+  text description
   json grantTypes
   varchar id
   boolean isFirstParty

@@ -14,6 +14,8 @@ const oauthClientOwnerShape = z.object({
 const oauthClientShape = {
 	id: z.string(),
 	name: z.string(),
+	/** Admin-supplied note about the client. Shown only in the client details view. */
+	description: z.string().nullable(),
 	redirectUris: z.array(z.string()),
 	grantTypes: z.array(z.string()),
 	tokenEndpointAuthMethod: z.string(),
@@ -78,6 +80,34 @@ export class DeleteOAuthClientQueryDto extends Z.class({
 export class DeleteOAuthClientResponseDto extends Z.class({
 	success: z.boolean(),
 	message: z.string(),
+}) {}
+
+/** Matches the `oauth_clients.name` column size. */
+export const OAUTH_CLIENT_NAME_MAX_LENGTH = 255;
+export const OAUTH_CLIENT_DESCRIPTION_MAX_LENGTH = 512;
+
+/**
+ * DTO to update the name and description of a connected OAuth client.
+ * An empty description clears it.
+ */
+export class UpdateOAuthClientDto extends Z.class({
+	name: z.string().trim().min(1).max(OAUTH_CLIENT_NAME_MAX_LENGTH).optional(),
+	description: z
+		.string()
+		.trim()
+		.max(OAUTH_CLIENT_DESCRIPTION_MAX_LENGTH)
+		.nullable()
+		.optional()
+		.transform((value) => (value === '' ? null : value)),
+}) {}
+
+/**
+ * DTO for the updated OAuth client response
+ */
+export class UpdateOAuthClientResponseDto extends Z.class({
+	id: z.string(),
+	name: z.string(),
+	description: z.string().nullable(),
 }) {}
 
 /**

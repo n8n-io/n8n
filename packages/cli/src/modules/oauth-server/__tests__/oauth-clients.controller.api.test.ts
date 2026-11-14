@@ -687,3 +687,135 @@ describe('DELETE /rest/mcp/oauth-clients/:clientId', () => {
 		expect(response.statusCode).toBe(404);
 	});
 });
+
+describe('PATCH /rest/mcp/oauth-clients/:clientId', () => {
+	const saveConnectedClient = async (id: string, userId: string) => {
+		const client = await oauthClientRepository.save({
+			id,
+			name: 'Claude',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+		await userConsentRepository.save({
+			userId,
+			clientId: client.id,
+			grantedAt: Date.now(),
+			scope: ['workflow:read'],
+		});
+		return client;
+	};
+
+	test('should update the name and description and return them in the list', async () => {
+		const client = await saveConnectedClient('patch-client', owner.id);
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch(`/mcp/oauth-clients/${client.id}`)
+			.send({ name: '  Claude (marketing)  ', description: 'Used by the marketing team' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toEqual({
+			id: client.id,
+			name: 'Claude (marketing)',
+			description: 'Used by the marketing team',
+		});
+
+		const listResponse = await testServer.authAgentFor(owner).get('/mcp/oauth-clients');
+		expect(listResponse.body.data.data[0]).toMatchObject({
+			id: client.id,
+			name: 'Claude (marketing)',
+			description: 'Used by the marketing team',
+		});
+	});
+
+	test('should keep fields that are not in the request', async () => {
+		const client = await saveConnectedClient('patch-partial-client', owner.id);
+		await oauthClientRepository.update({ id: client.id }, { description: 'Existing note' });
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch(`/mcp/oauth-clients/${client.id}`)
+			.send({ name: 'Renamed' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({ name: 'Renamed', description: 'Existing note' });
+	});
+
+	test('should clear the description when it is empty', async () => {
+		const client = await saveConnectedClient('patch-clear-client', owner.id);
+		await oauthClientRepository.update({ id: client.id }, { description: 'Existing note' });
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch(`/mcp/oauth-clients/${client.id}`)
+			.send({ description: '   ' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.description).toBeNull();
+		expect((await oauthClientRepository.findOneBy({ id: client.id }))?.description).toBeNull();
+	});
+
+	test('should return 400 for an empty name', async () => {
+		const client = await saveConnectedClient('patch-empty-name-client', owner.id);
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch(`/mcp/oauth-clients/${client.id}`)
+			.send({ name: '  ' });
+
+		expect(response.statusCode).toBe(400);
+		expect((await oauthClientRepository.findOneBy({ id: client.id }))?.name).toBe('Claude');
+	});
+
+	test('should return 400 for a description that is too long', async () => {
+		const client = await saveConnectedClient('patch-long-description-client', owner.id);
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch(`/mcp/oauth-clients/${client.id}`)
+			.send({ description: 'a'.repeat(513) });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 403 for a member, even for their own client', async () => {
+		const client = await saveConnectedClient('patch-member-client', member.id);
+
+		const response = await testServer
+			.authAgentFor(member)
+			.patch(`/mcp/oauth-clients/${client.id}`)
+			.send({ name: 'Renamed' });
+
+		expect(response.statusCode).toBe(403);
+		expect((await oauthClientRepository.findOneBy({ id: client.id }))?.name).toBe('Claude');
+	});
+
+	test('should return 404 for a non-existent client', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch('/mcp/oauth-clients/non-existent-id')
+			.send({ name: 'Renamed' });
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 404 for a first-party client', async () => {
+		const client = await oauthClientRepository.save({
+			id: 'https://n8n.example.com/form/patch',
+			name: 'My Form',
+			redirectUris: ['https://n8n.example.com/form/patch'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+			isFirstParty: true,
+		});
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch(`/mcp/oauth-clients/${encodeURIComponent(client.id)}`)
+			.send({ name: 'Renamed' });
+
+		expect(response.statusCode).toBe(404);
+		expect((await oauthClientRepository.findOneBy({ id: client.id }))?.name).toBe('My Form');
+	});
+});
