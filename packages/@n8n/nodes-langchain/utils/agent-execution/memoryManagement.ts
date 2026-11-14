@@ -221,6 +221,44 @@ export function cleanupOrphanedMessages(chatHistory: BaseMessage[]): BaseMessage
 	return result;
 }
 
+function hasEmptyContent(message: BaseMessage): boolean {
+	const type = message.getType();
+	if (type !== 'human' && type !== 'ai') return false;
+	// An AI message that only carries tool calls has no text by design
+	if (AIMessage.isInstance(message) && (message.tool_calls?.length ?? 0) > 0) return false;
+
+	const { content } = message;
+	if (typeof content === 'string') return content.trim() === '';
+	if (!Array.isArray(content)) return true;
+	return !content.some(
+		(block) =>
+			block?.type !== 'text' || (typeof block.text === 'string' && block.text.trim() !== ''),
+	);
+}
+
+/**
+ * Removes every turn (a human message and all messages up to the next human message)
+ * that has a human or AI message without content. Providers such as Anthropic reject
+ * empty messages, and a stored turn can be empty when another process wrote to the memory.
+ * Removing the full turn keeps the role order and the tool call pairs valid.
+ */
+export function removeEmptyTurns(chatHistory: BaseMessage[]): BaseMessage[] {
+	if (!chatHistory.some(hasEmptyContent)) return chatHistory;
+
+	const result: BaseMessage[] = [];
+	let turn: BaseMessage[] = [];
+	const flush = () => {
+		if (!turn.some(hasEmptyContent)) result.push(...turn);
+		turn = [];
+	};
+	for (const message of chatHistory) {
+		if (message.getType() === 'human') flush();
+		turn.push(message);
+	}
+	flush();
+	return result;
+}
+
 /**
  * Loads chat history from memory and optionally trims it to fit within token limits.
  * Automatically cleans up orphaned tool messages that may result from memory trimming.
@@ -249,6 +287,8 @@ export async function loadMemory(
 	}
 	const memoryVariables = await memory.loadMemoryVariables({});
 	let chatHistory = (memoryVariables['chat_history'] as BaseMessage[]) || [];
+
+	chatHistory = removeEmptyTurns(chatHistory);
 
 	// Clean up any orphaned messages from previous trimming operations
 	chatHistory = cleanupOrphanedMessages(chatHistory);

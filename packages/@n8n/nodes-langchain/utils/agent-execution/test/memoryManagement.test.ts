@@ -17,6 +17,7 @@ import {
 	extractToolCallId,
 	buildMessagesFromSteps,
 	cleanupOrphanedMessages,
+	removeEmptyTurns,
 } from '../memoryManagement';
 import type { ToolCallData } from '../types';
 
@@ -57,6 +58,49 @@ describe('memoryManagement', () => {
 			const result = await loadMemory(mockMemory);
 
 			expect(result).toEqual([]);
+		});
+
+		it('should drop a turn with an empty human message so history starts with a human message', async () => {
+			// Shape from GH #39670: the provider rejects messages.0 with empty user content
+			const chatHistory = [
+				new HumanMessage(''),
+				new AIMessage('Stale answer'),
+				new HumanMessage('Price today?'),
+				new AIMessage('42 EUR/MWh'),
+			];
+			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
+
+			const result = await loadMemory(mockMemory);
+
+			expect(result).toEqual(chatHistory.slice(2));
+		});
+
+		it('should drop a tool call turn with an empty final AI message and keep the other turns', async () => {
+			const toolCallMessage = new AIMessage({
+				content: '',
+				tool_calls: [{ id: 'call-1', name: 'lookup', args: {}, type: 'tool_call' }],
+			});
+			const goodTurn = [
+				new HumanMessage('Second'),
+				new AIMessage({
+					content: '',
+					tool_calls: [{ id: 'call-2', name: 'lookup', args: {}, type: 'tool_call' }],
+				}),
+				new ToolMessage({ content: 'ok', tool_call_id: 'call-2', name: 'lookup' }),
+				new AIMessage('Done'),
+			];
+			const chatHistory = [
+				new HumanMessage('First'),
+				toolCallMessage,
+				new ToolMessage({ content: 'ok', tool_call_id: 'call-1', name: 'lookup' }),
+				new AIMessage({ content: [] }),
+				...goodTurn,
+			];
+			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
+
+			const result = await loadMemory(mockMemory);
+
+			expect(result).toEqual(goodTurn);
 		});
 
 		it('should remove orphaned ToolMessage at start of chat history', async () => {
@@ -215,6 +259,34 @@ describe('memoryManagement', () => {
 
 			expect(result).toEqual(chatHistory);
 			expect(trimMessages).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('removeEmptyTurns', () => {
+		it.each([
+			['empty string', new HumanMessage('')],
+			['blank string', new HumanMessage('   ')],
+			['empty array', new HumanMessage({ content: [] })],
+			['blank text block', new AIMessage({ content: [{ type: 'text', text: ' ' }] })],
+			['null content', new AIMessage({ content: null as unknown as string })],
+		])('should drop a turn with %s content', (_, emptyMessage) => {
+			const kept = [new HumanMessage('Hi'), new AIMessage('Hello')];
+			const turn =
+				emptyMessage.getType() === 'human'
+					? [emptyMessage, new AIMessage('x')]
+					: [new HumanMessage('q'), emptyMessage];
+
+			expect(removeEmptyTurns([...turn, ...kept])).toEqual(kept);
+		});
+
+		it('should keep messages with non-text or non-empty content and system messages', () => {
+			const chatHistory = [
+				new SystemMessage(''),
+				new HumanMessage({ content: [{ type: 'image_url', image_url: { url: 'data:' } }] }),
+				new AIMessage({ content: [{ type: 'text', text: 'A cat' }] }),
+			];
+
+			expect(removeEmptyTurns(chatHistory)).toBe(chatHistory);
 		});
 	});
 
