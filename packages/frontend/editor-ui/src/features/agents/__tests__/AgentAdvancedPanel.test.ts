@@ -237,6 +237,47 @@ describe('AgentAdvancedPanel', () => {
 		expect(wrapper.find('[data-testid="agent-reasoning-toggle"]').isVisible()).toBe(true);
 	});
 
+	it('updates compression model warnings after changing the cap', async () => {
+		modelCatalog.value.openai.models['gpt-4.1-mini'].limits = { context: 1_000_000 };
+		modelCatalog.value.anthropic.models['claude-sonnet-4-6'].limits = { context: 128_000 };
+		const config = makeConfig({
+			model: 'openai/gpt-4.1-mini',
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				observationalMemory: {
+					windowShares: { maxContextWindowTokens: 500_000 },
+					observerModel: { model: 'anthropic/claude-sonnet-4-6', credential: 'example' },
+				},
+			},
+		});
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		expect(
+			wrapper.find('[data-testid="agent-memory-context-window-observer-warning"]').text(),
+		).toContain('observer.exceeds');
+		expect(
+			wrapper.find('[data-testid="agent-memory-context-window-reflector-warning"]').exists(),
+		).toBe(false);
+		await wrapper.setProps({
+			config: {
+				...config,
+				memory: {
+					...config.memory!,
+					observationalMemory: {
+						...config.memory!.observationalMemory,
+						windowShares: { maxContextWindowTokens: 160_000 },
+					},
+				},
+			},
+		});
+		expect(
+			wrapper.find('[data-testid="agent-memory-context-window-observer-warning"]').exists(),
+		).toBe(false);
+	});
+
 	it('does not render web search controls', function doesNotRenderWebSearchControls() {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config: makeConfig() },
@@ -662,6 +703,153 @@ describe('AgentAdvancedPanel', () => {
 		expect(events.length).toBeGreaterThan(0);
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
 		expect(last.config).not.toHaveProperty('maxIterations');
+	});
+
+	it('saves the memory context window and preserves other memory settings', async () => {
+		const memory = {
+			enabled: true,
+			storage: 'n8n' as const,
+			observationalMemory: {
+				observerThresholdTokens: 4_000,
+				windowShares: { maxContextWindowTokens: 32_000 },
+			},
+		};
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig({ memory }) },
+			global: { stubs: globalStubs },
+		});
+		const input = wrapper.findComponent('[data-testid="agent-memory-context-window-input"]');
+		expect(input.props('modelValue')).toBe(32_000);
+		input.vm.$emit('update:modelValue', 64_000);
+		await nextTick();
+		expect(wrapper.emitted('update:config')?.at(-1)?.[0]).toEqual({
+			memory: {
+				...memory,
+				observationalMemory: {
+					...memory.observationalMemory,
+					windowShares: { maxContextWindowTokens: 64_000 },
+				},
+			},
+		});
+		await wrapper.setProps({
+			config: makeConfig({
+				memory: {
+					...memory,
+					observationalMemory: { windowShares: { maxContextWindowTokens: 16_000 } },
+				},
+			}),
+		});
+		expect(input.props('modelValue')).toBe(16_000);
+	});
+
+	it('removes an empty window object when the cap is cleared', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: {
+				config: makeConfig({
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						observationalMemory: { windowShares: { maxContextWindowTokens: 32_000 } },
+					},
+				}),
+			},
+			global: { stubs: globalStubs },
+		});
+		wrapper
+			.findComponent('[data-testid="agent-memory-context-window-input"]')
+			.vm.$emit('update:modelValue', NaN);
+		await nextTick();
+		expect(wrapper.emitted('update:config')?.at(-1)?.[0]).toEqual({
+			memory: { enabled: true, storage: 'n8n', observationalMemory: {} },
+		});
+	});
+
+	it.each([-1, 1.5, Infinity, Number.MAX_SAFE_INTEGER + 1])(
+		'does not save an invalid memory cap %s',
+		async (value) => {
+			const wrapper = mount(AgentAdvancedPanel, {
+				props: { config: makeConfig({ memory: { enabled: true, storage: 'n8n' } }) },
+				global: { stubs: globalStubs },
+			});
+			wrapper
+				.findComponent('[data-testid="agent-memory-context-window-input"]')
+				.vm.$emit('update:modelValue', value);
+			await nextTick();
+			expect(wrapper.emitted('update:config')).toBeUndefined();
+		},
+	);
+
+	it.each([true, false])(
+		'disables the memory cap for read-only or disabled memory (%s)',
+		async (readOnly) => {
+			const wrapper = mount(AgentAdvancedPanel, {
+				props: {
+					config: makeConfig({ memory: { enabled: !readOnly ? false : true, storage: 'n8n' } }),
+					disabled: readOnly,
+				},
+				global: { stubs: globalStubs },
+			});
+			const input = wrapper.findComponent('[data-testid="agent-memory-context-window-input"]');
+			expect(input.props('disabled')).toBe(true);
+			input.vm.$emit('update:modelValue', 64_000);
+			await nextTick();
+			expect(wrapper.emitted('update:config')).toBeUndefined();
+		},
+	);
+
+	it('edits and clears the cap with the real numeric control', async () => {
+		const config = makeConfig({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				observationalMemory: { windowShares: { maxContextWindowTokens: 32_000 } },
+			},
+		});
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: { ...globalStubs, N8nInputNumber: false } },
+		});
+		const input = wrapper.find('[data-testid="agent-memory-context-window-input"] input');
+		expect(input.exists()).toBe(true);
+		await input.setValue('64000');
+		await input.trigger('blur');
+		expect(wrapper.emitted('update:config')?.at(-1)?.[0]).toEqual({
+			memory: {
+				...config.memory,
+				observationalMemory: { windowShares: { maxContextWindowTokens: 64_000 } },
+			},
+		});
+		await wrapper.setProps({
+			config: makeConfig({
+				memory: {
+					...config.memory!,
+					observationalMemory: { windowShares: { maxContextWindowTokens: 64_000 } },
+				},
+			}),
+		});
+		await input.setValue('');
+		await input.trigger('blur');
+		expect(wrapper.emitted('update:config')?.at(-1)?.[0]).toEqual({
+			memory: { ...config.memory, observationalMemory: {} },
+		});
+	});
+
+	it('allows zero to remove the memory cap', async () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig({ memory: { enabled: true, storage: 'n8n' } }) },
+			global: { stubs: globalStubs },
+		});
+		wrapper
+			.findComponent('[data-testid="agent-memory-context-window-input"]')
+			.vm.$emit('update:modelValue', 0);
+		await nextTick();
+		expect(wrapper.emitted('update:config')?.at(-1)?.[0]).toEqual({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				observationalMemory: { windowShares: { maxContextWindowTokens: 0 } },
+			},
+		});
 	});
 
 	it('emits update:config with toolCallConcurrency when the concurrency field changes', async () => {

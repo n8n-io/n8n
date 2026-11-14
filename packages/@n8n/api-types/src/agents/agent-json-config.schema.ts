@@ -43,7 +43,12 @@ const MemoryWorkerModelSchema = z.object({
 	credential: CredentialIdSchema,
 });
 
+export const ObservationWindowSharesSchema = z.object({
+	maxContextWindowTokens: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+});
+
 const ObservationalMemoryConfigSchema = z.object({
+	windowShares: ObservationWindowSharesSchema.optional(),
 	enabled: z.boolean().optional(),
 	observerModel: MemoryWorkerModelSchema.optional(),
 	reflectorModel: MemoryWorkerModelSchema.optional(),
@@ -52,12 +57,6 @@ const ObservationalMemoryConfigSchema = z.object({
 	renderTokenBudget: z.number().int().min(1).optional(),
 	observationLogTailLimit: z.number().int().min(1).optional(),
 	lockTtlMs: z.number().int().min(0).optional(),
-	windowShares: z
-		.object({
-			// 0 removes the default cap; the model's context window still applies.
-			maxContextWindowTokens: z.number().int().min(0).optional(),
-		})
-		.optional(),
 });
 
 export const EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS = 20;

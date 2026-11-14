@@ -1,13 +1,20 @@
 <script setup lang="ts">
 /** Advanced settings for memory and execution behavior. */
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, useId } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
 	AGENT_REASONING_LEVELS,
 	getModelPromptCachingCapability,
 	type AgentReasoningLevel,
 } from '@n8n/api-types';
-import { N8nInputNumber, N8nOption, N8nSelect, N8nSwitch2, N8nText } from '@n8n/design-system';
+import {
+	N8nCallout,
+	N8nInputNumber,
+	N8nOption,
+	N8nSelect,
+	N8nSwitch2,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import AgentMemoryModelSetting from './AgentMemoryModelSetting.vue';
 import AgentPanel from './AgentPanel.vue';
@@ -16,6 +23,7 @@ import { useModelCatalog } from '../composables/useModelCatalog';
 import type { AgentJsonConfig } from '../types';
 import { ANTHROPIC_CACHE_TTL_OPTIONS, type AnthropicCacheTtl } from '../provider-capabilities';
 import { modelToString, parseModelString } from '../utils/model-string';
+import { getMemoryWindowWarnings } from '../utils/memory-context-window';
 import shared from '../styles/agent-panel.module.scss';
 
 const i18n = useI18n();
@@ -166,6 +174,33 @@ const {
 	sync: syncMaxIterations,
 } = makeNumberField('maxIterations', { displayDefault: MAX_ITERATIONS_DEFAULT });
 
+const memoryContextWindowId = useId();
+const memoryContextWindow = computed(
+	() => props.config?.memory?.observationalMemory?.windowShares?.maxContextWindowTokens,
+);
+const memoryWindowWarnings = computed(() => getMemoryWindowWarnings(props.config, catalog.value));
+
+function onMemoryContextWindowChange(value: number | undefined) {
+	const memory = props.config?.memory;
+	if (props.disabled || !memory?.enabled || memory.observationalMemory?.enabled === false) return;
+	const cleared = value === undefined || Number.isNaN(value);
+	if (!cleared && (!Number.isSafeInteger(value) || value < 0)) return;
+
+	const observationalMemory = { ...memory.observationalMemory };
+	const windowShares = { ...observationalMemory.windowShares };
+	if (cleared) {
+		delete windowShares.maxContextWindowTokens;
+	} else {
+		windowShares.maxContextWindowTokens = value;
+	}
+	if (Object.keys(windowShares).length) {
+		observationalMemory.windowShares = windowShares;
+	} else {
+		delete observationalMemory.windowShares;
+	}
+	emit('update:config', { memory: { ...memory, observationalMemory } });
+}
+
 // ---------------------------------------------------------------------------
 // Reasoning
 // ---------------------------------------------------------------------------
@@ -252,6 +287,53 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 					:project-id="props.projectId"
 					@update:config="emit('update:config', $event)"
 				/>
+
+				<div :class="shared.settingRow">
+					<label :for="memoryContextWindowId" :class="shared.settingLabel">
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+							i18n.baseText('agents.builder.advanced.memoryContextWindow.label')
+						}}</N8nText>
+						<N8nText size="small" :class="shared.dataEntrySubLabel">
+							{{ i18n.baseText('agents.builder.advanced.memoryContextWindow.hint') }}
+						</N8nText>
+					</label>
+					<N8nInputNumber
+						:id="memoryContextWindowId"
+						:model-value="memoryContextWindow"
+						:max="Number.MAX_SAFE_INTEGER"
+						:min="0"
+						:precision="0"
+						:controls="false"
+						:placeholder="i18n.baseText('agents.builder.advanced.memoryContextWindow.automatic')"
+						:disabled="
+							props.disabled ||
+							!props.config?.memory?.enabled ||
+							props.config.memory.observationalMemory?.enabled === false
+						"
+						:class="shared.settingControlShort"
+						data-testid="agent-memory-context-window-input"
+						data-attr="agent-memory-context-window-input"
+						@update:model-value="onMemoryContextWindowChange"
+					/>
+				</div>
+				<div v-if="memoryWindowWarnings.length" :class="$style.settingGroup">
+					<N8nCallout
+						v-for="warning in memoryWindowWarnings"
+						:key="warning.role"
+						theme="warning"
+						slim
+						:data-testid="`agent-memory-context-window-${warning.role}-warning`"
+					>
+						{{
+							i18n.baseText(
+								`agents.builder.advanced.memoryContextWindow.${warning.role}.${warning.reason}`,
+								{
+									interpolate: { tokens: warning.tokens ?? '', context: warning.context ?? '' },
+								},
+							)
+						}}
+					</N8nCallout>
+				</div>
 
 				<div :class="$style.settingGroup">
 					<div :class="shared.settingRow">

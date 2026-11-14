@@ -2,6 +2,7 @@ import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import {
 	AgentJsonConfigBaseSchema,
 	AgentModelSchema,
+	ObservationWindowSharesSchema,
 	EPISODIC_MEMORY_GUIDANCE_MAX_TOPICS,
 	EPISODIC_MEMORY_GUIDANCE_TOPIC_MAX_LENGTH,
 } from '@n8n/api-types';
@@ -25,6 +26,7 @@ const BuilderPromptMemoryConfigSchema = z.object({
 	observationalMemory: z
 		.object({
 			enabled: z.boolean().optional(),
+			windowShares: ObservationWindowSharesSchema.optional(),
 			observerModel: BuilderPromptMemoryWorkerModelSchema.optional(),
 			reflectorModel: BuilderPromptMemoryWorkerModelSchema.optional(),
 			observerThresholdTokens: z.number().int().min(1).optional(),
