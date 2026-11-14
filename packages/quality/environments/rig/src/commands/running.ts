@@ -13,7 +13,8 @@ import { type InspectMode, Supervisor } from '../runtime/supervisor';
 import { serviceAddress, servicesDown, servicesStatus, servicesUp } from '../services/compose';
 import { type Component, portsOf } from '../topology/components';
 import { validateTopology } from '../topology/validate';
-import { openUrl, PrefixPrinter, table, ui } from '../ui/output';
+import { PrefixPrinter, table, ui } from '../ui/output';
+import { openUrl } from '../integrations/browser';
 import {
 	envArg,
 	loadEnv,
@@ -259,7 +260,7 @@ export const statusCommand = defineCommand({
 
 		const needed = requiredServices(env.topology);
 		if (needed.length > 0) {
-			const statuses = servicesStatus(env.name, env.paths);
+			const statuses = servicesStatus(env.name, env.topology);
 			const rows = [[pc.dim('SERVICE'), pc.dim('STATE'), pc.dim('ADDRESS')]];
 			for (const name of needed) {
 				const status = statuses.find((s) => s.name === name);
@@ -377,7 +378,7 @@ export const openCommand = defineCommand({
 		target: { type: 'positional', required: false, description: 'Main component, default main-1' },
 		public: { type: 'boolean', description: 'Open the public HTTPS URL of the tunnel' },
 	},
-	run({ args }) {
+	async run({ args }) {
 		const env = loadEnv(args.env);
 		const publicUrl = args.public ? env.tunnelUrl() : undefined;
 		if (args.public && !publicUrl) {
@@ -389,7 +390,7 @@ export const openCommand = defineCommand({
 			);
 		}
 		const url = publicUrl ?? env.editorUrl(args.target ?? 'main-1');
-		openUrl(url);
+		await openUrl(url);
 		ui.info(url);
 	},
 });

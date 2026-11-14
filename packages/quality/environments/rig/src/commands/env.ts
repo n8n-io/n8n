@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process';
 import { defineCommand } from 'citty';
 import pc from 'picocolors';
 
@@ -7,6 +6,7 @@ import { setInDotenvFile, unsetInDotenvFile } from '../env/dotenv';
 import { TOPOLOGY_KEYS } from '../env/managed';
 import { type EnvSource, type ResolvedEnv, resolveRunnerEnv } from '../env/resolve';
 import { RigError } from '../errors';
+import { editFile } from '../integrations/editor';
 import { RUNNER_LAYERS } from '../topology/components';
 import { table, ui } from '../ui/output';
 import { confirm, isInteractive } from '../ui/prompt';
@@ -104,15 +104,15 @@ const unsetCommand = defineCommand({
 });
 
 const editCommand = defineCommand({
-	meta: { name: 'edit', description: 'Open a layer file in $EDITOR' },
+	meta: {
+		name: 'edit',
+		description: 'Open a layer file in your editor (`editor` in the global config)',
+	},
 	args: { ...envArg, ...onArg, ...restartArg },
 	async run({ args }) {
 		const env = loadEnv(args.env);
 		const layer = layerOf(env, args);
-		const file = ensureLayerFile(env, layer);
-		const editor = process.env.VISUAL ?? process.env.EDITOR ?? 'vi';
-		const result = spawnSync(editor, [file], { stdio: 'inherit', shell: true });
-		if (result.status !== 0) throw new RigError(`${editor} exited with code ${result.status}.`);
+		await editFile(ensureLayerFile(env, layer));
 		await offerRestart(env, layer, args.restart);
 	},
 });

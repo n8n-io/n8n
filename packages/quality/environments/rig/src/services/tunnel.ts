@@ -76,7 +76,11 @@ async function isConnected(metrics: string): Promise<boolean> {
  * Waits until cloudflared has a connection, then stores and returns the public
  * URL. A quick tunnel keeps its URL while its container runs.
  */
-export async function waitForTunnel(paths: EnvPaths, topology: Topology): Promise<string> {
+export async function waitForTunnel(
+	paths: EnvPaths,
+	topology: Topology,
+	runtime: string,
+): Promise<string> {
 	const { tunnel } = topology;
 	const metrics = `http://127.0.0.1:${servicePort(topology, 'tunnel')}`;
 	const deadline = Date.now() + READY_TIMEOUT_MS;
@@ -103,6 +107,6 @@ export async function waitForTunnel(paths: EnvPaths, topology: Topology): Promis
 	}
 	throw new RigError(
 		'The Cloudflare tunnel did not connect within 60 seconds.',
-		'Check the container logs with `docker logs rig-<name>-tunnel`. Quick tunnels need outbound access to trycloudflare.com.',
+		`Check the container logs with \`${runtime} logs rig-<name>-tunnel\`. Quick tunnels need outbound access to trycloudflare.com.`,
 	);
 }
