@@ -1,4 +1,4 @@
-import { UserError } from '@n8n/errors';
+import { UserError } from 'n8n-workflow';
 
 vi.mock('@qdrant/js-client-rest', () => {
 	class QdrantClient {
