@@ -1,4 +1,5 @@
 import { serializeIntermediateSteps } from '../serializeIntermediateSteps';
+import type { ToolCallData } from '../types';
 
 describe('serializeIntermediateSteps', () => {
 	it('should convert class instances with toJSON to plain objects', () => {
@@ -97,6 +98,26 @@ describe('serializeIntermediateSteps', () => {
 		expect(() =>
 			serializeIntermediateSteps(steps as Array<{ action: { messageLog?: unknown[] } }>),
 		).not.toThrow();
+	});
+
+	it('should strip internal itemIndex property from steps without mutating original step object', () => {
+		const originalStep: ToolCallData = {
+			action: {
+				tool: 'TestTool',
+				toolInput: {},
+				log: '',
+				toolCallId: 'call_1',
+				type: 'function',
+			},
+			observation: 'Tool result',
+			itemIndex: 0,
+		};
+		const steps = [originalStep];
+
+		serializeIntermediateSteps(steps);
+
+		expect(steps[0]).not.toHaveProperty('itemIndex');
+		expect(originalStep.itemIndex).toBe(0);
 	});
 
 	it('should handle empty steps array', () => {

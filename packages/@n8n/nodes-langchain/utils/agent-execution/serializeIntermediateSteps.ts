@@ -10,19 +10,25 @@
 export function serializeIntermediateSteps(
 	steps: Array<{ action: { messageLog?: unknown[] }; [key: string]: unknown }>,
 ): void {
-	for (const step of steps) {
-		if (step.action.messageLog) {
-			step.action.messageLog = step.action.messageLog.map((msg) => {
-				if (
-					msg &&
-					typeof msg === 'object' &&
-					typeof (msg as Record<string, unknown>).toJSON === 'function'
-				) {
-					return serializeMessage(msg);
-				}
-				return msg;
-			});
+	for (let i = 0; i < steps.length; i++) {
+		const step = { ...steps[i] };
+		delete step.itemIndex;
+		if (step.action) {
+			step.action = { ...step.action };
+			if (step.action.messageLog) {
+				step.action.messageLog = step.action.messageLog.map((msg) => {
+					if (
+						msg &&
+						typeof msg === 'object' &&
+						typeof (msg as Record<string, unknown>).toJSON === 'function'
+					) {
+						return serializeMessage(msg);
+					}
+					return msg;
+				});
+			}
 		}
+		steps[i] = step;
 	}
 }
 

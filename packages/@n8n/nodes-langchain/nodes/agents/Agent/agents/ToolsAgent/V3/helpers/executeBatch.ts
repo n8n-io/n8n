@@ -18,6 +18,7 @@ import type { AgentResult } from '../types';
 import { checkMaxIterations } from './checkMaxIterations';
 import { createAgentSequence } from './createAgentSequence';
 import { finalizeResult } from './finalizeResult';
+import { mergeRequestMetadata } from './mergeRequestMetadata';
 import { prepareItemContext } from './prepareItemContext';
 import { runAgent } from './runAgent';
 
@@ -135,6 +136,8 @@ export async function executeBatch(
 				};
 			} else {
 				request.actions.push.apply(request.actions, batchResult.actions);
+				// Preserve each item's previousRequests so buildSteps can rebuild conversation history per item
+				request.metadata = mergeRequestMetadata(request.metadata, batchResult.metadata);
 			}
 			return;
 		}
