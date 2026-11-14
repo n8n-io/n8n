@@ -4,7 +4,7 @@ import type {
 	INodeListSearchResult,
 } from 'n8n-workflow';
 
-const RERANK_MODELS: INodeListSearchItems[] = [
+export const RERANK_MODELS: INodeListSearchItems[] = [
 	{ name: 'rerank-v3.5', value: 'rerank-v3.5' },
 	{ name: 'rerank-english-v3.0', value: 'rerank-english-v3.0' },
 	{ name: 'rerank-multilingual-v3.0', value: 'rerank-multilingual-v3.0' },

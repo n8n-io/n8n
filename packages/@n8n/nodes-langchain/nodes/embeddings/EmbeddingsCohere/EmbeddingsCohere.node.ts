@@ -11,7 +11,7 @@ import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import { getRequiredApiKey } from '@utils/helpers';
 
-import { searchModels } from './methods/searchModels';
+import { EMBEDDING_MODELS, searchModels } from './methods/searchModels';
 
 export class EmbeddingsCohere implements INodeType {
 	methods = {
@@ -74,40 +74,7 @@ export class EmbeddingsCohere implements INodeType {
 				description:
 					'The model which will generate the embeddings. <a href="https://docs.cohere.com/docs/models">Learn more</a>.',
 				default: 'embed-english-v2.0',
-				options: [
-					{
-						name: 'Embed-English-Light-v2.0 (1024 Dimensions)',
-						value: 'embed-english-light-v2.0',
-					},
-					{
-						name: 'Embed-English-Light-v3.0 (384 Dimensions)',
-						value: 'embed-english-light-v3.0',
-					},
-					{
-						name: 'Embed-English-v2.0 (4096 Dimensions)',
-						value: 'embed-english-v2.0',
-					},
-					{
-						name: 'Embed-English-v3.0 (1024 Dimensions)',
-						value: 'embed-english-v3.0',
-					},
-					{
-						name: 'Embed-Multilingual-Light-v3.0 (384 Dimensions)',
-						value: 'embed-multilingual-light-v3.0',
-					},
-					{
-						name: 'Embed-Multilingual-v2.0 (768 Dimensions)',
-						value: 'embed-multilingual-v2.0',
-					},
-					{
-						name: 'Embed-Multilingual-v3.0 (1024 Dimensions)',
-						value: 'embed-multilingual-v3.0',
-					},
-					{
-						name: 'Embed-v4.0',
-						value: 'embed-v4.0',
-					},
-				],
+				options: EMBEDDING_MODELS,
 				displayOptions: {
 					show: {
 						'@version': [1],

@@ -11,7 +11,7 @@ import { logWrapper } from '@n8n/ai-utilities';
 
 import { getRequiredApiKey } from '@utils/helpers';
 
-import { searchModels } from './methods/searchModels';
+import { RERANK_MODELS, searchModels } from './methods/searchModels';
 
 export class RerankerCohere implements INodeType {
 	methods = {
@@ -65,31 +65,7 @@ export class RerankerCohere implements INodeType {
 				description:
 					'The model that should be used to rerank the documents. <a href="https://docs.cohere.com/docs/models">Learn more</a>.',
 				default: 'rerank-v3.5',
-				// rerank-v3.5 is the default and must stay the first option, so the
-				// dropdown's first entry matches the default (backward compatibility).
-				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
-				options: [
-					{
-						name: 'rerank-v3.5',
-						value: 'rerank-v3.5',
-					},
-					{
-						name: 'rerank-english-v3.0',
-						value: 'rerank-english-v3.0',
-					},
-					{
-						name: 'rerank-multilingual-v3.0',
-						value: 'rerank-multilingual-v3.0',
-					},
-					{
-						name: 'rerank-v4.0-pro',
-						value: 'rerank-v4.0-pro',
-					},
-					{
-						name: 'rerank-v4.0-fast',
-						value: 'rerank-v4.0-fast',
-					},
-				],
+				options: RERANK_MODELS,
 				displayOptions: {
 					show: {
 						'@version': [1],

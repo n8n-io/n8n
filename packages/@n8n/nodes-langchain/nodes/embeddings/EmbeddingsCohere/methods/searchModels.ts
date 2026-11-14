@@ -4,7 +4,7 @@ import type {
 	INodeListSearchResult,
 } from 'n8n-workflow';
 
-const EMBEDDING_MODELS: INodeListSearchItems[] = [
+export const EMBEDDING_MODELS: INodeListSearchItems[] = [
 	{
 		name: 'Embed-English-Light-v2.0 (1024 Dimensions)',
 		value: 'embed-english-light-v2.0',

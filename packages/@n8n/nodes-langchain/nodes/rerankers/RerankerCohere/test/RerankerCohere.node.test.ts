@@ -337,6 +337,23 @@ describe('RerankerCohere', () => {
 		});
 	});
 
+	it('passes an arbitrary id-mode model ID through unchanged', async () => {
+		const context = createMockExecuteFunction<ISupplyDataFunctions>(
+			{ modelName: { mode: 'id', value: 'customer-rerank-model' }, topN: 3 },
+			{ ...mockNode, typeVersion: 2 },
+		) as Mocked<ISupplyDataFunctions>;
+		context.getCredentials = vi.fn().mockResolvedValue({ apiKey: 'test-api-key' });
+		context.logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+
+		await rerankerCohere.supplyData.call(context, 0);
+
+		expect(CohereRerank).toHaveBeenCalledWith({
+			apiKey: 'test-api-key',
+			model: 'customer-rerank-model',
+			topN: 3,
+		});
+	});
+
 	it('passes a v1 plain-string model value through unchanged', async () => {
 		const context = createMockExecuteFunction<ISupplyDataFunctions>(
 			{ modelName: 'rerank-english-v3.0', topN: 3 },

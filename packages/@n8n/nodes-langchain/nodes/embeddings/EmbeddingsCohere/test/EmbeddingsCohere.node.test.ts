@@ -157,6 +157,19 @@ describe('EmbeddingsCohere', () => {
 			expect(logWrapper).toHaveBeenCalledWith(expect.anything(), context);
 		});
 
+		it('passes an arbitrary id-mode model ID through unchanged', async () => {
+			const context = setupMockContext({
+				modelName: { mode: 'id', value: 'customer-embed-model' },
+			});
+
+			await embeddingsCohere.supplyData.call(context, 0);
+
+			expect(CohereEmbeddings).toHaveBeenCalledWith({
+				apiKey: 'test-api-key',
+				model: 'customer-embed-model',
+			});
+		});
+
 		it('should pass a v1 plain-string model value through unchanged', async () => {
 			const context = setupMockContext({});
 			context.getNodeParameter = vi.fn().mockReturnValue('embed-english-v3.0');
