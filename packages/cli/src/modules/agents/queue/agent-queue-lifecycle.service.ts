@@ -8,6 +8,8 @@ import { Service } from '@n8n/di';
 import { AgentAppTurnService } from '../agent-app-turn.service';
 import { AgentChatResumeService } from '../agent-chat-resume.service';
 import { AgentMessageQueueConsumer } from '../agent-message-queue-consumer.service';
+import { AgentTaskService } from '../agent-task.service';
+import { AgentWakeService } from '../background/agent-wake.service';
 import { AgentWorkflowToolResumeService } from '../agent-workflow-tool-resume.service';
 import { WebhookChannelService } from '../integrations/platforms/webhook/webhook-channel.service';
 import { AgentRemoteTurnService } from './agent-remote-turn.service';
@@ -41,6 +43,8 @@ export class AgentQueueLifecycle {
 		_webhookChannel: WebhookChannelService,
 		_appTurns: AgentAppTurnService,
 		_workflowToolResume: AgentWorkflowToolResumeService,
+		_tasks: AgentTaskService,
+		_wakes: AgentWakeService,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}

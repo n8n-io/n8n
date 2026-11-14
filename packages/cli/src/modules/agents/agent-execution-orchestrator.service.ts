@@ -19,6 +19,7 @@ import { Logger } from '@n8n/backend-common';
 import { AiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UserError } from '@n8n/errors';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
@@ -842,23 +843,28 @@ export class AgentExecutionOrchestratorService {
 		}
 		const delivery = await this.getWakeDelivery(
 			config.agentId,
+			config.projectId,
 			config.identity.integrationType,
 			approval.metadata.messageContext,
 		);
-		await delivery.bridge.deliverBackgroundApproval(delivery.threadId, {
-			jobId: approval.metadata.jobId,
-			title,
-			token: approval.token,
-			toolCall: {
-				type: 'tool-call-suspended',
-				runId: approval.runId,
-				toolCallId: approval.pending.toolCallId,
-				toolName: approval.pending.toolName,
-				input: approval.pending.input,
-				suspendPayload: approval.pending.suspendPayload,
-				resumeSchema: approval.pending.resumeSchema,
-			},
-		});
+		try {
+			await delivery.bridge.deliverBackgroundApproval(delivery.threadId, {
+				jobId: approval.metadata.jobId,
+				title,
+				token: approval.token,
+				toolCall: {
+					type: 'tool-call-suspended',
+					runId: approval.runId,
+					toolCallId: approval.pending.toolCallId,
+					toolName: approval.pending.toolName,
+					input: approval.pending.input,
+					suspendPayload: approval.pending.suspendPayload,
+					resumeSchema: approval.pending.resumeSchema,
+				},
+			});
+		} finally {
+			delivery.release();
+		}
 	}
 
 	/**
@@ -1237,20 +1243,24 @@ export class AgentExecutionOrchestratorService {
 		const messageContext = await this.integrationMessageContextService.getLatest(memory.threadId);
 		const delivery = setup
 			? undefined
-			: await this.getWakeDelivery(agentId, integrationType, messageContext);
-		const stream = this.withRuntimeLease(
-			async () => await this.getWakeRuntime(config, setup, access, integrationType),
-			(runtime) =>
-				this.streamWakeResponse(
-					this.streamWakeTurn(config, runtime, setup, access, integrationType, messageContext),
-					abortSignal,
-					delivery,
-					messageContext?.interactingUserId,
-					memory.threadId,
-				),
-		);
-		for await (const _chunk of stream) {
-			// Complete execution and reply delivery within the runtime lease.
+			: await this.getWakeDelivery(agentId, config.projectId, integrationType, messageContext);
+		try {
+			const stream = this.withRuntimeLease(
+				async () => await this.getWakeRuntime(config, setup, access, integrationType),
+				(runtime) =>
+					this.streamWakeResponse(
+						this.streamWakeTurn(config, runtime, setup, access, integrationType, messageContext),
+						abortSignal,
+						delivery,
+						messageContext?.interactingUserId,
+						memory.threadId,
+					),
+			);
+			for await (const _chunk of stream) {
+				// Complete execution and reply delivery within the runtime lease.
+			}
+		} finally {
+			delivery?.release();
 		}
 	}
 
@@ -1287,9 +1297,10 @@ export class AgentExecutionOrchestratorService {
 
 	private async getWakeDelivery(
 		agentId: string,
+		projectId: string,
 		integrationType: string,
 		context: IntegrationMessageContext | null,
-	) {
+	): Promise<{ bridge: AgentChatBridge; threadId: string; release: () => void }> {
 		const target = context?.replyTarget ?? context?.target;
 		const [platform, credentialId] = context?.integrationConnectionId.split(':') ?? [];
 		if (
@@ -1303,15 +1314,29 @@ export class AgentExecutionOrchestratorService {
 
 		// Use the stored connection so results return to the correct workspace.
 		const { ChatIntegrationService } = await import('./integrations/chat-integration.service.js');
-		const bridge = Container.get(ChatIntegrationService).getBridge(
-			agentId,
-			integrationType,
-			credentialId,
-		);
-		if (!bridge) {
-			throw new OperationalError('Background job wake chat connection is unavailable');
+		const integrations = Container.get(ChatIntegrationService);
+		const bridge = integrations.getBridge(agentId, integrationType, credentialId);
+		if (bridge) return { bridge, threadId: target.threadId, release: () => {} };
+
+		// An agent worker has no receiving connection. It opens a send-only one.
+		if (Container.get(InstanceSettings).isWorker) {
+			const { AgentMessageQueueRepository } = await import(
+				'./repositories/agent-message-queue.repository.js'
+			);
+			const connection = await Container.get(AgentMessageQueueRepository).findPublishedConnection(
+				agentId,
+				projectId,
+				integrationType,
+				credentialId,
+			);
+			const lease = connection
+				? await integrations.acquireSendOnlyBridge(agentId, projectId, connection)
+				: undefined;
+			if (lease) {
+				return { bridge: lease.bridge, threadId: target.threadId, release: lease.release };
+			}
 		}
-		return { bridge, threadId: target.threadId };
+		throw new OperationalError('Background job wake chat connection is unavailable');
 	}
 
 	/**

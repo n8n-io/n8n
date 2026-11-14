@@ -80,8 +80,32 @@ export interface AgentWorkflowToolResumeRequest {
 	status: string;
 }
 
+/**
+ * One run of a scheduled task. The main takes the run lock before it sends
+ * the run, so the worker gets the lock with the request and releases it.
+ */
+export interface AgentTaskRunRequest {
+	kind: 'task-run';
+	agentId: string;
+	taskId: string;
+	holderId: string;
+	/** ISO date. The worker renews the lock while the run lasts. */
+	heldUntil: string;
+}
+
+/**
+ * A wake of a parent agent with the results of its background jobs. The
+ * worker takes the wake lease and the claim on the results, as a main does.
+ */
+export interface AgentWakeRequest {
+	kind: 'wake';
+	threadId: string;
+}
+
 export type AgentTurnRequestPayload =
 	| AgentChatResumeRequest
+	| AgentTaskRunRequest
+	| AgentWakeRequest
 	| AgentWorkflowToolResumeRequest
 	| AgentWebhookRespondRequest
 	| AgentWebhookDecideRequest

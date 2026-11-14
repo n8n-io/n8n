@@ -32,6 +32,9 @@ import type { ProjectAgent } from '../entities/agent.entity';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
+import { AgentClusterService } from '../agent-cluster.service';
+import { AgentRemoteTurnService } from '../queue/agent-remote-turn.service';
+import { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
 import { AgentRepository } from '../repositories/agent.repository';
 import {
 	integrationTypeFromMemoryResourceId,
@@ -72,8 +75,15 @@ export class AgentWakeService {
 		private readonly logger: Logger,
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly planService: AgentPlanService,
+		private readonly cluster: AgentClusterService,
+		private readonly placement: AgentTurnPlacement,
+		private readonly remoteTurns: AgentRemoteTurnService,
 	) {
 		this.logger = this.logger.scoped('agents');
+		this.remoteTurns.handle('wake', {
+			mode: 'detached',
+			run: async ({ threadId }) => await this.attemptWake(threadId),
+		});
 	}
 
 	async requestWake(threadId: string): Promise<void> {
@@ -159,10 +169,53 @@ export class AgentWakeService {
 		if (this.timers.has(threadId)) return;
 		const timer = setTimeout(() => {
 			this.timers.delete(threadId);
-			void this.attemptWake(threadId);
+			void this.startWake(threadId);
 		}, WAKE_DEBOUNCE_MS);
 		timer.unref();
 		this.timers.set(threadId, timer);
+	}
+
+	/**
+	 * In agent queue mode, the leader sends the wake to an agent worker. Other
+	 * mains leave it to the leader while a worker is up, because every main gets
+	 * the wake command. The wake lease and the claim on the results still block
+	 * a second wake when two processes try.
+	 */
+	private async startWake(threadId: string): Promise<void> {
+		if (this.placement.dispatchEnabled) {
+			try {
+				if (!(await this.canWakeOnWorker(threadId))) {
+					// Discord and WhatsApp replies need the connection of a main.
+				} else if (!this.cluster.isLeader) {
+					if (await this.placement.workersAvailable()) return;
+				} else if (
+					await this.remoteTurns.detached(
+						{ kind: 'wake', threadId },
+						async () => await this.attemptWake(threadId),
+					)
+				) {
+					return;
+				}
+			} catch (error) {
+				this.logger.warn('Failed to send a background job wake to an agent worker', {
+					threadId,
+					error,
+				});
+			}
+		}
+		await this.attemptWake(threadId);
+	}
+
+	/** Whether a worker can deliver the next wake of this thread. */
+	private async canWakeOnWorker(threadId: string): Promise<boolean> {
+		const [first] = await this.jobRepository.findWakeableUnconsumed(threadId);
+		if (!first) return false;
+		const integrationType = integrationTypeFromMemoryResourceId(first.parentResourceId);
+		return (
+			!integrationType ||
+			integrationType === N8N_CHAT_INTEGRATION_TYPE ||
+			this.placement.isWorkerKind('integration', integrationType)
+		);
 	}
 
 	async attemptWake(threadId: string): Promise<void> {

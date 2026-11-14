@@ -954,6 +954,9 @@ describe('AgentBackgroundJobRepository', () => {
 			logger,
 			jobService,
 			mock<AgentPlanService>(),
+			mock(),
+			mock({ dispatchEnabled: false }),
+			mock(),
 		);
 
 		await wakeService.attemptWake('thread-1');
@@ -1039,6 +1042,9 @@ describe('AgentBackgroundJobRepository', () => {
 				logger,
 				jobService,
 				planService,
+				mock(),
+				mock({ dispatchEnabled: false }),
+				mock(),
 			);
 			Container.set(AgentWakeService, wakeService);
 

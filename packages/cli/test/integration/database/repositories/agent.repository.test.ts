@@ -488,6 +488,8 @@ describe('AgentRepository', () => {
 				transactionRunner,
 				Container.get(AgentSkillRefsService),
 				definitionService,
+				mock({ dispatchEnabled: false }),
+				mock(),
 			);
 			const readTask = taskRepo.findByIdAndAgentId.bind(taskRepo);
 			vi.spyOn(taskRepo, 'findByIdAndAgentId').mockImplementationOnce(async (id, agentId) => {

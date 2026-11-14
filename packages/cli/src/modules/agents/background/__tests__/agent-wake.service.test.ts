@@ -123,6 +123,9 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 		logger,
 		backgroundJobService,
 		planService,
+		mock(),
+		mock({ dispatchEnabled: false }),
+		mock(),
 	);
 
 	return {

@@ -172,6 +172,8 @@ describe('AgentTaskService', () => {
 			transactionRunner,
 			createAgentSkillRefsService(),
 			mock<AgentDefinitionService>(),
+			mock({ dispatchEnabled: false }),
+			mock(),
 		);
 	}
 

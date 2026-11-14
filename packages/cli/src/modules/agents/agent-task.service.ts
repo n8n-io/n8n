@@ -48,6 +48,9 @@ import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { markAgentDraftDirty, saveAgentDraftFenced } from './utils/agent-draft.utils';
 import { taskRunMemoryResourceId } from './utils/agent-memory-scope';
 import { generateAgentResourceId } from './utils/agent-resource-id';
+import { AgentRemoteTurnService } from './queue/agent-remote-turn.service';
+import { AgentTurnPlacement } from './queue/agent-turn-placement.service';
+import type { AgentTaskRunRequest } from './queue/agent-turn-request.types';
 
 const TASK_RUN_LOCK_TTL_MS = 5 * 60 * 1000;
 const TASK_RUN_LOCK_RENEW_MS = 60 * 1000;
@@ -89,7 +92,14 @@ export class AgentTaskService {
 		private readonly transactionRunner: TransactionRunner,
 		private readonly agentSkillRefs: AgentSkillRefsService,
 		private readonly definitionService: AgentDefinitionService,
-	) {}
+		private readonly placement: AgentTurnPlacement,
+		private readonly remoteTurns: AgentRemoteTurnService,
+	) {
+		this.remoteTurns.handle('task-run', {
+			mode: 'detached',
+			run: async (request) => await this.runSentTask(request),
+		});
+	}
 
 	// ── CRUD ──────────────────────────────────────────────────────────────
 
@@ -511,8 +521,67 @@ export class AgentTaskService {
 			return 'skipped-active';
 		}
 
+		if (
+			await this.sendToWorker(lock, async () => await this.runScheduledTask(agent, snapshot, lock))
+		) {
+			return 'started';
+		}
 		void this.runScheduledTask(agent, snapshot, lock);
 		return 'started';
+	}
+
+	/**
+	 * In agent queue mode, send a locked run to an agent worker. Returns `false`
+	 * when this main must run it: no worker is up or the job could not be sent.
+	 * When no worker claims the run in time, this main runs it with `fallback`.
+	 */
+	private async sendToWorker(
+		lock: AgentTaskRunLockHandle,
+		fallback: () => Promise<void>,
+	): Promise<boolean> {
+		if (!this.placement.dispatchEnabled) return false;
+		try {
+			return await this.remoteTurns.detached(
+				{
+					kind: 'task-run',
+					agentId: lock.agentId,
+					taskId: lock.taskId,
+					holderId: lock.holderId,
+					heldUntil: lock.heldUntil.toISOString(),
+				},
+				fallback,
+			);
+		} catch (error) {
+			this.logger.warn('[AgentTaskService] Failed to send a task run to an agent worker', {
+				taskId: lock.taskId,
+				agentId: lock.agentId,
+				error,
+			});
+			return false;
+		}
+	}
+
+	/** Run a task run that a main locked and sent to this worker. */
+	private async runSentTask(request: AgentTaskRunRequest): Promise<void> {
+		const lock: AgentTaskRunLockHandle = {
+			agentId: request.agentId,
+			taskId: request.taskId,
+			holderId: request.holderId,
+			heldUntil: new Date(request.heldUntil),
+		};
+		// The agent can change between the lock and the claim. Read it again.
+		const agent = await this.agentRepository.findOne({ where: { id: request.agentId } });
+		const snapshot = agent?.activeVersionId
+			? await this.taskSnapshotRepository.findByVersionAndTaskId(
+					agent.activeVersionId,
+					request.taskId,
+				)
+			: null;
+		if (!agent?.activeVersionId || !snapshot?.enabled || !isProjectAgent(agent)) {
+			await this.taskRunLockRepository.release(lock);
+			return;
+		}
+		await this.runScheduledTask(agent, snapshot, lock);
 	}
 
 	private startTaskRunLockRenewal(lock: AgentTaskRunLockHandle): ReturnType<typeof setInterval> {

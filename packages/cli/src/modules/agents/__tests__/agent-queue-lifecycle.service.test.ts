@@ -34,6 +34,8 @@ describe('AgentQueueLifecycle', () => {
 			mock<WebhookChannelService>(),
 			mock<AgentAppTurnService>(),
 			mock<AgentWorkflowToolResumeService>(),
+			mock(),
+			mock(),
 		);
 	}
 
