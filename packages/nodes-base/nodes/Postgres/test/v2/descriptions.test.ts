@@ -35,11 +35,44 @@ describe('PostgresV2, Query Parameters option', () => {
 	);
 });
 
+describe('PostgresV2, schema and table pickers', () => {
+	const isShown = (name: string, operation: string) => {
+		const picker = versionDescription.properties.find(
+			(property) => property.name === name,
+		) as INodeProperties;
+
+		return NodeHelpers.displayParameter(
+			{ resource: 'database', operation },
+			picker,
+			{ typeVersion: 2.8 },
+			versionDescription,
+		);
+	};
+
+	// Both pickers are required, and they attach to every operation by exclusion, so each new
+	// operation has to opt out of the ones it does not take.
+	it.each([
+		['deleteTable', true, true],
+		['executeQuery', false, false],
+		['insert', true, true],
+		['listSchemas', false, false],
+		['listTables', true, false],
+		['select', true, true],
+		['update', true, true],
+		['upsert', true, true],
+	])('should show schema and table for %s as %s and %s', (operation, schema, table) => {
+		expect(isShown('schema', operation)).toBe(schema);
+		expect(isShown('table', operation)).toBe(table);
+	});
+});
+
 describe('PostgresV2, annotations', () => {
 	const table = { __rl: true, mode: 'list', value: 'users' };
 
 	it.each([
 		[{ operation: 'select' }, READ_ONLY_ANNOTATIONS],
+		[{ operation: 'listSchemas' }, READ_ONLY_ANNOTATIONS],
+		[{ operation: 'listTables' }, READ_ONLY_ANNOTATIONS],
 		[{ operation: 'insert' }, { effect: 'write', destructive: false, idempotent: false }],
 		[{ operation: 'upsert' }, { effect: 'write', destructive: true, idempotent: false }],
 		[{ operation: 'executeQuery' }, { effect: 'write', destructive: true, idempotent: false }],
