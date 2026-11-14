@@ -2491,7 +2491,9 @@ describe('GoogleGemini Node', () => {
 		beforeEach(() => {
 			downloadFileMock.mockResolvedValue({ fileContent: Buffer.from('a'), mimeType: 'audio/mpeg' });
 			uploadFileMock.mockResolvedValue({ fileUri: 'uploaded', mimeType: 'audio/mpeg' });
-			apiRequestMock.mockResolvedValue({ candidates: [] });
+			apiRequestMock.mockResolvedValue({
+				candidates: [{ content: { parts: [{ text: 'ok' }], role: 'model' } }],
+			});
 		});
 
 		it.each([

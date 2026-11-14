@@ -1,6 +1,7 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
+import { assertResponseHasCandidates } from '../../helpers/candidates';
 import type { GenerateContentResponse } from '../../helpers/interfaces';
 import { getFilenameFromMimeType, uploadFile } from '../../helpers/utils';
 import { apiRequest, modelPath } from '../../transport';
@@ -49,7 +50,11 @@ function isGenerateContentResponse(response: unknown): response is GenerateConte
 
 	const responseObj = response as Record<string, unknown>;
 
-	if (!('candidates' in responseObj) || !Array.isArray(responseObj.candidates)) {
+	if (!('candidates' in responseObj) || responseObj.candidates === undefined) {
+		return true;
+	}
+
+	if (!Array.isArray(responseObj.candidates)) {
 		return false;
 	}
 
@@ -206,6 +211,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	if (!isGenerateContentResponse(response)) {
 		throw new Error('Invalid response format from Gemini API');
 	}
+
+	assertResponseHasCandidates(response);
 
 	const promises = response.candidates.map(async (candidate) => {
 		const imagePart = candidate.content.parts.find((part) => 'inlineData' in part);

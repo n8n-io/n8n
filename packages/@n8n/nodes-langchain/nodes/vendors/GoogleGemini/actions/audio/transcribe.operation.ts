@@ -2,6 +2,7 @@ import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n
 import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { getFilesDataFromUrls } from '../../helpers/baseAnalyze';
+import { assertResponseHasCandidates } from '../../helpers/candidates';
 import type {
 	Content,
 	GenerateContentRequest,
@@ -156,6 +157,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		requestPath`/v1beta${modelPath.call(this, model)}:generateContent`,
 		{ body },
 	)) as GenerateContentResponse;
+
+	assertResponseHasCandidates(response);
 
 	if (simplify) {
 		return response.candidates.map((candidate) => ({
