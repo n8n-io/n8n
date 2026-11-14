@@ -1665,6 +1665,51 @@ describe('integration tools', () => {
 		);
 	});
 
+	it('action tool keeps the interacting user after a send', async () => {
+		const messageContextStore = mock<IntegrationMessageContextStore>();
+		const messageContext: IntegrationMessageContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: { type: 'thread', threadId: 'slack:C123:123.456', channelId: 'slack:C123' },
+			messageId: '123.456',
+			interactingUserId: 'U_CUSTOMER',
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		};
+		const actionExecutor = mock<IntegrationActionExecutor>();
+		actionExecutor.execute.mockResolvedValue({
+			ok: true,
+			messageContext: {
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				target: { type: 'dm', userId: 'slack:U123', threadId: 'slack:D123' },
+				messageId: '456.789',
+				updatedAt: '2026-05-18T10:01:00.000Z',
+			},
+		});
+		const tool = createIntegrationActionTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore,
+			actionExecutor,
+		}).build();
+
+		await tool.handler!(
+			{ action: 'send_dm', input: { userId: 'slack:U123', message: { text: 'Hello' } } },
+			makeInterruptibleCtx({
+				persistence: {
+					threadId: 'thread-1',
+					resourceId: 'resource-1',
+					hostMetadata: encodeIntegrationMessageContext(messageContext),
+				},
+			}),
+		);
+
+		expect(messageContextStore.setLatest).toHaveBeenCalledWith(
+			'thread-1',
+			'resource-1',
+			expect.objectContaining({ interactingUserId: 'U_CUSTOMER' }),
+		);
+	});
+
 	describe('action approval', () => {
 		const slackWithApproval: AgentIntegrationConfig = {
 			...slackA,
@@ -1692,6 +1737,24 @@ describe('integration tools', () => {
 			action: 'send_channel_message' as const,
 			input: { channelId: 'slack:C999', message: { text: 'Hi' } },
 		};
+
+		it('refuses a recipient before it asks for approval', async () => {
+			const { tool, actionExecutor } = approvalTool({ ...slackA, approval: { mode: 'global' } });
+			actionExecutor.checkRecipient = vi.fn().mockReturnValue('Not allowed for this chat.');
+			const ctx = makeInterruptibleCtx();
+
+			const result = await tool.handler!(
+				{ action: 'send_dm', input: { userId: 'slack:U1', message: { text: 'Hi' } } },
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				error: { code: 'ACTION_DECLINED', message: 'Not allowed for this chat.' },
+			});
+			expect(ctx.suspend).not.toHaveBeenCalled();
+			expect(actionExecutor.execute).not.toHaveBeenCalled();
+		});
 
 		it('limits a session allowance to its connection and action, including batches', async () => {
 			const approvedKeys = new Set<string>();
