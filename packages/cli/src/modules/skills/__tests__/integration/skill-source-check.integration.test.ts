@@ -329,7 +329,7 @@ describe('Skill source checks', () => {
 		});
 
 		it('keeps a skill whose folder is gone, and checks the others', async () => {
-			const { docx, xlsx } = await importAll();
+			const { sourceId, docx, xlsx } = await importAll();
 			const files = github.files('acme/skills');
 			delete files['skills/xlsx/SKILL.md'];
 			github.push('acme/skills', { ...files, 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
@@ -338,6 +338,47 @@ describe('Skill source checks', () => {
 
 			expect(await linkOf(docx)).toMatchObject({ state: 'update_available' });
 			expect(await linkOf(xlsx)).toMatchObject({ state: 'up_to_date', pendingContentHash: null });
+			expect((await linkOf(xlsx)).sourceUnavailable).toBe(true);
+			const list = await viewer.get('/skill-sources').expect(200);
+			expect(list.body.data).toContainEqual(
+				expect.objectContaining({
+					id: sourceId,
+					health: 'source_unavailable',
+					missingSkills: ['xlsx'],
+				}),
+			);
+			await sync().checkAll();
+			expect((await linkOf(xlsx)).sourceUnavailable).toBe(true);
+			pushChange({ 'skills/xlsx/SKILL.md': skillMd('xlsx') });
+			await sync().checkAll();
+			expect((await linkOf(xlsx)).sourceUnavailable).toBe(false);
+			const recovered = await viewer.get('/skill-sources').expect(200);
+			expect(recovered.body.data).toContainEqual(
+				expect.objectContaining({ health: 'connected', missingSkills: [] }),
+			);
+		});
+
+		it('keeps a pending update while its folder is missing', async () => {
+			const { xlsx } = await importAll();
+			pushChange({ 'skills/xlsx/SKILL.md': skillMd('xlsx', 'Updated instructions') });
+			await sync().checkAll();
+			const pending = await linkOf(xlsx);
+			const files = github.files('acme/skills');
+			delete files['skills/xlsx/SKILL.md'];
+			github.push('acme/skills', files);
+			await sync().checkAll();
+			expect(await linkOf(xlsx)).toMatchObject({
+				sourceUnavailable: true,
+				pendingContentHash: pending.pendingContentHash,
+				state: 'update_available',
+			});
+			pushChange({ 'skills/xlsx/SKILL.md': skillMd('xlsx', 'Updated instructions') });
+			await sync().checkAll();
+			expect(await linkOf(xlsx)).toMatchObject({
+				sourceUnavailable: false,
+				pendingContentHash: pending.pendingContentHash,
+				state: 'update_available',
+			});
 		});
 
 		it('blocks an update whose SKILL.md n8n cannot parse, and reports it once', async () => {
@@ -562,6 +603,48 @@ describe('Skill source checks', () => {
 				]);
 
 				expect(claims.filter(Boolean)).toHaveLength(1);
+			});
+
+			it('clears a conflicting cursor from an older check and keeps the newer health', async () => {
+				const { sourceId, docx } = await importAll();
+				const source = await sourceOf(sourceId);
+				const later = new Date(Date.now() + 60_000);
+				await repository().recordCheck(sourceId, {
+					checkedAt: later,
+					errorReason: null,
+					probeCursor: { from: source.probeCursor, to: 'newer' },
+				});
+				await repository().recordCheck(sourceId, {
+					checkedAt: new Date(),
+					errorReason: 'unreachable',
+					probeCursor: { from: source.probeCursor, to: 'older' },
+					availability: [{ skillId: docx, missing: true }],
+				});
+				expect(await sourceOf(sourceId)).toMatchObject({
+					lastCheckedAt: later,
+					lastErrorReason: null,
+					probeCursor: null,
+				});
+				expect((await linkOf(docx)).sourceUnavailable).toBe(false);
+			});
+
+			it('reports a missing-folder health transition once for concurrent checks', async () => {
+				const { sourceId, docx } = await importAll();
+				const result = {
+					checkedAt: new Date(),
+					errorReason: null,
+					availability: [{ skillId: docx, missing: true }],
+				};
+				const transitions = await Promise.all([
+					repository().recordCheck(sourceId, result),
+					repository().recordCheck(sourceId, result),
+				]);
+				expect(transitions.filter(Boolean)).toEqual([
+					{
+						before: { errorReason: null, hasMissingSkills: false },
+						after: { errorReason: null, hasMissingSkills: true },
+					},
+				]);
 			});
 
 			it('checks once for two Check now clicks at the same time', async () => {

@@ -1,5 +1,6 @@
 import {
 	ConnectSkillSourceDto,
+	ReplaceSkillSourceCredentialDto,
 	DiscoverSkillSourceDto,
 	ListSkillSourceCredentialsQueryDto,
 	ListSkillSourceRepositoriesQueryDto,
@@ -101,5 +102,27 @@ export class SkillSourceController {
 	@Post('/:sourceId/check')
 	async checkNow(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
 		return await this.skillSyncService.checkNow(req.user, sourceId);
+	}
+
+	/** The service checks update access to the source and the credential scope. */
+	@Get('/:sourceId/credentials')
+	async replacementCredentials(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+	) {
+		return await this.skillSourceService.listReplacementCredentials(req.user, sourceId);
+	}
+
+	/** Source scope determines update access. A failed connection test keeps the saved selection. */
+	@Post('/:sourceId/credential')
+	async replaceCredential(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Body payload: ReplaceSkillSourceCredentialDto,
+	) {
+		await this.skillSourceService.replaceCredential(req.user, sourceId, payload.credentialId);
+		return { ok: true };
 	}
 }

@@ -167,6 +167,14 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return await api.checkSkillSource(rootStore.restApiContext, sourceId);
 	}
 
+	async function fetchReplacementCredentials(sourceId: string) {
+		return await api.getReplacementSkillSourceCredentials(rootStore.restApiContext, sourceId);
+	}
+
+	async function replaceSourceCredential(sourceId: string, credentialId: string) {
+		await api.replaceSkillSourceCredential(rootStore.restApiContext, sourceId, credentialId);
+	}
+
 	return {
 		skills,
 		count,
@@ -194,5 +202,7 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		fetchSources,
 		checkSource,
 		deleteSource,
+		fetchReplacementCredentials,
+		replaceSourceCredential,
 	};
 });

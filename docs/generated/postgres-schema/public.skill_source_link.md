@@ -16,6 +16,7 @@
 | skippedContentHash | varchar(64) |  | true |  |  | Content hash that the user skipped. A check hides an update with this hash |
 | skippedFiles | json |  | false |  |  | Paths of the files that the import left out, e.g. scripts |
 | sourceId | uuid |  | false |  | [public.skill_source](public.skill_source.md) | The source that syncs the skill |
+| sourceUnavailable | boolean | false | false |  |  | True when the latest source check could not find this skill folder |
 | state | varchar(32) | 'up_to_date'::character varying | false |  |  | Sync state that badges and counts read |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -34,6 +35,7 @@
 | skill_source_link_skillId_not_null | n | NOT NULL "skillId" |
 | skill_source_link_skippedFiles_not_null | n | NOT NULL "skippedFiles" |
 | skill_source_link_sourceId_not_null | n | NOT NULL "sourceId" |
+| skill_source_link_sourceUnavailable_not_null | n | NOT NULL "sourceUnavailable" |
 | skill_source_link_state_not_null | n | NOT NULL state |
 | skill_source_link_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
@@ -65,6 +67,7 @@ erDiagram
   varchar_64_ skippedContentHash
   json skippedFiles
   uuid sourceId FK
+  boolean sourceUnavailable
   varchar_32_ state
   timestamp_3__with_time_zone updatedAt
 }
@@ -82,6 +85,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ credentialId FK
+  integer credentialVersion
   uuid id
   varchar_255_ identityKey
   timestamp_3__with_time_zone lastCheckedAt
@@ -89,6 +93,7 @@ erDiagram
   json locator
   text probeCursor
   varchar_36_ projectId FK
+  boolean requiresCredential
   varchar_32_ status
   varchar_16_ type
   timestamp_3__with_time_zone updatedAt

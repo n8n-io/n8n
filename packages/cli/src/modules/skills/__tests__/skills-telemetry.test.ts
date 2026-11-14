@@ -166,6 +166,26 @@ describe('SkillsTelemetry', () => {
 		});
 	});
 
+	it('reports source health without a user or credential identifier', async () => {
+		await service.sourceHealthChanged({
+			provider: 'github',
+			from: 'connected',
+			to: 'credential_issue',
+			reason: 'credential_invalid',
+		});
+		expect(telemetry.track.mock.calls).toEqual([
+			[
+				TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_HEALTH_CHANGED,
+				{
+					provider: 'github',
+					from: 'connected',
+					to: 'credential_issue',
+					reason: 'credential_invalid',
+				},
+			],
+		]);
+	});
+
 	it('never fails the write it reports', async () => {
 		repository.findByIds.mockRejectedValue(new Error('connection lost'));
 

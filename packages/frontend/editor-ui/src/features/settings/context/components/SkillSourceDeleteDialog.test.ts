@@ -43,6 +43,7 @@ const source: SkillSourceListItem = {
 	updatesBlocked: 0,
 	health: 'connected',
 	lastCheckedAt: null,
+	missingSkills: [],
 	canReview: true,
 	canDelete: true,
 };
