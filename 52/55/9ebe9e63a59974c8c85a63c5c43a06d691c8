@@ -1,0 +1,45 @@
+packages/frontend/editor-ui/src/features/agents/components/testRun/wouldHaveHappened.types.ts
+  s_901f582250d1d3::t_007c432baab235 10,29,50-54,61,78,90-101
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedIssue.vue
+  s_901f582250d1d3::t_793a58f181eb44 10,18-31,35,61,64-65
+  s_901f582250d1d3::t_5e4e99a80bfd02 33-34
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedList.vue
+  s_901f582250d1d3::t_30a6424343701e 6-7,30
+  s_901f582250d1d3::t_53edfe27c6001d 29
+packages/frontend/editor-ui/src/features/agents/components/testRun/wouldHaveHappened.utils.ts
+  s_901f582250d1d3::t_51709d57c1cabc 49,71,134-135
+packages/frontend/editor-ui/src/features/agents/__tests__/WouldHaveHappenedPreview.test.ts
+  s_901f582250d1d3::t_cd574bd1afec08 12-15,186-191
+  s_901f582250d1d3::t_5e4e99a80bfd02 198-200,228-233
+  s_901f582250d1d3::t_b267810c286b97 192-197,201-204,206-227,234-236,405
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedPreview.vue
+  s_901f582250d1d3::t_cb7410125059f2 12,14,18,26-27,34,39-40
+  s_901f582250d1d3::t_5e4e99a80bfd02 35-38,41-44
+packages/frontend/editor-ui/src/features/agents/__tests__/wouldHaveHappened.utils.test.ts
+  s_901f582250d1d3::t_1424a9e9422090 34-35,78-81
+  s_47b1af41b47c86::t_76e5fabe373b9c 82-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "52559ebe9e63a59974c8c85a63c5c43a06d691c8",
+  "prompts": {},
+  "sessions": {
+    "s_47b1af41b47c86": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1d6bd-91c4-739b-9f85-5816f2162d35",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    },
+    "s_901f582250d1d3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1d6bd-91e0-7468-b40f-e879d1d172c9",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

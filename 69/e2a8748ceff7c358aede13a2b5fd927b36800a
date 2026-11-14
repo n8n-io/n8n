@@ -1,0 +1,80 @@
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_b4641ea02956ba::t_71a21077d474fd 4200-4221
+packages/cli/test/integration/public-api/endpoints-with-scopes-enabled.test.ts
+  s_b4641ea02956ba::t_96c128475ebe31 395
+  s_b4641ea02956ba::t_315ee4e298d863 368-394
+packages/cli/src/events/maps/relay.event-map.ts
+  s_b4641ea02956ba::t_7d402c31dd4a14 451-458
+packages/@n8n/telemetry/src/events/platform.ts
+  s_b4641ea02956ba::t_11944aa5d1009f 89,96-98
+  s_b4641ea02956ba::t_acbf34d56a1fd4 4,86-88,90-95,99-100
+  s_b4641ea02956ba::t_f24edf473c0f11 101-102
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_b4641ea02956ba::t_d07a93ac5becd6 123
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_b4641ea02956ba::t_3bdd03b8721501 100
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_b4641ea02956ba::t_3bdd03b8721501 24
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_b4641ea02956ba::t_7d402c31dd4a14 352,2528-2537
+  s_b4641ea02956ba::t_d535a2b16d8c41 2538-2541
+packages/cli/src/public-api/v1/controllers/users.public.controller.ts
+  s_b4641ea02956ba::t_964edc3fe00457 222
+  s_b4641ea02956ba::t_36b97e1391684a 2,26,201-206,208-210,214-221
+  s_b4641ea02956ba::t_c5de55720e6a92 207,211-213
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_b4641ea02956ba::t_3bdd03b8721501 163
+packages/@n8n/permissions/src/scope-information.ts
+  s_b4641ea02956ba::t_3bdd03b8721501 197-200
+packages/@n8n/permissions/src/constants.ee.ts
+  s_b4641ea02956ba::t_3bdd03b8721501 75,155
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  s_b4641ea02956ba::t_d11d5647c0da4b 411-413
+packages/cli/src/services/user.service.ts
+  s_b4641ea02956ba::t_36b97e1391684a 156-162,165,167-178
+  s_b4641ea02956ba::t_c5de55720e6a92 163-164,166
+packages/cli/src/public-api/v1/controllers/__tests__/users.public.controller.test.ts
+  s_b4641ea02956ba::t_e6974d1b775800 262,264
+  s_b4641ea02956ba::t_e65499d4f45cc7 8-9,240-261,263
+packages/@n8n/permissions/src/roles/__tests__/user-change-locale-scope.test.ts
+  s_b4641ea02956ba::t_f626d235bce7a8 1-43
+packages/cli/src/public-api/v1/handlers/users/spec/paths/changeLocale.generated.yml
+  s_b4641ea02956ba::t_0f2fdd48f6ffd6 1-44
+packages/@n8n/api-types/src/dto/index.ts
+  s_b4641ea02956ba::t_7d402c31dd4a14 159
+packages/@n8n/api-types/src/dto/user/change-user-locale-public.dto.ts
+  s_b4641ea02956ba::t_7d402c31dd4a14 1-12
+packages/cli/src/services/__tests__/user.service.test.ts
+  s_b4641ea02956ba::t_c5de55720e6a92 476
+  s_b4641ea02956ba::t_06fe544665d0ae 405-470,472-475,477-483
+  s_b4641ea02956ba::t_4290a94271a9b7 471
+packages/@n8n/config/src/configs/locales.config.ts
+  s_b4641ea02956ba::t_4290a94271a9b7 41
+packages/cli/test/integration/public-api/users.test.ts
+  s_b4641ea02956ba::t_c5de55720e6a92 672,683-684
+  s_b4641ea02956ba::t_806cd68fd10475 2,14,556-671,673-682,685-688
+  s_b4641ea02956ba::t_5ab00fae052a3f 689
+packages/@n8n/api-types/src/dto/user/__tests__/change-user-locale-public.dto.test.ts
+  s_b4641ea02956ba::t_7d402c31dd4a14 1-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "69e2a8748ceff7c358aede13a2b5fd927b36800a",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b4641ea02956ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90f52e92-c34d-4756-acf2-4adb62793353",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
