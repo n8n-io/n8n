@@ -206,6 +206,25 @@ describe('AppServingController', () => {
 			expect(res.send).toHaveBeenCalledWith(Buffer.from('app'));
 		});
 
+		it('serves the plan to the preview only', async () => {
+			const published = setup('/plan.json', false);
+			withPlan(published.bundles);
+			await published.controller.serve(published.req, published.res);
+			expect(published.res.status).toHaveBeenCalledWith(404);
+			expect(published.res.send).not.toHaveBeenCalled();
+
+			const preview = setup('/plan.json', false);
+			withPlan(preview.bundles);
+			preview.req.appContext = {
+				app: mock({ projectId: 'project-1' }),
+				versionId: 'draft',
+				preview: true,
+				previewUserId: 'editor-1',
+			};
+			await preview.controller.serve(preview.req, preview.res);
+			expect(preview.res.send).toHaveBeenCalledWith(Buffer.from('{}'));
+		});
+
 		it('does not add the plan overlay to preview HTML of an app without a plan', async () => {
 			const { controller, req, res } = setup('/');
 			req.appContext = {

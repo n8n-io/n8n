@@ -20,6 +20,8 @@ const APP_CSP = "base-uri 'self'; object-src 'none'";
 const parseCookies = cookieParser();
 const ipRateLimit = createIpRateLimit(Container.get(AppsConfig).rateLimitServe, 60_000);
 
+const PLAN_FILE = 'plan.json';
+
 @RootLevelController('/', { surface: 'apps' })
 export class AppServingController {
 	constructor(
@@ -34,7 +36,7 @@ export class AppServingController {
 	private injectPlanOverlay(html: string, projectId: string | undefined): string {
 		if (!projectId) return html;
 		const config = {
-			planUrl: '/plan.json',
+			planUrl: `/${PLAN_FILE}`,
 			editorUrl: this.preview.editorOrigin,
 			parentOrigin: this.preview.editorOrigin,
 			projectId,
@@ -75,6 +77,8 @@ export class AppServingController {
 			const name = this.filePath(req.path);
 			const index = bundle.get('index.html');
 			let file = name ? bundle.get(name) : index;
+			// The plan names internal workflows and data tables. Only the builder preview needs it.
+			if (name === PLAN_FILE && !context.preview) file = undefined;
 			const isNavigation = this.auth.isNavigation(req);
 			if (!file && !path.posix.extname(name) && isNavigation) {
 				file = index;
@@ -95,7 +99,7 @@ export class AppServingController {
 				? Buffer.from(
 						this.injectPlanOverlay(
 							injectInspectorScript(file.body.toString('utf8'), this.preview.editorOrigin),
-							bundle.has('plan.json') ? context.app.projectId : undefined,
+							bundle.has(PLAN_FILE) ? context.app.projectId : undefined,
 						),
 					)
 				: file.body;
