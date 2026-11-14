@@ -1311,6 +1311,28 @@ describe('buildFromJson()', () => {
 		},
 	);
 
+	it('keeps the default memory window cap when windowShares has no cap', async () => {
+		const config = makeConfig({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				observationalMemory: { windowShares: {} },
+			},
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
+		);
+
+		expect(getMemoryConfig(agent)?.observationalMemory).toEqual({});
+	});
+
 	it('uses synchronous title generation so the first message can sync the title', async () => {
 		const config = makeConfig({
 			memory: { enabled: true, storage: 'n8n' },
