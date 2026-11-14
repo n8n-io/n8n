@@ -96,6 +96,21 @@ describe('HttpRequestV2', () => {
 				authValue: { Authorization: 'Bearer token' },
 			},
 			{
+				genericCredentialType: 'httpMultipleHeadersAuth',
+				credentials: {
+					headers: {
+						values: [
+							{ name: 'X-Service-Token', value: 'first-test-value' },
+							{ name: 'X-Account-Key', value: 'second-test-value' },
+						],
+					},
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'example.com',
+				},
+				authField: 'headers',
+				authValue: { 'X-Service-Token': 'first-test-value', 'X-Account-Key': 'second-test-value' },
+			},
+			{
 				genericCredentialType: 'httpQueryAuth',
 				credentials: { name: 'Token', value: 'secretToken' },
 				authField: 'qs',
@@ -142,8 +157,18 @@ describe('HttpRequestV2', () => {
 							return options;
 						case 'bodyParametersUi':
 						case 'headerParametersUi':
-						case 'queryParametersUi':
 							return { parameter: [] };
+						case 'queryParametersUi':
+							return {
+								parameter:
+									genericCredentialType === 'httpMultipleHeadersAuth'
+										? [
+												{ name: 'First', value: 'first-test-value' },
+												{ name: 'Second', value: 'prefix-second-test-value' },
+												{ name: 'Keep', value: 'visible' },
+											]
+										: [],
+							};
 						default:
 							return undefined;
 					}
@@ -166,6 +191,26 @@ describe('HttpRequestV2', () => {
 						expect.objectContaining({
 							[authField]: expect.objectContaining(authValue),
 							sendCredentialsOnCrossOriginRedirect: true,
+						}),
+					);
+				}
+				if (genericCredentialType === 'httpMultipleHeadersAuth') {
+					expect(executeFunctions.sendMessageToUI).toHaveBeenCalledWith(
+						expect.objectContaining({
+							headers: expect.objectContaining(
+								Object.fromEntries(Object.keys(authValue).map((name) => [name, '**hidden**'])),
+							),
+							qs: { First: '**hidden**', Second: 'prefix-**hidden**', Keep: 'visible' },
+						}),
+					);
+					expect(executeFunctions.helpers.request).toHaveBeenCalledWith(
+						expect.objectContaining({
+							allowedDomains: 'example.com',
+							qs: {
+								First: 'first-test-value',
+								Second: 'prefix-second-test-value',
+								Keep: 'visible',
+							},
 						}),
 					);
 				}
