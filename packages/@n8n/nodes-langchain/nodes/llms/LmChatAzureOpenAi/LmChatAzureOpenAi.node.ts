@@ -2,7 +2,7 @@ import { ChatAnthropic, type ChatAnthropicInput } from '@langchain/anthropic';
 import { AzureChatOpenAI, ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
 	getProxyAgent,
-	aiClientFetch,
+	createAiClientFetch,
 	anthropicTokensUsageParser,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
@@ -182,8 +182,9 @@ export class LmChatAzureOpenAi implements INodeType {
 
 				// Claude in Foundry answers on <resource>/anthropic; the SDK appends /v1/messages.
 				const anthropicURL = new URL(modelConfig.azureFoundryBaseURL).origin + '/anthropic';
+				const tracedFetch = createAiClientFetch(this);
 				const clientOptions: NonNullable<ChatAnthropicInput['clientOptions']> = {
-					fetch: aiClientFetch,
+					fetch: tracedFetch,
 					// undici v7 and the SDK's bundled fetch types disagree structurally
 					// (FormData iterators), so the dispatcher cannot carry its own type here.
 					fetchOptions: {
@@ -200,11 +201,11 @@ export class LmChatAzureOpenAi implements INodeType {
 				if (modelConfig.azureADTokenProvider) {
 					const getToken = modelConfig.azureADTokenProvider;
 					// The SDK's own bearer option is a static string, and an Entra token expires mid-run.
-					const fetchWithEntraToken: typeof aiClientFetch = async (input, init) => {
+					const fetchWithEntraToken: typeof fetch = async (input, init) => {
 						const headers = new Headers(init?.headers);
 						headers.set('Authorization', `Bearer ${await getToken()}`);
 						headers.delete('x-api-key');
-						return await aiClientFetch(input, { ...init, headers });
+						return await tracedFetch(input, { ...init, headers });
 					};
 					clientOptions.fetch = fetchWithEntraToken;
 				}
@@ -246,7 +247,7 @@ export class LmChatAzureOpenAi implements INodeType {
 				const foundryURL = modelConfig.azureFoundryBaseURL;
 				const configuration: ClientOptions = {
 					baseURL: foundryURL,
-					fetch: aiClientFetch,
+					fetch: createAiClientFetch(this),
 					fetchOptions: {
 						dispatcher: getProxyAgent(
 							foundryURL,
@@ -332,7 +333,7 @@ export class LmChatAzureOpenAi implements INodeType {
 				maxRetries: options.maxRetries ?? 2,
 				callbacks: [new N8nLlmTracing(this, { tokensUsageParser: openAiTokensUsageParser })],
 				configuration: {
-					fetch: aiClientFetch,
+					fetch: createAiClientFetch(this),
 					fetchOptions: {
 						// Same host the client dials, so NO_PROXY and the egress filter apply to it.
 						dispatcher: getProxyAgent(

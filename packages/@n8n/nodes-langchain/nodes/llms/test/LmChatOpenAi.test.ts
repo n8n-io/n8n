@@ -6,7 +6,7 @@ import {
 	N8nLlmTracing,
 	openAiTokensUsageParser,
 	getProxyAgent,
-	aiClientFetch,
+	createAiClientFetch,
 } from '@n8n/ai-utilities';
 import { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
@@ -39,7 +39,8 @@ const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedCommon = vi.mocked(common);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
-const mockedAiClientFetch = vi.mocked(aiClientFetch);
+const mockedCreateAiClientFetch = vi.mocked(createAiClientFetch);
+const tracedFetch = vi.fn() as unknown as typeof fetch;
 const mockedWrapChatModelMessageInput = vi.mocked(wrapChatModelMessageInput);
 const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
@@ -80,6 +81,7 @@ describe('LmChatOpenAi', () => {
 	beforeEach(() => {
 		lmChatOpenAi = new LmChatOpenAi();
 		vi.clearAllMocks();
+		mockedCreateAiClientFetch.mockReturnValue(tracedFetch);
 	});
 
 	afterEach(() => {
@@ -186,6 +188,7 @@ describe('LmChatOpenAi', () => {
 			});
 
 			const result = await lmChatOpenAi.supplyData.call(mockContext, 0);
+			expect(mockedCreateAiClientFetch).toHaveBeenCalledWith(mockContext);
 
 			expect(mockContext.getCredentials).toHaveBeenCalledWith('openAiApi');
 			expect(mockContext.getNodeParameter).toHaveBeenCalledWith('model.value', 0);
@@ -196,7 +199,7 @@ describe('LmChatOpenAi', () => {
 					model: 'gpt-4o-mini',
 					maxRetries: 2,
 					configuration: {
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						defaultHeaders,
 						fetchOptions: {
 							dispatcher: {},
@@ -233,7 +236,7 @@ describe('LmChatOpenAi', () => {
 					model: 'gpt-4o-mini',
 					maxRetries: 2,
 					configuration: {
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						defaultHeaders,
 						fetchOptions: {
 							dispatcher: {},
@@ -271,7 +274,7 @@ describe('LmChatOpenAi', () => {
 					timeout: 30000,
 					maxRetries: 5,
 					configuration: {
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						baseURL: customBaseURL,
 						fetchOptions: {
 							dispatcher: {},
@@ -308,7 +311,7 @@ describe('LmChatOpenAi', () => {
 					model: 'gpt-4o-mini',
 					maxRetries: 2,
 					configuration: {
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						baseURL: customURL,
 						fetchOptions: {
 							dispatcher: {},
@@ -346,7 +349,7 @@ describe('LmChatOpenAi', () => {
 					model: 'gpt-4o-mini',
 					maxRetries: 2,
 					configuration: {
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						defaultHeaders: {
 							...defaultHeaders,
 							'X-Custom-Header': 'custom-value',
@@ -396,7 +399,7 @@ describe('LmChatOpenAi', () => {
 					timeout: 45000,
 					maxRetries: 3,
 					configuration: {
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						defaultHeaders,
 						fetchOptions: {
 							dispatcher: {},
@@ -558,7 +561,7 @@ describe('LmChatOpenAi', () => {
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
 					configuration: {
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						baseURL: optionsBaseURL,
 						fetchOptions: {
 							dispatcher: {},

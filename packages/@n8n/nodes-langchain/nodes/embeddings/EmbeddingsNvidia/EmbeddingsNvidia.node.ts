@@ -1,7 +1,7 @@
 import type { ClientOptions } from '@langchain/openai';
 import {
 	getProxyAgent,
-	aiClientFetch,
+	createAiClientFetch,
 	logWrapper,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
@@ -156,7 +156,7 @@ export class EmbeddingsNvidia implements INodeType {
 
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
-			fetch: aiClientFetch,
+			fetch: createAiClientFetch(this),
 			fetchOptions: {
 				dispatcher: getProxyAgent(credentials.url, {}, this.helpers.getSecureEgressFilter()),
 			},

@@ -2,7 +2,7 @@ import { ChatAnthropic, type ChatAnthropicInput } from '@langchain/anthropic';
 import {
 	anthropicTokensUsageParser,
 	getProxyAgent,
-	aiClientFetch,
+	createAiClientFetch,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
@@ -653,7 +653,7 @@ export class LmChatAnthropic implements INodeType {
 		}
 
 		const clientOptions: NonNullable<ChatAnthropicInput['clientOptions']> = {
-			fetch: aiClientFetch,
+			fetch: createAiClientFetch(this),
 			// undici v7 and the SDK's bundled fetch types disagree structurally
 			// (FormData iterators), so the dispatcher cannot carry its own type here.
 			fetchOptions: {

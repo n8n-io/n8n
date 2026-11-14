@@ -16,7 +16,7 @@ import { mergeCustomHeaders, getRequiredApiKey } from '@utils/helpers';
 import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 import {
 	getProxyAgent,
-	aiClientFetch,
+	createAiClientFetch,
 	logWrapper,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
@@ -255,7 +255,7 @@ export class EmbeddingsOpenAi implements INodeType {
 		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
 		const configuration: ClientOptions = {
-			fetch: aiClientFetch,
+			fetch: createAiClientFetch(this),
 			defaultHeaders,
 		};
 		if (options.baseURL) {

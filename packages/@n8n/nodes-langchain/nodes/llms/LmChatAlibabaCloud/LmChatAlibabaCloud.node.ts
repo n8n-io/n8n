@@ -1,7 +1,7 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
 	getProxyAgent,
-	aiClientFetch,
+	createAiClientFetch,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
@@ -322,7 +322,7 @@ export class LmChatAlibabaCloud implements INodeType {
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL,
-			fetch: aiClientFetch,
+			fetch: createAiClientFetch(this),
 			fetchOptions: {
 				dispatcher: getProxyAgent(
 					baseURL,

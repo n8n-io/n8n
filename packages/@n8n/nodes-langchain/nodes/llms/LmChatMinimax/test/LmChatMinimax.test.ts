@@ -6,7 +6,7 @@ import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getProxyAgent,
-	aiClientFetch,
+	createAiClientFetch,
 } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
@@ -21,7 +21,8 @@ const MockedChatOpenAI = vi.mocked(ChatOpenAI);
 const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
-const mockedAiClientFetch = vi.mocked(aiClientFetch);
+const mockedCreateAiClientFetch = vi.mocked(createAiClientFetch);
+const tracedFetch = vi.fn() as unknown as typeof fetch;
 
 describe('LmChatMinimax', () => {
 	let node: LmChatMinimax;
@@ -64,6 +65,7 @@ describe('LmChatMinimax', () => {
 	beforeEach(() => {
 		node = new LmChatMinimax();
 		vi.clearAllMocks();
+		mockedCreateAiClientFetch.mockReturnValue(tracedFetch);
 	});
 
 	describe('node description', () => {
@@ -137,6 +139,7 @@ describe('LmChatMinimax', () => {
 			const ctx = setupMockContext();
 
 			const result = await node.supplyData.call(ctx, 0);
+			expect(mockedCreateAiClientFetch).toHaveBeenCalledWith(ctx);
 
 			expect(ctx.getCredentials).toHaveBeenCalledWith('minimaxApi');
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
@@ -147,7 +150,7 @@ describe('LmChatMinimax', () => {
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					onFailedAttempt: expect.any(Function),
 					configuration: expect.objectContaining({
-						fetch: mockedAiClientFetch,
+						fetch: tracedFetch,
 						baseURL: 'https://api.minimax.io/v1',
 					}),
 				}),

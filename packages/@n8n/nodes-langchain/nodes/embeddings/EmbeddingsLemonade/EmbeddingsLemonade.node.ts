@@ -10,7 +10,7 @@ import {
 import type { LemonadeApiCredentialsType } from '../../../credentials/LemonadeApi.credentials';
 
 import {
-	aiClientFetch,
+	createAiClientFetch,
 	getProxyAgent,
 	logWrapper,
 	getConnectionHintNoticeField,
@@ -60,7 +60,7 @@ export class EmbeddingsLemonade implements INodeType {
 
 		// Build configuration object separately like official OpenAI nodes
 		const configuration: any = {
-			fetch: aiClientFetch,
+			fetch: createAiClientFetch(this),
 			baseURL: credentials.baseUrl,
 			fetchOptions: {
 				dispatcher: getProxyAgent(credentials.baseUrl, {}, this.helpers.getSecureEgressFilter()),

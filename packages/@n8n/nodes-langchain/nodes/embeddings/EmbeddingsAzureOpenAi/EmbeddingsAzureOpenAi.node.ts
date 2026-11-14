@@ -2,7 +2,7 @@ import { getBearerTokenProvider } from '@azure/identity';
 import { AzureOpenAIEmbeddings, OpenAIEmbeddings } from '@langchain/openai';
 import {
 	getProxyAgent,
-	aiClientFetch,
+	createAiClientFetch,
 	logWrapper,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
@@ -293,7 +293,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 				model: modelName,
 				configuration: {
 					baseURL: foundryURL,
-					fetch: aiClientFetch,
+					fetch: createAiClientFetch(this),
 					fetchOptions: {
 						dispatcher: getProxyAgent(foundryURL, {}, this.helpers.getSecureEgressFilter()),
 					},
@@ -335,7 +335,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			// only setting azureOpenAIBasePath worked
 			azureOpenAIBasePath: target.endpoint ? `${target.endpoint}/openai/deployments` : undefined,
 			configuration: {
-				fetch: aiClientFetch,
+				fetch: createAiClientFetch(this),
 				fetchOptions: {
 					// Resolve the proxy against the host LangChain dials so NO_PROXY applies to it.
 					dispatcher: getProxyAgent(dialledHost, {}, this.helpers.getSecureEgressFilter()),

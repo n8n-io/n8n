@@ -1,6 +1,6 @@
 import type { Logger, RequestHelperFunctions } from 'n8n-workflow';
 
-import { aiClientFetch } from './http-proxy-agent';
+import { boundedAiClientFetch } from './http-proxy-agent';
 
 /**
  * Wraps a fetch so that each request carries the W3C trace context of the node that runs now.
@@ -33,10 +33,10 @@ export function withTraceHeaders(
 	};
 }
 
-/** `aiClientFetch` that also sends the trace context of the node that owns `ctx`. */
+/** `boundedAiClientFetch` that also sends the trace context of the node that owns `ctx`. */
 export function createAiClientFetch(ctx: {
 	helpers: Pick<RequestHelperFunctions, 'getTraceHeaders'>;
 	logger?: Logger;
 }): typeof fetch {
-	return withTraceHeaders(aiClientFetch, () => ctx.helpers.getTraceHeaders(), ctx.logger);
+	return withTraceHeaders(boundedAiClientFetch, () => ctx.helpers.getTraceHeaders(), ctx.logger);
 }
