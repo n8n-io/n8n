@@ -351,6 +351,22 @@ describe('AgentJsonConfigSchema — config.promptCaching', () => {
 	});
 });
 
+describe('AgentJsonConfigSchema — config.serviceTier', () => {
+	it.each(['default', 'flex', 'priority'])('accepts serviceTier %s', (serviceTier) => {
+		const result = AgentJsonConfigSchema.safeParse({ ...minimalConfig, config: { serviceTier } });
+		expect(result.success).toBe(true);
+		if (result.success) expect(result.data.config?.serviceTier).toBe(serviceTier);
+	});
+
+	it('rejects an unknown serviceTier', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { serviceTier: 'turbo' },
+		});
+		expect(result.success).toBe(false);
+	});
+});
+
 describe('AgentJsonConfigSchema — vectorStores', () => {
 	const embedding = { model: 'openai/text-embedding-3-small', credential: 'embed-cred' };
 
