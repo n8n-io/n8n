@@ -185,7 +185,7 @@ describe('TypeORMObservationLogStore', () => {
 		const observationCursorRepo = mock<InstanceAiObservationCursorRepository>();
 		const lastObservedAt = new Date('2026-01-01T00:00:00.000Z');
 		const updatedAt = new Date('2026-01-01T00:01:00.000Z');
-		observationCursorRepo.findOneBy.mockResolvedValueOnce(null).mockResolvedValueOnce({
+		observationCursorRepo.findForThread.mockResolvedValueOnce(null).mockResolvedValueOnce({
 			observationScopeId: 'thread-1',
 			lastObservedMessageId: 'message-2',
 			lastObservedAt,
@@ -208,17 +208,15 @@ describe('TypeORMObservationLogStore', () => {
 			lastObservedAt,
 			updatedAt,
 		});
-		expect(observationCursorRepo.upsert).toHaveBeenCalledWith(
+		expect(observationCursorRepo.findForThread).toHaveBeenCalledWith('thread-1', {});
+		expect(observationCursorRepo.upsertForThread).toHaveBeenCalledWith(
 			{
 				observationScopeId: 'thread-1',
 				lastObservedMessageId: 'message-2',
 				lastObservedAt,
 				updatedAt,
 			},
-			{
-				conflictPaths: ['observationScopeId'],
-				skipUpdateIfNoValuesChanged: false,
-			},
+			{},
 		);
 	});
 
