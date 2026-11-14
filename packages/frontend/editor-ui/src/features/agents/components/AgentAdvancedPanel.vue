@@ -3,9 +3,14 @@
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
+	AGENT_FLEX_MAX_RETRIES_DEFAULT,
+	AGENT_FLEX_MAX_RETRIES_MAX,
 	AGENT_REASONING_LEVELS,
+	AGENT_SERVICE_TIERS,
 	getModelPromptCachingCapability,
+	getModelServiceTierCapability,
 	type AgentReasoningLevel,
+	type AgentServiceTier,
 } from '@n8n/api-types';
 import { N8nInputNumber, N8nOption, N8nSelect, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -54,6 +59,12 @@ const reasoningHintKey = computed(() => {
 });
 const promptCachingCapability = computed(() =>
 	getModelPromptCachingCapability(modelToString(props.config?.model)),
+);
+const serviceTierSupported = computed(() =>
+	getModelServiceTierCapability(modelToString(props.config?.model)),
+);
+const serviceTier = computed<AgentServiceTier>(
+	() => props.config?.config?.serviceTier ?? 'default',
 );
 
 watch(
@@ -166,6 +177,12 @@ const {
 	sync: syncMaxIterations,
 } = makeNumberField('maxIterations', { displayDefault: MAX_ITERATIONS_DEFAULT });
 
+const {
+	modelValue: flexMaxRetriesModelValue,
+	onChange: onFlexMaxRetriesChange,
+	sync: syncFlexMaxRetries,
+} = makeNumberField('flexMaxRetries', { displayDefault: AGENT_FLEX_MAX_RETRIES_DEFAULT });
+
 // ---------------------------------------------------------------------------
 // Reasoning
 // ---------------------------------------------------------------------------
@@ -192,6 +209,7 @@ watch(
 		anthropicTtl.value = anthropicTtlFrom(config);
 		syncConcurrency(config);
 		syncMaxIterations(config);
+		syncFlexMaxRetries(config);
 	},
 	{ deep: true },
 );
@@ -226,6 +244,14 @@ function emitPromptCaching(enabled: boolean) {
 			promptCaching: { enabled, ...(ttl ? { anthropic: { ttl } } : {}) },
 		},
 	});
+}
+
+function onServiceTierChange(value: AgentServiceTier) {
+	const cfg = { ...(props.config?.config ?? {}) };
+	// The default tier is not stored, so saved configs stay unchanged for users who never touch it.
+	if (value === 'default') delete cfg.serviceTier;
+	else cfg.serviceTier = value;
+	emit('update:config', { config: cfg });
 }
 
 function onAnthropicTtlChange(value: AnthropicCacheTtl) {
@@ -351,6 +377,56 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 									:label="opt"
 								/>
 							</N8nSelect>
+						</div>
+					</div>
+				</div>
+
+				<div v-if="serviceTierSupported" :class="$style.settingGroup">
+					<div :class="shared.settingRow">
+						<div :class="shared.settingLabel">
+							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+								i18n.baseText('agents.builder.advanced.serviceTier.label')
+							}}</N8nText>
+							<N8nText size="small" :class="shared.dataEntrySubLabel">
+								{{ i18n.baseText('agents.builder.advanced.serviceTier.hint') }}
+							</N8nText>
+						</div>
+						<N8nSelect
+							:model-value="serviceTier"
+							size="small"
+							:disabled="props.disabled"
+							:class="shared.settingControlShort"
+							data-testid="agent-service-tier-select"
+							@update:model-value="(v) => onServiceTierChange(v as AgentServiceTier)"
+						>
+							<N8nOption v-for="opt in AGENT_SERVICE_TIERS" :key="opt" :value="opt" :label="opt" />
+						</N8nSelect>
+					</div>
+					<div
+						v-if="serviceTier === 'flex'"
+						:class="$style.subSettings"
+						data-testid="agent-flex-settings"
+					>
+						<div :class="shared.settingRow">
+							<div :class="shared.settingLabel">
+								<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+									i18n.baseText('agents.builder.advanced.flexMaxRetries.label')
+								}}</N8nText>
+								<N8nText size="small" :class="shared.dataEntrySubLabel">
+									{{ i18n.baseText('agents.builder.advanced.flexMaxRetries.hint') }}
+								</N8nText>
+							</div>
+							<N8nInputNumber
+								:model-value="flexMaxRetriesModelValue"
+								:min="0"
+								:max="AGENT_FLEX_MAX_RETRIES_MAX"
+								:precision="0"
+								:controls="false"
+								:disabled="props.disabled"
+								:class="shared.settingControlShort"
+								data-testid="agent-flex-max-retries-input"
+								@update:model-value="onFlexMaxRetriesChange"
+							/>
 						</div>
 					</div>
 				</div>

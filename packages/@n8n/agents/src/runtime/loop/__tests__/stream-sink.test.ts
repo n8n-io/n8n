@@ -2,6 +2,7 @@ import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 
 import type { StreamWriterGuard } from '../../streaming/stream-writer-guard';
 import type { RunServices } from '../run-output-sink';
+import { DEFAULT_FLEX_UNAVAILABLE_RETRIES } from '../../model/flex-unavailable';
 import { StreamSink } from '../stream-sink';
 
 type MockStreamResult = Awaited<ReturnType<MockLanguageModelV3['doStream']>>;
@@ -27,6 +28,44 @@ function makeTextTurn(text: string): MockStreamResult {
 		{ type: 'finish', finishReason: { unified: 'stop', raw: 'stop' }, usage: USAGE },
 	];
 	return { stream: convertArrayToReadableStream(parts) };
+}
+
+function makeFlexUnavailableTurn(): MockStreamResult {
+	const error = Object.assign(new Error('Flex processing is temporarily unavailable.'), {
+		code: 'flex_unavailable',
+	});
+	return {
+		stream: convertArrayToReadableStream([
+			{ type: 'stream-start', warnings: [] },
+			{ type: 'error', error },
+		]),
+	};
+}
+
+function makeSink(
+	write = vi.fn<StreamWriterGuard['write']>().mockResolvedValue(undefined),
+	options: { flexUnavailableRetries?: number } = {},
+) {
+	const sink = new StreamSink(
+		{ write } as unknown as StreamWriterGuard,
+		{
+			modelId: 'mock/scripted',
+		} as RunServices,
+		{ modelStreamIdleTimeoutMs: 0, smoothStream: false, ...options },
+	);
+	return { sink, write };
+}
+
+function callContext(model: MockLanguageModelV3, abortSignal = new AbortController().signal) {
+	return {
+		model,
+		system: [],
+		messages: [{ role: 'user' as const, content: 'hello' }],
+		abortSignal,
+		hasTools: false,
+		aiTools: {},
+		aiSdkOptions: {},
+	};
 }
 
 describe('StreamSink', () => {
@@ -84,5 +123,107 @@ describe('StreamSink', () => {
 			}),
 		).rejects.toHaveProperty('name', 'AI_NoOutputGeneratedError');
 		expect(model.doStreamCalls).toHaveLength(2);
+	});
+
+	describe('OpenAI Flex without capacity', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('waits and re-issues the turn without forwarding the error', async () => {
+			const model = new MockLanguageModelV3({
+				provider: 'mock',
+				modelId: 'scripted',
+				doStream: [
+					makeFlexUnavailableTurn(),
+					makeFlexUnavailableTurn(),
+					makeTextTurn('recovered response'),
+				],
+			});
+			const { sink, write } = makeSink();
+
+			const pending = sink.callModel(callContext(model));
+			await vi.advanceTimersByTimeAsync(1000 + 2000);
+			const result = await pending;
+
+			expect(result.newMessages).toEqual([
+				{ role: 'assistant', content: [{ type: 'text', text: 'recovered response' }] },
+			]);
+			expect(write.mock.calls.some(([chunk]) => chunk.type === 'error')).toBe(false);
+			expect(model.doStreamCalls).toHaveLength(3);
+		});
+
+		it('surfaces the error once the retries are used up', async () => {
+			const model = new MockLanguageModelV3({
+				provider: 'mock',
+				modelId: 'scripted',
+				doStream: Array.from({ length: DEFAULT_FLEX_UNAVAILABLE_RETRIES + 1 }, () =>
+					makeFlexUnavailableTurn(),
+				),
+			});
+			const { sink } = makeSink();
+
+			const pending = sink.callModel(callContext(model));
+			const assertion = expect(pending).rejects.toHaveProperty('code', 'flex_unavailable');
+			await vi.advanceTimersByTimeAsync(5 * 60_000);
+			await assertion;
+
+			expect(model.doStreamCalls).toHaveLength(DEFAULT_FLEX_UNAVAILABLE_RETRIES + 1);
+		});
+
+		it('retries as often as flexUnavailableRetries says', async () => {
+			const model = new MockLanguageModelV3({
+				provider: 'mock',
+				modelId: 'scripted',
+				doStream: Array.from({ length: 4 }, () => makeFlexUnavailableTurn()),
+			});
+			const { sink } = makeSink(undefined, { flexUnavailableRetries: 2 });
+
+			const pending = sink.callModel(callContext(model));
+			const assertion = expect(pending).rejects.toHaveProperty('code', 'flex_unavailable');
+			await vi.advanceTimersByTimeAsync(5 * 60_000);
+			await assertion;
+
+			expect(model.doStreamCalls).toHaveLength(3);
+		});
+
+		it('does not retry when flexUnavailableRetries is 0', async () => {
+			const model = new MockLanguageModelV3({
+				provider: 'mock',
+				modelId: 'scripted',
+				doStream: [makeFlexUnavailableTurn(), makeTextTurn('never reached')],
+			});
+			const { sink } = makeSink(undefined, { flexUnavailableRetries: 0 });
+
+			await expect(sink.callModel(callContext(model))).rejects.toHaveProperty(
+				'code',
+				'flex_unavailable',
+			);
+
+			expect(model.doStreamCalls).toHaveLength(1);
+		});
+
+		it('stops waiting when the run is aborted', async () => {
+			const model = new MockLanguageModelV3({
+				provider: 'mock',
+				modelId: 'scripted',
+				doStream: [makeFlexUnavailableTurn(), makeTextTurn('never reached')],
+			});
+			const { sink } = makeSink();
+			const controller = new AbortController();
+
+			const pending = sink.callModel(callContext(model, controller.signal));
+			// The abort reason proves the wait was interrupted. A Flex error thrown without waiting would carry another message.
+			const assertion = expect(pending).rejects.toThrow('stopped');
+			await vi.advanceTimersByTimeAsync(10);
+			controller.abort(new Error('stopped'));
+			await assertion;
+
+			expect(model.doStreamCalls).toHaveLength(1);
+		});
 	});
 });

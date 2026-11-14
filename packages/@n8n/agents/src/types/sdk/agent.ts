@@ -293,6 +293,13 @@ export interface ExecutionOptions {
 	 * Clamped to at least `modelStreamIdleTimeoutMs`. Defaults to 3 minutes.
 	 */
 	modelStreamFirstOutputTimeoutMs?: number;
+	/**
+	 * How often a turn is re-issued, with a growing wait, while OpenAI has no free
+	 * Flex capacity (`flex_unavailable`). 0 turns the retry off. Defaults to 10.
+	 * Applies to streaming runs. The non-streaming `generate()` path does not retry this
+	 * error itself and keeps the AI SDK's own retries.
+	 */
+	flexUnavailableRetries?: number;
 	/** Inherited telemetry from a host runtime. */
 	telemetry?: BuiltTelemetry;
 	/** Inherited execution counter from the host runtime. Used for aggregate heartbeat telemetry. */
