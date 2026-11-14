@@ -2359,7 +2359,14 @@ describe('AgentExecutionService', () => {
 		it('deletes thread memory, attachments, and the execution thread', async () => {
 			agentExecutionThreadRepository.deleteSession.mockResolvedValue({
 				status: 'deleted',
-				refs: { attachmentBinaryDataIds: ['binary-1'], executionLogs: [] },
+				refs: [
+					{
+						agentId: 'agent-1',
+						threadId: 'thread-1',
+						attachmentBinaryDataIds: ['binary-1'],
+						executionLogs: [],
+					},
+				],
 			});
 
 			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1');
@@ -2382,10 +2389,14 @@ describe('AgentExecutionService', () => {
 		it('deletes blob-stored logs when deleting a thread', async () => {
 			agentExecutionThreadRepository.deleteSession.mockResolvedValue({
 				status: 'deleted',
-				refs: {
-					attachmentBinaryDataIds: [],
-					executionLogs: [{ id: 'execution-1', storedAt: 'fs' }],
-				},
+				refs: [
+					{
+						agentId: 'agent-1',
+						threadId: 'thread-1',
+						attachmentBinaryDataIds: [],
+						executionLogs: [{ id: 'execution-1', storedAt: 'fs' }],
+					},
+				],
 			});
 
 			const result = await service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1');
@@ -2393,6 +2404,41 @@ describe('AgentExecutionService', () => {
 			expect(result).toBe(true);
 			expect(agentExecutionLogStore.delete).toHaveBeenCalledWith([
 				{ agentId: 'agent-1', threadId: 'thread-1', executionId: 'execution-1', storedAt: 'fs' },
+			]);
+		});
+
+		it('uses the descendant agent and thread for memory and external cleanup', async () => {
+			const childMemory = mock<N8nMemoryImplementation>();
+			n8nMemory.getImplementation.mockImplementation((agentId) =>
+				agentId === 'agent-2' ? childMemory : memoryBackend,
+			);
+			agentExecutionThreadRepository.deleteSession.mockResolvedValue({
+				status: 'deleted',
+				refs: [
+					{
+						agentId: 'agent-1',
+						threadId: 'thread-1',
+						attachmentBinaryDataIds: ['binary-1'],
+						executionLogs: [{ id: 'execution-1', storedAt: 'fs' }],
+					},
+					{
+						agentId: 'agent-2',
+						threadId: 'thread-2',
+						attachmentBinaryDataIds: ['binary-2'],
+						executionLogs: [{ id: 'execution-2', storedAt: 's3' }],
+					},
+				],
+			});
+
+			expect(await service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1')).toBe(true);
+
+			expect(memoryBackend.deleteThread).toHaveBeenCalledExactlyOnceWith('thread-1', {});
+			expect(childMemory.deleteThread).toHaveBeenCalledExactlyOnceWith('thread-2', {});
+			expect(agentChatAttachmentService.deleteStoredData).toHaveBeenCalledWith(['binary-2'], {
+				threadId: 'thread-2',
+			});
+			expect(agentExecutionLogStore.delete).toHaveBeenCalledWith([
+				{ agentId: 'agent-2', threadId: 'thread-2', executionId: 'execution-2', storedAt: 's3' },
 			]);
 		});
 

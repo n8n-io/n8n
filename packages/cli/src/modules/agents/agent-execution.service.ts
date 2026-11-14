@@ -716,9 +716,8 @@ export class AgentExecutionService {
 	}
 
 	/**
-	 * Delete a thread and all its associated runs. The FK on agent_execution
-	 * cascades, so deleting the thread removes the runs in one statement.
-	 * The transaction removes all database rows. External data is deleted after commit.
+	 * Delete a session and its descendants in one database transaction.
+	 * Delete external data after commit.
 	 */
 	async deleteThread(
 		projectId: string,
@@ -737,26 +736,28 @@ export class AgentExecutionService {
 			if (!deletion) return null;
 			if (deletion.status === 'busy') return deletion;
 
-			await this.n8nMemory.getImplementation(agentId).deleteThread(threadId, ctx);
+			for (const session of deletion.refs) {
+				await this.n8nMemory.getImplementation(session.agentId).deleteThread(session.threadId, ctx);
+			}
 			return deletion;
 		});
 		if (!result) return false;
 		if (result.status === 'busy') {
 			throw new ConflictError('The session has active work and cannot be deleted');
 		}
-		const { refs } = result;
-
-		await Promise.all([
-			this.agentChatAttachmentService.deleteStoredData(refs.attachmentBinaryDataIds, { threadId }),
-			this.agentExecutionLogStore.delete(
-				this.toBlobRefs(refs.executionLogs).map((ref) => ({
-					agentId,
-					threadId,
-					executionId: ref.id,
-					storedAt: ref.storedAt,
-				})),
-			),
-		]);
+		await Promise.all(
+			result.refs.flatMap(({ agentId, threadId, attachmentBinaryDataIds, executionLogs }) => [
+				this.agentChatAttachmentService.deleteStoredData(attachmentBinaryDataIds, { threadId }),
+				this.agentExecutionLogStore.delete(
+					this.toBlobRefs(executionLogs).map((ref) => ({
+						agentId,
+						threadId,
+						executionId: ref.id,
+						storedAt: ref.storedAt,
+					})),
+				),
+			]),
+		);
 		return true;
 	}
 
