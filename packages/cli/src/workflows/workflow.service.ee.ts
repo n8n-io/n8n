@@ -532,6 +532,9 @@ export class EnterpriseWorkflowService {
 		}
 		const allowedCredentialIds = userCredIds instanceof Set ? userCredIds : new Set(userCredIds);
 		return workflow.nodes.filter((node) => {
+			// A disabled node cannot run, so its credentials are not in use.
+			if (node.disabled === true) return false;
+
 			const { ids, hasUnresolved, hasUninspectableSource } = this.getNodeCredentialRefs(node);
 			return (
 				hasUnresolved ||
