@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import {
+	N8N_CHAT_INTEGRATION_TYPE,
+	WEBHOOK_INTEGRATION_TYPE,
+	webhookAuthentication,
+} from '@n8n/api-types';
 import type {
 	AgentConfigValidationIssue,
 	AgentJsonTaskConfig,
@@ -81,7 +85,8 @@ const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const integrationStatus = useAgentIntegrationStatus(props.projectId, props.agentId);
-const { connectedCredentials, runtimeErrors, hasRuntimeError, fetchStatus } = integrationStatus;
+const { connectedCredentials, integrationSettings, runtimeErrors, hasRuntimeError, fetchStatus } =
+	integrationStatus;
 
 // The chip reads Meta's status once, and again when the channel modal closes.
 // The modal polls on its own while it is open.
@@ -218,7 +223,13 @@ const channelRows = computed(() =>
 			invalidReasons,
 			// A red callout in the channel settings shows a red cross on the chip too.
 			invalidIcon: metaNotice?.isError ? ('circle-x' as const) : undefined,
-			warningReasons: metaNotice && !metaNotice.isError ? [metaNotice.message] : [],
+			warningReasons: [
+				...(metaNotice && !metaNotice.isError ? [metaNotice.message] : []),
+				...(channel === WEBHOOK_INTEGRATION_TYPE &&
+				webhookAuthentication({ settings: integrationSettings.value[channel] }) === 'none'
+					? [i18n.baseText('agents.channels.webhook.authentication.noneNotice')]
+					: []),
+			],
 			// The status fetch can confirm n8n Chat before `connectedTriggers` does.
 			connected:
 				props.connectedTriggers.includes(channel) || integrationStatus.isConfigured(channel),

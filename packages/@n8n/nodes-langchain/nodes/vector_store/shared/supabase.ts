@@ -1,8 +1,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
 
 import { aiClientFetch } from '@n8n/ai-utilities';
+import { UserError } from '@n8n/errors';
 
 // PostgreSQL unquoted identifier syntax, plus hyphens. PostgREST accepts
 // hyphenated schema names (it quotes the identifier when it builds the

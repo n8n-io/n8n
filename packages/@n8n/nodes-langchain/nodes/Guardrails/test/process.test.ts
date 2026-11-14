@@ -6,47 +6,38 @@ import { mockDeep } from 'vitest-mock-extended';
 
 vi.mock('../helpers/model', () => ({
 	createLLMCheckFn: vi.fn(() => vi.fn()),
+	createLangChainGuardrailRunner: vi.fn(() => vi.fn()),
 }));
 
-vi.mock('../actions/checks/jailbreak', () => ({
-	createJailbreakCheckFn: vi.fn(() => vi.fn()),
-	JAILBREAK_PROMPT: 'DEFAULT_JAILBREAK',
-}));
+vi.mock('@n8n/ai-utilities/guardrails', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/ai-utilities/guardrails')>();
+	return {
+		...actual,
+		createJailbreakCheckFn: vi.fn(() => vi.fn()),
+		JAILBREAK_PROMPT: 'DEFAULT_JAILBREAK',
+		createKeywordsCheckFn: vi.fn(() => vi.fn()),
+		createNSFWCheckFn: vi.fn(() => vi.fn()),
+		NSFW_SYSTEM_PROMPT: 'DEFAULT_NSFW',
+		createPiiCheckFn: vi.fn(() => vi.fn()),
+		createCustomRegexCheckFn: vi.fn(() => vi.fn()),
+		createSecretKeysCheckFn: vi.fn(() => vi.fn()),
+		createTopicalAlignmentCheckFn: vi.fn(() => vi.fn()),
+		TOPICAL_ALIGNMENT_SYSTEM_PROMPT: 'DEFAULT_TOPICAL',
+		createUrlsCheckFn: vi.fn(() => vi.fn()),
+	};
+});
 
-vi.mock('../actions/checks/keywords', () => ({
-	createKeywordsCheckFn: vi.fn(() => vi.fn()),
-}));
+import {
+	createCustomRegexCheckFn,
+	createJailbreakCheckFn,
+	createKeywordsCheckFn,
+	createNSFWCheckFn,
+	createPiiCheckFn,
+	createSecretKeysCheckFn,
+	createTopicalAlignmentCheckFn,
+	createUrlsCheckFn,
+} from '@n8n/ai-utilities/guardrails';
 
-vi.mock('../actions/checks/nsfw', () => ({
-	createNSFWCheckFn: vi.fn(() => vi.fn()),
-	NSFW_SYSTEM_PROMPT: 'DEFAULT_NSFW',
-}));
-
-vi.mock('../actions/checks/pii', () => ({
-	createPiiCheckFn: vi.fn(() => vi.fn()),
-	createCustomRegexCheckFn: vi.fn(() => vi.fn()),
-}));
-
-vi.mock('../actions/checks/secretKeys', () => ({
-	createSecretKeysCheckFn: vi.fn(() => vi.fn()),
-}));
-
-vi.mock('../actions/checks/topicalAlignment', () => ({
-	createTopicalAlignmentCheckFn: vi.fn(() => vi.fn()),
-	TOPICAL_ALIGNMENT_SYSTEM_PROMPT: 'DEFAULT_TOPICAL',
-}));
-
-vi.mock('../actions/checks/urls', () => ({
-	createUrlsCheckFn: vi.fn(() => vi.fn()),
-}));
-
-import { createJailbreakCheckFn } from '../actions/checks/jailbreak';
-import { createKeywordsCheckFn } from '../actions/checks/keywords';
-import { createNSFWCheckFn } from '../actions/checks/nsfw';
-import { createCustomRegexCheckFn, createPiiCheckFn } from '../actions/checks/pii';
-import { createSecretKeysCheckFn } from '../actions/checks/secretKeys';
-import { createTopicalAlignmentCheckFn } from '../actions/checks/topicalAlignment';
-import { createUrlsCheckFn } from '../actions/checks/urls';
 import { process as processGuardrails } from '../actions/process';
 import { createLLMCheckFn } from '../helpers/model';
 
@@ -261,19 +252,19 @@ describe('Guardrails Process', () => {
 		});
 		expect(createKeywordsCheckFn).toHaveBeenCalledWith({ keywords: ['alpha', 'beta'] });
 		expect(createJailbreakCheckFn).toHaveBeenCalledWith({
-			model,
+			run: expect.any(Function),
 			prompt: 'DEFAULT_JAILBREAK',
 			threshold: 0.2,
 			systemMessage: 'SYS',
 		});
 		expect(createNSFWCheckFn).toHaveBeenCalledWith({
-			model,
+			run: expect.any(Function),
 			prompt: 'DEFAULT_NSFW',
 			threshold: 0.3,
 			systemMessage: 'SYS',
 		});
 		expect(createTopicalAlignmentCheckFn).toHaveBeenCalledWith({
-			model,
+			run: expect.any(Function),
 			prompt: 'DEFAULT_TOPICAL',
 			systemMessage: 'SYS',
 			threshold: 0.4,

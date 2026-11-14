@@ -2,7 +2,10 @@ operationId: createFolder
 tags:
   - Folders
 summary: Create a folder
-description: Create a folder within a project.
+description: |-
+  Create a folder within a project.
+
+  Requires the `folder:create` API key scope.
 x-required-scope: folder:create
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml

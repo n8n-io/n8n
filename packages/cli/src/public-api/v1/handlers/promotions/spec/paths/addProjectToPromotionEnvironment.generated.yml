@@ -6,6 +6,8 @@ description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
   Links a team project to a project-scoped environment. A project can have one environment for each direction. A direction without a project environment uses the instance environment.
+
+  Requires the `promotions:manageProjects` API key scope.
 x-required-scope: promotions:manageProjects
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml

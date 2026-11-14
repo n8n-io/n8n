@@ -1,5 +1,6 @@
 import {
 	AgentJsonConfigSchema,
+	findToolGuardrailRefIssues,
 	findVectorStoreToolNameCollisions,
 	formatAgentConfigZodError,
 	McpOAuth2CredentialTypeSchema,
@@ -883,5 +884,178 @@ describe('AgentJsonConfigSchema — config.guardrails.budget', () => {
 		});
 
 		expect(result.success).toBe(false);
+	});
+});
+
+describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
+	const baseGuardrail = {
+		id: 'guardrail_1',
+		stage: 'before' as const,
+		tools: [{ type: 'workflow' as const, workflowId: 'wf-1' }],
+	};
+
+	const parseGuardrails = (tools: unknown[]) =>
+		AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { guardrails: { tools } },
+		});
+
+	it.each([
+		{ kind: 'keywords', keywords: ['secret', 'internal'] },
+		{ kind: 'pii', type: 'all' },
+		{ kind: 'pii', type: 'selected', entities: ['EMAIL_ADDRESS', 'US_SSN'] },
+		{ kind: 'secretKeys', permissiveness: 'balanced' },
+		{
+			kind: 'urls',
+			allowedUrls: ['https://example.com'],
+			allowedSchemes: ['https'],
+			blockUserinfo: true,
+			allowSubdomains: false,
+		},
+		{ kind: 'customRegex', regex: [{ name: 'ticket', value: '[A-Z]+-\\d+' }] },
+		{ kind: 'jailbreak' },
+		{ kind: 'jailbreak', prompt: 'Detect jailbreaks', threshold: 0.7 },
+		{ kind: 'nsfw', threshold: 0 },
+		{ kind: 'topicalAlignment', prompt: 'Stay on topic', threshold: 1 },
+		{ kind: 'customPrompt', prompt: 'Check the output' },
+	])('accepts a valid %s guardrail', (guardrail) => {
+		expect(parseGuardrails([{ ...baseGuardrail, ...guardrail }]).success).toBe(true);
+	});
+
+	it('accepts an optional name', () => {
+		expect(
+			parseGuardrails([{ ...baseGuardrail, kind: 'keywords', keywords: ['a'], name: 'My guard' }])
+				.success,
+		).toBe(true);
+	});
+
+	it('rejects an unknown kind', () => {
+		expect(parseGuardrails([{ ...baseGuardrail, kind: 'profanity' }]).success).toBe(false);
+	});
+
+	it('rejects a missing stage', () => {
+		const { stage: _, ...noStage } = { ...baseGuardrail, kind: 'keywords', keywords: ['a'] };
+		expect(parseGuardrails([noStage]).success).toBe(false);
+	});
+
+	it('rejects an empty tools array', () => {
+		expect(
+			parseGuardrails([{ ...baseGuardrail, kind: 'keywords', keywords: ['a'], tools: [] }]).success,
+		).toBe(false);
+	});
+
+	it('rejects duplicate guardrail ids', () => {
+		const result = parseGuardrails([
+			{ ...baseGuardrail, kind: 'keywords', keywords: ['a'] },
+			{ ...baseGuardrail, kind: 'nsfw' },
+		]);
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.errors[0].message).toBe('Duplicate tool guardrail id: "guardrail_1"');
+		}
+	});
+
+	it('rejects pii with type "selected" and no entities', () => {
+		expect(parseGuardrails([{ ...baseGuardrail, kind: 'pii', type: 'selected' }]).success).toBe(
+			false,
+		);
+	});
+
+	it.each([-0.1, 1.1])('rejects a threshold of %s', (threshold) => {
+		expect(parseGuardrails([{ ...baseGuardrail, kind: 'jailbreak', threshold }]).success).toBe(
+			false,
+		);
+	});
+
+	it('rejects an unknown PII entity', () => {
+		expect(
+			parseGuardrails([
+				{ ...baseGuardrail, kind: 'pii', type: 'selected', entities: ['BLOOD_TYPE'] },
+			]).success,
+		).toBe(false);
+	});
+
+	it.each(['[A-Z', '(', '*'])('rejects a customRegex value of %s that does not parse', (value) => {
+		expect(
+			parseGuardrails([{ ...baseGuardrail, kind: 'customRegex', regex: [{ name: 'r', value }] }])
+				.success,
+		).toBe(false);
+	});
+
+	it('accepts a customRegex value in /pattern/flags literal form', () => {
+		expect(
+			parseGuardrails([
+				{ ...baseGuardrail, kind: 'customRegex', regex: [{ name: 'r', value: '/ticket-\\d+/gi' }] },
+			]).success,
+		).toBe(true);
+	});
+});
+
+describe('findToolGuardrailRefIssues', () => {
+	const configuredTools = [
+		{ type: 'workflow' as const, workflow: 'My Workflow', workflowId: 'wf-1' },
+		{ type: 'workflow' as const, workflow: 'Disabled', workflowId: 'wf-disabled', enabled: false },
+		{
+			type: 'node' as const,
+			name: 'read_file',
+			node: { nodeType: 'n8n-nodes-base.readBinaryFile', nodeTypeVersion: 1, nodeParameters: {} },
+		},
+	];
+
+	it('returns no issues when guardrails.tools is unset', () => {
+		expect(findToolGuardrailRefIssues({ tools: configuredTools })).toEqual([]);
+	});
+
+	it('returns no issues when every ref resolves', () => {
+		const issues = findToolGuardrailRefIssues({
+			tools: configuredTools,
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'keywords',
+							id: 'g1',
+							stage: 'before',
+							keywords: ['a'],
+							tools: [
+								{ type: 'workflow', workflowId: 'wf-1' },
+								{ type: 'workflow', workflowId: 'wf-disabled' },
+								{ type: 'node', name: 'read_file' },
+							],
+						},
+					],
+				},
+			},
+		});
+
+		expect(issues).toEqual([]);
+	});
+
+	it('returns every dangling ref with its position', () => {
+		const issues = findToolGuardrailRefIssues({
+			tools: configuredTools,
+			config: {
+				guardrails: {
+					tools: [
+						{
+							kind: 'nsfw',
+							id: 'g1',
+							stage: 'after',
+							tools: [
+								{ type: 'workflow', workflowId: 'wf-1' },
+								{ type: 'workflow', workflowId: 'wf-missing' },
+								{ type: 'node', name: 'missing_node' },
+							],
+						},
+					],
+				},
+			},
+		});
+
+		expect(issues).toEqual([
+			{ guardrailIndex: 0, toolIndex: 1, ref: { type: 'workflow', workflowId: 'wf-missing' } },
+			{ guardrailIndex: 0, toolIndex: 2, ref: { type: 'node', name: 'missing_node' } },
+		]);
 	});
 });

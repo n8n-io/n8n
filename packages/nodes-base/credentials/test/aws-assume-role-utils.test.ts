@@ -1,6 +1,6 @@
 import { assumeRole } from '@credentials/common/aws/utils';
 import type { AwsAssumeRoleCredentialsType } from '@credentials/common/aws/types';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 // `assumeRole` now delegates STS to the AWS SDK's `fromTemporaryCredentials`.
 // Proxy is built from `@n8n/backend-network/proxy` + `@smithy/node-http-handler`.

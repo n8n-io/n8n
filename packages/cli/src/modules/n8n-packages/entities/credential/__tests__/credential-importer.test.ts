@@ -1,7 +1,15 @@
 import type { SerializedCredential } from '@n8n/api-types';
 import type { CredentialsFinderService, EventService } from '@n8n/backend-services';
 import { GLOBAL_OWNER_ROLE } from '@n8n/db';
-import type { CredentialsEntity, ICredentialsDb, Project, SharedCredentials, User } from '@n8n/db';
+import type {
+	CredentialsEntity,
+	ICredentialsDb,
+	OperationContext,
+	Project,
+	SharedCredentials,
+	User,
+} from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
@@ -51,7 +59,12 @@ describe('CredentialImporter', () => {
 
 	let importer: CredentialImporter;
 
-	const context: ImportContext = { user, projectId: targetProject.id, folderId: null };
+	const context: ImportContext = {
+		user,
+		projectId: targetProject.id,
+		folderId: null,
+		publicApi: false,
+	};
 
 	const bindingRequest = (
 		requirements: CredentialBindingRequest['requirements'],
@@ -549,6 +562,29 @@ describe('CredentialImporter', () => {
 			).rejects.toThrow(UnprocessableRequestError);
 		});
 
+		it.each([{ enabled: true }, { enabled: false }])(
+			'treats a description-only difference as an update only when descriptions are on ($enabled)',
+			async ({ enabled }) => {
+				credentialDescriptions.isEnabled.mockResolvedValue(enabled);
+				credentialsFinder.findById.mockResolvedValue(destination({ description: 'Old' }));
+				credentialsService.decryptOrFail.mockResolvedValue({ accessToken: EXPRESSION });
+
+				const result = await importer.plan(
+					context,
+					bindingRequest([requirement], {
+						conflictPolicy: 'overwrite',
+						packageCredentials: new Map([
+							['cred-1', packageFile({ description: 'From the package' })],
+						]),
+					}),
+				);
+
+				expect(result.candidates).toHaveLength(1);
+				expect(result.candidates[0].description).toBe(enabled ? 'From the package' : undefined);
+				expect(result.updates).toHaveLength(enabled ? 1 : 0);
+			},
+		);
+
 		it('keeps an equal candidate out of the updates', async () => {
 			credentialsFinder.findById.mockResolvedValue(destination());
 			credentialsService.decryptOrFail.mockResolvedValue({
@@ -890,6 +926,23 @@ describe('CredentialImporter', () => {
 					accessToken: EXPRESSION,
 					server: 'https://api.github.com',
 				});
+			});
+
+			it('adds the login of the operation context to the update event', async () => {
+				const ctx: OperationContext = {
+					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+				};
+
+				await importer.applyUpdates(
+					{ ...context, ctx },
+					bindingRequest([], { conflictPolicy: 'overwrite' }),
+					plan([update()]),
+				);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'credentials-updated',
+					expect.objectContaining({ credentialId: 'cred-1', loginId: 'login-1' }),
+				);
 			});
 
 			it('reports external secrets in the written data', async () => {

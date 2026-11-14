@@ -1,0 +1,57 @@
+{
+	"type": "object",
+	"properties": {
+		"id": {
+			"type": "string"
+		},
+		"object": {
+			"type": "string"
+		},
+		"created": {
+			"type": "number"
+		},
+		"model": {
+			"type": "string"
+		},
+		"choices": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"index": {
+						"type": "number"
+					},
+					"message": {
+						"type": "object",
+						"properties": {
+							"role": {
+								"type": "string"
+							},
+							"content": {
+								"type": "string"
+							}
+						}
+					},
+					"finish_reason": {
+						"type": "string"
+					}
+				}
+			}
+		},
+		"usage": {
+			"type": "object",
+			"properties": {
+				"prompt_tokens": {
+					"type": "number"
+				},
+				"completion_tokens": {
+					"type": "number"
+				},
+				"total_tokens": {
+					"type": "number"
+				}
+			}
+		}
+	},
+	"version": 1
+}

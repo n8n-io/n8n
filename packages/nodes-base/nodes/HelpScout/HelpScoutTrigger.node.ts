@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, randomString } from 'n8n-workflow';
+import { NodeConnectionTypes, randomString, requestPath } from 'n8n-workflow';
 
 import { helpscoutApiRequest, helpscoutApiRequestAllItems } from './GenericFunctions';
 
@@ -108,7 +108,7 @@ export class HelpScoutTrigger implements INodeType {
 
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const endpoint = '/v2/webhooks';
+				const endpoint = requestPath`/v2/webhooks`;
 				const data = await helpscoutApiRequestAllItems.call(
 					this,
 					'_embedded.webhooks',
@@ -136,7 +136,7 @@ export class HelpScoutTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const events = this.getNodeParameter('events') as string;
 
-				const endpoint = '/v2/webhooks';
+				const endpoint = requestPath`/v2/webhooks`;
 
 				const body = {
 					url: webhookUrl,
@@ -166,9 +166,12 @@ export class HelpScoutTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/v2/webhooks/${webhookData.webhookId}`;
 					try {
-						await helpscoutApiRequest.call(this, 'DELETE', endpoint);
+						await helpscoutApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/v2/webhooks/${webhookData.webhookId}`,
+						);
 					} catch (error) {
 						return false;
 					}

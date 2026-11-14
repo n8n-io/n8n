@@ -23,8 +23,11 @@ const YAML_OPTS = { aliasDuplicateObjects: false, singleQuote: true, lineWidth: 
 // the envelope (see `assembleSpec`).
 export const DECORATOR_ROOT_FILENAME = 'openapi.decorator-routes.generated.yml';
 
+const N8N_VERSION_EXTENSION = 'x-n8n-version';
+
 /** The subset of an OpenAPI document this module reads or assembles. Everything else passes through. */
 export interface OpenApiDocument {
+	info?: Record<string, unknown>;
 	paths?: Record<string, Record<string, unknown>>;
 	components?: Record<string, Record<string, unknown>>;
 	[key: string]: unknown;
@@ -231,6 +234,7 @@ function assertConsistentPathParameterNames(paths: OpenApiDocument['paths']): vo
 export function assembleSpec(
 	envelope: OpenApiDocument,
 	generated: OpenApiDocument,
+	n8nVersion: string,
 ): OpenApiDocument {
 	// Ensure the envelope itself does not declare any paths.
 	const envelopePaths = Object.keys(envelope.paths ?? {});
@@ -238,6 +242,17 @@ export function assembleSpec(
 		throw new UnexpectedError(
 			`openapi.yml still declares paths (${envelopePaths.join(', ')}). Paths come from the generated spec.`,
 		);
+	}
+
+	// Ensure the envelope does not set a version that the build would silently replace.
+	if (envelope.info?.[N8N_VERSION_EXTENSION] !== undefined) {
+		throw new UnexpectedError(
+			`openapi.yml still declares ${N8N_VERSION_EXTENSION}. The build sets it from the n8n version in package.json.`,
+		);
+	}
+
+	if (n8nVersion.trim() === '') {
+		throw new UnexpectedError('The n8n version for the Public API spec is empty.');
 	}
 
 	// Ensure the generated root has at least one path.
@@ -261,5 +276,7 @@ export function assembleSpec(
 		components[section] = { ...target, ...items };
 	}
 
-	return { ...envelope, paths: generatedPaths, components };
+	const info = { ...envelope.info, [N8N_VERSION_EXTENSION]: n8nVersion };
+
+	return { ...envelope, info, paths: generatedPaths, components };
 }

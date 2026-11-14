@@ -8,7 +8,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 
 import { createClient } from '@supabase/supabase-js';
 import { aiClientFetch } from '@n8n/ai-utilities';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { createSupabaseClient, resolveSchema } from './supabase';
 

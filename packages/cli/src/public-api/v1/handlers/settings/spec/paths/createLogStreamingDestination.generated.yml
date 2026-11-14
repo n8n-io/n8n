@@ -2,7 +2,10 @@ operationId: createLogStreamingDestination
 tags:
   - LogStreaming
 summary: Create a log streaming destination
-description: Create a log streaming destination. The destination takes effect exactly as it would from the UI, using the same validation. Requires the `eventBusDestination:create` scope and the Log Streaming feature to be licensed. When destinations are managed via environment variables, the write is rejected with 409 and nothing is created; reads still return the current values.
+description: |-
+  Create a log streaming destination. The destination takes effect exactly as it would from the UI, using the same validation. Requires the Log Streaming feature to be licensed. When destinations are managed via environment variables, the write is rejected with 409 and nothing is created; reads still return the current values.
+
+  Requires the `eventBusDestination:create` API key scope.
 x-required-scope: eventBusDestination:create
 parameters:
   - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml

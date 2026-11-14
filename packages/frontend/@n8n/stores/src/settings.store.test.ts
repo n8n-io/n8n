@@ -1,4 +1,5 @@
 import type { FrontendSettings } from '@n8n/api-types';
+import { EMBEDDED_SETTINGS_GLOBAL } from '@n8n/constants';
 import { i18n } from '@n8n/i18n';
 import { createPinia, setActivePinia } from 'pinia';
 import type { MockInstance } from 'vitest';
@@ -361,6 +362,124 @@ describe('settings.store', () => {
 			await useSettingsStore().getSettings();
 
 			expect(writeSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('embedded settings', () => {
+		const embeddedSettings = () =>
+			({
+				...structuredClone(publicSettingsResponse),
+				defaultLocale: 'de',
+				authCookie: { secure: false },
+				activeModules: ['data-table', 'insights'],
+			}) as FrontendSettings;
+
+		afterEach(() => {
+			delete window[EMBEDDED_SETTINGS_GLOBAL];
+			vi.unstubAllGlobals();
+			vi.restoreAllMocks();
+			// Drop queued one-time results, so a failed case cannot leak them into later cases
+			getSettings.mockReset();
+			mockRootStore.setDefaultLocale.mockReset();
+		});
+
+		it('should apply the embedded settings without a request', async () => {
+			window[EMBEDDED_SETTINGS_GLOBAL] = embeddedSettings();
+			const settingsStore = useSettingsStore();
+
+			expect(settingsStore.applyEmbeddedSettings()).toBe(true);
+
+			expect(getSettings).not.toHaveBeenCalled();
+			expect(settingsStore.isModuleActive('data-table')).toBe(true);
+			expect(settingsStore.isModuleActive('agents')).toBe(false);
+			expect(mockRootStore.setDefaultLocale).toHaveBeenCalledWith('de');
+
+			await settingsStore.initialize();
+
+			expect(getSettings).not.toHaveBeenCalled();
+		});
+
+		it('should end in the same state as a fetched public payload', async () => {
+			window[EMBEDDED_SETTINGS_GLOBAL] = {
+				...embeddedSettings(),
+				mfa: { enabled: true, enforced: true },
+			};
+			const embeddedStore = useSettingsStore();
+			embeddedStore.applyEmbeddedSettings();
+			await embeddedStore.initialize();
+
+			setActivePinia(createPinia());
+			getSettings.mockResolvedValueOnce({
+				...embeddedSettings(),
+				mfa: { enabled: true, enforced: true },
+			});
+			const fetchedStore = useSettingsStore();
+			await fetchedStore.initialize();
+
+			expect(embeddedStore.settings).toEqual(fetchedStore.settings);
+			expect(embeddedStore.userManagement).toEqual(fetchedStore.userManagement);
+			expect(embeddedStore.isMFAEnforced).toBe(true);
+			expect(fetchedStore.isMFAEnforced).toBe(true);
+		});
+
+		it('should fetch the settings when the page has none', async () => {
+			getSettings.mockResolvedValueOnce(embeddedSettings());
+			const settingsStore = useSettingsStore();
+
+			expect(settingsStore.applyEmbeddedSettings()).toBe(false);
+			await settingsStore.initialize();
+
+			expect(getSettings).toHaveBeenCalledTimes(1);
+			expect(settingsStore.isModuleActive('data-table')).toBe(true);
+		});
+
+		it('should fetch the settings when the embedded settings cannot be applied', async () => {
+			const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			mockRootStore.setDefaultLocale.mockImplementationOnce(() => {
+				throw new Error('Unexpected settings shape');
+			});
+			window[EMBEDDED_SETTINGS_GLOBAL] = embeddedSettings();
+			getSettings.mockResolvedValueOnce(embeddedSettings());
+			const settingsStore = useSettingsStore();
+
+			expect(settingsStore.applyEmbeddedSettings()).toBe(false);
+			await settingsStore.initialize();
+
+			expect(consoleWarn).toHaveBeenCalledTimes(1);
+			expect(getSettings).toHaveBeenCalledTimes(1);
+			expect(settingsStore.isModuleActive('data-table')).toBe(true);
+		});
+
+		it('should still fetch the settings in preview mode', async () => {
+			window[EMBEDDED_SETTINGS_GLOBAL] = { ...embeddedSettings(), previewMode: true };
+			getSettings.mockResolvedValueOnce({ ...embeddedSettings(), previewMode: true });
+			const settingsStore = useSettingsStore();
+
+			expect(settingsStore.applyEmbeddedSettings()).toBe(true);
+			await settingsStore.initialize();
+
+			expect(getSettings).toHaveBeenCalledTimes(1);
+		});
+
+		it('should show the insecure connection warning only once initialize runs, in a later task', async () => {
+			const writeSpy = vi.spyOn(document, 'write').mockImplementation(() => {});
+			vi.stubGlobal('location', { protocol: 'http:', hostname: '192.168.1.10' });
+			window[EMBEDDED_SETTINGS_GLOBAL] = { ...embeddedSettings(), authCookie: { secure: true } };
+			const settingsStore = useSettingsStore();
+
+			settingsStore.applyEmbeddedSettings();
+			expect(writeSpy).not.toHaveBeenCalled();
+
+			const initializing = settingsStore.initialize();
+			await Promise.resolve();
+			expect(writeSpy).not.toHaveBeenCalled();
+
+			await initializing;
+			expect(writeSpy).toHaveBeenCalledTimes(1);
+			expect(writeSpy.mock.calls[0][0]).toContain(
+				i18n.baseText('settings.authCookie.insecureConnection.title'),
+			);
+			expect(getSettings).not.toHaveBeenCalled();
 		});
 	});
 

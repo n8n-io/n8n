@@ -7,17 +7,17 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function affinityApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: any = {},
 	query: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('affinityApi');
 
@@ -25,7 +25,7 @@ export async function affinityApiRequest(
 
 	const endpoint = 'https://api.affinity.co';
 
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: `Basic ${Buffer.from(apiKey).toString(BINARY_ENCODING)}`,
@@ -33,7 +33,7 @@ export async function affinityApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri || `${endpoint}${resource}`,
+		uri: requestUrl`${endpoint}${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body as IDataObject).length) {
@@ -42,7 +42,6 @@ export async function affinityApiRequest(
 	if (!Object.keys(query).length) {
 		delete options.qs;
 	}
-	options = Object.assign({}, options, option);
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
@@ -54,7 +53,7 @@ export async function affinityApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {

@@ -4,7 +4,7 @@ import type { MemorySaver } from '@langchain/langgraph';
 import { GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import type { Mock, MockedClass, MockedFunction } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 

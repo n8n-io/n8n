@@ -89,6 +89,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-archived': (event) => this.workflowArchived(event),
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
+			'agent-archived': (event) => this.agentArchived(event),
+			'agent-unarchived': (event) => this.agentUnarchived(event),
 			'workflow-activated': (event) => this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
 			'workflow-deactivated-by-system': (event) => this.workflowDeactivatedBySystem(event),
@@ -181,6 +183,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'job-stalled': (event) => this.jobStalled(event),
 			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
 			'redaction-enforcement-updated': (event) => this.redactionEnforcementUpdated(event),
+			'public-api-rate-limit-updated': (event) => this.publicApiRateLimitUpdated(event),
 			'workflow-review-requested': (event) => this.workflowReviewRequested(event),
 			'workflow-review-version-updated': (event) => this.workflowReviewVersionUpdated(event),
 			'workflow-review-decided': (event) => this.workflowReviewDecided(event),
@@ -218,10 +221,15 @@ export class LogStreamingEventRelay extends EventRelay {
 	// #region Workflow
 
 	@Redactable()
-	private packageImported({ user, counts, ...rest }: RelayEventMap['n8n-package-imported']) {
+	private packageImported({
+		user,
+		counts,
+		loginId,
+		...rest
+	}: RelayEventMap['n8n-package-imported']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.n8n-package.import.success',
-			payload: { ...user, ...rest },
+			payload: { ...user, ...rest, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 
@@ -230,20 +238,25 @@ export class LogStreamingEventRelay extends EventRelay {
 		user,
 		counts,
 		credentialExportPolicy,
-		includeArchivedWorkflows,
+		includeArchived,
+		loginId,
 		...rest
 	}: RelayEventMap['n8n-package-exported']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.n8n-package.export.success',
-			payload: { ...user, ...rest },
+			payload: { ...user, ...rest, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 
 	@Redactable()
-	private packageExportFailed({ user, ...rest }: RelayEventMap['n8n-package-export-failed']) {
+	private packageExportFailed({
+		user,
+		loginId,
+		...rest
+	}: RelayEventMap['n8n-package-export-failed']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.n8n-package.export.failed',
-			payload: { ...user, operation: 'export', ...rest },
+			payload: { ...user, operation: 'export', ...rest, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 
@@ -258,51 +271,82 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private packageImportFailed({ user, ...rest }: RelayEventMap['n8n-package-import-failed']) {
+	private packageImportFailed({
+		user,
+		loginId,
+		...rest
+	}: RelayEventMap['n8n-package-import-failed']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.n8n-package.import.failed',
-			payload: { ...user, operation: 'import', ...rest },
+			payload: { ...user, operation: 'import', ...rest, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 
 	@Redactable()
-	private workflowCreated({ user, workflow }: RelayEventMap['workflow-created']) {
+	private workflowCreated({ user, workflow, loginId }: RelayEventMap['workflow-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.created',
 			payload: {
 				...user,
 				workflowId: workflow.id,
 				workflowName: workflow.name,
+				...(loginId !== undefined && { loginId }),
 			},
 		});
 	}
 
 	@Redactable()
-	private workflowDeleted({ user, workflowId }: RelayEventMap['workflow-deleted']) {
+	private workflowDeleted({ user, workflowId, loginId }: RelayEventMap['workflow-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.deleted',
-			payload: { ...user, workflowId },
+			payload: { ...user, workflowId, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 
 	@Redactable()
-	private workflowArchived({ user, workflowId }: RelayEventMap['workflow-archived']) {
+	private workflowArchived({ user, workflowId, loginId }: RelayEventMap['workflow-archived']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.archived',
-			payload: { ...user, workflowId },
+			payload: { ...user, workflowId, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 
 	@Redactable()
-	private workflowUnarchived({ user, workflowId }: RelayEventMap['workflow-unarchived']) {
+	private workflowUnarchived({ user, workflowId, loginId }: RelayEventMap['workflow-unarchived']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.unarchived',
-			payload: { ...user, workflowId },
+			payload: { ...user, workflowId, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 
 	@Redactable()
-	private workflowActivated({ user, workflowId, workflow }: RelayEventMap['workflow-activated']) {
+	private agentArchived({ user, agentId, projectId, loginId }: RelayEventMap['agent-archived']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.agent.archived',
+			payload: { ...user, agentId, projectId, ...(loginId !== undefined && { loginId }) },
+		});
+	}
+
+	@Redactable()
+	private agentUnarchived({
+		user,
+		agentId,
+		projectId,
+		loginId,
+	}: RelayEventMap['agent-unarchived']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.agent.unarchived',
+			payload: { ...user, agentId, projectId, ...(loginId !== undefined && { loginId }) },
+		});
+	}
+
+	@Redactable()
+	private workflowActivated({
+		user,
+		workflowId,
+		workflow,
+		loginId,
+	}: RelayEventMap['workflow-activated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.activated',
 			payload: {
@@ -310,6 +354,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				workflowId,
 				workflowName: workflow.name,
 				activeVersionId: workflow.activeVersionId,
+				...(loginId !== undefined && { loginId }),
 			},
 		});
 	}
@@ -320,6 +365,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		workflowId,
 		workflow,
 		deactivatedVersionId,
+		loginId,
 	}: RelayEventMap['workflow-deactivated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.deactivated',
@@ -328,6 +374,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				workflowId,
 				workflowName: workflow.name,
 				deactivatedVersionId,
+				...(loginId !== undefined && { loginId }),
 			},
 		});
 	}
@@ -351,7 +398,12 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private workflowSaved({ user, workflow, settingsChanged }: RelayEventMap['workflow-saved']) {
+	private workflowSaved({
+		user,
+		workflow,
+		settingsChanged,
+		loginId,
+	}: RelayEventMap['workflow-saved']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.updated',
 			payload: {
@@ -359,6 +411,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				workflowId: workflow.id,
 				workflowName: workflow.name,
 				...(settingsChanged && { settingsChanged }),
+				...(loginId !== undefined && { loginId }),
 			},
 		});
 	}
@@ -496,6 +549,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		projectId,
 		projectName,
 		source,
+		loginId,
 	}: WorkflowExecutedEventWithUser) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.executed',
@@ -507,6 +561,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				projectId,
 				projectName,
 				source,
+				...(loginId !== undefined && { loginId }),
 			},
 		});
 	}
@@ -518,6 +573,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		projectId,
 		projectName,
 		source,
+		loginId,
 	}: WorkflowExecutedEvent) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.executed',
@@ -528,6 +584,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				projectId,
 				projectName,
 				source,
+				...(loginId !== undefined && { loginId }),
 			},
 		});
 	}
@@ -589,20 +646,22 @@ export class LogStreamingEventRelay extends EventRelay {
 	// #region User
 
 	@Redactable()
-	private userDeleted({ user, source, targetUserId }: RelayEventMap['user-deleted']) {
+	private userDeleted({ user, source, targetUserId, loginId }: RelayEventMap['user-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.deleted',
 			// A system deletion has no acting user, so name the system and the
 			// deleted user.
-			payload: user ?? { userId: null, source, targetUserId },
+			payload: user
+				? { ...user, ...(loginId !== undefined && { loginId }) }
+				: { userId: null, source, targetUserId },
 		});
 	}
 
 	@Redactable()
-	private userInvited({ user, targetUserId }: RelayEventMap['user-invited']) {
+	private userInvited({ user, targetUserId, loginId }: RelayEventMap['user-invited']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.invited',
-			payload: { ...user, targetUserId },
+			payload: { ...user, targetUserId, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 
@@ -751,10 +810,10 @@ export class LogStreamingEventRelay extends EventRelay {
 	// #region Email
 
 	@Redactable()
-	private emailFailed({ user, messageType }: RelayEventMap['email-failed']) {
+	private emailFailed({ user, messageType, loginId }: RelayEventMap['email-failed']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.email.failed',
-			payload: { ...user, messageType },
+			payload: { ...user, messageType, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 
@@ -779,6 +838,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		jweEnabled,
 		supportsManagedAuth,
 		usesManagedAuth,
+		loginId,
 	}: RelayEventMap['credentials-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.created',
@@ -786,7 +846,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				...user,
 				credentialType,
 				credentialId,
-				publicApi,
+				publicApi: publicApi !== false,
 				projectId,
 				projectType,
 				isDynamic,
@@ -794,6 +854,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				jweEnabled,
 				supportsManagedAuth,
 				usesManagedAuth,
+				...(loginId !== undefined && { loginId }),
 			},
 		});
 	}
@@ -803,10 +864,11 @@ export class LogStreamingEventRelay extends EventRelay {
 		user,
 		credentialType,
 		credentialId,
+		loginId,
 	}: RelayEventMap['credentials-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.deleted',
-			payload: { ...user, credentialType, credentialId },
+			payload: { ...user, credentialType, credentialId, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 
@@ -819,7 +881,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	}: RelayEventMap['credentials-data-read']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.data.read',
-			payload: { ...user, credentialType, credentialId, publicApi },
+			payload: { ...user, credentialType, credentialId, publicApi: publicApi !== false },
 		});
 	}
 
@@ -834,7 +896,14 @@ export class LogStreamingEventRelay extends EventRelay {
 	}: RelayEventMap['credentials-list-data-read']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.list.data.read',
-			payload: { ...user, credentialIds, credentialCount, chunk, chunkCount, publicApi },
+			payload: {
+				...user,
+				credentialIds,
+				credentialCount,
+				chunk,
+				chunkCount,
+				publicApi: publicApi !== false,
+			},
 		});
 	}
 
@@ -867,6 +936,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		jweEnabled,
 		supportsManagedAuth,
 		usesManagedAuth,
+		loginId,
 	}: RelayEventMap['credentials-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.updated',
@@ -879,6 +949,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				jweEnabled,
 				supportsManagedAuth,
 				usesManagedAuth,
+				...(loginId !== undefined && { loginId }),
 			},
 		});
 	}
@@ -906,26 +977,26 @@ export class LogStreamingEventRelay extends EventRelay {
 	// #region Variable
 
 	@Redactable()
-	private variableCreated({ user, ...rest }: RelayEventMap['variable-created']) {
+	private variableCreated({ user, loginId, ...rest }: RelayEventMap['variable-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.variable.created',
-			payload: { ...user, ...rest },
+			payload: { ...user, ...rest, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 
 	@Redactable()
-	private variableUpdated({ user, ...rest }: RelayEventMap['variable-updated']) {
+	private variableUpdated({ user, loginId, ...rest }: RelayEventMap['variable-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.variable.updated',
-			payload: { ...user, ...rest },
+			payload: { ...user, ...rest, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 
 	@Redactable()
-	private variableDeleted({ user, ...rest }: RelayEventMap['variable-deleted']) {
+	private variableDeleted({ user, loginId, ...rest }: RelayEventMap['variable-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.variable.deleted',
-			payload: { ...user, ...rest },
+			payload: { ...user, ...rest, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 
@@ -943,6 +1014,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				scopeId: event.scopeId,
 				before: event.before ? { ...event.before } : null,
 				after: { ...event.after },
+				...(event.loginId !== undefined && { loginId: event.loginId }),
 			},
 		});
 	}
@@ -955,6 +1027,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				kind: event.kind,
 				policyId: event.policyId,
 				after: policyContentToJson(event.after),
+				...(event.loginId !== undefined && { loginId: event.loginId }),
 			},
 		});
 	}
@@ -968,6 +1041,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				policyId: event.policyId,
 				before: policyContentToJson(event.before),
 				after: policyContentToJson(event.after),
+				...(event.loginId !== undefined && { loginId: event.loginId }),
 			},
 		});
 	}
@@ -980,6 +1054,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				kind: event.kind,
 				policyId: event.policyId,
 				before: policyContentToJson(event.before),
+				...(event.loginId !== undefined && { loginId: event.loginId }),
 			},
 		});
 	}
@@ -996,6 +1071,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				scopeId: event.scopeId,
 				before: attachmentsContentToJson(event.before),
 				after: attachmentsContentToJson(event.after),
+				...(event.loginId !== undefined && { loginId: event.loginId }),
 			},
 		});
 	}
@@ -1118,27 +1194,36 @@ export class LogStreamingEventRelay extends EventRelay {
 	@Redactable()
 	private communityPackageInstalled({
 		user,
+		loginId,
 		...rest
 	}: RelayEventMap['community-package-installed']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.package.installed',
-			payload: { ...user, ...rest },
+			payload: { ...user, ...rest, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 
 	@Redactable()
-	private communityPackageUpdated({ user, ...rest }: RelayEventMap['community-package-updated']) {
+	private communityPackageUpdated({
+		user,
+		loginId,
+		...rest
+	}: RelayEventMap['community-package-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.package.updated',
-			payload: { ...user, ...rest },
+			payload: { ...user, ...rest, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 
 	@Redactable()
-	private communityPackageDeleted({ user, ...rest }: RelayEventMap['community-package-deleted']) {
+	private communityPackageDeleted({
+		user,
+		loginId,
+		...rest
+	}: RelayEventMap['community-package-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.package.deleted',
-			payload: { ...user, ...rest },
+			payload: { ...user, ...rest, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 
@@ -1230,10 +1315,19 @@ export class LogStreamingEventRelay extends EventRelay {
 		ipAddress,
 		userAgent,
 		redactionPolicy,
+		loginId,
 	}: RelayEventMap['execution-data-revealed']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.execution.data.revealed',
-			payload: { ...user, executionId, workflowId, ipAddress, userAgent, redactionPolicy },
+			payload: {
+				...user,
+				executionId,
+				workflowId,
+				ipAddress,
+				userAgent,
+				redactionPolicy,
+				...(loginId !== undefined && { loginId }),
+			},
 		});
 	}
 
@@ -1246,6 +1340,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		userAgent,
 		redactionPolicy,
 		rejectionReason,
+		loginId,
 	}: RelayEventMap['execution-data-reveal-failure']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.execution.data.reveal_failure',
@@ -1257,6 +1352,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				userAgent,
 				redactionPolicy,
 				rejectionReason,
+				...(loginId !== undefined && { loginId }),
 			},
 		});
 	}
@@ -1417,14 +1513,16 @@ export class LogStreamingEventRelay extends EventRelay {
 		user,
 		settingName,
 		value,
+		loginId,
 	}: RelayEventMap['instance-policies-updated']) {
+		const payload = { ...user, ...(loginId !== undefined && { loginId }) };
 		switch (settingName) {
 			case 'workflow_publishing':
 				void this.eventBus.sendAuditEvent({
 					eventName: value
 						? 'n8n.audit.personal-publishing-restricted.disabled'
 						: 'n8n.audit.personal-publishing-restricted.enabled',
-					payload: user,
+					payload,
 				});
 				break;
 			case 'workflow_sharing':
@@ -1432,7 +1530,7 @@ export class LogStreamingEventRelay extends EventRelay {
 					eventName: value
 						? 'n8n.audit.personal-sharing-restricted.disabled'
 						: 'n8n.audit.personal-sharing-restricted.enabled',
-					payload: user,
+					payload,
 				});
 				break;
 			case '2fa_enforcement':
@@ -1440,7 +1538,7 @@ export class LogStreamingEventRelay extends EventRelay {
 					eventName: value
 						? 'n8n.audit.2fa-enforcement.enabled'
 						: 'n8n.audit.2fa-enforcement.disabled',
-					payload: user,
+					payload,
 				});
 				break;
 			case 'data_redaction_enforcement_floor':
@@ -1452,7 +1550,7 @@ export class LogStreamingEventRelay extends EventRelay {
 					eventName: value
 						? 'n8n.audit.workflow-reviews.enabled'
 						: 'n8n.audit.workflow-reviews.disabled',
-					payload: user,
+					payload,
 				});
 				break;
 			case 'public_api_rate_limit':
@@ -1460,7 +1558,7 @@ export class LogStreamingEventRelay extends EventRelay {
 					eventName: value
 						? 'n8n.audit.public-api-rate-limit.enabled'
 						: 'n8n.audit.public-api-rate-limit.disabled',
-					payload: user,
+					payload,
 				});
 				break;
 			default:
@@ -1473,9 +1571,22 @@ export class LogStreamingEventRelay extends EventRelay {
 		user,
 		before,
 		after,
+		loginId,
 	}: RelayEventMap['redaction-enforcement-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.redaction-enforcement.updated',
+			payload: { ...user, before, after, ...(loginId !== undefined && { loginId }) },
+		});
+	}
+
+	@Redactable()
+	private publicApiRateLimitUpdated({
+		user,
+		before,
+		after,
+	}: RelayEventMap['public-api-rate-limit-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.public-api-rate-limit.updated',
 			payload: { ...user, before, after },
 		});
 	}
@@ -1651,6 +1762,7 @@ export class LogStreamingEventRelay extends EventRelay {
 					expression: event.expression,
 					role: event.role,
 				},
+				...(event.loginId !== undefined && { loginId: event.loginId }),
 			},
 		});
 	}
@@ -1665,6 +1777,7 @@ export class LogStreamingEventRelay extends EventRelay {
 					ruleType: event.ruleType,
 					patchedFields: event.patchedFields,
 				},
+				...(event.loginId !== undefined && { loginId: event.loginId }),
 			},
 		});
 	}
@@ -1678,6 +1791,7 @@ export class LogStreamingEventRelay extends EventRelay {
 					ruleId: event.ruleId,
 					ruleType: event.ruleType,
 				},
+				...(event.loginId !== undefined && { loginId: event.loginId }),
 			},
 		});
 	}
@@ -1750,11 +1864,20 @@ export class LogStreamingEventRelay extends EventRelay {
 		authType,
 		hostBaseUrl,
 		outcome,
+		loginId,
 	}: RelayEventMap['promotion-provider-created']) {
 		if (outcome !== 'success') return;
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.promotions.provider.created',
-			payload: { ...user, providerId, providerName, providerType, authType, hostBaseUrl },
+			payload: {
+				...user,
+				providerId,
+				providerName,
+				providerType,
+				authType,
+				hostBaseUrl,
+				...(loginId !== undefined && { loginId }),
+			},
 		});
 	}
 
@@ -1768,6 +1891,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		hostBaseUrl,
 		changedFields,
 		outcome,
+		loginId,
 	}: RelayEventMap['promotion-provider-updated']) {
 		if (outcome !== 'success') return;
 		void this.eventBus.sendAuditEvent({
@@ -1780,6 +1904,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				authType,
 				hostBaseUrl,
 				changedFields,
+				...(loginId !== undefined && { loginId }),
 			},
 		});
 	}
@@ -1792,10 +1917,19 @@ export class LogStreamingEventRelay extends EventRelay {
 		providerType,
 		authType,
 		hostBaseUrl,
+		loginId,
 	}: RelayEventMap['promotion-provider-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.promotions.provider.deleted',
-			payload: { ...user, providerId, providerName, providerType, authType, hostBaseUrl },
+			payload: {
+				...user,
+				providerId,
+				providerName,
+				providerType,
+				authType,
+				hostBaseUrl,
+				...(loginId !== undefined && { loginId }),
+			},
 		});
 	}
 
@@ -1809,6 +1943,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		repository,
 		direction,
 		environmentScope,
+		loginId,
 	}: RelayEventMap['promotion-environment-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.promotions.environment.created',
@@ -1821,6 +1956,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				repository,
 				direction,
 				environmentScope,
+				...(loginId !== undefined && { loginId }),
 			},
 		});
 	}
@@ -1836,6 +1972,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		direction,
 		environmentScope,
 		changedFields,
+		loginId,
 	}: RelayEventMap['promotion-environment-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.promotions.environment.updated',
@@ -1849,6 +1986,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				direction,
 				environmentScope,
 				changedFields,
+				...(loginId !== undefined && { loginId }),
 			},
 		});
 	}
@@ -1863,6 +2001,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		repository,
 		direction,
 		environmentScope,
+		loginId,
 	}: RelayEventMap['promotion-environment-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.promotions.environment.deleted',
@@ -1875,6 +2014,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				repository,
 				direction,
 				environmentScope,
+				...(loginId !== undefined && { loginId }),
 			},
 		});
 	}
@@ -1895,10 +2035,10 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private mcpToolCalled({ user, ...rest }: RelayEventMap['mcp-tool-called']) {
+	private mcpToolCalled({ user, loginId, ...rest }: RelayEventMap['mcp-tool-called']) {
 		void this.eventBus.sendMcpEvent({
 			eventName: 'n8n.audit.mcp.tool.called',
-			payload: { ...user, ...rest },
+			payload: { ...user, ...rest, ...(loginId !== undefined && { loginId }) },
 		});
 	}
 

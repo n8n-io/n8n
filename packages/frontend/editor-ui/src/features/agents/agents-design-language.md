@@ -24,6 +24,13 @@ Publish dropdown. Each action opens its tab, including when the panel is already
 open. Keep history available for saved Agents during edits and with read-only access.
 Hide these entry points in embedded Agent artifacts.
 
+## Builder tabs
+
+Show Build, Knowledge, Sessions, and Settings from the first visit to a new
+Agent. Let users switch tabs before they save or configure the Agent. Keep
+persistence tied to edits and actions that need a saved Agent. Keep optional
+tabs under their existing feature flags.
+
 ## Configuration add actions
 
 Show a leading `plus` icon beside empty-state configuration add labels. Use
@@ -54,6 +61,11 @@ the Agent and Assistant setup is complete. Let users close it during the visit.
 Keep the panel state when the Agent is saved or published. For published or
 read-only Agents, use the saved panel preference. Apply these defaults in the
 control layout. Keep the experiment layouts unchanged.
+
+Keep a new Assistant chat local until the user sends a message. Opening the
+panel must not add an empty chat to history. Resume an existing chat when one
+is available. Send an opening prompt from the Agents list after the local chat
+is saved. Keep manual Agent edits independent of Assistant chat persistence.
 
 ## Builder side panel widths
 
@@ -356,6 +368,9 @@ under category headings. Hide the category tabs until the search is cleared.
 Keep the outer modal body fixed on picker steps. Show a list scrollbar only
 when the list content overflows. Do not show a scrollbar for an empty state.
 
+In the Channels picker, show a short description under each channel name. It
+says what the channel does and what setup needs. Use small, muted text.
+
 Put an explicit action in every selectable row. The action must name the
 outcome. Use `Add node`, `Add MCP`, `Add workflow`, or the matching asset label.
 When the list has no items or no search matches, show a centered, asset-specific
@@ -372,7 +387,7 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Skills                    | Use `fit` with a 52rem content width. Keep it narrower than `full`. Use the flush Agent body so the file workspace does not get double padding. Keep the file navigation and editor inside the scrolling body. |
 | Dangerous confirmation    | Keep its explicit Cancel and primary actions. Examples are Agent, file, and session deletion; unpublish; revert; eval regeneration; LangSmith export; and managed Slack app removal.                           |
-| Managed Slack app removal | Keep the stacked confirmation because it can delete an external resource.                                                                                                                                      |
+| Channel removal           | Use `AgentChannelRemoveConfirmation`. It stacks over the channel modal and matches the Agent confirmation. Slack adds its app deletion choice in the slot.                                                     |
 | Small utility dialog      | Keep an appropriate small size. Use Cancel and one bottom-right primary action. JSON import and Agent duplication use this rule.                                                                               |
 | Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                                                       |
 | Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                                                        |
@@ -599,8 +614,14 @@ publication and unpublication event, including repeated publication of a version
 Show unknown durations for incomplete legacy records.
 
 Use the small Agent modal shell for version details and publication. Reuse the
-workflow version name and description fields. Both fields are optional. Keep
-Cancel before Save or Publish. Keep entered values when the request fails.
+workflow version name and description fields. Require a nonblank version name
+in both dialogs. Prefill an unnamed version with `Version <first 8 ID characters>`.
+Select the name text on initial focus. Keep the description optional. Keep Cancel
+before Save or Publish. Keep entered values when the request fails.
+
+Order version actions as Restore version, Publish version, and Name version.
+For the published version, replace Publish version with Unpublish agent.
+Keep automatic draft saves unnamed unless the user names them.
 
 Flush pending editor changes before opening the publish dialog. Keep the selected
 saved version fixed while the dialog is open. Later edits remain in the draft.

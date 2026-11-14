@@ -9,10 +9,12 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import { ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
 import { jsonParse, type INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -612,6 +614,29 @@ describe('workflow package export', () => {
 					usedBy: [{ kind: 'workflow', id: workflowB.id }],
 				},
 			]);
+		});
+
+		it('adds the login of the operation context to the export event', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflow({ name: 'Login', nodes: [], connections: {} }, owner);
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			try {
+				await service.exportPackage({ user: owner, ctx, workflowIds: [workflow.id] });
+
+				const exportedEvents = emitSpy.mock.calls.filter(
+					([name]) => name === 'n8n-package-exported',
+				);
+				expect(exportedEvents).toHaveLength(1);
+				expect((exportedEvents[0][1] as RelayEventMap['n8n-package-exported']).loginId).toBe(
+					'login-1',
+				);
+			} finally {
+				emitSpy.mockRestore();
+			}
 		});
 
 		it('emits all exported workflow IDs when static sub-workflows are auto-included', async () => {

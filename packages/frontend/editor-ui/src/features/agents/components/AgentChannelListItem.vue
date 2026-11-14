@@ -17,6 +17,8 @@ import type { AgentChannelConnectAction } from '../channels/types';
 
 interface Props {
 	integration: ChatIntegrationDescriptor;
+	/** What the channel does and what setup needs, shown under the name. */
+	description?: string;
 	configured: boolean;
 	connected: boolean;
 	connectAction: AgentChannelConnectAction;
@@ -90,6 +92,7 @@ const statusTooltip = computed(() => {
 			</div>
 			<div :class="$style.content">
 				<N8nLoading variant="text" :class="$style.nameSkeleton" />
+				<N8nLoading v-if="description" variant="text" :class="$style.descriptionSkeleton" />
 			</div>
 			<div :class="$style.channelActions">
 				<N8nLoading variant="rect" :class="$style.buttonSkeleton" />
@@ -107,6 +110,14 @@ const statusTooltip = computed(() => {
 			<div :class="$style.content">
 				<N8nText :class="$style.name" size="medium" bold color="text-dark">
 					{{ integration.label }}
+				</N8nText>
+				<N8nText
+					v-if="description"
+					size="small"
+					color="text-light"
+					data-testid="agent-channel-description"
+				>
+					{{ description }}
 				</N8nText>
 			</div>
 
@@ -195,6 +206,10 @@ const statusTooltip = computed(() => {
 
 .nameSkeleton {
 	width: 30%;
+}
+
+.descriptionSkeleton {
+	width: 70%;
 }
 
 .buttonSkeleton {

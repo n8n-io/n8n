@@ -1,0 +1,585 @@
+{
+	"name": "NocoDB v1 request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "e1e32082-690b-5e66-b1ae-552b2cabcee8",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"authentication": "nocoDbApiToken",
+				"projectId": "p8x2kq9w3m4n5b1",
+				"table": "md_m7yq2w4e6r8t0a",
+				"version": 1,
+				"operation": "create",
+				"dataToSend": "autoMapInputData",
+				"inputsToIgnore": ""
+			},
+			"type": "n8n-nodes-base.nocoDb",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "447d676e-a9b1-5364-b35b-b8e6cc4581af",
+			"name": "V1 Create",
+			"credentials": {
+				"nocoDbApiToken": {
+					"id": "aB3dE5fG7hJ9kL1m",
+					"name": "NocoDB API Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "nocoDbApiToken",
+				"projectId": "p8x2kq9w3m4n5b1",
+				"table": "md_m7yq2w4e6r8t0a",
+				"version": 1,
+				"operation": "delete",
+				"id": "12"
+			},
+			"type": "n8n-nodes-base.nocoDb",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"id": "2c088032-8979-597e-b9cc-800a125ed6f7",
+			"name": "V1 Delete",
+			"credentials": {
+				"nocoDbApiToken": {
+					"id": "aB3dE5fG7hJ9kL1m",
+					"name": "NocoDB API Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "nocoDbApiToken",
+				"projectId": "p8x2kq9w3m4n5b1",
+				"table": "md_m7yq2w4e6r8t0a",
+				"version": 1,
+				"operation": "get",
+				"id": "12"
+			},
+			"type": "n8n-nodes-base.nocoDb",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"id": "5d53961d-f209-552b-a2d7-f96570a1ddc6",
+			"name": "V1 Get",
+			"credentials": {
+				"nocoDbApiToken": {
+					"id": "aB3dE5fG7hJ9kL1m",
+					"name": "NocoDB API Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "nocoDbApiToken",
+				"projectId": "p8x2kq9w3m4n5b1",
+				"table": "md_m7yq2w4e6r8t0a",
+				"version": 1,
+				"operation": "getAll",
+				"limit": 2,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.nocoDb",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"id": "28abce64-a777-567d-817b-f0dbec57d794",
+			"name": "V1 Get Many",
+			"credentials": {
+				"nocoDbApiToken": {
+					"id": "aB3dE5fG7hJ9kL1m",
+					"name": "NocoDB API Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "nocoDbApiToken",
+				"projectId": "p8x2kq9w3m4n5b1",
+				"table": "md_m7yq2w4e6r8t0a",
+				"version": 1,
+				"operation": "update",
+				"id": "12",
+				"dataToSend": "autoMapInputData",
+				"inputsToIgnore": ""
+			},
+			"type": "n8n-nodes-base.nocoDb",
+			"typeVersion": 1,
+			"position": [300, 800],
+			"id": "44e0b380-6bf0-5081-8758-74d59532999e",
+			"name": "V1 Update",
+			"credentials": {
+				"nocoDbApiToken": {
+					"id": "aB3dE5fG7hJ9kL1m",
+					"name": "NocoDB API Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "nocoDbApiToken",
+				"projectId": "p8x2kq9w3m4n5b1",
+				"table": "md_m7yq2w4e6r8t0a",
+				"version": 2,
+				"operation": "create",
+				"dataToSend": "autoMapInputData",
+				"inputsToIgnore": ""
+			},
+			"type": "n8n-nodes-base.nocoDb",
+			"typeVersion": 2,
+			"position": [300, 1000],
+			"id": "2930548d-9198-5303-963f-3f81333988dc",
+			"name": "V2 Create",
+			"credentials": {
+				"nocoDbApiToken": {
+					"id": "aB3dE5fG7hJ9kL1m",
+					"name": "NocoDB API Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "nocoDbApiToken",
+				"projectId": "p8x2kq9w3m4n5b1",
+				"table": "md_m7yq2w4e6r8t0a",
+				"version": 2,
+				"operation": "delete",
+				"id": "12"
+			},
+			"type": "n8n-nodes-base.nocoDb",
+			"typeVersion": 2,
+			"position": [300, 1200],
+			"id": "b84ddf19-e999-5797-ae36-88cb8c87aa3e",
+			"name": "V2 Delete",
+			"credentials": {
+				"nocoDbApiToken": {
+					"id": "aB3dE5fG7hJ9kL1m",
+					"name": "NocoDB API Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "nocoDbApiToken",
+				"projectId": "p8x2kq9w3m4n5b1",
+				"table": "md_m7yq2w4e6r8t0a",
+				"version": 2,
+				"operation": "get",
+				"id": "12"
+			},
+			"type": "n8n-nodes-base.nocoDb",
+			"typeVersion": 2,
+			"position": [300, 1400],
+			"id": "e31f6eb7-5f6b-5da2-abd4-835b3b2af797",
+			"name": "V2 Get",
+			"credentials": {
+				"nocoDbApiToken": {
+					"id": "aB3dE5fG7hJ9kL1m",
+					"name": "NocoDB API Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "nocoDbApiToken",
+				"projectId": "p8x2kq9w3m4n5b1",
+				"table": "md_m7yq2w4e6r8t0a",
+				"version": 2,
+				"operation": "getAll",
+				"limit": 2,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.nocoDb",
+			"typeVersion": 2,
+			"position": [300, 1600],
+			"id": "a4aa9446-29b5-5406-8fd6-5b80fb6a9409",
+			"name": "V2 Get Many",
+			"credentials": {
+				"nocoDbApiToken": {
+					"id": "aB3dE5fG7hJ9kL1m",
+					"name": "NocoDB API Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "nocoDbApiToken",
+				"projectId": "p8x2kq9w3m4n5b1",
+				"table": "md_m7yq2w4e6r8t0a",
+				"version": 2,
+				"operation": "update",
+				"id": "12",
+				"dataToSend": "autoMapInputData",
+				"inputsToIgnore": ""
+			},
+			"type": "n8n-nodes-base.nocoDb",
+			"typeVersion": 2,
+			"position": [300, 1800],
+			"id": "3c062664-53bd-5e67-af40-c103dfe927aa",
+			"name": "V2 Update",
+			"credentials": {
+				"nocoDbApiToken": {
+					"id": "aB3dE5fG7hJ9kL1m",
+					"name": "NocoDB API Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "nocoDbApiToken",
+				"projectId": "p8x2kq9w3m4n5b1",
+				"table": "md_m7yq2w4e6r8t0a",
+				"version": 3,
+				"operation": "create",
+				"dataToSend": "autoMapInputData",
+				"inputsToIgnore": ""
+			},
+			"type": "n8n-nodes-base.nocoDb",
+			"typeVersion": 3,
+			"position": [300, 2000],
+			"id": "71ebbdf8-41ab-5c00-ae11-ed3665a17ff0",
+			"name": "V3 Create",
+			"credentials": {
+				"nocoDbApiToken": {
+					"id": "aB3dE5fG7hJ9kL1m",
+					"name": "NocoDB API Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "nocoDbApiToken",
+				"projectId": "p8x2kq9w3m4n5b1",
+				"table": "md_m7yq2w4e6r8t0a",
+				"version": 3,
+				"operation": "delete",
+				"id": "12"
+			},
+			"type": "n8n-nodes-base.nocoDb",
+			"typeVersion": 3,
+			"position": [300, 2200],
+			"id": "ddbcc34d-ed24-5da7-904d-9ccd0d7fe703",
+			"name": "V3 Delete",
+			"credentials": {
+				"nocoDbApiToken": {
+					"id": "aB3dE5fG7hJ9kL1m",
+					"name": "NocoDB API Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "nocoDbApiToken",
+				"projectId": "p8x2kq9w3m4n5b1",
+				"table": "md_m7yq2w4e6r8t0a",
+				"version": 3,
+				"operation": "get",
+				"id": "12"
+			},
+			"type": "n8n-nodes-base.nocoDb",
+			"typeVersion": 3,
+			"position": [300, 2400],
+			"id": "7953b5ce-6d98-55ab-bde3-d62275ea8133",
+			"name": "V3 Get",
+			"credentials": {
+				"nocoDbApiToken": {
+					"id": "aB3dE5fG7hJ9kL1m",
+					"name": "NocoDB API Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "nocoDbApiToken",
+				"projectId": "p8x2kq9w3m4n5b1",
+				"table": "md_m7yq2w4e6r8t0a",
+				"version": 3,
+				"operation": "getAll",
+				"limit": 2,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.nocoDb",
+			"typeVersion": 3,
+			"position": [300, 2600],
+			"id": "cc33fe15-1207-5154-8c28-fe00a82881cc",
+			"name": "V3 Get Many",
+			"credentials": {
+				"nocoDbApiToken": {
+					"id": "aB3dE5fG7hJ9kL1m",
+					"name": "NocoDB API Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "nocoDbApiToken",
+				"projectId": "p8x2kq9w3m4n5b1",
+				"table": "md_m7yq2w4e6r8t0a",
+				"version": 3,
+				"operation": "update",
+				"id": "12",
+				"dataToSend": "autoMapInputData",
+				"inputsToIgnore": ""
+			},
+			"type": "n8n-nodes-base.nocoDb",
+			"typeVersion": 3,
+			"position": [300, 2800],
+			"id": "7bfe3def-98ce-5774-9982-8ac5a3b4f317",
+			"name": "V3 Update",
+			"credentials": {
+				"nocoDbApiToken": {
+					"id": "aB3dE5fG7hJ9kL1m",
+					"name": "NocoDB API Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "nocoDbApiToken",
+				"projectId": "p8x2kq9w3m4n5b1",
+				"table": "md_m7yq2w4e6r8t0a",
+				"version": 3,
+				"operation": "get",
+				"id": "14",
+				"downloadAttachments": true,
+				"downloadFieldNames": "Files"
+			},
+			"type": "n8n-nodes-base.nocoDb",
+			"typeVersion": 3,
+			"position": [300, 3000],
+			"id": "9c636f64-0268-5924-82d6-0a322657a9d0",
+			"name": "V3 Get With Attachments",
+			"credentials": {
+				"nocoDbApiToken": {
+					"id": "aB3dE5fG7hJ9kL1m",
+					"name": "NocoDB API Token"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "V1 Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V2 Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V2 Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V2 Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V2 Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V2 Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V3 Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V3 Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V3 Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V3 Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V3 Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V3 Get With Attachments",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"V1 Create": [
+			{
+				"json": {
+					"id": 5
+				}
+			}
+		],
+		"V1 Delete": [
+			{
+				"json": {}
+			}
+		],
+		"V1 Get": [
+			{
+				"json": {
+					"Id": 12,
+					"Title": "Quarterly report"
+				}
+			}
+		],
+		"V1 Get Many": [
+			{
+				"json": {
+					"Id": 12,
+					"Title": "Quarterly report"
+				}
+			},
+			{
+				"json": {
+					"Id": 13,
+					"Title": "Annual report"
+				}
+			}
+		],
+		"V1 Update": [
+			{
+				"json": {
+					"id": "12"
+				}
+			}
+		],
+		"V2 Create": [
+			{
+				"json": {
+					"id": 5
+				}
+			}
+		],
+		"V2 Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"V2 Get": [
+			{
+				"json": {
+					"Id": 12,
+					"Title": "Quarterly report"
+				}
+			}
+		],
+		"V2 Get Many": [
+			{
+				"json": {
+					"Id": 12,
+					"Title": "Quarterly report"
+				}
+			},
+			{
+				"json": {
+					"Id": 13,
+					"Title": "Annual report"
+				}
+			}
+		],
+		"V2 Update": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"V3 Create": [
+			{
+				"json": {
+					"Id": 5
+				}
+			}
+		],
+		"V3 Delete": [
+			{
+				"json": {
+					"Id": 12
+				}
+			}
+		],
+		"V3 Get": [
+			{
+				"json": {
+					"Id": 12,
+					"Title": "Quarterly report"
+				}
+			}
+		],
+		"V3 Get Many": [
+			{
+				"json": {
+					"Id": 12,
+					"Title": "Quarterly report"
+				}
+			},
+			{
+				"json": {
+					"Id": 13,
+					"Title": "Annual report"
+				}
+			}
+		],
+		"V3 Update": [
+			{
+				"json": {
+					"Id": 12
+				}
+			}
+		],
+		"V3 Get With Attachments": [
+			{
+				"json": {}
+			}
+		]
+	}
+}

@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { assertNoQueryDelimiters } from '@utils/query-escaping';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -282,7 +283,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		}
 	}
 
-	const endpoint = '/messages';
+	const endpoint = requestPath`/messages`;
 
 	if (returnAll) {
 		responseData = await microsoftApiRequestAllItems.call(

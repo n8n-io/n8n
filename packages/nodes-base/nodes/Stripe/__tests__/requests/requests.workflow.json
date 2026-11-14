@@ -1,0 +1,503 @@
+{
+	"name": "Stripe Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "balance",
+				"operation": "get"
+			},
+			"id": "node-0",
+			"name": "Balance Get",
+			"type": "n8n-nodes-base.stripe",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"stripeApi": {
+					"id": "1",
+					"name": "Stripe account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customerCard",
+				"operation": "add",
+				"customerId": "cus_NffrFeUfNV2Hib",
+				"token": "tok_visa"
+			},
+			"id": "node-1",
+			"name": "Card Add",
+			"type": "n8n-nodes-base.stripe",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"stripeApi": {
+					"id": "1",
+					"name": "Stripe account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customerCard",
+				"operation": "get",
+				"customerId": "cus_NffrFeUfNV2Hib",
+				"sourceId": "src_1N3lxdLkdIwHu7ixPHXy4X5V"
+			},
+			"id": "node-2",
+			"name": "Card Get",
+			"type": "n8n-nodes-base.stripe",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"stripeApi": {
+					"id": "1",
+					"name": "Stripe account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customerCard",
+				"operation": "remove",
+				"customerId": "cus_NffrFeUfNV2Hib",
+				"cardId": "card_1MvoiELkdIwHu7ix1mD3EUce"
+			},
+			"id": "node-3",
+			"name": "Card Remove",
+			"type": "n8n-nodes-base.stripe",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"stripeApi": {
+					"id": "1",
+					"name": "Stripe account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "charge",
+				"operation": "get",
+				"chargeId": "ch_3MmlLrLkdIwHu7ix0snN0B15"
+			},
+			"id": "node-4",
+			"name": "Charge Get",
+			"type": "n8n-nodes-base.stripe",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"stripeApi": {
+					"id": "1",
+					"name": "Stripe account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "charge",
+				"operation": "getAll",
+				"limit": 1
+			},
+			"id": "node-5",
+			"name": "Charge Get Many",
+			"type": "n8n-nodes-base.stripe",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"stripeApi": {
+					"id": "1",
+					"name": "Stripe account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "charge",
+				"operation": "update",
+				"chargeId": "ch_3MmlLrLkdIwHu7ix0snN0B15",
+				"updateFields": {
+					"description": "Updated"
+				}
+			},
+			"id": "node-6",
+			"name": "Charge Update",
+			"type": "n8n-nodes-base.stripe",
+			"typeVersion": 1,
+			"position": [300, 900],
+			"credentials": {
+				"stripeApi": {
+					"id": "1",
+					"name": "Stripe account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "coupon",
+				"operation": "getAll",
+				"limit": 1
+			},
+			"id": "node-7",
+			"name": "Coupon Get Many",
+			"type": "n8n-nodes-base.stripe",
+			"typeVersion": 1,
+			"position": [300, 1050],
+			"credentials": {
+				"stripeApi": {
+					"id": "1",
+					"name": "Stripe account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "get",
+				"customerId": "cus_NffrFeUfNV2Hib"
+			},
+			"id": "node-8",
+			"name": "Customer Get",
+			"type": "n8n-nodes-base.stripe",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"credentials": {
+				"stripeApi": {
+					"id": "1",
+					"name": "Stripe account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "getAll",
+				"limit": 1,
+				"filters": {
+					"email": "nathan@example.com"
+				}
+			},
+			"id": "node-9",
+			"name": "Customer Get Many",
+			"type": "n8n-nodes-base.stripe",
+			"typeVersion": 1,
+			"position": [300, 1350],
+			"credentials": {
+				"stripeApi": {
+					"id": "1",
+					"name": "Stripe account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "update",
+				"customerId": "cus_NffrFeUfNV2Hib",
+				"updateFields": {
+					"description": "VIP"
+				}
+			},
+			"id": "node-10",
+			"name": "Customer Update",
+			"type": "n8n-nodes-base.stripe",
+			"typeVersion": 1,
+			"position": [300, 1500],
+			"credentials": {
+				"stripeApi": {
+					"id": "1",
+					"name": "Stripe account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "customer",
+				"operation": "delete",
+				"customerId": "cus_NffrFeUfNV2Hib"
+			},
+			"id": "node-11",
+			"name": "Customer Delete",
+			"type": "n8n-nodes-base.stripe",
+			"typeVersion": 1,
+			"position": [300, 1650],
+			"credentials": {
+				"stripeApi": {
+					"id": "1",
+					"name": "Stripe account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "source",
+				"operation": "create",
+				"customerId": "cus_NffrFeUfNV2Hib",
+				"type": "wechat",
+				"amount": 100,
+				"currency": "usd"
+			},
+			"id": "node-12",
+			"name": "Source Create",
+			"type": "n8n-nodes-base.stripe",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"credentials": {
+				"stripeApi": {
+					"id": "1",
+					"name": "Stripe account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "source",
+				"operation": "get",
+				"sourceId": "src_1N3lxdLkdIwHu7ixPHXy4X5V"
+			},
+			"id": "node-13",
+			"name": "Source Get",
+			"type": "n8n-nodes-base.stripe",
+			"typeVersion": 1,
+			"position": [300, 1950],
+			"credentials": {
+				"stripeApi": {
+					"id": "1",
+					"name": "Stripe account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "source",
+				"operation": "delete",
+				"customerId": "cus_NffrFeUfNV2Hib",
+				"sourceId": "src_1N3lxdLkdIwHu7ixPHXy4X5V"
+			},
+			"id": "node-14",
+			"name": "Source Delete",
+			"type": "n8n-nodes-base.stripe",
+			"typeVersion": 1,
+			"position": [300, 2100],
+			"credentials": {
+				"stripeApi": {
+					"id": "1",
+					"name": "Stripe account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Balance Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Card Add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Card Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Card Remove",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Charge Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Charge Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Charge Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Coupon Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Customer Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Source Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Source Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Source Delete",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Balance Get": [
+			{
+				"json": {
+					"object": "balance",
+					"livemode": false
+				}
+			}
+		],
+		"Card Add": [
+			{
+				"json": {
+					"id": "card_1MvoiELkdIwHu7ix1mD3EUce",
+					"object": "card"
+				}
+			}
+		],
+		"Card Get": [
+			{
+				"json": {
+					"id": "src_1N3lxdLkdIwHu7ixPHXy4X5V",
+					"object": "source"
+				}
+			}
+		],
+		"Card Remove": [
+			{
+				"json": {
+					"id": "card_1MvoiELkdIwHu7ix1mD3EUce",
+					"deleted": true
+				}
+			}
+		],
+		"Charge Get": [
+			{
+				"json": {
+					"id": "ch_3MmlLrLkdIwHu7ix0snN0B15",
+					"object": "charge"
+				}
+			}
+		],
+		"Charge Get Many": [
+			{
+				"json": {
+					"id": "ch_3MmlLrLkdIwHu7ix0snN0B15",
+					"object": "charge"
+				}
+			}
+		],
+		"Charge Update": [
+			{
+				"json": {
+					"id": "ch_3MmlLrLkdIwHu7ix0snN0B15",
+					"description": "Updated"
+				}
+			}
+		],
+		"Coupon Get Many": [
+			{
+				"json": {
+					"id": "Z4OV52SU",
+					"object": "coupon"
+				}
+			}
+		],
+		"Customer Get": [
+			{
+				"json": {
+					"id": "cus_NffrFeUfNV2Hib",
+					"name": "Nathan"
+				}
+			}
+		],
+		"Customer Get Many": [
+			{
+				"json": {
+					"id": "cus_NffrFeUfNV2Hib",
+					"name": "Nathan"
+				}
+			}
+		],
+		"Customer Update": [
+			{
+				"json": {
+					"id": "cus_NffrFeUfNV2Hib",
+					"description": "VIP"
+				}
+			}
+		],
+		"Customer Delete": [
+			{
+				"json": {
+					"id": "cus_NffrFeUfNV2Hib",
+					"deleted": true
+				}
+			}
+		],
+		"Source Create": [
+			{
+				"json": {
+					"id": "src_1N3lxdLkdIwHu7ixPHXy4X5V",
+					"object": "source"
+				}
+			}
+		],
+		"Source Get": [
+			{
+				"json": {
+					"id": "src_1N3lxdLkdIwHu7ixPHXy4X5V",
+					"object": "source"
+				}
+			}
+		],
+		"Source Delete": [
+			{
+				"json": {
+					"id": "src_1N3lxdLkdIwHu7ixPHXy4X5V",
+					"status": "consumed"
+				}
+			}
+		]
+	}
+}

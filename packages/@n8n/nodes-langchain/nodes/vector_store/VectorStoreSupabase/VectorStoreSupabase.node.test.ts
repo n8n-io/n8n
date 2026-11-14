@@ -1,6 +1,7 @@
 import type { VectorStoreNodeConstructorArgs } from '@n8n/ai-utilities';
+import { UserError } from '@n8n/errors';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
-import { NodeOperationError, UserError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 // ---------------------------------------------------------------------------

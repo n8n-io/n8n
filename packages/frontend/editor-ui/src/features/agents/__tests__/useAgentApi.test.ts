@@ -143,8 +143,8 @@ describe('useAgentApi', () => {
 			vi.mocked(getFullApiResponse).mockResolvedValueOnce(response);
 
 			const result = await listAgentsPage(restApiContext, 'project-1', {
-				skip: 10,
-				take: 25,
+				offset: 10,
+				limit: 25,
 				sortBy: 'name:asc',
 				filter: { query: 'support' },
 			});
@@ -154,8 +154,8 @@ describe('useAgentApi', () => {
 				'GET',
 				'/projects/project-1/agents/v2',
 				{
-					skip: 10,
-					take: 25,
+					offset: 10,
+					limit: 25,
 					sortBy: 'name:asc',
 					filter: { query: 'support' },
 				},
@@ -180,14 +180,14 @@ describe('useAgentApi', () => {
 				restApiContext,
 				'GET',
 				'/projects/project-1/agents/v2',
-				{ skip: 0, take: 250 },
+				{ offset: 0, limit: 250 },
 			);
 			expect(getFullApiResponse).toHaveBeenNthCalledWith(
 				2,
 				restApiContext,
 				'GET',
 				'/projects/project-1/agents/v2',
-				{ skip: 1, take: 250 },
+				{ offset: 1, limit: 250 },
 			);
 		});
 	});
@@ -521,15 +521,15 @@ describe('useAgentApi', () => {
 
 			const result = await listN8nChatAgents(restApiContext, {
 				query: '  support  ',
-				skip: 10,
-				take: 50,
+				offset: 10,
+				limit: 50,
 				sortBy: 'usage:desc',
 			});
 
 			expect(getFullApiResponse).toHaveBeenCalledWith(restApiContext, 'GET', '/agents/v2', {
 				filter: { availableInChat: true, query: 'support' },
-				skip: 10,
-				take: 50,
+				offset: 10,
+				limit: 50,
 				sortBy: 'usage:desc',
 			});
 			expect(result).toBe(response);
@@ -538,19 +538,19 @@ describe('useAgentApi', () => {
 		it('omits the query from the filter when blank — not given, empty, or whitespace-only', async () => {
 			vi.mocked(getFullApiResponse).mockResolvedValue({ count: 0, data: [] });
 
-			await listN8nChatAgents(restApiContext, { skip: 0, take: 50 });
-			await listN8nChatAgents(restApiContext, { query: '   ', skip: 0, take: 50 });
+			await listN8nChatAgents(restApiContext, { offset: 0, limit: 50 });
+			await listN8nChatAgents(restApiContext, { query: '   ', offset: 0, limit: 50 });
 
 			expect(getFullApiResponse).toHaveBeenNthCalledWith(1, restApiContext, 'GET', '/agents/v2', {
 				filter: { availableInChat: true },
-				skip: 0,
-				take: 50,
+				offset: 0,
+				limit: 50,
 				sortBy: undefined,
 			});
 			expect(getFullApiResponse).toHaveBeenNthCalledWith(2, restApiContext, 'GET', '/agents/v2', {
 				filter: { availableInChat: true },
-				skip: 0,
-				take: 50,
+				offset: 0,
+				limit: 50,
 				sortBy: undefined,
 			});
 		});
@@ -613,25 +613,22 @@ describe('useAgentApi', () => {
 	});
 
 	describe('duplicateAgent', () => {
-		it('fetches the source agent and config, then creates a clone with the new name', async () => {
-			const sourceAgent = {
-				id: 'agent-1',
-				name: 'Support Agent',
-				schema: { personalisation: { icon: 'bot' } },
-				tools: { refund_tool: { code: 'return 1', descriptor: { name: 'refund_tool' } } },
-				skills: { skill_abc: { name: 'Triage', description: '', instructions: '' } },
-			} as unknown as AgentResource;
+		it('fetches the source agent, then creates a clone with the new name', async () => {
 			const sourceConfig = {
 				name: 'Support Agent',
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Triage tickets.',
 			} as unknown as AgentJsonConfig;
+			const sourceAgent = {
+				id: 'agent-1',
+				name: 'Support Agent',
+				config: sourceConfig,
+				tools: { refund_tool: { code: 'return 1', descriptor: { name: 'refund_tool' } } },
+				skills: { skill_abc: { name: 'Triage', description: '', instructions: '' } },
+			} as unknown as AgentResource;
 			const cloned = { id: 'agent-2', name: 'Support Agent (copy)' } as unknown as AgentResource;
-			// getAgent, getAgentConfig, then createAgent — in Promise.all order then sequential.
-			// getAgentConfig returns the AgentConfigResponse envelope { config, configHash }.
 			vi.mocked(makeRestApiRequest)
 				.mockResolvedValueOnce(sourceAgent)
-				.mockResolvedValueOnce({ config: sourceConfig, configHash: 'hash-1' })
 				.mockResolvedValueOnce(cloned);
 
 			const result = await duplicateAgent(
@@ -642,23 +639,16 @@ describe('useAgentApi', () => {
 			);
 
 			expect(result).toBe(cloned);
-			// getAgent + getAgentConfig fetched in parallel.
 			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
 				1,
 				restApiContext,
 				'GET',
 				'/projects/project-1/agents/v2/agent-1',
 			);
-			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
-				2,
-				restApiContext,
-				'GET',
-				'/projects/project-1/agents/v2/agent-1/config',
-			);
 			// createAgent posts the copied config with the new name overriding the source name;
 			// tasks are dropped and integrations are copied without their credential.
 			expect(makeRestApiRequest).toHaveBeenNthCalledWith(
-				3,
+				2,
 				restApiContext,
 				'POST',
 				'/projects/project-1/agents/v2',
@@ -672,13 +662,6 @@ describe('useAgentApi', () => {
 		});
 
 		it('copies channels without their credential so the clone opens as drafts', async () => {
-			const sourceAgent = {
-				id: 'agent-1',
-				name: 'Support Agent',
-				schema: { personalisation: { icon: 'bot' } },
-				tools: {},
-				skills: {},
-			} as unknown as AgentResource;
 			const sourceConfig = {
 				name: 'Support Agent',
 				model: 'anthropic/claude-sonnet-4-5',
@@ -689,15 +672,21 @@ describe('useAgentApi', () => {
 					{ type: 'n8n_chat', credentialId: '' },
 				],
 			} as unknown as AgentJsonConfig;
+			const sourceAgent = {
+				id: 'agent-1',
+				name: 'Support Agent',
+				config: sourceConfig,
+				tools: {},
+				skills: {},
+			} as unknown as AgentResource;
 			const cloned = { id: 'agent-2', name: 'Support Agent (copy)' } as unknown as AgentResource;
 			vi.mocked(makeRestApiRequest)
 				.mockResolvedValueOnce(sourceAgent)
-				.mockResolvedValueOnce({ config: sourceConfig, configHash: 'hash-1' })
 				.mockResolvedValueOnce(cloned);
 
 			await duplicateAgent(restApiContext, 'project-1', 'agent-1', 'Support Agent (copy)');
 
-			const [, , , postBody] = vi.mocked(makeRestApiRequest).mock.calls[2] as [
+			const [, , , postBody] = vi.mocked(makeRestApiRequest).mock.calls[1] as [
 				unknown,
 				string,
 				string,

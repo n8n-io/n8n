@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { parseDiscordError, prepareErrorData } from '../../helpers/utils';
@@ -38,7 +39,7 @@ export async function execute(
 				await discordApiRequest.call(
 					this,
 					'PUT',
-					`/guilds/${guildId}/members/${userId}/roles/${roleId}`,
+					requestPath`/guilds/${guildId}/members/${userId}/roles/${roleId}`,
 				);
 			}
 

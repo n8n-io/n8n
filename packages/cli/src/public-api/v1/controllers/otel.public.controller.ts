@@ -40,7 +40,7 @@ export class OtelPublicController {
 	@ApiKeyScope('otel:manage')
 	@ApiSummary('Retrieve the OpenTelemetry configuration')
 	@ApiDescription(
-		'Retrieve the current OpenTelemetry configuration, including every field exposed in the UI. Requires the `otel:manage` scope.',
+		'Retrieve the current OpenTelemetry configuration, including every field exposed in the UI.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, OtelSettingsPublicDto)
@@ -59,7 +59,7 @@ export class OtelPublicController {
 	@ApiKeyScope('otel:manage')
 	@ApiSummary('Set the OpenTelemetry configuration')
 	@ApiDescription(
-		'Set the OpenTelemetry configuration. This is a full replacement: every field must be provided, and a partial body is rejected. The exceptions are `exporterProtocol`, which defaults to `http/protobuf` when omitted, and `emitWorkflowStartSpan` and `emitNodeStartSpan`, which default to `false` when omitted. The update takes effect exactly as it would from the UI, using the same validation, and is applied to the running instance immediately. Fields managed declaratively via environment variables are read-only: attempting to change one is rejected with 409, while re-submitting its current value (as returned by GET) is accepted. Requires the `otel:manage` scope.',
+		'Set the OpenTelemetry configuration. This is a full replacement: every field must be provided, and a partial body is rejected. The exceptions are `exporterProtocol`, which defaults to `http/protobuf` when omitted, and `emitWorkflowStartSpan` and `emitNodeStartSpan`, which default to `false` when omitted. The update takes effect exactly as it would from the UI, using the same validation, and is applied to the running instance immediately. Fields managed declaratively via environment variables are read-only: attempting to change one is rejected with 409, while re-submitting its current value (as returned by GET) is accepted.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, OtelSettingsPublicDto)
@@ -91,7 +91,7 @@ export class OtelPublicController {
 	@ApiKeyScope('otel:manage')
 	@ApiSummary('Test the connection to an OTLP collector')
 	@ApiDescription(
-		'Send a single test span to the given OTLP collector and report whether it was accepted. This tests the supplied connection details without changing the stored configuration. Fields managed declaratively via environment variables are overridden with their effective value before the test is sent. Requires the `otel:manage` scope.',
+		'Send a single test span to the given OTLP collector and report whether it was accepted. This tests the supplied connection details without changing the stored configuration. Fields managed declaratively via environment variables are overridden with their effective value before the test is sent.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, OtelTestTraceResultPublicDto)

@@ -2,7 +2,10 @@ operationId: getDataTableDependencies
 tags:
   - DataTable
 summary: List data table dependencies
-description: List the workflows that use the data table.
+description: |-
+  List the workflows that use the data table.
+
+  Requires the `dataTable:read` API key scope.
 x-required-scope: dataTable:read
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml

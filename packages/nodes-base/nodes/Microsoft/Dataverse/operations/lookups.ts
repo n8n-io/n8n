@@ -1,5 +1,5 @@
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
+import { NodeOperationError, requestPath, setSafeObjectProperty } from 'n8n-workflow';
 
 import { escapeODataValue } from '../../../../utils/query-escaping';
 import { dataverseApiRequest } from '../GenericFunctions';
@@ -163,7 +163,7 @@ async function collectLookupFieldMap(
 	const rels = await dataverseApiRequest(
 		ctx,
 		'GET',
-		`/EntityDefinitions(LogicalName='${logicalName}')/ManyToOneRelationships`,
+		requestPath`/EntityDefinitions(LogicalName='${logicalName}')/ManyToOneRelationships`,
 		{},
 		{
 			$select: 'ReferencingAttribute,ReferencingEntityNavigationPropertyName,ReferencedEntity',
@@ -224,7 +224,7 @@ async function resolveLogicalName(
 	const response = await dataverseApiRequest(
 		ctx,
 		'GET',
-		'/EntityDefinitions',
+		requestPath`/EntityDefinitions`,
 		{},
 		{
 			$select: 'LogicalName',

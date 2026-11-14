@@ -2,7 +2,10 @@ operationId: deleteVariable
 tags:
   - Variables
 summary: Delete a variable
-description: Delete a variable from your instance.
+description: |-
+  Delete a variable from your instance.
+
+  Requires the `variable:delete` API key scope.
 x-required-scope: variable:delete
 parameters:
   - schema:

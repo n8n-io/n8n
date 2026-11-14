@@ -11,11 +11,12 @@
 // flows automatically.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiBuildMode, InstanceAiConfirmRequest } from '@n8n/api-types';
+import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 import { INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS } from '@n8n/api-types';
 import { isTerminalExecutionStatus } from 'n8n-workflow';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { waitForAssistantAgentActivity } from './assistant-agents';
 import type { EvalLogger } from './logger';
 import { MIN_TURN_BUDGET_MS, RunTimeoutError } from './timeouts';
 import type { N8nClient } from '../clients/n8n-client';
@@ -65,6 +66,13 @@ export async function startSseConnection(
 	events: CapturedEvent[],
 	signal: AbortSignal,
 ): Promise<void> {
+	// The Agents runtime has no event log. Its wait loop rebuilds the events from history.
+	if (client.assistantAgents()) {
+		if (signal.aborted) return;
+		return await new Promise((resolve) => {
+			signal.addEventListener('abort', () => resolve(), { once: true });
+		});
+	}
 	const url = client.getEventsUrl(threadId);
 	const cookie = client.cookie;
 
@@ -122,6 +130,30 @@ export async function waitForAllActivity(config: WaitConfig): Promise<void> {
 	// Allocate the retries map once per conversation if the caller didn't
 	// pass one; per-call allocation would reset attempt counts every poll.
 	config.confirmationRetries ??= new Map<string, number>();
+
+	const agents = config.client.assistantAgents();
+	if (agents) {
+		// No hidden follow-up turns and no background tasks on the Agents runtime, and no route
+		// that reports memory tasks: the quiet polls give the observer its time.
+		await waitForAssistantAgentActivity({
+			client: agents,
+			threadId: config.threadId,
+			events: config.events,
+			approvedRequests: config.approvedRequests,
+			sentAt: config.turnStartedAt ?? config.startTime,
+			confirmationStrategy: config.confirmationStrategy ?? buildAutoApprovePayload,
+			confirmationRetries: config.confirmationRetries,
+			maxConfirmationRetries: MAX_CONFIRMATION_RETRIES,
+			proxyResponses: config.proxyResponses,
+			// No inactivity bound: these events come from the stored history, which can
+			// stay the same for minutes while a long tool call runs. The turn and
+			// conversation budgets still stop a turn that hangs.
+			timeoutBreach: () => elapsedBudgetBreach(config),
+			onTimeout: async (breach) => await cancelAndThrow(config, breach),
+			log: (message) => config.logger.verbose(message),
+		});
+		return;
+	}
 
 	let runFinishCount = 0;
 
@@ -379,7 +411,6 @@ export interface MultiTurnConfig extends WaitConfig {
 	beforeUserExecution?: (deadline: number) => Promise<void>;
 	allowUserExecution?: boolean;
 	/** Repeat the eval override on each message to bypass the backend assignment. */
-	buildMode?: InstanceAiBuildMode;
 	promptVersion?: string;
 	observerThresholdTokens?: number;
 }
@@ -444,7 +475,6 @@ export async function runMultiTurnConversation(
 				config.threadId,
 				decision.message,
 				undefined,
-				config.buildMode,
 				config.promptVersion,
 				undefined,
 				// Re-sent per message: the backend clears an omitted override.

@@ -1,3 +1,4 @@
+import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
@@ -1605,16 +1606,18 @@ describe('DELETE /workflows/:id', () => {
 		expect(response.body.activeVersionId).toBe(workflow.versionId);
 	});
 
-	test('should mark the workflow-deleted event as public API', async () => {
+	test('should report the calling client on the workflow-deleted event', async () => {
 		const workflow = await createWorkflowWithHistory({}, member);
 		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 		try {
-			await authMemberAgent.delete(`/workflows/${workflow.id}`);
+			await authMemberAgent
+				.delete(`/workflows/${workflow.id}`)
+				.set(N8N_CLIENT_HEADER, N8N_CLIENT_EDITOR_UI);
 
 			expect(emit).toHaveBeenCalledWith(
 				'workflow-deleted',
-				expect.objectContaining({ workflowId: workflow.id, publicApi: true }),
+				expect.objectContaining({ workflowId: workflow.id, publicApi: 'editor_ui' }),
 			);
 		} finally {
 			emit.mockRestore();
@@ -1671,10 +1674,16 @@ describe.each(['activate', 'publish'])('POST /workflows/:id/%s', (action) => {
 
 	test('should set workflow as active', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
 
 		expect(response.statusCode).toBe(200);
+		expect(emit).toHaveBeenCalledWith(
+			'workflow-activated',
+			expect.objectContaining({ workflowId: workflow.id, publicApi: 'other' }),
+		);
+		emit.mockRestore();
 
 		const {
 			id,
@@ -1905,10 +1914,16 @@ describe.each(['deactivate', 'unpublish'])('POST /workflows/:id/%s', (action) =>
 		});
 
 		expect(sharedWorkflow?.workflow.activeVersionId).toBe(workflow.versionId);
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 		const deactivateResponse = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
 
 		expect(deactivateResponse.statusCode).toBe(200);
+		expect(emit).toHaveBeenCalledWith(
+			'workflow-deactivated',
+			expect.objectContaining({ workflowId: workflow.id, publicApi: 'other' }),
+		);
+		emit.mockRestore();
 		expect(deactivateResponse.body.active).toBe(false);
 		expect(deactivateResponse.body.activeVersionId).toBe(null);
 
@@ -3298,6 +3313,35 @@ describe('PUT /workflows/:id', () => {
 		expect(versionInTheDb!.nodes).toEqual(updatedPayload.nodes);
 	});
 
+	test('should publish a pending engine change with the draft', async () => {
+		const workflow = await createActiveWorkflow({ settings: { engineType: 'v1' } }, member);
+		// An engine change saved in the editor is a draft version with the new engine.
+		const engineDraft = await createWorkflowHistoryItem(workflow.id, {
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			settings: { engineType: 'v2' },
+		});
+		await Container.get(WorkflowRepository).update(workflow.id, {
+			versionId: engineDraft.versionId,
+			settings: { engineType: 'v2' },
+		});
+
+		const updateResponse = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			staticData: workflow.staticData,
+			settings: {},
+		});
+
+		expect(updateResponse.statusCode).toBe(200);
+		expect(updateResponse.body.activeVersionId).not.toBe(workflow.versionId);
+		const activeVersion = await Container.get(WorkflowHistoryRepository).findOneByOrFail({
+			versionId: updateResponse.body.activeVersionId,
+		});
+		expect(activeVersion.settings).toEqual({ engineType: 'v2' });
+	});
+
 	test('should save as draft without republishing when publishIfActive=false', async () => {
 		const workflow = await createActiveWorkflow({}, member);
 
@@ -3656,6 +3700,24 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	describe('credential access on shared workflows', () => {
+		// The shared httpRequest stub declares no parameters, so the guard cannot see a
+		// parameter edit. Declare the URL for this block only.
+		beforeAll(async () => {
+			const defaultNodes = utils.buildDefaultNodes();
+			const customHttpRequestNode = utils.minimalNodeType('n8n-nodes-base.httpRequest', [
+				{ displayName: 'URL', name: 'url', type: 'string', default: '' },
+			]);
+
+			await utils.initNodeTypes({
+				...defaultNodes,
+				'n8n-nodes-base.httpRequest': customHttpRequestNode,
+			});
+		});
+
+		afterAll(async () => {
+			await utils.initNodeTypes();
+		});
+
 		const ownerCredentialPayload = {
 			name: 'Owner Header Auth',
 			type: 'httpHeaderAuth',
@@ -3788,7 +3850,7 @@ describe('PUT /workflows/:id', () => {
 			expect(httpNode?.credentials?.httpHeaderAuth?.name).toBe(ownerCredential.name);
 		});
 
-		test('should revert edits to a read-only credential node when a sharee updates the workflow', async () => {
+		test('should reject an edit to a node whose credential the sharee cannot use', async () => {
 			license.enable('feat:sharing');
 
 			const ownerCredential = await saveCredential(ownerCredentialPayload, {
@@ -3813,9 +3875,8 @@ describe('PUT /workflows/:id', () => {
 			const historyCountBeforeUpdate = await workflowHistoryRepository.count({
 				where: { workflowId: workflow.id },
 			});
+			const storedBeforeUpdate = await workflowRepository.findOneByOrFail({ id: workflow.id });
 
-			// Sharee renames the workflow (allowed) and changes the
-			// owner-credential node URL (must be reverted).
 			const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
 				name: 'renamed by sharee',
 				nodes: [
@@ -3830,21 +3891,17 @@ describe('PUT /workflows/:id', () => {
 				settings: {},
 			});
 
-			expect(response.statusCode).toBe(200);
-			const { name, nodes, versionId } = response.body as {
-				name: string;
-				nodes: INode[];
-				versionId: string;
-			};
-			// The sharee can still edit the workflow...
-			expect(name).toBe('renamed by sharee');
-			const httpNode = nodes.find((node) => node.id === 'http-node');
-			// ...but parameter edits to the read-only credential node are reverted
-			expect(httpNode?.parameters?.url).toBe(originalUrl);
-			expect(httpNode?.credentials?.httpHeaderAuth?.id).toBe(ownerCredential.id);
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toBe(
+				"You don't have access to the credentials in the 'HTTP Request' node. Ask the owner to share them with you.",
+			);
 
-			// Reverted node edits should not create a new workflow version
-			expect(versionId).toBe(workflow.versionId);
+			const storedAfterUpdate = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			const httpNode = storedAfterUpdate.nodes.find((node) => node.id === 'http-node');
+			expect(storedAfterUpdate.name).toBe(storedBeforeUpdate.name);
+			expect(httpNode?.parameters?.url).toBe(originalUrl);
+			expect(storedAfterUpdate.versionId).toBe(storedBeforeUpdate.versionId);
+			expect(storedAfterUpdate.updatedAt).toEqual(storedBeforeUpdate.updatedAt);
 			await expect(
 				workflowHistoryRepository.count({ where: { workflowId: workflow.id } }),
 			).resolves.toBe(historyCountBeforeUpdate);

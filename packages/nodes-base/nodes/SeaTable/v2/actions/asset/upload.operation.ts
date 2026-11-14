@@ -4,6 +4,7 @@ import {
 	type INodeProperties,
 	type IExecuteFunctions,
 	updateDisplayOptions,
+	requestPath,
 } from 'n8n-workflow';
 
 import { resolveBaseUri, seaTableApiRequest } from '../../GenericFunctions';
@@ -113,7 +114,7 @@ export async function execute(
 		this,
 		ctx,
 		'GET',
-		'/api/v2.1/dtable/app-upload-link/',
+		requestPath`/api/v2.1/dtable/app-upload-link/`,
 	)) as IUploadLink;
 	const relativePath =
 		uploadColumnType === 'image' ? uploadLink.img_relative_path : uploadLink.file_relative_path;
@@ -131,7 +132,7 @@ export async function execute(
 			this,
 			{},
 			'GET',
-			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/rows/' + rowId,
+			(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/rows/${rowId}`,
 			{},
 			{
 				table_name: tableName,
@@ -164,10 +165,9 @@ export async function execute(
 		this,
 		{},
 		'POST',
-		`/seafhttp/upload-api/${uploadLink.upload_link.split('seafhttp/upload-api/')[1]}?ret-json=true`,
+		requestPath`/seafhttp/upload-api/${uploadLink.upload_link.split('seafhttp/upload-api/')[1]}?ret-json=true`,
 		{},
 		{},
-		'',
 		requestOptions,
 	);
 
@@ -208,7 +208,7 @@ export async function execute(
 			this,
 			{},
 			'PUT',
-			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/rows/',
+			(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/rows/`,
 			body,
 		);
 

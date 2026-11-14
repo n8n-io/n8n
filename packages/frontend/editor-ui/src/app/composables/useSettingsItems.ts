@@ -91,7 +91,6 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.ROLES_SETTINGS),
 				route: { to: { name: VIEWS.ROLES_SETTINGS } },
-				new: true,
 			},
 			{
 				// One entry for how people sign in; SSO and LDAP are rows on this page.

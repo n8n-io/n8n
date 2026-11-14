@@ -5,6 +5,8 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 
+import { getRequiredApiKey } from '@utils/helpers';
+
 const embeddingDimensions: INodeProperties = {
 	displayName: 'Embedding Dimensions',
 	name: 'embeddingDimensions',
@@ -100,7 +102,10 @@ export class VectorStoreZep extends createVectorStoreNode<ZepVectorStore | ZepCl
 		};
 
 		if (credentials.cloud) {
-			return new ZepCloudVectorStore(embeddings, zepConfig);
+			return new ZepCloudVectorStore(embeddings, {
+				...zepConfig,
+				apiKey: getRequiredApiKey(context.getNode(), credentials.apiKey),
+			});
 		} else {
 			return new ZepVectorStore(embeddings, { ...zepConfig, apiUrl: credentials.apiUrl });
 		}
@@ -128,7 +133,10 @@ export class VectorStoreZep extends createVectorStoreNode<ZepVectorStore | ZepCl
 
 		try {
 			if (credentials.cloud) {
-				await ZepCloudVectorStore.fromDocuments(documents, embeddings, zepConfig);
+				await ZepCloudVectorStore.fromDocuments(documents, embeddings, {
+					...zepConfig,
+					apiKey: getRequiredApiKey(context.getNode(), credentials.apiKey),
+				});
 			} else {
 				await ZepVectorStore.fromDocuments(documents, embeddings, {
 					...zepConfig,

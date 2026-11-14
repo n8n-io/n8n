@@ -6,21 +6,21 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function circleciApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('circleCiApi');
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Circle-Token': credentials.apiKey,
 			Accept: 'application/json',
@@ -28,10 +28,9 @@ export async function circleciApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://circleci.com/api/v2${resource}`,
+		uri: requestUrl`https://circleci.com/api/v2${resource}`,
 		json: true,
 	};
-	options = Object.assign({}, options, option);
 	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
@@ -50,7 +49,7 @@ export async function circleciApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	query: IDataObject = {},

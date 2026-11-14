@@ -1,10 +1,18 @@
-import type { UpdateWorkflowPublicDto, UpdateWorkflowQueryDto } from '@n8n/api-types';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type {
+	CreateWorkflowPublicDto,
+	PublishWorkflowPublicDto,
+	UpdateWorkflowPublicDto,
+	UpdateWorkflowQueryDto,
+} from '@n8n/api-types';
+import type { OperationContext } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@n8n/errors';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
+import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { WorkflowsPublicController } from '../workflows.public.controller';
@@ -12,13 +20,14 @@ import { WorkflowsPublicController } from '../workflows.public.controller';
 describe('WorkflowsPublicController', () => {
 	let controller: WorkflowsPublicController;
 	const workflowService = mock<WorkflowService>();
+	const workflowCreationService = mock<WorkflowCreationService>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		controller = new WorkflowsPublicController(
 			mock(), // workflowHistoryService
 			mock(), // workflowFinderService
-			mock(), // workflowCreationService
+			workflowCreationService,
 			workflowService,
 			mock(), // enterpriseWorkflowService
 			mock(), // eventService
@@ -29,9 +38,16 @@ describe('WorkflowsPublicController', () => {
 		);
 	});
 
+	// mock() wraps nested objects in a proxy, so set ctx after creation to keep its identity.
+	const requestWith = (ctx?: OperationContext) => {
+		const req = mock<PublicApiRequest>({ publicApiClient: 'other' });
+		req.ctx = ctx;
+		return req;
+	};
+
 	const updateWorkflow = async () =>
 		await controller.updateWorkflow(
-			mock<AuthenticatedRequest>(),
+			mock<PublicApiRequest>(),
 			mock<Response>(),
 			'workflow-id',
 			mock<UpdateWorkflowPublicDto>(),
@@ -68,6 +84,129 @@ describe('WorkflowsPublicController', () => {
 			expect(error).toBeInstanceOf(PolicyViolationError);
 			expect((error as PolicyViolationError).httpStatusCode).toBe(403);
 			expect((error as PolicyViolationError).meta.violations).toEqual([violation]);
+		});
+	});
+
+	describe('createWorkflow', () => {
+		const stop = new Error('Stopping for test');
+
+		const createWorkflow = async (ctx?: OperationContext) =>
+			await controller
+				.createWorkflow(requestWith(ctx), mock<Response>(), {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					settings: {},
+				} as unknown as CreateWorkflowPublicDto)
+				.catch((e: unknown) => {
+					if (e !== stop) throw e;
+				});
+
+		const ctxPassed = () => workflowCreationService.createWorkflow.mock.calls[0][3];
+
+		beforeEach(() => {
+			workflowCreationService.createWorkflow.mockRejectedValue(stop);
+		});
+
+		it('passes the request context to the workflow creation', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await createWorkflow(ctx);
+
+			expect(ctxPassed()).toBe(ctx);
+		});
+
+		it('passes no context when the request has none', async () => {
+			await createWorkflow(undefined);
+
+			expect(ctxPassed()).toBeUndefined();
+		});
+	});
+
+	describe('request context on workflow changes', () => {
+		const stop = new Error('Stopping for test');
+
+		type Route = {
+			route: string;
+			call: (req: PublicApiRequest) => Promise<unknown>;
+			arrange: () => void;
+			ctxPassed: () => OperationContext | undefined;
+		};
+
+		const routes: Route[] = [
+			{
+				route: 'updateWorkflow',
+				call: async (req) =>
+					await controller.updateWorkflow(
+						req,
+						mock<Response>(),
+						'workflow-id',
+						{} as UpdateWorkflowPublicDto,
+						{} as UpdateWorkflowQueryDto,
+					),
+				arrange: () => workflowService.update.mockRejectedValue(stop),
+				ctxPassed: () => workflowService.update.mock.calls[0][4],
+			},
+			{
+				route: 'publishWorkflow',
+				call: async (req) =>
+					await controller.publishWorkflow(req, mock<Response>(), 'workflow-id', {
+						versionId: 'version-id',
+					} as PublishWorkflowPublicDto),
+				arrange: () => workflowService.activateWorkflow.mockRejectedValue(stop),
+				ctxPassed: () => workflowService.activateWorkflow.mock.calls[0][3],
+			},
+			{
+				route: 'unpublishWorkflow',
+				call: async (req) =>
+					await controller.unpublishWorkflow(req, mock<Response>(), 'workflow-id'),
+				arrange: () => workflowService.deactivateWorkflow.mockRejectedValue(stop),
+				ctxPassed: () => workflowService.deactivateWorkflow.mock.calls[0][3],
+			},
+			{
+				route: 'archiveWorkflow',
+				call: async (req) => await controller.archiveWorkflow(req, mock<Response>(), 'workflow-id'),
+				arrange: () => workflowService.archiveForPublicApi.mockRejectedValue(stop),
+				ctxPassed: () => workflowService.archiveForPublicApi.mock.calls[0][3],
+			},
+			{
+				route: 'unarchiveWorkflow',
+				call: async (req) =>
+					await controller.unarchiveWorkflow(req, mock<Response>(), 'workflow-id'),
+				arrange: () => workflowService.unarchiveForPublicApi.mockRejectedValue(stop),
+				ctxPassed: () => workflowService.unarchiveForPublicApi.mock.calls[0][3],
+			},
+			{
+				route: 'deleteWorkflow',
+				call: async (req) => await controller.deleteWorkflow(req, mock<Response>(), 'workflow-id'),
+				arrange: () => workflowService.deleteForPublicApi.mockRejectedValue(stop),
+				ctxPassed: () => workflowService.deleteForPublicApi.mock.calls[0][3],
+			},
+		];
+
+		// updateWorkflow wraps the sentinel in a BadRequestError, so accept any rejection here.
+		const callRoute = async ({ call }: Route, ctx?: OperationContext) =>
+			await call(requestWith(ctx)).catch(() => undefined);
+
+		it.each(routes)('$route passes the request context to the service', async (route) => {
+			route.arrange();
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await callRoute(route, ctx);
+
+			expect(route.ctxPassed()).toBe(ctx);
+		});
+
+		it.each(routes)('$route passes no context when the request has none', async (route) => {
+			route.arrange();
+
+			await callRoute(route, undefined);
+
+			expect(route.ctxPassed()).toBeUndefined();
 		});
 	});
 });

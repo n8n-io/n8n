@@ -186,8 +186,6 @@ const evalTestCaseObjectSchema = z
 		triggerType: z.enum(['manual', 'webhook', 'schedule', 'form']).optional(),
 		executionScenarios: z.array(ExecutionScenarioSchema).optional(),
 		messageBudget: z.number().int().positive().optional(),
-		/** Optional case override. Unset cases use the suite mode or control. */
-		buildMode: z.enum(['progressive', 'default']).optional(),
 		promptVersion: z.string().trim().min(1).max(128).optional(),
 		allowUserExecution: z.boolean().optional(),
 		/** Harness lowers the observer threshold for this thread, and reports the case

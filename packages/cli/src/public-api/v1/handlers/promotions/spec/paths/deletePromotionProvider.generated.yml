@@ -6,6 +6,8 @@ description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
   A provider used by an environment cannot be deleted.
+
+  Requires the `promotions:delete` API key scope.
 x-required-scope: promotions:delete
 parameters:
   - schema:

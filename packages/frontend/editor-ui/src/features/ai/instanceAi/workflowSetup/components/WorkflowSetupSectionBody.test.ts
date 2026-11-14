@@ -35,6 +35,7 @@ const nodeCredentialsMock = vi.hoisted(() => ({
 	lastSetupHint: undefined as unknown,
 	lastSkipAutoSelect: undefined as boolean | undefined,
 	lastPreferNewCredential: undefined as boolean | undefined,
+	lastCredentials: undefined as unknown,
 	lastCredentialHelp: undefined as
 		| ((credential: {
 				credentialType: string;
@@ -81,6 +82,7 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', async () => {
 				'instanceAiCredentialHelp',
 				'skipAutoSelect',
 				'preferNewCredential',
+				'credentials',
 			],
 			emits: ['credentialSelected'],
 			setup(props, { emit, slots }) {
@@ -88,6 +90,7 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', async () => {
 				nodeCredentialsMock.lastNodeProp = props.node;
 				nodeCredentialsMock.lastFieldLabel = props.credentialsFieldLabel as string | undefined;
 				nodeCredentialsMock.lastSetupHint = props.credentialSetupHint;
+				nodeCredentialsMock.lastCredentials = props.credentials;
 				nodeCredentialsMock.lastSkipAutoSelect = props.skipAutoSelect as boolean | undefined;
 				nodeCredentialsMock.lastPreferNewCredential = props.preferNewCredential as
 					| boolean
@@ -332,6 +335,21 @@ describe('WorkflowSetupSectionBody', () => {
 		// The recipe rides into NodeCredentials so a CREATE opens the credential
 		// modal pre-filled on the guided simple view.
 		expect(nodeCredentialsMock.lastSetupHint).toEqual(section.setupHint);
+	});
+
+	it('offers only the credentials the server listed, whatever the store holds', async () => {
+		const section = makeWorkflowSetupSection({
+			credentialType: 'slackApi',
+			existingCredentials: [{ id: 'own', name: 'My Slack' }],
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		renderComponent({ props: { section } });
+		await nextTick();
+
+		expect(nodeCredentialsMock.lastCredentials).toEqual([
+			expect.objectContaining({ id: 'own', name: 'My Slack', type: 'slackApi' }),
+		]);
 	});
 
 	it('stores the AI Gateway-managed tag when selected in NodeCredentials', async () => {

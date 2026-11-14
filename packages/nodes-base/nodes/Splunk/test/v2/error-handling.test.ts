@@ -71,7 +71,7 @@ describe('Splunk v2 error handling', () => {
 		const context = setup(true);
 		context.helpers.httpRequestWithAuthentication.mockImplementation(
 			async (_credentials, options) => {
-				if (options.url.endsWith('/first')) throw error();
+				if (String(options.url).endsWith('/first')) throw error();
 				return { sid: 'second' };
 			},
 		);
@@ -84,7 +84,9 @@ describe('Splunk v2 error handling', () => {
 		]);
 		expect(context.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'splunkApi',
-			expect.objectContaining({ url: expect.stringMatching(/\/second$/) }),
+			expect.objectContaining({
+				url: expect.objectContaining({ value: expect.stringMatching(/\/second$/) }),
+			}),
 		);
 	});
 
@@ -97,7 +99,9 @@ describe('Splunk v2 error handling', () => {
 		expect(apiError.context.itemIndex).toBe(0);
 		expect(context.helpers.httpRequestWithAuthentication).not.toHaveBeenCalledWith(
 			'splunkApi',
-			expect.objectContaining({ url: expect.stringMatching(/\/second$/) }),
+			expect.objectContaining({
+				url: expect.objectContaining({ value: expect.stringMatching(/\/second$/) }),
+			}),
 		);
 	});
 
@@ -117,7 +121,7 @@ describe('Splunk v2 error handling', () => {
 			}) as unknown as JsonObject,
 		);
 		context.helpers.requestWithAuthentication.mockImplementation(async (_credentials, options) => {
-			if (options.uri?.endsWith('/first')) throw apiError;
+			if (String(options.uri).endsWith('/first')) throw apiError;
 			return '<response />';
 		});
 

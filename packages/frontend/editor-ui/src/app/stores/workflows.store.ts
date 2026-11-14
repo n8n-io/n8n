@@ -14,7 +14,7 @@ import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { defineStore } from 'pinia';
 import type { IDataObject, INodeCredentials, IWorkflowSettings } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { applyVersionedSettings, deepCopy } from 'n8n-workflow';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/app/api/workflows';
@@ -321,12 +321,25 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (id === workflowId.value) {
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			// An engine change saves a new version. A new version has no name or description yet.
+			const keptVersionData =
+				workflowDocumentStore.versionData?.versionId === updatedWorkflow.versionId
+					? workflowDocumentStore.versionData
+					: null;
 			workflowDocumentStore.setVersionData({
 				versionId: updatedWorkflow.versionId,
-				name: workflowDocumentStore.versionData?.name ?? null,
-				description: workflowDocumentStore.versionData?.description ?? null,
+				name: keptVersionData?.name ?? null,
+				description: keptVersionData?.description ?? null,
 			});
 			workflowDocumentStore.setChecksum(updatedWorkflow.checksum);
+			// The server can change version-scoped settings (a restore sets the engine of the
+			// restored version), so a later settings save must not send the old value back.
+			workflowDocumentStore.setSettings(
+				applyVersionedSettings(
+					workflowDocumentStore.getSettingsSnapshot(),
+					updatedWorkflow.settings ?? {},
+				),
+			);
 		}
 
 		if (

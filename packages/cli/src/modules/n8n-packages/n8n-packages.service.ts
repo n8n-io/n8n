@@ -1,11 +1,11 @@
-import { ModuleRegistry } from '@n8n/backend-common';
+import { getN8nVersion, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { N8N_VERSION } from '@/constants';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { loginIdOf } from '@/events/login-id';
 
 import { buildImportResult, toPackageSummary } from './engine/import-result';
 import { assertPackageImportApiKeyScopes, packageImportScopes } from './engine/import-gates';
@@ -93,7 +93,7 @@ interface WrittenExport {
 	folderIds: string[];
 	projectIds: string[];
 	credentialExportPolicy: CredentialExportPolicy;
-	includeArchivedWorkflows: boolean;
+	includeArchived: boolean;
 }
 
 type DirectoryProjectPackage =
@@ -125,6 +125,7 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	| 'projectId'
 	| 'folderId'
 	| 'apiKeyScopes'
+	| 'publicApi'
 	| 'bindings'
 	| 'selection'
 	| 'overwriteDeletionPolicy'
@@ -176,7 +177,8 @@ export class N8nPackagesService {
 			...(result.projectIds.length ? { projectIds: result.projectIds } : {}),
 			counts: result.counts,
 			credentialExportPolicy: result.credentialExportPolicy,
-			includeArchivedWorkflows: result.includeArchivedWorkflows,
+			includeArchived: result.includeArchived,
+			loginId: loginIdOf(request.ctx),
 		});
 
 		return { stream, counts: result.counts };
@@ -216,14 +218,14 @@ export class N8nPackagesService {
 		const versionPolicy = request.versionPolicy ?? ExportVersionPolicy.Latest;
 		const credentialExportPolicy =
 			request.credentialExportPolicy ?? CredentialExportPolicy.ExpressionValuesOnly;
-		const includeArchivedWorkflows = request.includeArchivedWorkflows ?? false;
+		const includeArchived = request.includeArchived ?? false;
 
 		const { folderExportResult, workflowExportResult, projectExportResult, agentExportResult } =
 			await this.exportSelectedEntities(writer, request, {
 				includeTags,
 				versionPolicy,
 				dependencyPolicy,
-				includeArchivedWorkflows,
+				includeArchived,
 			});
 
 		const allFoldersBeforeAutoInclude = [
@@ -394,7 +396,7 @@ export class N8nPackagesService {
 		const agentEntries = agentExportResult?.agentEntries ?? [];
 		const written = {
 			packageFormatVersion: FORMAT_VERSION,
-			sourceN8nVersion: N8N_VERSION,
+			sourceN8nVersion: getN8nVersion(),
 			sourceId: this.instanceSettings.instanceId,
 			...(agentEntries.length > 0 ? { agents: agentEntries } : {}),
 			...(agentExportResult?.skillEntries.length ? { skills: agentExportResult.skillEntries } : {}),
@@ -435,7 +437,7 @@ export class N8nPackagesService {
 			folderIds: allFolders.map(({ id }) => id),
 			projectIds: allProjects.map(({ id }) => id),
 			credentialExportPolicy,
-			includeArchivedWorkflows,
+			includeArchived,
 		};
 	}
 
@@ -446,13 +448,13 @@ export class N8nPackagesService {
 			includeTags: boolean;
 			versionPolicy: ExportVersionPolicy;
 			dependencyPolicy: ExportDependencyPolicy;
-			includeArchivedWorkflows: boolean;
+			includeArchived: boolean;
 		},
 	) {
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
 		const projectIds = request.projectIds ?? [];
-		const { includeTags, versionPolicy, dependencyPolicy, includeArchivedWorkflows } = options;
+		const { includeTags, versionPolicy, dependencyPolicy, includeArchived } = options;
 
 		const folderExportResult =
 			folderIds.length > 0
@@ -462,7 +464,7 @@ export class N8nPackagesService {
 						writer,
 						includeTags,
 						versionPolicy,
-						includeArchivedWorkflows,
+						includeArchived,
 					})
 				: undefined;
 
@@ -492,7 +494,7 @@ export class N8nPackagesService {
 						writer,
 						includeTags,
 						versionPolicy,
-						includeArchivedWorkflows,
+						includeArchived,
 					})
 				: undefined;
 
@@ -507,6 +509,7 @@ export class N8nPackagesService {
 						projectWorkflowIds: request.projectWorkflowIds,
 						versionPolicy,
 						dependencyPolicy,
+						includeArchived,
 						projectTargetsById: projectExportResult?.projectTargetsById,
 					});
 
@@ -705,6 +708,8 @@ export class N8nPackagesService {
 
 		return {
 			user: request.user,
+			publicApi: request.publicApi,
+			...(request.ctx !== undefined ? { ctx: request.ctx } : {}),
 			...(request.apiKeyScopes !== undefined ? { apiKeyScopes: request.apiKeyScopes } : {}),
 			...(request.bindings !== undefined ? { bindings: request.bindings } : {}),
 			...CHERRY_PICK_IMPORT_POLICY,

@@ -5,6 +5,7 @@ import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { WorkflowsConfig } from '@n8n/config';
 import { WorkflowDependencyRepository, WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import type { WorkflowHistory } from '@n8n/db';
 import type { Span } from 'n8n-core';
 import { ErrorReporter, Tracing } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
@@ -751,6 +752,31 @@ describe('WorkflowIndexService', () => {
 				'workflow-deactivated',
 				expect.any(Function),
 			);
+		});
+
+		it('indexes the nodes of the activated version, not the draft nodes, on workflow-activated', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+			service.init();
+			const onActivated = mockEventService.on.mock.calls.find(
+				([event]) => event === 'workflow-activated',
+			)![1] as (event: { workflow: WorkflowEntity }) => Promise<void>;
+
+			const workflow = createWorkflowEntity([
+				createNode({ id: 'node-1', type: 'n8n-nodes-base.manualTrigger' }),
+			]);
+			workflow.activeVersion = mock<WorkflowHistory>({
+				nodes: [createNode({ id: 'node-2', type: 'n8n-nodes-base.httpRequest' })],
+			});
+
+			await onActivated({ workflow });
+
+			const [, update] =
+				mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
+			expect(update.publishedVersionId).toBe('some-version-id');
+			const nodeTypes = update.dependencies
+				.filter((d) => d.dependencyType === 'nodeType')
+				.map((d) => d.dependencyKey);
+			expect(nodeTypes).toEqual(['n8n-nodes-base.httpRequest']);
 		});
 	});
 

@@ -159,7 +159,10 @@ const connected = computed(
 		!needsAuthorization.value,
 );
 const usableCredentials = computed(() =>
-	credentialsStore.hasUsableCredentialsForScope({ workflowId: props.workflowId })
+	credentialsStore.hasUsableCredentialsForScope({
+		workflowId: props.workflowId,
+		forAssistant: true,
+	})
 		? credentialsStore.getUsableCredentialByType(props.item.credentialType)
 		: [],
 );
@@ -510,7 +513,7 @@ async function saveKey() {
 	credentialsStore.upsertCredential(credential);
 	if (!active || props.workflowId !== workflowId) return;
 	// Creation succeeded. A picker refresh must not force another credential creation.
-	await credentialsStore.fetchUsableCredentials({ workflowId }).catch(() => {});
+	await credentialsStore.fetchUsableCredentials({ workflowId, forAssistant: true }).catch(() => {});
 	emitBinding(credential.id, details.data);
 }
 
@@ -689,7 +692,9 @@ onScopeDispose(() => {
 				:workflow-id="workflowId"
 				:credential-setup-hint="item.setupHint"
 				:credentials-field-label="i18n.baseText('instanceAi.setupPanel.credential')"
+				:credentials="usableCredentials"
 				standalone
+				for-assistant
 				hide-issues
 				skip-auto-select
 				@credential-selected="onCredentialSelected"

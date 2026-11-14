@@ -1,6 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { User, WorkflowEntity } from '@n8n/db';
+import { type OperationContext, User, WorkflowEntity } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { Telemetry } from '@/telemetry';
@@ -58,13 +60,14 @@ describe('archive-workflow MCP tool', () => {
 		});
 	});
 
-	const createTool = () =>
+	const createTool = (ctx?: OperationContext) =>
 		createArchiveWorkflowTool(
 			user,
 			workflowFinderService,
 			workflowService,
 			telemetry,
 			collaborationService,
+			ctx,
 		);
 
 	describe('smoke tests', () => {
@@ -102,6 +105,23 @@ describe('archive-workflow MCP tool', () => {
 			expect(result.isError).toBeUndefined();
 
 			expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
+		});
+
+		test('passes the operation context to the workflow service', async () => {
+			(workflowService.archive as Mock).mockResolvedValue({ id: 'wf-1', name: 'My Workflow' });
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await createTool(ctx).handler({ workflowId: 'wf-1' }, {} as never);
+
+			expect(workflowService.archive).toHaveBeenCalledWith(
+				user,
+				'wf-1',
+				{ skipArchived: true },
+				ctx,
+			);
+			expect((workflowService.archive as Mock).mock.calls[0][3]).toBe(ctx);
 		});
 
 		test('returns error when workflow has active write lock', async () => {

@@ -1,5 +1,7 @@
+import { UserError } from '@n8n/errors';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+import type { WeaviateClient } from 'weaviate-client';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -10,7 +12,8 @@ vi.mock('@zilliz/milvus2-sdk-node', () => ({ MilvusClient: class {} }));
 vi.mock('../../VectorStoreQdrant/Qdrant.utils', () => ({ createQdrantClient: vi.fn() }));
 vi.mock('../../VectorStoreWeaviate/Weaviate.utils', () => ({ createWeaviateClient: vi.fn() }));
 
-import { supabaseTableNameSearch } from './listSearch';
+import { createWeaviateClient } from '../../VectorStoreWeaviate/Weaviate.utils';
+import { supabaseTableNameSearch, weaviateCollectionsSearch } from './listSearch';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -130,11 +133,17 @@ describe('supabaseTableNameSearch', () => {
 		await expect(supabaseTableNameSearch.call(ctx)).rejects.toThrow(UserError);
 	});
 
-	it('maps API paths to result entries, omitting the introspection path', async () => {
+	it('requests the REST root of the credential host and maps API paths to result entries', async () => {
 		const ctx = createContext();
 
 		const result = await supabaseTableNameSearch.call(ctx);
 
+		const [credentialType, options] = (
+			ctx.helpers.requestWithAuthentication as ReturnType<typeof vi.fn>
+		).mock.calls[0];
+		expect(credentialType).toBe('supabaseApi');
+		expect(options.method).toBe('GET');
+		expect(String(options.uri)).toBe(`${HOST}/rest/v1/`);
 		expect(result).toEqual({
 			results: [
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
@@ -156,5 +165,28 @@ describe('supabaseTableNameSearch', () => {
 		await expect(supabaseTableNameSearch.call(ctx)).rejects.toThrow(UserError);
 
 		expect(ctx.helpers.requestWithAuthentication).not.toHaveBeenCalled();
+	});
+});
+
+describe('weaviateCollectionsSearch', () => {
+	it('should list each collection by name', async () => {
+		const credentials = { weaviate_cloud_endpoint: 'https://cluster.weaviate.cloud' };
+		const context = mock<ILoadOptionsFunctions>();
+		context.getCredentials.mockResolvedValue(credentials);
+		const listAll = vi.fn().mockResolvedValue([{ name: 'Books' }, { name: 'Films' }]);
+		vi.mocked(createWeaviateClient).mockResolvedValue(
+			mock<WeaviateClient>({ collections: mock<WeaviateClient['collections']>({ listAll }) }),
+		);
+
+		const result = await weaviateCollectionsSearch.call(context);
+
+		expect(context.getCredentials).toHaveBeenCalledWith('weaviateApi');
+		expect(createWeaviateClient).toHaveBeenCalledWith(credentials);
+		expect(result).toEqual({
+			results: [
+				{ name: 'Books', value: 'Books' },
+				{ name: 'Films', value: 'Films' },
+			],
+		});
 	});
 });

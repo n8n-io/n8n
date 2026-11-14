@@ -3,7 +3,7 @@ import {
 	filterRuntimeSkillSource,
 	type RuntimeSkillSource,
 } from '@n8n/agents';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 export interface SkillVariant {
 	id: string;

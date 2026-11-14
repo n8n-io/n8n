@@ -2,7 +2,10 @@ operationId: updateLogStreamingDestination
 tags:
   - LogStreaming
 summary: Update a log streaming destination
-description: Replace an existing log streaming destination. The update takes effect exactly as it would from the UI, using the same validation. Requires the `eventBusDestination:update` scope and the Log Streaming feature to be licensed. When destinations are managed via environment variables, the write is rejected with 409 and nothing is changed; reads still return the current values.
+description: |-
+  Replace an existing log streaming destination. The update takes effect exactly as it would from the UI, using the same validation. Requires the Log Streaming feature to be licensed. When destinations are managed via environment variables, the write is rejected with 409 and nothing is changed; reads still return the current values.
+
+  Requires the `eventBusDestination:update` API key scope.
 x-required-scope: eventBusDestination:update
 parameters:
   - schema:

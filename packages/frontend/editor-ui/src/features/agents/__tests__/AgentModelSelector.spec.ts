@@ -126,15 +126,12 @@ vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal
 		props: ['open', 'typeName', 'kind', 'audience'],
 		template: '<div v-if="open" data-testid="contact-admin-modal">{{ typeName }}</div>',
 	},
-}));
-
-vi.mock('../components/model-selector/ModelSelectorRestrictedMarker.vue', () => ({
-	default: {
-		name: 'ModelSelectorRestrictedMarker',
-		props: ['name', 'restriction'],
+	RestrictedMenuItemMarker: {
+		name: 'RestrictedMenuItemMarker',
+		props: ['kind', 'nodeTypeName', 'restriction'],
 		emits: ['contactAdmin'],
 		template:
-			'<button data-testid="restricted-marker" @click="$emit(\'contactAdmin\', \'project\')">{{ name }}</button>',
+			'<button data-testid="restricted-marker" @click="$emit(\'contactAdmin\', \'project\')">{{ nodeTypeName }}</button>',
 	},
 }));
 
@@ -432,10 +429,11 @@ describe('AgentModelSelector', () => {
 		restrictedCredentialTypes.value = { openAiApi: 'project' };
 
 		const wrapper = await mountSelector({ anthropic: null });
-		const marker = wrapper.findComponent({ name: 'ModelSelectorRestrictedMarker' });
+		const marker = wrapper.findComponent({ name: 'RestrictedMenuItemMarker' });
 
 		expect(marker.props()).toEqual({
-			name: 'OpenAI credentials',
+			kind: 'credential',
+			nodeTypeName: 'OpenAI credentials',
 			restriction: { name: 'openAiApi', available: false, scope: 'project' },
 		});
 		expect(wrapper.findComponent({ name: 'ContactAdminModal' }).props('open')).toBe(false);

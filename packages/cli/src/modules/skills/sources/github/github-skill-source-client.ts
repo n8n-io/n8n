@@ -3,6 +3,11 @@ import {
 	OutboundHttp,
 	type HttpRequestClient,
 } from '@n8n/backend-network';
+import {
+	GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES,
+	isGitHubSkillSourceCredentialType,
+	type GitHubSkillSourceCredentialType,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { isRecord } from '@n8n/utils/is-record';
@@ -69,8 +74,21 @@ const CREDENTIAL_INVALID = 'GitHub refused the credential. Its token is wrong or
 const API = 'https://api.github.com';
 /** The repositories that the repository select lists at most: 10 pages of 100. */
 const MAX_REPOSITORY_PAGES = 10;
-const TOKEN_CREDENTIAL = 'githubApi';
-const APP_CREDENTIAL = 'githubAppApi';
+const APP_CREDENTIAL: GitHubSkillSourceCredentialType = 'githubAppApi';
+
+/**
+ * Where each credential type holds its token. A GitHub App gets a fresh one on each resolve.
+ * OAuth2 holds it in `oauthTokenData` once the user connected the account.
+ */
+const TOKEN_OF: Record<
+	GitHubSkillSourceCredentialType,
+	(data: Record<string, unknown>) => unknown
+> = {
+	githubApi: (data) => data.accessToken,
+	githubAppApi: (data) => data.accessToken,
+	githubOAuth2Api: (data) =>
+		isRecord(data.oauthTokenData) ? data.oauthTokenData.access_token : undefined,
+};
 
 /**
  * Reads skills from GitHub repositories. Branches come from `ls-refs` over git smart HTTP. A
@@ -84,10 +102,11 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	readonly type = 'github';
 
 	/**
-	 * A personal access token, classic or fine-grained, and a GitHub App installation. Not
-	 * OAuth2: its fixed scope gives write access to every repository of the user.
+	 * A personal access token, classic or fine-grained, a GitHub App installation, and an
+	 * OAuth2 account. OAuth2 has a fixed scope with write access to every repository of the
+	 * user, so the connect dialog warns about it.
 	 */
-	readonly credentialTypes = [TOKEN_CREDENTIAL, APP_CREDENTIAL];
+	readonly credentialTypes: readonly string[] = GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES;
 
 	readonly capabilities: SkillSourceCapabilities = {
 		discovery: 'listing',
@@ -128,7 +147,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		return isGitHubLink(input);
 	}
 
-	/** Both credential types hold the token in `accessToken`. A GitHub App gets a fresh one. */
+	/** The token of the credential, from where its type holds it. */
 	authFrom(credential: {
 		id?: string;
 		type: string;
@@ -136,10 +155,11 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	}): SkillSourceAuth {
 		this.checkCredential(credential);
 		const { id, type, data } = credential;
-		if (typeof data.accessToken !== 'string' || data.accessToken === '') {
+		const token = isGitHubSkillSourceCredentialType(type) ? TOKEN_OF[type](data) : undefined;
+		if (typeof token !== 'string' || token === '') {
 			throw new SkillSourceReadError('credential_invalid', 'The credential has no token.');
 		}
-		return { token: data.accessToken, credentialType: type, ...(id ? { credentialId: id } : {}) };
+		return { token, credentialType: type, ...(id ? { credentialId: id } : {}) };
 	}
 
 	/** A credential of another type, or for another GitHub server, is refused. */
@@ -257,8 +277,8 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	}
 
 	/**
-	 * A GitHub App lists the repositories it is installed on. A token lists the repositories
-	 * that its user owns, collaborates on, or reaches through an organization.
+	 * A GitHub App lists the repositories it is installed on. A token or an OAuth2 account lists
+	 * the repositories that its user owns, collaborates on, or reaches through an organization.
 	 */
 	async listRepositories(
 		auth: SkillSourceAuth,

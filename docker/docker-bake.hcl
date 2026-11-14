@@ -39,10 +39,10 @@ variable "DEBIAN_RUNTIME_IMAGE" {
 
 # Published by build-node-pc-image.yml on master.
 variable "PC_BUILDER_IMAGE" {
-  default = "n8nio/node-pc:26.13.0-b23a3454e958998b052277c130ee6f9f027427f0-dev@sha256:13b88649776f735e4c2dd2818eb754f6fcd55a3444a114559d58995e55785b1b"
+  default = "n8nio/node-pc:26.13.0-c191db3de7f8187af3f35a59c2a1ca6833c66afc-dev@sha256:c1ff9dd826920453d5ab67cb3daaa4b3efb5270cf45d65b7f393bee7c4ff1857"
 }
 variable "PC_RUNTIME_IMAGE" {
-  default = "n8nio/node-pc:26.13.0-b23a3454e958998b052277c130ee6f9f027427f0@sha256:16ce0475bc1336d7aaa877bbfc3c346d6355805594f3065c217655ee0fb0c4fc"
+  default = "n8nio/node-pc:26.13.0-c191db3de7f8187af3f35a59c2a1ca6833c66afc@sha256:757a7ca4022a4a2aebdc6e1f07e9d08016e446994aed1c8473922df54a14eb01"
 }
 
 # Other base images. The runners take their Python version from the image tag.

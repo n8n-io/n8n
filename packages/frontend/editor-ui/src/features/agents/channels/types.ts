@@ -28,6 +28,8 @@ export interface AgentChannelViewExpose {
 	saveLabel?: string;
 	/** Runs after a successful save, before the modal closes. Must not throw. */
 	afterSave?: () => Promise<void>;
+	/** False when the channel can be saved without a credential. Defaults to true. */
+	credentialRequired?: boolean;
 	/** Keeps the modal open after connecting. The view emits `done` to close it. */
 	keepOpenAfterConnect?: boolean;
 	/**
@@ -129,6 +131,8 @@ export interface AgentChannelPlatform {
 		runtime: AgentChannelRuntime,
 	) => AgentChannelConnectAction;
 	getConnectedDescription?: (context: AgentChannelPresentationContext) => string;
+	/** What the channel does and what setup needs, shown under its name in the channel list. */
+	getListDescription?: (context: AgentChannelPresentationContext) => string;
 	headerContent?: {
 		setupModal?: Component;
 		/** The Assistant's setup card. Separate from the modal, so each platform opts in. */

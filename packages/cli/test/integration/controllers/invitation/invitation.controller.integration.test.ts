@@ -26,7 +26,12 @@ import {
 	assertStoredUserProps,
 	assertUserInviteResult,
 } from './assertions';
-import { createMember, createOwner, createUserShell } from '../../shared/db/users';
+import {
+	createMember,
+	createOwner,
+	createServiceAccountWithProject,
+	createUserShell,
+} from '../../shared/db/users';
 import * as utils from '../../shared/utils';
 import type { UserInvitationResult } from '../../shared/utils/users';
 
@@ -195,6 +200,23 @@ describe('InvitationController', () => {
 			);
 
 			expect(comparisonResult).toBe(false);
+		});
+
+		test('should fail for a service account', async () => {
+			const serviceAccount = await createServiceAccountWithProject();
+			const token = invitationToken(instanceOwner.id, serviceAccount.id);
+
+			const response = await testServer.authlessAgent
+				.post('/invitations/accept')
+				.send({
+					token,
+					firstName: randomName(),
+					lastName: randomName(),
+					password: randomValidPassword(),
+				})
+				.expect(400);
+
+			expect(response.body.message).toBe('Invalid payload or URL');
 		});
 	});
 

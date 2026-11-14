@@ -31,7 +31,7 @@ const withDataTable =
 test.describe(
 	'Data Table node',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test('inserts and reads rows of a table in the workflow project @engine:v2', async ({

@@ -40,6 +40,13 @@ describe('RolesView', () => {
 		rbacStore.hasScope = vi.fn().mockReturnValue(true);
 	});
 
+	it('shows the Roles heading without a New badge', () => {
+		const { getByRole, queryByText } = renderComponent();
+
+		expect(getByRole('heading', { level: 1, name: 'Roles' })).toBeInTheDocument();
+		expect(queryByText('New')).not.toBeInTheDocument();
+	});
+
 	it('defaults to the instance tab', () => {
 		const { getByTestId, queryByTestId } = renderComponent();
 

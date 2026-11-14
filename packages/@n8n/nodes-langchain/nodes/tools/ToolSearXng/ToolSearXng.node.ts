@@ -1,5 +1,5 @@
 import { DynamicTool } from '@langchain/core/tools';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestUrl } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -80,7 +80,7 @@ async function getTool(ctx: ISupplyDataFunctions | IExecuteFunctions, itemIndex:
 			// Routed through the node request helper so outbound policy applies.
 			const response = (await ctx.helpers.httpRequest({
 				method: 'POST',
-				url: `${apiBase}/search`,
+				url: requestUrl`${apiBase}/search`,
 				qs: { q: query, ...qs },
 				headers: { Accept: 'application/json' },
 				json: true,

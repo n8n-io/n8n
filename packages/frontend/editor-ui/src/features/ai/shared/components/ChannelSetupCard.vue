@@ -89,7 +89,7 @@ const submitted = ref(false);
 const connectionInFlight = ref(false);
 const agent = ref<AgentResource | null>(null);
 // This card is not under the builder, so it provides the agent's look itself.
-provideAgentPersonalisation(() => agent.value?.schema?.personalisation);
+provideAgentPersonalisation(() => agent.value?.config?.personalisation);
 const catalogLoading = ref(false);
 const catalogLoadFailed = ref(false);
 const isN8nChat = computed(() => props.integrationType === N8N_CHAT_INTEGRATION_TYPE);
@@ -259,7 +259,8 @@ function restartSetup(restart: AgentChannelRestart) {
 async function writeChannelConfig(): Promise<boolean> {
 	if (isBlocked() || channelActionInFlight.value) return false;
 	const credentialId = currentChannelCredentialId.value;
-	if (!credentialId || channelViewRef.value?.validationError) return false;
+	const credentialRequired = channelViewRef.value?.credentialRequired !== false;
+	if ((credentialRequired && !credentialId) || channelViewRef.value?.validationError) return false;
 
 	connectionInFlight.value = true;
 	try {

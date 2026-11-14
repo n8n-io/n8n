@@ -430,6 +430,9 @@ $expand-easing: motion.$blur-motion-easing;
 	-webkit-box-orient: vertical;
 	-webkit-line-clamp: var(--settings-row--description-lines, 2);
 	overflow: hidden;
+	// An unbreakable value (an ID, a URL) would otherwise run past the box and get clipped
+	// mid-character: the clamp's ellipsis only appears when the text wraps onto a hidden line.
+	overflow-wrap: anywhere;
 }
 
 .action {

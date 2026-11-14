@@ -7,6 +7,11 @@ export const TYPE_AVAILABILITY_POLICIES_MODULE_ID = 'type-availability-policies'
 
 export const TYPE_AVAILABILITY_POLICIES_STORE_ID = 'typeAvailabilityPolicies';
 
+export const RESTRICTED_NODE_POPOVER_WIDTH = 254;
+
+/** The default gap between the popover card and the row it explains. */
+export const RESTRICTED_NODE_POPOVER_SIDE_OFFSET = 24;
+
 export const SCOPE_LABEL_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
 	instance: 'typeAvailabilityPolicies.restrictedNode.scope.instance',
 	project: 'typeAvailabilityPolicies.restrictedNode.scope.project',

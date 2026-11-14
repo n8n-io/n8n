@@ -49,9 +49,6 @@ const props = withDefaults(
 		autosize?: boolean | { minRows: number; maxRows: number };
 		/** Keeps the composer at this CSS height, including its attachment row. */
 		composerHeight?: string;
-		buttonLabel?: string;
-		// Send button turns active only while focused with text (default: follows canSubmit).
-		activeRequiresFocus?: boolean;
 		maxLength?: number;
 	}>(),
 	{
@@ -62,8 +59,6 @@ const props = withDefaults(
 		acceptedMimeTypes: undefined,
 		attachedEncodedBytes: 0,
 		autosize: () => ({ minRows: 2, maxRows: 6 }),
-		buttonLabel: undefined,
-		activeRequiresFocus: false,
 		maxLength: undefined,
 	},
 );
@@ -82,7 +77,6 @@ const i18n = useI18n();
 const toast = useToast();
 const inputRef = useTemplateRef<InstanceType<typeof N8nChatInput>>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
-const isFocused = ref(false);
 const resolvedPlaceholder = computed(() => props.placeholderPreview?.value ?? props.placeholder);
 const canAcceptFiles = computed(() =>
 	Boolean(props.showAttach && !props.disabled && !props.isStreaming),
@@ -94,10 +88,6 @@ const acceptedMimeTypeList = computed(() =>
 		.filter(Boolean),
 );
 const fileDrop = useFileDrop(canAcceptFiles, handleFiles, acceptedMimeTypeList);
-
-// Visual only — must NOT gate `submit-disabled`, or clicking the button (which
-// blurs the textarea) would disable it mid-click and swallow the submit.
-const submitMuted = computed(() => props.activeRequiresFocus && !isFocused.value);
 
 // Voice input
 const committedSpokenMessage = ref('');
@@ -256,10 +246,7 @@ defineExpose({
 
 <template>
 	<div
-		:class="[
-			$style.inputWrapper,
-			{ [$style.focusGatedSubmit]: activeRequiresFocus, [$style.submitMuted]: submitMuted },
-		]"
+		:class="$style.inputWrapper"
 		@dragenter="fileDrop.handleDragEnter"
 		@dragleave="fileDrop.handleDragLeave"
 		@dragover="fileDrop.handleDragOver"
@@ -297,7 +284,6 @@ defineExpose({
 			:streaming="showStopButton ?? isStreaming"
 			:disabled="disabled"
 			:submit-disabled="!canSubmit"
-			:button-label="props.buttonLabel"
 			send-button-test-id="instance-ai-send-button"
 			stop-button-test-id="instance-ai-stop-button"
 			:autosize="composerHeight ? false : autosize"
@@ -306,8 +292,6 @@ defineExpose({
 			@update:model-value="emit('update:modelValue', $event)"
 			@submit="handleSubmit"
 			@stop="emit('stop')"
-			@focus="isFocused = true"
-			@blur="isFocused = false"
 		>
 			<template #leading>
 				<div v-if="composerHeight" :class="$style.attachmentRow">
@@ -420,15 +404,5 @@ defineExpose({
 
 .recording {
 	color: var(--color--danger);
-}
-
-/* Split empty state: de-emphasise the send button until the composer is focused.
-   Visual only — the button stays enabled so the click still submits. */
-.focusGatedSubmit [data-test-id='instance-ai-send-button'] {
-	transition: opacity 0.15s ease;
-}
-
-.submitMuted [data-test-id='instance-ai-send-button'] {
-	opacity: 0.5;
 }
 </style>

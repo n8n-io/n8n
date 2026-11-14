@@ -1,6 +1,7 @@
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
+import { publicApiClientSchema } from '../schemas';
 import { setupTelemetryProperties } from '../setup-properties';
 
 const descriptionProperties = {
@@ -44,6 +45,7 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 				.optional()
 				.describe('Set by the server. Existing editor events omit it.'),
 			public_api: z.boolean().optional().describe('Whether the server used the public API.'),
+			public_api_client: publicApiClientSchema.optional(),
 			has_description: descriptionProperties.has_description.optional(),
 			description_length: descriptionProperties.description_length.optional(),
 			user_id: z.string().optional(),
@@ -120,6 +122,32 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					"'accepted' = the service took the credential (2xx, or a service-declared accepted status code); 'rejected' = explicit 401/403 auth rejection; 'unverified' = anything else (wrong test URL, unreachable service) — proves nothing about the credential",
 				),
+		}),
+	},
+	USER_REGISTERED_OAUTH_CLIENT: {
+		name: 'User registered OAuth client',
+		description:
+			'n8n tried to register itself as an OAuth2 client of an authorization server when a user connected a credential with automatic client registration. Fires once per attempt, on each connect and reconnect, also when the registration fails. Count credentials, not events, to measure adoption.',
+		properties: z.object({
+			user_id: z.string().optional().describe('Absent when no user started the flow'),
+			credential_id: z.string(),
+			credential_type: z.string(),
+			method: z
+				.enum(['cimd', 'dcr', 'none_available'])
+				.optional()
+				.describe(
+					"The selected registration method. 'none_available' = the server supports neither CIMD nor DCR. Absent when n8n could not read the authorization server metadata",
+				),
+			success: z.boolean(),
+			cimd_enabled: z.boolean().describe('Value of N8N_OAUTH_CIMD_ENABLED'),
+			server_supports_cimd: z
+				.boolean()
+				.optional()
+				.describe('Absent when n8n could not read the authorization server metadata'),
+			server_supports_dcr: z
+				.boolean()
+				.optional()
+				.describe('Absent when n8n could not read the authorization server metadata'),
 		}),
 	},
 	USER_OPENED_CREDENTIAL_SHARING_FROM_REDACTED_DATA: {

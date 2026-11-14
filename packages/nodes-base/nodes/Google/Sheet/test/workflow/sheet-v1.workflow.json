@@ -1,0 +1,360 @@
+{
+	"name": "Google Sheets v1 request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "9c4d2e63-1a5b-4c7d-8e9f-0a1b2c3d4e00",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"sheetId": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+				"operation": "read",
+				"range": "Q3 Orders!A:B"
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 2,
+			"position": [220, 200],
+			"id": "9c4d2e63-1a5b-4c7d-8e9f-0a1b2c3d4e01",
+			"name": "Read Rows",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"sheetId": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+				"operation": "update",
+				"range": "Q3 Orders!A:B",
+				"key": "order_id"
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 2,
+			"position": [440, 400],
+			"id": "9c4d2e63-1a5b-4c7d-8e9f-0a1b2c3d4e02",
+			"name": "Update Rows",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"sheetId": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+				"operation": "upsert",
+				"range": "Q3 Orders!A:B",
+				"key": "order_id"
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 2,
+			"position": [220, 600],
+			"id": "9c4d2e63-1a5b-4c7d-8e9f-0a1b2c3d4e03",
+			"name": "Upsert Rows",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"sheetId": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+				"operation": "append",
+				"range": "Q3 Orders!A:B"
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 2,
+			"position": [440, 800],
+			"id": "9c4d2e63-1a5b-4c7d-8e9f-0a1b2c3d4e04",
+			"name": "Append Rows",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"sheetId": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+				"operation": "lookup",
+				"range": "A:B",
+				"lookupColumn": "order_id",
+				"lookupValue": "ORD-1042"
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 2,
+			"position": [220, 1000],
+			"id": "9c4d2e63-1a5b-4c7d-8e9f-0a1b2c3d4e05",
+			"name": "Lookup Rows",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"sheetId": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+				"operation": "clear",
+				"range": "Q3 Orders!A2:B10"
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 2,
+			"position": [220, 1200],
+			"id": "9c4d2e63-1a5b-4c7d-8e9f-0a1b2c3d4e06",
+			"name": "Clear Rows",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"sheetId": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+				"operation": "delete",
+				"toDelete": {
+					"rows": [
+						{
+							"sheetId": "1843902751",
+							"startIndex": 4,
+							"amount": 1
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 2,
+			"position": [220, 1400],
+			"id": "9c4d2e63-1a5b-4c7d-8e9f-0a1b2c3d4e07",
+			"name": "Delete Rows",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"sheetId": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+				"operation": "create",
+				"options": {
+					"title": "Q4 Orders"
+				}
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 2,
+			"position": [220, 1600],
+			"id": "9c4d2e63-1a5b-4c7d-8e9f-0a1b2c3d4e08",
+			"name": "Create Sheet",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"sheetId": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+				"operation": "remove",
+				"id": "1843902751"
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 2,
+			"position": [220, 1800],
+			"id": "9c4d2e63-1a5b-4c7d-8e9f-0a1b2c3d4e09",
+			"name": "Remove Sheet",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "spreadsheet",
+				"title": "Q4 Planning",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 2,
+			"position": [220, 2000],
+			"id": "9c4d2e63-1a5b-4c7d-8e9f-0a1b2c3d4e10",
+			"name": "Create Spreadsheet",
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "gsheets-cred-1",
+					"name": "Google Sheets account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Read Rows": [
+			{
+				"json": {
+					"order_id": "ORD-1042",
+					"status": "pending"
+				}
+			}
+		],
+		"Update Rows": [
+			{
+				"json": {
+					"order_id": "ORD-1042",
+					"status": "pending"
+				}
+			}
+		],
+		"Append Rows": [
+			{
+				"json": {
+					"order_id": "ORD-1042",
+					"status": "pending"
+				}
+			}
+		],
+		"Upsert Rows": [
+			{
+				"json": {}
+			}
+		],
+		"Lookup Rows": [
+			{
+				"json": {
+					"order_id": "ORD-1042",
+					"status": "pending"
+				}
+			}
+		],
+		"Clear Rows": [
+			{
+				"json": {}
+			}
+		],
+		"Delete Rows": [
+			{
+				"json": {}
+			}
+		],
+		"Create Sheet": [
+			{
+				"json": {
+					"spreadsheetId": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M",
+					"sheetId": 905317462,
+					"title": "Q4 Orders"
+				}
+			}
+		],
+		"Remove Sheet": [
+			{
+				"json": {
+					"spreadsheetId": "1kZ8pQ4mV7xR2tN9wL3cH6bJ0sF5gD1aY8uE4iO7qW2M"
+				}
+			}
+		],
+		"Create Spreadsheet": [
+			{
+				"json": {
+					"spreadsheetId": "1Hq3nW6tR9yU2iO5pA8sD1fG4hJ7kL0zX3cV6bN9mQ2E",
+					"properties": {
+						"title": "Q4 Planning"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Read Rows",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Upsert Rows",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Lookup Rows",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Clear Rows",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Rows",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Sheet",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Remove Sheet",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Spreadsheet",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read Rows": {
+			"main": [
+				[
+					{
+						"node": "Update Rows",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Append Rows",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { activeCampaignApiRequest, activeCampaignApiRequestAllItems } from './GenericFunctions';
 
@@ -92,7 +92,7 @@ export class ActiveCampaignTrigger implements INodeType {
 				const events = await activeCampaignApiRequestAllItems.call(
 					this,
 					'GET',
-					'/api/3/webhook/events',
+					requestPath`/api/3/webhook/events`,
 					{},
 					{},
 					'webhookEvents',
@@ -117,7 +117,7 @@ export class ActiveCampaignTrigger implements INodeType {
 				if (webhookData.webhookId === undefined) {
 					return false;
 				}
-				const endpoint = `/api/3/webhooks/${webhookData.webhookId}`;
+				const endpoint = requestPath`/api/3/webhooks/${webhookData.webhookId}`;
 				try {
 					await activeCampaignApiRequest.call(this, 'GET', endpoint, {});
 				} catch (error) {
@@ -141,7 +141,7 @@ export class ActiveCampaignTrigger implements INodeType {
 				const { webhook } = await activeCampaignApiRequest.call(
 					this,
 					'POST',
-					'/api/3/webhooks',
+					requestPath`/api/3/webhooks`,
 					body,
 				);
 				webhookData.webhookId = webhook.id;
@@ -153,7 +153,7 @@ export class ActiveCampaignTrigger implements INodeType {
 					await activeCampaignApiRequest.call(
 						this,
 						'DELETE',
-						`/api/3/webhooks/${webhookData.webhookId}`,
+						requestPath`/api/3/webhooks/${webhookData.webhookId}`,
 						{},
 					);
 				} catch (error) {

@@ -1,6 +1,7 @@
 import { Pinecone } from '@pinecone-database/pinecone';
 import { MilvusClient } from '@zilliz/milvus2-sdk-node';
-import { UserError, type IDataObject, type ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestUrl, type IDataObject, type ILoadOptionsFunctions } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import type { QdrantCredential } from '../../VectorStoreQdrant/Qdrant.utils';
 import { createQdrantClient } from '../../VectorStoreQdrant/Qdrant.utils';
@@ -45,7 +46,7 @@ export async function supabaseTableNameSearch(this: ILoadOptionsFunctions) {
 	const { paths } = (await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', {
 		headers,
 		method: 'GET',
-		uri: `${credentials.host}/rest/v1/`,
+		uri: requestUrl`${credentials.host}/rest/v1/`,
 		json: true,
 	})) as { paths: IDataObject };
 

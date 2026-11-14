@@ -124,15 +124,15 @@ describe('eval agent model config', () => {
 		});
 	});
 
-	it('throws without env keys or a fallback model config', () => {
+	it('throws without env keys or a resolved model', () => {
 		expect(() => createEvalAgent('test-agent', { instructions: 'Do the task.' })).toThrow(
 			/Missing API key/,
 		);
 	});
 
-	it('uses the fallback model config when no env API key is configured', () => {
-		const fallbackModelConfig = {
-			id: 'anthropic/claude-opus-4-8' as const,
+	it('uses a resolved model as is, with its own effort', () => {
+		const resolvedModel = {
+			id: 'anthropic/claude-haiku-5-5' as const,
 			url: 'https://proxy.example.com/anthropic/v1',
 			apiKey: 'proxy-token',
 		};
@@ -140,16 +140,17 @@ describe('eval agent model config', () => {
 
 		createEvalAgent('test-agent', {
 			instructions: 'Do the task.',
-			fallbackModelConfig,
+			resolvedModel,
+			effort: 'low',
 			modelFetch,
 		});
 
-		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith(fallbackModelConfig);
+		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith(resolvedModel);
 		expect(mockAgentInstances[0]?.modelFetch).toHaveBeenCalledWith(modelFetch);
 		expect(mockAgentInstances[0]?.functionId).not.toHaveBeenCalled();
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
 			mode: 'adaptive',
-			effort: 'medium',
+			effort: 'low',
 		});
 	});
 
@@ -202,19 +203,13 @@ describe('eval agent model config', () => {
 		expect(mockAgentInstances[0]?.functionId).toHaveBeenCalledWith('eval-mock-Slack-node');
 	});
 
-	it('prefers env-based model resolution over the fallback', () => {
+	it('skips env-based model resolution for a resolved model', () => {
 		process.env.N8N_AI_ANTHROPIC_KEY = 'env-key';
+		const resolvedModel = { id: 'anthropic/claude-opus-4-8' as const, url: '', apiKey: 'jwt' };
 
-		createEvalAgent('test-agent', {
-			instructions: 'Do the task.',
-			fallbackModelConfig: { id: 'anthropic/claude-opus-4-8' as const, url: '', apiKey: 'jwt' },
-		});
+		createEvalAgent('test-agent', { instructions: 'Do the task.', resolvedModel });
 
-		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith({
-			id: 'anthropic/claude-sonnet-5-5',
-			apiKey: 'env-key',
-			url: undefined,
-		});
+		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith(resolvedModel);
 	});
 
 	it('supports custom endpoints that authenticate with EVAL_MODAL_LLM_HEADERS only', () => {

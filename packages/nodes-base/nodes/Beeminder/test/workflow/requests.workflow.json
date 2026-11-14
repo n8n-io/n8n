@@ -1,0 +1,370 @@
+{
+	"name": "Beeminder Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "datapoint",
+				"operation": "getAll",
+				"goalName": "weight",
+				"returnAll": false,
+				"limit": 10,
+				"options": {}
+			},
+			"id": "node-0",
+			"name": "Datapoint Get Many",
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"credentials": {
+				"beeminderApi": {
+					"id": "1",
+					"name": "Beeminder account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "datapoint",
+				"operation": "createAll",
+				"goalName": "weight",
+				"datapoints": "[{\"value\": 1}]"
+			},
+			"id": "node-1",
+			"name": "Datapoint Create All",
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [400, 150],
+			"credentials": {
+				"beeminderApi": {
+					"id": "1",
+					"name": "Beeminder account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "datapoint",
+				"operation": "get",
+				"goalName": "weight",
+				"datapointId": "688bc54ef0168a11bee2468b"
+			},
+			"id": "node-2",
+			"name": "Datapoint Get",
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [400, 300],
+			"credentials": {
+				"beeminderApi": {
+					"id": "1",
+					"name": "Beeminder account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "goal",
+				"operation": "get",
+				"goalName": "weight",
+				"additionalFields": {}
+			},
+			"id": "node-3",
+			"name": "Goal Get",
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [400, 450],
+			"credentials": {
+				"beeminderApi": {
+					"id": "1",
+					"name": "Beeminder account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "goal",
+				"operation": "getArchived",
+				"additionalFields": {}
+			},
+			"id": "node-4",
+			"name": "Goal Get Archived",
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [400, 600],
+			"credentials": {
+				"beeminderApi": {
+					"id": "1",
+					"name": "Beeminder account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "goal",
+				"operation": "update",
+				"goalName": "weight",
+				"updateFields": {
+					"title": "Daily weight"
+				}
+			},
+			"id": "node-5",
+			"name": "Goal Update",
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [400, 750],
+			"credentials": {
+				"beeminderApi": {
+					"id": "1",
+					"name": "Beeminder account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "goal",
+				"operation": "refresh",
+				"goalName": "weight"
+			},
+			"id": "node-6",
+			"name": "Goal Refresh",
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [400, 900],
+			"credentials": {
+				"beeminderApi": {
+					"id": "1",
+					"name": "Beeminder account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "goal",
+				"operation": "shortCircuit",
+				"goalName": "weight"
+			},
+			"id": "node-7",
+			"name": "Goal Short Circuit",
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [400, 1050],
+			"credentials": {
+				"beeminderApi": {
+					"id": "1",
+					"name": "Beeminder account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "goal",
+				"operation": "stepDown",
+				"goalName": "weight"
+			},
+			"id": "node-8",
+			"name": "Goal Step Down",
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [400, 1200],
+			"credentials": {
+				"beeminderApi": {
+					"id": "1",
+					"name": "Beeminder account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "goal",
+				"operation": "cancelStepDown",
+				"goalName": "weight"
+			},
+			"id": "node-9",
+			"name": "Goal Cancel Step Down",
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [400, 1350],
+			"credentials": {
+				"beeminderApi": {
+					"id": "1",
+					"name": "Beeminder account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "goal",
+				"operation": "uncle",
+				"goalName": "weight"
+			},
+			"id": "node-10",
+			"name": "Goal Uncle",
+			"type": "n8n-nodes-base.beeminder",
+			"typeVersion": 1,
+			"position": [400, 1500],
+			"credentials": {
+				"beeminderApi": {
+					"id": "1",
+					"name": "Beeminder account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Datapoint Get Many": [
+			{
+				"json": {
+					"id": "688bc54ef0168a11bee2468b",
+					"value": 1
+				}
+			}
+		],
+		"Datapoint Create All": [
+			{
+				"json": {
+					"id": "688bc54ef0168a11bee2468b",
+					"value": 1
+				}
+			}
+		],
+		"Datapoint Get": [
+			{
+				"json": {
+					"id": "688bc54ef0168a11bee2468b",
+					"value": 1
+				}
+			}
+		],
+		"Goal Get": [
+			{
+				"json": {
+					"slug": "weight"
+				}
+			}
+		],
+		"Goal Get Archived": [
+			{
+				"json": {
+					"slug": "reading"
+				}
+			}
+		],
+		"Goal Update": [
+			{
+				"json": {
+					"slug": "weight",
+					"title": "Daily weight"
+				}
+			}
+		],
+		"Goal Refresh": [
+			{
+				"json": {
+					"slug": "weight"
+				}
+			}
+		],
+		"Goal Short Circuit": [
+			{
+				"json": {
+					"slug": "weight"
+				}
+			}
+		],
+		"Goal Step Down": [
+			{
+				"json": {
+					"slug": "weight"
+				}
+			}
+		],
+		"Goal Cancel Step Down": [
+			{
+				"json": {
+					"slug": "weight"
+				}
+			}
+		],
+		"Goal Uncle": [
+			{
+				"json": {
+					"slug": "weight"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Datapoint Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Datapoint Create All",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Datapoint Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Goal Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Goal Get Archived",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Goal Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Goal Refresh",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Goal Short Circuit",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Goal Step Down",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Goal Cancel Step Down",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Goal Uncle",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

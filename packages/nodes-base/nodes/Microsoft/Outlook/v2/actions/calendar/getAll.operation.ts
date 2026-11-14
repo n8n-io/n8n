@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -54,7 +55,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		}
 	}
 
-	const endpoint = '/calendars';
+	const endpoint = requestPath`/calendars`;
 
 	if (returnAll) {
 		responseData = await microsoftApiRequestAllItems.call(

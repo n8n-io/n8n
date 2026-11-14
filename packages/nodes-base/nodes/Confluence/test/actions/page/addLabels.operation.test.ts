@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { execute } from '../../../actions/page/addLabels.operation';
 import { confluenceApiRequest } from '../../../transport';
@@ -23,7 +23,7 @@ describe('Confluence page:addLabels operation', () => {
 		await execute.call(ctx, 0);
 
 		expect(apiRequest).toHaveBeenCalledTimes(1);
-		expect(apiRequest).toHaveBeenCalledWith('POST', '/wiki/rest/api/content/123/label', [
+		expect(apiRequest).toHaveBeenCalledWith('POST', requestPath`/wiki/rest/api/content/123/label`, [
 			{ prefix: 'global', name: 'runbook' },
 		]);
 	});
@@ -37,7 +37,7 @@ describe('Confluence page:addLabels operation', () => {
 		await execute.call(ctx, 0);
 
 		expect(apiRequest).toHaveBeenCalledTimes(1);
-		expect(apiRequest).toHaveBeenCalledWith('POST', '/wiki/rest/api/content/123/label', [
+		expect(apiRequest).toHaveBeenCalledWith('POST', requestPath`/wiki/rest/api/content/123/label`, [
 			{ prefix: 'global', name: 'alpha' },
 			{ prefix: 'global', name: 'beta' },
 		]);
@@ -92,12 +92,15 @@ describe('Confluence page:addLabels operation', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'GET',
-			'/wiki/api/v2/pages',
+			requestPath`/wiki/api/v2/pages`,
 			{},
 			{ title: 'Doc', limit: 250 },
 		);
-		expect(apiRequest).toHaveBeenNthCalledWith(2, 'POST', '/wiki/rest/api/content/777/label', [
-			{ prefix: 'global', name: 'runbook' },
-		]);
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'POST',
+			requestPath`/wiki/rest/api/content/777/label`,
+			[{ prefix: 'global', name: 'runbook' }],
+		);
 	});
 });

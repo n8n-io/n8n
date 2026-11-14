@@ -283,6 +283,19 @@ describe('AgentSessionTimelineView', () => {
 		});
 	});
 
+	it('shows an API channel session with the channel name and icon', async () => {
+		const wrapper = await renderTimeline();
+		wrapper.getComponent(AgentSessionTimelinePanel).vm.$emit('loaded', {
+			thread: sessionThread('thread-a'),
+			executions: [{ id: 'e1', source: 'webhook', status: 'success' }],
+		});
+		await nextTick();
+
+		expect(wrapper.getComponent(AgentSessionTimelineHeader).props('metadata')?.trigger).toEqual(
+			expect.objectContaining({ label: 'API', icon: 'plug' }),
+		);
+	});
+
 	it('returns to the session list when closed without a previous route', async () => {
 		const wrapper = await renderTimeline();
 		wrapper.findComponent(AgentSessionTimelineHeader).vm.$emit('close');

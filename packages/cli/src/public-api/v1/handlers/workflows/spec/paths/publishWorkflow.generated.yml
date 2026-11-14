@@ -2,7 +2,10 @@ operationId: publishWorkflow
 tags:
   - Workflow
 summary: Publish a workflow
-description: Publish a workflow. In n8n v1, this action was termed activating a workflow.
+description: |-
+  Publish a workflow. In n8n v1, this action was termed activating a workflow.
+
+  Requires the `workflow:activate` API key scope.
 x-required-scope: workflow:activate
 parameters:
   - schema:

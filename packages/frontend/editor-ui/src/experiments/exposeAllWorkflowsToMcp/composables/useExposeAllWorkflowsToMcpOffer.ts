@@ -27,7 +27,7 @@ export function useExposeAllWorkflowsToMcpOffer() {
 			const [eligibleWorkflows, eligibleAgents] = await Promise.all([
 				mcpStore.getMcpEligibleWorkflows({ take: 1 }),
 				settingsStore.isAgentsEnabled
-					? mcpStore.getMcpEligibleAgents({ take: 1 })
+					? mcpStore.getMcpEligibleAgents({ limit: 1 })
 					: Promise.resolve({ count: 0 }),
 			]);
 			if (eligibleWorkflows.count === 0 && eligibleAgents.count === 0) {

@@ -1,0 +1,622 @@
+{
+	"name": "Elastic Security request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"title": "Suspicious login",
+				"connectorId": "b2f1a3c4-5d6e-4f70-8a9b-0c1d2e3f4a5b",
+				"connectorType": ".jira",
+				"issueType": "10001",
+				"priority": "High",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.elasticSecurity",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Create Case",
+			"credentials": {
+				"elasticSecurityApi": {
+					"id": "cred1",
+					"name": "Elastic Security account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"caseId": "3b1e7c50-2f4a-11ee-9d1c-5f3e2a1b4c6d"
+			},
+			"type": "n8n-nodes-base.elasticSecurity",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Delete Case",
+			"credentials": {
+				"elasticSecurityApi": {
+					"id": "cred1",
+					"name": "Elastic Security account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"caseId": "3b1e7c50-2f4a-11ee-9d1c-5f3e2a1b4c6d"
+			},
+			"type": "n8n-nodes-base.elasticSecurity",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Get Case",
+			"credentials": {
+				"elasticSecurityApi": {
+					"id": "cred1",
+					"name": "Elastic Security account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 10,
+				"filters": {},
+				"sortOptions": {}
+			},
+			"type": "n8n-nodes-base.elasticSecurity",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Get Many Cases",
+			"credentials": {
+				"elasticSecurityApi": {
+					"id": "cred1",
+					"name": "Elastic Security account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "getStatus"
+			},
+			"type": "n8n-nodes-base.elasticSecurity",
+			"typeVersion": 1,
+			"position": [220, 800],
+			"id": "00000000-0000-4000-8000-000000000005",
+			"name": "Get Case Status",
+			"credentials": {
+				"elasticSecurityApi": {
+					"id": "cred1",
+					"name": "Elastic Security account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"caseId": "3b1e7c50-2f4a-11ee-9d1c-5f3e2a1b4c6d",
+				"updateFields": {
+					"title": "Suspicious login (checked)"
+				}
+			},
+			"type": "n8n-nodes-base.elasticSecurity",
+			"typeVersion": 1,
+			"position": [220, 1000],
+			"id": "00000000-0000-4000-8000-000000000006",
+			"name": "Update Case",
+			"credentials": {
+				"elasticSecurityApi": {
+					"id": "cred1",
+					"name": "Elastic Security account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "caseTag",
+				"operation": "add",
+				"caseId": "3b1e7c50-2f4a-11ee-9d1c-5f3e2a1b4c6d",
+				"tag": "phishing"
+			},
+			"type": "n8n-nodes-base.elasticSecurity",
+			"typeVersion": 1,
+			"position": [220, 1200],
+			"id": "00000000-0000-4000-8000-000000000007",
+			"name": "Add Tag",
+			"credentials": {
+				"elasticSecurityApi": {
+					"id": "cred1",
+					"name": "Elastic Security account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "caseTag",
+				"operation": "remove",
+				"caseId": "7d2f8e61-3a5b-11ee-8e2d-6a4f3b2c5d7e",
+				"tag": "phishing"
+			},
+			"type": "n8n-nodes-base.elasticSecurity",
+			"typeVersion": 1,
+			"position": [220, 1400],
+			"id": "00000000-0000-4000-8000-000000000008",
+			"name": "Remove Tag",
+			"credentials": {
+				"elasticSecurityApi": {
+					"id": "cred1",
+					"name": "Elastic Security account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "caseComment",
+				"operation": "add",
+				"caseId": "3b1e7c50-2f4a-11ee-9d1c-5f3e2a1b4c6d",
+				"comment": "Checked the logs",
+				"simple": true,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.elasticSecurity",
+			"typeVersion": 1,
+			"position": [220, 1600],
+			"id": "00000000-0000-4000-8000-000000000009",
+			"name": "Add Comment",
+			"credentials": {
+				"elasticSecurityApi": {
+					"id": "cred1",
+					"name": "Elastic Security account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "caseComment",
+				"operation": "get",
+				"caseId": "3b1e7c50-2f4a-11ee-9d1c-5f3e2a1b4c6d",
+				"commentId": "a71c2d90-2f4b-11ee-9d1c-5f3e2a1b4c6d"
+			},
+			"type": "n8n-nodes-base.elasticSecurity",
+			"typeVersion": 1,
+			"position": [220, 1800],
+			"id": "00000000-0000-4000-8000-000000000010",
+			"name": "Get Comment",
+			"credentials": {
+				"elasticSecurityApi": {
+					"id": "cred1",
+					"name": "Elastic Security account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "caseComment",
+				"operation": "getAll",
+				"caseId": "3b1e7c50-2f4a-11ee-9d1c-5f3e2a1b4c6d",
+				"returnAll": false,
+				"limit": 10
+			},
+			"type": "n8n-nodes-base.elasticSecurity",
+			"typeVersion": 1,
+			"position": [220, 2000],
+			"id": "00000000-0000-4000-8000-000000000011",
+			"name": "Get Many Comments",
+			"credentials": {
+				"elasticSecurityApi": {
+					"id": "cred1",
+					"name": "Elastic Security account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "caseComment",
+				"operation": "remove",
+				"caseId": "3b1e7c50-2f4a-11ee-9d1c-5f3e2a1b4c6d",
+				"commentId": "a71c2d90-2f4b-11ee-9d1c-5f3e2a1b4c6d"
+			},
+			"type": "n8n-nodes-base.elasticSecurity",
+			"typeVersion": 1,
+			"position": [220, 2200],
+			"id": "00000000-0000-4000-8000-000000000012",
+			"name": "Remove Comment",
+			"credentials": {
+				"elasticSecurityApi": {
+					"id": "cred1",
+					"name": "Elastic Security account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "caseComment",
+				"operation": "update",
+				"caseId": "3b1e7c50-2f4a-11ee-9d1c-5f3e2a1b4c6d",
+				"commentId": "a71c2d90-2f4b-11ee-9d1c-5f3e2a1b4c6d",
+				"comment": "Checked the logs",
+				"simple": true
+			},
+			"type": "n8n-nodes-base.elasticSecurity",
+			"typeVersion": 1,
+			"position": [220, 2400],
+			"id": "00000000-0000-4000-8000-000000000013",
+			"name": "Update Comment",
+			"credentials": {
+				"elasticSecurityApi": {
+					"id": "cred1",
+					"name": "Elastic Security account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "connector",
+				"name": "Jira",
+				"connectorType": ".jira",
+				"apiUrl": "https://example.atlassian.net",
+				"projectKey": "SEC",
+				"email": "nathan@n8n.io",
+				"apiToken": "fake-token"
+			},
+			"type": "n8n-nodes-base.elasticSecurity",
+			"typeVersion": 1,
+			"position": [220, 2600],
+			"id": "00000000-0000-4000-8000-000000000014",
+			"name": "Create Connector",
+			"credentials": {
+				"elasticSecurityApi": {
+					"id": "cred1",
+					"name": "Elastic Security account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Case": [
+			{
+				"json": {
+					"id": "3b1e7c50-2f4a-11ee-9d1c-5f3e2a1b4c6d",
+					"version": "WzEsMV0=",
+					"title": "Suspicious login",
+					"description": "",
+					"owner": "securitySolution",
+					"status": "open",
+					"tags": [],
+					"settings": {
+						"syncAlerts": false
+					},
+					"connector": {
+						"id": "none",
+						"name": "none",
+						"type": ".none",
+						"fields": null
+					},
+					"comments": [
+						{
+							"id": "a71c2d90-2f4b-11ee-9d1c-5f3e2a1b4c6d",
+							"version": "WzMsMV0=",
+							"comment": "Checked the logs",
+							"type": "user",
+							"owner": "securitySolution"
+						}
+					]
+				}
+			}
+		],
+		"Delete Case": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Get Case": [
+			{
+				"json": {
+					"id": "3b1e7c50-2f4a-11ee-9d1c-5f3e2a1b4c6d",
+					"version": "WzEsMV0=",
+					"title": "Suspicious login",
+					"description": "",
+					"owner": "securitySolution",
+					"status": "open",
+					"tags": [],
+					"settings": {
+						"syncAlerts": false
+					},
+					"connector": {
+						"id": "none",
+						"name": "none",
+						"type": ".none",
+						"fields": null
+					},
+					"comments": [
+						{
+							"id": "a71c2d90-2f4b-11ee-9d1c-5f3e2a1b4c6d",
+							"version": "WzMsMV0=",
+							"comment": "Checked the logs",
+							"type": "user",
+							"owner": "securitySolution"
+						}
+					]
+				}
+			}
+		],
+		"Get Many Cases": [
+			{
+				"json": {
+					"id": "3b1e7c50-2f4a-11ee-9d1c-5f3e2a1b4c6d",
+					"version": "WzEsMV0=",
+					"title": "Suspicious login",
+					"description": "",
+					"owner": "securitySolution",
+					"status": "open",
+					"tags": [],
+					"settings": {
+						"syncAlerts": false
+					},
+					"connector": {
+						"id": "none",
+						"name": "none",
+						"type": ".none",
+						"fields": null
+					},
+					"comments": [
+						{
+							"id": "a71c2d90-2f4b-11ee-9d1c-5f3e2a1b4c6d",
+							"version": "WzMsMV0=",
+							"comment": "Checked the logs",
+							"type": "user",
+							"owner": "securitySolution"
+						}
+					]
+				}
+			}
+		],
+		"Get Case Status": [
+			{
+				"json": {
+					"count_open_cases": 1,
+					"count_in_progress_cases": 0,
+					"count_closed_cases": 0
+				}
+			}
+		],
+		"Update Case": [
+			{
+				"json": {
+					"id": "3b1e7c50-2f4a-11ee-9d1c-5f3e2a1b4c6d",
+					"version": "WzEsMV0=",
+					"title": "Suspicious login",
+					"description": "",
+					"owner": "securitySolution",
+					"status": "open",
+					"tags": [],
+					"settings": {
+						"syncAlerts": false
+					},
+					"connector": {
+						"id": "none",
+						"name": "none",
+						"type": ".none",
+						"fields": null
+					},
+					"comments": [
+						{
+							"id": "a71c2d90-2f4b-11ee-9d1c-5f3e2a1b4c6d",
+							"version": "WzMsMV0=",
+							"comment": "Checked the logs",
+							"type": "user",
+							"owner": "securitySolution"
+						}
+					]
+				}
+			}
+		],
+		"Add Tag": [
+			{
+				"json": {
+					"id": "3b1e7c50-2f4a-11ee-9d1c-5f3e2a1b4c6d",
+					"version": "WzEsMV0=",
+					"title": "Suspicious login",
+					"description": "",
+					"owner": "securitySolution",
+					"status": "open",
+					"tags": [],
+					"settings": {
+						"syncAlerts": false
+					},
+					"connector": {
+						"id": "none",
+						"name": "none",
+						"type": ".none",
+						"fields": null
+					},
+					"comments": [
+						{
+							"id": "a71c2d90-2f4b-11ee-9d1c-5f3e2a1b4c6d",
+							"version": "WzMsMV0=",
+							"comment": "Checked the logs",
+							"type": "user",
+							"owner": "securitySolution"
+						}
+					]
+				}
+			}
+		],
+		"Remove Tag": [
+			{
+				"json": {
+					"id": "7d2f8e61-3a5b-11ee-8e2d-6a4f3b2c5d7e",
+					"version": "WzEsMV0=",
+					"title": "Suspicious login",
+					"description": "",
+					"owner": "securitySolution",
+					"status": "open",
+					"tags": ["phishing"],
+					"settings": {
+						"syncAlerts": false
+					},
+					"connector": {
+						"id": "none",
+						"name": "none",
+						"type": ".none",
+						"fields": null
+					},
+					"comments": []
+				}
+			}
+		],
+		"Add Comment": [
+			{
+				"json": {
+					"id": "a71c2d90-2f4b-11ee-9d1c-5f3e2a1b4c6d",
+					"version": "WzMsMV0=",
+					"comment": "Checked the logs",
+					"type": "user",
+					"owner": "securitySolution"
+				}
+			}
+		],
+		"Get Comment": [
+			{
+				"json": {
+					"id": "a71c2d90-2f4b-11ee-9d1c-5f3e2a1b4c6d",
+					"version": "WzMsMV0=",
+					"comment": "Checked the logs",
+					"type": "user",
+					"owner": "securitySolution"
+				}
+			}
+		],
+		"Get Many Comments": [
+			{
+				"json": {
+					"id": "a71c2d90-2f4b-11ee-9d1c-5f3e2a1b4c6d",
+					"version": "WzMsMV0=",
+					"comment": "Checked the logs",
+					"type": "user",
+					"owner": "securitySolution"
+				}
+			}
+		],
+		"Remove Comment": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Update Comment": [
+			{
+				"json": {
+					"id": "a71c2d90-2f4b-11ee-9d1c-5f3e2a1b4c6d",
+					"version": "WzMsMV0=",
+					"comment": "Checked the logs",
+					"type": "user",
+					"owner": "securitySolution"
+				}
+			}
+		],
+		"Create Connector": [
+			{
+				"json": {
+					"id": "b2f1a3c4-5d6e-4f70-8a9b-0c1d2e3f4a5b",
+					"name": "Jira",
+					"connector_type_id": ".jira"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Create Case",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Case",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Case",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Cases",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Case Status",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Case",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Add Tag",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Remove Tag",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Add Comment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Comment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Comments",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Remove Comment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Comment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Connector",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

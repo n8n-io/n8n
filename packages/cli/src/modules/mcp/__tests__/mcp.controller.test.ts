@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { ApiKeyRepository, type AuthenticatedRequest } from '@n8n/db';
+import { ApiKeyRepository, type AuthenticatedRequest, type OperationContext } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Request } from 'express';
@@ -173,6 +174,7 @@ describe('McpController', () => {
 		});
 		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
 			mcpApps: { enabled: true, variant: 'variant' },
+			preferencesNoteVariant: 'control',
 		});
 		const res = createRes();
 
@@ -202,6 +204,7 @@ describe('McpController', () => {
 			mcp_connection_status: 'success',
 			mcp_apps_enabled: true,
 			mcp_apps_variant: 'variant',
+			'$feature/140_mcp_empty_preferences_note': 'control',
 		});
 	});
 
@@ -412,6 +415,7 @@ describe('McpController', () => {
 			{ mcpApps: { enabled: true, variant: 'variant' } },
 			{ name: 'Claude', version: '1.0.0' },
 			{ caller: undefined, grantedScopes: undefined },
+			{},
 		);
 	});
 
@@ -452,6 +456,7 @@ describe('McpController', () => {
 			expect.objectContaining({ instanceContextEnabled: true }),
 			{ name: 'Claude', version: '1.0.0' },
 			{ caller: undefined, grantedScopes: undefined },
+			{},
 		);
 	});
 
@@ -484,6 +489,7 @@ describe('McpController', () => {
 			{ mcpApps: { enabled: false, variant: 'control' } },
 			undefined,
 			{ caller: undefined, grantedScopes: undefined },
+			{},
 		);
 		// Non-initialize requests still skip telemetry tracking.
 		expect(telemetry.track).not.toHaveBeenCalled();
@@ -517,7 +523,25 @@ describe('McpController', () => {
 				caller: { authType: 'oauth', clientId: 'client-abc' },
 				grantedScopes: ['workflow:read'],
 			},
+			{},
 		);
+	});
+
+	test('forwards the operation context of the request to getServer', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		});
+		const ctx: OperationContext = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
+
+		await controller.build(
+			createReq({ body: { jsonrpc: '2.0', method: 'tools/call' }, ctx }),
+			createRes(),
+		);
+
+		const forwardedCtx = (mcpService.getServer as unknown as Mock).mock.calls[0][4];
+		expect(forwardedCtx).toBe(ctx);
 	});
 
 	test('HEAD /http returns 401 with WWW-Authenticate header for auth scheme discovery', async () => {

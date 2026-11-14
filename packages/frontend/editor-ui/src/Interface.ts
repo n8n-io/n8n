@@ -106,7 +106,8 @@ declare global {
 				options?: {
 					api_host?: string;
 					tracing_headers?: string[];
-					autocapture?: boolean;
+					autocapture?: boolean | { element_attribute_ignorelist?: string[] };
+					mask_all_text?: boolean;
 					disable_session_recording?: boolean;
 					advanced_disable_feature_flags?: boolean;
 					debug?: boolean;
@@ -788,8 +789,7 @@ export type NodeCreatorOpenSource =
 	| 'notice_error_message'
 	| 'add_node_button'
 	| 'add_evaluation_node_button'
-	| 'templates_callout'
-	| 'instance_ai';
+	| 'templates_callout';
 
 export interface INodeCreatorState {
 	itemsFilter: string;

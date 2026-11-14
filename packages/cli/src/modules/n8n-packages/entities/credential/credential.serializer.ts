@@ -13,7 +13,7 @@ type CredentialPackageKeyHandling = {
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
 	name: 'copy';
-	description: 'exclude';
+	description: 'copy';
 	data: 'transform';
 	type: 'copy';
 	shared: 'exclude';
@@ -36,13 +36,23 @@ const serializePayload = definePackageSerializationPayload<
 export class CredentialSerializer {
 	serialize(
 		credential: CredentialsEntity,
-		{ data, dataIsComplete }: { data?: SerializedCredentialData; dataIsComplete?: boolean } = {},
+		{
+			data,
+			dataIsComplete,
+			includeDescription,
+		}: {
+			data?: SerializedCredentialData;
+			dataIsComplete?: boolean;
+			/** Set when the source instance has credential descriptions on. An empty one exports as `null`. */
+			includeDescription?: boolean;
+		} = {},
 	): SerializedCredential {
 		return serializedCredentialSchema.parse(
 			serializePayload({
 				id: credential.id,
 				name: credential.name,
 				type: credential.type,
+				...(includeDescription ? { description: credential.description ?? null } : {}),
 				...(data !== undefined ? { data } : {}),
 				...(dataIsComplete !== undefined ? { dataIsComplete } : {}),
 			}),
