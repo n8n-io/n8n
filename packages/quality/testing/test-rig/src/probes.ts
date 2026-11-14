@@ -123,4 +123,9 @@ export class RedisProbe {
 			lock: (await this.redis('EXISTS', `${key}:lock`)) === '1',
 		};
 	}
+
+	/** Host id of the current multi-main leader, or undefined when the key is vacant. */
+	async leader(): Promise<string | undefined> {
+		return (await this.redis('GET', 'n8n:main_instance_leader')) || undefined;
+	}
 }

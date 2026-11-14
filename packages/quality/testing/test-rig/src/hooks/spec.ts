@@ -3,6 +3,7 @@ import { z } from 'zod';
 /** Compiled files the hooks patch, as path suffixes inside the n8n image. */
 export const FILES = {
 	jobProcessor: 'n8n/dist/scaling/job-processor.js',
+	multiMainSetup: 'n8n/dist/scaling/multi-main-setup.ee.js',
 	scalingService: 'n8n/dist/scaling/scaling.service.js',
 	executionPersistence: 'n8n/dist/executions/execution-persistence.js',
 	taskRequester: 'n8n/dist/task-runners/task-managers/task-requester.js',

@@ -102,11 +102,19 @@ test('worker drain: a running job finishes before the worker exits', async () =>
 
 Always wait on something the product does: a log line that names an execution id, a process exit, a row in Postgres, or a state in Bull. Never wait a fixed time, because Docker timing varies from run to run. Log text can change between versions, so when the line you need differs between the `before` and `after` images, add an `observe` hook on the method instead and wait for its hit.
 
-Checks are plain data. `s.verify` takes `before`, `after` and `always` lists of `[label, value, expectation]` entries, runs the lists for the current variant together with `always`, and returns the labels that failed. The expectations are `is`, `isNot`, `below`, `includes`, `excludes` and `anything`. Use `s.mark`, `s.step` and `s.race` to add steps to the timeline, and `s.set` to record values in the record. `s.run` stops the stack and attaches the record to the test whatever happens, and it fails the test when a check failed or the stack did not stop. `s.collectLogs` saves the container logs and returns them by container name.
+Checks are plain data. `s.verify` takes `before`, `after` and `always` lists of `[label, value, expectation]` entries, runs the lists for the current variant together with `always`, and returns the labels that failed. The expectations are `is`, `isNot`, `below`, `atMost`, `includes`, `excludes` and `anything`. Use `s.mark`, `s.step` and `s.race` to add steps to the timeline, and `s.set` to record values in the record. `s.run` stops the stack and attaches the record to the test whatever happens, and it fails the test when a check failed or the stack did not stop. `s.collectLogs` saves the container logs and returns them by container name.
 
 To add the scenario to `pnpm scenarios`, give it an entry in `scenarios.json`. The key is the scenario name, in lower case with dashes. The entry names the `spec` file, the released `before` and `after` images (`null` when no release has the fix yet), the `issue` it reproduces, and optionally `env` values whose names start with `TEST_RIG_`. Two entries can share one spec and differ only in `env`; the external runner variants do this with `TEST_RIG_RUNNERS=external`.
 
 When a spec hooks a method for the first time, add it to `src/hooks/catalogue.ts`, with `since` if older releases do not have it. A unit test fails when a spec hooks a method the catalogue does not list.
+
+## Multi-main scenarios
+
+A stack with more than one main needs a licence that allows several mains. Set `N8N_LICENSE_ACTIVATION_KEY` or `N8N_LICENSE_CERT` in your shell first; without one the stack fails to start. The stack uses the sandbox licence tenant by default, so use a sandbox key. Never commit a key or a cert.
+
+Each new stack activates the key again. For many runs a cert is faster: start one stack with the key, read `license.cert` from the `settings` table, and export it as `N8N_LICENSE_CERT`.
+
+`LEADER_HOOKS` logs each leader takeover and step-down in the mains. `fastLeaderElection` shortens the leader key TTL and check interval. `currentLeader` waits until exactly one main leads. `oneLeaderAtATime` finds periods in which two mains both led.
 
 ## How it works
 

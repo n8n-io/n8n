@@ -88,5 +88,15 @@
 		"spec": "fetched-before-lock.spec.ts",
 		"before": "n8nio/n8n:2.42.2",
 		"after": null
+	},
+	"multi-main-leader-killed": {
+		"spec": "multi-main-leader-killed.spec.ts",
+		"before": null,
+		"after": "n8nio/n8n:2.42.2"
+	},
+	"multi-main-leader-frozen": {
+		"spec": "multi-main-leader-frozen.spec.ts",
+		"before": null,
+		"after": "n8nio/n8n:2.42.2"
 	}
 }
