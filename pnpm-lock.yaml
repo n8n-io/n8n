@@ -9704,6 +9704,9 @@ importers:
       '@n8n/test-impact':
         specifier: workspace:*
         version: link:../test-impact
+      '@n8n/test-rig':
+        specifier: workspace:*
+        version: link:../test-rig
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
@@ -9865,6 +9868,9 @@ importers:
       oxlint-tsgolint:
         specifier: 'catalog:'
         version: 0.21.1
+      tsx:
+        specifier: 'catalog:'
+        version: 4.19.3
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
