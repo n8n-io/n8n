@@ -43,6 +43,7 @@ import {
 	TimeoutExecutionCancelledError,
 	Workflow,
 	type IWorkflowIssues,
+	isTriggerNode,
 } from 'n8n-workflow';
 import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
@@ -239,6 +240,7 @@ export class EvalExecutionService {
 				options.scenarioHints,
 				unpinSet,
 				options.seededDataTableIds,
+				options.scenarioDescription,
 			);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -284,6 +286,7 @@ export class EvalExecutionService {
 		scenarioHints?: string,
 		unpinSet?: Set<string>,
 		seededDataTableIds?: string[],
+		scenarioDescription?: string,
 	): Promise<MockHints> {
 		// Phase 1: Generate mock hints for HTTP-interceptible nodes
 		const hintNodes = identifyNodesForHints(workflowEntity);
@@ -303,6 +306,10 @@ export class EvalExecutionService {
 					nodeNames,
 					scenarioHints,
 					defaultStartNodeName: defaultStartNode?.name,
+					triggerNodeNames: workflowEntity.nodes
+						.filter((node) => this.asTriggerNode(node))
+						.map((node) => node.name),
+					scenarioDescription,
 				}),
 		);
 
@@ -551,6 +558,9 @@ export class EvalExecutionService {
 			? this.asTriggerNode(workflow.nodes[hints.startNodeName])
 			: undefined;
 		const startNode = hintedStart ?? this.findStartNode(workflow);
+		this.logger.debug(
+			`[EvalMock] Start node: "${startNode?.name}" (Phase 1 named "${hints.startNodeName ?? 'none'}")`,
+		);
 
 		if (!startNode) {
 			return this.errorResult(randomUUID(), 'No trigger or start node found in the workflow');
@@ -859,9 +869,8 @@ export class EvalExecutionService {
 	private asTriggerNode(node: INode | undefined): INode | undefined {
 		if (!node || node.disabled) return undefined;
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-		if (!nodeType) return undefined;
-		const isTriggerCapable = 'trigger' in nodeType || 'poll' in nodeType || 'webhook' in nodeType;
-		return isTriggerCapable ? node : undefined;
+		// Not `'webhook' in nodeType`: Slack, Gmail, Wait and Form have one for send-and-wait.
+		return nodeType && isTriggerNode(nodeType.description) ? node : undefined;
 	}
 
 	private findWebhookNode(workflow: Workflow): INode | undefined {
