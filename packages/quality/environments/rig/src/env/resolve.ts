@@ -2,11 +2,12 @@ import { createHash } from 'node:crypto';
 import { relative } from 'node:path';
 
 import type { Topology } from '../config/env-yaml';
-import type { EnvPaths } from '../config/paths';
+import { displayPath, type EnvPaths, globalSecretsFile, profileFile } from '../config/paths';
 import type {
 	Component,
 	LauncherComponent,
 	ProcessComponent,
+	RunnerComponent,
 	RunnerLayer,
 } from '../topology/components';
 import { readDotenv } from './dotenv';
@@ -17,15 +18,18 @@ import {
 	ENGINE_MODULE,
 	isControlPlaneOnlyKey,
 	isDataPlaneOnlyKey,
+	managedDirectRunnerEnv,
 	managedLauncherEnv,
 	managedProcessEnv,
 	managedRunnerEnv,
 } from './managed';
+import { RUNNER_ALLOWED_ENV } from '../launcher/config';
 
 export type LayerKind =
 	| 'shell'
 	| 'default'
 	| 'managed'
+	| 'profile'
 	| 'shared'
 	| 'role'
 	| 'component'
@@ -83,7 +87,9 @@ function fromRecord(kind: LayerKind, label: string, record: Record<string, strin
 }
 
 function fromFile(kind: LayerKind, paths: EnvPaths, file: string): Layer {
-	const label = relative(paths.root, file);
+	// Files outside the environment, like profiles, show with their full path.
+	const inside = file.startsWith(`${paths.root}/`);
+	const label = inside ? relative(paths.root, file) : displayPath(file);
 	return {
 		kind,
 		entries: readDotenv(file).map((entry) => ({
@@ -138,6 +144,21 @@ function secretsExclusion(topology: Topology): (key: string) => boolean {
 	return (key) => topology.engine === 'off' && key.startsWith('N8N_ENGINE_');
 }
 
+/** The profiles of the topology, in order. They sit between managed vars and shared.env. */
+function profileLayers(ctx: ResolveContext, exclude: (key: string) => boolean): Layer[] {
+	return ctx.topology.profiles.map((name) =>
+		without(fromFile('profile', ctx.paths, profileFile(name)), exclude),
+	);
+}
+
+/** Global secrets first, so the secrets of the environment win. */
+function secretLayers(ctx: ResolveContext, exclude: (key: string) => boolean): Layer[] {
+	return [
+		without(fromFile('secrets', ctx.paths, globalSecretsFile()), exclude),
+		without(fromFile('secrets', ctx.paths, ctx.paths.secrets), exclude),
+	];
+}
+
 export function resolveProcessEnv(ctx: ResolveContext, component: ProcessComponent): ResolvedEnv {
 	const { paths, topology } = ctx;
 	let exclude: (key: string) => boolean = () => false;
@@ -149,13 +170,11 @@ export function resolveProcessEnv(ctx: ResolveContext, component: ProcessCompone
 		shellLayer(ctx),
 		fromRecord('default', 'rig default', defaultProcessEnv()),
 		fromRecord('managed', 'rig', managedProcessEnv(ctx, component)),
+		...profileLayers(ctx, exclude),
 		without(fromFile('shared', paths, paths.layerFile('shared')), exclude),
 		fromFile('role', paths, paths.layerFile(component.role)),
 		fromFile('component', paths, paths.layerFile(component.name)),
-		without(
-			fromFile('secrets', paths, paths.secrets),
-			(key) => exclude(key) || excludeSecrets(key),
-		),
+		...secretLayers(ctx, (key) => exclude(key) || excludeSecrets(key)),
 		fromRecord('one-off', '-e', ctx.oneOff ?? {}),
 	]);
 
@@ -171,10 +190,11 @@ export function resolveLauncherEnv(ctx: ResolveContext, component: LauncherCompo
 		shellLayer(ctx),
 		fromRecord('default', 'rig default', defaultLauncherEnv()),
 		fromRecord('managed', 'rig', managedLauncherEnv(ctx, component)),
+		...profileLayers(ctx, () => false),
 		fromFile('shared', paths, paths.layerFile('shared')),
 		fromFile('role', paths, paths.layerFile('launcher')),
 		fromFile('component', paths, paths.layerFile(component.name)),
-		without(fromFile('secrets', paths, paths.secrets), secretsExclusion(topology)),
+		...secretLayers(ctx, secretsExclusion(topology)),
 		fromRecord('one-off', '-e', ctx.oneOff ?? {}),
 	]);
 }
@@ -194,10 +214,34 @@ export function resolveRunnerEnv(
 	]);
 }
 
+/**
+ * A direct runner gets what a launcher would pass it: the allowed keys of the
+ * launcher layers, then the runner layers. It does not get secrets.
+ */
+export function resolveDirectRunnerEnv(
+	ctx: ResolveContext,
+	component: RunnerComponent,
+): ResolvedEnv {
+	const { paths } = ctx;
+	const allowed = new Set(RUNNER_ALLOWED_ENV[component.language]);
+	const onlyAllowed = (layer: Layer) => without(layer, (key) => !allowed.has(key));
+	return merge([
+		shellLayer(ctx),
+		fromRecord('default', 'rig default', defaultLauncherEnv()),
+		...profileLayers(ctx, () => false).map(onlyAllowed),
+		onlyAllowed(fromFile('shared', paths, paths.layerFile('shared'))),
+		fromRecord('default', 'rig default', defaultRunnerEnv(component.role)),
+		fromRecord('managed', 'rig', managedDirectRunnerEnv(ctx, component)),
+		fromFile('role', paths, paths.layerFile(component.role)),
+		fromFile('component', paths, paths.layerFile(component.name)),
+		fromRecord('one-off', '-e', ctx.oneOff ?? {}),
+	]);
+}
+
 export function resolveEnv(ctx: ResolveContext, component: Component): ResolvedEnv {
-	return component.kind === 'process'
-		? resolveProcessEnv(ctx, component)
-		: resolveLauncherEnv(ctx, component);
+	if (component.kind === 'process') return resolveProcessEnv(ctx, component);
+	if (component.kind === 'runner') return resolveDirectRunnerEnv(ctx, component);
+	return resolveLauncherEnv(ctx, component);
 }
 
 export function hashValues(...parts: unknown[]): string {

@@ -1,13 +1,15 @@
 import { join } from 'node:path';
 import { ENGINE_DATABASE, ENGINE_MODULE } from 'n8n-containers/services/engine';
 
-import type { Topology } from '../config/env-yaml';
+import { servicePort, type Topology } from '../config/env-yaml';
+import { type EnginePlane, engineTlsEnv } from '../services/engine-tls';
 import type { EnvPaths } from '../config/paths';
 import {
-	ENGINE_CONTROL_PLANE_PORT,
-	ENGINE_HTTP_PORT,
+	engineControlPlanePort,
+	engineHttpPort,
 	type LauncherComponent,
 	type ProcessComponent,
+	type RunnerComponent,
 	type RunnerLayer,
 } from '../topology/components';
 
@@ -61,13 +63,28 @@ function tunnelEnv(
 function redisEnv(topology: Topology): Record<string, string> {
 	return {
 		QUEUE_BULL_REDIS_HOST: '127.0.0.1',
-		QUEUE_BULL_REDIS_PORT: String(topology.services.redis.port),
+		QUEUE_BULL_REDIS_PORT: String(servicePort(topology, 'redis')),
 	};
 }
 
 function engineDatabaseUrl(topology: Topology): string {
-	const { port } = topology.services.postgres;
+	const port = servicePort(topology, 'postgres');
 	return `postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:${port}/${ENGINE_DATABASE}`;
+}
+
+function engineScheme(topology: Topology): 'http' | 'https' {
+	return topology.engineTls ? 'https' : 'http';
+}
+
+/** The certificate files of a plane with `engineTls`. Without it, both planes allow plain HTTP. */
+function planeTlsEnv(
+	topology: Topology,
+	paths: EnvPaths,
+	plane: EnginePlane,
+): Record<string, string> {
+	return topology.engineTls
+		? engineTlsEnv(paths, plane)
+		: { N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP: 'true' };
 }
 
 function sharedStorageEnv(paths: EnvPaths): Record<string, string> {
@@ -82,6 +99,9 @@ export function defaultProcessEnv(): Record<string, string> {
 	return {
 		N8N_DIAGNOSTICS_ENABLED: 'false',
 		N8N_LOG_LEVEL: 'info',
+		// Workers run manual executions too, so mains in queue mode need no launcher.
+		// n8n reads it only in queue mode. Set it to false on a main to give it a launcher.
+		OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS: 'true',
 	};
 }
 
@@ -104,11 +124,11 @@ export function managedProcessEnv(
 		return {
 			...env,
 			N8N_ENABLED_MODULES: ENGINE_MODULE,
-			N8N_ENGINE_PORT: String(ENGINE_HTTP_PORT),
+			N8N_ENGINE_PORT: String(engineHttpPort(topology)),
 			N8N_ENGINE_HOST: '127.0.0.1',
 			N8N_ENGINE_DATABASE_URL: engineDatabaseUrl(topology),
-			N8N_ENGINE_CONTROL_PLANE_BASE_URL: `http://127.0.0.1:${ENGINE_CONTROL_PLANE_PORT}`,
-			N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP: 'true',
+			N8N_ENGINE_CONTROL_PLANE_BASE_URL: `${engineScheme(topology)}://127.0.0.1:${engineControlPlanePort(topology)}`,
+			...planeTlsEnv(topology, paths, 'engine'),
 			...sharedStorageEnv(paths),
 			...redisEnv(topology),
 		};
@@ -120,7 +140,7 @@ export function managedProcessEnv(
 		Object.assign(env, {
 			DB_TYPE: 'postgresdb',
 			DB_POSTGRESDB_HOST: '127.0.0.1',
-			DB_POSTGRESDB_PORT: String(topology.services.postgres.port),
+			DB_POSTGRESDB_PORT: String(servicePort(topology, 'postgres')),
 			DB_POSTGRESDB_USER: POSTGRES_USER,
 			DB_POSTGRESDB_PASSWORD: POSTGRES_PASSWORD,
 			DB_POSTGRESDB_DATABASE: POSTGRES_DATABASE,
@@ -157,9 +177,9 @@ export function managedProcessEnv(
 				N8N_ENABLED_MODULES: ENGINE_MODULE,
 				N8N_ENGINE_MODE: 'remote',
 				N8N_ENGINE_DEFAULT_TYPE: 'v2',
-				N8N_ENGINE_BASE_URL: `http://127.0.0.1:${ENGINE_HTTP_PORT}`,
-				N8N_ENGINE_CONTROL_PLANE_PORT: String(ENGINE_CONTROL_PLANE_PORT),
-				N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP: 'true',
+				N8N_ENGINE_BASE_URL: `${engineScheme(topology)}://127.0.0.1:${engineHttpPort(topology)}`,
+				N8N_ENGINE_CONTROL_PLANE_PORT: String(engineControlPlanePort(topology)),
+				...planeTlsEnv(topology, paths, 'main'),
 			},
 			sharedStorageEnv(paths),
 			redisEnv(topology),
@@ -203,6 +223,23 @@ export function defaultRunnerEnv(layer: RunnerLayer): Record<string, string> {
 	return {
 		N8N_RUNNERS_STDLIB_ALLOW: '',
 		N8N_RUNNERS_EXTERNAL_ALLOW: '',
+	};
+}
+
+/** Wiring of a direct runner. rig adds `N8N_RUNNERS_GRANT_TOKEN` at each start. */
+export function managedDirectRunnerEnv(
+	ctx: ManagedContext,
+	component: RunnerComponent,
+): Record<string, string> {
+	const { ports } = component.host;
+	return {
+		N8N_RUNNERS_TASK_BROKER_URI: `http://127.0.0.1:${ports.broker}`,
+		N8N_RUNNERS_HEALTH_CHECK_SERVER_ENABLED: 'true',
+		N8N_RUNNERS_HEALTH_CHECK_SERVER_HOST: '127.0.0.1',
+		N8N_RUNNERS_HEALTH_CHECK_SERVER_PORT: String(
+			component.language === 'js' ? ports.jsHealth : ports.pyHealth,
+		),
+		...managedRunnerEnv(ctx, component.role),
 	};
 }
 

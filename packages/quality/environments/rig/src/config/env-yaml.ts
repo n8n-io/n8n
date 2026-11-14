@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { RigError } from '../errors';
 
 export const ENV_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+export const PROFILE_NAME_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
 
 const serviceSchema = (defaultPort: number) =>
 	z
@@ -22,6 +23,7 @@ export const engineModeSchema = z.enum(['off', 'in-process', 'remote']);
 export type EngineMode = z.infer<typeof engineModeSchema>;
 
 export const TUNNEL_METRICS_PORT = 20241;
+export const MAX_SLOT = 9;
 
 /**
  * A public HTTPS URL through a Cloudflare tunnel. `tunnel: cloudflare` is the
@@ -66,13 +68,25 @@ export const topologySchema = z
 		runners: z
 			.object({
 				mode: z.enum(['internal', 'external']).default('external'),
-				via: z.literal('launcher').default('launcher'),
+				/** `launcher`: one launcher per process starts the runners. `direct`: rig runs each runner itself. */
+				via: z.enum(['launcher', 'direct']).default('launcher'),
 				languages: z.array(languageSchema).min(1).default(['js', 'python']),
 			})
 			.strict()
 			.default({}),
 		engine: engineModeSchema.default('off'),
+		/** With `engine: remote`: mutual TLS between the main and the engine, with certificates from rig. */
+		engineTls: z.boolean().default(false),
 		tunnel: tunnelSchema,
+		/**
+		 * Port slot. Slot k adds 1000 * k to every n8n port and k to the service
+		 * ports, so environments with different slots can run at the same time.
+		 */
+		slot: z.number().int().min(0).max(MAX_SLOT).default(0),
+		/** Profiles from ~/.config/rig/profiles, in layer order. A later profile wins. */
+		profiles: z
+			.array(z.string().regex(PROFILE_NAME_PATTERN, 'use lowercase letters, digits, - and _'))
+			.default([]),
 		services: z
 			.object({
 				postgres: serviceSchema(5432),
@@ -126,9 +140,10 @@ export function requiredServices(topology: Topology): ServiceName[] {
 	return services;
 }
 
-/** The host port of a service. The tunnel publishes only its metrics port. */
+/** The host port of a service, with the slot. The tunnel publishes only its metrics port. */
 export function servicePort(topology: Topology, service: ServiceName): number {
-	return service === 'tunnel' ? topology.tunnel.metricsPort : topology.services[service].port;
+	const port = service === 'tunnel' ? topology.tunnel.metricsPort : topology.services[service].port;
+	return port + topology.slot;
 }
 
 export function describeTopology(topology: Topology): string {
@@ -142,12 +157,15 @@ export function describeTopology(topology: Topology): string {
 	}
 	parts.push(
 		topology.runners.mode === 'external'
-			? `runners: ${topology.runners.languages.join('+')} via launcher`
+			? `runners: ${topology.runners.languages.join('+')} via ${topology.runners.via}`
 			: 'runners: internal',
 	);
-	if (topology.engine !== 'off') parts.push(`engine: ${topology.engine}`);
+	if (topology.engine !== 'off') {
+		parts.push(`engine: ${topology.engine}${topology.engineTls ? ' (TLS)' : ''}`);
+	}
 	if (topology.tunnel.provider === 'cloudflare') {
 		parts.push(`tunnel: ${topology.tunnel.hostname ?? 'cloudflare quick tunnel'}`);
 	}
+	if (topology.slot > 0) parts.push(`slot ${topology.slot}`);
 	return parts.join(' · ');
 }

@@ -19,6 +19,7 @@ import {
 	selectEnvName,
 	setCurrentEnv,
 } from '../environment';
+import { setInDotenv, setInDotenvFile } from '../env/dotenv';
 import { ensureSecrets } from '../env/secrets';
 import { RigError } from '../errors';
 import { servicesDown } from '../services/compose';
@@ -29,6 +30,7 @@ import { confirm, isInteractive } from '../ui/prompt';
 import { envArg, newSupervisor, stopComponents } from './common';
 import { wizard } from './wizard';
 import { RIG } from '../self/build-info';
+import { parseSlot, slotsInUse } from '../topology/slots';
 
 const LAYER_HEADERS: Record<string, string> = {
 	shared: 'every component (mains, workers, engine, launchers)',
@@ -44,7 +46,7 @@ export function layerHeader(layer: string): string {
 	const target = LAYER_HEADERS[layer] ?? `the component "${layer}"`;
 	return (
 		`# Env vars for ${target}.\n` +
-		'# Order, later wins: managed by rig < shared.env < <role>.env < <component>.env < ../secrets.env\n' +
+		'# Order, later wins: managed by rig < profiles < shared.env < <role>.env < <component>.env < secrets\n' +
 		`# Edit this file or use \`${RIG} env set KEY=value --on <role|component>\`.\n` +
 		'# Running components show drift and restart on request.\n\n'
 	);
@@ -71,7 +73,7 @@ function parseDb(value: string): 'sqlite' | 'postgres' {
 	throw new RigError('--db must be sqlite or postgres.');
 }
 
-function assertNewEnv(name: string): void {
+export function assertNewEnv(name: string): void {
 	if (existsSync(envPaths(name).envYaml)) {
 		throw new RigError(
 			`Environment "${name}" exists.`,
@@ -90,6 +92,8 @@ interface TopologyFlags {
 	languages?: string;
 	engine?: string;
 	tunnel?: boolean;
+	'engine-tls'?: boolean;
+	slot?: string;
 }
 
 function inputFromFlags(name: string, args: TopologyFlags): TopologyInput {
@@ -112,7 +116,12 @@ function inputFromFlags(name: string, args: TopologyFlags): TopologyInput {
 	if ((input.mains ?? 1) > 1 && input.queue === undefined) input.queue = true;
 	if (args.runners !== undefined || args.languages !== undefined) {
 		const runners: Record<string, unknown> = {};
-		if (args.runners !== undefined) runners.mode = args.runners;
+		if (args.runners === 'direct') {
+			runners.mode = 'external';
+			runners.via = 'direct';
+		} else if (args.runners !== undefined) {
+			runners.mode = args.runners;
+		}
 		if (args.languages !== undefined) {
 			runners.languages = args.languages.split(',').map((l) => l.trim());
 		}
@@ -124,7 +133,61 @@ function inputFromFlags(name: string, args: TopologyFlags): TopologyInput {
 		if (engine !== 'off' && input.db === undefined) input.db = 'postgres';
 	}
 	if (args.tunnel) input.tunnel = { provider: 'cloudflare' };
+	if (args['engine-tls']) input.engineTls = true;
+	const slot = parseSlot(args.slot, name);
+	if (slot !== undefined) input.slot = slot;
 	return input;
+}
+
+/** Writes a new environment: env.yaml, layer files, and secrets. Prints the next steps. */
+export function createEnvironment(
+	topology: Topology,
+	options: {
+		layers?: Record<string, Record<string, string>>;
+		secrets?: Record<string, string>;
+	} = {},
+): RigEnv {
+	const { name } = topology;
+	assertNewEnv(name);
+	const paths = envPaths(name);
+	validateTopology(topology);
+
+	mkdirSync(paths.layersDir, { recursive: true });
+	saveTopology(paths.envYaml, topology);
+	const layers = new Set([...layersFor(topology), ...Object.keys(options.layers ?? {})]);
+	for (const layer of layers) {
+		let text = layerHeader(layer);
+		for (const [key, value] of Object.entries(options.layers?.[layer] ?? {})) {
+			text = setInDotenv(text, key, value);
+		}
+		writeFileSync(paths.layerFile(layer), text);
+	}
+	ensureSecrets(paths.secrets);
+	for (const [key, value] of Object.entries(options.secrets ?? {})) {
+		setInDotenvFile(paths.secrets, key, value);
+	}
+	setCurrentEnv(name);
+
+	const env = new RigEnv(name, paths);
+	ui.success(`Created ${pc.bold(name)}: ${describeTopology(topology)}`);
+	ui.step(
+		`Components: ${env
+			.components()
+			.map((c) => c.name)
+			.join(', ')}`,
+	);
+	ui.step(`Directory:  ${paths.root}`);
+	const sharing = slotsInUse(name).get(topology.slot);
+	if (sharing) {
+		ui.warn(
+			`${sharing.join(', ')} also use${sharing.length === 1 ? 's' : ''} slot ${topology.slot}, so they cannot run at the same time. To run them in parallel, set \`slot\` in env.yaml or create with --slot auto.`,
+		);
+	}
+	console.log('');
+	ui.info(`Run everything:      ${pc.bold(`${RIG} up`)}`);
+	ui.info(`Run one component:   ${pc.bold(`${RIG} run ${env.components()[0]?.name ?? 'main-1'}`)}`);
+	ui.info(`Set an env var:      ${pc.bold(`${RIG} env set N8N_LOG_LEVEL=debug --on worker`)}`);
+	return env;
 }
 
 export const createCommand = defineCommand({
@@ -139,12 +202,24 @@ export const createCommand = defineCommand({
 		queue: { type: 'boolean', description: 'Use queue mode' },
 		mains: { type: 'string', description: 'Number of mains' },
 		workers: { type: 'string', description: 'Number of workers' },
-		runners: { type: 'string', description: 'Task runner mode: external (launcher) or internal' },
+		runners: {
+			type: 'string',
+			description:
+				'Task runners: external (via the launcher), direct (external, no launcher), or internal',
+		},
 		languages: { type: 'string', description: 'Runner languages, comma-separated: js,python' },
 		engine: { type: 'string', description: 'Engine v2: off, in-process, or remote' },
 		tunnel: {
 			type: 'boolean',
 			description: 'Add a public HTTPS URL through a Cloudflare quick tunnel',
+		},
+		'engine-tls': {
+			type: 'boolean',
+			description: 'With --engine remote: mutual TLS between the main and the engine',
+		},
+		slot: {
+			type: 'string',
+			description: 'Port slot: 0 (default ports) to 9, or auto for the lowest free slot',
 		},
 	},
 	async run({ args }) {
@@ -158,6 +233,8 @@ export const createCommand = defineCommand({
 			args.languages,
 			args.engine,
 			args.tunnel,
+			args['engine-tls'],
+			args.slot,
 		].some((value) => value !== undefined);
 
 		if (args.name) assertNewEnv(args.name);
@@ -173,34 +250,7 @@ export const createCommand = defineCommand({
 			throw new RigError(`Give a name: \`${RIG} create <name> --preset <preset>\`.`);
 		}
 
-		const { name } = input;
-		const paths = envPaths(name);
-		const topology = parseTopology(input);
-		validateTopology(topology);
-
-		mkdirSync(paths.layersDir, { recursive: true });
-		saveTopology(paths.envYaml, topology);
-		for (const layer of layersFor(topology)) {
-			writeFileSync(paths.layerFile(layer), layerHeader(layer));
-		}
-		ensureSecrets(paths.secrets);
-		setCurrentEnv(name);
-
-		const env = new RigEnv(name, paths);
-		ui.success(`Created ${pc.bold(name)}: ${describeTopology(topology)}`);
-		ui.step(
-			`Components: ${env
-				.components()
-				.map((c) => c.name)
-				.join(', ')}`,
-		);
-		ui.step(`Directory:  ${paths.root}`);
-		console.log('');
-		ui.info(`Run everything:      ${pc.bold(`${RIG} up`)}`);
-		ui.info(
-			`Run one component:   ${pc.bold(`${RIG} run ${env.components()[0]?.name ?? 'main-1'}`)}`,
-		);
-		ui.info(`Set an env var:      ${pc.bold(`${RIG} env set N8N_LOG_LEVEL=debug --on worker`)}`);
+		createEnvironment(parseTopology(input));
 	},
 });
 

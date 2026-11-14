@@ -37,6 +37,12 @@ const PY_ALLOWED_ENV = [
 	'HOME',
 ];
 
+/** Keys that a runner gets from the env of its launcher. */
+export const RUNNER_ALLOWED_ENV: Record<Language, readonly string[]> = {
+	js: JS_ALLOWED_ENV,
+	python: PY_ALLOWED_ENV,
+};
+
 export interface LauncherRunnerConfig {
 	'runner-type': 'javascript' | 'python';
 	workdir: string;
@@ -61,6 +67,27 @@ export function nodeBinary(): string {
 	return realpathSync(process.execPath);
 }
 
+/** How to start a runner. The launcher config and direct runners use the same command. */
+export function runnerCommand(
+	language: Language,
+	repoRoot: string,
+): { command: string; args: string[]; cwd: string } {
+	if (language === 'js') {
+		const cwd = join(repoRoot, JS_RUNNER_DIR);
+		return {
+			command: nodeBinary(),
+			args: [
+				'--disallow-code-generation-from-strings',
+				'--disable-proto=delete',
+				join(cwd, 'dist/start.js'),
+			],
+			cwd,
+		};
+	}
+	const cwd = join(repoRoot, PY_RUNNER_DIR);
+	return { command: 'uv', args: ['--directory', cwd, 'run', 'python', 'src/main.py'], cwd };
+}
+
 export function buildLauncherConfig(options: {
 	component: LauncherComponent;
 	repoRoot: string;
@@ -72,16 +99,12 @@ export function buildLauncherConfig(options: {
 	const runners: LauncherRunnerConfig[] = [];
 
 	if (languages.includes('js')) {
-		const node = nodeBinary();
+		const { command, args, cwd } = runnerCommand('js', repoRoot);
 		runners.push({
 			'runner-type': 'javascript',
-			workdir: join(repoRoot, JS_RUNNER_DIR),
-			command: node,
-			args: [
-				'--disallow-code-generation-from-strings',
-				'--disable-proto=delete',
-				join(repoRoot, JS_RUNNER_DIR, 'dist/start.js'),
-			],
+			workdir: cwd,
+			command,
+			args,
 			'health-check-server-port': String(ports.jsHealth),
 			'allowed-env': JS_ALLOWED_ENV,
 			'env-overrides': overrides.js,
@@ -89,12 +112,12 @@ export function buildLauncherConfig(options: {
 	}
 
 	if (languages.includes('python')) {
-		const pythonDir = join(repoRoot, PY_RUNNER_DIR);
+		const { command, args, cwd } = runnerCommand('python', repoRoot);
 		runners.push({
 			'runner-type': 'python',
-			workdir: pythonDir,
-			command: 'uv',
-			args: ['--directory', pythonDir, 'run', 'python', 'src/main.py'],
+			workdir: cwd,
+			command,
+			args,
 			'health-check-server-port': String(ports.pyHealth),
 			'allowed-env': PY_ALLOWED_ENV,
 			'env-overrides': overrides.python,

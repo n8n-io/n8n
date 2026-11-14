@@ -3,6 +3,7 @@ import { stripVTControlCharacters } from 'node:util';
 import pc from 'picocolors';
 
 import { CancelledError, RigError } from '../errors';
+import { formatLogLine } from './log-format';
 
 const PREFIX_COLORS = [pc.cyan, pc.magenta, pc.yellow, pc.green, pc.blue, pc.red];
 
@@ -41,6 +42,20 @@ export function printError(error: unknown): void {
 export class PrefixPrinter {
 	private readonly colors = new Map<string, (text: string) => string>();
 	private width = 0;
+	/** When set, only these components show their log lines. Events always show. */
+	private visible: Set<string> | undefined;
+
+	/** @param readable Show JSON log lines in a readable form. The log files keep the raw lines. */
+	constructor(private readonly readable = true) {}
+
+	setFilter(names: Set<string> | undefined): void {
+		this.visible = names && names.size > 0 ? names : undefined;
+	}
+
+	color(name: string): (text: string) => string {
+		this.register([name]);
+		return this.colors.get(name) ?? pc.white;
+	}
 
 	register(names: string[]): void {
 		for (const name of names) {
@@ -63,15 +78,19 @@ export class PrefixPrinter {
 
 	/** Writes many lines with one write. A terminal write is a blocking system call. */
 	lines(name: string, texts: string[]): void {
-		if (texts.length === 0) return;
+		if (texts.length === 0 || (this.visible && !this.visible.has(name))) return;
 		const prefix = this.prefix(name);
 		let output = '';
-		for (const text of texts) output += `${prefix}${text}\n`;
+		for (const text of texts) {
+			const formatted = this.readable ? formatLogLine(text) : text;
+			// A JSON message can contain new lines. Each one gets the prefix.
+			for (const line of formatted.split('\n')) output += `${prefix}${line}\n`;
+		}
 		process.stdout.write(output);
 	}
 
 	event(name: string, text: string): void {
-		this.line(name, pc.bold(text));
+		process.stdout.write(`${this.prefix(name)}${pc.bold(text)}\n`);
 	}
 }
 

@@ -1,13 +1,23 @@
-import type { Topology } from '../config/env-yaml';
+import type { Language, Topology } from '../config/env-yaml';
 
 export type ProcessRole = 'main' | 'worker' | 'engine';
-export type Role = ProcessRole | 'launcher';
 
-/** Layers that configure a launcher's runners. They are not components. */
+/**
+ * Layers that configure the runners. With `runners.via: launcher` they are the
+ * env-overrides of the launcher config. With `direct` they are also the roles of
+ * the runner components.
+ */
 export const RUNNER_LAYERS = ['runner-js', 'runner-py'] as const;
 export type RunnerLayer = (typeof RUNNER_LAYERS)[number];
 
-export const ROLES: readonly Role[] = ['main', 'worker', 'engine', 'launcher'];
+export type Role = ProcessRole | 'launcher' | RunnerLayer;
+
+export const ROLES: readonly Role[] = ['main', 'worker', 'engine', 'launcher', ...RUNNER_LAYERS];
+
+export const RUNNER_LAYER_OF: Record<Language, RunnerLayer> = {
+	js: 'runner-js',
+	python: 'runner-py',
+};
 
 /** The port block of one n8n process. See the Ports section of the spec. */
 export interface PortBlock {
@@ -18,6 +28,8 @@ export interface PortBlock {
 	launcherHealth: number;
 	jsHealth: number;
 	pyHealth: number;
+	/** The Node inspector with `--inspect`. */
+	inspect: number;
 }
 
 export const MAIN_PORT_BASE = 5678;
@@ -25,6 +37,26 @@ export const WORKER_PORT_BASE = 5778;
 export const ENGINE_PORT_BASE = 5878;
 export const ENGINE_HTTP_PORT = 3000;
 export const ENGINE_CONTROL_PLANE_PORT = 3001;
+/** Slot k moves every n8n port by this step times k. */
+export const SLOT_PORT_STEP = 1000;
+
+function slotOffset(topology: Topology): number {
+	return SLOT_PORT_STEP * topology.slot;
+}
+
+/**
+ * The engine ports move by 10 for each slot: 3000, 3010, and so on. A step of
+ * 1000 would reach port 5000, which macOS uses for AirPlay.
+ */
+const ENGINE_SLOT_STEP = 10;
+
+export function engineHttpPort(topology: Topology): number {
+	return ENGINE_HTTP_PORT + ENGINE_SLOT_STEP * topology.slot;
+}
+
+export function engineControlPlanePort(topology: Topology): number {
+	return ENGINE_CONTROL_PLANE_PORT + ENGINE_SLOT_STEP * topology.slot;
+}
 
 function block(base: number, http = base): PortBlock {
 	return {
@@ -34,6 +66,7 @@ function block(base: number, http = base): PortBlock {
 		launcherHealth: base + 2,
 		jsHealth: base + 3,
 		pyHealth: base + 4,
+		inspect: base + 5,
 	};
 }
 
@@ -54,7 +87,20 @@ export interface LauncherComponent {
 	dependsOn: string[];
 }
 
-export type Component = ProcessComponent | LauncherComponent;
+/** A task runner that rig runs itself (`runners.via: direct`). */
+export interface RunnerComponent {
+	kind: 'runner';
+	name: string;
+	role: RunnerLayer;
+	language: Language;
+	host: ProcessComponent;
+	dependsOn: string[];
+}
+
+/** A launcher or a direct runner: a component that serves the task broker of a host. */
+export type RunnerHostComponent = LauncherComponent | RunnerComponent;
+
+export type Component = ProcessComponent | LauncherComponent | RunnerComponent;
 
 export function launcherName(host: string): string {
 	return `launcher@${host}`;
@@ -62,13 +108,14 @@ export function launcherName(host: string): string {
 
 export function processComponents(topology: Topology): ProcessComponent[] {
 	const components: ProcessComponent[] = [];
+	const offset = slotOffset(topology);
 	for (let i = 1; i <= topology.mains; i++) {
 		components.push({
 			kind: 'process',
 			name: `main-${i}`,
 			role: 'main',
 			index: i,
-			ports: block(MAIN_PORT_BASE + 10 * (i - 1)),
+			ports: block(offset + MAIN_PORT_BASE + 10 * (i - 1)),
 			dependsOn: i === 1 ? [] : ['main-1'],
 		});
 	}
@@ -78,7 +125,7 @@ export function processComponents(topology: Topology): ProcessComponent[] {
 			name: `worker-${i}`,
 			role: 'worker',
 			index: i,
-			ports: block(WORKER_PORT_BASE + 10 * (i - 1)),
+			ports: block(offset + WORKER_PORT_BASE + 10 * (i - 1)),
 			dependsOn: ['main-1'],
 		});
 	}
@@ -88,7 +135,7 @@ export function processComponents(topology: Topology): ProcessComponent[] {
 			name: 'engine',
 			role: 'engine',
 			index: 1,
-			ports: block(ENGINE_PORT_BASE, ENGINE_HTTP_PORT),
+			ports: block(offset + ENGINE_PORT_BASE, engineHttpPort(topology)),
 			dependsOn: ['main-1'],
 		});
 	}
@@ -114,6 +161,7 @@ export function launcherComponents(
 	processes: ProcessComponent[],
 	offloadsManualExecutions: (main: ProcessComponent) => boolean,
 ): LauncherComponent[] {
+	if (topology.runners.via !== 'launcher') return [];
 	return processes
 		.filter((host) =>
 			runsTasks(topology, host, host.role === 'main' && offloadsManualExecutions(host)),
@@ -125,6 +173,29 @@ export function launcherComponents(
 			host,
 			dependsOn: [host.name],
 		}));
+}
+
+/** With `runners.via: direct`: one runner for each language and each process that runs tasks. */
+export function runnerComponents(
+	topology: Topology,
+	processes: ProcessComponent[],
+	offloadsManualExecutions: (main: ProcessComponent) => boolean,
+): RunnerComponent[] {
+	if (topology.runners.via !== 'direct') return [];
+	return processes
+		.filter((host) =>
+			runsTasks(topology, host, host.role === 'main' && offloadsManualExecutions(host)),
+		)
+		.flatMap((host) =>
+			topology.runners.languages.map((language) => ({
+				kind: 'runner' as const,
+				name: `${RUNNER_LAYER_OF[language]}@${host.name}`,
+				role: RUNNER_LAYER_OF[language],
+				language,
+				host,
+				dependsOn: [host.name],
+			})),
+		);
 }
 
 /** Orders components so each one comes after its dependencies. */
@@ -160,11 +231,13 @@ export function portsOf(component: Component, topology: Topology): number[] {
 		// The broker also listens in internal mode, where n8n starts the runners itself.
 		const ports = [component.ports.http, component.ports.broker];
 		if (component.role === 'main' && topology.engine === 'remote') {
-			ports.push(ENGINE_CONTROL_PLANE_PORT);
+			ports.push(engineControlPlanePort(topology));
 		}
 		return ports;
 	}
 	const { ports } = component.host;
+	if (component.kind === 'runner')
+		return [component.language === 'js' ? ports.jsHealth : ports.pyHealth];
 	const result = [ports.launcherHealth];
 	if (topology.runners.languages.includes('js')) result.push(ports.jsHealth);
 	if (topology.runners.languages.includes('python')) result.push(ports.pyHealth);

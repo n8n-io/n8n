@@ -1,9 +1,23 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { ENV_NAME_PATTERN, loadTopology, type Topology } from './config/env-yaml';
+import {
+	ENV_NAME_PATTERN,
+	loadTopology,
+	PROFILE_NAME_PATTERN,
+	type Topology,
+} from './config/env-yaml';
 import { loadGlobalConfig, type GlobalConfig } from './config/global-config';
-import { currentEnvFile, dataDir, EnvPaths, envsDir } from './config/paths';
+import {
+	currentEnvFile,
+	dataDir,
+	displayPath,
+	EnvPaths,
+	envsDir,
+	globalSecretsFile,
+	profileFile,
+	profilesDir,
+} from './config/paths';
 import { readDotenv } from './env/dotenv';
 import {
 	hashValues,
@@ -19,14 +33,37 @@ import { readTunnelUrl } from './services/tunnel';
 import { type ResolvedSource, resolveSource } from './source';
 import {
 	launcherComponents,
+	runnerComponents,
 	processComponents,
 	RUNNER_LAYERS,
 	ROLES,
 	type Component,
 	type LauncherComponent,
 	type ProcessComponent,
+	type RunnerComponent,
+	type RunnerHostComponent,
 } from './topology/components';
 import { RIG } from './self/build-info';
+
+export const GLOBAL_SECRETS_LAYER = 'global-secrets';
+export const PROFILE_PREFIX = 'profile:';
+
+/** The profile name of a `profile:<name>` layer target. */
+export function profileName(layer: string): string | undefined {
+	if (!layer.startsWith(PROFILE_PREFIX)) return undefined;
+	const name = layer.slice(PROFILE_PREFIX.length);
+	return PROFILE_NAME_PATTERN.test(name) ? name : undefined;
+}
+
+/** Profiles in ~/.config/rig/profiles. */
+export function listProfiles(): string[] {
+	if (!existsSync(profilesDir())) return [];
+	return readdirSync(profilesDir())
+		.filter((file) => file.endsWith('.env'))
+		.map((file) => file.slice(0, -'.env'.length))
+		.filter((name) => PROFILE_NAME_PATTERN.test(name))
+		.sort();
+}
 
 export function listEnvNames(): string[] {
 	if (!existsSync(envsDir())) return [];
@@ -136,15 +173,38 @@ export class RigEnv {
 		return processComponents(this.topology);
 	}
 
+	private offloads = (main: ProcessComponent): boolean => {
+		const { env } = resolveEnv(this.context(), main);
+		return env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
+	};
+
 	launchers(): LauncherComponent[] {
-		return launcherComponents(this.topology, this.processes(), (main) => {
-			const { env } = resolveEnv(this.context(), main);
-			return env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
-		});
+		return launcherComponents(this.topology, this.processes(), this.offloads);
+	}
+
+	/** Runners that rig runs itself, with `runners.via: direct`. */
+	runners(): RunnerComponent[] {
+		return runnerComponents(this.topology, this.processes(), this.offloads);
+	}
+
+	/**
+	 * The components plus the direct runners of each process among them. A
+	 * direct runner holds a single-use grant token for the broker of its host,
+	 * so it must restart with the host. A launcher gets a new token itself.
+	 */
+	withDependentRunners(components: Component[]): Component[] {
+		const hosts = new Set(components.filter((c) => c.kind === 'process').map((c) => c.name));
+		const runners = this.runners().filter((runner) => hosts.has(runner.host.name));
+		return [...new Map([...components, ...runners].map((c) => [c.name, c])).values()];
+	}
+
+	/** The launchers or direct runners that serve the task brokers of processes. */
+	runnerHosts(): RunnerHostComponent[] {
+		return [...this.launchers(), ...this.runners()];
 	}
 
 	components(): Component[] {
-		return [...this.processes(), ...this.launchers()];
+		return [...this.processes(), ...this.launchers(), ...this.runners()];
 	}
 
 	component(name: string): Component | undefined {
@@ -193,6 +253,7 @@ export class RigEnv {
 	componentHash(component: Component, overrides: Partial<ResolveContext> = {}): string {
 		const { env } = this.resolve(component, overrides);
 		if (component.kind === 'launcher') return hashValues(env, this.launcherConfig(component));
+		if (component.kind === 'runner') return hashValues(env, this.repoRoot, component.language);
 		return hashValues(env, this.repoRoot);
 	}
 
@@ -209,6 +270,23 @@ export class RigEnv {
 		return `${protocol}://localhost:${env.N8N_PORT ?? main.ports.http}${path.startsWith('/') ? path : `/${path}`}`;
 	}
 
+	/** The file of a layer target: a layer in env/, `secrets`, `global-secrets`, or `profile:<name>`. */
+	layerFile(layer: string): string {
+		if (layer === 'secrets') return this.paths.secrets;
+		if (layer === GLOBAL_SECRETS_LAYER) return globalSecretsFile();
+		const profile = profileName(layer);
+		if (profile) return profileFile(profile);
+		return this.paths.layerFile(layer);
+	}
+
+	/** A short path of a layer file for messages. */
+	layerLabel(layer: string): string {
+		const file = this.layerFile(layer);
+		return file.startsWith(`${this.paths.root}/`)
+			? file.slice(this.paths.root.length + 1)
+			: displayPath(file);
+	}
+
 	/** Names that `rig env set --on` accepts. */
 	layerTargets(): string[] {
 		const components = this.components();
@@ -223,6 +301,12 @@ export class RigEnv {
 			if (component.kind === 'launcher') {
 				for (const layer of RUNNER_LAYERS) targets.add(`${layer}@${component.host.name}`);
 			}
+			if (component.kind === 'runner') targets.add(component.role);
+		}
+		targets.add('secrets');
+		targets.add(GLOBAL_SECRETS_LAYER);
+		for (const profile of new Set([...this.topology.profiles, ...listProfiles()])) {
+			targets.add(`${PROFILE_PREFIX}${profile}`);
 		}
 		return [...targets];
 	}
@@ -230,19 +314,32 @@ export class RigEnv {
 	/** Components that a change in a layer file affects. */
 	affectedBy(layer: string): Component[] {
 		const components = this.components();
-		if (layer === 'shared' || layer === 'secrets') return components;
+		if (layer === 'shared' || layer === 'secrets' || layer === GLOBAL_SECRETS_LAYER) {
+			return components;
+		}
+		const profile = profileName(layer);
+		if (profile) return this.topology.profiles.includes(profile) ? components : [];
 		for (const runnerLayer of RUNNER_LAYERS) {
-			if (layer === runnerLayer) return components.filter((c) => c.kind === 'launcher');
+			// Launchers pass these layers to all their runners. Direct runners read only their own.
+			if (layer === runnerLayer) {
+				return components.filter(
+					(c) => c.kind === 'launcher' || (c.kind === 'runner' && c.role === runnerLayer),
+				);
+			}
 			if (layer.startsWith(`${runnerLayer}@`)) {
 				const host = layer.slice(runnerLayer.length + 1);
-				return components.filter((c) => c.kind === 'launcher' && c.host.name === host);
+				return components.filter(
+					(c) =>
+						(c.kind === 'launcher' && c.host.name === host) ||
+						(c.kind === 'runner' && c.name === layer),
+				);
 			}
 		}
 		return components.filter((c) => c.role === layer || c.name === layer);
 	}
 
 	hasLayerKey(layer: string, key: string): boolean {
-		return readDotenv(this.paths.layerFile(layer)).some((entry) => entry.key === key);
+		return readDotenv(this.layerFile(layer)).some((entry) => entry.key === key);
 	}
 }
 

@@ -17,6 +17,12 @@ export function validateTopology(topology: Topology): void {
 			'Set `queue: true` in env.yaml, or create with --queue.',
 		);
 	}
+	if (topology.engineTls && topology.engine !== 'remote') {
+		throw new RigError(
+			'Engine TLS needs `engine: remote`.',
+			'Set `engine: remote` in env.yaml, or remove `engineTls`.',
+		);
+	}
 	if (topology.queue && topology.db !== 'postgres') {
 		throw new RigError(
 			'Queue mode needs Postgres.',

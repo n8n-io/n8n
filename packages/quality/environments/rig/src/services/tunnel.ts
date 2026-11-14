@@ -3,8 +3,8 @@ import { dirname } from 'node:path';
 import { sleep } from '@n8n/utils/sleep';
 import { z } from 'zod';
 
-import type { Topology } from '../config/env-yaml';
-import type { EnvPaths } from '../config/paths';
+import { servicePort, type Topology } from '../config/env-yaml';
+import { type EnvPaths, globalSecretsFile } from '../config/paths';
 import { readDotenv } from '../env/dotenv';
 import { RigError } from '../errors';
 import { RIG } from '../self/build-info';
@@ -44,7 +44,10 @@ export function clearTunnelUrl(paths: EnvPaths): void {
 /** The token of a named tunnel from secrets.env. Throws when it is missing. */
 export function tunnelToken(paths: EnvPaths, topology: Topology): string | undefined {
 	if (topology.tunnel.provider !== 'cloudflare' || !topology.tunnel.hostname) return undefined;
-	const token = readDotenv(paths.secrets).find((entry) => entry.key === TUNNEL_TOKEN_KEY)?.value;
+	// The secrets of the environment win over the global secrets.
+	const token = [...readDotenv(globalSecretsFile()), ...readDotenv(paths.secrets)]
+		.filter((entry) => entry.key === TUNNEL_TOKEN_KEY)
+		.at(-1)?.value;
 	if (!token) {
 		throw new RigError(
 			`The named tunnel for ${topology.tunnel.hostname} needs ${TUNNEL_TOKEN_KEY} in secrets.env.`,
@@ -75,7 +78,7 @@ async function isConnected(metrics: string): Promise<boolean> {
  */
 export async function waitForTunnel(paths: EnvPaths, topology: Topology): Promise<string> {
 	const { tunnel } = topology;
-	const metrics = `http://127.0.0.1:${tunnel.metricsPort}`;
+	const metrics = `http://127.0.0.1:${servicePort(topology, 'tunnel')}`;
 	const deadline = Date.now() + READY_TIMEOUT_MS;
 
 	while (Date.now() < deadline) {

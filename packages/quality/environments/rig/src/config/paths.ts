@@ -22,6 +22,26 @@ export function globalConfigFile(): string {
 	return join(configDir(), 'config.yaml');
 }
 
+/** Reusable env snippets that environments turn on with `rig profile on`. */
+export function profilesDir(): string {
+	return join(configDir(), 'profiles');
+}
+
+export function profileFile(name: string): string {
+	return join(profilesDir(), `${name}.env`);
+}
+
+/** Secrets for every environment, for example license keys. */
+export function globalSecretsFile(): string {
+	return join(configDir(), 'secrets.env');
+}
+
+/** A path for messages: `~` instead of the home directory. */
+export function displayPath(path: string): string {
+	const home = homedir();
+	return path.startsWith(`${home}/`) ? `~${path.slice(home.length)}` : path;
+}
+
 export function envsDir(): string {
 	return join(dataDir(), 'envs');
 }
@@ -99,6 +119,11 @@ export class EnvPaths {
 	/** The public URL of the tunnel, written when the tunnel connects. */
 	get tunnelState() {
 		return join(this.stateDir, 'tunnel.json');
+	}
+
+	/** The CA and the certificates of the engine planes, with `engineTls`. */
+	get engineTlsDir() {
+		return join(this.root, 'engine-tls');
 	}
 
 	state(component: string) {

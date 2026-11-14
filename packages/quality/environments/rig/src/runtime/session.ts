@@ -3,6 +3,8 @@ import { watch } from 'chokidar';
 import pc from 'picocolors';
 
 import { describeTopology, requiredServices } from '../config/env-yaml';
+import { configDir } from '../config/paths';
+import { StatusLine } from '../ui/status-line';
 import type { RigEnv } from '../environment';
 import { RigError } from '../errors';
 import { type Component, startStages } from '../topology/components';
@@ -14,7 +16,16 @@ import { RIG } from '../self/build-info';
 
 const SIGNALS: NodeJS.Signals[] = ['SIGINT', 'SIGTERM', 'SIGHUP'];
 
-export type DependencyMode = 'prompt' | 'background' | 'none';
+export type DependencyMode = 'prompt' | 'background' | 'wait' | 'none';
+
+type ComponentStatus = 'stopped' | 'starting' | 'ready' | 'exited';
+
+const STATUS_SYMBOLS: Record<ComponentStatus, string> = {
+	stopped: pc.dim('○'),
+	starting: pc.yellow('◌'),
+	ready: pc.green('●'),
+	exited: pc.red('✖'),
+};
 
 export interface SessionOptions {
 	env: RigEnv;
@@ -64,6 +75,10 @@ export class Session {
 	private quitting = false;
 	private resolveDone: (() => void) | undefined;
 	private readonly abort = new AbortController();
+	private readonly statuses = new Map<string, ComponentStatus>();
+	private readonly statusLine = new StatusLine();
+	private filter = new Set<string>();
+	private readonly probing = new Set<string>();
 
 	constructor(private readonly options: SessionOptions) {
 		this.env = options.env;
@@ -92,20 +107,28 @@ export class Session {
 		const done = new Promise<void>((resolve) => (this.resolveDone = resolve));
 		this.installSignalHandlers();
 		this.installKeys();
+		if (isInteractive()) this.statusLine.start();
+		this.renderStatus();
 		const watcher = this.watchEnv();
 		const monitor = setInterval(() => this.monitor(), 1000);
 
 		try {
-			await this.startAll(
+			const started = await this.startAll(
 				[...backgroundDeps, ...this.targets],
 				new Set(backgroundDeps.map((d) => d.name)),
 			);
+			if (!started && !isInteractive()) {
+				// Without a terminal, nobody can press R. Stop and report the failure.
+				process.exitCode = 1;
+				this.quit();
+			}
 			if (!this.quitting) this.printHelp();
 			await done;
 		} finally {
 			clearInterval(monitor);
 			await watcher.close();
 			this.uninstallKeys();
+			this.statusLine.stop();
 			await this.shutdown();
 			this.uninstallSignalHandlers();
 		}
@@ -113,6 +136,7 @@ export class Session {
 
 	private async chooseDependencyMode(deps: Component[]): Promise<'background' | 'wait' | 'abort'> {
 		const names = deps.map((d) => d.name).join(', ');
+		if (this.options.dependencies === 'wait') return 'wait';
 		if (this.options.dependencies === 'background' || !isInteractive()) {
 			ui.info(`Starting ${names} in the background. Logs: ${RIG} logs <component> -f`);
 			return 'background';
@@ -141,9 +165,10 @@ export class Session {
 		}
 	}
 
-	private async startAll(components: Component[], background: Set<string>): Promise<void> {
+	/** Starts components stage by stage. Returns false when one is not ready. */
+	private async startAll(components: Component[], background: Set<string>): Promise<boolean> {
 		for (const stage of startStages(components)) {
-			if (this.quitting) return;
+			if (this.quitting) return true;
 			const results = await Promise.all(
 				stage.map(
 					async (component) =>
@@ -152,10 +177,11 @@ export class Session {
 			);
 			if (results.includes(false)) {
 				ui.warn('A component did not become ready. rig does not start the next components.');
-				ui.step('Fix the problem, then press R to restart, or q to quit.');
-				return;
+				if (isInteractive()) ui.step('Fix the problem, then press R to restart, or q to quit.');
+				return false;
 			}
 		}
+		return true;
 	}
 
 	/** Starts one component and waits until it is ready. Returns false when it is not ready. */
@@ -171,6 +197,7 @@ export class Session {
 				this.supervisor.follow(component.name, true);
 				this.supervisor.adopt(running);
 				this.lastPid.set(component.name, running.pid);
+				this.setStatus(component.name, 'starting');
 			}
 			return true;
 		}
@@ -178,12 +205,14 @@ export class Session {
 		const startedAt = Date.now();
 		let pid: number;
 		this.restarting.add(component.name);
+		if (isTarget) this.setStatus(component.name, 'starting');
 		try {
 			pid = await this.supervisor.start(component, owner);
 			// Follow after the start: the start replaces the log file.
 			if (isTarget) this.supervisor.follow(component.name, false);
 		} catch (error) {
 			this.restarting.delete(component.name);
+			if (isTarget) this.setStatus(component.name, 'exited');
 			printError(error);
 			return false;
 		}
@@ -198,6 +227,7 @@ export class Session {
 			await sleep(400);
 		}
 		const label = isTarget ? component.name : `${component.name} (background)`;
+		if (isTarget) this.setStatus(component.name, result === 'ready' ? 'ready' : 'exited');
 		if (result === 'ready') {
 			this.printer.event(label, pc.green(`ready in ${formatDuration(Date.now() - startedAt)}`));
 			return true;
@@ -224,7 +254,7 @@ export class Session {
 		}
 	}
 
-	private printHelp(): void {
+	private printHelp(full = false): void {
 		const url = this.editorUrl();
 		const publicUrl = this.env.tunnelUrl();
 		const keys = isInteractive()
@@ -233,12 +263,62 @@ export class Session {
 					publicUrl ? `${pc.bold('[p]')} open ${publicUrl}` : undefined,
 					`${pc.bold('[r]')} restart drifted`,
 					`${pc.bold('[R]')} restart all`,
+					full || this.targets.length > 1
+						? `${pc.bold(`[1-${Math.min(9, this.targets.length)}]`)} show only some logs ${pc.bold('[0]')} all`
+						: undefined,
 					`${pc.bold('[q]')} quit`,
 				]
 					.filter(Boolean)
 					.join('  ')
 			: 'Press Ctrl+C to stop.';
 		console.log(pc.dim(`── ${keys} ──`));
+	}
+
+	private setStatus(name: string, status: ComponentStatus): void {
+		if (this.statuses.get(name) === status) return;
+		this.statuses.set(name, status);
+		this.renderStatus();
+	}
+
+	/** Checks the readiness of a component that this session did not start, once at a time. */
+	private probeReady(component: Component): void {
+		if (this.probing.has(component.name)) return;
+		this.probing.add(component.name);
+		this.supervisor
+			.isComponentReady(component)
+			.then((ready) => this.setStatus(component.name, ready ? 'ready' : 'starting'))
+			.catch(() => {})
+			.finally(() => this.probing.delete(component.name));
+	}
+
+	/** Shows only the logs of the chosen components. A key adds or removes one. 0 shows all. */
+	private toggleFilter(index: number | undefined): void {
+		const target = index === undefined ? undefined : this.targets[index];
+		if (index !== undefined && !target) return;
+		if (!target) this.filter = new Set();
+		else if (this.filter.has(target.name)) this.filter.delete(target.name);
+		else this.filter.add(target.name);
+		this.printer.setFilter(this.filter);
+		console.log(
+			pc.dim(
+				this.filter.size === 0
+					? '── showing the logs of all components ──'
+					: `── showing only ${[...this.filter].join(', ')} · 0 shows all ──`,
+			),
+		);
+		this.renderStatus();
+	}
+
+	private renderStatus(): void {
+		const parts = this.targets.map((target, index) => {
+			const status = this.statuses.get(target.name) ?? 'stopped';
+			const symbol = STATUS_SYMBOLS[status];
+			const hidden = this.filter.size > 0 && !this.filter.has(target.name);
+			const name = hidden ? pc.dim(target.name) : this.printer.color(target.name)(target.name);
+			const drift = this.drifted.includes(target.name) ? pc.yellow('⟳') : '';
+			return `${index < 9 ? pc.dim(String(index + 1)) : ' '}${symbol} ${name}${drift}`;
+		});
+		this.statusLine.update(` ${parts.join('  ')}  ${pc.dim('│ ? keys')}`);
 	}
 
 	private openPublicUrl(): void {
@@ -285,6 +365,9 @@ export class Session {
 		else if (key === 'p') this.openPublicUrl();
 		else if (key === 'r') this.restartDrifted().catch(printError);
 		else if (key === 'R') this.restartTargets(this.targets.map((t) => t.name)).catch(printError);
+		else if (/^[1-9]$/.test(key)) this.toggleFilter(Number(key) - 1);
+		else if (key === '0') this.toggleFilter(undefined);
+		else if (key === '?' || key === 'h') this.printHelp(true);
 		else if (key === '\r' || key === '\n') console.log('');
 	};
 
@@ -325,15 +408,18 @@ export class Session {
 		if (this.busy || this.quitting) return;
 		this.busy = true;
 		try {
-			const components = names
-				.map((name) => this.env.component(name))
-				.filter((c): c is Component => c !== undefined);
+			const components = this.env.withDependentRunners(
+				names
+					.map((name) => this.env.component(name))
+					.filter((c): c is Component => c !== undefined),
+			);
 			for (const stage of startStages(components)) {
 				await Promise.all(
 					stage.map(async (component) => {
 						this.printer.event(component.name, 'restarting');
 						const startedAt = Date.now();
 						this.restarting.add(component.name);
+						this.setStatus(component.name, 'starting');
 						try {
 							const pid = await this.supervisor.restart(component, 'self');
 							this.lastPid.set(component.name, pid);
@@ -342,6 +428,7 @@ export class Session {
 								this.lastPid.set(component.name, undefined);
 								await sleep(400);
 							}
+							this.setStatus(component.name, result === 'ready' ? 'ready' : 'exited');
 							if (result === 'ready') {
 								this.printer.event(
 									component.name,
@@ -351,6 +438,7 @@ export class Session {
 								this.printer.event(component.name, pc.red('did not become ready'));
 							}
 						} catch (error) {
+							this.setStatus(component.name, 'exited');
 							printError(error);
 						} finally {
 							this.restarting.delete(component.name);
@@ -359,6 +447,7 @@ export class Session {
 				);
 			}
 			this.drifted = this.drifted.filter((name) => !names.includes(name));
+			this.renderStatus();
 		} finally {
 			this.busy = false;
 		}
@@ -371,6 +460,11 @@ export class Session {
 			if (this.supervisor.isStopping(target.name) || this.restarting.has(target.name)) continue;
 			const previous = this.lastPid.get(target.name);
 			const state = liveState(this.env.paths, target.name);
+			if (!state && this.statuses.get(target.name) !== 'exited') {
+				this.setStatus(target.name, 'exited');
+			} else if (state && this.statuses.get(target.name) !== 'ready') {
+				this.probeReady(target);
+			}
 			if (state?.pid === previous) continue;
 			if (!state && previous !== undefined) {
 				const reason = this.supervisor.exitReason(previous);
@@ -401,8 +495,10 @@ export class Session {
 
 	private watchEnv() {
 		const { paths } = this.env;
-		// A new tunnel URL changes N8N_WEBHOOK_URL, so it is drift too.
-		const watcher = watch([paths.layersDir, paths.envYaml, paths.secrets, paths.tunnelState], {
+		// A new tunnel URL changes N8N_WEBHOOK_URL, so it is drift too. The config
+		// directory holds the profiles and the global secrets.
+		const watched = [paths.layersDir, paths.envYaml, paths.secrets, paths.tunnelState, configDir()];
+		const watcher = watch(watched, {
 			ignoreInitial: true,
 			awaitWriteFinish: { stabilityThreshold: 100, pollInterval: 50 },
 		});
@@ -452,6 +548,7 @@ export class Session {
 			}
 		}
 		this.drifted = drifted;
+		this.renderStatus();
 		if (drifted.length === 0) return;
 
 		if (this.options.autoRestart) {
