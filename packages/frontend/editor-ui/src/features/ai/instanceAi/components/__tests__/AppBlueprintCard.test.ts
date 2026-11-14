@@ -31,7 +31,12 @@ const renderComponent = createComponentRenderer(AppBlueprintCard);
 
 describe('AppBlueprintCard', () => {
 	it('keeps the settings of an existing app and approves its planned change', async () => {
-		const change = { ...blueprint, appId: '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f71' };
+		// The settings are hidden, so a value that fails validation must not block approval.
+		const change = {
+			...blueprint,
+			namespace: 'Not A Namespace',
+			appId: '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f71',
+		};
 		const { emitted, getByTestId, queryByTestId, getByText } = renderComponent({
 			props: { blueprint: change },
 		});

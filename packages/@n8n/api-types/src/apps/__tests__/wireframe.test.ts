@@ -396,4 +396,33 @@ describe('plan of a change to an existing app', () => {
 		expect(Object.keys(placeholders).sort()).toEqual(['approve', 'drafts']);
 		expect(placeholders.drafts).toContain(' v-pre>');
 	});
+
+	it('leaves existing parts out of the placeholder of a new container', () => {
+		const withChild = {
+			...change,
+			screens: change.screens.map((s) => ({
+				...s,
+				components: s.components.map((c) =>
+					c.id === 'approve' ? { ...c, inside: 'drafts', existing: true } : c,
+				),
+			})),
+		};
+		const placeholders = renderPlanPlaceholders(withChild);
+		expect(Object.keys(placeholders)).toEqual(['drafts']);
+		expect(placeholders.drafts).not.toContain('data-plan-id="approve"');
+	});
+
+	it('draws an existing part plain, also when it has detail', () => {
+		const detailed = {
+			...byId('kpi-pending'),
+			existing: true,
+			detail: { html: '<b>42</b>' },
+		};
+		const html = renderWireframeBody({
+			...change,
+			screens: [{ ...change.screens[0], components: [detailed] }],
+		});
+		expect(html).not.toContain('wf-hifi');
+		expect(html).toContain('wf-existing');
+	});
 });

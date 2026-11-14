@@ -485,13 +485,14 @@ export function getPendingAppPlan(turns: readonly ArtifactTurn[]): PendingAppPla
 			}
 			const blueprint = tc.args.blueprint;
 			const parsed = isRecord(blueprint) ? appPlanSchema.safeParse(blueprint.plan) : undefined;
-			// The latest create decides: a create without a plan, or a finished one, ends the plan view.
+			// The latest create or plan decides: one without a plan, or a finished one, ends the plan view.
 			if (!parsed?.success || !isRecord(blueprint)) return null;
 			const result = unwrapUntrustedToolResult(tc.result);
 			const settled =
 				isRecord(result) &&
 				(isRecord(result.app) ||
 					(action === 'plan' && result.approved === true) ||
+					typeof result.error === 'string' ||
 					(result.approved === false && !result.revisionRequested));
 			if (settled || tc.error) return null;
 			return {

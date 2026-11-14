@@ -305,7 +305,8 @@ export function renderWireframeBlock(
 	plan: AppPlan,
 	options: WireframeRenderOptions = {},
 ): string {
-	if (component.detail) {
+	// An existing part is drawn plain: it is not up for review.
+	if (component.detail && !component.existing) {
 		// In the app the host stays empty: `mountPlanDetails()` attaches the content.
 		return [
 			`<div class="wf-block wf-hifi wf-k-${component.kind}${component.existing ? ' wf-existing' : ''} wf-theme-${options.theme ?? 'both'}" data-plan-id="${component.id}" data-plan-kind="${component.kind}"`,
@@ -516,7 +517,8 @@ export const WIREFRAME_CSS = `
 .wf-k-button { border: 0; box-shadow: none; padding: 0; background: transparent; }
 .wf-pills { display: flex; gap: 6px; flex-wrap: wrap; }
 .wf-pill { border: 1.5px solid var(--wf-line-soft); border-radius: 999px; padding: 1px 10px; color: var(--wf-ink-soft); }
-.wf-existing { position: relative; border-style: solid; border-color: var(--wf-line-soft); box-shadow: none; opacity: .55; }
+.wf-existing { position: relative; border-style: solid; border-color: var(--wf-line-soft); box-shadow: none; }
+.wf-existing > .wf-head, .wf-existing > .wf-body { opacity: .55; }
 .wf-existing::after { content: 'In the app'; position: absolute; top: -9px; right: 10px; padding: 0 7px; border-radius: 999px;
   font: 500 10.5px/16px system-ui, sans-serif; background: var(--wf-panel); color: var(--wf-ink-soft); border: 1px solid var(--wf-line-soft); }
 .wf-pill.active { background: var(--wf-wash); color: var(--wf-ink); }
@@ -703,6 +705,7 @@ export function planOverlayMain(
 		screenOfPart = {};
 		plan.screens.forEach((sc) => sc.components.forEach((c) => (screenOfPart[c.id] = sc.id)));
 		// In a change to an existing app, the shell and the unchanged parts are not built again.
+		// Keep in sync with `planBuildOrder`, which this serialized script cannot import.
 		const isChange = all.some((c) => c.existing);
 		order = (plan.buildOrder?.length ? plan.buildOrder : ['shell', ...all.map((c) => c.id)]).filter(
 			(id) => (id === 'shell' ? !isChange : !byId[id]?.existing),
@@ -1194,6 +1197,7 @@ export function renderWireframeDocument(
 
 /** Component ids in build order, with the shell first. */
 export function planBuildOrder(plan: AppPlan): string[] {
+	// Keep in sync with `index()` in `planOverlayMain`.
 	const all = listPlanComponents(plan);
 	const isChange = all.some((c) => c.existing);
 	const existing = new Set(all.filter((c) => c.existing).map((c) => c.id));
@@ -1212,15 +1216,23 @@ export function renderPlanPlaceholders(
 	plan: AppPlan,
 	theme: WireframeRenderOptions['theme'] = 'both',
 ): Record<string, string> {
-	const all = listPlanComponents(plan);
-	const isNew = (id?: string) => !!id && all.some((c) => c.id === id && !c.existing);
+	// Only new parts, without detail: the build does not add the detail module to an existing app,
+	// and an existing part inside a new container is already in the app.
+	const strip = (c: AppPlanComponent) => ({ ...c, detail: undefined });
+	const newParts: AppPlan = {
+		...plan,
+		nav: plan.nav && !plan.nav.existing ? strip(plan.nav) : undefined,
+		screens: plan.screens.map((s) => ({
+			...s,
+			components: s.components.filter((c) => !c.existing).map(strip),
+		})),
+	};
+	const all = listPlanComponents(newParts);
+	const ids = new Set(all.map((c) => c.id));
 	return Object.fromEntries(
 		all
-			.filter((c) => !c.existing && !isNew(c.inside))
-			.map((c) => [
-				c.id,
-				renderWireframeBlock({ ...c, detail: undefined }, plan, { vue: true, theme }),
-			]),
+			.filter((c) => !c.inside || !ids.has(c.inside))
+			.map((c) => [c.id, renderWireframeBlock(c, newParts, { vue: true, theme })]),
 	);
 }
 

@@ -725,19 +725,63 @@ describe('apps tool', () => {
 			blueprint: { ...BLUEPRINT, plan: CHANGE_PLAN },
 		};
 
-		it('suspends with the plan and the id of the app', async () => {
+		it('suspends with the plan and the settings of the app it changes', async () => {
 			const { tool, appService } = setup();
+			appService.getApp.mockResolvedValue({
+				...app(SERVER_ID),
+				id: SERVER_ID,
+				name: 'Task board',
+				namespace: 'task-board',
+				visibility: 'instance',
+			});
 			const suspend = vi.fn(async (payload: unknown) => await Promise.resolve(payload));
 
 			await executeTool(tool, planInput, { suspend });
 
 			expect(suspend).toHaveBeenCalledWith(
 				expect.objectContaining({
-					message: 'Review the planned change to Todos',
-					appBlueprint: { ...planInput.blueprint, appId: SERVER_ID },
+					message: 'Review the planned change to Task board',
+					appBlueprint: {
+						...planInput.blueprint,
+						name: 'Task board',
+						namespace: 'task-board',
+						visibility: 'instance',
+						appId: SERVER_ID,
+					},
 				}),
 			);
 			expect(appService.createApp).not.toHaveBeenCalled();
+		});
+
+		it('does not show the card for an app it cannot read', async () => {
+			const { tool, appService } = setup();
+			appService.getApp.mockRejectedValue(new Error('App not found'));
+			const suspend = vi.fn();
+
+			const result = await executeTool(tool, planInput, { suspend });
+
+			expect(result).toEqual({ error: 'App not found' });
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
+		it('needs a plan in the blueprint', async () => {
+			const { tool } = setup();
+			const suspend = vi.fn();
+			const result = await executeTool(tool, { ...planInput, blueprint: BLUEPRINT }, { suspend });
+			expect(result).toMatchObject({ error: expect.stringContaining('`plan`') });
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
+		it('returns an error when the app cannot be opened after approval', async () => {
+			const { tool } = setup();
+			vi.mocked(checkOutDraft).mockRejectedValue(new Error('Sandbox is down'));
+
+			const result = await executeTool(tool, planInput, {
+				resumeData: { approved: true, blueprint: { ...planInput.blueprint, appId: SERVER_ID } },
+			});
+
+			expect(result).toEqual({ error: 'Sandbox is down' });
+			expect(writeAppFile).not.toHaveBeenCalled();
 		});
 
 		it('hands a requested revision back to the model', async () => {

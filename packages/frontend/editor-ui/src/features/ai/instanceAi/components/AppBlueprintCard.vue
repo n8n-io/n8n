@@ -77,10 +77,12 @@ const namespaceError = computed(() =>
 );
 const isValid = computed(
 	() =>
-		appNameSchema.safeParse(editedBlueprint.value.name).success &&
-		appNamespaceSchema.safeParse(editedBlueprint.value.namespace).success &&
-		!namespaceError.value &&
-		editedBlueprint.value.description.length > 0,
+		// A change to an existing app does not edit its settings, so there is nothing to fix.
+		!!props.blueprint.appId ||
+		(appNameSchema.safeParse(editedBlueprint.value.name).success &&
+			appNamespaceSchema.safeParse(editedBlueprint.value.namespace).success &&
+			!namespaceError.value &&
+			editedBlueprint.value.description.length > 0),
 );
 
 function startBuilding() {

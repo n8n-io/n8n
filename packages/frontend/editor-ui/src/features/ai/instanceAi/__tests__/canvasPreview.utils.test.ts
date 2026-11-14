@@ -1579,4 +1579,8 @@ describe('getPendingAppPlan', () => {
 	test('ends the plan view when the change is approved', () => {
 		expect(utils.getPendingAppPlan(turns(planCall({ approved: true })))).toBeUndefined();
 	});
+
+	test('ends the plan view when the change fails', () => {
+		expect(utils.getPendingAppPlan(turns(planCall({ error: 'App not found' })))).toBeUndefined();
+	});
 });

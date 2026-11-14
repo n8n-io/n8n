@@ -56,6 +56,9 @@ export async function writeAppFile(
 	path: string,
 	content: string,
 ) {
+	if (path.startsWith('/') || path.split('/').includes('..')) {
+		throw new Error(`The path "${path}" is outside the app folder.`);
+	}
 	await writeFileViaSandbox(
 		workspace,
 		`${(await appPaths(workspace, appId)).dir}/${path}`,

@@ -202,7 +202,7 @@ async function startPlannedChange(
 		...opened,
 		placeholders: renderPlanPlaceholders(plan, theme),
 		nextStep:
-			"Import './plan/wireframe.css' once in `src/main.js`. Put each placeholder where its part goes in the app, keep its `data-plan-id`, and `commit`. " +
+			"Import './plan/wireframe.css' once in `src/main.js`, unless the app imports it already. Put each placeholder where its part goes in the app, keep its `data-plan-id`, and `commit`. " +
 			'Then build the parts in `buildOrder`: call `progress` with the plan id, replace its placeholder with the real component, set its `status` to `built` in `public/plan.json`, and `commit`.',
 	};
 }
@@ -364,12 +364,20 @@ export function createAppsTool(context: InstanceAiContext) {
 					}
 					const resumeData = ctx.resumeData;
 					if (!resumeData) {
+						// The card names the app that the change goes to, not the name the model sent.
+						const app = await apps.getApp(input.appId);
 						return await ctx.suspend({
 							requestId: nanoid(),
-							message: `Review the planned change to ${input.blueprint.name}`,
+							message: `Review the planned change to ${app.name}`,
 							severity: 'info',
 							inputType: 'app-blueprint',
-							appBlueprint: { ...input.blueprint, appId: input.appId },
+							appBlueprint: {
+								...input.blueprint,
+								name: app.name,
+								namespace: app.namespace,
+								visibility: app.visibility,
+								appId: app.id,
+							},
 						});
 					}
 					if (!resumeData.approved && resumeData.revise) {
@@ -383,8 +391,11 @@ export function createAppsTool(context: InstanceAiContext) {
 								'Change the plan as the user asked, keep everything else, and call `plan` again with the updated blueprint. Answer in one short sentence.',
 						};
 					}
-					if (!resumeData.approved || !resumeData.blueprint.plan) {
+					if (!resumeData.approved) {
 						return { approved: false, blueprint: resumeData.blueprint };
+					}
+					if (!resumeData.blueprint.plan) {
+						return { approved: true, error: 'The approved blueprint has no `plan`.' };
 					}
 					return {
 						approved: true,
