@@ -67,6 +67,18 @@ function hasUsageMetadata(message: unknown): message is {
 	return typeof message === 'object' && message !== null && 'usage_metadata' in message;
 }
 
+/** The message's `text`, which joins only its text blocks (no reasoning or tool calls). */
+function readMessageText(generation: Generation): string {
+	if (!hasMessage(generation)) return '';
+	const { message } = generation;
+	return typeof message === 'object' &&
+		message !== null &&
+		'text' in message &&
+		typeof message.text === 'string'
+		? message.text
+		: '';
+}
+
 /** The reported OpenAI `tokenUsage` shape; a partial payload falls through to the message. */
 function isReportedTokenUsage(
 	usage: unknown,
@@ -186,6 +198,10 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			const tokenUsage = result?.llmOutput?.tokenUsage as
 				| Partial<ProviderTokenUsageResult>
 				| undefined;
+			// Providers such as Bedrock Converse leave llmOutput empty and report usage
+			// only in the message `usage_metadata`, which openAiTokensUsageParser reads.
+			if (!tokenUsage) return openAiTokensUsageParser(result);
+
 			const completionTokens = tokenUsage?.completionTokens ?? 0;
 			const promptTokens = tokenUsage?.promptTokens ?? 0;
 			const cost = tokenUsage?.cost ?? tokenUsage?.totalCost;
@@ -214,7 +230,8 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 	}
 
 	async estimateTokensFromGeneration(generations: LLMResult['generations']) {
-		const messages = generations.flatMap((gen) => gen.map((g) => g.text));
+		// `text` is empty when the content is an array of blocks, e.g. reasoning or tool calls
+		const messages = generations.flatMap((gen) => gen.map((g) => g.text || readMessageText(g)));
 		return await this.estimateTokensFromStringList(messages);
 	}
 
