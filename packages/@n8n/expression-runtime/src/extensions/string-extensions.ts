@@ -329,7 +329,7 @@ function toSentenceCase(value: string) {
 function toSnakeCase(value: string) {
 	return value
 		.toLocaleLowerCase()
-		.replace(/[ \-]/g, '_')
+		.replace(/[\s-]/g, '_')
 		.replace(/[\u2000-\u206F\u2E00-\u2E7F\\'!"#$%&()*+,.\/:;<=>?@\[\]^`{|}~]/g, '');
 }
 
