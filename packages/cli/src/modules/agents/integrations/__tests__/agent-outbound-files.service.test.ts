@@ -213,6 +213,17 @@ describe('AgentOutboundFiles.postReplyFiles', () => {
 		});
 	});
 
+	it('posts Telegram reply text as its own message when Markdown escaping can pass the caption limit', async () => {
+		const { service, thread } = createService();
+		// 1000 characters, but 1100 after each "." is escaped.
+		const caption = 'a'.repeat(900) + '.'.repeat(100);
+
+		await service.postReplyFiles(thread, 'telegram', { fileIds: ['file-1'], caption, scope });
+
+		expect(thread.post).toHaveBeenCalledTimes(2);
+		expect(thread.post).toHaveBeenNthCalledWith(1, { markdown: caption });
+	});
+
 	it('posts Discord reply files as raw uploads with the reply text', async () => {
 		const { service, thread } = createService();
 

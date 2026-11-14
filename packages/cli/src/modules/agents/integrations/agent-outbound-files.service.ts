@@ -56,7 +56,7 @@ export async function postWithFileGroups<T>(
 	const text = postableText(message);
 	const { maxCaptionLength, maxMessageLength } = limits;
 	const captionLimit = Math.min(maxCaptionLength ?? Infinity, maxMessageLength ?? Infinity);
-	if (text !== undefined && text.length > captionLimit) {
+	if (text !== undefined && captionLength(message, text) > captionLimit) {
 		const parts = maxMessageLength === undefined ? [text] : splitMessage(text, maxMessageLength);
 		let first: T | undefined;
 		for (const part of parts) {
@@ -73,6 +73,19 @@ export async function postWithFileGroups<T>(
 	);
 	for (const loadGroup of otherGroups) await post({ raw: '', ...(await loadGroup()) });
 	return first;
+}
+
+// Telegram MarkdownV2 escapes each of these characters with a backslash.
+const MARKDOWN_V2_SPECIAL_CHARS = /[_*[\]()~`>#+\-=|{}.!\\]/g;
+
+/**
+ * The adapter cuts a caption after it renders Markdown, and escaping makes the
+ * text longer. Count each special character twice, so a caption that can grow
+ * past the limit is posted as its own message and nothing is cut.
+ */
+function captionLength(message: OutboundPostable, text: string): number {
+	if (typeof message === 'string' || !('markdown' in message)) return text.length;
+	return text.length + (text.match(MARKDOWN_V2_SPECIAL_CHARS)?.length ?? 0);
 }
 
 function postableText(message: OutboundPostable): string | undefined {
