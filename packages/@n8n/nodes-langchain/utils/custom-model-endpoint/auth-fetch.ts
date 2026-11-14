@@ -9,8 +9,14 @@ import {
 	type NodeEgressFilter,
 } from 'n8n-workflow';
 
+import { wrapCustomModelEndpointErrorFetch } from './error-handling';
 import { buildRequestHeaders } from './headers';
+import { createClientCredentialsTokenSource } from './oauth2';
 import type { EndpointCredential } from './types';
+
+export interface CustomModelEndpointTransport {
+	fetch: typeof fetch;
+}
 
 export type CustomModelEndpointFetchContext =
 	| IExecuteFunctions
@@ -41,7 +47,7 @@ export function createCustomModelEndpointAuthFetch(
 		baseFetch: typeof fetch;
 		requestHeaders?: Record<string, string>;
 	},
-): typeof fetch {
+): CustomModelEndpointTransport {
 	const { endpoint, egressFilter, baseFetch, requestHeaders } = options;
 	const node = ctx.getNode();
 	const allowedDomains = getCredentialAllowedDomains({
@@ -51,19 +57,46 @@ export function createCustomModelEndpointAuthFetch(
 		nodeEndpointUrl: endpoint.baseUrl,
 	});
 
+	const assertAllowedUrl = async (hopUrl: string) => {
+		assertUrlAllowed({ url: hopUrl, allowedDomains, node });
+		if (!egressFilter) return;
+		const result = await egressFilter.validateUrl(hopUrl);
+		if (!result.ok) throw result.error;
+	};
+
+	// The login server is a host of its own, so the user has to allow it too
+	const tokenSource =
+		endpoint.login.type === 'oauth2'
+			? createClientCredentialsTokenSource(
+					endpoint.login,
+					createRefreshingAuthFetch({ baseFetch, assertAllowedUrl }),
+				)
+			: undefined;
+
+	const resolveHeaders = async () =>
+		buildRequestHeaders({
+			endpoint,
+			requestHeaders,
+			bearerToken: await tokenSource?.getToken(),
+		});
+
 	const authFetch = createRefreshingAuthFetch({
-		baseFetch,
-		resolveHeaders: async () => buildRequestHeaders({ endpoint, requestHeaders }),
-		assertAllowedUrl: async (hopUrl) => {
-			assertUrlAllowed({ url: hopUrl, allowedDomains, node });
-			if (!egressFilter) return;
-			const result = await egressFilter.validateUrl(hopUrl);
-			if (!result.ok) throw result.error;
-		},
+		baseFetch: wrapCustomModelEndpointErrorFetch(baseFetch),
+		resolveHeaders,
+		...(tokenSource && {
+			// The retry is a whole request again, so it needs the gateway headers too
+			refreshHeaders: async () => {
+				tokenSource.forgetToken();
+				return await resolveHeaders();
+			},
+		}),
+		assertAllowedUrl,
 	});
 
-	return async (input, init) => {
-		const stripped = withoutInheritedAuthorization(input, init);
-		return await authFetch(stripped.input, stripped.init);
+	return {
+		fetch: async (input, init) => {
+			const stripped = withoutInheritedAuthorization(input, init);
+			return await authFetch(stripped.input, stripped.init);
+		},
 	};
 }

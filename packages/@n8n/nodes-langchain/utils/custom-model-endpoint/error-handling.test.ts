@@ -133,13 +133,13 @@ describe('a rejected login', () => {
 			gatewayHeaders: {},
 		};
 
-		const authFetch = createCustomModelEndpointAuthFetch(
+		const { fetch: authFetch } = createCustomModelEndpointAuthFetch(
 			ctx,
 			{},
 			{
 				endpoint,
 				egressFilter: allowAll,
-				baseFetch: wrapCustomModelEndpointErrorFetch(baseFetch),
+				baseFetch,
 			},
 		);
 		const response = await authFetch(BASE_URL);
