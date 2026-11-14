@@ -5,6 +5,7 @@ import {
 	AIMessage,
 	SystemMessage,
 	ToolMessage,
+	mapStoredMessagesToChatMessages,
 	trimMessages,
 } from '@langchain/core/messages';
 import type { Mock, Mocked } from 'vitest';
@@ -277,6 +278,32 @@ describe('memoryManagement', () => {
 					: [new HumanMessage('q'), emptyMessage];
 
 			expect(removeEmptyTurns([...turn, ...kept])).toEqual(kept);
+		});
+
+		it('should keep system messages in place when their turn is dropped', () => {
+			const system = new SystemMessage('Be brief');
+			const kept = [new HumanMessage('Hi'), new AIMessage('Hello')];
+
+			expect(removeEmptyTurns([new HumanMessage('q'), system, new AIMessage(''), ...kept])).toEqual(
+				[system, ...kept],
+			);
+		});
+
+		it('should drop a turn read from a stored row in the { type, data: { content } } shape', () => {
+			// GH #39670: Postgres Chat Memory reads a row as { type, data: rest-of-row }. A row that
+			// another writer stored as { type, data: { content } } gives a message with empty content.
+			const rows = [
+				{ type: 'human', data: { content: 'Price today?' } },
+				{ type: 'ai', data: { content: '42 EUR/MWh' } },
+				{ type: 'human', content: 'And tomorrow?' },
+				{ type: 'ai', content: '40 EUR/MWh' },
+			];
+			const chatHistory = mapStoredMessagesToChatMessages(
+				rows.map(({ type, ...data }) => ({ type, data }) as never),
+			);
+			expect(chatHistory[0].content).toEqual([]);
+
+			expect(removeEmptyTurns(chatHistory)).toEqual(chatHistory.slice(2));
 		});
 
 		it('should keep messages with non-text or non-empty content and system messages', () => {

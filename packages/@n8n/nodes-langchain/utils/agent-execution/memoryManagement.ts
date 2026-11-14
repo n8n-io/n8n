@@ -239,8 +239,10 @@ function hasEmptyContent(message: BaseMessage): boolean {
 /**
  * Removes every turn (a human message and all messages up to the next human message)
  * that has a human or AI message without content. Providers such as Anthropic reject
- * empty messages, and a stored turn can be empty when another process wrote to the memory.
+ * empty messages. A stored message has empty content when its row has a shape that the
+ * memory store does not expect, for example `{ type, data: { content } }` from another writer.
  * Removing the full turn keeps the role order and the tool call pairs valid.
+ * System messages are not part of a turn and are always kept.
  */
 export function removeEmptyTurns(chatHistory: BaseMessage[]): BaseMessage[] {
 	if (!chatHistory.some(hasEmptyContent)) return chatHistory;
@@ -248,7 +250,10 @@ export function removeEmptyTurns(chatHistory: BaseMessage[]): BaseMessage[] {
 	const result: BaseMessage[] = [];
 	let turn: BaseMessage[] = [];
 	const flush = () => {
-		if (!turn.some(hasEmptyContent)) result.push(...turn);
+		const keep = turn.some(hasEmptyContent)
+			? turn.filter((message) => message.getType() === 'system')
+			: turn;
+		result.push(...keep);
 		turn = [];
 	};
 	for (const message of chatHistory) {
