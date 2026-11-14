@@ -6,6 +6,7 @@ import {
 	type AppResponse,
 	type AppBlueprint,
 } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
 import { executeTool, parseToolInput } from '../../../__tests__/tool-test-utils';
@@ -785,7 +786,7 @@ describe('apps tool', () => {
 		});
 
 		it('hands a requested revision back to the model', async () => {
-			const { tool } = setup();
+			const { tool, trackTelemetry } = setup();
 			const result = await executeTool(tool, planInput, {
 				resumeData: {
 					approved: false,
@@ -798,6 +799,18 @@ describe('apps tool', () => {
 				feedback: 'Make it a list',
 				planIds: ['due-chart'],
 			});
+			expect(trackTelemetry).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.APPS.USER_REVIEWED_APP_PLAN.name,
+				{
+					thread_id: 'thread-1',
+					app_id: SERVER_ID,
+					is_change: true,
+					outcome: 'revised',
+					part_count: 2,
+					new_part_count: 1,
+					selected_part_count: 1,
+				},
+			);
 		});
 
 		it('opens the app on approval, adds the plan files and returns placeholders for new parts', async () => {
@@ -828,13 +841,34 @@ describe('apps tool', () => {
 		});
 
 		it('does not open the app when the user cancels', async () => {
-			const { tool } = setup();
+			const { tool, trackTelemetry } = setup();
 			const result = await executeTool(tool, planInput, {
 				resumeData: { approved: false, blueprint: planInput.blueprint },
 			});
 			expect(result).toMatchObject({ approved: false });
 			expect(checkOutDraft).not.toHaveBeenCalled();
 			expect(writeAppFile).not.toHaveBeenCalled();
+			expect(trackTelemetry).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.APPS.USER_REVIEWED_APP_PLAN.name,
+				expect.objectContaining({ outcome: 'cancelled', is_change: true }),
+			);
+		});
+
+		it('reports an approved plan of a new app', async () => {
+			const { tool, trackTelemetry, appService } = setup();
+			appService.createApp.mockResolvedValue(app(SERVER_ID));
+			appService.commitPlan.mockResolvedValue(mock({ versionId: 'v1', status: 'succeeded' }));
+			const blueprint = { ...BLUEPRINT, plan: CHANGE_PLAN };
+
+			await executeTool(tool, createInput(blueprint), {
+				resumeData: { approved: true, blueprint },
+			});
+
+			expect(trackTelemetry).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.APPS.USER_REVIEWED_APP_PLAN.name,
+				expect.objectContaining({ outcome: 'approved', is_change: false, part_count: 2 }),
+			);
+			expect(trackTelemetry.mock.calls[0][1]).not.toHaveProperty('app_id');
 		});
 	});
 

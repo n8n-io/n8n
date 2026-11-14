@@ -10,11 +10,14 @@ import {
 	type AppBinding,
 	type AppBuildResponse,
 	type AppBlueprint,
+	type AppBlueprintResume,
 	type AppPlan,
+	listPlanComponents,
 	appWorkflowBindingSchema,
 	renderPlanPlaceholders,
 	WIREFRAME_CSS,
 } from '@n8n/api-types';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -206,6 +209,25 @@ async function startPlannedChange(
 	};
 }
 
+function trackPlanReview(
+	context: InstanceAiContext,
+	resume: AppBlueprintResume,
+	appId: string | undefined,
+) {
+	const plan = resume.blueprint.plan;
+	if (!plan) return;
+	const parts = listPlanComponents(plan);
+	context.trackTelemetry?.(TELEMETRY_EVENT.APPS.USER_REVIEWED_APP_PLAN.name, {
+		thread_id: context.threadId,
+		...(appId ? { app_id: appId } : {}),
+		is_change: appId !== undefined,
+		outcome: resume.approved ? 'approved' : resume.revise ? 'revised' : 'cancelled',
+		part_count: parts.length,
+		new_part_count: parts.filter((part) => !part.existing).length,
+		...(resume.revise ? { selected_part_count: resume.revise.planIds?.length ?? 0 } : {}),
+	});
+}
+
 async function commit(
 	context: InstanceAiContext,
 	workspace: Workspace,
@@ -362,6 +384,7 @@ export function createAppsTool(context: InstanceAiContext) {
 						return { error: 'A `plan` action needs a `plan` in the blueprint.' };
 					}
 					const resumeData = ctx.resumeData;
+					if (resumeData) trackPlanReview(context, resumeData, input.appId);
 					if (!resumeData) {
 						// The card names the app that the change goes to, not the name the model sent.
 						const app = await apps.getApp(input.appId);
@@ -410,6 +433,7 @@ export function createAppsTool(context: InstanceAiContext) {
 				}
 				if (input.action === 'create') {
 					const resumeData = ctx.resumeData;
+					if (resumeData) trackPlanReview(context, resumeData, undefined);
 					if (!resumeData) {
 						return await ctx.suspend({
 							requestId: nanoid(),

@@ -124,6 +124,25 @@ export const APPS_TELEMETRY = defineTelemetryEvents({
 			removed_count: z.number().describe('Binding keys of the previous draft that are gone'),
 		}),
 	},
+	USER_REVIEWED_APP_PLAN: {
+		name: 'User reviewed app plan',
+		description:
+			'A user answered the plan of an app in the n8n Assistant: approved it, asked for a change, or cancelled. Fires once per answer, so one plan can fire several revisions before its approval. Covers new apps and changes to existing apps.',
+		properties: z.object({
+			thread_id: z.string(),
+			app_id: z.string().optional().describe('Only for a change to an existing app'),
+			is_change: z.boolean().describe('True for a change to an existing app, false for a new app'),
+			outcome: z.enum(['approved', 'revised', 'cancelled']),
+			part_count: z.number().describe('Parts in the plan, including the navigation'),
+			new_part_count: z
+				.number()
+				.describe('Parts the build adds or changes. Equals part_count for a new app'),
+			selected_part_count: z
+				.number()
+				.optional()
+				.describe('Only for revised: the parts the user selected for the change'),
+		}),
+	},
 	USER_INTERACTED_WITH_APP: {
 		name: 'User interacted with app',
 		description:
