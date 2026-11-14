@@ -50,6 +50,8 @@ export interface IAgentTurnFinishedTrackProperties extends ITelemetryTrackProper
 	/** Absent for saved agents; 'inline' for node-embedded agent definitions. */
 	agent_type?: 'inline';
 	turn_status: AgentTurnTelemetryStatus;
+	/** Kind of process that ran the turn. Absent counts as a main instance. */
+	turn_location?: 'main' | 'worker';
 	configuration: IAgentConfigurationTelemetryProperties;
 	latency_ms: number;
 	cost: number;

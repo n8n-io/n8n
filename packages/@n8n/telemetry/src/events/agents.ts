@@ -523,6 +523,12 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			run_type: agentRunType,
 			turn_status: z.enum(['succeeded', 'failed']),
 			...agentSessionMetrics,
+			worker_turn_count: z
+				.number()
+				.optional()
+				.describe(
+					'Turns of turn_count that ran on an agent worker in queue mode. The rest ran on a main instance. Absent when no turn ran on a worker',
+				),
 			counts_by_source: z
 				.record(agentRunSource, z.object(agentSessionMetrics))
 				.optional()

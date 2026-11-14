@@ -46,6 +46,7 @@ interface IAgentSessionMetricsBuffer {
 		configuration: IAgentConfigurationTelemetryProperties;
 		sessions: Record<string, IAgentSessionMetrics>;
 		sessions_by_source: Record<string, Record<string, IAgentSessionMetrics>>;
+		worker_turn_count: number;
 	};
 }
 
@@ -122,6 +123,7 @@ export class AgentUsageTelemetryService {
 				run_type: bucket.run_type,
 				turn_status: bucket.turn_status,
 				...this.sumAgentSessionMetrics(bucket.sessions),
+				...(bucket.worker_turn_count > 0 ? { worker_turn_count: bucket.worker_turn_count } : {}),
 				counts_by_source: Object.fromEntries(
 					Object.entries(bucket.sessions_by_source).map(([source, sessions]) => [
 						source,
@@ -211,9 +213,11 @@ export class AgentUsageTelemetryService {
 			// These maps have no prototype, so every thread id and source is an own key.
 			sessions: Object.create(null),
 			sessions_by_source: Object.create(null),
+			worker_turn_count: 0,
 		};
 
 		const bucket = this.agentSessionMetricsBuffer[bufferKey];
+		if (properties.turn_location === 'worker') bucket.worker_turn_count++;
 		const source = properties.source || 'unknown';
 		bucket.sessions_by_source[source] ??= Object.create(null);
 		const sourceSessions = bucket.sessions_by_source[source];

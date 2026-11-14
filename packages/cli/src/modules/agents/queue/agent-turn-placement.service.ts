@@ -108,6 +108,7 @@ export class AgentTurnPlacement {
 		if (!this.isWorkerKind(kind, platform) || !(await this.workersAvailable())) return true;
 		if (Date.now() - queuedAt.getTime() < AgentTurnPlacement.FALLBACK_WAIT_MS) return false;
 		this.fallbackClaims++;
+		this.cluster.metrics.record({ type: 'fallback', path: 'queued-message' });
 		return true;
 	}
 

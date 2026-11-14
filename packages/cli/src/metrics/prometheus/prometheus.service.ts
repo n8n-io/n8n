@@ -7,6 +7,7 @@ import { DatabaseIndependentRoutes } from '@/services/database-independent-route
 
 import { PrometheusActiveWorkflowMetricsService } from './active-workflow-metrics.service';
 import { PrometheusAgentMetricsService } from './agent-metrics.service';
+import { PrometheusAgentQueueMetricsService } from './agent-queue-metrics.service';
 import type { PrometheusMetricsCollector } from './base';
 import { PrometheusCacheMetricsService } from './cache-metrics.service';
 import { METRICS_PATH } from './constant';
@@ -72,6 +73,7 @@ export class PrometheusMetricsService {
 		systemTask: PrometheusSystemTaskMetricsService,
 		memoryGuard: PrometheusMemoryGuardMetricsService,
 		executionLedger: PrometheusExecutionLedgerMetricsService,
+		agentQueue: PrometheusAgentQueueMetricsService,
 		private readonly databaseIndependentRoutes: DatabaseIndependentRoutes,
 	) {
 		this.logger = logger.scoped('metrics');
@@ -104,6 +106,7 @@ export class PrometheusMetricsService {
 			systemTask,
 			memoryGuard,
 			executionLedger,
+			agentQueue,
 		];
 	}
 

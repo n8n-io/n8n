@@ -28,6 +28,7 @@ import type { PrometheusSchedulerMetricsService } from '../prometheus/scheduler-
 import type { PrometheusSsrfMetricsService } from '../prometheus/ssrf-metrics.service';
 import type { PrometheusExecutionLedgerMetricsService } from '../prometheus/execution-ledger-metrics.service';
 import type { PrometheusMemoryGuardMetricsService } from '../prometheus/memory-guard-metrics.service';
+import type { PrometheusAgentQueueMetricsService } from '../prometheus/agent-queue-metrics.service';
 import type { PrometheusSystemTaskMetricsService } from '../prometheus/system-task-metrics.service';
 import type { PrometheusTokenExchangeMetricsService } from '../prometheus/token-exchange-metrics.service';
 import type { PrometheusVersionMetricsService } from '../prometheus/version-metrics.service';
@@ -71,6 +72,7 @@ describe('PrometheusMetricsService', () => {
 	let systemTask: Mocked<PrometheusSystemTaskMetricsService>;
 	let memoryGuard: Mocked<PrometheusMemoryGuardMetricsService>;
 	let executionLedger: Mocked<PrometheusExecutionLedgerMetricsService>;
+	let agentQueue: Mocked<PrometheusAgentQueueMetricsService>;
 	const databaseIndependentRoutes = mock<DatabaseIndependentRoutes>();
 
 	let service: PrometheusMetricsService;
@@ -106,6 +108,7 @@ describe('PrometheusMetricsService', () => {
 			systemTask,
 			memoryGuard,
 			executionLedger,
+			agentQueue,
 			databaseIndependentRoutes,
 		);
 
@@ -148,6 +151,7 @@ describe('PrometheusMetricsService', () => {
 		systemTask = mock<PrometheusSystemTaskMetricsService>({ enabled: true });
 		memoryGuard = mock<PrometheusMemoryGuardMetricsService>({ enabled: true });
 		executionLedger = mock<PrometheusExecutionLedgerMetricsService>({ enabled: true });
+		agentQueue = mock<PrometheusAgentQueueMetricsService>({ enabled: true });
 
 		service = buildService();
 	});

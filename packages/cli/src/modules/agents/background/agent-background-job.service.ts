@@ -787,10 +787,35 @@ export class AgentBackgroundJobService {
 
 	registerAbortController(jobId: string, controller: AbortController): void {
 		this.abortControllers.set(jobId, controller);
+		this.localRunsChanged();
 	}
 
 	unregisterAbortController(jobId: string, controller: AbortController): void {
 		if (this.abortControllers.get(jobId) === controller) this.abortControllers.delete(jobId);
+		this.localRunsChanged();
+	}
+
+	/** Background jobs that run in this process now. */
+	get localRunCount(): number {
+		return this.abortControllers.size;
+	}
+
+	/**
+	 * Called with the new count each time a local background job starts or
+	 * stops. An agent worker counts these runs against its concurrency.
+	 */
+	onLocalRunsChange(listener: (count: number) => void): void {
+		this.localRunsListener = listener;
+	}
+
+	private localRunsListener?: (count: number) => void;
+
+	private localRunsChanged(): void {
+		try {
+			this.localRunsListener?.(this.abortControllers.size);
+		} catch (error) {
+			this.logger.warn('Failed to report the count of local background jobs', { error });
+		}
 	}
 
 	/**
@@ -937,6 +962,7 @@ export class AgentBackgroundJobService {
 		if (controller) {
 			controller.abort();
 			this.abortControllers.delete(jobId);
+			this.localRunsChanged();
 		}
 		// publishCommand is a no-op outside queue mode.
 		// The row is already claimed, so a relay failure must not become a tool error.
@@ -1042,13 +1068,16 @@ export class AgentBackgroundJobService {
 		}
 	}
 
-	@OnPubSubEvent('cancel-agent-background-job', { instanceType: 'main' })
+	// Not main-only: in agent queue mode a background job runs on the agent
+	// worker that ran the turn which started it.
+	@OnPubSubEvent('cancel-agent-background-job')
 	handleCancelRelay({ jobId }: { jobId: string }): void {
 		const controller = this.abortControllers.get(jobId);
 		if (!controller) return;
 
 		controller.abort();
 		this.abortControllers.delete(jobId);
+		this.localRunsChanged();
 		this.logger.debug('Aborted background job after relayed cancellation', { jobId });
 	}
 

@@ -40,6 +40,7 @@ import type { AgentUsageTelemetryService } from '@/modules/agents/agent-usage-te
 import type { AgentExecutionMetrics } from '@/modules/agents/agent-execution-metrics';
 import type { Publisher } from '@n8n/backend-services';
 import { testCluster } from '@/modules/agents/__tests__/test-utils/cluster';
+import { AgentQueueMetrics } from '@/modules/agents/queue/agent-queue-metrics';
 import type { ExternalHooks } from '@/external-hooks';
 import { AgentBackgroundJobRepository } from '@/modules/agents/repositories/agent-background-job.repository';
 import { AgentBackgroundJobService } from '@/modules/agents/background/agent-background-job.service';
@@ -243,6 +244,8 @@ describe('AgentExecutionRepository', () => {
 			),
 			mock<AgentExecutionMetrics>(),
 			testCluster(),
+			Container.get(AgentsConfig),
+			new AgentQueueMetrics(),
 		);
 		const queueUpdates = mock<AgentExecutionUpdateBroadcaster>();
 		const settingsService = new AgentsSettingsService(

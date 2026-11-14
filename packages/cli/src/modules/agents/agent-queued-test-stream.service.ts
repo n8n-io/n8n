@@ -170,6 +170,7 @@ export class AgentQueuedTestStreamService {
 				this.logger.warn('Ended a queued agent stream because an event is too large to relay', {
 					queueId,
 				});
+				this.cluster.metrics.record({ type: 'relay-dropped', channel: 'stream' });
 				payload = { queueId, sequence, event: null };
 				failed = true;
 				clearInterval(heartbeat);

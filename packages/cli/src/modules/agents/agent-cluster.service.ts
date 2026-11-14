@@ -2,6 +2,8 @@ import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
+import { AgentQueueMetrics } from './queue/agent-queue-metrics';
+
 import { InstanceRegistryProxyService, MAX_PUBSUB_PAYLOAD_BYTES } from '@n8n/backend-services';
 
 /**
@@ -18,6 +20,8 @@ export class AgentClusterService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly instanceRegistry: InstanceRegistryProxyService,
+		/** Queue-mode metrics. Here so that every cluster-aware service can record them. */
+		readonly metrics: AgentQueueMetrics,
 	) {}
 
 	/**

@@ -101,6 +101,7 @@ export class AgentExecutionUpdateBroadcaster {
 				command: command.command,
 				threadId: command.payload.data.threadId,
 			});
+			this.cluster.metrics.record({ type: 'relay-dropped', channel: 'execution-update' });
 			return;
 		}
 		await this.publisher.publishCommand(command);

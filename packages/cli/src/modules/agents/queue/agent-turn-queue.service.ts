@@ -47,6 +47,8 @@ export class AgentTurnQueue {
 
 	private paused = false;
 
+	private held = false;
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
@@ -121,6 +123,21 @@ export class AgentTurnQueue {
 			if (job.name === REQUEST_JOB && 'requestId' in data) await handlers.request(data);
 			else if (job.name === DRAIN_JOB && 'threadId' in data) await handlers.drain(data);
 		});
+	}
+
+	/**
+	 * Stop or restart pulling jobs here while other agent work (background
+	 * sub-agents) uses this worker's capacity. Running jobs keep running.
+	 */
+	async hold(hold: boolean): Promise<void> {
+		if (!this.queue || this.paused || hold === this.held) return;
+		this.held = hold;
+		try {
+			if (hold) await this.queue.pause(true, true);
+			else await this.queue.resume(true);
+		} catch (error) {
+			this.logger.warn('Failed to change the agent turn queue hold', { hold, error });
+		}
 	}
 
 	/** Waiting and active drain jobs, for metrics. */

@@ -12,7 +12,10 @@ import { AgentTaskService } from '../agent-task.service';
 import { AgentWakeService } from '../background/agent-wake.service';
 import { AgentWorkflowToolResumeService } from '../agent-workflow-tool-resume.service';
 import { WebhookChannelService } from '../integrations/platforms/webhook/webhook-channel.service';
+import { AgentBackgroundJobService } from '../background/agent-background-job.service';
+import { AgentQueueMetrics } from './agent-queue-metrics';
 import { AgentRemoteTurnService } from './agent-remote-turn.service';
+import { AgentWorkerCapacity } from './agent-worker-capacity.service';
 import { AgentTurnPlacement } from './agent-turn-placement.service';
 import { AgentTurnQueue } from './agent-turn-queue.service';
 
@@ -45,8 +48,15 @@ export class AgentQueueLifecycle {
 		_workflowToolResume: AgentWorkflowToolResumeService,
 		_tasks: AgentTaskService,
 		_wakes: AgentWakeService,
+		private readonly capacity: AgentWorkerCapacity,
+		private readonly backgroundJobs: AgentBackgroundJobService,
+		private readonly metrics: AgentQueueMetrics,
 	) {
 		this.logger = this.logger.scoped('agents');
+		this.metrics.registerGauges({
+			backgroundRuns: () => this.backgroundJobs.localRunCount,
+			queueCounts: async () => await this.turnQueue.counts(),
+		});
 	}
 
 	async startOnMain(): Promise<void> {
@@ -62,9 +72,19 @@ export class AgentQueueLifecycle {
 		await this.turnQueue.init();
 		this.consumer.startOnWorker();
 		const concurrency = this.agentsConfig.workerConcurrency;
+		// Background sub-agents outlive the job of the turn that started them. Count
+		// them too, and stop pulling jobs while they fill this worker.
+		// `hold()` logs its own failures and never rejects.
+		this.capacity.onHoldChange((hold) => {
+			void this.turnQueue.hold(hold);
+		});
+		this.backgroundJobs.onLocalRunsChange((count) => this.capacity.setBackgroundRuns(count));
+		this.capacity.setBackgroundRuns(this.backgroundJobs.localRunCount);
 		this.turnQueue.process(concurrency, {
-			drain: async ({ threadId }) => await this.consumer.drainForJob(threadId),
-			request: async ({ requestId }) => await this.remoteTurns.runRequest(requestId),
+			drain: async ({ threadId }) =>
+				await this.counted(async () => await this.consumer.drainForJob(threadId)),
+			request: async ({ requestId }) =>
+				await this.counted(async () => await this.remoteTurns.runRequest(requestId)),
 		});
 		await this.advertise(AGENT_TURNS_CAPABILITY);
 		this.logger.info('This worker runs agent turns', { concurrency });
@@ -80,6 +100,15 @@ export class AgentQueueLifecycle {
 			await this.registry.withdrawCapability(capability);
 		} catch (error) {
 			this.logger.warn('Failed to withdraw an agent queue capability', { capability, error });
+		}
+	}
+
+	private async counted(run: () => Promise<void>): Promise<void> {
+		this.capacity.jobStarted();
+		try {
+			await run();
+		} finally {
+			this.capacity.jobFinished();
 		}
 	}
 

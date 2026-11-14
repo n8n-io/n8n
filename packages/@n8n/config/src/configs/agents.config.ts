@@ -192,9 +192,18 @@ export class AgentsConfig {
 	workerEnabled: boolean = false;
 
 	/**
-	 * Maximum number of agent turns that one worker runs at the same time. Only
+	 * Maximum number of agent turns that one worker runs at the same time.
+	 * Background sub-agents that run on the worker count toward this limit. Only
 	 * applies when `N8N_AGENTS_WORKER_ENABLED` is set.
 	 */
 	@Env('N8N_AGENTS_WORKER_CONCURRENCY', positiveIntSchema)
 	workerConcurrency: number = 5;
+
+	/**
+	 * Maximum time, in seconds, that one agent turn can run. n8n stops a turn that
+	 * runs longer and marks it as failed. A turn that waits for a tool approval
+	 * ends while it waits, so the wait doesn't count. Set to `0` for no limit.
+	 */
+	@Env('N8N_AGENTS_TURN_TIMEOUT', nonnegativeIntSchema)
+	turnTimeoutSeconds: number = 0;
 }

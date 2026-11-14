@@ -12,6 +12,7 @@ import { AbstractServer } from '@/abstract-server';
 import { DatabaseIndependentRoutes } from '@/services/database-independent-routes.service';
 
 import { PrometheusActiveWorkflowMetricsService } from '../active-workflow-metrics.service';
+import type { PrometheusAgentQueueMetricsService } from '../agent-queue-metrics.service';
 import type { PrometheusCacheMetricsService } from '../cache-metrics.service';
 import { CachedMetricQueryFactory } from '../cached-metric-query';
 import { DatabaseMetricQueryService } from '../database-metric-query.service';
@@ -80,6 +81,7 @@ describe('database pool metrics exposition', () => {
 		systemTask: mock<PrometheusSystemTaskMetricsService>({ enabled: false }),
 		memoryGuard: mock<PrometheusMemoryGuardMetricsService>({ enabled: false }),
 		executionLedger: mock<PrometheusExecutionLedgerMetricsService>({ enabled: false }),
+		agentQueue: mock<PrometheusAgentQueueMetricsService>({ enabled: false }),
 	};
 	let config: GlobalConfig;
 	let metrics: DbConnectionMetrics;
@@ -156,6 +158,7 @@ describe('database pool metrics exposition', () => {
 			disabledCollectors.systemTask,
 			disabledCollectors.memoryGuard,
 			disabledCollectors.executionLedger,
+			disabledCollectors.agentQueue,
 			Container.get(DatabaseIndependentRoutes),
 		);
 		prometheusMetrics.init(server.app);

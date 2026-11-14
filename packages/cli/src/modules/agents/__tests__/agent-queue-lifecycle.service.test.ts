@@ -9,7 +9,10 @@ import type { AgentChatResumeService } from '../agent-chat-resume.service';
 import type { AgentMessageQueueConsumer } from '../agent-message-queue-consumer.service';
 import type { AgentWorkflowToolResumeService } from '../agent-workflow-tool-resume.service';
 import type { WebhookChannelService } from '../integrations/platforms/webhook/webhook-channel.service';
+import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { AgentQueueLifecycle } from '../queue/agent-queue-lifecycle.service';
+import { AgentQueueMetrics } from '../queue/agent-queue-metrics';
+import { AgentWorkerCapacity } from '../queue/agent-worker-capacity.service';
 import type { AgentRemoteTurnService } from '../queue/agent-remote-turn.service';
 import type { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
 import type { AgentTurnQueue, AgentTurnJobHandlers } from '../queue/agent-turn-queue.service';
@@ -18,6 +21,8 @@ describe('AgentQueueLifecycle', () => {
 	const turnQueue = mock<AgentTurnQueue>();
 	const consumer = mock<AgentMessageQueueConsumer>();
 	const remoteTurns = mock<AgentRemoteTurnService>();
+	let backgroundJobs: AgentBackgroundJobService;
+	let capacity: AgentWorkerCapacity;
 	let registry: InstanceRegistryProxyService;
 	const refreshRegistration = vi.fn(async () => {});
 
@@ -36,11 +41,16 @@ describe('AgentQueueLifecycle', () => {
 			mock<AgentWorkflowToolResumeService>(),
 			mock(),
 			mock(),
+			capacity,
+			backgroundJobs,
+			new AgentQueueMetrics(),
 		);
 	}
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		backgroundJobs = mock<AgentBackgroundJobService>({ localRunCount: 0 });
+		capacity = new AgentWorkerCapacity({ workerConcurrency: 3 } as AgentsConfig);
 		registry = new InstanceRegistryProxyService();
 		registry.registerProvider({
 			getAllInstances: async () => [],
@@ -79,6 +89,25 @@ describe('AgentQueueLifecycle', () => {
 		expect(consumer.drainForJob).toHaveBeenCalledWith('thread');
 		await handlers.request({ requestId: 'request' });
 		expect(remoteTurns.runRequest).toHaveBeenCalledWith('request');
+	});
+
+	it('stops pulling jobs while background sub-agents fill the worker', async () => {
+		await setup({ runsTurnsOnWorker: true }).startOnWorker();
+		const listener = vi.mocked(backgroundJobs.onLocalRunsChange).mock.calls[0][0];
+		const handlers = turnQueue.process.mock.calls[0][1] as AgentTurnJobHandlers;
+
+		let finishJob = () => {};
+		consumer.drainForJob.mockImplementation(
+			async () => await new Promise<void>((resolve) => (finishJob = resolve)),
+		);
+		const job = handlers.drain({ threadId: 'thread' });
+
+		listener(2);
+		expect(turnQueue.hold).toHaveBeenLastCalledWith(true);
+
+		finishJob();
+		await job;
+		expect(turnQueue.hold).toHaveBeenLastCalledWith(false);
 	});
 
 	it('withdraws the capability on shutdown', async () => {

@@ -4,6 +4,7 @@ import type { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
 
 import { AgentClusterService } from '../../agent-cluster.service';
+import { AgentQueueMetrics } from '../../queue/agent-queue-metrics';
 
 export interface TestClusterOptions {
 	/** Queue mode: agent state is relayed across processes. Default false. */
@@ -39,5 +40,11 @@ export function testCluster(options: TestClusterOptions = {}): AgentClusterServi
 			getAllInstances: async () => (options.activeInstanceKeys ?? [instanceKey]).map(registration),
 		});
 	}
-	return new AgentClusterService(executionsConfig, globalConfig, instanceSettings, registry);
+	return new AgentClusterService(
+		executionsConfig,
+		globalConfig,
+		instanceSettings,
+		registry,
+		new AgentQueueMetrics(),
+	);
 }

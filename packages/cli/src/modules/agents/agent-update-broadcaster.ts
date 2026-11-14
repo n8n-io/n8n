@@ -42,6 +42,7 @@ export class AgentUpdateBroadcaster {
 			this.logger.warn('Skipped an agent update relay because the payload is too large', {
 				agentId: data.agentId,
 			});
+			this.cluster.metrics.record({ type: 'relay-dropped', channel: 'agent-update' });
 			return;
 		}
 		await this.publisher.publishCommand({ command: 'relay-agent-update', payload });

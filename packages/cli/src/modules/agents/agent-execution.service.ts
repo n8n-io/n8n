@@ -9,6 +9,7 @@ import type {
 	AgentTokenUsage,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import type { StorageLocation } from '@n8n/blob-storage';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -60,6 +61,8 @@ import {
 	type AgentExecutionStopRequest,
 } from './entities/agent-execution.entity';
 import { AgentClusterService } from './agent-cluster.service';
+import { AgentTurnTimeoutError } from './agent-turn-timeout.error';
+import { AgentQueueMetrics, type AgentTurnLocation } from './queue/agent-queue-metrics';
 import { isProjectAgent } from './entities/agent.entity';
 import type { MessageRecord, TimelineEvent } from './execution-recorder';
 import {
@@ -284,7 +287,18 @@ export class AgentExecutionService {
 		private readonly integrationMessageContext: IntegrationMessageContextService,
 		private readonly metrics: AgentExecutionMetrics,
 		private readonly cluster: AgentClusterService,
-	) {}
+		private readonly agentsConfig: AgentsConfig,
+		private readonly queueMetrics: AgentQueueMetrics,
+	) {
+		this.queueMetrics.registerGauges({ localTurns: () => this.heartbeatTimers.size });
+	}
+
+	/** Timers that stop turns which run longer than `N8N_AGENTS_TURN_TIMEOUT`. */
+	private readonly turnTimeouts = new Map<string, NodeJS.Timeout>();
+
+	private get turnLocation(): AgentTurnLocation {
+		return this.cluster.isWorker ? 'worker' : 'main';
+	}
 
 	/**
 	 * The heartbeat calls this handler when it finds a stop request on the row
@@ -499,6 +513,8 @@ export class AgentExecutionService {
 		});
 		this.startHeartbeat(execution.id);
 		this.metrics.started(execution.id, metricsSubjectOf(params));
+		this.startTurnTimeout(execution.id);
+		this.queueMetrics.record({ type: 'turn-started', location: this.turnLocation });
 		if (needsTitleSync) this.executionsNeedingTitleSync.add(execution.id);
 		this.executionUpdateBroadcaster.notify({
 			projectId: params.projectId,
@@ -812,10 +828,35 @@ export class AgentExecutionService {
 		}
 	}
 
+	/**
+	 * Stop a turn that runs longer than the configured cap. A turn that parks
+	 * on an approval finishes its execution, so the wait does not count.
+	 */
+	private startTurnTimeout(executionId: string): void {
+		const timeoutSeconds = this.agentsConfig.turnTimeoutSeconds;
+		if (!timeoutSeconds || timeoutSeconds <= 0) return;
+		const timer = setTimeout(() => {
+			this.turnTimeouts.delete(executionId);
+			const controller = this.executionControllers.get(executionId);
+			if (!controller || controller.signal.aborted) return;
+			this.logger.warn('Stopping an agent execution that ran longer than the time limit', {
+				executionId,
+				timeoutSeconds,
+			});
+			this.queueMetrics.record({ type: 'turn-timed-out' });
+			controller.abort(new AgentTurnTimeoutError(timeoutSeconds));
+		}, timeoutSeconds * 1_000);
+		timer.unref();
+		this.turnTimeouts.set(executionId, timer);
+	}
+
 	private stopHeartbeat(executionId: string): void {
 		const timer = this.heartbeatTimers.get(executionId);
 		if (timer) clearInterval(timer);
 		this.heartbeatTimers.delete(executionId);
+		const timeout = this.turnTimeouts.get(executionId);
+		if (timeout) clearTimeout(timeout);
+		this.turnTimeouts.delete(executionId);
 		this.executionControllers.delete(executionId);
 		this.metrics.stopped(executionId);
 		this.activeExecutions.delete(executionId);
@@ -1734,6 +1775,7 @@ export class AgentExecutionService {
 				run_type: params.telemetry.runType,
 				source: params.source,
 				turn_status: status === 'success' ? 'succeeded' : 'failed',
+				turn_location: this.turnLocation,
 				configuration: params.telemetry.configuration,
 				...buildAgentTurnMetrics(record),
 			});

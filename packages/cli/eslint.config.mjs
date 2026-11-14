@@ -485,6 +485,8 @@ export default defineConfig(
 								'!@/modules/',
 								'!@/modules/agents/',
 								'!@/modules/agents/agent-execution-probe',
+								'!@/modules/agents/queue/',
+								'!@/modules/agents/queue/agent-queue-metrics',
 								'!@/modules/instance-ai/',
 								'!@/modules/instance-ai/instance-ai-run-probe',
 								'!@/services/',

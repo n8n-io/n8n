@@ -1,5 +1,6 @@
 import type { Mocked } from 'vitest';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { AgentsConfig } from '@n8n/config';
 import type { TransactionRunner } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
@@ -36,6 +37,7 @@ import type { AgentMessageQueueRepository } from '../repositories/agent-message-
 import { MARK_SESSION_FAILED_TOOL_NAME } from '../tools/mark-session-failed.tool';
 import { MAX_ITERATIONS_STOPPED_MESSAGE } from '../utils/fatal-session-outcome';
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
+import { AgentQueueMetrics } from '../queue/agent-queue-metrics';
 import { testCluster } from './test-utils/cluster';
 
 const previewAccess = { accessScope: 'user' as const, ownerId: 'user-1' };
@@ -105,6 +107,7 @@ function makeMessageRecord(overrides: Partial<MessageRecord> = {}): MessageRecor
 
 const projectDeletion = mock<AgentProjectDeletionRepository>();
 const executionMetrics = mock<AgentExecutionMetrics>();
+const agentsConfig = { turnTimeoutSeconds: 0 } as AgentsConfig;
 projectDeletion.withWritableProject.mockImplementation(
 	async (_projectId, write, ctx = {}) => await write(ctx),
 );
@@ -176,6 +179,8 @@ describe('AgentExecutionService', () => {
 			integrationMessageContext,
 			executionMetrics,
 			testCluster({ instanceKey: 'instance-a' }),
+			agentsConfig,
+			new AgentQueueMetrics(),
 		);
 	});
 
@@ -1150,6 +1155,8 @@ describe('AgentExecutionService', () => {
 				integrationMessageContext,
 				executionMetrics,
 				testCluster({ instanceKey: 'instance-a' }),
+				agentsConfig,
+				new AgentQueueMetrics(),
 			);
 
 			const record = makeMessageRecord({
@@ -1260,6 +1267,8 @@ describe('AgentExecutionService', () => {
 					integrationMessageContext,
 					executionMetrics,
 					testCluster({ instanceKey: 'instance-a' }),
+					agentsConfig,
+					new AgentQueueMetrics(),
 				);
 
 				const record = makeMessageRecord({
@@ -1555,6 +1564,7 @@ describe('AgentExecutionService', () => {
 				tool_call_count: 1,
 				skill_load_count: 0,
 				loaded_skill_ids: [],
+				turn_location: 'main',
 			});
 		});
 
@@ -2035,6 +2045,8 @@ describe('AgentExecutionService', () => {
 				integrationMessageContext,
 				executionMetrics,
 				testCluster({ instanceKey: 'instance-a' }),
+				agentsConfig,
+				new AgentQueueMetrics(),
 			);
 			const partial = [{ type: 'text', content: 'Partial', timestamp: 1, endTime: 2 }] as const;
 			agentExecutionRepository.updateIfRunning.mockResolvedValue(true);

@@ -222,7 +222,10 @@ export class AgentRemoteTurnService {
 				if (state.result) return { outcome: 'done', result: state.result };
 				if (state.claimedBy === null) {
 					if (Date.now() - sentAt < AgentTurnPlacement.FALLBACK_WAIT_MS) continue;
-					if (await this.claimHere(requestId)) return { outcome: 'local' };
+					if (await this.claimHere(requestId)) {
+						this.cluster.metrics.record({ type: 'fallback', path: 'request' });
+						return { outcome: 'local' };
+					}
 					continue;
 				}
 				if (Date.now() - ownerCheckedAt < AgentRemoteTurnService.OWNER_CHECK_INTERVAL_MS) continue;
@@ -267,6 +270,7 @@ export class AgentRemoteTurnService {
 		await sleep(AgentTurnPlacement.FALLBACK_WAIT_MS, undefined, { ref: false });
 		try {
 			if (!(await this.claimHere(requestId))) return;
+			this.cluster.metrics.record({ type: 'fallback', path: 'request' });
 			await this.requests.remove(requestId).catch(() => {});
 			await fallback();
 		} catch (error) {

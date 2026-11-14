@@ -15,6 +15,7 @@ import type { AgentQueuedTestStreamService } from '../agent-queued-test-stream.s
 import { AgentSessionStopService } from '../agent-session-stop.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
+import { AgentQueueMetrics } from '../queue/agent-queue-metrics';
 
 describe('AgentSessionStopService', () => {
 	const executionService = mock<AgentExecutionService>();
@@ -35,6 +36,7 @@ describe('AgentSessionStopService', () => {
 			mock<GlobalConfig>(),
 			mock<InstanceSettings>(),
 			new InstanceRegistryProxyService(),
+			new AgentQueueMetrics(),
 		),
 		systemAgents,
 		chatExecutions,
