@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_799f5a9df10e6d::t_c4f0955a36f892 638-642
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_799f5a9df10e6d::t_e1fe9c39658b04 1314-1335
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "76ae701f3f6444344d415b9e1a7e14cdc570e5c4",
+  "prompts": {},
+  "sessions": {
+    "s_799f5a9df10e6d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d427110-4bce-4c95-952f-f6172e1f69ff",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
