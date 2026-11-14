@@ -1,0 +1,9 @@
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreQdrant/Qdrant.utils.test.ts
+  ai_agent 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "83935877f7ac28dfc1da77d3bcd16a82f601cc11",
+  "prompts": {}
+}
