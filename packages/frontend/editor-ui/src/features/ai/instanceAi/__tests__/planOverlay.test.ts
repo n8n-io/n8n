@@ -70,6 +70,27 @@ describe('plan overlay labels', () => {
 	});
 });
 
+describe('plan overlay keyboard', () => {
+	it('shows the card on focus, pins it with Enter and closes it with Escape', () => {
+		document.body.innerHTML = renderWireframeBody(plan);
+		planOverlayMain(describePlanComponent, PLAN_OVERLAY_CSS, { plan });
+		const drafts = document.querySelector<HTMLElement>('[data-plan-id="drafts"]')!;
+		expect(drafts.getAttribute('tabindex')).toBe('0');
+		expect(drafts.getAttribute('aria-label')).toBe('Drafts');
+
+		drafts.focus();
+		expect(document.querySelector('.plan-ov-tip')?.textContent).toContain('Drafts');
+		expect(drafts.getAttribute('aria-describedby')).toBe('plan-ov-tip');
+
+		drafts.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		expect(document.querySelector('.plan-ov-tip')?.classList.contains('pinned')).toBe(true);
+
+		drafts.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		expect(document.querySelector('.plan-ov-tip')).toBeNull();
+		expect(document.activeElement).toBe(drafts);
+	});
+});
+
 describe('plan overlay pages', () => {
 	it('opens the page of a part that `opens` names, with the button in the pinned card', () => {
 		const pages = appPlanSchema.parse({

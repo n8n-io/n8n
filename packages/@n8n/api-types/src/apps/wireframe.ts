@@ -621,6 +621,7 @@ export const WIREFRAME_CSS = `
 
 /** Styles of the preview overlay: hover card, highlight, progress bar, shimmer on the block in progress. */
 export const PLAN_OVERLAY_CSS = `
+[data-plan-ov-focus]:focus-visible { outline: 2px solid #7b61ff; outline-offset: 2px; }
 .plan-ov-tip { position: fixed; z-index: 2147483646; width: 288px; box-sizing: border-box; border-radius: 12px;
   background: #fff; color: #1f2328; border: 1px solid rgba(15, 23, 42, .08);
   box-shadow: 0 12px 32px -8px rgba(15, 23, 42, .28), 0 2px 6px rgba(15, 23, 42, .08);
@@ -953,6 +954,7 @@ export function planOverlayMain(
 	}
 
 	function hideTip() {
+		tipFor?.removeAttribute('aria-describedby');
 		pinned = false;
 		window.clearTimeout(switchTimer);
 		tip?.remove();
@@ -996,6 +998,9 @@ export function planOverlayMain(
 		);
 
 		tip = el('div', 'plan-ov-tip');
+		tip.id = 'plan-ov-tip';
+		tip.setAttribute('role', 'tooltip');
+		target.setAttribute('aria-describedby', tip.id);
 		const head = el('div', 'plan-ov-head');
 		head.append(
 			el('span', 'plan-ov-kind', kindIcons[id === 'shell' ? 'shell' : info.kind] ?? '▢'),
@@ -1154,8 +1159,49 @@ export function planOverlayMain(
 		if (tip && !pinned) hideTimer = window.setTimeout(hideTip, 400);
 	});
 	doc.addEventListener('keydown', (event) => {
-		if (event.key === 'Escape') hideTip();
+		if (event.key === 'Escape') {
+			const back = tipFor;
+			hideTip();
+			if (back instanceof HTMLElement) back.focus();
+			return;
+		}
+		// Enter and Space act like a click on a focused wireframe block or page link.
+		const target = event.target;
+		if (
+			(event.key === 'Enter' || event.key === ' ') &&
+			target instanceof HTMLElement &&
+			target.hasAttribute('data-plan-ov-focus')
+		) {
+			event.preventDefault();
+			target.click();
+		}
 	});
+	// Keyboard users get the same card as pointer users when they tab to a planned block.
+	doc.addEventListener('focusin', (event) => {
+		const target = event.target instanceof Element ? event.target : null;
+		if (!target || pinned || tip?.contains(target)) return;
+		const id = target.getAttribute('data-plan-id');
+		if (id && byId[id]) showTip(target, id);
+	});
+
+	doc.addEventListener('focusout', (event) => {
+		const next = event.relatedTarget instanceof Element ? event.relatedTarget : null;
+		if (pinned || (next && (tip?.contains(next) || next.hasAttribute('data-plan-id')))) return;
+		hideTip();
+	});
+
+	/** Wireframe blocks and page links are plain elements, so they get a tab stop and a role. */
+	function makeFocusable() {
+		doc.querySelectorAll('.wf-block[data-plan-id], [data-plan-screen-link]').forEach((node) => {
+			if (node.hasAttribute('data-plan-ov-focus')) return;
+			node.setAttribute('data-plan-ov-focus', '');
+			node.setAttribute('tabindex', '0');
+			node.setAttribute('role', 'button');
+			const id = node.getAttribute('data-plan-id');
+			const label = id ? byId[id]?.label : undefined;
+			if (label && !node.hasAttribute('aria-label')) node.setAttribute('aria-label', label);
+		});
+	}
 	window.addEventListener('scroll', hideTip, true);
 
 	// Screen switching in the wireframe: nav links, the page strip, back links and parts that open a page.
@@ -1289,6 +1335,7 @@ export function planOverlayMain(
 		if (!config.progress) return;
 		if (!bar) {
 			bar = el('div', 'plan-ov-bar');
+			bar.setAttribute('role', 'status');
 			doc.body.append(bar);
 			doc.body.style.paddingTop = '28px';
 		}
@@ -1312,12 +1359,16 @@ export function planOverlayMain(
 
 	function start(plan: AppPlan) {
 		index(plan);
+		makeFocusable();
 		renderProgress();
 		// The app may render after this script runs, so recount when the DOM changes.
 		let pending = 0;
 		new MutationObserver(() => {
 			window.clearTimeout(pending);
-			pending = window.setTimeout(renderProgress, 30);
+			pending = window.setTimeout(() => {
+				makeFocusable();
+				renderProgress();
+			}, 30);
 		}).observe(doc.body, {
 			childList: true,
 			subtree: true,
