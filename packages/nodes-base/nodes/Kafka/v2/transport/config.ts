@@ -1,7 +1,42 @@
 import type { KafkaJS } from '@confluentinc/kafka-javascript';
 import { UserError } from '@n8n/errors';
 
-import { formatAndValidatePem, type KafkaCredentials } from '../../utils';
+import { generateMskIamToken } from './msk-iam';
+import { formatAndValidatePem, MSK_IAM_SASL_MECHANISM, type KafkaCredentials } from '../../utils';
+
+/**
+ * Validates the MSK IAM fields when the config is built, so that a mistake
+ * fails the execution instead of surfacing later as a broker connection error.
+ */
+function toMskIamSasl(credentials: KafkaCredentials): KafkaJS.SASLOptions {
+	if (!credentials.ssl) {
+		throw new UserError('AWS MSK IAM authentication needs SSL', {
+			level: 'warning',
+			description:
+				'Turn on SSL in the Kafka credential. Amazon MSK accepts IAM clients only over TLS.',
+		});
+	}
+	if (!credentials.awsRegion) {
+		throw new UserError('AWS MSK IAM authentication needs an AWS Region', { level: 'warning' });
+	}
+	if (
+		!credentials.awsUseSystemCredentials &&
+		!(credentials.awsAccessKeyId?.trim() && credentials.awsSecretAccessKey?.trim())
+	) {
+		throw new UserError(
+			'AWS MSK IAM authentication needs an access key ID and a secret access key',
+			{
+				level: 'warning',
+			},
+		);
+	}
+
+	return {
+		mechanism: 'oauthbearer',
+		// Called on connect and again before each token expires.
+		oauthBearerProvider: async () => await generateMskIamToken(credentials),
+	};
+}
 
 /**
  * Builds the flat, dotted-key TLS/mTLS properties the library expects at the
@@ -53,14 +88,19 @@ export function toKafkaJSConfig(
 	};
 
 	if (credentials.authentication) {
-		if (!(credentials.username && credentials.password)) {
-			throw new UserError('Username and password are required for authentication');
+		const mechanism = credentials.saslMechanism ?? 'plain';
+		if (mechanism === MSK_IAM_SASL_MECHANISM) {
+			kafkaJS.sasl = toMskIamSasl(credentials);
+		} else {
+			if (!(credentials.username && credentials.password)) {
+				throw new UserError('Username and password are required for authentication');
+			}
+			kafkaJS.sasl = {
+				mechanism,
+				username: credentials.username,
+				password: credentials.password,
+			};
 		}
-		kafkaJS.sasl = {
-			mechanism: credentials.saslMechanism ?? 'plain',
-			username: credentials.username,
-			password: credentials.password,
-		};
 	}
 
 	return { kafkaJS, ...toTlsProperties(credentials) };

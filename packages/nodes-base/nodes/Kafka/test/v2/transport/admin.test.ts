@@ -3,10 +3,11 @@ import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { KafkaCredentials } from '../../../utils';
-import { assertTopicExists } from '../../../v2/transport/admin';
+import { assertTopicExists, testKafkaConnection } from '../../../v2/transport/admin';
 import {
 	confluentKafkaModuleMock,
 	failNextAdminDisconnect,
+	failNextListTopics,
 	failNextTopicMetadata,
 	getFakeAdmins,
 	getFakeClientConfigs,
@@ -172,5 +173,29 @@ describe('assertTopicExists', () => {
 		failNextTopicMetadata(new Error('Local: Broker transport failure'));
 
 		await expect(assertTopicExists(credentials, 'my-topic')).resolves.toBeUndefined();
+	});
+});
+
+describe('testKafkaConnection', () => {
+	it('makes a bounded metadata request, because connect alone does not reach the broker', async () => {
+		await testKafkaConnection(credentials);
+
+		expect(lastAdmin().connect).toHaveBeenCalled();
+		expect(lastAdmin().listTopics).toHaveBeenCalledWith({ timeout: 3_000 });
+		expect(lastAdmin().disconnect).toHaveBeenCalled();
+	});
+
+	it('passes on a failed metadata request and still disconnects', async () => {
+		const authFailure = new Error('Local: Authentication failure');
+		failNextListTopics(authFailure);
+
+		await expect(testKafkaConnection(credentials)).rejects.toBe(authFailure);
+		expect(lastAdmin().disconnect).toHaveBeenCalled();
+	});
+
+	it('ignores a failed disconnect after a successful check', async () => {
+		failNextAdminDisconnect(new Error('already disconnected'));
+
+		await expect(testKafkaConnection(credentials)).resolves.toBeUndefined();
 	});
 });

@@ -29,6 +29,8 @@ import http from 'node:http';
 import https from 'node:https';
 import type { ConnectionOptions } from 'node:tls';
 
+import type { AWSRegion } from '../../credentials/common/aws/regions';
+
 // Default delay in milliseconds before retrying after a failed offset resolution.
 // This prevents rapid retry loops that could overwhelm the Kafka broker
 export const DEFAULT_ERROR_RETRY_DELAY_MS = 5000;
@@ -99,11 +101,41 @@ export interface KafkaCredentials {
 	authentication: boolean;
 	username?: string;
 	password?: string;
-	saslMechanism?: 'plain' | 'scram-sha-256' | 'scram-sha-512';
+	saslMechanism?: 'plain' | 'scram-sha-256' | 'scram-sha-512' | typeof MSK_IAM_SASL_MECHANISM;
 	allowUnauthorizedCerts?: boolean;
 	ca?: string;
 	cert?: string;
 	key?: string;
+	awsRegion?: AWSRegion;
+	awsUseSystemCredentials?: boolean;
+	awsAccessKeyId?: string;
+	awsSecretAccessKey?: string;
+	awsSessionToken?: string;
+}
+
+export const MSK_IAM_SASL_MECHANISM = 'aws-msk-iam';
+
+export function usesMskIam(credentials: { authentication?: unknown; saslMechanism?: unknown }) {
+	return (
+		credentials.authentication === true && credentials.saslMechanism === MSK_IAM_SASL_MECHANISM
+	);
+}
+
+/**
+ * The v1 nodes run on kafkajs, which cannot authenticate to MSK with IAM. The
+ * credential is shared with v2, so v1 must reject it instead of sending an
+ * empty username and password.
+ */
+export function assertNotMskIamOnV1(credentials: {
+	authentication?: unknown;
+	saslMechanism?: unknown;
+}) {
+	if (!usesMskIam(credentials)) return;
+	throw new UserError('AWS MSK IAM authentication needs version 2 of this node', {
+		level: 'warning',
+		description:
+			'Replace this node with a new Kafka or Kafka Trigger node, which uses version 2. Or select a different SASL mechanism in the Kafka credential.',
+	});
 }
 
 interface SchemaRegistryCredentials {
@@ -213,6 +245,7 @@ export async function createConfig(ctx: ITriggerFunctions) {
 	};
 
 	if (credentials.authentication) {
+		assertNotMskIamOnV1(credentials);
 		if (!(credentials.username && credentials.password)) {
 			throw new NodeOperationError(
 				ctx.getNode(),

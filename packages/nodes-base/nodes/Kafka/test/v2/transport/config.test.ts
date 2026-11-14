@@ -3,7 +3,12 @@ import { UserError } from '@n8n/errors';
 import type { KafkaCredentials } from '../../../utils';
 import { toKafkaJSConfig } from '../../../v2/transport/config';
 
-const { kafkajsLoadCount } = vi.hoisted(() => ({ kafkajsLoadCount: { value: 0 } }));
+const { kafkajsLoadCount, generateMskIamToken } = vi.hoisted(() => ({
+	kafkajsLoadCount: { value: 0 },
+	generateMskIamToken: vi.fn(),
+}));
+
+vi.mock('../../../v2/transport/msk-iam', () => ({ generateMskIamToken }));
 
 // Counts module loads rather than property reads: this file's import graph reaches
 // `utils.ts` for a value (the shared PEM validator), which only stays free of v1's
@@ -198,5 +203,93 @@ describe('toKafkaJSConfig', () => {
 		toKafkaJSConfig(creds({ ssl: true, ca: CA_PEM }));
 
 		expect(kafkajsLoadCount.value).toBe(0);
+	});
+});
+
+describe('toKafkaJSConfig with AWS MSK IAM', () => {
+	const iam = (overrides: Partial<KafkaCredentials> = {}): KafkaCredentials =>
+		creds({
+			ssl: true,
+			authentication: true,
+			saslMechanism: 'aws-msk-iam',
+			awsRegion: 'eu-central-1',
+			awsAccessKeyId: 'AKIDEXAMPLE',
+			awsSecretAccessKey: 'secret',
+			...overrides,
+		});
+
+	beforeEach(() => {
+		generateMskIamToken.mockReset();
+	});
+
+	it('uses OAUTHBEARER with a token provider instead of a username and password', () => {
+		const result = toKafkaJSConfig(iam());
+
+		expect(result.kafkaJS.sasl).toStrictEqual({
+			mechanism: 'oauthbearer',
+			oauthBearerProvider: expect.any(Function),
+		});
+		expect(result.kafkaJS.ssl).toBe(true);
+	});
+
+	it('does not sign a token until the library asks for one', () => {
+		toKafkaJSConfig(iam());
+
+		expect(generateMskIamToken).not.toHaveBeenCalled();
+	});
+
+	it('returns a token signed from the credential each time the library asks', async () => {
+		const token = { value: 'token', principal: 'aws-msk-iam', lifetime: 1 };
+		generateMskIamToken.mockResolvedValue(token);
+		const credentials = iam();
+		const { sasl } = toKafkaJSConfig(credentials).kafkaJS;
+		if (sasl?.mechanism !== 'oauthbearer') throw new Error('expected an OAUTHBEARER config');
+
+		await expect(sasl.oauthBearerProvider()).resolves.toBe(token);
+		await sasl.oauthBearerProvider();
+
+		expect(generateMskIamToken).toHaveBeenCalledTimes(2);
+		expect(generateMskIamToken).toHaveBeenCalledWith(credentials);
+	});
+
+	it('keeps mTLS material alongside MSK IAM', () => {
+		const result = toKafkaJSConfig(iam({ ca: CA_PEM }));
+
+		expect(result['ssl.ca.pem']).toBe(CA_PEM);
+	});
+
+	it('accepts system credentials without an access key', () => {
+		const result = toKafkaJSConfig(
+			iam({
+				awsUseSystemCredentials: true,
+				awsAccessKeyId: undefined,
+				awsSecretAccessKey: undefined,
+			}),
+		);
+
+		expect(result.kafkaJS.sasl?.mechanism).toBe('oauthbearer');
+	});
+
+	it('throws when SSL is off', () => {
+		expect(() => toKafkaJSConfig(iam({ ssl: false }))).toThrow(
+			'AWS MSK IAM authentication needs SSL',
+		);
+	});
+
+	it('throws without an AWS Region', () => {
+		expect(() => toKafkaJSConfig(iam({ awsRegion: undefined }))).toThrow(UserError);
+	});
+
+	it.each([
+		['access key ID', { awsAccessKeyId: '' }],
+		['secret access key', { awsSecretAccessKey: '  ' }],
+	])('throws without an %s', (_, overrides) => {
+		expect(() => toKafkaJSConfig(iam(overrides))).toThrow(UserError);
+	});
+
+	it('ignores the MSK IAM mechanism when authentication is off', () => {
+		const result = toKafkaJSConfig(iam({ authentication: false }));
+
+		expect(result.kafkaJS.sasl).toBeUndefined();
 	});
 });

@@ -22,6 +22,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import {
+	assertNotMskIamOnV1,
 	createSchemaRegistry,
 	getAutoCommitSettings,
 	configureDataEmitter,
@@ -44,6 +45,25 @@ vi.mock('@n8n/utils/sleep', () => ({
 const mockedSleep = vi.mocked(sleep);
 
 describe('Kafka Utils', () => {
+	describe('assertNotMskIamOnV1', () => {
+		it('throws for an MSK IAM credential', () => {
+			expect(() =>
+				assertNotMskIamOnV1({ authentication: true, saslMechanism: 'aws-msk-iam' }),
+			).toThrow('AWS MSK IAM authentication needs version 2 of this node');
+		});
+
+		it.each([
+			['a username and password credential', { authentication: true, saslMechanism: 'plain' }],
+			['a credential with no SASL mechanism', { authentication: true }],
+			[
+				'an MSK IAM mechanism left over with authentication off',
+				{ authentication: false, saslMechanism: 'aws-msk-iam' },
+			],
+		])('accepts %s', (_, credentials) => {
+			expect(() => assertNotMskIamOnV1(credentials)).not.toThrow();
+		});
+	});
+
 	describe('sanitizeRegistryError', () => {
 		const CAP = 500;
 

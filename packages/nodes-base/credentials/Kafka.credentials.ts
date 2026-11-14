@@ -1,5 +1,12 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
+import { awsRegionProperty } from './common/aws/descriptions';
+
+const showForMskIam = {
+	authentication: [true],
+	saslMechanism: ['aws-msk-iam'],
+};
+
 export class Kafka implements ICredentialType {
 	name = 'kafka';
 
@@ -106,6 +113,9 @@ export class Kafka implements ICredentialType {
 				show: {
 					authentication: [true],
 				},
+				hide: {
+					saslMechanism: ['aws-msk-iam'],
+				},
 			},
 			default: '',
 			description: 'Optional username if authenticated is required',
@@ -117,6 +127,9 @@ export class Kafka implements ICredentialType {
 			displayOptions: {
 				show: {
 					authentication: [true],
+				},
+				hide: {
+					saslMechanism: ['aws-msk-iam'],
 				},
 			},
 			typeOptions: {
@@ -147,8 +160,68 @@ export class Kafka implements ICredentialType {
 					name: 'scram-sha-512',
 					value: 'scram-sha-512',
 				},
+				{
+					name: 'AWS MSK IAM',
+					value: 'aws-msk-iam',
+					description: 'Requires version 2 of the Kafka and Kafka Trigger nodes, and SSL',
+				},
 			],
 			default: 'plain',
+		},
+		{
+			...awsRegionProperty,
+			name: 'awsRegion',
+			description: 'The AWS Region of the Amazon MSK cluster',
+			displayOptions: {
+				show: showForMskIam,
+			},
+		},
+		{
+			displayName: 'Use System Credentials',
+			name: 'awsUseSystemCredentials',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether to use the AWS credentials of the n8n host (environment variables, IAM role for service account, EKS Pod Identity, container or instance role). An administrator must turn on access to AWS system credentials. See <a href="https://docs.n8n.io/integrations/builtin/credentials/aws/">documentation</a> for more information.',
+			displayOptions: {
+				show: showForMskIam,
+				showOnDeployment: 'hosted',
+			},
+		},
+		{
+			displayName: 'Access Key ID',
+			name: 'awsAccessKeyId',
+			// eslint-disable-next-line n8n-nodes-base/cred-class-field-type-options-password-missing
+			type: 'string',
+			default: '',
+			displayOptions: {
+				show: { ...showForMskIam, awsUseSystemCredentials: [false] },
+			},
+		},
+		{
+			displayName: 'Secret Access Key',
+			name: 'awsSecretAccessKey',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			displayOptions: {
+				show: { ...showForMskIam, awsUseSystemCredentials: [false] },
+			},
+		},
+		{
+			displayName: 'Session Token',
+			name: 'awsSessionToken',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			description: 'Only for temporary AWS credentials',
+			displayOptions: {
+				show: { ...showForMskIam, awsUseSystemCredentials: [false] },
+			},
 		},
 	];
 }

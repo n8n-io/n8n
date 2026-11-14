@@ -107,6 +107,22 @@ export async function assertTopicExists(
 }
 
 /**
+ * Checks that the credential can connect and authenticate. A metadata request
+ * is necessary because `admin.connect()` resolves without reaching the broker.
+ * @param credentials - The decrypted Kafka credential
+ */
+export async function testKafkaConnection(credentials: KafkaCredentials): Promise<void> {
+	const kafka = await createKafkaClient(credentials);
+	const admin = kafka.admin();
+	try {
+		await admin.connect();
+		await admin.listTopics({ timeout: METADATA_TIMEOUT_MS });
+	} finally {
+		await admin.disconnect().catch(() => {});
+	}
+}
+
+/**
  * Whether the broker's error matches the given code. Checked by code, not
  * message: the admin path preserves the broker's error code, unlike the
  * consumer's log stream.
