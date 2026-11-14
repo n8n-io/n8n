@@ -412,6 +412,7 @@ erDiagram
   varchar clientId FK
   bigint grantedAt
   INTEGER id
+  datetime_3_ lastUsedAt
   TEXT scope
   varchar userId FK
 }

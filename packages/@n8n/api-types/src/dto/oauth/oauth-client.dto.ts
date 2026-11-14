@@ -23,6 +23,8 @@ const oauthClientShape = {
 	grantedAt: z.number(),
 	/** Scopes granted on the consent screen. */
 	scopes: z.array(z.string()),
+	/** ISO time of the last instance MCP request with this grant; `null` if never used. */
+	lastUsedAt: z.string().datetime().nullable(),
 	/** Consent owner; present only when listing with ownership=all. */
 	owner: oauthClientOwnerShape.optional(),
 };
