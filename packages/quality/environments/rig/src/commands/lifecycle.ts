@@ -6,6 +6,7 @@ import pc from 'picocolors';
 import {
 	describeTopology,
 	parseTopology,
+	requiredServices,
 	saveTopology,
 	type Topology,
 	type TopologyInput,
@@ -27,10 +28,12 @@ import { liveState } from '../runtime/state';
 import { validateTopology } from '../topology/validate';
 import { table, ui } from '../ui/output';
 import { confirm, isInteractive } from '../ui/prompt';
-import { envArg, newSupervisor, stopComponents } from './common';
+import { envArg, loadEnv, newSupervisor, offerRestart, stopComponents } from './common';
+import { editFile } from '../integrations/editor';
 import { wizard } from './wizard';
 import { RIG } from '../self/build-info';
 import { parseSlot, slotsInUse } from '../topology/slots';
+import { ensureContainerRuntime } from '../services/runtime';
 
 const LAYER_HEADERS: Record<string, string> = {
 	shared: 'every component (mains, workers, engine, launchers)',
@@ -250,7 +253,10 @@ export const createCommand = defineCommand({
 			throw new RigError(`Give a name: \`${RIG} create <name> --preset <preset>\`.`);
 		}
 
-		createEnvironment(parseTopology(input));
+		const topology = parseTopology(input);
+		// The first environment with services picks the container runtime.
+		if (requiredServices(topology).length > 0) await ensureContainerRuntime();
+		createEnvironment(topology);
 	},
 });
 
@@ -371,5 +377,19 @@ export const destroyCommand = defineCommand({
 		rmSync(env.paths.root, { recursive: true, force: true });
 		if (currentEnvName() === env.name) setCurrentEnv(undefined);
 		ui.success(`Deleted ${env.name}.`);
+	},
+});
+
+export const editCommand = defineCommand({
+	meta: { name: 'edit', description: 'Open env.yaml (the topology) in your editor' },
+	args: { ...envArg },
+	async run({ args }) {
+		const env = loadEnv(args.env);
+		await editFile(env.paths.envYaml);
+		// Validate now: a mistake should show here, not at the next start.
+		const fresh = env.reload();
+		validateTopology(fresh.topology);
+		ui.success(`${fresh.name}: ${describeTopology(fresh.topology)}`);
+		await offerRestart(fresh, 'shared', undefined);
 	},
 });

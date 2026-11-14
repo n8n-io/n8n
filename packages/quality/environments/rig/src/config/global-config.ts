@@ -8,6 +8,9 @@ import { expandHome, globalConfigFile } from './paths';
 
 export const LAUNCHER_VERSION_PATTERN = /^\d+\.\d+\.\d+$/;
 
+export const CONTAINER_RUNTIMES = ['docker', 'podman'] as const;
+export type ContainerRuntime = (typeof CONTAINER_RUNTIMES)[number];
+
 const globalConfigSchema = z
 	.object({
 		launcher: z
@@ -24,13 +27,31 @@ const globalConfigSchema = z
 			.default({}),
 		/** The n8n checkout for `source: auto` outside a checkout. */
 		repo: z.string().optional(),
+		/** `default`, a known browser such as `chrome`, or a macOS app name or a command. */
+		browser: z.string().min(1).optional(),
+		/** `env` for $VISUAL or $EDITOR, a known editor such as `code`, or a command line. */
+		editor: z.string().min(1).optional(),
+		container: z
+			.object({
+				/** The runtime for Postgres, Redis, and tunnels. rig sets it on the first use. */
+				runtime: z.enum(CONTAINER_RUNTIMES).optional(),
+			})
+			.strict()
+			.default({}),
 	})
 	.strict();
 
 export type GlobalConfig = z.infer<typeof globalConfigSchema>;
 
 /** Keys that `rig config set` accepts. */
-export const GLOBAL_CONFIG_KEYS = ['launcher.path', 'launcher.version', 'repo'] as const;
+export const GLOBAL_CONFIG_KEYS = [
+	'launcher.path',
+	'launcher.version',
+	'repo',
+	'container.runtime',
+	'browser',
+	'editor',
+] as const;
 
 /** Keys whose values are paths. `rig config set` expands `~` and makes them absolute. */
 export const PATH_KEYS: readonly GlobalConfigKey[] = ['launcher.path', 'repo'];
@@ -76,6 +97,12 @@ export function getGlobalConfigValue(
 			return config.launcher.version;
 		case 'repo':
 			return config.repo;
+		case 'container.runtime':
+			return config.container.runtime;
+		case 'browser':
+			return config.browser;
+		case 'editor':
+			return config.editor;
 	}
 }
 
@@ -91,6 +118,18 @@ export function setGlobalConfigValue(
 			return { ...config, launcher: { ...config.launcher, version: value } };
 		case 'repo':
 			return { ...config, repo: value };
+		case 'container.runtime':
+			return {
+				...config,
+				container: {
+					...config.container,
+					runtime: value === undefined ? undefined : runtimeValue(value),
+				},
+			};
+		case 'browser':
+			return { ...config, browser: value };
+		case 'editor':
+			return { ...config, editor: value };
 	}
 }
 
@@ -98,4 +137,10 @@ export function setGlobalConfigValue(
 export function launcherCheckout(config: GlobalConfig): string | undefined {
 	const path = process.env.RIG_LAUNCHER_PATH || config.launcher.path;
 	return path ? expandHome(path) : undefined;
+}
+
+function runtimeValue(value: string): ContainerRuntime {
+	const runtime = CONTAINER_RUNTIMES.find((candidate) => candidate === value);
+	if (!runtime) throw new RigError(`Invalid container.runtime "${value}". Use docker or podman.`);
+	return runtime;
 }

@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import { stripVTControlCharacters } from 'node:util';
 import pc from 'picocolors';
 
@@ -45,6 +44,25 @@ export class PrefixPrinter {
 	/** When set, only these components show their log lines. Events always show. */
 	private visible: Set<string> | undefined;
 
+	/** Output that waits while a prompt shows. */
+	private held: string[] | undefined;
+
+	/** Keeps new output until `release`, so it does not break a prompt. */
+	hold(): void {
+		this.held ??= [];
+	}
+
+	release(): void {
+		const held = this.held;
+		this.held = undefined;
+		if (held && held.length > 0) process.stdout.write(held.join(''));
+	}
+
+	private write(output: string): void {
+		if (this.held) this.held.push(output);
+		else process.stdout.write(output);
+	}
+
 	/** @param readable Show JSON log lines in a readable form. The log files keep the raw lines. */
 	constructor(private readonly readable = true) {}
 
@@ -86,11 +104,11 @@ export class PrefixPrinter {
 			// A JSON message can contain new lines. Each one gets the prefix.
 			for (const line of formatted.split('\n')) output += `${prefix}${line}\n`;
 		}
-		process.stdout.write(output);
+		this.write(output);
 	}
 
 	event(name: string, text: string): void {
-		process.stdout.write(`${this.prefix(name)}${pc.bold(text)}\n`);
+		this.write(`${this.prefix(name)}${pc.bold(text)}\n`);
 	}
 }
 
@@ -111,12 +129,4 @@ export function table(rows: string[][]): string {
 				.join('  '),
 		)
 		.join('\n');
-}
-
-/** Opens a URL in the default browser. */
-export function openUrl(url: string): void {
-	const opener = process.platform === 'darwin' ? 'open' : 'xdg-open';
-	const child = spawn(opener, [url], { stdio: 'ignore', detached: true });
-	child.on('error', () => ui.warn(`Cannot open a browser. Open ${url} yourself.`));
-	child.unref();
 }

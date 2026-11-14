@@ -70,7 +70,7 @@ describe('launcher source', () => {
 	const dockerfile = 'docker/images/runners/Dockerfile.debian';
 
 	it('should prefer a launcher checkout', () => {
-		const config = { launcher: { path: '/launcher', version: '1.2.3' } };
+		const config = { launcher: { path: '/launcher', version: '1.2.3' }, container: {} };
 		expect(launcherSource(config, checkout)).toEqual({ kind: 'checkout', path: '/launcher' });
 	});
 
@@ -79,15 +79,17 @@ describe('launcher source', () => {
 		writeFileSync(join(checkout, dockerfile), 'FROM x\nARG LAUNCHER_VERSION=1.5.1\nRUN true\n');
 		expect(versionFromCheckout(checkout)).toBe('1.5.1');
 
-		expect(launcherSource({ launcher: { version: '1.4.0' } }, checkout)).toMatchObject({
+		expect(
+			launcherSource({ launcher: { version: '1.4.0' }, container: {} }, checkout),
+		).toMatchObject({
 			version: '1.4.0',
 			versionFrom: 'global config',
 		});
-		expect(launcherSource({ launcher: {} }, checkout)).toMatchObject({
+		expect(launcherSource({ launcher: {}, container: {} }, checkout)).toMatchObject({
 			version: '1.5.1',
 			versionFrom: 'runners image',
 		});
-		expect(launcherSource({ launcher: {} }, undefined)).toMatchObject({
+		expect(launcherSource({ launcher: {}, container: {} }, undefined)).toMatchObject({
 			version: DEFAULT_LAUNCHER_VERSION,
 			versionFrom: 'default',
 		});

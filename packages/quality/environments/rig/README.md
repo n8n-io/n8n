@@ -9,9 +9,42 @@ Design and status: [`.agents/specs/rig.md`](../../../../.agents/specs/rig.md).
 
 ## Setup
 
-You need Docker, Node, and a build of the repository (`pnpm build`).
+You need Docker or Podman, Node, and a build of the repository (`pnpm build`).
 The Python runner needs [`uv`](https://docs.astral.sh/uv/). `pnpm rig doctor`
 checks all of it.
+
+### Docker or Podman
+
+Postgres, Redis, and tunnels run as containers. The first time `rig` needs
+them, it checks which of Docker and Podman is installed. With one, it uses that
+one. With both, it asks which one to use. It saves the choice in the global
+config:
+
+```bash
+pnpm rig config set container.runtime podman   # or docker
+RIG_CONTAINER_RUNTIME=docker pnpm rig up         # for one command
+```
+
+### Browser and editor
+
+The first time `rig` opens a URL (`o` in `rig up`, `rig open`), it lists the
+browsers it finds (Chrome, Firefox, Safari, Arc, Brave, Edge, and more) and
+asks which one to use. The first time it opens a file (`rig edit`,
+`rig env edit`, `rig config edit`), it asks for the editor: VS Code, Cursor,
+Windsurf, Zed, Sublime Text, JetBrains IDEs, Neovim, Vim, Helix, micro, nano,
+Emacs, or `$VISUAL`/`$EDITOR`. GUI editors open with `--wait`, so `rig` can
+offer a restart when you close the file.
+
+```bash
+pnpm rig config set browser firefox     # default, a listed id, or a macOS app name
+pnpm rig config set editor cursor       # env ($VISUAL/$EDITOR), a listed id, or a command line
+pnpm rig config set editor "code-insiders --wait"
+```
+
+Podman needs a running machine on macOS (`podman machine start`) and a compose
+provider for `podman compose` (`docker-compose` or `podman-compose`). Stop the
+services (`pnpm rig stop`) before you switch: `rig` manages the containers only
+in the runtime that is set.
 
 Run `pnpm rig` from the repository root. In a package directory, use
 `pnpm -w rig`.
@@ -191,7 +224,7 @@ pnpm rig env browse                                # interactive editor, see bel
 pnpm rig env set N8N_LOG_LEVEL=debug --on worker   # one role
 pnpm rig env set N8N_LOG_LEVEL=debug --on worker-2 # one component
 pnpm rig env set NODE_FUNCTION_ALLOW_EXTERNAL=lodash --on runner-js
-pnpm rig env edit --on main                        # opens $EDITOR
+pnpm rig env edit --on main                        # opens your editor (see below)
 pnpm rig env ls worker-1                           # resolved env with sources
 pnpm rig env explain N8N_LOG_LEVEL --on worker-2   # every layer that sets the key
 pnpm rig env diff main-1 worker-1                  # keys that differ, also <env>:<component>
@@ -247,8 +280,9 @@ changes. `--refresh` reads the source again.
 | `exec <component> -- <cmd>` | Run a command with the env of a component |
 | `print <component> --format shell\|dotenv\|json\|vscode` | Print the resolved env, or VS Code launch configurations |
 | `psql`, `redis-cli` | Open a shell in a service container |
-| `config get\|set\|unset` | Read and change the global config: `launcher.path`, `launcher.version`, `repo` |
-| `doctor` | Check Docker, Node, Go, `uv`, the checkout and its build, the launcher, ports, and the global install |
+| `config get\|set\|unset\|edit` | Read and change the global config: `launcher.path`, `launcher.version`, `repo`, `container.runtime`, `browser`, `editor` |
+| `edit` | Open env.yaml in your editor, then check it |
+| `doctor` | Check Docker or Podman, Node, Go, `uv`, the checkout and its build, the launcher, ports, and the global install |
 | `install-global`, `self-update [--rollback]` | Install and update the global `rig` |
 
 Add `--env <name>` after a command to select an environment. Without it,

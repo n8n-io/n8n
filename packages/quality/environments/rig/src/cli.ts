@@ -6,6 +6,7 @@ import { envCommand } from './commands/env';
 import {
 	createCommand,
 	destroyCommand,
+	editCommand,
 	lsCommand,
 	resetCommand,
 	useCommand,
@@ -47,6 +48,7 @@ const rig = defineCommand({
 		reset: resetCommand,
 		destroy: destroyCommand,
 		clone: cloneCommand,
+		edit: editCommand,
 		up: upCommand,
 		run: runCommand,
 		stop: stopCommand,

@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { defineCommand } from 'citty';
 import pc from 'picocolors';
@@ -15,6 +16,7 @@ import {
 import { expandHome, globalConfigFile } from '../config/paths';
 import { formatValue } from '../env/dotenv';
 import { RigError } from '../errors';
+import { editFile } from '../integrations/editor';
 import { execInService, type ServiceName } from '../services/compose';
 import { requiredServices } from '../config/env-yaml';
 import { CLI_DIR, userCwd } from '../source';
@@ -164,7 +166,7 @@ function serviceShell(service: ServiceName, command: string[]) {
 			if (!requiredServices(env.topology).includes(service)) {
 				throw new RigError(`${env.name} does not use ${service}.`);
 			}
-			process.exitCode = execInService(env.name, env.paths, service, command);
+			process.exitCode = execInService(env.name, service, command);
 		},
 	});
 }
@@ -209,6 +211,17 @@ export const configCommand = defineCommand({
 				const value = PATH_KEYS.includes(key) ? expandHome(raw) : raw;
 				saveGlobalConfig(setGlobalConfigValue(loadGlobalConfig(), key, value));
 				ui.success(`${key} = ${value}`);
+			},
+		}),
+		edit: defineCommand({
+			meta: { name: 'edit', description: 'Open the global config file in your editor' },
+			async run() {
+				const file = globalConfigFile();
+				if (!existsSync(file)) saveGlobalConfig(loadGlobalConfig());
+				await editFile(file);
+				// Report a mistake now, not at the next command.
+				loadGlobalConfig();
+				ui.success(`Saved ${file}`);
 			},
 		}),
 		unset: defineCommand({

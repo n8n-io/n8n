@@ -35,7 +35,7 @@ Status: phases 1 (MVP), 2 (global install), and 3 (developer experience) impleme
 | Distribution | No publishing. `pnpm rig` runs the source with tsx. `rig install-global` copies a `tsdown` bundle from a checkout to a versions directory and writes a shim |
 | Task runners | The launcher is the default (`runners.via: launcher`). Go is an accepted dependency on macOS |
 | `pnpm services` | Stays. `rig` reads the same image tags. Containers, ports, and files stay separate |
-| Service containers | Generated `docker compose` file per environment. No testcontainers, because environments must persist |
+| Service containers | Generated compose file per environment, run with Docker or Podman (`container.runtime`). No testcontainers, because environments must persist |
 | Env var files | Dotenv files, one file per layer |
 | Topology file | `env.yaml` |
 | Prompts | `@clack/prompts` 1.x, for `autocomplete`. `@n8n/node-cli` keeps 0.11 |
@@ -125,7 +125,7 @@ tunnel:
 - **Named tunnel** (`hostname`): cloudflared runs `tunnel run` with the token.
   The routes come from the Cloudflare dashboard. The public hostname must point
   at `http://host.docker.internal:<target port>`. `rig` passes the token in the
-  environment of `docker compose`, so the compose file does not contain it.
+  environment of `compose`, so the compose file does not contain it.
 - The tunnel is a compose service, not a component. A component restart does
   not change the URL. A quick tunnel keeps its URL while its container runs, so
   also across `rig up` sessions. `rig stop` and `rig services down` remove it.
@@ -154,7 +154,13 @@ launcher:
   path: ~/work/task-runner-launcher   # optional: a local launcher checkout
   version: 1.6.0                      # optional: a release, when path is not set
 repo: ~/work/n8n                      # default source outside a checkout
+container:
+  runtime: docker                     # docker | podman. Set on the first use
+browser: firefox                      # set on the first URL, see Browser and editor
+editor: cursor                        # set on the first edit
 ```
+
+`RIG_CONTAINER_RUNTIME` overrides `container.runtime`.
 
 ### Topology file
 
@@ -237,7 +243,9 @@ not start with `-` as the command.
 | `rig env browse [--on <layer>] [--refresh]` | Interactive editor with every env var that n8n declares (see [Env var catalog](#env-var-catalog)) |
 | `rig env set KEY=VAL [--on <role\|component>]` | Write to `shared.env`, a role file, or a component file |
 | `rig env unset KEY [--on …]` | Remove a key from a layer file |
-| `rig env edit [--on …]` | Open the layer file in `$EDITOR` |
+| `rig env edit [--on …]` | Open the layer file in the editor (see Browser and editor) |
+| `rig edit` | Open env.yaml in the editor. Then validate it and report drift |
+| `rig config edit` | Open the global config in the editor. Then validate it |
 | `rig env ls [component]` | Show the resolved env and the layer of each key |
 | `rig env explain KEY --on <component>` | Show every layer that sets the key, and which layer wins |
 | `rig env diff <a> <b>` | Compare the resolved env of two components. `<env>:<component>` names a component of another environment |
@@ -253,7 +261,7 @@ not start with `-` as the command.
 | `rig print <component> --format shell\|dotenv\|json` | Print the resolved env |
 | `rig print <component> --format vscode` | Print a launch and an attach configuration for VS Code (n8n processes only). The env contains secrets |
 | `rig config get [key]`, `rig config set <key> <value>`, `rig config unset <key>` | Read and change the global config |
-| `rig doctor [--env <name>]` | Check Node, pnpm, Docker, the checkout and its build, the launcher, Go, `uv`, the ports of the environment, and the global install. Exit code 1 on a problem |
+| `rig doctor [--env <name>]` | Check Node, pnpm, Docker and Podman (the one in use fails, the other is information), the checkout and its build, the launcher, Go, `uv`, the ports of the environment, and the global install. Exit code 1 on a problem |
 | `rig install-global [--from <path>] [--force]` | Build and install the global `rig` |
 | `rig self-update [--from <path>] [--force] [--rollback]` | Rebuild the global `rig`, or point it to the previous version |
 | `rig --version` | The running version, and the global version when it handed off |
@@ -585,7 +593,32 @@ restarts the affected launchers.
 ## Services
 
 `rig services up` writes `compose.yaml` and runs
-`docker compose -p rig-<name> -f compose.yaml up -d --wait`.
+`<runtime> compose -p rig-<name> -f compose.yaml up -d --remove-orphans`, where
+`<runtime>` is `docker` or `podman`.
+
+### Container runtime
+
+- `container.runtime` in the global config, or `RIG_CONTAINER_RUNTIME`, names
+  the runtime. Without a value, the first command that needs containers
+  (`rig create` with services, `rig up`, `rig run`, `rig services up`) checks
+  which CLIs are installed: with one, `rig` saves it; with both, `rig` asks in
+  a terminal (the running one is the default) and saves the answer. Without a
+  terminal it uses a running one, Docker first, and does not save it. With
+  none, it fails with an install hint.
+- Commands that only read or stop (`status`, `stop`, `destroy`, `doctor`) do
+  not ask. They use the runtime without saving it, and skip the containers when
+  it does not run.
+- `podman compose` delegates to a compose provider (`docker-compose` or
+  `podman-compose`), and the providers differ in `--wait` and in the output of
+  `compose ps`. So `rig` uses `compose` only for `up` and `down`. It waits for
+  readiness, reads the status, and runs `psql` and `redis-cli` with
+  `<runtime> inspect` and `<runtime> exec` on the fixed container names
+  (`rig-<name>-<service>`). `inspect` prints the same JSON fields in both
+  runtimes. Older Podman versions name the health field `Healthcheck`.
+- Both runtimes resolve `host.docker.internal` for the tunnel. The
+  `host-gateway` mapping covers Docker on Linux.
+- `rig` manages the containers only in the runtime that is set. Stop the
+  services before a switch.
 
 - Images come from `TEST_CONTAINER_IMAGES` in
   `packages/quality/environments/containers/test-containers.ts`, unless
@@ -596,7 +629,8 @@ restarts the affected launchers.
 - Ports bind to `127.0.0.1`.
 - Redis has no volume.
 - Containers have the label `n8n-rig=<name>`.
-- Each service has a healthcheck, so `--wait` returns only when it is ready.
+- Each service has a healthcheck. `rig` waits up to 120 seconds until each
+  container runs and is healthy, and fails early when one exits or is unhealthy.
 - The Postgres init script creates the `n8n` and `n8n_engine` databases.
 
 `rig run` and `rig up` start the services that the topology needs, if they
@@ -732,6 +766,35 @@ worker-1  │ n8n worker is now ready
 
 When the terminal closes during a shutdown, writes to it fail. `rig` ignores
 these errors, so the shutdown still stops every component.
+
+## Browser and editor
+
+`browser` and `editor` in the global config. `rig` asks for each the first time
+it needs it, in a terminal, and saves the answer.
+
+- **Browser** (`o`, `p`, `rig open`): values `default` (the system opener:
+  `open` or `xdg-open`), a known id (`chrome`, `firefox`, `safari`, `arc`,
+  `brave`, `edge`, `chromium`, `vivaldi`, `opera`, `zen`, `orion`, `dia`), or
+  any other macOS app name (`open -a <name>`) or Linux command. Discovery:
+  `<App>.app` in `/Applications` and `~/Applications` on macOS, commands on
+  `PATH` on Linux. The question lists the system default and the browsers
+  found. With one browser or none, or without a terminal, `rig` uses the
+  default and does not ask.
+- **Editor** (`rig edit`, `rig env edit`, `rig config edit`): values `env`
+  (`$VISUAL`, then `$EDITOR`, then `vi`), a known id, or a command line that
+  gets the file as the last argument. GUI editors (`code`, `cursor`,
+  `windsurf`, `zed`, `subl`, `webstorm`, `idea`) run with `--wait`. Terminal
+  editors (`nvim`, `vim`, `hx`, `micro`, `nano`, `emacs -nw`) take over the
+  terminal. On macOS, an app without its shell command still works: `rig` uses
+  the CLI inside the bundle (for example
+  `Visual Studio Code.app/Contents/Resources/app/bin/code`). The question
+  lists `$VISUAL`/`$EDITOR` first when set. With one choice, `rig` saves it
+  without a question. Without a terminal, it uses the first choice and does
+  not save it.
+- In `rig up` and `rig run`, the browser question pauses the keys and holds
+  the log output until it has an answer.
+- `RIG_APPLICATIONS_DIRS` replaces the app directories (tests use it).
+- `rig doctor` shows both settings, or the browsers and editors it finds.
 
 ## Validation
 
@@ -878,7 +941,8 @@ packages/quality/environments/rig/
       resolve.ts            # layer merge, explain traces, hashes
       secrets.ts
     services/
-      compose.ts            # compose.yaml generation, docker compose calls
+      compose.ts            # compose.yaml generation, compose up/down, inspect, exec
+      runtime.ts            # Docker or Podman: selection, first-use question, checks
       tunnel.ts             # Cloudflare tunnel URL and token
       engine-tls.ts         # engine TLS certificates
     runtime/
@@ -989,6 +1053,24 @@ same key, `rig env set` uncomments and updates that line.
   `--split` ran against a fake `tmux` that records its arguments, and one pane
   command ran by hand (it waited for `main-1`). Not done: a run with real tmux,
   because tmux is not installed on the test machine.
+- Container runtime (`test/runtime.test.ts`): fake `docker` and `podman` CLIs
+  on `PATH`. The only installed runtime is saved, both installed without a
+  terminal picks the running one and does not save it, Docker wins a tie, none
+  fails, the saved value and `RIG_CONTAINER_RUNTIME`, and an invalid value.
+  Manual with Podman 5.8 (compose provider `docker-compose`): the first-use
+  question in a pseudo-terminal saved Podman; `services up`, `status`, and
+  `psql` through `podman exec`; `rig up` of the queue preset with Postgres and
+  Redis in Podman; a quick tunnel served `/healthz/readiness` over HTTPS through
+  `host.docker.internal`; `destroy` removed the containers and the volume. The
+  Docker path ran the same checks without a regression.
+- Browser and editor (`test/integrations.test.ts`): macOS app discovery and
+  `open -a`, Linux commands on `PATH`, no question without a terminal, the CLI
+  inside a macOS app bundle, `--wait` and quoting, `$EDITOR`, and the choice
+  without a terminal. Manual in a pseudo-terminal with fake `open` and `vim`:
+  the browser question from `rig open` (Firefox, `open -a Firefox <url>`), the
+  editor question from `rig env edit`, `rig edit` with the saved editor, and
+  the browser question from `o` during `rig up` (the keys worked again after
+  it).
 - Not done: an automated integration test with Docker.
 
 ## Implementation TODO
@@ -1064,6 +1146,11 @@ same key, `rig env set` uncomments and updates that line.
 - [ ] `source: image:<tag>` and minimum-version checks for topology rules
 - [ ] `n8nio/runners` launcher containers
 - [ ] Webhook processors (`webhook-N`)
+
+### Container runtimes
+
+- [x] Podman as an alternative to Docker: `container.runtime`, first-use detection and question
+- [x] Browser and editor settings with discovery and a first-use question; `rig edit`, `rig config edit`
 
 ### Optional
 

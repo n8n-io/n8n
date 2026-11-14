@@ -5,7 +5,7 @@ import { defineCommand } from 'citty';
 import pc from 'picocolors';
 
 import { requiredServices, servicePort } from '../config/env-yaml';
-import { loadGlobalConfig } from '../config/global-config';
+import { CONTAINER_RUNTIMES, loadGlobalConfig } from '../config/global-config';
 import { RigEnv } from '../environment';
 import { RigError } from '../errors';
 import {
@@ -16,7 +16,18 @@ import {
 } from '../launcher/binary';
 import { isPortFree, portOwner } from '../runtime/health';
 import { liveState } from '../runtime/state';
+import { browserLabel, installedBrowsers } from '../integrations/browser';
+import { editorLabel, installedEditors } from '../integrations/editor';
 import { servicesStatus } from '../services/compose';
+import {
+	type ContainerRuntime,
+	configuredRuntime,
+	containerRuntime,
+	isInstalled,
+	RUNTIME_ENV_VAR,
+	runtimeLabel,
+	serverVersion,
+} from '../services/runtime';
 import { BUILD, RIG, runningVersion } from '../self/build-info';
 import { handOffTarget } from '../self/delegate';
 import { binDir, currentInstall, isShim, pathStatus, shimPath } from '../self/install';
@@ -102,31 +113,85 @@ function systemChecks(repoRoot: string | undefined): Check[] {
 				},
 	);
 
-	const docker = version('docker', ['info', '--format', '{{.ServerVersion}}']);
-	const compose = version('docker', ['compose', 'version', '--short']);
-	if (!version('docker', ['--version'])) {
-		checks.push({
-			status: 'fail',
-			label: 'Docker',
-			detail: 'not found',
-			hint: 'Install Docker Desktop or OrbStack. Postgres, Redis, and tunnels run in Docker.',
-		});
-	} else if (!docker) {
-		checks.push({
-			status: 'fail',
-			label: 'Docker',
-			detail: 'the daemon is not running',
-			hint: 'Start Docker Desktop, OrbStack, or your Docker daemon.',
-		});
-	} else if (!compose) {
-		checks.push({
-			status: 'fail',
-			label: 'Docker',
-			detail: `server ${docker}, no compose plugin`,
-			hint: 'Install Docker Compose v2.',
-		});
-	} else {
-		checks.push({ status: 'ok', label: 'Docker', detail: `server ${docker}, compose ${compose}` });
+	checks.push(...runtimeChecks());
+	return checks;
+}
+
+function runtimeChecks(): Check[] {
+	let configured: ContainerRuntime | undefined;
+	try {
+		configured = configuredRuntime();
+	} catch (error) {
+		return [
+			{
+				status: 'fail',
+				label: 'Containers',
+				detail: error instanceof Error ? error.message : String(error),
+			},
+		];
+	}
+	const installed = CONTAINER_RUNTIMES.filter(isInstalled);
+	const selected = configured ?? (installed.length > 0 ? containerRuntime() : undefined);
+	const checks: Check[] = [
+		{
+			status: selected ? 'ok' : 'fail',
+			label: 'Containers',
+			detail: configured
+				? `${runtimeLabel(configured)} ${pc.dim(process.env[RUNTIME_ENV_VAR] ? `(${RUNTIME_ENV_VAR})` : '(container.runtime)')}`
+				: selected
+					? `${runtimeLabel(selected)} ${pc.dim('(not saved yet: rig asks or saves on the first use)')}`
+					: 'neither Docker nor Podman is installed',
+			hint: selected
+				? undefined
+				: 'Install Docker Desktop, OrbStack, or Podman. Postgres, Redis, and tunnels run in containers.',
+		},
+	];
+	for (const runtime of CONTAINER_RUNTIMES) {
+		const label = runtimeLabel(runtime);
+		const used = runtime === selected;
+		// A runtime that rig does not use is information only.
+		const problem: Status = used ? 'fail' : 'info';
+		if (!installed.includes(runtime)) {
+			if (used)
+				checks.push({
+					status: 'fail',
+					label,
+					detail: 'not found',
+					hint: `Install ${label}, or run \`${RIG} config set container.runtime <docker|podman>\`.`,
+				});
+			continue;
+		}
+		const server = serverVersion(runtime);
+		const compose = version(runtime, ['compose', 'version']);
+		if (!server) {
+			checks.push({
+				status: problem,
+				label,
+				detail: 'installed, not running',
+				hint: used
+					? runtime === 'docker'
+						? 'Start Docker Desktop, OrbStack, or your Docker daemon.'
+						: 'Run `podman machine start`.'
+					: undefined,
+			});
+		} else if (!compose) {
+			checks.push({
+				status: problem,
+				label,
+				detail: `server ${server}, no compose`,
+				hint: used
+					? runtime === 'docker'
+						? 'Install Docker Compose v2.'
+						: '`podman compose` needs docker-compose or podman-compose on PATH.'
+					: undefined,
+			});
+		} else {
+			checks.push({
+				status: used ? 'ok' : 'info',
+				label,
+				detail: `server ${server}, ${compose.replace(/^.*version\s*/i, 'compose ')}`,
+			});
+		}
 	}
 	return checks;
 }
@@ -253,7 +318,7 @@ async function portChecks(env: RigEnv): Promise<Check[]> {
 		}
 	}
 	const running = new Set(
-		servicesStatus(env.name, env.paths)
+		servicesStatus(env.name, env.topology)
 			.filter((status) => status.state === 'running')
 			.map((status) => status.name),
 	);
@@ -331,6 +396,30 @@ function installChecks(): Check[] {
 	return checks;
 }
 
+function toolChecks(): Check[] {
+	const { browser, editor } = loadGlobalConfig();
+	const browsers = installedBrowsers().map((b) => b.label);
+	const editors = installedEditors().map((e) => e.label);
+	const found = (names: string[]) =>
+		names.length > 0 ? `found: ${names.join(', ')}` : 'none found';
+	return [
+		{
+			status: 'info',
+			label: 'Browser',
+			detail: browser
+				? `${browserLabel(browser)} ${pc.dim('(browser)')}`
+				: `asks on the first URL · ${found(browsers)}`,
+		},
+		{
+			status: 'info',
+			label: 'Editor',
+			detail: editor
+				? `${editorLabel(editor)} ${pc.dim('(editor)')}`
+				: `asks on the first edit · ${found(editors)}`,
+		},
+	];
+}
+
 function printSection(title: string, checks: Check[]): void {
 	console.log(`\n${pc.bold(title)}`);
 	const width = Math.max(...checks.map((check) => check.label.length));
@@ -386,6 +475,7 @@ export const doctorCommand = defineCommand({
 				],
 			]);
 		}
+		sections.push(['Browser and editor', toolChecks()]);
 		sections.push(['Global install', installChecks()]);
 
 		for (const [title, checks] of sections) printSection(title, checks);

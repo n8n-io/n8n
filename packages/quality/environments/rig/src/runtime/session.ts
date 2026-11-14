@@ -8,7 +8,8 @@ import { StatusLine } from '../ui/status-line';
 import type { RigEnv } from '../environment';
 import { RigError } from '../errors';
 import { type Component, startStages } from '../topology/components';
-import { openUrl, type PrefixPrinter, printError, ui } from '../ui/output';
+import { type PrefixPrinter, printError, ui } from '../ui/output';
+import { needsBrowserChoice, openUrl } from '../integrations/browser';
 import { isInteractive, select } from '../ui/prompt';
 import { liveState } from './state';
 import { type Owner, type Supervisor } from './supervisor';
@@ -331,8 +332,7 @@ export class Session {
 			);
 			return;
 		}
-		ui.info(`Opening ${url}`);
-		openUrl(url);
+		this.open(url).catch(printError);
 	}
 
 	private openEditor(): void {
@@ -341,8 +341,28 @@ export class Session {
 			ui.warn('This environment has no main to open.');
 			return;
 		}
-		ui.info(`Opening ${url}`);
-		openUrl(url);
+		this.open(url).catch(printError);
+	}
+
+	/**
+	 * Opens a URL. The first time, rig asks for the browser. During the
+	 * question, the keys go to the prompt and the logs wait.
+	 */
+	private async open(url: string): Promise<void> {
+		if (!needsBrowserChoice()) {
+			ui.info(`Opening ${url}`);
+			await openUrl(url);
+			return;
+		}
+		this.uninstallKeys();
+		this.printer.hold();
+		try {
+			await openUrl(url);
+			ui.info(`Opening ${url}`);
+		} finally {
+			this.printer.release();
+			if (!this.quitting) this.installKeys();
+		}
 	}
 
 	private readonly onSignal = () => {
