@@ -21,6 +21,7 @@ export * from './projects';
 export * from './provisioning';
 export * from './roleMappingRule';
 export * from './roles';
+export * from './scim';
 export * from './security-settings';
 export * from './settings';
 export * from './module-settings';

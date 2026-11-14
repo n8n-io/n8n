@@ -342,7 +342,8 @@ const hasUnsavedChanges = computed(
 	() => isSaveEnabled.value && (!isSsoManagedByEnv.value || isRulesMappingInN8n.value),
 );
 
-defineExpose({ hasUnsavedChanges, onSave });
+// The SSO page saves through its save bar, so it needs these.
+defineExpose({ hasUnsavedChanges, onSave, saving: savingForm });
 
 onMounted(async () => {
 	await loadSamlConfig();
@@ -492,16 +493,6 @@ onMounted(async () => {
 		</div>
 
 		<div :class="$style.buttons">
-			<N8nButton
-				v-if="!isSsoManagedByEnv || isRulesMappingInN8n"
-				:disabled="!isSaveEnabled"
-				:loading="savingForm"
-				size="large"
-				data-test-id="sso-save"
-				@click="onSave(false)"
-			>
-				{{ i18n.baseText('settings.sso.settings.save') }}
-			</N8nButton>
 			<N8nButton
 				variant="outline"
 				:disabled="!isTestEnabled"
