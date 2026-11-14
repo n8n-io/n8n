@@ -32,7 +32,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			let sheetId = '';
 			let sheetName = '';
 
-			if (operation !== 'create') {
+			// "All Sheets" resolves the sheets itself, so there is none to look up here
+			const readsAllSheets =
+				operation === 'read' && this.getNodeParameter('sheetSelectionMode', 0, 'single') === 'all';
+
+			if (operation !== 'create' && !readsAllSheets) {
 				const sheetWithinDocument = this.getNodeParameter('sheetName', 0, undefined, {
 					extractValue: true,
 				}) as string;
