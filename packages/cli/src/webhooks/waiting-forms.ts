@@ -159,7 +159,7 @@ export class WaitingForms extends WaitingWebhooks {
 
 		// Validate token for forms (backwards compat: skip for old executions without resumeToken)
 		let webhookPath: string | undefined;
-		if (execution?.data.resumeToken) {
+		if (execution?.data?.resumeToken) {
 			const result = this.validateToken(req, execution);
 			if (!result.valid) {
 				applyFormSandboxCSP(res);
@@ -178,15 +178,19 @@ export class WaitingForms extends WaitingWebhooks {
 			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
 		}
 
-		if (execution.data.resultData.error) {
+		if (execution.data?.resultData.error) {
 			const message = `The execution "${executionId}" has finished with error.`;
 			this.logger.debug(message, { error: execution.data.resultData.error });
 			throw new ConflictError(message);
 		}
 
+		if (execution.status === 'running' && req.method === 'GET') {
+			return this.askBrowserToRetry(res);
+		}
+
 		// A run parked at a node boundary is not waiting for a form page. Treated
 		// like a running run, so the page keeps polling until the run resumes.
-		if (execution.status === 'running' || execution.data.waitReason === 'suspended') {
+		if (execution.status === 'running' || execution.data?.waitReason === 'suspended') {
 			return { noWebhookResponse: true };
 		}
 
@@ -226,6 +230,13 @@ export class WaitingForms extends WaitingWebhooks {
 		});
 	}
 
+	/** Sends an empty page that makes the browser request the same URL again after one second. */
+	private askBrowserToRetry(res: express.Response): IWebhookResponseCallbackData {
+		res.setHeader('Refresh', '1');
+		res.end();
+		return { noWebhookResponse: true };
+	}
+
 	/**
 	 * Checks if the request is a form execution status poll and, if so,
 	 * responds with the current execution status (e.g. 'waiting', 'form-waiting')
@@ -241,11 +252,11 @@ export class WaitingForms extends WaitingWebhooks {
 		if (suffix !== WAITING_FORMS_EXECUTION_STATUS) return undefined;
 
 		let status: string = execution?.status ?? 'null';
-		const { node } = execution?.data.executionData?.nodeExecutionStack[0] ?? {};
+		const { node } = execution?.data?.executionData?.nodeExecutionStack[0] ?? {};
 
 		// A run parked at a node boundary has its next, unexecuted node at the stack
 		// head. Even when that is a form node, no form is being served yet.
-		const isParked = execution?.data.waitReason === 'suspended';
+		const isParked = execution?.data?.waitReason === 'suspended';
 		if (node && status === 'waiting' && !isParked && this.isFormResumeNode(node)) {
 			status = 'form-waiting';
 		}

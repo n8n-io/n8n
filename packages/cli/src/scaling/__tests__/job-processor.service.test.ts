@@ -829,6 +829,7 @@ describe('JobProcessor', () => {
 					pinData,
 				},
 				executionData: undefined,
+				resumeToken: 'stored-token',
 			}),
 		});
 		const executionPersistence = mock<ExecutionPersistence>();
@@ -869,6 +870,7 @@ describe('JobProcessor', () => {
 			executionId,
 			pinData,
 			's3',
+			'stored-token',
 		);
 	});
 

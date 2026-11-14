@@ -367,6 +367,7 @@ export class JobProcessor {
 				executionId,
 				resultData.pinData,
 				execution.storedAt,
+				execution.data.resumeToken,
 			);
 		}
 
