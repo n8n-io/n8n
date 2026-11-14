@@ -10,6 +10,8 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 
+import { addTraceHeaders } from './trace-headers';
+
 /**
  * @deprecated This is only used by legacy request helpers, that are also deprecated
  */
@@ -22,6 +24,8 @@ export async function proxyRequestToAxios(
 ): Promise<any> {
 	const configObject: IRequestOptions =
 		typeof uriOrObject === 'string' ? { uri: uriOrObject, ...options } : (uriOrObject ?? {});
+
+	if (additionalData && node) addTraceHeaders(configObject, additionalData, node);
 
 	const client = Container.get(OutboundHttp).requests();
 

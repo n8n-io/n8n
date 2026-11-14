@@ -126,4 +126,45 @@ describe('proxyRequestToAxios', () => {
 			).resolves.toBe('ok');
 		});
 	});
+
+	describe('trace headers', () => {
+		const traceparent = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
+		const tracedData = () =>
+			mock<IWorkflowExecuteAdditionalData>({
+				ssrfBridge: undefined,
+				executionId: 'exec-1',
+				otel: {
+					injectTraceHeaders: (_id: string, _node: string | undefined, headers: object) =>
+						Object.assign(headers, { traceparent }),
+					extractInboundBaggage: vi.fn(),
+				},
+			});
+
+		it('adds the trace headers of the node next to its own headers', async () => {
+			await proxyRequestToAxios(workflow, tracedData(), node, {
+				uri: 'https://example.test',
+				headers: { Authorization: 'Bearer x' },
+			});
+
+			expect(requestLegacy.mock.calls[0][0].headers).toEqual({
+				Authorization: 'Bearer x',
+				traceparent,
+			});
+		});
+
+		it('adds the trace headers when the call passes a URI string', async () => {
+			await proxyRequestToAxios(workflow, tracedData(), node, 'https://example.test');
+
+			expect(requestLegacy.mock.calls[0][0]).toMatchObject({
+				uri: 'https://example.test',
+				headers: { traceparent },
+			});
+		});
+
+		it('adds no trace headers without a node', async () => {
+			await proxyRequestToAxios(workflow, tracedData(), undefined, 'https://example.test');
+
+			expect(requestLegacy.mock.calls[0][0].headers).toBeUndefined();
+		});
+	});
 });
