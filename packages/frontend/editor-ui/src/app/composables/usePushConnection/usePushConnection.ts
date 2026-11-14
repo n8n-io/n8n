@@ -17,6 +17,7 @@ import {
 	nodeExecuteAfter,
 	nodeExecuteAfterData,
 	executionStarted,
+	executionWaiting,
 	sendWorkerStatusMessage,
 	sendConsoleMessage,
 	workflowFailedToActivate,
@@ -163,6 +164,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 				return await nodeExecuteAfterData(event, options);
 			case 'executionStarted':
 				return await executionStarted(event, options);
+			case 'executionWaiting':
+				return await executionWaiting(event, options);
 			case 'sendWorkerStatusMessage':
 				return await sendWorkerStatusMessage(event);
 			case 'sendConsoleMessage':
