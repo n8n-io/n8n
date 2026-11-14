@@ -544,6 +544,38 @@ describe('N8nLlmTracing', () => {
 			expect(json[0][0].json.tokenUsageEstimate).toBeUndefined();
 		});
 
+		it('should estimate from the message text blocks when no usage is reported', async () => {
+			// Bedrock extended-thinking shape without usage: empty text, reasoning + text blocks
+			const tracer = new N8nLlmTracing(mockExecutionFunctions);
+			const runId = 'run-123';
+			tracer.runsMap[runId] = { index: 0, messages: ['Test prompt'], options: {} };
+			estimateTokensFromStringList.mockResolvedValue(7);
+
+			const output: LLMResult = {
+				generations: [
+					[
+						{
+							text: '',
+							message: new AIMessage({
+								content: [
+									{ type: 'reasoning_content', reasoning_content: { text: 'Thinking' } },
+									{ type: 'text', text: 'Final answer' },
+								],
+							}),
+						} as ChatGeneration,
+					],
+				],
+			};
+
+			await tracer.handleLLMEnd(output, runId);
+
+			expect(estimateTokensFromStringList).toHaveBeenCalledWith(['Final answer'], 'gpt-4o');
+			const json = mockExecutionFunctions.addOutputData.mock.calls[0][2] as Array<
+				Array<{ json: Record<string, unknown> }>
+			>;
+			expect(json[0][0].json.tokenUsageEstimate).toMatchObject({ completionTokens: 7 });
+		});
+
 		it('should use token estimates when actual tokens not available', async () => {
 			const tracer = new N8nLlmTracing(mockExecutionFunctions);
 

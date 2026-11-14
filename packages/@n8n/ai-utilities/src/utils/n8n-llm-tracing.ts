@@ -249,8 +249,6 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		// so a parser can read fields the run-data shape drops (e.g. the message).
 		const tokenUsage = this.options.tokensUsageParser(output);
 
-		output.generations = output.generations.map((gen) => gen.map(toRunDataGeneration));
-
 		const tokenUsageEstimate = {
 			completionTokens: 0,
 			promptTokens: 0,
@@ -266,6 +264,10 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			tokenUsageEstimate.totalTokens =
 				tokenUsageEstimate.completionTokens + this.promptTokensEstimate;
 		}
+
+		// After the estimate, which reads the message text when `text` is empty
+		output.generations = output.generations.map((gen) => gen.map(toRunDataGeneration));
+
 		const response: {
 			response: { generations: LLMResult['generations'] };
 			tokenUsageEstimate?: typeof tokenUsageEstimate;
