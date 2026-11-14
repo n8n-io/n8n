@@ -50,6 +50,26 @@ describe('plan overlay progress', () => {
 	});
 });
 
+describe('plan overlay labels', () => {
+	it('switches to the labels the editor sends', async () => {
+		document.body.innerHTML = renderWireframeBody(plan);
+		planOverlayMain(describePlanComponent, PLAN_OVERLAY_CSS, { plan, progress: true });
+
+		window.dispatchEvent(
+			new MessageEvent('message', {
+				source: window.parent,
+				data: {
+					source: 'n8n-app-plan',
+					type: 'labels',
+					labels: { progress: '{built} von {total} fertig', shell: 'Layout', unknown: 'x' },
+				},
+			}),
+		);
+
+		await vi.waitFor(() => expect(barText()).toBe('0 von 4 fertig'));
+	});
+});
+
 describe('plan overlay pages', () => {
 	it('opens the page of a part that `opens` names, with the button in the pinned card', () => {
 		const pages = appPlanSchema.parse({

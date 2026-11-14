@@ -35,7 +35,7 @@ export interface PlanComponentInfo {
 	states: string[];
 	data?: PlanResourceInfo & { fields: string[]; shows?: string };
 	action?: PlanResourceInfo & { does: string };
-	link?: { label: string; href: string };
+	link?: { label: string; name: string; href: string };
 	/** The same content as plain lines. */
 	lines: string[];
 }
@@ -70,7 +70,7 @@ export function describePlanComponent(
 				: undefined,
 		};
 		const path = paths[r.kind];
-		if (path) link = { label: `Open ${r.name}`, href: `${base}${path}` };
+		if (path) link = { label: `Open ${r.name}`, name: r.name, href: `${base}${path}` };
 	};
 
 	const lines: string[] = [];
@@ -528,7 +528,7 @@ export const WIREFRAME_CSS = `
 .wf-pill { border: 1.5px solid var(--wf-line-soft); border-radius: 999px; padding: 1px 10px; color: var(--wf-ink-soft); }
 .wf-existing { position: relative; border-style: solid; border-color: var(--wf-line-soft); box-shadow: none; }
 .wf-existing > .wf-head, .wf-existing > .wf-body { opacity: .55; }
-.wf-existing::after { content: 'In the app'; position: absolute; top: -9px; right: 10px; padding: 0 7px; border-radius: 999px;
+.wf-existing::after { content: var(--wf-existing-label, 'In the app'); position: absolute; top: -9px; right: 10px; padding: 0 7px; border-radius: 999px;
   font: 500 10.5px/16px system-ui, sans-serif; background: var(--wf-panel); color: var(--wf-ink-soft); border: 1px solid var(--wf-line-soft); }
 .wf-pill.active { background: var(--wf-wash); color: var(--wf-ink); }
 `;
@@ -616,6 +616,63 @@ export const PLAN_OVERLAY_CSS = `
 .plan-ov-dark .plan-ov-bar .track { background: #3a3a3d; }
 `;
 
+/**
+ * The text of the plan overlay, in English. `{name}` marks a value. The editor sends
+ * translations with a `labels` message. A published app has no editor, so it keeps these.
+ */
+export const PLAN_OVERLAY_LABELS = {
+	shell: 'Layout and theme',
+	pages: 'Pages',
+	midDetail: 'Mid detail',
+	highDetail: 'High detail',
+	building: 'Building',
+	built: 'Built',
+	inTheApp: 'In the app',
+	planned: 'Planned',
+	data: 'Data',
+	onClick: 'On click',
+	opensPage: 'Opens page',
+	goToPage: 'Go to page →',
+	layoutOnly: 'Layout only. No data or workflow behind this part.',
+	isNew: 'New',
+	open: 'Open {name}',
+	addDetail: '✨ Add detail',
+	addStyle: '✨ Add colors and style',
+	redoDetail: '✨ Redo the detail',
+	addStates: '◐ Add states: empty, loading, error',
+	redoStates: '◐ Redo the states ({states})',
+	asked: 'Asked the Assistant…',
+	progress: '{built} of {total} built · Building: {current}',
+	allBuilt: 'All {total} parts built',
+} as const;
+export type PlanOverlayLabelKey = keyof typeof PLAN_OVERLAY_LABELS;
+export type PlanOverlayLabels = Record<PlanOverlayLabelKey, string>;
+
+/**
+ * The overlay text in the language of the editor. `translate` looks up
+ * `appPlan.overlay.<key>` and must keep each `{value}` marker as it is.
+ */
+export function translatePlanOverlayLabels(
+	translate: (
+		key: `appPlan.overlay.${PlanOverlayLabelKey}`,
+		interpolate: Record<string, string>,
+	) => string,
+): PlanOverlayLabels {
+	const keys = Object.keys(PLAN_OVERLAY_LABELS) as PlanOverlayLabelKey[];
+	return Object.fromEntries(
+		keys.map((key) => {
+			// Each value is passed as its own marker, so the overlay fills it in later.
+			const markers = Object.fromEntries(
+				[...PLAN_OVERLAY_LABELS[key].matchAll(/\{(\w+)\}/g)].map(([marker, name]) => [
+					name,
+					marker,
+				]),
+			);
+			return [key, translate(`appPlan.overlay.${key}`, markers)];
+		}),
+	) as PlanOverlayLabels;
+}
+
 export interface PlanOverlayConfig {
 	/** The plan itself, or a URL that serves it (e.g. `plan.json` in the app). */
 	plan?: AppPlan;
@@ -631,6 +688,8 @@ export interface PlanOverlayConfig {
 	selectable?: boolean;
 	/** The origin of the parent page. Messages go only there and come only from there. Defaults to any. */
 	parentOrigin?: string;
+	/** The overlay text. Missing labels are English. */
+	labels?: Partial<PlanOverlayLabels>;
 }
 
 /** `postMessage` source of the plan overlay. */
@@ -652,10 +711,22 @@ export function planOverlayMain(
 	describe: typeof describePlanComponent,
 	css: string,
 	config: PlanOverlayConfig,
+	// `planOverlayScript` always passes the defaults: the page has no module scope to read them from.
+	defaultLabels: PlanOverlayLabels = PLAN_OVERLAY_LABELS,
 ): void {
 	const doc = document;
 	const source = 'n8n-app-plan';
 	const parentOrigin = config.parentOrigin ?? '*';
+	let labels: Record<string, string> = { ...defaultLabels, ...config.labels };
+	function t(key: PlanOverlayLabelKey, values: Record<string, string | number> = {}): string {
+		return (labels[key] ?? key).replace(/\{(\w+)\}/g, (marker, name: string) =>
+			name in values ? String(values[name]) : marker,
+		);
+	}
+	function applyLabels() {
+		// The badge of existing parts is CSS text, so it reads the label from a variable.
+		doc.documentElement.style.setProperty('--wf-existing-label', JSON.stringify(t('inTheApp')));
+	}
 	// Until the parent sends the editor theme, follow the color scheme of the browser.
 	doc.documentElement.classList.toggle(
 		'plan-ov-dark',
@@ -664,6 +735,7 @@ export function planOverlayMain(
 	const style = doc.createElement('style');
 	style.textContent = css;
 	doc.head.append(style);
+	applyLabels();
 
 	const kindIcons: Record<string, string> = {
 		nav: '☰',
@@ -819,7 +891,7 @@ export function planOverlayMain(
 				`${r.kindLabel === 'data table' ? '▦' : r.kindLabel === 'agent' ? '✦' : '⚡'} ${r.name}`,
 			),
 		);
-		if (r.isNew) row.append(el('span', 'plan-ov-new', 'NEW'));
+		if (r.isNew) row.append(el('span', 'plan-ov-new', t('isNew')));
 		return row;
 	}
 
@@ -829,7 +901,7 @@ export function planOverlayMain(
 		const comp: AppPlanComponent = byId[id] ?? {
 			id: 'shell',
 			kind: 'text',
-			label: 'Layout and theme',
+			label: t('shell'),
 		};
 		const status = isBuilt(id) ? 'built' : currentId() === id ? 'building' : 'planned';
 		const info = describe(
@@ -845,7 +917,7 @@ export function planOverlayMain(
 		);
 		if (info.detailed && !isBuilt(id)) {
 			head.append(
-				el('span', 'plan-ov-st detailed', info.fidelity === 'high' ? 'High detail' : 'Mid detail'),
+				el('span', 'plan-ov-st detailed', t(info.fidelity === 'high' ? 'highDetail' : 'midDetail')),
 			);
 		}
 		// Once every part is built, the card only shows what the part is connected to.
@@ -854,19 +926,21 @@ export function planOverlayMain(
 				el(
 					'span',
 					`plan-ov-st ${info.status}`,
-					info.status === 'building'
-						? 'Building'
-						: info.status === 'built'
-							? byId[id]?.existing
-								? 'In the app'
-								: 'Built'
-							: 'Planned',
+					t(
+						info.status === 'building'
+							? 'building'
+							: info.status === 'built'
+								? byId[id]?.existing
+									? 'inTheApp'
+									: 'built'
+								: 'planned',
+					),
 				),
 			);
 		}
 		tip.append(head);
 		if (info.data) {
-			const sec = section('Data');
+			const sec = section(t('data'));
 			sec.append(resourceRow(info.data));
 			if (info.data.fields.length) {
 				const fields = el('div', 'plan-ov-fields');
@@ -877,19 +951,19 @@ export function planOverlayMain(
 			tip.append(sec);
 		}
 		if (info.action) {
-			const sec = section('On click');
+			const sec = section(t('onClick'));
 			sec.append(resourceRow(info.action), el('div', 'plan-ov-text', info.action.does));
 			tip.append(sec);
 		}
 		if (comp.opens) {
 			const targetId = screenFor(comp.opens);
 			const target = targetId ? screens[targetId] : undefined;
-			const sec = section('Opens page');
+			const sec = section(t('opensPage'));
 			const row = el('div', 'plan-ov-res');
 			row.append(el('span', 'plan-ov-chip', `↗ ${target?.name ?? comp.opens}`));
 			if (target?.path) row.append(el('span', 'plan-ov-field', target.path));
 			if (targetId) {
-				const go = el('button', 'plan-ov-go', 'Go to page →');
+				const go = el('button', 'plan-ov-go', t('goToPage'));
 				go.setAttribute('type', 'button');
 				go.addEventListener('click', () => {
 					hideTip();
@@ -901,21 +975,19 @@ export function planOverlayMain(
 			tip.append(sec);
 		}
 		if (!info.data && !info.action && !comp.opens)
-			tip.append(el('div', 'plan-ov-empty', 'Layout only. No data or workflow behind this part.'));
+			tip.append(el('div', 'plan-ov-empty', t('layoutOnly')));
 		if (config.selectable && id !== 'shell') {
 			const foot = el('div', 'plan-ov-foot');
 			// Each click goes one level deeper: sketch, then structure and content, then the finished look.
 			const level = info.detailed ? 'high' : 'mid';
-			const label = !info.detailed
-				? '✨ Add detail'
-				: info.fidelity === 'high'
-					? '✨ Redo the detail'
-					: '✨ Add colors and style';
+			const label = t(
+				!info.detailed ? 'addDetail' : info.fidelity === 'high' ? 'redoDetail' : 'addStyle',
+			);
 			const button = el('button', 'plan-ov-detail', label);
 			button.setAttribute('type', 'button');
 			button.addEventListener('click', () => {
 				window.parent.postMessage({ source, type: 'detail', planId: id, level }, parentOrigin);
-				button.textContent = 'Asked the Assistant…';
+				button.textContent = t('asked');
 				button.setAttribute('disabled', '');
 			});
 			foot.append(button);
@@ -923,9 +995,7 @@ export function planOverlayMain(
 				const statesButton = el(
 					'button',
 					'plan-ov-detail plan-ov-secondary',
-					info.states.length
-						? `◐ Redo the states (${info.states.join(', ')})`
-						: '◐ Add states: empty, loading, error',
+					info.states.length ? t('redoStates', { states: info.states.join(', ') }) : t('addStates'),
 				);
 				statesButton.setAttribute('type', 'button');
 				statesButton.addEventListener('click', () => {
@@ -933,7 +1003,7 @@ export function planOverlayMain(
 						{ source, type: 'detail', planId: id, level: 'states' },
 						parentOrigin,
 					);
-					statesButton.textContent = 'Asked the Assistant…';
+					statesButton.textContent = t('asked');
 					statesButton.setAttribute('disabled', '');
 				});
 				foot.append(statesButton);
@@ -942,7 +1012,7 @@ export function planOverlayMain(
 		}
 		if (info.link) {
 			const foot = el('div', 'plan-ov-foot');
-			const a = el('a', undefined, `${info.link.label} ↗`);
+			const a = el('a', undefined, `${t('open', { name: info.link.name })} ↗`);
 			a.setAttribute('href', info.link.href);
 			a.setAttribute('target', '_blank');
 			a.setAttribute('rel', 'noopener');
@@ -1057,6 +1127,14 @@ export function planOverlayMain(
 			renderProgress();
 		} else if (type === 'page') {
 			if ('pageId' in data && typeof data.pageId === 'string') openPage(data.pageId);
+		} else if (type === 'labels' && 'labels' in data && typeof data.labels === 'object') {
+			const next: Record<string, string> = { ...labels };
+			for (const [key, value] of Object.entries(data.labels ?? {})) {
+				if (typeof value === 'string' && key in labels) next[key] = value;
+			}
+			labels = next;
+			applyLabels();
+			renderProgress();
 		} else if (type === 'theme' && 'dark' in data) {
 			doc.documentElement.classList.toggle('plan-ov-dark', data.dark === true);
 		} else if (type === 'font' && 'data' in data && data.data instanceof ArrayBuffer) {
@@ -1100,7 +1178,7 @@ export function planOverlayMain(
 		if (!order.length) return;
 		const built = order.filter(isBuilt).length;
 		const current = currentId();
-		const name = (id: string) => (id === 'shell' ? 'Layout and theme' : (byId[id]?.label ?? id));
+		const name = (id: string) => (id === 'shell' ? t('shell') : (byId[id]?.label ?? id));
 		doc
 			.querySelectorAll('.plan-ov-building')
 			.forEach((n) => n.classList.remove('plan-ov-building'));
@@ -1140,8 +1218,8 @@ export function planOverlayMain(
 				'span',
 				undefined,
 				current
-					? `${built} of ${order.length} built · Building: ${name(current)}`
-					: `All ${order.length} parts built`,
+					? t('progress', { built, total: order.length, current: name(current) })
+					: t('allBuilt', { total: order.length }),
 			),
 		);
 	}
@@ -1176,7 +1254,8 @@ export function planOverlayMain(
 export function planOverlayScript(config: PlanOverlayConfig): string {
 	const json = JSON.stringify(config).replace(/</g, '\\u003c');
 	const css = JSON.stringify(PLAN_OVERLAY_CSS);
-	return `(${planOverlayMain.toString()})(${describePlanComponent.toString()}, ${css}, ${json});`;
+	const labels = JSON.stringify(PLAN_OVERLAY_LABELS).replace(/</g, '\\u003c');
+	return `(${planOverlayMain.toString()})(${describePlanComponent.toString()}, ${css}, ${json}, ${labels});`;
 }
 
 /** A full HTML document of the wireframe, for an iframe `srcdoc` or an MCP App. */
@@ -1191,7 +1270,7 @@ export function renderWireframeDocument(
 		`<style>html,body{margin:0}${WIREFRAME_CSS}</style>`,
 		'</head><body>',
 		plan.screens.length > 1
-			? `<nav class="wf-pages"><b>Pages</b>${plan.screens
+			? `<nav class="wf-pages"><b>${escapeHtml(overlay.labels?.pages ?? PLAN_OVERLAY_LABELS.pages)}</b>${plan.screens
 					.map(
 						(screen, i) =>
 							`<span class="wf-page${i === 0 ? ' active' : ''}" data-plan-screen-link="${screen.id}">${escapeHtml(screen.name)}${screen.path ? `<code>${escapeHtml(screen.path)}</code>` : ''}</span>`,
@@ -1271,11 +1350,21 @@ async function loadEditorFont(): Promise<ArrayBuffer | undefined> {
 }
 
 /**
- * Sends the editor theme and font into a frame with the plan overlay, so the
+ * Sends the editor text, theme and font into a frame with the plan overlay, so the
  * wireframe and the hover card look like the editor. A frame cannot load the
  * font itself: it runs on another origin, or on none.
  */
-export async function postPlanFrameContext(target: Window, targetOrigin: string): Promise<void> {
+export async function postPlanFrameContext(
+	target: Window,
+	targetOrigin: string,
+	labels?: PlanOverlayLabels,
+): Promise<void> {
+	if (labels) {
+		target.postMessage(
+			{ source: PLAN_OVERLAY_MESSAGE_SOURCE, type: 'labels', labels },
+			targetOrigin,
+		);
+	}
 	const theme = document.body.getAttribute('data-theme');
 	const dark = theme
 		? theme === 'dark'

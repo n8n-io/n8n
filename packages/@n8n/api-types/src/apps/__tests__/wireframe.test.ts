@@ -1,7 +1,9 @@
 import { appPlanSchema, listPlanComponents } from '../../schemas/app-plan.schema';
 import { appBlueprintSchema } from '../../schemas/instance-ai.schema';
 import {
+	PLAN_OVERLAY_LABELS,
 	planBuildOrder,
+	translatePlanOverlayLabels,
 	renderPlanPlaceholders,
 	renderDetailModule,
 	WIREFRAME_CSS,
@@ -78,6 +80,7 @@ describe('describePlanComponent', () => {
 		approve.action = { ...approve.action!, resourceId: 'wf1', status: 'existing' };
 		expect(describePlanComponent(approve, { editorUrl: 'http://n8n.test/' }).link).toEqual({
 			label: 'Open Publish draft',
+			name: 'Publish draft',
 			href: 'http://n8n.test/workflow/wf1',
 		});
 
@@ -426,5 +429,39 @@ describe('plan of a change to an existing app', () => {
 		});
 		expect(html).not.toContain('wf-hifi');
 		expect(html).toContain('wf-existing');
+	});
+});
+
+describe('overlay labels', () => {
+	it('looks up each label and keeps the value markers for the overlay', () => {
+		const translate = vi.fn((key: string, interpolate: Record<string, string>) =>
+			key === 'appPlan.overlay.progress'
+				? `${interpolate.built}/${interpolate.total} – ${interpolate.current}`
+				: key,
+		);
+		const labels = translatePlanOverlayLabels(translate);
+		expect(Object.keys(labels)).toEqual(Object.keys(PLAN_OVERLAY_LABELS));
+		expect(labels.progress).toBe('{built}/{total} – {current}');
+		expect(translate).toHaveBeenCalledWith('appPlan.overlay.open', { name: '{name}' });
+	});
+
+	it('uses translated page heading in the plan document', () => {
+		const doc = renderWireframeDocument(
+			plan.screens.length > 1
+				? plan
+				: {
+						...plan,
+						screens: [plan.screens[0], { ...plan.screens[0], id: 'second', name: 'Second' }],
+					},
+			{ labels: { pages: 'Seiten' } },
+		);
+		expect(doc).toContain('<b>Seiten</b>');
+	});
+
+	it('embeds every English label in the overlay script', () => {
+		const script = planOverlayScript({ plan, labels: { built: 'Fertig' } });
+		expect(script).toContain('"built":"Fertig"');
+		expect(script).toContain('"planned":"Planned"');
+		expect(() => new Function(script)).not.toThrow();
 	});
 });

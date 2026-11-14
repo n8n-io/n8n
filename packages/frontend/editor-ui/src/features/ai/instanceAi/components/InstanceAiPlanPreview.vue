@@ -3,6 +3,7 @@ import {
 	PLAN_OVERLAY_MESSAGE_SOURCE,
 	listPlanComponents,
 	postPlanFrameContext,
+	translatePlanOverlayLabels,
 	renderWireframeDocument,
 	type AppPlan,
 } from '@n8n/api-types';
@@ -28,10 +29,14 @@ const store = useInstanceAiStore();
 const frame = useTemplateRef<HTMLIFrameElement>('frame');
 const selecting = ref(false);
 
+const labels = translatePlanOverlayLabels((key, interpolate) =>
+	i18n.baseText(key, { interpolate }),
+);
+
 const srcdoc = computed(() =>
 	renderWireframeDocument(
 		props.plan,
-		{ selectable: true, parentOrigin: window.location.origin },
+		{ selectable: true, parentOrigin: window.location.origin, labels },
 		{ theme: props.theme },
 	),
 );

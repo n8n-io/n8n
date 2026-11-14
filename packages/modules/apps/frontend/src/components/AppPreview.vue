@@ -4,6 +4,7 @@ import {
 	PLAN_OVERLAY_MESSAGE_SOURCE,
 	appInspectorEventSchema,
 	postPlanFrameContext,
+	translatePlanOverlayLabels,
 	type AppPreviewElement,
 	type AppResponse,
 	type AppVersionResponse,
@@ -68,6 +69,9 @@ const props = defineProps<{
 const emit = defineEmits<{ 'element-selected': [element: AppPreviewElement] }>();
 
 const i18n = useI18n();
+const overlayLabels = translatePlanOverlayLabels((key, interpolate) =>
+	i18n.baseText(key, { interpolate }),
+);
 const toast = useToast();
 const rootStore = useRootStore();
 const latestFetch = useLatestFetch();
@@ -216,7 +220,9 @@ function postBuilding() {
 function onFrameLoad() {
 	if (inspecting.value) postInspectCommand('inspect:enable');
 	const target = frame.value?.contentWindow;
-	if (target && previewOrigin.value) void postPlanFrameContext(target, previewOrigin.value);
+	if (target && previewOrigin.value) {
+		void postPlanFrameContext(target, previewOrigin.value, overlayLabels);
+	}
 	if (props.buildingPlanId) postBuilding();
 	if (pickedPage.value) openPlanPage(pickedPage.value);
 }
