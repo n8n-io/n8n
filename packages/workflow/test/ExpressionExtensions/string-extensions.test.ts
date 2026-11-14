@@ -3,6 +3,7 @@ import { DateTime } from 'luxon';
 
 import { evaluate, asDateTime } from './helpers';
 import { ExpressionExtensionError } from '../../src/errors';
+import { stringExtensions } from '../../src/extensions/string-extensions';
 
 describe('Data Transformation Functions', () => {
 	describe('String Data Transformation Functions', () => {
@@ -95,6 +96,24 @@ describe('Data Transformation Functions', () => {
 					'cannot convert to date',
 				);
 			});
+
+			test.each(['America/New_York', 'UTC', 'Asia/Seoul'])(
+				'should keep the written day of a date-only string in %s',
+				(timeZone) => {
+					const originalTimeZone = process.env.TZ;
+					process.env.TZ = timeZone;
+					try {
+						const toDate = stringExtensions.functions.toDate as (value: string) => Date;
+						expect(toDate('2023-06-16')).toEqual(new Date(2023, 5, 16));
+						expect(toDate('2023-06')).toEqual(new Date(2023, 5, 1));
+						expect(toDate('2023')).toEqual(new Date(2023, 0, 1));
+						expect(toDate('June 16, 2023')).toEqual(new Date(2023, 5, 16));
+					} finally {
+						if (originalTimeZone === undefined) delete process.env.TZ;
+						else process.env.TZ = originalTimeZone;
+					}
+				},
+			);
 		});
 
 		test('.toFloat should work correctly on a string', () => {
