@@ -151,8 +151,12 @@ export class AiGatewayService {
 		return (
 			this.licenseState.isAiGatewayLicensed() &&
 			this.globalConfig.aiGateway.enabled &&
-			!!this.globalConfig.aiAssistant.baseUrl
+			!!this.configuredBaseUrl
 		);
+	}
+
+	private get configuredBaseUrl(): string {
+		return this.globalConfig.aiGateway.baseUrl || this.globalConfig.aiAssistant.baseUrl;
 	}
 
 	assertEnabled(): void {
@@ -546,9 +550,11 @@ export class AiGatewayService {
 	}
 
 	private requireBaseUrl(): string {
-		const url = this.globalConfig.aiAssistant.baseUrl;
+		const url = this.configuredBaseUrl;
 		if (!url)
-			throw new UserError('Gateway credits are not configured. Set the AI assistant base URL.');
+			throw new UserError(
+				'Gateway credits are not configured. Set the AI Gateway or AI assistant base URL.',
+			);
 		return url;
 	}
 
