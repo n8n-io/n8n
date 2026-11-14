@@ -14,6 +14,7 @@ import type { JSONValue } from '../../types/utils/json';
 import { stringifyError } from '../loop/runtime-helpers';
 import { compareKeyset } from '../memory/memory-store';
 import { stripOrphanedToolMessages } from '../memory/strip-orphaned-tool-messages';
+import { hasOffloadedToolResult } from '../memory/tool-result-memory';
 
 export type { SerializedMessageList };
 
@@ -458,12 +459,14 @@ export class AgentMessageList {
 	 * boundary. Every user input of the current turn stays visible after a
 	 * mid-turn swap, so the model sees the notes, then the request (and any
 	 * follow-ups added during the run), then its own steps.
+	 * Current-run offloaded results stay visible while their files can be read.
 	 */
 	llmVisibleMessages(): AgentDbMessage[] {
 		const boundary = this.observationMaskBoundary;
 		if (!boundary) return this.all;
 		return this.all.filter((m) => {
 			if (this.inputSet.has(m) && 'role' in m && m.role === 'user') return true;
+			if (this.responseSet.has(m) && hasOffloadedToolResult(m)) return true;
 			// createdAt can be an ISO string after a checkpoint JSON round-trip. An
 			// unparseable date cannot be compared — keep the message visible rather
 			// than silently dropping it from the window.

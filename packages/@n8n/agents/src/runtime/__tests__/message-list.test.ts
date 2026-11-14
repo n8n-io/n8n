@@ -6,7 +6,9 @@ import type {
 	AgentMessage,
 	ContentToolCall,
 	Message,
+	MessageContent,
 } from '../../types/sdk/message';
+import { RUN_SCOPED_OFFLOADED_TOOL_RESULT } from '../memory/tool-result-memory';
 import {
 	AgentMessageList,
 	buildSystemMessages,
@@ -652,6 +654,70 @@ describe('AgentMessageList — observation masking', () => {
 	function dbMsgWithId(id: string, text: string, createdAt: Date): AgentDbMessage {
 		return { id, createdAt, role: 'user', content: [{ type: 'text', text }] };
 	}
+
+	const path = `tool-results/runs/${'a'.repeat(43)}/${'r'.repeat(43)}.result.json`;
+	const envelope = { _offloaded: true, path };
+	const toolCall = {
+		type: 'tool-call',
+		toolCallId: 'search-call',
+		toolName: 'search',
+		input: {},
+	} as const;
+	const offloadedContent: Array<[string, MessageContent]> = [
+		['result', { ...toolCall, state: 'resolved', output: envelope }],
+		[
+			'content result',
+			{
+				...toolCall,
+				state: 'resolved',
+				output: { type: 'content', value: [{ type: 'text', text: JSON.stringify(envelope) }] },
+			},
+		],
+		['error', { ...toolCall, state: 'rejected', error: JSON.stringify(envelope) }],
+		['message', { type: 'text', text: JSON.stringify(envelope) }],
+	];
+
+	it.each(offloadedContent)(
+		'keeps a current-run offloaded %s visible after masking',
+		(_, block) => {
+			const list = new AgentMessageList();
+			list.addHistory([{ id: 'history', createdAt: at(1), role: 'assistant', content: [block] }]);
+			list.addResponse([{ id: 'live', role: 'assistant', content: [block] }]);
+			const [live] = list.responseDelta();
+			const cursor = { lastObservedAt: live.createdAt, lastObservedMessageId: live.id };
+			list.maskObservedMessages(cursor);
+
+			expect(list.llmVisibleMessages().map((message) => message.id)).toEqual(['live']);
+			const { messages } = list.forLlm('base');
+			expect(JSON.stringify(messages)).toContain(path);
+			expect(messages.map((message) => message.role)).toEqual(
+				block.type === 'tool-call' ? ['user', 'assistant', 'tool'] : ['user', 'assistant'],
+			);
+
+			const restored = AgentMessageList.deserialize(list.serialize());
+			restored.maskObservedMessages(cursor);
+			expect(JSON.stringify(restored.forLlm('base').messages)).toContain(path);
+		},
+	);
+
+	it.each([RUN_SCOPED_OFFLOADED_TOOL_RESULT, { _offloaded: true, path: 'not-a-result' }])(
+		'masks a result without a readable result reference: %j',
+		(output) => {
+			const list = new AgentMessageList();
+			list.addResponse([
+				{ role: 'assistant', content: [{ ...toolCall, state: 'resolved', output }] },
+			]);
+			const [message] = list.responseDelta();
+			list.maskObservedMessages({
+				lastObservedAt: message.createdAt,
+				lastObservedMessageId: message.id,
+			});
+
+			expect(list.forLlm('base').messages).toEqual([
+				{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
+			]);
+		},
+	);
 
 	it('hides messages at or before the cursor from forLlm while deltas and serialize keep everything', () => {
 		const list = new AgentMessageList();

@@ -36,14 +36,36 @@ function isOffloadedToolResult(value: unknown): value is OffloadedToolResult {
 	);
 }
 
-/** Returns the serialized memory marker, or undefined when `value` is not an offloaded result. */
-function serializedMemoryMarker(value: string): string | undefined {
+function parseOffloadedToolResult(value: string): OffloadedToolResult | undefined {
 	try {
 		const parsed: unknown = JSON.parse(value);
-		return isOffloadedToolResult(parsed) ? JSON.stringify(toMemoryMarker(parsed)) : undefined;
+		return isOffloadedToolResult(parsed) ? parsed : undefined;
 	} catch {
 		return undefined;
 	}
+}
+
+/** Returns the serialized memory marker, or undefined when `value` is not an offloaded result. */
+function serializedMemoryMarker(value: string): string | undefined {
+	const envelope = parseOffloadedToolResult(value);
+	return envelope ? JSON.stringify(toMemoryMarker(envelope)) : undefined;
+}
+
+export function hasOffloadedToolResult(message: AgentDbMessage): boolean {
+	if (!('content' in message)) return false;
+	return message.content.some((block) => {
+		if (block.type === 'text') return parseOffloadedToolResult(block.text) !== undefined;
+		if (block.type !== 'tool-call') return false;
+		if (block.state === 'rejected') return parseOffloadedToolResult(block.error) !== undefined;
+		if (block.state !== 'resolved') return false;
+		if (isOffloadedToolResult(block.output)) return true;
+		return (
+			isContentToolResultOutput(block.output) &&
+			block.output.value.some(
+				(part) => 'text' in part && parseOffloadedToolResult(part.text) !== undefined,
+			)
+		);
+	});
 }
 
 export function sanitizeOffloadedToolResultsForMemory(
