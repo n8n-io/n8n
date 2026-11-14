@@ -1,6 +1,7 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	IN8nHttpFullResponse,
 	INode,
 	IRequestOptions,
 	IWorkflowDataProxyAdditionalKeys,
@@ -306,6 +307,117 @@ describe('requestWithAuthenticationPaginated', () => {
 		);
 
 		expect(capturedKeys[0].$request).toBe(requestOptions);
+	});
+
+	describe('empty response bodies', () => {
+		const setupPagination = () => {
+			const paginationOptions: PaginationOptions = {
+				continue: '={{ !!$response.body }}',
+				request: { url: 'https://example.com/page' },
+				requestInterval: 0,
+				maxRequests: 10,
+			};
+			const continuePagination = vi.fn((response: IN8nHttpFullResponse) => !!response.body);
+			const resolveValue = vi.fn<ResolveValueFn>((parameterValue, _i, _r, _e, additionalKeys) => {
+				if (parameterValue === paginationOptions.request) {
+					return { url: 'https://example.com/page' };
+				}
+				if (parameterValue === paginationOptions.continue) {
+					return continuePagination(additionalKeys?.$response as IN8nHttpFullResponse);
+				}
+				return parameterValue;
+			});
+			const request = vi.fn<() => Promise<IN8nHttpFullResponse>>();
+			const ctx = {
+				helpers: { request },
+				getExecutionCancelSignal: () => undefined,
+				getNode: () => node,
+			} as unknown as IExecuteFunctions;
+			const run = async () =>
+				await requestWithAuthenticationPaginated.call(
+					ctx,
+					{ uri: 'https://example.com' },
+					0,
+					paginationOptions,
+					resolveValue,
+					node,
+				);
+
+			return { request, continuePagination, run };
+		};
+
+		test.each([
+			{ name: 'undefined', body: undefined },
+			{ name: 'null', body: null },
+			{ name: 'an empty string', body: '' },
+		])('stops on the first page when its body is $name', async ({ body }) => {
+			const { request, continuePagination, run } = setupPagination();
+			const response: IN8nHttpFullResponse = {
+				body,
+				headers: { 'content-type': 'application/json' },
+				statusCode: 204,
+				statusMessage: 'No Content',
+			};
+			request.mockResolvedValue(response);
+
+			const result = await run();
+
+			expect(result).toEqual([response]);
+			expect(result[0]).toBe(response);
+			expect(response.body).toBe(body);
+			expect(request).toHaveBeenCalledTimes(1);
+			expect(continuePagination).toHaveBeenCalledExactlyOnceWith({
+				body,
+				headers: response.headers,
+				statusCode: 204,
+			});
+		});
+
+		test('keeps earlier pages when a later page has no content', async () => {
+			const { request, continuePagination, run } = setupPagination();
+			const firstResponse: IN8nHttpFullResponse = {
+				body: { items: [{ id: 1 }] },
+				headers: { 'content-type': 'application/json' },
+				statusCode: 200,
+			};
+			const lastResponse: IN8nHttpFullResponse = {
+				body: undefined,
+				headers: { 'content-type': 'application/json' },
+				statusCode: 204,
+				statusMessage: 'No Content',
+			};
+			request.mockResolvedValueOnce(firstResponse).mockResolvedValue(lastResponse);
+
+			const result = await run();
+
+			expect(result).toEqual([firstResponse, lastResponse]);
+			expect(result[0]).toBe(firstResponse);
+			expect(result[1]).toBe(lastResponse);
+			expect(lastResponse.body).toBeUndefined();
+			expect(request).toHaveBeenCalledTimes(2);
+			expect(continuePagination).toHaveBeenCalledTimes(2);
+			expect(continuePagination).toHaveBeenLastCalledWith({
+				body: undefined,
+				headers: lastResponse.headers,
+				statusCode: 204,
+			});
+		});
+
+		test.each([
+			{ name: 'undefined', body: undefined },
+			{ name: 'an empty string', body: '' },
+			{ name: 'a JSON object', body: { items: [{ id: 1 }] } },
+		])('stops repeated pages when the body is $name', async ({ body }) => {
+			const { request, continuePagination, run } = setupPagination();
+			continuePagination.mockReturnValue(true);
+			request.mockResolvedValue({ body, headers: {}, statusCode: 200 });
+
+			await expect(run()).rejects.toThrow(
+				'The returned response was identical 5x, so requests got stopped',
+			);
+			expect(request).toHaveBeenCalledTimes(4);
+			expect(continuePagination).toHaveBeenCalledTimes(3);
+		});
 	});
 
 	describe('execution cancellation', () => {
