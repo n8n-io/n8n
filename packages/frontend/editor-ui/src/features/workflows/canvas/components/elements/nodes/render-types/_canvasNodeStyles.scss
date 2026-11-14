@@ -54,48 +54,57 @@
 	--canvas-node--border-color: transparent;
 }
 
-@mixin status-animated-after($inset: 3px) {
-	content: '';
+// The gradient is static and its element rotates, so the animation runs on the
+// compositor. An animated gradient angle repaints the canvas on every frame.
+@mixin status-animated-ring($inset: 3px) {
 	position: absolute;
 	inset: -$inset;
 	border-radius: 10px;
 	z-index: -1;
-	background: conic-gradient(
-		from var(--node--gradient-angle),
-		rgba(255, 109, 90, 1),
-		rgba(255, 109, 90, 1) 20%,
-		rgba(255, 109, 90, 0.2) 35%,
-		rgba(255, 109, 90, 0.2) 65%,
-		rgba(255, 109, 90, 1) 90%,
-		rgba(255, 109, 90, 1)
-	);
+	overflow: hidden;
+	container-type: size;
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		// A square that covers the ring at every angle.
+		width: calc(max(100cqw, 100cqh) * 1.42 + #{3 * $inset});
+		aspect-ratio: 1;
+		transform: translate(-50%, -50%);
+		background: conic-gradient(
+			rgba(255, 109, 90, 1),
+			rgba(255, 109, 90, 1) 20%,
+			rgba(255, 109, 90, 0.2) 35%,
+			rgba(255, 109, 90, 0.2) 65%,
+			rgba(255, 109, 90, 1) 90%,
+			rgba(255, 109, 90, 1)
+		);
+	}
 }
 
 @mixin status-running-animation {
-	animation: border-rotate 1.5s linear infinite;
+	&::before {
+		animation: border-rotate 1.5s linear infinite;
+	}
 }
 
 @mixin status-waiting-animation {
-	animation: border-rotate 4.5s linear infinite;
+	&::before {
+		animation: border-rotate 4.5s linear infinite;
+	}
 }
 
 // @keyframes names are scoped per CSS module, so every module that uses the
 // running/waiting animation mixins must include this once at the top level.
 @mixin status-animation-definitions {
-	/* stylelint-disable */
-	@property --node--gradient-angle {
-		syntax: '<angle>';
-		initial-value: 0deg;
-		inherits: false;
-	}
-
 	@keyframes border-rotate {
 		from {
-			--node--gradient-angle: 0deg;
+			transform: translate(-50%, -50%) rotate(0deg);
 		}
 		to {
-			--node--gradient-angle: 360deg;
+			transform: translate(-50%, -50%) rotate(360deg);
 		}
 	}
-	/* stylelint-enable */
 }

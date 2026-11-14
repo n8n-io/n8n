@@ -75,9 +75,14 @@ const nodeHelpers = useNodeHelpers();
 const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 
+const isWaiting = computed(() =>
+	Boolean(executionWaiting.value || executionStatus.value === 'waiting'),
+);
+const isRunning = computed(() => Boolean(executionRunning.value || executionWaitingForNext.value));
+
 const classes = computed(() => {
-	const waiting = Boolean(executionWaiting.value || executionStatus.value === 'waiting');
-	const running = Boolean(executionRunning.value || executionWaitingForNext.value);
+	const waiting = isWaiting.value;
+	const running = isRunning.value;
 	return {
 		[$style.node]: true,
 		[$style.selected]: isSelected.value,
@@ -220,6 +225,7 @@ function onActivate(event: MouseEvent) {
 		@contextmenu="openContextMenu"
 		@dblclick.stop="onActivate"
 	>
+		<span v-if="isRunning || isWaiting" :class="$style.statusRing" />
 		<CanvasNodeTooltip v-if="renderOptions.tooltip" :visible="showTooltip" />
 		<NodeIcon
 			:icon-source="iconSource"
@@ -282,8 +288,7 @@ function onActivate(event: MouseEvent) {
 		border-radius: var(--trigger-node--radius) var(--radius--lg) var(--radius--lg)
 			var(--trigger-node--radius);
 
-		&.running::after,
-		&.waiting::after {
+		> .statusRing {
 			border-top-left-radius: calc(
 				var(--trigger-node--radius) + var(--canvas-node--status-radius-offset)
 			);
@@ -300,8 +305,7 @@ function onActivate(event: MouseEvent) {
 	&.configuration {
 		border-radius: calc(var(--canvas-node--height) / 2);
 
-		&.running::after,
-		&.waiting::after {
+		> .statusRing {
 			border-radius: calc(
 				var(--canvas-node--height) / 2 + var(--canvas-node--status-radius-offset)
 			);
@@ -418,25 +422,22 @@ function onActivate(event: MouseEvent) {
 	}
 }
 
-/* stylelint-disable */
-.running::after,
-.waiting::after {
+.statusRing {
 	$status-inset: 3px;
-	@include styles.status-animated-after($status-inset);
-	// The pseudo-element starts at the padding edge. Keep its curve concentric with the node.
+	@include styles.status-animated-ring($status-inset);
+	// The ring starts at the padding edge. Keep its curve concentric with the node.
 	--canvas-node--status-radius-offset: calc(#{$status-inset} - var(--canvas-node--border-width));
 	border-radius: calc(var(--radius--lg) + var(--canvas-node--status-radius-offset));
 }
 
-.running::after {
+.running > .statusRing {
 	@include styles.status-running-animation;
 }
-.waiting::after {
+.waiting > .statusRing {
 	@include styles.status-waiting-animation;
 }
 
 @include styles.status-animation-definitions;
-/* stylelint-enable */
 
 .description {
 	top: 100%;

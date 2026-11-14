@@ -1,4 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
 import CanvasNodeAgentChips from './CanvasNodeAgentChips.vue';
 import type { AgentCardChip } from './canvasNodeAgentChips.utils';
 
@@ -81,6 +83,7 @@ describe('CanvasNodeAgentChips', () => {
 		expect(activeChip).toHaveAttribute('aria-busy', 'true');
 		expect(activeChip.className).not.toContain('running');
 		expect(activeChip.parentElement?.className).toContain('running');
+		expect(activeChip.parentElement?.querySelector('.statusRing')).not.toBeNull();
 	});
 
 	it('does not animate an inactive inline capability', () => {
@@ -95,6 +98,7 @@ describe('CanvasNodeAgentChips', () => {
 		expect(inactiveChip).toHaveAttribute('aria-busy', 'false');
 		expect(inactiveChip.className).not.toContain('running');
 		expect(inactiveChip.parentElement?.className).not.toContain('running');
+		expect(inactiveChip.parentElement?.querySelector('.statusRing')).toBeNull();
 	});
 
 	it('marks the overflow pill active when a hidden capability is active', () => {
@@ -114,5 +118,33 @@ describe('CanvasNodeAgentChips', () => {
 		expect(overflowChip).toHaveAttribute('aria-busy', 'true');
 		expect(overflowChip.className).not.toContain('running');
 		expect(overflowChip.parentElement?.className).toContain('running');
+		expect(overflowChip.parentElement?.querySelector('.statusRing')).not.toBeNull();
 	});
+
+	it.each([[true], [false]])(
+		'keeps the editable overflow button as the menu trigger (active: %s)',
+		async (active) => {
+			const { getByTestId, container } = renderComponent({
+				props: {
+					chips: [chip('Visible'), chip('Hidden', { activityKeys: ['tool:hidden'] })],
+					maxInline: 1,
+					activeCapabilityKeys: new Set(active ? ['tool:hidden'] : []),
+				},
+			});
+
+			const trigger = getByTestId('canvas-node-agent-chips-overflow');
+			expect(trigger.tagName).toBe('BUTTON');
+			expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+			expect(trigger).toHaveAttribute('aria-expanded', 'false');
+			expect(container.querySelectorAll('.statusRing')).toHaveLength(active ? 1 : 0);
+
+			trigger.focus();
+			await userEvent.keyboard('{Enter}');
+			await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
+
+			await userEvent.keyboard('{Escape}');
+			await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'false'));
+			expect(trigger).toHaveFocus();
+		},
+	);
 });
