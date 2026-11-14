@@ -957,20 +957,75 @@ describe('PromotionsService', () => {
 			await expect(stat(stagingFolder)).rejects.toThrow();
 		});
 
-		it('refuses to promote before exporting when the direction is not connected', async () => {
+		it('clones on demand before exporting when this main has no checkout', async () => {
 			gitService.hasCheckout.mockResolvedValueOnce(false);
+
+			await service.promote(ENVIRONMENT_ID, actor, {
+				canExportVariableValues: true,
+				commitMessage: 'm',
+			});
+
+			expect(gitService.clone).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					remoteUrl: REMOTE_URL,
+					branchName: 'staging',
+					environmentId: ENVIRONMENT_ID,
+					beforeSwap: expect.any(Function),
+				}),
+			);
+			expect(gitService.clone.mock.invocationCallOrder[0]).toBeLessThan(
+				n8nPackagesService.exportPackageToDirectory.mock.invocationCallOrder[0],
+			);
+			expect(gitService.commitAndPush).toHaveBeenCalled();
+			await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.toMatchObject({
+				remoteUrl: REMOTE_URL,
+				checkoutBranchName: 'staging',
+			});
+			expect(logger.info).toHaveBeenCalledWith('Cloned a promotion branch on demand', {
+				environmentId: ENVIRONMENT_ID,
+				direction: 'promote',
+				durationMs: expect.any(Number),
+			});
+			// Connect reports its own outcome. An on-demand clone belongs to the operation.
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'promotion-environment-connected',
+				expect.anything(),
+			);
+		});
+
+		it('does not clone when the checkout is ready', async () => {
+			await service.promote(ENVIRONMENT_ID, actor, {
+				canExportVariableValues: true,
+				commitMessage: 'm',
+			});
+
+			expect(gitService.clone).not.toHaveBeenCalled();
+			expect(n8nPackagesService.exportPackageToDirectory).toHaveBeenCalled();
+		});
+
+		it('fails without exporting when the on-demand clone fails', async () => {
+			gitService.hasCheckout.mockResolvedValueOnce(false);
+			gitService.clone.mockRejectedValueOnce(
+				new PromotionGitError('Could not complete the Git operation'),
+			);
+			await workingDirectory.invalidateDescriptor(ENVIRONMENT_ID);
 
 			await expect(
 				service.promote(ENVIRONMENT_ID, actor, {
 					canExportVariableValues: true,
 					commitMessage: 'm',
 				}),
-			).rejects.toThrow('not connected');
+			).rejects.toThrow(PromotionGitError);
+
 			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
-			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+			await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.toBeNull();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'promotion-promoted',
+				expect.objectContaining({ outcome: 'failed', failureKind: 'git_remote' }),
+			);
 		});
 
-		it('refuses to promote when the checkout was cloned from another branch', async () => {
+		it('clones again before exporting when the checkout was cloned from another branch', async () => {
 			resolver.resolveForEnvironment.mockResolvedValue(
 				operationInput({
 					direction: 'promote',
@@ -982,25 +1037,37 @@ describe('PromotionsService', () => {
 				}),
 			);
 
-			await expect(
-				service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
-					commitMessage: 'm',
-				}),
-			).rejects.toThrow('not connected');
-			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+			await service.promote(ENVIRONMENT_ID, actor, {
+				canExportVariableValues: true,
+				commitMessage: 'm',
+			});
+
+			expect(gitService.clone).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ branchName: 'release' }),
+			);
+			expect(gitService.clone.mock.invocationCallOrder[0]).toBeLessThan(
+				n8nPackagesService.exportPackageToDirectory.mock.invocationCallOrder[0],
+			);
+			await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.toMatchObject({
+				checkoutBranchName: 'release',
+			});
 		});
 
-		it('refuses to promote when the checkout was cloned with another provider', async () => {
+		it('clones again before exporting when the checkout was cloned with another provider', async () => {
 			resolver.resolveForEnvironment.mockResolvedValue(promoteInput({ providerId: 'prov2' }));
 
-			await expect(
-				service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
-					commitMessage: 'm',
-				}),
-			).rejects.toThrow('not connected');
-			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+			await service.promote(ENVIRONMENT_ID, actor, {
+				canExportVariableValues: true,
+				commitMessage: 'm',
+			});
+
+			expect(gitService.clone).toHaveBeenCalledOnce();
+			expect(gitService.clone.mock.invocationCallOrder[0]).toBeLessThan(
+				n8nPackagesService.exportPackageToDirectory.mock.invocationCallOrder[0],
+			);
+			await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.toMatchObject({
+				providerId: 'prov2',
+			});
 		});
 
 		it('checks the base commit it reset to in branch mode, without a second fetch', async () => {
@@ -1245,18 +1312,23 @@ describe('PromotionsService', () => {
 			await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.not.toBeNull();
 		});
 
-		it('refuses to promote when the checkout was cloned from another remote', async () => {
+		it('clones again before exporting when the checkout was cloned from another remote', async () => {
+			const otherRemoteUrl = 'git@github.com:o/other.git';
 			resolver.resolveForEnvironment.mockResolvedValue(
-				promoteInput({ remote: { schemaVersion: 1, remoteUrl: 'git@github.com:o/other.git' } }),
+				promoteInput({ remote: { schemaVersion: 1, remoteUrl: otherRemoteUrl } }),
 			);
 
-			await expect(
-				service.promote(ENVIRONMENT_ID, actor, {
-					canExportVariableValues: true,
-					commitMessage: 'm',
-				}),
-			).rejects.toThrow('not connected');
-			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+			await service.promote(ENVIRONMENT_ID, actor, {
+				canExportVariableValues: true,
+				commitMessage: 'm',
+			});
+
+			expect(gitService.clone).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ remoteUrl: otherRemoteUrl }),
+			);
+			expect(gitService.clone.mock.invocationCallOrder[0]).toBeLessThan(
+				n8nPackagesService.exportPackageToDirectory.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('commits as n8n when the actor has no name or email', async () => {
@@ -1939,9 +2011,15 @@ describe('PromotionsService', () => {
 			await expect(readExported('projects/alpha/workflows/w2/workflow.json')).rejects.toThrow();
 		});
 
-		it('refuses to promote a selection before the direction is cloned', async () => {
+		it('clones on demand before exporting a selection when this main has no checkout', async () => {
 			gitService.hasCheckout.mockResolvedValueOnce(false);
+			gitService.clone.mockImplementationOnce(async ({ paths }) => {
+				await mkdir(paths.repositoryFolder, { recursive: true });
+			});
 			ownedByP1('w1', 'w2');
+			// Stop at the export: this test only checks that the clone comes first.
+			const stopped = new Error('stopped at the export');
+			n8nPackagesService.exportPackageToDirectory.mockRejectedValueOnce(stopped);
 
 			await expect(
 				service.promoteProjectSelection('p1', actor, {
@@ -1949,12 +2027,17 @@ describe('PromotionsService', () => {
 					commitMessage: 'm',
 					canExportVariableValues: true,
 				}),
-			).rejects.toThrow('not connected');
-			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
-			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+			).rejects.toBe(stopped);
+
+			expect(gitService.clone).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ branchName: 'staging', beforeSwap: expect.any(Function) }),
+			);
+			expect(gitService.clone.mock.invocationCallOrder[0]).toBeLessThan(
+				n8nPackagesService.exportPackageToDirectory.mock.invocationCallOrder[0],
+			);
 		});
 
-		it('refuses to promote a selection when the checkout was cloned from another branch', async () => {
+		it('clones again before exporting a selection when the checkout was cloned from another branch', async () => {
 			resolver.resolveForProject.mockResolvedValue(
 				operationInput({
 					direction: 'promote',
@@ -1965,7 +2048,12 @@ describe('PromotionsService', () => {
 					},
 				}),
 			);
+			gitService.clone.mockImplementationOnce(async ({ paths }) => {
+				await mkdir(paths.repositoryFolder, { recursive: true });
+			});
 			ownedByP1('w1', 'w2');
+			const stopped = new Error('stopped at the export');
+			n8nPackagesService.exportPackageToDirectory.mockRejectedValueOnce(stopped);
 
 			await expect(
 				service.promoteProjectSelection('p1', actor, {
@@ -1973,8 +2061,14 @@ describe('PromotionsService', () => {
 					commitMessage: 'm',
 					canExportVariableValues: true,
 				}),
-			).rejects.toThrow('not connected');
-			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+			).rejects.toBe(stopped);
+
+			expect(gitService.clone).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ branchName: 'release' }),
+			);
+			expect(gitService.clone.mock.invocationCallOrder[0]).toBeLessThan(
+				n8nPackagesService.exportPackageToDirectory.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('refuses a project-scope environment', async () => {
@@ -2219,11 +2313,17 @@ describe('PromotionsService', () => {
 			expect(gitService.readFilesAtCommit).not.toHaveBeenCalled();
 		});
 
-		it('refuses to read before the direction is cloned', async () => {
-			gitService.hasCheckout.mockResolvedValueOnce(false);
+		it('clones on demand before reading when this main has no checkout', async () => {
+			gitService.hasCheckout.mockResolvedValue(false);
 
-			await expect(service.readBranchPackage('p1', 'apply')).rejects.toThrow('not connected');
-			expect(gitService.listBranchTree).not.toHaveBeenCalled();
+			await service.readBranchPackage('p1', 'apply');
+
+			expect(gitService.clone).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ branchName: 'dev', environmentId: ENVIRONMENT_ID }),
+			);
+			expect(gitService.clone.mock.invocationCallOrder[0]).toBeLessThan(
+				gitService.listBranchTree.mock.invocationCallOrder[0],
+			);
 		});
 	});
 
@@ -2276,6 +2376,98 @@ describe('PromotionsService', () => {
 				git: null,
 				data: [],
 			});
+		});
+	});
+
+	describe('readBranchFilesAtCommit', () => {
+		const commitSha = 'c'.repeat(40);
+		const workflowPath = 'n8n/projects/orders-p1/workflows/order-w1/workflow.json';
+
+		beforeEach(async () => {
+			const input = applyInput();
+			resolver.resolveForProject.mockResolvedValue(input);
+			await markCloned(input, 'dev');
+		});
+
+		it('makes the commit available, then reads the files that the commit holds', async () => {
+			gitService.findPathsAtCommit.mockResolvedValue(new Set([workflowPath]));
+			gitService.readFilesAtCommit.mockResolvedValue(new Map([[workflowPath, '{"id":"w1"}']]));
+
+			const files = await service.readBranchFilesAtCommit('p1', 'apply', commitSha, [
+				workflowPath,
+				'n8n/manifest.json',
+			]);
+
+			expect(files).toEqual(new Map([[workflowPath, '{"id":"w1"}']]));
+			expect(gitService.ensureCommit).toHaveBeenCalledExactlyOnceWith({
+				paths: workingDirectory.paths(ENVIRONMENT_ID),
+				branchName: 'dev',
+				environmentId: ENVIRONMENT_ID,
+				remoteUrl: REMOTE_URL,
+				credentials: { authType: 'ssh-key', privateKey: 'PRIV' },
+				commitSha,
+			});
+			expect(gitService.readFilesAtCommit).toHaveBeenCalledWith(
+				expect.objectContaining({ commitSha, branchName: 'dev', filePaths: [workflowPath] }),
+			);
+			expect(gitService.ensureCommit.mock.invocationCallOrder[0]).toBeLessThan(
+				gitService.findPathsAtCommit.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('does not read when the commit is not available', async () => {
+			const missing = new BadRequestError(
+				'The branch no longer has the commit of the preview. Load the preview again.',
+			);
+			gitService.ensureCommit.mockRejectedValueOnce(missing);
+
+			await expect(
+				service.readBranchFilesAtCommit('p1', 'apply', commitSha, [workflowPath]),
+			).rejects.toBe(missing);
+
+			expect(gitService.findPathsAtCommit).not.toHaveBeenCalled();
+			expect(gitService.readFilesAtCommit).not.toHaveBeenCalled();
+		});
+
+		it('fetches from the environment that the on-demand clone read again', async () => {
+			const newRemoteUrl = 'git@github.com:o/new.git';
+			gitService.hasCheckout.mockResolvedValue(false);
+			resolver.resolveForProject
+				.mockResolvedValueOnce(applyInput())
+				.mockResolvedValueOnce(
+					applyInput({ remote: { schemaVersion: 1, remoteUrl: newRemoteUrl } }),
+				);
+
+			await service.readBranchFilesAtCommit('p1', 'apply', commitSha, [workflowPath]);
+
+			expect(gitService.clone).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ remoteUrl: newRemoteUrl }),
+			);
+			expect(gitService.ensureCommit).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ remoteUrl: newRemoteUrl, commitSha }),
+			);
+		});
+	});
+
+	describe('readReviewCommits', () => {
+		it('reads review files without the commit fetch of the change details', async () => {
+			const commitSha = 'c'.repeat(40);
+			resolver.resolveForEnvironment.mockResolvedValue(promoteInput());
+			await markCloned(promoteInput(), 'staging');
+			gitService.fetchReviewCommits.mockResolvedValue({ baselineCommitSha: commitSha });
+			gitService.findPathsAtCommit.mockResolvedValue(new Set(['n8n/manifest.json']));
+			gitService.readFilesAtCommit.mockResolvedValue(new Map([['n8n/manifest.json', '{}']]));
+
+			const { baseline, head } = await service.readReviewCommits(ENVIRONMENT_ID, {
+				headRef: 'refs/heads/promotion',
+				headCommitSha: commitSha,
+				baseline: { targetBranchName: 'staging' },
+			});
+			await baseline.readFiles(['n8n/manifest.json']);
+			await head.readFiles(['n8n/manifest.json']);
+
+			expect(gitService.readFilesAtCommit).toHaveBeenCalledTimes(2);
+			expect(gitService.ensureCommit).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2752,12 +2944,18 @@ describe('PromotionsService', () => {
 			expect(n8nPackagesService.planPackage).not.toHaveBeenCalled();
 		});
 
-		it('refuses to apply before fetching when the direction is not connected', async () => {
+		it('clones on demand before fetching when this main has no checkout', async () => {
 			gitService.hasCheckout.mockResolvedValueOnce(false);
 
-			await expect(service.apply(ENVIRONMENT_ID, actor)).rejects.toThrow('not connected');
-			expect(gitService.listBranchTree).not.toHaveBeenCalled();
-			expect(n8nPackagesService.planPackage).not.toHaveBeenCalled();
+			await service.apply(ENVIRONMENT_ID, actor);
+
+			expect(gitService.clone).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ branchName: 'dev', beforeSwap: expect.any(Function) }),
+			);
+			expect(gitService.clone.mock.invocationCallOrder[0]).toBeLessThan(
+				gitService.listBranchTree.mock.invocationCallOrder[0],
+			);
+			expect(n8nPackagesService.applyPackagePlan).toHaveBeenCalled();
 		});
 
 		describe('apply project selection', () => {
@@ -3396,6 +3594,137 @@ describe('PromotionsService', () => {
 			expect(gitService.fetchReviewCommits).toHaveBeenCalled();
 			expect(gitService.readTreeAtCommit).toHaveBeenCalled();
 			expect(run).not.toHaveBeenCalled();
+		});
+
+		describe('read paths without a ready checkout', () => {
+			const commitSha = 'c'.repeat(40);
+
+			type ReadPath = {
+				name: string;
+				route: 'environment' | 'project';
+				input: (over?: Partial<PromotionOperationInput>) => PromotionOperationInput;
+				read: () => Promise<unknown>;
+				gitRead: () => MockInstance;
+			};
+
+			const readPaths: ReadPath[] = [
+				{
+					name: 'readBranchPackage',
+					route: 'project',
+					input: applyInput,
+					read: async () => await service.readBranchPackage('p1', 'apply'),
+					gitRead: () => gitService.listBranchTree as unknown as MockInstance,
+				},
+				{
+					name: 'readBranchFilesAtCommit',
+					route: 'project',
+					input: applyInput,
+					read: async () =>
+						await service.readBranchFilesAtCommit('p1', 'apply', commitSha, ['n8n/manifest.json']),
+					gitRead: () => gitService.findPathsAtCommit as unknown as MockInstance,
+				},
+				{
+					name: 'readApplyPackageAtCommit',
+					route: 'project',
+					input: applyInput,
+					read: async () => await service.readApplyPackageAtCommit('p1', commitSha),
+					gitRead: () => gitService.readTreeAtCommit as unknown as MockInstance,
+				},
+				{
+					name: 'readReviewCommits',
+					route: 'environment',
+					input: promoteInput,
+					read: async () =>
+						await service.readReviewCommits(ENVIRONMENT_ID, {
+							headRef: 'refs/heads/promotion',
+							headCommitSha: commitSha,
+							baseline: { targetBranchName: 'staging' },
+						}),
+					gitRead: () => gitService.fetchReviewCommits as unknown as MockInstance,
+				},
+			];
+
+			beforeEach(() => {
+				gitService.hasCheckout.mockResolvedValue(false);
+				gitService.readFilesAtCommit.mockResolvedValue(new Map());
+				gitService.readTreeAtCommit.mockResolvedValue(new Map());
+				gitService.fetchReviewCommits.mockResolvedValue({ baselineCommitSha: commitSha });
+			});
+
+			it.each(readPaths)(
+				'$name takes the lock only to clone, then reads the environment read inside it',
+				async (entry) => {
+					const newRemoteUrl = 'git@github.com:o/new.git';
+					resolveMock(entry.route)
+						.mockResolvedValueOnce(entry.input())
+						.mockResolvedValueOnce(
+							entry.input({ remote: { schemaVersion: 1, remoteUrl: newRemoteUrl } }),
+						);
+					const run = vi.spyOn(environmentLock, 'run');
+					const lockHeldDuringRead: boolean[] = [];
+					entry.gitRead().mockImplementationOnce(async () => {
+						lockHeldDuringRead.push(
+							!(await environmentLock.run(ENVIRONMENT_ID, async () => true).catch(() => false)),
+						);
+						return entry.name === 'readReviewCommits'
+							? { baselineCommitSha: commitSha }
+							: entry.name === 'readBranchPackage'
+								? { commitSha: null, lsTreeOutput: '' }
+								: new Set();
+					});
+
+					await entry.read();
+
+					// One run for the clone, one for the probe inside the read.
+					expect(run).toHaveBeenCalledTimes(2);
+					expect(gitService.clone).toHaveBeenCalledExactlyOnceWith(
+						expect.objectContaining({ remoteUrl: newRemoteUrl, beforeSwap: expect.any(Function) }),
+					);
+					expect(lockHeldDuringRead).toEqual([false]);
+					expect(entry.gitRead()).toHaveBeenCalledWith(
+						expect.objectContaining({ environmentId: ENVIRONMENT_ID }),
+					);
+					if (entry.name !== 'readBranchFilesAtCommit') {
+						expect(entry.gitRead()).toHaveBeenCalledWith(
+							expect.objectContaining({ remoteUrl: newRemoteUrl }),
+						);
+					}
+				},
+			);
+
+			it.each(readPaths)(
+				'$name does not clone when a clone finished before it took the lock',
+				async (entry) => {
+					resolveMock(entry.route).mockResolvedValue(entry.input());
+					await markCloned(entry.input(), entry.route === 'project' ? 'dev' : 'staging');
+					// Not ready before the lock, ready inside it.
+					gitService.hasCheckout.mockResolvedValueOnce(false).mockResolvedValue(true);
+					const run = vi.spyOn(environmentLock, 'run');
+
+					await entry.read();
+
+					expect(run).toHaveBeenCalledOnce();
+					expect(gitService.clone).not.toHaveBeenCalled();
+					expect(entry.gitRead()).toHaveBeenCalled();
+				},
+			);
+
+			it.each(readPaths)(
+				'$name fails with 423 and does not read while another operation holds the lock',
+				async (entry) => {
+					resolveMock(entry.route).mockResolvedValue(entry.input());
+					const release = await holdLock();
+
+					try {
+						await expect(entry.read()).rejects.toThrow(LockedError);
+					} finally {
+						await release();
+					}
+
+					expect(gitService.clone).not.toHaveBeenCalled();
+					expect(entry.gitRead()).not.toHaveBeenCalled();
+				},
+			);
 		});
 	});
 });

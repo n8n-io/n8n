@@ -83,6 +83,8 @@ responses:
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '422':
     $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '423':
+    $ref: ../../../../shared/spec/responses/locked.yml
   '429':
     $ref: ../../../../shared/spec/responses/tooManyRequests.yml
   '503':

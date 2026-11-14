@@ -859,6 +859,38 @@ export class PromotionsGitService {
 	}
 
 	/**
+	 * Fetches the branch when this checkout lacks the commit. The fetch changes only refs and
+	 * objects, so a read path can call this without the environment lock.
+	 */
+	async ensureCommit({ commitSha, ...operation }: GitOperation & { commitSha: string }) {
+		const { paths, branchName, environmentId } = operation;
+		if (!COMMIT_SHA.test(commitSha)) {
+			throw new UnexpectedError('The commit SHA is not a Git object name');
+		}
+		try {
+			await this.lockCheckout(
+				paths.repositoryFolder,
+				async () => await this.fetchMissingCommit(operation, commitSha),
+			);
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/** Run under the checkout lock. */
+	private async fetchMissingCommit(operation: GitOperation, commitSha: string) {
+		const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: operation.paths.repositoryFolder });
+		// Another main may have served the preview, so this checkout can lack its commit.
+		if (await hasCommit(git, commitSha)) return;
+		await this.fetchBranch(operation);
+		if (!(await hasCommit(git, commitSha))) {
+			throw new BadRequestError(
+				'The branch no longer has the commit of the preview. Load the preview again.',
+			);
+		}
+	}
+
+	/**
 	 * Reads every file under `directory` at the commit, keyed by its path inside `directory`.
 	 * One `cat-file --batch` reads all files: a `git show` per file takes seconds for a large package.
 	 * The limits are checked on the listed sizes, before any content is read.
@@ -880,15 +912,7 @@ export class PromotionsGitService {
 		try {
 			return await this.lockCheckout(paths.repositoryFolder, async () => {
 				const options = { ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder };
-				// Another main may have served the preview, so this checkout can lack its commit.
-				if (!(await hasCommit(simpleGit(options), commitSha))) {
-					await this.fetchBranch(operation);
-					if (!(await hasCommit(simpleGit(options), commitSha))) {
-						throw new BadRequestError(
-							'The branch no longer has the commit of the preview. Load the preview again.',
-						);
-					}
-				}
+				await this.fetchMissingCommit(operation, commitSha);
 				const tree = await simpleGit(options).raw([
 					'ls-tree',
 					'-r',

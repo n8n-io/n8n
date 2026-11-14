@@ -82,6 +82,15 @@ describe('Promotions in Public API', () => {
 		return response.body.id as string;
 	}
 
+	/** Makes the on-demand clone fail without a network call to the test remote. */
+	function failClone() {
+		const clone = vi
+			.spyOn(Container.get(PromotionsGitService), 'clone')
+			.mockRejectedValue(new BadRequestError('Clone stopped for test'));
+		onTestFinished(() => clone.mockRestore());
+		return clone;
+	}
+
 	beforeAll(async () => {
 		await testDb.init();
 	});
@@ -2362,15 +2371,17 @@ describe('Promotions in Public API', () => {
 			}
 		});
 
-		it('explains that the direction needs a clone first', async () => {
+		it('clones the direction on demand and reports a failed clone', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			await createEnvironment(agent);
 			const project = await createTeamProject('Team project', owner);
+			const clone = failClone();
 
 			const response = await agent.get(`/promotions/projects/${project.id}/changes/apply`);
 
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('not connected');
+			expect(response.body.message).toBe('Clone stopped for test');
+			expect(clone).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -2853,29 +2864,33 @@ describe('Promotions in Public API', () => {
 			},
 		);
 
-		it('explains that Promote needs a clone first', async () => {
+		it('clones on demand for Promote and reports a failed clone', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const id = await createEnvironment(agent, promoteEnvironment);
+			const clone = failClone();
 
 			const response = await agent
 				.post(`/promotions/environments/${id}/promote`)
 				.send({ commitMessage: 'sync projects' });
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('not connected');
+			expect(response.body.message).toBe('Clone stopped for test');
+			expect(clone).toHaveBeenCalledTimes(1);
 		});
 
-		it('explains that Apply needs a clone first', async () => {
+		it('clones on demand for Apply and Continue and reports a failed clone', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
 			const id = await createEnvironment(agent);
+			const clone = failClone();
 
 			const response = await agent.post(`/promotions/environments/${id}/apply`);
 			const continued = await agent
 				.post(`/promotions/environments/${id}/apply/continue`)
 				.send(continueBody);
-			expect(continued.status).toBe(400);
-			expect(continued.body.message).toContain('not connected');
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('not connected');
+			expect(response.body.message).toBe('Clone stopped for test');
+			expect(continued.status).toBe(400);
+			expect(continued.body.message).toBe('Clone stopped for test');
+			expect(clone).toHaveBeenCalledTimes(2);
 		});
 
 		it('returns 423 and keeps the environment while another operation holds its lock', async () => {
