@@ -30,6 +30,9 @@ describe('IntegrationMessageContextService', () => {
 			threads.has(id) ? (threads.get(id) as never) : (null as never),
 		);
 		threadRepository.create.mockImplementation((data: unknown) => data as never);
+		threadRepository.ensureExists.mockImplementation(async (id) => {
+			if (!threads.has(id)) threads.set(id, { id, metadata: null });
+		});
 		threadRepository.save.mockImplementation(
 			async (entity: { id: string; metadata: string | null }) => {
 				threads.set(entity.id, { id: entity.id, metadata: entity.metadata });
@@ -43,7 +46,7 @@ describe('IntegrationMessageContextService', () => {
 			if (patch?.metadata !== undefined) {
 				await threadRepository.save({ ...row, metadata: patch.metadata } as never);
 			}
-			return row as never;
+			return threads.get(id) as never;
 		});
 		const service = new IntegrationMessageContextService(
 			threadRepository,

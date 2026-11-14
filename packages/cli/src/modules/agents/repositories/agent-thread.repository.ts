@@ -17,6 +17,15 @@ export class AgentThreadRepository extends BaseRepository<AgentThreadEntity> {
 		super(AgentThreadEntity, dataSource.manager, transactionRunner);
 	}
 
+	async ensureExists(threadId: string, resourceId: string): Promise<void> {
+		await this.createQueryBuilder()
+			.insert()
+			.into(AgentThreadEntity)
+			.values({ id: threadId, resourceId, title: null, metadata: null })
+			.orIgnore()
+			.execute();
+	}
+
 	async findBuilderSessionIds(prefix: string): Promise<string[]> {
 		const threads = await this.find({
 			select: { id: true },

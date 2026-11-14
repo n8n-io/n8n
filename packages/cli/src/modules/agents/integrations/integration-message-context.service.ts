@@ -148,16 +148,17 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		messageId: string,
 		origin: SessionBinding,
 	): Promise<void> {
-		const existing = await this.threadRepository.findOneBy({ id: derivedThreadId });
-		const previous = this.parseMetadata(existing?.metadata)[SENT_MESSAGES_METADATA_KEY];
-		const entries = isRecord(previous) ? Object.entries(previous) : [];
-		const sentMessages = Object.fromEntries(
-			[...entries.filter(([id]) => id !== messageId), [messageId, origin]].slice(
-				-MAX_SENT_MESSAGES_PER_THREAD,
-			),
-		);
-		await this.writeMetadata(derivedThreadId, origin.resourceId, {
-			[SENT_MESSAGES_METADATA_KEY]: sentMessages,
+		await this.updateMetadata(derivedThreadId, origin.resourceId, (metadata) => {
+			const previous = metadata[SENT_MESSAGES_METADATA_KEY];
+			const entries = isRecord(previous) ? Object.entries(previous) : [];
+			return {
+				...metadata,
+				[SENT_MESSAGES_METADATA_KEY]: Object.fromEntries(
+					[...entries.filter(([id]) => id !== messageId), [messageId, origin]].slice(
+						-MAX_SENT_MESSAGES_PER_THREAD,
+					),
+				),
+			};
 		});
 	}
 
@@ -354,34 +355,27 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 	 * Read-modify-write on the thread metadata under the row lock of
 	 * `patchThread`, so overlapping writers do not drop each other's keys.
 	 * `update` returns `null` to leave the row as it is. A missing row is
-	 * created from `update({})`.
+	 * created before the locked update is retried.
 	 */
 	private async updateMetadata(
 		threadId: string,
 		resourceId: string,
 		update: (metadata: Record<string, unknown>) => Record<string, unknown> | null,
 	): Promise<void> {
-		const row = await this.threadRepository.patchThread(
-			threadId,
-			(current) => {
-				const next = update(this.parseMetadata(current.metadata));
-				return next ? { metadata: JSON.stringify(next) } : null;
-			},
-			{},
-		);
-		if (row) return;
-
-		const created = update({});
-		if (!created) return;
+		const write = async () =>
+			await this.threadRepository.patchThread(
+				threadId,
+				(current) => {
+					const next = update(this.parseMetadata(current.metadata));
+					return next ? { metadata: JSON.stringify(next) } : null;
+				},
+				{},
+			);
+		if (await write()) return;
+		if (!update({})) return;
 		await this.resourceRepository.ensureExists(resourceId);
-		await this.threadRepository.save(
-			this.threadRepository.create({
-				id: threadId,
-				resourceId,
-				title: null,
-				metadata: JSON.stringify(created),
-			}),
-		);
+		await this.threadRepository.ensureExists(threadId, resourceId);
+		await write();
 	}
 
 	private parseMetadata(value: string | null | undefined): Record<string, unknown> {

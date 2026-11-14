@@ -324,24 +324,41 @@ describe('N8nMemory', () => {
 
 	describe('saveThread — new row', () => {
 		it('creates the thread when no row exists', async () => {
-			threadRepository.patchThread.mockResolvedValue(null);
-			threadRepository.create.mockImplementation((e) => e as AgentThreadEntity);
-			threadRepository.save.mockImplementation(async (e) => e as AgentThreadEntity);
+			let exists = false;
+			const row = {
+				id: 'thread-1',
+				resourceId: 'user-1',
+				title: null,
+				metadata: null,
+			} as AgentThreadEntity;
+			threadRepository.ensureExists.mockImplementation(async () => {
+				exists = true;
+			});
+			threadRepository.patchThread.mockImplementation(async (_id, update) => {
+				if (!exists) return null;
+				Object.assign(row, update(row));
+				return row;
+			});
 
-			await memory.saveThread({
+			const saved = await memory.saveThread({
 				id: 'thread-1',
 				resourceId: 'user-1',
 				title: 'Chat',
 				metadata: { keep: 1 },
 			});
 
-			expect(threadRepository.save).toHaveBeenCalledWith(
-				expect.objectContaining({
-					id: 'thread-1',
-					resourceId: 'user-1',
-					title: 'Chat',
-					metadata: JSON.stringify({ keep: 1 }),
-				}),
+			expect(saved).toMatchObject({
+				id: 'thread-1',
+				resourceId: 'user-1',
+				title: 'Chat',
+				metadata: { keep: 1 },
+			});
+		});
+
+		it('fails if the thread is deleted before the metadata patch', async () => {
+			threadRepository.patchThread.mockResolvedValue(null);
+			await expect(memory.saveThread({ id: 'thread-1', resourceId: 'user-1' })).rejects.toThrow(
+				'Cannot save a thread that no longer exists',
 			);
 		});
 	});

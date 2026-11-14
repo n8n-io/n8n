@@ -41,6 +41,7 @@ import {
 	type ObservationLogTaskLockHandle,
 	type ObservationResumeState,
 	type RetrievedEpisodicMemoryEntry,
+	type RuntimeSkillStateStore,
 	type Thread,
 } from '@n8n/agents';
 import type { AgentMessageAuthor } from '@n8n/api-types';
@@ -50,6 +51,7 @@ import type { EntityManager, FindOperator, FindOptionsWhere } from '@n8n/typeorm
 import { In, IsNull, Like } from '@n8n/typeorm';
 import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
+import { z } from 'zod';
 import { UnexpectedError } from '@n8n/errors';
 
 import { AgentMemoryEntryCandidateEntity } from '../entities/agent-memory-entry-candidate.entity';
@@ -149,6 +151,21 @@ export type EpisodicMemorySourceWithMessageContext = EpisodicMemoryEntrySource &
 	origin?: AgentMessageOrigin;
 };
 
+const activeSkillStatesSchema = z.array(
+	z.object({
+		agentId: z.string(),
+		agentName: z.string(),
+		resourceId: z.string(),
+		skillIds: z.array(z.string()),
+		versions: z.record(z.string().nullable()).optional(),
+	}),
+);
+
+function activeSkillStates(metadata: Thread['metadata']) {
+	const parsed = activeSkillStatesSchema.safeParse(metadata?.activeSkillStates);
+	return parsed.success ? parsed.data : [];
+}
+
 export class N8nMemoryImpl
 	implements
 		BuiltMemory,
@@ -158,6 +175,41 @@ export class N8nMemoryImpl
 		BuiltEpisodicMemoryStore,
 		BuiltEpisodicMemoryCaptureStore
 {
+	readonly skillState: RuntimeSkillStateStore = {
+		load: async ({ threadId, resourceId, agentName }) => {
+			const thread = await this.getThread(threadId);
+			const state = activeSkillStates(thread?.metadata).find(
+				(state) =>
+					state.agentId === this.agentId &&
+					state.resourceId === resourceId &&
+					state.agentName === agentName,
+			);
+			return state
+				? { skillIds: state.skillIds, ...(state.versions ? { versions: state.versions } : {}) }
+				: undefined;
+		},
+		save: async ({ threadId, resourceId, agentName }, state) => {
+			const updated = await this.patchThread({
+				threadId,
+				update: (thread) => ({
+					metadata: {
+						...thread.metadata,
+						activeSkillStates: [
+							...activeSkillStates(thread.metadata).filter(
+								(saved) =>
+									saved.agentId !== this.agentId ||
+									saved.resourceId !== resourceId ||
+									saved.agentName !== agentName,
+							),
+							{ agentId: this.agentId, resourceId, agentName, ...state },
+						],
+					},
+				}),
+			});
+			if (!updated) throw new UnexpectedError('Cannot save active skills for a missing thread');
+		},
+	};
+
 	constructor(
 		private readonly agentId: string,
 		private readonly threadRepository: AgentThreadRepository,
@@ -219,31 +271,29 @@ export class N8nMemoryImpl
 		// Per-user scoping is enforced at the message level via resourceId.
 		// The merge runs on the locked row, so a save cannot revert a concurrent
 		// `patchThread`.
-		const updated = await this.threadRepository.patchThread(
-			thread.id,
-			(row) => {
-				if (thread.title === undefined && thread.metadata === undefined) return null;
-				return {
-					title: thread.title,
-					// Thread metadata carries runtime-owned keys such as integration
-					// message context, so caller updates merge into the existing blob.
-					metadata:
-						thread.metadata === undefined
-							? undefined
-							: this.mergeThreadMetadata(row.metadata, thread.metadata),
-				};
-			},
-			{},
-		);
-		if (updated) return this.toThread(updated);
-
-		const entity = this.threadRepository.create({
-			id: thread.id,
-			resourceId: thread.resourceId,
-			title: thread.title ?? null,
-			metadata: thread.metadata ? JSON.stringify(thread.metadata) : null,
-		});
-		const saved = await this.threadRepository.save(entity);
+		const update = async () =>
+			await this.threadRepository.patchThread(
+				thread.id,
+				(row) => {
+					if (thread.title === undefined && thread.metadata === undefined) return null;
+					return {
+						title: thread.title,
+						// Thread metadata carries runtime-owned keys such as integration
+						// message context, so caller updates merge into the existing blob.
+						metadata:
+							thread.metadata === undefined
+								? undefined
+								: this.mergeThreadMetadata(row.metadata, thread.metadata),
+					};
+				},
+				{},
+			);
+		let saved = await update();
+		if (!saved) {
+			await this.threadRepository.ensureExists(thread.id, thread.resourceId);
+			saved = await update();
+		}
+		if (!saved) throw new UnexpectedError('Cannot save a thread that no longer exists');
 		return this.toThread(saved);
 	}
 
@@ -1014,9 +1064,11 @@ export class N8nMemoryImpl
 		existingMetadata: string | null | undefined,
 		nextMetadata: Record<string, unknown>,
 	): string {
+		// Active selections change through the locked skill-state patch, not stale thread snapshots.
+		const { activeSkillStates: _activeSkillStates, ...incoming } = nextMetadata;
 		return JSON.stringify({
 			...this.parseThreadMetadata(existingMetadata),
-			...nextMetadata,
+			...incoming,
 		});
 	}
 
