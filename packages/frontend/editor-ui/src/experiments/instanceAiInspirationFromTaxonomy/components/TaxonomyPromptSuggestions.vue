@@ -1,4 +1,4 @@
-<!-- Experiment cleanup (129_aia_inspiration_from_taxonomy_v2) -->
+<!-- Experiment cleanup (142_aia_inspiration_from_taxonomy_v3) -->
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 import { N8nIcon, type IconName } from '@n8n/design-system';
@@ -10,18 +10,12 @@ import type { InstanceAiPrefillDeclaration } from '@/features/ai/instanceAi/pref
 const SUGGESTION_ENTER_STAGGER_MS = 45;
 
 const SUGGESTION_ICONS: Record<string, IconName> = {
-	'v6-taxonomy-sales-and-marketing-1-weekly-ads-and-website-report': 'trending-up',
-	'v6-taxonomy-sales-and-marketing-2-keep-crm-updated': 'refresh-cw',
 	'v6-taxonomy-sales-and-marketing-3-qualify-leads-and-book-calls': 'message-circle',
-	'v6-taxonomy-sales-and-marketing-4-schedule-linkedin-posts': 'calendar',
-	'v6-taxonomy-sales-and-marketing-5-morning-news-brief': 'rss',
-	'v6-taxonomy-sales-and-marketing-6-invoices-from-email': 'file-text',
-	'v6-taxonomy-bis-sales-and-marketing-1-personal-follow-ups': 'mail',
-	'v6-taxonomy-bis-sales-and-marketing-2-form-leads-to-sheet': 'inbox',
 	'v6-taxonomy-bis-sales-and-marketing-3-research-ideal-customers': 'search',
-	'v6-taxonomy-bis-sales-and-marketing-4-draft-seo-content': 'pencil',
-	'v6-taxonomy-bis-sales-and-marketing-5-meeting-summaries': 'video',
+	'v6-taxonomy-bis-sales-and-marketing-2-form-leads-to-sheet': 'inbox',
+	'v6-taxonomy-sales-and-marketing-2-keep-crm-updated': 'refresh-cw',
 	'v6-taxonomy-bis-sales-and-marketing-6-messages-into-tasks': 'list-checks',
+	'v6-taxonomy-bis-sales-and-marketing-5-meeting-summaries': 'video',
 };
 
 const SECTIONS: Array<{ id: TaxonomyDisplaySuggestion['section']; headingKey: BaseTextKey }> = [
@@ -62,15 +56,19 @@ function shuffle<T>(items: readonly T[]): T[] {
 	return copy;
 }
 
-const roleSuggestions = computed(() =>
-	props.suggestions.filter((suggestion) => suggestion.section === 'role'),
-);
 // Shuffled once per catalog, so a re-render does not reorder the rows.
-const shuffledRoleIds = ref<string[]>([]);
+const shuffledIdsBySection = ref<Partial<Record<TaxonomyDisplaySuggestion['section'], string[]>>>(
+	{},
+);
 watch(
-	() => roleSuggestions.value.map((suggestion) => suggestion.id).join('\0'),
+	() => props.suggestions.map((suggestion) => `${suggestion.section}:${suggestion.id}`).join('\0'),
 	() => {
-		shuffledRoleIds.value = shuffle(roleSuggestions.value).map((suggestion) => suggestion.id);
+		const next: Partial<Record<TaxonomyDisplaySuggestion['section'], string[]>> = {};
+		for (const section of SECTIONS) {
+			const inSection = props.suggestions.filter((suggestion) => suggestion.section === section.id);
+			next[section.id] = shuffle(inSection).map((suggestion) => suggestion.id);
+		}
+		shuffledIdsBySection.value = next;
 	},
 	{ immediate: true },
 );
@@ -78,13 +76,10 @@ watch(
 const sections = computed(() =>
 	SECTIONS.map((section) => {
 		const inSection = props.suggestions.filter((suggestion) => suggestion.section === section.id);
-		if (section.id !== 'role') {
-			return { ...section, suggestions: inSection };
-		}
 		const byId = new Map(inSection.map((suggestion) => [suggestion.id, suggestion]));
 		return {
 			...section,
-			suggestions: shuffledRoleIds.value.flatMap((id) => {
+			suggestions: (shuffledIdsBySection.value[section.id] ?? []).flatMap((id) => {
 				const suggestion = byId.get(id);
 				return suggestion ? [suggestion] : [];
 			}),

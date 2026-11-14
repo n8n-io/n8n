@@ -1,4 +1,4 @@
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 import { fireEvent } from '@testing-library/vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -22,10 +22,10 @@ const render = createComponentRenderer(TaxonomyPromptSuggestions, {
 });
 
 const roleTitles = [
-	'Weekly report on my ads and website, with what changed',
-	'Keep my CRM updated without manual entry',
 	'AI chatbot that answers messages, qualifies leads and books calls',
-	'Schedule LinkedIn posts in my voice, after my approval',
+	'Find and research leads that fit my ideal customer',
+	'Save form leads to a Google Sheet, email them and alert me',
+	'Keep my CRM updated without manual entry',
 ];
 
 describe('TaxonomyPromptSuggestions', () => {
@@ -39,35 +39,45 @@ describe('TaxonomyPromptSuggestions', () => {
 		expect(getByText('For sales and marketing')).toBeVisible();
 		expect(getByText('For everyone')).toBeVisible();
 		expect(getAllByRole('button')).toHaveLength(6);
-		expect(getByText('Weekly report on my ads and website, with what changed')).toBeVisible();
-		expect(getByText('Morning brief from Slack, Gmail and the news')).toBeVisible();
-		expect(getByText('Pull invoices from my email into a sheet, with due reminders')).toBeVisible();
+		expect(
+			getByText('AI chatbot that answers messages, qualifies leads and books calls'),
+		).toBeVisible();
+		expect(getByText('Turn requests in emails and messages into tasks')).toBeVisible();
+		expect(getByText('Meeting summaries and action items, sent to me')).toBeVisible();
 		expect(queryByText('Every Monday at 9:00')).not.toBeInTheDocument();
 	});
 
-	it('shuffles the sales and marketing rows and keeps For everyone in catalog order', () => {
+	it('shuffles each section once and keeps the two headings separate', () => {
 		vi.spyOn(Math, 'random').mockReturnValue(0);
-		const { getAllByRole } = render();
-		const labels = getAllByRole('button').map((button) => button.textContent);
+		const { getAllByRole, rerender } = render();
+		const labels = () => getAllByRole('button').map((button) => button.textContent);
 
-		expect(labels.slice(0, 4)).toEqual([
+		expect(labels().slice(0, 4)).toEqual([
+			'Find and research leads that fit my ideal customer',
+			'Save form leads to a Google Sheet, email them and alert me',
 			'Keep my CRM updated without manual entry',
 			'AI chatbot that answers messages, qualifies leads and books calls',
-			'Schedule LinkedIn posts in my voice, after my approval',
-			'Weekly report on my ads and website, with what changed',
 		]);
-		expect(labels.slice(4)).toEqual([
-			'Morning brief from Slack, Gmail and the news',
-			'Pull invoices from my email into a sheet, with due reminders',
+		expect(labels().slice(4)).toEqual([
+			'Meeting summaries and action items, sent to me',
+			'Turn requests in emails and messages into tasks',
 		]);
-		expect(labels.slice(0, 4).sort()).toEqual([...roleTitles].sort());
+		expect(labels().slice(0, 4).sort()).toEqual([...roleTitles].sort());
+
+		vi.spyOn(Math, 'random').mockReturnValue(0.99);
+		return rerender({ suggestions, disabled: false }).then(() => {
+			expect(labels().slice(4)).toEqual([
+				'Meeting summaries and action items, sent to me',
+				'Turn requests in emails and messages into tasks',
+			]);
+		});
 	});
 
 	it('inserts the clicked suggestion prompt at its displayed position', async () => {
 		const { getAllByRole, emitted } = render();
 		const buttons = getAllByRole('button');
 		const index = buttons.findIndex((button) =>
-			button.textContent?.includes('Weekly report on my ads and website, with what changed'),
+			button.textContent?.includes('Keep my CRM updated without manual entry'),
 		);
 
 		await fireEvent.click(buttons[index]!);
@@ -75,9 +85,9 @@ describe('TaxonomyPromptSuggestions', () => {
 		expect(emitted()['insert-suggestion']).toEqual([
 			[
 				expect.objectContaining({
-					suggestionId: 'v6-taxonomy-sales-and-marketing-1-weekly-ads-and-website-report',
+					suggestionId: 'v6-taxonomy-sales-and-marketing-2-keep-crm-updated',
 					suggestionKind: 'prompt',
-					suggestionTitle: 'Weekly report on my ads and website, with what changed',
+					suggestionTitle: 'Keep my CRM updated without manual entry',
 					position: index + 1,
 					prefillType: 'suggestion_catalog',
 				}),

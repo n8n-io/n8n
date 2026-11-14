@@ -1,4 +1,4 @@
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -25,11 +25,6 @@ describe('useInstanceAiInspirationFromTaxonomyExperiment', () => {
 		{
 			variant: INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.variant,
 			isTreatmentVariant: true,
-			isRowsVariant: true,
-		},
-		{
-			variant: INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.variantBis,
-			isTreatmentVariant: false,
 			isRowsVariant: true,
 		},
 		{
