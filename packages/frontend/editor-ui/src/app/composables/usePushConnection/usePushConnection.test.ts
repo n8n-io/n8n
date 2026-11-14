@@ -4,6 +4,7 @@ import {
 	builderCreditsUpdated,
 	executionStarted,
 	executionFinished,
+	executionWaiting,
 	agentNodeProgress,
 } from '@/app/composables/usePushConnection/handlers';
 import type { TestWebhookReceived } from '@n8n/api-types/push/webhook';
@@ -165,6 +166,20 @@ describe('usePushConnection composable', () => {
 		pushConnection.terminate();
 
 		expect(removeEventListener).toHaveBeenCalledTimes(1);
+	});
+
+	it('routes executionWaiting to its execution-scoped handler', async () => {
+		pushConnection.initialize();
+		const handler = addEventListener.mock.calls[0][0];
+		const event: PushMessage = {
+			type: 'executionWaiting',
+			data: { executionId: 'exec-1' },
+		};
+
+		handler(event);
+		await flushPromises();
+
+		expect(executionWaiting).toHaveBeenCalledWith(event, expect.any(Object));
 	});
 
 	it('routes agent capability progress to its execution-scoped handler', async () => {

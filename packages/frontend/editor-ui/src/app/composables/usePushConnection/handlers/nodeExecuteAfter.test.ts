@@ -286,7 +286,7 @@ describe('nodeExecuteAfter', () => {
 		expect(runData?.['Test Node'][0].data?.invalid_connection).toBeUndefined();
 	});
 
-	it('should open form popup when execution status is waiting and resumeFormUrl is present', async () => {
+	it('should retain the signed form URL without opening the popup while the node is waiting', async () => {
 		const formUrl = 'http://localhost:5678/form-waiting/exec-1?signature=abc123';
 		const event: NodeExecuteAfter = {
 			type: 'nodeExecuteAfter',
@@ -308,7 +308,9 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, options);
 
-		expect(openFormPopupWindow).toHaveBeenCalledWith(formUrl);
+		expect(openFormPopupWindow).not.toHaveBeenCalled();
+		expect(workflowExecutionStateStore.pendingFormPopupUrl).toBe(formUrl);
+		expect(trackNodeExecution).not.toHaveBeenCalled();
 	});
 
 	it('should not open form popup when resumeFormUrl is absent', async () => {
