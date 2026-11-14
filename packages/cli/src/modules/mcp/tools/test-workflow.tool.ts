@@ -2,11 +2,18 @@ import type { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { normalizePinData } from '@n8n/workflow-sdk';
+import { formatRedactedError } from '@n8n/instance-ai/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { truncate } from '@n8n/utils/string/truncate';
 import {
+	type ExecutionStatus,
 	type IPinData,
 	type INodeExecutionData,
+	type IRedactedErrorInfo,
+	type IRunData,
+	type ITaskData,
 	type IWorkflowExecutionDataProcess,
+	ExecutionStatusList,
 	createRunExecutionData,
 	jsonStringify,
 	isTriggerNode,
@@ -15,6 +22,7 @@ import {
 import z from 'zod';
 
 import type { ActiveExecutions } from '@/active-executions';
+import { loadExecutionForViewer } from '@/executions/execution-viewer-reader';
 import { findCredentialRefusal } from '@/executions/pre-execution-checks';
 import type { McpService } from '@/modules/mcp/mcp.service';
 import type { Telemetry } from '@/telemetry';
@@ -26,7 +34,7 @@ import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { findEnabledEligibleTrigger } from '../mcp.utils';
 import {
-	getRunErrorForViewer,
+	REDACTION_CHECK_FAILED_MESSAGE,
 	waitForExecutionResult,
 	WORKFLOW_EXECUTION_TIMEOUT_DEFAULT_SECONDS,
 	WORKFLOW_EXECUTION_TIMEOUT_MAX_SECONDS,
@@ -57,11 +65,32 @@ const inputSchema = z.object({
 		),
 });
 
+const MAX_NODE_RESULTS = 50;
+const MAX_ERROR_LENGTH = 500;
+
+type NodeResult = {
+	nodeName: string;
+	status: ExecutionStatus;
+	itemCounts: number[];
+	error?: string;
+};
+
 type TestWorkflowOutput = {
 	executionId: string | null;
 	status: 'success' | 'error' | 'running' | 'waiting' | 'canceled' | 'crashed' | 'new' | 'unknown';
 	error?: string;
+	nodeResults?: NodeResult[];
+	truncated?: boolean;
 };
+
+const nodeResultSchema = z.object({
+	nodeName: z.string(),
+	status: z.enum(ExecutionStatusList),
+	itemCounts: z
+		.array(z.number().int())
+		.describe('The number of output items on each main output of the node, in output order'),
+	error: z.string().optional().describe('Error message if the node failed'),
+});
 
 const outputSchema = {
 	executionId: z.string().nullable(),
@@ -69,6 +98,18 @@ const outputSchema = {
 		.enum(['success', 'error', 'running', 'waiting', 'canceled', 'crashed', 'new', 'unknown'])
 		.describe('The status of the test execution'),
 	error: z.string().optional().describe('Error message if the execution failed'),
+	nodeResults: z
+		.array(nodeResultSchema)
+		.optional()
+		.describe(
+			'The nodes that ran, in execution order. Absent when you cannot read executions of this workflow, or when n8n does not save manual executions',
+		),
+	truncated: z
+		.boolean()
+		.optional()
+		.describe(
+			`True when more than ${MAX_NODE_RESULTS} nodes ran and nodeResults omits the earliest nodes`,
+		),
 } satisfies z.ZodRawShape;
 
 export const createTestWorkflowTool = (
@@ -80,11 +121,12 @@ export const createTestWorkflowTool = (
 	telemetry: Telemetry,
 	mcpService: McpService,
 	logger: Logger,
+	executionReadGranted: boolean,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'test_workflow',
 	config: {
 		description:
-			'Test a workflow using pin data to bypass external services. Trigger nodes, nodes with credentials, and HTTP Request nodes are pinned (use simulated data). Other nodes (Set, If, Code, etc.) execute normally — including credential-free I/O nodes like Execute Command or file read/write nodes. Use prepare_workflow_pin_data to generate the pin data first.',
+			'Test a workflow using pin data to bypass external services. Trigger nodes, nodes with credentials, and HTTP Request nodes are pinned (use simulated data). Other nodes (Set, If, Code, etc.) execute normally — including credential-free I/O nodes like Execute Command or file read/write nodes. Use prepare_workflow_pin_data to generate the pin data first. The result lists each node that ran with its status, the item count of each output, and its error message.',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
@@ -125,6 +167,7 @@ export const createTestWorkflowTool = (
 				pinData as IPinData,
 				triggerNodeName,
 				timeout,
+				executionReadGranted,
 			);
 
 			telemetryPayload.results = {
@@ -184,6 +227,7 @@ export async function testWorkflow(
 	pinData: IPinData,
 	triggerNodeName?: string,
 	timeoutSeconds: number = WORKFLOW_EXECUTION_TIMEOUT_DEFAULT_SECONDS,
+	executionReadGranted = false,
 ): Promise<TestWorkflowOutput> {
 	const workflow = await getMcpWorkflow(
 		workflowId,
@@ -273,6 +317,10 @@ export async function testWorkflow(
 
 	// Redaction can hide the refusal reason in the saved execution, so get it up front.
 	const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
+	const canReadExecution =
+		executionReadGranted &&
+		(await workflowFinderService.findWorkflowHeadForUser(workflowId, user, ['execution:read'])) !==
+			null;
 
 	const executionId = await workflowRunner.run(runData);
 
@@ -292,13 +340,74 @@ export async function testWorkflow(
 		timeoutSeconds * Time.seconds.toMilliseconds,
 	);
 	const hasError = data.status === 'error' || data.data.resultData?.error;
+	const viewedResultData =
+		hasError || canReadExecution
+			? await loadResultDataForViewer(executionId, user, logger)
+			: undefined;
+	const nodeSummary =
+		canReadExecution && viewedResultData ? summarizeNodeResults(viewedResultData.runData) : {};
+
 	if (!hasError) {
-		return { executionId, status: data.status, error: undefined };
+		return { executionId, status: data.status, ...nodeSummary };
 	}
 
 	return {
 		executionId,
 		status: 'error',
-		error: await getRunErrorForViewer(executionId, user, logger),
+		error: viewedResultData
+			? (getViewedErrorMessage(viewedResultData) ?? 'Execution completed with errors')
+			: REDACTION_CHECK_FAILED_MESSAGE,
+		...nodeSummary,
+	};
+}
+
+async function loadResultDataForViewer(executionId: string, user: User, logger: Logger) {
+	const execution = await loadExecutionForViewer(executionId, user).catch((error: unknown) => {
+		logger.error('MCP test_workflow could not apply execution data redaction', {
+			executionId,
+			error: ensureError(error),
+		});
+		return undefined;
+	});
+	return execution?.data?.resultData;
+}
+
+function getViewedErrorMessage(source: {
+	error?: { message: string };
+	redactedError?: IRedactedErrorInfo;
+}): string | undefined {
+	const message = source.redactedError
+		? formatRedactedError(source.redactedError)
+		: source.error?.message;
+	return message === undefined ? undefined : truncate(message, MAX_ERROR_LENGTH);
+}
+
+function summarizeNodeResults(
+	runData: IRunData,
+): Pick<TestWorkflowOutput, 'nodeResults' | 'truncated'> {
+	const nodeResults = Object.entries(runData)
+		.filter(([, runs]) => runs.length > 0)
+		.sort(([, a], [, b]) => a[0].executionIndex - b[0].executionIndex)
+		.map(([nodeName, runs]) => summarizeNode(nodeName, runs));
+
+	if (nodeResults.length <= MAX_NODE_RESULTS) return { nodeResults };
+	return { nodeResults: nodeResults.slice(-MAX_NODE_RESULTS), truncated: true };
+}
+
+function summarizeNode(nodeName: string, runs: ITaskData[]): NodeResult {
+	const itemCounts: number[] = [];
+	for (const run of runs) {
+		(run.data?.main ?? []).forEach((items, outputIndex) => {
+			itemCounts[outputIndex] = (itemCounts[outputIndex] ?? 0) + (items?.length ?? 0);
+		});
+	}
+
+	const lastRun = runs[runs.length - 1];
+	const error = getViewedErrorMessage(lastRun);
+	return {
+		nodeName,
+		status: lastRun.executionStatus ?? (error ? 'error' : 'success'),
+		itemCounts,
+		...(error !== undefined && { error }),
 	};
 }
