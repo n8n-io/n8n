@@ -13,6 +13,7 @@ import {
 	getFakeClientConfigs,
 	invalidTopicNameError,
 	resetConfluentKafkaRecordings,
+	setNextListTopics,
 	unknownTopicError,
 } from '../../mocks/confluent-kafka';
 
@@ -183,6 +184,12 @@ describe('testKafkaConnection', () => {
 		expect(lastAdmin().connect).toHaveBeenCalled();
 		expect(lastAdmin().listTopics).toHaveBeenCalledWith({ timeout: 3_000 });
 		expect(lastAdmin().disconnect).toHaveBeenCalled();
+	});
+
+	it('succeeds when the identity may describe no topics, as Kafka filters the list', async () => {
+		setNextListTopics([]);
+
+		await expect(testKafkaConnection(credentials)).resolves.toBeUndefined();
 	});
 
 	it('passes on a failed metadata request and still disconnects', async () => {

@@ -2,13 +2,37 @@ import type { KafkaJS } from '@confluentinc/kafka-javascript';
 import { UserError } from '@n8n/errors';
 
 import { generateMskIamToken } from './msk-iam';
+import { getAwsDomain, type AWSRegion } from '../../../../credentials/common/aws/regions';
 import { formatAndValidatePem, MSK_IAM_SASL_MECHANISM, type KafkaCredentials } from '../../utils';
+
+/**
+ * A token signed with system credentials carries the identity of the n8n host,
+ * and it is valid on every MSK cluster in the region. Sending it only to Amazon
+ * MSK broker hosts stops a credential from passing it to a broker that is not MSK.
+ */
+function assertMskBrokerHosts(brokers: string[], region: AWSRegion) {
+	const domain = getAwsDomain(region);
+	const mskSuffixes = [`.kafka.${region}.${domain}`, `.kafka-serverless.${region}.${domain}`];
+	const otherBrokers = brokers.filter((broker) => {
+		const host = broker.replace(/:\d+$/, '').toLowerCase();
+		return !mskSuffixes.some((suffix) => host.endsWith(suffix));
+	});
+	if (otherBrokers.length === 0) return;
+
+	throw new UserError(
+		'AWS MSK IAM with system credentials connects only to Amazon MSK broker hosts',
+		{
+			level: 'warning',
+			description: `These brokers are not Amazon MSK hosts in ${region}: ${otherBrokers.join(', ')}. Use the broker hosts of the MSK cluster. Or turn off "Use System Credentials" and enter an access key.`,
+		},
+	);
+}
 
 /**
  * Validates the MSK IAM fields when the config is built, so that a mistake
  * fails the execution instead of surfacing later as a broker connection error.
  */
-function toMskIamSasl(credentials: KafkaCredentials): KafkaJS.SASLOptions {
+function toMskIamSasl(credentials: KafkaCredentials, brokers: string[]): KafkaJS.SASLOptions {
 	if (!credentials.ssl) {
 		throw new UserError('AWS MSK IAM authentication needs SSL', {
 			level: 'warning',
@@ -29,6 +53,9 @@ function toMskIamSasl(credentials: KafkaCredentials): KafkaJS.SASLOptions {
 				level: 'warning',
 			},
 		);
+	}
+	if (credentials.awsUseSystemCredentials) {
+		assertMskBrokerHosts(brokers, credentials.awsRegion);
 	}
 
 	return {
@@ -90,7 +117,7 @@ export function toKafkaJSConfig(
 	if (credentials.authentication) {
 		const mechanism = credentials.saslMechanism ?? 'plain';
 		if (mechanism === MSK_IAM_SASL_MECHANISM) {
-			kafkaJS.sasl = toMskIamSasl(credentials);
+			kafkaJS.sasl = toMskIamSasl(credentials, brokers);
 		} else {
 			if (!(credentials.username && credentials.password)) {
 				throw new UserError('Username and password are required for authentication');

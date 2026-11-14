@@ -258,14 +258,69 @@ describe('toKafkaJSConfig with AWS MSK IAM', () => {
 		expect(result['ssl.ca.pem']).toBe(CA_PEM);
 	});
 
-	it('accepts system credentials without an access key', () => {
-		const result = toKafkaJSConfig(
+	describe('with system credentials', () => {
+		const systemIam = (brokers: string, overrides: Partial<KafkaCredentials> = {}) =>
 			iam({
+				brokers,
 				awsUseSystemCredentials: true,
 				awsAccessKeyId: undefined,
 				awsSecretAccessKey: undefined,
-			}),
-		);
+				...overrides,
+			});
+
+		it('accepts Amazon MSK broker hosts without an access key', () => {
+			const result = toKafkaJSConfig(
+				systemIam(
+					'b-1.demo.abc123.c2.kafka.eu-central-1.amazonaws.com:9098, b-2.demo.abc123.c2.kafka.eu-central-1.amazonaws.com:9098',
+				),
+			);
+
+			expect(result.kafkaJS.sasl?.mechanism).toBe('oauthbearer');
+		});
+
+		it.each([
+			['MSK Serverless', 'boot-abc123.c1.kafka-serverless.eu-central-1.amazonaws.com:9098', {}],
+			['a host without a port', 'B-1.Demo.abc123.c2.Kafka.eu-central-1.amazonaws.com', {}],
+			[
+				'a China region',
+				'b-1.demo.abc123.c2.kafka.cn-north-1.amazonaws.com.cn:9098',
+				{ awsRegion: 'cn-north-1' as const },
+			],
+		])('accepts %s', (_, brokers, overrides) => {
+			expect(() => toKafkaJSConfig(systemIam(brokers, overrides))).not.toThrow();
+		});
+
+		it.each([
+			['a host that is not MSK', 'kafka.example.com:9098'],
+			[
+				'an MSK host in a different region',
+				'b-1.demo.abc123.c2.kafka.us-east-1.amazonaws.com:9098',
+			],
+			[
+				'a host that only contains the MSK suffix',
+				'kafka.eu-central-1.amazonaws.com.example.com:9098',
+			],
+			[
+				'a list with one host that is not MSK',
+				'b-1.demo.abc123.c2.kafka.eu-central-1.amazonaws.com:9098,attacker.example.com:9098',
+			],
+		])('rejects %s, so the host identity token stays with MSK', (_, brokers) => {
+			expect(() => toKafkaJSConfig(systemIam(brokers))).toThrow(
+				'AWS MSK IAM with system credentials connects only to Amazon MSK broker hosts',
+			);
+		});
+
+		it('names the rejected brokers in the error description', () => {
+			expect(() => toKafkaJSConfig(systemIam('kafka.example.com:9098'))).toThrow(
+				expect.objectContaining({
+					description: expect.stringContaining('kafka.example.com:9098'),
+				}),
+			);
+		});
+	});
+
+	it('accepts any broker host with an access key, which belongs to the credential owner', () => {
+		const result = toKafkaJSConfig(iam({ brokers: 'kafka.internal.example.com:9098' }));
 
 		expect(result.kafkaJS.sasl?.mechanism).toBe('oauthbearer');
 	});

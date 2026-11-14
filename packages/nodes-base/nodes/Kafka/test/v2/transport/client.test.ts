@@ -5,7 +5,9 @@ import { createKafkaClient, getKafkaLibrary } from '../../../v2/transport/client
 import {
 	confluentKafkaModuleMock,
 	getConfluentKafkaAccessCount,
+	getFakeClientConfigs,
 	resetConfluentKafkaAccessCount,
+	resetConfluentKafkaRecordings,
 } from '../../mocks/confluent-kafka';
 
 const { generateMskIamToken } = vi.hoisted(() => ({ generateMskIamToken: vi.fn() }));
@@ -42,14 +44,21 @@ describe('createKafkaClient with AWS MSK IAM', () => {
 
 	beforeEach(() => {
 		generateMskIamToken.mockReset();
+		resetConfluentKafkaRecordings();
 	});
 
 	it('signs a token before creating the client', async () => {
-		generateMskIamToken.mockResolvedValue({ value: 't', principal: 'p', lifetime: 1 });
+		const clientsAtSigning: number[] = [];
+		generateMskIamToken.mockImplementation(async () => {
+			clientsAtSigning.push(getFakeClientConfigs().length);
+			return { value: 't', principal: 'p', lifetime: 1 };
+		});
 
 		await createKafkaClient(credentials);
 
 		expect(generateMskIamToken).toHaveBeenCalledWith(credentials);
+		expect(clientsAtSigning).toStrictEqual([0]);
+		expect(getFakeClientConfigs()).toHaveLength(1);
 	});
 
 	it('passes on a token error, which the library would hide behind a transport failure', async () => {
@@ -61,6 +70,7 @@ describe('createKafkaClient with AWS MSK IAM', () => {
 		await expect(createKafkaClient({ ...credentials, awsUseSystemCredentials: true })).rejects.toBe(
 			disabled,
 		);
+		expect(getFakeClientConfigs()).toHaveLength(0);
 	});
 
 	it('does not sign a token for other mechanisms', async () => {

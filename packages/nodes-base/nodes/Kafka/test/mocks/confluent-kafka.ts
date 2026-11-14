@@ -96,6 +96,12 @@ export function failNextTopicMetadata(error: Error): void {
 }
 
 let nextListTopicsError: Error | undefined;
+let nextListTopics: string[] | undefined;
+
+/** Makes the next admin's `listTopics()` resolve with `topics`. */
+export function setNextListTopics(topics: string[]): void {
+	nextListTopics = topics;
+}
 
 /** Makes the next admin's `listTopics()` reject with `error`. */
 export function failNextListTopics(error: Error): void {
@@ -128,6 +134,8 @@ function createFakeAdmin(): FakeAdmin {
 	nextDisconnectError = undefined;
 	const listTopicsError = nextListTopicsError;
 	nextListTopicsError = undefined;
+	const listTopicsResult = nextListTopics ?? ['test-topic'];
+	nextListTopics = undefined;
 
 	const admin: FakeAdmin = {
 		connect: vi.fn(async () => {}),
@@ -137,7 +145,7 @@ function createFakeAdmin(): FakeAdmin {
 		}),
 		listTopics: vi.fn(async () => {
 			if (listTopicsError) throw listTopicsError;
-			return ['test-topic'];
+			return listTopicsResult;
 		}),
 		disconnect: vi.fn(async () => {
 			if (disconnectError) throw disconnectError;
@@ -277,4 +285,5 @@ export function resetConfluentKafkaRecordings(): void {
 	metadataOutcomeQueue.length = 0;
 	nextDisconnectError = undefined;
 	nextListTopicsError = undefined;
+	nextListTopics = undefined;
 }

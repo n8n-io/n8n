@@ -109,6 +109,9 @@ export async function assertTopicExists(
 /**
  * Checks that the credential can connect and authenticate. A metadata request
  * is necessary because `admin.connect()` resolves without reaching the broker.
+ * An all-topics metadata request needs no topic permission: the broker leaves
+ * out the topics that the client cannot describe. A cluster description would
+ * need an additional permission.
  * @param credentials - The decrypted Kafka credential
  */
 export async function testKafkaConnection(credentials: KafkaCredentials): Promise<void> {

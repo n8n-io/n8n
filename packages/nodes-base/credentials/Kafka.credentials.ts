@@ -182,7 +182,7 @@ export class Kafka implements ICredentialType {
 			type: 'boolean',
 			default: false,
 			description:
-				'Whether to use the AWS credentials of the n8n host (environment variables, IAM role for service account, EKS Pod Identity, container or instance role). An administrator must turn on access to AWS system credentials. See <a href="https://docs.n8n.io/integrations/builtin/credentials/aws/">documentation</a> for more information.',
+				'Whether to use the AWS credentials of the n8n host (environment variables, IAM role for service account, EKS Pod Identity, container or instance role). Connects only to Amazon MSK broker hosts in the selected region. An administrator must turn on access to AWS system credentials. See <a href="https://docs.n8n.io/integrations/builtin/credentials/aws/">documentation</a> for more information.',
 			displayOptions: {
 				show: showForMskIam,
 				showOnDeployment: 'hosted',
