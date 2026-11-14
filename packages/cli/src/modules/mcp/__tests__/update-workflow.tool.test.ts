@@ -329,8 +329,7 @@ describe('update-workflow MCP tool', () => {
 			z.object(tool.config.outputSchema as z.ZodRawShape).strict();
 
 		test('error-path structuredContent conforms to declared outputSchema', async () => {
-			// A JSON Pointer path without a leading "/" passes input validation but
-			// fails at apply time — the exact repro from the ticket.
+			// A dotted path passes input validation but fails at apply time.
 			const tool = createTool();
 			const result = (await callHandler(
 				{
@@ -339,7 +338,7 @@ describe('update-workflow MCP tool', () => {
 						{
 							type: 'setNodeParameter',
 							nodeName: 'B',
-							path: 'parameters.url',
+							path: 'options.url',
 							value: 'https://new',
 						},
 					],
@@ -351,7 +350,7 @@ describe('update-workflow MCP tool', () => {
 			expect(result.isError).toBe(true);
 			const structured = result.structuredContent as { error?: string };
 			expect(structured.error).toContain('Operation 0 failed');
-			expect(structured.error).toContain('is invalid or contains unsafe segments');
+			expect(structured.error).toContain('is not a valid JSON Pointer');
 
 			// ...and the error envelope validates against the published schema,
 			// so strict clients no longer reject it with -32602.
@@ -3962,47 +3961,55 @@ describe('update-workflow MCP tool', () => {
 				expect(workflowService.update).toHaveBeenCalled();
 			});
 
-			test('accepts a predefined credential configured via setNodeParameter earlier in the same batch', async () => {
-				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([
-					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
-				]);
-				findWorkflowMock.mockResolvedValue(
-					Object.assign(buildExistingWorkflow(), {
-						nodes: [
-							makeNode({
-								id: 'h',
-								name: 'HTTP Request',
-								type: 'n8n-nodes-base.httpRequest',
-								typeVersion: 4,
-								parameters: {},
-							}),
+			test.each([
+				'/nodeCredentialType',
+				'nodeCredentialType',
+				'parameters.nodeCredentialType',
+				'/parameters/nodeCredentialType',
+			])(
+				'accepts a predefined credential configured via setNodeParameter path %s earlier in the same batch',
+				async (path) => {
+					(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([
+						{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
+					]);
+					findWorkflowMock.mockResolvedValue(
+						Object.assign(buildExistingWorkflow(), {
+							nodes: [
+								makeNode({
+									id: 'h',
+									name: 'HTTP Request',
+									type: 'n8n-nodes-base.httpRequest',
+									typeVersion: 4,
+									parameters: {},
+								}),
+							],
+							connections: {},
+						}),
+					);
+
+					const result = await callHandler({
+						workflowId: 'wf-1',
+						operations: [
+							{
+								type: 'setNodeParameter',
+								nodeName: 'HTTP Request',
+								path,
+								value: 'githubApi',
+							},
+							{
+								type: 'setNodeCredential',
+								nodeName: 'HTTP Request',
+								credentialKey: 'githubApi',
+								credentialId: 'cred-github',
+								credentialName: 'My GitHub',
+							},
 						],
-						connections: {},
-					}),
-				);
+					});
 
-				const result = await callHandler({
-					workflowId: 'wf-1',
-					operations: [
-						{
-							type: 'setNodeParameter',
-							nodeName: 'HTTP Request',
-							path: '/nodeCredentialType',
-							value: 'githubApi',
-						},
-						{
-							type: 'setNodeCredential',
-							nodeName: 'HTTP Request',
-							credentialKey: 'githubApi',
-							credentialId: 'cred-github',
-							credentialName: 'My GitHub',
-						},
-					],
-				});
-
-				expect(result.isError).toBeUndefined();
-				expect(workflowService.update).toHaveBeenCalled();
-			});
+					expect(result.isError).toBeUndefined();
+					expect(workflowService.update).toHaveBeenCalled();
+				},
+			);
 
 			test('rejects a dynamic credential key on a node that does not declare a credential selector', async () => {
 				// A Set node carries nodeCredentialType but exposes no credentialsSelect
