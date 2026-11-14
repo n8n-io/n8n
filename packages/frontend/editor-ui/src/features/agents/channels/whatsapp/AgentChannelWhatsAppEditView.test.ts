@@ -59,7 +59,9 @@ function mountView(props: Record<string, unknown> = {}) {
 				AgentChannelWhatsAppSetup: { template: '<div data-testid="whatsapp-details" />' },
 				AgentChannelWhatsAppMetaCallout: {
 					props: ['status'],
-					template: '<div data-testid="meta-callout">{{ status?.state }}</div>',
+					emits: ['setup'],
+					template:
+						'<div data-testid="meta-callout" @click="$emit(\'setup\')">{{ status?.state }}</div>',
 				},
 			},
 		},
@@ -90,6 +92,16 @@ describe('AgentChannelWhatsAppEditView', () => {
 		expect(
 			callout.compareDocumentPosition(credential) & Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
+	});
+
+	it('starts a new credential setup when the callout asks to set up again', async () => {
+		metaStatus.value = { state: 'numberDeleted' };
+		const wrapper = mountView();
+		await flushPromises();
+
+		await wrapper.get('[data-testid="meta-callout"]').trigger('click');
+
+		expect(wrapper.emitted('create')).toHaveLength(1);
 	});
 
 	it('keeps the credential and the details below the callout', async () => {

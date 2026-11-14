@@ -10,6 +10,8 @@ describe('presentWhatsAppMetaState', () => {
 
 	it('uses the error theme when the state stops the agent from sending', () => {
 		expect(presentWhatsAppMetaState('numberUnavailable')?.theme).toBe('danger');
+		expect(presentWhatsAppMetaState('numberDeleted')?.theme).toBe('danger');
+		expect(presentWhatsAppMetaState('numberMigrated')?.theme).toBe('danger');
 		expect(presentWhatsAppMetaState('nameDeclinedBlocked')?.theme).toBe('danger');
 		expect(presentWhatsAppMetaState('nameDeclined')?.theme).toBe('warning');
 	});
@@ -22,6 +24,18 @@ describe('presentWhatsAppMetaState', () => {
 	])('links %s to the right place in Meta', (state, url) => {
 		expect(presentWhatsAppMetaState(state)?.action?.url).toBe(url);
 	});
+
+	it.each<WhatsAppMetaState>(['numberDeleted', 'numberMigrated'])(
+		'offers a button to set up again for %s, and no link',
+		(state) => {
+			const presentation = presentWhatsAppMetaState(state);
+
+			expect(presentation?.setupAction?.labelKey).toBe(
+				'agents.channels.whatsapp.meta.action.setUpAgain',
+			);
+			expect(presentation?.action).toBeUndefined();
+		},
+	);
 
 	it.each<WhatsAppMetaState>([
 		'numberPending',
@@ -43,6 +57,8 @@ describe('presentWhatsAppMetaState', () => {
 	describe('metaTitleKey', () => {
 		it.each<[WhatsAppMetaState, string]>([
 			['numberUnavailable', 'agents.channels.whatsapp.meta.numberUnavailable.titleNoNumber'],
+			['numberDeleted', 'agents.channels.whatsapp.meta.numberDeleted.titleNoNumber'],
+			['numberMigrated', 'agents.channels.whatsapp.meta.numberMigrated.titleNoNumber'],
 			['numberPending', 'agents.channels.whatsapp.meta.numberPending.titleNoNumber'],
 			['dailyLimit', 'agents.channels.whatsapp.meta.dailyLimit.titleNoNumber'],
 		])('drops the number from the %s headline when Meta gives none', (state, key) => {

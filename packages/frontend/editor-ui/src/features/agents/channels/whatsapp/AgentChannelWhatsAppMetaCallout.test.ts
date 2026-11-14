@@ -1,6 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { configure } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AgentChannelWhatsAppMetaCallout from './AgentChannelWhatsAppMetaCallout.vue';
@@ -57,6 +58,30 @@ describe('AgentChannelWhatsAppMetaCallout', () => {
 		});
 
 		expect(getByTestId('whatsapp-meta-callout')).toBeInTheDocument();
+	});
+
+	it.each(['numberDeleted', 'numberMigrated'] as const)(
+		'shows a set up again button for %s that asks to start the setup',
+		async (state) => {
+			const { getByTestId, queryByTestId, emitted } = renderComponent({
+				props: { status: { state, displayPhoneNumber: '+1 555' } },
+			});
+
+			expect(queryByTestId('whatsapp-meta-callout-action')).toBeNull();
+			await userEvent.click(getByTestId('whatsapp-meta-callout-setup'));
+
+			expect(emitted('setup')).toHaveLength(1);
+		},
+	);
+
+	it('hides the set up again button without credential create permission', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: { status: { state: 'numberDeleted', displayPhoneNumber: '+1 555' }, canSetup: false },
+		});
+
+		expect(getByTestId('whatsapp-meta-callout')).toBeInTheDocument();
+		expect(queryByTestId('whatsapp-meta-callout-setup')).toBeNull();
+		expect(queryByTestId('whatsapp-meta-callout-action')).toBeNull();
 	});
 
 	it('links a declined name to WhatsApp Manager', () => {

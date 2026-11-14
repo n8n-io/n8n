@@ -39,7 +39,7 @@ const NOT_VERIFIED_VERIFICATION = new Set([
  * enum that client libraries such as RestFB carry. Other values, such as
  * `FLAGGED` and `RATE_LIMITED`, show nothing until their meaning is known.
  */
-const UNAVAILABLE_NUMBER_STATUSES = new Set(['BANNED', 'DISCONNECTED', 'DELETED', 'MIGRATED']);
+const UNAVAILABLE_NUMBER_STATUSES = new Set(['BANNED', 'DISCONNECTED']);
 
 const isPending = (status?: string) => status === 'PENDING_REVIEW';
 const isDeclined = (status?: string) => status === 'DECLINED';
@@ -53,6 +53,9 @@ const isDeclined = (status?: string) => status === 'DECLINED';
 export function resolveWhatsAppMetaState(signals: WhatsAppMetaSignals): WhatsAppMetaState {
 	const { numberStatus, nameStatus, newNameStatus } = signals;
 
+	// A deleted or moved number needs a new setup, so each has its own state.
+	if (numberStatus === 'DELETED') return 'numberDeleted';
+	if (numberStatus === 'MIGRATED') return 'numberMigrated';
 	if (numberStatus && UNAVAILABLE_NUMBER_STATUSES.has(numberStatus)) return 'numberUnavailable';
 	if (numberStatus === 'PENDING') return 'numberPending';
 	if (isDeclined(nameStatus)) return 'nameDeclinedBlocked';
