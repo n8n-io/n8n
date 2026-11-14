@@ -1,6 +1,6 @@
 import { TSESTree } from '@typescript-eslint/utils';
 
-import { createRule, getStringLiteralValue, isSensitiveName } from '../utils/index.js';
+import { createRule, getStaticStringValue, isSensitiveName } from '../utils/index.js';
 
 const { AST_NODE_TYPES } = TSESTree;
 
@@ -71,23 +71,6 @@ function looksLikeSecretValue(value: string): boolean {
 	}
 
 	return false;
-}
-
-function getStaticStringValue(node: TSESTree.Node | null | undefined): string | null {
-	if (!node) return null;
-
-	const literal = getStringLiteralValue(node);
-	if (literal !== null) return literal;
-
-	if (
-		node.type === AST_NODE_TYPES.TemplateLiteral &&
-		node.expressions.length === 0 &&
-		node.quasis.length === 1
-	) {
-		return node.quasis[0]?.value.cooked ?? null;
-	}
-
-	return null;
 }
 
 function getKeyName(key: TSESTree.Node): string | null {

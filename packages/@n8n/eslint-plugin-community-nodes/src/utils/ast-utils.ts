@@ -183,6 +183,23 @@ export function getStringLiteralValue(node: TSESTree.Node | null): string | null
 	return typeof value === 'string' ? value : null;
 }
 
+export function getStaticStringValue(node: TSESTree.Node | null | undefined): string | null {
+	if (!node) return null;
+
+	const literal = getStringLiteralValue(node);
+	if (literal !== null) return literal;
+
+	if (
+		node.type === AST_NODE_TYPES.TemplateLiteral &&
+		node.expressions.length === 0 &&
+		node.quasis.length === 1
+	) {
+		return node.quasis[0]?.value.cooked ?? null;
+	}
+
+	return null;
+}
+
 export function getModulePath(node: TSESTree.Node | null): string | null {
 	const stringValue = getStringLiteralValue(node);
 	if (stringValue) {
