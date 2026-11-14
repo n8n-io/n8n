@@ -359,12 +359,31 @@ function extractDomain(value: string) {
 	return undefined;
 }
 
+// Punctuation right after a URL usually belongs to the surrounding sentence,
+// not the URL itself. Drop trailing marks (e.g. the period ending a sentence)
+// and closing parens that the URL's own opening parens do not balance.
+function countChar(value: string, ch: string): number {
+	return value.split(ch).length - 1;
+}
+
+function trimTrailingSentencePunctuation(url: string): string {
+	let trimmed = url;
+	for (;;) {
+		trimmed = trimmed.replace(/[.,;:!?]+$/, '');
+		if (trimmed.endsWith(')') && countChar(trimmed, ')') > countChar(trimmed, '(')) {
+			trimmed = trimmed.slice(0, -1);
+			continue;
+		}
+		return trimmed;
+	}
+}
+
 function extractUrl(value: string) {
 	const matched = URL_REGEXP.exec(value);
 	if (!matched) {
 		return undefined;
 	}
-	return matched[0];
+	return trimTrailingSentencePunctuation(matched[0]);
 }
 
 function isLetter(ch: number): boolean {
