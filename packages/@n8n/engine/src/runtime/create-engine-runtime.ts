@@ -36,6 +36,8 @@ import {
 	DEFAULT_RECONCILIATION_INTERVAL_MS,
 	QueuedExecutionDetector,
 	QueuedExecutionRepair,
+	QueuedStepDetector,
+	QueuedStepRepair,
 	ReconciliationSweeper,
 } from '../reconciliation';
 import type { ExecutionResponseSender } from '../response-channel';
@@ -167,9 +169,15 @@ export function createEngineRuntime({
 				reconciliationIntervalMs,
 				DEFAULT_RECONCILIATION_BATCH_SIZE,
 			),
+			new QueuedStepDetector(
+				stepStore,
+				reconciliationIntervalMs,
+				DEFAULT_RECONCILIATION_BATCH_SIZE,
+			),
 		],
 		{
 			'execution-queued-no-message': new QueuedExecutionRepair(executionStore, orchestrationQueue),
+			'step-queued-no-message': new QueuedStepRepair(stepStore, stepQueue),
 		},
 		logger,
 	);

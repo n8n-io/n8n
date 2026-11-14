@@ -1310,6 +1310,104 @@ describe('workflow_step_execution table (integration)', () => {
 
 			expect(await loadStaleAfter(id)).toBeNull();
 		});
+
+		it('findStaleQueuedSteps returns the queued steps whose time has passed, oldest first', async () => {
+			const repo = dataSource.getRepository(WorkflowStepExecution);
+			// The rows of the earlier tests share this table, so remove them from the search.
+			await repo.update({ status: 'queued' }, { staleAfter: null });
+			const executionId = await createExecution();
+			const store = stalenessStore();
+			const seed = async (nodeId: string, staleAfter: Date | null, claim = false) => {
+				const { id } = await createStep(store, executionId, {
+					nodeId,
+					iteration: 0,
+					status: 'queued',
+				});
+				if (claim) await store.claimStep(id);
+				await repo.update({ id }, { staleAfter });
+				return id;
+			};
+			const newer = await seed('newer', new Date('2020-01-01T00:02:00.000Z'));
+			const older = await seed('older', new Date('2020-01-01T00:01:00.000Z'));
+			// not returned: the time has not passed, the status is not `queued`, or no time exists
+			await seed('later', new Date('2020-01-01T00:04:00.000Z'));
+			await seed('running', new Date('2020-01-01T00:01:00.000Z'), true);
+			await seed('no-time', null);
+			const at = new Date('2020-01-01T00:03:00.000Z');
+
+			expect(await store.findStaleQueuedSteps(at, 10)).toEqual([
+				{ id: older, executionId, staleAfter: new Date('2020-01-01T00:01:00.000Z') },
+				{ id: newer, executionId, staleAfter: new Date('2020-01-01T00:02:00.000Z') },
+			]);
+			expect(await store.findStaleQueuedSteps(at, 1)).toEqual([
+				{ id: older, executionId, staleAfter: new Date('2020-01-01T00:01:00.000Z') },
+			]);
+		});
+
+		it('findStaleQueuedSteps does not return a step of an execution that has a failed step', async () => {
+			const repo = dataSource.getRepository(WorkflowStepExecution);
+			await repo.update({ status: 'queued' }, { staleAfter: null });
+			const store = stalenessStore();
+			const staleAfter = new Date('2020-01-01T00:01:00.000Z');
+			const seedQueued = async (executionId: string) => {
+				const { id } = await createStep(store, executionId, {
+					nodeId: 'queued',
+					iteration: 0,
+					status: 'queued',
+				});
+				await repo.update({ id }, { staleAfter });
+				return id;
+			};
+			const healthyExecutionId = await createExecution();
+			const healthy = await seedQueued(healthyExecutionId);
+			const failedExecutionId = await createExecution();
+			await seedQueued(failedExecutionId);
+			await seedStep({ executionId: failedExecutionId, nodeId: 'failed', status: 'failed' });
+
+			expect(await store.findStaleQueuedSteps(new Date('2020-01-01T00:03:00.000Z'), 10)).toEqual([
+				{ id: healthy, executionId: healthyExecutionId, staleAfter },
+			]);
+		});
+
+		it('renewQueuedStep moves the time forward once for one observed value', async () => {
+			const executionId = await createExecution();
+			const store = stalenessStore();
+			const { id } = await createStep(store, executionId, {
+				nodeId: 'a',
+				iteration: 0,
+				status: 'queued',
+			});
+			const observed = await loadStaleAfter(id);
+			if (!observed) throw new Error('expected a stale_after value');
+
+			const before = Date.now();
+			expect(await store.renewQueuedStep(id, observed)).toBe(true);
+			const after = Date.now();
+
+			const renewed = await loadStaleAfter(id);
+			expect(renewed?.getTime()).toBeGreaterThanOrEqual(before + staleness.queuedMs);
+			expect(renewed?.getTime()).toBeLessThanOrEqual(after + staleness.queuedMs);
+			// a second caller that read the same value changes nothing
+			expect(await store.renewQueuedStep(id, observed)).toBe(false);
+			expect(await loadStaleAfter(id)).toEqual(renewed);
+		});
+
+		it('renewQueuedStep changes nothing once the step left queued', async () => {
+			const executionId = await createExecution();
+			const store = stalenessStore();
+			const { id } = await createStep(store, executionId, {
+				nodeId: 'a',
+				iteration: 0,
+				status: 'queued',
+			});
+			const observed = await loadStaleAfter(id);
+			if (!observed) throw new Error('expected a stale_after value');
+			await store.claimStep(id);
+			const afterClaim = await loadStaleAfter(id);
+
+			expect(await store.renewQueuedStep(id, observed)).toBe(false);
+			expect(await loadStaleAfter(id)).toEqual(afterClaim);
+		});
 	});
 
 	it('carries the unique key and the partial indexes in the schema', async () => {
