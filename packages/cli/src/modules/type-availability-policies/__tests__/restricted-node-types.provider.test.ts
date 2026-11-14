@@ -64,14 +64,18 @@ describe('NodeTypePolicyRestrictedTypesProvider', () => {
 		await expect(provider.findRestrictedWorkflowIds()).resolves.toBe(QUERY);
 
 		expect(service.evaluateComposedTypesForAllProjects).toHaveBeenCalledWith('node-types', IN_USE);
-		expect(restrictedWorkflowRepository.restrictedWorkflowIdsQuery).toHaveBeenCalledWith({
-			shared: [CODE],
-			byProjects: [
-				{ projectIds: ['denies-set-1', 'denies-set-2'], nodeTypes: [SET, CODE] },
-				{ projectIds: ['denies-nothing'], nodeTypes: [] },
-			],
-			nodeTypesInUse: IN_USE,
-		});
+		expect(restrictedWorkflowRepository.findRunningNodeTypes).toHaveBeenCalledWith({});
+		expect(restrictedWorkflowRepository.restrictedWorkflowIdsQuery).toHaveBeenCalledWith(
+			{
+				shared: [CODE],
+				byProjects: [
+					{ projectIds: ['denies-set-1', 'denies-set-2'], nodeTypes: [SET, CODE] },
+					{ projectIds: ['denies-nothing'], nodeTypes: [] },
+				],
+				nodeTypesInUse: IN_USE,
+			},
+			{},
+		);
 	});
 
 	it('reports nothing when the license has lapsed, as enforcement stops too', async () => {

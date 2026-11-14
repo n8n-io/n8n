@@ -26,7 +26,9 @@ export class NodeTypePolicyRestrictedTypesProvider implements RestrictedNodeType
 	readonly findRestrictedWorkflowIds = singleFlight(async (): Promise<WorkflowIdsQuery | null> => {
 		const restricted = await this.findRestrictedNodeTypes();
 
-		return restricted && this.restrictedWorkflowRepository.restrictedWorkflowIdsQuery(restricted);
+		return (
+			restricted && this.restrictedWorkflowRepository.restrictedWorkflowIdsQuery(restricted, {})
+		);
 	});
 
 	constructor(
@@ -44,7 +46,7 @@ export class NodeTypePolicyRestrictedTypesProvider implements RestrictedNodeType
 			return null;
 		}
 
-		const inUse = await this.restrictedWorkflowRepository.findRunningNodeTypes();
+		const inUse = await this.restrictedWorkflowRepository.findRunningNodeTypes({});
 		if (inUse.length === 0) return null;
 
 		const { withoutProjectPolicy, byProject } =

@@ -299,11 +299,14 @@ describe('RestrictedWorkflowRepository', () => {
 				unrestrictedHttp,
 			].map(({ id }) => id),
 			{
-				workflowIdsIn: Container.get(RestrictedWorkflowRepository).restrictedWorkflowIdsQuery({
-					shared: [HTTP_REQUEST],
-					byProjects,
-					nodeTypesInUse,
-				}),
+				workflowIdsIn: Container.get(RestrictedWorkflowRepository).restrictedWorkflowIdsQuery(
+					{
+						shared: [HTTP_REQUEST],
+						byProjects,
+						nodeTypesInUse,
+					},
+					{},
+				),
 			},
 		);
 
