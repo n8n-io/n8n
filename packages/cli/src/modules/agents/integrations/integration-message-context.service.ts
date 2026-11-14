@@ -8,6 +8,7 @@ import type {
 	IntegrationMessageContext,
 	IntegrationMessageContextStore,
 	SessionBinding,
+	SessionReplyScope,
 } from './integration-tool-types';
 import {
 	isIntegrationMessageContext,
@@ -19,6 +20,9 @@ import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 const MESSAGE_CONTEXT_METADATA_KEY = 'currentMessageContext';
 const CONTINUE_AS_METADATA_KEY = 'continueAs';
 const BOUND_THREADS_METADATA_KEY = 'boundThreads';
+const OUTBOUND_METADATA_KEY = 'outboundMessages';
+const MAX_OUTBOUND_MESSAGES = 5;
+const MAX_OUTBOUND_TEXT_LENGTH = 2000;
 const SENT_MESSAGES_METADATA_KEY = 'sentMessages';
 
 /** Older entries drop out, so the metadata of a busy thread stays small. */
@@ -86,12 +90,46 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		});
 	}
 
-	async bindSession(derivedThreadId: string, origin: SessionBinding): Promise<void> {
+	async bindSession(
+		derivedThreadId: string,
+		origin: SessionBinding,
+		options: { recipientId?: string; outboundText?: string } = {},
+	): Promise<void> {
 		if (derivedThreadId === origin.threadId) return;
-		if (await this.resolveSession(derivedThreadId)) return;
+		// The first task to message a thread keeps the binding. Every task still
+		// records what it sent, so the reply turn sees all of it.
+		const existing = await this.resolveSession(derivedThreadId);
+		if (!existing) {
+			await this.appendBoundThread(
+				origin.threadId,
+				derivedThreadId,
+				options.recipientId ?? derivedThreadId,
+			);
+			await this.writeContinueAsIfAbsent(derivedThreadId, origin);
+		}
+		if (options.outboundText) {
+			await this.appendOutboundMessage(derivedThreadId, options.outboundText);
+		}
+	}
 
-		await this.appendBoundThread(origin.threadId, derivedThreadId);
-		await this.writeContinueAsIfAbsent(derivedThreadId, origin);
+	async resolveSessionReplyScope(derivedThreadId: string): Promise<SessionReplyScope | null> {
+		const binding = await this.resolveSession(derivedThreadId);
+		if (!binding) return null;
+		const derived = await this.threadRepository.findOneBy({ id: derivedThreadId });
+		const origin = await this.threadRepository.findOneBy({ id: binding.threadId });
+		const bound = this.readBoundThreads(
+			this.parseMetadata(origin?.metadata)[BOUND_THREADS_METADATA_KEY],
+		);
+		const recipient = bound[derivedThreadId] ?? derivedThreadId;
+		return {
+			binding,
+			// The task messaged more than one recipient, so its memory holds other
+			// recipients' messages. Several threads of one recipient do not count.
+			sharedWithOtherRecipients: Object.values(bound).some((other) => other !== recipient),
+			outboundMessages: this.readStringArray(
+				this.parseMetadata(derived?.metadata)[OUTBOUND_METADATA_KEY],
+			),
+		};
 	}
 
 	async resolveSession(derivedThreadId: string): Promise<SessionBinding | null> {
@@ -128,72 +166,156 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		return isSessionBinding(value) ? value : null;
 	}
 
+	async consumeOutboundMessages(derivedThreadId: string, carried: string[]): Promise<void> {
+		// Drops only the messages the turn carried. The cap can push a carried
+		// message out of the queue, so a position-based drop would remove a new one.
+		await this.threadRepository.patchThread(
+			derivedThreadId,
+			(row) => {
+				const metadata = this.parseMetadata(row.metadata);
+				const messages = this.readStringArray(metadata[OUTBOUND_METADATA_KEY]);
+				const remaining = [...messages];
+				for (const text of carried) {
+					const index = remaining.indexOf(text);
+					if (index !== -1) remaining.splice(index, 1);
+				}
+				if (remaining.length === messages.length) return null;
+				return { metadata: JSON.stringify({ ...metadata, [OUTBOUND_METADATA_KEY]: remaining }) };
+			},
+			{},
+		);
+	}
+
 	async unbindSession(derivedThreadId: string): Promise<void> {
-		await this.writeMetadata(derivedThreadId, undefined, {
-			[CONTINUE_AS_METADATA_KEY]: undefined,
-		});
+		const binding = await this.resolveSession(derivedThreadId);
+		// A rebind may have changed the binding since it was read. Clear only the
+		// state that was read, and touch the origin map only when it was cleared.
+		let cleared = false;
+		await this.updateMetadata(
+			derivedThreadId,
+			binding?.resourceId ?? derivedThreadId,
+			(metadata) => {
+				const current = metadata[CONTINUE_AS_METADATA_KEY];
+				cleared = isSameBinding(isSessionBinding(current) ? current : null, binding);
+				return cleared
+					? {
+							...metadata,
+							[CONTINUE_AS_METADATA_KEY]: undefined,
+							[OUTBOUND_METADATA_KEY]: undefined,
+						}
+					: null;
+			},
+		);
+		if (cleared && binding) await this.removeBoundThread(binding.threadId, derivedThreadId);
 	}
 
 	async clearSessionBindings(originThreadId: string): Promise<void> {
 		const existing = await this.threadRepository.findOneBy({ id: originThreadId });
-		const metadata = this.parseMetadata(existing?.metadata);
-		const bound = Array.isArray(metadata[BOUND_THREADS_METADATA_KEY])
-			? (metadata[BOUND_THREADS_METADATA_KEY] as string[])
+		const bound = this.readBoundThreads(
+			this.parseMetadata(existing?.metadata)[BOUND_THREADS_METADATA_KEY],
+		);
+		const derivedThreadIds = Object.keys(bound);
+		if (derivedThreadIds.length === 0) return;
+		for (const id of derivedThreadIds) await this.clearBinding(id);
+		await this.threadRepository.patchThread(
+			originThreadId,
+			(row) => ({
+				metadata: JSON.stringify({
+					...this.parseMetadata(row.metadata),
+					[BOUND_THREADS_METADATA_KEY]: {},
+				}),
+			}),
+			{},
+		);
+	}
+
+	/** Drops the binding and the task messages that waited for a reply. */
+	private async clearBinding(derivedThreadId: string): Promise<void> {
+		await this.writeMetadata(derivedThreadId, undefined, {
+			[CONTINUE_AS_METADATA_KEY]: undefined,
+			[OUTBOUND_METADATA_KEY]: undefined,
+		});
+	}
+
+	private async removeBoundThread(originThreadId: string, derivedThreadId: string): Promise<void> {
+		await this.threadRepository.patchThread(
+			originThreadId,
+			(row) => {
+				const metadata = this.parseMetadata(row.metadata);
+				const { [derivedThreadId]: _removed, ...rest } = this.readBoundThreads(
+					metadata[BOUND_THREADS_METADATA_KEY],
+				);
+				return { metadata: JSON.stringify({ ...metadata, [BOUND_THREADS_METADATA_KEY]: rest }) };
+			},
+			{},
+		);
+	}
+
+	private async appendOutboundMessage(derivedThreadId: string, text: string): Promise<void> {
+		await this.threadRepository.patchThread(
+			derivedThreadId,
+			(row) => {
+				const metadata = this.parseMetadata(row.metadata);
+				const messages = [
+					...this.readStringArray(metadata[OUTBOUND_METADATA_KEY]),
+					text.slice(0, MAX_OUTBOUND_TEXT_LENGTH),
+				];
+				return {
+					metadata: JSON.stringify({
+						...metadata,
+						[OUTBOUND_METADATA_KEY]: messages.slice(-MAX_OUTBOUND_MESSAGES),
+					}),
+				};
+			},
+			{},
+		);
+	}
+
+	private readStringArray(value: unknown): string[] {
+		return Array.isArray(value)
+			? value.filter((item): item is string => typeof item === 'string')
 			: [];
-		if (bound.length === 0) return;
-		for (const id of bound) await this.unbindSession(id);
-		metadata[BOUND_THREADS_METADATA_KEY] = [];
-		if (existing) {
-			existing.metadata = JSON.stringify(metadata);
-			await this.threadRepository.save(existing);
-		}
 	}
 
 	private async writeContinueAsIfAbsent(
 		derivedThreadId: string,
 		origin: SessionBinding,
 	): Promise<void> {
-		const existing = await this.threadRepository.findOneBy({ id: derivedThreadId });
-		const metadata = this.parseMetadata(existing?.metadata);
-		if (isSessionBinding(metadata[CONTINUE_AS_METADATA_KEY])) return;
-		metadata[CONTINUE_AS_METADATA_KEY] = origin;
-		if (existing) {
-			existing.metadata = JSON.stringify(metadata);
-			await this.threadRepository.save(existing);
-			return;
-		}
-		await this.resourceRepository.ensureExists(origin.resourceId);
-		await this.threadRepository.save(
-			this.threadRepository.create({
-				id: derivedThreadId,
-				resourceId: origin.resourceId,
-				title: null,
-				metadata: JSON.stringify(metadata),
-			}),
+		await this.updateMetadata(derivedThreadId, origin.resourceId, (metadata) =>
+			isSessionBinding(metadata[CONTINUE_AS_METADATA_KEY])
+				? null
+				: { ...metadata, [CONTINUE_AS_METADATA_KEY]: origin },
 		);
 	}
 
-	private async appendBoundThread(originThreadId: string, derivedThreadId: string): Promise<void> {
-		const existing = await this.threadRepository.findOneBy({ id: originThreadId });
-		const metadata = this.parseMetadata(existing?.metadata);
-		const bound = Array.isArray(metadata[BOUND_THREADS_METADATA_KEY])
-			? (metadata[BOUND_THREADS_METADATA_KEY] as string[]).filter((id) => id !== derivedThreadId)
-			: [];
-		bound.push(derivedThreadId);
-		metadata[BOUND_THREADS_METADATA_KEY] = bound;
-		if (existing) {
-			existing.metadata = JSON.stringify(metadata);
-			await this.threadRepository.save(existing);
-			return;
+	private async appendBoundThread(
+		originThreadId: string,
+		derivedThreadId: string,
+		recipientId: string,
+	): Promise<void> {
+		await this.updateMetadata(originThreadId, originThreadId, (metadata) => ({
+			...metadata,
+			[BOUND_THREADS_METADATA_KEY]: {
+				...this.readBoundThreads(metadata[BOUND_THREADS_METADATA_KEY]),
+				[derivedThreadId]: recipientId,
+			},
+		}));
+	}
+
+	/**
+	 * Maps each bound thread to its recipient. A platform with threads can give
+	 * one person many threads. Older rows hold a plain list of thread ids, where
+	 * each thread counts as its own recipient.
+	 */
+	private readBoundThreads(value: unknown): Record<string, string> {
+		if (Array.isArray(value)) {
+			return Object.fromEntries(this.readStringArray(value).map((id) => [id, id]));
 		}
-		await this.resourceRepository.ensureExists(originThreadId);
-		await this.threadRepository.save(
-			this.threadRepository.create({
-				id: originThreadId,
-				resourceId: originThreadId,
-				title: null,
-				metadata: JSON.stringify(metadata),
-			}),
+		if (!isRecord(value)) return {};
+		return Object.fromEntries(
+			Object.entries(value).filter(
+				(entry): entry is [string, string] => typeof entry[1] === 'string',
+			),
 		);
 	}
 
@@ -202,25 +324,42 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		resourceId: string | undefined,
 		patch: Record<string, unknown>,
 	): Promise<void> {
-		const existing = await this.threadRepository.findOneBy({ id: threadId });
-		const metadata = {
-			...this.parseMetadata(existing?.metadata),
+		await this.updateMetadata(threadId, resourceId ?? threadId, (metadata) => ({
+			...metadata,
 			...patch,
-		};
+		}));
+	}
 
-		if (existing) {
-			existing.metadata = JSON.stringify(metadata);
-			await this.threadRepository.save(existing);
-			return;
-		}
+	/**
+	 * Read-modify-write on the thread metadata under the row lock of
+	 * `patchThread`, so overlapping writers do not drop each other's keys.
+	 * `update` returns `null` to leave the row as it is. A missing row is
+	 * created from `update({})`.
+	 */
+	private async updateMetadata(
+		threadId: string,
+		resourceId: string,
+		update: (metadata: Record<string, unknown>) => Record<string, unknown> | null,
+	): Promise<void> {
+		const row = await this.threadRepository.patchThread(
+			threadId,
+			(current) => {
+				const next = update(this.parseMetadata(current.metadata));
+				return next ? { metadata: JSON.stringify(next) } : null;
+			},
+			{},
+		);
+		if (row) return;
 
-		await this.resourceRepository.ensureExists(resourceId ?? threadId);
+		const created = update({});
+		if (!created) return;
+		await this.resourceRepository.ensureExists(resourceId);
 		await this.threadRepository.save(
 			this.threadRepository.create({
 				id: threadId,
-				resourceId: resourceId ?? threadId,
+				resourceId,
 				title: null,
-				metadata: JSON.stringify(metadata),
+				metadata: JSON.stringify(created),
 			}),
 		);
 	}
@@ -240,4 +379,8 @@ function isSessionBinding(value: unknown): value is SessionBinding {
 	return (
 		isRecord(value) && typeof value.threadId === 'string' && typeof value.resourceId === 'string'
 	);
+}
+
+function isSameBinding(a: SessionBinding | null, b: SessionBinding | null): boolean {
+	return a?.threadId === b?.threadId && a?.resourceId === b?.resourceId;
 }
