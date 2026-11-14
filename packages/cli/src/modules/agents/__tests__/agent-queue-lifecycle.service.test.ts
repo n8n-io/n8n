@@ -7,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentAppTurnService } from '../agent-app-turn.service';
 import type { AgentChatResumeService } from '../agent-chat-resume.service';
 import type { AgentMessageQueueConsumer } from '../agent-message-queue-consumer.service';
+import type { AgentWorkflowToolResumeService } from '../agent-workflow-tool-resume.service';
 import type { WebhookChannelService } from '../integrations/platforms/webhook/webhook-channel.service';
 import { AgentQueueLifecycle } from '../queue/agent-queue-lifecycle.service';
 import type { AgentRemoteTurnService } from '../queue/agent-remote-turn.service';
@@ -32,6 +33,7 @@ describe('AgentQueueLifecycle', () => {
 			mock<AgentChatResumeService>(),
 			mock<WebhookChannelService>(),
 			mock<AgentAppTurnService>(),
+			mock<AgentWorkflowToolResumeService>(),
 		);
 	}
 

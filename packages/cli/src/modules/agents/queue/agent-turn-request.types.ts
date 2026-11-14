@@ -1,4 +1,4 @@
-import { jsonParse, type JsonValue } from 'n8n-workflow';
+import { jsonParse, type JsonValue, type RelatedAgentRun } from 'n8n-workflow';
 
 /** The chat surface of a resumed turn. Each surface resumes with its own runtime. */
 export type AgentChatResumeSurface = 'preview' | 'n8n-chat';
@@ -69,8 +69,20 @@ export interface AgentAppResumeRequest {
 	threadId: string;
 }
 
+/**
+ * The resume of an agent tool call after the sub-workflow of a workflow tool
+ * finished. No caller waits for it.
+ */
+export interface AgentWorkflowToolResumeRequest {
+	kind: 'workflow-tool-resume';
+	agentRun: RelatedAgentRun;
+	/** The status of the finished sub-execution. */
+	status: string;
+}
+
 export type AgentTurnRequestPayload =
 	| AgentChatResumeRequest
+	| AgentWorkflowToolResumeRequest
 	| AgentWebhookRespondRequest
 	| AgentWebhookDecideRequest
 	| AgentAppChatRequest

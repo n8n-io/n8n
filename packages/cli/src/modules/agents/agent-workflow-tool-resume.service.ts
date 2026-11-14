@@ -11,6 +11,7 @@ import { isTerminalExecutionStatus } from 'n8n-workflow';
 import { Publisher } from '@n8n/backend-services';
 import { collectResultData } from '@/workflows/callable/callable-workflow-result';
 
+import { AgentClusterService } from './agent-cluster.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentRepository } from './repositories/agent.repository';
@@ -25,6 +26,9 @@ import { ChatIntegrationService } from './integrations/chat-integration.service'
 import { readIntegrationMessageContext } from './integrations/integration-message-context';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { AgentRemoteTurnService } from './queue/agent-remote-turn.service';
+import { AgentTurnPlacement } from './queue/agent-turn-placement.service';
+import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 
 /**
  * Wakes the agent tool call a finished sub-execution belongs to, from the
@@ -47,8 +51,16 @@ export class AgentWorkflowToolResumeService {
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly agentRepository: AgentRepository,
+		private readonly cluster: AgentClusterService,
+		private readonly placement: AgentTurnPlacement,
+		private readonly remoteTurns: AgentRemoteTurnService,
+		private readonly messageQueueRepository: AgentMessageQueueRepository,
 	) {
 		this.logger = this.logger.scoped('agents');
+		this.remoteTurns.handle('workflow-tool-resume', {
+			mode: 'detached',
+			run: async ({ agentRun, status }) => await this.resumeSafely(agentRun, status),
+		});
 	}
 
 	@OnLifecycleEvent('workflowExecuteAfter')
@@ -71,6 +83,11 @@ export class AgentWorkflowToolResumeService {
 		const checkpoint = await this.checkpointStorage.getStatus(agentRun.runId, agentRun.agentId);
 		if (checkpoint.status !== 'active' || checkpoint.checkpoint?.status !== 'suspended') return;
 
+		// In agent queue mode, an agent worker runs the resume. The process that
+		// sent it runs it when no worker takes it in time.
+		const runHere = async () => await this.resumeSafely(agentRun, ctx.runData.status);
+		if (await this.sendToWorker(agentRun, ctx.runData.status, runHere)) return;
+
 		// In queue mode this runs on a worker, which holds no chat connections.
 		if (this.instanceSettings.isWorker) {
 			await this.publisher.publishCommand({
@@ -91,7 +108,44 @@ export class AgentWorkflowToolResumeService {
 		agentRun: RelatedAgentRun;
 		status: string;
 	}): Promise<void> {
+		if (this.placement.dispatchEnabled && this.canRunOnWorker(agentRun)) {
+			// Every main gets this command. Only the leader sends the job, so the
+			// resume runs once.
+			if (!this.cluster.isLeader) return;
+			const runHere = async () => await this.resumeSafely(agentRun, status);
+			if (await this.sendToWorker(agentRun, status, runHere)) return;
+		}
 		await this.resumeSafely(agentRun, status);
+	}
+
+	/** Returns `true` when an agent worker runs the resume, or this process runs it later. */
+	private async sendToWorker(
+		agentRun: RelatedAgentRun,
+		status: string,
+		runHere: () => Promise<void>,
+	): Promise<boolean> {
+		if (!this.placement.sendsJobs || !this.canRunOnWorker(agentRun)) return false;
+		try {
+			return await this.remoteTurns.detached(
+				{ kind: 'workflow-tool-resume', agentRun, status },
+				runHere,
+			);
+		} catch (error) {
+			this.logger.warn('Failed to send an agent workflow tool resume to a worker', {
+				agentId: agentRun.agentId,
+				runId: agentRun.runId,
+				error,
+			});
+			return false;
+		}
+	}
+
+	/** Chat platforms that need a live ingress connection stay on mains. */
+	private canRunOnWorker(agentRun: RelatedAgentRun): boolean {
+		if (agentRun.publishedN8nChat === true) return true;
+		if (agentRun.integrationType === N8N_CHAT_INTEGRATION_TYPE) return true;
+		if (!agentRun.integrationType) return false;
+		return this.placement.isWorkerKind('integration', agentRun.integrationType);
 	}
 
 	/**
@@ -178,12 +232,8 @@ export class AgentWorkflowToolResumeService {
 		);
 		if (!route) return;
 		const { integrationType, credentialId, messageContext, allowLegacyThreadId } = route;
-		const bridge = this.chatIntegrationService.getBridge(
-			agentRun.agentId,
-			integrationType,
-			credentialId,
-		);
-		if (!bridge) {
+		const lease = await this.leaseBridge(agentRun, integrationType, credentialId);
+		if (!lease) {
 			// The checkpoint stays suspended and the suspension card stays clickable,
 			// so the run is recoverable once the integration reconnects.
 			this.logger.warn('No live chat bridge to resume the agent run into', {
@@ -195,12 +245,45 @@ export class AgentWorkflowToolResumeService {
 			return;
 		}
 
-		await bridge.resumeInAgentThread(
-			agentRun.threadId,
-			agentRun.runId,
-			agentRun.toolCallId,
-			resumeData,
-			{ messageContext, allowLegacyThreadId },
+		try {
+			await lease.bridge.resumeInAgentThread(
+				agentRun.threadId,
+				agentRun.runId,
+				agentRun.toolCallId,
+				resumeData,
+				{ messageContext, allowLegacyThreadId },
+			);
+		} finally {
+			lease.release();
+		}
+	}
+
+	/** A worker has no ingress connection, so it builds a send-only one. */
+	private async leaseBridge(
+		agentRun: RelatedAgentRun,
+		integrationType: string,
+		credentialId: string | undefined,
+	) {
+		if (!this.cluster.isWorker) {
+			const bridge = this.chatIntegrationService.getBridge(
+				agentRun.agentId,
+				integrationType,
+				credentialId,
+			);
+			return bridge ? { bridge, release: () => {} } : undefined;
+		}
+		if (!credentialId) return undefined;
+		const connection = await this.messageQueueRepository.findPublishedConnection(
+			agentRun.agentId,
+			agentRun.projectId,
+			integrationType,
+			credentialId,
+		);
+		if (!connection) return undefined;
+		return await this.chatIntegrationService.acquireSendOnlyBridge(
+			agentRun.agentId,
+			agentRun.projectId,
+			connection,
 		);
 	}
 

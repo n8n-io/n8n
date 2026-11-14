@@ -49,9 +49,16 @@ export interface AgentResultTurnHandler<K extends Kind> {
 	run: (payload: PayloadOf<K>, context: AgentRemoteTurnContext) => Promise<JsonObject>;
 }
 
+/** A turn that no caller waits for, such as the resume of a workflow tool. */
+export interface AgentDetachedTurnHandler<K extends Kind> {
+	mode: 'detached';
+	run: (payload: PayloadOf<K>, context: AgentRemoteTurnContext) => Promise<void>;
+}
+
 export type AgentTurnHandler<K extends Kind> =
 	| AgentStreamTurnHandler<K>
-	| AgentResultTurnHandler<K>;
+	| AgentResultTurnHandler<K>
+	| AgentDetachedTurnHandler<K>;
 
 /**
  * - `local`: no worker took the turn. The caller runs it in this process.
@@ -230,6 +237,47 @@ export class AgentRemoteTurnService {
 		}
 	}
 
+	/**
+	 * Send a turn that no caller waits for to a worker. Returns `false` when
+	 * this process must run it in its own way: no worker is up, or the job
+	 * could not be sent. When no worker claims the request in time, this
+	 * process claims it and calls `fallback`. A process that stops before then
+	 * leaves the job to the workers.
+	 */
+	async detached(
+		payload: AgentTurnRequestPayload,
+		fallback: () => Promise<void>,
+	): Promise<boolean> {
+		if (!(await this.placement.workersAvailable())) return false;
+
+		const requestId = await this.create(payload);
+		if (!(await this.send(requestId))) {
+			await this.requests.remove(requestId).catch(() => {});
+			return false;
+		}
+		void this.fallBackWhenUnclaimed(requestId, payload.kind, fallback);
+		return true;
+	}
+
+	private async fallBackWhenUnclaimed(
+		requestId: string,
+		kind: Kind,
+		fallback: () => Promise<void>,
+	): Promise<void> {
+		await sleep(AgentTurnPlacement.FALLBACK_WAIT_MS, undefined, { ref: false });
+		try {
+			if (!(await this.claimHere(requestId))) return;
+			await this.requests.remove(requestId).catch(() => {});
+			await fallback();
+		} catch (error) {
+			this.logger.warn('Failed to run an agent turn that no worker took', {
+				requestId,
+				kind,
+				error,
+			});
+		}
+	}
+
 	/** Run a request job on this worker. */
 	async runRequest(requestId: string): Promise<void> {
 		const claimant = this.cluster.instanceKey;
@@ -250,6 +298,14 @@ export class AgentRemoteTurnService {
 		const stopWatch = this.watchWanted(requestId, abort);
 		const context = { requestId, abortSignal: abort.signal };
 		try {
+			if (handler.mode === 'detached') {
+				try {
+					await handler.run(payload, context);
+				} finally {
+					await this.requests.remove(requestId).catch(() => {});
+				}
+				return;
+			}
 			if (handler.mode === 'result') {
 				const result = await handler.run(payload, context);
 				// The main removes the row once it reads the result.
@@ -266,7 +322,8 @@ export class AgentRemoteTurnService {
 				await this.requests.remove(requestId).catch(() => {});
 			}
 		} catch (error) {
-			// A result turn reports its own errors. This is a failure to store the result.
+			// A result turn reports its own errors. This is a failure to store the
+			// result, or a failed detached turn.
 			this.logger.warn('Failed to finish an agent turn request', {
 				requestId,
 				kind: payload.kind,

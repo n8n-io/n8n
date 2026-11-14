@@ -66,6 +66,15 @@ export class AgentTurnPlacement {
 		);
 	}
 
+	/**
+	 * True on a process that may send jobs to agent workers: a main that
+	 * dispatches, or an agent worker. An agent worker sends the resume of a
+	 * workflow tool whose sub-workflow finished on it.
+	 */
+	get sendsJobs(): boolean {
+		return this.dispatchEnabled || this.runsTurnsOnWorker;
+	}
+
 	/** `platform` is the chat platform of an `integration` turn. */
 	isWorkerKind(kind: QueuedTurnKind, platform?: string): boolean {
 		if (kind === 'integration') return platform !== undefined && WORKER_PLATFORMS.has(platform);
@@ -82,7 +91,7 @@ export class AgentTurnPlacement {
 	 * the registry at most once each `WORKER_CHECK_TTL_MS`.
 	 */
 	async workersAvailable(): Promise<boolean> {
-		if (!this.dispatchEnabled) return false;
+		if (!this.sendsJobs) return false;
 		const now = Date.now();
 		if (this.workerCheck && now - this.workerCheck.at < AgentTurnPlacement.WORKER_CHECK_TTL_MS) {
 			return this.workerCheck.available;
