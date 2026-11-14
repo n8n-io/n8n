@@ -35,6 +35,7 @@ export {
 	type SubWorkflowRestriction,
 } from './composables/useSubWorkflowRestriction';
 export { default as RestrictedNodePopover } from './components/RestrictedNodePopover.vue';
+export { default as RestrictedMenuItemMarker } from './components/RestrictedMenuItemMarker.vue';
 export { default as RestrictedNodePanel } from './components/RestrictedNodePanel.vue';
 export { default as RestrictedTypeCallout } from './components/RestrictedTypeCallout.vue';
 export { default as RestrictedTemplateNodesCallout } from './components/RestrictedTemplateNodesCallout.vue';
