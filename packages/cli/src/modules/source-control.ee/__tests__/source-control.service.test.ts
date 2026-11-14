@@ -23,6 +23,7 @@ import {
 } from '../constants';
 import { sourceControlFoldersExistCheck } from '../source-control-helper.ee';
 import type { ExportResult } from '../types/export-result';
+import { SourceControlGetStatus } from '../types/source-control-get-status';
 import { mockServiceAccount } from '@test/mock-objects';
 
 // Mock the status service to avoid complex dependency issues
@@ -1595,6 +1596,41 @@ describe('SourceControlService', () => {
 			});
 		});
 	});
+
+	describe('SourceControlGetStatus parsing', () => {
+		const build = (preferLocalVersion: string | boolean | undefined, verbose: string | boolean | undefined = undefined) =>
+			new SourceControlGetStatus({ direction: 'pull', preferLocalVersion, verbose });
+
+		it('defaults preferLocalVersion to true when the query parameter is missing', () => {
+			expect(build(undefined).preferLocalVersion).toBe(true);
+		});
+
+		it('keeps the default for an empty query parameter', () => {
+			expect(build('').preferLocalVersion).toBe(true);
+		});
+
+		it('keeps the default for unrecognized values', () => {
+			expect(build('1').preferLocalVersion).toBe(true);
+		});
+
+		it('honors an explicit false', () => {
+			expect(build(false).preferLocalVersion).toBe(false);
+			expect(build('false').preferLocalVersion).toBe(false);
+		});
+
+		it('honors an explicit true', () => {
+			expect(build(true).preferLocalVersion).toBe(true);
+			expect(build('true').preferLocalVersion).toBe(true);
+		});
+
+		it('keeps verbose defaults unchanged for missing, empty, and unrecognized values', () => {
+			expect(build(undefined).verbose).toBe(false);
+			expect(build(undefined, '').verbose).toBe(false);
+			expect(build(undefined, '1').verbose).toBe(false);
+			expect(build(undefined, 'true').verbose).toBe(true);
+		});
+	});
+
 
 	describe('sanityCheck', () => {
 		beforeEach(() => {

@@ -46,7 +46,7 @@ function booleanFromString(value: string | boolean | undefined): boolean | undef
 	if (typeof value === 'boolean') {
 		return value;
 	}
-	if (value === undefined) {
+	if (value === undefined || value === '' || (value !== 'true' && value !== 'false')) {
 		return undefined;
 	}
 	return value === 'true';
