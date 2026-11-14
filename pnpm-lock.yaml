@@ -2859,6 +2859,9 @@ importers:
       '@testcontainers/postgresql':
         specifier: 'catalog:'
         version: 11.13.0(supports-color@8.1.1)
+      '@testcontainers/redis':
+        specifier: 'catalog:'
+        version: 11.13.0(supports-color@8.1.1)
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
@@ -2871,6 +2874,9 @@ importers:
       '@types/supertest':
         specifier: ^6.0.3
         version: 6.0.3
+      ioredis:
+        specifier: 5.3.2
+        version: 5.3.2(supports-color@8.1.1)
       n8n-containers:
         specifier: workspace:*
         version: link:../../quality/environments/containers
