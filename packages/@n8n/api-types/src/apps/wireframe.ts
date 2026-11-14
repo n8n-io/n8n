@@ -1,3 +1,5 @@
+import { FilterXSS, getDefaultWhiteList } from 'xss';
+
 import {
 	APP_PLAN_SHELL_ID,
 	listPlanComponents,
@@ -198,13 +200,97 @@ export interface WireframeRenderOptions {
 }
 
 /** One planned block. Its root carries `data-plan-id`. */
-/** Detail HTML without scripts, frames, event handlers or `javascript:` URLs. */
+const SVG_ATTRIBUTES = [
+	'viewbox',
+	'width',
+	'height',
+	'x',
+	'y',
+	'x1',
+	'x2',
+	'y1',
+	'y2',
+	'cx',
+	'cy',
+	'r',
+	'rx',
+	'ry',
+	'd',
+	'points',
+	'fill',
+	'stroke',
+	'stroke-width',
+	'stroke-dasharray',
+	'stroke-linecap',
+	'opacity',
+	'transform',
+	'text-anchor',
+	'font-size',
+	'offset',
+	'stop-color',
+	'preserveaspectratio',
+];
+const SVG_TAGS = [
+	'svg',
+	'g',
+	'path',
+	'rect',
+	'circle',
+	'ellipse',
+	'line',
+	'polyline',
+	'polygon',
+	'text',
+	'tspan',
+	'defs',
+	'lineargradient',
+	'stop',
+];
+
+let detailFilter: FilterXSS | undefined;
+
+/**
+ * Detail HTML as markup only: an allowlist of layout, text, table, form and SVG
+ * elements with `class` and `style`. Scripts, event handlers and unsafe URLs go.
+ */
 export function sanitizeDetailHtml(html: string): string {
-	return html
-		.replace(/<(script|style|iframe|object|embed|template)\b[\s\S]*?<\/\1\s*>/gi, '')
-		.replace(/<\/?(script|style|iframe|object|embed|template|link|meta|base)\b[^>]*>/gi, '')
-		.replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-		.replace(/(href|src|action|formaction)\s*=\s*("|')?\s*javascript:[^"'\s>]*("|')?/gi, '$1="#"');
+	if (!detailFilter) {
+		const allowed = getDefaultWhiteList();
+		for (const tag of [
+			'main',
+			'section',
+			'article',
+			'aside',
+			'header',
+			'footer',
+			'nav',
+			'label',
+			'input',
+			'select',
+			'option',
+			'button',
+			'textarea',
+			'progress',
+		]) {
+			allowed[tag] ??= [];
+		}
+		allowed.input?.push('type', 'value', 'placeholder', 'checked', 'disabled');
+		allowed.option?.push('value', 'selected');
+		allowed.progress?.push('value', 'max');
+		allowed.button?.push('type', 'disabled');
+		allowed.textarea?.push('placeholder', 'rows');
+		for (const tag of SVG_TAGS) allowed[tag] = [...SVG_ATTRIBUTES];
+		for (const tag of Object.keys(allowed))
+			allowed[tag] = [...(allowed[tag] ?? []), 'class', 'style'];
+		detailFilter = new FilterXSS({
+			whiteList: allowed,
+			// Inline styles stay as written: the detail is a design, and CSS does not run scripts.
+			css: false,
+			stripIgnoreTag: true,
+			stripIgnoreTagBody: ['script', 'style', 'iframe', 'object', 'embed', 'template'],
+		});
+	}
+	return detailFilter.process(html);
 }
 
 /** The font of the n8n editor. The editor sends the font file into the frame (see `postPlanFrameContext`). */

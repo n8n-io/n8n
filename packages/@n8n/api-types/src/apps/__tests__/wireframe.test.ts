@@ -465,3 +465,26 @@ describe('overlay labels', () => {
 		expect(() => new Function(script)).not.toThrow();
 	});
 });
+
+describe('sanitizeDetailHtml', () => {
+	it('keeps layout, inline styles and SVG charts', () => {
+		const html =
+			'<div class="kpi" style="display:grid;gap:8px"><b>12</b></div>' +
+			'<svg viewBox="0 0 10 10"><path d="M0 0L10 10" stroke="#888"></path></svg>';
+		const clean = sanitizeDetailHtml(html);
+		expect(clean).toContain('style="display:grid;gap:8px"');
+		expect(clean).toContain('class="kpi"');
+		expect(clean).toMatch(/<svg viewBox="0 0 10 10">/i);
+		expect(clean).toContain('d="M0 0L10 10"');
+	});
+
+	it('removes scripts, handlers and unsafe links, also when encoded', () => {
+		const clean = sanitizeDetailHtml(
+			'<script>alert(1)</script><img src="https://example.com/a.png" onerror="alert(1)">' +
+				'<a href="jav&#x09;ascript:alert(1)">a</a><svg><a xlink:href="javascript:alert(1)">b</a></svg>' +
+				'<iframe src="https://example.com"></iframe>',
+		);
+		expect(clean).not.toMatch(/alert|onerror|javascript|iframe|xlink/i);
+		expect(clean).toContain('<img src="https://example.com/a.png">');
+	});
+});
