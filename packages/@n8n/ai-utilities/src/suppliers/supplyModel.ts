@@ -7,8 +7,9 @@ import { BaseChatModel } from '../chat-model/base';
 import type { ChatModel } from '../types/chat-model';
 import type { OpenAIModelOptions } from '../types/openai';
 import { makeN8nLlmFailedAttemptHandler } from '../utils/failed-attempt-handler/n8nLlmFailedAttemptHandler';
-import { getProxyAgent, aiClientFetch } from '../utils/http-proxy-agent';
+import { getProxyAgent } from '../utils/http-proxy-agent';
 import { N8nLlmTracing } from '../utils/n8n-llm-tracing';
+import { createAiClientFetch } from '../utils/trace-headers-fetch';
 
 export type OpenAiModel = OpenAIModelOptions & {
 	type: 'openai';
@@ -21,7 +22,7 @@ function isOpenAiModel(model: SupplyModelOptions): model is OpenAiModel {
 
 function getOpenAiModel(ctx: ISupplyDataFunctions, model: OpenAiModel) {
 	const clientConfiguration: ClientOptions = {
-		fetch: aiClientFetch,
+		fetch: createAiClientFetch(ctx),
 		baseURL: model.baseUrl,
 	};
 

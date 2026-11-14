@@ -1,7 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { createRefreshingAuthFetch, proxyFetch } from '@n8n/ai-utilities';
+import { createRefreshingAuthFetch, proxyFetch, withTraceHeaders } from '@n8n/ai-utilities';
 import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import type {
@@ -338,35 +338,6 @@ export async function connectMcpClient({
 
 function headersToRecord(headers: HeadersInit | undefined): Record<string, string> {
 	return headers ? Object.fromEntries(new Headers(headers).entries()) : {};
-}
-
-/**
- * Wraps a fetch so that each request carries the W3C trace context of the node that
- * runs now. One MCP client serves many tool calls under different spans, so the
- * headers are read for each request and not once at connect.
- */
-function withTraceHeaders(
-	baseFetch: typeof fetch,
-	getTraceHeaders: () => Record<string, string>,
-	logger?: Logger,
-): typeof fetch {
-	return async (input, init) => {
-		let tracedInit: RequestInit | undefined;
-		try {
-			const traceHeaders = getTraceHeaders();
-			if (Object.keys(traceHeaders).length) {
-				const headers = new Headers(init?.headers);
-				for (const [name, value] of Object.entries(traceHeaders)) headers.set(name, value);
-				tracedInit = { ...init, headers };
-			}
-		} catch (error) {
-			logger?.warn('Failed to add the trace context to an MCP request', {
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
-
-		return await baseFetch(input, tracedInit ?? init);
-	};
 }
 
 /**
