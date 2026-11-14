@@ -1,6 +1,12 @@
 import type { EngineLogger } from '../logging';
 import type { Detector, Finding, Repairs } from './reconciliation.types';
 
+/** How often a detector runs, unless the host sets another value. */
+export const DEFAULT_RECONCILIATION_INTERVAL_MS = 60_000;
+
+/** The most rows that one pass of a detector reads. */
+export const DEFAULT_RECONCILIATION_BATCH_SIZE = 500;
+
 type RepairOutcome = 'repaired' | 'unchanged' | 'failed';
 
 /**
