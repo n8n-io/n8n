@@ -20,6 +20,8 @@ export const SKILL_SOURCE_REASONS = [
 	'parse_error',
 	'blocked_by_check',
 	'review_required',
+	'stale',
+	'name_clash',
 	'name_taken',
 	'duplicate_source',
 	'credential_invalid',
@@ -302,6 +304,74 @@ export type SkillSourceListItem = {
 	/** Whether the user may delete the source and its synced skills. */
 	canDelete: boolean;
 };
+
+const reviewedUpdate = {
+	contentHash: z.string().regex(/^[a-f0-9]{64}$/),
+	baseVersionId: z.string().min(1).max(36),
+};
+
+export class ReviewSkillSourceUpdateQueryDto extends Z.class(reviewedUpdate) {}
+
+/** Applies every selected update in one transaction. */
+export class AcceptSkillSourceUpdatesDto extends Z.class({
+	updates: z
+		.array(z.object({ skillId: z.string().min(1).max(36), ...reviewedUpdate }))
+		.min(1)
+		.max(SKILL_SOURCE_MAX_SKILLS)
+		.refine(
+			(updates) => new Set(updates.map(({ skillId }) => skillId)).size === updates.length,
+			'Select each skill once',
+		),
+	reviewedWarnings: z.boolean().default(false),
+}) {}
+
+export class SkillSourceCommitQueryDto extends Z.class({
+	revision: z.string().min(1).max(255),
+}) {}
+
+export type SkillUpdateCommit = {
+	revision: string;
+	webUrl: string | null;
+	message: string | null;
+	author: string | null;
+	date: string | null;
+};
+
+export type SkillPendingUpdate = {
+	revisionUrl: string | null;
+	skillId: string;
+	name: string;
+	location: string;
+	webUrl: string;
+	contentHash: string;
+	baseVersionId: string;
+	revision: string;
+	check: SkillScanResult;
+	nameClash: { name: string; where: 'scope' | 'agent' } | null;
+	changes: { added: number; removed: number };
+	nextVersion: number;
+};
+
+export type SkillSourceUpdates = {
+	updates: SkillPendingUpdate[];
+	commit: SkillUpdateCommit | null;
+};
+
+export type SkillUpdateFile = {
+	path: string;
+	before: string;
+	after: string;
+	status?: 'added' | 'removed';
+};
+
+/** Names are limited to agents the user can read. */
+export type SkillUpdateAgents = {
+	agents: Array<{ id: string; name: string }>;
+	hiddenAgentCount: number;
+};
+
+export type SkillUpdateReview = SkillUpdateAgents & { files: SkillUpdateFile[] };
+export type SkillSourceAcceptResponse = SkillUpdateAgents & { updatedCount: number };
 
 /** A refused source delete names only the agents that the user may read. */
 export const skillSourceDeleteBlockSchema = z.object({
