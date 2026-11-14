@@ -25,6 +25,14 @@ function clientShapedMessage(parsed: unknown): string | undefined {
 		: undefined;
 }
 
+/** Reads back what this module writes, for callers that handle a failure themselves. */
+export function clientErrorMessage(text: string): string | undefined {
+	const parsed = parseJson(text);
+	if (!isRecord(parsed) || !isRecord(parsed.error)) return undefined;
+	const message = parsed.error.message;
+	return typeof message === 'string' && message.trim() ? message : undefined;
+}
+
 const NAMED_ENTITIES: Record<string, string> = {
 	amp: '&',
 	lt: '<',
