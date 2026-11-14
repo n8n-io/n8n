@@ -577,9 +577,10 @@ export class AgentExecutionService {
 	}
 
 	async finalizeExecution(executionId: string, params: RecordMessageParams): Promise<string> {
+		const abortReason: unknown = this.executionControllers.get(executionId)?.signal.reason;
 		this.stopHeartbeat(executionId);
 		this.pendingTimelineSnapshots.delete(executionId);
-		const record = applyFatalSessionOutcome(params.record);
+		const record = applyFatalSessionOutcome(withTimeoutOutcome(params.record, abortReason));
 		const settled = record === params.record ? params : { ...params, record };
 		const status = executionStatus(settled);
 		const stoppedAt = new Date(record.startTime + record.duration);
@@ -1810,6 +1811,15 @@ function metricsSubjectOf(
 	params: Pick<RecordMessageParams, 'agentId' | 'threadMetadata'>,
 ): AgentMetricsSubject {
 	return { agentId: params.agentId, parentAgentId: params.threadMetadata?.parentAgentId };
+}
+
+/**
+ * The runtime reports an aborted turn as cancelled. A turn that the time limit
+ * stopped failed, so record it as an error with the reason.
+ */
+function withTimeoutOutcome(record: MessageRecord, abortReason: unknown): MessageRecord {
+	if (!(abortReason instanceof AgentTurnTimeoutError) || record.error !== null) return record;
+	return { ...record, finishReason: 'error', error: abortReason.message };
 }
 
 function executionStatus(

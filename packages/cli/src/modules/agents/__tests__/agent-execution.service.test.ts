@@ -801,6 +801,42 @@ describe('AgentExecutionService', () => {
 			});
 		});
 
+		it('records a turn that the time limit stopped as an error, not a cancel', async () => {
+			vi.useFakeTimers();
+			agentsConfig.turnTimeoutSeconds = 5;
+			try {
+				await startSnapshotExecution();
+				const signal = service.getAbortSignal('execution-1');
+				agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+
+				vi.advanceTimersByTime(5_000);
+				expect(signal.aborted).toBe(true);
+
+				await service.finalizeExecution('execution-1', {
+					threadId: 'thread-1',
+					agentId: 'agent-1',
+					agentName: 'Agent',
+					projectId: 'project-1',
+					userMessage: 'Run',
+					record: makeMessageRecord({ finishReason: 'cancelled' }),
+				});
+
+				expect(agentExecutionRepository.updateIfRunning).toHaveBeenCalledWith(
+					'execution-1',
+					expect.objectContaining({
+						status: 'error',
+						error: expect.stringContaining('limit of 5 seconds'),
+					}),
+					{ ownerKey: 'instance-a' },
+					expect.anything(),
+					undefined,
+				);
+			} finally {
+				agentsConfig.turnTimeoutSeconds = 0;
+				vi.useRealTimers();
+			}
+		});
+
 		it('stops local turns with an interrupted error', async () => {
 			await startSnapshotExecution();
 			const signal = service.getAbortSignal('execution-1');
