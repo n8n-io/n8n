@@ -293,6 +293,7 @@ export class AgentRuntime {
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
 			tokenCounter,
 			...(config.workspaceFilesystem ? { workspaceFilesystem: config.workspaceFilesystem } : {}),
+			...(config.toolCallInterceptor ? { toolCallInterceptor: config.toolCallInterceptor } : {}),
 			...(this.activeSkills ? { loadSkill: this.activeSkills.load.bind(this.activeSkills) } : {}),
 		});
 		this.modelCost = config.modelCost;

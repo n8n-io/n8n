@@ -569,6 +569,26 @@ describe('inline sub-agent transport inheritance', () => {
 		expect(runtimeConfigs[0].modelFetch).toBe(parentFetch);
 	});
 
+	it('passes the parent tool call interceptor to inline child runtimes', async () => {
+		const interceptor = vi.fn();
+		const agent = new Agent('parent');
+		agent.toolCallInterceptor(interceptor as never);
+		const runInline = (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
+			deferredTools: [],
+			modelConfig: 'openai/gpt-4o-mini',
+			tools: [makeTool('lookup')],
+		});
+
+		await runInline({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: ['research'],
+		} as unknown as DelegateSubAgentRequest);
+
+		expect(runtimeConfigs[0].toolCallInterceptor).toBe(interceptor);
+	});
+
 	it('names inline child runtimes after the parent functionId', async () => {
 		const agent = new Agent('parent');
 		agent.functionId('feature.orchestrator');

@@ -14,6 +14,7 @@ import type {
 	PendingToolCall,
 	ToolSuspendOptions,
 	ToolApprovalContext,
+	ToolCallInterceptor,
 } from '../index';
 import type { AgentPersistenceOptions, ToolResultEntry } from '../sdk/agent';
 import type { AgentMessage } from '../sdk/message';
@@ -153,4 +154,5 @@ export interface ToolCallExecutorDeps {
 	onCancelled: () => void;
 	tokenCounter: TokenCounter;
 	workspaceFilesystem?: WorkspaceFilesystem;
+	toolCallInterceptor?: ToolCallInterceptor;
 }

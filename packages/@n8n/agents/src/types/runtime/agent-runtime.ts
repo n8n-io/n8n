@@ -24,6 +24,7 @@ import type {
 	ReasoningLevel,
 	ThinkingConfig,
 	TitleGenerationConfig,
+	ToolCallInterceptor,
 } from '../index';
 import type {
 	AgentPersistenceOptions,
@@ -120,6 +121,8 @@ export interface AgentRuntimeConfig {
 	eventBus?: AgentEventBus;
 	/** Number of tool calls to execute concurrently. Default `1` (sequential). */
 	toolCallConcurrency?: number;
+	/** Runs around every tool handler. See {@link ToolCallInterceptor}. */
+	toolCallInterceptor?: ToolCallInterceptor;
 	titleGeneration?: TitleGenerationConfig;
 	telemetry?: BuiltTelemetry;
 	/** Existing run id to continue, used when resuming a suspended run. */

@@ -24,6 +24,8 @@ export type {
 	EvalRunResult,
 	EvalResults,
 	ToolContext,
+	ToolCallInterception,
+	ToolCallInterceptor,
 	ToolCancellationContext,
 	ToolExecutionContext,
 	ToolApprovalContext,
