@@ -12,6 +12,16 @@ describe('safeRegex', () => {
 		expect(parseRegexLiteral('foo')).toEqual({ source: 'foo', flags: '' });
 	});
 
+	it('accepts the d and v flags', () => {
+		// `d` (hasIndices, ES2022) and `v` (unicodeSets, ES2024) are valid on
+		// the Node range this package supports. Left out of the allowlist,
+		// the whole literal is treated as the pattern source instead.
+		expect(parseRegexLiteral('/foo/d')).toEqual({ source: 'foo', flags: 'd' });
+		expect(parseRegexLiteral('/foo/v')).toEqual({ source: 'foo', flags: 'v' });
+		expect(parseRegexLiteral('/foo/gidv')).toEqual({ source: 'foo', flags: 'gidv' });
+		expect(parseRegexLiteral('/foo/v', true)).toEqual({ source: 'foo', flags: 'vi' });
+	});
+
 	it('delegates operations to the configured engine', () => {
 		setSafeRegexEngine({
 			exec: vi.fn(() => ['match'] as unknown as RegExpExecArray),
