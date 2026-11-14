@@ -555,8 +555,10 @@ const toolGuardrailBaseShape = {
 			'Guardrail id can only contain letters, numbers, hyphens, and underscores',
 		),
 	name: z.string().trim().min(1).optional(),
-	stage: z.enum(['before', 'after']),
-	tools: z.array(ToolGuardrailToolRefSchema).min(1),
+	/** When absent, runs at every stage the kind supports (both, for pattern kinds). */
+	stage: z.enum(['before', 'after']).optional(),
+	/** Covers every tool when absent. At least one ref when present. */
+	tools: z.array(ToolGuardrailToolRefSchema).min(1).optional(),
 };
 
 const modelToolGuardrailShape = {
@@ -899,6 +901,8 @@ export function findToolGuardrailRefIssues(
 	const issues: ToolGuardrailRefIssue[] = [];
 	for (let guardrailIndex = 0; guardrailIndex < guardrails.length; guardrailIndex++) {
 		const refs = guardrails[guardrailIndex].tools;
+		// A guardrail without `tools` covers every tool, so it has no refs to dangle.
+		if (!refs) continue;
 		for (let toolIndex = 0; toolIndex < refs.length; toolIndex++) {
 			const ref = refs[toolIndex];
 			const matches =

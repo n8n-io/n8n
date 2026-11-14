@@ -26,6 +26,7 @@ import {
 	hasChannelRuntime,
 	isCredentialAgentIntegration,
 	type AgentIntegrationConfig,
+	type AgentToolGuardrailConfig,
 	type BudgetGuardrailConfig,
 	type AgentJsonConfig,
 	type AgentJsonMcpServerConfig,
@@ -141,6 +142,8 @@ export interface ReconstructedAgentRuntime {
 	 * classifier — a depleted wallet ends the run with `budget.credits`.
 	 */
 	modelCredentialGatewayManaged?: boolean;
+	/** Saved tool guardrail config. Absent when the agent has none. */
+	toolGuardrails?: AgentToolGuardrailConfig[];
 }
 
 export interface SubAgentDelegationConfig {
@@ -747,6 +750,9 @@ export class AgentRuntimeReconstructionService {
 				: {}),
 			...(options.config.credential === AI_GATEWAY_MANAGED_TAG
 				? { modelCredentialGatewayManaged: true }
+				: {}),
+			...(options.config.config?.guardrails?.tools?.length
+				? { toolGuardrails: options.config.config.guardrails.tools }
 				: {}),
 		};
 	}

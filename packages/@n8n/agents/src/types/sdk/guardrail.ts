@@ -43,7 +43,10 @@ export interface ModelGuardrail {
 	before?(ctx: GuardrailModelCallContext): Promise<GuardrailDecision | undefined>;
 	after?(ctx: GuardrailModelCallContext, usage: TokenUsage | undefined): Promise<void>;
 	beforeTool?(ctx: GuardrailToolCallContext): Promise<GuardrailDecision | undefined>;
-	afterTool?(ctx: GuardrailToolCallContext, result: unknown): Promise<void>;
+	afterTool?(
+		ctx: GuardrailToolCallContext,
+		result: unknown,
+	): Promise<GuardrailDecision> | Promise<void>;
 }
 
 /** Host-supplied on `ExecutionOptions`. The SDK never looks up settings. */

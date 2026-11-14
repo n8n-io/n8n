@@ -933,9 +933,27 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 		expect(parseGuardrails([{ ...baseGuardrail, kind: 'profanity' }]).success).toBe(false);
 	});
 
-	it('rejects a missing stage', () => {
+	it('accepts a missing stage: it then runs at every stage the kind supports', () => {
 		const { stage: _, ...noStage } = { ...baseGuardrail, kind: 'keywords', keywords: ['a'] };
-		expect(parseGuardrails([noStage]).success).toBe(false);
+		expect(parseGuardrails([noStage]).success).toBe(true);
+	});
+
+	it('accepts missing tools: it then covers every tool', () => {
+		const { tools: _, ...noTools } = { ...baseGuardrail, kind: 'keywords', keywords: ['a'] };
+		expect(parseGuardrails([noTools]).success).toBe(true);
+	});
+
+	it('accepts a guardrail with neither stage nor tools', () => {
+		const {
+			stage: _,
+			tools: __,
+			...bare
+		} = {
+			...baseGuardrail,
+			kind: 'keywords',
+			keywords: ['a'],
+		};
+		expect(parseGuardrails([bare]).success).toBe(true);
 	});
 
 	it('rejects an empty tools array', () => {
@@ -1025,6 +1043,19 @@ describe('findToolGuardrailRefIssues', () => {
 							],
 						},
 					],
+				},
+			},
+		});
+
+		expect(issues).toEqual([]);
+	});
+
+	it('returns no issues when a guardrail omits tools', () => {
+		const issues = findToolGuardrailRefIssues({
+			tools: configuredTools,
+			config: {
+				guardrails: {
+					tools: [{ kind: 'keywords', id: 'g1', stage: 'before', keywords: ['a'] }],
 				},
 			},
 		});

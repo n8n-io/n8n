@@ -166,5 +166,26 @@ describe('GuardrailRunner', () => {
 			expect(first.afterTool).toHaveBeenCalledWith(toolCtx, result);
 			expect(second.afterTool).toHaveBeenCalledWith(toolCtx, result);
 		});
+
+		it('returns the first stop and does not call later hooks', async () => {
+			const first = makeHook();
+			const second = makeHook({ afterTool: vi.fn().mockResolvedValue(stop('tool.a')) });
+			const third = makeHook({ afterTool: vi.fn().mockResolvedValue(stop('tool.b')) });
+
+			const result = await runnerFor([first, second, third]).afterTool(toolCtx, {});
+
+			expect(result).toEqual({ code: 'tool.a' });
+			expect(first.afterTool).toHaveBeenCalledWith(toolCtx, {});
+			expect(third.afterTool).not.toHaveBeenCalled();
+		});
+
+		it('returns undefined when hooks only observe', async () => {
+			const observing = makeHook();
+			const voidHook: ModelGuardrail = { afterTool: vi.fn().mockResolvedValue(undefined) };
+
+			const result = await runnerFor([observing, voidHook]).afterTool(toolCtx, {});
+
+			expect(result).toBeUndefined();
+		});
 	});
 });
