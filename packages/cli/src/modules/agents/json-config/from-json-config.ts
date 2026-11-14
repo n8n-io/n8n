@@ -635,6 +635,12 @@ async function applyMemoryFromConfig(
 			...(observationalMemory?.lockTtlMs !== undefined && {
 				lockTtlMs: observationalMemory.lockTtlMs,
 			}),
+			// Any windowShares object replaces the SDK's default 200k cap, so pass it only with a cap set.
+			...(observationalMemory?.windowShares?.maxContextWindowTokens !== undefined && {
+				windowShares: {
+					maxContextWindowTokens: observationalMemory.windowShares.maxContextWindowTokens,
+				},
+			}),
 		});
 	}
 

@@ -125,6 +125,7 @@ describe('buildFromJson()', () => {
 						reflectorThresholdTokens?: number;
 						observationLogTailLimit?: number;
 						lockTtlMs?: number;
+						windowShares?: { maxContextWindowTokens?: number };
 						observe?: unknown;
 						reflect?: unknown;
 					};
@@ -1281,6 +1282,55 @@ describe('buildFromJson()', () => {
 		});
 		expect(getMemoryConfig(agent)?.observationalMemory?.observe).toBeUndefined();
 		expect(getMemoryConfig(agent)?.observationalMemory?.reflect).toBeUndefined();
+	});
+
+	it.each([64_000, 0])(
+		'forwards a memory window cap of %i to observational memory',
+		async (maxContextWindowTokens) => {
+			const config = makeConfig({
+				memory: {
+					enabled: true,
+					storage: 'n8n',
+					observationalMemory: { windowShares: { maxContextWindowTokens } },
+				},
+			});
+
+			const agent = await buildFromJson(
+				config,
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
+				},
+			);
+
+			expect(getMemoryConfig(agent)?.observationalMemory).toEqual({
+				windowShares: { maxContextWindowTokens },
+			});
+		},
+	);
+
+	it('keeps the default memory window cap when windowShares has no cap', async () => {
+		const config = makeConfig({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				observationalMemory: { windowShares: {} },
+			},
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
+			},
+		);
+
+		expect(getMemoryConfig(agent)?.observationalMemory).toEqual({});
 	});
 
 	it('uses synchronous title generation so the first message can sync the title', async () => {
