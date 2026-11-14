@@ -252,10 +252,12 @@ export function getProjects(): Project[] {
 			testDir: './tests/e2e',
 			grep: new RegExp(ENGINE_TAG_PREFIX),
 			timeout: 180000,
-			// One worker, one stack. Every worker boots its own Postgres, main and
+			// One worker, one stack. Every worker boots its own Postgres, mains and
 			// engine, and the CI job asks for one worker anyway.
 			workers: 1,
-			use: { containerConfig: { postgres: true, engine: 'container' } },
+			// Two mains, so the execution channel runs over Redis in multi-main as
+			// it does in production.
+			use: { containerConfig: { postgres: true, engine: 'container', mains: 2 } },
 		});
 
 		projects.push({
