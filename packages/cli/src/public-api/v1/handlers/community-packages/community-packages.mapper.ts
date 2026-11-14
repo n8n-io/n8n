@@ -30,5 +30,6 @@ export function toCommunityPackagePublic(pkg: PublicInstalledPackage): Community
 		updatedAt: toIsoString(pkg.updatedAt),
 		updateAvailable: optionalString(pkg.updateAvailable),
 		failedLoading: optionalBoolean(pkg.failedLoading),
+		failedLoadingReason: optionalString(pkg.failedLoadingReason),
 	});
 }

@@ -366,6 +366,40 @@ describe('CommunityPackagesService', () => {
 
 			expect(communityPackagesService.withLoadStatus([pkg])[0].failedLoading).toBe(false);
 		});
+
+		test('should include the load error of a package that failed to load', () => {
+			const pkg = installedPackageWithNodeTypes(['node-a']);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			loadNodesAndCredentials.getPackageLoadError.mockReturnValue('Credential types clash');
+
+			const [matched] = communityPackagesService.withLoadStatus([pkg]);
+
+			expect(matched.failedLoading).toBe(true);
+			expect(matched.failedLoadingReason).toBe('Credential types clash');
+			expect(loadNodesAndCredentials.getPackageLoadError).toHaveBeenCalledWith(pkg.packageName);
+		});
+
+		test('should omit the reason when the package failed without a recorded load error', () => {
+			const pkg = installedPackageWithNodeTypes(['node-a']);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			loadNodesAndCredentials.getPackageLoadError.mockReturnValue(undefined);
+
+			const [matched] = communityPackagesService.withLoadStatus([pkg]);
+
+			expect(matched.failedLoading).toBe(true);
+			expect(matched).not.toHaveProperty('failedLoadingReason');
+		});
+
+		test('should not include a reason for a package that loaded', () => {
+			const pkg = installedPackageWithNodeTypes(['node-a']);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(true);
+			loadNodesAndCredentials.getPackageLoadError.mockReturnValue('stale error');
+
+			const [matched] = communityPackagesService.withLoadStatus([pkg]);
+
+			expect(matched.failedLoading).toBe(false);
+			expect(matched).not.toHaveProperty('failedLoadingReason');
+		});
 	});
 
 	describe('checkNpmPackageStatus()', () => {
@@ -1109,6 +1143,28 @@ describe('CommunityPackagesService', () => {
 			});
 			expect(installedPackageRepository.remove).toHaveBeenCalledWith(installedPackage);
 			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+		});
+
+		test('should retry rejected packages after unloading, before rebuilding the registry', async () => {
+			const PACKAGE_NAME = 'n8n-nodes-test';
+			const installedPackage = mock<InstalledPackages>({ packageName: PACKAGE_NAME });
+			const callOrder: string[] = [];
+
+			loadNodesAndCredentials.unloadPackage.mockImplementation(async () => {
+				callOrder.push('unload');
+			});
+			loadNodesAndCredentials.reloadRejectedPackages.mockImplementation(async () => {
+				callOrder.push('reloadRejected');
+			});
+			loadNodesAndCredentials.postProcessLoaders.mockImplementation(async () => {
+				callOrder.push('postProcess');
+			});
+			vi.mocked(rm).mockResolvedValue(undefined);
+			installedPackageRepository.remove.mockResolvedValue(undefined as never);
+
+			await communityPackagesService.removePackage(PACKAGE_NAME, installedPackage);
+
+			expect(callOrder).toEqual(['unload', 'reloadRejected', 'postProcess']);
 		});
 
 		test('should log and not throw when publishing the uninstall event fails', async () => {
