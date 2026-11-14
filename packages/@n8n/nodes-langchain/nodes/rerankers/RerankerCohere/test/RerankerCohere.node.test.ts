@@ -1,10 +1,12 @@
 import { CohereRerank } from '@langchain/cohere';
 import { logWrapper } from '@n8n/ai-utilities';
-import type { ISupplyDataFunctions } from 'n8n-workflow';
+import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
+import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mock, Mocked, MockedClass } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { RerankerCohere } from '../RerankerCohere.node';
+import { searchModels } from '../methods/searchModels';
 
 // Mock the CohereRerank class
 vi.mock('@langchain/cohere', () => ({
@@ -15,6 +17,15 @@ vi.mock('@langchain/cohere', () => ({
 vi.mock('@n8n/ai-utilities', () => ({
 	logWrapper: vi.fn().mockImplementation((obj) => ({ logWrapped: obj })),
 }));
+
+const mockNode: INode = {
+	id: '1',
+	name: 'Reranker Cohere',
+	type: '@n8n/n8n-nodes-langchain.rerankerCohere',
+	typeVersion: 1,
+	position: [0, 0],
+	parameters: {},
+};
 
 describe('RerankerCohere', () => {
 	let rerankerCohere: RerankerCohere;
@@ -67,6 +78,7 @@ describe('RerankerCohere', () => {
 			'modelName',
 			0,
 			'rerank-v3.5',
+			{ extractValue: true },
 		);
 		expect(mockSupplyDataFunctions.getNodeParameter).toHaveBeenCalledWith('topN', 0, 3);
 		expect(mockSupplyDataFunctions.getCredentials).toHaveBeenCalledWith('cohereApi');
@@ -114,6 +126,7 @@ describe('RerankerCohere', () => {
 			'modelName',
 			2,
 			'rerank-v3.5',
+			{ extractValue: true },
 		);
 		expect(mockSupplyDataFunctions.getNodeParameter).toHaveBeenCalledWith('topN', 2, 3);
 	});
@@ -207,6 +220,161 @@ describe('RerankerCohere', () => {
 			apiKey: 'test-api-key',
 			model: 'rerank-multilingual-v3.0',
 			topN: 100,
+		});
+	});
+
+	describe('description', () => {
+		it('should declare versions 1 and 2', () => {
+			expect(rerankerCohere.description.version).toEqual([1, 2]);
+		});
+
+		it('should keep the v1 options parameter, gate it to version 1, and append v4 models', () => {
+			const v1Model = rerankerCohere.description.properties.find(
+				(property) => property.name === 'modelName' && property.type === 'options',
+			);
+
+			expect(v1Model).toBeDefined();
+			expect(v1Model?.displayOptions).toEqual({ show: { '@version': [1] } });
+			expect(v1Model?.options).toContainEqual({
+				name: 'rerank-v4.0-pro',
+				value: 'rerank-v4.0-pro',
+			});
+			expect(v1Model?.options).toContainEqual({
+				name: 'rerank-v4.0-fast',
+				value: 'rerank-v4.0-fast',
+			});
+		});
+
+		it('preserves the original v1 option order and appends v4', () => {
+			const v1Model = rerankerCohere.description.properties.find(
+				(p) => p.name === 'modelName' && p.type === 'options',
+			);
+			const values = (v1Model?.options as Array<{ value: string }>).map((o) => o.value);
+
+			expect(values).toEqual([
+				'rerank-v3.5',
+				'rerank-english-v3.0',
+				'rerank-multilingual-v3.0',
+				'rerank-v4.0-pro',
+				'rerank-v4.0-fast',
+			]);
+		});
+
+		it('should expose a v2 resourceLocator with list and id modes', () => {
+			const v2Model = rerankerCohere.description.properties.find(
+				(property) => property.name === 'modelName' && property.type === 'resourceLocator',
+			);
+
+			expect(v2Model).toMatchObject({
+				type: 'resourceLocator',
+				default: { mode: 'list', value: 'rerank-v3.5' },
+				required: true,
+				displayOptions: { show: { '@version': [2] } },
+			});
+			expect(v2Model?.modes).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						name: 'list',
+						type: 'list',
+						typeOptions: { searchListMethod: 'searchModels', searchable: true },
+					}),
+					expect.objectContaining({
+						name: 'id',
+						type: 'string',
+						placeholder: 'rerank-v4.0-pro',
+					}),
+				]),
+			);
+		});
+
+		it('should register searchModels as a listSearch method', () => {
+			expect(rerankerCohere.methods?.listSearch).toHaveProperty('searchModels');
+			expect(rerankerCohere.methods?.listSearch?.searchModels).toBeTypeOf('function');
+		});
+	});
+
+	describe('searchModels', () => {
+		it('should include both rerank v4 models in the model list', async () => {
+			const result = await searchModels.call({} as ILoadOptionsFunctions);
+
+			expect(result.results).toContainEqual({
+				name: 'rerank-v4.0-pro',
+				value: 'rerank-v4.0-pro',
+			});
+			expect(result.results).toContainEqual({
+				name: 'rerank-v4.0-fast',
+				value: 'rerank-v4.0-fast',
+			});
+		});
+
+		it('filters by substring across value', async () => {
+			const v4 = await searchModels.call({} as ILoadOptionsFunctions, 'v4');
+			expect(v4.results.map((r) => r.value)).toEqual(['rerank-v4.0-pro', 'rerank-v4.0-fast']);
+
+			const empty = await searchModels.call({} as ILoadOptionsFunctions, '');
+			expect(empty.results).toHaveLength(5);
+		});
+	});
+
+	it('resolves a resourceLocator model value to a plain string', async () => {
+		const context = createMockExecuteFunction<ISupplyDataFunctions>(
+			{ modelName: { mode: 'list', value: 'rerank-v4.0-pro' }, topN: 3 },
+			{ ...mockNode, typeVersion: 2 },
+		) as Mocked<ISupplyDataFunctions>;
+		context.getCredentials = vi.fn().mockResolvedValue({ apiKey: 'test-api-key' });
+		context.logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+		const getNodeParameter = vi.spyOn(context, 'getNodeParameter');
+
+		await rerankerCohere.supplyData.call(context, 0);
+
+		expect(getNodeParameter).toHaveBeenCalledWith('modelName', 0, 'rerank-v3.5', {
+			extractValue: true,
+		});
+		expect(CohereRerank).toHaveBeenCalledWith({
+			apiKey: 'test-api-key',
+			model: 'rerank-v4.0-pro',
+			topN: 3,
+		});
+	});
+
+	it('passes an arbitrary id-mode model ID through unchanged', async () => {
+		const context = createMockExecuteFunction<ISupplyDataFunctions>(
+			{ modelName: { mode: 'id', value: 'customer-rerank-model' }, topN: 3 },
+			{ ...mockNode, typeVersion: 2 },
+		) as Mocked<ISupplyDataFunctions>;
+		context.getCredentials = vi.fn().mockResolvedValue({ apiKey: 'test-api-key' });
+		context.logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+
+		await rerankerCohere.supplyData.call(context, 0);
+
+		expect(CohereRerank).toHaveBeenCalledWith({
+			apiKey: 'test-api-key',
+			model: 'customer-rerank-model',
+			topN: 3,
+		});
+	});
+
+	it('passes a v1 plain-string model value through unchanged', async () => {
+		const context = createMockExecuteFunction<ISupplyDataFunctions>(
+			{ modelName: 'rerank-english-v3.0', topN: 3 },
+			{ ...mockNode, typeVersion: 1 },
+		) as Mocked<ISupplyDataFunctions>;
+		context.getCredentials = vi.fn().mockResolvedValue({ apiKey: 'test-api-key' });
+		context.logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+		// createMockExecuteFunction resolves `extractValue` by reading `${name}.value`,
+		// which returns the fallback for a bare string. Real n8n returns a non-RLC value
+		// unchanged, so model that contract to exercise the v1 backward-compat path.
+		context.getNodeParameter = vi
+			.fn()
+			.mockReturnValueOnce('rerank-english-v3.0')
+			.mockReturnValueOnce(3);
+
+		await rerankerCohere.supplyData.call(context, 0);
+
+		expect(CohereRerank).toHaveBeenCalledWith({
+			apiKey: 'test-api-key',
+			model: 'rerank-english-v3.0',
+			topN: 3,
 		});
 	});
 });

@@ -11,13 +11,21 @@ import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import { getRequiredApiKey } from '@utils/helpers';
 
+import { EMBEDDING_MODELS, searchModels } from './methods/searchModels';
+
 export class EmbeddingsCohere implements INodeType {
+	methods = {
+		listSearch: {
+			searchModels,
+		},
+	};
+
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings Cohere',
 		name: 'embeddingsCohere',
 		icon: { light: 'file:cohere.svg', dark: 'file:cohere.dark.svg' },
 		group: ['transform'],
-		version: 1,
+		version: [1, 2],
 		description: 'Use Cohere Embeddings',
 		defaults: {
 			name: 'Embeddings Cohere',
@@ -66,43 +74,53 @@ export class EmbeddingsCohere implements INodeType {
 				description:
 					'The model which will generate the embeddings. <a href="https://docs.cohere.com/docs/models">Learn more</a>.',
 				default: 'embed-english-v2.0',
-				options: [
+				options: EMBEDDING_MODELS,
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Model',
+				name: 'modelName',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: 'embed-english-v2.0' },
+				required: true,
+				description:
+					'The model which will generate the embeddings. RAG query and document input types are applied automatically by the Cohere integration. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>. <a href="https://docs.cohere.com/docs/models">Learn more</a>.',
+				modes: [
 					{
-						name: 'Embed-English-Light-v2.0 (1024 Dimensions)',
-						value: 'embed-english-light-v2.0',
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a model...',
+						typeOptions: {
+							searchListMethod: 'searchModels',
+							searchable: true,
+						},
 					},
 					{
-						name: 'Embed-English-Light-v3.0 (384 Dimensions)',
-						value: 'embed-english-light-v3.0',
-					},
-					{
-						name: 'Embed-English-v2.0 (4096 Dimensions)',
-						value: 'embed-english-v2.0',
-					},
-					{
-						name: 'Embed-English-v3.0 (1024 Dimensions)',
-						value: 'embed-english-v3.0',
-					},
-					{
-						name: 'Embed-Multilingual-Light-v3.0 (384 Dimensions)',
-						value: 'embed-multilingual-light-v3.0',
-					},
-					{
-						name: 'Embed-Multilingual-v2.0 (768 Dimensions)',
-						value: 'embed-multilingual-v2.0',
-					},
-					{
-						name: 'Embed-Multilingual-v3.0 (1024 Dimensions)',
-						value: 'embed-multilingual-v3.0',
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'embed-v4.0',
 					},
 				],
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
 			},
 		],
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.debug('Supply data for embeddings Cohere');
-		const modelName = this.getNodeParameter('modelName', itemIndex, 'embed-english-v2.0') as string;
+		const modelName = this.getNodeParameter('modelName', itemIndex, 'embed-english-v2.0', {
+			extractValue: true,
+		}) as string;
 		const credentials = await this.getCredentials<{ apiKey: string }>('cohereApi');
 		const embeddings = new CohereEmbeddings({
 			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
