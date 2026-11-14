@@ -1,0 +1,30 @@
+packages/cli/src/modules/agents/integrations/__tests__/channel-integration-contract.test.ts
+  s_6322656abbff25::t_04bbe9b09d371c 72,120
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_6322656abbff25::t_d66728616d30a4 406-408
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_6322656abbff25::t_04bbe9b09d371c 175,272,319,371,698-700,1534,1553,1874,1898,2116,2186,2219
+packages/@n8n/api-types/src/agents/rich-card.schema.ts
+  s_6322656abbff25::t_84a36ff3d801b8 133-138
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/recorded-integration.test.ts
+  s_6322656abbff25::t_3936f2057c1e0c 445,450-455,457-464,466-475
+  s_6322656abbff25::t_325c67d95fa927 427,429,436,442,446-449,456,476-477
+  s_6322656abbff25::t_f6d0624b5138e7 435,437-441,443-444
+  s_6322656abbff25::t_8351a2281bbe41 465
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3e5a51436e569e3a145b37acb7d0f1ecd58ab068",
+  "prompts": {},
+  "sessions": {
+    "s_6322656abbff25": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40ba07fe-c71c-4b7c-9262-31d11c387a8d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
