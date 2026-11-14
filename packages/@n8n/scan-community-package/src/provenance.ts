@@ -5,6 +5,7 @@ const N8N_COMMUNITY_NODE_PUBLISH_DOCS_URL =
 /** The parts of an npm registry package document that the scanner reads. */
 export type PackageMetadata = {
 	readonly 'dist-tags': Readonly<Record<string, string>>;
+	readonly time?: { readonly created?: string };
 	readonly versions: Readonly<
 		Record<
 			string,
