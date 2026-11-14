@@ -635,6 +635,9 @@ async function applyMemoryFromConfig(
 			...(observationalMemory?.lockTtlMs !== undefined && {
 				lockTtlMs: observationalMemory.lockTtlMs,
 			}),
+			...(observationalMemory?.windowShares !== undefined && {
+				windowShares: observationalMemory.windowShares,
+			}),
 		});
 	}
 

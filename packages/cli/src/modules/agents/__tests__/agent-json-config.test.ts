@@ -240,6 +240,30 @@ describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
 		});
 		expect(parsed.success).toBe(true);
 	});
+
+	it.each([64_000, 0])('preserves a memory window cap of %i', (maxContextWindowTokens) => {
+		const parsed = AgentJsonConfigSchema.parse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				observationalMemory: { windowShares: { maxContextWindowTokens } },
+			},
+		});
+		expect(parsed.memory?.observationalMemory).toEqual({
+			windowShares: { maxContextWindowTokens },
+		});
+	});
+
+	it('rejects a negative memory window cap', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				observationalMemory: { windowShares: { maxContextWindowTokens: -1 } },
+			},
+		});
+		expect(parsed.success).toBe(false);
+	});
 });
 
 describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
