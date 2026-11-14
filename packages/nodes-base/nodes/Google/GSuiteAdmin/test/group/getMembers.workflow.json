@@ -1,0 +1,77 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [120, 700],
+			"id": "0e76b314-4994-4141-975f-9614c6094c80",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "group",
+				"operation": "getMembers",
+				"groupId": {
+					"__rl": true,
+					"value": "01x0gk373c9z46j",
+					"mode": "GroupId"
+				},
+				"returnAll": true,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.gSuiteAdmin",
+			"typeVersion": 1,
+			"position": [100, 1120],
+			"id": "30263040-3578-4ce6-b19c-f665b85ca301",
+			"name": "Get Many Members",
+			"credentials": {
+				"gSuiteAdminOAuth2Api": {
+					"id": "OXfPMaggXFJ0RLkw",
+					"name": "Google Workspace Admin account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get Many Members",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Get Many Members": [
+			{
+				"json": {
+					"kind": "admin#directory#member",
+					"etag": "\"example\"",
+					"id": "123456789",
+					"email": "alice@example.com",
+					"role": "OWNER",
+					"type": "USER",
+					"status": "ACTIVE",
+					"delivery_settings": "ALL_MAIL"
+				}
+			},
+			{
+				"json": {
+					"kind": "admin#directory#member",
+					"etag": "\"example2\"",
+					"id": "987654321",
+					"email": "bob@example.com",
+					"role": "MEMBER",
+					"type": "USER",
+					"status": "ACTIVE",
+					"delivery_settings": "ALL_MAIL"
+				}
+			}
+		]
+	}
+}
