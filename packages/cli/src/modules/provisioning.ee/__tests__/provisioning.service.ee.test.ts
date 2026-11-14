@@ -684,6 +684,19 @@ describe('ProvisioningService', () => {
 			expect(projectService.addUser).not.toHaveBeenCalled();
 		});
 
+		it('should not change access for a claim with only malformed non-colon entries', async () => {
+			const userId = 'user-id-123';
+			const projectIdToRole = ['not-a-project-role'];
+
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
+
+			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+
+			expect(entityManager.delete).not.toHaveBeenCalled();
+			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
 		it('should do nothing if the project does not exist', async () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = ['non-existent-project:viewer'];
@@ -965,10 +978,10 @@ describe('ProvisioningService', () => {
 		it('should revoke existing access when all mapped projects are invalid', async () => {
 			const userId = 'user-id-123';
 			const existingProject = mock<Project>({ id: 'project-existing' });
-			// First find: currentlyAccessibleProjects
-			projectRepository.find.mockResolvedValueOnce([existingProject]);
-			// Second find: existingProjects lookup (none found — all invalid)
+			// First find: existingProjects lookup (none found — all invalid)
 			projectRepository.find.mockResolvedValueOnce([]);
+			// Second find: currentlyAccessibleProjects
+			projectRepository.find.mockResolvedValueOnce([existingProject]);
 			roleRepository.find.mockResolvedValue([]);
 
 			await provisioningService['applyExpressionMappedProjectRoles'](
