@@ -116,7 +116,7 @@ export const engineRefusals: EngineRefusal[] = [
 			B: outputs([to('A')]),
 		}),
 		engineError: 'Only Split In Batches loops are currently supported',
-		check: { plannedIn: 'CET-678' },
+		check: { code: 'CYCLE_WITHOUT_SPLIT_IN_BATCHES' },
 	},
 	{
 		name: 'a loop is entered at a node other than its Split In Batches node',
@@ -125,7 +125,7 @@ export const engineRefusals: EngineRefusal[] = [
 			Body: outputs([to('Loop')]),
 		}),
 		engineError: 'must be entered only through its Split In Batches node',
-		check: { plannedIn: 'CET-678' },
+		check: { code: 'LOOP_ENTERED_MID_BODY' },
 	},
 	{
 		name: 'a loop has two entry edges',
@@ -140,7 +140,7 @@ export const engineRefusals: EngineRefusal[] = [
 			},
 		),
 		engineError: 'converging entries on its input slot is not supported yet',
-		check: { plannedIn: 'CET-678' },
+		check: { code: 'LOOP_MULTIPLE_ENTRIES' },
 	},
 	{
 		name: 'a loop has two return edges',
@@ -150,7 +150,7 @@ export const engineRefusals: EngineRefusal[] = [
 			B: outputs([to('Loop')]),
 		}),
 		engineError: 'multiple returns converge on one input slot',
-		check: { plannedIn: 'CET-678' },
+		check: { code: 'LOOP_MULTIPLE_RETURNS' },
 	},
 	{
 		name: 'a loop sits inside another loop',
@@ -164,7 +164,7 @@ export const engineRefusals: EngineRefusal[] = [
 			},
 		),
 		engineError: 'nested loops are not supported yet',
-		check: { plannedIn: 'CET-678' },
+		check: { code: 'NESTED_LOOP' },
 	},
 	{
 		name: 'an edge leaves a loop from a node in its body',
@@ -177,7 +177,7 @@ export const engineRefusals: EngineRefusal[] = [
 			},
 		),
 		engineError: 'mid-body',
-		check: { plannedIn: 'CET-678' },
+		check: { code: 'LOOP_EXITS_MID_BODY' },
 	},
 	{
 		name: 'an edge leaves a loop from the loop output of its Split In Batches node',
@@ -190,7 +190,7 @@ export const engineRefusals: EngineRefusal[] = [
 			},
 		),
 		engineError: 'leaves the loop from the loop slot',
-		check: { plannedIn: 'CET-678' },
+		check: { code: 'LOOP_EXITS_MID_BODY' },
 	},
 	{
 		name: 'two edges feed the same input of a node',
@@ -199,7 +199,48 @@ export const engineRefusals: EngineRefusal[] = [
 			B: outputs([to('C')]),
 		}),
 		engineError: 'more than one edge into input slot 0',
-		check: { plannedIn: 'CET-678' },
+		check: { code: 'INPUT_SLOT_CONVERGENCE' },
+	},
+	{
+		name: 'a Split In Batches node has no return edge',
+		workflow: fromTrigger('Loop', [splitInBatches('Loop'), noOp('Body'), noOp('After')], {
+			Loop: outputs([to('After')], [to('Body')]),
+		}),
+		engineError: 'has no back-edge returning to it',
+		check: { code: 'LOOP_WITHOUT_RETURN' },
+	},
+	{
+		name: 'a return edge feeds an input of the Split In Batches node other than the first',
+		workflow: fromTrigger('Loop', [splitInBatches('Loop'), noOp('Body'), noOp('After')], {
+			Loop: outputs([to('After')], [to('Body')]),
+			Body: outputs([to('Loop', 1)]),
+		}),
+		engineError: "returns feed the batch node's slot 0",
+		check: { code: 'LOOP_INPUT_NOT_FIRST' },
+	},
+	{
+		name: 'the done output of a Split In Batches node feeds its own loop',
+		workflow: fromTrigger('Loop', [splitInBatches('Loop'), noOp('Body')], {
+			Loop: outputs([to('Body', 1)], [to('Body')]),
+			Body: outputs([to('Loop')]),
+		}),
+		engineError: 'a member of its own loop',
+		check: { code: 'LOOP_DONE_OUTPUT_FEEDS_BODY' },
+	},
+	{
+		// Only the first input of a disabled node passes data on, so Side loses its way in.
+		name: 'a node is reached only through a later input of a disabled node',
+		workflow: v1Workflow(
+			[TRIGGER, noOp('A'), { ...noOp('Disabled'), disabled: true }, noOp('Side'), noOp('Join')],
+			{
+				[TRIGGER.name]: mainTo('A'),
+				A: outputs([to('Disabled', 1), to('Join')]),
+				Disabled: outputs([to('Side')]),
+				Side: outputs([to('Join', 1)]),
+			},
+		),
+		engineError: 'feeds a node the trigger reaches from one it cannot reach',
+		check: { code: 'NODE_REACHED_ONLY_THROUGH_DISABLED_NODE' },
 	},
 ];
 

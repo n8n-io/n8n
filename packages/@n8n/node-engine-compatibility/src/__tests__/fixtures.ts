@@ -515,6 +515,7 @@ export const v1Workflow = (
 		parameters?: IDataObject;
 		credentials?: INodeCredentials;
 		onError?: INode['onError'];
+		disabled?: boolean;
 	}>,
 	connections: IConnections = {},
 ): IWorkflowBase =>
