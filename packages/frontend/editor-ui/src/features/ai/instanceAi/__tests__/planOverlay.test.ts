@@ -63,12 +63,20 @@ describe('plan overlay labels', () => {
 				data: {
 					source: 'n8n-app-plan',
 					type: 'labels',
-					labels: { progress: '{built} von {total} fertig', shell: 'Layout', unknown: 'x' },
+					labels: {
+						progress: '{built} von {total} fertig',
+						shell: 'Layout',
+						sketchColumn: 'Spalte',
+						unknown: 'x',
+					},
 				},
 			}),
 		);
 
 		await vi.waitFor(() => expect(barText()).toBe('0 von 4 fertig'));
+		// The sample text that the wireframe draws follows the labels too.
+		const head = document.querySelector('[data-plan-id="drafts"] .wf-th')?.textContent;
+		expect(head).toBe('SpalteSpalteSpalte');
 	});
 });
 

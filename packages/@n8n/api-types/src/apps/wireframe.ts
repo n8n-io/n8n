@@ -127,6 +127,14 @@ const LINE_A = 'M0 80 L40 70 L80 74 L120 50 L160 56 L200 30 L240 36 L300 20';
 const LINE_B = 'M0 90 L40 86 L80 80 L120 82 L160 70 L200 72 L240 60 L300 64';
 const LINE_C = 'M0 60 L40 64 L80 50 L120 58 L160 44 L200 50 L240 46 L300 40';
 
+/**
+ * Sample text that a block draws when the plan names nothing. The overlay swaps it
+ * for the translated label, so the plan view follows the editor language.
+ */
+function sketchText(key: PlanOverlayLabelKey): string {
+	return `<span data-plan-text="${key}">${escapeHtml(PLAN_OVERLAY_LABELS[key])}</span>`;
+}
+
 function blockBody(component: AppPlanComponent, plan: AppPlan): string {
 	const items = (component.items ?? []).map(escapeHtml);
 	switch (component.kind) {
@@ -146,7 +154,8 @@ function blockBody(component: AppPlanComponent, plan: AppPlan): string {
 			return items.length ? `<div class="wf-kpis">${items.map(tile).join('')}</div>` : tile('');
 		}
 		case 'table': {
-			const cols = items.length ? items : ['Column', 'Column', 'Column'];
+			const column = sketchText('sketchColumn');
+			const cols = items.length ? items : [column, column, column];
 			const head = cols.map((c) => `<span>${c}</span>`).join('');
 			const row = cols.map(() => SKETCH_LINE).join('');
 			return `<div class="wf-table" style="--cols:${cols.length}"><div class="wf-tr wf-th">${head}</div>${`<div class="wf-tr">${row}</div>`.repeat(4)}</div>`;
@@ -173,14 +182,19 @@ function blockBody(component: AppPlanComponent, plan: AppPlan): string {
 			return `${legend}<svg class="wf-linechart" viewBox="0 0 300 100" preserveAspectRatio="none"><path d="M0 99H300M0 0V100" class="wf-axis"/>${paths}</svg>`;
 		}
 		case 'detail':
-			return `<div class="wf-detail">${(items.length ? items : ['Title', 'Body']).map((i) => `<div class="wf-kv"><span class="wf-k">${i}</span>${SKETCH_LINE}</div>`).join('')}</div>`;
+			return `<div class="wf-detail">${(items.length ? items : [sketchText('sketchTitle'), sketchText('sketchBody')]).map((i) => `<div class="wf-kv"><span class="wf-k">${i}</span>${SKETCH_LINE}</div>`).join('')}</div>`;
 		case 'form':
-			return `${(items.length ? items : ['Field']).map((i) => `<div class="wf-field"><span class="wf-k">${i}</span><span class="wf-input"></span></div>`).join('')}<span class="wf-btn">Submit</span>`;
+			return `${(items.length ? items : [sketchText('sketchField')]).map((i) => `<div class="wf-field"><span class="wf-k">${i}</span><span class="wf-input"></span></div>`).join('')}<span class="wf-btn">${sketchText('sketchSubmit')}</span>`;
 		case 'filter':
 			if (component.variant === 'pills') {
-				return `<div class="wf-pills">${(items.length ? items : ['All', 'Open', 'Done']).map((i, n) => `<span class="wf-pill${n === 0 ? ' active' : ''}">${i}</span>`).join('')}</div>`;
+				return `<div class="wf-pills">${(items.length
+					? items
+					: [sketchText('sketchAll'), sketchText('sketchOpen'), sketchText('sketchDone')]
+				)
+					.map((i, n) => `<span class="wf-pill${n === 0 ? ' active' : ''}">${i}</span>`)
+					.join('')}</div>`;
 			}
-			return `<div class="wf-selects">${(items.length ? items : ['Filter']).map((i) => `<div class="wf-field"><span class="wf-k">${i}</span><span class="wf-input wf-select">All</span></div>`).join('')}</div>`;
+			return `<div class="wf-selects">${(items.length ? items : [sketchText('sketchFilter')]).map((i) => `<div class="wf-field"><span class="wf-k">${i}</span><span class="wf-input wf-select">${sketchText('sketchAll')}</span></div>`).join('')}</div>`;
 		case 'button':
 			return `<span class="wf-btn">${escapeHtml(component.label)}${component.action ? ' <span class="wf-mark">⚡</span>' : ''}</span>`;
 		case 'text':
@@ -330,7 +344,7 @@ export function detailShadowContent(component: AppPlanComponent): string {
 		...(component.detail.states ?? []),
 	];
 	if (states.length === 1) {
-		return `<style>${DETAIL_BASE_CSS}${css}${mid}</style><span class="wf-sample">Sample data</span><div class="wf-hifi-body">${sanitizeDetailHtml(component.detail.html)}</div><slot></slot>`;
+		return `<style>${DETAIL_BASE_CSS}${css}${mid}</style><span class="wf-sample">${sketchText('sampleData')}</span><div class="wf-hifi-body">${sanitizeDetailHtml(component.detail.html)}</div><slot></slot>`;
 	}
 	// A CSS-only switcher: it works in the sandboxed plan view and in the app without scripts.
 	const switcher = states
@@ -347,8 +361,8 @@ export function detailShadowContent(component: AppPlanComponent): string {
 					`<input class="wf-states-radio" type="radio" name="wf-state" id="wf-s${n}"${n === 0 ? ' checked' : ''}>`,
 			)
 			.join(''),
-		`<div class="wf-states">${states.map((state, n) => `<label for="wf-s${n}">${escapeHtml(state.name)}</label>`).join('')}</div>`,
-		'<span class="wf-sample">Sample data</span>',
+		`<div class="wf-states">${states.map((state, n) => `<label for="wf-s${n}">${n === 0 ? sketchText('withData') : escapeHtml(state.name)}</label>`).join('')}</div>`,
+		`<span class="wf-sample">${sketchText('sampleData')}</span>`,
 		`<div class="wf-hifi-body">${states.map((state, n) => `<div class="wf-state wf-s${n}">${sanitizeDetailHtml(state.html)}</div>`).join('')}</div>`,
 		'<slot></slot>',
 	].join('');
@@ -730,6 +744,17 @@ export const PLAN_OVERLAY_LABELS = {
 	addStates: '◐ Add states: empty, loading, error',
 	redoStates: '◐ Redo the states ({states})',
 	asked: 'Asked the Assistant…',
+	sketchColumn: 'Column',
+	sketchTitle: 'Title',
+	sketchBody: 'Body',
+	sketchField: 'Field',
+	sketchSubmit: 'Submit',
+	sketchFilter: 'Filter',
+	sketchAll: 'All',
+	sketchOpen: 'Open',
+	sketchDone: 'Done',
+	sampleData: 'Sample data',
+	withData: 'With data',
 	progress: '{built} of {total} built · Building: {current}',
 	allBuilt: 'All {total} parts built',
 } as const;
@@ -814,6 +839,18 @@ export function planOverlayMain(
 	function applyLabels() {
 		// The badge of existing parts is CSS text, so it reads the label from a variable.
 		doc.documentElement.style.setProperty('--wf-existing-label', JSON.stringify(t('inTheApp')));
+		applyTextLabels(doc);
+	}
+	/** Sample text of the wireframe, also inside the shadow roots of detailed parts. */
+	function applyTextLabels(root: Document | ShadowRoot) {
+		root.querySelectorAll('[data-plan-text]').forEach((node) => {
+			const key = node.getAttribute('data-plan-text') ?? '';
+			// Only write a change: each write is a DOM mutation, and mutations call this again.
+			if (key in labels && node.textContent !== labels[key]) node.textContent = labels[key];
+		});
+		root.querySelectorAll('.wf-hifi').forEach((host) => {
+			if (host.shadowRoot) applyTextLabels(host.shadowRoot);
+		});
 	}
 	// Until the parent sends the editor theme, follow the color scheme of the browser.
 	doc.documentElement.classList.toggle(
@@ -1384,6 +1421,7 @@ export function planOverlayMain(
 			window.clearTimeout(pending);
 			pending = window.setTimeout(() => {
 				makeFocusable();
+				applyTextLabels(doc);
 				renderProgress();
 			}, 30);
 		}).observe(doc.body, {
