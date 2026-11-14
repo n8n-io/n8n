@@ -23,6 +23,10 @@ export class SourceControlPullModal {
 		return this.container.getByTestId('pull-modal-item').filter({ hasText: fileName }).first();
 	}
 
+	getConflictingDataTable(tableName: string): Locator {
+		return this.container.getByRole('listitem').filter({ hasText: tableName });
+	}
+
 	getStatusBadge(fileName: string, status: 'New' | 'Modified' | 'Deleted' | 'Conflict'): Locator {
 		return this.getFileInModal(fileName).getByText(status, { exact: true });
 	}
