@@ -1,5 +1,5 @@
 import { parseFlatted } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, ExecutionLedger } from '@n8n/backend-services';
 import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -20,7 +20,13 @@ import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import chunk from 'lodash/chunk';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
-import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	IRunExecutionData,
+	IRunExecutionDataAll,
+	WorkflowExecuteMode,
+	WorkflowExecutionSource,
+} from 'n8n-workflow';
 import { createEmptyRunExecutionData, migrateRunExecutionData } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 
@@ -41,6 +47,15 @@ import { sumBinaryDataBytes } from './sum-binary-data-bytes';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
+
+type ReclaimedTombstone = DeletionTarget & { mode: WorkflowExecuteMode };
+
+export type CreateExecutionOptions = {
+	/** Who started the run. The execution row does not store it, so the ledger gets it here. */
+	source?: WorkflowExecutionSource;
+	/** For rows that copy a run from elsewhere: that run is not a run of this instance. */
+	skipLedger?: true;
+};
 
 type InFlightExecutionOutcome = Pick<IExecutionResponse, 'status' | 'finished' | 'stoppedAt'>;
 
@@ -87,6 +102,7 @@ export class ExecutionPersistence {
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly errorReporter: ErrorReporter,
 		private readonly eventService: EventService,
+		private readonly executionLedger: ExecutionLedger,
 	) {}
 
 	/**
@@ -97,7 +113,11 @@ export class ExecutionPersistence {
 	 * With a `ctx` carrying a transaction, this row commits together with everything
 	 * else in it; with none, it gets a transaction of its own.
 	 */
-	async create(payload: CreateExecutionPayload, ctx: OperationContext = {}): Promise<string> {
+	async create(
+		payload: CreateExecutionPayload,
+		ctx: OperationContext = {},
+		options: CreateExecutionOptions = {},
+	): Promise<string> {
 		const { data: rawData, workflowData, ...rest } = payload;
 		const { id } = workflowData;
 		const workflowSnapshot = toWorkflowSnapshot(workflowData);
@@ -105,12 +125,12 @@ export class ExecutionPersistence {
 		const workflowVersionId = workflowData.versionId ?? null;
 		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
 
-		let reclaimedTombstone: DeletionTarget | null = null;
+		let reclaimedTombstone: ReclaimedTombstone | null = null;
 		const failedCreate: {
 			blobTarget: (ExecutionRef & { storedAt: BlobStorageLocation }) | null;
 		} = { blobTarget: null };
 		try {
-			const executionId = await this.executionRepository.runInTransaction(ctx, async (tx) => {
+			const executionId = await this.executionRepository.runInTransaction(ctx, async (tx, c) => {
 				reclaimedTombstone = await this.reclaimTombstone(tx, executionEntity.deduplicationKey);
 				const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
 				const executionId = String(identifiers[0].id);
@@ -131,6 +151,27 @@ export class ExecutionPersistence {
 					{ id: executionId },
 					{ jsonSizeBytes, binaryDataSizeBytes },
 				);
+
+				if (this.executionLedger.isEnabled) {
+					await this.executionLedger.recordCreated(
+						{
+							started: {
+								executionId,
+								workflowId: executionEntity.workflowId,
+								workflowName: workflowData.name,
+								mode: executionEntity.mode,
+								source: options.source,
+								occurredAt: executionEntity.createdAt,
+							},
+							status: executionEntity.status,
+							startedAt: executionEntity.startedAt,
+							stoppedAt: executionEntity.stoppedAt,
+							isCopy: options.skipLedger,
+							reclaimedTombstone,
+						},
+						c,
+					);
+				}
 
 				return executionId;
 			});
@@ -188,7 +229,7 @@ export class ExecutionPersistence {
 	private async reclaimTombstone(
 		tx: EntityManager,
 		deduplicationKey: string | null | undefined,
-	): Promise<DeletionTarget | null> {
+	): Promise<ReclaimedTombstone | null> {
 		if (!deduplicationKey) return null;
 
 		// Load the tombstone before deleting it so its out-of-band blob can be cleared
@@ -196,7 +237,7 @@ export class ExecutionPersistence {
 		// most one row carries this key.
 		const tombstone = await tx.findOne(ExecutionEntity, {
 			where: { deduplicationKey, status: 'new' },
-			select: ['id', 'workflowId', 'storedAt'],
+			select: ['id', 'workflowId', 'storedAt', 'mode'],
 		});
 		if (!tombstone) return null;
 
@@ -211,6 +252,7 @@ export class ExecutionPersistence {
 			workflowId: tombstone.workflowId,
 			executionId: tombstone.id,
 			storedAt: tombstone.storedAt,
+			mode: tombstone.mode,
 		};
 	}
 

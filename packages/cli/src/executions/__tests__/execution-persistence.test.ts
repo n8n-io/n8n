@@ -1,7 +1,7 @@
 /* eslint-disable id-denylist */
 /* eslint-disable @typescript-eslint/unbound-method */
 
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, ExecutionLedger } from '@n8n/backend-services';
 import type { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import {
 	ExecutionEntity,
@@ -34,6 +34,8 @@ describe('ExecutionPersistence', () => {
 	const dbStore = mock<DbStore>();
 	const errorReporter = mock<ErrorReporter>();
 	const eventService = mock<EventService>();
+	const disabledLedger = mock<ExecutionLedger>({ isEnabled: false });
+	const executionLedger = mock<ExecutionLedger>({ isEnabled: true });
 	const executionsConfig = mock<ExecutionsConfig>({
 		pruneData: true,
 		pruneDataHardDeleteBuffer: 1,
@@ -79,16 +81,22 @@ describe('ExecutionPersistence', () => {
 	const createMockTx = (tx: EntityManager) =>
 		vi.fn().mockImplementation(async <T>(cb: (em: EntityManager) => Promise<T>) => await cb(tx));
 
+	const txCtx: OperationContext = { trx: mock<Transaction>() };
+
 	const createMockRunInTransaction = (tx: EntityManager) =>
 		vi
 			.fn()
 			.mockImplementation(
-				async <T>(_ctx: OperationContext, cb: (em: EntityManager) => Promise<T>) => await cb(tx),
+				async <T>(
+					_ctx: OperationContext,
+					cb: (em: EntityManager, ctx: OperationContext) => Promise<T>,
+				) => await cb(tx, txCtx),
 			) as unknown as typeof executionRepository.runInTransaction;
 
 	const createPersistenceService = (
 		modeTag: 'db' | 'fs' | 's3' | 'az',
 		dbType: DatabaseConfig['type'] = 'postgresdb',
+		ledger = disabledLedger,
 	) =>
 		new ExecutionPersistence(
 			executionRepository,
@@ -100,6 +108,7 @@ describe('ExecutionPersistence', () => {
 			mock<DatabaseConfig>({ type: dbType }),
 			errorReporter,
 			eventService,
+			ledger,
 		);
 
 	describe('create', () => {
@@ -528,6 +537,73 @@ describe('ExecutionPersistence', () => {
 
 				expect(mockTx.findOne).not.toHaveBeenCalled();
 				expect(jsonStore.delete).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('execution ledger', () => {
+			const persistence = createPersistenceService('db', 'postgresdb', executionLedger);
+			let mockTx: ReturnType<typeof createMockTransaction>;
+
+			beforeEach(() => {
+				mockTx = createMockTransaction();
+				executionRepository.runInTransaction = createMockRunInTransaction(mockTx);
+			});
+
+			it('passes the new row to the ledger in its transaction', async () => {
+				const stoppedAt = new Date('2026-11-10T10:00:00Z');
+
+				await persistence.create(
+					{ ...createPayload, status: 'error', stoppedAt },
+					{},
+					{ source: 'instance_ai', skipLedger: true },
+				);
+
+				expect(executionLedger.recordCreated).toHaveBeenCalledExactlyOnceWith(
+					{
+						started: {
+							executionId: 'exec-1',
+							workflowId: 'workflow-123',
+							workflowName: 'Test Workflow',
+							mode: 'manual',
+							source: 'instance_ai',
+							occurredAt: expect.any(Date),
+						},
+						status: 'error',
+						startedAt: undefined,
+						stoppedAt,
+						isCopy: true,
+						reclaimedTombstone: null,
+					},
+					txCtx,
+				);
+			});
+
+			it('passes the reclaimed tombstone to the ledger', async () => {
+				mockTx.findOne.mockResolvedValue({
+					id: 'exec-old',
+					workflowId: 'workflow-123',
+					storedAt: 'db',
+					mode: 'trigger',
+				} as unknown as ExecutionEntity);
+
+				await persistence.create({ ...createPayload, deduplicationKey: 'wf-1:node-1:1' });
+
+				expect(executionLedger.recordCreated).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({
+						reclaimedTombstone: expect.objectContaining({
+							executionId: 'exec-old',
+							workflowId: 'workflow-123',
+							mode: 'trigger',
+						}),
+					}),
+					txCtx,
+				);
+			});
+
+			it('does not call the ledger when the module is off', async () => {
+				await createPersistenceService('db').create(createPayload);
+
+				expect(disabledLedger.recordCreated).not.toHaveBeenCalled();
 			});
 		});
 	});
