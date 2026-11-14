@@ -1539,3 +1539,44 @@ describe('getLatestAppArtifactResult', () => {
 		});
 	});
 });
+
+describe('getPendingAppPlan', () => {
+	const plan = {
+		screens: [
+			{
+				id: 'home',
+				name: 'Tasks',
+				components: [
+					{ id: 'tasks', kind: 'table', label: 'Tasks', existing: true },
+					{ id: 'due-chart', kind: 'chart', label: 'Due per day' },
+				],
+			},
+		],
+	};
+	const planCall = (result?: unknown) =>
+		makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'apps',
+					args: {
+						action: 'plan',
+						appId: 'app-1',
+						blueprint: { name: 'Todos', theme: 'light', plan },
+					},
+					result,
+				}),
+			],
+		});
+
+	test('shows the plan of a change to an existing app while it waits for approval', () => {
+		expect(utils.getPendingAppPlan(turns(planCall()))).toMatchObject({
+			name: 'Todos',
+			theme: 'light',
+			plan: { screens: [{ components: [{ existing: true }, { id: 'due-chart' }] }] },
+		});
+	});
+
+	test('ends the plan view when the change is approved', () => {
+		expect(utils.getPendingAppPlan(turns(planCall({ approved: true })))).toBeUndefined();
+	});
+});

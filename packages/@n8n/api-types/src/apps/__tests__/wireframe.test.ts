@@ -1,6 +1,8 @@
 import { appPlanSchema, listPlanComponents } from '../../schemas/app-plan.schema';
 import { appBlueprintSchema } from '../../schemas/instance-ai.schema';
 import {
+	planBuildOrder,
+	renderPlanPlaceholders,
 	renderDetailModule,
 	WIREFRAME_CSS,
 	describePlanComponent,
@@ -360,5 +362,38 @@ describe('opens', () => {
 
 	it('rejects an id that is neither', () => {
 		expect(appPlanSchema.safeParse({ screens: screens('nowhere') }).success).toBe(false);
+	});
+});
+
+describe('plan of a change to an existing app', () => {
+	const change = {
+		...plan,
+		nav: plan.nav && { ...plan.nav, existing: true },
+		screens: plan.screens.map((screen) => ({
+			...screen,
+			components: screen.components.map((c) =>
+				c.id === 'drafts' || c.id === 'approve' ? c : { ...c, existing: true },
+			),
+		})),
+	};
+
+	it('builds only the new and changed parts, without the shell', () => {
+		expect(planBuildOrder(change)).toEqual(['drafts', 'approve']);
+	});
+
+	it('marks existing parts in the wireframe and describes them as built', () => {
+		const html = renderWireframeBody(change);
+		expect(html).toMatch(/class="wf-block wf-k-kpi wf-existing/);
+		expect(html).not.toMatch(/wf-k-table wf-existing/);
+		expect(describePlanComponent(byId('kpi-pending'), {}).status).toBe('planned');
+		expect(describePlanComponent({ ...byId('kpi-pending'), existing: true }, {}).status).toBe(
+			'built',
+		);
+	});
+
+	it('returns placeholders for the new parts only', () => {
+		const placeholders = renderPlanPlaceholders(change);
+		expect(Object.keys(placeholders).sort()).toEqual(['approve', 'drafts']);
+		expect(placeholders.drafts).toContain(' v-pre>');
 	});
 });

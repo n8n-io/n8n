@@ -49,6 +49,20 @@ export async function writeBaseVersion(
 	);
 }
 
+/** Write one file into the app folder. `path` is relative to the folder. */
+export async function writeAppFile(
+	workspace: Workspace,
+	appId: string,
+	path: string,
+	content: string,
+) {
+	await writeFileViaSandbox(
+		workspace,
+		`${(await appPaths(workspace, appId)).dir}/${path}`,
+		content,
+	);
+}
+
 /** Replace the app folder with the draft source of the app. Installed dependencies stay. */
 export async function checkOutDraft(
 	workspace: Workspace,

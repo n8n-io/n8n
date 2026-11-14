@@ -30,6 +30,21 @@ const blueprint: AppBlueprint = {
 const renderComponent = createComponentRenderer(AppBlueprintCard);
 
 describe('AppBlueprintCard', () => {
+	it('keeps the settings of an existing app and approves its planned change', async () => {
+		const change = { ...blueprint, appId: '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f71' };
+		const { emitted, getByTestId, queryByTestId, getByText } = renderComponent({
+			props: { blueprint: change },
+		});
+
+		expect(getByText('Review the planned change')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-app-blueprint-namespace')).not.toBeInTheDocument();
+		await userEvent.click(getByTestId('instance-ai-app-blueprint-start'));
+
+		expect(emitted().submit?.[0]).toEqual([
+			{ kind: 'appBlueprint', approved: true, blueprint: change },
+		]);
+	});
+
 	it('starts building with the edited blueprint', async () => {
 		const { emitted, getByTestId } = renderComponent({ props: { blueprint } });
 		const name = getByTestId('instance-ai-app-blueprint-name');

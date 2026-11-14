@@ -75,9 +75,19 @@ Add components under `src/`. Keep files small and focused.
    - Existing app: use the `appId` from the conversation context. If the
      conversation has no id, call `list` (optionally with a `search` text) and
      pick the app by name. If several apps match, ask the user which one. Then
-     call `open`. Do not make a plan for a change to an existing app. Small
-     changes, such as a color, a label or one button, go straight into the
-     code.
+     call `open`. Small changes, such as a color, a label or one button, go
+     straight into the code. Do not make a plan for them.
+   - Bigger change to an existing app: a new page, several new parts, or a new
+     workflow or data table. Read the app first, then call `plan` with the
+     `appId`, the current app settings and a `plan` of the whole app after the
+     change. Mark each part that stays as it is with `existing: true`, and
+     leave the mark off new and changed parts. Use the plan ids of
+     `data-plan-id` attributes that the app already has. Handle
+     `revisionRequested` as for `create`, but call `plan` again. On approval,
+     `plan` opens the app and returns a wireframe `placeholders` block for each
+     new or changed part. Follow its `nextStep`: commit the app with the
+     placeholders in place, then replace one placeholder at a time in
+     `buildOrder`. Leave the existing parts out of `buildOrder`.
    - `open` returns the app folder, `apps/<appId>`. It keeps a folder that is
      already open, with your uncommitted edits.
 2. **Apply the selected theme.**

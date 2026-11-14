@@ -77,7 +77,7 @@ export function describePlanComponent(
 	const info: PlanComponentInfo = {
 		title: component.label,
 		kind: component.kind,
-		status: component.status ?? 'planned',
+		status: component.existing ? 'built' : (component.status ?? 'planned'),
 		detailed: component.detail !== undefined,
 		fidelity: component.detail ? (component.detail.fidelity ?? 'mid') : undefined,
 		states: component.detail?.states?.map((state) => state.name) ?? [],
@@ -308,7 +308,7 @@ export function renderWireframeBlock(
 	if (component.detail) {
 		// In the app the host stays empty: `mountPlanDetails()` attaches the content.
 		return [
-			`<div class="wf-block wf-hifi wf-k-${component.kind} wf-theme-${options.theme ?? 'both'}" data-plan-id="${component.id}" data-plan-kind="${component.kind}"`,
+			`<div class="wf-block wf-hifi wf-k-${component.kind}${component.existing ? ' wf-existing' : ''} wf-theme-${options.theme ?? 'both'}" data-plan-id="${component.id}" data-plan-kind="${component.kind}"`,
 			component.kind === 'nav' ? '' : ` style="grid-column: span ${component.span ?? 12}"`,
 			component.opens ? ` data-plan-opens="${component.opens}"` : '',
 			options.vue ? ' v-pre>' : '>',
@@ -327,7 +327,7 @@ export function renderWireframeBlock(
 	const showLabel = component.kind !== 'button' && component.kind !== 'nav';
 	const showHead = component.kind !== 'button' && (showLabel || markers);
 	return [
-		`<div class="wf-block wf-k-${component.kind} wf-theme-${options.theme ?? 'both'}" data-plan-id="${component.id}" data-plan-kind="${component.kind}"`,
+		`<div class="wf-block wf-k-${component.kind}${component.existing ? ' wf-existing' : ''} wf-theme-${options.theme ?? 'both'}" data-plan-id="${component.id}" data-plan-kind="${component.kind}"`,
 		component.kind === 'nav' ? '' : ` style="grid-column: span ${component.span ?? 12}"`,
 		component.opens ? ` data-plan-opens="${component.opens}"` : '',
 		options.vue ? ' v-pre' : '',
@@ -516,6 +516,9 @@ export const WIREFRAME_CSS = `
 .wf-k-button { border: 0; box-shadow: none; padding: 0; background: transparent; }
 .wf-pills { display: flex; gap: 6px; flex-wrap: wrap; }
 .wf-pill { border: 1.5px solid var(--wf-line-soft); border-radius: 999px; padding: 1px 10px; color: var(--wf-ink-soft); }
+.wf-existing { position: relative; border-style: solid; border-color: var(--wf-line-soft); box-shadow: none; opacity: .55; }
+.wf-existing::after { content: 'In the app'; position: absolute; top: -9px; right: 10px; padding: 0 7px; border-radius: 999px;
+  font: 500 10.5px/16px system-ui, sans-serif; background: var(--wf-panel); color: var(--wf-ink-soft); border: 1px solid var(--wf-line-soft); }
 .wf-pill.active { background: var(--wf-wash); color: var(--wf-ink); }
 `;
 
@@ -699,7 +702,11 @@ export function planOverlayMain(
 		screenList = plan.screens.map((sc) => ({ id: sc.id, name: sc.name, path: sc.path }));
 		screenOfPart = {};
 		plan.screens.forEach((sc) => sc.components.forEach((c) => (screenOfPart[c.id] = sc.id)));
-		order = plan.buildOrder?.length ? plan.buildOrder : ['shell', ...all.map((c) => c.id)];
+		// In a change to an existing app, the shell and the unchanged parts are not built again.
+		const isChange = all.some((c) => c.existing);
+		order = (plan.buildOrder?.length ? plan.buildOrder : ['shell', ...all.map((c) => c.id)]).filter(
+			(id) => (id === 'shell' ? !isChange : !byId[id]?.existing),
+		);
 	}
 
 	function isBuilt(id: string): boolean {
@@ -718,6 +725,7 @@ export function planOverlayMain(
 		return (
 			doneIds.has(id) ||
 			byId[id]?.status === 'built' ||
+			!!byId[id]?.existing ||
 			(!!buildingId && order.indexOf(id) < order.indexOf(buildingId))
 		);
 	}
@@ -834,7 +842,13 @@ export function planOverlayMain(
 				el(
 					'span',
 					`plan-ov-st ${info.status}`,
-					info.status === 'building' ? 'Building' : info.status === 'built' ? 'Built' : 'Planned',
+					info.status === 'building'
+						? 'Building'
+						: info.status === 'built'
+							? byId[id]?.existing
+								? 'In the app'
+								: 'Built'
+							: 'Planned',
 				),
 			);
 		}
@@ -1180,9 +1194,34 @@ export function renderWireframeDocument(
 
 /** Component ids in build order, with the shell first. */
 export function planBuildOrder(plan: AppPlan): string[] {
-	return plan.buildOrder?.length
-		? plan.buildOrder
-		: [APP_PLAN_SHELL_ID, ...listPlanComponents(plan).map((c) => c.id)];
+	const all = listPlanComponents(plan);
+	const isChange = all.some((c) => c.existing);
+	const existing = new Set(all.filter((c) => c.existing).map((c) => c.id));
+	return (
+		plan.buildOrder?.length ? plan.buildOrder : [APP_PLAN_SHELL_ID, ...all.map((c) => c.id)]
+	).filter((id) => (id === APP_PLAN_SHELL_ID ? !isChange : !existing.has(id)));
+}
+
+/**
+ * Wireframe blocks for the new and changed parts of a change to an existing app, by
+ * plan id, as Vue template markup. The builder puts each block where its part goes in
+ * the app, then replaces one block at a time. A part inside another new part comes
+ * with its container.
+ */
+export function renderPlanPlaceholders(
+	plan: AppPlan,
+	theme: WireframeRenderOptions['theme'] = 'both',
+): Record<string, string> {
+	const all = listPlanComponents(plan);
+	const isNew = (id?: string) => !!id && all.some((c) => c.id === id && !c.existing);
+	return Object.fromEntries(
+		all
+			.filter((c) => !c.existing && !isNew(c.inside))
+			.map((c) => [
+				c.id,
+				renderWireframeBlock({ ...c, detail: undefined }, plan, { vue: true, theme }),
+			]),
+	);
 }
 
 let editorFont: Promise<ArrayBuffer | undefined> | undefined;

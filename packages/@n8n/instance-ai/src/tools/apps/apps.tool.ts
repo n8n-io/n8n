@@ -10,7 +10,10 @@ import {
 	type AppBinding,
 	type AppBuildResponse,
 	type AppBlueprint,
+	type AppPlan,
 	appWorkflowBindingSchema,
+	renderPlanPlaceholders,
+	WIREFRAME_CSS,
 } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -26,6 +29,7 @@ import {
 	installSdk,
 	packAppFolder,
 	readBaseVersion,
+	writeAppFile,
 	writeBaseVersion,
 } from './app-workspace';
 
@@ -36,12 +40,24 @@ const MAX_LOG_CHARS = 4000;
 const appIdSchema = z.string().uuid().describe('ID of the app');
 
 const labelSchema = z.string().max(255).describe('Short summary of the change set');
-const appBlueprintProposalSchema = appBlueprintSchema.omit({ additionalInstructions: true });
+const appBlueprintProposalSchema = appBlueprintSchema.omit({
+	additionalInstructions: true,
+	appId: true,
+});
+// One description for `create` and `plan`: the model sees the actions merged into one schema.
+const blueprintInputSchema = appBlueprintProposalSchema.describe(
+	'The app you propose to build. For `plan`: the current app settings, and a `plan` of the whole app after the change',
+);
 
 const inputSchema = z.discriminatedUnion('action', [
 	z.object({
 		action: z.literal('create'),
-		blueprint: appBlueprintProposalSchema.describe('The app you propose to build'),
+		blueprint: blueprintInputSchema,
+	}),
+	z.object({
+		action: z.literal('plan'),
+		appId: appIdSchema,
+		blueprint: blueprintInputSchema,
 	}),
 	z.object({
 		action: z.literal('list'),
@@ -77,7 +93,7 @@ const inputSchema = z.discriminatedUnion('action', [
 ]);
 
 type Input = z.infer<typeof inputSchema>;
-type NonCreateInput = Exclude<Input, { action: 'create' }>;
+type NonCreateInput = Exclude<Input, { action: 'create' | 'plan' }>;
 
 function commitResult({ versionId, status, diagnostics }: AppBuildResponse) {
 	return {
@@ -164,6 +180,31 @@ async function createApp(
 				},
 			}
 		: { app };
+}
+
+/**
+ * Opens the app and adds what the preview needs to show the plan of a change:
+ * `public/plan.json` and the wireframe styles. The builder places the returned
+ * wireframe blocks in the app and replaces them one at a time.
+ */
+async function startPlannedChange(
+	context: InstanceAiContext,
+	workspace: Workspace,
+	apps: InstanceAiAppService,
+	appId: string,
+	plan: AppPlan,
+	theme: AppBlueprint['theme'],
+) {
+	const opened = await open(context, workspace, apps, appId);
+	await writeAppFile(workspace, appId, 'public/plan.json', JSON.stringify(plan, null, 2) + '\n');
+	await writeAppFile(workspace, appId, 'src/plan/wireframe.css', WIREFRAME_CSS);
+	return {
+		...opened,
+		placeholders: renderPlanPlaceholders(plan, theme),
+		nextStep:
+			"Import './plan/wireframe.css' once in `src/main.js`. Put each placeholder where its part goes in the app, keep its `data-plan-id`, and `commit`. " +
+			'Then build the parts in `buildOrder`: call `progress` with the plan id, replace its placeholder with the real component, set its `status` to `built` in `public/plan.json`, and `commit`.',
+	};
 }
 
 async function commit(
@@ -295,7 +336,9 @@ export function createAppsTool(context: InstanceAiContext) {
 				'`commit` saves the folder as one version and builds it. ' +
 				'`bindings` lists the workflows, data tables and agents that the app can call. ' +
 				'`bind` adds or replaces one binding and `unbind` removes one. Each change saves a new version. ' +
-				'`progress` tells the user which plan part you start to build now. It saves nothing.',
+				'`progress` tells the user which plan part you start to build now. It saves nothing. ' +
+				'`plan` shows the plan of a bigger change to an existing app as a wireframe for approval, with the unchanged parts marked `existing`. ' +
+				'On approval it opens the app and returns a wireframe placeholder for each new or changed part.',
 		)
 		.input(sanitizeInputSchema(inputSchema))
 		.suspend(
@@ -315,6 +358,47 @@ export function createAppsTool(context: InstanceAiContext) {
 			if (!apps || !workspace) return { error: 'Apps are not available in this conversation.' };
 
 			try {
+				if (input.action === 'plan') {
+					if (!input.blueprint.plan) {
+						return { error: 'A `plan` action needs a `plan` in the blueprint.' };
+					}
+					const resumeData = ctx.resumeData;
+					if (!resumeData) {
+						return await ctx.suspend({
+							requestId: nanoid(),
+							message: `Review the planned change to ${input.blueprint.name}`,
+							severity: 'info',
+							inputType: 'app-blueprint',
+							appBlueprint: { ...input.blueprint, appId: input.appId },
+						});
+					}
+					if (!resumeData.approved && resumeData.revise) {
+						return {
+							approved: false,
+							revisionRequested: true,
+							feedback: resumeData.revise.feedback,
+							...(resumeData.revise.planIds?.length ? { planIds: resumeData.revise.planIds } : {}),
+							blueprint: resumeData.blueprint,
+							nextStep:
+								'Change the plan as the user asked, keep everything else, and call `plan` again with the updated blueprint. Answer in one short sentence.',
+						};
+					}
+					if (!resumeData.approved || !resumeData.blueprint.plan) {
+						return { approved: false, blueprint: resumeData.blueprint };
+					}
+					return {
+						approved: true,
+						blueprint: resumeData.blueprint,
+						...(await startPlannedChange(
+							context,
+							workspace,
+							apps,
+							input.appId,
+							resumeData.blueprint.plan,
+							resumeData.blueprint.theme,
+						)),
+					};
+				}
 				if (input.action === 'create') {
 					const resumeData = ctx.resumeData;
 					if (!resumeData) {

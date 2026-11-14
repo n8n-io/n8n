@@ -18,6 +18,7 @@ import {
 	installSdk,
 	packAppFolder,
 	readBaseVersion,
+	writeAppFile,
 	writeBaseVersion,
 } from '../app-workspace';
 
@@ -27,6 +28,7 @@ vi.mock('../app-workspace', () => ({
 	installSdk: vi.fn(),
 	packAppFolder: vi.fn(),
 	readBaseVersion: vi.fn(),
+	writeAppFile: vi.fn(),
 	writeBaseVersion: vi.fn(),
 }));
 
@@ -702,6 +704,94 @@ describe('apps tool', () => {
 				blueprint: { ...BLUEPRINT, namespace: 'Todo App' },
 			}).success,
 		).toBe(false);
+	});
+
+	describe('plan of a change to an existing app', () => {
+		const CHANGE_PLAN: NonNullable<AppBlueprint['plan']> = {
+			screens: [
+				{
+					id: 'home',
+					name: 'Tasks',
+					components: [
+						{ id: 'tasks', kind: 'table', label: 'Tasks', existing: true },
+						{ id: 'due-chart', kind: 'chart', label: 'Due per day' },
+					],
+				},
+			],
+		};
+		const planInput = {
+			action: 'plan' as const,
+			appId: SERVER_ID,
+			blueprint: { ...BLUEPRINT, plan: CHANGE_PLAN },
+		};
+
+		it('suspends with the plan and the id of the app', async () => {
+			const { tool, appService } = setup();
+			const suspend = vi.fn(async (payload: unknown) => await Promise.resolve(payload));
+
+			await executeTool(tool, planInput, { suspend });
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'Review the planned change to Todos',
+					appBlueprint: { ...planInput.blueprint, appId: SERVER_ID },
+				}),
+			);
+			expect(appService.createApp).not.toHaveBeenCalled();
+		});
+
+		it('hands a requested revision back to the model', async () => {
+			const { tool } = setup();
+			const result = await executeTool(tool, planInput, {
+				resumeData: {
+					approved: false,
+					blueprint: planInput.blueprint,
+					revise: { feedback: 'Make it a list', planIds: ['due-chart'] },
+				},
+			});
+			expect(result).toMatchObject({
+				revisionRequested: true,
+				feedback: 'Make it a list',
+				planIds: ['due-chart'],
+			});
+		});
+
+		it('opens the app on approval, adds the plan files and returns placeholders for new parts', async () => {
+			const { tool, appService } = setup();
+			appService.getApp.mockResolvedValue(app(SERVER_ID));
+
+			const result = await executeTool(tool, planInput, {
+				resumeData: { approved: true, blueprint: { ...planInput.blueprint, appId: SERVER_ID } },
+			});
+
+			expect(checkOutDraft).toHaveBeenCalledWith({}, appService, SERVER_ID);
+			expect(writeAppFile).toHaveBeenCalledWith(
+				{},
+				SERVER_ID,
+				'public/plan.json',
+				expect.stringContaining('"due-chart"'),
+			);
+			expect(writeAppFile).toHaveBeenCalledWith(
+				{},
+				SERVER_ID,
+				'src/plan/wireframe.css',
+				expect.stringContaining('.wf-block'),
+			);
+			const { placeholders } = result as { placeholders: Record<string, string> };
+			expect(Object.keys(placeholders)).toEqual(['due-chart']);
+			expect(placeholders['due-chart']).toContain('data-plan-id="due-chart"');
+			expect(appService.createApp).not.toHaveBeenCalled();
+		});
+
+		it('does not open the app when the user cancels', async () => {
+			const { tool } = setup();
+			const result = await executeTool(tool, planInput, {
+				resumeData: { approved: false, blueprint: planInput.blueprint },
+			});
+			expect(result).toMatchObject({ approved: false });
+			expect(checkOutDraft).not.toHaveBeenCalled();
+			expect(writeAppFile).not.toHaveBeenCalled();
+		});
 	});
 
 	it('exposes an object input schema to the model', () => {

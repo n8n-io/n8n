@@ -478,7 +478,11 @@ export interface PendingAppPlan {
 export function getPendingAppPlan(turns: readonly ArtifactTurn[]): PendingAppPlan | undefined {
 	return (
 		findLatestInTurns(turns, (tc): PendingAppPlan | null | undefined => {
-			if (tc.toolName !== APPS_TOOL_NAME || tc.args?.action !== 'create') return undefined;
+			// `create` plans a new app, `plan` a change to an existing app.
+			const action = tc.args?.action;
+			if (tc.toolName !== APPS_TOOL_NAME || (action !== 'create' && action !== 'plan')) {
+				return undefined;
+			}
 			const blueprint = tc.args.blueprint;
 			const parsed = isRecord(blueprint) ? appPlanSchema.safeParse(blueprint.plan) : undefined;
 			// The latest create decides: a create without a plan, or a finished one, ends the plan view.
@@ -486,7 +490,9 @@ export function getPendingAppPlan(turns: readonly ArtifactTurn[]): PendingAppPla
 			const result = unwrapUntrustedToolResult(tc.result);
 			const settled =
 				isRecord(result) &&
-				(isRecord(result.app) || (result.approved === false && !result.revisionRequested));
+				(isRecord(result.app) ||
+					(action === 'plan' && result.approved === true) ||
+					(result.approved === false && !result.revisionRequested));
 			if (settled || tc.error) return null;
 			return {
 				toolCallId: tc.toolCallId,

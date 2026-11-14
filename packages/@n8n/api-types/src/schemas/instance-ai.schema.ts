@@ -876,6 +876,8 @@ export const appBlueprintSchema = z.object({
 	additionalInstructions: z.string().trim().min(1).max(2000).optional(),
 	/** Screens and components, shown as a wireframe before approval. */
 	plan: appPlanSchema.optional(),
+	/** Set when the blueprint plans a change to this existing app. */
+	appId: z.string().uuid().optional(),
 });
 export type AppBlueprint = z.infer<typeof appBlueprintSchema>;
 

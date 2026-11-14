@@ -61,6 +61,7 @@ const editedBlueprint = computed<AppBlueprint>(() => ({
 	theme: theme.value,
 	...(props.blueprint.bindings ? { bindings: props.blueprint.bindings } : {}),
 	...(props.blueprint.plan ? { plan: props.blueprint.plan } : {}),
+	...(props.blueprint.appId ? { appId: props.blueprint.appId } : {}),
 	...(additionalInstructions.value.trim()
 		? { additionalInstructions: additionalInstructions.value.trim() }
 		: {}),
@@ -108,7 +109,13 @@ function cancel() {
 	>
 		<div :class="$style.content">
 			<N8nText size="medium" color="text-dark" bold>
-				{{ i18n.baseText('instanceAi.appBlueprint.title') }}
+				{{
+					i18n.baseText(
+						blueprint.appId
+							? 'instanceAi.appBlueprint.changeTitle'
+							: 'instanceAi.appBlueprint.title',
+					)
+				}}
 			</N8nText>
 			<N8nText
 				size="medium"
@@ -119,7 +126,8 @@ function cancel() {
 				{{ blueprint.description }}
 			</N8nText>
 
-			<div :class="$style.fields">
+			<!-- A change to an existing app keeps its settings. -->
+			<div v-if="!blueprint.appId" :class="$style.fields">
 				<label :class="$style.field">
 					<N8nText size="medium" color="text-dark">{{
 						i18n.baseText('instanceAi.appBlueprint.name')

@@ -97,6 +97,12 @@ export const appPlanComponentSchema = z.object({
 		})
 		.optional(),
 	status: appPlanComponentStatusSchema.optional(),
+	/**
+	 * The part is in the app already and this plan does not change it. Only for a plan
+	 * of a change to an existing app. The wireframe shows it as built, and the build
+	 * progress leaves it out.
+	 */
+	existing: z.boolean().optional(),
 	/** The id of a screen that opens when the user clicks this part, e.g. a row of a list. */
 	opens: planIdSchema.optional(),
 	/**
