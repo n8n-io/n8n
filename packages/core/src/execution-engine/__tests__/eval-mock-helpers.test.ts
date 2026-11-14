@@ -7,11 +7,11 @@ import {
 	buildEvalMockCredentials,
 	callEvalMockHandler,
 	isSecretCredentialProperty,
-	normalizeLegacyRequest,
 	resolveEvalMockRequestUrl,
 	serializeMockToHttpResponse,
 } from '../eval-mock-helpers';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from '../index';
+import { normalizeLegacyRequest } from '../node-execution-context/utils/request-helpers/legacy-request-adapter';
 
 // ---------------------------------------------------------------------------
 // Helper to build a minimal INodeProperties with sensible defaults

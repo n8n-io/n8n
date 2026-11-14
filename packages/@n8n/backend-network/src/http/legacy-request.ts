@@ -1,4 +1,3 @@
-// oxlint-disable typescript/no-deprecated
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -43,10 +42,9 @@ export interface LegacyRequestCallbacks {
  * Exposed to callers as {@link HttpRequestClient.requestLegacy}; kept in its own
  * module so the whole legacy path can be removed in one go once the deprecated
  * request helpers are gone.
- *
- * @deprecated Backs the deprecated `request` helpers.
  */
 export async function executeLegacyRequest(
+	// oxlint-disable-next-line typescript/no-deprecated
 	requestObject: IRequestOptions,
 	ssrfBridge: SsrfBridge | undefined,
 	logger: Logger,
@@ -63,6 +61,7 @@ export async function executeLegacyRequest(
 }
 
 async function sendLegacyRequest(
+	// oxlint-disable-next-line typescript/no-deprecated
 	requestObject: IRequestOptions,
 	ssrfBridge: SsrfBridge | undefined,
 	logger: Logger,

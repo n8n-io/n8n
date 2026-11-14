@@ -23,7 +23,6 @@ export { markNonRetryable, retryabilityFromError } from './retryability';
 export { HttpResponseSizeLimitError } from './response-size-limit.error';
 export {
 	httpStatusFromError,
-	isAxiosError,
 	isConnectionRefusedError,
 	isDnsFailure,
 	isHttpRequestError,

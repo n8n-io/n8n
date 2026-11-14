@@ -5651,6 +5651,9 @@ importers:
       '@sentry/profiling-node':
         specifier: catalog:sentry
         version: 11.8.0(@babel/core@7.29.7(supports-color@8.1.1))
+      axios:
+        specifier: 1.20.0
+        version: 1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -5757,9 +5760,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
-      axios:
-        specifier: 1.20.0
-        version: 1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       nock:
         specifier: 'catalog:'
         version: 14.0.14

@@ -8,7 +8,7 @@
  */
 
 import { isRecord } from '@n8n/utils/is-record';
-import type { IHttpRequestOptions, INode, INodeProperties, IRequestOptions } from 'n8n-workflow';
+import type { IHttpRequestOptions, INode, INodeProperties } from 'n8n-workflow';
 import { generateKeyPairSync } from 'node:crypto';
 import { STATUS_CODES } from 'node:http';
 import { Readable } from 'node:stream';
@@ -160,42 +160,6 @@ export function serializeMockToHttpResponse(
 	return { ...common, body: mock.body, __bodyResolved: true };
 }
 
-/**
- * Normalize legacy IRequestOptions or (uri, options) args into IHttpRequestOptions
- * for the eval mock handler. The legacy API has three mutually exclusive body
- * slots: `body`, `formData` (multipart), and `form` (URL-encoded) — fold them
- * all into `body` so the mock layer sees the payload regardless of transport
- * encoding (the binary redactor reduces multipart to part metadata before the
- * LLM). `simple: false` becomes `ignoreHttpStatusErrors`.
- */
-export function normalizeLegacyRequest(
-	// oxlint-disable-next-line typescript/no-deprecated
-	uriOrObject: string | IRequestOptions,
-	// oxlint-disable-next-line typescript/no-deprecated
-	options?: IRequestOptions,
-): IHttpRequestOptions {
-	if (typeof uriOrObject === 'string') {
-		return {
-			url: uriOrObject,
-			method: options?.method,
-			headers: options?.headers,
-			body: (options?.body ?? options?.formData ?? options?.form) as IHttpRequestOptions['body'],
-			qs: options?.qs,
-			...(options?.simple === false ? { ignoreHttpStatusErrors: true } : {}),
-		};
-	}
-	return {
-		url: uriOrObject.url ?? uriOrObject.uri ?? '',
-		method: uriOrObject.method,
-		headers: uriOrObject.headers,
-		body: (uriOrObject.body ??
-			uriOrObject.formData ??
-			uriOrObject.form) as IHttpRequestOptions['body'],
-		qs: uriOrObject.qs,
-		...(uriOrObject.simple === false ? { ignoreHttpStatusErrors: true } : {}),
-	};
-}
-
 const AWS_CREDENTIAL_TYPES = new Set(['aws', 'awsAssumeRole']);
 
 // Not the credential's region: the resolver must not read credentials. The mock only
@@ -215,11 +179,9 @@ function nonEmptyString(value: unknown): string | undefined {
  * Takes the legacy shape too: resolve before `normalizeLegacyRequest`, which drops the
  * top-level `region` and `baseURL`.
  */
-// oxlint-disable-next-line typescript/no-deprecated
-export function resolveEvalMockRequestUrl<T extends IHttpRequestOptions | IRequestOptions>(
-	requestOptions: T,
-	credentialsType: string,
-): T {
+export function resolveEvalMockRequestUrl<
+	T extends Partial<Pick<IHttpRequestOptions, 'url' | 'baseURL' | 'qs'>>,
+>(requestOptions: T, credentialsType: string): T {
 	const qs = requestOptions.qs;
 	const service = nonEmptyString(qs?.service);
 	const legacyUri = 'uri' in requestOptions ? requestOptions.uri : undefined;
