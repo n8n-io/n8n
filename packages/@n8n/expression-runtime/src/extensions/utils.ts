@@ -4,11 +4,22 @@ import { ExpressionExtensionError } from './expression-extension-error';
 
 // Utility functions and type guards for expression extensions
 
+// A date-only ISO string ("2023-06-16", "2023-06", "2023") parses as UTC midnight,
+// which shifts to a different local time in every non-UTC zone (to the previous
+// day west of UTC). Parse it as local midnight instead.
+const ISO_DATE_ONLY_REGEXP = /^\d{4}(?:-\d{2}(?:-\d{2})?)?$/;
+
 export const convertToDateTime = (value: string | Date | DateTime): DateTime | undefined => {
 	let converted: DateTime | undefined;
 
 	if (typeof value === 'string') {
-		converted = DateTime.fromJSDate(new Date(value));
+		const isDateOnly = ISO_DATE_ONLY_REGEXP.test(value);
+		converted = isDateOnly ? DateTime.fromISO(value) : DateTime.fromJSDate(new Date(value));
+		if (converted.invalidReason !== null && isDateOnly) {
+			// Keep the previous new Date() rollover normalization for invalid
+			// date-only strings (e.g. "2023-02-29" becomes March 1).
+			converted = DateTime.fromJSDate(new Date(value));
+		}
 		if (converted.invalidReason !== null) {
 			return;
 		}
