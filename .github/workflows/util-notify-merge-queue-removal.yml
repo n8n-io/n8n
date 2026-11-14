@@ -1,15 +1,18 @@
 name: 'Util: Notify Merge Queue Removal'
 
 on:
-  pull_request:
+  # Use the base workflow so fork PRs and merge conflicts can send notifications.
+  # Do not check out or run PR code in this workflow.
+  pull_request_target:
     types: [dequeued]
 
-permissions:
-  pull-requests: write
+permissions: {}
 
 jobs:
   notify:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     # MERGE/ALREADY_MERGED are successful exits, MANUAL is the author's own doing
     if: ${{ !contains(fromJSON('["MERGE", "ALREADY_MERGED", "MANUAL"]'), github.event.reason) }}
     steps:
@@ -20,3 +23,36 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           REASON: ${{ github.event.reason }}
+
+  track-rejection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: >-
+      github.repository == 'n8n-io/n8n' &&
+      !contains(fromJSON('["MERGE", "ALREADY_MERGED", "MANUAL"]'), github.event.reason)
+    env:
+      WEBHOOK_URL: ${{ secrets.N8N_NOTIFY_MERGE_QUEUE_REJECTION_URL }}
+    steps:
+      - name: Notify n8n
+        if: env.WEBHOOK_URL != ''
+        env:
+          WEBHOOK_TOKEN: ${{ secrets.N8N_NOTIFY_MERGE_QUEUE_REJECTION_TOKEN }}
+        run: |
+          : "${WEBHOOK_TOKEN:?Set N8N_NOTIFY_MERGE_QUEUE_REJECTION_TOKEN}"
+
+          jq -n \
+            --slurpfile event "$GITHUB_EVENT_PATH" \
+            --arg event_id "$GITHUB_REPOSITORY:$GITHUB_RUN_ID" \
+            --arg event_name "$GITHUB_EVENT_NAME" \
+            --arg run_url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{event_id: $event_id, event_name: $event_name, pr_url: $event[0].pull_request.html_url, reason: $event[0].reason, run_url: $run_url, event: $event[0]}' \
+            > "$RUNNER_TEMP/merge-queue-rejection.json"
+
+          curl --fail --silent --show-error \
+            --connect-timeout 10 --max-time 30 \
+            --retry 3 --retry-delay 5 \
+            --header 'Content-Type: application/json' \
+            --header "x-api-token: $WEBHOOK_TOKEN" \
+            --data-binary "@$RUNNER_TEMP/merge-queue-rejection.json" \
+            --output /dev/null \
+            "$WEBHOOK_URL"
