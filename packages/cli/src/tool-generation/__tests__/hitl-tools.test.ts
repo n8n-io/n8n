@@ -1,12 +1,26 @@
 import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { PackageDirectoryLoader } from 'n8n-core';
 import type {
 	EngineResponse,
 	IExecuteFunctions,
+	INode,
 	INodeProperties,
 	INodeTypeDescription,
+	IWorkflowDataProxyData,
 	NodeOutput,
+	NodeTypeAndVersion,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	ChatNodeMessageType,
+	Expression,
+	NodeConnectionTypes,
+	NodeHelpers,
+	SEND_AND_WAIT_OPERATION,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
+import { dirname } from 'node:path';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { convertNodeToHitlTool, createHitlTools, hasSendAndWaitOperation } from '../hitl-tools';
 
@@ -241,7 +255,7 @@ describe('hitl-tools', () => {
 			const searchHint = result.description.builderHint?.searchHint;
 			expect(searchHint).not.toContain('Use for Slack');
 			expect(searchHint).toContain('subnodes.tools');
-			expect(searchHint).toContain('$tool.parameters');
+			expect(searchHint).toContain('{{ $tool.parameters.toJsonString() }}');
 		});
 
 		describe('workflow validation', () => {
@@ -383,8 +397,98 @@ describe('hitl-tools', () => {
 			expect(messageProp).toBeDefined();
 			expect(messageProp?.type).toBe('string');
 			expect(messageProp?.default).toBe(
-				'=The agent wants to run this tool: {{ $tool.name }}\n\nInput:\n{{ $tool.parameters }}',
+				'=The agent wants to run this tool: {{ $tool.name }}\n\nInput:\n{{ $tool.parameters.toJsonString() }}',
 			);
+		});
+
+		describe('approval message rendering', () => {
+			const tool = {
+				name: 'get_latest_emails',
+				parameters: { limit: 5, filters: { unreadOnly: true, labels: ['INBOX'] } },
+			};
+			const expectedMessage = `The agent wants to run this tool: ${tool.name}\n\nInput:\n${JSON.stringify(tool.parameters)}`;
+			let data: IWorkflowDataProxyData;
+
+			beforeEach(() => {
+				data = mock<IWorkflowDataProxyData>();
+				// Keep tool input as plain objects for expression evaluation.
+				data.$tool = tool;
+			});
+
+			it('should render tool parameters as JSON in a custom approval message', () => {
+				const message = new Expression('UTC').resolveSimpleParameterValue(
+					'=The agent wants to run this tool: {{ $tool.name }}\n\nInput:\n{{ $tool.parameters.toJsonString() }}',
+					data,
+				);
+
+				expect(message).toBe(expectedMessage);
+			});
+
+			// AGENT-439: Reviewers need readable tool input in the default approval message.
+			it('should render tool parameters as JSON in the default approval message', () => {
+				const result = convertNodeToHitlTool(fullNodeWrapper);
+				const defaultMessage = result.description.properties.find(
+					(prop) => prop.name === 'message',
+				)?.default;
+				if (typeof defaultMessage !== 'string') {
+					throw new Error('Expected a default approval message');
+				}
+
+				const message = new Expression('UTC').resolveSimpleParameterValue(defaultMessage, data);
+
+				expect(message).toBe(expectedMessage);
+			});
+
+			it('should send readable tool parameters in the Chat approval prompt', async () => {
+				const loader = new PackageDirectoryLoader(
+					dirname(require.resolve('@n8n/n8n-nodes-langchain/package.json')),
+				);
+				loader.loadNodeFromFile('dist/nodes/trigger/ChatTrigger/Chat.node.js');
+				const chat = convertNodeToHitlTool(
+					NodeHelpers.getVersionedNodeType(loader.getNode('chat').type, 1.3),
+				);
+				const context = mockDeep<IExecuteFunctions>();
+				context.getNode.mockReturnValue(
+					mock<INode>({
+						name: 'Chat',
+						type: '@n8n/n8n-nodes-langchain.chatHitlTool',
+						typeVersion: 1.3,
+					}),
+				);
+				context.getParentNodes.mockReturnValue([
+					mock<NodeTypeAndVersion>({
+						type: CHAT_TRIGGER_NODE_TYPE,
+						disabled: false,
+						parameters: { options: { responseMode: 'responseNodes' } },
+					}),
+				]);
+				context.getNodeParameter.mockImplementation((name, _itemIndex, fallback) => {
+					const value = chat.description.properties.find((prop) => prop.name === name)?.default;
+					return typeof value === 'string'
+						? new Expression('UTC').resolveSimpleParameterValue(value, data)
+						: (value ?? fallback);
+				});
+				context.getSignedResumeUrl.mockReturnValue('https://example.com/approve');
+
+				const result = await chat.execute?.call(context);
+
+				expect(result).toEqual([
+					[
+						{
+							json: {},
+							sendMessage: {
+								type: ChatNodeMessageType.WITH_BUTTONS,
+								text: expectedMessage,
+								blockUserInput: false,
+								buttons: [
+									{ text: 'Approve', link: 'https://example.com/approve', type: 'primary' },
+								],
+							},
+						},
+					],
+				]);
+				expect(context.putExecutionToWait).toHaveBeenCalledWith(WAIT_INDEFINITELY);
+			});
 		});
 
 		it('should replace original message property with HITL message', () => {
@@ -407,7 +511,7 @@ describe('hitl-tools', () => {
 			// Should only have one message property (our HITL one, not the original)
 			expect(messageProps).toHaveLength(1);
 			expect(messageProps[0].default).toBe(
-				'=The agent wants to run this tool: {{ $tool.name }}\n\nInput:\n{{ $tool.parameters }}',
+				'=The agent wants to run this tool: {{ $tool.name }}\n\nInput:\n{{ $tool.parameters.toJsonString() }}',
 			);
 		});
 
