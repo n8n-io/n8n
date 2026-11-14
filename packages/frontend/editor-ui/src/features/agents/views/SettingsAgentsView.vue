@@ -5,12 +5,11 @@ import {
 	N8nButton,
 	N8nLoading,
 	N8nPreviewBadge,
+	N8nSettingsEnableRow,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
-	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
-	N8nSwitch,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -80,25 +79,18 @@ onMounted(async () => {
 		<N8nLoading v-if="isLoading" :rows="1" :shrink-last="false" />
 		<N8nSettingsSection v-else-if="settings">
 			<N8nSettingsRowGroup>
-				<N8nSettingsRow
+				<N8nSettingsEnableRow
 					:title="i18n.baseText('settings.agents.enable.label')"
 					:description="i18n.baseText('settings.agents.enable.description')"
-					:max-description-lines="3"
-				>
-					<template #action>
-						<N8nSwitch
-							:model-value="settings.enabled"
-							:disabled="isSaving"
-							:aria-label="i18n.baseText('settings.agents.enable.label')"
-							@update:model-value="saveEnabled"
-						/>
-					</template>
-				</N8nSettingsRow>
+					:enabled="settings.enabled"
+					:disabled="isSaving"
+					@update:enabled="saveEnabled"
+				/>
 			</N8nSettingsRowGroup>
 		</N8nSettingsSection>
 		<N8nButton v-else variant="outline" @click="loadSettings">
 			{{ i18n.baseText('generic.retry') }}
 		</N8nButton>
-		<AgentsSandboxSettings v-if="settings" />
+		<AgentsSandboxSettings v-if="settings?.enabled" />
 	</N8nSettingsLayout>
 </template>

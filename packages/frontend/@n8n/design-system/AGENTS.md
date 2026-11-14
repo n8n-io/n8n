@@ -9,6 +9,9 @@
 - Always add i18n translations for user-facing strings, including accessible labels
 - Always use `n8n:content-design` skill for copy wording
 - Prefer to bind fixed child component props from a fixed props object. Add comment that explain why each prop must remain fixed.
+- Declare state that the parent owns as a named prop. Declare the change as `update:<name>` on the emits interface.
+- Name the prop for that state. `N8nSettingsEnableRow` uses `enabled`. Callers bind `:enabled` and `@update:enabled`.
+- Use `defineModel` only when the component must also work with no parent binding. `N8nSettingsRow` does this for its disclosure state.
 
 ### Storybook Stories
 
