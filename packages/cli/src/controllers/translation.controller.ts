@@ -6,13 +6,15 @@ import { access } from 'fs/promises';
 
 import { NODES_BASE_DIR } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
-import { BadRequestError, InternalServerError } from '@n8n/errors';
+import { LocaleService } from '@/services/locale.service';
+import { BadRequestError, InternalServerError, NotFoundError } from '@n8n/errors';
 
 export const CREDENTIAL_TRANSLATIONS_DIR = 'n8n-nodes-base/dist/credentials/translations';
 export const NODE_HEADERS_PATH = safeJoinPath(NODES_BASE_DIR, 'dist/nodes/headers');
 
 export declare namespace TranslationRequest {
 	export type Credential = Request<{}, {}, {}, { credentialType: string }>;
+	export type Locale = Request<{ code: string }>;
 }
 
 @RestController('/')
@@ -20,6 +22,7 @@ export class TranslationController {
 	constructor(
 		private readonly credentialTypes: CredentialTypes,
 		private readonly globalConfig: GlobalConfig,
+		private readonly localeService: LocaleService,
 	) {}
 
 	@Get('/credential-translation')
@@ -58,5 +61,14 @@ export class TranslationController {
 		} catch (error) {
 			throw new InternalServerError('Failed to load headers file', error);
 		}
+	}
+
+	// Unauthenticated because the sign-in page also renders in the instance default locale.
+	@Get('/locales/:code', { allowUnauthenticated: true })
+	async getLocaleCatalog(req: TranslationRequest.Locale) {
+		const { code } = req.params;
+		const catalog = await this.localeService.getUiCatalog(code);
+		if (!catalog) throw new NotFoundError(`Unknown locale: "${code}"`);
+		return catalog;
 	}
 }

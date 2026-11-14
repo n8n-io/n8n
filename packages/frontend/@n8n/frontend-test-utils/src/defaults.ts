@@ -17,6 +17,8 @@ export const defaultSettings: FrontendSettings = {
 	unverifiedCommunityNodesEnabled: true,
 	communityNodesManagedByEnv: false,
 	defaultLocale: '',
+	availableLocales: [{ code: 'en', name: 'English' }],
+	localeUserOverride: true,
 	endpointForm: '',
 	endpointFormTest: '',
 	endpointFormWaiting: '',

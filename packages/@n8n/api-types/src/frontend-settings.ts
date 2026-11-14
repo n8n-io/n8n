@@ -149,6 +149,10 @@ export interface FrontendSettings {
 	};
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
+	/** English plus the admin-configured locales whose translation file exists. */
+	availableLocales: Array<{ code: string; name: string }>;
+	/** Whether users can choose their own UI language in personal settings. */
+	localeUserOverride: boolean;
 	userManagement: IUserManagementSettings;
 	sso: {
 		managedByEnv: boolean;

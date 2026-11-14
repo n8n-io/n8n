@@ -19,6 +19,7 @@ import type { InboxService } from '@/modules/inbox/inbox.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { PushConfig } from '@/push/push.config';
 import type { AiUsageService } from '@/services/ai-usage.service';
+import type { LocaleService } from '@/services/locale.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
 import type { UrlService } from '@n8n/backend-services';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
@@ -57,6 +58,7 @@ describe('FrontendService', () => {
 		},
 		personalization: { enabled: false },
 		defaultLocale: 'en',
+		locales: { available: {}, userOverride: true },
 		auth: { cookie: { secure: false } },
 		generic: { releaseChannel: 'stable', timezone: 'UTC' },
 		publicApi: { path: 'api', swaggerUiDisabled: false },
@@ -209,6 +211,7 @@ describe('FrontendService', () => {
 
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 	const inboxService = mock<InboxService>();
+	const localeService = mock<LocaleService>();
 
 	const createMockService = () => {
 		Container.set(
@@ -249,6 +252,7 @@ describe('FrontendService', () => {
 					workflowRepository,
 					workflowReviewPolicyService,
 					inboxService,
+					localeService,
 				),
 				license,
 			};
@@ -692,6 +696,22 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.useWorkflowPublicationService).toBe(false);
+		});
+	});
+
+	describe('locales', () => {
+		it('should include the available locales and the user override switch', async () => {
+			const locales = [
+				{ code: 'en', name: 'English' },
+				{ code: 'de', name: 'Deutsch' },
+			];
+			localeService.getAvailableLocales.mockReturnValue(locales);
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.availableLocales).toEqual(locales);
+			expect(settings.localeUserOverride).toBe(true);
 		});
 	});
 

@@ -24,9 +24,11 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
 import { locale } from '@n8n/design-system';
 import { registerTimeAgoLocale } from '@/app/utils/timeAgoLocale';
-import { setLanguage } from '@n8n/i18n';
+import { loadLanguage, setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
+import { getLocaleCatalog } from '@n8n/rest-api-client/api/settings';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
 import axios from 'axios';
 import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -43,6 +45,7 @@ import type {
 const route = useRoute();
 const router = useRouter();
 const rootStore = useRootStore();
+const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 
 const workflowId = useWorkflowId();
@@ -82,7 +85,10 @@ useMcpDiscoveryEnrollment();
 // EOF Experiment cleanup
 
 const loading = ref(true);
-const defaultLocale = computed(() => rootStore.defaultLocale);
+// The personal locale wins. Signed-out users and users without one get the instance default.
+const effectiveLocale = computed(
+	() => usersStore.currentUser?.settings?.locale || rootStore.defaultLocale,
+);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const hasContentFooter = ref(false);
 
@@ -113,8 +119,22 @@ watch(route, (r) => {
 });
 
 watch(
-	defaultLocale,
+	effectiveLocale,
 	async (newLocale) => {
+		if (newLocale !== 'en') {
+			try {
+				const messages = await getLocaleCatalog(rootStore.restApiContext, newLocale);
+				// A newer locale change started while this catalog was loading.
+				if (newLocale !== effectiveLocale.value) return;
+				loadLanguage(newLocale, messages);
+			} catch (error) {
+				// No admin-configured catalog for this locale. Apply it anyway: missing keys show
+				// in English, and node translations keyed by this locale still work.
+				if (newLocale !== effectiveLocale.value) return;
+				console.warn(`Failed to load the catalog for locale "${newLocale}"`, error);
+			}
+		}
+
 		setLanguage(newLocale);
 
 		axios.defaults.headers.common['Accept-Language'] = newLocale;

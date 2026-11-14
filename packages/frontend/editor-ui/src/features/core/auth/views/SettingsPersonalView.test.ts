@@ -473,6 +473,76 @@ describe('SettingsPersonalView', () => {
 		});
 	});
 
+	describe('when changing language', () => {
+		const locales = [
+			{ code: 'en', name: 'English' },
+			{ code: 'de', name: 'Deutsch' },
+		];
+
+		async function selectLanguage(container: Element, label: string) {
+			await userEvent.click(within(container as HTMLElement).getByTestId('language-select'));
+			await userEvent.click(await within(document.body).findByRole('option', { name: label }));
+			await waitAllPromises();
+		}
+
+		beforeEach(() => {
+			settingsStore.settings.availableLocales = locales;
+			settingsStore.settings.localeUserOverride = true;
+		});
+
+		it('should hide the language row when only English is available', async () => {
+			settingsStore.settings.availableLocales = [locales[0]];
+
+			const { queryByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(queryByTestId('language-select')).not.toBeInTheDocument();
+		});
+
+		it('should hide the language row when the user override is turned off', async () => {
+			settingsStore.settings.localeUserOverride = false;
+
+			const { queryByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(queryByTestId('language-select')).not.toBeInTheDocument();
+		});
+
+		it('should save the selected language at once', async () => {
+			const updateUserSettings = vi.spyOn(usersStore, 'updateUserSettings').mockResolvedValue();
+
+			const { container } = renderComponent({ pinia });
+			await waitAllPromises();
+			await selectLanguage(container, 'Deutsch');
+
+			expect(updateUserSettings).toHaveBeenCalledWith({ locale: 'de' });
+		});
+
+		it('should clear the personal language when the instance default is selected', async () => {
+			usersStore.usersById[currentUser.id] = { ...currentUser, settings: { locale: 'de' } };
+			const updateUserSettings = vi.spyOn(usersStore, 'updateUserSettings').mockResolvedValue();
+
+			const { container } = renderComponent({ pinia });
+			await waitAllPromises();
+			await selectLanguage(container, 'Instance default');
+
+			expect(updateUserSettings).toHaveBeenCalledWith({ locale: null });
+		});
+
+		it('should show an error when saving fails', async () => {
+			vi.spyOn(usersStore, 'updateUserSettings').mockRejectedValue(new Error('failed'));
+
+			const { container } = renderComponent({ pinia });
+			await waitAllPromises();
+			await selectLanguage(container, 'Deutsch');
+
+			expect(toast.showError).toHaveBeenCalledWith(
+				expect.any(Error),
+				'Could not change the language',
+			);
+		});
+	});
+
 	describe('when changing theme', () => {
 		it('should apply the theme at once', async () => {
 			const { getByRole, container } = renderComponent({ pinia });
