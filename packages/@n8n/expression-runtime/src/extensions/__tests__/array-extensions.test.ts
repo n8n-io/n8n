@@ -31,10 +31,32 @@ const merge = arrayExtensions.functions.merge as (
 	extraArgs: unknown[][],
 ) => Record<string, unknown>;
 
+const pluck = arrayExtensions.functions.pluck as (
+	value: unknown[],
+	extraArgs: unknown[],
+) => unknown[];
+
 const mergeIntoObject = arrayExtensions.functions.mergeIntoObject as (
 	value: unknown[],
 	extraArgs: unknown[][],
 ) => Record<string, unknown>;
+
+describe('pluck', () => {
+	it('should return values in the order of the requested fields', () => {
+		expect(
+			pluck(
+				[
+					{ lastName: 'Doe', firstName: 'John' },
+					{ firstName: 'Jane', lastName: 'Roe' },
+				],
+				['firstName', 'lastName'],
+			),
+		).toEqual([
+			['John', 'Doe'],
+			['Jane', 'Roe'],
+		]);
+	});
+});
 
 describe('smartJoin', () => {
 	it('should join own key and value fields', () => {

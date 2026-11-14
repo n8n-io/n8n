@@ -58,12 +58,13 @@ function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 	const plucked = value.reduce<unknown[]>((pluckedFromObject, current) => {
 		if (current && typeof current === 'object') {
 			const p: unknown[] = [];
-			Object.keys(current).forEach((k) => {
-				(extraArgs as string[]).forEach((field) => {
-					if (current && field === k) {
-						p.push((current as { [key: string]: unknown })[k]);
-					}
-				});
+			const keys = new Set(Object.keys(current));
+			// Follow the order of the requested fields, not the object's key order,
+			// so every item's values line up with the field names.
+			(extraArgs as string[]).forEach((field) => {
+				if (keys.has(field)) {
+					p.push((current as { [key: string]: unknown })[field]);
+				}
 			});
 			if (p.length > 0) {
 				pluckedFromObject.push(p.length === 1 ? p[0] : p);
