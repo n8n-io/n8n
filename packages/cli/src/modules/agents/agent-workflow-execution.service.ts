@@ -285,7 +285,10 @@ export class AgentWorkflowExecutionService {
 				undefined,
 				undefined,
 				instrumentation,
-				'manual',
+				// Same rule as chat and task turns: a production run executes its
+				// workflow tools as production runs, so queue mode sends them to
+				// workers and production save settings apply.
+				runType === 'production' ? 'integrated' : 'manual',
 				sandboxPrincipalHash,
 				// A workflow execution cannot resume a suspended run — it throws
 				// instead (see `recorder.suspended` below).

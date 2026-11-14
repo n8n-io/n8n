@@ -393,6 +393,30 @@ describe('AgentWorkflowExecutionService', () => {
 		);
 	});
 
+	it.each([
+		{ useDraftVersion: false, mode: 'integrated' },
+		{ useDraftVersion: true, mode: 'manual' },
+	])(
+		'runs workflow tools as $mode executions when useDraftVersion is $useDraftVersion',
+		async ({ useDraftVersion, mode }) => {
+			const { service, agentRepository, reconstructionService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
+
+			await service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'wf:workflow-1:execution-1-0',
+				projectId,
+				undefined,
+				useDraftVersion,
+			);
+
+			expect(reconstructionService.reconstructFromAgentEntity.mock.calls[0][6]).toBe(mode);
+		},
+	);
+
 	it('uses the execution-scoped workspace principal', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const runtime = makeRuntime();

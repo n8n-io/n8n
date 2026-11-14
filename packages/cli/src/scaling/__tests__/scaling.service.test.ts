@@ -243,7 +243,7 @@ describe('ScalingService', () => {
 				await scalingService.setupQueue();
 
 				const onProgress = queue.on.mock.calls.find(
-					([event]) => event === 'global:progress',
+					([event]) => (event as string) === 'global:progress',
 				)?.[1] as unknown as (jobId: string, msg: unknown) => void;
 				onProgress('job-1', {
 					kind: 'respond-to-webhook',
