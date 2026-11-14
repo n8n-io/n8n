@@ -41,7 +41,7 @@ export class InboundAuthPipeline extends AuthenticationPipeline {
 			await this.recordFirstAuthentication(verified.value.source, extracted.surface);
 		}
 
-		this.logger.info('Inbound authentication accepted', {
+		this.logger.debug('Inbound authentication accepted', {
 			surface: extracted.surface,
 			resource: extracted.resource.url,
 			sourceId: verified.value.source.id,
