@@ -151,19 +151,20 @@ export type EpisodicMemorySourceWithMessageContext = EpisodicMemoryEntrySource &
 	origin?: AgentMessageOrigin;
 };
 
-const activeSkillStatesSchema = z.array(
-	z.object({
-		agentId: z.string(),
-		agentName: z.string(),
-		resourceId: z.string(),
-		skillIds: z.array(z.string()),
-		versions: z.record(z.string().nullable()).optional(),
-	}),
-);
+const activeSkillStateSchema = z.object({
+	agentId: z.string(),
+	agentName: z.string(),
+	resourceId: z.string(),
+	skillIds: z.array(z.string()),
+	versions: z.record(z.string().nullable()).optional(),
+});
 
 function activeSkillStates(metadata: Thread['metadata']) {
-	const parsed = activeSkillStatesSchema.safeParse(metadata?.activeSkillStates);
-	return parsed.success ? parsed.data : [];
+	if (!Array.isArray(metadata?.activeSkillStates)) return [];
+	return metadata.activeSkillStates.flatMap((state) => {
+		const parsed = activeSkillStateSchema.safeParse(state);
+		return parsed.success ? [parsed.data] : [];
+	});
 }
 
 export class N8nMemoryImpl

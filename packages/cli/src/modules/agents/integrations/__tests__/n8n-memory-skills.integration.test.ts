@@ -290,6 +290,28 @@ describe('N8nMemory active skills', () => {
 		await expect(memory.skillState.load(scope)).resolves.toBeUndefined();
 	});
 
+	it('preserves valid selections when another stored entry is malformed', async () => {
+		await memory.skillState.save(scope, state);
+		const thread = await memory.getThread(scope.threadId);
+		await threads.update(scope.threadId, {
+			metadata: JSON.stringify({
+				...thread?.metadata,
+				activeSkillStates: [
+					null,
+					{ agentId, ...scope, skillIds: 'invalid' },
+					{ agentId, ...scope, ...state },
+				],
+			}),
+		});
+
+		await expect(memory.skillState.load(scope)).resolves.toEqual(state);
+		const reviewer = { ...scope, agentName: 'reviewer' };
+		await memory.skillState.save(reviewer, { skillIds: ['review'] });
+
+		await expect(memory.skillState.load(scope)).resolves.toEqual(state);
+		await expect(memory.skillState.load(reviewer)).resolves.toEqual({ skillIds: ['review'] });
+	});
+
 	it('does not recreate a deleted thread while saving active skills', async () => {
 		await memory.deleteThread(scope.threadId);
 
