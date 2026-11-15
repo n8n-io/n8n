@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { DbLock, DbLockService, type OperationContext } from '@n8n/db';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -6,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { AppBuildService } from '../app-build.service';
 import { AppBuildError } from '../app-build.types';
-import { createAppScaffold } from '../../scaffold/app-scaffold';
+import { checkBuildSource, createAppScaffold } from '../../scaffold/app-scaffold';
 import { appStorageLockSubKey } from '../../storage/app-storage-lock';
 import type { AppVersion } from '../../versions/app-version.entity';
 import { AppVersionRepository } from '../../versions/app-version.repository';
@@ -20,6 +21,7 @@ function setup() {
 	const workspaces = mock<AppWorkspaceService>();
 	const locks = mock<DbLockService>();
 	const logger = mock<Logger>();
+	const events = mock<EventService>();
 	const config = new AppsConfig();
 	const ctx = mock<OperationContext>();
 	const version = mock<AppVersion>({
@@ -50,8 +52,20 @@ function setup() {
 		version.buildStatus = 'succeeded';
 		return version;
 	});
-	const service = new AppBuildService(versions, source, workspaces, locks, logger, config);
-	return { service, versions, source, workspaces, locks, version, bundle, ctx, config, logger };
+	const service = new AppBuildService(versions, source, workspaces, locks, logger, config, events);
+	return {
+		service,
+		versions,
+		source,
+		workspaces,
+		locks,
+		version,
+		bundle,
+		ctx,
+		config,
+		logger,
+		events,
+	};
 }
 
 describe('AppBuildService', () => {
@@ -191,6 +205,7 @@ describe('AppBuildService', () => {
 
 	it('builds the selected stored source and attaches output with attempt ownership', async () => {
 		const { service, source, workspaces, locks, versions, version, bundle, ctx } = setup();
+		const scaffold = createAppScaffold();
 		expect(await service.build('project', 'app', 'version')).toMatchObject({
 			versionId: 'version',
 			status: 'succeeded',
@@ -206,7 +221,8 @@ describe('AppBuildService', () => {
 			'app',
 			'version',
 			{ attemptNumber: 1, startedAt: version.buildStatusUpdatedAt },
-			createAppScaffold(),
+			scaffold,
+			checkBuildSource(scaffold),
 			expect.any(AbortSignal),
 		);
 		expect(source.attachBundle).toHaveBeenCalledWith('project', 'app', 'version', bundle, {
@@ -377,7 +393,7 @@ describe('AppBuildService', () => {
 		source.readSource.mockResolvedValue(new Map());
 		expect(await service.build('project', 'app', 'version')).toMatchObject({
 			status: 'failed',
-			diagnostics: { stage: 'source' },
+			diagnostics: { stage: 'source', log: 'Invalid package files.' },
 		});
 		expect(workspaces.build).not.toHaveBeenCalled();
 	});
@@ -418,7 +434,7 @@ describe('AppBuildService', () => {
 	it('marks a running build failed on shutdown', async () => {
 		const { service, workspaces } = setup();
 		workspaces.build.mockImplementation(
-			async (_project, _app, _version, _attempt, _files, signal) =>
+			async (_project, _app, _version, _attempt, _files, _dependencyKey, signal) =>
 				await new Promise((_resolve, reject) => {
 					signal.addEventListener('abort', () => reject(new Error('Aborted.')), { once: true });
 				}),
@@ -429,6 +445,74 @@ describe('AppBuildService', () => {
 		expect(await result).toMatchObject({
 			status: 'failed',
 			diagnostics: { message: expect.stringContaining('shutdown') },
+		});
+	});
+
+	describe('app-build-finished event', () => {
+		it('emits once with the origin of the build', async () => {
+			const { service, events } = setup();
+
+			await service.build('project', 'app', 'version', false, {
+				userId: 'user-1',
+				threadId: 'thread-1',
+				changeSource: 'initial',
+			});
+
+			expect(events.emit).toHaveBeenCalledExactlyOnceWith('app-build-finished', {
+				userId: 'user-1',
+				threadId: 'thread-1',
+				appId: 'app',
+				versionId: 'version',
+				changeSource: 'initial',
+				status: 'succeeded',
+				attempts: 1,
+				durationMs: expect.any(Number),
+			});
+		});
+
+		it('reports a failed build', async () => {
+			const { service, workspaces, events } = setup();
+			workspaces.build.mockRejectedValue(new AppBuildError('build', 'Compilation failed.', ''));
+
+			await service.build('project', 'app', 'version');
+
+			expect(events.emit).toHaveBeenCalledExactlyOnceWith(
+				'app-build-finished',
+				expect.objectContaining({ status: 'failed', changeSource: 'chat' }),
+			);
+		});
+
+		it('defaults a manual retry to the retry change source', async () => {
+			const { service, version, events } = setup();
+			version.buildStatus = 'failed';
+
+			await service.build('project', 'app', 'version', true, { userId: 'user-1' });
+
+			expect(events.emit).toHaveBeenCalledExactlyOnceWith(
+				'app-build-finished',
+				expect.objectContaining({ userId: 'user-1', changeSource: 'retry' }),
+			);
+		});
+
+		it('counts only the attempts of this build, not those of earlier builds', async () => {
+			const { service, version, events } = setup();
+			version.buildStatus = 'failed';
+			version.buildAttempts = 7;
+
+			await service.build('project', 'app', 'version', true);
+
+			expect(events.emit).toHaveBeenCalledWith(
+				'app-build-finished',
+				expect.objectContaining({ attempts: 1 }),
+			);
+		});
+
+		it('emits nothing when the build cannot start', async () => {
+			const { service, version, events } = setup();
+			version.buildStatus = 'running';
+
+			await expect(service.build('project', 'app', 'version')).rejects.toThrow(ConflictError);
+			expect(events.emit).not.toHaveBeenCalled();
 		});
 	});
 });

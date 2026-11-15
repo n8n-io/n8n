@@ -13,6 +13,8 @@ type Files = Record<string, string>;
 
 type Repository = {
 	defaultBranch: string;
+	/** Only a token that was granted the repository reads it. */
+	private: boolean;
 	/** Files at the head of each branch. */
 	branches: Map<string, { sha: string; files: Files }>;
 };
@@ -43,35 +45,121 @@ export class FakeGitHub {
 		return [this.failWith.status, '', this.failWith.headers ?? {}];
 	}
 
+	/** The repositories that each token reads, by token. */
+	private readonly tokens = new Map<string, Set<string>>();
+
+	/** Lets the token read these repositories, and list them. */
+	grant(token: string, fullNames: string[]): void {
+		const granted = this.tokens.get(token) ?? new Set<string>();
+		for (const name of fullNames) granted.add(name.toLowerCase());
+		this.tokens.set(token, granted);
+	}
+
+	/** 401 for a token GitHub does not know, 404 for a repository the request cannot read. */
+	private access(key: string, token: string | undefined): 200 | 401 | 404 {
+		if (token !== undefined && !this.tokens.has(token)) return 401;
+		const repo = this.repositories.get(key);
+		if (!repo) return 404;
+		if (repo.private && !(token && this.tokens.get(token)?.has(key))) return 404;
+		return 200;
+	}
+
 	start(): void {
+		// nock gives the request headers only to a `function` reply, as `this.req`.
+		// eslint-disable-next-line @typescript-eslint/no-this-alias
+		const github = this;
 		nock('https://github.com')
 			.persist()
 			.post(/^\/([^/]+)\/([^/]+)\.git\/git-upload-pack$/)
-			.reply((uri) => {
-				this.requests.refs += 1;
-				const failure = this.failure();
-				if (failure) return failure;
-				const [, owner, repository] = /^\/([^/]+)\/([^/]+)\.git/.exec(uri) ?? [];
-				const repo = this.repositories.get(`${owner}/${repository}`.toLowerCase());
-				if (!repo) return [401, 'Authentication required'];
-				return [200, lsRefsAnswer(repo)];
+			.reply(function (this: nock.ReplyFnContext, uri) {
+				return github.refsReply(uri, basicToken(this.req.headers.authorization));
+			});
+		nock('https://api.github.com')
+			.persist()
+			.get(/^\/repos\/([^/]+)\/([^/]+)\/tarball\/([0-9a-f]+)$/)
+			.reply(function (this: nock.ReplyFnContext, uri) {
+				return github.apiTarballReply(uri, bearerToken(this.req.headers.authorization));
+			})
+			.get(/^\/(user\/repos|installation\/repositories)\?/)
+			.reply(function (this: nock.ReplyFnContext, uri) {
+				return github.listReply(uri, bearerToken(this.req.headers.authorization));
 			});
 		nock('https://codeload.github.com')
 			.persist()
-			.get(/^\/([^/]+)\/([^/]+)\/tar\.gz\/([0-9a-f]+)$/)
-			.reply((uri) => {
-				this.requests.archives += 1;
-				const failure = this.failure();
-				if (failure) return failure;
-				const sha = uri.split('/').at(-1) ?? '';
-				const commit = this.commits.get(sha);
-				if (!commit) return [404, 'Not found'];
-				return [200, tarball(`${commit.repository}-${sha}`, commit.files)];
-			});
+			.get(/^\/([^/]+)\/([^/]+)\/(tar\.gz|legacy\.tar\.gz)\/([0-9a-f]+)(\?token=.*)?$/)
+			.reply((uri) => github.codeloadReply(uri));
+	}
+
+	private refsReply(uri: string, token: string | undefined): nock.ReplyFnResult {
+		this.requests.refs += 1;
+		const failure = this.failure();
+		if (failure) return failure;
+		const [, owner, repository] = /^\/([^/]+)\/([^/]+)\.git/.exec(uri) ?? [];
+		const key = `${owner}/${repository}`.toLowerCase();
+		// Without a token, smart HTTP answers 401 for a repository that it cannot show. With a
+		// token GitHub knows, it answers 404, and 401 means a bad token.
+		const status = this.access(key, token);
+		if (status === 404 && token === undefined) return [401, 'Authentication required'];
+		if (status !== 200) return [status, ''];
+		const repo = this.repositories.get(key);
+		return repo ? [200, lsRefsAnswer(repo)] : [401, ''];
+	}
+
+	/** The REST tarball redirects to codeload with a short-lived token, as GitHub does. */
+	private apiTarballReply(uri: string, token: string | undefined): nock.ReplyFnResult {
+		const failure = this.failure();
+		if (failure) return failure;
+		const [, owner, repository, sha] =
+			/^\/repos\/([^/]+)\/([^/]+)\/tarball\/([0-9a-f]+)$/.exec(uri) ?? [];
+		const status = this.access(`${owner}/${repository}`.toLowerCase(), token);
+		if (status !== 200) return [status, ''];
+		const location = `https://codeload.github.com/${owner}/${repository}/legacy.tar.gz/${sha}?token=temp-${sha}`;
+		return [302, '', { Location: location }];
+	}
+
+	private codeloadReply(uri: string): nock.ReplyFnResult {
+		this.requests.archives += 1;
+		const failure = this.failure();
+		if (failure) return failure;
+		const [path, query] = uri.split('?');
+		const [, owner, repository, , sha] = path.split('/');
+		const commit = this.commits.get(sha);
+		const repo = this.repositories.get(`${owner}/${repository}`.toLowerCase());
+		if (!commit || !repo) return [404, 'Not found'];
+		// A private archive needs the short-lived token of the REST redirect.
+		if (repo.private && query !== `token=temp-${sha}`) return [404, 'Not found'];
+		return [200, tarball(`${commit.repository}-${sha}`, commit.files)];
+	}
+
+	private listReply(uri: string, token: string | undefined): nock.ReplyFnResult {
+		const failure = this.failure();
+		if (failure) return failure;
+		const granted = token === undefined ? undefined : this.tokens.get(token);
+		if (!granted) return [401, ''];
+		// Pages of `per_page` granted repositories, as GitHub sends them.
+		const params = new URL(uri, 'https://api.github.com').searchParams;
+		const page = Number(params.get('page') ?? '1');
+		const perPage = Number(params.get('per_page') ?? '30');
+		const items = [...granted].slice((page - 1) * perPage, page * perPage).flatMap((key) => {
+			const repo = this.repositories.get(key);
+			const [owner, name] = key.split('/');
+			return repo
+				? [
+						{
+							name,
+							private: repo.private,
+							html_url: `https://github.com/${key}`,
+							owner: { login: owner },
+						},
+					]
+				: [];
+		});
+		return [200, uri.startsWith('/installation') ? { repositories: items } : items];
 	}
 
 	stop(): void {
 		nock.cleanAll();
+		this.tokens.clear();
 		this.repositories.clear();
 		this.commits.clear();
 		this.requests.refs = 0;
@@ -80,9 +168,18 @@ export class FakeGitHub {
 	}
 
 	/** Creates the repository, or a new commit on one branch of it. Answers the commit SHA. */
-	push(fullName: string, files: Files, branch = 'main'): string {
+	push(
+		fullName: string,
+		files: Files,
+		branch = 'main',
+		options: { private?: boolean } = {},
+	): string {
 		const key = fullName.toLowerCase();
-		const repo = this.repositories.get(key) ?? { defaultBranch: branch, branches: new Map() };
+		const repo = this.repositories.get(key) ?? {
+			defaultBranch: branch,
+			private: options.private === true,
+			branches: new Map(),
+		};
 		this.repositories.set(key, repo);
 		const sha = createHash('sha1')
 			.update(`${key}@${branch}#${this.commits.size}:${JSON.stringify(files)}`)
@@ -98,6 +195,17 @@ export class FakeGitHub {
 		if (!head) throw new Error(`No branch ${branch} in ${fullName}`);
 		return { ...head.files };
 	}
+}
+
+function basicToken(header: string | string[] | undefined): string | undefined {
+	const value = Array.isArray(header) ? header[0] : header;
+	if (!value?.startsWith('Basic ')) return undefined;
+	return Buffer.from(value.slice(6), 'base64').toString('utf8').split(':').slice(1).join(':');
+}
+
+function bearerToken(header: string | string[] | undefined): string | undefined {
+	const value = Array.isArray(header) ? header[0] : header;
+	return value?.startsWith('Bearer ') ? value.slice(7) : undefined;
 }
 
 function lsRefsAnswer(repo: Repository): Buffer {

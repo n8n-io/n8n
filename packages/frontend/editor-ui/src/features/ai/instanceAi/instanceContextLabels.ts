@@ -5,8 +5,11 @@ type I18n = ReturnType<typeof useI18n>;
 
 export type InstanceContextEntry = Extract<InstanceAiTimelineEntry, { type: 'instance-context' }>;
 
+/** The fields that the label reads. The Agents runtime sends no reach. */
+type InstanceContextSummary = Pick<InstanceContextEntry, 'injection' | 'reach'>;
+
 /** Only the legs that carried something, so an empty leg does not read as a zero result. */
-function legSummary(i18n: I18n, entry: InstanceContextEntry): string {
+function legSummary(i18n: I18n, entry: InstanceContextSummary): string {
 	const { injection } = entry;
 	if (injection.state !== 'injected') return '';
 
@@ -35,7 +38,7 @@ function legSummary(i18n: I18n, entry: InstanceContextEntry): string {
 }
 
 /** Name each surface so readers do not need the depth scale. */
-function reachSummary(i18n: I18n, entry: InstanceContextEntry): string {
+function reachSummary(i18n: I18n, entry: InstanceContextSummary): string {
 	return (entry.reach?.surfaces ?? [])
 		.map((surface) => i18n.baseText(`aiAssistant.instanceContext.trace.surface.${surface}`))
 		.join(i18n.baseText('aiAssistant.instanceContext.trace.listSeparator'));
@@ -45,7 +48,7 @@ function reachSummary(i18n: I18n, entry: InstanceContextEntry): string {
 export function useInstanceContextLabel() {
 	const i18n = useI18n();
 
-	function getInstanceContextLabel(entry: InstanceContextEntry): string {
+	function getInstanceContextLabel(entry: InstanceContextSummary): string {
 		let head: string;
 		// A turn can read activity even when its opening block is empty.
 		if (entry.injection.state === 'absent') {

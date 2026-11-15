@@ -3,23 +3,33 @@ import { Logger } from '@n8n/backend-common';
 import { InstanceAiConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import {
+	isUniqueConstraintError,
 	SharedWorkflowRepository,
 	TransactionRunner,
 	type OperationContext,
 	type User,
 } from '@n8n/db';
+import type { PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { selfHealingOutputSchema } from '@n8n/instance-ai';
+import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import { InstanceSettings } from 'n8n-core';
 import { randomUUID } from 'node:crypto';
 
+import { Telemetry } from '@/telemetry';
+
+import { afterCommit, runInTransaction } from '../after-commit';
 import { DurableEventLog } from '../event-bus/durable-event-log';
 import { InterruptedRunSweeper } from '../event-bus/interrupted-run-sweeper';
 import { InstanceAiService } from '../instance-ai.service';
 import { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-log.repository';
+import { hasGraphChanges } from '../workflow-suggestions/workflow-suggestion-graph';
 import { WorkflowSuggestionService } from '../workflow-suggestions/workflow-suggestion.service';
 import type { SelfHealingInvestigation } from './database/self-healing-investigation.entity';
+import type { SelfHealingConfiguration } from './database/self-healing-configuration.entity';
+import type { SelfHealingResult } from './database/self-healing-result.entity';
 import { SelfHealingConfigurationRepository } from './database/self-healing-configuration.repository';
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 import { SelfHealingResultRepository } from './database/self-healing-result.repository';
@@ -33,15 +43,29 @@ import {
 
 export const SELF_HEALING_CANNOT_FIX_COOLDOWN_MS = Time.days.toMilliseconds;
 
-type StartInvestigation = {
-	workflowId: string;
-	projectId: string;
-	executionId: string;
-};
+type StartInvestigation = PubSubCommandMap['self-healing-failure'] & { projectId: string };
 
 type ExistingWork =
 	| { kind: 'investigation'; investigationId: string }
 	| { kind: 'result'; resultId: string };
+
+type SkipReason = NonNullable<
+	InferTelemetryProps<
+		typeof TELEMETRY_EVENT.SELF_HEALING.SELF_HEALING_EVALUATED_FAILURE
+	>['skip_reason']
+>;
+
+/** A code that says why a run has no result. Never an error message. */
+function noResultReason(run?: SelfHealingRunResult, error?: unknown) {
+	if (!run) return 'not_started';
+	if (run.status !== 'completed') return run.status;
+	if (run.finishReason !== 'stop') return run.finishReason ?? 'unknown';
+	if (!run.output) return 'invalid_output';
+	// The run gave a valid answer, and `error` stopped the save.
+	if (error instanceof BadRequestError) return 'invalid_candidate';
+	if (error instanceof ConflictError) return 'workflow_changed';
+	return 'save_failed';
+}
 
 @Service()
 export class SelfHealingInvestigationService {
@@ -61,6 +85,8 @@ export class SelfHealingInvestigationService {
 		private readonly logger: Logger,
 		private readonly configurations: SelfHealingConfigurationRepository,
 		private readonly configurationService: SelfHealingConfigurationService,
+		private readonly telemetry: Telemetry,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	/** Admit an eligible failure. Automatic triggers belong to the caller. */
@@ -73,9 +99,22 @@ export class SelfHealingInvestigationService {
 			input.projectId,
 			input.workflowId,
 		);
-		if (!configuration) return null;
+		if (!configuration) {
+			// Report the failure only when the project uses self-healing.
+			if (
+				this.instanceSettings.isLeader &&
+				(await this.configurations.hasConfiguration(input.projectId))
+			) {
+				this.trackEvaluated(input, 'not_watched');
+			}
+			return null;
+		}
+		const skip = (reason: SkipReason) => {
+			this.trackEvaluated(input, reason, configuration);
+			return null;
+		};
 
-		const actor = await this.txRunner.run({}, async (ctx) => {
+		const actor = await runInTransaction(this.txRunner, {}, async (ctx) => {
 			const current = await this.configurations.findForUpdate(
 				configuration.id,
 				input.projectId,
@@ -85,15 +124,17 @@ export class SelfHealingInvestigationService {
 
 			return await this.configurationService.resolveActorOrPause(current, input.workflowId, ctx);
 		});
-		if (!actor) return null;
+		if (!actor) return skip('configuration_paused');
 
 		await this.requireProject(input.workflowId, input.projectId);
 		await this.suggestions.reconcileWorkflow(input.workflowId);
 
-		const existing = await this.findExisting(input);
+		const existing = await this.findExisting(input, configuration);
 		if (existing) return existing;
 
-		if (await this.resultRepository.isInCooldown(this.cooldownQuery(input))) return null;
+		if (await this.resultRepository.isInCooldown(this.cooldownQuery(input))) {
+			return skip('cooldown');
+		}
 
 		try {
 			const baseline = await this.suggestions.captureBaseline(input.workflowId, actor.id);
@@ -103,10 +144,12 @@ export class SelfHealingInvestigationService {
 			await this.executions.validateFailure(actor, baseline, input.executionId);
 
 			const claimed = await this.claim(input, baseline, configuration.id);
-			if (!claimed || 'kind' in claimed) return claimed;
+			if (typeof claimed === 'string') return skip(claimed);
+			if ('kind' in claimed) return claimed;
+			this.trackEvaluated(input, null, configuration, claimed);
 
 			// Return the investigation ID without waiting for the agent to finish.
-			void this.run(claimed, baseline, actor).catch((error: unknown) => {
+			void this.run(claimed, baseline, actor, configuration).catch((error: unknown) => {
 				this.logger.error('Self-healing investigation failed.', {
 					investigationId: claimed.id,
 					error,
@@ -114,6 +157,10 @@ export class SelfHealingInvestigationService {
 			});
 			return { kind: 'investigation', investigationId: claimed.id };
 		} catch (error) {
+			// A unique constraint error means that another main started this investigation.
+			if (!isUniqueConstraintError(error)) {
+				skip(error instanceof ConflictError ? 'unpublished_changes' : 'other');
+			}
 			if (error instanceof ForbiddenError) {
 				await this.configurationService.recheckAccess(
 					configuration.id,
@@ -126,8 +173,67 @@ export class SelfHealingInvestigationService {
 		}
 	}
 
+	private trackEvaluated(
+		input: StartInvestigation,
+		skipReason: SkipReason | null,
+		configuration?: SelfHealingConfiguration,
+		investigation?: SelfHealingInvestigation,
+	) {
+		// Each main reaches the same skip decision, so only the leader reports it.
+		if (skipReason && !this.instanceSettings.isLeader) return;
+
+		const userId = configuration?.enabledById;
+		this.telemetry.track(TELEMETRY_EVENT.SELF_HEALING.SELF_HEALING_EVALUATED_FAILURE, {
+			execution_id: input.executionId,
+			workflow_id: input.workflowId,
+			project_id: input.projectId,
+			workflow_version_id: input.workflowVersionId ?? null,
+			failed_at: input.failedAt ?? null,
+			error_type: input.errorType ?? null,
+			error_node_type: input.errorNodeType ?? null,
+			configuration_id: configuration?.id ?? null,
+			decision: skipReason ? 'skip' : 'investigate',
+			skip_reason: skipReason,
+			investigation_id: investigation?.id ?? null,
+			...(userId ? { user_id: userId } : {}),
+		});
+	}
+
+	private trackFinished(
+		investigation: SelfHealingInvestigation,
+		reason: string,
+		run?: SelfHealingRunResult,
+		result?: { id: string; outcome: SelfHealingResult['outcome'] } | null,
+	) {
+		this.telemetry.track(TELEMETRY_EVENT.SELF_HEALING.SELF_HEALING_FINISHED_INVESTIGATION, {
+			investigation_id: investigation.id,
+			execution_id: investigation.executionId,
+			workflow_id: investigation.workflowId,
+			project_id: investigation.projectId,
+			thread_id: investigation.threadId,
+			run_id: investigation.runId,
+			user_id: investigation.backgroundUserId,
+			baseline_version_id: investigation.publishedVersionId,
+			outcome: result?.outcome ?? 'no_result',
+			termination_reason: reason,
+			result_id: result?.id ?? null,
+			duration_seconds: run?.usage.durationSeconds ?? null,
+			turns: run?.usage.turns ?? null,
+			token_usage_by_model:
+				run?.tokenUsage?.map((usage) => ({
+					model: usage.model,
+					uncached_input: usage.uncachedInput,
+					cache_read: usage.cacheRead,
+					cache_write: usage.cacheWrite,
+					output: usage.output,
+				})) ?? null,
+			credits_charged: run && 'credits' in run.usage ? run.usage.credits : null,
+		});
+	}
+
 	private async findExisting(
 		input: StartInvestigation,
+		configuration: SelfHealingConfiguration,
 		ctx: OperationContext = {},
 	): Promise<ExistingWork | null> {
 		const executionInvestigation = await this.investigations.getForExecution(
@@ -136,6 +242,7 @@ export class SelfHealingInvestigationService {
 			ctx,
 		);
 		if (executionInvestigation) {
+			// Another delivery of this failure started the investigation and sent the event.
 			return { kind: 'investigation', investigationId: executionInvestigation.id };
 		}
 
@@ -144,6 +251,7 @@ export class SelfHealingInvestigationService {
 			ctx,
 		);
 		if (unfinishedInvestigation) {
+			afterCommit(ctx, () => this.trackEvaluated(input, 'investigation_running', configuration));
 			return { kind: 'investigation', investigationId: unfinishedInvestigation.id };
 		}
 
@@ -152,7 +260,9 @@ export class SelfHealingInvestigationService {
 			input.projectId,
 			ctx,
 		);
-		return result ? { kind: 'result', resultId: result.id } : null;
+		if (!result) return null;
+		afterCommit(ctx, () => this.trackEvaluated(input, 'result_awaiting_review', configuration));
+		return { kind: 'result', resultId: result.id };
 	}
 
 	private async claim(
@@ -160,27 +270,31 @@ export class SelfHealingInvestigationService {
 		baseline: WorkflowSuggestionBaseline,
 		configurationId: number,
 	) {
-		return await this.txRunner.run({}, async (ctx) => {
+		type Claim = SkipReason | ExistingWork | SelfHealingInvestigation;
+		return await runInTransaction(this.txRunner, {}, async (ctx): Promise<Claim> => {
 			const configuration = await this.configurations.findForUpdate(
 				configurationId,
 				input.projectId,
 				ctx,
 			);
-			if (!configuration) return null;
+			if (!configuration) return 'other';
 
 			const actor = await this.configurationService.resolveActorOrPause(
 				configuration,
 				input.workflowId,
 				ctx,
 			);
-			if (!actor || actor.id !== baseline.backgroundUserId) return null;
+			if (!actor) return 'configuration_paused';
+			if (actor.id !== baseline.backgroundUserId) return 'other';
 
 			await this.suggestions.readWorkflowTargetForApply(input.workflowId, ctx);
-			const existing = await this.findExisting(input, ctx);
+			const existing = await this.findExisting(input, configuration, ctx);
 			if (existing) return existing;
 
 			await this.suggestions.requireCurrentBaseline(baseline, ctx);
-			if (await this.resultRepository.isInCooldown(this.cooldownQuery(input), ctx)) return null;
+			if (await this.resultRepository.isInCooldown(this.cooldownQuery(input), ctx)) {
+				return 'cooldown';
+			}
 
 			return await this.investigations.createInvestigation(
 				{
@@ -204,19 +318,25 @@ export class SelfHealingInvestigationService {
 		investigation: SelfHealingInvestigation,
 		baseline: WorkflowSuggestionBaseline,
 		user: User,
+		configuration: Pick<SelfHealingConfiguration, 'id' | 'includeSubWorkflows'>,
 	) {
+		let completedRun: SelfHealingRunResult | undefined;
 		try {
 			await this.runtime.startSelfHealingRun(
 				{
 					user,
 					baseline,
+					configurationId: configuration.id,
+					includeSubWorkflows: configuration.includeSubWorkflows,
 					executionId: investigation.executionId,
 				},
 				{
 					threadId: investigation.threadId,
 					runId: investigation.runId,
-					onComplete: async (run, signal) =>
-						await this.handleRunCompletion(investigation, baseline, run, signal),
+					onComplete: async (run, signal) => {
+						completedRun = run;
+						await this.handleRunCompletion(investigation, baseline, run, signal);
+					},
 				},
 			);
 		} catch (error) {
@@ -228,7 +348,11 @@ export class SelfHealingInvestigationService {
 				);
 			}
 
-			await this.investigations.finishWithoutResult(investigation.id);
+			await this.finishWithoutResult(
+				investigation,
+				noResultReason(completedRun, error),
+				completedRun,
+			);
 			throw error;
 		}
 	}
@@ -241,7 +365,7 @@ export class SelfHealingInvestigationService {
 	) {
 		if (run.status !== 'completed' || run.finishReason !== 'stop' || !run.output) {
 			if (run.error instanceof ForbiddenError) throw run.error;
-			await this.investigations.finishWithoutResult(investigation.id);
+			await this.finishWithoutResult(investigation, noResultReason(run), run);
 			return;
 		}
 
@@ -252,28 +376,31 @@ export class SelfHealingInvestigationService {
 			completedAt: new Date().toISOString(),
 		};
 
-		if (output.candidateFilePath) {
-			if (!run.candidate || run.candidate.filePath !== output.candidateFilePath) {
-				throw new BadRequestError('The candidate file is unavailable.');
+		if (output.candidateWorkflowIds.length > 0) {
+			if (!run.candidates) throw new BadRequestError('The candidate files are unavailable.');
+
+			const missingSetup: string[] = [];
+			result.candidates = [];
+			for (const { baseline, compile } of run.candidates) {
+				const candidate = await compile();
+				if (!candidate.success) throw new BadRequestError(candidate.errors.join('\n'));
+				const { nodes, connections } = candidate.workflow;
+				if (!hasGraphChanges(baseline.original, { nodes, connections })) continue;
+
+				const workflowName = baseline.original.name;
+				missingSetup.push(
+					...Object.entries(candidate.credentialResolution.mockedCredentialsByNode).map(
+						([node, types]) =>
+							`- Connect credentials for ${node} in "${workflowName}": ${types.join(', ')}`,
+					),
+					...candidate.warnings
+						.filter(({ code }) => code === 'unresolved_placeholders')
+						.map(({ message }) => `- In "${workflowName}": ${message}`),
+				);
+				result.candidates.push({ baseline, graph: { nodes, connections } });
 			}
 
-			const candidate = await run.candidate.compile();
-			if (!candidate.success) throw new BadRequestError(candidate.errors.join('\n'));
-
-			const placeholderWarnings = candidate.warnings.filter(
-				({ code }) => code === 'unresolved_placeholders',
-			);
-			if (
-				output.outcome === 'fix_ready' &&
-				(candidate.credentialResolution.mockedCredentialTypes.length > 0 ||
-					placeholderWarnings.length > 0)
-			) {
-				const missingSetup = [
-					...Object.entries(candidate.credentialResolution.mockedCredentialsByNode).map(
-						([node, types]) => `- Connect credentials for ${node}: ${types.join(', ')}`,
-					),
-					...placeholderWarnings.map(({ message }) => `- ${message}`),
-				];
+			if (output.outcome === 'fix_ready' && missingSetup.length > 0) {
 				result.output = {
 					...output,
 					outcome: 'needs_you',
@@ -287,10 +414,10 @@ export class SelfHealingInvestigationService {
 						'Continue in chat to complete the setup and verify the repair.',
 				};
 			}
+		}
 
-			result.candidate = {
-				graph: { nodes: candidate.workflow.nodes, connections: candidate.workflow.connections },
-			};
+		if (output.outcome === 'fix_ready' && !result.candidates?.length) {
+			throw new BadRequestError('The suggestion has no workflow changes.');
 		}
 
 		const outputFields = selfHealingOutputSchema.innerType().shape;
@@ -305,7 +432,14 @@ export class SelfHealingInvestigationService {
 
 		await this.suggestions.requireCurrentBaseline(baseline);
 		signal.throwIfAborted();
-		await this.results.complete({ investigationId: investigation.id, baseline, ...result, signal });
+		const saved = await this.results.complete({
+			investigationId: investigation.id,
+			baseline,
+			...result,
+			signal,
+		});
+		// No saved result means that the configuration was paused or deleted during the run.
+		this.trackFinished(investigation, saved ? 'completed' : 'not_saved', run, saved);
 	}
 
 	async reconcile(signal?: AbortSignal) {
@@ -330,13 +464,27 @@ export class SelfHealingInvestigationService {
 			return;
 		}
 		if (!(await this.events.lastFactAt(threadId, runId))) {
-			await this.investigations.finishWithoutResult(investigation.id);
+			await this.finishWithoutResult(investigation, 'crash_interrupted');
 			return;
 		}
 		await this.sweeper.sweepRun(threadId, runId);
 		await this.eventLog.flush(threadId);
 		if (await this.events.getRunFinish(threadId, runId)) {
-			await this.investigations.finishWithoutResult(investigation.id);
+			await this.finishWithoutResult(investigation, 'crash_interrupted');
+		}
+	}
+
+	/** Close an investigation that has no result, and report it. */
+	private async finishWithoutResult(
+		investigation: SelfHealingInvestigation,
+		reason: string,
+		run?: SelfHealingRunResult,
+	) {
+		const finished = await this.investigations.finishWithoutResult(investigation.id);
+		// Another main can finish the investigation first. Then it sent the event.
+		// A deleted investigation has no other reporter.
+		if (finished || !(await this.investigations.findInvestigation(investigation.id))) {
+			this.trackFinished(investigation, reason, run);
 		}
 	}
 

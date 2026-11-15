@@ -191,6 +191,16 @@ useEventListener(
 	{ capture: true },
 );
 
+// Hovering a row, the edited one too, moves focus to that row or to the search input.
+// That blurs the rename input and ends the rename, so rows get no hover while editing.
+function keepEditFocus(event: PointerEvent) {
+	if (!props.editingItemId || !(event.target instanceof Element)) return;
+	if (event.target.closest('[data-menu-content]')?.id !== contentId.value) return;
+	event.stopPropagation();
+}
+useEventListener(document, 'pointermove', keepEditFocus, { capture: true });
+useEventListener(document, 'pointerleave', keepEditFocus, { capture: true });
+
 const highlightFirstItem = () => {
 	dropdownRef.value?.highlightFirstItem();
 };
@@ -237,12 +247,16 @@ defineExpose({ highlightFirstItem, focusTrigger });
 		</template>
 
 		<template #item-label="{ item, ui }">
-			<slot
+			<!-- Events in the edit row stay there. On the menu, a click, Space or Enter selects the row, and letters jump between rows. -->
+			<div
 				v-if="item.data && props.editingItemId === item.id"
-				name="item-edit"
-				:item="item"
-				:ui="ui"
-			/>
+				:class="$style.itemEdit"
+				@pointerdown.stop
+				@click.stop
+				@keydown.stop
+			>
+				<slot name="item-edit" :item="item" :ui="ui" />
+			</div>
 			<N8nText
 				v-else
 				:class="[ui.class, $style.itemLabel]"
@@ -291,6 +305,10 @@ defineExpose({ highlightFirstItem, focusTrigger });
 </template>
 
 <style lang="scss" module>
+.itemEdit {
+	display: contents;
+}
+
 .menuContent {
 	width: var(--n8n--dropdown-menu-width);
 }

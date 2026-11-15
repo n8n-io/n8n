@@ -9,6 +9,8 @@ import { AppBuildResultStore } from '../storage/app-version-stores';
 export type AppBundleFile = { body: Buffer; contentType: string; etag: string };
 type Bundle = Map<string, AppBundleFile>;
 
+export const etagOf = (body: Buffer) => `W/"${createHash('sha256').update(body).digest('hex')}"`;
+
 @Service()
 export class AppBundleCache {
 	private readonly cache: LRUCache<string, Bundle>;
@@ -50,7 +52,7 @@ export class AppBundleCache {
 			bundle.set(name, {
 				body,
 				contentType: contentType(mimeType) || mimeType,
-				etag: `W/"${createHash('sha256').update(body).digest('hex')}"`,
+				etag: etagOf(body),
 			});
 		}
 		this.cache.set(versionId, bundle);

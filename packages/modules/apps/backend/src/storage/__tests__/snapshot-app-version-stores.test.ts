@@ -22,6 +22,7 @@ const version: NewSourceVersion = {
 	appId: 'app',
 	expectedDraftVersionId: 'draft',
 	label: 'Snapshot',
+	bindings: [{ key: 'submit', kind: 'workflow', workflowId: 'w1' }],
 };
 const files = new Map([['index.html', Buffer.from('<html/>')]]);
 const attempt = { attemptNumber: 1, startedAt: new Date() };
@@ -71,7 +72,13 @@ describe('SnapshotAppSourceVersionStore', () => {
 		});
 		expect(artifacts.completeUpload).toHaveBeenCalledWith(artifact, ctx);
 		expect(versions.insertVersion).toHaveBeenCalledWith(
-			{ id: version.id, appId: version.appId, label: version.label, sourceArtifactId: artifact.id },
+			{
+				id: version.id,
+				appId: version.appId,
+				label: version.label,
+				sourceArtifactId: artifact.id,
+				bindings: version.bindings,
+			},
 			ctx,
 		);
 		expect(apps.advanceDraft).toHaveBeenCalledWith(
@@ -81,6 +88,49 @@ describe('SnapshotAppSourceVersionStore', () => {
 			ctx,
 		);
 		expect(artifacts.discard).not.toHaveBeenCalled();
+	});
+
+	describe('copyDraft', () => {
+		const copy = { ...version, expectedDraftVersionId: 'draft' };
+		const published = {
+			id: 'draft',
+			appId: version.appId,
+			sourceArtifactId: 7,
+			bundleArtifactId: 8,
+			buildStatus: 'succeeded',
+		} as AppVersion;
+
+		it('shares the source and the build of the draft and advances the draft', async () => {
+			const { source, artifacts, versions, apps, ctx } = createStores();
+			versions.findVersionById.mockResolvedValue(published);
+
+			await source.copyDraft(copy);
+
+			expect(versions.findVersionById).toHaveBeenCalledWith('draft', ctx);
+			expect(versions.insertCopy).toHaveBeenCalledWith(
+				published,
+				{ id: version.id, label: version.label, bindings: version.bindings },
+				ctx,
+			);
+			expect(apps.advanceDraft).toHaveBeenCalledWith(version.appId, 'draft', version.id, ctx);
+			expect(artifacts.upload).not.toHaveBeenCalled();
+		});
+
+		it('refuses a draft of another app', async () => {
+			const { source, versions } = createStores();
+			versions.findVersionById.mockResolvedValue({ ...published, appId: 'other' } as AppVersion);
+
+			await expect(source.copyDraft(copy)).rejects.toThrow(NotFoundError);
+			expect(versions.insertCopy).not.toHaveBeenCalled();
+		});
+
+		it('refuses when the draft changed', async () => {
+			const { source, versions, apps } = createStores();
+			versions.findVersionById.mockResolvedValue(published);
+			apps.advanceDraft.mockResolvedValue(false);
+
+			await expect(source.copyDraft(copy)).rejects.toThrow(ConflictError);
+		});
 	});
 
 	it('discards the upload when the app disappears', async () => {

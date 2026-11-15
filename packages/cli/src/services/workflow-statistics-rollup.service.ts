@@ -3,7 +3,7 @@ import { DbLock, DbLockService, WorkflowStatisticsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
 import { ErrorReporter } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { WorkflowStatisticsService } from './workflow-statistics.service';
 

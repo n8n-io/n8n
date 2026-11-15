@@ -33,9 +33,12 @@ export class AssistantEventSink implements InstanceAiEventBus {
 	constructor(
 		private readonly emitHostEvent: HostEventEmitter,
 		private readonly logger: Logger,
+		/** Sees every published event, also the ones that the chat does not show. */
+		private readonly onEvent?: (event: InstanceAiEvent) => void,
 	) {}
 
 	publish(_threadId: string, event: InstanceAiEvent): void {
+		this.onEvent?.(event);
 		const keyOf = HOST_EVENT_KEYS[event.type];
 		if (!keyOf) return;
 		const payload = 'payload' in event ? event.payload : undefined;

@@ -3,6 +3,8 @@ import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not } from '@n8n/typeorm';
 import { isDraftIntegration } from '@n8n/api-types';
 
+import { readInboundUserMessage } from '../utils/inbound-attachments';
+import { AgentMessageEntity } from '../entities/agent-message.entity';
 import { AgentMessageQueue } from '../entities/agent-message-queue.entity';
 import { Agent } from '../entities/agent.entity';
 import type { AgentQueueDispatch, QueuedUserChatMessage } from '../types/agent-queued-message';
@@ -107,6 +109,31 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 			steeringExecutionId: IsNull(),
 		});
 		return result.affected === 1;
+	}
+
+	async discardPending(threadId: string, ctx: OperationContext) {
+		const manager = this.managerFor(ctx);
+		const items = await this.listPending(threadId, ctx);
+
+		if (!items.length) return [];
+
+		const attachmentIds = items.flatMap((item) =>
+			readInboundUserMessage(item.message.content).attachments.map((attachment) => attachment.id),
+		);
+
+		await manager.delete(AgentMessageQueue, { id: In(items.map((item) => item.id)) });
+		await manager.update(
+			AgentMessageEntity,
+			{ id: In(items.map((item) => item.messageId)) },
+			{
+				content: { role: 'user', content: [] },
+				author: null,
+				modelContent: null,
+				modelContextAt: null,
+			},
+		);
+
+		return attachmentIds;
 	}
 
 	async discardPendingForSession(threadId: string, ctx: OperationContext): Promise<void> {

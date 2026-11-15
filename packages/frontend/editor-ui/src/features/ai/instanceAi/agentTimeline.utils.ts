@@ -63,6 +63,7 @@ export type TimelineBlock =
 	| { type: 'text'; key: string; entry: TextEntry }
 	| { type: 'tasks'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'mcp-connect'; key: string; toolCall: InstanceAiToolCallState }
+	| { type: 'app-blueprint'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'questions'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'preference'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'child'; key: string; child: InstanceAiAgentNode }
@@ -72,6 +73,7 @@ type ToolCallKind =
 	| 'hidden'
 	| 'tasks'
 	| 'mcp-connect'
+	| 'app-blueprint'
 	| 'questions'
 	| 'questions-pending'
 	| 'preference'
@@ -97,6 +99,7 @@ function classifyToolCall(tc: InstanceAiToolCallState): ToolCallKind {
 		return isPreferenceWriteOutcome(tc) ? 'preference' : 'hidden';
 	}
 	if (tc.confirmation?.mcpConnectRequest) return 'mcp-connect';
+	if (tc.confirmation?.appBlueprint) return 'app-blueprint';
 	if (tc.confirmation?.inputType === 'questions') {
 		return tc.isLoading ? 'questions-pending' : 'questions';
 	}
@@ -248,6 +251,9 @@ export function buildTimelineBlocks(
 				return;
 			case 'mcp-connect':
 				pushStandalone({ type: 'mcp-connect', key: `mcp-connect-${idx}`, toolCall: tc });
+				return;
+			case 'app-blueprint':
+				pushStandalone({ type: 'app-blueprint', key: `app-blueprint-${idx}`, toolCall: tc });
 				return;
 			case 'questions':
 				pushStandalone({ type: 'questions', key: `questions-${idx}`, toolCall: tc });

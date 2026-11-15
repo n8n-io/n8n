@@ -1,0 +1,104 @@
+{
+	"name": "Marketstack Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 200],
+			"id": "0b6a2f5e-7a51-4d0c-8a4f-6a2b1f7c9e01",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"symbols": "AAPL",
+				"filters": {
+					"specificDate": "2024-01-02"
+				}
+			},
+			"type": "n8n-nodes-base.marketstack",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "0b6a2f5e-7a51-4d0c-8a4f-6a2b1f7c9e02",
+			"name": "End of Day Data",
+			"credentials": {
+				"marketstackApi": {
+					"id": "1",
+					"name": "Marketstack account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "exchange",
+				"exchange": "XNAS"
+			},
+			"type": "n8n-nodes-base.marketstack",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "0b6a2f5e-7a51-4d0c-8a4f-6a2b1f7c9e03",
+			"name": "Exchange",
+			"credentials": {
+				"marketstackApi": {
+					"id": "1",
+					"name": "Marketstack account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "ticker",
+				"symbol": "AAPL"
+			},
+			"type": "n8n-nodes-base.marketstack",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "0b6a2f5e-7a51-4d0c-8a4f-6a2b1f7c9e04",
+			"name": "Ticker",
+			"credentials": {
+				"marketstackApi": {
+					"id": "1",
+					"name": "Marketstack account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"End of Day Data": [
+			{
+				"json": { "symbol": "AAPL", "date": "2024-01-02T00:00:00+0000", "close": 185.64 }
+			}
+		],
+		"Exchange": [
+			{
+				"json": { "name": "NASDAQ Stock Exchange", "mic": "XNAS" }
+			}
+		],
+		"Ticker": [
+			{
+				"json": { "name": "Apple Inc", "symbol": "AAPL" }
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "End of Day Data", "type": "main", "index": 0 },
+					{ "node": "Exchange", "type": "main", "index": 0 },
+					{ "node": "Ticker", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "0b6a2f5e-7a51-4d0c-8a4f-6a2b1f7c9e05",
+	"meta": {
+		"instanceId": "test-instance-id"
+	},
+	"id": "marketstackTestWorkflow",
+	"tags": []
+}

@@ -1,12 +1,14 @@
 import { In, type Repository } from '@n8n/typeorm';
 
 import { WorkflowSeededStep, type WorkflowExecution } from './entities';
+import { parentLinkSql, toParentColumns } from './parent-link-columns';
 import {
 	ExecutionNotFoundError,
 	type ExecutionRecord,
 	type ExecutionStore,
 	type NewExecutionRecord,
 } from '../execution/execution-store';
+import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
 import {
 	LIVE_EXECUTION_STATUSES,
 	stepKeyId,
@@ -24,10 +26,23 @@ type InsertValues = Parameters<Repository<WorkflowExecution>['insert']>[0];
 
 /** TypeORM-backed `ExecutionStore` adapter. */
 export class TypeOrmExecutionStore implements ExecutionStore {
-	constructor(private readonly repo: Repository<WorkflowExecution>) {}
+	constructor(
+		private readonly repo: Repository<WorkflowExecution>,
+		private readonly staleness: StalenessThresholds = DEFAULT_STALENESS_THRESHOLDS,
+	) {}
 
-	async createExecution({ seededSteps, ...record }: NewExecutionRecord): Promise<void> {
-		const execution = this.repo.create({ ...record, finishedAt: null });
+	/** The `stale_after` value of an execution that enters `status` now. */
+	private staleAfterFor(status: ExecutionStatus): Date | null {
+		return status === 'queued' ? new Date(Date.now() + this.staleness.queuedMs) : null;
+	}
+
+	async createExecution({ seededSteps, parent, ...record }: NewExecutionRecord): Promise<void> {
+		const execution = this.repo.create({
+			...record,
+			...toParentColumns(parent),
+			finishedAt: null,
+			staleAfter: this.staleAfterFor(record.status),
+		});
 		const seeded = Object.entries(seededSteps ?? {}).flatMap(([nodeId, passes]) =>
 			passes.map((outputs, iteration) => ({ executionId: record.id, nodeId, iteration, outputs })),
 		);
@@ -75,6 +90,8 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			.addSelect('execution.trigger_outputs', 'triggerOutputs')
 			.addSelect('execution.caller_context', 'callerContext')
 			.addSelect('execution.response_expectation', 'responseExpectation')
+			.addSelect(parentLinkSql('execution'), 'parent')
+			.addSelect('execution.lifecycle_event_subscription', 'lifecycleEventSubscription')
 			.addSelect('execution.finished_at', 'finishedAt')
 			.where('execution.id = :id', { id })
 			.getRawOne();
@@ -82,8 +99,17 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		return row;
 	}
 
+	async loadExecutionStatus(id: string): Promise<ExecutionStatus> {
+		const row = await this.repo.findOne({ select: { status: true }, where: { id } });
+		if (!row) throw new ExecutionNotFoundError(id);
+		return row.status;
+	}
+
 	async transitionStatus(id: string, from: ExecutionStatus, to: ExecutionStatus): Promise<boolean> {
-		const result = await this.repo.update({ id, status: from }, { status: to });
+		const result = await this.repo.update(
+			{ id, status: from },
+			{ status: to, staleAfter: this.staleAfterFor(to) },
+		);
 		return result.affected === 1;
 	}
 
@@ -104,7 +130,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		const finishedAt = new Date();
 		const result = await this.repo.update(
 			{ id, status: In(['queued', ...LIVE_EXECUTION_STATUSES] satisfies ExecutionStatus[]) },
-			{ status: 'cancelled', finishedAt },
+			{ status: 'cancelled', finishedAt, staleAfter: null },
 		);
 		return result.affected === 1 ? { finishedAt } : null;
 	}

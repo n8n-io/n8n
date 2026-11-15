@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Push } from '@/push';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { resolveMcpRegistryConnection } from '../../mcp-registry-connection';

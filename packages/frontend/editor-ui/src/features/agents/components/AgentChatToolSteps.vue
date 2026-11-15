@@ -11,6 +11,7 @@ import {
 	getViolationVerdict,
 	SCOPE_LABEL_KEY,
 } from '@n8n/frontend-module-type-availability-policies';
+import { N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed, toRef } from 'vue';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
@@ -58,7 +59,14 @@ const showFix = computed(() => Boolean(props.canFixWithAssistant && props.execut
 const dismissedToolCallIds = computed(() => new Set(props.dismissedToolCallIds ?? []));
 
 const outputFilesByToolCallId = computed(
-	() => new Map(props.toolCalls.map((tc) => [tc.toolCallId, getToolOutputAttachments(tc.output)])),
+	() =>
+		new Map(
+			props.toolCalls.map((tc) => [
+				tc.toolCallId,
+				// The reply files of n8n Chat show on the message, not under the step.
+				tc.tool === N8N_CHAT_ACTION_TOOL_NAME ? [] : getToolOutputAttachments(tc.output),
+			]),
+		),
 );
 
 function outputFiles(tc: ToolCall) {
@@ -70,8 +78,12 @@ const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
 
 	const dismissed = dismissedToolCallIds.value;
 	const failures: AgentFixWithAssistantFailure[] = [];
+
 	for (const toolCall of props.toolCalls) {
 		if (dismissed.has(toolCall.toolCallId)) continue;
+
+		if (isCanceledToolCall(toolCall)) continue;
+
 		if (toolCall.state !== TOOL_CALL_STATE.ERROR) continue;
 		if (isRecoverablePlanError(toolCall)) continue;
 		// The assistant cannot lift a policy.
@@ -132,6 +144,8 @@ function toolStepLabel(tc: ToolCall, isCompact = false): string {
 }
 
 function toolStepMetadata(tc: ToolCall): string[] {
+	if (isCanceledToolCall(tc)) return [i18n.baseText('agentSessions.status.cancelled')];
+
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return [
 			resolveSubAgentName(tc.input, subAgentNameById.value),
@@ -198,7 +212,19 @@ function toolStepRefusal(tc: ToolCall) {
 	return parseToolPolicyRefusal(tc.output);
 }
 
+function isCanceledToolCall(tc: ToolCall): boolean {
+	return (
+		tc.canceled === true ||
+		tc.state === TOOL_CALL_STATE.CANCELLED ||
+		// Older saved cancellations used the tool-error path.
+		(tc.state === TOOL_CALL_STATE.ERROR &&
+			tc.output === 'Error: Tool call stopped by guardrail: tasks-cancelled')
+	);
+}
+
 function toolStepError(tc: ToolCall): string | undefined {
+	if (isCanceledToolCall(tc)) return undefined;
+
 	if (isRecoverablePlanError(tc)) return i18n.baseText('agents.chat.plan.error.rejected');
 	if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;
 	const refusal = toolStepRefusal(tc);
@@ -252,7 +278,7 @@ function hasActiveToolCall(): boolean {
 <template>
 	<div :class="$style.toolSteps">
 		<template v-if="toolCalls.length > 1">
-			<N8nAiActivityStepGroup :label="groupLabel()" size="small" :loading="hasActiveToolCall()">
+			<N8nAiActivityStepGroup :label="groupLabel()" size="medium" :loading="hasActiveToolCall()">
 				<template v-for="tc in toolCalls" :key="tc.toolCallId">
 					<N8nAiActivityStep
 						v-for="view in [toolStepView(tc)]"

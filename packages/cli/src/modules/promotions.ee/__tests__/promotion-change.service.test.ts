@@ -13,6 +13,11 @@ import { PACKAGE_SUBFOLDER } from '../constants';
 import { PromotionChangeService } from '../promotion-change.service';
 import { buildPreview, scopeManifestToProject, type PreviewSide } from '../promotion-preview';
 
+vi.mock('@/modules/n8n-packages/n8n-packages.service', () => ({
+	N8nPackagesService: class {},
+}));
+vi.mock('@/services/folder.service', () => ({ FolderService: class {} }));
+
 const ids = (entries: Array<{ id: string }> | undefined) => entries?.map(({ id }) => id).sort();
 
 // The global entry comes last on purpose: a name-keyed map would keep it for every project.
@@ -130,8 +135,6 @@ describe('PromotionChangeService preview permission', () => {
 		mock(),
 		mock(),
 		mock(),
-		mock(),
-		mock(),
 	);
 	// The read scope passes the route decorator, but not the check for each direction.
 	const reader = { role: { slug: 'custom', scopes: [{ slug: 'promotions:read' }] } } as User;
@@ -139,10 +142,13 @@ describe('PromotionChangeService preview permission', () => {
 	it.each(['promote', 'apply'] as const)(
 		'names the promotions:%s scope when the user lacks it',
 		async (direction) => {
-			const details = service.getDetails(reader, 'project1', direction, {
-				commitSha: null,
-				keys: [],
-			});
+			const details = service.getDetails(
+				reader,
+				'project1',
+				direction,
+				{ commitSha: null, keys: [] },
+				{ canSeeVariableValues: false },
+			);
 
 			await expect(details).rejects.toThrow(ForbiddenError);
 			await expect(details).rejects.toThrow(`requires the promotions:${direction} scope`);

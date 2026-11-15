@@ -293,8 +293,21 @@ export const InstanceAiModule = defineFrontendModule({
 		// the SDK registry instead of a view-scoped store listener. The store is
 		// imported lazily so it stays out of the startup bundle.
 		updateInstanceAiCredits: async (event) => {
-			const { useInstanceAiStore } = await import('./instanceAi.store');
-			useInstanceAiStore().handleCreditsPush(event.data);
+			const { useAssistantCreditsStore } = await import('./assistantCredits.store');
+			useAssistantCreditsStore().setCredits(event.data);
+			// A claim also carries the running total of its thread. Each runtime keeps the
+			// totals of its own threads. A tab cannot always tell the runtime of a thread
+			// (a new thread can open from a launch marker only), so both stores get the
+			// total. The current Assistant store ignores a thread that it does not hold.
+			const perThread = event.data.creditsPerThread;
+			if (!perThread) return;
+			const [{ useAssistantAgentThreadsStore }, { useInstanceAiStore }] = await Promise.all([
+				import('./assistantAgent/assistantAgentThreads.store'),
+				import('./instanceAi.store'),
+			]);
+			const { threadId, totalCreditsUsed } = perThread;
+			useAssistantAgentThreadsStore().setThreadCreditsUsed(threadId, totalCreditsUsed);
+			useInstanceAiStore().setThreadCreditsUsed(threadId, totalCreditsUsed);
 		},
 		instanceAiMcpToolCallFailed: async (event) => {
 			const { useInstanceAiMcpStore } = await import('./instanceAiMcp.store');

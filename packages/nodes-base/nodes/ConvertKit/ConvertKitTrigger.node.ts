@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { convertKitApiRequest } from './GenericFunctions';
 
@@ -178,7 +178,7 @@ export class ConvertKitTrigger implements INodeType {
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const { tags } = await convertKitApiRequest.call(this, 'GET', '/tags');
+				const { tags } = await convertKitApiRequest.call(this, 'GET', requestPath`/tags`);
 
 				for (const tag of tags) {
 					const tagName = tag.name;
@@ -198,7 +198,7 @@ export class ConvertKitTrigger implements INodeType {
 			async getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const { forms } = await convertKitApiRequest.call(this, 'GET', '/forms');
+				const { forms } = await convertKitApiRequest.call(this, 'GET', requestPath`/forms`);
 
 				for (const form of forms) {
 					const formName = form.name;
@@ -219,7 +219,7 @@ export class ConvertKitTrigger implements INodeType {
 			async getSequences(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const { courses } = await convertKitApiRequest.call(this, 'GET', '/sequences');
+				const { courses } = await convertKitApiRequest.call(this, 'GET', requestPath`/sequences`);
 
 				for (const course of courses) {
 					const courseName = course.name;
@@ -256,7 +256,7 @@ export class ConvertKitTrigger implements INodeType {
 
 				let event = this.getNodeParameter('event', 0) as string;
 
-				const endpoint = '/automations/hooks';
+				const endpoint = requestPath`/automations/hooks`;
 
 				if (event === 'purchaseCreate') {
 					event = `purchase.${snakeCase(event)}`;
@@ -313,7 +313,7 @@ export class ConvertKitTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const endpoint = `/automations/hooks/${webhookData.webhookId}`;
+					const endpoint = requestPath`/automations/hooks/${webhookData.webhookId}`;
 
 					try {
 						await convertKitApiRequest.call(this, 'DELETE', endpoint);

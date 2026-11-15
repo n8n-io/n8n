@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { isoCountryCodes } from '@utils/ISOCountryCodes';
 
@@ -158,7 +158,12 @@ export class InvoiceNinja implements INodeType {
 			// select them easily
 			async getClients(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const clients = await invoiceNinjaApiRequestAllItems.call(this, 'data', 'GET', '/clients');
+				const clients = await invoiceNinjaApiRequestAllItems.call(
+					this,
+					'data',
+					'GET',
+					requestPath`/clients`,
+				);
 				for (const client of clients) {
 					const clientName = client.display_name as string;
 					const clientId = client.id as string;
@@ -177,7 +182,7 @@ export class InvoiceNinja implements INodeType {
 					this,
 					'data',
 					'GET',
-					'/projects',
+					requestPath`/projects`,
 				);
 				for (const project of projects) {
 					const projectName = project.name as string;
@@ -197,7 +202,7 @@ export class InvoiceNinja implements INodeType {
 					this,
 					'data',
 					'GET',
-					'/invoices',
+					requestPath`/invoices`,
 				);
 				for (const invoice of invoices) {
 					const invoiceName = (invoice.invoice_number || invoice.number) as string;
@@ -227,7 +232,12 @@ export class InvoiceNinja implements INodeType {
 			// select them easily
 			async getVendors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const vendors = await invoiceNinjaApiRequestAllItems.call(this, 'data', 'GET', '/vendors');
+				const vendors = await invoiceNinjaApiRequestAllItems.call(
+					this,
+					'data',
+					'GET',
+					requestPath`/vendors`,
+				);
 				for (const vendor of vendors) {
 					const vendorName = vendor.name as string;
 					const vendorId = vendor.id as string;
@@ -246,7 +256,7 @@ export class InvoiceNinja implements INodeType {
 					this,
 					'data',
 					'GET',
-					'/expense_categories',
+					requestPath`/expense_categories`,
 				);
 				for (const category of categories) {
 					const categoryName = category.name as string;
@@ -266,7 +276,7 @@ export class InvoiceNinja implements INodeType {
 					this,
 					'data',
 					'GET',
-					'/bank_integrations',
+					requestPath`/bank_integrations`,
 				);
 				banks = banks.filter((e) => !e.is_deleted);
 				for (const bank of banks) {
@@ -294,7 +304,7 @@ export class InvoiceNinja implements INodeType {
 					this,
 					'data',
 					'GET',
-					'/payments',
+					requestPath`/payments`,
 					{},
 					qs,
 				);
@@ -316,7 +326,7 @@ export class InvoiceNinja implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 
 				const { currencies }: { currencies: Array<{ id: number; name: string; code: string }> } =
-					await invoiceNinjaApiRequest.call(this, 'GET', '/statics');
+					await invoiceNinjaApiRequest.call(this, 'GET', requestPath`/statics`);
 
 				for (const currency of currencies) {
 					returnData.push({
@@ -412,7 +422,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'POST',
-							'/clients',
+							requestPath`/clients`,
 							body as IDataObject,
 						);
 						responseData = responseData.data;
@@ -426,7 +436,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'GET',
-							`/clients/${clientId}`,
+							requestPath`/clients/${clientId}`,
 							{},
 							qs,
 						);
@@ -455,13 +465,19 @@ export class InvoiceNinja implements INodeType {
 								this,
 								'data',
 								'GET',
-								'/clients',
+								requestPath`/clients`,
 								{},
 								qs,
 							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', 0);
-							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/clients', {}, qs);
+							responseData = await invoiceNinjaApiRequest.call(
+								this,
+								'GET',
+								requestPath`/clients`,
+								{},
+								qs,
+							);
 							responseData = responseData.data;
 						}
 					}
@@ -470,7 +486,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'DELETE',
-							`/clients/${clientId}`,
+							requestPath`/clients/${clientId}`,
 						);
 						responseData = responseData.data;
 					}
@@ -592,7 +608,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'POST',
-							'/invoices',
+							requestPath`/invoices`,
 							body as IDataObject,
 							qs,
 						);
@@ -601,15 +617,20 @@ export class InvoiceNinja implements INodeType {
 					if (operation === 'email') {
 						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
 						if (apiVersion === 'v4') {
-							responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/email_invoice', {
-								id: invoiceId,
-							});
+							responseData = await invoiceNinjaApiRequest.call(
+								this,
+								'POST',
+								requestPath`/email_invoice`,
+								{
+									id: invoiceId,
+								},
+							);
 						}
 						if (apiVersion === 'v5') {
 							responseData = await invoiceNinjaApiRequest.call(
 								this,
 								'GET',
-								`/invoices/${invoiceId}/email`,
+								requestPath`/invoices/${invoiceId}/email`,
 							);
 						}
 					}
@@ -622,7 +643,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'GET',
-							`/invoices/${invoiceId}`,
+							requestPath`/invoices/${invoiceId}`,
 							{},
 							qs,
 						);
@@ -662,13 +683,19 @@ export class InvoiceNinja implements INodeType {
 								this,
 								'data',
 								'GET',
-								'/invoices',
+								requestPath`/invoices`,
 								{},
 								qs,
 							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', 0);
-							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/invoices', {}, qs);
+							responseData = await invoiceNinjaApiRequest.call(
+								this,
+								'GET',
+								requestPath`/invoices`,
+								{},
+								qs,
+							);
 							responseData = responseData.data;
 						}
 					}
@@ -677,7 +704,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'DELETE',
-							`/invoices/${invoiceId}`,
+							requestPath`/invoices/${invoiceId}`,
 						);
 						responseData = responseData.data;
 					}
@@ -724,7 +751,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'POST',
-							'/tasks',
+							requestPath`/tasks`,
 							body as IDataObject,
 						);
 						responseData = responseData.data;
@@ -738,7 +765,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'GET',
-							`/tasks/${taskId}`,
+							requestPath`/tasks/${taskId}`,
 							{},
 							qs,
 						);
@@ -755,19 +782,29 @@ export class InvoiceNinja implements INodeType {
 								this,
 								'data',
 								'GET',
-								'/tasks',
+								requestPath`/tasks`,
 								{},
 								qs,
 							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', 0);
-							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/tasks', {}, qs);
+							responseData = await invoiceNinjaApiRequest.call(
+								this,
+								'GET',
+								requestPath`/tasks`,
+								{},
+								qs,
+							);
 							responseData = responseData.data;
 						}
 					}
 					if (operation === 'delete') {
 						const taskId = this.getNodeParameter('taskId', i) as string;
-						responseData = await invoiceNinjaApiRequest.call(this, 'DELETE', `/tasks/${taskId}`);
+						responseData = await invoiceNinjaApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/tasks/${taskId}`,
+						);
 						responseData = responseData.data;
 					}
 				}
@@ -776,7 +813,13 @@ export class InvoiceNinja implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const invoice = this.getNodeParameter('invoice', i) as number | string;
 						const client = (
-							await invoiceNinjaApiRequest.call(this, 'GET', `/invoices/${invoice}`, {}, qs)
+							await invoiceNinjaApiRequest.call(
+								this,
+								'GET',
+								requestPath`/invoices/${invoice}`,
+								{},
+								qs,
+							)
 						).data?.client_id as string;
 						const amount = this.getNodeParameter('amount', i) as number;
 						const body: IPayment = {
@@ -809,7 +852,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'POST',
-							'/payments',
+							requestPath`/payments`,
 							body as IDataObject,
 						);
 						responseData = responseData.data;
@@ -823,7 +866,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'GET',
-							`/payments/${paymentId}`,
+							requestPath`/payments/${paymentId}`,
 							{},
 							qs,
 						);
@@ -852,13 +895,19 @@ export class InvoiceNinja implements INodeType {
 								this,
 								'data',
 								'GET',
-								'/payments',
+								requestPath`/payments`,
 								{},
 								qs,
 							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', 0);
-							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/payments', {}, qs);
+							responseData = await invoiceNinjaApiRequest.call(
+								this,
+								'GET',
+								requestPath`/payments`,
+								{},
+								qs,
+							);
 							responseData = responseData.data;
 						}
 					}
@@ -867,7 +916,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'DELETE',
-							`/payments/${paymentId}`,
+							requestPath`/payments/${paymentId}`,
 						);
 						responseData = responseData.data;
 					}
@@ -930,7 +979,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'POST',
-							'/expenses',
+							requestPath`/expenses`,
 							body as IDataObject,
 						);
 						responseData = responseData.data;
@@ -940,7 +989,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'GET',
-							`/expenses/${expenseId}`,
+							requestPath`/expenses/${expenseId}`,
 							{},
 							qs,
 						);
@@ -953,13 +1002,19 @@ export class InvoiceNinja implements INodeType {
 								this,
 								'data',
 								'GET',
-								'/expenses',
+								requestPath`/expenses`,
 								{},
 								qs,
 							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', 0);
-							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/expenses', {}, qs);
+							responseData = await invoiceNinjaApiRequest.call(
+								this,
+								'GET',
+								requestPath`/expenses`,
+								{},
+								qs,
+							);
 							responseData = responseData.data;
 						}
 					}
@@ -968,13 +1023,13 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'DELETE',
-							`/expenses/${expenseId}`,
+							requestPath`/expenses/${expenseId}`,
 						);
 						responseData = responseData.data;
 					}
 				}
 				if (resource === 'bank_transaction') {
-					const resourceEndpoint = '/bank_transactions';
+					const resourceEndpoint = requestPath`/bank_transactions`;
 					if (operation === 'create') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IBankTransaction = {};
@@ -1013,7 +1068,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'GET',
-							`${resourceEndpoint}/${bankTransactionId}`,
+							requestPath`${resourceEndpoint}/${bankTransactionId}`,
 							{},
 							qs,
 						);
@@ -1054,7 +1109,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'DELETE',
-							`${resourceEndpoint}/${bankTransactionId}`,
+							requestPath`${resourceEndpoint}/${bankTransactionId}`,
 						);
 						responseData = responseData.data;
 					}
@@ -1073,13 +1128,14 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'POST',
-							`${resourceEndpoint}/match`,
+							requestPath`${resourceEndpoint}/match`,
 							body as unknown as IDataObject,
 						);
 					}
 				}
 				if (resource === 'quote') {
-					const resourceEndpoint = apiVersion === 'v4' ? '/invoices' : '/quotes';
+					const resourceEndpoint =
+						apiVersion === 'v4' ? requestPath`/invoices` : requestPath`/quotes`;
 					if (operation === 'create') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IQuote = {
@@ -1195,15 +1251,20 @@ export class InvoiceNinja implements INodeType {
 					if (operation === 'email') {
 						const quoteId = this.getNodeParameter('quoteId', i) as string;
 						if (apiVersion === 'v4') {
-							responseData = await invoiceNinjaApiRequest.call(this, 'POST', '/email_invoice', {
-								id: quoteId,
-							});
+							responseData = await invoiceNinjaApiRequest.call(
+								this,
+								'POST',
+								requestPath`/email_invoice`,
+								{
+									id: quoteId,
+								},
+							);
 						}
 						if (apiVersion === 'v5') {
 							responseData = await invoiceNinjaApiRequest.call(
 								this,
 								'GET',
-								`${resourceEndpoint}/${quoteId}/email`,
+								requestPath`${resourceEndpoint}/${quoteId}/email`,
 							);
 						}
 					}
@@ -1216,7 +1277,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'GET',
-							`${resourceEndpoint}/${quoteId}`,
+							requestPath`${resourceEndpoint}/${quoteId}`,
 							{},
 							qs,
 						);
@@ -1269,7 +1330,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'DELETE',
-							`${resourceEndpoint}/${quoteId}`,
+							requestPath`${resourceEndpoint}/${quoteId}`,
 						);
 						responseData = responseData.data;
 					}

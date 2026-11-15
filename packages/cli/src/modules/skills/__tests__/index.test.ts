@@ -16,6 +16,8 @@ describe('public API', () => {
 			'SkillNameTakenError',
 			'SkillRuntimeService',
 			'SkillService',
+			'SkillSourceCredentials',
+			'SkillSourceCredentialsProxy',
 			'SkillUsage',
 			'SkillUsageProxy',
 			'SkillsGate',

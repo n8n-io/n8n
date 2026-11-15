@@ -15,6 +15,7 @@ import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import { loadAi } from '../model/lazy-ai';
 import { createModel } from '../model/model-factory';
 import { toTokenUsage } from '../streaming/stream';
+import { buildFunctionIdHeaders } from '../telemetry/function-id';
 import { buildAiSdkTelemetry } from '../telemetry/telemetry-options';
 
 // Batch messages to reduce the observer's fixed prompt overhead.
@@ -173,6 +174,7 @@ export function createObservationLogObserveFn(
 			instructions: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 			prompt: buildObservationLogObserverPrompt(input),
 			maxRetries: options.maxRetries ?? DEFAULT_OBSERVATION_LOG_OBSERVER_MAX_RETRIES,
+			...buildFunctionIdHeaders(input.functionId, 'memory-observer'),
 			...buildAiSdkTelemetry(input.telemetry, { functionSuffix: 'memory-observer' }),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
@@ -341,6 +343,7 @@ export function createObservationLogReflectFn(
 			model: createModel(model, input.modelFetch, input.telemetry),
 			instructions: options.reflectorPrompt ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 			prompt: buildObservationLogReflectorPrompt({ ...input, renderedObservationLog }),
+			...buildFunctionIdHeaders(input.functionId, 'memory-reflector'),
 			...buildAiSdkTelemetry(input.telemetry, { functionSuffix: 'memory-reflector' }),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);

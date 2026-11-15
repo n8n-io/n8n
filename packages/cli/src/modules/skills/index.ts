@@ -5,6 +5,12 @@ export { SkillsGate } from './services/skills-gate';
 export { AssistantSkillsFlagGate } from './services/assistant-skills-flag-gate';
 export { SkillUsage, type SkillAgent } from './services/skill-usage.contracts';
 export { SkillUsageProxy } from './services/skill-usage-proxy.service';
+export {
+	SkillSourceCredentials,
+	type ResolvedSkillSourceCredential,
+	type SkillSourceCredentialScope,
+} from './services/skill-source-credentials.contracts';
+export { SkillSourceCredentialsProxy } from './services/skill-source-credentials-proxy.service';
 export type {
 	SkillTelemetryMethod,
 	SkillTelemetryRef,

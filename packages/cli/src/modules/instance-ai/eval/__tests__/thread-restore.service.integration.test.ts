@@ -1,3 +1,4 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import type { LicenseState } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
@@ -13,9 +14,9 @@ import type { PolicyViolation } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
-import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
+import { DataTableService, DataTableValidationError } from '@n8n/backend-module-data-table';
+
+import { mockDataTableSizeValidator } from '@n8n/backend-module-data-table/testing';
 import { createOwner } from '../../../../../test/integration/shared/db/users';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
@@ -29,7 +30,7 @@ import { EvalThreadRestoreService } from '../thread-restore.service';
 // path. A string id like `row_001` must land in an explicitly `string`-typed
 // column (no DataTableValidationError), where a `number` column would reject it.
 beforeAll(async () => {
-	await testModules.loadModules(['data-table']);
+	await testModules.loadModules(['data-table'], packagedModules);
 	await testDb.init();
 	mockDataTableSizeValidator();
 });

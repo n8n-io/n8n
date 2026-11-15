@@ -1,28 +1,13 @@
 import type { BreakingChangeRuleDetailWorkflow } from '@n8n/api-types';
-import { TIME } from '@/app/constants';
 import {
 	countActiveFilters,
+	countQuickFilters,
 	DEFAULT_WORKFLOW_FILTERS,
+	filterWorkflows,
 	matchesWorkflowFilters,
 	type WorkflowFilters,
 } from './workflowFilters';
-
-const now = new Date('2026-10-09T12:00:00Z').getTime();
-const daysAgo = (days: number) => new Date(now - days * TIME.DAY);
-
-const workflow = (
-	overrides: Partial<BreakingChangeRuleDetailWorkflow> = {},
-): BreakingChangeRuleDetailWorkflow => ({
-	id: 'workflow-1',
-	name: 'Workflow',
-	active: true,
-	numberOfExecutions: 10,
-	lastUpdatedAt: daysAgo(1),
-	lastExecutedAt: daysAgo(1),
-	issues: [],
-	status: 'open',
-	...overrides,
-});
+import { daysAgo, now, owner, workflowRow as workflow } from './__tests__/workflowRow';
 
 const matches = (item: BreakingChangeRuleDetailWorkflow, filters: Partial<WorkflowFilters>) =>
 	matchesWorkflowFilters(item, { ...DEFAULT_WORKFLOW_FILTERS, ...filters }, now);
@@ -101,6 +86,8 @@ describe('workflowFilters', () => {
 		expect(matches(workflow({ status: 'wont_fix' }), { state: 'wont_fix' })).toBe(true);
 		expect(matches(workflow({ status: 'notified' }), { state: 'open' })).toBe(true);
 		expect(matches(workflow({ status: 'notified' }), { state: 'wont_fix' })).toBe(false);
+		expect(matches(workflow({ status: 'fixed_unpublished' }), { state: 'open' })).toBe(true);
+		expect(matches(workflow({ status: 'fixed_unpublished' }), { state: 'wont_fix' })).toBe(false);
 		// A migrated row keeps its status, but the page shows it as migrated.
 		expect(
 			matchesWorkflowFilters(
@@ -112,10 +99,68 @@ describe('workflowFilters', () => {
 		).toBe(false);
 	});
 
+	it('should hide archived workflows unless the filter shows them', () => {
+		const archived = workflow({ isArchived: true });
+		expect(matches(archived, {})).toBe(false);
+		expect(matches(archived, { showArchived: true })).toBe(true);
+		expect(matches(workflow(), {})).toBe(true);
+		expect(matches(workflow(), { showArchived: true })).toBe(true);
+		expect(countActiveFilters({ ...DEFAULT_WORKFLOW_FILTERS, showArchived: true })).toBe(1);
+	});
+
 	it('should count the filters that differ from the default', () => {
 		expect(countActiveFilters(DEFAULT_WORKFLOW_FILTERS)).toBe(0);
 		expect(
 			countActiveFilters({ ...DEFAULT_WORKFLOW_FILTERS, owner: 'user-1', executions: 'none' }),
 		).toBe(2);
+	});
+
+	describe('filterWorkflows', () => {
+		const rows = [
+			workflow({ id: 'invoices', name: 'Sync Invoices' }),
+			workflow({ id: 'orders', name: 'Sync orders' }),
+			workflow({ id: 'report', name: 'Daily report' }),
+		];
+
+		it('should search names without regard to case', () => {
+			const result = filterWorkflows(
+				rows,
+				'sync',
+				DEFAULT_WORKFLOW_FILTERS,
+				{ migratedIds: new Set() },
+				now,
+			);
+
+			expect(result.map((row) => row.id)).toEqual(['invoices', 'orders']);
+		});
+
+		it('should leave a migrated row out of the open state filter', () => {
+			const context = { migratedIds: new Set(['orders']) };
+			const filters = { ...DEFAULT_WORKFLOW_FILTERS, state: 'open' as const };
+
+			expect(filterWorkflows(rows, '', filters, context, now).map((row) => row.id)).toEqual([
+				'invoices',
+				'report',
+			]);
+		});
+	});
+
+	it('should count the rows for each quick filter', () => {
+		const me = owner('me');
+		const rows = [
+			workflow({ id: '1', owner: me }),
+			workflow({ id: '2', owner: me, status: 'wont_fix' }),
+			workflow({ id: '3', owner: owner('other'), status: 'notified' }),
+			workflow({ id: '4' }),
+			workflow({ id: '5', status: 'fixed_unpublished' }),
+		];
+		const context = { migratedIds: new Set(['5']) };
+
+		expect(countQuickFilters(rows, context, 'me')).toEqual({
+			assignedToMe: 2,
+			open: 3,
+			wontFix: 1,
+			unassigned: 2,
+		});
 	});
 });

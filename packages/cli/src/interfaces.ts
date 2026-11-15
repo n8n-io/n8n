@@ -92,7 +92,8 @@ export interface IWorkflowToImport
 	owner?:
 		| {
 				type: 'personal';
-				personalEmail: string;
+				/** Null when the owner has no email, for example a service account. */
+				personalEmail: string | null;
 		  }
 		| {
 				type: 'team';
@@ -171,7 +172,7 @@ export interface ResumableExecution {
 
 /** What the control plane forwards to the data plane to end a wait. */
 export interface EngineV2ResumeRequest {
-	/** The waiting step that `locateResumeTarget` named. */
+	/** The waiting step that `locateResume` named. */
 	stepId: string;
 	/**
 	 * The resume token from the request. The control plane does not read it
@@ -247,6 +248,8 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	credential_resolver_id?: string;
 	execution_source?: WorkflowExecutionSource;
 	mock_data_sources?: string;
+	/** Number of credentials the run uses only through the acting user's own access. */
+	personal_credentials_count?: number;
 }
 
 export interface IAgentExecutionTrackProperties extends ITelemetryTrackProperties {

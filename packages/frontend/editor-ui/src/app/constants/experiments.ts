@@ -4,7 +4,6 @@ import {
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 } from '@n8n/api-types';
 
@@ -117,10 +116,6 @@ export const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT = createExpe
 	},
 );
 
-export const INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT = createExperiment(
-	'089_instance_ai_split_empty_state',
-);
-
 export const EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT = createExperiment(
 	'095_expose_all_workflows_to_mcp',
 );
@@ -147,10 +142,6 @@ export const INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT = createExperiment
 );
 // EOF Experiment cleanup
 
-export const INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT = createExperiment(
-	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
-);
-
 export const INSTANCE_AI_CONCISE_STYLE_EXPERIMENT = createExperiment(
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 );
@@ -158,19 +149,16 @@ export const INSTANCE_AI_CONCISE_STYLE_EXPERIMENT = createExperiment(
 export const INSTANCE_AI_SETUP_PANEL_EXPERIMENT = createExperiment(INSTANCE_AI_SETUP_PANEL_FLAG);
 export const AI_ASSISTANT_AT_MENTIONS_EXPERIMENT = createExperiment(AI_ASSISTANT_AT_MENTIONS_FLAG);
 
-/**
- * Multivariate: the enabled arm is the variant string `variant`, not a boolean,
- * so the check goes through `isVariantEnabled` rather than `isFeatureEnabled`.
- * The default `control` / `variant` arms match the PostHog flag.
- */
-export const MCP_JSON_NUDGE_EXPERIMENT = createExperiment('113_mcp_nudge_modal_on_export_import');
-
 export const CREDENTIAL_DESCRIPTIONS_EXPERIMENT = createExperiment(CREDENTIAL_DESCRIPTIONS_FLAG);
 export const ASSISTANT_SKILLS_EXPERIMENT = createExperiment(ASSISTANT_SKILLS_FLAG);
 
 // Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 export const MCP_DISCOVERY_EXPERIMENT = createExperiment('123_surface_mcp_to_claude_trial_users');
 // EOF Experiment cleanup
+export const ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT = createExperiment(
+	'139_enable_posthog_autocapture',
+);
+
 export const SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT = createExperiment(
 	'119_surface_assistant_on_workflow_error',
 );
@@ -181,6 +169,10 @@ export const WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT = createExperiment(
 
 export const AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT = createExperiment(
 	'120_agents_empty_state_templates',
+	{
+		control: 'control',
+		test: 'test',
+	},
 );
 
 export const AGENTS_N8N_CHAT_EXPERIMENT = createExperiment(AGENTS_N8N_CHAT_FLAG, {
@@ -235,7 +227,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	// EOF Experiment cleanup
 	INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name,
 	AI_ASSISTANT_AT_MENTIONS_EXPERIMENT.name,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT.name,
 	INSTANCE_AI_CONCISE_STYLE_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -263,7 +254,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.name,
 	EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT.name,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT.name,
-	INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT.name,
 	EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name,
 	TRIAL_INTRO_MODAL_EXPERIMENT.name,
 	PREFERENCES_EMPTY_STATE_EXPERIMENT.name,
@@ -273,10 +263,8 @@ export const EXPERIMENTS_TO_TRACK = [
 	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name,
 	// EOF Experiment cleanup
-	MCP_JSON_NUDGE_EXPERIMENT.name,
 	CREDENTIAL_DESCRIPTIONS_EXPERIMENT.name,
 	ASSISTANT_SKILLS_EXPERIMENT.name,
-	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name,
 	WORKFLOW_PREVIEWS_ABOVE_ASSISTANT_EXPERIMENT.name,
 	AGENTS_LIST_EMPTY_STATE_TEMPLATES_EXPERIMENT.name,
 	AGENTS_N8N_CHAT_EXPERIMENT.name,

@@ -5,6 +5,7 @@ import type {
 	InstanceAiQuestion,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
+import { accountSummary } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ASK_USER_TOOL_ID, orchestratorAgentId } from '@n8n/instance-ai';
 import { redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -160,7 +161,7 @@ export class InstanceAiOnboardingService {
 
 		const greeting = ONBOARDING_OPENING.greeting.replace(
 			'{{firstName}}',
-			user.firstName?.trim() || 'there',
+			accountSummary(user).firstName?.trim() || 'there',
 		);
 		try {
 			// The LLM history needs the greeting as an assistant turn; the card lives in the event log.

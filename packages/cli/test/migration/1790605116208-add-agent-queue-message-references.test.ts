@@ -7,7 +7,8 @@ import {
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
 const MIGRATION_NAME = 'AddAgentQueueMessageReferences1790605116208';

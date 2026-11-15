@@ -36,6 +36,19 @@ describe('scimBodyParser', () => {
 		expect(req.body).toEqual({ userName: 'ada@example.com' });
 	});
 
+	it('decodes the body in the declared charset', () => {
+		const req = {
+			contentType: 'application/scim+json',
+			encoding: 'iso-8859-1',
+			rawBody: Buffer.from('{"displayName":"Jürgen"}', 'latin1'),
+		} as unknown as Request;
+		const next = vi.fn();
+		void scimBodyParser(req, mock<Response>(), next);
+
+		expect(req.body).toEqual({ displayName: 'Jürgen' });
+		expect(next).toHaveBeenCalledWith();
+	});
+
 	it.each(['application/json', 'text/plain', undefined])(
 		'leaves %p alone for the global parser',
 		(contentType) => {

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/blob-storage",
-  "version": "1.14.0",
+  "version": "1.16.0",
   "description": "Blob storage layer for n8n, with filesystem, S3, and Azure Blob backends",
   "scripts": {
     "clean": "rimraf dist .turbo",
@@ -45,6 +45,7 @@
     "@n8n/backend-network": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
+    "@n8n/errors": "workspace:*",
     "@n8n/utils": "workspace:*",
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",

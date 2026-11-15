@@ -34,7 +34,7 @@ describe('AgentDependencyIndexService', () => {
 
 		await service.refresh('agent-1');
 
-		expect(dependencyRepository.refreshForAgent).toHaveBeenCalledWith('agent-1');
+		expect(dependencyRepository.refreshForAgent).toHaveBeenCalledWith('agent-1', {});
 		expect(workflowDependencyRepository.refreshForAgent).toHaveBeenCalledWith('agent-1');
 	});
 
@@ -43,7 +43,7 @@ describe('AgentDependencyIndexService', () => {
 
 		await service.remove('agent-1');
 
-		expect(dependencyRepository.removeForAgent).toHaveBeenCalledWith('agent-1');
+		expect(dependencyRepository.removeForAgent).toHaveBeenCalledWith('agent-1', {});
 		expect(workflowDependencyRepository.removeForAgent).toHaveBeenCalledWith('agent-1');
 	});
 
@@ -65,7 +65,7 @@ describe('AgentDependencyIndexService', () => {
 			2,
 		);
 		expect(dependencyRepository.refreshForAgent).toHaveBeenCalledTimes(3);
-		expect(dependencyRepository.refreshForAgent).toHaveBeenCalledWith('agent-c');
+		expect(dependencyRepository.refreshForAgent).toHaveBeenCalledWith('agent-c', {});
 		expect(logger.error).toHaveBeenCalledWith('Failed to index agent dependencies', {
 			agentId: 'agent-b',
 			error: expect.any(Error),

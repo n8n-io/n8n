@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -15,7 +16,7 @@ export async function createTicket(
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
-	const endpoint = 'tickets';
+	const endpoint = requestPath`tickets`;
 	let body = {} as IDataObject;
 
 	body = {

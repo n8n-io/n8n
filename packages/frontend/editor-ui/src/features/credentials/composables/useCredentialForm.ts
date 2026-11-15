@@ -46,7 +46,7 @@ import {
 	parseTemplatedAuthField,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 } from '../templatedAuth.utils';
-import { hasManagedOAuthApp } from '../credentials.utils';
+import { hasAutomaticOAuthApp, hasManagedOAuthApp } from '../credentials.utils';
 
 const MANAGED_CREDENTIAL_HIDDEN_PROPERTIES = new Set([
 	'scope',
@@ -210,6 +210,10 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		() => isOAuthType.value && managedOAuthAvailable.value && !useCustomOAuth.value,
 	);
 
+	const isAutomaticOAuthType = computed(() =>
+		hasAutomaticOAuthApp(credentialType.value ?? undefined),
+	);
+
 	const isOAuthConnected = computed(() => {
 		if (!isOAuthType.value) return false;
 		if (isResolvable.value) return connectedByMe.value;
@@ -241,6 +245,22 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		},
 		{ immediate: true },
 	);
+
+	/** Automatic types store the selected mode, because the backend reads it. */
+	function storeSelectedOAuthMode() {
+		if (!isAutomaticOAuthType.value) return;
+		const useDynamicClientRegistration = !useCustomOAuth.value;
+		if (credentialData.value.useDynamicClientRegistration === useDynamicClientRegistration) return;
+		credentialData.value = { ...credentialData.value, useDynamicClientRegistration };
+	}
+
+	const oauthModeInputs = () => [
+		isAutomaticOAuthType.value,
+		useCustomOAuth.value,
+		credentialData.value.useDynamicClientRegistration,
+	];
+
+	watch(oauthModeInputs, storeSelectedOAuthMode, { immediate: true });
 
 	// --- properties --------------------------------------------------------
 	const credentialProperties = computed(() => {
@@ -401,7 +421,8 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	}
 
 	function hasManagedOAuthCredentials(credType: string): boolean {
-		return hasManagedOAuthApp(credentialsStore.getCredentialTypeByName(credType));
+		const type = credentialsStore.getCredentialTypeByName(credType);
+		return hasManagedOAuthApp(type) || hasAutomaticOAuthApp(type);
 	}
 
 	function usesExternalSecrets(data: Record<string, unknown>): boolean {
@@ -449,6 +470,14 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		};
 	}
 
+	function clearOverwrittenProperties() {
+		const overwritten = credentialType.value?.__overwrittenProperties;
+		if (!overwritten?.length) return;
+		credentialData.value = Object.fromEntries(
+			Object.entries(credentialData.value).filter(([key]) => !overwritten.includes(key)),
+		);
+	}
+
 	/**
 	 * Source-controlled credentials can arrive with empty-string parameters that
 	 * break FE type checks — strip them.
@@ -494,6 +523,10 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			typeof loaded.connectedAccountIdentifier === 'string'
 				? loaded.connectedAccountIdentifier
 				: undefined;
+		// Same tick as the data, so the sync watcher sees the right mode.
+		if (isAutomaticOAuthType.value) {
+			useCustomOAuth.value = credentialData.value.useDynamicClientRegistration !== true;
+		}
 	}
 
 	// An existing credential whose managed clientId/secret were overridden was
@@ -703,6 +736,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		usesExternalSecrets,
 		setCredentialPropertyDefaults,
 		resetCredentialData,
+		clearOverwrittenProperties,
 		loadCurrentCredential,
 		initialize,
 		getChangedSharedFields,

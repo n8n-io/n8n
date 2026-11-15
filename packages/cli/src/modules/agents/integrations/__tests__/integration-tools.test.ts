@@ -1478,6 +1478,45 @@ describe('integration tools', () => {
 			});
 		});
 
+		it('binds the outbound thread for send_template too', async () => {
+			const whatsapp: AgentIntegrationConfig = { type: 'whatsapp', credentialId: 'cred-w' };
+			const templateContext = {
+				integrationConnectionId: 'whatsapp:cred-w',
+				platform: 'whatsapp',
+				target: {
+					type: 'dm' as const,
+					userId: '447700900123',
+					threadId: 'whatsapp:111:447700900123',
+				},
+				messageId: 'wamid.1',
+				updatedAt: '2026-08-20T10:00:00.000Z',
+			};
+			const messageContextStore = mock<IntegrationMessageContextStore>();
+			const actionExecutor = mock<IntegrationActionExecutor>();
+			actionExecutor.execute.mockResolvedValue({ ok: true, messageContext: templateContext });
+
+			const tool = createIntegrationActionTool({
+				descriptor: getIntegrationToolConnectionDescriptors([whatsapp], 'agent-1', () => ({
+					actions: ['send_template'],
+				}))[0],
+				messageContextStore,
+				actionExecutor,
+			}).build();
+
+			await tool.handler!(
+				{
+					action: 'send_template',
+					input: { userId: '447700900123', templateName: 'order_update', language: 'en_US' },
+				},
+				makeInterruptibleCtx({ persistence: taskPersistence }),
+			);
+
+			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
+				'agent-1:whatsapp:111:447700900123',
+				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
+			);
+		});
+
 		it('does not bind for respond (operates on an existing thread)', async () => {
 			const messageContextStore = mock<IntegrationMessageContextStore>();
 			const messageContext: IntegrationMessageContext | null = {

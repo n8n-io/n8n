@@ -10,7 +10,8 @@ import {
 	WorkflowExecute,
 	rewireGraph,
 } from 'n8n-core';
-import { NodeHelpers, UserError, createRunExecutionData } from 'n8n-workflow';
+import { NodeHelpers, createRunExecutionData } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type {
 	ExecutionStorageLocation,
 	IExecuteData,

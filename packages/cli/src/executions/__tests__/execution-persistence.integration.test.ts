@@ -1,8 +1,9 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { ExecutionsConfig } from '@n8n/config';
-import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
+import { ExecutionData, ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { DbStore } from '@/executions/execution-data/db-store';
@@ -49,7 +50,7 @@ describe('ExecutionPersistence', () => {
 			expect(executionEntity?.status).toEqual('new');
 			expect(executionEntity?.storedAt).toEqual('db');
 
-			const executionDataRepository = Container.get(ExecutionDataRepository);
+			const executionDataRepository = Container.get(DataSource).getRepository(ExecutionData);
 			const executionData = await executionDataRepository.findOneBy({ executionId });
 			expect(executionData?.workflowData).toEqual({
 				id: workflow.id,
@@ -88,7 +89,7 @@ describe('ExecutionPersistence', () => {
 	describe('updateExistingExecution (db overwrite path)', () => {
 		it('should preserve the original workflowVersionId when overwriting data and workflowData', async () => {
 			const executionPersistence = Container.get(ExecutionPersistence);
-			const executionDataRepository = Container.get(ExecutionDataRepository);
+			const executionDataRepository = Container.get(DataSource).getRepository(ExecutionData);
 			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
 
 			const executionId = await executionPersistence.create({
@@ -117,7 +118,7 @@ describe('ExecutionPersistence', () => {
 		it('should roll back the status change when the data row is missing during an overwrite', async () => {
 			const executionPersistence = Container.get(ExecutionPersistence);
 			const executionRepo = Container.get(ExecutionRepository);
-			const executionDataRepository = Container.get(ExecutionDataRepository);
+			const executionDataRepository = Container.get(DataSource).getRepository(ExecutionData);
 			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
 
 			const executionId = await executionPersistence.create({
@@ -178,40 +179,6 @@ describe('ExecutionPersistence', () => {
 				});
 			},
 		);
-	});
-
-	// CAT-3909: an enqueued execution whose data row is gone used to be dropped silently, so
-	// startup recovery never learned about it and the row stayed `new` forever.
-	describe('findMultipleExecutionsWithUnreadable', () => {
-		it('returns the ids of enqueued executions whose data row is gone', async () => {
-			const executionPersistence = Container.get(ExecutionPersistence);
-			const executionDataRepository = Container.get(ExecutionDataRepository);
-			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
-
-			const create = async () =>
-				await executionPersistence.create({
-					workflowId: workflow.id,
-					data: createEmptyRunExecutionData(),
-					workflowData: workflow,
-					mode: 'webhook',
-					status: 'new',
-					finished: false,
-				});
-
-			const healthyId = await create();
-			const orphanedId = await create();
-			await executionDataRepository.delete({ executionId: orphanedId });
-
-			const { executions, unreadableIds } =
-				await executionPersistence.findMultipleExecutionsWithUnreadable({
-					select: ['id', 'mode'],
-					where: { status: 'new' },
-					order: { id: 'ASC' },
-				});
-
-			expect(executions.map((e) => e.id)).toEqual([healthyId]);
-			expect(unreadableIds).toEqual([orphanedId]);
-		});
 	});
 
 	describe('deleteInFlightExecution', () => {

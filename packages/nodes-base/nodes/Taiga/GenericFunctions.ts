@@ -9,8 +9,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 import type { LoadedResource, Resource } from './types';
 
 export async function getAuthorization(
@@ -22,19 +24,22 @@ export async function getAuthorization(
 	}
 
 	const { password, username } = credentials;
-	const options: IRequestOptions = {
-		headers: { 'Content-Type': 'application/json' },
-		method: 'POST',
-		body: {
-			type: 'normal',
-			password,
-			username,
-		},
-		uri: credentials.url ? `${credentials.url}/api/v1/auth` : 'https://api.taiga.io/api/v1/auth',
-		json: true,
-	};
 
 	try {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
+			headers: { 'Content-Type': 'application/json' },
+			method: 'POST',
+			body: {
+				type: 'normal',
+				password,
+				username,
+			},
+			uri: credentials.url
+				? requestUrl`${credentials.url}/api/v1/auth`
+				: requestUrl`https://api.taiga.io/api/v1/auth`,
+			json: true,
+		};
+
 		const response = await this.helpers.request(options);
 
 		return response.auth_token;
@@ -46,38 +51,42 @@ export async function getAuthorization(
 export async function taigaApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body = {},
 	query = {},
 	uri?: string,
-	option = {},
+	option: Pick<IRequestOptions, 'resolveWithFullResponse'> & {
+		uri?: never;
+		url?: never;
+		baseURL?: never;
+	} = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('taigaApi');
 
 	const authToken = await getAuthorization.call(this, credentials);
 
-	const options: IRequestOptions = {
-		headers: {
-			'Content-Type': 'application/json',
-		},
-		auth: {
-			bearer: authToken,
-		},
-		qs: query,
-		method,
-		body,
-		uri:
-			uri || credentials.url
-				? `${credentials.url}/api/v1${resource}`
-				: `https://api.taiga.io/api/v1${resource}`,
-		json: true,
-	};
-
-	if (Object.keys(option).length !== 0) {
-		Object.assign(options, option);
-	}
-
 	try {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			auth: {
+				bearer: authToken,
+			},
+			qs: query,
+			method,
+			body,
+			uri:
+				uri || credentials.url
+					? requestUrl`${credentials.url}/api/v1${resource}`
+					: requestUrl`https://api.taiga.io/api/v1${resource}`,
+			json: true,
+		};
+
+		if (Object.keys(option).length !== 0) {
+			Object.assign(options, option);
+		}
+
 		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -87,7 +96,7 @@ export async function taigaApiRequest(
 export async function taigaApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: IDataObject = {},
 	query: IDataObject = {},
@@ -123,7 +132,7 @@ export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) 
 export async function handleListing(
 	this: IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject,
 	qs: IDataObject,
 	i: number,
@@ -151,6 +160,6 @@ export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: Resource) 
 	);
 }
 
-export async function getVersionForUpdate(this: IExecuteFunctions, endpoint: string) {
+export async function getVersionForUpdate(this: IExecuteFunctions, endpoint: RequestPath) {
 	return await taigaApiRequest.call(this, 'GET', endpoint).then((response) => response.version);
 }

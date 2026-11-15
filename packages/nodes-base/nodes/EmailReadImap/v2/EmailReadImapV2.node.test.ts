@@ -80,6 +80,7 @@ const flush = async () => await Promise.resolve();
 
 describe('EmailReadImapV2', () => {
 	const staticData: IDataObject = {};
+	let insideIsolateScope = false;
 
 	const triggerFunctions = mock<ITriggerFunctions>({
 		helpers: {
@@ -92,6 +93,14 @@ describe('EmailReadImapV2', () => {
 				});
 				return { promise, resolve, reject };
 			}),
+			withExpressionIsolate: async <T>(fn: () => Promise<T>) => {
+				insideIsolateScope = true;
+				try {
+					return await fn();
+				} finally {
+					insideIsolateScope = false;
+				}
+			},
 		},
 	});
 
@@ -166,6 +175,20 @@ describe('EmailReadImapV2', () => {
 			void arrive(connection, 1);
 
 			await vi.waitFor(() => expect(fetched).toHaveBeenCalled());
+		});
+
+		it('fetches inside an expression isolate scope', async () => {
+			const connection = createConnection();
+			connectMock.mockResolvedValueOnce(connection);
+			let fetchedInsideScope: boolean | undefined;
+			fetched.mockImplementationOnce(async () => {
+				fetchedInsideScope = insideIsolateScope;
+			});
+			await startTrigger();
+
+			await arrive(connection, 1);
+
+			expect(fetchedInsideScope).toBe(true);
 		});
 	});
 

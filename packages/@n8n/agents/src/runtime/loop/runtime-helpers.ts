@@ -2,6 +2,8 @@
  * Pure utility functions used by AgentRuntime that require no class context.
  * These are extracted here to keep agent-runtime.ts focused on orchestration logic.
  */
+import type { FinishReason as AiFinishReason } from 'ai';
+
 import type { ModelTurnError } from '../../types/runtime/agent-loop';
 import { stripInvisibleUnicode, wrapUntrustedData } from '../../sdk/untrusted-content';
 import type { StreamChunk, TokenUsage, McpConnectionFailedEvent } from '../../types';
@@ -45,6 +47,23 @@ The following MCP server(s) could not be reached, so their tools are unavailable
 ${details}
 If this affects the user's request, briefly let them know which server is unavailable.
 </mcp-connection-status>`;
+}
+
+/**
+ * The finish reason the loop acts on. Some OpenAI-compatible servers end a turn
+ * that calls tools with `stop`, not `tool-calls`. The AI SDK step loop continues
+ * on the calls themselves, so the runtime does too: a `stop` turn with calls for
+ * the runtime to run counts as `tool-calls`. Provider-executed calls already ran
+ * on the provider and do not count.
+ */
+export function resolveAiFinishReason(
+	aiFinishReason: AiFinishReason,
+	toolCalls: ReadonlyArray<{ providerExecuted?: boolean }>,
+): AiFinishReason {
+	if (aiFinishReason !== 'stop') return aiFinishReason;
+	return toolCalls.some((toolCall) => toolCall.providerExecuted !== true)
+		? 'tool-calls'
+		: aiFinishReason;
 }
 
 /**

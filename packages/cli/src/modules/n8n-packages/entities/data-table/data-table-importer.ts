@@ -1,12 +1,15 @@
 import type { SerializedDataTable, SerializedDataTableColumn } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@n8n/errors';
-import type { DataTable } from '@/modules/data-table/data-table.entity';
-import { DataTableService } from '@/modules/data-table/data-table.service';
-import { orderColumnRenames, pairDataTableColumns } from '@/modules/data-table/utils/pair-columns';
+import { ForbiddenError, UserError } from '@n8n/errors';
+import {
+	type DataTable,
+	DataTableService,
+	orderColumnRenames,
+	pairDataTableColumns,
+} from '@n8n/backend-module-data-table';
+
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { diffDataTableSchema } from './data-table-compat';

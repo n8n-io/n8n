@@ -191,12 +191,35 @@ describe('stripHydratedFileData', () => {
 });
 
 describe('toAiMessages — file parts', () => {
-	it('emits hydrated file blocks as AI SDK file parts', () => {
+	it('labels hydrated file blocks with their fileId before the file part', () => {
 		const input: Message[] = [{ role: 'user', content: [refFileBlock({ data: bytes })] }];
 
 		const [message] = toAiMessages(input);
 
+		expect(message.content).toEqual([
+			{ type: 'text', text: expect.stringContaining('fileId: att-1') },
+			{ type: 'file', data: bytes, mediaType: 'image/png' },
+		]);
+	});
+
+	it('does not label a file part without a fileRef', () => {
+		const input: Message[] = [
+			{ role: 'user', content: [{ type: 'file', data: bytes, mediaType: 'image/png' }] },
+		];
+
+		const [message] = toAiMessages(input);
+
 		expect(message.content).toEqual([{ type: 'file', data: bytes, mediaType: 'image/png' }]);
+	});
+
+	it('keeps one text part for a file the model cannot view', () => {
+		const input: Message[] = [{ role: 'user', content: [refFileBlock()] }];
+
+		const [message] = toAiMessages(input);
+
+		expect(message.content).toEqual([
+			{ type: 'text', text: expect.stringContaining('fileId: att-1') },
+		]);
 	});
 
 	it('degrades reference-only file blocks to a text metadata part', () => {
@@ -213,5 +236,31 @@ describe('toAiMessages — file parts', () => {
 		expect(parts[1].text).toContain('image/png');
 		expect(parts[1].text).toContain('1.2 MB');
 		expect(parts[1].text).toContain('fileId: att-1');
+	});
+});
+
+describe('stripHydratedFileData — tool outputs', () => {
+	it('strips loaded bytes from file parts in a tool output', () => {
+		const file = refFileBlock({ data: bytes });
+		const message: AgentDbMessage = {
+			id: 'm-tool',
+			createdAt: new Date(),
+			role: 'assistant',
+			content: [
+				{
+					type: 'tool-call',
+					toolCallId: 'call-1',
+					toolName: 'read',
+					input: {},
+					state: 'resolved',
+					output: { type: 'content', value: [file] },
+				},
+			],
+		} as unknown as AgentDbMessage;
+
+		const stripped = stripHydratedFileData(message);
+
+		expect(JSON.stringify(stripped)).not.toContain('"data"');
+		expect(file.data).toBe(bytes);
 	});
 });

@@ -37,6 +37,10 @@ export class InMemorySkillSourceClient extends SkillSourceClient {
 		super();
 	}
 
+	authFrom(): SkillSourceAuth {
+		throw new Error('A pages source is public');
+	}
+
 	handles(input: string): boolean {
 		return input.trim().startsWith(`https://${PAGES_HOST}/`);
 	}

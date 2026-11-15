@@ -146,8 +146,8 @@
 	// AI Chat text and icon colors
 	--assistant--color--text--subtle: var(--color--neutral-500);
 	--assistant--icon-color--subtle: var(--color--neutral-500);
-	--assistant--color--text: var(--color--neutral-800);
-	--assistant--color--text--user-bubble: var(--color--neutral-750);
+	--assistant--color--text: var(--text-color--subtle);
+	--assistant--color--text--user-bubble: var(--text-color);
 	--assistant--color--background--user-bubble: var(--color--neutral-150);
 	--assistant--text-message--collapsed--max-height: 200px;
 
@@ -231,7 +231,7 @@
 	--json--brackets--color: var(--color--neutral-700);
 	--json--brackets--color--hover: var(--color--blue-400);
 	--json--line--color: var(--color--neutral-250);
-	--json--highlight--color: var(--color--background);
+	--json--highlight--color: var(--color--black-alpha-100);
 	--code--color--background: var(--color--neutral-white);
 	--code--color--background--readonly: var(--color--neutral-125);
 	--code--line-highlight--color: var(--color--neutral-300-alpha-100);

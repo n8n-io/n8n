@@ -5,20 +5,20 @@ import type {
 	ILoadOptionsFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { jsonParse, NodeApiError } from 'n8n-workflow';
+import { jsonParse, NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function cockpitApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
-	uri?: string,
-	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('cockpitApi');
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
@@ -28,11 +28,9 @@ export async function cockpitApiRequest(
 			token: credentials.accessToken,
 		},
 		body,
-		uri: uri || `${credentials.url}/api${resource}`,
+		uri: requestUrl`${credentials.url}/api${resource}`,
 		json: true,
 	};
-
-	options = Object.assign({}, options, option);
 
 	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;

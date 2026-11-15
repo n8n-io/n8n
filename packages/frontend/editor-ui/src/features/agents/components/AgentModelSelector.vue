@@ -22,13 +22,13 @@ import {
 } from '@n8n/api-types';
 import {
 	ContactAdminModal,
+	RestrictedMenuItemMarker,
 	SCOPE_LABEL_KEY,
 	type ContactAudience,
-	useTypeAvailabilityPoliciesStore,
+	useTypeAvailability,
 } from '@n8n/frontend-module-type-availability-policies';
 import ModelSelectorTriggerIcon from './model-selector/ModelSelectorTriggerIcon.vue';
 import ModelSelectorItemLeadingIcon from './model-selector/ModelSelectorItemLeadingIcon.vue';
-import ModelSelectorRestrictedMarker from './model-selector/ModelSelectorRestrictedMarker.vue';
 import { buildMenuItemId, parseMenuItemId } from './model-selector/menuItemId';
 import { useModelCatalog } from '../composables/useModelCatalog';
 import {
@@ -130,7 +130,7 @@ const dropdownRef = useTemplateRef('dropdownRef');
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
-const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
+const { credentialTypeRestriction } = useTypeAvailability(() => projectId);
 const aiGateway = useAiGateway();
 const { ensureLoaded, getDefaultModelForPicker, getVerificationStatus } = useModelCatalog();
 const pendingDefaultCredential = ref<{
@@ -259,11 +259,13 @@ const freeOpenAiCreditsDescription = computed(() =>
 );
 
 function getProviderRestriction(provider: AgentModelProvider): CredentialTypeAvailability | null {
-	const availabilities = getProviderCredentialTypes(provider).map((credentialType) =>
-		typeAvailabilityPoliciesStore.getCredentialTypeAvailability(credentialType),
+	const restrictions = getProviderCredentialTypes(provider).map((credentialType) =>
+		credentialTypeRestriction(credentialType),
 	);
 
-	return availabilities.every((availability) => !availability.available) ? availabilities[0] : null;
+	return restrictions.every((restriction) => restriction !== null)
+		? (restrictions[0] ?? null)
+		: null;
 }
 
 const restrictedLabel = computed(() =>
@@ -785,8 +787,9 @@ defineExpose({
 			</template>
 
 			<template #item-restricted="{ item }">
-				<ModelSelectorRestrictedMarker
-					:name="restrictedCredentialsName(item)"
+				<RestrictedMenuItemMarker
+					kind="credential"
+					:node-type-name="restrictedCredentialsName(item)"
 					:restriction="item.data?.restriction"
 					@contact-admin="
 						(audience) => requestContactAdmin(restrictedCredentialsName(item), audience)
@@ -796,7 +799,7 @@ defineExpose({
 		</N8nAiModelSelectorDropdown>
 		<ContactAdminModal
 			kind="credential"
-			:node-type-name="contactAdmin?.subject ?? ''"
+			:type-name="contactAdmin?.subject ?? ''"
 			:audience="contactAdmin?.audience ?? 'instance'"
 			:open="contactAdmin !== null"
 			@update:open="(isOpen) => !isOpen && (contactAdmin = null)"

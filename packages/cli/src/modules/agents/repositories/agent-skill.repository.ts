@@ -51,6 +51,23 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 		return pins.map(({ skillId, skillVersionId }) => ({ skillId, skillVersionId }));
 	}
 
+	/** Read version pins for an agent list without loading skill content. */
+	async findPinsForVersions(
+		agentVersionIds: string[],
+		ctx: OperationContext,
+	): Promise<{ agentVersionId: string; skillId: string; skillVersionId: string }[]> {
+		const pins: { agentVersionId: string; skillId: string; skillVersionId: string }[] = [];
+		for (const ids of chunkIds(unique(agentVersionIds))) {
+			pins.push(
+				...(await this.managerFor(ctx).find(AgentVersionSkillDependency, {
+					select: ['agentVersionId', 'skillId', 'skillVersionId'],
+					where: { agentVersionId: In(ids) },
+				})),
+			);
+		}
+		return pins;
+	}
+
 	/**
 	 * The skill ids one published agent version pins, in the order of the draft refs at
 	 * publish. Reads no version or file rows.
@@ -323,7 +340,7 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 		return new Map([...agentsBySkill].map(([skillId, agents]) => [skillId, agents.size]));
 	}
 
-	/** Name and project of each agent, keyed by agent id. An agent skill takes its project from them. */
+	/** Name and project of each agent, keyed by agent id. */
 	async findAgents(
 		agentIds: string[],
 		ctx: OperationContext = {},
@@ -340,20 +357,6 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 		return new Map(
 			agents.filter(isProjectAgent).map(({ id, name, projectId }) => [id, { name, projectId }]),
 		);
-	}
-
-	/** Ids of the agents in these projects. Their agent skills belong to these projects. */
-	async findAgentIdsInProjects(
-		projectIds: string[],
-		ctx: OperationContext = {},
-	): Promise<string[]> {
-		const manager = this.managerFor(ctx);
-		const agents = await inChunks(
-			projectIds,
-			async (chunk) =>
-				await manager.find(Agent, { where: { projectId: In(chunk) }, select: ['id'] }),
-		);
-		return agents.map((agent) => agent.id);
 	}
 
 	/** The skill version each of these published agent versions pins, keyed by agent version. */

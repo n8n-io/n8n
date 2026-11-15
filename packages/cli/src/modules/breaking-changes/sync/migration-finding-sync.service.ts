@@ -3,19 +3,24 @@ import {
 	type BreakingChangeVersion,
 	type BreakingChangeWorkflowRuleResult,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { getN8nVersion, Logger } from '@n8n/backend-common';
 import { TransactionRunner, WorkflowRepository, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { createHash } from 'node:crypto';
 
-import { N8N_VERSION } from '../../../constants';
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import { BreakingChangeService } from '../breaking-changes.service';
 import { MigrationFindingSyncRepository } from '../database/repositories/migration-finding-sync.repository';
 import { MigrationFindingRepository } from '../database/repositories/migration-finding.repository';
-import { MigrationWorkflowOwnerRepository } from '../database/repositories/migration-workflow-owner.repository';
-import { MigrationOwnerSuggestionService } from '../owners/migration-owner-suggestion.service';
+import {
+	MigrationWorkflowOwnerRepository,
+	type OwnerSuggestion,
+} from '../database/repositories/migration-workflow-owner.repository';
+import {
+	MigrationOwnerSuggestionService,
+	type EligibleUsers,
+} from '../owners/migration-owner-suggestion.service';
 import { diffMigrationFindings, type MigrationFindingHit } from './migration-finding-diff';
 
 /**
@@ -23,7 +28,7 @@ import { diffMigrationFindings, type MigrationFindingHit } from './migration-fin
  * The n8n version is part of the hash: a release can change how a rule detects
  * issues without changing its id, so the first read after an upgrade re-syncs.
  */
-export function computeRuleSetFingerprint(ruleIds: string[], n8nVersion = N8N_VERSION): string {
+export function computeRuleSetFingerprint(ruleIds: string[], n8nVersion = getN8nVersion()): string {
 	return createHash('sha256')
 		.update([n8nVersion, ...[...ruleIds].sort()].join('\n'))
 		.digest('hex');
@@ -39,10 +44,10 @@ export class MigrationFindingSyncService {
 	private static readonly BATCH_SIZE = 100;
 
 	/** In-flight runs per target version, so concurrent callers share one scan. */
-	private readonly ongoingSyncs = new Map<BreakingChangeVersion, Promise<void>>();
+	private readonly ongoingSyncs = new Map<BreakingChangeVersion, Promise<boolean>>();
 
 	/** The latest re-check per workflow, so re-checks of one workflow run in save order. */
-	private readonly ongoingWorkflowSyncs = new Map<string, Promise<void>>();
+	private readonly ongoingWorkflowSyncs = new Map<string, Promise<boolean>>();
 
 	constructor(
 		private readonly breakingChangeService: BreakingChangeService,
@@ -62,27 +67,27 @@ export class MigrationFindingSyncService {
 	/**
 	 * Syncs when the table has never been filled for the version, or when the
 	 * registered rule set changed since the last sync (for example after an upgrade).
+	 * Returns `false` when the sync it ran or joined was partial, so the table can
+	 * miss findings until the next sync.
 	 */
-	async syncIfStale(targetVersion: BreakingChangeVersion): Promise<void> {
+	async syncIfStale(targetVersion: BreakingChangeVersion): Promise<boolean> {
 		// A read during a sync waits for it, so the table is never read mid-sync.
 		const ongoing = this.ongoingSyncs.get(targetVersion);
-		if (ongoing) {
-			await ongoing;
-			return;
-		}
+		if (ongoing) return await ongoing;
 
 		const record = await this.syncRepository.getForVersion(targetVersion, {});
 		const ruleIds = this.ruleRegistry.getRules(targetVersion).map((rule) => rule.id);
-		if (record?.ruleSetFingerprint === computeRuleSetFingerprint(ruleIds)) return;
+		if (record?.ruleSetFingerprint === computeRuleSetFingerprint(ruleIds)) return true;
 
 		this.logger.debug('Migration finding table is stale, syncing', {
 			targetVersion,
 			reason: record ? 'rule set or n8n version changed' : 'never synced',
 		});
-		await this.sync(targetVersion);
+		return await this.sync(targetVersion);
 	}
 
-	async sync(targetVersion: BreakingChangeVersion): Promise<void> {
+	/** Runs a full sync. Returns `false` when a batch failed and the sync was partial. */
+	async sync(targetVersion: BreakingChangeVersion): Promise<boolean> {
 		const ongoing = this.ongoingSyncs.get(targetVersion);
 		if (ongoing) {
 			this.logger.debug('Reusing ongoing migration finding sync', { targetVersion });
@@ -92,13 +97,13 @@ export class MigrationFindingSyncService {
 		const run = this.runSync(targetVersion);
 		this.ongoingSyncs.set(targetVersion, run);
 		try {
-			await run;
+			return await run;
 		} finally {
 			this.ongoingSyncs.delete(targetVersion);
 		}
 	}
 
-	private async runSync(targetVersion: BreakingChangeVersion): Promise<void> {
+	private async runSync(targetVersion: BreakingChangeVersion): Promise<boolean> {
 		this.logger.debug('Starting migration finding sync', { targetVersion });
 
 		// The record is written again only after every batch succeeded. A sync that stops
@@ -107,8 +112,10 @@ export class MigrationFindingSyncService {
 
 		// One full, uncached scan. Batch rules need every workflow to produce a result,
 		// so the scan runs first and the table is updated from its output afterwards.
-		const { report, failedChecks } = await this.breakingChangeService.detect(targetVersion);
+		const { report, publishedHits, failedChecks } =
+			await this.breakingChangeService.detect(targetVersion);
 		const hitsByWorkflow = groupHitsByWorkflow(report.workflowResults);
+		const publishedHitsByWorkflow = groupByWorkflow(publishedHits);
 
 		// A rule check that threw leaves no hit for its pair. Treating that as "clean"
 		// would mark a real finding fixed, so the diff leaves those pairs untouched.
@@ -127,11 +134,17 @@ export class MigrationFindingSyncService {
 		let afterId: string | undefined;
 		let workflowIds: string[];
 		let failedBatches = 0;
+		// The users are loaded on the first batch with a finding and kept for the rest of the sync.
+		const owners: { users?: EligibleUsers } = {};
 		do {
 			workflowIds = await this.workflowRepository.getIdsAfter(afterId, take);
 			try {
-				await this.syncBatch(targetVersion, workflowIds, hitsByWorkflow, unknownByWorkflow);
-				await this.refreshSuggestedOwners(targetVersion, workflowIds);
+				await this.syncBatch(targetVersion, workflowIds, {
+					hitsByWorkflow,
+					publishedHitsByWorkflow,
+					unknownByWorkflow,
+				});
+				await this.refreshSuggestedOwners(targetVersion, workflowIds, owners);
 			} catch (error) {
 				// One bad batch must not lose the rest. The sync record stays cleared
 				// below, so the next read syncs and visits this batch again.
@@ -152,7 +165,7 @@ export class MigrationFindingSyncService {
 				targetVersion,
 				failedBatches,
 			});
-			return;
+			return false;
 		}
 
 		const ruleIds = this.ruleRegistry.getRules(targetVersion).map((rule) => rule.id);
@@ -166,6 +179,7 @@ export class MigrationFindingSyncService {
 		);
 
 		this.logger.debug('Migration finding sync completed', { targetVersion });
+		return true;
 	}
 
 	/**
@@ -174,15 +188,16 @@ export class MigrationFindingSyncService {
 	 * to one workflow, and a later full sync corrects any drift. The sync record
 	 * marks a full scan, so this path never writes it.
 	 * Errors are reported, not thrown, so the save that triggered it is unaffected.
+	 * Returns `false` when the re-check failed and the workflow's findings may be stale.
 	 */
-	async syncWorkflow(workflowId: string): Promise<void> {
+	async syncWorkflow(workflowId: string): Promise<boolean> {
 		// Saves of one workflow can overlap. Running their re-checks one after the
 		// other keeps the table on the result of the latest save.
-		const previous = this.ongoingWorkflowSyncs.get(workflowId) ?? Promise.resolve();
+		const previous = this.ongoingWorkflowSyncs.get(workflowId) ?? Promise.resolve(true);
 		const run = previous.then(async () => await this.runWorkflowSync(workflowId));
 		this.ongoingWorkflowSyncs.set(workflowId, run);
 		try {
-			await run;
+			return await run;
 		} finally {
 			if (this.ongoingWorkflowSyncs.get(workflowId) === run) {
 				this.ongoingWorkflowSyncs.delete(workflowId);
@@ -190,34 +205,44 @@ export class MigrationFindingSyncService {
 		}
 	}
 
-	private async runWorkflowSync(workflowId: string): Promise<void> {
+	/**
+	 * Waits for the re-check that the latest save of the workflow queued, and returns
+	 * whether it succeeded. A save emits `workflow-saved` synchronously, so the listener
+	 * has queued its re-check by the time the save returns. Joining it keeps the rules
+	 * from running twice. When no re-check is queued, it runs one.
+	 */
+	async awaitWorkflowSync(workflowId: string): Promise<boolean> {
+		const queued = this.ongoingWorkflowSyncs.get(workflowId);
+		return queued ? await queued : await this.syncWorkflow(workflowId);
+	}
+
+	private async runWorkflowSync(workflowId: string): Promise<boolean> {
 		const targetVersion = MIGRATION_REPORT_TARGET_VERSION;
-		if (!targetVersion) return;
+		if (!targetVersion) return true;
 
 		try {
-			const { hits, failedChecks } = await this.breakingChangeService.detectWorkflowHits(
-				targetVersion,
-				workflowId,
-			);
+			const { hits, publishedHits, failedChecks } =
+				await this.breakingChangeService.detectWorkflowHits(targetVersion, workflowId);
 			// A batch rule decides from all workflows at once, so only a full sync
 			// may change its rows. Here they are out of scope and stay as they are.
 			const batchRulePairs = this.ruleRegistry
 				.getRules(targetVersion)
 				.filter((rule) => 'collectWorkflowData' in rule)
 				.map((rule) => ({ ruleId: rule.id, workflowId }));
-			await this.syncBatch(
-				targetVersion,
-				[workflowId],
-				groupByWorkflow(hits),
-				groupByWorkflow([...failedChecks, ...batchRulePairs]),
-			);
+			await this.syncBatch(targetVersion, [workflowId], {
+				hitsByWorkflow: groupByWorkflow(hits),
+				publishedHitsByWorkflow: groupByWorkflow(publishedHits),
+				unknownByWorkflow: groupByWorkflow([...failedChecks, ...batchRulePairs]),
+			});
 			await this.refreshSuggestedOwners(targetVersion, [workflowId]);
+			return true;
 		} catch (error) {
 			this.logger.warn('Migration finding sync for one workflow failed', {
 				targetVersion,
 				workflowId,
 			});
 			this.errorReporter.error(error, { extra: { targetVersion, workflowId } });
+			return false;
 		}
 	}
 
@@ -229,6 +254,7 @@ export class MigrationFindingSyncService {
 	private async refreshSuggestedOwners(
 		targetVersion: BreakingChangeVersion,
 		workflowIds: string[],
+		owners: { users?: EligibleUsers } = {},
 	): Promise<void> {
 		try {
 			const affectedIds = await this.findingRepository.listWorkflowIdsWithUnresolvedFindings(
@@ -236,8 +262,11 @@ export class MigrationFindingSyncService {
 				workflowIds,
 				{},
 			);
-			const suggestions =
-				affectedIds.length > 0 ? await this.ownerSuggestionService.suggestOwners(affectedIds) : [];
+			let suggestions: OwnerSuggestion[] = [];
+			if (affectedIds.length > 0) {
+				owners.users ??= await this.ownerSuggestionService.loadEligibleUsers();
+				suggestions = await this.ownerSuggestionService.suggestOwners(affectedIds, owners.users);
+			}
 			await this.ownerRepository.replaceSuggestions(workflowIds, suggestions, {});
 		} catch (error) {
 			this.logger.warn('Refreshing the suggested owners failed, the findings are unaffected', {
@@ -252,8 +281,11 @@ export class MigrationFindingSyncService {
 	private async syncBatch(
 		targetVersion: BreakingChangeVersion,
 		pagedIds: string[],
-		hitsByWorkflow: Map<string, MigrationFindingHit[]>,
-		unknownByWorkflow: Map<string, MigrationFindingHit[]>,
+		scan: {
+			hitsByWorkflow: Map<string, MigrationFindingHit[]>;
+			publishedHitsByWorkflow: Map<string, MigrationFindingHit[]>;
+			unknownByWorkflow: Map<string, MigrationFindingHit[]>;
+		},
 	): Promise<void> {
 		if (pagedIds.length === 0) return;
 
@@ -263,20 +295,38 @@ export class MigrationFindingSyncService {
 			const workflowIds = await this.workflowRepository.findExistingIds(pagedIds, ctx);
 			if (workflowIds.length === 0) return;
 
-			const hits = workflowIds.flatMap((workflowId) => hitsByWorkflow.get(workflowId) ?? []);
-			const unknown = workflowIds.flatMap((workflowId) => unknownByWorkflow.get(workflowId) ?? []);
+			const forBatch = (byWorkflow: Map<string, MigrationFindingHit[]>) =>
+				workflowIds.flatMap((workflowId) => byWorkflow.get(workflowId) ?? []);
+			const hits = forBatch(scan.hitsByWorkflow);
+			const publishedHits = forBatch(scan.publishedHitsByWorkflow);
+			const unknown = forBatch(scan.unknownByWorkflow);
 			const existing = await this.findingRepository.listForWorkflows(
 				targetVersion,
 				workflowIds,
 				ctx,
 			);
-			const diff = diffMigrationFindings({ targetVersion, workflowIds, hits, existing, unknown });
+			const diff = diffMigrationFindings({
+				targetVersion,
+				workflowIds,
+				hits,
+				publishedHits,
+				existing,
+				unknown,
+			});
 
 			if (diff.toInsert.length > 0) {
 				await this.findingRepository.insertMany(diff.toInsert, ctx);
 			}
 			if (diff.toMarkFixed.length > 0) {
 				await this.findingRepository.markFixedForIds(diff.toMarkFixed, ctx);
+			}
+			if (diff.toMarkFixedUnpublished.length > 0) {
+				await this.findingRepository.updateStatusForIds(
+					diff.toMarkFixedUnpublished,
+					'fixed_unpublished',
+					undefined,
+					ctx,
+				);
 			}
 			if (diff.toReopen.length > 0) {
 				await this.findingRepository.updateStatusForIds(diff.toReopen, 'open', undefined, ctx);

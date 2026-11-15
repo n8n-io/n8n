@@ -1,7 +1,10 @@
 import type { EpisodicScopeDecision, JSONObject, SerializableAgentState } from '@n8n/agents';
 import type { AgentMessageAuthor, AgentMessageIntegrationOrigin } from '@n8n/api-types';
 import type { Author } from 'chat';
-import type { BridgeExecutionContext } from '../integrations/agent-chat-integration';
+import type {
+	BridgeExecutionContext,
+	VerifiedSender,
+} from '../integrations/agent-chat-integration';
 
 import type {
 	IntegrationMessageContext,
@@ -30,6 +33,8 @@ export interface QueuedUserChatMessage extends QueuedMessageInput {
 	 * `origin.hidden`, stays out of the transcript and the pending list.
 	 */
 	hidden?: boolean;
+	/** Set only by the Stop service. This turn cannot accept steering. */
+	stopReportId?: string;
 }
 
 /**
@@ -50,18 +55,39 @@ export interface QueuedIntegrationMessage extends QueuedMessageInput {
 	/** The channel's episodic ownership for this turn. Absent on work queued before channels resolved it: that work has no episodic memory. */
 	episodicScope?: EpisodicScopeDecision;
 	sender: Author;
+	/**
+	 * The sender identity for the access check when the queued turn runs.
+	 * `null`: the event had no individual user as its sender.
+	 */
+	verifiedSender?: VerifiedSender | null;
 	messageContext: IntegrationMessageContext;
 	contextConversation: SessionBinding;
 	forceBuffered?: boolean;
 	slackThreadContext?: BridgeExecutionContext['slackThreadContext'];
 }
 
+/**
+ * The sender identity for the access check before a queued integration turn
+ * runs. Turns queued without `verifiedSender` (older queue items) fall back to
+ * the adapter user ID only, never to a name.
+ */
+export const queuedAccessSender = (
+	payload: Pick<QueuedIntegrationMessage, 'sender' | 'verifiedSender'>,
+): VerifiedSender | undefined =>
+	payload.verifiedSender === undefined
+		? { userId: payload.sender.userId }
+		: (payload.verifiedSender ?? undefined);
+
 export type AgentQueuedMessage = QueuedUserChatMessage | QueuedIntegrationMessage;
 
 /** Queue storage keeps dispatch data. Conversation input belongs to the referenced message. */
 export type AgentQueueDispatch =
 	// `hidden` is stored on the message origin, not in the dispatch.
-	| { kind: QueuedUserChatMessage['kind']; options?: Record<string, unknown> }
+	| {
+			kind: QueuedUserChatMessage['kind'];
+			options?: Record<string, unknown>;
+			stopReportId?: string;
+	  }
 	| (Omit<
 			QueuedIntegrationMessage,
 			| keyof QueuedMessageInput
@@ -94,6 +120,6 @@ export function hostMetadataExecutionId(metadata: JSONObject | undefined): strin
 
 export function checkpointExecutionId(state: SerializableAgentState): string | undefined {
 	if (state.persistence?.delegated) return undefined;
-	const id = state.persistence?.hostMetadata?.[EXECUTION_METADATA_KEY];
-	return typeof id === 'string' ? id : undefined;
+
+	return hostMetadataExecutionId(state.persistence?.hostMetadata);
 }

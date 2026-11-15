@@ -3,5 +3,6 @@
 	"name": "CodeNodePython",
 	"description": "A Python Code Node that first generates 100 items and then runs once for each item and adds, modifies and removes properties. The data is returned with RespondToWebhook Node.",
 	"scenarioData": { "workflowFiles": ["py-code-node.json"] },
-	"scriptPath": "py-code-node.script.js"
+	"scriptPath": "py-code-node.script.js",
+	"supportedEngines": ["v1"]
 }

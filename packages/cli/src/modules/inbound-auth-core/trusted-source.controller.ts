@@ -15,6 +15,7 @@ import {
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import {
 	deriveCapabilities,
+	trustedSourceFacetsOf,
 	type Capability,
 	type TrustedSource,
 	type TrustedSourceConfigInput,
@@ -127,6 +128,7 @@ export class TrustedSourceController {
 			user: req.user,
 			sourceId: source.id,
 			issuer: source.issuer,
+			facets: trustedSourceFacetsOf(source.config),
 		});
 		return redact(source);
 	}
@@ -164,6 +166,7 @@ export class TrustedSourceController {
 			user: req.user,
 			sourceId: updated.id,
 			issuer: updated.issuer,
+			facets: trustedSourceFacetsOf(updated.config),
 		});
 		return redact(updated);
 	}
@@ -171,8 +174,7 @@ export class TrustedSourceController {
 	@Delete('/:id')
 	@GlobalScope('trustedSource:delete')
 	async delete(req: AuthenticatedRequest, _res: Response, @Param('id') id: string) {
-		const source = await this.require(id);
-		await this.store.delete(id);
+		const source = await this.store.delete(id);
 		this.eventService.emit('trusted-source-deleted', {
 			user: req.user,
 			sourceId: source.id,
