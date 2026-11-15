@@ -2,9 +2,15 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { STORES } from '@n8n/stores/constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useToast } from '@n8n/composables/useToast';
+import { i18n } from '@n8n/i18n';
 import type { AgentN8nChatThreadSummary } from '@n8n/api-types';
 
-import { getN8nChatThread, listN8nChatThreads } from '../composables/useAgentApi';
+import {
+	deleteN8nChatThread,
+	getN8nChatThread,
+	listN8nChatThreads,
+} from '../composables/useAgentApi';
 
 /**
  * The user's own n8n Chat threads across every agent they can reach, for the sidebar's
@@ -13,16 +19,23 @@ import { getN8nChatThread, listN8nChatThreads } from '../composables/useAgentApi
  */
 export const useAgentN8nChatThreadsStore = defineStore(STORES.AGENT_N8N_CHAT_THREADS, () => {
 	const rootStore = useRootStore();
+	const toast = useToast();
 
 	const recentThreads = ref<AgentN8nChatThreadSummary[]>([]);
 	// Threads opened by id that the recent list doesn't hold. Kept apart, so a later
 	// `fetchRecent` (which replaces `recentThreads`) can't drop them.
 	const openedThreads = ref<AgentN8nChatThreadSummary[]>([]);
-	/** Every known thread by id; a fresher `recentThreads` entry wins. */
+	/** Ids deleted this session, so every already-mounted list (recent, paged, merged) can
+	 * filter a row out without each one separately tracking and removing it. */
+	const deletedThreadIds = ref<Set<string>>(new Set());
+	/** Every known thread by id; a fresher `recentThreads` entry wins. Skips deleted threads,
+	 * so a list response that was already in flight cannot bring one back. */
 	const threadsById = computed(
 		() =>
 			new Map(
-				[...openedThreads.value, ...recentThreads.value].map((thread) => [thread.id, thread]),
+				[...openedThreads.value, ...recentThreads.value]
+					.filter((thread) => !deletedThreadIds.value.has(thread.id))
+					.map((thread) => [thread.id, thread]),
 			),
 	);
 	/** Every known thread, newest `updatedAt` first — the single source for callers that
@@ -64,12 +77,37 @@ export const useAgentN8nChatThreadsStore = defineStore(STORES.AGENT_N8N_CHAT_THR
 		}
 	}
 
+	/**
+	 * Delete one of the user's own threads, like the preview chat deletes sessions.
+	 * Rename is out of scope — the preview chat has none either. Takes the thread itself,
+	 * not just its id, so a thread a pager loaded past the recent page can still delete.
+	 */
+	async function deleteThread(thread: AgentN8nChatThreadSummary): Promise<boolean> {
+		try {
+			await deleteN8nChatThread(
+				rootStore.restApiContext,
+				thread.agent.projectId,
+				thread.agent.id,
+				thread.id,
+			);
+		} catch (error) {
+			toast.showError(error, i18n.baseText('agentSessions.showError.delete'));
+			return false;
+		}
+		recentThreads.value = recentThreads.value.filter((t) => t.id !== thread.id);
+		openedThreads.value = openedThreads.value.filter((t) => t.id !== thread.id);
+		deletedThreadIds.value.add(thread.id);
+		return true;
+	}
+
 	return {
 		recentThreads,
 		openedThreads,
 		threadsById,
 		knownThreads,
+		deletedThreadIds,
 		fetchRecent,
 		loadThread,
+		deleteThread,
 	};
 });

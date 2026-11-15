@@ -5,8 +5,7 @@ import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import z from 'zod';
 
-import type { AiPreferenceService } from '@/services/ai-preference.service';
-import type { UrlService } from '@n8n/backend-services';
+import type { AiPreferenceService, UrlService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 
 import {

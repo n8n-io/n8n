@@ -65,7 +65,6 @@ function makeAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 		name: 'Support Agent',
 		projectId: PROJECT_ID,
 		resourceType: 'agent',
-		isCompiled: true,
 		createdAt: '2026-01-01T00:00:00.000Z',
 		updatedAt: '2026-01-01T00:00:00.000Z',
 		versionId: 'v1',
@@ -363,6 +362,9 @@ describe('useNdvAgentConfig', () => {
 				url: 'https://mcp.example.com',
 				transport: 'streamableHttp' as const,
 				authentication: 'none' as const,
+				toolPermissions: {
+					categories: { read: 'always_allow' as const, write: 'always_allow' as const },
+				},
 			};
 			api.inline.scheduleConfigUpdate({ tools: [], mcpServers: [mcpServer] });
 

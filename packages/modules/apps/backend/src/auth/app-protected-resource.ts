@@ -1,0 +1,89 @@
+import { appSchema } from '@n8n/api-types';
+import { ProjectScopeService } from '@n8n/backend-services';
+import type { ProtectedResourceResolver } from '@n8n/backend-services/auth';
+import { Service } from '@n8n/di';
+import {
+	SYSTEM_TRUSTED_SOURCE_ID,
+	type ProtectedResource,
+	type ResourcePrincipal,
+} from '@n8n/inbound-auth';
+
+import type { App } from '../app.entity';
+import { AppRepository } from '../app.repository';
+import { AppHostService } from '../serving/app-host.service';
+
+@Service()
+export class AppProtectedResource implements ProtectedResourceResolver {
+	readonly id = 'apps';
+	readonly scopes: string[] = [];
+
+	constructor(
+		private readonly apps: AppRepository,
+		private readonly hosts: AppHostService,
+		private readonly projectScope: ProjectScopeService,
+	) {}
+
+	forApp(app: App): ProtectedResource {
+		const url = this.hosts.callbackUrl(app);
+		const currentApp = async () => {
+			const current = await this.apps.findById(app.id);
+			return current?.publishedVersionId && current.namespace === app.namespace ? current : null;
+		};
+		return {
+			id: `app:${app.id}`,
+			surface: 'apps',
+			displayName: app.name,
+			isFirstParty: true,
+			uiHints: { icon: 'grid-2x2', consentType: 'app' },
+			scopes: [],
+			getResourceUrl: () => url,
+			getAudiences: () => [url],
+			getAcceptedSourceIds: () => [SYSTEM_TRUSTED_SOURCE_ID],
+			getAllowedRedirectUris: async () => [url],
+			isAvailable: async () => !!(await currentApp()),
+			authorize: async (user) => {
+				const current = await currentApp();
+				return !!current && (await this.canAccess(current, user));
+			},
+		};
+	}
+
+	async canAccess(app: App, user: ResourcePrincipal): Promise<boolean> {
+		return app.visibility === 'instance' || (await this.canRead(app, user));
+	}
+
+	async canRead(app: App, user: ResourcePrincipal): Promise<boolean> {
+		return await this.projectScope.hasScopes(user, app.projectId, ['app:read']);
+	}
+
+	matchesVirtualClientUrl(value: string): boolean {
+		try {
+			const url = new URL(value);
+			if (url.username || url.password || url.search || url.hash) return false;
+			return (
+				this.appId(url.pathname) !== undefined && this.hosts.namespaceFromUrl(url) !== undefined
+			);
+		} catch {
+			return false;
+		}
+	}
+
+	async resolveByUrl(value: string): Promise<ProtectedResource | undefined> {
+		if (!this.matchesVirtualClientUrl(value)) return undefined;
+		const id = this.appId(new URL(value).pathname);
+		if (!id) return undefined;
+		const app = await this.apps.findById(id);
+		const resource = app?.publishedVersionId ? this.forApp(app) : undefined;
+		return resource?.getResourceUrl() === value ? resource : undefined;
+	}
+
+	async resolveByPath(): Promise<ProtectedResource | undefined> {
+		// App resources require the apps host, which a path cannot identify.
+		return undefined;
+	}
+
+	private appId(pathname: string): string | undefined {
+		const match = /^\/_n8n\/auth\/([^/]+)\/callback$/.exec(pathname);
+		return match && appSchema.shape.id.safeParse(match[1]).success ? match[1] : undefined;
+	}
+}

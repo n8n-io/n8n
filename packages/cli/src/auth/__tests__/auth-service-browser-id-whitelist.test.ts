@@ -1,11 +1,13 @@
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { EventService } from '@n8n/backend-services';
+// EOF Experiment cleanup
 import type { GlobalConfig } from '@n8n/config';
-import type { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
+import type { InvalidAuthTokenRepository, PersonRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
 import type { MfaService } from '@/mfa/mfa.service';
-import type { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@n8n/backend-services';
+import type { JwtService, UrlService } from '@n8n/backend-services';
 
 describe('AuthService Browser ID Whitelist', () => {
 	let authService: AuthService;
@@ -16,17 +18,20 @@ describe('AuthService Browser ID Whitelist', () => {
 		});
 		const jwtService = mock<JwtService>();
 		const urlService = mock<UrlService>();
-		const userRepository = mock<UserRepository>();
+		const personRepository = mock<PersonRepository>();
 		const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 		const mfaService = mock<MfaService>();
 
 		authService = new AuthService(
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			mock<EventService>(),
+			// EOF Experiment cleanup
 			globalConfig,
 			mock(),
 			mock(),
 			jwtService,
 			urlService,
-			userRepository,
+			personRepository,
 			invalidAuthTokenRepository,
 			mfaService,
 		);

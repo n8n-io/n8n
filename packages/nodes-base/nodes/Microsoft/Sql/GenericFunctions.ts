@@ -1,9 +1,10 @@
 import { routeBinaryProperties } from '@utils/binary';
+import { isInsideQuotes } from '@utils/sql-query-parameters';
 import { chunk, flatten } from '@utils/utilities';
 import type { IResult } from 'mssql';
 import mssql from 'mssql';
-import { deepCopy, safeRegex } from 'n8n-workflow';
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { deepCopy, NodeOperationError, safeRegex } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 
 import type { ITables, OperationInputData } from './interfaces';
 
@@ -281,11 +282,11 @@ export async function executeSqlQueryAndPrepareResults(
 	pool: mssql.ConnectionPool,
 	rawQuery: string,
 	itemIndex: number,
-	queryValues: Array<string | number | boolean | IDataObject | null> = [],
+	queryValues: unknown[] = [],
 	nodeVersion?: number,
 ): Promise<INodeExecutionData[]> {
 	const request = pool.request();
-	const processedQuery = bindQueryParameters(request, rawQuery, queryValues);
+	const processedQuery = bindQueryParameters(this.getNode(), request, rawQuery, queryValues);
 
 	const rawResult: IResult<any> = await request.query(processedQuery);
 	const { recordsets, rowsAffected } = rawResult;
@@ -322,9 +323,10 @@ export async function executeSqlQueryAndPrepareResults(
 }
 
 export function bindQueryParameters(
+	node: INode,
 	request: mssql.Request,
 	rawQuery: string,
-	queryValues: Array<string | number | boolean | IDataObject | null> = [],
+	queryValues: unknown[] = [],
 ): string {
 	let processedQuery = rawQuery;
 	if (queryValues.length > 0) {
@@ -335,22 +337,22 @@ export function bindQueryParameters(
 			request.input(paramName, queryValues[i - 1]);
 		}
 	}
+
+	// $1..$N were all replaced above (none were, if queryValues is empty), so
+	// anything still shaped like a placeholder here references a number past
+	// the last bound value. SQL Server reads it as a money literal instead of
+	// failing. A $N inside a quoted string is text, not a placeholder.
+	const unboundNumbers = safeRegex
+		.matchAll('\\$(\\d+)(?!\\d)', processedQuery, 'g')
+		.filter((match) => !isInsideQuotes(processedQuery, match.index ?? 0))
+		.map((match) => Number(match[1]));
+
+	if (unboundNumbers.length > 0) {
+		throw new NodeOperationError(
+			node,
+			`The query references $${Math.max(...unboundNumbers)}, but only ${queryValues.length} query parameter(s) are set`,
+		);
+	}
+
 	return processedQuery;
-}
-
-export function normalizeQueryReplacement(
-	queryReplacement: unknown,
-): Array<string | number | boolean | IDataObject | null> {
-	// null/undefined bind as SQL NULL, not ''. An unbound $N is read by T-SQL as a
-	// money literal (`id = $1` means `id = 1`), matching a row instead of none.
-	let normalized: unknown = queryReplacement ?? null;
-
-	if (typeof normalized === 'string' && normalized) {
-		normalized = normalized.split(',').map((entry) => entry.trim());
-	}
-	if (normalized !== '' && !Array.isArray(normalized)) {
-		normalized = [normalized];
-	}
-
-	return Array.isArray(normalized) ? normalized : [];
 }

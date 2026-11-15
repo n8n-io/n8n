@@ -16,7 +16,8 @@ import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
 import { DateTime } from 'luxon';
-import { PROJECT_ROOT, UnexpectedError } from 'n8n-workflow';
+import { PROJECT_ROOT } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { OwnershipService } from '@/services/ownership.service';
@@ -30,6 +31,7 @@ import {
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
 
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createOwner, createMember, createUser, createAdmin } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -1876,6 +1878,78 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 			.expect(404);
 	});
 
+	test('a role with folder:move but without workflow:move cannot transfer the workflows of a folder', async () => {
+		const sourceProject = await createTeamProject('source project', owner);
+		const role = await createCustomRoleWithScopeSlugs(
+			['folder:read', 'folder:list', 'folder:move'],
+			{
+				roleType: 'project',
+			},
+		);
+		await linkUserToProject(member, sourceProject, role.slug);
+
+		const sourceFolder = await createFolder(sourceProject, { name: 'Source Folder' });
+		// The only workflow sits in a subfolder, so the check must cover the whole folder tree.
+		const childFolder = await createFolder(sourceProject, {
+			name: 'Child Folder',
+			parentFolder: sourceFolder,
+		});
+		const workflow = await createWorkflow({ parentFolder: childFolder }, sourceProject);
+
+		await testServer
+			.authAgentFor(member)
+			.get(`/projects/${sourceProject.id}/folders/${sourceFolder.id}/transfer-preview`)
+			.query({ destinationProjectId: memberProject.id })
+			.expect(403);
+
+		await testServer
+			.authAgentFor(member)
+			.put(`/projects/${sourceProject.id}/folders/${sourceFolder.id}/transfer`)
+			.send({ destinationProjectId: memberProject.id, destinationParentFolderId: '0' })
+			.expect(403);
+
+		const workflowSharing = await getWorkflowSharing(workflow);
+		expect(workflowSharing).toHaveLength(1);
+		expect(workflowSharing[0]).toMatchObject({
+			projectId: sourceProject.id,
+			role: 'workflow:owner',
+		});
+		const folder = await folderRepository.findOneOrFail({
+			where: { id: sourceFolder.id },
+			relations: ['homeProject'],
+		});
+		expect(folder.homeProject.id).toBe(sourceProject.id);
+	});
+
+	test('a role without folder:create in the destination project cannot transfer a folder into it', async () => {
+		const sourceFolder = await createFolder(memberProject, { name: 'Source Folder' });
+		await createWorkflow({ parentFolder: sourceFolder }, memberProject);
+
+		const destinationProject = await createTeamProject('destination project', owner);
+		const role = await createCustomRoleWithScopeSlugs(['workflow:create'], {
+			roleType: 'project',
+		});
+		await linkUserToProject(member, destinationProject, role.slug);
+
+		await testServer
+			.authAgentFor(member)
+			.get(`/projects/${memberProject.id}/folders/${sourceFolder.id}/transfer-preview`)
+			.query({ destinationProjectId: destinationProject.id })
+			.expect(404);
+
+		await testServer
+			.authAgentFor(member)
+			.put(`/projects/${memberProject.id}/folders/${sourceFolder.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id, destinationParentFolderId: '0' })
+			.expect(404);
+
+		const folder = await folderRepository.findOneOrFail({
+			where: { id: sourceFolder.id },
+			relations: ['homeProject'],
+		});
+		expect(folder.homeProject.id).toBe(memberProject.id);
+	});
+
 	test.each<ProjectRole>([PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG])(
 		'%ss cannot transfer workflows',
 		async (projectRole) => {
@@ -1995,7 +2069,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 				.expect(200);
 
 			// ASSERT
-			expect(response.body).toEqual({});
+			expect(response.body).toEqual({ data: { unpublishedWorkflows: [] } });
 
 			const allSharings = await getWorkflowSharing(workflow);
 			expect(allSharings).toHaveLength(1);
@@ -2596,7 +2670,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 		);
 	});
 
-	test('returns a 500 if the workflow cannot be activated due to an unknown error', async () => {
+	test('moves the folder and reports a workflow whose republish fails for an unknown reason', async () => {
 		//
 		// ARRANGE
 		//
@@ -2610,22 +2684,62 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 			parentFolder: sourceFolder1,
 		});
 
-		await createActiveWorkflow({ parentFolder: sourceFolder1 }, sourceProject);
-		await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
+		const activeWorkflow = await createActiveWorkflow(
+			{ parentFolder: sourceFolder1 },
+			sourceProject,
+		);
+		const republishedWorkflow = await createActiveWorkflow(
+			{ parentFolder: sourceFolder2 },
+			sourceProject,
+		);
+		const inactiveWorkflow = await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
 
-		activeWorkflowManager.add.mockRejectedValue(new UnexpectedError('Oh no!'));
+		activeWorkflowManager.add.mockImplementation(async (workflowId) => {
+			if (workflowId === activeWorkflow.id) throw new UnexpectedError('Oh no!');
+			return { webhooks: true, triggersAndPollers: true };
+		});
 
 		//
-		// ACT & ASSERT
+		// ACT
 		//
-		await testServer
+		const response = await testServer
 			.authAgentFor(member)
 			.put(`/projects/${sourceProject.id}/folders/${sourceFolder1.id}/transfer`)
 			.send({
 				destinationProjectId: destinationProject.id,
 				destinationParentFolderId: '0',
 			})
-			.expect(500);
+			.expect(200);
+
+		//
+		// ASSERT
+		//
+		expect(response.body.data).toEqual({
+			unpublishedWorkflows: [
+				{
+					id: activeWorkflow.id,
+					name: activeWorkflow.name,
+					error: { name: 'UnexpectedError', message: 'Oh no!' },
+				},
+			],
+		});
+		const workflowInDb = await workflowRepository.findOneByOrFail({ id: activeWorkflow.id });
+		expect(workflowInDb.activeVersionId).toBeNull();
+
+		// One failure must not stop the loop before the other workflows.
+		expect(activeWorkflowManager.add).toHaveBeenCalledWith(
+			republishedWorkflow.id,
+			'update',
+			undefined,
+			expect.anything(),
+		);
+		const republishedInDb = await workflowRepository.findOneByOrFail({
+			id: republishedWorkflow.id,
+		});
+		expect(republishedInDb.activeVersionId).not.toBeNull();
+
+		const [inactiveSharing] = await getWorkflowSharing(inactiveWorkflow);
+		expect(inactiveSharing.projectId).toBe(destinationProject.id);
 	});
 
 	test('should update workflow project cache entries when transferring folder', async () => {

@@ -9,10 +9,12 @@ import { SsoInstanceSettingsLoader } from '../../loaders/sso/sso.instance-settin
 
 const mockSetCurrentAuthenticationMethod = vi.fn();
 const mockGetCurrentAuthenticationMethod = vi.fn().mockReturnValue('email');
+const mockEmitSsoLoginDisabled = vi.fn();
 vi.mock('@/sso.ee/sso-helpers', () => ({
 	setCurrentAuthenticationMethod: (...args: unknown[]) =>
 		mockSetCurrentAuthenticationMethod(...args),
 	getCurrentAuthenticationMethod: () => mockGetCurrentAuthenticationMethod(),
+	emitSsoLoginDisabled: (...args: unknown[]) => mockEmitSsoLoginDisabled(...args),
 }));
 
 describe('SsoInstanceSettingsLoader', () => {
@@ -132,6 +134,40 @@ describe('SsoInstanceSettingsLoader', () => {
 		});
 	});
 
+	describe('sso-login-disabled', () => {
+		it.each(['saml', 'oidc'] as const)(
+			'should emit the event after the switch from %s to email',
+			async (method) => {
+				const callOrder: string[] = [];
+				mockGetCurrentAuthenticationMethod.mockReturnValue(method);
+				mockSetCurrentAuthenticationMethod.mockImplementation(() => {
+					callOrder.push('sync');
+				});
+				mockEmitSsoLoginDisabled.mockImplementation(() => {
+					callOrder.push('emit');
+				});
+				const loader = createLoader({ ssoManagedByEnv: true });
+
+				await loader.run();
+
+				expect(mockEmitSsoLoginDisabled).toHaveBeenCalledExactlyOnceWith(method);
+				expect(callOrder).toEqual(['sync', 'emit']);
+			},
+		);
+
+		it.each([
+			['saml', { samlLoginEnabled: true }],
+			['oidc', { oidcLoginEnabled: true }],
+		])('should not emit the event when %s stays enabled', async (method, overrides) => {
+			mockGetCurrentAuthenticationMethod.mockReturnValue(method);
+			const loader = createLoader({ ssoManagedByEnv: true, ...overrides });
+
+			await loader.run();
+
+			expect(mockEmitSsoLoginDisabled).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('auth method sync', () => {
 		it('should set authentication method to saml when SAML login is enabled', async () => {
 			const loader = createLoader({ ssoManagedByEnv: true, samlLoginEnabled: true });
@@ -174,6 +210,7 @@ describe('SsoInstanceSettingsLoader', () => {
 			await loader.run();
 
 			expect(mockSetCurrentAuthenticationMethod).not.toHaveBeenCalled();
+			expect(mockEmitSsoLoginDisabled).not.toHaveBeenCalled();
 		});
 
 		it('should set auth method to saml (not email) when switching from oidc to saml', async () => {
@@ -184,6 +221,8 @@ describe('SsoInstanceSettingsLoader', () => {
 
 			expect(mockSetCurrentAuthenticationMethod).toHaveBeenCalledWith('saml');
 			expect(mockSetCurrentAuthenticationMethod).not.toHaveBeenCalledWith('email');
+			// A switch between protocols keeps single sign-on on.
+			expect(mockEmitSsoLoginDisabled).not.toHaveBeenCalled();
 		});
 
 		it('should set auth method to oidc (not email) when switching from saml to oidc', async () => {
@@ -194,6 +233,7 @@ describe('SsoInstanceSettingsLoader', () => {
 
 			expect(mockSetCurrentAuthenticationMethod).toHaveBeenCalledWith('oidc');
 			expect(mockSetCurrentAuthenticationMethod).not.toHaveBeenCalledWith('email');
+			expect(mockEmitSsoLoginDisabled).not.toHaveBeenCalled();
 		});
 	});
 });

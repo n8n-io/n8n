@@ -102,6 +102,7 @@ export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>> & {
 	executionButtonType?: 'primary' | 'secondary';
 	/** Show missing credentials as setup warnings in hosts with a setup panel. */
 	credentialSetupWarnings?: boolean;
+	showNodeIssues?: boolean;
 };
 export const EditorEnabledFeaturesKey: InjectionKey<Readonly<Ref<EditorEnabledFeatures>>> =
 	Symbol('EditorEnabledFeatures');
@@ -120,3 +121,10 @@ export interface LogsPanelHost {
 	heightContainer?: MaybeRefOrGetter<HTMLElement | null | undefined>;
 }
 export const LogsPanelHostKey: InjectionKey<LogsPanelHost> = Symbol('LogsPanelHost');
+
+/**
+ * Canvas area of an embedded editor, below its own header. Fixed overlays, such
+ * as the node creator, align to its top. The standalone editor provides nothing.
+ */
+export const EmbeddedCanvasElementKey: InjectionKey<Readonly<Ref<HTMLElement | null>>> =
+	Symbol('EmbeddedCanvasElement');

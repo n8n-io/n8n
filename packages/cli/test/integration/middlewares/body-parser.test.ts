@@ -54,6 +54,25 @@ describe('bodyParser', () => {
 		expect(({} as Record<string, unknown>).polluted).toBeUndefined();
 	});
 
+	it('should decode a form body in the charset from the content-type header', async () => {
+		const response = await request(server)
+			.post('/')
+			.set('content-type', 'application/x-www-form-urlencoded; charset=ISO-8859-1')
+			.send('text=Gr%FC%DFe')
+			.expect(200);
+		expect(JSON.parse(response.text)).toEqual({ text: 'Grüße' });
+	});
+
+	it('should decode a json body in the charset from the content-type header', async () => {
+		const response = await request(server)
+			.post('/')
+			.set('content-type', 'application/json; charset="windows-1252"')
+			.serialize(((data: unknown) => data) as (obj: unknown) => string)
+			.send(Buffer.from([...Buffer.from('{"price":"5'), 0x80, ...Buffer.from('"}')]))
+			.expect(200);
+		expect(JSON.parse(response.text)).toEqual({ price: '5€' });
+	});
+
 	it('should reject an unreadable request stream as a client error', async () => {
 		const req = {
 			headers: {},

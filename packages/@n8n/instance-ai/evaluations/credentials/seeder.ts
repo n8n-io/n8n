@@ -56,6 +56,27 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		envVar: 'EVAL_GOOGLE_SHEETS_ACCESS_TOKEN',
 		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
 	},
+	googleCalendarOAuth2Api: {
+		defaultName: '[eval] Google Calendar',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	hubspotAppToken: {
+		defaultName: '[eval] HubSpot',
+		buildData: (token) => ({ appToken: token }),
+	},
+	// Instagram accounts connect through the Facebook Graph API.
+	facebookGraphApi: {
+		defaultName: '[eval] Facebook Graph',
+		buildData: (token) => ({ accessToken: token }),
+	},
+	linkedInOAuth2Api: {
+		defaultName: '[eval] LinkedIn',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	highLevelOAuth2Api: {
+		defaultName: '[eval] HighLevel',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
 	// MCP-registry-synthesized credential types (agent MCP servers). Creating
 	// them requires the backend to run with the `mcp-registry` module enabled;
 	// placeholder tokens are fine — agent eval runs mock the MCP wire.
@@ -106,6 +127,83 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		envVar: 'EVAL_OPENAI_API_KEY',
 		buildData: (key) => ({ apiKey: key }),
 	},
+	stripeApi: {
+		defaultName: '[eval] Stripe',
+		buildData: (key) => ({ secretKey: key }),
+	},
+	shopifyAccessTokenApi: {
+		defaultName: '[eval] Shopify',
+		buildData: (token) => ({
+			shopSubdomain: 'eval-shop',
+			accessToken: token,
+			appSecretKey: token,
+		}),
+	},
+	zendeskApi: {
+		defaultName: '[eval] Zendesk',
+		buildData: (token) => ({ subdomain: 'eval', email: 'eval@example.com', apiToken: token }),
+	},
+	telegramApi: {
+		defaultName: '[eval] Telegram',
+		// The node builds its URLs from `baseUrl`; a stored credential has no default.
+		buildData: (token) => ({ accessToken: token, baseUrl: 'https://api.telegram.org' }),
+	},
+	airtableTokenApi: {
+		defaultName: '[eval] Airtable',
+		buildData: (token) => ({ accessToken: token }),
+	},
+	slackOAuth2Api: {
+		defaultName: '[eval] Slack OAuth2',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	jiraSoftwareCloudApi: {
+		defaultName: '[eval] Jira',
+		buildData: (token) => ({
+			email: 'eval@example.com',
+			apiToken: token,
+			domain: 'https://eval.atlassian.net',
+		}),
+	},
+	googleOAuth2Api: {
+		defaultName: '[eval] Google',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	typeformApi: {
+		defaultName: '[eval] Typeform',
+		buildData: (token) => ({ accessToken: token }),
+	},
+	sendInBlueApi: {
+		defaultName: '[eval] Brevo',
+		buildData: (key) => ({ apiKey: key }),
+	},
+	linearApi: {
+		defaultName: '[eval] Linear',
+		buildData: (key) => ({ apiKey: key }),
+	},
+	hubspotOAuth2Api: {
+		defaultName: '[eval] HubSpot OAuth2',
+		buildData: (token) => ({ oauthTokenData: { access_token: token } }),
+	},
+	clearbitApi: {
+		defaultName: '[eval] Clearbit',
+		buildData: (key) => ({ apiKey: key }),
+	},
+	anthropicApi: {
+		defaultName: '[eval] Anthropic',
+		buildData: (key) => ({ apiKey: key, url: 'https://api.anthropic.com' }),
+	},
+	groqApi: {
+		defaultName: '[eval] Groq',
+		buildData: (key) => ({ apiKey: key }),
+	},
+	wordpressApi: {
+		defaultName: '[eval] WordPress',
+		buildData: (password) => ({
+			username: 'eval-user',
+			password,
+			url: 'https://blog.example.com',
+		}),
+	},
 };
 
 // ---------------------------------------------------------------------------
@@ -144,6 +242,8 @@ export async function createOneCredential(
 		description?: string | null;
 		/** Seed with no field values, modelling a credential the user saved empty. */
 		blank?: boolean;
+		/** The build's project. Absent: the caller's personal project. */
+		projectId?: string;
 	},
 ): Promise<CreatedCredential> {
 	if (credentialType === 'httpTemplatedCustomAuth') {
@@ -173,13 +273,14 @@ export async function createOneCredential(
 		credentialType,
 		options?.blank ? {} : template.buildData(token),
 		options?.description,
+		options?.projectId,
 	);
 	return { id, name: resolvedName, type: credentialType };
 }
 
 /**
  * Mint an `httpTemplatedCustomAuth` ("Simplified Custom Auth") credential from
- * a setup card's recipe. Unlike the 14 types above, this type has no fixed
+ * a setup card's recipe. Unlike the types above, this type has no fixed
  * field shape — the AI builder researches it at runtime per service — so there
  * is no `CREDENTIAL_TEMPLATES` entry to look up; the recipe carried on
  * `options.setupHint` is the only source of the data to persist.
@@ -192,6 +293,7 @@ async function createTemplatedCustomAuthCredential(
 		logger?: EvalLogger;
 		setupHint?: InstanceAiCredentialSetupHint;
 		description?: string | null;
+		projectId?: string;
 	},
 ): Promise<CreatedCredential> {
 	const hint = options?.setupHint;
@@ -238,6 +340,7 @@ async function createTemplatedCustomAuthCredential(
 			acceptedStatusCodes: hint.acceptedStatusCodes ? JSON.stringify(hint.acceptedStatusCodes) : '',
 		},
 		options?.description,
+		options?.projectId,
 	);
 	return { id, name: resolvedName, type: 'httpTemplatedCustomAuth' };
 }
@@ -265,6 +368,8 @@ export async function createDeclaredCredentials(
 		onCreated?: (id: string) => void;
 		logger?: EvalLogger;
 		nameCounts?: Map<string, number>;
+		/** The build's project. Absent: the caller's personal project. */
+		projectId?: string;
 	},
 ): Promise<CreatedCredential[]> {
 	const logger = options?.logger;
@@ -276,6 +381,7 @@ export async function createDeclaredCredentials(
 			logger,
 			...(decl.description !== undefined ? { description: decl.description } : {}),
 			...(decl.blank ? { blank: true } : {}),
+			...(options?.projectId !== undefined ? { projectId: options.projectId } : {}),
 		});
 		options?.onCreated?.(cred.id);
 		created.push(cred);

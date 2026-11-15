@@ -31,6 +31,12 @@ describe('resolveOffsetPagination', () => {
 		});
 	});
 
+	it('keeps the query limit when the decoded cursor has a limit of 0', () => {
+		const cursor = encodeCursor({ offset: 40, limit: 0 });
+
+		expect(resolveOffsetPagination({ limit: 100, cursor })).toEqual({ offset: 40, limit: 100 });
+	});
+
 	it('throws BadRequestError for an undecodable cursor', () => {
 		expect(() => resolveOffsetPagination({ limit: 50, cursor: 'not-a-valid-cursor' })).toThrow(
 			BadRequestError,

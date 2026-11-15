@@ -1,6 +1,6 @@
+import type { SerializedWorkflow } from '@n8n/api-types';
 import { WorkflowEntity } from '@n8n/db';
 
-import type { SerializedWorkflow } from '../../../spec/serialized/workflow.schema';
 import { WorkflowSerializer } from '../workflow.serializer';
 
 const wire = (overrides: Partial<SerializedWorkflow> = {}): SerializedWorkflow => ({
@@ -88,6 +88,52 @@ describe('WorkflowSerializer.deserialize', () => {
 	it('carries the archived flag', () => {
 		expect(serializer.deserialize(wire({ isArchived: true })).isArchived).toBe(true);
 		expect(serializer.deserialize(wire({ isArchived: false })).isArchived).toBe(false);
+	});
+});
+
+describe('WorkflowSerializer description', () => {
+	const serializer = new WorkflowSerializer();
+
+	const workflow = (description: string | null) =>
+		Object.assign(new WorkflowEntity(), {
+			id: 'wf-1',
+			name: 'Workflow',
+			description,
+			versionId: 'version-1',
+			activeVersionId: null,
+			nodes: [],
+			connections: {},
+			isArchived: false,
+		});
+
+	it('exports a description', () => {
+		const wire = serializer.serialize(workflow('Syncs orders'), { includeTags: false });
+
+		expect(wire.description).toBe('Syncs orders');
+	});
+
+	it('omits an empty description', () => {
+		const wire = serializer.serialize(workflow(null), { includeTags: false });
+
+		expect(wire).not.toHaveProperty('description');
+	});
+
+	it('does not put the description in the metadata file', () => {
+		expect(serializer.serializeMetadata(workflow('Syncs orders'))).not.toHaveProperty(
+			'description',
+		);
+	});
+
+	it('restores the description on import', () => {
+		const wire = serializer.serialize(workflow('Syncs orders'), { includeTags: false });
+
+		expect(serializer.deserialize(wire).description).toBe('Syncs orders');
+	});
+
+	it('clears the description when the package has none', () => {
+		const wire = serializer.serialize(workflow(null), { includeTags: false });
+
+		expect(serializer.deserialize(wire).description).toBeNull();
 	});
 });
 

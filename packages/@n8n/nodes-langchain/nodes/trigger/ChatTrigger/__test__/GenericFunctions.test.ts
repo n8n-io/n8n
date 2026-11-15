@@ -97,11 +97,23 @@ describe('validateAuth', () => {
 			mockContext.getNodeParameter.calledWith('authentication').mockReturnValue('n8nUserAuth');
 		});
 
-		it('should skip validation for the setup webhook, and identify nobody', async () => {
+		it('should skip validation for the setup webhook in hostedChat mode, and identify nobody', async () => {
+			mockContext.getNodeParameter.calledWith('mode', 'hostedChat').mockReturnValue('hostedChat');
 			mockContext.getWebhookName.mockReturnValue('setup');
 			mockContext.getHeaderData.mockReturnValue({});
 
 			await expect(validateAuth(mockContext)).resolves.toBeUndefined();
+		});
+
+		it('should require the n8n-auth cookie for the setup webhook in webhook mode', async () => {
+			mockContext.getNodeParameter.calledWith('mode', 'hostedChat').mockReturnValue('webhook');
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getHeaderData.mockReturnValue({});
+
+			await expect(validateAuth(mockContext)).rejects.toMatchObject({
+				responseCode: 401,
+				message: 'User not authenticated!',
+			});
 		});
 
 		it('should throw 401 when no n8n-auth cookie is present', async () => {
@@ -205,6 +217,63 @@ describe('validateAuth', () => {
 					message: 'Invalid authentication token',
 				});
 				expect(mockContext.establishTriggerIdentity).not.toHaveBeenCalled();
+			});
+
+			it('carries the challenge that names the resource metadata on the 401', async () => {
+				mockContext.getHeaderData.mockReturnValue({ 'x-auth-token': 'not-a-token' });
+				mockContext.validateN8nOAuth2Token.mockResolvedValue({
+					valid: false,
+					reason: 'invalid_token',
+					challenge: 'Bearer resource_metadata="https://n8n.example/.well-known/x"',
+				});
+
+				await expect(validateAuth(mockContext)).rejects.toMatchObject({
+					responseCode: 401,
+					challenge: 'Bearer resource_metadata="https://n8n.example/.well-known/x"',
+				});
+			});
+
+			it('names the resource metadata on the 401 when the frame sends no token and no session cookie', async () => {
+				mockContext.getHeaderData.mockReturnValue({});
+				mockContext.validateN8nOAuth2Token.mockResolvedValue({
+					valid: false,
+					reason: 'invalid_token',
+					challenge: 'Bearer resource_metadata="https://n8n.example/.well-known/x"',
+				});
+
+				await expect(validateAuth(mockContext)).rejects.toMatchObject({
+					responseCode: 401,
+					message: 'User not authenticated!',
+					challenge: 'Bearer resource_metadata="https://n8n.example/.well-known/x"',
+				});
+				expect(mockContext.validateN8nOAuth2Token).toHaveBeenCalledWith('', resourceUrl);
+			});
+
+			it('names the resource metadata on the 401 when the frame sends no token and the session cookie is rejected', async () => {
+				mockContext.getHeaderData.mockReturnValue({ cookie: 'n8n-auth=anything' });
+				mockContext.validateCookieAuth.mockRejectedValue(new Error('Unauthorized'));
+				mockContext.validateN8nOAuth2Token.mockResolvedValue({
+					valid: false,
+					reason: 'invalid_token',
+					challenge: 'Bearer resource_metadata="https://n8n.example/.well-known/x"',
+				});
+
+				await expect(validateAuth(mockContext)).rejects.toMatchObject({
+					responseCode: 401,
+					message: 'Invalid authentication token',
+					challenge: 'Bearer resource_metadata="https://n8n.example/.well-known/x"',
+				});
+			});
+
+			it('keeps the 401 without a challenge when the challenge lookup fails', async () => {
+				mockContext.getHeaderData.mockReturnValue({});
+				mockContext.validateN8nOAuth2Token.mockRejectedValue(new Error('no sources'));
+
+				await expect(validateAuth(mockContext)).rejects.toMatchObject({
+					responseCode: 401,
+					message: 'User not authenticated!',
+					challenge: undefined,
+				});
 			});
 
 			it('should throw 401 when the resource URL cannot be resolved', async () => {
@@ -337,6 +406,37 @@ describe('establishChatSessionIdentity', () => {
 		);
 		// Redirects to the plain top-level URL — never to the inner-frame URL, which
 		// would render editor-ui/the AS callback inside the sandboxed frame.
+		expect(mockContext.getResponseObject().writeHead).toHaveBeenCalledWith(302, {
+			Location: '/webhook/abc/chat',
+		});
+	});
+
+	it('sets no refresh cookie when the issuer granted no refresh token', async () => {
+		mockContext.getRequestObject.mockReturnValue({
+			query: { code: 'auth-code', state: 'flow-state' },
+			headers: {},
+			originalUrl: '/webhook/abc/chat?code=auth-code&state=flow-state',
+		} as never);
+		mockContext.completeN8nOAuth2Flow.mockResolvedValue({
+			valid: true,
+			token: 'as-token',
+			expiresIn: 3600,
+			user,
+		});
+
+		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
+
+		expect(result).toBeNull();
+		expect(mockContext.getResponseObject().cookie).toHaveBeenCalledWith(
+			'n8n-chat-oauth',
+			expect.stringContaining('as-token'),
+			expect.anything(),
+		);
+		expect(mockContext.getResponseObject().cookie).not.toHaveBeenCalledWith(
+			'n8n-chat-oauth-refresh',
+			expect.anything(),
+			expect.anything(),
+		);
 		expect(mockContext.getResponseObject().writeHead).toHaveBeenCalledWith(302, {
 			Location: '/webhook/abc/chat',
 		});

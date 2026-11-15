@@ -32,6 +32,22 @@ describe('EngineConfig', () => {
 		expect(consoleWarnMock).toHaveBeenCalledWith(expect.stringContaining('N8N_ENGINE_AUTH_SECRET'));
 	});
 
+	it('should accept a resume secret of at least 32 characters', () => {
+		const secret = 'r'.repeat(32);
+		process.env.N8N_ENGINE_RESUME_SECRET = secret;
+
+		expect(Container.get(EngineConfig).resumeSecret).toBe(secret);
+	});
+
+	it('should reject a shorter resume secret and fall back to the default', () => {
+		process.env.N8N_ENGINE_RESUME_SECRET = 'r'.repeat(31);
+
+		expect(Container.get(EngineConfig).resumeSecret).toBe('');
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining('N8N_ENGINE_RESUME_SECRET'),
+		);
+	});
+
 	it('should leave the control plane base URL empty so the host picks the default', () => {
 		expect(Container.get(EngineConfig).controlPlaneBaseUrl).toBe('');
 	});
@@ -74,5 +90,24 @@ describe('EngineConfig', () => {
 
 		expect(Container.get(EngineConfig).mode).toBe('in-process');
 		expect(consoleWarnMock).toHaveBeenCalledWith(expect.stringContaining('N8N_ENGINE_MODE'));
+	});
+
+	it('should default new workflows to engine v1', () => {
+		expect(Container.get(EngineConfig).defaultType).toBe('v1');
+	});
+
+	it('should read the default engine type', () => {
+		process.env.N8N_ENGINE_DEFAULT_TYPE = 'v2';
+
+		expect(Container.get(EngineConfig).defaultType).toBe('v2');
+	});
+
+	it('should reject an unknown default engine type and fall back to v1', () => {
+		process.env.N8N_ENGINE_DEFAULT_TYPE = 'v3';
+
+		expect(Container.get(EngineConfig).defaultType).toBe('v1');
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining('N8N_ENGINE_DEFAULT_TYPE'),
+		);
 	});
 });

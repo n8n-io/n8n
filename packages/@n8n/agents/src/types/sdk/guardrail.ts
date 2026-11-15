@@ -51,4 +51,10 @@ export interface GuardrailsOptions {
 	hooks: ModelGuardrail[];
 	agentId?: string;
 	threadId?: string;
+	onNotice?: (notice: GuardrailNotice) => void;
 }
+
+export type GuardrailNotice = {
+	code: string;
+	agentId?: string;
+};

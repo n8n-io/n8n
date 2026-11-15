@@ -1,9 +1,9 @@
 import type { AgentJsonToolConfig, AiGatewayConfigDto, NodeToolConfig } from '@n8n/api-types';
 import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
-import type { INodeParameters, INodeTypeDescription } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
+import type { INodeParameters, INodeTypeDescription, INodeTypes } from 'n8n-workflow';
 import { NodeHelpers, resolveSupportedCredentialActivation } from 'n8n-workflow';
 
-import type { NodeTypes } from '@/node-types';
 import { checkAiGatewayEligibility, HTTP_NODE_TYPES } from '@/services/ai-gateway-eligibility';
 
 const N8N_CONNECT_CREDENTIAL_NAME = 'Gateway credits';
@@ -11,12 +11,22 @@ const AI_GATEWAY_MANAGED_CREDENTIAL_FLAG = '__aiGatewayManaged';
 
 type NodeToolCredential = NonNullable<NodeToolConfig['credentials']>[string];
 
+/** Unknown or tool-incapable node types are bad config; any other lookup failure is a bug. */
+function isNodeToolConfigError(error: unknown): boolean {
+	return error instanceof UserError;
+}
+
 function aiGatewayManagedCredential(): NodeToolCredential {
 	return {
 		id: null,
 		name: N8N_CONNECT_CREDENTIAL_NAME,
 		[AI_GATEWAY_MANAGED_CREDENTIAL_FLAG]: true,
 	};
+}
+
+/** Sanitization clears inaccessible ids to '', which leaves the slot empty. */
+function isCredentialSlotFilled(ref: NodeToolCredential | undefined): boolean {
+	return !!ref && (!!ref.id || AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in ref);
 }
 
 function setAiGatewayManagedCredential(
@@ -109,7 +119,7 @@ function reconcileAiGatewayManagedMarkers(
  */
 export function reconcileNodeToolGatewayCredentials(
 	tools: AgentJsonToolConfig[] | undefined,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	aiGatewayConfig: AiGatewayConfigDto | undefined,
 	ownedCredentialTypes: ReadonlySet<string>,
 ): void {
@@ -122,7 +132,7 @@ export function reconcileNodeToolGatewayCredentials(
 
 /**
  * Credential types whose every required, displayed node-tool slot is already
- * satisfied (managed marker or a real id) — the finish_setup credential card
+ * satisfied (managed marker or a real id) — the agent_builder_finish_setup credential card
  * for such a type is redundant and can be dropped.
  *
  * A type is EXCLUDED when any tool still has an empty required slot of it, even
@@ -132,7 +142,7 @@ export function reconcileNodeToolGatewayCredentials(
  */
 export function listAiGatewayManagedCredentialTypes(
 	tools: AgentJsonToolConfig[] | undefined,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 ): string[] {
 	const managed = new Set<string>();
 	const unsatisfied = new Set<string>();
@@ -144,7 +154,8 @@ export function listAiGatewayManagedCredentialTypes(
 		let description: INodeTypeDescription;
 		try {
 			description = nodeTypes.getByNameAndVersion(node.nodeType, node.nodeTypeVersion).description;
-		} catch {
+		} catch (error) {
+			if (!isNodeToolConfigError(error)) throw error;
 			continue;
 		}
 
@@ -155,8 +166,7 @@ export function listAiGatewayManagedCredentialTypes(
 		const resolvedParameters = resolveNodeParameters(node, description);
 		for (const slot of getRequiredNodeCredentialSlots(description)) {
 			const credentialType = slot.credentialType;
-			const ref = node.credentials?.[credentialType];
-			if (ref && (ref.id || AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in ref)) continue;
+			if (isCredentialSlotFilled(node.credentials?.[credentialType])) continue;
 			if (isCredentialDisplayed(node, description, credentialType, resolvedParameters)) {
 				unsatisfied.add(credentialType);
 			}
@@ -166,16 +176,53 @@ export function listAiGatewayManagedCredentialTypes(
 	return [...managed].filter((credentialType) => !unsatisfied.has(credentialType));
 }
 
+/**
+ * Write a resolved credential into every node-tool slot of its type that is
+ * still empty and displayed for the node's current parameters. A slot with a
+ * real id or a managed marker is left alone. Returns the number of slots filled.
+ */
+export function assignCredentialToNodeTools(
+	tools: AgentJsonToolConfig[] | undefined,
+	nodeTypes: INodeTypes,
+	credentialType: string,
+	credential: { id: string; name: string },
+): number {
+	let assigned = 0;
+	for (const tool of tools ?? []) {
+		if (tool.type !== 'node') continue;
+		const node = tool.node;
+
+		let description: INodeTypeDescription;
+		try {
+			description = nodeTypes.getByNameAndVersion(node.nodeType, node.nodeTypeVersion).description;
+		} catch (error) {
+			if (!isNodeToolConfigError(error)) throw error;
+			continue;
+		}
+		if (!description.credentials?.some((c) => c.name === credentialType)) continue;
+
+		if (isCredentialSlotFilled(node.credentials?.[credentialType])) continue;
+
+		const resolvedParameters = resolveNodeParameters(node, description);
+		if (!isCredentialDisplayed(node, description, credentialType, resolvedParameters)) continue;
+
+		node.credentials = { ...(node.credentials ?? {}), [credentialType]: { ...credential } };
+		assigned++;
+	}
+	return assigned;
+}
+
 function reconcileNode(
 	node: NodeToolConfig,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	aiGatewayConfig: AiGatewayConfigDto | undefined,
 	ownedCredentialTypes: ReadonlySet<string>,
 ): void {
 	let description: INodeTypeDescription;
 	try {
 		description = nodeTypes.getByNameAndVersion(node.nodeType, node.nodeTypeVersion).description;
-	} catch {
+	} catch (error) {
+		if (!isNodeToolConfigError(error)) throw error;
 		dropAiGatewayMarkers(node);
 		return;
 	}
@@ -226,10 +273,7 @@ function reconcileNode(
 
 	for (const slot of getRequiredNodeCredentialSlots(description)) {
 		const credentialType = slot.credentialType;
-		// A ref only occupies the slot with a real id or the managed flag —
-		// sanitization clears inaccessible ids to '', leaving the slot empty.
-		const existing = node.credentials?.[credentialType];
-		if (existing && (existing.id || AI_GATEWAY_MANAGED_CREDENTIAL_FLAG in existing)) continue;
+		if (isCredentialSlotFilled(node.credentials?.[credentialType])) continue;
 
 		// Own credential wins (same precedence as MCP and model slots): leave the
 		// slot empty so the builder resolves the user's credential instead.

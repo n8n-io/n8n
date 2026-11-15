@@ -2,8 +2,8 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
+import type { Publisher } from '@n8n/backend-services';
+import type { PubSubCommandMap } from '@n8n/decorators';
 
 import {
 	LEADER_CHANNEL_REQUEST_TIMEOUT_MS,

@@ -12,7 +12,7 @@ const router = createRouter({
 	history: createMemoryHistory(),
 	routes: [
 		{
-			path: '/reviews/:reviewRequestId?',
+			path: '/inbox/reviews/:reviewId',
 			name: WORKFLOW_REVIEW_REQUESTS_VIEW,
 			component: { template: '<div />' },
 		},
@@ -44,7 +44,7 @@ describe('WorkflowReviewSubmittedDialog', () => {
 
 		expect(getByRole('link', { name: 'your submission' })).toHaveAttribute(
 			'href',
-			'/reviews/review-1',
+			'/inbox/reviews/review-1',
 		);
 	});
 
@@ -57,7 +57,7 @@ describe('WorkflowReviewSubmittedDialog', () => {
 			getByRole('dialog', { name: 'Workflow version submitted for review' }),
 		).toBeInTheDocument();
 		expect(getByTestId('workflow-review-submitted-dialog')).toHaveTextContent(
-			'You can view your submission in the reviews area',
+			'You can view your submission in your Inbox',
 		);
 
 		await userEvent.click(getByRole('button', { name: 'Got it' }));

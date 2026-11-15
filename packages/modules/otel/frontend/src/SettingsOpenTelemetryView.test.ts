@@ -1,7 +1,7 @@
 import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { screen, waitFor } from '@testing-library/vue';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
 
 import type { OtelSettingsResponse } from './otel.api';
 import { useOtelStore } from './otel.store';
@@ -59,6 +59,8 @@ const makeSettings = (overrides: Partial<OtelSettingsResponse> = {}): OtelSettin
 	tracesSampleRate: 1.0,
 	startupConnectivityTimeoutMs: 2000,
 	includeNodeSpans: true,
+	emitWorkflowStartSpan: false,
+	emitNodeStartSpan: false,
 	injectOutbound: true,
 	productionExecutionsOnly: true,
 	envManagedFields: [],
@@ -70,7 +72,17 @@ const render = (options = {}) => {
 	return {
 		pinia,
 		store: mockedStore(useOtelStore, pinia),
-		...createComponentRenderer(SettingsOpenTelemetryView, { pinia })(options),
+		...createComponentRenderer(SettingsOpenTelemetryView, {
+			pinia,
+			// Test the form controls without the per-field layout, tooltip portals, and SVG trees.
+			global: {
+				stubs: {
+					N8nSettingsRow: { template: '<div><slot name="info" /><slot name="action" /></div>' },
+					N8nTooltip: { template: '<slot />' },
+					N8nIcon: true,
+				},
+			},
+		})(options),
 	};
 };
 
@@ -173,13 +185,41 @@ describe('SettingsOpenTelemetryView', () => {
 		expect(queryByTestId('settings-save-bar')).not.toBeInTheDocument();
 	});
 
-	it('commits pending form edits when enabling', async () => {
+	it('shows the new status at once while the status save is in flight', async () => {
 		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
-		updateOtelSettingsMock.mockResolvedValue(
-			makeSettings({ enabled: true, exporterEndpoint: 'http://localhost:4318x' }),
-		);
+		updateOtelSettingsMock.mockReturnValue(new Promise(() => {}));
 
-		const { getByTestId, queryByTestId } = render();
+		const { getByTestId, getByText, queryByTestId } = render();
+		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toBeInTheDocument());
+
+		await userEvent.click(getByTestId('otel-enabled-toggle'));
+
+		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toHaveTextContent('Enabled'));
+		expect(getByText(/Tracing is on/)).toBeInTheDocument();
+		expect(queryByTestId('settings-save-bar')).not.toBeInTheDocument();
+	});
+
+	it('disables the save bar while the status save is in flight', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
+		updateOtelSettingsMock.mockReturnValue(new Promise(() => {}));
+
+		const { getByTestId } = render();
+		await waitFor(() => expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument());
+
+		await dirtyEndpoint(getByTestId);
+		await waitFor(() => expect(getByTestId('settings-save-bar-save')).not.toBeDisabled());
+
+		await userEvent.click(getByTestId('otel-enabled-toggle'));
+
+		await waitFor(() => expect(getByTestId('settings-save-bar-save')).toBeDisabled());
+		expect(updateOtelSettingsMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('saves only the status when enabling and keeps pending form edits unsaved', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
+		updateOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: true }));
+
+		const { getByTestId, store } = render();
 		await waitFor(() => expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument());
 
 		await dirtyEndpoint(getByTestId);
@@ -190,10 +230,12 @@ describe('SettingsOpenTelemetryView', () => {
 		await waitFor(() => {
 			expect(updateOtelSettingsMock).toHaveBeenCalledWith(
 				expect.anything(),
-				expect.objectContaining({ enabled: true, exporterEndpoint: 'http://localhost:4318x' }),
+				expect.objectContaining({ enabled: true, exporterEndpoint: 'http://localhost:4318' }),
 			);
-			expect(queryByTestId('settings-save-bar')).not.toBeInTheDocument();
+			expect(store.savedSettings.enabled).toBe(true);
 		});
+		expect(store.settings.exporterEndpoint).toBe('http://localhost:4318x');
+		expect(getByTestId('settings-save-bar')).toBeInTheDocument();
 	});
 
 	it('rolls the status back when enabling fails', async () => {
@@ -236,6 +278,19 @@ describe('SettingsOpenTelemetryView', () => {
 		await userEvent.click(getByTestId('otel-production-only'));
 
 		await waitFor(() => expect(getByTestId('settings-save-bar-save')).toBeInTheDocument());
+	});
+
+	it('disables the node start span checkbox while node spans are off', async () => {
+		getOtelSettingsMock.mockResolvedValue(makeSettings({ includeNodeSpans: false }));
+
+		const { getByTestId } = render();
+		await waitFor(() => expect(getByTestId('otel-emit-node-start-span')).toBeInTheDocument());
+
+		expect(getByTestId('otel-emit-node-start-span')).toBeDisabled();
+
+		await userEvent.click(getByTestId('otel-include-node-spans'));
+
+		await waitFor(() => expect(getByTestId('otel-emit-node-start-span')).toBeEnabled());
 	});
 
 	// ── save ──────────────────────────────────────────────────────────────────
@@ -412,21 +467,23 @@ describe('SettingsOpenTelemetryView', () => {
 		const { getByTestId } = render();
 		await waitFor(() => expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument());
 
+		// Update each field once to avoid per-character timers and form renders.
 		// Endpoint
-		await userEvent.type(getByTestId('otel-exporter-endpoint'), 'https://collector.example.com');
+		await fireEvent.update(getByTestId('otel-exporter-endpoint'), 'https://collector.example.com');
 
 		// Service name
-		await userEvent.type(getByTestId('otel-service-name'), 'my-n8n');
+		await fireEvent.update(getByTestId('otel-service-name'), 'my-n8n');
 
 		// Tracing path
-		await userEvent.clear(getByTestId('otel-tracing-path'));
-		await userEvent.type(getByTestId('otel-tracing-path'), '/custom/traces');
+		await fireEvent.update(getByTestId('otel-tracing-path'), '/custom/traces');
 
 		// Connectivity timeout
-		await typeIntoUnitInput(getByTestId('otel-connectivity-timeout'), '5000');
+		await fireEvent.update(getByTestId('otel-connectivity-timeout'), '5000');
+		await fireEvent.blur(getByTestId('otel-connectivity-timeout'));
 
 		// Sample rate
-		await typeIntoUnitInput(getByTestId('otel-sample-rate'), '0.5');
+		await fireEvent.update(getByTestId('otel-sample-rate'), '0.5');
+		await fireEvent.blur(getByTestId('otel-sample-rate'));
 
 		// Add a header
 		await userEvent.click(getByTestId('otel-header-add'));
@@ -435,11 +492,13 @@ describe('SettingsOpenTelemetryView', () => {
 			getByTestId('otel-header-key').querySelector('input') ?? getByTestId('otel-header-key');
 		const valueInput =
 			getByTestId('otel-header-value').querySelector('input') ?? getByTestId('otel-header-value');
-		await userEvent.type(keyInput, 'x-api-key');
-		await userEvent.type(valueInput, 'secret');
+		await fireEvent.update(keyInput, 'x-api-key');
+		await fireEvent.update(valueInput, 'secret');
 
 		// Checkboxes
 		await userEvent.click(getByTestId('otel-include-node-spans'));
+		await userEvent.click(getByTestId('otel-emit-workflow-start-span'));
+		await userEvent.click(getByTestId('otel-emit-node-start-span'));
 		await userEvent.click(getByTestId('otel-inject-outbound'));
 		await userEvent.click(getByTestId('otel-production-only'));
 
@@ -458,6 +517,8 @@ describe('SettingsOpenTelemetryView', () => {
 					startupConnectivityTimeoutMs: 5000,
 					tracesSampleRate: 0.5,
 					includeNodeSpans: true,
+					emitWorkflowStartSpan: true,
+					emitNodeStartSpan: true,
 					injectOutbound: true,
 					productionExecutionsOnly: true,
 				}),

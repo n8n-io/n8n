@@ -158,6 +158,7 @@ describe('Workflow history store', () => {
 					userId: null,
 					user: null,
 					versionName: 'Release 1',
+					settings: null,
 				},
 			];
 
@@ -182,6 +183,30 @@ describe('Workflow history store', () => {
 			await expect(
 				workflowHistoryStore.getPublishTimeline('workflow-123', { take: 100, skip: 0 }),
 			).rejects.toThrow('API Error');
+		});
+	});
+
+	describe('restoreWorkflow', () => {
+		it('sends the version it restores, so the server can keep its nodes', async () => {
+			const workflowHistoryStore = useWorkflowHistoryStore();
+			const workflowsStore = useWorkflowsStore();
+			const nodes = [{ id: 'node-1', name: 'Call' }];
+			vi.mocked(whApi.getWorkflowVersion).mockResolvedValue({
+				nodes,
+				connections: {},
+				nodeGroups: [],
+			} as unknown as Awaited<ReturnType<typeof whApi.getWorkflowVersion>>);
+			const updateWorkflow = vi
+				.spyOn(workflowsStore, 'updateWorkflow')
+				.mockResolvedValue({} as Awaited<ReturnType<typeof workflowsStore.updateWorkflow>>);
+
+			await workflowHistoryStore.restoreWorkflow('workflow-123', 'version-456');
+
+			expect(updateWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({ nodes, restoredFromVersionId: 'version-456' }),
+				true,
+			);
 		});
 	});
 

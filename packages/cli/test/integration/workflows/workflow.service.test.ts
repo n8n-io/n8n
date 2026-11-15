@@ -1,4 +1,4 @@
-import type { Logger } from '@n8n/backend-common';
+import { type Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	createWorkflowWithHistory,
 	testDb,
@@ -12,7 +12,9 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	TransactionRunner,
 	SharedWorkflowRepository,
+	type User,
 	type WorkflowEntity,
+	type WorkflowHistory,
 	WorkflowHistoryRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
@@ -23,19 +25,29 @@ import {
 	ProjectRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
+import { TriggerCredentialAccessError } from '@/errors/trigger-credential-access.error';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import type { ExternalHooks } from '@/external-hooks';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { NodeTypes } from '@/node-types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@n8n/backend-services';
+import {
+	ProjectScopeService,
+	RoleService,
+	RestrictedNodeTypesProviderProxy,
+	type WorkflowPublishGuardProxy,
+	WorkflowVersionedSettingsService,
+} from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
@@ -43,10 +55,10 @@ import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-p
 import type { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
-import { RestrictedNodeTypesProviderProxy } from '@/workflows/restricted-node-types-provider-proxy.service';
+
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
+
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -122,8 +134,6 @@ beforeAll(async () => {
 		Container.get(ProjectRepository), // projectRepository
 		mock(), // redactionEnforcementService
 		workflowPublicationNotifier,
-		mock(), // scheduleTriggerJobRegistrar
-		mock(), // pollTriggerJobRegistrar
 		mock(), // workflowScheduledJobOwner
 		mock(), // durableJobProvisioner
 		workflowPublishedVersionRepository,
@@ -137,6 +147,10 @@ beforeAll(async () => {
 		Container.get(NodeGroupRulesFlagGate), // nodeGroupRulesFlagGate
 		Container.get(ErrorWorkflowValidationService), // errorWorkflowValidationService
 		Container.get(RestrictedNodeTypesProviderProxy), // restrictedNodeTypesProvider
+		mock(),
+		Container.get(ProjectScopeService), // projectScopeService
+		mock(),
+		Container.get(WorkflowVersionedSettingsService), // WorkflowVersionedSettingsService
 	);
 });
 
@@ -284,6 +298,7 @@ describe('update()', () => {
 		const owner = await createOwner();
 		const workflow = await createActiveWorkflow({}, owner);
 		const previousActiveVersionId = workflow.activeVersionId;
+		const activateSpy = vi.spyOn(workflowService, 'activateWorkflow');
 
 		const updatedWorkflow = await workflowService.update(
 			owner,
@@ -301,13 +316,23 @@ describe('update()', () => {
 				connections: {},
 			} as WorkflowEntity,
 			workflow.id,
-			{ forceSave: true, publishIfActive: true, publicApi: true, source: 'api' },
+			{ forceSave: true, publishIfActive: true, publicApi: 'other', source: 'api' },
 		);
 
 		expect(updatedWorkflow.active).toBe(true);
 		expect(updatedWorkflow.activeVersionId).toBe(updatedWorkflow.versionId);
 		expect(updatedWorkflow.activeVersionId).not.toBe(previousActiveVersionId);
 		expect(updatedWorkflow.activeVersion?.versionId).toBe(updatedWorkflow.versionId);
+		expect(activateSpy).toHaveBeenCalledWith(
+			owner,
+			workflow.id,
+			{
+				versionId: updatedWorkflow.versionId,
+				source: 'api',
+				publicApi: 'other',
+			},
+			{},
+		);
 	});
 
 	test('saves the API update as a draft when an open review blocks re-publication', async () => {
@@ -338,7 +363,7 @@ describe('update()', () => {
 					connections: {},
 				} as WorkflowEntity,
 				workflow.id,
-				{ forceSave: true, publishIfActive: true, publicApi: true, source: 'api' },
+				{ forceSave: true, publishIfActive: true, publicApi: 'other', source: 'api' },
 			),
 		).rejects.toMatchObject({
 			httpStatusCode: 409,
@@ -365,14 +390,20 @@ describe('update()', () => {
 			owner,
 			{ settings: { timezone: 'Europe/Berlin' } } as WorkflowEntity,
 			workflow.id,
-			{ forceSave: true },
+			{ forceSave: true, publicApi: 'editor_ui', source: 'api' },
 		);
 
-		expect(activateSpy).toHaveBeenCalledWith(owner, workflow.id, {
-			versionId: workflow.activeVersionId,
-			source: 'ui',
-			publishHistory: 'none',
-		});
+		expect(activateSpy).toHaveBeenCalledWith(
+			owner,
+			workflow.id,
+			{
+				versionId: workflow.activeVersionId,
+				source: 'api',
+				publicApi: 'editor_ui',
+				publishHistory: 'none',
+			},
+			{},
+		);
 	});
 
 	test('should save workflow history version with backfilled data when nodes change', async () => {
@@ -1086,6 +1117,26 @@ describe('workflow publication outbox', () => {
 			const count = await workflowPublishedVersionRepository.count();
 			expect(count).toBe(0);
 		});
+
+		test('archive removes the workflow from the active workflow manager and records deactivated by the user', async () => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({}, owner);
+			activeWorkflowManager.remove.mockClear();
+
+			await workflowService.archive(owner, workflow.id);
+
+			expect(activeWorkflowManager.remove).toHaveBeenCalledExactlyOnceWith(workflow.id);
+			const history = await workflowPublishHistoryRepository.find({
+				where: { workflowId: workflow.id },
+				order: { id: 'ASC' },
+			});
+			expect(history.map(({ event, versionId, userId }) => ({ event, versionId, userId }))).toEqual(
+				[
+					{ event: 'activated', versionId: workflow.versionId, userId: owner.id },
+					{ event: 'deactivated', versionId: workflow.versionId, userId: owner.id },
+				],
+			);
+		});
 	});
 });
 
@@ -1115,6 +1166,25 @@ describe('activateWorkflow trigger cleanup', () => {
 			expect.stringContaining('Rolled back partial activation'),
 			{ workflowId: workflow.id },
 		);
+
+		const reloaded = await workflowRepository.findById(workflow.id);
+		expect(reloaded?.active).toBe(false);
+		expect(reloaded?.activeVersionId).toBeNull();
+	});
+
+	test('should not tear down triggers when the credential check refuses', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		activeWorkflowManager.add.mockRejectedValueOnce(
+			new TriggerCredentialAccessError(new UserError('Node "Trigger" cannot use the credential')),
+		);
+
+		await expect(workflowService.activateWorkflow(owner, workflow.id)).rejects.toThrow(
+			'Node "Trigger" cannot use the credential',
+		);
+
+		expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
 
 		const reloaded = await workflowRepository.findById(workflow.id);
 		expect(reloaded?.active).toBe(false);
@@ -1456,5 +1526,549 @@ describe('publishAsSystem()', () => {
 		).toBe(versionRowsBefore);
 		expect(await outboxRepository.findBy({ workflowId: workflow.id })).toEqual([]);
 		expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
+	});
+});
+
+describe('delete() and the workflowsFromAList caller policy', () => {
+	test('denies a caller whose allowlist entry no longer refers to a live workflow', async () => {
+		const owner = await createOwner();
+		const member = await createMember();
+
+		const allowlistedCaller = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: { callerPolicy: 'workflowsFromAList', callerIds: allowlistedCaller.id },
+			},
+			owner,
+		);
+
+		await workflowService.archive(owner, allowlistedCaller.id);
+		await workflowService.delete(owner, allowlistedCaller.id);
+
+		const reusedIdWorkflow = await createWorkflow({ id: allowlistedCaller.id }, member);
+
+		const storedSubworkflow = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+
+		await expect(
+			Container.get(SubworkflowPolicyChecker).check(
+				{ id: storedSubworkflow.id, settings: storedSubworkflow.settings },
+				reusedIdWorkflow.id,
+			),
+		).rejects.toThrowError(SubworkflowPolicyDenialError);
+	});
+
+	test('keeps the allowlist entry while the caller is only archived', async () => {
+		const owner = await createOwner();
+
+		const allowlistedCaller = await createWorkflow({}, owner);
+		const callerIds = `keepMe,\n${allowlistedCaller.id}`;
+		const subworkflow = await createWorkflow(
+			{ settings: { callerPolicy: 'workflowsFromAList', callerIds } },
+			owner,
+		);
+
+		await workflowService.archive(owner, allowlistedCaller.id);
+
+		const afterArchive = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(afterArchive.settings).toEqual({ callerPolicy: 'workflowsFromAList', callerIds });
+
+		await workflowService.delete(owner, allowlistedCaller.id);
+
+		const afterDelete = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(afterDelete.settings).toEqual({
+			callerPolicy: 'workflowsFromAList',
+			callerIds: 'keepMe',
+		});
+	});
+
+	test('allows a live allowlisted caller owned by another project', async () => {
+		const owner = await createOwner();
+		const member = await createMember();
+
+		const allowlistedCaller = await createWorkflow({}, member);
+		const subworkflow = await createWorkflow(
+			{
+				settings: { callerPolicy: 'workflowsFromAList', callerIds: allowlistedCaller.id },
+			},
+			owner,
+		);
+
+		const storedSubworkflow = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+
+		await expect(
+			Container.get(SubworkflowPolicyChecker).check(
+				{ id: storedSubworkflow.id, settings: storedSubworkflow.settings },
+				allowlistedCaller.id,
+			),
+		).resolves.toBeUndefined();
+	});
+
+	test('keeps the other settings of an allowlist it rewrites', async () => {
+		const owner = await createOwner();
+
+		const caller = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `${caller.id},another-caller`,
+					executionOrder: 'v1',
+					timezone: 'Europe/Berlin',
+				},
+			},
+			owner,
+		);
+
+		await workflowService.archive(owner, caller.id);
+		await workflowService.delete(owner, caller.id);
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual({
+			callerPolicy: 'workflowsFromAList',
+			callerIds: 'another-caller',
+			executionOrder: 'v1',
+			timezone: 'Europe/Berlin',
+		});
+	});
+
+	test('leaves an allowlist alone when the deleted id only appears inside another entry', async () => {
+		const owner = await createOwner();
+
+		const caller = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `${caller.id}-suffix, ${caller.id}-other`,
+				},
+			},
+			owner,
+		);
+		const before = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+
+		await workflowService.archive(owner, caller.id);
+		await workflowService.delete(owner, caller.id);
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual(before.settings);
+		expect(after.updatedAt).toEqual(before.updatedAt);
+	});
+
+	test('takes several deleted ids out of one allowlist', async () => {
+		const owner = await createOwner();
+
+		const first = await createWorkflow({}, owner);
+		const second = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `${first.id},keepMe,${second.id}`,
+				},
+			},
+			owner,
+		);
+
+		await workflowRepository.removeFromCallerAllowlists([first.id, second.id], {});
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual({ callerPolicy: 'workflowsFromAList', callerIds: 'keepMe' });
+	});
+
+	test('leaves every allowlist untouched when the deleted workflow is on none of them', async () => {
+		const owner = await createOwner();
+
+		const allowlistedCaller = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `${allowlistedCaller.id},another-caller`,
+				},
+			},
+			owner,
+		);
+		const before = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+
+		const unrelatedWorkflow = await createWorkflow({}, owner);
+		await workflowService.archive(owner, unrelatedWorkflow.id);
+		await workflowService.delete(owner, unrelatedWorkflow.id);
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual(before.settings);
+		expect(after.updatedAt).toEqual(before.updatedAt);
+	});
+
+	// A character the `json` column keeps but the binary JSON form cannot hold.
+	const NO_BINARY_JSON_FORM = String.fromCharCode(0);
+
+	test('deletes a workflow while an allowlist elsewhere holds a value json alone can carry', async () => {
+		const owner = await createOwner();
+
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `another-caller${NO_BINARY_JSON_FORM}`,
+				},
+			},
+			owner,
+		);
+		const before = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+
+		const unrelatedWorkflow = await createWorkflow({}, owner);
+		await workflowService.archive(owner, unrelatedWorkflow.id);
+		await workflowService.delete(owner, unrelatedWorkflow.id);
+
+		await expect(workflowRepository.findOneBy({ id: unrelatedWorkflow.id })).resolves.toBeNull();
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual(before.settings);
+	});
+
+	test('rewrites an allowlist that holds a value json alone can carry', async () => {
+		const owner = await createOwner();
+
+		const caller = await createWorkflow({}, owner);
+		const subworkflow = await createWorkflow(
+			{
+				settings: {
+					callerPolicy: 'workflowsFromAList',
+					callerIds: `${caller.id},another-caller`,
+					errorWorkflow: `error-workflow${NO_BINARY_JSON_FORM}`,
+				},
+			},
+			owner,
+		);
+
+		await workflowService.archive(owner, caller.id);
+		await workflowService.delete(owner, caller.id);
+
+		const after = await workflowRepository.findOneByOrFail({ id: subworkflow.id });
+		expect(after.settings).toEqual({
+			callerPolicy: 'workflowsFromAList',
+			callerIds: 'another-caller',
+			errorWorkflow: `error-workflow${NO_BINARY_JSON_FORM}`,
+		});
+	});
+});
+
+const versionSettings = async (versionId: string) =>
+	(await Container.get(WorkflowHistoryRepository).findOneByOrFail({ versionId })).settings;
+
+describe('version-scoped settings in workflow history', () => {
+	const changedNodes = (): INode[] => [
+		{
+			id: uuid(),
+			name: 'Changed',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		},
+	];
+
+	test('stores the new engine of an update', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({ settings: { engineType: 'v1' } }, owner);
+
+		const updated = await workflowService.update(
+			owner,
+			Object.assign(workflowRepository.create(), {
+				nodes: changedNodes(),
+				connections: {},
+				settings: { engineType: 'v2', availableInMCP: true },
+			}),
+			workflow.id,
+			{ forceSave: true },
+		);
+
+		expect(await versionSettings(updated.versionId)).toEqual({ engineType: 'v2' });
+	});
+
+	test('keeps the draft engine when an update has no settings', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({ settings: { engineType: 'v2' } }, owner);
+
+		const updated = await workflowService.update(
+			owner,
+			Object.assign(workflowRepository.create(), { nodes: changedNodes(), connections: {} }),
+			workflow.id,
+			{ forceSave: true },
+		);
+
+		expect(await versionSettings(updated.versionId)).toEqual({ engineType: 'v2' });
+	});
+
+	test('stores the settings of the published version on a system publish, not the draft settings', async () => {
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({ settings: { engineType: 'v2' } }, owner);
+
+		const result = await workflowService.publishAsSystem(
+			workflow.id,
+			{ nodes: changedNodes(), connections: {}, settings: { engineType: 'v1' } },
+			workflow.activeVersionId as string,
+		);
+
+		if (!result.published) throw new Error('expected a publish');
+		expect(await versionSettings(result.versionId)).toEqual({ engineType: 'v1' });
+	});
+
+	test('stores the engine on archive', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({ settings: { engineType: 'v2' } }, owner);
+
+		const archived = await workflowService.archive(owner, workflow.id);
+
+		expect(await versionSettings(archived!.versionId)).toEqual({ engineType: 'v2' });
+	});
+});
+
+describe('version-scoped settings on save', () => {
+	const settingsUpdate = (settings: WorkflowEntity['settings']) =>
+		Object.assign(workflowRepository.create(), { settings });
+
+	const restoreUpdate = (version: Pick<WorkflowHistory, 'nodes' | 'connections'>) =>
+		Object.assign(workflowRepository.create(), {
+			nodes: version.nodes,
+			connections: version.connections,
+		});
+
+	const expectRepublished = (owner: User, workflow: WorkflowEntity) =>
+		expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+			owner,
+			workflow.id,
+			{
+				versionId: workflow.activeVersionId,
+				source: 'ui',
+				publishHistory: 'none',
+				publicApi: false,
+			},
+			expect.any(Object),
+		);
+
+	beforeEach(() => {
+		vi.spyOn(workflowService, 'activateWorkflow');
+	});
+
+	describe('with the engine-v2 module', () => {
+		beforeEach(() => {
+			vi.spyOn(Container.get(ModuleRegistry), 'eligibleModules', 'get').mockReturnValue([
+				'engine-v2',
+			]);
+		});
+
+		test('saves an engine change as a new draft version and keeps the published version', async () => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({ settings: { engineType: 'v1' } }, owner);
+
+			const updated = await workflowService.update(
+				owner,
+				settingsUpdate({ engineType: 'v2' }),
+				workflow.id,
+				{ forceSave: true },
+			);
+
+			expect(updated.versionId).not.toBe(workflow.versionId);
+			expect(updated.activeVersionId).toBe(workflow.activeVersionId);
+			expect(updated.settings).toEqual(expect.objectContaining({ engineType: 'v2' }));
+			const version = await Container.get(WorkflowHistoryRepository).findOneByOrFail({
+				versionId: updated.versionId,
+			});
+			expect(version.settings).toEqual({ engineType: 'v2' });
+			expect(version.nodes).toEqual(workflow.nodes);
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+		});
+
+		test('does not save a new version when v1 is picked for a workflow without an engine', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			const updated = await workflowService.update(
+				owner,
+				settingsUpdate({ engineType: 'v1' }),
+				workflow.id,
+				{ forceSave: true },
+			);
+
+			expect(updated.versionId).toBe(workflow.versionId);
+		});
+
+		test('does not republish the published version on an engine change when the stored settings are null', async () => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({}, owner);
+			await workflowRepository.update(workflow.id, { settings: () => 'NULL' });
+
+			const updated = await workflowService.update(
+				owner,
+				settingsUpdate({ engineType: 'v2' }),
+				workflow.id,
+				{ forceSave: true },
+			);
+
+			expect(updated.versionId).not.toBe(workflow.versionId);
+			expect(updated.activeVersionId).toBe(workflow.activeVersionId);
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+		});
+
+		test('republishes the published version on a live settings change, as before', async () => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({ settings: { engineType: 'v1' } }, owner);
+
+			const updated = await workflowService.update(
+				owner,
+				settingsUpdate({ engineType: 'v1', timezone: 'Europe/Berlin' }),
+				workflow.id,
+				{ forceSave: true },
+			);
+
+			expect(updated.versionId).toBe(workflow.versionId);
+			expectRepublished(owner, workflow);
+		});
+
+		test('saves a new draft version and republishes the published version when the engine and a live setting change', async () => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({ settings: { engineType: 'v1' } }, owner);
+
+			const updated = await workflowService.update(
+				owner,
+				settingsUpdate({ engineType: 'v2', timezone: 'Europe/Berlin' }),
+				workflow.id,
+				{ forceSave: true },
+			);
+
+			expect(updated.versionId).not.toBe(workflow.versionId);
+			expect(updated.activeVersionId).toBe(workflow.activeVersionId);
+			expectRepublished(owner, workflow);
+		});
+
+		test('restores the engine of the restored version', async () => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({ settings: { engineType: 'v1' } }, owner);
+			const v2Version = await createWorkflowHistoryItem(workflow.id, {
+				settings: { engineType: 'v2' },
+			});
+
+			const updated = await workflowService.update(owner, restoreUpdate(v2Version), workflow.id, {
+				forceSave: true,
+				restoredFromVersionId: v2Version.versionId,
+			});
+
+			expect(updated.versionId).not.toBe(workflow.versionId);
+			expect(updated.activeVersionId).toBe(workflow.activeVersionId);
+			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(saved.settings?.engineType).toBe('v2');
+			expect(await versionSettings(updated.versionId)).toEqual({ engineType: 'v2' });
+		});
+
+		test('restores v1 from a version saved on v1', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({ settings: { engineType: 'v2' } }, owner);
+			const v1Version = await createWorkflowHistoryItem(workflow.id, {
+				settings: { engineType: 'v1' },
+			});
+
+			const updated = await workflowService.update(owner, restoreUpdate(v1Version), workflow.id, {
+				forceSave: true,
+				restoredFromVersionId: v1Version.versionId,
+			});
+
+			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(saved.settings?.engineType).toBe('v1');
+			expect(await versionSettings(updated.versionId)).toEqual({ engineType: 'v1' });
+		});
+
+		test('restores v1 from a version saved before history stored settings', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({ settings: { engineType: 'v2' } }, owner);
+			const oldVersion = await createWorkflowHistoryItem(workflow.id, { settings: {} });
+
+			const updated = await workflowService.update(owner, restoreUpdate(oldVersion), workflow.id, {
+				forceSave: true,
+				restoredFromVersionId: oldVersion.versionId,
+			});
+
+			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(saved.settings?.engineType).toBe('v1');
+			expect(await versionSettings(updated.versionId)).toEqual({ engineType: 'v1' });
+		});
+
+		test('does not change the settings on a restore that keeps the engine', async () => {
+			const owner = await createOwner();
+			const settings = { engineType: 'v2' as const, timezone: 'DEFAULT' };
+			const workflow = await createActiveWorkflow({ settings }, owner);
+			const v2Version = await createWorkflowHistoryItem(workflow.id, {
+				settings: { engineType: 'v2' },
+			});
+
+			await workflowService.update(owner, restoreUpdate(v2Version), workflow.id, {
+				forceSave: true,
+				restoredFromVersionId: v2Version.versionId,
+			});
+
+			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(saved.settings).toEqual(settings);
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+		});
+
+		test('restores the engine of the version settings passed with the update', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({ settings: { engineType: 'v1' } }, owner);
+
+			await workflowService.update(owner, settingsUpdate(undefined), workflow.id, {
+				forceSave: true,
+				restoredVersionSettings: { engineType: 'v2' },
+			});
+
+			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(saved.settings?.engineType).toBe('v2');
+		});
+
+		// The sharing license is off here, so the credential guard does not read the version.
+		test('ignores a restored version that is not in the history of the workflow, as before', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({ settings: { engineType: 'v2' } }, owner);
+
+			await workflowService.update(owner, settingsUpdate(undefined), workflow.id, {
+				forceSave: true,
+				restoredFromVersionId: uuid(),
+			});
+
+			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(saved.settings?.engineType).toBe('v2');
+		});
+	});
+
+	describe('without the engine-v2 module', () => {
+		test('applies an engine change to the published version at once, as before', async () => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({ settings: { engineType: 'v1' } }, owner);
+
+			const updated = await workflowService.update(
+				owner,
+				settingsUpdate({ engineType: 'v2' }),
+				workflow.id,
+				{ forceSave: true },
+			);
+
+			expect(updated.versionId).toBe(workflow.versionId);
+			expectRepublished(owner, workflow);
+		});
+
+		test('keeps the draft engine on a restore', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({ settings: { engineType: 'v2' } }, owner);
+			const v1Version = await createWorkflowHistoryItem(workflow.id, {
+				settings: { engineType: 'v1' },
+			});
+
+			await workflowService.update(owner, restoreUpdate(v1Version), workflow.id, {
+				forceSave: true,
+				restoredFromVersionId: v1Version.versionId,
+			});
+
+			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(saved.settings?.engineType).toBe('v2');
+		});
 	});
 });

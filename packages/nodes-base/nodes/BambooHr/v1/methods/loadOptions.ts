@@ -1,4 +1,5 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
 
@@ -9,7 +10,7 @@ export async function getTimeOffTypeID(
 	const returnData: INodePropertyOptions[] = [];
 	const body: IDataObject = {};
 	const requestMethod = 'GET';
-	const endPoint = 'meta/time_off/types';
+	const endPoint = requestPath`meta/time_off/types`;
 
 	const response = await apiRequest.call(this, requestMethod, endPoint, body);
 	const timeOffTypeIds = response.body.timeOffTypes;
@@ -40,7 +41,7 @@ export async function getCompanyFileCategories(
 	const returnData: INodePropertyOptions[] = [];
 	const body: IDataObject = {};
 	const requestMethod = 'GET';
-	const endPoint = 'files/view/';
+	const endPoint = requestPath`files/view/`;
 
 	const response = await apiRequest.call(this, requestMethod, endPoint, body);
 	const categories = response.categories;
@@ -65,7 +66,7 @@ export async function getEmployeeDocumentCategories(
 	const requestMethod = 'GET';
 	const id = this.getCurrentNodeParameter('employeeId') as string;
 
-	const endPoint = `employees/${id}/files/view/`;
+	const endPoint = requestPath`employees/${id}/files/view/`;
 
 	const response = await apiRequest.call(this, requestMethod, endPoint, body);
 	const categories = response.categories;
@@ -88,7 +89,7 @@ export async function getEmployeeLocations(
 	const returnData: INodePropertyOptions[] = [];
 	const body: IDataObject = {};
 	const requestMethod = 'GET';
-	const endPoint = 'meta/lists/';
+	const endPoint = requestPath`meta/lists/`;
 
 	//do not request all data?
 	const fields = (await apiRequest.call(this, requestMethod, endPoint, body, {})) as [
@@ -113,7 +114,7 @@ export async function getDepartments(this: ILoadOptionsFunctions): Promise<INode
 	const returnData: INodePropertyOptions[] = [];
 	const body: IDataObject = {};
 	const requestMethod = 'GET';
-	const endPoint = 'meta/lists/';
+	const endPoint = requestPath`meta/lists/`;
 
 	//do not request all data?
 	const fields = (await apiRequest.call(this, requestMethod, endPoint, body, {})) as [
@@ -138,7 +139,7 @@ export async function getDivisions(this: ILoadOptionsFunctions): Promise<INodePr
 	const returnData: INodePropertyOptions[] = [];
 	const body: IDataObject = {};
 	const requestMethod = 'GET';
-	const endPoint = 'meta/lists/';
+	const endPoint = requestPath`meta/lists/`;
 
 	//do not request all data?
 	const fields = (await apiRequest.call(this, requestMethod, endPoint, body, {})) as [
@@ -165,7 +166,7 @@ export async function getEmployeeFields(
 	const returnData: INodePropertyOptions[] = [];
 	const body: IDataObject = {};
 	const requestMethod = 'GET';
-	const endPoint = 'employees/directory';
+	const endPoint = requestPath`employees/directory`;
 
 	const { fields } = await apiRequest.call(this, requestMethod, endPoint, body);
 

@@ -7,7 +7,12 @@ import type { N8NConfig, N8NProcessUrl, N8NStack } from 'n8n-containers/stack';
 import { a11yFixtures, type A11yTestFixtures } from './a11y';
 import { shouldSkipContainerRequirement, type CapabilityOption } from './capabilities';
 import { watchConsoleErrors } from './console-error-monitor';
-import { engineParityDisposition, workflowSettingsFor } from './engine-parity';
+import {
+	type CanvasRunGuard,
+	engineParityDisposition,
+	watchCanvasRuns,
+	workflowSettingsFor,
+} from './engine-parity';
 import { resolveConfig } from './resolve-config';
 import { roleFromTags, signIn, wantsReset, type StorageState } from './session';
 import { startSut, type Sut } from './sut';
@@ -58,6 +63,12 @@ type TestFixtures = {
 	containerRequirement: undefined;
 	/** Internal auto fixture: sorts a test into its engine v2 parity bucket by tag. */
 	engineParity: undefined;
+	/**
+	 * Watches the runs the page starts and fails the test after it when one
+	 * stayed on the legacy engine. A test that runs the legacy engine on purpose
+	 * calls `allowLegacyRuns()`.
+	 */
+	canvasRuns: CanvasRunGuard;
 };
 
 type WorkerFixtures = {
@@ -157,9 +168,16 @@ export const test = base.extend<
 
 	baseURL: async ({ sut }, use) => await use(sut.editorUrl),
 
-	page: async ({ page, session }, use, testInfo) => {
+	canvasRuns: async ({ context, n8nStackConfig }, use) => {
+		const guard = await watchCanvasRuns(context, workflowSettingsFor(n8nStackConfig));
+		await use(guard);
+		guard.assertRoutedToEngine();
+	},
+
+	page: async ({ page, session, apiOptions, canvasRuns }, use, testInfo) => {
+		void canvasRuns;
 		const consoleErrors = watchConsoleErrors(page.context());
-		await setupDefaultInterceptors(page.context());
+		await setupDefaultInterceptors(page.context(), apiOptions);
 		// 1 keeps normal debounce timing. Lower values speed tests up, but 0 causes races.
 		await page.addInitScript(() => sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '1'));
 		await page.context().setStorageState(session);

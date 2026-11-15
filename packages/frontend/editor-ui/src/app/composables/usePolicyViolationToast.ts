@@ -2,10 +2,16 @@ import { h } from 'vue';
 import type { PolicyViolation } from '@n8n/api-types';
 import { useToast, type NotificationHandle } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { PolicyViolationList } from '@n8n/frontend-module-type-availability-policies';
+import {
+	PolicyViolationList,
+	type PolicyViolationListItem,
+} from '@n8n/frontend-module-type-availability-policies';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import {
+	CREDENTIAL_TYPE_SUBJECT,
+	NODE_TYPE_SUBJECT,
+	usePolicyViolationLabels,
+} from '@/app/composables/usePolicyViolationLabels';
 import type { INodeUi } from '@/Interface';
 import { hasNodeCredentialFilled } from '@/app/utils/nodes/nodeTransforms';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -20,42 +26,26 @@ type PolicyRefusedAction = 'save' | 'publish' | 'execute';
 
 let activeToast: { handle: NotificationHandle; refusedAction: PolicyRefusedAction } | undefined;
 
-const NODE_TYPE_SUBJECT = 'nodeType';
-const CREDENTIAL_TYPE_SUBJECT = 'credentialType';
-
 const NODE_MATCHER: Record<string, ((subject: string) => (node: INodeUi) => boolean) | undefined> =
 	{
 		[NODE_TYPE_SUBJECT]: (subject) => (node) => node.type === subject,
 		[CREDENTIAL_TYPE_SUBJECT]: (subject) => (node) => hasNodeCredentialFilled(node, subject),
 	};
 
+export function isWorkflowDocumentOpenOnCanvas(documentId: WorkflowDocumentId): boolean {
+	return (
+		!useUIStore().isReadOnlyView &&
+		createWorkflowDocumentId(useWorkflowsStore().workflowId) === documentId
+	);
+}
+
 export function usePolicyViolationToast() {
 	const toast = useToast();
 	const telemetry = useTelemetry();
-	const workflowsStore = useWorkflowsStore();
-	const nodeTypesStore = useNodeTypesStore();
-	const credentialsStore = useCredentialsStore();
-	const uiStore = useUIStore();
-
-	function displayNameOf({ subject, subjectType }: PolicyViolation): string | undefined {
-		if (subject === undefined) return undefined;
-
-		if (subjectType === NODE_TYPE_SUBJECT) return nodeTypesStore.getNodeType(subject)?.displayName;
-		if (subjectType === CREDENTIAL_TYPE_SUBJECT) {
-			return credentialsStore.getCredentialTypeByName(subject)?.displayName;
-		}
-
-		return undefined;
-	}
-
-	function isOpenOnCanvas(documentId: WorkflowDocumentId): boolean {
-		return (
-			!uiStore.isReadOnlyView && createWorkflowDocumentId(workflowsStore.workflowId) === documentId
-		);
-	}
+	const { labelOf } = usePolicyViolationLabels();
 
 	function nodeIdsFor(
-		{ subject, subjectType }: PolicyViolation,
+		{ subject, subjectType }: PolicyViolationListItem,
 		documentId: WorkflowDocumentId,
 	): string[] {
 		const matcher = subjectType ? NODE_MATCHER[subjectType] : undefined;
@@ -80,10 +70,11 @@ export function usePolicyViolationToast() {
 				duration: 0,
 				message: h(PolicyViolationList, {
 					violations,
-					labelOf: displayNameOf,
-					isJumpable: (violation: PolicyViolation) =>
-						isOpenOnCanvas(documentId) && nodeIdsFor(violation, documentId).length > 0,
-					onJump: (violation: PolicyViolation) => {
+					labelOf,
+					isJumpable: (violation: PolicyViolationListItem) =>
+						isWorkflowDocumentOpenOnCanvas(documentId) &&
+						nodeIdsFor(violation, documentId).length > 0,
+					onJump: (violation: PolicyViolationListItem) => {
 						const ids = nodeIdsFor(violation, documentId);
 						if (ids.length > 0) canvasEventBus.emit('nodes:select', { ids, panIntoView: true });
 					},

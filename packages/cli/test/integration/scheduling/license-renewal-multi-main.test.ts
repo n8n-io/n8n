@@ -20,11 +20,14 @@ import { SETTINGS_LICENSE_CERT_KEY } from '@/constants';
 import { License } from '@/license';
 import { LicenseRenewalTask } from '@/license/license-renewal.task';
 import type { LicenseMetricsService } from '@/metrics/license-metrics.service';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 import { SystemTaskHandler } from '@/scheduling/system-tasks/system-task-handler';
-import { systemTaskProvisionRequest } from '@/scheduling/system-tasks/system-task-job-registrar';
+import {
+	systemTaskProvisionRequest,
+	durableSystemTask,
+} from '@/scheduling/system-tasks/system-task-job-registrar';
 import { SystemTaskScheduledJobOwner } from '@/scheduling/system-tasks/system-task-scheduled-job-owner';
 import { systemTaskType } from '@/scheduling/system-tasks/system-task-type';
 
@@ -208,7 +211,9 @@ describe('license renewal across two mains over one database', () => {
 
 	/** The provision seeds the first occurrence of an interval task at `now`, so it is due at once. */
 	const provisionDueOccurrence = async (task: LicenseRenewalTask): Promise<ScheduledTask> => {
-		await provisioner.provision(systemTaskProvisionRequest(task, owner, 'UTC', new Date()));
+		await provisioner.provision(
+			systemTaskProvisionRequest(durableSystemTask(task), owner, 'UTC', new Date()),
+		);
 		return await taskRepo.findOneByOrFail({ taskType: TASK_TYPE });
 	};
 

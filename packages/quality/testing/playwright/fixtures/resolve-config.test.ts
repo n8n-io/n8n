@@ -40,7 +40,11 @@ describe('resolveConfig', () => {
 	test('ignores an invalid global env', () => {
 		const config = resolveConfig({}, undefined, { N8N_TEST_ENV: '{not json' });
 
-		expect(config.env).toEqual({ E2E_TESTS: 'true', N8N_RESTRICT_FILE_ACCESS_TO: '' });
+		expect(config.env).toEqual({
+			N8N_INSTANCE_AI_ENABLED: 'true',
+			E2E_TESTS: 'true',
+			N8N_RESTRICT_FILE_ACCESS_TO: '',
+		});
 	});
 
 	test('passes the coverage folder to the stack', () => {

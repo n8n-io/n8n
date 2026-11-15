@@ -3,7 +3,6 @@ import type {
 	WorkflowPublishHistory,
 	WorkflowHistory,
 } from '@n8n/rest-api-client/api/workflowHistory';
-import { useI18n } from '@n8n/i18n';
 import dateformat from 'dateformat';
 
 export const getLastPublishedVersion = (
@@ -12,27 +11,10 @@ export const getLastPublishedVersion = (
 	return workflowPublishHistory.findLast((history) => history.event === 'activated');
 };
 
-export const generateVersionLabelFromId = (versionId: string) => {
-	return `Version ${versionId.substring(0, 8)}`;
-};
-
-export const getVersionLabel = ({
-	workflowHistory,
-	currentVersionId,
-}: {
-	workflowHistory: Pick<WorkflowHistory, 'versionId' | 'name'>;
-	currentVersionId?: string;
-}) => {
-	const i18n = useI18n();
-	if (workflowHistory.name) {
-		return workflowHistory.name;
-	}
-
-	const isCurrentVersion = workflowHistory.versionId === currentVersionId;
-	return isCurrentVersion
-		? i18n.baseText('workflowHistory.item.currentChanges')
-		: generateVersionLabelFromId(workflowHistory.versionId);
-};
+export {
+	generateVersionLabelFromId,
+	getVersionLabel,
+} from '@n8n/composables/useWorkflowVersionLabel';
 
 export const formatTimestamp = (value: string) => {
 	const currentYear = new Date().getFullYear().toString();

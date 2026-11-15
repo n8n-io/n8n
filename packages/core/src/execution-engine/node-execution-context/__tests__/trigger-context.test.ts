@@ -69,6 +69,17 @@ describe('TriggerContext', () => {
 		});
 	});
 
+	describe('helpers.withExpressionIsolate', () => {
+		it('should run the callback inside the workflow expression isolate scope', async () => {
+			expression.withIsolate.mockImplementation(async (fn) => await fn());
+
+			const result = await triggerContext.helpers.withExpressionIsolate(async () => 'done');
+
+			expect(result).toBe('done');
+			expect(expression.withIsolate).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('getCredentials', () => {
 		it('should get decrypted credentials', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);

@@ -1,16 +1,23 @@
 import {
 	createBudgetGuardrail,
 	type ExecutionOptions,
+	type GuardrailsOptions,
+	type ModelGuardrail,
 	type RunOptions,
 	type SpendEntry,
 	type SpendLedger,
 	type SpendTotal,
 } from '@n8n/agents';
-import type { BudgetGuardrailConfig } from '@n8n/api-types';
+import {
+	isAgentBudgetNoticeCode,
+	type AgentBudgetNotice,
+	type BudgetGuardrailConfig,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 
 import { AgentBudgetAlertService } from './agent-budget-alert.service';
+import { classifyGatewayError } from './utils/gateway-error-classifier';
 import {
 	AgentBudgetSpendRepository,
 	previousTotalUsd,
@@ -38,7 +45,7 @@ export class AgentSpendLedger implements SpendLedger {
 	async add(callId: string, entries: SpendEntry[]): Promise<SpendTotal[]> {
 		await this.flushPending();
 		try {
-			return await this.budgetSpendRepository.applySpend(callId, entries);
+			return await this.budgetSpendRepository.applySpend(callId, entries, {});
 		} catch (error) {
 			this.logger.warn('Failed to record budget spend; buffered the call for a later retry', {
 				callId,
@@ -52,7 +59,7 @@ export class AgentSpendLedger implements SpendLedger {
 	async read(key: string): Promise<number> {
 		await this.flushPending();
 		try {
-			const stored = await this.budgetSpendRepository.readTotal(key);
+			const stored = await this.budgetSpendRepository.readTotal(key, {});
 			return stored + this.bufferedTotalFor(key);
 		} catch (error) {
 			this.logger.warn('Failed to read budget spend; using the buffered totals', {
@@ -71,7 +78,7 @@ export class AgentSpendLedger implements SpendLedger {
 	private async flushPending(): Promise<void> {
 		for (const [callId, entries] of this.pending) {
 			try {
-				await this.budgetSpendRepository.applySpend(callId, entries);
+				await this.budgetSpendRepository.applySpend(callId, entries, {});
 			} catch {
 				return;
 			}
@@ -117,6 +124,13 @@ export interface BudgetAttachInput {
 	sessionId?: string;
 	agentId?: string;
 	/**
+	 * Set when the run's model credential is the Gateway credits marker: the
+	 * gateway 402 classifier attaches, so a depleted wallet ends the run with
+	 * `budget.credits`. Own-key runs never attach it — a provider's own 402
+	 * must keep its provider error, not the n8n Gateway wallet stop.
+	 */
+	modelCredentialGatewayManaged?: boolean;
+	/**
 	 * Saved agent to email when the month total crosses the alert.
 	 * A workflow run sets this to the agent the node targets. Inline workflow
 	 * runs have no saved agent, so they leave it unset.
@@ -130,7 +144,7 @@ export interface BudgetAttachInput {
 	 */
 	useRootSessionCap?: boolean;
 	/** Preview chat shows the approaching card. Cloud also emails the project owner. */
-	onNotice?: (notice: { code: 'budget.alert' }) => void;
+	onNotice?: (notice: AgentBudgetNotice) => void;
 }
 
 interface ResolvedBudgetLimits {
@@ -228,28 +242,75 @@ function hasId(value: string | undefined): value is string {
 	return value !== undefined && value.length > 0;
 }
 
-/** Appends the budget hook when a bucket is on. Leaves the options unchanged otherwise. */
+/**
+ * Adapts the budget notice callback to the SDK's guardrail notice sink, so a
+ * delegated run can forward it to its own children. Drops non-budget codes.
+ */
+function toGuardrailNoticeSink(input: BudgetAttachInput): GuardrailsOptions['onNotice'] {
+	if (!input.onNotice) return undefined;
+	return (notice) => {
+		if (!isAgentBudgetNoticeCode(notice.code)) return;
+		input.onNotice?.({
+			code: notice.code,
+			...(notice.agentId !== undefined ? { agentId: notice.agentId } : {}),
+		});
+	};
+}
+
+/**
+ * Appends hooks and the notice sink to the run's guardrail options, preserving
+ * the existing agent and thread scope. An input sink wins over a stored one.
+ */
+function attachGuardrails<T extends RunOptions & ExecutionOptions>(
+	options: T,
+	hooks: GuardrailsOptions['hooks'],
+	onNotice: GuardrailsOptions['onNotice'],
+): T {
+	const existing = options.guardrails;
+	const notice = onNotice ?? existing?.onNotice;
+	return {
+		...options,
+		guardrails: {
+			hooks: [...(existing?.hooks ?? []), ...hooks],
+			...(existing?.agentId !== undefined ? { agentId: existing.agentId } : {}),
+			...(existing?.threadId !== undefined ? { threadId: existing.threadId } : {}),
+			...(notice !== undefined ? { onNotice: notice } : {}),
+		},
+	};
+}
+
+/**
+ * Appends the budget hook when a bucket is on. For a Gateway credits model it
+ * also attaches the 402 classifier: a depleted wallet ends the run with
+ * `budget.credits` from the gateway's own rejection, so no wallet read runs
+ * before a model call. Own-key runs get no classifier — a provider's own 402
+ * keeps its provider error.
+ */
 export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 	options: T,
 	input: BudgetAttachInput,
 ): T {
 	const limits = resolveBudgetLimits(input);
-	if (!limits) return options;
+	const sink = toGuardrailNoticeSink(input);
 
-	const ledger = input.ledger ?? Container.get(AgentSpendLedger);
-	const onNotice = monthlyAlertNotice(input, limits.alertThresholdPercent);
-	const hook = createBudgetGuardrail({
-		ledger,
-		...limits,
-		...(onNotice ? { onNotice } : {}),
-	});
-	const existing = options.guardrails;
-	return {
-		...options,
-		guardrails: {
-			hooks: [...(existing?.hooks ?? []), hook],
-			...(existing?.agentId !== undefined ? { agentId: existing.agentId } : {}),
-			...(existing?.threadId !== undefined ? { threadId: existing.threadId } : {}),
-		},
-	};
+	const hooks: ModelGuardrail[] = [];
+	if (limits) {
+		const ledger = input.ledger ?? Container.get(AgentSpendLedger);
+		const onNotice = monthlyAlertNotice(input, limits.alertThresholdPercent);
+		hooks.push(
+			createBudgetGuardrail({
+				ledger,
+				...limits,
+				...(onNotice ? { onNotice } : {}),
+			}),
+		);
+	}
+	const withHooks =
+		hooks.length === 0
+			? sink
+				? attachGuardrails(options, [], sink)
+				: options
+			: attachGuardrails(options, hooks, sink);
+	if (!input.modelCredentialGatewayManaged || withHooks.classifyModelError) return withHooks;
+	return { ...withHooks, classifyModelError: classifyGatewayError };
 }

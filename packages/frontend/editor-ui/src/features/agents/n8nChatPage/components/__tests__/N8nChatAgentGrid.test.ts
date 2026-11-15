@@ -27,9 +27,22 @@ const router = createRouter({
 	],
 });
 
+const NO_ATTACHMENTS = { image: false, pdf: false, audio: false };
 const agents: AgentChatListItem[] = [
-	{ id: 'agent-1', name: 'One', project: { id: 'p', name: 'P' } },
-	{ id: 'agent-2', name: 'Two', project: { id: 'p', name: 'P' } },
+	{
+		id: 'agent-1',
+		name: 'One',
+		project: { id: 'p', name: 'P' },
+		attachments: NO_ATTACHMENTS,
+		availableInChat: true,
+	},
+	{
+		id: 'agent-2',
+		name: 'Two',
+		project: { id: 'p', name: 'P' },
+		attachments: NO_ATTACHMENTS,
+		availableInChat: true,
+	},
 ];
 
 function renderGrid(

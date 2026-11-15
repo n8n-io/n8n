@@ -130,13 +130,17 @@ function onPrimaryAction() {
 <style lang="scss" module>
 .nav {
 	display: flex;
-	flex: 1;
+	// Do not shrink below the counter width, so "1 of 4" stays on one line
+	flex: 1 0 auto;
 	align-items: center;
 	gap: var(--spacing--4xs);
+	white-space: nowrap;
 }
 
 .actions {
 	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
 	align-items: center;
 	gap: var(--spacing--2xs);
 }

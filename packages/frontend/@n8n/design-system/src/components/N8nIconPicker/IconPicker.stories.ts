@@ -17,7 +17,7 @@ export default {
 		},
 		buttonVariant: {
 			control: 'select',
-			options: ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'],
+			options: ['solid', 'brand', 'ghost', 'outline', 'destructive', 'success'],
 		},
 		isReadOnly: {
 			control: 'boolean',

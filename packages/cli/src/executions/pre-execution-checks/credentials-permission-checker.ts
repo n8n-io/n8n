@@ -4,9 +4,9 @@ import { CredentialsRepository, SharedCredentialsRepository, UserRepository } fr
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
-import { getActiveCredentialTypes, UserError } from 'n8n-workflow';
+import { getActiveCredentialTypes } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
-import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { CredentialsFinderService, type UnusableCredential } from '@n8n/backend-services';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
@@ -89,8 +89,15 @@ export class CredentialsPermissionChecker {
 	 * (inline/parameter, file, url): these carry no project of their own, so their
 	 * credentials must be evaluated against the user triggering the run rather than
 	 * against the parent workflow's project.
+	 *
+	 * @param options.ignoreGlobalUseScope - check the user's own access only, as
+	 * if they held no instance-wide `credential:use`.
 	 */
-	async checkForUser(userId: string, nodes: INode[]) {
+	async checkForUser(
+		userId: string,
+		nodes: INode[],
+		options: { ignoreGlobalUseScope?: boolean } = {},
+	) {
 		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
 		const workflowCredIds = Object.keys(credIdsToNodes);
 
@@ -99,6 +106,7 @@ export class CredentialsPermissionChecker {
 		const { instanceScoped, notGranted } = await this.findUnusable(
 			await this.loadUserWithRole(userId),
 			workflowCredIds,
+			options,
 		);
 
 		// No owner to ask: sharing a provider connection cannot make a workflow able
@@ -109,26 +117,19 @@ export class CredentialsPermissionChecker {
 
 		if (notGranted.length === 0) return;
 
-		const nodeToFlag = credIdsToNodes[notGranted[0].id][0];
-		// The richer message is part of the feature, so it stays behind the flag
-		// along with everything else the user can see.
-		throw isCredSharingEnabled()
-			? new UnusableCredentialForUserError(nodeToFlag, notGranted[0])
-			: new InaccessibleCredentialForUserError(nodeToFlag);
+		throw new UnusableCredentialForUserError(credIdsToNodes[notGranted[0].id][0], notGranted[0]);
 	}
 
 	/**
 	 * Non-throwing, named-credential check for publish validation: what a triggered
 	 * run acting as the publisher could not use in this workflow (see
-	 * {@link findUnusableInWorkflow}). Gated behind {@link isCredSharingEnabled}.
+	 * {@link findUnusableInWorkflow}).
 	 */
 	async findInaccessibleForUser(
 		userId: string,
 		nodes: INode[],
 		workflowId: string,
 	): Promise<Array<{ id: string; name: string; exists: boolean }>> {
-		if (!isCredSharingEnabled()) return [];
-
 		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
 		const workflowCredIds = Object.keys(credIdsToNodes);
 
@@ -251,6 +252,28 @@ export class CredentialsPermissionChecker {
 		return unusable.map((c) => c.id);
 	}
 
+	/**
+	 * The credentials that `user` can use through their own access: owned, shared
+	 * with them, in a project they belong to, or global. An instance-wide
+	 * `credential:use` does not count. Redaction asks the same question, so the
+	 * n8n Assistant suggests only these.
+	 */
+	async filterUsableThroughOwnAccess<T extends { id: string }>(
+		user: User,
+		credentials: T[],
+	): Promise<T[]> {
+		if (credentials.length === 0) return credentials;
+
+		const inaccessibleIds = new Set(
+			await this.resolveInaccessibleCredentialIdsForUser(
+				user,
+				credentials.map((c) => c.id),
+				{ ignoreGlobalUseScope: true },
+			),
+		);
+		return credentials.filter((c) => !inaccessibleIds.has(c.id));
+	}
+
 	/** Loads the role relation (scopes are eager) so `hasGlobalScope` can resolve. */
 	private async loadUserWithRole(userId: string) {
 		return await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
@@ -264,27 +287,63 @@ export class CredentialsPermissionChecker {
 	 * on a triggered one. Consulted only for credentials the project route already
 	 * rejected, so a workflow whose credentials are all shared with its project
 	 * never needs one.
+	 * @returns for execution telemetry, how many credentials the run uses that the
+	 * workflow's projects do not carry and that the acting user's personal space owns.
 	 */
-	async check(workflowId: string, nodes: INode[], actingUserId?: string) {
+	async check(
+		workflowId: string,
+		nodes: INode[],
+		actingUserId?: string,
+	): Promise<{ personalCredentialsCount: number }> {
 		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
 
 		const workflowCredIds = Object.keys(credIdsToNodes);
 
-		if (workflowCredIds.length === 0) return;
+		if (workflowCredIds.length === 0) return { personalCredentialsCount: 0 };
 
-		const { homeProject, inaccessibleIds, unusableForActingUser } = await this.findInaccessible(
-			workflowId,
-			workflowCredIds,
-			actingUserId,
-		);
+		const { homeProject, inaccessibleIds, unusableForActingUser, personalRouteIds } =
+			await this.findInaccessible(workflowId, workflowCredIds, actingUserId);
 
-		if (inaccessibleIds.length === 0) return;
+		if (inaccessibleIds.length === 0) {
+			const personalCredentialsCount = await this.countOwnedByPersonalProjectOf(
+				actingUserId,
+				personalRouteIds,
+			);
+			return { personalCredentialsCount };
+		}
 
 		const unusable = unusableForActingUser.find((c) => c.id === inaccessibleIds[0]);
 		const nodeToFlag = credIdsToNodes[inaccessibleIds[0]][0];
 		throw unusable
 			? new UnusableCredentialForUserError(nodeToFlag, unusable)
 			: new InaccessibleCredentialError(nodeToFlag, homeProject);
+	}
+
+	/**
+	 * How many of `credentialIds` the personal project of `userId` owns. The user
+	 * route also accepts direct shares, other team memberships, and an instance-wide
+	 * grant, which telemetry must not count as personal credentials.
+	 */
+	private async countOwnedByPersonalProjectOf(
+		userId: string | undefined,
+		credentialIds: string[],
+	): Promise<number> {
+		if (!userId || credentialIds.length === 0) return 0;
+
+		const ownerProjects =
+			await this.sharedCredentialsRepository.findOwnerProjectsByCredentialIds(credentialIds);
+		const personalProjectIds = [...ownerProjects.values()]
+			.filter((project) => project.type === 'personal')
+			.map((project) => project.id);
+		if (personalProjectIds.length === 0) return 0;
+
+		const personalProjectOwners =
+			await this.ownershipService.getPersonalProjectOwnersCached(personalProjectIds);
+
+		return credentialIds.filter((id) => {
+			const ownerProject = ownerProjects.get(id);
+			return ownerProject && personalProjectOwners.get(ownerProject.id)?.id === userId;
+		}).length;
 	}
 
 	/**
@@ -308,13 +367,20 @@ export class CredentialsPermissionChecker {
 		inaccessibleIds: string[];
 		/** Details for the ids the acting user personally cannot use, to name them in an error. */
 		unusableForActingUser: UnusableCredential[];
+		/** Ids the project route rejected but the acting user may use through their own access. */
+		personalRouteIds: string[];
 	}> {
 		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
 
 		const { instanceScopedIds, projectScopedIds } = await this.partitionByUsageScope(credentialIds);
 		if (instanceScopedIds.length > 0) {
 			// Never usable by a workflow, so they do not fall through to the user route.
-			return { homeProject, inaccessibleIds: instanceScopedIds, unusableForActingUser: [] };
+			return {
+				homeProject,
+				inaccessibleIds: instanceScopedIds,
+				unusableForActingUser: [],
+				personalRouteIds: [],
+			};
 		}
 
 		const homeProjectOwner = await this.ownershipService.getPersonalProjectOwnerCached(
@@ -335,7 +401,7 @@ export class CredentialsPermissionChecker {
 			// picker's personal-only restriction is cosmetic for Owner/Admin — a
 			// hand-edited or imported workflow in their personal space still runs a
 			// team credential.
-			return { homeProject, inaccessibleIds: [], unusableForActingUser: [] };
+			return { homeProject, inaccessibleIds: [], unusableForActingUser: [], personalRouteIds: [] };
 		}
 		const projectIds = await this.projectService.findProjectsWorkflowIsIn(workflowId);
 
@@ -351,17 +417,13 @@ export class CredentialsPermissionChecker {
 
 		const rejectedByProject = projectScopedIds.filter((id) => !accessibleSet.has(id));
 		if (rejectedByProject.length === 0) {
-			return { homeProject, inaccessibleIds: [], unusableForActingUser: [] };
+			return { homeProject, inaccessibleIds: [], unusableForActingUser: [], personalRouteIds: [] };
 		}
 
-		// Behind the flag, and only for what the project route rejected. Without an
-		// acting user we cannot tell a colleague's personal credential from one
-		// simply never shared here, so keep the sharing answer, which is the
-		// accurate one for the common case.
-		if (!isCredSharingEnabled()) {
-			return { homeProject, inaccessibleIds: rejectedByProject, unusableForActingUser: [] };
-		}
-
+		// Only for what the project route rejected. Without an acting user we
+		// cannot tell a colleague's personal credential from one simply never
+		// shared here, so keep the sharing answer, which is the accurate one for
+		// the common case.
 		if (!actingUserId) {
 			// Says out loud what the sharing message cannot: the run was refused for
 			// want of an identity, not because the credential was never shared. Hit by
@@ -371,12 +433,22 @@ export class CredentialsPermissionChecker {
 				'Refusing a run with no identity to attribute it to; republish the workflow to restore attribution',
 				{ workflowId, credentialIds: rejectedByProject },
 			);
-			return { homeProject, inaccessibleIds: rejectedByProject, unusableForActingUser: [] };
+			return {
+				homeProject,
+				inaccessibleIds: rejectedByProject,
+				unusableForActingUser: [],
+				personalRouteIds: [],
+			};
 		}
 
 		const actingUser = await this.loadUserWithRole(actingUserId);
 		if (!actingUser) {
-			return { homeProject, inaccessibleIds: rejectedByProject, unusableForActingUser: [] };
+			return {
+				homeProject,
+				inaccessibleIds: rejectedByProject,
+				unusableForActingUser: [],
+				personalRouteIds: [],
+			};
 		}
 
 		// Asks the finder directly rather than going through `findUnusable`: the ids
@@ -394,18 +466,19 @@ export class CredentialsPermissionChecker {
 				{ ignoreGlobalUseScope: homeProject.type === 'team' },
 			);
 
+		const unusableIds = new Set(unusableForActingUser.map((c) => c.id));
+
 		return {
 			homeProject,
-			inaccessibleIds: rejectedByProject.filter((id) =>
-				unusableForActingUser.some((c) => c.id === id),
-			),
+			inaccessibleIds: rejectedByProject.filter((id) => unusableIds.has(id)),
 			unusableForActingUser,
+			personalRouteIds: rejectedByProject.filter((id) => !unusableIds.has(id)),
 		};
 	}
 
 	/**
-	 * Behind {@link isCredSharingEnabled}: the credentials `userId` may not use in
-	 * this workflow. The workflow payload and the publish check share it.
+	 * The credentials `userId` may not use in this workflow. The workflow payload
+	 * and the publish check share it.
 	 *
 	 * Global credentials and credentials of any team project the workflow is in
 	 * are usable. Anything else needs the user's own access, and in a team project
@@ -418,7 +491,7 @@ export class CredentialsPermissionChecker {
 		credentialIds: string[],
 		userId: string,
 	): Promise<UnusableCredential[]> {
-		if (!isCredSharingEnabled() || credentialIds.length === 0) return [];
+		if (credentialIds.length === 0) return [];
 
 		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
 		const isTeamProject = homeProject.type === 'team';
@@ -480,7 +553,7 @@ export class CredentialsPermissionChecker {
 	getCredentialIdsForNodes(nodes: INode[]): string[] {
 		const ids = new Set<string>();
 		for (const node of nodes) {
-			if (node.disabled || !node.credentials) continue;
+			if (node.disabled === true || !node.credentials) continue;
 
 			const activeCredTypes = this.getActiveCredentialTypes(node);
 
@@ -495,7 +568,7 @@ export class CredentialsPermissionChecker {
 
 	private mapCredIdsToNodes(nodes: INode[]) {
 		return nodes.reduce<{ [credentialId: string]: INode[] }>((map, node) => {
-			if (node.disabled || !node.credentials) return map;
+			if (node.disabled === true || !node.credentials) return map;
 
 			const activeCredTypes = this.getActiveCredentialTypes(node);
 

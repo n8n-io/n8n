@@ -14,6 +14,7 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { oldVersionNotice } from '@utils/descriptions';
+import { resolveQueryReplacementSegments } from '@utils/sql-query-parameters';
 import { getResolvables } from '@utils/utilities';
 
 import { createConnection, searchTables } from './GenericFunctions';
@@ -346,7 +347,7 @@ export class MySqlV1 implements INodeType {
 					let queryReplacement = options.queryReplacement ?? [];
 
 					if (typeof queryReplacement === 'string') {
-						queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
+						queryReplacement = resolveQueryReplacementSegments.call(this, index, queryReplacement);
 					}
 
 					if (!Array.isArray(queryReplacement)) {

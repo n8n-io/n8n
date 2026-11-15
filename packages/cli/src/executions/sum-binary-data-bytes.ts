@@ -71,3 +71,19 @@ export function sumBinaryDataBytes(data: IRunExecutionData | undefined): number 
 	for (const bytes of bytesByBlobId.values()) total += bytes;
 	return total;
 }
+
+/** Whether execution data points at binary stored outside its JSON bundle. */
+export function hasExternalBinaryData(data: IRunExecutionData | undefined): boolean {
+	for (const binary of iterateBinary(data)) {
+		if (binary?.id) return true;
+	}
+	// Pin data is outside the size accounting above, but its binary can point at a blob too.
+	for (const items of Object.values(data?.resultData.pinData ?? {})) {
+		for (const item of items ?? []) {
+			for (const binary of Object.values(item.binary ?? {})) {
+				if (binary?.id) return true;
+			}
+		}
+	}
+	return false;
+}

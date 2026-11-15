@@ -129,7 +129,7 @@ export class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_WORKFLOW_INFO_METRIC_INTERVAL')
 	workflowInfoMetricInterval: number = 60;
 
-	/** Whether to include metrics for the database connection pool (size, usage, wait queue, acquire latency). */
+	/** Whether to include database pool metrics for usage, acquisition, connection state, and recovery. */
 	@Env('N8N_METRICS_INCLUDE_DB_POOL_METRICS')
 	includeDbPoolMetrics: boolean = false;
 
@@ -186,6 +186,10 @@ export class EndpointsConfig {
 	/** Path segment for waiting webhook endpoints. */
 	@Env('N8N_ENDPOINT_WEBHOOK_WAIT')
 	webhookWaiting: string = 'webhook-waiting';
+
+	/** Path segment for agent webhook channel endpoints. */
+	@Env('N8N_ENDPOINT_AGENT_WEBHOOK')
+	agentWebhook: string = 'agent-webhook';
 
 	/** Path segment for MCP endpoints. */
 	@Env('N8N_ENDPOINT_MCP')

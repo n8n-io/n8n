@@ -74,6 +74,8 @@ export type ShortenCallback = (
 export interface NormalizeComponentsContext {
 	runId: string;
 	toolCallId: string;
+	/** The card title: the payload's `title`, or its `message` when there is no title. */
+	title?: string;
 	/**
 	 * Wraps a raw resume value exactly as `makeButton` below does
 	 * (`JSON.stringify(wrapValueForSchema(rawValue, resumeSchema))`). A
@@ -146,12 +148,13 @@ export class ComponentMapper {
 		// Delegate per-platform normalization to the Integration implementation.
 		const integration = platform ? Container.get(ChatIntegrationRegistry).get(platform) : undefined;
 		const components =
-			integration?.normalizeComponents?.(payload.components, {
+			(await integration?.normalizeComponents?.(payload.components, {
 				runId,
 				toolCallId,
+				title: payload.title ?? payload.message,
 				wrapResumeValue: (rawValue) =>
 					JSON.stringify(this.wrapValueForSchema(rawValue, resumeSchema)),
-			}) ?? payload.components;
+			})) ?? payload.components;
 
 		const children: unknown[] = [];
 		const buttons: unknown[] = [];

@@ -1,13 +1,13 @@
+import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { User, TransactionRunner, OperationContext, Transaction } from '@n8n/db';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, Publisher } from '@n8n/backend-services';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings, ScheduledTaskManager } from 'n8n-core';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
@@ -27,8 +27,11 @@ import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-sna
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentTaskJobRegistrar } from '../scheduling/agent-task-job-registrar';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
+import {
+	composeStoredJsonConfig,
+	createAgentSkillRefsService,
+} from './test-utils/stored-agent-config';
 
 const AGENT_ID = 'agent-1';
 const PROJECT_ID = 'project-1';
@@ -167,6 +170,8 @@ describe('AgentTaskService', () => {
 			),
 			settingsService,
 			transactionRunner,
+			createAgentSkillRefsService(),
+			mock<AgentDefinitionService>(),
 		);
 	}
 
@@ -241,7 +246,9 @@ describe('AgentTaskService', () => {
 				{ type: 'task', id: expect.stringMatching(/^task_/), enabled: true },
 			]);
 			expect(taskRepository.saveDefinitions).toHaveBeenCalledTimes(1);
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, ctx);
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, ctx, undefined, {
+				allowArchivedUpdate: false,
+			});
 		});
 
 		it('rejects an invalid cron without creating', async () => {
@@ -374,8 +381,10 @@ describe('AgentTaskService', () => {
 				],
 				ctx,
 			);
-			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, ctx);
-			expect(configHash).toBe(getAgentConfigHash(composeJsonConfig(agent)));
+			expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, ctx, undefined, {
+				allowArchivedUpdate: false,
+			});
+			expect(configHash).toBe(getAgentConfigHash(composeStoredJsonConfig(agent)));
 		});
 
 		it('rejects an empty batch before loading or writing anything', async () => {
@@ -634,7 +643,6 @@ describe('AgentTaskService', () => {
 			expect.objectContaining({
 				by: 'user',
 				changedParts: ['tasks'],
-				wasUnconfigured: false,
 			}),
 		);
 
@@ -1177,6 +1185,16 @@ describe('AgentTaskService', () => {
 					memory: expect.objectContaining({ resourceId: 'task:task-1' }),
 				}),
 			);
+		});
+
+		it('rejects an archived agent before the run starts', async () => {
+			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(makeTask());
+			(agentRepository.findOne as Mock).mockResolvedValue(makeAgent({ isArchived: true }));
+
+			await expect(service.runNow(AGENT_ID, 'task-1', requestingUser)).rejects.toThrow(
+				'Agent is archived. Restore the agent before running it.',
+			);
+			expect(agentExecutionOrchestratorService.executeForTaskNow).not.toHaveBeenCalled();
 		});
 
 		it('throws NotFoundError when the task does not exist', async () => {

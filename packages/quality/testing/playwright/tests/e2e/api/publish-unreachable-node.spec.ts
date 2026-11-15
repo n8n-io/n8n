@@ -3,6 +3,8 @@ import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../fixtures/base';
 
+test.use({ capability: { env: { N8N_DEPRECATED_NODES_BLOCK: 'false' } } });
+
 const AGENT = '@n8n/n8n-nodes-langchain.agent';
 const PARSER = '@n8n/n8n-nodes-langchain.outputParserAutofixing';
 const LANGCHAIN_CODE = '@n8n/n8n-nodes-langchain.code';
@@ -74,7 +76,7 @@ function buildWorkflow(reachable: boolean): Partial<IWorkflowBase> {
 test.describe(
 	'Publishing a workflow with unmet required inputs',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		const cleanupWorkflowIds: string[] = [];

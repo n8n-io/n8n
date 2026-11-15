@@ -2,11 +2,11 @@ operationId: changeRole
 tags:
   - User
 summary: Change a user's global role
-description: Change a user's global role
+description: |-
+  Change a user's global role
+
+  Requires the `user:changeRole` API key scope.
 x-required-scope: user:changeRole
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -45,3 +45,5 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

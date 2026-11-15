@@ -1,5 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { reactive, ref, nextTick, type Ref } from 'vue';
+import { toArtifactTurns } from '../../agentTreeArtifactTurns';
+import { computed, reactive, ref, nextTick, type Ref } from 'vue';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
@@ -48,7 +49,7 @@ function makeConfigMutationTree(toolCallId: string) {
 		toolCalls: [
 			makeToolCall({
 				toolCallId,
-				toolName: 'patch_config',
+				toolName: 'agent_builder_patch_config',
 				isLoading: false,
 				result: { ok: true, configMutated: true, agentId: 'agent-1' },
 			}),
@@ -59,7 +60,8 @@ function makeConfigMutationTree(toolCallId: string) {
 function createMockThread() {
 	const messages = ref<InstanceAiMessage[]>([]) as Ref<InstanceAiMessage[]>;
 	const isHydratingThread = ref(false);
-	return reactive({ id: 'thread-1', messages, isHydratingThread });
+	const artifactTurns = computed(() => toArtifactTurns(messages.value));
+	return reactive({ id: 'thread-1', messages, artifactTurns, isHydratingThread });
 }
 
 describe('useAgentMutationRefresh', () => {

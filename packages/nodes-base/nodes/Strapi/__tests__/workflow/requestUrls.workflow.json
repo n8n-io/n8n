@@ -1,0 +1,266 @@
+{
+	"name": "Strapi Request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"values": {
+					"number": [
+						{
+							"name": "id",
+							"value": 1
+						}
+					],
+					"string": [
+						{
+							"name": "title",
+							"value": "Hello"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [200, -200],
+			"id": "input",
+			"name": "Input"
+		},
+		{
+			"parameters": {
+				"authentication": "token",
+				"operation": "create",
+				"contentType": "posts",
+				"columns": "title"
+			},
+			"type": "n8n-nodes-base.strapi",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "node-0",
+			"name": "Create",
+			"credentials": {
+				"strapiTokenApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "token",
+				"operation": "update",
+				"contentType": "posts",
+				"columns": "title"
+			},
+			"type": "n8n-nodes-base.strapi",
+			"typeVersion": 1,
+			"position": [400, 200],
+			"id": "node-1",
+			"name": "Update",
+			"credentials": {
+				"strapiTokenApi": {
+					"id": "2",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "token",
+				"contentType": "posts",
+				"entryId": "1"
+			},
+			"type": "n8n-nodes-base.strapi",
+			"typeVersion": 1,
+			"position": [400, 400],
+			"id": "node-2",
+			"name": "Get",
+			"credentials": {
+				"strapiTokenApi": {
+					"id": "3",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "token",
+				"operation": "delete",
+				"contentType": "posts",
+				"entryId": "1"
+			},
+			"type": "n8n-nodes-base.strapi",
+			"typeVersion": 1,
+			"position": [400, 600],
+			"id": "node-3",
+			"name": "Delete",
+			"credentials": {
+				"strapiTokenApi": {
+					"id": "4",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "token",
+				"operation": "getAll",
+				"contentType": "posts",
+				"limit": 2,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.strapi",
+			"typeVersion": 1,
+			"position": [400, 800],
+			"id": "node-4",
+			"name": "Get Many",
+			"credentials": {
+				"strapiTokenApi": {
+					"id": "5",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"contentType": "articles",
+				"entryId": "7"
+			},
+			"type": "n8n-nodes-base.strapi",
+			"typeVersion": 1,
+			"position": [400, 1000],
+			"id": "node-5",
+			"name": "Get V3",
+			"credentials": {
+				"strapiApi": {
+					"id": "6",
+					"name": "Test account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create": [
+			{
+				"json": {
+					"data": {
+						"id": 1,
+						"attributes": {
+							"title": "Hello"
+						}
+					}
+				}
+			}
+		],
+		"Update": [
+			{
+				"json": {
+					"id": 1,
+					"attributes": {
+						"title": "Hello"
+					}
+				}
+			}
+		],
+		"Get": [
+			{
+				"json": {
+					"id": 1,
+					"attributes": {
+						"title": "Hello"
+					}
+				}
+			}
+		],
+		"Delete": [
+			{
+				"json": {
+					"data": {
+						"id": 1,
+						"attributes": {
+							"title": "Hello"
+						}
+					}
+				}
+			}
+		],
+		"Get Many": [
+			{
+				"json": {
+					"id": 1,
+					"attributes": {
+						"title": "Hello"
+					}
+				}
+			}
+		],
+		"Get V3": [
+			{
+				"json": {
+					"id": 7,
+					"title": "Hello"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Input",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get V3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Input": {
+			"main": [
+				[
+					{
+						"node": "Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

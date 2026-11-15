@@ -81,7 +81,7 @@ export function useProjectNavigationCommands(): CommandGroup {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'layers',
+						icon: 'plus',
 						color: 'text-light',
 					},
 				},

@@ -4,6 +4,8 @@ export interface ProviderModel {
 	id: string;
 	/** Human-readable name when the provider supplies one, otherwise the id. */
 	name: string;
+	/** Pickers list models with a priority first, highest first. Only the AI Gateway reports one. */
+	priority?: number;
 }
 
 export interface ListModelsOptions {

@@ -2,11 +2,11 @@ operationId: getInstalledPackages
 tags:
   - CommunityPackage
 summary: List installed community packages
-description: Retrieve all installed community packages with pending update info.
+description: |-
+  Retrieve all installed community packages with pending update info.
+
+  Requires the `communityPackage:list` API key scope.
 x-required-scope: communityPackage:list
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 responses:
   '200':
     description: Operation successful.
@@ -65,3 +65,5 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

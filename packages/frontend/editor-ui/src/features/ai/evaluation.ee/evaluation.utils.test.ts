@@ -11,10 +11,12 @@ import {
 	formatDeltaPercent,
 	formatDuration,
 	formatMetricAverage,
+	formatMetricDelta,
 	formatMetricLabel,
 	formatMetricPercent,
 	formatMetricRawScore,
 	formatMetricRawScoreSum,
+	formatMetricValue,
 	formatTokens,
 	getDefaultOrderedColumns,
 	getDeltaTone,
@@ -1319,6 +1321,36 @@ describe('utils', () => {
 		});
 	});
 
+	describe('formatMetricValue', () => {
+		it('renders out-of-range custom metrics as numbers instead of percentages', () => {
+			expect(formatMetricValue(706, { category: 'custom' })).toBe('706');
+			expect(formatMetricValue(1694, { category: 'custom' })).toBe('1,694');
+			expect(formatMetricValue(1.47, { category: 'custom' })).toBe('1.47');
+			expect(formatMetricValue(12_345_678, { category: 'custom' })).toBe('12,345,678');
+		});
+
+		it.each([
+			[0, '0'],
+			[1, '1'],
+			[-0.5, '-0.5'],
+			[0.004, '0.004'],
+		])('renders an unscaled custom value of %s as %s', (value, expected) => {
+			expect(formatMetricValue(value, { category: 'custom' })).toBe(expected);
+		});
+
+		it('renders a metric with no source or scale as a number', () => {
+			expect(formatMetricValue(0.73, { key: 'metricFromDeletedNode' })).toBe('0.73');
+		});
+
+		it('keeps a built-in metric with no source as a percentage', () => {
+			expect(formatMetricValue(0.73, { key: 'stringSimilarity' })).toBe('73%');
+		});
+
+		it('lets an explicit scale override the custom-metric heuristic', () => {
+			expect(formatMetricValue(5, { category: 'custom', scale: 'oneToFive' })).toBe('100%');
+		});
+	});
+
 	describe('formatMetricAverage', () => {
 		it('returns the "X / 5" average form for AI-based metrics', () => {
 			expect(formatMetricAverage(5, { category: 'aiBased' })).toBe('5 / 5');
@@ -1418,6 +1450,19 @@ describe('utils', () => {
 				// custom category would treat +1 as +100%; the oneToFive scale → +20%.
 				expect(formatDeltaPercent(1, { category: 'custom', scale: 'oneToFive' })).toBe('+20%');
 			});
+		});
+	});
+
+	describe('formatMetricDelta', () => {
+		it('renders a raw custom-metric delta without a percent sign', () => {
+			expect(formatMetricDelta(6, { category: 'custom' })).toBe('+6');
+			expect(formatMetricDelta(-2.5, { category: 'custom' })).toBe('-2.5');
+			expect(formatMetricDelta(0.004, { category: 'custom' })).toBe('+0.004');
+		});
+
+		it('preserves percentage-point formatting for score deltas', () => {
+			expect(formatMetricDelta(0.04, { key: 'stringSimilarity' })).toBe('+4%');
+			expect(formatMetricDelta(1, { category: 'aiBased' })).toBe('+20%');
 		});
 	});
 

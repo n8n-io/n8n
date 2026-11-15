@@ -7,10 +7,11 @@ import type {
 	RunServices,
 	SuspendEmission,
 } from '../../types/runtime/agent-loop';
-import { classifyModelTurnError } from './runtime-helpers';
+import { classifyModelTurnError, resolveAiFinishReason } from './runtime-helpers';
 import type { GenerateResult } from '../../types';
 import type { ToolResultEntry } from '../../types/sdk/agent';
 import { isAttachmentValidationError } from '../model/attachment-validation-error';
+import { toPromptCacheParamsError } from '../model/prompt-cache-params-error';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
 import { toTokenUsage } from '../streaming/stream';
@@ -45,18 +46,16 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 			...ctx.aiSdkOptions,
 		}).catch(async (error: unknown) => {
 			if (isAttachmentValidationError(error)) await ctx.onInputRejected?.(error);
-			throw error;
+			throw toPromptCacheParamsError(error);
 		});
 
-		const aiFinishReason = result.finishReason;
-		// oxlint-disable-next-line typescript/no-deprecated
-		const newMessages = fromAiMessages(result.response.messages);
+		const aiFinishReason = resolveAiFinishReason(result.finishReason, result.toolCalls);
+		const newMessages = fromAiMessages(result.responseMessages);
 		const errorReason = classifyModelTurnError({ aiFinishReason, newMessages });
 		return {
 			aiFinishReason,
 			finishReason: fromAiFinishReason(aiFinishReason),
-			// oxlint-disable-next-line typescript/no-deprecated
-			usage: toTokenUsage(result.usage, result.providerMetadata),
+			usage: toTokenUsage(result.usage, result.finalStep.providerMetadata),
 			newMessages,
 			toolCalls: result.toolCalls,
 			structuredOutput:

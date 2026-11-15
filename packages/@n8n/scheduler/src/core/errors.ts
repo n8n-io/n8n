@@ -70,6 +70,30 @@ export class LeaseLostError extends Error {
 	}
 }
 
+/** Raised when a job is provisioned with a run option outside the range the scheduler enforces. */
+export class InvalidRunOptionError extends Error {
+	constructor(
+		message: string,
+		readonly option: 'timeoutSeconds' | 'concurrencyLimit',
+		readonly value: number,
+		readonly max: number,
+	) {
+		super(message);
+		this.name = 'InvalidRunOptionError';
+	}
+}
+
+/**
+ * The abort reason of a handler's signal when its run reaches the timeout of
+ * its occurrence. The executor stops renewing the lease at the same time.
+ */
+export class TaskTimeoutError extends Error {
+	constructor(readonly timeoutSeconds: number) {
+		super('The run of this occurrence reached its timeout');
+		this.name = 'TaskTimeoutError';
+	}
+}
+
 /** Raised when a lease heartbeat is given a lease duration that is not a positive integer. */
 export class InvalidLeaseDurationError extends Error {
 	constructor(readonly leaseDurationMs: number) {
@@ -132,6 +156,17 @@ export class UnregisteredOwnerTypeError extends Error {
 	constructor(readonly ownerType: string) {
 		super('Cannot provision scheduled jobs for an owner type with no registered liveness resolver');
 		this.name = 'UnregisteredOwnerTypeError';
+	}
+}
+
+/** Raised when a job's name is too long to store. */
+export class InvalidJobNameError extends Error {
+	constructor(
+		readonly length: number,
+		readonly maxLength: number,
+	) {
+		super('Scheduled job name must fit its length limit');
+		this.name = 'InvalidJobNameError';
 	}
 }
 

@@ -155,21 +155,26 @@ describe('MCPWorkflowsSelect', () => {
 				data: [],
 			});
 
-			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
+			const { getAllByRole, findByRole, emitted } = createComponent({ pinia });
 
-			// Wait for the fetch to complete
+			// The ready event follows the loading indicator delay.
 			await waitFor(() => {
-				expect(mcpStore.getMcpEligibleWorkflows).toHaveBeenCalled();
+				expect(emitted('ready')).toHaveLength(1);
 			});
 
-			const select = getByTestId('mcp-workflows-select');
-			await userEvent.click(select);
+			const [input] = getAllByRole('combobox').filter(
+				(combobox) => !combobox.hasAttribute('readonly'),
+			);
+			expect(input).toHaveAttribute('aria-expanded', 'false');
+			await userEvent.click(input);
 
 			await waitFor(() => {
-				const emptyText = document.querySelector('.el-select-dropdown__empty');
-				expect(emptyText).toBeInTheDocument();
+				expect(input).toHaveAttribute('aria-expanded', 'true');
 			});
+
+			const emptyOption = await findByRole('option', { name: 'No available workflows' });
+			expect(emptyOption).toBeVisible();
+			expect(emptyOption).toHaveAttribute('aria-disabled', 'true');
 		});
 	});
 

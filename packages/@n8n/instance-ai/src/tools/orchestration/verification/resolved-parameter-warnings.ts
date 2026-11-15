@@ -22,7 +22,12 @@ export const resolvedParameterWarningSchema = z.object({
 export const skippedParameterCheckSchema = z.object({
 	nodeName: z.string(),
 	executionId: z.string().optional(),
-	reason: z.enum(['parameter-values-disabled', 'replay-failed', 'execution-unavailable']),
+	reason: z.enum([
+		'parameter-values-disabled',
+		'execution-redacted',
+		'replay-failed',
+		'execution-unavailable',
+	]),
 });
 
 export type ResolvedParameterWarning = z.infer<typeof resolvedParameterWarningSchema>;
@@ -129,6 +134,7 @@ export function buildResolvedParameterNote(
 ): string | undefined {
 	const skipReasons = {
 		'parameter-values-disabled': 'parameter values are disabled',
+		'execution-redacted': 'n8n redacted the execution data for this user',
 		'replay-failed': 'parameter replay failed',
 		'execution-unavailable': 'the execution is unavailable',
 	};

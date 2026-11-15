@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch, type Ref } from 'vue';
 import {
 	base64EncodedSize,
 	exceedsAttachmentSizeLimit,
@@ -16,8 +16,12 @@ import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 
 const props = withDefaults(
 	defineProps<{
+		/** Blocks workflow canvas shortcuts while the textarea has focus. Defaults to true. */
+		blockCanvasShortcuts?: boolean;
 		modelValue: string;
 		placeholder?: string;
+		/** Read animation frames here so chat hosts do not render on each tick. */
+		placeholderPreview?: Readonly<Ref<string | undefined>>;
 		isStreaming: boolean;
 		/** Override the action button separately from the composer busy state. */
 		showStopButton?: boolean;
@@ -25,7 +29,12 @@ const props = withDefaults(
 		disabled?: boolean;
 		showVoice?: boolean;
 		showAttach?: boolean;
+		/**
+		 * Shows the built-in attach button. A host that renders its own attach
+		 * button sets this to false. Files can still be dropped or pasted.
+		 */
 		showAttachButton?: boolean;
+		/** Also shows the attach button. Without it, files can still be dropped or pasted. */
 		acceptedMimeTypes?: string;
 		/**
 		 * Base64-encoded size of the files already staged in the composer. Needed
@@ -38,21 +47,19 @@ const props = withDefaults(
 		 */
 		attachedEncodedBytes?: number;
 		autosize?: boolean | { minRows: number; maxRows: number };
-		buttonLabel?: string;
-		// Send button turns active only while focused with text (default: follows canSubmit).
-		activeRequiresFocus?: boolean;
+		/** Keeps the composer at this CSS height, including its attachment row. */
+		composerHeight?: string;
 		maxLength?: number;
 	}>(),
 	{
+		blockCanvasShortcuts: true,
 		placeholder: undefined,
 		showStopButton: undefined,
+		showAttachButton: true,
 		acceptedMimeTypes: undefined,
 		attachedEncodedBytes: 0,
 		autosize: () => ({ minRows: 2, maxRows: 6 }),
-		buttonLabel: undefined,
-		activeRequiresFocus: false,
 		maxLength: undefined,
-		showAttachButton: true,
 	},
 );
 
@@ -62,13 +69,15 @@ const emit = defineEmits<{
 	stop: [];
 	tab: [];
 	'files-selected': [files: File[]];
+	/** Files dropped, pasted or picked whose type `acceptedMimeTypes` does not allow. */
+	'files-rejected': [files: File[]];
 }>();
 
 const i18n = useI18n();
 const toast = useToast();
 const inputRef = useTemplateRef<InstanceType<typeof N8nChatInput>>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
-const isFocused = ref(false);
+const resolvedPlaceholder = computed(() => props.placeholderPreview?.value ?? props.placeholder);
 const canAcceptFiles = computed(() =>
 	Boolean(props.showAttach && !props.disabled && !props.isStreaming),
 );
@@ -80,10 +89,6 @@ const acceptedMimeTypeList = computed(() =>
 );
 const fileDrop = useFileDrop(canAcceptFiles, handleFiles, acceptedMimeTypeList);
 
-// Visual only — must NOT gate `submit-disabled`, or clicking the button (which
-// blurs the textarea) would disable it mid-click and swallow the submit.
-const submitMuted = computed(() => props.activeRequiresFocus && !isFocused.value);
-
 // Voice input
 const committedSpokenMessage = ref('');
 const speechInput = useSpeechRecognition({
@@ -93,7 +98,7 @@ const speechInput = useSpeechRecognition({
 });
 
 watch(speechInput.result, (spoken) => {
-	if (props.showVoice) {
+	if (props.showVoice && !props.disabled) {
 		const prefix = committedSpokenMessage.value;
 		const separator = prefix.length > 0 ? ' ' : '';
 		emit('update:modelValue', prefix + separator + spoken.trimStart());
@@ -108,6 +113,13 @@ watch(
 		}
 	},
 	{ flush: 'post' },
+);
+
+watch(
+	() => props.disabled,
+	(disabled) => {
+		if (disabled && speechInput.isListening.value) speechInput.stop();
+	},
 );
 
 function handleMic() {
@@ -191,6 +203,8 @@ function handleFiles(files: File[]) {
 	const acceptedByType = files.filter((file) =>
 		isFileAcceptedByAccept(file.name, file.type, props.acceptedMimeTypes ?? ''),
 	);
+	const rejected = files.filter((file) => !acceptedByType.includes(file));
+	if (rejected.length > 0) emit('files-rejected', rejected);
 	const accepted = withinSizeLimit(acceptedByType);
 	if (accepted.length > 0) emit('files-selected', accepted);
 }
@@ -232,10 +246,7 @@ defineExpose({
 
 <template>
 	<div
-		:class="[
-			$style.inputWrapper,
-			{ [$style.focusGatedSubmit]: activeRequiresFocus, [$style.submitMuted]: submitMuted },
-		]"
+		:class="$style.inputWrapper"
 		@dragenter="fileDrop.handleDragEnter"
 		@dragleave="fileDrop.handleDragLeave"
 		@dragover="fileDrop.handleDragOver"
@@ -264,26 +275,33 @@ defineExpose({
 
 		<N8nChatInput
 			ref="inputRef"
+			:class="{ [$style.fixedHeightInput]: composerHeight }"
+			:style="composerHeight ? { '--chat-input-height': composerHeight } : undefined"
+			data-test-id="chat-input-composer"
+			:block-canvas-shortcuts="blockCanvasShortcuts"
 			:model-value="modelValue"
-			:placeholder="placeholder"
+			:placeholder="resolvedPlaceholder"
 			:streaming="showStopButton ?? isStreaming"
 			:disabled="disabled"
 			:submit-disabled="!canSubmit"
-			:button-label="props.buttonLabel"
 			send-button-test-id="instance-ai-send-button"
 			stop-button-test-id="instance-ai-stop-button"
-			:autosize="autosize"
-			:layout="autosize === false ? 'single-line' : 'multiline'"
+			:autosize="composerHeight ? false : autosize"
+			:layout="composerHeight || autosize !== false ? 'multiline' : 'single-line'"
 			:max-length="maxLength"
 			@update:model-value="emit('update:modelValue', $event)"
 			@submit="handleSubmit"
 			@stop="emit('stop')"
-			@focus="isFocused = true"
-			@blur="isFocused = false"
 		>
 			<template #leading>
-				<slot name="header" />
-				<slot name="attachments" />
+				<div v-if="composerHeight" :class="$style.attachmentRow">
+					<slot name="header" />
+					<slot name="attachments" />
+				</div>
+				<template v-else>
+					<slot name="header" />
+					<slot name="attachments" />
+				</template>
 			</template>
 			<template #left-actions>
 				<slot name="footer-start" />
@@ -291,7 +309,7 @@ defineExpose({
 			<template #right-actions>
 				<slot name="right-actions" />
 				<N8nTooltip
-					v-if="showAttach && showAttachButton"
+					v-if="showAttach && showAttachButton && acceptedMimeTypes !== undefined"
 					:content="i18n.baseText('chatInputBase.button.attach')"
 					placement="top"
 				>
@@ -338,6 +356,34 @@ defineExpose({
 	width: 100%;
 }
 
+.fixedHeightInput > div:has(> textarea) {
+	height: var(--chat-input-height);
+
+	> textarea {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+	}
+
+	> textarea + div {
+		flex-shrink: 0;
+	}
+}
+
+.attachmentRow {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
+	min-height: var(--height--xs);
+	max-height: var(--height--3xl);
+	overflow-y: auto;
+
+	&:empty {
+		display: none;
+	}
+}
+
 .dropOverlay {
 	position: absolute;
 	inset: 0;
@@ -358,15 +404,5 @@ defineExpose({
 
 .recording {
 	color: var(--color--danger);
-}
-
-/* Split empty state: de-emphasise the send button until the composer is focused.
-   Visual only — the button stays enabled so the click still submits. */
-.focusGatedSubmit [data-test-id='instance-ai-send-button'] {
-	transition: opacity 0.15s ease;
-}
-
-.submitMuted [data-test-id='instance-ai-send-button'] {
-	opacity: 0.5;
 }
 </style>

@@ -30,6 +30,8 @@ export function resolveConfig(
 		...override,
 		services: [...new Set([...(base.services ?? []), ...(override.services ?? [])])],
 		env: {
+			// The Enterprise plan disables the Assistant unless the test enables it.
+			N8N_INSTANCE_AI_ENABLED: 'true',
 			...parseGlobalTestEnv(env.N8N_TEST_ENV),
 			...base.env,
 			...override.env,

@@ -15,6 +15,7 @@ import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import {
 	applyEngineEnv,
 	ENGINE_PORT,
+	ENGINE_SHARED_STORAGE_PATH,
 	engineContainerEnv,
 	engineHostname,
 	type EngineMode,
@@ -84,6 +85,8 @@ export interface N8NInstancesOptions {
 	usePostgres: boolean;
 	engine?: EngineMode;
 	engineAuthSecret?: string;
+	/** Per-plane TLS files from `createEngineTlsFiles`. `container` engine mode only. */
+	engineTlsFiles?: Record<'main' | 'engine', FileToMount[]>;
 	/**
 	 * In `container` engine mode, do not start an engine: one from an earlier
 	 * call is still running. `replaceN8N` sets this when it swaps the main.
@@ -112,6 +115,12 @@ export interface N8NInstancesOptions {
 	 * Pair with `user` so the files stay owned by the host user.
 	 */
 	userHomeHostDir?: string;
+	/**
+	 * Host dir bind-mounted as the storage path of the main and the engine
+	 * container, so a binary file one plane stores is read by the other.
+	 * `container` engine mode only. Disables container reuse.
+	 */
+	binaryDataHostDir?: string;
 	/** Run the container as this uid:gid (e.g. the host user for bind mounts). */
 	user?: string;
 	/** Readiness timeout override; an old release migrating a fresh DB can exceed the default. */
@@ -178,7 +187,7 @@ function computeEnvironment(options: N8NInstancesOptions): ComputedEnvironment {
 		}
 	}
 
-	if (mains === 1 && baseUrl && !serviceEnvironment.WEBHOOK_URL) {
+	if (mains === 1 && baseUrl && !serviceEnvironment.WEBHOOK_URL && !userEnvironment.WEBHOOK_URL) {
 		env.WEBHOOK_URL = baseUrl;
 		env.N8N_PORT = '5678';
 	}
@@ -212,6 +221,7 @@ interface SharedConfig {
 	startupDeadline: StartupDeadline;
 	image?: string;
 	userHomeHostDir?: string;
+	binaryDataHostDir?: string;
 	user?: string;
 	startupTimeoutMs?: number;
 }
@@ -246,19 +256,22 @@ async function createContainer(
 		startupDeadline,
 		image,
 		userHomeHostDir,
+		binaryDataHostDir,
 		user,
 		startupTimeoutMs,
 	} = shared;
 	const { consumer, throwWithLogs, getLogs } = createSilentLogConsumer();
-	// The engine serves no REST API; its health route lives on the engine port.
+	// The engine serves no REST API; its health route lives on the engine port,
+	// over TLS in `container` mode.
 	const readiness =
 		role === 'engine'
-			? { path: '/healthz', port: ENGINE_PORT }
-			: { path: '/healthz/readiness', port: N8N_READINESS_PORT };
+			? { path: '/healthz', port: ENGINE_PORT, tls: true }
+			: { path: '/healthz/readiness', port: N8N_READINESS_PORT, tls: false };
 	const { strategy: waitStrategy, getLastBody: getLastReadinessBody } = createReadinessProbe(
 		readiness.path,
 		readiness.port,
 		{
+			tls: readiness.tls,
 			startupTimeoutMs: Math.min(
 				startupTimeoutMs ?? N8N_STARTUP_TIMEOUT_MS,
 				startupDeadline.remainingMs,
@@ -311,13 +324,26 @@ async function createContainer(
 		bindMounts.push({ source: hostCoverageDir, target: CONTAINER_COVERAGE_DIR, mode: 'rw' });
 	}
 
+	if (binaryDataHostDir) {
+		// One host dir in both planes, at the path their env names. Writable by
+		// the container's `node` user for the same reason as the coverage dir.
+		mkdirSync(binaryDataHostDir, { recursive: true });
+		chmodSync(binaryDataHostDir, 0o777);
+		bindMounts.push({
+			source: binaryDataHostDir,
+			target: ENGINE_SHARED_STORAGE_PATH,
+			mode: 'rw',
+		});
+	}
+
 	if (bindMounts.length > 0) {
 		container = container.withBindMounts(bindMounts);
 	}
 
-	// Reuse stays off for a coverage or mounted-home container: the process
-	// must exit to flush coverage, and cycle data belongs to the cycle.
-	if (!coverageHostDir && !userHomeHostDir) {
+	// Reuse stays off for a container with a host dir mounted: the process must
+	// exit to flush coverage, cycle data belongs to the cycle, and a reused
+	// container would keep the binary data dir of an earlier stack.
+	if (!coverageHostDir && !userHomeHostDir && !binaryDataHostDir) {
 		container = container.withReuse();
 	}
 
@@ -390,9 +416,11 @@ export async function createN8NInstances(
 		startupDeadline,
 		image,
 		userHomeHostDir,
+		binaryDataHostDir,
 		user,
 		startupTimeoutMs,
 		engine,
+		engineTlsFiles,
 		reuseEngine = false,
 	} = options;
 
@@ -406,12 +434,13 @@ export async function createN8NInstances(
 		environment,
 		network,
 		resourceQuota,
-		filesToMount,
+		filesToMount: [...(filesToMount ?? []), ...(engineTlsFiles?.main ?? [])],
 		coverageHostDir,
 		registerContainer,
 		startupDeadline,
 		image,
 		userHomeHostDir,
+		binaryDataHostDir,
 		user,
 		startupTimeoutMs,
 	};
@@ -448,11 +477,12 @@ export async function createN8NInstances(
 		environment: engineEnvironment ?? {},
 		network,
 		resourceQuota,
-		filesToMount,
+		filesToMount: [...(filesToMount ?? []), ...(engineTlsFiles?.engine ?? [])],
 		coverageHostDir,
 		registerContainer,
 		startupDeadline,
 		image,
+		binaryDataHostDir,
 		user,
 		startupTimeoutMs,
 	};

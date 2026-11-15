@@ -8,7 +8,7 @@ import {
 	createTelegramResumeExecutionContext,
 	getTelegramPlatformMessageContext,
 	startTelegramTypingIndicator,
-} from '../../telegram-bridge-behavior';
+} from '../../telegram/telegram-bridge-behavior';
 
 const REFRESH_MS = 4000;
 const MAX_LIFETIME_MS = 10 * 60 * 1000;

@@ -1,7 +1,9 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
-import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
+import { ExecutionsConfig } from '@n8n/config';
+import { ExecutionData, ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { DbStore } from '@/executions/execution-data/db-store';
@@ -48,7 +50,7 @@ describe('ExecutionPersistence', () => {
 			expect(executionEntity?.status).toEqual('new');
 			expect(executionEntity?.storedAt).toEqual('db');
 
-			const executionDataRepository = Container.get(ExecutionDataRepository);
+			const executionDataRepository = Container.get(DataSource).getRepository(ExecutionData);
 			const executionData = await executionDataRepository.findOneBy({ executionId });
 			expect(executionData?.workflowData).toEqual({
 				id: workflow.id,
@@ -87,7 +89,7 @@ describe('ExecutionPersistence', () => {
 	describe('updateExistingExecution (db overwrite path)', () => {
 		it('should preserve the original workflowVersionId when overwriting data and workflowData', async () => {
 			const executionPersistence = Container.get(ExecutionPersistence);
-			const executionDataRepository = Container.get(ExecutionDataRepository);
+			const executionDataRepository = Container.get(DataSource).getRepository(ExecutionData);
 			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
 
 			const executionId = await executionPersistence.create({
@@ -116,7 +118,7 @@ describe('ExecutionPersistence', () => {
 		it('should roll back the status change when the data row is missing during an overwrite', async () => {
 			const executionPersistence = Container.get(ExecutionPersistence);
 			const executionRepo = Container.get(ExecutionRepository);
-			const executionDataRepository = Container.get(ExecutionDataRepository);
+			const executionDataRepository = Container.get(DataSource).getRepository(ExecutionData);
 			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
 
 			const executionId = await executionPersistence.create({
@@ -179,37 +181,88 @@ describe('ExecutionPersistence', () => {
 		);
 	});
 
-	// CAT-3909: an enqueued execution whose data row is gone used to be dropped silently, so
-	// startup recovery never learned about it and the row stayed `new` forever.
-	describe('findMultipleExecutionsWithUnreadable', () => {
-		it('returns the ids of enqueued executions whose data row is gone', async () => {
+	describe('deleteInFlightExecution', () => {
+		const executionsConfig = Container.get(ExecutionsConfig);
+		const originalPruneData = executionsConfig.pruneData;
+		const stoppedAt = new Date('2026-01-01T00:00:00.000Z');
+
+		afterEach(() => {
+			executionsConfig.pruneData = originalPruneData;
+		});
+
+		const createRunningExecution = async () => {
 			const executionPersistence = Container.get(ExecutionPersistence);
-			const executionDataRepository = Container.get(ExecutionDataRepository);
 			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data: createEmptyRunExecutionData(),
+				workflowData: workflow,
+				mode: 'trigger',
+				status: 'running',
+				finished: false,
+			});
+			return { workflowId: workflow.id, executionId, storedAt: 'db' as const };
+		};
 
-			const create = async () =>
-				await executionPersistence.create({
-					workflowId: workflow.id,
-					data: createEmptyRunExecutionData(),
-					workflowData: workflow,
-					mode: 'webhook',
-					status: 'new',
-					finished: false,
+		it.each([
+			{ status: 'success' as const, finished: true },
+			{ status: 'error' as const, finished: false },
+		])(
+			'should write the final $status state and soft-delete when pruning is enabled',
+			async ({ status, finished }) => {
+				executionsConfig.pruneData = true;
+				const target = await createRunningExecution();
+
+				await Container.get(ExecutionPersistence).deleteInFlightExecution(target, {
+					status,
+					finished,
+					stoppedAt,
 				});
 
-			const healthyId = await create();
-			const orphanedId = await create();
-			await executionDataRepository.delete({ executionId: orphanedId });
-
-			const { executions, unreadableIds } =
-				await executionPersistence.findMultipleExecutionsWithUnreadable({
-					select: ['id', 'mode'],
-					where: { status: 'new' },
-					order: { id: 'ASC' },
+				const row = await Container.get(ExecutionRepository).findOne({
+					where: { id: target.executionId },
+					withDeleted: true,
 				});
+				expect(row).toMatchObject({ status, finished, stoppedAt });
+				expect(row?.deletedAt).toBeInstanceOf(Date);
+			},
+		);
 
-			expect(executions.map((e) => e.id)).toEqual([healthyId]);
-			expect(unreadableIds).toEqual([orphanedId]);
+		it('should keep a canceled status and still soft-delete when pruning is enabled', async () => {
+			executionsConfig.pruneData = true;
+			const target = await createRunningExecution();
+			const executionRepo = Container.get(ExecutionRepository);
+			await executionRepo.update(target.executionId, { status: 'canceled' });
+
+			await Container.get(ExecutionPersistence).deleteInFlightExecution(target, {
+				status: 'success',
+				finished: true,
+				stoppedAt,
+			});
+
+			const row = await executionRepo.findOne({
+				where: { id: target.executionId },
+				withDeleted: true,
+			});
+			expect(row?.status).toEqual('canceled');
+			expect(row?.deletedAt).toBeInstanceOf(Date);
+		});
+
+		it('should hard-delete the execution when pruning is disabled', async () => {
+			executionsConfig.pruneData = false;
+			const target = await createRunningExecution();
+
+			await Container.get(ExecutionPersistence).deleteInFlightExecution(target, {
+				status: 'success',
+				finished: true,
+				stoppedAt,
+			});
+
+			const row = await Container.get(ExecutionRepository).findOne({
+				where: { id: target.executionId },
+				withDeleted: true,
+			});
+			expect(row).toBeNull();
 		});
 	});
 

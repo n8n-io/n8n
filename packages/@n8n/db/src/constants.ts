@@ -53,6 +53,7 @@ export const GLOBAL_OWNER_ROLE = ALL_BUILTIN_ROLES['global:owner'];
 export const GLOBAL_ADMIN_ROLE = ALL_BUILTIN_ROLES['global:admin'];
 export const GLOBAL_MEMBER_ROLE = ALL_BUILTIN_ROLES['global:member'];
 export const GLOBAL_CHAT_USER_ROLE = ALL_BUILTIN_ROLES['global:chatUser'];
+export const GLOBAL_AGENT_ROLE = ALL_BUILTIN_ROLES['global:agent'];
 
 export const PROJECT_OWNER_ROLE = ALL_BUILTIN_ROLES[PROJECT_OWNER_ROLE_SLUG];
 export const PROJECT_ADMIN_ROLE = ALL_BUILTIN_ROLES[PROJECT_ADMIN_ROLE_SLUG];
@@ -65,6 +66,7 @@ export const GLOBAL_ROLES: Record<GlobalRole, Role> = {
 	'global:admin': GLOBAL_ADMIN_ROLE,
 	'global:member': GLOBAL_MEMBER_ROLE,
 	'global:chatUser': GLOBAL_CHAT_USER_ROLE,
+	'global:agent': GLOBAL_AGENT_ROLE,
 };
 
 export const PROJECT_ROLES: Record<ProjectRole, Role> = {

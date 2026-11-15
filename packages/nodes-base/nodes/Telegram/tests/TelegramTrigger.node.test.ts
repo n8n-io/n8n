@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { HITL_CALLBACK_PREFIX, InstanceSettings } from 'n8n-core';
+import { HITL_CALLBACK_PREFIX, HITL_CALLBACK_PREFIX_V2 } from 'n8n-core';
 import type { IHookFunctions, IWebhookFunctions, INode, Workflow } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -8,9 +8,8 @@ import { testWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { apiRequest } from '../GenericFunctions';
 import type * as _importType0 from '../GenericFunctions';
+import { deriveHitlSecretToken } from '../hitl/tokens';
 import { TelegramTrigger } from '../TelegramTrigger.node';
-
-Container.set(InstanceSettings, { hmacSignatureSecret: 'test-hmac-secret' } as InstanceSettings);
 
 vi.mock('../GenericFunctions', async () => {
 	const originalModule = await vi.importActual<typeof _importType0>('../GenericFunctions');
@@ -133,18 +132,22 @@ describe('TelegramTrigger', () => {
 		);
 
 		it.each([
-			{ type: 'photo', attachment: [{ file_id: 'photo0909' }] },
-			{ type: 'video', attachment: { file_id: 'vid666' } },
-			{ type: 'document', attachment: { file_id: '0909' } },
+			{ type: 'photo', attachment: [{ file_id: 'photo0909' }], fileId: 'photo0909' },
+			{ type: 'video', attachment: { file_id: 'vid666' }, fileId: 'vid666' },
+			{ type: 'document', attachment: { file_id: '0909' }, fileId: '0909' },
 		])(
 			'should return downloaded files for %s attachments with message',
-			async ({ type, attachment }) => {
+			async ({ type, attachment, fileId }) => {
 				const options = createOptions({ type, attachment });
 				const { responseData } = await testWebhookTriggerNode(TelegramTrigger, options);
 
 				expect(responseData).toEqual({
 					workflowData: [[{ json: mockResult, binary: { data: binaryData } }]],
 				});
+				expect(apiRequest).toHaveBeenCalledWith('GET', 'getFile', {}, { file_id: fileId });
+				expect(String(vi.mocked(apiRequest).mock.lastCall?.[5])).toBe(
+					'https://api.telegram.org/file/bot999999/path/to/file',
+				);
 			},
 		);
 
@@ -515,7 +518,12 @@ describe('TelegramTrigger', () => {
 			await telegramTrigger.webhook.call(webhookFunctions);
 
 			expect(httpRequest).toHaveBeenCalledWith(
-				expect.objectContaining({ url: 'https://mybot.example.com/custom-waiting-telegram' }),
+				expect.objectContaining({
+					url: 'https://mybot.example.com/custom-waiting-telegram',
+					headers: {
+						'x-telegram-bot-api-secret-token': deriveHitlSecretToken('123456:test-token'),
+					},
+				}),
 			);
 		});
 
@@ -551,6 +559,80 @@ describe('TelegramTrigger', () => {
 				}),
 			);
 		});
+
+		const createForwardingWebhookFunctions = (
+			typeVersion: number,
+			headers: Record<string, string> = { 'x-telegram-bot-api-secret-token': '1_2' },
+			data = `${HITL_CALLBACK_PREFIX}42|a|deadbeef`,
+		) => {
+			const httpRequest = vi.fn().mockResolvedValue({});
+			const status = vi.fn().mockReturnThis();
+			const webhookFunctions = mock<IWebhookFunctions>({
+				helpers: mock<IWebhookFunctions['helpers']>({ httpRequest }),
+				getNode: () => mock<INode>({ id: '2', typeVersion }),
+				getWorkflow: () => mock<Workflow>({ id: '1' }),
+				getNodeWebhookUrl: () => 'https://example.com/webhook/abc/webhook',
+				getBodyData: () => ({ callback_query: { data } }),
+				getHeaderData: () => headers,
+				getResponseObject: () => ({ status, json: vi.fn() }) as never,
+				getCredentials: async <T extends object>() => ({ accessToken: '123456:test-token' }) as T,
+				getNodeParameter: () => [],
+			});
+			return { httpRequest, status, webhookFunctions };
+		};
+
+		test('does not forward HITL callbacks for node version 1', async () => {
+			const { httpRequest, webhookFunctions } = createForwardingWebhookFunctions(1);
+
+			await new TelegramTrigger().webhook.call(webhookFunctions);
+
+			expect(httpRequest).not.toHaveBeenCalled();
+		});
+
+		test('forwards HITL callbacks for node version 1.4 when the secret header matches', async () => {
+			const { httpRequest, webhookFunctions } = createForwardingWebhookFunctions(1.4);
+
+			await new TelegramTrigger().webhook.call(webhookFunctions);
+
+			expect(httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: {
+						'x-telegram-bot-api-secret-token': deriveHitlSecretToken('123456:test-token'),
+					},
+				}),
+			);
+		});
+
+		test('forwards an engine v2 callback, which names a step', async () => {
+			const { httpRequest, webhookFunctions } = createForwardingWebhookFunctions(
+				1.4,
+				undefined,
+				`${HITL_CALLBACK_PREFIX_V2}AZJqTn9ccACAAAAAAAAAAQ|a|mac`,
+			);
+
+			await new TelegramTrigger().webhook.call(webhookFunctions);
+
+			expect(httpRequest).toHaveBeenCalledOnce();
+		});
+
+		test.each([
+			['an incorrect', { 'x-telegram-bot-api-secret-token': 'wrong' }],
+			['a missing', {}],
+		])(
+			'responds 403 and does not forward HITL callbacks with %s secret header',
+			async (_, headers) => {
+				const { httpRequest, status, webhookFunctions } = createForwardingWebhookFunctions(
+					1.4,
+					headers,
+				);
+
+				const result = await new TelegramTrigger().webhook.call(webhookFunctions);
+
+				expect(status).toHaveBeenCalledWith(403);
+				expect(httpRequest).not.toHaveBeenCalled();
+				expect(result).toEqual({ noWebhookResponse: true });
+			},
+		);
 	});
 
 	describe('checkExists', () => {

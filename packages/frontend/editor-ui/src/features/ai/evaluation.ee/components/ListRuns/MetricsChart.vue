@@ -84,12 +84,6 @@ watchEffect(() => {
 		padding: var(--spacing--xs) var(--spacing--sm) 0;
 	}
 
-	.chartTitle {
-		font-size: var(--font-size--lg);
-		font-weight: var(--font-weight--bold);
-		color: var(--color--text);
-	}
-
 	.metricSelect {
 		max-width: 15rem;
 	}

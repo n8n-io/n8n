@@ -1,0 +1,17 @@
+/** Register the Geist Mono variable font. */
+@font-face {
+	font-family: 'Geist Mono';
+	src: url('../../../assets/fonts/GeistMono-Variable.woff2') format('woff2');
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+}
+
+/** Register the Geist Mono italic variable font. */
+@font-face {
+	font-family: 'Geist Mono';
+	src: url('../../../assets/fonts/GeistMono-Italic-Variable.woff2') format('woff2');
+	font-style: italic;
+	font-weight: 100 900;
+	font-display: swap;
+}

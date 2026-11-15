@@ -13,23 +13,29 @@ export { Middleware } from './middleware';
 export { ControllerRegistryMetadata } from './controller-registry-metadata';
 export { Licensed } from './licensed';
 export { RequiresUserQuota } from './requires-user-quota';
+export { RateLimitAccess } from './rate-limit-access';
 export { Deprecated } from './deprecated';
 export { GlobalScope, ProjectScope } from './scoped';
 export type {
 	AccessScope,
 	ApiKeyScopeRequirement,
 	Arg,
+	BinaryResponse,
+	BinaryResponseMediaType,
+	BinaryResult,
 	Controller,
 	CorsOptions,
 	DeprecationInfo,
 	ErrorResponse,
 	HandlerName,
 	Method,
+	RateLimitAccessName,
 	MultipartUploadLimits,
 	RequestBodyMedia,
 	RequestBodyMediaOptions,
 	RequestBodyMediaType,
 	ResponseDtoClass,
+	ResponseHeader,
 	RouteMetadata,
 	StaticRouterMetadata,
 	SuccessStatus,

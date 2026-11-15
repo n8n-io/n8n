@@ -1,10 +1,11 @@
 import { createTestingPinia } from '@pinia/testing';
-import { screen, waitFor } from '@testing-library/vue';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import MigrationRules from './MigrationRules.vue';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import type { BreakingChangeLightReportResult } from '@n8n/api-types';
@@ -12,9 +13,23 @@ import type { BreakingChangeLightReportResult } from '@n8n/api-types';
 vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 	getReport: vi.fn(),
 	refreshReport: vi.fn(),
+	exportReport: vi.fn(),
+}));
+
+const { saveAs, showError } = vi.hoisted(() => ({
+	saveAs: vi.fn(),
+	showError: vi.fn(),
+}));
+
+vi.mock('file-saver', () => ({ saveAs }));
+
+vi.mock('@n8n/composables/useToast', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	useToast: () => ({ showError }),
 }));
 
 let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
+let rbacStore: ReturnType<typeof mockedStore<typeof useRBACStore>>;
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 
 const mockWorkflowIssue = {
@@ -31,6 +46,7 @@ const mockWorkflowIssue = {
 	],
 	migratable: false,
 	nbAffectedWorkflows: 5,
+	nbWontFixWorkflows: 0,
 };
 
 const mockInstanceIssue = {
@@ -99,6 +115,9 @@ describe('MigrationRules', () => {
 			baseUrl: 'http://localhost:5678',
 			pushRef: 'test-push-ref',
 		};
+		// By default the user can edit every workflow, so the page shows the whole instance.
+		rbacStore = mockedStore(useRBACStore);
+		rbacStore.hasScope.mockReturnValue(true);
 
 		vi.mocked(breakingChangesApi.getReport).mockResolvedValue(mockReport);
 		vi.mocked(breakingChangesApi.refreshReport).mockResolvedValue(mockReport);
@@ -106,6 +125,7 @@ describe('MigrationRules', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		vi.useRealTimers();
 	});
 
 	describe('initial rendering and loading', () => {
@@ -138,6 +158,59 @@ describe('MigrationRules', () => {
 
 			// Loading skeletons are gone
 			expect(document.querySelectorAll('.el-skeleton').length).toBe(0);
+		});
+
+		it('shows a message over the skeleton only after the report loads for 5 seconds', async () => {
+			vi.useFakeTimers();
+			let resolveReport: (report: BreakingChangeLightReportResult) => void = () => {};
+			vi.mocked(breakingChangesApi.getReport).mockReturnValue(
+				new Promise((resolve) => (resolveReport = resolve)),
+			);
+			renderComponent();
+
+			await vi.advanceTimersByTimeAsync(4999);
+			expect(screen.queryByTestId('migration-report-slow-loading')).not.toBeInTheDocument();
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(screen.getByTestId('migration-report-slow-loading')).toHaveTextContent(
+				'Still scanning your workflows…',
+			);
+
+			resolveReport(mockReport);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(screen.queryByTestId('migration-report-slow-loading')).not.toBeInTheDocument();
+		});
+
+		it('does not show the message when the report loads in less than 5 seconds', async () => {
+			vi.useFakeTimers();
+			renderComponent();
+
+			await vi.advanceTimersByTimeAsync(0);
+			expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+
+			await vi.advanceTimersByTimeAsync(5000);
+			expect(screen.queryByTestId('migration-report-slow-loading')).not.toBeInTheDocument();
+		});
+
+		it('shows the message when a refresh takes more than 5 seconds', async () => {
+			vi.useFakeTimers();
+			let resolveRefresh: (report: BreakingChangeLightReportResult) => void = () => {};
+			vi.mocked(breakingChangesApi.refreshReport).mockReturnValue(
+				new Promise((resolve) => (resolveRefresh = resolve)),
+			);
+			renderComponent();
+			await vi.advanceTimersByTimeAsync(0);
+
+			await fireEvent.click(screen.getByText('Refresh'));
+			await vi.advanceTimersByTimeAsync(4999);
+			expect(screen.queryByTestId('migration-report-slow-loading')).not.toBeInTheDocument();
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(screen.getByTestId('migration-report-slow-loading')).toBeInTheDocument();
+
+			resolveRefresh(mockReport);
+			await vi.advanceTimersByTimeAsync(0);
+			expect(screen.queryByTestId('migration-report-slow-loading')).not.toBeInTheDocument();
 		});
 	});
 
@@ -198,7 +271,7 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('5 Workflows')).toBeInTheDocument();
 
 				// Impact tag
-				expect(screen.getByText('Executions fail')).toBeInTheDocument();
+				expect(screen.getByText('Executions will fail')).toBeInTheDocument();
 
 				// Documentation link
 				expect(screen.getAllByText('Documentation').length).toBeGreaterThan(0);
@@ -207,6 +280,12 @@ describe('MigrationRules', () => {
 				const workflowLink = screen.getByText('5 Workflows');
 				expect(workflowLink.closest('a')).toBeInTheDocument();
 			});
+
+			// The title links to the detail page too
+			expect(screen.getByText('Test Rule 1').closest('a')).toHaveAttribute(
+				'data-test-id',
+				'migration-rule-title-link',
+			);
 		});
 
 		it('should show empty state when no workflow issues', async () => {
@@ -241,7 +320,6 @@ describe('MigrationRules', () => {
 					targetVersion: '2.0.0',
 					currentVersion: '1.0.0',
 					workflowResults: [
-						mockWorkflowIssue,
 						{
 							...mockWorkflowIssue,
 							ruleId: 'rule-2',
@@ -249,6 +327,16 @@ describe('MigrationRules', () => {
 							ruleImpact: 'behaviorChanges' as const,
 							nbAffectedWorkflows: 3,
 						},
+						// Listed between its neighbours in the input: after the behaviorChanges rule and
+						// before the executionsFail rule. A tie with either one then fails the test.
+						{
+							...mockWorkflowIssue,
+							ruleId: 'rule-5',
+							ruleTitle: 'Test Rule 5',
+							ruleImpact: 'executionsMightFail' as const,
+							nbAffectedWorkflows: 2,
+						},
+						mockWorkflowIssue,
 						{
 							...mockWorkflowIssue,
 							ruleId: 'rule-3',
@@ -276,7 +364,8 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
 				expect(screen.getByText('Test Rule 2')).toBeInTheDocument();
 				expect(screen.getByText('Test Rule 3')).toBeInTheDocument();
-				expect(screen.getByText('Executions fail')).toBeInTheDocument();
+				expect(screen.getByText('Executions will fail')).toBeInTheDocument();
+				expect(screen.getByText('Executions might fail')).toBeInTheDocument();
 				expect(screen.getByText('Behavior changes')).toBeInTheDocument();
 				expect(screen.getByText('Upgrade blocked')).toBeInTheDocument();
 				expect(screen.getByText('Capability removed')).toBeInTheDocument();
@@ -287,7 +376,55 @@ describe('MigrationRules', () => {
 			const titles = screen
 				.getAllByRole('heading', { level: 3 })
 				.map((heading) => heading.textContent?.trim());
-			expect(titles).toEqual(['Test Rule 3', 'Test Rule 1', 'Test Rule 2', 'Test Rule 4']);
+			expect(titles).toEqual([
+				'Test Rule 3',
+				'Test Rule 1',
+				'Test Rule 5',
+				'Test Rule 2',
+				'Test Rule 4',
+			]);
+		});
+	});
+
+	describe('finding counts', () => {
+		it("shows the open and won't fix counts of each rule, and leaves out a zero count", async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({
+					report: {
+						generatedAt: new Date('2024-01-01'),
+						targetVersion: '2.0.0',
+						currentVersion: '1.0.0',
+						workflowResults: [
+							{ ...mockWorkflowIssue, nbAffectedWorkflows: 9, nbWontFixWorkflows: 1 },
+							{
+								...mockWorkflowIssue,
+								ruleId: 'rule-open-only',
+								ruleTitle: 'Open Only Rule',
+								nbAffectedWorkflows: 3,
+								nbWontFixWorkflows: 0,
+							},
+							{
+								...mockWorkflowIssue,
+								ruleId: 'rule-wont-fix-only',
+								ruleTitle: "Won't Fix Only Rule",
+								nbAffectedWorkflows: 0,
+								nbWontFixWorkflows: 2,
+							},
+						],
+						instanceResults: [],
+					},
+				}),
+			);
+
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getAllByTestId('migration-rule-finding-counts')).toHaveLength(3);
+			});
+			const counts = screen
+				.getAllByTestId('migration-rule-finding-counts')
+				.map((element) => element.textContent?.replace(/\s+/g, ' ').trim());
+			expect(counts).toEqual(["9 open 1 won't fix", '3 open', "2 won't fix"]);
 		});
 	});
 
@@ -298,6 +435,7 @@ describe('MigrationRules', () => {
 			ruleTitle: 'Resolved Rule',
 			ruleImpact: 'upgradeBlocked' as const,
 			nbAffectedWorkflows: 0,
+			nbWontFixWorkflows: 2,
 		};
 
 		it('lists a rule without open findings last, as resolved, with a link to its detail page', async () => {
@@ -406,6 +544,14 @@ describe('MigrationRules', () => {
 					workflowResults: [],
 					instanceResults: [
 						mockInstanceIssue,
+						// Listed between its neighbours in the input: after the behaviorChanges rule and
+						// before the executionsFail rule. A tie with either one then fails the test.
+						{
+							...mockInstanceIssue,
+							ruleId: 'rule-6',
+							ruleTitle: 'Instance Rule 5',
+							ruleImpact: 'executionsMightFail' as const,
+						},
 						{
 							...mockInstanceIssue,
 							ruleId: 'rule-3',
@@ -439,19 +585,40 @@ describe('MigrationRules', () => {
 				expect(screen.getByText('Instance Rule 2')).toBeInTheDocument();
 				expect(screen.getByText('Instance Rule 3')).toBeInTheDocument();
 				expect(screen.getByText('Instance Rule 4')).toBeInTheDocument();
+				expect(screen.getByText('Instance Rule 5')).toBeInTheDocument();
 			});
 
 			// Same order as the workflow tab: upgradeBlocked, executionsFail,
-			// behaviorChanges, capabilityRemoved.
+			// executionsMightFail, behaviorChanges, capabilityRemoved.
 			const titles = screen
 				.getAllByRole('heading', { level: 3 })
 				.map((heading) => heading.textContent?.trim());
 			expect(titles).toEqual([
 				'Instance Rule 4',
 				'Instance Rule 2',
+				'Instance Rule 5',
 				'Instance Rule 1',
 				'Instance Rule 3',
 			]);
+		});
+	});
+
+	describe('as a user who cannot edit every workflow', () => {
+		beforeEach(() => {
+			rbacStore.hasScope.mockReturnValue(false);
+		});
+
+		it('shows the workflow issues with a scope note, and neither Refresh nor the instance tab', async () => {
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+			});
+
+			expect(screen.getByTestId('migration-report-scope-note')).toBeInTheDocument();
+			expect(screen.queryByText('Refresh')).not.toBeInTheDocument();
+			expect(screen.queryByText('Instance issues')).not.toBeInTheDocument();
+			expect(screen.getByText('Workflow issues')).toBeInTheDocument();
 		});
 	});
 
@@ -471,7 +638,7 @@ describe('MigrationRules', () => {
 			},
 		);
 
-		it('should show when the report was last synced, from generatedAt', async () => {
+		it('should show when the report was last updated, from generatedAt', async () => {
 			// One year in the past, so the relative label is stable whatever the test date.
 			const generatedAt = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
 			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
@@ -489,12 +656,26 @@ describe('MigrationRules', () => {
 			renderComponent();
 
 			await waitFor(() => {
-				const lastSynced = screen.getByTestId('migration-report-last-synced');
-				expect(lastSynced).toHaveTextContent(/Last synced\s+1 year ago/);
+				const lastUpdated = screen.getByTestId('migration-report-last-updated');
+				expect(lastUpdated).toHaveTextContent(/Last updated\s+1 year ago/);
 			});
 		});
 
-		it('should update the last synced time after Refresh', async () => {
+		it('should show "Never updated" when the report has no generatedAt', async () => {
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
+				createMockReport({ report: { ...mockReport.report, generatedAt: undefined } }),
+			);
+
+			renderComponent();
+
+			await waitFor(() => {
+				expect(screen.getByTestId('migration-report-last-updated')).toHaveTextContent(
+					'Never updated',
+				);
+			});
+		});
+
+		it('should update the last updated time after Refresh', async () => {
 			const oldDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
 			const newDate = new Date(Date.now() - 60 * 1000);
 			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(
@@ -507,13 +688,13 @@ describe('MigrationRules', () => {
 			renderComponent();
 
 			await waitFor(() => {
-				expect(screen.getByTestId('migration-report-last-synced')).toHaveTextContent(/1 year ago/);
+				expect(screen.getByTestId('migration-report-last-updated')).toHaveTextContent(/1 year ago/);
 			});
 
 			await userEvent.click(screen.getByText('Refresh'));
 
 			await waitFor(() => {
-				expect(screen.getByTestId('migration-report-last-synced')).toHaveTextContent(
+				expect(screen.getByTestId('migration-report-last-updated')).toHaveTextContent(
 					/1 minute ago/,
 				);
 			});
@@ -692,8 +873,13 @@ describe('MigrationRules', () => {
 			},
 			{
 				impact: 'executionsFail',
-				label: 'Executions fail',
+				label: 'Executions will fail',
 				tooltipText: 'will fail',
+			},
+			{
+				impact: 'executionsMightFail',
+				label: 'Executions might fail',
+				tooltipText: 'Read the recommendation',
 			},
 			{
 				impact: 'behaviorChanges',
@@ -732,6 +918,33 @@ describe('MigrationRules', () => {
 				await waitFor(() => expect(getTooltip()).toHaveTextContent(tooltipText));
 			},
 		);
+
+		it('should show the instance tooltip for the executionsMightFail impact on hover', async () => {
+			const report = createMockReport({
+				report: {
+					generatedAt: new Date('2024-01-01'),
+					targetVersion: '2.0.0',
+					currentVersion: '1.0.0',
+					workflowResults: [],
+					instanceResults: [{ ...mockInstanceIssue, ruleImpact: 'executionsMightFail' }],
+				},
+			});
+
+			vi.mocked(breakingChangesApi.getReport).mockResolvedValue(report);
+
+			renderComponent();
+
+			await userEvent.click(screen.getByText('Instance issues'));
+
+			await waitFor(() => {
+				expect(screen.getByText('Executions might fail')).toBeInTheDocument();
+			});
+
+			await hoverTooltipTrigger(screen.getByText('Executions might fail'));
+			await waitFor(() =>
+				expect(getTooltip()).toHaveTextContent('set the related environment variable'),
+			);
+		});
 	});
 
 	describe('error handling and edge cases', () => {
@@ -788,6 +1001,56 @@ describe('MigrationRules', () => {
 					screen.getByText(/0 of your 0 workflows are already compatible/, { exact: false }),
 				).toBeInTheDocument();
 			});
+		});
+	});
+
+	describe('export', () => {
+		it('downloads the CSV the server returns, under the name the server gives it', async () => {
+			const blob = new Blob(['target_version\r\n'], { type: 'text/csv' });
+			vi.mocked(breakingChangesApi.exportReport).mockResolvedValue({
+				blob,
+				filename: 'migration-report-v3-2026-10-20.csv',
+			});
+			renderComponent();
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+			});
+
+			await userEvent.click(screen.getByTestId('migration-report-export'));
+
+			await waitFor(() => {
+				expect(saveAs).toHaveBeenCalledWith(blob, 'migration-report-v3-2026-10-20.csv');
+			});
+			expect(breakingChangesApi.exportReport).toHaveBeenCalledWith(rootStore.restApiContext, {
+				version: 'v3',
+			});
+			expect(showError).not.toHaveBeenCalled();
+		});
+
+		it('shows an error toast when the export fails', async () => {
+			const error = new Error('Forbidden');
+			vi.mocked(breakingChangesApi.exportReport).mockRejectedValue(error);
+			renderComponent();
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+			});
+
+			await userEvent.click(screen.getByTestId('migration-report-export'));
+
+			await waitFor(() => {
+				expect(showError).toHaveBeenCalledWith(error, 'Could not export the report');
+			});
+			expect(saveAs).not.toHaveBeenCalled();
+		});
+
+		it('is offered to a user who cannot edit every workflow', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+			renderComponent();
+			await waitFor(() => {
+				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
+			});
+
+			expect(screen.getByTestId('migration-report-export')).toBeInTheDocument();
 		});
 	});
 });

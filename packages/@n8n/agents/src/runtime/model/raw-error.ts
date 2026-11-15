@@ -53,6 +53,7 @@ export class GoogleRawErrorReader implements RawErrorReader {
  */
 const RAW_ERROR_READERS: Partial<Record<ProviderId, () => RawErrorReader>> = {
 	google: () => new GoogleRawErrorReader(),
+	'google-vertex': () => new GoogleRawErrorReader(),
 };
 
 /**

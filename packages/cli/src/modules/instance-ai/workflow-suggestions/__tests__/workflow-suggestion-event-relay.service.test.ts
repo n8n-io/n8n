@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import type { IWorkflowDb } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
@@ -12,6 +12,7 @@ import type { WorkflowSuggestionService } from '../workflow-suggestion.service';
 const suggestions = mock<WorkflowSuggestionService>();
 const logger = mock<Logger>();
 let events: EventService;
+let hooks: WorkflowMutationHooksProxy;
 
 function save(workflowId: string) {
 	events.emit(
@@ -25,7 +26,8 @@ beforeEach(() => {
 	vi.resetAllMocks();
 	suggestions.reconcileWorkflow.mockResolvedValue();
 	events = new EventService();
-	new WorkflowSuggestionEventRelay(events, suggestions, logger);
+	hooks = new WorkflowMutationHooksProxy(logger);
+	hooks.registerProvider(new WorkflowSuggestionEventRelay(events, suggestions, logger));
 });
 
 afterEach(() => {
@@ -80,14 +82,23 @@ it('checks within sixty seconds when saves continue', async () => {
 	expect(vi.getTimerCount()).toBe(0);
 });
 
-it.each(['workflow-activated', 'workflow-deactivated', 'workflow-archived'] as const)(
+it.each(['publish', 'unpublish', 'archive'] as const)(
 	'checks immediately on %s and cancels only that workflow’s pending save',
 	async (eventName) => {
 		save('first');
 		save('second');
 		await vi.advanceTimersByTimeAsync(15_000);
 
-		events.emit(eventName, mock<RelayEventMap[typeof eventName]>({ workflowId: 'first' }));
+		if (eventName === 'publish') {
+			await hooks.afterWorkflowPublished({ workflowId: 'first', versionId: 'v1', userId: 'user' });
+		} else if (eventName === 'archive') {
+			await hooks.afterWorkflowArchived('first', 'user');
+		} else {
+			events.emit(
+				'workflow-deactivated',
+				mock<RelayEventMap['workflow-deactivated']>({ workflowId: 'first' }),
+			);
+		}
 
 		expect(suggestions.reconcileWorkflow).toHaveBeenCalledExactlyOnceWith('first');
 		await vi.advanceTimersByTimeAsync(15_000);
@@ -97,13 +108,23 @@ it.each(['workflow-activated', 'workflow-deactivated', 'workflow-archived'] as c
 	},
 );
 
-it.each(['workflow-saved', 'workflow-archived'] as const)(
+it.each(['save', 'publish', 'unpublish', 'archive'] as const)(
 	'logs a failed %s check and accepts later saves',
 	async (eventName) => {
 		const error = new Error('Reconciliation unavailable.');
 		suggestions.reconcileWorkflow.mockRejectedValueOnce(error);
-		if (eventName === 'workflow-saved') save('first');
-		else events.emit(eventName, mock<RelayEventMap[typeof eventName]>({ workflowId: 'first' }));
+		if (eventName === 'save') {
+			save('first');
+		} else if (eventName === 'publish') {
+			await hooks.afterWorkflowPublished({ workflowId: 'first', versionId: 'v1', userId: 'user' });
+		} else if (eventName === 'archive') {
+			await hooks.afterWorkflowArchived('first', 'user');
+		} else {
+			events.emit(
+				'workflow-deactivated',
+				mock<RelayEventMap['workflow-deactivated']>({ workflowId: 'first' }),
+			);
+		}
 		await vi.advanceTimersByTimeAsync(30_000);
 
 		expect(logger.warn).toHaveBeenCalledExactlyOnceWith(
@@ -119,3 +140,16 @@ it.each(['workflow-saved', 'workflow-archived'] as const)(
 		expect(logger.warn).toHaveBeenCalledOnce();
 	},
 );
+
+it('uses hooks instead of activation and archive events', () => {
+	events.emit(
+		'workflow-activated',
+		mock<RelayEventMap['workflow-activated']>({ workflowId: 'first' }),
+	);
+	events.emit(
+		'workflow-archived',
+		mock<RelayEventMap['workflow-archived']>({ workflowId: 'first' }),
+	);
+
+	expect(suggestions.reconcileWorkflow).not.toHaveBeenCalled();
+});

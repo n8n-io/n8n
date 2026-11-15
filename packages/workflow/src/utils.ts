@@ -353,7 +353,13 @@ export function hasKey<T extends PropertyKey>(value: unknown, key: T): value is 
 	return value !== null && typeof value === 'object' && value.hasOwnProperty(key);
 }
 
-const unsafeObjectProperties = new Set([
+/**
+ * Names rejected for static and literal member access by the expression
+ * transform, and for runtime-built keys by each engine's runtime sanitizer.
+ * Exported so other engine runtimes can be checked against it
+ * (test/expression-sanitize-parity.test.ts).
+ */
+export const unsafeObjectProperties: ReadonlySet<string> = new Set([
 	'__proto__',
 	'prototype',
 	'constructor',

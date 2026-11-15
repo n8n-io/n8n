@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import { useAsyncState } from '@vueuse/core';
-import { ElSwitch } from 'element-plus';
 import { I18nT } from 'vue-i18n';
 import {
 	N8nAlertDialog,
@@ -12,6 +11,7 @@ import {
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -27,6 +27,9 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import DataRedactionSection from './DataRedactionSection.vue';
 import WorkflowReviewsSection from './WorkflowReviewsSection.vue';
+import ApiKeyRateLimitsSection from './rateLimits/ApiKeyRateLimitsSection.vue';
+import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 
 const rootStore = useRootStore();
@@ -36,6 +39,11 @@ const i18n = useI18n();
 const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { isWorkflowReviewsAvailable } = useWorkflowReviewsFeature();
+const posthogStore = usePostHog();
+
+const isRateLimitSettingsEnabled = computed(() =>
+	posthogStore.isFeatureEnabled(PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG),
+);
 
 const mfaTooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
 const personalSpaceTooltipKey = 'settings.security.personalSpace.unlicensed_tooltip';
@@ -216,7 +224,7 @@ const sharingCountText = computed(() => {
 					</template>
 					<template #action>
 						<EnterpriseEdition :features="[EnterpriseEditionFeature.EnforceMFA]">
-							<ElSwitch
+							<N8nSwitch
 								:model-value="settingsStore.isMFAEnforced"
 								size="large"
 								:disabled="isManagedByEnv"
@@ -225,7 +233,7 @@ const sharingCountText = computed(() => {
 							/>
 							<template #fallback>
 								<N8nTooltip>
-									<ElSwitch
+									<N8nSwitch
 										:model-value="settingsStore.isMFAEnforced"
 										size="large"
 										:disabled="true"
@@ -274,7 +282,7 @@ const sharingCountText = computed(() => {
 					</template>
 					<template #action>
 						<EnterpriseEdition :features="[EnterpriseEditionFeature.PersonalSpacePolicy]">
-							<ElSwitch
+							<N8nSwitch
 								v-if="state !== undefined"
 								v-model="personalSpaceSharing"
 								size="large"
@@ -283,7 +291,7 @@ const sharingCountText = computed(() => {
 							/>
 							<template #fallback>
 								<N8nTooltip>
-									<ElSwitch
+									<N8nSwitch
 										v-if="state !== undefined"
 										:model-value="personalSpaceSharing"
 										size="large"
@@ -333,7 +341,7 @@ const sharingCountText = computed(() => {
 					</template>
 					<template #action>
 						<EnterpriseEdition :features="[EnterpriseEditionFeature.PersonalSpacePolicy]">
-							<ElSwitch
+							<N8nSwitch
 								v-if="state !== undefined"
 								v-model="personalSpacePublishing"
 								size="large"
@@ -342,7 +350,7 @@ const sharingCountText = computed(() => {
 							/>
 							<template #fallback>
 								<N8nTooltip>
-									<ElSwitch
+									<N8nSwitch
 										v-if="state !== undefined"
 										:model-value="personalSpacePublishing"
 										size="large"
@@ -396,6 +404,8 @@ const sharingCountText = computed(() => {
 				/>
 			</N8nSettingsRowGroup>
 		</N8nSettingsSection>
+
+		<ApiKeyRateLimitsSection v-if="isRateLimitSettingsEnabled" />
 
 		<N8nAlertDialog
 			:open="showPublishingDialog"

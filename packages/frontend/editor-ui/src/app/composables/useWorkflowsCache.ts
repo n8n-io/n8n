@@ -2,7 +2,7 @@ import { indexedDbCache } from '@/app/plugins/cache';
 import { jsonParse } from 'n8n-workflow';
 import { ref } from 'vue';
 
-const actionTypes = [
+export const actionTypes = [
 	'evaluations',
 	'errorWorkflow',
 	'timeSaved',
@@ -18,6 +18,9 @@ export interface UserEvaluationPreferences {
 }
 export interface WorkflowSettings {
 	firstActivatedAt?: number;
+	suggestedActions?: {
+		[K in ActionType]?: { ignored: boolean };
+	};
 	evaluationRuns?: UserEvaluationPreferences;
 }
 
@@ -40,6 +43,22 @@ export function useWorkflowSettingsCache() {
 		});
 	}
 
+	async function getMergedWorkflowSettings(workflowId: string): Promise<WorkflowSettings> {
+		const workflowSettings = await getWorkflowSettings(workflowId);
+
+		const cache = await getWorkflowsCache();
+		const globalPreferences = jsonParse<WorkflowSettings>(cache.getItem('*') ?? '', {
+			fallbackValue: {},
+		});
+
+		workflowSettings.suggestedActions = {
+			...(workflowSettings.suggestedActions ?? {}),
+			...(globalPreferences.suggestedActions ?? {}),
+		};
+
+		return workflowSettings;
+	}
+
 	async function upsertWorkflowSettings(
 		workflowId: string,
 		updates: Partial<WorkflowSettings>,
@@ -51,6 +70,14 @@ export function useWorkflowSettingsCache() {
 			...existingSettings,
 			...updates,
 		};
+
+		// Deep merge suggestedActions, and keep the stored ones when the update has none
+		if (existingSettings.suggestedActions || updates.suggestedActions) {
+			updatedSettings.suggestedActions = {
+				...(existingSettings.suggestedActions ?? {}),
+				...updates.suggestedActions,
+			};
+		}
 
 		cache.setItem(workflowId, JSON.stringify(updatedSettings));
 	}
@@ -64,6 +91,14 @@ export function useWorkflowSettingsCache() {
 				firstActivatedAt: Date.now(),
 			});
 		}
+	}
+
+	async function ignoreSuggestedAction(workflowId: string, action: ActionType): Promise<void> {
+		await upsertWorkflowSettings(workflowId, {
+			suggestedActions: {
+				[action]: { ignored: true },
+			},
+		});
 	}
 
 	async function getEvaluationPreferences(workflowId: string): Promise<UserEvaluationPreferences> {
@@ -82,10 +117,27 @@ export function useWorkflowSettingsCache() {
 		await upsertWorkflowSettings(workflowId, { evaluationRuns });
 	}
 
+	async function ignoreAllSuggestedActionsForAllWorkflows(actionsToIgnore: ActionType[]) {
+		await upsertWorkflowSettings(
+			'*',
+			actionsToIgnore.reduce<WorkflowSettings>((accu, key) => {
+				accu.suggestedActions = accu.suggestedActions ?? {};
+				accu.suggestedActions[key] = {
+					ignored: true,
+				};
+
+				return accu;
+			}, {}),
+		);
+	}
+
 	return {
 		getWorkflowSettings,
+		getMergedWorkflowSettings,
 		upsertWorkflowSettings,
 		updateFirstActivatedAt,
+		ignoreSuggestedAction,
+		ignoreAllSuggestedActionsForAllWorkflows,
 		getEvaluationPreferences,
 		saveEvaluationPreferences,
 		isCacheLoading,

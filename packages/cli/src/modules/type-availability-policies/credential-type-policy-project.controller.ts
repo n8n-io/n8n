@@ -1,4 +1,4 @@
-import { PutProjectPolicyDto } from '@n8n/api-types';
+import { PutCredentialTypeProjectPolicyDto } from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, ProjectScope, Put, RestController } from '@n8n/decorators';
@@ -42,7 +42,7 @@ export class CredentialTypePolicyProjectController {
 	async putProjectPolicy(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
-		@Body dto: PutProjectPolicyDto,
+		@Body dto: PutCredentialTypeProjectPolicyDto,
 	) {
 		const result = await this.service.setEffectivePolicy(
 			CREDENTIAL_TYPES_KIND,

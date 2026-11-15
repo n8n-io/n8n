@@ -4,23 +4,29 @@ A powerful scaffolding tool to quickly create custom n8n community nodes with be
 
 ## 🚀 Quick Start
 
-Create a new n8n node in seconds:
+Create a new n8n node in seconds with the `create` command of your package manager ([npm](https://docs.npmjs.com/cli/commands/npm-init), [pnpm](https://pnpm.io/cli/create), or [yarn](https://classic.yarnpkg.com/en/docs/cli/create)):
 
 ```bash
-npm create @n8n/node@latest # or pnpm/yarn/...
+npm create @n8n/node@latest
+pnpm create @n8n/node@latest
+yarn create @n8n/node
 ```
 
 Follow the interactive prompts to configure your node, or specify options directly:
 
 ```bash
-npm create @n8n/node my-awesome-node --template declarative/custom
+npm create @n8n/node n8n-nodes-my-app -- --template declarative/custom
 ```
+
+> **Note:** This package is a small wrapper around the `n8n-node new` command from [`@n8n/node-cli`](https://www.npmjs.com/package/@n8n/node-cli). The `create` command of each package manager resolves `@n8n/node` to this package.
 
 ## 📋 Command Line Options
 
 ```bash
-npm create @n8n/node [NAME] [OPTIONS]
+npm create @n8n/node [NAME] -- [OPTIONS]
 ```
+
+With npm, put `--` before the options. Without it, npm reads the options as its own settings and does not pass them to this tool.
 
 ### Options
 
@@ -44,11 +50,11 @@ The CLI will guide you through setting up your node:
 $ npm create @n8n/node
 ┌ @n8n/create-node
 │
-◇ What is your node called?
-│ my-awesome-api-node
+◇ Package name (must start with 'n8n-nodes-' or '@org/n8n-nodes-')
+│ n8n-nodes-my-app
 │
 ◇ What kind of node are you building?
-│ HTTP API
+│ Declarative
 │
 ◇ What template do you want to use?
 │ Start from scratch
@@ -65,14 +71,14 @@ $ npm create @n8n/node
 │
 ◇ Next Steps ─────────────────────────────────────────────────────────────────────╮
 │                                                                                  │
-│  cd ./my-awesome-api-node && npm run dev                                       │
+│  cd ./n8n-nodes-my-app && npm run dev                                          │
 │                                                                                  │
 │  📚 Documentation: https://docs.n8n.io/integrations/creating-nodes/            │
 │  💬 Community: https://community.n8n.io                                        │
 │                                                                                  │
 ├──────────────────────────────────────────────────────────────────────────────────╯
 │
-└ Created ./my-awesome-api-node ✨
+└ Created ./n8n-nodes-my-app ✨
 ```
 
 ## 🛠️ Development Workflow
@@ -80,7 +86,7 @@ $ npm create @n8n/node
 ### 1. Navigate to your project
 
 ```bash
-cd ./my-awesome-api-node
+cd ./n8n-nodes-my-app
 ```
 
 ### 2. Start development server
@@ -195,14 +201,13 @@ Runs [release-it](https://github.com/release-it/release-it) to handle the comple
 Your generated project includes:
 
 ```
-my-awesome-api-node/
-├── src/
-│   ├── nodes/
-│   │   └── MyAwesomeApi/
-│   │       ├── MyAwesomeApi.node.ts    # Main node logic
-│   │       └── MyAwesomeApi.node.json  # Node metadata
-│   └── credentials/
-│       └── MyAwesomeApiAuth.credentials.ts
+n8n-nodes-my-app/
+├── nodes/
+│   └── MyApp/
+│       ├── MyApp.node.ts    # Main node logic
+│       └── MyApp.node.json  # Node metadata
+├── credentials/
+│   └── MyAppApi.credentials.ts
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -216,14 +221,14 @@ The CLI reads configuration from your `package.json`:
 
 ```json
 {
-  "name": "n8n-nodes-my-awesome-node",
+  "name": "n8n-nodes-my-app",
   "n8n": {
     "n8nNodesApiVersion": 1,
     "nodes": [
-      "dist/nodes/MyAwesomeApi/MyAwesomeApi.node.js"
+      "dist/nodes/MyApp/MyApp.node.js"
     ],
     "credentials": [
-      "dist/credentials/MyAwesomeApiAuth.credentials.js"
+      "dist/credentials/MyAppApi.credentials.js"
     ]
   }
 }

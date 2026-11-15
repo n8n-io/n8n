@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { isRecord } from '@n8n/utils/is-record';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
 
 import N8nCommandBarItem from './CommandBarItem.vue';
@@ -61,6 +62,16 @@ const listId = useId();
 const inputRef = ref<HTMLInputElement>();
 const listRef = ref<HTMLElement>();
 const selectedKey = ref<string | null>(null);
+const itemRefs = new Map<string, { activateTrailing: () => void }>();
+
+function isCommandBarItemInstance(value: unknown): value is { activateTrailing: () => void } {
+	return isRecord(value) && typeof value.activateTrailing === 'function';
+}
+
+function setItemRef(key: string, element: unknown) {
+	if (isCommandBarItemInstance(element)) itemRefs.set(key, element);
+	else itemRefs.delete(key);
+}
 
 const rows = computed(() => {
 	const result: CommandBarRow[] = [];
@@ -163,7 +174,14 @@ function onInputKeydown(event: KeyboardEvent) {
 		case 'Enter': {
 			event.preventDefault();
 			const item = selectedItem.value;
-			if (item) selectItem(item, { newTab: event.metaKey || event.ctrlKey });
+			if (item?.disabled) {
+				// Only a row the user moved to: its trailing component already shows what Enter does.
+				if (selectedKey.value !== null && selectedRow.value) {
+					itemRefs.get(selectedRow.value.key)?.activateTrailing();
+				}
+			} else if (item) {
+				selectItem(item, { newTab: event.metaKey || event.ctrlKey });
+			}
 			break;
 		}
 		case 'Tab':
@@ -222,10 +240,86 @@ function maybeLoadMore() {
 	}
 }
 
+function moveInputCaret(input: HTMLInputElement, event: KeyboardEvent) {
+	const start = input.selectionStart ?? 0;
+	const end = input.selectionEnd ?? start;
+	const isBackward = input.selectionDirection === 'backward';
+	const anchor = isBackward ? end : start;
+	const caret = isBackward ? start : end;
+	const isLeft = event.key === 'ArrowLeft';
+	const boundaries = [
+		...Array.from(new Intl.Segmenter().segment(input.value), ({ index }) => index),
+		input.value.length,
+	];
+	if (isLeft) boundaries.reverse();
+	const nextCaret =
+		boundaries.find((position) => (isLeft ? position < caret : position > caret)) ??
+		(isLeft ? 0 : input.value.length);
+
+	if (event.shiftKey) {
+		input.setSelectionRange(
+			Math.min(anchor, nextCaret),
+			Math.max(anchor, nextCaret),
+			nextCaret < anchor ? 'backward' : 'forward',
+		);
+	} else {
+		const position = start === end ? nextCaret : isLeft ? start : end;
+		input.setSelectionRange(position, position);
+	}
+}
+
+/**
+ * A dialog opened over the bar keeps its keys, so typing in it does not change the search behind it.
+ * It also keeps Cmd+K: closing the bar would close that dialog with it.
+ */
+function isInStackedDialog(target: EventTarget | null, input: HTMLInputElement) {
+	const dialog = target instanceof Element ? target.closest('[role="dialog"]') : null;
+	return dialog !== null && !dialog.contains(input);
+}
+
 function onGlobalKeydown(event: KeyboardEvent) {
-	if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+	const isAltGraph = event.getModifierState('AltGraph');
+	if (!isAltGraph && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
 		event.preventDefault();
+		if (isOpen.value && inputRef.value && isInStackedDialog(event.target, inputRef.value)) return;
 		isOpen.value = !isOpen.value;
+		return;
+	}
+
+	const input = inputRef.value;
+	if (
+		!isOpen.value ||
+		!input ||
+		event.target === input ||
+		isInStackedDialog(event.target, input) ||
+		event.defaultPrevented ||
+		event.isComposing ||
+		event.metaKey ||
+		((event.ctrlKey || event.altKey) && !isAltGraph)
+	) {
+		return;
+	}
+
+	const isPrintable = event.key.length === 1;
+	if (!isPrintable && !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+		return;
+	}
+
+	input.focus();
+	onInputKeydown(event);
+	if (isPrintable) {
+		// The key event still targets the element that had focus before recovery.
+		event.preventDefault();
+		input.setRangeText(
+			event.key,
+			input.selectionStart ?? input.value.length,
+			input.selectionEnd ?? input.value.length,
+			'end',
+		);
+		query.value = input.value;
+	} else if (!event.defaultPrevented && ['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+		event.preventDefault();
+		moveInputCaret(input, event);
 	}
 }
 
@@ -349,9 +443,11 @@ onBeforeUnmount(() => {
 					</div>
 					<N8nCommandBarItem
 						v-else-if="row.type === 'item'"
+						:ref="(element) => setItemRef(row.key, element)"
 						:item="row.item"
 						:row-key="row.key"
 						:is-selected="row.key === selectedRow?.key"
+						:is-active="selectedKey !== null && row.key === selectedRow?.key"
 						:query="query"
 						@select="selectItem"
 						@hover="selectedKey = $event"
@@ -373,7 +469,7 @@ onBeforeUnmount(() => {
 					<span>{{ emptyText }}</span>
 					<N8nButton
 						v-if="isFilteredByTab"
-						variant="subtle"
+						variant="outline"
 						size="small"
 						data-test-id="command-bar-search-all"
 						@mousedown.prevent

@@ -1,0 +1,844 @@
+import type { SelfHealingConfigurationRepository } from '../database/self-healing-configuration.repository';
+import type { SelfHealingConfigurationService } from '../self-healing-configuration.service';
+import type { SelfHealingConfiguration } from '../database/self-healing-configuration.entity';
+import type { WorkflowSuggestionBaseline } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
+import type { InstanceAiConfig } from '@n8n/config';
+import type {
+	OperationContext,
+	Project,
+	SharedWorkflowRepository,
+	Transaction,
+	TransactionRunner,
+	User,
+} from '@n8n/db';
+import { BadRequestError, ConflictError, ForbiddenError } from '@n8n/errors';
+import { selfHealingOutputSchema, type CredentialResolutionResult } from '@n8n/instance-ai';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
+
+import type { Telemetry } from '@/telemetry';
+
+import type { DurableEventLog } from '../../event-bus/durable-event-log';
+import type { InterruptedRunSweeper } from '../../event-bus/interrupted-run-sweeper';
+import type { InstanceAiService } from '../../instance-ai.service';
+import type { InstanceAiEventLogRepository } from '../../repositories/instance-ai-event-log.repository';
+import type { SelfHealingResultRepository } from '../database/self-healing-result.repository';
+import type { WorkflowSuggestionService } from '../../workflow-suggestions/workflow-suggestion.service';
+import type { SelfHealingInvestigation } from '../database/self-healing-investigation.entity';
+import type { SelfHealingInvestigationRepository } from '../database/self-healing-investigation.repository';
+import type { SelfHealingResult } from '../database/self-healing-result.entity';
+import type { SelfHealingRunResult } from '../self-healing-agent.service';
+import type { SelfHealingExecutionReferenceService } from '../self-healing-execution-reference.service';
+import { SelfHealingInvestigationService } from '../self-healing-investigation.service';
+import type { SelfHealingResultService } from '../self-healing-result.service';
+
+const user = mock<User>({ id: 'actor' });
+const input = {
+	workflowId: 'workflow',
+	projectId: 'project',
+	backgroundUserId: user.id,
+	executionId: '123',
+};
+const baseline = mock<WorkflowSuggestionBaseline>({ ...input });
+
+describe('SelfHealingInvestigationService', () => {
+	const investigations = mock<SelfHealingInvestigationRepository>();
+	const results = mock<SelfHealingResultService>();
+	const suggestions = mock<WorkflowSuggestionService>();
+	const resultRepository = mock<SelfHealingResultRepository>();
+	const ownership = mock<SharedWorkflowRepository>();
+	const executions = mock<SelfHealingExecutionReferenceService>();
+	const runtime = mock<InstanceAiService>();
+	const events = mock<InstanceAiEventLogRepository>();
+	const eventLog = mock<DurableEventLog>();
+	const sweeper = mock<InterruptedRunSweeper>();
+	const txRunner = mock<TransactionRunner>();
+	const config = mock<InstanceAiConfig>({ workflowSuggestionsEnabled: true });
+	const logger = mock<Logger>();
+	const configurations = mock<SelfHealingConfigurationRepository>();
+	const configurationService = mock<SelfHealingConfigurationService>();
+	const configuration = mock<SelfHealingConfiguration>({
+		id: 1,
+		enabled: true,
+		enabledById: user.id,
+		includeSubWorkflows: false,
+	});
+	const telemetry = mock<Telemetry>();
+	const instanceSettings = mock<InstanceSettings>({ isLeader: true });
+	const { SELF_HEALING_EVALUATED_FAILURE, SELF_HEALING_FINISHED_INVESTIGATION } =
+		TELEMETRY_EVENT.SELF_HEALING;
+	const service = new SelfHealingInvestigationService(
+		investigations,
+		results,
+		suggestions,
+		resultRepository,
+		ownership,
+		executions,
+		runtime,
+		events,
+		eventLog,
+		sweeper,
+		txRunner,
+		config,
+		logger,
+		configurations,
+		configurationService,
+		telemetry,
+		instanceSettings,
+	);
+	let investigation: SelfHealingInvestigation;
+	let run: SelfHealingRunResult;
+	let execution: Promise<SelfHealingRunResult> | undefined;
+	let controller: AbortController;
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		config.workflowSuggestionsEnabled = true;
+		configuration.includeSubWorkflows = false;
+		configurations.findForWorkflow.mockResolvedValue(configuration);
+		configurations.findForUpdate.mockResolvedValue(configuration);
+		configurationService.resolveActorOrPause.mockResolvedValue(user);
+		investigations.finishWithoutResult.mockResolvedValue(true);
+		execution = undefined;
+		controller = new AbortController();
+		investigation = mock<SelfHealingInvestigation>({
+			...input,
+			id: 'investigation',
+			publishedVersionId: 'version',
+			configurationId: configuration.id,
+			threadId: 'private-thread',
+			runId: 'run',
+			resultId: null,
+			finishedAt: null,
+			createdAt: new Date(Date.now() - 300_000),
+		});
+		run = {
+			threadId: investigation.threadId,
+			runId: investigation.runId,
+			status: 'completed',
+			finishReason: 'stop',
+			output: {
+				outcome: 'could_not_fix',
+				summary: 'No fix found.',
+				report: 'The cause could not be determined.',
+				candidateWorkflowIds: [],
+			},
+			usage: { credits: 2, turns: 3, durationSeconds: 10 },
+		};
+		suggestions.requireEditor.mockResolvedValue(user);
+		suggestions.requireCurrentBaseline.mockResolvedValue(user);
+		suggestions.captureBaseline.mockResolvedValue(baseline);
+		ownership.getWorkflowOwningProject.mockResolvedValue(mock<Project>({ id: input.projectId }));
+		investigations.getForExecution.mockResolvedValue(null);
+		investigations.getUnfinishedForWorkflow.mockResolvedValue(null);
+		investigations.createInvestigation.mockResolvedValue(investigation);
+		resultRepository.getOpenForWorkflow.mockResolvedValue(null);
+		resultRepository.isInCooldown.mockResolvedValue(false);
+		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+		runtime.startSelfHealingRun.mockImplementation(async (_input, lifecycle) => {
+			execution = (async () => {
+				await lifecycle.onComplete(run, controller.signal);
+				return run;
+			})();
+			return await execution;
+		});
+		results.complete.mockResolvedValue(mock<SelfHealingResult>({ id: 'result' }));
+		events.getRunFinish.mockResolvedValue(null);
+		events.lastFactAt.mockResolvedValue(investigation.createdAt);
+	});
+
+	async function startAndFinish() {
+		const response = await service.start(input);
+		await vi.waitFor(() => expect(execution).toBeDefined());
+		await execution;
+		return response;
+	}
+
+	const tracked = (event: unknown) =>
+		telemetry.track.mock.calls.filter(([entry]) => entry === event).map(([, props]) => props);
+
+	it('does not admit an investigation when workflow suggestions are disabled', async () => {
+		config.workflowSuggestionsEnabled = false;
+
+		await expect(service.start(input)).rejects.toThrow('Self-healing investigations are disabled.');
+		expect(investigations.createInvestigation).not.toHaveBeenCalled();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+	});
+
+	it('uses server references and saves the result directly', async () => {
+		expect(await startAndFinish()).toEqual({
+			kind: 'investigation',
+			investigationId: investigation.id,
+		});
+		expect(runtime.startSelfHealingRun).toHaveBeenCalledWith(
+			{
+				user,
+				baseline,
+				configurationId: configuration.id,
+				includeSubWorkflows: false,
+				executionId: input.executionId,
+			},
+			expect.objectContaining({ threadId: investigation.threadId, runId: investigation.runId }),
+		);
+		expect(results.complete).toHaveBeenCalledWith(
+			expect.objectContaining({
+				investigationId: investigation.id,
+				baseline,
+				output: run.output,
+				usage: run.usage,
+			}),
+		);
+	});
+
+	it('passes the sub-workflow setting to the run', async () => {
+		configuration.includeSubWorkflows = true;
+
+		await startAndFinish();
+
+		expect(runtime.startSelfHealingRun).toHaveBeenCalledWith(
+			expect.objectContaining({ includeSubWorkflows: true }),
+			expect.anything(),
+		);
+	});
+
+	it('normalizes final report text before storage', async () => {
+		const value = ['xoxb', '1234567890', 'abcdefghij'].join('-');
+		const output = {
+			outcome: 'needs_you' as const,
+			summary: `The response contained ${value}.`,
+			report: `Check the HTTP Request node. Authorization: Bearer ${value}`,
+			candidateWorkflowIds: [],
+		};
+		run.output = output;
+
+		await startAndFinish();
+
+		expect(results.complete.mock.calls[0]?.[0]?.output).toEqual({
+			outcome: 'needs_you',
+			summary: 'The response contained [REDACTED].',
+			report: 'Check the HTTP Request node. Authorization: [REDACTED]',
+			candidateWorkflowIds: [],
+		});
+		expect(output.report).toContain(value);
+	});
+
+	it.each([
+		['summary', 80],
+		['report', 50_000],
+	] as const)('keeps %s within its limit after text replacement', async (field, limit) => {
+		const output = selfHealingOutputSchema.parse({
+			...run.output,
+			[field]: 'token=x '.repeat(Math.floor(limit / 8)).padEnd(limit, '.'),
+		});
+		run.output = output;
+
+		await startAndFinish();
+
+		expect(results.complete.mock.calls[0]?.[0]?.output[field]).toHaveLength(limit);
+		expect(results.complete.mock.calls[0]?.[0]?.output[field]).not.toContain('token=x');
+		expect(
+			selfHealingOutputSchema.safeParse(results.complete.mock.calls[0]?.[0]?.output).success,
+		).toBe(true);
+	});
+
+	it.each(['fix_ready', 'needs_you'] as const)(
+		'keeps a useful candidate for %s',
+		async (outcome) => {
+			run.output = {
+				outcome,
+				summary: 'Update the node.',
+				report: 'The node now uses the correct field.',
+				candidateWorkflowIds: ['workflow'],
+			};
+			run.candidates = [
+				{
+					baseline,
+					compile: vi.fn().mockResolvedValue({
+						success: true,
+						workflow: { nodes: [], connections: {} },
+						warnings: [],
+						credentialResolution: mock<CredentialResolutionResult>({
+							mockedCredentialsByNode: {},
+						}),
+					}),
+				},
+			];
+			await startAndFinish();
+			expect(results.complete.mock.calls[0]?.[0]?.candidates).toEqual([
+				{ baseline, graph: { nodes: [], connections: {} } },
+			]);
+		},
+	);
+
+	it.each([
+		{ missing: true, placeholders: false, outcome: 'needs_you' },
+		{ missing: false, placeholders: true, outcome: 'needs_you' },
+		{ missing: true, placeholders: true, outcome: 'needs_you' },
+		{ missing: false, placeholders: false, outcome: 'fix_ready' },
+	])(
+		'saves $outcome with missing credentials=$missing and placeholders=$placeholders',
+		async ({ missing, placeholders, outcome }) => {
+			const value = ['xoxb', '1234567890', 'abcdefghij'].join('-');
+			const output = {
+				outcome: 'fix_ready' as const,
+				summary: 'The workflow is fixed.',
+				report: 'The credential was created and verification passed.',
+				candidateWorkflowIds: ['workflow'],
+			};
+			const graph = { nodes: [], connections: {} };
+			run.output = output;
+			run.candidates = [
+				{
+					baseline,
+					compile: vi.fn().mockResolvedValue({
+						success: true,
+						workflow: graph,
+						warnings: placeholders
+							? [
+									{
+										code: 'unresolved_placeholders',
+										message: 'Fill in the channel in "Send message".',
+									},
+								]
+							: [],
+						credentialResolution: mock<CredentialResolutionResult>({
+							mockedNodeNames: ['Fetch Order'],
+							mockedCredentialTypes: missing ? ['httpHeaderAuth'] : [],
+							mockedCredentialsByNode: missing
+								? { [`Fetch Order ${value}`]: ['httpHeaderAuth'] }
+								: {},
+							resolvedCredentialsByNode: missing
+								? {}
+								: { 'Fetch Order': [{ type: 'openAiApi', id: null, name: 'Gateway credits' }] },
+						}),
+					}),
+				},
+			];
+
+			await startAndFinish();
+
+			const resultInput = results.complete.mock.calls[0]?.[0];
+			expect(resultInput?.output.outcome).toBe(outcome);
+			expect(resultInput?.candidates).toEqual([{ baseline, graph }]);
+			if (missing || placeholders) {
+				expect(resultInput?.output.summary).toContain('setup');
+				expect(resultInput?.output.summary).not.toBe(output.summary);
+				if (missing) {
+					expect(resultInput?.output.report).toContain('Fetch Order');
+					expect(resultInput?.output.report).toContain('[REDACTED]');
+					expect(resultInput?.output.report).toContain('httpHeaderAuth');
+				}
+				if (placeholders) expect(resultInput?.output.report).toContain('Fill in the channel');
+				expect(resultInput?.output.report).not.toContain(value);
+				expect(resultInput?.output.report).not.toContain('credential was created');
+				expect(resultInput?.output.report?.match(/^\*\*.+\*\*$/gm)).toEqual([
+					'**What happened**',
+					'**What changed**',
+				]);
+				expect(resultInput?.output.report).toContain('has not been applied');
+				expect(resultInput?.output.report).toContain('Continue in chat');
+			} else {
+				expect(resultInput?.output).toEqual(output);
+			}
+			expect(results.complete).toHaveBeenCalledWith(
+				expect.objectContaining({ investigationId: investigation.id }),
+			);
+		},
+	);
+
+	it('keeps a needs-attention report without changes', async () => {
+		run.output = {
+			outcome: 'needs_you',
+			summary: 'Reconnect the credential.',
+			report: 'The credential needs to be reconnected.',
+			candidateWorkflowIds: [],
+		};
+		await startAndFinish();
+		expect(results.complete.mock.calls[0]?.[0]?.output.outcome).toBe('needs_you');
+		expect(results.complete.mock.calls[0]?.[0]?.candidates).toBeUndefined();
+	});
+
+	describe('candidate groups', () => {
+		const subWorkflow = mock<WorkflowSuggestionBaseline>({
+			workflowId: 'sub-workflow',
+			original: { name: 'Calculate tax' },
+		});
+		const compiled = (name: string) => ({
+			success: true,
+			workflow: { nodes: [mock({ name })], connections: {} },
+			warnings: [],
+			credentialResolution: mock<CredentialResolutionResult>({
+				mockedCredentialsByNode: { [name]: ['httpHeaderAuth'] },
+			}),
+		});
+
+		beforeEach(() => {
+			run.output = {
+				outcome: 'fix_ready',
+				summary: 'Update the nodes.',
+				report: 'Both workflows now use the correct field.',
+				candidateWorkflowIds: ['workflow', 'sub-workflow'],
+			};
+			run.candidates = [
+				{
+					baseline,
+					compile: vi.fn().mockResolvedValue(compiled('Parent')),
+				},
+				{
+					baseline: subWorkflow,
+					compile: vi.fn().mockResolvedValue(compiled('Child')),
+				},
+			];
+		});
+
+		it('saves a candidate for each changed workflow', async () => {
+			await startAndFinish();
+
+			const resultInput = results.complete.mock.calls[0]?.[0];
+			expect(resultInput?.candidates?.map((candidate) => candidate.baseline)).toEqual([
+				baseline,
+				subWorkflow,
+			]);
+			expect(resultInput?.output.outcome).toBe('needs_you');
+			expect(resultInput?.output.report).toContain('Connect credentials for Parent');
+			expect(resultInput?.output.report).toContain(
+				'Connect credentials for Child in "Calculate tax"',
+			);
+		});
+
+		it('omits an unchanged candidate and its missing setup', async () => {
+			const unchanged = compiled('Child');
+			run.candidates![1] = {
+				baseline: mock<WorkflowSuggestionBaseline>({
+					workflowId: 'sub-workflow',
+					original: unchanged.workflow,
+				}),
+				compile: vi.fn().mockResolvedValue(unchanged),
+			};
+
+			await startAndFinish();
+
+			const resultInput = results.complete.mock.calls[0]?.[0];
+			expect(resultInput?.candidates?.map((candidate) => candidate.baseline)).toEqual([baseline]);
+			expect(resultInput?.output.report).toContain('Connect credentials for Parent');
+			expect(resultInput?.output.report).not.toContain('Connect credentials for Child');
+		});
+
+		it('creates no result when a candidate does not compile', async () => {
+			vi.mocked(run.candidates![1].compile).mockResolvedValue({
+				success: false,
+				reason: 'candidate_invalid',
+				errors: ['The node is invalid.'],
+			});
+
+			await expect(startAndFinish()).rejects.toThrow('The node is invalid.');
+			expect(results.complete).not.toHaveBeenCalled();
+		});
+
+		it('creates no result when a candidate file is unresolved', async () => {
+			delete run.candidates;
+
+			await expect(startAndFinish()).rejects.toThrow('The candidate files are unavailable.');
+			expect(results.complete).not.toHaveBeenCalled();
+		});
+	});
+
+	it.each(['cancelled', 'errored', 'suspended'] as const)(
+		'creates no result for a %s run',
+		async (status) => {
+			run.status = status;
+			run.output = {
+				outcome: 'fix_ready',
+				summary: 'Candidate checked.',
+				report: 'Verification passed.',
+				candidateWorkflowIds: ['workflow'],
+			};
+			const compile = vi.fn();
+			run.candidates = [{ baseline, compile }];
+			await startAndFinish();
+			expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id);
+			expect(compile).not.toHaveBeenCalled();
+			expect(results.complete).not.toHaveBeenCalled();
+			expect(configurationService.recheckAccess).not.toHaveBeenCalled();
+		},
+	);
+
+	it('rechecks configuration access when the agent returns an access error', async () => {
+		run.status = 'errored';
+		run.error = new ForbiddenError('Workflow edit access is required.');
+		delete run.output;
+
+		await expect(startAndFinish()).rejects.toBe(run.error);
+		await vi.waitFor(() =>
+			expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id),
+		);
+
+		expect(configurationService.recheckAccess).toHaveBeenCalledWith(
+			configuration.id,
+			input.projectId,
+			input.workflowId,
+		);
+		expect(results.complete).not.toHaveBeenCalled();
+	});
+
+	it.each(['error', 'max-iterations', 'other'] as const)(
+		'creates no result for termination reason %s',
+		async (finishReason) => {
+			run.finishReason = finishReason;
+			await startAndFinish();
+			expect(results.complete).not.toHaveBeenCalled();
+		},
+	);
+
+	it('creates no result when final output is missing', async () => {
+		run.output = undefined;
+		await startAndFinish();
+		expect(results.complete).not.toHaveBeenCalled();
+		expect(tracked(SELF_HEALING_FINISHED_INVESTIGATION)).toEqual([
+			expect.objectContaining({ outcome: 'no_result', termination_reason: 'invalid_output' }),
+		]);
+	});
+
+	it('does not run the model again for the same failed execution', async () => {
+		investigations.getForExecution.mockResolvedValue(investigation);
+		expect(await service.start(input)).toEqual({
+			kind: 'investigation',
+			investigationId: investigation.id,
+		});
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+		expect(executions.validateFailure).not.toHaveBeenCalled();
+		// The first delivery sent the event.
+		expect(telemetry.track).not.toHaveBeenCalled();
+	});
+
+	it('returns an open result instead of starting another investigation', async () => {
+		resultRepository.getOpenForWorkflow.mockResolvedValue(
+			mock<SelfHealingResult>({ id: 'open-result' }),
+		);
+		expect(await service.start(input)).toEqual({ kind: 'result', resultId: 'open-result' });
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+	});
+
+	it('does not accept output when cancellation arrives during the final baseline check', async () => {
+		const checking = createDeferredPromise();
+		const checked = createDeferredPromise();
+		suggestions.requireCurrentBaseline
+			.mockResolvedValueOnce(user)
+			.mockImplementationOnce(async () => {
+				checking.resolve();
+				await checked.promise;
+				return user;
+			});
+		await service.start(input);
+		await checking.promise;
+		controller.abort(new Error('Run cancelled'));
+		checked.resolve();
+		await expect(execution).rejects.toThrow('Run cancelled');
+		expect(results.complete).not.toHaveBeenCalled();
+		await vi.waitFor(() =>
+			expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id),
+		);
+	});
+
+	it('rechecks claims after admission waits', async () => {
+		investigations.getUnfinishedForWorkflow
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce(investigation);
+		await service.start(input);
+		expect(investigations.createInvestigation).not.toHaveBeenCalled();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+	});
+
+	it('rechecks open results inside the claim transaction', async () => {
+		const ctx: OperationContext = { trx: mock<Transaction>() };
+		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
+		resultRepository.getOpenForWorkflow
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce(mock<SelfHealingResult>({ id: 'completed-during-preparation' }));
+
+		await expect(service.start(input)).resolves.toEqual({
+			kind: 'result',
+			resultId: 'completed-during-preparation',
+		});
+		expect(resultRepository.getOpenForWorkflow).toHaveBeenLastCalledWith(
+			input.workflowId,
+			input.projectId,
+			ctx,
+		);
+		expect(investigations.createInvestigation).not.toHaveBeenCalled();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+	});
+
+	it('skips a cooldown before capturing a baseline or opening the claim', async () => {
+		resultRepository.isInCooldown.mockResolvedValue(true);
+
+		await expect(service.start(input)).resolves.toBeNull();
+
+		expect(resultRepository.isInCooldown).toHaveBeenCalledWith({
+			workflowId: input.workflowId,
+			projectId: input.projectId,
+			completedAfter: expect.any(Date),
+		});
+		expect(suggestions.captureBaseline).not.toHaveBeenCalled();
+		expect(executions.validateFailure).not.toHaveBeenCalled();
+		expect(suggestions.readWorkflowTargetForApply).not.toHaveBeenCalled();
+		expect(investigations.createInvestigation).not.toHaveBeenCalled();
+	});
+
+	it('returns existing work for the same execution during a cooldown', async () => {
+		investigations.getForExecution.mockResolvedValue(investigation);
+		resultRepository.isInCooldown.mockResolvedValue(true);
+
+		await expect(service.start(input)).resolves.toEqual({
+			kind: 'investigation',
+			investigationId: investigation.id,
+		});
+		expect(resultRepository.isInCooldown).not.toHaveBeenCalled();
+	});
+
+	it('checks a newly completed cannot-fix result inside the locked claim transaction', async () => {
+		const ctx: OperationContext = { trx: mock<Transaction>() };
+		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
+		suggestions.readWorkflowTargetForApply.mockImplementationOnce(async () => {
+			resultRepository.isInCooldown.mockResolvedValue(true);
+			return mock<Awaited<ReturnType<WorkflowSuggestionService['readWorkflowTargetForApply']>>>();
+		});
+
+		await expect(service.start(input)).resolves.toBeNull();
+
+		expect(resultRepository.isInCooldown).toHaveBeenLastCalledWith(
+			{
+				workflowId: input.workflowId,
+				projectId: input.projectId,
+				completedAfter: expect.any(Date),
+			},
+			ctx,
+		);
+		expect(investigations.createInvestigation).not.toHaveBeenCalled();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+	});
+
+	it('checks current access before returning existing work', async () => {
+		investigations.getForExecution.mockResolvedValue(investigation);
+		configurationService.resolveActorOrPause.mockResolvedValue(null);
+		await expect(service.start(input)).resolves.toBeNull();
+		expect(investigations.getForExecution).not.toHaveBeenCalled();
+	});
+
+	it('rejects a changed baseline before claiming or using a model', async () => {
+		suggestions.requireCurrentBaseline.mockRejectedValue(new ConflictError('Changed.'));
+		await expect(service.start(input)).rejects.toBeInstanceOf(ConflictError);
+		expect(investigations.createInvestigation).not.toHaveBeenCalled();
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
+	});
+
+	it('releases the claim when saving the result fails', async () => {
+		results.complete.mockRejectedValue(new Error('Database unavailable.'));
+		await expect(startAndFinish()).rejects.toThrow('Database unavailable.');
+		await vi.waitFor(() =>
+			expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id),
+		);
+	});
+
+	it('reconciles interrupted work through the Assistant lifecycle', async () => {
+		investigations.listUnfinished.mockResolvedValue([investigation]);
+		events.getRunFinish.mockResolvedValue({ status: 'interrupted', reason: 'crash_interrupted' });
+		await service.reconcile();
+		expect(sweeper.sweepRun).toHaveBeenCalledWith(investigation.threadId, investigation.runId);
+		expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id);
+		expect(results.complete).not.toHaveBeenCalled();
+	});
+
+	it('leaves a live run claimed', async () => {
+		investigations.listUnfinished.mockResolvedValue([investigation]);
+		runtime.isRunLive.mockReturnValue(true);
+		await service.reconcile();
+		expect(sweeper.sweepRun).not.toHaveBeenCalled();
+		expect(investigations.finishWithoutResult).not.toHaveBeenCalled();
+	});
+
+	it('releases a claim when the process stopped before creating the private thread', async () => {
+		investigations.listUnfinished.mockResolvedValue([investigation]);
+		events.lastFactAt.mockResolvedValue(null);
+		await service.reconcile();
+		expect(investigations.finishWithoutResult).toHaveBeenCalledWith(investigation.id);
+		expect(sweeper.sweepRun).not.toHaveBeenCalled();
+	});
+
+	it('does not reap a claim while another main can still be starting it', async () => {
+		investigation.createdAt = new Date();
+		investigations.listUnfinished.mockResolvedValue([investigation]);
+		await service.reconcile();
+		expect(sweeper.sweepRun).not.toHaveBeenCalled();
+		expect(investigations.finishWithoutResult).not.toHaveBeenCalled();
+	});
+
+	describe('telemetry', () => {
+		it('reports the decision to investigate and the saved result', async () => {
+			results.complete.mockResolvedValue(
+				mock<SelfHealingResult>({ id: 'result', outcome: 'could_not_fix' }),
+			);
+
+			await startAndFinish();
+
+			expect(tracked(SELF_HEALING_EVALUATED_FAILURE)).toEqual([
+				expect.objectContaining({
+					execution_id: input.executionId,
+					decision: 'investigate',
+					skip_reason: null,
+					investigation_id: investigation.id,
+					configuration_id: configuration.id,
+					user_id: user.id,
+				}),
+			]);
+			const [finished] = tracked(SELF_HEALING_FINISHED_INVESTIGATION);
+			expect(finished).toMatchObject({
+				investigation_id: investigation.id,
+				outcome: 'could_not_fix',
+				termination_reason: 'completed',
+				result_id: 'result',
+				turns: 3,
+				credits_charged: 2,
+			});
+			expect(SELF_HEALING_FINISHED_INVESTIGATION.getValidationError(finished)).toBeNull();
+		});
+
+		it.each([
+			['cooldown', () => resultRepository.isInCooldown.mockResolvedValue(true)],
+			[
+				'result_awaiting_review',
+				() => resultRepository.getOpenForWorkflow.mockResolvedValue(mock<SelfHealingResult>()),
+			],
+			[
+				'investigation_running',
+				() =>
+					investigations.getUnfinishedForWorkflow.mockResolvedValue(
+						mock<SelfHealingInvestigation>({ executionId: 'other' }),
+					),
+			],
+			[
+				'configuration_paused',
+				() => configurationService.resolveActorOrPause.mockResolvedValue(null),
+			],
+			[
+				'unpublished_changes',
+				() => suggestions.captureBaseline.mockRejectedValue(new ConflictError('Changed')),
+			],
+		] as const)('reports a skip with the reason %s', async (reason, arrange) => {
+			arrange();
+
+			await service.start(input).catch(() => {});
+
+			const events = tracked(SELF_HEALING_EVALUATED_FAILURE);
+			expect(events).toEqual([
+				expect.objectContaining({ decision: 'skip', skip_reason: reason, investigation_id: null }),
+			]);
+			expect(SELF_HEALING_EVALUATED_FAILURE.getValidationError(events[0])).toBeNull();
+		});
+
+		it.each([
+			[
+				'cooldown',
+				() => resultRepository.isInCooldown.mockResolvedValueOnce(false).mockResolvedValue(true),
+			],
+			[
+				'configuration_paused',
+				() =>
+					configurationService.resolveActorOrPause
+						.mockResolvedValueOnce(user)
+						.mockResolvedValue(null),
+			],
+		] as const)('keeps the reason %s from the final check', async (reason, arrange) => {
+			arrange();
+
+			await service.start(input);
+
+			expect(tracked(SELF_HEALING_EVALUATED_FAILURE)).toEqual([
+				expect.objectContaining({ decision: 'skip', skip_reason: reason }),
+			]);
+		});
+
+		it('reports an unwatched failure only when the project has a configuration', async () => {
+			configurations.findForWorkflow.mockResolvedValue(null);
+			await service.start(input);
+			expect(telemetry.track).not.toHaveBeenCalled();
+
+			configurations.hasConfiguration.mockResolvedValue(true);
+			await service.start(input);
+			expect(tracked(SELF_HEALING_EVALUATED_FAILURE)).toEqual([
+				expect.objectContaining({ skip_reason: 'not_watched', configuration_id: null }),
+			]);
+		});
+
+		it('reports a skip only on the leader, and an investigation on each main', async () => {
+			Object.assign(instanceSettings, { isLeader: false });
+			try {
+				resultRepository.isInCooldown.mockResolvedValue(true);
+				await service.start(input);
+				expect(telemetry.track).not.toHaveBeenCalled();
+
+				resultRepository.isInCooldown.mockResolvedValue(false);
+				await startAndFinish();
+				expect(tracked(SELF_HEALING_EVALUATED_FAILURE)).toEqual([
+					expect.objectContaining({ decision: 'investigate' }),
+				]);
+			} finally {
+				Object.assign(instanceSettings, { isLeader: true });
+			}
+		});
+
+		it.each([
+			['invalid_candidate', new BadRequestError('The candidate file is unavailable.')],
+			['workflow_changed', new ConflictError('Changed.')],
+			['save_failed', new Error('Database unavailable.')],
+		])('reports %s when a valid answer is not saved', async (reason, error) => {
+			results.complete.mockRejectedValue(error);
+			await expect(startAndFinish()).rejects.toThrow(error);
+			await vi.waitFor(() =>
+				expect(tracked(SELF_HEALING_FINISHED_INVESTIGATION)).toEqual([
+					expect.objectContaining({ outcome: 'no_result', termination_reason: reason }),
+				]),
+			);
+		});
+
+		it('reports a Fix ready answer with no workflow changes as an invalid candidate', async () => {
+			run.output = { ...run.output!, outcome: 'fix_ready' };
+
+			await expect(startAndFinish()).rejects.toThrow('The suggestion has no workflow changes.');
+
+			expect(results.complete).not.toHaveBeenCalled();
+			await vi.waitFor(() =>
+				expect(tracked(SELF_HEALING_FINISHED_INVESTIGATION)).toEqual([
+					expect.objectContaining({ termination_reason: 'invalid_candidate' }),
+				]),
+			);
+		});
+
+		it('reports a cancelled run when its investigation was deleted', async () => {
+			run.status = 'cancelled';
+			investigations.finishWithoutResult.mockResolvedValue(false);
+			investigations.findInvestigation.mockResolvedValue(null);
+
+			await startAndFinish();
+
+			expect(tracked(SELF_HEALING_FINISHED_INVESTIGATION)).toEqual([
+				expect.objectContaining({ termination_reason: 'cancelled', credits_charged: 2 }),
+			]);
+		});
+
+		it('reports an investigation only when the clean-up task closes it', async () => {
+			investigations.listUnfinished.mockResolvedValue([investigation, investigation]);
+			events.lastFactAt.mockResolvedValue(null);
+			// Another main finished the second investigation first.
+			investigations.finishWithoutResult.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+			investigations.findInvestigation.mockResolvedValue(investigation);
+			await service.reconcile();
+			expect(tracked(SELF_HEALING_FINISHED_INVESTIGATION)).toEqual([
+				expect.objectContaining({ termination_reason: 'crash_interrupted', result_id: null }),
+			]);
+		});
+	});
+});

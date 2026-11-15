@@ -96,12 +96,12 @@ describe('VectorStoreDatabricks', () => {
 	});
 
 	describe('description', () => {
-		it('is a hidden vector store node with the four default modes', () => {
+		it('is a visible vector store node with the four default modes', () => {
 			expect(node.description).toMatchObject({
 				name: 'vectorStoreDatabricks',
-				hidden: true,
 				credentials: [{ name: 'databricksOAuth2Api', required: true }],
 			});
+			expect(node.description.hidden).toBeUndefined();
 			const mode = node.description.properties.find((p) => p.name === 'mode');
 			expect(mode?.options?.map((option) => 'value' in option && option.value)).toEqual([
 				'load',
@@ -146,7 +146,7 @@ describe('VectorStoreDatabricks', () => {
 	});
 
 	describe('supplyData in retrieve mode', () => {
-		it('creates the store from the credential host and the shared fields', async () => {
+		it('creates the store from the credential host, the shared fields and the search options', async () => {
 			const store = {};
 			mockedFromExistingIndex.mockResolvedValue(store as DatabricksVectorStore);
 			mockedDescribeIndex.mockResolvedValue(indexInfo);
@@ -155,7 +155,8 @@ describe('VectorStoreDatabricks', () => {
 				mode: 'retrieve',
 				options: {
 					metadataColumns: ['source'],
-					metadata: { metadataValues: [{ name: 'source', value: 'hr' }] },
+					searchMode: 'HYBRID',
+					searchFilterJson: { source: 'hr' },
 				},
 			});
 
@@ -167,7 +168,7 @@ describe('VectorStoreDatabricks', () => {
 				indexName: 'cat.sch.idx',
 				contentColumn: 'text',
 				metadataColumns: ['source'],
-				queryType: 'ANN',
+				queryType: 'HYBRID',
 				filter: { source: 'hr' },
 				index: indexInfo,
 			});
@@ -426,8 +427,8 @@ describe('VectorStoreDatabricks', () => {
 
 		const setupSearchContext = (host: string, mode = 'load') => {
 			httpRequestWithAuthentication = vi.fn(
-				async (_type: string, options: { url: string; qs: Record<string, string> }) =>
-					options.url.endsWith('/endpoints')
+				async (_type: string, options: { url: unknown; qs: Record<string, string> }) =>
+					String(options.url).endsWith('/endpoints')
 						? pages.endpoints
 						: pages[`${options.qs.endpoint_name}:${options.qs.page_token ?? ''}`],
 			);
@@ -452,9 +453,16 @@ describe('VectorStoreDatabricks', () => {
 			expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(4);
 			for (const [type, options] of httpRequestWithAuthentication.mock.calls) {
 				expect(type).toBe('databricksOAuth2Api');
-				expect(options.url).toMatch(/^https:\/\/ws\.example\.com\/api\/2\.0\/vector-search\//);
 				expect(options.headers).toMatchObject({ 'User-Agent': DATABRICKS_PARTNER_USER_AGENT });
 			}
+			expect(
+				httpRequestWithAuthentication.mock.calls.map(([, options]) => String(options.url)),
+			).toEqual([
+				'https://ws.example.com/api/2.0/vector-search/endpoints',
+				'https://ws.example.com/api/2.0/vector-search/indexes',
+				'https://ws.example.com/api/2.0/vector-search/indexes',
+				'https://ws.example.com/api/2.0/vector-search/indexes',
+			]);
 		});
 
 		// Only insert writes, so only insert may narrow the list; the read modes query both types.

@@ -1,5 +1,5 @@
 import type { IBinaryData, IExecuteFunctions, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -22,7 +22,6 @@ vi.mock('../../../transport', async () => {
 
 const SITE_ID =
 	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
-const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 const FILE_ID = '01SPEVVYELNAJ4S3XKNBBIEUJZOWXGE64U';
 const FILE_BYTES = Buffer.from('col1,col2\n1,2\n');
 const DOWNLOAD_URL =
@@ -79,7 +78,7 @@ describe('Microsoft SharePoint v2 — File: Download', () => {
 		expect(apiRequest).toHaveBeenCalledTimes(1);
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`/v1.0/sites/${ENCODED_SITE_ID}/drive/items/${FILE_ID}`,
+			requestPath`/v1.0/sites/${SITE_ID}/drive/items/${FILE_ID}`,
 		);
 		const [payload, fileName, mimeType] = ctx.helpers.prepareBinaryData.mock.calls[0];
 		expect((payload as Buffer).equals(FILE_BYTES)).toBe(true);
