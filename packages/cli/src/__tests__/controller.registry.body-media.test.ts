@@ -1,4 +1,4 @@
-import type { GlobalConfig } from '@n8n/config';
+import type { PathResolvingService } from '@n8n/backend-services';
 import { Body, ControllerRegistryMetadata, Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import express from 'express';
@@ -25,10 +25,12 @@ describe('ControllerRegistry - @Body media guard', () => {
 		new ControllerRegistry(
 			mock<License>(),
 			authService,
-			mock<GlobalConfig>({ endpoints: { rest: 'rest' } }),
 			Container.get(ControllerRegistryMetadata),
 			lastActiveAtService,
 			new RateLimitService(),
+			mock<PathResolvingService>({
+				resolveRestEndpoint: (path = '') => `/rest${path ? `/${path}` : ''}`,
+			}),
 		).activate(express());
 	}
 

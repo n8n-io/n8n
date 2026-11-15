@@ -1,5 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { EventService, UrlService, CredentialsFinderService } from '@n8n/backend-services';
+import {
+	EventService,
+	PathResolvingService,
+	UrlService,
+	CredentialsFinderService,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { type AuthenticatedRequest, type CredentialsEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -38,6 +43,7 @@ describe('DynamicCredentialsController', () => {
 	const credentialsFinderService = mockInstance(CredentialsFinderService);
 	const dynamicCredentialService = mockInstance(DynamicCredentialService);
 	const urlService = mockInstance(UrlService);
+	const pathResolvingService = mockInstance(PathResolvingService);
 	const eventService = mockInstance(EventService);
 	mockInstance(CredentialConnectionStatusService);
 
@@ -64,6 +70,7 @@ describe('DynamicCredentialsController', () => {
 			status: 'unbound',
 		});
 		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
+		pathResolvingService.getBasePath.mockReturnValue('/');
 
 		// Default: the credential exists and is an end-user (resolvable) credential.
 		enterpriseCredentialsService.getOne.mockResolvedValue(
@@ -789,6 +796,62 @@ describe('DynamicCredentialsController', () => {
 			expect(res.redirect).toHaveBeenCalledWith(
 				`http://localhost:5678/signin?redirect=${encodeURIComponent(
 					'http://localhost:5678/rest/credentials/cred-1/authorize?token=tok',
+				)}`,
+			);
+			expect(oauthService.generateAOauth2AuthUri).not.toHaveBeenCalled();
+		});
+
+		it('builds the sign-in return URL without duplicating the base path', async () => {
+			const req = mock<Request>({
+				params: { id: 'cred-1' },
+				query: { token: 'tok' },
+				originalUrl: '/n8n/rest/credentials/cred-1/authorize?token=tok',
+			});
+			const res = mock<Response>();
+
+			pathResolvingService.getBasePath.mockReturnValue('/n8n');
+			urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678/n8n');
+			authorizeIntentService.get.mockResolvedValue({
+				credentialId: 'cred-1',
+				resolverId: 'resolver-123',
+				identity: 'bearer-jwt',
+				userId: 'user-1',
+				metadata: {},
+			});
+
+			await controller.authorizeCredentialRedirect(req, res);
+
+			expect(res.redirect).toHaveBeenCalledWith(
+				`http://localhost:5678/n8n/signin?redirect=${encodeURIComponent(
+					'http://localhost:5678/n8n/rest/credentials/cred-1/authorize?token=tok',
+				)}`,
+			);
+			expect(oauthService.generateAOauth2AuthUri).not.toHaveBeenCalled();
+		});
+
+		it('appends the base path to the sign-in URL when the editor URL omits it', async () => {
+			const req = mock<Request>({
+				params: { id: 'cred-1' },
+				query: { token: 'tok' },
+				originalUrl: '/n8n/rest/credentials/cred-1/authorize?token=tok',
+			});
+			const res = mock<Response>();
+
+			pathResolvingService.getBasePath.mockReturnValue('/n8n');
+			urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
+			authorizeIntentService.get.mockResolvedValue({
+				credentialId: 'cred-1',
+				resolverId: 'resolver-123',
+				identity: 'bearer-jwt',
+				userId: 'user-1',
+				metadata: {},
+			});
+
+			await controller.authorizeCredentialRedirect(req, res);
+
+			expect(res.redirect).toHaveBeenCalledWith(
+				`http://localhost:5678/n8n/signin?redirect=${encodeURIComponent(
+					'http://localhost:5678/n8n/rest/credentials/cred-1/authorize?token=tok',
 				)}`,
 			);
 			expect(oauthService.generateAOauth2AuthUri).not.toHaveBeenCalled();

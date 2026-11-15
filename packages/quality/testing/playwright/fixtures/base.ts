@@ -5,6 +5,7 @@ import type { ServiceHelpers } from 'n8n-containers/services/types';
 import type { N8NProcessUrl } from 'n8n-containers/stack';
 
 import { a11yFixtures, type A11yTestFixtures } from './a11y';
+import { getBasePath, getUrlOrigin, withBasePathRequest } from './base-path';
 import { shouldSkipContainerRequirement } from './capabilities';
 import { consoleErrorFixtures } from './console-error-monitor';
 import { containerFixtures, type ContainerWorkerFixtures } from './containers';
@@ -165,10 +166,11 @@ export const test = base.extend<
 	},
 
 	// `canvasRuns` installs its route before this fixture opens the page.
-	n8n: async ({ context, n8nStackConfig, canvasRuns }, use, testInfo) => {
+	n8n: async ({ context, frontendUrl, n8nStackConfig, canvasRuns }, use, testInfo) => {
 		void canvasRuns;
 		const apiOptions = { workflowSettings: workflowSettingsFor(n8nStackConfig) };
 		await setupDefaultInterceptors(context, apiOptions);
+		const frontendBasePath = getBasePath(frontendUrl);
 		const page = await context.newPage();
 
 		// Set debounce multiplier for E2E tests - 1 means normal timing (no change)
@@ -177,7 +179,11 @@ export const test = base.extend<
 			sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '1');
 		});
 
-		const n8nInstance = new n8nPage(page, new ApiHelpers(page.context().request, apiOptions));
+		const n8nInstance = new n8nPage(
+			page,
+			new ApiHelpers(withBasePathRequest(page.context().request, frontendBasePath), apiOptions),
+			frontendBasePath,
+		);
 		await n8nInstance.api.setupFromTags(testInfo.tags);
 
 		// Auth fallback: untagged tests establish the owner session
@@ -195,8 +201,11 @@ export const test = base.extend<
 	},
 
 	api: async ({ backendUrl, n8nStackConfig }, use, testInfo) => {
-		const context = await request.newContext({ baseURL: backendUrl });
-		const api = new ApiHelpers(context, { workflowSettings: workflowSettingsFor(n8nStackConfig) });
+		const basePath = getBasePath(backendUrl);
+		const context = await request.newContext({ baseURL: getUrlOrigin(backendUrl) });
+		const api = new ApiHelpers(withBasePathRequest(context, basePath), {
+			workflowSettings: workflowSettingsFor(n8nStackConfig),
+		});
 		await api.setupFromTags(testInfo.tags);
 
 		const hasAuthTag = testInfo.tags.some((tag) => tag.startsWith('@auth:'));
@@ -232,10 +241,11 @@ export const test = base.extend<
 				);
 			}
 
-			const context = await request.newContext({ baseURL: mainUrls[mainIndex] });
+			const basePath = getBasePath(mainUrls[mainIndex]);
+			const context = await request.newContext({ baseURL: getUrlOrigin(mainUrls[mainIndex]) });
 			contexts.push(context);
 
-			const api = new ApiHelpers(context, {
+			const api = new ApiHelpers(withBasePathRequest(context, basePath), {
 				workflowSettings: workflowSettingsFor(n8nStackConfig),
 			});
 			await api.setupFromTags(testInfo.tags.filter((tag) => tag.toLowerCase() !== '@db:reset'));

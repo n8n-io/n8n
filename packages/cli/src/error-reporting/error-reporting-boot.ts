@@ -5,7 +5,10 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { ErrorReporter, instanceTypeFromArgv } from 'n8n-core';
 
 import { N8N_RELEASE_DATE, N8N_VERSION } from '@/constants';
-import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
+import {
+	resolveBackendHealthEndpointPath,
+	resolveMainHealthEndpointPath,
+} from '@/utils/health-endpoint.util';
 
 export async function initErrorReporting(): Promise<void> {
 	try {
@@ -23,8 +26,16 @@ export async function initErrorReporting(): Promise<void> {
 			eventLoopBlockDetectionEnabled,
 		} = globalConfig.sentry;
 
+		const serverType = instanceTypeFromArgv(process.argv);
+		// Main process health routes are mounted under N8N_BASE_PATH; worker
+		// health routes stay bare because workers are reached directly.
+		const healthEndpoint =
+			serverType === 'worker'
+				? resolveBackendHealthEndpointPath(globalConfig)
+				: resolveMainHealthEndpointPath(globalConfig);
+
 		await Container.get(ErrorReporter).init({
-			serverType: instanceTypeFromArgv(process.argv),
+			serverType,
 			dsn: backendDsn,
 			environment,
 			release: `n8n@${N8N_VERSION}`,
@@ -38,7 +49,7 @@ export async function initErrorReporting(): Promise<void> {
 			webhookEndpoint: globalConfig.endpoints.webhook,
 			webhookTracesSampleRate,
 			profilingEnabled,
-			healthEndpoint: resolveBackendHealthEndpointPath(globalConfig),
+			healthEndpoint,
 			eligibleIntegrations: {
 				Express: true,
 				Http: true,

@@ -1,9 +1,10 @@
-import { UrlService } from '@n8n/backend-services';
+import { PathResolvingService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Router, ErrorRequestHandler, RequestHandler } from 'express';
 import express from 'express';
 import fs from 'fs/promises';
+import type { OpenAPIV3 } from 'openapi-types';
 import path from 'path';
 import type { JsonObject } from 'swagger-ui-express';
 
@@ -33,6 +34,42 @@ type SwaggerUiSystem = {
 	};
 };
 type OperationSummaryProps = { specPath?: ImmutableListLike };
+
+function joinUrlPaths(prefix: string, urlPath: string) {
+	const normalizedPrefix = prefix === '/' ? '' : prefix.replace(/\/+$/, '');
+	const normalizedPath = urlPath.replace(/^\/+/, '');
+
+	return normalizedPath ? `${normalizedPrefix}/${normalizedPath}` : normalizedPrefix || '/';
+}
+
+function stripLeadingSlash(urlPath: string) {
+	return urlPath.startsWith('/') ? urlPath.slice(1) : urlPath;
+}
+
+export function patchOpenApiServers(
+	openApiDocument: OpenAPIV3.Document,
+	basePath: string,
+): OpenAPIV3.Document {
+	if (basePath === '/') return openApiDocument;
+
+	return {
+		...openApiDocument,
+		servers: openApiDocument.servers?.map((server) => ({
+			...server,
+			url: server.url.startsWith('/') ? joinUrlPaths(basePath, server.url) : server.url,
+		})),
+	};
+}
+
+async function loadOpenApiDocument(openApiSpecPath: string, basePath: string) {
+	if (basePath === '/') return openApiSpecPath;
+
+	const YAML = await import('yaml');
+	const spec = await fs.readFile(openApiSpecPath, 'utf-8');
+	const openApiDocument = YAML.parse(spec) as OpenAPIV3.Document;
+
+	return patchOpenApiServers(openApiDocument, basePath);
+}
 
 function scopeBadgePlugin() {
 	const wrapOperationSummary =
@@ -73,27 +110,28 @@ function scopeBadgePlugin() {
 	return { wrapComponents: { OperationSummary: wrapOperationSummary } };
 }
 
-function createLazySwaggerMiddleware(
-	openApiSpecPath: string,
-	publicApiEndpoint: string,
-	version: string,
-): RequestHandler {
+function createLazySwaggerMiddleware(openApiSpecPath: string, version: string): RequestHandler {
 	let cachedRouter: Router | undefined;
 
 	return async (req, res, next) => {
 		if (!cachedRouter) {
 			const globalConfig = Container.get(GlobalConfig);
-			const n8nPath = globalConfig.path;
+			const pathResolvingService = Container.get(PathResolvingService);
+			const urlBasePath = pathResolvingService.getUrlBasePath();
+			const faviconPath = joinUrlPaths(urlBasePath, 'favicon.ico');
 
 			const YAML = await import('yaml');
 			const spec = await fs.readFile(openApiSpecPath, 'utf-8');
 			const openapiSpec = YAML.parse(spec) as JsonObject;
 			const swaggerDocument = stripGitBookParentTags(openapiSpec);
 			// add the server depending on the config so the user can interact with the API
-			// from the Swagger UI
-			swaggerDocument.server = [
+			// from the Swagger UI.
+			// `getInstanceBaseUrl()` already includes the configured base path, so we must
+			// combine it with the *bare* public API endpoint name to avoid double-prefixing.
+			const bareApiEndpoint = globalConfig.publicApi.path;
+			swaggerDocument.servers = [
 				{
-					url: `${Container.get(UrlService).getInstanceBaseUrl()}/${publicApiEndpoint}/${version}}`,
+					url: `${Container.get(UrlService).getInstanceBaseUrl()}/${bareApiEndpoint}/${version}`,
 				},
 			];
 
@@ -104,7 +142,7 @@ function createLazySwaggerMiddleware(
 			const swaggerSetupOpts = {
 				customCss: swaggerThemeCss,
 				customSiteTitle: 'n8n Public API UI',
-				customfavIcon: `${n8nPath}favicon.ico`,
+				customfavIcon: faviconPath,
 				swaggerOptions: {
 					plugins: [scopeBadgePlugin],
 				},
@@ -130,23 +168,36 @@ function createApiRouter(
 	version: string,
 	openApiSpecPath: string,
 	publicApiEndpoint: string,
+	basePath: string,
 ): Router {
 	const globalConfig = Container.get(GlobalConfig);
 	const payloadLimit = `${globalConfig.endpoints.payloadSizeMax}mb`;
 	const apiController = express.Router();
+	const mountedPublicApiEndpoint = stripLeadingSlash(joinUrlPaths(basePath, publicApiEndpoint));
 
 	if (!globalConfig.publicApi.swaggerUiDisabled) {
 		apiController.use(
-			`/${publicApiEndpoint}/${version}/docs`,
-			createLazySwaggerMiddleware(openApiSpecPath, publicApiEndpoint, version),
+			`/${mountedPublicApiEndpoint}/${version}/docs`,
+			createLazySwaggerMiddleware(openApiSpecPath, version),
 		);
 	}
 
-	apiController.get(`/${publicApiEndpoint}/${version}/openapi.yml`, (_, res) => {
+	apiController.get(`/${mountedPublicApiEndpoint}/${version}/openapi.yml`, async (_, res, next) => {
 		// Public, read-only spec with no auth or sensitive data - safe to expose
 		// cross-origin for documentation playgrounds
 		res.header('Access-Control-Allow-Origin', '*');
-		res.sendFile(openApiSpecPath);
+		if (basePath === '/') {
+			res.sendFile(openApiSpecPath);
+			return;
+		}
+
+		try {
+			const YAML = await import('yaml');
+			const openApiDocument = await loadOpenApiDocument(openApiSpecPath, basePath);
+			res.type('yaml').send(YAML.stringify(openApiDocument));
+		} catch (error) {
+			next(error);
+		}
 	});
 
 	// Error handler specifically for JSON parsing - must come immediately after express.json()
@@ -166,7 +217,7 @@ function createApiRouter(
 	};
 
 	apiController.use(
-		`/${publicApiEndpoint}/${version}`,
+		`/${mountedPublicApiEndpoint}/${version}`,
 		express.json({
 			limit: payloadLimit,
 			verify: (req, _res, buf) => {
@@ -194,6 +245,7 @@ function createApiRouter(
 
 export const loadPublicApiVersions = async (
 	publicApiEndpoint: string,
+	basePath: string = Container.get(PathResolvingService).getBasePath(),
 ): Promise<{ apiRouters: express.Router[]; apiLatestVersion: number }> => {
 	const folders = await fs.readdir(__dirname);
 	const versions = folders.filter((folderName) => folderName.startsWith('v'));
@@ -202,7 +254,7 @@ export const loadPublicApiVersions = async (
 
 	const apiRouters = versions.map((version) => {
 		const openApiPath = path.join(__dirname, version, 'openapi.yml');
-		return createApiRouter(version, openApiPath, publicApiEndpoint);
+		return createApiRouter(version, openApiPath, publicApiEndpoint, basePath);
 	});
 
 	const version = versions.pop()?.charAt(1);

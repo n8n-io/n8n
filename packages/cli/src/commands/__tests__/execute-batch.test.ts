@@ -92,6 +92,9 @@ test('should start a task runner and the policy modules', async () => {
 	Container.set(
 		GlobalConfig,
 		mock<GlobalConfig>({
+			path: '/',
+			basePath: '',
+			endpoints: { health: 'healthz' },
 			taskRunners: {},
 			codeExecution: { backend: 'task-runners' },
 			nodes: {},

@@ -97,6 +97,7 @@ export interface SetupProps {
 	enabledFeatures?: BooleanLicenseFeature[];
 	quotas?: Partial<{ [K in NumericLicenseFeature]: number }>;
 	modules?: ModuleName[];
+	basePath?: string;
 	/** Override the default test timeout (ms) for the shared `beforeAll` setup hook. */
 	setupTimeout?: number;
 	/** Reuse the bound HTTP server across agents. */

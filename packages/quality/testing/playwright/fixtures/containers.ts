@@ -3,6 +3,7 @@ import { request } from '@playwright/test';
 import { createN8NStack } from 'n8n-containers/stack';
 import type { N8NConfig, N8NStack } from 'n8n-containers/stack';
 
+import { getBasePath, getUrlOrigin, withBasePathRequest } from './base-path';
 import { CAPABILITIES, type CapabilityOption } from './capabilities';
 import { ApiHelpers } from '../services/api-helper';
 import { getBackendUrl } from '../utils/url-helper';
@@ -89,8 +90,11 @@ export const containerFixtures: Fixtures<object, ContainerWorkerFixtures> = {
 		async ({ n8nContainer, n8nStackConfig }, use) => {
 			if (n8nContainer) {
 				console.log('Resetting database for new container');
-				const apiContext = await request.newContext({ baseURL: n8nContainer.baseUrl });
-				const api = new ApiHelpers(apiContext);
+				const basePath = getBasePath(n8nContainer.baseUrl);
+				const apiContext = await request.newContext({
+					baseURL: getUrlOrigin(n8nContainer.baseUrl),
+				});
+				const api = new ApiHelpers(withBasePathRequest(apiContext, basePath));
 				await api.resetDatabase();
 				await apiContext.dispose();
 

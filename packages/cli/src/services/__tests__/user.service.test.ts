@@ -1,6 +1,12 @@
 import type { OperationContext, TransactionRunner } from '@n8n/db';
 import { InviteUsersRequestDto } from '@n8n/api-types';
-import { type EventService, UrlService, type RoleService, JwtService } from '@n8n/backend-services';
+import {
+	type EventService,
+	type PathResolvingService,
+	UrlService,
+	type RoleService,
+	JwtService,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -51,7 +57,10 @@ describe('UserService', () => {
 		editorBaseUrl: '',
 		webhookUrl: '',
 	});
-	const urlService = new UrlService(globalConfig);
+	const urlService = new UrlService(
+		globalConfig,
+		mock<PathResolvingService>({ getBasePath: () => '/', getUrlBasePath: () => '/' }),
+	);
 	const manager = mock<EntityManager>();
 	const userRepository = mockInstance(UserRepository, {
 		manager,
