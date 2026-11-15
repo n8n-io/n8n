@@ -266,8 +266,7 @@ function buildHelmSetFlags(
 			'--set env.shared.N8N_LICENSE_CERT.secretKeyRef.key=certificate',
 		);
 	}
-	// The preparation script creates this Secret only when both host inputs are set.
-	if (process.env.N8N_LICENSE_ACTIVATION_KEY && process.env.N8N_LICENSE_TENANT_ID) {
+	if (process.env.N8N_LICENSE_ACTIVATION_KEY) {
 		if (envOverrides?.N8N_LICENSE_ACTIVATION_KEY === undefined) {
 			flags.push(
 				'--set license.enabled=true',
@@ -290,8 +289,8 @@ function buildHelmSetFlags(
 /**
  * Runs the chart's own CI preparation script. It creates the Secrets that the
  * overlays name and starts the Postgres and Redis fixtures, so this stack
- * follows the chart when those change. The script creates the activation-key
- * Secret only when both licence variables are set.
+ * follows the chart when those change. The default tenant ID matches n8n and
+ * lets the script create the licence Secret when the host sets only the key.
  */
 async function prepareCluster(
 	chartDir: string,
@@ -304,7 +303,7 @@ async function prepareCluster(
 		{
 			...env,
 			ACTIVATION_KEY: process.env.N8N_LICENSE_ACTIVATION_KEY,
-			TENANT_ID: process.env.N8N_LICENSE_TENANT_ID,
+			TENANT_ID: process.env.N8N_LICENSE_TENANT_ID || '1',
 		},
 		'Prepare cluster',
 		deadline,

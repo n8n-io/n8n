@@ -102,11 +102,18 @@ describe('Helm stack licensing', () => {
 		if (chartDir) rmSync(chartDir, { recursive: true, force: true });
 	});
 
-	test.each(['standalone', 'minimal'])(
-		'passes activation-key licensing to %s through the prepared Secret',
-		async (example) => {
+	test.each(
+		['standalone', 'minimal'].flatMap((example) =>
+			[
+				{ tenantId: 'test-tenant-id', expectedTenantId: 'test-tenant-id' },
+				{ tenantId: undefined, expectedTenantId: '1' },
+				{ tenantId: '', expectedTenantId: '1' },
+			].map((tenant) => ({ example, ...tenant })),
+		),
+	)(
+		'passes activation-key licensing to $example with host tenant ID "$tenantId"',
+		async ({ example, tenantId, expectedTenantId }) => {
 			const activationKey = 'test-activation-key';
-			const tenantId = 'test-tenant-id';
 			vi.stubEnv('N8N_LICENSE_ACTIVATION_KEY', activationKey);
 			vi.stubEnv('N8N_LICENSE_TENANT_ID', tenantId);
 
@@ -117,7 +124,7 @@ describe('Helm stack licensing', () => {
 			);
 			expect(prepareCall?.[1].env).toMatchObject({
 				ACTIVATION_KEY: activationKey,
-				TENANT_ID: tenantId,
+				TENANT_ID: expectedTenantId,
 			});
 			const installCommand = execAsync.mock.calls.find(([command]) =>
 				command.startsWith('helm install '),
@@ -133,7 +140,7 @@ describe('Helm stack licensing', () => {
 			);
 			const commands = execAsync.mock.calls.map(([command]) => command).join('\n');
 			const logs = vi.mocked(console.log).mock.calls.flat().join('\n');
-			for (const value of [activationKey, tenantId]) {
+			for (const value of [activationKey, ...(tenantId ? [tenantId] : [])]) {
 				expect(commands).not.toContain(value);
 				expect(logs).not.toContain(value);
 			}
@@ -144,7 +151,6 @@ describe('Helm stack licensing', () => {
 
 	test.each([
 		{ activationKey: undefined, tenantId: undefined },
-		{ activationKey: 'test-activation-key', tenantId: undefined },
 		{ activationKey: undefined, tenantId: 'test-tenant-id' },
 	])('does not reference an absent licence Secret for %j', async ({ activationKey, tenantId }) => {
 		vi.stubEnv('N8N_LICENSE_ACTIVATION_KEY', activationKey);
