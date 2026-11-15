@@ -75,6 +75,12 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "<html><head>test</head></html>".removeTags() }}')).toEqual('test');
 		});
 
+		test('.removeTags should keep the text after a < that does not start a tag', () => {
+			expect(evaluate('={{ "price < 100 USD".removeTags() }}')).toEqual('price < 100 USD');
+			expect(evaluate('={{ "a<2 and b>1".removeTags() }}')).toEqual('a<2 and b>1');
+			expect(evaluate('={{ "<b>bold</b> < 100".removeTags() }}')).toEqual('bold < 100');
+		});
+
 		test('.removeMarkdown should work correctly on a string', () => {
 			expect(evaluate('={{ "<html><head>test</head></html>".removeMarkdown() }}')).toEqual('test');
 		});

@@ -9,6 +9,8 @@ const toSentenceCase = stringExtensions.functions.toSentenceCase as (value: stri
 
 const toFloat = stringExtensions.functions.toFloat as (value: string) => number;
 
+const removeTags = stringExtensions.functions.removeTags as (value: string) => string;
+
 describe('extractUrlPath (imperative parser, no URL constructor)', () => {
 	it.each([
 		['https://example.com/path', '/path'],
@@ -78,5 +80,26 @@ describe('toFloat', () => {
 
 	it('should not accept a symbol that is not in the list', () => {
 		expect(() => toFloat('Rb5')).toThrow();
+	});
+});
+
+describe('removeTags', () => {
+	it.each([
+		['<b>bold</b>, <a href="x">link</a>', 'bold, link'],
+		['<html><head>test</head></html>', 'test'],
+		['<!-- note -->text<br/>', 'text'],
+		['line<br', 'line'],
+	])('removes tags from %j', (input, expected) => {
+		expect(removeTags(input)).toBe(expected);
+	});
+
+	it.each([
+		['price < 100 USD', 'price < 100 USD'],
+		['a<2 and b>1', 'a<2 and b>1'],
+		['x <= y', 'x <= y'],
+		['<3 thanks', '<3 thanks'],
+		['1 < 2 <b>bold</b>', '1 < 2 bold'],
+	])('keeps a < that does not start a tag in %j', (input, expected) => {
+		expect(removeTags(input)).toBe(expected);
 	});
 });
