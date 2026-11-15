@@ -1,5 +1,6 @@
 import { request, type APIRequestContext } from '@playwright/test';
 
+import { N8N_AUTH_COOKIE } from '../config/constants';
 import { ApiHelpers, type UserRole } from '../services/api-helper';
 import { TestError } from '../Types';
 
@@ -25,6 +26,24 @@ export function roleFromTags(tags: string[]): SessionRole {
 
 export function wantsReset(tags: string[]): boolean {
 	return lowerCase(tags).includes('@db:reset');
+}
+
+/** Keeps the backend session valid on an editor that proxies requests from another host. */
+export function storageStateForEditor(
+	session: StorageState,
+	backendUrl: string,
+	editorUrl: string,
+): StorageState {
+	const backendHost = new URL(backendUrl).hostname;
+	const editorHost = new URL(editorUrl).hostname;
+	return {
+		...session,
+		cookies: session.cookies.map((cookie) =>
+			cookie.name === N8N_AUTH_COOKIE && cookie.domain === backendHost
+				? { ...cookie, domain: editorHost }
+				: cookie,
+		),
+	};
 }
 
 /** Signs in once and returns the session for the API and browser contexts. */

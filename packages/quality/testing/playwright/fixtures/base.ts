@@ -14,7 +14,13 @@ import {
 	workflowSettingsFor,
 } from './engine-parity';
 import { resolveConfig } from './resolve-config';
-import { roleFromTags, signIn, wantsReset, type StorageState } from './session';
+import {
+	roleFromTags,
+	signIn,
+	storageStateForEditor,
+	wantsReset,
+	type StorageState,
+} from './session';
 import { startSut, type Sut } from './sut';
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { backendV8CoverageFixtures } from '../fixtures/backend-v8-coverage';
@@ -174,13 +180,13 @@ export const test = base.extend<
 		guard.assertRoutedToEngine();
 	},
 
-	page: async ({ page, session, apiOptions, canvasRuns }, use, testInfo) => {
+	page: async ({ page, session, sut, apiOptions, canvasRuns }, use, testInfo) => {
 		void canvasRuns;
 		const consoleErrors = watchConsoleErrors(page.context());
 		await setupDefaultInterceptors(page.context(), apiOptions);
 		// 1 keeps normal debounce timing. Lower values speed tests up, but 0 causes races.
 		await page.addInitScript(() => sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '1'));
-		await page.context().setStorageState(session);
+		await page.context().setStorageState(storageStateForEditor(session, sut.url, sut.editorUrl));
 		await use(page);
 		await consoleErrors.report(testInfo);
 	},
