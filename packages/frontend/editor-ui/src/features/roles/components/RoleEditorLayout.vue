@@ -70,7 +70,7 @@ const emit = defineEmits<{
 				</N8nHeading>
 			</div>
 			<div v-if="showEditButtons" :class="$style.headerActions">
-				<N8nButton variant="subtle" :disabled="!hasUnsavedChanges" @click="emit('discard')">
+				<N8nButton variant="outline" :disabled="!hasUnsavedChanges" @click="emit('discard')">
 					{{ labels.discardChanges }}
 				</N8nButton>
 				<N8nButton :disabled="!hasUnsavedChanges" @click="emit('save')">

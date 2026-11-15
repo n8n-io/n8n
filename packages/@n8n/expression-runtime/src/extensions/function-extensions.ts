@@ -43,13 +43,15 @@ const not = (value: unknown): boolean => {
 	return !value;
 };
 
+const DOT_SEGMENT = /(^|[/\\])\.{1,2}([/\\]|$)/;
+
 function toPathSegment(input: unknown): string {
 	if (input === null || input === undefined) {
 		throw new ExpressionExtensionError('Invalid identifier: a value is required');
 	}
 
 	const value = String(input);
-	if (value === '' || value === '.' || value === '..') {
+	if (value === '' || DOT_SEGMENT.test(value)) {
 		throw new ExpressionExtensionError(`Invalid identifier: "${value}" is not allowed`);
 	}
 
@@ -89,7 +91,8 @@ ifEmpty.doc = {
 		{ name: 'value', type: 'any' },
 		{ name: 'defaultValue', type: 'any' },
 	],
-	docURL: 'https://docs.n8n.io/code/builtin/convenience',
+	docURL:
+		'https://docs.n8n.io/build/work-with-data/transform-data/expression-reference/root#dollarifempty',
 };
 
 export const extendedFunctions = {

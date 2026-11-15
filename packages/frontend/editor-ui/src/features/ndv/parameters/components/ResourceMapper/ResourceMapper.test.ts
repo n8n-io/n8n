@@ -85,12 +85,82 @@ describe('ResourceMapper.vue', () => {
 		).toBe(MAPPING_COLUMNS_RESPONSE.fields.length + 1);
 	});
 
+	// Read-only renders pass full props without `{ merge: true }`: lodash merge
+	// mutates the shared DEFAULT_SETUP, and a leaked `isReadOnly` would stop every
+	// later test from fetching.
+	const readOnlyWithSavedSchema = () =>
+		renderComponent({
+			props: {
+				isReadOnly: true,
+				node: createTestNode({
+					parameters: {
+						columns: {
+							mappingMode: 'defineBelow',
+							value: { 'First name': 'Ada' },
+							schema: UPDATED_SCHEMA,
+						},
+					},
+				}),
+				parameter: createTestNodeProperties({
+					name: 'columns',
+					type: 'resourceMapper',
+					typeOptions: {
+						resourceMapper: {
+							mode: 'upsert',
+							resourceMapperMethod: 'getMappingColumns',
+						} as ResourceMapperTypeOptions,
+					},
+				}),
+			},
+		});
+
 	it('renders correctly in read only mode', async () => {
-		const { getByTestId } = renderComponent({ props: { isReadOnly: true } });
+		const { getByTestId } = readOnlyWithSavedSchema();
 		await waitAllPromises();
 		expect(getByTestId('mapping-mode-select').querySelector('input')).toBeDisabled();
 		expect(getByTestId('matching-column-select').querySelector('input')).toBeDisabled();
 		expect(getByTestId('mapping-fields-container').querySelector('input')).toBeDisabled();
+	});
+
+	it('does not fetch fields in read only mode and renders the saved schema', async () => {
+		const { getByTestId } = readOnlyWithSavedSchema();
+		await waitAllPromises();
+
+		expect(fetchFieldsSpy).not.toHaveBeenCalled();
+		// Every field of the saved schema that is not removed
+		expect(
+			getByTestId('mapping-fields-container').querySelectorAll('.parameter-input').length,
+		).toBe(4);
+	});
+
+	it('does not fetch fields in read only mode without a saved schema', async () => {
+		renderComponent({ props: { isReadOnly: true } });
+		await waitAllPromises();
+
+		expect(fetchFieldsSpy).not.toHaveBeenCalled();
+	});
+
+	it('does not fetch fields in read only mode when a dependency changes', async () => {
+		const { rerender } = renderComponent({
+			props: {
+				isReadOnly: true,
+				dependentParametersValues: null,
+				node: createTestNode({
+					parameters: { columns: { mappingMode: 'defineBelow', value: null } },
+				}),
+			},
+			global: {
+				provide: {
+					[ResourceMapperRefreshEmptySchemaKey as symbol]: true,
+				},
+			},
+		});
+		await waitAllPromises();
+
+		await rerender({ dependentParametersValues: 'table-id' });
+		await waitAllPromises();
+
+		expect(fetchFieldsSpy).not.toHaveBeenCalled();
 	});
 
 	it('renders add mode properly', async () => {
@@ -402,6 +472,64 @@ describe('ResourceMapper.vue', () => {
 		});
 		await waitAllPromises();
 		expect(fetchFieldsSpy).not.toHaveBeenCalled();
+	});
+
+	describe('reading the saved value', () => {
+		const parameter = createTestNodeProperties({
+			name: 'columns',
+			typeOptions: { resourceMapper: { mode: 'add' } as ResourceMapperTypeOptions },
+		});
+		const savedValue = (firstName: string) => ({
+			mappingMode: 'defineBelow',
+			value: { 'First name': firstName },
+			schema: UPDATED_SCHEMA,
+		});
+
+		it('reads a top-level mapper', async () => {
+			const { getByDisplayValue } = renderComponent({
+				props: {
+					parameter,
+					path: 'parameters.columns',
+					node: createTestNode({ parameters: { columns: savedValue('Ana') } }),
+				},
+			});
+			await waitAllPromises();
+
+			expect(getByDisplayValue('Ana')).toBeInTheDocument();
+		});
+
+		it('reads a top-level mapper when the path has no parameters prefix', async () => {
+			const { getByDisplayValue } = renderComponent({
+				props: {
+					parameter,
+					path: 'columns',
+					node: createTestNode({ parameters: { columns: savedValue('Ana') } }),
+				},
+			});
+			await waitAllPromises();
+
+			expect(getByDisplayValue('Ana')).toBeInTheDocument();
+		});
+
+		it('reads a mapper inside a fixedCollection entry', async () => {
+			const { getByDisplayValue, queryByDisplayValue } = renderComponent({
+				props: {
+					parameter,
+					path: 'parameters.entries.entry[1].columns',
+					node: createTestNode({
+						parameters: {
+							entries: {
+								entry: [{ columns: savedValue('Bob') }, { columns: savedValue('Ana') }],
+							},
+						},
+					}),
+				},
+			});
+			await waitAllPromises();
+
+			expect(getByDisplayValue('Ana')).toBeInTheDocument();
+			expect(queryByDisplayValue('Bob')).not.toBeInTheDocument();
+		});
 	});
 
 	it('reconciles an incomplete cached schema by default when refreshIncompleteSchemaOnOpen is set', async () => {

@@ -66,6 +66,8 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const isCreateNodeActive = ref<boolean>(false);
 
 	const openingContext = ref<null | 'replacement'>(null);
+	/** True when the setup panel started the replacement, so the creator opens beside it. */
+	const isReplacingFromSetupPanel = ref(false);
 	const pendingInitialViewStack = ref<ViewStack | null>(null);
 
 	const nodePanelSessionId = ref<string>('');
@@ -247,6 +249,9 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		if (!nodeType) {
 			return;
 		}
+		// This entry point is not associated with a node-creator action. Clear a
+		// previous source so consumers do not attribute this open to stale context.
+		setOpenSource('');
 		setNodeCreatorState({
 			workflowId,
 			createNodeActive: true,
@@ -391,7 +396,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		}
 		const { results_count, trigger_count, regular_count, community_count } = filteredNodes.reduce(
 			(accu, node) => {
-				if (!('properties' in node)) {
+				if (!('properties' in node) || node.type === 'command') {
 					return accu;
 				}
 				const isCustomAction =
@@ -488,6 +493,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	return {
 		isCreateNodeActive,
 		openingContext,
+		isReplacingFromSetupPanel,
 		openSource,
 		selectedView,
 		mergedNodes,

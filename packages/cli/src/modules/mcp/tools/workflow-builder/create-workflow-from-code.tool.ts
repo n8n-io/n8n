@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import {
 	type Folder,
+	type OperationContext,
 	type Project,
 	type ProjectRepository,
 	type User,
@@ -9,10 +10,10 @@ import {
 import z from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
-import type { NodeTypes } from '@/node-types';
+import type { DataTableUserOperations } from '@n8n/backend-module-data-table';
+import type { INodeTypes } from 'n8n-workflow';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -30,6 +31,7 @@ import {
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
 import { getErrorCode } from './error-code.utils';
+import { validateScheduleTriggerIntervals } from './schedule-trigger-validation';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import { topLevelItemsWarning } from './top-level-items-warning';
 import {
@@ -38,12 +40,16 @@ import {
 	versionDescriptionInputSchema,
 	versionNameInputSchema,
 } from './version-metadata';
+import {
+	buildUninstalledNodeWarnings,
+	type FindUninstalledNodeTypes,
+} from './uninstalled-node-warnings';
 import type { McpPostSaveMetricsService } from '../../mcp-post-save-metrics.service';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import type { Telemetry } from '@/telemetry';
 import {
 	dropInvalidWorkflowGroups,
@@ -52,6 +58,18 @@ import {
 } from '@/workflow-helpers';
 
 const MAX_WORKFLOW_DESCRIPTION_LENGTH = 255;
+
+export type CreateWorkflowFromCodeToolOptions = {
+	/**
+	 * Reports which of the workflow's node types are verified community nodes
+	 * that are not installed here, so creation can warn that the workflow will
+	 * not run yet. Supplied only on surfaces that offer community-node
+	 * discovery, which keeps this tool independent of the node catalog.
+	 */
+	findUninstalledNodeTypes?: FindUninstalledNodeTypes;
+	/** Whether this session can call the install tool; steers the warning text. */
+	installToolAvailable?: boolean;
+};
 
 function normalizeWorkflowDescription(description?: string) {
 	if (!description) return { description: undefined, truncated: false };
@@ -306,13 +324,15 @@ export const createCreateWorkflowFromCodeTool = (
 	workflowFinderService: WorkflowFinderService,
 	urlService: UrlService,
 	telemetry: Telemetry,
-	nodeTypes: NodeTypes,
+	nodeTypes: INodeTypes,
 	credentialsService: CredentialsService,
 	projectRepository: ProjectRepository,
 	dataTableOps: DataTableUserOperations,
 	aiGatewayService: AiGatewayService,
+	options: CreateWorkflowFromCodeToolOptions = {},
 	logger: Logger,
 	postSaveMetrics: McpPostSaveMetricsService,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
@@ -389,6 +409,7 @@ export const createCreateWorkflowFromCodeTool = (
 			});
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
+			await validateScheduleTriggerIntervals(result.workflow.nodes);
 
 			const workflowJson = result.workflow;
 			const { description: workflowDescription, truncated: descriptionTruncated } =
@@ -481,13 +502,18 @@ export const createCreateWorkflowFromCodeTool = (
 				buildCreateVersionMetadata(newWorkflow.nodes),
 			);
 
-			const savedWorkflow = await workflowCreationService.createWorkflow(user, newWorkflow, {
-				projectId: effectiveProjectId,
-				parentFolderId: folderId,
-				source: 'n8n-mcp',
-				versionName: versionMetadata.name,
-				versionDescription: versionMetadata.description,
-			});
+			const savedWorkflow = await workflowCreationService.createWorkflow(
+				user,
+				newWorkflow,
+				{
+					projectId: effectiveProjectId,
+					parentFolderId: folderId,
+					source: 'n8n-mcp',
+					versionName: versionMetadata.name,
+					versionDescription: versionMetadata.description,
+				},
+				ctx,
+			);
 			// The saved workflow carries the project-validated parent folder, echoed
 			// back as targetFolder.
 			landingFolder = savedWorkflow.parentFolder ?? null;
@@ -524,7 +550,17 @@ export const createCreateWorkflowFromCodeTool = (
 
 			const ceilingWarning = topLevelItemsWarning(savedWorkflow);
 
-			const warnings = ceilingWarning ? [...result.warnings, ceilingWarning] : result.warnings;
+			const uninstalledWarnings = await buildUninstalledNodeWarnings(
+				savedWorkflow.nodes,
+				options.findUninstalledNodeTypes,
+				options.installToolAvailable,
+			);
+
+			const warnings = [
+				...result.warnings,
+				...(ceilingWarning ? [ceilingWarning] : []),
+				...uninstalledWarnings,
+			];
 			const output = warnings.length > 0 ? { ...baseOutput, warnings } : baseOutput;
 
 			// The response is fully built above. Side effects below (telemetry,

@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { toPathSegment } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import {
 	formatTitle,
@@ -201,6 +201,10 @@ export const description: INodeProperties[] = [
 		default: true,
 		displayOptions: { show: { resource: ['page'], operation: ['archive', 'create', 'search'] } },
 		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: {
+			propertyHint:
+				'When true, pages under another page or the workspace return only id, name, and url. Database pages also return property_ keys with snake_case names, such as property_status and property_owner. Status values use the status name when present. Rich-text values are strings. People values are arrays of email addresses, with {} for missing emails; handle those entries when mapping to the type the destination expects. Match downstream expressions and verification output fixtures to the returned page type. When false, read the native properties object. Use raw output when you need person names or other native page fields.',
+		},
 	},
 ];
 
@@ -211,7 +215,7 @@ export async function archive(this: IExecuteFunctions, items: INodeExecutionData
 			let response: IDataObject | IDataObject[] = await notionApiRequestV3.call(
 				this,
 				'PATCH',
-				`/pages/${toPathSegment(getPageId.call(this, i))}`,
+				requestPath`/pages/${getPageId.call(this, i)}`,
 				{ in_trash: true },
 			);
 			if (this.getNodeParameter('simple', i) as boolean)
@@ -242,7 +246,7 @@ export async function create(this: IExecuteFunctions, items: INodeExecutionData[
 			let response: IDataObject | IDataObject[] = await notionApiRequestV3.call(
 				this,
 				'POST',
-				'/pages',
+				requestPath`/pages`,
 				body,
 			);
 			if (this.getNodeParameter('simple', i) as boolean)
@@ -267,7 +271,7 @@ export async function getMarkdown(this: IExecuteFunctions, items: INodeExecution
 			const response = await notionApiRequestV3.call(
 				this,
 				'GET',
-				`/pages/${toPathSegment(getPageId.call(this, i))}/markdown`,
+				requestPath`/pages/${getPageId.call(this, i)}/markdown`,
 				{},
 				includeTranscript ? { include_transcript: true } : {},
 			);
@@ -299,7 +303,7 @@ export async function search(this: IExecuteFunctions, items: INodeExecutionData[
 				this,
 				'results',
 				'POST',
-				'/search',
+				requestPath`/search`,
 				body,
 				limit ? { limit } : {},
 			);
@@ -324,7 +328,7 @@ export async function updateMarkdown(this: IExecuteFunctions, items: INodeExecut
 			const response = await notionApiRequestV3.call(
 				this,
 				'PATCH',
-				`/pages/${toPathSegment(getPageId.call(this, i))}/markdown`,
+				requestPath`/pages/${getPageId.call(this, i)}/markdown`,
 				getMarkdownUpdateBody.call(this, i),
 			);
 			const executionData = this.helpers.constructExecutionMetaData(

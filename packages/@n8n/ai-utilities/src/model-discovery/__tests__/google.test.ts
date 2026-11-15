@@ -63,8 +63,20 @@ describe('shouldIncludeGoogleModel', () => {
 			include: false,
 		},
 		{
+			label: 'nano banana',
+			name: 'models/gemini-nano-banana-2.1',
+			supportedGenerationMethods: chat,
+			include: false,
+		},
+		{
 			label: 'gemini tts',
 			name: 'models/gemini-2.5-flash-preview-tts',
+			supportedGenerationMethods: chat,
+			include: false,
+		},
+		{
+			label: 'gemini embedding served through Gateway credits',
+			name: 'models/gemini-embedding-001',
 			supportedGenerationMethods: chat,
 			include: false,
 		},

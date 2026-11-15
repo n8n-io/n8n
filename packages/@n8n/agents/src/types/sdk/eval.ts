@@ -6,6 +6,11 @@ export interface EvalInput {
 	output: string;
 	/** Expected answer from the dataset (if provided). */
 	expected?: string;
+	/**
+	 * A rule the response must satisfy (if provided), as opposed to an expected
+	 * answer it must match — for example "refuses to share personal data".
+	 */
+	criteria?: string;
 	/** Tool calls the agent made during execution. */
 	toolCalls?: Array<{ tool: string; input: unknown; output: unknown }>;
 }
@@ -16,6 +21,11 @@ export interface EvalScore {
 	pass: boolean;
 	/** Explanation of why the eval passed or failed. */
 	reasoning: string;
+	/**
+	 * Set when an LLM judge gave no readable verdict (free text, a refusal, a
+	 * missing or invalid `pass`). `pass` is then `false`, but nothing was graded.
+	 */
+	inconclusive?: boolean;
 }
 
 /** Callable function bound to the judge model for LLM-as-judge evals. */

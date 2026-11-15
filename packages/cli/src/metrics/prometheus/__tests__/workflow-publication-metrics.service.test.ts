@@ -2,19 +2,24 @@ import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { WorkflowsConfig } from '@n8n/config';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import type { WorkflowPublicationOutboxRepository } from '@n8n/db';
+import type { DbConnection, WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
 import { PrometheusWorkflowPublicationMetricsService } from '../workflow-publication-metrics.service';
 
-import type { EventService } from '@/events/event.service';
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService, EventService } from '@n8n/backend-services';
+
+import { CachedMetricQueryFactory } from '../cached-metric-query';
+import { DatabaseMetricQueryService } from '../database-metric-query.service';
 
 vi.mock('prom-client');
 
 describe('PrometheusWorkflowPublicationMetricsService', () => {
+	const dbConnection = mock<DbConnection>({
+		connectionState: { connected: true, migrated: true },
+	});
 	const config = mockInstance(PrometheusMetricsConfig, {
 		prefix: 'n8n_',
 		includeWorkflowPublicationMetrics: true,
@@ -44,8 +49,14 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 			workflowsConfig,
 			instanceSettings,
 			eventService,
-			outboxRepository,
-			cacheService,
+			new DatabaseMetricQueryService(
+				new CachedMetricQueryFactory(cacheService, dbConnection),
+				mock(),
+				mock(),
+				outboxRepository,
+				mock(),
+				mock(),
+			),
 		);
 
 		mockCounterInc = vi.fn();

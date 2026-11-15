@@ -25,23 +25,30 @@ export const retriedExecutionStartedAtOpenApi: ZodOpenAPIMetadata = {
 
 export const retriedExecutionDataOpenApi: ZodOpenAPIMetadata = {
 	...dataOpenApi,
-	description: 'Run data of the new execution.',
+	description:
+		'Run data of the new execution.' +
+		" Absent when the API key's user cannot read the executions of the workflow.",
 };
 
 export const retriedExecutionWorkflowDataOpenApi: ZodOpenAPIMetadata = {
 	...workflowDataOpenApi,
 	description:
 		'The workflow as it was saved when the original execution ran. `loadWorkflow` changes which ' +
-		'workflow the retry runs, not what this field reports.',
+		'workflow the retry runs, not what this field reports.' +
+		" Absent when the API key's user cannot read the executions of the workflow.",
 };
 
 export const retriedExecutionCustomDataOpenApi: ZodOpenAPIMetadata = {
 	...customDataOpenApi,
-	description: 'Execution metadata carried over from the original execution.',
+	description:
+		'Execution metadata carried over from the original execution.' +
+		" Absent when the API key's user cannot read the executions of the workflow.",
 };
 
 export const retriedExecutionAnnotationOpenApi: ZodOpenAPIMetadata = {
-	description: 'Annotation on the original execution. Absent when it carries none.',
+	description:
+		'Annotation on the original execution. Absent when it carries none, or when the API ' +
+		"key's user cannot read the executions of the workflow.",
 };
 
 export const executionAnnotationVoteOpenApi: ZodOpenAPIMetadata = alsoNullable({

@@ -7,7 +7,12 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import {
+	assertParamIsString,
+	NodeConnectionTypes,
+	NodeOperationError,
+	requestPath,
+} from 'n8n-workflow';
 
 import { linkedInApiRequest } from './GenericFunctions';
 import { postFields, postOperations } from './PostDescription';
@@ -98,11 +103,11 @@ export class LinkedIn implements INodeType {
 			// https://docs.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin
 			async getPersonUrn(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const authentication = this.getNodeParameter('authentication', 0);
-				let endpoint = '/v2/me';
+				let endpoint = requestPath`/v2/me`;
 				if (authentication === 'standard') {
 					const { legacy } = await this.getCredentials('linkedInOAuth2Api');
 					if (!legacy) {
-						endpoint = '/v2/userinfo';
+						endpoint = requestPath`/v2/userinfo`;
 					}
 				}
 				const person = await linkedInApiRequest.call(this, 'GET', endpoint, {});
@@ -133,7 +138,15 @@ export class LinkedIn implements INodeType {
 			try {
 				if (resource === 'post') {
 					if (operation === 'create') {
-						let text = this.getNodeParameter('text', i) as string;
+						let text = this.getNodeParameter('text', i);
+						assertParamIsString('text', text, this.getNode());
+						if (text.trim() === '') {
+							throw new NodeOperationError(
+								this.getNode(),
+								'The Text field is empty. Enter text to publish the post.',
+								{ itemIndex: i, level: 'info' },
+							);
+						}
 						const shareMediaCategory = this.getNodeParameter('shareMediaCategory', i) as string;
 						const postAs = this.getNodeParameter('postAs', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -182,7 +195,7 @@ export class LinkedIn implements INodeType {
 							const registerObject = await linkedInApiRequest.call(
 								this,
 								'POST',
-								'/images?action=initializeUpload',
+								requestPath`/images?action=initializeUpload`,
 								registerRequest,
 							);
 
@@ -246,7 +259,7 @@ export class LinkedIn implements INodeType {
 								const registerObject = await linkedInApiRequest.call(
 									this,
 									'POST',
-									'/images?action=initializeUpload',
+									requestPath`/images?action=initializeUpload`,
 									registerRequest,
 								);
 
@@ -283,7 +296,7 @@ export class LinkedIn implements INodeType {
 								commentary: text,
 							});
 						}
-						const endpoint = '/posts';
+						const endpoint = requestPath`/posts`;
 						responseData = await linkedInApiRequest.call(this, 'POST', endpoint, body);
 					}
 				}

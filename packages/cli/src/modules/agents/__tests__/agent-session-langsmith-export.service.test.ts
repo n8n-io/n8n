@@ -1,9 +1,10 @@
+import { setN8nVersion } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { N8N_VERSION } from '@/constants';
+import { NotFoundError } from '@n8n/errors';
 import type { AiService } from '@/services/ai.service';
 
 import { AgentSessionLangSmithExportService } from '../agent-session-langsmith-export.service';
@@ -204,6 +205,7 @@ describe('AgentSessionLangSmithExportService', () => {
 
 	beforeEach(() => {
 		batchIngestRunsMock.mockReset();
+		setN8nVersion('1.2.3');
 	});
 
 	it('exports a background signal as a chain event', async () => {
@@ -230,6 +232,58 @@ describe('AgentSessionLangSmithExportService', () => {
 				inputs: { tasks },
 			}),
 		);
+	});
+
+	it('exports additional input from its canonical message reference', async () => {
+		const message = {
+			id: 'steered',
+			role: 'user' as const,
+			content: [{ type: 'text' as const, text: 'Use the newer file' }],
+		};
+		const { service } = setupSession(
+			makeExecution({
+				inputMessages: [message],
+				timeline: [{ type: 'input', messageId: message.id, timestamp: 100 }],
+			}),
+		);
+		await service.exportSession(input);
+		expect(submittedRuns()).toContainEqual(
+			expect.objectContaining({
+				name: 'Additional user input',
+				inputs: { message },
+			}),
+		);
+	});
+
+	it('checks the caller for each child before sending a trace', async () => {
+		const { service, agentExecutionService, threadRepository } = setup();
+		agentExecutionService.getThreadDetail
+			.mockResolvedValueOnce({ thread: makeThread(), executions: [makeExecution()] })
+			.mockRejectedValueOnce(new NotFoundError('Thread not found'));
+		threadRepository.findByParentThreadId.mockResolvedValueOnce([
+			makeThread({
+				id: 'child-thread',
+				agentId: 'child-agent',
+				parentThreadId: 'parent-thread',
+				parentAgentId: 'parent-agent',
+			}),
+		]);
+		await expect(service.exportSession(input)).rejects.toThrow(NotFoundError);
+		expect(agentExecutionService.getThreadDetail).toHaveBeenNthCalledWith(
+			1,
+			'parent-thread',
+			'project-1',
+			'parent-agent',
+			'user-1',
+		);
+		expect(agentExecutionService.getThreadDetail).toHaveBeenNthCalledWith(
+			2,
+			'child-thread',
+			'project-1',
+			'child-agent',
+			'user-1',
+		);
+		expect(batchIngestRunsMock).not.toHaveBeenCalled();
 	});
 
 	it('exports a complete redacted session tree with stable snapshot IDs', async () => {
@@ -295,7 +349,7 @@ describe('AgentSessionLangSmithExportService', () => {
 		expect(JSON.stringify(firstRuns)).not.toContain('third-value');
 		expect(JSON.stringify(firstRuns)).not.toContain('deep-boundary-secret');
 		expect(JSON.stringify(firstRuns)).toContain('[REDACTED]');
-		expect(firstRuns[0].extra.metadata.n8nVersion).toBe(N8N_VERSION);
+		expect(firstRuns[0].extra.metadata.n8nVersion).toBe('1.2.3');
 		expect(firstRuns[1].inputs.attachments).toEqual([
 			{ id: 'attachment-1', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 42 },
 		]);
@@ -513,6 +567,35 @@ describe('AgentSessionLangSmithExportService', () => {
 		expect(hitlRun).toMatchObject({
 			inputs: { toolCallId: 'tool-approval' },
 			outputs: { approved: false, reason: 'Needs changes' },
+		});
+	});
+
+	it('exports host events with their name, payload and key', async () => {
+		const { service, agentExecutionService, threadRepository } = setup();
+		agentExecutionService.getThreadDetail.mockResolvedValue({
+			thread: makeThread(),
+			executions: [
+				makeExecution({
+					timeline: [
+						{
+							type: 'host-event',
+							name: 'test.progress',
+							key: 'build',
+							payload: { done: 1 },
+							timestamp: Date.parse('2026-08-14T09:00:00.500Z'),
+						},
+					],
+				}),
+			],
+		});
+		threadRepository.findByParentThreadId.mockResolvedValue([]);
+
+		await service.exportSession(input);
+
+		const hostEventRun = submittedRuns().find(({ name }) => name === 'Host event: test.progress');
+		expect(hostEventRun).toMatchObject({
+			outputs: { payload: { done: 1 } },
+			extra: { metadata: expect.objectContaining({ key: 'build' }) },
 		});
 	});
 

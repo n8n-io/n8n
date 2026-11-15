@@ -1,17 +1,55 @@
 import { Time } from '@n8n/constants';
+import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
 import { concurrencyLimitSchema } from '../schemas';
 
+const observationLogPlacementSchema = z.enum(['system', 'message']);
+const observationFailurePolicySchema = z.enum(['disableForRun', 'retry']);
+const observationReflectionModeSchema = z.enum(['background', 'afterObserve']);
+
 @Config
 export class InstanceAiConfig {
+	/**
+	 * Whether the n8n Assistant is on when no admin has turned it on or off in Settings > Assistant.
+	 * When unset, it's off on the Enterprise plan and on for all other plans. A choice saved in
+	 * Settings > Assistant overrides this variable.
+	 */
+	@Env('N8N_INSTANCE_AI_ENABLED')
+	enabled?: boolean;
+
+	/**
+	 * Enable workflow suggestions, self-healing investigations, and result review.
+	 */
+	@Env('N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED')
+	workflowSuggestionsEnabled: boolean = false;
+
+	/**
+	 * Whether n8n runs the n8n Assistant on the agents runtime as well. This is an
+	 * experimental preview for development and evaluation. Don't turn it on in
+	 * production.
+	 */
+	@Env('N8N_INSTANCE_AI_ASSISTANT_AGENT_ENABLED')
+	assistantAgentEnabled: boolean = false;
+
 	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
-	model: string = 'anthropic/claude-opus-4-8';
+	model: string = 'anthropic/claude-opus-5-5';
 
 	/** Base URL for an OpenAI-compatible endpoint (e.g. "http://localhost:1234/v1" for LM Studio). */
 	@Env('N8N_INSTANCE_AI_MODEL_URL')
 	modelUrl: string = '';
+
+	/**
+	 * Add `x-n8n-*` request labels to the Assistant's model calls. When on, a directly
+	 * configured model provider gets `x-n8n-feature`, `x-n8n-version`, `x-n8n-run-id`,
+	 * `x-n8n-thread-id` and `x-n8n-function-id` (which part of the Assistant made the call),
+	 * and n8n's AI service also gets `x-n8n-function-id`. When off, a direct provider gets
+	 * no `x-n8n-*` headers, and n8n's AI service gets only the feature, version, run and
+	 * thread headers it always gets.
+	 */
+	@Env('N8N_INSTANCE_AI_MODEL_REQUEST_LABELS')
+	modelRequestLabels: boolean = false;
 
 	/** API key for the custom model endpoint (optional — some local servers don't require one). */
 	@Env('N8N_INSTANCE_AI_MODEL_API_KEY')
@@ -42,25 +80,75 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')
 	mcpServers: string = '';
 
-	/** Token threshold for Observer to trigger compression of message history. */
+	/**
+	 * Token threshold for Observer to trigger compression of message history.
+	 * Applies only when `N8N_INSTANCE_AI_OBSERVATION_MAX_WINDOW_TOKENS` is `0` and n8n can't find the model's context window.
+	 * Otherwise, thresholds are shares of the model's window or of the max window, whichever is smaller.
+	 */
 	@Env('N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS')
 	observerMessageTokens: number = 30_000;
 
-	/** Token threshold for Reflector to condense observations. */
-	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
-	reflectorObservationTokens: number = 40_000;
+	/**
+	 * Smaller model for n8n Assistant background tasks, such as conversation memory, thread titles, and the test data for workflow verification. Use the same `provider/model` format as `N8N_INSTANCE_AI_MODEL`, for example `anthropic/claude-haiku-5-5`.
+	 * It uses the same provider and credentials as the main model, so set a model that provider offers.
+	 * When unset, n8n uses `claude-haiku-5-5` for Anthropic and `gpt-6-luna` for OpenAI. With other providers, or with a custom base URL, it uses the main model.
+	 */
+	@Env('N8N_INSTANCE_AI_UTILITY_MODEL')
+	utilityModel: string = '';
 
 	/**
-	 * Run the Observer inside a turn (at tool-loop boundaries). When false the
-	 * Observer runs only after the turn, which keeps the prompt prefix stable
-	 * within a turn and improves provider prompt-cache reuse.
+	 * Token threshold for the Reflector to condense observations.
+	 * When unset, the threshold is a share of the model's window or of the max window, whichever is smaller.
+	 * When set, this fixed value replaces that share.
+	 */
+	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
+	reflectorObservationTokens?: number;
+
+	/**
+	 * Whether n8n Assistant summarizes the conversation into memory during a long turn, between tool calls.
+	 * When false, it summarizes only after the turn ends. This keeps the prompt stable within a turn and can improve prompt-cache reuse, but a long turn can then fill the model's context window.
 	 */
 	@Env('N8N_INSTANCE_AI_MID_RUN_OBSERVATION')
-	midRunObservation: boolean = false;
+	midRunObservation: boolean = true;
 
-	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
-	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
-	localGatewayDisabled: boolean = false;
+	/**
+	 * Largest context window, in tokens, that n8n Assistant uses to set its memory thresholds.
+	 * When the model's window is larger, n8n uses this value, so memory starts summarizing earlier on models with very large windows.
+	 * Set to 0 to use the model's full window.
+	 */
+	@Env('N8N_INSTANCE_AI_OBSERVATION_MAX_WINDOW_TOKENS')
+	observationMaxWindowTokens: number = 200_000;
+
+	/**
+	 * Where n8n Assistant puts its memory summary. One of `system` or `message`.
+	 * With `message`, summary updates don't change the system prompt, which improves prompt-cache reuse.
+	 */
+	@Env('N8N_INSTANCE_AI_OBSERVATION_LOG_PLACEMENT', observationLogPlacementSchema)
+	observationLogPlacement: z.infer<typeof observationLogPlacementSchema> = 'message';
+
+	/**
+	 * What n8n Assistant does when a memory summary call fails during a turn. One of `disableForRun` or `retry`.
+	 * With `retry`, it tries again at the next step.
+	 */
+	@Env('N8N_INSTANCE_AI_OBSERVATION_FAILURE_POLICY', observationFailurePolicySchema)
+	observationFailurePolicy: z.infer<typeof observationFailurePolicySchema> = 'retry';
+
+	/** Maximum memory summary calls after one turn. Each call reads one batch. Set to 0 for no limit. */
+	@Env('N8N_INSTANCE_AI_OBSERVER_MAX_BATCHES')
+	observerMaxBatches: number = 5;
+
+	/**
+	 * When n8n Assistant condenses its memory summary. One of `background` or `afterObserve`.
+	 * With `afterObserve`, it condenses only after a turn that added to the summary.
+	 */
+	@Env('N8N_INSTANCE_AI_REFLECTION_MODE', observationReflectionModeSchema)
+	reflectionMode: z.infer<typeof observationReflectionModeSchema> = 'background';
+
+	/**
+	 * Whether n8n Assistant can read earlier messages of a conversation that its memory summary replaced.
+	 */
+	@Env('N8N_INSTANCE_AI_HISTORY_RECALL')
+	historyRecall: boolean = true;
 
 	@Env('N8N_INSTANCE_AI_BROWSER_USE_ENABLED')
 	browserUseEnabled: boolean = true;
@@ -118,6 +206,14 @@ export class InstanceAiConfig {
 	sandboxEphemeral: boolean = false;
 
 	/**
+	 * Set to true only on a throwaway instance that runs n8n Assistant evaluations. It turns on
+	 * the evaluation API routes and lets an evaluation reset Remove Duplicates history between
+	 * scenarios. Feature flags then come only from their defaults and environment overrides.
+	 */
+	@Env('N8N_INSTANCE_AI_EVAL_INSTANCE')
+	evalInstance: boolean = false;
+
+	/**
 	 * Minutes an idle Daytona sandbox waits before it is stopped. Default 15 minutes.
 	 * `0` disables auto-stop (the sandbox stays running).
 	 */
@@ -158,15 +254,11 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SEARXNG_URL')
 	searxngUrl: string = '';
 
-	/** Optional static API key for the filesystem gateway. When set, accepted alongside per-user pairing/session keys. */
-	@Env('N8N_INSTANCE_AI_GATEWAY_API_KEY')
-	gatewayApiKey: string = '';
-
 	/** Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. */
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
 	threadTtlDays: number = 30;
 
-	/** Interval in milliseconds between scheduled pruning runs on the leader. 0 = disabled. */
+	/** Interval in milliseconds between scheduled pruning runs. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_PRUNE_INTERVAL')
 	pruneInterval: number = 1 * Time.hours.toMilliseconds;
 
@@ -191,13 +283,6 @@ export class InstanceAiConfig {
 	thinkingEnabled: boolean = true;
 
 	/**
-	 * Let the assistant discover and connect MCP registry servers.
-	 * Force enable the `089_instance_ai_mcp_connections` PostHog flag
-	 */
-	@Env('N8N_INSTANCE_AI_MCP_CONNECTIONS_ENABLED')
-	mcpConnectionsEnabled: boolean = false;
-
-	/**
 	 * Force-enable canvas-selected-nodes chat context in Instance AI.
 	 * Acts as an operator-level override of the PostHog rollout flag
 	 * (`104_canvas_aia_node_context`). Cannot force-disable: setting this to
@@ -207,17 +292,22 @@ export class InstanceAiConfig {
 	canvasNodeContextEnabled: boolean = false;
 
 	/**
-	 * Non-blocking setup panel (setup panel v2): the persistent checklist above
-	 * the chat input replaces the suspending setup wizard. Env-settable so eval
-	 * lanes can exercise both paths; a managed rollout flag may layer on top
-	 * later behind the same accessors.
+	 * Pin every Instance AI run on this instance to one published prompt profile
+	 * (e.g. `concise@1`). Empty keeps the backend experiment assignment.
+	 *
+	 * Instance-wide on purpose, so the two system prompts never fragment the
+	 * prompt cache within one instance. A request-level `promptVersion` and a
+	 * value already selected for the thread both still win, so an eval keeps the
+	 * profile it pinned. Checkpoints do not store this pin, so a suspended run
+	 * that resumes after you change it uses the new value. An unknown version
+	 * fails the run, and n8n keeps serving everything else.
 	 */
-	@Env('N8N_INSTANCE_AI_SETUP_PANEL_ENABLED')
-	instanceAiSetupPanelEnabled: boolean = false;
+	@Env('N8N_INSTANCE_AI_PROMPT_VERSION')
+	promptVersion: string = '';
 
 	/**
 	 * Force-enable the node-usage context surface for Instance AI — the `node-usage` action and
-	 * the `nodeTypes` filter on `workflows(action="list")`.
+	 * the `nodeTypes` filter on `list_workflows`.
 	 *
 	 * Operator-level override of the PostHog rollout flag (`109_instance_ai_node_usage`). Cannot
 	 * force-disable: setting this to `false` falls back to PostHog. Gated on its own rather than
@@ -234,19 +324,6 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_FOLDER_EXPLORATION_ENABLED')
 	folderExplorationEnabled: boolean = false;
-
-	/**
-	 * Activation-capped trial variant for n8n cloud experiment.
-	 * Set by the cloud dashboard at deploy time on one signup-experiment cohort only.
-	 */
-	@Env('N8N_INSTANCE_AI_ACTIVATION_CAPPED')
-	activationCapped: boolean = false;
-
-	/**
-	 * How many assistant messages the instance must have sent before {@link activationCapped} locking may apply.
-	 */
-	@Env('N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD')
-	activationLockMessageThreshold: number = 1;
 
 	/**
 	 * Max orchestrator runs executing concurrently on this process. A new user turn over
@@ -291,19 +368,4 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_MAX_CONCURRENT_SUB_AGENTS', concurrencyLimitSchema)
 	maxConcurrentSubAgents: number = -1;
-
-	/**
-	 * Whether to hand the agent a block of instance context on each turn — what exists here, what
-	 * changed recently, and what has run — plus the tool to read further back.
-	 *
-	 * Separate from `N8N_ACTIVITY_LOG_ENABLED`, which decides whether the record is written at all.
-	 * The record is core and has other potential consumers; this flag gates one consumer's read.
-	 * Two of the three sources are not the activity log in the first place: what exists comes from
-	 * the workflows themselves, and runs come from `execution_entity`.
-	 *
-	 * Reading needs both flags on. With only this one, the workflow and run legs still work while
-	 * the edit history stays empty, since no entry was ever written.
-	 */
-	@Env('N8N_INSTANCE_AI_INSTANCE_CONTEXT_ENABLED')
-	instanceContextEnabled: boolean = false;
 }

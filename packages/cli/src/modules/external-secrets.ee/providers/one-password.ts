@@ -1,7 +1,8 @@
 import type { OPConnect } from '@1password/connect';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { UserError, type IDataObject, type INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { DOCS_HELP_NOTICE } from '../constants';
 import {
@@ -10,6 +11,7 @@ import {
 	type LogContext,
 	type SecretsProviderOperationFailureParams,
 } from '../errors/secrets-provider-errors';
+import { formatSecretPath } from '../secret-path';
 import { SecretsProvider, type SecretsProviderSettings } from '../types';
 
 export type OnePasswordContext = SecretsProviderSettings<{
@@ -193,8 +195,10 @@ export class OnePasswordProvider extends SecretsProvider {
 		return name in this.cachedSecrets;
 	}
 
-	getSecretNames() {
-		return Object.keys(this.cachedSecrets);
+	getSecretNames(): string[] {
+		return Object.entries(this.cachedSecrets).flatMap(([itemName, fields]) =>
+			Object.keys(fields).map((fieldName) => formatSecretPath([itemName, fieldName])),
+		);
 	}
 
 	private async verifyConnection(): Promise<void> {

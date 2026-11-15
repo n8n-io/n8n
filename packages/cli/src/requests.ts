@@ -5,6 +5,7 @@ import type {
 	Variables,
 	Project,
 	User,
+	UserKind,
 	ListQueryDb,
 	WorkflowHistory,
 } from '@n8n/db';
@@ -114,7 +115,10 @@ export declare namespace CredentialRequest {
 		{},
 		{},
 		{},
-		{ workflowId: string } | { projectId: string }
+		({ workflowId: string } | { projectId: string }) & {
+			forAgent?: 'true' | 'false';
+			forAssistant?: 'true' | 'false';
+		}
 	>;
 }
 
@@ -147,13 +151,6 @@ export declare namespace UserRequest {
 		{},
 		{},
 		{ transferId?: string; includeRole: boolean }
-	>;
-
-	export type Get = AuthenticatedRequest<
-		{ id: string; email: string; identifier: string },
-		{},
-		{},
-		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean; projectId?: string }
 	>;
 
 	export type PasswordResetLink = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
@@ -196,7 +193,22 @@ export declare namespace OAuthRequest {
 
 	namespace OAuth2Credential {
 		type Auth = AuthenticatedRequest<{}, {}, {}, { id: string }>;
-		type Callback = AuthenticatedRequest<{}, {}, {}, { code: string; state: string }>;
+		type Callback = AuthenticatedRequest<
+			{},
+			{},
+			{},
+			// `admin_consent` arrives when an administrator approves the app for an
+			// organisation, which reuses the same reply URL. The error pair arrives with
+			// it, or when the authorization server refuses the request (RFC 6749 4.1.2.1).
+			{
+				code: string;
+				state: string;
+				admin_consent?: string;
+				error?: string;
+				error_description?: string;
+				iss?: string;
+			}
+		>;
 	}
 }
 
@@ -218,15 +230,7 @@ export declare namespace AnnotationTagsRequest {
 export declare namespace NodeRequest {
 	type GetAll = AuthenticatedRequest;
 
-	type Post = AuthenticatedRequest<
-		{},
-		{},
-		{ name?: string; verify?: boolean; version?: string; checksum?: string }
-	>;
-
 	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
-
-	type Update = Post;
 }
 
 // ----------------------------------
@@ -291,7 +295,21 @@ export declare namespace ProjectRequest {
 		email: string;
 		firstName: string;
 		lastName: string;
+		kind: UserKind;
 		role: ProjectRole | AssignableProjectRole;
+	};
+	/**
+	 * A user who reaches a project through a global role instead of a project
+	 * relation. Instance owners and admins always have full project access, so
+	 * the member list shows them even when no relation row exists.
+	 */
+	type ProjectImplicitMemberResponse = {
+		id: string;
+		email: string;
+		firstName: string;
+		lastName: string;
+		kind: UserKind;
+		globalRole: { slug: string; displayName: string };
 	};
 	type ProjectWithRelations = {
 		id: string;
@@ -300,7 +318,9 @@ export declare namespace ProjectRequest {
 		type: ProjectType;
 		description: string | null;
 		customTelemetryTags: Array<{ key: string; value: string }>;
+		creatorId: string | null;
 		relations: ProjectRelationResponse[];
+		implicitMembers: ProjectImplicitMemberResponse[];
 		scopes: Scope[];
 		rolesManaged: boolean;
 	};

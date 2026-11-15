@@ -10,7 +10,7 @@ Modules give these benefits:
 - **Independence:** You typecheck, lint and test one feature in seconds. You do not run all of
   editor-ui (~770K lines of `.ts` and `.vue`; `src/features/` holds ~600K of that).
 - **Decoupling:** A module cannot read the shell or another module. Features stay separate.
-- **Ownership:** One package has one CODEOWNERS line.
+- **Ownership:** One package has one `OWNERS` line.
 - **Parity:** The frontend module id is the same as the backend module id. Both read
   `/rest/module-settings`.
 
@@ -62,7 +62,7 @@ The command prints this output:
  │    pnpm turbo lint --filter=@n8n/frontend-module-my-feature       │
  │    pnpm turbo test --filter=@n8n/frontend-module-my-feature       │
  │                                                                   │
- │    Guide: packages/@n8n/module-cli/frontend-module-guide.md       │
+ │    Frontend: packages/@n8n/module-cli/frontend-module-guide.md    │
  │                                                                   │
  ╰───────────────────────────────────────────────────────────────────╯
 ```
@@ -90,18 +90,13 @@ dependencies first, and the typecheck then passes. `lint` and `test` pass in bot
 The CLI makes every edit outside the new package idempotent. You can run the command again after
 a partial failure.
 
-### `--stack=backend` is a placeholder
+### `--stack=backend` creates a separate package
 
-The backend half is a reserved path and a README. **Nothing loads it.**
+The backend half is a built workspace package at `packages/modules/<name>/backend`. The CLI adds
+its runtime dependency and lazy registration to `packages/cli`. It also adds the module id to the
+validated list in `@n8n/backend-common`.
 
-The backend runtime reads its modules from `packages/cli/src/modules/<name>`. All 37 real backend
-modules are there. For this reason `packages/modules/<name>/backend` is not a workspace package.
-
-To create a backend module that runs, use `pnpm setup-backend-module`. Then obey
-`scripts/backend-module/backend-module-guide.md`.
-
-The CLI prints all of this when you ask for the backend half. This guide repeats it, because it is
-the one part of `create` that can mislead you.
+Read `docs/backend/how-to/build-a-backend-module.md` before you add backend behavior.
 
 ## File structure
 
@@ -110,7 +105,8 @@ packages/modules/my-feature/frontend/
 ├── package.json               # source-only; deps are L0-L2 only
 ├── tsconfig.json              # extends the shared module base
 ├── vite.config.ts             # vitest config + the shared source aliases
-├── eslint.config.mjs
+├── oxlint.config.mts          # lints the TypeScript and the SFC scripts
+├── vize-lint.config.mjs       # lints the Vue templates
 ├── biome.jsonc
 ├── README.md
 └── src/
@@ -181,21 +177,35 @@ shell imports.
 
 ## The descriptor contract
 
-`FrontendModuleDescription` (`@n8n/frontend-module-sdk/src/types/descriptor.ts`) declares twelve
+`FrontendModuleDescription` (`@n8n/frontend-module-sdk/src/types/descriptor.ts`) declares the
 extension surfaces. The shell connects them at three different levels. Read the difference before
 you use a surface.
 
 ### Live — the shell registers these, and a reader shows them
 
-| Field                   | Register function              | Reader                                   |
-| ----------------------- | ------------------------------ | ---------------------------------------- |
-| `routes`                | `registerModuleRoutes`         | vue-router                               |
-| `projectTabs`           | `registerModuleProjectTabs`    | `ProjectHeader`                          |
-| `resources`             | `registerModuleResources`      | `ResourcesListLayout`                    |
-| `modals`                | `registerModuleModals`         | `DynamicModalLoader`                     |
-| `adHocModalKeyPrefixes` | `registerModuleModals`         | `modalRegistry` (keys minted at runtime) |
-| `settingsPages`         | `registerModuleSettingsPages`  | `SettingsSidebar`                        |
-| `pushHandlers`          | `registerModulePushHandlers`   | `useModulePushDispatcher`, in `App.vue`  |
+| Field                   | Register function               | Reader                                   |
+| ----------------------- | ------------------------------- | ---------------------------------------- |
+| `routes`                | `registerModuleRoutes`          | vue-router                               |
+| `projectTabs`           | `registerModuleProjectTabs`     | `ProjectHeader`                          |
+| `resources`             | `registerModuleResources`       | `ResourcesListLayout`                    |
+| `modals`                | `registerModuleModals`          | `DynamicModalLoader`                     |
+| `adHocModalKeyPrefixes` | `registerModuleModals`          | `modalRegistry` (keys minted at runtime) |
+| `settingsPages`         | `registerModuleSettingsPages`   | `SettingsSidebar`                        |
+| `pushHandlers`          | `registerModulePushHandlers`    | `useModulePushDispatcher`, in `App.vue`  |
+| `parameterInputs`       | `registerModuleParameterInputs` | `ParameterInput`, `ParameterInputFull`   |
+
+### Position of a settings link
+
+The settings sidebar lists its links under headings: Personal, People & access, AI, Integrations,
+Security, Operations and Billing.
+
+Each item in `settingsPages` accepts an optional `section` (`'personal' | 'people' | 'ai' |
+'integrations' | 'security' | 'operations' | 'billing'`) and an optional integer `order`. The
+sidebar groups the shell links and the module links by `section`, then sorts each group from low to
+high `order`. The shell links use 10, 20, 30, and so on inside each section. Pick a number between
+two shell links of your section to put your link between them. A link without `order` goes last in
+its section. Two links with the same `order` keep their registration order. A link without
+`section` is listed before the first heading. Neither field is part of `IMenuItem`.
 
 All the register functions are in `editor-ui/src/app/moduleInitializer/moduleInitializer.ts`.
 `main.ts` registers `routes` before the mount. `app/init/index.ts` registers the other surfaces
@@ -218,11 +228,45 @@ composables. The registry keeps your `commands` array, but the command bar never
 The SDK exports the types. No file in the shell reads them. A value that you set does nothing: no
 error, no warning, no behaviour.
 
+`runDataDisplayModes` is also types-only for now. The shell support lands with **CAP-327**. See
+[Run data display modes](#run-data-display-modes) for the contract.
+
 Do not use `commands` or the four types-only fields yet. **CAT-3685** tracks the remaining work.
 The descriptor that the CLI writes repeats this split in a comment, so you see it as you write.
 
 **Note:** this is the most common cause of lost time for a new module author. The type accepts
 your `commands` array, and no component draws it.
+
+### Run data display modes
+
+A display mode is a view of run data in the NDV input and output panes and in the Logs panel, next
+to Table, JSON and Schema. A module adds one with `runDataDisplayModes`:
+
+```ts
+runDataDisplayModes: [
+	{
+		id: 'chart',
+		label: () => i18n.baseText('chart.displayMode'),
+		icon: 'chart-column-decreasing',
+		component: async () => await import('./ChartView.vue'),
+		canRender: ({ data, pane }) => pane === 'output' && data.length > 0,
+	},
+],
+```
+
+- `id` must be lowercase kebab-case, such as `chart` or `geo-map`. It is also the saved display
+  mode and the telemetry `view` value. Do not change it after a release. The ids in
+  `BUILT_IN_DISPLAY_MODES` are reserved.
+- `canRender` decides if the select offers the mode. It gets all items of the selected run, not
+  filtered by search. It must be synchronous and cheap, because it runs on every data change.
+- `autoSelect: true` makes the output pane select the mode when the node opens or finishes a run,
+  if `canRender` is true.
+- `supports.search: true` shows the search field. Without it, the search field is hidden and
+  `search` is always `''`.
+
+The component gets `RunDataDisplayModeProps`: `data`, `node`, `pane`, `runIndex`, `outputIndex`,
+`search` and `compact`. `data` is never paginated, so a component that can get many items must
+handle that itself. Pinned data needs no code: `data` holds the pinned items when the node has them.
 
 ### Route names are yours, and a check guards them
 
@@ -270,6 +314,27 @@ routes: [
 
 If `meta.middleware` has no `'custom'` entry, the route resolves. The state of the module then
 makes no difference.
+
+### Placeholder page for licensed features
+
+An unlicensed module is inactive, so its settings links and routes disappear. To show a paywall
+instead, set `placeholderPage` with the module's license feature:
+
+```ts
+placeholderPage: {
+	licenseFlag: 'logStreaming', // a key of `settings.enterprise`
+	component: async () => await import('./views/MyFeaturePaywall.vue'),
+},
+```
+
+When the module is inactive and `licenseFlag` is off, its settings links stay and its routes show
+this page. The `available` getter and route `rbac` still apply. The shell adds the `'custom'` guard
+to these routes, so you don't need to list it. Route views must be lazy loaders. The shell picks
+the view or the placeholder once, on the first load of the route.
+
+If the module is licensed but inactive, for example turned off with `N8N_DISABLED_MODULES`, it
+stays hidden. A module that is unlicensed and also turned off still shows the page, because the
+frontend can't tell it apart from a module that is only unlicensed.
 
 ## Import-light descriptors
 
@@ -367,14 +432,16 @@ base says the same:
 >
 > — `packages/@n8n/typescript-config/tsconfig.frontend-module.json`
 
+The rule that this comment names does not exist yet (see below).
+
 **`pnpm boundaries:check` does not close the gap either.** It runs `turbo boundaries` against a
 baseline in the repository (`.boundaries-baseline.json`). The count of issues can only decrease.
 `turbo boundaries` reports an *undeclared* dependency or a reach-in import. It accepts a declared
 dependency by design.
 
 The alias split changes an accidental import from a silent success into two clear failures. It
-does not stop a person who wants that import. An ESLint `no-restricted-imports` rule would stop
-it, and that rule **is not in the repository yet**. **CAT-3692** tracks it.
+does not stop a person who wants that import. A `no-restricted-imports` rule in the Oxlint config
+would stop it, and that rule **is not in the repository yet**. **CAT-3692** tracks it.
 
 Until that rule lands, the boundary is the responsibility of the reviewer. Reviewers, look for a
 new `@n8n/frontend-module-*` entry in the `dependencies` of a module. That entry is the only
@@ -398,6 +465,49 @@ export const useMyFeatureStore = defineStore('myFeature', () => {
 
 Export the store from `src/index.ts` if a file outside the module reads it. `instance-registry`
 does this, because `AboutModal` and `useDebugInfo` read its cluster-info store.
+
+## Capabilities
+
+A capability is a shell action that a module calls but cannot import. The shell provides an
+implementation at boot. The module reads it through a typed token.
+
+Declare one only when all three rows hold. If one row fails, use the surface named in it.
+
+| Check | Otherwise |
+|---|---|
+| The module needs a runtime action or a reactive read, not a component | Use `componentRegistry` |
+| The target is shell-core state with no path down to an L2 package | Import the L2 package |
+| No contribution surface fits (components, modals, commands, resources, push handlers, parameter inputs) | Use the contribution surface that fits |
+
+Four files hold one capability:
+
+```ts
+// packages/frontend/@n8n/frontend-module-sdk/src/capabilities/myThing.ts
+export const myThing = declareCapability<(id: string) => void>('my-thing');
+
+// packages/frontend/@n8n/frontend-module-sdk/src/capabilities/index.ts
+export { myThing } from './myThing';
+
+// packages/frontend/editor-ui/src/app/capabilities.manifest.ts
+capabilityRegistry.provide(capabilities.myThing, (id) => useMyShellStore().touch(id));
+
+// your module, in a handler or a route guard
+capabilityRegistry.use(capabilities.myThing)(id);
+```
+
+Give the type parameter of `declareCapability` explicitly. It is the contract both sides get
+checked against.
+
+**Caution:** `use()` throws when the capability has no provider and no `fallback`. That is
+intended: a missing provider is a bootstrap bug, and a silent no-op hides it. Never call `use()`
+at module scope, because the shell provides after your module file is evaluated. Use `tryUse()`
+for a presence check; it returns `undefined` and ignores the `fallback`.
+
+In a module test there is no shell, so provide a stub in `beforeEach` and call
+`capabilityRegistry.clear()` in `afterEach`.
+
+The shell's full list is `editor-ui/src/app/capabilities.manifest.ts`. The other registries are
+contribution surfaces and not capabilities. They stay as they are.
 
 ## Module settings and the timing problem
 
@@ -434,7 +544,7 @@ const isEnabled = computed(
 ## Register the module with the shell
 
 A module does nothing until the shell can see it. The shell needs **four file edits and one
-CODEOWNERS line**. The CLI makes the four edits. Read this section when you register a module by
+`OWNERS` line**. The CLI makes the four edits. Read this section when you register a module by
 hand, or when you debug a CI failure.
 
 | # | Where                                          | What                                      | Scaffolded? |
@@ -443,10 +553,10 @@ hand, or when you debug a CI failure.
 | 2 | `editor-ui/package.json`                       | `"@n8n/frontend-module-x": "workspace:*"`  | ✅          |
 | 3 | `editor-ui/tsconfig.json`                      | two `paths` entries (bare + `/*`)          | ✅          |
 | 4 | `editor-ui/src/app/modules.manifest.ts`        | import + array entry                       | ✅          |
-| 5 | `.github/CODEOWNERS`                           | one line for the new package               | ❌ do this  |
+| 5 | `OWNERS`                                       | one line for the new package               | ❌ do this  |
 
-The frontend has no CODEOWNERS entries today, so you cannot copy a line for #5. Add your line when
-you create the module. A package with no owner is the start of an incomplete migration.
+Add the ownership line when you create the module. A package with no owner is the start of an
+incomplete migration.
 
 **Put #1, #2 and #3 in the same PR.** They are not alternatives. Each one serves a different
 resolver:
@@ -554,27 +664,23 @@ Narrow the type of each error by hand.
 ## Lint
 
 ```sh
-pnpm turbo lint --filter=@n8n/frontend-module-my-feature      # eslint src --quiet
-pnpm --filter @n8n/frontend-module-my-feature lint:fix        # no build needed to autofix
+pnpm turbo lint --filter=@n8n/frontend-module-my-feature      # oxlint, then vize lint
+pnpm --filter @n8n/frontend-module-my-feature lint:fix        # oxlint --fix, then vize lint
 ```
 
-**Note:** lint is stricter in a module than in the shell. `editor-ui/eslint.config.mjs` sets
-`'import-x/order': 'off'`. The shared frontend config keeps that rule on. Code that passed in
-editor-ui then fails in a module:
+A module does not use ESLint. Two tools lint it:
 
-```
-  2:1  error  `@n8n/stores/settings.store` import should occur before import of `vue`  import-x/order
+- **Oxlint** lints the TypeScript files and the `<script>` blocks of the SFCs.
+  `oxlint.config.mts` extends `@n8n/oxlint-config/frontend`. Its type-aware rules run on
+  `.ts` files only, not on SFC scripts.
+- **Vize** (`vize lint`) lints the Vue templates and the SFC structure. `vize-lint.config.mjs`
+  exports the shared config from `@n8n/oxlint-config/vize`. Do not rename this file to
+  `vize.config.*`: Vize does not read that name as a `-c` file.
 
-✖ 1 problem (1 error, 0 warnings)
-  1 error and 0 warnings potentially fixable with the `--fix` option.
-```
+`lint:fix` does not pass `--fix` to `vize lint`, because nobody has tested the Vize fixes yet.
+Correct the Vue template findings by hand.
 
-`pnpm lint:fix` corrects this error. Every extraction PR gets these import-order changes, and they
-change no behaviour.
-
-Put those changes in one commit, so a reviewer can skip them. Then say so in the PR body. A new
-module author can read this error as a defect, and can then search for a problem that does not
-exist.
+The `eslint-disable` comments for `vue/*` rules work unchanged: Vize reads them.
 
 ## Tests
 
@@ -642,7 +748,7 @@ Keep `"license": "LicenseRef-n8n-sustainable-use"`. Do not add `private`.
    command-bar host reads that registry. `locales`, `shortcuts`, `banners` and `setup` are types,
    and no file reads them (**CAT-3685**). Until that work lands, cross-feature code stays in the
    shell.
-2. **No tool stops a deliberate cross-module import.** The ESLint `no-restricted-imports` rule is
+2. **No tool stops a deliberate cross-module import.** The Oxlint `no-restricted-imports` rule is
    **CAT-3692**. The alias split stops an accident in a test run. The tsconfig base stops one at
    typecheck. `turbo boundaries` reports only an *undeclared* dependency. A declared dependency
    clears all three. This rule must land before the second extraction.
@@ -653,7 +759,7 @@ Keep `"license": "LicenseRef-n8n-sustainable-use"`. Do not add `private`.
    can become a static map of dynamic imports. Vite then emits one chunk for each module. The
    decision point is the end of wave 2, with bundle data. The team decided against a module load
    at run time.
-5. **CODEOWNERS is a manual step.** An addition to the CLI is a small and clear follow-up.
+5. **Updating `OWNERS` is a manual step.** An addition to the CLI is a small and clear follow-up.
 6. **`@n8n/module-cli` has no `lint` script.** Type-aware lint on a package with no types gives
    only `no-unsafe-*` noise. Ten other `@n8n/*` packages ship in the same way, and Biome still
    formats this one. Review this decision if the CLI grows past a few hundred lines.
@@ -675,7 +781,7 @@ Keep `"license": "LicenseRef-n8n-sustainable-use"`. Do not add `private`.
 - **Do I need a backend module also?** Only if your feature needs a gate on the backend. If a
   backend twin exists, the two ids **must** be the same, because `isModuleActive` and
   `/rest/module-settings` use the same string. See
-  `scripts/backend-module/backend-module-guide.md`.
+  `docs/backend/how-to/build-a-backend-module.md`.
 - **Must every new feature be a module?** Yes, after the wave-1 pilots prove the pattern. Each new
   feature then starts as a package. The editor core — canvas, NDV and the node creator — stays in
   the shell for now. See the modularization roadmap on CAT-3680.

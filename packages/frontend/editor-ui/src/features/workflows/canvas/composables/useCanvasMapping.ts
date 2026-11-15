@@ -18,6 +18,7 @@ import { CanvasConnectionMode, CanvasNodeRenderType } from '../canvas.types';
 import type { CanvasNodeGroupView } from './useCanvasNodeGroupView';
 import {
 	buildCollapsedGroupByNodeId,
+	getStickyZIndex,
 	remapCollapsedGroupConnections,
 } from './useCanvasMapping.groups';
 import {
@@ -27,8 +28,13 @@ import {
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
 import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
-import type { IConnections, ITaskData, IWorkflowGroup } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import {
+	isEmptyGroupAnchor,
+	NodeConnectionTypes,
+	type IConnections,
+	type ITaskData,
+	type IWorkflowGroup,
+} from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { MarkerType } from '@vue-flow/core';
 import type { Connection } from '@vue-flow/core';
@@ -64,6 +70,12 @@ export function useCanvasMapping({
 	getAgentNodeHeight?: (id: string) => number | undefined;
 }) {
 	const i18n = useI18n();
+
+	function getCanvasNodeLabel(node: INodeUi): string {
+		const isEmptyGroupAnchorNode = isEmptyGroupAnchor(node);
+
+		return isEmptyGroupAnchorNode ? i18n.baseText('nodeView.replaceMe') : node.name;
+	}
 
 	function countNonCanceledIterations(tasks: ITaskData[] | null | undefined): number {
 		return tasks?.filter((task) => task.executionStatus !== 'canceled').length ?? 0;
@@ -103,6 +115,8 @@ export function useCanvasMapping({
 		return buildCollapsedGroupByNodeId(allGroups.value, (id) => nodeGroupView.isGroupCollapsed(id));
 	});
 
+	const groupMemberIds = computed(() => new Set(allGroups.value.flatMap((group) => group.nodeIds)));
+
 	// Display size by node id. WorkflowCanvas uses this for group bounds so
 	// they wrap each node's actual rendered size. Sticky notes are omitted —
 	// their own width/height parameters are read by the group mapper directly.
@@ -132,10 +146,7 @@ export function useCanvasMapping({
 
 	function getVisiblePinDataByNodeId(id: string) {
 		const rd = renderData.value;
-		if (rd.isExecutionDataDisplayed) {
-			return rd.executionPinDataByNodeId.get(id)?.value;
-		}
-		return rd.pinnedDataByNodeId.get(id)?.value;
+		return rd.pinnedDataByNodeId.get(id)?.value ?? rd.getDisplayedExecutionPinData(id);
 	}
 
 	const mappedNodes = computed<CanvasNode[]>(() => {
@@ -183,14 +194,19 @@ export function useCanvasMapping({
 					({ type: node.type, options: {} } as CanvasNodeData['render']),
 			};
 			const offset = nodeGroupView?.getVisualOffsetForNode(node.id) ?? { x: 0, y: 0 };
+			const stickyStyle = additionalProperties[node.id]?.style;
 
 			return {
 				id: node.id,
-				label: node.name,
+				label: getCanvasNodeLabel(node),
 				type: 'canvas-node',
 				position: applyOffset(node.position, offset),
 				data,
-				...additionalProperties[node.id],
+				...(stickyStyle && {
+					style: {
+						zIndex: getStickyZIndex(stickyStyle.zIndex, groupMemberIds.value.has(node.id)),
+					},
+				}),
 				draggable: node.draggable,
 				hidden: collapsedGroupByNodeId.value.has(node.id) ? true : undefined,
 			};

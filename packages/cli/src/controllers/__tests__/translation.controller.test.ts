@@ -4,7 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { TranslationRequest } from '@/controllers/translation.controller';
 import { TranslationController } from '@/controllers/translation.controller';
 import type { CredentialTypes } from '@/credential-types';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 // The controller loads the translation file via `require(<computed path>)`.
 // Vitest cannot mock a path that doesn't resolve to a real module, so write a

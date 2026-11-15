@@ -6,6 +6,7 @@ import InstanceAiView from '../InstanceAiView.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { INSTANCE_AI_VIEW } from '../constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
@@ -65,7 +66,6 @@ describe('InstanceAiView', () => {
 		pinia = createTestingPinia();
 		const settingsStore = useInstanceAiSettingsStore();
 		settingsStore.refreshModuleSettings = vi.fn().mockResolvedValue(undefined);
-		settingsStore.ensurePreferencesLoaded = vi.fn().mockResolvedValue(undefined);
 		vi.mocked(hasPermission).mockReturnValue(false);
 		routerPush.mockClear();
 		routerReplace.mockClear();
@@ -127,12 +127,18 @@ describe('InstanceAiView', () => {
 		});
 	});
 
+	it('loads node types on mount', () => {
+		renderView({ pinia });
+
+		expect(useNodeTypesStore().loadNodeTypesIfNotLoaded).toHaveBeenCalledOnce();
+	});
+
 	it('shows onboarding to self-managed admins and returns to chat after completion', async () => {
 		vi.mocked(hasPermission).mockReturnValue(true);
 		useSettingsStore().moduleSettings = {
 			'instance-ai': {
 				enabled: true,
-				localGatewayDisabled: false,
+				mcpConnectionsAvailable: true,
 				browserUseEnabled: true,
 				proxyEnabled: false,
 				cloudManaged: false,
@@ -141,6 +147,8 @@ describe('InstanceAiView', () => {
 				workflowBuilderAvailable: false,
 				sandboxUnavailableReason: null,
 				runDebugEnabled: false,
+				workflowSuggestionsEnabled: false,
+				assistantAgentEnabled: false,
 			},
 		};
 		routeState.name = 'InstanceAiThread';
@@ -162,7 +170,7 @@ describe('InstanceAiView', () => {
 		useSettingsStore().moduleSettings = {
 			'instance-ai': {
 				enabled: true,
-				localGatewayDisabled: false,
+				mcpConnectionsAvailable: true,
 				browserUseEnabled: true,
 				proxyEnabled: false,
 				cloudManaged: false,
@@ -171,6 +179,8 @@ describe('InstanceAiView', () => {
 				workflowBuilderAvailable: true,
 				sandboxUnavailableReason: null,
 				runDebugEnabled: false,
+				workflowSuggestionsEnabled: false,
+				assistantAgentEnabled: false,
 			},
 		};
 
@@ -187,7 +197,7 @@ describe('InstanceAiView', () => {
 		appSettingsStore.moduleSettings = {
 			'instance-ai': {
 				enabled: true,
-				localGatewayDisabled: false,
+				mcpConnectionsAvailable: true,
 				browserUseEnabled: true,
 				proxyEnabled: false,
 				cloudManaged: false,
@@ -196,6 +206,8 @@ describe('InstanceAiView', () => {
 				workflowBuilderAvailable: true,
 				sandboxUnavailableReason: null,
 				runDebugEnabled: false,
+				workflowSuggestionsEnabled: false,
+				assistantAgentEnabled: false,
 			},
 		};
 		const { getByTestId, queryByTestId } = renderView({ pinia });

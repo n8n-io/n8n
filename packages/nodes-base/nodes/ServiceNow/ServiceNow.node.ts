@@ -6,8 +6,9 @@ import type {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { assertNoQueryDelimiters } from '@utils/query-escaping';
 
@@ -175,7 +176,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowApiRequest.call(
 					this,
 					'GET',
-					'/now/doc/table/schema',
+					requestPath`/now/doc/table/schema`,
 					{},
 					{},
 				);
@@ -208,7 +209,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowApiRequest.call(
 					this,
 					'GET',
-					'/now/table/sys_dictionary',
+					requestPath`/now/table/sys_dictionary`,
 					{},
 					qs,
 				);
@@ -230,7 +231,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowApiRequest.call(
 					this,
 					'GET',
-					'/now/table/cmdb_ci_service',
+					requestPath`/now/table/cmdb_ci_service`,
 					{},
 					qs,
 				);
@@ -260,7 +261,7 @@ export class ServiceNow implements INodeType {
 					const response = await serviceNowRequestAllItems.call(
 						this,
 						'GET',
-						'/now/table/sys_user_grmember',
+						requestPath`/now/table/sys_user_grmember`,
 						{},
 						{
 							sysparm_query: `group=${group}^`,
@@ -269,13 +270,14 @@ export class ServiceNow implements INodeType {
 
 					for (const column of response) {
 						if (column.user) {
-							const responseData = await serviceNowApiRequest.call(
-								this,
-								'GET',
-								`/now/table/sys_user/${column.user.value}`,
-								{},
-								{},
-							);
+							let userPath: RequestPath;
+							try {
+								userPath = requestPath`/now/table/sys_user/${column.user.value}`;
+							} catch {
+								// One unusable member id must not break the whole list
+								continue;
+							}
+							const responseData = await serviceNowApiRequest.call(this, 'GET', userPath, {}, {});
 							const user = responseData.result;
 
 							returnData.push({
@@ -288,7 +290,7 @@ export class ServiceNow implements INodeType {
 					const response = await serviceNowRequestAllItems.call(
 						this,
 						'GET',
-						'/now/table/sys_user',
+						requestPath`/now/table/sys_user`,
 						{},
 						qs,
 					);
@@ -312,7 +314,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowRequestAllItems.call(
 					this,
 					'GET',
-					'/now/table/sys_user_group',
+					requestPath`/now/table/sys_user_group`,
 					{},
 					qs,
 				);
@@ -335,7 +337,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowRequestAllItems.call(
 					this,
 					'GET',
-					'/now/table/sys_user_role',
+					requestPath`/now/table/sys_user_role`,
 					{},
 					qs,
 				);
@@ -358,7 +360,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowRequestAllItems.call(
 					this,
 					'GET',
-					'/now/table/cmdb_ci',
+					requestPath`/now/table/cmdb_ci`,
 					{},
 					qs,
 				);
@@ -383,7 +385,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowRequestAllItems.call(
 					this,
 					'GET',
-					'/now/table/sys_choice',
+					requestPath`/now/table/sys_choice`,
 					{},
 					qs,
 				);
@@ -416,7 +418,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowRequestAllItems.call(
 					this,
 					'GET',
-					'/now/table/sys_choice',
+					requestPath`/now/table/sys_choice`,
 					{},
 					qs,
 				);
@@ -439,7 +441,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowRequestAllItems.call(
 					this,
 					'GET',
-					'/now/table/sys_choice',
+					requestPath`/now/table/sys_choice`,
 					{},
 					qs,
 				);
@@ -463,7 +465,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowRequestAllItems.call(
 					this,
 					'GET',
-					'/now/table/sys_choice',
+					requestPath`/now/table/sys_choice`,
 					{},
 					qs,
 				);
@@ -485,7 +487,7 @@ export class ServiceNow implements INodeType {
 				const response = await serviceNowRequestAllItems.call(
 					this,
 					'GET',
-					'/now/table/sys_choice',
+					requestPath`/now/table/sys_choice`,
 					{},
 					qs,
 				);
@@ -517,7 +519,7 @@ export class ServiceNow implements INodeType {
 					if (operation === 'get') {
 						const attachmentsSysId = this.getNodeParameter('attachmentId', i) as string;
 						const download = this.getNodeParameter('download', i);
-						const endpoint = `/now/attachment/${attachmentsSysId}`;
+						const endpoint = requestPath`/now/attachment/${attachmentsSysId}`;
 
 						const response = await serviceNowApiRequest.call(this, 'GET', endpoint, {});
 						const fileMetadata = response.result;
@@ -568,7 +570,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								'/now/attachment',
+								requestPath`/now/attachment`,
 								{},
 								qs,
 							);
@@ -577,7 +579,7 @@ export class ServiceNow implements INodeType {
 							responseData = await serviceNowRequestAllItems.call(
 								this,
 								'GET',
-								'/now/attachment',
+								requestPath`/now/attachment`,
 								{},
 								qs,
 							);
@@ -593,7 +595,7 @@ export class ServiceNow implements INodeType {
 									binary: {
 										[outputField]: await serviceNowDownloadAttachment.call(
 											this,
-											`/now/attachment/${data.sys_id}`,
+											requestPath`/now/attachment/${data.sys_id}`,
 											data.file_name as string,
 											data.content_type as string,
 										),
@@ -631,16 +633,19 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'POST',
-							'/now/attachment/file',
+							requestPath`/now/attachment/file`,
 							body,
 							query,
-							'',
 							{ headers },
 						);
 						responseData = response.result;
 					} else if (operation === 'delete') {
 						const attachmentsSysId = this.getNodeParameter('attachmentId', i) as string;
-						await serviceNowApiRequest.call(this, 'DELETE', `/now/attachment/${attachmentsSysId}`);
+						await serviceNowApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/now/attachment/${attachmentsSysId}`,
+						);
 						responseData = { success: true };
 					}
 				} else if (resource === 'businessService') {
@@ -658,7 +663,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								'/now/table/cmdb_ci_service',
+								requestPath`/now/table/cmdb_ci_service`,
 								{},
 								qs,
 							);
@@ -667,7 +672,7 @@ export class ServiceNow implements INodeType {
 							responseData = await serviceNowRequestAllItems.call(
 								this,
 								'GET',
-								'/now/table/cmdb_ci_service',
+								requestPath`/now/table/cmdb_ci_service`,
 								{},
 								qs,
 							);
@@ -688,7 +693,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								'/now/table/cmdb_ci',
+								requestPath`/now/table/cmdb_ci`,
 								{},
 								qs,
 							);
@@ -697,7 +702,7 @@ export class ServiceNow implements INodeType {
 							responseData = await serviceNowRequestAllItems.call(
 								this,
 								'GET',
-								'/now/table/cmdb_ci',
+								requestPath`/now/table/cmdb_ci`,
 								{},
 								qs,
 							);
@@ -718,7 +723,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								'/now/table/cmn_department',
+								requestPath`/now/table/cmn_department`,
 								{},
 								qs,
 							);
@@ -727,7 +732,7 @@ export class ServiceNow implements INodeType {
 							responseData = await serviceNowRequestAllItems.call(
 								this,
 								'GET',
-								'/now/table/cmn_department',
+								requestPath`/now/table/cmn_department`,
 								{},
 								qs,
 							);
@@ -748,7 +753,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								'/now/table/sys_dictionary',
+								requestPath`/now/table/sys_dictionary`,
 								{},
 								qs,
 							);
@@ -757,7 +762,7 @@ export class ServiceNow implements INodeType {
 							responseData = await serviceNowRequestAllItems.call(
 								this,
 								'GET',
-								'/now/table/sys_dictionary',
+								requestPath`/now/table/sys_dictionary`,
 								{},
 								qs,
 							);
@@ -775,7 +780,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'POST',
-							'/now/table/incident',
+							requestPath`/now/table/incident`,
 							body,
 						);
 						responseData = response.result;
@@ -784,7 +789,7 @@ export class ServiceNow implements INodeType {
 						responseData = await serviceNowApiRequest.call(
 							this,
 							'DELETE',
-							`/now/table/incident/${id}`,
+							requestPath`/now/table/incident/${id}`,
 						);
 						responseData = { success: true };
 					} else if (operation === 'get') {
@@ -798,7 +803,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'GET',
-							`/now/table/incident/${id}`,
+							requestPath`/now/table/incident/${id}`,
 							{},
 							qs,
 						);
@@ -817,7 +822,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								'/now/table/incident',
+								requestPath`/now/table/incident`,
 								{},
 								qs,
 							);
@@ -826,7 +831,7 @@ export class ServiceNow implements INodeType {
 							responseData = await serviceNowRequestAllItems.call(
 								this,
 								'GET',
-								'/now/table/incident',
+								requestPath`/now/table/incident`,
 								{},
 								qs,
 							);
@@ -838,7 +843,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'PATCH',
-							`/now/table/incident/${id}`,
+							requestPath`/now/table/incident/${id}`,
 							body,
 						);
 						responseData = response.result;
@@ -875,7 +880,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'POST',
-							`/now/table/${tableName}`,
+							requestPath`/now/table/${tableName}`,
 							body,
 						);
 						responseData = response.result;
@@ -885,7 +890,7 @@ export class ServiceNow implements INodeType {
 						responseData = await serviceNowApiRequest.call(
 							this,
 							'DELETE',
-							`/now/table/${tableName}/${id}`,
+							requestPath`/now/table/${tableName}/${id}`,
 						);
 						responseData = { success: true };
 					} else if (operation === 'get') {
@@ -900,7 +905,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'GET',
-							`/now/table/${tableName}/${id}`,
+							requestPath`/now/table/${tableName}/${id}`,
 							{},
 							qs,
 						);
@@ -920,7 +925,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								`/now/table/${tableName}`,
+								requestPath`/now/table/${tableName}`,
 								{},
 								qs,
 							);
@@ -929,7 +934,7 @@ export class ServiceNow implements INodeType {
 							responseData = await serviceNowRequestAllItems.call(
 								this,
 								'GET',
-								`/now/table/${tableName}`,
+								requestPath`/now/table/${tableName}`,
 								{},
 								qs,
 							);
@@ -960,7 +965,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'PATCH',
-							`/now/table/${tableName}/${id}`,
+							requestPath`/now/table/${tableName}/${id}`,
 							body,
 						);
 						responseData = response.result;
@@ -978,7 +983,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'POST',
-							'/now/table/sys_user',
+							requestPath`/now/table/sys_user`,
 							body,
 						);
 						responseData = response.result;
@@ -987,7 +992,7 @@ export class ServiceNow implements INodeType {
 						responseData = await serviceNowApiRequest.call(
 							this,
 							'DELETE',
-							`/now/table/sys_user/${id}`,
+							requestPath`/now/table/sys_user/${id}`,
 						);
 						responseData = { success: true };
 					} else if (operation === 'get') {
@@ -1003,7 +1008,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								`/now/table/sys_user/${id}`,
+								requestPath`/now/table/sys_user/${id}`,
 								{},
 								qs,
 							);
@@ -1017,7 +1022,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								'/now/table/sys_user',
+								requestPath`/now/table/sys_user`,
 								{},
 								qs,
 							);
@@ -1037,7 +1042,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								'/now/table/sys_user',
+								requestPath`/now/table/sys_user`,
 								{},
 								qs,
 							);
@@ -1046,7 +1051,7 @@ export class ServiceNow implements INodeType {
 							responseData = await serviceNowRequestAllItems.call(
 								this,
 								'GET',
-								'/now/table/sys_user',
+								requestPath`/now/table/sys_user`,
 								{},
 								qs,
 							);
@@ -1058,7 +1063,7 @@ export class ServiceNow implements INodeType {
 						const response = await serviceNowApiRequest.call(
 							this,
 							'PATCH',
-							`/now/table/sys_user/${id}`,
+							requestPath`/now/table/sys_user/${id}`,
 							body,
 						);
 						responseData = response.result;
@@ -1084,7 +1089,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								'/now/table/sys_user_group',
+								requestPath`/now/table/sys_user_group`,
 								{},
 								qs,
 							);
@@ -1093,7 +1098,7 @@ export class ServiceNow implements INodeType {
 							responseData = await serviceNowRequestAllItems.call(
 								this,
 								'GET',
-								'/now/table/sys_user_group',
+								requestPath`/now/table/sys_user_group`,
 								{},
 								qs,
 							);
@@ -1120,7 +1125,7 @@ export class ServiceNow implements INodeType {
 							const response = await serviceNowApiRequest.call(
 								this,
 								'GET',
-								'/now/table/sys_user_role',
+								requestPath`/now/table/sys_user_role`,
 								{},
 								qs,
 							);
@@ -1129,7 +1134,7 @@ export class ServiceNow implements INodeType {
 							responseData = await serviceNowRequestAllItems.call(
 								this,
 								'GET',
-								'/now/table/sys_user_role',
+								requestPath`/now/table/sys_user_role`,
 								{},
 								qs,
 							);

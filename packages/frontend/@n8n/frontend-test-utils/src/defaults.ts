@@ -26,6 +26,7 @@ export const defaultSettings: FrontendSettings = {
 	endpointWebhookTest: '',
 	endpointWebhookWaiting: '',
 	endpointHealth: '/healthz',
+	healthCheckTimeoutMs: 5000,
 	enterprise: {
 		sharing: false,
 		ldap: false,
@@ -74,7 +75,6 @@ export const defaultSettings: FrontendSettings = {
 	posthog: {
 		apiHost: '',
 		apiKey: '',
-		autocapture: false,
 		debug: false,
 		disableSessionRecording: false,
 		enabled: false,
@@ -137,6 +137,8 @@ export const defaultSettings: FrontendSettings = {
 	excludeNodes: [],
 	workflowTagsDisabled: false,
 	workflowsAutosaveDisabled: false,
+	workflowsGroupsWithTriggersEnabled: false,
+	workflowsGroupsWithManyBoundariesEnabled: false,
 	variables: {
 		limit: -1,
 	},
@@ -170,6 +172,7 @@ export const defaultSettings: FrontendSettings = {
 	aiAssistant: {
 		enabled: false,
 		setup: false,
+		cloudUbbEnabled: false,
 	},
 	aiCredits: {
 		enabled: false,
@@ -191,6 +194,7 @@ export const defaultSettings: FrontendSettings = {
 		collectionsEnabled: false,
 		configEvalsEnabled: false,
 		agentEvalsEnabled: false,
+		forceAgentWorthTesting: false,
 	},
 	activeModules: [],
 	canvasOnly: false,

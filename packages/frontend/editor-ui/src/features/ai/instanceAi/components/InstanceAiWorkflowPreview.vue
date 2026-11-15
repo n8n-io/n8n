@@ -5,8 +5,10 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
 import {
 	EditorEnabledFeaturesKey,
+	LogsPanelHostKey,
 	type EditorEnabledFeatures,
 } from '@/app/constants/injectionKeys';
+import { LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_LOGS_PANEL_HEIGHT } from '@/app/constants';
 import {
 	InstanceAiEditorCapabilityKey,
 	type InstanceAiEditorCapability,
@@ -25,7 +27,8 @@ import {
 import { useIsAgentWorking } from '../composables/useIsAgentWorking';
 import { useInstanceAiWorkflowPreviewExecution } from '../composables/useInstanceAiWorkflowPreviewExecution';
 import type { FixWithAiError } from '../fixWithAi';
-import { useThread } from '../instanceAi.store';
+import { useArtifactThread } from '../artifactThread';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 
 export interface WorkflowFailuresReport {
 	workflowId: string;
@@ -49,9 +52,12 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'initial-node-id-consumed': [];
 	'workflow-failures': [report: WorkflowFailuresReport];
+	/** A later run of the workflow succeeded, so an earlier failure is stale. */
+	'workflow-succeeded': [workflowId: string];
 }>();
 
 const hostRef = useTemplateRef<InstanceType<typeof WorkflowCanvasHost>>('host');
+const paneElement = useTemplateRef<HTMLElement>('pane');
 
 function requestFitView() {
 	hostRef.value?.requestFitView();
@@ -113,6 +119,8 @@ const { restoreExecutionResult } = useInstanceAiWorkflowPreviewExecution({
 	workflowId: () => props.workflowId,
 	executionResult: () => props.executionResult,
 	reportWorkflowFailures,
+	reportWorkflowSuccess: (workflowId) => emit('workflow-succeeded', workflowId),
+	paneElement: () => paneElement.value,
 });
 
 let pendingInitialNodeId = props.initialNodeId;
@@ -137,8 +145,9 @@ function handleWorkflowLoaded(workflowId: string) {
 // drag nodes into a mid-stream conflict. Thread-wide, since the per-workflow
 // signals below only fire around tool calls that name a workflowId — leaving
 // the canvas editable through workspace file edits and failed builds.
-const thread = useThread();
+const thread = useArtifactThread();
 const isAgentWorking = useIsAgentWorking();
+const settingsStore = useInstanceAiSettingsStore();
 
 // The workflow + execution the editor handed off, applied once when this
 // preview first opens. Consumed (cleared) here, so it never re-applies on a
@@ -148,13 +157,9 @@ const handoff = thread.consumePendingHandoff(props.workflowId);
 const initialWorkflow = handoff?.workflow;
 const initialExecution = handoff?.execution;
 
-const isAgentEditingThisWorkflow = computed(() => {
-	for (const message of thread.messages) {
-		if (!message.agentTree) continue;
-		if (isAgentEditingWorkflow(message.agentTree, props.workflowId)) return true;
-	}
-	return false;
-});
+const isAgentEditingThisWorkflow = computed(() =>
+	isAgentEditingWorkflow(thread.artifactTurns, props.workflowId),
+);
 
 // Per-editor host overrides for the embedded editor. Instance AI supersedes the
 // standalone AI helpers (`false`), forces the canvas read-only while the agent
@@ -173,8 +178,17 @@ const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 	executionSuccessToasts: false,
 	executionErrorToasts: false,
 	executionButtonType: 'secondary',
+	credentialSetupWarnings: settingsStore.isInstanceAiSetupPanelEnabled,
 }));
 provide(EditorEnabledFeaturesKey, enabledFeatures);
+
+// The logs panel sizes itself against this pane, not the browser window, and
+// keeps its height apart from the editor (INS-1192).
+provide(LogsPanelHostKey, {
+	context: 'artifact',
+	heightStorageKey: LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_LOGS_PANEL_HEIGHT,
+	heightContainer: () => paneElement.value,
+});
 
 const rootStore = useRootStore();
 
@@ -200,7 +214,7 @@ provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 </script>
 
 <template>
-	<div :class="$style.content">
+	<div ref="pane" :class="$style.content">
 		<WorkflowCanvasHost
 			ref="host"
 			:workflow-id="workflowId"

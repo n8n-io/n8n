@@ -26,12 +26,14 @@ import { GlobalComponentsPlugin } from '@/app/plugins/components';
 import { GlobalDirectivesPlugin } from '@/app/plugins/directives';
 
 import { createPinia, PiniaVuePlugin } from 'pinia';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { ChartJSPlugin } from '@/app/plugins/chartjs';
 import { SentryPlugin } from '@/app/plugins/sentry';
 import { registerVitePreloadErrorHandler } from '@/app/plugins/vitePreloadError';
 import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer';
 import { registerEagerModals } from '@/app/modals.manifest';
 import { registerComponentSlots } from '@/app/componentSlots.manifest';
+import { registerShellCapabilities } from '@/app/capabilities.manifest';
 import { registerUpgradeRedirectGuard } from '@/app/upgradeRedirectGuard.manifest';
 import { installRenderTracker } from '@/app/dev/render-tracker';
 
@@ -57,6 +59,9 @@ registerEagerModals();
 // Shell-hosted components modules render — see componentSlots.manifest.ts
 registerComponentSlots();
 
+// Shell actions modules call — see capabilities.manifest.ts
+registerShellCapabilities();
+
 // The upgrade-CTA guard modules rely on — see upgradeRedirectGuard.manifest.ts
 registerUpgradeRedirectGuard();
 
@@ -65,6 +70,8 @@ app.use(PiniaVuePlugin);
 app.use(GlobalComponentsPlugin);
 app.use(GlobalDirectivesPlugin);
 app.use(pinia);
+// Settings embedded in the page are ready before the first request, so modules can use them
+useSettingsStore().applyEmbeddedSettings();
 app.use(router);
 app.use(i18nInstance);
 app.use(ChartJSPlugin);

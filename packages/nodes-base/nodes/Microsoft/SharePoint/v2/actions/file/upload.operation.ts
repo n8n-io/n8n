@@ -1,12 +1,12 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { folderRLC } from '../../folder';
-import { getUploadBufferWithinCap, validateSharePointFileName } from '../../helpers/utils';
-import { untilSiteSelected } from '../../list';
-import { resolveSiteId, siteRLC } from '../../site';
-import { microsoftApiRequest } from '../../transport';
+import { getUploadBufferWithinCap, validateSharePointFileName } from '../../../helpers/utils';
+import { untilSiteSelected } from '../../../list';
+import { resolveSiteId, siteRLC } from '../../../site';
+import { microsoftApiRequest } from '../../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -79,7 +79,7 @@ export async function execute(
 	return await microsoftApiRequest.call(
 		this,
 		'PUT',
-		`/v1.0/sites/${encodeURIComponent(siteId)}/drive/items/${encodeURIComponent(folderId)}:/${encodeURIComponent(fileName)}:/content`,
+		requestPath`/v1.0/sites/${siteId}/drive/items/${folderId}:/${fileName}:/content`,
 		body,
 		{},
 		undefined,

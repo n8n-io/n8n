@@ -2,7 +2,7 @@ import { Time } from '@n8n/constants';
 import type { Schedule } from '@n8n/scheduler';
 import { computeFirstRunAt, computeNextRunAt } from '@n8n/scheduler';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 /**
  * Node fires a timeout longer than this straight away (the delay is a signed
@@ -42,9 +42,9 @@ export class SystemTaskTimer {
 		private readonly now: () => number = Date.now,
 	) {}
 
-	start(from: Date): void {
+	start(from: Date, initialDelaySeconds?: number): void {
 		this.stop();
-		this.arm(from, true);
+		this.arm(from, true, initialDelaySeconds);
 	}
 
 	stop(): void {
@@ -52,12 +52,13 @@ export class SystemTaskTimer {
 		this.timer = undefined;
 	}
 
-	private arm(after: Date, isFirst: boolean): number {
+	private arm(after: Date, isFirst: boolean, initialDelaySeconds?: number): number {
 		let next: Date | null;
 		try {
-			next = isFirst
-				? computeFirstRunAt(this.schedule, after)
-				: computeNextRunAt(this.schedule, after);
+			next =
+				initialDelaySeconds === undefined
+					? this.nextOccurrence(after, isFirst)
+					: new Date(after.getTime() + initialDelaySeconds * Time.seconds.toMilliseconds);
 		} catch (error) {
 			this.timer = undefined;
 			this.onPlanError(ensureError(error));
@@ -92,6 +93,23 @@ export class SystemTaskTimer {
 		this.waitFor(next, delayMs);
 		this.onPlan(next);
 		return 0;
+	}
+
+	/**
+	 * An interval is planned here rather than by the scheduler, which only
+	 * accepts whole seconds: an instance task may run more than once a second.
+	 */
+	private nextOccurrence(after: Date, isFirst: boolean): Date | null {
+		if (this.schedule.kind === 'interval') {
+			const intervalMs = this.schedule.intervalSeconds * Time.seconds.toMilliseconds;
+			if (!(intervalMs > 0)) {
+				throw new UnexpectedError('A system task interval is not positive');
+			}
+			return new Date(after.getTime() + intervalMs);
+		}
+		return isFirst
+			? computeFirstRunAt(this.schedule, after)
+			: computeNextRunAt(this.schedule, after);
 	}
 
 	/**

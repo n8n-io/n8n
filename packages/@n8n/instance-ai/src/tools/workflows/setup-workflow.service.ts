@@ -31,6 +31,7 @@ import {
 	type SetupNodeCredential,
 } from './credential-utils';
 import { coerceWrongKindListModeParams } from './detect-wrong-kind-locator';
+import { describeSavedPublishState, type SavedWorkflowState } from './saved-workflow-state';
 import type { SetupRequest } from './setup-workflow.schema';
 import { refreshWorkflowSourceFileBindingFromSave } from './workflow-file-bindings';
 import type { InstanceAiContext } from '../../types';
@@ -472,16 +473,19 @@ async function resolveCredentialState(
 	// Auto-apply n8n credits only when the user has no credentials of their own
 	// for this type: none assigned on the node (`hasExistingOnNode`) and none
 	// stored (`existingCredentials`). Any user-defined credential wins — we never
-	// override a saved key with the managed gateway.
+	// override a saved key with the managed gateway. The node itself must also be
+	// eligible, or the card would offer credits that fail when the workflow runs.
 	if (
 		!hasExistingOnNode &&
 		!prefersNewCredential &&
 		existingCredentials.length === 0 &&
 		context.credentialService.isAiGatewayCredentialType
 	) {
-		const gatewaySupported = await context.credentialService
-			.isAiGatewayCredentialType(credentialType)
-			.catch(() => false);
+		const gatewaySupported =
+			(await context.credentialService
+				.isAiGatewayCredentialType(credentialType)
+				.catch(() => false)) &&
+			!(await context.credentialService.getAiGatewayNodeRejection?.(node, credentialType));
 		if (gatewaySupported) {
 			isAutoApplied = true;
 			autoAppliedGateway = true;
@@ -1017,9 +1021,11 @@ export function sortByExecutionOrder(
 // ── Workflow mutation ───────────────────────────────────────────────────────
 
 /** Result of applying credentials or parameters to workflow nodes. */
-export interface ApplyResult {
+export interface ApplyResult extends SavedWorkflowState {
 	applied: string[];
 	failed: Array<{ nodeName: string; error: string }>;
+	/** Set when the single save failed: nothing was persisted. */
+	saveError?: string;
 }
 
 function addUnknownNodeFailures(
@@ -1042,103 +1048,6 @@ function addUnknownNodeFailures(
 			});
 		}
 	}
-}
-
-/** Apply per-node credentials from resume data to a workflow. */
-export async function applyNodeCredentials(
-	context: InstanceAiContext,
-	workflowId: string,
-	nodeCredentials: Record<string, Record<string, string>>,
-): Promise<ApplyResult> {
-	const result: ApplyResult = { applied: [], failed: [] };
-	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
-	addUnknownNodeFailures(result, workflowJson, nodeCredentials);
-
-	for (const node of workflowJson.nodes) {
-		if (!node.name) continue;
-		const credsMap = nodeCredentials[node.name];
-		if (!credsMap) continue;
-
-		let nodeSucceeded = true;
-		for (const [credType, credId] of Object.entries(credsMap)) {
-			const resolved = await resolveCredentialForApply(credType, credId, context);
-			if (resolved.resolved) {
-				assignCredentialToNode(node, credType, resolved.credential);
-			} else {
-				nodeSucceeded = false;
-				result.failed.push({
-					nodeName: node.name,
-					error: resolved.error,
-				});
-			}
-		}
-		if (nodeSucceeded) {
-			result.applied.push(node.name);
-		}
-	}
-
-	try {
-		const saved = await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
-		await refreshWorkflowSourceFileBindingFromSave(context, workflowId, {
-			versionId: saved.versionId,
-			checksum: saved.checksum,
-		});
-	} catch (error) {
-		// If the final save fails, mark all previously-applied nodes as failed
-		const saveError = `Failed to save workflow after credential apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
-		for (const nodeName of result.applied) {
-			result.failed.push({ nodeName, error: saveError });
-		}
-		result.applied = [];
-	}
-
-	return result;
-}
-
-/** Apply per-node parameter values from resume data to a workflow. */
-export async function applyNodeParameters(
-	context: InstanceAiContext,
-	workflowId: string,
-	nodeParameters: Record<string, Record<string, unknown>>,
-): Promise<ApplyResult> {
-	const result: ApplyResult = { applied: [], failed: [] };
-	const workflowJson = await context.workflowService.getAsWorkflowJSON(workflowId);
-	addUnknownNodeFailures(result, workflowJson, undefined, nodeParameters);
-
-	for (const node of workflowJson.nodes) {
-		if (!node.name) continue;
-		const params = nodeParameters[node.name];
-		if (!params) continue;
-
-		try {
-			node.parameters = {
-				...(node.parameters ?? {}),
-				...params,
-			} as IDataObject;
-			result.applied.push(node.name);
-		} catch (error) {
-			result.failed.push({
-				nodeName: node.name,
-				error: `Failed to merge parameters: ${error instanceof Error ? error.message : 'Unknown error'}`,
-			});
-		}
-	}
-
-	try {
-		const saved = await context.workflowService.updateFromWorkflowJSON(workflowId, workflowJson);
-		await refreshWorkflowSourceFileBindingFromSave(context, workflowId, {
-			versionId: saved.versionId,
-			checksum: saved.checksum,
-		});
-	} catch (error) {
-		const saveError = `Failed to save workflow after parameter apply: ${error instanceof Error ? error.message : 'Unknown error'}`;
-		for (const nodeName of result.applied) {
-			result.failed.push({ nodeName, error: saveError });
-		}
-		result.applied = [];
-	}
-
-	return result;
 }
 
 /**
@@ -1303,12 +1212,14 @@ export async function applyNodeChanges(
 			checksum: saved.checksum,
 		});
 		result.applied = [...appliedNodes];
+		return { ...result, ...describeSavedPublishState(saved) };
 	} catch (error) {
 		const saveError = `Failed to save workflow: ${error instanceof Error ? error.message : 'Unknown error'}`;
 		for (const nodeName of appliedNodes) {
 			result.failed.push({ nodeName, error: saveError });
 		}
 		result.applied = [];
+		result.saveError = saveError;
 	}
 
 	return result;

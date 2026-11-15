@@ -415,6 +415,26 @@ export async function getPullRequestById(pullRequestId) {
 }
 
 /**
+ * Open PRs whose head is `headOwner:headBranch`, newest first.
+ *
+ * @param { string } headOwner Owner of the head repository (a fork owner or this org).
+ * @param { string } headBranch
+ * @returns { Promise<any[]> }
+ */
+export async function listOpenPullRequestsByHead(headOwner, headBranch) {
+	const { octokit, owner, repo } = initGithub();
+
+	const pullRequests = await octokit.rest.pulls.list({
+		owner,
+		repo,
+		state: 'open',
+		head: `${headOwner}:${headBranch}`,
+	});
+
+	return pullRequests.data;
+}
+
+/**
  * Returns the set of files changed in a PR, including previous filenames for renames.
  *
  * @param { number } pullRequestNumber
@@ -466,6 +486,23 @@ export async function getPrReviews(pullRequestNumber) {
 		owner,
 		repo,
 		pull_number: pullRequestNumber,
+		per_page: 100,
+	});
+}
+
+/**
+ * Returns all events for a PR, including label changes and their actors.
+ *
+ * @param { number } pullRequestNumber
+ * @returns { Promise<Array<{ event: string, actor: { login: string } | null, label?: { name?: string } | null, created_at?: string }>> }
+ * */
+export async function getPrEvents(pullRequestNumber) {
+	const { octokit, owner, repo } = initGithub();
+
+	return await octokit.paginate(octokit.rest.issues.listEvents, {
+		owner,
+		repo,
+		issue_number: pullRequestNumber,
 		per_page: 100,
 	});
 }

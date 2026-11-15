@@ -243,6 +243,7 @@ describe('Source Control Helper', () => {
 			expect(getRepoType('git@github.com:n8ntest/n8n_testrepo.git')).toBe('github');
 			expect(getRepoType('git@gitlab.com:n8ntest/n8n_testrepo.git')).toBe('gitlab');
 			expect(getRepoType('git@mygitea.io:n8ntest/n8n_testrepo.git')).toBe('other');
+			expect(getRepoType(undefined)).toBe('other');
 		});
 	});
 
@@ -596,7 +597,7 @@ describe('Source Control Helper', () => {
 		beforeEach(() => {
 			// Reset module registry so we can unmock properly
 			vi.resetModules();
-			vi.unmock('node:fs/promises');
+			vi.doUnmock('node:fs/promises');
 		});
 
 		it('should return default mapping if the file path is not valid', async () => {
@@ -617,7 +618,7 @@ describe('Source Control Helper', () => {
 		beforeEach(() => {
 			// Reset module registry so we can unmock properly
 			vi.resetModules();
-			vi.unmock('node:fs/promises');
+			vi.doUnmock('node:fs/promises');
 		});
 
 		it('should return default folders if the file path is not valid', async () => {
@@ -637,7 +638,7 @@ describe('Source Control Helper', () => {
 		beforeEach(() => {
 			// Reset module registry so we can unmock properly
 			vi.resetModules();
-			vi.unmock('node:fs/promises');
+			vi.doUnmock('node:fs/promises');
 		});
 
 		it('should return empty array if the file path is not valid (ENOENT)', async () => {

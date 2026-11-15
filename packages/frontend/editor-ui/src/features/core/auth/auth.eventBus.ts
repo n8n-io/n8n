@@ -5,7 +5,8 @@ export interface ConfirmPasswordClosedEventPayload {
 }
 
 export interface ConfirmPasswordModalEvents {
-	close: ConfirmPasswordClosedEventPayload | undefined;
+	/** The dialog has closed: with the accepted password, or without one when the user cancelled. */
+	closed: ConfirmPasswordClosedEventPayload | undefined;
 }
 
 export const confirmPasswordEventBus = createEventBus<ConfirmPasswordModalEvents>();

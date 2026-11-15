@@ -167,6 +167,46 @@ describe('InstanceAiMemoryService.listThreadHistory', () => {
 	});
 });
 
+describe('InstanceAiMemoryService internal thread ownership', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+	afterEach(() => {
+		mockGetThread.mockReset();
+	});
+
+	it.each(['user-1', 'other-user'])('keeps producer threads hidden from %s', async (userId) => {
+		mockGetThread.mockResolvedValue({
+			...makeThread('internal-thread', '2026-02-01T00:00:00.000Z'),
+			resourceId: 'ia-self-healing:user-1',
+		});
+		const service = createService();
+
+		expect(await service.checkThreadOwnership(userId, 'internal-thread')).toBe('other_user');
+		expect(await service.getThreadMetadata(userId, 'internal-thread')).toBeUndefined();
+		await expect(
+			service.ensureThread(userId, 'internal-thread', 'project-1', {
+				source: 'assistant_page',
+				origin: 'internal',
+			}),
+		).rejects.toThrow('not owned');
+		expect(mockSaveThreadWithProject).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ resourceId: 'user-1', actorId: 'user-1' },
+		{ resourceId: 'ia-self-healing:user-1', actorId: 'user-1' },
+		{ resourceId: 'ia-self-healing:', actorId: undefined },
+	])('resolves the workspace cleanup actor for $resourceId', async ({ resourceId, actorId }) => {
+		mockGetThread.mockResolvedValue({
+			...makeThread('thread', '2026-02-01T00:00:00.000Z'),
+			resourceId,
+		});
+
+		expect(await createService().getThreadActorId('thread')).toBe(actorId);
+	});
+});
+
 describe('InstanceAiMemoryService.getRichMessages', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -712,6 +752,86 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(result.messages[3].agentTree?.toolCalls.map((tc) => tc.toolName)).toEqual(['tool-1']);
 	});
 
+	it('keeps a turn paired when a preference-card fact lands after a later message', async () => {
+		// Edit and Undo append a `preference-card` fact to the run that saved the
+		// preference. A second tab, or a crafted runId, can append one after the
+		// next user message. The anchor must ignore that fact: the parser drops a
+		// snapshot anchored after the next message, which would unpair the whole
+		// turn instead of correcting one card.
+		const t = (seconds: number) => new Date(2026, 0, 1, 0, 0, seconds);
+		mockListMessages.mockResolvedValue({
+			messages: [
+				{ id: 'msg-u1', role: 'user', content: 'remember this', createdAt: t(0) },
+				{
+					id: 'msg-a1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'saved it' }],
+					createdAt: t(8),
+				},
+				{ id: 'msg-u2', role: 'user', content: 'something else', createdAt: t(20) },
+			],
+		});
+		setLogRows([
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_pref',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1', messageGroupId: 'mg-1' },
+				},
+				t(5),
+			),
+			eventRow(
+				{
+					type: 'tool-call',
+					runId: 'run_pref',
+					agentId: 'agent-001',
+					payload: { toolCallId: 'tc-1', toolName: 'save_user_preference', args: {} },
+				},
+				t(6),
+			),
+			eventRow(
+				{
+					type: 'tool-result',
+					runId: 'run_pref',
+					agentId: 'agent-001',
+					payload: { toolCallId: 'tc-1', result: { preferenceId: 'pref-1' } },
+				},
+				t(7),
+			),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_pref',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				t(9),
+			),
+			// The undo lands after the next user message.
+			eventRow(
+				{
+					type: 'preference-card',
+					runId: 'run_pref',
+					agentId: 'agent-001',
+					payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+				},
+				t(30),
+			),
+		]);
+
+		const service = createService();
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		// Three messages, no trailing orphan card.
+		expect(result.messages).toHaveLength(3);
+		const assistant = result.messages[1];
+		expect(assistant.role).toBe('assistant');
+		expect(assistant.runId).toBe('run_pref');
+		const toolCall = assistant.agentTree?.toolCalls.find((tc) => tc.toolCallId === 'tc-1');
+		expect(toolCall?.preferenceCard?.state).toBe('undone');
+	});
+
 	it('keeps interleaved runs of one group in thread order', async () => {
 		// Background runs execute concurrently with their parent, so a group's
 		// facts interleave in the log. The fold must feed the reducer in seq
@@ -830,6 +950,12 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 	describe('hydration is scoped to the requested page', () => {
 		const oldAt = new Date('2025-06-01T00:00:00.000Z');
 
+		function cursorFor(id: string, createdAt: Date) {
+			return Buffer.from(JSON.stringify({ createdAt: createdAt.toISOString(), id })).toString(
+				'base64url',
+			);
+		}
+
 		/** A complete, renderable run: start, one tool call, finish. */
 		function runRows(runId: string, when: Date, messageGroupId?: string) {
 			return [
@@ -912,23 +1038,22 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			expect(result.messages.some((m) => m.runId === 'run_live')).toBe(true);
 		});
 
-		it('stops an older page where the next page starts, not at its own newest message', async () => {
+		it('stops an older page at its cursor, not at its own newest message', async () => {
 			// A turn's tree is written when its run ends — after the assistant row
 			// it pairs with. Clipping at the page's own newest message would drop
 			// the tree of the turn the page ends on, and no other page would claim
 			// it either.
 			const nextPageAt = new Date('2026-01-01T00:00:05.000Z');
-			mockListMessages.mockResolvedValue({
-				messages: [userMessage, assistantMessage],
-				newerBoundaryAt: nextPageAt,
-			});
+			mockListMessages.mockResolvedValue({ messages: [userMessage, assistantMessage] });
 			setLogRows([...runRows('run_recent', at)]);
 
 			const service = createService();
-			await service.getRichMessages('user-1', 'thread-1', { page: 1 });
+			await service.getRichMessages('user-1', 'thread-1', {
+				cursor: cursorFor('msg-next', nextPageAt),
+			});
 
 			expect(mockListMessages).toHaveBeenCalledWith(
-				expect.objectContaining({ page: 1, withNewerBoundary: true }),
+				expect.objectContaining({ before: { createdAt: nextPageAt, id: 'msg-next' } }),
 			);
 			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {
 				since: userMessage.createdAt,
@@ -936,7 +1061,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			});
 		});
 
-		it('hydrates nothing for an out-of-range older page', async () => {
+		it('hydrates nothing for an empty older page', async () => {
 			// No message rows to pair a tree with, and no bounds to read one
 			// with: an unbounded read here would hydrate the whole thread to
 			// render nothing.
@@ -944,10 +1069,70 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			setLogRows([...runRows('run_recent', at)]);
 
 			const service = createService();
-			const result = await service.getRichMessages('user-1', 'thread-1', { page: 3 });
+			const result = await service.getRichMessages('user-1', 'thread-1', {
+				cursor: cursorFor('msg-u', userMessage.createdAt),
+			});
 
 			expect(mockEventLogRepository.findRunIdsInWindow).not.toHaveBeenCalled();
 			expect(result.messages).toEqual([]);
+			expect(result.nextCursor).toBeUndefined();
+		});
+
+		it('rejects a cursor it did not issue', async () => {
+			const service = createService();
+			await expect(
+				service.getRichMessages('user-1', 'thread-1', { cursor: 'not-a-cursor' }),
+			).rejects.toThrow('Invalid thread messages cursor');
+			expect(mockListMessages).not.toHaveBeenCalled();
+		});
+
+		it('starts a page with older messages at its first user message', async () => {
+			// The leading rows end a turn that began on the older page. The parser
+			// merges a turn's rows only when it sees all of them, so the older page
+			// reads them again with their user message.
+			const tailOfOlderTurn = {
+				id: 'msg-tail',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'Older turn, last words' }],
+				createdAt: new Date('2025-12-31T23:59:59.000Z'),
+			};
+			mockListMessages.mockResolvedValue({
+				messages: [tailOfOlderTurn, userMessage, assistantMessage],
+				hasMore: true,
+			});
+			setLogRows([]);
+
+			const service = createService();
+			const result = await service.getRichMessages('user-1', 'thread-1');
+
+			expect(result.messages.map((m) => m.id)).toEqual(['msg-u', 'msg-a']);
+			expect(result.nextCursor).toBe(cursorFor('msg-u', userMessage.createdAt));
+		});
+
+		it('continues from the oldest row when a turn is longer than one page', async () => {
+			mockListMessages.mockResolvedValue({ messages: [assistantMessage], hasMore: true });
+			setLogRows([]);
+
+			const service = createService();
+			const result = await service.getRichMessages('user-1', 'thread-1');
+
+			expect(result.messages.map((m) => m.id)).toEqual(['msg-a']);
+			expect(result.nextCursor).toBe(cursorFor('msg-a', assistantMessage.createdAt));
+		});
+
+		it('keeps every message and issues no cursor on the oldest page', async () => {
+			const firstAssistant = { ...assistantMessage, id: 'msg-first', createdAt: oldAt };
+			mockListMessages.mockResolvedValue({
+				messages: [firstAssistant, userMessage, assistantMessage],
+				hasMore: false,
+			});
+			setLogRows([]);
+
+			const service = createService();
+			const result = await service.getRichMessages('user-1', 'thread-1');
+
+			expect(result.messages.map((m) => m.id)).toEqual(['msg-first', 'msg-u', 'msg-a']);
+			expect(result.nextCursor).toBeUndefined();
 		});
 
 		it('widens the window to whole message groups', async () => {
@@ -955,14 +1140,13 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			// message. Folding the group without it would drop its work from the
 			// turn's tree, so the window has to pull the sibling back in.
 			const afterPage = new Date('2026-01-01T00:00:30.000Z');
-			mockListMessages.mockResolvedValue({
-				messages: [userMessage, assistantMessage],
-				newerBoundaryAt: new Date('2026-01-01T00:00:05.000Z'),
-			});
+			mockListMessages.mockResolvedValue({ messages: [userMessage, assistantMessage] });
 			setLogRows([...runRows('run_parent', at, 'mg-1'), ...runRows('run_bg', afterPage, 'mg-1')]);
 
 			const service = createService();
-			const result = await service.getRichMessages('user-1', 'thread-1', { page: 1 });
+			const result = await service.getRichMessages('user-1', 'thread-1', {
+				cursor: cursorFor('msg-next', new Date('2026-01-01T00:00:05.000Z')),
+			});
 
 			// `run_bg` is outside the page bounds; it rides in on its group.
 			expect(mockEventLogRepository.getForThreadRuns).toHaveBeenCalledWith('thread-1', [
@@ -1069,7 +1253,7 @@ describe('InstanceAiMemoryService.restoreThreadMessages', () => {
 		vi.clearAllMocks();
 	});
 
-	it('preserves message ids and content verbatim, coercing createdAt back to a Date', async () => {
+	it('keeps the message content, gives new ids and coerces createdAt back to a Date', async () => {
 		const service = createService();
 
 		const result = await service.restoreThreadMessages('user-1', 'thread-1', [
@@ -1104,8 +1288,11 @@ describe('InstanceAiMemoryService.restoreThreadMessages', () => {
 		expect(args.threadId).toBe('thread-1');
 		expect(args.resourceId).toBe('user-1');
 		expect(args.messages).toHaveLength(2);
-		// Verbatim restore: same ids and content blocks, createdAt as ascending Dates.
-		expect(args.messages[0].id).toBe('msg-user');
+		// Same content blocks under new ids, createdAt as ascending Dates.
+		expect(args.messages[0].id).not.toBe('msg-user');
+		expect(args.messages[0].content).toEqual([
+			{ type: 'text', text: 'Send a daily digest to #cosmic-otter-alerts' },
+		]);
 		expect(args.messages[1].content[1].toolCallId).toBe('tc-1');
 		expect(args.messages[0].createdAt).toEqual(new Date('2026-01-01T00:00:00.000Z'));
 		expect(args.messages[1].createdAt).toEqual(new Date('2026-01-01T00:00:01.000Z'));
@@ -1266,14 +1453,15 @@ describe('InstanceAiMemoryService.deleteThreadsForUser', () => {
 		vi.clearAllMocks();
 	});
 
-	it('delegates to the agent memory and returns the number of deleted threads', async () => {
-		mockDeleteThreadsByResourceId.mockResolvedValueOnce(3);
+	it('deletes the actor chat and internal threads with their existing resource cleanup', async () => {
+		mockDeleteThreadsByResourceId.mockResolvedValueOnce(3).mockResolvedValueOnce(2);
 		const service = createService();
 
 		const deleted = await service.deleteThreadsForUser('user-1');
 
-		expect(deleted).toBe(3);
+		expect(deleted).toBe(5);
 		expect(mockDeleteThreadsByResourceId).toHaveBeenCalledWith('user-1');
+		expect(mockDeleteThreadsByResourceId).toHaveBeenCalledWith('ia-self-healing:user-1');
 	});
 });
 

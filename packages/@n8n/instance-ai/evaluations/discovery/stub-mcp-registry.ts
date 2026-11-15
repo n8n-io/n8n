@@ -1,10 +1,11 @@
 // ---------------------------------------------------------------------------
 // Stub MCP registry + connections for discovery evals. Fakes the registry
-// service; `stub-local-mcp.ts` fakes the computer-use gateway.
+// service; `stub-local-mcp.ts` fakes the Browser Use server.
 //
 // ---------------------------------------------------------------------------
 
 import { sanitizeToolName, wrapToolForApproval, type BuiltTool } from '@n8n/agents';
+import { DEFAULT_INSTANCE_AI_PERMISSIONS, type InstanceAiPermissions } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { ApprovalResponder } from './confirmation-policy';
@@ -26,27 +27,21 @@ const CATALOGUE: McpRegistryConnectServerSummary[] = [
 		slug: 'notion',
 		title: 'Notion',
 		description: 'Connect to the Notion MCP Server',
-		usesCredentials: [
-			{ credentialType: 'notionMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
-		],
+		usesCredentials: [{ credentialType: 'notionMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 		tools: ['notion-search', 'notion-fetch', 'notion-create-pages'],
 	},
 	{
 		slug: 'linear',
 		title: 'Linear',
 		description: 'Connect to the Linear MCP Server',
-		usesCredentials: [
-			{ credentialType: 'linearMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
-		],
+		usesCredentials: [{ credentialType: 'linearMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 		tools: ['list_issues', 'get_issue', 'save_issue'],
 	},
 	{
 		slug: 'slack',
 		title: 'Slack',
 		description: 'Connect to the Slack MCP Server',
-		usesCredentials: [
-			{ credentialType: 'slackMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
-		],
+		usesCredentials: [{ credentialType: 'slackMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 		tools: [],
 	},
 ];
@@ -91,10 +86,12 @@ export function createStubMcpRegistry(state: DiscoveryMcpState): StubMcpRegistry
 			// Connected servers are filtered out, as in the adapter.
 			search: async (queries) =>
 				await Promise.resolve(
-					servers.filter(
-						(server) =>
-							!connected.has(server.slug) && queries.some((query) => matches(server, query)),
-					).map(({ slug, title, description, tools }) => ({ slug, title, description, tools })),
+					servers
+						.filter(
+							(server) =>
+								!connected.has(server.slug) && queries.some((query) => matches(server, query)),
+						)
+						.map(({ slug, title, description, tools }) => ({ slug, title, description, tools })),
 				),
 			getServers: async (slugs) =>
 				await Promise.resolve(servers.filter((server) => slugs.includes(server.slug))),
@@ -184,8 +181,12 @@ export class StubMcpClientManager extends McpClientManager {
 	override async getRegularTools(
 		_configs: McpServerConfig[],
 		_logger?: Logger,
-		requireApproval = true,
+		{
+			mcpRead,
+			mcpWrite,
+		}: Pick<InstanceAiPermissions, 'mcpRead' | 'mcpWrite'> = DEFAULT_INSTANCE_AI_PERMISSIONS,
 	) {
+		const requireApproval = mcpRead !== 'always_allow' || mcpWrite !== 'always_allow';
 		const tools = requireApproval ? withApprovalGate(this.stubTools) : this.stubTools;
 		return await Promise.resolve({ tools, connectionFailures: [] });
 	}

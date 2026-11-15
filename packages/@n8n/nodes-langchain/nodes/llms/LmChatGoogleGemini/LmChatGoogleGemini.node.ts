@@ -1,6 +1,8 @@
 import type { SafetySetting } from '@google/generative-ai';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { isRecord } from '@n8n/utils/is-record';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import type {
 	NodeError,
 	INodeType,
@@ -12,13 +14,58 @@ import type {
 	INodeExecutionData,
 } from 'n8n-workflow';
 
+import { getRequiredApiKey } from '@utils/helpers';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
 import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
+	proxyFetch,
 } from '@n8n/ai-utilities';
-import { shouldIncludeGoogleModel } from '@n8n/ai-utilities/model-discovery';
+import {
+	getGoogleModelLabel,
+	pinPrioritizedModels,
+	shouldIncludeGoogleModel,
+} from '@n8n/ai-utilities/model-discovery';
+
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
+
+/**
+ * Gemini returns no candidates when it blocks a prompt. The SDK then gives an empty
+ * `generations` list, and LangChain fails with a TypeError on `generations[0][0]`.
+ * This class throws an error that tells the user why Gemini did not answer.
+ */
+export class N8nChatGoogleGenerativeAI extends ChatGoogleGenerativeAI {
+	async _generate(...args: Parameters<ChatGoogleGenerativeAI['_generate']>) {
+		const result = await super._generate(...args);
+		if (result.generations.length > 0) return result;
+
+		const feedback: unknown = result.llmOutput?.filters;
+		const blockReason = isRecord(feedback) ? feedback.blockReason : undefined;
+		if (typeof blockReason !== 'string') {
+			throw new OperationalError('Gemini returned an empty response');
+		}
+		const detail = isRecord(feedback) ? feedback.blockReasonMessage : undefined;
+		throw new UserError(`Gemini blocked the prompt (reason: ${blockReason})`, {
+			description: typeof detail === 'string' ? detail : undefined,
+		});
+	}
+
+	// The SDK skips stream responses without candidates and drops their `promptFeedback`,
+	// so a blocked prompt ends the stream with no chunks and no block reason.
+	async *_streamResponseChunks(
+		...args: Parameters<ChatGoogleGenerativeAI['_streamResponseChunks']>
+	) {
+		let empty = true;
+		for await (const chunk of super._streamResponseChunks(...args)) {
+			empty = false;
+			yield chunk;
+		}
+		if (empty && !args[1].signal?.aborted) {
+			throw new OperationalError('Gemini returned an empty response');
+		}
+	}
+}
 
 /** Drop non-chat models (embedding, image, TTS, Veo, etc.) from the dropdown. */
 async function filterChatModels(
@@ -33,6 +80,30 @@ async function filterChatModels(
 				supportedGenerationMethods: item.json.supportedGenerationMethods,
 			}),
 	);
+}
+
+/** Show models under the name the API reports, sorted by it, with prioritized models first. */
+async function labelModels(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+	const labelled = items.map((item) => {
+		// `displayName` and `priority` only carry the API's values to here; options do not keep them.
+		const { displayName, priority, ...option } = item.json;
+		const json =
+			typeof option.value === 'string'
+				? {
+						...option,
+						name: getGoogleModelLabel(
+							option.value,
+							typeof displayName === 'string' ? displayName : undefined,
+						),
+					}
+				: option;
+		return { item: { ...item, json }, priority };
+	});
+	labelled.sort((a, b) => String(a.item.json.name).localeCompare(String(b.item.json.name)));
+	return pinPrioritizedModels(labelled, (entry) => entry.priority).map((entry) => entry.item);
 }
 
 function errorDescriptionMapper(error: NodeError) {
@@ -76,14 +147,11 @@ const modelRLC: INodeProperties = {
 								name: '={{$responseItem.name}}',
 								value: '={{$responseItem.name}}',
 								description: '={{$responseItem.description}}',
+								displayName: '={{$responseItem.displayName}}',
+								priority: '={{$responseItem.priority}}',
 							},
 						},
-						{
-							type: 'sort',
-							properties: {
-								key: 'name',
-							},
-						},
+						labelModels,
 					],
 				},
 			},
@@ -97,8 +165,10 @@ const modelRLC: INodeProperties = {
 	},
 	default: 'models/gemini-2.5-flash',
 	builderHint: {
+		// The dropdown loads through declarative routing, which the builder's resource lookup cannot call.
 		propertyHint:
-			'Default to the latest flagship Gemini (models/gemini-3.1-pro-preview). Use models/gemini-3.1-flash-lite for cost-efficient builds. Avoid Gemini 2.x, 1.x, and earlier.',
+			'This node declares no model-list lookup, so its models cannot be listed, even with a connected credential. For a new choice, use current Google provider catalog information and choose a Gemini 3.x or newer model ID with the "models/" prefix. Do not choose Gemini 2.x or older. ' +
+			MODEL_SELECTION_HINT,
 	},
 };
 
@@ -129,14 +199,11 @@ const modelRLCV2: INodeProperties = {
 								name: '={{$responseItem.name}}',
 								value: '={{$responseItem.name}}',
 								description: '={{$responseItem.description}}',
+								displayName: '={{$responseItem.displayName}}',
+								priority: '={{$responseItem.priority}}',
 							},
 						},
-						{
-							type: 'sort',
-							properties: {
-								key: 'name',
-							},
-						},
+						labelModels,
 					],
 				},
 			},
@@ -152,7 +219,7 @@ export class LmChatGoogleGemini implements INodeType {
 		icon: 'file:google.svg',
 		group: ['transform'],
 		version: [1, 1.1, 1.2],
-		description: 'Chat Model Google Gemini',
+		description: 'Run Gemini models, with optional adjustable safety filters',
 		defaults: {
 			name: 'Google Gemini Chat Model',
 		},
@@ -240,9 +307,12 @@ export class LmChatGoogleGemini implements INodeType {
 			null,
 		) as SafetySetting[];
 
-		const model = new ChatGoogleGenerativeAI({
-			apiKey: credentials.apiKey as string,
+		const egressFilter = this.helpers.getSecureEgressFilter();
+		const model = new N8nChatGoogleGenerativeAI({
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			baseUrl: credentials.host as string,
+			fetch: async (input: RequestInfo | URL, init?: RequestInit) =>
+				await proxyFetch({ input, init, egressFilter }),
 			model: modelName,
 			topK: options.topK,
 			topP: options.topP,

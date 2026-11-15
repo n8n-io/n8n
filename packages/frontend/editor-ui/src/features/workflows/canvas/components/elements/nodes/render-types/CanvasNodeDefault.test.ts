@@ -6,6 +6,7 @@ import {
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
 import { NodeConnectionTypes, type IPinData } from 'n8n-workflow';
@@ -32,7 +33,6 @@ const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>
 const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 const pinnedDataByNodeName: IPinData = {};
 const executionPinDataByNodeId = new Map<string, ComputedRef<IPinData[string] | undefined>>();
-let isExecutionDataDisplayed = false;
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
@@ -43,8 +43,8 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 				nodeInputsByNodeId: renderNodeInputsMap,
 				nodeOutputsByNodeId: renderNodeOutputsMap,
 				pinnedDataByNodeName,
-				executionPinDataByNodeId,
-				isExecutionDataDisplayed,
+				getDisplayedExecutionPinData: (nodeId: string) =>
+					executionPinDataByNodeId.get(nodeId)?.value,
 			}),
 		})),
 	};
@@ -74,6 +74,7 @@ const renderComponent = createComponentRenderer(CanvasNodeDefault, {
 });
 
 let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
+let typeAvailabilityPoliciesStore: MockedStore<typeof useTypeAvailabilityPoliciesStore>;
 const mockedUseRoute = vi.mocked(useRoute);
 
 beforeEach(() => {
@@ -84,10 +85,10 @@ beforeEach(() => {
 		delete pinnedDataByNodeName[key];
 	}
 	executionPinDataByNodeId.clear();
-	isExecutionDataDisplayed = false;
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	nodeTypesStore = mockedStore(useNodeTypesStore);
+	typeAvailabilityPoliciesStore = mockedStore(useTypeAvailabilityPoliciesStore);
 	mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
 	vi.mocked(useNodePrivateCredential).mockReturnValue({
 		hasPrivateCredential: computed(() => false),
@@ -140,6 +141,51 @@ describe('CanvasNodeDefault', () => {
 				'data-badge-tooltip',
 				'This node uses private credentials that are resolved at runtime.',
 			);
+		});
+	});
+
+	describe('restricted node type', () => {
+		beforeEach(() => {
+			typeAvailabilityPoliciesStore.getNodeTypeAvailability.mockReturnValue({
+				name: 'n8n-nodes-base.slack',
+				available: false,
+				scope: 'instance',
+			});
+		});
+
+		it('renders the restricted treatment: deactivated look, greyed icon, lock and label', () => {
+			const { getByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: { type: 'n8n-nodes-base.slack', subtitle: 'send: message' },
+						}),
+					},
+				},
+			});
+
+			const node = getByTestId('canvas-default-node');
+			expect(node).toHaveClass('disabled');
+			expect(node.querySelector('node-icon-stub')).toHaveAttribute('disabled', 'true');
+			expect(getByTestId('canvas-node-restricted')).toHaveTextContent('Restricted');
+			expect(getByTestId('node-restricted')).toBeInTheDocument();
+			expect(node).not.toHaveTextContent('send: message');
+		});
+
+		it('keeps the lock visible on a deactivated restricted node', () => {
+			const { getByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: { type: 'n8n-nodes-base.slack', disabled: true },
+						}),
+					},
+				},
+			});
+
+			expect(getByTestId('node-restricted')).toBeInTheDocument();
 		});
 	});
 
@@ -345,7 +391,6 @@ describe('CanvasNodeDefault', () => {
 				'node',
 				computed(() => [{ json: { ok: true } }]),
 			);
-			isExecutionDataDisplayed = true;
 
 			const { getByText } = renderComponent({
 				global: {
@@ -366,9 +411,8 @@ describe('CanvasNodeDefault', () => {
 			expect(nodeElement).not.toHaveClass('success');
 		});
 
-		it('should ignore workflow pin data when displaying an execution without pin data for the node', () => {
-			pinnedDataByNodeName['Test Node'] = [{ json: { stale: true } }];
-			isExecutionDataDisplayed = true;
+		it('should apply pinned styling for workflow pin data without execution pin data', () => {
+			pinnedDataByNodeName['Test Node'] = [{ json: { ok: true } }];
 
 			const { getByText } = renderComponent({
 				global: {
@@ -384,34 +428,7 @@ describe('CanvasNodeDefault', () => {
 				},
 			});
 
-			const nodeElement = getByText('Test Node').closest('.node');
-			expect(nodeElement).not.toHaveClass('pinned');
-			expect(nodeElement).toHaveClass('success');
-		});
-
-		it('should ignore execution pin data outside execution preview mode', () => {
-			executionPinDataByNodeId.set(
-				'node',
-				computed(() => [{ json: { ok: true } }]),
-			);
-
-			const { getByText } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								execution: { status: 'success', running: false },
-								runData: { outputMap: {}, iterations: 1, visible: true },
-							},
-						}),
-					},
-				},
-			});
-
-			const nodeElement = getByText('Test Node').closest('.node');
-			expect(nodeElement).not.toHaveClass('pinned');
-			expect(nodeElement).toHaveClass('success');
+			expect(getByText('Test Node').closest('.node')).toHaveClass('pinned');
 		});
 	});
 

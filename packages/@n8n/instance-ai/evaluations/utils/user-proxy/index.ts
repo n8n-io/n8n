@@ -51,6 +51,8 @@ export interface CredentialCreationConfig {
 	 *  credentials with no way to tell which one an agent picked). Defaults to
 	 *  a fresh, unshared `Map` if omitted. */
 	nameCounts?: Map<string, number>;
+	/** The build's project. Absent: the client's personal project. */
+	projectId?: string;
 }
 
 /**
@@ -203,6 +205,12 @@ export class UserProxyLlm {
 		}
 	}
 
+	/** Record a whole assistant reply, for builders that don't emit n8n SSE events. */
+	recordAssistantMessage(text: string): void {
+		if (text.trim().length === 0) return;
+		this.actualTranscript.push({ role: 'assistant', text });
+	}
+
 	async respondToConfirmation(event: CapturedEvent): Promise<InstanceAiConfirmRequest> {
 		const requestId = extractRequestId(event);
 		const isRepeat = requestId !== undefined && this.seenRequestIds.has(requestId);
@@ -272,13 +280,13 @@ export class UserProxyLlm {
 			// throw here means that invariant broke, not a normal runtime failure.
 			throw new Error('createCredential invoked without a credentialCreation config');
 		}
-		const { client, threadId, createdCredentialIds } = this.credentialCreation;
+		const { client, threadId, createdCredentialIds, projectId } = this.credentialCreation;
 		const created = await createOneCredential(
 			client,
 			credentialType,
 			undefined,
 			this.createdCredentialNameCounts,
-			{ logger: this.logger, setupHint: options?.setupHint },
+			{ logger: this.logger, setupHint: options?.setupHint, projectId },
 		);
 		createdCredentialIds?.add(created.id);
 		this.allowlistedCredentialIds = [...this.allowlistedCredentialIds, created.id];
@@ -439,14 +447,7 @@ export class UserProxyLlm {
 			return undefined;
 		}
 
-		// ask-user questions go to the LLM; only single-blob plan-review/text are scripted here.
-		if (inputType === 'plan-review') {
-			const userInput = this.consumeAllRemainingUserScriptTurns(
-				'Before I approve, use these details:',
-			);
-			if (userInput) return { kind: 'approval', approved: false, userInput };
-		}
-
+		// ask_user questions go to the LLM; only single-blob text is scripted here.
 		if (inputType === 'text') {
 			const userInput = this.consumeAllRemainingUserScriptTurns();
 			if (userInput) return { kind: 'approval', approved: true, userInput };

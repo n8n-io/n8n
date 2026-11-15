@@ -1,28 +1,31 @@
 import { inDevelopment, inProduction, ModuleRegistry } from '@n8n/backend-common';
+import { EventService, PostHogClient } from '@n8n/backend-services';
+import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import { SecurityConfig } from '@n8n/config';
-import { HTML_NONCE_PLACEHOLDER, Time } from '@n8n/constants';
+import { EMBEDDED_SETTINGS_GLOBAL, HTML_NONCE_PLACEHOLDER, Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { OperationalError } from '@n8n/errors';
+import { withTimeout } from '@n8n/utils/promise/with-timeout';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { access as fsAccess, readFile } from 'fs/promises';
 import helmet from 'helmet';
+import escapeRegExp from 'lodash/escapeRegExp';
 import { InstanceSettings } from 'n8n-core';
 import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import { AuthService } from '@/auth/auth.service';
-import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests } from '@/constants';
+import { CLI_DIR, EDITOR_UI_DIST_DIR, EMBEDDED_SETTINGS_TIMEOUT_MS, inE2ETests } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import type { ICredentialsOverwrite } from '@/interfaces';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { createContentSecurityPolicyMiddleware } from '@/middlewares/content-security-policy';
-import { PostHogClient } from '@/posthog';
 import { loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';
@@ -58,10 +61,13 @@ import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
 import '@/controllers/api-keys.controller';
 import '@/controllers/security-settings.controller';
+import '@/controllers/public-api-rate-limit-settings.controller';
 import '@/credentials/credentials.controller';
+import '@/credentials/credential-options.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/node-execution/ephemeral-node-executor';
+import '@/jwks/jwks.controller';
 import '@/license/license.controller';
 import '@/evaluation.ee/test-runs.controller.ee';
 import '@/evaluation.ee/evaluation-config.controller';
@@ -75,11 +81,28 @@ import '@/webhooks/webhooks.controller';
 
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
+import { responsesApiFallback } from './modules/agents/integrations/platforms/webhook/responses-api';
 import { BrowserUseServer } from './modules/instance-ai/browser/browser-use-server';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
-import { AuthStrategyRegistry } from './services/auth-strategy.registry';
 import { SessionCookieAuthStrategy } from './services/session-cookie-auth.strategy';
+
+/**
+ * JSON that is safe inside an inline `<script>`. `<`, `>` and `&` cannot close the
+ * script or start markup, and U+2028 and U+2029 cannot end a line in older parsers.
+ * `JSON.parse` and the JS parser map the escapes back to the original characters.
+ */
+const toScriptSafeJson = (value: unknown) =>
+	JSON.stringify(value).replace(
+		/[<>&\u2028\u2029]/g,
+		(char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`,
+	);
+
+/** Inserts `markup` before `</head>`. Returns `html` unchanged when it has no `</head>`. */
+const insertBeforeHeadEnd = (html: string, markup: string) => {
+	const headEnd = html.indexOf('</head>');
+	return headEnd !== -1 ? html.slice(0, headEnd) + markup + html.slice(headEnd) : html;
+};
 
 @Service()
 export class Server extends AbstractServer {
@@ -153,6 +176,7 @@ export class Server extends AbstractServer {
 
 		if (this.globalConfig.diagnostics.enabled) {
 			await import('@/controllers/telemetry.controller.js');
+			await import('@/controllers/page-hide-telemetry.controller.js');
 			await import('@/controllers/posthog.controller.js');
 		}
 
@@ -189,7 +213,7 @@ export class Server extends AbstractServer {
 		const publicApiEndpoint = this.globalConfig.publicApi.path;
 
 		// Register auth strategies in priority order. The registry evaluates them
-		// sequentially — the first strategy that returns a non-null result wins.
+		// sequentially — the first strategy that does not abstain wins.
 		// API key auth is registered first so existing behavior is preserved.
 		// Session cookie auth is registered last: an explicit but wrong API
 		// key/bearer token fails fast rather than silently falling back to an
@@ -267,6 +291,9 @@ export class Server extends AbstractServer {
 		// register all known controllers
 		Container.get(ControllerRegistry).activate(app);
 
+		// The agent webhook keeps the OpenAI error shape for unknown routes and unparsable bodies.
+		app.use(`/${this.globalConfig.endpoints.agentWebhook}`, ...responsesApiFallback);
+
 		// ----------------------------------------
 		// Options
 		// ----------------------------------------
@@ -282,9 +309,10 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		// EventBus Setup
 		// ----------------------------------------
+		// Before initialize(), which runs crash recovery.
+		Container.get(LogStreamingEventRelay).init();
 		const eventBus = Container.get(MessageEventBus);
 		await eventBus.initialize();
-		Container.get(LogStreamingEventRelay).init();
 
 		// ----------------------------------------
 		// Workflow Indexing Setup
@@ -347,13 +375,28 @@ export class Server extends AbstractServer {
 		}
 
 		const maxAge = Time.days.toMilliseconds;
-		const cacheOptions = inE2ETests || inDevelopment ? {} : { maxAge };
+		const cacheOptions: { maxAge?: number } = inE2ETests || inDevelopment ? {} : { maxAge };
 		const { staticCacheDir } = Container.get(InstanceSettings);
 
 		this.protectTypeFiles(staticCacheDir);
 
 		if (frontendService) {
-			this.app.use(
+			const assetAuthMiddleware = Container.get(AuthService).createAssetAuthMiddleware();
+
+			const registerAuthenticatedRoutes = (paths: string[], handler: express.RequestHandler) => {
+				for (const assetPath of paths) {
+					this.app.get(assetPath, assetAuthMiddleware, handler);
+				}
+			};
+
+			const respondWithPrivateFile = (res: express.Response, filePath: string, assetMaxAge = 0) => {
+				const maxAgeSeconds = Math.floor(assetMaxAge * Time.milliseconds.toSeconds);
+				// `res.sendFile` writes its own `Cache-Control` only when the response carries none.
+				res.setHeader('Cache-Control', `private, max-age=${maxAgeSeconds}`);
+				return res.sendFile(filePath, { maxAge: assetMaxAge, dotfiles: 'allow' });
+			};
+
+			registerAuthenticatedRoutes(
 				[
 					'/icons/{@:scope/}:packageName/*path/*file.svg',
 					'/icons/{@:scope/}:packageName/*path/*file.png',
@@ -366,7 +409,7 @@ export class Server extends AbstractServer {
 					if (filePath) {
 						try {
 							await fsAccess(filePath);
-							return res.sendFile(filePath, { maxAge, dotfiles: 'allow' });
+							return respondWithPrivateFile(res, filePath, maxAge);
 						} catch {}
 					}
 					res.sendStatus(404);
@@ -385,12 +428,15 @@ export class Server extends AbstractServer {
 				if (filePath) {
 					try {
 						await fsAccess(filePath);
-						return res.sendFile(filePath, { ...cacheOptions, dotfiles: 'allow' });
+						return respondWithPrivateFile(res, filePath, cacheOptions.maxAge);
 					} catch {}
 				}
 				res.sendStatus(404);
 			};
-			this.app.use('/schemas/:node/:version{/:resource}{/:operation}.json', serveSchemas);
+			registerAuthenticatedRoutes(
+				['/schemas/:node/:version{/:resource}{/:operation}.json'],
+				serveSchemas,
+			);
 
 			const isTLSEnabled =
 				this.globalConfig.protocol === 'https' && !!(this.sslKey && this.sslCert);
@@ -433,6 +479,8 @@ export class Server extends AbstractServer {
 				'e2e',
 				this.restEndpoint,
 				this.endpointPresetCredentials,
+				// This path may contain `.`, which the route pattern must match literally.
+				escapeRegExp(this.globalConfig.endpoints.agentWebhook),
 				...this.globalConfig.endpoints.additionalNonUIRoutes.split(':'),
 			].filter((u) => !!u);
 			// Matched against the normalised path, so a non-UI asset requested in another
@@ -447,6 +495,23 @@ export class Server extends AbstractServer {
 					HTML_NONCE_PLACEHOLDER,
 				);
 				return indexHtmlParts;
+			};
+
+			// Public settings only: the page handler runs no auth middleware. If they cannot
+			// be built in time, the page is served without them and the editor fetches them
+			// instead. The time limit keeps a slow database from delaying the page.
+			const embeddedSettingsScript = async (nonce: string) => {
+				try {
+					const settings = await withTimeout(
+						frontendService.getPublicSettings(false),
+						EMBEDDED_SETTINGS_TIMEOUT_MS,
+						() => new OperationalError('Building the embedded settings timed out'),
+					);
+					return `<script nonce="${nonce}">window.${EMBEDDED_SETTINGS_GLOBAL} = ${toScriptSafeJson(settings)};</script>`;
+				} catch (error) {
+					this.logger.warn('Could not embed settings in the editor page', { error });
+					return undefined;
+				}
 			};
 
 			const historyApiHandler: express.RequestHandler = async (req, res, next) => {
@@ -476,8 +541,13 @@ export class Server extends AbstractServer {
 
 					// Only the placeholders the build wrote get the nonce. Markup that arrived
 					// any other way must not get one.
+					const nonce = res.locals.cspNonce;
+					const settingsScript = await embeddedSettingsScript(nonce);
 					securityHeadersMiddleware(req, res, () => {
-						res.type('html').send(template.join(res.locals.cspNonce));
+						const page = template.join(nonce);
+						res
+							.type('html')
+							.send(settingsScript ? insertBeforeHeadEnd(page, settingsScript) : page);
 					});
 				} else {
 					next();

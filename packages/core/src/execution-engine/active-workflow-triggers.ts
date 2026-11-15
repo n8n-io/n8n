@@ -14,10 +14,10 @@ import {
 	isSubMinuteCron,
 	toCronExpression,
 	TriggerCloseError,
-	UserError,
 	WorkflowActivationError,
 	WorkflowDeactivationError,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { ErrorReporter } from '@/errors/error-reporter';
 
@@ -88,6 +88,11 @@ export class ActiveWorkflowTriggers {
 	 */
 	allActiveWorkflows() {
 		return Array.from(this.activeTriggersByWorkflowId.keys());
+	}
+
+	/** Sizes of the in-memory collections, for diagnostics and tests. */
+	getDiagnosticCounts() {
+		return { workflows: this.activeTriggersByWorkflowId.size };
 	}
 
 	/**

@@ -2,7 +2,6 @@ const { packWorkspaceSdkMockState, resolveMockWorkspaceRoot, sandboxFsMockState 
 	() => ({
 		packWorkspaceSdkMockState: {
 			isEnabled: false,
-			packWorkspaceSdk: vi.fn(),
 			packSandboxLinkedWorkspacePackages: vi.fn(),
 		},
 		resolveMockWorkspaceRoot: async (workspace: {
@@ -34,7 +33,6 @@ const { packWorkspaceSdkMockState, resolveMockWorkspaceRoot, sandboxFsMockState 
 
 vi.mock('../pack-workspace-sdk', () => ({
 	isLinkWorkspaceSdkEnabled: () => packWorkspaceSdkMockState.isEnabled,
-	packWorkspaceSdk: packWorkspaceSdkMockState.packWorkspaceSdk,
 	packSandboxLinkedWorkspacePackages: packWorkspaceSdkMockState.packSandboxLinkedWorkspacePackages,
 }));
 
@@ -63,14 +61,20 @@ vi.mock('../sandbox-fs', () => ({
 }));
 
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { execFileSync } from 'node:child_process';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { jsonParse } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { makeBuilderTemplatesTarGz } from '../../knowledge-base/__tests__/builder-templates-archive.fixtures';
+import { buildKnowledgeBaseWorkspaceBundle } from '../../knowledge-base/materialize-knowledge-base';
 import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
 import type { BuilderTemplatesBundle } from '../builder-templates-service';
 import type { SandboxWorkspace } from '../sandbox-fs';
 import {
+	isSandboxWorkspaceInitialized,
 	setupSandboxWorkspace,
 	type formatNodeCatalogLine as formatNodeCatalogLineFunction,
 } from '../sandbox-setup';
@@ -190,7 +194,6 @@ function loadSetupSandboxWorkspaceWithFsMocks(
 	readFileViaSandbox: ReadFileViaSandboxMock,
 ): SetupSandboxWorkspace {
 	packWorkspaceSdkMockState.isEnabled = false;
-	packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 	sandboxFsMockState.runInSandbox = runInSandbox;
 	sandboxFsMockState.readFileViaSandbox = readFileViaSandbox;
 	return setupSandboxWorkspace;
@@ -231,7 +234,6 @@ async function loadSandboxPackageJson(linkSdk: boolean): Promise<{
 	// is re-evaluated. Using `await import` (rather than `vi.importActual`) keeps the
 	// module-cache interaction consistent with the doMock-based loaders above.
 	packWorkspaceSdkMockState.isEnabled = linkSdk;
-	packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 	vi.doUnmock('../sandbox-fs');
 	vi.resetModules();
 	if (linkSdk) {
@@ -255,7 +257,6 @@ describe('PACKAGE_JSON', () => {
 	afterEach(() => {
 		vi.resetModules();
 		packWorkspaceSdkMockState.isEnabled = false;
-		packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 		restoreLinkWorkspaceSdkEnv(originalLinkSdk);
 	});
 
@@ -275,11 +276,91 @@ describe('PACKAGE_JSON', () => {
 		expect(packageJson.dependencies.typescript).toBe('7.0.2');
 	});
 });
+describe('BUILD_MJS', () => {
+	let dir: string;
+
+	beforeEach(async () => {
+		dir = await mkdtemp(join(tmpdir(), 'instance-ai-build-mjs-'));
+		const sdkDir = join(dir, 'node_modules', '@n8n', 'workflow-sdk');
+		await mkdir(sdkDir, { recursive: true });
+		await writeFile(
+			join(sdkDir, 'package.json'),
+			JSON.stringify({ name: '@n8n/workflow-sdk', type: 'module', exports: './index.js' }),
+		);
+		await writeFile(join(dir, 'workflow.mjs'), WORKFLOW_STUB);
+	});
+
+	afterEach(async () => {
+		await rm(dir, { recursive: true, force: true });
+	});
+
+	const WORKFLOW_STUB = `export default {
+  validate: () => ({ errors: [], warnings: [{ code: 'GRAPH', message: 'graph warning', severity: 'warning' }] }),
+  toJSON: () => ({ name: 'wf', nodes: [], connections: {} }),
+};
+`;
+
+	async function runBuild(sdkSource: string): Promise<{ success: boolean; warnings: unknown[] }> {
+		await writeFile(join(dir, 'node_modules', '@n8n', 'workflow-sdk', 'index.js'), sdkSource);
+		vi.resetModules();
+		const { BUILD_MJS } = await import('../sandbox-setup.js');
+		await writeFile(join(dir, 'build.mjs'), BUILD_MJS);
+		const stdout = execFileSync(process.execPath, ['build.mjs', join(dir, 'workflow.mjs')], {
+			cwd: dir,
+			encoding: 'utf8',
+		});
+		return jsonParse<{ success: boolean; warnings: unknown[] }>(stdout);
+	}
+
+	it('should report SDK source lint findings with the build warnings', async () => {
+		const result = await runBuild(`export function validateWorkflowBuilder(wf, options) {
+  if (!options.lint || !options.source.includes('export default')) throw new Error('bad options');
+  return { lint: [
+    { code: 'JS_LINT', message: 'js finding', line: 3, nodeName: 'Code', parameterPath: 'jsCode', severity: 'informational', lintTarget: 'jsCode' },
+    { code: 'PY_LINT', message: 'py finding', nodeName: 'Py', severity: 'informational', lintTarget: 'pythonCode' },
+    { code: 'SDK_LINT', message: 'sdk finding', severity: 'informational' },
+  ] };
+}
+`);
+
+		expect(result.success).toBe(true);
+		expect(result.warnings).toEqual([
+			{ code: 'GRAPH', message: 'graph warning', severity: 'warning' },
+			{
+				code: 'JS_LINT',
+				message: 'line 3: js finding',
+				nodeName: 'Code',
+				parameterPath: 'jsCode',
+				severity: 'informational',
+			},
+			{
+				code: 'SDK_LINT',
+				message: 'sdk finding',
+				nodeName: null,
+				parameterPath: null,
+				severity: 'informational',
+			},
+		]);
+	});
+
+	it('should still succeed when the SDK source lint throws', async () => {
+		const result = await runBuild(
+			"export function validateWorkflowBuilder() { throw new Error('lint crashed'); }\n",
+		);
+
+		expect(result.success).toBe(true);
+		expect(result.warnings).toEqual([
+			{ code: 'GRAPH', message: 'graph warning', severity: 'warning' },
+		]);
+	});
+});
+
 /** npm install commands issued, ignoring how cwd/options were passed. */
 function installCommandsFrom(runInSandbox: RunInSandboxMock): string[] {
 	return runInSandbox.mock.calls
 		.map(([, command]) => command)
-		.filter((command) => command.startsWith('npm install'));
+		.filter((command) => command.startsWith('npm install'))
+		.map((command) => command.split(' && ')[0]);
 }
 
 describe('setupSandboxWorkspace', () => {
@@ -287,42 +368,152 @@ describe('setupSandboxWorkspace', () => {
 		vi.doUnmock('../sandbox-fs');
 		vi.resetModules();
 		packWorkspaceSdkMockState.isEnabled = false;
-		packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 	});
 
-	it('writes the initialized marker only after workspace files and npm install succeed', async () => {
-		const runInSandbox: RunInSandboxMock =
-			vi.fn<
-				(
-					...args: [SandboxWorkspace, string, string?]
-				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
-			>();
+	it('writes the initialized marker in the same command as a successful npm install', async () => {
+		const runInSandbox: RunInSandboxMock = vi.fn();
 		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
-		const readFileViaSandbox: ReadFileViaSandboxMock =
-			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
+		const readFileViaSandbox: ReadFileViaSandboxMock = vi.fn();
 		readFileViaSandbox.mockResolvedValue(null);
-		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
-			runInSandbox,
-			readFileViaSandbox,
-		);
+		const setup = loadSetupSandboxWorkspaceWithFsMocks(runInSandbox, readFileViaSandbox);
 		const writeFile = vi.fn<
 			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
-		>(async () => await Promise.resolve());
+		>(async () => {});
 
-		await setupSandboxWorkspace(createFilesystemWorkspace(writeFile), createSetupContext());
-		expect(writeFile).toHaveBeenCalledWith(
+		await expect(setup(createFilesystemWorkspace(writeFile), createSetupContext())).resolves.toBe(
+			true,
+		);
+
+		const installCommand = runInSandbox.mock.calls
+			.map(([, command]) => command)
+			.find((command) => command.startsWith('npm install'));
+		expect(installCommand).toMatch(/^npm install [^&]+ && .*> '?\.sandbox-initialized'?$/);
+		expect(writeFile.mock.calls.map(([path]) => path)).not.toContain(
+			'/home/daytona/workspace/.sandbox-initialized',
+		);
+	});
+
+	it('writes the initialized marker after linking the workspace SDK', async () => {
+		const runInSandbox: RunInSandboxMock = vi.fn();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock = vi.fn();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setup = loadSetupSandboxWorkspaceWithFsMocks(runInSandbox, readFileViaSandbox);
+		packWorkspaceSdkMockState.isEnabled = true;
+		packWorkspaceSdkMockState.packSandboxLinkedWorkspacePackages.mockResolvedValue([
+			{
+				filename: 'workflow-sdk.tgz',
+				tarball: Buffer.from('sdk'),
+				version: '1.0.0',
+				packageName: '@n8n/workflow-sdk',
+				packagePath: '/host/sdk',
+			},
+		]);
+
+		await expect(
+			setup(createFilesystemWorkspace(vi.fn(async () => {})), createSetupContext()),
+		).resolves.toBe(true);
+
+		const commands = runInSandbox.mock.calls.map(([, command]) => command);
+		const markerIndex = commands.findIndex((command) => command.includes('.sandbox-initialized'));
+		const linkIndex = commands.findIndex((command) => command.includes('workflow-sdk.tgz'));
+		expect(linkIndex).toBeGreaterThan(-1);
+		expect(markerIndex).toBeGreaterThan(linkIndex);
+	});
+
+	it('writes workspace files one by one when the batch write fails', async () => {
+		const runInSandbox: RunInSandboxMock = vi.fn();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock = vi.fn();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setup = loadSetupSandboxWorkspaceWithFsMocks(runInSandbox, readFileViaSandbox);
+		const writeFile = vi.fn<
+			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
+		>(async () => {});
+		const workspace = createFilesystemWorkspace(writeFile);
+		if (!workspace.filesystem) throw new Error('Expected test workspace to include a filesystem');
+		workspace.filesystem.writeFiles = vi.fn(async () => {
+			throw new Error('bulk upload failed');
+		});
+
+		await expect(setup(workspace, createSetupContext())).resolves.toBe(true);
+
+		expect(writeFile.mock.calls.map(([path]) => path)).toContain(
+			'/home/daytona/workspace/package.json',
+		);
+	});
+
+	it('reads the initialization marker when setup already ran in this fresh sandbox', async () => {
+		const runInSandbox: RunInSandboxMock = vi.fn();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock = vi.fn();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setup = loadSetupSandboxWorkspaceWithFsMocks(runInSandbox, readFileViaSandbox);
+		const workspace = createFilesystemWorkspace(vi.fn(async () => {}));
+		workspace.sandbox = { ...workspace.sandbox, createdFreshSandbox: true };
+
+		await expect(setup(workspace, createSetupContext())).resolves.toBe(true);
+		readFileViaSandbox.mockResolvedValue('2024-01-01T00:00:00Z');
+
+		await expect(setup(workspace, createSetupContext())).resolves.toBe(false);
+	});
+
+	it('writes workspace files in one batch when the filesystem supports it', async () => {
+		const runInSandbox: RunInSandboxMock = vi.fn();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock = vi.fn();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setup = loadSetupSandboxWorkspaceWithFsMocks(runInSandbox, readFileViaSandbox);
+		const writeFile = vi.fn<
+			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
+		>(async () => {});
+		const writeFiles = vi.fn<
+			(...args: [Array<{ path: string; content: string | Buffer }>]) => Promise<void>
+		>(async () => {});
+		const workspace = createFilesystemWorkspace(writeFile);
+		if (!workspace.filesystem) throw new Error('Expected test workspace to include a filesystem');
+		workspace.filesystem.writeFiles = writeFiles;
+
+		await setup(workspace, createSetupContext());
+
+		expect(writeFiles).toHaveBeenCalledTimes(1);
+		expect(writeFiles.mock.calls[0][0].map(({ path }) => path).sort()).toEqual([
+			'/home/daytona/workspace/build.mjs',
+			'/home/daytona/workspace/node-types/index.txt',
+			'/home/daytona/workspace/package.json',
+			'/home/daytona/workspace/tsconfig.json',
 			'/home/daytona/workspace/workflow-diagnostics.mts',
-			expect.any(String),
-			{ recursive: true },
-		);
+		]);
+		const singleWrites = writeFile.mock.calls.map(([path]) => path);
+		expect(singleWrites).not.toContain('/home/daytona/workspace/package.json');
+		expect(singleWrites).not.toContain('/home/daytona/workspace/node-types/index.txt');
+	});
 
-		const markerCallIndex = writeFile.mock.calls.findIndex(
-			([path]) => path === '/home/daytona/workspace/.sandbox-initialized',
-		);
-		expect(markerCallIndex).toBeGreaterThan(-1);
-		expect(writeFile.mock.invocationCallOrder[markerCallIndex]).toBeGreaterThan(
-			runInSandbox.mock.invocationCallOrder[0],
-		);
+	it('skips the initialization marker read when the sandbox was just created', async () => {
+		const runInSandbox: RunInSandboxMock = vi.fn();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock = vi.fn();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setup = loadSetupSandboxWorkspaceWithFsMocks(runInSandbox, readFileViaSandbox);
+		const workspace = createFilesystemWorkspace(vi.fn(async () => {}));
+		workspace.sandbox = { ...workspace.sandbox, createdFreshSandbox: true };
+
+		await expect(setup(workspace, createSetupContext())).resolves.toBe(true);
+
+		const readPaths = readFileViaSandbox.mock.calls.map(([, path]) => path);
+		expect(readPaths).not.toContain('/home/daytona/workspace/.sandbox-initialized');
+	});
+
+	it('reads the initialization marker when the sandbox was reattached', async () => {
+		const runInSandbox: RunInSandboxMock = vi.fn();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock = vi.fn();
+		readFileViaSandbox.mockResolvedValue('2024-01-01T00:00:00.000Z');
+		const setup = loadSetupSandboxWorkspaceWithFsMocks(runInSandbox, readFileViaSandbox);
+		const workspace = createFilesystemWorkspace(vi.fn(async () => {}));
+		workspace.sandbox = { ...workspace.sandbox, createdFreshSandbox: false };
+
+		await expect(setup(workspace, createSetupContext())).resolves.toBe(false);
 	});
 
 	it('always creates src/ and chunks/', async () => {
@@ -400,6 +591,53 @@ describe('setupSandboxWorkspace', () => {
 		const writtenPaths = writeFile.mock.calls.map(([path]) => path);
 		expect(writtenPaths).not.toContain('/sandbox/workflow-diagnostics.mts');
 		expect(writtenPaths.some((p) => p.includes('/knowledge-base/templates/'))).toBe(true);
+	});
+
+	it('reads only the knowledge base manifest when the prebaked bundle matches', async () => {
+		const runInSandbox: RunInSandboxMock =
+			vi.fn<
+				(
+					...args: [SandboxWorkspace, string, string?]
+				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
+			>();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock =
+			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
+			runInSandbox,
+			readFileViaSandbox,
+		);
+		const context = createSetupContext();
+		const knowledgeBase = await buildKnowledgeBaseWorkspaceBundle({
+			root: '/sandbox',
+			logger: context.logger,
+		});
+		const files = new Map(knowledgeBase.files);
+		files.set('/sandbox/.sandbox-initialized', '2024-01-01T00:00:00.000Z');
+		const writeFile = vi.fn<
+			(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>
+		>(async () => await Promise.resolve());
+		const readFile = vi.fn(async (path: string) => {
+			const content = files.get(path);
+			if (content === undefined) return await Promise.reject(new Error(`ENOENT: ${path}`));
+			return await Promise.resolve(content);
+		});
+		const verifiedBundles = new Map<string, string>();
+
+		const initialized = await setupSandboxWorkspace(
+			createLocalWorkspace(writeFile, undefined, readFile),
+			context,
+			{ verifiedBundles },
+		);
+
+		expect(initialized).toBe(false);
+		expect(readFile.mock.calls.map(([path]) => path)).toEqual([
+			'/sandbox/.sandbox-initialized',
+			knowledgeBase.manifestPath,
+		]);
+		expect(writeFile).not.toHaveBeenCalled();
+		expect(verifiedBundles.get(knowledgeBase.manifestPath)).toBe(knowledgeBase.contentHash);
 	});
 
 	it('materializes knowledge-base templates on the local provider when a bundle is available', async () => {
@@ -643,11 +881,10 @@ describe('setupSandboxWorkspace', () => {
 			'npm install --ignore-scripts --no-audit --no-fund --prefer-offline',
 			'npm install --ignore-scripts --no-audit --no-fund --prefer-online',
 		]);
-		expect(writeFile.mock.calls).toContainEqual([
-			'/home/daytona/workspace/.sandbox-initialized',
-			expect.any(String),
-			{ recursive: true },
-		]);
+		const retriedCommand = runInSandbox.mock.calls
+			.map(([, command]) => command)
+			.findLast((command) => command.startsWith('npm install'));
+		expect(retriedCommand).toContain('.sandbox-initialized');
 	});
 
 	it('does not retry the install when the step budget is already spent', async () => {
@@ -687,82 +924,6 @@ describe('setupSandboxWorkspace', () => {
 		expect(installCommandsFrom(runInSandbox)).toEqual([
 			'npm install --ignore-scripts --no-audit --no-fund --prefer-offline',
 		]);
-	});
-
-	it('uses command fallback when a filesystem marker write fails', async () => {
-		const runInSandbox: RunInSandboxMock =
-			vi.fn<
-				(
-					...args: [SandboxWorkspace, string, string?]
-				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
-			>();
-		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
-		const readFileViaSandbox: ReadFileViaSandboxMock =
-			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
-		readFileViaSandbox.mockResolvedValue(null);
-		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
-			runInSandbox,
-			readFileViaSandbox,
-		);
-		const writeFile = vi
-			.fn<(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>>()
-			.mockImplementation(async (path) => {
-				await Promise.resolve();
-				if (path === '/home/daytona/workspace/.sandbox-initialized') {
-					throw new Error('primary write failed');
-				}
-			});
-
-		await expect(
-			setupSandboxWorkspace(createFilesystemWorkspace(writeFile), createSetupContext()),
-		).resolves.toBe(true);
-
-		expect(
-			runInSandbox.mock.calls.some(([, command]) => command.includes('.sandbox-initialized')),
-		).toBe(true);
-	});
-
-	it('includes the failing setup step when marker fallback fails', async () => {
-		const runInSandbox: RunInSandboxMock =
-			vi.fn<
-				(
-					...args: [SandboxWorkspace, string, string?]
-				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
-			>();
-		runInSandbox.mockImplementation(async (_workspace, command) => {
-			await Promise.resolve();
-			return command.includes('.sandbox-initialized')
-				? { exitCode: 1, stdout: '', stderr: 'fallback failed' }
-				: { exitCode: 0, stdout: '', stderr: '' };
-		});
-		const readFileViaSandbox: ReadFileViaSandboxMock =
-			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
-		readFileViaSandbox.mockResolvedValue(null);
-		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
-			runInSandbox,
-			readFileViaSandbox,
-		);
-		const writeFile = vi
-			.fn<(...args: [string, string | Buffer, { recursive?: boolean }?]) => Promise<void>>()
-			.mockImplementation(async (path) => {
-				await Promise.resolve();
-				if (path === '/home/daytona/workspace/.sandbox-initialized') {
-					throw new Error('primary write failed');
-				}
-			});
-		const workspace = createFilesystemWorkspace(writeFile);
-		const executeCommand = workspace.sandbox?.executeCommand;
-		if (!executeCommand) throw new Error('Expected test workspace to include a sandbox');
-		vi.mocked(executeCommand).mockImplementation(async (command: string) => {
-			await Promise.resolve();
-			return command.includes('.sandbox-initialized')
-				? { exitCode: 1, stdout: '', stderr: 'fallback failed' }
-				: mockDaytonaExecuteCommand(command);
-		});
-
-		await expect(setupSandboxWorkspace(workspace, createSetupContext())).rejects.toThrow(
-			/Sandbox workspace setup failed during write-initialization-marker[\s\S]*primary write failed[\s\S]*command fallback failed/,
-		);
 	});
 
 	it('retries packing linked workspace packages after a null pack result', async () => {
@@ -847,14 +1008,124 @@ describe('setupSandboxWorkspace', () => {
 			'/workspace',
 		);
 	});
+
+	it('reports the install output when the tarball install fails', async () => {
+		const packSandboxLinkedWorkspacePackages = vi.fn().mockResolvedValue([
+			{
+				filename: 'workflow-sdk.tgz',
+				tarball: Buffer.from('sdk'),
+				version: '1.0.0',
+				packageName: '@n8n/workflow-sdk',
+				packagePath: '/host/sdk',
+			},
+		]);
+		const npmError = 'npm error notarget No matching version found for nanoid@3.3.18.';
+		const runInSandbox: RunInSandboxMock = vi
+			.fn<
+				(
+					...args: [SandboxWorkspace, string, string?]
+				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
+			>()
+			// Daytona returns all command output in stdout.
+			.mockResolvedValue({ exitCode: 1, stdout: npmError, stderr: '' });
+		const linkWorkspaceSdkIfEnabled = await loadLinkWorkspaceSdkWithMocks(
+			packSandboxLinkedWorkspacePackages,
+			runInSandbox,
+		);
+		const workspace = {
+			filesystem: { provider: 'daytona', writeFile: vi.fn(async () => {}) },
+			sandbox: {},
+		} as unknown as SandboxWorkspace;
+		const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() };
+
+		await expect(linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger)).rejects.toThrow(
+			`Failed to install workspace package tarballs (exit code 1): ${npmError}`,
+		);
+		expect(logger.error).toHaveBeenCalledWith(
+			'Failed to link workspace packages into sandbox',
+			expect.objectContaining({
+				exitCode: 1,
+				command: expect.stringContaining(
+					"npm install '/workspace/workflow-sdk.tgz' --no-save --force",
+				),
+				output: npmError,
+			}),
+		);
+	});
+
+	it('keeps the end of long install output with stderr last', async () => {
+		const packSandboxLinkedWorkspacePackages = vi.fn().mockResolvedValue([
+			{
+				filename: 'workflow-sdk.tgz',
+				tarball: Buffer.from('sdk'),
+				version: '1.0.0',
+				packageName: '@n8n/workflow-sdk',
+				packagePath: '/host/sdk',
+			},
+		]);
+		const stdout = 'npm http fetch GET 200 https://registry.npmjs.org/pkg\n'.repeat(200);
+		const stderr = 'npm error notarget No matching version found for nanoid@3.3.18.';
+		const runInSandbox: RunInSandboxMock = vi
+			.fn<
+				(
+					...args: [SandboxWorkspace, string, string?]
+				) => Promise<{ exitCode: number; stdout: string; stderr: string }>
+			>()
+			.mockResolvedValue({ exitCode: 1, stdout, stderr });
+		const linkWorkspaceSdkIfEnabled = await loadLinkWorkspaceSdkWithMocks(
+			packSandboxLinkedWorkspacePackages,
+			runInSandbox,
+		);
+		const workspace = {
+			filesystem: { provider: 'local', writeFile: vi.fn(async () => {}) },
+			sandbox: {},
+		} as unknown as SandboxWorkspace;
+		const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() };
+
+		await expect(linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger)).rejects.toThrow(
+			stderr,
+		);
+		const { output } = logger.error.mock.calls[0][1] as { output: string };
+		const expectedTail = `${stdout}\n${stderr}`.trim().slice(-4000);
+		expect(output).toBe(`…${expectedTail}`);
+	});
 });
+
+describe('isSandboxWorkspaceInitialized', () => {
+	function workspaceWithFiles(files: Map<string, string>) {
+		const readFileViaSandbox: ReadFileViaSandboxMock =
+			vi.fn<(...args: [SandboxWorkspace, string]) => Promise<string | null>>();
+		readFileViaSandbox.mockResolvedValue(null);
+		loadSetupSandboxWorkspaceWithFsMocks(vi.fn(), readFileViaSandbox);
+		const readFile = vi.fn(async (path: string) => {
+			const content = files.get(path);
+			if (content === undefined) return await Promise.reject(new Error(`ENOENT: ${path}`));
+			return await Promise.resolve(content);
+		});
+		return createLocalWorkspace(vi.fn(), undefined, readFile);
+	}
+
+	it('returns true when the setup marker exists', async () => {
+		const workspace = workspaceWithFiles(
+			new Map([['/sandbox/.sandbox-initialized', '2024-01-01T00:00:00.000Z']]),
+		);
+
+		await expect(isSandboxWorkspaceInitialized(workspace)).resolves.toBe(true);
+	});
+
+	it('returns false when the setup marker is missing', async () => {
+		const workspace = workspaceWithFiles(new Map());
+
+		await expect(isSandboxWorkspaceInitialized(workspace)).resolves.toBe(false);
+	});
+});
+
 describe('formatNodeCatalogLine', () => {
 	let formatNodeCatalogLine: FormatNodeCatalogLine;
 
 	beforeAll(async () => {
 		vi.doUnmock('../sandbox-fs');
 		packWorkspaceSdkMockState.isEnabled = false;
-		packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 		vi.resetModules();
 		({ formatNodeCatalogLine } = await import('../sandbox-setup.js'));
 	});

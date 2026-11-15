@@ -1,6 +1,7 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
 	getProxyAgent,
+	aiClientFetch,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
@@ -12,6 +13,9 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
+
+import { getRequiredApiKey } from '@utils/helpers';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
@@ -117,7 +121,8 @@ export class LmChatVercelAiGateway implements INodeType {
 				default: 'openai/gpt-4o',
 				builderHint: {
 					propertyHint:
-						'Default to a current flagship (e.g. openai/gpt-5.4, anthropic/claude-sonnet-4.6, google/gemini-3.1-pro). Avoid the openai/gpt-4o default and other pre-2026 models.',
+						'Use the exact provider-prefixed ID returned by Vercel AI Gateway. Do not assume it serves every model from the underlying provider. ' +
+						MODEL_SELECTION_HINT,
 				},
 			},
 			{
@@ -232,6 +237,7 @@ export class LmChatVercelAiGateway implements INodeType {
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
+			fetch: aiClientFetch,
 			fetchOptions: {
 				dispatcher: getProxyAgent(
 					credentials.url,
@@ -245,7 +251,7 @@ export class LmChatVercelAiGateway implements INodeType {
 		};
 
 		const model = new ChatOpenAI({
-			apiKey: credentials.apiKey,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			model: modelName,
 			...options,
 			timeout,

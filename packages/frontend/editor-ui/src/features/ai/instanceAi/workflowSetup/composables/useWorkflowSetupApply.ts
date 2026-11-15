@@ -15,7 +15,7 @@ export function useWorkflowSetupApply(deps: {
 	thread: ThreadRuntime;
 }): {
 	terminalState: Ref<TerminalState | null>;
-	apply: (payload: WorkflowSetupApplyPayload) => Promise<void>;
+	apply: (payload: WorkflowSetupApplyPayload) => Promise<Record<string, unknown> | undefined>;
 	defer: () => Promise<void>;
 } {
 	const toast = useToast();
@@ -82,7 +82,9 @@ export function useWorkflowSetupApply(deps: {
 		return { promise, cancel: () => finish(WAIT_CANCELLED) };
 	}
 
-	async function apply(payload: WorkflowSetupApplyPayload): Promise<void> {
+	async function apply(
+		payload: WorkflowSetupApplyPayload,
+	): Promise<Record<string, unknown> | undefined> {
 		if (terminalState.value === 'applying') return;
 		terminalState.value = 'applying';
 
@@ -117,12 +119,13 @@ export function useWorkflowSetupApply(deps: {
 		if (result.success === true) {
 			terminalState.value = result.partial === true ? 'partial' : 'applied';
 			deps.thread.resolveConfirmation(deps.requestId.value, 'approved');
-			return;
+			return result;
 		}
 
 		const message = typeof result.error === 'string' ? result.error : 'Apply failed.';
 		toast.showError(new Error(message), 'Setup failed');
 		terminalState.value = null;
+		return undefined;
 	}
 
 	async function defer(): Promise<void> {

@@ -63,9 +63,25 @@ export {
 } from './chat-model-errors';
 export { listAlibabaModels, shouldIncludeAlibabaModel } from './providers/alibaba';
 export { listAnthropicModels } from './providers/anthropic';
+export {
+	AZURE_AI_FOUNDRY_AUDIENCE,
+	AzureProjectNotFoundError,
+	getAzureFoundryOrigin,
+	listAzureOpenAiModels,
+	shouldIncludeAzureModel,
+	type AzureOpenAiListModelsOptions,
+	type AzureDeploymentModel,
+} from './providers/azure';
 export { listCohereModels } from './providers/cohere';
 export { listDeepSeekModels } from './providers/deepseek';
-export { listGoogleModels, shouldIncludeGoogleModel } from './providers/google';
+export {
+	getGoogleModelLabel,
+	listGoogleModels,
+	parseGoogleModels,
+	shouldIncludeGoogleModel,
+	type GoogleModel,
+} from './providers/google';
+export { pinPrioritizedModels } from '@n8n/api-types';
 export { listGroqModels } from './providers/groq';
 export { listMiniMaxModels } from './providers/minimax';
 export { listMistralModels } from './providers/mistral';

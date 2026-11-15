@@ -8,12 +8,13 @@ import type {
 	INode,
 	INodeExecutionData,
 	IOAuth2Options,
-	IRequestOptions,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
+	LegacyRequestOptions,
 	NodeParameterValueType,
 	RequestHelperFunctions,
+	WithRequestTarget,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -24,6 +25,7 @@ import { httpRequestWithAuthentication, requestWithAuthentication } from './auth
 import { proxyRequestToAxios } from './legacy-request-adapter';
 import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './oauth';
 import { requestWithAuthenticationPaginated } from './pagination';
+import { toHttpRequestOptions, toLegacyRequestOptions } from './request-target';
 
 export const getRequestHelperFunctions = (
 	workflow: Workflow,
@@ -66,8 +68,21 @@ export const getRequestHelperFunctions = (
 	// Eval LLM mock handler: extract once for use in direct helpers below
 	const evalLlmMock = additionalData.evalLlmMockHandler;
 
+	const getTraceHeaders = (): Record<string, string> => {
+		const { otel, executionId } = additionalData;
+		if (!otel?.injectTraceHeaders || !executionId) return {};
+
+		const headers: Record<string, string> = {};
+		otel.injectTraceHeaders(executionId, node.name, headers);
+		return headers;
+	};
+
 	return {
-		httpRequest: async (requestOptions: IHttpRequestOptions) => {
+		getTraceHeaders,
+		httpRequest: async (
+			requestOptionsWithTarget: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions>,
+		) => {
+			const requestOptions = toHttpRequestOptions(requestOptionsWithTarget);
 			if (evalLlmMock) {
 				const evalMockResponse = await callEvalMockHandler(
 					evalLlmMock,
@@ -77,13 +92,9 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
-			if (additionalData.otel?.injectTraceHeaders) {
-				requestOptions.headers ??= {};
-				additionalData.otel.injectTraceHeaders(
-					additionalData.executionId!,
-					node.name,
-					requestOptions.headers as Record<string, string>,
-				);
+			const traceHeaders = getTraceHeaders();
+			if (Object.keys(traceHeaders).length) {
+				Object.assign((requestOptions.headers ??= {}), traceHeaders);
 			}
 			return await Container.get(OutboundHttp).requests().request(requestOptions);
 		},
@@ -101,7 +112,7 @@ export const getRequestHelperFunctions = (
 		): Promise<any[]> {
 			return await requestWithAuthenticationPaginated.call(
 				this,
-				requestOptions,
+				toLegacyRequestOptions(requestOptions),
 				itemIndex,
 				paginationOptions,
 				getResolvedValue,
@@ -142,7 +153,12 @@ export const getRequestHelperFunctions = (
 			);
 		},
 
-		request: async (uriOrObject, options) => {
+		request: async (uriOrObjectWithTarget, optionsWithTarget) => {
+			const uriOrObject =
+				typeof uriOrObjectWithTarget === 'string'
+					? uriOrObjectWithTarget
+					: toLegacyRequestOptions(uriOrObjectWithTarget);
+			let options = optionsWithTarget && toLegacyRequestOptions(optionsWithTarget);
 			if (evalLlmMock) {
 				const wantsFull = typeof uriOrObject !== 'string' && uriOrObject.resolveWithFullResponse;
 				const evalMockResponse = await callEvalMockHandler(
@@ -154,16 +170,12 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
-			if (additionalData.otel?.injectTraceHeaders) {
+			const traceHeaders = getTraceHeaders();
+			if (Object.keys(traceHeaders).length) {
 				const target = typeof uriOrObject === 'string' ? (options ??= {}) : uriOrObject;
-				target.headers ??= {};
-				additionalData.otel.injectTraceHeaders(
-					additionalData.executionId!,
-					node.name,
-					target.headers as Record<string, string>,
-				);
+				Object.assign((target.headers ??= {}), traceHeaders);
 			}
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
 		},
 
@@ -175,6 +187,7 @@ export const getRequestHelperFunctions = (
 			itemIndex,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		): Promise<any> {
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestWithAuthentication.call(
 				this,
 				credentialsType,
@@ -190,9 +203,10 @@ export const getRequestHelperFunctions = (
 		async requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: IRequestOptions,
+			requestOptionsWithTarget: LegacyRequestOptions,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		): Promise<any> {
+			const requestOptions = toLegacyRequestOptions(requestOptionsWithTarget);
 			if (evalLlmMock) {
 				const evalMockResponse = await callEvalMockHandler(
 					evalLlmMock,
@@ -203,16 +217,18 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth1.call(this, credentialsType, requestOptions);
 		},
 
 		async requestOAuth2(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: IRequestOptions,
+			requestOptionsWithTarget: LegacyRequestOptions,
 			oAuth2Options?: IOAuth2Options,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		): Promise<any> {
+			const requestOptions = toLegacyRequestOptions(requestOptionsWithTarget);
 			if (evalLlmMock) {
 				const evalMockResponse = await callEvalMockHandler(
 					evalLlmMock,
@@ -223,6 +239,7 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await requestOAuth2.call(
 				this,
 				credentialsType,

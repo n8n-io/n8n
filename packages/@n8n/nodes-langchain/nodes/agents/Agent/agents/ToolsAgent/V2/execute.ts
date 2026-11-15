@@ -31,6 +31,7 @@ import {
 } from '@utils/output_parsers/N8nOutputParser';
 import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 
+import { resolveCustomEndpointChatModel } from '../../../../../llms/LMChatOpenAi/custom-endpoint-chat-openai';
 import { isExecuteFunctions } from '../../utils';
 import {
 	fixEmptyContentMessage,
@@ -42,6 +43,19 @@ import {
 	preparePrompt,
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
+
+/**
+ * Lets a vendor node observe an agent run without copying the executor.
+ *
+ * `createCallbacks` runs once for each item, because one handler instance per
+ * item is what keeps per-run observability separate. `onItemFinished` runs after
+ * the item's output is recorded, successfully or not, which is the point at which
+ * a handler's collected data is complete.
+ */
+export interface AgentExecutionHooks {
+	createCallbacks?: (itemIndex: number) => BaseCallbackHandler[];
+	onItemFinished?: (itemIndex: number) => Promise<void>;
+}
 
 /**
  * Creates an agent executor with the given configuration
@@ -250,6 +264,7 @@ function checkIsResponsesApi(model: BaseChatModel | null | undefined): boolean {
  */
 export async function toolsAgentExecute(
 	this: IExecuteFunctions | ISupplyDataFunctions,
+	hooks: AgentExecutionHooks = {},
 ): Promise<INodeExecutionData[][]> {
 	let toolCalls = 0;
 	let failedItems = 0;
@@ -273,9 +288,11 @@ export async function toolsAgentExecute(
 		) as number;
 		const needsFallback = this.getNodeParameter('needsFallback', 0, false) as boolean;
 		const memory = await getOptionalMemory(this);
-		const model = await getChatModel(this, 0);
+		const model = resolveCustomEndpointChatModel(await getChatModel(this, 0));
 		assert(model, 'Please connect a model to the Chat Model input');
-		const fallbackModel = needsFallback ? await getChatModel(this, 1) : null;
+		const fallbackModel = needsFallback
+			? resolveCustomEndpointChatModel(await getChatModel(this, 1))
+			: null;
 
 		// FIXME: remove when this is fixed: https://github.com/langchain-ai/langchainjs/pull/9082
 		// Responses API + tools is broken when using langchain default call handling. In V3 calls are handled differently, so it works.
@@ -305,9 +322,8 @@ export async function toolsAgentExecute(
 
 		for (let i = 0; i < items.length; i += batchSize) {
 			const batch = items.slice(i, i + batchSize);
-			const batchPromises = batch.map(async (_item, batchItemIndex) => {
-				const itemIndex = i + batchItemIndex;
 
+			const runItem = async (itemIndex: number) => {
 				const input = getPromptInputByType({
 					ctx: this,
 					i: itemIndex,
@@ -354,10 +370,11 @@ export async function toolsAgentExecute(
 				if (Object.keys(additionalMetadata).length > 0) {
 					this.logger.debug('Tracing metadata', { additionalMetadata });
 				}
-				const tracingConfig = isExecuteFunctions(this)
-					? getTracingConfig(this, { additionalMetadata })
-					: undefined;
-				const executorWithTracing = tracingConfig ? executor.withConfig(tracingConfig) : executor;
+				// `getTracingConfig` supports both context types, so sub-agents keep their
+				// LangSmith run name and execution id.
+				const executorWithTracing = executor.withConfig(
+					getTracingConfig(this, { additionalMetadata }),
+				);
 				// Invoke with fallback logic
 				const invokeParams = {
 					input,
@@ -368,7 +385,7 @@ export async function toolsAgentExecute(
 				const toolCounter = new ToolCallCounterCallback();
 				const executeOptions = {
 					signal: this.getExecutionCancelSignal(),
-					callbacks: [toolCounter],
+					callbacks: [toolCounter, ...(hooks.createCallbacks?.(itemIndex) ?? [])],
 				};
 
 				// Check if streaming is actually available
@@ -408,13 +425,31 @@ export async function toolsAgentExecute(
 					const response = await executorWithTracing.invoke(invokeParams, executeOptions);
 					return { response, toolCallsCounted: toolCounter.count };
 				}
+			};
+
+			const batchPromises = batch.map(async (_item, batchItemIndex) => {
+				const itemIndex = i + batchItemIndex;
+				try {
+					return await runItem(itemIndex);
+				} finally {
+					// Per item, not after the batch settles, so a rejection can't skip a
+					// later item's hook call. Guarded so a hook error can't mask the result.
+					try {
+						await hooks.onItemFinished?.(itemIndex);
+					} catch (hookError) {
+						this.logger.warn('Agent execution observer hook failed', {
+							itemIndex,
+							error: hookError instanceof Error ? hookError.message : String(hookError),
+						});
+					}
+				}
 			});
 
 			const batchResults = await Promise.allSettled(batchPromises);
 			// This is only used to check if the output parser is connected
 			// so we can parse the output if needed. Actual output parsing is done in the loop above
 			const outputParser = await getOptionalOutputParser(this, 0);
-			batchResults.forEach((result, index) => {
+			for (const [index, result] of batchResults.entries()) {
 				const itemIndex = i + index;
 				if (result.status === 'rejected') {
 					const error = wrapLangChainParserError(result.reason, this.getNode(), itemIndex, {
@@ -426,7 +461,7 @@ export async function toolsAgentExecute(
 							json: { error: error.message },
 							pairedItem: { item: itemIndex },
 						});
-						return;
+						continue;
 					} else {
 						throw new NodeOperationError(this.getNode(), error);
 					}
@@ -455,7 +490,7 @@ export async function toolsAgentExecute(
 				};
 
 				returnData.push(itemResult);
-			});
+			}
 
 			if (i + batchSize < items.length && delayBetweenBatches > 0) {
 				await sleep(delayBetweenBatches);

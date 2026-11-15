@@ -75,11 +75,15 @@ erDiagram
   boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  uuid identityId FK
   json integrations
+  boolean isArchived
   varchar_128_ name
   varchar_255_ projectId FK
+  integer publicationRevision
   integer revision
   json schema
+  varchar_16_ scope
   timestamp_3__with_time_zone setupCompletedAt
   json skills
   json tools
@@ -107,7 +111,7 @@ erDiagram
   text content
   varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
-  json embedding
+  bytea embedding
   varchar_128_ embeddingModel
   varchar_36_ id
   timestamp_3__with_time_zone lastSeenAt

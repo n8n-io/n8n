@@ -1,10 +1,35 @@
 import type { FrontendSettings } from '@n8n/api-types';
+import { EMBEDDED_SETTINGS_GLOBAL } from '@n8n/constants';
 import { i18n } from '@n8n/i18n';
 import { createPinia, setActivePinia } from 'pinia';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { useSettingsStore } from './settings.store';
+
+it.each([
+	{ active: true, enabled: true, expected: true },
+	{ active: true, enabled: undefined, expected: true },
+	{ active: true, enabled: false, expected: false },
+	{ active: false, enabled: true, expected: false },
+])(
+	'gates Agents and its features (active=$active, enabled=$enabled)',
+	({ active, enabled, expected }) => {
+		setActivePinia(createPinia());
+		const store = useSettingsStore();
+		store.settings.activeModules = active ? ['agents'] : [];
+		store.moduleSettings.agents = {
+			enabled,
+			modules: ['tasks'],
+			knowledgeBaseEnabled: true,
+			proxyEnabled: false,
+		};
+
+		expect(store.isAgentsEnabled).toBe(expected);
+		expect(store.isAgentModuleActive('tasks')).toBe(expected);
+		expect(store.isAgentsKnowledgeBaseFeatureEnabled).toBe(expected);
+	},
+);
 
 const mockRootStore = {
 	restApiContext: {},
@@ -108,6 +133,82 @@ describe('settings.store', () => {
 		setActivePinia(createPinia());
 	});
 
+	describe('setWorkflowReviewsPolicy', () => {
+		beforeEach(() => {
+			const store = useSettingsStore();
+			store.settings.activeModules = ['inbox', 'workflow-reviews'];
+			store.settings.enterprise = { ...mockSettings.enterprise, workflowReviews: true };
+			store.settings.inbox = { enabled: false, availableTypes: [], failedTypes: [] };
+		});
+
+		it.each(['availableTypes', 'failedTypes'] as const)(
+			'preserves Assistant %s when Reviews are enabled and disabled',
+			(sourceStatus) => {
+				const store = useSettingsStore();
+				store.settings.inbox = {
+					enabled: true,
+					availableTypes: [],
+					failedTypes: ['workflow_review'],
+				};
+				store.settings.inbox[sourceStatus].push('self_healing_result');
+
+				store.setWorkflowReviewsPolicy({ enabled: true });
+				expect(store.settings.inbox.availableTypes).toContain('workflow_review');
+				expect(store.settings.inbox.failedTypes).not.toContain('workflow_review');
+				expect(store.settings.inbox[sourceStatus]).toContain('self_healing_result');
+
+				store.setWorkflowReviewsPolicy({ enabled: false });
+				expect(store.settings.inbox).toEqual({
+					enabled: true,
+					availableTypes: [],
+					failedTypes: [],
+					[sourceStatus]: ['self_healing_result'],
+				});
+			},
+		);
+
+		it('disables Inbox when its last source is disabled', () => {
+			const store = useSettingsStore();
+			store.setWorkflowReviewsPolicy({ enabled: true });
+			expect(store.settings.inbox?.enabled).toBe(true);
+
+			store.setWorkflowReviewsPolicy({ enabled: false });
+
+			expect(store.settings.inbox).toEqual({
+				enabled: false,
+				availableTypes: [],
+				failedTypes: [],
+			});
+		});
+
+		it.each([
+			{ licensed: false, activeModules: ['inbox', 'workflow-reviews'] },
+			{ licensed: true, activeModules: ['inbox'] },
+			{ licensed: true, activeModules: ['workflow-reviews'] },
+		])('keeps license and module gates: %j', ({ licensed, activeModules }) => {
+			const store = useSettingsStore();
+			store.settings.enterprise.workflowReviews = licensed;
+			store.settings.activeModules = activeModules;
+
+			store.setWorkflowReviewsPolicy({ enabled: true });
+
+			expect(store.settings.inbox).toEqual({
+				enabled: false,
+				availableTypes: [],
+				failedTypes: [],
+			});
+		});
+
+		it('does not invent Inbox settings when they are absent', () => {
+			const store = useSettingsStore();
+			delete store.settings.inbox;
+
+			store.setWorkflowReviewsPolicy({ enabled: true });
+
+			expect(store.settings.inbox).toBeUndefined();
+		});
+	});
+
 	describe('isAutosaveEnabled', () => {
 		it('should return true when workflowsAutosaveDisabled is false', async () => {
 			getSettings.mockResolvedValueOnce({
@@ -146,71 +247,21 @@ describe('settings.store', () => {
 		});
 	});
 
-	describe('isExecuteWorkflowNodeExcluded', () => {
-		it('should return true when executeWorkflow is in excludeNodes', async () => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes: ['n8n-nodes-base.executeWorkflow'],
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(true);
-		});
-
-		it('should return false when executeWorkflow is not excluded', async () => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes: ['n8n-nodes-base.executeCommand'],
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(false);
-		});
-
-		it('should return false when only executeWorkflowTrigger is excluded', async () => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes: ['n8n-nodes-base.executeWorkflowTrigger'],
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isExecuteWorkflowNodeExcluded).toBe(false);
-		});
-	});
-
-	describe('isSubworkflowConversionDisabled', () => {
+	describe('isEnterprisePlan', () => {
 		it.each([
-			[['n8n-nodes-base.executeWorkflow']],
-			[['n8n-nodes-base.executeWorkflowTrigger']],
-			[['n8n-nodes-base.executeWorkflow', 'n8n-nodes-base.executeWorkflowTrigger']],
-		])('should return true when %j is excluded', async (excludeNodes) => {
+			{ planName: 'Enterprise', expected: true },
+			{ planName: 'Business', expected: false },
+			{ planName: undefined, expected: false },
+		])('returns $expected for plan $planName', async ({ planName, expected }) => {
 			getSettings.mockResolvedValueOnce({
 				...mockSettings,
-				excludeNodes,
+				license: { planName } as FrontendSettings['license'],
 			});
 
 			const settingsStore = useSettingsStore();
 			await settingsStore.getSettings();
 
-			expect(settingsStore.isSubworkflowConversionDisabled).toBe(true);
-		});
-
-		it('should return false when both sub-workflow nodes are available', async () => {
-			getSettings.mockResolvedValueOnce({
-				...mockSettings,
-				excludeNodes: ['n8n-nodes-base.executeCommand'],
-			});
-
-			const settingsStore = useSettingsStore();
-			await settingsStore.getSettings();
-
-			expect(settingsStore.isSubworkflowConversionDisabled).toBe(false);
+			expect(settingsStore.isEnterprisePlan).toBe(expected);
 		});
 	});
 
@@ -311,6 +362,124 @@ describe('settings.store', () => {
 			await useSettingsStore().getSettings();
 
 			expect(writeSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('embedded settings', () => {
+		const embeddedSettings = () =>
+			({
+				...structuredClone(publicSettingsResponse),
+				defaultLocale: 'de',
+				authCookie: { secure: false },
+				activeModules: ['data-table', 'insights'],
+			}) as FrontendSettings;
+
+		afterEach(() => {
+			delete window[EMBEDDED_SETTINGS_GLOBAL];
+			vi.unstubAllGlobals();
+			vi.restoreAllMocks();
+			// Drop queued one-time results, so a failed case cannot leak them into later cases
+			getSettings.mockReset();
+			mockRootStore.setDefaultLocale.mockReset();
+		});
+
+		it('should apply the embedded settings without a request', async () => {
+			window[EMBEDDED_SETTINGS_GLOBAL] = embeddedSettings();
+			const settingsStore = useSettingsStore();
+
+			expect(settingsStore.applyEmbeddedSettings()).toBe(true);
+
+			expect(getSettings).not.toHaveBeenCalled();
+			expect(settingsStore.isModuleActive('data-table')).toBe(true);
+			expect(settingsStore.isModuleActive('agents')).toBe(false);
+			expect(mockRootStore.setDefaultLocale).toHaveBeenCalledWith('de');
+
+			await settingsStore.initialize();
+
+			expect(getSettings).not.toHaveBeenCalled();
+		});
+
+		it('should end in the same state as a fetched public payload', async () => {
+			window[EMBEDDED_SETTINGS_GLOBAL] = {
+				...embeddedSettings(),
+				mfa: { enabled: true, enforced: true },
+			};
+			const embeddedStore = useSettingsStore();
+			embeddedStore.applyEmbeddedSettings();
+			await embeddedStore.initialize();
+
+			setActivePinia(createPinia());
+			getSettings.mockResolvedValueOnce({
+				...embeddedSettings(),
+				mfa: { enabled: true, enforced: true },
+			});
+			const fetchedStore = useSettingsStore();
+			await fetchedStore.initialize();
+
+			expect(embeddedStore.settings).toEqual(fetchedStore.settings);
+			expect(embeddedStore.userManagement).toEqual(fetchedStore.userManagement);
+			expect(embeddedStore.isMFAEnforced).toBe(true);
+			expect(fetchedStore.isMFAEnforced).toBe(true);
+		});
+
+		it('should fetch the settings when the page has none', async () => {
+			getSettings.mockResolvedValueOnce(embeddedSettings());
+			const settingsStore = useSettingsStore();
+
+			expect(settingsStore.applyEmbeddedSettings()).toBe(false);
+			await settingsStore.initialize();
+
+			expect(getSettings).toHaveBeenCalledTimes(1);
+			expect(settingsStore.isModuleActive('data-table')).toBe(true);
+		});
+
+		it('should fetch the settings when the embedded settings cannot be applied', async () => {
+			const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+			mockRootStore.setDefaultLocale.mockImplementationOnce(() => {
+				throw new Error('Unexpected settings shape');
+			});
+			window[EMBEDDED_SETTINGS_GLOBAL] = embeddedSettings();
+			getSettings.mockResolvedValueOnce(embeddedSettings());
+			const settingsStore = useSettingsStore();
+
+			expect(settingsStore.applyEmbeddedSettings()).toBe(false);
+			await settingsStore.initialize();
+
+			expect(consoleWarn).toHaveBeenCalledTimes(1);
+			expect(getSettings).toHaveBeenCalledTimes(1);
+			expect(settingsStore.isModuleActive('data-table')).toBe(true);
+		});
+
+		it('should still fetch the settings in preview mode', async () => {
+			window[EMBEDDED_SETTINGS_GLOBAL] = { ...embeddedSettings(), previewMode: true };
+			getSettings.mockResolvedValueOnce({ ...embeddedSettings(), previewMode: true });
+			const settingsStore = useSettingsStore();
+
+			expect(settingsStore.applyEmbeddedSettings()).toBe(true);
+			await settingsStore.initialize();
+
+			expect(getSettings).toHaveBeenCalledTimes(1);
+		});
+
+		it('should show the insecure connection warning only once initialize runs, in a later task', async () => {
+			const writeSpy = vi.spyOn(document, 'write').mockImplementation(() => {});
+			vi.stubGlobal('location', { protocol: 'http:', hostname: '192.168.1.10' });
+			window[EMBEDDED_SETTINGS_GLOBAL] = { ...embeddedSettings(), authCookie: { secure: true } };
+			const settingsStore = useSettingsStore();
+
+			settingsStore.applyEmbeddedSettings();
+			expect(writeSpy).not.toHaveBeenCalled();
+
+			const initializing = settingsStore.initialize();
+			await Promise.resolve();
+			expect(writeSpy).not.toHaveBeenCalled();
+
+			await initializing;
+			expect(writeSpy).toHaveBeenCalledTimes(1);
+			expect(writeSpy.mock.calls[0][0]).toContain(
+				i18n.baseText('settings.authCookie.insecureConnection.title'),
+			);
+			expect(getSettings).not.toHaveBeenCalled();
 		});
 	});
 

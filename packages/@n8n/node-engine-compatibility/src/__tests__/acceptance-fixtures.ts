@@ -8,12 +8,15 @@ import type {
 import {
 	AllowAllAdmittance,
 	createEngineRuntime,
+	noopExecutionResponseSender,
 	mintIdentityToken,
 	SharedSecretIdentityVerifier,
 	WorkflowExecution,
 	WorkflowStepExecution,
 } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
+import { ExecuteWorkflow } from 'n8n-nodes-base/dist/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node';
+import { ExecuteWorkflowTrigger } from 'n8n-nodes-base/dist/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger/ExecuteWorkflowTrigger.node';
 /* The Set and Merge source files predate strict mode, and Merge also uses path
 aliases this package does not resolve, so both come from dist. */
 import { Merge } from 'n8n-nodes-base/dist/nodes/Merge/Merge.node';
@@ -27,12 +30,15 @@ import { v7 as uuidv7 } from 'uuid';
 import { vi } from 'vitest';
 
 import { createEngineStepDataLoader } from '../engine-step-data-loader';
+import type { SubWorkflowResolver } from '../types';
 import { V1StepExecutor } from '../v1-step-executor';
 import { V1WorkflowConverter } from '../v1-workflow-converter';
-import { testAdditionalDataFactory, v1Workflow } from './fixtures';
+import { noSubWorkflows, testAdditionalDataFactory, v1Workflow } from './fixtures';
 
 const registry = new Map<string, INodeType | IVersionedNodeType>([
 	['n8n-nodes-base.set', new SetNode()],
+	['n8n-nodes-base.executeWorkflow', new ExecuteWorkflow()],
+	['n8n-nodes-base.executeWorkflowTrigger', new ExecuteWorkflowTrigger()],
 	['n8n-nodes-base.merge', new Merge()],
 	['n8n-nodes-base.noOp', new NoOp()],
 	['n8n-nodes-base.splitOut', new SplitOut()],
@@ -100,7 +106,7 @@ export const mainTo = (target: string) => ({
  *                │ After │
  *                └───────┘
  */
-export function loopWorkflow(
+export function loopV1Workflow(
 	batchSize: number,
 	body: {
 		id: string;
@@ -115,31 +121,29 @@ export function loopWorkflow(
 		typeVersion: 1,
 	},
 ) {
-	return converter.convert(
-		v1Workflow(
-			[
-				TRIGGER,
-				{
-					id: 'loop',
-					name: 'Loop',
-					type: 'n8n-nodes-base.splitInBatches',
-					typeVersion: 3,
-					parameters: { batchSize },
-				},
-				body,
-				setNode('after', 'After', [{ name: 'ran', value: 'yes', type: 'string' }]),
-			],
+	return v1Workflow(
+		[
+			TRIGGER,
 			{
-				'When clicking Execute': mainTo('Loop'),
-				Loop: {
-					main: [
-						[{ node: 'After', type: 'main' as const, index: 0 }],
-						[{ node: 'Body', type: 'main' as const, index: 0 }],
-					],
-				},
-				Body: mainTo('Loop'),
+				id: 'loop',
+				name: 'Loop',
+				type: 'n8n-nodes-base.splitInBatches',
+				typeVersion: 3,
+				parameters: { batchSize },
 			},
-		),
+			body,
+			setNode('after', 'After', [{ name: 'ran', value: 'yes', type: 'string' }]),
+		],
+		{
+			'When clicking Execute': mainTo('Loop'),
+			Loop: {
+				main: [
+					[{ node: 'After', type: 'main' as const, index: 0 }],
+					[{ node: 'Body', type: 'main' as const, index: 0 }],
+				],
+			},
+			Body: mainTo('Loop'),
+		},
 	);
 }
 
@@ -155,51 +159,49 @@ export function loopWorkflow(
  *     │                   └──────┘       └───┬──┘
  *     └────────────────(back)────────────────┘
  */
-export function branchyLoopWorkflow(batchSize: number) {
-	return converter.convert(
-		v1Workflow(
-			[
-				TRIGGER,
-				{
-					id: 'loop',
-					name: 'Loop',
-					type: 'n8n-nodes-base.splitInBatches',
-					typeVersion: 3,
-					parameters: { batchSize },
-				},
-				{ id: 'fork', name: 'Fork', type: 'n8n-nodes-base.noOp', typeVersion: 1 },
-				setNode('left', 'Left', [{ name: 'side', value: 'left', type: 'string' }]),
-				setNode('right', 'Right', [{ name: 'side', value: 'right', type: 'string' }]),
-				{
-					id: 'join',
-					name: 'Join',
-					type: 'n8n-nodes-base.merge',
-					typeVersion: 3,
-					parameters: { mode: 'append', numberInputs: 2 },
-				},
-				setNode('after', 'After', [{ name: 'ran', value: 'yes', type: 'string' }]),
-			],
+export function branchyLoopV1Workflow(batchSize: number) {
+	return v1Workflow(
+		[
+			TRIGGER,
 			{
-				'When clicking Execute': mainTo('Loop'),
-				Loop: {
-					main: [
-						[{ node: 'After', type: 'main' as const, index: 0 }],
-						[{ node: 'Fork', type: 'main' as const, index: 0 }],
-					],
-				},
-				Fork: {
-					main: [
-						[
-							{ node: 'Left', type: 'main' as const, index: 0 },
-							{ node: 'Right', type: 'main' as const, index: 0 },
-						],
-					],
-				},
-				Left: { main: [[{ node: 'Join', type: 'main' as const, index: 0 }]] },
-				Right: { main: [[{ node: 'Join', type: 'main' as const, index: 1 }]] },
-				Join: mainTo('Loop'),
+				id: 'loop',
+				name: 'Loop',
+				type: 'n8n-nodes-base.splitInBatches',
+				typeVersion: 3,
+				parameters: { batchSize },
 			},
-		),
+			{ id: 'fork', name: 'Fork', type: 'n8n-nodes-base.noOp', typeVersion: 1 },
+			setNode('left', 'Left', [{ name: 'side', value: 'left', type: 'string' }]),
+			setNode('right', 'Right', [{ name: 'side', value: 'right', type: 'string' }]),
+			{
+				id: 'join',
+				name: 'Join',
+				type: 'n8n-nodes-base.merge',
+				typeVersion: 3,
+				parameters: { mode: 'append', numberInputs: 2 },
+			},
+			setNode('after', 'After', [{ name: 'ran', value: 'yes', type: 'string' }]),
+		],
+		{
+			'When clicking Execute': mainTo('Loop'),
+			Loop: {
+				main: [
+					[{ node: 'After', type: 'main' as const, index: 0 }],
+					[{ node: 'Fork', type: 'main' as const, index: 0 }],
+				],
+			},
+			Fork: {
+				main: [
+					[
+						{ node: 'Left', type: 'main' as const, index: 0 },
+						{ node: 'Right', type: 'main' as const, index: 0 },
+					],
+				],
+			},
+			Left: { main: [[{ node: 'Join', type: 'main' as const, index: 0 }]] },
+			Right: { main: [[{ node: 'Join', type: 'main' as const, index: 1 }]] },
+			Join: mainTo('Loop'),
+		},
 	);
 }
 
@@ -222,7 +224,7 @@ export function branchyLoopWorkflow(batchSize: number) {
  *               │ After │
  *               └───────┘
  */
-export function chainedLoopsWorkflow(batchSize: number) {
+export function chainedLoopsV1Workflow(batchSize: number) {
 	const loopNode = (id: string, name: string) => ({
 		id,
 		name,
@@ -231,34 +233,32 @@ export function chainedLoopsWorkflow(batchSize: number) {
 		parameters: { batchSize },
 	});
 
-	return converter.convert(
-		v1Workflow(
-			[
-				TRIGGER,
-				loopNode('one', 'One'),
-				{ id: 'body-one', name: 'BodyOne', type: 'n8n-nodes-base.noOp', typeVersion: 1 },
-				loopNode('two', 'Two'),
-				{ id: 'body-two', name: 'BodyTwo', type: 'n8n-nodes-base.noOp', typeVersion: 1 },
-				setNode('after', 'After', [{ name: 'ran', value: 'yes', type: 'string' }]),
-			],
-			{
-				'When clicking Execute': mainTo('One'),
-				One: {
-					main: [
-						[{ node: 'Two', type: 'main' as const, index: 0 }],
-						[{ node: 'BodyOne', type: 'main' as const, index: 0 }],
-					],
-				},
-				BodyOne: mainTo('One'),
-				Two: {
-					main: [
-						[{ node: 'After', type: 'main' as const, index: 0 }],
-						[{ node: 'BodyTwo', type: 'main' as const, index: 0 }],
-					],
-				},
-				BodyTwo: mainTo('Two'),
+	return v1Workflow(
+		[
+			TRIGGER,
+			loopNode('one', 'One'),
+			{ id: 'body-one', name: 'BodyOne', type: 'n8n-nodes-base.noOp', typeVersion: 1 },
+			loopNode('two', 'Two'),
+			{ id: 'body-two', name: 'BodyTwo', type: 'n8n-nodes-base.noOp', typeVersion: 1 },
+			setNode('after', 'After', [{ name: 'ran', value: 'yes', type: 'string' }]),
+		],
+		{
+			'When clicking Execute': mainTo('One'),
+			One: {
+				main: [
+					[{ node: 'Two', type: 'main' as const, index: 0 }],
+					[{ node: 'BodyOne', type: 'main' as const, index: 0 }],
+				],
 			},
-		),
+			BodyOne: mainTo('One'),
+			Two: {
+				main: [
+					[{ node: 'After', type: 'main' as const, index: 0 }],
+					[{ node: 'BodyTwo', type: 'main' as const, index: 0 }],
+				],
+			},
+			BodyTwo: mainTo('Two'),
+		},
 	);
 }
 
@@ -270,40 +270,51 @@ export function chainedLoopsWorkflow(batchSize: number) {
  * └─────────┘    └──▲─┬─┘       └───────┘
  *                   └─┘ o1, straight back
  */
-export function selfLoopWorkflow(batchSize: number) {
-	return converter.convert(
-		v1Workflow(
-			[
-				TRIGGER,
-				{
-					id: 'loop',
-					name: 'Loop',
-					type: 'n8n-nodes-base.splitInBatches',
-					typeVersion: 3,
-					parameters: { batchSize },
-				},
-				setNode('after', 'After', [{ name: 'ran', value: 'yes', type: 'string' }]),
-			],
+export function selfLoopV1Workflow(batchSize: number) {
+	return v1Workflow(
+		[
+			TRIGGER,
 			{
-				'When clicking Execute': mainTo('Loop'),
-				Loop: {
-					main: [
-						[{ node: 'After', type: 'main' as const, index: 0 }],
-						[{ node: 'Loop', type: 'main' as const, index: 0 }],
-					],
-				},
+				id: 'loop',
+				name: 'Loop',
+				type: 'n8n-nodes-base.splitInBatches',
+				typeVersion: 3,
+				parameters: { batchSize },
 			},
-		),
+			setNode('after', 'After', [{ name: 'ran', value: 'yes', type: 'string' }]),
+		],
+		{
+			'When clicking Execute': mainTo('Loop'),
+			Loop: {
+				main: [
+					[{ node: 'After', type: 'main' as const, index: 0 }],
+					[{ node: 'Loop', type: 'main' as const, index: 0 }],
+				],
+			},
+		},
 	);
 }
 
-export function setWorkflow(assignments: Assignment[]) {
-	return converter.convert(
-		v1Workflow([TRIGGER, setNode('set-node', 'Edit Fields', assignments)], {
-			'When clicking Execute': mainTo('Edit Fields'),
-		}),
-	);
+export function setV1Workflow(assignments: Assignment[]) {
+	return v1Workflow([TRIGGER, setNode('set-node', 'Edit Fields', assignments)], {
+		'When clicking Execute': mainTo('Edit Fields'),
+	});
 }
+
+export const loopWorkflow = (...args: Parameters<typeof loopV1Workflow>) =>
+	converter.convert(loopV1Workflow(...args));
+
+export const branchyLoopWorkflow = (...args: Parameters<typeof branchyLoopV1Workflow>) =>
+	converter.convert(branchyLoopV1Workflow(...args));
+
+export const chainedLoopsWorkflow = (...args: Parameters<typeof chainedLoopsV1Workflow>) =>
+	converter.convert(chainedLoopsV1Workflow(...args));
+
+export const selfLoopWorkflow = (...args: Parameters<typeof selfLoopV1Workflow>) =>
+	converter.convert(selfLoopV1Workflow(...args));
+
+export const setWorkflow = (...args: Parameters<typeof setV1Workflow>) =>
+	converter.convert(setV1Workflow(...args));
 
 type EngineDataSource = ReturnType<typeof createDataSource>;
 
@@ -312,22 +323,34 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 		graph: WorkflowGraph,
 		triggerOutputs: TriggerOutputs | null,
 		mode?: ExecutionMode,
+		{
+			resolveSubWorkflow = noSubWorkflows,
+			finishCount = 1,
+		}: {
+			/** Resolves the sub-workflows the run calls, as the control plane would. */
+			resolveSubWorkflow?: SubWorkflowResolver;
+			/** How many executions must finish first: a sub-execution finishes before its parent. */
+			finishCount?: number;
+		} = {},
 	) {
 		const dataSource = getDataSource();
 
 		let done!: () => void;
 		const finished = new Promise<void>((resolve) => (done = resolve));
+		let finishedCount = 0;
 
 		const runtime = createEngineRuntime({
 			dataSource,
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(authSecret),
+			// Nothing here waits for a response; the fixture reads the run over the API.
+			responseSender: noopExecutionResponseSender,
 			// also how the test reaches the stores the runtime owns
 			externalDependencies: ({ executionStore, stepStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
 				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
 					const recorded = await finishExecution(id, status);
-					done();
+					if (recorded && ++finishedCount === finishCount) done();
 					return recorded;
 				});
 
@@ -336,6 +359,7 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 						nodeTypes: realNodeTypes,
 						additionalDataFactory: testAdditionalDataFactory,
 						loadStepData: createEngineStepDataLoader(executionStore, stepStore),
+						resolveSubWorkflow,
 					}),
 				};
 			},
@@ -366,11 +390,21 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 				finished,
 				new Promise((_, reject) => {
 					setTimeout(() => {
-						reject(
-							new Error(
-								`execution ${executionId} never recorded an outcome: the engine stalled without calling finishExecution`,
-							),
-						);
+						// The step rows say where it stalled, so a failing case reads as one.
+						void dataSource
+							.getRepository(WorkflowStepExecution)
+							.find({ where: { executionId } })
+							.then((rows) => {
+								const states = rows.map(({ nodeId, status, error }) =>
+									[nodeId, status, error?.message].filter(Boolean).join(':'),
+								);
+								reject(
+									new Error(
+										`execution ${executionId} never recorded an outcome: the engine stalled without calling finishExecution. Steps: ${states.join(', ')}`,
+									),
+								);
+							})
+							.catch(reject);
 					}, 10_000).unref();
 				}),
 			]);

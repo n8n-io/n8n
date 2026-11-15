@@ -4,11 +4,13 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import type { WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { propagation } from '@opentelemetry/api';
 import { readFileSync } from 'fs';
 import { InstanceSettings, UnrecognizedNodeTypeError } from 'n8n-core';
 import { DebugHelper } from 'n8n-nodes-base/nodes/DebugHelper/DebugHelper.node';
 import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
-import { createRunExecutionData, UnexpectedError } from 'n8n-workflow';
+import { createRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type {
 	ExecutionStatus,
 	IDataObject,
@@ -18,12 +20,18 @@ import type {
 } from 'n8n-workflow';
 import path from 'path';
 
+import { ActiveExecutions } from '@/active-executions';
+import { JobProcessor } from '@/scaling/job-processor';
+import type { Job } from '@/scaling/scaling.types';
+import { DEFAULT_OUTBOUND_PROPAGATOR } from '@/observability/outbound-propagator';
 import { WorkflowRunner } from '@/workflow-runner';
 import * as utils from '@test-integration/utils';
 
 import { OtelTestProvider } from './otel-test-provider';
 import { TestNodeWithTracing } from './test-node-with-tracing';
+import { OtelSettingsService } from '../../otel-settings.service';
 import { OtelConfig } from '../../otel.config';
+import type { TracingContext } from '../../tracing-context';
 
 const BASE_DIR = path.resolve(__dirname, '../../../../../..');
 
@@ -51,6 +59,12 @@ export async function initOtelTestEnvironment() {
 
 	await testModules.loadModules(['otel']);
 	await testDb.init();
+
+	const config = Container.get(OtelConfig);
+	config.includeNodeSpans = true;
+	config.injectOutbound = true;
+
+	await Container.get(OtelSettingsService).loadSettings();
 	await Container.get(ModuleRegistry).initModules('main');
 	Container.get(LicenseState).setLicenseProvider({
 		isLicensed: (feature) => feature === LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES,
@@ -71,9 +85,7 @@ export async function initOtelTestEnvironment() {
 
 	Container.get(InstanceSettings).markAsLeader();
 
-	const config = Container.get(OtelConfig);
-	config.includeNodeSpans = true;
-	config.injectOutbound = true;
+	propagation.setGlobalPropagator(DEFAULT_OUTBOUND_PROPAGATOR);
 
 	return {
 		otel,
@@ -83,6 +95,7 @@ export async function initOtelTestEnvironment() {
 }
 
 export async function terminateOtelTestEnvironment(otel: OtelTestProvider) {
+	propagation.disable();
 	await otel.shutdown();
 	await testDb.terminate();
 }
@@ -113,13 +126,55 @@ export async function executeWorkflow(
 	options: {
 		mode?: 'webhook' | 'trigger' | 'manual' | 'retry';
 		retryOf?: string;
-		tracingContext?: { traceparent: string; tracestate?: string };
+		tracingContext?: TracingContext;
 		triggerData?: IDataObject;
 	} = {},
 ): Promise<string> {
 	const { mode = 'webhook', retryOf, tracingContext, triggerData } = options;
+
+	return await workflowRunner.run(
+		{
+			workflowData: workflow,
+			projectId,
+			executionMode: mode,
+			executionData: createTriggerExecutionData(workflow, triggerData),
+			retryOf,
+			tracingContext,
+		},
+		true,
+	);
+}
+
+export async function executeWorkflowOnWorker(
+	workflow: WorkflowEntity,
+	projectId: string,
+	options: { tracingContext?: TracingContext } = {},
+): Promise<string> {
+	const executionId = await Container.get(ActiveExecutions).add({
+		workflowData: workflow,
+		projectId,
+		executionMode: 'trigger',
+		executionData: createTriggerExecutionData(workflow),
+		tracingContext: options.tracingContext,
+	});
+
+	const job = {
+		id: `job-${executionId}`,
+		data: { executionId, workflowId: workflow.id, loadStaticData: false },
+		progress: vi.fn(),
+	} as unknown as Job;
+	try {
+		await Container.get(JobProcessor).processJob(job);
+	} finally {
+		Container.get(ActiveExecutions).finalizeExecution(executionId);
+	}
+
+	return executionId;
+}
+
+function createTriggerExecutionData(workflow: WorkflowEntity, triggerData?: IDataObject) {
 	const triggerNode = workflow.nodes.find((n) => n.type === 'n8n-nodes-base.manualTrigger')!;
-	const executionData = createRunExecutionData({
+	return createRunExecutionData({
 		executionData: {
 			nodeExecutionStack: [
 				{
@@ -133,18 +188,6 @@ export async function executeWorkflow(
 			startNodes: [{ name: triggerNode.name, sourceData: null }],
 		},
 	});
-
-	return await workflowRunner.run(
-		{
-			workflowData: workflow,
-			projectId,
-			executionMode: mode,
-			executionData,
-			retryOf,
-			tracingContext,
-		},
-		true,
-	);
 }
 
 export async function waitForExecution(

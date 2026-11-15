@@ -1,3 +1,4 @@
+import type { AgentTokenUsage } from '../agent-sse';
 import type { AgentActor } from '../agents/types';
 
 export type AgentExecutionUpdated = {
@@ -7,6 +8,10 @@ export type AgentExecutionUpdated = {
 		agentId: string;
 		threadId: string;
 		executionId: string;
+		usage?: AgentTokenUsage;
+		/** Execution duration in milliseconds, measured on the server. */
+		duration?: number;
+		complete?: boolean;
 	};
 };
 
@@ -29,4 +34,13 @@ export type AgentUpdated = {
 	};
 };
 
-export type AgentsPushMessage = AgentExecutionUpdated | AgentUpdated | AgentBackgroundJobsUpdated;
+export type AgentMessageQueueUpdated = {
+	type: 'agentMessageQueueUpdated';
+	data: { projectId: string; agentId: string; threadId: string };
+};
+
+export type AgentsPushMessage =
+	| AgentExecutionUpdated
+	| AgentUpdated
+	| AgentBackgroundJobsUpdated
+	| AgentMessageQueueUpdated;

@@ -20,3 +20,16 @@ export const projectRelationSchema = z.object({
 	role: assignableProjectRoleSchema,
 });
 export type ProjectRelation = z.infer<typeof projectRelationSchema>;
+
+const customTelemetryTagSchema = z.object({
+	key: z.string().refine((k) => k.trim().length > 0, { message: 'Key must not be empty' }),
+	value: z.string(),
+});
+
+export const projectCustomTelemetryTagsSchema = z.array(customTelemetryTagSchema).refine(
+	(tags) => {
+		const trimmedKeys = tags.map((t) => t.key.trim());
+		return trimmedKeys.length === new Set(trimmedKeys).size;
+	},
+	{ message: 'Duplicate keys are not allowed in custom span attributes' },
+);

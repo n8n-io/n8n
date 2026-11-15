@@ -293,6 +293,35 @@ describe('planPush', () => {
 		expect(plan.toUpdate).toEqual([]);
 	});
 
+	it('treats a requiresMemoryCompaction addition as an update (the export omits the stored false)', () => {
+		const plan = planPush(
+			[item('c', { requiresMemoryCompaction: true })],
+			{ 'c.json': body() },
+			{ c: 5 },
+		);
+		expect(plan.toUpdate.map((u) => u.id)).toEqual([5]);
+		expect(plan.unchanged).toEqual([]);
+	});
+
+	it('reports a case whose stored requiresMemoryCompaction matches as unchanged', () => {
+		const plan = planPush(
+			[item('c', { requiresMemoryCompaction: true })],
+			{ 'c.json': body({ requiresMemoryCompaction: true }) },
+			{ c: 5 },
+		);
+		expect(plan.unchanged.map((c) => c.fileSlug)).toEqual(['c']);
+	});
+
+	it('reports a disk requiresMemoryCompaction: false as unchanged when the export omits the stored default', () => {
+		const plan = planPush(
+			[item('c', { requiresMemoryCompaction: false })],
+			{ 'c.json': body() },
+			{ c: 5 },
+		);
+		expect(plan.unchanged.map((c) => c.fileSlug)).toEqual(['c']);
+		expect(plan.toUpdate).toEqual([]);
+	});
+
 	it('treats a datasets difference as an update so tier edits re-sync', () => {
 		const plan = planPush(
 			[item('c', { datasets: ['mcp', 'pr', 'full'] })],
@@ -433,6 +462,33 @@ describe('comparableDiff (post-write verification)', () => {
 		expect(
 			comparableDiff(body({ seed: stored }), item('c', { seed: inlineSeed() }).testCase),
 		).toEqual([]);
+	});
+
+	const table = {
+		id: 'seed-table-1',
+		name: 'Queue',
+		columns: [{ name: 'message', type: 'string' as const }],
+	};
+	const scenario = { name: 'empty-queue', description: 'd', dataSetup: 's', successCriteria: 'ok' };
+
+	it('reads a stored seed table without `rows` as the disk table that declares `rows: []`', () => {
+		const written = item('c', {
+			executionScenarios: [{ ...scenario, seedDataTables: [{ ...table, rows: [] }] }],
+		}).testCase;
+		const stored = body({ executionScenarios: [{ ...scenario, seedDataTables: [table] }] });
+
+		expect(comparableDiff(stored, written)).toEqual([]);
+	});
+
+	it('names `executionScenarios` when the stored table lost the declared rows', () => {
+		const written = item('c', {
+			executionScenarios: [
+				{ ...scenario, seedDataTables: [{ ...table, rows: [{ message: 'hello' }] }] },
+			],
+		}).testCase;
+		const stored = body({ executionScenarios: [{ ...scenario, seedDataTables: [table] }] });
+
+		expect(comparableDiff(stored, written)).toEqual(['executionScenarios']);
 	});
 
 	it('names `seed` when a pre-#113 server dropped it', () => {

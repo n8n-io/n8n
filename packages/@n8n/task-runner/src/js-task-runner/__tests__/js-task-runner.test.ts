@@ -62,7 +62,7 @@ describe('JsTaskRunner', () => {
 				deploymentName: '',
 				environment: '',
 				n8nVersion: '',
-				profilesSampleRate: 0,
+				profilingEnabled: false,
 				tracesSampleRate: 0,
 			},
 		});
@@ -191,6 +191,34 @@ describe('JsTaskRunner', () => {
 			});
 
 			expect(outcome.result).toEqual([wrapIntoJson({ allZeros: true })]);
+		});
+
+		it('should give small buffers their own backing memory', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					const fromString = Buffer.from('.');
+					const fromArray = Buffer.from([1, 2]);
+					return [{ json: {
+						fromString: fromString.buffer.byteLength,
+						fromArray: fromArray.buffer.byteLength,
+					} }]
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ fromString: 1, fromArray: 2 })]);
+		});
+
+		it('should prevent guest code from re-enabling the buffer pool', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					Buffer.poolSize = 8192;
+					return [{ json: { poolSize: Buffer.poolSize } }]
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ poolSize: 0 })]);
 		});
 
 		it('should support Buffer.from and Buffer.concat', async () => {

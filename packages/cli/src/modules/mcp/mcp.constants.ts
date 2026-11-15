@@ -35,12 +35,20 @@ export const MCP_CLIENT_INFO_META_KEY = 'io.modelcontextprotocol/clientInfo';
  */
 export const MCP_DISCOVER_METHOD = 'server/discover';
 
+export { MCP_SKILLS_EXTENSION_FLAG } from '@n8n/api-types';
+
+export const MCP_EMPTY_PREFERENCES_NOTE_FLAG = '140_mcp_empty_preferences_note';
+export const MCP_EMPTY_PREFERENCES_NOTE_MAX_IMPRESSIONS = 3;
+export const MCP_EMPTY_PREFERENCES_NOTE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
 /**
  * Message constants
  */
 export const UNAUTHORIZED_ERROR_MESSAGE = 'Unauthorized';
 export const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal server error';
 export const MCP_ACCESS_DISABLED_ERROR_MESSAGE = 'MCP access is disabled';
+export const MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE =
+	'This instance is protected. Use read-only operations or production workflow executions.';
 /** Telemetry-only: the handshake reached the SDK but it answered with an error. */
 export const HANDSHAKE_FAILED_ERROR_MESSAGE = 'MCP handshake failed';
 /** Telemetry-only: a `server/discover` with no protocol version to negotiate on. */
@@ -52,6 +60,20 @@ export const MISSING_PROTOCOL_VERSION_ERROR_MESSAGE =
  */
 export const LIST_N8N_GATEWAY_SERVICES_TOOL_NAME = 'list_n8n_gateway_services';
 export const MCP_GET_USER_PREFERENCES_TOOL_NAME = 'get_user_preferences';
+export const MCP_SAVE_USER_PREFERENCE_TOOL_NAME = 'save_user_preference';
+export const MCP_UPDATE_USER_PREFERENCE_TOOL_NAME = 'update_user_preference';
+export const MCP_UNDO_USER_PREFERENCE_TOOL_NAME = 'undo_user_preference';
+
+/**
+ * Installs a vetted community package so its nodes become usable. Not in
+ * `@n8n/ai-workflow-builder` with the other builder tool constants because
+ * installing packages is an instance-administration action, not something the
+ * code-builder agent can do.
+ */
+export const INSTALL_COMMUNITY_NODE_TOOL = {
+	toolName: 'install_community_node',
+	displayTitle: 'Install Community Node',
+} as const;
 
 /**
  * Shared by the `get_user_preferences` description and the pointer in the server instructions,
@@ -61,6 +83,15 @@ export const MCP_USER_PREFERENCES_TRIGGER_CLAUSE =
 	'you create or modify anything in n8n — a workflow, an Agent, a data table, a folder —';
 export const MCP_CALL_AGENT_TOOL_NAME = 'call_agent';
 export const MCP_CREATE_AGENT_TOOL_NAME = 'create_agent';
+
+/**
+ * Migration report tools. Reading needs the `breakingChanges:list` scope; a fix or a status
+ * needs `breakingChanges:migrate`.
+ */
+export const MCP_GET_MIGRATION_REPORT_TOOL_NAME = 'get_migration_report';
+export const MCP_GET_MIGRATION_FINDINGS_TOOL_NAME = 'get_migration_findings';
+export const MCP_MIGRATE_WORKFLOW_TOOL_NAME = 'migrate_workflow';
+export const MCP_SET_MIGRATION_FINDING_STATUS_TOOL_NAME = 'set_migration_finding_status';
 
 /**
  * Triggers supported in production mode for MCP execution

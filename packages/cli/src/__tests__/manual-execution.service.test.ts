@@ -1,7 +1,13 @@
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import * as core from 'n8n-core';
-import { DirectedGraph, recreateNodeExecutionStack, WorkflowExecute } from 'n8n-core';
-import { NodeHelpers, UserError } from 'n8n-workflow';
+import {
+	DirectedGraph,
+	recreateNodeExecutionStack,
+	type StorageConfig,
+	WorkflowExecute,
+} from 'n8n-core';
+import { NodeHelpers } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type {
 	Workflow,
 	IWorkflowExecutionDataProcess,
@@ -26,7 +32,10 @@ import { ManualExecutionService } from '@/manual-execution.service';
 vi.mock('n8n-core');
 
 describe('ManualExecutionService', () => {
-	const manualExecutionService = new ManualExecutionService(mock());
+	const manualExecutionService = new ManualExecutionService(
+		mock(),
+		mock<StorageConfig>({ modeTag: 'fs' }),
+	);
 
 	describe('getExecutionStartNode', () => {
 		it('Should return undefined', () => {
@@ -60,12 +69,9 @@ describe('ManualExecutionService', () => {
 			expect(executionStartNode?.name).toEqual('node2');
 		});
 
-		it('Should return triggerToStartFrom trigger node', () => {
+		it.each([true, false])('returns the selected trigger when pinned data is %s', (pinned) => {
 			const data = mock<IWorkflowExecutionDataProcess>({
-				pinData: {
-					node1: [mock<INodeExecutionData>()],
-					node2: [mock<INodeExecutionData>()],
-				},
+				pinData: pinned ? { node3: [mock<INodeExecutionData>()] } : undefined,
 				triggerToStartFrom: { name: 'node3' },
 			});
 			const workflow = mock<Workflow>({
@@ -189,6 +195,7 @@ describe('ManualExecutionService', () => {
 						waitingExecutionSource,
 					},
 				}),
+				'fs',
 			);
 		});
 
@@ -240,6 +247,7 @@ describe('ManualExecutionService', () => {
 					resultData: expect.any(Object),
 					executionData: expect.any(Object),
 				}),
+				'fs',
 			);
 		});
 
@@ -534,6 +542,7 @@ describe('ManualExecutionService', () => {
 						pinData: mockPinData,
 					}),
 				}),
+				'fs',
 			);
 		});
 		it('should call runPartialWorkflow2 with runData and empty startNodes', async () => {

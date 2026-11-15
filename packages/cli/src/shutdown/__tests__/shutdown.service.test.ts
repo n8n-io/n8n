@@ -2,7 +2,7 @@ import { ShutdownMetadata } from '@n8n/decorators';
 import type { ShutdownServiceClass } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ErrorReporter } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 

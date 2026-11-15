@@ -6,14 +6,27 @@ import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteFunctions,
+	INode,
 	ISupplyDataFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { ZodType } from 'zod';
 
 import { N8nTool } from './N8nTool';
 import { convertJsonSchemaToZod } from './schemaParsing';
+
+/**
+ * Parses a `json`-typed node parameter. The editor stores these as strings,
+ * but programmatic producers (AI workflow builder, public API) may store real
+ * objects or arrays — accept both.
+ */
+export function parseJsonParameter<T>(value: unknown, errorMessage: string): T {
+	if (typeof value === 'object' && value !== null) {
+		return value as T;
+	}
+	return jsonParse<T>(typeof value === 'string' ? value : String(value), { errorMessage });
+}
 
 export function getPromptInputByType(options: {
 	ctx: IExecuteFunctions | ISupplyDataFunctions;
@@ -250,12 +263,15 @@ export const getConnectedTools = async (
 					tool.metadata ??= {};
 					tool.metadata.isFromToolkit = true;
 					tool.metadata.sourceNodeName = parentNodes[index]?.name ?? tool.name;
+					// The name can change when the user renames the node, the ID cannot.
+					tool.metadata.sourceNodeId = parentNodes[index]?.id;
 					return tool;
 				});
 			} else {
 				toolOrToolkit.metadata ??= {};
 				toolOrToolkit.metadata.isFromToolkit = false;
 				toolOrToolkit.metadata.sourceNodeName = parentNodes[index]?.name ?? toolOrToolkit.name;
+				toolOrToolkit.metadata.sourceNodeId = parentNodes[index]?.id;
 			}
 
 			return toolOrToolkit;
@@ -308,6 +324,20 @@ export function getCustomCredentialHeader(
 		return { name: credentials.headerName, value: credentials.headerValue };
 	}
 	return undefined;
+}
+
+/**
+ * Returns the API key of a credential. Throws when the key is missing or blank.
+ * Some SDKs read a process environment variable when they get no key,
+ * so always pass the result of this function to the client.
+ */
+export function getRequiredApiKey(node: INode, apiKey: unknown): string {
+	if (typeof apiKey !== 'string' || apiKey.trim() === '') {
+		throw new NodeOperationError(node, 'The credential has no API key', {
+			description: 'Add an API key to the credential and try again.',
+		});
+	}
+	return apiKey;
 }
 
 /**

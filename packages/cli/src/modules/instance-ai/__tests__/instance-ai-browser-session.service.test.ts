@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 
 import {

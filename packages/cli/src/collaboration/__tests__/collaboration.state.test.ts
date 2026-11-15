@@ -1,7 +1,7 @@
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 import { CollaborationState } from '../collaboration.state';
 
@@ -146,6 +146,196 @@ describe('CollaborationState', () => {
 				'collaboration:workflow',
 				'old-user-uuid',
 			);
+		});
+	});
+
+	// Agent-scoped collaboration mirrors the workflow methods under distinct
+	// cache keys so workflow and agent locks never collide on a shared cache.
+	describe('agent collaborators', () => {
+		const agentId = 'agent-1';
+
+		it('adds an agent collaborator under the agent cache key', async () => {
+			// Arrange
+			global.Date = mockDateFactory('2023-01-01T00:00:00.000Z');
+
+			// Act
+			await collaborationState.addAgentCollaborator(agentId, 'userId', 'clientId');
+
+			// Assert
+			expect(mockCacheService.setHash).toHaveBeenCalledWith('collaboration:agent:agent-1', {
+				clientId: 'userId|2023-01-01T00:00:00.000Z',
+			});
+		});
+
+		it('removes an agent collaborator under the agent cache key', async () => {
+			// Act
+			await collaborationState.removeAgentCollaborator(agentId, 'clientId');
+
+			// Assert
+			expect(mockCacheService.deleteFromHash).toHaveBeenCalledWith(
+				'collaboration:agent:agent-1',
+				'clientId',
+			);
+		});
+
+		it('reads agent collaborators under the agent cache key', async () => {
+			// Act
+			const users = await collaborationState.getAgentCollaborators(agentId);
+
+			// Assert
+			expect(mockCacheService.getHash).toHaveBeenCalledWith('collaboration:agent:agent-1');
+			expect(users).toBeEmptyArray();
+		});
+	});
+
+	describe('agent write lock', () => {
+		const agentId = 'agent-1';
+
+		it('sets the agent write lock under the agent lock key', async () => {
+			// Act
+			await collaborationState.setAgentWriteLock(agentId, 'clientId', 'userId');
+
+			// Assert
+			expect(mockCacheService.set).toHaveBeenCalledWith(
+				'collaboration:write-lock:agent:agent-1',
+				JSON.stringify({ clientId: 'clientId', userId: 'userId' }),
+				collaborationState.writeLockTtl,
+			);
+		});
+
+		it('reads the agent write lock under the agent lock key', async () => {
+			// Arrange
+			mockCacheService.get.mockResolvedValueOnce(
+				JSON.stringify({ clientId: 'clientId', userId: 'userId' }),
+			);
+
+			// Act
+			const lock = await collaborationState.getAgentWriteLock(agentId);
+
+			// Assert
+			expect(mockCacheService.get).toHaveBeenCalledWith('collaboration:write-lock:agent:agent-1');
+			expect(lock).toEqual({ clientId: 'clientId', userId: 'userId' });
+		});
+
+		it('releases the agent write lock under the agent lock key', async () => {
+			// Act
+			await collaborationState.releaseAgentWriteLock(agentId);
+
+			// Assert
+			expect(mockCacheService.delete).toHaveBeenCalledWith(
+				'collaboration:write-lock:agent:agent-1',
+			);
+		});
+
+		it('force-acquires the agent write lock only when the same user holds it', async () => {
+			// Arrange — a different user holds the lock
+			mockCacheService.get.mockResolvedValueOnce(
+				JSON.stringify({ clientId: 'otherClient', userId: 'otherUser' }),
+			);
+
+			// Act
+			const acquired = await collaborationState.acquireAgentWriteLockForce(
+				agentId,
+				'clientId',
+				'userId',
+			);
+
+			// Assert
+			expect(acquired).toBe(false);
+			expect(mockCacheService.set).not.toHaveBeenCalled();
+		});
+
+		it('force-acquires the agent write lock when the same user holds it from another tab', async () => {
+			// Arrange — same user, different client
+			mockCacheService.get.mockResolvedValueOnce(
+				JSON.stringify({ clientId: 'otherClient', userId: 'userId' }),
+			);
+
+			// Act
+			const acquired = await collaborationState.acquireAgentWriteLockForce(
+				agentId,
+				'clientId',
+				'userId',
+			);
+
+			// Assert
+			expect(acquired).toBe(true);
+			expect(mockCacheService.set).toHaveBeenCalledWith(
+				'collaboration:write-lock:agent:agent-1',
+				JSON.stringify({ clientId: 'clientId', userId: 'userId' }),
+				collaborationState.writeLockTtl,
+			);
+		});
+	});
+
+	describe('write lock owner check', () => {
+		const lockOf = (userId: string) => JSON.stringify({ clientId: 'clientId', userId });
+
+		const writeOps = [
+			[
+				'acquireWriteLock',
+				async () => await collaborationState.acquireWriteLock(workflowId, 'clientId', 'userId'),
+			],
+			[
+				'renewWriteLock',
+				async () => await collaborationState.renewWriteLock(workflowId, 'clientId', 'userId'),
+			],
+			[
+				'acquireAgentWriteLock',
+				async () => await collaborationState.acquireAgentWriteLock('agent-1', 'clientId', 'userId'),
+			],
+			[
+				'renewAgentWriteLock',
+				async () => await collaborationState.renewAgentWriteLock('agent-1', 'clientId', 'userId'),
+			],
+		] as const;
+
+		const releaseOps = [
+			[
+				'releaseWriteLockIfHolder',
+				async () =>
+					await collaborationState.releaseWriteLockIfHolder(workflowId, 'clientId', 'userId'),
+			],
+			[
+				'releaseAgentWriteLockIfHolder',
+				async () =>
+					await collaborationState.releaseAgentWriteLockIfHolder('agent-1', 'clientId', 'userId'),
+			],
+		] as const;
+
+		it.each(writeOps)('%s keeps a lock of another user with the same client id', async (_, act) => {
+			mockCacheService.get.mockResolvedValueOnce(lockOf('otherUser'));
+
+			await act();
+
+			expect(mockCacheService.set).not.toHaveBeenCalled();
+		});
+
+		it.each(releaseOps)(
+			'%s keeps a lock of another user with the same client id',
+			async (_, act) => {
+				mockCacheService.get.mockResolvedValueOnce(lockOf('otherUser'));
+
+				await act();
+
+				expect(mockCacheService.delete).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each(writeOps)('%s writes the lock of its holder', async (_, act) => {
+			mockCacheService.get.mockResolvedValueOnce(lockOf('userId'));
+
+			await act();
+
+			expect(mockCacheService.set).toHaveBeenCalled();
+		});
+
+		it.each(releaseOps)('%s deletes the lock of its holder', async (_, act) => {
+			mockCacheService.get.mockResolvedValueOnce(lockOf('userId'));
+
+			await act();
+
+			expect(mockCacheService.delete).toHaveBeenCalled();
 		});
 	});
 });

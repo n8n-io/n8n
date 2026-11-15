@@ -4,6 +4,7 @@ import { isCommunityPackageName } from 'n8n-workflow';
 import type { CanvasNodeData } from '../canvas.types';
 import { CanvasNodeRenderType, CanvasConnectionMode } from '../canvas.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeTypeRestriction } from '@n8n/frontend-module-type-availability-policies';
 
 export function useCanvasNode() {
 	const node = inject(CanvasNodeKey);
@@ -56,6 +57,18 @@ export function useCanvasNode() {
 
 	const render = computed(() => data.value.render);
 
+	const isDeprecated = computed(() =>
+		data.value.render.type === CanvasNodeRenderType.Default
+			? Boolean(data.value.render.options.deprecated)
+			: false,
+	);
+
+	const deprecatedReplacementName = computed(() =>
+		data.value.render.type === CanvasNodeRenderType.Default
+			? data.value.render.options.deprecatedReplacementName
+			: undefined,
+	);
+
 	const eventBus = computed(() => node?.eventBus.value);
 
 	// verified community nodes are checked by communityNodeType()
@@ -65,6 +78,8 @@ export function useCanvasNode() {
 			isCommunityPackageName(data.value.type) &&
 			!useNodeTypesStore().getIsNodeInstalled(data.value.type),
 	);
+
+	const { isRestricted, restrictionScope } = useNodeTypeRestriction(() => data.value.type);
 
 	return {
 		node,
@@ -87,7 +102,11 @@ export function useCanvasNode() {
 		executionWaitingForNext,
 		executionRunning,
 		render,
+		isDeprecated,
+		deprecatedReplacementName,
 		eventBus,
 		isNotInstalledCommunityNode,
+		isRestricted,
+		restrictionScope,
 	};
 }

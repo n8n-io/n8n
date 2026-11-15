@@ -1,17 +1,20 @@
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, In, Repository } from '@n8n/typeorm';
-import { UserError } from 'n8n-workflow';
+import { DataSource, EntityManager, In } from '@n8n/typeorm';
+import { UserError } from '@n8n/errors';
 
-import { Project, ProjectRelation, Role, User } from '../entities';
+import { BaseRepository } from './base-repository';
+import { Project, ProjectRelation, Role, User, type UserKind } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
+import { accountSummary } from '../utils/account-display-name';
 
 @Service()
-export class RoleRepository extends Repository<Role> {
-	constructor(dataSource: DataSource) {
-		super(Role, dataSource.manager);
+export class RoleRepository extends BaseRepository<Role> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(Role, dataSource.manager, transactionRunner);
 	}
 
-	async findAll(trx?: EntityManager) {
-		const em = trx ?? this.manager;
+	async findAll(context?: EntityManager | OperationContext) {
+		const em = context instanceof EntityManager ? context : this.managerFor(context ?? {});
 		return await em.find(Role, { relations: ['scopes'] });
 	}
 
@@ -148,7 +151,7 @@ export class RoleRepository extends Repository<Role> {
 
 	async findAllProjectMembers(
 		projectId: string,
-		roleSlug?: string,
+		roleSlug: string,
 	): Promise<
 		Array<{
 			userId: string;
@@ -156,23 +159,27 @@ export class RoleRepository extends Repository<Role> {
 			lastName: string | null;
 			email: string;
 			role: string;
+			kind: UserKind;
 		}>
 	> {
-		const qb = this.manager
-			.createQueryBuilder(ProjectRelation, 'pr')
-			.innerJoin(User, 'user', 'user.id = pr.userId')
-			.select('user.id', 'userId')
-			.addSelect('user.firstName', 'firstName')
-			.addSelect('user.lastName', 'lastName')
-			.addSelect('user.email', 'email')
-			.addSelect('pr.role', 'role')
-			.where('pr.projectId = :projectId', { projectId });
+		// Load entities, not raw columns: a service account keeps its name in its details.
+		// Do not load `role`: its scopes load eagerly, and the slug is already known.
+		const relations = await this.manager.find(ProjectRelation, {
+			where: { projectId, role: { slug: roleSlug } },
+			relations: { user: true },
+		});
 
-		if (roleSlug) {
-			qb.andWhere('pr.role = :roleSlug', { roleSlug });
-		}
-
-		return await qb.getRawMany();
+		return relations.map(({ user }) => {
+			const { id, email, firstName, lastName } = accountSummary(user);
+			return {
+				userId: id,
+				firstName,
+				lastName,
+				email: email ?? '',
+				role: roleSlug,
+				kind: user.kind,
+			};
+		});
 	}
 
 	async findBySlug(slug: string) {

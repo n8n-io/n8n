@@ -110,8 +110,7 @@ export function createEmptyCanvasRenderData(
 		executionIssuesByNodeName: shallowReactive(new Map()),
 		executionPinDataByNodeName: {},
 		executionIssuesByNodeId: shallowReactive(new Map()),
-		executionPinDataByNodeId: shallowReactive(new Map()),
-		isExecutionDataDisplayed: false,
+		getDisplayedExecutionPinData: () => undefined,
 		executionStatusByNodeId: shallowReactive(new Map()),
 		executionRunDataByNodeId: shallowReactive(new Map()),
 		executionRunDataOutputMapByNodeId: shallowReactive(new Map()),
@@ -428,10 +427,13 @@ export function getMaxNodePortsLabelSize(
 	return labelSizes[Math.max(...labelSizeIndexes)];
 }
 
-export function shouldIgnoreCanvasShortcut(el: Element): boolean {
+export function shouldIgnoreCanvasShortcut(
+	el: Element,
+	{ allowInInputs = false }: { allowInInputs?: boolean } = {},
+): boolean {
 	return (
-		['INPUT', 'TEXTAREA'].includes(el.tagName) ||
-		el.closest('[contenteditable]') !== null ||
+		(!allowInInputs &&
+			(['INPUT', 'TEXTAREA'].includes(el.tagName) || el.closest('[contenteditable]') !== null)) ||
 		el.closest('[role="dialog"]') !== null ||
 		el.closest('.ignore-key-press-canvas') !== null
 	);

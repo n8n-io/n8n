@@ -6,6 +6,7 @@ import {
 	type InstanceAiWebSearchSource,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
@@ -15,7 +16,6 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 import type { InstanceCredentialUse } from '@/credentials/instance-credential-broker';
-import { EventService } from '@/events/event.service';
 import { Telemetry } from '@/telemetry';
 
 import {

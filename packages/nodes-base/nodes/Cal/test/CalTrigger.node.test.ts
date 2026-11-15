@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
 import type { IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { CalTrigger } from '../CalTrigger.node';
 import { verifySignature } from '../CalTriggerHelpers';
@@ -77,7 +78,7 @@ describe('CalTrigger', () => {
 
 			expect(result).toBe(true);
 			expect(randomBytes).toHaveBeenCalledWith(32);
-			expect(calApiRequest).toHaveBeenCalledWith('POST', '/webhooks', {
+			expect(calApiRequest).toHaveBeenCalledWith('POST', requestPath`/webhooks`, {
 				subscriberUrl,
 				eventTriggers: events,
 				active: true,
@@ -116,7 +117,7 @@ describe('CalTrigger', () => {
 			);
 
 			expect(result).toBe(true);
-			expect(calApiRequest).toHaveBeenCalledWith('POST', '/hooks', {
+			expect(calApiRequest).toHaveBeenCalledWith('POST', requestPath`/hooks`, {
 				subscriberUrl,
 				eventTriggers: events,
 				active: true,
@@ -172,7 +173,7 @@ describe('CalTrigger', () => {
 			);
 
 			expect(result).toBe(true);
-			expect(calApiRequest).toHaveBeenCalledWith('DELETE', `/webhooks/${webhookId}`);
+			expect(calApiRequest).toHaveBeenCalledWith('DELETE', requestPath`/webhooks/${webhookId}`);
 			expect(webhookData.webhookId).toBeUndefined();
 			expect(webhookData.webhookSecret).toBeUndefined();
 		});

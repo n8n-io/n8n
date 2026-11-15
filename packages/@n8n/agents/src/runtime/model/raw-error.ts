@@ -2,7 +2,7 @@ import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import { isRecord } from '@n8n/utils/is-record';
 
 import { type ProviderId } from './provider-credentials';
-import type { ModelTurnErrorType } from '../loop/run-output-sink';
+import type { ModelTurnErrorType } from '../../types/runtime/agent-loop';
 
 /** A recognized failure signal read from the provider's raw stream events. */
 export interface RawProviderError {
@@ -53,6 +53,7 @@ export class GoogleRawErrorReader implements RawErrorReader {
  */
 const RAW_ERROR_READERS: Partial<Record<ProviderId, () => RawErrorReader>> = {
 	google: () => new GoogleRawErrorReader(),
+	'google-vertex': () => new GoogleRawErrorReader(),
 };
 
 /**

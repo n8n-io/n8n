@@ -5,8 +5,7 @@ import { Cipher } from 'n8n-core';
 import { ICredentialContext, INode, isNodeWithWorkflowSelector, jsonParse } from 'n8n-workflow';
 
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';

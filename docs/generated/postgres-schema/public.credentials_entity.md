@@ -7,11 +7,12 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | data | text |  | false |  |  |  |
 | description | text |  | true |  |  | User-supplied note on what the credential is for and where it belongs. Set and read through the credentials API |
-| id | varchar(36) |  | false | [public.agent_credential_dependency](public.agent_credential_dependency.md) [public.chat_hub_agents](public.chat_hub_agents.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.credential_dependency](public.credential_dependency.md) [public.dynamic_credential_entry](public.dynamic_credential_entry.md) [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) [public.instance_credential_assignment](public.instance_credential_assignment.md) [public.shared_credentials](public.shared_credentials.md) |  |  |
+| id | varchar(36) |  | false | [public.agent_credential_dependency](public.agent_credential_dependency.md) [public.chat_hub_agents](public.chat_hub_agents.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.credential_dependency](public.credential_dependency.md) [public.dynamic_credential_entry](public.dynamic_credential_entry.md) [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) [public.instance_credential_assignment](public.instance_credential_assignment.md) [public.shared_credentials](public.shared_credentials.md) [public.skill_source](public.skill_source.md) |  |  |
 | isGlobal | boolean | false | false |  |  |  |
 | isManaged | boolean | false | false |  |  |  |
 | isResolvable | boolean | false | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
+| pendingAuthorizationExpiresAt | timestamp(3) with time zone |  | true |  |  | Set on a credential created for an OAuth authorization the user has not completed yet. Cleared when a token is written; rows past this time are deleted by the pending-authorization cleanup task |
 | resolvableAllowFallback | boolean | false | false |  |  |  |
 | resolverId | varchar(16) |  | true |  | [public.dynamic_credential_resolver](public.dynamic_credential_resolver.md) |  |
 | type | varchar(128) |  | false |  |  |  |
@@ -60,6 +61,7 @@ erDiagram
 "public.instance_ai_mcp_registry_connections" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
 "public.shared_credentials" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialsId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
+"public.skill_source" }o--o| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE SET NULL"
 "public.credentials_entity" }o--o| "public.dynamic_credential_resolver" : "FOREIGN KEY (#quot;resolverId#quot;) REFERENCES dynamic_credential_resolver(id) ON DELETE SET NULL"
 
 "public.credentials_entity" {
@@ -71,6 +73,7 @@ erDiagram
   boolean isManaged
   boolean isResolvable
   varchar_128_ name
+  timestamp_3__with_time_zone pendingAuthorizationExpiresAt
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
   varchar_128_ type
@@ -140,7 +143,7 @@ erDiagram
   varchar_36_ credentialId FK
   uuid id
   varchar_255_ serverSlug FK
-  json toolFilter
+  json toolPermissions
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
 }
@@ -155,6 +158,21 @@ erDiagram
   varchar_36_ credentialsId FK
   varchar_36_ projectId FK
   text role
+  timestamp_3__with_time_zone updatedAt
+}
+"public.skill_source" {
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_36_ credentialId FK
+  uuid id
+  varchar_255_ identityKey
+  timestamp_3__with_time_zone lastCheckedAt
+  varchar_32_ lastErrorReason
+  json locator
+  text probeCursor
+  varchar_36_ projectId FK
+  varchar_32_ status
+  varchar_16_ type
   timestamp_3__with_time_zone updatedAt
 }
 "public.dynamic_credential_resolver" {

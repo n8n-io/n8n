@@ -4,11 +4,14 @@ import type {
 	IDataObject,
 	JsonObject,
 	IHttpRequestMethods,
-	IRequestOptions,
 	IHookFunctions,
+	IWebhookFunctions,
 	INode,
+	LegacyRequestOptions,
+	RequestPath,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import { capitalize } from '../utilities';
 
@@ -36,27 +39,44 @@ export type MicrosoftGraphCredentialType<TDefault extends string> =
 	| 'microsoftOAuth2Api'
 	| typeof SERVICE_PRINCIPAL_AUTH;
 
+/**
+ * Both `endpoint` (Graph path tail) and `match` must hit, so a permission Graph echoes
+ * under "Roles on the request" for another endpoint keeps the generic copy.
+ */
+export interface MicrosoftGraphForbiddenHint {
+	endpoint: string;
+	match: string;
+	message: string;
+	description: string;
+	delegated?: { message: string; description: string };
+}
+
+function wrappedGraphText(error: unknown): string {
+	if (!(error instanceof NodeApiError)) return '';
+	return [error.description ?? '', ...error.messages].join(' ');
+}
+
 // Reject any id that could escape its Graph path segment or start a query/fragment:
 // path separators (`/` `\`), query/fragment starters (`?` `#`), residual percent
 // (`%`), and control chars (0x00-0x1F). `:` and `@` are ALLOWED: they are
 // structure-neutral inside a single Teams id segment (real channel ids look like
-// `19:...@thread.tacv2`), and the proven Graph URL shape interpolates them raw.
+// `19:...@thread.tacv2`), and `requestPath` keeps them unencoded.
 // This class runs against the percent-DECODED value: a pre-encoded separator like
 // `..%2F..` decodes to `../..` and is caught by the separator chars, a double-encoded
 // one like `..%252F..` decodes to `..%2F..` and is caught by the residual `%`
 // (legitimate Graph ids never carry a literal `%` after the single decode), and a
 // malformed encoding rejects in the decode step before this.
-// Validating the decoded shape (not encoding) is what keeps a value safe to
-// interpolate raw. Messages are static so a rejected id is never echoed back.
+// The validated value is then encoded by `requestPath`. Messages are static so a
+// rejected id is never echoed back.
 // eslint-disable-next-line no-control-regex
 const GRAPH_ID_REJECT = /[\x00-\x1f\/\\?#%]/;
 
 /**
- * Validates a user-supplied Graph id (already `extractValue`-resolved) before it is
- * interpolated RAW into a Graph path, and returns the coerced, trimmed and
+ * Validates a user-supplied Graph id (already `extractValue`-resolved) before
+ * `requestPath` encodes it into a Graph path, and returns the coerced, trimmed and
  * percent-decoded value. Teams URLs expose ids percent-encoded
  * (`19%3A...%40thread.tacv2`) and the RLC hints tell users to paste them, so the id
- * is decoded once and the decoded form is what gets validated and interpolated,
+ * is decoded once and the decoded form is what gets validated and encoded,
  * matching the raw shape list-sourced ids already travel in.
  * Throws a `NodeOperationError` with a fully static message (never echoing the id)
  * on a bad shape. Reused for both path IDs and `task:create` body IDs.
@@ -79,6 +99,13 @@ export function validateMicrosoftGraphId(id: string, node: INode): string {
 			description: 'The ID contains a malformed percent-encoding. Copy it again and try again.',
 		});
 	}
+	// A lone surrogate is not valid text. `decodeURIComponent` passes it through, and the
+	// `encodeURIComponent` on a body value (`@odata.bind`) then throws a raw `URIError`.
+	if (/\p{Surrogate}/u.test(value)) {
+		throw new NodeOperationError(node, 'The ID is not valid', {
+			description: 'The ID contains an invalid character. Copy it again and try again.',
+		});
+	}
 	if (/^\.+$/.test(value)) {
 		throw new NodeOperationError(node, 'The ID is not valid', {
 			description: 'An ID cannot consist only of dots.',
@@ -93,28 +120,40 @@ export function validateMicrosoftGraphId(id: string, node: INode): string {
 	return value;
 }
 
-export type MicrosoftGraphPathSegment = string | { id: string };
+export type MicrosoftGraphPathSegment = string | RequestPath | { id: string };
+
+function appendLiteral(path: RequestPath, literal: string): RequestPath {
+	return literal.split('/').reduce((result, part, index) => {
+		const withSeparator = index === 0 ? result : requestPath`${result}/`;
+		return part === '' ? withSeparator : requestPath`${withSeparator}${part}`;
+	}, path);
+}
+
+/** Every n8n context that can call Graph through this transport. */
+export type MicrosoftGraphContext =
+	| IExecuteFunctions
+	| ILoadOptionsFunctions
+	| IHookFunctions
+	| IWebhookFunctions;
 
 /**
  * Single, non-bypassable path builder for every Graph path that interpolates a
- * user-supplied id. `segments` is an ordered mix of literal strings and id parts
- * (`{ id: value }`). Every `{ id }` is validated then interpolated RAW, under
- * both credential types. See `validateMicrosoftGraphId` / `GRAPH_ID_REJECT` for why
- * validation (not encoding) is the guard.
+ * user-supplied id. `segments` is an ordered mix of literal strings, built paths and
+ * id parts (`{ id: value }`). Every `{ id }` is validated, then encoded as one path
+ * segment by `requestPath`, under both credential types.
  */
 export function buildMicrosoftGraphPath(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	this: MicrosoftGraphContext,
 	segments: MicrosoftGraphPathSegment[],
-): string {
+): RequestPath {
 	const node = this.getNode();
-	return segments
-		.map((segment) => {
-			if (typeof segment === 'string') return segment;
-			// validateMicrosoftGraphId coerces + trims — `as string` at the call sites is
-			// compile-time only, so an expression can resolve an id to a non-string.
-			return validateMicrosoftGraphId(segment.id, node);
-		})
-		.join('');
+	return segments.reduce<RequestPath>((path, segment) => {
+		if (typeof segment === 'string') return appendLiteral(path, segment);
+		if (!('id' in segment)) return requestPath`${path}${segment}`;
+		// validateMicrosoftGraphId coerces + trims — `as string` at the call sites is
+		// compile-time only, so an expression can resolve an id to a non-string.
+		return requestPath`${path}${validateMicrosoftGraphId(segment.id, node)}`;
+	}, requestPath``);
 }
 
 /**
@@ -124,9 +163,7 @@ export function buildMicrosoftGraphPath(
  * literal fallback `0`; both resolve to `undefined` here so callers fall back to
  * a generic message instead of surfacing "0 not found".
  */
-function nodeResourceName(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-): string | undefined {
+function nodeResourceName(this: MicrosoftGraphContext): string | undefined {
 	try {
 		const resource = this.getNodeParameter('resource', 0);
 		if (typeof resource === 'string' && resource !== '') {
@@ -162,19 +199,27 @@ export function rewriteNotFound(
  *
  * Known SharePoint v2 deltas to fold in via factory config (not per-node forks)
  * when it adopts the kernel: injectable static messages (UserTargetMessages
- * pattern in nodes/Microsoft/GenericFunctions.ts), per-operation 403 permission
- * hints, safe-message allowlist, per-page headers and a negative-limit guard on
- * `microsoftApiRequestAllItems`.
+ * pattern in nodes/Microsoft/GenericFunctions.ts), operation-keyed 403 permission
+ * naming (`forbiddenHints` keys on the Graph endpoint tail plus text, not on the node
+ * operation), the non-403 safe-message allowlist, per-page headers and a
+ * negative-limit guard on `microsoftApiRequestAllItems`.
  */
 export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	defaultCredentialType: TDefault;
+	forbiddenHints?: readonly MicrosoftGraphForbiddenHint[];
 }) {
-	const { defaultCredentialType } = config;
+	const { defaultCredentialType, forbiddenHints = [] } = config;
 	const defaultTypeName: string = defaultCredentialType;
 	if (defaultTypeName === SERVICE_PRINCIPAL_AUTH) {
 		// Fail at module load so a misconfigured facade can never ship.
 		throw new UnexpectedError(
 			'createMicrosoftGraphTransport: defaultCredentialType must be a delegated OAuth2 credential, not the Service Principal credential',
+		);
+	}
+
+	function findForbiddenHint(resource: RequestPath, graphText: string) {
+		return forbiddenHints.find(
+			(hint) => resource.value.endsWith(hint.endpoint) && graphText.includes(hint.match),
 		);
 	}
 
@@ -192,9 +237,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	 * Shared by the action node, its `listSearch` helpers and the Trigger's
 	 * webhook hooks, since all of them authenticate through `microsoftApiRequest`.
 	 */
-	function getCredentialType(
-		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-	): MicrosoftGraphCredentialType<TDefault> {
+	function getCredentialType(this: MicrosoftGraphContext): MicrosoftGraphCredentialType<TDefault> {
 		// `0` is the execute item index; in load-options/hook contexts getNodeParameter
 		// treats the 2nd arg as the FALLBACK value, so don't switch this to the 3-arg form.
 		// Use an explicit allow-list (not `selected ?? default`): in load-options/hooks a
@@ -217,9 +260,7 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	 * so a second copy of this logic would let an operation that builds an absolute
 	 * Graph URL (e.g. `user@odata.bind`) drift from the host the request goes to.
 	 */
-	async function getGraphBaseUrl(
-		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-	): Promise<string> {
+	async function getGraphBaseUrl(this: MicrosoftGraphContext): Promise<string> {
 		const credentials = await this.getCredentials(getCredentialType.call(this));
 		const baseUrl = (
 			typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
@@ -249,9 +290,9 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	}
 
 	async function microsoftApiRequest(
-		this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+		this: MicrosoftGraphContext,
 		method: IHttpRequestMethods,
-		resource: string,
+		resource: RequestPath,
 		body: any = {},
 		qs: IDataObject = {},
 		uri?: string,
@@ -266,21 +307,20 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 		// always same-origin, so nothing legitimate is refused. An unparseable
 		// `uri` is refused the same way, so a client-supplied pagination token
 		// cannot escape as a bare TypeError.
-		const target = uri || `${baseUrl}${resource}`;
-		if (!URL.canParse(target) || new URL(target).origin !== new URL(baseUrl).origin) {
+		if (uri && (!URL.canParse(uri) || new URL(uri).origin !== new URL(baseUrl).origin)) {
 			throw new NodeOperationError(
 				this.getNode(),
 				'Refusing to send credentials to an unexpected host',
 			);
 		}
-		const options: IRequestOptions = {
+		const options: LegacyRequestOptions = {
 			headers: {
 				'Content-Type': 'application/json',
 			},
 			method,
 			body,
 			qs,
-			uri: target,
+			...(uri ? { uri } : { uri: requestUrl`${baseUrl}${resource}` }),
 			json: true,
 		};
 		try {
@@ -305,14 +345,14 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 				// `requestWithAuthentication` wraps the underlying request error in a
 				// `NodeApiError`, which exposes the HTTP status on `httpCode` (a string) — NOT
 				// on `statusCode` / `error.error.statusCode`. Read `httpCode` first; fall back
-				// to `statusCode` for the rare raw-error case. The Graph body/code is not
-				// reliably accessible on the wrapped error, so key the NotFound rewrite off the
-				// numeric 404 rather than the Graph `code`.
+				// to `statusCode` for the rare raw-error case. The Graph text survives on
+				// `description` / `messages` (see `wrappedGraphText`); only the 403 hints read it.
 				const rawCode = error?.httpCode ?? error?.statusCode;
 				const httpCode: number | undefined =
 					rawCode === undefined || rawCode === null ? undefined : Number(rawCode);
 
 				let message: string;
+				let description: string | undefined;
 				const nodeResource = nodeResourceName.call(this);
 				if (httpCode === 404 && nodeResource) {
 					message = `${nodeResource} not found`;
@@ -325,14 +365,21 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 					message =
 						'This operation requires a metered Microsoft Teams API to be enabled on the tenant.';
 				} else if (httpCode === 403) {
+					const hint = findForbiddenHint(resource, wrappedGraphText(error));
 					message =
+						hint?.message ??
 						'The app registration is missing a consented application permission for this operation. Grant the required Graph application permission and admin consent, then retry.';
+					description = hint?.description;
 				} else {
 					message = `Microsoft Graph rejected the request (HTTP ${httpCode ?? 'unknown'}). Check the operation's inputs and the app registration's permissions.`;
 				}
 
 				const sanitizedError: JsonObject = { message };
 				const errorOptions: IDataObject = { message };
+				if (description !== undefined) {
+					sanitizedError.description = description;
+					errorOptions.description = description;
+				}
 				if (httpCode !== undefined && !Number.isNaN(httpCode)) {
 					sanitizedError.httpStatusCode = httpCode;
 					errorOptions.httpCode = `${httpCode}`;
@@ -355,6 +402,13 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 					if (nodeResource) {
 						errorOptions.message = `${nodeResource} not found`;
 					}
+				} else if (httpCode === 403) {
+					const hint = findForbiddenHint(resource, String(error.message ?? ''));
+					if (hint) {
+						const copy = hint.delegated ?? hint;
+						errorOptions.message = copy.message;
+						errorOptions.description = copy.description;
+					}
 				}
 			}
 			throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
@@ -362,10 +416,10 @@ export function createMicrosoftGraphTransport<TDefault extends string>(config: {
 	}
 
 	async function microsoftApiRequestAllItems(
-		this: IExecuteFunctions | ILoadOptionsFunctions,
+		this: MicrosoftGraphContext,
 		propertyName: string,
 		method: IHttpRequestMethods,
-		endpoint: string,
+		endpoint: RequestPath,
 		body: any = {},
 		query: IDataObject = {},
 		limit?: number,

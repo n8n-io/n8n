@@ -1,4 +1,4 @@
-import type { DataTable } from '@/modules/data-table/data-table.entity';
+import type { DataTable } from '@n8n/backend-module-data-table';
 
 import type { DataTableMatchingMode } from '../../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';
@@ -21,7 +21,10 @@ export interface MatchCandidates {
 /* eslint-disable @typescript-eslint/naming-convention -- API data table matching mode keys */
 const MATCH_TARGET_TABLE: Record<
 	DataTableMatchingMode,
-	(requirement: PackageDataTableRequirement, candidates: MatchCandidates) => DataTable | undefined
+	(
+		requirement: Pick<PackageDataTableRequirement, 'id'>,
+		candidates: MatchCandidates,
+	) => DataTable | undefined
 > = {
 	'by-id': ({ id }, { targetsById, projectId }) => {
 		const table = targetsById.get(id);
@@ -32,7 +35,7 @@ const MATCH_TARGET_TABLE: Record<
 
 export function matchTargetTable(
 	mode: DataTableMatchingMode,
-	requirement: PackageDataTableRequirement,
+	requirement: Pick<PackageDataTableRequirement, 'id'>,
 	candidates: MatchCandidates,
 ): DataTable | undefined {
 	return MATCH_TARGET_TABLE[mode](requirement, candidates);

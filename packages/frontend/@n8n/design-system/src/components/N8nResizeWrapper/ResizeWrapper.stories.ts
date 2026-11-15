@@ -71,6 +71,8 @@ export const Default = Template.bind({});
 Default.args = {
 	width: 200,
 	height: 200,
+	defaultWidth: 200,
+	defaultHeight: 200,
 	minWidth: 200,
 	minHeight: 200,
 	scale: 1,

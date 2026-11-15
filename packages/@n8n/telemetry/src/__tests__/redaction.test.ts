@@ -110,13 +110,10 @@ describe('redactTelemetryProperties', () => {
 	});
 
 	it('catches kebab-case secret keys too', () => {
-		/* eslint-disable @typescript-eslint/naming-convention -- kebab-case keys
-		   are the subject of this test */
 		expect(redactTelemetryProperties({ 'private-key': 'plain', 'api-key': 'plain' })).toEqual({
 			'private-key': '[REDACTED]',
 			'api-key': '[REDACTED]',
 		});
-		/* eslint-enable @typescript-eslint/naming-convention */
 	});
 
 	it('keeps properties that only describe a credential', () => {

@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { isDeepStrictEqual } from 'node:util';
 
 import type { WorkflowTaskService } from '../types';

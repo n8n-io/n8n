@@ -8,7 +8,7 @@ import { highlighter } from '../../plugins/codemirror/resolvableHighlighter';
 import type { Plaintext, Resolved, Segment } from '@/app/types/expressions';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { forceParse } from '@/app/utils/forceParse';
-import RunDataHtml from '@/features/ndv/runData/components/RunDataHtml.vue';
+import { N8nHtmlPreview } from '@n8n/design-system';
 import RunDataMarkdown from '@/features/ndv/runData/components/RunDataMarkdown.vue';
 
 interface ExpressionOutputProps {
@@ -96,7 +96,9 @@ const resolvedSegments = computed<Resolved[]>(() => {
 			segment.to = cursor;
 			return segment;
 		})
-		.filter((segment): segment is Resolved => segment.kind === 'resolvable');
+		.filter(
+			(segment): segment is Resolved => segment.kind === 'resolvable' && segment.from < segment.to,
+		);
 });
 
 function initializeEditor() {
@@ -161,10 +163,10 @@ defineExpose({ getValue: () => '=' + resolvedExpression.value });
 <template>
 	<div v-if="render === 'text'" ref="root" data-test-id="expression-output"></div>
 
-	<RunDataHtml
+	<N8nHtmlPreview
 		v-else-if="render === 'html'"
 		data-test-id="expression-output"
-		:input-html="resolvedExpression"
+		:html="resolvedExpression"
 	/>
 
 	<RunDataMarkdown

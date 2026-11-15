@@ -561,6 +561,22 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/Run 1 \[builder_issue\]: Builder produced/);
 	});
 
+	it('marks a case that built an Agent as "(agent)" in both renderers', () => {
+		const ev = evaluation({
+			totalRuns: 2,
+			testCases: [{ scenarios: [{ name: 'happy', passCount: 2, passes: [true, true] }] }],
+		});
+		ev.testCases[0].runs[1].agentId = 'agent-1';
+		const slugs = slugMap(ev, ['a']);
+		const pr = bucket('pr', [s('a', 'happy', 2, 2)]);
+		const outcome = ok(compareBuckets(pr, pr));
+
+		expect(formatComparisonMarkdown(ev, outcome, { slugByTestCase: slugs })).toMatch(
+			/`a` \(agent\)/,
+		);
+		expect(formatComparisonTerminal(ev, outcome, { slugByTestCase: slugs })).toMatch(/a \(agent\)/);
+	});
+
 	it('uses `file/scenario` slug headers in the bottom Failure details section', () => {
 		const evalWithFailures = evaluation({
 			totalRuns: 3,

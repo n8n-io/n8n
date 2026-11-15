@@ -8,4 +8,9 @@ export class ProcessedDataRepository extends Repository<ProcessedData> {
 	constructor(dataSource: DataSource) {
 		super(ProcessedData, dataSource.manager);
 	}
+
+	/** Deletes the deduplication records of a workflow, in every context. */
+	async deleteForWorkflow(workflowId: string): Promise<void> {
+		await this.delete({ workflowId });
+	}
 }

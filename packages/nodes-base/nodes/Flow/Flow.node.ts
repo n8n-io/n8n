@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError, requestPath } from 'n8n-workflow';
 
 import { flowApiRequest, FlowApiRequestAllItems } from './GenericFunctions';
 import { taskFields, taskOperations } from './TaskDescription';
@@ -66,7 +66,6 @@ export class Flow implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			if (resource === 'task') {
-				//https://developer.getflow.com/api/#tasks_create-task
 				if (operation === 'create') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const name = this.getNodeParameter('name', i) as string;
@@ -122,13 +121,12 @@ export class Flow implements INodeType {
 					}
 					body.task = task;
 					try {
-						responseData = await flowApiRequest.call(this, 'POST', '/tasks', body);
+						responseData = await flowApiRequest.call(this, 'POST', requestPath`/tasks`, body);
 						responseData = responseData.task;
 					} catch (error) {
 						throw new NodeApiError(this.getNode(), error as JsonObject);
 					}
 				}
-				//https://developer.getflow.com/api/#tasks_update-a-task
 				if (operation === 'update') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const taskId = this.getNodeParameter('taskId', i) as string;
@@ -190,13 +188,17 @@ export class Flow implements INodeType {
 					}
 					body.task = task;
 					try {
-						responseData = await flowApiRequest.call(this, 'PUT', `/tasks/${taskId}`, body);
+						responseData = await flowApiRequest.call(
+							this,
+							'PUT',
+							requestPath`/tasks/${taskId}`,
+							body,
+						);
 						responseData = responseData.task;
 					} catch (error) {
 						throw new NodeApiError(this.getNode(), error as JsonObject);
 					}
 				}
-				//https://developer.getflow.com/api/#tasks_get-task
 				if (operation === 'get') {
 					const taskId = this.getNodeParameter('taskId', i) as string;
 					const filters = this.getNodeParameter('filters', i);
@@ -205,12 +207,17 @@ export class Flow implements INodeType {
 						qs.include = (filters.include as string[]).join(',');
 					}
 					try {
-						responseData = await flowApiRequest.call(this, 'GET', `/tasks/${taskId}`, {}, qs);
+						responseData = await flowApiRequest.call(
+							this,
+							'GET',
+							requestPath`/tasks/${taskId}`,
+							{},
+							qs,
+						);
 					} catch (error) {
 						throw new NodeApiError(this.getNode(), error as JsonObject);
 					}
 				}
-				//https://developer.getflow.com/api/#tasks_get-tasks
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i);
 					const filters = this.getNodeParameter('filters', i);
@@ -248,13 +255,13 @@ export class Flow implements INodeType {
 								this,
 								'tasks',
 								'GET',
-								'/tasks',
+								requestPath`/tasks`,
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await flowApiRequest.call(this, 'GET', '/tasks', {}, qs);
+							responseData = await flowApiRequest.call(this, 'GET', requestPath`/tasks`, {}, qs);
 							responseData = responseData.tasks;
 						}
 					} catch (error) {

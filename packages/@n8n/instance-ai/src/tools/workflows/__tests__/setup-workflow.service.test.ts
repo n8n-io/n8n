@@ -11,7 +11,6 @@ import {
 	analyzeWorkflow,
 	applyCredentialHints,
 	applyNodeChanges,
-	applyNodeCredentials,
 	buildCompletedReport,
 	createCredentialCache,
 	stripStaleCredentialsFromWorkflow,
@@ -58,6 +57,7 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 		credentialService: {
 			list: vi.fn(),
 			get: vi.fn(),
+			updateDescription: vi.fn(),
 			delete: vi.fn(),
 			test: vi.fn(),
 		},
@@ -164,7 +164,7 @@ describe('buildSetupRequests', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].parameterIssues?.model).toEqual([
 				'"gpt-6-mini" isn\'t available with the connected credential "n8n free OpenAI API credits". ' +
-					'Pick a value the credential offers instead — use nodes(action="explore-resources") to list allowed models.',
+					'Pick a value the credential offers instead — run get_node_parameter_options through call_tool to list allowed models.',
 			]);
 			expect(result[0].needsAction).toBe(true);
 		});
@@ -603,6 +603,23 @@ describe('buildSetupRequests', () => {
 		const node = makeNode();
 		const result = await buildSetupRequests(context, node);
 
+		expect(result[0].isAutoApplied).toBeFalsy();
+		expect(result[0].node.credentials?.slackApi).toBeUndefined();
+	});
+
+	it('does not auto-apply Gateway credits when the gateway rejects the node itself', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([]);
+		const getAiGatewayNodeRejection = vi.fn().mockResolvedValue('message.delete not supported');
+		Object.assign(context.credentialService, {
+			isAiGatewayCredentialType: vi.fn().mockResolvedValue(true),
+			getAiGatewayNodeRejection,
+		});
+
+		const node = makeNode();
+		const result = await buildSetupRequests(context, node);
+
+		expect(getAiGatewayNodeRejection).toHaveBeenCalledWith(node, 'slackApi');
+		// The card asks for the user's own credential instead.
 		expect(result[0].isAutoApplied).toBeFalsy();
 		expect(result[0].node.credentials?.slackApi).toBeUndefined();
 	});
@@ -1259,6 +1276,63 @@ describe('analyzeWorkflow', () => {
 // applyNodeChanges
 // ---------------------------------------------------------------------------
 
+describe.each([
+	{
+		name: 'applyNodeChanges',
+		apply: async (context: InstanceAiContext) =>
+			await applyNodeChanges(context, 'wf-1', { Slack: { slackApi: 'cred-1' } }),
+	},
+])('$name save state', ({ apply }) => {
+	function setup() {
+		const context = createMockContext();
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(
+			makeWorkflowJSON([makeNode()]),
+		);
+		vi.mocked(context.credentialService.get).mockResolvedValue({
+			id: 'cred-1',
+			name: 'My Slack',
+			type: 'slackApi',
+		});
+		return context;
+	}
+
+	it.each([
+		{ activeVersionId: null, live: 'unpublished' },
+		{ activeVersionId: 'v-live', live: 'stale' },
+	])('returns the saved revision with $live state', async ({ activeVersionId, live }) => {
+		const context = setup();
+		vi.mocked(context.workflowService.updateFromWorkflowJSON).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-saved',
+			activeVersionId,
+			checksum: 'saved-checksum',
+		} as never);
+
+		const result = await apply(context);
+
+		expect(result).toMatchObject({
+			applied: ['Slack'],
+			failed: [],
+			publishState: { savedVersionId: 'v-saved', activeVersionId, live },
+		});
+		expect(context.workflowService.getAsWorkflowJSON).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not report a revision when saving fails', async () => {
+		const context = setup();
+		vi.mocked(context.workflowService.updateFromWorkflowJSON).mockRejectedValue(
+			new Error('Save failed'),
+		);
+
+		const result = await apply(context);
+
+		expect(result.applied).toEqual([]);
+		expect(result.failed).toHaveLength(1);
+		expect(result).not.toHaveProperty('publishState');
+		expect(result).not.toHaveProperty('publishStateNote');
+	});
+});
+
 describe('applyNodeChanges', () => {
 	let context: InstanceAiContext;
 
@@ -1293,6 +1367,33 @@ describe('applyNodeChanges', () => {
 		expect(result.failed).toHaveLength(0);
 		// Single save for both changes
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports the saved revision when only some requested nodes exist', async () => {
+		vi.mocked(context.workflowService.getAsWorkflowJSON).mockResolvedValue(
+			makeWorkflowJSON([makeNode()]),
+		);
+		vi.mocked(context.workflowService.updateFromWorkflowJSON).mockResolvedValue({
+			id: 'wf-1',
+			versionId: 'v-saved',
+			activeVersionId: 'v-live',
+			checksum: 'saved-checksum',
+		} as never);
+
+		const result = await applyNodeChanges(context, 'wf-1', undefined, {
+			Slack: { channel: 'updated' },
+			Missing: { channel: 'updated' },
+		});
+
+		expect(result.applied).toEqual(['Slack']);
+		expect(result.failed).toEqual([
+			{ nodeName: 'Missing', error: 'Node "Missing" was not found in the workflow' },
+		]);
+		expect(result.publishState).toEqual({
+			live: 'stale',
+			savedVersionId: 'v-saved',
+			activeVersionId: 'v-live',
+		});
 	});
 
 	it('reports failures when credential is not found', async () => {
@@ -1489,6 +1590,7 @@ describe('applyNodeChanges', () => {
 		expect(result.applied).toHaveLength(0);
 		expect(result.failed).toHaveLength(1);
 		expect(result.failed[0].error).toContain('Failed to save workflow');
+		expect(result.saveError).toContain('Failed to save workflow');
 	});
 
 	it('strips credentials not valid for the current parameters', async () => {
@@ -1866,7 +1968,7 @@ describe('stripStaleCredentialsFromWorkflow', () => {
 });
 
 // ---------------------------------------------------------------------------
-// applyNodeCredentials — credential ownership revalidation (IDOR boundary)
+// applyNodeChanges — credential ownership revalidation (IDOR boundary)
 //
 // `nodeCredentials` arrives in the confirmation payload from the client and
 // can carry arbitrary credential IDs. Each ID must be resolved through
@@ -1875,7 +1977,7 @@ describe('stripStaleCredentialsFromWorkflow', () => {
 // failures rather than being silently written to the workflow.
 // ---------------------------------------------------------------------------
 
-describe('applyNodeCredentials — credential ownership revalidation', () => {
+describe('applyNodeChanges — credential ownership revalidation', () => {
 	let context: InstanceAiContext;
 
 	beforeEach(() => {
@@ -1892,7 +1994,7 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 			type: 'slackApi',
 		});
 
-		const result = await applyNodeCredentials(context, 'wf-1', {
+		const result = await applyNodeChanges(context, 'wf-1', {
 			Slack: { slackApi: 'cred-mine' },
 		});
 
@@ -1908,7 +2010,7 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 		const wfJson = makeWorkflowJSON([node]);
 		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
 
-		const result = await applyNodeCredentials(context, 'wf-1', {
+		const result = await applyNodeChanges(context, 'wf-1', {
 			Gemini: { googlePalmApi: AI_GATEWAY_MANAGED_TAG },
 		});
 
@@ -1928,7 +2030,7 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 			new Error('Credential with ID "cred-other" could not be found.'),
 		);
 
-		const result = await applyNodeCredentials(context, 'wf-1', {
+		const result = await applyNodeChanges(context, 'wf-1', {
 			Slack: { slackApi: 'cred-other' },
 		});
 
@@ -1951,7 +2053,7 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 			throw new Error(`Credential with ID "${credId}" could not be found.`);
 		});
 
-		const result = await applyNodeCredentials(context, 'wf-1', {
+		const result = await applyNodeChanges(context, 'wf-1', {
 			Slack: { slackApi: 'cred-mine' },
 			GitHub: { githubApi: 'cred-other' },
 		});
@@ -1974,7 +2076,7 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 			throw new Error(`Credential with ID "${credId}" could not be found.`);
 		});
 
-		const result = await applyNodeCredentials(context, 'wf-1', {
+		const result = await applyNodeChanges(context, 'wf-1', {
 			HTTP: { httpHeaderAuth: 'cred-mine', httpQueryAuth: 'cred-other' },
 		});
 
@@ -1991,7 +2093,7 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 		const wfJson = makeWorkflowJSON([node]);
 		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
 
-		const result = await applyNodeCredentials(context, 'wf-1', {
+		const result = await applyNodeChanges(context, 'wf-1', {
 			GhostNode: { slackApi: 'cred-other' },
 		});
 

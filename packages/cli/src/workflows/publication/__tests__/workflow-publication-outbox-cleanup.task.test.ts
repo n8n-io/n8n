@@ -9,12 +9,14 @@ describe('WorkflowPublicationOutboxCleanupTask', () => {
 	const cleanupService = mock<WorkflowPublicationOutboxCleanupService>();
 	const task = new WorkflowPublicationOutboxCleanupTask(config, cleanupService);
 
-	it('should declare the configured cleanup cadence and a run on takeover', () => {
+	it('should declare the configured cleanup cadence, a durable run and a run on takeover', () => {
 		expect(task.name).toBe('publication-outbox-cleanup');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 30 });
-		expect(task.effects).toBe('idempotent');
-		expect(task.durable).toBe(false);
-		expect(task.runOnTakeover).toBe(true);
+		expect(task.target).toEqual({
+			scope: 'cluster',
+			scheduler: { retryOnFailure: true },
+			leaderTimer: { runOnTakeover: true, retryDelaySeconds: 30 },
+		});
 	});
 
 	it('should clean up the outbox on run, handing the pass its abort signal', async () => {

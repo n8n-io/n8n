@@ -15,6 +15,28 @@ import {
 
 const BASE_URL = 'http://localhost:5678';
 
+describe('N8nClient.createCredential', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it.each([undefined, null, 'Production reports'])(
+		'sends description %s as optional credential metadata',
+		async (description) => {
+			const fetchMock = stubFetch({ data: { id: 'credential-1' } });
+			const data = { accessToken: 'placeholder' };
+			await new N8nClient(BASE_URL).createCredential('Account A', 'slackApi', data, description);
+			const [url, init] = fetchMock.mock.calls[0];
+			expect(url).toBe(`${BASE_URL}/rest/credentials`);
+			if (typeof init?.body !== 'string') throw new Error('Expected a JSON request body.');
+			expect(jsonParse(init.body)).toEqual({
+				name: 'Account A',
+				type: 'slackApi',
+				data,
+				...(description !== undefined ? { description } : {}),
+			});
+		},
+	);
+});
+
 describe('N8nClient.sendMessage', () => {
 	afterEach(() => vi.unstubAllGlobals());
 
@@ -25,14 +47,7 @@ describe('N8nClient.sendMessage', () => {
 		const attachments = [{ type: 'workflow', id: context.workflowId, name: 'Greeting' }] as const;
 
 		await expect(
-			client.sendMessage(
-				'thread-1',
-				'Run a test.',
-				[...attachments],
-				'progressive',
-				'progressive@1',
-				context,
-			),
+			client.sendMessage('thread-1', 'Run a test.', [...attachments], 'concise@1', context),
 		).resolves.toEqual({ runId: 'run-1' });
 
 		const [url, init] = fetchMock.mock.calls[0];
@@ -43,10 +58,29 @@ describe('N8nClient.sendMessage', () => {
 			message: 'Run a test.',
 			attachments,
 			context,
-			mode: 'progressive',
-			promptVersion: 'progressive@1',
+			promptVersion: 'concise@1',
 		});
 		expect(body).not.toHaveProperty('handoffContext');
+	});
+
+	it('sends an Agent attachment through the resource attachment channel', async () => {
+		const fetchMock = stubFetch({ data: { runId: 'run-1' } });
+		const client = new N8nClient(BASE_URL);
+		const attachments = [
+			{
+				type: 'agent' as const,
+				id: 'agent-remapped',
+				name: 'Notion research',
+				projectId: 'project-1',
+			},
+		];
+
+		await client.sendMessage('thread-1', 'Inspect this Agent.', attachments);
+
+		const [, init] = fetchMock.mock.calls[0];
+		if (typeof init?.body !== 'string') throw new Error('Expected a JSON request body.');
+		const body = jsonParse<Record<string, unknown>>(init.body);
+		expect(InstanceAiSendMessageRequest.parse(body)).toMatchObject({ attachments });
 	});
 });
 
@@ -76,49 +110,39 @@ function stubFetch(body: unknown) {
 	return fetchMock;
 }
 
-describe('N8nClient chat build mode', () => {
+describe('N8nClient chat prompt version', () => {
 	afterEach(() => vi.unstubAllGlobals());
 
 	it('sends an explicit prompt version with the chat message', async () => {
 		const fetchMock = stubFetch({ data: { runId: 'run-1' } });
-		await new N8nClient(BASE_URL).sendMessage(
-			'thread-1',
-			'Build it',
-			undefined,
-			'default',
-			'progressive@1',
-		);
+		await new N8nClient(BASE_URL).sendMessage('thread-1', 'Build it', undefined, 'concise@1');
 		expect(fetchMock).toHaveBeenCalledWith(
 			`${BASE_URL}/rest/instance-ai/chat/thread-1`,
 			expect.objectContaining({
 				body: JSON.stringify({
 					message: 'Build it',
-					mode: 'default',
-					promptVersion: 'progressive@1',
+					promptVersion: 'concise@1',
 				}),
 			}),
 		);
 	});
 
-	it.each([undefined, 'default', 'progressive'] as const)(
-		'sends an explicit eval mode when the override is %s',
-		async (mode) => {
-			const fetchMock = stubFetch({ data: { runId: 'run-1' } });
-			const client = new N8nClient(BASE_URL);
+	it('omits the prompt version when no pin is set', async () => {
+		const fetchMock = stubFetch({ data: { runId: 'run-1' } });
+		const client = new N8nClient(BASE_URL);
 
-			await expect(
-				client.sendMessage('thread-1', 'Build a workflow', undefined, mode),
-			).resolves.toEqual({ runId: 'run-1' });
+		await expect(client.sendMessage('thread-1', 'Build a workflow')).resolves.toEqual({
+			runId: 'run-1',
+		});
 
-			expect(fetchMock).toHaveBeenCalledWith(
-				`${BASE_URL}/rest/instance-ai/chat/thread-1`,
-				expect.objectContaining({
-					method: 'POST',
-					body: JSON.stringify({ message: 'Build a workflow', mode: mode ?? 'default' }),
-				}),
-			);
-		},
-	);
+		expect(fetchMock).toHaveBeenCalledWith(
+			`${BASE_URL}/rest/instance-ai/chat/thread-1`,
+			expect.objectContaining({
+				method: 'POST',
+				body: JSON.stringify({ message: 'Build a workflow' }),
+			}),
+		);
+	});
 });
 
 describe('N8nClient — TRUST-229 artifact fetch methods', () => {

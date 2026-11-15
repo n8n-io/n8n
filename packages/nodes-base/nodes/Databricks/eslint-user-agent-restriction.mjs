@@ -11,8 +11,6 @@ const NO_RAW_ENUM_SYNTAX_RULE = {
 };
 
 // `request` also names unrelated members (error.request), so it stays anchored to `helpers`.
-const RESTRICTED_HELPER_METHODS =
-	'/^(httpRequest|httpRequestWithAuthentication|request|requestWithAuthentication|requestWithAuthenticationPaginated|requestOAuth1|requestOAuth2)$/';
 const DISTINCTIVE_HELPER_METHODS =
 	'/^(httpRequest|httpRequestWithAuthentication|requestWithAuthentication|requestWithAuthenticationPaginated|requestOAuth1|requestOAuth2)$/';
 const USE_DATABRICKS_API_REQUEST =
@@ -32,11 +30,15 @@ export const databricksUserAgentRestriction = [
 					message: USE_DATABRICKS_API_REQUEST,
 				},
 				{
-					selector: `MemberExpression[computed=true] > Literal.property[value=${RESTRICTED_HELPER_METHODS}]`,
+					selector: `MemberExpression[computed=true] > Literal.property[value=${DISTINCTIVE_HELPER_METHODS}]`,
 					message: USE_DATABRICKS_API_REQUEST,
 				},
 				{
 					selector: `MemberExpression:matches([object.property.name="helpers"], [object.name="helpers"])[property.name="request"]`,
+					message: USE_DATABRICKS_API_REQUEST,
+				},
+				{
+					selector: `MemberExpression:matches([object.property.name="helpers"], [object.name="helpers"])[computed=true] > Literal.property[value="request"]`,
 					message: USE_DATABRICKS_API_REQUEST,
 				},
 				{

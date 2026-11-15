@@ -14,14 +14,21 @@ import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { foldersEventBus } from '@/features/core/folders/folders.eventBus';
+import { useFolders } from '@/features/core/folders/composables/useFolders';
+import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import { COMMUNITY_PLUS_ENROLLMENT_MODAL } from '@/features/settings/usage/usage.constants';
 import { getResourcePermissions } from '@n8n/permissions';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import type { Scope } from '@n8n/permissions';
 import type { RouteLocationRaw } from 'vue-router';
 import { updatedIconSet, type IconName } from '@n8n/design-system';
+import { useCreateApp } from '@n8n/frontend-module-apps';
 
 type ProjectIcon = IconName | { type: 'icon'; value: IconName } | { type: 'emoji'; value: string };
 
@@ -56,7 +63,9 @@ export const useGlobalEntityCreation = () => {
 	const VARIABLE_MENU_ID = 'variable';
 	const DATA_TABLE_MENU_ID = 'data-table';
 	const AGENTS_MENU_ID = 'agent';
+	const APPS_MENU_ID = 'app';
 	const INSTANCE_AI_THREAD_MENU_ID = 'instance-ai-thread';
+	const FOLDER_MENU_ID = 'folder';
 	const DEFAULT_ICON: IconName = 'layers';
 
 	const settingsStore = useSettingsStore();
@@ -65,14 +74,22 @@ export const useGlobalEntityCreation = () => {
 	const sourceControlStore = useSourceControlStore();
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
+	const foldersStore = useFoldersStore();
+	const folderHelpers = useFolders();
 
 	const router = useRouter();
 	const i18n = useI18n();
+	const message = useMessage();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const { createAgent } = useCreateAgent();
+	const { createApp } = useCreateApp();
 
 	const isCreatingProject = ref(false);
+
+	const folderProject = computed(
+		() => projectsStore.currentProject ?? projectsStore.personalProject,
+	);
 
 	const displayProjects = computed(() =>
 		sortByProperty(
@@ -93,6 +110,9 @@ export const useGlobalEntityCreation = () => {
 		sourceControlStore.preferences.branchReadOnly || !getResourcePermissions(scopes).agent?.create;
 
 	const isAgentsModuleActive = computed(() => settingsStore.isModuleActive(AGENTS_MODULE_NAME));
+	const isAppsModuleActive = computed(() => settingsStore.isAppsEnabled);
+	const disabledApp = (scopes: Scope[] = []): boolean =>
+		sourceControlStore.preferences.branchReadOnly || !getResourcePermissions(scopes).app?.create;
 
 	const isInstanceAiAvailable = useInstanceAiAvailable();
 
@@ -113,7 +133,7 @@ export const useGlobalEntityCreation = () => {
 	const variableScopeSubmenu = computed<BaseItem[]>(() => {
 		const readOnly = sourceControlStore.preferences.branchReadOnly;
 		return [
-			{ id: 'variable-title', title: 'Create in', disabled: true },
+			{ id: 'variable-title', title: i18n.baseText('projects.menu.create.in'), disabled: true },
 			{
 				id: 'variable-global',
 				title: i18n.baseText('variables.modal.scope.global'),
@@ -151,7 +171,7 @@ export const useGlobalEntityCreation = () => {
 	});
 
 	const dataTableScopeSubmenu = computed<BaseItem[]>(() => [
-		{ id: 'data-table-title', title: 'Create in', disabled: true },
+		{ id: 'data-table-title', title: i18n.baseText('projects.menu.create.in'), disabled: true },
 		{
 			id: 'data-table-personal',
 			title: i18n.baseText('projects.menu.personal'),
@@ -196,14 +216,38 @@ export const useGlobalEntityCreation = () => {
 		};
 	});
 
+	const folderItem = computed<Item | null>(() => {
+		const canUserRegisterCommunityPlus = getResourcePermissions(
+			usersStore.currentUser?.globalScopes,
+		).community.register;
+		const folderProjectPermissions = getResourcePermissions(folderProject.value?.scopes).folder;
+
+		if (
+			!settingsStore.isFoldersFeatureEnabled &&
+			(settingsStore.deploymentType !== 'default' || !canUserRegisterCommunityPlus)
+		) {
+			return null;
+		}
+
+		return {
+			id: FOLDER_MENU_ID,
+			title: i18n.baseText('projects.menu.create.folder'),
+			disabled:
+				settingsStore.isFoldersFeatureEnabled &&
+				(sourceControlStore.preferences.branchReadOnly || !folderProjectPermissions.create),
+		};
+	});
+
 	const menu = computed<Item[]>(() => {
 		const workflowTitle = i18n.baseText('projects.menu.create.workflow');
 		const credentialTitle = i18n.baseText('projects.menu.create.credential');
 		const agentTitle = i18n.baseText('projects.menu.create.agent');
+		const appTitle = i18n.baseText('projects.menu.create.app');
 		const projectTitle = i18n.baseText('projects.menu.create.project');
 		const instanceAiTrailing = instanceAiThreadItem.value ? [instanceAiThreadItem.value] : [];
 		const variableTrailing = variableItem.value ? [variableItem.value] : [];
 		const dataTableTrailing = dataTableItem.value ? [dataTableItem.value] : [];
+		const folderTrailing = folderItem.value ? [folderItem.value] : [];
 
 		// Community
 		if (!projectsStore.isTeamProjectFeatureEnabled) {
@@ -229,6 +273,7 @@ export const useGlobalEntityCreation = () => {
 						},
 					},
 				},
+				...folderTrailing,
 				...variableTrailing,
 				...dataTableTrailing,
 				...(isAgentsModuleActive.value
@@ -236,6 +281,15 @@ export const useGlobalEntityCreation = () => {
 							{
 								id: AGENTS_MENU_ID,
 								title: agentTitle,
+							},
+						]
+					: []),
+				...(isAppsModuleActive.value
+					? [
+							{
+								id: APPS_MENU_ID,
+								title: appTitle,
+								disabled: disabledApp(projectsStore.personalProject?.scopes),
 							},
 						]
 					: []),
@@ -273,6 +327,7 @@ export const useGlobalEntityCreation = () => {
 						params: { projectId: projectsStore.personalProject?.id, credentialId: 'create' },
 					},
 				},
+				...folderTrailing,
 				...variableTrailing,
 				...dataTableTrailing,
 				...(isAgentsModuleActive.value
@@ -281,6 +336,15 @@ export const useGlobalEntityCreation = () => {
 								id: AGENTS_MENU_ID,
 								title: agentTitle,
 								disabled: disabledAgent(projectsStore.personalProject?.scopes),
+							},
+						]
+					: []),
+				...(isAppsModuleActive.value
+					? [
+							{
+								id: APPS_MENU_ID,
+								title: appTitle,
+								disabled: disabledApp(projectsStore.personalProject?.scopes),
 							},
 						]
 					: []),
@@ -305,7 +369,7 @@ export const useGlobalEntityCreation = () => {
 					submenu: [
 						{
 							id: 'workflow-title',
-							title: 'Create in',
+							title: i18n.baseText('projects.menu.create.in'),
 							disabled: true,
 						},
 						{
@@ -339,7 +403,7 @@ export const useGlobalEntityCreation = () => {
 					submenu: [
 						{
 							id: 'credential-title',
-							title: 'Create in',
+							title: i18n.baseText('projects.menu.create.in'),
 							disabled: true,
 						},
 						{
@@ -366,6 +430,7 @@ export const useGlobalEntityCreation = () => {
 				}),
 			},
 			...variableTrailing,
+			...folderTrailing,
 			...dataTableTrailing,
 			...(isAgentsModuleActive.value
 				? [
@@ -377,7 +442,7 @@ export const useGlobalEntityCreation = () => {
 								submenu: [
 									{
 										id: 'agent-title',
-										title: 'Create in',
+										title: i18n.baseText('projects.menu.create.in'),
 										disabled: true,
 									},
 									{
@@ -391,6 +456,36 @@ export const useGlobalEntityCreation = () => {
 										title: project.name as string,
 										icon: isProjectIcon(project.icon) ? project.icon : DEFAULT_ICON,
 										disabled: disabledAgent(project.scopes),
+									})),
+								],
+							}),
+						},
+					]
+				: []),
+			...(isAppsModuleActive.value
+				? [
+						{
+							id: APPS_MENU_ID,
+							title: appTitle,
+							disabled: sourceControlStore.preferences.branchReadOnly,
+							...(!sourceControlStore.preferences.branchReadOnly && {
+								submenu: [
+									{
+										id: 'app-title',
+										title: i18n.baseText('projects.menu.create.in'),
+										disabled: true,
+									},
+									{
+										id: 'app-personal',
+										title: i18n.baseText('projects.menu.personal'),
+										icon: 'user' as const,
+										disabled: disabledApp(projectsStore.personalProject?.scopes),
+									},
+									...displayProjects.value.map((project) => ({
+										id: `app-${project.id}`,
+										title: project.name as string,
+										icon: isProjectIcon(project.icon) ? project.icon : DEFAULT_ICON,
+										disabled: disabledApp(project.scopes),
 									})),
 								],
 							}),
@@ -429,7 +524,63 @@ export const useGlobalEntityCreation = () => {
 		}
 	};
 
+	const createFolder = async () => {
+		const project = folderProject.value;
+		if (!project) return;
+
+		const parentName =
+			project.type === 'personal'
+				? i18n.baseText('projects.menu.personal')
+				: (project.name ?? i18n.baseText('commandBar.projects.unnamed'));
+		const promptResponse = await message.prompt(
+			i18n.baseText('folders.add.to.parent.message', {
+				interpolate: { parent: parentName },
+			}),
+			{
+				confirmButtonText: i18n.baseText('generic.create'),
+				cancelButtonText: i18n.baseText('generic.cancel'),
+				inputValidator: folderHelpers.validateFolderName,
+				customClass: 'add-folder-modal',
+			},
+		);
+
+		if (promptResponse.action !== MODAL_CONFIRM || !promptResponse.value) return;
+
+		try {
+			const newFolder = await foldersStore.createFolder(promptResponse.value, project.id);
+			const newFolderURL = router.resolve({
+				name: VIEWS.PROJECTS_FOLDERS,
+				params: { projectId: project.id, folderId: newFolder.id },
+			}).href;
+			toast.showToast({
+				title: i18n.baseText('folders.add.success.title'),
+				message: i18n.baseText('folders.add.success.message', {
+					interpolate: { link: newFolderURL, folderName: newFolder.name },
+				}),
+				type: 'success',
+			});
+			foldersEventBus.emit('folder-created', { projectId: project.id });
+			telemetry.track('User created folder', { folder_id: newFolder.id });
+		} catch (error) {
+			toast.showError(error, i18n.baseText('folders.create.error.title'));
+		}
+	};
+
 	const handleSelect = (id: string) => {
+		if (id === FOLDER_MENU_ID) {
+			if (!settingsStore.isFoldersFeatureEnabled) {
+				uiStore.openModalWithData({
+					name: COMMUNITY_PLUS_ENROLLMENT_MODAL,
+					data: {
+						customHeading: i18n.baseText('folders.registeredCommunity.cta.heading'),
+					},
+				});
+			} else {
+				void createFolder();
+			}
+			return;
+		}
+
 		if (id.startsWith('variable-') && id !== 'variable-title') {
 			const projectId =
 				id === 'variable-global'
@@ -455,6 +606,15 @@ export const useGlobalEntityCreation = () => {
 					? (projectsStore.personalProject?.id ?? '')
 					: id.slice('agent-'.length);
 			createAgent('dropdown', projectId);
+			return;
+		}
+
+		if (id === APPS_MENU_ID || (id.startsWith('app-') && id !== 'app-title')) {
+			const projectId =
+				id === APPS_MENU_ID || id === 'app-personal'
+					? (projectsStore.personalProject?.id ?? '')
+					: id.slice('app-'.length);
+			createApp(projectId);
 			return;
 		}
 

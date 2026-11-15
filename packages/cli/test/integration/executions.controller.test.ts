@@ -10,13 +10,16 @@ import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ExecutionSnapshot, StepDetail } from '@n8n/engine';
-import { parse } from 'flatted';
-import type { INode } from 'n8n-workflow';
+import { parse, stringify } from 'flatted';
+import type { INode, IRun } from 'n8n-workflow';
 import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
+import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { WaitTracker } from '@/wait-tracker';
+import { WorkflowRunner } from '@/workflow-runner';
 
 import {
 	createExecution,
@@ -24,6 +27,7 @@ import {
 	createWaitingExecution,
 	getAllExecutions,
 } from './shared/db/executions';
+import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
 import { createMember, createOwner } from './shared/db/users';
 import { setupTestServer } from './shared/utils';
 
@@ -86,6 +90,33 @@ describe('GET /executions', () => {
 		const response = await testServer.authAgentFor(member).get('/executions').expect(200);
 
 		expect(response.body.data.count).toBe(1);
+	});
+
+	test('project viewers can list executions of project workflows', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const workflow = await createWorkflow({}, teamProject);
+		await createSuccessfulExecution(workflow);
+
+		const response = await testServer.authAgentFor(member).get('/executions').expect(200);
+
+		expect(response.body.data.count).toBe(1);
+	});
+
+	test('a custom project role without execution:read cannot list executions of project workflows', async () => {
+		const teamProject = await createTeamProject();
+		const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
+			roleType: 'project',
+		});
+		await linkUserToProject(member, teamProject, role.slug);
+
+		const workflow = await createWorkflow({}, teamProject);
+		await createSuccessfulExecution(workflow);
+
+		const response = await testServer.authAgentFor(member).get('/executions').expect(200);
+
+		expect(response.body.data.count).toBe(0);
 	});
 
 	test('should return a scopes array for each execution', async () => {
@@ -193,6 +224,56 @@ describe('GET /executions/:id', () => {
 		expect(response.body.data).toBeDefined();
 	});
 
+	describe('push session fields', () => {
+		const PUSH_REF = 'push-ref-of-the-owner';
+		const PUSH_REF_USER_ID = 'user-id-of-the-owner';
+
+		const createWaitingExecutionForViewer = async () => {
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:viewer');
+			const workflow = await createWorkflow({}, teamProject);
+			return await createExecution(
+				{
+					finished: false,
+					status: 'waiting',
+					waitTill: new Date(),
+					data: stringify({
+						pushRef: PUSH_REF,
+						pushRefUserId: PUSH_REF_USER_ID,
+						resultData: { runData: {} },
+					}),
+				},
+				workflow,
+			);
+		};
+
+		test('keeps the stored push session fields after a read', async () => {
+			const execution = await createWaitingExecutionForViewer();
+
+			await testServer.authAgentFor(member).get(`/executions/${execution.id}`).expect(200);
+
+			const stored = await Container.get(ExecutionPersistence).findSingleExecution(execution.id, {
+				includeData: true,
+				unflattenData: true,
+			});
+			expect(stored?.data.pushRef).toBe(PUSH_REF);
+			expect(stored?.data.pushRefUserId).toBe(PUSH_REF_USER_ID);
+		});
+
+		test('hides the push session fields from a project viewer', async () => {
+			const execution = await createWaitingExecutionForViewer();
+
+			const response = await testServer
+				.authAgentFor(member)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			const data = parse(response.body.data.data);
+			expect(data).not.toHaveProperty('pushRef');
+			expect(data).not.toHaveProperty('pushRefUserId');
+		});
+	});
+
 	test('project admins can view executions for workflows in the project without the sharing license', async () => {
 		const teamProject = await createTeamProject();
 		await linkUserToProject(member, teamProject, 'project:admin');
@@ -223,7 +304,7 @@ describe('GET /executions/:id', () => {
 		await testServer.authAgentFor(owner).get('/executions/not-an-id').expect(400);
 	});
 
-	describe('engine 2.0 executions', () => {
+	describe('engine v2 executions', () => {
 		const V2_EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
 		const startExecution = vi.fn();
 		const getExecution = vi.fn();
@@ -233,6 +314,11 @@ describe('GET /executions/:id', () => {
 				startExecution,
 				getExecution,
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
+				findLatestExecution: vi.fn(),
+				cancelExecution: vi.fn(),
+				locateResume: vi.fn(),
+				resolveStep: vi.fn(),
+				readApprovalCallback: vi.fn(),
 			});
 		});
 
@@ -255,8 +341,14 @@ describe('GET /executions/:id', () => {
 			workflowId,
 			status: 'completed',
 			mode: 'manual',
-			graph: { nodes: [{ id: 'trigger-id', name: 'Trigger', type: 'trigger' }], edges: [] },
+			hostMode: 'manual',
+			graph: {
+				nodes: [{ id: 'trigger-id', name: 'Trigger', type: 'trigger' }],
+				edges: [],
+				seeded: [],
+			},
 			workflow: ranWorkflow(workflowId),
+			parent: null,
 			createdAt: '2026-08-25T10:00:00.000Z',
 			updatedAt: '2026-08-25T10:00:05.000Z',
 			finishedAt: '2026-08-25T10:00:05.000Z',
@@ -385,7 +477,7 @@ describe('PATCH /executions/:id', () => {
 			.expect(400);
 	});
 
-	test('reports annotating an engine 2.0 execution as not implemented', async () => {
+	test('reports annotating an engine v2 execution as not implemented', async () => {
 		await createWorkflow({}, owner);
 
 		await testServer
@@ -395,7 +487,7 @@ describe('PATCH /executions/:id', () => {
 			.expect(501);
 	});
 
-	test('reports an engine 2.0 execution as not found when no workflow is accessible', async () => {
+	test('reports an engine v2 execution as not found when no workflow is accessible', async () => {
 		await testServer
 			.authAgentFor(member)
 			.patch('/executions/01a038ae-c4a8-7799-8a3e-e3c2ca055cfa')
@@ -423,6 +515,74 @@ describe('POST /executions/delete', () => {
 		const executions = await getAllExecutions();
 
 		expect(executions).toHaveLength(0);
+	});
+
+	test('project editors can delete executions of project workflows', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:editor');
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createSuccessfulExecution(workflow);
+
+		await testServer
+			.authAgentFor(member)
+			.post('/executions/delete')
+			.send({ ids: [execution.id] })
+			.expect(200);
+
+		expect(await getAllExecutions()).toHaveLength(0);
+	});
+
+	test('project viewers cannot delete executions of project workflows', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createSuccessfulExecution(workflow);
+
+		await testServer
+			.authAgentFor(member)
+			.post('/executions/delete')
+			.send({ ids: [execution.id] })
+			.expect(404);
+
+		expect(await getAllExecutions()).toHaveLength(1);
+	});
+
+	test('a custom project role needs execution:delete to delete executions, workflow:execute is not enough', async () => {
+		const teamProject = await createTeamProject();
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createSuccessfulExecution(workflow);
+		const baseScopes = [
+			'workflow:read',
+			'workflow:list',
+			'workflow:execute',
+			'execution:read',
+			'execution:list',
+		];
+
+		const withoutDelete = await createCustomRoleWithScopeSlugs(baseScopes, {
+			roleType: 'project',
+		});
+		await linkUserToProject(member, teamProject, withoutDelete.slug);
+
+		await testServer
+			.authAgentFor(member)
+			.post('/executions/delete')
+			.send({ ids: [execution.id] })
+			.expect(404);
+		expect(await getAllExecutions()).toHaveLength(1);
+
+		const withDelete = await createCustomRoleWithScopeSlugs([...baseScopes, 'execution:delete'], {
+			roleType: 'project',
+		});
+		const otherMember = await createMember();
+		await linkUserToProject(otherMember, teamProject, withDelete.slug);
+
+		await testServer
+			.authAgentFor(otherMember)
+			.post('/executions/delete')
+			.send({ ids: [execution.id] })
+			.expect(200);
+		expect(await getAllExecutions()).toHaveLength(0);
 	});
 
 	test('should hard-delete executions older than `deleteBefore`', async () => {
@@ -471,6 +631,194 @@ describe('POST /executions/stop', () => {
 		await testServer.authAgentFor(owner).post(`/executions/${execution.id}/stop`).expect(200);
 	});
 });
+describe('POST /executions/:id/retry', () => {
+	const baseScopes = ['workflow:read', 'workflow:list', 'workflow:execute'];
+
+	/**
+	 * A failed execution that a retry can continue. The retry run itself is mocked,
+	 * so the test exercises the access check and the response, not the engine.
+	 */
+	const retryAs = async (scopes: string[]) => {
+		const teamProject = await createTeamProject();
+		const role = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
+		await linkUserToProject(member, teamProject, role.slug);
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createExecution(
+			{
+				finished: false,
+				status: 'error',
+				data: stringify({
+					resultData: { runData: { Canary: [] } },
+					executionData: {
+						contextData: {},
+						nodeExecutionStack: [],
+						metadata: {},
+						waitingExecution: {},
+						waitingExecutionSource: {},
+					},
+				}),
+			},
+			workflow,
+		);
+
+		const run = vi.spyOn(Container.get(WorkflowRunner), 'run').mockResolvedValue('999');
+		const outcome = vi
+			.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
+			.mockResolvedValue({
+				data: { resultData: { runData: {} } },
+				mode: 'retry',
+				startedAt: new Date(),
+				finished: true,
+				status: 'success',
+				waitTill: null,
+			} as unknown as IRun);
+
+		const response = await testServer
+			.authAgentFor(member)
+			.post(`/executions/${execution.id}/retry`);
+
+		const ran = run.mock.calls.length > 0;
+		run.mockRestore();
+		outcome.mockRestore();
+		return { response, ran };
+	};
+
+	test('a custom project role without execution:read retries without the execution data', async () => {
+		const { response, ran } = await retryAs(baseScopes);
+
+		expect(response.statusCode).toBe(200);
+		expect(ran).toBe(true);
+		expect(response.body.data).toMatchObject({ id: '999', status: 'success' });
+		expect(response.body.data).not.toHaveProperty('data');
+		expect(response.body.data).not.toHaveProperty('workflowData');
+	});
+
+	test('a custom project role with execution:read retries with the execution data', async () => {
+		const { response } = await retryAs([...baseScopes, 'execution:read']);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({ id: '999', status: 'success' });
+		expect(response.body.data).toHaveProperty('data');
+		expect(response.body.data).toHaveProperty('workflowData');
+	});
+
+	test('a custom project role without workflow:execute cannot retry an execution', async () => {
+		const { response, ran } = await retryAs(['workflow:read', 'workflow:list', 'execution:read']);
+
+		expect(response.statusCode).toBe(404);
+		expect(ran).toBe(false);
+	});
+});
+
+describe('POST /executions/:id/retry with private credentials', () => {
+	/**
+	 * A failed execution that ran as `executedBy` with a private credential.
+	 * The retry run is mocked, so the test checks who may start it.
+	 */
+	const retryPrivateCredentialRun = async ({
+		executedBy,
+		retriedBy,
+		loadWorkflow,
+		runtimeData = {
+			usesDynamicCredentials: true,
+			executedByUserId: executedBy.id,
+		},
+	}: {
+		executedBy: User;
+		retriedBy: User;
+		loadWorkflow: boolean;
+		runtimeData?: Record<string, unknown>;
+	}) => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:editor');
+		const workflow = await createWorkflow({}, teamProject);
+		const execution = await createExecution(
+			{
+				finished: false,
+				status: 'error',
+				data: stringify({
+					resultData: { runData: {} },
+					executionData: {
+						contextData: {},
+						nodeExecutionStack: [],
+						metadata: {},
+						waitingExecution: {},
+						waitingExecutionSource: {},
+						runtimeData: {
+							version: 1,
+							establishedAt: Date.now(),
+							source: 'manual',
+							...runtimeData,
+						},
+					},
+				}),
+			},
+			workflow,
+		);
+
+		const run = vi.spyOn(Container.get(WorkflowRunner), 'run').mockResolvedValue('999');
+		const outcome = vi
+			.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
+			.mockResolvedValue({
+				data: { resultData: { runData: {} } },
+				mode: 'retry',
+				startedAt: new Date(),
+				finished: true,
+				status: 'success',
+				waitTill: null,
+			} as unknown as IRun);
+
+		const response = await testServer
+			.authAgentFor(retriedBy)
+			.post(`/executions/${execution.id}/retry`)
+			.send({ loadWorkflow });
+
+		const ran = run.mock.calls.length > 0;
+		const runData = run.mock.calls[0]?.[0];
+		run.mockRestore();
+		outcome.mockRestore();
+		return { response, ran, runData };
+	};
+
+	test.each([true, false])(
+		'a project editor cannot retry a run of another user (loadWorkflow: %s)',
+		async (loadWorkflow) => {
+			const { response, ran } = await retryPrivateCredentialRun({
+				executedBy: owner,
+				retriedBy: member,
+				loadWorkflow,
+			});
+
+			expect(response.statusCode).toBe(403);
+			expect(ran).toBe(false);
+		},
+	);
+
+	test('a project editor retries a run of another user without the original identity', async () => {
+		const { response, ran, runData } = await retryPrivateCredentialRun({
+			executedBy: owner,
+			retriedBy: member,
+			loadWorkflow: false,
+			runtimeData: { credentials: 'encrypted-owner-identity' },
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(ran).toBe(true);
+		expect(runData?.executionData?.executionData?.runtimeData).not.toHaveProperty('credentials');
+	});
+
+	test('a project editor can retry their own run', async () => {
+		const { response, ran } = await retryPrivateCredentialRun({
+			executedBy: member,
+			retriedBy: member,
+			loadWorkflow: false,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(ran).toBe(true);
+	});
+});
+
 describe('POST /executions/stopMany', () => {
 	test('should not stop an execution we do not have access to', async () => {
 		await saveWaitingExecution({ belongingTo: owner });

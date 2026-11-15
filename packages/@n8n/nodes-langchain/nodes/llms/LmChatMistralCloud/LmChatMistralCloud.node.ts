@@ -15,6 +15,9 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { getRequiredApiKey } from '@utils/helpers';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
+
 const deprecatedMagistralModelsWithTextOutput = ['magistral-small-2506', 'magistral-medium-2506'];
 
 export class LmChatMistralCloud implements INodeType {
@@ -114,7 +117,8 @@ export class LmChatMistralCloud implements INodeType {
 				default: 'mistral-small',
 				builderHint: {
 					propertyHint:
-						'Default to the latest flagship Mistral (mistral-large-2512, aka Mistral Large 3). Use mistral-small for cost-efficient builds. Avoid older dated snapshots and Medium/Small 2.x.',
+						"Prefer a stable Mistral model or rolling alias from the connected credential's model list. " +
+						MODEL_SELECTION_HINT,
 				},
 			},
 			{
@@ -200,7 +204,7 @@ export class LmChatMistralCloud implements INodeType {
 		const httpClient = new HTTPClient({ fetcher: fetchWithTimeout });
 
 		const model = new ChatMistralAI({
-			apiKey: credentials.apiKey as string,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			model: modelName,
 			...options,
 			httpClient,

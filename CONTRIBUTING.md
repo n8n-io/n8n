@@ -239,6 +239,22 @@ N8N_PORT=5699 pnpm dev:be
 N8N_PORT=5699 N8N_EDITOR_PORT=8082 pnpm dev:fe:editor
 ```
 
+### See telemetry events locally
+
+To see the telemetry events that your instance sends, start a local listener in
+one terminal and the backend in another. The listener shows one line for each
+event, from the backend and from the editor, and writes each event to
+`.output/telemetry.ndjson`. Run `pnpm telemetry:sink --help` for its options.
+
+`pnpm dev:be:telemetry` loads `.env.local` and `.env` when they exist, like
+`dotenvx` in the examples above. It always points the diagnostics settings at the
+listener, also when those files set them to other values.
+
+```bash
+pnpm telemetry:sink
+pnpm dev:be:telemetry
+```
+
 ### Basic Development Workflow Example (most used within n8n)
 
 If you're working on API and FE, a lot of team members run the following steps:
@@ -432,7 +448,7 @@ Each instance gets its own port, and the webhook URL matches the main URL. Multi
 >- This does not work with Podman out of the box. You need to [configure Testcontainers for Podman](https://podman-desktop.io/tutorial/testcontainers-with-podman) first.
 >- Alternatively, you can use colima and set DOCKER_HOST and TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE environment variables as described [here](https://node.testcontainers.org/supported-container-runtimes/#colima)
 
-Refer to [packages/testing/containers/README.md](packages/testing/containers/README.md) for more information.
+Refer to [packages/quality/environments/containers/README.md](packages/quality/environments/containers/README.md) for more information.
 
 ### Work locally with syslog
 
@@ -565,7 +581,7 @@ Please address the requested changes or provide feedback within 14 days. If ther
 #### **3. General Requirements**
 
 - **Describe Your Change:**
-  - Every PR needs a clear description of what you changed, why, and why you took this approach over the alternatives. Link the issue or forum topic. Write the description in your own words. A PR with no real description will be closed.
+  - Every PR needs a concise description of what you changed and why. Keep its length in proportion to the complexity of the change. Link the issue or forum topic. Write the description in your own words. A PR with no real description will be closed.
   - Where possible try to include a short video or screenshots. This is useful if you are working on a feature or updating a node.
 - **Follow the Style Guide:**
   - Ensure your code adheres to n8n's coding standards and conventions (e.g., formatting, naming, indentation). Use linting tools where applicable.
@@ -583,6 +599,7 @@ Please address the requested changes or provide feedback within 14 days. If ther
     - Workflow tests for nodes (example [here](https://github.com/n8n-io/n8n/tree/master/packages/nodes-base/nodes/Switch/V3/test))
     - UI tests (if applicable)
     - Detailed steps under the "How to test" section of the PR template to cover how to manually test the feature or bug fix.
+    - The command that runs your tests, also under the "How to test" section.
   - For a **bug fix**, include at least one regression test that **fails against the latest `master`** without your change and passes with it. Tell us in the description how to see it fail, so we can verify the fix actually fixes something.
 - **Typos:**
   - Use a spell-checking tool, such as [**Code Spell Checker**](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker), to avoid typos.
@@ -661,7 +678,7 @@ E2E tests can be started via one of the following commands:
 - `pnpm --filter=n8n-playwright test:local --ui` - Run tests in interactive UI mode (useful for debugging)
 - `pnpm --filter=n8n-playwright test:local --grep="test-name"` - Run specific tests matching pattern
 
-See `packages/testing/playwright/README.md` for more test commands and `packages/testing/playwright/CONTRIBUTING.md` for writing guidelines.
+See `packages/quality/testing/playwright/README.md` for more test commands and `packages/quality/testing/playwright/CONTRIBUTING.md` for writing guidelines.
 
 ## Create custom nodes
 

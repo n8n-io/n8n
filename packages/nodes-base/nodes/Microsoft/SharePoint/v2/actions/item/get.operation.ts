@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import {
@@ -6,11 +7,11 @@ import {
 	ITEM_SIMPLIFY_EXPAND,
 	ITEM_SIMPLIFY_SELECT,
 	simplifyItem,
-} from '../../helpers/utils';
+} from '../../../helpers/utils';
 import { itemRLC, untilListSelected } from '../../item';
-import { listRLC, untilSiteSelected } from '../../list';
-import { resolveSiteId, siteRLC } from '../../site';
-import { microsoftApiRequest } from '../../transport';
+import { listRLC, untilSiteSelected } from '../../../list';
+import { resolveSiteId, siteRLC } from '../../../site';
+import { microsoftApiRequest } from '../../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -82,7 +83,7 @@ export async function execute(
 	const response = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(list)}/items/${encodeURIComponent(item)}`,
+		requestPath`/v1.0/sites/${siteId}/lists/${list}/items/${item}`,
 		{},
 		qs,
 	);

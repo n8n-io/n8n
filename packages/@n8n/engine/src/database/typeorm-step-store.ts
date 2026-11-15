@@ -6,14 +6,18 @@ import { UnexpectedError } from '../common';
 import {
 	SETTLED_STEP_STATUSES,
 	stepKeyId,
+	type ResumeCause,
+	type WaitDeclaration,
 	type StepError,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
 	type StepStatus,
 } from '../execution/execution.types';
+import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
 import {
 	StepNotFoundError,
+	type DueStep,
 	type NewStepRecord,
 	type StepRecord,
 	type StepStore,
@@ -39,7 +43,15 @@ type StepSummaryRow = {
 
 /** RETURNING rows come back keyed by database column name (snake_case). */
 type InsertedStepRow = { id: string; node_id: string; iteration: number };
-type ClaimedStepRow = { id: string; execution_id: string; node_id: string; iteration: number };
+type ClaimedStepRow = {
+	id: string;
+	execution_id: string;
+	node_id: string;
+	iteration: number;
+	wait_declaration: WaitDeclaration | null;
+	resume_cause: ResumeCause | null;
+};
+type DueStepRow = { id: string; execution_id: string };
 
 /**
  * `(node_id, iteration) IN ((:n0, :i0), ...)` as a fragment + parameters, since
@@ -61,7 +73,17 @@ function stepKeyFilter(keys: StepKey[]): {
 
 /** TypeORM-backed `StepStore` adapter. */
 export class TypeOrmStepStore implements StepStore {
-	constructor(private readonly repo: Repository<WorkflowStepExecution>) {}
+	constructor(
+		private readonly repo: Repository<WorkflowStepExecution>,
+		private readonly staleness: StalenessThresholds = DEFAULT_STALENESS_THRESHOLDS,
+	) {}
+
+	/** The `stale_after` value of a step that enters `status` now. */
+	private staleAfterFor(status: StepStatus): Date | null {
+		if (status === 'queued') return new Date(Date.now() + this.staleness.queuedMs);
+		if (status === 'running') return new Date(Date.now() + this.staleness.runningStepMs);
+		return null;
+	}
 
 	async createSteps(
 		executionId: string,
@@ -70,10 +92,6 @@ export class TypeOrmStepStore implements StepStore {
 		if (records.length === 0) return [];
 
 		for (const record of records) assertCreatableRecord(record);
-
-		// Ids are assigned here because the entity's insert hook only runs on class
-		// instances, and these are plain values.
-		const rows = records.map((record) => ({ ...record, executionId, id: generateId() }));
 
 		// The execution-row lock serializes this insert with `failStep`, so rows
 		// land before the failure (its sweep cancels them) or not at all.
@@ -89,6 +107,16 @@ export class TypeOrmStepStore implements StepStore {
 				[executionId],
 			);
 			if (failed) return [];
+
+			// Ids are assigned here because the entity's insert hook only runs on class
+			// instances, and these are plain values. `stale_after` is computed after
+			// the lock, so the wait for the lock does not shorten the threshold.
+			const rows = records.map((record) => ({
+				...record,
+				executionId,
+				id: generateId(),
+				staleAfter: this.staleAfterFor(record.status),
+			}));
 
 			// `orIgnore` is the unique key doing its job: a node another planner already
 			// queued is skipped, leaving the rest of the batch to land. RETURNING emits
@@ -120,9 +148,14 @@ export class TypeOrmStepStore implements StepStore {
 
 	async claimStep(id: string): Promise<StepRecord | null> {
 		// The one transition that hands the row back, so the claimant doesn't
-		// need a second query to learn which node it now runs. RETURNING covers
-		// only the identity columns: a step claimed out of `queued` can't have
-		// an outcome yet, so `outputs` is `null` by the lifecycle.
+		// need a second query to learn which node it now runs. `outputs` is not
+		// among the returned columns: a step claimed out of `queued` can't have
+		// an outcome yet, so it is `null` by the lifecycle.
+		//
+		// `wait_declaration` and `resume_cause` are returned, because a resumed step
+		// is also claimed
+		// out of `queued` and carries both. A deadline resume reads its captured
+		// outputs straight off the claim, so dispatching one costs no extra read.
 		//
 		// The execution-row lock serializes the claim with `failStep`, so no
 		// step starts running once its execution has a failed step. Claims
@@ -139,7 +172,7 @@ export class TypeOrmStepStore implements StepStore {
 			const result = await manager
 				.createQueryBuilder()
 				.update(WorkflowStepExecution)
-				.set({ status: 'running' })
+				.set({ status: 'running', staleAfter: this.staleAfterFor('running') })
 				.where({ id, status: 'queued' })
 				.andWhere(
 					`NOT EXISTS (
@@ -148,7 +181,7 @@ export class TypeOrmStepStore implements StepStore {
 					)`,
 					{ executionId: execution.id },
 				)
-				.returning(['id', 'executionId', 'nodeId', 'iteration'])
+				.returning(['id', 'executionId', 'nodeId', 'iteration', 'waitDeclaration', 'resumeCause'])
 				.execute();
 
 			const [row] = result.raw as ClaimedStepRow[];
@@ -161,6 +194,8 @@ export class TypeOrmStepStore implements StepStore {
 				iteration: row.iteration,
 				status: 'running',
 				outputs: null,
+				waitDeclaration: row.wait_declaration,
+				resumeCause: row.resume_cause,
 			};
 		});
 	}
@@ -169,11 +204,90 @@ export class TypeOrmStepStore implements StepStore {
 		return await this.transition(id, 'running', 'completed', { outputs });
 	}
 
-	async cancelQueuedSteps(executionId: string): Promise<void> {
-		await this.repo.update({ executionId, status: 'queued' }, { status: 'cancelled' });
+	async suspendStep(id: string, waitDeclaration: WaitDeclaration): Promise<boolean> {
+		// `wait_till` is derived from the declaration in the same statement that
+		// writes it, so the column the sweep reads can never disagree with the
+		// declaration it fires.
+		return await this.transition(id, 'running', 'waiting', {
+			waitDeclaration,
+			waitTill: waitDeclaration.resumeAt === undefined ? null : new Date(waitDeclaration.resumeAt),
+		});
+	}
+
+	async resumeStep(id: string, resumeCause: ResumeCause): Promise<boolean> {
+		// `wait_till` stays as it was, so the status is the only thing that keeps
+		// the sweep from firing this row again.
+		return await this.transition(id, 'waiting', 'queued', { resumeCause });
+	}
+
+	async resumeDueSteps(due: Date, limit: number): Promise<DueStep[]> {
+		// `SKIP LOCKED` so two sweepers split a backlog instead of one waiting out
+		// the other's batch. The subquery carries the `wait_till` test, so the row
+		// that is updated is the row that was found due.
+		//
+		// Through the query builder, not `manager.query`: a raw UPDATE resolves to
+		// `[rows, rowCount]`, whereas `.execute()` puts the RETURNING rows in
+		// `result.raw` — as `claimStep` and `createSteps` also rely on.
+		const result = await this.repo
+			.createQueryBuilder()
+			.update(WorkflowStepExecution)
+			.set({
+				status: 'queued',
+				resumeCause: { kind: 'deadline' },
+				staleAfter: this.staleAfterFor('queued'),
+			})
+			.where(
+				`id IN (
+					SELECT id FROM workflow_step_execution
+					WHERE status = 'waiting' AND wait_till <= :due
+					ORDER BY wait_till
+					LIMIT :limit
+					FOR UPDATE SKIP LOCKED
+				)`,
+				{ due, limit },
+			)
+			.returning(['id', 'executionId'])
+			.execute();
+
+		return (result.raw as DueStepRow[]).map(({ id, execution_id: executionId }) => ({
+			id,
+			executionId,
+		}));
+	}
+
+	async nextWaitDeadline(): Promise<Date | null> {
+		// Served by the partial index on `wait_till`, so this stays a cheap read
+		// even with a large backlog.
+		const [row] = await this.repo
+			.createQueryBuilder('step')
+			.select('MIN(step.wait_till)', 'next')
+			.where("step.status = 'waiting'")
+			.andWhere('step.wait_till IS NOT NULL')
+			.getRawMany<{ next: Date | null }>();
+
+		return row?.next ?? null;
+	}
+
+	async cancelPendingSteps(executionId: string): Promise<void> {
+		await this.repo.update(
+			{ executionId, status: In(['queued', 'waiting'] satisfies StepStatus[]) },
+			{ status: 'cancelled', staleAfter: null },
+		);
+	}
+
+	async cancelStep(id: string): Promise<boolean> {
+		return await this.transition(id, 'running', 'cancelled');
 	}
 
 	async failStep(id: string, error: StepError): Promise<boolean> {
+		return await this.failStepFrom('running', id, error);
+	}
+
+	async failWaitingStep(id: string, error: StepError): Promise<boolean> {
+		return await this.failStepFrom('waiting', id, error);
+	}
+
+	private async failStepFrom(from: StepStatus, id: string, error: StepError): Promise<boolean> {
 		// Locking the execution row makes concurrent claims and planning inserts
 		// wait for this failure to commit (see `claimStep` and `createSteps`).
 		// NO KEY UPDATE, not UPDATE, so plain FK checks don't queue behind it.
@@ -186,8 +300,8 @@ export class TypeOrmStepStore implements StepStore {
 			);
 			const result = await manager.update(
 				WorkflowStepExecution,
-				{ id, status: 'running' },
-				{ error, status: 'failed' },
+				{ id, status: from },
+				{ error, status: 'failed', staleAfter: null },
 			);
 			return result.affected === 1;
 		});
@@ -196,14 +310,24 @@ export class TypeOrmStepStore implements StepStore {
 	/**
 	 * Compare-and-set on `status`, writing any result columns in the same
 	 * statement so a step's status and its outcome can't be observed apart.
+	 * The same statement writes `stale_after` for the new status.
 	 */
 	private async transition(
 		id: string,
 		from: StepStatus,
 		to: StepStatus,
-		fields: { outputs?: StepSlots; error?: StepError } = {},
+		fields: {
+			outputs?: StepSlots;
+			error?: StepError;
+			waitDeclaration?: WaitDeclaration;
+			waitTill?: Date | null;
+			resumeCause?: ResumeCause;
+		} = {},
 	): Promise<boolean> {
-		const result = await this.repo.update({ id, status: from }, { ...fields, status: to });
+		const result = await this.repo.update(
+			{ id, status: from },
+			{ ...fields, status: to, staleAfter: this.staleAfterFor(to) },
+		);
 		return result.affected === 1;
 	}
 
@@ -273,6 +397,18 @@ export class TypeOrmStepStore implements StepStore {
 		});
 	}
 
+	async loadStepsByNodeIds(executionId: string, nodeIds: string[]): Promise<StepRecord[]> {
+		if (nodeIds.length === 0) return [];
+		return await this.repo.find({
+			where: { executionId, nodeId: In(nodeIds) },
+			order: { nodeId: 'ASC', iteration: 'ASC' },
+		});
+	}
+
+	async loadWaitingSteps(executionId: string): Promise<StepRecord[]> {
+		return await this.repo.find({ where: { executionId, status: 'waiting' } });
+	}
+
 	async countSettledSteps(executionId: string): Promise<number> {
 		return await this.repo.count({
 			where: { executionId, status: In([...SETTLED_STEP_STATUSES]) },
@@ -281,6 +417,13 @@ export class TypeOrmStepStore implements StepStore {
 
 	async hasFailedSteps(executionId: string): Promise<boolean> {
 		return await this.repo.exists({ where: { executionId, status: 'failed' } });
+	}
+
+	async loadFailedSteps(executionId: string): Promise<StepRecord[]> {
+		return await this.repo.find({
+			where: { executionId, status: 'failed' },
+			order: { nodeId: 'ASC', iteration: 'ASC' },
+		});
 	}
 }
 

@@ -8,6 +8,7 @@ import {
 	CreateAgentEvalRatingDto,
 	CreateAgentEvalRunDto,
 	GenerateDraftCasesOptionsDto,
+	RerunResultOptionsDto,
 	UpdateAgentEvalDatasetDto,
 } from '../agent-evals.schema';
 
@@ -205,12 +206,24 @@ describe('agentEvalDraftCaseSchema', () => {
 			agentEvalDraftCaseSchema.safeParse({
 				input: 'Reset my password',
 				whatToCheck: 'Explains steps',
+				scenario: 'Vague',
 			}).success,
 		).toBe(true);
 	});
 
 	it('rejects a draft case missing whatToCheck', () => {
-		expect(agentEvalDraftCaseSchema.safeParse({ input: 'Reset my password' }).success).toBe(false);
+		expect(
+			agentEvalDraftCaseSchema.safeParse({ input: 'Reset my password', scenario: 'Vague' }).success,
+		).toBe(false);
+	});
+
+	it('rejects a draft case missing scenario', () => {
+		expect(
+			agentEvalDraftCaseSchema.safeParse({
+				input: 'Reset my password',
+				whatToCheck: 'Explains steps',
+			}).success,
+		).toBe(false);
 	});
 });
 
@@ -228,5 +241,32 @@ describe('GenerateDraftCasesOptionsDto', () => {
 	it('rejects a non-positive or non-integer count', () => {
 		expect(GenerateDraftCasesOptionsDto.safeParse({ count: 0 }).success).toBe(false);
 		expect(GenerateDraftCasesOptionsDto.safeParse({ count: 2.5 }).success).toBe(false);
+	});
+
+	it('trims a rule, and rejects an empty or whitespace-only one', () => {
+		const parsed = GenerateDraftCasesOptionsDto.safeParse({
+			rule: '  Never share a phone number  ',
+		});
+		expect(parsed.success && parsed.data.rule).toBe('Never share a phone number');
+		expect(GenerateDraftCasesOptionsDto.safeParse({ rule: '' }).success).toBe(false);
+		expect(GenerateDraftCasesOptionsDto.safeParse({ rule: '   ' }).success).toBe(false);
+	});
+});
+
+describe('RerunResultOptionsDto', () => {
+	it('accepts an empty body for a plain rerun', () => {
+		expect(RerunResultOptionsDto.safeParse({}).success).toBe(true);
+	});
+
+	it('trims the edited rule', () => {
+		const parsed = RerunResultOptionsDto.safeParse({
+			whatToCheck: '  Mentions the refund window.  ',
+		});
+		expect(parsed.success && parsed.data.whatToCheck).toBe('Mentions the refund window.');
+	});
+
+	it('rejects an empty or whitespace-only rule, so a stored rule is never blanked', () => {
+		expect(RerunResultOptionsDto.safeParse({ whatToCheck: '' }).success).toBe(false);
+		expect(RerunResultOptionsDto.safeParse({ whatToCheck: '   ' }).success).toBe(false);
 	});
 });

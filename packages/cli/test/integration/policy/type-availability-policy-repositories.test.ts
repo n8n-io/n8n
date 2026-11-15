@@ -74,6 +74,31 @@ describe('type availability policy repositories', () => {
 		return scope;
 	}
 
+	/** The instance scope plus two project scopes, all carrying the one policy. */
+	async function attachToThreeScopes(policyId: string) {
+		const scopes = [
+			await createInstanceScope(),
+			await createProjectScope((await createTeamProject()).id),
+			await createProjectScope((await createTeamProject()).id),
+		];
+
+		for (const scope of scopes) {
+			await attachmentRepo.replaceAttachmentsForScope(
+				scope.id,
+				[{ policyId, priority: 0, isFloor: false }],
+				ROOT,
+			);
+		}
+
+		return scopes;
+	}
+
+	async function versionsOf(scopes: Array<{ id: string }>) {
+		return await Promise.all(
+			scopes.map(async (scope) => (await scopeRepo.findScopeById(scope.id, ROOT))?.version),
+		);
+	}
+
 	describe('TypeAvailabilityPolicyRepository', () => {
 		it('creates a policy with a generated id at version 1', async () => {
 			const policy = await createPolicy();
@@ -367,6 +392,44 @@ describe('type availability policy repositories', () => {
 		it('locks nothing and returns an empty list for an empty input', async () => {
 			expect(await scopeRepo.lockScopesByIds([], ROOT)).toEqual([]);
 		});
+
+		describe('readFingerprint', () => {
+			it('reads zeros from an empty table', async () => {
+				expect(await scopeRepo.readFingerprint(ROOT)).toEqual({
+					count: 0,
+					versionSum: 0,
+					newestCreatedAt: 0,
+				});
+			});
+
+			it('changes when a version is bumped', async () => {
+				const scope = await createInstanceScope();
+				const before = await scopeRepo.readFingerprint(ROOT);
+
+				await scopeRepo.bumpVersion(scope.id, ROOT);
+
+				expect(await scopeRepo.readFingerprint(ROOT)).not.toEqual(before);
+			});
+
+			it('changes when a scope is replaced by another at the same version', async () => {
+				const first = await createProjectScope((await createTeamProject()).id);
+				const projectId = (await createTeamProject()).id;
+				const before = await scopeRepo.readFingerprint(ROOT);
+
+				await scopeRepo.delete({ id: first.id });
+				// The timestamp has millisecond precision, so a same-millisecond insert would tie.
+				await new Promise((resolve) => setTimeout(resolve, 10));
+				const second = await createProjectScope(projectId, 'deny');
+
+				const after = await scopeRepo.readFingerprint(ROOT);
+				expect(second.version).toBe(first.version);
+				expect({ count: after.count, versionSum: after.versionSum }).toEqual({
+					count: before.count,
+					versionSum: before.versionSum,
+				});
+				expect(after.newestCreatedAt).toBeGreaterThan(before.newestCreatedAt);
+			});
+		});
 	});
 
 	describe('TypeAvailabilityPolicyAttachmentRepository', () => {
@@ -622,6 +685,37 @@ describe('type availability policy repositories', () => {
 
 			expect(await attachmentRepo.listAttachmentsForScope(scope.id, ROOT)).toHaveLength(0);
 			expect((await scopeRepo.findScopeById(scope.id, ROOT))?.version).toBe(1);
+		});
+
+		it('commits the version bumps of every scope a policy is attached to together', async () => {
+			const policy = await createPolicy();
+			const scopes = await attachToThreeScopes(policy.id);
+
+			await transactionRunner.run({}, async (ctx) => {
+				await scopeRepo.bumpVersions(
+					scopes.map((scope) => scope.id),
+					ctx,
+				);
+			});
+
+			expect(await versionsOf(scopes)).toEqual([2, 2, 2]);
+		});
+
+		it('rolls back every version bump when the fan-out fails part-way', async () => {
+			const policy = await createPolicy();
+			const scopes = await attachToThreeScopes(policy.id);
+
+			await expect(
+				transactionRunner.run({}, async (ctx) => {
+					await scopeRepo.bumpVersions(
+						scopes.map((scope) => scope.id),
+						ctx,
+					);
+					throw new Error('fan-out failed');
+				}),
+			).rejects.toThrow('fan-out failed');
+
+			expect(await versionsOf(scopes)).toEqual([1, 1, 1]);
 		});
 	});
 });

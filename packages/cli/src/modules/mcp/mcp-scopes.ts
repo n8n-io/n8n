@@ -1,7 +1,16 @@
 import type { McpScope } from '@n8n/api-types';
 import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 
-import { MCP_GET_USER_PREFERENCES_TOOL_NAME } from './mcp.constants';
+import {
+	MCP_GET_MIGRATION_FINDINGS_TOOL_NAME,
+	MCP_GET_MIGRATION_REPORT_TOOL_NAME,
+	MCP_GET_USER_PREFERENCES_TOOL_NAME,
+	MCP_MIGRATE_WORKFLOW_TOOL_NAME,
+	MCP_SAVE_USER_PREFERENCE_TOOL_NAME,
+	MCP_SET_MIGRATION_FINDING_STATUS_TOOL_NAME,
+	MCP_UNDO_USER_PREFERENCE_TOOL_NAME,
+	MCP_UPDATE_USER_PREFERENCE_TOOL_NAME,
+} from './mcp.constants';
 
 /**
  * Maps each grantable OAuth scope to the MCP tools it unlocks. A tool is
@@ -32,6 +41,9 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'get_instance_activity',
 		'expand_instance_activity',
 		'get_node_usage',
+		// Lists credentials, data tables and agents too. The tool withholds the ones whose
+		// scope the grant lacks, and refuses a credential or data table as the requested resource.
+		'get_dependencies',
 	],
 	'workflow:write': [
 		'create_workflow_from_code',
@@ -55,6 +67,8 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'search_agents',
 		'get_agent',
 		'list_agent_versions',
+		'list_agent_sessions',
+		'get_agent_session',
 		'discover_agent_assets',
 		'validate_agent',
 		'get_agent_builder_reference',
@@ -66,11 +80,13 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'create_agent',
 		'mutate_agent',
 		'revert_agent',
-		'delete_agent',
+		'archive_agent',
 		'verify_agent_mcp_server',
 		'search_agents',
 		'get_agent',
 		'list_agent_versions',
+		'list_agent_sessions',
+		'get_agent_session',
 		'discover_agent_assets',
 		'validate_agent',
 		'get_agent_builder_reference',
@@ -79,9 +95,12 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'unpublish_agent',
 	],
 	'agent:execute': ['call_agent'],
+	'skill:read': ['search_n8n_skills', 'get_skill'],
+	'skill:write': ['create_skill', 'update_skill', 'delete_skill', 'search_n8n_skills', 'get_skill'],
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
 	'credential:read': ['list_credentials', 'list_n8n_gateway_services', 'explore_node_resources'],
+	'credential:update': ['update_credential_description'],
 	'dataTable:read': ['search_data_tables', 'get_data_table_rows'],
 	// Writing requires finding tables, so search rides along.
 	'dataTable:write': [
@@ -98,10 +117,37 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	// so the search tools ride along on a write-only grant.
 	'project:write': ['create_folder', 'update_folder', 'search_projects', 'search_folders'],
 	'tag:read': ['list_workflow_tags'],
+	// Installing a package changes what the instance can run, so it gets its own
+	// scope rather than riding along on a workflow write grant. The tool is also
+	// gated on the user's `communityPackage:install` global scope at
+	// registration, so granting this to a member still exposes nothing.
+	'communityPackage:install': ['install_community_node'],
 	// `ai_preference` is a first-class resource, so reading it rides on a normal scope rather
 	// than an MCP-only string. Not builder-gated: preferences apply to Agents, data tables and
 	// folders too, none of which need the builder.
 	'aiPreference:read': [MCP_GET_USER_PREFERENCES_TOOL_NAME],
+	// The read tool does not ride along: a client that may write is expected to read first, and
+	// the consent screen shows that as two scopes. Undo is here rather than on a delete scope
+	// because it only removes what this surface wrote.
+	'aiPreference:write': [
+		MCP_SAVE_USER_PREFERENCE_TOOL_NAME,
+		MCP_UPDATE_USER_PREFERENCE_TOOL_NAME,
+		MCP_UNDO_USER_PREFERENCE_TOOL_NAME,
+	],
+	// Both migration report scopes need the `breakingChanges:list` role permission, as the REST
+	// routes do. Registration still checks the role: a grant can outlive one.
+	'breakingChanges:list': [
+		MCP_GET_MIGRATION_REPORT_TOOL_NAME,
+		MCP_GET_MIGRATION_FINDINGS_TOOL_NAME,
+	],
+	// A fix or a status starts from the findings, so the read tools ride along. Neither scope
+	// grants update_workflow: fixing a workflow by hand needs `workflow:write`.
+	'breakingChanges:migrate': [
+		MCP_GET_MIGRATION_REPORT_TOOL_NAME,
+		MCP_GET_MIGRATION_FINDINGS_TOOL_NAME,
+		MCP_MIGRATE_WORKFLOW_TOOL_NAME,
+		MCP_SET_MIGRATION_FINDING_STATUS_TOOL_NAME,
+	],
 };
 
 /**
@@ -136,36 +182,56 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'explore_node_resources',
 	'search_projects',
 	'search_folders',
+	'install_community_node',
 	...FOLDER_FEATURE_TOOLS,
 ]);
 
 /**
- * Tools only registered when the instance-context read surface is on
- * (`N8N_MCP_INSTANCE_CONTEXT_ENABLED` or its rollout flag) and the `instance-ai`
- * module is active. Same role as BUILDER_TOOLS and AGENT_TOOLS: it lets the
- * scope-map drift guard tell "not mapped" from "not registered here".
+ * Tools that additionally require the `community-packages` module to be active,
+ * verified packages to be enabled, and the caller to hold the
+ * `communityPackage:install` global scope. Excluded from the "every mapped tool
+ * is registered" drift guard for the same reason as {@link AGENT_TOOLS}: none of
+ * those conditions hold in a bare service under test. The gate itself is covered
+ * by `isCommunityNodeInstallAvailable` in mcp-tool-availability.test.ts.
  */
-/**
- * Of those, the ones that read the activity log itself, so they also need
- * `N8N_ACTIVITY_LOG_ENABLED`. The others draw on the workflow and execution tables and work
- * whether or not anything is writing the log.
- */
+export const COMMUNITY_PACKAGE_TOOLS: ReadonlySet<string> = new Set(['install_community_node']);
+
+/** Context tools that also require the instance-ai module. */
 export const ACTIVITY_LOG_TOOLS: ReadonlySet<string> = new Set([
+	'get_instance_context',
 	'get_instance_activity',
 	'expand_instance_activity',
 ]);
 
+/** Tools that require the shared instance activity gate. */
 export const INSTANCE_CONTEXT_TOOLS: ReadonlySet<string> = new Set([
 	'get_instance_context',
 	'get_instance_activity',
 	'expand_instance_activity',
 	'get_node_usage',
+	'get_dependencies',
+]);
+
+/**
+ * Tools that need a migration report target version, the `breaking-changes`
+ * module, and a caller with `breakingChanges:list`. Excluded from the "every
+ * mapped tool is registered" drift guard like {@link AGENT_TOOLS}; their own
+ * registration tests live in migration-report-tools.test.ts.
+ */
+export const MIGRATION_REPORT_TOOLS: ReadonlySet<string> = new Set([
+	...TOOLS_BY_SCOPE['breakingChanges:list'],
+	...TOOLS_BY_SCOPE['breakingChanges:migrate'],
 ]);
 
 export const AGENT_TOOLS: ReadonlySet<string> = new Set([
 	...TOOLS_BY_SCOPE['agent:read'],
 	...TOOLS_BY_SCOPE['agent:write'],
 	...TOOLS_BY_SCOPE['agent:execute'],
+]);
+
+export const SKILL_TOOLS: ReadonlySet<string> = new Set([
+	...TOOLS_BY_SCOPE['skill:read'],
+	...TOOLS_BY_SCOPE['skill:write'],
 ]);
 
 function isMcpScope(scope: string): scope is McpScope {

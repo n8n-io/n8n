@@ -29,7 +29,9 @@ export function getNextValidIndex<T, D>(
 		return next;
 	}
 
-	return direction === -1 ? -1 : current;
+	// Stay on the current row at either end. Clearing the highlight lets the
+	// next key move the caret in an external text field and close the menu.
+	return current;
 }
 
 export function getItemDomId(instanceId: string, index: number) {
@@ -37,7 +39,7 @@ export function getItemDomId(instanceId: string, index: number) {
 }
 
 export function scrollHighlightedItemIntoView(container: HTMLElement | null) {
-	const highlightedItem = container?.querySelector('[data-menu-items] [aria-selected="true"]');
+	const highlightedItem = container?.querySelector('[data-menu-items] [data-virtual-highlighted]');
 
 	if (!(container && highlightedItem instanceof HTMLElement)) return;
 

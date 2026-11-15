@@ -2,24 +2,25 @@ import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
+import { OAuthClient } from '../database/entities/oauth-client.entity';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 
 const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['oauth-server', 'mcp'] });
 
 let owner: User;
 let member: User;
-let oauthClientRepository: OAuthClientRepository;
+let oauthClientRepository: Repository<OAuthClient>;
 let userConsentRepository: UserConsentRepository;
 
 beforeAll(async () => {
 	owner = await createOwner();
 	member = await createMember();
-	oauthClientRepository = Container.get(OAuthClientRepository);
+	oauthClientRepository = Container.get(DataSource).getRepository(OAuthClient);
 	userConsentRepository = Container.get(UserConsentRepository);
 });
 
@@ -28,6 +29,17 @@ afterEach(async () => {
 });
 
 describe('GET /rest/mcp/oauth-clients', () => {
+	test('returns the resolved scope tools in the client list', async () => {
+		const response = await testServer.authAgentFor(owner).get('/mcp/oauth-clients');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.scopeTools).toEqual(
+			expect.objectContaining({
+				'workflow:read': expect.arrayContaining(['search_workflows']),
+			}),
+		);
+	});
+
 	test('should return only the requesting user clients', async () => {
 		const ownerClient = await oauthClientRepository.save({
 			id: 'owner-list-client',

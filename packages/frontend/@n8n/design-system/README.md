@@ -85,10 +85,10 @@ app.mount('#app');
 `N8nPlugin` registers the `v-n8n-truncate` and `v-n8n-html` directives. Pass `{}` as the
 options argument.
 
-Do not skip this call. Ten components render their text through `v-n8n-html`: `N8nNotice`,
+Do not skip this call. Nine components render their text through `v-n8n-html`: `N8nNotice`,
 `N8nTooltip`, `N8nTabs`, `N8nSticky`, `N8nInputLabel`, `N8nInfoAccordion`, `N8nEmptyState`,
-`CommandBarItem`, and the two `AskAssistantChat` message components. If the directive is
-absent, these components render empty and show no error.
+and the two `AskAssistantChat` message components. If the directive is absent, these
+components render empty and show no error.
 
 The `app.provide(IconBodyLoaderKey, loadLucideIconBody)` call gives you the full Lucide
 set. If you omit the call, `N8nIcon` renders only the bundled icon set. That set holds

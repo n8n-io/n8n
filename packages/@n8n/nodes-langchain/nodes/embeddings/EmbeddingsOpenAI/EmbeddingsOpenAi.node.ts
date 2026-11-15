@@ -11,17 +11,22 @@ import {
 } from 'n8n-workflow';
 import type { ClientOptions } from 'openai';
 
-import { mergeCustomHeaders } from '@utils/helpers';
+import { mergeCustomHeaders, getRequiredApiKey } from '@utils/helpers';
 
 import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
-import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import {
+	getProxyAgent,
+	aiClientFetch,
+	logWrapper,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 
 const modelParameter: INodeProperties = {
 	displayName: 'Model',
 	name: 'model',
 	type: 'options',
 	description:
-		'The model which will generate the embeddings. <a href="https://platform.openai.com/docs/models/overview">Learn more</a>.',
+		'The model which will generate the embeddings. <a href="https://developers.openai.com/api/docs/models">Learn more</a>.',
 	typeOptions: {
 		loadOptions: {
 			routing: {
@@ -250,6 +255,7 @@ export class EmbeddingsOpenAi implements INodeType {
 		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
 		const configuration: ClientOptions = {
+			fetch: aiClientFetch,
 			defaultHeaders,
 		};
 		if (options.baseURL) {
@@ -274,7 +280,7 @@ export class EmbeddingsOpenAi implements INodeType {
 
 		const embeddings = new OpenAIEmbeddings({
 			model: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
-			apiKey: credentials.apiKey as string,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			...options,
 			configuration,
 		});

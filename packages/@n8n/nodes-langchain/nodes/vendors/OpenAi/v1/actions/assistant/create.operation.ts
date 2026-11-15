@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 import { modelRLC } from '../descriptions';
@@ -45,7 +45,7 @@ const properties: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description:
-			'Whether to enable the code interpreter that allows the assistants to write and run Python code in a sandboxed execution environment, find more <a href="https://platform.openai.com/docs/assistants/tools/code-interpreter" target="_blank">here</a>',
+			'Whether to enable the code interpreter that allows the assistants to write and run Python code in a sandboxed execution environment, find more <a href="https://developers.openai.com/api/docs/guides/tools-code-interpreter" target="_blank">here</a>',
 	},
 	{
 		displayName: 'Knowledge Retrieval',
@@ -53,7 +53,7 @@ const properties: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description:
-			'Whether to augments the assistant with knowledge from outside its model, such as proprietary product information or documents, find more <a href="https://platform.openai.com/docs/assistants/tools/knowledge-retrieval" target="_blank">here</a>',
+			'Whether to augments the assistant with knowledge from outside its model, such as proprietary product information or documents, find more <a href="https://developers.openai.com/api/docs/guides/tools-file-search" target="_blank">here</a>',
 	},
 	//we want to display Files selector only when codeInterpreter true or knowledgeRetrieval true or both
 	{
@@ -193,7 +193,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		let after: string | undefined;
 
 		do {
-			const response = (await apiRequest.call(this, 'GET', '/assistants', {
+			const response = (await apiRequest.call(this, 'GET', requestPath`/assistants`, {
 				headers: {
 					'OpenAI-Beta': 'assistants=v2',
 				},
@@ -274,7 +274,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		body.tools = tools;
 	}
 
-	const response = await apiRequest.call(this, 'POST', '/assistants', {
+	const response = await apiRequest.call(this, 'POST', requestPath`/assistants`, {
 		body,
 		headers: {
 			'OpenAI-Beta': 'assistants=v2',

@@ -1,0 +1,29 @@
+{
+    "type": "object",
+    "properties": {
+        "createdDateTime": {
+            "type": "string"
+        },
+        "fields": {
+            "type": "object",
+            "properties": {
+                "Title": {
+                    "type": "string"
+                }
+            }
+        },
+        "fields@odata.context": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "webUrl": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

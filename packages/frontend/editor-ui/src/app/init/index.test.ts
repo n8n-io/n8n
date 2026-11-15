@@ -4,6 +4,7 @@ import { initializeAuthenticatedFeatures, initializeCore, state } from '@/app/in
 import { AuthenticationMethod } from '@n8n/api-types';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
@@ -24,6 +25,12 @@ import { telemetry } from '@/app/plugins/telemetry';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
 import * as moduleInitializer from '@/app/moduleInitializer/moduleInitializer';
 import { initializeExpressionEngine } from '@/app/init/expressionEngine';
+import {
+	initializeQuickJsExpressionShadow,
+	preloadQuickJsExpressionShadow,
+	stopQuickJsExpressionShadow,
+} from '@/experiments/quickjsExpressionShadow/init';
+import { flushPromises } from '@vue/test-utils';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
@@ -72,7 +79,30 @@ vi.mock('@/app/init/toastNotifier', () => ({
 // The real one dynamically imports the QuickJS runtime bundle, which has no
 // place in this graph. It stays inert on the default `legacy` setting anyway.
 vi.mock('@/app/init/expressionEngine', () => ({
-	initializeExpressionEngine: vi.fn(),
+	initializeExpressionEngine: vi.fn(async () => {}),
+}));
+
+// The real one waits for feature flags and loads the QuickJS runtime bundle.
+vi.mock('@/experiments/quickjsExpressionShadow/init', () => ({
+	initializeQuickJsExpressionShadow: vi.fn(async () => {}),
+	preloadQuickJsExpressionShadow: vi.fn(),
+	stopQuickJsExpressionShadow: vi.fn(),
+}));
+
+const dataWorker = vi.hoisted(() => ({
+	enabled: vi.fn(() => false),
+	initialize: vi.fn(async () => {}),
+	loadNodeTypes: vi.fn(async () => {}),
+}));
+
+vi.mock('@/app/workers/isDataWorkerEnabled', () => ({
+	isDataWorkerEnabled: dataWorker.enabled,
+}));
+
+// The real module spawns the SharedWorker and dedicated worker on import.
+vi.mock('@/app/workers', () => ({
+	initialize: dataWorker.initialize,
+	loadNodeTypes: dataWorker.loadNodeTypes,
 }));
 
 vi.mock('@n8n/stores/users.store', () => ({
@@ -92,6 +122,7 @@ describe('Init', () => {
 	let sourceControlStore: ReturnType<typeof mockedStore<typeof useSourceControlStore>>;
 	let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
+	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 	let versionsStore: ReturnType<typeof mockedStore<typeof useVersionsStore>>;
 	let ssoStore: ReturnType<typeof mockedStore<typeof useSSOStore>>;
 	let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
@@ -110,6 +141,7 @@ describe('Init', () => {
 		cloudPlanStore = mockedStore(useCloudPlanStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
+		credentialsStore = mockedStore(useCredentialsStore);
 		usersStore = mockedStore(useUsersStore);
 		versionsStore = mockedStore(useVersionsStore);
 		versionsStore = mockedStore(useVersionsStore);
@@ -170,6 +202,29 @@ describe('Init', () => {
 			);
 		});
 
+		it('should show the startup error toast when the login hook cannot load the full settings', async () => {
+			const error = new Error('Settings request failed');
+			settingsStore.getSettings.mockRejectedValue(error);
+			let hookResult: Promise<void> | undefined;
+			usersStore.registerLoginHook.mockImplementation((hook) => {
+				const result = Promise.resolve(hook(mock<CurrentUserResponse>({ id: 'userId' })));
+				result.catch(() => {});
+				hookResult = result;
+			});
+
+			await initializeCore();
+
+			await expect(hookResult).rejects.toBe(error);
+			expect(showToast).toHaveBeenCalledTimes(1);
+			expect(showToast).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'Error connecting to n8n',
+					type: 'error',
+					duration: 0,
+				}),
+			);
+		});
+
 		it('should initialize authentication hooks', async () => {
 			const registerLoginHookSpy = vi.spyOn(usersStore, 'registerLoginHook');
 			const registerLogoutHookSpy = vi.spyOn(usersStore, 'registerLogoutHook');
@@ -204,9 +259,61 @@ describe('Init', () => {
 			expect(initializeExpressionEngine).toHaveBeenCalledWith('legacy');
 		});
 
-		// Public settings omit the engine, so an unauthenticated boot leaves the
-		// legacy evaluator in place and the login hook is the first point where
-		// the choice is known.
+		it('should not wait for the expression engine when no user is signed in', async () => {
+			usersStore.currentUser = null;
+			vi.mocked(initializeExpressionEngine).mockImplementationOnce(
+				async () => await new Promise<void>(() => {}),
+			);
+
+			await initializeCore();
+
+			expect(state.initialized).toBe(true);
+		});
+
+		it('should wait for the expression engine in preview mode', async () => {
+			usersStore.currentUser = null;
+			settingsStore.isPreviewMode = true;
+			let finishEngineStart: () => void = () => {};
+			vi.mocked(initializeExpressionEngine).mockImplementationOnce(
+				async () =>
+					await new Promise<void>((resolve) => {
+						finishEngineStart = resolve;
+					}),
+			);
+
+			const core = initializeCore();
+			await new Promise((resolve) => setTimeout(resolve));
+			expect(state.initialized).toBe(false);
+
+			finishEngineStart();
+			await core;
+			settingsStore.isPreviewMode = false;
+
+			expect(state.initialized).toBe(true);
+		});
+
+		it('should load the user while the expression engine starts, and wait for the engine', async () => {
+			usersStore.currentUser = mock<IUser>({ id: '123' });
+			let finishEngineStart: () => void = () => {};
+			vi.mocked(initializeExpressionEngine).mockImplementationOnce(
+				async () =>
+					await new Promise<void>((resolve) => {
+						finishEngineStart = resolve;
+					}),
+			);
+
+			const core = initializeCore();
+			await vi.waitFor(() => expect(usersStore.initialize).toHaveBeenCalled());
+			expect(state.initialized).toBe(false);
+
+			finishEngineStart();
+			await core;
+
+			expect(state.initialized).toBe(true);
+		});
+
+		// A boot that could not read the settings leaves the legacy evaluator in
+		// place, and the login hook is the next point where the choice is known.
 		it('should start the expression engine in the login hook with authenticated settings', async () => {
 			settingsStore.getSettings.mockImplementation(async () => {
 				settingsStore.settings.expressionEngine = 'quickjs';
@@ -219,6 +326,45 @@ describe('Init', () => {
 
 			expect(initializeExpressionEngine).toHaveBeenCalledTimes(2);
 			expect(initializeExpressionEngine).toHaveBeenLastCalledWith('quickjs');
+		});
+
+		it('should stop the expression shadow run on logout', async () => {
+			usersStore.registerLogoutHook.mockImplementation((hook) => {
+				void hook();
+			});
+
+			await initializeCore();
+
+			expect(stopQuickJsExpressionShadow).toHaveBeenCalledTimes(1);
+		});
+
+		// The shadow run reads its flag, which only exists once PostHog has the user's flags.
+		it('should start the expression shadow run in the login hook after PostHog', async () => {
+			const postHogInit = vi.spyOn(mockedStore(usePostHog), 'init');
+			usersStore.registerLoginHook.mockImplementation(async (hook) => {
+				await hook(mock<CurrentUserResponse>({ id: 'userId' }));
+			});
+
+			await initializeCore();
+
+			expect(initializeQuickJsExpressionShadow).toHaveBeenCalledTimes(1);
+			expect(postHogInit.mock.invocationCallOrder[0]).toBeLessThan(
+				vi.mocked(initializeQuickJsExpressionShadow).mock.invocationCallOrder[0],
+			);
+		});
+
+		it('should preload the expression shadow engine in the login hook before the settings request', async () => {
+			const featureFlags = { '126_quickjs_expression_shadow': true };
+			usersStore.registerLoginHook.mockImplementation(async (hook) => {
+				await hook(mock<CurrentUserResponse>({ id: 'userId', featureFlags }));
+			});
+
+			await initializeCore();
+
+			expect(preloadQuickJsExpressionShadow).toHaveBeenCalledWith(featureFlags);
+			expect(vi.mocked(preloadQuickJsExpressionShadow).mock.invocationCallOrder[0]).toBeLessThan(
+				settingsStore.getSettings.mock.invocationCallOrder[0],
+			);
 		});
 
 		it('should re-initialize ssoStore in login hook with authenticated settings', async () => {
@@ -300,6 +446,8 @@ describe('Init', () => {
 			settingsStore.isTemplatesEnabled = true;
 			sourceControlStore.isEnterpriseSourceControlEnabled = true;
 			rootStore.defaultLocale = 'es';
+			credentialsStore.fetchAllCredentials.mockResolvedValue([]);
+			credentialsStore.fetchCredentialTypes.mockResolvedValue();
 		});
 
 		afterEach(() => {
@@ -318,6 +466,111 @@ describe('Init', () => {
 			expect(sourceControlSpy).not.toHaveBeenCalled();
 			expect(nodeTranslationSpy).not.toHaveBeenCalled();
 			expect(versionsSpy).not.toHaveBeenCalled();
+			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).not.toHaveBeenCalled();
+			expect(credentialsStore.fetchAllCredentials).not.toHaveBeenCalled();
+			expect(credentialsStore.fetchCredentialTypes).not.toHaveBeenCalled();
+		});
+
+		it('loads node types before authenticated pages render', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			const { promise, resolve } = Promise.withResolvers<void>();
+			nodeTypesStore.loadNodeTypesIfNotLoaded.mockReturnValueOnce(promise);
+			let initialized = false;
+			const initializing = initializeAuthenticatedFeatures(false).then(() => {
+				initialized = true;
+			});
+
+			await flushPromises();
+			expect(initialized).toBe(false);
+
+			resolve();
+			await initializing;
+			expect(initialized).toBe(true);
+		});
+
+		it('initializes the data worker before loading node types', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			dataWorker.enabled.mockReturnValue(true);
+			const calls: string[] = [];
+			dataWorker.initialize.mockImplementationOnce(async () => {
+				calls.push('worker:initialize');
+			});
+			dataWorker.loadNodeTypes.mockImplementationOnce(async () => {
+				calls.push('worker:loadNodeTypes');
+			});
+			nodeTypesStore.loadNodeTypesIfNotLoaded.mockImplementationOnce(async () => {
+				calls.push('store:loadNodeTypes');
+			});
+
+			try {
+				await initializeAuthenticatedFeatures(false);
+			} finally {
+				dataWorker.enabled.mockReturnValue(false);
+			}
+
+			expect(calls).toEqual(['worker:initialize', 'worker:loadNodeTypes', 'store:loadNodeTypes']);
+		});
+
+		it('loads credential types before authenticated pages render', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			const { promise, resolve } = Promise.withResolvers<void>();
+			credentialsStore.fetchCredentialTypes.mockReturnValueOnce(promise);
+			let initialized = false;
+			const initializing = initializeAuthenticatedFeatures(false).then(() => {
+				initialized = true;
+			});
+
+			await flushPromises();
+			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
+			expect(initialized).toBe(false);
+
+			resolve();
+			await initializing;
+			expect(initialized).toBe(true);
+		});
+
+		it('loads credentials without waiting for them', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			// A request that never settles: init must still finish.
+			credentialsStore.fetchAllCredentials.mockReturnValueOnce(new Promise(() => {}));
+
+			await initializeAuthenticatedFeatures(false);
+
+			expect(credentialsStore.fetchAllCredentials).toHaveBeenCalledTimes(1);
+		});
+
+		it('logs type and credential loading failures without failing init', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const nodeTypesError = new Error('node types');
+			const credentialTypesError = new Error('credential types');
+			const credentialsError = new Error('credentials');
+			nodeTypesStore.loadNodeTypesIfNotLoaded.mockRejectedValueOnce(nodeTypesError);
+			credentialsStore.fetchCredentialTypes.mockRejectedValueOnce(credentialTypesError);
+			credentialsStore.fetchAllCredentials.mockRejectedValueOnce(credentialsError);
+
+			await expect(initializeAuthenticatedFeatures(false)).resolves.toBeUndefined();
+			await flushPromises();
+
+			expect(consoleErrorSpy).toHaveBeenCalledWith(expect.any(String), nodeTypesError);
+			expect(consoleErrorSpy).toHaveBeenCalledWith(expect.any(String), credentialTypesError);
+			expect(consoleErrorSpy).toHaveBeenCalledWith(expect.any(String), credentialsError);
+		});
+
+		it('fetches credentials and credential types only once across repeated calls', async () => {
+			settingsStore.isCloudDeployment = false;
+			usersStore.currentUser = mock<IUser>({ id: '123', globalScopes: ['user:list'] });
+
+			await initializeAuthenticatedFeatures(false);
+			await initializeAuthenticatedFeatures();
+
+			expect(credentialsStore.fetchAllCredentials).toHaveBeenCalledTimes(1);
+			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledTimes(1);
 		});
 
 		it('should init authenticated features only once if user is logged in', async () => {

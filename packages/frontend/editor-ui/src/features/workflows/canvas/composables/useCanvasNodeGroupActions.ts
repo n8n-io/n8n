@@ -1,11 +1,12 @@
 import type { GraphNode } from '@vue-flow/core';
 import { useI18n } from '@n8n/i18n';
-import type { IWorkflowGroup } from 'n8n-workflow';
+import { getEmptyGroupAnchor, type IWorkflowGroup } from 'n8n-workflow';
 import type { MaybeRefOrGetter } from 'vue';
 import { computed, toValue } from 'vue';
 
 import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { isPresent } from '@/app/utils/typesUtils';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { AddNodeGroupCommand, UpdateNodeGroupCommand } from '@/app/models/history';
 import {
@@ -55,7 +56,15 @@ export function useCanvasNodeGroupActions(
 				ids.add(group.id);
 			}
 		}
-		return Array.from(ids);
+		return Array.from(ids).filter((id) => {
+			const group = workflowDocumentStore.value.getGroupById(id);
+			if (!group) return false;
+
+			const memberNodes = group.nodeIds
+				.map((nodeId) => workflowDocumentStore.value.getNodeById(nodeId))
+				.filter(isPresent);
+			return getEmptyGroupAnchor(group, memberNodes) === undefined;
+		});
 	});
 
 	const canUngroup = computed(() => selectedGroupIds.value.length > 0);

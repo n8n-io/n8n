@@ -1,10 +1,10 @@
 import { folderIdSchema } from '@n8n/api-types';
-import type { Folder, User } from '@n8n/db';
+import type { Folder, OperationContext, User } from '@n8n/db';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import z from 'zod';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import type { FolderFinderService } from '@/services/folder-finder.service';
+import type { FolderFinderService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -66,6 +66,7 @@ export const createMoveWorkflowsToFolderTool = (
 	workflowService: WorkflowService,
 	folderFinderService: FolderFinderService,
 	telemetry: Telemetry,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'move_workflows_to_folder',
 	config: {
@@ -116,10 +117,16 @@ export const createMoveWorkflowsToFolderTool = (
 					// Folder-only update, mirroring the REST PATCH path: an empty entity
 					// payload so only the folder placement (validated against the
 					// workflow's owning project) changes.
-					await workflowService.update(user, createWorkflowEntityFromPayload({}), workflowId, {
-						parentFolderId: folderId,
-						source: 'n8n-mcp',
-					});
+					await workflowService.update(
+						user,
+						createWorkflowEntityFromPayload({}),
+						workflowId,
+						{
+							parentFolderId: folderId,
+							source: 'n8n-mcp',
+						},
+						ctx,
+					);
 					moved.push({ workflowId, name: workflow.name });
 				} catch (error) {
 					failed.push({ workflowId, error: describeFolderError(error) });

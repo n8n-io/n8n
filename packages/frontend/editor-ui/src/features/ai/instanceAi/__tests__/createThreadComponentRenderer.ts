@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { toArtifactTurns } from '../agentTreeArtifactTurns';
 import { defineComponent, h, reactive, ref, type Component } from 'vue';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
@@ -13,45 +14,72 @@ type RendererOptions = { merge?: boolean };
 
 /** A bare, all-mocked `ThreadRuntime` for components that only need the shape, not real behaviour. */
 export function makeThread(): ThreadRuntime {
-	return reactive({
+	const thread = reactive({
 		id: 'thread-1',
 		messages: [] as InstanceAiMessage[],
+		get artifactTurns() {
+			return toArtifactTurns(this.messages);
+		},
 		hasMessages: false,
 		sseState: 'connected',
 		isStreaming: false,
 		isSendingMessage: false,
 		isAwaitingConfirmation: false,
+		hydrationStatus: 'ready',
 		isHydratingThread: false,
 		amendContext: null,
-		pendingPlanReview: null,
-		updatingPlanRequestIds: new Set<string>(),
 		contextualSuggestion: null,
 		currentTasks: null,
 		producedArtifacts: new Map(),
+		producedArtifactOrigins: new Map(),
+		setupItemsByWorkflowId: {},
+		projectId: 'thread-project',
 		resourceNameIndex: new Map(),
 		linkableResourceNameIndex: new Map(),
+		activeArtifactId: undefined,
+		setActiveArtifactId: vi.fn(),
+		setOpenTabs: vi.fn(),
 		feedbackByResponseId: {},
 		rateableResponseId: null,
 		pendingConfirmations: [],
 		resolvedConfirmationIds: new Map(),
 		debugEvents: [],
+		pendingWorkflowAttachment: null as {
+			type: 'workflow';
+			id: string;
+			name?: string;
+			executionId?: string;
+		} | null,
+		setPendingWorkflowAttachment: vi.fn(),
+		clearPendingWorkflowAttachment: vi.fn(),
+		applyEvent: vi.fn(),
 		loadHistoricalMessages: vi.fn().mockResolvedValue('applied'),
 		loadThreadStatus: vi.fn().mockResolvedValue(undefined),
 		connectSSE: vi.fn(),
 		closeSSE: vi.fn(),
+		registerSetupChatTelemetryContext: vi.fn(() => vi.fn()),
 		sendMessage: vi.fn().mockResolvedValue(true),
 		cancelRun: vi.fn().mockResolvedValue(undefined),
 		resolveConfirmation: vi.fn(),
 		confirmAction: vi.fn().mockResolvedValue(true),
-		requestPlanChanges: vi.fn().mockResolvedValue(true),
 		copyFullTrace: vi.fn(),
 		submitFeedback: vi.fn(),
-	}) as unknown as ThreadRuntime;
+	});
+	thread.setActiveArtifactId = vi.fn((id) => {
+		thread.activeArtifactId = id;
+	});
+	thread.setPendingWorkflowAttachment = vi.fn((value) => {
+		thread.pendingWorkflowAttachment = value;
+	});
+	thread.clearPendingWorkflowAttachment = vi.fn(() => {
+		thread.pendingWorkflowAttachment = null;
+	});
+	return thread as unknown as ThreadRuntime;
 }
 
 export const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
 	enabled: true,
-	localGatewayDisabled: false,
+	mcpConnectionsAvailable: true,
 	browserUseEnabled: true,
 	proxyEnabled: false,
 	cloudManaged: false,
@@ -59,6 +87,8 @@ export const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance
 	workflowBuilderAvailable: true,
 	sandboxUnavailableReason: null,
 	runDebugEnabled: false,
+	workflowSuggestionsEnabled: false,
+	assistantAgentEnabled: false,
 };
 
 // Shared mutable fixtures the stub below reads from — tests reset them in `beforeEach`
@@ -66,7 +96,6 @@ export const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance
 export const inputState = { initialDraft: '', hasAttachments: false };
 export const inputFocusSpy = vi.fn();
 export const inputSetTextSpy = vi.fn();
-export const planEditSubmitState = { message: 'Make the plan simpler' };
 
 /** Fake `InstanceAiInput` exposing the same surface real callers rely on (focus/setText/…). */
 export const InstanceAiInputStub = defineComponent({
@@ -74,10 +103,16 @@ export const InstanceAiInputStub = defineComponent({
 	props: {
 		suggestions: { type: Array, required: false },
 		isStreaming: { type: Boolean, required: false },
-		isAwaitingPlanReview: { type: Boolean, required: false },
 		isSubmitting: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 		contextChip: { type: Object, required: false },
+		placeholderKey: { type: String, required: false },
+		mentionsEnabled: { type: Boolean, required: false },
+		mentionProjectId: { type: String, required: false },
+		mentionArtifacts: { type: Array, required: false },
+		mentionActiveWorkflowId: { type: String, required: false },
+		reservedAttachmentCount: { type: Number, required: false },
+		isOutOfCredits: { type: Boolean, required: false },
 	},
 	emits: ['submit', 'dismiss-context-chip'],
 	setup(props, { emit, expose }) {
@@ -116,11 +151,6 @@ export const InstanceAiInputStub = defineComponent({
 				props.suggestions === undefined ? 'unset' : String(props.suggestions.length),
 				h(
 					'span',
-					{ 'data-test-id': 'instance-ai-input-mode' },
-					props.isAwaitingPlanReview ? 'plan-review' : 'normal',
-				),
-				h(
-					'span',
 					{ 'data-test-id': 'instance-ai-input-busy' },
 					props.isSubmitting ? 'busy' : 'idle',
 				),
@@ -139,7 +169,17 @@ export const InstanceAiInputStub = defineComponent({
 					{ 'data-test-id': 'instance-ai-input-context-chip-icon' },
 					props.contextChip?.icon ?? '',
 				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-placeholder-key' },
+					props.placeholderKey ?? 'unset',
+				),
 				h('span', { 'data-test-id': 'instance-ai-input-draft' }, inputDraft.value),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-out-of-credits' },
+					String(Boolean(props.isOutOfCredits)),
+				),
 				h(
 					'span',
 					{ 'data-test-id': 'instance-ai-input-attachments' },
@@ -168,9 +208,7 @@ export const InstanceAiInputStub = defineComponent({
 					{
 						'data-test-id': 'instance-ai-input-submit',
 						onClick: () => {
-							const message = props.isAwaitingPlanReview
-								? planEditSubmitState.message
-								: inputDraft.value || 'Normal message';
+							const message = inputDraft.value || 'Normal message';
 							const submittedHasAttachments = hasAttachments.value;
 							const authorship = resolveAuthorship(message);
 							const submittedPrefill = activePrefill.value;

@@ -1,18 +1,23 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import dateformat from 'dateformat';
 import { useI18n } from '@n8n/i18n';
-import { N8nText, N8nLoading, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { useToast } from '@n8n/composables/useToast';
+import { N8nText, N8nLoading, N8nIcon, N8nTooltip, N8nButton } from '@n8n/design-system';
 import type { PublishTimelineEvent } from '@n8n/rest-api-client/api/workflowHistory';
+import { formatPublicationDuration } from '@/app/utils/publicationHistoryUtils';
+import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { formatTimestamp, generateVersionLabelFromId } from '../utils';
 import WorkflowHistoryPublishedTooltip from './WorkflowHistoryPublishedTooltip.vue';
+import WorkflowVersionEngineBadge from './WorkflowVersionEngineBadge.vue';
 import type { WorkflowHistoryVersionStatus } from '../types';
 
 /** Brief unpublished gaps shorter than this are version-change artefacts, not real deactivations */
 const TRANSIENT_DEACTIVATION_MS = 2000;
 /** Adoption point for publish-timeline tracking — older events may be incomplete */
 const ADOPTION_VERSION = { major: 2, minor: 17, patch: 0 } as const;
+const PAGE_SIZE = 100;
 
 const props = defineProps<{
 	workflowId: string;
@@ -24,11 +29,19 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const workflowHistoryStore = useWorkflowHistoryStore();
 
 const isLoading = ref(true);
+const isLoadingMore = ref(false);
+const hasLoadError = ref(false);
+const hasMore = ref(false);
 const events = ref<PublishTimelineEvent[]>([]);
+const fetchedCount = ref(0);
 const adoptionDate = ref<Date | null>(null);
+const contentElement = ref<HTMLElement | null>(null);
+const loadMoreSentinel = ref<HTMLElement | null>(null);
+let disposed = false;
 
 type EntryStatus = 'published' | 'unpublished';
 
@@ -42,6 +55,7 @@ type TimelineEntry = {
 	isClickable: boolean;
 	isSelected: boolean;
 	isDeletedVersion: boolean;
+	settings: PublishTimelineEvent['settings'];
 	title: string;
 	durationLabel: string;
 	shortDate: string;
@@ -67,27 +81,15 @@ const formatShortDate = (date: Date) => {
 	return dateformat(date, format);
 };
 
-const formatDuration = (start: Date, end: Date | null) => {
-	const ms = (end ?? new Date()).getTime() - start.getTime();
-	const seconds = Math.floor(ms / 1000);
-	const minutes = Math.floor(seconds / 60);
-	const hours = Math.floor(minutes / 60);
-	const days = Math.floor(hours / 24);
-
-	if (days > 0) return `${days}d ${hours % 24}h`;
-	if (hours > 0) {
-		const remMin = minutes % 60;
-		return remMin > 0 ? `${hours}h ${remMin}m` : `${hours}h`;
-	}
-	if (minutes > 0) return `${minutes}m`;
-	return `${seconds}s`;
-};
-
 // ---- entry construction ------------------------------------------------
 
 const titleFor = (event: PublishTimelineEvent): string => {
 	if (event.event === 'deactivated') {
-		return i18n.baseText('workflowHistory.publishTimeline.event.deactivated');
+		return event.versionName
+			? i18n.baseText('workflowHistory.publishTimeline.event.deactivatedVersion', {
+					interpolate: { version: event.versionName },
+				})
+			: i18n.baseText('workflowHistory.publishTimeline.event.deactivated');
 	}
 	if (!event.versionId) {
 		return i18n.baseText('workflowHistory.publishTimeline.event.activatedDeletedVersion');
@@ -101,11 +103,10 @@ const titleFor = (event: PublishTimelineEvent): string => {
 };
 
 const tooltipLabelFor = (event: PublishTimelineEvent): string => {
-	if (event.event === 'deactivated') {
-		return i18n.baseText('workflowHistory.publishTimeline.event.deactivated');
-	}
 	if (!event.versionId) {
-		return i18n.baseText('workflowHistory.publishTimeline.event.activatedDeletedVersion');
+		return event.event === 'deactivated'
+			? i18n.baseText('workflowHistory.publishTimeline.event.deactivated')
+			: i18n.baseText('workflowHistory.publishTimeline.event.activatedDeletedVersion');
 	}
 	return event.versionName ?? generateVersionLabelFromId(event.versionId);
 };
@@ -137,7 +138,7 @@ const buildEntry = (
 	const status: EntryStatus = event.event === 'activated' ? 'published' : 'unpublished';
 	const startedAt = new Date(event.createdAt);
 	const endedAt = next ? new Date(next.createdAt) : null;
-	const versionId = status === 'published' ? event.versionId : null;
+	const versionId = event.versionId;
 	const user = event.user ? `${event.user.firstName} ${event.user.lastName}` : null;
 	const isLatest = !next;
 	const durationKey =
@@ -152,12 +153,13 @@ const buildEntry = (
 		versionId,
 		user,
 		isLatest,
-		isClickable: status === 'published' && !!versionId,
+		isClickable: !!versionId,
 		isSelected: !!versionId && versionId === props.selectedVersionId,
 		isDeletedVersion: status === 'published' && !versionId,
+		settings: event.settings,
 		title: titleFor(event),
 		durationLabel: i18n.baseText(durationKey, {
-			interpolate: { duration: formatDuration(startedAt, endedAt) },
+			interpolate: { duration: formatPublicationDuration(startedAt, endedAt ?? new Date()) },
 		}),
 		shortDate: formatShortDate(startedAt),
 		tooltipLabel: tooltipLabelFor(event),
@@ -181,7 +183,7 @@ const entries = computed<TimelineEntry[]>(() =>
 );
 
 const showDeletedVersionsDisclaimer = computed(() => {
-	if (adoptionDate.value === null) return false;
+	if (adoptionDate.value === null || hasMore.value) return false;
 	const adoptionTime = adoptionDate.value.getTime();
 	return events.value.some((e) => new Date(e.createdAt).getTime() < adoptionTime);
 });
@@ -196,27 +198,90 @@ const handleSelect = (entry: TimelineEntry) => {
 	if (entry.versionId) emit('selectVersion', entry.versionId);
 };
 
+const oldestFirst = (a: PublishTimelineEvent, b: PublishTimelineEvent) =>
+	new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() || a.id - b.id;
+
+const fetchNextPage = async () => {
+	const page = await workflowHistoryStore.getPublishTimeline(props.workflowId, {
+		take: PAGE_SIZE,
+		skip: fetchedCount.value,
+	});
+	if (disposed) return;
+	fetchedCount.value += page.length;
+	hasMore.value = page.length === PAGE_SIZE;
+	// A publish while scrolling shifts the pages, so they can overlap.
+	const loadedIds = new Set(events.value.map(({ id }) => id));
+	events.value = [...events.value, ...page.filter(({ id }) => !loadedIds.has(id))].sort(
+		oldestFirst,
+	);
+};
+
 const loadTimeline = async () => {
+	if (disposed) return;
 	isLoading.value = true;
+	hasLoadError.value = false;
 	try {
-		const [timelineEvents, firstAdoptionDate] = await Promise.all([
-			workflowHistoryStore.getPublishTimeline(props.workflowId),
+		const [, firstAdoptionDate] = await Promise.all([
+			fetchNextPage(),
 			workflowHistoryStore.getVersionFirstAdoptionDate(ADOPTION_VERSION).catch(() => null),
 		]);
-		adoptionDate.value = firstAdoptionDate ? new Date(firstAdoptionDate) : null;
-		events.value = timelineEvents;
+		if (!disposed) {
+			adoptionDate.value = firstAdoptionDate ? new Date(firstAdoptionDate) : null;
+		}
+	} catch (error) {
+		if (!disposed) {
+			hasLoadError.value = true;
+			toast.showError(error, i18n.baseText('workflowHistory.title'));
+		}
 	} finally {
-		isLoading.value = false;
+		if (!disposed) isLoading.value = false;
 	}
 };
 
+const loadMore = async () => {
+	if (disposed || isLoadingMore.value || !hasMore.value) return;
+	isLoadingMore.value = true;
+	hasLoadError.value = false;
+	try {
+		await fetchNextPage();
+	} catch (error) {
+		if (!disposed) {
+			hasLoadError.value = true;
+			toast.showError(error, i18n.baseText('workflowHistory.title'));
+		}
+	} finally {
+		if (!disposed) isLoadingMore.value = false;
+	}
+};
+
+const retry = async () => {
+	if (disposed || isLoading.value || isLoadingMore.value) return;
+	if (fetchedCount.value === 0) await loadTimeline();
+	else await loadMore();
+};
+
+const { observe: observeForLoadMore } = useIntersectionObserver({
+	root: contentElement,
+	onIntersect: async () => await loadMore(),
+	// Keep observing so a later scroll can retry a failed page.
+	once: false,
+});
+
+watch([loadMoreSentinel, hasMore, fetchedCount], ([sentinel, canLoadMore]) => {
+	if (sentinel && canLoadMore) observeForLoadMore(sentinel);
+});
+
 onMounted(loadTimeline);
+
+onBeforeUnmount(() => {
+	disposed = true;
+});
 </script>
 
 <template>
-	<div :class="$style.content">
+	<div ref="contentElement" :class="$style.content">
 		<N8nLoading v-if="isLoading" :rows="4" />
-		<div v-else-if="entries.length === 0" :class="$style.empty">
+		<div v-else-if="entries.length === 0 && !hasMore && !hasLoadError" :class="$style.empty">
 			<N8nText size="small" color="text-light">
 				{{ i18n.baseText('workflowHistory.publishTimeline.empty') }}
 			</N8nText>
@@ -247,10 +312,11 @@ onMounted(loadTimeline);
 							<span
 								:class="[
 									$style.timelineLine,
-									idx === 0 && entry.status !== 'published' && $style.timelineLineHidden,
+									$style.timelineLineAbove,
+									idx === 0 && $style.timelineLineHidden,
 								]"
 							/>
-							<span v-if="entry.status === 'unpublished'" :class="$style.timelineMarker">
+							<span v-if="entry.status === 'unpublished'" :class="$style.timelineUnpublished">
 								<N8nIcon icon="x" size="small" />
 							</span>
 							<span
@@ -260,12 +326,25 @@ onMounted(loadTimeline);
 									entry.isLatest ? $style.dotPublished : $style.dotPastPublished,
 								]"
 							/>
+							<span
+								:class="[
+									$style.timelineLine,
+									$style.timelineLineBelow,
+									idx === entries.length - 1 && $style.timelineLineHidden,
+								]"
+							/>
 						</div>
 						<div :class="$style.timelineContent">
 							<div :class="$style.durationRow">
 								<N8nText size="xsmall" color="text-base">
 									{{ entry.durationLabel }}
 								</N8nText>
+								<WorkflowVersionEngineBadge
+									v-if="entry.versionId"
+									:settings="entry.settings"
+									size="xxsmall"
+									:class="$style.engineBadge"
+								/>
 							</div>
 							<div :class="$style.timelineHeader">
 								<div :class="$style.timelineTitle">
@@ -297,6 +376,17 @@ onMounted(loadTimeline);
 					</div>
 				</WorkflowHistoryPublishedTooltip>
 			</div>
+			<div v-if="hasMore" ref="loadMoreSentinel" :class="$style.sentinel" aria-hidden="true" />
+			<N8nLoading v-if="isLoadingMore" :rows="1" />
+			<N8nButton
+				v-if="hasLoadError"
+				variant="outline"
+				size="small"
+				:disabled="isLoading || isLoadingMore"
+				@click="retry"
+			>
+				{{ i18n.baseText('generic.retry') }}
+			</N8nButton>
 			<N8nTooltip
 				v-if="showDeletedVersionsDisclaimer"
 				placement="top"
@@ -328,6 +418,10 @@ onMounted(loadTimeline);
 	padding: var(--spacing--2xs);
 }
 
+.sentinel {
+	height: 1px;
+}
+
 .empty {
 	display: flex;
 	align-items: center;
@@ -343,9 +437,20 @@ onMounted(loadTimeline);
 }
 
 .timelineItem {
+	// The vertical padding of the item. The timeline line spans it.
+	--timeline-item-padding: var(--spacing--xs);
+	// Fixed row heights keep rows with and without the engine badge the same height.
+	--timeline-row-height: var(--height--2xs);
+	--timeline-header-height: var(--timeline-row-height);
+	--timeline-marker-size: 12px;
+	// Centers the marker on the header row.
+	--timeline-indicator-padding: calc(
+		(var(--timeline-header-height) - var(--timeline-marker-size)) / 2
+	);
+
 	display: flex;
 	gap: var(--spacing--xs);
-	padding: var(--spacing--xs) var(--spacing--2xs);
+	padding: var(--timeline-item-padding) var(--spacing--2xs);
 	border-radius: var(--radius);
 
 	&.timelineItemClickable {
@@ -369,7 +474,8 @@ onMounted(loadTimeline);
 	align-items: center;
 	flex-shrink: 0;
 	width: 11px;
-	padding-bottom: 3px;
+	position: relative;
+	padding-bottom: var(--timeline-indicator-padding);
 }
 
 .timelineDot {
@@ -387,20 +493,35 @@ onMounted(loadTimeline);
 	border: var(--border-width) solid var(--color--text--tint-2);
 }
 
-.timelineMarker {
+.timelineUnpublished {
 	display: flex;
-	place-content: center;
-	width: 13px;
-	height: 13px;
+	align-items: center;
+	justify-content: center;
 	flex-shrink: 0;
+	width: var(--timeline-marker-size);
+	height: var(--timeline-marker-size);
 	color: var(--color--warning);
 }
 
 .timelineLine {
-	flex: 1;
-	width: 1px;
-	min-height: var(--spacing--2xs);
+	width: var(--border-width);
 	background-color: var(--color--foreground);
+
+	// Runs up through the item's top padding, to meet the line of the item above.
+	&.timelineLineAbove {
+		flex: 1;
+		margin-top: calc((-1 * var(--timeline-item-padding)));
+	}
+
+	// Runs down through the item's bottom padding, to meet the line of the item below.
+	&.timelineLineBelow {
+		position: absolute;
+		top: calc(100% - var(--timeline-indicator-padding));
+		left: 0;
+		right: 0;
+		margin-inline: auto;
+		height: calc(var(--timeline-item-padding) + var(--timeline-indicator-padding));
+	}
 
 	&.timelineLineHidden {
 		visibility: hidden;
@@ -419,6 +540,7 @@ onMounted(loadTimeline);
 .timelineHeader {
 	display: flex;
 	align-items: center;
+	min-height: var(--timeline-header-height);
 	gap: var(--spacing--2xs);
 }
 
@@ -450,8 +572,13 @@ onMounted(loadTimeline);
 .durationRow {
 	display: flex;
 	align-items: center;
+	min-height: var(--timeline-row-height);
 	gap: var(--spacing--4xs);
 	color: var(--color--text--tint-2);
+}
+
+.engineBadge {
+	margin-left: auto;
 }
 
 .deletedVersionsDisclaimer {

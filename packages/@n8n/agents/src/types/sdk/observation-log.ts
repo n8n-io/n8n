@@ -1,5 +1,6 @@
 import type { AgentExecutionCounter, TokenUsage } from './agent';
 import type { AgentDbMessage } from './message';
+import type { ObservationCursor } from './observation';
 import type { BuiltTelemetry } from '../telemetry';
 
 export const OBSERVATION_LOG_MARKERS = ['critical', 'important', 'info', 'completion'] as const;
@@ -40,6 +41,22 @@ export interface NewObservationLogEntry extends ObservationLogScope {
 	tokenCount?: number;
 	createdAt?: Date;
 }
+
+export interface ObservationLogBatchEntry {
+	marker: ObservationLogMarker;
+	text: string;
+	parentIndex: number | null;
+	tokenCount: number;
+	createdAt: Date;
+}
+
+export interface ObservationLogBatch extends ObservationLogScope {
+	expectedCursor: ObservationCursor | null;
+	nextCursor: ObservationCursor;
+	entries: ObservationLogBatchEntry[];
+}
+
+export type ObservationLogBatchCommitResult = 'committed' | 'stale';
 
 export interface ObservationLogReadOptions extends ObservationLogScope {
 	status?: ObservationLogStatus;
@@ -85,9 +102,29 @@ export interface ObservationLogObserverInput {
 	renderedObservationLogTail: string | null;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	/** The agent's model transport (`AgentRuntimeConfig.modelFetch`), for the task's own model call. */
+	modelFetch?: typeof globalThis.fetch;
+	/** The agent's caller identity (`AgentRuntimeConfig.functionId`), for the task's request header. */
+	functionId?: string;
 }
 
-export type ObservationLogObserveFn = (input: ObservationLogObserverInput) => Promise<string>;
+/** Return observation bullets, or exactly NO_OBSERVATIONS when the batch has no new facts. */
+export interface ObservationLogObserveResult {
+	text: string;
+	/** Normalized token usage from the observer LLM call, when the provider reports it. */
+	usage?: TokenUsage;
+	/** Stable model id string of the model that produced the result. */
+	model: string;
+}
+
+/**
+ * Observe the transcript delta. Returns the observation markdown, or a
+ * `{ text, usage, model }` result that also carries token usage for the host
+ * to price. String returns are accepted for backward compatibility.
+ */
+export type ObservationLogObserveFn = (
+	input: ObservationLogObserverInput,
+) => Promise<string | ObservationLogObserveResult>;
 
 export interface ObservationLogReflectorInput {
 	observationScopeId: string;
@@ -98,9 +135,29 @@ export interface ObservationLogReflectorInput {
 	tokenBudget: number;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	/** The agent's model transport (`AgentRuntimeConfig.modelFetch`), for the task's own model call. */
+	modelFetch?: typeof globalThis.fetch;
+	/** The agent's caller identity (`AgentRuntimeConfig.functionId`), for the task's request header. */
+	functionId?: string;
 }
 
-export type ObservationLogReflectFn = (input: ObservationLogReflectorInput) => Promise<string>;
+export interface ObservationLogReflectResult {
+	/** JSON string with `drop` and `merge` arrays, using the references supplied in the input. */
+	text: string;
+	/** Normalized token usage from the reflector LLM call, when the provider reports it. */
+	usage?: TokenUsage;
+	/** Stable model id string of the model that produced the result. */
+	model: string;
+}
+
+/**
+ * Reflect the active observation log. Returns the reflection JSON, or a
+ * `{ text, usage, model }` result that also carries token usage for the host
+ * to price. String returns are accepted for backward compatibility.
+ */
+export type ObservationLogReflectFn = (
+	input: ObservationLogReflectorInput,
+) => Promise<string | ObservationLogReflectResult>;
 
 /** Reported after an observation-log observer/reflector LLM call completes, for hosts that meter usage. */
 export interface MemoryTaskUsageReport {
@@ -113,6 +170,7 @@ export interface MemoryTaskUsageReport {
 }
 
 export interface BuiltObservationLogStore {
+	commitObservationLogBatch(batch: ObservationLogBatch): Promise<ObservationLogBatchCommitResult>;
 	appendObservationLogEntries(rows: NewObservationLogEntry[]): Promise<ObservationLogEntry[]>;
 	getActiveObservationLog(
 		scope: ObservationLogScope & { limit?: number; order?: 'asc' | 'desc' },
