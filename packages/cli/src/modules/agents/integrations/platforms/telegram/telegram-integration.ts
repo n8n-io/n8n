@@ -20,6 +20,7 @@ import {
 	type BridgeExecutionContext,
 	type BridgeMessageContextParams,
 	type BridgeResumeExecutionContext,
+	type VerifiedSender,
 } from '../../agent-chat-integration';
 import type { SuspendComponent } from '../../component-mapper';
 import { assertCredentialNotClaimed } from '../../credential-claim';
@@ -283,14 +284,29 @@ export class TelegramIntegration extends AgentChatIntegration {
 	}
 
 	/**
-	 * Enforce the Private-mode allowlist. Public mode (or legacy connections
-	 * without saved settings) accepts every Telegram user; Private mode only
-	 * accepts senders whose numeric user ID or username appears in `allowedUsers`.
-	 * Stored values may carry a leading "@" (saved verbatim from user input), so
-	 * they are normalized by stripping "@" before comparison. The SDK delivers
-	 * both userId and userName without "@".
+	 * The sender from the raw update (a message or a callback query). Returns
+	 * `undefined` when a chat sends on behalf of itself (`sender_chat`: channel
+	 * posts, send-as-channel, anonymous admins) or when no user is present.
 	 */
-	isUserAllowed(author: Author, integration: AgentIntegrationConfig | undefined): boolean {
+	verifiedSender(raw: unknown): VerifiedSender | undefined {
+		if (!isRecord(raw) || raw.sender_chat !== undefined || !isRecord(raw.from)) return undefined;
+		const { id, username } = raw.from;
+		if (typeof id !== 'number') return undefined;
+		return { userId: String(id), userName: typeof username === 'string' ? username : undefined };
+	}
+
+	/**
+	 * Enforce the Private-mode allowlist. Public mode (or legacy connections
+	 * without saved settings) accepts every Telegram user. Private mode only
+	 * accepts a {@link verifiedSender}: numeric entries match the user ID, other
+	 * entries match the Telegram username (case-insensitive, leading "@"
+	 * optional).
+	 */
+	isUserAllowed(
+		_author: Author,
+		integration: AgentIntegrationConfig | undefined,
+		sender?: VerifiedSender,
+	): boolean {
 		if (!integration) return true;
 		if (integration?.type !== 'telegram') {
 			throw new UnexpectedError(
@@ -300,9 +316,12 @@ export class TelegramIntegration extends AgentChatIntegration {
 		if (!integration.settings) return true;
 
 		if (integration.settings.accessMode === 'public') return true;
+		if (!sender) return false;
+		const userName = sender.userName?.toLowerCase();
 		return integration.settings.allowedUsers.some((allowed) => {
-			const normalized = allowed.startsWith('@') ? allowed.slice(1) : allowed;
-			return normalized === author.userId || normalized === author.userName;
+			const entry = allowed.startsWith('@') ? allowed.slice(1) : allowed;
+			if (/^\d+$/.test(entry)) return entry === sender.userId;
+			return userName !== undefined && entry.toLowerCase() === userName;
 		});
 	}
 

@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { searchDriveItems } from '../../helpers/graphSearch';
 import { resolveSiteId } from '../../site';
@@ -47,7 +48,7 @@ export async function getFolders(
 	const siteId = paginationToken ? '' : await resolveSiteId.call(this, 0);
 
 	return await searchDriveItems.call(this, {
-		endpoint: `/v1.0/sites/${encodeURIComponent(siteId)}/drive/items`,
+		endpoint: paginationToken ? requestPath`` : requestPath`/v1.0/sites/${siteId}/drive/items`,
 		qs: {
 			$select: 'id,name,folder',
 			// `folder` isn't a documented filterable property, so the reply is

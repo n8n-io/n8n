@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { requestPath, requestUrl } from 'n8n-workflow';
 
 import { sortLoadOptions } from '../helpers/utils';
 import { googleApiRequest } from '../transport';
@@ -8,10 +9,10 @@ export async function getDimensions(this: ILoadOptionsFunctions): Promise<INodeP
 	const { items: dimensions } = await googleApiRequest.call(
 		this,
 		'GET',
-		'',
+		requestPath``,
 		{},
 		{},
-		'https://www.googleapis.com/analytics/v3/metadata/ga/columns',
+		requestUrl`https://www.googleapis.com/analytics/v3/metadata/ga/columns`,
 	);
 
 	for (const dimension of dimensions) {
@@ -31,10 +32,10 @@ export async function getMetrics(this: ILoadOptionsFunctions): Promise<INodeProp
 	const { items: metrics } = await googleApiRequest.call(
 		this,
 		'GET',
-		'',
+		requestPath``,
 		{},
 		{},
-		'https://www.googleapis.com/analytics/v3/metadata/ga/columns',
+		requestUrl`https://www.googleapis.com/analytics/v3/metadata/ga/columns`,
 	);
 
 	for (const metric of metrics) {
@@ -54,10 +55,10 @@ export async function getViews(this: ILoadOptionsFunctions): Promise<INodeProper
 	const { items } = await googleApiRequest.call(
 		this,
 		'GET',
-		'',
+		requestPath``,
 		{},
 		{},
-		'https://www.googleapis.com/analytics/v3/management/accounts/~all/webproperties/~all/profiles',
+		requestUrl`https://www.googleapis.com/analytics/v3/management/accounts/~all/webproperties/~all/profiles`,
 	);
 
 	for (const item of items) {
@@ -77,20 +78,20 @@ export async function getProperties(this: ILoadOptionsFunctions): Promise<INodeP
 	const { accounts } = await googleApiRequest.call(
 		this,
 		'GET',
-		'',
+		requestPath``,
 		{},
 		{},
-		'https://analyticsadmin.googleapis.com/v1alpha/accounts',
+		requestUrl`https://analyticsadmin.googleapis.com/v1alpha/accounts`,
 	);
 
 	for (const acount of accounts || []) {
 		const { properties } = await googleApiRequest.call(
 			this,
 			'GET',
-			'',
+			requestPath``,
 			{},
 			{ filter: `parent:${acount.name}` },
-			'https://analyticsadmin.googleapis.com/v1alpha/properties',
+			requestUrl`https://analyticsadmin.googleapis.com/v1alpha/properties`,
 		);
 
 		if (properties && properties.length > 0) {
@@ -114,7 +115,7 @@ export async function getDimensionsGA4(
 	const { dimensions } = await googleApiRequest.call(
 		this,
 		'GET',
-		`/v1beta/properties/${propertyId}/metadata`,
+		requestPath`/v1beta/properties/${propertyId}/metadata`,
 		{},
 		{ fields: 'dimensions' },
 	);
@@ -137,7 +138,7 @@ export async function getMetricsGA4(this: ILoadOptionsFunctions): Promise<INodeP
 	const { metrics } = await googleApiRequest.call(
 		this,
 		'GET',
-		`/v1beta/properties/${propertyId}/metadata`,
+		requestPath`/v1beta/properties/${propertyId}/metadata`,
 		{},
 		{ fields: 'metrics' },
 	);

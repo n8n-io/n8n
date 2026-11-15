@@ -1,8 +1,13 @@
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import type { Context } from '../GenericFunctions';
-import { todoistApiGetAllRequest, todoistSyncRequest } from '../GenericFunctions';
+import {
+	todoistApiGetAllRequest,
+	todoistApiRequest,
+	todoistSyncRequest,
+} from '../GenericFunctions';
 
 const createMockContext = (typeVersion: number = 2.2) => {
 	const mockRequestWithAuth = vi.fn();
@@ -38,7 +43,7 @@ describe('GenericFunctions', () => {
 			await todoistSyncRequest.call(ctx, { commands: [] });
 
 			const calledOptions = mockRequestWithAuth.mock.calls[0][2];
-			expect(calledOptions.uri).toBe('https://api.todoist.com/api/v1/sync');
+			expect(calledOptions.uri.value).toBe('https://api.todoist.com/api/v1/sync');
 		});
 
 		it('should use sync/v9 endpoint for node version < 2.2', async () => {
@@ -48,17 +53,32 @@ describe('GenericFunctions', () => {
 			await todoistSyncRequest.call(ctx, { commands: [] });
 
 			const calledOptions = mockRequestWithAuth.mock.calls[0][2];
-			expect(calledOptions.uri).toBe('https://api.todoist.com/sync/v9/sync');
+			expect(calledOptions.uri.value).toBe('https://api.todoist.com/sync/v9/sync');
 		});
 
 		it('should use api/v1 endpoint for quick/add on version >= 2.2', async () => {
 			const { ctx, mockRequestWithAuth } = createMockContext(2.2);
 			mockRequestWithAuth.mockResolvedValue({});
 
-			await todoistSyncRequest.call(ctx, { text: 'test' }, {}, '/quick/add');
+			await todoistSyncRequest.call(ctx, { text: 'test' }, {}, requestPath`/quick/add`);
 
 			const calledOptions = mockRequestWithAuth.mock.calls[0][2];
-			expect(calledOptions.uri).toBe('https://api.todoist.com/api/v1/quick/add');
+			expect(calledOptions.uri.value).toBe('https://api.todoist.com/api/v1/quick/add');
+		});
+	});
+
+	describe('todoistApiRequest', () => {
+		it('should encode path values as one segment', async () => {
+			const { ctx, mockRequestWithAuth } = createMockContext(2.2);
+			mockRequestWithAuth.mockResolvedValue({});
+
+			const id = '6X7rM8997g3RQmvh/close?x=1';
+			await todoistApiRequest.call(ctx, 'GET', requestPath`/tasks/${id}`);
+
+			const calledOptions = mockRequestWithAuth.mock.calls[0][2];
+			expect(calledOptions.uri.value).toBe(
+				'https://api.todoist.com/api/v1/tasks/6X7rM8997g3RQmvh%2Fclose%3Fx=1',
+			);
 		});
 	});
 
@@ -66,7 +86,7 @@ describe('GenericFunctions', () => {
 		describe('Legacy mode (node version < 2.2)', () => {
 			it('should fetch all items without pagination for version 2.0', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.0);
-				const resource = '/tasks';
+				const resource = requestPath`/tasks`;
 				const qs = { project_id: '123' };
 
 				const mockResponse = [
@@ -85,7 +105,7 @@ describe('GenericFunctions', () => {
 
 			it('should fetch all items without pagination for version 2.1', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.1);
-				const resource = '/tasks';
+				const resource = requestPath`/tasks`;
 				const qs = { project_id: '123' };
 
 				const mockResponse = [
@@ -104,7 +124,7 @@ describe('GenericFunctions', () => {
 
 			it('should apply limit when specified for old node versions', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.1);
-				const resource = '/tasks';
+				const resource = requestPath`/tasks`;
 				const qs = { project_id: '123' };
 				const limit = 2;
 
@@ -127,7 +147,7 @@ describe('GenericFunctions', () => {
 
 			it('should handle limit greater than available items', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.1);
-				const resource = '/tasks';
+				const resource = requestPath`/tasks`;
 				const limit = 10;
 
 				const mockResponse = [
@@ -145,7 +165,7 @@ describe('GenericFunctions', () => {
 
 			it('should handle empty response for old node versions', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.1);
-				const resource = '/tasks';
+				const resource = requestPath`/tasks`;
 
 				mockRequestWithAuth.mockResolvedValue([]);
 
@@ -157,7 +177,7 @@ describe('GenericFunctions', () => {
 
 			it('should handle query parameters correctly', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.0);
-				const resource = '/tasks';
+				const resource = requestPath`/tasks`;
 				const qs = { project_id: '456', filter: 'today' };
 
 				const mockResponse = [{ id: '1', content: 'Task 1' }];
@@ -172,7 +192,7 @@ describe('GenericFunctions', () => {
 
 			it('should work without query parameters', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.1);
-				const resource = '/projects';
+				const resource = requestPath`/projects`;
 
 				const mockResponse = [
 					{ id: '1', name: 'Project 1' },
@@ -191,7 +211,7 @@ describe('GenericFunctions', () => {
 		describe('Pagination mode (node version >= 2.2)', () => {
 			it('should fetch all items with pagination for version 2.2', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.2);
-				const resource = '/tasks';
+				const resource = requestPath`/tasks`;
 				const qs = { project_id: '123' };
 
 				const mockResponsePage1 = {
@@ -227,7 +247,7 @@ describe('GenericFunctions', () => {
 
 			it('should fetch all items with pagination for version greater then 2.2', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.3);
-				const resource = '/projects';
+				const resource = requestPath`/projects`;
 
 				const mockResponsePage1 = {
 					results: [{ id: '1', name: 'Project 1' }],
@@ -251,7 +271,7 @@ describe('GenericFunctions', () => {
 
 			it('should respect limit and stop fetching when limit is reached', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.2);
-				const resource = '/tasks';
+				const resource = requestPath`/tasks`;
 				const qs = { project_id: '123' };
 				const limit = 3;
 
@@ -287,7 +307,7 @@ describe('GenericFunctions', () => {
 
 			it('should handle single page response with no next cursor', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.2);
-				const resource = '/tasks';
+				const resource = requestPath`/tasks`;
 
 				const mockResponse = {
 					results: [
@@ -310,7 +330,7 @@ describe('GenericFunctions', () => {
 
 			it('should handle empty results array', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.2);
-				const resource = '/tasks';
+				const resource = requestPath`/tasks`;
 
 				const mockResponse = {
 					results: [],
@@ -327,7 +347,7 @@ describe('GenericFunctions', () => {
 
 			it('should handle response without results property', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.2);
-				const resource = '/tasks';
+				const resource = requestPath`/tasks`;
 
 				const mockResponse = {
 					next_cursor: null,
@@ -343,7 +363,7 @@ describe('GenericFunctions', () => {
 
 			it('should respect limit of 200 items per request', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.2);
-				const resource = '/tasks';
+				const resource = requestPath`/tasks`;
 				const limit = 250;
 
 				const mockResponsePage1 = {
@@ -368,7 +388,7 @@ describe('GenericFunctions', () => {
 
 			it('should handle multiple pages with different result sizes', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.2);
-				const resource = '/tasks';
+				const resource = requestPath`/tasks`;
 
 				const mockResponsePage1 = {
 					results: [{ id: '1' }, { id: '2' }],
@@ -405,7 +425,7 @@ describe('GenericFunctions', () => {
 
 			it('should stop pagination when limit is exactly reached', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.2);
-				const resource = '/tasks';
+				const resource = requestPath`/tasks`;
 				const limit = 2;
 
 				const mockResponsePage1 = {
@@ -423,7 +443,7 @@ describe('GenericFunctions', () => {
 
 			it('should handle limit of 0', async () => {
 				const { ctx, mockRequestWithAuth } = createMockContext(2.2);
-				const resource = '/tasks';
+				const resource = requestPath`/tasks`;
 				const limit = 0;
 
 				const result = await todoistApiGetAllRequest(ctx, resource, {}, limit);

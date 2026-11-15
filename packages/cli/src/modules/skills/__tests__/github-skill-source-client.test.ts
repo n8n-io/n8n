@@ -187,8 +187,24 @@ describe('GitHubSkillSourceClient', () => {
 				ok: true,
 			},
 			{
-				case: 'OAuth2',
-				credential: { type: 'githubOAuth2Api', data: { accessToken: 't' } },
+				case: 'a connected OAuth2 account',
+				credential: { type: 'githubOAuth2Api', data: { oauthTokenData: { access_token: 't' } } },
+				ok: true,
+			},
+			{
+				case: 'an OAuth2 account that is not connected yet',
+				credential: { type: 'githubOAuth2Api', data: {} },
+				ok: false,
+			},
+			{
+				case: 'OAuth2 for another GitHub server',
+				credential: {
+					type: 'githubOAuth2Api',
+					data: {
+						server: 'https://git.acme.dev/api/v3',
+						oauthTokenData: { access_token: 't' },
+					},
+				},
 				ok: false,
 			},
 			{ case: 'no token', credential: { type: 'githubApi', data: {} }, ok: false },

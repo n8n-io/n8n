@@ -1,0 +1,128 @@
+{
+	"name": "Medium Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "post",
+				"operation": "create",
+				"publication": true,
+				"publicationId": "5e3b1c9a2f4d",
+				"title": "Hello",
+				"contentFormat": "markdown",
+				"content": "# Hello"
+			},
+			"id": "medium-0",
+			"name": "Post Create In Publication",
+			"type": "n8n-nodes-base.medium",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"mediumApi": {
+					"id": "1",
+					"name": "Medium account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "post",
+				"operation": "create",
+				"title": "Hello",
+				"contentFormat": "markdown",
+				"content": "# Hello"
+			},
+			"id": "medium-1",
+			"name": "Post Create",
+			"type": "n8n-nodes-base.medium",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"mediumApi": {
+					"id": "1",
+					"name": "Medium account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "publication",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"id": "medium-2",
+			"name": "Publication Get Many",
+			"type": "n8n-nodes-base.medium",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"mediumApi": {
+					"id": "1",
+					"name": "Medium account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Post Create In Publication": [
+			{
+				"json": {
+					"data": {
+						"id": "e6f36a",
+						"title": "Hello"
+					}
+				}
+			}
+		],
+		"Post Create": [
+			{
+				"json": {
+					"id": "f7a47b",
+					"title": "Hello"
+				}
+			}
+		],
+		"Publication Get Many": [
+			{
+				"json": {
+					"id": "5e3b1c9a2f4d",
+					"name": "Acme Corp"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Post Create In Publication",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Post Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Publication Get Many",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

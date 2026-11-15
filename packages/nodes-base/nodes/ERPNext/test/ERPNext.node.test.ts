@@ -1,6 +1,7 @@
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
-import { mockDeep } from 'vitest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { ERPNext } from '../ERPNext.node';
 import * as GenericFunctions from '../GenericFunctions';
@@ -34,6 +35,7 @@ describe('ERPNext > document: getAll', () => {
 		node = new ERPNext();
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.1 }));
 		(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation(
 			(data: IDataObject | IDataObject[]) =>
 				(Array.isArray(data) ? data : [data]).map((json) => ({ json })),
@@ -58,7 +60,7 @@ describe('ERPNext > document: getAll', () => {
 		expect(result[0]).toEqual([{ json: { name: 'Customer A' } }]);
 		expect(GenericFunctions.erpNextApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/api/resource/Customer',
+			requestPath`/api/resource/Customer`,
 			{},
 			{ fields: JSON.stringify(['name']), limit_page_length: 10, limit_start: 0 },
 		);
@@ -71,7 +73,7 @@ describe('ERPNext > document: getAll', () => {
 
 		expect(GenericFunctions.erpNextApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/api/resource/Customer',
+			requestPath`/api/resource/Customer`,
 			{},
 			{ limit_page_length: 10, limit_start: 0 },
 		);
@@ -86,14 +88,14 @@ describe('ERPNext > document: getAll', () => {
 		expect(GenericFunctions.erpNextApiRequest).toHaveBeenNthCalledWith(
 			1,
 			'GET',
-			'/api/resource/Customer',
+			requestPath`/api/resource/Customer`,
 			{},
 			{ fields: JSON.stringify(['name']), limit_page_length: 10, limit_start: 0 },
 		);
 		expect(GenericFunctions.erpNextApiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			'/api/resource/Customer',
+			requestPath`/api/resource/Customer`,
 			{},
 			{ limit_page_length: 10, limit_start: 0 },
 		);
@@ -112,7 +114,7 @@ describe('ERPNext > document: getAll', () => {
 		expect(GenericFunctions.erpNextApiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			'/api/resource/Customer',
+			requestPath`/api/resource/Customer`,
 			{},
 			{ limit_page_length: 10, limit_start: 0 },
 		);
@@ -127,7 +129,7 @@ describe('ERPNext > document: getAll', () => {
 
 		expect(GenericFunctions.erpNextApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/api/resource/Customer',
+			requestPath`/api/resource/Customer`,
 			{},
 			expect.objectContaining({
 				filters: JSON.stringify([['Customer', 'first_name', '=', 'Jane']]),

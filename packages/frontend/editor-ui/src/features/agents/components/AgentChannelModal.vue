@@ -333,6 +333,10 @@ const showFooterActions = computed(
 const currentChannelCredentialId = computed(() =>
 	getChannelCredentialId(selectedChannelType.value),
 );
+/** A channel view can say that the channel runs without a credential. */
+const credentialMissing = computed(
+	() => channelViewRef.value?.credentialRequired !== false && !currentChannelCredentialId.value,
+);
 const headerText = computed(() => {
 	const isListMode = currentView.value === 'list';
 	const channel = selectedChannelType.value;
@@ -373,6 +377,12 @@ function connectAction(channelType: string) {
 		{ text: (key) => i18n.baseText(key) },
 		runtimeFor(channelType),
 	);
+}
+
+function listDescription(channelType: string): string | undefined {
+	return getAgentChannelPlatform(channelType).getListDescription?.({
+		text: (key) => i18n.baseText(key),
+	});
 }
 
 function goToSetup(channelType: string) {
@@ -464,18 +474,22 @@ async function writeChannelConfig(): Promise<boolean> {
 	if (actionInFlight.value) return false;
 	saveAttempted.value = true;
 	const channelType = selectedChannelType.value;
-	const credentialId = currentChannelCredentialId.value;
-	if (!channelType || !credentialId) return false;
+	// The lookup falls back to the connected credential. A channel that needs none
+	// (an API channel switched to none) must keep a cleared selection empty.
+	const credentialId =
+		channelType && channelViewRef.value?.credentialRequired === false
+			? (selectedCredentials.value[channelType] ?? '')
+			: currentChannelCredentialId.value;
+	if (!channelType || credentialMissing.value) return false;
 	if (channelViewRef.value?.validationError) return false;
 	if (!channelApprovalValid.value) return false;
 
 	// Swapping the credential of a configured channel is one request: the
 	// backend brings the new channel up, swaps both entries in a single write,
-	// and only then releases the old one.
+	// and only then releases the old one. The old credential can be '' for a
+	// channel that runs without one.
 	const credentialIdToReplace =
-		isEditMode.value &&
-		credentialIdAtEditOpen.value &&
-		credentialIdAtEditOpen.value !== credentialId
+		isEditMode.value && isConfigured(channelType) && credentialIdAtEditOpen.value !== credentialId
 			? credentialIdAtEditOpen.value
 			: undefined;
 
@@ -490,7 +504,9 @@ async function writeChannelConfig(): Promise<boolean> {
 			return false;
 		}
 		await connect(channelType, credentialId, channelViewRef.value?.currentSettings, {
-			...(credentialIdToReplace ? { replaces: { credentialId: credentialIdToReplace } } : {}),
+			...(credentialIdToReplace !== undefined
+				? { replaces: { credentialId: credentialIdToReplace } }
+				: {}),
 			// Only the edit view shows the approval control, so only it may carry one.
 			...(isEditMode.value && channelApproval.value ? { approval: channelApproval.value } : {}),
 		});
@@ -672,6 +688,7 @@ watch(
 						v-for="integration in channelList"
 						:key="integration.type"
 						:integration="integration"
+						:description="listDescription(integration.type)"
 						:configured="isConfigured(integration.type)"
 						:connected="isConnected(integration.type)"
 						:not-running="hasRuntimeError(integration.type)"
@@ -745,7 +762,7 @@ watch(
 					</template>
 				</component>
 				<N8nText
-					v-if="saveAttempted && !currentChannelCredentialId"
+					v-if="saveAttempted && credentialMissing"
 					size="small"
 					color="danger"
 					data-testid="agent-channel-credential-required"

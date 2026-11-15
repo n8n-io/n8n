@@ -10,7 +10,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import { CacheService } from '@n8n/backend-services';
+import { CacheService, ProjectScopeService } from '@n8n/backend-services';
 import type { Project } from '@n8n/db';
 import {
 	FolderRepository,
@@ -21,6 +21,7 @@ import {
 	RoleRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	UserRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -36,6 +37,7 @@ import { EntityNotFoundError } from '@n8n/typeorm';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { OwnershipService } from '@/services/ownership.service';
 import { createFolder } from '@test-integration/db/folders';
 
@@ -51,6 +53,7 @@ import {
 	createChatUser,
 	createMember,
 	createOwner,
+	createServiceAccountWithProject,
 	createUser,
 } from './shared/db/users';
 import * as utils from './shared/utils/';
@@ -543,6 +546,136 @@ describe('Project members endpoints', () => {
 			await ownerAgent.delete(`/projects/${project.id}/users/${disabledAdmin.id}`).expect(204);
 
 			expect(await getProjectRelations({ projectId: project.id })).toHaveLength(0);
+		});
+	});
+
+	describe('service accounts', () => {
+		/** Runs both project scope checks with the service account as the caller. */
+		async function checkScope(serviceAccountId: string, projectId: string, scope: Scope) {
+			const caller = await Container.get(UserRepository).findByIdWithRole(serviceAccountId);
+			return {
+				userHasScopes: await userHasScopes(caller!, [scope], false, { projectId }),
+				hasScopes: await Container.get(ProjectScopeService).hasScopes(caller!, projectId, [scope]),
+			};
+		}
+
+		test('POST /projects/:projectId/users adds a service account that then passes project scope checks', async () => {
+			const [admin, serviceAccount] = await Promise.all([
+				createAdmin(),
+				createServiceAccountWithProject(),
+			]);
+			const project = await createTeamProject('Team Project');
+
+			await testServer
+				.authAgentFor(admin)
+				.post(`/projects/${project.id}/users`)
+				.send({ relations: [{ userId: serviceAccount.id, role: 'project:editor' }] })
+				.expect(201);
+
+			const relations = await getProjectRelations({ projectId: project.id });
+			expect(relations.find((r) => r.userId === serviceAccount.id)?.role.slug).toBe(
+				'project:editor',
+			);
+			expect(await checkScope(serviceAccount.id, project.id, 'workflow:read')).toEqual({
+				userHasScopes: true,
+				hasScopes: true,
+			});
+		});
+
+		test("PATCH /projects/:projectId/users/:userId changes a service account's role and its project scopes", async () => {
+			const [admin, serviceAccount] = await Promise.all([
+				createAdmin(),
+				createServiceAccountWithProject(),
+			]);
+			const project = await createTeamProject('Team Project');
+			await linkUserToProject(serviceAccount, project, 'project:editor');
+			expect(await checkScope(serviceAccount.id, project.id, 'workflow:create')).toEqual({
+				userHasScopes: true,
+				hasScopes: true,
+			});
+
+			await testServer
+				.authAgentFor(admin)
+				.patch(`/projects/${project.id}/users/${serviceAccount.id}`)
+				.send({ role: 'project:viewer' })
+				.expect(204);
+
+			expect(await checkScope(serviceAccount.id, project.id, 'workflow:create')).toEqual({
+				userHasScopes: false,
+				hasScopes: false,
+			});
+			expect(await checkScope(serviceAccount.id, project.id, 'workflow:read')).toEqual({
+				userHasScopes: true,
+				hasScopes: true,
+			});
+		});
+
+		test('DELETE /projects/:projectId/users/:userId removes a service account that then fails project scope checks', async () => {
+			const [admin, serviceAccount] = await Promise.all([
+				createAdmin(),
+				createServiceAccountWithProject(),
+			]);
+			const project = await createTeamProject('Team Project');
+			await linkUserToProject(serviceAccount, project, 'project:editor');
+			expect(await checkScope(serviceAccount.id, project.id, 'workflow:read')).toEqual({
+				userHasScopes: true,
+				hasScopes: true,
+			});
+
+			await testServer
+				.authAgentFor(admin)
+				.delete(`/projects/${project.id}/users/${serviceAccount.id}`)
+				.expect(204);
+
+			const relations = await getProjectRelations({ projectId: project.id });
+			expect(relations.some((r) => r.userId === serviceAccount.id)).toBe(false);
+			expect(await checkScope(serviceAccount.id, project.id, 'workflow:read')).toEqual({
+				userHasScopes: false,
+				hasScopes: false,
+			});
+		});
+
+		test('GET /projects/:projectId shows the kind of each member', async () => {
+			const [admin, member, serviceAccount] = await Promise.all([
+				createAdmin(),
+				createMember(),
+				createServiceAccountWithProject(),
+			]);
+			const project = await createTeamProject('Team Project');
+			await linkUserToProject(member, project, 'project:editor');
+			await linkUserToProject(serviceAccount, project, 'project:editor');
+
+			const response = await testServer
+				.authAgentFor(admin)
+				.get(`/projects/${project.id}`)
+				.expect(200);
+
+			expect(response.body.data.relations).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ id: member.id, kind: 'person' }),
+					expect.objectContaining({ id: serviceAccount.id, kind: 'service' }),
+				]),
+			);
+		});
+
+		test('GET /projects/:projectId shows the kind of an implicit member', async () => {
+			const [admin, serviceAccount] = await Promise.all([
+				createAdmin(),
+				createServiceAccountWithProject(GLOBAL_ADMIN_ROLE),
+			]);
+			const project = await createTeamProject('Team Project');
+
+			const response = await testServer
+				.authAgentFor(admin)
+				.get(`/projects/${project.id}`)
+				.expect(200);
+
+			expect(response.body.data.implicitMembers).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ id: admin.id, kind: 'person' }),
+					expect.objectContaining({ id: serviceAccount.id, kind: 'service' }),
+				]),
+			);
 		});
 	});
 
@@ -1300,6 +1433,7 @@ describe('GET /project/:projectId', () => {
 			email: testUser1.email,
 			firstName: testUser1.firstName,
 			lastName: testUser1.lastName,
+			kind: 'person',
 			role: 'project:editor',
 		});
 		expect(resp.body.data.relations).toContainEqual({
@@ -1307,6 +1441,7 @@ describe('GET /project/:projectId', () => {
 			email: testUser2.email,
 			firstName: testUser2.firstName,
 			lastName: testUser2.lastName,
+			kind: 'person',
 			role: 'project:admin',
 		});
 	});
@@ -1338,6 +1473,7 @@ describe('GET /project/:projectId', () => {
 					email: ownerUser.email,
 					firstName: ownerUser.firstName,
 					lastName: ownerUser.lastName,
+					kind: 'person',
 					globalRole: { slug: 'global:owner', displayName: 'Owner' },
 				},
 				{
@@ -1345,6 +1481,7 @@ describe('GET /project/:projectId', () => {
 					email: adminUser.email,
 					firstName: adminUser.firstName,
 					lastName: adminUser.lastName,
+					kind: 'person',
 					globalRole: { slug: 'global:admin', displayName: 'Admin' },
 				},
 			]),
