@@ -298,8 +298,20 @@ export async function servicesDown(
 ): Promise<void> {
 	// An environment without services has no compose file.
 	if (!existsSync(paths.compose)) return;
-	const runtime = runningRuntime();
-	if (!runtime) return;
+	let runtime: ContainerRuntime | undefined;
+	if (options.volumes) {
+		// A delete must not report success when the volumes are still there.
+		try {
+			runtime = containerRuntime();
+		} catch {
+			// No runtime is installed, so no volumes are left.
+			return;
+		}
+		assertRuntimeRunning(runtime);
+	} else {
+		runtime = runningRuntime();
+		if (!runtime) return;
+	}
 	const args = ['down', '--remove-orphans'];
 	if (options.volumes) args.push('--volumes');
 	// `down` reads the compose file, which names the token variable. An empty value is enough.

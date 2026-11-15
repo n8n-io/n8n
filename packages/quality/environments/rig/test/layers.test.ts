@@ -3,10 +3,10 @@ import { dirname } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { resolveLayer, ensureLayerFile } from '../src/commands/layers';
-import { diffResolved } from '../src/commands/env';
 import { parseTopology, saveTopology, type TopologyInput } from '../src/config/env-yaml';
 import { envsDir, globalSecretsFile, profileFile } from '../src/config/paths';
 import { PRESETS } from '../src/config/presets';
+import { diffResolved } from '../src/env/resolve';
 import { envPaths, RigEnv } from '../src/environment';
 
 function makeEnv(name: string, input: Omit<TopologyInput, 'name'> = {}): RigEnv {

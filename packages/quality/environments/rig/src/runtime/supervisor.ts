@@ -41,6 +41,8 @@ const N8N_SUBCOMMANDS: Record<ProcessComponent['role'], string> = {
 	engine: 'engine',
 };
 
+const KILL_WAIT_MS = 5000;
+
 const READY_TIMEOUT_MS: Record<Component['role'], number> = {
 	main: 10 * 60_000,
 	worker: 5 * 60_000,
@@ -298,7 +300,15 @@ export class Supervisor {
 				await sleep(100);
 			}
 			if (isPidAlive(state.pid)) signalGroup(state.pid, 'SIGKILL');
-			while (isPidAlive(state.pid)) await sleep(50);
+			// A process in uninterruptible sleep ignores SIGKILL. Do not wait for it forever.
+			const killDeadline = Date.now() + KILL_WAIT_MS;
+			while (isPidAlive(state.pid) && Date.now() < killDeadline) await sleep(50);
+			if (isPidAlive(state.pid)) {
+				this.printer.event(
+					component.name,
+					pc.yellow(`pid ${state.pid} did not exit after SIGKILL. Check it with \`ps\`.`),
+				);
+			}
 			// The launcher's runners are in its group. Make sure they are gone too.
 			signalGroup(state.pid, 'SIGKILL', false);
 			clearState(this.env.paths, component.name, state.pid);

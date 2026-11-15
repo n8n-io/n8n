@@ -20,6 +20,7 @@ import {
 } from './config/paths';
 import { readDotenv } from './env/dotenv';
 import {
+	configuredValues,
 	hashValues,
 	resolveEnv,
 	resolveRunnerEnv,
@@ -251,7 +252,7 @@ export class RigEnv {
 
 	/** A hash of everything that a restart applies: env, command, and launcher config. */
 	componentHash(component: Component, overrides: Partial<ResolveContext> = {}): string {
-		const { env } = this.resolve(component, overrides);
+		const env = configuredValues(this.resolve(component, overrides));
 		if (component.kind === 'launcher') return hashValues(env, this.launcherConfig(component));
 		if (component.kind === 'runner') return hashValues(env, this.repoRoot, component.language);
 		return hashValues(env, this.repoRoot);

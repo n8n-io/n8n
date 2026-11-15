@@ -169,6 +169,9 @@ export function managedProcessEnv(
 			N8N_ENGINE_MODE: 'in-process',
 			N8N_ENGINE_DATABASE_URL: engineDatabaseUrl(topology),
 			N8N_ENGINE_DEFAULT_TYPE: 'v2',
+			// The main also runs the engine listeners. The slot keeps them apart from other environments.
+			N8N_ENGINE_PORT: String(engineHttpPort(topology)),
+			N8N_ENGINE_CONTROL_PLANE_PORT: String(engineControlPlanePort(topology)),
 		});
 	} else if (topology.engine === 'remote') {
 		Object.assign(
