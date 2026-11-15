@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { ExpressionExtensionError } from '../expression-extension-error';
 import { stringExtensions } from '../string-extensions';
 
 const extractUrlPath = stringExtensions.functions.extractUrlPath as (
@@ -8,6 +9,11 @@ const extractUrlPath = stringExtensions.functions.extractUrlPath as (
 const toSentenceCase = stringExtensions.functions.toSentenceCase as (value: string) => string;
 
 const toFloat = stringExtensions.functions.toFloat as (value: string) => number;
+
+const urlDecode = stringExtensions.functions.urlDecode as (
+	value: string,
+	extraArgs: boolean[],
+) => string;
 
 describe('extractUrlPath (imperative parser, no URL constructor)', () => {
 	it.each([
@@ -78,5 +84,15 @@ describe('toFloat', () => {
 
 	it('should not accept a symbol that is not in the list', () => {
 		expect(() => toFloat('Rb5')).toThrow();
+	});
+});
+
+describe('urlDecode', () => {
+	it('should decode valid input', () => {
+		expect(urlDecode('a%20b', [])).toBe('a b');
+	});
+
+	it.each([[[]], [[true]]])('should throw on malformed input with args %j', (extraArgs) => {
+		expect(() => urlDecode('%%%', extraArgs)).toThrow(ExpressionExtensionError);
 	});
 });
