@@ -904,6 +904,22 @@ describe('ResourceMapper.vue', () => {
 	});
 });
 
+// The testing Pinia cannot resolve expressions. These tests set the resolved value.
+const resolvedWorkflowId = vi.hoisted(() => ({ override: false, value: null as string | null }));
+
+vi.mock('@/app/composables/useWorkflowHelpers', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/app/composables/useWorkflowHelpers')>();
+	return {
+		...actual,
+		resolveRequiredParameters: async (
+			...args: Parameters<typeof actual.resolveRequiredParameters>
+		) =>
+			resolvedWorkflowId.override
+				? { workflowId: { __rl: true, mode: 'id', value: resolvedWorkflowId.value } }
+				: await actual.resolveRequiredParameters(...args),
+	};
+});
+
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
 	const params = {};
@@ -990,6 +1006,92 @@ describe('ResourceMapper::Workflow Inputs', () => {
 		await waitAllPromises();
 		expect(getByTestId('mapping-fields-container')).toBeInTheDocument();
 		expect(getAllByTestId('field-input')).toHaveLength(2);
+	});
+
+	describe('refresh of a saved schema on open', () => {
+		const parameter = {
+			...WORKFLOW_INPUTS_TEST_PARAMETER,
+			typeOptions: {
+				...WORKFLOW_INPUTS_TEST_PARAMETER.typeOptions,
+				resourceMapper: {
+					...WORKFLOW_INPUTS_TEST_PARAMETER.typeOptions?.resourceMapper,
+					refreshStaleSchemaOnOpen: true,
+				} as ResourceMapperTypeOptions,
+			},
+		};
+		const savedInputs = {
+			mappingMode: 'defineBelow',
+			value: { env: "={{ $('Edit Fields').item.json.env }}" },
+			matchingColumns: [],
+			schema: [
+				{
+					id: 'env',
+					displayName: 'env',
+					required: false,
+					defaultMatch: false,
+					display: true,
+					canBeUsedToMatch: true,
+					type: 'string',
+					removed: false,
+				},
+			],
+			attemptToConvertTypes: false,
+			convertFieldsToString: true,
+		};
+		const createNode = (workflowIdValue: string) =>
+			createTestNode({
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1.2,
+				parameters: {
+					source: 'database',
+					workflowId: { __rl: true, mode: 'id', value: workflowIdValue },
+					workflowInputs: savedInputs,
+				},
+			});
+
+		beforeEach(() => {
+			resolvedWorkflowId.override = true;
+			// The field loader returns no fields when it cannot find the sub-workflow.
+			nodeTypesStore.getLocalResourceMapperFields.mockResolvedValue({ fields: [] });
+		});
+
+		afterEach(() => {
+			resolvedWorkflowId.override = false;
+		});
+
+		it('keeps the saved mapping when the workflow ID expression has no resolved value', async () => {
+			resolvedWorkflowId.value = null;
+			const { getByTestId, getAllByTestId, emitted } = renderComponent({
+				props: {
+					parameter,
+					node: createNode("={{ $('Edit Fields').item.json.workflow_id }}"),
+					path: WORKFLOW_INPUTS_TEST_PARAMETER_PATH,
+				},
+			});
+			await waitAllPromises();
+
+			expect(getByTestId('mapping-fields-container')).toBeInTheDocument();
+			expect(getAllByTestId('field-input')).toHaveLength(1);
+			expect(emitted('valueChanged')).toBeUndefined();
+		});
+
+		it('removes a field that the resolved sub-workflow no longer has', async () => {
+			resolvedWorkflowId.value = 'test123';
+			const { queryByTestId, emitted } = renderComponent({
+				props: {
+					parameter,
+					node: createNode('test123'),
+					path: WORKFLOW_INPUTS_TEST_PARAMETER_PATH,
+				},
+			});
+			await waitAllPromises();
+
+			expect(queryByTestId('mapping-fields-container')).not.toBeInTheDocument();
+			expect(getLatestValueChangeEvent(emitted())[0].value).toMatchObject({
+				value: {},
+				schema: [],
+			});
+		});
 	});
 
 	it('renders provided empty fields message', async () => {
