@@ -15,7 +15,7 @@ import type {
 	WorkflowTagMappingRepository,
 	Variables,
 } from '@n8n/db';
-import { GLOBAL_ADMIN_ROLE, In, User, WorkflowEntity } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, In, User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
@@ -645,7 +645,7 @@ describe('SourceControlExportService', () => {
 			expect(result.files).toHaveLength(1);
 		});
 
-		it('should not export empty folders', async () => {
+		it('should write an empty folders file when there are no folders', async () => {
 			// Arrange
 			folderRepository.find.mockResolvedValue([]);
 
@@ -653,8 +653,11 @@ describe('SourceControlExportService', () => {
 			const result = await service.exportFoldersToWorkFolder(globalAdminContext);
 
 			// Assert
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/folders.json', dataCaptor);
+			expect(JSON.parse(dataCaptor.value)).toEqual({ folders: [] });
 			expect(result.count).toBe(0);
-			expect(result.files).toHaveLength(0);
+			expect(result.files).toHaveLength(1);
 		});
 
 		it('should not duplicate folders on push', async () => {
@@ -728,7 +731,7 @@ describe('SourceControlExportService', () => {
 			expect(result.files).toHaveLength(1);
 		});
 
-		it('should not export empty variables', async () => {
+		it('should write an empty variables file when there are no variables', async () => {
 			// Arrange
 			variablesService.getAllCached.mockResolvedValue([]);
 
@@ -736,8 +739,32 @@ describe('SourceControlExportService', () => {
 			const result = await service.exportGlobalVariablesToWorkFolder();
 
 			// Assert
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/variables.json', dataCaptor);
+			expect(JSON.parse(dataCaptor.value)).toEqual([]);
 			expect(result.count).toBe(0);
-			expect(result.files).toHaveLength(0);
+			expect(result.files).toHaveLength(1);
+		});
+
+		it('should preserve folders from projects the user cannot access when exporting no accessible folders', async () => {
+			// Arrange
+			const restrictedContext = new SourceControlContext(
+				Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE }),
+				[teamProject],
+				[],
+			);
+			const outOfScopeFolder = { id: 'folder2', name: 'Other project folder', homeProjectId: 'other-project' };
+			folderRepository.find.mockResolvedValue([]);
+			fsReadFile.mockResolvedValueOnce(JSON.stringify({ folders: [outOfScopeFolder] }));
+
+			// Act
+			const result = await service.exportFoldersToWorkFolder(restrictedContext);
+
+			// Assert
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/folders.json', dataCaptor);
+			expect(JSON.parse(dataCaptor.value)).toEqual({ folders: [outOfScopeFolder] });
+			expect(result.count).toBe(0);
 		});
 	});
 
