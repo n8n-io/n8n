@@ -46,8 +46,16 @@ const CAPTURE_STORE_METHODS = [
 	'addEntrySources',
 ] as const;
 
+const RECALL_MAX_QUERIES = 3;
+
 const RecallMemoryInputSchema = z.object({
-	query: z.string().min(1),
+	queries: z
+		.array(z.string().min(1))
+		.min(1)
+		.max(RECALL_MAX_QUERIES)
+		.describe(
+			"One to three short queries, each for one thing: a named subject (for example 'Acme renewal') or a kind of output plus preferences (for example 'email style length sign-off').",
+		),
 });
 
 const RecallMemoryOutputSchema = z.object({
@@ -149,18 +157,18 @@ export function createRecallMemoryTool(opts: {
 
 	return new Tool(RECALL_MEMORY_TOOL_NAME)
 		.description(
-			'Recall source-backed prior-session entries for explicit asks about previous conversations, earlier decisions, exact names, prior artifacts, remembered details, or similar historical situations.',
+			"Search entries saved from earlier sessions with this user: decisions, facts, artifacts, and the user's preferences and rules for how work should be done (format, length, tone, sign-off, channel). Use short queries of distinctive words. Results are past context and can be outdated or about a different item.",
 		)
 		.systemInstruction(normalized.recallToolInstruction)
 		.input(RecallMemoryInputSchema)
 		.output(RecallMemoryOutputSchema)
-		.handler(async ({ query }, ctx): Promise<RecallMemoryOutput> => {
-			const { embed } = await import('ai');
-			const { embedding: queryEmbedding, usage } = await withEmbeddingErrorContext(
+		.handler(async ({ queries }, ctx): Promise<RecallMemoryOutput> => {
+			const { embedMany } = await import('ai');
+			const { embeddings, usage } = await withEmbeddingErrorContext(
 				async () =>
-					await embed({
+					await embedMany({
 						model: normalized.embedder,
-						value: query,
+						values: queries,
 						abortSignal: ctx.abortSignal,
 					}),
 			);
@@ -175,11 +183,7 @@ export function createRecallMemoryTool(opts: {
 					...inferMemoryStoreAttributes(opts.memory),
 				}),
 				async () => {
-					const entries = await opts.memory.episodic.searchEntries(opts.scope, query, {
-						topK: normalized.topK,
-						queryEmbedding,
-						minSimilarity: RECALL_MIN_SIMILARITY,
-					});
+					const entries = await searchEachQuery(opts, normalized.topK, queries, embeddings);
 					return {
 						result: { entries: entries.map(toRecallToolEntry) },
 						attributes: {
@@ -198,6 +202,34 @@ export function createRecallMemoryTool(opts: {
 		}))
 		.toTraceOutput(toRecallTraceOutput)
 		.build();
+}
+
+/**
+ * Ranks each query on its own, so matches for the subject of a task do not push
+ * the matches for the user's preferences out of topK. An entry found by several
+ * queries is returned once.
+ */
+async function searchEachQuery(
+	opts: { memory: BuiltEpisodicMemoryStore; scope: EpisodicMemoryScope },
+	topK: number,
+	queries: string[],
+	embeddings: number[][],
+): Promise<RetrievedEpisodicMemoryEntry[]> {
+	const results = await Promise.all(
+		queries.map(
+			async (query, index) =>
+				await opts.memory.episodic.searchEntries(opts.scope, query, {
+					topK,
+					queryEmbedding: embeddings[index],
+					minSimilarity: RECALL_MIN_SIMILARITY,
+				}),
+		),
+	);
+	const byId = new Map<string, RetrievedEpisodicMemoryEntry>();
+	for (const entry of results.flat()) {
+		if (!byId.has(entry.id)) byId.set(entry.id, entry);
+	}
+	return [...byId.values()];
 }
 
 /** Hosts link recalled entries in traces by id; the model output drops ids. */
