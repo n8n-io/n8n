@@ -677,7 +677,9 @@ prompt. `--no-deps` skips the check.
 shows the logs and stops the component on exit, or `null` in the background),
 `ownerTty`, `startedAt`, `processStart`, `ports`, `source`, `inspect` (so a
 restart from any terminal keeps the inspector), and `envHash` (a hash of the
-resolved env and, for launchers, the launcher config).
+resolved env and, for launchers, the launcher config). The hash leaves out the
+parent shell and the one-off values of `rig run -e`, so another terminal does
+not report drift for them.
 
 - A component writes its output to its log file, not to a terminal. Each
   component runs in its own process group (`detached`).

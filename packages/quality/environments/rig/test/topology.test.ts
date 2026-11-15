@@ -93,4 +93,12 @@ describe('components', () => {
 		expect(portsOf(processes[1], topology)).toEqual([3000, 5879]);
 		expect(requiredServices(topology)).toEqual(['postgres', 'redis']);
 	});
+
+	it('should give the main the engine ports of its slot in in-process mode', () => {
+		const topology = parseTopology({ name: 'ei', ...PRESETS.engine.topology, slot: 2 });
+		const [main] = processComponents(topology);
+		expect(portsOf(main, topology)).toEqual(
+			expect.arrayContaining([3020, 3021, main.ports.http, main.ports.broker]),
+		);
+	});
 });

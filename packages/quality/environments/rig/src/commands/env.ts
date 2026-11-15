@@ -4,7 +4,7 @@ import pc from 'picocolors';
 import { type RigEnv, suggest } from '../environment';
 import { setInDotenvFile, unsetInDotenvFile } from '../env/dotenv';
 import { TOPOLOGY_KEYS } from '../env/managed';
-import { type EnvSource, type ResolvedEnv, resolveRunnerEnv } from '../env/resolve';
+import { diffResolved, type EnvSource, type ResolvedEnv, resolveRunnerEnv } from '../env/resolve';
 import { RigError } from '../errors';
 import { editFile } from '../integrations/editor';
 import { RUNNER_LAYERS } from '../topology/components';
@@ -222,37 +222,6 @@ function diffSide(env: RigEnv, target: string): DiffSide {
 	const other = loadEnv(target.slice(0, separator));
 	const { name, resolved } = resolvedFor(other, target.slice(separator + 1));
 	return { label: `${other.name}:${name}`, resolved };
-}
-
-export interface EnvDifference {
-	key: string;
-	a?: EnvSource;
-	b?: EnvSource;
-}
-
-/** Keys whose values differ, including keys that only one side has. Shell keys do not count. */
-export function diffResolved(
-	a: ResolvedEnv,
-	b: ResolvedEnv,
-	includeShell = false,
-): EnvDifference[] {
-	const winner = (resolved: ResolvedEnv, key: string) => resolved.trace.get(key)?.at(-1);
-	const keys = [...new Set([...Object.keys(a.env), ...Object.keys(b.env)])].sort();
-	const differences: EnvDifference[] = [];
-	for (const key of keys) {
-		const left = winner(a, key);
-		const right = winner(b, key);
-		if (left?.value === right?.value) continue;
-		if (
-			!includeShell &&
-			(left?.layer ?? 'shell') === 'shell' &&
-			(right?.layer ?? 'shell') === 'shell'
-		) {
-			continue;
-		}
-		differences.push({ key, a: left, b: right });
-	}
-	return differences;
 }
 
 const diffCommand = defineCommand({

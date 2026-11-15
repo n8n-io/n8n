@@ -146,7 +146,7 @@ export const runCommand = defineCommand({
 			selected.push(...env.runnerHosts().filter((l) => hosts.has(l.host.name)));
 		}
 		const targets = [...new Map(selected.map((c) => [c.name, c])).values()];
-		const oneOff = parseAssignments(repeatedFlag(rawArgs, ['-e']));
+		const oneOff = parseAssignments(repeatedFlag(rawArgs, ['-e', '--e']));
 
 		await preflight(env, targets, { services: args.services });
 		const printer = new PrefixPrinter();
@@ -353,7 +353,10 @@ export const logsCommand = defineCommand({
 			: env.components();
 		const printer = new PrefixPrinter(!args.raw && process.stdout.isTTY);
 		printer.register(components.map((c) => c.name));
-		const count = Number(args.lines) || 100;
+		const count = Number(args.lines);
+		if (!Number.isInteger(count) || count < 1) {
+			throw new RigError('--lines must be a whole number greater than 0.');
+		}
 		for (const component of components) {
 			printer.lines(component.name, tailLines(env.paths.log(component.name), count));
 		}

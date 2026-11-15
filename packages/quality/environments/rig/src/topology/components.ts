@@ -230,7 +230,9 @@ export function portsOf(component: Component, topology: Topology): number[] {
 	if (component.kind === 'process') {
 		// The broker also listens in internal mode, where n8n starts the runners itself.
 		const ports = [component.ports.http, component.ports.broker];
-		if (component.role === 'main' && topology.engine === 'remote') {
+		if (component.role === 'main' && topology.engine === 'in-process') {
+			ports.push(engineHttpPort(topology), engineControlPlanePort(topology));
+		} else if (component.role === 'main' && topology.engine === 'remote') {
 			ports.push(engineControlPlanePort(topology));
 		}
 		return ports;

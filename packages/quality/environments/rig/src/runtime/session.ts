@@ -73,6 +73,9 @@ export class Session {
 	/** Components in a start or a restart. `startOne` and `restartTargets` report their exits. */
 	private readonly restarting = new Set<string>();
 	private busy = false;
+	private activeRestart: Promise<void> | undefined;
+	/** Components that left the topology while this session ran. The shutdown still stops them. */
+	private removed: Component[] = [];
 	private quitting = false;
 	private resolveDone: (() => void) | undefined;
 	private readonly abort = new AbortController();
@@ -94,15 +97,18 @@ export class Session {
 
 		ui.header(`rig · ${env.name} · ${describeTopology(env.topology)}`);
 
-		const deps = missingDependencies(env, this.targets).filter(
-			(dep) => !liveState(env.paths, dep.name),
-		);
+		const allDeps = missingDependencies(env, this.targets);
+		const deps = allDeps.filter((dep) => !liveState(env.paths, dep.name));
 		let backgroundDeps: Component[] = [];
-		if (deps.length > 0 && this.options.dependencies !== 'none') {
-			const mode = await this.chooseDependencyMode(deps);
-			if (mode === 'abort') throw new RigError('Aborted.');
-			if (mode === 'background') backgroundDeps = deps;
-			else await this.waitForDependencies(deps);
+		if (this.options.dependencies !== 'none') {
+			// A dependency that runs can still be starting. Its dependents need it ready.
+			await this.waitForRunningDependencies(allDeps.filter((dep) => !deps.includes(dep)));
+			if (deps.length > 0) {
+				const mode = await this.chooseDependencyMode(deps);
+				if (mode === 'abort') throw new RigError('Aborted.');
+				if (mode === 'background') backgroundDeps = deps;
+				else await this.waitForDependencies(deps);
+			}
 		}
 
 		const done = new Promise<void>((resolve) => (this.resolveDone = resolve));
@@ -166,6 +172,21 @@ export class Session {
 		}
 	}
 
+	private async waitForRunningDependencies(deps: Component[]): Promise<void> {
+		for (const dep of deps) {
+			const state = liveState(this.env.paths, dep.name);
+			if (!state || (await this.supervisor.isComponentReady(dep))) continue;
+			ui.info(`Waiting for ${dep.name} to become ready.`);
+			const result = await this.supervisor.waitReady(dep, state.pid, this.abort.signal);
+			if (result !== 'ready') {
+				throw new RigError(
+					`${dep.name} did not become ready.`,
+					`Check its logs with \`${RIG} logs ${dep.name}\`.`,
+				);
+			}
+		}
+	}
+
 	/** Starts components stage by stage. Returns false when one is not ready. */
 	private async startAll(components: Component[], background: Set<string>): Promise<boolean> {
 		for (const stage of startStages(components)) {
@@ -200,7 +221,13 @@ export class Session {
 				this.lastPid.set(component.name, running.pid);
 				this.setStatus(component.name, 'starting');
 			}
-			return true;
+			// The next stage depends on it, so it must be ready, not only running.
+			const result = await this.supervisor.waitReady(component, running.pid, this.abort.signal);
+			if (isTarget) this.setStatus(component.name, result === 'ready' ? 'ready' : 'exited');
+			if (result === 'exited' || result === 'timeout') {
+				this.printer.event(component.name, pc.red('did not become ready'));
+			}
+			return result === 'ready';
 		}
 
 		const startedAt = Date.now();
@@ -427,50 +454,61 @@ export class Session {
 	private async restartTargets(names: string[]): Promise<void> {
 		if (this.busy || this.quitting) return;
 		this.busy = true;
+		// The shutdown waits for it, so a quit cannot leave a new process behind.
+		this.activeRestart = this.restartStages(names);
 		try {
-			const components = this.env.withDependentRunners(
-				names
-					.map((name) => this.env.component(name))
-					.filter((c): c is Component => c !== undefined),
-			);
-			for (const stage of startStages(components)) {
-				await Promise.all(
-					stage.map(async (component) => {
-						this.printer.event(component.name, 'restarting');
-						const startedAt = Date.now();
-						this.restarting.add(component.name);
-						this.setStatus(component.name, 'starting');
-						try {
-							const pid = await this.supervisor.restart(component, 'self');
-							this.lastPid.set(component.name, pid);
-							const result = await this.supervisor.waitReady(component, pid, this.abort.signal);
-							if (result === 'exited') {
-								this.lastPid.set(component.name, undefined);
-								await sleep(400);
-							}
-							this.setStatus(component.name, result === 'ready' ? 'ready' : 'exited');
-							if (result === 'ready') {
-								this.printer.event(
-									component.name,
-									pc.green(`ready in ${formatDuration(Date.now() - startedAt)}`),
-								);
-							} else if (result !== 'aborted') {
-								this.printer.event(component.name, pc.red('did not become ready'));
-							}
-						} catch (error) {
-							this.setStatus(component.name, 'exited');
-							printError(error);
-						} finally {
-							this.restarting.delete(component.name);
-						}
-					}),
-				);
-			}
-			this.drifted = this.drifted.filter((name) => !names.includes(name));
-			this.renderStatus();
+			await this.activeRestart;
 		} finally {
+			this.activeRestart = undefined;
 			this.busy = false;
 		}
+	}
+
+	private async restartStages(names: string[]): Promise<void> {
+		const components = this.env.withDependentRunners(
+			names.map((name) => this.env.component(name)).filter((c): c is Component => c !== undefined),
+		);
+		for (const stage of startStages(components)) {
+			if (this.quitting) return;
+			await Promise.all(
+				stage.map(async (component) => {
+					this.printer.event(component.name, 'restarting');
+					const startedAt = Date.now();
+					this.restarting.add(component.name);
+					this.setStatus(component.name, 'starting');
+					try {
+						const previous = liveState(this.env.paths, component.name);
+						await this.supervisor.stop(component);
+						if (this.quitting) return;
+						const pid = await this.supervisor.start(component, 'self', {
+							inspect: previous?.inspect,
+						});
+						this.lastPid.set(component.name, pid);
+						const result = await this.supervisor.waitReady(component, pid, this.abort.signal);
+						if (result === 'exited') {
+							this.lastPid.set(component.name, undefined);
+							await sleep(400);
+						}
+						this.setStatus(component.name, result === 'ready' ? 'ready' : 'exited');
+						if (result === 'ready') {
+							this.printer.event(
+								component.name,
+								pc.green(`ready in ${formatDuration(Date.now() - startedAt)}`),
+							);
+						} else if (result !== 'aborted') {
+							this.printer.event(component.name, pc.red('did not become ready'));
+						}
+					} catch (error) {
+						this.setStatus(component.name, 'exited');
+						printError(error);
+					} finally {
+						this.restarting.delete(component.name);
+					}
+				}),
+			);
+		}
+		this.drifted = this.drifted.filter((name) => !names.includes(name));
+		this.renderStatus();
 	}
 
 	/** Reports components that exited or that another terminal restarted. */
@@ -546,10 +584,17 @@ export class Session {
 
 		const known = new Set(env.components().map((c) => c.name));
 		const removed = this.targets.filter((t) => !known.has(t.name));
+		this.removed = this.removed.filter((c) => !known.has(c.name));
 		for (const component of removed) {
-			ui.warn(
-				`${component.name} is no longer in the topology. Stop it with \`${RIG} stop ${component.name}\`.`,
-			);
+			const state = liveState(env.paths, component.name);
+			if (state?.ownerPid === process.pid) {
+				this.removed.push(component);
+				ui.warn(`${component.name} is no longer in the topology. It stops when you quit.`);
+			} else if (state) {
+				ui.warn(
+					`${component.name} is no longer in the topology. It still runs as pid ${state.pid}. End that process to stop it.`,
+				);
+			}
 		}
 
 		this.targets = this.targets
@@ -583,7 +628,8 @@ export class Session {
 
 	/** Stops the components that this terminal owns, in reverse start order. */
 	private async shutdown(): Promise<void> {
-		const owned = this.targets.filter(
+		await this.activeRestart?.catch(printError);
+		const owned = [...this.targets, ...this.removed].filter(
 			(t) => liveState(this.env.paths, t.name)?.ownerPid === process.pid,
 		);
 		if (owned.length > 0) {

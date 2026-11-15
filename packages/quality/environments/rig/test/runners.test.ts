@@ -71,7 +71,23 @@ describe('direct runners', () => {
 		});
 		expect(resolved.N8N_LOG_LEVEL).toBeUndefined();
 		expect(resolved.N8N_RUNNERS_AUTH_TOKEN).toBeUndefined();
+		// Launcher-only defaults stay with the launcher.
+		expect(resolved.N8N_RUNNERS_LAUNCHER_LOG_LEVEL).toBeUndefined();
 		expect(readinessProbe(runner, resolved).url).toBe('http://127.0.0.1:5681/healthz');
+	});
+});
+
+describe('env hash', () => {
+	it('should ignore one-off values and the parent shell, and see env file changes', () => {
+		const env = makeEnv('h', {});
+		const main = env.component('main-1');
+		if (!main) throw new Error('no main');
+		const hash = env.componentHash(main);
+		expect(env.componentHash(main, { oneOff: { N8N_LOG_LEVEL: 'debug' }, inheritEnv: true })).toBe(
+			hash,
+		);
+		writeFileSync(env.paths.layerFile('main'), 'N8N_LOG_LEVEL=debug\n');
+		expect(env.reload().componentHash(main)).not.toBe(hash);
 	});
 });
 

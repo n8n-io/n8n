@@ -311,6 +311,30 @@ export async function stopEverything(env: RigEnv): Promise<void> {
 	if (stopped.length > 0) ui.success(`Stopped ${stopped.join(', ')}`);
 }
 
+const isSqliteFile = (name: string) => name.startsWith('database.sqlite');
+// `config` can hold the encryption key of the credentials in the database.
+const keepWithDatabase = (name: string) => isSqliteFile(name) || name === 'config';
+
+/** Deletes the data of each component and keeps its SQLite database. */
+export function removeDataExceptDatabase(dataRoot: string): void {
+	if (!existsSync(dataRoot)) return;
+	for (const entry of readdirSync(dataRoot)) {
+		const componentDir = join(dataRoot, entry);
+		const n8nDir = join(componentDir, '.n8n');
+		const keepsDatabase = existsSync(n8nDir) && readdirSync(n8nDir).some(isSqliteFile);
+		if (!keepsDatabase) {
+			rmSync(componentDir, { recursive: true, force: true });
+			continue;
+		}
+		for (const name of readdirSync(componentDir)) {
+			if (name !== '.n8n') rmSync(join(componentDir, name), { recursive: true, force: true });
+		}
+		for (const name of readdirSync(n8nDir)) {
+			if (!keepWithDatabase(name)) rmSync(join(n8nDir, name), { recursive: true, force: true });
+		}
+	}
+}
+
 export const resetCommand = defineCommand({
 	meta: {
 		name: 'reset',
@@ -320,7 +344,10 @@ export const resetCommand = defineCommand({
 	args: {
 		...envArg,
 		db: { type: 'boolean', description: 'Delete the database only' },
-		data: { type: 'boolean', description: 'Delete user folders, binary data, and logs' },
+		data: {
+			type: 'boolean',
+			description: 'Delete user folders, binary data, and logs. Keep the database',
+		},
 		yes: { type: 'boolean', alias: 'y', description: 'Do not ask for confirmation' },
 	},
 	async run({ args }) {
@@ -349,10 +376,12 @@ export const resetCommand = defineCommand({
 				}
 			}
 		}
-		if (args.data || both) {
+		if (both) {
 			rmSync(env.paths.dataRoot, { recursive: true, force: true });
-			rmSync(env.paths.logsDir, { recursive: true, force: true });
+		} else if (args.data) {
+			removeDataExceptDatabase(env.paths.dataRoot);
 		}
+		if (args.data || both) rmSync(env.paths.logsDir, { recursive: true, force: true });
 		ui.success(`Deleted ${what} of ${env.name}.`);
 	},
 });

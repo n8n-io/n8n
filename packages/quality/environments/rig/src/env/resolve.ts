@@ -227,7 +227,7 @@ export function resolveDirectRunnerEnv(
 	const onlyAllowed = (layer: Layer) => without(layer, (key) => !allowed.has(key));
 	return merge([
 		shellLayer(ctx),
-		fromRecord('default', 'rig default', defaultLauncherEnv()),
+		onlyAllowed(fromRecord('default', 'rig default', defaultLauncherEnv())),
 		...profileLayers(ctx, () => false).map(onlyAllowed),
 		onlyAllowed(fromFile('shared', paths, paths.layerFile('shared'))),
 		fromRecord('default', 'rig default', defaultRunnerEnv(component.role)),
@@ -242,6 +242,50 @@ export function resolveEnv(ctx: ResolveContext, component: Component): ResolvedE
 	if (component.kind === 'process') return resolveProcessEnv(ctx, component);
 	if (component.kind === 'runner') return resolveDirectRunnerEnv(ctx, component);
 	return resolveLauncherEnv(ctx, component);
+}
+
+export interface EnvDifference {
+	key: string;
+	a?: EnvSource;
+	b?: EnvSource;
+}
+
+/** Keys whose values differ, including keys that only one side has. Shell keys do not count. */
+export function diffResolved(
+	a: ResolvedEnv,
+	b: ResolvedEnv,
+	includeShell = false,
+): EnvDifference[] {
+	const winner = (resolved: ResolvedEnv, key: string) => resolved.trace.get(key)?.at(-1);
+	const keys = [...new Set([...Object.keys(a.env), ...Object.keys(b.env)])].sort();
+	const differences: EnvDifference[] = [];
+	for (const key of keys) {
+		const left = winner(a, key);
+		const right = winner(b, key);
+		if (left?.value === right?.value) continue;
+		if (
+			!includeShell &&
+			(left?.layer ?? 'shell') === 'shell' &&
+			(right?.layer ?? 'shell') === 'shell'
+		) {
+			continue;
+		}
+		differences.push({ key, a: left, b: right });
+	}
+	return differences;
+}
+
+/**
+ * The values that the env files and the topology decide. Drift compares these,
+ * so the parent shell and one-off values of `rig run -e` do not count.
+ */
+export function configuredValues(resolved: ResolvedEnv): Record<string, string> {
+	const values: Record<string, string> = {};
+	for (const [key, sources] of resolved.trace) {
+		const configured = sources.filter((s) => s.layer !== 'shell' && s.layer !== 'one-off').at(-1);
+		if (configured) values[key] = configured.value;
+	}
+	return values;
 }
 
 export function hashValues(...parts: unknown[]): string {
