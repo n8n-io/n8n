@@ -5,20 +5,11 @@
   "framework": null,
   "headers": [
     {
-      "source": "/assets/(.*)",
+      "source": "/media/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/logos/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
+          "value": "public, max-age=604800"
         }
       ]
     },
