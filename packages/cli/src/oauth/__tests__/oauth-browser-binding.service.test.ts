@@ -1,3 +1,4 @@
+import { PathResolvingService } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type { Request, Response } from 'express';
 import type { Mock } from 'vitest';
@@ -14,6 +15,7 @@ const makeConfig = (
 		samesite: 'strict' | 'lax' | 'none';
 		oauthBrowserBinding: boolean;
 		restEndpoint: string;
+		basePath: string;
 	}> = {},
 ) =>
 	mock<GlobalConfig>({
@@ -22,7 +24,14 @@ const makeConfig = (
 			oauthBrowserBinding: overrides.oauthBrowserBinding ?? true,
 		},
 		endpoints: { rest: overrides.restEndpoint ?? 'rest' },
+		path: '',
+		basePath: overrides.basePath ?? '',
 	});
+
+const makeService = (overrides: Parameters<typeof makeConfig>[0] = {}) => {
+	const globalConfig = makeConfig(overrides);
+	return new OAuthBrowserBindingService(globalConfig, new PathResolvingService(globalConfig));
+};
 
 const makeReq = (cookies: Record<string, unknown> = {}) => ({ cookies }) as unknown as Request;
 
@@ -34,18 +43,14 @@ const makeRes = () => {
 describe('OAuthBrowserBindingService', () => {
 	describe('isEnabled', () => {
 		it('reflects the auth.oauthBrowserBinding config value', () => {
-			expect(
-				new OAuthBrowserBindingService(makeConfig({ oauthBrowserBinding: true })).isEnabled(),
-			).toBe(true);
-			expect(
-				new OAuthBrowserBindingService(makeConfig({ oauthBrowserBinding: false })).isEnabled(),
-			).toBe(false);
+			expect(makeService({ oauthBrowserBinding: true }).isEnabled()).toBe(true);
+			expect(makeService({ oauthBrowserBinding: false }).isEnabled()).toBe(false);
 		});
 	});
 
 	describe('ensureBindingCookie', () => {
 		it('mints a new nonce and sets the cookie when none is present', () => {
-			const service = new OAuthBrowserBindingService(makeConfig());
+			const service = makeService();
 			const req = makeReq();
 			const res = makeRes();
 
@@ -66,7 +71,7 @@ describe('OAuthBrowserBindingService', () => {
 		});
 
 		it('reuses an existing cookie value when present', () => {
-			const service = new OAuthBrowserBindingService(makeConfig());
+			const service = makeService();
 			const req = makeReq({ [OAUTH_BINDING_COOKIE_NAME]: 'existing-nonce' });
 			const res = makeRes();
 
@@ -77,7 +82,7 @@ describe('OAuthBrowserBindingService', () => {
 		});
 
 		it('inherits secure=false from config', () => {
-			const service = new OAuthBrowserBindingService(makeConfig({ secure: false }));
+			const service = makeService({ secure: false });
 			const res = makeRes();
 
 			service.ensureBindingCookie(makeReq(), res);
@@ -90,7 +95,7 @@ describe('OAuthBrowserBindingService', () => {
 		});
 
 		it('clamps SameSite=strict to lax', () => {
-			const service = new OAuthBrowserBindingService(makeConfig({ samesite: 'strict' }));
+			const service = makeService({ samesite: 'strict' });
 			const res = makeRes();
 
 			service.ensureBindingCookie(makeReq(), res);
@@ -103,7 +108,7 @@ describe('OAuthBrowserBindingService', () => {
 		});
 
 		it('passes SameSite=none through unchanged', () => {
-			const service = new OAuthBrowserBindingService(makeConfig({ samesite: 'none' }));
+			const service = makeService({ samesite: 'none' });
 			const res = makeRes();
 
 			service.ensureBindingCookie(makeReq(), res);
@@ -116,7 +121,7 @@ describe('OAuthBrowserBindingService', () => {
 		});
 
 		it('uses the configured REST endpoint as the cookie path', () => {
-			const service = new OAuthBrowserBindingService(makeConfig({ restEndpoint: 'api/v1' }));
+			const service = makeService({ restEndpoint: 'api/v1' });
 			const res = makeRes();
 
 			service.ensureBindingCookie(makeReq(), res);
@@ -128,8 +133,21 @@ describe('OAuthBrowserBindingService', () => {
 			);
 		});
 
+		it('prefixes the cookie path with the base path', () => {
+			const service = makeService({ basePath: '/n8n' });
+			const res = makeRes();
+
+			service.ensureBindingCookie(makeReq(), res);
+
+			expect(res.cookie).toHaveBeenCalledWith(
+				OAUTH_BINDING_COOKIE_NAME,
+				expect.any(String),
+				expect.objectContaining({ path: '/n8n/rest' }),
+			);
+		});
+
 		it('does not set a Max-Age (session cookie)', () => {
-			const service = new OAuthBrowserBindingService(makeConfig());
+			const service = makeService();
 			const res = makeRes();
 
 			service.ensureBindingCookie(makeReq(), res);
@@ -142,17 +160,17 @@ describe('OAuthBrowserBindingService', () => {
 
 	describe('computeHash', () => {
 		it('is deterministic for the same input', () => {
-			const service = new OAuthBrowserBindingService(makeConfig());
+			const service = makeService();
 			expect(service.computeHash('abc')).toBe(service.computeHash('abc'));
 		});
 
 		it('differs for different inputs', () => {
-			const service = new OAuthBrowserBindingService(makeConfig());
+			const service = makeService();
 			expect(service.computeHash('abc')).not.toBe(service.computeHash('abd'));
 		});
 
 		it('emits a base64url-encoded SHA-256 digest', () => {
-			const service = new OAuthBrowserBindingService(makeConfig());
+			const service = makeService();
 			const hash = service.computeHash('any-nonce-value');
 			expect(hash).toMatch(/^[A-Za-z0-9_-]+$/);
 			expect(hash.length).toBe(43); // 32 bytes base64url with no padding
@@ -160,7 +178,7 @@ describe('OAuthBrowserBindingService', () => {
 	});
 
 	describe('verifyBinding', () => {
-		const service = new OAuthBrowserBindingService(makeConfig());
+		const service = makeService();
 		const nonce = 'matching-nonce-value';
 		const expectedHash = service.computeHash(nonce);
 

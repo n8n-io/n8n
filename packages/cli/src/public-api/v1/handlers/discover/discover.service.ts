@@ -34,7 +34,8 @@ export interface DiscoverOptions {
 	includeSchemas?: boolean;
 	resource?: string;
 	operation?: string;
-	specUrl?: string;
+	/** The mounted path of the API version, such as `/n8n/api/v1`. Defaults to `/api/v1`. */
+	apiVersionPath?: string;
 }
 
 let cachedEndpoints: EndpointInfo[] | undefined;
@@ -42,7 +43,7 @@ let cachedEndpoints: EndpointInfo[] | undefined;
 function buildEndpoints(): EndpointInfo[] {
 	return resolvePublicApiRoutes().map((route) => ({
 		method: route.method.toUpperCase(),
-		path: `/api/v1${toOpenApiPathTemplate(route.path)}`,
+		path: toOpenApiPathTemplate(route.path),
 		operationId: route.handlerName,
 		tag: route.tags?.[0] ?? 'Other',
 		scope: route.apiKeyScope ?? null,
@@ -64,6 +65,7 @@ export async function buildDiscoverResponse(
 
 	const allEndpoints = cachedEndpoints;
 	const includeSchemas = options?.includeSchemas === true;
+	const apiVersionPath = options?.apiVersionPath ?? '/api/v1';
 
 	// Same any/all matching the registry enforces, so /discover shows exactly what the caller may call.
 	const filtered = allEndpoints.filter(
@@ -89,7 +91,7 @@ export async function buildDiscoverResponse(
 
 		const entry: EndpointEntry = {
 			method: ep.method,
-			path: ep.path,
+			path: `${apiVersionPath}${ep.path}`,
 			operationId: ep.operationId,
 		};
 
@@ -158,7 +160,7 @@ export async function buildDiscoverResponse(
 				values: ['schemas'],
 			},
 		},
-		specUrl: options?.specUrl ?? '/api/v1/openapi.yml',
+		specUrl: `${apiVersionPath}/openapi.yml`,
 	};
 }
 

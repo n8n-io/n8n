@@ -1,3 +1,4 @@
+import { PathResolvingService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
@@ -13,7 +14,10 @@ export type BindingVerifyResult =
 
 @Service()
 export class OAuthBrowserBindingService {
-	constructor(private readonly globalConfig: GlobalConfig) {}
+	constructor(
+		private readonly globalConfig: GlobalConfig,
+		private readonly pathResolvingService: PathResolvingService,
+	) {}
 
 	/** Whether binding should be applied to new flows. Callback-side verification is unconditional when a hash is present. */
 	isEnabled(): boolean {
@@ -40,7 +44,9 @@ export class OAuthBrowserBindingService {
 			httpOnly: true,
 			secure,
 			sameSite,
-			path: `/${this.globalConfig.endpoints.rest}`,
+			// Match the mounted REST path, so the browser sends the cookie to the callback
+			// when n8n runs under N8N_BASE_PATH.
+			path: this.pathResolvingService.resolveRestEndpoint(),
 		});
 		return nonce;
 	}

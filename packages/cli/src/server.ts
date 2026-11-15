@@ -325,64 +325,58 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		await this.initializeWorkflowIndexing();
 
-		if (this.endpointPresetCredentials !== '') {
+		if (this.endpointPresetCredentials) {
 			// POST endpoint to set preset credentials
 			const overwriteEndpointMiddleware =
 				Container.get(CredentialsOverwrites).getOverwriteEndpointMiddleware();
 
+			// The guard and the handler must use the same path, or the guard does not run.
+			const presetCredentialsPath = pathResolvingService.resolveEndpoint(
+				this.endpointPresetCredentials,
+			);
+
 			if (overwriteEndpointMiddleware) {
-				// Mount the guard on the same resolved path as the handler below, so it
-				// still runs when n8n is hosted under N8N_BASE_PATH.
-				this.app.use(
-					pathResolvingService.resolveEndpoint(this.endpointPresetCredentials),
-					overwriteEndpointMiddleware,
-				);
+				this.app.use(presetCredentialsPath, overwriteEndpointMiddleware);
 			}
 
 			const authenticationEnforced = overwriteEndpointMiddleware !== null;
-			this.app.post(
-				`${basePath}/${this.endpointPresetCredentials}`,
-				async (req: express.Request, res: express.Response) => {
-					try {
-						// If authentication is enforced we can allow multiple overwrites
-						if (!this.presetCredentialsLoaded || authenticationEnforced) {
-							const body = req.body as ICredentialsOverwrite;
+			this.app.post(presetCredentialsPath, async (req: express.Request, res: express.Response) => {
+				try {
+					// If authentication is enforced we can allow multiple overwrites
+					if (!this.presetCredentialsLoaded || authenticationEnforced) {
+						const body = req.body as ICredentialsOverwrite;
 
-							if (req.contentType !== 'application/json') {
-								ResponseHelper.sendErrorResponse(
-									res,
-									new Error(
-										'Body must be a valid JSON, make sure the content-type is application/json',
-									),
-								);
-								return;
-							}
-
-							await Container.get(CredentialsOverwrites).setData(body, true, true);
-
-							this.presetCredentialsLoaded = true;
-
-							// Send push event to notify frontend to refetch types
-							Container.get(Push).broadcast({ type: 'nodeDescriptionUpdated', data: {} });
-
-							ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
-						} else {
+						if (req.contentType !== 'application/json') {
 							ResponseHelper.sendErrorResponse(
 								res,
-								new Error('Preset credentials can be set once'),
+								new Error(
+									'Body must be a valid JSON, make sure the content-type is application/json',
+								),
 							);
+							return;
 						}
-					} catch (error) {
-						this.logger.error('Error handling credentials overwrite', { error });
-						ResponseHelper.sendErrorResponse(
-							res,
-							new Error(
-								'An error occurred while handling credentials overwrite, please check the logs for more details',
-							),
-						);
+
+						await Container.get(CredentialsOverwrites).setData(body, true, true);
+
+						this.presetCredentialsLoaded = true;
+
+						// Send push event to notify frontend to refetch types
+						Container.get(Push).broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+
+						ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
+					} else {
+						ResponseHelper.sendErrorResponse(res, new Error('Preset credentials can be set once'));
 					}
-				},
-			);
+				} catch (error) {
+					this.logger.error('Error handling credentials overwrite', { error });
+					ResponseHelper.sendErrorResponse(
+						res,
+						new Error(
+							'An error occurred while handling credentials overwrite, please check the logs for more details',
+						),
+					);
+				}
+			});
 		}
 
 		const maxAge = Time.days.toMilliseconds;
@@ -409,8 +403,8 @@ export class Server extends AbstractServer {
 
 			registerAuthenticatedRoutes(
 				[
-					`${basePath}/icons/{@:scope/}:packageName/*path/*file.svg`,
-					`${basePath}/icons/{@:scope/}:packageName/*path/*file.png`,
+					pathResolvingService.resolveIconsEndpoint('{@:scope/}:packageName/*path/*file.svg'),
+					pathResolvingService.resolveIconsEndpoint('{@:scope/}:packageName/*path/*file.png'),
 				],
 				async (req, res) => {
 					// eslint-disable-next-line prefer-const
@@ -449,7 +443,11 @@ export class Server extends AbstractServer {
 				res.sendStatus(404);
 			};
 			registerAuthenticatedRoutes(
-				[`${basePath}/schemas/:node/:version{/:resource}{/:operation}.json`],
+				[
+					pathResolvingService.resolveSchemasEndpoint(
+						':node/:version{/:resource}{/:operation}.json',
+					),
+				],
 				serveSchemas,
 			);
 
@@ -610,13 +608,18 @@ export class Server extends AbstractServer {
 		// Deny any request that can reach /types/* that isn't caught above, rather than
 		// authenticating it: no client asks for those forms, and authenticating here would
 		// clear the session cookie of a signed-in caller, since this matches no route.
-		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-			if (requestPath.mayReachDirectory(req.path, 'types')) {
-				res.status(401).end();
-				return;
-			}
-			next();
-		});
+		// Mount it on the base path, like the static middleware, so both check the same
+		// mount-relative path.
+		this.app.use(
+			this.pathResolvingService.getBasePath(),
+			(req: express.Request, res: express.Response, next: express.NextFunction) => {
+				if (requestPath.mayReachDirectory(req.path, 'types')) {
+					res.status(401).end();
+					return;
+				}
+				next();
+			},
+		);
 	}
 
 	private configureSettingsRoute() {

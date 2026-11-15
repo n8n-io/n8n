@@ -117,8 +117,10 @@ export class OidcController {
 	@Get('/callback', { skipAuth: true, usesTemplates: true })
 	@Licensed('feat:oidc')
 	async callbackHandler(req: AuthlessRequest, res: Response) {
-		const fullUrl = `${this.urlService.getInstanceBaseUrl()}${req.originalUrl}`;
-		const callbackUrl = new URL(fullUrl);
+		// Use the registered redirect URI and copy only the query. The instance base URL
+		// and `req.originalUrl` both carry N8N_BASE_PATH, so joining them repeats it.
+		const callbackUrl = new URL(this.oidcService.getCallbackUrl());
+		callbackUrl.search = new URL(req.originalUrl, callbackUrl).search;
 
 		try {
 			const state = req.cookies[OIDC_STATE_COOKIE_NAME];

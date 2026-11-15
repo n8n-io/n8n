@@ -1,4 +1,5 @@
 import { DiscoverPublicDto, DiscoverQueryPublicDto } from '@n8n/api-types';
+import { PathResolvingService } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
@@ -16,6 +17,8 @@ import { buildDiscoverResponse } from '@/public-api/v1/handlers/discover/discove
 
 @PublicApiController('/discover')
 export class DiscoverPublicController {
+	constructor(private readonly pathResolvingService: PathResolvingService) {}
+
 	@Get('/')
 	@ApiSummary('Discover available API capabilities')
 	@ApiDescription(
@@ -38,6 +41,7 @@ export class DiscoverPublicController {
 				includeSchemas: query.include === 'schemas',
 				resource: query.resource,
 				operation: query.operation,
+				apiVersionPath: this.pathResolvingService.resolvePublicApiEndpoint('v1'),
 			}),
 		};
 	}
