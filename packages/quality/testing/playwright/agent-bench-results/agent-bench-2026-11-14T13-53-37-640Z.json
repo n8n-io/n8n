@@ -1,0 +1,265 @@
+{
+	"config": {
+		"topologies": ["queue"],
+		"turns": 4,
+		"concurrency": 2,
+		"warmup": 0,
+		"mix": {
+			"plain": 5,
+			"tool": 3,
+			"long": 2
+		},
+		"model": "anthropic/claude-sonnet-4-5",
+		"workers": 1,
+		"workerConcurrency": 10,
+		"mains": 2,
+		"out": "agent-bench-results",
+		"keep": false,
+		"cockpit": 4790,
+		"observability": true
+	},
+	"results": [
+		{
+			"topology": "queue",
+			"stack": {
+				"mains": 1,
+				"workers": 1,
+				"agentQueue": true
+			},
+			"wallMs": 1128.5480000000025,
+			"turnsPerMinute": 0,
+			"byKind": {
+				"plain": {
+					"turns": 2,
+					"errors": 2,
+					"start": {
+						"n": 0,
+						"p50": null,
+						"p95": null,
+						"max": null
+					},
+					"firstToken": {
+						"n": 0,
+						"p50": null,
+						"p95": null,
+						"max": null
+					},
+					"total": {
+						"n": 0,
+						"p50": null,
+						"p95": null,
+						"max": null
+					},
+					"dbQueued": {
+						"n": 0,
+						"p50": null,
+						"p95": null,
+						"max": null
+					},
+					"dbRun": {
+						"n": 0,
+						"p50": null,
+						"p95": null,
+						"max": null
+					},
+					"ranOn": {
+						"worker": 2
+					},
+					"tokens": 0,
+					"cost": 0
+				},
+				"tool": {
+					"turns": 1,
+					"errors": 1,
+					"start": {
+						"n": 0,
+						"p50": null,
+						"p95": null,
+						"max": null
+					},
+					"firstToken": {
+						"n": 0,
+						"p50": null,
+						"p95": null,
+						"max": null
+					},
+					"total": {
+						"n": 0,
+						"p50": null,
+						"p95": null,
+						"max": null
+					},
+					"dbQueued": {
+						"n": 0,
+						"p50": null,
+						"p95": null,
+						"max": null
+					},
+					"dbRun": {
+						"n": 0,
+						"p50": null,
+						"p95": null,
+						"max": null
+					},
+					"ranOn": {
+						"worker": 1
+					},
+					"tokens": 0,
+					"cost": 0
+				},
+				"long": {
+					"turns": 1,
+					"errors": 1,
+					"start": {
+						"n": 0,
+						"p50": null,
+						"p95": null,
+						"max": null
+					},
+					"firstToken": {
+						"n": 0,
+						"p50": null,
+						"p95": null,
+						"max": null
+					},
+					"total": {
+						"n": 0,
+						"p50": null,
+						"p95": null,
+						"max": null
+					},
+					"dbQueued": {
+						"n": 0,
+						"p50": null,
+						"p95": null,
+						"max": null
+					},
+					"dbRun": {
+						"n": 0,
+						"p50": null,
+						"p95": null,
+						"max": null
+					},
+					"ranOn": {
+						"worker": 1
+					},
+					"tokens": 0,
+					"cost": 0
+				}
+			},
+			"all": {
+				"turns": 4,
+				"errors": 4,
+				"start": {
+					"n": 0,
+					"p50": null,
+					"p95": null,
+					"max": null
+				},
+				"firstToken": {
+					"n": 0,
+					"p50": null,
+					"p95": null,
+					"max": null
+				},
+				"total": {
+					"n": 0,
+					"p50": null,
+					"p95": null,
+					"max": null
+				},
+				"dbQueued": {
+					"n": 0,
+					"p50": null,
+					"p95": null,
+					"max": null
+				},
+				"dbRun": {
+					"n": 0,
+					"p50": null,
+					"p95": null,
+					"max": null
+				},
+				"ranOn": {
+					"worker": 4
+				},
+				"tokens": 0,
+				"cost": 0
+			},
+			"turns": [
+				{
+					"kind": "plain",
+					"ok": false,
+					"totalMs": 801.9394580000007,
+					"toolCalls": 0,
+					"executionId": "RaetEf1sHBPzgqo8",
+					"startMs": 250.73658299999806,
+					"error": "invalid x-api-key",
+					"db": {
+						"status": "error",
+						"ownerKey": "44e06bc6-03c1-495b-a4e6-3f64c30dbad1",
+						"process": "worker",
+						"queuedMs": 5,
+						"runMs": 624,
+						"totalTokens": 0,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": false,
+					"totalMs": 799.8089590000018,
+					"toolCalls": 0,
+					"executionId": "fnEECVOrwQLCcwvM",
+					"startMs": 207.83679200000188,
+					"error": "invalid x-api-key",
+					"db": {
+						"status": "error",
+						"ownerKey": "44e06bc6-03c1-495b-a4e6-3f64c30dbad1",
+						"process": "worker",
+						"queuedMs": 11,
+						"runMs": 657,
+						"totalTokens": 0,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": false,
+					"totalMs": 310.4437909999979,
+					"toolCalls": 0,
+					"executionId": "WF5r4TFnIEyX8tOo",
+					"startMs": 164.93666599999779,
+					"error": "invalid x-api-key",
+					"db": {
+						"status": "error",
+						"ownerKey": "44e06bc6-03c1-495b-a4e6-3f64c30dbad1",
+						"process": "worker",
+						"queuedMs": 4,
+						"runMs": 198,
+						"totalTokens": 0,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": false,
+					"totalMs": 326.4267919999984,
+					"toolCalls": 0,
+					"executionId": "bipt1bZ482HHJOHE",
+					"startMs": 181.9933749999982,
+					"error": "invalid x-api-key",
+					"db": {
+						"status": "error",
+						"ownerKey": "44e06bc6-03c1-495b-a4e6-3f64c30dbad1",
+						"process": "worker",
+						"queuedMs": 4,
+						"runMs": 200,
+						"totalTokens": 0,
+						"cost": 0
+					}
+				}
+			]
+		}
+	]
+}

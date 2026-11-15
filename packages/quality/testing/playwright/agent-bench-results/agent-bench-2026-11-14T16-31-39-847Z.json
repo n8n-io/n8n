@@ -1,0 +1,5933 @@
+{
+	"config": {
+		"topologies": ["main", "queue-agents-off", "queue"],
+		"turns": 100,
+		"concurrency": 20,
+		"warmup": 5,
+		"mix": {
+			"plain": 5,
+			"tool": 3,
+			"long": 2
+		},
+		"model": "anthropic/claude-sonnet-4-5",
+		"workers": 2,
+		"workerConcurrency": 10,
+		"mains": 2,
+		"out": "agent-bench-results",
+		"keep": false,
+		"cockpit": 4790,
+		"observability": false
+	},
+	"results": [
+		{
+			"topology": "main",
+			"stack": {
+				"mains": 1,
+				"workers": 0,
+				"agentQueue": false
+			},
+			"wallMs": 53809.654041,
+			"turnsPerMinute": 111.50415491295166,
+			"byKind": {
+				"plain": {
+					"turns": 50,
+					"errors": 0,
+					"start": {
+						"n": 50,
+						"p50": 49.51470800000243,
+						"p95": 540.8105419999993,
+						"max": 550.636625000001
+					},
+					"firstToken": {
+						"n": 50,
+						"p50": 740.2249159999992,
+						"p95": 1548.6048329999994,
+						"max": 1844.0762909999994
+					},
+					"total": {
+						"n": 50,
+						"p50": 2180.2765830000026,
+						"p95": 4165.714290999997,
+						"max": 5370.320458
+					},
+					"dbQueued": {
+						"n": 50,
+						"p50": 2,
+						"p95": 7,
+						"max": 11
+					},
+					"dbRun": {
+						"n": 50,
+						"p50": 2133,
+						"p95": 4111,
+						"max": 4893
+					},
+					"ranOn": {
+						"main": 50
+					},
+					"tokens": 167658,
+					"cost": 0
+				},
+				"tool": {
+					"turns": 30,
+					"errors": 0,
+					"start": {
+						"n": 30,
+						"p50": 45.89775000000009,
+						"p95": 536.9162919999999,
+						"max": 564.5981670000001
+					},
+					"firstToken": {
+						"n": 30,
+						"p50": 989.5403330000008,
+						"p95": 2818.8202500000007,
+						"max": 3365.1054170000007
+					},
+					"total": {
+						"n": 30,
+						"p50": 5255.290167000001,
+						"p95": 6691.851415999998,
+						"max": 7906.854916999999
+					},
+					"dbQueued": {
+						"n": 30,
+						"p50": 3,
+						"p95": 5,
+						"max": 9
+					},
+					"dbRun": {
+						"n": 30,
+						"p50": 4956,
+						"p95": 6577,
+						"max": 7427
+					},
+					"ranOn": {
+						"main": 30
+					},
+					"tokens": 322566,
+					"cost": 0
+				},
+				"long": {
+					"turns": 20,
+					"errors": 0,
+					"start": {
+						"n": 20,
+						"p50": 47.864832999999635,
+						"p95": 523.2302909999999,
+						"max": 546.1260000000002
+					},
+					"firstToken": {
+						"n": 20,
+						"p50": 1034.5876250000001,
+						"p95": 1792.2352920000012,
+						"max": 1807.6179580000007
+					},
+					"total": {
+						"n": 20,
+						"p50": 24657.464416999996,
+						"p95": 26371.334875,
+						"max": 27154.149833
+					},
+					"dbQueued": {
+						"n": 20,
+						"p50": 2,
+						"p95": 7,
+						"max": 7
+					},
+					"dbRun": {
+						"n": 20,
+						"p50": 24583,
+						"p95": 26194,
+						"max": 26732
+					},
+					"ranOn": {
+						"main": 20
+					},
+					"tokens": 84624,
+					"cost": 0
+				}
+			},
+			"all": {
+				"turns": 100,
+				"errors": 0,
+				"start": {
+					"n": 100,
+					"p50": 49.48433400000067,
+					"p95": 536.9162919999999,
+					"max": 564.5981670000001
+				},
+				"firstToken": {
+					"n": 100,
+					"p50": 783.3755000000019,
+					"p95": 2562.143707999996,
+					"max": 3365.1054170000007
+				},
+				"total": {
+					"n": 100,
+					"p50": 4555.283625,
+					"p95": 25442.972540999996,
+					"max": 27154.149833
+				},
+				"dbQueued": {
+					"n": 100,
+					"p50": 3,
+					"p95": 7,
+					"max": 11
+				},
+				"dbRun": {
+					"n": 100,
+					"p50": 4492,
+					"p95": 25056,
+					"max": 26732
+				},
+				"ranOn": {
+					"main": 100
+				},
+				"tokens": 574848,
+				"cost": 0
+			},
+			"turns": [
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2827.0604159999984,
+					"toolCalls": 0,
+					"executionId": "qZxWKfzrHGx6JsQA",
+					"startMs": 488.5398329999989,
+					"firstTokenMs": 1548.6048329999994,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 2409,
+						"totalTokens": 3338,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5962.286417000001,
+					"toolCalls": 2,
+					"executionId": "cXXfW2JJ3IG0GOF9",
+					"startMs": 510.65625,
+					"firstTokenMs": 1520.494166999999,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 5519,
+						"totalTokens": 10669,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 27154.149833,
+					"toolCalls": 0,
+					"executionId": "v15XeaHl3SgsaOdC",
+					"startMs": 494.14508299999943,
+					"firstTokenMs": 1792.2352920000012,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 26732,
+						"totalTokens": 4170,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2951.2308329999996,
+					"toolCalls": 0,
+					"executionId": "Ty2zi3loOjPHhbl9",
+					"startMs": 482.44841599999927,
+					"firstTokenMs": 1455.2224579999984,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 2526,
+						"totalTokens": 3379,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2723.027041999998,
+					"toolCalls": 0,
+					"executionId": "1ENXlLKvbxnuPZO2",
+					"startMs": 491.0901249999988,
+					"firstTokenMs": 1451.4555,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2301,
+						"totalTokens": 3342,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5069.224291999999,
+					"toolCalls": 2,
+					"executionId": "UdlK8il2XRWSNRuI",
+					"startMs": 504.9076249999998,
+					"firstTokenMs": 1523.000333,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 4632,
+						"totalTokens": 10641,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1609.3700000000008,
+					"toolCalls": 0,
+					"executionId": "i0ndJjSPcDzpfBAV",
+					"startMs": 513.2686250000006,
+					"firstTokenMs": 1534.1933750000007,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 1160,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24657.464416999996,
+					"toolCalls": 0,
+					"executionId": "u1eogZVGmfKzAkEc",
+					"startMs": 521.4383749999997,
+					"firstTokenMs": 1807.6179580000007,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 24199,
+						"totalTokens": 4255,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5426.350958000001,
+					"toolCalls": 2,
+					"executionId": "CVosFAWOBOZkc80a",
+					"startMs": 528.1187910000008,
+					"firstTokenMs": 1486.1470830000017,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 4956,
+						"totalTokens": 10660,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 5095.200875,
+					"toolCalls": 0,
+					"executionId": "4qKeDe7WlyXjRrul",
+					"startMs": 514.4662499999995,
+					"firstTokenMs": 1844.0762909999994,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 4641,
+						"totalTokens": 3441,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1573.4246249999997,
+					"toolCalls": 0,
+					"executionId": "tY32Sr67p2T83VhJ",
+					"startMs": 518.8358750000007,
+					"firstTokenMs": 1497.5257500000007,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 1113,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 6568.685625,
+					"toolCalls": 2,
+					"executionId": "3unOlncz5wfu08FQ",
+					"startMs": 506.86870799999997,
+					"firstTokenMs": 1504.7398750000011,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 6134,
+						"totalTokens": 10730,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 25442.972540999996,
+					"toolCalls": 0,
+					"executionId": "eqT3XZMeJOdvFMvS",
+					"startMs": 523.2302909999999,
+					"firstTokenMs": 1521.905041,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 24983,
+						"totalTokens": 4257,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 5370.320458,
+					"toolCalls": 0,
+					"executionId": "HF5kwpcWCTHUfOTu",
+					"startMs": 540.8105419999993,
+					"firstTokenMs": 1770.8413750000018,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 4893,
+						"totalTokens": 3454,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1576.0640829999993,
+					"toolCalls": 0,
+					"executionId": "JPh34rOJFxCnLWW3",
+					"startMs": 532.3459999999995,
+					"firstTokenMs": 1504.120499999999,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 1101,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 7906.854916999999,
+					"toolCalls": 2,
+					"executionId": "ZT2ojRmrnfhTUgeW",
+					"startMs": 536.9162919999999,
+					"firstTokenMs": 3365.1054170000007,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 7427,
+						"totalTokens": 10761,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2958.611541000002,
+					"toolCalls": 0,
+					"executionId": "NuxILYkyVXbBmMvU",
+					"startMs": 548.804583000001,
+					"firstTokenMs": 1497.8871660000004,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 2447,
+						"totalTokens": 3353,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 26371.334875,
+					"toolCalls": 0,
+					"executionId": "pNgCSCUqlJK5z7l8",
+					"startMs": 546.1260000000002,
+					"firstTokenMs": 1751.891290999998,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 6,
+						"runMs": 25879,
+						"totalTokens": 4195,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5255.290167000001,
+					"toolCalls": 2,
+					"executionId": "DhG53Rkjxbu7xM4L",
+					"startMs": 564.5981670000001,
+					"firstTokenMs": 1454.470542000001,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 4722,
+						"totalTokens": 10666,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3121.712458000002,
+					"toolCalls": 0,
+					"executionId": "xAAlI0OOr9OVzr13",
+					"startMs": 550.636625000001,
+					"firstTokenMs": 1486.6758750000008,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 2611,
+						"totalTokens": 3381,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2093.386624999999,
+					"toolCalls": 0,
+					"executionId": "crFlEBWtuj9UYYZt",
+					"startMs": 81.34537500000079,
+					"firstTokenMs": 770.2671250000021,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 2022,
+						"totalTokens": 3345,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5803.569749999999,
+					"toolCalls": 2,
+					"executionId": "GWuM0Y5oQDZ066B6",
+					"startMs": 81.86370899999747,
+					"firstTokenMs": 2693.881999999998,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 5735,
+						"totalTokens": 10741,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 25028.143291999997,
+					"toolCalls": 0,
+					"executionId": "MKWvoxW0ImOGmvJj",
+					"startMs": 85.55370799999946,
+					"firstTokenMs": 1202.2907080000004,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 7,
+						"runMs": 24946,
+						"totalTokens": 4349,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2465.6616670000003,
+					"toolCalls": 0,
+					"executionId": "tbFx3nHuRVCj0VoZ",
+					"startMs": 50.025667000001704,
+					"firstTokenMs": 691.8485419999997,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2419,
+						"totalTokens": 3385,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2203.103374999999,
+					"toolCalls": 0,
+					"executionId": "cMRINLIeU0q3YpwZ",
+					"startMs": 45.89079100000163,
+					"firstTokenMs": 713.7001249999994,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 2160,
+						"totalTokens": 3347,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4896.5926660000005,
+					"toolCalls": 2,
+					"executionId": "wzV4yOSR8IrQrrzf",
+					"startMs": 65.40287499999977,
+					"firstTokenMs": 1029.973582999999,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 4826,
+						"totalTokens": 10665,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 800.6656250000015,
+					"toolCalls": 0,
+					"executionId": "A1P52Blq45isBtLy",
+					"startMs": 60.81195799999841,
+					"firstTokenMs": 718.9238750000004,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 738,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 22916.585750000002,
+					"toolCalls": 0,
+					"executionId": "4A6YZhZkieoBuzHc",
+					"startMs": 54.06499999999869,
+					"firstTokenMs": 704.6674590000002,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 5,
+						"runMs": 22866,
+						"totalTokens": 4218,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4770.756167,
+					"toolCalls": 2,
+					"executionId": "SaTTL1VdGXfcPLTo",
+					"startMs": 87.9923340000023,
+					"firstTokenMs": 781.3873750000021,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 4690,
+						"totalTokens": 10666,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 4024.8694159999977,
+					"toolCalls": 0,
+					"executionId": "gE6AK5pcVadVBdvh",
+					"startMs": 92.95724999999948,
+					"firstTokenMs": 740.2249159999992,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 7,
+						"runMs": 3940,
+						"totalTokens": 3445,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 783.8196669999998,
+					"toolCalls": 0,
+					"executionId": "zxnFVq9PRDHAIXS3",
+					"startMs": 44.15858300000036,
+					"firstTokenMs": 710.7615829999995,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 742,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4555.283625,
+					"toolCalls": 2,
+					"executionId": "v6tR7r6ngLRAtxo4",
+					"startMs": 65.62433400000009,
+					"firstTokenMs": 746.6424999999981,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 4492,
+						"totalTokens": 11571,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 25854.051584,
+					"toolCalls": 0,
+					"executionId": "ssTomHBxt7OUzJY0",
+					"startMs": 49.48433400000067,
+					"firstTokenMs": 997.731667,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 25802,
+						"totalTokens": 4157,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3971.6850840000006,
+					"toolCalls": 0,
+					"executionId": "HfqDet7LHQg956ih",
+					"startMs": 36.844750000000204,
+					"firstTokenMs": 965.557084,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 3939,
+						"totalTokens": 3435,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 754.5166249999966,
+					"toolCalls": 0,
+					"executionId": "Uzj5Jzn3vCJqNMO2",
+					"startMs": 38.58429199999955,
+					"firstTokenMs": 680.6104999999989,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 5,
+						"runMs": 708,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 6076.228041999999,
+					"toolCalls": 2,
+					"executionId": "nQlwkdJrw8i9ik4y",
+					"startMs": 45.89775000000009,
+					"firstTokenMs": 746.919082999997,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 6039,
+						"totalTokens": 10748,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2038.0247500000005,
+					"toolCalls": 0,
+					"executionId": "Moio7xq1jhOvYdsb",
+					"startMs": 61.552332999999635,
+					"firstTokenMs": 742.351541,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 1978,
+						"totalTokens": 3348,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 23685.599583,
+					"toolCalls": 0,
+					"executionId": "GPilhXV0E1RSLvpR",
+					"startMs": 39.9006249999984,
+					"firstTokenMs": 1012.4809160000004,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 23648,
+						"totalTokens": 4275,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 6387.970291999998,
+					"toolCalls": 2,
+					"executionId": "aOd7Dc6J6BcYDaIv",
+					"startMs": 42.5603340000016,
+					"firstTokenMs": 728.8474590000005,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 6344,
+						"totalTokens": 10741,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2180.2765830000026,
+					"toolCalls": 0,
+					"executionId": "adkWBrC03h7Ahj3h",
+					"startMs": 55.828292000001966,
+					"firstTokenMs": 724.828375000001,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2133,
+						"totalTokens": 3380,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2481.464667,
+					"toolCalls": 0,
+					"executionId": "ofAnqW2kCr0KG2GE",
+					"startMs": 37.174958999999944,
+					"firstTokenMs": 687.0966249999983,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2444,
+						"totalTokens": 3355,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 6290.340540999998,
+					"toolCalls": 2,
+					"executionId": "HMo0TDoAb9YuscaG",
+					"startMs": 37.13695799999914,
+					"firstTokenMs": 674.9909159999988,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 5,
+						"runMs": 6226,
+						"totalTokens": 10748,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 25095.861209,
+					"toolCalls": 0,
+					"executionId": "tmuLK8B0iDARn1KQ",
+					"startMs": 42.79845900000146,
+					"firstTokenMs": 1001.8190840000025,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 25056,
+						"totalTokens": 4228,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2553.4949579999993,
+					"toolCalls": 0,
+					"executionId": "URIr5rtdBWjalUAs",
+					"startMs": 40.71416699999827,
+					"firstTokenMs": 730.6391670000012,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2518,
+						"totalTokens": 3385,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2110.448874999998,
+					"toolCalls": 0,
+					"executionId": "W7ku7fdgwaTIvELV",
+					"startMs": 42.666417000000365,
+					"firstTokenMs": 718.4599579999995,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 2069,
+						"totalTokens": 3352,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5579.6500419999975,
+					"toolCalls": 2,
+					"executionId": "Xp7mC5DCUvAEBpUw",
+					"startMs": 38.843417000000045,
+					"firstTokenMs": 2591.290374999997,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 5531,
+						"totalTokens": 10744,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 769.7483749999992,
+					"toolCalls": 0,
+					"executionId": "56gYRtshWbRejsdB",
+					"startMs": 33.60029099999883,
+					"firstTokenMs": 688.2655830000003,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 727,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 23152.036208,
+					"toolCalls": 0,
+					"executionId": "IkDDVvGymu5KJAdx",
+					"startMs": 34.11441599999671,
+					"firstTokenMs": 1034.5876250000001,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 23119,
+						"totalTokens": 4154,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4952.412082999999,
+					"toolCalls": 2,
+					"executionId": "YSxjGdhtJxtEJTWW",
+					"startMs": 45.05370799999946,
+					"firstTokenMs": 2656.4128329999985,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 4895,
+						"totalTokens": 10646,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3257.8599170000016,
+					"toolCalls": 0,
+					"executionId": "tGAJz3Idvs7TDQba",
+					"startMs": 33.06116699999984,
+					"firstTokenMs": 783.3755000000019,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 3225,
+						"totalTokens": 3382,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 843.2462090000008,
+					"toolCalls": 0,
+					"executionId": "uf8BjCmdi2zAKE3h",
+					"startMs": 34.38720900000044,
+					"firstTokenMs": 775.8668340000004,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 806,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5866.475459000001,
+					"toolCalls": 2,
+					"executionId": "UB3c1ATnobzDERkx",
+					"startMs": 34.42674999999872,
+					"firstTokenMs": 712.6939999999995,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 5828,
+						"totalTokens": 10671,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24509.449334,
+					"toolCalls": 0,
+					"executionId": "tHhFAwMfEZ57Nr3G",
+					"startMs": 39.18333399999756,
+					"firstTokenMs": 1124.0104589999974,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 24476,
+						"totalTokens": 4306,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3128.8364170000023,
+					"toolCalls": 0,
+					"executionId": "XVdPvSqJZqGB4ZgJ",
+					"startMs": 43.49116700000013,
+					"firstTokenMs": 726.9547080000011,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 3084,
+						"totalTokens": 3389,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 749.8044169999994,
+					"toolCalls": 0,
+					"executionId": "dl7RZFJezh7Y54aI",
+					"startMs": 33.145416999999725,
+					"firstTokenMs": 687.0564579999991,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 718,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4825.058583000002,
+					"toolCalls": 2,
+					"executionId": "A1srsN8p2l90gFkV",
+					"startMs": 33.73250000000189,
+					"firstTokenMs": 989.5403330000008,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 4786,
+						"totalTokens": 10675,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2209.7175000000025,
+					"toolCalls": 0,
+					"executionId": "ntLl5VRyNPaKpjJB",
+					"startMs": 35.95591600000262,
+					"firstTokenMs": 705.5329580000034,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 2141,
+						"totalTokens": 3351,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24516.081959000003,
+					"toolCalls": 0,
+					"executionId": "udiQgoHaq7dxoTtc",
+					"startMs": 37.820708999999624,
+					"firstTokenMs": 715.6413339999999,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 24481,
+						"totalTokens": 4265,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4846.910707999999,
+					"toolCalls": 2,
+					"executionId": "IsbtLReeAE0iC9UK",
+					"startMs": 57.78349999999773,
+					"firstTokenMs": 1030.3946660000001,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 4793,
+						"totalTokens": 10668,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2191.727791000001,
+					"toolCalls": 0,
+					"executionId": "OmZTprPfyrl4K1qn",
+					"startMs": 40.202541000002384,
+					"firstTokenMs": 699.1005409999998,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2153,
+						"totalTokens": 3379,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2392.967667000001,
+					"toolCalls": 0,
+					"executionId": "ESW4kX2gWEVWK790",
+					"startMs": 94.44800000000032,
+					"firstTokenMs": 888.500167000002,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 11,
+						"runMs": 2305,
+						"totalTokens": 3350,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 6691.851415999998,
+					"toolCalls": 2,
+					"executionId": "dsTz828igsx5AOGE",
+					"startMs": 132.12362500000017,
+					"firstTokenMs": 2818.8202500000007,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 9,
+						"runMs": 6577,
+						"totalTokens": 10706,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 25993.660375000003,
+					"toolCalls": 0,
+					"executionId": "O3CpXjiMmhr20wtg",
+					"startMs": 114.16262500000084,
+					"firstTokenMs": 1123.5327920000018,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 7,
+						"runMs": 25889,
+						"totalTokens": 4143,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2483.7452079999966,
+					"toolCalls": 0,
+					"executionId": "VtguyIDdRSldcVbA",
+					"startMs": 86.44624999999724,
+					"firstTokenMs": 755.1279159999976,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 2400,
+						"totalTokens": 3381,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1977.5535419999978,
+					"toolCalls": 0,
+					"executionId": "Obv49MIp3DpVcEUT",
+					"startMs": 60.53924999999799,
+					"firstTokenMs": 818.2172079999982,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 1921,
+						"totalTokens": 3337,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 6367.295417000001,
+					"toolCalls": 2,
+					"executionId": "h1aC47NBMzFZJqeZ",
+					"startMs": 56.076334000001225,
+					"firstTokenMs": 728.4813340000001,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 6318,
+						"totalTokens": 10767,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 888.150916999999,
+					"toolCalls": 0,
+					"executionId": "VE2Jlfbjmwg5fc3O",
+					"startMs": 98.53649999999834,
+					"firstTokenMs": 812.6852089999993,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 10,
+						"runMs": 796,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 23869.359541,
+					"toolCalls": 0,
+					"executionId": "uzewdTAo0kRuT26j",
+					"startMs": 150.31079099999988,
+					"firstTokenMs": 1116.599083000001,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 6,
+						"runMs": 23734,
+						"totalTokens": 4319,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 6350.8138750000035,
+					"toolCalls": 2,
+					"executionId": "ed1KcYKvedUfTxGV",
+					"startMs": 54.49233300000196,
+					"firstTokenMs": 714.0872080000008,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 6301,
+						"totalTokens": 10724,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3557.0639999999985,
+					"toolCalls": 0,
+					"executionId": "fe04pN3pvD0iT4Wo",
+					"startMs": 49.51470800000243,
+					"firstTokenMs": 1077.541250000002,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 3511,
+						"totalTokens": 3422,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 816.2116659999956,
+					"toolCalls": 0,
+					"executionId": "7zHNT2k4BalcBZdP",
+					"startMs": 57.03649999999834,
+					"firstTokenMs": 740.1853750000009,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 7,
+						"runMs": 759,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4106.905125000001,
+					"toolCalls": 2,
+					"executionId": "mdokblQk4gl2pK1k",
+					"startMs": 57.49616700000115,
+					"firstTokenMs": 725.1389579999995,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 5,
+						"runMs": 4052,
+						"totalTokens": 10644,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24855.971167000003,
+					"toolCalls": 0,
+					"executionId": "l4I6r0JylcPCCl5p",
+					"startMs": 59.35412499999802,
+					"firstTokenMs": 829.2183329999971,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 24787,
+						"totalTokens": 4257,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3006.3565000000017,
+					"toolCalls": 0,
+					"executionId": "2t9CJgamQgg2yEdH",
+					"startMs": 56.01633299999958,
+					"firstTokenMs": 747.137708000002,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2953,
+						"totalTokens": 3395,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 781.8838749999995,
+					"toolCalls": 0,
+					"executionId": "xxJiTz9peQUhIbdU",
+					"startMs": 47.98658299999806,
+					"firstTokenMs": 723.2025829999984,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 737,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5208.507707999997,
+					"toolCalls": 2,
+					"executionId": "WcrM5ROOXG0vO074",
+					"startMs": 37.87808299999597,
+					"firstTokenMs": 2562.143707999996,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 5174,
+						"totalTokens": 10657,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2107.7262499999997,
+					"toolCalls": 0,
+					"executionId": "nBXYDDXdMP74TlII",
+					"startMs": 32.722750000000815,
+					"firstTokenMs": 706.5768329999992,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 2076,
+						"totalTokens": 3349,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24620.44075,
+					"toolCalls": 0,
+					"executionId": "972iojlU0BQlghMw",
+					"startMs": 33.52337500000431,
+					"firstTokenMs": 1030.4825420000052,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 24583,
+						"totalTokens": 4170,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4610.041083999997,
+					"toolCalls": 2,
+					"executionId": "9CL1M2IQtMUjWLwC",
+					"startMs": 33.547749999997905,
+					"firstTokenMs": 679.3636669999978,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 4578,
+						"totalTokens": 10673,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2434.6650420000005,
+					"toolCalls": 0,
+					"executionId": "dp6jMzc2cELQrg5Z",
+					"startMs": 34.05991699999868,
+					"firstTokenMs": 728.9307079999999,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 2402,
+						"totalTokens": 3381,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1829.2348340000026,
+					"toolCalls": 0,
+					"executionId": "wvn9wqyX8jgYLrM5",
+					"startMs": 33.440167000000656,
+					"firstTokenMs": 695.3433340000047,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 1795,
+						"totalTokens": 3334,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4990.415832999999,
+					"toolCalls": 2,
+					"executionId": "QfUqTH77LgFp0LTa",
+					"startMs": 36.172041000005265,
+					"firstTokenMs": 2477.4966249999998,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 4954,
+						"totalTokens": 10671,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24773.635125,
+					"toolCalls": 0,
+					"executionId": "Wk5TFBvYk373vEMG",
+					"startMs": 45.8237500000032,
+					"firstTokenMs": 1029.8684170000051,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 24728,
+						"totalTokens": 4283,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2133.9186250000057,
+					"toolCalls": 0,
+					"executionId": "bxxu49SNMwgb1pvb",
+					"startMs": 35.47591700000339,
+					"firstTokenMs": 738.0403330000045,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 2101,
+						"totalTokens": 3375,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1852.8259169999947,
+					"toolCalls": 0,
+					"executionId": "LlsSrWEtLRKkIpel",
+					"startMs": 34.458499999993364,
+					"firstTokenMs": 714.318041999999,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 1814,
+						"totalTokens": 3354,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4646.849375000005,
+					"toolCalls": 2,
+					"executionId": "OudEKOqh7TorEiHm",
+					"startMs": 37.79558299999917,
+					"firstTokenMs": 695.1508749999994,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 4611,
+						"totalTokens": 10675,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 791.3394169999956,
+					"toolCalls": 0,
+					"executionId": "NbR1EhF1kenr9EE2",
+					"startMs": 57.9320000000007,
+					"firstTokenMs": 725.6844589999964,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 736,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 23420.060291,
+					"toolCalls": 0,
+					"executionId": "VrJKnYBbjJFLs92z",
+					"startMs": 47.864832999999635,
+					"firstTokenMs": 729.5982079999958,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 23376,
+						"totalTokens": 4235,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4893.167916999999,
+					"toolCalls": 2,
+					"executionId": "ztt2gNxylxRRrEtn",
+					"startMs": 37.75679200000013,
+					"firstTokenMs": 677.9778339999975,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 4856,
+						"totalTokens": 10676,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 4165.714290999997,
+					"toolCalls": 0,
+					"executionId": "rjXJONqgkv2a0eSN",
+					"startMs": 58.700665999997,
+					"firstTokenMs": 724.083832999997,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 4111,
+						"totalTokens": 3435,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 822.7229160000061,
+					"toolCalls": 0,
+					"executionId": "9qVaupMewFY2t6CH",
+					"startMs": 50.393958000000566,
+					"firstTokenMs": 760.374333000007,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 776,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4828.4154590000035,
+					"toolCalls": 2,
+					"executionId": "oEngI74GW6SljnAr",
+					"startMs": 33.45962500000314,
+					"firstTokenMs": 708.8122500000027,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 5,
+						"runMs": 4796,
+						"totalTokens": 10667,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 26230.660000000003,
+					"toolCalls": 0,
+					"executionId": "uv0A9w0yKT9n9c5x",
+					"startMs": 38.84575000000041,
+					"firstTokenMs": 1037.599417000005,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 26194,
+						"totalTokens": 4141,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3597.381791000007,
+					"toolCalls": 0,
+					"executionId": "i0NcWazyrJRlVmnp",
+					"startMs": 41.59241600000678,
+					"firstTokenMs": 1003.5646250000063,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 3556,
+						"totalTokens": 3406,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 775.1379589999997,
+					"toolCalls": 0,
+					"executionId": "1PPF8ZRC9ejmrIch",
+					"startMs": 31.738459000000148,
+					"firstTokenMs": 705.403750000005,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 745,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5435.350542,
+					"toolCalls": 2,
+					"executionId": "FUM6V0T9weHcb338",
+					"startMs": 33.12758300000132,
+					"firstTokenMs": 727.7786669999987,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 5403,
+						"totalTokens": 10703,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1957.3958330000023,
+					"toolCalls": 0,
+					"executionId": "a1jiIdMvyoYlJp3v",
+					"startMs": 38.47158300000592,
+					"firstTokenMs": 759.6121249999997,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 1926,
+						"totalTokens": 3340,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 23372.778082999997,
+					"toolCalls": 0,
+					"executionId": "ukc4x2EUsJ1xJvHh",
+					"startMs": 34.80474999999569,
+					"firstTokenMs": 1086.0567919999958,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 23338,
+						"totalTokens": 4247,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5601.794375000005,
+					"toolCalls": 2,
+					"executionId": "LMuwETfTX1XCmZpk",
+					"startMs": 45.33637499999895,
+					"firstTokenMs": 1022.0233750000043,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 5557,
+						"totalTokens": 11592,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2332.8095420000027,
+					"toolCalls": 0,
+					"executionId": "v4vqn4n4lh9BApMh",
+					"startMs": 35.50945800000045,
+					"firstTokenMs": 815.3208749999976,
+					"db": {
+						"status": "success",
+						"ownerKey": "139d19ab-6817-4061-8632-25cd417c9383",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 2298,
+						"totalTokens": 3378,
+						"cost": 0
+					}
+				}
+			]
+		},
+		{
+			"topology": "queue-agents-off",
+			"stack": {
+				"mains": 1,
+				"workers": 2,
+				"agentQueue": false
+			},
+			"wallMs": 54094.323416,
+			"turnsPerMinute": 110.9173684243793,
+			"byKind": {
+				"plain": {
+					"turns": 50,
+					"errors": 0,
+					"start": {
+						"n": 50,
+						"p50": 52.58025000001362,
+						"p95": 563.5557919999992,
+						"max": 572.3144999999931
+					},
+					"firstToken": {
+						"n": 50,
+						"p50": 758.9666250000009,
+						"p95": 1777.7168340000062,
+						"max": 1818.293292000002
+					},
+					"total": {
+						"n": 50,
+						"p50": 2174.901708000005,
+						"p95": 4250.493499999997,
+						"max": 4551.455999999991
+					},
+					"dbQueued": {
+						"n": 50,
+						"p50": 3,
+						"p95": 6,
+						"max": 10
+					},
+					"dbRun": {
+						"n": 50,
+						"p50": 2124,
+						"p95": 3880,
+						"max": 4206
+					},
+					"ranOn": {
+						"main": 50
+					},
+					"tokens": 167596,
+					"cost": 0
+				},
+				"tool": {
+					"turns": 30,
+					"errors": 0,
+					"start": {
+						"n": 30,
+						"p50": 47.086834000001545,
+						"p95": 556.6181250000081,
+						"max": 569.0779159999947
+					},
+					"firstToken": {
+						"n": 30,
+						"p50": 1009.1954170000099,
+						"p95": 3350.1870000000054,
+						"max": 3488.2658749999973
+					},
+					"total": {
+						"n": 30,
+						"p50": 5333.026125000004,
+						"p95": 6689.666750000004,
+						"max": 9356.754874999999
+					},
+					"dbQueued": {
+						"n": 30,
+						"p50": 3,
+						"p95": 5,
+						"max": 6
+					},
+					"dbRun": {
+						"n": 30,
+						"p50": 5064,
+						"p95": 6623,
+						"max": 9317
+					},
+					"ranOn": {
+						"main": 30
+					},
+					"tokens": 321491,
+					"cost": 0
+				},
+				"long": {
+					"turns": 20,
+					"errors": 0,
+					"start": {
+						"n": 20,
+						"p50": 45.94100000000617,
+						"p95": 551.661791999999,
+						"max": 582.112374999997
+					},
+					"firstToken": {
+						"n": 20,
+						"p50": 1022.9745830000029,
+						"p95": 1787.4265000000014,
+						"max": 1816.032917000004
+					},
+					"total": {
+						"n": 20,
+						"p50": 24643.33374999999,
+						"p95": 25899.23383299999,
+						"max": 27275.499458000006
+					},
+					"dbQueued": {
+						"n": 20,
+						"p50": 3,
+						"p95": 6,
+						"max": 13
+					},
+					"dbRun": {
+						"n": 20,
+						"p50": 24286,
+						"p95": 25648,
+						"max": 27231
+					},
+					"ranOn": {
+						"main": 20
+					},
+					"tokens": 84728,
+					"cost": 0
+				}
+			},
+			"all": {
+				"turns": 100,
+				"errors": 0,
+				"start": {
+					"n": 100,
+					"p50": 48.615959000002476,
+					"p95": 558.0539579999895,
+					"max": 582.112374999997
+				},
+				"firstToken": {
+					"n": 100,
+					"p50": 822.6787919999915,
+					"p95": 2569.8953750000073,
+					"max": 3488.2658749999973
+				},
+				"total": {
+					"n": 100,
+					"p50": 4301.601542000004,
+					"p95": 25261.636084000012,
+					"max": 27275.499458000006
+				},
+				"dbQueued": {
+					"n": 100,
+					"p50": 3,
+					"p95": 6,
+					"max": 13
+				},
+				"dbRun": {
+					"n": 100,
+					"p50": 4072,
+					"p95": 25217,
+					"max": 27231
+				},
+				"ranOn": {
+					"main": 100
+				},
+				"tokens": 573815,
+				"cost": 0
+			},
+			"turns": [
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2824.7750420000084,
+					"toolCalls": 0,
+					"executionId": "Uc5cioQoT07nzm8p",
+					"startMs": 438.0013750000071,
+					"firstTokenMs": 1460.4919170000067,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 5,
+						"runMs": 2455,
+						"totalTokens": 3347,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5519.005667000005,
+					"toolCalls": 2,
+					"executionId": "C0ActLAdyOY6ppVG",
+					"startMs": 502.05558400000155,
+					"firstTokenMs": 1919.277792000008,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 5114,
+						"totalTokens": 10668,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 25899.23383299999,
+					"toolCalls": 0,
+					"executionId": "XDfHHPhUpGKaAIAJ",
+					"startMs": 438.01958300000115,
+					"firstTokenMs": 1709.628582999998,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 25543,
+						"totalTokens": 4154,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3011.4429999999993,
+					"toolCalls": 0,
+					"executionId": "E2lZYAkba1j23CGE",
+					"startMs": 506.22262500000943,
+					"firstTokenMs": 1777.7168340000062,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2604,
+						"totalTokens": 3381,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3108.023874999999,
+					"toolCalls": 0,
+					"executionId": "bqYdVhGQPGnbOI8d",
+					"startMs": 492.25754099999904,
+					"firstTokenMs": 1498.3161249999976,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2710,
+						"totalTokens": 3351,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 6541.689874999996,
+					"toolCalls": 2,
+					"executionId": "3nLlSdvcozBLlRQu",
+					"startMs": 457.9631669999944,
+					"firstTokenMs": 1458.3501249999972,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 5,
+						"runMs": 6159,
+						"totalTokens": 10725,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1582.2359999999899,
+					"toolCalls": 0,
+					"executionId": "Wl7g14KLbFvWKkTd",
+					"startMs": 511.39691699999094,
+					"firstTokenMs": 1501.1288749999949,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 1161,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 23832.956999999995,
+					"toolCalls": 0,
+					"executionId": "pbUsVw0kKTkqQvrL",
+					"startMs": 534.7859590000007,
+					"firstTokenMs": 1654.8361670000013,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 23399,
+						"totalTokens": 4371,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5889.651125000004,
+					"toolCalls": 2,
+					"executionId": "aRxnjfj9KH58l1mn",
+					"startMs": 523.1473750000005,
+					"firstTokenMs": 1520.6669580000016,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 5469,
+						"totalTokens": 10698,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 4301.601542000004,
+					"toolCalls": 0,
+					"executionId": "lgOko7NYndHmLm0o",
+					"startMs": 529.4259170000005,
+					"firstTokenMs": 1818.293292000002,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 3880,
+						"totalTokens": 3414,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1614.5479589999886,
+					"toolCalls": 0,
+					"executionId": "aBjQGY2yACrSETwK",
+					"startMs": 553.3550419999956,
+					"firstTokenMs": 1533.1604169999919,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 1161,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5571.365125000011,
+					"toolCalls": 2,
+					"executionId": "W7OmYa4MWrqeGDcE",
+					"startMs": 545.0174160000024,
+					"firstTokenMs": 1494.7377080000006,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 5126,
+						"totalTokens": 10666,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24703.780083000005,
+					"toolCalls": 0,
+					"executionId": "eySmE90f7to3GCS7",
+					"startMs": 551.661791999999,
+					"firstTokenMs": 1787.4265000000014,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 24256,
+						"totalTokens": 4194,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 4551.455999999991,
+					"toolCalls": 0,
+					"executionId": "9TbwSvaMTCg1Q6Hl",
+					"startMs": 567.3577090000035,
+					"firstTokenMs": 1816.977749999991,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 4072,
+						"totalTokens": 3427,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1567.9549160000024,
+					"toolCalls": 0,
+					"executionId": "u6mnBZrdkvYynw2c",
+					"startMs": 558.0539579999895,
+					"firstTokenMs": 1487.4308329999913,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 1103,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5299.161708,
+					"toolCalls": 2,
+					"executionId": "Ftk7gKbbGZh3E1Fp",
+					"startMs": 556.6181250000081,
+					"firstTokenMs": 3350.1870000000054,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 4845,
+						"totalTokens": 10628,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2823.003666999997,
+					"toolCalls": 0,
+					"executionId": "DBXYpfP056ZyU6e7",
+					"startMs": 563.5557919999992,
+					"firstTokenMs": 1503.8487920000043,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 2345,
+						"totalTokens": 3347,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 25167.611749999996,
+					"toolCalls": 0,
+					"executionId": "Jo3WpXJqHRISMAFy",
+					"startMs": 582.112374999997,
+					"firstTokenMs": 1816.032917000004,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 13,
+						"runMs": 24635,
+						"totalTokens": 4142,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5553.4234159999905,
+					"toolCalls": 2,
+					"executionId": "6S1bPiwIdByhbxej",
+					"startMs": 569.0779159999947,
+					"firstTokenMs": 3488.2658749999973,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 5064,
+						"totalTokens": 10633,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3233.1510419999977,
+					"toolCalls": 0,
+					"executionId": "SCvC1n2tpIvFvYZH",
+					"startMs": 572.3144999999931,
+					"firstTokenMs": 1514.052874999994,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 8,
+						"runMs": 2750,
+						"totalTokens": 3380,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2454.920916999996,
+					"toolCalls": 0,
+					"executionId": "SzTbDZ88pydzGOVY",
+					"startMs": 84.13383399999293,
+					"firstTokenMs": 777.221000000005,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2372,
+						"totalTokens": 3355,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5345.572084000014,
+					"toolCalls": 2,
+					"executionId": "exoappNaLqcoWBwQ",
+					"startMs": 76.0643340000097,
+					"firstTokenMs": 2812.323000000004,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 5273,
+						"totalTokens": 10664,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24670.790125,
+					"toolCalls": 0,
+					"executionId": "t7kO8Z25aHbYMbYC",
+					"startMs": 76.11158300000534,
+					"firstTokenMs": 1087.6481670000067,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 24596,
+						"totalTokens": 4365,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2259.6345,
+					"toolCalls": 0,
+					"executionId": "KaD6fggLj5HETzsT",
+					"startMs": 69.19545899999503,
+					"firstTokenMs": 735.971458999993,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2183,
+						"totalTokens": 3378,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2014.451583999995,
+					"toolCalls": 0,
+					"executionId": "5sJ5nAgGNPysrcW5",
+					"startMs": 70.5072089999885,
+					"firstTokenMs": 821.2734589999891,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 1946,
+						"totalTokens": 3353,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4639.1784590000025,
+					"toolCalls": 2,
+					"executionId": "nZeQsdbWTEMaYsoG",
+					"startMs": 47.39049999999406,
+					"firstTokenMs": 727.4991670000018,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 5,
+						"runMs": 4589,
+						"totalTokens": 10663,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 844.1547909999936,
+					"toolCalls": 0,
+					"executionId": "equYRtgisHBqs5eJ",
+					"startMs": 49.41120800000499,
+					"firstTokenMs": 766.3957079999964,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 793,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 25688.767792,
+					"toolCalls": 0,
+					"executionId": "wz1PUwU8Q0nxx972",
+					"startMs": 41.70108299999265,
+					"firstTokenMs": 711.226416999998,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 5,
+						"runMs": 25648,
+						"totalTokens": 4301,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4855.732374999992,
+					"toolCalls": 2,
+					"executionId": "w9eRqldKJmoLmeDP",
+					"startMs": 42.92854100000113,
+					"firstTokenMs": 730.5648749999964,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 4814,
+						"totalTokens": 10689,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3282.07654200001,
+					"toolCalls": 0,
+					"executionId": "SrkVLlo0de8EtU3a",
+					"startMs": 46.06750000000466,
+					"firstTokenMs": 712.3320830000011,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 3239,
+						"totalTokens": 3394,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 770.7147499999992,
+					"toolCalls": 0,
+					"executionId": "50juAw3HOdDEGjjL",
+					"startMs": 42.717709000004106,
+					"firstTokenMs": 685.2680839999957,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 719,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4809.237208999999,
+					"toolCalls": 2,
+					"executionId": "nzYxVcz2igAGqcyy",
+					"startMs": 42.3607090000005,
+					"firstTokenMs": 774.1519999999873,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 4767,
+						"totalTokens": 10666,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24145.286833000006,
+					"toolCalls": 0,
+					"executionId": "oLTpxqwfUqSZ9XFf",
+					"startMs": 41.95120799999859,
+					"firstTokenMs": 1055.0832919999957,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 5,
+						"runMs": 24100,
+						"totalTokens": 4124,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3883.408958999993,
+					"toolCalls": 0,
+					"executionId": "IsXmY8NFstvE0XxA",
+					"startMs": 65.24358399999619,
+					"firstTokenMs": 1058.9539589999913,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 3823,
+						"totalTokens": 3432,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 889.5908329999947,
+					"toolCalls": 0,
+					"executionId": "64YYI7DPDhjQtORq",
+					"startMs": 58.97204199999396,
+					"firstTokenMs": 822.6787919999915,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 837,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5497.251917000001,
+					"toolCalls": 2,
+					"executionId": "61WAxja7OYVk0PxI",
+					"startMs": 39.94466699998884,
+					"firstTokenMs": 738.9495420000021,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 5457,
+						"totalTokens": 10710,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1998.0905829999974,
+					"toolCalls": 0,
+					"executionId": "pYrw9UhVCOlIZ1fv",
+					"startMs": 90.79124999999476,
+					"firstTokenMs": 791.3597920000029,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 6,
+						"runMs": 1908,
+						"totalTokens": 3337,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 23481.1835,
+					"toolCalls": 0,
+					"executionId": "cbTi2j63UFbBA6KV",
+					"startMs": 77.54108399999677,
+					"firstTokenMs": 1079.2097090000025,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 23398,
+						"totalTokens": 4305,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 6689.666750000004,
+					"toolCalls": 2,
+					"executionId": "ixCQmnu6jvaaR3xx",
+					"startMs": 72.07312499999534,
+					"firstTokenMs": 769.2488330000051,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 6623,
+						"totalTokens": 10749,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2166.355291999993,
+					"toolCalls": 0,
+					"executionId": "n2EbnkjbfsbOa6GJ",
+					"startMs": 44.38124999999127,
+					"firstTokenMs": 736.0407919999998,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2124,
+						"totalTokens": 3376,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1911.0207089999894,
+					"toolCalls": 0,
+					"executionId": "j5o9l7JVj4viyrH9",
+					"startMs": 41.46295899999677,
+					"firstTokenMs": 708.4642089999979,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 1869,
+						"totalTokens": 3337,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4537.906082999994,
+					"toolCalls": 2,
+					"executionId": "051v8yABm3gZx9Bk",
+					"startMs": 56.6195000000007,
+					"firstTokenMs": 735.0958749999991,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 4483,
+						"totalTokens": 10661,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 23756.76075,
+					"toolCalls": 0,
+					"executionId": "UJs8vapHOFmR7frL",
+					"startMs": 49.38383299999987,
+					"firstTokenMs": 733.9291250000097,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 23700,
+						"totalTokens": 4221,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2367.611958999987,
+					"toolCalls": 0,
+					"executionId": "LY74OjlL8a5gFFVP",
+					"startMs": 49.226874999993015,
+					"firstTokenMs": 770.4812499999971,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2324,
+						"totalTokens": 3378,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2048.320875000005,
+					"toolCalls": 0,
+					"executionId": "qXx6wNQxH6KgW8o3",
+					"startMs": 45.10825000000477,
+					"firstTokenMs": 755.8422089999949,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 2005,
+						"totalTokens": 3347,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4386.6709589999955,
+					"toolCalls": 2,
+					"executionId": "MLSHwIAlTh1Iv27e",
+					"startMs": 38.92437500000233,
+					"firstTokenMs": 2598.7780420000054,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 4349,
+						"totalTokens": 10629,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 816.0597500000003,
+					"toolCalls": 0,
+					"executionId": "GVY8ggQw53PQX2ub",
+					"startMs": 37.056750000003376,
+					"firstTokenMs": 741.6964999999909,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 778,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 22638.485208000013,
+					"toolCalls": 0,
+					"executionId": "uPeyUSbkwKDKdkvB",
+					"startMs": 48.2134170000063,
+					"firstTokenMs": 1007.0285000000003,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 22589,
+						"totalTokens": 4137,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5392.4335830000055,
+					"toolCalls": 2,
+					"executionId": "Kix5rRqDU9Hljf1K",
+					"startMs": 54.013749999998254,
+					"firstTokenMs": 727.5051660000026,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 5341,
+						"totalTokens": 10698,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 4250.493499999997,
+					"toolCalls": 0,
+					"executionId": "QTlc6qgXt0MjIebg",
+					"startMs": 42.601499999989755,
+					"firstTokenMs": 986.3515409999964,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 4206,
+						"totalTokens": 3448,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 825.8889579999959,
+					"toolCalls": 0,
+					"executionId": "AYZuKEmTz2KJmzMC",
+					"startMs": 43.48758299999463,
+					"firstTokenMs": 761.5254580000037,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 786,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 9356.754874999999,
+					"toolCalls": 2,
+					"executionId": "GBEmGPgN2J96zmmU",
+					"startMs": 39.00554199999897,
+					"firstTokenMs": 2769.8771669999987,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 9317,
+						"totalTokens": 10869,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24080.642083,
+					"toolCalls": 0,
+					"executionId": "hytpUii4iQoZhefR",
+					"startMs": 45.94100000000617,
+					"firstTokenMs": 1055.1611249999987,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 24039,
+						"totalTokens": 4319,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3846.2398749999993,
+					"toolCalls": 0,
+					"executionId": "VFP3PqrigGatqyJs",
+					"startMs": 40.906457999997656,
+					"firstTokenMs": 741.3472920000058,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 3807,
+						"totalTokens": 3427,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 825.8297909999965,
+					"toolCalls": 0,
+					"executionId": "qoKQ4aR0KbEacIpe",
+					"startMs": 49.10025000000314,
+					"firstTokenMs": 758.3315409999923,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 781,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4664.575542000006,
+					"toolCalls": 2,
+					"executionId": "kQOF6K7Scl2hURnA",
+					"startMs": 47.4967089999991,
+					"firstTokenMs": 1009.1954170000099,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 4620,
+						"totalTokens": 11575,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2312.585917000004,
+					"toolCalls": 0,
+					"executionId": "klDynaueIxdTRRrJ",
+					"startMs": 39.784542000008514,
+					"firstTokenMs": 723.2120830000058,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 2260,
+						"totalTokens": 3350,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24643.33374999999,
+					"toolCalls": 0,
+					"executionId": "PE8TSmxsNE4WGKU8",
+					"startMs": 45.1215419999935,
+					"firstTokenMs": 840.8706249999959,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 24599,
+						"totalTokens": 4287,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4945.90125000001,
+					"toolCalls": 2,
+					"executionId": "IPZvcbqOms6rEzLu",
+					"startMs": 40.08079200000793,
+					"firstTokenMs": 1014.931792000003,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 4909,
+						"totalTokens": 10666,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2503.6340000000055,
+					"toolCalls": 0,
+					"executionId": "lRXQD2jt1Tqz2IWw",
+					"startMs": 66.79958299999998,
+					"firstTokenMs": 746.567332999999,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 5,
+						"runMs": 2439,
+						"totalTokens": 3376,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2604.161374999996,
+					"toolCalls": 0,
+					"executionId": "pcDpnJQB7B5suobb",
+					"startMs": 95.88874999999825,
+					"firstTokenMs": 884.6232499999896,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2519,
+						"totalTokens": 3353,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5074.881041000001,
+					"toolCalls": 2,
+					"executionId": "dZXE95KRnSiZTRzh",
+					"startMs": 86.27174999999988,
+					"firstTokenMs": 1052.7195409999986,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 4999,
+						"totalTokens": 10672,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 25295.58029099999,
+					"toolCalls": 0,
+					"executionId": "fw9JZIvfimx0yf2N",
+					"startMs": 58.38904100000218,
+					"firstTokenMs": 1022.9745830000029,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 25243,
+						"totalTokens": 4155,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2303.177874999994,
+					"toolCalls": 0,
+					"executionId": "He9vNwPdB3PaXmLF",
+					"startMs": 112.17283399999724,
+					"firstTokenMs": 838.9049589999922,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 10,
+						"runMs": 2217,
+						"totalTokens": 3386,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2119.0099590000027,
+					"toolCalls": 0,
+					"executionId": "1YCNuy1dMGtyYAqU",
+					"startMs": 40.80037500000617,
+					"firstTokenMs": 735.1833340000012,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2078,
+						"totalTokens": 3345,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5930.220832999999,
+					"toolCalls": 2,
+					"executionId": "IWpMGvI0hT5VJTP5",
+					"startMs": 45.103250000000116,
+					"firstTokenMs": 722.3994999999995,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 5883,
+						"totalTokens": 10756,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 823.2399580000056,
+					"toolCalls": 0,
+					"executionId": "G7OwsmRH7qOn8mA4",
+					"startMs": 60.77362500000163,
+					"firstTokenMs": 758.9666250000009,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 6,
+						"runMs": 768,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 22621.884959000003,
+					"toolCalls": 0,
+					"executionId": "rENzMtlrBHDuTOsp",
+					"startMs": 39.78691699999035,
+					"firstTokenMs": 996.0380000000005,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 22584,
+						"totalTokens": 4273,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 6097.614708999987,
+					"toolCalls": 2,
+					"executionId": "gAeASoAH5OzyG8QN",
+					"startMs": 37.74937499999942,
+					"firstTokenMs": 684.1508749999921,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 6057,
+						"totalTokens": 10740,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3170.0479579999956,
+					"toolCalls": 0,
+					"executionId": "JKG2cYB0NLUVGobD",
+					"startMs": 43.8791249999922,
+					"firstTokenMs": 726.2475419999973,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 3129,
+						"totalTokens": 3403,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 787.2740420000046,
+					"toolCalls": 0,
+					"executionId": "4zFIcBUOr5z2SoAe",
+					"startMs": 42.25729200000933,
+					"firstTokenMs": 707.7773750000051,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 742,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5333.026125000004,
+					"toolCalls": 2,
+					"executionId": "x9OgZkuxoNLmki7k",
+					"startMs": 41.33404099999461,
+					"firstTokenMs": 734.5540409999958,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 5292,
+						"totalTokens": 10702,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 27275.499458000006,
+					"toolCalls": 0,
+					"executionId": "lelQxbRjHGBPOMjF",
+					"startMs": 44.22608300000138,
+					"firstTokenMs": 702.2414169999975,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 5,
+						"runMs": 27231,
+						"totalTokens": 4301,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2837.3358749999898,
+					"toolCalls": 0,
+					"executionId": "5e7dFktNVvOnhm1s",
+					"startMs": 38.86683400000038,
+					"firstTokenMs": 704.9314999999915,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2799,
+						"totalTokens": 3397,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 884.7958750000107,
+					"toolCalls": 0,
+					"executionId": "6oyxoj7YYN7rDM9s",
+					"startMs": 52.58025000001362,
+					"firstTokenMs": 814.8575000000128,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 841,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 6614.144750000007,
+					"toolCalls": 2,
+					"executionId": "PqPHExlxhGUinApo",
+					"startMs": 47.086834000001545,
+					"firstTokenMs": 2569.8953750000073,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 6570,
+						"totalTokens": 10707,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2204.464957999997,
+					"toolCalls": 0,
+					"executionId": "cA1ju3PBx7fQeqMF",
+					"startMs": 39.211624999996275,
+					"firstTokenMs": 711.9108330000017,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2165,
+						"totalTokens": 3351,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 25261.636084000012,
+					"toolCalls": 0,
+					"executionId": "iA4J7ms9LCzxTSr9",
+					"startMs": 44.475791999997455,
+					"firstTokenMs": 1002.2999169999966,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 25217,
+						"totalTokens": 4162,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4666.242999999988,
+					"toolCalls": 2,
+					"executionId": "ZFO7vBi9frvxdgcK",
+					"startMs": 41.84958299998834,
+					"firstTokenMs": 2561.948207999987,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 4620,
+						"totalTokens": 10639,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1991.7712089999986,
+					"toolCalls": 0,
+					"executionId": "JYk5m9vezRWYPeXU",
+					"startMs": 48.615959000002476,
+					"firstTokenMs": 717.7593340000021,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 1944,
+						"totalTokens": 3377,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1955.4072499999893,
+					"toolCalls": 0,
+					"executionId": "dNqMsyZXamyHZiW5",
+					"startMs": 37.39258399998653,
+					"firstTokenMs": 819.8919169999863,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 1918,
+						"totalTokens": 3349,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 6029.461250000008,
+					"toolCalls": 2,
+					"executionId": "gxDaC0ifcrFSCD8F",
+					"startMs": 45.70287500000268,
+					"firstTokenMs": 2542.6561250000086,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 5984,
+						"totalTokens": 10692,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 22929.295207999996,
+					"toolCalls": 0,
+					"executionId": "esnUmVlcVB71QX2w",
+					"startMs": 42.74829099999624,
+					"firstTokenMs": 1001.2465830000001,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 22888,
+						"totalTokens": 4237,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2139.9567909999896,
+					"toolCalls": 0,
+					"executionId": "zYmbi3zTTl8xS7ly",
+					"startMs": 40.616207999992184,
+					"firstTokenMs": 727.6171249999898,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 5,
+						"runMs": 2091,
+						"totalTokens": 3378,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2290.434208999999,
+					"toolCalls": 0,
+					"executionId": "ucJlFraL60AQAkAu",
+					"startMs": 37.90600000000268,
+					"firstTokenMs": 719.7302499999932,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2253,
+						"totalTokens": 3356,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4786.054667000004,
+					"toolCalls": 2,
+					"executionId": "jZ4sxbAgltAA1O5C",
+					"startMs": 38.68899999999849,
+					"firstTokenMs": 689.6486670000013,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 4745,
+						"totalTokens": 10681,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 808.2405419999996,
+					"toolCalls": 0,
+					"executionId": "xnrUESyD3d6h0bcY",
+					"startMs": 40.457792000001064,
+					"firstTokenMs": 733.9155840000021,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 768,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 25303.895416,
+					"toolCalls": 0,
+					"executionId": "gkQeZpyv2JL0TTVX",
+					"startMs": 38.13345799999661,
+					"firstTokenMs": 1112.700749999989,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 25267,
+						"totalTokens": 4183,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4770.673125000001,
+					"toolCalls": 2,
+					"executionId": "khpABJRDwAHmhh7i",
+					"startMs": 46.85541699999885,
+					"firstTokenMs": 705.270457999999,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 4725,
+						"totalTokens": 10669,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3593.8516660000023,
+					"toolCalls": 0,
+					"executionId": "QfL24nDMGpKybOgc",
+					"startMs": 67.75,
+					"firstTokenMs": 1061.293166000003,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 3533,
+						"totalTokens": 3411,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 793.041167000003,
+					"toolCalls": 0,
+					"executionId": "MbiV7UstzgPjCAVu",
+					"startMs": 62.138208999997005,
+					"firstTokenMs": 727.6116670000047,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 5,
+						"runMs": 736,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 3945.3395420000015,
+					"toolCalls": 2,
+					"executionId": "D3KrygHa67sDJNFl",
+					"startMs": 40.04508399999759,
+					"firstTokenMs": 989.0344170000026,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 3906,
+						"totalTokens": 10601,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24862.830083000008,
+					"toolCalls": 0,
+					"executionId": "EC7V3QdV0e6qg1vN",
+					"startMs": 42.59825000001001,
+					"firstTokenMs": 1018.8907080000063,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 24824,
+						"totalTokens": 4162,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3224.0944170000002,
+					"toolCalls": 0,
+					"executionId": "jP2qGBjAvhRuReTW",
+					"startMs": 40.47641700001259,
+					"firstTokenMs": 991.197834000006,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 3188,
+						"totalTokens": 3375,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 819.3495419999963,
+					"toolCalls": 0,
+					"executionId": "3XeO3INcSSjTw35k",
+					"startMs": 53.898207999998704,
+					"firstTokenMs": 730.5853329999954,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 6,
+						"runMs": 754,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4864.312375000009,
+					"toolCalls": 2,
+					"executionId": "2WHg4h8K2QiPTY5y",
+					"startMs": 75.54491700000654,
+					"firstTokenMs": 755.0881250000093,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 2,
+						"runMs": 4789,
+						"totalTokens": 10659,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2174.901708000005,
+					"toolCalls": 0,
+					"executionId": "jbKd2azDVndp8ySq",
+					"startMs": 57.10229199999594,
+					"firstTokenMs": 727.8434169999964,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 3,
+						"runMs": 2121,
+						"totalTokens": 3346,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24347.041458000007,
+					"toolCalls": 0,
+					"executionId": "QUU1z8XCwmgt6wkA",
+					"startMs": 63.94033299999137,
+					"firstTokenMs": 1136.8830409999937,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 6,
+						"runMs": 24286,
+						"totalTokens": 4335,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5397.507125000004,
+					"toolCalls": 2,
+					"executionId": "Y3d7imGYlimt9rEJ",
+					"startMs": 47.74479199999769,
+					"firstTokenMs": 1018.78125,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 6,
+						"runMs": 5351,
+						"totalTokens": 10716,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2515.261208000011,
+					"toolCalls": 0,
+					"executionId": "0SFKfx7xVMi2creg",
+					"startMs": 63.61441700000432,
+					"firstTokenMs": 757.0637920000008,
+					"db": {
+						"status": "success",
+						"ownerKey": "1174534e-0745-4bdc-9c78-4b3d0fff6669",
+						"process": "main",
+						"queuedMs": 4,
+						"runMs": 2459,
+						"totalTokens": 3379,
+						"cost": 0
+					}
+				}
+			]
+		},
+		{
+			"topology": "queue",
+			"stack": {
+				"mains": 1,
+				"workers": 2,
+				"agentQueue": true
+			},
+			"wallMs": 56794.420083000005,
+			"turnsPerMinute": 105.64418108735916,
+			"byKind": {
+				"plain": {
+					"turns": 50,
+					"errors": 0,
+					"start": {
+						"n": 50,
+						"p50": 186.93225000001257,
+						"p95": 598.001333000022,
+						"max": 891.2246250000026
+					},
+					"firstToken": {
+						"n": 50,
+						"p50": 929.7107079999987,
+						"p95": 1611.7195420000062,
+						"max": 1751.7497090000252
+					},
+					"total": {
+						"n": 50,
+						"p50": 2287.141249999986,
+						"p95": 3990.6472920000087,
+						"max": 4325.129416999989
+					},
+					"dbQueued": {
+						"n": 50,
+						"p50": 3,
+						"p95": 21,
+						"max": 30
+					},
+					"dbRun": {
+						"n": 50,
+						"p50": 2160,
+						"p95": 3736,
+						"max": 3949
+					},
+					"ranOn": {
+						"worker": 50
+					},
+					"tokens": 167578,
+					"cost": 0
+				},
+				"tool": {
+					"turns": 30,
+					"errors": 0,
+					"start": {
+						"n": 30,
+						"p50": 186.97737499998766,
+						"p95": 598.4707499999786,
+						"max": 703.6745840000222
+					},
+					"firstToken": {
+						"n": 30,
+						"p50": 1246.5494159999944,
+						"p95": 3497.624333999993,
+						"max": 3840.740374999994
+					},
+					"total": {
+						"n": 30,
+						"p50": 5211.292709000001,
+						"p95": 7704.731834000006,
+						"max": 8528.518875000009
+					},
+					"dbQueued": {
+						"n": 30,
+						"p50": 3,
+						"p95": 27,
+						"max": 216
+					},
+					"dbRun": {
+						"n": 30,
+						"p50": 4957,
+						"p95": 7284,
+						"max": 8052
+					},
+					"ranOn": {
+						"worker": 30
+					},
+					"tokens": 321764,
+					"cost": 0
+				},
+				"long": {
+					"turns": 20,
+					"errors": 0,
+					"start": {
+						"n": 20,
+						"p50": 173.09312499998487,
+						"p95": 572.7919589999947,
+						"max": 590.9474159999809
+					},
+					"firstToken": {
+						"n": 20,
+						"p50": 1143.2618749999965,
+						"p95": 1795.0798329999961,
+						"max": 1823.0042919999978
+					},
+					"total": {
+						"n": 20,
+						"p50": 24636.23112499999,
+						"p95": 27453.481333000003,
+						"max": 28090.055458999996
+					},
+					"dbQueued": {
+						"n": 20,
+						"p50": 3,
+						"p95": 9,
+						"max": 10
+					},
+					"dbRun": {
+						"n": 20,
+						"p50": 24493,
+						"p95": 26957,
+						"max": 27584
+					},
+					"ranOn": {
+						"worker": 20
+					},
+					"tokens": 84595,
+					"cost": 0
+				}
+			},
+			"all": {
+				"turns": 100,
+				"errors": 0,
+				"start": {
+					"n": 100,
+					"p50": 185.0635830000101,
+					"p95": 591.9159579999978,
+					"max": 891.2246250000026
+				},
+				"firstToken": {
+					"n": 100,
+					"p50": 1127.9615840000042,
+					"p95": 2687.2160419999855,
+					"max": 3840.740374999994
+				},
+				"total": {
+					"n": 100,
+					"p50": 4288.925083000009,
+					"p95": 25768.830292,
+					"max": 28090.055458999996
+				},
+				"dbQueued": {
+					"n": 100,
+					"p50": 3,
+					"p95": 20,
+					"max": 216
+				},
+				"dbRun": {
+					"n": 100,
+					"p50": 3949,
+					"p95": 25653,
+					"max": 27584
+				},
+				"ranOn": {
+					"worker": 100
+				},
+				"tokens": 573937,
+				"cost": 0
+			},
+			"turns": [
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2728.1933750000026,
+					"toolCalls": 0,
+					"executionId": "x4XOVCfNM09nThHe",
+					"startMs": 489.4594159999979,
+					"firstTokenMs": 1335.7456249999814,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 4,
+						"runMs": 2295,
+						"totalTokens": 3351,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5949.08383399999,
+					"toolCalls": 2,
+					"executionId": "V2L4wS4CObQjEQJI",
+					"startMs": 556.3450000000012,
+					"firstTokenMs": 1758.380124999996,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 7,
+						"runMs": 5470,
+						"totalTokens": 10709,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24557.454958000017,
+					"toolCalls": 0,
+					"executionId": "dKZf8sOH67COR6RC",
+					"startMs": 508.4170420000155,
+					"firstTokenMs": 1764.2725420000206,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 5,
+						"runMs": 23999,
+						"totalTokens": 4098,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2946.6199999999953,
+					"toolCalls": 0,
+					"executionId": "ubaXURhM2dbA2Yag",
+					"startMs": 574.4202499999956,
+					"firstTokenMs": 1474.6606249999895,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 2448,
+						"totalTokens": 3381,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2894.2695419999945,
+					"toolCalls": 0,
+					"executionId": "ww1XgIUy7prECURe",
+					"startMs": 566.1817089999968,
+					"firstTokenMs": 1443.5466669999878,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 11,
+						"runMs": 2418,
+						"totalTokens": 3342,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 7088.530417000002,
+					"toolCalls": 2,
+					"executionId": "3TdS0stYr6Xive30",
+					"startMs": 503.953708999994,
+					"firstTokenMs": 1366.2035000000033,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 5,
+						"runMs": 6645,
+						"totalTokens": 10776,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1462.0601250000182,
+					"toolCalls": 0,
+					"executionId": "rQzNrQxcy2UivIaT",
+					"startMs": 540.353375000006,
+					"firstTokenMs": 1443.4652500000084,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 6,
+						"runMs": 1001,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24326.31349999999,
+					"toolCalls": 0,
+					"executionId": "3jHXSEnVzOwZfdnE",
+					"startMs": 590.9474159999809,
+					"firstTokenMs": 1795.0798329999961,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 2,
+						"runMs": 23744,
+						"totalTokens": 4283,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 6999.712291999982,
+					"toolCalls": 2,
+					"executionId": "C9KJduAaoEqf7RlC",
+					"startMs": 584.5026249999937,
+					"firstTokenMs": 1473.9258339999942,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 6491,
+						"totalTokens": 10752,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3990.6472920000087,
+					"toolCalls": 0,
+					"executionId": "GLCsl2poifpYuUUh",
+					"startMs": 579.2931250000256,
+					"firstTokenMs": 1751.7497090000252,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 3490,
+						"totalTokens": 3404,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1624.818333000003,
+					"toolCalls": 0,
+					"executionId": "RdwMn93Af34KOYTf",
+					"startMs": 591.9159579999978,
+					"firstTokenMs": 1611.7195420000062,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 6,
+						"runMs": 1099,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 7620.148041999986,
+					"toolCalls": 2,
+					"executionId": "7S2iEpNYYaBR2M4e",
+					"startMs": 586.3823749999865,
+					"firstTokenMs": 1793.4968749999825,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 6,
+						"runMs": 7107,
+						"totalTokens": 10729,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 27453.481333000003,
+					"toolCalls": 0,
+					"executionId": "ysiBzojGnZ5HYChU",
+					"startMs": 568.1011250000156,
+					"firstTokenMs": 1478.2492920000223,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 10,
+						"runMs": 26938,
+						"totalTokens": 4263,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 4325.129416999989,
+					"toolCalls": 0,
+					"executionId": "in0u1rfflAGt5ppJ",
+					"startMs": 514.9210829999938,
+					"firstTokenMs": 1449.5646669999987,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 4,
+						"runMs": 3873,
+						"totalTokens": 3408,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1547.749582999997,
+					"toolCalls": 0,
+					"executionId": "QpId4ygbL5dZoVWo",
+					"startMs": 605.1290830000071,
+					"firstTokenMs": 1516.4915409999958,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 6,
+						"runMs": 1001,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 6331.3524580000085,
+					"toolCalls": 2,
+					"executionId": "5hKMbTmra196nB4Z",
+					"startMs": 561.1715419999964,
+					"firstTokenMs": 1457.3167079999985,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 6,
+						"runMs": 5854,
+						"totalTokens": 10726,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2657.104958000011,
+					"toolCalls": 0,
+					"executionId": "1mHGHc8SvGfzGbbq",
+					"startMs": 569.0904580000206,
+					"firstTokenMs": 1500.1898330000113,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 4,
+						"runMs": 2160,
+						"totalTokens": 3337,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 28090.055458999996,
+					"toolCalls": 0,
+					"executionId": "Q7YloCreBkwjRqJe",
+					"startMs": 572.7919589999947,
+					"firstTokenMs": 1823.0042919999978,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 4,
+						"runMs": 27584,
+						"totalTokens": 4179,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5559.072125000006,
+					"toolCalls": 2,
+					"executionId": "9H15tQm8wTOmYVyp",
+					"startMs": 598.4707499999786,
+					"firstTokenMs": 3497.624333999993,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 7,
+						"runMs": 5035,
+						"totalTokens": 10631,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2988.109625000012,
+					"toolCalls": 0,
+					"executionId": "4irnbfQhLDIMNsRv",
+					"startMs": 598.001333000022,
+					"firstTokenMs": 1480.9585829999996,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 2453,
+						"totalTokens": 3380,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2558.005541999999,
+					"toolCalls": 0,
+					"executionId": "IwXo77NYP5dwLb6O",
+					"startMs": 169.72416700000758,
+					"firstTokenMs": 920.2347500000033,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 2,
+						"runMs": 2438,
+						"totalTokens": 3354,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5221.096415999986,
+					"toolCalls": 2,
+					"executionId": "YKalYfsVeu1YlmaC",
+					"startMs": 186.97737499998766,
+					"firstTokenMs": 2898.128291000001,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 5086,
+						"totalTokens": 10663,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24636.23112499999,
+					"toolCalls": 0,
+					"executionId": "WPZJaPANyIEwrjaJ",
+					"startMs": 157.68174999998882,
+					"firstTokenMs": 1112.204666000005,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 24493,
+						"totalTokens": 4253,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2367.6941670000087,
+					"toolCalls": 0,
+					"executionId": "eG5f7cUq6qjFx9YE",
+					"startMs": 171.02587499999208,
+					"firstTokenMs": 873.5053750000079,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 4,
+						"runMs": 2250,
+						"totalTokens": 3378,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2276.9014170000155,
+					"toolCalls": 0,
+					"executionId": "e0UW0ZcbipRjTW9H",
+					"startMs": 154.87987500001327,
+					"firstTokenMs": 817.3747920000169,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 2175,
+						"totalTokens": 3353,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4653.181416999985,
+					"toolCalls": 2,
+					"executionId": "FtfnBrZBiY3wORK3",
+					"startMs": 149.4720419999794,
+					"firstTokenMs": 1115.445875000005,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 4550,
+						"totalTokens": 10668,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 854.8894589999982,
+					"toolCalls": 0,
+					"executionId": "UuZz3ZYms9Bo1lKp",
+					"startMs": 169.31495900001028,
+					"firstTokenMs": 838.1003339999879,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 2,
+						"runMs": 737,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 23864.686167000007,
+					"toolCalls": 0,
+					"executionId": "ynfMOchHXHTJd8W6",
+					"startMs": 165.1512920000241,
+					"firstTokenMs": 847.850167000026,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 23651,
+						"totalTokens": 4278,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4551.950708999997,
+					"toolCalls": 2,
+					"executionId": "WVKYIjxo7gNLSI1R",
+					"startMs": 164.36683400001493,
+					"firstTokenMs": 2612.804959000001,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 2,
+						"runMs": 4439,
+						"totalTokens": 10640,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3245.907708999992,
+					"toolCalls": 0,
+					"executionId": "X9G6zg2fjd9sVLVC",
+					"startMs": 166.42641700000968,
+					"firstTokenMs": 1168.5614590000187,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 3131,
+						"totalTokens": 3398,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 844.8405419999908,
+					"toolCalls": 0,
+					"executionId": "FDlS2Xg2TiUvNeXs",
+					"startMs": 148.7770840000012,
+					"firstTokenMs": 828.0052499999874,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 2,
+						"runMs": 748,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4715.270500000013,
+					"toolCalls": 2,
+					"executionId": "Nrpi0ch2W4Y3NhEE",
+					"startMs": 185.01787499999045,
+					"firstTokenMs": 852.2703749999928,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 2,
+						"runMs": 4582,
+						"totalTokens": 10664,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24661.205749999994,
+					"toolCalls": 0,
+					"executionId": "jZ3BeMvzAoCGUI5n",
+					"startMs": 156.4934999999823,
+					"firstTokenMs": 1140.448207999987,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 24522,
+						"totalTokens": 4117,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3485.2051250000077,
+					"toolCalls": 0,
+					"executionId": "y1sauwHjuQRau0Co",
+					"startMs": 181.01812500000233,
+					"firstTokenMs": 1176.5930000000226,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 3356,
+						"totalTokens": 3413,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 871.3267499999783,
+					"toolCalls": 0,
+					"executionId": "y8JWJgPaaOqTvNSx",
+					"startMs": 165.00254099999438,
+					"firstTokenMs": 851.5852500000037,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 4,
+						"runMs": 759,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 6714.385875000007,
+					"toolCalls": 2,
+					"executionId": "bS1tCPlKnkvF1tc0",
+					"startMs": 161.6011250000156,
+					"firstTokenMs": 835.4428750000079,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 4,
+						"runMs": 6606,
+						"totalTokens": 10850,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1789.0362089999835,
+					"toolCalls": 0,
+					"executionId": "sLRau41wPxBHNjjt",
+					"startMs": 177.55341699998826,
+					"firstTokenMs": 838.2902919999906,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 1664,
+						"totalTokens": 3340,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 25768.830292,
+					"toolCalls": 0,
+					"executionId": "rSdGZKh3OAH8q2B1",
+					"startMs": 146.17766699998174,
+					"firstTokenMs": 1164.1474999999919,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 4,
+						"runMs": 25653,
+						"totalTokens": 4364,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4378.775958999991,
+					"toolCalls": 2,
+					"executionId": "TsbIQHw9wrmcAfCy",
+					"startMs": 164.83491700000013,
+					"firstTokenMs": 832.0771669999813,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 4264,
+						"totalTokens": 10644,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2661.220957999991,
+					"toolCalls": 0,
+					"executionId": "EvIeVPh1pPTNWKpy",
+					"startMs": 190.1105830000015,
+					"firstTokenMs": 865.3872909999918,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 2516,
+						"totalTokens": 3380,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2287.141249999986,
+					"toolCalls": 0,
+					"executionId": "EjEKMN5kxDzFFQfQ",
+					"startMs": 164.425499999983,
+					"firstTokenMs": 968.5986659999762,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 4,
+						"runMs": 2175,
+						"totalTokens": 3349,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4658.65520899999,
+					"toolCalls": 2,
+					"executionId": "fRY2gNy80CaXc9al",
+					"startMs": 159.00641699999687,
+					"firstTokenMs": 837.7698749999981,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 4551,
+						"totalTokens": 10663,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 25704.31487500001,
+					"toolCalls": 0,
+					"executionId": "EHtVjly6K06TyAI3",
+					"startMs": 148.91204200001084,
+					"firstTokenMs": 838.1055840000045,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 25606,
+						"totalTokens": 4264,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2389.9905000000144,
+					"toolCalls": 0,
+					"executionId": "kXSjXqH8qH6yjmkK",
+					"startMs": 168.85470799999894,
+					"firstTokenMs": 923.0265829999989,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 2281,
+						"totalTokens": 3382,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1940.085167000012,
+					"toolCalls": 0,
+					"executionId": "ODvkeNkNybNJA786",
+					"startMs": 153.87025000000722,
+					"firstTokenMs": 817.9255840000114,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 1839,
+						"totalTokens": 3349,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4914.243125000008,
+					"toolCalls": 2,
+					"executionId": "sgSunBp1Jr4Ff7cD",
+					"startMs": 147.63899999999558,
+					"firstTokenMs": 871.8728750000009,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 4817,
+						"totalTokens": 10674,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 969.4860840000038,
+					"toolCalls": 0,
+					"executionId": "8THabe3SEqm7PnwM",
+					"startMs": 160.8536670000176,
+					"firstTokenMs": 948.564000000013,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 861,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 23924.413499999995,
+					"toolCalls": 0,
+					"executionId": "t7rI1T2qT3ynTYsI",
+					"startMs": 156.44445799998357,
+					"firstTokenMs": 1135.7366249999905,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 23813,
+						"totalTokens": 4160,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5055.91525000002,
+					"toolCalls": 2,
+					"executionId": "qBIJOIMzJ0pVD36F",
+					"startMs": 167.72483300001477,
+					"firstTokenMs": 836.3914999999979,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 4941,
+						"totalTokens": 10671,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3766.488042000012,
+					"toolCalls": 0,
+					"executionId": "yJ89Bl2LO9lqILu4",
+					"startMs": 194.356832999998,
+					"firstTokenMs": 888.3920830000134,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 4,
+						"runMs": 3626,
+						"totalTokens": 3422,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 871.7639579999959,
+					"toolCalls": 0,
+					"executionId": "FF5uvhtsO7ox7dhW",
+					"startMs": 196.48229099999298,
+					"firstTokenMs": 852.8122910000093,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 4,
+						"runMs": 732,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5599.553374999989,
+					"toolCalls": 2,
+					"executionId": "kPou783Z0PYLOkEY",
+					"startMs": 177.1267499999958,
+					"firstTokenMs": 2687.2160419999855,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 5476,
+						"totalTokens": 10711,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24450.053459000017,
+					"toolCalls": 0,
+					"executionId": "cZHo4GaGGZ5ZGOPq",
+					"startMs": 183.56016700001783,
+					"firstTokenMs": 1174.463625000004,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 24319,
+						"totalTokens": 4313,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3715.580667000002,
+					"toolCalls": 0,
+					"executionId": "hWJoj1iiREZE4ajS",
+					"startMs": 164.1127919999999,
+					"firstTokenMs": 798.1824999999953,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 3598,
+						"totalTokens": 3413,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 931.6970000000147,
+					"toolCalls": 0,
+					"executionId": "LEWNSBjl9VBVQcrM",
+					"startMs": 147.79375000001164,
+					"firstTokenMs": 916.7426250000135,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 837,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4622.028749999998,
+					"toolCalls": 2,
+					"executionId": "SPz1Fy2e4338Y7Oz",
+					"startMs": 166.1952089999977,
+					"firstTokenMs": 1127.9615840000042,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 2,
+						"runMs": 4508,
+						"totalTokens": 10668,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2149.8040420000034,
+					"toolCalls": 0,
+					"executionId": "6u4gJdeEUdtCXJLc",
+					"startMs": 156.32616699999198,
+					"firstTokenMs": 852.1272079999908,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 2044,
+						"totalTokens": 3356,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 23293.439417000016,
+					"toolCalls": 0,
+					"executionId": "pEuYU3vbaquix3RA",
+					"startMs": 162.9723750000121,
+					"firstTokenMs": 819.4512500000128,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 23181,
+						"totalTokens": 4225,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4970.981750000006,
+					"toolCalls": 2,
+					"executionId": "jmSh79qUPexpRSlW",
+					"startMs": 181.91941599998972,
+					"firstTokenMs": 1246.5494159999944,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 4841,
+						"totalTokens": 10662,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2178.0100000000093,
+					"toolCalls": 0,
+					"executionId": "KTzok36eEdf48FRq",
+					"startMs": 176.84470800001873,
+					"firstTokenMs": 869.9925830000138,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 2053,
+						"totalTokens": 3377,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1941.4724580000038,
+					"toolCalls": 0,
+					"executionId": "Vi6XEZaDevNpW4Ji",
+					"startMs": 180.56225000001723,
+					"firstTokenMs": 838.4582919999957,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 1811,
+						"totalTokens": 3337,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4981.220250000013,
+					"toolCalls": 2,
+					"executionId": "rotpXchic3kzXnuI",
+					"startMs": 185.0635830000101,
+					"firstTokenMs": 1148.1686660000123,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 2,
+						"runMs": 4847,
+						"totalTokens": 11577,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24810.295249999996,
+					"toolCalls": 0,
+					"executionId": "z5qjvtrrOuMWpCai",
+					"startMs": 163.45724999997765,
+					"firstTokenMs": 1143.2618749999965,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 24695,
+						"totalTokens": 4125,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2233.8115830000024,
+					"toolCalls": 0,
+					"executionId": "ehgYuRaNOOMLaj5Z",
+					"startMs": 168.55758300001617,
+					"firstTokenMs": 879.0849580000213,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 2113,
+						"totalTokens": 3378,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1964.3151249999937,
+					"toolCalls": 0,
+					"executionId": "lyF0QXqI5tKFbGiT",
+					"startMs": 172.2868749999907,
+					"firstTokenMs": 846.6139580000017,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 1840,
+						"totalTokens": 3345,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4907.42412500002,
+					"toolCalls": 2,
+					"executionId": "IwqmDRFBZFSFLAOO",
+					"startMs": 173.18787500000326,
+					"firstTokenMs": 945.6831250000105,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 4781,
+						"totalTokens": 10663,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 873.4449160000077,
+					"toolCalls": 0,
+					"executionId": "1UQ7w1GGDM0K0HIA",
+					"startMs": 169.77100000000792,
+					"firstTokenMs": 849.3589159999974,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 2,
+						"runMs": 752,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 24154.771332999982,
+					"toolCalls": 0,
+					"executionId": "xU0n4D1ucUvfDQHt",
+					"startMs": 173.09312499998487,
+					"firstTokenMs": 1132.4408750000002,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 6,
+						"runMs": 24038,
+						"totalTokens": 4232,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4341.963458000013,
+					"toolCalls": 2,
+					"executionId": "2kAXNcm86gL1xnho",
+					"startMs": 223.13000000000466,
+					"firstTokenMs": 3840.740374999994,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 8,
+						"runMs": 4170,
+						"totalTokens": 10610,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3619.19862499999,
+					"toolCalls": 0,
+					"executionId": "jYEhhZNKj7yN1Qss",
+					"startMs": 181.24512499998673,
+					"firstTokenMs": 1288.3413329999894,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 4,
+						"runMs": 3481,
+						"totalTokens": 3422,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 845.1560419999878,
+					"toolCalls": 0,
+					"executionId": "536Xgx0GMwjWWE3K",
+					"startMs": 164.16179199999897,
+					"firstTokenMs": 817.9018339999893,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 736,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 6699.646083,
+					"toolCalls": 2,
+					"executionId": "xicsoZhSNYkp4sDP",
+					"startMs": 168.97658300001058,
+					"firstTokenMs": 860.8292910000018,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 6515,
+						"totalTokens": 10787,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 23803.595040999993,
+					"toolCalls": 0,
+					"executionId": "1eNaghyS7Tr8qOVq",
+					"startMs": 172.01245799998287,
+					"firstTokenMs": 1121.6718330000003,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 2,
+						"runMs": 23684,
+						"totalTokens": 4185,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3843.7906660000153,
+					"toolCalls": 0,
+					"executionId": "4f3BBwO8mMfvJtJH",
+					"startMs": 146.98329100001138,
+					"firstTokenMs": 818.830707999994,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 3736,
+						"totalTokens": 3426,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 953.029291999992,
+					"toolCalls": 0,
+					"executionId": "xHYiQet4vYij1J2c",
+					"startMs": 216.1689999999944,
+					"firstTokenMs": 929.7107079999987,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 3,
+						"runMs": 788,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 7329.676208000019,
+					"toolCalls": 2,
+					"executionId": "06nDXCGcuKQfXKc7",
+					"startMs": 199.30225000000792,
+					"firstTokenMs": 2854.3160420000204,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 4,
+						"runMs": 7172,
+						"totalTokens": 10719,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2715.183334000001,
+					"toolCalls": 0,
+					"executionId": "757Byjp11mraQPtC",
+					"startMs": 248.64670899999328,
+					"firstTokenMs": 938.4152089999989,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 6,
+						"runMs": 2275,
+						"totalTokens": 3351,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 27077.52349999998,
+					"toolCalls": 0,
+					"executionId": "1enHA3Tue7gRAKhR",
+					"startMs": 173.27383399999235,
+					"firstTokenMs": 1279.1320839999826,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 6,
+						"runMs": 26957,
+						"totalTokens": 4190,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 7704.731834000006,
+					"toolCalls": 2,
+					"executionId": "LUKimKX6XLHt6tJk",
+					"startMs": 703.6745840000222,
+					"firstTokenMs": 1694.9527090000047,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 216,
+						"runMs": 7284,
+						"totalTokens": 10744,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2862.15625,
+					"toolCalls": 0,
+					"executionId": "DKwvTTuwpnSMDTjw",
+					"startMs": 440.6532910000242,
+					"firstTokenMs": 1542.6306660000118,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 18,
+						"runMs": 2498,
+						"totalTokens": 3383,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3015.256458000018,
+					"toolCalls": 0,
+					"executionId": "vMtDMHap4z2xsMoq",
+					"startMs": 448.7386660000193,
+					"firstTokenMs": 1315.7421250000189,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 14,
+						"runMs": 2431,
+						"totalTokens": 3351,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 8528.518875000009,
+					"toolCalls": 2,
+					"executionId": "uPDr5q0kZk6u7BsX",
+					"startMs": 550.893041000003,
+					"firstTokenMs": 3208.893250000023,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 13,
+						"runMs": 8052,
+						"totalTokens": 10798,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 22127.32154199999,
+					"toolCalls": 0,
+					"executionId": "TBV4dMx3R0uU4765",
+					"startMs": 347.72979199999827,
+					"firstTokenMs": 1381.7830419999955,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 9,
+						"runMs": 21869,
+						"totalTokens": 4215,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2499.518458000006,
+					"toolCalls": 0,
+					"executionId": "4fRFMjWkG5KA5oL0",
+					"startMs": 304.89220800000476,
+					"firstTokenMs": 1141.4962499999965,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 30,
+						"runMs": 2242,
+						"totalTokens": 3379,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2748.9070830000273,
+					"toolCalls": 0,
+					"executionId": "9vzmooS2sufeNWdy",
+					"startMs": 891.2246250000026,
+					"firstTokenMs": 1678.1236659999995,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 21,
+						"runMs": 1964,
+						"totalTokens": 3347,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4453.642208000005,
+					"toolCalls": 2,
+					"executionId": "s1BZVcJyOMF91hIC",
+					"startMs": 555.1485000000102,
+					"firstTokenMs": 1308.3280830000003,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 8,
+						"runMs": 3966,
+						"totalTokens": 10635,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1261.6050410000025,
+					"toolCalls": 0,
+					"executionId": "4UVxJ8HGjPxE2cEG",
+					"startMs": 442.0892500000191,
+					"firstTokenMs": 1204.5405409999948,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 12,
+						"runMs": 863,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 26149.734459,
+					"toolCalls": 0,
+					"executionId": "Uh6467usJiTqA3Xh",
+					"startMs": 230.29283399999258,
+					"firstTokenMs": 1033.4886249999981,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 8,
+						"runMs": 25988,
+						"totalTokens": 4280,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5211.292709000001,
+					"toolCalls": 2,
+					"executionId": "pASdLGytYEpPK9DB",
+					"startMs": 336.28925000000163,
+					"firstTokenMs": 1348.1133339999942,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 27,
+						"runMs": 4957,
+						"totalTokens": 10660,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 3276.1960840000247,
+					"toolCalls": 0,
+					"executionId": "xCG4vCJpDiepfau8",
+					"startMs": 317.0485420000041,
+					"firstTokenMs": 1065.8916250000184,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 19,
+						"runMs": 3034,
+						"totalTokens": 3375,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 1098.3642499999842,
+					"toolCalls": 0,
+					"executionId": "2ftGypwpIiP0W3fv",
+					"startMs": 306.5115419999929,
+					"firstTokenMs": 1054.1880419999943,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 22,
+						"runMs": 845,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 4288.925083000009,
+					"toolCalls": 2,
+					"executionId": "dLeAtg5hZP0c41IT",
+					"startMs": 326.8082080000022,
+					"firstTokenMs": 1054.7975420000148,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 20,
+						"runMs": 4036,
+						"totalTokens": 10634,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 26123.521458000003,
+					"toolCalls": 0,
+					"executionId": "LyE2j3j7Hxt7KiTM",
+					"startMs": 220.92641600000206,
+					"firstTokenMs": 1208.97195799998,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 6,
+						"runMs": 25960,
+						"totalTokens": 4169,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 4083.2816659999953,
+					"toolCalls": 0,
+					"executionId": "FeD5XcSureTMdWRF",
+					"startMs": 204.44295799999963,
+					"firstTokenMs": 1263.256625000009,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 7,
+						"runMs": 3949,
+						"totalTokens": 3431,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 947.349916999985,
+					"toolCalls": 0,
+					"executionId": "M5XdwLh5bKzWJIQa",
+					"startMs": 232.49991700000828,
+					"firstTokenMs": 923.6955420000013,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 6,
+						"runMs": 769,
+						"totalTokens": 3297,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5779.037374999985,
+					"toolCalls": 2,
+					"executionId": "x5oExCFHqcVaRlng",
+					"startMs": 215.01262500000303,
+					"firstTokenMs": 958.5584999999846,
+					"db": {
+						"status": "success",
+						"ownerKey": "ab51311c-78b3-411d-b849-b4ba014e038b",
+						"process": "worker",
+						"queuedMs": 5,
+						"runMs": 5620,
+						"totalTokens": 10726,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2025.9426670000248,
+					"toolCalls": 0,
+					"executionId": "yWWa8QiCQlZRZOFS",
+					"startMs": 186.93225000001257,
+					"firstTokenMs": 834.8626670000085,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 6,
+						"runMs": 1895,
+						"totalTokens": 3355,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "long",
+					"ok": true,
+					"totalMs": 25485.06141600001,
+					"toolCalls": 0,
+					"executionId": "PSHY18pdt2v9Ksjl",
+					"startMs": 207.59041599999182,
+					"firstTokenMs": 1375.3988330000138,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 9,
+						"runMs": 25334,
+						"totalTokens": 4402,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "tool",
+					"ok": true,
+					"totalMs": 5622.963208000001,
+					"toolCalls": 2,
+					"executionId": "zIVLMZKTOMHTrZ0B",
+					"startMs": 199.04375000001164,
+					"firstTokenMs": 848.0122909999918,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 4,
+						"runMs": 5480,
+						"totalTokens": 10710,
+						"cost": 0
+					}
+				},
+				{
+					"kind": "plain",
+					"ok": true,
+					"totalMs": 2697.604457999987,
+					"toolCalls": 0,
+					"executionId": "mqyjaG6zGlh90Vxe",
+					"startMs": 225.2225829999952,
+					"firstTokenMs": 949.4221660000039,
+					"db": {
+						"status": "success",
+						"ownerKey": "687c3827-318e-42c9-b4b5-ebc3618458b2",
+						"process": "worker",
+						"queuedMs": 7,
+						"runMs": 2530,
+						"totalTokens": 3376,
+						"cost": 0
+					}
+				}
+			]
+		}
+	]
+}
