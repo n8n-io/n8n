@@ -1,3 +1,4 @@
+import type { LicenseState } from '@n8n/backend-common';
 import type { PostHogClient } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import RudderStack from '@rudderstack/rudder-sdk-node';
@@ -56,6 +57,7 @@ describe('Telemetry shutdown', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock<LicenseState>(),
 		);
 		// @ts-expect-error Assigning to private property
 		telemetry.rudderStack = new RudderStack('key', {
