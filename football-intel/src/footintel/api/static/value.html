@@ -129,6 +129,37 @@ tr.group td { background: var(--bg); padding-top: 10px; }
   .tabbar a.active { color: var(--text); border-top-color: var(--accent); }
   .coupon { bottom: calc(57px + env(safe-area-inset-bottom, 0px)); }
 }
+
+/* Glass layer (D81): same ground and panels as the dashboard. */
+:root, :root[data-theme="dark"] { --bg: #07090d; --surface: rgba(255,255,255,.07); --line: rgba(255,255,255,.10);
+  --glass-shine: rgba(255,255,255,.09); --glass-bar: rgba(7,9,13,.66); --glow-a: rgba(198,242,78,.20); --glow-b: rgba(96,150,255,.26);
+  --glass-shadow: 0 10px 34px rgba(0,0,0,.32); }
+:root[data-theme="light"] { --bg: #eaeef3; --surface: rgba(255,255,255,.6); --line: rgba(20,30,45,.10);
+  --glass-shine: rgba(255,255,255,.9); --glass-bar: rgba(234,238,243,.72); --glow-a: rgba(132,190,40,.20); --glow-b: rgba(96,150,255,.22);
+  --glass-shadow: 0 10px 30px rgba(30,45,70,.10); }
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(60vmax 60vmax at 88% -8%, var(--glow-a), transparent 62%),
+    radial-gradient(70vmax 70vmax at -12% 104%, var(--glow-b), transparent 60%), var(--bg); }
+.match, .formula, .coupon, .fi-card { box-shadow: inset 0 1px 0 var(--glass-shine), var(--glass-shadow);
+  -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%); }
+.coupon { background: var(--glass-bar); }
+.match, .formula { border-radius: 18px; }
+@media (min-width: 861px) { .coupon { border-radius: 18px; } }
+h1, h2, .day { font-family: var(--font); letter-spacing: -0.02em; }
+@media (max-width: 900px) {
+  .tabbar { left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); padding: 4px; border: 1px solid var(--line);
+    border-radius: 999px; background: var(--glass-bar); box-shadow: inset 0 1px 0 var(--glass-shine), var(--glass-shadow);
+    -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%); }
+  .tabbar a { min-height: 48px; border-top: 0; border-radius: 999px; }
+  .tabbar a.active { background: rgba(128,128,128,.22); box-shadow: inset 0 1px 0 var(--glass-shine); }
+}
+@media (max-width: 860px) {
+  .coupon { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); left: 12px; right: 12px; border-radius: 18px; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .match, .formula, .coupon, .fi-card { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root, :root[data-theme="dark"] { --surface: #12151b; --glass-bar: #0b0e13; }
+  :root[data-theme="light"] { --surface: #ffffff; --glass-bar: #eaeef3; } }
 </style>
 
 </head>
