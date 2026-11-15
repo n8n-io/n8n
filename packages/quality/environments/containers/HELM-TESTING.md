@@ -84,19 +84,21 @@ pnpm build:docker
 
 # 2. Start the Helm stack (takes ~60-120s)
 cd packages/quality/environments/containers
-pnpm stack:helm
+pnpm stack:helm --env E2E_TESTS=true --env NODE_ENV=development
 
 # 3. In another terminal, debug with kubectl (the stack activates its context)
 kubectl get pods
 kubectl logs -l app.kubernetes.io/name=n8n --all-containers
 
-# 4. Run tests (start the stack with --env E2E_TESTS=true --env NODE_ENV=development)
+# 4. Run tests
 N8N_BASE_URL=http://localhost:<port> RESET_E2E_DB=true \
-  npx playwright test --project=e2e tests/e2e/nodes/code-node-api.spec.ts --workers=1
+  pnpm --filter n8n-playwright exec playwright test --project=e2e tests/e2e/nodes/code-node-api.spec.ts --workers=1
 
 # 5. Cleanup
 pnpm stack:helm:clean
 ```
+
+The stack reads licence variables from the host environment. It passes `N8N_LICENSE_ACTIVATION_KEY` and `N8N_LICENSE_TENANT_ID` to the chart's preparation script. It also supports `N8N_LICENSE_CERT` without an activation key. It stores the certificate in a Kubernetes Secret and adds a shared pod environment reference.
 
 ### Test a Specific Version Matrix
 

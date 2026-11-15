@@ -250,7 +250,7 @@ function buildHelmSetFlags(
 	};
 
 	// Dynamic overrides on top of the example and overlay values files (-f).
-	return [
+	const flags = [
 		`--set image.repository=${repository}`,
 		`--set image.tag=${tag}`,
 		`--set taskRunners.image.repository=${getRunnersRepository(repository)}`,
@@ -260,6 +260,13 @@ function buildHelmSetFlags(
 		// --set-string because K8s env values must be strings
 		...Object.entries(env).map(([name, value]) => `--set-string env.shared.${name}=${value}`),
 	];
+	if (process.env.N8N_LICENSE_CERT && envOverrides?.N8N_LICENSE_CERT === undefined) {
+		flags.push(
+			'--set env.shared.N8N_LICENSE_CERT.secretKeyRef.name=n8n-license-cert',
+			'--set env.shared.N8N_LICENSE_CERT.secretKeyRef.key=certificate',
+		);
+	}
+	return flags;
 }
 
 // -- Cluster preparation ------------------------------------------------------
@@ -267,8 +274,8 @@ function buildHelmSetFlags(
 /**
  * Runs the chart's own CI preparation script. It creates the Secrets that the
  * overlays name and starts the Postgres and Redis fixtures, so this stack
- * follows the chart when those change. The script creates the licence Secret
- * only when both licence variables are set.
+ * follows the chart when those change. The script creates the activation-key
+ * Secret only when both licence variables are set.
  */
 async function prepareCluster(
 	chartDir: string,
@@ -286,6 +293,21 @@ async function prepareCluster(
 		'Prepare cluster',
 		deadline,
 	);
+
+	if (env.N8N_LICENSE_CERT) {
+		const certificatePath = join(chartDir, 'license-cert');
+		writeFileSync(certificatePath, env.N8N_LICENSE_CERT, { mode: 0o600 });
+		try {
+			await execOnHost(
+				`kubectl create secret generic n8n-license-cert --from-file=certificate="${certificatePath}"`,
+				env,
+				'Create licence certificate Secret',
+				deadline,
+			);
+		} finally {
+			unlinkSync(certificatePath);
+		}
+	}
 }
 
 // -- Health check -------------------------------------------------------------
