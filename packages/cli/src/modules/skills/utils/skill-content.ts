@@ -1,20 +1,24 @@
-import type { AgentSkill, SkillScope } from '@n8n/api-types';
+import {
+	AGENT_SKILL_NAME_MAX_LENGTH,
+	agentSkillSchema,
+	type AgentSkill,
+	type SkillScope,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { UserError } from '@n8n/errors';
+import { z } from 'zod';
 
 import { skillContentHash, type SkillContent } from './skill-content-hash';
 import type { SkillFile } from '../database/entities/skill-file.entity';
 import type { SkillFrontmatter, SkillVersion } from '../database/entities/skill-version.entity';
+import type { SkillSourceType } from '../database/entities/skill-source-connection.entity';
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
 
-/**
- * Where a skill lives: a project, one agent, or the instance (both null). An agent skill
- * has no projectId: its project is the agent's.
- */
-export type SkillTarget = { projectId: string | null; agentId: string | null };
+/** Where a skill lives: a project, or the instance (null). */
+export type SkillTarget = { projectId: string | null };
 
 export function isSameSkillTarget(a: SkillTarget, b: SkillTarget): boolean {
-	return a.projectId === b.projectId && a.agentId === b.agentId;
+	return a.projectId === b.projectId;
 }
 
 /** One skill with one of its version rows and that row's files, sorted by path. */
@@ -111,7 +115,13 @@ export interface AssistantSkillFileContent {
 }
 
 /** A skill as the MCP skills extension serves it: the latest saved version. */
-export type McpSkillContent = { id: string; projectId: string | null; skill: AgentSkill };
+export type McpSkillContent = {
+	id: string;
+	projectId: string | null;
+	skill: AgentSkill;
+	/** Set for a synced skill. */
+	origin?: { provider: SkillSourceType; access: 'public' | 'credential' };
+};
 
 /**
  * The content of one version. Skills ignore `allowedTools`: the frontmatter, the
@@ -178,7 +188,7 @@ export function contentToAgentSkill(content: SkillContent): AgentSkill {
 export function toLatestSkill(row: ResolvedSkillRow): LatestSkill {
 	return {
 		id: row.skill.id,
-		target: { projectId: row.skill.projectId, agentId: row.skill.agentId },
+		target: { projectId: row.skill.projectId },
 		versionId: row.version.id,
 		skill: toAgentSkill(row),
 		frontmatter: row.version.frontmatter,
@@ -194,11 +204,9 @@ export function skillContentHashOf(
 	return skillContentHash(toSkillContent(skill, frontmatter));
 }
 
-/** Who owns a skill: one agent, one project, or the instance. */
-export function skillScopeOf(skill: Pick<Skill, 'projectId' | 'agentId'>): SkillScope {
-	if (skill.agentId) return 'agent';
-	if (skill.projectId) return 'project';
-	return 'instance';
+/** A skill with a project is a project skill. Any other skill belongs to the instance. */
+export function skillScopeOf(skill: Pick<Skill, 'projectId'>): SkillScope {
+	return skill.projectId ? 'project' : 'instance';
 }
 
 /**
@@ -217,4 +225,23 @@ export function trimmedName(name: string): string {
  */
 export function withTrimmedName<T extends { name: string }>(skill: T): T {
 	return { ...skill, name: trimmedName(skill.name) };
+}
+
+/**
+ * What a skill from a source must be to come in. Skills ignore `allowedTools`, as a create does.
+ * The name is trimmed as a create stores it, so the name checks and the hashes match the stored
+ * skill.
+ */
+export const importableSkillSchema = agentSkillSchema
+	.omit({ allowedTools: true })
+	.extend({ name: z.string().trim().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH) });
+
+/**
+ * The content of a skill from a source as a version would store it, so its hash compares with
+ * the hash of the stored version. Content that n8n cannot store stays as the source sent it:
+ * the security check blocks it anyway.
+ */
+export function storedContentOf(content: SkillContent): SkillContent {
+	const parsed = importableSkillSchema.safeParse(contentToAgentSkill(content));
+	return parsed.success ? toSkillContent(parsed.data, content.frontmatter) : content;
 }

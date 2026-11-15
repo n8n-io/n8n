@@ -7,6 +7,7 @@ import type {
 	INodeExecutionData,
 	IPairedItemData,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import * as GenericFunctions from '../shared/GenericFunctions';
 import { NotionV2 } from '../v2/NotionV2.node';
@@ -86,7 +87,7 @@ describe('NotionV2 getAll pagination (coverage)', () => {
 		expect(mockNotionApiRequestAllItems).toHaveBeenCalledWith(
 			'results',
 			'GET',
-			'/blocks/test-block-id/children',
+			requestPath`/blocks/test-block-id/children`,
 			{},
 			{ page_size: 100, limit: 150 },
 		);
@@ -111,7 +112,7 @@ describe('NotionV2 getAll pagination (coverage)', () => {
 		expect(mockNotionApiRequestAllItems).toHaveBeenCalledWith(
 			'results',
 			'GET',
-			'/blocks/parent%2Fchild/children',
+			requestPath`/blocks/parent%2Fchild/children`,
 			{},
 			{ page_size: 1, limit: 1 },
 		);
@@ -137,7 +138,7 @@ describe('NotionV2 getAll pagination (coverage)', () => {
 		expect(mockNotionApiRequestAllItems).toHaveBeenCalledWith(
 			'results',
 			'POST',
-			'/search',
+			requestPath`/search`,
 			expect.objectContaining({
 				filter: { property: 'object', value: 'database' },
 				page_size: 100,
@@ -174,7 +175,7 @@ describe('NotionV2 getAll pagination (coverage)', () => {
 		expect(mockNotionApiRequestAllItems).toHaveBeenCalledWith(
 			'results',
 			'POST',
-			'/databases/test-db-id/query',
+			requestPath`/databases/test-db-id/query`,
 			expect.objectContaining({ page_size: 100 }),
 			{ limit: 150 },
 		);

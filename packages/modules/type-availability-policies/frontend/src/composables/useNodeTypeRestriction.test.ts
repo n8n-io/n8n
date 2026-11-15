@@ -4,6 +4,8 @@ import { ref } from 'vue';
 
 import {
 	describeAgentToolRestriction,
+	describeImportedRestrictions,
+	describeTypeRestriction,
 	describeRestrictedNodeTypes,
 	describeNodeTypeRestriction,
 	getCredentialTypeRestriction,
@@ -11,6 +13,7 @@ import {
 	getRestrictionContact,
 	isNodeTypeRestricted,
 	resolveRestrictionContact,
+	useCredentialTypeRestriction,
 	useNodeTypeRestriction,
 } from './useNodeTypeRestriction';
 import { mockPolicyProject } from '../__tests__/mocks';
@@ -189,6 +192,41 @@ describe('useNodeTypeRestriction', () => {
 		});
 	});
 
+	describe('describeImportedRestrictions', () => {
+		const PREFIX =
+			"The workflow was imported, but it can't be published or executed until these restricted nodes or credentials are replaced or";
+
+		it('points to an instance admin outside a team project', () => {
+			expect(describeImportedRestrictions([{ scope: 'instance' }, { scope: 'project' }])).toBe(
+				`${PREFIX} an instance admin grants access.`,
+			);
+		});
+
+		it('points to a project admin when a project admin can lift every restriction', () => {
+			mockPolicyProject({ type: 'team' });
+
+			expect(describeImportedRestrictions([{ scope: 'project' }])).toBe(
+				`${PREFIX} a project admin grants access.`,
+			);
+		});
+
+		it('names the opt-in when a project admin can allow every type', () => {
+			mockPolicyProject({ type: 'team' });
+
+			expect(describeImportedRestrictions([{ scope: 'instance', optInAvailable: true }])).toBe(
+				`${PREFIX} a project admin allows them for this project.`,
+			);
+		});
+
+		it('points to an instance admin when one restriction needs one', () => {
+			mockPolicyProject({ type: 'team' });
+
+			expect(describeImportedRestrictions([{ scope: 'project' }, { scope: 'instance' }])).toBe(
+				`${PREFIX} an instance admin grants access.`,
+			);
+		});
+	});
+
 	describe('resolveRestrictionContact', () => {
 		it.each([
 			{ verdict: { scope: 'project' }, projectType: 'team', contact: 'project' },
@@ -249,5 +287,84 @@ describe('useNodeTypeRestriction', () => {
 		const { restriction } = useNodeTypeRestriction(ref('n8n-nodes-base.slack'));
 
 		expect(restriction.value?.optInAvailable).toBe(true);
+	});
+});
+
+describe('useCredentialTypeRestriction', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	it('reports the verdict and scope of a restricted credential type', () => {
+		mockRestrictions({}, { openAiApi: 'instance' });
+
+		const { restriction, isRestricted } = useCredentialTypeRestriction(ref('openAiApi'));
+
+		expect(isRestricted.value).toBe(true);
+		expect(restriction.value?.name).toBe('openAiApi');
+		expect(restriction.value?.scope).toBe('instance');
+	});
+
+	it('follows the type it is given', () => {
+		mockRestrictions({}, { openAiApi: 'instance' });
+		const type = ref<string | null>('slackApi');
+
+		const { isRestricted } = useCredentialTypeRestriction(type);
+		expect(isRestricted.value).toBe(false);
+
+		type.value = 'openAiApi';
+		expect(isRestricted.value).toBe(true);
+
+		type.value = null;
+		expect(isRestricted.value).toBe(false);
+	});
+
+	it('reads the credential kind, not the node kind', () => {
+		mockRestrictions({ openAiApi: 'instance' }, {});
+
+		const { isRestricted } = useCredentialTypeRestriction(ref('openAiApi'));
+
+		expect(isRestricted.value).toBe(false);
+	});
+
+	it('describes the restriction for each scope', () => {
+		mockPolicyProject({ type: 'team' });
+
+		expect(describeTypeRestriction('credential', 'OpenAI', { scope: 'instance' })).toBe(
+			"OpenAI credentials are restricted on this instance. Workflows can't use them.",
+		);
+		expect(describeTypeRestriction('credential', 'OpenAI', { scope: 'project' })).toBe(
+			"OpenAI credentials are restricted in this project. Workflows can't use them.",
+		);
+		expect(
+			describeTypeRestriction('credential', 'OpenAI', { scope: 'instance', optInAvailable: true }),
+		).toBe(
+			"OpenAI credentials need approval in this project. Workflows can't use them until a project admin allows it.",
+		);
+		expect(describeTypeRestriction('credential', 'OpenAI', null)).toBe(
+			"OpenAI credentials are restricted. Workflows can't use them.",
+		);
+	});
+
+	it('describes a chat tool restriction for each scope', () => {
+		mockPolicyProject({ type: 'team' });
+
+		expect(describeTypeRestriction('chatTool', 'Gmail Tool', { scope: 'instance' })).toBe(
+			"Gmail Tool is restricted on this instance. Your chats can't use it.",
+		);
+		expect(describeTypeRestriction('chatTool', 'Gmail Tool', { scope: 'project' })).toBe(
+			"Gmail Tool is restricted in this project. Your chats can't use it.",
+		);
+		expect(
+			describeTypeRestriction('chatTool', 'Gmail Tool', {
+				scope: 'instance',
+				optInAvailable: true,
+			}),
+		).toBe(
+			"Gmail Tool needs approval in this project. Your chats can't use it until a project admin allows it.",
+		);
+		expect(describeTypeRestriction('chatTool', 'Gmail Tool', null)).toBe(
+			"Gmail Tool is restricted. Your chats can't use it.",
+		);
 	});
 });

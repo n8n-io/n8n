@@ -4,18 +4,28 @@ import { Service } from '@n8n/di';
 import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
 import { ResourceAdmission } from '@n8n/inbound-auth';
 import type { SecurityContext } from '@n8n/permissions';
-import { isRecord } from '@n8n/utils/is-record';
-import type { CookieOptions, NextFunction, Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { createHash, randomBytes } from 'node:crypto';
 
+import { appCookieName, appCookieOptions, readCookie } from './app-cookies';
 import { AppProtectedResource } from './app-protected-resource';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
 import { AppHostService } from '../serving/app-host.service';
 
 export interface AppRequest extends Request {
-	appContext?: { app: App; security?: SecurityContext };
+	appContext?: {
+		app: App;
+		versionId: string | null;
+		preview?: boolean;
+		previewUserId?: string;
+		security?: SecurityContext;
+	};
 }
+
+export type AppAdmission =
+	| { ok: true; app: App; security: SecurityContext }
+	| { ok: false; app: App; reason: 'unauthenticated' | 'insufficient_scope' };
 
 @Service()
 export class AppAuthService {
@@ -37,22 +47,30 @@ export class AppAuthService {
 		return app;
 	}
 
-	async authenticate(req: AppRequest, res: Response, next: NextFunction): Promise<void> {
+	/** Resolves the published app of the request host and checks the visitor's session. */
+	async admit(req: Request): Promise<AppAdmission> {
 		const app = await this.requireApp(req);
-		req.appContext = { app };
-		if (app.visibility === 'public') {
-			next();
-			return;
-		}
 		const resource = this.resources.forApp(app);
 		const request = { method: req.method, url: this.hosts.callbackUrl(app), ip: req.ip ?? '' };
 		const result = await this.admission.admitBearer(
 			resource,
 			request,
-			this.cookie(req, this.cookieName('session')) ?? '',
+			readCookie(req, appCookieName(this.hosts.baseUrl, 'session')) ?? '',
 		);
+		if (result.ok) return { ok: true, app, security: result.context };
+		return {
+			ok: false,
+			app,
+			reason: result.reason === 'insufficient_scope' ? 'insufficient_scope' : 'unauthenticated',
+		};
+	}
+
+	async authenticate(req: AppRequest, res: Response, next: NextFunction): Promise<void> {
+		const result = await this.admit(req);
+		const { app } = result;
+		req.appContext = { app, versionId: app.publishedVersionId };
 		if (result.ok) {
-			req.appContext.security = result.context;
+			req.appContext.security = result.security;
 			next();
 			return;
 		}
@@ -92,7 +110,7 @@ export class AppAuthService {
 		if (!state) throw new AuthError('Invalid app sign-in state.');
 		res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
 		res.cookie(this.flowCookieName(state), nonce, {
-			...this.cookieOptions(),
+			...appCookieOptions(this.hosts.baseUrl),
 			maxAge: 5 * 60 * 1000,
 		});
 		res.redirect(url);
@@ -106,8 +124,8 @@ export class AppAuthService {
 			throw new BadRequestError('Invalid app sign-in callback.');
 		}
 		const name = this.flowCookieName(state);
-		const nonce = this.cookie(req, name);
-		res.clearCookie(name, this.cookieOptions());
+		const nonce = readCookie(req, name);
+		res.clearCookie(name, appCookieOptions(this.hosts.baseUrl));
 		if (!nonce) throw new AuthError('Restart app sign-in in this browser.');
 		if (typeof error === 'string' && error) {
 			throw new AuthError(
@@ -146,8 +164,8 @@ export class AppAuthService {
 		);
 		if (!admitted.ok)
 			throw new AuthError('App access is no longer available. Open the app again to check access.');
-		res.cookie(this.cookieName('session'), result.token, {
-			...this.cookieOptions(),
+		res.cookie(appCookieName(this.hosts.baseUrl, 'session'), result.token, {
+			...appCookieOptions(this.hosts.baseUrl),
 			maxAge: result.expiresIn * 1000,
 		});
 		res.redirect(this.returnPath(result.metadata.returnPath));
@@ -162,26 +180,8 @@ export class AppAuthService {
 			: '/';
 	}
 
-	private cookieName(suffix: string): string {
-		return `${this.hosts.baseUrl.protocol === 'https:' ? '__Host-' : ''}n8n-app-${suffix}`;
-	}
-
 	private flowCookieName(state: string): string {
-		return this.cookieName(`flow-${this.hash(state)}`);
-	}
-
-	private cookieOptions(): CookieOptions {
-		return {
-			httpOnly: true,
-			secure: this.hosts.baseUrl.protocol === 'https:',
-			sameSite: 'lax',
-			path: '/',
-		};
-	}
-
-	private cookie(req: Request, name: string): string | undefined {
-		const value: unknown = isRecord(req.cookies) ? req.cookies[name] : undefined;
-		return typeof value === 'string' ? value : undefined;
+		return appCookieName(this.hosts.baseUrl, `flow-${this.hash(state)}`);
 	}
 
 	private hash(value: string): string {

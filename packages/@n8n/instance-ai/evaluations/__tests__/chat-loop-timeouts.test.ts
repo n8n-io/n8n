@@ -30,6 +30,7 @@ function makeClient(): N8nClient & { cancelRun: ReturnType<typeof vi.fn> } {
 		cancelRun: vi.fn().mockResolvedValue(undefined),
 		sendMessage: vi.fn().mockResolvedValue(undefined),
 		getThreadStatus: vi.fn().mockResolvedValue({ backgroundTasks: [], memoryTasks: [] }),
+		assistantAgents: () => undefined,
 	} as unknown as N8nClient & { cancelRun: ReturnType<typeof vi.fn> };
 }
 
@@ -149,6 +150,43 @@ describe('waitForAllActivity under a budget', () => {
 			timeout: { kind: 'turn', turn: 1 },
 		});
 		expect(cfg.client.cancelRun).toHaveBeenCalledWith('thread-1');
+	});
+
+	it('applies no inactivity bound on the Agents runtime, where events come from stored history', async () => {
+		const now = Date.now();
+		// The only reply is older than the inactivity bound, as after a long tool call.
+		const repliedAt = new Date(now - 299_000).toISOString();
+		const agents = {
+			getHistory: vi.fn(async () => ({
+				messages: [
+					{ id: 'u-1', role: 'user', executionId: 'exec-1', createdAt: repliedAt, content: [] },
+					{
+						id: 'exec-1:assistant',
+						role: 'assistant',
+						executionId: 'exec-1',
+						executionStatus: 'success',
+						createdAt: repliedAt,
+						content: [{ type: 'text', text: 'Done.' }],
+					},
+				],
+				openSuspensions: [],
+				activeExecutionId: null,
+			})),
+			resume: vi.fn(),
+			getUsage: vi.fn(),
+		};
+		const client = { ...makeClient(), assistantAgents: () => agents } as unknown as N8nClient & {
+			cancelRun: ReturnType<typeof vi.fn>;
+		};
+		const cfg = config({
+			client,
+			events: [userTurn(now - 300_000)],
+			startTime: now - 300_000,
+			turnStartedAt: now - 300_000,
+		});
+
+		await expect(waitForAllActivity(cfg)).resolves.toBeUndefined();
+		expect(client.cancelRun).not.toHaveBeenCalled();
 	});
 
 	it('returns normally when the run finishes inside every budget', async () => {

@@ -35,12 +35,6 @@ export class FakeSkillUsage extends SkillUsage {
 		);
 	}
 
-	async findAgentIdsInProjects(projectIds: string[]): Promise<string[]> {
-		return this.world.agents
-			.filter((agent) => projectIds.includes(agent.project))
-			.map((agent) => agent.key);
-	}
-
 	async findUsage(skillId: string, projectIds: string[] | 'all'): Promise<SkillUsedBy> {
 		const isVisible = (agentKey: string) =>
 			projectIds === 'all' || projectIds.includes(this.agent(agentKey).project);

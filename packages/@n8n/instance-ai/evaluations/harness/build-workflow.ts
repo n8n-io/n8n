@@ -8,7 +8,6 @@
 // ---------------------------------------------------------------------------
 
 import type {
-	InstanceAiBuildMode,
 	InstanceAiConfirmRequest,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiHandoffContext,
@@ -19,7 +18,7 @@ import { truncate } from '@n8n/utils/string/truncate';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { resolveEvalPromptSettings } from './build-mode';
+import { resolveEvalPromptVersion } from './prompt-version';
 import {
 	SSE_SETTLE_DELAY_MS,
 	startSseConnection,
@@ -54,7 +53,7 @@ import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
 import { executePriorRuns } from './prior-runs';
-import { restoreRecordedRuns } from './recorded-runs';
+import { restoreRecordedRuns, seedNodeNamesById } from './recorded-runs';
 import { redactSecretsInTextDeep } from './redact';
 import type { CaseSeed } from './schema';
 import {
@@ -131,8 +130,7 @@ interface MultiTurnDriverConfig {
 	threadId: string;
 	conversation: ConversationTurn[];
 	messageBudget?: number;
-	/** Resolved wire value sent with every message (see `resolveEvalBuildMode`). */
-	buildMode?: InstanceAiBuildMode;
+	/** Resolved wire value sent with every message (see `resolveEvalPromptVersion`). */
 	promptVersion?: string;
 	observerThresholdTokens?: number;
 	allowUserExecution?: boolean;
@@ -232,7 +230,6 @@ async function driveMultiTurnConversation(
 		config.threadId,
 		openingMessage + (config.openingMessageSuffix ?? ''),
 		config.openingAttachments,
-		config.buildMode,
 		config.promptVersion,
 		config.openingHandoffContext,
 		config.observerThresholdTokens,
@@ -254,7 +251,6 @@ async function driveMultiTurnConversation(
 			confirmationStrategy,
 			nextMessageDecider,
 			proxyResponses: config.proxyResponses,
-			buildMode: config.buildMode,
 			promptVersion: config.promptVersion,
 			observerThresholdTokens: config.observerThresholdTokens,
 			allowUserExecution: config.allowUserExecution,
@@ -307,8 +303,13 @@ export interface BuildResult {
 	 *  rows into the table the built workflow actually bound.
 	 *  Absent when the case declares no scenario seed tables. */
 	seededScenarioTableIdsByName?: Record<string, string>;
+	/** The thread that seeds scenario table rows when the build has no Instance AI
+	 *  thread of its own (MCP builds). The server scopes row seeding to a thread's
+	 *  project. */
+	seedThreadId?: string;
 	/** Non-workflow artifact refs (agent, config-eval) captured from the SSE stream,
-	 *  fed to the build-expectations judge context. Empty/undefined for prebuilt runs. */
+	 *  or from `create_agent` results on MCP builds. Fed to the build-expectations
+	 *  judge context. Empty/undefined for prebuilt runs. */
 	artifactRefs?: ArtifactRef[];
 	/** Per-turn deterministic counters extracted from the captured event stream. */
 	conversationMetrics?: ConversationMetrics;
@@ -522,8 +523,6 @@ export interface BuildWorkflowConfig {
 	conversation?: ConversationTurn[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
-	/** Case-declared build style; resolved via `resolveEvalBuildMode` (absent → default). */
-	buildMode?: WorkflowTestCase['buildMode'];
 	promptVersion?: string;
 	requiresMemoryCompaction?: boolean;
 	allowUserExecution?: boolean;
@@ -595,7 +594,7 @@ export function workflowExpectedForCase(
  */
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
 	const { client, logger } = config;
-	const { buildMode, promptVersion } = resolveEvalPromptSettings(config);
+	const promptVersion = resolveEvalPromptVersion(config);
 	const observerThresholdTokens = config.requiresMemoryCompaction
 		? COMPACTION_OBSERVER_THRESHOLD_TOKENS
 		: undefined;
@@ -632,7 +631,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let parsedToolCalls: CapturedToolCall[] | undefined;
 	const foreignReadFields = () => {
 		const toolCalls = parsedToolCalls ?? extractOutcomeFromEvents(events).toolCalls;
-		const foreignWorkflowReads = findForeignWorkflowReads(toolCalls, restoredWorkflowIds);
+		const foreignWorkflowReads = findForeignWorkflowReads(toolCalls, [
+			...restoredWorkflowIds,
+			...restoredAgentIds,
+		]);
 		if (foreignWorkflowReads.length === 0) return {};
 		logger.warn(
 			`  The agent read workflows another build made: ${foreignWorkflowReads.join(', ')}`,
@@ -1036,6 +1038,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 						threadId,
 						recordedRuns: config.seed.recordedRuns,
 						seedWorkflows: seedWorkflowsBySeedId,
+						seedNodeNames: seedNodeNamesById(config.seed.workflows),
 						logger,
 						laneTag: config.laneTag,
 					});
@@ -1226,7 +1229,6 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				threadId,
 				conversation,
 				messageBudget: config.messageBudget,
-				buildMode,
 				promptVersion,
 				allowUserExecution: config.allowUserExecution,
 				beforeUserExecution: async (deadline) => {
@@ -1284,7 +1286,6 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				threadId,
 				openingMessage + scenarioSeedTablesNote,
 				openingAttachments,
-				buildMode,
 				promptVersion,
 				openingHandoffContext,
 				observerThresholdTokens,

@@ -4,7 +4,7 @@ export type { CancelExecutionResponse, ExecutionSnapshot, StepDetail } from './a
 export type {
 	ResolveStepRequest,
 	ResolveStepResponse,
-	ResumeTargetRequest,
+	ResumeLocateRequest,
 	ResumeTargetResponse,
 } from './api.types';
 export type {
@@ -15,3 +15,4 @@ export type {
 } from './api.types';
 export { fail } from './error-response';
 export type { EngineErrorResponse } from './error-response';
+export { triggerOutputsSchema, workflowGraphSchema } from './start-execution.schema';

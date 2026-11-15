@@ -45,6 +45,19 @@ describe('AppsHostingService', () => {
 		expect(next).not.toHaveBeenCalled();
 	});
 
+	it('routes preview hosts to the apps router', () => {
+		const { service, hosts, req, res } = setup();
+		hosts.namespace.mockReturnValue(undefined);
+		hosts.previewNamespace.mockReturnValue('sales');
+		const router = service.router as typeof service.router & { handle: RequestHandler };
+		const handle = vi.spyOn(router, 'handle').mockImplementation(() => {});
+
+		void service.dispatch(req, res, vi.fn());
+
+		expect(handle).toHaveBeenCalledOnce();
+		expect(res.sendStatus).not.toHaveBeenCalled();
+	});
+
 	it('never falls through to main routes when the apps router exits', () => {
 		const { service, req, res } = setup();
 		const router = service.router as typeof service.router & { handle: RequestHandler };

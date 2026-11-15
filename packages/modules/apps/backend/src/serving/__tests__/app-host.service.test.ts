@@ -10,7 +10,8 @@ function setup({
 	baseUrl = 'https://apps.example.com',
 	proxyHops = 0,
 	deploymentType = 'default',
-	host = 'n8n.example.net',
+	deploymentName = '',
+	instanceBaseUrl = 'https://n8n.example.net',
 } = {}) {
 	const config = new AppsConfig();
 	config.baseUrl = baseUrl;
@@ -18,11 +19,11 @@ function setup({
 		config,
 		mock<GlobalConfig>({
 			proxy_hops: proxyHops,
-			host,
 			deployment: mock<GlobalConfig['deployment']>({ type: deploymentType }),
+			sentry: mock<GlobalConfig['sentry']>({ deploymentName }),
 		}),
 		mock<UrlService>({
-			getInstanceBaseUrl: () => 'https://n8n.example.net',
+			getInstanceBaseUrl: () => instanceBaseUrl,
 			getWebhookBaseUrl: () => 'https://hooks.example.net',
 		}),
 	);
@@ -54,6 +55,16 @@ describe('AppHostService', () => {
 		expect(setup({ baseUrl: 'http://apps.localhost:5678' }).origin('sales')).toBe(
 			'http://sales.apps.localhost:5678',
 		);
+	});
+
+	it('generates and resolves preview hosts', () => {
+		const hosts = setup({ baseUrl: 'http://apps.localhost:5678' });
+
+		expect(hosts.previewOrigin('sales')).toBe('http://sales--preview.apps.localhost:5678');
+		expect(hosts.previewNamespace(request('sales--preview.apps.localhost:5678'))).toBe('sales');
+		expect(hosts.namespace(request('sales--preview.apps.localhost:5678'))).toBeUndefined();
+		expect(hosts.previewNamespace(request('sales.apps.localhost:5678'))).toBeUndefined();
+		expect(hosts.previewNamespace(request('--preview.apps.localhost:5678'))).toBeUndefined();
 	});
 
 	it('accepts valid parent labels with consecutive hyphens', () => {
@@ -109,16 +120,27 @@ describe('AppHostService', () => {
 	});
 
 	describe('Cloud hosts', () => {
-		const cloud = { deploymentType: 'cloud', host: 'foo.app.n8n.cloud' };
+		const cloud = { deploymentType: 'cloud', deploymentName: 'foo' };
 
-		it('uses the configured instance host for app and callback URLs', () => {
-			const hosts = setup(cloud);
+		it('uses the deployment name for app and callback URLs', () => {
+			const hosts = setup({ ...cloud, instanceBaseUrl: 'https://bar.app.n8n.cloud' });
 
 			expect(hosts.origin('sales')).toBe('https://sales--foo.apps.example.com');
 			expect(hosts.callbackUrl({ id: 'app-id', namespace: 'sales' })).toBe(
 				'https://sales--foo.apps.example.com/_n8n/auth/app-id/callback',
 			);
-			expect(setup({ host: cloud.host }).origin('sales')).toBe('https://sales.apps.example.com');
+			expect(setup({ deploymentName: 'foo' }).origin('sales')).toBe(
+				'https://sales.apps.example.com',
+			);
+		});
+
+		it('falls back to the instance base URL hostname', () => {
+			const hosts = setup({
+				deploymentType: 'cloud',
+				instanceBaseUrl: 'https://foo.app.n8n.cloud',
+			});
+
+			expect(hosts.origin('sales')).toBe('https://sales--foo.apps.example.com');
 		});
 
 		it('only resolves namespaces for the configured instance', () => {
@@ -141,14 +163,55 @@ describe('AppHostService', () => {
 		});
 
 		it('limits the combined instance and app label to 63 characters', () => {
-			const hosts = setup(cloud);
-			const namespace = 'a'.repeat(58);
-			const origin = `https://${namespace}--foo.apps.example.com`;
+			const instance = 'x'.repeat(20);
+			const hosts = setup({ ...cloud, deploymentName: instance });
+			const namespace = 'a'.repeat(41);
+			const origin = `https://${namespace}--${instance}.apps.example.com`;
 
 			expect(hosts.origin(namespace)).toBe(origin);
 			expect(hosts.namespace(request(new URL(origin).host))).toBe(namespace);
 			expect(hosts.origin(namespace + 'a')).toBeNull();
-			expect(hosts.namespace(request(`${namespace}a--foo.apps.example.com`))).toBeUndefined();
+			expect(
+				hosts.namespace(request(`${namespace}a--${instance}.apps.example.com`)),
+			).toBeUndefined();
+		});
+
+		it('limits the combined preview and instance label to 63 characters', () => {
+			const hosts = setup(cloud);
+			const namespace = 'a'.repeat(49);
+			const origin = `https://${namespace}--preview--foo.apps.example.com`;
+
+			expect(hosts.previewOrigin(namespace)).toBe(origin);
+			expect(hosts.previewNamespace(request(new URL(origin).host))).toBe(namespace);
+			expect(hosts.previewOrigin(namespace + 'a')).toBeNull();
+			expect(hosts.origin(namespace + 'a')).not.toBeNull();
+		});
+
+		it('resolves preview hosts only for the configured instance', () => {
+			const hosts = setup(cloud);
+
+			expect(hosts.previewNamespace(request('sales--preview--foo.apps.example.com'))).toBe('sales');
+			expect(hosts.namespace(request('sales--preview--foo.apps.example.com'))).toBeUndefined();
+			for (const host of [
+				'sales--foo.apps.example.com',
+				'sales--preview-foo.apps.example.com',
+				'sales--preview--bar.apps.example.com',
+				'sales--preview.apps.example.com',
+			]) {
+				expect(hosts.previewNamespace(request(host))).toBeUndefined();
+			}
+		});
+
+		it('does not confuse an instance named like the preview marker with a preview host', () => {
+			const hosts = setup({ ...cloud, deploymentName: 'preview-foo' });
+
+			expect(hosts.namespace(request('sales--preview-foo.apps.example.com'))).toBe('sales');
+			expect(
+				hosts.previewNamespace(request('sales--preview-foo.apps.example.com')),
+			).toBeUndefined();
+			expect(hosts.previewNamespace(request('sales--preview--preview-foo.apps.example.com'))).toBe(
+				'sales',
+			);
 		});
 
 		it('includes the instance suffix in the full hostname length limit', () => {
@@ -159,8 +222,13 @@ describe('AppHostService', () => {
 			expect(hosts.origin('abc')).toBeNull();
 		});
 
-		it('rejects an instance name that cannot form an app host', () => {
-			expect(() => setup({ ...cloud, host: 'invalid_name.app.n8n.cloud' })).toThrow('Set N8N_HOST');
-		});
+		it.each(['invalid_name', 'preview--foo'])(
+			'rejects an instance name that cannot form an app host: %s',
+			(name) => {
+				expect(() => setup({ ...cloud, deploymentName: name })).toThrow(
+					'Set DEPLOYMENT_NAME to a valid name, or leave it unset and use an instance base URL with a valid first hostname label.',
+				);
+			},
+		);
 	});
 });

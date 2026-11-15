@@ -6,8 +6,10 @@ export function getAppPermissions(projectId: string) {
 	const app = getResourcePermissions(permissions.scopesFor(projectId)).app;
 
 	return {
+		canCreate: !permissions.isReadOnly() && Boolean(app?.create),
 		canList: Boolean(app?.list),
 		canRead: Boolean(app?.read),
+		canUpdate: !permissions.isReadOnly() && Boolean(app?.update),
 		canDelete: !permissions.isReadOnly() && Boolean(app?.delete),
 	};
 }

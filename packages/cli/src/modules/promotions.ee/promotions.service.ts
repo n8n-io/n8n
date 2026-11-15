@@ -13,12 +13,19 @@ import {
 	type PromotionBindingConflict,
 	type PromotionCheckoutPublicDto,
 	type PromotionDirection,
+	type PromotionMissingProjectListPublicDto,
 	type PromotionPreviewCheck,
 	type PromotionRunContents,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import { ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db';
+import {
+	isPerson,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	type OperationContext,
+	type User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
@@ -26,7 +33,7 @@ import path from 'node:path';
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
 import {
 	PackageDirectoryInventoryReader,
@@ -60,6 +67,7 @@ import {
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 
 import { BASE_BRANCH_DIRECTORIES, parseBaseBranchFiles } from './base-branch-files';
 import { projectHolding } from './branch-placement';
@@ -72,8 +80,13 @@ import {
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { applySelectionRequest, ApplyPreviewService } from './apply-preview.service';
 import { GitCommitPackageReader } from './git-commit-package-reader';
-import { exportInstancePackage } from './instance-package';
+import { exportInstancePackage, instancePromotionExportRequest } from './instance-package';
 import { compare } from './package-references';
+import { PromotionCheckoutCleanupService } from './promotion-checkout-cleanup.service';
+import {
+	PromotionEnvironmentLockService,
+	throwIfLockLost,
+} from './promotion-environment-lock.service';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionRunRepository } from './database/repositories/promotion-run.repository';
@@ -109,6 +122,14 @@ type PushedPromotion = {
 	commitMessage: string;
 };
 
+type ApplyHead = {
+	operation: Omit<Parameters<PromotionsGitService['listBranchTree']>[0], 'pathspecs'>;
+	identity: { environmentId: string; git: { commitSha: string; branchName: string } };
+};
+
+const NO_APPLY_PACKAGE_MESSAGE =
+	'The remote branch has no exported package to import. Promote to it first.';
+
 /** Conflicts that `confirmDestructiveChanges` lets the apply continue past. */
 function isConfirmableConflict(code: PromotionBindingConflict['code']): boolean {
 	return code === 'destructive-change' || code === 'project-deletion';
@@ -116,11 +137,12 @@ function isConfirmableConflict(code: PromotionBindingConflict['code']): boolean 
 
 // Apply treats the package as source of truth. Callers cannot override this policy,
 // but a confirmed Continue uses `overwrite` for data tables.
-const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
+const IMPORT_POLICY: Omit<ImportRequest, 'user' | 'publicApi'> = {
 	projectConflictPolicy: ProjectConflictPolicy.Overwrite,
 	conflictPolicy: ImportConflictPolicy.NewVersion,
 	idPolicy: WorkflowIdPolicy.Source,
-	publishingPolicy: WorkflowPublishingPolicy.MatchSource,
+	// Promotion moves content only. Publish state stays with the target until autopublish exists.
+	publishingPolicy: WorkflowPublishingPolicy.PreserveTargetState,
 	missingNodeTypeMode: MissingNodeTypeMode.Fail,
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
@@ -146,6 +168,8 @@ export class PromotionsService {
 		private readonly resolver: PromotionEnvironmentResolver,
 		private readonly providersService: PromotionProvidersService,
 		private readonly workingDirectory: PromotionWorkingDirectoryService,
+		private readonly checkoutCleanup: PromotionCheckoutCleanupService,
+		private readonly environmentLock: PromotionEnvironmentLockService,
 		private readonly workingCopy: WorkingCopyUpdater,
 		private readonly gitService: PromotionsGitService,
 		private readonly projectRepository: ProjectRepository,
@@ -168,7 +192,12 @@ export class PromotionsService {
 	async clone(environmentId: string, actor: User): Promise<PromotionCheckoutPublicDto> {
 		const input = await this.resolver.resolveForEnvironment(environmentId);
 		return await observePromotion(
-			async () => await this.cloneResolved(input),
+			async () =>
+				await this.withEnvironmentLock(
+					input,
+					async () => await this.resolver.resolveForEnvironment(environmentId),
+					async (current, signal) => await this.cloneResolved(current, signal),
+				),
 			(observed) =>
 				this.eventService.emit('promotion-environment-connected', {
 					user: actor,
@@ -181,7 +210,10 @@ export class PromotionsService {
 		);
 	}
 
-	private async cloneResolved(input: PromotionOperationInput): Promise<PromotionCheckoutPublicDto> {
+	private async cloneResolved(
+		input: PromotionOperationInput,
+		signal: AbortSignal,
+	): Promise<PromotionCheckoutPublicDto> {
 		const branchName = checkoutBranchName(input.config);
 
 		await this.gitService.clone({
@@ -190,6 +222,7 @@ export class PromotionsService {
 			paths: this.workingDirectory.paths(input.environmentId),
 			branchName,
 			environmentId: input.environmentId,
+			beforeSwap: () => throwIfLockLost(signal),
 		});
 		// Only a finished clone gets a descriptor, so a failed one stays unusable.
 		await this.workingDirectory.writeDescriptor(this.descriptorFor(input));
@@ -202,8 +235,12 @@ export class PromotionsService {
 	 * changes no branch, package, or instance content.
 	 */
 	async disconnect(environmentId: string): Promise<PromotionCheckoutPublicDto> {
-		const input = await this.resolver.resolveForEnvironment(environmentId);
-		await this.workingDirectory.resetCheckout(input.environmentId);
+		const { environmentId: lockedId } = await this.resolver.resolveForEnvironment(environmentId);
+		// Resolve again inside the lock, so a Delete that ran in between makes this fail.
+		const input = await this.checkoutCleanup.disconnect(
+			lockedId,
+			async () => await this.resolver.resolveForEnvironment(environmentId),
+		);
 		return {
 			...this.checkoutIdentity(input),
 			branchName: checkoutBranchName(input.config),
@@ -222,7 +259,12 @@ export class PromotionsService {
 			input,
 			actor,
 			{},
-			async () => await this.promoteResolved(input, actor, request),
+			async () =>
+				await this.withEnvironmentLock(
+					input,
+					async () => await this.resolver.resolveForEnvironment(environmentId, 'promote'),
+					async (current, signal) => await this.promoteResolved(current, actor, request, signal),
+				),
 		);
 	}
 
@@ -230,11 +272,13 @@ export class PromotionsService {
 		input: PromotionOperationInput,
 		actor: User,
 		request: PromotePackageDto & { canExportVariableValues: boolean },
+		signal: AbortSignal,
 	): Promise<PromotePackageResultDto> {
 		this.assertInstanceScope(input, 'Promote');
 		await this.assertCheckoutReady(input, 'promoting');
 
 		const branchName = checkoutBranchName(input.config);
+		await this.removeLeftoverLockFiles(input, branchName);
 		const credentials = await this.credentialsFor(input);
 		const target = await this.prepareTargetBranch(input, branchName, credentials);
 		const targetBranchName = target?.targetBranchName;
@@ -262,20 +306,11 @@ export class PromotionsService {
 		let pushed: PushedPromotion;
 		try {
 			const exportResult = await this.n8nPackagesService.exportPackageToDirectory(
-				{
+				instancePromotionExportRequest({
 					user: actor,
 					projectIds,
-					includeAgents: false,
-					includeVariableValues: true,
 					canExportVariableValues: request.canExportVariableValues,
-					includeTags: true,
-					// Archived workflows travel too, so the target archives them instead of removing them.
-					includeArchivedWorkflows: true,
-					// personal projects are excluded, so a team workflow calling a personal
-					// sub-workflow blocks the whole promotion; intended for now, see LIGO-1089
-					dependencyPolicy: ExportDependencyPolicy.Fail,
-					versionPolicy: ExportVersionPolicy.Latest,
-				},
+				}),
 				{ targetDir: stagingFolder },
 			);
 
@@ -283,6 +318,8 @@ export class PromotionsService {
 			await rm(packageFolder, { recursive: true, force: true });
 			await rename(stagingFolder, packageFolder);
 
+			// Before the descriptor goes, so a stop here leaves the checkout usable.
+			throwIfLockLost(signal);
 			if (targetBranchName) {
 				// The commit moves the local base branch. Remove trust before it moves, and
 				// restore trust only after the base branch is back on its own commit.
@@ -309,6 +346,8 @@ export class PromotionsService {
 				stagePathspec: PACKAGE_SUBFOLDER,
 				onCheckoutRestored: async () =>
 					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
+				// Staging and the commit take time, so check again just before the push.
+				beforePush: () => throwIfLockLost(signal),
 			});
 			pushed = { commitSha, counts: exportResult.counts, commitMessage };
 		} finally {
@@ -429,6 +468,7 @@ export class PromotionsService {
 		request: { commitMessage?: string; canExportVariableValues: boolean },
 		selection: SelectivePushOptions,
 		movedTo: ReadonlyMap<string, string>,
+		signal: AbortSignal,
 	): Promise<PromotePackageResultDto> {
 		// NOTE: This assertion needs adjusting once we add full support for project-scoped promotions.
 		this.assertInstanceScope(input, 'Promote');
@@ -438,6 +478,7 @@ export class PromotionsService {
 		await this.assertCheckoutReady(input, 'promoting');
 
 		const branchName = checkoutBranchName(input.config);
+		await this.removeLeftoverLockFiles(input, branchName);
 		const credentials = await this.credentialsFor(input);
 		// A branched environment resets the checkout to the latest base here, so the
 		// selection applies on top of it and pushes to a fresh promotion branch.
@@ -492,10 +533,11 @@ export class PromotionsService {
 					user: actor,
 					projectIds: [selection.projectId],
 					projectWorkflowIds: selection.workflowIds,
+					projectFolderIds: selection.folderIds,
 					includeVariableValues: true,
 					canExportVariableValues: request.canExportVariableValues,
 					includeTags: true,
-					includeArchivedWorkflows: true,
+					includeArchived: true,
 					// A sub-workflow nobody selected stays a reference. Failing here would
 					// block a promote whose sub-workflow the branch already holds.
 					dependencyPolicy: ExportDependencyPolicy.ReferenceOnly,
@@ -512,6 +554,9 @@ export class PromotionsService {
 				branch,
 			);
 
+			// Before the descriptor goes, so a stop here leaves the checkout usable. The catch
+			// below restores the package.
+			throwIfLockLost(signal);
 			if (targetBranchName) {
 				// The commit moves the local base branch. Remove trust before it moves, and
 				// restore trust only after the base branch is back on its own commit.
@@ -536,6 +581,8 @@ export class PromotionsService {
 				rollbackOnFailure: true,
 				onCheckoutRestored: async () =>
 					await this.workingDirectory.writeDescriptor(this.descriptorFor(input)),
+				// Staging and the commit take time, so check again just before the push.
+				beforePush: () => throwIfLockLost(signal),
 			});
 			pushed = { commitSha, counts, commitMessage };
 		} catch (error) {
@@ -590,19 +637,19 @@ export class PromotionsService {
 	}
 
 	/**
-	 * Promotes a client-chosen set of a project's workflows. The client sends ids
-	 * only; the server reads each one now, so the push carries the current state.
-	 * Live and archived workflows export; an id that is gone from the instance leaves
-	 * the branch. A workflow that moved to another project is refused.
+	 * Promotes a client-chosen set of a project's workflows and folders. The client
+	 * sends ids only; the server reads each one now, so the push carries the current
+	 * state. Live and archived workflows export; an id that is gone from the instance
+	 * leaves the branch. A workflow that moved to another project is refused. The
+	 * project itself is always written, so an empty selection promotes only the project.
 	 */
 	async promoteProjectSelection(
 		projectId: string,
 		actor: User,
 		request: PromoteRequest & { canExportVariableValues: boolean },
 	): Promise<PromotePackageResultDto> {
-		if (new Set(request.workflowIds).size !== request.workflowIds.length) {
-			throw new BadRequestError('workflowIds contains duplicates');
-		}
+		const workflowIds = request.workflowIds ?? [];
+		const folderIds = request.folderIds ?? [];
 
 		// Resolve like the change preview does, so the promote pushes to the environment
 		// the user previewed. resolveForProject validates the project and environment too.
@@ -611,27 +658,66 @@ export class PromotionsService {
 		return await this.trackPromote(
 			input,
 			actor,
-			{ projectId, selectedWorkflowCount: request.workflowIds.length },
-			async () => {
-				const { selection, movedTo } = await this.classifySelection(projectId, request.workflowIds);
-				return await this.promoteSelectionResolved(
-					input,
-					actor,
-					{
-						commitMessage: request.commitMessage,
-						canExportVariableValues: request.canExportVariableValues,
-					},
-					selection,
-					movedTo,
-				);
+			{
+				projectId,
+				selectedWorkflowCount: workflowIds.length,
+				selectedFolderCount: folderIds.length,
 			},
+			async () =>
+				await this.withEnvironmentLock(
+					input,
+					async () => await this.resolver.resolveForProject(projectId, 'promote'),
+					async (current, signal) => {
+						const { selection, movedTo } = await this.classifySelection(
+							projectId,
+							workflowIds,
+							folderIds,
+						);
+						return await this.promoteSelectionResolved(
+							current,
+							actor,
+							{
+								commitMessage: request.commitMessage,
+								canExportVariableValues: request.canExportVariableValues,
+							},
+							selection,
+							movedTo,
+							signal,
+						);
+					},
+				),
 		);
+	}
+
+	/**
+	 * Runs `run` under the environment lock, on the environment read again inside the lock, so a
+	 * Delete or settings change that finished before the lock counts. A project route that now
+	 * resolves to another environment is refused, because this lock does not cover that one.
+	 */
+	private async withEnvironmentLock<T>(
+		input: PromotionOperationInput,
+		resolveAgain: () => Promise<PromotionOperationInput>,
+		run: (current: PromotionOperationInput, signal: AbortSignal) => Promise<T>,
+	): Promise<T> {
+		return await this.environmentLock.run(input.environmentId, async (signal) => {
+			const current = await resolveAgain();
+			if (current.environmentId !== input.environmentId) {
+				throw new ConflictError(
+					'The promotion environment of this project changed. Reload and try again.',
+				);
+			}
+			return await run(current, signal);
+		});
 	}
 
 	private async trackPromote(
 		input: PromotionOperationInput,
 		actor: User,
-		{ projectId, selectedWorkflowCount }: { projectId?: string; selectedWorkflowCount?: number },
+		{
+			projectId,
+			selectedWorkflowCount,
+			selectedFolderCount,
+		}: { projectId?: string; selectedWorkflowCount?: number; selectedFolderCount?: number },
 		run: () => Promise<PromotePackageResultDto>,
 	): Promise<PromotePackageResultDto> {
 		return await observePromotion(run, (observed) =>
@@ -641,6 +727,7 @@ export class PromotionsService {
 				scope: projectId ? 'project' : 'instance',
 				projectId,
 				selectedWorkflowCount,
+				selectedFolderCount,
 				durationMs: observed.durationMs,
 				...(observed.ok
 					? {
@@ -676,12 +763,24 @@ export class PromotionsService {
 	 * state. A live or archived workflow this project owns exports; an id it no
 	 * longer owns leaves the branch. An id that another project owns now is also
 	 * returned in `movedTo`, which says where it is now, because promote refuses it
-	 * as a move.
+	 * as a move. Every selected folder must be a folder of this project.
 	 */
 	private async classifySelection(
 		projectId: string,
 		workflowIds: string[],
+		folderIds: string[],
 	): Promise<{ selection: SelectivePushOptions; movedTo: Map<string, string> }> {
+		const folders = await this.folderService.getFoldersByIds(folderIds);
+		const ownFolderIds = new Set(
+			folders.filter((folder) => folder.homeProject.id === projectId).map(({ id }) => id),
+		);
+		const foreignFolderIds = folderIds.filter((id) => !ownFolderIds.has(id));
+		if (foreignFolderIds.length > 0) {
+			throw new BadRequestError(
+				`The following folders are not in this project: ${foreignFolderIds.join(', ')}`,
+			);
+		}
+
 		const ownerProjects =
 			await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
 
@@ -705,7 +804,7 @@ export class PromotionsService {
 		}
 
 		return {
-			selection: { projectId, workflowIds: live, deletedWorkflowIds: deleted },
+			selection: { projectId, workflowIds: live, deletedWorkflowIds: deleted, folderIds },
 			movedTo,
 		};
 	}
@@ -715,20 +814,26 @@ export class PromotionsService {
 		environmentId: string,
 		actor: User,
 		expectedSource?: ApplyPackageDto['expectedSource'],
+		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
-		return await this.applyFromSource(environmentId, actor, expectedSource);
+		return await this.applyFromSource(environmentId, actor, publicApi, expectedSource, false, ctx);
 	}
 
 	async continueApply(
 		environmentId: string,
 		actor: User,
 		request: ContinueApplyPackageDto,
+		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		return await this.applyFromSource(
 			environmentId,
 			actor,
+			publicApi,
 			request.expectedSource,
 			request.confirmDestructiveChanges === true,
+			ctx,
 		);
 	}
 
@@ -736,32 +841,62 @@ export class PromotionsService {
 		projectId: string,
 		actor: User,
 		request: ApplySelectionDto,
+		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
-		return await this.applySelectionFromSource(projectId, actor, request.workflowIds, {
-			expectedSource: request.expectedSource,
-			expectedPreviewRevision: request.expectedPreviewRevision,
-		});
+		return await this.applySelectionFromSource(
+			projectId,
+			actor,
+			toApplySelection(request),
+			{
+				publicApi,
+				expectedSource: request.expectedSource,
+				expectedPreviewRevision: request.expectedPreviewRevision,
+			},
+			ctx,
+		);
 	}
 
 	async continueApplyProjectSelection(
 		projectId: string,
 		actor: User,
 		request: ContinueApplySelectionDto,
+		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
-		return await this.applySelectionFromSource(projectId, actor, request.workflowIds, {
-			expectedSource: request.expectedSource,
-			expectedPreviewRevision: request.expectedPreviewRevision,
-			confirmDestructiveChanges: request.confirmDestructiveChanges === true,
-		});
+		return await this.applySelectionFromSource(
+			projectId,
+			actor,
+			toApplySelection(request),
+			{
+				publicApi,
+				expectedSource: request.expectedSource,
+				expectedPreviewRevision: request.expectedPreviewRevision,
+				confirmDestructiveChanges: request.confirmDestructiveChanges === true,
+			},
+			ctx,
+		);
 	}
 
 	/** `movedWorkflowIds` comes from findCrossProjectMoves, so a moved workflow is never planned as a deletion. */
 	private async classifyApplySelection(
 		inventory: PackageDirectoryInventory,
 		projectId: string,
-		workflowIds: string[],
+		{ workflowIds, folderIds }: ApplySelection,
 		movedWorkflowIds: ReadonlySet<string>,
 	): Promise<ImportSelection> {
+		const branchFolderIds = new Set(
+			inventory.folders
+				.filter((folder) => folder.projectId === projectId)
+				.map(({ folder }) => folder.id),
+		);
+		const invalidFolderIds = folderIds.filter((id) => !branchFolderIds.has(id));
+		if (invalidFolderIds.length > 0) {
+			throw new BadRequestError(
+				`The following folders are not in this project's branch: ${invalidFolderIds.join(', ')}`,
+			);
+		}
+
 		const branchWorkflowIds = new Set(
 			inventory.workflows
 				.filter((workflow) => workflow.projectId === projectId)
@@ -791,7 +926,12 @@ export class PromotionsService {
 			);
 		}
 
-		return { selectedProjectId: projectId, selectedWorkflowIds, deletedWorkflowIds };
+		return {
+			selectedProjectId: projectId,
+			selectedWorkflowIds,
+			deletedWorkflowIds,
+			selectedFolderIds: folderIds,
+		};
 	}
 
 	/**
@@ -819,16 +959,19 @@ export class PromotionsService {
 	private async applySelectionFromSource(
 		projectId: string,
 		actor: User,
-		workflowIds: string[],
+		selection: ApplySelection,
 		{
+			publicApi,
 			expectedSource,
 			expectedPreviewRevision,
 			confirmDestructiveChanges = false,
 		}: {
+			publicApi: PublicApiCaller;
 			expectedSource?: ApplySelectionDto['expectedSource'];
 			expectedPreviewRevision?: string;
 			confirmDestructiveChanges?: boolean;
 		},
+		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForProject(projectId, 'apply');
 		return await this.trackApply(
@@ -836,14 +979,22 @@ export class PromotionsService {
 			actor,
 			{ projectId },
 			async () =>
-				await this.applySelectionResolved(
+				await this.withEnvironmentLock(
 					input,
-					projectId,
-					actor,
-					workflowIds,
-					expectedSource,
-					confirmDestructiveChanges,
-					expectedPreviewRevision,
+					async () => await this.resolver.resolveForProject(projectId, 'apply'),
+					async (current, signal) =>
+						await this.applySelectionResolved(
+							current,
+							projectId,
+							actor,
+							publicApi,
+							selection,
+							expectedSource,
+							confirmDestructiveChanges,
+							signal,
+							expectedPreviewRevision,
+							ctx,
+						),
 				),
 		);
 	}
@@ -852,10 +1003,13 @@ export class PromotionsService {
 		input: PromotionOperationInput,
 		projectId: string,
 		actor: User,
-		workflowIds: string[],
+		publicApi: PublicApiCaller,
+		requested: ApplySelection,
 		expectedSource: ApplySelectionDto['expectedSource'],
 		confirmDestructiveChanges: boolean,
+		signal: AbortSignal,
 		expectedPreviewRevision?: string,
+		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		await this.assertCheckoutReady(input, 'applying');
 
@@ -885,22 +1039,22 @@ export class PromotionsService {
 		const selection = await this.classifyApplySelection(
 			inventory,
 			projectId,
-			workflowIds,
+			requested,
 			new Set(moves.workflows.map(({ id }) => id)),
 		);
 		const plan = await this.n8nPackagesService.planPackageSelection(
-			applySelectionRequest(actor, confirmDestructiveChanges),
+			{ ...applySelectionRequest(actor, publicApi, confirmDestructiveChanges), ctx },
 			reader,
 			selection,
 			'enforce',
 		);
 		// A folder the package holds under this project but this instance holds elsewhere blocks
-		// every selection: the import would meet it whatever the user selected.
-		const requested = new Set(workflowIds);
+		// every selection, so the user moves it back first.
+		const requestedWorkflowIds = new Set(requested.workflowIds);
 		const check = blockingCheck(
 			this.applyPreviewService.check(plan, inventory, selection, {
 				...moves,
-				workflows: moves.workflows.filter(({ id }) => requested.has(id)),
+				workflows: moves.workflows.filter(({ id }) => requestedWorkflowIds.has(id)),
 			}),
 		);
 		if (this.isBlocked(check, confirmDestructiveChanges, identity)) {
@@ -914,6 +1068,7 @@ export class PromotionsService {
 			deletedCount: selection.deletedWorkflowIds?.length ?? 0,
 			confirmDestructiveChanges,
 		});
+		throwIfLockLost(signal);
 		const result = await this.n8nPackagesService.applyPackagePlan(plan);
 
 		return {
@@ -930,23 +1085,42 @@ export class PromotionsService {
 	private async applyFromSource(
 		environmentId: string,
 		actor: User,
+		publicApi: PublicApiCaller,
 		expectedSource?: ApplyPackageDto['expectedSource'],
 		confirmDestructiveChanges = false,
+		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		const input = await this.resolver.resolveForEnvironment(environmentId, 'apply');
 		return await this.trackApply(
 			input,
 			actor,
 			{},
-			async () => await this.applyResolved(input, actor, expectedSource, confirmDestructiveChanges),
+			async () =>
+				await this.withEnvironmentLock(
+					input,
+					async () => await this.resolver.resolveForEnvironment(environmentId, 'apply'),
+					async (current, signal) =>
+						await this.applyResolved(
+							current,
+							actor,
+							publicApi,
+							expectedSource,
+							confirmDestructiveChanges,
+							signal,
+							ctx,
+						),
+				),
 		);
 	}
 
 	private async applyResolved(
 		input: PromotionOperationInput,
 		actor: User,
+		publicApi: PublicApiCaller,
 		expectedSource: ApplyPackageDto['expectedSource'],
 		confirmDestructiveChanges: boolean,
+		signal: AbortSignal,
+		ctx: OperationContext = {},
 	): Promise<ApplyPackageResultDto> {
 		this.assertInstanceScope(input, 'Apply');
 		await this.assertCheckoutReady(input, 'applying');
@@ -960,7 +1134,11 @@ export class PromotionsService {
 		const moves = await this.applyPreviewService.findCrossProjectMoves(inventory);
 		const plan = await this.n8nPackagesService.planPackage(
 			// Both Apply flows share the policies of a selection.
-			{ ...IMPORT_POLICY, ...applySelectionRequest(actor, confirmDestructiveChanges) },
+			{
+				...IMPORT_POLICY,
+				...applySelectionRequest(actor, publicApi, confirmDestructiveChanges),
+				ctx,
+			},
 			reader,
 			'enforce',
 		);
@@ -976,6 +1154,7 @@ export class PromotionsService {
 			environmentId: input.environmentId,
 			confirmDestructiveChanges,
 		});
+		throwIfLockLost(signal);
 		const result = await this.n8nPackagesService.applyPackagePlan(plan);
 		const importedProjectIds = result.projects.map((project) => project.localId);
 		const confirmedProjectIds = check.conflicts.flatMap((conflict) =>
@@ -983,8 +1162,10 @@ export class PromotionsService {
 		);
 		const projectReconciliation = await this.reconcileTeamProjects(
 			actor,
+			publicApi,
 			importedProjectIds,
 			confirmedProjectIds,
+			ctx,
 		);
 
 		return {
@@ -996,6 +1177,31 @@ export class PromotionsService {
 	}
 
 	/**
+	 * The package projects whose IDs do not exist on this instance. Users create them
+	 * before they apply changes to them from the project page.
+	 */
+	async listMissingProjects(environmentId: string): Promise<PromotionMissingProjectListPublicDto> {
+		const input = await this.resolver.resolveForEnvironment(environmentId, 'apply');
+		// A new project has no environment link, so its project Apply reads the instance environment.
+		this.assertInstanceScope(input, 'Listing missing projects');
+		await this.assertCheckoutReady(input, 'reading its package');
+
+		const head = await this.fetchApplyHead(input);
+		const files = head && (await this.readApplyTree(head));
+		if (!head || !files?.size) return { environmentId, git: null, data: [] };
+
+		// Read projects the way Apply does, so the list matches what the project Apply finds.
+		const { projects } = await this.inventoryReader.read(new GitCommitPackageReader(files));
+		const existing = await this.projectRepository.findTypesByIds(projects.map(({ id }) => id));
+		const existingIds = new Set(existing.map(({ id }) => id));
+		const data = projects
+			.filter(({ id }) => !existingIds.has(id))
+			.map(({ path: _path, ...project }) => project)
+			.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+		return { environmentId, git: head.identity.git, data };
+	}
+
+	/**
 	 * Fetches the Apply branch and reads the package at its tip. The working copy stays as it is,
 	 * so Apply imports the commit that it compared, not the files on disk.
 	 */
@@ -1004,12 +1210,32 @@ export class PromotionsService {
 		expectedSource: ApplyPackageDto['expectedSource'],
 	): Promise<
 		| Extract<ApplyPackageResultDto, { status: 'source-changed' }>
-		| {
-				status: 'current';
-				identity: { environmentId: string; git: { commitSha: string; branchName: string } };
-				files: Map<string, Buffer>;
-		  }
+		| { status: 'current'; identity: ApplyHead['identity']; files: Map<string, Buffer> }
 	> {
+		const head = await this.fetchApplyHead(input);
+		if (head === null) throw new BadRequestError(NO_APPLY_PACKAGE_MESSAGE);
+
+		const { identity } = head;
+		if (
+			expectedSource &&
+			(expectedSource.environmentId !== input.environmentId ||
+				expectedSource.branchName !== identity.git.branchName ||
+				expectedSource.commitSha !== identity.git.commitSha)
+		) {
+			this.logger.info('Apply stopped because the source changed', {
+				status: 'source-changed',
+				...identity,
+			});
+			return { status: 'source-changed', ...identity };
+		}
+
+		const files = await this.readApplyTree(head);
+		if (files.size === 0) throw new BadRequestError(NO_APPLY_PACKAGE_MESSAGE);
+		return { status: 'current', identity, files };
+	}
+
+	/** Fetches the Apply branch tip. `null` when the remote has no commits yet. */
+	private async fetchApplyHead(input: PromotionOperationInput): Promise<ApplyHead | null> {
 		const branchName = checkoutBranchName(input.config);
 		const operation = {
 			remoteUrl: repositoryUrl(input),
@@ -1022,38 +1248,20 @@ export class PromotionsService {
 			...operation,
 			pathspecs: [`${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`],
 		});
-		if (commitSha === null) {
-			throw new BadRequestError(
-				'The remote branch has no exported package to import. Promote to it first.',
-			);
-		}
+		if (commitSha === null) return null;
+		return {
+			operation,
+			identity: { environmentId: input.environmentId, git: { commitSha, branchName } },
+		};
+	}
 
-		const identity = { environmentId: input.environmentId, git: { commitSha, branchName } };
-		if (
-			expectedSource &&
-			(expectedSource.environmentId !== input.environmentId ||
-				expectedSource.branchName !== branchName ||
-				expectedSource.commitSha !== commitSha)
-		) {
-			this.logger.info('Apply stopped because the source changed', {
-				status: 'source-changed',
-				...identity,
-			});
-			return { status: 'source-changed', ...identity };
-		}
-
-		const files = await this.gitService.readTreeAtCommit({
+	private async readApplyTree({ operation, identity }: ApplyHead): Promise<Map<string, Buffer>> {
+		return await this.gitService.readTreeAtCommit({
 			...operation,
-			commitSha,
+			commitSha: identity.git.commitSha,
 			directory: PACKAGE_SUBFOLDER,
 			limits: this.packageImportConfig,
 		});
-		if (files.size === 0) {
-			throw new BadRequestError(
-				'The remote branch has no exported package to import. Promote to it first.',
-			);
-		}
-		return { status: 'current', identity, files };
 	}
 
 	private isBlocked(
@@ -1223,13 +1431,23 @@ export class PromotionsService {
 		});
 	}
 
+	/** A killed earlier operation can leave Git lock files that block every write. Run under the lock. */
+	private async removeLeftoverLockFiles(input: PromotionOperationInput, branchName: string) {
+		await this.gitService.removeLeftoverLockFiles({
+			paths: this.workingDirectory.paths(input.environmentId),
+			branchName,
+			environmentId: input.environmentId,
+		});
+	}
+
 	/**
 	 * Resolves the branch one promotion pushes to, honoring the resolved environment.
 	 * When the environment creates a branch per promotion, this validates the new name
 	 * and resets the checkout to the latest base, so the promotion builds on it.
 	 * Otherwise the push targets the base branch, and this resets the checkout to the
-	 * latest base too, because a merged review can move it. `baseCommitSha` is the base
-	 * commit the checkout was reset to.
+	 * latest base too, because a merged review can move it. When the remote does not hold
+	 * the base branch, this returns no target, and before a first push it empties the local
+	 * branch. `baseCommitSha` is the base commit the checkout was reset to.
 	 */
 	private async prepareTargetBranch(
 		input: PromotionOperationInput,
@@ -1245,8 +1463,12 @@ export class PromotionsService {
 			environmentId: input.environmentId,
 		};
 		if (!input.config.settings.createBranchOnPromotion) {
-			// Without a remote branch there is nothing to reset to. The push creates it.
-			if (!(await this.gitService.hasRemoteBranch(checkout))) return undefined;
+			// Without a remote branch there is nothing to reset to. The push creates it, and a first
+			// push starts from an empty branch, so nothing an earlier attempt left locally reaches it.
+			if (!(await this.gitService.hasRemoteBranch(checkout))) {
+				await this.gitService.prepareCheckoutForFirstPush(checkout);
+				return undefined;
+			}
 			const { commitSha } = await this.gitService.prepareCheckoutForPromotion(checkout);
 			return { baseCommitSha: commitSha };
 		}
@@ -1394,12 +1616,14 @@ export class PromotionsService {
 		const onBranch = new Map((branch.state.workflows ?? []).map((w) => [w.id, w.name]));
 		const exported = new Map((staging.workflows ?? []).map((w) => [w.id, w.name]));
 		const pushed = selection.workflowIds.map((id) => ({ id, name: exported.get(id) ?? id }));
+		const exportedFolders = new Map((staging.folders ?? []).map((f) => [f.id, f.name]));
 
 		return buildSelectionPromotionCommitMessage({
 			projectName,
 			added: pushed.filter(({ id }) => !onBranch.has(id)),
 			updated: pushed.filter(({ id }) => onBranch.has(id)),
 			removed: selection.deletedWorkflowIds.map((id) => ({ id, name: onBranch.get(id) ?? id })),
+			folders: selection.folderIds.map((id) => ({ id, name: exportedFolders.get(id) ?? id })),
 		});
 	}
 
@@ -1423,6 +1647,7 @@ export class PromotionsService {
 	private descriptorFor(input: PromotionOperationInput): PromotionCacheDescriptor {
 		return buildCacheDescriptor({
 			environmentId: input.environmentId,
+			providerId: input.providerId,
 			remote: input.remote,
 			config: input.config,
 		});
@@ -1446,8 +1671,10 @@ export class PromotionsService {
 	/** Deletes only the projects that the user confirmed and that the import did not keep. */
 	private async reconcileTeamProjects(
 		actor: User,
+		publicApi: PublicApiCaller,
 		importedProjectIds: string[],
 		confirmedProjectIds: string[],
+		ctx: OperationContext = {},
 	): Promise<ProjectReconciliationResult> {
 		const imported = new Set(importedProjectIds);
 		const confirmed = new Set(confirmedProjectIds);
@@ -1457,13 +1684,16 @@ export class PromotionsService {
 		);
 
 		for (const projectId of removedProjectIds) {
-			await this.projectService.deleteProject(actor, projectId);
+			await this.projectService.deleteProject(actor, projectId, { publicApi }, ctx);
 		}
 
 		return { deletedProjectIds: removedProjectIds };
 	}
 
 	private commitAuthor(user: User): { name: string; email: string } {
+		// A service account commits with the default author, as in source control.
+		if (!isPerson(user)) return { name: GIT_DEFAULT_COMMIT_NAME, email: GIT_DEFAULT_COMMIT_EMAIL };
+
 		const name =
 			[user.firstName, user.lastName].filter(Boolean).join(' ') || GIT_DEFAULT_COMMIT_NAME;
 		return { name, email: user.email ?? GIT_DEFAULT_COMMIT_EMAIL };
@@ -1545,23 +1775,37 @@ async function pathExists(target: string): Promise<boolean> {
 	}
 }
 
+/** What a project Apply selects. The project details always come along. */
+type ApplySelection = { workflowIds: string[]; folderIds: string[] };
+
+function toApplySelection(request: ApplySelectionDto | ContinueApplySelectionDto): ApplySelection {
+	return { workflowIds: request.workflowIds ?? [], folderIds: request.folderIds ?? [] };
+}
+
 function appliedOutcome(
 	observed: ObservedOperation<ApplyPackageResultDto>,
 ): Pick<
 	RelayEventMap['promotion-applied'],
-	'outcome' | 'failureKind' | 'workflowsChanged' | 'workflowsFailedToPublish'
+	| 'outcome'
+	| 'failureKind'
+	| 'workflowsChanged'
+	| 'workflowsFailedToPublish'
+	| 'foldersChanged'
+	| 'projectsChanged'
 > {
 	if (!observed.ok) return { outcome: 'failed', failureKind: observed.failureKind };
 	const { result } = observed;
 	if (result.status === 'blocked') return { outcome: 'blocked' };
 	if (result.status === 'source-changed') return { outcome: 'source_changed' };
 	if (result.status === 'preview-changed') return { outcome: 'preview_changed' };
-	const { workflows } = result.counts;
+	const { workflows, folders, projects } = result.counts;
 	return {
 		outcome: 'applied',
 		workflowsChanged:
 			workflows.created + workflows.updated + workflows.archived + workflows.deleted,
 		workflowsFailedToPublish: workflows.publishing.failed,
+		foldersChanged: folders.created + folders.updated + folders.removed,
+		projectsChanged: projects.created + projects.updated + projects.deleted,
 	};
 }
 

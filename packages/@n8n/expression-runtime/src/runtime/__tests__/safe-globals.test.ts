@@ -14,6 +14,17 @@ describe('__sanitize', () => {
 		expect(__sanitize('0')).toBe('0');
 	});
 
+	it.each([
+		'toString',
+		'valueOf',
+		'toLocaleString',
+		'hasOwnProperty',
+		'isPrototypeOf',
+		'propertyIsEnumerable',
+	])('allows %s, which can be a field name in workflow data', (key) => {
+		expect(__sanitize(key)).toBe(key);
+	});
+
 	it('throws for every name in the transform-time denylist', () => {
 		// These names are rejected for static and literal keys at transform time;
 		// keys built at runtime must be rejected here as well.

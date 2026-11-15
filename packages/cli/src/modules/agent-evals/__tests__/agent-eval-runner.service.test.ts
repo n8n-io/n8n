@@ -20,7 +20,7 @@ import type { AgentConfigService } from '@/modules/agents/agent-config.service';
 import type { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { DataTableService } from '@n8n/backend-module-data-table';
 import type { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
@@ -41,7 +41,7 @@ vi.mock('@/evaluation.ee/evaluation-concurrency.helper', () => ({
 vi.mock('@/modules/agents/repositories/agent.repository', () => ({
 	AgentRepository: class AgentRepository {},
 }));
-vi.mock('@/modules/data-table/data-table.service', () => ({
+vi.mock('@n8n/backend-module-data-table', () => ({
 	DataTableService: class DataTableService {},
 }));
 vi.mock('@/modules/instance-ai/eval/agent-execution.service', () => ({

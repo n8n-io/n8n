@@ -10,7 +10,7 @@ import type {
 import type { DesiredJob, ProvisionSummary, ScheduleDefinition } from '@n8n/scheduler';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Tracing } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { DurableJobProvisioner } from '../durable-job-provisioner';
@@ -1169,23 +1169,6 @@ describe('DurableJobProvisioner', () => {
 			await provisioner.deprovisionOwnerInTransaction(callerManager, OWNER_REF);
 
 			expect(jobs.deleteByOwnerRef).toHaveBeenCalledWith(callerManager, OWNER_REF);
-			expect(dataSource.transaction).not.toHaveBeenCalled();
-		});
-
-		it("deletes one task type through the caller's manager", async () => {
-			const callerManager = mock<EntityManager>();
-
-			await provisioner.deprovisionOwnerTaskTypeInTransaction(
-				callerManager,
-				OWNER_REF,
-				'schedule-trigger',
-			);
-
-			expect(jobs.deleteByOwnerTaskType).toHaveBeenCalledWith(
-				callerManager,
-				OWNER_REF,
-				'schedule-trigger',
-			);
 			expect(dataSource.transaction).not.toHaveBeenCalled();
 		});
 	});

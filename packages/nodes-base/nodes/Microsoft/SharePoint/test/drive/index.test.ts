@@ -2,6 +2,7 @@ import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
+import { requestPath } from 'n8n-workflow';
 
 import { versionDescription } from '../../v2/actions/versionDescription';
 import { getDrives } from '../../drive';
@@ -19,7 +20,6 @@ vi.mock('../../transport', async () => {
 
 const SITE_ID =
 	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
-const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 
 const MIXED = {
 	value: [
@@ -51,7 +51,7 @@ describe('Microsoft SharePoint v2 — drive search', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`/v1.0/sites/${ENCODED_SITE_ID}/drives`,
+			requestPath`/v1.0/sites/${SITE_ID}/drives`,
 			{},
 			{ $select: 'id,name,system' },
 		);
@@ -84,7 +84,7 @@ describe('Microsoft SharePoint v2 — drive search', () => {
 		const secondPage = await getDrives.call(ctx, undefined, firstPage.paginationToken);
 
 		expect(firstPage.paginationToken).toBe(nextLink);
-		expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
+		expect(apiRequest).toHaveBeenLastCalledWith('GET', requestPath``, {}, {}, nextLink);
 		expect(secondPage.results).toEqual([{ name: 'Later', value: 'b!next' }]);
 	});
 

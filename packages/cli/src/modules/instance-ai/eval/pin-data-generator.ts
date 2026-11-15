@@ -29,7 +29,7 @@ import {
 	PIN_DATA_SYSTEM_PROMPT,
 	repairStructuredOutput,
 } from '@n8n/workflow-sdk';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 // Re-exports: existing consumers/tests import these from this module.
 export { findOutputParserTargets, repairStructuredOutput } from '@n8n/workflow-sdk';

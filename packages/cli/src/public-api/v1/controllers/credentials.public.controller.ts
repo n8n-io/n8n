@@ -49,6 +49,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
+import { loginIdOf } from '@/events/login-id';
 import {
 	assertValidUpdateProperties,
 	buildSharedForCredential,
@@ -60,6 +61,7 @@ import {
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
 
 /**
  * Allows us to type the input to `toCredentialPublicDto` and have the return type of each service method satisfy that input type.
@@ -216,7 +218,7 @@ export class CredentialsPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	async createCredential(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Body body: CreateCredentialPublicDto,
 	): Promise<CredentialPublicDto> {
@@ -249,11 +251,16 @@ export class CredentialsPublicController {
 			...(includeDescription && {
 				credentialDescriptionLength: credential.description?.length ?? 0,
 			}),
-			publicApi: true,
+			publicApi: req.publicApiClient,
 			projectId: project?.id,
 			projectType: project?.type,
 			isDynamic: credential.isResolvable ?? false,
 			jweEnabled: body.data.jweEnabled === true,
+			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(
+				credential.type,
+				body.data,
+			),
+			loginId: loginIdOf(req.ctx),
 		});
 
 		return toCredentialPublicDto(credential, includeDescription);
@@ -361,6 +368,11 @@ export class CredentialsPublicController {
 				updatedCredential.type,
 				credentialData,
 			),
+			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(
+				updatedCredential.type,
+				credentialData,
+			),
+			loginId: loginIdOf(req.ctx),
 		});
 
 		return toCredentialPublicDto(updatedCredential, includeDescription);
@@ -471,7 +483,7 @@ export class CredentialsPublicController {
 			throw new NotFoundError('Not Found');
 		}
 
-		await this.credentialsService.delete(req.user, credentialId);
+		await this.credentialsService.delete(req.user, credentialId, {}, req.ctx);
 
 		return toDeleteCredentialPublicDto(credential, await this.credentialDescriptions.isEnabled());
 	}

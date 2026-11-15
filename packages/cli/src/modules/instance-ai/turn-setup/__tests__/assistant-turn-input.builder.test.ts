@@ -1,9 +1,17 @@
 import { loadReplayedMessages, type AgentDbMessage, type BuiltMemory } from '@n8n/agents';
-import type { AiPreferencesAppliedPayload } from '@n8n/api-types';
+import {
+	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
+	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
+	type AiPreferencesAppliedPayload,
+} from '@n8n/api-types';
 import { AI_PREFERENCES_CLEARED_BLOCK, renderAiPreferencesBlock } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 
-import { buildThreadArtifactsBlock, buildThreadContextBlock } from '../../internal-messages';
+import {
+	buildAppTargetsBlock,
+	buildThreadArtifactsBlock,
+	buildThreadContextBlock,
+} from '../../internal-messages';
 import type { AssistantTurnEnvironment } from '../assistant-turn-environment.factory';
 import { AssistantTurnInputBuilder, OPENED_METADATA_KEY } from '../assistant-turn-input.builder';
 
@@ -12,17 +20,34 @@ type ThreadMemoryMock = {
 	getCursor: Mock;
 	getActiveObservationLog: Mock;
 	getMessagesForObservationScope: Mock;
+	getResumeState: Mock;
 };
 
-/** A thread memory with an observation log, so the replay reads the post-cursor window. */
+/** The resume state the runtime saves when it replaces the history up to `messageId` with notes. */
+function resumeAt(messageId: string, at: Date) {
+	return {
+		observationScopeId: 'thread-1',
+		resumeFrom: { lastObservedMessageId: messageId, lastObservedAt: at },
+		resumeNotes: 'Notes.',
+		lastRequestTokens: null,
+		lastModelId: null,
+	};
+}
+
+/** Places a stored message before the resume point that the tests save at 2026-09-01. */
+const beforeResume = { id: 'message-0', createdAt: new Date('2026-08-01T00:00:00.000Z') };
+
+/** A thread memory with an observation log, so the replay reads the post-resume window. */
 function createThreadMemory(): ThreadMemoryMock {
 	return {
 		getMessages: vi.fn().mockResolvedValue([]),
 		getCursor: vi.fn().mockResolvedValue(null),
 		getActiveObservationLog: vi.fn().mockResolvedValue([]),
 		getMessagesForObservationScope: vi.fn().mockResolvedValue([]),
+		getResumeState: vi.fn().mockResolvedValue(null),
 		...Object.fromEntries(
 			[
+				'saveResumeState',
 				'commitObservationLogBatch',
 				'appendObservationLogEntries',
 				'getObservationLog',
@@ -145,13 +170,16 @@ describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 		const service = createService();
 		// The full history has the same block, so only a replay-window read sends it again.
 		service.agentMemory.getMessages.mockResolvedValue([
-			storedUserTurn(buildThreadArtifactsBlock({ artifacts: [] })),
+			{ ...storedUserTurn(buildThreadArtifactsBlock({ artifacts: [] })), ...beforeResume },
 		]);
 		service.agentMemory.getCursor.mockResolvedValue({
 			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
 			lastObservedMessageId: 'message-1',
 		});
 		service.agentMemory.getActiveObservationLog.mockResolvedValue([{ id: 'observation-1' }]);
+		service.agentMemory.getResumeState.mockResolvedValue(
+			resumeAt('message-1', new Date('2026-09-01T00:00:00.000Z')),
+		);
 		service.agentMemory.getMessagesForObservationScope.mockResolvedValue([]);
 
 		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
@@ -169,13 +197,16 @@ describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 	it('sends the tabs again when the earlier block was compacted out of the replay window', async () => {
 		const service = createService();
 		service.agentMemory.getMessages.mockResolvedValue([
-			storedUserTurn(buildThreadArtifactsBlock({ artifacts: [digest] })),
+			{ ...storedUserTurn(buildThreadArtifactsBlock({ artifacts: [digest] })), ...beforeResume },
 		]);
 		service.agentMemory.getCursor.mockResolvedValue({
 			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
 			lastObservedMessageId: 'message-1',
 		});
 		service.agentMemory.getActiveObservationLog.mockResolvedValue([{ id: 'observation-1' }]);
+		service.agentMemory.getResumeState.mockResolvedValue(
+			resumeAt('message-1', new Date('2026-09-01T00:00:00.000Z')),
+		);
 		service.agentMemory.getMessagesForObservationScope.mockResolvedValue([]);
 
 		expect(await resolve(service, { artifacts: [digest] })).toContain('Workflow "Digest"');
@@ -187,6 +218,40 @@ describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 
 		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
 		expect(service.logger.warn).toHaveBeenCalled();
+	});
+});
+
+describe('AssistantTurnInputBuilder — resolveAppTargetsBlock', () => {
+	type Internals = {
+		resolveAppTargetsBlock: (
+			context: { appService?: { getApp: Mock } },
+			metadata: Record<string, unknown>,
+		) => Promise<string>;
+	};
+
+	const builder = Object.create(AssistantTurnInputBuilder.prototype) as unknown as Internals;
+	const [first, missing, pending] = [1, 2, 3].map((n) => `00000000-0000-4000-8000-00000000000${n}`);
+	const metadata = {
+		[INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [
+			{ appId: first, projectId: 'project-1' },
+			{ appId: missing, projectId: 'project-1' },
+		],
+		[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: { appId: pending, projectId: 'project-1' },
+	};
+
+	it('sends nothing without the app service', async () => {
+		expect(await builder.resolveAppTargetsBlock({}, metadata)).toBe('');
+	});
+
+	it('lists the apps that still exist and the pending app', async () => {
+		const getApp = vi.fn(async (appId: string) => {
+			if (appId === missing) throw new Error('Not found');
+			return { id: appId, name: 'Orders' };
+		});
+
+		const block = await builder.resolveAppTargetsBlock({ appService: { getApp } }, metadata);
+
+		expect(block).toBe(buildAppTargetsBlock([{ id: first, name: 'Orders' }], true));
 	});
 });
 
@@ -461,7 +526,7 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 		);
 	});
 
-	it('re-injects when the observation cursor has compacted the turn that carried the block', async () => {
+	it('re-injects when the resume point has compacted the turn that carried the block', async () => {
 		const service = createService();
 		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
 		const block = renderAiPreferencesBlock(applicable);
@@ -473,27 +538,32 @@ describe('AssistantTurnInputBuilder — resolveAiPreferencesTurn', () => {
 			lastObservedMessageId: 'msg-9',
 			lastObservedAt: new Date('2026-09-01T00:00:00.000Z'),
 		};
-		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(block)]);
+		service.agentMemory.getMessages.mockResolvedValue([
+			{ ...storedUserTurn(block), ...beforeResume },
+			{
+				...storedUserTurn(undefined, 'Thanks'),
+				id: 'msg-10',
+				createdAt: new Date('2026-09-02T00:00:00.000Z'),
+			},
+		]);
 		service.agentMemory.getCursor.mockResolvedValue(cursor);
 		service.agentMemory.getActiveObservationLog.mockResolvedValue([{ id: 'obs-1' }]);
-		service.agentMemory.getMessagesForObservationScope.mockResolvedValue([
-			storedUserTurn(undefined, 'Thanks'),
-		]);
+		service.agentMemory.getResumeState.mockResolvedValue(
+			resumeAt(cursor.lastObservedMessageId, cursor.lastObservedAt),
+		);
 
 		const turn = await resolvePreferences(service, boundProject);
 
 		expect(turn.block).toContain('<ai-preferences>');
 		expect(turn.payload).toMatchObject({ injectedThisTurn: true });
-		expect(service.agentMemory.getMessages).not.toHaveBeenCalled();
-		expect(service.agentMemory.getMessagesForObservationScope).toHaveBeenCalledWith('thread-1', {
-			since: {
-				sinceCreatedAt: cursor.lastObservedAt,
-				sinceMessageId: cursor.lastObservedMessageId,
-			},
+		// A user-scoped thread reads through getMessages, so the resource filter applies.
+		expect(service.agentMemory.getMessages).toHaveBeenCalledWith('thread-1', {
+			resourceId: 'user-1',
 		});
+		expect(service.agentMemory.getMessagesForObservationScope).not.toHaveBeenCalled();
 	});
 
-	it('reads the full history when a cursor exists without an active observation, like the runtime', async () => {
+	it('reads the full history when a cursor exists without a resume point, like the runtime', async () => {
 		const service = createService();
 		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
 		const block = renderAiPreferencesBlock(applicable);
@@ -601,7 +671,6 @@ describe('AssistantTurnInputBuilder — opening-turn title', () => {
 			memory,
 			taskStorage: { get: vi.fn(async () => undefined) },
 			conversationHistory,
-			aiPreferencesEnabled: false,
 			instanceContextEnabled: false,
 			skillScope: {},
 		} as unknown as AssistantTurnEnvironment;
@@ -653,6 +722,34 @@ describe('AssistantTurnInputBuilder — opening-turn title', () => {
 		expect(patch).toEqual({
 			title: 'Digest',
 			metadata: { [OPENED_METADATA_KEY]: true, titleRefined: true },
+		});
+	});
+
+	it('leaves the title to the agent runtime when only an unsaved agent is attached', async () => {
+		const memory = createMemory({});
+
+		const { patch } = await buildOpeningTurn(memory, {
+			titledByRuntime: true,
+			contextAttachments: [
+				{ type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'Untitled', pending: true },
+			],
+		});
+
+		expect(patch).toEqual({ metadata: { [OPENED_METADATA_KEY]: true } });
+	});
+
+	it('titles from the message when only an unsaved agent is attached', async () => {
+		const memory = createMemory({});
+
+		const { patch } = await buildOpeningTurn(memory, {
+			contextAttachments: [
+				{ type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'Untitled', pending: true },
+			],
+		});
+
+		expect(patch).toEqual({
+			title: 'Send me a daily digest of new GitHub issues',
+			metadata: { [OPENED_METADATA_KEY]: true },
 		});
 	});
 

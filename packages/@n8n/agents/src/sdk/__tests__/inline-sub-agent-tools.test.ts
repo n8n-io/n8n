@@ -569,6 +569,25 @@ describe('inline sub-agent transport inheritance', () => {
 		expect(runtimeConfigs[0].modelFetch).toBe(parentFetch);
 	});
 
+	it('names inline child runtimes after the parent functionId', async () => {
+		const agent = new Agent('parent');
+		agent.functionId('feature.orchestrator');
+		const runInline = (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
+			deferredTools: [],
+			modelConfig: 'openai/gpt-4o-mini',
+			tools: [makeTool('lookup')],
+		});
+
+		await runInline({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: ['research'],
+		} as unknown as DelegateSubAgentRequest);
+
+		expect(runtimeConfigs[0].functionId).toBe('feature.orchestrator.subagent');
+	});
+
 	it('leaves modelFetch unset on child runtimes when the parent has none', async () => {
 		const runInline = createInlineRunner({});
 
@@ -581,5 +600,6 @@ describe('inline sub-agent transport inheritance', () => {
 
 		expect(runtimeConfigs).toHaveLength(1);
 		expect('modelFetch' in runtimeConfigs[0]).toBe(false);
+		expect('functionId' in runtimeConfigs[0]).toBe(false);
 	});
 });

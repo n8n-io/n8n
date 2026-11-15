@@ -376,7 +376,25 @@ function isSupportedLeafSchema(schema: z.ZodTypeAny): boolean {
 
 type SanitizeChild = (child: z.ZodTypeAny, path: string) => z.ZodTypeAny;
 
-type DiscriminatedFieldEntry = { action: string; description?: string; type: z.ZodTypeAny };
+type DiscriminatedFieldEntry = {
+	action: string;
+	description?: string;
+	type: z.ZodTypeAny;
+	required: boolean;
+};
+
+/**
+ * Whether the model must send this field. Nullable counts as optional, because
+ * the sanitizer turns `T | null` into an optional `T` on the wire.
+ */
+function isRequiredField(type: z.ZodTypeAny): boolean {
+	try {
+		return !type.isOptional() && !type.isNullable();
+	} catch {
+		// A preprocess step can throw on undefined. Do not enforce what we cannot check.
+		return false;
+	}
+}
 
 /** Collect per-action and per-field metadata from a discriminated union's variants. */
 function collectDiscriminatedUnionMeta(
@@ -402,9 +420,12 @@ function collectDiscriminatedUnionMeta(
 		for (const [key, value] of Object.entries(variant.shape)) {
 			if (key === discriminator) continue;
 			if (!fieldMeta.has(key)) fieldMeta.set(key, []);
-			fieldMeta
-				.get(key)!
-				.push({ action: actionValue, description: value.description, type: value });
+			fieldMeta.get(key)!.push({
+				action: actionValue,
+				description: value.description,
+				type: value,
+				required: isRequiredField(value),
+			});
 		}
 	}
 
@@ -442,7 +463,45 @@ function assertNoEnumConflict(fieldName: string, entries: DiscriminatedFieldEntr
 	);
 }
 
-/** Build a single flattened, optional field for a merged discriminated union, merging descriptions. */
+const quoteActions = (actions: string[]) => actions.map((action) => `"${action}"`).join(', ');
+
+/**
+ * Hint for a field that only some actions use, or only some actions require.
+ * Names whichever side is shorter where it can, to keep the schema small.
+ */
+function buildActionHint(
+	entries: DiscriminatedFieldEntry[],
+	allActions: string[],
+	hasDescription: boolean,
+): string | undefined {
+	const used = entries.map((e) => e.action);
+	const required = entries.filter((e) => e.required).map((e) => e.action);
+	const optional = entries.filter((e) => !e.required).map((e) => e.action);
+	const excluded = allActions.filter((action) => !used.includes(action));
+	const inAllActions = excluded.length === 0;
+
+	if (required.length === 0) {
+		if (inAllActions) return undefined;
+		return excluded.length < used.length
+			? `Not for ${quoteActions(excluded)}`
+			: `${hasDescription ? 'For' : 'Only for'} ${quoteActions(used)}`;
+	}
+
+	if (optional.length === 0) {
+		return excluded.length < used.length
+			? `Required, not for ${quoteActions(excluded)}`
+			: `Required for ${quoteActions(used)}`;
+	}
+
+	const requiredHint = `Required for ${quoteActions(required)}`;
+	return inAllActions ? requiredHint : `${requiredHint}, optional for ${quoteActions(optional)}`;
+}
+
+/**
+ * Build a single flattened field for a merged discriminated union, merging descriptions.
+ * The field stays required on the wire only when every action requires it.
+ * For the other fields, `buildRequiredFieldCheck` enforces the per-action rule at parse time.
+ */
 function buildMergedDiscriminatedField(
 	fieldName: string,
 	entries: DiscriminatedFieldEntry[],
@@ -451,7 +510,10 @@ function buildMergedDiscriminatedField(
 	sanitizeChild: SanitizeChild,
 ): z.ZodTypeAny {
 	const fieldPath = `${context.path}.${fieldName}`;
-	const sanitizedField = sanitizeChild(entries[0].type, fieldPath).optional();
+	const requiredEverywhere =
+		entries.length === allActions.length && entries.every((e) => e.required);
+	const baseField = sanitizeChild(entries[0].type, fieldPath);
+	const sanitizedField = requiredEverywhere ? baseField : baseField.optional();
 
 	if (context.strict && entries.length > 1) {
 		assertNoEnumConflict(fieldName, entries);
@@ -472,28 +534,24 @@ function buildMergedDiscriminatedField(
 			);
 		}
 		// Non-strict: combine with action context for external MCP tools
-		const combined = withDesc.map((d) => `For "${d.action}": ${d.description}`).join('. ');
+		const markRequired = (d: DiscriminatedFieldEntry) =>
+			d.required && !requiredEverywhere ? ' (required)' : '';
+		const combined = withDesc
+			.map((d) => `For "${d.action}"${markRequired(d)}: ${d.description}`)
+			.join('. ');
 		return sanitizedField.describe(boundDescription(combined, context, fieldPath));
 	}
 
-	if (entries.length < allActions.length) {
-		// Field appears in a subset of variants. Annotate with an action hint so
-		// the model binds the (now-flattened-optional) field to the right actions
-		// and stops cross-mixing fields between sibling actions. Name whichever
-		// side is shorter: the actions that use the field, or the ones that don't.
-		const used = new Set(entries.map((e) => e.action));
-		const excluded = allActions.filter((action) => !used.has(action));
-		const quote = (actions: string[]) => actions.map((action) => `"${action}"`).join(', ');
-		const hint =
-			excluded.length < entries.length
-				? `Not for ${quote(excluded)}`
-				: `${withDesc[0]?.description ? 'For' : 'Only for'} ${quote([...used])}`;
-		const baseDesc = withDesc[0]?.description;
-		const merged = baseDesc ? `${hint}: ${baseDesc}` : hint;
-		return sanitizedField.describe(boundDescription(merged, context, fieldPath));
-	}
+	if (requiredEverywhere) return sanitizedField;
 
-	return sanitizedField;
+	// Every flattened field is optional on the wire. Annotate it with an action
+	// hint so the model binds it to the right actions, sends it where an action
+	// requires it, and stops cross-mixing fields between sibling actions.
+	const baseDesc = withDesc[0]?.description;
+	const hint = buildActionHint(entries, allActions, !!baseDesc);
+	if (!hint) return sanitizedField;
+	const merged = baseDesc ? `${hint}: ${baseDesc}` : hint;
+	return sanitizedField.describe(boundDescription(merged, context, fieldPath));
 }
 
 /**
@@ -556,7 +614,50 @@ function sanitizeDiscriminatedUnion(
 		);
 	}
 
-	return z.object(mergedShape);
+	return buildRequiredFieldCheck(z.object(mergedShape), discriminator, fieldMeta);
+}
+
+/**
+ * Flattening makes action-specific fields optional, so the flat object accepts a
+ * call that leaves out a field its action requires. Check this at parse time and
+ * name the action in the error, so the model can correct its call. A refinement
+ * does not change the JSON schema that the provider gets.
+ */
+function buildRequiredFieldCheck(
+	flattened: z.ZodObject<z.ZodRawShape>,
+	discriminator: string,
+	fieldMeta: Map<string, DiscriminatedFieldEntry[]>,
+): z.ZodTypeAny {
+	const requiredByAction = new Map<string, string[]>();
+	for (const [fieldName, entries] of fieldMeta) {
+		for (const entry of entries) {
+			if (!entry.required) continue;
+			const fields = requiredByAction.get(entry.action) ?? [];
+			fields.push(fieldName);
+			requiredByAction.set(entry.action, fields);
+		}
+	}
+	if (requiredByAction.size === 0) return flattened;
+
+	return flattened.superRefine((value, ctx) => {
+		const action: unknown = value[discriminator];
+		if (typeof action !== 'string') return;
+		for (const fieldName of requiredByAction.get(action) ?? []) {
+			if (value[fieldName] !== undefined) continue;
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: [fieldName],
+				message: `"${fieldName}" is required when ${discriminator} is "${action}"`,
+			});
+		}
+	});
+}
+
+/** The flattened object, with or without its required-field check. */
+function unwrapRequiredFieldCheck(schema: z.ZodTypeAny): z.ZodTypeAny {
+	return schema instanceof z.ZodEffects
+		? (schema as z.ZodEffects<z.ZodTypeAny>).innerType()
+		: schema;
 }
 
 /** Strip ZodNull members from a union, making the result optional if null was present. */
@@ -811,7 +912,8 @@ function sanitizeZodTypeNode(schema: z.ZodTypeAny, context: SanitizeContext): z.
  * which accepts any object — same fallback used when schema conversion fails.
  */
 export function ensureTopLevelObject(schema: z.ZodTypeAny): z.ZodTypeAny {
-	if (schema instanceof z.ZodObject || schema instanceof z.ZodRecord) {
+	const objectSchema = unwrapRequiredFieldCheck(schema);
+	if (objectSchema instanceof z.ZodObject || objectSchema instanceof z.ZodRecord) {
 		return schema;
 	}
 	// Fallback: accept any object rather than sending a non-object schema that

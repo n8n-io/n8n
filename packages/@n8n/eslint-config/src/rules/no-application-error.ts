@@ -14,7 +14,6 @@ const ALLOWED_FILES = [
 	'workflow-execute.ts',
 	'type-validation.ts',
 	// Tests covering the shim / legacy-error handling
-	'application-error.test.ts',
 	'error-reporter.test.ts',
 	'workflow-execute-node-error-reporting.test.ts',
 ];
@@ -28,7 +27,7 @@ export const NoApplicationErrorRule = ESLintUtils.RuleCreator.withoutDocs({
 		},
 		messages: {
 			noApplicationError:
-				'Do not import `ApplicationError`. It is a deprecated compatibility shim for community nodes. Use `UserError`, `OperationalError` or `UnexpectedError` from `n8n-workflow` instead.',
+				'Do not import `ApplicationError`. It is a deprecated compatibility shim for community nodes. Use `UserError`, `OperationalError` or `UnexpectedError` from `@n8n/errors` instead.',
 		},
 		schema: [],
 	},

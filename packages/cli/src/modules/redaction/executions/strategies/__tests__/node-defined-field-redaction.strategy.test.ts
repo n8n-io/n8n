@@ -3,7 +3,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { IRedactedFieldMarker } from 'n8n-workflow';
 
 import type { RedactableExecution } from '@n8n/backend-services';
-import { NodeTypes } from '@/node-types';
+import { NodeTypesProviderMissingError, NodeTypesProxy } from '@n8n/backend-services';
 
 import type { RedactionContext } from '../../execution-redaction.interfaces';
 import { NodeDefinedFieldRedactionStrategy } from '../node-defined-field-redaction.strategy';
@@ -64,7 +64,7 @@ const REDACTED_MARKER: IRedactedFieldMarker = {
 
 describe('NodeDefinedFieldRedactionStrategy', () => {
 	const logger = mockInstance(Logger);
-	const nodeTypes = mockInstance(NodeTypes);
+	const nodeTypes = mockInstance(NodeTypesProxy);
 	let strategy: NodeDefinedFieldRedactionStrategy;
 
 	const mockNodeDescription = (sensitiveOutputFields: string[]) => ({
@@ -376,6 +376,21 @@ describe('NodeDefinedFieldRedactionStrategy', () => {
 	});
 
 	describe('fail-closed behavior', () => {
+		it('rethrows when no node types provider is registered', async () => {
+			nodeTypes.getByNameAndVersion.mockImplementation(() => {
+				throw new NodeTypesProviderMissingError();
+			});
+
+			const execution = makeExecution(
+				[{ name: 'Webhook', type: 'n8n-nodes-base.webhook', typeVersion: 1 }],
+				{ Webhook: [{ data: { main: [[{ json: { headers: { authorization: 'secret' } } }]] } }] },
+			);
+
+			await expect(strategy.apply(execution, makeContext())).rejects.toThrow(
+				NodeTypesProviderMissingError,
+			);
+		});
+
 		it('redacts all outputs conservatively when node type cannot be resolved', async () => {
 			nodeTypes.getByNameAndVersion.mockImplementation(() => {
 				throw new Error('Unknown node type');

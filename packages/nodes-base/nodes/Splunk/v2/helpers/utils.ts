@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
-import { sanitizeXmlName } from 'n8n-workflow';
+import { decodePathValue, sanitizeXmlName } from 'n8n-workflow';
 import { parseString } from 'xml2js';
 
 import type { SplunkError, SplunkFeedResponse } from './interfaces';
@@ -80,7 +80,11 @@ export function extractErrorDescription(rawError: SplunkError) {
 }
 
 export function toUnixEpoch(timestamp: string) {
-	return Date.parse(timestamp) / 1000;
+	// Splunk reads a bare number as epoch seconds; a four-digit one stays a year.
+	if (/^-?\d+(\.\d+)?$/.test(timestamp) && !/^\d{4}$/.test(timestamp)) return timestamp;
+	const parsed = Date.parse(timestamp);
+	// Relative specifiers such as -15m or now are passed through for Splunk to read.
+	return Number.isNaN(parsed) ? timestamp : parsed / 1000;
 }
 
 export function formatFeed(responseData: SplunkFeedResponse) {
@@ -93,14 +97,24 @@ export function formatFeed(responseData: SplunkFeedResponse) {
 		: [formatEntry(entries)];
 }
 
-export function setReturnAllOrLimit(this: IExecuteFunctions, qs: IDataObject) {
-	qs.count = this.getNodeParameter('returnAll', 0) ? 0 : this.getNodeParameter('limit', 0);
+export function setReturnAllOrLimit(this: IExecuteFunctions, qs: IDataObject, itemIndex: number) {
+	qs.count = this.getNodeParameter('returnAll', itemIndex)
+		? 0
+		: this.getNodeParameter('limit', itemIndex);
 }
 
 export function populate(source: IDataObject, destination: IDataObject) {
 	if (Object.keys(source).length) {
 		Object.assign(destination, source);
 	}
+}
+
+export function toListValue(version: number, id: string) {
+	return version < 2.1 ? id : decodePathValue(id);
+}
+
+export function toPathValue(version: number, value: string) {
+	return version < 2.1 ? decodePathValue(value) : value;
 }
 
 export function getId(

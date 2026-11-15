@@ -21,6 +21,8 @@ export type JobData = {
 	executionId: string;
 	loadStaticData: boolean;
 	pushRef?: string;
+	/** The user who owns `pushRef`, so the worker can route push messages to that user. */
+	pushRefUserId?: string;
 	streamingEnabled?: boolean;
 	/** What on main awaits this run's outcome, see IWorkflowExecutionDataProcess. */
 	callerAwaitsOutcome?: 'none' | 'response' | 'completion';
@@ -92,6 +94,7 @@ export type JobFinishedProps = {
 	waitTill?: Date | null;
 	startedAt: Date;
 	stoppedAt: Date;
+	failedBeforeStart?: true;
 	nodeTimeSavedMinutes?: number;
 };
 

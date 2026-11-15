@@ -28,6 +28,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { runDataAttemptedDynamicCredentials, runDataUsedDynamicCredentials } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { executeErrorWorkflow } from './execute-error-workflow';
 import { restoreBinaryDataId } from './restore-binary-data-id';
@@ -39,6 +40,7 @@ import {
 	updateExistingExecutionMetadata,
 } from './shared/shared-hook-functions';
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
+import { UnsavedManualExecutionService } from './unsaved-manual-execution.service';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
@@ -156,6 +158,7 @@ class ModulesHooksRegistry {
 type HooksSetupParameters = {
 	saveSettings: ExecutionSaveSettings;
 	pushRef?: string;
+	pushRefUserId?: string;
 	retryOf?: string;
 	parentExecution?: RelatedExecution;
 	source?: IWorkflowExecutionDataProcess['source'];
@@ -295,8 +298,7 @@ function buildRedactableExecution(
  */
 function hookFunctionsPush(
 	hooks: ExecutionLifecycleHooks,
-	{ pushRef, retryOf }: HooksSetupParameters,
-	userId?: string,
+	{ pushRef, pushRefUserId, retryOf }: HooksSetupParameters,
 	source?: IWorkflowExecutionDataProcess['source'],
 ) {
 	if (!pushRef) return;
@@ -310,8 +312,8 @@ function hookFunctionsPush(
 	let resolvedUser: User | null | undefined; // undefined = not yet resolved
 	async function getUser(): Promise<User | null> {
 		if (resolvedUser !== undefined) return resolvedUser;
-		resolvedUser = userId
-			? await userRepository.findOne({ where: { id: userId }, relations: ['role'] })
+		resolvedUser = pushRefUserId
+			? await userRepository.findOne({ where: { id: pushRefUserId }, relations: ['role'] })
 			: null;
 		return resolvedUser;
 	}
@@ -341,6 +343,7 @@ function hookFunctionsPush(
 				data: { executionId, nodeName, sequenceNumber: nodeEventSequence++, data },
 			},
 			pushRef,
+			pushRefUserId,
 		);
 	});
 	hooks.addHandler('nodeExecuteAfter', async function (nodeName, data, executionData) {
@@ -370,6 +373,7 @@ function hookFunctionsPush(
 				},
 			},
 			pushRef,
+			pushRefUserId,
 		);
 
 		// Fail-closed redaction: if user cannot be resolved, skip the data push
@@ -379,7 +383,7 @@ function hookFunctionsPush(
 			logger.warn('Skipping execution data push: unable to resolve user for redaction', {
 				executionId,
 				nodeName,
-				userId,
+				userId: pushRefUserId,
 			});
 			return;
 		}
@@ -424,6 +428,7 @@ function hookFunctionsPush(
 				data: { executionId, nodeName, itemCountByConnectionType, data: dataToSend },
 			},
 			pushRef,
+			pushRefUserId,
 			asBinary,
 		);
 	});
@@ -464,7 +469,7 @@ function hookFunctionsPush(
 			logger.warn('Cannot redact execution start data: unable to resolve user', {
 				executionId,
 				workflowId,
-				userId,
+				userId: pushRefUserId,
 			});
 			// runDataToStringify stays {} — fail closed
 		}
@@ -485,6 +490,7 @@ function hookFunctionsPush(
 				},
 			},
 			pushRef,
+			pushRefUserId,
 		);
 	});
 	hooks.addHandler('workflowExecuteAfter', function (fullRunData) {
@@ -498,11 +504,16 @@ function hookFunctionsPush(
 
 		const { status } = fullRunData;
 		if (status === 'waiting') {
-			pushInstance.send({ type: 'executionWaiting', data: { executionId, source } }, pushRef);
+			pushInstance.send(
+				{ type: 'executionWaiting', data: { executionId, source } },
+				pushRef,
+				pushRefUserId,
+			);
 		} else {
 			pushInstance.send(
 				{ type: 'executionFinished', data: { executionId, workflowId, status, source } },
 				pushRef,
+				pushRefUserId,
 			);
 		}
 	});
@@ -606,6 +617,7 @@ function hookFunctionsSave(
 	hooks: ExecutionLifecycleHooks,
 	{
 		pushRef,
+		pushRefUserId,
 		retryOf,
 		saveSettings,
 		parentExecution,
@@ -617,6 +629,7 @@ function hookFunctionsSave(
 	const errorReporter = Container.get(ErrorReporter);
 	const executionRepository = Container.get(ExecutionRepository);
 	const executionPersistence = Container.get(ExecutionPersistence);
+	const unsavedManualExecutionService = Container.get(UnsavedManualExecutionService);
 	const binaryDataService = Container.get(BinaryDataService);
 	const workflowStaticDataService = Container.get(WorkflowStaticDataService);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
@@ -654,6 +667,30 @@ function hookFunctionsSave(
 				}
 			}
 
+			// Although it is treated as IWorkflowBase here, it's being instantiated elsewhere with properties that may be sensitive
+			// As a result, we should create an IWorkflowBase object with only the data we want to save in it.
+			const prepareFullExecutionData = () => {
+				const fullExecutionData = prepareExecutionDataForDbUpdate({
+					runData: fullRunData,
+					workflowData: this.workflowData,
+					workflowStatusFinal: fullRunData.status,
+					retryOf,
+				});
+
+				const resultRunData = fullRunData.data?.resultData?.runData;
+				fullExecutionData.usedPrivateCredentials =
+					runDataUsedDynamicCredentials(resultRunData) ||
+					runDataAttemptedDynamicCredentials(resultRunData);
+
+				return fullExecutionData;
+			};
+
+			// A completed run must never overwrite a status the user already canceled. This applies
+			// to every save path that runs this hook; the case that motivated it is a subworkflow
+			// stopped in queue mode, where the worker keeps running the child to completion after
+			// the cancel and would otherwise write `success` over `canceled`.
+			const saveConditions = { requireNotCanceled: true };
+
 			if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
 				/**
 				 * When manual executions are not being saved, we only soft-delete
@@ -663,8 +700,36 @@ function hookFunctionsSave(
 				 * The manual execution and its binary data will be hard-deleted
 				 * on the next pruning cycle after the grace period set by
 				 * `EXECUTIONS_DATA_HARD_DELETE_BUFFER`.
+				 *
+				 * Until then, the user recorded as its starter can also read its run
+				 * data, for example in the n8n Assistant. The execution is deleted
+				 * before its run data is written, so no other reader gets that data.
+				 * Known limit: in blob storage, a write that stalls for longer than the
+				 * buffer can leave its data behind after pruning removes the execution.
 				 */
 				await executionRepository.softDelete(this.executionId);
+				if (await unsavedManualExecutionService.keep(this.executionId)) {
+					try {
+						await updateExistingExecution({
+							executionId: this.executionId,
+							workflowId: this.workflowData.id,
+							executionData: prepareFullExecutionData(),
+							// A canceled run writes its own outcome, like a worker does.
+							conditions:
+								fullRunData.status === 'canceled'
+									? { includeDeleted: true }
+									: { ...saveConditions, includeDeleted: true },
+						});
+					} catch (error) {
+						// The run data is only kept for reading. Failing to keep it must not
+						// replace the run's own outcome.
+						logger.warn('Failed to keep the run data of an unsaved manual execution', {
+							executionId: this.executionId,
+							workflowId: this.workflowData.id,
+							error: ensureError(error),
+						});
+					}
+				}
 
 				return;
 			}
@@ -701,34 +766,19 @@ function hookFunctionsSave(
 				return;
 			}
 
-			// Although it is treated as IWorkflowBase here, it's being instantiated elsewhere with properties that may be sensitive
-			// As a result, we should create an IWorkflowBase object with only the data we want to save in it.
-			const fullExecutionData = prepareExecutionDataForDbUpdate({
-				runData: fullRunData,
-				workflowData: this.workflowData,
-				workflowStatusFinal: fullRunData.status,
-				retryOf,
-			});
+			const fullExecutionData = prepareFullExecutionData();
 
-			// When going into the waiting state, store the pushRef in the execution-data
+			// When going into the waiting state, store the pushRef and its user in the execution-data
 			if (fullRunData.waitTill && isManualMode) {
 				fullExecutionData.data.pushRef = pushRef;
+				fullExecutionData.data.pushRefUserId = pushRefUserId;
 			}
-
-			const resultRunData = fullRunData.data?.resultData?.runData;
-			fullExecutionData.usedPrivateCredentials =
-				runDataUsedDynamicCredentials(resultRunData) ||
-				runDataAttemptedDynamicCredentials(resultRunData);
 
 			await updateExistingExecution({
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
 				executionData: fullExecutionData,
-				// A completed run must never overwrite a status the user already canceled. This applies
-				// to every save path that runs this hook; the case that motivated it is a subworkflow
-				// stopped in queue mode, where the worker keeps running the child to completion after
-				// the cancel and would otherwise write `success` over `canceled`.
-				conditions: { requireNotCanceled: true },
+				conditions: saveConditions,
 			});
 
 			await updateExistingExecutionMetadata(
@@ -760,7 +810,14 @@ const DISCARDABLE_DATA_MODES: WorkflowExecuteMode[] = ['trigger', 'cli', 'error'
  */
 function hookFunctionsSaveWorker(
 	hooks: ExecutionLifecycleHooks,
-	{ pushRef, retryOf, saveSettings, source, suppressErrorWorkflow }: HooksSetupParameters,
+	{
+		pushRef,
+		pushRefUserId,
+		retryOf,
+		saveSettings,
+		source,
+		suppressErrorWorkflow,
+	}: HooksSetupParameters,
 ) {
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
@@ -815,9 +872,10 @@ function hookFunctionsSaveWorker(
 				retryOf,
 			});
 
-			// When going into the waiting state, store the pushRef in the execution-data
+			// When going into the waiting state, store the pushRef and its user in the execution-data
 			if (fullRunData.waitTill && isManualMode) {
 				fullExecutionData.data.pushRef = pushRef;
+				fullExecutionData.data.pushRefUserId = pushRefUserId;
 			}
 
 			const resultRunData = fullRunData.data?.resultData?.runData;
@@ -871,11 +929,12 @@ export function getLifecycleHooksForSubExecutions(
 	parentExecution?: RelatedExecution,
 	projectId?: string,
 	projectName?: string,
+	telemetryMetadata?: IWorkflowExecutionDataProcess['telemetryMetadata'],
 ): ExecutionLifecycleHooks {
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	hookFunctionsMemoryGuard(hooks);
-	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
+	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, undefined, telemetryMetadata);
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, { saveSettings, parentExecution });
@@ -897,6 +956,22 @@ function resolveSuppressErrorWorkflow(data: IWorkflowExecutionDataProcess): bool
 	return data.suppressErrorWorkflow ?? data.executionData?.manualData?.suppressErrorWorkflow;
 }
 
+/** The user who owns `pushRef`, so push messages for this run go only to that user's editor. */
+export function getPushRefUserId(data: IWorkflowExecutionDataProcess): string | undefined {
+	// Written into the job by the main, read on a worker.
+	const ownerFromJob = data.pushRefUserId;
+	// Stored when a manual run went to waiting, read when it resumes.
+	const ownerStoredOnWait = data.executionData?.pushRefUserId;
+	// Comes after the stored owner, because a resumed run can start as the publisher.
+	const runUser = data.userId;
+	// A manual run that a worker loads from the database keeps its user only here.
+	const manualRunUser = data.executionData?.manualData?.userId;
+
+	return data.pushRef === undefined
+		? undefined
+		: (ownerFromJob ?? ownerStoredOnWait ?? runUser ?? manualRunUser);
+}
+
 /**
  * Returns ExecutionLifecycleHooks instance for worker in scaling mode.
  */
@@ -915,6 +990,7 @@ export function getLifecycleHooksForScalingWorker(
 	const saveSettings = toSaveSettings(workflowData.settings);
 	const optionalParameters = {
 		pushRef,
+		pushRefUserId: getPushRefUserId(data),
 		retryOf: retryOf ?? undefined,
 		saveSettings,
 		source,
@@ -929,7 +1005,7 @@ export function getLifecycleHooksForScalingWorker(
 	hookFunctionsPostExecute(hooks);
 
 	if (executionMode === 'manual' && Container.get(InstanceSettings).isWorker) {
-		hookFunctionsPush(hooks, optionalParameters, data.userId, data.source);
+		hookFunctionsPush(hooks, optionalParameters, data.source);
 	}
 
 	Container.get(ModulesHooksRegistry).addHooks(
@@ -968,6 +1044,7 @@ export function getLifecycleHooksForScalingMain(
 	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
 	const executionRepository = Container.get(ExecutionRepository);
 	const executionPersistence = Container.get(ExecutionPersistence);
+	const unsavedManualExecutionService = Container.get(UnsavedManualExecutionService);
 
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, source, telemetryMetadata);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
@@ -993,8 +1070,12 @@ export function getLifecycleHooksForScalingMain(
 			 * The manual execution and its binary data will be hard-deleted
 			 * on the next pruning cycle after the grace period set by
 			 * `EXECUTIONS_DATA_HARD_DELETE_BUFFER`.
+			 *
+			 * The worker already wrote the run data, so until then the user
+			 * recorded as its starter can also read it.
 			 */
 			await executionRepository.softDelete(this.executionId);
+			await unsavedManualExecutionService.keep(this.executionId);
 
 			return;
 		}
@@ -1069,6 +1150,7 @@ export function getLifecycleHooksForRegularMain(
 	const saveSettings = toSaveSettings(workflowData.settings);
 	const optionalParameters = {
 		pushRef,
+		pushRefUserId: getPushRefUserId(data),
 		retryOf: retryOf ?? undefined,
 		saveSettings,
 		source,
@@ -1079,7 +1161,7 @@ export function getLifecycleHooksForRegularMain(
 	hookFunctionsNodeEvents(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 	hookFunctionsSave(hooks, optionalParameters);
-	hookFunctionsPush(hooks, optionalParameters, userId, source);
+	hookFunctionsPush(hooks, optionalParameters, source);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsStatistics(hooks, source);
 	hookFunctionsPreExecute(hooks, source);

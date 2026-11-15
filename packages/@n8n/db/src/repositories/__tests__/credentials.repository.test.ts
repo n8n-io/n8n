@@ -20,6 +20,32 @@ describe('CredentialsRepository', () => {
 		vi.resetAllMocks();
 	});
 
+	it.each([0, 1])(
+		'updates only description metadata and reports %s affected rows',
+		async (affected) => {
+			entityManager.update.mockResolvedValue({ affected, generatedMaps: [], raw: [] });
+			const policyCleared = mintPolicyCleared({
+				point: 'credentialSave',
+				subject: { type: 'credential', id: 'credential-id' },
+				decision: { violations: [] },
+			});
+			await expect(
+				credentialsRepository.updateDescription('credential-id', 'Reporting', { policyCleared }),
+			).resolves.toBe(affected > 0);
+			expect(entityManager.update).toHaveBeenCalledWith(CredentialsEntity, 'credential-id', {
+				description: 'Reporting',
+				updatedAt: expect.any(Date),
+			});
+		},
+	);
+
+	it('requires policy clearance for description updates', async () => {
+		await expect(
+			credentialsRepository.updateDescription('credential-id', null, {}),
+		).rejects.toThrow();
+		expect(entityManager.update).not.toHaveBeenCalled();
+	});
+
 	it('finds non-project credentials by ID', async () => {
 		entityManager.find.mockResolvedValueOnce([]);
 

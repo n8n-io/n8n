@@ -32,7 +32,7 @@ When creating an error workflow to attach to another workflow:
    an error workflow for it.
 2. Build the error workflow as a separate workflow. It starts with an Error
    Trigger and sends the notification the user requested.
-3. Publish the error workflow with `publish_workflow` before setting
+3. Publish the error workflow by running `publish_workflow` through `call_tool` before setting
    it on the target workflow: `settings.errorWorkflow` only accepts a published
    workflow, and publishing goes through HITL approval, so the user confirms it.
    This applies to the error workflow only; never publish the target workflow
@@ -54,7 +54,7 @@ then publish and assign only after the user approves.
 
 After successfully publishing a direct new primary workflow,
 ask once whether the user wants to build an error workflow for that workflow.
-Use `workflow_builder_ask_user` with a yes/no choice or a concise visible question. Do **not**
+Use `ask_user` with a yes/no choice or a concise visible question. Do **not**
 create an error workflow before the user opts in.
 
 The opt-in must explicitly mention an error workflow and the target workflow
@@ -80,7 +80,7 @@ If the user says yes:
 3. The error workflow must be published before it can be assigned. If the user
    has not already asked you to publish and attach it, ask whether to publish it
    and set it as the error workflow for the named target workflow. When the user
-   agrees, call `publish_workflow` for the error workflow and let the
+   agrees, run `publish_workflow` through `call_tool` for the error workflow and let the
    HITL approval card handle confirmation.
 4. After publish succeeds, set the original workflow's workflow-level
    `settings.errorWorkflow` to the **error workflow's workflowId**. Do not use

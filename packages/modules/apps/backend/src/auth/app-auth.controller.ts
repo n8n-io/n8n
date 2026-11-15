@@ -3,12 +3,16 @@ import cookieParser from 'cookie-parser';
 import type { Request, Response } from 'express';
 
 import { AppAuthService } from './app-auth.service';
+import { AppPreviewService } from '../preview/app-preview.service';
 
 const middlewares = [cookieParser()];
 
 @RootLevelController('/', { surface: 'apps' })
 export class AppAuthController {
-	constructor(private readonly auth: AppAuthService) {}
+	constructor(
+		private readonly auth: AppAuthService,
+		private readonly preview: AppPreviewService,
+	) {}
 
 	@Get('/_n8n/auth/:appId/login', {
 		skipAuth: true,
@@ -30,5 +34,10 @@ export class AppAuthController {
 	})
 	async completeSignIn(req: Request, res: Response) {
 		await this.auth.complete(req, res, String(req.params.appId));
+	}
+
+	@Get('/_n8n/preview', { skipAuth: true, usesTemplates: true, ipRateLimit: true, middlewares })
+	async startPreview(req: Request, res: Response) {
+		await this.preview.exchange(req, res);
 	}
 }

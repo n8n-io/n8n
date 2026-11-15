@@ -2,7 +2,10 @@ operationId: getTag
 tags:
   - Tags
 summary: Retrieves a tag
-description: Retrieves a tag.
+description: |-
+  Retrieves a tag.
+
+  Requires the `tag:read` API key scope.
 x-required-scope: tag:read
 parameters:
   - schema:
@@ -24,3 +27,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

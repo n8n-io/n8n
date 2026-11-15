@@ -37,6 +37,14 @@ export class InMemorySkillSourceClient extends SkillSourceClient {
 		super();
 	}
 
+	authFrom(): SkillSourceAuth {
+		throw new Error('A pages source is public');
+	}
+
+	handles(input: string): boolean {
+		return input.trim().startsWith(`https://${PAGES_HOST}/`);
+	}
+
 	async parseLocator(input: string): Promise<SkillSourceLocator> {
 		const match = /^https:\/\/pages\.test\/([^/\s]+)\/([^/\s]+)\/?$/.exec(input.trim());
 		if (!match) throw new SkillSourceUrlError('This is not a link to a pages database.');
@@ -50,6 +58,15 @@ export class InMemorySkillSourceClient extends SkillSourceClient {
 	identity(locator: SkillSourceLocator): SkillSourceIdentity {
 		const { workspace, database } = readLocator(locator);
 		return { type: this.type, host: PAGES_HOST, owner: workspace, repository: database };
+	}
+
+	describe(locator: SkillSourceLocator): { label: string; ref: string | null; path: string } {
+		const { workspace, database } = readLocator(locator);
+		return { label: `${workspace}/${database}`, ref: null, path: '' };
+	}
+
+	location(ref: RemoteSkillRef): string {
+		return pageIdOf(ref);
 	}
 
 	webUrl(locator: SkillSourceLocator, ref?: RemoteSkillRef): string {

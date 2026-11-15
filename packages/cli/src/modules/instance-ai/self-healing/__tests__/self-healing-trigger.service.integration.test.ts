@@ -1,5 +1,5 @@
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { RedisClientService } from '@n8n/backend-services';
+import { RedisClientService, PubSubEventBus, Publisher, Subscriber } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, InstanceAiConfig } from '@n8n/config';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { PubSubMetadata } from '@n8n/decorators';
@@ -8,10 +8,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { Redis } from 'ioredis';
 import { mock } from 'vitest-mock-extended';
 
-import { PubSubEventBus } from '@/scaling/pubsub/pubsub.eventbus';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 
 import { SelfHealingInvestigationService } from '../self-healing-investigation.service';
 import { SelfHealingTriggerService } from '../self-healing-trigger.service';

@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
+import { accountFullName } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { type INode, type IWorkflowBase, type WorkflowSettings } from 'n8n-workflow';
 
@@ -129,7 +130,7 @@ export class SubworkflowPolicyChecker {
 
 		return {
 			hasReadAccess,
-			ownerName: owner ? owner.firstName + ' ' + owner.lastName : 'No owner (team project)',
+			ownerName: owner ? accountFullName(owner) : 'No owner (team project)',
 		};
 	}
 

@@ -11,6 +11,7 @@ import {
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
+	N8nEmptyState,
 	N8nExternalLink,
 	N8nHeading,
 	N8nTabs,
@@ -19,12 +20,13 @@ import {
 } from '@n8n/design-system';
 import { componentRegistry, type PromotionChangesState } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, useId, watch } from 'vue';
 
 import type { InboxItemChange } from '../inbox.constants';
 import { formatUserDisplayName, toError } from '../reviews/workflowReviews.utils';
-import { approvePromotionReview } from './promotionReviews.api';
+import { approvePromotionReview, closePromotionReview } from './promotionReviews.api';
 
 const props = defineProps<{
 	item: InboxPromotionReviewItem;
@@ -33,6 +35,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const { showError } = useToast();
 const rootStore = useRootStore();
+const rbacStore = useRBACStore();
 const disabledReasonId = useId();
 const newCommitsId = useId();
 
@@ -64,6 +67,8 @@ const hasNewCommits = computed(
 		!!props.item.headCommitSha &&
 		changes.value.headCommitSha !== props.item.headCommitSha,
 );
+const withoutEnvironment = computed(() => props.item.remoteError === 'no_connection');
+const endedAs = computed(() => (props.item.reviewState === 'merged' ? 'merged' : 'closed'));
 // A new key mounts the Changes tab again, so it loads the newest head.
 const changesKey = ref(0);
 
@@ -97,6 +102,48 @@ const approveDescribedBy = computed(() => {
 	if (disabledReason.value) return disabledReasonId;
 	return hasNewCommits.value ? newCommitsId : undefined;
 });
+
+const canClose = computed(() => rbacStore.hasScope('promotions:approveReviews'));
+/** The review the user confirms. A later change of the selected row does not change it. */
+const pendingClose = ref<{ id: string; title: string | null } | null>(null);
+const closing = ref(false);
+// The buttons stay still while the changes load. Without a Changes tab, nothing reports a state,
+// so a review without an environment must not wait for one.
+const closeDisabled = computed(
+	() =>
+		(changes.value.status === 'loading' && !withoutEnvironment.value && !!PromotionChanges.value) ||
+		approving.value,
+);
+
+// Close does not call GitLab to end the merge request, but it reads GitLab first.
+// The dialog stays open until the request ends.
+function dismissClose() {
+	if (!closing.value) pendingClose.value = null;
+}
+
+async function onClose() {
+	if (!pendingClose.value || closing.value) return;
+	const { id } = pendingClose.value;
+	// The Inbox can reconcile this result after the viewer selects another item.
+	const onItemChange = props.onItemChange;
+	closing.value = true;
+	try {
+		const { state, updatedAt } = await closePromotionReview(rootStore.restApiContext, id);
+		onItemChange({ type: 'promotion_review', id, state, updatedAt });
+	} catch (error: unknown) {
+		showError(toError(error), i18n.baseText('inbox.promotionReview.close.error.title'));
+		// Reload the list, so the next attempt uses the current state from GitLab.
+		onItemChange({ type: 'promotion_review', id });
+	} finally {
+		closing.value = false;
+		pendingClose.value = null;
+	}
+}
+
+function openClose() {
+	const { id, title } = props.item;
+	pendingClose.value = { id, title };
+}
 
 function openApproval() {
 	if (changes.value.status !== 'ready') return;
@@ -188,7 +235,7 @@ async function onApprove() {
 			</div>
 		</header>
 		<N8nCallout
-			v-if="item.remoteError"
+			v-if="item.remoteError && !withoutEnvironment"
 			:class="$style.gutter"
 			theme="warning"
 			data-test-id="inbox-promotion-review-remote-error"
@@ -215,8 +262,19 @@ async function onApprove() {
 					{{ disabledReason }}
 				</N8nText>
 				<N8nButton
+					v-if="canClose"
+					variant="outline"
 					size="small"
-					:disabled="approveDisabled"
+					:disabled="closeDisabled"
+					:loading="closing"
+					data-test-id="inbox-promotion-review-close"
+					@click="openClose"
+				>
+					{{ i18n.baseText('inbox.promotionReview.close.button') }}
+				</N8nButton>
+				<N8nButton
+					size="small"
+					:disabled="approveDisabled || closing"
 					:loading="approving"
 					:aria-describedby="approveDescribedBy"
 					data-test-id="inbox-promotion-review-approve"
@@ -248,8 +306,17 @@ async function onApprove() {
 					</N8nButton>
 				</template>
 			</N8nCallout>
+			<N8nEmptyState
+				v-if="withoutEnvironment"
+				:class="$style.changes"
+				:icon="{ type: 'icon', value: endedAs === 'merged' ? 'check' : 'circle-check' }"
+				:heading="i18n.baseText(`promotions.review.outcome.${endedAs}.title`)"
+				:description="i18n.baseText('inbox.promotionReview.changes.withoutEnvironment')"
+				data-test-id="inbox-promotion-review-without-environment"
+			/>
 			<component
 				:is="PromotionChanges"
+				v-else
 				:key="changesKey"
 				:class="$style.changes"
 				:review-id="item.id"
@@ -283,6 +350,45 @@ async function onApprove() {
 					:label="i18n.baseText('inbox.promotionReview.approve.button')"
 					:loading="approving"
 					@click="onApprove"
+				/>
+			</N8nDialogFooter>
+		</N8nDialog>
+		<N8nDialog
+			:open="!!pendingClose"
+			size="small"
+			:show-close-button="false"
+			:close-on-overlay-click="!closing"
+			:close-on-escape="!closing"
+			@update:open="dismissClose"
+		>
+			<N8nDialogHeader>
+				<N8nDialogTitle data-test-id="inbox-promotion-review-close-title">
+					{{
+						pendingClose?.title
+							? i18n.baseText('inbox.promotionReview.close.confirm.titleNamed', {
+									interpolate: { title: pendingClose.title },
+								})
+							: i18n.baseText('inbox.promotionReview.close.confirm.title')
+					}}
+				</N8nDialogTitle>
+				<N8nDialogDescription>
+					{{ i18n.baseText('inbox.promotionReview.close.confirm.description') }}
+				</N8nDialogDescription>
+			</N8nDialogHeader>
+			<N8nDialogFooter>
+				<N8nButton
+					variant="outline"
+					:label="i18n.baseText('generic.cancel')"
+					:disabled="closing"
+					data-test-id="inbox-promotion-review-close-cancel"
+					@click="dismissClose"
+				/>
+				<N8nButton
+					variant="destructive"
+					:label="i18n.baseText('inbox.promotionReview.close.button')"
+					:loading="closing"
+					data-test-id="inbox-promotion-review-close-confirm"
+					@click="onClose"
 				/>
 			</N8nDialogFooter>
 		</N8nDialog>

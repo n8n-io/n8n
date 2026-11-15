@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { confluenceApiRequest } from '../../transport';
 import { optionalSpaceRLC, pageRLC, resolvePageId } from '../common';
@@ -45,7 +45,7 @@ export const execute: ConfluenceOperation = async function (
 ) {
 	const purge = this.getNodeParameter('purge', itemIndex, false) as boolean;
 	const pageId = await resolvePageId.call(this, itemIndex);
-	const endpoint = `/wiki/api/v2/pages/${encodeURIComponent(pageId)}`;
+	const endpoint = requestPath`/wiki/api/v2/pages/${pageId}`;
 
 	let trashConfirmed = false;
 	try {

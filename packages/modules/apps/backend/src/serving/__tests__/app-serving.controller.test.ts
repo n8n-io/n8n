@@ -1,9 +1,12 @@
+import { EventService } from '@n8n/backend-services';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { AppServingController } from '../app-serving.controller';
 import { AppBundleCache } from '../app-bundle-cache';
+import { AppHostService } from '../app-host.service';
 import { AppAuthService, type AppRequest } from '../../auth/app-auth.service';
+import { AppPreviewService } from '../../preview/app-preview.service';
 
 function setup(url = '/', navigation = true) {
 	const bundles = mock<AppBundleCache>();
@@ -17,16 +20,24 @@ function setup(url = '/', navigation = true) {
 		]),
 	);
 	const auth = mock<AppAuthService>({ isNavigation: () => navigation });
-	const controller = new AppServingController(bundles, auth);
+	const hosts = mock<AppHostService>();
+	const preview = mock<AppPreviewService>({ editorOrigin: 'https://n8n.example.net' });
+	const events = mock<EventService>();
+	const controller = new AppServingController(bundles, auth, hosts, preview, events);
 	const req = mock<AppRequest>({
 		method: 'GET',
 		path: url,
-		appContext: { app: { publishedVersionId: 'version' } },
+		appContext: {
+			app: { id: 'app', publishedVersionId: 'version' },
+			versionId: 'version',
+			preview: false,
+			security: mock({ subject: { id: 'viewer-1' } }),
+		},
 	});
 	const res = mock<Response>({ headersSent: false });
 	res.set.mockReturnValue(res);
 	res.status.mockReturnValue(res);
-	return { controller, req, res, bundles, auth };
+	return { controller, req, res, bundles, auth, hosts, preview, events };
 }
 
 describe('AppServingController', () => {
@@ -88,5 +99,123 @@ describe('AppServingController', () => {
 		await controller.serve(req, res);
 		expect(res.status).toHaveBeenCalledWith(404);
 		expect(bundles.get).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{ host: 'preview', namespace: 'sales', expected: 'preview', skipped: 'auth' },
+		{ host: 'published', namespace: undefined, expected: 'auth', skipped: 'preview' },
+	] as const)(
+		'authenticates $host hosts with the $expected session',
+		async ({ namespace, expected, skipped }) => {
+			const context = setup();
+			const { controller, req, res, hosts } = context;
+			hosts.previewNamespace.mockReturnValue(namespace);
+			const next = vi.fn();
+
+			await controller.authenticate(req, res, next);
+
+			expect(context[expected].authenticate).toHaveBeenCalledExactlyOnceWith(req, res, next);
+			expect(context[skipped].authenticate).not.toHaveBeenCalled();
+		},
+	);
+
+	it('serves the preview version and allows only the editor to frame it', async () => {
+		const { controller, req, res, bundles } = setup('/assets/main.js', false);
+		req.appContext = { app: mock(), versionId: 'draft', preview: true, previewUserId: 'editor-1' };
+
+		await controller.serve(req, res);
+
+		expect(bundles.get).toHaveBeenCalledWith('draft');
+		expect(res.set).toHaveBeenCalledWith(
+			expect.objectContaining({
+				'Content-Security-Policy':
+					"base-uri 'self'; object-src 'none'; frame-ancestors https://n8n.example.net",
+			}),
+		);
+	});
+
+	it('adds the element inspector to preview HTML with its own ETag', async () => {
+		const { controller, req, res } = setup('/');
+		req.appContext = { app: mock(), versionId: 'draft', preview: true, previewUserId: 'editor-1' };
+
+		await controller.serve(req, res);
+
+		const sent = (res.send.mock.calls[0][0] as Buffer).toString();
+		expect(sent).toContain('<script>');
+		expect(sent).toContain('"https://n8n.example.net"');
+		expect(res.set).not.toHaveBeenCalledWith(expect.objectContaining({ ETag: '"html"' }));
+		expect(res.set).toHaveBeenCalledWith(
+			expect.objectContaining({ ETag: expect.stringMatching(/^W\/"[0-9a-f]{64}"$/) }),
+		);
+	});
+
+	it('does not add the element inspector to published HTML', async () => {
+		const { controller, req, res } = setup('/');
+
+		await controller.serve(req, res);
+
+		expect(res.send).toHaveBeenCalledWith(Buffer.from('app'));
+		expect(res.set).toHaveBeenCalledWith(expect.objectContaining({ ETag: '"html"' }));
+	});
+
+	it('does not add the element inspector to preview assets', async () => {
+		const { controller, req, res } = setup('/assets/main.js', false);
+		req.appContext = { app: mock(), versionId: 'draft', preview: true, previewUserId: 'editor-1' };
+
+		await controller.serve(req, res);
+
+		expect(res.send).toHaveBeenCalledWith(Buffer.from('js'));
+	});
+
+	it('keeps the published CSP without frame-ancestors', async () => {
+		const { controller, req, res } = setup('/assets/main.js', false);
+
+		await controller.serve(req, res);
+
+		expect(res.set).toHaveBeenCalledWith(
+			expect.objectContaining({ 'Content-Security-Policy': "base-uri 'self'; object-src 'none'" }),
+		);
+	});
+
+	describe('app-opened event', () => {
+		it.each(['/', '/orders/123'])('emits once for a page navigation to %s', async (url) => {
+			const { controller, req, res, events } = setup(url);
+
+			await controller.serve(req, res);
+
+			expect(events.emit).toHaveBeenCalledExactlyOnceWith('app-opened', {
+				appId: 'app',
+				versionId: 'version',
+				userId: 'viewer-1',
+				isPreview: false,
+			});
+		});
+
+		it('sends the editor of a preview session as the user', async () => {
+			const { controller, req, res, events } = setup();
+			req.appContext!.preview = true;
+			req.appContext!.previewUserId = 'editor-1';
+
+			await controller.serve(req, res);
+
+			expect(events.emit).toHaveBeenCalledExactlyOnceWith('app-opened', {
+				appId: 'app',
+				versionId: 'version',
+				userId: 'editor-1',
+				isPreview: true,
+			});
+		});
+
+		it.each([
+			{ case: 'an asset', url: '/assets/main.js', navigation: false },
+			{ case: 'a non-navigation request for the page', url: '/', navigation: false },
+			{ case: 'a missing asset', url: '/assets/missing.js', navigation: true },
+		])('emits nothing for $case', async ({ url, navigation }) => {
+			const { controller, req, res, events } = setup(url, navigation);
+
+			await controller.serve(req, res);
+
+			expect(events.emit).not.toHaveBeenCalled();
+		});
 	});
 });

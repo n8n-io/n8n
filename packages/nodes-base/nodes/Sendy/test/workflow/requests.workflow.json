@@ -1,0 +1,220 @@
+{
+	"name": "Sendy Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "campaign",
+				"operation": "create",
+				"fromName": "Nathan",
+				"fromEmail": "nathan@example.com",
+				"replyTo": "nathan@example.com",
+				"title": "October news",
+				"subject": "October news",
+				"htmlText": "<p>Hello</p>",
+				"sendCampaign": false,
+				"brandId": "1",
+				"additionalFields": {}
+			},
+			"id": "sendy-0",
+			"name": "Campaign Create",
+			"type": "n8n-nodes-base.sendy",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"sendyApi": {
+					"id": "1",
+					"name": "Sendy account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "subscriber",
+				"operation": "add",
+				"email": "nathan@example.com",
+				"listId": "kL8xPz7Yl6Gq",
+				"additionalFields": {}
+			},
+			"id": "sendy-1",
+			"name": "Subscriber Add",
+			"type": "n8n-nodes-base.sendy",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"sendyApi": {
+					"id": "1",
+					"name": "Sendy account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "subscriber",
+				"operation": "count",
+				"listId": "kL8xPz7Yl6Gq"
+			},
+			"id": "sendy-2",
+			"name": "Subscriber Count",
+			"type": "n8n-nodes-base.sendy",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"sendyApi": {
+					"id": "1",
+					"name": "Sendy account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "subscriber",
+				"operation": "delete",
+				"email": "nathan@example.com",
+				"listId": "kL8xPz7Yl6Gq"
+			},
+			"id": "sendy-3",
+			"name": "Subscriber Delete",
+			"type": "n8n-nodes-base.sendy",
+			"typeVersion": 1,
+			"position": [300, 450],
+			"credentials": {
+				"sendyApi": {
+					"id": "1",
+					"name": "Sendy account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "subscriber",
+				"operation": "remove",
+				"email": "nathan@example.com",
+				"listId": "kL8xPz7Yl6Gq"
+			},
+			"id": "sendy-4",
+			"name": "Subscriber Remove",
+			"type": "n8n-nodes-base.sendy",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"credentials": {
+				"sendyApi": {
+					"id": "1",
+					"name": "Sendy account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "subscriber",
+				"operation": "status",
+				"email": "nathan@example.com",
+				"listId": "kL8xPz7Yl6Gq"
+			},
+			"id": "sendy-5",
+			"name": "Subscriber Status",
+			"type": "n8n-nodes-base.sendy",
+			"typeVersion": 1,
+			"position": [300, 750],
+			"credentials": {
+				"sendyApi": {
+					"id": "1",
+					"name": "Sendy account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Campaign Create": [
+			{
+				"json": {
+					"message": "Campaign created"
+				}
+			}
+		],
+		"Subscriber Add": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Subscriber Count": [
+			{
+				"json": {
+					"count": "42"
+				}
+			}
+		],
+		"Subscriber Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Subscriber Remove": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Subscriber Status": [
+			{
+				"json": {
+					"status": "Subscribed"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Campaign Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Subscriber Add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Subscriber Count",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Subscriber Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Subscriber Remove",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Subscriber Status",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

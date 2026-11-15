@@ -14,6 +14,7 @@ import { processDocuments, type N8nJsonLoader } from '@n8n/ai-utilities';
 
 import { pineconeIndexSearch } from '../shared/methods/listSearch';
 import { pineconeIndexRLC } from '../shared/descriptions';
+import { assertPineconeIndexAcceptsVectors } from '../shared/pinecone';
 
 // This node is deprecated. Use VectorStorePinecone instead.
 export class VectorStorePineconeInsert implements INodeType {
@@ -118,6 +119,10 @@ export class VectorStorePineconeInsert implements INodeType {
 			apiKey: credentials.apiKey as string,
 		});
 
+		await assertPineconeIndexAcceptsVectors(
+			{ context: this, credentialType: 'pineconeApi', apiKey: credentials.apiKey as string },
+			index,
+		);
 		const pineconeIndex = client.Index(index);
 
 		if (namespace && clearNamespace) {

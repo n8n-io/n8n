@@ -152,7 +152,8 @@ export interface EpisodicMemoryEntry {
 	contentHash: string;
 	status: EpisodicMemoryStatus;
 	supersededBy: string | null;
-	embedding?: number[];
+	/** float32 values, so a store can keep them as bytes without converting them. */
+	embedding?: Float32Array;
 	embeddingModel?: string;
 	metadata?: JSONObject | null;
 	createdAt: Date;
@@ -204,7 +205,7 @@ export interface RetrievedEpisodicMemoryEntry extends EpisodicMemoryEntry {
 
 export interface EpisodicMemorySearchOptions {
 	topK?: number;
-	queryEmbedding?: number[];
+	queryEmbedding?: ArrayLike<number>;
 	includeStatuses?: EpisodicMemoryStatus[];
 	/** Search only entries a write from this scope would supersede or merge. Shared backends must not widen this search. */
 	writeScopeOnly?: boolean;
@@ -268,7 +269,7 @@ export interface EpisodicMemoryCaptureMethods {
 	 */
 	findSimilarEntries(
 		scope: EpisodicMemoryScope,
-		embeddings: number[][],
+		embeddings: Array<ArrayLike<number>>,
 		opts: Pick<EpisodicMemorySearchOptions, 'topK' | 'minSimilarity'>,
 	): Promise<RetrievedEpisodicMemoryEntry[][]>;
 	/**
@@ -316,6 +317,8 @@ export interface EpisodicMemoryConsolidatorInput {
 	executionCounter?: AgentExecutionCounter;
 	/** The agent's model transport (`AgentRuntimeConfig.modelFetch`), for the task's own model call. */
 	modelFetch?: typeof globalThis.fetch;
+	/** The agent's caller identity (`AgentRuntimeConfig.functionId`), for the task's request header. */
+	functionId?: string;
 }
 
 export interface EpisodicMemoryConsolidation {
@@ -416,7 +419,10 @@ export interface ObservationLogMemoryConfig {
 }
 
 export interface ObservationalMemoryConfig {
-	/** Estimated visible-window tokens at which the Observer is scheduled mid-run and post-turn. */
+	/**
+	 * Fixed token threshold for the Observer. When set, it replaces the default
+	 * window shares. Window shares are used when this is unset.
+	 */
 	observerThresholdTokens?: number;
 	/**
 	 * Run the Observer at tool-loop boundaries inside a turn. Default `true`.
@@ -435,6 +441,70 @@ export interface ObservationalMemoryConfig {
 	observe?: ObservationLogObserveFn;
 	/** Policy callback that returns drop/merge instructions for the active observation log. */
 	reflect?: ObservationLogReflectFn;
+	/**
+	 * Derive thresholds from shares of the context window. Default when
+	 * `observerThresholdTokens` is unset: the default shares with a 200k cap.
+	 */
+	windowShares?: ObservationWindowShares;
+	/**
+	 * Prompt-cache lifetime. A thread idle for longer resumes from its notes.
+	 * Defaults to the provider cache retention from `promptCaching`.
+	 */
+	cacheTtlMs?: number;
+	/**
+	 * `message` (default) sends the observation log as the first conversation
+	 * message, so log updates do not change the cached system prefix.
+	 * `system` renders it into the system prompt.
+	 */
+	logPlacement?: ObservationLogPlacement;
+	/**
+	 * `retry` (default) tries a failed Observer call again at the next step,
+	 * up to `maxConsecutiveObserverFailures` in a row.
+	 * `disableForRun` stops observation for the rest of the run.
+	 */
+	failurePolicy?: ObservationFailurePolicy;
+	/** Failures in a row after which `retry` stops observing for the run. Default 3. */
+	maxConsecutiveObserverFailures?: number;
+	/**
+	 * Maximum Observer calls after one turn. Each call reads one batch. A
+	 * blocking observation has no limit. `0` means no limit. Default 5.
+	 */
+	maxObserverBatchesAfterTurn?: number;
+	/**
+	 * `background` (default) queues the Reflector after every turn.
+	 * `afterObserve` runs it only after an Observer call that advanced the cursor.
+	 */
+	reflectionMode?: ObservationReflectionMode;
+	/** Give the agent a `read_history` tool to read messages the log replaced. Default `true`. */
+	historyRecall?: boolean;
+}
+
+export type ObservationLogPlacement = 'system' | 'message';
+export type ObservationFailurePolicy = 'disableForRun' | 'retry';
+export type ObservationReflectionMode = 'background' | 'afterObserve';
+
+/** Thresholds as shares (0–1) of the model's context window. */
+export interface ObservationWindowShares {
+	/** Context window size. Looked up in the model catalog when unset. */
+	contextWindowTokens?: number;
+	/**
+	 * Upper limit for the window that the shares are taken from. The smaller of
+	 * this and the model's window is used, so memory starts early on very large
+	 * windows. Overrun checks still use the model's real window. No cap when unset.
+	 */
+	maxContextWindowTokens?: number;
+	/** Unobserved size that triggers the first observation. Default 0.2. */
+	observeAt?: number;
+	/** New unobserved size that triggers later observations. Default 0.1. */
+	observeNew?: number;
+	/** Visible window size that starts a background mid-run observation. Default 0.6. */
+	midRunAt?: number;
+	/** Visible window size at which the loop waits for observation. Default 0.9. */
+	waitAt?: number;
+	/** Observation log size that triggers the Reflector. Default 0.6. */
+	reflectAt?: number;
+	/** Largest unobserved batch that one Observer call reads. Default 0.6. */
+	batchAt?: number;
 }
 
 interface MemoryConfigBase {

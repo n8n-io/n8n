@@ -8,6 +8,7 @@ import {
 	uniqueStrings,
 	type EpisodicMemoryReflectionApply,
 	type EpisodicMemoryReflectionApplyMerge,
+	type EpisodicMemoryStatus,
 	type NewEpisodicMemoryEntry,
 	type NewEpisodicMemoryEntrySourceForEntry,
 } from '@n8n/agents';
@@ -19,6 +20,7 @@ import { AgentMemoryEntryCandidateEntity } from '../entities/agent-memory-entry-
 import { AgentMemoryEntrySourceEntity } from '../entities/agent-memory-entry-source.entity';
 import { AgentMemoryEntryEntity } from '../entities/agent-memory-entry.entity';
 import { AgentMessageEntity } from '../entities/agent-message.entity';
+import { AgentMemoryScopeRepository } from './agent-memory-scope.repository';
 
 export type MemorySourceMessageField = 'channelId' | 'teamId' | 'authorId';
 
@@ -71,7 +73,11 @@ const userDeletedState = { status: 'deleted', supersededBy: null } as const;
 
 @Service()
 export class AgentMemoryEntryRepository extends BaseRepository<AgentMemoryEntryEntity> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly memoryScopeRepository: AgentMemoryScopeRepository,
+	) {
 		super(AgentMemoryEntryEntity, dataSource.manager, transactionRunner);
 	}
 
@@ -82,6 +88,32 @@ export class AgentMemoryEntryRepository extends BaseRepository<AgentMemoryEntryE
 	): Promise<AgentMemoryEntryEntity[]> {
 		if (contentHashes.length === 0) return [];
 		return await this.find({ where: { agentId, resourceId, contentHash: In(contentHashes) } });
+	}
+
+	/**
+	 * Only the fields that ranking reads. A search ranks every entry of the scope,
+	 * so it reads content and metadata only for the entries it returns.
+	 */
+	async findRankableEntries(
+		agentId: string,
+		resourceIds: string[],
+		statuses: EpisodicMemoryStatus[],
+	): Promise<AgentMemoryEntryEntity[]> {
+		if (resourceIds.length === 0) return [];
+		return await this.find({
+			select: [
+				'id',
+				'resourceId',
+				'contentHash',
+				'status',
+				'supersededBy',
+				'embedding',
+				'createdAt',
+				'updatedAt',
+				'lastSeenAt',
+			],
+			where: { agentId, resourceId: In(resourceIds), status: In(statuses) },
+		});
 	}
 
 	/** Entries in any status, e.g. to show what a past run recalled. */
@@ -139,6 +171,26 @@ export class AgentMemoryEntryRepository extends BaseRepository<AgentMemoryEntryE
 		return (result.affected ?? 0) > 0;
 	}
 
+	/** Stop user-scoped recall and capture. Keep the text and sources for historical traces. */
+	async retireUserScopes(resourceIds: string[], ctx: OperationContext): Promise<void> {
+		if (resourceIds.length === 0) return;
+		await this.runInTransaction(ctx, async (manager, transactionCtx) => {
+			for (const resourceId of [...resourceIds].sort()) {
+				await this.memoryScopeRepository.retireScope(resourceId, transactionCtx);
+			}
+			await manager.update(
+				AgentMemoryEntryCandidateEntity,
+				{ resourceId: In(resourceIds) },
+				{ status: 'deleted' },
+			);
+			await manager.update(
+				AgentMemoryEntryEntity,
+				{ resourceId: In(resourceIds) },
+				{ ...userDeletedState, embedding: null, embeddingModel: null },
+			);
+		});
+	}
+
 	/**
 	 * Saves the entry only after it claims the capture candidates of its sources.
 	 * Returns null when a user deleted the candidate.
@@ -150,6 +202,9 @@ export class AgentMemoryEntryRepository extends BaseRepository<AgentMemoryEntryE
 		ctx: OperationContext,
 	): Promise<AgentMemoryEntryEntity | null> {
 		return await this.runInTransaction(ctx, async (_manager, transactionCtx) => {
+			if (!(await this.memoryScopeRepository.lockActiveScope(entry.resourceId, transactionCtx))) {
+				return null;
+			}
 			if (!(await this.claimCandidates(agentId, sources, transactionCtx))) return null;
 			const persisted = await this.upsertEntry(agentId, entry, transactionCtx);
 			await this.saveSources(persisted, sources, transactionCtx);
@@ -170,6 +225,13 @@ export class AgentMemoryEntryRepository extends BaseRepository<AgentMemoryEntryE
 		ctx: OperationContext,
 	): Promise<AgentMemoryEntryEntity | null> {
 		return await this.runInTransaction(ctx, async (manager, transactionCtx) => {
+			const current = await manager.findOneBy(AgentMemoryEntryEntity, { agentId, id: entryId });
+			if (
+				!current ||
+				!(await this.memoryScopeRepository.lockActiveScope(current.resourceId, transactionCtx))
+			) {
+				return null;
+			}
 			if (!(await this.claimCandidates(agentId, sources, transactionCtx))) return null;
 			const refreshed = await manager.update(
 				AgentMemoryEntryEntity,
@@ -194,6 +256,9 @@ export class AgentMemoryEntryRepository extends BaseRepository<AgentMemoryEntryE
 		ctx: OperationContext,
 	): Promise<AppliedMemoryReflection> {
 		return await this.runInTransaction(ctx, async (manager, transactionCtx) => {
+			if (!(await this.memoryScopeRepository.lockActiveScope(resourceId, transactionCtx))) {
+				return { droppedIds: [], supersededIds: [], inserted: [] };
+			}
 			const actionIds = uniqueStrings([
 				...reflection.drop,
 				...reflection.merge.flatMap((merge) => merge.supersedes),

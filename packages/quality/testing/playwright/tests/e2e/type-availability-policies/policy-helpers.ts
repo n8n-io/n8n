@@ -16,6 +16,8 @@ export const SCHEDULE_TRIGGER_NAME = 'Schedule Trigger';
 /** A credential type is policed by its bare name, unlike a package-qualified node type. */
 export const POSTGRES_CREDENTIAL = 'postgres';
 export const HEADER_AUTH_CREDENTIAL = 'httpHeaderAuth';
+export const SLACK_CREDENTIAL = { type: 'slackApi', displayName: 'Slack API' };
+export const HTTP_REQUEST_NAME = 'HTTP Request';
 
 export interface PolicyViolation {
 	kind: string;
@@ -132,6 +134,28 @@ export function webhookToPostgresWorkflow(credential: {
 			postgresNode(credential),
 		],
 		connections: { Webhook: { main: [[{ node: POSTGRES.name, type: 'main', index: 0 }]] } },
+	};
+}
+
+/** An HTTP Request node that authenticates with a predefined credential type. */
+export function httpRequestWorkflow(nodeCredentialType: string): Partial<IWorkflowBase> {
+	return {
+		name: `Credential type policy ${nanoid(8)}`,
+		nodes: [
+			{
+				id: nanoid(),
+				name: HTTP_REQUEST_NAME,
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [0, 0],
+				parameters: {
+					url: 'https://example.com',
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType,
+				},
+			},
+		],
+		connections: {},
 	};
 }
 

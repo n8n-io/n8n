@@ -1,6 +1,6 @@
 import { trace, type TracerDelegator, type TracerProvider } from '@opentelemetry/api';
 import type { InstrumentationScope } from '@opentelemetry/core';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { WORKFLOW_TRACER_NAME } from './tracer-names';
 

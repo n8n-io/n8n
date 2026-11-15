@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { chromium, type BrowserContext } from 'playwright-core';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
+import { gotoFixturePage } from './helpers/fixture-navigation';
 import { findChromiumForEval, fixtureInterceptionArgs } from '../harness/browser-runtime';
 import {
 	providerFixtureManifestSchema,
@@ -236,7 +237,7 @@ describe('fixture server served to a real browser', () => {
 
 	it('answers as the real hostname, so the agent never sees loopback', async () => {
 		const page = await fx.ctx.newPage();
-		await page.goto('https://platform.claude.com/settings/keys');
+		await gotoFixturePage(page, 'https://platform.claude.com/settings/keys');
 		expect(page.url()).toBe('https://platform.claude.com/settings/keys');
 		expect(page.url()).not.toContain('127.0.0.1');
 		expect(await page.locator('h1').textContent()).toContain('API keys');
@@ -245,14 +246,14 @@ describe('fixture server served to a real browser', () => {
 
 	it('serves the default page for an unmodelled path instead of stranding the agent', async () => {
 		const page = await fx.ctx.newPage();
-		await page.goto('https://platform.claude.com/some/unmodelled/path');
+		await gotoFixturePage(page, 'https://platform.claude.com/some/unmodelled/path');
 		expect(await page.locator('h1').textContent()).toBe('Dashboard');
 		await page.close();
 	});
 
 	it('does not expose the secret before the agent creates a key', async () => {
 		const page = await fx.ctx.newPage();
-		await page.goto('https://platform.claude.com/settings/keys');
+		await gotoFixturePage(page, 'https://platform.claude.com/settings/keys');
 		expect(await page.content()).not.toContain(fx.server.mintedSecret);
 		expect(fx.server.secretWasIssued).toBe(false);
 		await page.close();
@@ -260,7 +261,7 @@ describe('fixture server served to a real browser', () => {
 
 	it('hands out exactly the ledger secret through the create-key flow', async () => {
 		const page = await fx.ctx.newPage();
-		await page.goto('https://platform.claude.com/dashboard');
+		await gotoFixturePage(page, 'https://platform.claude.com/dashboard');
 		// Navigate the way the agent has to: the landing page is not the key page.
 		// Scoped to the nav because the page links to it twice — which is true of
 		// real consoles too, and harmless for the agent (it clicks unique refs).
@@ -307,7 +308,7 @@ describe('fixture server served to a real browser', () => {
 		// Case 593 turns on this: the dead end has to be visible in the tree the
 		// agent reads, or the gap is undiagnosable rather than just open.
 		const page = await fx.ctx.newPage();
-		await page.goto('https://platform.claude.com/settings/keys');
+		await gotoFixturePage(page, 'https://platform.claude.com/settings/keys');
 		await page.getByRole('button', { name: 'Create Key' }).click();
 		const outline = await page.getByRole('dialog').ariaSnapshot();
 		expect(outline).toMatch(/button "Add".*disabled/);
@@ -316,7 +317,7 @@ describe('fixture server served to a real browser', () => {
 
 	it('exposes an accessibility outline with the landmarks the agent needs', async () => {
 		const page = await fx.ctx.newPage();
-		await page.goto('https://platform.claude.com/settings/keys');
+		await gotoFixturePage(page, 'https://platform.claude.com/settings/keys');
 		const outline = await page.locator('main').ariaSnapshot();
 		expect(outline).toContain('button "Create Key"');
 		expect(outline).toContain('heading "API keys');
@@ -336,7 +337,7 @@ describe('openai fixture served to a real browser', () => {
 
 	it('answers as the real hostname, so the agent never sees loopback', async () => {
 		const page = await fx.ctx.newPage();
-		await page.goto('https://platform.openai.com/api-keys');
+		await gotoFixturePage(page, 'https://platform.openai.com/api-keys');
 		expect(page.url()).toBe('https://platform.openai.com/api-keys');
 		expect(await page.locator('h1').textContent()).toBe('API keys');
 		await page.close();
@@ -344,7 +345,7 @@ describe('openai fixture served to a real browser', () => {
 
 	it('keeps the two "create...key" buttons distinguishable', async () => {
 		const page = await fx.ctx.newPage();
-		await page.goto('https://platform.openai.com/api-keys');
+		await gotoFixturePage(page, 'https://platform.openai.com/api-keys');
 		// Closed, the submit is not in the tree at all — only the opener is.
 		expect(await page.getByRole('button', { name: 'Create' }).count()).toBe(1);
 
@@ -361,7 +362,7 @@ describe('openai fixture served to a real browser', () => {
 
 	it('hands out exactly the ledger secret through the create-key flow', async () => {
 		const page = await fx.ctx.newPage();
-		await page.goto('https://platform.openai.com/home');
+		await gotoFixturePage(page, 'https://platform.openai.com/home');
 		// Navigate the way the agent has to: the landing page is not the key page.
 		await page.getByRole('complementary').getByRole('link', { name: 'API Keys' }).click();
 		expect(await page.locator('h1').textContent()).toBe('API keys');
@@ -393,7 +394,7 @@ describe('openai fixture served to a real browser', () => {
 		// flow renders, and a fresh page never contains the secret in the first
 		// place, so asserting there proves nothing.
 		const page = await fx.ctx.newPage();
-		await page.goto('https://platform.openai.com/api-keys');
+		await gotoFixturePage(page, 'https://platform.openai.com/api-keys');
 		await page.getByRole('button', { name: 'Create new secret key' }).click();
 		await page
 			.getByRole('dialog')
@@ -413,7 +414,7 @@ describe('openai fixture served to a real browser', () => {
 		// The name is free-form agent input. Interpolated into the row's HTML it
 		// would corrupt the table the truncation assertions read.
 		const page = await fx.ctx.newPage();
-		await page.goto('https://platform.openai.com/api-keys');
+		await gotoFixturePage(page, 'https://platform.openai.com/api-keys');
 		await page.getByRole('button', { name: 'Create new secret key' }).click();
 		await page.getByPlaceholder('My Test Key').fill('<b>bold</b> & co');
 		await page
@@ -429,7 +430,7 @@ describe('openai fixture served to a real browser', () => {
 
 	it('exposes an accessibility outline with the landmarks the agent needs', async () => {
 		const page = await fx.ctx.newPage();
-		await page.goto('https://platform.openai.com/api-keys');
+		await gotoFixturePage(page, 'https://platform.openai.com/api-keys');
 		const outline = await page.locator('main').ariaSnapshot();
 		expect(outline).toContain('button "Create new secret key"');
 		expect(outline).toContain('heading "API keys"');
@@ -447,7 +448,7 @@ describe('gemini fixture served to a real browser', () => {
 
 	it('blocks the page behind BOTH overlays until each is dismissed', async () => {
 		const page = await fx.ctx.newPage();
-		await page.goto('https://aistudio.google.com/apikey');
+		await gotoFixturePage(page, 'https://aistudio.google.com/apikey');
 		expect(await page.getByRole('button', { name: 'Create API key' }).isVisible()).toBe(false);
 
 		await page.getByRole('button', { name: 'Close guided tour' }).click();
@@ -460,7 +461,7 @@ describe('gemini fixture served to a real browser', () => {
 
 	async function openConsole() {
 		const page = await fx.ctx.newPage();
-		await page.goto('https://aistudio.google.com/apikey');
+		await gotoFixturePage(page, 'https://aistudio.google.com/apikey');
 		await page.getByRole('button', { name: 'Close guided tour' }).click();
 		await page.getByRole('button', { name: 'OK, got it' }).click();
 		return page;
@@ -528,7 +529,7 @@ describe('slack fixture served to a real browser', () => {
 		// rendered surface, so a click never passes the hit-test while fill()
 		// does. Short timeout here — the real one costs 30s.
 		const page = await fx.ctx.newPage();
-		await page.goto('https://api.slack.com/apps');
+		await gotoFixturePage(page, 'https://api.slack.com/apps');
 		await page.getByRole('button', { name: 'Create New App' }).click();
 		await page.getByRole('button', { name: 'From a manifest' }).click();
 
@@ -545,7 +546,7 @@ describe('slack fixture served to a real browser', () => {
 		// manifest's own closers pile up and the result is no longer JSON. Guards the
 		// keydown handler — without it the box is a plain textarea and nothing traps.
 		const page = await fx.ctx.newPage();
-		await page.goto('https://api.slack.com/apps');
+		await gotoFixturePage(page, 'https://api.slack.com/apps');
 		await page.getByRole('button', { name: 'Create New App' }).click();
 		await page.getByRole('button', { name: 'From a manifest' }).click();
 
@@ -561,7 +562,7 @@ describe('slack fixture served to a real browser', () => {
 
 	it('accepts the same manifest inserted in one operation', async () => {
 		const page = await fx.ctx.newPage();
-		await page.goto('https://api.slack.com/apps');
+		await gotoFixturePage(page, 'https://api.slack.com/apps');
 		await page.getByRole('button', { name: 'Create New App' }).click();
 		await page.getByRole('button', { name: 'From a manifest' }).click();
 
@@ -576,7 +577,7 @@ describe('slack fixture served to a real browser', () => {
 
 	it('leaves Next enabled — nothing here is gated on a required field', async () => {
 		const page = await fx.ctx.newPage();
-		await page.goto('https://api.slack.com/apps');
+		await gotoFixturePage(page, 'https://api.slack.com/apps');
 		await page.getByRole('button', { name: 'Create New App' }).click();
 		await page.getByRole('button', { name: 'From a manifest' }).click();
 		expect(await page.getByRole('button', { name: 'Next' }).isDisabled()).toBe(false);
@@ -587,7 +588,7 @@ describe('slack fixture served to a real browser', () => {
 		const page = await fx.ctx.newPage();
 		// An app id this fixture has never seen — the console mints one per app, and
 		// the agent navigates by typing those URLs back.
-		await page.goto('https://api.slack.com/apps/A0Q3ZK71LMN/install-on-team');
+		await gotoFixturePage(page, 'https://api.slack.com/apps/A0Q3ZK71LMN/install-on-team');
 		expect(await page.content()).not.toContain(fx.server.mintedSecret);
 
 		await page.getByRole('button', { name: 'Install to Workspace' }).click();
@@ -600,7 +601,7 @@ describe('slack fixture served to a real browser', () => {
 
 	it('reaches the token only through the multi-page flow', async () => {
 		const page = await fx.ctx.newPage();
-		await page.goto('https://api.slack.com/apps/A0Q3ZK71LMN/general');
+		await gotoFixturePage(page, 'https://api.slack.com/apps/A0Q3ZK71LMN/general');
 		// Basic Information carries the OAuth2 credentials, never the bot token.
 		expect(await page.content()).not.toContain(fx.server.mintedSecret);
 		expect(await page.getByLabel('Client ID').inputValue()).toContain('.');

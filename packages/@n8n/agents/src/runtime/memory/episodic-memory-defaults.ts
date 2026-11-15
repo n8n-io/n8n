@@ -12,6 +12,7 @@ import { getCatalogModelId } from '../../utils/model';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 import { createModel } from '../model/model-factory';
 import { toTokenUsage } from '../streaming/stream';
+import { buildFunctionIdHeaders } from '../telemetry/function-id';
 
 export const DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL = 'openai/text-embedding-3-small';
 export const DEFAULT_EPISODIC_MEMORY_TOP_K = 5;
@@ -74,6 +75,7 @@ export function createEpisodicMemoryConsolidateFn(
 			instructions: options.consolidationPrompt ?? DEFAULT_EPISODIC_MEMORY_CONSOLIDATION_PROMPT,
 			prompt: buildEpisodicMemoryConsolidatorPrompt(input),
 			output: Output.object({ schema: EpisodicMemoryConsolidationSchema }),
+			...buildFunctionIdHeaders(input.functionId, 'memory-consolidate'),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, response.usage);
 		return {

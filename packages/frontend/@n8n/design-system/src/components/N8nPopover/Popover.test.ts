@@ -114,6 +114,35 @@ describe('N8nPopover', () => {
 		expect(wrapper.props('maxHeight')).toBeUndefined();
 	});
 
+	describe('hideWhenDetached', () => {
+		const contentWrapper = async (wrapper: ReturnType<typeof render>) =>
+			(await wrapper.findByRole('dialog')).closest<HTMLElement>(
+				'[data-reka-popper-content-wrapper]',
+			);
+
+		it('hides the content while its reference has no box', async () => {
+			const wrapper = render(N8nPopover, {
+				props: { open: true, hideWhenDetached: true },
+				slots: { trigger: '<button />', content: '<span />' },
+			});
+
+			const content = await contentWrapper(wrapper);
+			await waitFor(() => expect(content?.style.visibility).toBe('hidden'));
+		});
+
+		it('keeps the content visible by default', async () => {
+			const wrapper = render(N8nPopover, {
+				props: { open: true },
+				slots: { trigger: '<button />', content: '<span />' },
+			});
+
+			const content = await contentWrapper(wrapper);
+			// The content is placed once floating-ui has run, which is when it would be hidden.
+			await waitFor(() => expect(content?.style.transform).not.toContain('-200%'));
+			expect(content?.style.visibility).not.toBe('hidden');
+		});
+	});
+
 	describe('auto-focus behavior', () => {
 		it('should focus an element in the content slot by default', async () => {
 			const wrapper = render(N8nPopover, {

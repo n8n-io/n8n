@@ -1,10 +1,11 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, RoleService } from '@n8n/backend-services';
+import { EventService, ProjectNotFoundError, RoleService } from '@n8n/backend-services';
 import {
 	type User,
 	FolderRepository,
 	Project,
+	TransactionRunner,
 	ProjectRelation,
 	ProjectRelationRepository,
 	ProjectRepository,
@@ -30,9 +31,15 @@ import {
 	isAssignableProjectRoleSlug,
 } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
-import { UserError } from 'n8n-workflow';
 
-import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	NotFoundError,
+	UserError,
+} from '@n8n/errors';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { OwnershipService } from './ownership.service';
@@ -56,20 +63,7 @@ export class UnlicensedProjectRoleError extends UserError {
 	}
 }
 
-export class ProjectNotFoundError extends NotFoundError {
-	constructor(readonly projectId: string) {
-		super(`Could not find project with ID: ${projectId}`);
-	}
-
-	static isDefinedAndNotNull<T>(
-		value: T | undefined | null,
-		projectId: string,
-	): asserts value is T {
-		if (value === undefined || value === null) {
-			throw new ProjectNotFoundError(projectId);
-		}
-	}
-}
+export { ProjectNotFoundError } from '@n8n/backend-services';
 
 export interface ProjectCreateOverrides {
 	id?: string;
@@ -99,6 +93,7 @@ export class ProjectService {
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly userRepository: UserRepository,
 		private readonly roleRepository: RoleRepository,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	private get workflowService() {
@@ -126,7 +121,7 @@ export class ProjectService {
 	}
 
 	private get dataTableService() {
-		return import('@/modules/data-table/data-table.service.js').then(({ DataTableService }) =>
+		return import('@n8n/backend-module-data-table').then(({ DataTableService }) =>
 			Container.get(DataTableService),
 		);
 	}
@@ -137,27 +132,9 @@ export class ProjectService {
 		);
 	}
 
-	private get agentRepository() {
-		return import('@/modules/agents/repositories/agent.repository.js').then(({ AgentRepository }) =>
-			Container.get(AgentRepository),
-		);
-	}
-
-	private get agentKnowledgeService() {
-		return import('@/modules/agents/agent-knowledge.service.js').then(({ AgentKnowledgeService }) =>
-			Container.get(AgentKnowledgeService),
-		);
-	}
-
-	private get agentExecutionService() {
-		return import('@/modules/agents/agent-execution.service.js').then(({ AgentExecutionService }) =>
-			Container.get(AgentExecutionService),
-		);
-	}
-
-	private get agentChatAttachmentService() {
-		return import('@/modules/agents/agent-chat-attachment.service.js').then(
-			({ AgentChatAttachmentService }) => Container.get(AgentChatAttachmentService),
+	private get agentProjectCleanupService() {
+		return import('@/modules/agents/agent-project-cleanup.service.js').then(
+			({ AgentProjectCleanupService }) => Container.get(AgentProjectCleanupService),
 		);
 	}
 
@@ -170,7 +147,11 @@ export class ProjectService {
 	async deleteProject(
 		user: User,
 		projectId: string,
-		{ migrateToProject }: { migrateToProject?: string } = {},
+		{
+			migrateToProject,
+			publicApi = false,
+		}: { migrateToProject?: string; publicApi?: PublicApiCaller } = {},
+		ctx: OperationContext = {},
 	) {
 		const workflowService = await this.workflowService;
 		const credentialsService = await this.credentialsService;
@@ -236,15 +217,13 @@ export class ProjectService {
 		const ownedSharedWorkflows = await this.sharedWorkflowRepository.find({
 			where: { projectId: project.id, role: 'workflow:owner' },
 		});
+		const workflowIds = ownedSharedWorkflows.map((sw) => sw.workflowId);
 
 		if (targetProject) {
-			await this.sharedWorkflowRepository.makeOwner(
-				ownedSharedWorkflows.map((sw) => sw.workflowId),
-				targetProject.id,
-			);
+			await this.sharedWorkflowRepository.makeOwner(workflowIds, targetProject.id);
 		} else {
 			for (const sharedWorkflow of ownedSharedWorkflows) {
-				await workflowService.delete(user, sharedWorkflow.workflowId, true);
+				await workflowService.delete(user, sharedWorkflow.workflowId, true, { publicApi }, ctx);
 			}
 		}
 
@@ -256,7 +235,7 @@ export class ProjectService {
 			);
 		} else {
 			for (const sharedCredential of ownedCredentials) {
-				await credentialsService.delete(user, sharedCredential.credentials.id);
+				await credentialsService.delete(user, sharedCredential.credentials.id, {}, ctx);
 			}
 		}
 
@@ -288,42 +267,9 @@ export class ProjectService {
 			await secretsProvidersConnectionsService.cleanupConnectionsForProjectDeletion(project.id);
 		}
 
-		// 8. delete agent knowledge files before project removal cascades delete agent_files rows.
+		// 8. Remove agent data before project removal cascades delete its records.
 		if (this.moduleRegistry.isActive('agents')) {
-			const [agentRepository, agentKnowledgeService, agentExecutionService, agentChatAttachments] =
-				await Promise.all([
-					this.agentRepository,
-					this.agentKnowledgeService,
-					this.agentExecutionService,
-					this.agentChatAttachmentService,
-				]);
-			const agents = await agentRepository.findByProjectId(project.id);
-			for (const agent of agents) {
-				try {
-					await agentKnowledgeService.deleteAllFilesForAgent(project.id, agent.id);
-				} catch (error) {
-					this.logger.warn('Failed to delete knowledge files on project delete', {
-						agentId: agent.id,
-						projectId: project.id,
-						error: error instanceof Error ? error.message : error,
-					});
-				}
-
-				// Delete chat attachment bytes before the project removal cascades away
-				// the agent_chat_attachments rows that hold the binaryDataId handles.
-				try {
-					await agentChatAttachments.deleteByAgent(agent.id);
-				} catch (error) {
-					this.logger.warn('Failed to delete chat attachments on project delete', {
-						agentId: agent.id,
-						projectId: project.id,
-						error: error instanceof Error ? error.message : error,
-					});
-				}
-
-				await agentKnowledgeService.destroyKnowledgeSandbox(project.id, agent.id);
-				await agentExecutionService.deleteExecutionLogsForAgent(agent.id);
-			}
+			await (await this.agentProjectCleanupService).cleanupProject(project.id);
 		}
 
 		// Capture member user IDs before the project (and its relations) are removed,
@@ -331,8 +277,25 @@ export class ProjectService {
 		const projectMembers = await this.projectRelationRepository.findBy({ projectId: project.id });
 		const memberUserIds = projectMembers.map((pr) => pr.userId);
 
-		// 9. delete project
-		await this.projectRepository.remove(project);
+		// 9. Delete the project and its deletion marker in one transaction.
+		await this.txRunner.run({}, async (ctx) => {
+			await this.projectRepository.removeProjectForDeletion(project, ctx);
+			if (this.moduleRegistry.isActive('agents')) {
+				await (await this.agentProjectCleanupService).completeProjectDeletion(projectId, ctx);
+			}
+		});
+
+		if (targetProject) {
+			// The cascade removes the source owner rows. Invalidate after the transaction commits.
+			try {
+				await this.ownershipService.invalidateWorkflowProjectCacheByIds(workflowIds);
+			} catch (error) {
+				this.logger.warn('Failed to invalidate the workflow project cache on project delete', {
+					projectId,
+					error: error instanceof Error ? error.message : error,
+				});
+			}
+		}
 
 		// The cascade deletes the project's variables. Refresh the cache so their keys are free again.
 		try {
@@ -652,12 +615,16 @@ export class ProjectService {
 		sharer: User,
 		project: Project,
 		newSharees: Array<{ userId: string; role: AssignableProjectRole }>,
+		publicApi: PublicApiCaller,
+		ctx: OperationContext = {},
 	) {
 		if (newSharees.length === 0) return;
 		await this.userManagementMailer.notifyProjectShared({
 			sharer,
 			newSharees,
 			project: { id: project.id, name: project.name },
+			publicApi,
+			ctx,
 		});
 	}
 
@@ -678,9 +645,18 @@ export class ProjectService {
 	 * Throws if the relations contain `project:personalOwner`.
 	 */
 	async addUsersToProject(
-		user: User,
-		projectId: string,
-		relations: Array<{ userId: string; role: AssignableProjectRole }>,
+		{
+			user,
+			projectId,
+			relations,
+			publicApi = false,
+		}: {
+			user: User;
+			projectId: string;
+			relations: Array<{ userId: string; role: AssignableProjectRole }>;
+			publicApi?: PublicApiCaller;
+		},
+		ctx: OperationContext = {},
 	) {
 		const project = await this.getTeamProjectWithRelations(projectId);
 		this.checkRolesLicensed(project, relations);
@@ -712,7 +688,7 @@ export class ProjectService {
 			})),
 		);
 
-		await this.notifyNewSharees(user, project, newSharees);
+		await this.notifyNewSharees(user, project, newSharees, publicApi, ctx);
 		await this.emitProjectMembersUpdated(user, projectId);
 	}
 
@@ -777,7 +753,7 @@ export class ProjectService {
 			added.push(...toInsert);
 		}
 
-		await this.notifyNewSharees(user, project, added);
+		await this.notifyNewSharees(user, project, added, false);
 		await this.emitProjectMembersUpdated(user, project.id);
 
 		return { project, added, conflicts };

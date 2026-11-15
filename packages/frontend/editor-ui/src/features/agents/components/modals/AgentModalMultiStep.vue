@@ -18,7 +18,9 @@ const props = withDefaults(
 		showCancel?: boolean;
 		cancelLabel?: string;
 		headerDivider?: boolean;
+		headerDividerTone?: 'default' | 'warning';
 		bodyFlush?: boolean;
+		fixedSize?: boolean;
 		stableHeight?: boolean;
 		busy?: boolean;
 		size?: DialogSize;
@@ -36,7 +38,9 @@ const props = withDefaults(
 		showCancel: true,
 		cancelLabel: undefined,
 		headerDivider: false,
+		headerDividerTone: 'default',
 		bodyFlush: false,
+		fixedSize: false,
 		stableHeight: false,
 		busy: false,
 		size: '2xlarge',
@@ -78,8 +82,10 @@ watch(
 		:show-cancel="showCancel"
 		:cancel-label="cancelLabel"
 		:header-divider="headerDivider"
+		:header-divider-tone="headerDividerTone"
 		:body-scrollable="!isPickerStep"
 		:body-flush="bodyFlush"
+		:fixed-size="fixedSize"
 		:stable-height="stableHeight"
 		:busy="busy"
 		:size="size"

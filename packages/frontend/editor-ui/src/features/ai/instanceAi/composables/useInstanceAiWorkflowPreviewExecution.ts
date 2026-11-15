@@ -9,12 +9,13 @@ import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionSt
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ExecutionResult } from '../canvasPreview.utils';
-import { useThread } from '../instanceAi.store';
+import { useArtifactThread } from '../artifactThread';
 
 interface UseInstanceAiWorkflowPreviewExecutionOptions {
 	workflowId: () => string;
 	executionResult: () => ExecutionResult | undefined;
 	reportWorkflowFailures: (executionId: string, workflowId: string) => void;
+	reportWorkflowSuccess?: (workflowId: string) => void;
 	/** Pane the artifact renders in. Its size gates the logs panel auto-open. */
 	paneElement: () => HTMLElement | null;
 }
@@ -56,7 +57,7 @@ export function useInstanceAiWorkflowPreviewExecution(
 	const aiSimulatedExecutionsStore = useAiSimulatedExecutionsStore();
 	// Thread runtime owns the user-run memory so it survives the preview unmounting
 	// on a tab switch and is reachable here without prop-drilling (INS-611).
-	const thread = useThread();
+	const thread = useArtifactThread();
 	const telemetry = useTelemetry();
 	const latestAgentExecution = shallowRef<IExecutionResponse>();
 	const supersededAgentExecutionId = shallowRef<string | null>(null);
@@ -251,6 +252,7 @@ export function useInstanceAiWorkflowPreviewExecution(
 		if (event.data.workflowId !== options.workflowId()) return;
 		if (event.data.status === 'success') {
 			collapseLogsAfterRun(event.data.executionId);
+			options.reportWorkflowSuccess?.(event.data.workflowId);
 			return;
 		}
 		if (event.data.status !== 'error' && event.data.status !== 'crashed') return;

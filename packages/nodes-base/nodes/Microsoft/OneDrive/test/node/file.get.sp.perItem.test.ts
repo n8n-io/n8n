@@ -12,12 +12,12 @@ import { credentials } from '../credentials';
 describe('Test MicrosoftOneDrive, Service Principal file:get resolves the target per item and fails only the bad item under continueOnFail', () => {
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')
-		.get('/users/alice%40contoso.com/drive/items/FILE123')
+		.get('/users/alice@contoso.com/drive/items/FILE123')
 		.reply(200, { id: 'FILE123', name: 'alice.txt', file: { mimeType: 'text/plain' } });
 
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')
-		.get('/users/bob%40contoso.com/drive/items/FILE123')
+		.get('/users/bob@contoso.com/drive/items/FILE123')
 		.reply(200, { id: 'FILE123', name: 'bob.txt', file: { mimeType: 'text/plain' } });
 
 	new NodeTestHarness().setupTests({

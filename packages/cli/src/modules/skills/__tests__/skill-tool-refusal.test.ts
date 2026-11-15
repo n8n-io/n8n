@@ -49,6 +49,16 @@ describe('toSkillToolRefusal', () => {
 			},
 		},
 		{
+			case: 'a move of a synced skill on its own',
+			error: new SkillSyncedError('Brand voice', 'GitHub', 'move'),
+			update: update('base'),
+			expected: {
+				code: 'skill_synced',
+				message:
+					'The skill "Brand voice" is synced from GitHub, so it moves only with its source and nothing was saved. Do not retry. Tell the user to stop syncing it first.',
+			},
+		},
+		{
 			case: 'any other error',
 			error: new UserError('Bad input'),
 			update: update('newer'),

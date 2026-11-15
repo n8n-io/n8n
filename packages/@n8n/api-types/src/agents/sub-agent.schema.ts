@@ -34,6 +34,8 @@ export interface SubAgentSpawnRequest {
 	goal: string;
 	context?: string;
 	expectedOutput?: string;
+	/** Files of the parent that the child can read. The runner grants them; nothing is copied. */
+	fileIds?: string[];
 	source: SubAgentSource;
 	policy?: SubAgentRunPolicy;
 	parentThreadId?: string;

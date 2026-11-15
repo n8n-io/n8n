@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto';
 import {
 	NodeConnectionTypes,
+	requestPath,
 	type IHookFunctions,
 	type ILoadOptionsFunctions,
 	type INodePropertyOptions,
@@ -77,7 +78,11 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 	methods = {
 		loadOptions: {
 			async getActivityTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const activitytypes = await venafiApiRequest.call(this, 'GET', '/v1/activitytypes');
+				const activitytypes = await venafiApiRequest.call(
+					this,
+					'GET',
+					requestPath`/v1/activitytypes`,
+				);
 				return activitytypes.map(
 					({ key, readableName }: { key: string; readableName: string }) => ({
 						name: readableName,
@@ -87,7 +92,11 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 			},
 			async getActivitySubTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const resource = this.getCurrentNodeParameter('resource') as string;
-				const activitytypes = await venafiApiRequest.call(this, 'GET', '/v1/activitytypes');
+				const activitytypes = await venafiApiRequest.call(
+					this,
+					'GET',
+					requestPath`/v1/activitytypes`,
+				);
 				const activity = activitytypes.find(({ key }: { key: string }) => key === resource) as {
 					values: [{ key: string; readableName: string }];
 				};
@@ -106,13 +115,17 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
-				const { connectors } = await venafiApiRequest.call(this, 'GET', '/v1/connectors');
+				const { connectors } = await venafiApiRequest.call(
+					this,
+					'GET',
+					requestPath`/v1/connectors`,
+				);
 
 				// The API does not return the connection URL, so match the name that `create` sets
 				const expectedName = connectorName(webhookUrl);
 				for (const { id, name } of connectors) {
 					if (name === expectedName) {
-						await venafiApiRequest.call(this, 'DELETE', `/v1/connectors/${id}`);
+						await venafiApiRequest.call(this, 'DELETE', requestPath`/v1/connectors/${id}`);
 					}
 				}
 				return false;
@@ -138,7 +151,12 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 					},
 				};
 
-				const responseData = await venafiApiRequest.call(this, 'POST', '/v1/connectors', body);
+				const responseData = await venafiApiRequest.call(
+					this,
+					'POST',
+					requestPath`/v1/connectors`,
+					body,
+				);
 
 				if (responseData.id === undefined) {
 					// Required data is missing so was not successful
@@ -156,7 +174,11 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 
 				if (webhookData.webhookId !== undefined) {
 					try {
-						await venafiApiRequest.call(this, 'DELETE', `/v1/connectors/${webhookData.webhookId}`);
+						await venafiApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/v1/connectors/${webhookData.webhookId}`,
+						);
 					} catch (error) {
 						return false;
 					}

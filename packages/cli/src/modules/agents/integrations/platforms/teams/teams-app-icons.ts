@@ -8,7 +8,7 @@ import { Container } from '@n8n/di';
 import { oklchMixer, rgbToHex, type Rgb } from '@n8n/utils/color/oklch';
 import { isRecord } from '@n8n/utils/is-record';
 import { runSerially } from '@n8n/utils/run-serially';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { Worker, type ResourceLimits } from 'node:worker_threads';
 
 /**

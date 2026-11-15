@@ -1,7 +1,7 @@
 import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { screen, waitFor } from '@testing-library/vue';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
 
 import type { OtelSettingsResponse } from './otel.api';
 import { useOtelStore } from './otel.store';
@@ -72,7 +72,17 @@ const render = (options = {}) => {
 	return {
 		pinia,
 		store: mockedStore(useOtelStore, pinia),
-		...createComponentRenderer(SettingsOpenTelemetryView, { pinia })(options),
+		...createComponentRenderer(SettingsOpenTelemetryView, {
+			pinia,
+			// Test the form controls without the per-field layout, tooltip portals, and SVG trees.
+			global: {
+				stubs: {
+					N8nSettingsRow: { template: '<div><slot name="info" /><slot name="action" /></div>' },
+					N8nTooltip: { template: '<slot />' },
+					N8nIcon: true,
+				},
+			},
+		})(options),
 	};
 };
 
@@ -457,21 +467,23 @@ describe('SettingsOpenTelemetryView', () => {
 		const { getByTestId } = render();
 		await waitFor(() => expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument());
 
+		// Update each field once to avoid per-character timers and form renders.
 		// Endpoint
-		await userEvent.type(getByTestId('otel-exporter-endpoint'), 'https://collector.example.com');
+		await fireEvent.update(getByTestId('otel-exporter-endpoint'), 'https://collector.example.com');
 
 		// Service name
-		await userEvent.type(getByTestId('otel-service-name'), 'my-n8n');
+		await fireEvent.update(getByTestId('otel-service-name'), 'my-n8n');
 
 		// Tracing path
-		await userEvent.clear(getByTestId('otel-tracing-path'));
-		await userEvent.type(getByTestId('otel-tracing-path'), '/custom/traces');
+		await fireEvent.update(getByTestId('otel-tracing-path'), '/custom/traces');
 
 		// Connectivity timeout
-		await typeIntoUnitInput(getByTestId('otel-connectivity-timeout'), '5000');
+		await fireEvent.update(getByTestId('otel-connectivity-timeout'), '5000');
+		await fireEvent.blur(getByTestId('otel-connectivity-timeout'));
 
 		// Sample rate
-		await typeIntoUnitInput(getByTestId('otel-sample-rate'), '0.5');
+		await fireEvent.update(getByTestId('otel-sample-rate'), '0.5');
+		await fireEvent.blur(getByTestId('otel-sample-rate'));
 
 		// Add a header
 		await userEvent.click(getByTestId('otel-header-add'));
@@ -480,8 +492,8 @@ describe('SettingsOpenTelemetryView', () => {
 			getByTestId('otel-header-key').querySelector('input') ?? getByTestId('otel-header-key');
 		const valueInput =
 			getByTestId('otel-header-value').querySelector('input') ?? getByTestId('otel-header-value');
-		await userEvent.type(keyInput, 'x-api-key');
-		await userEvent.type(valueInput, 'secret');
+		await fireEvent.update(keyInput, 'x-api-key');
+		await fireEvent.update(valueInput, 'secret');
 
 		// Checkboxes
 		await userEvent.click(getByTestId('otel-include-node-spans'));
