@@ -6,18 +6,11 @@ import { computed } from 'vue';
 
 const props = defineProps<{ baseUrl: string; enabled: boolean }>();
 const chatUrl = computed(() => `${props.baseUrl}/chat`);
+// One tag: the bundle is served by this instance and mounts itself from its data attributes.
+const scriptUrl = computed(() => props.baseUrl.replace(/\/[^/]+$/, '/assets/agent-chat.js'));
 const snippet = computed(
-	() => `<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
-<script type="module">
-  import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
-  createChat({
-    webhookUrl: '${chatUrl.value}',
-    enableStreaming: true,
-    loadPreviousSession: false,
-    showWelcomeScreen: false,
-    initialMessages: ['Hi! How can I help?'],
-  });
-</${'script'}>`,
+	() =>
+		`<script src="${scriptUrl.value}" data-agent-url="${chatUrl.value}" defer></${'script'}>`,
 );
 const { copy, copied } = useClipboard();
 </script>
@@ -35,13 +28,13 @@ const { copy, copied } = useClipboard();
 			</N8nText>
 			<N8nCopyInput :value="chatUrl" size="medium" data-testid="webhook-chat-url" />
 			<N8nText size="small" color="text-light">
-				Embed on any website: paste before &lt;/body&gt;.
+				Embed on any website: paste into the page HTML. Theme with CSS variables (--agent-chat--color-primary, …) on the widget.
 				<N8nLink size="small" @click="copy(snippet)">{{ copied ? 'Copied' : 'Copy snippet' }}</N8nLink>
 			</N8nText>
 			<N8nInput
 				:model-value="snippet"
 				type="textarea"
-				:rows="6"
+				:rows="3"
 				readonly
 				data-testid="webhook-embed-snippet"
 			/>

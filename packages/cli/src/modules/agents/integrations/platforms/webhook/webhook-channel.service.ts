@@ -142,8 +142,8 @@ export class WebhookChannelService {
 	}
 
 	/**
-	 * SPIKE (agent-chat-embed): the @n8n/chat protocol for the hosted page and
-	 * the embed. Streams NDJSON `begin`/`item`/`end` chunks. No access control
+	 * SPIKE (agent-chat-embed): the agent chat protocol of @n8n/agent-chat (see
+	 * its src/api.ts). The server picks the conversation id. No access control
 	 * beyond "the API channel is published with authentication none".
 	 */
 	async *chat(request: {
@@ -151,7 +151,6 @@ export class WebhookChannelService {
 		body: unknown;
 		abortSignal: AbortSignal;
 	}): AsyncGenerator<Record<string, unknown>> {
-		const meta = { nodeId: 'agent', runIndex: 0 };
 		try {
 			const { agent, channel } = await this.findChannel(request.agentId);
 			if (webhookAuthentication(channel) !== 'none') {
@@ -162,22 +161,25 @@ export class WebhookChannelService {
 				);
 			}
 			const body = (request.body ?? {}) as Record<string, unknown>;
-			const sessionId = typeof body.sessionId === 'string' ? body.sessionId : '';
-			const input = typeof body.chatInput === 'string' ? body.chatInput : '';
-			if (!sessionId || !input) {
-				throw new WebhookChannelError(400, 'invalid_request', 'sessionId and chatInput are required');
+			const message = typeof body.message === 'string' ? body.message.trim() : '';
+			if (!message) throw new WebhookChannelError(400, 'invalid_request', 'message is required');
+			const requested = typeof body.conversationId === 'string' ? body.conversationId : undefined;
+			// ponytail: the random id is the only key to the conversation; the gate's session token replaces this.
+			const conversationId = requested ?? randomUUID();
+			const threadId = `${agent.id}:${WEBHOOK_INTEGRATION_TYPE}:chat:${conversationId}`;
+			const exists = !!requested && !!(await this.executionService.findThreadById(threadId));
+			if (requested && !exists) {
+				throw new WebhookChannelError(404, 'conversation_not_found', 'This conversation has ended. Send your message again to start a new one.');
 			}
-			// ponytail: the client picks the session id, so whoever knows it can read on in the thread.
-			const threadId = `${agent.id}:${WEBHOOK_INTEGRATION_TYPE}:chat:${sessionId}`;
-			const exists = !!(await this.executionService.findThreadById(threadId));
 			if (exists) await this.cancelSuspension(agent.id, threadId);
+			yield { type: 'conversation', id: conversationId };
 			const stream = this.orchestrator.executeForChatPublished({
 				agentId: agent.id,
 				projectId: agent.projectId,
-				message: input,
+				message,
 				memory: {
 					threadId,
-					resourceId: integrationMemoryResourceId(WEBHOOK_INTEGRATION_TYPE, `chat:${sessionId}`),
+					resourceId: integrationMemoryResourceId(WEBHOOK_INTEGRATION_TYPE, `chat:${conversationId}`),
 				},
 				integrationType: WEBHOOK_INTEGRATION_TYPE,
 				sessionMode: exists ? 'existing' : 'new',
@@ -189,26 +191,30 @@ export class WebhookChannelService {
 				allowBackgroundTasks: false,
 				abortSignal: request.abortSignal,
 			});
-			yield { type: 'begin', metadata: meta };
 			let suspended = false;
 			for await (const chunk of stream) {
 				if (chunk.type === 'error') throw ensureError(chunk.error);
-				if (chunk.type === 'text-delta') yield { type: 'item', content: chunk.delta, metadata: meta };
+				if (chunk.type === 'text-delta') yield { type: 'text', delta: chunk.delta };
+				if (chunk.type === 'tool-call') {
+					yield { type: 'tool-start', id: chunk.toolCallId, name: chunk.toolName };
+				}
+				if (chunk.type === 'tool-result' && 'toolCallId' in chunk) {
+					yield { type: 'tool-end', id: chunk.toolCallId };
+				}
 				if (chunk.type === 'tool-call-suspended') suspended = true;
 			}
 			if (suspended) {
 				await this.cancelSuspension(agent.id, threadId);
 				yield {
-					type: 'item',
-					content: '\n\n_(The agent wanted to run an action that needs approval. The chat page cannot approve actions yet.)_',
-					metadata: meta,
+					type: 'notice',
+					text: 'The agent wanted to run an action that needs approval. This chat cannot approve actions yet.',
 				};
 			}
-			yield { type: 'end', metadata: meta };
+			yield { type: 'done' };
 		} catch (error) {
 			if (request.abortSignal.aborted) return;
 			const channelError = this.toChannelError(error);
-			yield { type: 'error', content: channelError.message, metadata: meta };
+			yield { type: 'error', message: channelError.message, code: channelError.code };
 		}
 	}
 

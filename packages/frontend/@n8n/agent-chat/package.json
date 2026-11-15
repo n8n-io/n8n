@@ -1,0 +1,27 @@
+{
+  "name": "@n8n/agent-chat",
+  "version": "0.0.1",
+  "private": true,
+  "description": "SPIKE: chat widget and hosted page for n8n agents. One IIFE bundle, served by the n8n instance.",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "build": "vite build",
+    "dev": "vite build --watch"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "markdown-it": "catalog:",
+    "vue": "catalog:frontend"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@types/markdown-it": "catalog:",
+    "@vitejs/plugin-vue": "catalog:frontend",
+    "typescript": "catalog:",
+    "vue-tsc": "catalog:frontend",
+    "vite": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}
