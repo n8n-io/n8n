@@ -266,6 +266,22 @@ function buildHelmSetFlags(
 			'--set env.shared.N8N_LICENSE_CERT.secretKeyRef.key=certificate',
 		);
 	}
+	// The preparation script creates this Secret only when both host inputs are set.
+	if (process.env.N8N_LICENSE_ACTIVATION_KEY && process.env.N8N_LICENSE_TENANT_ID) {
+		if (envOverrides?.N8N_LICENSE_ACTIVATION_KEY === undefined) {
+			flags.push(
+				'--set license.enabled=true',
+				'--set license.existingSecret.name=n8n-license',
+				'--set license.existingSecret.key=license-key',
+			);
+		}
+		if (envOverrides?.N8N_LICENSE_TENANT_ID === undefined) {
+			flags.push(
+				'--set env.shared.N8N_LICENSE_TENANT_ID.secretKeyRef.name=n8n-license',
+				'--set env.shared.N8N_LICENSE_TENANT_ID.secretKeyRef.key=tenant-id',
+			);
+		}
+	}
 	return flags;
 }
 

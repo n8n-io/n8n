@@ -103,6 +103,93 @@ describe('Helm stack licensing', () => {
 	});
 
 	test.each(['standalone', 'minimal'])(
+		'passes activation-key licensing to %s through the prepared Secret',
+		async (example) => {
+			const activationKey = 'test-activation-key';
+			const tenantId = 'test-tenant-id';
+			vi.stubEnv('N8N_LICENSE_ACTIVATION_KEY', activationKey);
+			vi.stubEnv('N8N_LICENSE_TENANT_ID', tenantId);
+
+			const stack = await createHelmStack({ example });
+
+			const prepareCall = execAsync.mock.calls.find(([command]) =>
+				command.includes('bash charts/n8n/ci/prepare-cluster.sh'),
+			);
+			expect(prepareCall?.[1].env).toMatchObject({
+				ACTIVATION_KEY: activationKey,
+				TENANT_ID: tenantId,
+			});
+			const installCommand = execAsync.mock.calls.find(([command]) =>
+				command.startsWith('helm install '),
+			)?.[0];
+			expect(installCommand).toContain('--set license.enabled=true');
+			expect(installCommand).toContain('--set license.existingSecret.name=n8n-license');
+			expect(installCommand).toContain('--set license.existingSecret.key=license-key');
+			expect(installCommand).toContain(
+				'--set env.shared.N8N_LICENSE_TENANT_ID.secretKeyRef.name=n8n-license',
+			);
+			expect(installCommand).toContain(
+				'--set env.shared.N8N_LICENSE_TENANT_ID.secretKeyRef.key=tenant-id',
+			);
+			const commands = execAsync.mock.calls.map(([command]) => command).join('\n');
+			const logs = vi.mocked(console.log).mock.calls.flat().join('\n');
+			for (const value of [activationKey, tenantId]) {
+				expect(commands).not.toContain(value);
+				expect(logs).not.toContain(value);
+			}
+
+			await stack.stop();
+		},
+	);
+
+	test.each([
+		{ activationKey: undefined, tenantId: undefined },
+		{ activationKey: 'test-activation-key', tenantId: undefined },
+		{ activationKey: undefined, tenantId: 'test-tenant-id' },
+	])('does not reference an absent licence Secret for %j', async ({ activationKey, tenantId }) => {
+		vi.stubEnv('N8N_LICENSE_ACTIVATION_KEY', activationKey);
+		vi.stubEnv('N8N_LICENSE_TENANT_ID', tenantId);
+
+		const stack = await createHelmStack();
+
+		const installCommand = execAsync.mock.calls.find(([command]) =>
+			command.startsWith('helm install '),
+		)?.[0];
+		expect(installCommand).not.toContain('--set license.');
+		expect(installCommand).not.toContain('N8N_LICENSE_TENANT_ID.secretKeyRef');
+
+		await stack.stop();
+	});
+
+	test.each<Record<string, string>>([
+		{ N8N_LICENSE_ACTIVATION_KEY: '' },
+		{ N8N_LICENSE_TENANT_ID: '' },
+		{ N8N_LICENSE_ACTIVATION_KEY: '', N8N_LICENSE_TENANT_ID: '' },
+	])('keeps explicit licensing environment overrides %j', async (env) => {
+		vi.stubEnv('N8N_LICENSE_ACTIVATION_KEY', 'host-activation-key');
+		vi.stubEnv('N8N_LICENSE_TENANT_ID', 'host-tenant-id');
+
+		const stack = await createHelmStack({ env });
+
+		const installCommand = execAsync.mock.calls.find(([command]) =>
+			command.startsWith('helm install '),
+		)?.[0];
+		for (const [name, value] of Object.entries(env)) {
+			expect(installCommand).toContain(`--set-string env.shared.${name}=${value}`);
+		}
+		if (env.N8N_LICENSE_ACTIVATION_KEY !== undefined) {
+			expect(installCommand).not.toContain('--set license.');
+		} else {
+			expect(installCommand).toContain('--set license.enabled=true');
+		}
+		if (env.N8N_LICENSE_TENANT_ID !== undefined) {
+			expect(installCommand).not.toContain('N8N_LICENSE_TENANT_ID.secretKeyRef');
+		}
+
+		await stack.stop();
+	});
+
+	test.each(['standalone', 'minimal'])(
 		'passes a certificate-only licence to %s',
 		async (example) => {
 			const licenseCert = 'test-certificate\nwith "quotes", commas, and $characters';

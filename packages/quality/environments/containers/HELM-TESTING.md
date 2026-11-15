@@ -98,7 +98,9 @@ N8N_BASE_URL=http://localhost:<port> RESET_E2E_DB=true \
 pnpm stack:helm:clean
 ```
 
-The stack reads licence variables from the host environment. It passes `N8N_LICENSE_ACTIVATION_KEY` and `N8N_LICENSE_TENANT_ID` to the chart's preparation script. It also supports `N8N_LICENSE_CERT` without an activation key. It stores the certificate in a Kubernetes Secret and adds a shared pod environment reference.
+The stack reads licence variables from the host environment. When both `N8N_LICENSE_ACTIVATION_KEY` and `N8N_LICENSE_TENANT_ID` are set, the chart's preparation script creates the `n8n-license` Secret. The stack enables chart licensing and references this Secret for the activation key and tenant ID. Explicit `--env` values override the host values for each variable.
+
+The stack also supports `N8N_LICENSE_CERT` without an activation key. It stores the certificate in a Kubernetes Secret and adds a shared pod environment reference.
 
 ### Test a Specific Version Matrix
 
