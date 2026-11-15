@@ -64,6 +64,27 @@ export class N8nClient {
 		await this.request('POST', `/rest/workflows/${id}/activate`, { versionId });
 	}
 
+	async createDataTable(
+		projectId: string,
+		name: string,
+		columns: Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'date' }>,
+	) {
+		return await this.request<{ id: string }>('POST', `/rest/projects/${projectId}/data-tables`, {
+			name,
+			columns,
+		});
+	}
+
+	async insertDataTableRows(
+		projectId: string,
+		dataTableId: string,
+		rows: Array<Record<string, string | number | boolean | null>>,
+	) {
+		await this.request('POST', `/rest/projects/${projectId}/data-tables/${dataTableId}/insert`, {
+			data: rows,
+		});
+	}
+
 	async createAgent(projectId: string, schema: AgentJsonConfig) {
 		return await this.request<{ id: string }>('POST', `/rest/projects/${projectId}/agents/v2`, {
 			name: schema.name,

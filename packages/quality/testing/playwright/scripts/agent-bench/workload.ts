@@ -4,6 +4,18 @@ import type { TurnKind, TurnMix } from './config';
 import type { N8nClient } from './n8n-client';
 
 export const TOOL_NAME = 'lookup_order';
+export const STOCK_TOOL = 'check_stock';
+export const SHIPPING_TOOL = 'shipping_quote';
+export const CUSTOMER_TOOL = 'find_customer';
+
+/** The data table that `find_customer` reads, and the rows the bench puts in it. */
+export const CUSTOMER_TABLE = 'bench_customers';
+const CUSTOMERS = [
+	{ email: 'ada@example.com', name: 'Ada Lovelace', plan: 'enterprise', city: 'London' },
+	{ email: 'grace@example.com', name: 'Grace Hopper', plan: 'pro', city: 'New York' },
+	{ email: 'linus@example.com', name: 'Linus Torvalds', plan: 'starter', city: 'Helsinki' },
+	{ email: 'joana@example.com', name: 'Joana Silva', plan: 'pro', city: 'Lisbon' },
+];
 
 export const PROMPTS: Record<TurnKind, string[]> = {
 	plain: [
@@ -16,6 +28,15 @@ export const PROMPTS: Record<TurnKind, string[]> = {
 		`Use the ${TOOL_NAME} tool for order 1042 and tell me its status.`,
 		`Look up order 77 with the ${TOOL_NAME} tool and summarise it in one line.`,
 		`Check order 9001 with ${TOOL_NAME}. What did it return?`,
+		`Use ${STOCK_TOOL} for SKU KB-104. How many are in stock?`,
+		`What does it cost to ship 2 kg to Lisbon? Use ${SHIPPING_TOOL}.`,
+		`Is SKU MS-220 in stock? Check with ${STOCK_TOOL} and answer in one line.`,
+	],
+	datatable: [
+		`Use ${CUSTOMER_TOOL} for ada@example.com. Which plan is she on?`,
+		`Find the customer grace@example.com with ${CUSTOMER_TOOL} and tell me her city.`,
+		`Look up joana@example.com with ${CUSTOMER_TOOL}. Reply with name and plan only.`,
+		`Is linus@example.com a customer? Check with ${CUSTOMER_TOOL}.`,
 	],
 	long: [
 		'Write a detailed guide, about 600 words, on how to run a database migration with zero downtime.',
@@ -38,19 +59,40 @@ export const PROMPTS: Record<TurnKind, string[]> = {
 };
 
 export const AGENT_NAME = 'Agent bench';
-export const AGENT_INSTRUCTIONS = `You are a concise assistant. When the user asks about an order, call ${TOOL_NAME} exactly once, then answer.`;
+export const AGENT_INSTRUCTIONS = `You are a concise assistant. Call each tool the user names exactly once, then answer. Use ${TOOL_NAME} for orders, ${STOCK_TOOL} for stock, ${SHIPPING_TOOL} for shipping costs and ${CUSTOMER_TOOL} for customers.`;
 
-/** What the agent's tool does, in the words the cockpit shows. */
-export const TOOL_STEPS = [
-	'Execute Workflow Trigger',
-	'Set: status "shipped", eta "2 days"',
-	'Respond to Webhook with the items',
+/** The agent's tools, in the words the cockpit shows. */
+export const TOOLS = [
+	{
+		name: TOOL_NAME,
+		steps: [
+			'Execute Workflow Trigger',
+			'Set: status "shipped", eta "2 days"',
+			'Respond to Webhook',
+		],
+	},
+	{
+		name: STOCK_TOOL,
+		steps: ['Execute Workflow Trigger (sku)', 'Set: in_stock 14, warehouse "Lisbon"'],
+	},
+	{
+		name: SHIPPING_TOOL,
+		steps: ['Execute Workflow Trigger (destination, weightKg)', 'Code: price from weight'],
+	},
+	{
+		name: CUSTOMER_TOOL,
+		steps: [
+			'Execute Workflow Trigger (email)',
+			`Data table: get rows of ${CUSTOMER_TABLE} where email = input`,
+		],
+	},
 ];
 
 /** How the bench sends each kind of turn. */
 export const KIND_PATHS: Record<TurnKind, string> = {
 	plain: 'Editor chat (streamed). Short question, no tool.',
-	tool: `Editor chat (streamed). The agent calls ${TOOL_NAME} once.`,
+	tool: `Editor chat (streamed). The agent calls ${TOOL_NAME}, ${STOCK_TOOL} or ${SHIPPING_TOOL} once.`,
+	datatable: `Editor chat (streamed). The agent calls ${CUSTOMER_TOOL}, which reads a data table.`,
 	long: 'Editor chat (streamed). About 600 words of output.',
 	webhook: 'Responses API of the agent webhook integration. Not streamed.',
 	workflow: 'Production webhook of a workflow that runs the agent with Message an Agent.',
@@ -130,6 +172,95 @@ function toolWorkflow(): Partial<IWorkflowBase> {
 	};
 }
 
+type Field = { name: string; type: 'string' | 'number' };
+
+/** A tool workflow with typed inputs, so the model sees what to pass. */
+function inputWorkflow(
+	name: string,
+	fields: Field[],
+	step: IWorkflowBase['nodes'][number],
+): Partial<IWorkflowBase> {
+	return {
+		name: `Agent bench ${name}`,
+		active: false,
+		nodes: [
+			{
+				id: 'trigger',
+				name: 'Start',
+				type: 'n8n-nodes-base.executeWorkflowTrigger',
+				typeVersion: 1.1,
+				position: [0, 0],
+				parameters: { inputSource: 'workflowInputs', workflowInputs: { values: fields } },
+			},
+			{ ...step, position: [220, 0] },
+		],
+		connections: { Start: { main: [[{ node: step.name, type: 'main', index: 0 }]] } },
+		settings: { executionOrder: 'v1' },
+	};
+}
+
+function stockWorkflow() {
+	return inputWorkflow(STOCK_TOOL, [{ name: 'sku', type: 'string' }], {
+		id: 'stock',
+		name: 'Stock',
+		type: 'n8n-nodes-base.set',
+		typeVersion: 3.4,
+		position: [0, 0],
+		parameters: {
+			assignments: {
+				assignments: [
+					{ id: 'sku', name: 'sku', value: '={{ $json.sku }}', type: 'string' },
+					{ id: 'in_stock', name: 'in_stock', value: 14, type: 'number' },
+					{ id: 'warehouse', name: 'warehouse', value: 'Lisbon', type: 'string' },
+				],
+			},
+			options: {},
+		},
+	});
+}
+
+function shippingWorkflow() {
+	return inputWorkflow(
+		SHIPPING_TOOL,
+		[
+			{ name: 'destination', type: 'string' },
+			{ name: 'weightKg', type: 'number' },
+		],
+		{
+			id: 'quote',
+			name: 'Quote',
+			type: 'n8n-nodes-base.code',
+			typeVersion: 2,
+			position: [0, 0],
+			parameters: {
+				jsCode:
+					'const { destination, weightKg } = $input.first().json;\nconst kg = Number(weightKg) || 1;\nreturn [{ json: { destination, weightKg: kg, priceEur: Math.round((4.9 + kg * 1.5) * 100) / 100, days: 3 } }];',
+			},
+		},
+	);
+}
+
+function customerWorkflow(dataTableId: string) {
+	return inputWorkflow(CUSTOMER_TOOL, [{ name: 'email', type: 'string' }], {
+		id: 'customer',
+		name: 'Customer',
+		type: 'n8n-nodes-base.dataTable',
+		typeVersion: 1.1,
+		position: [0, 0],
+		alwaysOutputData: true,
+		parameters: {
+			resource: 'row',
+			operation: 'get',
+			dataTableId: { __rl: true, mode: 'id', value: dataTableId },
+			matchType: 'allConditions',
+			filters: {
+				conditions: [{ keyName: 'email', condition: 'eq', keyValue: '={{ $json.email }}' }],
+			},
+			returnAll: true,
+		},
+	});
+}
+
 /**
  * Webhook to Message an Agent. The caller sends the message and a session ID,
  * so the bench can find the turn in `agent_execution`. In queue mode a
@@ -203,22 +334,38 @@ export async function seedAgent(client: N8nClient, model: string, integrations: 
 	const credential = await client.createCredential('Agent bench model', provider.credentialType, {
 		apiKey: provider.apiKey,
 	});
-	const tool = await client.createWorkflow(projectId, toolWorkflow());
-	await client.activateWorkflow(tool.id, tool.versionId);
+	const table = await client.createDataTable(projectId, CUSTOMER_TABLE, [
+		{ name: 'email', type: 'string' },
+		{ name: 'name', type: 'string' },
+		{ name: 'plan', type: 'string' },
+		{ name: 'city', type: 'string' },
+	]);
+	await client.insertDataTableRows(projectId, table.id, CUSTOMERS);
+	const definitions: Array<[string, string, Partial<IWorkflowBase>]> = [
+		[TOOL_NAME, 'Look up an order by its number.', toolWorkflow()],
+		[STOCK_TOOL, 'Check how many units of a SKU are in stock.', stockWorkflow()],
+		[SHIPPING_TOOL, 'Quote the shipping price for a destination and weight.', shippingWorkflow()],
+		[CUSTOMER_TOOL, 'Find a customer by email in the customer table.', customerWorkflow(table.id)],
+	];
+	const tools = [];
+	for (const [name, description, workflow] of definitions) {
+		const created = await client.createWorkflow(projectId, workflow);
+		await client.activateWorkflow(created.id, created.versionId);
+		tools.push({
+			type: 'workflow' as const,
+			name,
+			description,
+			workflow: created.name,
+			workflowId: created.id,
+			requireApproval: false,
+		});
+	}
 	const agent = await client.createAgent(projectId, {
 		name: AGENT_NAME,
 		model,
 		credential: credential.id,
 		instructions: AGENT_INSTRUCTIONS,
-		tools: [
-			{
-				type: 'workflow',
-				name: TOOL_NAME,
-				workflow: tool.name,
-				workflowId: tool.id,
-				requireApproval: false,
-			},
-		],
+		tools,
 	});
 	if (integrations) {
 		await client.connectIntegration(projectId, agent.id, {

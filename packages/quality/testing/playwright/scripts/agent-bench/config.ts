@@ -8,7 +8,7 @@ import type { N8NConfig } from 'n8n-containers';
  * Responses API of the agent's webhook integration. `workflow` calls a
  * production webhook of a workflow that runs the agent with Message an Agent.
  */
-export const TURN_KINDS = ['plain', 'tool', 'long', 'webhook', 'workflow'] as const;
+export const TURN_KINDS = ['plain', 'tool', 'datatable', 'long', 'webhook', 'workflow'] as const;
 export type TurnKind = (typeof TURN_KINDS)[number];
 export type TurnMix = Partial<Record<TurnKind, number>>;
 
@@ -74,9 +74,10 @@ const WORKLOADS: Record<string, TurnMix> = {
 	long: { long: 1 },
 	webhook: { webhook: 1 },
 	workflow: { workflow: 1 },
+	datatable: { datatable: 1 },
 	// Editor chat only: the mix of runs before webhook and workflow turns.
 	chat: { plain: 5, tool: 3, long: 2 },
-	mixed: { plain: 1, tool: 1, long: 1, webhook: 1, workflow: 1 },
+	mixed: { plain: 1, tool: 1, datatable: 1, long: 1, webhook: 1, workflow: 1 },
 };
 
 const DEFAULTS: BenchConfig = {

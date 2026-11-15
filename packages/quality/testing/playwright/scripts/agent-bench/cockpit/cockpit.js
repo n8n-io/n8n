@@ -9,6 +9,7 @@
 	const KIND_COLORS = {
 		plain: 'var(--plain)',
 		tool: 'var(--tool)',
+		datatable: 'var(--datatable)',
 		long: 'var(--long)',
 		webhook: 'var(--webhook)',
 		workflow: 'var(--workflow)',
@@ -136,8 +137,8 @@
 		return section(
 			1,
 			'The agent',
-			`<div class="rows">
-				<div class="row"><span class="label">Name</span><div>${esc(a.name)}</div></div>
+			`<div class="block rows">
+				<div class="row"><span class="label">Name</span><div class="strong">${esc(a.name)}</div></div>
 				<div class="row"><span class="label">Model</span><div><code>${esc(a.model)}</code></div></div>
 				<div class="row"><span class="label">Instructions</span><div class="quote">${esc(a.instructions)}</div></div>
 				${tools}
@@ -147,24 +148,26 @@
 
 	function scenarioSection(state) {
 		if (!state.scenarios?.length) return '';
-		const rows = state.scenarios
+		const planned = state.topologies[0]?.planned ?? 0;
+		const count = (s) => Math.round(planned * s.share);
+		const total = state.scenarios.reduce((sum, s) => sum + count(s), 0);
+		const cards = state.scenarios
 			.map(
-				(s) => `<div class="scenario">
-					<div class="head"><span class="kind" style="--c:${KIND_COLORS[s.kind]}">${esc(s.kind)}</span>
-						<b>${Math.round(s.share * 100)}%</b><span class="muted">of turns</span></div>
-					<div>${esc(s.path)}</div>
-					<details><summary>“${esc(s.prompts[0])}”${s.prompts.length > 1 ? ` <span class="muted">+${s.prompts.length - 1} more</span>` : ''}</summary>
-						<ul>${s.prompts
-							.slice(1)
-							.map((p) => `<li>“${esc(p)}”</li>`)
-							.join('')}</ul></details>
+				(s) => `<div class="block scenario">
+					<div class="scenario-head">
+						<span class="name"><i class="dot" style="background:${KIND_COLORS[s.kind]}"></i>${esc(s.kind)}</span>
+						<span class="count"><b>${count(s)}</b> of ${total} messages to the agent</span>
+					</div>
+					<p class="path">${esc(s.path)}</p>
+					<ol class="prompts">${s.prompts.map((p) => `<li>${esc(p)}</li>`).join('')}</ol>
 				</div>`,
 			)
 			.join('');
+		const summary = `<div class="scenario-total"><span><b>${state.scenarios.length}</b> kinds of message</span><span><b>${total}</b> messages sent to the agent in each run (each one a new chat)</span></div>`;
 		return section(
 			2,
 			'Scenarios',
-			`<p class="muted lead">Every run sends the same turns in the same order. Each turn is a new chat. Prompts rotate through the list.</p>${rows}`,
+			`<p class="muted lead">Every run sends the same messages to the agent in the same order. Each message starts a new chat and gets one reply. Prompts rotate through the list.</p>${summary}<div class="scenario-grid">${cards}</div>`,
 		);
 	}
 
@@ -212,7 +215,7 @@
 			.filter((p) => p.role === 'worker')
 			.map((p) => p.name)
 			.sort();
-		const workerColors = ['#3b82f6', '#14b8a6', '#a855f7', '#f59e0b'];
+		const workerColors = ['#ff91ac', '#8ec5ff', '#b9a3ff', '#ffc56b'];
 		const workerSeries = (key, dash) =>
 			workers.map((name, i) => ({
 				name: `${key === 'cpu' ? 'CPU' : 'memory'} · worker ${i + 1}`,
@@ -225,25 +228,20 @@
 		const workerRss = workers
 			.flatMap((name) => samples.map((x) => x.processes[name]?.rssMb))
 			.filter((v) => v != null);
-		const workerStat = (kind) =>
-			workers.length
-				? kind === 'cpu'
-					? `<div class="stat"><span>Workers</span><b>${pct(quantile(workerCpu, 0.5))}</b><span class="muted">typical</span><b>${pct(quantile(workerCpu, 1))}</b><span class="muted">peak, each</span></div>`
-					: `<div class="stat"><span>Workers</span><b>${mb(workerRss.length ? Math.max(...workerRss) : null)}</b><span class="muted">peak, largest</span></div>`
-				: '';
+		const workerPeakCpu = quantile(workerCpu, 1);
+		const workerPeakMem = workerRss.length ? Math.max(...workerRss) : null;
+		const wMemLimit = c?.limits?.worker?.memory ? c.limits.worker.memory * 1024 : null;
+		const wCpuLimit = c?.limits?.worker?.cpu ? c.limits.worker.cpu * 100 : null;
 
 		const memLimit = c?.limits?.main?.memory ? c.limits.main.memory * 1024 * mains.length : null;
 		const cpuLimit = c?.limits?.main?.cpu ? c.limits.main.cpu * 100 * mains.length : null;
 		const xMax = sec(end);
-		const cpuChart = chart(
-			[{ name: `CPU · ${label}`, color: 'var(--accent)', points: cpu }, ...workerSeries('cpu')],
-			{
-				id: `cpu-${t.name}`,
-				yFormat: pct,
-				xMax,
-				limit: cpuLimit ? { value: cpuLimit, label: `limit ${pct(cpuLimit)}` } : undefined,
-			},
-		);
+		const cpuChart = chart([{ name: `CPU · ${label}`, color: 'var(--accent)', points: cpu }], {
+			id: `cpu-${t.name}`,
+			yFormat: pct,
+			xMax,
+			limit: cpuLimit ? { value: cpuLimit, label: `limit ${pct(cpuLimit)}` } : undefined,
+		});
 		const memChart = chart(
 			[
 				{ name: `memory · ${label}`, color: 'var(--ink)', points: rss },
@@ -254,7 +252,6 @@
 					width: 1.6,
 					points: heap,
 				},
-				...workerSeries('rssMb'),
 			],
 			{
 				id: `mem-${t.name}`,
@@ -267,16 +264,25 @@
 			v != null && limit
 				? ` <span class="muted">· ${Math.round((v / limit) * 100)}% of limit</span>`
 				: '';
-		return `<div class="run">${head}
+		const lim = (v, f) => (v ? { value: v, label: `limit ${f(v)}` } : undefined);
+		const workerPair = workers.length
+			? `<h4 class="proc">Workers</h4>
 			<div class="pair">
-				<div><div class="stat"><span>CPU</span><b>${pct(quantile(cpuValues, 0.5))}</b><span class="muted">typical</span><b>${pct(peakCpu)}</b><span class="muted">peak${share(peakCpu, cpuLimit)}</span></div>${workerStat('cpu')}${cpuChart}</div>
-				<div><div class="stat"><span>Memory</span><b>${mb(rssValues[0] ?? null)}</b><span class="muted">at start</span><b>${mb(peakMem)}</b><span class="muted">peak${share(peakMem, memLimit)}</span></div>${workerStat('mem')}${memChart}</div>
-			</div></div>`;
+				<div><div class="stat"><span>CPU</span><b>${pct(quantile(workerCpu, 0.5))}</b><span class="muted">typical</span><b>${pct(workerPeakCpu)}</b><span class="muted">peak, each${share(workerPeakCpu, wCpuLimit)}</span></div>${chart(workerSeries('cpu'), { id: `wcpu-${t.name}`, yFormat: pct, xMax, limit: lim(wCpuLimit, pct) })}</div>
+				<div><div class="stat"><span>Memory</span><b>${mb(workerPeakMem)}</b><span class="muted">peak, largest${share(workerPeakMem, wMemLimit)}</span></div>${chart(workerSeries('rssMb'), { id: `wmem-${t.name}`, yFormat: mb, xMax, limit: lim(wMemLimit, mb) })}</div>
+			</div>`
+			: '';
+		return `<div class="run">${head}
+			<h4 class="proc">Main</h4>
+			<div class="pair">
+				<div><div class="stat"><span>CPU</span><b>${pct(quantile(cpuValues, 0.5))}</b><span class="muted">typical</span><b>${pct(peakCpu)}</b><span class="muted">peak${share(peakCpu, cpuLimit)}</span></div>${cpuChart}</div>
+				<div><div class="stat"><span>Memory</span><b>${mb(rssValues[0] ?? null)}</b><span class="muted">at start</span><b>${mb(peakMem)}</b><span class="muted">peak${share(peakMem, memLimit)}</span></div>${memChart}</div>
+			</div>${workerPair}</div>`;
 	}
 
 	function runsSection(state, now) {
 		return section(
-			3,
+			4,
 			'CPU and memory, per run',
 			state.topologies.map((t) => runCard(t, now)).join(''),
 			'x = time since measuring started · CPU in % of one core · hover for values',
@@ -304,32 +310,23 @@
 			['Main limit', (c) => limitText(c.limits?.main)],
 			['Worker limit', (c) => (c.workers ? limitText(c.limits?.worker) : '–')],
 		];
-		const head = `<div class="cfg-row cfg-head"><span></span>${runs.map((t) => `<b>${esc(t.name)}</b>`).join('')}</div>`;
-		const body = rows
-			.map(
-				([label, get]) =>
-					`<div class="cfg-row"><span class="label">${label}</span>${runs.map((t) => `<span>${esc(get(t.config))}</span>`).join('')}</div>`,
-			)
-			.join('');
-		const envKeys = [...new Set(runs.flatMap((t) => Object.keys(t.config.env)))].sort();
-		const env = `<div class="cfg-row"><span class="label">n8n env</span>${runs
-			.map(
-				(t) =>
-					`<span class="env">${envKeys
-						.filter((k) => k in t.config.env)
-						.map((k) => `<code>${esc(k)}=${esc(t.config.env[k])}</code>`)
-						.join('')}</span>`,
-			)
-			.join('')}</div>`;
-		const shared = `<div class="rows shared">
-			<div class="row"><span class="label">Model</span><div><code>${esc(state.model)}</code></div></div>
-			<div class="row"><span class="label">Image</span><div><code>${esc(state.image)}</code></div></div>
-			<div class="row"><span class="label">Database</span><div>Postgres, one per run</div></div>
+		const card = (t) => {
+			const env = Object.keys(t.config.env).sort();
+			return `<div class="block rows">
+				<div class="block-head"><b>${esc(t.name)}</b></div>
+				${rows.map(([label, get]) => `<div class="row"><span class="label">${label}</span><div>${esc(get(t.config))}</div></div>`).join('')}
+				<div class="row"><span class="label">n8n env</span><div class="env">${env.length ? env.map((k) => `<code>${esc(k)}=${esc(t.config.env[k])}</code>`).join('') : '<span class="muted">none</span>'}</div></div>
+			</div>`;
+		};
+		const shared = `<div class="block tiles">
+			<div><span class="label">Model</span><code>${esc(state.model)}</code></div>
+			<div><span class="label">Image</span><code>${esc(state.image)}</code></div>
+			<div><span class="label">Database</span><span>Postgres, one per run</span></div>
 		</div>`;
 		return section(
-			4,
+			3,
 			'Run config',
-			`${shared}<div class="cfg" style="--cols:${runs.length}">${head}${body}${env}</div>`,
+			`<p class="muted lead">Same for every run:</p>${shared}<div class="cards wide">${runs.map(card).join('')}</div>`,
 		);
 	}
 
@@ -338,13 +335,22 @@
 		const current =
 			state.topologies.find((t) => ['starting', 'warmup', 'running'].includes(t.status)) ??
 			[...state.topologies].reverse().find((t) => t.kept);
-		const login = `<span>email <code>${esc(state.owner.email)}</code></span><span>password <code>${esc(state.owner.password)}</code></span>`;
-		if (!current?.baseUrl)
-			return `<div class="try muted">Try it in n8n once a stack is up. ${login}</div>`;
-		const agent = current.agentUrl
-			? `<a target="_blank" rel="noreferrer" href="${esc(current.agentUrl)}">open the agent ↗</a>`
-			: '';
-		return `<div class="try">Try it in n8n: <a target="_blank" rel="noreferrer" href="${esc(current.baseUrl)}">${esc(current.baseUrl)} ↗</a>${agent}${login}</div>`;
+		const row = (label, value) =>
+			`<div class="row"><span class="label">${label}</span><div>${value}</div></div>`;
+		const link = (href, text) =>
+			`<a target="_blank" rel="noreferrer" href="${esc(href)}">${esc(text)} ↗</a>`;
+		const rows = [
+			row(
+				'n8n',
+				current?.baseUrl
+					? link(current.baseUrl, current.baseUrl)
+					: '<span class="muted">Starts once a stack is up</span>',
+			),
+			current?.agentUrl ? row('Agent', link(current.agentUrl, 'Open the agent')) : '',
+			row('Email', `<code class="copy">${esc(state.owner.email)}</code>`),
+			row('Password', `<code class="copy">${esc(state.owner.password)}</code>`),
+		];
+		return `<div class="try"><div class="block rows">${rows.join('')}</div></div>`;
 	}
 
 	function render(state) {
@@ -361,8 +367,8 @@
 			${tryLine(state)}
 			${agentSection(state)}
 			${scenarioSection(state)}
-			${runsSection(state, now)}
-			${configSection(state)}`;
+			${configSection(state)}
+			${runsSection(state, now)}`;
 	}
 
 	let frame = 0;

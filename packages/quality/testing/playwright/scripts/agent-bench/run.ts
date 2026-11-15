@@ -43,8 +43,7 @@ import {
 	AGENT_WORKFLOW_PATH,
 	KIND_PATHS,
 	PROMPTS,
-	TOOL_NAME,
-	TOOL_STEPS,
+	TOOLS,
 	modelProvider,
 	promptFor,
 	seedAgent,
@@ -603,6 +602,7 @@ function warmupMix(mix: TurnMix): TurnMix {
 	return {
 		plain: 1,
 		tool: 1,
+		...((mix.datatable ?? 0) > 0 ? { datatable: 1 } : {}),
 		...((mix.webhook ?? 0) > 0 ? { webhook: 1 } : {}),
 		...((mix.workflow ?? 0) > 0 ? { workflow: 1 } : {}),
 	};
@@ -624,7 +624,7 @@ async function main() {
 				name: AGENT_NAME,
 				model: config.model,
 				instructions: AGENT_INSTRUCTIONS,
-				tools: [{ name: TOOL_NAME, steps: TOOL_STEPS }],
+				tools: TOOLS,
 			},
 			scenarios: scenarios(config.mix),
 			topologies: topologies.map((t) => ({
