@@ -19,6 +19,32 @@ import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 
 import { ollamaModel, ollamaOptions, ollamaDescription } from '../LMOllama/description';
 
+type ChatOllamaClient = ChatOllama['client'];
+type NonStreamingChatRequest = Parameters<ChatOllamaClient['chat']>[0];
+
+/**
+ * `ChatOllama` always sends `stream: true` to Ollama, so its `streaming` option
+ * has no effect. Send `stream: false` and return the single complete response
+ * as a one-item iterator, so the SDK keeps handling message conversion and
+ * chunk assembly instead of this class reimplementing them.
+ */
+class NonStreamingChatOllama extends ChatOllama {
+	constructor(fields: ChatOllamaInput) {
+		super(fields);
+
+		const client = this.client;
+		const chat = client.chat.bind(client);
+
+		// `chat` is overloaded on the `stream` literal, so a single function cannot
+		// satisfy every overload. The cast is safe: callers only observe the
+		// one-item iterator this returns.
+		client.chat = (async (request: NonStreamingChatRequest) =>
+			chat({ ...request, stream: false }).then(async function* (response) {
+				yield response;
+			})) as ChatOllamaClient['chat'];
+	}
+}
+
 export class LmChatOllama implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Ollama Chat Model',
@@ -54,7 +80,20 @@ export class LmChatOllama implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			ollamaModel,
-			ollamaOptions,
+			{
+				...ollamaOptions,
+				options: [
+					...(ollamaOptions.options ?? []),
+					{
+						displayName: 'Streaming',
+						name: 'streaming',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to stream the response as it is generated. Disable to receive the full response at once.',
+					},
+				],
+			},
 		],
 	};
 
@@ -81,7 +120,8 @@ export class LmChatOllama implements INodeType {
 		const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit) =>
 			await proxyFetch({ input, init, egressFilter });
 
-		const model = new ChatOllama({
+		const ModelClass = options.streaming === false ? NonStreamingChatOllama : ChatOllama;
+		const model = new ModelClass({
 			...options,
 			baseUrl,
 			model: modelName,
