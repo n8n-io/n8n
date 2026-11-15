@@ -1,0 +1,446 @@
+:root {
+	--bg: #fbfbfc;
+	--ink: #1f2430;
+	--body: #3d4452;
+	--muted: #7a8291;
+	--line: #e8eaee;
+	--soft: #f1f2f5;
+	--accent: #ea4b71;
+	--ok: #1f9d6b;
+	--bad: #d6334c;
+	--plain: #4c7cf0;
+	--tool: #ea4b71;
+	--long: #8e5ad8;
+	--webhook: #0e9aa7;
+	--workflow: #d98a00;
+	color-scheme: light;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--body);
+	font:
+		14px / 1.5 -apple-system,
+		BlinkMacSystemFont,
+		'Segoe UI',
+		Inter,
+		sans-serif;
+}
+
+#app {
+	max-width: 1120px;
+	margin: 0 auto;
+	padding: 28px 28px 64px;
+}
+
+.empty,
+.muted {
+	color: var(--muted);
+}
+
+.bad {
+	color: var(--bad);
+}
+
+code {
+	font:
+		12px / 1.4 ui-monospace,
+		SFMono-Regular,
+		Menlo,
+		monospace;
+	background: var(--soft);
+	border-radius: 4px;
+	padding: 1px 5px;
+	color: var(--ink);
+}
+
+a {
+	color: var(--accent);
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 6px;
+}
+
+header h1 {
+	margin: 0;
+	font-size: 20px;
+	color: var(--ink);
+}
+
+.try {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 14px;
+	align-items: center;
+	color: var(--body);
+	padding-bottom: 20px;
+	border-bottom: 1px solid var(--line);
+}
+
+.try code {
+	user-select: all;
+}
+
+section {
+	padding: 26px 0;
+	border-bottom: 1px solid var(--line);
+}
+
+section:last-child {
+	border-bottom: 0;
+}
+
+section h2 {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	margin: 0 0 14px;
+	font-size: 16px;
+	color: var(--ink);
+}
+
+section h2 .n {
+	color: var(--muted);
+	font-weight: 500;
+	font-variant-numeric: tabular-nums;
+}
+
+section h2 .hint {
+	margin-left: auto;
+	font-size: 12px;
+	font-weight: 400;
+	color: var(--muted);
+}
+
+.lead {
+	margin: -6px 0 12px;
+}
+
+.rows .row {
+	display: grid;
+	grid-template-columns: 140px 1fr;
+	gap: 16px;
+	padding: 5px 0;
+}
+
+.label {
+	color: var(--muted);
+}
+
+.quote {
+	color: var(--ink);
+	border-left: 2px solid var(--line);
+	padding-left: 10px;
+}
+
+.flow {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	margin-top: 6px;
+}
+
+.flow span {
+	background: var(--soft);
+	border-radius: 6px;
+	padding: 2px 8px;
+	font-size: 13px;
+}
+
+.flow i {
+	color: var(--muted);
+	font-style: normal;
+}
+
+.scenario {
+	display: grid;
+	grid-template-columns: 200px 1fr;
+	gap: 2px 16px;
+	padding: 8px 0;
+}
+
+.scenario .head {
+	grid-row: span 2;
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+}
+
+.scenario b {
+	color: var(--ink);
+	font-variant-numeric: tabular-nums;
+}
+
+.scenario details {
+	color: var(--muted);
+	font-size: 13px;
+}
+
+.scenario summary {
+	cursor: pointer;
+}
+
+.scenario ul {
+	margin: 4px 0 0;
+	padding-left: 18px;
+}
+
+.kind {
+	display: inline-block;
+	padding: 0 8px;
+	border-radius: 4px;
+	color: #fff;
+	font-size: 12px;
+	font-weight: 600;
+	background: var(--c);
+}
+
+.pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 1px 9px;
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 600;
+	background: var(--soft);
+	color: var(--muted);
+}
+
+.pill::before {
+	content: '';
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: currentColor;
+}
+
+.pill.running,
+.pill.warmup,
+.pill.starting {
+	color: var(--accent);
+	background: #fdecf0;
+}
+
+.pill.running::before,
+.pill.warmup::before,
+.pill.starting::before {
+	animation: pulse 1.2s infinite;
+}
+
+.pill.done {
+	color: var(--ok);
+	background: #e6f6ef;
+}
+
+.pill.failed {
+	color: var(--bad);
+	background: #fbe9ec;
+}
+
+@keyframes pulse {
+	50% {
+		opacity: 0.25;
+	}
+}
+
+.run {
+	padding: 6px 0 22px;
+}
+
+.run + .run {
+	border-top: 1px dashed var(--line);
+	padding-top: 20px;
+}
+
+.run-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 12px;
+	margin-bottom: 12px;
+}
+
+.run-head b {
+	color: var(--ink);
+	font-size: 15px;
+}
+
+.run-head .facts {
+	margin-left: auto;
+	font-variant-numeric: tabular-nums;
+}
+
+.pair {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 28px;
+}
+
+.stat {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+	margin-bottom: 6px;
+	font-variant-numeric: tabular-nums;
+}
+
+.stat > span:first-child {
+	color: var(--ink);
+	font-weight: 600;
+	margin-right: 6px;
+}
+
+.stat b {
+	color: var(--ink);
+	font-size: 18px;
+}
+
+.stat b + .muted {
+	margin-right: 10px;
+}
+
+svg.chart {
+	width: 100%;
+	display: block;
+	overflow: visible;
+}
+
+svg.chart text {
+	fill: var(--muted);
+	font-size: 10px;
+	font-variant-numeric: tabular-nums;
+}
+
+svg.chart .grid {
+	stroke: var(--line);
+	stroke-width: 1;
+}
+
+svg.chart .limit {
+	stroke: var(--bad);
+	stroke-width: 1;
+	stroke-dasharray: 2 4;
+	vector-effect: non-scaling-stroke;
+}
+
+svg.chart .limit-label {
+	fill: var(--bad);
+}
+
+svg.chart .cursor {
+	stroke: var(--muted);
+	stroke-width: 1;
+	stroke-dasharray: 3 3;
+	vector-effect: non-scaling-stroke;
+}
+
+.chart-wrap {
+	position: relative;
+}
+
+.legend {
+	display: flex;
+	gap: 14px;
+	flex-wrap: wrap;
+	margin-top: 4px;
+	color: var(--muted);
+	font-size: 12px;
+}
+
+.tip {
+	position: absolute;
+	top: 4px;
+	z-index: 2;
+	min-width: 150px;
+	padding: 6px 8px;
+	background: #fff;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	box-shadow: 0 4px 14px rgb(0 0 0 / 0.08);
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	pointer-events: none;
+}
+
+.tip-t {
+	color: var(--muted);
+	margin-bottom: 2px;
+}
+
+.tip div:not(.tip-t) {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.tip span::before,
+.legend span::before {
+	content: '';
+	display: inline-block;
+	width: 12px;
+	height: 2px;
+	margin-right: 6px;
+	background: var(--c);
+	vertical-align: 3px;
+}
+
+.legend span.dash::before {
+	background: repeating-linear-gradient(90deg, var(--c) 0 4px, transparent 4px 7px);
+}
+
+.shared {
+	margin-bottom: 14px;
+}
+
+.cfg-row {
+	display: grid;
+	grid-template-columns: 140px repeat(var(--cols), minmax(0, 1fr));
+	gap: 16px;
+	padding: 5px 0;
+	font-variant-numeric: tabular-nums;
+}
+
+.cfg-head b {
+	color: var(--ink);
+}
+
+.cfg-row .env {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 4px;
+}
+
+.cfg-row .env code {
+	word-break: break-all;
+}
+
+@media (max-width: 860px) {
+	.pair {
+		grid-template-columns: 1fr;
+	}
+
+	.scenario {
+		grid-template-columns: 1fr;
+	}
+
+	.scenario .head {
+		grid-row: auto;
+	}
+}

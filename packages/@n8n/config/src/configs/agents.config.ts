@@ -1,8 +1,11 @@
 import { Time } from '@n8n/constants';
+import { z } from 'zod';
 
 import { CommaSeparatedStringArray } from '../custom-types';
 import { Config, Env } from '../decorators';
 import { nonnegativeIntSchema, positiveIntSchema } from '../schemas';
+
+const memoryLevelSchema = z.coerce.number().gt(0).lte(1);
 
 /**
  * Known agent sub-feature modules. Add a token here to make it valid in
@@ -202,6 +205,36 @@ export class AgentsConfig {
 	 */
 	@Env('N8N_AGENTS_WORKER_CONCURRENCY', positiveIntSchema)
 	workerConcurrency: number = 5;
+
+	/**
+	 * Maximum number of agent turns that one main instance runs at the same time
+	 * before it takes over turns that agent workers didn't start in time. A main
+	 * takes over a turn only when the agent workers stop making progress, not
+	 * when they're just busy. Set to 0 so that main instances never run these
+	 * turns while an agent worker is running. `N8N_AGENTS_MAIN_MAX_TURNS` also
+	 * limits these turns. Only applies when `N8N_AGENTS_QUEUE_MODE_ENABLED` is
+	 * set.
+	 */
+	@Env('N8N_AGENTS_MAIN_FALLBACK_TURNS', nonnegativeIntSchema)
+	mainFallbackTurns: number = 5;
+
+	/**
+	 * Maximum number of agent turns that one main instance runs at the same time.
+	 * Turns over the limit wait until the main instance has room or an agent
+	 * worker takes them. Only applies when `N8N_AGENTS_QUEUE_MODE_ENABLED` is set.
+	 */
+	@Env('N8N_AGENTS_MAIN_MAX_TURNS', positiveIntSchema)
+	mainMaxTurns: number = 20;
+
+	/**
+	 * Memory use of a main instance, as a share of its memory limit from 0 to 1,
+	 * above which it starts no new agent turns and opens no new live chat
+	 * streams. Turns wait or run on agent workers, and the chat loads the reply
+	 * when it's ready. Set to 1 to turn off this check. Only applies when
+	 * `N8N_AGENTS_QUEUE_MODE_ENABLED` is set.
+	 */
+	@Env('N8N_AGENTS_MAIN_MEMORY_HOLD_LEVEL', memoryLevelSchema)
+	mainMemoryHoldLevel: number = 0.8;
 
 	/**
 	 * Maximum time, in seconds, that one agent turn can run. n8n stops a turn that

@@ -19,6 +19,7 @@ import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentQueuedTestStreamService } from './agent-queued-test-stream.service';
 import { type FlushableResponse, initSseStream, toChatErrorEvent } from './agent-sse-stream';
 import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
+import { AgentTurnPlacement } from './queue/agent-turn-placement.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
 
@@ -35,6 +36,7 @@ export class AgentChatRelayService {
 		private readonly messageQueue: AgentMessageQueueService,
 		private readonly queuedPreviewStreams: AgentQueuedTestStreamService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+		private readonly placement: AgentTurnPlacement,
 	) {}
 
 	createChatStream(res: FlushableResponse) {
@@ -122,6 +124,10 @@ export class AgentChatRelayService {
 	/**
 	 * Enqueue a chat message and relay its execution to the browser stream.
 	 * `accept` validates the request and stores attachments. It returns nothing after it sends its own error.
+	 *
+	 * When the memory of this main is high, the message is accepted but the
+	 * stream closes right after `message-queued`. The client then loads the
+	 * reply from the recorded history, as it does after a lost stream.
 	 */
 	async relayQueuedMessage(
 		res: FlushableResponse,
@@ -140,8 +146,9 @@ export class AgentChatRelayService {
 			if (!input) return;
 			attachments = input.payload.attachments;
 			abortSignal.throwIfAborted();
+			const live = this.placement.mayOpenStream();
 			const result = await this.messageQueue.enqueue(input, (queueId) => {
-				subscription = this.queuedPreviewStreams.subscribe(queueId, delivery);
+				if (live) subscription = this.queuedPreviewStreams.subscribe(queueId, delivery);
 			});
 			if (result.status === 'duplicate') {
 				send({ type: 'done' });

@@ -87,6 +87,7 @@ describe('AgentChatResumeService', () => {
 		placement = mock<AgentTurnPlacement>({
 			dispatchEnabled: true,
 			workersAvailable: async () => workers,
+			mayFallBack: async (sentAt) => Date.now() - sentAt >= AgentTurnPlacement.FALLBACK_WAIT_MS,
 		});
 		turnQueue = mock<AgentTurnQueue>();
 		requests = mock<AgentTurnRequestRepository>();

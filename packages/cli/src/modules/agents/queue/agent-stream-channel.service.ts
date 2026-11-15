@@ -29,6 +29,10 @@ export interface AgentStreamBatch {
  * Streams are much louder than commands, so they do not share the command
  * channel that every process reads. Workers that run agent turns publish here,
  * and only mains with agent queue mode subscribe.
+ *
+ * Every subscribed main receives every batch. A message starts with the queue
+ * ID and a line break, so that a main parses only the batches of its own
+ * browser streams.
  */
 @Service()
 export class AgentStreamChannel {
@@ -60,15 +64,22 @@ export class AgentStreamChannel {
 			: this.agentsConfig.queueModeEnabled;
 	}
 
-	/** Subscribe on a main. Each batch goes to `handler`. */
-	async subscribe(handler: (batch: AgentStreamBatch) => void): Promise<void> {
+	/** Subscribe on a main. Each batch of a queue ID that `wants` accepts goes to `handler`. */
+	async subscribe(
+		handler: (batch: AgentStreamBatch) => void,
+		wants: (queueId: string) => boolean,
+	): Promise<void> {
 		if (!this.enabled || !this.cluster.isMain || this.subscriber) return;
 		this.handler = handler;
 		const client = await this.createClient();
 		this.subscriber = client;
 		client.on('message', (channel: string, message: string) => {
 			if (channel !== this.channel) return;
-			const batch = jsonParse<AgentStreamBatch | null>(message, { fallbackValue: null });
+			const split = message.indexOf('\n');
+			if (split < 0 || !wants(message.slice(0, split))) return;
+			const batch = jsonParse<AgentStreamBatch | null>(message.slice(split + 1), {
+				fallbackValue: null,
+			});
 			if (!batch || typeof batch.queueId !== 'string' || !Array.isArray(batch.entries)) return;
 			this.handler?.(batch);
 		});
@@ -78,7 +89,7 @@ export class AgentStreamChannel {
 
 	async publish(batch: AgentStreamBatch): Promise<void> {
 		this.publisher ??= await this.createClient();
-		await this.publisher.publish(this.channel, JSON.stringify(batch));
+		await this.publisher.publish(this.channel, `${batch.queueId}\n${JSON.stringify(batch)}`);
 	}
 
 	/** False when the publish connection is down, so a stream should not start. */

@@ -1,0 +1,16 @@
+{
+	"topologies": [
+		"main",
+		"queue",
+		{ "name": "queue-4-workers", "mains": 1, "workers": 4, "agentQueue": true }
+	],
+	"workload": "mixed",
+	"turns": 30,
+	"concurrency": 5,
+	"warmup": 2,
+	"model": "anthropic/claude-sonnet-4-5",
+	"workers": 2,
+	"workerConcurrency": 10,
+	"resourceQuota": { "cpu": 1, "memory": 2 },
+	"env": { "N8N_AGENTS_TURN_TIMEOUT": "300" }
+}

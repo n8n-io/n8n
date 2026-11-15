@@ -10,6 +10,7 @@ import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
+import type { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
 
 import { sendStreamToResponse } from '@/response-helper';
 
@@ -54,7 +55,67 @@ describe('AgentChatRelayService', () => {
 		mock<AgentMessageQueueService>(),
 		mock<AgentQueuedTestStreamService>(),
 		attachmentService,
+		mock<AgentTurnPlacement>(),
 	);
+
+	describe('relayQueuedMessage', () => {
+		const input = {
+			agentId: 'agent',
+			projectId: 'project',
+			threadId: 'thread',
+			sessionMode: 'new' as const,
+			source: 'chat',
+			payload: { kind: 'preview' as const, message: 'hi', userId: 'user', resourceId: 'r' },
+		};
+
+		function setup(mayOpenStream: boolean) {
+			const streams = mock<AgentQueuedTestStreamService>();
+			const subscription = {
+				accepted: vi.fn(),
+				close: vi.fn(),
+				lastEventAt: vi.fn(() => Date.now()),
+				done: Promise.resolve(),
+			};
+			streams.subscribe.mockReturnValue(subscription);
+			const messageQueue = mock<AgentMessageQueueService>();
+			messageQueue.enqueue.mockImplementation(async (_input, onInserted) => {
+				onInserted?.('7');
+				return { status: 'accepted', item: { id: '7' } } as Awaited<
+					ReturnType<AgentMessageQueueService['enqueue']>
+				>;
+			});
+			const service = new AgentChatRelayService(
+				messageQueue,
+				streams,
+				mock<AgentChatAttachmentService>(),
+				mock<AgentTurnPlacement>({ mayOpenStream: () => mayOpenStream }),
+			);
+			return { service, streams, subscription };
+		}
+
+		it('subscribes the browser stream to the queued message', async () => {
+			const { service, streams, subscription } = setup(true);
+			const writes: string[] = [];
+			const res = makeSseResponse(writes);
+			await service.relayQueuedMessage(res as unknown as FlushableResponse, async () => input);
+
+			expect(streams.subscribe).toHaveBeenCalledWith('7', expect.anything());
+			expect(subscription.accepted).toHaveBeenCalledOnce();
+		});
+
+		it('accepts the message without a live stream when the main may not open one', async () => {
+			const { service, streams } = setup(false);
+			const writes: string[] = [];
+			const res = makeSseResponse(writes);
+			await service.relayQueuedMessage(res as unknown as FlushableResponse, async () => input);
+
+			expect(streams.subscribe).not.toHaveBeenCalled();
+			expect(sentEvents(writes)).toEqual([
+				{ type: 'message-queued', queueId: '7', sessionId: 'thread' },
+			]);
+			expect(res.end).toHaveBeenCalledOnce();
+		});
+	});
 
 	describe('relayQueuedStop', () => {
 		it('subscribes before acceptance and keeps the stream open for the report', async () => {
@@ -73,6 +134,7 @@ describe('AgentChatRelayService', () => {
 				mock<AgentMessageQueueService>(),
 				streams,
 				mock<AgentChatAttachmentService>(),
+				mock<AgentTurnPlacement>(),
 			);
 			const writes: string[] = [];
 			const res = makeSseResponse(writes);

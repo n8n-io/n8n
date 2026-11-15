@@ -2,7 +2,10 @@ import { AGENT_TURNS_CAPABILITY, type InstanceRegistration } from '@n8n/api-type
 import { InstanceRegistryProxyService } from '@n8n/backend-services';
 import type { AgentsConfig } from '@n8n/config';
 
+import type { AgentMainMemory } from '../queue/agent-main-memory.service';
+import type { AgentQueueMetricEvent } from '../queue/agent-queue-metrics';
 import { AgentTurnPlacement } from '../queue/agent-turn-placement.service';
+import type { AgentTurnQueue } from '../queue/agent-turn-queue.service';
 import { testCluster, type TestClusterOptions } from './test-utils/cluster';
 
 function setup({
@@ -11,12 +14,23 @@ function setup({
 	workerEnabled = true,
 	instances = [] as Array<Partial<InstanceRegistration>>,
 	registryFails = false,
+	mainFallbackTurns = 5,
+	mainMaxTurns = 20,
+	memoryHigh = false,
+	localTurns = 0,
+	lastProgressAt,
 }: {
 	cluster?: TestClusterOptions;
 	queueModeEnabled?: boolean;
 	workerEnabled?: boolean;
 	instances?: Array<Partial<InstanceRegistration>>;
 	registryFails?: boolean;
+	mainFallbackTurns?: number;
+	mainMaxTurns?: number;
+	memoryHigh?: boolean;
+	localTurns?: number;
+	/** When an agent job last started or ended anywhere. Omit for never. */
+	lastProgressAt?: number;
 } = {}) {
 	const registry = new InstanceRegistryProxyService();
 	const getAllInstances = vi.fn(async () => {
@@ -24,10 +38,22 @@ function setup({
 		return instances as InstanceRegistration[];
 	});
 	registry.registerProvider({ getAllInstances, getLocalInstance: () => null });
-	const config = { queueModeEnabled, workerEnabled } as AgentsConfig;
+	const config = {
+		queueModeEnabled,
+		workerEnabled,
+		mainFallbackTurns,
+		mainMaxTurns,
+	} as AgentsConfig;
+	const agentCluster = testCluster(cluster);
+	agentCluster.metrics.registerGauges({ localTurns: () => localTurns });
+	const events: AgentQueueMetricEvent[] = [];
+	agentCluster.metrics.onEvent((event) => events.push(event));
+	const turnQueue = { lastProgressAt } as AgentTurnQueue;
+	const memory = { isHigh: () => memoryHigh } as AgentMainMemory;
 	return {
-		placement: new AgentTurnPlacement(config, testCluster(cluster), registry),
+		placement: new AgentTurnPlacement(config, agentCluster, registry, turnQueue, memory),
 		getAllInstances,
+		events,
 	};
 }
 
@@ -93,10 +119,150 @@ describe('AgentTurnPlacement', () => {
 			expect(placement.fallbackCount).toBe(0);
 		});
 
-		it('runs a worker turn that waited longer than the fallback wait', async () => {
-			const { placement } = setup({ instances: [agentWorker] });
+		it('runs an overdue worker turn when the workers made no progress', async () => {
+			const { placement, events } = setup({ instances: [agentWorker] });
 			expect(await placement.mayClaim('preview', old())).toBe(true);
 			expect(placement.fallbackCount).toBe(1);
+			expect(events).toEqual([{ type: 'fallback', path: 'queued-message' }]);
+		});
+
+		it('leaves an overdue turn to workers that still start or finish jobs', async () => {
+			const { placement, events } = setup({
+				instances: [agentWorker],
+				lastProgressAt: Date.now() - 1_000,
+			});
+			expect(await placement.mayClaim('preview', old())).toBe(false);
+			expect(placement.fallbackCount).toBe(0);
+			expect(events).toEqual([{ type: 'turn-held', reason: 'workers-progressing' }]);
+		});
+
+		it('takes over again once the workers stop making progress', async () => {
+			const { placement } = setup({
+				instances: [agentWorker],
+				lastProgressAt: Date.now() - AgentTurnPlacement.FALLBACK_WAIT_MS - 1,
+			});
+			expect(await placement.mayClaim('preview', old())).toBe(true);
+		});
+
+		it('holds an overdue turn when this main is at its fallback limit', async () => {
+			const { placement, events } = setup({
+				instances: [agentWorker],
+				mainFallbackTurns: 2,
+				localTurns: 2,
+			});
+			expect(await placement.mayClaim('preview', old())).toBe(false);
+			expect(events).toEqual([{ type: 'turn-held', reason: 'main-at-limit' }]);
+		});
+
+		it('holds an overdue turn when the memory of this main is high', async () => {
+			const { placement, events } = setup({
+				instances: [agentWorker],
+				memoryHigh: true,
+				localTurns: 1,
+			});
+			expect(await placement.mayClaim('preview', old())).toBe(false);
+			expect(placement.fallbackCount).toBe(0);
+			expect(events).toEqual([{ type: 'turn-held', reason: 'main-memory-high' }]);
+		});
+
+		it('counts takeovers that have not started yet toward the limit', async () => {
+			vi.useFakeTimers();
+			const { placement } = setup({ instances: [agentWorker], mainFallbackTurns: 2 });
+			const checks = await Promise.all(
+				[1, 2, 3].map(async () => await placement.mayClaim('preview', old())),
+			);
+			expect(checks).toEqual([true, true, false]);
+			vi.advanceTimersByTime(AgentTurnPlacement.CLAIM_START_MS);
+			expect(await placement.mayClaim('preview', old())).toBe(true);
+		});
+
+		it('ignores the fallback limit when no agent worker is registered', async () => {
+			const { placement } = setup({ mainFallbackTurns: 1, localTurns: 10 });
+			expect(await placement.mayFallBack(old().getTime(), 'request')).toBe(true);
+			expect(await placement.mayFallBack(Date.now(), 'request')).toBe(false);
+		});
+
+		it('holds every kind at the turn limit of this main, with or without workers', async () => {
+			for (const instances of [[], [agentWorker]]) {
+				const { placement, events } = setup({ instances, mainMaxTurns: 3, localTurns: 3 });
+				expect(await placement.mayClaim('system', recent())).toBe(false);
+				expect(await placement.mayClaim('integration', recent(), 'discord')).toBe(false);
+				expect(await placement.mayFallBack(old().getTime(), 'request')).toBe(false);
+				expect(events.at(-1)).toEqual({ type: 'turn-held', reason: 'main-at-limit' });
+			}
+			const { placement } = setup({ mainMaxTurns: 3, localTurns: 3 });
+			expect(await placement.mayClaim('preview', recent())).toBe(false);
+		});
+
+		it('counts turns that have not started yet toward the turn limit', async () => {
+			vi.useFakeTimers();
+			const { placement } = setup({ mainMaxTurns: 2 });
+			const queuedAt = recent();
+			const checks = await Promise.all(
+				[1, 2, 3].map(async () => await placement.mayClaim('preview', queuedAt)),
+			);
+			expect(checks).toEqual([true, true, false]);
+			vi.advanceTimersByTime(AgentTurnPlacement.CLAIM_START_MS);
+			expect(await placement.mayClaim('preview', queuedAt)).toBe(true);
+		});
+
+		it('stops counting a claim once the caller reports that it settled', async () => {
+			const { placement } = setup({ mainMaxTurns: 1 });
+			expect(await placement.mayClaim('preview', recent())).toBe(true);
+			expect(await placement.mayClaim('preview', recent())).toBe(false);
+			placement.claimSettled();
+			expect(await placement.mayClaim('preview', recent())).toBe(true);
+		});
+
+		it('lets a held turn go before a newer turn when room frees up', async () => {
+			vi.useFakeTimers();
+			const { placement } = setup({ mainMaxTurns: 1 });
+			const older = new Date(Date.now() - 2_000);
+			const newer = new Date(Date.now() - 1_000);
+			expect(await placement.mayClaim('preview', recent())).toBe(true);
+			expect(await placement.mayClaim('preview', older)).toBe(false);
+			expect(placement.hasHeldTurns).toBe(true);
+
+			placement.claimSettled();
+			expect(await placement.mayClaim('preview', newer)).toBe(false);
+			expect(await placement.mayClaim('preview', older)).toBe(true);
+
+			// A held turn that nobody checks again, for example a cancelled one, loses its place.
+			placement.claimSettled();
+			vi.advanceTimersByTime(AgentTurnPlacement.HELD_TTL_MS);
+			expect(placement.hasHeldTurns).toBe(false);
+			expect(await placement.mayClaim('preview', new Date())).toBe(true);
+		});
+
+		it('holds a turn while memory is high, but always runs one turn', async () => {
+			const busy = setup({ memoryHigh: true, localTurns: 1 });
+			expect(await busy.placement.mayClaim('system', recent())).toBe(false);
+			expect(busy.events).toEqual([{ type: 'turn-held', reason: 'main-memory-high' }]);
+
+			const idle = setup({ memoryHigh: true });
+			expect(await idle.placement.mayClaim('system', recent())).toBe(true);
+			expect(await idle.placement.mayClaim('system', recent())).toBe(false);
+		});
+
+		it('applies no limit without agent queue mode', async () => {
+			for (const options of [{ queueModeEnabled: false }, { cluster: { queue: false } }]) {
+				const { placement, events } = setup({
+					...options,
+					mainMaxTurns: 1,
+					localTurns: 50,
+					memoryHigh: true,
+				});
+				expect(await placement.mayClaim('preview', recent())).toBe(true);
+				expect(placement.mayOpenStream()).toBe(true);
+				expect(events).toEqual([]);
+			}
+		});
+
+		it('opens no live stream while memory is high', () => {
+			expect(setup().placement.mayOpenStream()).toBe(true);
+			const { placement, events } = setup({ memoryHigh: true });
+			expect(placement.mayOpenStream()).toBe(false);
+			expect(events).toEqual([{ type: 'stream-skipped' }]);
 		});
 
 		it('runs every kind when no agent worker is registered', async () => {

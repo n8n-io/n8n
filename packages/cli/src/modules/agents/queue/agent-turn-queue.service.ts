@@ -49,6 +49,8 @@ export class AgentTurnQueue {
 
 	private held = false;
 
+	private progressAt?: number;
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
@@ -58,6 +60,15 @@ export class AgentTurnQueue {
 
 	get isReady(): boolean {
 		return this.queue !== undefined;
+	}
+
+	/**
+	 * When a job of this queue last started or ended on any process, in epoch
+	 * milliseconds. Starts at the time the queue opened here. `undefined` before
+	 * the queue opens.
+	 */
+	get lastProgressAt(): number | undefined {
+		return this.progressAt;
 	}
 
 	async init(): Promise<void> {
@@ -78,6 +89,15 @@ export class AgentTurnQueue {
 		queue.on('error', (error) => {
 			this.logger.warn('Agent turn queue error', { error });
 		});
+		// Global events come from every process, so a main sees when workers take
+		// or finish jobs. Mains use this to tell busy workers from stuck ones.
+		const markProgress = () => {
+			this.progressAt = Date.now();
+		};
+		queue.on('global:active', markProgress);
+		queue.on('global:completed', markProgress);
+		queue.on('global:failed', markProgress);
+		this.progressAt = Date.now();
 		this.queue = queue;
 	}
 

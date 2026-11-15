@@ -101,6 +101,9 @@ export class AgentRemoteTurnService {
 	/** How often the worker checks that the main still waits for a turn. */
 	static readonly WANTED_CHECK_INTERVAL_MS = 2_000;
 
+	/** How often a process checks again whether it may take over an unclaimed detached turn. */
+	static readonly DETACHED_RECHECK_MS = 5_000;
+
 	/** Requests older than this are left over from a crash. */
 	static readonly STALE_REQUEST_MS = 60 * 60 * 1_000;
 
@@ -170,7 +173,7 @@ export class AgentRemoteTurnService {
 				}
 				if (claimedSeenAt === undefined) {
 					if (await this.requests.isPending(requestId)) {
-						if (Date.now() - sentAt < AgentTurnPlacement.FALLBACK_WAIT_MS) continue;
+						if (!(await this.placement.mayFallBack(sentAt, 'request'))) continue;
 						if (await this.claimHere(requestId)) return false;
 					}
 					claimedSeenAt = Date.now();
@@ -221,11 +224,8 @@ export class AgentRemoteTurnService {
 				if (!state) return this.lost(requestId);
 				if (state.result) return { outcome: 'done', result: state.result };
 				if (state.claimedBy === null) {
-					if (Date.now() - sentAt < AgentTurnPlacement.FALLBACK_WAIT_MS) continue;
-					if (await this.claimHere(requestId)) {
-						this.cluster.metrics.record({ type: 'fallback', path: 'request' });
-						return { outcome: 'local' };
-					}
+					if (!(await this.placement.mayFallBack(sentAt, 'request'))) continue;
+					if (await this.claimHere(requestId)) return { outcome: 'local' };
 					continue;
 				}
 				if (Date.now() - ownerCheckedAt < AgentRemoteTurnService.OWNER_CHECK_INTERVAL_MS) continue;
@@ -262,15 +262,21 @@ export class AgentRemoteTurnService {
 		return true;
 	}
 
+	/** Wait until a worker claims the request, or this process may take it over. */
 	private async fallBackWhenUnclaimed(
 		requestId: string,
 		kind: Kind,
 		fallback: () => Promise<void>,
 	): Promise<void> {
+		const sentAt = Date.now();
 		await sleep(AgentTurnPlacement.FALLBACK_WAIT_MS, undefined, { ref: false });
 		try {
+			// Check the claim first, so that a turn a worker took is not counted as a fallback.
+			while (await this.requests.isPending(requestId)) {
+				if (await this.placement.mayFallBack(sentAt, 'request')) break;
+				await sleep(AgentRemoteTurnService.DETACHED_RECHECK_MS, undefined, { ref: false });
+			}
 			if (!(await this.claimHere(requestId))) return;
-			this.cluster.metrics.record({ type: 'fallback', path: 'request' });
 			await this.requests.remove(requestId).catch(() => {});
 			await fallback();
 		} catch (error) {

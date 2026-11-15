@@ -7,7 +7,8 @@ import { AgentQueueMetrics } from '@/modules/agents/queue/agent-queue-metrics';
 import type { PrometheusMetricsCollector } from './base';
 
 /**
- * Agent turn metrics for queue mode: where turns run, fallbacks to mains,
+ * Agent turn metrics for queue mode: where turns run, fallbacks to mains and
+ * fallbacks held back,
  * dropped cross-process relays, timed-out turns, and the agent turn queue depth.
  */
 @Service()
@@ -37,6 +38,18 @@ export class PrometheusAgentQueueMetricsService implements PrometheusMetricsColl
 			labelNames: ['path'],
 		});
 
+		const turnsHeld = new promClient.Counter({
+			name: `${prefix}agent_turns_held_total`,
+			help: 'Checks in which a main left an agent turn in the queue, by reason: workers-progressing (busy, not stuck), main-at-limit (N8N_AGENTS_MAIN_FALLBACK_TURNS or N8N_AGENTS_MAIN_MAX_TURNS reached) or main-memory-high (above N8N_AGENTS_MAIN_MEMORY_HOLD_LEVEL).',
+			labelNames: ['reason'],
+		});
+
+		const streamsSkipped = new promClient.Counter({
+			name: `${prefix}agent_streams_skipped_total`,
+			help: 'Chat messages that a main accepted without a live stream, because its memory was above N8N_AGENTS_MAIN_MEMORY_HOLD_LEVEL.',
+		});
+		streamsSkipped.inc(0);
+
 		const relaysDropped = new promClient.Counter({
 			name: `${prefix}agent_relays_dropped_total`,
 			help: 'Agent updates or stream events too large to relay between processes.',
@@ -56,6 +69,12 @@ export class PrometheusAgentQueueMetricsService implements PrometheusMetricsColl
 					break;
 				case 'fallback':
 					fallbacks.inc({ path: event.path });
+					break;
+				case 'turn-held':
+					turnsHeld.inc({ reason: event.reason });
+					break;
+				case 'stream-skipped':
+					streamsSkipped.inc();
 					break;
 				case 'relay-dropped':
 					relaysDropped.inc({ channel: event.channel });

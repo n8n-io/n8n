@@ -29,6 +29,7 @@
     "test:community-packages": "playwright test --project='sqlite:e2e' --project='sqlite:infrastructure' community-nodes/node-api-version-guard community-packages/startup-guard",
     "test:benchmark": "playwright test --project='benchmarking:infrastructure'",
     "benchmark:sizing-matrix": "tsx scripts/sizing-matrix-aggregate.ts",
+    "bench:agents": "tsx scripts/agent-bench/run.ts",
     "test:container:sqlite": "playwright test --project='sqlite:*'",
     "test:container:sqlite:e2e": "playwright test --project='sqlite:e2e'",
     "test:container:postgres": "playwright test --project='postgres:*'",

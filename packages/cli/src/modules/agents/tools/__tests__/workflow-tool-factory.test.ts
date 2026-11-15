@@ -175,6 +175,47 @@ describe('executeWorkflow → execution classification', () => {
 		},
 	);
 
+	it.each([
+		[
+			'new',
+			'Execution did not start within 120000ms because it waited in the queue, and was cancelled',
+		],
+		['running', 'Execution timed out after 120000ms and was cancelled'],
+	])('cancels a %s execution at the time limit and says why', async (status, expected) => {
+		vi.useFakeTimers();
+		try {
+			const findSingleExecution = vi.fn().mockResolvedValue({ status });
+			Container.set(ExecutionPersistence, {
+				findSingleExecution,
+			} as unknown as ExecutionPersistence);
+			const stopExecution = vi.fn();
+			const pending = executeWorkflow(
+				workflow,
+				triggerNode,
+				{},
+				{
+					...buildContext(vi.fn().mockResolvedValue('exec-1'), {
+						activeExecutions: mock<ActiveExecutions>({
+							has: () => true,
+							getPostExecutePromise: async () => await new Promise<IRun>(() => {}),
+							stopExecution,
+						}),
+					}),
+				},
+			);
+
+			await vi.advanceTimersByTimeAsync(120_000);
+			const result = await pending;
+
+			expect(result).toMatchObject({ executionId: 'exec-1', status: 'error' });
+			expect(result.error).toBe(expected);
+			expect(findSingleExecution).toHaveBeenCalledWith('exec-1');
+			expect(stopExecution).toHaveBeenCalledOnce();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('does not cancel a workflow after the foreground tool has returned', async () => {
 		const controller = new AbortController();
 		const stop = vi.fn();

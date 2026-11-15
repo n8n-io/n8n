@@ -74,7 +74,11 @@ describe('AgentRemoteTurnService', () => {
 		return new AgentRemoteTurnService(
 			mockLogger(),
 			testCluster({ instanceKey, activeInstanceKeys }),
-			mock<AgentTurnPlacement>({ dispatchEnabled: true, workersAvailable: async () => workers }),
+			mock<AgentTurnPlacement>({
+				dispatchEnabled: true,
+				workersAvailable: async () => workers,
+				mayFallBack: async (sentAt) => Date.now() - sentAt >= AgentTurnPlacement.FALLBACK_WAIT_MS,
+			}),
 			turnQueue,
 			requests,
 			mock<AgentQueuedTestStreamService>(),

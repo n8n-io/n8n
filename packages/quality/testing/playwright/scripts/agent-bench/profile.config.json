@@ -1,0 +1,17 @@
+{
+	"topologies": [
+		{
+			"name": "profile-2w-x40",
+			"workers": 2,
+			"agentQueue": true,
+			"workerConcurrency": 40,
+			"concurrency": 80,
+			"turns": 240,
+			"resourceQuota": { "memory": 1, "cpu": 1 },
+			"workerResourceQuota": { "memory": 1, "cpu": 1 },
+			"env": { "NODE_OPTIONS": "--cpu-prof --cpu-prof-dir=/tmp/prof" }
+		}
+	],
+	"workload": "mixed",
+	"warmup": 2
+}

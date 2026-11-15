@@ -167,6 +167,8 @@ export class AgentMessageQueueConsumer {
 	private async drain(threadId: string): Promise<void> {
 		while (!this.stopped) {
 			if (!(await this.consumeNext(threadId))) return;
+			// A turn ended here, so a turn that this main held may have room now. Workers do not scan.
+			if (this.timer && this.placement.hasHeldTurns) void this.scan();
 		}
 	}
 
@@ -178,7 +180,8 @@ export class AgentMessageQueueConsumer {
 			const claim = await this.chatExecutionService.withTurnLock(threadId, async (signal) => {
 				signal.throwIfAborted();
 
-				const claimed = await this.queue.claimNext(threadId, async (item, thread, ctx) => {
+				let admitted = false;
+				const claimNext = this.queue.claimNext(threadId, async (item, thread, ctx) => {
 					if (this.stopped) return false;
 					// An integration message stores its chat platform as the origin source.
 					const platform =
@@ -188,6 +191,7 @@ export class AgentMessageQueueConsumer {
 					if (!(await this.placement.mayClaim(item.payload.kind, item.createdAt, platform))) {
 						return false;
 					}
+					admitted = true;
 					if (item.payload.kind !== 'integration') return true;
 
 					const source = item.message.origin?.source;
@@ -221,6 +225,10 @@ export class AgentMessageQueueConsumer {
 							);
 
 					return lease !== undefined;
+				});
+				// A claimed turn shows as a running turn from here on. Stop counting the claim itself.
+				const claimed = await claimNext.finally(() => {
+					if (admitted) this.placement.claimSettled();
 				});
 
 				if (!claimed) return null;

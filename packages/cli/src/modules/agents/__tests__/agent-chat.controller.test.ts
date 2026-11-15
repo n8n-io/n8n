@@ -131,7 +131,12 @@ function makeController() {
 		chatExecutionService,
 		messageQueue,
 		agentsConfig,
-		new AgentChatRelayService(messageQueue, previewStreams, agentChatAttachmentService),
+		new AgentChatRelayService(
+			messageQueue,
+			previewStreams,
+			agentChatAttachmentService,
+			mock<AgentTurnPlacement>({ mayOpenStream: () => true }),
+		),
 		plans,
 		new AgentChatResumeService(
 			mock<UserRepository>(),

@@ -1,0 +1,38 @@
+{
+	"topologies": [
+		{
+			"name": "640mb-0.5cpu",
+			"workers": 2,
+			"agentQueue": true,
+			"resourceQuota": { "memory": 0.625, "cpu": 0.5 },
+			"workerResourceQuota": { "memory": 0.625, "cpu": 0.5 }
+		},
+		{
+			"name": "512mb-0.5cpu-heap384",
+			"workers": 2,
+			"agentQueue": true,
+			"resourceQuota": { "memory": 0.5, "cpu": 0.5 },
+			"workerResourceQuota": { "memory": 0.5, "cpu": 0.5 },
+			"env": { "NODE_OPTIONS": "--max-old-space-size=384" }
+		},
+		{
+			"name": "main768-worker512-0.5cpu",
+			"workers": 2,
+			"agentQueue": true,
+			"resourceQuota": { "memory": 0.75, "cpu": 0.5 },
+			"workerResourceQuota": { "memory": 0.5, "cpu": 0.5 }
+		},
+		{
+			"name": "768mb-0.25cpu",
+			"workers": 2,
+			"agentQueue": true,
+			"resourceQuota": { "memory": 0.75, "cpu": 0.25 },
+			"workerResourceQuota": { "memory": 0.75, "cpu": 0.25 }
+		}
+	],
+	"workload": "mixed",
+	"turns": 60,
+	"concurrency": 20,
+	"warmup": 2,
+	"workerConcurrency": 10
+}

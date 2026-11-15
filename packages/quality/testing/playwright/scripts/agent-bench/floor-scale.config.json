@@ -1,0 +1,46 @@
+{
+	"topologies": [
+		{
+			"name": "floor-2w-x20",
+			"workers": 2,
+			"agentQueue": true,
+			"workerConcurrency": 20,
+			"concurrency": 40,
+			"turns": 120,
+			"resourceQuota": { "memory": 0.75, "cpu": 0.5 },
+			"workerResourceQuota": { "memory": 0.5, "cpu": 0.5 }
+		},
+		{
+			"name": "floor-2w-x30",
+			"workers": 2,
+			"agentQueue": true,
+			"workerConcurrency": 30,
+			"concurrency": 60,
+			"turns": 180,
+			"resourceQuota": { "memory": 0.75, "cpu": 0.5 },
+			"workerResourceQuota": { "memory": 0.5, "cpu": 0.5 }
+		},
+		{
+			"name": "floor-2w-x40",
+			"workers": 2,
+			"agentQueue": true,
+			"workerConcurrency": 40,
+			"concurrency": 80,
+			"turns": 240,
+			"resourceQuota": { "memory": 0.75, "cpu": 0.5 },
+			"workerResourceQuota": { "memory": 0.5, "cpu": 0.5 }
+		},
+		{
+			"name": "floor-2w-x60",
+			"workers": 2,
+			"agentQueue": true,
+			"workerConcurrency": 60,
+			"concurrency": 120,
+			"turns": 360,
+			"resourceQuota": { "memory": 0.75, "cpu": 0.5 },
+			"workerResourceQuota": { "memory": 0.5, "cpu": 0.5 }
+		}
+	],
+	"workload": "mixed",
+	"warmup": 2
+}

@@ -31,6 +31,7 @@ test.use({
 const REPLY = 'Agent worker reply.';
 const TOOL_REPLY = 'Tool done.';
 const TOOL_NAME = 'echo_tool';
+const WEBHOOK_REPLY = 'relayed-from-the-tool-workflow';
 
 type Stream = Awaited<ReturnType<ApiHelpers['agents']['openChat']>>;
 
@@ -188,8 +189,25 @@ function toolWorkflow(): Partial<IWorkflowBase> {
 					options: {},
 				},
 			},
+			{
+				// Version 1 does not require a Webhook trigger. The agent adds the
+				// body to the tool result, also when another process ran the workflow.
+				id: 'respond',
+				name: 'Respond',
+				type: 'n8n-nodes-base.respondToWebhook',
+				typeVersion: 1,
+				position: [440, 0],
+				parameters: {
+					respondWith: 'json',
+					responseBody: JSON.stringify({ reply: WEBHOOK_REPLY }),
+					options: {},
+				},
+			},
 		],
-		connections: { Start: { main: [[{ node: 'Echo', type: 'main', index: 0 }]] } },
+		connections: {
+			Start: { main: [[{ node: 'Echo', type: 'main', index: 0 }]] },
+			Echo: { main: [[{ node: 'Respond', type: 'main', index: 0 }]] },
+		},
 		settings: { executionOrder: 'v1' },
 	};
 }
@@ -340,6 +358,13 @@ test.describe(
 					await expect
 						.poll(async () => (await api.workflows.getExecutions(tool.id)).length)
 						.toBe(1);
+					// The worker that ran the turn got the Respond to Webhook body of the
+					// workflow job and passed it to the model in the tool result.
+					const toolResults = (await stack.services.proxy.getReceivedRequests('/v1/messages'))
+						.map((request) => JSON.stringify(request.body))
+						.filter((body) => body.includes('tool_result'));
+					expect(toolResults.length).toBeGreaterThan(0);
+					expect(toolResults.some((body) => body.includes(WEBHOOK_REPLY))).toBe(true);
 					// The suspended turn and its resume both ran on the worker.
 					await expect
 						.poll(async () => (await turns()).map(({ status, ownerKey }) => ({ status, ownerKey })))

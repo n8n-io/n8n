@@ -28,11 +28,19 @@ describe('PrometheusAgentQueueMetricsService', () => {
 		bridge.record({ type: 'fallback', path: 'request' });
 		bridge.record({ type: 'relay-dropped', channel: 'stream' });
 		bridge.record({ type: 'turn-timed-out' });
+		bridge.record({ type: 'turn-held', reason: 'workers-progressing' });
+		bridge.record({ type: 'turn-held', reason: 'main-at-limit' });
+		bridge.record({ type: 'turn-held', reason: 'main-memory-high' });
+		bridge.record({ type: 'stream-skipped' });
 
 		expect(await valueOf('n8n_agent_turns_started_total', { location: 'worker' })).toBe(2);
 		expect(await valueOf('n8n_agent_turn_fallbacks_total', { path: 'request' })).toBe(1);
 		expect(await valueOf('n8n_agent_relays_dropped_total', { channel: 'stream' })).toBe(1);
 		expect(await valueOf('n8n_agent_turns_timed_out_total')).toBe(1);
+		for (const reason of ['workers-progressing', 'main-at-limit', 'main-memory-high']) {
+			expect(await valueOf('n8n_agent_turns_held_total', { reason })).toBe(1);
+		}
+		expect(await valueOf('n8n_agent_streams_skipped_total')).toBe(1);
 	});
 
 	it('reads the gauges at scrape time', async () => {

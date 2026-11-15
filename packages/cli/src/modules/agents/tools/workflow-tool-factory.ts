@@ -402,6 +402,8 @@ export async function executeWorkflow(
 			} catch (error) {
 				clearTimeout(timeoutId);
 				if (error instanceof Error && error.message.includes('timed out')) {
+					// The time limit counts queue time too. Read the status before the stop changes it.
+					const neverStarted = await hasNotStarted(executionId);
 					try {
 						activeExecutions.stopExecution(
 							executionId,
@@ -413,7 +415,9 @@ export async function executeWorkflow(
 					return {
 						executionId,
 						status: 'error',
-						error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
+						error: neverStarted
+							? `Execution did not start within ${timeoutMs}ms because it waited in the queue, and was cancelled`
+							: `Execution timed out after ${timeoutMs}ms and was cancelled`,
 					};
 				}
 				throw error;
@@ -439,6 +443,16 @@ export async function executeWorkflow(
 }
 
 /** The foreground tool owns cancellation until it hands the workflow to a background job. */
+/** A queued execution stays `new` until a worker or a concurrency slot picks it up. */
+async function hasNotStarted(executionId: string): Promise<boolean> {
+	try {
+		const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId);
+		return execution?.status === 'new';
+	} catch {
+		return false;
+	}
+}
+
 async function withWorkflowCancellation<T>(
 	executionId: string,
 	workflowId: string | undefined,

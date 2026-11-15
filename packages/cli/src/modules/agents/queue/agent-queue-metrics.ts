@@ -3,9 +3,22 @@ import { Service } from '@n8n/di';
 /** The kind of process that ran an agent turn. */
 export type AgentTurnLocation = 'main' | 'worker';
 
+/**
+ * Why a main left a queued turn in the queue:
+ * - `workers-progressing`: agent workers still start or finish jobs, so they are busy, not stuck.
+ * - `main-at-limit`: this main already runs `N8N_AGENTS_MAIN_FALLBACK_TURNS` or
+ *   `N8N_AGENTS_MAIN_MAX_TURNS` agent turns.
+ * - `main-memory-high`: the memory of this main is above `N8N_AGENTS_MAIN_MEMORY_HOLD_LEVEL`.
+ */
+export type AgentTurnHoldReason = 'workers-progressing' | 'main-at-limit' | 'main-memory-high';
+
 export type AgentQueueMetricEvent =
 	| { type: 'turn-started'; location: AgentTurnLocation }
 	| { type: 'fallback'; path: 'queued-message' | 'request' }
+	/** A main left a turn in the queue. Counts each check, not each turn. */
+	| { type: 'turn-held'; reason: AgentTurnHoldReason }
+	/** A main accepted a chat message but opened no live stream, because its memory was high. */
+	| { type: 'stream-skipped' }
 	| { type: 'relay-dropped'; channel: 'execution-update' | 'agent-update' | 'stream' }
 	| { type: 'turn-timed-out' };
 

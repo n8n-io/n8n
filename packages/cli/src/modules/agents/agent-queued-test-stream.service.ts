@@ -62,7 +62,10 @@ export class AgentQueuedTestStreamService {
 		this.streamChannel.onPublisherClose(stopRelays);
 		if (!this.cluster.isMain) return;
 		this.streamChannel
-			.subscribe((batch) => this.handleBatch(batch))
+			.subscribe(
+				(batch) => this.handleBatch(batch),
+				(queueId) => this.listeners.has(queueId),
+			)
 			.then(() => this.streamChannel.onSubscriberClose(closeListeners))
 			.catch((error: unknown) => {
 				this.logger.error('Failed to subscribe to the agent stream channel', { error });

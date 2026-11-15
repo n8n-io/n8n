@@ -801,6 +801,9 @@ describe('GlobalConfig', () => {
 			queueModeEnabled: false,
 			workerEnabled: false,
 			workerConcurrency: 5,
+			mainFallbackTurns: 5,
+			mainMaxTurns: 20,
+			mainMemoryHoldLevel: 0.8,
 			turnTimeoutSeconds: 0,
 		},
 	} satisfies GlobalConfigShape;
