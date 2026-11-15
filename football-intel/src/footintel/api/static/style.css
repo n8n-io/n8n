@@ -452,3 +452,69 @@ td.pos { color: var(--accent); } td.neg { color: var(--muted); }
 .results li:first-child { border-top: 0; }
 .results .state { margin-left: 4px; }
 .today-block h3 { font-size: 15px; margin: 18px 0 8px; color: var(--muted); font-weight: 500; }
+
+/* ---- Glass layer (D81). A dark ground with two soft glows, fixed behind the page; panels
+   are translucent with a blur and a thin light edge. The tokens above keep their roles. ---- */
+:root, :root[data-theme="dark"] {
+  --bg: #07090d;
+  --surface: rgba(255, 255, 255, 0.07);
+  --sunk: rgba(255, 255, 255, 0.085);
+  --raised: rgba(255, 255, 255, 0.14);
+  --line: rgba(255, 255, 255, 0.09);
+  --control: rgba(255, 255, 255, 0.24);
+  --glass-edge: rgba(255, 255, 255, 0.11);
+  --glass-shine: rgba(255, 255, 255, 0.09);
+  --glass-bar: rgba(7, 9, 13, 0.62);
+  --glow-a: rgba(198, 242, 78, 0.20);
+  --glow-b: rgba(96, 150, 255, 0.26);
+  --glass-shadow: 0 10px 34px rgba(0, 0, 0, 0.32);
+}
+:root[data-theme="light"] {
+  --bg: #eaeef3;
+  --surface: rgba(255, 255, 255, 0.58);
+  --sunk: rgba(255, 255, 255, 0.78);
+  --raised: rgba(20, 30, 45, 0.10);
+  --line: rgba(20, 30, 45, 0.09);
+  --control: rgba(20, 30, 45, 0.26);
+  --glass-edge: rgba(255, 255, 255, 0.85);
+  --glass-shine: rgba(255, 255, 255, 0.9);
+  --glass-bar: rgba(234, 238, 243, 0.66);
+  --glow-a: rgba(132, 190, 40, 0.20);
+  --glow-b: rgba(96, 150, 255, 0.22);
+  --glass-shadow: 0 10px 30px rgba(30, 45, 70, 0.10);
+}
+body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(60vmax 60vmax at 88% -8%, var(--glow-a), transparent 62%),
+    radial-gradient(70vmax 70vmax at -12% 104%, var(--glow-b), transparent 60%),
+    var(--bg); }
+body { background: var(--bg); }
+.card, .empty, .fixtures, .fi-card {
+  border: 1px solid var(--glass-edge);
+  box-shadow: inset 0 1px 0 var(--glass-shine), var(--glass-shadow);
+  -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%); }
+.sidebar, .topbar { background: var(--glass-bar);
+  -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%); }
+nav a.active { box-shadow: inset 0 1px 0 var(--glass-shine); border: 1px solid var(--glass-edge); }
+nav a { border: 1px solid transparent; }
+.btn { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+.btn.ghost { box-shadow: none; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+h1 { font-size: 26px; letter-spacing: -0.025em; }
+@media (max-width: 900px) {
+  /* A floating pill instead of a full-width bar. */
+  .tabbar { left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); padding: 4px;
+    border: 1px solid var(--glass-edge); border-radius: 999px; background: var(--glass-bar);
+    box-shadow: inset 0 1px 0 var(--glass-shine), var(--glass-shadow);
+    -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%); }
+  .tabbar a { min-height: 48px; border-top: 0; border-radius: 999px; }
+  .tabbar a.active, .tabbar a:hover { background: var(--sunk); border-top-color: transparent; color: var(--text);
+    box-shadow: inset 0 1px 0 var(--glass-shine); }
+  .main-col { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+  .sidebar { background: rgba(7, 9, 13, 0.82); }
+  :root[data-theme="light"] .sidebar { background: rgba(234, 238, 243, 0.88); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .card, .empty, .fixtures, .fi-card, .sidebar, .topbar, .tabbar { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root, :root[data-theme="dark"] { --surface: #12151b; --sunk: #1b1f27; --glass-bar: #07090d; }
+  :root[data-theme="light"] { --surface: #ffffff; --sunk: #f3f5f8; --glass-bar: #eaeef3; }
+}
