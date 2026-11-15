@@ -1,7 +1,37 @@
 import { MessageComponentKey } from '@n8n/chat/constants';
-import { parseBotChatMessageContent, shouldBlockUserInput } from '@n8n/chat/utils';
+import {
+	constructChatWebsocketUrl,
+	parseBotChatMessageContent,
+	shouldBlockUserInput,
+} from '@n8n/chat/utils';
 
 describe('utils', () => {
+	describe('constructChatWebsocketUrl', () => {
+		it('should use the origin when n8n runs at the root path', () => {
+			expect(
+				constructChatWebsocketUrl('https://example.com/webhook/abc/chat', 'exec-1', 'sess-1', true),
+			).toBe('wss://example.com/chat?sessionId=sess-1&executionId=exec-1&isPublic=true');
+		});
+
+		it('should keep the base path when n8n runs under a subpath', () => {
+			expect(
+				constructChatWebsocketUrl(
+					'http://example.com/n8n/webhook-test/abc/chat',
+					'exec-1',
+					'sess-1',
+					false,
+					'token-1',
+				),
+			).toBe('ws://example.com/n8n/chat?sessionId=sess-1&executionId=exec-1&token=token-1');
+		});
+
+		it('should fall back to the origin for an unknown URL shape', () => {
+			expect(
+				constructChatWebsocketUrl('https://example.com/custom', 'exec-1', 'sess-1', false),
+			).toBe('wss://example.com/chat?sessionId=sess-1&executionId=exec-1');
+		});
+	});
+
 	describe('parseBotChatMessageContent', () => {
 		it('should return a string for a non-JSON message', () => {
 			const message = parseBotChatMessageContent('test');

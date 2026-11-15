@@ -8,6 +8,7 @@ import { Network } from 'testcontainers';
 
 import {
 	createElapsedLogger,
+	normalizeStackBasePath,
 	pollContainerHttpEndpoint,
 	waitForContainerLogMessages,
 } from './helpers/utils';
@@ -369,8 +370,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		// When n8n is hosted under a base path, expose it as part of `baseUrl`
 		// so Playwright's `request.newContext({ baseURL })`, page navigations
 		// and helpers all resolve relative paths against the prefixed origin.
-		const basePath = env.N8N_BASE_PATH ?? '';
-		const baseUrl = (lbResult?.meta.baseUrl ?? `http://localhost:${allocatedMainPort}`) + basePath;
+		const basePath = normalizeStackBasePath(env.N8N_BASE_PATH);
+		const baseUrl = lbResult?.meta.baseUrl ?? `http://localhost:${allocatedMainPort}${basePath}`;
 
 		const filesToMount: FileToMount[] = Object.values(serviceResults).flatMap((result) => {
 			const meta = result.meta as { n8nFilesToMount?: FileToMount[] } | undefined;
@@ -442,7 +443,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			try {
 				await pollContainerHttpEndpoint(
 					lbResult.container,
-					'/healthz/readiness',
+					`${basePath}/healthz/readiness`,
 					startupDeadline.remainingMs,
 					startupDeadline.signal,
 				);

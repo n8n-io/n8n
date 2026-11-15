@@ -103,7 +103,7 @@ describe('OidcController', () => {
 			});
 
 			// Verify redirect to home page
-			expect(res.redirect).toHaveBeenCalledWith('/');
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
 		});
 
 		test('Should redirect to the destination stored in the state after login', async () => {
@@ -124,7 +124,7 @@ describe('OidcController', () => {
 
 			await controller.callbackHandler(req, res);
 
-			expect(res.redirect).toHaveBeenCalledWith('/workflow/abc?tab=1');
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/workflow/abc?tab=1');
 		});
 
 		test('Should fall back to the home page when the stored destination is not a local path', async () => {
@@ -145,7 +145,7 @@ describe('OidcController', () => {
 
 			await controller.callbackHandler(req, res);
 
-			expect(res.redirect).toHaveBeenCalledWith('/');
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
 		});
 
 		test('Should handle callback URL with different query parameters', async () => {
@@ -174,7 +174,7 @@ describe('OidcController', () => {
 				'nonce_value',
 			);
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, person, true, req.browserId);
-			expect(res.redirect).toHaveBeenCalledWith('/');
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
 		});
 
 		test('Should not repeat the base path in the callback URL', async () => {
@@ -203,6 +203,29 @@ describe('OidcController', () => {
 				'state_value',
 				'nonce_value',
 			);
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/n8n/');
+		});
+
+		test('Should redirect to the stored destination under the base path', async () => {
+			urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678/n8n');
+			const req = mock<AuthlessRequest>({
+				originalUrl: '/n8n/rest/sso/oidc/callback?code=auth_code&state=state_value',
+				browserId: 'browser-id-123',
+				cookies: {
+					[OIDC_STATE_COOKIE_NAME]: 'state_value',
+					[OIDC_NONCE_COOKIE_NAME]: 'nonce_value',
+				},
+			});
+			const res = mock<Response>();
+			oidcService.verifyState.mockReturnValue({
+				state: 'n8n_state:uuid',
+				redirectUrl: '/home/workflows',
+			});
+			oidcService.loginUser.mockResolvedValueOnce({ user: person });
+
+			await controller.callbackHandler(req, res);
+
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/n8n/home/workflows');
 		});
 
 		test('Should handle callback URL with no query parameters', async () => {
@@ -228,7 +251,7 @@ describe('OidcController', () => {
 				'nonce_value',
 			);
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, person, true, undefined);
-			expect(res.redirect).toHaveBeenCalledWith('/');
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
 		});
 
 		test('Should redirect a failed OIDC login to the sign-in page', async () => {
@@ -404,7 +427,7 @@ describe('OidcController', () => {
 			expect(logger.warn).toHaveBeenCalled();
 			// Login itself must still succeed
 			expect(authService.issueCookie).toHaveBeenCalledWith(res, person, true, req.browserId);
-			expect(res.redirect).toHaveBeenCalledWith('/');
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
 		});
 
 		test('Should still complete login when storing the ID token throws', async () => {
@@ -434,7 +457,7 @@ describe('OidcController', () => {
 				user: person,
 				authenticationMethod: 'oidc',
 			});
-			expect(res.redirect).toHaveBeenCalledWith('/');
+			expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
 		});
 
 		test('Should redirect a login denied by role mapping to the sign-in page', async () => {

@@ -55,9 +55,13 @@ export class ControllerRegistry {
 
 		const router = Router({ mergeParams: true });
 
-		const controllerPath = metadata.registerOnRootPath
-			? this.pathResolvingService.resolveEndpoint(metadata.basePath)
-			: this.pathResolvingService.resolveRestEndpoint(metadata.basePath);
+		// Apps run on their own hostnames, so the main instance base path does not apply to them.
+		const controllerPath =
+			metadata.surface === 'apps'
+				? metadata.basePath
+				: metadata.registerOnRootPath
+					? this.pathResolvingService.resolveEndpoint(metadata.basePath)
+					: this.pathResolvingService.resolveRestEndpoint(metadata.basePath);
 
 		const prefix = controllerPath.replace(/\/+/g, '/').replace(/\/$/, '');
 

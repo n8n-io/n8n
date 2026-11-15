@@ -37,7 +37,11 @@ export function constructChatWebsocketUrl(
 	isPublic: boolean,
 	token?: string,
 ) {
-	const baseUrl = new URL(url).origin;
+	const parsedUrl = new URL(url);
+	// The webhook URL is `<base path>/<webhook endpoint>/<webhook id>/chat`. Keep the base
+	// path, so the socket reaches n8n when it runs under a subpath.
+	const basePath = parsedUrl.pathname.match(/^(.*)\/[^/]+\/[^/]+\/chat\/?$/)?.[1] ?? '';
+	const baseUrl = `${parsedUrl.origin}${basePath}`;
 	const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws';
 	const wsUrl = baseUrl.replace(/^https?/, wsProtocol);
 	let wsFullUrl = `${wsUrl}/chat?sessionId=${sessionId}&executionId=${executionId}`;

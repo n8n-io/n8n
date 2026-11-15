@@ -191,7 +191,9 @@ export class OidcController {
 				authenticationMethod: 'oidc',
 			});
 
-			return res.redirect(validateRedirectUrl(stateInfo.redirectUrl ?? ''));
+			return res.redirect(
+				this.urlService.getInstanceBaseUrl() + validateRedirectUrl(stateInfo.redirectUrl ?? ''),
+			);
 		} catch (error) {
 			if (error instanceof SsoAccessDeniedError) {
 				this.eventService.emit('user-login-failed', {

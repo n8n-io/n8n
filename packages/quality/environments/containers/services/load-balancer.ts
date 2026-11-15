@@ -15,6 +15,7 @@ export interface LoadBalancerConfig {
 
 export interface LoadBalancerMeta {
 	hostPort: number;
+	/** Public URL of the stack, including the n8n base path. */
 	baseUrl: string;
 }
 
@@ -147,7 +148,7 @@ export const loadBalancer: Service<LoadBalancerResult> = {
 				container,
 				meta: {
 					hostPort: actualHostPort,
-					baseUrl: `http://localhost:${actualHostPort}`,
+					baseUrl: `http://localhost:${actualHostPort}${basePath}`,
 				},
 			};
 		} catch (error) {

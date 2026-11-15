@@ -60,7 +60,7 @@ let authService: Mocked<AuthService>;
 let oauthConsentService: Mocked<OAuthConsentService>;
 
 // Shared, immutable across tests: the base URLs gate the first-party client_id guard.
-const urlServiceMock = mock<UrlService>();
+const urlServiceMock = mock<UrlService>({ basePath: '/' });
 
 const activeGrantUser = mock<User>({ disabled: false });
 const grantRepository = mock<OAuthGrantRepository>();
@@ -713,6 +713,61 @@ describe('OAuthServerService', () => {
 				resource: 'https://n8n.example.com/mcp-server/http',
 			});
 			expect(res.redirect).toHaveBeenCalledWith(`/oauth/consent?flow=${FLOW_ID}`);
+		});
+
+		it('should redirect to the consent page under the base path', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read write',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+			const res = mock<Response>();
+			const registry = new ProtectedResourceRegistry(mock<Logger>());
+			registry.register({
+				surface: 'instance-mcp',
+				id: 'instance-mcp',
+				getResourceUrl: () => TEST_RESOURCE_URL,
+				getAudiences: () => [TEST_RESOURCE_URL],
+				scopes: SUPPORTED_SCOPES,
+				isDefault: true,
+				getAllowedRedirectUris: async () => ['https://example.com/callback'],
+				authorize: async () => true,
+			});
+			const basePathService = new OAuthServerService(
+				logger,
+				mockInstance(GlobalConfig),
+				oauthSessionService,
+				oauthClientRepository,
+				tokenService,
+				authorizationCodeService,
+				userConsentRepository,
+				registry,
+				mailer,
+				mock<UrlService>({ basePath: '/n8n' }),
+				mock<EventService>(),
+				authService,
+				oauthConsentService,
+				grantService,
+			);
+
+			await basePathService.authorize(
+				client,
+				{
+					redirectUri: 'https://example.com/callback',
+					codeChallenge: 'challenge-123',
+					state: 'state-xyz',
+					resource: new URL(TEST_RESOURCE_URL),
+				},
+				res,
+			);
+
+			expect(res.redirect).toHaveBeenCalledWith(`/n8n/oauth/consent?flow=${FLOW_ID}`);
 		});
 
 		it('should reject with invalid_target when the named resource is unavailable', async () => {

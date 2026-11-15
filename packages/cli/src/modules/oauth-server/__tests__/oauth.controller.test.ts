@@ -85,6 +85,36 @@ describe('OAuthController', () => {
 		});
 	});
 
+	describe('pathInsertedMetadata', () => {
+		const makeIssuerReq = (issuerPath: string[]): Request =>
+			({ params: { issuerPath } }) as unknown as Request;
+
+		test('returns the metadata when the path matches the issuer path', async () => {
+			const document = { issuer: 'https://n8n.test/n8n', jwks_uri: 'https://n8n.test/n8n/jwks' };
+			localServer.getMetadata.mockResolvedValue(document);
+			const res = makeRes();
+
+			await controller.pathInsertedMetadata(makeIssuerReq(['n8n']), res);
+
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
+			expect(res.json).toHaveBeenCalledWith(document);
+			expect(res.status).not.toHaveBeenCalled();
+		});
+
+		test('returns a JSON 404 for any other issuer path', async () => {
+			localServer.getMetadata.mockResolvedValue({
+				issuer: 'https://n8n.test',
+				jwks_uri: 'https://n8n.test/jwks',
+			});
+			const res = makeRes();
+
+			await controller.pathInsertedMetadata(makeIssuerReq(['mcp', 'some-trigger']), res);
+
+			expect(res.status).toHaveBeenCalledWith(404);
+			expect(res.json).toHaveBeenCalledWith({ message: 'Unknown authorization server' });
+		});
+	});
+
 	describe('protectedResourceMetadata', () => {
 		test('resolves the registry with the reconstructed leading-slash path', async () => {
 			registry.getByResourcePath.mockResolvedValue(resource(['tool:listWorkflows']));

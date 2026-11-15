@@ -26,6 +26,7 @@ import type { ICredentialsOverwrite } from '@/interfaces';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { createContentSecurityPolicyMiddleware } from '@/middlewares/content-security-policy';
+import { createWellKnownBasePathMiddleware } from '@/middlewares/well-known-base-path';
 import { loadPublicApiVersions } from '@/public-api';
 import { Push } from '@/push';
 import * as ResponseHelper from '@/response-helper';
@@ -237,19 +238,6 @@ export class Server extends AbstractServer {
 			next();
 		});
 
-		// ----------------------------------------
-		// Public API
-		// ----------------------------------------
-
-		const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(
-			this.globalConfig.publicApi.path,
-			basePath,
-		);
-		this.app.use(...apiRouters);
-		if (frontendService) {
-			(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
-		}
-
 		// Installed here on purpose, and the order is the mechanism: `AbstractServer` has
 		// already registered the webhook and form routes, so they never reach this
 		// middleware. Those pages serve HTML that a workflow author wrote, which the
@@ -266,6 +254,19 @@ export class Server extends AbstractServer {
 				),
 			),
 		);
+
+		// ----------------------------------------
+		// Public API
+		// ----------------------------------------
+
+		const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(
+			this.globalConfig.publicApi.path,
+			basePath,
+		);
+		this.app.use(...apiRouters);
+		if (frontendService) {
+			(await frontendService.getSettings()).publicApi.latestVersion = apiLatestVersion;
+		}
 
 		const pushEndpoint = pathResolvingService.resolveRestEndpoint('push');
 		const push = Container.get(Push);
@@ -293,6 +294,8 @@ export class Server extends AbstractServer {
 
 		// Reinitialize the PubSubRegistry
 		Container.get(PubSubRegistry).init();
+
+		app.use(createWellKnownBasePathMiddleware(basePath));
 
 		// register all known controllers
 		Container.get(ControllerRegistry).activate(app);
@@ -496,6 +499,7 @@ export class Server extends AbstractServer {
 				'metrics',
 				'e2e',
 				this.globalConfig.endpoints.rest,
+				this.globalConfig.publicApi.path,
 				this.endpointPresetCredentials,
 				// This path may contain `.`, which the route pattern must match literally.
 				escapeRegExp(this.globalConfig.endpoints.agentWebhook),

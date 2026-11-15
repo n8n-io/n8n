@@ -145,6 +145,24 @@ describe('ControllerRegistry', () => {
 			expect(authService.createAuthMiddleware).not.toHaveBeenCalled();
 			expect(read).not.toHaveBeenCalled();
 		});
+
+		it('does not apply the base path to apps controllers', () => {
+			const target = mock<express.Application>();
+			const prefixedPathResolvingService = mock<PathResolvingService>({
+				resolveEndpoint: (path: string) => `/n8n/${path.replace(/^\//, '')}`,
+				resolveRestEndpoint: (path: string) => `/n8n/rest/${path}`,
+			});
+			new ControllerRegistry(
+				license,
+				authService,
+				metadata,
+				lastActiveAtService,
+				new RateLimitService(),
+				prefixedPathResolvingService,
+			).activate(target, { surface: 'apps' });
+
+			expect(target.use.mock.calls.map(([prefix]) => prefix)).toEqual(['/apps-only']);
+		});
 	});
 
 	describe('Body-based keyed rate limiting', () => {
