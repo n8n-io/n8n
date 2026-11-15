@@ -178,6 +178,75 @@ describe('RedisClientService', () => {
 			expect(service.isConnected()).toBe(true);
 		});
 
+		describe('with several clients', () => {
+			const setup = () => {
+				const service = new RedisClientService(logger, globalConfig);
+				service.createClient({ type: 'client(bull)' });
+				service.createClient({ type: 'bclient(bull)' });
+
+				const retryStrategies = [0, 1].map(
+					(i) => mockedRedis.mock.calls[i][0].retryStrategy as () => number,
+				);
+				const handlers = [0, 1].map((i) => {
+					const byEvent = new Map<string, EventHandler>();
+					vi.mocked(mockedRedis.mock.results[i].value.on).mock.calls.forEach(
+						([event, handler]: [string, EventHandler]) => byEvent.set(event, handler),
+					);
+					return byEvent;
+				});
+
+				return { service, retryStrategies, handlers };
+			};
+
+			it('should stay disconnected until every lost client is ready again', () => {
+				const { service, retryStrategies, handlers } = setup();
+
+				retryStrategies[0]();
+				retryStrategies[1]();
+				expect(service.isConnected()).toBe(false);
+
+				handlers[0].get('ready')!();
+				expect(service.isConnected()).toBe(false);
+
+				handlers[1].get('ready')!();
+				expect(service.isConnected()).toBe(true);
+			});
+
+			it('should emit connection-recovered once, when the last lost client is ready again', () => {
+				vi.useFakeTimers();
+				try {
+					const { service, retryStrategies, handlers } = setup();
+					const onRecovered = vi.fn();
+					service.on('connection-recovered', onRecovered);
+
+					retryStrategies[0]();
+					retryStrategies[1]();
+
+					handlers[0].get('ready')!();
+					vi.advanceTimersByTime(1000);
+					expect(onRecovered).not.toHaveBeenCalled();
+
+					handlers[1].get('ready')!();
+					vi.advanceTimersByTime(1000);
+					expect(onRecovered).toHaveBeenCalledTimes(1);
+				} finally {
+					vi.useRealTimers();
+				}
+			});
+
+			it('should stop counting a lost client that emits end', () => {
+				const { service, retryStrategies, handlers } = setup();
+
+				retryStrategies[0]();
+				retryStrategies[1]();
+				handlers[0].get('ready')!();
+				expect(service.isConnected()).toBe(false);
+
+				handlers[1].get('end')!();
+				expect(service.isConnected()).toBe(true);
+			});
+		});
+
 		it("should not reset another client's retry state when one client recovers", () => {
 			const T0 = 1_700_000_000_000;
 			const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(T0);
@@ -251,7 +320,7 @@ describe('RedisClientService', () => {
 			dateNowSpy.mockReturnValue(T0 + 2_000);
 			retryB();
 
-			// A recovers first — flips lostConnection to false.
+			// A recovers first, while B is still lost.
 			dateNowSpy.mockReturnValue(T0 + 3_000);
 			handlersA.get('ready')!();
 
