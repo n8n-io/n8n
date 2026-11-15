@@ -5,7 +5,7 @@ import {
 	ListSkillSourceRepositoriesQueryDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Middleware, Param, Post, Query, RestController } from '@n8n/decorators';
+import { Body, Delete, Get, Middleware, Param, Post, Query, RestController } from '@n8n/decorators';
 import type { NextFunction, Response } from 'express';
 
 import { SkillSourceService } from '../services/skill-source.service';
@@ -85,6 +85,13 @@ export class SkillSourceController {
 	@Get('/')
 	async list(req: AuthenticatedRequest) {
 		return await this.skillSourceService.list(req.user);
+	}
+
+	/** The source's scope decides access. The service checks its delete permission. */
+	@Delete('/:sourceId')
+	async delete(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
+		await this.skillSourceService.delete(req.user, sourceId);
+		return { ok: true };
 	}
 
 	/**

@@ -9,8 +9,9 @@ import type {
 	ICredentialDataDecryptedObject,
 	IHttpRequestOptions,
 	INode,
-	IRequestOptions,
+	LegacyRequestOptions,
 	IWorkflowExecuteAdditionalData,
+	WithRequestTarget,
 	Workflow,
 } from 'n8n-workflow';
 import {
@@ -34,6 +35,7 @@ import {
 	requestOAuth1,
 	requestOAuth2,
 } from './oauth';
+import { toHttpRequestOptions, toLegacyRequestOptions } from './request-target';
 
 /**
  * Whether a failed request earns the generic `preAuthentication` refresh-and-resend. Only the
@@ -60,12 +62,13 @@ function shouldRetryAfterPreAuthentication(
 export async function httpRequestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: IHttpRequestOptions,
+	requestOptions: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions>,
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 ) {
+	requestOptions = toHttpRequestOptions(requestOptions);
 	removeEmptyBody(requestOptions);
 
 	// Cancel this request on execution cancellation
@@ -207,14 +210,14 @@ export async function httpRequestWithAuthentication(
 export async function requestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	// oxlint-disable-next-line typescript/no-deprecated
-	requestOptions: IRequestOptions,
+	requestOptions: LegacyRequestOptions,
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 	itemIndex?: number,
 ) {
+	requestOptions = toLegacyRequestOptions(requestOptions);
 	removeEmptyBody(requestOptions);
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;

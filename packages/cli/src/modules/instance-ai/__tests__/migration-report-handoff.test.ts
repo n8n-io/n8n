@@ -5,7 +5,7 @@ import type {
 import { ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User, WorkflowEntity } from '@n8n/db';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { cleanStoredUserMessage } from '../internal-messages';
 import {

@@ -5,6 +5,7 @@ import {
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
 } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -27,7 +28,6 @@ import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.er
 import { SkillSourceRepository } from '../../database/repositories/skill-source.repository';
 import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
-import { PostHogClient } from '@/posthog';
 
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';

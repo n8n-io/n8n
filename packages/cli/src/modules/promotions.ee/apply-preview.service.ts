@@ -18,6 +18,7 @@ import {
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
 import { entityFilePath } from '@/modules/n8n-packages/io/manifest-entry';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { FolderService } from '@/services/folder.service';
 import {
 	CredentialConflictPolicy,
@@ -60,10 +61,12 @@ export type ApplyPreview = {
  */
 export function applySelectionRequest(
 	user: User,
+	publicApi: PublicApiCaller,
 	confirmDestructiveChanges = false,
 ): ImportSelectionRequest {
 	return {
 		user,
+		publicApi,
 		projectConflictPolicy: ProjectConflictPolicy.Overwrite,
 		// Hard delete, so that the next preview has nothing left to show.
 		overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
@@ -132,7 +135,7 @@ export class ApplyPreviewService {
 		const onBranch = inventory.projects.some(({ id }) => id === projectId);
 		const plan = onBranch
 			? await this.packagesService.planPackageSelection(
-					applySelectionRequest(user),
+					applySelectionRequest(user, false),
 					reader,
 					selection,
 					'check',

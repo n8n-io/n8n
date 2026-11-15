@@ -6,19 +6,25 @@ import type {
 	JsonObject,
 	IHttpRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	RequestUrl,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 import { getGoogleAccessToken } from '../../../GenericFunctions';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject | string | Buffer = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	uri?: RequestUrl,
+	option: Omit<Partial<IHttpRequestOptions>, 'url' | 'baseURL'> & {
+		url?: never;
+		baseURL?: never;
+	} = {},
 ) {
 	const authenticationMethod = this.getNodeParameter(
 		'authentication',
@@ -26,14 +32,14 @@ export async function googleApiRequest(
 		'serviceAccount',
 	) as string;
 
-	let options: IHttpRequestOptions = {
+	let options: WithRequestTarget<IHttpRequestOptions> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		body,
 		qs,
-		url: uri || `https://www.googleapis.com${resource}`,
+		url: uri ?? requestUrl`https://www.googleapis.com${resource}`,
 		json: true,
 	};
 
@@ -70,7 +76,7 @@ export async function googleApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
 	propertyName: string,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {

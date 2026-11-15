@@ -13,11 +13,12 @@ import type {
 } from '@n8n/db';
 import { Person, WorkflowEntity } from '@n8n/db';
 import type { PolicyCleared } from '@n8n/decorators';
+import type { SecurityContext } from '@n8n/permissions';
 import type { INode } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@n8n/backend-services';
+import type { CredentialsFinderService, EventService } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
 import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';
@@ -57,6 +58,7 @@ describe('WorkflowCreationService', () => {
 	let instanceRedactionEnforcementServiceMock: MockProxy<InstanceRedactionEnforcementService>;
 	let workflowHistoryServiceMock: MockProxy<WorkflowHistoryService>;
 	let externalHooksMock: MockProxy<ExternalHooks>;
+	let eventServiceMock: MockProxy<EventService>;
 	let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
 	let workflowHookContextServiceMock: MockProxy<WorkflowHookContextService>;
 	let mcpSettingsService: MockProxy<McpSettingsService>;
@@ -81,6 +83,7 @@ describe('WorkflowCreationService', () => {
 		instanceRedactionEnforcementServiceMock = mock<InstanceRedactionEnforcementService>();
 		workflowHistoryServiceMock = mock<WorkflowHistoryService>();
 		externalHooksMock = mock<ExternalHooks>();
+		eventServiceMock = mock<EventService>();
 		workflowFinderServiceMock = mock<WorkflowFinderService>();
 		workflowHookContextServiceMock = mock<WorkflowHookContextService>();
 		workflowValidationServiceMock.validateCredentialNodeRestrictions.mockReturnValue({
@@ -119,7 +122,7 @@ describe('WorkflowCreationService', () => {
 			workflowHistoryServiceMock,
 			externalHooksMock, // externalHooks
 			projectServiceMock,
-			mock(), // eventService
+			eventServiceMock,
 			mock(), // globalConfig
 			workflowFinderServiceMock, // workflowFinderService
 			licenseStateMock,
@@ -251,7 +254,7 @@ describe('WorkflowCreationService', () => {
 	}
 
 	describe('createWorkflow()', () => {
-		it.each([false, true])(
+		it.each([false, 'other'] as const)(
 			'rechecks project access in the workflow transaction with publicApi=%s',
 			async (publicApi) => {
 				const user = mock<User>();
@@ -625,6 +628,52 @@ describe('WorkflowCreationService', () => {
 					workflowHookContextServiceMock,
 					expectedActor,
 				]);
+			});
+		});
+
+		describe('login id on the created event', () => {
+			const arrangeSuccessfulCreate = () => {
+				licenseStateMock.isSharingLicensed.mockReturnValue(false);
+				licenseStateMock.isDataRedactionLicensed.mockReturnValue(false);
+				projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+				const { transactionManager } = setupTransactionMocks();
+				transactionManager.save.mockImplementation(async (entity: unknown) => entity);
+				workflowRepositoryMock.createContent.mockImplementation(async (workflow) => workflow);
+				workflowHistoryServiceMock.saveVersion.mockResolvedValue(undefined as never);
+				workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(new WorkflowEntity());
+
+				const newWorkflow = new WorkflowEntity();
+				newWorkflow.name = 'Test';
+				newWorkflow.nodes = [];
+				newWorkflow.connections = {};
+				return newWorkflow;
+			};
+
+			it('passes the login id to the workflow-created event', async () => {
+				const newWorkflow = arrangeSuccessfulCreate();
+
+				await workflowCreationService.createWorkflow(
+					mock<User>(),
+					newWorkflow,
+					{ projectId: 'project-1' },
+					{ security: mock<SecurityContext>({ subIdentityId: 'login-1' }) },
+				);
+
+				expect(eventServiceMock.emit).toHaveBeenCalledWith(
+					'workflow-created',
+					expect.objectContaining({ loginId: 'login-1' }),
+				);
+			});
+
+			it('emits no login id without a context', async () => {
+				const newWorkflow = arrangeSuccessfulCreate();
+
+				await workflowCreationService.createWorkflow(mock<User>(), newWorkflow, {
+					projectId: 'project-1',
+				});
+
+				const call = eventServiceMock.emit.mock.calls.find(([name]) => name === 'workflow-created');
+				expect(call?.[1]).toMatchObject({ loginId: undefined });
 			});
 		});
 	});
@@ -1148,7 +1197,7 @@ describe('WorkflowCreationService', () => {
 			await expect(
 				workflowCreationService.createWorkflow(user, newWorkflow, {
 					projectId: 'other-project',
-					publicApi: true,
+					publicApi: 'other',
 				}),
 			).rejects.toBeInstanceOf(ForbiddenError);
 		});

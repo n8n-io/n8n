@@ -5,21 +5,60 @@ import {
 	type AppBindingWarning,
 	type AppBindingsResponse,
 	type AppDescribedBinding,
+	type AppPublishPreviewResource,
+	type AppPublishPreviewResponse,
 	type AppRuntimeBinding,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError, UnprocessableRequestError } from '@n8n/errors';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 
-import { AppAgentPort, AppDataTablePort, AppWorkflowPort } from './app-binding-ports';
+import {
+	AppAgentPort,
+	AppDataTablePort,
+	AppWorkflowPort,
+	type AppPublishPort,
+	type AppPublishState,
+} from './app-binding-ports';
 import { renderBindingTypes } from './app-binding-types';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
 import type { AppVersion } from '../versions/app-version.entity';
 import { AppVersionRepository } from '../versions/app-version.repository';
 import { AppChangeService } from '../versions/app-change.service';
+
+type AppPublishBinding = Extract<AppBinding, { kind: 'workflow' | 'agent' }>;
+
+type PublishTarget = {
+	canPublish(user: User, projectId: string): Promise<boolean>;
+	getPublishState(projectId: string): Promise<AppPublishState | null>;
+	publish(user: User, projectId: string): Promise<void>;
+};
+
+type PublishEntry = { target: PublishTarget; resource: AppPublishPreviewResource };
+
+function toPublishTarget<B extends AppPublishBinding>(
+	port: AppPublishPort<B>,
+	binding: B,
+): PublishTarget {
+	return {
+		canPublish: async (user, projectId) => await port.canPublish(user, projectId, binding),
+		getPublishState: async (projectId) => await port.getPublishState(projectId, binding),
+		publish: async (user, projectId) => await port.publish(user, projectId, binding),
+	};
+}
+
+const PUBLISH_KIND_ORDER: Record<AppPublishBinding['kind'], number> = { workflow: 0, agent: 1 };
+
+function compareByKindAndName(a: PublishEntry, b: PublishEntry) {
+	return (
+		PUBLISH_KIND_ORDER[a.resource.kind] - PUBLISH_KIND_ORDER[b.resource.kind] ||
+		a.resource.name.localeCompare(b.resource.name)
+	);
+}
 
 export function toRuntimeBinding(binding: AppBinding): AppRuntimeBinding {
 	if (binding.kind === 'workflow') return { key: binding.key, kind: binding.kind };
@@ -123,10 +162,7 @@ export class AppBindingsService {
 		if (versionId.toLowerCase() === app.draftVersionId?.toLowerCase()) {
 			throw new ConflictError('The current app draft cannot be restored.');
 		}
-		const source = appVersionSchema.shape.id.safeParse(versionId).success
-			? await this.versions.findVersionById(versionId)
-			: null;
-		if (source?.appId !== appId) throw new NotFoundError('App version not found');
+		const source = await this.requireVersion(appId, versionId);
 		for (const binding of source.bindings) {
 			await this.assertCanBind(user, projectId, binding);
 		}
@@ -140,6 +176,36 @@ export class AppBindingsService {
 			versionId: version.id,
 		});
 		return version;
+	}
+
+	async getPublishPreview(
+		user: User,
+		projectId: string,
+		appId: string,
+		versionId: string,
+	): Promise<AppPublishPreviewResponse> {
+		const entries = await this.listPublishResources(user, projectId, appId, versionId);
+		return { resources: entries.map(({ resource }) => resource) };
+	}
+
+	async publishResources(
+		user: User,
+		projectId: string,
+		appId: string,
+		versionId: string,
+	): Promise<void> {
+		const entries = await this.listPublishResources(user, projectId, appId, versionId);
+		const pending = entries.filter(
+			({ resource }) => resource.canPublish && (!resource.published || resource.hasChanges),
+		);
+		for (const { target, resource } of pending) {
+			try {
+				await target.publish(user, projectId);
+			} catch (error) {
+				const reason = scrubSecretsInText(error instanceof Error ? error.message : 'Unknown error');
+				throw new UnprocessableRequestError(`Could not publish "${resource.name}": ${reason}`);
+			}
+		}
 	}
 
 	async getTypes(projectId: string, appId: string): Promise<string> {
@@ -191,6 +257,51 @@ export class AppBindingsService {
 			case 'agent':
 				return await this.agents.describe(projectId, binding);
 		}
+	}
+
+	private async listPublishResources(
+		user: User,
+		projectId: string,
+		appId: string,
+		versionId: string,
+	): Promise<PublishEntry[]> {
+		await this.requireApp(projectId, appId);
+		const version = await this.requireVersion(appId, versionId);
+		const entries: PublishEntry[] = [];
+		for (const binding of version.bindings) {
+			if (binding.kind === 'dataTable') continue;
+			const target = this.publishTarget(binding);
+			const state = await target.getPublishState(projectId);
+			if (!state) continue;
+			entries.push({
+				target,
+				resource: {
+					key: binding.key,
+					kind: binding.kind,
+					resourceId: binding.kind === 'workflow' ? binding.workflowId : binding.agentId,
+					...state,
+					canPublish: await target.canPublish(user, projectId),
+				},
+			});
+		}
+		return entries.sort(compareByKindAndName);
+	}
+
+	private publishTarget(binding: AppPublishBinding): PublishTarget {
+		switch (binding.kind) {
+			case 'workflow':
+				return toPublishTarget(this.workflows, binding);
+			case 'agent':
+				return toPublishTarget(this.agents, binding);
+		}
+	}
+
+	private async requireVersion(appId: string, versionId: string): Promise<AppVersion> {
+		const version = appVersionSchema.shape.id.safeParse(versionId).success
+			? await this.versions.findVersionById(versionId)
+			: null;
+		if (version?.appId !== appId) throw new NotFoundError('App version not found');
+		return version;
 	}
 
 	private async assertCanBind(user: User, projectId: string, binding: AppBinding) {

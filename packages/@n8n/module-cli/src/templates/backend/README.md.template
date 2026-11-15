@@ -11,7 +11,7 @@ pnpm turbo test --filter=@n8n/backend-module-{{name}}
 
 Go through Turbo. It builds this package's workspace dependencies first.
 
-Read `scripts/backend-module/backend-module-guide.md` for the module lifecycle, REST controller,
+Read `docs/backend/how-to/build-a-backend-module.md` for the module lifecycle, REST controller,
 service, repository, entity, configuration, and testing patterns.
 
 ## Import rules

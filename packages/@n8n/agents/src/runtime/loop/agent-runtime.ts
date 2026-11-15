@@ -60,6 +60,10 @@ import { createFilteredLogger } from '../logger';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { sanitizeOffloadedToolResultsForMemory } from '../memory/tool-result-memory';
 import { generateThreadTitle } from '../memory/title-generation';
+import {
+	isEncryptedReasoningRejected,
+	withoutEncryptedReasoning,
+} from '../model/encrypted-reasoning';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import { createModelTokenCounter } from '../model/model-token-counter';
 import { getEffectiveAnthropicCacheTtl, getPromptCacheRetentionMs } from '../model/prompt-cache';
@@ -1217,7 +1221,16 @@ export class AgentRuntime {
 			this.activeSkills?.reportContext();
 			let turn: ModelTurnResult;
 			try {
-				turn = await sink.callModel(modelCallContext);
+				turn = await sink.callModel(modelCallContext).catch(async (error: unknown) => {
+					if (!isEncryptedReasoningRejected(error)) throw error;
+					// The history holds reasoning from another org (for example after a
+					// change from Gateway credits to an own key). Retry once without it.
+					this.assertNotAborted(ctx.abortScope);
+					await this.memory.stripRejectedReasoning(ctx.list, ctx.options);
+					this.updateState({ messageList: ctx.list.serialize() });
+					modelCallContext.messages = withoutEncryptedReasoning(modelCallContext.messages);
+					return await sink.callModel(modelCallContext);
+				});
 			} catch (error) {
 				// A cancellation wins over error classification: an aborted run
 				// must end on the existing cancelled path, not as a guardrail stop.

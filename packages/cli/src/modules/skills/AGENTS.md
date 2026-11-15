@@ -74,7 +74,6 @@ Two checks enforce two rules. The code-health rule `skills-module-boundary` reso
 
 | Allowed import                                    | Used in                                        | Needed before a move to a package                                      |
 | ------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------- |
-| `PostHogClient` (`@/posthog`)                     | `AssistantSkillsFlagGate`, `SkillSyncFlagGate` | A shared package, or a contract that cli implements                    |
 | `Telemetry` (`@/telemetry`)                       | `SkillsTelemetry`                              | A shared package, or a contract that cli implements                    |
 
 These rules keep the module ready to move to `packages/modules/skills/backend`, like `packages/modules/insights/backend`. The ownership transfer manifest (`src/services/ownership-transfer/ownership-transfer.manifest.json`) also holds the path of `skill.entity.ts`.

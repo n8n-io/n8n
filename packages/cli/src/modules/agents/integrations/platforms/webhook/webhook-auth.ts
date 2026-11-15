@@ -19,9 +19,9 @@ const credentialIncomplete = () =>
 	);
 
 /**
- * Checks the caller against the channel credential. The status codes follow
- * the Webhook node. Unlike it, a header value compares in constant time and a
- * JWT credential must use a signing algorithm.
+ * Checks the caller against the channel credential: 401 when the caller sends
+ * no credentials, 403 when they are wrong. Unlike the Webhook node, a header
+ * value compares in constant time and a JWT credential must use a signing algorithm.
  */
 export function authenticateWebhookRequest(
 	headers: Headers,
@@ -37,7 +37,10 @@ function checkHeader(headers: Headers, { name, value }: Record<string, unknown>)
 		throw credentialIncomplete();
 	}
 	const received = headers[name.toLowerCase()];
-	if (typeof received !== 'string' || !safeEqual(received, value)) {
+	if (typeof received !== 'string' || received === '') {
+		throw new WebhookChannelError(401, 'missing_credentials', 'No authorization data provided');
+	}
+	if (!safeEqual(received, value)) {
 		throw new WebhookChannelError(403, 'invalid_credentials', 'Authorization data is wrong');
 	}
 }
