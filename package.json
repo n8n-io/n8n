@@ -81,6 +81,7 @@
     "tsc-watch": "^6.2.0",
     "turbo": "2.5.4",
     "typescript": "*",
+    "zod": "catalog:",
     "zx": "^8.8.5"
   },
   "pnpm": {
@@ -113,7 +114,7 @@
       "date-fns": "2.30.0",
       "date-fns-tz": "2.0.0",
       "flatted": "3.4.2",
-      "nodemailer": "7.0.11",
+      "nodemailer": "10.1.4",
       "validator": "13.15.26",
       "lodash": "4.18.0",
       "body-parser": "2.3.0",
@@ -150,6 +151,7 @@
       "picomatch@<=4.0.4": "4.0.4",
       "nanoid@<3.3.18": "3.3.18",
       "zod": "3.25.67",
+      "ts-ics>zod": "4.6.6",
       "fast-xml-parser": "5.7.2",
       "fast-xml-builder": "1.2.1",
       "strnum": "2.4.2",
