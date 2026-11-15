@@ -141,6 +141,88 @@ export class WebhookChannelService {
 		});
 	}
 
+	/**
+	 * SPIKE (agent-chat-embed): the @n8n/chat protocol for the hosted page and
+	 * the embed. Streams NDJSON `begin`/`item`/`end` chunks. No access control
+	 * beyond "the API channel is published with authentication none".
+	 */
+	async *chat(request: {
+		agentId: string;
+		body: unknown;
+		abortSignal: AbortSignal;
+	}): AsyncGenerator<Record<string, unknown>> {
+		const meta = { nodeId: 'agent', runIndex: 0 };
+		try {
+			const { agent, channel } = await this.findChannel(request.agentId);
+			if (webhookAuthentication(channel) !== 'none') {
+				throw new WebhookChannelError(
+					403,
+					'chat_not_public',
+					'Chat page needs the API channel with authentication none (spike)',
+				);
+			}
+			const body = (request.body ?? {}) as Record<string, unknown>;
+			const sessionId = typeof body.sessionId === 'string' ? body.sessionId : '';
+			const input = typeof body.chatInput === 'string' ? body.chatInput : '';
+			if (!sessionId || !input) {
+				throw new WebhookChannelError(400, 'invalid_request', 'sessionId and chatInput are required');
+			}
+			// ponytail: the client picks the session id, so whoever knows it can read on in the thread.
+			const threadId = `${agent.id}:${WEBHOOK_INTEGRATION_TYPE}:chat:${sessionId}`;
+			const exists = !!(await this.executionService.findThreadById(threadId));
+			if (exists) await this.cancelSuspension(agent.id, threadId);
+			const stream = this.orchestrator.executeForChatPublished({
+				agentId: agent.id,
+				projectId: agent.projectId,
+				message: input,
+				memory: {
+					threadId,
+					resourceId: integrationMemoryResourceId(WEBHOOK_INTEGRATION_TYPE, `chat:${sessionId}`),
+				},
+				integrationType: WEBHOOK_INTEGRATION_TYPE,
+				sessionMode: exists ? 'existing' : 'new',
+				sandboxPrincipalHash: hashAgentSandboxPrincipal({
+					type: 'project-session',
+					projectId: agent.projectId,
+					sessionId: threadId,
+				}),
+				allowBackgroundTasks: false,
+				abortSignal: request.abortSignal,
+			});
+			yield { type: 'begin', metadata: meta };
+			let suspended = false;
+			for await (const chunk of stream) {
+				if (chunk.type === 'error') throw ensureError(chunk.error);
+				if (chunk.type === 'text-delta') yield { type: 'item', content: chunk.delta, metadata: meta };
+				if (chunk.type === 'tool-call-suspended') suspended = true;
+			}
+			if (suspended) {
+				await this.cancelSuspension(agent.id, threadId);
+				yield {
+					type: 'item',
+					content: '\n\n_(The agent wanted to run an action that needs approval. The chat page cannot approve actions yet.)_',
+					metadata: meta,
+				};
+			}
+			yield { type: 'end', metadata: meta };
+		} catch (error) {
+			if (request.abortSignal.aborted) return;
+			const channelError = this.toChannelError(error);
+			yield { type: 'error', content: channelError.message, metadata: meta };
+		}
+	}
+
+	/** SPIKE: name for the hosted page title, or undefined when the chat is not available. */
+	async chatPageInfo(agentId: string) {
+		try {
+			const { agent, channel } = await this.findChannel(agentId);
+			if (webhookAuthentication(channel) !== 'none') return undefined;
+			return { name: agent.name };
+		} catch {
+			return undefined;
+		}
+	}
+
 	/** Resumes the run with the caller's decision on one approval request. */
 	async decide(request: {
 		agentId: string;
