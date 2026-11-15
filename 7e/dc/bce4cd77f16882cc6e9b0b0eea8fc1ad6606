@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/utils/agent-execution/test/hitlToolCallRoundTrip.test.ts
+  s_ea243bd11a1db0::t_aed71ded339577 5,104-138
+packages/@n8n/nodes-langchain/utils/agent-execution/createEngineRequests.ts
+  s_ea243bd11a1db0::t_dfc10196c7e4c5 2,45-58,61-62,72-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7edcbce4cd77f16882cc6e9b0b0eea8fc1ad6606",
+  "prompts": {},
+  "sessions": {
+    "s_ea243bd11a1db0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0511f34-1b43-4a87-aa54-605b6fdea81d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

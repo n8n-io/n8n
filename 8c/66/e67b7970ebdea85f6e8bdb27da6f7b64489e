@@ -1,0 +1,57 @@
+packages/nodes-base/nodes/N8n/v1/N8nV1.node.ts
+  s_b1ad9d5b324814::t_77ccc7de425a38 14
+  s_b1ad9d5b324814::t_a04f8faf0ee26a 42
+packages/cli/src/telemetry/index.ts
+  s_b1ad9d5b324814::t_b30ec767b6a060 571
+packages/nodes-base/nodes/N8n/shared/constants.ts
+  s_b1ad9d5b324814::t_04b3513609cc65 1-4
+packages/nodes-base/nodes/N8n/test/shared/WorkflowLocator.test.ts
+  s_b1ad9d5b324814::t_236089f8596b9e 55
+packages/@n8n/telemetry/src/schemas.ts
+  s_b1ad9d5b324814::t_b616368675c0b1 8,10
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_b1ad9d5b324814::t_be53e2adef109f 1135
+  s_b1ad9d5b324814::t_e167a2a64b90db 1222-1263
+  s_b1ad9d5b324814::t_86de176fbff641 1710
+  s_b1ad9d5b324814::t_698fb2edd15dfc 1209
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_b1ad9d5b324814::t_2c789d1eb938f9 2252-2255
+  s_b1ad9d5b324814::t_c998497ab7a4e9 2020-2041
+  s_b1ad9d5b324814::t_92676566ac725f 2251
+packages/nodes-base/nodes/N8n/shared/GenericFunctions.ts
+  s_b1ad9d5b324814::t_0d917dd86447cd 20-21
+  s_b1ad9d5b324814::t_59b0cec45885d8 50
+packages/@n8n/api-types/src/constants/client.ts
+  s_b1ad9d5b324814::t_a81026763c3d78 4
+packages/@n8n/api-types/src/index.ts
+  s_b1ad9d5b324814::t_d3b381151ad567 1023
+packages/cli/src/public-api/public-api-client.ts
+  s_b1ad9d5b324814::t_0ebf2cf5a1ed7a 18-22,25-28
+  s_b1ad9d5b324814::t_3dc5e1a32635eb 1,4
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_b1ad9d5b324814::t_8ea904eb056549 307-328
+packages/nodes-base/nodes/N8n/test/GenericFunctions.test.ts
+  s_b1ad9d5b324814::t_aa73c7a1323a21 22-35
+packages/nodes-base/nodes/N8n/test/v1/node/N8n.test.ts
+  s_b1ad9d5b324814::t_6ff09e76f7a526 17-19,24,31,36
+  s_b1ad9d5b324814::t_1e79c61b40a8f1 16
+packages/cli/src/public-api/__tests__/public-api-client.test.ts
+  s_b1ad9d5b324814::t_626d6f2e228d01 6,19-22,27-30
+  s_b1ad9d5b324814::t_fcd09b409049cc 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8c66e67b7970ebdea85f6e8bdb27da6f7b64489e",
+  "prompts": {},
+  "sessions": {
+    "s_b1ad9d5b324814": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6dc94c4f-db05-4a13-aafe-751261dfedbf",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

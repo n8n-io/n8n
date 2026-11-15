@@ -1,0 +1,59 @@
+packages/modules/apps/backend/src/bindings/app-binding-ports.ts
+  s_6c2341b8f2ea7f::t_fc5607e5c85d72 79-91,102-105,142,153-156
+packages/modules/apps/frontend/src/components/publish/AppPublishDialog.test.ts
+  s_6c2341b8f2ea7f::t_3f11ef066efd94 272,276-278,284-309
+packages/modules/apps/frontend/src/components/publish/AppPublishResources.vue
+  s_6c2341b8f2ea7f::t_7bb8e80a9dc7c9 27
+packages/cli/src/modules/apps/bindings/__tests__/app-agent.adapter.test.ts
+  s_6c2341b8f2ea7f::t_eb459455042309 140,153,164-174,177,180
+  s_6c2341b8f2ea7f::t_eced53ae930441 141-152
+  s_6c2341b8f2ea7f::t_29c0d56b7cfd07 27-28,156-161
+packages/modules/apps/backend/src/publication/app-publication.service.ts
+  s_6c2341b8f2ea7f::t_c4300023b95736 3,8,25-31,39,46,82-97
+packages/modules/apps/backend/src/bindings/__tests__/app-bindings.service.test.ts
+  s_6c2341b8f2ea7f::t_f32d0148fe8a55 280-282,284,286-289,291-293,299-302,304,329-376,395-396,398,400-401,403,439-440,448-449,458,466-467,489-491,493,495-496,499-500
+  s_6c2341b8f2ea7f::t_7bb8e80a9dc7c9 472,477-481,483,485-486
+  s_6c2341b8f2ea7f::t_c1acc971bd87d7 468,470-471,474
+packages/modules/apps/backend/src/bindings/app-bindings.service.ts
+  s_6c2341b8f2ea7f::t_c4300023b95736 19-25,37,46,201,203,273-275,277,282-283,290,293,295
+  s_6c2341b8f2ea7f::t_7bb8e80a9dc7c9 17,205
+  s_6c2341b8f2ea7f::t_fc5607e5c85d72 35-36,38-45,47-52
+packages/modules/apps/backend/src/publication/__tests__/app-publication.service.test.ts
+  s_6c2341b8f2ea7f::t_eced53ae930441 125-167
+packages/cli/src/modules/apps/bindings/app-workflow.adapter.ts
+  s_6c2341b8f2ea7f::t_e3ce11bd798e45 168,173-179
+packages/modules/apps/backend/src/publication/__tests__/app-publication.controller.test.ts
+  s_6c2341b8f2ea7f::t_eced53ae930441 142,145-147,169-181
+packages/modules/apps/frontend/src/components/publish/AppPublishDialog.vue
+  s_6c2341b8f2ea7f::t_3f11ef066efd94 48,62,72-75,109,174-180
+packages/modules/apps/backend/src/publication/app-publication.controller.ts
+  s_6c2341b8f2ea7f::t_c4300023b95736 66
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6c2341b8f2ea7f::t_3f11ef066efd94 365
+packages/cli/src/modules/apps/bindings/app-agent.adapter.ts
+  s_6c2341b8f2ea7f::t_e3ce11bd798e45 111-112,115-121
+packages/cli/src/modules/apps/bindings/__tests__/app-workflow.adapter.test.ts
+  s_6c2341b8f2ea7f::t_eced53ae930441 356-367
+  s_6c2341b8f2ea7f::t_eb459455042309 355,368,374-377,384-397,401
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b47613089444ad092ab990a28c9a0986f27fbbdb",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6c2341b8f2ea7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95848dd9-6fd9-47d0-92e9-82bbc662db10",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

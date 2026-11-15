@@ -1,0 +1,19 @@
+packages/cli/BREAKING-CHANGES.md
+  s_1281c45e639724::t_61325548804ab8 41-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f6126ef2d4452bb5244b480ef1b89b0f239bd85d",
+  "prompts": {},
+  "sessions": {
+    "s_1281c45e639724": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ef74ca2-bc09-4202-a6fb-0cfb36b86f56",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

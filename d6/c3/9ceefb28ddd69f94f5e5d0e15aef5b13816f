@@ -1,0 +1,24 @@
+packages/@n8n/instance-ai/scripts/build-snapshot.cjs
+  s_939a48207b5108::t_02f2c67643b13a 85-107,110-111,114-116,118-120,122,124-131,136-138,141,175
+  s_939a48207b5108::t_90501e04e7b18a 23,132
+.github/workflows/release-build-daytona-snapshot.yml
+  s_939a48207b5108::t_02f2c67643b13a 12,36
+packages/@n8n/instance-ai/docs/sandboxing.md
+  s_939a48207b5108::t_02f2c67643b13a 156-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6c39ceefb28ddd69f94f5e5d0e15aef5b13816f",
+  "prompts": {},
+  "sessions": {
+    "s_939a48207b5108": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e366ccd96ffeMbZge3MQBa6Tn6",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
