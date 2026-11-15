@@ -1,0 +1,99 @@
+{
+	"name": "Telegram File Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"fileId": "BQACAgIAAxkBAAIBG2Zf-file_id",
+				"download": false
+			},
+			"id": "telegram-0",
+			"name": "File Get",
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [300, 0],
+			"credentials": {
+				"telegramApi": {
+					"id": "1",
+					"name": "Telegram account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "file",
+				"fileId": "BQACAgIAAxkBAAIBG2Zf-file_id",
+				"download": true
+			},
+			"id": "telegram-1",
+			"name": "File Download",
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [300, 150],
+			"credentials": {
+				"telegramApi": {
+					"id": "1",
+					"name": "Telegram account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"File Get": [
+			{
+				"json": {
+					"ok": true,
+					"result": {
+						"file_id": "BQACAgIAAxkBAAIBG2Zf-file_id",
+						"file_unique_id": "AgADuQQAAkW1",
+						"file_size": 9,
+						"file_path": "documents/file_1.pdf"
+					}
+				}
+			}
+		],
+		"File Download": [
+			{
+				"json": {
+					"ok": true,
+					"result": {
+						"file_id": "BQACAgIAAxkBAAIBG2Zf-file_id",
+						"file_unique_id": "AgADuQQAAkW1",
+						"file_size": 9,
+						"file_path": "documents/file_1.pdf"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "File Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "File Download",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

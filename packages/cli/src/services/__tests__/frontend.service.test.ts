@@ -728,6 +728,8 @@ describe('FrontendService', () => {
 				communityNodesEnabled: false,
 				previewMode: false,
 				enterprise: { saml: false, ldap: false, oidc: false },
+				activeModules: [],
+				expressionEngine: 'legacy',
 			};
 
 			const { service } = createMockService();
@@ -758,6 +760,8 @@ describe('FrontendService', () => {
 				communityNodesEnabled: false,
 				previewMode: false,
 				enterprise: { saml: false, ldap: false, oidc: false },
+				activeModules: [],
+				expressionEngine: 'legacy',
 				mfa: {
 					enabled: false,
 					enforced: false,
@@ -768,6 +772,21 @@ describe('FrontendService', () => {
 			const settings = await service.getPublicSettings(true);
 
 			expect(settings).toEqual(expectedPublicSettings);
+		});
+
+		it('should include the active modules and no settings that need a user', async () => {
+			moduleRegistry.getActiveModules.mockReturnValue(['data-table', 'insights']);
+
+			const { service } = createMockService();
+			const publicSettings = await service.getPublicSettings(false);
+
+			expect(publicSettings.activeModules).toEqual(['data-table', 'insights']);
+			expect(publicSettings).not.toHaveProperty('instanceId');
+			expect(publicSettings).not.toHaveProperty('urlBaseWebhook');
+			expect(publicSettings).not.toHaveProperty('telemetry');
+			expect(publicSettings).not.toHaveProperty('mfa');
+
+			moduleRegistry.getActiveModules.mockReturnValue([]);
 		});
 
 		it('should expose configured passwordMinLength in settings', async () => {
@@ -916,6 +935,14 @@ describe('FrontendService', () => {
 			const { service } = createMockService();
 			const settings = await service.getSettings();
 			expect(settings.expressionEngine).toBe('quickjs');
+		});
+
+		it('should surface the engine in the public settings', async () => {
+			globalConfig.expressionEngine.frontendEngine = 'quickjs';
+
+			const { service } = createMockService();
+			const publicSettings = await service.getPublicSettings(false);
+			expect(publicSettings.expressionEngine).toBe('quickjs');
 		});
 	});
 

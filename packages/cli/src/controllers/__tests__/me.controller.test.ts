@@ -4,7 +4,7 @@ import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
-import type { AuthenticatedRequest, User, PublicUser, AuthIdentity } from '@n8n/db';
+import type { AuthenticatedRequest, PublicUser, AuthIdentity } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
 	InvalidAuthTokenRepository,
@@ -320,7 +320,7 @@ describe('MeController', () => {
 		});
 
 		describe('when an auth_identity exists but the SSO provider is no longer active', () => {
-			const setUpdateMocks = (user: User) => {
+			const setUpdateMocks = (user: Person) => {
 				personRepository.findById.mockResolvedValue(user);
 				userService.findUserWithAuthIdentities.mockResolvedValue(user);
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
@@ -673,7 +673,7 @@ describe('MeController', () => {
 					role: GLOBAL_OWNER_ROLE,
 				}),
 				browserId,
-			} as unknown as AuthenticatedRequest;
+			} as unknown as AuthenticatedRequest & { user: Person };
 			const res = mock<Response>();
 			personRepository.save.mockImplementation(async (person) => person);
 			vi.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
@@ -752,7 +752,7 @@ describe('MeController', () => {
 						role: GLOBAL_OWNER_ROLE,
 					}),
 					browserId,
-				} as unknown as AuthenticatedRequest;
+				} as unknown as AuthenticatedRequest & { user: Person };
 				const res = mock<Response>();
 				personRepository.save.mockImplementation(async (person) => person);
 				vi.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');

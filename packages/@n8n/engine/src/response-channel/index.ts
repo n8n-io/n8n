@@ -1,5 +1,5 @@
 export { createResponseEmitter } from './create-response-emitter';
-export { EXECUTION_CHANNEL_TOPICS } from './execution-channel';
+export { EXECUTION_CHANNEL_TOPICS, MAX_FRAME_BYTES } from './execution-channel';
 export type {
 	ExecutionChannelCodec,
 	ExecutionChannelFrameHandler,

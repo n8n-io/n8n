@@ -117,9 +117,6 @@ export class WorkflowsController {
 
 		const savedWorkflowWithMetaData =
 			this.enterpriseWorkflowService.addOwnerAndSharings(savedWorkflow);
-		// @ts-expect-error: This is added as part of addOwnerAndSharings but
-		// shouldn't be returned to the frontend
-		delete savedWorkflowWithMetaData.shared;
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 
@@ -247,10 +244,6 @@ export class WorkflowsController {
 
 			await enterpriseWorkflowService.addCredentialsToWorkflow(workflowWithMetaData, req.user);
 
-			// @ts-expect-error: This is added as part of addOwnerAndSharings but
-			// shouldn't be returned to the frontend
-			delete workflowWithMetaData.shared;
-
 			const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 			const checksum = await calculateWorkflowChecksum(workflow);
 
@@ -284,7 +277,9 @@ export class WorkflowsController {
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 		const checksum = await calculateWorkflowChecksum(workflow);
 
-		return { ...workflow, scopes, checksum };
+		const workflowWithMetaData = this.enterpriseWorkflowService.addOwnerAndSharings(workflow);
+
+		return { ...workflowWithMetaData, scopes, checksum };
 	}
 
 	/**

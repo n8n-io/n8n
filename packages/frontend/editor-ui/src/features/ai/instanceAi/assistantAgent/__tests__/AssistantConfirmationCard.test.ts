@@ -183,6 +183,32 @@ describe('AssistantConfirmationCard', () => {
 		});
 	});
 
+	it('opens the app blueprint again with its field errors when the tool asks again', async () => {
+		const appBlueprint = {
+			name: 'Planner',
+			namespace: 'planner',
+			visibility: 'project' as const,
+			description: 'Plan weekly tasks.',
+			theme: 'both' as const,
+		};
+		const { getByTestId, queryByTestId, rerender } = renderComponent({
+			props: { input: { requestId: 'req-app-1', message: 'Review', appBlueprint } },
+		});
+		expect(queryByTestId('instance-ai-app-blueprint-namespace-error')).not.toBeInTheDocument();
+
+		await rerender({
+			input: {
+				requestId: 'req-app-2',
+				message: 'Review',
+				appBlueprint: { ...appBlueprint, namespace: 'taken-planner' },
+				appBlueprintErrors: { namespace: 'taken' },
+			},
+		});
+
+		expect(getByTestId('instance-ai-app-blueprint-namespace')).toHaveValue('taken-planner');
+		expect(getByTestId('instance-ai-app-blueprint-namespace-error')).toBeVisible();
+	});
+
 	it('submits the typed answer of a text card', async () => {
 		const { getByTestId, getByPlaceholderText, emitted } = renderComponent({
 			props: { input: { requestId: 'req-t', message: 'What is the channel?', inputType: 'text' } },

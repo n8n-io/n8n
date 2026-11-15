@@ -358,6 +358,14 @@ export class License implements LicenseProvider {
 		return this.manager?.getConsumerId() ?? 'unknown';
 	}
 
+	isEphemeral() {
+		return this.manager?.isEphemeral() ?? false;
+	}
+
+	getDeviceFingerprint() {
+		return this.manager?.getDeviceFingerprint();
+	}
+
 	/**
 	 * The SDK merges all active entitlements and lets the newest one win, so an add-on that
 	 * started later (such as Registered Community) would otherwise rename a paid plan.

@@ -11,8 +11,8 @@ import {
 	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	// EOF Experiment cleanup
+	ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
-	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
 } from '@/app/constants';
 import {
 	AGENT_BUILDER_EXPERIMENT_COHORT as COHORT,
@@ -22,7 +22,7 @@ import {
 import { nextTick } from 'vue';
 import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { TELEMETRY_EVENT } from '@n8n/telemetry'; // Experiment cleanup (119_surface_assistant_on_workflow_error)
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import type { FeatureFlags } from 'n8n-workflow';
 import postHogInitStub from '../../../public/static/posthog.init.js?raw';
@@ -31,7 +31,6 @@ export const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
 	enabled: true,
 	apiHost: 'host',
 	apiKey: 'key',
-	autocapture: false,
 	disableSessionRecording: true,
 	debug: false,
 	proxy: 'proxy',
@@ -219,6 +218,55 @@ describe('Posthog store', () => {
 
 			posthog.reset();
 			expect(posthog.getFeatureFlagPayload('config-form-url')).toBeUndefined();
+		});
+
+		it('enables autocapture when the server-evaluated flag is on', () => {
+			const posthog = usePostHog();
+			posthog.init({ [ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name]: true });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({
+					autocapture: {
+						element_attribute_ignorelist: expect.arrayContaining([
+							'data-node-name',
+							'title',
+							'alt',
+							'data-value',
+						]),
+					},
+				}),
+			);
+		});
+
+		it('masks the text of captured elements', () => {
+			const posthog = usePostHog();
+			posthog.init({ [ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name]: true });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({ mask_all_text: true }),
+			);
+		});
+
+		it('keeps autocapture off when the flag is off', () => {
+			const posthog = usePostHog();
+			posthog.init({ [ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name]: false });
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({ autocapture: false }),
+			);
+		});
+
+		it('keeps autocapture off when flags are not bootstrapped', () => {
+			const posthog = usePostHog();
+			posthog.init();
+
+			expect(window.posthog?.init).toHaveBeenCalledWith(
+				DEFAULT_POSTHOG_SETTINGS.apiKey,
+				expect.objectContaining({ autocapture: false }),
+			);
 		});
 
 		it('disables client-side flag refetch when flags are bootstrapped', () => {
@@ -656,41 +704,6 @@ describe('Posthog store', () => {
 					});
 				},
 			);
-		});
-		// EOF Experiment cleanup
-
-		// Experiment cleanup (119_surface_assistant_on_workflow_error)
-		describe('cloud-only experiment tracking', () => {
-			const flags = { [SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name]: 'variant' };
-
-			beforeEach(() => {
-				vi.useFakeTimers();
-			});
-
-			afterEach(() => {
-				vi.useRealTimers();
-			});
-
-			it('does not track the experiment on a self-hosted instance', () => {
-				usePostHog().init(flags);
-				vi.advanceTimersByTime(2000);
-
-				expect(useTelemetry().track).not.toHaveBeenCalledWith(
-					TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT,
-					expect.objectContaining({ name: SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name }),
-				);
-			});
-
-			it('tracks the experiment on a cloud instance', () => {
-				setSettings({ deployment: { type: 'cloud' } });
-				usePostHog().init(flags);
-				vi.advanceTimersByTime(2000);
-
-				expect(useTelemetry().track).toHaveBeenCalledWith(
-					TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT,
-					{ name: SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name, variant: 'variant' },
-				);
-			});
 		});
 		// EOF Experiment cleanup
 

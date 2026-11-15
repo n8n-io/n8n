@@ -55,6 +55,11 @@ export type PubSubCommandMap = {
 	'self-healing-failure': {
 		workflowId: string;
 		executionId: string;
+		// Telemetry facts that only the executing process has. Optional for rolling upgrades.
+		workflowVersionId?: string;
+		failedAt?: string;
+		errorType?: string;
+		errorNodeType?: string;
 	};
 	'reload-agents-settings': never;
 
@@ -141,6 +146,8 @@ export type PubSubCommandMap = {
 
 	'relay-execution-lifecycle-event': PushMessage & {
 		pushRef: string;
+		/** Absent when a main or worker of an older version sends the event. */
+		userId?: string;
 		asBinary: boolean;
 	};
 
@@ -443,6 +450,21 @@ export type PubSubCommandMap = {
 	 * updates its own cache synchronously in set().
 	 */
 	'redaction-floor-changed': never;
+
+	// #endregion
+
+	// #region Promotions
+
+	/**
+	 * Not a self-send command: the main that handled the request already reacted.
+	 * Delete and update messages check the stored state before cleanup. Disconnect
+	 * messages always reset the checkout.
+	 */
+	'promotion-environment-changed': {
+		environmentIds: string[];
+		/** `updated` also covers a provider host URL change, because it changes the remote of each environment. */
+		change: 'deleted' | 'updated' | 'checkout-disconnected';
+	};
 
 	// #endregion
 

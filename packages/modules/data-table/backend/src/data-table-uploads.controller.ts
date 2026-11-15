@@ -4,7 +4,9 @@ import multer from 'multer';
 
 import { BadRequestError } from '@n8n/errors';
 
-import { CsvParserService } from './csv-parser.service';
+import { CsvParserService, type CsvMetadata } from './csv-parser.service';
+import { DataTableFileCleanupService } from './data-table-file-cleanup.service';
+import { FileUploadError } from './errors/data-table-file-upload.error';
 import { MulterUploadMiddleware } from './multer-upload-middleware';
 import { AuthenticatedRequestWithFile, hasStringProperty } from './types';
 
@@ -12,7 +14,10 @@ const uploadMiddleware = Container.get(MulterUploadMiddleware);
 
 @RestController('/data-tables/uploads')
 export class DataTableUploadsController {
-	constructor(private readonly csvParserService: CsvParserService) {}
+	constructor(
+		private readonly csvParserService: CsvParserService,
+		private readonly fileCleanupService: DataTableFileCleanupService,
+	) {}
 
 	@Post('/', {
 		middlewares: [uploadMiddleware.single('file')],
@@ -37,7 +42,17 @@ export class DataTableUploadsController {
 		const hasHeaders =
 			hasStringProperty(req.body, 'hasHeaders') && req.body.hasHeaders === 'false' ? false : true;
 
-		const metadata = await this.csvParserService.parseFile(req.file.filename, hasHeaders);
+		let metadata: CsvMetadata;
+		try {
+			metadata = await this.csvParserService.parseFile(req.file.filename, hasHeaders);
+		} catch (error) {
+			await this.fileCleanupService.deleteFile(req.file.filename);
+			if (error instanceof FileUploadError) {
+				throw new BadRequestError(error.message);
+			}
+
+			throw error;
+		}
 
 		return {
 			originalName: req.file.originalname,

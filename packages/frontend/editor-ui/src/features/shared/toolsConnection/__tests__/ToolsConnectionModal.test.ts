@@ -778,14 +778,25 @@ describe('ToolsConnectionModal', () => {
 		});
 	});
 
-	it('feeds every flattened row through to the scroller', async () => {
+	it('feeds every flattened row through to the scroller', () => {
 		const items = makeLargeMcpList(300);
-		const { getAllByTestId } = renderWith({ items, categories: ['mcp'] });
-
-		await waitFor(() => {
-			const rendered = getAllByTestId('tools-connection-row');
-			expect(rendered.length).toBe(300);
+		const { getAllByTestId } = renderModal({
+			props: { open: true, items, categories: ['mcp'] },
+			pinia: createTestingPinia(),
+			// Check the full list without mounting hundreds of row component trees.
+			global: {
+				stubs: {
+					ToolRow: {
+						props: ['item'],
+						template: '<div data-test-id="tools-connection-row">{{ item.title }}</div>',
+					},
+				},
+			},
 		});
+
+		expect(getAllByTestId('tools-connection-row').map((row) => row.textContent)).toEqual(
+			items.map((item) => item.title),
+		);
 	});
 
 	it('shows a loading screen instead of the list while loading', async () => {

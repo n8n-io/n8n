@@ -72,7 +72,13 @@ export interface DueStep {
 	executionId: string;
 }
 
-/** Persistence interface for step records. */
+/**
+ * Persistence interface for step records.
+ *
+ * Every transition into `queued` or `running` also records when the engine
+ * treats the step as stuck in that status (see `StalenessThresholds`). Every
+ * other transition clears that time.
+ */
 export interface StepStore {
 	/**
 	 * Persist new step records for one execution, batched so planning a fan-out

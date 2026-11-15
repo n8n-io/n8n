@@ -101,6 +101,7 @@ describe('SelfHealingCandidateService', () => {
 		input = {
 			user,
 			baseline: structuredClone(baseline),
+			workflowId: baseline.workflowId,
 			filePath: 'self-healing/candidate.json',
 			abortSignal: new AbortController().signal,
 			context: mock<InstanceAiContext>({
@@ -183,7 +184,7 @@ describe('SelfHealingCandidateService', () => {
 			license.isSharingLicensed.mockReturnValue(true);
 			const edited = structuredClone(baseline.original);
 			edited.nodes[1].parameters = { value: 'edited' };
-			source = JSON.stringify(edited);
+			source = JSON.stringify({ ...edited, id: baseline.workflowId });
 			enterpriseWorkflows.preventTampering.mockImplementationOnce(async (workflow) => {
 				workflow.nodes[1].parameters = {};
 				return workflow;
@@ -321,7 +322,7 @@ describe('SelfHealingCandidateService', () => {
 		workflow.connections['Incoming Order'] = {
 			main: [[{ node: 'Process Order', type: 'main', index: 0 }]],
 		};
-		source = JSON.stringify(workflow);
+		source = JSON.stringify({ ...workflow, id: baseline.workflowId });
 		const inputData = {
 			body: { price: '12' },
 			query: { currency: 'EUR' },

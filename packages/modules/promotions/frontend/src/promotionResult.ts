@@ -65,11 +65,11 @@ const warningNodes = (warning: PromoteWarning, reviewNotRecorded: string) =>
 	);
 
 /**
- * Appends how many workflows and folders an Apply moved within their projects, and how many
- * folders it renamed, so prod does not change without notice. Moved workflows are part of the
- * updated count.
+ * Appends how many folders an Apply created, how many workflows and folders it moved within their
+ * projects, and how many folders it renamed, so prod does not change without notice. Moved
+ * workflows are part of the updated count.
  */
-export function withMoveAndRenameNote(
+export function withFolderNotes(
 	i18n: I18nClass,
 	message: string,
 	{ workflows, folders }: AppliedResult['counts'],
@@ -79,7 +79,14 @@ export function withMoveAndRenameNote(
 			adjustToNumber: count,
 			interpolate: { count: String(count) },
 		});
-	const notes = [message];
+	const notes = message ? [message] : [];
+	if (folders.created > 0) {
+		notes.push(
+			i18n.baseText('promotions.applied.created', {
+				interpolate: { folders: folderCount(folders.created) },
+			}),
+		);
+	}
 	if (workflows.moved + folders.moved > 0) {
 		notes.push(
 			i18n.baseText('promotions.applied.moved', {

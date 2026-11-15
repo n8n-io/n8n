@@ -133,4 +133,16 @@ describe('app DTOs', () => {
 			PublishAppDto.safeParse({ versionId, label: 'v1', description: 'a'.repeat(2001) }).success,
 		).toBe(false);
 	});
+
+	it('accepts an optional boolean to publish the attached resources', () => {
+		expect(PublishAppDto.parse({ versionId, label: 'v1' }).publishResources).toBeUndefined();
+		expect(PublishAppDto.parse({ versionId, label: 'v1', publishResources: true })).toEqual({
+			versionId,
+			label: 'v1',
+			publishResources: true,
+		});
+		expect(
+			PublishAppDto.safeParse({ versionId, label: 'v1', publishResources: 'yes' }).success,
+		).toBe(false);
+	});
 });

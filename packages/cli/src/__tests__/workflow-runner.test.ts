@@ -56,6 +56,7 @@ import {
 	WorkflowPreExecute,
 } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
+import { Push } from '@/push';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
@@ -549,17 +550,8 @@ describe('processError', () => {
 			{ executionMode: 'webhook', workflowData: workflow },
 			{ executionId: execution.id, expectedStatus: 'new' },
 		);
-		const claim = vi
-			.spyOn(Container.get(ExecutionCrashService), 'markAsCrashedWithoutCounting')
-			.mockResolvedValue([
-				{
-					id: execution.id,
-					workflowId: workflow.id,
-					mode: 'webhook',
-					startedAt: null,
-					stoppedAt: new Date(),
-				},
-			]);
+		const executionRepository = Container.get(ExecutionRepository);
+		const announce = vi.spyOn(Container.get(ExecutionCrashService), 'announceStalledExecution');
 
 		globalConfig.executions.mode = 'regular';
 		await runner.processError(
@@ -570,7 +562,7 @@ describe('processError', () => {
 			hooks,
 		);
 
-		expect(claim).toHaveBeenCalledExactlyOnceWith(execution.id, 'stall');
+		expect(announce).toHaveBeenCalledExactlyOnceWith(execution.id);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -582,16 +574,45 @@ describe('processError', () => {
 				}),
 			}),
 		);
+
+		// the guarded write transitioned and persisted the execution atomically
+		const stored = await executionRepository.findSingleExecution(execution.id, {});
+		expect(stored?.status).toBe('crashed');
 	});
 
-	test('processError finalizes without running the after hook when a stalled-count error claims nothing', async () => {
+	test('processError still finalizes and runs hooks when the crash announcement fails', async () => {
 		const workflow = await createWorkflow({}, owner);
-		const execution = await createExecution({ status: 'crashed', finished: false }, workflow);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
 		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
-		vi.spyOn(
-			Container.get(ExecutionCrashService),
-			'markAsCrashedWithoutCounting',
-		).mockResolvedValue([]);
+		vi.spyOn(Container.get(ExecutionCrashService), 'announceStalledExecution').mockRejectedValue(
+			new Error('database connection reset'),
+		);
+
+		globalConfig.executions.mode = 'regular';
+		await runner.processError(
+			new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		expect(finalizeExecution).toHaveBeenCalledWith(
+			execution.id,
+			expect.objectContaining({ status: 'crashed' }),
+		);
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+	});
+
+	test('processError finalizes without hooks when the stalled-count claim cannot persist', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+		const executionRepository = Container.get(ExecutionRepository);
+		const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
+		const announce = vi.spyOn(Container.get(ExecutionCrashService), 'announceStalledExecution');
+		vi.spyOn(Container.get(ExecutionPersistence), 'updateExistingExecution').mockRejectedValue(
+			new Error('stored data bundle is unreadable'),
+		);
 
 		globalConfig.executions.mode = 'regular';
 		await runner.processError(
@@ -604,6 +625,32 @@ describe('processError', () => {
 
 		expect(finalizeExecution).toHaveBeenCalledExactlyOnceWith(execution.id);
 		expect(watcher.workflowExecuteAfter).not.toHaveBeenCalled();
+		expect(announce).not.toHaveBeenCalled();
+
+		// the claim rolled back, so the row stays claimable for crash recovery
+		const stored = await executionRepository.findSingleExecution(execution.id, {});
+		expect(stored?.status).toBe('running');
+	});
+
+	test('processError claims an execution that is still new on a stalled-count error', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution({ status: 'new', finished: false }, workflow);
+		const executionRepository = Container.get(ExecutionRepository);
+
+		globalConfig.executions.mode = 'regular';
+		await runner.processError(
+			new MaxStalledCountError(new Error('job stalled more than maxStalledCount')),
+			new Date(),
+			'webhook',
+			execution.id,
+			hooks,
+		);
+
+		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+
+		// `new` is crashable, so the guarded write claims it without a running transition
+		const stored = await executionRepository.findSingleExecution(execution.id, {});
+		expect(stored?.status).toBe('crashed');
 	});
 
 	test('processError leaves a paused execution to the wait tracker on a stalled-count error', async () => {
@@ -689,16 +736,12 @@ describe('processError', () => {
 	});
 
 	test.each(['error', 'crashed'] as const)(
-		'processError fails a stalled-count error without rechecking when the execution is already %s',
+		'processError does not overwrite an execution already %s on a stalled-count error',
 		async (status) => {
 			const workflow = await createWorkflow({}, owner);
-			const execution = await createExecution({ status: 'running', finished: false }, workflow);
+			const execution = await createExecution({ status, finished: false }, workflow);
 			const executionRepository = Container.get(ExecutionRepository);
 			const finalizeExecution = vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution');
-
-			const findSingleExecution = vi
-				.spyOn(executionRepository, 'findSingleExecution')
-				.mockResolvedValue(mock<IExecutionBase>({ status }));
 
 			globalConfig.executions.mode = 'queue';
 			vi.useFakeTimers();
@@ -716,12 +759,11 @@ describe('processError', () => {
 				vi.useRealTimers();
 			}
 
-			expect(findSingleExecution).toHaveBeenCalledTimes(1);
-			expect(finalizeExecution).toHaveBeenCalledWith(
-				execution.id,
-				expect.objectContaining({ status: 'crashed' }),
-			);
-			expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(1);
+			// the guarded write loses to the terminal row, so nothing is persisted
+			expect(finalizeExecution).toHaveBeenCalledExactlyOnceWith(execution.id);
+			expect(watcher.workflowExecuteAfter).not.toHaveBeenCalled();
+			const stored = await executionRepository.findSingleExecution(execution.id, {});
+			expect(stored?.status).toBe(status);
 		},
 	);
 
@@ -1248,6 +1290,42 @@ describe('run', () => {
 		});
 	});
 
+	describe('user of the pushRef', () => {
+		it('binds sendDataToUI to the user of the pushRef', async () => {
+			const push = mockInstance(Push);
+			const activeExecutions = Container.get(ActiveExecutions);
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce({
+				personalCredentialsCount: 0,
+			});
+			vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockReturnValueOnce(
+				new PCancelable(() => mock<IRun>()),
+			);
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+			const data = mock<IWorkflowExecutionDataProcess>({
+				workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
+				executionData: Object.assign(createRunExecutionData({}), { pushRefUserId: undefined }),
+				triggerToStartFrom: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+				pushRef: 'push-ref',
+				pushRefUserId: undefined,
+				userId: 'editor',
+			});
+
+			await runner.run(data);
+			additionalData.sendDataToUI?.('sendConsoleMessage', { message: 'hi' });
+
+			expect(push.send).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'sendConsoleMessage' }),
+				'push-ref',
+				'editor',
+			);
+		});
+	});
+
 	describe('startup failure', () => {
 		it('rejects on startup errors', async () => {
 			const error = new Error('boom');
@@ -1634,6 +1712,30 @@ describe('enqueueExecution', () => {
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
 		expect(addJob).toHaveBeenCalledWith(expect.objectContaining(processData), expect.any(Object));
+	});
+
+	it('enqueues the user of the pushRef with the job', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		vi.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+			executionMode: 'trigger',
+			pushRef: 'push-ref',
+			pushRefUserId: undefined,
+			userId: 'editor',
+		});
+		const error = new Error('stop for test purposes');
+		addJob.mockRejectedValueOnce(error);
+
+		// @ts-expect-error Private method
+		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
+
+		expect(addJob).toHaveBeenCalledWith(
+			expect.objectContaining({ pushRefUserId: 'editor' }),
+			expect.any(Object),
+		);
 	});
 
 	it('excludes the execution from getRunningExecutionIds once enqueued', async () => {

@@ -1,6 +1,6 @@
 import type { LicenseState, Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
-import { InstanceRegistryProxyService } from '@n8n/backend-services';
+import { InstanceRegistryProxyService, type PostHogClient } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { ProjectRelationRepository, ProjectRepository, UserRepository } from '@n8n/db';
@@ -15,11 +15,9 @@ import { z } from 'zod/v4';
 import type { License } from '@/license';
 import { USER_CALLED_MCP_TOOL_EVENT } from '@/modules/mcp/mcp.constants';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
 
 vi.unmock('@/telemetry');
-vi.mock('@/posthog');
 
 const rudderStackConstructor = vi.fn().mockImplementation(function () {
 	return mock<RudderStack>();
@@ -59,8 +57,7 @@ describe('Telemetry', () => {
 	beforeEach(async () => {
 		spyTrack = vi.spyOn(Telemetry.prototype, 'track').mockName('track');
 
-		postHog = new PostHogClient(instanceSettings, mock());
-		await postHog.init();
+		postHog = mock<PostHogClient>();
 
 		telemetry = new Telemetry(
 			mock(),
@@ -102,7 +99,7 @@ describe('Telemetry', () => {
 			initConfig.diagnostics.backendConfig = 'test-key;https://data-plane.test';
 			initTelemetry = new Telemetry(
 				mock(),
-				new PostHogClient(instanceSettings, mock()),
+				mock<PostHogClient>(),
 				mock(),
 				instanceSettings,
 				mock(),
@@ -1479,7 +1476,7 @@ describe('Telemetry', () => {
 			const logger = mock<Logger>();
 			const validationTelemetry = new Telemetry(
 				logger,
-				new PostHogClient(instanceSettings, mock()),
+				mock<PostHogClient>(),
 				mock(),
 				instanceSettings,
 				mock(),
@@ -1512,7 +1509,7 @@ describe('Telemetry', () => {
 			const logger = mock<Logger>();
 			const uninitializedTelemetry = new Telemetry(
 				logger,
-				new PostHogClient(instanceSettings, mock()),
+				mock<PostHogClient>(),
 				mock(),
 				instanceSettings,
 				mock(),
@@ -1542,7 +1539,7 @@ describe('Telemetry', () => {
 				const logger = mock<Logger>();
 				const instance = new Telemetry(
 					logger,
-					new PostHogClient(instanceSettings, mock()),
+					mock<PostHogClient>(),
 					mock(),
 					instanceSettings,
 					mock(),
@@ -1605,7 +1602,7 @@ describe('Telemetry', () => {
 
 			pulseTelemetry = new Telemetry(
 				mock(),
-				new PostHogClient(instanceSettings, mock()),
+				mock<PostHogClient>(),
 				license,
 				instanceSettings,
 				workflowRepository,
@@ -1688,6 +1685,29 @@ describe('Telemetry', () => {
 			telemetry.flushBuffers();
 
 			expect(spyTrack).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('stopTracking', () => {
+		test('should send the buffered events before it drains the queue', async () => {
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				path: '/workflows',
+				method: 'GET',
+				api_version: 'v1',
+				client: 'other',
+			});
+
+			await telemetry.stopTracking();
+
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Public API usage',
+				expect.objectContaining({ user_id: 'user1', total_calls: 1 }),
+			);
+			expect(mockRudderStack.track.mock.invocationCallOrder.at(-1)).toBeLessThan(
+				mockRudderStack.flush.mock.invocationCallOrder.at(-1)!,
+			);
+			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
 		});
 	});
 });

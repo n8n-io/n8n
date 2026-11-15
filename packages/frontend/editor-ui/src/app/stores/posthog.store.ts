@@ -13,9 +13,9 @@ import {
 	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	// EOF Experiment cleanup
+	ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT,
 	EXPERIMENTS_TO_TRACK,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
-	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
 } from '@/app/constants';
 // Experiment cleanup (133_agent_builder_experiment_cohort)
 import {
@@ -23,14 +23,30 @@ import {
 	isAgentBuilderExperiment,
 } from '@/experiments/agentBuilder/enrollment';
 // EOF Experiment cleanup
-// Experiment cleanup (119_surface_assistant_on_workflow_error)
-import { CLOUD_ONLY } from '@/experiments/surfaceAssistantOnWorkflowError/cloudOnly';
-// EOF Experiment cleanup
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 const POSTHOG_GROUP_TYPE_INSTANCE = 'company';
+
+// These attributes can hold sensitive information, such as node names, node parameters or workflow
+// data. Autocapture must not send them.
+// https://docs.n8n.io/privacy-and-security#data-collection-in-self-hosted-n8n
+const AUTOCAPTURE_IGNORED_ATTRIBUTES = [
+	'title',
+	'alt',
+	'aria-label',
+	'data-node-name',
+	'data-source-node-name',
+	'data-target-node-name',
+	'data-action-parameter-node',
+	'data-value',
+	'data-name',
+	'data-path',
+	'data-resourcename',
+	'data-table-name',
+	'data-placeholder',
+];
 
 export type PosthogStore = ReturnType<typeof usePostHog>;
 
@@ -199,15 +215,6 @@ export const usePostHog = defineStore('posthog', () => {
 		)
 			return;
 		// EOF Experiment cleanup
-		// Experiment cleanup (119_surface_assistant_on_workflow_error)
-		if (
-			CLOUD_ONLY &&
-			name === SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name &&
-			!settingsStore.isCloudDeployment
-		) {
-			return;
-		}
-		// EOF Experiment cleanup
 
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		if (name === MCP_DISCOVERY_EXPERIMENT.name && !mcpDiscoveryEligible.value) return;
@@ -293,7 +300,15 @@ export const usePostHog = defineStore('posthog', () => {
 
 		const options: Parameters<typeof window.posthog.init>[1] = {
 			api_host: settingsStore.settings.posthog.proxy,
-			autocapture: config.autocapture,
+			// Needs server-evaluated flags: autocapture is fixed at init, before client-side flags load.
+			autocapture:
+				hasServerFlags && evaluatedFeatureFlags[ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT.name] === true
+					? { element_attribute_ignorelist: AUTOCAPTURE_IGNORED_ATTRIBUTES }
+					: false,
+			// The text of a clicked element can hold sensitive information, such as node names or
+			// parameter values, so we mask it. Add a `data-attr` to any element that analytics needs
+			// to identify. See https://docs.n8n.io/privacy-and-security#data-collection-in-self-hosted-n8n
+			mask_all_text: true,
 			disable_session_recording: config.disableSessionRecording,
 			debug: false, // Enables console logs for debugging reasons
 			session_recording: {

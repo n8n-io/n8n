@@ -2,7 +2,10 @@ operationId: deactivateWorkflow
 tags:
   - Workflow
 summary: Deactivate a workflow
-description: 'Deprecated: use POST /workflows/{id}/unpublish instead. Deactivate a workflow.'
+description: |-
+  Deprecated: use POST /workflows/{id}/unpublish instead. Deactivate a workflow.
+
+  Requires the `workflow:deactivate` API key scope.
 x-required-scope: workflow:deactivate
 deprecated: true
 parameters:

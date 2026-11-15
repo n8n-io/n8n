@@ -105,6 +105,43 @@ export class EngineConfig {
 	controlPlaneBaseUrl: string = '';
 
 	/**
+	 * Path to this process's TLS certificate, in PEM format. The control plane
+	 * and the engine use it as the server certificate and as the client
+	 * certificate. It needs the `serverAuth` and `clientAuth` key usages, and its
+	 * subject alternative name must match the host in the URL the other side
+	 * dials. Set it together with `N8N_ENGINE_TLS_KEY_FILE` and
+	 * `N8N_ENGINE_TLS_CA_FILE`. n8n reads the three files again when they
+	 * change, so a renewed certificate applies to new connections without a
+	 * restart. Mount the directory that holds the files, not single files.
+	 * Kubernetes does not update a Secret mounted with `subPath`, and a Docker
+	 * bind mount of a single file keeps the old file when the host replaces it.
+	 */
+	@Env('N8N_ENGINE_TLS_CERT_FILE')
+	tlsCertFile: string = '';
+
+	/**
+	 * Path to the private key of `N8N_ENGINE_TLS_CERT_FILE`, in PEM format.
+	 */
+	@Env('N8N_ENGINE_TLS_KEY_FILE')
+	tlsKeyFile: string = '';
+
+	/**
+	 * Path to the certificate authority bundle, in PEM format. The control plane
+	 * and the engine accept only a peer whose certificate this authority signed.
+	 */
+	@Env('N8N_ENGINE_TLS_CA_FILE')
+	tlsCaFile: string = '';
+
+	/**
+	 * Whether a control plane in remote mode and the engine can talk over plain
+	 * HTTP. Without the three `N8N_ENGINE_TLS_*` files, both refuse to start
+	 * unless you set this to `true`. Plain HTTP sends tokens and credentials
+	 * unencrypted, so use it only for local development.
+	 */
+	@Env('N8N_ENGINE_TLS_INSECURE_ALLOW_PLAIN_HTTP')
+	tlsInsecureAllowPlainHttp: boolean = false;
+
+	/**
 	 * How long (in ms) the control plane waits for a run to answer before it
 	 * answers the webhook request itself. The response channel is at-most-once,
 	 * so a lost answer must not hold the request open forever. For a streaming

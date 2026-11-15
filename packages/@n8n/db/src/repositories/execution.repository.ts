@@ -41,9 +41,9 @@ import type {
 import {
 	CRASHABLE_EXECUTION_STATUSES,
 	migrateRunExecutionData,
-	UnexpectedError,
 	WAIT_FOR_SUB_EXECUTION,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import {
 	AnnotationTagEntity,
@@ -127,6 +127,7 @@ export type ResumeAttemptClaim =
 
 export interface UpdateExecutionConditions {
 	requireStatus?: ExecutionStatus;
+	requireStatuses?: readonly ExecutionStatus[];
 	requireNotFinished?: boolean;
 	requireNotCanceled?: boolean;
 	/** Also update a soft-deleted execution. */
@@ -486,7 +487,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			expectedAttempts,
 			onTransitioned,
 		}: { expectedAttempts?: number; onTransitioned?: (batch: CrashedExecution[]) => void } = {},
-	): Promise<CrashedExecution[]> {
+	): Promise<boolean> {
 		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 		if (expectedAttempts !== undefined) where.resumeAttempts = expectedAttempts;
 
@@ -494,12 +495,11 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			await this.transitionToCrashed(where, [status]),
 		);
 
-		if (transitioned.length > 0) {
-			onTransitioned?.(transitioned);
-			this.logger.info('Marked executions as `crashed`', { executionIds: [executionId] });
-		}
+		if (transitioned.length === 0) return false;
 
-		return transitioned;
+		onTransitioned?.(transitioned);
+		this.logger.info('Marked executions as `crashed`', { executionIds: [executionId] });
+		return true;
 	}
 
 	/**
@@ -625,10 +625,11 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	 * @param execution - Partial execution data to update
 	 * @param conditions - Optional conditions that must be met for the update to proceed.
 	 *   `requireStatus`: only update if execution has this exact status.
+	 *   `requireStatuses`: only update if execution has one of these statuses.
 	 *   `requireNotFinished`: only update if `finished = false`.
 	 *   `requireNotCanceled`: only update if `status != 'canceled'`.
-	 *   Note: `requireStatus` and `requireNotCanceled` both constrain the `status` column,
-	 *   so combining them is not supported.
+	 *   Note: `requireStatus`, `requireStatuses`, and `requireNotCanceled` all constrain the
+	 *   `status` column, so combining them is not supported.
 	 * @returns true if update succeeded, false if no rows matched (execution not found or conditions not met)
 	 */
 	async updateExistingExecution(
@@ -636,6 +637,14 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		execution: Partial<IExecutionResponse>,
 		conditions?: UpdateExecutionConditions,
 	): Promise<boolean> {
+		const statusConstraintCount =
+			(conditions?.requireStatus !== undefined ? 1 : 0) +
+			(conditions?.requireStatuses !== undefined ? 1 : 0) +
+			(conditions?.requireNotCanceled ? 1 : 0);
+		if (statusConstraintCount > 1) {
+			throw new UnexpectedError('Only one `status` constraint can be applied per update');
+		}
+
 		const {
 			id,
 			data,
@@ -659,6 +668,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
+				if (conditions?.requireStatuses)
+					whereCondition.status = In([...conditions.requireStatuses]);
 				// oxlint-disable-next-line typescript/no-deprecated
 				if (conditions?.requireNotFinished) whereCondition.finished = false;
 				if (conditions?.requireNotCanceled) whereCondition.status = Not('canceled');

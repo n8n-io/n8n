@@ -3,10 +3,8 @@ import type { Message, ScopedMemoryTaskEvent } from '@n8n/agents';
 import {
 	mcpConnectRequestSchema,
 	credentialSetupHintSchema,
-	instanceAiBuildModeSchema,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
-	type InstanceAiBuildMode,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
 	type InstanceAiFileAttachment,
@@ -24,10 +22,11 @@ import {
 	INSTANCE_CONTEXT_SURFACE_DEPTH,
 	type InstanceAiEvalThreadMemoryResponse,
 	type InstanceAiThreadArtifactsContext,
+	TOOL_CATALOG_CALL_TOOL_NAME,
 	resolveBuilderToolName,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { getN8nVersion, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService, Publisher } from '@n8n/backend-services';
 import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
@@ -64,6 +63,7 @@ import {
 	patchThread,
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
+	createThreadApprovalContext,
 	orchestratorAgentId,
 	type ConfirmationData,
 	type DomainAccessTracker,
@@ -96,7 +96,7 @@ import { lazyImport } from '@n8n/utils/lazy-import';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { nanoid } from 'nanoid';
 
-import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { WORKFLOW_SDK_VERSION } from '@/constants';
 import {
 	BadRequestError,
 	ForbiddenError,
@@ -118,7 +118,10 @@ import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-a
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
-import { InstanceAiCreditService } from './instance-ai-credit.service';
+import {
+	InstanceAiCreditService,
+	SELF_HEALING_BILLING_USER_ID,
+} from './instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
@@ -200,7 +203,10 @@ import {
 	type OrchestratorResumeReason,
 } from './tracing';
 import { buildResumeTraceInput } from './tracing/resume-trace-input';
-import { buildSuspensionTraceOutputs } from './tracing/suspension-trace';
+import {
+	buildSuspensionTraceMetadata,
+	buildSuspensionTraceOutputs,
+} from './tracing/suspension-trace';
 import { WorkflowVerificationObligationService } from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
 
@@ -865,12 +871,16 @@ export class InstanceAiService {
 		threadId: string,
 		runId: string,
 		signal: AbortSignal,
+		context: InstanceAiContext | undefined,
 	): Record<string, unknown> {
 		if (this.isRunDebugEnabled()) {
 			this.runDebugBuffer.ensure(runId, threadId);
 		}
+		const approvalContext = context && createThreadApprovalContext(context);
 		return {
 			maxIterations: MAX_STEPS.ORCHESTRATOR,
+			// Lets the SDK approval gate read and save "Always allow" grants of the thread.
+			...(approvalContext ? { approvalContext } : {}),
 			abortSignal: signal,
 			// Recover token usage from raw provider events so a stopped/errored run
 			// is still billed for the tokens consumed before the stop.
@@ -883,7 +893,6 @@ export class InstanceAiService {
 				// sweep can match a crashed run's checkpoint exactly.
 				hostRunId: runId,
 				hostMetadata: {
-					buildMode: this.runState.getBuildMode(threadId) ?? null,
 					promptVersion: this.runState.getPromptVersion(threadId) ?? null,
 				},
 			},
@@ -903,12 +912,16 @@ export class InstanceAiService {
 		agentRunId: string,
 		toolCallId: string,
 		signal: AbortSignal,
+		context: InstanceAiContext | undefined,
 	): Record<string, unknown> {
 		if (this.isRunDebugEnabled()) {
 			this.runDebugBuffer.ensure(runId, threadId);
 		}
+		const approvalContext = context && createThreadApprovalContext(context);
 		return {
 			runId: agentRunId,
+			// Mirrors the stream options: a decision on an SDK approval card can save a grant.
+			...(approvalContext ? { approvalContext } : {}),
 			toolCallId,
 			abortSignal: signal,
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
@@ -919,7 +932,6 @@ export class InstanceAiService {
 				threadId,
 				hostRunId: runId,
 				hostMetadata: {
-					buildMode: this.runState.getBuildMode(threadId) ?? null,
 					promptVersion: this.runState.getPromptVersion(threadId) ?? null,
 				},
 			},
@@ -1075,7 +1087,8 @@ export class InstanceAiService {
 				signal: abortController.signal,
 				sandbox: this.sandboxService,
 				tracing: this.tracing,
-				createProxyRunConfig: async () => await this.createProxyRunConfig(input.user),
+				createProxyRunConfig: async () =>
+					await this.createProxyRunConfig({ id: SELF_HEALING_BILLING_USER_ID }),
 				assertCreditsAvailable: async () => await this.assertAssistantCreditsAvailable(input.user),
 				onActivity: () => this.runState.touchActiveRun(threadId),
 				onFinalizing: () => {
@@ -1135,7 +1148,6 @@ export class InstanceAiService {
 		context?: InstanceAiHandoffContext,
 		timeZone?: string,
 		pushRef?: string,
-		mode?: InstanceAiBuildMode,
 		promptVersion?: string,
 		browserUseAvailable?: boolean,
 		threadArtifacts?: InstanceAiThreadArtifactsContext,
@@ -1164,9 +1176,8 @@ export class InstanceAiService {
 		// whether the client renders the Browser Use + menu entry.
 		this.runState.setBrowserUseAvailable(threadId, browserUseAvailable);
 
-		// A new user message resets selection. Explicit eval modes take precedence;
+		// A new user message resets selection. An explicit pin takes precedence;
 		// otherwise environment creation selects and stores the backend assignment.
-		this.runState.setBuildMode(threadId, mode);
 		this.runState.setPromptVersion(threadId, promptVersion);
 		this.runState.setObserverThresholdTokens(threadId, observerThresholdTokens);
 
@@ -2036,8 +2047,6 @@ export class InstanceAiService {
 			eventBus: this.eventBus,
 			checkpointStore: this.checkpointStore,
 			turnState: {
-				getBuildMode: () => this.runState.getBuildMode(threadId),
-				setBuildMode: (mode) => this.runState.setBuildMode(threadId, mode),
 				getPromptVersion: () => this.runState.getPromptVersion(threadId),
 				setPromptConfiguration: (configuration) =>
 					this.runState.setPromptConfiguration(threadId, configuration),
@@ -2108,8 +2117,11 @@ export class InstanceAiService {
 	): string | undefined {
 		if (!toolName || !suspendPayload) return undefined;
 		// Only setup suspends with `setupRequests`, so a former multi-action call is a setup.
-		if (resolveBuilderToolName(toolName, 'setup') !== WORKFLOW_BUILDER_TOOL_NAMES.SETUP_WORKFLOW)
-			return undefined;
+		// A deferred `setup_workflow` suspends under the tool catalog's `call_tool` name.
+		const isSetupTool =
+			toolName === TOOL_CATALOG_CALL_TOOL_NAME ||
+			resolveBuilderToolName(toolName, 'setup') === WORKFLOW_BUILDER_TOOL_NAMES.SETUP_WORKFLOW;
+		if (!isSetupTool) return undefined;
 		if (!Array.isArray(suspendPayload.setupRequests)) return undefined;
 		return typeof suspendPayload.workflowId === 'string' ? suspendPayload.workflowId : undefined;
 	}
@@ -2555,7 +2567,7 @@ export class InstanceAiService {
 					input: traceInput,
 					metadata: threadProvenance,
 					proxyConfig: proxyRunConfig.tracingProxyConfig,
-					n8nVersion: N8N_VERSION,
+					n8nVersion: getN8nVersion(),
 					workflowSdkVersion: WORKFLOW_SDK_VERSION,
 					browserExtension,
 				});
@@ -2765,7 +2777,13 @@ export class InstanceAiService {
 				tracing,
 			);
 
-			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
+			const streamOptions = this.buildOrchestratorAgentStreamOptions(
+				user,
+				threadId,
+				runId,
+				signal,
+				environment.context,
+			);
 
 			streamReached = true;
 			await this.turnInput.onInputAccepted(environment, turnInputRuntime, turnInput, {
@@ -2941,30 +2959,12 @@ export class InstanceAiService {
 				await this.tracing.finalizeRunTracing(runId, tracing, {
 					status: 'suspended',
 					outputs: suspensionOutputs,
-					metadata: {
-						completion_source: 'orchestrator',
-						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
-						...(result.suspension?.toolCallId
-							? { pending_tool_call_id: result.suspension.toolCallId }
-							: {}),
-						...(result.suspension?.toolName
-							? { pending_tool_name: result.suspension.toolName }
-							: {}),
-					},
+					metadata: buildSuspensionTraceMetadata(result.suspension),
 				});
 				messageTraceFinalization = {
 					status: 'suspended',
 					outputs: suspensionOutputs,
-					metadata: {
-						completion_source: 'orchestrator',
-						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
-						...(result.suspension?.toolCallId
-							? { pending_tool_call_id: result.suspension.toolCallId }
-							: {}),
-						...(result.suspension?.toolName
-							? { pending_tool_name: result.suspension.toolName }
-							: {}),
-					},
+					metadata: buildSuspensionTraceMetadata(result.suspension),
 				};
 				return;
 			}
@@ -3459,9 +3459,7 @@ export class InstanceAiService {
 				state.persistence?.hostMetadata?.instanceContext,
 			);
 			if (storedContext.success) instanceContext = storedContext.data;
-			// Restore before rebuilding the prompt and tools. Older checkpoints use control.
-			const mode = instanceAiBuildModeSchema.safeParse(state.persistence?.hostMetadata?.buildMode);
-			this.runState.setBuildMode(orphan.threadId, mode.success ? mode.data : 'default');
+			// Restore before rebuilding the prompt and tools.
 			const version = state.persistence?.hostMetadata?.promptVersion;
 			this.runState.setPromptVersion(
 				orphan.threadId,
@@ -3874,6 +3872,7 @@ export class InstanceAiService {
 					opts.agentRunId,
 					opts.toolCallId,
 					opts.signal,
+					opts.orchestrationContext?.domainContext,
 				),
 				onResumeClaimed,
 			};
@@ -4039,30 +4038,12 @@ export class InstanceAiService {
 				await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 					status: 'suspended',
 					outputs: suspensionOutputs,
-					metadata: {
-						completion_source: 'orchestrator',
-						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
-						...(result.suspension?.toolCallId
-							? { pending_tool_call_id: result.suspension.toolCallId }
-							: {}),
-						...(result.suspension?.toolName
-							? { pending_tool_name: result.suspension.toolName }
-							: {}),
-					},
+					metadata: buildSuspensionTraceMetadata(result.suspension),
 				});
 				messageTraceFinalization = {
 					status: 'suspended',
 					outputs: suspensionOutputs,
-					metadata: {
-						completion_source: 'orchestrator',
-						...(result.suspension?.requestId ? { request_id: result.suspension.requestId } : {}),
-						...(result.suspension?.toolCallId
-							? { pending_tool_call_id: result.suspension.toolCallId }
-							: {}),
-						...(result.suspension?.toolName
-							? { pending_tool_name: result.suspension.toolName }
-							: {}),
-					},
+					metadata: buildSuspensionTraceMetadata(result.suspension),
 				};
 
 				return;
@@ -5133,7 +5114,7 @@ export class InstanceAiService {
 				},
 				proxyConfig: baseTracing?.proxyConfig,
 				metadata: {
-					n8n_version: N8N_VERSION || undefined,
+					n8n_version: getN8nVersion() || undefined,
 					operation_name: 'thread_title',
 					trigger: 'run_completed',
 				},

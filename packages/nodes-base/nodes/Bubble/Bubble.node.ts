@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { bubbleApiRequest, bubbleApiRequestAllItems, validateJSON } from './GenericFunctions';
 import { objectFields, objectOperations } from './ObjectDescription';
@@ -84,7 +84,13 @@ export class Bubble implements INodeType {
 
 					property.forEach((data) => (body[data.key] = data.value));
 
-					responseData = await bubbleApiRequest.call(this, 'POST', `/obj/${typeName}`, body, {});
+					responseData = await bubbleApiRequest.call(
+						this,
+						'POST',
+						requestPath`/obj/${typeName}`,
+						body,
+						{},
+					);
 				} else if (operation === 'delete') {
 					// ----------------------------------
 					//         object: delete
@@ -94,7 +100,7 @@ export class Bubble implements INodeType {
 					const typeName = typeNameInput.replace(/\s/g, '').toLowerCase();
 					const objectId = this.getNodeParameter('objectId', i) as string;
 
-					const endpoint = `/obj/${typeName}/${objectId}`;
+					const endpoint = requestPath`/obj/${typeName}/${objectId}`;
 					responseData = await bubbleApiRequest.call(this, 'DELETE', endpoint, {}, {});
 					responseData = { success: true };
 				} else if (operation === 'get') {
@@ -106,7 +112,7 @@ export class Bubble implements INodeType {
 					const typeName = typeNameInput.replace(/\s/g, '').toLowerCase();
 					const objectId = this.getNodeParameter('objectId', i) as string;
 
-					const endpoint = `/obj/${typeName}/${objectId}`;
+					const endpoint = requestPath`/obj/${typeName}/${objectId}`;
 					responseData = await bubbleApiRequest.call(this, 'GET', endpoint, {}, {});
 					responseData = responseData.response;
 				} else if (operation === 'getAll') {
@@ -118,7 +124,7 @@ export class Bubble implements INodeType {
 					const typeNameInput = this.getNodeParameter('typeName', i) as string;
 					const typeName = typeNameInput.replace(/\s/g, '').toLowerCase();
 
-					const endpoint = `/obj/${typeName}`;
+					const endpoint = requestPath`/obj/${typeName}`;
 
 					const jsonParameters = this.getNodeParameter('jsonParameters', 0);
 					const options = this.getNodeParameter('options', i);
@@ -159,7 +165,7 @@ export class Bubble implements INodeType {
 					const typeNameInput = this.getNodeParameter('typeName', i) as string;
 					const typeName = typeNameInput.replace(/\s/g, '').toLowerCase();
 					const objectId = this.getNodeParameter('objectId', i) as string;
-					const endpoint = `/obj/${typeName}/${objectId}`;
+					const endpoint = requestPath`/obj/${typeName}/${objectId}`;
 					const { property } = this.getNodeParameter('properties', i) as {
 						property: [{ key: string; value: string }];
 					};
