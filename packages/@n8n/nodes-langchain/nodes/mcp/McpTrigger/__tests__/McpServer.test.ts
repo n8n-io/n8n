@@ -354,6 +354,55 @@ describe('McpServer', () => {
 		});
 	});
 
+	describe('tool call arguments', () => {
+		const sessionId = 'arguments-session';
+
+		type CallToolHandler = (
+			request: { params: { name?: string; arguments?: Record<string, unknown> } },
+			extra: { sessionId?: string; requestId?: string },
+		) => Promise<{ isError?: boolean; content: Array<{ text: string }> }>;
+
+		async function callToolHandlerFor(tool: ReturnType<typeof createMockTool>) {
+			const server = createMockServer();
+			const internals = mcpServer as unknown as {
+				sessionManager: SessionManager;
+				setupHandlers(server: unknown): void;
+			};
+
+			await internals.sessionManager.registerSession(
+				sessionId,
+				server,
+				createMockTransport(sessionId, 'streamableHttp'),
+				[tool],
+			);
+			internals.setupHandlers(server);
+
+			// [0] = ListTools handler, [1] = CallTool handler
+			return server.setRequestHandler.mock.calls[1][1] as unknown as CallToolHandler;
+		}
+
+		it('should run the tool with an empty object when the request has no arguments', async () => {
+			const tool = createMockTool('list_items', { invokeReturn: { items: [] } });
+			const callTool = await callToolHandlerFor(tool);
+
+			const result = await callTool({ params: { name: 'list_items' } }, { sessionId });
+
+			expect(tool.invoke).toHaveBeenCalledWith({});
+			expect(result.isError).toBeUndefined();
+			expect(result.content[0].text).toBe(JSON.stringify({ items: [] }));
+		});
+
+		it('should still reject a request that has no tool name', async () => {
+			const tool = createMockTool('list_items');
+			const callTool = await callToolHandlerFor(tool);
+
+			await expect(callTool({ params: { arguments: {} } }, { sessionId })).rejects.toThrow(
+				'Require a name',
+			);
+			expect(tool.invoke).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('handleDeleteRequest', () => {
 		it('should return 400 when no sessionId provided', async () => {
 			const response = createMockResponse();

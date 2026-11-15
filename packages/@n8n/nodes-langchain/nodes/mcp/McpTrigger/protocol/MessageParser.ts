@@ -60,15 +60,18 @@ export class MessageParser {
 				typeof params === 'object' &&
 				params !== null &&
 				'name' in params &&
-				typeof params.name === 'string' &&
-				'arguments' in params &&
-				typeof params.arguments === 'object' &&
-				params.arguments !== null
+				typeof params.name === 'string'
 			) {
-				return {
-					toolName: params.name,
-					arguments: params.arguments as Record<string, unknown>,
-				};
+				// The MCP specification makes `arguments` optional. A call without it has no arguments.
+				if (!('arguments' in params)) {
+					return { toolName: params.name, arguments: {} };
+				}
+				if (typeof params.arguments === 'object' && params.arguments !== null) {
+					return {
+						toolName: params.name,
+						arguments: params.arguments as Record<string, unknown>,
+					};
+				}
 			}
 		}
 		return undefined;
