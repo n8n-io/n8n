@@ -192,7 +192,7 @@ export async function requestWithAuthenticationPaginated(
 				} else {
 					// If there is no etag, we calculate a hash from the data in the body
 					if (typeof contentBody !== 'string') {
-						contentBody = JSON.stringify(contentBody);
+						contentBody = JSON.stringify(contentBody) ?? '';
 					}
 					hash = crypto.createHash('md5').update(contentBody).digest('base64');
 				}

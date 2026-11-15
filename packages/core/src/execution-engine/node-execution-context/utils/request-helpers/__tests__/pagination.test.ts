@@ -373,4 +373,100 @@ describe('requestWithAuthenticationPaginated', () => {
 			expect(request).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('empty 204 responses', () => {
+		test('handles HTTP 204 No Content with undefined body on the first page', async () => {
+			const paginationOptions = {
+				continue: 'continue',
+				request: { url: 'https://example.com/page' },
+				maxRequests: 'maxRequests',
+				requestInterval: 'requestInterval',
+			} as unknown as PaginationOptions;
+
+			const request = vi.fn().mockResolvedValue({
+				body: undefined,
+				headers: {},
+				statusCode: 204,
+			});
+			const resolveValue = vi.fn((parameterValue, _itemIndex, _runIndex, _executeData, keys) => {
+				if (parameterValue === paginationOptions.request) {
+					return { url: 'https://example.com/page' };
+				}
+				if (parameterValue === paginationOptions.continue) {
+					return Boolean((keys.$response as { body?: unknown })?.body);
+				}
+				return 0;
+			});
+			const ctx = {
+				helpers: { request },
+				getExecutionCancelSignal: () => new AbortController().signal,
+				getNode: () => node,
+			} as unknown as IExecuteFunctions;
+
+			const responses = await requestWithAuthenticationPaginated.call(
+				ctx,
+				{ uri: 'https://example.com' },
+				0,
+				paginationOptions,
+				resolveValue,
+				node,
+			);
+
+			expect(request).toHaveBeenCalledTimes(1);
+			expect(responses).toHaveLength(1);
+			expect(responses[0].statusCode).toBe(204);
+		});
+
+		test('handles HTTP 204 No Content with undefined body after a populated page', async () => {
+			const paginationOptions = {
+				continue: 'continue',
+				request: { url: 'https://example.com/page' },
+				maxRequests: 'maxRequests',
+				requestInterval: 'requestInterval',
+			} as unknown as PaginationOptions;
+
+			const request = vi
+				.fn()
+				.mockResolvedValueOnce({
+					body: { items: [1, 2], next: 'https://example.com/page?cursor=2' },
+					headers: { 'content-length': '0' },
+					statusCode: 200,
+				})
+				.mockResolvedValueOnce({
+					body: undefined,
+					headers: { 'content-length': '0' },
+					statusCode: 204,
+				});
+
+			const resolveValue = vi.fn((parameterValue, _itemIndex, _runIndex, _executeData, keys) => {
+				if (parameterValue === paginationOptions.request) {
+					return { url: 'https://example.com/page' };
+				}
+				if (parameterValue === paginationOptions.continue) {
+					const responseBody = (keys.$response as { body?: { next?: string } })?.body;
+					return Boolean(responseBody?.next);
+				}
+				return 0;
+			});
+			const ctx = {
+				helpers: { request },
+				getExecutionCancelSignal: () => new AbortController().signal,
+				getNode: () => node,
+			} as unknown as IExecuteFunctions;
+
+			const responses = await requestWithAuthenticationPaginated.call(
+				ctx,
+				{ uri: 'https://example.com' },
+				0,
+				paginationOptions,
+				resolveValue,
+				node,
+			);
+
+			expect(request).toHaveBeenCalledTimes(2);
+			expect(responses).toHaveLength(2);
+			expect(responses[0].statusCode).toBe(200);
+			expect(responses[1].statusCode).toBe(204);
+		});
+	});
 });
