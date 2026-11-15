@@ -10,6 +10,8 @@ import path from 'node:path';
 
 import { loadDiscoveryTestCasesWithFiles } from '../../data/discovery';
 import { createStubServices } from '../../harness/stub-services';
+import type { EventOutcome } from '../../types';
+import { runExpectedToolsInvokedCheck } from '../expected-tools-invoked';
 import type { DiscoveryScenario } from '../types';
 
 const SCENARIO_ID = 'config-evals-skill-loading';
@@ -48,4 +50,61 @@ describe(`${SCENARIO_ID} discovery scenario`, () => {
 		);
 		expect(agentWorkflows.map(({ name }) => name)).not.toEqual([]);
 	});
+
+	describe('expected tool invocations', () => {
+		const [{ testCase }] = loadDiscoveryTestCasesWithFiles(SCENARIO_ID);
+		const skillLoad = {
+			toolName: 'load_skill',
+			args: { name: 'workflow-builder', filePath: 'config-evals' },
+		};
+
+		it('passes a run that loads config-evals and does not build a workflow', () => {
+			const result = runExpectedToolsInvokedCheck(
+				testCase,
+				makeOutcome([skillLoad, { toolName: 'list_workflows' }, { toolName: 'eval-config' }]),
+			);
+			expect(result.pass).toBe(true);
+		});
+
+		it('fails a run that does not load config-evals', () => {
+			const result = runExpectedToolsInvokedCheck(
+				testCase,
+				makeOutcome([
+					{ toolName: 'load_skill', args: { name: 'workflow-builder' } },
+					{ toolName: 'list_workflows' },
+				]),
+			);
+			expect(result.pass).toBe(false);
+		});
+
+		// The workflow builder is the only tool that can add evaluation nodes to the canvas.
+		it.each(['workflow_builder_build_workflow', 'build-workflow'])(
+			'fails a run that calls %s',
+			(toolName) => {
+				const result = runExpectedToolsInvokedCheck(
+					testCase,
+					makeOutcome([skillLoad, { toolName }]),
+				);
+				expect(result.pass).toBe(false);
+			},
+		);
+	});
 });
+
+function makeOutcome(toolCalls: Array<{ toolName: string; args?: Record<string, unknown> }>) {
+	const outcome: EventOutcome = {
+		workflowIds: [],
+		executionIds: [],
+		dataTableIds: [],
+		artifactRefs: [],
+		finalText: '',
+		toolCalls: toolCalls.map(({ toolName, args }, i) => ({
+			toolCallId: `call-${i}`,
+			toolName,
+			args: args ?? {},
+			durationMs: 0,
+		})),
+		agentActivities: [],
+	};
+	return outcome;
+}
