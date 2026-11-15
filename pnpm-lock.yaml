@@ -271,7 +271,7 @@ overrides:
   protobufjs@<=7.6.5: 7.6.5
   multer: 2.3.0
   js-yaml: 4.3.2
-  undici@<=7.29.1: 7.29.1
+  undici@<=7.29.1: 7.30.2
   form-data: 4.0.6
   esbuild: 0.28.1
   tmp: 0.2.7
@@ -1394,8 +1394,8 @@ importers:
         specifier: 3.0.3
         version: 3.0.3
       undici:
-        specifier: 7.29.1
-        version: 7.29.1
+        specifier: 7.30.2
+        version: 7.30.2
       vm2:
         specifier: 'catalog:'
         version: 3.12.2
@@ -1874,8 +1874,8 @@ importers:
         specifier: 1.1.1
         version: 1.1.1
       undici:
-        specifier: 7.29.1
-        version: 7.29.1
+        specifier: ^7.30.2
+        version: 7.30.2
       uuid:
         specifier: 'catalog:'
         version: 11.1.1
@@ -17456,8 +17456,8 @@ packages:
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
-  undici@7.29.1:
-    resolution: {integrity: sha512-RYONW2MeafgYlkVOKYKkA/Ag7BmXqgIWCa8t1m0JcxrQg9pI9lEqRhAOruOBCbAohOa/gkCF+iPi9hrgvTzu6Q==}
+  undici@7.30.2:
+    resolution: {integrity: sha512-mLyPQnHwUxaM/rideoK/+KL8DaAJLRl4aBCfmX444aCSLnIaomqPLtNRe2jdCYcsk5wZzXrDIQC8ZeYNRAYyIA==}
     engines: {node: '>=20.18.1'}
 
   unicode-canonical-property-names-ecmascript@2.0.1:
@@ -22837,7 +22837,7 @@ snapshots:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
       node-rsa: 1.1.1
-      undici: 7.29.1
+      undici: 7.30.2
 
   '@napi-rs/canvas-android-arm64@0.1.70':
     optional: true
@@ -23374,7 +23374,7 @@ snapshots:
     dependencies:
       '@qdrant/openapi-typescript-fetch': 1.2.6
       typescript: 5.9.2
-      undici: 7.29.1
+      undici: 7.30.2
 
   '@qdrant/openapi-typescript-fetch@1.2.6': {}
 
@@ -27352,7 +27352,7 @@ snapshots:
       parse5: 7.3.0
       parse5-htmlparser2-tree-adapter: 7.1.0
       parse5-parser-stream: 7.1.2
-      undici: 7.29.1
+      undici: 7.30.2
       whatwg-mimetype: 4.0.0
 
   chokidar@4.0.3:
@@ -35886,7 +35886,7 @@ snapshots:
       ssh-remote-port-forward: 1.0.4
       tar-fs: 2.1.5
       tmp: 0.2.7
-      undici: 7.29.1
+      undici: 7.30.2
     transitivePeerDependencies:
       - supports-color
 
@@ -36446,7 +36446,7 @@ snapshots:
 
   undici-types@6.21.0: {}
 
-  undici@7.29.1: {}
+  undici@7.30.2: {}
 
   unicode-canonical-property-names-ecmascript@2.0.1: {}
 
