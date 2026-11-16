@@ -1,3 +1,4 @@
+import { redactSecrets } from '@n8n/ai-utilities';
 import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from '@n8n/errors';
 
@@ -53,10 +54,21 @@ export function clientCredentialsTokenRequest(login: OAuth2Login): TokenRequest 
 	};
 }
 
-function refusedToSignIn(text: string, status: number): UserError {
-	const stated = messageFromBody(text.trim());
-	const reason =
-		stated === undefined ? `the login server answered ${status}` : truncateMessage(stated);
+/**
+ * A login server is free to echo what it was sent, so the credential is taken out of
+ * the text by value before anything reads it. The shared pass then covers the
+ * credential-shaped strings this does not know the value of.
+ */
+function withoutTheCredential(text: string, login: OAuth2Login): string {
+	const known = [login.clientSecret, oauth2BasicCredentials(login)].filter(
+		(secret) => secret.length > 0,
+	);
+	return redactSecrets(known.reduce((carried, secret) => carried.split(secret).join('***'), text));
+}
+
+function refusedToSignIn(text: string, status: number, login: OAuth2Login): UserError {
+	const stated = messageFromBody(withoutTheCredential(text.trim(), login));
+	const reason = stated ? truncateMessage(stated) : `the login server answered ${status}`;
 
 	return new UserError(`Could not sign in to the gateway: ${reason}`, {
 		description: 'Check the token URL, client ID, client secret and scope on the credential.',
@@ -108,9 +120,12 @@ function readToken(text: string): CachedToken {
 			description: 'Check that the token URL points at the token endpoint of the login server.',
 		});
 	}
+	// Half the lifetime at most, or a token that lives for 30 seconds is expired
+	// the moment it arrives and every request mints another one.
+	const lifetime = lifetimeSeconds(parsed) * 1000;
 	return {
 		accessToken: accessTokenIn(parsed),
-		expiresAt: Date.now() + lifetimeSeconds(parsed) * 1000 - CLOCK_SKEW_MARGIN_MS,
+		expiresAt: Date.now() + lifetime - Math.min(CLOCK_SKEW_MARGIN_MS, lifetime / 2),
 	};
 }
 
@@ -140,7 +155,7 @@ export function createClientCredentialsTokenSource(
 			);
 		});
 
-		if (!ok) throw refusedToSignIn(text, status);
+		if (!ok) throw refusedToSignIn(text, status, login);
 		return readToken(text);
 	};
 

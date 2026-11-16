@@ -1,3 +1,4 @@
+import { UserError } from '@n8n/errors';
 import {
 	NodeApiError,
 	type ILoadOptionsFunctions,
@@ -293,16 +294,43 @@ describe('listGatewayModels, answers that are not a model list', () => {
 		['an object in another shape', '{"models":["a"]}'],
 		['an error sent with status 200', '{"error":{"message":"nope"}}'],
 		['a bare string', '"ok"'],
+		['a list whose entries name no model', '{"data":[{"name":"gpt-4o"}]}'],
 	])('throws the hinted error for %s', async (_name, body) => {
 		const fetchModels = vi.fn().mockResolvedValue(new Response(body, { status: 200 }));
 
-		await expect(
+		const error = await rejection(
 			listGatewayModels(
 				node,
 				{ baseUrl: 'https://gw.example.com/v1' } as EndpointCredential,
 				fetchModels,
 			),
-		).rejects.toThrow('shape this node does not read');
+		);
+
+		expect(error).toBeInstanceOf(NodeApiError);
+		expect(error?.message).toContain('shape this node does not read');
+		expect(error?.description).toBe(BY_ID_HINT);
+	});
+
+	it('hands back the login failure rather than calling it a deadline', async () => {
+		const controller = new AbortController();
+		vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal);
+		const refused = new UserError(
+			'Could not sign in to the gateway: the login server answered 401',
+		);
+		const failingLogin = (async () => {
+			controller.abort(new DOMException('This operation was aborted', 'TimeoutError'));
+			throw refused;
+		}) as typeof fetch;
+
+		const error = await rejection(
+			listGatewayModels(
+				node,
+				{ baseUrl: 'https://gw.example.com/v1' } as EndpointCredential,
+				failingLogin,
+			),
+		);
+
+		expect(error).toBe(refused);
 	});
 
 	it('still returns an empty list when the gateway lists no models', async () => {

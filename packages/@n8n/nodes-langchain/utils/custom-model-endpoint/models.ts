@@ -31,10 +31,15 @@ function modelIdsIn(body: unknown): string[] | undefined {
 		: isRecord(body) && Array.isArray(body.data)
 			? body.data
 			: undefined;
-	return entries?.flatMap((entry) => {
+	if (entries === undefined) return undefined;
+
+	const ids = entries.flatMap((entry) => {
 		const id = idOf(entry);
 		return id ? [id] : [];
 	});
+	// Entries that none of them names a model is a shape this does not know either,
+	// unlike the empty list of a gateway that publishes no models.
+	return entries.length > 0 && ids.length === 0 ? undefined : ids;
 }
 
 export async function listGatewayModels(
