@@ -8,7 +8,10 @@ import type { z } from 'zod';
 
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../../types';
-import { changeDataTablesInputSchema } from './change-data-tables.schema';
+import {
+	changeDataTablesInputSchema,
+	type ChangeDataTablesInput,
+} from './change-data-tables.schema';
 import { validateChanges } from './change-data-tables.validate';
 
 const DESCRIPTION =
@@ -23,10 +26,14 @@ function formatIssuePath(path: Array<string | number>): string {
 }
 
 /** The model-facing schema is flattened, so parse again with the strict per-action schema. */
-function parseStrict(input: unknown) {
+function parseStrict(
+	input: unknown,
+):
+	| { ok: true; input: ChangeDataTablesInput }
+	| { ok: false; result: ReturnType<typeof invalidInputResult> } {
 	const parsed = changeDataTablesInputSchema.safeParse(input);
-	if (parsed.success) return parsed;
-	return { success: false as const, error: invalidInputResult(parsed.error) };
+	if (parsed.success) return { ok: true, input: parsed.data };
+	return { ok: false, result: invalidInputResult(parsed.error) };
 }
 
 function invalidInputResult(error: z.ZodError) {
@@ -34,7 +41,7 @@ function invalidInputResult(error: z.ZodError) {
 	const [field, index] = first.path;
 	const changeIndex = field === 'changes' && typeof index === 'number' ? index : undefined;
 	return {
-		success: false as const,
+		success: false,
 		error: `${formatIssuePath(first.path)}: ${first.message}. Fix it and call the tool again with the whole batch.`,
 		...(changeIndex === undefined ? {} : { changeIndex }),
 	};
@@ -42,8 +49,8 @@ function invalidInputResult(error: z.ZodError) {
 
 async function handleChanges(context: InstanceAiContext, input: unknown) {
 	const parsed = parseStrict(input);
-	if (!parsed.success) return parsed.error;
-	const validation = await validateChanges(context, parsed.data);
+	if (!parsed.ok) return parsed.result;
+	const validation = await validateChanges(context, parsed.input);
 	if (!validation.ok) return validation.error;
 	// Placeholder until the approval and run stages exist.
 	return { success: true, validated: true, changes: validation.plan.changes.length };

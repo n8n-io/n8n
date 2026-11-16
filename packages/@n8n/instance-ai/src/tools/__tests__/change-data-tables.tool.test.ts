@@ -277,7 +277,7 @@ describe('change_data_tables tool', () => {
 				changes: [
 					{ action: 'add-column', table: 'T', column: 'X', type: 'string' },
 					{ action: 'rename-column', table: 'dt-T', column: 'name', newName: 'full_name' },
-					{ action: 'insert-rows', table: 'T', rows: [{ X: 1 }] },
+					{ action: 'insert-rows', table: 'T', rows: [{ X: 1, full_name: 'a' }] },
 				],
 			});
 
@@ -287,6 +287,7 @@ describe('change_data_tables tool', () => {
 
 		it('uses the table reference as is when the service cannot resolve references', async () => {
 			const context = createMockContext({ assertInThreadProject: vi.fn() });
+			context.dataTableService.getSchema = vi.fn().mockResolvedValue([column('a')]);
 			const { result } = await runBatch(context, {
 				projectId: 'proj-1',
 				changes: [{ action: 'insert-rows', table: 'dt-1', rows: [{ a: 1 }] }],
@@ -299,5 +300,155 @@ describe('change_data_tables tool', () => {
 				projectId: 'proj-1',
 			});
 		});
+	});
+
+	describe('table lookups', () => {
+		it('looks up each table with the permission its change needs', async () => {
+			const context = contextWithTables({ 'dt-T': [column('a')] });
+			context.dataTableService.resolveTableReference = vi.fn(
+				async (ref: string, options?: { permission?: string }) => {
+					if (options?.permission === 'writeRow') throw new Error(`Data table "${ref}" not found`);
+					return { id: 'dt-T', name: 'T', projectId: 'proj-1' };
+				},
+			);
+			const { result, suspend } = await runBatch(context, {
+				changes: [{ action: 'insert-rows', table: 'T', rows: [{ a: 1 }] }],
+			});
+
+			expect(result).toMatchObject({ success: false, changeIndex: 0 });
+			expectNoCardAndNoWrites(context, suspend);
+		});
+
+		it('names the project choice when a table name is ambiguous', async () => {
+			const context = contextWithTables();
+			context.dataTableService.resolveTableReference = vi
+				.fn()
+				.mockRejectedValue(
+					new Error('Data table name "T" is ambiguous across accessible projects (p1, p2)'),
+				);
+			const { result } = await runBatch(context, { changes: [{ action: 'delete', table: 'T' }] });
+
+			expect(result).toMatchObject({
+				success: false,
+				changeIndex: 0,
+				error: expect.stringContaining('projectId'),
+			});
+		});
+
+		it('throws a lookup failure that is not about the table', async () => {
+			const context = contextWithTables();
+			context.dataTableService.resolveTableReference = vi
+				.fn()
+				.mockRejectedValue(new Error('Connection timed out'));
+
+			await expect(
+				runBatch(context, { changes: [{ action: 'delete', table: 'T' }] }),
+			).rejects.toThrow('Connection timed out');
+		});
+
+		it('rejects a change when the schema read cannot find the table', async () => {
+			const context = contextWithTables();
+			context.dataTableService.getSchema = vi
+				.fn()
+				.mockRejectedValue(new Error('Data table "dt-T" not found'));
+			const { result } = await runBatch(context, {
+				changes: [{ action: 'add-column', table: 'T', column: 'X', type: 'string' }],
+			});
+
+			expect(result).toMatchObject({ success: false, changeIndex: 0 });
+		});
+
+		it('throws a schema read failure that is not about the table', async () => {
+			const context = contextWithTables();
+			context.dataTableService.getSchema = vi
+				.fn()
+				.mockRejectedValue(new Error('Connection timed out'));
+
+			await expect(
+				runBatch(context, {
+					changes: [{ action: 'add-column', table: 'T', column: 'X', type: 'string' }],
+				}),
+			).rejects.toThrow('Connection timed out');
+		});
+	});
+
+	describe('row columns', () => {
+		const filterOn = (columnName: string) => ({
+			type: 'and',
+			filters: [{ columnName, condition: 'eq', value: 'x' }],
+		});
+
+		it.each([
+			{
+				name: 'an inserted row uses a column renamed earlier in the batch',
+				changes: [
+					{ action: 'rename-column', table: 'T', column: 'name', newName: 'full_name' },
+					{ action: 'insert-rows', table: 'T', rows: [{ name: 'Ann' }] },
+				],
+				changeIndex: 1,
+			},
+			{
+				name: 'an inserted row uses an unknown column',
+				changes: [{ action: 'insert-rows', table: 'T', rows: [{ name: 'Ann' }, { age: 3 }] }],
+				changeIndex: 0,
+			},
+			{
+				name: 'a row update sets an unknown column',
+				changes: [
+					{ action: 'update-rows', table: 'T', filter: filterOn('name'), data: { age: 3 } },
+				],
+				changeIndex: 0,
+			},
+			{
+				name: 'a row update filters on an unknown column',
+				changes: [
+					{ action: 'update-rows', table: 'T', filter: filterOn('age'), data: { name: 'Ann' } },
+				],
+				changeIndex: 0,
+			},
+			{
+				name: 'a row deletion filters on an unknown column',
+				changes: [{ action: 'delete-rows', table: 'T', filter: filterOn('age') }],
+				changeIndex: 0,
+			},
+			{
+				name: 'an inserted row in a created table uses a column the create does not define',
+				changes: [createA, { action: 'insert-rows', table: 'A', rows: [{ phone: '1' }] }],
+				changeIndex: 1,
+			},
+		])('rejects the batch when $name', async ({ changes, changeIndex }) => {
+			const context = contextWithTables({ 'dt-T': [column('name')] });
+			const { result, suspend } = await runBatch(context, { changes });
+
+			expect(result).toMatchObject({
+				success: false,
+				changeIndex,
+				error: expect.stringContaining(`changes[${changeIndex}]`),
+			});
+			expectNoCardAndNoWrites(context, suspend);
+		});
+
+		it('accepts filters on system columns and rows that use columns added in the batch', async () => {
+			const context = contextWithTables({ 'dt-T': [column('name')] });
+			const { result } = await runBatch(context, {
+				changes: [
+					{ action: 'add-column', table: 'T', column: 'age', type: 'number' },
+					{ action: 'insert-rows', table: 'T', rows: [{ name: 'Ann', age: 3 }] },
+					{ action: 'update-rows', table: 'T', filter: filterOn('createdAt'), data: { age: 4 } },
+					{ action: 'delete-rows', table: 'T', filter: filterOn('id') },
+				],
+			});
+
+			expect(result).toMatchObject({ success: true, validated: true });
+		});
+	});
+
+	it('accepts creating a table again after the batch deletes it', async () => {
+		const context = contextWithTables();
+		const { result } = await runBatch(context, {
+			changes: [createA, { action: 'delete', table: 'A' }, createA],
+		});
+
+		expect(result).toMatchObject({ success: true, validated: true });
 	});
 });
