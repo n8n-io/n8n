@@ -28,6 +28,26 @@ export function credentialsOf(
 	};
 }
 
+const escaped = (text: string) =>
+	text.replaceAll('\r', '%0D').replaceAll('\n', '%0A').replaceAll('"', '%22');
+
+export function sentParts(multipart: unknown): unknown {
+	if (!Array.isArray(multipart)) return multipart;
+	return multipart.map((part: unknown) => {
+		if (!isRecord(part)) return part;
+		const name = escaped(String(part.name));
+		const file = part.binary;
+		if (!isRecord(file)) return { name, value: part.value };
+		if (file.id !== undefined) return { name, stored: file };
+		return {
+			name,
+			...(typeof file.fileName === 'string' ? { fileName: escaped(file.fileName) } : {}),
+			...(typeof file.mimeType === 'string' ? { contentType: file.mimeType } : {}),
+			data: file.data,
+		};
+	});
+}
+
 type Compiled = ReturnType<typeof compileNodeInstance>;
 const RECENT_COMPILES = 8;
 const recent: Array<{ sources: NodeSources; key: string; compiled: Compiled }> = [];
@@ -125,7 +145,8 @@ export default workflow({
 					url: String(args.url),
 					headers: args.headers,
 					qs: args.qs,
-					body: args.body,
+					body:
+						args.multipart === undefined ? args.body : { $multipart: sentParts(args.multipart) },
 					basicAuth: args.basicAuth,
 					inject: args.inject,
 				},

@@ -54,6 +54,7 @@ interface Modules {
 	compat: AnyRecord;
 	di: AnyRecord;
 	network: AnyRecord;
+	forms: AnyRecord;
 }
 
 let modules: Modules | undefined;
@@ -69,6 +70,10 @@ function load(): Modules {
 		compat: hostRequire('@n8n/node-engine-compatibility'),
 		di: coreRequire('@n8n/di'),
 		network: coreRequire('@n8n/backend-network'),
+		// `createFormDataObject` is not an export of the package: the build file has it.
+		forms: coreRequire(
+			join(dirname(coreRequire.resolve('@n8n/backend-network')), 'http/axios/utils.js'),
+		),
 	};
 	return modules;
 }
@@ -226,6 +231,59 @@ function snapshot(value: unknown): unknown {
 	}
 }
 
+/** The parts of a form-data body: a file part has a file name or a content type, and base64 `data`. */
+function partsOf(body: Buffer, boundary: string): unknown[] {
+	const utf8 = (text: string) => Buffer.from(text, 'latin1').toString('utf8');
+	const sections = body.toString('latin1').split(`--${boundary}`).slice(1, -1);
+	return sections.map((section) => {
+		const cut = section.indexOf('\r\n\r\n');
+		const head = section.slice(2, cut);
+		const content = Buffer.from(section.slice(cut + 4, -2), 'latin1');
+		const disposition = /name="([^"]*)"(?:; filename="([^"]*)")?/.exec(head);
+		const fileName = disposition?.[2];
+		const contentType = /^content-type: (.*)$/im.exec(head)?.[1];
+		const isFile = fileName !== undefined || contentType !== undefined;
+		return {
+			name: utf8(disposition?.[1] ?? ''),
+			...(fileName !== undefined ? { fileName: utf8(fileName) } : {}),
+			...(contentType !== undefined ? { contentType: utf8(contentType) } : {}),
+			...(isFile ? { data: content.toString('base64') } : { value: content.toString('utf8') }),
+		};
+	});
+}
+
+/**
+ * The multipart body that n8n's request conversion (`parseRequestObject`) sends for `formData`:
+ * with a multipart content type the members of `body` are fields too, and without one a `form`
+ * alone comes first. n8n's own function builds the form-data, so the parts are the bytes of v1.
+ */
+function multipartOf(options: AnyRecord): unknown {
+	const { forms } = load();
+	const headers: AnyRecord = options.headers ?? {};
+	const typeName = Object.keys(headers).find((name) => name.toLowerCase() === 'content-type');
+	const type: unknown = typeName === undefined ? undefined : headers[typeName];
+	const mixed = typeof type === 'string' && type.includes('multipart/form-data');
+	if (!mixed && options.form !== undefined && options.body === undefined) return undefined;
+	try {
+		const form = forms.isFormDataInstance(options.formData)
+			? options.formData
+			: forms.createFormDataObject(
+					mixed ? { ...options.body, ...options.formData } : options.formData,
+				);
+		return { $multipart: partsOf(form.getBuffer(), form.getBoundary()) };
+	} catch (error) {
+		return {
+			$multipart: `[not readable: ${error instanceof Error ? error.message : String(error)}]`,
+		};
+	}
+}
+
+/** An item of a case as an n8n item: the key `$binary` of the JSON is the item's binary data. */
+function inputItem(json: Record<string, unknown>): AnyRecord {
+	const { $binary: binary, ...rest } = json;
+	return typeof binary === 'object' && binary !== null ? { json: rest, binary } : { json };
+}
+
 /** Installs a fake `OutboundHttp` that records requests and answers from a list. */
 function installFakeHttp(responses: EquivalenceCase['responses'], recorded: RawRequest[]) {
 	const { di, network } = load();
@@ -272,7 +330,7 @@ function installFakeHttp(responses: EquivalenceCase['responses'], recorded: RawR
 		async requestLegacy(options: AnyRecord) {
 			let body = options.body;
 			if (options.form !== undefined) body = { $form: options.form };
-			if (options.formData !== undefined) body = { $multipart: Object.keys(options.formData) };
+			if (options.formData !== undefined) body = multipartOf(options) ?? body;
 			// How the request library writes `qs` (spec 7.1 `qsFormat`): `querystring` with
 			// `useQuerystring` or `arrayFormat: 'repeat'`, else qs's `stringify` (brackets).
 			const qsOptions: unknown = options.qsStringifyOptions;
@@ -433,7 +491,7 @@ export async function recordV1(testCase: EquivalenceCase): Promise<Recording> {
 	try {
 		const result = await executor.execute({
 			node: graphNode,
-			inputs: [(testCase.items ?? [{}]).map((json) => ({ json }))],
+			inputs: [(testCase.items ?? [{}]).map(inputItem)],
 			context: {
 				executionId: 'equivalence',
 				stepId: 'step',

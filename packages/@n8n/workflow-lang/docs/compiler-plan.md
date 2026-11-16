@@ -273,6 +273,66 @@ gives one of two results, by a setting of the instance:
 These nodes need runtime work, not compiler work: protocol clients (Postgres, SMTP first), binary data, poll
 and webhook triggers, and the AI agent loop.
 
+### 9. Binary data
+
+**What the language has.** An item holds its files in the key `$binary` of its JSON, in the form of n8n:
+`{ data, mimeType, fileName?, fileExtension?, fileSize?, bytes?, id? }`. `data` is base64 text, or the name of
+the file store (`filesystem-v2`, `filesystem`) when `id` names a stored file. `ctx.http` sends files with
+`multipart` and with `body: { $binary }` (spec 7.1). The runtime reads a stored file into the request buffer.
+The language has no form for a response of bytes, and no call that writes a file to the store.
+
+**Built: uploads.** The compiler binds these calls. Each is exact, or stops with a `has no compiled form` error.
+
+| v1 | Compiled form |
+|---|---|
+| `assertBinaryData(i, name)` | The entry of `$binary`, with the two error texts of v1 |
+| `Buffer.from(text, 'base64')` | A handle `{ $bytes, data, length }`. No byte is decoded in the program |
+| `getBinaryDataBuffer(i, name)` | The same handle. A stored file needs `bytes` for `length` |
+| `getBinaryStream(id)` | A handle `{ $bytes, data: <store>, id }`, only for the file system stores |
+| `getBinaryMetadata(id)` | A stop at run time. The language cannot read the store |
+| `formData` of `request` helpers | `multipart`, with the field rules of form-data 4 (below) |
+
+- A handle is a value, not bytes. Code can read `length` and can put the handle into a form field. All other
+  reads of a variable that holds a handle are compile errors (`toString`, an index, `slice`).
+- Form fields: text and numbers are text parts. A handle is a file part. `options.filename` gives the base name.
+  `options.contentType` gives the type. Without both, the type is `application/octet-stream`, as in form-data.
+- These stop at run time: a file name without a content type (form-data reads a MIME table), a stored file
+  without both options (form-data reads the path of the stream), `filepath`, `header`, and other value types.
+- A handle as the whole `body` stops at run time. See "Raw bodies" below.
+- `items[i].binary` reads `$binary`. An output item with `binary` is a compile error, as before.
+
+**Verification.** The v1 recorder gives an item its `$binary` as `binary`. For `formData` it calls the function
+of n8n that makes the form-data, and it records each part from the bytes: name, file name, content type and
+data. The check compares these with the `multipart` of the compiled node. An operation that reads a file gets
+three cases: a file and a good answer, a file and status 400, and no file. v1 must succeed in the first case.
+
+**Design for the rest (not built).**
+
+- *Downloads.* Add `responseBinary: true` to `ctx.http`. The runtime streams the response body to the binary
+  store of n8n with a bounded buffer, and the result is `{ status, headers, body: <binary entry> }`. The entry
+  has `id`, `mimeType`, `fileName`, `fileExtension`, `fileSize` and `bytes`, as `BinaryDataService.store` makes
+  them. A body under a fixed limit can stay base64 text when n8n runs in the `default` mode.
+- *`prepareBinaryData(handle, fileName?, mimeType?)`.* For a handle from a response it sets the names on the
+  entry. v1 finds a missing MIME type from the bytes (`file-type`) and from the file name (`mime-types`). The
+  runtime must do the same, or the compiler must stop when the type is not given.
+- *`getBinaryMetadata(id)`.* Add `ctx.binary.metadata(id)`. The runtime reads the metadata file of the store.
+- *Raw bodies.* Bind a handle in `body` to `body: { $binary }`. First compare the content type that axios and
+  the runtime send when the node gives no header.
+- *Stores.* The runtime reads the file system stores only. S3 and database stores need a store interface.
+- *Bytes in code.* Hashes of a file, CSV and text reads need natives that take a handle. A program never holds
+  file bytes as JSON text that it makes itself.
+- *Verification of downloads.* The recorder answers with bytes, and it compares the output `binary` of each
+  item (metadata and a hash of the data) with the entry of the compiled node.
+
+**Decisions that are open.**
+
+1. Slack `file.upload` (2.2 and later) verifies with base64 data. With a stored file it stops at
+   `getBinaryMetadata`. Does the n8n side give the runtime base64 data, or stored ids? With ids, this operation
+   must stay on v1 until `ctx.binary.metadata` exists.
+2. The workflow setting `binaryMode: combined` changes `assertBinaryData`. The compiler assumes `separate`.
+   The publish step must refuse compiled binary operations for a `combined` workflow, or pass the mode in.
+3. `length` comes from the length of the base64 text. Text that is not valid base64 fails later, in the runtime.
+
 ## Phases
 
 | Phase | Work | Done when |
