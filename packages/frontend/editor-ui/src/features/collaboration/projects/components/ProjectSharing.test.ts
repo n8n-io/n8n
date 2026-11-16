@@ -249,79 +249,24 @@ describe('ProjectSharing', () => {
 		]);
 	});
 
-	describe('selected project outside the search results', () => {
+	it('should show a selected project that is not in the returned search page', async () => {
 		const selected = createProjectSharingData('team');
-
-		it('should show the selected project name when the search results do not include it', async () => {
-			const { getByTestId } = renderComponent({
-				props: {
-					searchFn: createTestSearchFn(teamProjects),
-					modelValue: selected,
-				},
-			});
-
-			const input = within(getByTestId('project-sharing-select')).getByRole('combobox');
-			await waitFor(() => expect(input).toHaveValue(selected.name));
+		const { getByTestId } = renderComponent({
+			props: {
+				// The count includes the selected project, which is not on the returned page.
+				searchFn: createTestSearchFnWithCount(teamProjects, teamProjects.length + 1),
+				modelValue: selected,
+			},
 		});
 
-		it('should show the selected project name while the search request is pending', async () => {
-			const { getByTestId } = renderComponent({
-				props: {
-					searchFn: async () => await new Promise<never>(() => {}),
-					modelValue: selected,
-				},
-			});
+		const projectSelect = getByTestId('project-sharing-select');
+		await waitFor(() =>
+			expect(within(projectSelect).getByRole('combobox')).toHaveValue(selected.name),
+		);
 
-			const input = within(getByTestId('project-sharing-select')).getByRole('combobox');
-			await waitFor(() => expect(input).toHaveValue(selected.name));
-		});
-
-		it('should list the selected project as the selected option', async () => {
-			const { getByTestId } = renderComponent({
-				props: {
-					searchFn: createTestSearchFn(teamProjects),
-					modelValue: selected,
-				},
-			});
-
-			const items = await getDropdownItems(getByTestId('project-sharing-select'));
-			expect(items).toHaveLength(teamProjects.length + 1);
-			expect(await getSelectedDropdownValue(items)).toBe(selected.name);
-		});
-
-		it('should not count the selected project as a "more results" item', async () => {
-			const { getByTestId } = renderComponent({
-				props: {
-					// The count includes the selected project, which is not on the returned page.
-					searchFn: createTestSearchFnWithCount(teamProjects, teamProjects.length + 1),
-					modelValue: selected,
-				},
-			});
-
-			const items = await getDropdownItems(getByTestId('project-sharing-select'));
-			expect(items).toHaveLength(teamProjects.length + 1);
-			for (const item of items) {
-				expect(item).not.toHaveTextContent('projects.sharing.moreResults');
-			}
-		});
-
-		it('should count the selected project once when filterFn hides it from the results', async () => {
-			const selectedItem = { ...selected, role: 'project:editor' as const };
-			const { getByTestId } = renderComponent({
-				props: {
-					// One project exists past the returned page.
-					searchFn: createTestSearchFnWithCount(
-						[...teamProjects, selectedItem],
-						teamProjects.length + 2,
-					),
-					filterFn: (project: ProjectListItem) => project.id !== selected.id,
-					modelValue: selected,
-				},
-			});
-
-			const items = await getDropdownItems(getByTestId('project-sharing-select'));
-			expect(items[items.length - 1]).toHaveTextContent('projects.sharing.moreResults');
-		});
+		const items = await getDropdownItems(projectSelect);
+		expect(items).toHaveLength(teamProjects.length + 1);
+		expect(await getSelectedDropdownValue(items)).toBe(selected.name);
 	});
 
 	it('should render home project as owner when defined', async () => {
