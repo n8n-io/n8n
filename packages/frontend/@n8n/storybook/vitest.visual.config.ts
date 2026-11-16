@@ -5,6 +5,10 @@
  * `.storybook/visual-setup.ts` compares a screenshot of it with a reference.
  * The design-system README, "Visual tests", tells how to run and update them.
  *
+ * Run it through `pnpm test:visual` (`scripts/run-visual-tests.ts`). That
+ * script starts the browser in the pinned Playwright container and gives its
+ * address in `N8N_VISUAL_TESTS_WS_ENDPOINT`.
+ *
  * Do not rename this file to `vitest.config.ts`: the root `vitest.workspace.ts`
  * would then pick it up with the jsdom unit tests.
  */
@@ -22,6 +26,19 @@ const THEMES: Array<ProvidedContext['visualTheme']> = ['light', 'dark'];
 const configDir = path.resolve(__dirname, '.storybook');
 const designSystemSrc = path.resolve(__dirname, '../design-system/src');
 const diffDir = path.resolve(__dirname, '.vitest/visual');
+
+const wsEndpoint = process.env.N8N_VISUAL_TESTS_WS_ENDPOINT;
+if (!wsEndpoint) {
+	throw new Error(
+		'Run the visual tests with `pnpm --filter @n8n/storybook test:visual`. It starts the browser in Docker.',
+	);
+}
+
+/**
+ * The browser always runs in the Linux container, so the images are Linux
+ * images on every computer. Vitest's default names use the host platform.
+ */
+const IMAGE_PLATFORM = 'linux';
 
 /**
  * Story files without the `visual` tag give no tests, but Vitest still loads
@@ -78,20 +95,38 @@ export default mergeConfig(
 					browser: {
 						enabled: true,
 						headless: true,
-						provider: playwright(),
+						provider: playwright({
+							// `<loopback>` lets the browser in the container load the Vite server on this computer.
+							connectOptions: { wsEndpoint, exposeNetwork: '<loopback>' },
+						}),
 						instances: [{ browser: 'chromium' }],
 						viewport: { width: 1200, height: 900 },
 						expect: {
 							toMatchScreenshot: {
-								// One layout for actual, diff and new reference images, which the
-								// CI artifact and `scripts/accept-visual-references.mjs` read:
+								// Vitest's default location, `<story dir>/__screenshots__/<story file>/`.
+								resolveScreenshotPath: ({
+									arg,
+									ext,
+									root,
+									browserName,
+									screenshotDirectory,
+									testFileDirectory,
+									testFileName,
+								}) =>
+									path.resolve(
+										root,
+										testFileDirectory,
+										screenshotDirectory,
+										testFileName,
+										`${arg}-${browserName}-${IMAGE_PLATFORM}${ext}`,
+									),
+								// One folder for actual, diff and new images, which CI can upload:
 								// `.vitest/visual/<story dir in design-system/src>/<story file>/<name>`.
 								resolveDiffPath: ({
 									arg,
 									ext,
 									root,
 									browserName,
-									platform,
 									testFileDirectory,
 									testFileName,
 								}) => {
@@ -108,7 +143,7 @@ export default mergeConfig(
 										diffDir,
 										storyDir,
 										testFileName,
-										`${arg}-${browserName}-${platform}${ext}`,
+										`${arg}-${browserName}-${IMAGE_PLATFORM}${ext}`,
 									);
 								},
 							},

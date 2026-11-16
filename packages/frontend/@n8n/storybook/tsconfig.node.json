@@ -24,6 +24,6 @@
 		"vite.config.ts",
 		"vitest.visual.config.ts",
 		".storybook/visual-context.d.ts",
-		"scripts/accept-visual-references.ts"
+		"scripts/run-visual-tests.ts"
 	]
 }

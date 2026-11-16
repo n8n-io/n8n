@@ -172,39 +172,60 @@ dark theme. The tests live in `@n8n/storybook` (`vitest.visual.config.ts` and
 
 #### Run the tests
 
-Install Chromium one time, from the repository root:
-
-```sh
-pnpm turbo run install-browsers --filter=n8n-playwright
-export PLAYWRIGHT_BROWSERS_PATH="$PWD/packages/quality/testing/playwright/.playwright-browsers"
-```
-
-Then run the tests. You do not have to build the package first.
+The tests need a running Docker engine. `pnpm test:visual` starts the browser in the
+pinned Playwright container (`mcr.microsoft.com/playwright`). Vitest runs on your computer
+and connects to that browser. So every screenshot comes from the same Linux Chromium and the
+same fonts, on any computer and in CI. You do not have to install a browser or build the
+package first.
 
 ```sh
 pnpm --filter @n8n/storybook test:visual
 ```
 
+The first run downloads the image, which is large, and needs network access. Each run also
+downloads the `playwright` package in the container.
+
 A failed test writes the actual image and a diff image to
 `packages/frontend/@n8n/storybook/.vitest/visual/<story directory>/<story file>/`.
 
-#### Use a local baseline
+Use `pnpm test:visual` only. `vitest.visual.config.ts` stops with an error when it runs
+without the container, for example from an IDE extension.
 
-The reference images that Git keeps are Linux images (`*-chromium-linux.png`), and only CI
-makes them. On macOS or Windows, the tests make images for your platform, and `.gitignore`
-keeps them out of Git.
+#### Update reference images
 
-On Linux, the tests make `*-chromium-linux.png` images, with the same names as the committed
-references, so `.gitignore` cannot keep them out. Do not commit them: your fonts and your
-Chromium are not the ones that CI uses. Commit only the images that `test:visual:accept`
-copies from CI (see below).
+The reference images are in Git, next to each stories file:
+`src/<story directory>/__screenshots__/<story file>/<story id>[-<state>]-<theme>-chromium-linux.png`.
+Update them like snapshots:
 
-To check a change on your computer:
+1. Run `pnpm --filter @n8n/storybook test:visual -u`. It writes each missing image, and
+   each image that changed.
+2. Look at the changed images with `git diff` or in your Git client.
+3. Commit them with your change.
 
-1. On `master`, run `pnpm --filter @n8n/storybook test:visual`. The first run fails and
-   writes your local reference images. Run it again. It must pass.
-2. Switch to your branch and run the tests again. Each failed test shows a change. Look at
-   the diff images.
+Arguments go to Vitest, so `pnpm --filter @n8n/storybook test:visual -u N8nButton` updates
+the images of one component. `-u` does not delete the images of a story that you rename or
+remove. Delete those yourself.
+
+CI runs on `linux/amd64`. On Apple silicon, Docker runs the `linux/arm64` image, and its
+images pass in CI. If an image passes on your computer but fails in CI, make it on
+`linux/amd64`:
+
+```sh
+DOCKER_DEFAULT_PLATFORM=linux/amd64 pnpm --filter @n8n/storybook test:visual -u --no-file-parallelism
+```
+
+`--no-file-parallelism` is necessary because the emulated browser needs much memory.
+
+When you update `playwright` in the catalog, set `PLAYWRIGHT_IMAGE` in
+`@n8n/storybook/scripts/run-visual-tests.ts` to the same version and digest. Then run
+`test:visual -u`. Until the two versions are the same, `pnpm test:visual` stops with an
+error.
+
+If a run stops and leaves a container, remove it:
+
+```sh
+docker rm -f $(docker ps -aq --filter label=n8n.visual-tests=1)
+```
 
 #### Add a component to the visual tests
 
@@ -259,28 +280,6 @@ For an open state, add a story that reuses an existing story. Give it a `play` f
 that opens the overlay and waits until it is visible. Set `target: 'viewport'`. The
 `…Open` stories in `N8nDialog/Dialog.stories.ts` are examples. The open stories also show
 in Storybook.
-
-#### Accept new reference images
-
-No CI job runs the visual tests yet, so Git has no reference images, and CI uploads no
-artifact. Until the job exists, use a local baseline (see above). When the job exists, CI
-makes the new Linux images for each story that you add or change:
-
-1. Push your branch. The visual tests in CI fail and upload the `visual-test-diffs`
-   artifact.
-2. Download the artifact, and copy the images into the design system:
-
-   ```sh
-   gh run download <run-id> -R n8n-io/n8n -n visual-test-diffs -D /tmp/visual-test-diffs
-   pnpm --filter @n8n/storybook test:visual:accept /tmp/visual-test-diffs
-   ```
-
-   The script copies each new image (`*-reference-chromium-linux.png`) and each changed
-   image (`*-actual-chromium-linux.png`) to
-   `src/<story directory>/__screenshots__/<story file>/<name>-chromium-linux.png`. It
-   changes no other file.
-
-3. Look at the new images. Then commit them and push.
 
 ## Pack and publish
 
