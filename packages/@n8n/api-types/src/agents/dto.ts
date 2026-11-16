@@ -146,6 +146,9 @@ export class ListAgentsQueryDto extends Z.class({
 	sortBy: z.enum(AGENTS_LIST_SORT_OPTIONS).optional(),
 }) {}
 
+export class WhatsAppWebhookStatusQueryDto extends Z.class({
+	credentialId: z.string().min(1).optional(),
+}) {}
 export type AgentListFilter = z.infer<typeof agentListFilterSchema>;
 
 export type AgentsListSortBy = (typeof AGENTS_LIST_SORT_OPTIONS)[number];
