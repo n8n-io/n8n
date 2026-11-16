@@ -13,7 +13,14 @@ import {
 	type ChatProviderSettingsDto,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
-import { N8nHeading, N8nSwitch, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nEnterpriseReadinessBadge,
+	N8nHeading,
+	N8nPreviewBadge,
+	N8nSwitch,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted } from 'vue';
 import { useChatStore } from './chat.store';
@@ -122,9 +129,17 @@ onMounted(async () => {
 </script>
 <template>
 	<div :class="$style.container">
-		<N8nHeading size="2xlarge">
-			{{ i18n.baseText('settings.chatHub') }}
-		</N8nHeading>
+		<div :class="$style.titleWithTag">
+			<N8nHeading size="2xlarge">
+				{{ i18n.baseText('settings.chatHub') }}
+			</N8nHeading>
+			<N8nPreviewBadge size="xsmall" data-test-id="chat-hub-preview-badge" />
+			<N8nEnterpriseReadinessBadge
+				v-if="settingsStore.isEnterprisePlan"
+				size="xsmall"
+				data-test-id="chat-hub-enterprise-readiness-badge"
+			/>
+		</div>
 
 		<label :class="$style.enabledRow">
 			<div :class="$style.enabledText">
@@ -186,5 +201,11 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
+}
+
+.titleWithTag {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 </style>

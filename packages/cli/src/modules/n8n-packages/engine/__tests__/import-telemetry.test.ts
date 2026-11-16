@@ -1,10 +1,12 @@
 import type { EventService } from '@n8n/backend-services';
-import type { WorkflowEntity } from '@n8n/db';
+import type { OperationContext, WorkflowEntity } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 import type { CredentialApplyResult } from '../../entities/credential/credential.types';
+import type { PersistedAgentOutcome } from '../../entities/agent/agent-import.types';
 import type { DataTableImportRequest } from '../../entities/data-table/data-table.types';
 import type { PersistedWorkflowOutcome } from '../../entities/workflow/workflow-import.types';
 import type {
@@ -40,6 +42,7 @@ const scope = (input: {
 	projectId: string;
 	folderId?: string | null;
 	outcomes: PersistedWorkflowOutcome[];
+	agents?: PersistedAgentOutcome[];
 	removedWorkflows?: RemovedWorkflowSummary[];
 	removedFolders?: RemovedFolderSummary[];
 	credentialResult: CredentialApplyResult;
@@ -68,6 +71,7 @@ const scope = (input: {
 		user: mock(),
 		projectId: input.projectId,
 		folderId: input.folderId ?? null,
+		publicApi: false,
 	};
 	const dt = input.dataTable ?? { matched: 0, created: 0, requirements: 0 };
 	const vars = input.variables ?? { matched: 0, missing: 0, requirements: 0 };
@@ -89,16 +93,18 @@ const scope = (input: {
 	const tags = input.tags ?? {};
 	const toTagRefs = (ids: string[] = []) => ids.map((id) => ({ id, name: `name-of-${id}` }));
 	const imported: ImportContentResult = {
+		agentOutcomes: input.agents ?? [],
 		workflowOutcomes: input.outcomes,
 		removedWorkflows: input.removedWorkflows ?? [],
 		removedFolders: input.removedFolders ?? [],
 		folderSummaries: [],
-		bindings: { workflows: new Map(), credentials: new Map() },
+		bindings: { agents: new Map(), workflows: new Map(), credentials: new Map() },
 		credentialResult: input.credentialResult,
 		dataTablePlan: {
 			creations: new Array(dt.created),
 			updates: new Array(dt.updated ?? 0),
 			columnAlignments: [],
+			matched: [],
 			failures: [],
 			matchedCount: dt.matched,
 		},
@@ -106,7 +112,7 @@ const scope = (input: {
 			matched: [
 				...Array.from({ length: vars.matched }, (_, i) => `matched-var-${i}`),
 				...overwrittenVariableNames,
-			],
+			].map((name) => ({ name, scopes: ['global'] })),
 			missing: missingVariableNames.map((name) => ({ name })),
 			creations: [...createdVariableNames, ...stubbedVariableNames, ...existingVariableNames].map(
 				(name) => ({ name }),
@@ -145,6 +151,8 @@ const scope = (input: {
 			matchingMode: 'id-only',
 			missingMode: 'create-stub',
 			credentialBindings: undefined,
+			conflictPolicy: 'overwrite',
+			updateScope: { projectIds: new Set([context.projectId]) },
 		},
 		dataTableRequest: mock<DataTableImportRequest>({
 			requirements: dt.requirements === 0 ? undefined : new Array(dt.requirements),
@@ -168,11 +176,12 @@ const scope = (input: {
 
 const request = mock<ResolvedImportPackageRequest>({
 	user: mock(),
-	workflowConflictPolicy: 'new-version',
-	workflowIdPolicy: 'new',
+	conflictPolicy: 'new-version',
+	idPolicy: 'source',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'create-stub',
-	workflowPublishingPolicy: 'preserve-published-state',
+	credentialConflictPolicy: 'overwrite',
+	publishingPolicy: 'preserve-published-state',
 	folderConflictPolicy: 'overwrite',
 	variableMissingMode: 'create-stub',
 	variableConflictPolicy: 'overwrite',
@@ -205,11 +214,25 @@ describe('emitPackageImportedEvent', () => {
 					projectId: 'P1',
 					folderId: 'F1',
 					outcomes: [outcome('wf1', 'WF1', 'created'), outcome('wf2', 'WF2', 'skipped')],
+					agents: [
+						mock<PersistedAgentOutcome>({
+							status: 'created',
+							sourceAgentId: 'WF1',
+							agent: mock({ id: 'agent1' }),
+						}),
+						mock<PersistedAgentOutcome>({
+							status: 'skipped',
+							sourceAgentId: 'WF2',
+							agent: mock({ id: 'agent2' }),
+						}),
+					],
 					credentialResult: {
 						bindings: new Map([['credA', 'target-a']]),
 						matched: ['credA'],
 						stubbed: [],
 						seeded: [],
+						incomplete: [],
+						updated: [],
 					},
 					requirements: [requirement('credA')],
 					dataTable: { matched: 1, created: 0, updated: 1, requirements: 2 },
@@ -219,16 +242,26 @@ describe('emitPackageImportedEvent', () => {
 				scope({
 					projectId: 'P2',
 					outcomes: [outcome('wf3', 'WF3', 'updated')],
+					agents: [
+						mock<PersistedAgentOutcome>({
+							status: 'updated',
+							sourceAgentId: 'WF3',
+							agent: mock({ id: 'agent3' }),
+						}),
+					],
 					credentialResult: {
 						bindings: new Map([
 							['credB', 'stub-b'],
 							['credC', 'seed-c'],
+							['credD', 'incomplete-d'],
 						]),
 						matched: [],
 						stubbed: ['credB'],
 						seeded: ['credC'],
+						incomplete: ['credD'],
+						updated: [],
 					},
-					requirements: [requirement('credB'), requirement('credC')],
+					requirements: [requirement('credB'), requirement('credC'), requirement('credD')],
 					dataTable: { matched: 0, created: 2, requirements: 2 },
 					variables: {
 						matched: 0,
@@ -254,19 +287,26 @@ describe('emitPackageImportedEvent', () => {
 		expect(payload.projectIds).toEqual(['P1', 'P2']);
 		// Skipped workflows are excluded; only wf1 and wf3 were actually written.
 		expect(payload.workflowIds).toEqual(['wf1', 'wf3']);
+		expect(payload.agentIds).toEqual(['agent1', 'agent3']);
+		expect(payload.options).toMatchObject({
+			workflowIdPolicy: 'source',
+			agentIdPolicy: 'source',
+			workflowPublishingPolicy: 'preserve-published-state',
+			agentPublishingPolicy: 'preserve-published-state',
+		});
 		// A multi-scope import has no single folder to attribute the event to.
 		expect(payload.folderId).toBeNull();
 		// Credential ids are resolved through each scope's binding map (source id -> target id).
-		// Seeded credentials count as created alongside stubs.
 		expect(payload.credentialIds).toEqual({
 			matched: ['target-a'],
-			created: ['stub-b', 'seed-c'],
+			created: ['stub-b', 'seed-c', 'incomplete-d'],
 			updated: [],
 		});
 		expect(payload.counts).toEqual({
+			agents: { created: 1, updated: 1, skipped: 1 },
 			workflows: { created: 1, updated: 1, skipped: 1, archived: 0, deleted: 0 },
 			folders: { removed: 0 },
-			credentials: { matched: 1, created: 2, requirements: 3 },
+			credentials: { matched: 1, created: 3, updated: 0, requirements: 4 },
 			dataTables: { matched: 1, created: 2, updated: 1, requirements: 4 },
 			// scope 2's two missing requirements were created, so post-apply missing is 0; its
 			// overwritten name matched first but is counted as updated, not matched.
@@ -275,11 +315,50 @@ describe('emitPackageImportedEvent', () => {
 			tags: { matched: 1, created: 1, renamed: 1, reconciled: 1, skipped: 1, requirements: 5 },
 		});
 		expect(payload.packageSourceId).toBe('src-1');
+		expect(payload.options.credentialConflictPolicy).toBe('overwrite');
 		expect(payload.options.variableMissingMode).toBe('create-stub');
 		expect(payload.options.variableConflictPolicy).toBe('overwrite');
 		expect(payload.options.variableParentPolicy).toBe('global');
 		expect(payload.options.tagMissingMode).toBe('create');
 		expect(payload.options.tagConflictPolicy).toBe('rename');
+	});
+
+	it('counts an updated credential once across scopes, and not as matched', () => {
+		const eventService = mock<EventService>();
+		const credentialResult = (updated: string[]): CredentialApplyResult => ({
+			bindings: new Map([
+				['credA', 'target-a'],
+				['credB', 'target-b'],
+			]),
+			matched: ['credA', 'credB'],
+			stubbed: [],
+			seeded: [],
+			incomplete: [],
+			updated,
+		});
+
+		emitPackageImportedEvent(eventService, {
+			request,
+			manifest,
+			scopes: [
+				scope({ projectId: 'P1', outcomes: [], credentialResult: credentialResult(['credA']) }),
+				// The second scope found credA already written, so it only matched it.
+				scope({ projectId: 'P2', outcomes: [], credentialResult: credentialResult([]) }),
+			],
+		});
+
+		const payload = lastImportedPayload(eventService);
+		expect(payload.credentialIds).toEqual({
+			matched: ['target-b', 'target-b'],
+			created: [],
+			updated: ['target-a'],
+		});
+		expect(payload.counts.credentials).toEqual({
+			matched: 2,
+			created: 0,
+			updated: 1,
+			requirements: 0,
+		});
 	});
 
 	it('still counts a missing requirement the import left unfilled', () => {
@@ -292,7 +371,14 @@ describe('emitPackageImportedEvent', () => {
 				scope({
 					projectId: 'P1',
 					outcomes: [outcome('wf1', 'WF1', 'created')],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [], seeded: [] },
+					credentialResult: {
+						bindings: new Map(),
+						matched: [],
+						stubbed: [],
+						seeded: [],
+						incomplete: [],
+						updated: [],
+					},
 					// Of three missing requirements, one was created with a value and one already existed.
 					variables: { matched: 0, missing: 3, requirements: 3, createdWithValue: 1, existing: 1 },
 				}),
@@ -323,13 +409,27 @@ describe('emitPackageImportedEvent', () => {
 				scope({
 					projectId: 'P1',
 					outcomes: [outcome('wf1', 'WF1', 'created')],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [], seeded: [] },
+					credentialResult: {
+						bindings: new Map(),
+						matched: [],
+						stubbed: [],
+						seeded: [],
+						incomplete: [],
+						updated: [],
+					},
 					variables: { matched: 0, missing: 1, requirements: 1, createdWithValue: 1 },
 				}),
 				scope({
 					projectId: 'P2',
 					outcomes: [outcome('wf2', 'WF2', 'created')],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [], seeded: [] },
+					credentialResult: {
+						bindings: new Map(),
+						matched: [],
+						stubbed: [],
+						seeded: [],
+						incomplete: [],
+						updated: [],
+					},
 					variables: { matched: 0, missing: 1, requirements: 1, existing: 1 },
 				}),
 			],
@@ -367,7 +467,14 @@ describe('emitPackageImportedEvent', () => {
 					removedFolders: [
 						{ folderId: 'F-stale', name: 'stale', projectId: 'P1', parentFolderId: null },
 					],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [], seeded: [] },
+					credentialResult: {
+						bindings: new Map(),
+						matched: [],
+						stubbed: [],
+						seeded: [],
+						incomplete: [],
+						updated: [],
+					},
 				}),
 			],
 		});
@@ -385,6 +492,21 @@ describe('emitPackageImportedEvent', () => {
 		expect(payload.options.folderConflictPolicy).toBe('overwrite');
 	});
 
+	it('adds the login of the operation context of the request', () => {
+		const eventService = mock<EventService>();
+		const ctx: OperationContext = {
+			security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+		};
+
+		emitPackageImportedEvent(eventService, {
+			request: Object.assign(mock<ResolvedImportPackageRequest>(), { ...request, ctx }),
+			manifest,
+			scopes: [],
+		});
+
+		expect(lastImportedPayload(eventService).loginId).toBe('login-1');
+	});
+
 	it('preserves the folder id for a single-scope import', () => {
 		const eventService = mock<EventService>();
 
@@ -396,7 +518,14 @@ describe('emitPackageImportedEvent', () => {
 					projectId: 'P1',
 					folderId: 'F1',
 					outcomes: [outcome('wf1', 'WF1', 'created')],
-					credentialResult: { bindings: new Map(), matched: [], stubbed: [], seeded: [] },
+					credentialResult: {
+						bindings: new Map(),
+						matched: [],
+						stubbed: [],
+						seeded: [],
+						incomplete: [],
+						updated: [],
+					},
 				}),
 			],
 		});

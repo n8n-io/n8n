@@ -39,7 +39,7 @@ The component is positioned absolutely at the bottom of its closest positioned a
 
 <N8nSelectedItemsInfo :selected-count="selectedIds.length" @clear-selection="clearSelection">
 	<template #actions>
-		<N8nButton variant="subtle" label="Remove access" @click="removeAccess" />
+		<N8nButton variant="outline" label="Remove access" @click="removeAccess" />
 	</template>
 </N8nSelectedItemsInfo>
 ```

@@ -7,6 +7,7 @@ import type {
 	PaginationOptions,
 } from 'n8n-workflow';
 
+import type { ResolveValueFn } from '../pagination';
 import { applyPaginationRequestData, requestWithAuthenticationPaginated } from '../pagination';
 
 describe('applyPaginationRequestData', () => {
@@ -233,7 +234,11 @@ describe('requestWithAuthenticationPaginated', () => {
 		});
 
 		const request = vi.fn().mockResolvedValue({ body: {}, headers: {}, statusCode: 200 });
-		const ctx = { helpers: { request } } as unknown as IExecuteFunctions;
+		const ctx = {
+			helpers: { request },
+			getExecutionCancelSignal: () => undefined,
+			getNode: () => node,
+		} as unknown as IExecuteFunctions;
 
 		return { ctx, requestOptions, paginationOptions, resolveValue, request, capturedKeys };
 	};
@@ -301,5 +306,71 @@ describe('requestWithAuthenticationPaginated', () => {
 		);
 
 		expect(capturedKeys[0].$request).toBe(requestOptions);
+	});
+
+	describe('execution cancellation', () => {
+		const setupMultiPage = (signal: AbortSignal) => {
+			const paginationOptions = {
+				continue: 'continue',
+				request: { url: 'https://example.com/page' },
+				maxRequests: 'maxRequests',
+				requestInterval: 'requestInterval',
+			} as unknown as PaginationOptions;
+
+			const resolveValue = vi.fn((parameterValue) => {
+				if (parameterValue === paginationOptions.request) {
+					return { url: 'https://example.com/page' };
+				}
+				if (parameterValue === paginationOptions.continue) return true;
+				if (parameterValue === paginationOptions.requestInterval) return 60_000;
+				return 0;
+			});
+
+			const request = vi.fn().mockResolvedValue({ body: {}, headers: {}, statusCode: 200 });
+			const ctx = {
+				helpers: { request },
+				getExecutionCancelSignal: () => signal,
+				getNode: () => node,
+			} as unknown as IExecuteFunctions;
+
+			return { ctx, paginationOptions, resolveValue, request };
+		};
+
+		const run = async (
+			ctx: IExecuteFunctions,
+			paginationOptions: PaginationOptions,
+			resolveValue: ResolveValueFn,
+		) => {
+			await requestWithAuthenticationPaginated.call(
+				ctx,
+				{ uri: 'https://example.com' },
+				0,
+				paginationOptions,
+				resolveValue,
+				node,
+			);
+		};
+
+		test('stops waiting for the next page when the execution is cancelled', async () => {
+			const controller = new AbortController();
+			const { ctx, paginationOptions, resolveValue, request } = setupMultiPage(controller.signal);
+
+			const pagination = run(ctx, paginationOptions, resolveValue);
+			setTimeout(() => controller.abort(), 10);
+
+			await expect(pagination).rejects.toThrow('The execution was canceled');
+			expect(request).toHaveBeenCalledTimes(1);
+		});
+
+		test('sends no request when the execution is already cancelled', async () => {
+			const controller = new AbortController();
+			controller.abort();
+			const { ctx, paginationOptions, resolveValue, request } = setupMultiPage(controller.signal);
+
+			await expect(run(ctx, paginationOptions, resolveValue)).rejects.toThrow(
+				'The execution was canceled',
+			);
+			expect(request).not.toHaveBeenCalled();
+		});
 	});
 });

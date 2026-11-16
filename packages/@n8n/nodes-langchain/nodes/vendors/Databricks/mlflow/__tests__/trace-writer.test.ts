@@ -1,4 +1,4 @@
-import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 
 import {
 	buildTraceInfo,
@@ -354,5 +354,17 @@ describe('previews', () => {
 		const info = buildTraceInfo(trace(), '42');
 
 		expect(info.response_preview).toContain('25 days');
+	});
+
+	it('removes credential material from the plain-text previews, even across the cap', () => {
+		const token = ['dapi', '0123456789abcdef0123456789abcdef'].join('');
+		// The token straddles the 1,000-character cut, so a slice before the scrub
+		// would leave a partial token in the preview.
+		const withToken = { ...trace(), requestPreview: `${'x'.repeat(989)} ${token}` };
+
+		const info = buildTraceInfo(withToken, '42');
+
+		expect(info.request_preview).toContain('[REDACTED]');
+		expect(info.request_preview).not.toContain(token);
 	});
 });

@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import type { AgentChannelRuntime } from '../types';
+import AgentChannelTeamsOptionLabel from './AgentChannelTeamsOptionLabel.vue';
 import { isTeamsChannelRuntime, type TeamsSetupKind } from './useTeamsChannelRuntime';
 
 const props = defineProps<{
@@ -26,6 +27,19 @@ const setupKind = computed<TeamsSetupKind>({
 		}
 	},
 });
+
+const options = computed(() => [
+	{
+		value: 'managed',
+		label: i18n.baseText('agents.channels.teams.setupKind.recommended'),
+		description: i18n.baseText('agents.channels.teams.setupKind.recommendedDescription'),
+	},
+	{
+		value: 'manual',
+		label: i18n.baseText('agents.channels.teams.setupKind.manual'),
+		description: i18n.baseText('agents.channels.teams.setupKind.manualDescription'),
+	},
+]);
 </script>
 
 <template>
@@ -38,11 +52,9 @@ const setupKind = computed<TeamsSetupKind>({
 		:teleported="false"
 		data-testid="teams-setup-kind-selector"
 	>
-		<N8nOption
-			value="managed"
-			:label="i18n.baseText('agents.channels.teams.setupKind.recommended')"
-		/>
-		<N8nOption value="manual" :label="i18n.baseText('agents.channels.teams.setupKind.manual')" />
+		<N8nOption v-for="opt in options" :key="opt.value" :value="opt.value" :label="opt.label">
+			<AgentChannelTeamsOptionLabel :label="opt.label" :description="opt.description" />
+		</N8nOption>
 	</N8nSelect>
 </template>
 

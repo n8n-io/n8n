@@ -11,7 +11,7 @@ export interface ChannelResponse {
 export interface WebhookNotification {
 	subscriptionId: string;
 	resource: string;
-	resourceData: ResourceData;
+	resourceData?: ResourceData;
 	tenantId: string;
 	subscriptionExpirationDateTime: string;
 	clientState?: string;
@@ -20,6 +20,15 @@ export interface WebhookNotification {
 export interface ResourceData {
 	id: string;
 	[key: string]: unknown;
+}
+
+export interface LifecycleNotification {
+	// Graph sends a string; the handler checks the value before it uses it.
+	subscriptionId: unknown;
+	subscriptionExpirationDateTime?: string;
+	tenantId?: string;
+	clientState?: string;
+	lifecycleEvent: string;
 }
 
 export interface SubscriptionResponse {

@@ -6,7 +6,7 @@ export type InstanceAiEditorActionSource =
 	| 'credential_edit'
 	| 'credentials_list'
 	| 'node_error_view'
-	| 'workflow_error_nudge'; // Experiment cleanup (119_surface_assistant_on_workflow_error)
+	| 'workflow_error_nudge';
 
 /** The credential type (and optional node) the user wants setup guidance for. */
 export interface InstanceAiCredentialContext {

@@ -1,6 +1,7 @@
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 import type { IDataObject, INode, IExecuteFunctions } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { GoogleCalendar } from '../../GoogleCalendar.node';
@@ -14,7 +15,6 @@ vi.mock('../../GenericFunctions', async () => ({
 	googleApiRequestAllItems: vi.fn(),
 	addTimezoneToDate: vi.fn(),
 	addNextOccurrence: vi.fn(),
-	encodeURIComponentOnce: vi.fn(),
 }));
 
 describe('Google Calendar Node', () => {
@@ -56,13 +56,16 @@ describe('Google Calendar Node', () => {
 
 			expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith(
 				'PATCH',
-				'/calendar/v3/calendars/undefined/events/myEvent',
+				requestPath`/calendar/v3/calendars/myCalendar/events/myEvent`,
 				{ attendees: [{ email: 'email1@mail.com' }] },
 				{},
 			);
 		});
 
-		it('should update replace attendees', async () => {
+		it.each([
+			{ attendees: ['email1@mail.com'], expectedAttendees: [{ email: 'email1@mail.com' }] },
+			{ attendees: [], expectedAttendees: [] },
+		])('should update replace attendees: $attendees', async ({ attendees, expectedAttendees }) => {
 			mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('event');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('update');
@@ -75,7 +78,7 @@ describe('Google Calendar Node', () => {
 				attendeesUi: {
 					values: {
 						mode: 'replace',
-						attendees: ['email1@mail.com'],
+						attendees,
 					},
 				},
 			});
@@ -84,11 +87,35 @@ describe('Google Calendar Node', () => {
 
 			expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith(
 				'PATCH',
-				'/calendar/v3/calendars/undefined/events/myEvent',
-				{ attendees: [{ email: 'email1@mail.com' }] },
+				requestPath`/calendar/v3/calendars/myCalendar/events/myEvent`,
+				{ attendees: expectedAttendees },
 				{},
 			);
 		});
+
+		it.each([
+			[1.3, 'my%2Fcal', requestPath`/calendar/v3/calendars/${'my/cal'}/events/myEvent`],
+			[1.4, 'my%2Fcal', requestPath`/calendar/v3/calendars/${'my%2Fcal'}/events/myEvent`],
+			[1.4, 'my/cal', requestPath`/calendar/v3/calendars/${'my/cal'}/events/myEvent`],
+		])(
+			'should handle the calendar ID in node version %s for %s',
+			async (typeVersion, calendar, path) => {
+				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+				mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('event');
+				mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('update');
+				mockExecuteFunctions.getTimezone.mockReturnValueOnce('Europe/Berlin');
+				mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion }));
+				mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(calendar);
+				mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('myEvent');
+				mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('instance');
+				mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(true);
+				mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
+
+				await googleCalendar.execute.call(mockExecuteFunctions);
+
+				expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith('PATCH', path, {}, {});
+			},
+		);
 
 		it('should update add attendees', async () => {
 			mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
@@ -117,14 +144,52 @@ describe('Google Calendar Node', () => {
 
 			expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith(
 				'GET',
-				'/calendar/v3/calendars/undefined/events/myEvent',
+				requestPath`/calendar/v3/calendars/myCalendar/events/myEvent`,
 			);
 			expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith(
 				'PATCH',
-				'/calendar/v3/calendars/undefined/events/myEvent',
+				requestPath`/calendar/v3/calendars/myCalendar/events/myEvent`,
 				{ attendees: [{ email: 'email2@mail.com' }, { email: 'email1@mail.com' }] },
 				{},
 			);
+		});
+
+		describe.each([
+			{ version: 1.1, mode: 'legacy' },
+			{ version: 1.2, mode: 'replace' },
+			{ version: 1.3, mode: 'add' },
+		])('attendee validation in version $version ($mode)', ({ version, mode }) => {
+			it.each([
+				{ attendees: [{ email: 'alice@example.com' }] },
+				{ attendees: [''] },
+				{ attendees: [' \t '] },
+				{ attendees: ['alice@example.com,'] },
+			])('should report a node error for invalid attendees: $attendees', async ({ attendees }) => {
+				const updateFields =
+					mode === 'legacy' ? { attendees } : { attendeesUi: { values: { mode, attendees } } };
+				mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+				mockExecuteFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: version }));
+				mockExecuteFunctions.getNodeParameter
+					.mockReturnValueOnce('event')
+					.mockReturnValueOnce('update')
+					.mockReturnValueOnce('myCalendar')
+					.mockReturnValueOnce('myEvent');
+				if (version >= 1.3) {
+					mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('instance');
+				}
+				mockExecuteFunctions.getNodeParameter
+					.mockReturnValueOnce(true)
+					.mockReturnValueOnce(updateFields);
+
+				const execution = googleCalendar.execute.call(mockExecuteFunctions);
+
+				await expect(execution).rejects.toBeInstanceOf(NodeOperationError);
+				await expect(execution).rejects.toMatchObject({
+					message: expect.stringMatching(/attendee/i),
+					context: { itemIndex: 0 },
+				});
+				expect(genericFunctions.googleApiRequest).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('all-day <-> timed conversion', () => {

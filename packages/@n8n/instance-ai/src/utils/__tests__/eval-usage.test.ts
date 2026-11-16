@@ -1,5 +1,8 @@
 import type { InstanceAiEvalLlmUsage } from '@n8n/api-types';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 import { createEvalAgent } from '../eval-agents';
 import { EvalUsageMeter, recordEvalUsage } from '../eval-usage';
@@ -40,9 +43,9 @@ function modelReporting(tokens: {
 	});
 }
 
-/** No eval key in the environment, so the agent runs on the mock model. */
+/** The agent runs on the mock model, passed in as a resolved model. */
 function judgeOn(model: MockLanguageModelV3, name = 'eval-checklist-verifier') {
-	return createEvalAgent(name, { instructions: 'Judge the run.', fallbackModelConfig: model });
+	return createEvalAgent(name, { instructions: 'Judge the run.', resolvedModel: model });
 }
 
 describe('eval usage meter', () => {
@@ -104,6 +107,26 @@ describe('eval usage meter', () => {
 
 		expect(first.entries().map((entry) => entry.calls)).toEqual([1]);
 		expect(second.entries().map((entry) => entry.calls)).toEqual([2]);
+	});
+
+	it('counts a call and writes its usage log line when the usage log is on', async () => {
+		const dir = mkdtempSync(path.join(tmpdir(), 'eval-usage-'));
+		const file = path.join(dir, 'usage.jsonl');
+		try {
+			process.env.N8N_INSTANCE_AI_EVAL_USAGE_LOG = file;
+			const judge = judgeOn(
+				modelReporting({ noCache: 10, cacheRead: 0, cacheWrite: 0, output: 1 }),
+			);
+			const meter = new EvalUsageMeter();
+
+			await meter.run(async () => await judge.generate('Case one'));
+
+			expect(meter.entries().map((entry) => entry.calls)).toEqual([1]);
+			const lines = existsSync(file) ? readFileSync(file, 'utf8').trim().split('\n') : [];
+			expect(lines).toHaveLength(1);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 
 	it('adds usage that an eval endpoint reported to the current meter', async () => {

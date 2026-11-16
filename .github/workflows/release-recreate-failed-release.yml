@@ -150,13 +150,14 @@ jobs:
       needs.recreate-release-pr.outputs.pull-request-number != ''
     # inherit, not named secrets: the callee's app credentials live on the
     # `release` environment, which a caller cannot read to forward.
-    uses: ./.github/workflows/util-approve-and-set-automerge.yml # zizmor: ignore[secrets-inherit]
+    uses: n8n-io/github-actions/.github/workflows/approve-and-set-automerge.yml@8fe337080c0386a17ce3c857b61db606c9430f4b
     permissions:
       contents: write
       pull-requests: write
     secrets: inherit
     with:
       pull-request-number: ${{ needs.recreate-release-pr.outputs.pull-request-number }}
+      enable-automerge: true
 
   notify-slack:
     name: Notify Slack

@@ -9,7 +9,7 @@ import type { IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';
 import N8nInput from '../N8nInput';
 import N8nPopover from '../N8nPopover';
-import N8nTabs from '../N8nTabs';
+import { N8nTabs } from '../N8nTabs';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 import type { EmojiSection } from './emojiData';
@@ -72,6 +72,8 @@ type Props = {
 	buttonClass?: string | Record<string, boolean> | Array<string | Record<string, boolean>>;
 	/** The tab to show when there is no selected value. */
 	defaultTab?: TabType;
+	/** Icon the button draws when no icon set has the selected icon */
+	fallbackIcon?: IconName;
 };
 
 const { t } = useI18n();
@@ -81,9 +83,10 @@ const props = withDefaults(defineProps<Props>(), {
 	iconsOnly: false,
 	showColorPicker: false,
 	containerClass: undefined,
-	buttonVariant: 'subtle',
+	buttonVariant: 'outline',
 	buttonClass: undefined,
 	defaultTab: 'icons',
+	fallbackIcon: undefined,
 });
 
 const model = defineModel<IconOrEmoji>();
@@ -479,6 +482,7 @@ function handlePickerKeyup(event: KeyboardEvent) {
 						v-if="!model || model.type === 'icon'"
 						:class="[$style['icon-button'], buttonClass]"
 						:icon="buttonIconName"
+						:fallback-icon="fallbackIcon"
 						:size="buttonSize"
 						icon-only
 						:disabled="isReadOnly"

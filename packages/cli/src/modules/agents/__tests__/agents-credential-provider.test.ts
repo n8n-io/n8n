@@ -54,7 +54,7 @@ describe('AgentsCredentialProvider', () => {
 				scopes: [],
 				isManaged: false,
 				isGlobal: false,
-				isResolvable: true,
+				isResolvable: false,
 				currentUserHasAccess: true,
 				homeProject: null,
 				sharedWithProjects: [],
@@ -70,6 +70,7 @@ describe('AgentsCredentialProvider', () => {
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId: 'project-1',
 			excludePersonalRoute: true,
+			excludeResolvable: true,
 		});
 		expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
 	});
@@ -126,6 +127,29 @@ describe('AgentsCredentialProvider', () => {
 			{ id: 'global-cred', name: 'Global OpenAI', type: 'openAiApi' },
 		]);
 	});
+
+	it.each([false, true])(
+		'excludes end-user credentials with a request user: %s',
+		async (withUser) => {
+			const credentialsService = mock<CredentialsService>();
+			const fixed = credential({ id: 'fixed', isResolvable: false });
+			const endUser = credential({ id: 'end-user', isResolvable: true });
+			credentialsService.findAllCredentialIdsForProject.mockResolvedValue([fixed, endUser]);
+			credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				mock({ id: fixed.id, name: fixed.name, type: fixed.type, isResolvable: false }),
+			]);
+			const provider = new AgentsCredentialProvider(
+				credentialsService,
+				'project-1',
+				withUser ? mock<User>() : undefined,
+			);
+
+			await expect(provider.list()).resolves.toEqual([listItem({ id: 'fixed' })]);
+			await expect(provider.resolve(endUser.id)).rejects.toThrow('not found or not accessible');
+			expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
+		},
+	);
 
 	it('resolves a project credential when no request user is provided', async () => {
 		const credentialsService = mock<CredentialsService>();
@@ -216,7 +240,7 @@ describe('AgentsCredentialProvider', () => {
 				scopes: [],
 				isManaged: false,
 				isGlobal: false,
-				isResolvable: true,
+				isResolvable: false,
 				currentUserHasAccess: true,
 				homeProject: null,
 				sharedWithProjects: [],

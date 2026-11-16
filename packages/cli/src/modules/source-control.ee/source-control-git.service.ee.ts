@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { execSync } from 'child_process';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import * as path from 'path';
 import type {
 	CommitResult,
@@ -20,13 +20,11 @@ import { OwnershipService } from '@/services/ownership.service';
 
 import {
 	SOURCE_CONTROL_DEFAULT_BRANCH,
-	SOURCE_CONTROL_DEFAULT_EMAIL,
-	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_MANAGED_DIRECTORIES,
 	SOURCE_CONTROL_MANAGED_PATHS,
 	SOURCE_CONTROL_ORIGIN,
 } from './constants';
-import { sourceControlFoldersExistCheck } from './source-control-helper.ee';
+import { gitAuthor, sourceControlFoldersExistCheck } from './source-control-helper.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import type { SourceControlPreferences } from './types/source-control-preferences';
 
@@ -141,6 +139,7 @@ export class SourceControlGitService {
 				...this.gitOptions,
 				config,
 				unsafe: { allowUnsafeCredentialHelper: true },
+				allowEnvironment: ['GIT_TERMINAL_PROMPT'],
 			};
 
 			this.git = simpleGit(httpsGitOptions)
@@ -159,6 +158,7 @@ export class SourceControlGitService {
 			this.git = simpleGit({
 				...this.gitOptions,
 				unsafe: { allowUnsafeSshCommand: true },
+				allowEnvironment: ['GIT_SSH_COMMAND', 'GIT_TERMINAL_PROMPT'],
 			})
 				.env('GIT_SSH_COMMAND', sshCommand)
 				.env('GIT_TERMINAL_PROMPT', '0');
@@ -237,12 +237,8 @@ export class SourceControlGitService {
 				throw error;
 			}
 		}
-		await this.setGitUserDetails(
-			user.firstName && user.lastName
-				? `${user.firstName} ${user.lastName}`
-				: SOURCE_CONTROL_DEFAULT_NAME,
-			user.email ?? SOURCE_CONTROL_DEFAULT_EMAIL,
-		);
+		const author = gitAuthor(user);
+		await this.setGitUserDetails(author.name, author.email);
 
 		await this.trackRemoteIfReady(branchName, options?.tolerateTrackingFetchFailure);
 

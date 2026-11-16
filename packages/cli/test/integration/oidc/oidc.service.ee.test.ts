@@ -13,9 +13,16 @@ import type { OidcConfigDto, ProvisioningConfigDto } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { createTeamProject, getProjectRoleForUser, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { type User, UserRepository, RoleRepository, RoleMappingRuleRepository } from '@n8n/db';
+import {
+	AuthIdentityRepository,
+	GLOBAL_MEMBER_ROLE,
+	Person,
+	type User,
+	RoleRepository,
+	RoleMappingRuleRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import type * as mocked_oidc_client from 'openid-client';
 // Assigned in beforeAll rather than top-level await (tsconfig module forbids TLA).
 let real_odic_client: typeof import('openid-client');
@@ -23,14 +30,14 @@ beforeAll(async () => {
 	real_odic_client = await vi.importActual<typeof import('openid-client')>('openid-client');
 });
 
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, UserError } from '@n8n/errors';
 import { License } from '@/license';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants';
 import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
-import { JwtService } from '@/services/jwt.service';
+import { JwtService } from '@n8n/backend-services';
 import { createCustomRoleWithScopes, createScope } from '@test-integration/db/roles';
-import { createUser } from '@test-integration/db/users';
+import { createUser, createUserShell } from '@test-integration/db/users';
 
 beforeAll(async () => {
 	await testDb.init();
@@ -42,12 +49,12 @@ afterAll(async () => {
 
 describe('OIDC service', () => {
 	let oidcService: OidcService;
-	let userRepository: UserRepository;
+	let personRepository: Repository<Person>;
 	let createdUser: User;
 
 	beforeAll(async () => {
 		oidcService = Container.get(OidcService);
-		userRepository = Container.get(UserRepository);
+		personRepository = Container.get(DataSource).manager.getRepository(Person);
 		await oidcService.init();
 
 		await createUser({
@@ -645,12 +652,12 @@ describe('OIDC service', () => {
 
 			createdUser = user;
 
-			const userFromDB = await userRepository.findOne({
+			const personFromDB = await personRepository.findOne({
 				where: { email: 'user2@example.com' },
 			});
 
-			expect(userFromDB).toBeDefined();
-			expect(userFromDB!.id).toEqual(user.id);
+			expect(personFromDB).toBeDefined();
+			expect(personFromDB!.id).toEqual(user.id);
 		});
 
 		it('should handle existing user login with valid callback URL', async () => {
@@ -729,6 +736,49 @@ describe('OIDC service', () => {
 			expect(user.email).toEqual('user1@example.com');
 		});
 
+		// Admins can invite under OIDC while SCIM is on. The invitee then signs in through OIDC.
+		it('should link the OIDC identity to an invited user by email and complete the invite', async () => {
+			const invitee = await createUserShell(GLOBAL_MEMBER_ROLE);
+			const state = oidcService.generateState();
+			const nonce = oidcService.generateNonce();
+			const callbackUrl = new URL(
+				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+			);
+			authorizationCodeGrantMock.mockResolvedValueOnce({
+				access_token: 'mock-access-token-invitee',
+				id_token: 'mock-id-token-invitee',
+				token_type: 'bearer',
+				claims: () =>
+					({
+						sub: 'mock-subject-invitee',
+						iss: 'https://example.com/auth/realms/n8n',
+						aud: 'test-client-id',
+						iat: Math.floor(Date.now() / 1000) - 1000,
+						exp: Math.floor(Date.now() / 1000) + 3600,
+					}) as mocked_oidc_client.IDToken,
+				expiresIn: () => 3600,
+			} as mocked_oidc_client.TokenEndpointResponse &
+				mocked_oidc_client.TokenEndpointResponseHelpers);
+			fetchUserInfoMock.mockResolvedValueOnce({ email_verified: true, email: invitee.email });
+
+			const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+
+			expect(user.id).toBe(invitee.id);
+			expect(
+				await Container.get(AuthIdentityRepository).findOneBy({
+					providerId: 'mock-subject-invitee',
+					providerType: 'oidc',
+				}),
+			).toMatchObject({ userId: invitee.id });
+			expect(
+				await personRepository.findOneOrFail({
+					where: { id: invitee.id },
+					relations: ['authIdentities', 'role'],
+				}),
+			).toMatchObject({ isPending: false, role: { slug: GLOBAL_MEMBER_ROLE.slug } });
+			expect(await personRepository.countBy({ email: invitee.email })).toBe(1);
+		});
+
 		it('should sign in user if OIDC Idp does not have email verified', async () => {
 			const state = oidcService.generateState();
 			const nonce = oidcService.generateNonce();
@@ -805,7 +855,7 @@ describe('OIDC service', () => {
 			).rejects.toThrowError(BadRequestError);
 
 			// The attacker's OIDC identity must not be linked to the existing account.
-			const victim = await userRepository.findOne({
+			const victim = await personRepository.findOne({
 				where: { email: 'link-target@example.com' },
 				relations: ['authIdentities'],
 			});
@@ -1091,12 +1141,12 @@ describe('OIDC service', () => {
 				expect(user).toBeDefined();
 				expect(user.email).toEqual('new-instance-role-user@example.com');
 
-				const userFromDB = await userRepository.findOne({
+				const personFromDB = await personRepository.findOne({
 					where: { id: user.id },
 					relations: ['role'],
 				});
-				expect(userFromDB).toBeDefined();
-				expect(userFromDB!.role.slug).toEqual('global:admin');
+				expect(personFromDB).toBeDefined();
+				expect(personFromDB!.role.slug).toEqual('global:admin');
 			});
 
 			it('should provision project roles for a new user', async () => {
@@ -1166,12 +1216,12 @@ describe('OIDC service', () => {
 				expect(user).toBeDefined();
 				expect(user.email).toEqual('new-both-provisioning-user@example.com');
 
-				const userFromDB = await userRepository.findOne({
+				const personFromDB = await personRepository.findOne({
 					where: { id: user.id },
 					relations: ['role'],
 				});
-				expect(userFromDB).toBeDefined();
-				expect(userFromDB!.role.slug).toEqual('global:admin');
+				expect(personFromDB).toBeDefined();
+				expect(personFromDB!.role.slug).toEqual('global:admin');
 
 				const projectRole = await getProjectRoleForUser(project.id, user.id);
 				expect(projectRole).toEqual('project:editor');
@@ -1225,11 +1275,11 @@ describe('OIDC service', () => {
 					const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 					expect(user).toBeDefined();
 
-					const userFromDB = await userRepository.findOne({
+					const personFromDB = await personRepository.findOne({
 						where: { id: user.id },
 						relations: ['role'],
 					});
-					expect(userFromDB!.role.slug).toEqual('global:admin');
+					expect(personFromDB!.role.slug).toEqual('global:admin');
 				});
 
 				it('should provision a custom global role with its scopes via expression mapping', async () => {
@@ -1278,12 +1328,12 @@ describe('OIDC service', () => {
 					const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 					expect(user).toBeDefined();
 
-					const userFromDB = await userRepository.findOne({
+					const personFromDB = await personRepository.findOne({
 						where: { id: user.id },
 						relations: ['role', 'role.scopes'],
 					});
-					expect(userFromDB!.role.slug).toEqual('global:test-auditor');
-					expect(userFromDB!.role.scopes.map((s) => s.slug)).toContain(auditScope.slug);
+					expect(personFromDB!.role.slug).toEqual('global:test-auditor');
+					expect(personFromDB!.role.scopes.map((s) => s.slug)).toContain(auditScope.slug);
 
 					customRolesLicensed.mockRestore();
 				});
@@ -1451,10 +1501,10 @@ describe('OIDC service', () => {
 				const { user } = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
 
 				expect(fetchUserInfoMock).not.toHaveBeenCalled();
-				const userFromDB = await userRepository.findOneOrFail({ where: { id: user.id } });
-				expect(userFromDB.email).toEqual('id-token-user@example.com');
-				expect(userFromDB.firstName).toEqual('Alex');
-				expect(userFromDB.lastName).toEqual('Smith');
+				const personFromDB = await personRepository.findOneOrFail({ where: { id: user.id } });
+				expect(personFromDB.email).toEqual('id-token-user@example.com');
+				expect(personFromDB.firstName).toEqual('Alex');
+				expect(personFromDB.lastName).toEqual('Smith');
 			});
 		});
 	});

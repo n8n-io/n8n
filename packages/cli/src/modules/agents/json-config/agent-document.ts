@@ -1,9 +1,8 @@
 import type { AgentJsonConfig, AgentJsonSkillConfig, StoredAgentConfig } from '@n8n/api-types';
 
 /**
- * Skill refs of one agent draft or one published version, in document order.
- * `undefined` means that the config has no skill list. Keep this apart from an
- * empty list, because the config hash sees the difference.
+ * Skill refs of a JSON document. `undefined` means that an inbound document
+ * has no skill list. The refs of a stored draft or version are always a list.
  */
 export type AgentSkillRefs = AgentJsonSkillConfig[] | undefined;
 

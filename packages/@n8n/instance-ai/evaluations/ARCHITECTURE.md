@@ -55,7 +55,8 @@ split them out of the old `runner.ts` monolith):
 - `harness/agent-execution.ts` — `executeAgentScenario` and the agent
   artifact helpers (the agent-anchored counterpart of scenario execution).
 - `harness/seed-tables.ts` — the scenario seed-data-table family (TRUST-311):
-  dedupe, pre-seed note, per-scenario row reseeding.
+  dedupe, pre-seed note, per-scenario row reseeding, and the table keys runs
+  queue on (the server refills every other table a workflow uses; TRUST-669).
 - `harness/cleanup.ts` — `cleanupBuild`, per-case timeout policy, bounded
   concurrency, binary workflow checks and shared failure summaries.
 
@@ -132,8 +133,10 @@ the cursor instead.
   runs ~12 of them (runners x slots), so one n8n process serves dozens of cases
   back to back. Isolation is per build, not per instance (`run/lane-users.ts`):
   an MCP build acts as a fresh member (`provisionCaseBuildUser`), an
-  orchestrator build runs in a fresh member's personal project
-  (`provisionBuildProject`). Assume anything the backend
+  orchestrator build runs in a fresh team project the owner administers, or,
+  without a license, in a fresh member's personal project
+  (`provisionBuildProject`), where n8n hides execution output from the owner.
+  Assume anything the backend
   holds in memory outlives the case that created it, and size it for a
   multi-hour process rather than one run.
 - **`eval-pr-comment.md`** is posted verbatim by CI. The comment uses an

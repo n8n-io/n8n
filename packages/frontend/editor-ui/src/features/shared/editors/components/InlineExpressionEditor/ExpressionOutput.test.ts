@@ -550,6 +550,42 @@ describe('ExpressionOutput.vue', () => {
 			expect(output?.textContent).toBe('Hello John, age: 25');
 		});
 
+		it('highlights the segments that follow a resolvable with an empty result', async () => {
+			const segments: Segment[] = [
+				{ kind: 'plaintext', from: 0, to: 6, plaintext: 'Hello ' },
+				{
+					kind: 'resolvable',
+					from: 6,
+					to: 23,
+					resolvable: '{{ $json.empty }}',
+					resolved: '',
+					state: 'valid',
+					error: null,
+				},
+				{
+					kind: 'resolvable',
+					from: 23,
+					to: 39,
+					resolvable: '{{ $json.name }}',
+					resolved: 'World',
+					state: 'valid',
+					error: null,
+				},
+			];
+
+			const { container } = renderComponent(ExpressionOutput, {
+				pinia: createTestingPinia(),
+				props: { segments, render: 'text' },
+			});
+
+			const output = container.querySelector('[data-test-id="expression-output"]');
+			expect(output?.textContent).toBe('Hello World');
+
+			await waitFor(() => {
+				expect(container.querySelector('.cm-valid-resolvable')?.textContent).toBe('World');
+			});
+		});
+
 		it('should handle custom extensions in text mode', () => {
 			const customExtensions: Extension[] = [];
 

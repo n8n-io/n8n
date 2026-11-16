@@ -2,17 +2,18 @@ import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwri
 import { fixtures as currentsFixtures } from '@currents/playwright';
 import { test as base, expect, request } from '@playwright/test';
 import type { ServiceHelpers } from 'n8n-containers/services/types';
-import type { N8NConfig, N8NProcessUrl, N8NStack } from 'n8n-containers/stack';
-import { createN8NStack } from 'n8n-containers/stack';
+import type { N8NProcessUrl } from 'n8n-containers/stack';
 
 import { a11yFixtures, type A11yTestFixtures } from './a11y';
-import {
-	CAPABILITIES,
-	shouldSkipContainerRequirement,
-	type CapabilityOption,
-} from './capabilities';
+import { shouldSkipContainerRequirement } from './capabilities';
 import { consoleErrorFixtures } from './console-error-monitor';
-import { engineParityDisposition, workflowSettingsFor } from './engine-parity';
+import { containerFixtures, type ContainerWorkerFixtures } from './containers';
+import {
+	type CanvasRunGuard,
+	engineParityDisposition,
+	watchCanvasRuns,
+	workflowSettingsFor,
+} from './engine-parity';
 import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { backendV8CoverageFixtures } from '../fixtures/backend-v8-coverage';
@@ -59,39 +60,20 @@ type TestFixtures = {
 	containerRequirement: undefined;
 	/** Internal auto fixture: sorts a test into its engine v2 parity bucket by tag. */
 	engineParity: undefined;
+	/**
+	 * Watches the runs the page starts and fails the test after it when one
+	 * stayed on the legacy engine. A test that runs the legacy engine on purpose
+	 * calls `allowLegacyRuns()`.
+	 */
+	canvasRuns: CanvasRunGuard;
 };
 
-type WorkerFixtures = {
+type WorkerFixtures = ContainerWorkerFixtures & {
 	n8nUrl: string;
 	backendUrl: string;
 	frontendUrl: string;
 	internalUrl: string;
-	dbSetup: undefined;
-	n8nStackConfig: N8NConfig;
-	n8nContainer: N8NStack;
-	capability?: CapabilityOption;
 };
-
-type ProjectUse = { containerConfig?: N8NConfig };
-
-function parseGlobalTestEnv(): Record<string, string> {
-	const raw = process.env.N8N_TEST_ENV;
-	if (!raw) return {};
-	try {
-		return JSON.parse(raw) as Record<string, string>;
-	} catch {
-		console.warn('[base.ts] Failed to parse N8N_TEST_ENV');
-		return {};
-	}
-}
-
-function logKeepalive(container: N8NStack): void {
-	console.log('\n=== KEEPALIVE: Containers left running for debugging ===');
-	console.log(`    URL: ${container.baseUrl}`);
-	console.log(`    Project: ${container.projectName}`);
-	console.log('    Cleanup: pnpm --filter n8n-containers stack:clean:all');
-	console.log('=========================================================\n');
-}
 
 export const test = base.extend<
 	TestFixtures &
@@ -105,13 +87,11 @@ export const test = base.extend<
 	...v8CoverageFixtures,
 	...backendV8CoverageFixtures,
 	...currentsFixtures.actionFixtures,
+	...containerFixtures,
 	...observabilityFixtures,
 	...consoleErrorFixtures,
 	...quarantineFixtures,
 	...a11yFixtures,
-
-	// Option for test.use({ capability: 'proxy' }) - transformed into N8NStack by n8nContainer
-	capability: [undefined, { scope: 'worker', option: true }],
 
 	// Rejects an unknown @engine:* tag anywhere; only an engine v2 stack skips or
 	// expects failure. See fixtures/engine-parity.ts for the tags.
@@ -135,63 +115,6 @@ export const test = base.extend<
 			await use(undefined);
 		},
 		{ auto: true },
-	],
-
-	// Resolves the effective N8NConfig from project.containerConfig (base) +
-	// capability (override) + N8N_TEST_ENV (global). Topology-neutral: it
-	// always produces a config, even when a container will not be provisioned.
-	n8nStackConfig: [
-		async ({ capability }, use, workerInfo) => {
-			const { containerConfig: base = {} } = workerInfo.project.use as ProjectUse;
-			const override: N8NConfig = !capability
-				? {}
-				: typeof capability === 'string'
-					? CAPABILITIES[capability]
-					: capability;
-
-			const globalEnv = parseGlobalTestEnv();
-
-			const config: N8NConfig = {
-				...base,
-				...override,
-				services: [...new Set([...(base.services ?? []), ...(override.services ?? [])])],
-				env: {
-					...globalEnv,
-					...base.env,
-					...override.env,
-					E2E_TESTS: 'true',
-					N8N_RESTRICT_FILE_ACCESS_TO: '',
-				},
-				// Coverage pipeline opt-in: when the coverage runner sets N8N_COVERAGE_DIR,
-				// bridge it to the stack's typed config so containers collect V8 coverage.
-				...(process.env.N8N_COVERAGE_DIR ? { coverageHostDir: process.env.N8N_COVERAGE_DIR } : {}),
-			};
-
-			await use(config);
-		},
-		{ scope: 'worker', box: true },
-	],
-
-	// Creates container from n8nStackConfig.
-	// When N8N_BASE_URL is set, skips container creation for local testing.
-	n8nContainer: [
-		async ({ n8nStackConfig }, use) => {
-			if (getBackendUrl()) {
-				await use(null!);
-				return;
-			}
-
-			const container = await createN8NStack(n8nStackConfig);
-			await use(container);
-
-			if (process.env.N8N_CONTAINERS_KEEPALIVE === 'true') {
-				logKeepalive(container);
-				return;
-			}
-
-			await container.stop();
-		},
-		{ scope: 'worker', box: true },
 	],
 
 	n8nUrl: [
@@ -230,35 +153,22 @@ export const test = base.extend<
 		{ scope: 'worker' },
 	],
 
-	dbSetup: [
-		async ({ n8nContainer, n8nStackConfig }, use) => {
-			if (n8nContainer) {
-				console.log('Resetting database for new container');
-				const apiContext = await request.newContext({ baseURL: n8nContainer.baseUrl });
-				const api = new ApiHelpers(apiContext);
-				await api.resetDatabase();
-				await apiContext.dispose();
-
-				// The reset endpoint only reaches the control plane database.
-				if (n8nStackConfig.engine) {
-					await (
-						n8nContainer.services.enginePostgres ?? n8nContainer.services.postgres
-					).truncateEngineDatabase();
-				}
-			}
-			await use(undefined);
-		},
-		{ scope: 'worker' },
-	],
-
 	baseURL: async ({ frontendUrl, dbSetup }, use) => {
 		void dbSetup; // Ensure dbSetup runs first
 		await use(frontendUrl);
 	},
 
-	n8n: async ({ context, n8nStackConfig }, use, testInfo) => {
+	canvasRuns: async ({ context, n8nStackConfig }, use) => {
+		const guard = await watchCanvasRuns(context, workflowSettingsFor(n8nStackConfig));
+		await use(guard);
+		guard.assertRoutedToEngine();
+	},
+
+	// `canvasRuns` installs its route before this fixture opens the page.
+	n8n: async ({ context, n8nStackConfig, canvasRuns }, use, testInfo) => {
+		void canvasRuns;
 		const apiOptions = { workflowSettings: workflowSettingsFor(n8nStackConfig) };
-		await setupDefaultInterceptors(context);
+		await setupDefaultInterceptors(context, apiOptions);
 		const page = await context.newPage();
 
 		// Set debounce multiplier for E2E tests - 1 means normal timing (no change)

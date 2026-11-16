@@ -8,6 +8,7 @@ import {
 	MessageEventBusDestinationSyslogOptionsSchema,
 	MessageEventBusDestinationTypeNames,
 	MessageEventBusDestinationWebhookOptionsSchema,
+	storedDestinationHostSchemas,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
@@ -18,16 +19,18 @@ import { EventDestinationsRepository } from '@/modules/log-streaming.ee/database
 import { InstanceBootstrappingError } from '../instance-bootstrapping.error';
 
 // Env var format reuses the canonical destination DTOs from `n8n-workflow`,
-// with three deliberate adjustments per variant:
+// with four deliberate adjustments per variant:
 //  1. Replace the internal `__type: '$$MessageEventBusDestination…'` discriminator
 //     with a friendlier `type: 'webhook' | 'syslog' | 'sentry'`.
 //  2. Tighten `id` to a UUID (the DTO only requires a non-empty string).
 //  3. Switch to strict mode so unknown keys in the env JSON fail loudly
 //     rather than being silently dropped on insert.
+//  4. Keep the earlier host checks, so a config that booted before still boots.
 const envWebhookSchema = MessageEventBusDestinationWebhookOptionsSchema.omit({ __type: true })
 	.extend({
 		type: z.literal('webhook'),
 		id: z.string().uuid().optional(),
+		url: storedDestinationHostSchemas.url,
 	})
 	.strict();
 
@@ -35,6 +38,7 @@ const envSyslogSchema = MessageEventBusDestinationSyslogOptionsSchema.omit({ __t
 	.extend({
 		type: z.literal('syslog'),
 		id: z.string().uuid().optional(),
+		host: storedDestinationHostSchemas.host,
 	})
 	.strict();
 
@@ -42,6 +46,7 @@ const envSentrySchema = MessageEventBusDestinationSentryOptionsSchema.omit({ __t
 	.extend({
 		type: z.literal('sentry'),
 		id: z.string().uuid().optional(),
+		dsn: storedDestinationHostSchemas.url,
 	})
 	.strict();
 

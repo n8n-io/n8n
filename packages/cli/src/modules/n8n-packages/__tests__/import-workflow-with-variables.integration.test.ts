@@ -80,7 +80,9 @@ async function exportWorkflowPackage(
 		workflowIds: [workflowId],
 		includeVariableValues,
 	});
-	return await streamToBuffer(stream);
+	const packageBuffer = await streamToBuffer(stream);
+	await workflowRepository.delete(workflowId);
+	return packageBuffer;
 }
 
 async function variablesInProject(projectId: string) {
@@ -114,13 +116,15 @@ describe('variable error consumers', () => {
 		await createProjectVariable('MATCHED', 'same-value', project);
 		const orchestrator = Container.get(ImportOrchestrator);
 		const input: ImportOrchestrationInput = {
-			context: { user: owner, projectId: project.id, folderId: null },
+			context: { user: owner, projectId: project.id, folderId: null, publicApi: false },
 			folders: [],
 			workflows: [],
 			credentialRequest: {
 				requirements: [],
 				matchingMode: 'id-only',
 				missingMode: 'must-preexist',
+				conflictPolicy: 'keep-existing',
+				updateScope: { projectIds: new Set([project.id]) },
 			},
 			dataTableRequest: {
 				requirements: [],
@@ -150,13 +154,14 @@ describe('variable error consumers', () => {
 				conflictPolicy: 'fail',
 			},
 			options: {
-				workflowConflictPolicy: 'fail',
-				workflowPublishingPolicy: 'preserve-published-state',
-				workflowIdPolicy: 'new',
+				conflictPolicy: 'fail',
+				publishingPolicy: 'preserve-published-state',
+				idPolicy: 'source',
 				missingNodeTypeMode: 'fail',
 				folderConflictPolicy: 'merge',
 				overwriteDeletionPolicy: 'archive',
 			},
+			checkRootPlacement: false,
 		};
 
 		const blockedPlan = await orchestrator.plan(input);
@@ -232,7 +237,7 @@ describe('workflow package import — with variables', () => {
 			});
 			expect(await variablesRepository.count()).toBe(variablesBefore);
 			expect(await variablesInProject(targetProject.id)).toEqual([]);
-			expect(await workflowRepository.count()).toBe(2);
+			expect(await workflowRepository.count()).toBe(1);
 		});
 
 		it('matches a variable that already exists in the target project', async () => {

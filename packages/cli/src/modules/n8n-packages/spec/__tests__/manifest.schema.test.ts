@@ -2,7 +2,6 @@ import { manifestEntrySchema, packageManifestSchema } from '../manifest.schema';
 
 const validManifest = {
 	packageFormatVersion: '1',
-	exportedAt: '2026-05-18T12:00:00.000Z',
 	sourceN8nVersion: '1.0.0',
 	sourceId: 'instance-abc',
 	workflows: [{ id: 'wf-abc', name: 'My workflow', target: 'workflows/my-workflow-abc' }],
@@ -11,6 +10,15 @@ const validManifest = {
 describe('packageManifestSchema', () => {
 	it('accepts a valid manifest', () => {
 		expect(() => packageManifestSchema.parse(validManifest)).not.toThrow();
+	});
+
+	it('accepts an older manifest with exportedAt and drops the field', () => {
+		const parsed = packageManifestSchema.parse({
+			...validManifest,
+			exportedAt: '2026-05-18T12:00:00.000Z',
+		});
+
+		expect(parsed).not.toHaveProperty('exportedAt');
 	});
 
 	it.each([
@@ -32,6 +40,14 @@ describe('packageManifestSchema', () => {
 	])('validates target "%s": %s', (target, valid) => {
 		const entry = { ...validManifest.workflows[0], target };
 		expect(manifestEntrySchema.safeParse(entry).success).toBe(valid);
+	});
+
+	it('keeps the archive flag of a workflow entry and reads an entry without it as active', () => {
+		const archived = { ...validManifest.workflows[0], isArchived: true };
+		const older = { id: 'wf-def', name: 'Older package', target: 'workflows/older-def' };
+		expect(
+			packageManifestSchema.parse({ ...validManifest, workflows: [archived, older] }).workflows,
+		).toEqual([archived, { ...older, isArchived: false }]);
 	});
 
 	it('rejects a manifest with an unsupported packageFormatVersion', () => {

@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { AuthenticatedRequest } from '@n8n/db';
+import { Person, type AuthenticatedRequest } from '@n8n/db';
 import { CredentialResolverDataNotFoundError, type ICredentialResolver } from '@n8n/decorators';
 import type { Response } from 'express';
 import type { Cipher } from 'n8n-core';
@@ -1268,10 +1268,10 @@ describe('DynamicCredentialService', () => {
 					const middleware = service.getDynamicCredentialsEndpointsMiddleware();
 
 					const mockReq = {
-						user: { id: 'user-123', email: 'test@example.com' }, // Authenticated user
+						user: Object.assign(new Person(), { id: 'user-123', email: 'test@example.com' }), // Authenticated user
 						cookies: {},
 						headers: {}, // No X-Authorization header
-					} as AuthenticatedRequest;
+					} as unknown as AuthenticatedRequest;
 
 					const mockRes = {
 						status: vi.fn().mockReturnThis(),
@@ -1304,9 +1304,9 @@ describe('DynamicCredentialService', () => {
 					const middleware = service.getDynamicCredentialsEndpointsMiddleware();
 
 					const mockReq = {
-						user: { id: 'user-123', email: 'test@example.com' }, // Authenticated user
+						user: Object.assign(new Person(), { id: 'user-123', email: 'test@example.com' }), // Authenticated user
 						cookies: {},
-					} as AuthenticatedRequest;
+					} as unknown as AuthenticatedRequest;
 
 					const mockRes = {
 						status: vi.fn().mockReturnThis(),

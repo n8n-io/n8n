@@ -91,6 +91,58 @@ describe('ControllerRegistry', () => {
 		});
 	});
 
+	describe('controller surfaces', () => {
+		const rejectUnauthenticated = vi.fn<express.RequestHandler>((_req, res) => {
+			res.sendStatus(401);
+		});
+
+		@RootLevelController('/apps-only', { surface: 'apps' })
+		class AppsOnlyController {
+			@Get('/', { skipAuth: true, middlewares: [rejectUnauthenticated] })
+			read() {
+				return { ok: true };
+			}
+		}
+
+		it('keeps apps controllers off the main surface', () => {
+			const target = mock<express.Application>();
+			new ControllerRegistry(
+				license,
+				authService,
+				globalConfig,
+				metadata,
+				lastActiveAtService,
+				new RateLimitService(),
+			).activate(target);
+			expect(target.use.mock.calls.map(([prefix]) => prefix)).not.toContain('/apps-only');
+		});
+
+		it('uses route middleware to reject unauthenticated apps requests', async () => {
+			const target = express();
+			const use = vi.spyOn(target, 'use');
+			const read = vi.spyOn(Container.get(AppsOnlyController), 'read');
+			rejectUnauthenticated.mockImplementation((_req, res) => {
+				res.sendStatus(401);
+			});
+			authService.createAuthMiddleware.mockClear();
+			new ControllerRegistry(
+				license,
+				authService,
+				globalConfig,
+				metadata,
+				lastActiveAtService,
+				new RateLimitService(),
+			).activate(target, { surface: 'apps' });
+
+			await request(target).get('/apps-only').expect(401);
+
+			expect(use.mock.calls.map(([prefix]) => prefix)).toEqual(['/apps-only']);
+			expect(rejectUnauthenticated).toHaveBeenCalledOnce();
+			expect(authService.createAuthMiddleware).not.toHaveBeenCalled();
+			expect(read).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('Body-based keyed rate limiting', () => {
 		class TestBodyDto extends Z.class({
 			email: z.string().max(20),

@@ -81,6 +81,18 @@ describe('components', () => {
 			expect(wrapper.html()).toContain('action-dropdown-container');
 		});
 
+		it('shows an item description under its label', async () => {
+			const wrapper = render(N8nActionDropdown, {
+				props: {
+					items: [{ id: 'publish', label: 'Publish', description: 'Goes live for everyone' }],
+				},
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+
+			expect(await wrapper.findByText('Goes live for everyone')).toBeVisible();
+		});
+
 		it('forwards badge variants over the default variant', async function testBadgeVariants() {
 			const wrapper = render(N8nActionDropdown, {
 				props: {

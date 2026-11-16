@@ -51,6 +51,8 @@ try {
 	// Per-spec BACKEND lcovs (DEVP-370) — needs the image dist for dist→.ts resolution.
 	sh('pnpm', ['coverage:emit-spec-backend-lcovs'], {
 		IMAGE_DIST_ROOT: `${process.cwd()}/img-dist`,
+		// Every coverage window, for the root ranges of scripts that load between specs.
+		N8N_COVERAGE_DIR: `${process.cwd()}/coverage/.backend-v8`,
 		NODE_OPTIONS: '--max-old-space-size=12288',
 	});
 } catch (error) {

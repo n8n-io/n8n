@@ -345,7 +345,7 @@ watch(workflows, (newWorkflows) => {
 				</div>
 				<div :class="$style.button">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						size="large"
 						:href="CREATOR_HUB_URL"
 						:label="i18n.baseText('templates.shareWorkflow')"

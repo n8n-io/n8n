@@ -13,7 +13,8 @@ Commands in this table run from the repository root. Container-backed tests need
 | Test a product UI or API journey | `e2e` (local) or `<mode>:e2e` (container) | `pnpm --filter n8n-playwright test:local` | [E2E tests](tests/e2e/) |
 | Test PostgreSQL, queue mode, multi-main, or process lifecycle | `<mode>:infrastructure` | `pnpm --filter n8n-playwright exec playwright test --project=postgres:infrastructure` | [Infrastructure tests](tests/infrastructure/) |
 | Check accessibility within a product journey | E2E project with the `a11y` fixture | `pnpm --filter n8n-playwright test:local` | [Accessibility checks](docs/ACCESSIBILITY.md) |
-| Measure idle memory, retention, or canvas performance | `performance` | `pnpm --filter n8n-playwright test:performance` | [Performance guide](tests/performance/README.md) |
+| Measure memory retention or canvas performance | `performance` | `pnpm --filter n8n-playwright test:performance` | [Performance guide](tests/performance/README.md) |
+| Measure idle memory | `@n8n/efficiency` memory project | `pnpm --filter @n8n/efficiency test:memory` | [Idle memory baselines](../../efficiency/memory/idle/README.md) |
 | Measure Docker image size and layer waste | `@n8n/efficiency` image projects | `pnpm --filter @n8n/efficiency test:images` | [Image efficiency](../../efficiency/images/README.md) |
 | Measure infrastructure throughput and resource use | `benchmarking:infrastructure` | `pnpm --filter n8n-playwright test:benchmark` | [Infrastructure benchmarks](tests/infrastructure/benchmarks/README.md) |
 | Investigate Instance AI memory with a local-only, Docker-backed run | `benchmark-memory-instanceai:infrastructure` | `pnpm --filter n8n-playwright exec playwright test --project=benchmark-memory-instanceai:infrastructure` | [Local benchmark setup](tests/infrastructure/benchmarks-local/README.md) |
@@ -34,11 +35,18 @@ Other private workspaces can declare `n8n-playwright` and the catalog-pinned `@p
 | `n8n-playwright/test` | `test` and `expect` with the base Currents fixtures |
 | `n8n-playwright/cli` | CLI fixture with command steps, output attachments, exit-code checks, and process cleanup |
 | `n8n-playwright/metrics` | `attachMetric()` for QA metrics and Currents analytics |
+| `n8n-playwright/containers` | Container configuration, worker lifecycle, database preparation, keepalive, and failure diagnostics |
+| `n8n-playwright/memory` | `getStableHeap()` with the existing GC and memory sampling method |
 
 The configuration factory accepts standard Playwright options. It does not start a browser, application, or container stack.
 Reporter paths resolve from this package. Test paths and report outputs resolve from the consuming workspace.
 Supply `reporter` to replace the defaults, or append suite-specific reporters to `qualityReporters()`.
-The existing container and product fixtures remain in `fixtures/`.
+The product fixtures reuse the shared container lifecycle from `fixtures/containers.ts`.
+
+The container export accepts `containerConfig` at project scope and `capability` through `test.use()`.
+It keeps the same configuration precedence as the product fixtures.
+Request `dbSetup` when a suite needs the reset and seeded database.
+The container fixtures do not launch a browser.
 
 ### CLI fixture
 
@@ -251,6 +259,7 @@ test('enterprise feature @licensed', ...)           // Requires enterprise licen
 | `@db:reset` | Reset database before each test (container-only) | Tests that need fresh DB state per test (e.g., MFA tests) |
 | `@engine:v2` | Must pass on engine v2 as well | Runs under the `engine-v2:e2e` project (see below) |
 | `@engine:v1-only` | Engine v2 will never support this | Skipped under `engine-v2:e2e`; tracking only |
+| `@engine:v2-only` | Only engine v2 can run this | Skipped on every project without the engine; required green under `engine-v2:e2e` |
 | `@engine:v2-pending` | Engine v2 will support this, but not yet | Expected to fail under `engine-v2:e2e`; an unexpected pass tells you to promote it to `@engine:v2` |
 
 ### Engine v2 parity
@@ -270,13 +279,18 @@ spec proves parity without changes.
 on inside a worker. The engine database is emptied once, when the worker takes
 its container.
 
-A workflow built in the UI does not get the setting, and a workflow without it
-runs on the legacy engine. A tagged spec must therefore create its workflow
-through `api.workflows` and run it through `api.workflows.runManually`, which
-fails the test when the run did not reach engine v2. A spec that starts the
-run from the UI instead calls `api.workflows.assertLatestExecutionRoutedToEngine`
-after the run, which checks the same thing. A tag the parity buckets do not
-know also fails the test, and names the three valid tags.
+A workflow saved from the canvas has no `engineType`, so the `n8n` fixture
+merges the stack's settings into the workflows the editor creates and updates.
+An engine type the editor sends, picked in the settings dialog, wins. The
+`canvasRuns` fixture watches every run the page starts and fails the test after
+it when a run stayed on the legacy engine; a test that runs the legacy engine
+on purpose calls `canvasRuns.allowLegacyRuns()`, and a page from
+`n8n.start.withUser()` is not watched. `api.workflows.runManually` and `runRaw`
+fail the same way on the way in. A webhook or trigger run returns no execution
+id, so `waitForExecution` and `waitForExecutionById` check the execution they
+hand back. A spec that reads no execution calls
+`api.workflows.assertLatestExecutionRoutedToEngine` after the run. A tag the
+parity buckets do not know also fails the test, and names the four valid tags.
 
 The project only picks up specs with an `@engine:*` tag for now. Tag a spec
 `@engine:v2` once it passes on both engines; use the other two tags to track

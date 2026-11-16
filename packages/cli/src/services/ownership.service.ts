@@ -4,12 +4,17 @@ import { CacheService, EventService, WorkflowProjectService } from '@n8n/backend
 import type { ListQueryDb } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
+	isPerson,
+	Person,
 	Project,
 	User,
 	ProjectRelationRepository,
 	ProjectRepository,
 	UserRepository,
+	PersonRepository,
 	Role,
+	ServiceAccount,
+	ServiceAccountDetails,
 	SettingsRepository,
 	Scope,
 } from '@n8n/db';
@@ -31,14 +36,43 @@ export class OwnershipService {
 		private projectRepository: ProjectRepository,
 		private workflowProjectService: WorkflowProjectService,
 		private userRepository: UserRepository,
+		private personRepository: PersonRepository,
 		private settingsRepository: SettingsRepository,
 	) {}
 
+	// To make use of the cache service we should store POJOs, these
+	// methods should be used to create copies of the entities
+	// converting them into plain JavaScript objects
+	// Ideally our data entities wouldn't be classes, but plain
+	// interfaces and therefore pojos adhering to these interfaces
+	copyProject(project: Project): Partial<Project> {
+		return {
+			...project,
+		};
+	}
+
+	reconstructProject(project: Partial<Project>): Project | undefined {
+		if (typeof project?.id !== 'string') {
+			return undefined;
+		}
+		return Object.assign(new Project(), project);
+	}
 	copyUser(user: User): Partial<User> {
 		return {
 			...user,
 			role: { ...user.role, scopes: [...user.role.scopes] },
 		};
+	}
+
+	/** Rebuilds the child class that `kind` names, so the account guards work on a cached copy. */
+	private reconstructAccount(cachedUser: Partial<User>): User {
+		if (cachedUser.kind !== 'service') return Object.assign(new Person(), cachedUser);
+
+		const serviceAccount = Object.assign(new ServiceAccount(), cachedUser);
+		if ('details' in cachedUser && cachedUser.details && typeof cachedUser.details === 'object') {
+			serviceAccount.details = Object.assign(new ServiceAccountDetails(), cachedUser.details);
+		}
+		return serviceAccount;
 	}
 
 	reconstructUser(cachedUser: Partial<User>): User | undefined {
@@ -47,7 +81,7 @@ export class OwnershipService {
 			// an external system our cache
 			return undefined;
 		}
-		const user = Object.assign(new User(), cachedUser);
+		const user = this.reconstructAccount(cachedUser);
 		if ('role' in cachedUser && cachedUser.role && typeof cachedUser.role === 'object') {
 			user.role = Object.assign(new Role(), cachedUser.role);
 			if ('scopes' in cachedUser.role && Array.isArray(cachedUser.role.scopes)) {
@@ -115,7 +149,9 @@ export class OwnershipService {
 			ownerByProjectId.set(projectId, user);
 			ownersToCache[projectId] = this.copyUser(user);
 		}
-		void this.cacheService.setHash('project-owner', ownersToCache);
+		if (Object.keys(ownersToCache).length > 0) {
+			void this.cacheService.setHash('project-owner', ownersToCache);
+		}
 
 		return ownerByProjectId;
 	}
@@ -198,7 +234,7 @@ export class OwnershipService {
 	}
 
 	async hasInstanceOwner() {
-		return await this.userRepository.hasClaimedInstanceOwner();
+		return await this.personRepository.hasClaimedInstanceOwner();
 	}
 
 	async setupOwner(
@@ -214,12 +250,13 @@ export class OwnershipService {
 			throw new BadRequestError('Instance owner already setup');
 		}
 
-		let shellUser = await this.userRepository.findOne({
+		const shellUser = await this.userRepository.findOne({
 			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
 			relations: ['role'],
 		});
 
-		if (!shellUser) {
+		// The owner is always a person.
+		if (!shellUser || !isPerson(shellUser)) {
 			this.logger.error('Could not find shell user with global:owner role');
 			throw new BadRequestError('Instance owner shell user not found');
 		}
@@ -232,7 +269,8 @@ export class OwnershipService {
 			? password
 			: await this.passwordUtility.hash(password);
 
-		shellUser = await this.userRepository.save(shellUser, { transaction: false });
+		// `save` updates the instance in place.
+		await this.userRepository.save(shellUser, { transaction: false });
 
 		this.logger.info('Owner was set up successfully');
 		this.eventService.emit('instance-owner-setup', { userId: shellUser.id });

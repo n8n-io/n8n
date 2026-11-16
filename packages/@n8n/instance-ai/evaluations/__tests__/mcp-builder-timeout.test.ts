@@ -69,7 +69,9 @@ describe('buildWorkflowViaMcp — build timeout', () => {
 		setImmediate(() => {
 			child.stdout.emit(
 				'data',
-				Buffer.from(JSON.stringify({ result: 'created\nWORKFLOW_ID=W1', subtype: 'success' })),
+				Buffer.from(
+					JSON.stringify({ type: 'result', result: 'created\nWORKFLOW_ID=W1', subtype: 'success' }),
+				),
 			);
 			child.emit('close', 0);
 		});

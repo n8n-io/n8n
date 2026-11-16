@@ -1,6 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { EventService, UrlService, RoleCacheService } from '@n8n/backend-services';
+import {
+	EventService,
+	UrlService,
+	RoleCacheService,
+	JwtService,
+	Publisher,
+	Subscriber,
+} from '@n8n/backend-services';
 import { HTML_NONCE_PLACEHOLDER, LICENSE_FEATURES } from '@n8n/constants';
 import {
 	AuthRolesService,
@@ -32,14 +39,11 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
-import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
 import { Server } from '@/server';
-import { JwtService } from '@/services/jwt.service';
 
 import { WaitTracker } from '@/wait-tracker';
 
@@ -282,6 +286,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		this.logger.debug('Binary data service init complete');
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
+		await this.initMemoryGuard();
 		await Container.get(CredentialsOverwrites).init();
 		this.logger.debug('Credentials overwrites init complete');
 		await this.initDataDeduplicationService();
@@ -300,6 +305,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
+		// The skills module reads the credentials of its sources through cli.
+		const { registerSkillSourceCredentials } = await import(
+			'@/credentials/skill-source-credentials.js'
+		);
+		registerSkillSourceCredentials();
+
 		// Initialize auth handler registry after modules are loaded
 		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry.js');
 		await Container.get(AuthHandlerRegistry).init();
@@ -310,6 +321,34 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+	}
+
+	private async initMemoryGuard() {
+		const { enabled } = this.globalConfig.memoryGuard;
+		if (enabled && this.globalConfig.executions.mode === 'regular') {
+			await this.startMemoryGuard();
+			return;
+		}
+
+		if (enabled) this.logger.warn('Memory guard supports only regular mode, so it stays off');
+		const { removeMemoryGuardJournal } = await import('@/memory-guard/memory-guard-journal.js');
+		removeMemoryGuardJournal();
+	}
+
+	private async startMemoryGuard() {
+		// Importing the tracker registers its lifecycle handlers. Resolve it now, so
+		// that a wiring error stops startup instead of the first execution.
+		const { RunDataTracker } = await import('@/memory-guard/run-data-tracker.js');
+		Container.get(RunDataTracker);
+		if (this.globalConfig.endpoints.metrics.enable) {
+			const { PrometheusMemoryGuardMetricsService } = await import(
+				'@/metrics/prometheus/memory-guard-metrics.service.js'
+			);
+			Container.get(PrometheusMemoryGuardMetricsService).init();
+		}
+		const { MemoryGuardService } = await import('@/memory-guard/memory-guard.service.js');
+		Container.get(MemoryGuardService).init();
+		this.logger.debug('Memory guard init complete');
 	}
 
 	private async initInstanceSettingsLoader(): Promise<void> {

@@ -1,15 +1,29 @@
+import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
-import type { AgentJsonConfig } from '@n8n/api-types';
-import { type EventService, ProjectScopeService, UrlService } from '@n8n/backend-services';
+import type { AgentJsonConfig, AgentPublishHistoryItemDto } from '@n8n/api-types';
+import {
+	CredentialsFinderService,
+	type EventService,
+	NodeTypesProxy,
+	ProjectScopeService,
+	UrlService,
+} from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp } from '@n8n/backend-network';
-import { User, type WorkflowRepository, type TransactionRunner } from '@n8n/db';
+import {
+	GLOBAL_MEMBER_ROLE,
+	type OperationContext,
+	User,
+	type WorkflowRepository,
+	type TransactionRunner,
+} from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { OperationalError } from 'n8n-workflow';
+import type { InstanceSettings } from 'n8n-core';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
@@ -29,9 +43,13 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 }));
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@n8n/errors';
+import { ConflictError, OperationalError } from '@n8n/errors';
+
+import { SkillNameTakenError } from '@/modules/skills';
 import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
+import type { AgentSessionDetail } from '@/modules/agents/agent-context.contracts';
+import { AgentContextService } from '@/modules/agents/agent-context.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
 import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integration-persistence.service';
@@ -51,7 +69,7 @@ import {
 import { AgentValidationService } from '@/modules/agents/agent-validation.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AttachableWorkflowsService } from '@/modules/agents/attachable-workflows.service';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import type { ProjectAgent } from '@/modules/agents/entities/agent.entity';
 import { SlackManagedSetupService } from '@/modules/agents/integrations/platforms/slack/slack-managed-setup.service';
 import { SlackManualSetupService } from '@/modules/agents/integrations/platforms/slack/slack-manual-setup.service';
 import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
@@ -59,9 +77,9 @@ import type { AgentTaskRepository } from '@/modules/agents/repositories/agent-ta
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
+import type { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
-import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Telemetry } from '@/telemetry';
@@ -75,7 +93,6 @@ import { AgentPolicyService } from '@/modules/agents/agent-policy.service';
 import {
 	createAgentSkillRefsService,
 	storedAgentConfig,
-	storedSkillRefs,
 } from '../../agents/__tests__/test-utils/stored-agent-config';
 
 const userHasScopesMock = userHasScopes as Mock;
@@ -91,7 +108,7 @@ type RegisteredTool = {
 	handler: (input: Record<string, unknown>, extra: { signal: AbortSignal }) => Promise<ToolResult>;
 };
 
-const user = Object.assign(new User(), { id: 'user-1' });
+const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
 const baseConfig: AgentJsonConfig = {
 	name: 'My Agent',
@@ -118,7 +135,7 @@ const approvalSuspension = (
 	resumeSchema: standardApprovalResumeSchema,
 });
 
-const agentEntity = (overrides: Record<string, unknown> = {}): Agent =>
+const agentEntity = (overrides: Record<string, unknown> = {}): ProjectAgent =>
 	({
 		id: 'agent-1',
 		name: 'My Agent',
@@ -131,13 +148,16 @@ const agentEntity = (overrides: Record<string, unknown> = {}): Agent =>
 		schema: baseConfig,
 		integrations: [],
 		...overrides,
-	}) as unknown as Agent;
+	}) as unknown as ProjectAgent;
 
 describe('McpAgentToolsService', () => {
+	// One fake skill refs seam for the MCP service and the services it writes through.
+	const agentSkillRefs = createAgentSkillRefsService();
 	const telemetry = mockInstance(Telemetry);
 	const credentialsService = mockInstance(CredentialsService);
 	const agentsService = mockInstance(AgentsService);
 	const agentConfigService = mockInstance(AgentConfigService);
+	const agentContextService = mockInstance(AgentContextService);
 	const agentValidationService = mockInstance(AgentValidationService);
 	const agentPublishService = mockInstance(AgentPublishService);
 	const agentSkillsService = mockInstance(AgentSkillsService);
@@ -154,6 +174,7 @@ describe('McpAgentToolsService', () => {
 	const projectScopeService = mockInstance(ProjectScopeService);
 	const slackManagedSetup = mockInstance(SlackManagedSetupService);
 	const slackManualSetup = mockInstance(SlackManualSetupService);
+	const credentialsFinderService = mockInstance(CredentialsFinderService);
 	const slackManifest = {
 		settings: {
 			event_subscriptions: {
@@ -167,6 +188,7 @@ describe('McpAgentToolsService', () => {
 		credentialsService,
 		agentsService,
 		agentConfigService,
+		agentContextService,
 		agentValidationService,
 		agentPublishService,
 		agentSkillsService,
@@ -179,19 +201,21 @@ describe('McpAgentToolsService', () => {
 		agentModelCatalogService,
 		mockInstance(AttachableWorkflowsService),
 		mcpRegistryService,
-		mockInstance(NodeTypes),
+		mockInstance(NodeTypesProxy),
 		mockInstance(OauthService),
 		outboundHttp,
 		urlService,
 		projectScopeService,
 		new McpAgentSlackSetup(slackManagedSetup, slackManualSetup, mockLogger()),
-		createAgentSkillRefsService(),
+		agentSkillRefs,
+		credentialsFinderService,
 	);
 
 	let tools: Map<string, RegisteredTool>;
 	let registerResource: Mock;
 
 	beforeEach(() => {
+		agentSkillRefs.draftRefs.clear();
 		vi.clearAllMocks();
 		userHasScopesMock.mockResolvedValue(true);
 		agentsService.findByIdForUser.mockResolvedValue(agentEntity());
@@ -222,11 +246,17 @@ describe('McpAgentToolsService', () => {
 		return await tool.handler(input, { signal });
 	};
 
-	const useRealCustomToolPersistence = (agent: Agent) => {
+	const useRealCustomToolPersistence = (agent: ProjectAgent) => {
 		const agentRepository = mock<AgentRepository>();
 		const runtimeCacheService = mock<AgentRuntimeCacheService>();
 		const lifecycleTelemetry = mock<Telemetry>();
-		const modificationTelemetry = new AgentModificationTelemetryService(lifecycleTelemetry);
+		const modificationTelemetry = new AgentModificationTelemetryService(
+			lifecycleTelemetry,
+			mock<InstanceSettings>(),
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			mock<EventService>(),
+			// EOF Experiment cleanup
+		);
 		const localCredentialsService = mock<CredentialsService>();
 		const workflowRepository = mock<WorkflowRepository>();
 		const agentTaskRepository = mock<AgentTaskRepository>();
@@ -253,23 +283,32 @@ describe('McpAgentToolsService', () => {
 			mockLogger(),
 			agentRepository,
 			saveCompletion,
-			createAgentSkillRefsService(agentRepository),
+			agentSkillRefs,
+			mock<AgentDefinitionService>(),
+			transactionRunner,
 		);
 		const configService = new AgentConfigService(
 			mockLogger(),
 			agentRepository,
 			agentTaskRepository,
-			mock<AgentSkillsService>(),
 			new AgentConfigPreparationService(
 				localCredentialsService,
 				workflowRepository,
 				mock<NodeToolAiGatewayService>(),
+				agentRepository,
+				agentTaskRepository,
+				agentSkillRefs,
+				new AgentPolicyService(new PolicyEnforcementService()),
+				mock<CredentialsFinderService>({
+					findCredentialForUser: async (id: string) => ({ id }) as never,
+				}),
 			),
 			mock<AgentSetupCompletionService>(),
 			transactionRunner,
 			saveCompletion,
-			new AgentPolicyService(new PolicyEnforcementService()),
-			createAgentSkillRefsService(agentRepository),
+			agentSkillRefs,
+			mock<ChatIntegrationRegistry>(),
+			mock<AgentDefinitionService>(),
 		);
 		agentCustomToolsService.buildCustomTool.mockImplementation(
 			async (agentId, projectId, code, descriptor, context, options) =>
@@ -294,12 +333,14 @@ describe('McpAgentToolsService', () => {
 		it('registers all agent tools and the reference resource', () => {
 			expect([...tools.keys()].sort()).toEqual(
 				[
+					'archive_agent',
 					'call_agent',
 					'create_agent',
-					'delete_agent',
 					'discover_agent_assets',
 					'get_agent',
 					'get_agent_builder_reference',
+					'get_agent_session',
+					'list_agent_sessions',
 					'list_agent_versions',
 					'mutate_agent',
 					'publish_agent',
@@ -412,7 +453,9 @@ describe('McpAgentToolsService', () => {
 			['unpublish_agent', 'agent:unpublish', identity],
 			['revert_agent', 'agent:update', identity],
 			['list_agent_versions', 'agent:read', identity],
-			['delete_agent', 'agent:delete', identity],
+			['list_agent_sessions', 'agent:read', identity],
+			['get_agent_session', 'agent:read', { ...identity, sessionId: 'session-1' }],
+			['archive_agent', 'agent:delete', identity],
 			['discover_agent_assets', 'agent:read', { projectId: 'project-1', kind: 'models' }],
 			[
 				'verify_agent_mcp_server',
@@ -462,7 +505,9 @@ describe('McpAgentToolsService', () => {
 			['unpublish_agent', identity],
 			['revert_agent', identity],
 			['list_agent_versions', identity],
-			['delete_agent', identity],
+			['list_agent_sessions', identity],
+			['get_agent_session', { ...identity, sessionId: 'session-1' }],
+			['archive_agent', identity],
 			[
 				'update_agent_integration',
 				{ ...identity, action: 'disconnect', type: 'slack', credentialId: 'cred-1' },
@@ -724,6 +769,26 @@ describe('McpAgentToolsService', () => {
 			});
 		});
 
+		it('names a taken skill name instead of reporting a stale config', async () => {
+			agentSkillsService.createAndAttachSkill.mockRejectedValue(new SkillNameTakenError('Skill'));
+			// Another edit changed the agent while the rejected create ran.
+			const latestConfig = { ...composedConfig, instructions: 'Newer work' };
+			agentConfigService.getConfig.mockResolvedValue(latestConfig);
+
+			const result = await callTool(
+				'mutate_agent',
+				mutateInput({ type: 'skill.upsert', skill: { name: 'Skill', body: 'do it' } }),
+			);
+
+			expect(result.structuredContent).toMatchObject({
+				ok: false,
+				code: 'skill_name_taken',
+				agentId: 'agent-1',
+				configHash: getAgentConfigHash(latestConfig),
+				message: expect.stringContaining('The skill name "Skill" is taken'),
+			});
+		});
+
 		it('updates an existing skill when skillId is given', async () => {
 			agentSkillsService.updateSkill.mockResolvedValue({ id: 'skill-1' } as never);
 
@@ -885,91 +950,55 @@ describe('McpAgentToolsService', () => {
 	});
 
 	describe('create_agent', () => {
-		beforeEach(() => {
-			agentsService.create.mockResolvedValue(agentEntity());
-		});
-
-		it('validates, creates, and stores the initial config with the name injected', async () => {
-			const initialConfig = { model: 'anthropic/claude', instructions: 'Help.' };
-			agentConfigService.validateConfig.mockResolvedValue({
-				valid: true,
-				config: baseConfig,
-			});
-			agentConfigService.updateConfig.mockResolvedValue({
-				config: baseConfig,
-				configHash: getAgentConfigHash(baseConfig),
-				updatedAt: 'now',
-				versionId: 'v2',
-			});
-
-			const result = await callTool('create_agent', {
-				projectId: 'project-1',
-				name: 'My Agent',
-				config: initialConfig,
-			});
-
-			expect(agentConfigService.validateConfig).toHaveBeenCalledWith({
-				...initialConfig,
-				name: 'My Agent',
-			});
-			expect(agentsService.create).toHaveBeenCalledWith('project-1', 'My Agent', {
-				actor: { kind: 'user', user },
-				availableInMCP: true,
-			});
-			expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
-				'agent-1',
-				'project-1',
-				{ ...initialConfig, name: 'My Agent' },
-				user,
-				{ baseConfigHash: expect.stringMatching(/^[a-f0-9]{64}$/), modifiedBy: 'mcp' },
-			);
-			expect(result.structuredContent).toEqual({
-				ok: true,
-				agent: {
-					id: 'agent-1',
-					name: 'My Agent',
+		it.each([undefined, { model: 'anthropic/claude', instructions: 'Help.' }])(
+			'creates once with initial config %j and returns the committed state',
+			async (initialConfig) => {
+				agentsService.createOrAdopt.mockResolvedValue({
+					agent: agentEntity({ versionId: 'created-version' }),
+					config: baseConfig,
+					configHash: 'created-config-hash',
+					adopted: false,
+				});
+				const result = await callTool('create_agent', {
 					projectId: 'project-1',
-					published: false,
-					versionId: 'v2',
-					activeVersionId: null,
-				},
-				configHash: getAgentConfigHash(baseConfig),
-				url: 'https://n8n.test/projects/project-1/agents/agent-1',
-			});
-		});
+					name: 'My Agent',
+					config: initialConfig,
+				});
+				expect(agentsService.createOrAdopt).toHaveBeenCalledWith('project-1', 'My Agent', {
+					actor: { kind: 'user', user },
+					user,
+					createdBy: 'mcp',
+					availableInMCP: true,
+					config: initialConfig ? { ...initialConfig, name: 'My Agent' } : undefined,
+				});
+				expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+				expect(result.structuredContent).toEqual({
+					ok: true,
+					agent: {
+						id: 'agent-1',
+						name: 'My Agent',
+						projectId: 'project-1',
+						published: false,
+						versionId: 'created-version',
+						activeVersionId: null,
+					},
+					configHash: 'created-config-hash',
+					url: 'https://n8n.test/projects/project-1/agents/agent-1',
+				});
+			},
+		);
 
-		it('rejects an invalid initial config before creating the agent', async () => {
-			agentConfigService.validateConfig.mockResolvedValue({ valid: false, error: 'bad model' });
-
-			const result = await callTool('create_agent', {
-				projectId: 'project-1',
-				name: 'My Agent',
-				config: { model: 'nope' },
-			});
-
-			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				error: 'Invalid initial Agent config: bad model',
-			});
-			expect(agentsService.create).not.toHaveBeenCalled();
-		});
-
-		it('deletes the created agent when storing the initial config fails', async () => {
-			agentConfigService.validateConfig.mockResolvedValue({
-				valid: true,
-				config: baseConfig,
-			});
-			agentConfigService.updateConfig.mockRejectedValue(new Error('write failed'));
-
+		it('returns a creation failure without a compensating delete', async () => {
+			agentsService.createOrAdopt.mockRejectedValue(new Error('write failed'));
 			const result = await callTool('create_agent', {
 				projectId: 'project-1',
 				name: 'My Agent',
 				config: { model: 'anthropic/claude' },
 			});
-
-			expect(agentsService.delete).toHaveBeenCalledWith('agent-1', 'project-1');
 			expect(result.isError).toBe(true);
 			expect(result.structuredContent).toMatchObject({ error: 'write failed' });
+			expect(agentsService.delete).not.toHaveBeenCalled();
+			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1178,6 +1207,33 @@ describe('McpAgentToolsService', () => {
 			});
 			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:execute'], false, {
 				projectId: 'project-1',
+			});
+		});
+
+		it('reports skill names that are hard to tell apart as a warning, not an error', async () => {
+			agentConfigService.validateConfig.mockResolvedValue({ valid: true, config: baseConfig });
+			agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+				status: 'valid',
+				issues: [],
+				warnings: [
+					{
+						code: 'similar_skill_names',
+						capability: { kind: 'skill' },
+						names: ['Brand voice', 'brand-voice'],
+					},
+				],
+			});
+
+			const result = await callTool('validate_agent', { agentId: 'agent-1' });
+
+			expect(result.structuredContent).toMatchObject({
+				ok: true,
+				valid: true,
+				errors: [],
+				missing: [],
+				warnings: [
+					'Skills "Brand voice", "brand-voice" have names that are hard to tell apart. Rename one of them.',
+				],
 			});
 		});
 
@@ -1653,14 +1709,18 @@ describe('McpAgentToolsService', () => {
 
 	describe('list_agent_versions', () => {
 		it('lists the publish history', async () => {
-			const versions = [
+			const versions: AgentPublishHistoryItemDto[] = [
 				{
+					id: 1,
 					versionId: 'v1',
-					agentId: 'agent-1',
+					name: null,
+					description: null,
+					event: 'activated',
 					createdAt: '2026-01-02T00:00:00.000Z',
-					updatedAt: '2026-01-02T00:00:00.000Z',
+					endedAt: null,
 					author: 'Ada Lovelace',
 					isActive: true,
+					isLegacy: false,
 				},
 			];
 			agentPublishService.listPublishHistory.mockResolvedValue(versions);
@@ -1681,8 +1741,303 @@ describe('McpAgentToolsService', () => {
 		});
 	});
 
+	describe('list_agent_sessions', () => {
+		it('lists sessions with the call_agent session id', async () => {
+			agentContextService.listSessions.mockResolvedValue({
+				sessions: [
+					{
+						threadId: 'session-1',
+						agentId: 'agent-1',
+						agentName: 'My Agent',
+						title: 'Session #1',
+						sessionNumber: 1,
+						createdAt: '2026-01-02T00:00:00.000Z',
+						updatedAt: '2026-01-02T00:01:00.000Z',
+						status: 'error',
+						origin: 'mcp',
+						failureCount: 1,
+						totalPromptTokens: 10,
+						totalCompletionTokens: 5,
+						totalDuration: 100,
+					},
+				],
+				nextCursor: 'cursor-2',
+			});
+
+			const result = await callTool('list_agent_sessions', {
+				agentId: 'agent-1',
+				limit: 20,
+				origin: 'mcp',
+			});
+
+			expect(agentContextService.listSessions).toHaveBeenCalledWith(user, 'project-1', 'agent-1', {
+				limit: 20,
+				origin: 'mcp',
+			});
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				data: [
+					expect.objectContaining({ sessionId: 'session-1', status: 'error', failureCount: 1 }),
+				],
+				count: 1,
+				nextCursor: 'cursor-2',
+			});
+			expect(result.structuredContent.data).toEqual([
+				expect.not.objectContaining({ threadId: expect.anything() }),
+			]);
+		});
+	});
+
+	describe('get_agent_session', () => {
+		const turn = (id: string): AgentSessionDetail['executions'][number] => ({
+			id,
+			status: 'success',
+			userMessage: `Message ${id}`,
+			model: 'anthropic/claude',
+			duration: 100,
+			totalTokens: 15,
+			error: null,
+			timeline: [
+				{
+					type: 'tool-call',
+					kind: 'tool',
+					name: 'lookup_order',
+					toolCallId: `call-${id}`,
+					input: { orderId: 'BAD-1' },
+					output: { error: 'Order database is not reachable' },
+					startTime: 1,
+					endTime: 2,
+					success: false,
+				},
+				{ type: 'text', content: `Reply ${id}`, timestamp: 3 },
+			],
+		});
+		const sessionDetail: AgentSessionDetail = {
+			thread: {
+				id: 'session-1',
+				agentId: 'agent-1',
+				agentName: 'My Agent',
+				title: null,
+				sessionNumber: 1,
+				createdAt: new Date('2026-01-02T00:00:00.000Z'),
+				updatedAt: new Date('2026-01-02T00:01:00.000Z'),
+			},
+			executions: [turn('execution-1'), turn('execution-2')],
+		};
+
+		it('returns a transcript of every turn', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+			});
+
+			expect(agentContextService.readSession).toHaveBeenCalledWith(
+				user,
+				'project-1',
+				'agent-1',
+				'session-1',
+			);
+			const { id: _id, ...thread } = sessionDetail.thread;
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				session: { sessionId: 'session-1', ...thread, title: 'Session #1' },
+				transcript: expect.any(String),
+			});
+			const { transcript } = result.structuredContent;
+			expect(transcript).toContain('title: Session #1, session #1, scope: whole session, turns: 2');
+			expect(transcript).toContain('User: Message execution-1');
+			expect(transcript).toContain('User: Message execution-2');
+			expect(transcript).toContain('Tool call: lookup_order | kind=tool | failed | 1ms');
+			expect(transcript).toContain('  Output: {"error":"Order database is not reachable"}');
+			expect(transcript).toContain('Assistant: Reply execution-2');
+		});
+
+		it('keeps a stored session title', async () => {
+			agentContextService.readSession.mockResolvedValue({
+				...sessionDetail,
+				thread: { ...sessionDetail.thread, title: 'Order questions' },
+			});
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+			});
+
+			expect(result.structuredContent).toMatchObject({
+				session: { sessionId: 'session-1', title: 'Order questions' },
+				transcript: expect.stringContaining('title: Order questions,'),
+			});
+		});
+
+		it('returns only the requested turn', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				executionId: 'execution-2',
+			});
+
+			expect(result.structuredContent).toMatchObject({
+				ok: true,
+				transcript: expect.stringContaining('scope: single turn, turns: 1'),
+			});
+			expect(result.structuredContent.transcript).toContain('User: Message execution-2');
+			expect(result.structuredContent.transcript).not.toContain('Message execution-1');
+		});
+
+		it('reports an unknown turn', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				executionId: 'execution-9',
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({ ok: false, code: 'execution_not_found' });
+		});
+
+		it('keeps long values truncated without pages by default', async () => {
+			const longReply = 'x'.repeat(10_000);
+			const longTurn = turn('execution-1');
+			longTurn.timeline = [{ type: 'text', content: longReply, timestamp: 1 }];
+			agentContextService.readSession.mockResolvedValue({
+				...sessionDetail,
+				executions: [longTurn],
+			});
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+			});
+
+			expect(result.structuredContent).toMatchObject({ ok: true });
+			expect(result.structuredContent).not.toHaveProperty('nextCursor');
+			expect(result.structuredContent.transcript).toContain('… [truncated]');
+			expect(result.structuredContent.transcript).not.toContain(longReply);
+		});
+
+		it('returns complete tool values in pages when maxToolValueLength is large', async () => {
+			const longOutput = 'o'.repeat(60_000);
+			const longTurn = turn('execution-1');
+			longTurn.timeline = [
+				{
+					type: 'tool-call',
+					kind: 'tool',
+					name: 'lookup_order',
+					toolCallId: 'call-1',
+					input: { orderId: 'BAD-1' },
+					output: longOutput,
+					startTime: 1,
+					endTime: 2,
+					success: true,
+				},
+			];
+			agentContextService.readSession.mockResolvedValue({
+				...sessionDetail,
+				executions: [longTurn, turn('execution-2')],
+			});
+			const args = { agentId: 'agent-1', sessionId: 'session-1', maxToolValueLength: 10_000_000 };
+
+			const first = await callTool('get_agent_session', args);
+			const second = await callTool('get_agent_session', {
+				...args,
+				cursor: first.structuredContent.nextCursor,
+			});
+
+			expect(first.structuredContent).toMatchObject({ ok: true, nextCursor: expect.any(String) });
+			expect(first.structuredContent.transcript).toHaveLength(40_000);
+			expect(second.structuredContent).toMatchObject({ ok: true, nextCursor: null });
+			const transcript = `${first.structuredContent.transcript}${second.structuredContent.transcript}`;
+			expect(transcript).toContain(`  Output: "${longOutput}"`);
+			expect(transcript).toContain('User: Message execution-2');
+			expect(transcript).not.toContain('… [truncated]');
+		});
+
+		it('leaves out tool values when maxToolValueLength is 0', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				maxToolValueLength: 0,
+			});
+
+			expect(result.structuredContent).toMatchObject({ ok: true, nextCursor: null });
+			expect(result.structuredContent.transcript).toContain(
+				'Tool call: lookup_order | kind=tool | failed | 1ms\n',
+			);
+			expect(result.structuredContent.transcript).not.toContain('Input:');
+			expect(result.structuredContent.transcript).not.toContain('Output:');
+		});
+
+		it('returns only the requested turn in pages', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				executionId: 'execution-2',
+				maxToolValueLength: 0,
+			});
+
+			expect(result.structuredContent).toMatchObject({ ok: true, nextCursor: null });
+			expect(result.structuredContent.transcript).toContain('scope: single turn, turns: 1');
+			expect(result.structuredContent.transcript).toContain('User: Message execution-2');
+			expect(result.structuredContent.transcript).not.toContain('Message execution-1');
+		});
+
+		it('reports an unknown turn in pages', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				executionId: 'execution-9',
+				maxToolValueLength: 0,
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({ ok: false, code: 'execution_not_found' });
+		});
+
+		it('reports a cursor that does not match the transcript', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				cursor: 'not-a-cursor',
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({ ok: false, code: 'invalid_cursor' });
+		});
+
+		it('reports an unknown session', async () => {
+			agentContextService.readSession.mockResolvedValue(null);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'missing',
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toEqual({
+				ok: false,
+				code: 'session_not_found',
+				message: 'Session "missing" not found',
+			});
+		});
+	});
+
 	describe('discover_agent_assets', () => {
 		it('returns a provider summary for kind=models without a provider', async () => {
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => vi.fn() } as never);
 			const result = await callTool('discover_agent_assets', {
 				projectId: 'project-1',
 				kind: 'models',
@@ -1809,6 +2164,31 @@ describe('McpAgentToolsService', () => {
 			expect(linear).not.toHaveProperty('setupGuidance');
 		});
 
+		it('describes the required webhook settings in kind=integrations', async () => {
+			integrationPersistenceService.listChatIntegrations.mockReturnValue([
+				{
+					type: 'webhook',
+					label: 'Webhook',
+					icon: 'webhook',
+					credentialTypes: ['httpHeaderAuth', 'jwtAuth'],
+				},
+			] as never);
+
+			const result = await callTool('discover_agent_assets', {
+				projectId: 'project-1',
+				kind: 'integrations',
+			});
+
+			const [webhook] = result.structuredContent.data as Array<Record<string, unknown>>;
+			expect(webhook).toMatchObject({
+				settingsRequired: true,
+				settingsSchema: {
+					properties: { authentication: { enum: ['none', 'headerAuth', 'jwtAuth'] } },
+				},
+				settingsGuidance: expect.stringContaining('Omit credentialId'),
+			});
+		});
+
 		it('lists MCP registry servers for kind=mcpServers without a query', async () => {
 			mcpRegistryService.list.mockResolvedValue([{ name: 'github' }] as never);
 
@@ -1907,6 +2287,77 @@ describe('McpAgentToolsService', () => {
 			expect(listMcpServerToolsMock).not.toHaveBeenCalled();
 		});
 
+		describe('credential usage', () => {
+			const authInput = {
+				...input,
+				url: 'https://other.test/mcp',
+				authentication: 'headerAuth',
+				credential: 'cred-1',
+			};
+
+			/** Answers the finder per scope: `connect` and `read` lookups. */
+			function grantCredential(grant: { connect: boolean; isGlobal?: boolean }) {
+				const entity = { id: 'cred-1', isGlobal: grant.isGlobal ?? false, isResolvable: false };
+				credentialsFinderService.findCredentialForUser.mockImplementation(
+					async (_id, _user, scopes) =>
+						(scopes.includes('credential:connect') ? grant.connect : true)
+							? (entity as never)
+							: null,
+				);
+			}
+
+			beforeEach(() => {
+				outboundHttp.transport.mockReturnValue({ asCustomFetch: () => vi.fn() } as never);
+				credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+					{ id: 'cred-1', name: 'hdr', type: 'httpHeaderAuth' },
+				] as never);
+				listMcpServerToolsMock.mockResolvedValue([]);
+			});
+
+			it('rejects a credential the user can only read', async () => {
+				grantCredential({ connect: false });
+
+				const result = await callTool('verify_agent_mcp_server', authInput);
+
+				expect(result.isError).toBe(true);
+				expect(result.structuredContent).toMatchObject({
+					error: 'Credential not found or not accessible',
+				});
+				expect(listMcpServerToolsMock).not.toHaveBeenCalled();
+			});
+
+			it('accepts a credential the user can connect', async () => {
+				grantCredential({ connect: true });
+
+				const result = await callTool('verify_agent_mcp_server', authInput);
+
+				expect(result.structuredContent).toEqual({ ok: true, tools: [] });
+				expect(listMcpServerToolsMock).toHaveBeenCalledWith(
+					expect.objectContaining({ credential: 'cred-1' }),
+					expect.anything(),
+				);
+			});
+
+			it('accepts a readable global credential', async () => {
+				grantCredential({ connect: false, isGlobal: true });
+
+				const result = await callTool('verify_agent_mcp_server', authInput);
+
+				expect(result.structuredContent).toEqual({ ok: true, tools: [] });
+				expect(listMcpServerToolsMock).toHaveBeenCalled();
+			});
+
+			it('rejects a usable credential that the project cannot use', async () => {
+				grantCredential({ connect: true });
+				credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+
+				const result = await callTool('verify_agent_mcp_server', authInput);
+
+				expect(result.isError).toBe(true);
+				expect(listMcpServerToolsMock).not.toHaveBeenCalled();
+			});
+		});
+
 		it('accepts a templated registry URL and passes it through for resolution', async () => {
 			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => vi.fn() } as never);
 			listMcpServerToolsMock.mockResolvedValue([{ name: 'genie_ask', description: 'Ask' }]);
@@ -1996,16 +2447,46 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent.config).not.toHaveProperty('integrations');
 		});
 
+		it('lists the pinned skills that have a newer version', async () => {
+			const pinnedRef = {
+				type: 'skill' as const,
+				id: 'brand_voice',
+				versionId: '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f',
+			};
+			const skill = { name: 'Brand voice', description: 'Voice', instructions: 'Old text.' };
+			agentsService.findByIdForUser.mockResolvedValue(
+				agentEntity({
+					schema: storedAgentConfig({ ...baseConfig, skills: [pinnedRef] }),
+					tools: {},
+				}),
+			);
+			agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
+			agentSkillsService.listSkills.mockResolvedValue({ brand_voice: skill });
+			agentTaskService.list.mockResolvedValue([] as never);
+			agentSkillRefs.findOutdatedSkillIds.mockResolvedValueOnce(['brand_voice']);
+
+			const result = await callTool('get_agent', { projectId: 'project-1', agentId: 'agent-1' });
+
+			expect(result.structuredContent).toMatchObject({ outdatedSkillIds: ['brand_voice'] });
+			expect(agentSkillRefs.findOutdatedSkillIds).toHaveBeenCalledWith(
+				[pinnedRef],
+				{ brand_voice: skill },
+				{},
+			);
+		});
+
 		it('returns the stored skill refs, and config.replace of that config keeps them', async () => {
 			const skillRefs = [
 				{ type: 'skill' as const, id: 'zeta' },
-				{ type: 'skill' as const, id: 'alpha', enabled: false },
-				{ type: 'skill' as const, id: 'mid', enabled: true },
+				{
+					type: 'skill' as const,
+					id: 'alpha',
+					versionId: '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f',
+				},
+				{ type: 'skill' as const, id: 'mid' },
 			];
-			const skillBody = { name: 'Skill', description: 'A skill', instructions: 'Do it.' };
 			const agent = agentEntity({
 				schema: storedAgentConfig({ ...baseConfig, skills: skillRefs }),
-				skills: { zeta: skillBody, mid: { ...skillBody, name: 'Mid' } },
 				tools: {},
 			});
 			useRealCustomToolPersistence(agent);
@@ -2032,7 +2513,7 @@ describe('McpAgentToolsService', () => {
 			});
 
 			expect(written.structuredContent).toMatchObject({ ok: true, configHash });
-			expect(storedSkillRefs(agent)).toEqual(skillRefs);
+			await expect(agentSkillRefs.refsForDraft(agent, {})).resolves.toEqual(skillRefs);
 		});
 
 		it('returns an error result for an unknown agent', async () => {
@@ -2255,6 +2736,62 @@ describe('McpAgentToolsService', () => {
 				replaces: { type: 'slack', credentialId: 'cred-0' },
 				modifiedBy: 'mcp',
 			});
+		});
+
+		it('connects a channel that runs without a credential', async () => {
+			const settings = { authentication: 'none' };
+
+			await callTool('update_agent_integration', {
+				agentId: 'agent-1',
+				action: 'connect',
+				type: 'webhook',
+				settings,
+			});
+
+			expect(integrationManagementService.connect).toHaveBeenCalledWith({
+				agent: expect.objectContaining({ id: 'agent-1' }),
+				user,
+				integration: { type: 'webhook', credentialId: '', settings },
+				modifiedBy: 'mcp',
+			});
+		});
+
+		it('leaves the webhook settings check to the integration', async () => {
+			integrationManagementService.connect.mockRejectedValueOnce(
+				new Error('This webhook authentication needs a credential'),
+			);
+
+			const result = await callTool('update_agent_integration', {
+				agentId: 'agent-1',
+				action: 'connect',
+				type: 'webhook',
+				settings: { authentication: 'headerAuth' },
+			});
+
+			expect(integrationManagementService.connect).toHaveBeenCalledWith(
+				expect.objectContaining({
+					integration: {
+						type: 'webhook',
+						credentialId: '',
+						settings: { authentication: 'headerAuth' },
+					},
+				}),
+			);
+			expect(result.structuredContent).toMatchObject({
+				error: 'This webhook authentication needs a credential',
+			});
+		});
+
+		it('connects no other channel without a credential', async () => {
+			const result = await callTool('update_agent_integration', {
+				agentId: 'agent-1',
+				action: 'connect',
+				type: 'n8n_chat',
+				settings: { authentication: 'none' },
+			});
+
+			expect(result.isError).toBe(true);
+			expect(integrationManagementService.connect).not.toHaveBeenCalled();
 		});
 
 		it('requires settings for telegram integrations', async () => {
@@ -2785,6 +3322,44 @@ describe('McpAgentToolsService', () => {
 			expect(integrationManagementService.disconnect).not.toHaveBeenCalled();
 		});
 
+		it('disconnects a channel that has no credential', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(
+				agentEntity({
+					integrations: [
+						{ type: 'webhook', credentialId: '', settings: { authentication: 'none' } },
+					],
+				}),
+			);
+			const { credentialId: _credentialId, ...withoutCredential } = input;
+
+			await callTool('update_agent_integration', { ...withoutCredential, type: 'webhook' });
+
+			expect(integrationManagementService.disconnect).toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'webhook', credentialId: '' }),
+			);
+		});
+
+		it('requires a credential to disconnect a webhook that has one', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(
+				agentEntity({
+					integrations: [
+						{ type: 'webhook', credentialId: 'cred-1', settings: { authentication: 'headerAuth' } },
+					],
+				}),
+			);
+			const { credentialId: _credentialId, ...withoutCredential } = input;
+
+			const result = await callTool('update_agent_integration', {
+				...withoutCredential,
+				type: 'webhook',
+			});
+
+			expect(result.structuredContent).toMatchObject({
+				error: 'credentialId is required to disconnect',
+			});
+			expect(integrationManagementService.disconnect).not.toHaveBeenCalled();
+		});
+
 		it('falls back to a plain disconnect for an unknown integration type', async () => {
 			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ integrations: [] }));
 
@@ -2796,23 +3371,57 @@ describe('McpAgentToolsService', () => {
 		});
 	});
 
-	describe('delete_agent', () => {
-		it('deletes an existing agent', async () => {
-			agentsService.delete.mockResolvedValue(true);
+	describe('archive_agent', () => {
+		it('archives an existing agent', async () => {
+			const result = await callTool('archive_agent', {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+			});
 
-			const result = await callTool('delete_agent', { projectId: 'project-1', agentId: 'agent-1' });
-
-			expect(agentsService.delete).toHaveBeenCalledWith('agent-1', 'project-1');
-			expect(result.structuredContent).toEqual({ ok: true, deleted: true, agentId: 'agent-1' });
+			expect(agentPublishService.archiveAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				user,
+				undefined,
+				'mcp',
+				{},
+			);
+			expect(result.structuredContent).toEqual({ ok: true, archived: true, agentId: 'agent-1' });
 		});
 
-		it('returns an error result when the agent does not exist', async () => {
-			agentsService.delete.mockResolvedValue(false);
+		it('passes the operation context to the archive', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+			const contextTools = new Map<string, RegisteredTool>();
+			const registerTool: RegisterToolFn = (tool) => {
+				contextTools.set(tool.name, {
+					config: tool.config,
+					handler: tool.handler as unknown as RegisteredTool['handler'],
+				});
+			};
+			service.registerTools(registerTool, vi.fn(), user, undefined, ctx);
 
-			const result = await callTool('delete_agent', { projectId: 'project-1', agentId: 'nope' });
+			await contextTools
+				.get('archive_agent')
+				?.handler(
+					{ projectId: 'project-1', agentId: 'agent-1' },
+					{ signal: new AbortController().signal },
+				);
+
+			expect(agentPublishService.archiveAgent.mock.calls[0][5]).toBe(ctx);
+		});
+
+		it('returns an error result for an archived agent', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ isArchived: true }));
+
+			const result = await callTool('archive_agent', {
+				projectId: 'project-1',
+				agentId: 'agent-1',
+			});
 
 			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({ error: 'Agent "nope" not found' });
+			expect(agentPublishService.archiveAgent).not.toHaveBeenCalled();
 		});
 	});
 });

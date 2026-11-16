@@ -17,7 +17,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 
 import { Telemetry } from '@/telemetry';
-import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
+import { createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 
 import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
@@ -230,10 +230,11 @@ export class InstanceAiVerificationService {
 				maxResults: 10,
 				abortSignal: AbortSignal.timeout(VERIFICATION_TIMEOUT_MS),
 			};
+			const searchFetch = createWebSearchFetch(this.outboundHttp);
 			const result = braveApiKey
-				? await braveSearch(braveApiKey, 'n8n workflow automation', options)
+				? await braveSearch(braveApiKey, 'n8n workflow automation', options, searchFetch)
 				: searxngUrl
-					? await searxngSearch(searxngUrl, 'n8n workflow automation', options)
+					? await searxngSearch(searxngUrl, 'n8n workflow automation', options, searchFetch)
 					: undefined;
 			if (!result) throw new Error('Search provider is not configured');
 			return { ok: true, resultCount: result.results.length };

@@ -1,17 +1,25 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { reactive, ref } from 'vue';
+import { toArtifactTurns } from '../agentTreeArtifactTurns';
+import { defineComponent, h, reactive, ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { InstanceAiMessage } from '@n8n/api-types';
-import type { AgentResource } from '@/features/agents/types';
+import type { AgentCreationResource } from '@/features/agents/types';
+import type { persistPendingAgent } from '../instanceAi.memory.api';
 import InstanceAiAgentPreview from '../components/InstanceAiAgentPreview.vue';
+import { provideArtifactAgentTargets, type ArtifactAgentTargets } from '../artifactAgentTargets';
+import { provideArtifactThread, type ArtifactThread } from '../artifactThread';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
 	getPendingAgentTargetFromThreadMetadata,
 } from '../instanceAi.threadRuntime';
 
+const useThreadMock = vi.fn();
 const threadState = reactive({
 	id: 'thread-1',
 	messages: [] as InstanceAiMessage[],
+	get artifactTurns() {
+		return toArtifactTurns(this.messages);
+	},
 	activeArtifactId: undefined as string | undefined,
 	isSendingMessage: false,
 	isStreaming: false,
@@ -24,7 +32,10 @@ const updateThreadMetadataMock = vi.fn(
 );
 
 vi.mock('../instanceAi.store', () => ({
-	useThread: () => threadState,
+	useThread: () => {
+		useThreadMock();
+		return threadState;
+	},
 	useInstanceAiStore: () => ({
 		getThreadMetadata: () => metadataState.value,
 		updateThreadMetadata: updateThreadMetadataMock,
@@ -46,13 +57,14 @@ vi.mock('../instanceAi.memory.api', () => ({
 const persistedAgent = {
 	id: 'agent-1',
 	name: 'Support Agent',
-} as AgentResource;
+} as AgentCreationResource;
 
 const AgentBuilderViewStub = {
 	name: 'AgentBuilderView',
 	props: [
 		'artifactPreviewSessionId',
 		'artifactPreviewOpen',
+		'artifactPreviewChatTarget',
 		'artifactPersistAgent',
 		'artifactEditingLocked',
 	],
@@ -74,24 +86,19 @@ function makeBuildingMessage(targetAgentId: string): InstanceAiMessage {
 			status: 'active',
 			textContent: '',
 			reasoning: '',
-			toolCalls: [],
-			timeline: [],
-			children: [
+			toolCalls: [
 				{
-					agentId: 'builder-1',
-					kind: 'agent-builder',
-					role: 'agent-builder',
-					status: 'active',
-					textContent: '',
-					reasoning: '',
-					toolCalls: [],
-					timeline: [],
-					children: [],
-					targetResource: { type: 'agent', id: targetAgentId },
+					toolCallId: 'tc-select',
+					toolName: 'agent_builder_select_agent',
+					args: {},
+					result: { ok: true, agentId: targetAgentId },
+					isLoading: false,
 				},
 			],
+			timeline: [],
+			children: [],
 		},
-	} as InstanceAiMessage;
+	};
 }
 
 describe('InstanceAiAgentPreview', () => {
@@ -108,15 +115,18 @@ describe('InstanceAiAgentPreview', () => {
 		threadState.isStreaming = false;
 		updateThreadMetadataMock.mockClear();
 		persistPendingAgentMock.mockReset();
+		useThreadMock.mockClear();
 	});
 
 	it('forwards preview dock state and Assistant handoffs from Agent Builder', async () => {
+		const previewChatTarget = document.createElement('div');
 		const wrapper = mount(InstanceAiAgentPreview, {
 			props: {
 				projectId: 'project-1',
 				agentId: 'agent-1',
 				previewSessionId: 'preview-session-1',
 				previewOpen: true,
+				previewChatTarget,
 			},
 			global: {
 				stubs: { AgentBuilderView: AgentBuilderViewStub },
@@ -126,6 +136,7 @@ describe('InstanceAiAgentPreview', () => {
 		const builder = wrapper.findComponent({ name: 'AgentBuilderView' });
 		expect(builder.props('artifactPreviewSessionId')).toBe('preview-session-1');
 		expect(builder.props('artifactPreviewOpen')).toBe(true);
+		expect(builder.props('artifactPreviewChatTarget')).toBe(previewChatTarget);
 		builder.vm.$emit('preview-open-change', true);
 		const handoff = {
 			projectId: 'project-1',
@@ -222,15 +233,19 @@ describe('InstanceAiAgentPreview', () => {
 		const builder = wrapper.findComponent({ name: 'AgentBuilderView' });
 
 		const persist = builder.props('artifactPersistAgent') as (
-			name: string,
-		) => Promise<AgentResource>;
-		await expect(persist('Support Agent')).resolves.toBe(persistedAgent);
+			request: Parameters<typeof persistPendingAgent>[2],
+		) => Promise<AgentCreationResource>;
+		const config = { name: 'Support Agent', model: '', instructions: 'Help users' };
+		await expect(
+			persist({ projectId: 'project-1', agentId: 'agent-1', name: 'Support Agent', config }),
+		).resolves.toBe(persistedAgent);
 		await flushPromises();
 
 		expect(persistPendingAgentMock).toHaveBeenCalledWith(expect.anything(), 'thread-1', {
 			projectId: 'project-1',
 			agentId: 'agent-1',
 			name: 'Support Agent',
+			config,
 		});
 		expect(getPendingAgentTargetFromThreadMetadata(metadataState.value)).toBeUndefined();
 		expect(getAgentBuilderTargetFromThreadMetadata(metadataState.value)).toEqual({
@@ -245,5 +260,95 @@ describe('InstanceAiAgentPreview', () => {
 		expect(getAgentBuilderTargetFromThreadMetadata(metadataState.value)?.name).toBe(
 			'Renamed Support Agent',
 		);
+	});
+
+	it('persists the supplied target after the preview switches to another pending agent', async () => {
+		const target = {
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			name: 'Support Agent',
+		};
+		const request = {
+			...target,
+			config: { name: 'Support Agent', model: '', instructions: 'Help users' },
+		};
+		persistPendingAgentMock.mockResolvedValue({
+			agent: persistedAgent,
+			thread: { metadata: { instanceAiAgentBuilderTarget: target } },
+		});
+		const wrapper = mount(InstanceAiAgentPreview, {
+			props: { projectId: 'project-1', agentId: 'agent-1', pending: true, previewOpen: false },
+			global: { stubs: { AgentBuilderView: AgentBuilderViewStub } },
+		});
+		const persist = wrapper
+			.findComponent({ name: 'AgentBuilderView' })
+			.props('artifactPersistAgent') as (
+			request: Parameters<typeof persistPendingAgent>[2],
+		) => Promise<AgentCreationResource>;
+
+		await wrapper.setProps({ agentId: 'agent-2' });
+		metadataState.value = {
+			instanceAiPendingAgentTarget: { projectId: 'project-1', agentId: 'agent-2' },
+		};
+		await persist(request);
+
+		expect(persistPendingAgentMock).toHaveBeenCalledWith(expect.anything(), 'thread-1', request);
+		expect(getPendingAgentTargetFromThreadMetadata(metadataState.value)).toEqual({
+			projectId: 'project-1',
+			agentId: 'agent-2',
+		});
+		wrapper.unmount();
+	});
+
+	it('reads and binds through the thread and agent bindings that its host provides', async () => {
+		const hostThread = reactive({
+			id: 'host-thread',
+			artifactTurns: toArtifactTurns([makeBuildingMessage('agent-1')]),
+			activeArtifactId: undefined,
+			isSendingMessage: false,
+			isStreaming: false,
+		}) as unknown as ArtifactThread;
+		const commit = vi.fn();
+		const hostTargets: ArtifactAgentTargets = {
+			bind: vi.fn(async () => {}),
+			persistPendingAgent: vi.fn(async () => ({ agent: persistedAgent, commit })),
+		};
+		const Host = defineComponent({
+			setup() {
+				provideArtifactThread(hostThread);
+				provideArtifactAgentTargets(hostTargets);
+				return () =>
+					h(InstanceAiAgentPreview, {
+						projectId: 'project-1',
+						agentId: 'agent-1',
+						previewOpen: false,
+						pending: true,
+					});
+			},
+		});
+
+		const wrapper = mount(Host, { global: { stubs: { AgentBuilderView: AgentBuilderViewStub } } });
+		const builder = wrapper.findComponent({ name: 'AgentBuilderView' });
+
+		expect(builder.props('artifactEditingLocked')).toBe(true);
+		const persist = builder.props('artifactPersistAgent') as (
+			target: Parameters<typeof persistPendingAgent>[2],
+		) => Promise<AgentCreationResource>;
+		await expect(
+			persist({ projectId: 'project-1', agentId: 'agent-1', name: 'Support Agent' }),
+		).resolves.toBe(persistedAgent);
+		expect(commit).toHaveBeenCalled();
+
+		builder.vm.$emit('name-saved', 'Renamed');
+		await flushPromises();
+		expect(hostTargets.bind).toHaveBeenCalledWith({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			name: 'Renamed',
+		});
+
+		expect(useThreadMock).not.toHaveBeenCalled();
+		expect(persistPendingAgentMock).not.toHaveBeenCalled();
+		expect(updateThreadMetadataMock).not.toHaveBeenCalled();
 	});
 });

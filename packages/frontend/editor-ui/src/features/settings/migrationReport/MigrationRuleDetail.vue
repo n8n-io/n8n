@@ -1,57 +1,87 @@
 <script lang="ts" setup>
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { DEBOUNCE_TIME, MIGRATE_WORKFLOW_MODAL_KEY, TIME, VIEWS } from '@/app/constants';
+import { DEBOUNCE_TIME, MIGRATE_WORKFLOW_MODAL_KEY, VIEWS } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type {
 	BreakingChangeRuleDetailResult,
 	BreakingChangeRuleDetailWorkflow,
-	BreakingChangeWorkflowOwner,
-	MigrationFindingListedStatus,
 	MigrationFindingTriageStatus,
-	MigrationNotifySkipReason,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
-import { getUsers } from '@n8n/rest-api-client/api/users';
 import {
-	N8nAvatar,
 	N8nBadge,
 	N8nButton,
 	N8nDataTableServer,
-	N8nDropdownMenu,
 	N8nIcon,
 	N8nInfoTip,
 	N8nInput,
 	N8nLink,
 	N8nLoading,
+	N8nOption,
+	N8nSelect,
 	N8nSelectedItemsInfo,
 	N8nSettingsLayout,
+	N8nSettingsPageHeader,
+	N8nStatusDot,
 	N8nText,
+	N8nTooltip,
 	N8nUserSelect,
 } from '@n8n/design-system';
-import type { DropdownMenuItemProps, IUser, TableHeader } from '@n8n/design-system';
+import type { TableHeader } from '@n8n/design-system';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@n8n/composables/useToast';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useAsyncState, useDebounceFn } from '@vueuse/core';
-import orderBy from 'lodash/orderBy';
-import { computed, nextTick, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { I18nT } from 'vue-i18n';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import FindingStateSelect from './components/FindingStateSelect.vue';
+import HowToFixPanel from './components/HowToFixPanel.vue';
 import ImpactTag from './components/ImpactTag.vue';
 import WorkflowFiltersPopover from './components/WorkflowFiltersPopover.vue';
+import { useMigrationFindingAssistant } from './useMigrationFindingAssistant';
+import SplitButton from './components/SplitButton.vue';
+import ArchiveWorkflowsModal from './ArchiveWorkflowsModal.vue';
+import { useArchiveFlow } from './composables/useArchiveFlow';
+import { useFindingTriage } from './composables/useFindingTriage';
+import { useOwnerNotify } from './composables/useOwnerNotify';
+import { useOwnerPicker } from './composables/useOwnerPicker';
 import {
+	archiveTargets,
+	canNotifyRow,
+	findUnusedOpenWorkflows,
+	notifyOwnerCount,
+	notifyTargets,
+	statusChangeTargets,
+} from './bulkTargets';
+import {
+	findingState,
+	isBusy,
+	isSelectable,
+	isStale,
+	type MigrationContext,
+	type RowContext,
+} from './findingState';
+import {
+	countQuickFilters,
 	DEFAULT_WORKFLOW_FILTERS,
-	UNASSIGNED_OWNER,
-	matchesWorkflowFilters,
+	filterWorkflows,
+	UNUSED_WORKFLOW_FILTERS,
 	type WorkflowFilters,
 } from './workflowFilters';
+import {
+	buildOwnerFilterOptions,
+	buildProjectFilterOptions,
+	ownerLabel,
+	projectLabel,
+} from './workflowLabels';
+import { SORT_OPTIONS, sortOptionFor, sortWorkflows } from './workflowSort';
 
 const i18n = useI18n();
 const uiStore = useUIStore();
@@ -59,19 +89,20 @@ const rootStore = useRootStore();
 const rbacStore = useRBACStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
-const toast = useToast();
 
 useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
 const props = defineProps<{ migrationRuleId: string }>();
 
 const router = useRouter();
+const route = useRoute();
 
-// The page needs only `breakingChanges:list`. A migration, a state change or
-// an owner choice needs `breakingChanges:migrate`.
-const canMigrate = computed(() => rbacStore.hasScope('breakingChanges:migrate'));
-// A notification is an email, so the instance needs SMTP.
-const canNotify = computed(() => canMigrate.value && settingsStore.isSmtpSetup);
+// The server lists only the workflows the user can edit, and editing a workflow
+// allows triaging and migrating it. So every row is editable. A notification
+// emails other users, so it needs `breakingChanges:migrate` and SMTP.
+const canNotify = computed(
+	() => rbacStore.hasScope('breakingChanges:migrate') && settingsStore.isSmtpSetup,
+);
 
 const { state, isLoading } = useAsyncState<BreakingChangeRuleDetailResult>(
 	async () => {
@@ -90,129 +121,55 @@ const { state, isLoading } = useAsyncState<BreakingChangeRuleDetailResult>(
 		affectedWorkflows: [],
 		recommendations: [],
 		migratable: false,
+		assistantAction: 'none',
 	},
 );
 
 type AffectedWorkflow = BreakingChangeRuleDetailWorkflow;
 
-// The picker searches the members of the focused row's project. One result list
-// serves every row, since only one picker is open at a time.
-const isLoadingUsers = ref(false);
-const activeProjectId = ref<string | undefined>();
-const memberOptions = ref<IUser[]>([]);
-
-function userOption(user: {
-	id: string;
-	firstName?: string | null;
-	lastName?: string | null;
-	email?: string | null;
-}): IUser {
-	const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
-	return {
-		id: user.id,
-		firstName: user.firstName,
-		lastName: user.lastName,
-		email: user.email,
-		fullName: fullName || undefined,
-	};
+// The async state is shallow, so the list is replaced rather than mutated.
+function updateRows(update: (rows: AffectedWorkflow[]) => AffectedWorkflow[]) {
+	state.value = { ...state.value, affectedWorkflows: update(state.value.affectedWorkflows) };
 }
 
-// An owner that just came back from the server, registered as an option one
-// tick before the row takes it as its value, so the picker can resolve the label.
-const incomingOwners = ref(new Map<string, BreakingChangeWorkflowOwner>());
-
-/** The members found for the row's project, plus the row's owner so the picker never shows a bare id. */
-function ownerOptionsFor(workflow: AffectedWorkflow): IUser[] {
-	const options = workflow.homeProjectId === activeProjectId.value ? [...memberOptions.value] : [];
-	for (const owner of [workflow.owner, incomingOwners.value.get(workflow.id)]) {
-		// The picker needs an email on every option; an owner without one is left out.
-		if (owner?.email && !options.some((option) => option.id === owner.id)) {
-			options.push(userOption(owner));
-		}
-	}
-	return options;
-}
-
-// A focus or a keystroke can start a new search before the last one answered;
-// only the latest answer may fill the list.
-let memberRequestSequence = 0;
-
-async function loadMembers(projectId: string | undefined, query = '') {
-	const sequence = ++memberRequestSequence;
-	isLoadingUsers.value = true;
-	try {
-		const { items } = await getUsers(rootStore.restApiContext, {
-			skip: 0,
-			take: 50,
-			filter: {
-				...(projectId ? { projectId } : {}),
-				...(query.trim() ? { fullText: query.trim() } : {}),
-			},
-		});
-		if (sequence !== memberRequestSequence) return;
-		memberOptions.value = items.map(userOption);
-	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('settings.migrationReport.detail.owner.search.error.title'),
-		);
-	} finally {
-		if (sequence === memberRequestSequence) isLoadingUsers.value = false;
-	}
-}
-
-function onOwnerPickerFocus(workflow: AffectedWorkflow) {
-	if (activeProjectId.value === workflow.homeProjectId && memberOptions.value.length > 0) return;
-	activeProjectId.value = workflow.homeProjectId;
-	memberOptions.value = [];
-	void loadMembers(workflow.homeProjectId);
-}
-
-const searchMembers = useDebounceFn(
-	async (query: string) => await loadMembers(activeProjectId.value, query),
-	getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH),
+const unassignedLabel = computed(() =>
+	i18n.baseText('settings.migrationReport.detail.table.unassigned'),
+);
+const personalLabel = computed(() =>
+	i18n.baseText('settings.migrationReport.detail.filters.project.personal'),
 );
 
-// A quick second change can answer before the first; only the latest answer may land.
-const ownerRequestSequence = new Map<string, number>();
+const { isLoadingUsers, ownerOptionsFor, onOwnerPickerFocus, onOwnerChange } =
+	useOwnerPicker(updateRows);
 
-async function onOwnerChange(workflow: AffectedWorkflow, userId: string) {
-	const sequence = (ownerRequestSequence.get(workflow.id) ?? 0) + 1;
-	ownerRequestSequence.set(workflow.id, sequence);
-	try {
-		const { owner } = userId
-			? await breakingChangesApi.assignWorkflowOwner(rootStore.restApiContext, workflow.id, userId)
-			: await breakingChangesApi.unassignWorkflowOwner(rootStore.restApiContext, workflow.id);
-		if (ownerRequestSequence.get(workflow.id) !== sequence) return;
-		if (owner) {
-			incomingOwners.value = new Map(incomingOwners.value).set(workflow.id, owner);
-			await nextTick();
-		}
-		// The async state is shallow, so the list is replaced rather than mutated.
-		state.value = {
-			...state.value,
-			affectedWorkflows: state.value.affectedWorkflows.map((row) =>
-				row.id === workflow.id ? { ...row, owner: owner ?? undefined } : row,
-			),
-		};
-		const remaining = new Map(incomingOwners.value);
-		remaining.delete(workflow.id);
-		incomingOwners.value = remaining;
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.migrationReport.detail.owner.error.title'));
+const showMigrate = computed(() => state.value.migratable);
+
+const findingAssistant = useMigrationFindingAssistant();
+// A rule with an automated migration offers the Assistant in the Migrate modal, after it ran.
+const assistantButton = computed(() => {
+	const action = state.value.assistantAction;
+	if (!findingAssistant.available.value || state.value.migratable || action === 'none') {
+		return undefined;
 	}
-}
+	return action === 'review'
+		? {
+				action,
+				label: i18n.baseText('settings.migrationReport.detail.assistant.reviewLabel'),
+				text: i18n.baseText('settings.migrationReport.detail.assistant.review'),
+			}
+		: {
+				action,
+				label: i18n.baseText('settings.migrationReport.detail.assistant.fixLabel'),
+				text: i18n.baseText('settings.migrationReport.detail.assistant.fix'),
+			};
+});
 
-function ownerLabel(workflow: AffectedWorkflow): string {
-	const owner = workflow.owner;
-	const fullName = [owner?.firstName, owner?.lastName].filter(Boolean).join(' ');
-	return (
-		fullName || owner?.email || i18n.baseText('settings.migrationReport.detail.table.unassigned')
-	);
-}
-
-// Migrate needs the same scope as a state change.
-const showMigrate = computed(() => state.value.migratable && canMigrate.value);
+/** Rule descriptions arrive with or without a trailing period; the header copy always ends in one. */
+const ruleDescription = computed(() => {
+	const description = state.value.ruleDescription;
+	if (!description) return '';
+	return description.endsWith('.') ? description : `${description}.`;
+});
 
 const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 	const headers: Array<TableHeader<AffectedWorkflow>> = [
@@ -236,37 +193,32 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.owner'),
 			key: 'owner',
-			value: ownerLabel,
+			value: (workflow) => ownerLabel(workflow, unassignedLabel.value),
 			width: 220,
 		},
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.state'),
 			key: 'status',
-			width: 140,
+			width: 150,
 		},
 	];
 
-	// The actions column holds the Migrate and Notify buttons.
-	if (showMigrate.value || canNotify.value) {
+	// The actions column holds the Migrate, Assistant and Notify buttons.
+	if (showMigrate.value || canNotify.value || assistantButton.value) {
 		headers.push({
 			title: '',
 			key: 'actions',
 			value: () => '',
-			width: (showMigrate.value ? 160 : 0) + (canNotify.value ? 110 : 0),
+			width:
+				(showMigrate.value ? 160 : 0) +
+				(canNotify.value ? 140 : 0) +
+				(assistantButton.value ? 110 : 0),
 			disableSort: true,
 		});
 	}
 
 	return headers;
 });
-
-// A workflow without a run in this period is probably not used any more.
-const STALE_WORKFLOW_AFTER = 90 * TIME.DAY;
-
-function isStale(workflow: AffectedWorkflow): boolean {
-	if (!workflow.lastExecutedAt) return false;
-	return Date.now() - new Date(workflow.lastExecutedAt).getTime() > STALE_WORKFLOW_AFTER;
-}
 
 function runCountLabel(workflow: AffectedWorkflow): string {
 	return i18n.baseText('settings.migrationReport.detail.table.runs', {
@@ -294,6 +246,8 @@ function openMigrateModal(workflows: AffectedWorkflow[]) {
 		name: MIGRATE_WORKFLOW_MODAL_KEY,
 		data: {
 			ruleId: props.migrationRuleId,
+			ruleTitle: state.value.ruleTitle,
+			assistantAction: state.value.assistantAction,
 			workflows,
 			recommendations: state.value.recommendations,
 			eventBus: migrateModalBus,
@@ -303,68 +257,32 @@ function openMigrateModal(workflows: AffectedWorkflow[]) {
 
 // Won't fix counts as resolved, so the badge counts only the unresolved findings. A
 // migration fixes the finding on save, so a migrated row is not unresolved either.
-const openCount = computed(
-	() => state.value.affectedWorkflows.filter((workflow) => isUnresolved(workflow)).length,
-);
+const openCount = computed(() => quickFilterCounts.value.open);
 
-// Rows with a state change in flight. One change at a time keeps the revert correct.
-const savingWorkflowIds = ref<Set<string>>(new Set());
+const { savingWorkflowIds, onFindingStatusChange, changeFindingStatuses } = useFindingTriage({
+	ruleId: () => props.migrationRuleId,
+	updateRows,
+	isBusy: (workflow) => isBusy(workflow, rowContext.value),
+	onRowWontFix: (workflow) => promptToArchive(workflow),
+});
 
-// The state is a shallow ref, so replace the list to make the table update.
-function setFindingStatuses(statuses: Map<string, MigrationFindingListedStatus>) {
-	state.value = {
-		...state.value,
-		affectedWorkflows: state.value.affectedWorkflows.map((workflow) => {
-			const status = statuses.get(workflow.id);
-			if (!status) return workflow;
-			// Reopening drops the notified mark, as the server does.
-			return status === 'open'
-				? { ...workflow, status, notifiedAt: undefined }
-				: { ...workflow, status };
-		}),
-	};
-}
+const { notifyingWorkflowIds, onNotify, notifyMany } = useOwnerNotify({
+	ruleId: () => props.migrationRuleId,
+	updateRows,
+	isBusy: (workflow) => isBusy(workflow, rowContext.value),
+});
 
-// Puts the rows back as they were before a failed change, notified date included.
-function restoreWorkflows(rows: AffectedWorkflow[]) {
-	const byId = new Map(rows.map((row) => [row.id, row]));
-	state.value = {
-		...state.value,
-		affectedWorkflows: state.value.affectedWorkflows.map((row) => byId.get(row.id) ?? row),
-	};
-}
+// Filtering and the quick counts read only this, so the saving and notifying marks coming and
+// going do not recompute them. The row changes of a save or a notification still do.
+const migrationContext = computed<MigrationContext>(() => ({
+	migratedIds: migratedWorkflowIds.value,
+}));
 
-function setSaving(workflowIds: string[], saving: boolean) {
-	const next = new Set(savingWorkflowIds.value);
-	for (const workflowId of workflowIds) {
-		if (saving) next.add(workflowId);
-		else next.delete(workflowId);
-	}
-	savingWorkflowIds.value = next;
-}
-
-async function onFindingStatusChange(
-	workflow: AffectedWorkflow,
-	status: MigrationFindingTriageStatus,
-) {
-	if (status === workflow.status || savingWorkflowIds.value.has(workflow.id)) return;
-
-	setFindingStatuses(new Map([[workflow.id, status]]));
-	setSaving([workflow.id], true);
-	try {
-		await breakingChangesApi.updateFindingStatus(
-			rootStore.restApiContext,
-			props.migrationRuleId,
-			workflow.id,
-			status,
-		);
-	} catch (error) {
-		restoreWorkflows([workflow]);
-		toast.showError(error, i18n.baseText('settings.migrationReport.detail.state.error.title'));
-	} finally {
-		setSaving([workflow.id], false);
-	}
-}
+const rowContext = computed<RowContext>(() => ({
+	...migrationContext.value,
+	savingIds: savingWorkflowIds.value,
+	notifyingIds: notifyingWorkflowIds.value,
+}));
 
 const selectedWorkflowIds = ref<string[]>([]);
 
@@ -373,48 +291,8 @@ const selectedWorkflows = computed(() => {
 	return state.value.affectedWorkflows.filter((workflow) => selected.has(workflow.id));
 });
 
-// A migrated row has no state to change, so it cannot be selected.
-function isSelectable(workflow: AffectedWorkflow): boolean {
-	return !migratedWorkflowIds.value.has(workflow.id);
-}
-
-/**
- * The selected rows that a bulk change to `status` would change. A notified
- * row counts as changeable to open, like in the row's own select: reopening
- * drops the notified mark.
- */
 function bulkTargets(status: MigrationFindingTriageStatus): AffectedWorkflow[] {
-	return selectedWorkflows.value.filter(
-		(workflow) =>
-			findingState(workflow) !== status &&
-			isSelectable(workflow) &&
-			!savingWorkflowIds.value.has(workflow.id),
-	);
-}
-
-/** Changes the state of all `workflows` in one request. Returns false when the request fails. */
-async function changeFindingStatuses(
-	workflows: AffectedWorkflow[],
-	status: MigrationFindingTriageStatus,
-): Promise<boolean> {
-	const workflowIds = workflows.map((workflow) => workflow.id);
-	setFindingStatuses(new Map(workflowIds.map((workflowId) => [workflowId, status])));
-	setSaving(workflowIds, true);
-	try {
-		await breakingChangesApi.updateFindingStatuses(
-			rootStore.restApiContext,
-			props.migrationRuleId,
-			workflowIds,
-			status,
-		);
-		return true;
-	} catch (error) {
-		restoreWorkflows(workflows);
-		toast.showError(error, i18n.baseText('settings.migrationReport.detail.state.error.title'));
-		return false;
-	} finally {
-		setSaving(workflowIds, false);
-	}
+	return statusChangeTargets(selectedWorkflows.value, status, rowContext.value);
 }
 
 async function onBulkStatusChange(status: MigrationFindingTriageStatus) {
@@ -429,90 +307,81 @@ async function onBulkStatusChange(status: MigrationFindingTriageStatus) {
 	);
 }
 
-// The callout offers to dismiss open findings on workflows that did not run for
-// 12 months. The "Last run" filter uses the same rule, so "Review" can show them.
-const UNUSED_WORKFLOW_FILTERS: WorkflowFilters = {
-	...DEFAULT_WORKFLOW_FILTERS,
-	lastRun: 'over12Months',
-};
+const unusedOpenWorkflows = computed(() =>
+	findUnusedOpenWorkflows(state.value.affectedWorkflows, rowContext.value),
+);
 
-const unusedOpenWorkflows = computed(() => {
-	const now = Date.now();
-	return state.value.affectedWorkflows.filter(
-		(workflow) =>
-			isUnresolved(workflow) &&
-			!savingWorkflowIds.value.has(workflow.id) &&
-			matchesWorkflowFilters(workflow, UNUSED_WORKFLOW_FILTERS, now),
+const bulkNotifyTargets = computed(() =>
+	notifyTargets(selectedWorkflows.value, rowContext.value, canNotify.value),
+);
+
+const bulkNotifyOwnerCount = computed(() => notifyOwnerCount(bulkNotifyTargets.value));
+
+const bulkNotifyLabel = computed(() =>
+	bulkNotifyOwnerCount.value > 0
+		? i18n.baseText('settings.migrationReport.detail.bulk.notifyOwnerCount', {
+				adjustToNumber: bulkNotifyOwnerCount.value,
+				interpolate: { count: String(bulkNotifyOwnerCount.value) },
+			})
+		: i18n.baseText('settings.migrationReport.detail.bulk.notifyOwners'),
+);
+
+const isBulkNotifying = computed(() =>
+	selectedWorkflows.value.some((workflow) => notifyingWorkflowIds.value.has(workflow.id)),
+);
+
+const selectedWithoutOwnerCount = computed(
+	() => selectedWorkflows.value.filter((workflow) => !workflow.owner?.email).length,
+);
+
+async function onBulkNotify() {
+	const notified = new Set(await notifyMany(bulkNotifyTargets.value));
+	// Keep the rows that the user selected while the request was in flight.
+	selectedWorkflowIds.value = selectedWorkflowIds.value.filter(
+		(workflowId) => !notified.has(workflowId),
 	);
-});
-
-// Rows with a notification in flight.
-const notifyingWorkflowIds = ref<Set<string>>(new Set());
-
-// An email goes to the owner, so a row without one has nobody to notify.
-function canNotifyRow(workflow: AffectedWorkflow): boolean {
-	return canNotify.value && !!workflow.owner?.email && isUnresolved(workflow);
-}
-
-const skipReasonKeys: Record<
-	MigrationNotifySkipReason,
-	| 'settings.migrationReport.detail.notify.skipped.noOwner'
-	| 'settings.migrationReport.detail.notify.skipped.noFinding'
-	| 'settings.migrationReport.detail.notify.skipped.sendFailed'
-> = {
-	no_owner: 'settings.migrationReport.detail.notify.skipped.noOwner',
-	no_finding: 'settings.migrationReport.detail.notify.skipped.noFinding',
-	send_failed: 'settings.migrationReport.detail.notify.skipped.sendFailed',
-};
-
-/** Emails the owner of one workflow. A second call on a notified row is a reminder. */
-async function onNotify(workflow: AffectedWorkflow) {
-	if (notifyingWorkflowIds.value.has(workflow.id) || savingWorkflowIds.value.has(workflow.id))
-		return;
-	notifyingWorkflowIds.value = new Set(notifyingWorkflowIds.value).add(workflow.id);
-	try {
-		const result = await breakingChangesApi.notifyFindingOwners(
-			rootStore.restApiContext,
-			props.migrationRuleId,
-			[workflow.id],
-		);
-		const skipped = result.skipped.find((entry) => entry.workflowId === workflow.id);
-		if (skipped) {
-			toast.showMessage({
-				type: 'error',
-				title: i18n.baseText('settings.migrationReport.detail.notify.error.title'),
-				message: i18n.baseText(skipReasonKeys[skipped.reason]),
-			});
-			return;
-		}
-		state.value = {
-			...state.value,
-			affectedWorkflows: state.value.affectedWorkflows.map((row) =>
-				row.id === workflow.id ? { ...row, status: 'notified', notifiedAt: new Date() } : row,
-			),
-		};
-		toast.showMessage({
-			type: 'success',
-			title: i18n.baseText('settings.migrationReport.detail.notify.success.title'),
-			message: i18n.baseText('settings.migrationReport.detail.notify.success.message', {
-				interpolate: { owner: ownerLabel(workflow), name: workflow.name },
-			}),
-		});
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.migrationReport.detail.notify.error.title'));
-	} finally {
-		const next = new Set(notifyingWorkflowIds.value);
-		next.delete(workflow.id);
-		notifyingWorkflowIds.value = next;
-	}
 }
 
 // Show only the rows that the callout counts.
 function reviewUnusedWorkflows() {
 	searchInput.value = '';
 	searchQuery.value = '';
-	stateFilter.value = 'open';
 	workflowFilters.value = { ...UNUSED_WORKFLOW_FILTERS };
+}
+
+const {
+	archiveDialog,
+	promptToArchive,
+	startBulkArchive,
+	onArchiveDialogConfirm,
+	closeArchiveDialog,
+} = useArchiveFlow({
+	ruleImpact: () => state.value.ruleImpact,
+	updateRows,
+	stateOf: (workflow) => findingState(workflow, rowContext.value),
+	markWontFix: async (workflows) => await changeFindingStatuses(workflows, 'wont_fix'),
+	onBulkArchiveStart: (workflowIds) => {
+		const started = new Set(workflowIds);
+		selectedWorkflowIds.value = selectedWorkflowIds.value.filter(
+			(workflowId) => !started.has(workflowId),
+		);
+	},
+});
+
+const bulkArchiveTargets = computed(() =>
+	archiveTargets(selectedWorkflows.value, rowContext.value),
+);
+
+const bulkWontFixActions = computed(() => [
+	{
+		label: i18n.baseText('settings.migrationReport.detail.bulk.wontFixAndArchive'),
+		value: 'wontFixAndArchive',
+		disabled: bulkArchiveTargets.value.length === 0,
+	},
+]);
+
+function onBulkWontFixAndArchive() {
+	startBulkArchive(bulkArchiveTargets.value);
 }
 
 async function markUnusedWorkflowsAsWontFix() {
@@ -527,48 +396,27 @@ function workflowUrl(workflow: AffectedWorkflow): string {
 
 const sortBy = ref([{ id: 'numberOfExecutions', desc: true }]);
 
-type SortField = 'numberOfExecutions' | 'lastExecutedAt' | 'lastUpdatedAt' | 'name';
-
-const sortFieldLabels = computed<Record<string, string>>(() => ({
-	numberOfExecutions: i18n.baseText('settings.migrationReport.detail.sort.executions'),
-	lastExecutedAt: i18n.baseText('settings.migrationReport.detail.sort.lastRun'),
-	lastUpdatedAt: i18n.baseText('settings.migrationReport.detail.sort.lastUpdated'),
-	name: i18n.baseText('settings.migrationReport.detail.table.name'),
-	owner: i18n.baseText('settings.migrationReport.detail.table.owner'),
-}));
-
-const sortMenuItems = computed<Array<DropdownMenuItemProps<SortField>>>(() =>
-	(['numberOfExecutions', 'lastExecutedAt', 'lastUpdatedAt', 'name'] as const).map((id) => ({
-		id,
-		label: sortFieldLabels.value[id],
-		checked: sortBy.value[0]?.id === id,
-	})),
+const sortOptions = computed(() =>
+	SORT_OPTIONS.map((option) => ({ ...option, label: i18n.baseText(option.labelKey) })),
 );
 
-const sortLabel = computed(() => {
-	const current = sortBy.value[0];
-	if (!current) return i18n.baseText('settings.migrationReport.detail.sort.none');
-	return i18n.baseText('settings.migrationReport.detail.sort.label', {
-		interpolate: {
-			field: sortFieldLabels.value[current.id] ?? current.id,
-			direction: current.desc ? '↓' : '↑',
-		},
-	});
-});
+const sortOption = computed(() => sortOptionFor(sortBy.value));
 
-// Picking the current field again flips the direction. A new field starts in the
-// direction that shows the most relevant rows first.
-function onSortSelect(id: SortField) {
-	const current = sortBy.value[0];
-	const desc = current?.id === id ? !current.desc : id !== 'name';
-	sortBy.value = [{ id, desc }];
+function onSortChange(value: string) {
+	const option = SORT_OPTIONS.find((candidate) => candidate.value === value);
+	if (option) sortBy.value = [{ id: option.id, desc: option.desc }];
 }
 
 // Filter state
 const searchInput = ref('');
 const searchQuery = ref(''); // Debounced value for filtering
-const workflowFilters = ref<WorkflowFilters>({ ...DEFAULT_WORKFLOW_FILTERS });
-const stateFilter = ref<MigrationFindingTriageStatus | undefined>();
+// The notification email links here with `?owner=me` to show the recipient's workflows.
+const workflowFilters = ref<WorkflowFilters>({
+	...DEFAULT_WORKFLOW_FILTERS,
+	...(route.query.owner === 'me' && usersStore.currentUserId
+		? { owner: usersStore.currentUserId }
+		: {}),
+});
 
 // Debounced search to avoid excessive filtering
 const debouncedSearch = useDebounceFn((value: string) => {
@@ -580,83 +428,28 @@ const onSearchInput = (value: string) => {
 	void debouncedSearch(value); // Debounce the filter update
 };
 
-// A migrated row shows as resolved, so it does not count as open.
-function findingState(workflow: AffectedWorkflow): MigrationFindingListedStatus | 'migrated' {
-	return migratedWorkflowIds.value.has(workflow.id) ? 'migrated' : workflow.status;
-}
-
-// A notified finding still needs a fix, so it counts and filters as open.
-function isUnresolved(workflow: AffectedWorkflow): boolean {
-	const findingStatus = findingState(workflow);
-	return findingStatus === 'open' || findingStatus === 'notified';
-}
-
-function hasState(workflow: AffectedWorkflow, status: MigrationFindingTriageStatus): boolean {
-	return status === 'open' ? isUnresolved(workflow) : findingState(workflow) === status;
-}
-
-const wontFixCount = computed(
-	() =>
-		state.value.affectedWorkflows.filter((workflow) => findingState(workflow) === 'wont_fix')
-			.length,
-);
-
-const unassignedCount = computed(
-	() => state.value.affectedWorkflows.filter((workflow) => !workflow.owner).length,
-);
-
 const currentUserId = computed(() => usersStore.currentUserId ?? undefined);
 
-const assignedToMeCount = computed(
-	() =>
-		state.value.affectedWorkflows.filter((workflow) => workflow.owner?.id === currentUserId.value)
-			.length,
+const quickFilterCounts = computed(() =>
+	countQuickFilters(state.value.affectedWorkflows, migrationContext.value, currentUserId.value),
 );
 
-function quickFilterLabel(
-	key:
-		| 'settings.migrationReport.detail.quickFilter.assignedToMe'
-		| 'settings.migrationReport.detail.quickFilter.open'
-		| 'settings.migrationReport.detail.quickFilter.wontFix'
-		| 'settings.migrationReport.detail.quickFilter.unassigned',
-	count: number,
-): string {
-	return i18n.baseText(key, { interpolate: { count: String(count) } });
-}
+const ownerFilterOptions = computed(() =>
+	buildOwnerFilterOptions(state.value.affectedWorkflows, unassignedLabel.value),
+);
 
-function toggleStateFilter(status: MigrationFindingTriageStatus) {
-	stateFilter.value = stateFilter.value === status ? undefined : status;
-}
+const projectFilterOptions = computed(() =>
+	buildProjectFilterOptions(state.value.affectedWorkflows, personalLabel.value),
+);
 
-function toggleOwnerFilter(owner: string) {
-	workflowFilters.value = {
-		...workflowFilters.value,
-		owner: workflowFilters.value.owner === owner ? 'any' : owner,
-	};
-}
-
-// The owners of the listed workflows, for the owner filter.
-const ownerFilterOptions = computed(() => {
-	const owners = new Map<string, string>();
-	for (const workflow of state.value.affectedWorkflows) {
-		if (workflow.owner) owners.set(workflow.owner.id, ownerLabel(workflow));
-	}
-	return orderBy(
-		[...owners].map(([id, label]) => ({ id, label })),
-		[(owner) => owner.label.toLowerCase()],
-	);
-});
-
-const filteredWorkflows = computed(() => {
-	const query = searchQuery.value.toLowerCase();
-	const now = Date.now();
-	return state.value.affectedWorkflows.filter(
-		(workflow) =>
-			(!query || workflow.name.toLowerCase().includes(query)) &&
-			(!stateFilter.value || hasState(workflow, stateFilter.value)) &&
-			matchesWorkflowFilters(workflow, workflowFilters.value, now),
-	);
-});
+const filteredWorkflows = computed(() =>
+	filterWorkflows(
+		state.value.affectedWorkflows,
+		searchQuery.value,
+		workflowFilters.value,
+		migrationContext.value,
+	),
+);
 
 // A bulk action must not change rows the user cannot see, so a search or a
 // filter drops the hidden rows from the selection.
@@ -666,23 +459,32 @@ watch(filteredWorkflows, (workflows) => {
 	if (kept.length !== selectedWorkflowIds.value.length) selectedWorkflowIds.value = kept;
 });
 
-// The owner cell shows a label, so it sorts by that label and not by the owner object.
-// Dates come from JSON as strings, and a workflow that never ran has no date.
-// A timestamp sorts them right, with a missing date as the oldest.
-const sortValues: Record<string, (workflow: AffectedWorkflow) => string | number> = {
-	owner: ownerLabel,
-	lastExecutedAt: (workflow) =>
-		workflow.lastExecutedAt ? new Date(workflow.lastExecutedAt).getTime() : 0,
-	lastUpdatedAt: (workflow) => new Date(workflow.lastUpdatedAt).getTime(),
-	name: (workflow) => workflow.name.toLowerCase(),
-};
+const sortedWorkflows = computed(() =>
+	sortWorkflows(filteredWorkflows.value, sortBy.value, unassignedLabel.value),
+);
 
-const sortedWorkflows = computed(() => {
-	if (!sortBy.value.length) return filteredWorkflows.value;
+const page = ref(0);
+const itemsPerPage = ref(25);
 
-	const { id, desc } = sortBy.value[0];
-	return orderBy(filteredWorkflows.value, [sortValues[id] ?? id], [desc ? 'desc' : 'asc']);
+const pagedWorkflows = computed(() =>
+	sortedWorkflows.value.slice(
+		page.value * itemsPerPage.value,
+		(page.value + 1) * itemsPerPage.value,
+	),
+);
+
+watch([searchQuery, workflowFilters, sortBy], () => {
+	page.value = 0;
 });
+
+// Resolving rows can empty the last page, so the page moves back to the last one with rows.
+watch(
+	() => sortedWorkflows.value.length,
+	(length) => {
+		const lastPage = Math.max(0, Math.ceil(length / itemsPerPage.value) - 1);
+		if (page.value > lastPage) page.value = lastPage;
+	},
+);
 </script>
 
 <template>
@@ -692,54 +494,45 @@ const sortedWorkflows = computed(() => {
 		:back-label="i18n.baseText('generic.back')"
 		@back="router.push({ name: VIEWS.MIGRATION_REPORT })"
 	>
-		<header>
-			<template v-if="isLoading">
-				<div class="mb-2xs">
-					<N8nLoading variant="h1" />
-				</div>
-				<div>
-					<N8nLoading variant="p" :rows="2" />
-				</div>
-			</template>
-			<template v-else>
-				<N8nText
-					tag="h2"
-					size="xlarge"
-					color="text-dark"
-					class="mb-2xs"
-					style="display: flex; align-items: center; gap: 4px"
-				>
-					{{ state.ruleTitle }}
-					<ImpactTag :impact="state.ruleImpact" />
-					<N8nBadge>
-						{{
-							i18n.baseText('settings.migrationReport.detail.affectedTag', {
-								interpolate: { count: String(openCount) },
-							})
-						}}
-					</N8nBadge>
-				</N8nText>
-				<N8nText tag="p" color="text-base">
-					{{ state.ruleDescription }}{{ state.ruleDescription.endsWith('.') ? '' : '.' }}
-					<N8nLink
-						v-if="state.ruleDocumentationUrl"
-						theme="text"
-						:href="state.ruleDocumentationUrl"
-						target="_blank"
-						rel="noopener noreferrer"
-						:class="$style.NoLineBreak"
-					>
-						<span :class="$style.UnderlinedText">{{
-							i18n.baseText('settings.migrationReport.documentation')
-						}}</span>
-						↗
-					</N8nLink>
-				</N8nText>
-			</template>
+		<header v-if="isLoading" :class="$style.pageHeader">
+			<div class="mb-2xs">
+				<N8nLoading variant="h1" />
+			</div>
+			<div>
+				<N8nLoading variant="p" :rows="2" />
+			</div>
 		</header>
+		<N8nSettingsPageHeader
+			v-else
+			:title="state.ruleTitle"
+			:description="ruleDescription"
+			:show-docs-link="Boolean(state.ruleDocumentationUrl)"
+			:docs-url="state.ruleDocumentationUrl"
+			:docs-label="i18n.baseText('settings.migrationReport.documentation')"
+			docs-leading-text=""
+		>
+			<template #titleTrailing>
+				<ImpactTag :impact="state.ruleImpact" />
+				<N8nBadge>
+					{{
+						i18n.baseText('settings.migrationReport.detail.affectedTag', {
+							interpolate: { count: String(openCount) },
+						})
+					}}
+				</N8nBadge>
+			</template>
+		</N8nSettingsPageHeader>
+
+		<HowToFixPanel
+			v-if="!isLoading"
+			:class="$style.howToFix"
+			:recommendations="state.recommendations"
+			:documentation-url="state.ruleDocumentationUrl"
+			:migratable="state.migratable"
+		/>
 
 		<div
-			v-if="!isLoading && canMigrate && unusedOpenWorkflows.length > 0"
+			v-if="!isLoading && unusedOpenWorkflows.length > 0"
 			:class="$style.unusedCallout"
 			data-test-id="migration-rule-unused-callout"
 		>
@@ -775,58 +568,6 @@ const sortedWorkflows = computed(() => {
 		</div>
 
 		<div :class="$style.toolbar">
-			<div :class="$style.quickFilters">
-				<N8nButton
-					v-if="currentUserId"
-					:variant="workflowFilters.owner === currentUserId ? 'solid' : 'subtle'"
-					size="small"
-					icon="user"
-					:aria-pressed="workflowFilters.owner === currentUserId"
-					data-test-id="migration-rule-quick-filter-mine"
-					@click="toggleOwnerFilter(currentUserId)"
-				>
-					{{
-						quickFilterLabel(
-							'settings.migrationReport.detail.quickFilter.assignedToMe',
-							assignedToMeCount,
-						)
-					}}
-				</N8nButton>
-				<N8nButton
-					:variant="stateFilter === 'open' ? 'solid' : 'subtle'"
-					size="small"
-					:aria-pressed="stateFilter === 'open'"
-					data-test-id="migration-rule-quick-filter-open"
-					@click="toggleStateFilter('open')"
-				>
-					{{ quickFilterLabel('settings.migrationReport.detail.quickFilter.open', openCount) }}
-				</N8nButton>
-				<N8nButton
-					:variant="stateFilter === 'wont_fix' ? 'solid' : 'subtle'"
-					size="small"
-					:aria-pressed="stateFilter === 'wont_fix'"
-					data-test-id="migration-rule-quick-filter-wont-fix"
-					@click="toggleStateFilter('wont_fix')"
-				>
-					{{
-						quickFilterLabel('settings.migrationReport.detail.quickFilter.wontFix', wontFixCount)
-					}}
-				</N8nButton>
-				<N8nButton
-					:variant="workflowFilters.owner === UNASSIGNED_OWNER ? 'solid' : 'subtle'"
-					size="small"
-					:aria-pressed="workflowFilters.owner === UNASSIGNED_OWNER"
-					data-test-id="migration-rule-quick-filter-unassigned"
-					@click="toggleOwnerFilter(UNASSIGNED_OWNER)"
-				>
-					{{
-						quickFilterLabel(
-							'settings.migrationReport.detail.quickFilter.unassigned',
-							unassignedCount,
-						)
-					}}
-				</N8nButton>
-			</div>
 			<N8nInput
 				:model-value="searchInput"
 				:placeholder="i18n.baseText('settings.migrationReport.detail.search.placeholder')"
@@ -840,64 +581,99 @@ const sortedWorkflows = computed(() => {
 					<N8nIcon icon="search" />
 				</template>
 			</N8nInput>
-		</div>
-
-		<div :class="$style.sortAndFilters">
-			<N8nDropdownMenu
-				:items="sortMenuItems"
-				placement="bottom-start"
+			<N8nSelect
+				:model-value="sortOption"
+				size="small"
+				:placeholder="i18n.baseText('settings.migrationReport.detail.sort.none')"
+				:class="$style.sort"
 				data-test-id="migration-rule-sort"
-				@select="onSortSelect"
+				@update:model-value="onSortChange"
 			>
-				<template #trigger>
-					<N8nButton variant="subtle" size="small" data-test-id="migration-rule-sort-trigger">
-						{{ sortLabel }}
-					</N8nButton>
-				</template>
-			</N8nDropdownMenu>
-			<WorkflowFiltersPopover v-model="workflowFilters" :owners="ownerFilterOptions" />
+				<N8nOption
+					v-for="option in sortOptions"
+					:key="option.value"
+					:value="option.value"
+					:label="option.label"
+					data-test-id="migration-rule-sort-item"
+				/>
+			</N8nSelect>
+			<WorkflowFiltersPopover
+				v-model="workflowFilters"
+				:owners="ownerFilterOptions"
+				:projects="projectFilterOptions"
+				:current-user-id="currentUserId"
+				:counts="quickFilterCounts"
+			/>
 		</div>
 
 		<N8nDataTableServer
 			:key="String(state.migratable)"
 			v-model:sort-by="sortBy"
 			v-model:selection="selectedWorkflowIds"
-			:show-select="canMigrate"
-			:item-selectable="isSelectable"
-			:items-per-page="sortedWorkflows.length + 1"
-			:items="sortedWorkflows"
+			v-model:page="page"
+			v-model:items-per-page="itemsPerPage"
+			show-select
+			:item-selectable="(item: AffectedWorkflow) => isSelectable(item, rowContext)"
+			:items="pagedWorkflows"
 			:items-length="sortedWorkflows.length"
 			:headers="tableHeaders"
 			:loading="isLoading"
 		>
 			<template #[`item.name`]="{ item }">
 				<div :class="$style.cellStack">
-					<N8nLink
-						theme="text"
-						:to="workflowUrl(item)"
-						new-window
-						:title="item.name"
-						:class="[$style.truncate, $style.workflowName]"
-						data-test-id="migration-workflow-name-link"
-					>
-						{{ item.name }}
-					</N8nLink>
-					<N8nText size="small" color="text-light">
-						{{
-							item.active
-								? i18n.baseText('settings.migrationReport.detail.table.published')
-								: i18n.baseText('settings.migrationReport.detail.table.notPublished')
-						}}
-						·
-						<I18nT
-							keypath="settings.migrationReport.detail.table.updated"
-							tag="span"
-							scope="global"
+					<div :class="$style.nameRow">
+						<N8nTooltip
+							v-if="item.active"
+							:content="i18n.baseText('settings.migrationReport.detail.table.published')"
 						>
-							<template #time>
-								<TimeAgo :date="item.lastUpdatedAt.toString()" />
-							</template>
-						</I18nT>
+							<span
+								:class="$style.publishedDot"
+								role="img"
+								:aria-label="i18n.baseText('settings.migrationReport.detail.table.published')"
+								data-test-id="migration-workflow-published"
+							>
+								<N8nStatusDot variant="success" />
+							</span>
+						</N8nTooltip>
+						<N8nLink
+							theme="text"
+							:to="workflowUrl(item)"
+							new-window
+							:title="item.name"
+							:class="[$style.truncate, $style.workflowName]"
+							data-test-id="migration-workflow-name-link"
+						>
+							{{ item.name }}
+						</N8nLink>
+					</div>
+					<N8nText size="small" color="text-light" :class="$style.nameDetails">
+						<span
+							:class="$style.project"
+							:title="projectLabel(item, personalLabel)"
+							data-test-id="migration-workflow-project"
+						>
+							<ProjectIcon
+								:icon="{
+									type: 'icon',
+									value: item.homeProjectType === 'personal' ? 'user' : 'layers',
+								}"
+								border-less
+								size="mini"
+							/>
+							<span :class="$style.truncate">{{ projectLabel(item, personalLabel) }}</span>
+						</span>
+						<span :class="$style.updated">
+							·
+							<I18nT
+								keypath="settings.migrationReport.detail.table.updated"
+								tag="span"
+								scope="global"
+							>
+								<template #time>
+									<TimeAgo :date="item.lastUpdatedAt.toString()" />
+								</template>
+							</I18nT>
+						</span>
 					</N8nText>
 				</div>
 			</template>
@@ -937,7 +713,6 @@ const sortedWorkflows = computed(() => {
 			</template>
 			<template #[`item.owner`]="{ item }">
 				<N8nUserSelect
-					v-if="canMigrate"
 					size="small"
 					:users="ownerOptionsFor(item)"
 					hide-email-in-label
@@ -945,28 +720,17 @@ const sortedWorkflows = computed(() => {
 					borderless
 					:model-value="item.owner?.id ?? ''"
 					:placeholder="i18n.baseText('settings.migrationReport.detail.table.unassigned')"
-					remote
-					:remote-method="searchMembers"
 					:loading="isLoadingUsers"
 					clearable
 					data-test-id="migration-owner-select"
 					@focus="onOwnerPickerFocus(item)"
 					@update:model-value="(userId: string) => onOwnerChange(item, userId)"
 				/>
-				<div v-else :class="$style.ownerLabel">
-					<N8nAvatar
-						size="xsmall"
-						:first-name="item.owner?.firstName"
-						:last-name="item.owner?.lastName"
-					/>
-					<span :class="$style.truncate">{{ ownerLabel(item) }}</span>
-				</div>
 			</template>
 			<template #[`item.status`]="{ item }">
 				<FindingStateSelect
 					:model-value="item.status"
 					:disabled="
-						!canMigrate ||
 						savingWorkflowIds.has(item.id) ||
 						notifyingWorkflowIds.has(item.id) ||
 						migratedWorkflowIds.has(item.id)
@@ -977,8 +741,8 @@ const sortedWorkflows = computed(() => {
 			<template #[`item.actions`]="{ item }">
 				<div :class="$style.actions">
 					<N8nButton
-						v-if="canNotifyRow(item)"
-						variant="subtle"
+						v-if="canNotifyRow(item, rowContext, canNotify)"
+						variant="outline"
 						size="small"
 						:loading="notifyingWorkflowIds.has(item.id)"
 						:label="
@@ -1008,6 +772,26 @@ const sortedWorkflows = computed(() => {
 							</template>
 						</I18nT>
 					</N8nInfoTip>
+					<!-- A short verb keeps the column narrow; the tooltip and aria-label name the Assistant. -->
+					<N8nTooltip v-if="assistantButton" :content="assistantButton.text" placement="top">
+						<N8nButton
+							size="small"
+							:label="assistantButton.label"
+							:aria-label="assistantButton.text"
+							data-test-id="migration-open-in-assistant-button"
+							@click="
+								findingAssistant.open({
+									rule: state,
+									workflow: item,
+									action: assistantButton.action,
+								})
+							"
+						>
+							<template #icon>
+								<N8nIcon icon="n8n-assistant" size="small" />
+							</template>
+						</N8nButton>
+					</N8nTooltip>
 					<template v-if="showMigrate">
 						<N8nText v-if="migratedWorkflowIds.has(item.id)" color="text-light" size="small">
 							{{ i18n.baseText('settings.migrationReport.detail.migrate.migrated') }}
@@ -1032,20 +816,49 @@ const sortedWorkflows = computed(() => {
 				<template #actions>
 					<N8nButton
 						v-if="showMigrate"
-						variant="subtle"
+						variant="outline"
 						:label="i18n.baseText('settings.migrationReport.detail.bulk.migrate')"
 						data-test-id="migration-bulk-migrate-button"
 						@click="openMigrateModal(selectedWorkflows)"
 					/>
-					<N8nButton
-						variant="subtle"
+					<template v-if="canNotify">
+						<N8nTooltip
+							:content="i18n.baseText('settings.migrationReport.detail.bulk.notify.tooltip')"
+							:disabled="bulkNotifyOwnerCount === 0"
+						>
+							<N8nButton
+								variant="outline"
+								:label="bulkNotifyLabel"
+								:disabled="bulkNotifyTargets.length === 0"
+								:loading="isBulkNotifying"
+								data-test-id="migration-bulk-notify-button"
+								@click="onBulkNotify"
+							/>
+						</N8nTooltip>
+						<N8nText
+							v-if="selectedWithoutOwnerCount > 0"
+							size="small"
+							color="text-light"
+							data-test-id="migration-bulk-notify-no-owner"
+						>
+							{{
+								i18n.baseText('settings.migrationReport.detail.bulk.notify.noOwner', {
+									interpolate: { count: String(selectedWithoutOwnerCount) },
+								})
+							}}
+						</N8nText>
+					</template>
+					<SplitButton
 						:label="i18n.baseText('settings.migrationReport.detail.bulk.wontFix')"
 						:disabled="bulkTargets('wont_fix').length === 0"
+						:actions="bulkWontFixActions"
+						:toggle-label="i18n.baseText('settings.migrationReport.detail.bulk.wontFixMore')"
 						data-test-id="migration-bulk-wont-fix-button"
 						@click="onBulkStatusChange('wont_fix')"
+						@action="onBulkWontFixAndArchive"
 					/>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						:label="i18n.baseText('settings.migrationReport.detail.bulk.reopen')"
 						:disabled="bulkTargets('open').length === 0"
 						data-test-id="migration-bulk-reopen-button"
@@ -1054,10 +867,29 @@ const sortedWorkflows = computed(() => {
 				</template>
 			</N8nSelectedItemsInfo>
 		</div>
+		<ArchiveWorkflowsModal
+			v-if="archiveDialog"
+			:mode="archiveDialog.mode"
+			:workflows="archiveDialog.workflows"
+			@confirm="onArchiveDialogConfirm"
+			@close="closeArchiveDialog"
+		/>
 	</N8nSettingsLayout>
 </template>
 
 <style module>
+/* Loading placeholder for the header: mirrors N8nSettingsPageHeader's self-capping so the
+   skeleton column stays centered while the table below spans the full-width layout. */
+.pageHeader {
+	width: 100%;
+	max-width: var(--settings-content--max-width, 45rem);
+	margin-inline: auto;
+}
+
+.howToFix {
+	margin-bottom: var(--spacing--md);
+}
+
 .unusedCallout {
 	display: flex;
 	align-items: center;
@@ -1094,15 +926,39 @@ const sortedWorkflows = computed(() => {
 	color: var(--color--text);
 }
 
-.nodeNames {
-	font-family: var(--font-family--monospace);
-}
-
-.ownerLabel {
+/* A dot before the name shows the published state, so the second line has room for the project. */
+.nameRow {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--3xs);
 	min-width: 0;
+}
+
+.publishedDot {
+	display: inline-flex;
+	flex-shrink: 0;
+}
+
+.nameDetails {
+	display: flex;
+	gap: var(--spacing--4xs);
+	white-space: nowrap;
+}
+
+/* A long project name truncates, so the updated time stays in view. */
+.project {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+
+.updated {
+	flex-shrink: 0;
+}
+
+.nodeNames {
+	font-family: var(--font-family--monospace);
 }
 
 .actions {
@@ -1121,24 +977,13 @@ const sortedWorkflows = computed(() => {
 	height: calc(var(--spacing--3xl) + var(--spacing--2xl));
 }
 
+/* Matches the search, sort and filter row of the Overview lists. */
 .toolbar {
 	display: flex;
 	flex-wrap: wrap;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--4xs);
 	align-items: center;
-	justify-content: space-between;
-	margin-bottom: var(--spacing--xs);
-}
-
-.quickFilters,
-.sortAndFilters {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-	align-items: center;
-}
-
-.sortAndFilters {
+	justify-content: flex-end;
 	margin-bottom: var(--spacing--md);
 }
 
@@ -1146,11 +991,7 @@ const sortedWorkflows = computed(() => {
 	flex: 0 1 20rem;
 }
 
-.NoLineBreak {
-	white-space: nowrap;
-}
-
-.UnderlinedText {
-	text-decoration: underline;
+.sort {
+	width: 196px;
 }
 </style>

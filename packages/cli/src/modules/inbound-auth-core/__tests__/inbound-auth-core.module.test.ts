@@ -1,7 +1,9 @@
+import { Logger } from '@n8n/backend-common';
 import { ModuleMetadata, type ModuleInterface } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import {
 	AuthenticationPipeline,
+	ResourceAdmission,
 	AuthenticationService,
 	IdentityService,
 	LocalAuthorizationServer,
@@ -9,29 +11,56 @@ import {
 	TrustedSourceStore,
 } from '@n8n/inbound-auth';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
+
+import { AuthStrategyRegistry, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
 // Importing the module runs the @BackendModule decorator, registering its metadata.
 import { InboundAuthPipeline } from '../authentication-pipeline';
 import { OAuth2AuthenticationService } from '../authentication.service';
 import { TrustedSourceIdentityService } from '../identity/trusted-source-identity.service';
 import { InboundAuthCoreModule } from '../inbound-auth-core.module';
+import { PublicApiOAuthStrategy } from '../public-api-oauth.strategy';
+import { PublicApiProtectedResource } from '../public-api-protected-resource';
+import { InboundResourceAdmission } from '../resource-admission';
+import { TrustedSourceDbDirectory } from '../trusted-source-directory.service';
 import { TrustedSourceDiscoveryTask } from '../trusted-source-discovery.task';
 import { TrustedSourceDbGate } from '../trusted-source.gate';
+import { LocalAuthorizationServerProxy } from '../local-authorization-server.proxy';
+import { TrustedSourceDiscoveryService } from '../trusted-source-discovery.service';
 import { TrustedSourceDbStore } from '../trusted-source.store';
+
+// A mocked module's factory runs on its first import, so the first `init()` that imports the
+// controller is the one that proves the gate. Keep the "loaded" case last.
+const { loadController } = vi.hoisted(() => ({ loadController: vi.fn() }));
+const FLAG = 'N8N_ENV_FEAT_TRUSTED_SOURCES_API_ENABLED';
+vi.mock('../trusted-source.controller', () => {
+	loadController();
+	return {};
+});
 
 describe('InboundAuthCoreModule', () => {
 	describe('init', () => {
 		const dbStore = mock<TrustedSourceDbStore>();
 		const dbGate = mock<TrustedSourceDbGate>();
 		const identityService = mock<TrustedSourceIdentityService>();
+		const strategyRegistry = mock<AuthStrategyRegistry>();
+		const resourceRegistry = mock<ProtectedResourceRegistry>();
+		const publicApiResource = mock<PublicApiProtectedResource>();
+		const publicApiStrategy = mock<PublicApiOAuthStrategy>();
 
 		beforeAll(async () => {
+			// The shell may carry the flag; the first init must not be the one that imports the controller.
+			vi.stubEnv(FLAG, '');
 			Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
 			Container.set(TrustedSourceDbStore, dbStore);
 			Container.set(TrustedSourceDbGate, dbGate);
 			Container.set(TrustedSourceIdentityService, identityService);
+			Container.set(AuthStrategyRegistry, strategyRegistry);
+			Container.set(ProtectedResourceRegistry, resourceRegistry);
+			Container.set(PublicApiProtectedResource, publicApiResource);
+			Container.set(PublicApiOAuthStrategy, publicApiStrategy);
 			await new InboundAuthCoreModule().init();
 		});
 
@@ -54,14 +83,38 @@ describe('InboundAuthCoreModule', () => {
 			);
 		});
 
+		it('upgrades the stored configs once on a main instance', async () => {
+			dbStore.upgradeStoredConfigs.mockClear();
+
+			await new InboundAuthCoreModule().init();
+
+			expect(dbStore.upgradeStoredConfigs).toHaveBeenCalledTimes(1);
+		});
+
+		it('warns and still seeds when the upgrade fails', async () => {
+			const warn = vi.spyOn(Container.get(Logger), 'warn').mockImplementation(() => {});
+			const error = new Error('database down');
+			dbStore.seedSystemSource.mockClear();
+			dbStore.upgradeStoredConfigs.mockRejectedValueOnce(error);
+
+			await expect(new InboundAuthCoreModule().init()).resolves.toBeUndefined();
+
+			expect(warn).toHaveBeenCalledWith('Could not upgrade stored trusted source configs', {
+				error,
+			});
+			expect(dbStore.seedSystemSource).toHaveBeenCalledTimes(1);
+		});
+
 		it.each(['webhook', 'worker'] as const)(
-			'does not seed the system trusted source on a %s instance',
+			'neither upgrades nor seeds on a %s instance',
 			async (instanceType) => {
 				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType }));
+				dbStore.upgradeStoredConfigs.mockClear();
 				dbStore.seedSystemSource.mockClear();
 
 				await new InboundAuthCoreModule().init();
 
+				expect(dbStore.upgradeStoredConfigs).not.toHaveBeenCalled();
 				expect(dbStore.seedSystemSource).not.toHaveBeenCalled();
 				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
 			},
@@ -72,6 +125,18 @@ describe('InboundAuthCoreModule', () => {
 
 			await expect(server.getMetadata()).rejects.toThrow(OperationalError);
 			await expect(server.getJwks()).rejects.toThrow(OperationalError);
+			await expect(server.isAccessTokenActive('token')).resolves.toBe(false);
+		});
+
+		it('discovers the system trusted source once the OAuth2 server registers itself', async () => {
+			const discovery = mock<TrustedSourceDiscoveryService>();
+			Container.set(TrustedSourceDiscoveryService, discovery);
+
+			await Container.get(LocalAuthorizationServerProxy).registerProvider(
+				mock<LocalAuthorizationServer>(),
+			);
+
+			expect(discovery.refresh).toHaveBeenCalledWith('n8n-internal');
 		});
 
 		it('binds the OAuth2 AuthenticationService', () => {
@@ -85,6 +150,42 @@ describe('InboundAuthCoreModule', () => {
 		it('binds the AuthenticationPipeline contract to the inbound-auth pipeline', () => {
 			expect(Container.get(AuthenticationPipeline)).toBeInstanceOf(InboundAuthPipeline);
 		});
+
+		it('binds the ResourceAdmission contract to the pipeline-backed admission', () => {
+			expect(Container.get(ResourceAdmission)).toBeInstanceOf(InboundResourceAdmission);
+		});
+
+		describe('public API surface', () => {
+			afterEach(() => {
+				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
+			});
+
+			it('registers the public API resource and its OAuth2 strategy once on a main instance', async () => {
+				resourceRegistry.register.mockClear();
+				strategyRegistry.register.mockClear();
+
+				await new InboundAuthCoreModule().init();
+
+				expect(resourceRegistry.register).toHaveBeenCalledTimes(1);
+				expect(resourceRegistry.register).toHaveBeenCalledWith(publicApiResource);
+				expect(strategyRegistry.register).toHaveBeenCalledTimes(1);
+				expect(strategyRegistry.register).toHaveBeenCalledWith(publicApiStrategy);
+			});
+
+			it.each(['webhook', 'worker'] as const)(
+				'registers neither on a %s instance, which serves no public API',
+				async (instanceType) => {
+					Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType }));
+					resourceRegistry.register.mockClear();
+					strategyRegistry.register.mockClear();
+
+					await new InboundAuthCoreModule().init();
+
+					expect(resourceRegistry.register).not.toHaveBeenCalled();
+					expect(strategyRegistry.register).not.toHaveBeenCalled();
+				},
+			);
+		});
 	});
 
 	it('registers itself on main, webhook and worker instances without a license flag', () => {
@@ -93,6 +194,14 @@ describe('InboundAuthCoreModule', () => {
 		expect(entry).toBeDefined();
 		expect(entry?.instanceTypes).toEqual(['main', 'webhook', 'worker']);
 		expect(entry?.licenseFlag).toBeUndefined();
+	});
+
+	it('hands the trusted source directory to nodes as its module context', async () => {
+		const directory = mock<TrustedSourceDbDirectory>();
+		Container.set(TrustedSourceDbDirectory, directory);
+		const module: ModuleInterface = new InboundAuthCoreModule();
+
+		expect(await module.context?.()).toEqual({ trustedSourceDirectory: directory });
 	});
 
 	it('exposes the discovery task as its only system task', async () => {
@@ -111,5 +220,42 @@ describe('InboundAuthCoreModule', () => {
 			'TrustedSourceEntity',
 			'TrustedSourceIdentityEntity',
 		]);
+	});
+	describe('management controller', () => {
+		beforeEach(() => {
+			loadController.mockClear();
+			vi.stubEnv(FLAG, '');
+		});
+
+		afterEach(() => {
+			vi.unstubAllEnvs();
+			Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
+		});
+
+		it('is not loaded while the flag is unset', async () => {
+			await new InboundAuthCoreModule().init();
+
+			expect(loadController).not.toHaveBeenCalled();
+		});
+
+		it.each(['webhook', 'worker'] as const)(
+			'is not loaded on a %s instance even with the flag',
+			async (instanceType) => {
+				vi.stubEnv(FLAG, 'true');
+				Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType }));
+
+				await new InboundAuthCoreModule().init();
+
+				expect(loadController).not.toHaveBeenCalled();
+			},
+		);
+
+		it('is loaded on a main instance when the flag is true', async () => {
+			vi.stubEnv(FLAG, 'true');
+
+			await new InboundAuthCoreModule().init();
+
+			expect(loadController).toHaveBeenCalledOnce();
+		});
 	});
 });

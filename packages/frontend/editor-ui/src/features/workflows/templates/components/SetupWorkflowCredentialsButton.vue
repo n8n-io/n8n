@@ -149,7 +149,7 @@ watch(
 <template>
 	<div v-if="showButton" :class="$style.container">
 		<N8nButton
-			variant="subtle"
+			variant="outline"
 			:label="label"
 			:disabled="isButtonDisabled"
 			:class="{ [$style.full]: collapsible }"
@@ -160,7 +160,7 @@ watch(
 		/>
 		<N8nTooltip v-if="collapsible" :content="label" placement="bottom">
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				icon-only
 				:aria-label="label"
 				:disabled="isButtonDisabled"

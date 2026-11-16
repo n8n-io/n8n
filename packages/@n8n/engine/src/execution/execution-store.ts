@@ -1,9 +1,11 @@
 import type { StoredWorkflowGraph } from '../graph';
+import type { LifecycleEventSubscription } from '../lifecycle-events';
 import type { ResponseExpectation } from '../response-channel';
 import type {
 	CallerContext,
 	ExecutionMode,
 	ExecutionStatus,
+	ParentLink,
 	SeededSteps,
 	StepKey,
 	StepKeyId,
@@ -27,6 +29,10 @@ interface BaseExecutionRecord {
 	callerContext: CallerContext;
 	/** What kind of a response the caller expects. */
 	responseExpectation: ResponseExpectation;
+	/** The parent link, or `null` for a top-level execution. */
+	parent: ParentLink | null;
+	/** Which lifecycle events the caller subscribes to. Missing or `null` means none. */
+	lifecycleEventSubscription?: LifecycleEventSubscription | null;
 }
 
 /**
@@ -54,13 +60,22 @@ export class ExecutionNotFoundError extends Error {
 	}
 }
 
-/** Persistence interface for executions. */
+/**
+ * Persistence interface for executions.
+ *
+ * A write that makes an execution `queued` also records when the engine treats
+ * it as stuck in that status (see `StalenessThresholds`). A transition out of
+ * `queued` clears that time.
+ */
 export interface ExecutionStore {
 	/** Persist a new execution record under the caller-minted `record.id`. */
 	createExecution(record: NewExecutionRecord): Promise<void>;
 
 	/** Load a full execution by id. Throws `ExecutionNotFoundError` if absent. */
 	loadExecution(id: string): Promise<ExecutionRecord>;
+
+	/** Load only an execution's status. Throws `ExecutionNotFoundError` if absent. */
+	loadExecutionStatus(id: string): Promise<ExecutionStatus>;
 
 	/**
 	 * The outputs the caller seeded for the given steps, by step key id. A key

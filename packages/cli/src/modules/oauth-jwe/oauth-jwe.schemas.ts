@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { EcPublicJwkSchema, RsaPublicJwkSchema } from '@/jwks/jwks.schemas';
+import { EcPublicJwkSchema, RsaPublicJwkSchema } from '@n8n/api-types';
 
 import { JWE_EC_ALGORITHMS, JWE_KEY_USE, JWE_RSA_ALGORITHMS } from './oauth-jwe.constants';
 

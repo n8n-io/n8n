@@ -24,6 +24,7 @@ import type { IUser } from '@n8n/design-system';
 import {
 	N8nEmptyState,
 	N8nButton,
+	N8nExternalLink,
 	N8nIcon,
 	N8nInput,
 	N8nSettingsLayout,
@@ -132,6 +133,8 @@ const { isSwaggerUIEnabled, publicApiPath, publicApiLatestVersion } = settingsSt
 const { baseUrl } = useRootStore();
 
 const { isPublicApiEnabled } = settingsStore;
+
+const showKeyTable = computed(() => isPublicApiEnabled && hasAnyKeys.value);
 
 const apiDocsURL = computed(() => {
 	if (!isSwaggerUIEnabled) return `https://${DOCS_DOMAIN}/api/api-reference/`;
@@ -297,7 +300,8 @@ function onOpenScopes(apiKey: ApiKey) {
 </script>
 
 <template>
-	<N8nSettingsLayout full-width :class="$style.layout">
+	<N8nSettingsLayout :full-width="showKeyTable" :class="$style.layout">
+		<!-- Three links in one sentence, so the built-in docs link is off and the sentence is composed in the slot. -->
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.api')"
 			:show-docs-link="false"
@@ -307,38 +311,38 @@ function onOpenScopes(apiKey: ApiKey) {
 				<N8nText size="medium" color="text-base">
 					<I18nT keypath="settings.api.view.info" tag="span" scope="global">
 						<template #apiPlayground>
-							<a
-								:class="$style.docLink"
+							<N8nExternalLink
+								inline
+								size="small"
 								data-test-id="api-playground-link"
 								:href="apiDocsURL"
-								target="_blank"
-								v-text="i18n.baseText('settings.api.view.info.apiPlayground')"
-							/>
+								>{{ i18n.baseText('settings.api.view.info.apiPlayground') }}</N8nExternalLink
+							>
 						</template>
 						<template #webhook>
-							<a
-								:class="$style.docLink"
+							<N8nExternalLink
+								inline
+								size="small"
 								data-test-id="webhook-docs-link"
 								href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
-								target="_blank"
-								v-text="i18n.baseText('settings.api.view.info.webhook')"
-							/>
+								>{{ i18n.baseText('settings.api.view.info.webhook') }}</N8nExternalLink
+							>
 						</template>
 						<template #documentation>
-							<a
-								:class="$style.docLink"
+							<N8nExternalLink
+								inline
+								size="small"
 								data-test-id="api-docs-link"
 								href="https://docs.n8n.io/api"
-								target="_blank"
-								v-text="i18n.baseText('settings.api.view.info.documentation')"
-							/>
+								>{{ i18n.baseText('settings.api.view.info.documentation') }}</N8nExternalLink
+							>
 						</template>
 					</I18nT>
 				</N8nText>
 			</template>
 		</N8nSettingsPageHeader>
 
-		<div v-if="isPublicApiEnabled && hasAnyKeys" :class="$style.tableArea">
+		<div v-if="showKeyTable" :class="$style.tableArea">
 			<div :class="$style.toolbar">
 				<N8nTabs
 					v-if="canManageAllKeys"
@@ -481,18 +485,6 @@ function onOpenScopes(apiKey: ApiKey) {
 /* Collapse the layout's own top inset; the settings shell already pads the page top. */
 .layout {
 	padding-top: 0;
-}
-
-.docLink {
-	color: var(--text-color--subtle);
-	text-decoration: underline;
-
-	&::after {
-		content: '↗';
-		margin-left: 2px;
-		text-decoration: none;
-		display: inline-block;
-	}
 }
 
 .tableArea {

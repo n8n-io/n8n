@@ -16,8 +16,7 @@ const INDEX_LAZY_REQUIRE_TEST_SPECS = new Set([
 	'./utils/stream-helpers',
 	'./storage',
 	'./stream/map-chunk',
-	'./skills/runtime-skills',
-	'./skills/materialize-runtime-skills',
+	'./skills/skills',
 	'./utils/eval-agents',
 	'./utils/agent-tree',
 	'./workspace/builder-templates-service',
@@ -36,8 +35,6 @@ const INDEX_LAZY_REQUIRE_TEST_SPECS = new Set([
 	'./runtime/liveness-policy',
 	'./workflow-loop',
 	'./workflow-loop/runtime',
-	'./planned-tasks/planned-task-service',
-	'./planned-tasks/planned-task-permissions',
 ]);
 
 /**

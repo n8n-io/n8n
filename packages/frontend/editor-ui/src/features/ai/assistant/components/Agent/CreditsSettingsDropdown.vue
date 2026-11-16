@@ -20,6 +20,7 @@ const props = withDefaults(
 	}>(),
 	{
 		buttonSize: 'large',
+		iconSize: 'large',
 	},
 );
 
@@ -107,7 +108,7 @@ function onGetMoreCredits() {
 <template>
 	<div ref="dropdownRef" :class="$style.wrapper">
 		<N8nButton
-			icon="circle-dollar-sign"
+			icon="n8n-assistant-circle"
 			variant="ghost"
 			:size="props.buttonSize"
 			:icon-size="props.iconSize"
@@ -196,7 +197,7 @@ function onGetMoreCredits() {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--shade-1);
 }
 

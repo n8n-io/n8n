@@ -8,6 +8,7 @@ import { BadRequestError } from '@n8n/errors';
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import { TeamsCatalogService } from '../teams-catalog.service';
+import { TeamsCredentialNotesService } from '../teams-credential-notes.service';
 import type { GraphResponse, TeamsGraphService } from '../teams-graph.service';
 import type { TeamsManagerTokenService } from '../teams-manager-token.service';
 import type { TeamsManifestService } from '../teams-manifest.service';
@@ -102,10 +103,15 @@ describe('TeamsCatalogService', () => {
 			credentialsFinderService,
 			credentialsService,
 			mock<Logger>(),
+			new TeamsCredentialNotesService(credentialsFinderService, credentialsService, mock<Logger>()),
 		);
 
 		tokens.acquire.mockResolvedValue('graph-token');
-		setupService.buildPackage.mockResolvedValue(ARCHIVE);
+		setupService.buildPackage.mockResolvedValue({
+			archive: ARCHIVE,
+			fingerprint: 'fingerprint-1',
+			credentialId: 'bot-cred-1',
+		});
 		credentialsFinderService.findCredentialForUser.mockResolvedValue(
 			mock<CredentialsEntity>({
 				id: 'manager-1',
@@ -520,8 +526,29 @@ describe('TeamsCatalogService', () => {
 					publishedTeamsAppId: TEAMS_APP_ID,
 					publishedTeamsAppState: 'published',
 					publishedTeamsAppAt: expect.any(String),
+					teamsAppFingerprint: 'fingerprint-1',
 				}),
 			);
+		});
+
+		it('leaves a credential it could not decrypt untouched', async () => {
+			withBotCredential({});
+			graph.postZip.mockResolvedValue(ok({ id: TEAMS_APP_ID }));
+
+			await service.publish({ ...publishOptions, settings: undefined });
+
+			expect(credentialsService.update).not.toHaveBeenCalled();
+		});
+
+		it('records what it handed over even before Microsoft lists the app', async () => {
+			withBotCredential({ clientId: 'app-1' });
+			graph.postZip.mockResolvedValue(ok({}));
+
+			await service.publish({ ...publishOptions, settings: undefined });
+
+			const written = credentialsService.update.mock.calls[0][3] as Record<string, unknown>;
+			expect(written.teamsAppFingerprint).toBe('fingerprint-1');
+			expect(written.publishedTeamsAppId).toBeUndefined();
 		});
 
 		/** Microsoft has the app either way, so losing the note must not undo it. */

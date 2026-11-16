@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { UrlService } from '@n8n/backend-services';
 import type { InstanceSettings } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -7,7 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentIntegrationManagementService } from '../agent-integration-management.service';
 import { AgentIntegrationsController } from '../agent-integrations.controller';
 import type { AgentChannelStatus } from '../entities/agent-channel-status.entity';
-import type { Agent } from '../entities/agent.entity';
+import type { ProjectAgent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
 import type { AgentChannelStatusReporter } from '../integrations/agent-channel-status-reporter';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
@@ -31,6 +32,7 @@ function makeController({
 	statusReporter = mock<AgentChannelStatusReporter>(),
 	instanceSettings = mock<InstanceSettings>(),
 	collaborationService = mock<CollaborationService>(),
+	urlService = mock<UrlService>(),
 }: {
 	managementService?: Mocked<AgentIntegrationManagementService>;
 	chatIntegrationService?: Mocked<ChatIntegrationService>;
@@ -40,6 +42,7 @@ function makeController({
 	statusReporter?: Mocked<AgentChannelStatusReporter>;
 	instanceSettings?: Mocked<InstanceSettings>;
 	collaborationService?: Mocked<CollaborationService>;
+	urlService?: Mocked<UrlService>;
 } = {}) {
 	channelStatusRepository.findByAgentId.mockResolvedValue([]);
 	statusReporter.isLive.mockReturnValue(true);
@@ -54,6 +57,7 @@ function makeController({
 			statusReporter,
 			instanceSettings,
 			collaborationService,
+			urlService,
 		),
 		managementService,
 		chatIntegrationService,
@@ -73,6 +77,7 @@ describe('AgentIntegrationsController route access scopes', () => {
 		['connectIntegration', 'agent:update'],
 		['disconnectIntegration', 'agent:update'],
 		['integrationStatus', 'agent:read'],
+		['webhookUrl', 'agent:read'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
@@ -85,7 +90,7 @@ describe('AgentIntegrationsController integration management', () => {
 		projectId: 'project-1',
 		activeVersionId: 'version-1',
 		integrations: [],
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 
 	it('delegates a connect and reports connected for a published agent', async () => {
 		const { controller, managementService, agentRepository } = makeController();
@@ -200,7 +205,7 @@ describe('AgentIntegrationsController integration management', () => {
 			type: 'slack',
 			credentialId: 'credential-1',
 		} satisfies AgentIntegrationConfig;
-		const draftAgent = { ...agent, activeVersionId: null } as Agent;
+		const draftAgent = { ...agent, activeVersionId: null } as ProjectAgent;
 		agentRepository.findByIdAndProjectId.mockResolvedValue(draftAgent);
 		managementService.connect.mockResolvedValue({
 			integration,
@@ -575,7 +580,7 @@ describe('AgentIntegrationsController channel status', () => {
 		projectId: 'project-1',
 		activeVersionId: 'version-1',
 		integrations: [slack, telegram],
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 
 	function liveRow(integration: AgentIntegrationConfig): AgentChannelStatus {
 		return {
@@ -591,7 +596,7 @@ describe('AgentIntegrationsController channel status', () => {
 		} as AgentChannelStatus;
 	}
 
-	async function statusOf(agent: Agent, rows: AgentChannelStatus[]) {
+	async function statusOf(agent: ProjectAgent, rows: AgentChannelStatus[]) {
 		const { controller, agentRepository, channelStatusRepository, statusReporter } =
 			makeController();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -612,7 +617,7 @@ describe('AgentIntegrationsController channel status', () => {
 	it('reports a channel with a live row as connected and one without as starting', async () => {
 		const { response, channelStatusRepository } = await statusOf(publishedAgent, [liveRow(slack)]);
 
-		expect(channelStatusRepository.findByAgentId).toHaveBeenCalledWith(publishedAgent.id);
+		expect(channelStatusRepository.findByAgentId).toHaveBeenCalledWith(publishedAgent.id, {});
 		expect(response.integrations).toEqual([
 			{ type: slack.type, credentialId: slack.credentialId, status: 'connected' },
 			{ type: telegram.type, credentialId: telegram.credentialId, status: 'starting' },
@@ -630,7 +635,7 @@ describe('AgentIntegrationsController channel status', () => {
 					integrations: [{ type: 'n8n_chat', credentialId: '' }],
 				},
 			},
-		} as Agent;
+		} as ProjectAgent;
 		const { response } = await statusOf(agent, []);
 		expect(response.n8nChat).toEqual({ draftEnabled: false, publishedEnabled: true });
 		expect(response.integrations).toEqual([
@@ -643,7 +648,7 @@ describe('AgentIntegrationsController channel status', () => {
 			activeVersionId: null,
 			activeVersion: null,
 			integrations: [...agent.integrations, { type: 'n8n_chat', credentialId: '' }],
-		} as Agent;
+		} as ProjectAgent;
 		const { response: unpublishedResponse } = await statusOf(unpublished, []);
 		expect(unpublishedResponse.n8nChat).toEqual({ draftEnabled: true, publishedEnabled: false });
 		expect(unpublishedResponse.integrations).toContainEqual({
@@ -698,5 +703,32 @@ describe('AgentIntegrationsController channel status', () => {
 				'agent-1',
 			),
 		).rejects.toThrow('Agent "agent-1" not found');
+	});
+});
+
+describe('AgentIntegrationsController webhook channel URL', () => {
+	it('returns the channel URL of the agent', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(mock<ProjectAgent>());
+		const urlService = mock<UrlService>();
+		urlService.getAgentWebhookUrl.mockReturnValue('https://n8n.example.com/agent-webhook/agent-1');
+		const { controller } = makeController({ agentRepository, urlService });
+
+		await expect(
+			controller.webhookUrl({ params: { projectId: 'project-1' } } as never, mock(), 'agent-1'),
+		).resolves.toEqual({ url: 'https://n8n.example.com/agent-webhook/agent-1' });
+		expect(urlService.getAgentWebhookUrl).toHaveBeenCalledWith('agent-1');
+	});
+
+	it('returns the URL of an agent that is not saved yet', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+		const urlService = mock<UrlService>();
+		urlService.getAgentWebhookUrl.mockReturnValue('https://n8n.example.com/agent-webhook/agent-1');
+		const { controller } = makeController({ agentRepository, urlService });
+
+		await expect(
+			controller.webhookUrl({ params: { projectId: 'project-1' } } as never, mock(), 'agent-1'),
+		).resolves.toEqual({ url: 'https://n8n.example.com/agent-webhook/agent-1' });
 	});
 });

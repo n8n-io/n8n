@@ -5,10 +5,14 @@ import {
 	DeactivateWorkflowDto,
 	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
+	ListCallableSubworkflowsQueryDto,
 	ManualRunDto,
+	TransferPreviewQueryDto,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
+	type CallableSubworkflowsResponse,
 	type WorkflowPublicationStatus,
+	type WorkflowTransferPreview,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfBlockedIpError } from '@n8n/backend-network';
@@ -65,6 +69,7 @@ import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
+import { toUserLike } from '@/utils/to-user-like';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -113,9 +118,6 @@ export class WorkflowsController {
 
 		const savedWorkflowWithMetaData =
 			this.enterpriseWorkflowService.addOwnerAndSharings(savedWorkflow);
-		// @ts-expect-error: This is added as part of addOwnerAndSharings but
-		// shouldn't be returned to the frontend
-		delete savedWorkflowWithMetaData.shared;
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 
@@ -244,10 +246,6 @@ export class WorkflowsController {
 
 			await enterpriseWorkflowService.addCredentialsToWorkflow(workflowWithMetaData, req.user);
 
-			// @ts-expect-error: This is added as part of addOwnerAndSharings but
-			// shouldn't be returned to the frontend
-			delete workflowWithMetaData.shared;
-
 			const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 			const checksum = await calculateWorkflowChecksum(workflow);
 
@@ -281,7 +279,9 @@ export class WorkflowsController {
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 		const checksum = await calculateWorkflowChecksum(workflow);
 
-		return { ...workflow, scopes, checksum };
+		const workflowWithMetaData = this.enterpriseWorkflowService.addOwnerAndSharings(workflow);
+
+		return { ...workflowWithMetaData, scopes, checksum };
 	}
 
 	/**
@@ -554,13 +554,7 @@ export class WorkflowsController {
 				dbWorkflow.id,
 			);
 			this.eventService.emit('workflow-executed', {
-				user: {
-					id: req.user.id,
-					email: req.user.email,
-					firstName: req.user.firstName,
-					lastName: req.user.lastName,
-					role: req.user.role,
-				},
+				user: toUserLike(req.user),
 				workflowId: dbWorkflow.id,
 				workflowName: dbWorkflow.name,
 				executionId: result.executionId,
@@ -656,6 +650,21 @@ export class WorkflowsController {
 		});
 	}
 
+	@Get('/:workflowId/transfer-preview')
+	@ProjectScope('workflow:move')
+	async transferPreview(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Query query: TransferPreviewQueryDto,
+	): Promise<WorkflowTransferPreview> {
+		return await this.enterpriseWorkflowService.previewWorkflowTransfer(
+			req.user,
+			workflowId,
+			query.destinationProjectId,
+		);
+	}
+
 	@Put('/:workflowId/transfer')
 	@ProjectScope('workflow:move')
 	async transfer(
@@ -715,6 +724,22 @@ export class WorkflowsController {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
 		}
 		return await this.workflowPublicationStatusService.getStatus(workflowId);
+	}
+
+	/**
+	 * Lists the workflows that this workflow can call as sub-workflows. Only
+	 * editors of the parent can add a sub-workflow call, so this requires
+	 * `workflow:update` on the parent.
+	 */
+	@Get('/:workflowId/callable-subworkflows')
+	@ProjectScope('workflow:update')
+	async getCallableSubworkflows(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Query query: ListCallableSubworkflowsQueryDto,
+	): Promise<CallableSubworkflowsResponse> {
+		return await this.workflowService.getCallableSubworkflows(req.user, workflowId, query);
 	}
 
 	@Post('/with-node-types')

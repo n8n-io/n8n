@@ -1,3 +1,4 @@
+import { InvalidRequestError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { authorizationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/authorize.js';
 import { clientRegistrationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/register.js';
 import { revocationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/revoke.js';
@@ -13,11 +14,13 @@ import {
 	StaticRouterMetadata,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { AuthenticationService, type SurfaceId } from '@n8n/inbound-auth';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Response, Request, RequestHandler, Router } from 'express';
+import { z } from 'zod/v4';
 
-import type { ProtectedResource } from '@/services/protected-resource.registry';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { UrlService } from '@n8n/backend-services';
+import { type ProtectedResource, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
 import { OAuthServerLocalAuthorizationServer } from './oauth-local-authorization-server';
 import { OAuthServerConfig } from './oauth-server.config';
@@ -30,6 +33,16 @@ const globalConfig = Container.get(GlobalConfig);
 const oauthServerConfig = Container.get(OAuthServerConfig);
 const logger = Container.get(Logger);
 const urlService = Container.get(UrlService);
+
+/**
+ * Surfaces that authenticate through the inbound-auth pipeline advertise the trusted sources
+ * accepted there. A trigger resource joins through `getAcceptedSourceIds()` instead, which also
+ * narrows the advertised issuers to the source its node selected.
+ */
+const PIPELINE_SURFACES: ReadonlySet<SurfaceId> = new Set<SurfaceId>([
+	'public-api',
+	'instance-mcp',
+]);
 
 /**
  * Pre-check guard for the unauthenticated DCR endpoint. Short-circuits with
@@ -59,6 +72,36 @@ const oauthClientLimitGuard: RequestHandler = async (_req, res, next) => {
 };
 
 /**
+ * Mirrors the SDK's `RequestAuthorizationParamsSchema`, which it does not
+ * export: the authorization request parameters it checks after it has
+ * resolved the client.
+ */
+const authorizationRequestParamsSchema = z.object({
+	response_type: z.literal('code'),
+	code_challenge: z.string(),
+	code_challenge_method: z.literal('S256'),
+	scope: z.string().optional(),
+	state: z.string().optional(),
+	resource: z.url().optional(),
+});
+
+/**
+ * Validates the authorization request parameters before the SDK handler runs,
+ * so that every invalid request gets a direct error response.
+ */
+const authorizationRequestValidator: RequestHandler = (req, res, next) => {
+	const result = authorizationRequestParamsSchema.safeParse(
+		req.method === 'POST' ? req.body : req.query,
+	);
+	if (result.success) {
+		next();
+		return;
+	}
+	res.setHeader('Cache-Control', 'no-store');
+	res.status(400).json(new InvalidRequestError(result.error.message).toResponseObject());
+};
+
+/**
  * The SDK's authorization handler redirects request-validation errors (e.g.
  * missing `code_challenge`) back to the client without the RFC 9207 `iss`
  * parameter, while our metadata advertises
@@ -74,6 +117,40 @@ const rfc9207IssuerParam: RequestHandler = (_req, res, next) => {
 	const originalLocation = res.location.bind(res);
 	res.location = (url: string) =>
 		originalLocation(OAuthHelpers.setIssuerParam(url, urlService.getInstanceBaseUrl()));
+	next();
+};
+
+/**
+ * The SDK's token handler serializes every rejection (unknown client, expired
+ * or reused code, PKCE mismatch, ...) straight into the HTTP response without
+ * logging, which leaves a failed token exchange with no trace in the server
+ * logs at all. Wrap `res.json` so the token route reports what it rejected and
+ * for which client.
+ */
+const logTokenFailures: RequestHandler = (req, res, next) => {
+	const originalJson = res.json.bind(res);
+	res.json = (body?: unknown) => {
+		if (res.statusCode >= 400) {
+			const errorBody = isRecord(body) ? body : {};
+			// The SDK's handler parses the form body before it responds, so the
+			// request body is populated by the time this runs.
+			const requestBody = isRecord(req.body) ? req.body : {};
+			// A `client_secret_basic` request has no `client_id` field; its id is the
+			// Basic username.
+			const clientId =
+				typeof requestBody.client_id === 'string'
+					? requestBody.client_id
+					: OAuthHelpers.basicAuthClientId(req.headers.authorization);
+			logger.warn('OAuth token request failed', {
+				statusCode: res.statusCode,
+				error: errorBody.error,
+				errorDescription: errorBody.error_description,
+				grantType: requestBody.grant_type,
+				clientId,
+			});
+		}
+		return originalJson(body);
+	};
 	next();
 };
 
@@ -109,7 +186,7 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		path: `${basePath}/authorize`,
 		router: authorizeRouter,
 		skipAuth: true,
-		middlewares: [rfc9207IssuerParam],
+		middlewares: [authorizationRequestValidator, rfc9207IssuerParam],
 		ipRateLimit: createIpRateLimit(
 			oauthServerConfig.rateLimitAuthorize,
 			5 * Time.minutes.toMilliseconds,
@@ -119,6 +196,7 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		path: `${basePath}/token`,
 		router: tokenRouter,
 		skipAuth: true,
+		middlewares: [logTokenFailures],
 		ipRateLimit: createIpRateLimit(
 			oauthServerConfig.rateLimitToken,
 			5 * Time.minutes.toMilliseconds,
@@ -149,6 +227,7 @@ export class OAuthController {
 		private readonly urlService: UrlService,
 		private readonly resourceRegistry: ProtectedResourceRegistry,
 		private readonly localServer: OAuthServerLocalAuthorizationServer,
+		private readonly authenticationService: AuthenticationService,
 	) {}
 
 	// Add CORS headers for OAuth discovery endpoints
@@ -252,7 +331,7 @@ export class OAuthController {
 			return;
 		}
 
-		res.json(this.buildProtectedResourceMetadata(resource));
+		res.json(await this.buildProtectedResourceMetadata(resource));
 	}
 
 	@Options('/.well-known/oauth-protected-resource', {
@@ -297,15 +376,33 @@ export class OAuthController {
 			return;
 		}
 
-		res.json(this.buildProtectedResourceMetadata(resource));
+		res.json(await this.buildProtectedResourceMetadata(resource));
 	}
 
-	private buildProtectedResourceMetadata(resource: ProtectedResource): Record<string, unknown> {
-		const baseUrl = this.urlService.getInstanceBaseUrl();
+	private async buildProtectedResourceMetadata(
+		resource: ProtectedResource,
+	): Promise<Record<string, unknown>> {
+		// A trigger narrows the surface to the source its node selected, so it advertises that
+		// source's issuer only. Resources outside the pipeline keep this instance.
+		const acceptedSourceIds = resource.getAcceptedSourceIds?.();
+		const authorizationServers =
+			PIPELINE_SURFACES.has(resource.surface) || acceptedSourceIds !== undefined
+				? (
+						await this.authenticationService.advertise({
+							surface: resource.surface,
+							resource: {
+								url: resource.getResourceUrl(),
+								acceptedAudiences: resource.getAudiences(),
+							},
+							...(acceptedSourceIds !== undefined && { acceptedSourceIds }),
+						})
+					).authorizationServers
+				: [this.urlService.getInstanceBaseUrl()];
+
 		const metadata: Record<string, unknown> = {
 			resource: resource.getResourceUrl(),
 			bearer_methods_supported: ['header'],
-			authorization_servers: [baseUrl],
+			authorization_servers: authorizationServers,
 		};
 
 		if (resource.scopes.length > 0) {

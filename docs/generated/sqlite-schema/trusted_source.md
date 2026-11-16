@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "trusted_source" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "type" varchar(32) NOT NULL, "issuer" varchar NOT NULL, "managedBy" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "lastError" text, "lastCheckedAt" datetime(3), "configVersion" integer NOT NULL, "config" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "metadata" text, "discoveryClaimedAt" datetime(3), "discoveryClaimToken" varchar(36))
+CREATE TABLE "trusted_source" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "type" varchar(32) NOT NULL, "issuer" varchar NOT NULL, "managedBy" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "lastError" text, "lastCheckedAt" datetime(3), "configVersion" integer NOT NULL, "config" text NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "metadata" text, "discoveryClaimedAt" datetime(3), "discoveryClaimToken" varchar(36), "firstAuthenticatedAt" datetime(3))
 ```
 
 </details>
@@ -20,6 +20,7 @@ CREATE TABLE "trusted_source" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" var
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | discoveryClaimToken | varchar(36) |  | true |  |  |  |
 | discoveryClaimedAt | datetime(3) |  | true |  |  |  |
+| firstAuthenticatedAt | datetime(3) |  | true |  |  |  |
 | id | varchar(36) |  | false | [trusted_source_identity](trusted_source_identity.md) |  |  |
 | issuer | varchar |  | false |  |  |  |
 | lastCheckedAt | datetime(3) |  | true |  |  |  |
@@ -59,6 +60,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_36_ discoveryClaimToken
   datetime_3_ discoveryClaimedAt
+  datetime_3_ firstAuthenticatedAt
   varchar_36_ id PK
   varchar issuer
   datetime_3_ lastCheckedAt

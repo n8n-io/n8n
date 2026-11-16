@@ -1,5 +1,7 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions } from 'n8n-workflow';
 
+import { requestUrl } from 'n8n-workflow';
+
 import { taskUpdatePreSendAction } from '../GenericFunctions';
 import type { Mock } from 'vitest';
 
@@ -64,7 +66,7 @@ describe('taskUpdatePreSendAction', () => {
 		expect(mockThis.helpers?.httpRequestWithAuthentication).toHaveBeenCalledWith(
 			'highLevelOAuth2Api',
 			expect.objectContaining({
-				url: 'https://services.leadconnectorhq.com/contacts/contact%2Fid%3Fx%23y/tasks/task%2Fid',
+				url: requestUrl`https://services.leadconnectorhq.com/contacts/contact%2Fid%3Fx%23y/tasks/task%2Fid`,
 			}),
 		);
 	});

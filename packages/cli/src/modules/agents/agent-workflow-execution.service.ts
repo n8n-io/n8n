@@ -18,13 +18,12 @@ import { AiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { context } from '@opentelemetry/api';
 import type { JSONSchema7 } from 'json-schema';
-import {
-	OperationalError,
-	type ExecuteAgentData,
-	type ExecuteAgentWorkflowContext,
-	type InlineAgentPayload,
-	UserError,
+import type {
+	ExecuteAgentData,
+	ExecuteAgentWorkflowContext,
+	InlineAgentPayload,
 } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentRunTelemetryType } from '@/interfaces';
@@ -36,7 +35,7 @@ import { AgentRunTracingService } from './agent-run-tracing.service';
 import type {
 	AgentRuntimeInstrumentation,
 	PrepareWorkflowAgentForEval,
-} from './agent-runtime-instrumentation';
+} from './evaluation/agent-evaluation.contracts';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import { AgentsSettingsService } from './agents-settings.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
@@ -56,7 +55,7 @@ import { encodeIntegrationMessageContext } from './integrations/integration-mess
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { fromAgentDocument, toAgentDocument } from './json-config/agent-document';
 import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
-import { modelStreamStallOptions } from './model-stream-stall-options';
+import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
 import { createInputDataTool } from './tools/input-data-tool';
 import { createWorkflowContextTool } from './tools/workflow-context-tool';
@@ -89,6 +88,8 @@ interface WorkflowAgentStreamParams {
 	 * saved agent. Inline runs leave it unset.
 	 */
 	savedAgentId?: string;
+	/** See `ReconstructedAgentRuntime.modelCredentialGatewayManaged`. */
+	modelCredentialGatewayManaged?: boolean;
 	telemetryUserId?: string;
 	runType: AgentRunTelemetryType;
 	outputSchema?: JSONSchema7;
@@ -111,6 +112,8 @@ interface WorkflowAgentStreamConsumption {
 	streamError: Error | undefined;
 	executionError: unknown;
 	executionStarted: boolean;
+	/** Run id of the agent runtime. Absent when the runtime never started. */
+	runId?: string;
 }
 
 interface WorkflowAgentStreamState extends WorkflowAgentStreamConsumption {
@@ -164,6 +167,8 @@ function createWorkflowAgentExecutionError(message: string, cause?: Error): Oper
 		...(cause ? { cause } : {}),
 	});
 }
+
+const WORKFLOW_AGENT_CLOSE_TIMEOUT_MS = 10_000;
 
 /**
  * Executes agents invoked from inside a workflow execution (the AI Agent node
@@ -254,7 +259,13 @@ export class AgentWorkflowExecutionService {
 		extraTools?: BuiltTool[],
 		sandboxPrincipalHash?: AgentSandboxPrincipalHash,
 		instrumentation?: AgentRuntimeInstrumentation,
-	): Promise<{ ok: boolean; agent?: BuiltAgent; budget?: BudgetGuardrailConfig; error?: string }> {
+	): Promise<{
+		ok: boolean;
+		agent?: BuiltAgent;
+		budget?: BudgetGuardrailConfig;
+		modelCredentialGatewayManaged?: boolean;
+		error?: string;
+	}> {
 		if (!runSource.agent.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
 		}
@@ -282,7 +293,11 @@ export class AgentWorkflowExecutionService {
 			);
 			const applied = this.applyPerCallAgentExtras(reconstructed.agent, outputSchema, extraTools);
 			if (!applied.ok) return applied;
-			return { ...applied, budget: reconstructed.budget };
+			return {
+				...applied,
+				budget: reconstructed.budget,
+				modelCredentialGatewayManaged: reconstructed.modelCredentialGatewayManaged,
+			};
 		} catch (e) {
 			return {
 				ok: false,
@@ -309,7 +324,13 @@ export class AgentWorkflowExecutionService {
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
 		instrumentation?: AgentRuntimeInstrumentation,
-	): Promise<{ ok: boolean; agent?: BuiltAgent; budget?: BudgetGuardrailConfig; error?: string }> {
+	): Promise<{
+		ok: boolean;
+		agent?: BuiltAgent;
+		budget?: BudgetGuardrailConfig;
+		modelCredentialGatewayManaged?: boolean;
+		error?: string;
+	}> {
 		try {
 			const reconstructed =
 				await this.agentRuntimeReconstructionService.reconstructFromResolvedSource({
@@ -326,7 +347,11 @@ export class AgentWorkflowExecutionService {
 				});
 			const applied = this.applyPerCallAgentExtras(reconstructed.agent, outputSchema, extraTools);
 			if (!applied.ok) return applied;
-			return { ...applied, budget: reconstructed.budget };
+			return {
+				...applied,
+				budget: reconstructed.budget,
+				modelCredentialGatewayManaged: reconstructed.modelCredentialGatewayManaged,
+			};
 		} catch (e) {
 			return {
 				ok: false,
@@ -403,6 +428,7 @@ export class AgentWorkflowExecutionService {
 			bindExecutionInput(params.message, params.admission?.inputMessageIds ?? []),
 			options,
 		);
+		state.runId = resultStream.runId;
 		for await (const value of streamAgentChunks(resultStream.stream)) {
 			this.recordWorkflowChunk(value, params.outputSchema, recorder, state);
 			await streamAdapter.observe(value);
@@ -475,6 +501,7 @@ export class AgentWorkflowExecutionService {
 				// month bucket. The email uses the saved agent the node targets.
 				agentId: telemetryAgentId,
 				...(savedAgentId ? { alertAgentId: savedAgentId } : {}),
+				...(params.modelCredentialGatewayManaged ? { modelCredentialGatewayManaged: true } : {}),
 			},
 		);
 	}
@@ -535,7 +562,7 @@ export class AgentWorkflowExecutionService {
 			agentExecutionId = admission.executionId;
 		}
 
-		const { structuredOutput, toolCalls, streamError, executionError, executionStarted } =
+		const { structuredOutput, toolCalls, streamError, executionError, executionStarted, runId } =
 			await this.consumeWorkflowAgentStream({ ...params, admission }, recorder, streamAdapter);
 
 		const messageRecord = recorder.getMessageRecord();
@@ -545,6 +572,7 @@ export class AgentWorkflowExecutionService {
 				executionStarted,
 				executionError,
 				params: { ...recordingParams, record: messageRecord },
+				runId,
 			});
 		}
 
@@ -657,28 +685,61 @@ export class AgentWorkflowExecutionService {
 		});
 	}
 
+	/**
+	 * Release the isolated agent after the run. `close()` disconnects its MCP
+	 * clients. Stop waiting after 10 seconds so a hung close cannot hold the
+	 * run result or the original error. A close failure is logged and does not
+	 * replace that result.
+	 */
+	private async closeAgentQuietly(agent: BuiltAgent): Promise<void> {
+		const close = agent.close();
+		void close.catch(() => {});
+
+		let timeoutId: ReturnType<typeof setTimeout> | undefined;
+		const timeout = new Promise<never>((_, reject) => {
+			timeoutId = setTimeout(() => {
+				reject(new Error(`Agent close timed out after ${WORKFLOW_AGENT_CLOSE_TIMEOUT_MS}ms`));
+			}, WORKFLOW_AGENT_CLOSE_TIMEOUT_MS);
+		});
+
+		try {
+			await Promise.race([close, timeout]);
+		} catch (error) {
+			this.logger.warn('Failed to close workflow agent after execution', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		} finally {
+			clearTimeout(timeoutId);
+		}
+	}
+
 	private async executeForWorkflowInternal(
 		params: StoredWorkflowExecutionContext,
 	): Promise<ExecuteAgentData> {
 		const { agentId, projectId, threadId, outputSchema, sandboxScope } = params;
-		const { agentInstance, recordingParams, runType, budget } =
+		const { agentInstance, recordingParams, runType, budget, modelCredentialGatewayManaged } =
 			await this.prepareStoredWorkflowRun(params);
-		const run = await this.streamCompiledWorkflowAgent(agentInstance, params, {
-			telemetryAgentId: agentId,
-			savedAgentId: agentId,
-			runType,
-			budget,
-			recordingParams: { ...recordingParams, agentName: agentInstance.name },
-			...(sandboxScope
-				? { sandboxScope: { projectId, principalHash: sandboxScope.principalHash } }
-				: {}),
-		});
-		return this.buildWorkflowResult({
-			run,
-			// The caller remaps the scoped thread key to its session id.
-			session: { agentId, projectId, sessionId: threadId, threadId },
-			outputSchema,
-		});
+		try {
+			const run = await this.streamCompiledWorkflowAgent(agentInstance, params, {
+				telemetryAgentId: agentId,
+				savedAgentId: agentId,
+				runType,
+				budget,
+				modelCredentialGatewayManaged,
+				recordingParams: { ...recordingParams, agentName: agentInstance.name },
+				...(sandboxScope
+					? { sandboxScope: { projectId, principalHash: sandboxScope.principalHash } }
+					: {}),
+			});
+			return this.buildWorkflowResult({
+				run,
+				// The caller remaps the scoped thread key to its session id.
+				session: { agentId, projectId, sessionId: threadId, threadId },
+				outputSchema,
+			});
+		} finally {
+			await this.closeAgentQuietly(agentInstance);
+		}
 	}
 
 	private async prepareStoredWorkflowRun(params: StoredWorkflowExecutionContext) {
@@ -737,7 +798,13 @@ export class AgentWorkflowExecutionService {
 			await this.turnExecutionService.recordFailedStart(recordingParams, error);
 			throw error;
 		}
-		return { agentInstance: compiled.agent, recordingParams, runType, budget: compiled.budget };
+		return {
+			agentInstance: compiled.agent,
+			recordingParams,
+			runType,
+			budget: compiled.budget,
+			modelCredentialGatewayManaged: compiled.modelCredentialGatewayManaged,
+		};
 	}
 
 	private async loadWorkflowAgent(params: StoredWorkflowExecutionContext) {
@@ -777,7 +844,7 @@ export class AgentWorkflowExecutionService {
 		const prepared = fromAgentDocument(config);
 		agent.schema = prepared.config;
 		agent.integrations = [];
-		return { runSource: { agent, skillRefs: prepared.skillRefs }, instrumentation };
+		return { runSource: { ...runSource, agent, skillRefs: prepared.skillRefs }, instrumentation };
 	}
 
 	private async streamCompiledWorkflowAgent(
@@ -791,6 +858,7 @@ export class AgentWorkflowExecutionService {
 			| 'recordingParams'
 			| 'sandboxScope'
 			| 'budget'
+			| 'modelCredentialGatewayManaged'
 		>,
 	): Promise<WorkflowAgentRunOutcome> {
 		const {
@@ -880,13 +948,19 @@ export class AgentWorkflowExecutionService {
 			workflowContext,
 			streamObserver,
 		};
-		const run = await this.streamCompiledWorkflowAgent(compiled.agent, params, {
-			telemetryAgentId: syntheticAgentId,
-			runType,
-			budget: compiled.budget,
-		});
-		this.trackInlineRun(params, syntheticAgentId, runType, runtimeConfig, run);
-		return this.buildWorkflowResult({ run, session: null, outputSchema });
+		const agentInstance = compiled.agent;
+		try {
+			const run = await this.streamCompiledWorkflowAgent(agentInstance, params, {
+				telemetryAgentId: syntheticAgentId,
+				runType,
+				budget: compiled.budget,
+				modelCredentialGatewayManaged: compiled.modelCredentialGatewayManaged,
+			});
+			this.trackInlineRun(params, syntheticAgentId, runType, runtimeConfig, run);
+			return this.buildWorkflowResult({ run, session: null, outputSchema });
+		} finally {
+			await this.closeAgentQuietly(agentInstance);
+		}
 	}
 
 	private async prepareInlineRuntime(

@@ -134,6 +134,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const { getQuickConnectOption } = useQuickConnect();
 const { promotionText } = useGatewayCreditsPromotion({
+	nodeType: () => props.contextNode?.type,
 	credentialType: () => props.credentialType.name,
 });
 
@@ -570,7 +571,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					"
 					:details="authError"
 					:button-label="i18n.baseText('credentialEdit.credentialConfig.retry')"
-					button-loading-label="Retrying"
+					:button-loading-label="i18n.baseText('credentialEdit.credentialConfig.retrying')"
 					:button-title="i18n.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
 					:button-loading="isRetesting"
 					@click="$emit('retest')"
@@ -586,7 +587,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 								@click="$emit('oauth')"
 							/>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								:class="$style.disconnectButton"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
@@ -674,14 +675,14 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					<template v-if="canConnect" #button>
 						<div :class="$style.bannerActions">
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								:label="i18n.baseText('credentialEdit.credentialConfig.switchAccount')"
 								data-test-id="oauth-switch-account-button"
 								@click="$emit('oauth')"
 							/>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								size="small"
 								:class="$style.disconnectButton"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"

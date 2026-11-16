@@ -1,15 +1,16 @@
 import { mock } from 'vitest-mock-extended';
 import { unzipSync } from 'fflate';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService, type UrlService } from '@n8n/backend-services';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { UrlService } from '@n8n/backend-services';
 
-import type { Agent } from '../../../../entities/agent.entity';
+import type { Agent, ProjectAgent } from '../../../../entities/agent.entity';
 import { AgentCredentialLookupService } from '../../../agent-credential-lookup.service';
 import type { AgentRepository } from '../../../../repositories/agent.repository';
 import { TeamsArmTemplateService } from '../teams-arm-template.service';
@@ -38,19 +39,19 @@ describe('TeamsSetupService', () => {
 	let service: TeamsSetupService;
 
 	/**
-	 * `integrations` is assigned rather than passed to `mock`, which proxies
-	 * nested objects: the integration's `settings` would come back as mock
-	 * functions, so an absent `displayName` would read as present.
+	 * `integrations` and `schema` are assigned rather than passed to `mock`,
+	 * which proxies nested objects: the integration's `settings` would come back
+	 * as mock functions, so an absent `displayName` would read as present.
 	 */
-	const agentWith = (integrations: Agent['integrations']) =>
+	const agentWith = (integrations: Agent['integrations'], schema: Agent['schema'] = null) =>
 		Object.assign(
-			mock<Agent>({
+			mock<ProjectAgent>({
 				id: AGENT_ID,
 				projectId: PROJECT_ID,
 				name: 'Support Bot',
 				updatedAt: new Date('2026-09-15T10:00:00.000Z'),
 			}),
-			{ integrations },
+			{ integrations, schema },
 		);
 
 	const connectTeamsCredential = (type = 'microsoftEntraServicePrincipalApi') => {
@@ -60,7 +61,7 @@ describe('TeamsSetupService', () => {
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
 			mock({ id: CREDENTIAL_ID, type }),
 		]);
-		credentialsService.decrypt.mockResolvedValue({
+		credentialsService.decryptForUse.mockResolvedValue({
 			clientId: CLIENT_ID,
 			tenantId: TENANT_ID,
 			clientSecret: 'super-secret',
@@ -72,6 +73,7 @@ describe('TeamsSetupService', () => {
 		credentialsService = mock<CredentialsService>();
 		urlService = mock<UrlService>();
 		urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
+		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([]);
 		credentialsService.findAllGlobalCredentialIds.mockResolvedValue([]);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
@@ -110,7 +112,7 @@ describe('TeamsSetupService', () => {
 			credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
 				mock({ id: CREDENTIAL_ID, type: 'microsoftEntraServicePrincipalApi' }),
 			]);
-			credentialsService.decrypt.mockResolvedValue({
+			credentialsService.decryptForUse.mockResolvedValue({
 				clientId: CLIENT_ID,
 				tenantId: TENANT_ID,
 				clientSecret: 'super-secret',
@@ -162,7 +164,7 @@ describe('TeamsSetupService', () => {
 		describe('the provenance that offers the managed app', () => {
 			const provisionedFor = (agentId: string) => {
 				connectTeamsCredential();
-				credentialsService.decrypt.mockResolvedValue({
+				credentialsService.decryptForUse.mockResolvedValue({
 					clientId: CLIENT_ID,
 					tenantId: TENANT_ID,
 					clientSecret: 'super-secret',
@@ -179,6 +181,39 @@ describe('TeamsSetupService', () => {
 				});
 
 				expect(state.provisionedByN8n).toBe(true);
+				expect(state.fileAccessConsentUrl).toContain('/adminconsent?client_id=');
+			});
+
+			it('links the Azure Bot the recommended setup recorded', async () => {
+				provisionedFor(AGENT_ID);
+				credentialsService.decryptForUse.mockResolvedValue({
+					clientId: CLIENT_ID,
+					tenantId: TENANT_ID,
+					provisionedForAgentId: AGENT_ID,
+					azureBotName: 'support-bot-abcd1234',
+					azureSubscriptionId: 'sub-1',
+				});
+
+				const state = await service.getSetupState(user, {
+					projectId: PROJECT_ID,
+					agentId: AGENT_ID,
+				});
+
+				expect(state.azureBot).toEqual({
+					name: 'support-bot-abcd1234',
+					portalUrl: `https://portal.azure.com/#@${TENANT_ID}/resource/subscriptions/sub-1/resourceGroups/n8n-agents/providers/Microsoft.BotService/botServices/support-bot-abcd1234/overview`,
+				});
+			});
+
+			it('has no bot link before the bot was recorded', async () => {
+				provisionedFor(AGENT_ID);
+
+				const state = await service.getSetupState(user, {
+					projectId: PROJECT_ID,
+					agentId: AGENT_ID,
+				});
+
+				expect(state.azureBot).toBeNull();
 			});
 
 			it('disclaims a hand-made credential, which carries no provenance', async () => {
@@ -190,6 +225,8 @@ describe('TeamsSetupService', () => {
 				});
 
 				expect(state.provisionedByN8n).toBe(false);
+				// A hand-made app registered no return address for the consent screen.
+				expect(state.fileAccessConsentUrl).toBeNull();
 			});
 
 			it('disclaims one the recommended setup made for a different agent', async () => {
@@ -205,10 +242,81 @@ describe('TeamsSetupService', () => {
 		});
 	});
 
+	describe('whether Teams holds an older version', () => {
+		const scope = { projectId: PROJECT_ID, agentId: AGENT_ID };
+		const recorded = (teamsAppFingerprint: string) =>
+			credentialsService.decryptForUse.mockResolvedValue({
+				clientId: CLIENT_ID,
+				tenantId: TENANT_ID,
+				teamsAppFingerprint,
+			});
+
+		it('says nothing without a record of what n8n handed over', async () => {
+			connectTeamsCredential();
+
+			expect((await service.getSetupState(user, scope)).appOutdated).toBe(false);
+		});
+
+		it('matches the app n8n last handed over', async () => {
+			connectTeamsCredential();
+			const { fingerprint } = await service.buildPackage(user, scope);
+			recorded(fingerprint);
+
+			expect((await service.getSetupState(user, scope)).appOutdated).toBe(false);
+		});
+
+		// The package carries the agent's accent colour, which the check does not draw.
+		it("matches an app drawn with the agent's own icon", async () => {
+			connectTeamsCredential();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				agentWith([{ type: 'teams', credentialId: CREDENTIAL_ID, settings: {} }], {
+					personalisation: {
+						icon: 'heart',
+						gradient: { from: '#2563EB', to: '#7C3AED', angle: 135, fromStop: 0, toStop: 100 },
+					},
+				} as Agent['schema']),
+			);
+			const { fingerprint } = await service.buildPackage(user, scope);
+			recorded(fingerprint);
+
+			expect((await service.getSetupState(user, scope)).appOutdated).toBe(false);
+		});
+
+		it('flags an agent renamed since then', async () => {
+			connectTeamsCredential();
+			const { fingerprint } = await service.buildPackage(user, scope);
+			recorded(fingerprint);
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				Object.assign(agentWith([{ type: 'teams', credentialId: CREDENTIAL_ID, settings: {} }]), {
+					name: 'Helpdesk',
+					updatedAt: new Date('2026-09-16T10:00:00.000Z'),
+				}),
+			);
+
+			expect((await service.getSetupState(user, scope)).appOutdated).toBe(true);
+		});
+
+		it('flags an agent whose icon changed since then', async () => {
+			const withIcon = (icon: string) =>
+				agentRepository.findByIdAndProjectId.mockResolvedValue(
+					Object.assign(agentWith([{ type: 'teams', credentialId: CREDENTIAL_ID, settings: {} }]), {
+						schema: { personalisation: { icon } },
+					}),
+				);
+			connectTeamsCredential();
+			withIcon('robot');
+			const { fingerprint } = await service.buildPackage(user, scope);
+			recorded(fingerprint);
+			withIcon('rocket');
+
+			expect((await service.getSetupState(user, scope)).appOutdated).toBe(true);
+		});
+	});
+
 	describe('a credential another agent already uses', () => {
 		const claimedByOtherAgent = () => {
 			agentRepository.findByIntegrationCredentialAnyProject.mockResolvedValue([
-				mock<Agent>({ name: 'Sales Bot' }),
+				mock<ProjectAgent>({ name: 'Sales Bot' }),
 			]);
 		};
 
@@ -343,14 +451,14 @@ describe('TeamsSetupService', () => {
 			credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
 				mock({ id: CREDENTIAL_ID, type: 'microsoftEntraServicePrincipalApi' }),
 			]);
-			credentialsService.decrypt.mockResolvedValue({
+			credentialsService.decryptForUse.mockResolvedValue({
 				clientId: CLIENT_ID,
 				tenantId: TENANT_ID,
 			});
 
 			await expect(
 				service.buildPackage(user, { projectId: PROJECT_ID, agentId: AGENT_ID }, CREDENTIAL_ID),
-			).resolves.toBeInstanceOf(Buffer);
+			).resolves.toMatchObject({ archive: expect.any(Buffer), credentialId: CREDENTIAL_ID });
 		});
 
 		it('builds a package once a credential is connected', async () => {
@@ -358,7 +466,7 @@ describe('TeamsSetupService', () => {
 
 			await expect(
 				service.buildPackage(user, { projectId: PROJECT_ID, agentId: AGENT_ID }),
-			).resolves.toBeInstanceOf(Buffer);
+			).resolves.toMatchObject({ archive: expect.any(Buffer), credentialId: CREDENTIAL_ID });
 		});
 
 		it('refuses a client ID that is not a GUID, which Teams rejects at upload', async () => {
@@ -366,7 +474,7 @@ describe('TeamsSetupService', () => {
 			credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
 				mock({ id: CREDENTIAL_ID, type: 'microsoftEntraServicePrincipalApi' }),
 			]);
-			credentialsService.decrypt.mockResolvedValue({
+			credentialsService.decryptForUse.mockResolvedValue({
 				clientId: 'not-a-guid',
 				tenantId: TENANT_ID,
 			});
@@ -376,7 +484,7 @@ describe('TeamsSetupService', () => {
 			).rejects.toThrow(/not a GUID/);
 		});
 
-		const manifestOf = (archive: Buffer) =>
+		const manifestOf = ({ archive }: { archive: Buffer }) =>
 			JSON.parse(Buffer.from(unzipSync(new Uint8Array(archive))['manifest.json']).toString());
 
 		it('builds from the settings it is given, which are not stored during setup', async () => {
@@ -416,6 +524,50 @@ describe('TeamsSetupService', () => {
 			expect(chosen).not.toBe(stored);
 		});
 
+		describe('app icons', () => {
+			const bundled = (name: string) => readFileSync(join(__dirname, '..', 'assets', name));
+			const packageFor = async (icon: string, from = '#2563EB') => {
+				connectTeamsCredential();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(
+					agentWith([{ type: 'teams', credentialId: CREDENTIAL_ID, settings: {} }], {
+						name: 'Support Bot',
+						model: 'anthropic/claude-sonnet-4-5',
+						instructions: '',
+						personalisation: {
+							icon,
+							gradient: { from, to: '#2563EB', angle: 90, fromStop: 0, toStop: 100 },
+						},
+					}),
+				);
+				const { archive } = await service.buildPackage(user, {
+					projectId: PROJECT_ID,
+					agentId: AGENT_ID,
+				});
+				return unzipSync(archive);
+			};
+
+			it("draws the agent's icon and colour into the package", async () => {
+				const entries = await packageFor('heart');
+				const manifest = JSON.parse(Buffer.from(entries['manifest.json']).toString('utf8'));
+
+				expect(Buffer.from(entries['color.png']).equals(bundled('color.png'))).toBe(false);
+				expect(Buffer.from(entries['outline.png']).equals(bundled('outline.png'))).toBe(false);
+				expect(manifest.accentColor).toBe('#2563EB');
+			});
+
+			it('draws the default icon on the agent colour for an icon name Lucide does not have', async () => {
+				expect(await packageFor('not-a-lucide-icon')).toEqual(await packageFor('bot'));
+			});
+
+			it('takes the accent colour from the default gradient for a stored colour that is not #RRGGBB', async () => {
+				const entries = await packageFor('heart', '#X000FF');
+				const manifest = JSON.parse(Buffer.from(entries['manifest.json']).toString('utf8'));
+
+				// The middle of the default red-orange gradient.
+				expect(manifest.accentColor).toBe('#FF4A00');
+			});
+		});
+
 		it('falls back to the stored settings when none are given', async () => {
 			agentRepository.findByIdAndProjectId.mockResolvedValue(
 				agentWith([{ type: 'teams', credentialId: CREDENTIAL_ID, settings: { groupChats: true } }]),
@@ -423,7 +575,10 @@ describe('TeamsSetupService', () => {
 			credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
 				mock({ id: CREDENTIAL_ID, type: 'microsoftEntraServicePrincipalApi' }),
 			]);
-			credentialsService.decrypt.mockResolvedValue({ clientId: CLIENT_ID, tenantId: TENANT_ID });
+			credentialsService.decryptForUse.mockResolvedValue({
+				clientId: CLIENT_ID,
+				tenantId: TENANT_ID,
+			});
 
 			const archive = await service.buildPackage(user, {
 				projectId: PROJECT_ID,
@@ -439,7 +594,7 @@ describe('TeamsSetupService', () => {
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([
 			mock({ id: CREDENTIAL_ID, type: 'microsoftEntraServicePrincipalApi' }),
 		]);
-		credentialsService.decrypt.mockResolvedValue({ clientId: '', tenantId: '' });
+		credentialsService.decryptForUse.mockResolvedValue({ clientId: '', tenantId: '' });
 
 		const state = await service.getSetupState(
 			user,

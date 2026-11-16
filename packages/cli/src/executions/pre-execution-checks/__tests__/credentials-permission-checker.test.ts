@@ -21,11 +21,6 @@ import type { ProjectService } from '@/services/project.service.ee';
 
 import { CredentialsPermissionChecker } from '../credentials-permission-checker';
 
-const flags = { credSharingEnabled: false };
-vi.mock('@/constants/credential-sharing', () => ({
-	isCredSharingEnabled: () => flags.credSharingEnabled,
-}));
-
 describe('CredentialsPermissionChecker', () => {
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
@@ -67,7 +62,6 @@ describe('CredentialsPermissionChecker', () => {
 
 	beforeEach(async () => {
 		vi.resetAllMocks();
-		flags.credSharingEnabled = false;
 
 		node.credentials!.someCredential.id = credentialId;
 		ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(personalProject);
@@ -122,7 +116,9 @@ describe('CredentialsPermissionChecker', () => {
 	});
 
 	it('should not throw an error if the workflow has no credentials', async () => {
-		await expect(permissionChecker.check(workflowId, [])).resolves.not.toThrow();
+		await expect(permissionChecker.check(workflowId, [])).resolves.toEqual({
+			personalCredentialsCount: 0,
+		});
 
 		expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
 	});
@@ -155,6 +151,7 @@ describe('CredentialsPermissionChecker', () => {
 				homeProject: personalProject,
 				inaccessibleIds: ['a', 'c'],
 				unusableForActingUser: [],
+				personalRouteIds: [],
 			});
 			expect(credentialsRepository.findGlobalProjectCredentialIds).toHaveBeenCalledWith([
 				'a',
@@ -176,7 +173,7 @@ describe('CredentialsPermissionChecker', () => {
 			expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
 		});
 
-		describe('acting-user route (isCredSharingEnabled)', () => {
+		describe('acting-user route', () => {
 			const actingUser = mock<User>({ id: 'acting-user' });
 
 			beforeEach(() => {
@@ -187,7 +184,6 @@ describe('CredentialsPermissionChecker', () => {
 			});
 
 			it('does not count an instance-wide grant in a team project', async () => {
-				flags.credSharingEnabled = true;
 				const teamProject = mock<Project>({ id: 'marketing', name: 'Marketing', type: 'team' });
 				ownershipService.getWorkflowProjectCached.mockReset();
 				ownershipService.getWorkflowProjectCached.mockResolvedValue(teamProject);
@@ -210,7 +206,6 @@ describe('CredentialsPermissionChecker', () => {
 			});
 
 			it('is never consulted for a credential the project already carries', async () => {
-				flags.credSharingEnabled = true;
 				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
 					credentialId,
 				]);
@@ -222,12 +217,12 @@ describe('CredentialsPermissionChecker', () => {
 				);
 
 				expect(result.inaccessibleIds).toEqual([]);
+				expect(result.personalRouteIds).toEqual([]);
 				// This is what keeps every workflow that runs today running.
 				expect(credentialsFinderService.findUnusableCredentialsForUser).not.toHaveBeenCalled();
 			});
 
 			it('lets the run through for a credential the acting user may use', async () => {
-				flags.credSharingEnabled = true;
 				credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValue([]);
 
 				const result = await permissionChecker.findInaccessible(
@@ -237,6 +232,7 @@ describe('CredentialsPermissionChecker', () => {
 				);
 
 				expect(result.inaccessibleIds).toEqual([]);
+				expect(result.personalRouteIds).toEqual([credentialId]);
 				expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(
 					actingUser,
 					[credentialId],
@@ -245,7 +241,6 @@ describe('CredentialsPermissionChecker', () => {
 			});
 
 			it('refuses when the acting user cannot use it either', async () => {
-				flags.credSharingEnabled = true;
 				credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValue([
 					{ id: credentialId, name: "Alice's Gmail", exists: true, ownerProject: null },
 				]);
@@ -263,8 +258,6 @@ describe('CredentialsPermissionChecker', () => {
 			});
 
 			it('keeps the sharing answer when the run has no acting user', async () => {
-				flags.credSharingEnabled = true;
-
 				const result = await permissionChecker.findInaccessible(workflowId, [credentialId]);
 
 				// Without an identity we cannot tell a colleague's personal credential
@@ -275,7 +268,6 @@ describe('CredentialsPermissionChecker', () => {
 			});
 
 			it('keeps the sharing answer when the acting user cannot be resolved', async () => {
-				flags.credSharingEnabled = true;
 				userRepository.findOne.mockResolvedValue(null);
 
 				const result = await permissionChecker.findInaccessible(
@@ -288,20 +280,7 @@ describe('CredentialsPermissionChecker', () => {
 				expect(credentialsFinderService.findUnusableCredentialsForUser).not.toHaveBeenCalled();
 			});
 
-			it('asks nothing of the acting user while the flag is off', async () => {
-				const result = await permissionChecker.findInaccessible(
-					workflowId,
-					[credentialId],
-					actingUser.id,
-				);
-
-				expect(result.inaccessibleIds).toEqual([credentialId]);
-				expect(credentialsFinderService.findUnusableCredentialsForUser).not.toHaveBeenCalled();
-				expect(userRepository.findOne).not.toHaveBeenCalled();
-			});
-
 			it('never lets an instance-scoped credential reach the acting user', async () => {
-				flags.credSharingEnabled = true;
 				credentialsRepository.findNonProjectCredentialsByIds.mockResolvedValue([
 					mock<CredentialsEntity>({ id: credentialId }),
 				]);
@@ -324,7 +303,6 @@ describe('CredentialsPermissionChecker', () => {
 		const actingUser = mock<User>({ id: 'acting-user' });
 
 		beforeEach(() => {
-			flags.credSharingEnabled = true;
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
 			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
 			credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
@@ -335,6 +313,7 @@ describe('CredentialsPermissionChecker', () => {
 		// and the run goes ahead anyway because the person it acts as may use it.
 		it('throws nothing when the acting user may use the credential', async () => {
 			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValue([]);
+			sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(new Map());
 
 			await expect(
 				permissionChecker.check(workflowId, [node], actingUser.id),
@@ -345,6 +324,62 @@ describe('CredentialsPermissionChecker', () => {
 				[credentialId],
 				{ ignoreGlobalUseScope: false },
 			);
+		});
+
+		describe('personal credentials count', () => {
+			const actingUserPersonalProject = mock<Project>({ id: 'acting-personal', type: 'personal' });
+
+			beforeEach(() => {
+				credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValue([]);
+				ownershipService.getPersonalProjectOwnersCached.mockResolvedValue(
+					new Map([
+						[actingUserPersonalProject.id, actingUser],
+						['colleague-personal', mock<User>({ id: 'colleague' })],
+					]),
+				);
+			});
+
+			it('counts a credential that the acting user personal project owns', async () => {
+				sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(
+					new Map([[credentialId, actingUserPersonalProject]]),
+				);
+
+				await expect(permissionChecker.check(workflowId, [node], actingUser.id)).resolves.toEqual({
+					personalCredentialsCount: 1,
+				});
+			});
+
+			it('does not count a team credential that the acting user can use as a member', async () => {
+				sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(
+					new Map([[credentialId, mock<Project>({ id: 'marketing', type: 'team' })]]),
+				);
+
+				await expect(permissionChecker.check(workflowId, [node], actingUser.id)).resolves.toEqual({
+					personalCredentialsCount: 0,
+				});
+				expect(ownershipService.getPersonalProjectOwnersCached).not.toHaveBeenCalled();
+			});
+
+			it('does not count a credential that a colleague shared with the acting user', async () => {
+				sharedCredentialsRepository.findOwnerProjectsByCredentialIds.mockResolvedValue(
+					new Map([[credentialId, mock<Project>({ id: 'colleague-personal', type: 'personal' })]]),
+				);
+
+				await expect(permissionChecker.check(workflowId, [node], actingUser.id)).resolves.toEqual({
+					personalCredentialsCount: 0,
+				});
+			});
+
+			it('does not look up owners when the project carries every credential', async () => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
+					credentialId,
+				]);
+
+				await expect(permissionChecker.check(workflowId, [node], actingUser.id)).resolves.toEqual({
+					personalCredentialsCount: 0,
+				});
+				expect(sharedCredentialsRepository.findOwnerProjectsByCredentialIds).not.toHaveBeenCalled();
+			});
 		});
 
 		it('names the credential, the node, and the project to ask', async () => {
@@ -810,6 +845,77 @@ describe('CredentialsPermissionChecker', () => {
 			});
 		});
 
+		describe('with a default-valued authentication parameter', () => {
+			const credentialId = 'password-cred';
+			const description = {
+				credentials: [
+					{
+						name: 'passwordApi',
+						required: true,
+						displayOptions: { show: { authentication: ['password'] } },
+					},
+					{
+						name: 'tokenApi',
+						required: true,
+						displayOptions: { show: { authentication: ['token'] } },
+					},
+				],
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'Password', value: 'password' },
+							{ name: 'Token', value: 'token' },
+						],
+						default: 'password',
+					},
+				],
+			};
+
+			// Saved nodes omit parameters left at their default value
+			const node: INode = {
+				id: 'node-6',
+				name: 'Service',
+				type: 'n8n-nodes-base.service',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { resource: 'entry' },
+				credentials: { passwordApi: { id: credentialId, name: 'Password' } },
+			};
+
+			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockReturnValue({ description } as never);
+				credentialsRepository.findGlobalProjectCredentialIds.mockResolvedValue([]);
+			});
+
+			it('should check the credential selected by the default value', async () => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+
+				await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
+					'Node "Service" does not have access to the credential',
+				);
+
+				expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+					[teamProject.id],
+					[credentialId],
+				);
+			});
+
+			it('should let the run through when the project can use the credential', async () => {
+				sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
+					credentialId,
+				]);
+
+				await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
+			});
+
+			it('should return the credential id for the node', () => {
+				expect(permissionChecker.getCredentialIdsForNodes([node])).toEqual([credentialId]);
+			});
+		});
+
 		it('should fall back to checking all credentials if node type cannot be resolved', async () => {
 			nodeTypes.getByNameAndVersion.mockImplementation(() => {
 				throw new Error('Unknown node type');
@@ -874,6 +980,12 @@ describe('CredentialsPermissionChecker', () => {
 			expect(permissionChecker.getCredentialIdsForNodes([disabledNode])).toEqual([]);
 		});
 
+		it.each([1, 'true', {}])('does not skip a node whose disabled flag is %p', (disabled) => {
+			const flaggedNode = { ...node, disabled } as unknown as INode;
+
+			expect(permissionChecker.getCredentialIdsForNodes([flaggedNode])).toEqual([credentialId]);
+		});
+
 		it('skips a credential reference with no id instead of throwing', () => {
 			const nodeWithNoId: INode = {
 				...node,
@@ -902,7 +1014,7 @@ describe('CredentialsPermissionChecker', () => {
 			]);
 
 			await expect(permissionChecker.checkForUser(userId, [node])).rejects.toThrow(
-				'Node "Test Node" uses a credential you do not have access to',
+				'Node "Test Node" uses the credential "Test Credential", which you cannot use',
 			);
 			expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(
 				null,
@@ -912,7 +1024,6 @@ describe('CredentialsPermissionChecker', () => {
 		});
 
 		it('names the credential and the node when the user cannot use it', async () => {
-			flags.credSharingEnabled = true;
 			const actingUser = mock<User>({ id: userId, role: GLOBAL_MEMBER_ROLE });
 			userRepository.findOne.mockResolvedValueOnce(actingUser);
 			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValueOnce([
@@ -929,6 +1040,25 @@ describe('CredentialsPermissionChecker', () => {
 			);
 		});
 
+		it("checks only the user's own access when asked to ignore the instance-wide scope", async () => {
+			const owner = mock<User>({ id: userId, role: GLOBAL_OWNER_ROLE });
+			userRepository.findOne.mockResolvedValueOnce(owner);
+			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValueOnce([
+				{ id: credentialId, name: "Alice's Gmail", exists: true, ownerProject: null },
+			]);
+
+			await expect(
+				permissionChecker.checkForUser(userId, [node], { ignoreGlobalUseScope: true }),
+			).rejects.toThrow(
+				'Node "Test Node" uses the credential "Alice\'s Gmail", which you cannot use',
+			);
+			expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(
+				owner,
+				[credentialId],
+				{ ignoreGlobalUseScope: true },
+			);
+		});
+
 		it('should not throw when the user has access to the credential', async () => {
 			userRepository.findOne.mockResolvedValueOnce(
 				mock<User>({ id: userId, role: GLOBAL_MEMBER_ROLE }),
@@ -938,26 +1068,10 @@ describe('CredentialsPermissionChecker', () => {
 			await expect(permissionChecker.checkForUser(userId, [node])).resolves.not.toThrow();
 		});
 
-		// Inline sub-workflows were already checked against the user before this
-		// feature, so their message must not change until the flag is on.
-		it('keeps the old message while the flag is off', async () => {
-			userRepository.findOne.mockResolvedValueOnce(
-				mock<User>({ id: userId, role: GLOBAL_MEMBER_ROLE }),
-			);
-			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValueOnce([
-				{ id: credentialId, name: "Alice's Gmail", exists: true, ownerProject: null },
-			]);
-
-			await expect(permissionChecker.checkForUser(userId, [node])).rejects.toThrow(
-				'Node "Test Node" uses a credential you do not have access to',
-			);
-		});
-
 		// A provider connection cannot be made usable by sharing it, so the "ask its
-		// owner" advice would point the user nowhere — even with the flag on, and even
-		// though the credential now has a real name to quote.
-		it('keeps the plain message for an instance-scoped credential with the flag on', async () => {
-			flags.credSharingEnabled = true;
+		// owner" advice would point the user nowhere, even though the credential has
+		// a real name to quote.
+		it('keeps the plain message for an instance-scoped credential', async () => {
 			userRepository.findOne.mockResolvedValueOnce(
 				mock<User>({ id: userId, role: GLOBAL_MEMBER_ROLE }),
 			);
@@ -996,18 +1110,8 @@ describe('CredentialsPermissionChecker', () => {
 		const userId = 'user-123';
 
 		beforeEach(() => {
-			flags.credSharingEnabled = true;
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
 			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
-		});
-
-		it('returns an empty array without checking anything when credential sharing is not enabled', async () => {
-			flags.credSharingEnabled = false;
-
-			await expect(
-				permissionChecker.findInaccessibleForUser(userId, [node], workflowId),
-			).resolves.toEqual([]);
-			expect(userRepository.findOne).not.toHaveBeenCalled();
 		});
 
 		it('returns an empty array when the workflow has no credentials', async () => {
@@ -1287,6 +1391,22 @@ describe('CredentialsPermissionChecker', () => {
 			).resolves.toEqual([credentialId]);
 			expect(credentialsFinderService.findUnusableCredentialsForUser).not.toHaveBeenCalled();
 		});
+	});
+
+	it("filterUsableThroughOwnAccess keeps only what the user's own access allows", async () => {
+		const user = mock<User>({ role: GLOBAL_OWNER_ROLE });
+		credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValueOnce([
+			{ id: 'colleague', name: 'Their Gmail', exists: true, ownerProject: null },
+		]);
+
+		await expect(
+			permissionChecker.filterUsableThroughOwnAccess(user, [{ id: 'own' }, { id: 'colleague' }]),
+		).resolves.toEqual([{ id: 'own' }]);
+		expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(
+			user,
+			['own', 'colleague'],
+			{ ignoreGlobalUseScope: true },
+		);
 	});
 
 	describe('resolveInaccessibleCredentialIdsForUserId', () => {

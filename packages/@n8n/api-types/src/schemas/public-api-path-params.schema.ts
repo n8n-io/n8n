@@ -2,7 +2,7 @@ import '../openapi-extend';
 import validator from 'validator';
 import { z } from 'zod';
 
-import { promotionDirectionSchema } from '../dto/promotions/promotion-config.dto';
+import { promotionDirectionSchema } from '../dto/promotions/promotion-environment.dto';
 
 /**
  * Runtime: the id stays a string, because the services these routes call expect a string.
@@ -21,6 +21,7 @@ const NANOID_REGEX = /^[A-Za-z0-9]{16}$/;
 export const executionIdParamSchema = numericIdParamSchema('The ID of the execution.');
 
 export const workflowIdParamSchema = stringIdParamSchema('The ID of the workflow.');
+export const agentIdParamSchema = stringIdParamSchema('The ID of the agent.');
 export const workflowVersionIdParamSchema = stringIdParamSchema('The ID of the workflow version.');
 export const testRunIdParamSchema = stringIdParamSchema('The ID of the test run.');
 export const projectIdParamSchema = stringIdParamSchema('The ID of the project.');
@@ -39,9 +40,10 @@ export const userUuidParamSchema = z
 	.openapi({ param: { description: 'The ID of the user.' } });
 export const roleSlugParamSchema = stringIdParamSchema('The slug of the role.');
 export const roleMappingRuleIdParamSchema = stringIdParamSchema('The ID of the role mapping rule.');
-export const promotionConnectionIdParamSchema = stringIdParamSchema(
-	'The ID of the promotion connection.',
-);
+export const promotionEnvironmentIdParamSchema = z
+	.string()
+	.refine((value) => validator.isUUID(value), { message: 'must be a valid ID' })
+	.openapi({ format: 'uuid', param: { description: 'The ID of the promotion environment.' } });
 export const promotionProviderIdParamSchema = stringIdParamSchema(
 	'The ID of the promotion provider.',
 );

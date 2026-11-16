@@ -4,12 +4,32 @@ import { setupTaskDefinitions, type SetupContext } from './agentSetupTasks.regis
 
 function makeContext(): SetupContext {
 	return {
-		config: { loaded: true, model: 'openai:gpt-4.1', instructions: 'Help the user', toolCount: 0 },
+		config: {
+			loaded: true,
+			isRunnable: true,
+			model: 'openai:gpt-4.1',
+			instructions: 'Help the user',
+			toolCount: 0,
+		},
 		channels: { loaded: true, ids: [] },
 		publication: { loaded: true, canPublish: true, activeVersionId: null },
 		sessions: { loaded: true, count: 0 },
 	};
 }
+
+describe('test-agent setup task', () => {
+	it('hides the task when the agent cannot run despite having model, instructions, and tools', () => {
+		const context = makeContext();
+		context.config.isRunnable = false;
+		context.config.toolCount = 1;
+
+		expect(setupTaskDefinitions['test-agent'].getVisible(context)).toBe(false);
+	});
+
+	it('shows the task for a runnable agent without tools', () => {
+		expect(setupTaskDefinitions['test-agent'].getVisible(makeContext())).toBe(true);
+	});
+});
 
 describe('add-channel setup task', () => {
 	it('does not require a channel to publish an agent', () => {

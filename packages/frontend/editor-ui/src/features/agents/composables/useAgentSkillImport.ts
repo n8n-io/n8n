@@ -15,7 +15,10 @@ const FRONTMATTER_DELIMITER = '---';
 const MAX_REFERENCE_FILE_BYTES = AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH * 4;
 
 export class AgentSkillImportError extends Error {
-	constructor(readonly i18nKey: BaseTextKey) {
+	constructor(
+		readonly i18nKey: BaseTextKey,
+		readonly interpolate?: Record<string, string | number>,
+	) {
 		super(i18nKey);
 	}
 }
@@ -23,7 +26,6 @@ export class AgentSkillImportError extends Error {
 type SkillFrontmatter = {
 	name?: unknown;
 	description?: unknown;
-	allowed_tools?: unknown;
 };
 
 type SkillFile = { file: File; path: string };
@@ -48,7 +50,13 @@ export function useAgentSkillImport() {
 			throw new AgentSkillImportError('agents.builder.skills.import.noFiles');
 		}
 
-		const skillFile = findSkillFile(fileEntries);
+		const skillFiles = findSkillFiles(fileEntries);
+		if (skillFiles.length > 1) {
+			throw new AgentSkillImportError('agents.builder.skills.import.multipleSkills', {
+				count: skillFiles.length,
+			});
+		}
+		const [skillFile] = skillFiles;
 		if (!skillFile) {
 			throw new AgentSkillImportError('agents.builder.skills.import.missingSkillFile');
 		}
@@ -101,7 +109,6 @@ export function useAgentSkillImport() {
 
 		return {
 			...parsed,
-			allowedTools: parsed.allowedTools,
 			references: references.length > 0 ? references : undefined,
 		};
 	}
@@ -139,8 +146,8 @@ async function readEntry(entry: FileSystemEntry): Promise<SkillFile[]> {
 	return files;
 }
 
-function findSkillFile(entries: Array<{ file: File; path: string }>) {
-	return entries.find(
+function findSkillFiles(entries: SkillFile[]) {
+	return entries.filter(
 		(entry) => entry.path === SKILL_FILE_NAME || entry.path.endsWith(`/${SKILL_FILE_NAME}`),
 	);
 }
@@ -182,7 +189,6 @@ function parseSkillMarkdown(content: string): AgentSkill {
 		name,
 		description,
 		instructions,
-		...optionalStringArrayField('allowedTools', data.allowed_tools),
 	};
 }
 
@@ -195,24 +201,6 @@ function readRequiredString(value: unknown, field: 'name' | 'description'): stri
 		);
 	}
 	return value.trim();
-}
-
-function optionalStringArrayField(field: 'allowedTools', value: unknown) {
-	if (typeof value === 'string' && value.trim()) return { [field]: [value.trim()] };
-	return optionalStringArrayProperty(field, value);
-}
-
-function optionalStringArrayProperty<T extends string>(
-	field: T,
-	value: unknown,
-): Partial<Record<T, string[]>> {
-	if (!Array.isArray(value)) return {};
-	const strings = value.filter(
-		(item): item is string => typeof item === 'string' && Boolean(item.trim()),
-	);
-	return strings.length > 0
-		? ({ [field]: strings.map((item) => item.trim()) } as Partial<Record<T, string[]>>)
-		: {};
 }
 
 function normalizePath(path: string): string {

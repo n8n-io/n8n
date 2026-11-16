@@ -3,7 +3,7 @@ import { N8nLoading } from '@n8n/design-system';
 import type { AgentTeamsIntegrationSettings } from '@n8n/api-types';
 import { computed, onMounted, ref, watch } from 'vue';
 
-import type { AgentChannelViewExpose, AgentChannelViewProps } from '../types';
+import type { AgentChannelRestart, AgentChannelViewExpose, AgentChannelViewProps } from '../types';
 import AgentChannelTeamsManagedSetup from './AgentChannelTeamsManagedSetup.vue';
 import AgentChannelTeamsSetup from './AgentChannelTeamsSetup.vue';
 import type { TeamsChannelRuntime } from './useTeamsChannelRuntime';
@@ -22,6 +22,7 @@ const emit = defineEmits<{
 	connect: [];
 	/** Either flow finishing: both outlive the connect and close themselves. */
 	done: [];
+	restart: [restart: AgentChannelRestart];
 }>();
 
 const manualRef = ref<AgentChannelViewExpose>();
@@ -30,6 +31,13 @@ const managedRef = ref<{
 	keepOpenAfterConnect?: boolean;
 	canFinish?: boolean;
 } | null>(null);
+// The modal types the settings as any channel's. Only the webhook settings share no field
+// with the Teams settings, so they are the ones to drop.
+const teamsSavedSettings = computed((): AgentTeamsIntegrationSettings | undefined =>
+	props.savedSettings && !('authentication' in props.savedSettings)
+		? props.savedSettings
+		: undefined,
+);
 const showManaged = computed(
 	() =>
 		props.runtime.managedSetup.value.managedSetupAvailable &&
@@ -51,7 +59,8 @@ const loading = computed(
 watch(
 	() => [props.projectId, props.agentId] as const,
 	() => {
-		props.runtime.setupKind.value = 'managed';
+		props.runtime.setupKind.value = props.runtime.nextSetupKind.value ?? 'managed';
+		props.runtime.nextSetupKind.value = null;
 	},
 	{ immediate: true },
 );
@@ -137,13 +146,14 @@ defineExpose({
 			:setup="runtime.managedSetup.value"
 			:loading="loading"
 			:credential-permissions="credentialPermissions"
-			:saved-settings="savedSettings"
+			:saved-settings="teamsSavedSettings"
 			:channel-connected="connected"
 			:project-id="projectId"
 			:agent-id="agentId"
 			@provisioned="credentialId = $event"
 			@persist="emit('persist')"
 			@done="emit('done')"
+			@restart="emit('restart', $event)"
 		/>
 		<AgentChannelTeamsSetup
 			v-else
@@ -151,7 +161,6 @@ defineExpose({
 			v-model="credentialId"
 			:mode="mode"
 			:connected="connected"
-			:is-published="isPublished"
 			:project-id="projectId"
 			:agent-id="agentId"
 			:integration="integration"
@@ -163,11 +172,13 @@ defineExpose({
 			:error-message="errorMessage"
 			:error-is-conflict="errorIsConflict"
 			:force-new-credential="forceNewCredential"
-			:saved-settings="savedSettings"
+			:saved-credential-id="savedCredentialId"
+			:saved-settings="teamsSavedSettings"
 			@create="emit('create')"
 			@edit="emit('edit')"
 			@connect="emit('connect')"
 			@done="emit('done')"
+			@restart="emit('restart', $event)"
 		/>
 	</div>
 </template>

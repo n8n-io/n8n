@@ -6,9 +6,9 @@ import {
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, UnexpectedError, UserError } from '@n8n/errors';
 
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import { toAgentDocument } from '../json-config/agent-document';
@@ -51,6 +51,12 @@ export class SubAgentSourceResolver {
 		context: ResolveSubAgentSourceContext,
 	): Promise<ResolvedSubAgentRuntimeSource> {
 		const agent = await getAgentOrThrow(this.agentRepository, source.agentId, context.projectId);
+		if (agent.isArchived) {
+			throw new UserError(
+				`Sub-agent "${agent.name}" is archived. Restore it before delegating to it.`,
+			);
+		}
+
 		if (context.runtimeSnapshot !== undefined) {
 			const saved = jsonParse<ResolvedSubAgentRuntimeSource | null>(context.runtimeSnapshot, {
 				fallbackValue: null,
@@ -81,6 +87,7 @@ export class SubAgentSourceResolver {
 			const version = await this.agentHistoryRepository.findByVersionAndAgentId(
 				source.versionId,
 				source.agentId,
+				{},
 			);
 			if (!version) {
 				throw new NotFoundError(
@@ -93,15 +100,14 @@ export class SubAgentSourceResolver {
 				);
 			}
 
+			const { skillRefs, skills } = await this.agentSkillRefs.readVersion(version, {});
 			return {
 				source: {
 					sourceId: source.agentId,
 					versionId: source.versionId,
-					config: this.toRunnableConfig(
-						toAgentDocument(version.schema, await this.agentSkillRefs.refsForVersion(version, {})),
-					),
+					config: this.toRunnableConfig(toAgentDocument(version.schema, skillRefs)),
 				},
-				...getAgentRuntimeAssets(version),
+				...getAgentRuntimeAssets(version, skills),
 			};
 		}
 
@@ -113,18 +119,14 @@ export class SubAgentSourceResolver {
 				);
 			}
 
+			const { skillRefs, skills } = await this.agentSkillRefs.readVersion(activeVersion, {});
 			return {
 				source: {
 					sourceId: source.agentId,
 					versionId: activeVersion.versionId,
-					config: this.toRunnableConfig(
-						toAgentDocument(
-							activeVersion.schema,
-							await this.agentSkillRefs.refsForVersion(activeVersion, {}),
-						),
-					),
+					config: this.toRunnableConfig(toAgentDocument(activeVersion.schema, skillRefs)),
 				},
-				...getAgentRuntimeAssets(activeVersion),
+				...getAgentRuntimeAssets(activeVersion, skills),
 			};
 		}
 
@@ -132,14 +134,13 @@ export class SubAgentSourceResolver {
 			throw new UserError(`Sub-agent "${source.agentId}" has no config`);
 		}
 
+		const { skillRefs, skills } = await this.agentSkillRefs.readDraft(agent, {});
 		return {
 			source: {
 				sourceId: source.agentId,
-				config: this.toRunnableConfig(
-					toAgentDocument(agent.schema, await this.agentSkillRefs.refsForDraft(agent, {})),
-				),
+				config: this.toRunnableConfig(toAgentDocument(agent.schema, skillRefs)),
 			},
-			...getAgentRuntimeAssets(agent),
+			...getAgentRuntimeAssets(agent, skills),
 		};
 	}
 

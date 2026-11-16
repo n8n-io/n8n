@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -98,7 +98,7 @@ export async function execute(
 					this,
 					'value',
 					'GET',
-					"/drive/root/search(q='.xlsx')",
+					requestPath`/root/search(q='.xlsx')`,
 					{},
 					qs,
 					i,
@@ -108,7 +108,7 @@ export async function execute(
 				responseData = await microsoftApiRequest.call(
 					this,
 					'GET',
-					"/drive/root/search(q='.xlsx')",
+					requestPath`/root/search(q='.xlsx')`,
 					{},
 					qs,
 					undefined,

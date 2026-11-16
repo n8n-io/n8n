@@ -22,6 +22,7 @@ import type { User } from '../entities';
 import { Project, ProjectRelation, SharedWorkflow } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
+import { getWithWorkflowCollections } from '../utils/workflow-collections';
 
 @Service()
 export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
@@ -302,6 +303,15 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		return [...new Set(projectIds)];
 	}
 
+	/** Reads one column and no relation. Pass `ctx` inside a transaction. */
+	async getWorkflowOwningProjectId(workflowId: string, ctx: OperationContext = {}) {
+		const row = await this.managerFor(ctx).findOne(SharedWorkflow, {
+			select: { projectId: true },
+			where: { workflowId, role: 'workflow:owner' },
+		});
+		return row?.projectId;
+	}
+
 	/**
 	 * Pass `ctx` when calling from inside a transaction — the read then runs on that
 	 * transaction's connection instead of checking out a second one, which would
@@ -372,22 +382,26 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 			em = this.managerFor(ctx),
 		} = options;
 
-		const sharedWorkflow = await em.findOne(SharedWorkflow, {
-			where: {
-				workflowId,
-				...where,
-			},
-			relations: {
-				workflow: {
-					shared: { project: true },
-					tags: includeTags,
-					parentFolder: includeParentFolder,
-					activeVersion: includeActiveVersion,
-				},
-			},
-		});
+		// One statement reads the share the user reaches the workflow through, the workflow, its
+		// one-row relations, shares and tags, so the access check covers all of it.
+		const qb = em
+			.createQueryBuilder(SharedWorkflow, 'sharedWorkflow')
+			.innerJoinAndSelect('sharedWorkflow.workflow', 'workflow')
+			.setFindOptions({ where: { workflowId, ...where } })
+			// Every join has at most one row per share row, so a plain LIMIT picks one share
+			// without the extra DISTINCT query TypeORM runs for `findOne` with joins.
+			.limit(1);
+		if (includeParentFolder) qb.leftJoinAndSelect('workflow.parentFolder', 'parentFolder');
+		if (includeActiveVersion) qb.leftJoinAndSelect('workflow.activeVersion', 'activeVersion');
 
-		const activeVersion = sharedWorkflow?.workflow.activeVersion;
+		const [sharedWorkflow] = await getWithWorkflowCollections(
+			qb,
+			{ shared: { project: true }, tags: includeTags },
+			({ workflow }) => workflow,
+		);
+		if (!sharedWorkflow) return null;
+
+		const activeVersion = sharedWorkflow.workflow.activeVersion;
 		if (activeVersion && publishHistory !== 'none') {
 			activeVersion.workflowPublishHistory =
 				await this.workflowPublishHistoryRepository.findByVersion(
@@ -409,6 +423,8 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		user: User,
 		sharingOptions: {
 			scopes?: Scope[];
+			/** Scopes that grant access without a share. Defaults to workflow read. */
+			globalScopes?: Scope[];
 			projectRoles?: string[];
 			workflowRoles?: string[];
 			isPersonalProject?: boolean;
@@ -419,6 +435,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	): SelectQueryBuilder<any> {
 		const {
+			globalScopes,
 			projectRoles,
 			workflowRoles,
 			isPersonalProject,
@@ -451,10 +468,13 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 				.where('sw.role = :editorRole', { editorRole: 'workflow:editor' })
 				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: user.id })
 				.andWhere('pr.role = :projectOwnerRole', { projectOwnerRole: PROJECT_OWNER_ROLE_SLUG });
-		} else if (!hasGlobalScope(user, 'workflow:read')) {
+		} else if (!hasGlobalScope(user, globalScopes ?? ['workflow:read'], { mode: 'allOf' })) {
 			// Standard sharing based on roles (global-scope users need no additional filtering)
 			if (!workflowRoles || !projectRoles) {
 				throw new Error('workflowRoles and projectRoles are required when not using special cases');
+			}
+			if (globalScopes && (workflowRoles.length === 0 || projectRoles.length === 0)) {
+				return subquery.where('1 = 0');
 			}
 
 			subquery

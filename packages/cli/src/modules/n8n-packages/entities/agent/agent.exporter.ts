@@ -1,9 +1,9 @@
 import { isCredentialAgentIntegration, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
-import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { type Agent, isProjectAgent } from '@/modules/agents/entities/agent.entity';
 import type { AgentDefinition } from '@/modules/agents/utils/agent-definition';
 
 import type { PreparedAgentExport } from './agent-export.types';
@@ -30,7 +30,14 @@ export class AgentExporter {
 		agent: Agent,
 		policy: ExportVersionPolicy = ExportVersionPolicy.Latest,
 	): Promise<PreparedAgentExport | undefined> {
-		if (agent.activeVersionId === null) {
+		// The export queries return only project agents. An instance agent has no project to export from.
+		if (!isProjectAgent(agent)) {
+			throw new UnexpectedError('Only project agents can be exported', {
+				extra: { agentId: agent.id },
+			});
+		}
+		// An archived agent has no published version. It always exports its draft.
+		if (agent.activeVersionId === null && !agent.isArchived) {
 			if (policy === ExportVersionPolicy.IgnoreUnpublished) return undefined;
 			if (policy === ExportVersionPolicy.PublishedStrict) {
 				throw new PackageExportBlockedError(

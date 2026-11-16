@@ -56,18 +56,23 @@ erDiagram
   INTEGER position
 }
 "agent_execution" {
-  BOOLEAN acceptsSteering
+  boolean acceptsSteering
   TEXT attachments
   TEXT author
+  INTEGER cacheReadTokens
+  INTEGER cacheWriteTokens
   INTEGER completionTokens
   REAL cost
   datetime_3_ createdAt
   INTEGER duration
   TEXT error
   TEXT failureSummary
+  varchar_32_ finishReason
+  varchar_64_ guardrailCode
   varchar_16_ hitlStatus
   varchar_36_ id PK
   varchar_255_ model
+  varchar_36_ parentExecutionId FK
   INTEGER promptTokens
   varchar_32_ source
   datetime_3_ startedAt

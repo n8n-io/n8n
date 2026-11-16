@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -51,7 +52,6 @@ const buildSimplified = (): IDataObject => {
 
 const SITE_ID =
 	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
-const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 const LIST_ID = 'list1';
 const ITEM_ID = 'item1';
 
@@ -117,7 +117,7 @@ describe('Microsoft SharePoint v2 — Item: Get', () => {
 		expect(apiRequest).toHaveBeenCalledTimes(1);
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`/v1.0/sites/${ENCODED_SITE_ID}/lists/${LIST_ID}/items/${ITEM_ID}`,
+			requestPath`/v1.0/sites/${SITE_ID}/lists/${LIST_ID}/items/${ITEM_ID}`,
 			{},
 			// Assert the literals, so drifting ITEM_SIMPLIFY_SELECT/EXPAND fails here.
 			{
@@ -146,7 +146,7 @@ describe('Microsoft SharePoint v2 — Item: Get', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`/v1.0/sites/${ENCODED_SITE_ID}/lists/${LIST_ID}/items/${ITEM_ID}`,
+			requestPath`/v1.0/sites/${SITE_ID}/lists/${LIST_ID}/items/${ITEM_ID}`,
 			{},
 			{ $expand: 'fields' },
 		);
@@ -173,14 +173,16 @@ describe('Microsoft SharePoint v2 — Item: Get', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'GET',
-			'/v1.0/sites/contoso.sharepoint.com:/sites/site1',
+			expect.objectContaining({ value: '/v1.0/sites/contoso.sharepoint.com:/sites/site1' }),
 			{},
 			{ $select: 'id' },
 		);
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			`/v1.0/sites/${ENCODED_SITE_ID}/lists/My%20List%201/items/${ITEM_ID}`,
+			expect.objectContaining({
+				value: `/v1.0/sites/${SITE_ID}/lists/My%20List%201/items/${ITEM_ID}`,
+			}),
 			{},
 			{ $select: ITEM_SIMPLIFY_SELECT, $expand: ITEM_SIMPLIFY_EXPAND },
 		);
@@ -204,9 +206,32 @@ describe('Microsoft SharePoint v2 — Item: Get', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`/v1.0/sites/${ENCODED_SITE_ID}/lists/${LIST_ID}/items/42`,
+			requestPath`/v1.0/sites/${SITE_ID}/lists/${LIST_ID}/items/42`,
 			{},
 			{ $select: ITEM_SIMPLIFY_SELECT, $expand: ITEM_SIMPLIFY_EXPAND },
+		);
+	});
+
+	it('encodes a list title and item ID that contain a slash as one path segment each', async () => {
+		setParams({
+			resource: 'item',
+			operation: 'get',
+			site: { mode: 'id', value: SITE_ID },
+			list: 'Projects/Archive',
+			item: { mode: 'id', value: '42/7' },
+			simplify: false,
+		});
+		apiRequest.mockResolvedValueOnce({ ...GRAPH_ITEM_REPLY });
+
+		await node.execute.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			expect.objectContaining({
+				value: `/v1.0/sites/${SITE_ID}/lists/Projects%2FArchive/items/42%2F7`,
+			}),
+			{},
+			{ $expand: 'fields' },
 		);
 	});
 

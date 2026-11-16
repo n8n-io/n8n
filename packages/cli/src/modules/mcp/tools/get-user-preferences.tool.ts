@@ -2,8 +2,11 @@ import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import z from 'zod';
 
-import type { AiPreferenceService } from '@/services/ai-preference.service';
-import { flattenAiPreferences, renderAiPreferences } from '@/services/ai-preference.service';
+import {
+	type AiPreferenceService,
+	flattenAiPreferences,
+	renderAiPreferences,
+} from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 
 import {
@@ -11,6 +14,7 @@ import {
 	MCP_USER_PREFERENCES_TRIGGER_CLAUSE,
 	USER_CALLED_MCP_TOOL_EVENT,
 } from '../mcp.constants';
+import type { McpPreferencesNoteService } from '../mcp-preferences-note.service';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 
 /**
@@ -74,6 +78,10 @@ const outputSchema = {
 		.describe(
 			'Set when the read failed. The preferences are unknown, not absent: do not build as if none were saved.',
 		),
+	note: z
+		.string()
+		.optional()
+		.describe('An instruction for the assistant. Follow it after you finish the current task.'),
 } satisfies z.ZodRawShape;
 
 /**
@@ -90,6 +98,8 @@ export const createGetUserPreferencesTool = (
 	user: User,
 	aiPreferenceService: AiPreferenceService,
 	telemetry: Telemetry,
+	preferencesNoteService: McpPreferencesNoteService,
+	preferencesNoteVariant: string | undefined,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	config: {
@@ -125,6 +135,9 @@ export const createGetUserPreferencesTool = (
 				: projectId
 					? NOTHING_SAVED_FOR_PROJECT
 					: NOTHING_SAVED;
+			const note = hasPreferences
+				? undefined
+				: await preferencesNoteService.takeNote(user, preferencesNoteVariant);
 
 			// Count, scopes and the size of the rendered text, never the text itself, which is
 			// the person's own writing. The length is what reviews the caps: the caps need a new
@@ -139,6 +152,10 @@ export const createGetUserPreferencesTool = (
 					count: items.length,
 					scopes,
 					rendered_length: renderedLength,
+					...(!hasPreferences && {
+						preferences_note_variant: preferencesNoteVariant,
+						preferences_note_shown: note !== undefined,
+					}),
 				},
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
@@ -153,8 +170,8 @@ export const createGetUserPreferencesTool = (
 			});
 
 			return {
-				content: [{ type: 'text', text }],
-				structuredContent: { hasPreferences, preferences: items },
+				content: [{ type: 'text', text: note ? `${text}\n\n${note}` : text }],
+				structuredContent: { hasPreferences, preferences: items, ...(note && { note }) },
 			};
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);

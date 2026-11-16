@@ -6,4 +6,4 @@ export type {
 	ResolvedRoles,
 	RoleMappingConfig,
 	RoleResolverContext,
-} from '@/services/role-mapping-proxy.service';
+} from '@n8n/backend-services';

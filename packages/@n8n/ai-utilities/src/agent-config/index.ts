@@ -1,5 +1,13 @@
 export { getProviderPrefix, splitModelId } from './model-id';
 export {
+	AZURE_FOUNDRY_ANTHROPIC_PREFIX,
+	getModelPromptCachingCapability,
+	isAzureFoundryAnthropicModel,
+	isGoogleVertexAnthropicModel,
+	isOpenRouterAnthropicModel,
+	isRoutedAnthropicModel,
+} from '@n8n/api-types';
+export {
 	getNativeWebSearchProviderTools,
 	hasNativeWebSearchProvider,
 	isNativeWebSearchRequested,

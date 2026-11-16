@@ -6,32 +6,40 @@
 // for post-run verification.
 // ---------------------------------------------------------------------------
 
-import type {
-	InstanceAiHandoffContext,
-	InstanceAiSendMessageRequest,
-	AgentConfigResponse,
-	InstanceAiBuildMode,
-	InstanceAiConfirmRequest,
-	InstanceAiRichMessagesResponse,
-	InstanceAiEvalAgentExecutionResult,
-	InstanceAiEvalExecutionResult,
-	InstanceAiRunDebugResponse,
-	InstanceAiEvalThreadMemoryResponse,
-	InstanceAiThreadDebugRunsResponse,
-	InstanceAiThreadStatusResponse,
-	InstanceAiEvalSeedAgent,
-	InstanceAiEvalSeedDataTable,
-	InstanceAiEvalSeedFolder,
-	InstanceAiEvalSeedWorkflow,
-	InstanceAiResourceAttachment,
-	AgentJsonConfig,
-	AgentSkill,
-	EvaluationConfigDto,
+import {
+	type InstanceAiHandoffContext,
+	type InstanceAiSendMessageRequest,
+	type AgentConfigResponse,
+	type InstanceAiConfirmRequest,
+	type InstanceAiRichMessagesResponse,
+	type InstanceAiEvalAgentExecutionResult,
+	type InstanceAiEvalExecutionResult,
+	type InstanceAiRunDebugResponse,
+	type InstanceAiEvalThreadMemoryResponse,
+	type InstanceAiThreadDebugRunsResponse,
+	type InstanceAiThreadStatusResponse,
+	type InstanceAiEvalSeedAgent,
+	type InstanceAiEvalSeedDataTable,
+	type InstanceAiEvalSeedFolder,
+	type InstanceAiEvalSeedWorkflow,
+	type InstanceAiResourceAttachment,
+	type AgentJsonConfig,
+	type AgentSkill,
+	type EvaluationConfigDto,
+	instanceAiEvalFailedExecutionEnvelopeSchema,
+	type InstanceAiEvalFailedExecutionEnvelope,
+	type ProjectIcon,
 } from '@n8n/api-types';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { Agent, setGlobalDispatcher } from 'undici';
 import { z } from 'zod';
 
+import {
+	AssistantAgentsApi,
+	readSseUntil,
+	type AssistantRuntime,
+	type AssistantSseEvent,
+} from './assistant-agents-api';
 import { recordEvalUsage } from '../../src/utils/eval-usage';
 
 // Disable undici's 300s timeouts — mocked eval runs take minutes; the per-request
@@ -43,6 +51,9 @@ setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }));
  *  unbounded, so a silent lane would hang rather than fail. Sized for a plain
  *  REST call — slower callers pass their own. */
 const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
+
+/** Eval routes of the Instance AI runtime. The Agents runtime has its own base. */
+const INSTANCE_AI_EVAL_BASE = '/rest/instance-ai/eval';
 
 /** Bulk creation of seed workflows + data tables; slower than a plain REST call. */
 const RESTORE_THREAD_TIMEOUT_MS = 300_000;
@@ -73,6 +84,14 @@ const InvitedUsersEnvelope = z.object({
 
 // -- Conversation seeding response shapes -------------------------------------
 
+const ExportExecutionEnvelope = z.object({
+	data: z.object({ envelope: instanceAiEvalFailedExecutionEnvelopeSchema }),
+});
+
+const RestoreExecutionEnvelope = z.object({
+	data: z.object({ ok: z.literal(true), executionId: z.string().min(1) }),
+});
+
 const RestoreThreadEnvelope = z.object({
 	data: z.object({
 		ok: z.literal(true),
@@ -86,32 +105,11 @@ const RestoreThreadEnvelope = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// Computer-use gateway response shapes (Zod-validated to keep the client
-// honest about API drift instead of trusting `as` casts)
+// Browser-use relay response shapes (Zod-validated to keep the client honest
+// about API drift instead of trusting `as` casts). The server owns the CDP
+// relay and the extension dials in.
 // ---------------------------------------------------------------------------
 
-const GatewayLinkSchema = z.object({
-	token: z.string(),
-	command: z.string(),
-});
-const GatewayLinkEnvelope = z.object({ data: GatewayLinkSchema });
-export type GatewayLink = z.infer<typeof GatewayLinkSchema>;
-
-const GatewayStatusSchema = z.object({
-	connected: z.boolean(),
-	directory: z.string().nullable(),
-	toolCategories: z.array(
-		z.object({
-			name: z.string(),
-			enabled: z.boolean(),
-		}),
-	),
-});
-const GatewayStatusEnvelope = z.object({ data: GatewayStatusSchema });
-export type GatewayStatus = z.infer<typeof GatewayStatusSchema>;
-
-// Browser-use relay (a different channel from the computer-use gateway above:
-// the server owns the CDP relay and the extension dials in).
 const BrowserLinkSchema = z.object({
 	connectUrl: z.string(),
 	expiresAt: z.string().nullable(),
@@ -280,9 +278,27 @@ export class N8nClient {
 	/** The logged-in user's name, when the login payload carries both parts. */
 	userName?: { firstName: string; lastName: string };
 
+	/** Which Assistant runtime the thread-tied calls drive. */
+	readonly assistantRuntime: AssistantRuntime;
+
+	/** Set only on the Agents runtime. Every thread-tied method checks this one
+	 *  field and sends the call to the Agents transport when it is set. */
+	private readonly agents?: AssistantAgentsApi;
+
 	/** Public: the browser runtime needs to know where n8n ACTUALLY is, which is
 	 *  not always what n8n reports as its own base URL (see `planRelayConnection`). */
-	constructor(readonly baseUrl: string) {}
+	constructor(
+		readonly baseUrl: string,
+		options: { assistantRuntime?: AssistantRuntime } = {},
+	) {
+		this.assistantRuntime = options.assistantRuntime ?? 'instance-ai';
+		if (this.assistantRuntime === 'agents') {
+			this.agents = new AssistantAgentsApi({
+				request: async (path, requestOptions) => await this.fetch(path, requestOptions),
+				postSseUntil: async (path, body, stop) => await this.postSseUntil(path, body, stop),
+			});
+		}
+	}
 
 	// -- Auth ----------------------------------------------------------------
 
@@ -336,6 +352,12 @@ export class N8nClient {
 		sourceContext?: Record<string, string | number | boolean>,
 	): Promise<void> {
 		const resolvedProjectId = projectId ?? (await this.getPersonalProjectId());
+		if (this.agents) {
+			return await this.agents.createThread(threadId, resolvedProjectId, {
+				source: 'evals',
+				...(sourceContext ? { sourceContext } : {}),
+			});
+		}
 		await this.fetch('/rest/instance-ai/threads', {
 			method: 'POST',
 			body: {
@@ -360,17 +382,26 @@ export class N8nClient {
 		threadId: string,
 		message: string,
 		attachments?: InstanceAiResourceAttachment[],
-		mode: InstanceAiBuildMode = 'default',
 		promptVersion?: string,
 		handoffContext?: InstanceAiHandoffContext,
 		observerThresholdTokens?: number,
 	): Promise<{ runId: string }> {
+		if (this.agents) {
+			// The Agents runtime sets the overrides once per thread, so a repeat here is ignored.
+			await this.agents.sendMessage(threadId, message, {
+				attachments,
+				context: handoffContext,
+				// The Assistant agent has no observer threshold override.
+				overrides: promptVersion ? { promptVersion } : {},
+			});
+			// The Agents runtime has no run id before the turn starts. The events carry the execution id.
+			return { runId: '' };
+		}
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
 			body: {
 				message,
 				...(attachments?.length ? { attachments } : {}),
-				mode,
 				...(promptVersion ? { promptVersion } : {}),
 				...(handoffContext ? { context: handoffContext } : {}),
 				// Per-thread, so other cases in the suite keep the instance default.
@@ -386,6 +417,8 @@ export class N8nClient {
 	 * body: kind-tagged `InstanceAiConfirmRequest` discriminated union.
 	 */
 	async confirmAction(requestId: string, payload: InstanceAiConfirmRequest): Promise<void> {
+		// The Agents runtime answers cards through `/chat/resume` in its wait loop.
+		this.assertV1Only('confirmAction');
 		await this.fetch(`/rest/instance-ai/confirm/${requestId}`, {
 			method: 'POST',
 			body: payload,
@@ -397,6 +430,7 @@ export class N8nClient {
 	 * POST /rest/instance-ai/chat/:threadId/cancel
 	 */
 	async cancelRun(threadId: string): Promise<void> {
+		if (this.agents) return await this.agents.cancel(threadId);
 		await this.fetch(`/rest/instance-ai/chat/${threadId}/cancel`, {
 			method: 'POST',
 		});
@@ -410,6 +444,7 @@ export class N8nClient {
 		threadId: string,
 		timeoutMs?: number,
 	): Promise<InstanceAiThreadStatusResponse> {
+		this.assertV1Only('getThreadStatus');
 		return this.unwrapRestData<InstanceAiThreadStatusResponse>(
 			await this.fetch(`/rest/instance-ai/threads/${threadId}/status`, { timeoutMs }),
 		);
@@ -420,6 +455,8 @@ export class N8nClient {
 	 * GET /rest/instance-ai/threads/:threadId/messages
 	 */
 	async getThreadMessages(threadId: string): Promise<InstanceAiRichMessagesResponse> {
+		// The Agents runtime builds the outcome from the events that the wait loop rebuilds from history.
+		if (this.agents) return { threadId, messages: [], nextEventId: 0 };
 		const result = (await this.fetch(`/rest/instance-ai/threads/${threadId}/messages`)) as {
 			data: InstanceAiRichMessagesResponse;
 		};
@@ -431,6 +468,7 @@ export class N8nClient {
 	 * DELETE /rest/instance-ai/threads/:threadId
 	 */
 	async deleteThread(threadId: string): Promise<void> {
+		if (this.agents) return await this.agents.deleteThread(threadId);
 		await this.fetch(`/rest/instance-ai/threads/${threadId}`, { method: 'DELETE' });
 	}
 
@@ -442,6 +480,8 @@ export class N8nClient {
 		threadId: string,
 		timeoutMs?: number,
 	): Promise<InstanceAiThreadDebugRunsResponse> {
+		// The Agents runtime has no run debug. `captureThreadRunDebug` reads the usage route instead.
+		this.assertV1Only('listThreadDebugRuns');
 		return this.unwrapRestData<InstanceAiThreadDebugRunsResponse>(
 			await this.fetch(`/rest/instance-ai/debug/threads/${threadId}/runs`, { timeoutMs }),
 		);
@@ -452,6 +492,7 @@ export class N8nClient {
 	 * GET /rest/instance-ai/debug/runs/:runId
 	 */
 	async getRunDebug(runId: string, timeoutMs?: number): Promise<InstanceAiRunDebugResponse> {
+		this.assertV1Only('getRunDebug');
 		return this.unwrapRestData<InstanceAiRunDebugResponse>(
 			await this.fetch(`/rest/instance-ai/debug/runs/${runId}`, { timeoutMs }),
 		);
@@ -462,32 +503,11 @@ export class N8nClient {
 		threadId: string,
 		timeoutMs?: number,
 	): Promise<InstanceAiEvalThreadMemoryResponse> {
+		// The Assistant agent has no memory read route. Compaction cases are skipped on it.
+		this.assertV1Only('getThreadMemory');
 		return this.unwrapRestData<InstanceAiEvalThreadMemoryResponse>(
-			await this.fetch(`/rest/instance-ai/eval/threads/${threadId}/memory`, { timeoutMs }),
+			await this.fetch(`${INSTANCE_AI_EVAL_BASE}/threads/${threadId}/memory`, { timeoutMs }),
 		);
-	}
-
-	// -- Computer-use gateway (pairing + status) -----------------------------
-
-	/**
-	 * Generate a one-shot pairing token for the local computer-use daemon.
-	 * POST /rest/instance-ai/gateway/create-link
-	 */
-	async createGatewayLink(): Promise<GatewayLink> {
-		const result = await this.fetch('/rest/instance-ai/gateway/create-link', {
-			method: 'POST',
-		});
-		return GatewayLinkEnvelope.parse(result).data;
-	}
-
-	/**
-	 * Read the local gateway status. The daemon flips this to `connected: true`
-	 * once it has registered its capabilities.
-	 * GET /rest/instance-ai/gateway/status
-	 */
-	async getGatewayStatus(): Promise<GatewayStatus> {
-		const result = await this.fetch('/rest/instance-ai/gateway/status');
-		return GatewayStatusEnvelope.parse(result).data;
 	}
 
 	// -- Browser-use relay (extension pairing + status) ----------------------
@@ -916,6 +936,29 @@ export class N8nClient {
 	}
 
 	/**
+	 * Expose workflows to MCP. MCP tools skip a workflow whose `availableInMCP`
+	 * is off, and a restored seed workflow starts with it off.
+	 * PATCH /rest/mcp/workflows/toggle-access
+	 */
+	async setWorkflowsAvailableInMcp(workflowIds: string[]): Promise<void> {
+		await this.fetch('/rest/mcp/workflows/toggle-access', {
+			method: 'PATCH',
+			body: { availableInMCP: true, workflowIds },
+		});
+	}
+
+	/**
+	 * Expose Agents to MCP, for the same reason as workflows.
+	 * PATCH /rest/mcp/agents/toggle-access
+	 */
+	async setAgentsAvailableInMcp(agentIds: string[]): Promise<void> {
+		await this.fetch('/rest/mcp/agents/toggle-access', {
+			method: 'PATCH',
+			body: { availableInMCP: true, agentIds },
+		});
+	}
+
+	/**
 	 * Delete a credential by ID.
 	 * DELETE /rest/credentials/:id
 	 */
@@ -988,7 +1031,7 @@ export class N8nClient {
 		credentialIds: string[],
 		bypassCredentialTest?: string[],
 	): Promise<void> {
-		await this.fetch('/rest/instance-ai/eval/thread-credential-allowlist', {
+		await this.fetch(`${this.threadEvalBase}/thread-credential-allowlist`, {
 			method: 'POST',
 			// Omit an empty list so the request stays byte-identical to before for
 			// threads with no credentials at all.
@@ -997,6 +1040,17 @@ export class N8nClient {
 				credentialIds,
 				...(bypassCredentialTest?.length ? { bypassCredentialTest } : {}),
 			},
+		});
+	}
+
+	/** Send the thread's connection tests for one credential type to a provider stand-in. */
+	async setThreadCredentialTestTarget(
+		threadId: string,
+		target: { credentialType: string; baseUrl: string; urlField: string },
+	): Promise<void> {
+		await this.fetch(`${this.threadEvalBase}/thread-credential-test-target`, {
+			method: 'POST',
+			body: { threadId, ...target },
 		});
 	}
 
@@ -1042,7 +1096,7 @@ export class N8nClient {
 			folders,
 		};
 		if (options.uniquifyNames !== undefined) body.uniquifyNames = options.uniquifyNames;
-		const result = await this.fetch('/rest/instance-ai/eval/restore-thread', {
+		const result = await this.fetch(`${this.threadEvalBase}/restore-thread`, {
 			method: 'POST',
 			body,
 			timeoutMs: RESTORE_THREAD_TIMEOUT_MS,
@@ -1066,6 +1120,31 @@ export class N8nClient {
 		return restored;
 	}
 
+	/** Export one failed execution of the thread's project as a portable envelope. */
+	async exportExecution(
+		threadId: string,
+		executionId: string,
+	): Promise<{ envelope: InstanceAiEvalFailedExecutionEnvelope }> {
+		const result = await this.fetch(`${this.threadEvalBase}/export-execution`, {
+			method: 'POST',
+			body: { threadId, executionId },
+		});
+		return ExportExecutionEnvelope.parse(result).data;
+	}
+
+	/** Restore an exported failed execution onto a seeded workflow; returns the new execution id. */
+	async restoreExecution(
+		threadId: string,
+		workflowId: string,
+		envelope: InstanceAiEvalFailedExecutionEnvelope,
+	): Promise<{ executionId: string }> {
+		const result = await this.fetch(`${this.threadEvalBase}/restore-execution`, {
+			method: 'POST',
+			body: { threadId, workflowId, envelope },
+		});
+		return RestoreExecutionEnvelope.parse(result).data;
+	}
+
 	/**
 	 * Reset an existing data table's rows to exactly `rows` (clear-then-insert),
 	 * for the per-scenario row seeding of a case that pre-created its tables
@@ -1081,7 +1160,7 @@ export class N8nClient {
 		rows: Array<Record<string, string | number | boolean | null>>,
 		timeoutMs?: number,
 	): Promise<void> {
-		await this.fetch('/rest/instance-ai/eval/seed-data-table-rows', {
+		await this.fetch(`${this.threadEvalBase}/seed-data-table-rows`, {
 			timeoutMs,
 			method: 'POST',
 			body: { threadId, tableId, rows },
@@ -1112,9 +1191,22 @@ export class N8nClient {
 	}
 
 	/**
-	 * Create a team project. Used to seed the extra projects a project-scope case
-	 * needs: a second project the eval user can see but whose writes are barred,
-	 * so `isCurrentProject` has something to distinguish the bound project from.
+	 * Whether the license allows team projects (`quota:maxTeamProjects` is not 0).
+	 * GET /rest/settings
+	 */
+	async canCreateTeamProjects(): Promise<boolean> {
+		const result = (await this.fetch('/rest/settings')) as {
+			data?: { enterprise?: { projects?: { team?: { limit?: number } } } };
+		};
+		const limit = result.data?.enterprise?.projects?.team?.limit;
+		return limit !== undefined && limit !== 0;
+	}
+
+	/**
+	 * Create a team project. Used for a build's own project, and to seed the extra
+	 * projects a project-scope case needs: a second project the eval user can see
+	 * but whose writes are barred, so `isCurrentProject` has something to
+	 * distinguish the bound project from.
 	 *
 	 * Team projects are licensed AND quota'd (`@Licensed('feat:projectRole:admin')`
 	 * plus `quota:maxTeamProjects`, which defaults to 0), so this fails on an
@@ -1123,11 +1215,11 @@ export class N8nClient {
 	 * against a project list it never saw, and pass for the wrong reason.
 	 * POST /rest/projects
 	 */
-	async createTeamProject(name: string): Promise<{ id: string; name: string }> {
+	async createTeamProject(name: string, icon?: ProjectIcon): Promise<{ id: string; name: string }> {
 		try {
 			const result = (await this.fetch('/rest/projects', {
 				method: 'POST',
-				body: { name },
+				body: { name, ...(icon ? { icon } : {}) },
 			})) as { data?: { id?: string; name?: string } };
 			const id = result.data?.id;
 			if (!id) {
@@ -1137,7 +1229,7 @@ export class N8nClient {
 		} catch (error: unknown) {
 			if (error instanceof N8nApiError && (error.status === 403 || error.status === 400)) {
 				throw new Error(
-					`Could not create the seed project "${name}" (${String(error.status)}): team projects are licensed ` +
+					`Could not create the team project "${name}" (${String(error.status)}): team projects are licensed ` +
 						'and quota-limited, and `quota:maxTeamProjects` defaults to 0.\n' +
 						'  - CI/real instance: needs N8N_LICENSE_ACTIVATION_KEY + N8N_LICENSE_CERT.\n' +
 						'  - Local run with E2E_TESTS=true: /rest/e2e/reset stubs the license to ALL-FALSE, so a real ' +
@@ -1157,13 +1249,27 @@ export class N8nClient {
 	 * are filtered out — they're never seeded and must never be deleted.
 	 * GET /rest/projects
 	 */
-	async listTeamProjects(): Promise<Array<{ id: string; name: string }>> {
+	async listTeamProjects(): Promise<
+		Array<{ id: string; name: string; icon?: ProjectIcon | null }>
+	> {
 		const result = (await this.fetch('/rest/projects')) as {
-			data?: Array<{ id?: string; name?: string; type?: string }>;
+			data?: Array<{ id?: string; name?: string; type?: string; icon?: ProjectIcon | null }>;
 		};
-		return (result.data ?? []).flatMap(({ id, name, type }) =>
-			type === 'team' && id !== undefined && name !== undefined ? [{ id, name }] : [],
+		return (result.data ?? []).flatMap(({ id, name, type, icon }) =>
+			type === 'team' && id !== undefined && name !== undefined ? [{ id, name, icon }] : [],
 		);
+	}
+
+	/**
+	 * Let a user see a team project without writing to it. An MCP build acts as its
+	 * own member, who sees no team project the owner did not share.
+	 * POST /rest/projects/:projectId/users
+	 */
+	async addProjectViewer(projectId: string, userId: string): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}/users`, {
+			method: 'POST',
+			body: { relations: [{ userId, role: 'project:viewer' }] },
+		});
 	}
 
 	/**
@@ -1322,8 +1428,8 @@ export class N8nClient {
 	 * sub-nodes actually run instead of being short-circuited by pin data;
 	 * pass `pinNodes` to keep specific roots on the pinned baseline (e.g. for
 	 * A/B comparison). Gated server-side behind the
-	 * `085_eval_vendor_sdk_interception` PostHog flag. Data Table reads of
-	 * `seededDataTableIds` run live instead of pinned.
+	 * `085_eval_vendor_sdk_interception` PostHog flag. The server keeps the rows of
+	 * `seededDataTableIds` and fills every other Data Table the workflow uses.
 	 */
 	async executeWithLlmMock(
 		workflowId: string,
@@ -1388,6 +1494,57 @@ export class N8nClient {
 		await this.fetch(`/rest/projects/${projectId}/agents/v2/${agentId}`, {
 			method: 'DELETE',
 		});
+	}
+
+	// -- Runtime switch ------------------------------------------------------
+
+	/** The transport on the Agents runtime, else undefined. The harness code
+	 *  outside this client branches on this call only. */
+	assistantAgents(): AssistantAgentsApi | undefined {
+		return this.agents;
+	}
+
+	/** Base of the thread-tied eval routes. Same bodies on both runtimes. */
+	private get threadEvalBase(): string {
+		return this.agents?.evalBase ?? INSTANCE_AI_EVAL_BASE;
+	}
+
+	/** Instance AI routes with no Agents route. Fail loudly when a caller reaches one on the Agents runtime. */
+	private assertV1Only(method: string): void {
+		if (this.agents) {
+			throw new Error(`N8nClient.${method} is not available on the Agents runtime`);
+		}
+	}
+
+	/** POST and read the SSE response until `stop` accepts an event, then close it. */
+	private async postSseUntil(
+		path: string,
+		body: unknown,
+		stop: (event: AssistantSseEvent) => boolean,
+	): Promise<AssistantSseEvent | undefined> {
+		const controller = new AbortController();
+		const timer = setTimeout(() => controller.abort(), DEFAULT_REQUEST_TIMEOUT_MS);
+		try {
+			const res = await fetch(`${this.baseUrl}${path}`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'text/event-stream',
+					cookie: this.cookie,
+				},
+				body: JSON.stringify(body),
+				signal: controller.signal,
+			});
+			if (!res.ok || !res.body) {
+				const text = await res.text().catch(() => '');
+				throw new N8nApiError(`n8n API POST ${path} failed (${res.status}): ${text}`, res.status);
+			}
+			return await readSseUntil(res.body, stop);
+		} finally {
+			clearTimeout(timer);
+			// Close the stream. The turn runs on the server without it.
+			controller.abort();
+		}
 	}
 
 	// -- SSE helpers ---------------------------------------------------------

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { setActivePinia, createPinia } from 'pinia';
-import { defineComponent, h, ref, type Component, type PropType } from 'vue';
+import { defineComponent, h, ref, type Component, type PropType, type Ref } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -21,7 +21,6 @@ type InputTestProps = {
 	isStreaming: boolean;
 	isSubmitting: boolean;
 	isAwaitingConfirmation: boolean;
-	isAwaitingPlanReview: boolean;
 	currentThreadId: string;
 	amendContext: { agentId: string; role: string } | null;
 	contextualSuggestion: string | null;
@@ -33,6 +32,7 @@ type InputTestProps = {
 	suggestionTelemetryPayload?: ITelemetryTrackProperties;
 	placeholderKey?: BaseTextKey;
 	placeholder?: string;
+	placeholderPreview?: Readonly<Ref<string | undefined>>;
 	contextChip?: ContextChip | null;
 };
 
@@ -40,7 +40,6 @@ const defaultProps = (): InputTestProps => ({
 	isStreaming: false,
 	isSubmitting: false,
 	isAwaitingConfirmation: false,
-	isAwaitingPlanReview: false,
 	currentThreadId: 'thread-1',
 	amendContext: null,
 	contextualSuggestion: null,
@@ -280,6 +279,37 @@ describe('InstanceAiInput', () => {
 				{ id: 'quick-examples', type: 'menu' },
 			],
 		);
+	});
+
+	it('keeps contextual and unavailable placeholders above an animated preview', async () => {
+		const placeholderPreview = ref<string | undefined>('Build me an agent');
+		const { getByRole, rerender } = renderComponent({
+			props: inputProps({ placeholderPreview }),
+		});
+		const input = getByRole('textbox');
+		expect(input).toHaveAttribute('placeholder', 'Build me an agent');
+		await rerender({ contextualSuggestion: 'Explain the result' });
+		expect(input).toHaveAttribute('placeholder', 'Explain the result');
+		placeholderPreview.value = 'Build me another agent';
+		await rerender({ isWorkflowBuilderAvailable: false });
+		expect(input).toHaveAttribute('placeholder', 'Workflow builder unavailable');
+	});
+
+	it('reports initial and edited draft content without submitting placeholder previews', async () => {
+		const { emitted, getByRole, rerender } = renderComponent({
+			props: inputProps({ placeholder: 'Build a news agent' }),
+		});
+		const textbox = getByRole('textbox');
+		expect(emitted()['content-change']).toEqual([[false]]);
+		expect(textbox).toHaveValue('');
+		await fireEvent.keyDown(textbox, { key: 'Enter' });
+		expect(emitted().submit).toBeUndefined();
+		await fireEvent.update(textbox, 'My draft');
+		await rerender({ placeholder: 'Build a different agent' });
+		expect(textbox).toHaveValue('My draft');
+		expect(emitted()['content-change']).toEqual([[false], [true]]);
+		await fireEvent.update(textbox, '');
+		expect(emitted()['content-change']).toEqual([[false], [true], [false]]);
 	});
 
 	it('renders the four empty-state suggestions when the textarea is empty', () => {
@@ -576,7 +606,6 @@ describe('InstanceAiInput', () => {
 				promptModified: false,
 			},
 			expect.any(Number),
-			expect.any(Function),
 			EMPTY_ASSISTANT_MENTION_COUNTS,
 			[],
 		]);
@@ -891,7 +920,6 @@ describe('InstanceAiInput', () => {
 				expect.any(Function),
 				{ kind: 'user_typed' },
 				expect.any(Number),
-				expect.any(Function),
 				EMPTY_ASSISTANT_MENTION_COUNTS,
 				[],
 			],
@@ -1063,121 +1091,6 @@ describe('InstanceAiInput', () => {
 		});
 	});
 
-	it('stays live for plan feedback while the run is suspended', async () => {
-		const { container, emitted, getByRole, getByTestId, queryByTestId } = renderComponent({
-			props: {
-				isAwaitingPlanReview: true,
-				isStreaming: true,
-				suggestions,
-			},
-		});
-
-		const textbox = getByRole('textbox');
-
-		expect(textbox).toHaveAttribute('placeholder', 'Ask for edits to the plan');
-		expect(queryByTestId('instance-ai-stop-button')).not.toBeInTheDocument();
-		expect(queryByTestId('chat-input-attach-button')).not.toBeInTheDocument();
-		expect(container.querySelector('input[type="file"]')).not.toBeInTheDocument();
-		expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
-
-		await userEvent.type(textbox, 'Make the first workflow simpler');
-		await userEvent.click(getByTestId('instance-ai-send-button'));
-
-		expect(emitted().submit).toEqual([
-			[
-				'Make the first workflow simpler',
-				undefined,
-				expect.any(Function),
-				{ kind: 'user_typed' },
-				expect.any(Number),
-				expect.any(Function),
-				EMPTY_ASSISTANT_MENTION_COUNTS,
-				[],
-			],
-		]);
-	});
-
-	// A suggestion draft survives into a plan review now that the transition no
-	// longer wipes the composer, and plan feedback is not a suggestion submission.
-	it('does not track an inserted suggestion as submitted when it is sent as plan feedback', async () => {
-		const { getByTestId, rerender } = renderComponent({
-			props: {
-				suggestions,
-				suggestionsComponent: CustomInsertSuggestionsComponent,
-				suggestionCatalogVersion: 'v2',
-				currentThreadId: '',
-			},
-		});
-
-		await userEvent.click(getByTestId('custom-suggestion-insert'));
-		telemetryTrack.mockClear();
-
-		await rerender(inputProps({ isAwaitingPlanReview: true, isStreaming: true }));
-		await userEvent.click(getByTestId('instance-ai-send-button'));
-
-		expect(telemetryTrack).not.toHaveBeenCalledWith(
-			'Instance AI prompt suggestion submitted',
-			expect.anything(),
-		);
-	});
-
-	it('submits plan feedback on Enter without any prior click', async () => {
-		const { emitted, getByRole } = renderComponent({
-			props: { isAwaitingPlanReview: true, isStreaming: true },
-		});
-
-		await userEvent.type(getByRole('textbox'), 'Drop the third workflow{Enter}');
-
-		expect(emitted().submit).toEqual([
-			[
-				'Drop the third workflow',
-				undefined,
-				expect.any(Function),
-				{ kind: 'user_typed' },
-				expect.any(Number),
-				expect.any(Function),
-				EMPTY_ASSISTANT_MENTION_COUNTS,
-				[],
-			],
-		]);
-	});
-
-	it('no longer renders the plan edit chip', () => {
-		const { queryByTestId } = renderComponent({
-			props: { isAwaitingPlanReview: true, isStreaming: true },
-		});
-
-		expect(queryByTestId('instance-ai-plan-edit-context')).not.toBeInTheDocument();
-		expect(queryByTestId('instance-ai-plan-edit-cancel')).not.toBeInTheDocument();
-	});
-
-	// There is no mode to enter now, so a draft typed before the plan card
-	// arrives has to survive the transition instead of being wiped.
-	it('keeps a draft typed before the plan review appeared', async () => {
-		const { getByRole, rerender } = renderComponent({
-			props: { isAwaitingPlanReview: false, isStreaming: true },
-		});
-
-		const textbox = getByRole('textbox');
-		await userEvent.type(textbox, 'Change the plan');
-		await rerender(inputProps({ isAwaitingPlanReview: true, isStreaming: true }));
-
-		expect(textbox).toHaveValue('Change the plan');
-	});
-
-	// Plan feedback is sent as a plain string, so an empty or whitespace-only
-	// draft must not resolve the plan review with nothing in it.
-	it('does not submit a whitespace-only draft as plan feedback', async () => {
-		const { emitted, getByRole, getByTestId } = renderComponent({
-			props: { isAwaitingPlanReview: true, isStreaming: true },
-		});
-
-		await userEvent.type(getByRole('textbox'), '   ');
-		await userEvent.click(getByTestId('instance-ai-send-button'));
-
-		expect(emitted().submit).toBeUndefined();
-	});
-
 	it('renders a dismissible handoff context chip inside the input', async () => {
 		const { emitted, getByRole, getByTestId } = renderComponent({
 			props: {
@@ -1202,22 +1115,6 @@ describe('InstanceAiInput', () => {
 		await userEvent.click(dismiss);
 
 		expect(emitted()['dismiss-context-chip']).toEqual([[]]);
-	});
-
-	it('still shows the handoff context chip while a plan review is pending', () => {
-		const { queryByTestId } = renderComponent({
-			props: {
-				isAwaitingPlanReview: true,
-				contextChip: {
-					type: 'agent-preview-session',
-					agentId: 'agent-1',
-					threadId: 'preview-thread-1',
-					label: 'SEO Auditor session',
-				},
-			},
-		});
-
-		expect(queryByTestId('instance-ai-handoff-context-chip')).toBeInTheDocument();
 	});
 
 	it('emits stop when the streaming stop button is clicked', async () => {
