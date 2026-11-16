@@ -202,8 +202,9 @@ Update them like snapshots:
 2. Look at the changed images with `git diff` or in your Git client.
 3. Commit them with your change.
 
-Arguments go to Vitest, so `pnpm --filter @n8n/storybook test:visual -u N8nButton` updates
-the images of one component. `-u` does not delete the images of a story that you rename or
+Arguments go to Vitest, so `pnpm --filter @n8n/storybook test:visual N8nButton -u` updates
+the images of one component. Put the file filter before `-u`, because `-u` reads the next
+word as its value. `-u` does not delete the images of a story that you rename or
 remove. Delete those yourself.
 
 CI runs on `linux/amd64`. On Apple silicon, Docker runs the `linux/arm64` image, and its
