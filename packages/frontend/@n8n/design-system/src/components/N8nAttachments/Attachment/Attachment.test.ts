@@ -106,7 +106,7 @@ describe('N8nAttachment', function describeComponent() {
 
 	it.each([
 		['photo.png', 'image/png', 'file'],
-		['clip.mp4', 'video/mp4', 'video'],
+		['clip.mp4', 'video/mp4', 'file'],
 		['document', 'application/pdf', 'pdf'],
 		['document.PDF', 'application/octet-stream', 'pdf'],
 		['notes', 'text/markdown; charset=utf-8', 'markdown'],
@@ -119,6 +119,15 @@ describe('N8nAttachment', function describeComponent() {
 		expect(screen.getByTitle(fileName).parentElement).toBe(screen.getByRole('figure'));
 		expect(screen.getByTitle(fileName).tagName).toBe('FIGCAPTION');
 		expect(screen.getByTitle(fileName)).toBeInTheDocument();
+	});
+
+	it('renders a video preview when the source is present', function testVideoPreview() {
+		render(N8nAttachment, {
+			props: { fileName: 'clip.mp4', mimeType: 'video/mp4', src: '/clip.mp4' },
+		});
+
+		expect(screen.getByRole('figure')).toHaveAttribute('data-type', 'video');
+		expect(screen.getByRole('figure').querySelector('video')).toHaveAttribute('src', '/clip.mp4');
 	});
 
 	it.each([

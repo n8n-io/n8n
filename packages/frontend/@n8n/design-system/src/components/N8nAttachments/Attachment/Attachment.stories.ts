@@ -30,6 +30,14 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+export const VideoWithoutPreview: Story = {
+	args: {
+		fileName: 'clip.mp4',
+		mimeType: 'video/mp4',
+		src: undefined,
+	},
+};
+
 export const WithFileLink: Story = {
 	args: {
 		href: 'https://picsum.photos/seed/attachment/1200/1200',

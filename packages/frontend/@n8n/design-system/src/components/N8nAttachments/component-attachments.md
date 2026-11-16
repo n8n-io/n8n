@@ -68,7 +68,7 @@ None.
 
 - Use a native button for removal. Keep it separate from the file link. Do not nest interactive controls.
 - Give the file link an accessible name that identifies the file and indicates that it opens in a new tab.
-- Keep the file link in the tab order. Support click, Enter, and Space activation. Space must not scroll the page or open more tabs when held.
+- Keep the file link in the tab order. Support click and Enter activation through the native link.
 - Give the remove button a translated accessible name that identifies the file.
 - Use `fileName` as image alternative text. Avoid duplicate announcements when the file name is also visible.
 - Preserve visible keyboard focus on controls.

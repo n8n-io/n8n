@@ -174,6 +174,12 @@ const fileType = computed(() => {
 const hasImagePreview = computed(
 	() => fileType.value === 'image' && !!props.src && !hasPreviewError.value,
 );
+const hasVideoPreview = computed(() => fileType.value === 'video' && !!props.src);
+const displayType = computed(() => {
+	if (fileType.value === 'image' && !hasImagePreview.value) return 'file';
+	if (fileType.value === 'video' && !hasVideoPreview.value) return 'file';
+	return fileType.value;
+});
 </script>
 
 <template>
@@ -195,7 +201,7 @@ const hasImagePreview = computed(
 			"
 			:class="['n8n-attachment', $style.attachment]"
 			:aria-hidden="isRemoving || undefined"
-			:data-type="fileType === 'image' && !hasImagePreview ? 'file' : fileType"
+			:data-type="displayType"
 			@keydown.backspace="onBackspace"
 		>
 			<img
@@ -208,7 +214,7 @@ const hasImagePreview = computed(
 				@error="onPreviewError"
 			/>
 			<video
-				v-else-if="fileType === 'video'"
+				v-else-if="hasVideoPreview"
 				:src="src"
 				:class="$style.coverPreview"
 				preload="metadata"
