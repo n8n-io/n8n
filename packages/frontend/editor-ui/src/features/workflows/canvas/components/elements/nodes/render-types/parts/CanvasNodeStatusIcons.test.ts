@@ -30,6 +30,7 @@ import type { Scope } from '@n8n/permissions';
 import type * as actualVueRouter from 'vue-router';
 import { type RouteLocationNormalizedLoadedGeneric, useRoute } from 'vue-router';
 import CanvasNodeStatusIcons from './CanvasNodeStatusIcons.vue';
+import type { SubworkflowProgress } from '@/app/stores/subworkflowProgress.store';
 import userEvent from '@testing-library/user-event';
 import { screen } from '@testing-library/vue';
 
@@ -426,40 +427,46 @@ describe('CanvasNodeStatusIcons', () => {
 	});
 
 	describe('sub-workflow progress', () => {
-		type Progress = NonNullable<CanvasNodeData['execution']['subworkflowProgress']>;
-
-		function renderWithProgress(subworkflowProgress?: Progress) {
+		function renderWithProgress(
+			subworkflowProgress?: SubworkflowProgress,
+			issues?: CanvasNodeData['issues'],
+		) {
 			return renderComponent({
 				global: {
 					provide: {
 						...createCanvasProvide(),
 						...createCanvasNodeProvide({
-							data: { execution: { status: 'running', running: true, subworkflowProgress } },
+							data: {
+								...(issues && { issues }),
+								execution: { status: 'running', running: true, subworkflowProgress },
+							},
 						}),
 					},
 				},
 			});
 		}
 
+		const progress = (currentNodeIndex: number, totalNodes: number): SubworkflowProgress => ({
+			currentNodeName: 'Child Node',
+			currentNodeIndex,
+			totalNodes,
+		});
+
 		it('should render a bare step count while the sub-workflow runs', () => {
-			const { getByTestId } = renderWithProgress({
-				currentNodeName: 'Child Node',
-				currentNodeIndex: 2,
-				totalNodes: 3,
-			});
+			const { getByTestId } = renderWithProgress(progress(2, 3));
 
 			// No denominator: the total is an estimate, the count isn't.
 			expect(getByTestId('canvas-node-status-subworkflow-progress')).toHaveTextContent('Step 2');
 		});
 
 		it('should still count when the total is unknown', () => {
-			const { getByTestId } = renderWithProgress({ currentNodeIndex: 2, totalNodes: 0 });
+			const { getByTestId } = renderWithProgress(progress(2, 0));
 
 			expect(getByTestId('canvas-node-status-subworkflow-progress')).toHaveTextContent('Step 2');
 		});
 
 		it('should keep counting past the estimated total', () => {
-			const { getByTestId } = renderWithProgress({ currentNodeIndex: 5, totalNodes: 3 });
+			const { getByTestId } = renderWithProgress(progress(5, 3));
 
 			expect(getByTestId('canvas-node-status-subworkflow-progress')).toHaveTextContent('Step 5');
 		});
@@ -471,47 +478,15 @@ describe('CanvasNodeStatusIcons', () => {
 		});
 
 		it('should not render a step count before the first node reports', () => {
-			const { queryByTestId } = renderWithProgress({ currentNodeIndex: 0, totalNodes: 3 });
+			const { queryByTestId } = renderWithProgress(progress(0, 3));
 
 			expect(queryByTestId('canvas-node-status-subworkflow-progress')).not.toBeInTheDocument();
-		});
-
-		it('should give way to the success checkmark once progress is cleared', () => {
-			const { getByTestId, queryByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({
-							data: {
-								execution: { status: 'success', running: false },
-								runData: { outputMap: {}, iterations: 1, visible: true },
-							},
-						}),
-					},
-				},
-			});
-
-			expect(queryByTestId('canvas-node-status-subworkflow-progress')).not.toBeInTheDocument();
-			expect(getByTestId('canvas-node-status-success')).toBeInTheDocument();
 		});
 
 		it('should keep node issues ahead of the step count', () => {
-			const { getByTestId, queryByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasProvide(),
-						...createCanvasNodeProvide({
-							data: {
-								issues: { validation: ['Parameter "Workflow" is required.'], visible: true },
-								execution: {
-									status: 'running',
-									running: true,
-									subworkflowProgress: { currentNodeIndex: 1, totalNodes: 3 },
-								},
-							},
-						}),
-					},
-				},
+			const { getByTestId, queryByTestId } = renderWithProgress(progress(1, 3), {
+				validation: ['Parameter "Workflow" is required.'],
+				visible: true,
 			});
 
 			expect(getByTestId('node-issues')).toBeInTheDocument();

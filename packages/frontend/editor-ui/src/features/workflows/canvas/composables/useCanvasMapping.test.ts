@@ -189,7 +189,10 @@ describe('useCanvasMapping — mapped nodes', () => {
 	});
 
 	it.each([
-		{ running: true, expected: { currentNodeIndex: 2, totalNodes: 5 } },
+		{
+			running: true,
+			expected: { currentNodeName: 'Child Node', currentNodeIndex: 2, totalNodes: 5 },
+		},
 		{ running: false, expected: undefined },
 	])(
 		'exposes sub-workflow progress only while the node runs (running=$running)',
@@ -202,7 +205,7 @@ describe('useCanvasMapping — mapped nodes', () => {
 			);
 			rd.subworkflowProgressByNodeId.set(
 				'a',
-				computed(() => ({ currentNodeIndex: 2, totalNodes: 5 })),
+				computed(() => ({ currentNodeName: 'Child Node', currentNodeIndex: 2, totalNodes: 5 })),
 			);
 
 			const { nodes } = useCanvasMapping({

@@ -59,19 +59,17 @@ describe('nodeExecuteBefore', () => {
 
 	it("clears the node's sub-workflow progress so a new run starts clean", async () => {
 		const progressStore = useSubworkflowProgressStore();
-		const progress = { executionId: 'child-1', currentNodeIndex: 3, totalNodes: 5 };
-		progressStore.updateProgress({
-			parentExecutionId: 'exec-1',
-			parentNodeName: 'Test Node',
-			currentNodeName: 'Last',
-			...progress,
-		});
-		progressStore.updateProgress({
-			parentExecutionId: 'exec-1',
-			parentNodeName: 'Other Node',
-			currentNodeName: 'Last',
-			...progress,
-		});
+		const recordProgress = (parentNodeName: string) =>
+			progressStore.updateProgress({
+				parentExecutionId: 'exec-1',
+				parentNodeName,
+				executionId: 'child-1',
+				currentNodeName: 'Last',
+				currentNodeIndex: 3,
+				totalNodes: 5,
+			});
+		recordProgress('Test Node');
+		recordProgress('Other Node');
 
 		await nodeExecuteBefore(makeEvent('exec-1'), options);
 

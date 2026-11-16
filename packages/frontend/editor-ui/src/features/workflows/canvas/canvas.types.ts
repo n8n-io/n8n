@@ -27,6 +27,7 @@ import type {
 	CanvasLayoutTarget,
 } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
+import type { SubworkflowProgress } from '@/app/stores/subworkflowProgress.store';
 import type { ExecutionOutputMap, ExecutionOutputMapData } from '@/app/types/executionData';
 
 export const enum CanvasConnectionMode {
@@ -149,11 +150,7 @@ export interface CanvasNodeData {
 		waiting?: string;
 		running: boolean;
 		waitingForNext?: boolean;
-		subworkflowProgress?: {
-			currentNodeName?: string;
-			currentNodeIndex: number;
-			totalNodes: number;
-		};
+		subworkflowProgress?: SubworkflowProgress;
 	};
 	runData: {
 		outputMap?: ExecutionOutputMap;

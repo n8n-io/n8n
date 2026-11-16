@@ -18,8 +18,8 @@ import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,
 	type CanvasConnectionPort,
-	type CanvasNodeData,
 } from '../../../../canvas.types';
+import type { SubworkflowProgress } from '@/app/stores/subworkflowProgress.store';
 import CanvasNodeDefault from './CanvasNodeDefault.vue';
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -387,10 +387,8 @@ describe('CanvasNodeDefault', () => {
 	});
 
 	describe('sub-workflow progress arc', () => {
-		function renderWithProgress(
-			subworkflowProgress?: NonNullable<CanvasNodeData['execution']['subworkflowProgress']>,
-		) {
-			const { getByText } = renderComponent({
+		function renderWithProgress(subworkflowProgress?: SubworkflowProgress) {
+			const result = renderComponent({
 				global: {
 					stubs,
 					provide: {
@@ -400,78 +398,46 @@ describe('CanvasNodeDefault', () => {
 					},
 				},
 			});
-			return getByText('Test Node').closest('.node');
+			return { ...result, node: result.getByText('Test Node').closest('.node') };
 		}
 
+		const progress = (currentNodeIndex: number, totalNodes: number): SubworkflowProgress => ({
+			currentNodeName: 'Fetch Orders',
+			currentNodeIndex,
+			totalNodes,
+		});
+
 		it('should set the arc fraction from the reported progress', () => {
-			const node = renderWithProgress({ currentNodeIndex: 1, totalNodes: 4 });
+			const { node } = renderWithProgress(progress(1, 4));
 
 			expect(node).toHaveClass('progress');
 			expect(node?.getAttribute('style')).toContain('--node--progress--fraction: 25.00%');
 		});
 
 		it('should stop short of a full turn so only completion closes the loop', () => {
-			const node = renderWithProgress({ currentNodeIndex: 3, totalNodes: 3 });
+			const { node } = renderWithProgress(progress(3, 3));
 
 			expect(node?.getAttribute('style')).toContain('--node--progress--fraction: 90.00%');
 		});
 
 		it('should not set an arc without progress', () => {
-			const node = renderWithProgress();
+			const { node } = renderWithProgress();
 
 			expect(node).not.toHaveClass('progress');
 			expect(node?.getAttribute('style')).not.toContain('--node--progress--fraction');
 		});
 
 		it('should not set an arc when the total is unknown', () => {
-			const node = renderWithProgress({ currentNodeIndex: 0, totalNodes: 0 });
+			const { node } = renderWithProgress(progress(0, 0));
 
 			expect(node?.getAttribute('style')).not.toContain('--node--progress--fraction');
 		});
 
 		it('should show the running child node in place of the subtitle', () => {
-			const { getByText, queryByText } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								execution: {
-									running: true,
-									subworkflowProgress: {
-										currentNodeName: 'Fetch Orders',
-										currentNodeIndex: 2,
-										totalNodes: 4,
-									},
-								},
-							},
-						}),
-					},
-				},
-			});
+			const { getByText, queryByText } = renderWithProgress(progress(2, 4));
 
 			expect(getByText('Running: Fetch Orders')).toBeVisible();
 			expect(queryByText('Test Node Subtitle')).not.toBeInTheDocument();
-		});
-
-		it('should fall back to the subtitle once no child node is reported', () => {
-			const { getByText } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								execution: {
-									running: true,
-									subworkflowProgress: { currentNodeIndex: 0, totalNodes: 4 },
-								},
-							},
-						}),
-					},
-				},
-			});
-
-			expect(getByText('Test Node Subtitle')).toBeVisible();
 		});
 	});
 

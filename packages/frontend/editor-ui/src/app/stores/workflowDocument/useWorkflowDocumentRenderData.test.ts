@@ -409,6 +409,15 @@ describe('useWorkflowDocumentRenderData — hasIssuesByNodeId precedence', () =>
 });
 
 describe('useWorkflowDocumentRenderData — subworkflowProgressByNodeId', () => {
+	const progressFor = (docId: string) => ({
+		parentExecutionId: `exec-${docId}`,
+		parentNodeName: 'Alpha',
+		executionId: 'child-1',
+		currentNodeName: 'Child Node',
+		currentNodeIndex: 2,
+		totalNodes: 5,
+	});
+
 	beforeEach(() => {
 		setActivePinia(createPinia());
 	});
@@ -435,14 +444,7 @@ describe('useWorkflowDocumentRenderData — subworkflowProgressByNodeId', () => 
 		setActiveExecution(docId, [alpha()], {});
 		const { renderData } = createRenderData(docId);
 
-		useSubworkflowProgressStore().updateProgress({
-			parentExecutionId: `exec-${docId}`,
-			parentNodeName: 'Alpha',
-			executionId: 'child-1',
-			currentNodeName: 'Child Node',
-			currentNodeIndex: 2,
-			totalNodes: 5,
-		});
+		useSubworkflowProgressStore().updateProgress(progressFor(docId));
 
 		expect(renderData.subworkflowProgressByNodeId.get('a')?.value).toEqual({
 			currentNodeName: 'Child Node',
@@ -457,14 +459,7 @@ describe('useWorkflowDocumentRenderData — subworkflowProgressByNodeId', () => 
 		const { renderData } = createRenderData(docId);
 		const store = useSubworkflowProgressStore();
 
-		const payload = {
-			parentExecutionId: `exec-${docId}`,
-			parentNodeName: 'Alpha',
-			executionId: 'child-1',
-			currentNodeName: 'Child Node',
-			currentNodeIndex: 2,
-			totalNodes: 5,
-		};
+		const payload = progressFor(docId);
 		store.updateProgress(payload);
 		const first = renderData.subworkflowProgressByNodeId.get('a')?.value;
 
