@@ -9,7 +9,7 @@ import {
 	buildDataTablesSessionGrantKey,
 } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../../types';
@@ -18,7 +18,10 @@ import {
 	buildApprovalRequest,
 	sessionGrantableActions,
 } from './change-data-tables.approval';
-import { FORMER_DATA_TABLES_TOOL_NAMES, normalizeLegacyInput } from './change-data-tables.legacy';
+import {
+	FORMER_DATA_TABLES_TOOL_NAMES,
+	convertFormerDataTableCall,
+} from './change-data-tables.legacy';
 import {
 	changeDataTablesInputSchema,
 	type ChangeDataTablesInput,
@@ -100,21 +103,13 @@ async function grantBatchActions(context: InstanceAiContext, plan: ChangePlan) {
 	}
 }
 
-/**
- * The runtime validates a resumed call against this schema before the handler
- * runs, so stored inputs of the former write tools are converted first. The
- * preprocess step does not change the JSON schema that the model sees.
- */
-const toolInputSchema = z.preprocess(
-	normalizeLegacyInput,
-	sanitizeInputSchema(changeDataTablesInputSchema),
-);
-
 export function createChangeDataTablesTool(context: InstanceAiContext) {
 	const tool = new Tool(CHANGE_DATA_TABLES_TOOL_NAME)
 		.description(DESCRIPTION)
-		.input(toolInputSchema)
-		.legacyNames(...DATA_TABLE_WRITE_TOOL_NAMES);
+		.input(sanitizeInputSchema(changeDataTablesInputSchema))
+		.legacyNames(...DATA_TABLE_WRITE_TOOL_NAMES)
+		// Old inputs are converted only on resume. A new call under an old name fails as unknown.
+		.legacyForResumeOnly(convertFormerDataTableCall);
 	for (const formerName of FORMER_DATA_TABLES_TOOL_NAMES) {
 		tool.legacyActions(formerName, ...DATA_TABLE_WRITE_TOOL_ACTIONS);
 	}

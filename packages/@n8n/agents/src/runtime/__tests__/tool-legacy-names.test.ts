@@ -200,4 +200,18 @@ describe('tool legacy names', () => {
 			expect(resolveToolForCall(both, 'delete_item', {})).toBe(batch);
 		});
 	});
+
+	it('stores a resume-only converter on the built tool', () => {
+		const convert = (_formerName: string, input: unknown) => input;
+		const tool = new Tool('current')
+			.description('current')
+			.input(z.object({}))
+			.legacyNames('old')
+			.legacyForResumeOnly(convert)
+			.handler(async () => await Promise.resolve({ ok: true }))
+			.build();
+
+		expect(tool.legacyResumeOnly?.convert).toBe(convert);
+		expect(makeTool('plain').legacyResumeOnly).toBeUndefined();
+	});
 });

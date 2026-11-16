@@ -1163,24 +1163,37 @@ describe('change_data_tables tool', () => {
 			);
 		}
 
-		/** Validate the stored input as the runtime does on resume, then run the handler. */
+		/**
+		 * Resume a stored call as the runtime does: convert the input of the former
+		 * name, validate it against the input schema, then run the handler.
+		 */
 		async function resumeStoredCall(
 			context: InstanceAiContext,
+			formerName: string,
 			input: unknown,
 			approved: boolean,
 			scope?: 'once' | 'session',
 		) {
 			const tool = createChangeDataTablesTool(context);
-			const parsed = parseToolInput(tool, input);
+			const convert = tool.legacyResumeOnly?.convert;
+			if (!convert) throw new Error('Expected the tool to convert stored calls');
+			const parsed = parseToolInput(tool, convert(formerName, input));
 			if (!parsed.success) return { success: false, error: parsed.error.message };
 			return await executeTool(tool, parsed.data, resumeCtx(approved, scope));
 		}
 
+		function expectNoWrites(context: InstanceAiContext) {
+			for (const method of WRITE_METHODS) {
+				expect(context.dataTableService[method]).not.toHaveBeenCalled();
+			}
+		}
+
 		it.each(storedCallCases)(
 			'runs an approved stored $action call with its stored arguments',
-			async ({ input, method, args }) => {
+			async ({ action, input, method, args }) => {
 				const context = tableContext();
-				const result = await resumeStoredCall(context, input, true);
+				const formerName = DATA_TABLE_TOOL_NAME_BY_ACTION[action];
+				const result = await resumeStoredCall(context, formerName, input, true);
 
 				expect(result).toMatchObject({ success: true });
 				expect(context.dataTableService[method]).toHaveBeenCalledWith(...args);
@@ -1192,61 +1205,137 @@ describe('change_data_tables tool', () => {
 
 		it.each(storedCallCases)(
 			'runs no change when the user denies a stored $action call',
-			async ({ input }) => {
+			async ({ action, input }) => {
 				const context = tableContext();
-				const result = await resumeStoredCall(context, input, false);
+				const formerName = DATA_TABLE_TOOL_NAME_BY_ACTION[action];
+				const result = await resumeStoredCall(context, formerName, input, false);
 
 				expect(result).toMatchObject({ success: false, denied: true });
-				for (const method of WRITE_METHODS) {
-					expect(context.dataTableService[method]).not.toHaveBeenCalled();
-				}
+				expectNoWrites(context);
 			},
 		);
 
-		it.each(storedCallCases)(
-			'runs a stored $action call of the former multi-action tool',
-			async ({ action, input, method, args }) => {
+		it.each(
+			storedCallCases.flatMap((call) =>
+				['data_tables', 'data-tables'].map((formerName) => ({ ...call, formerName })),
+			),
+		)(
+			'runs a stored $action call of the former multi-action tool $formerName',
+			async ({ action, formerName, input, method, args }) => {
 				const context = tableContext();
-				const result = await resumeStoredCall(context, { action, ...input }, true);
+				const result = await resumeStoredCall(context, formerName, { action, ...input }, true);
 
 				expect(result).toMatchObject({ success: true });
 				expect(context.dataTableService[method]).toHaveBeenCalledWith(...args);
 			},
 		);
 
+		it('runs a stored call whose input has a key the former tool ignored', async () => {
+			const context = tableContext();
+			const result = await resumeStoredCall(
+				context,
+				DATA_TABLE_TOOL_NAME_BY_ACTION['insert-rows'],
+				{ ...storedCalls['insert-rows'].input, note: 'extra' },
+				true,
+			);
+
+			expect(result).toMatchObject({ success: true });
+			expect(context.dataTableService.insertRows).toHaveBeenCalledWith(
+				...storedCalls['insert-rows'].args,
+			);
+		});
+
 		it.each([
-			{ name: 'a table delete with an unknown extra key', input: { dataTableId: 'dt-T', x: 1 } },
-			{ name: 'no known shape', input: { foo: 'bar' } },
-			{ name: 'an empty input', input: {} },
+			{
+				name: 'a stored input that misses a field of its tool',
+				formerName: DATA_TABLE_TOOL_NAME_BY_ACTION['rename-column'],
+				input: { dataTableId: 'dt-T', columnId: 'c-7' },
+			},
+			{
+				name: 'a stored input of another shape',
+				formerName: DATA_TABLE_TOOL_NAME_BY_ACTION['add-column'],
+				input: { foo: 'bar' },
+			},
 			{
 				name: 'a multi-action call whose fields belong to another action',
+				formerName: 'data_tables',
 				input: { action: 'add-column', dataTableId: 'dt-T' },
 			},
 			{
 				name: 'a multi-action call of a read action',
+				formerName: 'data_tables',
 				input: { action: 'query', dataTableId: 'dt-T' },
 			},
 			{
-				name: 'a multi-action call of an unknown action',
-				input: { action: 'drop', dataTableId: 'dt-T' },
+				name: 'a multi-action call without an action',
+				formerName: 'data-tables',
+				input: { dataTableId: 'dt-T' },
 			},
 			{
-				name: 'fields of two actions at once',
-				input: { dataTableId: 'dt-T', rows, filter },
+				name: 'a call under a name that no former write tool had',
+				formerName: 'query_data_table',
+				input: { dataTableId: 'dt-T' },
 			},
-		])('returns an error and runs nothing for $name', async ({ input }) => {
+		])('returns an error and runs nothing for $name', async ({ formerName, input }) => {
 			const context = tableContext();
-			const result = await resumeStoredCall(context, input, true);
+			const result = await resumeStoredCall(context, formerName, input, true);
 
 			expect(result).toMatchObject({ success: false });
-			for (const method of WRITE_METHODS) {
-				expect(context.dataTableService[method]).not.toHaveBeenCalled();
+			expectNoWrites(context);
+		});
+
+		it('rejects an old input shape in a new call of the batch tool', async () => {
+			const context = tableContext();
+			const tool = createChangeDataTablesTool(context);
+
+			for (const { input } of storedCallCases) {
+				expect(parseToolInput(tool, input).success).toBe(false);
+				expect(parseToolInput(tool, { action: 'delete', ...input }).success).toBe(false);
 			}
+			expectNoWrites(context);
+		});
+
+		it('passes a stored project ID to the change', async () => {
+			const context = tableContext();
+			const result = await resumeStoredCall(
+				context,
+				DATA_TABLE_TOOL_NAME_BY_ACTION.create,
+				{ name: 'A', projectId: 'proj-stored', columns: [{ name: 'email', type: 'string' }] },
+				true,
+			);
+
+			expect(result).toMatchObject({ success: true });
+			expect(context.dataTableService.create).toHaveBeenCalledWith(
+				'A',
+				[{ name: 'email', type: 'string' }],
+				{ projectId: 'proj-stored' },
+			);
+		});
+
+		it('passes a stored project ID to the table lookup', async () => {
+			const context = tableContext();
+			await resumeStoredCall(
+				context,
+				DATA_TABLE_TOOL_NAME_BY_ACTION['insert-rows'],
+				{ dataTableId: 'T', projectId: 'proj-stored', rows },
+				true,
+			);
+
+			expect(context.dataTableService.resolveTableReference).toHaveBeenCalledWith(
+				'T',
+				expect.objectContaining({ projectId: 'proj-stored' }),
+			);
 		});
 
 		it('grants a non-destructive action for the session on a stored call', async () => {
 			const context = tableContext();
-			await resumeStoredCall(context, storedCalls['insert-rows'].input, true, 'session');
+			await resumeStoredCall(
+				context,
+				DATA_TABLE_TOOL_NAME_BY_ACTION['insert-rows'],
+				storedCalls['insert-rows'].input,
+				true,
+				'session',
+			);
 
 			expect(context.grantSessionToolApproval).toHaveBeenCalledWith(
 				buildDataTablesSessionGrantKey('insert-rows'),
@@ -1255,7 +1344,13 @@ describe('change_data_tables tool', () => {
 
 		it('grants nothing for the session on a stored destructive call', async () => {
 			const context = tableContext();
-			await resumeStoredCall(context, storedCalls.delete.input, true, 'session');
+			await resumeStoredCall(
+				context,
+				DATA_TABLE_TOOL_NAME_BY_ACTION.delete,
+				storedCalls.delete.input,
+				true,
+				'session',
+			);
 
 			expect(context.grantSessionToolApproval).not.toHaveBeenCalled();
 		});

@@ -140,6 +140,9 @@ export interface ToolCancellationContext extends ToolContext {
 	resumeSchema?: ToolSuspendOptions['resumeSchema'];
 }
 
+/** Turns the stored input of a call under a former tool name into the current tool's input. */
+export type LegacyCallConverter = (formerName: string, input: unknown) => unknown;
+
 export interface BuiltTool {
 	readonly name: string;
 	/**
@@ -155,6 +158,12 @@ export interface BuiltTool {
 	 * tool that now owns its action. Never exposed to the model.
 	 */
 	readonly legacyActions?: Readonly<Record<string, readonly string[]>>;
+	/**
+	 * Former names and former actions resolve only for a suspended call that
+	 * resumes, and `convert` turns its stored input into this tool's input. A
+	 * new model call under a former name fails as an unknown tool.
+	 */
+	readonly legacyResumeOnly?: { readonly convert: LegacyCallConverter };
 	readonly description: string;
 	/**
 	 * Behavioural directive paired with the tool, injected into the agent's

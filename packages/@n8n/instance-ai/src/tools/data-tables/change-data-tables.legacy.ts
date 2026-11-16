@@ -1,11 +1,12 @@
 /**
  * Stored calls of the former data table write tools resume in the batch tool.
  * Suspended approval cards can outlive a deploy, so turn their old input into
- * a batch with one change.
+ * a batch with one change. The runtime calls this only on resume.
  */
 import {
 	DATA_TABLE_WRITE_TOOL_ACTIONS,
 	SPLIT_BUILDER_TOOLS,
+	getDataTableCallAction,
 	isFormerDataTablesTool,
 	type DataTableWriteToolAction,
 } from '@n8n/api-types';
@@ -23,25 +24,6 @@ export const FORMER_DATA_TABLES_TOOL_NAMES =
 
 function isWriteAction(action: unknown): action is DataTableWriteToolAction {
 	return DATA_TABLE_WRITE_TOOL_ACTIONS.some((known) => known === action);
-}
-
-/**
- * The actions whose old shape the input can have. A call of the former
- * multi-action tool names its action, so only that shape counts. Otherwise
- * a call with missing fields could match a smaller shape, such as a table delete.
- */
-function candidateActions(input: Record<string, unknown>): readonly DataTableWriteToolAction[] {
-	if (input.action === undefined) return DATA_TABLE_WRITE_TOOL_ACTIONS;
-	return isWriteAction(input.action) ? [input.action] : [];
-}
-
-/** Parse against every candidate shape. Extra keys fail, so at most one shape fits a valid call. */
-function parseLegacyInput(input: Record<string, unknown>): LegacyWriteInput | undefined {
-	const matches = candidateActions(input).flatMap((action) => {
-		const parsed = WRITE_ACTION_SCHEMAS[action].strict().safeParse({ ...input, action });
-		return parsed.success ? [parsed.data] : [];
-	});
-	return matches.length === 1 ? matches[0] : undefined;
 }
 
 function toChange(input: LegacyWriteInput): DataTableChange {
@@ -83,14 +65,18 @@ function toChange(input: LegacyWriteInput): DataTableChange {
 
 /**
  * Turns the stored input of a former write tool into a batch with one change.
- * Returns any other input unchanged, so batch validation rejects what fits no
- * old shape or more than one.
+ * The former name picks the action: a per-action tool by its name, the former
+ * multi-action tool by `action`. The old shape is parsed like the old tool
+ * parsed it, so unknown keys are dropped. Any other input returns unchanged,
+ * so batch validation rejects it.
  */
-export function normalizeLegacyInput(input: unknown): unknown {
+export function convertFormerDataTableCall(formerName: string, input: unknown): unknown {
 	if (!isRecord(input)) return input;
-	const legacy = parseLegacyInput(input);
-	if (!legacy) return input;
-	const batch: ChangeDataTablesInput = { changes: [toChange(legacy)] };
-	if (legacy.projectId !== undefined) batch.projectId = legacy.projectId;
+	const action = getDataTableCallAction(formerName, input.action);
+	if (!isWriteAction(action)) return input;
+	const parsed = WRITE_ACTION_SCHEMAS[action].safeParse({ ...input, action });
+	if (!parsed.success) return input;
+	const batch: ChangeDataTablesInput = { changes: [toChange(parsed.data)] };
+	if (parsed.data.projectId !== undefined) batch.projectId = parsed.data.projectId;
 	return batch;
 }
