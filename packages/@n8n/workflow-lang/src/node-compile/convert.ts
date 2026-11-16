@@ -30,6 +30,9 @@ function hashOf(text: string): string {
 	return h.toString(16).padStart(8, '0');
 }
 
+/** The most module texts whose check result is kept. */
+const MAX_ACCEPTED = 4096;
+
 /** Results of the subset compiler by module text: the same node instance compiles once. */
 const accepted = new Map<string, string[]>();
 
@@ -52,6 +55,8 @@ export default workflow({
 	} catch (error) {
 		errors = [error instanceof Error ? error.message : String(error)];
 	}
+	// The table has a limit: at the limit it starts again, and a module is checked once more.
+	if (accepted.size >= MAX_ACCEPTED) accepted.clear();
 	accepted.set(source, errors);
 	return errors;
 }
