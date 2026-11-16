@@ -1,3 +1,19 @@
+## [2.48.5](https://github.com/n8n-io/n8n/compare/n8n@2.48.4...n8n@2.48.5) (2026-11-16)
+
+
+### Bug Fixes
+
+* **AI Agent Node:** Stop adding newlines between streamed text chunks ([#43822](https://github.com/n8n-io/n8n/issues/43822)) ([19d9fa4](https://github.com/n8n-io/n8n/commit/19d9fa416ace21d287284b78dcbb9d55d79b1743))
+* **core:** Hand dollar property reads to the expression engine ([#43809](https://github.com/n8n-io/n8n/issues/43809)) ([6fb7219](https://github.com/n8n-io/n8n/commit/6fb721973b19e4dd18a66ae97cc317a2c53adf36))
+* **Microsoft Teams Trigger Node:** Emit every change notification of a batched request ([#43857](https://github.com/n8n-io/n8n/issues/43857)) ([e6745a6](https://github.com/n8n-io/n8n/commit/e6745a661e880d4a64e52e4634f84574beeda95d))
+* **Qdrant Vector Store Node:** Preserve reverse-proxy subpath as Qdrant client prefix ([#43922](https://github.com/n8n-io/n8n/issues/43922)) ([665667d](https://github.com/n8n-io/n8n/commit/665667d3345b0c4a0ba991e81ac27f8ae74bb9e5))
+
+
+### Features
+
+* **API:** Send an audit event when a Public API rate limit changes ([#43825](https://github.com/n8n-io/n8n/issues/43825)) ([16724f8](https://github.com/n8n-io/n8n/commit/16724f8fd4609246a5600b8df0e5b6b6cb247d82))
+
+
 ## [2.48.4](https://github.com/n8n-io/n8n/compare/n8n@2.48.3...n8n@2.48.4) (2026-11-13)
 
 
