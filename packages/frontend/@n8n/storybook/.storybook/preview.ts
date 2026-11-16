@@ -40,9 +40,6 @@ function hasAppliedTheme(): boolean {
 	return current === 'light' || current === 'dark';
 }
 
-/**
- * The app provides the real feature list. Storybook only needs the ids its stories render.
- */
 const featureMaturityStub: FeatureMaturityCatalog = {
 	agents: {
 		preview: true,
@@ -55,31 +52,6 @@ const featureMaturityStub: FeatureMaturityCatalog = {
 		preview: false,
 		limitedEnterpriseSupport: true,
 		docsUrl: 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant',
-	},
-	instance: {
-		preview: false,
-		limitedEnterpriseSupport: false,
-		docsUrl: 'https://docs.n8n.io',
-	},
-	api: {
-		preview: false,
-		limitedEnterpriseSupport: false,
-		docsUrl: 'https://docs.n8n.io/api/',
-	},
-	userManagement: {
-		preview: false,
-		limitedEnterpriseSupport: false,
-		docsUrl: 'https://docs.n8n.io/user-management/',
-	},
-	hosting: {
-		preview: false,
-		limitedEnterpriseSupport: false,
-		docsUrl: 'https://docs.n8n.io/hosting/configuration/',
-	},
-	mcp: {
-		preview: false,
-		limitedEnterpriseSupport: false,
-		docsUrl: 'https://docs.n8n.io/connect/connect-to-n8n-mcp-server',
 	},
 };
 

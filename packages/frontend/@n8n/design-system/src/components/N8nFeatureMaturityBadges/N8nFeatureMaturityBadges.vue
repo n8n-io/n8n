@@ -11,21 +11,12 @@ defineOptions({ name: 'N8nFeatureMaturityBadges' });
 
 const props = withDefaults(
 	defineProps<{
-		/**
-		 * Feature id from the list the app provides.
-		 * The entry decides which badges render.
-		 * An id that is missing from the list renders nothing and warns in development.
-		 * Omit it to draw only the Preview badge. That badge has no test id.
-		 *
-		 * The id sets the badge test ids. A camelCase id becomes kebab-case.
-		 * `agents` renders `agents-preview-badge` and `agents-enterprise-readiness-badge`.
-		 * `endUserCredentials` renders `end-user-credentials-preview-badge`.
-		 * The enterprise badge uses the same prefix and `-enterprise-readiness-badge`.
-		 */
 		feature?: string;
 		/** Hide the Preview badge at this callsite. */
+		/** @default false */
 		hidePreview?: boolean;
 		/** Hide the Limited enterprise readiness badge at this callsite. */
+		/** @default false */
 		hideEnterprise?: boolean;
 	}>(),
 	{
@@ -39,7 +30,6 @@ const { t } = useI18n();
 const catalog = useFeatureMaturityCatalog();
 
 const resolved = computed(() => {
-	// A callsite with no feature id draws the Preview badge on its own.
 	if (props.feature === undefined) {
 		return {
 			showPreview: !props.hidePreview,

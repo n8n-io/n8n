@@ -1,16 +1,3 @@
-/**
- * Which features show Preview and Limited enterprise readiness.
- * The app provides this list to `N8nFeatureMaturityBadges`.
- * Pass an id from this list to `N8nFeatureMaturityBadges` or `N8nSettingsPageHeader`.
- * `docsUrl` is the documentation page. The settings header reads that URL.
- * A page does not pass the URL.
- * Limited enterprise readiness shows only on the Enterprise plan.
- * The app filters this list before it provides the badges.
- *
- * An entry can name a documentation page and show no badges.
- * Some entries have no settings title yet: OAuth JWE, token exchange, node policies,
- * and the Microsoft Agent 365 trigger. Pass the id when that title exists.
- */
 export const featureMaturity = {
 	endUserCredentials: { preview: true, limitedEnterpriseSupport: false },
 	assistant: {
@@ -71,5 +58,3 @@ export const featureMaturity = {
 	string,
 	{ preview: boolean; limitedEnterpriseSupport: boolean; docsUrl?: string }
 >;
-
-export type FeatureMaturityId = keyof typeof featureMaturity;
