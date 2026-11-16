@@ -6368,6 +6368,26 @@ describe('generate-types', () => {
 					cleanupTestDir(nodeName);
 				}
 			});
+
+			it('still types the parameter variants when a layout variant is next to them', () => {
+				try {
+					createTestSchemaDir(nodeName, 'v1.0.0', {
+						...files,
+						'output.with-parser.json': JSON.stringify({
+							type: 'object',
+							properties: { parsed: { type: 'object' } },
+						}),
+					});
+
+					const content = generateTypes.generateSingleVersionTypeFile(triggerNode, 1);
+
+					expect(content).toMatch(/export type \w+SimpleFalseOutput = \{/);
+					expect(content).toContain('& { simple: false }');
+					expect(content).not.toContain('parsed?:');
+				} finally {
+					cleanupTestDir(nodeName);
+				}
+			});
 		});
 
 		it('prefers output.json over a sibling action file in a shared schema folder', () => {

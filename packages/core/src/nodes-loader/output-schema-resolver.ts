@@ -30,11 +30,18 @@ export interface OutputSchemaRef {
 	variant?: string;
 	/**
 	 * Node parameters that pick a shape variant. A file `<operation>.<param>-<value>.json`
-	 * is used when the parameter (or, if absent, its default) equals `<value>`.
-	 * Only meaningful for refs with an operation, and only with `versionFallback`.
+	 * is used when the parameter (or, if absent, its default) equals `<value>`. A ref
+	 * without resource and operation uses `output.<param>-<value>.json`. A dotted
+	 * `<param>` is a path into a collection (`options.simplifyOutput`).
+	 * Only meaningful with `versionFallback`.
 	 */
 	parameters?: Record<string, unknown>;
-	/** Defaults for parameters missing from `parameters`, read from the node description. */
+	/**
+	 * Defaults for parameters missing from `parameters`, read from the node description.
+	 * They hold top-level properties only, so a dotted parameter has no default: when
+	 * the collection does not set it, the plain file applies. The plain file must
+	 * therefore describe the shape for the option's default value.
+	 */
 	parameterDefaults?: Record<string, unknown>;
 }
 

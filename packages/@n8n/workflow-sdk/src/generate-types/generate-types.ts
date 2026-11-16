@@ -2563,16 +2563,17 @@ function parseParameterVariant(variant: string): { param: string; value: string 
 /**
  * Turn the variant schemas of an operation into one `ParameterVariants`, or
  * undefined when they cannot be typed: no plain schema, several parameters,
- * a parameter the node does not have, or no default to attach the plain schema to.
+ * or no default to attach the plain schema to. A variant whose name does not
+ * name a node parameter, such as the `with-parser` layout of `output.json`,
+ * is not a parameter variant and is left out first.
  */
 function resolveParameterVariants(
 	props: NodeProperty[],
 	variantSchemas: OutputSchema[],
 ): ParameterVariants | undefined {
-	const parsed = variantSchemas.map((s) => ({
-		...parseParameterVariant(s.variant ?? ''),
-		schema: s.schema,
-	}));
+	const parsed = variantSchemas
+		.map((s) => ({ ...parseParameterVariant(s.variant ?? ''), schema: s.schema }))
+		.filter((entry) => entry.param !== undefined && findPropertyAtPath(props, entry.param));
 	const param = parsed[0]?.param;
 	if (!param || parsed.some((entry) => entry.param !== param || entry.value === undefined)) {
 		return undefined;
