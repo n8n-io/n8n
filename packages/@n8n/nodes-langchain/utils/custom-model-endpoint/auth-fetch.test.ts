@@ -46,7 +46,7 @@ function authFetchFor(
 	} = {},
 ) {
 	const { calls, fetchImpl } = recordingFetch(overrides.responses);
-	const { fetch: authFetch } = createCustomModelEndpointAuthFetch(ctx, overrides.credential ?? {}, {
+	const authFetch = createCustomModelEndpointAuthFetch(ctx, overrides.credential ?? {}, {
 		endpoint,
 		egressFilter: overrides.egressFilter ?? allowAll,
 		baseFetch: fetchImpl,
@@ -213,7 +213,7 @@ describe('createCustomModelEndpointAuthFetch', () => {
 
 		it('sends the token it fetched from the login server', async () => {
 			const { calls, fetchImpl } = routedFetch([200]);
-			const { fetch: authFetch } = createCustomModelEndpointAuthFetch(
+			const authFetch = createCustomModelEndpointAuthFetch(
 				ctx,
 				{},
 				{
@@ -230,7 +230,7 @@ describe('createCustomModelEndpointAuthFetch', () => {
 
 		it('fetches a new token once when the gateway rejects the old one', async () => {
 			const { calls, fetchImpl } = routedFetch([401, 200]);
-			const { fetch: authFetch } = createCustomModelEndpointAuthFetch(
+			const authFetch = createCustomModelEndpointAuthFetch(
 				ctx,
 				{},
 				{
@@ -251,7 +251,7 @@ describe('createCustomModelEndpointAuthFetch', () => {
 
 		it('still carries the gateway headers on the retry after a refresh', async () => {
 			const { calls, fetchImpl } = routedFetch([401, 200]);
-			const { fetch: authFetch } = createCustomModelEndpointAuthFetch(
+			const authFetch = createCustomModelEndpointAuthFetch(
 				ctx,
 				{},
 				{
@@ -277,7 +277,7 @@ describe('createCustomModelEndpointAuthFetch', () => {
 
 		it('gives up after the second rejection rather than looping', async () => {
 			const { calls, fetchImpl } = routedFetch([401, 401]);
-			const { fetch: authFetch } = createCustomModelEndpointAuthFetch(
+			const authFetch = createCustomModelEndpointAuthFetch(
 				ctx,
 				{},
 				{
@@ -295,7 +295,7 @@ describe('createCustomModelEndpointAuthFetch', () => {
 
 		it('fails before reaching the gateway when the login server is not an allowed domain', async () => {
 			const { calls, fetchImpl } = routedFetch([200]);
-			const { fetch: authFetch } = createCustomModelEndpointAuthFetch(
+			const authFetch = createCustomModelEndpointAuthFetch(
 				ctx,
 				restrictedTo('gateway.example.com'),
 				{
