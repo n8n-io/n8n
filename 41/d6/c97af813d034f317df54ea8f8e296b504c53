@@ -1,0 +1,46 @@
+packages/cli/src/__tests__/controller.registry.test.ts
+  h_8fb27e0cdf6d1e 148-165
+packages/cli/src/chat/__tests__/chat-server.test.ts
+  h_8fb27e0cdf6d1e 1,25,34-35,37,91-118
+packages/cli/src/chat/chat-server.ts
+  h_8fb27e0cdf6d1e 1,22-25,28-29,34,41
+packages/cli/src/controller.registry.ts
+  h_8fb27e0cdf6d1e 58-64
+packages/cli/src/middlewares/__tests__/well-known-base-path.test.ts
+  h_8fb27e0cdf6d1e 1-41
+packages/cli/src/middlewares/well-known-base-path.ts
+  h_8fb27e0cdf6d1e 1-19
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  h_8fb27e0cdf6d1e 63,718-772
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.test.ts
+  h_8fb27e0cdf6d1e 88-117
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  h_8fb27e0cdf6d1e 492-493
+packages/cli/src/modules/oauth-server/oauth.controller.ts
+  h_8fb27e0cdf6d1e 278-281,288,290-300
+packages/cli/src/modules/sso-oidc/__tests__/oidc.controller.ee.test.ts
+  h_8fb27e0cdf6d1e 106,127,148,177,206-228,254,430,460
+packages/cli/src/modules/sso-oidc/oidc.controller.ee.ts
+  h_8fb27e0cdf6d1e 194-196
+packages/cli/src/server.ts
+  h_8fb27e0cdf6d1e 29,258-270,298-299,502
+packages/frontend/@n8n/chat/src/__tests__/utils/utils.spec.ts
+  h_8fb27e0cdf6d1e 2-6,9-34
+packages/frontend/@n8n/chat/src/utils/utils.ts
+  h_8fb27e0cdf6d1e 40-44
+packages/quality/environments/containers/services/load-balancer.ts
+  h_8fb27e0cdf6d1e 18,151
+packages/quality/environments/containers/stack.ts
+  h_8fb27e0cdf6d1e 11,373-374,446
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "41d6c97af813d034f317df54ea8f8e296b504c53",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

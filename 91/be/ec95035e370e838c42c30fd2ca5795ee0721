@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/N8n/test/GenericFunctions.test.ts
+  s_b1ad9d5b324814::t_4c0d8c90156380 8
+packages/@n8n/telemetry/src/schemas.ts
+  s_b1ad9d5b324814::t_9eb812cc043e98 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91beec95035e370e838c42c30fd2ca5795ee0721",
+  "prompts": {},
+  "sessions": {
+    "s_b1ad9d5b324814": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6dc94c4f-db05-4a13-aafe-751261dfedbf",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/agents/components/skillVersions/skillVersionDiff.ts
+  s_b46fafce860919::t_a647e2bf4a8ff0 4
+packages/cli/src/modules/skills/__tests__/integration/skill-source-check.integration.test.ts
+  s_b46fafce860919::t_b7a2e25d263147 256-282,307,314,331-332,336-337,341-345,356-359
+packages/@n8n/utils/src/__tests__/diff-text.test.ts
+  s_b46fafce860919::t_b78c46cdcc6dae 22-32
+packages/cli/src/modules/skills/services/skill-sync.service.ts
+  s_b46fafce860919::t_b78c46cdcc6dae 375
+packages/cli/src/modules/skills/AGENTS.md
+  s_b46fafce860919::t_4fe2414429389f 90
+packages/@n8n/telemetry/src/events/context.ts
+  s_b46fafce860919::t_249f5aece94cd3 573
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceUpdatesDialog.vue
+  s_b46fafce860919::t_b78c46cdcc6dae 6,101-103,121,219,221
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceUpdatesDialog.test.ts
+  s_b46fafce860919::t_b78c46cdcc6dae 149,151-154
+packages/frontend/editor-ui/src/features/agents/components/skillVersions/skillVersionDiff.test.ts
+  s_b46fafce860919::t_4fe2414429389f 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e6a85b5af4cb3e276ddaa92a83393835806bd65c",
+  "prompts": {},
+  "sessions": {
+    "s_b46fafce860919": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c01f-899b-7ed0-beb0-f0a848e364ae",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
