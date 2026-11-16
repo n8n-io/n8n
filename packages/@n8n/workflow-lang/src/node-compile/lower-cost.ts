@@ -383,7 +383,7 @@ function requestForm(name: string, has: (key: RequestKey) => boolean, flags: Req
 	});
 	if (response.status >= 400) {
 		const failure = new Error('Request failed with status code ' + response.status);
-		failure.response = { status: response.status, data: response.body };
+		failure.response = { status: response.status, data: response.body, headers: response.headers };
 		failure.statusCode = response.status;
 		throw ${flags.wrapped === 'true' ? '__apiError(failure, undefined)' : 'failure'};
 	}
@@ -396,6 +396,14 @@ interface RequestFlags {
 	legacy: boolean;
 	headersAreObjects: boolean;
 }
+
+const GENERAL_REQUEST_KEYS = [
+	'encoding',
+	'resolveWithFullResponse',
+	'returnFullResponse',
+	'simple',
+	'ignoreHttpStatusErrors',
+];
 
 function lowerRequests(sf: ts.SourceFile): string | undefined {
 	const changes = new Map<ts.Node, Replacement>();
@@ -424,7 +432,7 @@ function lowerRequests(sf: ts.SourceFile): string | undefined {
 			: ts.isObjectLiteralExpression(options)
 				? literalShape(options)
 				: undefined;
-		if (!shape || shape.maybe.has('encoding')) return;
+		if (!shape || GENERAL_REQUEST_KEYS.some((key) => shape.maybe.has(key))) return;
 		const has = (key: RequestKey) => shape.maybe.has(key);
 		if (REQUEST_KEYS.every(has) && !shape.headersAreObjects) return;
 		const flags = {

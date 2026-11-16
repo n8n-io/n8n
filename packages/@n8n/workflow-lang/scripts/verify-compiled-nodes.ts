@@ -283,6 +283,7 @@ function fakeCredential(type: string): Json {
 			access_token: 'fake-token',
 			instance_url: 'https://instance.example.test',
 			api_domain: 'https://api.example.test',
+			...(type === 'quickBooksOAuth2Api' ? { callbackQueryString: { realmId: 'fake-realm' } } : {}),
 		};
 	}
 	return data;

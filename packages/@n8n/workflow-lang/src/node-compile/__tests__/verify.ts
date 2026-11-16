@@ -386,6 +386,8 @@ async function recordWithMints(
 	return 'the token requests of v1 do not settle';
 }
 
+const V1_REQUEST_LIMIT = 'the node sent more than';
+
 export type ErrorPairing = 'item' | 'position';
 
 const MAX_ANSWERS = 64;
@@ -622,6 +624,7 @@ export async function differenceFromV1(
 		compiled.mints.length > 0 ? await recordWithMints(asked, compiled.mints, record) : undefined;
 	if (typeof minted === 'string') return minted;
 	const v1 = minted?.v1 ?? (await record(asked));
+	if (v1.error?.includes(V1_REQUEST_LIMIT)) return `v1 has no result: ${v1.error.slice(0, 90)}`;
 	const source = continues
 		? continueWorkflow(compiled.type, c, credentialType, options.pairing ?? 'item')
 		: plainSource;
@@ -695,12 +698,13 @@ export async function differenceFromV1(
 			),
 		);
 		const type = request.headers['content-type'] ?? '';
-		if (type.startsWith('application/x-www-form-urlencoded') && typeof request.body === 'string') {
+		const text = request.body ?? '';
+		if (type.startsWith('application/x-www-form-urlencoded') && typeof text === 'string') {
 			const { 'content-type': _type, ...headers } = request.headers;
 			return {
 				...request,
 				headers,
-				body: { $form: Object.fromEntries(new URLSearchParams(request.body)) },
+				body: { $form: Object.fromEntries(new URLSearchParams(text)) },
 			};
 		}
 		return request;
@@ -708,7 +712,10 @@ export async function differenceFromV1(
 	const others = compiled.randoms.length > 0 ? await Promise.all(OTHER_SEEDS.map(runWith)) : [];
 	const sent = minted ? v1.requests.filter((_request, k) => !minted.exchanges.has(k)) : v1.requests;
 	const sentPlain = sent.map(({ qsFormat: _, ...r }) => {
-		const form = isRecord(r.body) ? r.body.$form : undefined;
+		const emptyForm =
+			r.body === undefined &&
+			(r.headers['content-type'] ?? '').startsWith('application/x-www-form-urlencoded');
+		const form = emptyForm ? {} : isRecord(r.body) ? r.body.$form : undefined;
 		if (!isRecord(form)) return r;
 		const text: Record<string, string> = {};
 		for (const [key, value] of Object.entries(form)) {
