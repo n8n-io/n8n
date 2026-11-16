@@ -66,7 +66,12 @@ export class AgentProjectCleanupService {
 
 			await agentKnowledgeService.destroyKnowledgeSandbox(projectId, agent.id);
 			await agentTestChatService.clearAllTestChatMessages(agent.id);
-			await this.agentServiceAccount.deleteForAgent(agent, deletion.actor, deletion.transferId);
+			await this.agentServiceAccount.deleteForAgent(
+				agent,
+				deletion.actor,
+				deletion.transferId,
+				deletion.ctx,
+			);
 		}
 		await agentExecutionService.deleteExecutionLogsForProject(projectId);
 		await agentExecutionService.deleteMemoryThreadsForProject(projectId);

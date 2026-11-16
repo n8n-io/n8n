@@ -12,6 +12,8 @@ export interface UserDeletionContext {
 	actor: UserDeletionActor;
 	/** The project that takes the work of the deleted user, if there is one. */
 	transferId?: string;
+	/** The context of the request that deleted the user, for audit events. */
+	ctx?: OperationContext;
 }
 
 /**

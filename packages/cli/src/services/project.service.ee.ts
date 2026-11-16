@@ -272,6 +272,7 @@ export class ProjectService {
 			await (await this.agentProjectCleanupService).cleanupProject(project.id, {
 				actor: user,
 				transferId: targetProject?.id,
+				ctx,
 			});
 		}
 

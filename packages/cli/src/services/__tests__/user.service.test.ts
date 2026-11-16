@@ -1219,7 +1219,7 @@ describe('UserService', () => {
 
 				expect(
 					ownershipTransferService.deleteUserOwnedModuleResources,
-				).toHaveBeenCalledExactlyOnceWith([userToDelete.id], { actor, transferId });
+				).toHaveBeenCalledExactlyOnceWith([userToDelete.id], { actor, transferId, ctx: {} });
 				expect(
 					ownershipTransferService.deleteUserOwnedModuleResources.mock.invocationCallOrder[0],
 				).toBeLessThan(transactions.run.mock.invocationCallOrder[0]);
@@ -1265,6 +1265,17 @@ describe('UserService', () => {
 			);
 		});
 
+		it('passes the operation context to the module cleanup of the user', async () => {
+			const ctx = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
+
+			await userService.deleteUser(actor, userToDelete.id, undefined, false, ctx);
+
+			expect(ownershipTransferService.deleteUserOwnedModuleResources).toHaveBeenCalledWith(
+				[userToDelete.id],
+				expect.objectContaining({ ctx }),
+			);
+		});
+
 		it('emits no login id on user-deleted without an operation context', async () => {
 			await userService.deleteUser(actor, userToDelete.id);
 
@@ -1307,7 +1318,9 @@ describe('UserService', () => {
 			it('deletes the service account of an agent that is being deleted', async () => {
 				serviceAccountUsage.findAgent.mockResolvedValue({ id: 'agent-1', name: 'Support' });
 
-				await userService.deleteServiceAccount(actor, serviceAccount.id, transfereeProject.id);
+				await userService.deleteServiceAccount(actor, serviceAccount.id, transfereeProject.id, {
+					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+				});
 
 				expect(serviceAccountUsage.findAgent).not.toHaveBeenCalled();
 				expect(ownershipTransferService.transferAllResources).toHaveBeenCalledWith(
@@ -1321,7 +1334,11 @@ describe('UserService', () => {
 				);
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'user-deleted',
-					expect.objectContaining({ user: actor, targetUserId: serviceAccount.id }),
+					expect.objectContaining({
+						user: actor,
+						targetUserId: serviceAccount.id,
+						loginId: 'login-1',
+					}),
 				);
 			});
 		});

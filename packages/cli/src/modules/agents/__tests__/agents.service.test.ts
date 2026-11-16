@@ -32,6 +32,7 @@ import {
 	type ProjectRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
@@ -1221,9 +1222,11 @@ describe('AgentsService', () => {
 		const agent = makeAgent({ identityId: 'sa-1' });
 		agentRepository.findById.mockResolvedValue(agent);
 
-		await service.delete(agentId, user);
+		const ctx = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
 
-		expect(agentServiceAccount.deleteForAgent).toHaveBeenCalledWith(agent, user, projectId);
+		await service.delete(agentId, user, undefined, {}, ctx);
+
+		expect(agentServiceAccount.deleteForAgent).toHaveBeenCalledWith(agent, user, projectId, ctx);
 		expect(agentServiceAccount.deleteForAgent.mock.invocationCallOrder[0]).toBeLessThan(
 			agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0],
 		);

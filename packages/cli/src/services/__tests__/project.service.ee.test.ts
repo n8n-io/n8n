@@ -1101,6 +1101,7 @@ describe('ProjectService', () => {
 				{ id: 'agent-1' },
 				user,
 				undefined,
+				{},
 			);
 			expect(agentChatAttachmentService.deleteByProject).toHaveBeenCalledWith(project.id);
 			expect(agentChatAttachmentService.deleteByProject.mock.invocationCallOrder[0]).toBeLessThan(

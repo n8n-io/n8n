@@ -662,8 +662,9 @@ export class UserService {
 		actor: User | SystemDeletionActor,
 		idToDelete: string,
 		transferId?: string,
+		ctx: OperationContext = {},
 	) {
-		return await this.deleteAccount(actor, idToDelete, transferId, false, {}, {
+		return await this.deleteAccount(actor, idToDelete, transferId, false, ctx, {
 			allowAgentAccount: true,
 		});
 	}
@@ -785,6 +786,7 @@ export class UserService {
 		await ownershipTransferService.deleteUserOwnedModuleResources([userToDelete.id], {
 			actor,
 			transferId,
+			ctx,
 		});
 
 		await this.txRunner.run({}, async (ctx) => {

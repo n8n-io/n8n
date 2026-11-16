@@ -27,6 +27,7 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	In,
 	isUniqueConstraintError,
+	type OperationContext,
 	ProjectRelationRepository,
 	ProjectRepository,
 	TransactionRunner,
@@ -926,6 +927,7 @@ export class AgentsService {
 		actor: User,
 		projectId?: string,
 		{ requireArchived = false }: { requireArchived?: boolean } = {},
+		ctx: OperationContext = {},
 	): Promise<DeletedAgentSnapshot | null> {
 		const agent = projectId
 			? await this.agentRepository.findByIdAndProjectId(agentId, projectId)
@@ -956,7 +958,7 @@ export class AgentsService {
 		// Remove the account before any cleanup that cannot be undone. If the
 		// removal fails, for example because a policy blocks the transfer of its
 		// work, the agent stays as it was.
-		await this.agentServiceAccount.deleteForAgent(agent, actor, agentProjectId);
+		await this.agentServiceAccount.deleteForAgent(agent, actor, agentProjectId, ctx);
 
 		await this.deleteKnowledgeFiles(agentProjectId, agentId);
 

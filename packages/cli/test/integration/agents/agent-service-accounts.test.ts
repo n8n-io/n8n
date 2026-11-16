@@ -18,9 +18,11 @@ import {
 	User,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
 import { BadRequestError, ConflictError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import { nanoid } from 'nanoid';
+import { mock } from 'vitest-mock-extended';
 
 import { AgentServiceAccountService } from '@/modules/agents/agent-service-account.service';
 import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
@@ -380,17 +382,18 @@ describe('Agent service accounts', () => {
 			expect(sharing.projectId).toBe(project.id);
 		});
 
-		it('names the user who deleted the agent in the user-deleted event', async () => {
+		it('names the user and the login that deleted the agent in the user-deleted event', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject(undefined, owner);
 			const { agent, identityId } = await createAgentWithServiceAccount(project.id);
 			const emit = vi.spyOn(Container.get(EventService), 'emit');
+			const ctx = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
 
-			await agentsService.delete(agent.id, owner, project.id);
+			await agentsService.delete(agent.id, owner, project.id, {}, ctx);
 
 			expect(emit).toHaveBeenCalledWith(
 				'user-deleted',
-				expect.objectContaining({ user: owner, targetUserId: identityId }),
+				expect.objectContaining({ user: owner, targetUserId: identityId, loginId: 'login-1' }),
 			);
 		});
 
@@ -447,8 +450,9 @@ describe('Agent service accounts', () => {
 			const { identityId, personalProject } = await createAgentWithServiceAccount(memberProject.id);
 			const workflow = await createWorkflow({}, personalProject);
 			const emit = vi.spyOn(Container.get(EventService), 'emit');
+			const ctx = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
 
-			await Container.get(UserService).deleteUser(owner, member.id, target.id);
+			await Container.get(UserService).deleteUser(owner, member.id, target.id, false, ctx);
 
 			await expectRemoved(identityId, personalProject.id);
 			const sharing = await dataSource().findOneByOrFail(SharedWorkflow, {
@@ -458,7 +462,7 @@ describe('Agent service accounts', () => {
 			expect(sharing.projectId).toBe(target.id);
 			expect(emit).toHaveBeenCalledWith(
 				'user-deleted',
-				expect.objectContaining({ user: owner, targetUserId: identityId }),
+				expect.objectContaining({ user: owner, targetUserId: identityId, loginId: 'login-1' }),
 			);
 		});
 

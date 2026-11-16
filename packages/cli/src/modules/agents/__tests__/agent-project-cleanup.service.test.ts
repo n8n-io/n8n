@@ -1,6 +1,7 @@
 import { mock } from 'vitest-mock-extended';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentExecutionService } from '../agent-execution.service';
@@ -88,11 +89,13 @@ describe('AgentProjectCleanupService', () => {
 		const second = mock<ProjectAgent>({ id: 'agent-2', identityId: null });
 		agents.findByProjectId.mockResolvedValue([first, second]);
 
-		await service.cleanupProject('project-1', { actor, transferId: 'target-1' });
+		const ctx = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
+
+		await service.cleanupProject('project-1', { actor, transferId: 'target-1', ctx });
 
 		expect(agentServiceAccount.deleteForAgent).toHaveBeenCalledTimes(2);
-		expect(agentServiceAccount.deleteForAgent).toHaveBeenCalledWith(first, actor, 'target-1');
-		expect(agentServiceAccount.deleteForAgent).toHaveBeenCalledWith(second, actor, 'target-1');
+		expect(agentServiceAccount.deleteForAgent).toHaveBeenCalledWith(first, actor, 'target-1', ctx);
+		expect(agentServiceAccount.deleteForAgent).toHaveBeenCalledWith(second, actor, 'target-1', ctx);
 	});
 
 	it('stops the project deletion when a service account cannot be removed', async () => {

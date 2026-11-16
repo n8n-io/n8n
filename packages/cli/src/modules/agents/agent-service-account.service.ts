@@ -46,10 +46,11 @@ export class AgentServiceAccountService {
 		agent: Pick<Agent, 'identityId'>,
 		actor: User | SystemDeletionActor,
 		transferId?: string,
+		ctx: OperationContext = {},
 	): Promise<void> {
 		if (!agent.identityId) return;
 
-		await this.serviceAccountService.remove(agent.identityId, actor, transferId);
+		await this.serviceAccountService.remove(agent.identityId, actor, transferId, ctx);
 	}
 
 	/**

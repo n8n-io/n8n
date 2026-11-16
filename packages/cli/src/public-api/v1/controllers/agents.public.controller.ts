@@ -97,7 +97,7 @@ export class AgentsPublicController {
 		_res: Response,
 		@Param('agentId', agentIdParamSchema) agentId: string,
 	): Promise<DeletedAgentPublicDto> {
-		const deleted = await this.agentsService.delete(agentId, req.user);
+		const deleted = await this.agentsService.delete(agentId, req.user, undefined, {}, req.ctx);
 
 		if (!deleted) {
 			// the user cannot see this agent, or it does not exist

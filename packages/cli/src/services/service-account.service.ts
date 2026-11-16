@@ -35,10 +35,15 @@ export class ServiceAccountService {
 	 * to that project. Without it, the work is deleted with the account.
 	 * Does nothing when no service account has this id.
 	 */
-	async remove(serviceAccountId: string, actor: User | SystemDeletionActor, transferId?: string) {
+	async remove(
+		serviceAccountId: string,
+		actor: User | SystemDeletionActor,
+		transferId?: string,
+		ctx: OperationContext = {},
+	) {
 		const serviceAccount = await this.serviceAccountRepository.findById(serviceAccountId);
 		if (!serviceAccount) return;
 
-		await this.userService.deleteServiceAccount(actor, serviceAccountId, transferId);
+		await this.userService.deleteServiceAccount(actor, serviceAccountId, transferId, ctx);
 	}
 }
