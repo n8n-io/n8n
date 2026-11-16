@@ -13,9 +13,17 @@ import { runReference } from '../../reference/runner.ts';
 import type { NodeSources } from '../convert.ts';
 import { compileNodeInstance } from '../convert.ts';
 import { evaluateDerivation } from '../evaluate-node.ts';
-import type { CredentialMint } from '../specialise.ts';
+import type { CredentialMint, PublishFacts, RandomShape } from '../specialise.ts';
 
 export const V1_TIMEZONE = 'America/New_York';
+export const V1_FACTS: PublishFacts = {
+	workflow: { id: 'equivalence', active: false },
+	instanceBaseUrl: 'http://localhost:5678',
+};
+const OTHER_SEEDS = [2, 3, 5];
+const UUID_V4 = /[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/g;
+const UUID_MARK = '<random uuid>';
+const INTEGER_MARK = '<random integer>';
 
 type Registry = Parameters<typeof deriveInject>[0];
 
@@ -45,10 +53,88 @@ export function compileForCheck(
 	const key = JSON.stringify([instance.type, instance.version, instance.parameters, credentials]);
 	const found = recent.find((entry) => entry.sources === sources && entry.key === key);
 	if (found) return found.compiled;
-	const compiled = compileNodeInstance(sources, instance, null, credentials, V1_TIMEZONE);
+	const compiled = compileNodeInstance(sources, instance, null, credentials, V1_TIMEZONE, V1_FACTS);
 	recent.push({ sources, key, compiled });
 	if (recent.length > RECENT_COMPILES) recent.shift();
 	return compiled;
+}
+
+function randomMark(
+	mine: unknown,
+	theirs: unknown,
+	others: unknown[],
+	shapes: RandomShape[],
+): string | undefined {
+	const made = [mine, ...others];
+	if (typeof theirs === 'string' && made.every((value) => typeof value === 'string')) {
+		if (!shapes.some((shape) => shape.kind === 'uuid') || theirs.includes(UUID_MARK))
+			return undefined;
+		const masked = String(mine).replace(UUID_V4, UUID_MARK);
+		const count = (text: string) => text.match(UUID_V4)?.length ?? 0;
+		const same = [theirs, ...made].every(
+			(value) =>
+				String(value).replace(UUID_V4, UUID_MARK) === masked &&
+				count(String(value)) === count(String(mine)),
+		);
+		return same && count(String(mine)) > 0 ? masked : undefined;
+	}
+	const fits = (value: unknown, shape: RandomShape) =>
+		shape.kind === 'integer' &&
+		shape.min !== undefined &&
+		shape.max !== undefined &&
+		typeof value === 'number' &&
+		Number.isInteger(value) &&
+		value >= shape.min &&
+		value < shape.max;
+	const ranges = shapes.filter((shape) => made.every((value) => fits(value, shape)));
+	return ranges.length > 0 && ranges.every((shape) => fits(theirs, shape))
+		? INTEGER_MARK
+		: undefined;
+}
+
+export function withoutRandomValues(
+	mine: unknown,
+	theirs: unknown,
+	others: unknown[],
+	shapes: RandomShape[],
+): { mine: unknown; theirs: unknown } {
+	if (Array.isArray(mine)) {
+		const lists = [theirs, ...others];
+		if (!lists.every((list) => Array.isArray(list) && list.length === mine.length))
+			return { mine, theirs };
+		const pairs = mine.map((member, k) =>
+			withoutRandomValues(
+				member,
+				Array.isArray(theirs) ? theirs[k] : undefined,
+				others.map((other) => (Array.isArray(other) ? other[k] : undefined)),
+				shapes,
+			),
+		);
+		return { mine: pairs.map((pair) => pair.mine), theirs: pairs.map((pair) => pair.theirs) };
+	}
+	if (isRecord(mine)) {
+		const records = others.filter(isRecord);
+		if (!isRecord(theirs) || records.length !== others.length) return { mine, theirs };
+		const left: Record<string, unknown> = {};
+		const right: Record<string, unknown> = { ...theirs };
+		for (const [key, member] of Object.entries(mine)) {
+			const pair = Object.hasOwn(theirs, key)
+				? withoutRandomValues(
+						member,
+						theirs[key],
+						records.map((other) => other[key]),
+						shapes,
+					)
+				: { mine: member, theirs: undefined };
+			left[key] = pair.mine;
+			if (Object.hasOwn(theirs, key)) right[key] = pair.theirs;
+		}
+		return { mine: left, theirs: right };
+	}
+	const text = JSON.stringify(mine);
+	if (others.every((other) => JSON.stringify(other) === text)) return { mine, theirs };
+	const mark = randomMark(mine, theirs, others, shapes);
+	return mark === undefined ? { mine, theirs } : { mine: mark, theirs: mark };
 }
 
 async function within<T>(ms: number, work: Promise<T>): Promise<T> {
@@ -179,9 +265,13 @@ export default workflow({
 		seed: 1,
 		effects: { Node: responses.map((r) => ({ status: 200, headers: {}, ...r })) },
 	};
-	const out = await runReference(source, fixture, {
-		extraNodes: { [compiled.file]: compiled.source },
-	});
+	const runWith = async (seed: number) =>
+		await runReference(
+			source,
+			{ ...fixture, seed },
+			{ extraNodes: { [compiled.file]: compiled.source } },
+		);
+	const out = await runWith(fixture.seed);
 
 	const data: Record<string, unknown> = withDerivedValues(credentialType ?? '', {
 		...(registry.get(credentialType ?? '')?.defaults ?? {}),
@@ -207,7 +297,9 @@ export default workflow({
 		data.n8nMinted = minted.tokens;
 	}
 	const inject = credentialType ? deriveInject(registry, credentialType, data).inject : undefined;
-	const requests = out.effects.map((effect) => {
+	const requestsOf = (run: typeof out) =>
+		run.effects.filter((effect) => effect.kind !== 'wait').map(requestOf);
+	const requestOf = (effect: (typeof out.effects)[number]) => {
 		const args = isRecord(effect.args) ? effect.args : {};
 		const { qsFormat: _, ...request } = normalizeRequest(
 			applyCredential(
@@ -234,9 +326,10 @@ export default workflow({
 			};
 		}
 		return request;
-	});
+	};
+	const others = compiled.randoms.length > 0 ? await Promise.all(OTHER_SEEDS.map(runWith)) : [];
 	const sent = minted ? v1.requests.filter((_request, k) => !minted.exchanges.has(k)) : v1.requests;
-	const expected = sent.map(({ qsFormat: _, ...r }) => {
+	const sentPlain = sent.map(({ qsFormat: _, ...r }) => {
 		const form = isRecord(r.body) ? r.body.$form : undefined;
 		if (!isRecord(form)) return r;
 		const text: Record<string, string> = {};
@@ -247,6 +340,14 @@ export default workflow({
 		const { 'content-type': _type, ...headers } = r.headers;
 		return { ...r, headers, body: { $form: text } };
 	});
+	const requestPair = withoutRandomValues(
+		requestsOf(out),
+		sentPlain,
+		others.map(requestsOf),
+		compiled.randoms,
+	);
+	const requests = Array.isArray(requestPair.mine) ? requestPair.mine : [];
+	const expected = Array.isArray(requestPair.theirs) ? requestPair.theirs : [];
 	if (JSON.stringify(requests) !== JSON.stringify(expected)) {
 		if (requests.length !== expected.length) {
 			const cause = v1.error === undefined ? '' : `; v1 fails: ${v1.error.slice(0, 90)}`;
@@ -271,7 +372,13 @@ export default workflow({
 	}
 	if (out.status !== 'ok')
 		return `the compiled node fails: ${JSON.stringify(out.result).slice(0, 120)}`;
-	return JSON.stringify(out.result) === JSON.stringify(v1.output)
+	const results = withoutRandomValues(
+		out.result,
+		v1.output,
+		others.map((other) => other.result),
+		compiled.randoms,
+	);
+	return JSON.stringify(results.mine) === JSON.stringify(results.theirs)
 		? undefined
 		: 'the output differs';
 }

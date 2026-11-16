@@ -31,7 +31,19 @@ export interface SpecialiseInput {
 	aliases?: Record<string, string>;
 
 	parameterKind?: (name: string) => ParameterKind | undefined;
+
+	facts?: PublishFacts;
 }
+
+export interface PublishFacts {
+	workflow?: { id?: string; name?: string; active?: boolean };
+	instanceBaseUrl?: string;
+}
+
+export type RandomShape =
+	| { kind: 'uuid' }
+	| { kind: 'number' }
+	| { kind: 'integer'; min?: number; max?: number };
 
 export interface ParameterKind {
 	type: string;
@@ -50,6 +62,8 @@ export interface SpecialiseResult {
 	derivations?: CredentialDerivation[];
 
 	mints?: CredentialMint[];
+
+	randoms?: RandomShape[];
 
 	retyped?: (moduleType: string) => string;
 }
@@ -96,6 +110,110 @@ const REQUEST_SOURCE = `async function __request(options, wrapped) {
 	}
 	return response.body;
 }`;
+
+const MAX_TIMER_MS = 2147483647;
+const RANDOM_STEPS = 9007199254740992;
+const RANDOM_INTEGER_LIMIT = 4294967296;
+const MAX_RANDOM_SHAPES = 32;
+
+const CONTEXT_HELPERS: Record<string, string> = {
+	__sleep: `async function __sleep(ms) {
+	if (ms !== null && typeof ms === 'object') throw new Error('a pause for a value that is not a number or text has no compiled form');
+	const wanted = Number(ms);
+	await ctx.wait({ duration: wanted >= 1 && wanted <= ${MAX_TIMER_MS} ? Math.trunc(wanted) : 1 });
+}`,
+	__randomUUID: `function __randomUUID() {
+	const digits = '0123456789abcdef';
+	let out = '';
+	for (let k = 0; k < 16; k++) {
+		let byte = Math.floor(Math.random() * 256);
+		if (k === 6) byte = 64 + (byte % 16);
+		if (k === 8) byte = 128 + (byte % 64);
+		if (k === 4 || k === 6 || k === 8 || k === 10) out += '-';
+		out += digits.charAt(Math.floor(byte / 16)) + digits.charAt(byte % 16);
+	}
+	return out;
+}`,
+	__randomInt: `function __randomInt(first, second) {
+	const min = second === undefined ? 0 : first;
+	const max = second === undefined ? first : second;
+	if (typeof min !== 'number' || typeof max !== 'number' || Math.floor(min) !== min || Math.floor(max) !== max || Math.abs(min) > ${RANDOM_INTEGER_LIMIT} || Math.abs(max) > ${RANDOM_INTEGER_LIMIT})
+		throw new Error('a random integer with a limit that is not an integer between -2^32 and 2^32 has no compiled form');
+	if (max <= min) throw new RangeError('The value of "max" is out of range. It must be greater than the value of "min" (' + min + '). Received ' + max);
+	const range = max - min;
+	const bucket = Math.floor(${RANDOM_STEPS} / range);
+	const limit = bucket * range;
+	let draw = Math.floor(Math.random() * ${RANDOM_STEPS});
+	while (draw >= limit) draw = Math.floor(Math.random() * ${RANDOM_STEPS});
+	return min + Math.floor(draw / bucket);
+}`,
+	__randomIntOf: `function __randomIntOf(first, second) {
+	const min = second === undefined ? 0 : first;
+	const max = second === undefined ? first : second;
+	if (typeof min !== 'number' || typeof max !== 'number' || !(max > min) || max - min > ${RANDOM_INTEGER_LIMIT})
+		throw new Error('a random integer with limits that are not in order, or that are more than 2^32 apart, has no compiled form');
+	return __randomInt(first, second);
+}`,
+};
+
+const SLEEP_PACKAGES = new Set(['@n8n/utils/sleep', '@n8n/utils', 'n8n-workflow']);
+const CRYPTO_PACKAGES = new Set(['crypto', 'node:crypto']);
+
+function contextHelper(
+	imported: { from: string; name: string } | undefined,
+	call: ts.CallExpression,
+): string | undefined {
+	if (!imported || call.arguments.some(ts.isSpreadElement)) return undefined;
+	const count = call.arguments.length;
+	if (SLEEP_PACKAGES.has(imported.from) && imported.name === 'sleep')
+		return count === 1 ? '__sleep' : undefined;
+	if (imported.from === 'n8n-workflow' && imported.name === 'randomInt')
+		return count === 1 || count === 2 ? '__randomIntOf' : undefined;
+	if (!CRYPTO_PACKAGES.has(imported.from)) return undefined;
+	if (imported.name === 'randomUUID' && count === 0) return '__randomUUID';
+	if (imported.name === 'randomInt' && (count === 1 || count === 2)) return '__randomInt';
+	return undefined;
+}
+
+function isMathRandom(n: ts.Node): boolean {
+	return (
+		ts.isPropertyAccessExpression(n) &&
+		ts.isIdentifier(n.expression) &&
+		n.expression.text === 'Math' &&
+		n.name.text === 'random'
+	);
+}
+
+function randomShapes(roots: ts.Node[]): RandomShape[] {
+	const shapes = new Map<string, RandomShape>();
+	const add = (shape: RandomShape) => {
+		if (shapes.size < MAX_RANDOM_SHAPES) shapes.set(JSON.stringify(shape), shape);
+		else shapes.set('"number"', { kind: 'number' });
+	};
+	const bound = (e: ts.Expression | undefined): number | undefined => {
+		const value = e === undefined ? undefined : literalOf(e)?.value;
+		return typeof value === 'number' ? value : undefined;
+	};
+	const walk = (n: ts.Node) => {
+		if (isMathRandom(n)) add({ kind: 'number' });
+		if (ts.isCallExpression(n) && ts.isIdentifier(n.expression)) {
+			if (n.expression.text === '__randomUUID') add({ kind: 'uuid' });
+			if (n.expression.text === '__randomInt' || n.expression.text === '__randomIntOf') {
+				const [first, second] = n.arguments.map(bound);
+				const min = n.arguments.length === 1 ? 0 : first;
+				const max = n.arguments.length === 1 ? first : second;
+				add(
+					min === undefined || max === undefined || n.arguments.length > 2
+						? { kind: 'integer' }
+						: { kind: 'integer', min, max },
+				);
+			}
+		}
+		ts.forEachChild(n, walk);
+	};
+	for (const root of roots) walk(root);
+	return [...shapes.values()];
+}
 
 const GLOBALS = new Set([
 	'undefined',
@@ -676,6 +794,7 @@ function packageHelper(imported: { from: string; name: string }): string | undef
 }
 
 const HELPER_USES: Record<string, string[]> = {
+	__randomIntOf: ['__randomInt'],
 	__changeCase: ['__caseWords'],
 	__url: ['__urlText'],
 	__urlCanParse: ['__url', '__urlText', '__isLimit'],
@@ -1513,6 +1632,49 @@ class Specialiser {
 			if (isThisCall(node, 'getTimezone') && this.input.timezone !== undefined) {
 				return f.createStringLiteral(this.input.timezone);
 			}
+			const facts = this.input.facts;
+			const workflowFact = (
+				source: ts.Node | undefined,
+				key: ts.Node,
+			): ts.Expression | undefined => {
+				if (!isThisCall(source, 'getWorkflow') || source.arguments.length > 0) return undefined;
+				const known: Record<string, string | boolean | undefined> = { ...facts?.workflow };
+				return ts.isIdentifier(key) &&
+					Object.hasOwn(known, key.text) &&
+					known[key.text] !== undefined
+					? expressionOf(known[key.text])
+					: undefined;
+			};
+			if (ts.isPropertyAccessExpression(node)) {
+				const fact = workflowFact(node.expression, node.name);
+				if (fact) return fact;
+			}
+			if (
+				ts.isVariableDeclaration(node) &&
+				ts.isObjectBindingPattern(node.name) &&
+				node.name.elements.length > 0 &&
+				isThisCall(node.initializer, 'getWorkflow')
+			) {
+				const made: ts.VariableDeclaration[] = [];
+				for (const e of node.name.elements) {
+					const fact =
+						e.initializer || e.dotDotDotToken || !ts.isIdentifier(e.name)
+							? undefined
+							: workflowFact(node.initializer, e.propertyName ?? e.name);
+					if (fact && ts.isIdentifier(e.name))
+						made.push(f.createVariableDeclaration(e.name.text, undefined, undefined, fact));
+				}
+				if (made.length === node.name.elements.length) return made;
+			}
+			if (
+				isThisCall(node, 'getInstanceBaseUrl') &&
+				node.arguments.length === 0 &&
+				facts?.instanceBaseUrl !== undefined
+			) {
+				return f.createStringLiteral(facts.instanceBaseUrl);
+			}
+			if (isMathRandom(node) && unit.credentialType !== undefined)
+				this.error(unit.name, 'a random value in credential code has no compiled form');
 			if (isThisCall(node, 'getInstanceId')) {
 				const id = this.input.instanceId;
 				return id === undefined
@@ -1731,6 +1893,12 @@ class Specialiser {
 			) {
 				const imported = unit.file.imports.get(node.expression.text);
 				const helper = imported ? packageHelper(imported) : undefined;
+				const withContext = contextHelper(imported, node);
+				if (withContext !== undefined) {
+					if (withContext !== '__sleep' && unit.credentialType !== undefined)
+						this.error(unit.name, 'a random value in credential code has no compiled form');
+					return this.helper(withContext, ...args(node));
+				}
 				if (
 					imported?.from === 'change-case' &&
 					Object.hasOwn(CHANGE_CASE, imported.name) &&
@@ -4579,6 +4747,7 @@ class Specialiser {
 			linked,
 			derivations,
 			mints,
+			randoms: this.randoms,
 			retyped: this.retyped,
 		};
 	}
@@ -4638,7 +4807,9 @@ class Specialiser {
 		let body = '';
 		const buffers = this.output.some((o) => mentionsBuffer(o.node));
 		if (buffers) this.helpers.add('__bufferText');
-		const guarded = [...this.helpers].some((h) => HELPERS[h]?.includes(LIMIT_TEXT));
+		const guarded = [...this.helpers].some((h) =>
+			(HELPERS[h] ?? CONTEXT_HELPERS[h])?.includes(LIMIT_TEXT),
+		);
 		if (guarded) this.helpers.add('__isLimit');
 		for (const { name, node, sf } of this.output) {
 			const unit = this.units.get(name);
@@ -4675,6 +4846,10 @@ class Specialiser {
 		}
 		if (this.helpers.has('__request')) code.unshift(REQUEST_SOURCE);
 		this.helpers.delete('__request');
+		for (const [name, source] of Object.entries(CONTEXT_HELPERS)) {
+			if (this.helpers.delete(name)) code.unshift(source);
+		}
+		this.randoms = randomShapes(this.output.map((o) => o.node));
 		for (const always of ['__wrap', '__plain']) this.helpers.add(always);
 
 		const globals = new Set([
@@ -4683,6 +4858,7 @@ class Specialiser {
 			'credential',
 			'__items',
 			'__request',
+			...Object.keys(CONTEXT_HELPERS),
 			...Object.keys(HELPERS),
 		]);
 		const translated = translateCode({
@@ -4739,6 +4915,8 @@ ${t.body}
 	}
 
 	private retyped: ((type: string) => string) | undefined;
+
+	private randoms: RandomShape[] = [];
 }
 
 function bindingsOf(root: ts.Node): Map<string, number> {

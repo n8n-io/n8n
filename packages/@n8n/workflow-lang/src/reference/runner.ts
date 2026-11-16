@@ -234,6 +234,16 @@ export async function runReference(
 		});
 	};
 
+	/** The wait of a library node (spec 4.2): it uses no result of the fixture. */
+	const pause = async (step: string, args: unknown): Promise<void> => {
+		const fibre = current;
+		effects.push({ step, kind: 'wait', args: clone(args) });
+		await park<void>(fibre, (resolve) => {
+			if (isRecord(args) && typeof args.duration === 'number') clock += Math.max(0, args.duration);
+			resolve();
+		});
+	};
+
 	const retryOf = (opts: unknown) => {
 		const retry = isRecord(opts) ? opts.retry : undefined;
 		return isRecord(retry) && typeof retry.max === 'number' ? retry.max : 0;
@@ -317,6 +327,8 @@ export async function runReference(
 					http: async (req: unknown) => await effect(step, 'http', req, retryOf(opts)),
 					service: async (req: unknown) => await effect(step, 'service', req, retryOf(opts)),
 					staticData: (type: unknown, node: unknown) => statics.get(type, node),
+					random,
+					wait: async (call: unknown) => await pause(step, call),
 				};
 				return await lib.run(nodeCtx, opts.parameters, opts.items, opts.credential);
 			}
