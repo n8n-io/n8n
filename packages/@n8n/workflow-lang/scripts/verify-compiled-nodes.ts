@@ -66,6 +66,9 @@ findClasses(join(base, DIST ? 'dist/nodes' : 'nodes'));
 const known: Record<string, { className: string; sourcePath: string }> = JSON.parse(
 	readFileSync(join(base, 'dist/known/nodes.json'), 'utf8'),
 );
+const knownCredentials: Record<string, { className: string; sourcePath: string }> = JSON.parse(
+	readFileSync(join(base, 'dist/known/credentials.json'), 'utf8'),
+);
 const loaded = new Map<string, LoadedNode | undefined>();
 function nodeOf(type: string, version: number): LoadedNode | undefined {
 	const key = `${type}@${version}`;
@@ -92,6 +95,10 @@ const sources: NodeSources = {
 	description: (type, version) => nodeOf(type, version)?.description,
 	aliases: { '@utils/': `${base}/utils/` },
 	evaluate: evaluateInSandbox,
+	credentialEntry: (type) => {
+		const entry = knownCredentials[type];
+		return entry ? join(base, entry.sourcePath) : undefined;
+	},
 };
 
 const registry = registryOf(loadCredentialTypes().types);

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 
+import type { CredentialTypes } from '@/credential-types';
 import type { NodeTypes } from '@/node-types';
 
 import type { WorkflowLang } from './workflow-lang';
@@ -32,6 +33,7 @@ export function nodeSourcesOf(
 	lang: WorkflowLang,
 	nodeTypes: NodeTypes,
 	credentials: Map<string, PublicCredential>,
+	credentialTypes: CredentialTypes,
 ): NodeSources {
 	const nodeOf = (type: string, version: number) => {
 		try {
@@ -54,5 +56,9 @@ export function nodeSourcesOf(
 		description: (type, version) => lang.nodeDescriptionOf(nodeOf(type, version)?.description),
 		publicCredential: (type, id) => credentials.get(`${type}:${id ?? ''}`),
 		evaluate: lang.evaluateInSandbox,
+		credentialEntry: (type) =>
+			credentialTypes.recognizes(type)
+				? fileOf(credentialTypes.getByName(type).constructor)
+				: undefined,
 	};
 }

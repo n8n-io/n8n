@@ -12,6 +12,7 @@ import { getGlobalState, NodeHelpers, nodeIssuesToString, Workflow } from 'n8n-w
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 
+import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
 
 import { ArtifactCache } from './compiled-engine-disk.service';
@@ -202,6 +203,7 @@ export class CompiledWorkflowCompiler {
 		private readonly urlService: UrlService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly credentials: CompiledEngineCredentials,
+		private readonly credentialTypes: CredentialTypes,
 		config: CompiledEngineConfig,
 	) {
 		this.compileNodes = config.compileNodes;
@@ -288,7 +290,14 @@ export class CompiledWorkflowCompiler {
 			// A node without a built-in version is compiled from its own code
 			// (N8N_COMPILED_ENGINE_COMPILE_NODES).
 			...(this.compileNodes
-				? { nodeSources: nodeSourcesOf(lang, this.nodeTypes, publicCredentials) }
+				? {
+						nodeSources: nodeSourcesOf(
+							lang,
+							this.nodeTypes,
+							publicCredentials,
+							this.credentialTypes,
+						),
+					}
 				: {}),
 		};
 		const converted = lang.convertWorkflow(workflowJson, options);

@@ -18,6 +18,8 @@ export interface NodeSources {
 	publicCredential?: (type: string, id: string | null) => PublicCredential | undefined;
 
 	evaluate?: (code: string) => unknown;
+
+	credentialEntry?: (type: string) => string | undefined;
 }
 
 export function verifiedKey(
@@ -151,6 +153,7 @@ export function compileNodeInstance(
 		parameters,
 		aliases: sources.aliases,
 		evaluate: sources.evaluate,
+		credentialEntry: sources.credentialEntry,
 		instanceId,
 		credentialFields: Object.fromEntries(
 			Object.entries(credentials).map(([type, c]) => [type, c.fields]),

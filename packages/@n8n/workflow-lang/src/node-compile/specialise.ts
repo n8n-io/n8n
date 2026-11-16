@@ -24,6 +24,8 @@ export interface SpecialiseInput {
 
 	evaluate?: (code: string) => unknown;
 
+	credentialEntry?: (type: string) => string | undefined;
+
 	aliases?: Record<string, string>;
 }
 
@@ -424,6 +426,7 @@ interface Unit {
 	node: ts.FunctionDeclaration | ts.VariableDeclaration | ts.MethodDeclaration;
 	file: FileModel;
 	withContext: boolean;
+	credentialType?: string;
 }
 
 class Specialiser {
@@ -467,6 +470,28 @@ class Specialiser {
 	private helper(name: string, ...args: ts.Expression[]): ts.CallExpression {
 		this.helpers.add(name);
 		return call(name, ...args);
+	}
+
+	private authenticateUnit(type: string): string | undefined {
+		const path = this.input.credentialEntry?.(type);
+		const file = path === undefined ? undefined : this.load(path);
+		if (!file) return undefined;
+		let method: ts.MethodDeclaration | undefined;
+		file.sf.forEachChild((st) => {
+			if (!ts.isClassDeclaration(st)) return;
+			for (const m of st.members) {
+				if (ts.isMethodDeclaration(m) && ts.isIdentifier(m.name) && m.name.text === 'authenticate')
+					method = m;
+			}
+		});
+		if (!method || !/^[A-Za-z0-9_]+$/.test(type)) return undefined;
+		const name = `authenticate_${type}`;
+		if (!this.units.has(name)) {
+			const unit: Unit = { name, node: method, file, withContext: false, credentialType: type };
+			this.units.set(name, unit);
+			this.queue.push(unit);
+		}
+		return name;
 	}
 
 	private credentialField(type: string, name: string): ts.Expression {
@@ -809,7 +834,19 @@ class Specialiser {
 						);
 					for (const used of ['__apiError', '__assign', '__form', '__formText'])
 						this.helpers.add(used);
-					return this.helper('__request', options, wrapped ? f.createTrue() : f.createFalse());
+					const typeArgument = viaCall ? node.arguments[1] : undefined;
+					const authenticate =
+						wrapped &&
+						typeArgument &&
+						ts.isStringLiteral(typeArgument) &&
+						node.arguments.length >= 3
+							? this.authenticateUnit(typeArgument.text)
+							: undefined;
+					return this.helper(
+						'__request',
+						authenticate ? f.createAwaitExpression(call(authenticate, options)) : options,
+						wrapped ? f.createTrue() : f.createFalse(),
+					);
 				}
 
 				if (
@@ -1034,6 +1071,12 @@ class Specialiser {
 				if (p && ts.isIdentifier(p.name)) tainted.add(p.name.text);
 			}
 			const holds = (e: ts.Node): boolean => {
+				if (
+					ts.isCallExpression(e) &&
+					ts.isIdentifier(e.expression) &&
+					e.expression.text === '__request'
+				)
+					return false;
 				if (
 					ts.isIdentifier(e) &&
 					(e.text === '__CREDFIELD' || (tainted.has(e.text) && isValueUse(e)))
@@ -1879,11 +1922,29 @@ class Specialiser {
 			? f.createFunctionDeclaration(
 					[f.createModifier(ts.SyntaxKind.AsyncKeyword)],
 					undefined,
-					'execute',
+					unit.name,
 					undefined,
-					[],
+					unit.credentialType === undefined ? [] : source.parameters.slice(1),
 					undefined,
-					source.body,
+					unit.credentialType === undefined || !source.body
+						? source.body
+						: f.updateBlock(source.body, [
+								f.createVariableStatement(
+									undefined,
+									f.createVariableDeclarationList(
+										[
+											f.createVariableDeclaration(
+												source.parameters[0]?.name.getText(unit.file.sf) ?? 'credentials',
+												undefined,
+												undefined,
+												f.createIdentifier(CREDENTIAL_PREFIX + unit.credentialType),
+											),
+										],
+										ts.NodeFlags.Const,
+									),
+								),
+								...source.body.statements,
+							]),
 				)
 			: ts.isVariableDeclaration(source)
 				? f.createVariableStatement(

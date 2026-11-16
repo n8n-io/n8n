@@ -120,3 +120,43 @@ export class Acme {
 		expect(result.source).not.toContain('/items/null');
 	});
 });
+
+describe('a credential type that authenticates in code', () => {
+	const node = `
+export class Acme {
+	async execute() {
+		const response = await this.helpers.requestWithAuthentication.call(this, 'acmeApi', { method: 'GET', uri: 'https://api.acme.test/v1/items', qs: { limit: 5 } });
+		if (response.more) return [this.helpers.returnJsonArray(response.items)];
+		return [this.helpers.returnJsonArray(response)];
+	}
+}`;
+	const credential = `
+export class AcmeApi {
+	name = 'acmeApi';
+	async authenticate(credentials, requestOptions) {
+		requestOptions.qs = { ...requestOptions.qs, key: credentials.apiKey };
+		requestOptions.headers = { ...requestOptions.headers, 'X-Account': credentials.account };
+		return requestOptions;
+	}
+}`;
+	const files: Record<string, string> = {
+		'/acme/Acme.node.ts': node,
+		'/acme/AcmeApi.credentials.ts': credential,
+	};
+
+	it('compiles the code of the credential type into the request, with templates for its fields', () => {
+		const result = specialiseNode({
+			type: 'n8n-nodes-acme.acme',
+			version: 1,
+			entry: '/acme/Acme.node.ts',
+			readFile: (path) => files[path],
+			parameters: {},
+			instanceId: null,
+			credentialEntry: (type) => (type === 'acmeApi' ? '/acme/AcmeApi.credentials.ts' : undefined),
+		});
+		expect(result.errors).toEqual([]);
+		expect(result.linked).toContain('authenticate_acmeApi');
+		expect(result.source).toContain('key: "{{$credentials.apiKey}}"');
+		expect(result.source).toContain('"{{$credentials.account}}"');
+	});
+});
