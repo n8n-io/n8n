@@ -28,7 +28,10 @@ async function main(): Promise<void> {
 	const tls = openEngineTls(config, logger);
 	assertSecureTransport(config, tls !== undefined, {}, logger);
 
-	const dataSource = createDataSource(config.databaseUrl);
+	const dataSource = createDataSource(config.databaseUrl, {
+		poolSize: config.databasePoolSize,
+		connectTimeoutMS: config.databaseConnectionTimeoutMs,
+	});
 	await dataSource.initialize();
 	await dataSource.runMigrations();
 
@@ -40,6 +43,10 @@ async function main(): Promise<void> {
 		// Nothing in this process waits for a response: the caller reads the run
 		// over the API instead.
 		responseSender: noopExecutionResponseSender,
+		concurrency: {
+			step: config.stepConcurrency,
+			orchestration: config.orchestrationConcurrency,
+		},
 	});
 	runtime.start();
 

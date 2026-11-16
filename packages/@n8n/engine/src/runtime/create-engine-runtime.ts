@@ -9,6 +9,7 @@ import { createStores } from '../database';
 import type { EngineStores } from '../database';
 import type { ExternalDependencies } from '../dependencies';
 import {
+	assertValidStalenessThresholds,
 	CancelExecutionService,
 	ExecutionQueryService,
 	ExecutionStartHandler,
@@ -20,6 +21,7 @@ import {
 	StepWorker,
 	WaitSweeper,
 } from '../execution';
+import type { StalenessThresholds } from '../execution';
 import {
 	BatchingLifecycleEventPublisher,
 	LifecycleEventPublisherFactory,
@@ -29,6 +31,7 @@ import type { LifecycleEventPublisher } from '../lifecycle-events';
 import { createConsoleLogger, type EngineLogger } from '../logging';
 import { InMemoryWorkQueue } from '../queue';
 import type { OrchestrationMessage, StepMessage } from '../queue';
+import { ReconciliationSweeper } from '../reconciliation';
 import type { ExecutionResponseSender } from '../response-channel';
 import { createEngineServer } from '../server';
 
@@ -64,6 +67,11 @@ export interface EngineRuntimeOptions {
 	waitSweepIntervalMs?: number;
 	/** How many handlers each queue runs at once. Defaults to 1 each. */
 	concurrency?: { step?: number; orchestration?: number };
+	/**
+	 * How long a row can stay `queued` or `running` before the engine treats it
+	 * as stuck. Defaults to `DEFAULT_STALENESS_THRESHOLDS`.
+	 */
+	staleness?: StalenessThresholds;
 }
 
 /** A built engine, ready for a host to serve. */
@@ -94,6 +102,7 @@ export function createEngineRuntime({
 	resumeSecret: givenResumeSecret,
 	waitSweepIntervalMs,
 	concurrency = {},
+	staleness,
 }: EngineRuntimeOptions): EngineRuntime {
 	// An empty value is how an unset environment variable usually arrives.
 	const resumeSecret = givenResumeSecret || undefined;
@@ -105,11 +114,15 @@ export function createEngineRuntime({
 		);
 	}
 
+	// Refused here and not at the first write: an invalid threshold would
+	// otherwise fail every write of a row that becomes `queued` or `running`.
+	if (staleness !== undefined) assertValidStalenessThresholds(staleness);
+
 	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger, {
 		concurrency: concurrency.orchestration,
 	});
 	const stepQueue = new InMemoryWorkQueue<StepMessage>(logger, { concurrency: concurrency.step });
-	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
+	const { executionStore, stepStore, executionViewStore } = createStores(dataSource, staleness);
 	// Built once, not per handler: the factory must not run twice.
 	const dependencies =
 		externalDependencies?.({ executionStore, stepStore, executionViewStore }) ?? {};
@@ -138,6 +151,8 @@ export function createEngineRuntime({
 		),
 	);
 	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
+	// No detector yet, so the sweeper sets no timer.
+	const reconciliationSweeper = new ReconciliationSweeper([], {}, logger);
 	// One start path for every execution: the API and a step's sub-execution both admit
 	// and validate here, and only this path can set a parent link.
 	const startExecution = new StartExecutionService(
@@ -186,6 +201,7 @@ export function createEngineRuntime({
 			orchestrationWorker.start();
 			stepWorker.start();
 			waitSweeper.start();
+			reconciliationSweeper.start();
 		},
 
 		stop: async () => {
@@ -193,9 +209,9 @@ export function createEngineRuntime({
 			// only for whatever it is mid-handling; anything queued behind it is
 			// dropped, since the in-memory queues die with the process.
 
-			// The sweeper stops first: it feeds the step queue, so nothing lands
+			// The sweepers stop first: they feed the queues, so nothing lands
 			// there after the workers have drained.
-			await waitSweeper.stop();
+			await Promise.all([waitSweeper.stop(), reconciliationSweeper.stop()]);
 			await Promise.all([orchestrationWorker.stop(), stepWorker.stop()]);
 			// After the workers are quiet, so the last events still reach the host.
 			await lifecycleEventPublisher.stop();

@@ -262,6 +262,7 @@ describe('MCP Schedule Trigger intervals', () => {
 					]),
 				}),
 				expect.anything(),
+				{},
 			);
 		},
 	);

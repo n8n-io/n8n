@@ -11,7 +11,14 @@ import {
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp } from '@n8n/backend-network';
-import { GLOBAL_MEMBER_ROLE, User, type WorkflowRepository, type TransactionRunner } from '@n8n/db';
+import {
+	GLOBAL_MEMBER_ROLE,
+	type OperationContext,
+	User,
+	type WorkflowRepository,
+	type TransactionRunner,
+} from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
@@ -1915,7 +1922,7 @@ describe('McpAgentToolsService', () => {
 		});
 
 		it('returns complete tool values in pages when maxToolValueLength is large', async () => {
-			const longOutput = 'o'.repeat(80_000);
+			const longOutput = 'o'.repeat(60_000);
 			const longTurn = turn('execution-1');
 			longTurn.timeline = [
 				{
@@ -1943,6 +1950,7 @@ describe('McpAgentToolsService', () => {
 			});
 
 			expect(first.structuredContent).toMatchObject({ ok: true, nextCursor: expect.any(String) });
+			expect(first.structuredContent.transcript).toHaveLength(40_000);
 			expect(second.structuredContent).toMatchObject({ ok: true, nextCursor: null });
 			const transcript = `${first.structuredContent.transcript}${second.structuredContent.transcript}`;
 			expect(transcript).toContain(`  Output: "${longOutput}"`);
@@ -3376,8 +3384,32 @@ describe('McpAgentToolsService', () => {
 				user,
 				undefined,
 				'mcp',
+				{},
 			);
 			expect(result.structuredContent).toEqual({ ok: true, archived: true, agentId: 'agent-1' });
+		});
+
+		it('passes the operation context to the archive', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+			const contextTools = new Map<string, RegisteredTool>();
+			const registerTool: RegisterToolFn = (tool) => {
+				contextTools.set(tool.name, {
+					config: tool.config,
+					handler: tool.handler as unknown as RegisteredTool['handler'],
+				});
+			};
+			service.registerTools(registerTool, vi.fn(), user, undefined, ctx);
+
+			await contextTools
+				.get('archive_agent')
+				?.handler(
+					{ projectId: 'project-1', agentId: 'agent-1' },
+					{ signal: new AbortController().signal },
+				);
+
+			expect(agentPublishService.archiveAgent.mock.calls[0][5]).toBe(ctx);
 		});
 
 		it('returns an error result for an archived agent', async () => {

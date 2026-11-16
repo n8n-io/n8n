@@ -103,6 +103,7 @@ export {
 	type PublishedWorkflowData,
 	type PublishedWorkflowDataForExecution,
 } from './workflows/workflow-published-data.service';
+export { WorkflowVersionedSettingsService } from './workflows/workflow-versioned-settings.service';
 
 export {
 	RuntimeCredentialProxyService,

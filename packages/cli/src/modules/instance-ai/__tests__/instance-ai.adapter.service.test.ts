@@ -81,10 +81,8 @@ import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	ASSISTANT_SKILLS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
@@ -2119,6 +2117,29 @@ function createNodeAdapterServiceForTests(
 		nodeCatalogService,
 	};
 }
+
+describe('createContext models', () => {
+	it('keeps the main and utility models on the context', () => {
+		const { service, mockUser } = createNodeAdapterServiceForTests([]);
+		const utilityModelId = 'anthropic/claude-haiku-5-5';
+
+		const context = service.createContext(mockUser, {
+			modelId: 'anthropic/claude-opus-5-5',
+			utilityModelId,
+		});
+
+		expect(context.modelId).toBe('anthropic/claude-opus-5-5');
+		expect(context.utilityModelId).toBe(utilityModelId);
+	});
+
+	it('leaves the utility model unset when none is resolved', () => {
+		const { service, mockUser } = createNodeAdapterServiceForTests([]);
+
+		const context = service.createContext(mockUser, { modelId: 'openai/gpt-6.1-sol' });
+
+		expect(context).not.toHaveProperty('utilityModelId');
+	});
+});
 
 describe('executeNodeService adapter', () => {
 	const executeRequest = {
@@ -5188,6 +5209,27 @@ describe('createWorkflowAdapter', () => {
 			);
 		});
 
+		it('restores the version-scoped settings of the version', async () => {
+			const { adapter, mockWorkflowService, mockWorkflowHistoryService } =
+				createWorkflowAdapterForTests();
+			mockWorkflowHistoryService.getVersion.mockResolvedValue({
+				versionId: 'v-1',
+				nodes: [],
+				connections: {},
+				nodeGroups: [],
+				settings: { engineType: 'v1' },
+			});
+
+			await adapter.restoreVersion?.('wf-1', 'v-1');
+
+			expect(mockWorkflowService.update).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				'wf-1',
+				expect.objectContaining({ restoredVersionSettings: { engineType: 'v1' } }),
+			);
+		});
+
 		it('keeps a committed update when notifying open editors fails', async () => {
 			const { adapter, mockCollaborationService, mockLogger } = createWorkflowAdapterForTests();
 			mockCollaborationService.broadcastWorkflowUpdate.mockRejectedValue(new Error('push is down'));
@@ -7999,7 +8041,6 @@ describe('resolveExperimentGates', () => {
 	const allEnabled = {
 		[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
-		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 		[INSTANCE_AI_CONCISE_STYLE_FLAG]: INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 		[INSTANCE_AI_SETUP_PANEL_FLAG]: INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
@@ -8014,7 +8055,6 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: true,
 			conversationHistoryEnabled: true,
-			progressiveBuildingEnabled: true,
 			conciseStyleEnabled: true,
 			setupPanelEnabled: true,
 			setupPanelVariant: 'variant',
@@ -8109,7 +8149,6 @@ describe('resolveExperimentGates', () => {
 		stubContainer({
 			[CONFIG_EVALUATIONS_FLAG]: 'control',
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
-			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
 			[INSTANCE_AI_CONCISE_STYLE_FLAG]: 'control',
 			[INSTANCE_AI_SETUP_PANEL_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
@@ -8122,7 +8161,6 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
-			progressiveBuildingEnabled: false,
 			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			setupPanelVariant: 'control',
@@ -8172,7 +8210,6 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
-			progressiveBuildingEnabled: false,
 			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
@@ -8191,7 +8228,6 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
-			progressiveBuildingEnabled: false,
 			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
