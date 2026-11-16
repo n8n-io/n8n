@@ -12,6 +12,7 @@ describe('presentWhatsAppMetaState', () => {
 		expect(presentWhatsAppMetaState('numberUnavailable')?.theme).toBe('danger');
 		expect(presentWhatsAppMetaState('numberDeleted')?.theme).toBe('danger');
 		expect(presentWhatsAppMetaState('numberMigrated')?.theme).toBe('danger');
+		expect(presentWhatsAppMetaState('numberNotFound')?.theme).toBe('danger');
 		expect(presentWhatsAppMetaState('nameDeclinedBlocked')?.theme).toBe('danger');
 		expect(presentWhatsAppMetaState('nameDeclined')?.theme).toBe('warning');
 	});
@@ -25,7 +26,7 @@ describe('presentWhatsAppMetaState', () => {
 		expect(presentWhatsAppMetaState(state)?.action?.url).toBe(url);
 	});
 
-	it.each<WhatsAppMetaState>(['numberDeleted', 'numberMigrated'])(
+	it.each<WhatsAppMetaState>(['numberDeleted', 'numberMigrated', 'numberNotFound'])(
 		'offers a button to set up again for %s, and no link',
 		(state) => {
 			const presentation = presentWhatsAppMetaState(state);

@@ -17,7 +17,7 @@ import { createHmac } from 'node:crypto';
 
 import { AgentCredentialLookupService } from '../../agent-credential-lookup.service';
 import { numberProperty, stringProperty } from '../../integration-helpers';
-import { resolveWhatsAppMetaState } from './whatsapp-meta-status';
+import { isNumberNotFoundError, resolveWhatsAppMetaState } from './whatsapp-meta-status';
 
 const WHATSAPP_CREDENTIAL_TYPE = 'whatsAppBotApi';
 
@@ -223,6 +223,8 @@ export class WhatsAppCredentialCheckService {
 					fields: 'business_verification_status',
 				}).catch(() => undefined),
 			]);
+			// A deleted or moved number gives this error, not a 200 with a status.
+			if (isNumberNotFoundError(phone.body)) return { state: 'numberNotFound' };
 			if (phone.statusCode !== 200) return { state: 'unknown' };
 
 			return {

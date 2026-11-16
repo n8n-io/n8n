@@ -43,6 +43,7 @@ export interface WhatsAppWebhookStatus {
  * - `numberUnavailable`: Meta shows the number as disconnected or banned. The agent cannot send or receive.
  * - `numberDeleted`: the number was deleted from the WhatsApp account. The agent cannot send or receive. The user sets WhatsApp up again.
  * - `numberMigrated`: the number moved to another WhatsApp account. The agent cannot send or receive. The user sets WhatsApp up again with a credential for that account.
+ * - `numberNotFound`: Meta does not find the number for this credential. The number was deleted or moved, or the credential lost access to it. Meta gives one error for all of these. The user sets WhatsApp up again.
  * - `numberPending`: Meta has not activated the number. The agent cannot send or receive.
  * - `dailyLimit`: the number reached its daily limit. The agent can reply, but cannot start conversations.
  * - `nameInReviewBlocked`, `nameDeclinedBlocked`: a first display name is not approved. The agent cannot send.
@@ -55,6 +56,7 @@ export type WhatsAppMetaState =
 	| 'numberUnavailable'
 	| 'numberDeleted'
 	| 'numberMigrated'
+	| 'numberNotFound'
 	| 'numberPending'
 	| 'dailyLimit'
 	| 'nameInReviewBlocked'

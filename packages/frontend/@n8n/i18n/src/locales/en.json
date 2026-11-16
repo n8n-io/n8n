@@ -10352,6 +10352,8 @@
 	"agents.channels.whatsapp.meta.numberMigrated.title": "Your number {number} moved to another WhatsApp account",
 	"agents.channels.whatsapp.meta.numberMigrated.titleNoNumber": "Your number moved to another WhatsApp account",
 	"agents.channels.whatsapp.meta.numberMigrated.description": "The agent can’t send or receive messages. To keep using it, set up WhatsApp again with a credential for that account.",
+	"agents.channels.whatsapp.meta.numberNotFound.title": "Meta can’t find your WhatsApp number",
+	"agents.channels.whatsapp.meta.numberNotFound.description": "The number may have been deleted or moved to another WhatsApp account, or this credential lost access to it. The agent can’t send or receive messages. To keep using WhatsApp, set it up again.",
 	"agents.channels.whatsapp.meta.numberPending.title": "Your number {number} is pending activation",
 	"agents.channels.whatsapp.meta.numberPending.titleNoNumber": "Your number is pending activation",
 	"agents.channels.whatsapp.meta.numberPending.description": "The agent can’t send or receive messages until Meta activates the number, which can take a few days.",

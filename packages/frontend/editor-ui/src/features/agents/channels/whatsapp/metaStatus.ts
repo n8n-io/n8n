@@ -60,6 +60,13 @@ const presentations: Record<
 		descriptionKey: 'agents.channels.whatsapp.meta.numberMigrated.description',
 		setupAction: { labelKey: 'agents.channels.whatsapp.meta.action.setUpAgain' },
 	},
+	// Meta does not return the number with this error, so the headline has no number.
+	numberNotFound: {
+		theme: 'danger',
+		titleKey: 'agents.channels.whatsapp.meta.numberNotFound.title',
+		descriptionKey: 'agents.channels.whatsapp.meta.numberNotFound.description',
+		setupAction: { labelKey: 'agents.channels.whatsapp.meta.action.setUpAgain' },
+	},
 	numberPending: {
 		theme: 'warning',
 		titleKey: 'agents.channels.whatsapp.meta.numberPending.title',

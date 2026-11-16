@@ -1,4 +1,5 @@
 import type { WhatsAppMetaState } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 
 /** The tier Meta gives a business that is not verified. */
 const UNVERIFIED_MESSAGING_TIER = 'TIER_250';
@@ -40,6 +41,17 @@ const NOT_VERIFIED_VERIFICATION = new Set([
  * `FLAGGED` and `RATE_LIMITED`, show nothing until their meaning is known.
  */
 const UNAVAILABLE_NUMBER_STATUSES = new Set(['BANNED', 'DISCONNECTED']);
+
+/**
+ * Whether a refused phone number read means Meta does not find the number for
+ * this token. Meta gives this error for an ID that does not exist and for an
+ * ID the token cannot see, so it also covers a deleted or moved number. Other
+ * refusals, such as a bad field, use code 100 with another subcode.
+ */
+export function isNumberNotFoundError(body: unknown): boolean {
+	const error = isRecord(body) ? body.error : undefined;
+	return isRecord(error) && error.code === 100 && error.error_subcode === 33;
+}
 
 const isPending = (status?: string) => status === 'PENDING_REVIEW';
 const isDeclined = (status?: string) => status === 'DECLINED';

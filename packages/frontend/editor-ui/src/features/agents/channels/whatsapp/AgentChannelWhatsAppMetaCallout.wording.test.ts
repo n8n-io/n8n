@@ -109,6 +109,17 @@ describe('WhatsApp Meta callout wording', () => {
 	});
 
 	// Not in the design prototype. Review this wording with design.
+	it('words the numberNotFound callout, which has no number to show', () => {
+		const presentation = presentWhatsAppMetaState('numberNotFound');
+
+		expect(i18n.baseText(presentation!.titleKey)).toBe('Meta can’t find your WhatsApp number');
+		expect(i18n.baseText(presentation!.descriptionKey)).toBe(
+			'The number may have been deleted or moved to another WhatsApp account, or this credential lost access to it. The agent can’t send or receive messages. To keep using WhatsApp, set it up again.',
+		);
+		expect(i18n.baseText(presentation!.setupAction!.labelKey)).toBe('Set up again');
+	});
+
+	// Not in the design prototype. Review this wording with design.
 	it('words the numberUnavailable callout', () => {
 		const presentation = presentWhatsAppMetaState('numberUnavailable');
 

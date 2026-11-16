@@ -60,7 +60,7 @@ describe('AgentChannelWhatsAppMetaCallout', () => {
 		expect(getByTestId('whatsapp-meta-callout')).toBeInTheDocument();
 	});
 
-	it.each(['numberDeleted', 'numberMigrated'] as const)(
+	it.each(['numberDeleted', 'numberMigrated', 'numberNotFound'] as const)(
 		'shows a set up again button for %s that asks to start the setup',
 		async (state) => {
 			const { getByTestId, queryByTestId, emitted } = renderComponent({
