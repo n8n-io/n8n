@@ -212,6 +212,45 @@ describe('useAssistantAgentTurnTelemetry', () => {
 			expect(receivedCalls()).toHaveLength(0);
 		});
 
+		it('reports a run whose stream closes after the run finishes', async () => {
+			const { telemetry, send, isStreaming, isStreamAttached } = setup();
+
+			send();
+			isStreaming.value = true;
+			// The chat attaches the stream after it passes `execution-started` on.
+			telemetry.handleStreamEvent(started);
+			isStreamAttached.value = true;
+			telemetry.handleStreamEvent({ type: 'finish', finishReason: 'stop' });
+			telemetry.handleStreamEvent({ type: 'done', executionId: 'exec-1' });
+			isStreamAttached.value = false;
+			isStreaming.value = false;
+			await flushRender();
+
+			expect(receivedCalls()).toHaveLength(1);
+			expect(receivedCalls()[0][1]).toMatchObject({ run_id: 'exec-1' });
+		});
+
+		it('drops the sample of a run whose stream closes before the run ends', async () => {
+			const { telemetry, send, isStreaming, isStreamAttached } = setup();
+
+			send();
+			isStreaming.value = true;
+			telemetry.handleStreamEvent(started);
+			isStreamAttached.value = true;
+			telemetry.handleStreamEvent({ type: 'text-delta', id: 't1', delta: 'Hi' });
+			// The connection drops. The chat follows the run through history, which
+			// shows a card, and the user answers it later on a new stream.
+			isStreamAttached.value = false;
+			isStreaming.value = false;
+			isStreamAttached.value = true;
+			isStreaming.value = true;
+			telemetry.handleStreamEvent({ ...started, executionId: 'exec-2' });
+			telemetry.handleStreamEvent({ type: 'finish', finishReason: 'stop' });
+			await flushRender();
+
+			expect(receivedCalls()).toHaveLength(0);
+		});
+
 		it('does not report a run that no user message started, such as a card answer', async () => {
 			const { telemetry } = setup();
 

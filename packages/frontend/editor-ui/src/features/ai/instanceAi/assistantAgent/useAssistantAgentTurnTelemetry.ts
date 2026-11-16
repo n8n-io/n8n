@@ -139,6 +139,19 @@ export function useAssistantAgentTurnTelemetry(options: {
 		}
 	}
 
+	// A sample settles only on the events of its own stream, and a healthy stream
+	// sends its terminal event before it closes. A stream that closes first, for
+	// example after a dropped connection, leaves the run to history, so drop the
+	// sample. Otherwise a later stream, such as a card answer, would settle it.
+	// Sync, so a new sample from the next stream's start is never dropped.
+	watch(
+		() => options.isStreamAttached(),
+		(attached) => {
+			if (!attached) pending = null;
+		},
+		{ flush: 'sync' },
+	);
+
 	// --- 'Builder generation stalled' ---
 	// Fires when the active run has sent nothing on the stream for a minute. A run
 	// that shows a card is not stalled. Each stream event restarts the countdown,
