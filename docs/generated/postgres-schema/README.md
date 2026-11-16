@@ -373,6 +373,8 @@ erDiagram
 "public.instance_ai_thread_tabs" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
+"public.lease" }o--|| "public.lease_kind" : "FOREIGN KEY (#quot;leaseKind#quot;) REFERENCES lease_kind(kind) ON DELETE CASCADE"
+"public.lease_session" }o--|| "public.lease_kind" : "FOREIGN KEY (#quot;leaseKind#quot;) REFERENCES lease_kind(kind) ON DELETE CASCADE"
 "public.migration_finding" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.migration_workflow_owner" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.migration_workflow_owner" }o--o| "public.user" : "FOREIGN KEY (#quot;assignedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
@@ -1550,7 +1552,7 @@ erDiagram
   varchar_64_ dataHash
   bigint fencingToken
   varchar_255_ key
-  varchar_24_ leaseKind
+  varchar_24_ leaseKind FK
   varchar_36_ leaseSessionId
   timestamp_3__with_time_zone readyAt
   boolean revoked
@@ -1573,7 +1575,7 @@ erDiagram
   varchar_255_ hostId
   varchar_36_ id
   integer leaseDurationSeconds
-  varchar_24_ leaseKind
+  varchar_24_ leaseKind FK
 }
 "public.mcp_registry_server" {
   timestamp_3__with_time_zone createdAt

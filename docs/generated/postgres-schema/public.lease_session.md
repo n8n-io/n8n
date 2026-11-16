@@ -10,12 +10,13 @@
 | hostId | varchar(255) |  | false |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
 | leaseDurationSeconds | integer |  | false |  |  |  |
-| leaseKind | varchar(24) |  | false |  |  |  |
+| leaseKind | varchar(24) |  | false |  | [public.lease_kind](public.lease_kind.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_lease_session_leaseKind | FOREIGN KEY | FOREIGN KEY ("leaseKind") REFERENCES lease_kind(kind) ON DELETE CASCADE |
 | lease_session_bootId_not_null | n | NOT NULL "bootId" |
 | lease_session_createdAt_not_null | n | NOT NULL "createdAt" |
 | lease_session_expiresAt_not_null | n | NOT NULL "expiresAt" |
@@ -37,6 +38,7 @@
 ```mermaid
 erDiagram
 
+"public.lease_session" }o--|| "public.lease_kind" : "FOREIGN KEY (#quot;leaseKind#quot;) REFERENCES lease_kind(kind) ON DELETE CASCADE"
 
 "public.lease_session" {
   varchar_36_ bootId
@@ -45,7 +47,16 @@ erDiagram
   varchar_255_ hostId
   varchar_36_ id
   integer leaseDurationSeconds
-  varchar_24_ leaseKind
+  varchar_24_ leaseKind FK
+}
+"public.lease_kind" {
+  timestamp_3__with_time_zone createdAt
+  bigint fencingTokenCounter
+  varchar_24_ kind
+  timestamp_3__with_time_zone lastFullSyncAt
+  timestamp_3__with_time_zone syncLockExpiresAt
+  varchar_36_ syncLockRoundId
+  timestamp_3__with_time_zone updatedAt
 }
 ```
 

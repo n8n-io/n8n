@@ -10,7 +10,7 @@
 | dataHash | varchar(64) |  | false |  |  |  |
 | fencingToken | bigint | 0 | false |  |  |  |
 | key | varchar(255) |  | false |  |  |  |
-| leaseKind | varchar(24) |  | false |  |  |  |
+| leaseKind | varchar(24) |  | false |  | [public.lease_kind](public.lease_kind.md) |  |
 | leaseSessionId | varchar(36) |  | true |  |  |  |
 | readyAt | timestamp(3) with time zone |  | true |  |  |  |
 | revoked | boolean | false | false |  |  |  |
@@ -22,6 +22,7 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_lease_fencingToken | CHECK | CHECK (("fencingToken" >= 0)) |
+| FK_lease_leaseKind | FOREIGN KEY | FOREIGN KEY ("leaseKind") REFERENCES lease_kind(kind) ON DELETE CASCADE |
 | lease_createdAt_not_null | n | NOT NULL "createdAt" |
 | lease_dataHash_not_null | n | NOT NULL "dataHash" |
 | lease_data_not_null | n | NOT NULL data |
@@ -44,6 +45,7 @@
 ```mermaid
 erDiagram
 
+"public.lease" }o--|| "public.lease_kind" : "FOREIGN KEY (#quot;leaseKind#quot;) REFERENCES lease_kind(kind) ON DELETE CASCADE"
 
 "public.lease" {
   timestamp_3__with_time_zone claimedAt
@@ -52,11 +54,20 @@ erDiagram
   varchar_64_ dataHash
   bigint fencingToken
   varchar_255_ key
-  varchar_24_ leaseKind
+  varchar_24_ leaseKind FK
   varchar_36_ leaseSessionId
   timestamp_3__with_time_zone readyAt
   boolean revoked
   timestamp_3__with_time_zone revokedAt
+  timestamp_3__with_time_zone updatedAt
+}
+"public.lease_kind" {
+  timestamp_3__with_time_zone createdAt
+  bigint fencingTokenCounter
+  varchar_24_ kind
+  timestamp_3__with_time_zone lastFullSyncAt
+  timestamp_3__with_time_zone syncLockExpiresAt
+  varchar_36_ syncLockRoundId
   timestamp_3__with_time_zone updatedAt
 }
 ```

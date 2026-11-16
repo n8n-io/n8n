@@ -355,6 +355,8 @@ erDiagram
 "instance_ai_thread_tabs" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_credential_assignment" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"lease" |o--|| "lease_kind" : "FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"lease_session" }o--|| "lease_kind" : "FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "migration_finding" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "migration_workflow_owner" }o--o| "user" : "FOREIGN KEY (assignedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "migration_workflow_owner" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -1559,7 +1561,7 @@ erDiagram
   VARCHAR_255_ hostId
   VARCHAR_36_ id PK
   INTEGER leaseDurationSeconds
-  VARCHAR_24_ leaseKind
+  VARCHAR_24_ leaseKind FK
 }
 "mcp_registry_server" {
   datetime_3_ createdAt

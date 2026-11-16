@@ -30,7 +30,8 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 			"bootId" VARCHAR(36) NOT NULL,
 			"leaseDurationSeconds" INTEGER NOT NULL,
 			"expiresAt" ${ts} NOT NULL,
-			"createdAt" ${ts} NOT NULL DEFAULT ${nowDefault}
+			"createdAt" ${ts} NOT NULL DEFAULT ${nowDefault},
+			CONSTRAINT "FK_${tablePrefix}lease_session_leaseKind" FOREIGN KEY ("leaseKind") REFERENCES ${kind} ("kind") ON DELETE CASCADE
 		)`);
 		await runQuery(
 			`CREATE INDEX ${escape.indexName('lease_session_leaseKind_expiresAt')} ON ${session} ("leaseKind", "expiresAt")`,
@@ -49,7 +50,8 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 			"revokedAt" ${ts} NULL,
 			"createdAt" ${ts} NOT NULL DEFAULT ${nowDefault},
 			"updatedAt" ${ts} NOT NULL DEFAULT ${nowDefault},
-			PRIMARY KEY ("leaseKind", "key")
+			PRIMARY KEY ("leaseKind", "key"),
+			CONSTRAINT "FK_${tablePrefix}lease_leaseKind" FOREIGN KEY ("leaseKind") REFERENCES ${kind} ("kind") ON DELETE CASCADE
 		)`);
 		await runQuery(
 			`CREATE INDEX ${escape.indexName('lease_leaseKind_leaseSessionId')} ON ${lease} ("leaseKind", "leaseSessionId")`,

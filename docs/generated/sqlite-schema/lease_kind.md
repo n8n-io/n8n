@@ -25,7 +25,7 @@ CREATE TABLE "lease_kind" (
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f','NOW') | false |  |  |  |
 | fencingTokenCounter | INTEGER | 0 | false |  |  |  |
-| kind | VARCHAR(24) |  | false |  |  |  |
+| kind | VARCHAR(24) |  | false | [lease](lease.md) [lease_session](lease_session.md) |  |  |
 | lastFullSyncAt | DATETIME |  | true |  |  |  |
 | syncLockExpiresAt | DATETIME |  | true |  |  |  |
 | syncLockRoundId | VARCHAR(36) |  | true |  |  |  |
@@ -50,6 +50,8 @@ CREATE TABLE "lease_kind" (
 ```mermaid
 erDiagram
 
+"lease" |o--|| "lease_kind" : "FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"lease_session" }o--|| "lease_kind" : "FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "lease_kind" {
   DATETIME createdAt
@@ -59,6 +61,29 @@ erDiagram
   DATETIME syncLockExpiresAt
   VARCHAR_36_ syncLockRoundId
   DATETIME updatedAt
+}
+"lease" {
+  DATETIME claimedAt
+  DATETIME createdAt
+  TEXT data
+  VARCHAR_64_ dataHash
+  INTEGER fencingToken
+  VARCHAR_255_ key PK
+  VARCHAR_24_ leaseKind PK
+  VARCHAR_36_ leaseSessionId
+  DATETIME readyAt
+  BOOLEAN revoked
+  DATETIME revokedAt
+  DATETIME updatedAt
+}
+"lease_session" {
+  VARCHAR_36_ bootId
+  DATETIME createdAt
+  DATETIME expiresAt
+  VARCHAR_255_ hostId
+  VARCHAR_36_ id PK
+  INTEGER leaseDurationSeconds
+  VARCHAR_24_ leaseKind FK
 }
 ```
 

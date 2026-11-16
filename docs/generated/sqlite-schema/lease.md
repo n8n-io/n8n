@@ -19,7 +19,8 @@ CREATE TABLE "lease" (
 			"revokedAt" DATETIME NULL,
 			"createdAt" DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW')),
 			"updatedAt" DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW')),
-			PRIMARY KEY ("leaseKind", "key")
+			PRIMARY KEY ("leaseKind", "key"),
+			CONSTRAINT "FK_lease_leaseKind" FOREIGN KEY ("leaseKind") REFERENCES "lease_kind" ("kind") ON DELETE CASCADE
 		)
 ```
 
@@ -35,7 +36,7 @@ CREATE TABLE "lease" (
 | dataHash | VARCHAR(64) |  | false |  |  |  |
 | fencingToken | INTEGER | 0 | false |  |  |  |
 | key | VARCHAR(255) |  | false |  |  |  |
-| leaseKind | VARCHAR(24) |  | false |  |  |  |
+| leaseKind | VARCHAR(24) |  | false |  | [lease_kind](lease_kind.md) |  |
 | leaseSessionId | VARCHAR(36) |  | true |  |  |  |
 | readyAt | DATETIME |  | true |  |  |  |
 | revoked | BOOLEAN | 0 | false |  |  |  |
@@ -47,6 +48,7 @@ CREATE TABLE "lease" (
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | - | CHECK | CHECK ("fencingToken" >= 0) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | key | PRIMARY KEY | PRIMARY KEY (key) |
 | leaseKind | PRIMARY KEY | PRIMARY KEY (leaseKind) |
 | sqlite_autoindex_lease_1 | PRIMARY KEY | PRIMARY KEY (leaseKind, key) |
@@ -63,6 +65,7 @@ CREATE TABLE "lease" (
 ```mermaid
 erDiagram
 
+"lease" |o--|| "lease_kind" : "FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "lease" {
   DATETIME claimedAt
@@ -76,6 +79,15 @@ erDiagram
   DATETIME readyAt
   BOOLEAN revoked
   DATETIME revokedAt
+  DATETIME updatedAt
+}
+"lease_kind" {
+  DATETIME createdAt
+  INTEGER fencingTokenCounter
+  VARCHAR_24_ kind PK
+  DATETIME lastFullSyncAt
+  DATETIME syncLockExpiresAt
+  VARCHAR_36_ syncLockRoundId
   DATETIME updatedAt
 }
 ```

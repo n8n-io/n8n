@@ -13,7 +13,8 @@ CREATE TABLE "lease_session" (
 			"bootId" VARCHAR(36) NOT NULL,
 			"leaseDurationSeconds" INTEGER NOT NULL,
 			"expiresAt" DATETIME NOT NULL,
-			"createdAt" DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW'))
+			"createdAt" DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW')),
+			CONSTRAINT "FK_lease_session_leaseKind" FOREIGN KEY ("leaseKind") REFERENCES "lease_kind" ("kind") ON DELETE CASCADE
 		)
 ```
 
@@ -29,12 +30,13 @@ CREATE TABLE "lease_session" (
 | hostId | VARCHAR(255) |  | false |  |  |  |
 | id | VARCHAR(36) |  | false |  |  |  |
 | leaseDurationSeconds | INTEGER |  | false |  |  |  |
-| leaseKind | VARCHAR(24) |  | false |  |  |  |
+| leaseKind | VARCHAR(24) |  | false |  | [lease_kind](lease_kind.md) |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_lease_session_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -50,6 +52,7 @@ CREATE TABLE "lease_session" (
 ```mermaid
 erDiagram
 
+"lease_session" }o--|| "lease_kind" : "FOREIGN KEY (leaseKind) REFERENCES lease_kind (kind) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "lease_session" {
   VARCHAR_36_ bootId
@@ -58,7 +61,16 @@ erDiagram
   VARCHAR_255_ hostId
   VARCHAR_36_ id PK
   INTEGER leaseDurationSeconds
-  VARCHAR_24_ leaseKind
+  VARCHAR_24_ leaseKind FK
+}
+"lease_kind" {
+  DATETIME createdAt
+  INTEGER fencingTokenCounter
+  VARCHAR_24_ kind PK
+  DATETIME lastFullSyncAt
+  DATETIME syncLockExpiresAt
+  VARCHAR_36_ syncLockRoundId
+  DATETIME updatedAt
 }
 ```
 
