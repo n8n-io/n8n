@@ -1,6 +1,6 @@
 {
   "name": "@n8n/db",
-  "version": "1.46.0",
+  "version": "1.48.0",
   "scripts": {
     "clean": "rimraf dist .turbo .tmp-schema-docs",
     "gen:migration-index": "node scripts/generate-migration-index.mjs",
@@ -37,6 +37,7 @@
     "@n8n/constants": "workspace:*",
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
+    "@n8n/errors": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@n8n/typeorm": "workspace:*",

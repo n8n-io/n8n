@@ -12,11 +12,13 @@
 		"packages/@n8n/extension-sdk",
 		"packages/@n8n/inbound-auth",
 		"packages/@n8n/json-schema-to-zod",
+		"packages/@n8n/leases",
 		"packages/@n8n/mcp-browser-extension",
 		"packages/@n8n/permissions",
 		"packages/@n8n/telemetry",
 		"packages/@n8n/tournament",
 		"packages/@n8n/utils",
+		"packages/@n8n/workflow-engine-check",
 		"packages/workflow"
 	],
 	"backend": [
@@ -32,6 +34,7 @@
 		"packages/@n8n/blob-storage",
 		"packages/@n8n/cli",
 		"packages/@n8n/client-oauth2",
+		"packages/@n8n/code-runtime-js",
 		"packages/@n8n/config",
 		"packages/@n8n/db",
 		"packages/@n8n/decorators",

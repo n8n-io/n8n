@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type { Mocked } from 'vitest';
 
@@ -49,12 +50,28 @@ describe('Zoho > GenericFunctions', () => {
 			});
 
 			await expect(
-				zohoApiRequest.call(mockExecuteFunctions, 'POST', '/leads', {
+				zohoApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/leads`, {
 					Company: 'Acme Corp',
 					Last_Name: 'Doe',
 					Email: 'duplicate@example.com',
 				}),
 			).rejects.toThrow('duplicate data');
+		});
+
+		it('should encode path values and join them with the API domain', async () => {
+			mockRequestOAuth2.mockResolvedValue({ data: [{ id: '1' }] });
+
+			const leadId = '4876876000000624001/x?y=1';
+			await zohoApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/leads/${leadId}`);
+
+			expect(mockRequestOAuth2).toHaveBeenCalledWith(
+				'zohoOAuth2Api',
+				expect.objectContaining({
+					uri: expect.objectContaining({
+						value: 'https://www.zohoapis.com/crm/v2/leads/4876876000000624001%2Fx%3Fy=1',
+					}),
+				}),
+			);
 		});
 	});
 });

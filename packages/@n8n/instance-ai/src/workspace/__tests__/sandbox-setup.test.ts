@@ -275,6 +275,36 @@ describe('PACKAGE_JSON', () => {
 		expect(packageJson.dependencies.tsx).toBeDefined();
 		expect(packageJson.dependencies.typescript).toBe('7.0.2');
 	});
+
+	it('should use local tarballs for snapshot workspace packages', async () => {
+		const { buildSnapshotPackageJson } = await import('../sandbox-setup.js');
+
+		const packageJson = jsonParse<{ dependencies: Record<string, string> }>(
+			buildSnapshotPackageJson([
+				{
+					filename: 'n8n-utils-1.55.0.tgz',
+					packageName: '@n8n/utils',
+					packagePath: '/repo/packages/@n8n/utils',
+					tarball: Buffer.from('utils'),
+					version: '1.55.0',
+				},
+				{
+					filename: 'n8n-workflow-sdk-0.41.0.tgz',
+					packageName: '@n8n/workflow-sdk',
+					packagePath: '/repo/packages/@n8n/workflow-sdk',
+					tarball: Buffer.from('sdk'),
+					version: '0.41.0',
+				},
+			]),
+		);
+
+		expect(packageJson.dependencies).toMatchObject({
+			'@n8n/utils': 'file:.n8n-packages/n8n-utils-1.55.0.tgz',
+			'@n8n/workflow-sdk': 'file:.n8n-packages/n8n-workflow-sdk-0.41.0.tgz',
+			tsx: expect.any(String),
+			typescript: '7.0.2',
+		});
+	});
 });
 describe('BUILD_MJS', () => {
 	let dir: string;

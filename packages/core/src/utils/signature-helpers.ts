@@ -11,15 +11,16 @@ export function generateUrlSignature(url: string, secret: string): string {
 }
 
 /**
- * Builds the `/<executionId>/<nodeId>` suffix of a waiting-webhook resume URL.
+ * Builds the `/<id>/<nodeId>` suffix of a waiting-webhook resume URL. The id is the
+ * execution id on engine v1 and the step id on engine v2.
  *
  * The node id is client-supplied and stored verbatim, so it is percent-encoded to keep it
  * within one path segment of the signed URL. Ids of exactly `.` or `..` are the exception —
  * no encoding of a dot segment survives URL normalisation, so those collapse the path and
- * yield a link that does not resolve. The execution id is server-generated and already URL-safe.
+ * yield a link that does not resolve. The id is server-generated and already URL-safe.
  */
-export function buildResumeUrlSuffix(executionId: string, nodeId: string): string {
-	return `/${executionId}/${encodeURIComponent(nodeId)}`;
+export function buildResumeUrlSuffix(id: string, nodeId: string): string {
+	return `/${id}/${encodeURIComponent(nodeId)}`;
 }
 
 /**

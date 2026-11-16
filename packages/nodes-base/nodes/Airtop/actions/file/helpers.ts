@@ -1,6 +1,6 @@
 import pick from 'lodash/pick';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import { ERROR_MESSAGES, OPERATION_TIMEOUT } from '../../constants';
 import { waitForSessionEvent } from '../../GenericFunctions';
@@ -21,7 +21,7 @@ export async function requestAllFiles(
 	this: IExecuteFunctions,
 	sessionIds: string,
 ): Promise<IAirtopResponseWithFiles> {
-	const endpoint = '/files';
+	const endpoint = requestPath`/files`;
 	let hasMore = true;
 	let currentOffset = 0;
 	const limit = 100;
@@ -82,7 +82,7 @@ export async function pollFileUntilAvailable(
 			});
 		}
 
-		const response = await apiRequest.call(this, 'GET', `/files/${fileId}`);
+		const response = await apiRequest.call(this, 'GET', requestPath`/files/${fileId}`);
 		fileStatus = response.data?.status as string;
 		// Wait before the next polling attempt
 		await new Promise((resolve) => setTimeout(resolve, intervalSeconds * 1000));
@@ -109,7 +109,7 @@ export async function createAndUploadFile(
 	pollingFunction = pollFileUntilAvailable,
 ): Promise<string> {
 	// Create file entry
-	const createResponse = await apiRequest.call(this, 'POST', '/files', {
+	const createResponse = await apiRequest.call(this, 'POST', requestPath`/files`, {
 		fileName,
 		fileType,
 	});
@@ -188,7 +188,9 @@ export async function pushFileToSession(
 	pollingFunction = waitForFileInSession,
 ): Promise<void> {
 	// Push file into session
-	await apiRequest.call(this, 'POST', `/files/${fileId}/push`, { sessionIds: [sessionId] });
+	await apiRequest.call(this, 'POST', requestPath`/files/${fileId}/push`, {
+		sessionIds: [sessionId],
+	});
 	await pollingFunction.call(this, sessionId, fileId);
 }
 
@@ -207,7 +209,7 @@ export async function triggerFileInput(
 	await apiRequest.call(
 		this,
 		'POST',
-		`/sessions/${request.sessionId}/windows/${request.windowId}/file-input`,
+		requestPath`/sessions/${request.sessionId}/windows/${request.windowId}/file-input`,
 		pick(request, ['fileId', 'elementDescription', 'includeHiddenElements']),
 	);
 }

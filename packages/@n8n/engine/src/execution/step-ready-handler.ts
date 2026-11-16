@@ -12,7 +12,7 @@ import {
 	type GraphNode,
 	type WorkflowLoop,
 } from '../graph';
-import type { LifecycleEventPublisher } from '../lifecycle-events';
+import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import { createResponseEmitter, type ExecutionResponseSender } from '../response-channel';
 import { runBatchStep } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
@@ -33,6 +33,7 @@ import {
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { InvalidParentLinkError, type StartExecutionService } from './start-execution.service';
+import { stepErrorDetails } from './step-error-details';
 import type { StepRecord, StepStore } from './step-store';
 import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
@@ -75,7 +76,7 @@ export class StepReadyHandler {
 		private readonly stepStore: StepStore,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly dependencies: ExternalDependencies,
-		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
 		private readonly startExecution: StartExecutionService,
 		/** Called once a wait is on the row, so the sweeper can re-arm on its deadline. */
@@ -102,7 +103,8 @@ export class StepReadyHandler {
 		}
 
 		// This worker won the claim, so it is the one that announces the start.
-		this.lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
+		const lifecycleEventPublisher = this.lifecycleEventPublisherFactory.create(execution);
+		lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
 
 		// Decided outside the `try` below on purpose. Its errors are the engine's
 		// own bookkeeping, not the node's, so they leave the step `running`
@@ -117,7 +119,7 @@ export class StepReadyHandler {
 			| { kind: 'outputs'; outputs: StepSlots }
 			| { kind: 'wait'; wait: ExecutorWaitDeclaration }
 			| { kind: 'subExecution'; subExecution: SubExecutionDeclaration }
-			| { kind: 'error'; error: unknown };
+			| { kind: 'error'; error: StepError };
 		try {
 			let result: StepExecutionResult;
 			if (dispatch.kind === 'replay') {
@@ -135,7 +137,7 @@ export class StepReadyHandler {
 				run = { kind: 'outputs', outputs: result.outputs };
 			}
 		} catch (error) {
-			run = { kind: 'error', error };
+			run = { kind: 'error', error: toStepError(error) };
 		}
 
 		if (run.kind === 'subExecution') {
@@ -147,7 +149,7 @@ export class StepReadyHandler {
 			const started = await this.handleDetachedSubExecution(step, execution, subExecution);
 			run =
 				started.kind === 'error'
-					? { kind: 'error', error: started.error }
+					? { kind: 'error', error: toStepError(started.error) }
 					: { kind: 'outputs', outputs: subExecution.outputs };
 		}
 
@@ -157,7 +159,7 @@ export class StepReadyHandler {
 		} else if (run.kind === 'wait') {
 			recorded = await this.stepStore.suspendStep(event.stepId, run.wait);
 		} else {
-			recorded = await this.stepStore.failStep(event.stepId, toStepError(run.error));
+			recorded = await this.stepStore.failStep(event.stepId, run.error);
 		}
 
 		// Recording is a CAS on `running`, so losing it means something else took the
@@ -166,10 +168,9 @@ export class StepReadyHandler {
 		// only thing that can take a step over, and it doesn't exist yet.
 		if (!recorded) return;
 
-		// A wait is no outcome: nothing settled, so nothing is announced and no
-		// planning follows.
-		// TODO(CAT-2928): publish `step:waiting` so the UI can show it.
+		// A wait is no outcome: nothing settled, so no planning follows.
 		if (run.kind === 'wait') {
+			lifecycleEventPublisher.publish({ type: 'step:waiting', ...stepEventFields(step, node) });
 			// Nudge first, so the sweeper's re-arm read runs beside the status
 			// write rather than after it. Either order is correct.
 			this.onStepSuspended();
@@ -179,10 +180,10 @@ export class StepReadyHandler {
 
 		// Before the settled event, or the execution could announce its end first.
 		// Outputs ride along so a consumer needs no read to render them.
-		this.lifecycleEventPublisher.publish(
+		lifecycleEventPublisher.publish(
 			run.kind === 'outputs'
 				? { type: 'step:completed', ...stepEventFields(step, node), outputs: run.outputs }
-				: { type: 'step:failed', ...stepEventFields(step, node) },
+				: { type: 'step:failed', ...stepEventFields(step, node), error: run.error },
 		);
 
 		await this.orchestrationQueue.publish({
@@ -215,9 +216,12 @@ export class StepReadyHandler {
 		const started = await this.startSubExecution(step, execution, subExecution);
 		if (started.kind === 'started') return;
 
-		const failed = await this.stepStore.failWaitingStep(step.id, toStepError(started.error));
+		const error = toStepError(started.error);
+		const failed = await this.stepStore.failWaitingStep(step.id, error);
 		if (!failed) return;
-		this.lifecycleEventPublisher.publish({ type: 'step:failed', ...stepEventFields(step, node) });
+		this.lifecycleEventPublisherFactory
+			.create(execution)
+			.publish({ type: 'step:failed', ...stepEventFields(step, node), error });
 		await this.orchestrationQueue.publish({
 			type: 'step:settled',
 			executionId: event.executionId,
@@ -508,7 +512,13 @@ function stepEventFields(step: StepRecord, node: GraphNode) {
 
 function toStepError(error: unknown): StepError {
 	if (error instanceof Error) {
-		return { name: error.name, message: error.message, stack: error.stack };
+		const details = stepErrorDetails(error);
+		return {
+			name: error.name,
+			message: error.message,
+			stack: error.stack,
+			...(details === undefined ? {} : { details }),
+		};
 	}
 	return { name: 'Error', message: String(error) };
 }

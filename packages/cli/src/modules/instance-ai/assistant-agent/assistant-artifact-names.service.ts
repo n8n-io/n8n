@@ -1,8 +1,7 @@
+import { DataTableRepository } from '@n8n/backend-module-data-table';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { InstanceAiChangedArtifact } from '@n8n/instance-ai';
-
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
 /** Looks up the current names of the artifacts that the Assistant shows as tabs. */
 @Service()

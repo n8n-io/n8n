@@ -24,7 +24,7 @@ test.use({
 test.describe(
 	'Poll Trigger (durable scheduler)',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test('should fire the activation-time seed poll and provision a durable job', async ({
@@ -78,9 +78,8 @@ test.describe(
 
 			await api.workflows.deactivate(workflowId);
 
-			// Deactivation removes the row synchronously as part of the request, so
-			// this needs no wait: a stray row would be visible immediately.
-			expect(await api.countScheduledJobs(workflowId, nodeId)).toBe(0);
+			// The publication outbox removes jobs after the deactivation response.
+			await expect.poll(async () => await api.countScheduledJobs(workflowId, nodeId)).toBe(0);
 		});
 	},
 );

@@ -2,7 +2,10 @@ operationId: deleteRoleMappingRule
 tags:
   - RoleMappingRule
 summary: Delete a role-mapping rule
-description: Deletes a role-mapping rule. The remaining rules of the same type close the gap, so their `order` values stay a contiguous sequence starting at 0.
+description: |-
+  Deletes a role-mapping rule. The remaining rules of the same type close the gap, so their `order` values stay a contiguous sequence starting at 0.
+
+  Requires the `roleMappingRule:delete` API key scope.
 x-required-scope: roleMappingRule:delete
 parameters:
   - schema:

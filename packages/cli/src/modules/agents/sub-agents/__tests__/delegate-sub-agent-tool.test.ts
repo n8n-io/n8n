@@ -9,9 +9,8 @@ import {
 import type { SubAgentSource } from '@n8n/api-types';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { OperationalError, UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, OperationalError, UserError } from '@n8n/errors';
 
 import { AgentExecutionRecordingError } from '../../agent-execution-recording.error';
 import {

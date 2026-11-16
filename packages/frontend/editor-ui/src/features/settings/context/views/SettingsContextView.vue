@@ -16,7 +16,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { VIEWS } from '@/app/constants';
 
 import { useContextStore } from '../context.store';
-import { isContextPreferencesEnabled, isContextSkillsEnabled } from '../context.utils';
+import { isContextSkillsEnabled } from '../context.utils';
 import { useSkillsStore } from '../skills.store';
 
 const i18n = useI18n();
@@ -24,8 +24,7 @@ const router = useRouter();
 const documentTitle = useDocumentTitle();
 const contextStore = useContextStore();
 const skillsStore = useSkillsStore();
-// The overview opens when either flag is on, so each row follows its own flag.
-const preferencesEnabled = isContextPreferencesEnabled();
+// The skills row follows the skills module. Preferences are always on.
 const skillsEnabled = isContextSkillsEnabled();
 const { showError } = useToast();
 
@@ -63,11 +62,10 @@ async function loadCount(fetchCount: () => Promise<unknown>, errorKey: BaseTextK
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.title'));
 	await Promise.all([
-		preferencesEnabled &&
-			loadCount(
-				async () => await contextStore.fetchPreferenceCount(),
-				'settings.context.preferences.error.load',
-			),
+		loadCount(
+			async () => await contextStore.fetchPreferenceCount(),
+			'settings.context.preferences.error.load',
+		),
 		skillsEnabled &&
 			loadCount(
 				async () => await skillsStore.fetchSkillCount(),
@@ -91,7 +89,6 @@ onMounted(async () => {
 
 		<N8nSettingsRowGroup>
 			<N8nSettingsRow
-				v-if="preferencesEnabled"
 				clickable
 				:title="i18n.baseText('settings.context.preferences.title')"
 				:description="i18n.baseText('settings.context.preferences.subtitle')"
@@ -120,12 +117,6 @@ onMounted(async () => {
 				:title="i18n.baseText('settings.context.skills.title')"
 				:description="i18n.baseText('settings.context.comingSoon')"
 				data-test-id="settings-context-skills-row"
-			/>
-
-			<N8nSettingsRow
-				:title="i18n.baseText('settings.context.sources.title')"
-				:description="i18n.baseText('settings.context.comingSoon')"
-				data-test-id="settings-context-sources-row"
 			/>
 		</N8nSettingsRowGroup>
 	</N8nSettingsLayout>

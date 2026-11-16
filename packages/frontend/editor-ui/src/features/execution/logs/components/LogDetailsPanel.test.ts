@@ -19,18 +19,21 @@ import { LOG_DETAILS_PANEL_STATE } from '@/features/execution/logs/logs.constant
 import { type GroupLogEntry, type NodeLogEntry, isGroupLog } from '../logs.types';
 import { createTestLogEntry } from '../__test__/mocks';
 import { createLogTree } from '../logs.utils';
-import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes, type RedactionInfo } from 'n8n-workflow';
+import { useI18n } from '@n8n/i18n';
 import { HTML_NODE_TYPE } from '@/app/constants';
 import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
-const redactionState = vi.hoisted(() => ({ isRedacted: false }));
+const redactionState = vi.hoisted(() => ({
+	isRedacted: false,
+	canReveal: true,
+	reason: undefined as RedactionInfo['reason'] | undefined,
+}));
 vi.mock('@/features/execution/executions/composables/useExecutionRedaction', () => ({
 	useExecutionRedaction: () => ({
-		isRedacted: redactionState.isRedacted,
-		canReveal: true,
-		isDynamicCredentials: false,
+		...redactionState,
 		revealData: vi.fn(),
 	}),
 }));
@@ -112,6 +115,29 @@ describe('LogDetailsPanel', () => {
 	beforeEach(() => {
 		pinia = createTestingPinia({ stubActions: false, fakeApp: true });
 		redactionState.isRedacted = false;
+		redactionState.canReveal = true;
+		redactionState.reason = undefined;
+	});
+
+	it('shows the credential cause without a sharing action in the two-pane node view', () => {
+		redactionState.isRedacted = true;
+		redactionState.canReveal = false;
+		redactionState.reason = 'credential_inaccessible';
+
+		const rendered = render({
+			isOpen: true,
+			logEntry: createLogEntry({ node: aiNode, runIndex: 0, runData: aiNodeRunData }),
+			panels: LOG_DETAILS_PANEL_STATE.BOTH,
+			collapsingInputTableColumnName: null,
+			collapsingOutputTableColumnName: null,
+			isHeaderClickable: true,
+		});
+
+		expect(rendered.getByTestId('ndv-data-redacted')).toHaveTextContent(
+			useI18n().baseText('ndv.redacted.shareCredential.description'),
+		);
+		expect(rendered.queryByTestId('redacted-data-share-credential')).not.toBeInTheDocument();
+		expect(rendered.queryByTestId('ndv-reveal-redacted-data')).not.toBeInTheDocument();
 	});
 
 	it('should show name, run status, input, and output of the node', async () => {
@@ -531,6 +557,27 @@ describe('LogDetailsPanel', () => {
 			});
 
 			expect(rendered.getByTestId('ndv-data-redacted')).toBeInTheDocument();
+		});
+
+		it('shows the credential cause without a sharing action in the two-pane group view', () => {
+			redactionState.isRedacted = true;
+			redactionState.canReveal = false;
+			redactionState.reason = 'credential_inaccessible';
+
+			const rendered = render({
+				isOpen: true,
+				logEntry: buildGroupEntry(),
+				panels: LOG_DETAILS_PANEL_STATE.BOTH,
+				collapsingInputTableColumnName: null,
+				collapsingOutputTableColumnName: null,
+				isHeaderClickable: true,
+			});
+
+			expect(rendered.getByTestId('ndv-data-redacted')).toHaveTextContent(
+				useI18n().baseText('ndv.redacted.shareCredential.description'),
+			);
+			expect(rendered.queryByTestId('redacted-data-share-credential')).not.toBeInTheDocument();
+			expect(rendered.queryByTestId('ndv-reveal-redacted-data')).not.toBeInTheDocument();
 		});
 
 		it('does not show the reveal overlay for a group that is not redacted', () => {

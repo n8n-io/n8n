@@ -2,9 +2,15 @@ import type { Message } from '@n8n/agents';
 import type { AgentChatQueueResponse, AgentMessageAuthor } from '@n8n/api-types';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
-import { ConflictError, BadRequestError, NotFoundError } from '@n8n/errors';
+import {
+	ConflictError,
+	BadRequestError,
+	NotFoundError,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
@@ -13,6 +19,7 @@ import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadc
 import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import type { AgentMessageQueue } from './entities/agent-message-queue.entity';
+import type { AgentTaskStopSurface } from './types/agent-task-stop';
 import type { AgentMessageOrigin } from './entities/agent-message.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
@@ -36,10 +43,11 @@ import {
 import {
 	canContinueThreadOnSurface,
 	chatSurfaceForKind,
+	chatSurfaceMemoryResourceId,
+	N8N_CHAT_PRODUCTION_SOURCE,
 	type AgentSessionMode,
 } from './utils/agent-thread-access';
 import { buildInboundUserMessage, readInboundUserMessage } from './utils/inbound-attachments';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import { queuedMessageId } from './utils/queued-message-id';
 
 export interface ClaimedAgentMessage {
@@ -153,14 +161,16 @@ export class AgentMessageQueueService {
 		stopId: string,
 		message: string,
 		ctx: OperationContext,
+		surface: AgentTaskStopSurface = 'preview',
 	) {
 		if (!thread.ownerId) throw new UserError('Session has no owner');
 
+		const n8nChat = surface === 'n8n-chat';
 		const payload: QueuedUserChatMessage = {
-			kind: 'preview',
+			kind: n8nChat ? 'n8n_chat' : 'preview',
 			userId: thread.ownerId,
 			messageId: stopId,
-			resourceId: draftChatMemoryResourceId(thread.ownerId),
+			resourceId: chatSurfaceMemoryResourceId(surface, thread.ownerId),
 			message,
 			hidden: true,
 			stopReportId: stopId,
@@ -168,7 +178,7 @@ export class AgentMessageQueueService {
 
 		return await this.enqueueMessage(
 			thread.id,
-			'chat',
+			n8nChat ? N8N_CHAT_PRODUCTION_SOURCE : 'chat',
 			payload,
 			ctx,
 			queuedMessageId(thread.agentId, thread.id, payload),
@@ -239,7 +249,10 @@ export class AgentMessageQueueService {
 	}
 
 	/** Call after authorizing session access. Clear future turns before aborting the current turn. */
-	async prepareSessionStop(threadId: string): Promise<{
+	async prepareSessionStop(
+		threadId: string,
+		options: { preserveInput?: boolean } = {},
+	): Promise<{
 		executionIds: string[];
 		queueIds: string[];
 		attachmentIds: string[];
@@ -255,7 +268,7 @@ export class AgentMessageQueueService {
 				attachmentIds.push(
 					...readInboundUserMessage(item.message.content).attachments.map(({ id }) => id),
 				);
-				await this.messages.clearPendingInput(item.messageId, ctx);
+				if (!options.preserveInput) await this.messages.clearPendingInput(item.messageId, ctx);
 			}
 			return {
 				executionIds: running.map(({ id }) => id),

@@ -102,6 +102,8 @@ const SKILL_SOURCE_REASON_KEYS = {
 	blocked_by_check: 'settings.context.skills.connect.error.blockedByCheck',
 	review_required: 'settings.context.skills.connect.error.reviewRequired',
 	name_taken: 'settings.context.skills.connect.error.nameTaken',
+	stale: 'settings.context.skills.updates.stale',
+	name_clash: 'settings.context.skills.updates.nameClash',
 	duplicate_source: 'settings.context.skills.connect.error.duplicateSource',
 	credential_invalid: 'settings.context.skills.connect.error.credentialInvalid',
 	credential_missing: 'settings.context.skills.connect.error.credentialMissing',
@@ -125,10 +127,10 @@ const SKILL_SCAN_RULE_KEYS = {
 	invalid_skill: 'settings.context.skills.connect.check.rule.invalidSkill',
 	over_limit: 'settings.context.skills.connect.check.rule.overLimit',
 	file_skipped: 'settings.context.skills.connect.check.rule.fileSkipped',
+	file_unstorable: 'settings.context.skills.connect.check.rule.fileUnstorable',
 	hidden_unicode: 'settings.context.skills.connect.check.rule.hiddenUnicode',
 	new_url: 'settings.context.skills.connect.check.rule.newUrl',
 	permission_change: 'settings.context.skills.connect.check.rule.permissionChange',
-	suspicious_phrase: 'settings.context.skills.connect.check.rule.suspiciousPhrase',
 	lossy_conversion: 'settings.context.skills.connect.check.rule.lossyConversion',
 } satisfies Record<SkillScanRule, BaseTextKey>;
 
@@ -213,5 +215,10 @@ export function useSkillSourceReasons() {
 		});
 	}
 
-	return { reasonText, failedSkillReason, findingsText, linkedDomainsText };
+	/** The translated name of one rule of the security check. */
+	function ruleText(rule: SkillScanRule): string {
+		return i18n.baseText(SKILL_SCAN_RULE_KEYS[rule]);
+	}
+
+	return { reasonText, failedSkillReason, findingsText, linkedDomainsText, ruleText };
 }

@@ -8,7 +8,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import {
 	type AgentMutationTelemetryContext,
@@ -36,7 +36,7 @@ export class AgentCustomToolsService {
 		private readonly transactionRunner: TransactionRunner,
 	) {}
 
-	validateDescriptor(descriptor: ToolDescriptor): void {
+	validateDescriptor(descriptor: Pick<ToolDescriptor, 'name'>): void {
 		if (!CUSTOM_TOOL_ID_REGEX.test(descriptor.name)) {
 			throw new UserError(
 				`Custom tool name "${descriptor.name}" contains invalid characters. Only letters, numbers, and underscores are allowed.`,

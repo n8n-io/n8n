@@ -27,6 +27,12 @@ export interface ProviderQuirks {
 	 * turns still drop them.
 	 */
 	replayReasoningText?: boolean;
+	/**
+	 * Replay tool-call IDs exactly as the provider returned them. Otherwise the
+	 * runtime replaces IDs outside `[A-Za-z0-9_-]` with a hash, because Anthropic
+	 * rejects them.
+	 */
+	keepsToolCallIds?: boolean;
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
 	toolProviderOptionDefaults?: JSONObject;
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
@@ -35,20 +41,35 @@ export interface ProviderQuirks {
 	thinkingToProviderOptions?: (
 		thinking: ThinkingConfig,
 		modelId: string,
+		endpoint: ThinkingEndpoint,
 	) => Record<string, Record<string, unknown>>;
 }
 
-/** Shared Anthropic Messages thinking mapping (also used by Vertex Anthropic). */
+/** Where the model's requests go, for options that only the provider's own API accepts. */
+export interface ThinkingEndpoint {
+	/** The model calls the provider's own API, not a proxy, gateway, or custom base URL. */
+	isOfficialApi: boolean;
+}
+
+/**
+ * Shared Anthropic Messages thinking mapping (also used by Vertex Anthropic).
+ * `blockBinding` applies to the adaptive shape only: the budget shape does not accept it.
+ */
 function anthropicThinkingToProviderOptions(
 	thinking: ThinkingConfig,
 	modelId: string,
+	blockBinding?: { prefixMismatchBehavior: 'drop_block' },
 ): Record<string, Record<string, unknown>> {
 	const cfg = thinking as AnthropicThinkingConfig;
 	const adaptive = cfg.mode === 'adaptive' ? cfg : undefined;
 	if (anthropicUsesAdaptiveThinking(modelId)) {
 		return {
 			anthropic: {
-				thinking: { type: 'adaptive', display: adaptive?.display ?? 'summarized' },
+				thinking: {
+					type: 'adaptive',
+					display: adaptive?.display ?? 'summarized',
+					...(blockBinding !== undefined ? { blockBinding } : {}),
+				},
 				effort: adaptive?.effort ?? 'medium',
 			},
 		};
@@ -122,16 +143,32 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// QUIRK(anthropic): the two thinking APIs are mutually exclusive — an
 		// adaptive model rejects `type: 'enabled'` and vice versa — so the model
 		// decides the shape and the config only fills in its details.
-		thinkingToProviderOptions: anthropicThinkingToProviderOptions,
+		// QUIRK(anthropic): Anthropic binds signed thinking to the content before
+		// it. The runtime rewrites that content on purpose (mid-run observation,
+		// deferred tool and skill instructions), so ask Anthropic to drop stale
+		// thinking blocks instead of rejecting the request. Only Anthropic's own
+		// API accepts `block_binding`: proxies that forward to Vertex reject it.
+		thinkingToProviderOptions: (thinking, modelId, { isOfficialApi }) =>
+			anthropicThinkingToProviderOptions(
+				thinking,
+				modelId,
+				isOfficialApi ? { prefixMismatchBehavior: 'drop_block' } : undefined,
+			),
 	},
 	// Vertex Claude uses AnthropicLanguageModel under the hood — providerOptions
 	// stay under the `anthropic` namespace even though the model id prefix differs.
 	'google-vertex-anthropic': {
 		providerOptionsNamespace: 'anthropic',
 		toolProviderOptionDefaults: { eagerInputStreaming: false },
-		thinkingToProviderOptions: anthropicThinkingToProviderOptions,
+		thinkingToProviderOptions: (thinking, modelId) =>
+			anthropicThinkingToProviderOptions(thinking, modelId),
 	},
 	openai: {
+		// QUIRK(openai): OpenAI-compatible gateways can store data in the
+		// tool-call ID and read it back on the next request. LiteLLM stores
+		// Gemini's thought signature there in standard base64, so a changed ID
+		// makes Gemini reject the request.
+		keepsToolCallIds: true,
 		// QUIRK(openai): the Responses API pairs each function_call item with a
 		// reasoning item; dropping the reasoning part from history makes the next
 		// request fail with "function_call was provided without its required
@@ -190,6 +227,8 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// reasoning parts on its own, but attaches no providerMetadata to them, so
 		// the runtime keeps the parts by text alone, on the current tool chain only.
 		replayReasoningText: true,
+		// QUIRK(custom): same as openai, see keepsToolCallIds there.
+		keepsToolCallIds: true,
 	},
 	moonshotai: reasoningEffortQuirk('moonshotai'),
 };

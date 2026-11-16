@@ -1,4 +1,5 @@
 import { componentRegistry } from '@n8n/frontend-module-sdk';
+import { loadPromotionReviewChanges } from '@n8n/frontend-module-promotions';
 import { defineAsyncComponent } from 'vue';
 
 /**
@@ -18,14 +19,20 @@ export const registerComponentSlots = () => {
 	);
 
 	componentRegistry.register(
-		'promotion-changes',
+		'workflow-diff-placeholder',
 		defineAsyncComponent(
-			async () =>
-				await import(
-					'@/features/integrations/promotions.ee/components/review/PromotionReviewChanges.vue'
-				),
+			async () => await import('@/features/workflows/workflowDiff/WorkflowDiffPlaceholder.vue'),
 		),
 	);
+
+	componentRegistry.register(
+		'code-diff',
+		defineAsyncComponent(
+			async () => await import('@/features/workflows/workflowDiff/NodeDiff.vue'),
+		),
+	);
+
+	componentRegistry.register('promotion-changes', defineAsyncComponent(loadPromotionReviewChanges));
 
 	componentRegistry.register(
 		'project-filter',

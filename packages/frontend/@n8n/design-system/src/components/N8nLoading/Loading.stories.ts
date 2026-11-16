@@ -80,9 +80,9 @@ export const SpinnerVariants: StoryFn = () => ({
 			<n8n-spinner type="dots" size="small" />
 			<n8n-spinner type="dots" size="medium" />
 			<n8n-spinner type="dots" size="large" />
-			<n8n-spinner type="ring" size="small" />
-			<n8n-spinner type="ring" size="medium" />
-			<n8n-spinner type="ring" size="large" />
+			<n8n-spinner type="brand" size="small" />
+			<n8n-spinner type="brand" size="medium" />
+			<n8n-spinner type="brand" size="large" />
 		</div>
 	`,
 });

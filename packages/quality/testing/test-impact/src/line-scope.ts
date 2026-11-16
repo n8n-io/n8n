@@ -118,30 +118,39 @@ export function translateSpans(spans: LineSpan[], hunks: DiffHunk[]): LineSpan[]
 	return out;
 }
 
+/** How the changed spans of one file resolve. */
+export interface SpanResolution {
+	/** The specs that ran the functions that contain the spans. */
+	specs: string[];
+	/** A span is outside every function: module-level code, or an insertion between functions. */
+	moduleLevel: boolean;
+}
+
 /**
- * The specs for the changed spans of one file, or null to fall back to the whole
- * file. A span resolves to the innermost function that contains all of it, or
- * to the enclosing function when the span touches a line where the inner one
- * starts or ends. The
- * result is the union of the specs that ran that function or a function nested
- * in it. A nested function can run in a spec in which its parent did not run, for
- * example a callback that is stored and called later.
+ * Resolve the changed spans of one file, or return null to fall back to the
+ * whole file. A span resolves to the innermost function that contains all of
+ * it, or to the enclosing function when the span touches a line where the inner
+ * one starts or ends. The specs are the union of the specs that ran that
+ * function or a function nested in it. A nested function can run in a spec in
+ * which its parent did not run, for example a callback that is stored and
+ * called later.
  *
- * Falls back (null) when a span is outside every function (module-level code
- * runs on import, which the map does not record) or when the map has no entry
- * at the function's start line.
+ * A span outside every function sets `moduleLevel`: module-level code runs on
+ * import, which the map does not record per function. Falls back (null) when
+ * the map has no entry at the function's start line.
  */
 export function resolveSpans(
 	fileMap: Record<string, string[]>,
 	ranges: FunctionRange[],
 	spans: LineSpan[],
-): string[] | null {
+): SpanResolution | null {
 	const entries = Object.keys(fileMap).map((line) => ({
 		line: Number(line),
 		specs: fileMap[line],
 	}));
 	const specs = new Set<string>();
 	const contains = (r: FunctionRange, lo: number, hi: number) => r.start <= lo && r.end >= hi;
+	let moduleLevel = false;
 	for (const { lo, hi } of spans) {
 		let owner: FunctionRange | undefined;
 		for (const r of ranges) {
@@ -165,11 +174,15 @@ export function resolveSpans(
 			if (!outer) break;
 			owner = outer;
 		}
-		if (!owner || !fileMap[String(owner.start)]) return null;
+		if (!owner) {
+			moduleLevel = true;
+			continue;
+		}
+		if (!fileMap[String(owner.start)]) return null;
 		for (const e of entries) {
 			if (e.line < owner.start || e.line > owner.end) continue;
 			for (const s of e.specs) specs.add(s);
 		}
 	}
-	return [...specs].sort();
+	return { specs: [...specs].sort(), moduleLevel };
 }

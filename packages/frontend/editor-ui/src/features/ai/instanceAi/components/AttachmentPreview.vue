@@ -5,6 +5,7 @@ import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import InstanceAiResourceChip from './InstanceAiResourceChip.vue';
+import { elementAttachmentLabel } from '../utils/elementAttachment';
 import NodesAttachmentChips from './NodesAttachmentChips.vue';
 
 const props = defineProps<{
@@ -32,6 +33,12 @@ const workflowAttachment = computed(() =>
 );
 const agentAttachment = computed(() =>
 	props.attachment?.type === 'agent' ? props.attachment : undefined,
+);
+const elementAttachment = computed(() =>
+	props.attachment?.type === 'element' ? props.attachment : undefined,
+);
+const elementLabel = computed(() =>
+	elementAttachment.value ? elementAttachmentLabel(elementAttachment.value) : '',
 );
 const fileAttachment = computed(() =>
 	props.attachment?.type === 'file' ? props.attachment : undefined,
@@ -98,6 +105,16 @@ onBeforeUnmount(() => {
 		:remove-label="i18n.baseText('instanceAi.mentions.removeWorkflow')"
 		test-id="attachment-preview-resource"
 		remove-test-id="attachment-preview-remove-resource"
+		@remove="emit('remove-resource')"
+	/>
+	<InstanceAiResourceChip
+		v-else-if="elementAttachment"
+		:label="elementLabel"
+		icon="mouse-pointer"
+		:removable="isRemovable"
+		:remove-label="i18n.baseText('instanceAi.elementSelection.remove')"
+		test-id="attachment-preview-element"
+		remove-test-id="attachment-preview-remove-element"
 		@remove="emit('remove-resource')"
 	/>
 	<InstanceAiResourceChip
