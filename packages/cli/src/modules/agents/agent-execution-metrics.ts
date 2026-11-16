@@ -1,3 +1,4 @@
+import type { AgentExecutionStatus } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 
@@ -18,8 +19,8 @@ export interface AgentMetricsSubject {
 	parentAgentId?: string | null;
 }
 
-/** The final row status of an execution, without `running` and `interrupted`. */
-type FinishedRowStatus = 'success' | 'error' | 'cancelled' | 'awaiting';
+/** The status that a process stores when it finishes its own execution. */
+export type FinishedAgentExecutionStatus = Exclude<AgentExecutionStatus, 'running' | 'interrupted'>;
 
 /**
  * Turns the lifecycle of Agents executions into metrics events, and tracks the
@@ -58,10 +59,10 @@ export class AgentExecutionMetrics {
 
 	finished(
 		subject: AgentMetricsSubject,
-		outcome: { status: FinishedRowStatus; hitlStatus?: AgentExecutionHitlStatus },
+		outcome: { status: FinishedAgentExecutionStatus; hitlStatus?: AgentExecutionHitlStatus },
 		record: MessageRecord,
 	): void {
-		const status: Exclude<AgentMetricsExecutionStatus, 'interrupted'> =
+		const status: AgentMetricsExecutionStatus =
 			outcome.status === 'success' && outcome.hitlStatus === 'suspended'
 				? 'suspended'
 				: outcome.status;
