@@ -114,7 +114,7 @@ describe('WhatsApp Meta callout wording', () => {
 
 		expect(i18n.baseText(presentation!.titleKey)).toBe('Meta can’t find your WhatsApp number');
 		expect(i18n.baseText(presentation!.descriptionKey)).toBe(
-			'The number may have been deleted or moved to another WhatsApp account, or this credential lost access to it. The agent can’t send or receive messages. To keep using WhatsApp, set it up again.',
+			'The number may have been deleted or moved to another WhatsApp account, or this credential may have lost access to it. The agent can’t send or receive messages. To keep using WhatsApp, set it up again.',
 		);
 		expect(i18n.baseText(presentation!.setupAction!.labelKey)).toBe('Set up again');
 	});
