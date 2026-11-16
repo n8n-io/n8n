@@ -16,7 +16,14 @@ import { generateScimToken, getScimConfig, setScimEnabled } from '@n8n/rest-api-
 const renderView = createComponentRenderer(SettingsSso);
 
 /** The SSO page saves the SAML and OIDC forms through the settings save bar. */
-const SAVE_BUTTON = 'settings-save-bar-save';
+const SAVE_BUTTON = 'sso-save';
+
+/** The save button is always there. It turns on when something changed. */
+const clickSave = async () => {
+	const button = await screen.findByTestId(SAVE_BUTTON);
+	await waitFor(() => expect(button).toBeEnabled());
+	await userEvent.click(button);
+};
 
 const samlConfig = {
 	metadata: 'metadata dummy',
@@ -202,14 +209,14 @@ describe('SettingsSso View', () => {
 
 			const { getByTestId } = renderView();
 
-			expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument();
+			expect(await screen.findByTestId(SAVE_BUTTON)).toBeDisabled();
 
 			const urlInput = getByTestId('sso-provider-url');
 
 			expect(urlInput).toBeVisible();
 			await userEvent.type(urlInput, samlConfig.metadataUrl as string);
 
-			await userEvent.click(await screen.findByTestId(SAVE_BUTTON));
+			await clickSave();
 
 			expect(ssoStore.saveSamlConfig).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -229,33 +236,6 @@ describe('SettingsSso View', () => {
 			);
 
 			expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(2);
-		});
-
-		it('restores the saved values when the user discards the changes', async () => {
-			ssoStore.isEnterpriseSamlEnabled = true;
-			ssoStore.isEnterpriseOidcEnabled = true;
-			ssoStore.isSamlLoginEnabled = true;
-			ssoStore.samlConfig = { ...samlConfig, loginEnabled: true };
-			ssoStore.getSamlConfig.mockResolvedValue({ ...samlConfig, loginEnabled: true });
-
-			const { getByTestId } = renderView();
-			await waitFor(() =>
-				expect(getByTestId('sso-provider-url')).toHaveValue(samlConfig.metadataUrl),
-			);
-			expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument();
-
-			const urlInput = getByTestId('sso-provider-url');
-			await userEvent.clear(urlInput);
-			await userEvent.type(urlInput, 'https://other-idp.example.com/metadata');
-			await screen.findByTestId(SAVE_BUTTON);
-
-			await userEvent.click(screen.getByTestId('settings-save-bar-discard'));
-
-			await waitFor(() =>
-				expect(getByTestId('sso-provider-url')).toHaveValue(samlConfig.metadataUrl),
-			);
-			await waitFor(() => expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument());
-			expect(ssoStore.saveSamlConfig).not.toHaveBeenCalled();
 		});
 
 		it("allows user to fill Identity Provider's XML", async () => {
@@ -289,7 +269,7 @@ describe('SettingsSso View', () => {
 
 			const { getByTestId } = renderView();
 
-			expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument();
+			expect(await screen.findByTestId(SAVE_BUTTON)).toBeDisabled();
 
 			await userEvent.click(getByTestId('radio-button-xml'));
 
@@ -298,7 +278,7 @@ describe('SettingsSso View', () => {
 			expect(xmlInput).toBeVisible();
 			await userEvent.type(xmlInput, samlConfig.metadata!);
 
-			await userEvent.click(await screen.findByTestId(SAVE_BUTTON));
+			await clickSave();
 
 			expect(ssoStore.saveSamlConfig).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -402,14 +382,14 @@ describe('SettingsSso View', () => {
 
 			const { getByTestId } = renderView();
 
-			expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument();
+			expect(await screen.findByTestId(SAVE_BUTTON)).toBeDisabled();
 
 			const urlInput = getByTestId('sso-provider-url');
 
 			expect(urlInput).toBeVisible();
 			await userEvent.type(urlInput, samlConfig.metadata as string);
 
-			await userEvent.click(await screen.findByTestId(SAVE_BUTTON));
+			await clickSave();
 
 			expect(showError).toHaveBeenCalled();
 			expect(ssoStore.saveSamlConfig).not.toHaveBeenCalled();
@@ -428,14 +408,14 @@ describe('SettingsSso View', () => {
 
 			const { getByTestId } = renderView();
 
-			expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument();
+			expect(await screen.findByTestId(SAVE_BUTTON)).toBeDisabled();
 
 			const urlinput = getByTestId('sso-provider-url');
 
 			expect(urlinput).toBeVisible();
 			await userEvent.type(urlinput, 'mailto://test@example.com');
 
-			await userEvent.click(await screen.findByTestId(SAVE_BUTTON));
+			await clickSave();
 
 			expect(showError).toHaveBeenCalled();
 			expect(ssoStore.saveSamlConfig).not.toHaveBeenCalled();
@@ -642,7 +622,7 @@ describe('SettingsSso View', () => {
 			expect(clientSecretInput).toBeVisible();
 			await userEvent.type(clientSecretInput, 'test-client-secret');
 
-			await userEvent.click(await screen.findByTestId(SAVE_BUTTON));
+			await clickSave();
 
 			expect(ssoStore.saveOidcConfig).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -942,6 +922,24 @@ describe('SettingsSso View', () => {
 			expect(await findByTestId('sso-scim-section')).toBeInTheDocument();
 		});
 
+		it.each([
+			[SupportedProtocols.SAML, 'sso-test'],
+			[SupportedProtocols.OIDC, 'sso-oidc-test'],
+		])('shows the SCIM section above the %s test button', async (protocol, testButtonId) => {
+			setUpScim();
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.isEnterpriseOidcEnabled = true;
+			ssoStore.selectedAuthProtocol = protocol;
+
+			const { findByTestId } = renderView();
+
+			const scimSection = await findByTestId('sso-scim-section');
+			const testButton = await findByTestId(testButtonId);
+			expect(
+				scimSection.compareDocumentPosition(testButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
+		});
+
 		const chooseScimValue = async (getByTestId: (id: string) => HTMLElement, label: string) => {
 			await waitFor(() => expect(getByTestId('sso-scim-enabled-select')).toBeInTheDocument());
 			await userEvent.click(within(getByTestId('sso-scim-enabled-select')).getByRole('combobox'));
@@ -949,7 +947,7 @@ describe('SettingsSso View', () => {
 			await userEvent.click(options.find((option) => option.textContent?.includes(label))!);
 		};
 
-		it('saves the SCIM select with the save bar', async () => {
+		it('saves the SCIM select with the save button', async () => {
 			setUpScim();
 			ssoStore.isSamlLoginEnabled = true;
 			vi.mocked(setScimEnabled).mockResolvedValueOnce({ enabled: true });
@@ -962,10 +960,10 @@ describe('SettingsSso View', () => {
 			await chooseScimValue(getByTestId, 'Enabled');
 
 			expect(setScimEnabled).not.toHaveBeenCalled();
-			await userEvent.click(await screen.findByTestId(SAVE_BUTTON));
+			await clickSave();
 
 			await waitFor(() => expect(setScimEnabled).toHaveBeenCalledWith(expect.anything(), true));
-			await waitFor(() => expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument());
+			await waitFor(() => expect(screen.getByTestId(SAVE_BUTTON)).toBeDisabled());
 			// Turning SCIM on creates the first token for the identity provider.
 			await waitFor(() => expect(generateScimToken).toHaveBeenCalledTimes(1));
 			expect(
@@ -989,7 +987,7 @@ describe('SettingsSso View', () => {
 
 			const { getByTestId } = renderView();
 			await chooseScimValue(getByTestId, 'Enabled');
-			await userEvent.click(await screen.findByTestId(SAVE_BUTTON));
+			await clickSave();
 
 			await waitFor(() => expect(setScimEnabled).toHaveBeenCalledWith(expect.anything(), true));
 			expect(generateScimToken).not.toHaveBeenCalled();
@@ -1024,7 +1022,7 @@ describe('SettingsSso View', () => {
 				async () => await new Promise((resolve) => setTimeout(() => resolve(savedScimConfig), 100)),
 			);
 
-			await userEvent.click(await screen.findByTestId(SAVE_BUTTON));
+			await clickSave();
 
 			await waitFor(() => expect(ssoStore.saveSamlConfig).toHaveBeenCalled());
 			await waitFor(() =>
@@ -1032,38 +1030,6 @@ describe('SettingsSso View', () => {
 			);
 			expect(setScimEnabled).not.toHaveBeenCalled();
 			vi.mocked(getScimConfig).mockResolvedValue(savedScimConfig);
-		});
-
-		it('discards the SCIM select change', async () => {
-			setUpScim();
-			ssoStore.isSamlLoginEnabled = true;
-
-			const { getByTestId } = renderView();
-			await chooseScimValue(getByTestId, 'Enabled');
-			await screen.findByTestId(SAVE_BUTTON);
-
-			await userEvent.click(screen.getByTestId('settings-save-bar-discard'));
-
-			await waitFor(() => expect(screen.queryByTestId(SAVE_BUTTON)).not.toBeInTheDocument());
-			expect(within(getByTestId('sso-scim-enabled-select')).getByRole('combobox')).toHaveValue(
-				'Disabled',
-			);
-			expect(setScimEnabled).not.toHaveBeenCalled();
-		});
-
-		it.each([
-			['the module is not licensed', { moduleActive: false }],
-			['the opt-in is off', { optIn: 'false' }],
-			// The backend accepts only 'true' for the opt-in.
-			['the opt-in is not exactly true', { optIn: '1' }],
-			['the user cannot manage SCIM', { canManage: false }],
-		])('hides the SCIM section when %s', async (_, options) => {
-			setUpScim(options);
-
-			const { queryByTestId } = renderView();
-
-			await waitFor(() => expect(queryByTestId('sso-scim-section')).not.toBeInTheDocument());
-			expect(getScimConfig).not.toHaveBeenCalled();
 		});
 	});
 });

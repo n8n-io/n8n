@@ -342,8 +342,9 @@ const hasUnsavedChanges = computed(
 	() => isSaveEnabled.value && (!isSsoManagedByEnv.value || isRulesMappingInN8n.value),
 );
 
-// The SSO page saves through its save bar, so it needs these.
-defineExpose({ hasUnsavedChanges, onSave, saving: savingForm });
+// The SSO page saves through its save bar and shows the test button below
+// the SCIM section, so it needs these.
+defineExpose({ hasUnsavedChanges, onSave, saving: savingForm, isTestEnabled, onTest });
 
 onMounted(async () => {
 	await loadSamlConfig();
@@ -490,18 +491,6 @@ onMounted(async () => {
 					</N8nSelect>
 				</div>
 			</div>
-		</div>
-
-		<div :class="$style.buttons">
-			<N8nButton
-				variant="outline"
-				:disabled="!isTestEnabled"
-				size="large"
-				data-test-id="sso-test"
-				@click="onTest"
-			>
-				{{ i18n.baseText('settings.sso.settings.test') }}
-			</N8nButton>
 		</div>
 	</div>
 </template>

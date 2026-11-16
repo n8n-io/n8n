@@ -18,7 +18,6 @@ import {
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
-	N8nSettingsSaveBar,
 	N8nText,
 } from '@n8n/design-system';
 import { VIEWS } from '@/app/constants';
@@ -39,6 +38,9 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 const isRulesMappingInN8n = computed(
 	() => provisioningStore.provisioningConfig?.scopesUseExpressionMapping ?? false,
 );
+
+/** The env config locks the SSO form, unless n8n owns the role mapping rules. */
+const canEditSso = computed(() => !ssoStore.ssoManagedByEnv || isRulesMappingInN8n.value);
 
 const samlFormRef = useTemplateRef<InstanceType<typeof SamlSettingsForm>>('samlForm');
 const oidcFormRef = useTemplateRef<InstanceType<typeof OidcSettingsForm>>('oidcForm');
@@ -94,8 +96,23 @@ const activeForm = computed(() => {
 
 const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
 
-/** A new key remounts the form, which loads the saved values again. */
-const formKey = ref(0);
+const isSamlFormShown = computed(
+	() =>
+		hasAnySsoEnabled.value &&
+		ssoStore.isEnterpriseSamlEnabled &&
+		authProtocol.value === SupportedProtocols.SAML,
+);
+
+const isOidcFormShown = computed(
+	() =>
+		hasAnySsoEnabled.value &&
+		ssoStore.isEnterpriseOidcEnabled &&
+		authProtocol.value === SupportedProtocols.OIDC,
+);
+
+function onTestConnection() {
+	void activeForm.value?.onTest();
+}
 
 const hasUnsavedChanges = computed(
 	() =>
@@ -127,19 +144,8 @@ async function saveAll(): Promise<boolean> {
 	return scimSection.hasUnsavedChanges ? await scimSection.save() : true;
 }
 
-async function onSaveBarSave() {
+async function onSave() {
 	await saveAll();
-}
-
-function onDiscardChanges() {
-	if (activeForm.value?.hasUnsavedChanges) {
-		// The OIDC login switch writes to the store, so put the saved value back first.
-		if (authProtocol.value === SupportedProtocols.OIDC) {
-			ssoStore.isOidcLoginEnabled = ssoStore.oidcConfig?.loginEnabled ?? false;
-		}
-		formKey.value++;
-	}
-	scimSectionRef.value?.discard();
 }
 
 function onAuthProtocolUpdated(value: SupportedProtocolType) {
@@ -250,17 +256,11 @@ onMounted(() => {
 					</div>
 				</div>
 			</div>
-			<div
-				v-if="ssoStore.isEnterpriseSamlEnabled && authProtocol === SupportedProtocols.SAML"
-				data-test-id="sso-content-licensed"
-			>
-				<SamlSettingsForm ref="samlForm" :key="formKey" />
+			<div v-if="isSamlFormShown" data-test-id="sso-content-licensed">
+				<SamlSettingsForm ref="samlForm" />
 			</div>
-			<div
-				v-if="ssoStore.isEnterpriseOidcEnabled && authProtocol === SupportedProtocols.OIDC"
-				data-test-id="sso-content-licensed"
-			>
-				<OidcSettingsForm ref="oidcForm" :key="formKey" />
+			<div v-if="isOidcFormShown" data-test-id="sso-content-licensed">
+				<OidcSettingsForm ref="oidcForm" />
 			</div>
 		</div>
 		<N8nEmptyState
@@ -280,6 +280,40 @@ onMounted(() => {
 			ref="scimSection"
 			:sso-enabled="isSsoLoginEnabled"
 		/>
+
+		<!-- One save for the SSO form and SCIM. The buttons close the page, below the SCIM section. -->
+		<div v-if="isSamlFormShown || isOidcFormShown || showScimSection" :class="$style.actions">
+			<N8nButton
+				v-if="canEditSso || showScimSection"
+				:disabled="!hasUnsavedChanges || isSaving"
+				:loading="isSaving"
+				size="large"
+				data-test-id="sso-save"
+				@click="onSave"
+			>
+				{{ i18n.baseText('settings.sso.settings.save') }}
+			</N8nButton>
+			<N8nButton
+				v-if="isSamlFormShown"
+				variant="outline"
+				:disabled="!samlFormRef?.isTestEnabled"
+				size="large"
+				data-test-id="sso-test"
+				@click="onTestConnection"
+			>
+				{{ i18n.baseText('settings.sso.settings.test') }}
+			</N8nButton>
+			<N8nButton
+				v-else-if="isOidcFormShown"
+				variant="outline"
+				:disabled="!oidcFormRef?.isTestEnabled"
+				size="large"
+				data-test-id="sso-oidc-test"
+				@click="onTestConnection"
+			>
+				{{ i18n.baseText('settings.sso.settings.test') }}
+			</N8nButton>
+		</div>
 
 		<N8nDialog
 			:open="showUnsavedChangesDialog"
@@ -304,18 +338,6 @@ onMounted(() => {
 				</N8nButton>
 			</N8nDialogFooter>
 		</N8nDialog>
-
-		<!-- The save bar must be the last child of the content column to dock at the page end. -->
-		<N8nSettingsSaveBar
-			floating
-			:visible="hasUnsavedChanges || isSaving"
-			:saving="isSaving"
-			:message="i18n.baseText('settings.sso.settings.unsavedChanges.title')"
-			:save-label="i18n.baseText('settings.sso.settings.save')"
-			:discard-label="i18n.baseText('settings.sso.settings.discard')"
-			@save="onSaveBarSave"
-			@discard="onDiscardChanges"
-		/>
 	</N8nSettingsLayout>
 </template>
 
@@ -339,5 +361,11 @@ onMounted(() => {
 	border-bottom: none;
 	border-bottom-left-radius: 0;
 	border-bottom-right-radius: 0;
+}
+
+/* The layout puts the space above the buttons. */
+.actions {
+	display: flex;
+	gap: var(--spacing--sm);
 }
 </style>
