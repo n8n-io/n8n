@@ -2,7 +2,7 @@
 import { onMounted } from 'vue';
 import { ABOUT_MODAL_KEY } from '@/app/constants';
 
-import { N8nIcon, N8nLink, N8nMenuItem, N8nScrollArea, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nMenuItem, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useSettingsItems } from '../composables/useSettingsItems';
 import { useAiGateway } from '../composables/useAiGateway';
 import { useI18n } from '@n8n/i18n';
@@ -63,9 +63,14 @@ onMounted(() => {
 				</div>
 			</div>
 			<div :class="$style.versionContainer">
-				<N8nLink size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
-					{{ i18n.baseText('settings.version') }} {{ rootStore.versionCli }}
-				</N8nLink>
+				<!-- Opens a dialog, so it's a button, not a link: the ghost variant keeps the hover pill. -->
+				<N8nButton
+					variant="ghost"
+					size="small"
+					:label="`${i18n.baseText('settings.version')} ${rootStore.versionCli}`"
+					data-test-id="settings-sidebar-version"
+					@click="uiStore.openModal(ABOUT_MODAL_KEY)"
+				/>
 			</div>
 		</N8nScrollArea>
 	</div>
@@ -141,8 +146,11 @@ onMounted(() => {
 }
 
 .versionContainer {
-	/* Extra bottom space keeps the version clear of the browser's link preview bar. */
-	padding: var(--spacing--xs) var(--spacing--xs) var(--spacing--xl);
+	/*
+	 * Same horizontal inset as the menu items, so the ghost pill lines up with theirs.
+	 * Extra bottom space keeps the version clear of the browser's link preview bar.
+	 */
+	padding: var(--spacing--xs) var(--spacing--3xs) var(--spacing--xl);
 }
 
 @media screen and (max-height: 420px) {

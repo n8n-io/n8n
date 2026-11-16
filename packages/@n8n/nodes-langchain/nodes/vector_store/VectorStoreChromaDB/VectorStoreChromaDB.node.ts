@@ -4,6 +4,7 @@ import type { Document } from '@langchain/core/documents';
 import { ChromaClient, CloudClient, type Collection } from 'chromadb';
 import {
 	NodeOperationError,
+	type ICredentialDataDecryptedObject,
 	type INodeProperties,
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
@@ -13,6 +14,8 @@ import {
 import { OperationalError } from '@n8n/errors';
 
 import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
+
+import { getRequiredApiKey } from '@utils/helpers';
 
 import { chromaCollectionRLC } from '../shared/descriptions';
 
@@ -53,6 +56,36 @@ function getCredentialType(
 	return 'chromaSelfHostedApi';
 }
 
+interface CloudClientParams {
+	apiKey: string;
+	tenant?: string;
+	database?: string;
+}
+
+/**
+ * CloudClient fills an empty tenant or database from the CHROMA_TENANT and
+ * CHROMA_DATABASE environment variables. Use only the credential values, so
+ * Chroma resolves missing ones from the API key.
+ */
+class CredentialCloudClient extends CloudClient {
+	constructor(params: CloudClientParams) {
+		super(params);
+		this.tenant = params.tenant || undefined;
+		this.database = params.database || undefined;
+	}
+}
+
+function getCloudClientParams(
+	context: IExecuteFunctions | ILoadOptionsFunctions | ISupplyDataFunctions,
+	credentials: ICredentialDataDecryptedObject,
+): CloudClientParams {
+	return {
+		apiKey: getRequiredApiKey(context.getNode(), credentials.apiKey),
+		tenant: typeof credentials.tenant === 'string' ? credentials.tenant : undefined,
+		database: typeof credentials.database === 'string' ? credentials.database : undefined,
+	};
+}
+
 /**
  * Gets ChromaDB client configuration from credentials
  * Returns either ChromaClient or CloudClient based on credential type
@@ -65,25 +98,7 @@ async function getChromaClient(
 	const credentials = await context.getCredentials(credentialType, itemIndex);
 
 	if (credentialType === 'chromaCloudApi') {
-		// Use CloudClient for Chroma Cloud
-		const apiKey = typeof credentials.apiKey === 'string' ? credentials.apiKey : '';
-		const config: {
-			apiKey: string;
-			tenant?: string;
-			database?: string;
-		} = {
-			apiKey,
-		};
-
-		// Add optional tenant and database if provided
-		if (typeof credentials.tenant === 'string') {
-			config.tenant = credentials.tenant;
-		}
-		if (typeof credentials.database === 'string') {
-			config.database = credentials.database;
-		}
-
-		return new CloudClient(config);
+		return new CredentialCloudClient(getCloudClientParams(context, credentials));
 	} else {
 		// Use ChromaClient for self-hosted instances
 		const baseUrl = typeof credentials.baseUrl === 'string' ? credentials.baseUrl : '';
@@ -128,25 +143,9 @@ async function getChromaLibConfig(
 	const credentials = await context.getCredentials(credentialType, itemIndex);
 
 	if (credentialType === 'chromaCloudApi') {
-		// Configuration for Chroma Cloud
-		const cloudClientParams: {
-			apiKey: string;
-			tenant?: string;
-			database?: string;
-		} = {
-			apiKey: typeof credentials.apiKey === 'string' ? credentials.apiKey : '',
-		};
-
-		if (typeof credentials.tenant === 'string') {
-			cloudClientParams.tenant = credentials.tenant;
-		}
-		if (typeof credentials.database === 'string') {
-			cloudClientParams.database = credentials.database;
-		}
-
 		const config: ChromaLibArgs = {
 			collectionName,
-			clientParams: cloudClientParams as ChromaLibArgs['clientParams'],
+			clientParams: getCloudClientParams(context, credentials) as ChromaLibArgs['clientParams'],
 		};
 
 		return config;
@@ -197,7 +196,7 @@ class ExtendedChroma extends Chroma {
 				// Check if this is a Cloud
 				if ('apiKey' in clientParams && typeof clientParams.apiKey === 'string') {
 					// Use CloudClient for Chroma Cloud
-					this.index = new CloudClient({
+					this.index = new CredentialCloudClient({
 						apiKey: clientParams.apiKey,
 						tenant: typeof clientParams.tenant === 'string' ? clientParams.tenant : undefined,
 						database: typeof clientParams.database === 'string' ? clientParams.database : undefined,

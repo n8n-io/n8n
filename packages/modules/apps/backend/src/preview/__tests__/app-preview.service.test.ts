@@ -55,16 +55,7 @@ function setup(baseUrl = 'https://apps.example.com') {
 		JSON.stringify({ ...payload, exp: now + 3600 }),
 	);
 	jwt.verify.mockImplementation((_purpose, token) => JSON.parse(token) as never);
-	const service = new AppPreviewService(
-		apps,
-		versions,
-		hosts,
-		resources,
-		users,
-		cache,
-		jwt,
-		mock<UrlService>({ getInstanceBaseUrl: () => 'https://n8n.example.net/base' }),
-	);
+	const service = new AppPreviewService(apps, versions, hosts, resources, users, cache, jwt);
 	const res = mock<Response>();
 	res.set.mockReturnValue(res);
 	res.status.mockReturnValue(res);
@@ -84,10 +75,6 @@ async function grantCode(service: AppPreviewService) {
 }
 
 describe('AppPreviewService', () => {
-	it('exposes the editor origin for frame-ancestors', () => {
-		expect(setup().service.editorOrigin).toBe('https://n8n.example.net');
-	});
-
 	describe('createGrant', () => {
 		it('returns a preview host URL with a code that is stored for one minute', async () => {
 			const { service, store, cache } = setup();

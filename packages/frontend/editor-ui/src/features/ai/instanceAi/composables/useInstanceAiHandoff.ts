@@ -400,9 +400,9 @@ export async function ensurePersonalProjectId(): Promise<string | null> {
 	return projectsStore.personalProject?.id ?? null;
 }
 
-/** With the flag on, hand-offs start their threads on the Assistant agent. */
+/** For a user in the rollout, hand-offs start their threads on the Assistant agent. */
 function isAssistantAgentLaunch(): boolean {
-	return useInstanceAiSettingsStore().isAssistantAgentEnabled;
+	return useInstanceAiSettingsStore().newThreadsUseAssistantAgent;
 }
 
 /**
@@ -421,6 +421,7 @@ async function createLaunchedThread(
 			projectId,
 			source: launch.source,
 			origin: launch.origin,
+			sourceContext: launch.sourceContext,
 			...(typeof templateId === 'string' ? { templateId } : {}),
 		});
 	} else {

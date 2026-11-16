@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	instanceAiReady: { value: true },
-	settings: { isAssistantAgentEnabled: false },
+	settings: { newThreadsUseAssistantAgent: false },
 	telemetryTrack: vi.fn(),
 	routerPush: vi.fn(),
 	syncThread: vi.fn(),
@@ -94,7 +94,7 @@ describe('useInstanceAiHandoff', () => {
 		localStorage.clear();
 		forgetAssistantAgentThread('thread-1');
 		mocks.instanceAiReady.value = true;
-		mocks.settings.isAssistantAgentEnabled = false;
+		mocks.settings.newThreadsUseAssistantAgent = false;
 		mocks.syncThread.mockResolvedValue(undefined);
 		mocks.updateThreadMetadata.mockResolvedValue(undefined);
 		mocks.deleteThread.mockResolvedValue(true);
@@ -809,7 +809,7 @@ describe('useInstanceAiHandoff', () => {
 			});
 
 		beforeEach(() => {
-			mocks.settings.isAssistantAgentEnabled = true;
+			mocks.settings.newThreadsUseAssistantAgent = true;
 		});
 
 		it('provisions a launched thread without creating it on the current runtime', async () => {
@@ -834,6 +834,31 @@ describe('useInstanceAiHandoff', () => {
 				runtime: 'agents',
 			});
 			expect(consumePendingFirstMessage('thread-1')?.message).toBe('Adjust template 42');
+		});
+
+		it('links a thread from a self-healing result to that result in the launch event', async () => {
+			await provisionLaunchedThread(
+				'project-1',
+				{
+					message: 'Continue this repair',
+					authorship: { kind: 'prefill', prefillType: 'handoff_self_healing_report' },
+				},
+				{
+					source: 'self_healing_result',
+					origin: 'internal',
+					sourceContext: { resultId: 'result-1', outcome: 'needs_you' },
+				},
+			);
+
+			expect(mocks.telemetryTrack).toHaveBeenCalledWith('User launched Instance AI thread', {
+				thread_id: 'thread-1',
+				instance_id: 'instance-1',
+				source: 'self_healing_result',
+				origin: 'internal',
+				result_id: 'result-1',
+				result_kind: 'needs_you',
+				runtime: 'agents',
+			});
 		});
 
 		it('opens a thread that a new tab finds on the Assistant agent', async () => {

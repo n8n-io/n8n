@@ -33,6 +33,23 @@ describe('ScimTokenService', () => {
 		service = new ScimTokenService(scimTokenRepository, urlService);
 	});
 
+	describe('isSupersededToken', () => {
+		it('asks the repository with the hash of the token', async () => {
+			scimTokenRepository.isReplacedToken.mockResolvedValue(true);
+
+			await expect(service.isSupersededToken(validToken)).resolves.toBe(true);
+			expect(scimTokenRepository.isReplacedToken).toHaveBeenCalledWith(
+				hashScimToken(validToken),
+				{},
+			);
+		});
+
+		it('skips the read for a value in another format', async () => {
+			await expect(service.isSupersededToken('not-a-scim-token')).resolves.toBe(false);
+			expect(scimTokenRepository.isReplacedToken).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('verifyApiKey', () => {
 		it('accepts the stored instance token', async () => {
 			scimTokenRepository.findInstanceToken.mockResolvedValue(createToken());
@@ -111,7 +128,9 @@ describe('ScimTokenService', () => {
 			);
 
 			// The value leaves the service only here, once.
-			const token = await service.rotateToken(user);
+			const { token, replaced } = await service.rotateToken(user);
+
+			expect(replaced).toBe(true);
 
 			expect(token).toMatch(TOKEN_FORMAT);
 			expect(scimTokenRepository.replace).toHaveBeenCalledWith(
@@ -131,7 +150,9 @@ describe('ScimTokenService', () => {
 		it('creates the first token when the instance has none', async () => {
 			scimTokenRepository.findInstanceToken.mockResolvedValue(null);
 
-			await service.rotateToken(user);
+			const { replaced } = await service.rotateToken(user);
+
+			expect(replaced).toBe(false);
 
 			expect(scimTokenRepository.replace).toHaveBeenCalledWith(
 				null,
@@ -144,9 +165,9 @@ describe('ScimTokenService', () => {
 			scimTokenRepository.findInstanceToken.mockResolvedValue(null);
 
 			const tokens = new Set([
-				await service.rotateToken(user),
-				await service.rotateToken(user),
-				await service.rotateToken(user),
+				(await service.rotateToken(user)).token,
+				(await service.rotateToken(user)).token,
+				(await service.rotateToken(user)).token,
 			]);
 
 			expect(tokens.size).toBe(3);
@@ -160,9 +181,13 @@ describe('ScimTokenService', () => {
 		});
 	});
 
-	it('revokes the instance token', async () => {
-		await service.revokeToken();
+	it.each([true, false])(
+		'revokes the instance token and tells if one was there (%s)',
+		async (was) => {
+			scimTokenRepository.revokeInstanceToken.mockResolvedValue(was);
 
-		expect(scimTokenRepository.revokeInstanceToken).toHaveBeenCalledWith({});
-	});
+			expect(await service.revokeToken()).toBe(was);
+			expect(scimTokenRepository.revokeInstanceToken).toHaveBeenCalledWith({});
+		},
+	);
 });

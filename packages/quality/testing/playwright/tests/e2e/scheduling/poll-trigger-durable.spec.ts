@@ -78,9 +78,8 @@ test.describe(
 
 			await api.workflows.deactivate(workflowId);
 
-			// Deactivation removes the row synchronously as part of the request, so
-			// this needs no wait: a stray row would be visible immediately.
-			expect(await api.countScheduledJobs(workflowId, nodeId)).toBe(0);
+			// The publication outbox removes jobs after the deactivation response.
+			await expect.poll(async () => await api.countScheduledJobs(workflowId, nodeId)).toBe(0);
 		});
 	},
 );

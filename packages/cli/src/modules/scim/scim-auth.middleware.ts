@@ -3,6 +3,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { NextFunction, RequestHandler, Response } from 'express';
 
+import { markScimRejection } from './scim-request-observer';
 import { ScimSettingsService } from './scim-settings.service';
 import { ScimSsoService } from './scim-sso.service';
 import { ScimTokenService } from './scim-token.service';
@@ -29,12 +30,14 @@ export class ScimAuthMiddleware {
 	async authenticate(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		try {
 			if (!(await this.scimSettingsService.isEnabled())) {
+				markScimRejection(res, 'scim_disabled');
 				return this.forbidden(res, 'SCIM provisioning is disabled');
 			}
 
 			// Single sign-on can turn off without the SCIM cascade, for example
 			// when the license expires, so check it on each request.
 			if (!this.scimSsoService.isSsoEnabled()) {
+				markScimRejection(res, 'sso_off');
 				return this.forbidden(res, 'SCIM provisioning requires SAML or OIDC single sign-on');
 			}
 
@@ -44,6 +47,7 @@ export class ScimAuthMiddleware {
 
 			if (!bearer) {
 				this.logger.warn('SCIM: Missing or invalid Authorization header');
+				markScimRejection(res, 'invalid_token');
 				return this.unauthorized(res, 'Authorization header with Bearer token required');
 			}
 
@@ -53,6 +57,9 @@ export class ScimAuthMiddleware {
 
 			if (!isValid) {
 				this.logger.warn('SCIM: Invalid API key provided');
+				// Only a rejected token costs this read, and the IP rate limit caps those.
+				const superseded = await this.scimTokenService.isSupersededToken(token);
+				markScimRejection(res, superseded ? 'superseded_token' : 'invalid_token');
 				return this.unauthorized(res, 'Invalid SCIM API key');
 			}
 
