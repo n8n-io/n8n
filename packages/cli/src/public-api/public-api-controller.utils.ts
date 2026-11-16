@@ -21,10 +21,7 @@ export function parsePathParam(
 	return output.data[key];
 }
 
-/**
- * Whether an Express route template (`/widgets/:widgetId`) matches a request path. A `:param`
- * segment matches any single segment. Any other segment must be equal.
- */
+// Check whether a path matches a route template. Parameter segments match any value, other segments must match exactly.
 export function matchesPathTemplate(template: string, path: string): boolean {
 	const templateSegments = template.split('/');
 	const pathSegments = (path.length > 1 && path.endsWith('/') ? path.slice(0, -1) : path).split(
