@@ -33,7 +33,7 @@ export class PrometheusAgentMetricsService implements PrometheusMetricsCollector
 
 		const executionsTotal = new promClient.Counter({
 			name: `${prefix}agent_executions_total`,
-			help: 'Total number of finished agent executions, by agent, kind (turn, delegated) and status (success, error, cancelled, suspended, awaiting, interrupted).',
+			help: 'Total number of finished agent executions, by agent, kind (turn, delegated) and status (success, error, cancelled, suspended, awaiting, interrupted). A turn that waits for the user counts as suspended, and the turn that resumes it counts as a new execution.',
 			labelNames: ['agent', 'kind', 'status'],
 		});
 

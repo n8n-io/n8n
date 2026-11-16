@@ -1602,6 +1602,18 @@ describe('AgentExecutionService', () => {
 				expect(executionMetrics.finished).not.toHaveBeenCalled();
 			});
 
+			it('finalizes a stored execution when the metrics report fails', async () => {
+				agentExecutionRepository.updateIfRunning.mockResolvedValue(true);
+				const error = new Error('metrics failed');
+				executionMetrics.finished.mockImplementationOnce(() => {
+					throw error;
+				});
+
+				await expect(service.finalizeExecution('execution-1', params)).resolves.toBe('execution-1');
+
+				expect(errorReporter.error).toHaveBeenCalledWith(error);
+			});
+
 			it('reports an execution that the sweep interrupted, with the agents of its thread', async () => {
 				agentExecutionThreadRepository.findOneBy.mockResolvedValue(
 					makeThread({ agentId: 'child-agent', parentAgentId: 'root-agent' }),

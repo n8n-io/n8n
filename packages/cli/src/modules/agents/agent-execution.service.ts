@@ -480,18 +480,13 @@ export class AgentExecutionService {
 
 		try {
 			await this.writeTerminalExecution(executionId, settled, status, stoppedAt, failureSummary);
+			// Report as soon as the outcome is stored. A failed write leaves the row
+			// running, and the sweep counts it as interrupted.
+			this.reportFinishedExecution(settled, status);
 
 			// Save the terminal row first. A rejected finalization must not replace a stored blob.
 			await this.moveFinalTimelineToBlob(executionId, settled, storedAt);
 			await this.completeRecordedExecution(settled, executionId, status);
-			// A failed write leaves the row running, and the sweep counts it as interrupted.
-			if (status !== 'running' && status !== 'interrupted') {
-				this.metrics.finished(
-					metricsSubjectOf(params),
-					{ status, hitlStatus: settled.hitlStatus },
-					record,
-				);
-			}
 
 			this.executionUpdateBroadcaster.notify({
 				projectId: params.projectId,
@@ -609,6 +604,23 @@ export class AgentExecutionService {
 			.get(executionId)
 			?.abort(new OperationalError('Agent execution ownership was lost'));
 		this.stopHeartbeat(executionId);
+	}
+
+	/** A metrics failure must not fail an execution that is already stored. */
+	private reportFinishedExecution(
+		params: RecordMessageParams,
+		status: AgentExecution['status'],
+	): void {
+		if (status === 'running' || status === 'interrupted') return;
+		try {
+			this.metrics.finished(
+				metricsSubjectOf(params),
+				{ status, hitlStatus: params.hitlStatus },
+				params.record,
+			);
+		} catch (error) {
+			this.errorReporter.error(error);
+		}
 	}
 
 	private stopHeartbeat(executionId: string): void {
