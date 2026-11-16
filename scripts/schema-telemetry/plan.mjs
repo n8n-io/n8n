@@ -42,14 +42,12 @@ function planWithOperation(group, base, defaultOf) {
 }
 
 function planWithoutOperation(group, entry, base, defaultOf) {
-	const { isDefault, skip } = usesDefault(group, defaultOf);
-	if (skip) return { skip };
-	if (!isDefault)
-		return { skip: 'simplify variant on a node without an operation is not supported' };
+	const variant = variantSuffix(group, defaultOf);
+	if (variant.skip) return variant;
 	if (entry.noOperationSiblings.length > 0) {
 		return { skip: `shared folder with ${entry.noOperationSiblings.join(', ')}` };
 	}
-	return { file: `${base}/output.json` };
+	return { file: `${base}/output${variant.suffix}.json` };
 }
 
 /**
