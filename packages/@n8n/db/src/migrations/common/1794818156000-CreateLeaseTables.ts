@@ -9,6 +9,9 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 		runQuery,
 		tablePrefix,
 	}: MigrationContext) {
+		const fencingTokenCounter = escape.columnName('fencingTokenCounter');
+		const fencingToken = escape.columnName('fencingToken');
+
 		await createTable('lease_kind')
 			.withColumns(
 				column('kind').varchar(24).primary,
@@ -19,7 +22,7 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 			)
 			.withTimestamps.withCheck(
 				`CHK_${tablePrefix}lease_kind_fencingTokenCounter`,
-				'"fencingTokenCounter" >= 0',
+				`${fencingTokenCounter} >= 0`,
 			);
 
 		await createTable('lease_session')
@@ -52,7 +55,7 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 				column('revoked').bool.notNull.default(false),
 				column('revokedAt').timestampTimezone(),
 			)
-			.withTimestamps.withCheck(`CHK_${tablePrefix}lease_fencingToken`, '"fencingToken" >= 0')
+			.withTimestamps.withCheck(`CHK_${tablePrefix}lease_fencingToken`, `${fencingToken} >= 0`)
 			.withForeignKey('leaseKind', {
 				tableName: 'lease_kind',
 				columnName: 'kind',
