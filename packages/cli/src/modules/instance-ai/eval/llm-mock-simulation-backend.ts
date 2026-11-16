@@ -134,7 +134,10 @@ export class LlmMockSimulationBackend implements SimulationBackend {
 				if (request.protocol === 'mcp') {
 					const server = mcpServers.find((entry) => entry.name === request.server);
 					if (!server) {
-						return { outcome: 'unsupported', detail: 'The LLM mock does not know this MCP server.' };
+						return {
+							outcome: 'unsupported',
+							detail: 'The LLM mock does not know this MCP server.',
+						};
 					}
 					const response = await mcpFetch(server.url, {
 						method: request.method,

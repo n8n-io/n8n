@@ -147,7 +147,6 @@ describe('LlmMockSimulationBackend', () => {
 		).resolves.toMatchObject({ outcome: 'unsupported' });
 	});
 
-
 	it('says unavailable when the MCP or web search mock failed to generate a reply', async () => {
 		const { backend, mcpFetch, webSearch } = setup();
 		mcpFetch.mockResolvedValue(

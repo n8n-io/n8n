@@ -424,7 +424,6 @@ describe('SimulationSessionService', () => {
 		expect(session?.worldId).toBeUndefined();
 	});
 
-
 	it('fails the turn when the test chat marker matches no thread', async () => {
 		const { service, threadRepository } = setup();
 		threadRepository.markTestChat.mockResolvedValue(false);
@@ -477,7 +476,6 @@ describe('SimulationSessionService', () => {
 		expect(second).toBe(first);
 		expect(backend.openWorld).toHaveBeenCalledTimes(1);
 	});
-
 
 	it('keeps the sessions of two agents apart when they share a chat ID', async () => {
 		const { service } = setup({ backend: llmBackend() });

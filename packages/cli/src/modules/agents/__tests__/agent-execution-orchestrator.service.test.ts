@@ -525,7 +525,6 @@ describe('background approvals', () => {
 		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
 	});
 
-
 	it.each([
 		{ ...selectedContext, platform: 'telegram' },
 		{ ...selectedContext, integrationConnectionId: 'slack:other-credential' },
@@ -2350,7 +2349,6 @@ describe('AgentExecutionOrchestratorService', () => {
 			runtime.agent.stream.mock.invocationCallOrder[0],
 		);
 	});
-
 
 	it('executes in-app chat against the draft runtime with the caller source', async () => {
 		const {

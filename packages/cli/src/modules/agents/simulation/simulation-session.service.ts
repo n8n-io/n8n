@@ -24,11 +24,7 @@ import { nodeSimulationGap } from './non-http-node-types';
 import { SafeTestingFlagGate } from './safe-testing-flag-gate';
 import { SimulationBackendRegistry } from './simulation-backend-registry';
 import { SimulationSession } from './simulation-session';
-import type {
-	SimulatedAgent,
-	SimulatedTool,
-	SimulationWorld,
-} from './tool-simulation.contracts';
+import type { SimulatedAgent, SimulatedTool, SimulationWorld } from './tool-simulation.contracts';
 
 export interface OpenSimulationInput {
 	user: User;
