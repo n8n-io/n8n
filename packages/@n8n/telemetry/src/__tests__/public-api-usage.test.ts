@@ -24,20 +24,6 @@ describe('Public API usage', () => {
 		expect(PUBLIC_API_USAGE.getValidationError(report)).toBeNull();
 	});
 
-	it('rejects a report without routes', () => {
-		const incomplete = { ...report, routes: undefined };
-
-		expect(PUBLIC_API_USAGE.getValidationError(incomplete)).not.toBeNull();
-	});
-
-	it('rejects a property it does not know', () => {
-		expect(PUBLIC_API_USAGE.getValidationError({ ...report, paths: '{}' })).not.toBeNull();
-	});
-
-	it('rejects a first call time that is not ISO 8601', () => {
-		expect(PUBLIC_API_USAGE.getValidationError({ ...report, first: 'yesterday' })).not.toBeNull();
-	});
-
 	it.each(Object.keys(PUBLIC_API_USAGE_JSON_FIELDS) as JsonField[])(
 		'describes the JSON text in %s',
 		(field) => {

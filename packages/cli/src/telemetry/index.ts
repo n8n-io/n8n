@@ -294,7 +294,6 @@ export class Telemetry {
 				this.track(TELEMETRY_EVENT.PUBLIC_API.PUBLIC_API_USAGE, {
 					user_id: userId,
 					total_calls: entry.total_calls,
-					// The schema cannot type a Date. JSON serialized the Date to this same string before.
 					first: entry.first.toISOString(),
 					endpoints: JSON.stringify(entry.endpoints),
 					endpoints_by_client: JSON.stringify(entry.endpoints_by_client),
