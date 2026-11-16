@@ -297,7 +297,13 @@ async function runToolCall(opts: {
 			},
 			pairedItem: { item: itemIndex },
 		});
+
+		return;
 	}
+
+	throw new NodeOperationError(node, `Tool "${toolName}" was not found on the MCP server`, {
+		itemIndex,
+	});
 }
 
 /**
