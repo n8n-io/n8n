@@ -24,9 +24,8 @@ describe('Public API usage', () => {
 		expect(PUBLIC_API_USAGE.getValidationError(report)).toBeNull();
 	});
 
-	it('rejects a report without a required property', () => {
-		const incomplete: Record<string, unknown> = { ...report };
-		delete incomplete.routes;
+	it('rejects a report without routes', () => {
+		const incomplete = { ...report, routes: undefined };
 
 		expect(PUBLIC_API_USAGE.getValidationError(incomplete)).not.toBeNull();
 	});
