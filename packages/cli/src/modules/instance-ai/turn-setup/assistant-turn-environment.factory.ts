@@ -367,6 +367,7 @@ export class AssistantTurnEnvironmentFactory {
 		const approvalMode = buildsAgent
 			? 'manual'
 			: this.approvalModeService.resolveMode(user, gates.approvalModesEnabled);
+		if (gates.approvalModesEnabled) context.approvalMode = approvalMode;
 		context.enforceAdminMcpPermissions = approvalMode === 'auto';
 		if (approvalMode === 'auto') {
 			context.approvalReviewer = this.approvalReviewerFactory.create({
