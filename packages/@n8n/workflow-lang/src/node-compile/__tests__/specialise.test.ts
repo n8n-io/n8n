@@ -489,3 +489,111 @@ export async function execute(id) {
 		expect(result.errors.join('\n')).toContain('target that is not known at compile time');
 	});
 });
+
+describe('node compiler: folds that keep the result of v1', () => {
+	const run = (body: string, helpers = '', parameters: Record<string, unknown> = {}) =>
+		specialiseNode({
+			type: 'n8n-nodes-base.sample',
+			version: 1,
+			entry: '/n/Sample.node.js',
+			readFile: (path) =>
+				path === '/n/Sample.node.js'
+					? `${helpers}\nexport class Sample {\n\tasync execute() {\n${body}\n\t}\n}`
+					: undefined,
+			parameters,
+			instanceId: null,
+		});
+
+	it('keeps the name that v1 shows when a loop source folds to a value that is not there', () => {
+		const result = run(
+			`const media = this.getNodeParameter('media', 0);
+			const out = [];
+			for (const item of media.list) out.push({ json: item });
+			return [out];`,
+			'',
+			{ media: {} },
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain('"media.list is not iterable"');
+		expect(result.source).not.toContain('__iterable');
+	});
+
+	it('folds all the branches on an empty collection in one compile', () => {
+		const branches = Array.from(
+			{ length: 60 },
+			(_, k) => `if (fields.f${k}) body.push({ name: 'f${k}', value: fields.f${k} });`,
+		).join('\n');
+		const result = run(
+			`const fields = this.getNodeParameter('fields', 0);
+			const body = [];
+			${branches}
+			return [[{ json: { body } }]];`,
+			'',
+			{ fields: {} },
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.source).not.toContain('f59');
+	});
+
+	it('gives the error of v1 for the spread of a value that is not a list', () => {
+		const result = run(
+			`const out = [];
+			const data = await this.helpers.request({ method: 'GET', uri: 'https://api.example.test/a' });
+			out.push(...data.rows);
+			return [this.helpers.returnJsonArray(out)];`,
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain('__spreadList(data.rows, "data.rows")');
+	});
+
+	it('keeps a parameter that the function writes through a pattern', () => {
+		const result = run(
+			`const data = await this.helpers.request({ method: 'GET', uri: 'https://api.example.test/a' });
+			return [[{ json: { range: split(undefined, data.range) } }]];`,
+			`function split(sheet, range) {
+				if (range.includes('!')) [sheet, range] = range.split('!');
+				return [sheet, range];
+			}`,
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain('[sheet, range] = range.split');
+	});
+
+	it('takes more arguments than a function declares when an argument can have an effect', () => {
+		const result = run(
+			`const data = await this.helpers.request({ method: 'GET', uri: 'https://api.example.test/a' });
+			return [[{ json: { id: first(data.id, data.rows[0]) } }]];`,
+			`function first(id) {
+				return String(id) + '!';
+			}`,
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.source).toMatch(/function first\(id[^)]*, __unused0/);
+	});
+
+	it('refuses a read of an input other than the first', () => {
+		const result = run('return [[...this.getInputData(0), ...this.getInputData(1)]];');
+		expect(result.errors.join('\n')).toContain("'this.getInputData' has no compiled form");
+	});
+
+	it('keeps an item that has a json key when it makes the list of items', () => {
+		const result = run(
+			`const data = await this.helpers.request({ method: 'GET', uri: 'https://api.example.test/a' });
+			return [this.helpers.returnJsonArray(this.helpers.returnJsonArray(data))];`,
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain('json.json');
+	});
+
+	it('folds an optional chain on a value that is not there', () => {
+		const result = run(
+			`const uri = this.getNodeParameter('uri', 0);
+			const page = uri?.includes('page_info') ? 1 : 2;
+			return [[{ json: { page } }]];`,
+			'',
+			{ uri: undefined },
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.source).not.toContain('includes');
+	});
+});

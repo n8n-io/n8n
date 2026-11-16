@@ -364,8 +364,33 @@ const HELPERS: Record<string, string> = {
 	__jsonArray: `function __jsonArray(data: any): any {
 	const out: any[] = [];
 	const list: any = Array.isArray(data) ? data : [data];
-	for (const json of list) out.push({ json });
+	for (const json of list) {
+		if (json !== null && json !== undefined && json.json) {
+			const kept: any = {};
+			for (const [key, value] of Object.entries(json)) kept[key] = value;
+			out.push(kept);
+		} else out.push({ json });
+	}
 	return out;
+}`,
+	__spreadList: `function __spreadList(value: any, name: string): any {
+	if (Array.isArray(value) || typeof value === 'string') return value;
+	if (value !== null && value !== undefined) {
+		if (typeof value === 'object' && value.$coll !== undefined) return value;
+		throw new TypeError('Spread syntax requires ...iterable[Symbol.iterator] to be a function');
+	}
+	if (name === '') throw new Error('the spread of a value that is not there has no compiled form');
+	throw new TypeError(name + ' is not iterable (cannot read property ' + value + ')');
+}`,
+	__iterableOf: `function __iterableOf(value: any, name: string): any {
+	if (Array.isArray(value) || typeof value === 'string') return value;
+	if (value !== null && value !== undefined && typeof value === 'object' && value.$coll !== undefined) return value;
+	throw new TypeError(name + ' is not iterable');
+}`,
+	__applyList: `function __applyList(value: any): any {
+	if (Array.isArray(value)) return value;
+	if (value === null || value === undefined) return [];
+	throw new Error('a function call with a list of arguments that is not an array has no compiled form');
 }`,
 	__assign: `function __assign(target: any, source: any): any {
 	if (source !== null && source !== undefined) {
@@ -1640,7 +1665,8 @@ class Specialiser {
 				return f.createIdentifier(CREDENTIAL_PREFIX + credentialTypeOf(node));
 			if (isThisCall(node, 'getNodeParameter'))
 				return this.parameter(f.updateCallExpression(node, node.expression, undefined, args(node)));
-			if (isThisCall(node, 'getInputData')) return f.createIdentifier('__items');
+			if (isThisCall(node, 'getInputData') && readsFirstInput(node))
+				return f.createIdentifier('__items');
 			if (
 				ts.isBinaryExpression(node) &&
 				node.operatorToken.kind === ts.SyntaxKind.InKeyword &&
@@ -2084,16 +2110,17 @@ class Specialiser {
 				) {
 					const list = each(e.expression).expression;
 					const more = each(e.arguments[0]).expression;
+					const item = spreadItem(e.arguments[0].expression);
 					return f.createForOfStatement(
 						undefined,
 						f.createVariableDeclarationList(
-							[f.createVariableDeclaration('__more')],
+							[f.createVariableDeclaration(item)],
 							ts.NodeFlags.Const,
 						),
 						more,
 						f.createExpressionStatement(
 							f.createCallExpression(f.createPropertyAccessExpression(list, 'push'), undefined, [
-								f.createIdentifier('__more'),
+								f.createIdentifier(item),
 							]),
 						),
 					);
@@ -2339,7 +2366,7 @@ class Specialiser {
 	}
 
 	private fold(start: { node: ts.Node; sf: ts.SourceFile }, where: string) {
-		let cur = start;
+		let cur = this.renew(start, nameIterables(start.node));
 		let settled = false;
 		for (let round = 0; round < MAX_FOLD_ROUNDS && !settled; round++) {
 			this.changed = false;
@@ -2351,7 +2378,37 @@ class Specialiser {
 			settled = !this.changed;
 		}
 		if (!settled) this.error(where, `the code still changes after ${MAX_FOLD_ROUNDS} fold rounds`);
+		cur = this.renew(cur, this.settleIterables(cur.node));
 		return this.renew(cur, this.deriveCredentialValues(cur.node));
+	}
+
+	private settleIterables(root: ts.Node): ts.Node {
+		const visit = (input: ts.Node): ts.Node => {
+			const n = ts.visitEachChild(input, visit, undefined);
+			if (!ts.isForOfStatement(n) || !isNamedIterable(n.expression)) return n;
+			const [value, name] = n.expression.arguments;
+			const literal = literalOf(value);
+			if (literal && typeof literal.value !== 'string' && ts.isStringLiteral(name)) {
+				return f.createThrowStatement(
+					this.helper(
+						'__error',
+						f.createStringLiteral(`${name.text} is not iterable`),
+						f.createStringLiteral('TypeError'),
+						f.createIdentifier('undefined'),
+					),
+				);
+			}
+			const same = ts.isStringLiteral(name) && iterableName(value) === name.text;
+			const list = ts.isArrayLiteralExpression(value) || literal !== undefined;
+			return f.updateForOfStatement(
+				n,
+				n.awaitModifier,
+				n.initializer,
+				same || list ? value : this.helper(KEPT_ITERABLE, value, name),
+				n.statement,
+			);
+		};
+		return ts.visitNode(root, visit);
 	}
 
 	private renew(
@@ -2982,6 +3039,7 @@ class Specialiser {
 			ts.forEachChild(n, (c) => mark(c, inner || (c !== root && ts.isFunctionLike(c))));
 		};
 		mark(root, false);
+		for (const name of patternTargets(root)) fixed.add(name);
 		const assignedIn = (n: ts.Node, out = new Set<string>()): Set<string> => {
 			const name = targetOf(n);
 			if (name) out.add(name);
@@ -3231,13 +3289,17 @@ class Specialiser {
 				let out: ts.Statement;
 				if (ts.isBlock(st)) return f.updateBlock(st, block(st.statements, env));
 				if (ts.isIfStatement(st)) {
+					const condition = substitute(st.expression, env);
 					out = f.updateIfStatement(
 						st,
-						substitute(st.expression, env),
+						condition,
 						branch(st.thenStatement, copy(env)),
 						st.elseStatement ? branch(st.elseStatement, copy(env)) : undefined,
 					);
-					mentioned(st, env);
+					const decided = literalOf(condition);
+					if (decided === undefined) mentioned(st, env);
+					else if (decided.value) mentioned(st.thenStatement, env);
+					else if (st.elseStatement) mentioned(st.elseStatement, env);
 				} else if (
 					ts.isForStatement(st) ||
 					ts.isForOfStatement(st) ||
@@ -3333,16 +3395,37 @@ class Specialiser {
 
 	private reduce(root: ts.Node): ts.Node {
 		const visit = (input: ts.Node): ts.Node | ts.Node[] | undefined => {
+			if (
+				ts.isOptionalChain(input) &&
+				chainStartsAbsent(input) &&
+				!(input.parent && ts.isDeleteExpression(input.parent))
+			) {
+				this.changed = true;
+				return f.createIdentifier('undefined');
+			}
 			const n = ts.visitEachChild(input, visit, undefined);
 			const done = <T>(value: T): T => {
 				this.changed = true;
 				return value;
 			};
+			if (
+				ts.isPropertyAccessExpression(n) &&
+				!n.questionDotToken &&
+				isEmptyObject(n.expression) &&
+				!(n.name.text in Object.prototype) &&
+				input.parent &&
+				!isWritten(input) &&
+				!(ts.isCallExpression(input.parent) && input.parent.expression === input) &&
+				!(ts.isTaggedTemplateExpression(input.parent) && input.parent.tag === input)
+			)
+				return done(f.createIdentifier('undefined'));
 			if (ts.isParenthesizedExpression(n) && literalOf(n.expression)) return done(n.expression);
 			if (isThisCall(n, 'getNodeParameter')) {
 				const bound = this.parameter(n, true);
 				if (bound !== n) return done(bound);
 			}
+			if (isThisCall(n, 'getInputData') && readsFirstInput(n))
+				return done(f.createIdentifier('__items'));
 			if (ts.isForOfStatement(n)) {
 				const unrolled = unrollParameterLoop(n);
 				if (unrolled) return done(unrolled);
@@ -4639,16 +4722,47 @@ class Specialiser {
 			e.kind === ts.SyntaxKind.TrueKeyword ||
 			e.kind === ts.SyntaxKind.FalseKeyword ||
 			e.kind === ts.SyntaxKind.NullKeyword;
+		const wider = new Map<string, number>();
 		for (const entry of this.output) {
 			const visit = (input: ts.Node): ts.Node => {
 				const n = ts.visitEachChild(input, visit, undefined);
 				if (!ts.isCallExpression(n) || !ts.isIdentifier(n.expression)) return n;
 				const limit = limits.get(n.expression.text);
 				if (limit === undefined || n.arguments.length <= limit) return n;
-				if (!n.arguments.slice(limit).every(inert)) return n;
+				if (!n.arguments.slice(limit).every(inert)) {
+					if (!n.arguments.some(ts.isSpreadElement))
+						wider.set(
+							n.expression.text,
+							Math.max(wider.get(n.expression.text) ?? 0, n.arguments.length),
+						);
+					return n;
+				}
 				return f.updateCallExpression(n, n.expression, undefined, n.arguments.slice(0, limit));
 			};
 			const next = this.reparse(ts.visitNode(entry.node, visit), entry.sf);
+			entry.node = next.node;
+			entry.sf = next.sf;
+		}
+		for (const entry of this.output) {
+			const count = wider.get(entry.name);
+			const node = entry.node;
+			if (count === undefined || !ts.isFunctionDeclaration(node)) continue;
+			const unused = Array.from({ length: count - node.parameters.length }, (_, k) =>
+				f.createParameterDeclaration(undefined, undefined, `__unused${k}`),
+			);
+			const next = this.reparse(
+				f.updateFunctionDeclaration(
+					node,
+					node.modifiers,
+					node.asteriskToken,
+					node.name,
+					node.typeParameters,
+					[...node.parameters, ...unused],
+					node.type,
+					node.body,
+				),
+				entry.sf,
+			);
 			entry.node = next.node;
 			entry.sf = next.sf;
 		}
@@ -5062,6 +5176,7 @@ class Specialiser {
 				ts.forEachChild(n, noteWrites);
 			};
 			noteWrites(fn.body);
+			for (const name of patternTargets(fn.body)) written.add(name);
 			const constants: ts.Statement[] = [];
 			const parameters = fn.parameters.map((p, k) => {
 				if (
@@ -5136,6 +5251,7 @@ class Specialiser {
 					!bound.has(n.text) &&
 					n.text !== name &&
 					!PURE_GLOBALS.has(n.text) &&
+					n.text !== KEPT_ITERABLE &&
 					!pure.has(n.text)
 				)
 					ok = false;
@@ -5157,10 +5273,12 @@ class Specialiser {
 			}
 			if (pure.size === before) break;
 		}
-		const sources = this.output
-			.filter((o) => pure.has(o.name))
-			.map((o) => this.printer.printNode(ts.EmitHint.Unspecified, o.node, o.sf))
-			.join('\n');
+		const sources = [
+			KEPT_ITERABLE_CODE,
+			...this.output
+				.filter((o) => pure.has(o.name))
+				.map((o) => this.printer.printNode(ts.EmitHint.Unspecified, o.node, o.sf)),
+		].join('\n');
 		const literalJson = (e: ts.Expression): boolean =>
 			literalOf(e) !== undefined ||
 			(ts.isArrayLiteralExpression(e) && e.elements.every(literalJson)) ||
@@ -5356,10 +5474,38 @@ class Specialiser {
 		check(root);
 	}
 
+	private listSources(root: ts.Node): ts.Node {
+		let found = false;
+		const visit = (input: ts.Node): ts.Node => {
+			const n = ts.visitEachChild(input, visit, undefined);
+			const item = ts.isForOfStatement(n) ? loopItem(n) : undefined;
+			if (!ts.isForOfStatement(n) || item === undefined) return n;
+			const spread = item.startsWith(SPREAD_ITEM);
+			if (!spread && item !== APPLY_ITEM) return n;
+			found = true;
+			const source = spread
+				? this.helper(
+						'__spreadList',
+						n.expression,
+						f.createStringLiteral(
+							item
+								.slice(SPREAD_ITEM.length + 1)
+								.split('$')
+								.join('.'),
+						),
+					)
+				: this.helper('__applyList', n.expression);
+			return f.updateForOfStatement(n, n.awaitModifier, n.initializer, source, n.statement);
+		};
+		const out = ts.visitNode(root, visit);
+		return found ? out : root;
+	}
+
 	private print(): string {
 		const code: string[] = [];
 		let body = '';
 		for (const { node } of this.output) this.bytesUses(node);
+		for (const entry of this.output) entry.node = this.listSources(entry.node);
 		const buffers = this.output.some((o) => mentionsBuffer(o.node));
 		if (buffers) this.helpers.add('__bufferText');
 		const guarded = [...this.helpers].some((h) => HELPERS[h]?.includes(LIMIT_TEXT));
@@ -5551,6 +5697,129 @@ function unrollParameterLoop(loop: ts.ForOfStatement): ts.Statement | undefined 
 		values.map((value) => f.createBlock([withValue(value)], true)),
 		true,
 	);
+}
+
+function readsFirstInput(read: ts.CallExpression): boolean {
+	if (read.arguments.length === 0) return true;
+	return read.arguments.length === 1 && literalOf(read.arguments[0])?.value === 0;
+}
+
+function chainStartsAbsent(chain: ts.Node): boolean {
+	let link = chain;
+	while (
+		(ts.isPropertyAccessExpression(link) ||
+			ts.isElementAccessExpression(link) ||
+			ts.isCallExpression(link)) &&
+		!link.questionDotToken &&
+		ts.isOptionalChain(link)
+	)
+		link = link.expression;
+	if (
+		!ts.isPropertyAccessExpression(link) &&
+		!ts.isElementAccessExpression(link) &&
+		!ts.isCallExpression(link)
+	)
+		return false;
+	if (!link.questionDotToken) return false;
+	const base = literalOf(link.expression);
+	return base !== undefined && (base.value === undefined || base.value === null);
+}
+
+function isEmptyObject(e: ts.Expression): boolean {
+	if (ts.isParenthesizedExpression(e)) return isEmptyObject(e.expression);
+	return ts.isObjectLiteralExpression(e) && e.properties.length === 0;
+}
+
+function patternTargets(root: ts.Node): Set<string> {
+	const out = new Set<string>();
+	const names = (n: ts.Node) => {
+		if (ts.isIdentifier(n)) out.add(n.text);
+		ts.forEachChild(n, names);
+	};
+	const walk = (n: ts.Node) => {
+		if (
+			ts.isBinaryExpression(n) &&
+			n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+			!ts.isIdentifier(n.left)
+		) {
+			let target: ts.Expression = n.left;
+			while (ts.isParenthesizedExpression(target)) target = target.expression;
+			if (ts.isArrayLiteralExpression(target) || ts.isObjectLiteralExpression(target))
+				names(target);
+		}
+		if (
+			(ts.isForOfStatement(n) || ts.isForInStatement(n)) &&
+			!ts.isVariableDeclarationList(n.initializer)
+		)
+			names(n.initializer);
+		ts.forEachChild(n, walk);
+	};
+	walk(root);
+	return out;
+}
+
+const NAMED_ITERABLE = '__iterable';
+const KEPT_ITERABLE = '__iterableOf';
+const KEPT_ITERABLE_CODE = `function ${KEPT_ITERABLE}(value, name) {
+	if (Array.isArray(value) || typeof value === 'string') return value;
+	throw new TypeError(name + ' is not iterable');
+}`;
+const SPREAD_ITEM = '__each';
+const APPLY_ITEM = '__more';
+
+function spreadItem(source: ts.Expression): string {
+	const name = iterableName(source);
+	return name === undefined || name.includes('$')
+		? SPREAD_ITEM
+		: `${SPREAD_ITEM}$${name.replaceAll('.', '$')}`;
+}
+
+function loopItem(loop: ts.ForOfStatement): string | undefined {
+	const list = loop.initializer;
+	if (!ts.isVariableDeclarationList(list) || list.declarations.length !== 1) return undefined;
+	const name = list.declarations[0].name;
+	return ts.isIdentifier(name) ? name.text : undefined;
+}
+
+function isNamedIterable(e: ts.Expression): e is ts.CallExpression {
+	return (
+		ts.isCallExpression(e) &&
+		ts.isIdentifier(e.expression) &&
+		e.expression.text === NAMED_ITERABLE &&
+		e.arguments.length === 2
+	);
+}
+
+function iterableName(e: ts.Expression): string | undefined {
+	if (ts.isParenthesizedExpression(e) || ts.isAsExpression(e) || ts.isNonNullExpression(e))
+		return iterableName(e.expression);
+	if (ts.isIdentifier(e)) return e.text === 'undefined' ? undefined : e.text;
+	if (ts.isPropertyAccessExpression(e) && !e.questionDotToken) {
+		const head = iterableName(e.expression);
+		return head === undefined ? undefined : `${head}.${e.name.text}`;
+	}
+	return undefined;
+}
+
+function nameIterables(root: ts.Node): ts.Node {
+	let named = false;
+	const visit = (input: ts.Node): ts.Node => {
+		const n = ts.visitEachChild(input, visit, undefined);
+		if (!ts.isForOfStatement(n) || n.awaitModifier) return n;
+		const name = iterableName(n.expression);
+		const item = loopItem(n);
+		if (name === undefined || item === APPLY_ITEM || item?.startsWith(SPREAD_ITEM)) return n;
+		named = true;
+		return f.updateForOfStatement(
+			n,
+			n.awaitModifier,
+			n.initializer,
+			call(NAMED_ITERABLE, n.expression, f.createStringLiteral(name)),
+			n.statement,
+		);
+	};
+	const out = ts.visitNode(root, visit);
+	return named ? out : root;
 }
 
 function containsBreak(n: ts.Node): boolean {
