@@ -108,7 +108,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_monitoring_report](instance_monitoring_report.md) | 10 |  | table |
 | [instance_version_history](instance_version_history.md) | 5 |  | table |
 | [invalid_auth_token](invalid_auth_token.md) | 2 |  | table |
-| [lease](lease.md) | 17 |  | table |
+| [lease](lease.md) | 12 |  | table |
 | [lease_kind](lease_kind.md) | 7 |  | table |
 | [lease_session](lease_session.md) | 7 |  | table |
 | [mcp_registry_server](mcp_registry_server.md) | 7 |  | table |
@@ -1534,15 +1534,10 @@ erDiagram
   DATETIME createdAt
   TEXT data
   VARCHAR_64_ dataHash
-  INTEGER failedStartAttempts
-  VARCHAR_255_ fanOutGroup
   INTEGER fencingToken
   VARCHAR_255_ key PK
-  TEXT lastError
-  DATETIME lastErrorAt
   VARCHAR_24_ leaseKind PK
   VARCHAR_36_ leaseSessionId
-  DATETIME nextStartAttemptAt
   DATETIME readyAt
   BOOLEAN revoked
   DATETIME revokedAt

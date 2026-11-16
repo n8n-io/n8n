@@ -8,15 +8,10 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | data | text |  | false |  |  |  |
 | dataHash | varchar(64) |  | false |  |  |  |
-| failedStartAttempts | integer | 0 | false |  |  |  |
-| fanOutGroup | varchar(255) |  | true |  |  |  |
 | fencingToken | bigint | 0 | false |  |  |  |
 | key | varchar(255) |  | false |  |  |  |
-| lastError | text |  | true |  |  |  |
-| lastErrorAt | timestamp(3) with time zone |  | true |  |  |  |
 | leaseKind | varchar(24) |  | false |  |  |  |
 | leaseSessionId | varchar(36) |  | true |  |  |  |
-| nextStartAttemptAt | timestamp(3) with time zone |  | true |  |  |  |
 | readyAt | timestamp(3) with time zone |  | true |  |  |  |
 | revoked | boolean | false | false |  |  |  |
 | revokedAt | timestamp(3) with time zone |  | true |  |  |  |
@@ -26,12 +21,10 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_lease_failedStartAttempts | CHECK | CHECK (("failedStartAttempts" >= 0)) |
 | CHK_lease_fencingToken | CHECK | CHECK (("fencingToken" >= 0)) |
 | lease_createdAt_not_null | n | NOT NULL "createdAt" |
 | lease_dataHash_not_null | n | NOT NULL "dataHash" |
 | lease_data_not_null | n | NOT NULL data |
-| lease_failedStartAttempts_not_null | n | NOT NULL "failedStartAttempts" |
 | lease_fencingToken_not_null | n | NOT NULL "fencingToken" |
 | lease_key_not_null | n | NOT NULL key |
 | lease_leaseKind_not_null | n | NOT NULL "leaseKind" |
@@ -43,7 +36,6 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_lease_leaseKind_fanOutGroup | CREATE INDEX "IDX_lease_leaseKind_fanOutGroup" ON public.lease USING btree ("leaseKind", "fanOutGroup") |
 | IDX_lease_leaseKind_leaseSessionId | CREATE INDEX "IDX_lease_leaseKind_leaseSessionId" ON public.lease USING btree ("leaseKind", "leaseSessionId") |
 | lease_pkey | CREATE UNIQUE INDEX lease_pkey ON public.lease USING btree ("leaseKind", key) |
 
@@ -58,15 +50,10 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   text data
   varchar_64_ dataHash
-  integer failedStartAttempts
-  varchar_255_ fanOutGroup
   bigint fencingToken
   varchar_255_ key
-  text lastError
-  timestamp_3__with_time_zone lastErrorAt
   varchar_24_ leaseKind
   varchar_36_ leaseSessionId
-  timestamp_3__with_time_zone nextStartAttemptAt
   timestamp_3__with_time_zone readyAt
   boolean revoked
   timestamp_3__with_time_zone revokedAt

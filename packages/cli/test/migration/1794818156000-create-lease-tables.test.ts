@@ -124,31 +124,16 @@ describe('CreateLeaseTables migration', () => {
 				'key',
 				'data',
 				'dataHash',
-				'fanOutGroup',
 				'leaseSessionId',
 				'fencingToken',
 				'claimedAt',
 				'readyAt',
 				'revoked',
 				'revokedAt',
-				'failedStartAttempts',
-				'nextStartAttemptAt',
-				'lastError',
-				'lastErrorAt',
 				'createdAt',
 				'updatedAt',
 			],
-			[
-				'leaseKind',
-				'key',
-				'data',
-				'dataHash',
-				'fencingToken',
-				'revoked',
-				'failedStartAttempts',
-				'createdAt',
-				'updatedAt',
-			],
+			['leaseKind', 'key', 'data', 'dataHash', 'fencingToken', 'revoked', 'createdAt', 'updatedAt'],
 		],
 	])('creates %s with its columns and NOT NULL constraints', async (name, columns, notNull) => {
 		await withContext(async (context) => {
@@ -167,7 +152,6 @@ describe('CreateLeaseTables migration', () => {
 	it.each([
 		['lease_kind', 'fencingTokenCounter', zero],
 		['lease', 'fencingToken', zero],
-		['lease', 'failedStartAttempts', zero],
 		['lease', 'revoked', isSqlite ? '0' : 'false'],
 	])('sets the default of %s.%s to %s', async (name, column, expected) => {
 		await withContext(async (context) => {
@@ -190,7 +174,6 @@ describe('CreateLeaseTables migration', () => {
 	it.each([
 		['lease_session', 'lease_session_leaseKind_expiresAt', ['leaseKind', 'expiresAt']],
 		['lease', 'lease_leaseKind_leaseSessionId', ['leaseKind', 'leaseSessionId']],
-		['lease', 'lease_leaseKind_fanOutGroup', ['leaseKind', 'fanOutGroup']],
 	])('creates the non-unique index on %s named %s', async (name, suffix, expected) => {
 		await withContext(async (context) => {
 			const index = await getIndex(context, name, `IDX_${context.tablePrefix}${suffix}`);
@@ -216,7 +199,6 @@ describe('CreateLeaseTables migration', () => {
 	it.each([
 		['lease_kind', 'fencingTokenCounter'],
 		['lease', 'fencingToken'],
-		['lease', 'failedStartAttempts'],
 	])('accepts a zero %s.%s and rejects a negative one', async (table, column) => {
 		await withContext(async (context) => {
 			await expect(insertRow(context, table, { [column]: 0 })).resolves.not.toThrow();
@@ -285,15 +267,12 @@ describe('CreateLeaseTables migration', () => {
 		});
 		expect(await leases.findOneByOrFail({ leaseKind: kind, key: 'key-1' })).toMatchObject({
 			data: '{"a":1}',
-			fanOutGroup: null,
 			leaseSessionId: sessionId,
 			fencingToken: token,
 			claimedAt,
 			readyAt: null,
 			revoked: false,
 			revokedAt: null,
-			failedStartAttempts: 0,
-			lastError: null,
 		});
 	});
 

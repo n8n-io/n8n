@@ -41,26 +41,18 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 			"key" VARCHAR(255) NOT NULL,
 			"data" TEXT NOT NULL,
 			"dataHash" VARCHAR(64) NOT NULL,
-			"fanOutGroup" VARCHAR(255) NULL,
 			"leaseSessionId" VARCHAR(36) NULL,
 			"fencingToken" ${bigint} NOT NULL DEFAULT 0 CONSTRAINT "CHK_${tablePrefix}lease_fencingToken" CHECK ("fencingToken" >= 0),
 			"claimedAt" ${ts} NULL,
 			"readyAt" ${ts} NULL,
 			"revoked" BOOLEAN NOT NULL DEFAULT ${falseValue},
 			"revokedAt" ${ts} NULL,
-			"failedStartAttempts" INTEGER NOT NULL DEFAULT 0 CONSTRAINT "CHK_${tablePrefix}lease_failedStartAttempts" CHECK ("failedStartAttempts" >= 0),
-			"nextStartAttemptAt" ${ts} NULL,
-			"lastError" TEXT NULL,
-			"lastErrorAt" ${ts} NULL,
 			"createdAt" ${ts} NOT NULL DEFAULT ${nowDefault},
 			"updatedAt" ${ts} NOT NULL DEFAULT ${nowDefault},
 			PRIMARY KEY ("leaseKind", "key")
 		)`);
 		await runQuery(
 			`CREATE INDEX ${escape.indexName('lease_leaseKind_leaseSessionId')} ON ${lease} ("leaseKind", "leaseSessionId")`,
-		);
-		await runQuery(
-			`CREATE INDEX ${escape.indexName('lease_leaseKind_fanOutGroup')} ON ${lease} ("leaseKind", "fanOutGroup")`,
 		);
 
 		if (isPostgres) {
