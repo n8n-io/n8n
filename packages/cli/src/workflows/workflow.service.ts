@@ -1616,7 +1616,7 @@ export class WorkflowService {
 			const transferredWorkflows = transferred
 				? workflows
 				: await this._ownedByProject(workflows, destinationProjectId);
-			await this._restoreTriggersOfUnmoved(
+			await this._restoreTriggersOfUntransferred(
 				[...refusals.keys()].filter(
 					(workflowId) => !transferredWorkflows.some((workflow) => workflow.id === workflowId),
 				),
@@ -1654,7 +1654,7 @@ export class WorkflowService {
 	}
 
 	/** Never throws, so a transfer that failed half-way still reports its original error. */
-	private async _restoreTriggersOfUnmoved(workflowIds: string[]): Promise<void> {
+	private async _restoreTriggersOfUntransferred(workflowIds: string[]): Promise<void> {
 		if (workflowIds.length > 0) {
 			try {
 				await this.outboxRepository.enqueueByWorkflowIds(
