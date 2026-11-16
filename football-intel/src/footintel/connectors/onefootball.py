@@ -37,7 +37,12 @@ CUP_SLUGS = {"ENG-FAC": "fa-cup-17", "ENG-EFL": "efl-cup-41", "ESP-CDR": "copa-d
              "ITA-CI": "coppa-italia-19"}
 # Bracket slots shown before a draw ("Home", "Winner Quarter Final 1"): not teams.
 PLACEHOLDER = re.compile(r"^(Home|Guest|Away|Winner|Loser|TBD|TBA)\b", re.I)
-CALENDAR_SLUGS = {**LEAGUE_SLUGS, **CUP_SLUGS}
+# National teams (D82). Ids found on 2026-11-16 through /en/competition/x-<id>, which redirects to
+# the named page. A new edition (Euro 2028 qualifying, AFCON 2027) gets a new id: add it here.
+NATIONAL_SLUGS = {"INT-UNL": "uefa-nations-league-2349", "INT-FRI": "international-friendlies-24",
+                  "INT-WC": "world-cup-12", "INT-AFCON": "africa-cup-of-nations-49", "INT-COPA": "copa-america-37",
+                  "INT-ASIA": "afc-asian-cup-156", "INT-GOLD": "concacaf-gold-cup-87"}
+CALENDAR_SLUGS = {**LEAGUE_SLUGS, **CUP_SLUGS, **NATIONAL_SLUGS}
 
 _NEXT_DATA = re.compile(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', re.S)
 _MINUTE = re.compile(r"^(\d+)(?:\+(\d+))?'?$")

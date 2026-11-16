@@ -6,8 +6,16 @@ from datetime import timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from footintel.catalog import (COUNTRY_BY_CODE, FOOTBALL_DATA_ORG, ONEFOOTBALL, OPENFOOTBALL, OPENLIGADB,
-                               OUTCOME_SOURCE_RANK, get_source)
+from footintel.catalog import (
+    COUNTRY_BY_CODE,
+    FOOTBALL_DATA_ORG,
+    INTERNATIONAL,
+    ONEFOOTBALL,
+    OPENFOOTBALL,
+    OPENLIGADB,
+    OUTCOME_SOURCE_RANK,
+    get_source,
+)
 from footintel.connectors.base import MatchRecord, season_label
 from footintel.db.models import (
     Competition,
@@ -51,6 +59,7 @@ class MatchStore:
         self._ranks = {s.id: OUTCOME_SOURCE_RANK.get(s.code, 0)
                        for s in session.scalars(select(DataSource))}
         self._competitions = {c.code: c for c in session.scalars(select(Competition))}
+        self._national: dict[str, int] | None = None  # results-file name -> team id, read on first use
         self._seasons = {(x.competition_id, x.label): x for x in session.scalars(select(Season))}
         self._aliases = {
             a.alias: a.team_id
@@ -66,6 +75,8 @@ class MatchStore:
 
     def _team_id(self, name: str, rec: MatchRecord, competition: Competition,
                  stats: RunStats) -> int:
+        if competition.type == "national":
+            return self._national_team(name, competition, stats)
         if name in self._aliases:
             return self._aliases[name]
         if self.attach_only:
@@ -105,6 +116,23 @@ class MatchStore:
         self.s.add(TeamAlias(team_id=team.id, source_id=self.source.id, alias=name))
         self._aliases[name] = team.id
         return team.id
+
+    def _national_team(self, name: str, competition: Competition, stats: RunStats) -> int | None:
+        """National teams (D82) exist only through sync_international, under the name used in
+        the results file. A name with no such team is skipped: a new team would start at the
+        default rating and split the history of a real one."""
+        from footintel.connectors.international import ONEFOOTBALL_NAMES
+
+        if self._national is None:
+            intl = get_source(self.s, INTERNATIONAL)
+            self._national = dict(self.s.execute(select(TeamAlias.alias, TeamAlias.team_id)
+                                                 .where(TeamAlias.source_id == intl.id)).all())
+        canonical = ONEFOOTBALL_NAMES.get(name, name) if self.calendar else name
+        team_id = self._national.get(canonical)
+        if team_id is None:
+            stats.issue("warning", "unmapped_team",
+                        f"{competition.code} {name!r}: no national team of that name, match skipped")
+        return team_id
 
     def _calendar_team(self, name: str, rec: MatchRecord, competition: Competition,
                        stats: RunStats) -> int | None:

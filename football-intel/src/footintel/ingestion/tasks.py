@@ -15,7 +15,7 @@ from footintel.connectors.openfootball import FILE_TO_COMPETITION, OpenFootball
 from footintel.connectors.football_data_org import UEFA_TZ, FootballDataOrg
 from footintel.connectors.openligadb import OpenLigaDB
 from footintel.connectors.the_odds_api import TheOddsApi
-from footintel.connectors.onefootball import CALENDAR_SLUGS, CUP_SLUGS, MatchCard
+from footintel.connectors.onefootball import CALENDAR_SLUGS, CUP_SLUGS, NATIONAL_SLUGS, MatchCard
 from footintel.connectors.onefootball import LEAGUE_SLUGS as ONEFOOTBALL_LEAGUES, OneFootball
 from footintel.connectors.onefootball import MatchPage as OneFootballPage
 from footintel.connectors.http import SourceUnavailable
@@ -375,11 +375,13 @@ def _calendar_record(card: MatchCard, competition_code: str):
 
 def sync_onefootball_calendar(engine: Engine, settings: Settings, competitions: list[str] | None = None,
                               connector: OneFootball | None = None) -> RunStats:
-    """Upcoming matches of the five leagues and the national cups, and the cup results (D62).
+    """Upcoming matches of the five leagues, the national cups and the national-team
+    competitions, and the results of the cups and national teams (D62, D82).
 
     League results stay with football-data.co.uk; OneFootball only adds their fixtures, and
-    never a team. A cup may add a lower-tier club. One fixtures page per competition, and one
-    results page per cup, per run."""
+    never a team. A cup may add a lower-tier club; a national team must already exist
+    (sync_international). One fixtures page per competition, and one results page per cup
+    or national-team competition, per run."""
     competitions = competitions or list(CALENDAR_SLUGS)
     with tracked_run(engine, "sync_onefootball_calendar", source_id=_source_id(engine, ONEFOOTBALL),
                      params={"competitions": competitions}) as stats:
@@ -387,7 +389,7 @@ def sync_onefootball_calendar(engine: Engine, settings: Settings, competitions: 
         for comp in competitions:
             try:
                 cards = connector.fixtures(comp)
-                if comp in CUP_SLUGS:
+                if comp in CUP_SLUGS or comp in NATIONAL_SLUGS:
                     cards += [c for c in connector.results(comp) if c.finished]
             except SourceUnavailable as exc:
                 stats.issue("warning", "source_unavailable", f"{comp}: {exc}")

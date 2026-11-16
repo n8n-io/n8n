@@ -19,10 +19,17 @@ function readColors() {
 const COMP_FR = { "ENG-PL": "Premier League", "ESP-LL": "Liga", "ITA-SA": "Serie A", "GER-BL": "Bundesliga",
   "FRA-L1": "Ligue 1", "GER-DFB": "Coupe d'Allemagne", "UEFA-CL": "Ligue des champions", "UEFA-EL": "Ligue Europa",
   "UEFA-ECL": "Ligue Conférence", "ENG-FAC": "FA Cup", "ENG-EFL": "Coupe de la Ligue anglaise",
-  "ESP-CDR": "Coupe du Roi", "ITA-CI": "Coupe d'Italie", "FRA-CDF": "Coupe de France" };
-/* Tab order on the match list: leagues, then European cups, then national cups. */
+  "ESP-CDR": "Coupe du Roi", "ITA-CI": "Coupe d'Italie", "FRA-CDF": "Coupe de France",
+  /* National teams (D82). */
+  "INT-WC": "Coupe du monde", "INT-WCQ": "Éliminatoires Coupe du monde",
+  "INT-EURO": "Euro", "INT-EUROQ": "Éliminatoires Euro", "INT-UNL": "Ligue des nations", "INT-AFCON": "CAN",
+  "INT-AFCONQ": "Éliminatoires CAN", "INT-COPA": "Copa América", "INT-ASIA": "Coupe d'Asie", "INT-GOLD": "Gold Cup",
+  "INT-FRI": "Matchs amicaux" };
+/* Tab order on the match list: leagues, European cups, national cups, then national teams. */
 const COMP_ORDER = ["ENG-PL", "ESP-LL", "ITA-SA", "GER-BL", "FRA-L1", "UEFA-CL", "UEFA-EL", "UEFA-ECL",
-  "ENG-FAC", "ENG-EFL", "ESP-CDR", "ITA-CI", "GER-DFB", "FRA-CDF"];
+  "ENG-FAC", "ENG-EFL", "ESP-CDR", "ITA-CI", "GER-DFB", "FRA-CDF",
+  "INT-WC", "INT-EURO", "INT-AFCON", "INT-COPA", "INT-UNL", "INT-WCQ", "INT-EUROQ", "INT-AFCONQ", "INT-ASIA",
+  "INT-GOLD", "INT-FRI"];
 const compRank = (c) => { const i = COMP_ORDER.indexOf(c); return i < 0 ? COMP_ORDER.length : i; };
 const compName = (code, name) => COMP_FR[code] || name || code;
 /* A collapsible panel for side information: closed unless `open`; `inner` sits inside a card. */

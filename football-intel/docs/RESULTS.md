@@ -1,5 +1,32 @@
 # Résultats du backtest réel
 
+## Sélections nationales : modèle Elo (2026-11-16, D82)
+
+Données : 49 941 matchs de sélections (martj42, CC0). Chaque année est jugée avec un modèle appris
+sur les années d'avant. Classement Elo à la manière d'eloratings.net (poids par type de match,
+100 points pour l'équipe qui reçoit, plus de points pour un écart large), puis buts de Poisson
+selon l'écart de classement, appris sur les 12 dernières années, nuls relevés de 10 %.
+
+| Année | Matchs | Log loss du modèle | Log loss naïve | Bon résultat (1, N, 2) |
+|---|---|---|---|---|
+| 2018 | 935 | 0,937 | 1,063 | 55 % |
+| 2019 | 1 156 | 0,836 | 1,039 | 63 % |
+| 2020 | 356 | 0,961 | 1,084 | 54 % |
+| 2021 | 1 115 | 0,802 | 1,045 | 65 % |
+| 2022 | 970 | 0,915 | 1,039 | 58 % |
+| 2023 | 1 064 | 0,860 | 1,053 | 62 % |
+| 2024 | 1 231 | 0,899 | 1,064 | 59 % |
+| 2025 | 1 002 | 0,818 | 1,044 | 63 % |
+| 2026 | 801 | 0,883 | 1,049 | 60 % |
+
+Réglages testés sur 2018-2026 : apprentissage des buts depuis 2000 (0,8738), sur 12 ans (0,8733),
+sur 8 ans (0,8734) ; relèvement des nuls de 0 % (0,8715), 5 % (0,8709), 10 % (0,8707, nuls prévus
+22,9 % pour 22,9 % réels), 15 % (0,8708). Retenu : 12 ans et 10 %.
+
+Limites : aucune cote historique des sélections pour comparer le modèle aux bookmakers ; le
+terrain neutre n'est connu que pour les matchs du fichier (les matchs à venir sont comptés à
+domicile) ; plus de buts prévus que réels en 2022 (49 % contre 44 % de plus de 2,5 buts).
+
 ## Rotation des titulaires contre le marché (2026-11-13, D78)
 
 Données : compositions Transfermarkt (jeu de données CC0 `dcaribou/transfermarkt-datasets`,

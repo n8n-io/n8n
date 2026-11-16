@@ -94,6 +94,19 @@ dans le résumé du cycle quotidien.
 | Conditions | `static.onefootball.com/legal/terms-of-use/en` : usage personnel seulement ; interdiction de « copy, record, or save » le contenu (7.4) et de tout « processing » (7.2). **Utilisée malgré tout par décision du propriétaire (D50)**, avec garde-fous. Arrêt immédiat si le projet devient public ou commercial. |
 | Usage | Stockée (`lineups`, `team_match_tactics`, `match_events`, `team_match_statistics`). **Pas lue par le modèle actif.** |
 
+### martj42/international_results — sélections nationales (D82)
+
+| Élément | Constat |
+|---|---|
+| Accès | Libre, sans clé. `raw.githubusercontent.com/martj42/international_results/master/results.csv` et `goalscorers.csv`. Téléchargés chaque matin dans `DATA_DIR/international` ; la dernière copie sert si le téléchargement échoue. |
+| Couverture | 49 941 matchs de sélections masculines de 1872 au 6 octobre 2026 (vérifié le 16/11/2026), tous tournois : Coupe du monde et éliminatoires, Euro, Ligue des nations, CAN, Copa América, matchs amicaux… Colonne « terrain neutre ». Buteurs et minutes jusqu'en juillet 2026. |
+| Mise à jour | Après chaque fenêtre internationale, avec quelques semaines de retard. Les résultats plus récents viennent du calendrier OneFootball. |
+| Contenu absent | Pas de cotes, pas de matchs à venir. |
+| Conditions | Licence CC0 1.0 (domaine public). |
+| Usage | Classement Elo des sélections et modèle de buts (`models/national.py`). Les lignes `teams` des sélections portent `country = 'International'` ; un nom déjà pris par un club reçoit « (sélection) » (Andorra, Monaco). |
+
+Les matchs à venir et les résultats récents des sélections viennent des pages OneFootball (`NATIONAL_SLUGS`) : Ligue des nations, matchs amicaux, Coupe du monde, CAN, Copa América, Coupe d'Asie, Gold Cup. L'identifiant d'une nouvelle compétition se trouve avec `onefootball.com/en/competition/x-<id>`, qui redirige vers la page nommée. Les éliminatoires de la CAN n'ont pas été trouvés (identifiants 1 à 900 et 2300 à 2420 parcourus).
+
 ## Prévue, désactivée
 
 ### API-Football (api-sports.io)

@@ -26,7 +26,11 @@ const pct = (p, d = 0) => `${(100 * p).toFixed(d)} %`;
 const two = (x) => (x == null || !isFinite(x) ? "—" : x.toFixed(2));
 const COMP = { "ENG-PL": "Premier League", "ESP-LL": "Liga", "ITA-SA": "Serie A", "GER-BL": "Bundesliga",
   "FRA-L1": "Ligue 1", "GER-DFB": "Coupe d'Allemagne", "UEFA-CL": "Ligue des champions", "UEFA-EL": "Ligue Europa",
-  "UEFA-ECL": "Ligue Conférence", "ENG-FAC": "FA Cup", "ESP-CDR": "Coupe du Roi", "ITA-CI": "Coupe d'Italie" };
+  "UEFA-ECL": "Ligue Conférence", "ENG-FAC": "FA Cup", "ESP-CDR": "Coupe du Roi", "ITA-CI": "Coupe d'Italie",
+  "INT-WC": "Coupe du monde", "INT-WCQ": "Éliminatoires Coupe du monde",
+  "INT-EURO": "Euro", "INT-EUROQ": "Éliminatoires Euro", "INT-UNL": "Ligue des nations", "INT-AFCON": "CAN",
+  "INT-AFCONQ": "Éliminatoires CAN", "INT-COPA": "Copa América", "INT-ASIA": "Coupe d'Asie", "INT-GOLD": "Gold Cup",
+  "INT-FRI": "Matchs amicaux" };
 
 /* betPawa RD Congo "Bonus Gagnant", read on the owner's coupons on 2026-10-30: percentage of the
    net win (payout minus stake) by number of selections priced 1.20 or more. Combos of 3+ only. */

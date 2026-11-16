@@ -11,7 +11,7 @@ a tool or a lesson must survive the session. Keep it under 150 lines.
   short sentences, few numbers. No jargon (log loss, ECE, PSI, IC, millième, calibration, edge).
   Say what happened, what it means for his bets, and what to do. One example beats a table.
 - **football-intel/**: football prediction platform (Python, FastAPI, PostgreSQL).
-  Source of truth: `football-intel/docs/DECISIONS.md` (D1–D81), `docs/RESULTS.md`,
+  Source of truth: `football-intel/docs/DECISIONS.md` (D1–D82), `docs/RESULTS.md`,
   `docs/DATA_SOURCES.md`. Active model `routed_competition`; it equals the market and
   has no measured edge (CLV −2.5 % at average price, D54).
 - **PitUp**: delivery marketplace in Lubumbashi (customers, partner shops, couriers).
@@ -84,6 +84,13 @@ newest one when the owner says "reprends où on s'est arrêtés". Project plugin
   one again unless asked. Lecture du jour (D77) runs on GitHub Models for free (D78); an Anthropic key, if added later, takes over. The owner has no card for paid APIs: prefer free, keyless sources; a free football odds API blocked his key (2026-11-12).
 - Always give the fair odds (1/p) and say that a bet has value only above them; the model has no
   proven edge over the market, BTTS is its weakest market, 1UP/FG assume goals in random order.
+
+## National teams (D82)
+
+Own model `models/national.py` (Elo + Poisson), data from martj42/international_results (CC0) and
+the OneFootball calendar (`NATIONAL_SLUGS`). `INT-*` competitions are excluded from club data in
+`load_matches`. New edition = new OneFootball id: find it with `onefootball.com/en/competition/x-<id>`
+(redirects to the named page). Not in tickets until the owner names his national teams.
 
 ## Daily cycle trigger (D79)
 

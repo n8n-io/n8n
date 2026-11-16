@@ -1205,3 +1205,52 @@ def test_plain_week_says_what_happened_in_plain_words():
     assert "Parma" not in body.split("3. LE SITE")[0]  # not one of the owner's Serie A teams
     assert "Sur 2 matchs de tes championnats, le site a trouvé le bon résultat 1 fois, les bookmakers 1 fois." in body
     assert "remis à jour" in body and "PSI" not in body and "log loss" not in body
+
+
+def test_national_elo_rates_matches_and_gives_coherent_markets():
+    import pandas as pd
+
+    from footintel.connectors.international import kind_of
+    from footintel.models import national as N
+
+    assert kind_of("FIFA World Cup") == ("INT-WC", "world_cup") and kind_of("Friendly") == ("INT-FRI", "friendly")
+    assert kind_of("UEFA Nations League") == ("INT-UNL", "qualifier")
+    assert kind_of("CONCACAF Nations League") == ("INT-OTHER", "qualifier")
+    assert kind_of("Baltic Cup") == ("INT-OTHER", "tournament")
+    # A 3-0 home win moves both ratings by the same amount, more than a 1-0 would.
+    games = pd.DataFrame({"date": pd.to_datetime(["2026-01-01", "2026-02-01", "2026-03-01"]),
+                          "home": ["A", "B", "A"], "away": ["B", "C", "C"], "home_goals": [3, 1, None],
+                          "away_goals": [0, 1, None], "kind": ["qualifier", "friendly", "friendly"],
+                          "neutral": [False, True, False]})
+    rated, elo = N.ratings(games)
+    assert rated["elo_home"].iloc[0] == N.START and round(elo["A"] + elo["B"] + elo["C"]) == 3 * N.START
+    gain_3_0 = elo["A"] - N.START
+    expected = 1 / (1 + 10 ** (-N.HOME_ADVANTAGE / 400))
+    assert abs(gain_3_0 - 40 * (11 + 3) / 8 * (1 - expected)) < 1e-9
+    m = N.markets(1.6, 0.9)
+    assert abs(m["p_home"] + m["p_draw"] + m["p_away"] - 1) < 1e-9 and m["p_home"] > m["p_away"]
+    assert m["p_over_1_5"] > m["p_over_2_5"] > m["p_over_3_5"] and 0 < m["p_btts"] < 1
+    # The draw boost raises the draw against plain Poisson.
+    assert m["p_draw"] > N.markets(1.6, 0.9, draw_boost=0)["p_draw"]
+    # Stronger side, higher rate; neutral ground removes the home edge.
+    gm = N.GoalModel()
+    lh, la = gm.rates([300.0], [False])
+    assert lh[0] > la[0]
+    p = N.predict(gm, {"A": 1800.0, "B": 1600.0}, pd.DataFrame({"home": ["A"], "away": ["B"], "neutral": [True]}))
+    assert p["p_home"].iloc[0] > p["p_away"].iloc[0] and p["elo_home"].iloc[0] == 1800.0
+
+
+def test_national_history_adds_database_results_the_file_does_not_hold_yet():
+    import pandas as pd
+
+    from footintel.ingestion.international import _history
+
+    file = pd.DataFrame({"date": pd.to_datetime(["2026-10-06"]), "home": ["Spain"], "away": ["England"],
+                         "home_goals": [1], "away_goals": [0], "kind": ["qualifier"], "neutral": [False]})
+    db = pd.DataFrame({"date": pd.to_datetime(["2026-10-07", "2026-11-15", "2026-11-20"]),
+                       "home": ["Spain", "France", "Italy"], "away": ["England", "Türkiye", "Wales"],
+                       "home_goals": [1, 2, None], "away_goals": [0, 0, None], "kind": ["qualifier"] * 3,
+                       "neutral": [False] * 3})
+    out = _history(file, db)
+    # Spain - England one day apart is the same match; France - Türkiye is new; Italy - Wales is not played.
+    assert list(zip(out["home"], out["away"], strict=True)) == [("Spain", "England"), ("France", "Türkiye")]
