@@ -1,0 +1,21 @@
+packages/quality/testing/playwright/tests/e2e/ai/assistant-support-chat.spec.ts
+  s_31baefb8fe8e4c::t_1ee4a3f450cac7 79-81
+  s_31baefb8fe8e4c::t_c79a73d14aa1bb 110
+  s_31baefb8fe8e4c::t_debb7fb7b6b85b 111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8707a162bc37a7884537cba785d11d8847131b10",
+  "prompts": {},
+  "sessions": {
+    "s_31baefb8fe8e4c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dcc5b00f-b135-4796-af50-d83716e5fddd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
