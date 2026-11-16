@@ -1956,6 +1956,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				versionedSettings(),
 			);
 
 			await service.executeErrorWorkflow(
