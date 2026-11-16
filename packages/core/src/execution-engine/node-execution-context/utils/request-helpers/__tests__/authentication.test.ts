@@ -22,6 +22,12 @@ vi.mock('../legacy-request-adapter', () => ({
 	proxyRequestToAxios: vi.fn(),
 }));
 
+/** Shaped like cli's `PolicyViolationError`, which core cannot import. */
+const policyRefusal = () =>
+	Object.assign(new Error('Credential type "slackApi" is blocked by an instance policy'), {
+		isPolicyRefusal: true,
+	});
+
 describe('httpRequestWithAuthentication', () => {
 	const baseUrl = 'https://api.example.com';
 	const tokenUrl = 'https://auth.example.com';
@@ -125,6 +131,36 @@ describe('httpRequestWithAuthentication', () => {
 		);
 	});
 
+	// An explicit preAuthenticationRetryStatusCode replaces the default, so a caller can leave 401 out.
+	test('does NOT refresh on 401 when preAuthenticationRetryStatusCode excludes it', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		const requestOptions: IHttpRequestOptions = { method: 'GET', url: `${baseUrl}/items` };
+		mockAdditionalData.credentialsHelper.authenticate.mockResolvedValue(requestOptions);
+
+		const error401 = Object.assign(new Error('401 - session expired'), {
+			response: { status: 401 },
+		});
+		request.mockRejectedValueOnce(error401);
+
+		await expect(
+			httpRequestWithAuthentication.call(
+				mockThis,
+				'testSessionAuth',
+				requestOptions,
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+				{ preAuthenticationRetryStatusCode: [403, 404] },
+			),
+		).rejects.toSatisfy(
+			(thrown: unknown) => thrown instanceof NodeApiError && thrown.cause === error401,
+		);
+
+		expect(request).toHaveBeenCalledTimes(1);
+		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenCalledTimes(1);
+	});
+
 	// By default this path's generic preAuthentication retry only fires on exactly
 	// 401 (unlike the legacy requestWithAuthentication, which retries on any error —
 	// see the "requestWithAuthentication (legacy)" suite below) — a 404/403 here
@@ -196,6 +232,84 @@ describe('httpRequestWithAuthentication', () => {
 		expect(request).toHaveBeenCalledTimes(2);
 	});
 
+	// `skipPreAuthenticationRetryWhileTokenIsFresh`: a 403/404 also means "does not exist", so
+	// gate those on the expiry the credential stored, or a batch of missing resources costs one
+	// token exchange plus one credential write each.
+	describe('skipPreAuthenticationRetryWhileTokenIsFresh', () => {
+		const options = {
+			preAuthenticationRetryStatusCode: [401, 403, 404],
+			skipPreAuthenticationRetryWhileTokenIsFresh: true,
+		};
+
+		const runWith = async (
+			credentials: ICredentialDataDecryptedObject,
+			status: number,
+			requestOptions: IHttpRequestOptions = { method: 'GET', url: `${baseUrl}/items` },
+		) => {
+			mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+			mockThis.getCredentials.mockResolvedValue(credentials);
+			mockAdditionalData.credentialsHelper.preAuthentication
+				.mockResolvedValueOnce(undefined)
+				.mockResolvedValueOnce({ accessToken: 'fresh' });
+			mockAdditionalData.credentialsHelper.authenticate.mockResolvedValue(requestOptions);
+			request
+				.mockRejectedValueOnce(
+					Object.assign(new Error(`${status} - failed`), { response: { status } }),
+				)
+				.mockResolvedValueOnce({ ok: true });
+
+			return await httpRequestWithAuthentication.call(
+				mockThis,
+				'testServiceAccount',
+				requestOptions,
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+				options,
+			);
+		};
+
+		test('does not retry a 404 while the stored token is still live', async () => {
+			await expect(
+				runWith({ accessToken: 'live', n8n_expires_at: String(Date.now() + 3_600_000) }, 404),
+			).rejects.toThrow(NodeApiError);
+
+			expect(request).toHaveBeenCalledTimes(1);
+			// only the unforced call that runs before the request
+			expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenCalledTimes(1);
+		});
+
+		test('retries a 404 once the stored token is at its expiry', async () => {
+			const result = await runWith(
+				{ accessToken: 'stale', n8n_expires_at: String(Date.now() - 1_000) },
+				404,
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(request).toHaveBeenCalledTimes(2);
+		});
+
+		test.each([
+			['unknown', {}],
+			['unparsable', { n8n_expires_at: 'tomorrow' }],
+		])('retries a 404 when the stored expiry is %s', async (_label, stored) => {
+			const result = await runWith({ accessToken: 'stale', ...stored }, 404);
+
+			expect(result).toEqual({ ok: true });
+			expect(request).toHaveBeenCalledTimes(2);
+		});
+
+		test('still retries a 401 while the stored token reads as live, since the server rejected it', async () => {
+			const result = await runWith(
+				{ accessToken: 'revoked', n8n_expires_at: String(Date.now() + 3_600_000) },
+				401,
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(request).toHaveBeenCalledTimes(2);
+		});
+	});
+
 	test('refreshes but does NOT resend a drained form-data body on 401; the original error surfaces', async () => {
 		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
 		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
@@ -265,6 +379,25 @@ describe('httpRequestWithAuthentication', () => {
 
 		expect(result).toEqual({ ok: true });
 		expect(request).toHaveBeenCalledTimes(1);
+	});
+
+	test('rethrows a policy refusal from the credential read unchanged, with no request sent', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		const refusal = policyRefusal();
+		mockThis.getCredentials.mockRejectedValue(refusal);
+
+		await expect(
+			httpRequestWithAuthentication.call(
+				mockThis,
+				'slackApi',
+				{ method: 'GET', url: `${baseUrl}/items` },
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			),
+		).rejects.toBe(refusal);
+
+		expect(request).not.toHaveBeenCalled();
 	});
 });
 
@@ -400,4 +533,118 @@ describe('requestWithAuthentication (legacy) — preAuthentication retry', () =>
 			);
 		},
 	);
+
+	test('rethrows a policy refusal from the credential read unchanged, with no request sent', async () => {
+		const refusal = policyRefusal();
+		mockThis.getCredentials.mockRejectedValue(refusal);
+
+		await expect(
+			requestWithAuthentication.call(
+				mockThis,
+				'slackApi',
+				{ method: 'GET', uri: 'https://api.example.com/items' },
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+			),
+		).rejects.toBe(refusal);
+
+		expect(proxyRequestToAxiosMock).not.toHaveBeenCalled();
+	});
+});
+
+const TRACEPARENT = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
+
+/** Injects a different trace span for each call, so a retry is distinguishable. */
+const otelWithSpans = () => {
+	let calls = 0;
+	return {
+		injectTraceHeaders: vi.fn(
+			(_executionId: string, _nodeName: string | undefined, headers: Record<string, string>) => {
+				calls += 1;
+				Object.assign(headers, {
+					traceparent: TRACEPARENT.replace(/-01$/, `-0${calls}`),
+				});
+			},
+		),
+		extractInboundBaggage: vi.fn(),
+	};
+};
+
+describe('httpRequestWithAuthentication trace headers', () => {
+	const mockThis = mockDeep<IAllExecuteFunctions>();
+	const mockWorkflow = mock<Workflow>();
+	const mockNode = mockDeep<INode>();
+	const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+	(mockAdditionalData as unknown as Record<string, unknown>)['oauth-jwe'] = undefined;
+	mockAdditionalData.ssrfBridge = undefined;
+	mockAdditionalData.evalLlmMockHandler = undefined;
+
+	const request = vi.fn();
+	const requests = vi.fn();
+	const outboundHttp = mock<OutboundHttp>({ requests });
+	const options: IHttpRequestOptions = { method: 'GET', url: 'https://api.example.com/items' };
+
+	const send = async () =>
+		await httpRequestWithAuthentication.call(
+			mockThis,
+			'testSessionAuth',
+			{ ...options },
+			mockWorkflow,
+			mockNode,
+			mockAdditionalData,
+		);
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		requests.mockReturnValue(mock<HttpRequestClient>({ request }));
+		Container.set(OutboundHttp, outboundHttp);
+		mockNode.name = 'test-node';
+		mockAdditionalData.executionId = 'exec-1';
+		(mockAdditionalData as IWorkflowExecuteAdditionalData).otel = otelWithSpans();
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		// A new object with only the credential header, so trace headers must be added after it
+		mockAdditionalData.credentialsHelper.authenticate.mockImplementation(
+			async (_credentials, _type, requestOptions) => ({
+				...(requestOptions as IHttpRequestOptions),
+				headers: { Authorization: 'Bearer x' },
+			}),
+		);
+	});
+
+	test('sends the trace headers together with the credential header', async () => {
+		request.mockResolvedValueOnce({ ok: true });
+
+		await send();
+
+		expect(request).toHaveBeenCalledTimes(1);
+		expect(request.mock.calls[0][0].headers).toEqual({
+			Authorization: 'Bearer x',
+			traceparent: expect.stringMatching(/^00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-/),
+		});
+		expect(mockAdditionalData.otel?.injectTraceHeaders).toHaveBeenCalledWith(
+			'exec-1',
+			'test-node',
+			expect.any(Object),
+		);
+	});
+
+	test('sends the trace headers again on the retry after a 401', async () => {
+		mockAdditionalData.credentialsHelper.preAuthentication
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce({ sessionToken: 'fresh' });
+		const error401 = Object.assign(new Error('401 - session expired'), {
+			response: { status: 401 },
+		});
+		request.mockRejectedValueOnce(error401).mockResolvedValueOnce({ ok: true });
+
+		await send();
+
+		expect(request).toHaveBeenCalledTimes(2);
+		expect(request.mock.calls[1][0].headers).toEqual({
+			Authorization: 'Bearer x',
+			traceparent: expect.stringMatching(/-02$/),
+		});
+	});
 });

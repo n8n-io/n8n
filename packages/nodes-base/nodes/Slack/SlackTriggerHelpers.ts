@@ -1,6 +1,6 @@
 import { createHmac } from 'crypto';
 import type { IHttpRequestOptions, IWebhookFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, isDomainAllowed, requestPath } from 'n8n-workflow';
 
 import { slackApiRequest } from './V2/GenericFunctions';
 import { verifySignature as verifySignatureGeneric } from '../../utils/webhook-signature-verification';
@@ -9,7 +9,7 @@ export async function getUserInfo(this: IWebhookFunctions, userId: string): Prom
 	const user = await slackApiRequest.call(
 		this,
 		'GET',
-		'/users.info',
+		requestPath`/users.info`,
 		{},
 		{
 			user: userId,
@@ -23,7 +23,7 @@ export async function getChannelInfo(this: IWebhookFunctions, channelId: string)
 	const channel = await slackApiRequest.call(
 		this,
 		'GET',
-		'/conversations.info',
+		requestPath`/conversations.info`,
 		{},
 		{
 			channel: channelId,
@@ -33,10 +33,32 @@ export async function getChannelInfo(this: IWebhookFunctions, channelId: string)
 	return channel.channel.name;
 }
 
+const SLACK_FILE_DOMAINS = 'files.slack.com, files.slack-gov.com';
+const SLACK_FILE_PATH_PREFIX = '/files-pri/';
+
+function isSlackFileUrl(url: string): boolean {
+	try {
+		const { protocol, pathname } = new URL(url);
+		return (
+			protocol === 'https:' &&
+			pathname.startsWith(SLACK_FILE_PATH_PREFIX) &&
+			isDomainAllowed({ url, allowedDomains: SLACK_FILE_DOMAINS })
+		);
+	} catch {
+		return false;
+	}
+}
+
 export async function downloadFile(this: IWebhookFunctions, url: string): Promise<any> {
+	if (!isSlackFileUrl(url)) {
+		throw new NodeOperationError(this.getNode(), 'The file URL is not an HTTPS Slack file URL');
+	}
+
 	let options: IHttpRequestOptions = {
 		method: 'GET',
 		url,
+		allowedDomains: SLACK_FILE_DOMAINS,
+		sendCredentialsOnCrossOriginRedirect: false,
 	};
 
 	const requestOptions = {

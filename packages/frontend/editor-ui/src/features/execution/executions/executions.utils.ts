@@ -1,4 +1,5 @@
 import {
+	EVALUATION_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	createRunExecutionData,
 	isTrimmedNodeExecutionData,
@@ -9,8 +10,6 @@ import type {
 	ExecutionStatus,
 	ExecutionSummary,
 	IDataObject,
-	INode,
-	IPinData,
 	IRunData,
 	ExecutionError,
 	INodeTypeBaseDescription,
@@ -139,54 +138,19 @@ export const openFormPopupWindow = (url: string) => {
 
 export const clearPopupWindowState = () => (formPopupWindow = false);
 
-export async function displayForm({
-	nodes,
-	runData,
-	pinData,
-	destinationNode,
-	triggerNode,
-	directParentNodes,
+/** Opens the test form popup for each Form Trigger the backend registered in this manual run. */
+export function displayForm({
+	formTestUrls,
 	source,
-	getTestUrl,
 }: {
-	nodes: INode[];
-	runData: IRunData | undefined;
-	pinData: IPinData;
-	destinationNode: string | undefined;
-	triggerNode: string | undefined;
-	directParentNodes: string[];
+	formTestUrls: string[];
 	source: string | undefined;
-	getTestUrl: (node: INode) => string;
 }) {
-	for (const node of nodes) {
-		if (triggerNode !== undefined && triggerNode !== node.name) continue;
+	if (source === 'RunData.ManualChatMessage') return;
 
-		const hasNodeRunAndIsNotFormTrigger =
-			runData?.hasOwnProperty(node.name) && node.type !== FORM_TRIGGER_NODE_TYPE;
-
-		if (hasNodeRunAndIsNotFormTrigger || pinData[node.name]) continue;
-
-		if (![FORM_TRIGGER_NODE_TYPE].includes(node.type)) continue;
-
-		if (destinationNode && destinationNode !== node.name && !directParentNodes.includes(node.name))
-			continue;
-
-		if (node.name === destinationNode || !node.disabled) {
-			let testUrl = '';
-			if (node.type === FORM_TRIGGER_NODE_TYPE) testUrl = getTestUrl(node);
-
-			try {
-				const res = await fetch(testUrl, { method: 'GET' });
-				if (!res.ok) continue;
-			} catch (error) {
-				continue;
-			}
-
-			if (testUrl && source !== 'RunData.ManualChatMessage') {
-				clearPopupWindowState();
-				openFormPopupWindow(testUrl);
-			}
-		}
+	for (const formTestUrl of formTestUrls) {
+		clearPopupWindowState();
+		openFormPopupWindow(formTestUrl);
 	}
 }
 
@@ -440,6 +404,11 @@ export function findTriggerNodeToAutoSelect(
 		[MANUAL_TRIGGER_NODE_TYPE]: 6,
 		[WORKFLOW_TRIGGER_NODE_TYPE]: 5,
 		[ERROR_TRIGGER_NODE_TYPE]: 4,
+		// Ranked below the core-node fallback: selecting this trigger runs the whole
+		// evaluation dataset, so it should never win over a trigger the user can run
+		// interactively. Its codex category is "Utility", so without this entry it
+		// would fall through to the 8 reserved for third-party app triggers.
+		[EVALUATION_TRIGGER_NODE_TYPE]: -1,
 	};
 
 	function isCoreNode(node: INodeUi): boolean {

@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /**
  * Thrown when a public CRUD caller attempts to create, PATCH, or DELETE a row

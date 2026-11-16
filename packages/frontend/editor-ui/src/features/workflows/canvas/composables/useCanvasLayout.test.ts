@@ -21,7 +21,7 @@ import {
 import { useCanvasLayout, type CanvasLayoutResult } from './useCanvasLayout';
 import { STICKY_NODE_TYPE } from '@/app/constants';
 import { DEFAULT_NODE_SIZE, GRID_SIZE, NODE_X_SPACING } from '@/app/utils/nodeViewUtils';
-import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
+import { DEFAULT_AGENT_HEIGHT, DEFAULT_AGENT_WIDTH } from '@/features/agents/utils/agentNode';
 import type { INodeUi } from '@/Interface';
 import {
 	computeGroupFrameRects,
@@ -58,16 +58,18 @@ function isGraphCanvasNode(
 }
 
 describe('useCanvasLayout', () => {
+	type TestConnection = [sourceId: string, targetId: string, sourceIndex?: number];
+
 	function createTestSetup(
 		nodes: Array<GraphNode<CanvasNodeData> | GraphNode<CanvasGroupNodeData>>,
-		connections: Array<[string, string]>,
+		connections: TestConnection[],
 		selectedNodeIds?: string[],
 		canonicalConnections = connections,
 	) {
 		const nodesById = Object.fromEntries(nodes.map((node) => [node.id, node]));
 		seedCanonicalConnections(nodesById, canonicalConnections);
-		const edges = connections.map(([sourceId, targetId]) =>
-			createCanvasGraphEdge(nodesById[sourceId], nodesById[targetId]),
+		const edges = connections.map(([sourceId, targetId, sourceIndex = 0]) =>
+			createCanvasGraphEdge(nodesById[sourceId], nodesById[targetId], { sourceIndex }),
 		);
 		const edgesById = Object.fromEntries(edges.map((edge) => [edge.id, edge]));
 
@@ -94,27 +96,25 @@ describe('useCanvasLayout', () => {
 
 	function seedCanonicalConnections(
 		nodesById: Record<string, GraphNode<CanvasNodeData> | GraphNode<CanvasGroupNodeData>>,
-		connections: Array<[string, string]>,
+		connections: TestConnection[],
 	) {
 		for (const node of Object.values(nodesById)) {
 			if (isGraphCanvasNode(node)) node.data.name = node.id;
 		}
 
-		for (const [sourceId, targetId] of connections) {
+		for (const [sourceId, targetId, sourceIndex = 0] of connections) {
 			const source = nodesById[sourceId];
 			const target = nodesById[targetId];
 			if (!source || !target || !isGraphCanvasNode(source) || !isGraphCanvasNode(target)) continue;
 
 			const outputConnections = source.data.connections[CanvasConnectionMode.Output];
 			const mainOutputConnections = outputConnections[NodeConnectionTypes.Main] ?? [];
-			const firstPortConnections = mainOutputConnections[0] ?? [];
-			outputConnections[NodeConnectionTypes.Main] = [
-				[
-					...firstPortConnections,
-					{ node: target.data.name, type: NodeConnectionTypes.Main, index: 0 },
-				],
-				...mainOutputConnections.slice(1),
+			const updatedConnections = [...mainOutputConnections];
+			updatedConnections[sourceIndex] = [
+				...(mainOutputConnections[sourceIndex] ?? []),
+				{ node: target.data.name, type: NodeConnectionTypes.Main, index: 0 },
 			];
+			outputConnections[NodeConnectionTypes.Main] = updatedConnections;
 		}
 	}
 
@@ -264,6 +264,36 @@ describe('useCanvasLayout', () => {
 		expect(matchesGrid(result)).toBe(true);
 	});
 
+	test.each([
+		{ branchOrder: 'ordered', trueY: -144, falseY: 48 },
+		{ branchOrder: 'crossed', trueY: 48, falseY: -144 },
+	])(
+		'should place the true IF branch above the false branch after tidying $branchOrder branches',
+		({ trueY, falseY }) => {
+			// LIGO-439: Tidy up must restore the IF output order when targets are crossed.
+			const nodes = [
+				createCanvasGraphNode({
+					id: 'if',
+					position: { x: -64, y: -48 },
+					data: { type: 'n8n-nodes-base.if' },
+				}),
+				createCanvasGraphNode({ id: 'true', position: { x: 160, y: trueY } }),
+				createCanvasGraphNode({ id: 'false', position: { x: 160, y: falseY } }),
+			];
+			const { layout } = createTestSetup(nodes, [
+				['if', 'true', 0],
+				['if', 'false', 1],
+			]);
+
+			const result = layout('all');
+			const trueBranch = result.nodes.find(({ id }) => id === 'true');
+			const falseBranch = result.nodes.find(({ id }) => id === 'false');
+			assert(trueBranch);
+			assert(falseBranch);
+			expect(trueBranch.y).toBeLessThan(falseBranch.y);
+		},
+	);
+
 	test('should handle nodes with missing dimensions', () => {
 		const nodes = [
 			createCanvasGraphNode({
@@ -335,10 +365,10 @@ describe('useCanvasLayout', () => {
 		expect(result.boundingBox).toEqual({
 			x: 0,
 			y: 0,
-			width: DEFAULT_NODE_SIZE[0] + GRID_SIZE * 8 + AGENT_NODE_SIZE[0],
-			height: AGENT_NODE_SIZE[1],
+			width: DEFAULT_NODE_SIZE[0] + GRID_SIZE * 8 + DEFAULT_AGENT_WIDTH,
+			height: DEFAULT_AGENT_HEIGHT,
 		});
-		expect(node.y + DEFAULT_NODE_SIZE[1] / 2).toBe(agent.y + AGENT_NODE_SIZE[1] / 2);
+		expect(node.y + DEFAULT_NODE_SIZE[1] / 2).toBe(agent.y + DEFAULT_AGENT_HEIGHT / 2);
 	});
 
 	test('should keep a measured agent card on the grid with its handle on the row axis', () => {
@@ -347,7 +377,7 @@ describe('useCanvasLayout', () => {
 			createCanvasGraphNode({
 				id: 'agent',
 				data: { render: { type: CanvasNodeRenderType.Agent, options: {} } },
-				dimensions: { width: AGENT_NODE_SIZE[0], height: 356 },
+				dimensions: { width: DEFAULT_AGENT_WIDTH, height: 356 },
 			}),
 		];
 
@@ -632,7 +662,7 @@ describe('useCanvasLayout', () => {
 			const agent = createCanvasGraphNode({
 				id: 'm1',
 				data: { render: { type: CanvasNodeRenderType.Agent, options: {} } },
-				dimensions: { width: AGENT_NODE_SIZE[0], height: 356 },
+				dimensions: { width: DEFAULT_AGENT_WIDTH, height: 356 },
 				position: { x: 1008, y: 1008 },
 				hidden: true,
 			});
@@ -1499,7 +1529,7 @@ describe('useCanvasLayout', () => {
 				data: agentData,
 			});
 			const merge = createCanvasGraphNode({ id: 'merge', position: { x: 800, y: 64 } });
-			const memberSize = { width: AGENT_NODE_SIZE[0], height: AGENT_NODE_SIZE[1] };
+			const memberSize = { width: DEFAULT_AGENT_WIDTH, height: DEFAULT_AGENT_HEIGHT };
 			const topNodesRect = { x: 384, y: 0, ...memberSize };
 			const bottomNodesRect = { x: 384, y: 128, ...memberSize };
 			const topFrame = computeGroupFrameRects(topNodesRect).expanded;

@@ -27,14 +27,13 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	UnexpectedError,
 	CHAT_TRIGGER_NODE_TYPE,
 	deepCopy,
 	ExpressionError,
 	NodeHelpers,
 	NodeOperationError,
-	UserError,
 } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 import { FULL_ACCESS_NODE_TYPES, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
@@ -115,6 +114,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		for (const n of nodeNames) {
 			const node = this.workflow.nodes[n];
 			const entry: NodeTypeAndVersion = {
+				id: node.id,
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion,
@@ -148,6 +148,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		for (const n of nodeNames) {
 			const node = this.workflow.nodes[n];
 			const entry: NodeTypeAndVersion = {
+				id: node.id,
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion,
@@ -272,6 +273,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	}
 
 	getSignedResumeUrl(parameters: Record<string, string> = {}) {
+		if (this.instanceSettings.instanceType === 'engine') {
+			throw new UserError('Engine v2 does not support signed resume URLs yet');
+		}
+
 		const { webhookWaitingBaseUrl, executionId } = this.additionalData;
 
 		if (typeof executionId !== 'string') {

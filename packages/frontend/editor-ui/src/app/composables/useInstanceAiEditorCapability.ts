@@ -5,7 +5,8 @@ export type InstanceAiEditorActionSource =
 	| 'canvas_choice_prompt'
 	| 'credential_edit'
 	| 'credentials_list'
-	| 'node_error_view';
+	| 'node_error_view'
+	| 'workflow_error_nudge';
 
 /** The credential type (and optional node) the user wants setup guidance for. */
 export interface InstanceAiCredentialContext {

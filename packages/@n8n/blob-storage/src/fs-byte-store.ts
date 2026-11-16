@@ -1,5 +1,5 @@
 import { assertDir } from '@n8n/backend-common';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -86,13 +86,15 @@ export class FsByteStore implements ByteStore {
 
 	async deletePrefix(prefix: string) {
 		const dir = this.getAbsolutePath(prefix);
-		await fs.rm(dir, { recursive: true, force: true });
+		// Node retries ENOTEMPTY/EBUSY/EPERM only when maxRetries > 0; a tree that
+		// changes during the recursive walk raises them transiently.
+		await fs.rm(dir, { recursive: true, force: true, maxRetries: 3 });
 		await this.removeEmptyAncestors(path.dirname(dir));
 	}
 
 	async delete(keys: ByteStoreKey[]) {
 		const deletePaths = keys.map((key) => this.getAbsolutePath(key));
-		await Promise.all(deletePaths.map(async (p) => await fs.rm(p, { force: true })));
+		await Promise.all(deletePaths.map(async (p) => await fs.rm(p, { force: true, maxRetries: 3 })));
 		const dirs = [...new Set(deletePaths.map((p) => path.dirname(p)))];
 		await Promise.all(dirs.map(async (dir) => await this.removeEmptyAncestors(dir)));
 	}

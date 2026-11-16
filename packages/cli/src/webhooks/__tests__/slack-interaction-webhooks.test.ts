@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
 import type { InstanceSettings } from 'n8n-core';
@@ -5,7 +6,6 @@ import { buildHitlCallbackReference, isSlackInteractionRequest } from 'n8n-core'
 import type { IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { SlackInteractionWebhooks } from '@/webhooks/slack-interaction-webhooks';
 import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from '@/webhooks/webhook.types';
@@ -45,6 +45,8 @@ describe('SlackInteractionWebhooks', () => {
 		mock(),
 		mock<InstanceSettings>({ hmacSignatureSecret: TEST_HMAC_SECRET }),
 		mock<EventService>(),
+		mock(),
+		mock(),
 		mock(),
 	);
 
@@ -111,7 +113,7 @@ describe('SlackInteractionWebhooks', () => {
 		});
 
 	it('responds 404 without resuming for a non-POST request', async () => {
-		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const req = createRequest(reference, { method: 'GET' });
 		const { res, status } = createResponse();
 
@@ -151,7 +153,7 @@ describe('SlackInteractionWebhooks', () => {
 	});
 
 	it('responds 404 without resuming when the HMAC does not verify against this instance secret', async () => {
-		const reference = buildHitlCallbackReference('exec-1', 'a', 'a-different-secret');
+		const reference = buildHitlCallbackReference('1', 'a', 'a-different-secret');
 		const req = createRequest(reference);
 		const { res, status } = createResponse();
 
@@ -166,7 +168,7 @@ describe('SlackInteractionWebhooks', () => {
 	});
 
 	it('responds 404 without resuming when the referenced execution does not exist', async () => {
-		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const req = createRequest(reference);
 		const { res, status } = createResponse();
 		executionPersistence.findSingleExecution.mockResolvedValue(undefined);
@@ -179,7 +181,7 @@ describe('SlackInteractionWebhooks', () => {
 	});
 
 	it('responds 409 when the execution is already running', async () => {
-		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const req = createRequest(reference);
 		const { res, status } = createResponse();
 		executionPersistence.findSingleExecution.mockResolvedValue(
@@ -193,8 +195,27 @@ describe('SlackInteractionWebhooks', () => {
 		expect(slackInteractionWebhooks.getWebhookExecutionDataArgs).toBeNull();
 	});
 
+	it('responds 409 when the execution was parked at a node boundary', async () => {
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
+		const req = createRequest(reference);
+		const { res, status } = createResponse();
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'waiting',
+				finished: false,
+				data: { waitReason: 'suspended', resultData: { error: undefined } },
+			}),
+		);
+
+		const result = await slackInteractionWebhooks.executeWebhook(req, res);
+
+		expect(status).toHaveBeenCalledWith(409);
+		expect(result).toEqual({ noWebhookResponse: true });
+		expect(slackInteractionWebhooks.getWebhookExecutionDataArgs).toBeNull();
+	});
+
 	it('responds 409 when the execution has already finished', async () => {
-		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const req = createRequest(reference);
 		const { res, status } = createResponse();
 		executionPersistence.findSingleExecution.mockResolvedValue(
@@ -208,7 +229,7 @@ describe('SlackInteractionWebhooks', () => {
 	});
 
 	it('responds 409 without resuming when the execution finished with an error', async () => {
-		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const req = createRequest(reference);
 		const { res, status } = createResponse();
 		executionPersistence.findSingleExecution.mockResolvedValue(
@@ -228,7 +249,7 @@ describe('SlackInteractionWebhooks', () => {
 	});
 
 	it('responds 404 without resuming when lastNodeExecuted cannot be found in the workflow', async () => {
-		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const req = createRequest(reference);
 		const { res, status } = createResponse();
 		executionPersistence.findSingleExecution.mockResolvedValue(
@@ -243,7 +264,7 @@ describe('SlackInteractionWebhooks', () => {
 	});
 
 	it('responds 404 without resuming when the resumed node is not a Slack node', async () => {
-		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const req = createRequest(reference);
 		const { res, status } = createResponse();
 		executionPersistence.findSingleExecution.mockResolvedValue(
@@ -258,7 +279,7 @@ describe('SlackInteractionWebhooks', () => {
 	});
 
 	it('responds 404 without resuming when the resumed node has no id', async () => {
-		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const req = createRequest(reference);
 		const { res, status } = createResponse();
 		executionPersistence.findSingleExecution.mockResolvedValue(waitingExecutionWithNode(''));
@@ -271,7 +292,7 @@ describe('SlackInteractionWebhooks', () => {
 	});
 
 	it('resolves the node id from lastNodeExecuted and routes into the shared resume', async () => {
-		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const req = createRequest(reference);
 		const { res } = createResponse();
 		executionPersistence.findSingleExecution.mockResolvedValue(waitingExecutionWithNode('node-1'));
@@ -280,7 +301,7 @@ describe('SlackInteractionWebhooks', () => {
 
 		expect(result).toEqual({ noWebhookResponse: true });
 		expect(slackInteractionWebhooks.getWebhookExecutionDataArgs).toMatchObject({
-			executionId: 'exec-1',
+			executionId: '1',
 			suffix: 'node-1',
 		});
 		// The request must be flagged before routing into the shared resume so the Slack node
@@ -290,7 +311,7 @@ describe('SlackInteractionWebhooks', () => {
 	});
 
 	it('strips n8n auth and browserId cookies before routing into the shared resume', async () => {
-		const reference = buildHitlCallbackReference('exec-1', 'a', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'a', TEST_HMAC_SECRET);
 		const req = createRequest(reference);
 		// Assign real cookie values after construction so the deep mock does not proxy them.
 		req.headers = { cookie: 'n8n-auth=token; n8n-browserId=bid; other=keep' };
@@ -306,7 +327,7 @@ describe('SlackInteractionWebhooks', () => {
 	});
 
 	it('routes a verified decline reference into the shared resume', async () => {
-		const reference = buildHitlCallbackReference('exec-1', 'd', TEST_HMAC_SECRET);
+		const reference = buildHitlCallbackReference('1', 'd', TEST_HMAC_SECRET);
 		const req = createRequest(reference);
 		const { res } = createResponse();
 		executionPersistence.findSingleExecution.mockResolvedValue(waitingExecutionWithNode('node-1'));
@@ -315,8 +336,14 @@ describe('SlackInteractionWebhooks', () => {
 
 		expect(result).toEqual({ noWebhookResponse: true });
 		expect(slackInteractionWebhooks.getWebhookExecutionDataArgs).toMatchObject({
-			executionId: 'exec-1',
+			executionId: '1',
 			suffix: 'node-1',
 		});
+	});
+
+	it('advertises POST as the only method without reading an execution', async () => {
+		await expect(slackInteractionWebhooks.getWebhookMethods()).resolves.toEqual(['POST']);
+
+		expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
 	});
 });

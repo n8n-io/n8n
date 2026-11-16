@@ -1,7 +1,8 @@
-import type { WorkflowGraph } from '../graph';
+import type { StoredWorkflowGraph } from '../graph';
 import type {
 	ExecutionMode,
 	ExecutionStatus,
+	ParentLink,
 	StepError,
 	StepSlots,
 	StepStatus,
@@ -18,17 +19,27 @@ export interface ExecutionListItemView {
 	workflowId: string;
 	status: ExecutionStatus;
 	mode: ExecutionMode;
+	/** The host's finer execution mode. */
+	hostMode: string;
+	/** The parent link, or `null` for a top-level execution. */
+	parent: ParentLink | null;
 	createdAt: Date;
 	updatedAt: Date;
 	finishedAt: Date | null;
 }
 
-export interface ExecutionListQuery {
+/** The filter half of a list query: which executions, with no say in how many or from where. */
+export interface ExecutionListFilter {
 	workflowIds: readonly string[] | 'all';
 	status?: ExecutionStatus[];
-	mode?: string;
+	hostMode?: string;
+	/** Only the sub-executions of this execution. */
+	parentExecutionId?: string;
 	createdAfter?: string;
 	createdBefore?: string;
+}
+
+export interface ExecutionListQuery extends ExecutionListFilter {
 	before?: { createdAt: string; id: string };
 	/** Required at this layer; the API's default lives on the request schema. */
 	limit: number;
@@ -47,10 +58,14 @@ export interface ExecutionView {
 	workflowId: string;
 	status: ExecutionStatus;
 	mode: ExecutionMode;
+	/** The host's finer execution mode. */
+	hostMode: string;
 	/** The graph captured at start, immutable for the execution's lifetime. */
-	graph: WorkflowGraph;
+	graph: StoredWorkflowGraph;
 	/** The workflow captured at start, alongside the graph and just as immutable. */
 	workflow: WorkflowDocument;
+	/** The parent link, or `null` for a top-level execution. */
+	parent: ParentLink | null;
 	createdAt: Date;
 	updatedAt: Date;
 	finishedAt: Date | null;
@@ -106,4 +121,13 @@ export interface ExecutionViewStore {
 	 * `ExecutionNotFoundError` if absent.
 	 */
 	loadExecutionWithStepsView(id: string): Promise<ExecutionWithStepsView>;
+
+	/**
+	 * Read view of the newest execution matching `filter`, with its steps, or
+	 * `undefined` when none matches. Newest by `(created_at, id)`, the same
+	 * order the list walks.
+	 */
+	loadLatestExecutionWithStepsView(
+		filter: ExecutionListFilter,
+	): Promise<ExecutionWithStepsView | undefined>;
 }

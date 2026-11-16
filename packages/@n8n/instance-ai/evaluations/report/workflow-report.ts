@@ -7,10 +7,12 @@
  * 3. Compare — what changed between runs? (cross-report)
  */
 
+import { REMOVED_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
 import fs from 'fs';
 import path from 'path';
 
 import { getTestCaseAnchorId } from './report-anchors';
+import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
 import { groupOutcomesByDimension } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS, type CheckDimension, type CheckOutcome } from '../binaryChecks/types';
 import { getCaseRunStatus, getCaseRunStatusLabel, getRunScoredCounts } from '../summary';
@@ -391,15 +393,28 @@ function plannerReview(result: WorkflowTestCaseResult): StageReview {
 }
 
 function summarizeToolCalls(result: WorkflowTestCaseResult): string[] {
-	const toolCalls = result.buildTrace?.toolCalls ?? [];
-	const count = (toolName: string): number =>
-		toolCalls.filter((call) => call.toolName === toolName).length;
-	const submitCalls = toolCalls.filter((call) => call.toolName === 'submit-workflow');
-	const verifyCalls = toolCalls.filter((call) => call.toolName === 'verify-built-workflow');
+	const toolNames = (result.buildTrace?.toolCalls ?? []).map((call) =>
+		resolveBuilderToolName(call.toolName, call.args.action),
+	);
+	const count = (toolName: string): number => toolNames.filter((name) => name === toolName).length;
+	const submitCalls = toolNames.filter(
+		(name) => name === REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
+	);
+	const verifyCalls = toolNames.filter(
+		(name) => name === ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
+	);
+
+	const nodeResearchCount =
+		count(DOMAIN_TOOL_IDS.NODES) +
+		count(DOMAIN_TOOL_IDS.SEARCH_NODES) +
+		count(DOMAIN_TOOL_IDS.GET_NODE_TYPES) +
+		count(DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS);
+	const credentialLookupCount =
+		count(DOMAIN_TOOL_IDS.LIST_CREDENTIALS) + count(DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES);
 
 	const summaries = [
-		count('nodes') > 0 ? `${String(count('nodes'))} node-research call(s)` : '',
-		count('credentials') > 0 ? `${String(count('credentials'))} credential lookup call(s)` : '',
+		nodeResearchCount > 0 ? `${String(nodeResearchCount)} node-research call(s)` : '',
+		credentialLookupCount > 0 ? `${String(credentialLookupCount)} credential lookup call(s)` : '',
 		submitCalls.length > 0 ? `${String(submitCalls.length)} workflow submission call(s)` : '',
 		verifyCalls.length > 0 ? `${String(verifyCalls.length)} builder verification call(s)` : '',
 	];
@@ -994,18 +1009,6 @@ function renderStep(step: TranscriptStep): string | null {
 
 function renderInteraction(interaction: ToolInteraction): string | null {
 	switch (interaction.kind) {
-		case 'plan': {
-			if (interaction.tasks.length === 0) return null;
-			const lines = interaction.tasks
-				.map((t, i) => {
-					const title = t.title ?? `Task ${String(i + 1)}`;
-					const desc = t.description ? `: ${escapeHtml(t.description)}` : '';
-					return `<li><strong>${escapeHtml(title)}</strong>${desc}</li>`;
-				})
-				.join('');
-			const word = interaction.tasks.length === 1 ? 'task' : 'tasks';
-			return `<details class="transcript-aside" open><summary>📋 plan (${String(interaction.tasks.length)} ${word})</summary><ul class="transcript-plan">${lines}</ul></details>`;
-		}
 		case 'ask-user': {
 			if (interaction.questions.length === 0) return null;
 			const answerByQId = new Map<string, string>();
@@ -1032,8 +1035,8 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 				.join('');
 			const summary =
 				answerByQId.size > 0
-					? '❓ ask-user (with answers)'
-					: `❓ ask-user (${String(interaction.questions.length)} question${interaction.questions.length === 1 ? '' : 's'})`;
+					? `❓ ${DOMAIN_TOOL_IDS.ASK_USER} (with answers)`
+					: `❓ ${DOMAIN_TOOL_IDS.ASK_USER} (${String(interaction.questions.length)} question${interaction.questions.length === 1 ? '' : 's'})`;
 			return `<details class="transcript-aside" open><summary>${summary}</summary><ul class="transcript-questions">${lines}</ul></details>`;
 		}
 		case 'setup-wizard': {
@@ -1312,21 +1315,30 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 
 	let traceHtml = '';
 	if (result.buildTrace) {
-		const nodeResearchCalls = result.buildTrace.toolCalls.filter(
-			(call) => call.toolName === 'nodes',
+		const callsNamed = (...toolNames: string[]) =>
+			result.buildTrace?.toolCalls.filter((call) =>
+				toolNames.includes(resolveBuilderToolName(call.toolName, call.args.action)),
+			) ?? [];
+		const nodeResearchCalls = callsNamed(
+			DOMAIN_TOOL_IDS.NODES,
+			DOMAIN_TOOL_IDS.SEARCH_NODES,
+			DOMAIN_TOOL_IDS.GET_NODE_TYPES,
+			DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS,
 		);
-		const workflowWriteCalls = result.buildTrace.toolCalls.filter((call) =>
-			['build-workflow', 'submit-workflow', 'build-workflow-with-agent'].includes(call.toolName),
+		const workflowWriteCalls = callsNamed(
+			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
+			REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
+			REMOVED_BUILDER_TOOL_NAMES.BUILD_WORKFLOW_WITH_AGENT,
 		);
-		const validationCalls = result.buildTrace.toolCalls.filter(
-			(call) => call.toolName === 'submit-workflow',
+		const validationCalls = callsNamed(REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW);
+		const credentialCalls = callsNamed(
+			DOMAIN_TOOL_IDS.LIST_CREDENTIALS,
+			DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES,
+			DOMAIN_TOOL_IDS.SETUP_CREDENTIALS,
+			DOMAIN_TOOL_IDS.TEST_CREDENTIAL,
+			DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
 		);
-		const credentialCalls = result.buildTrace.toolCalls.filter(
-			(call) => call.toolName === 'credentials',
-		);
-		const verificationCalls = result.buildTrace.toolCalls.filter(
-			(call) => call.toolName === 'verify-built-workflow',
-		);
+		const verificationCalls = callsNamed(ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW);
 		const completionActivity = [...result.buildTrace.agentActivities]
 			.reverse()
 			.find((activity) => activity.status !== 'running');

@@ -26,6 +26,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
@@ -101,6 +102,10 @@ export function useNodeExecution(
 	const uiStore = useUIStore();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+		() => workflowDocumentStore.value.usedCredentials,
+		() => workflowDocumentStore.value.allNodes,
+	);
 	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
@@ -192,6 +197,11 @@ export function useNodeExecution(
 
 		if (codeGenerationInProgress.value) {
 			return i18n.baseText('ndv.execute.generatingCode');
+		}
+
+		// An unusable credential blocks the whole run, so it outranks per-node reasons.
+		if (unusableCredentialReason.value) {
+			return unusableCredentialReason.value;
 		}
 
 		if (nodeRef.value?.disabled) {

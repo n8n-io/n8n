@@ -1,4 +1,5 @@
 import { effectScope, ref } from 'vue';
+import { toArtifactTurns } from '../agentTreeArtifactTurns';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { flushPromises } from '@vue/test-utils';
@@ -13,6 +14,7 @@ import { getWorkflow } from '@/app/api/workflows';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -56,6 +58,9 @@ function harness() {
 	const thread = {
 		id: 'thread-1',
 		messages: [] as InstanceAiMessage[],
+		get artifactTurns() {
+			return toArtifactTurns(this.messages);
+		},
 		sendMessage: vi.fn().mockResolvedValue(true),
 		rememberManualExecution: vi.fn(),
 	};
@@ -98,6 +103,7 @@ describe('useSetupPanelExecution', () => {
 	it.each(['success', 'error', 'canceled'] as const)(
 		'notifies the agent only after the actual execution finishes: %s',
 		async (status) => {
+			mockedStore(usePostHog).getVariant.mockReturnValue('variant');
 			const { executeWorkflow, workflows, thread } = harness();
 			const pending = executeWorkflow();
 			await flushPromises();
@@ -120,11 +126,24 @@ describe('useSetupPanelExecution', () => {
 					pushRef: useRootStore().pushRef,
 				},
 			);
-			expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.WORKFLOW.USER_REQUESTED_WORKFLOW_TEST, {
+			const request = track.mock.calls.find(
+				([event]) => event === TELEMETRY_EVENT.WORKFLOW.USER_REQUESTED_WORKFLOW_TEST,
+			)?.[1];
+			expect(request).toEqual({
+				variant: 'variant',
+				'$feature/118_instance_ai_setup_overhaul': 'variant',
+				test_request_id: expect.any(String),
+				session_id: useRootStore().pushRef,
 				source: 'instance_ai_setup_panel',
 				workflow_id: 'wf-1',
 				thread_id: 'thread-1',
 			});
+			expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.WORKFLOW.SETUP_TEST_FINISHED, {
+				...request,
+				execution_id: 'exec-1',
+				status,
+			});
+			expect(track).toHaveBeenCalledTimes(2);
 			expect(handlers.size).toBe(0);
 		},
 	);
@@ -372,6 +391,10 @@ describe('useSetupPanelExecution', () => {
 		).toBeUndefined();
 		expect(handlers.size).toBe(0);
 		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.WORKFLOW.SETUP_TEST_FINISHED,
+			expect.objectContaining({ status: 'request_failed' }),
+		);
 	});
 
 	it('does not rerun automatically when the notification fails', async () => {
@@ -382,6 +405,10 @@ describe('useSetupPanelExecution', () => {
 		finish();
 		await expect(pending).resolves.toMatchObject({ status: 'success', notified: false });
 		expect(workflows.runWorkflow).toHaveBeenCalledOnce();
+		expect(track).toHaveBeenLastCalledWith(
+			TELEMETRY_EVENT.WORKFLOW.SETUP_TEST_FINISHED,
+			expect.objectContaining({ execution_id: 'exec-1', status: 'success' }),
+		);
 	});
 
 	it.each([false, true])('selects an eligible trigger, selected disabled: %s', async (disabled) => {

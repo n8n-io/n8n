@@ -5,6 +5,7 @@ import {
 	type FrontendModuleSettings,
 	type WorkflowReviewsPolicy,
 } from '@n8n/api-types';
+import { EMBEDDED_SETTINGS_GLOBAL } from '@n8n/constants';
 import { i18n } from '@n8n/i18n';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import * as aiUsageApi from '@n8n/rest-api-client/api/ai-usage';
@@ -13,12 +14,7 @@ import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
 import Bowser from 'bowser';
-import {
-	EXECUTE_WORKFLOW_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	type IDataObject,
-	type WorkflowSettings,
-} from 'n8n-workflow';
+import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
@@ -146,6 +142,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return activeModules.value?.includes(moduleName);
 	};
 
+	const isAgentsEnabled = computed(
+		() => isModuleActive('agents') && moduleSettings.value.agents?.enabled !== false,
+	);
+	const isAppsEnabled = computed(() => isModuleActive('apps'));
+
 	/**
 	 * Checks whether an agents-module sub-feature token (listed in
 	 * `N8N_AGENTS_MODULES` on the backend) is enabled. Returns `false`
@@ -155,9 +156,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	 * Known tokens: see `AGENTS_MODULE_NAMES` in `agents.config.ts`.
 	 */
 	const isAgentModuleActive = (name: string): boolean => {
-		return (
-			isModuleActive('agents') && moduleSettings.value.agents?.modules?.includes(name) === true
-		);
+		return isAgentsEnabled.value && moduleSettings.value.agents?.modules?.includes(name) === true;
 	};
 
 	const isAiCreditsEnabled = computed(
@@ -174,6 +173,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isAiGatewayCloudUbbEnabled = computed(
 		() => settings.value.aiGateway?.cloudUbbEnabled ?? false,
+	);
+
+	const isAiAssistantCloudUbbEnabled = computed(
+		() => settings.value.aiAssistant?.cloudUbbEnabled ?? false,
 	);
 
 	const aiGatewayBudget = computed(() => settings.value.aiGateway?.budget ?? 0);
@@ -217,7 +220,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	// Opt-in flag controlled by the backend's N8N_AGENTS_AI_SANDBOX_ENABLED setting.
 	const isAgentsKnowledgeBaseFeatureEnabled = computed(
-		() => isModuleActive('agents') && moduleSettings.value.agents?.knowledgeBaseEnabled === true,
+		() => isAgentsEnabled.value && moduleSettings.value.agents?.knowledgeBaseEnabled === true,
 	);
 
 	const isPublicChatTriggerDisabled = computed(
@@ -265,23 +268,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => settings.value.workflowCallerPolicyDefaultOption,
 	);
 
-	const isNodeTypeExcluded = (nodeType: string) => {
-		const excludeNodes = settings.value.excludeNodes;
-		return Array.isArray(excludeNodes) && excludeNodes.includes(nodeType);
-	};
-
-	const isExecuteWorkflowNodeExcluded = computed(() =>
-		isNodeTypeExcluded(EXECUTE_WORKFLOW_NODE_TYPE),
-	);
-
-	const isSubworkflowConversionDisabled = computed(
-		() =>
-			isExecuteWorkflowNodeExcluded.value || isNodeTypeExcluded(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE),
-	);
-
 	const permanentlyDismissedBanners = computed(() => settings.value.banners?.dismissed ?? []);
 
 	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
+
+	const isEnterprisePlan = computed(() => planName.value.toLowerCase() === 'enterprise');
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
 
@@ -310,7 +301,14 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		if (settings.value.versionCli) {
 			useRootStore().setVersionCli(settings.value.versionCli);
 		}
+	};
 
+	/**
+	 * Replaces the page with a warning when the secure auth cookie cannot work on this origin.
+	 * Chrome ignores `document.write` while a module script evaluates, so never call this
+	 * from the code that runs while `main.ts` evaluates.
+	 */
+	const showInsecureConnectionWarningIfNeeded = () => {
 		if (settings.value.authCookie.secure) {
 			const { browser } = Bowser.parse(navigator.userAgent);
 			if (
@@ -318,7 +316,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 				(!['localhost', '127.0.0.1'].includes(location.hostname) || browser.name === 'Safari')
 			) {
 				document.write(buildInsecureConnectionWarning());
-				return;
 			}
 		}
 	};
@@ -329,6 +326,21 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const setWorkflowReviewsPolicy = (policy: WorkflowReviewsPolicy) => {
 		settings.value.workflowReviews = policy;
+
+		const inbox = settings.value.inbox;
+		if (!inbox || !isModuleActive('inbox')) return;
+
+		// Update Inbox access from the saved policy.
+		inbox.availableTypes = inbox.availableTypes.filter((type) => type !== 'workflow_review');
+		inbox.failedTypes = inbox.failedTypes.filter((type) => type !== 'workflow_review');
+		if (
+			policy.enabled &&
+			isEnterpriseFeatureEnabled.value.workflowReviews &&
+			isModuleActive('workflow-reviews')
+		) {
+			inbox.availableTypes.push('workflow_review');
+		}
+		inbox.enabled = inbox.availableTypes.length > 0 || inbox.failedTypes.length > 0;
 	};
 
 	const setSaveDataErrorExecution = (newValue: WorkflowSettings.SaveDataExecution) => {
@@ -347,58 +359,87 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveDataProgressExecution.value = newValue;
 	};
 
-	const getSettings = async () => {
+	/** Applies a settings payload, from the REST API or embedded in the page. Writes nothing to the document. */
+	const applySettings = (newSettings: FrontendSettings) => {
 		const rootStore = useRootStore();
-		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
 
-		setSettings(fetchedSettings);
-		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
+		setSettings(newSettings);
+		rootStore.setDefaultLocale(newSettings.defaultLocale);
 
 		// Set MFA enforced state even for public settings mode
 		// as it is needed to determine if the MFA setup page should be shown
 		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
 
-		if (fetchedSettings.settingsMode === 'public') {
+		if (newSettings.settingsMode === 'public') {
 			// public settings mode is typically used for unauthenticated users
 			// when public settings are returned we can skip the rest of the setup
 			// that need the full set of authenticated settings
 			return;
 		}
 
-		settings.value.communityNodesEnabled = fetchedSettings.communityNodesEnabled;
-		settings.value.unverifiedCommunityNodesEnabled =
-			fetchedSettings.unverifiedCommunityNodesEnabled;
-		setAllowedModules(fetchedSettings.allowedModules);
-		setSaveDataErrorExecution(fetchedSettings.saveDataErrorExecution);
-		setSaveDataSuccessExecution(fetchedSettings.saveDataSuccessExecution);
-		setSaveDataProgressExecution(fetchedSettings.saveExecutionProgress);
-		setSaveManualExecutions(fetchedSettings.saveManualExecutions);
+		settings.value.communityNodesEnabled = newSettings.communityNodesEnabled;
+		settings.value.unverifiedCommunityNodesEnabled = newSettings.unverifiedCommunityNodesEnabled;
+		setAllowedModules(newSettings.allowedModules);
+		setSaveDataErrorExecution(newSettings.saveDataErrorExecution);
+		setSaveDataSuccessExecution(newSettings.saveDataSuccessExecution);
+		setSaveDataProgressExecution(newSettings.saveExecutionProgress);
+		setSaveManualExecutions(newSettings.saveManualExecutions);
 
-		rootStore.setUrlBaseWebhook(fetchedSettings.urlBaseWebhook);
-		rootStore.setUrlBaseEditor(fetchedSettings.urlBaseEditor);
-		rootStore.setUrlBaseWebhookTest(fetchedSettings.urlBaseWebhookTest);
-		rootStore.setEndpointForm(fetchedSettings.endpointForm);
-		rootStore.setEndpointFormTest(fetchedSettings.endpointFormTest);
-		rootStore.setEndpointFormWaiting(fetchedSettings.endpointFormWaiting);
-		rootStore.setEndpointWebhook(fetchedSettings.endpointWebhook);
-		rootStore.setEndpointWebhookTest(fetchedSettings.endpointWebhookTest);
-		rootStore.setEndpointWebhookWaiting(fetchedSettings.endpointWebhookWaiting);
-		rootStore.setEndpointMcp(fetchedSettings.endpointMcp);
-		rootStore.setEndpointMcpTest(fetchedSettings.endpointMcpTest);
-		rootStore.setTimezone(fetchedSettings.timezone);
-		rootStore.setExecutionTimeout(fetchedSettings.executionTimeout);
-		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
+		rootStore.setUrlBaseWebhook(newSettings.urlBaseWebhook);
+		rootStore.setUrlBaseEditor(newSettings.urlBaseEditor);
+		rootStore.setUrlBaseWebhookTest(newSettings.urlBaseWebhookTest);
+		rootStore.setEndpointForm(newSettings.endpointForm);
+		rootStore.setEndpointFormTest(newSettings.endpointFormTest);
+		rootStore.setEndpointFormWaiting(newSettings.endpointFormWaiting);
+		rootStore.setEndpointWebhook(newSettings.endpointWebhook);
+		rootStore.setEndpointWebhookTest(newSettings.endpointWebhookTest);
+		rootStore.setEndpointWebhookWaiting(newSettings.endpointWebhookWaiting);
+		rootStore.setEndpointMcp(newSettings.endpointMcp);
+		rootStore.setEndpointMcpTest(newSettings.endpointMcpTest);
+		rootStore.setTimezone(newSettings.timezone);
+		rootStore.setExecutionTimeout(newSettings.executionTimeout);
+		rootStore.setMaxExecutionTimeout(newSettings.maxExecutionTimeout);
 		rootStore.setPublicApiPath(
-			`${fetchedSettings.publicApi.path}/v${fetchedSettings.publicApi.latestVersion}`,
+			`${newSettings.publicApi.path}/v${newSettings.publicApi.latestVersion}`,
 		);
-		rootStore.setInstanceId(fetchedSettings.instanceId);
-		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
-		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata ?? {});
-		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
+		rootStore.setInstanceId(newSettings.instanceId);
+		rootStore.setOauthCallbackUrls(newSettings.oauthCallbackUrls);
+		rootStore.setN8nMetadata(newSettings.n8nMetadata ?? {});
+		rootStore.setBinaryDataMode(newSettings.binaryDataMode);
 
-		if (fetchedSettings.telemetry.enabled) {
+		if (newSettings.telemetry.enabled) {
 			void eventsApi.sessionStarted(rootStore.restApiContext);
 		}
+	};
+
+	const getSettings = async () => {
+		applySettings(await settingsApi.getSettings(useRootStore().restApiContext));
+		showInsecureConnectionWarningIfNeeded();
+	};
+
+	let embeddedSettingsApplied = false;
+
+	/**
+	 * Applies the public settings that the backend embeds in the page. Returns false when the
+	 * page has none or they cannot be applied, so `initialize()` fetches them instead. Writes
+	 * nothing to the document, so it can run while `main.ts` evaluates.
+	 */
+	const applyEmbeddedSettings = () => {
+		const embeddedSettings = window[EMBEDDED_SETTINGS_GLOBAL];
+		if (!embeddedSettings) {
+			return false;
+		}
+
+		// This runs before the app mounts, so an error here must not stop the editor from starting.
+		try {
+			applySettings(embeddedSettings);
+		} catch (error) {
+			console.warn('Failed to apply the embedded settings:', error);
+			return false;
+		}
+
+		embeddedSettingsApplied = true;
+		return true;
 	};
 
 	const initialize = async () => {
@@ -406,7 +447,15 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 			return;
 		}
 
-		await getSettings();
+		// Preview mode skips the login hook, which loads the full settings, so fetch them here.
+		if (embeddedSettingsApplied && !isPreviewMode.value) {
+			// Chrome ignores `document.write` until the current task ends, and this can still
+			// run in the task that evaluates `main.ts`.
+			await new Promise((resolve) => setTimeout(resolve));
+			showInsecureConnectionWarningIfNeeded();
+		} else {
+			await getSettings();
+		}
 
 		initialized.value = true;
 	};
@@ -511,14 +560,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMultiMain,
 		isWorkerViewAvailable,
 		workflowCallerPolicyDefaultOption,
-		isExecuteWorkflowNodeExcluded,
-		isSubworkflowConversionDisabled,
 		permanentlyDismissedBanners,
 		saveDataErrorExecution,
 		saveDataSuccessExecution,
 		saveManualExecutions,
 		saveDataProgressExecution,
 		isCommunityPlan,
+		isEnterprisePlan,
 		isAskAiEnabled,
 		isAiBuilderEnabled,
 		isAiAssistantOrBuilderEnabled,
@@ -527,6 +575,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiDataSharingEnabled,
 		isAiGatewayEnabled,
 		isAiGatewayCloudUbbEnabled,
+		isAiAssistantCloudUbbEnabled,
 		aiGatewayBudget,
 		reset,
 		getTimezones,
@@ -534,6 +583,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		disableTemplates,
 		stopShowingSetupPage,
 		getSettings,
+		applyEmbeddedSettings,
 		setSettings,
 		setWorkflowReviewsPolicy,
 		initialize,
@@ -544,6 +594,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMFAEnforced,
 		activeModules,
 		isModuleActive,
+		isAgentsEnabled,
+		isAppsEnabled,
 		isAgentModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,

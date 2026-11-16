@@ -1,4 +1,4 @@
-// Inferred typing for CredentialsService.getOne() is a bit too broad, so we need custom type guards
+// Inferred typing for CredentialsService.decrypt() is a bit too broad, so we need custom type guards
 // to ensure that the decrypted data has the expected structure without changing the service code.
 
 import { isRecord } from '@n8n/utils/is-record';

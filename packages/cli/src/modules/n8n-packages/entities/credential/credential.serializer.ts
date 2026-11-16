@@ -1,11 +1,11 @@
+import {
+	type SerializedCredential,
+	type SerializedCredentialData,
+	serializedCredentialSchema,
+} from '@n8n/api-types';
 import type { CredentialsEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import {
-	serializedCredentialSchema,
-	type SerializedCredential,
-	type SerializedCredentialData,
-} from '../../spec/serialized/credential.schema';
 import { definePackageSerializationPayload } from '../package-serialization.types';
 
 type CredentialPackageKeyHandling = {
@@ -13,7 +13,7 @@ type CredentialPackageKeyHandling = {
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
 	name: 'copy';
-	description: 'exclude';
+	description: 'copy';
 	data: 'transform';
 	type: 'copy';
 	shared: 'exclude';
@@ -23,6 +23,7 @@ type CredentialPackageKeyHandling = {
 	resolvableAllowFallback: 'exclude';
 	resolverId: 'exclude';
 	usageScope: 'exclude';
+	pendingAuthorizationExpiresAt: 'exclude';
 };
 
 const serializePayload = definePackageSerializationPayload<
@@ -35,14 +36,25 @@ const serializePayload = definePackageSerializationPayload<
 export class CredentialSerializer {
 	serialize(
 		credential: CredentialsEntity,
-		{ data }: { data?: SerializedCredentialData } = {},
+		{
+			data,
+			dataIsComplete,
+			includeDescription,
+		}: {
+			data?: SerializedCredentialData;
+			dataIsComplete?: boolean;
+			/** Set when the source instance has credential descriptions on. An empty one exports as `null`. */
+			includeDescription?: boolean;
+		} = {},
 	): SerializedCredential {
 		return serializedCredentialSchema.parse(
 			serializePayload({
 				id: credential.id,
 				name: credential.name,
 				type: credential.type,
+				...(includeDescription ? { description: credential.description ?? null } : {}),
 				...(data !== undefined ? { data } : {}),
+				...(dataIsComplete !== undefined ? { dataIsComplete } : {}),
 			}),
 		);
 	}

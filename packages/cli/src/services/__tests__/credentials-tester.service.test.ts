@@ -3,6 +3,7 @@ import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
 import type { ExecuteContext } from 'n8n-core';
+import { ServiceNowBasicApi } from 'n8n-nodes-base/dist/credentials/ServiceNowBasicApi.credentials';
 import type {
 	ICredentialsHelper,
 	ICredentialTestFunctions,
@@ -17,6 +18,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsHelper } from '@/credentials-helper';
+import { ManagedAppUnavailableError } from '@/errors/managed-app-unavailable.error';
 import type { NodeTypes } from '@/node-types';
 import {
 	AUTH_PROBE_ACCEPTED_MESSAGE,
@@ -138,6 +140,22 @@ describe('CredentialsTester', () => {
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
 				{} as IWorkflowExecuteAdditionalData,
 			);
+		});
+
+		it('reports that the user must reconnect when the managed app is no longer available', async () => {
+			credentialsHelper.applyDefaultsAndOverwrites.mockRejectedValue(
+				new ManagedAppUnavailableError('Reconnect the credential to continue.'),
+			);
+
+			const result = await credentialsTester.testCredentials('user-id', 'testCredentials', {
+				id: 'credential-id',
+				name: 'credential-name',
+				type: 'oAuth2Api',
+				data: {},
+			});
+
+			expect(result).toEqual({ status: 'Error', message: 'Reconnect the credential to continue.' });
+			expect(mockTestFunction).not.toHaveBeenCalled();
 		});
 
 		it('should redact secrets in error messages', async () => {
@@ -266,6 +284,45 @@ describe('CredentialsTester', () => {
 			expect(RoutingNode).not.toHaveBeenCalled();
 		});
 
+		it('tests ServiceNow Basic credentials when the ServiceNow node is excluded', async () => {
+			credentialTypes.getByName.mockReturnValue(new ServiceNowBasicApi());
+			credentialTypes.getSupportedNodes.mockReturnValue([]);
+			nodeTypes.getByName.mockImplementation(() => {
+				throw new UnrecognizedNodeTypeError('n8n-nodes-base', 'serviceNow');
+			});
+			const requestLegacy = vi.fn().mockResolvedValue({ statusCode: 403 });
+			Container.set(
+				OutboundHttp,
+				mock<OutboundHttp>({
+					requests: vi.fn().mockReturnValue(mock<HttpRequestClient>({ requestLegacy })),
+				}),
+			);
+			const data = { user: 'test-user', password: 'test-password', subdomain: 'test-instance' };
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(data);
+
+			const result = await credentialsTester.testCredentials('user-id', 'serviceNowBasicApi', {
+				id: 'credential-id',
+				name: 'ServiceNow integration',
+				type: 'serviceNowBasicApi',
+				data,
+			});
+
+			expect(result).toEqual({ status: 'OK', message: 'Connection successful!' });
+			expect(requestLegacy).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					uri: 'https://test-instance.service-now.com/api/now/table/sys_user',
+					followRedirect: false,
+					qs: { sysparm_limit: '1', sysparm_fields: 'sys_id' },
+					auth: { user: data.user, pass: data.password },
+					json: true,
+					simple: false,
+					resolveWithFullResponse: true,
+				}),
+				expect.any(Object),
+			);
+			expect(nodeTypes.getByName).not.toHaveBeenCalled();
+		});
+
 		it('should not redact secrets with value shorter than 3 characters', async () => {
 			mockTestFunction.mockResolvedValue({
 				status: 'Error',
@@ -361,6 +418,77 @@ describe('CredentialsTester', () => {
 			// everything else delegates to the real helper
 			ctx.additionalData.credentialsHelper.getParentTypes('databricksOAuth2Api');
 			expect(storedHelper.getParentTypes).toHaveBeenCalledWith('databricksOAuth2Api');
+		});
+
+		it('keeps the node type of a request test isolated from a concurrent one', async () => {
+			const urls: Record<string, string> = {
+				firstApi: 'https://example.test/first',
+				secondApi: 'https://example.test/second',
+			};
+			credentialTypes.getByName.mockImplementation(
+				(type) => ({ test: { request: { url: urls[type] } } }) as unknown as ICredentialType,
+			);
+			credentialsHelper.applyDefaultsAndOverwrites.mockImplementation(async (_base, data) => data);
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({
+					description: { name: 'n8n-nodes-base.noOp', version: 1, properties: [] },
+				}),
+			);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({
+				credentialsHelper: {
+					getDecrypted: vi.fn(),
+					getParentTypes: vi.fn().mockReturnValue([]),
+				} as unknown as ICredentialsHelper,
+			} as unknown as IWorkflowExecuteAdditionalData);
+
+			// The first run stays inside the routing engine until the second run has finished.
+			let finishFirst!: () => void;
+			const firstMayFinish = new Promise<void>((resolve) => {
+				finishFirst = resolve;
+			});
+			(RoutingNode as unknown as Mock)
+				.mockImplementationOnce(function () {
+					return {
+						runNode: vi.fn().mockImplementation(async () => {
+							await firstMayFinish;
+							return [[{ json: {} }]];
+						}),
+					};
+				})
+				.mockImplementationOnce(function () {
+					return { runNode: vi.fn().mockResolvedValue([[{ json: {} }]]) };
+				});
+
+			const first = credentialsTester.testCredentials('user-id', 'firstApi', {
+				id: '1',
+				name: 'First',
+				type: 'firstApi',
+				data: {},
+			});
+			await vi.waitFor(() => expect(RoutingNode).toHaveBeenCalledTimes(1));
+
+			await expect(
+				credentialsTester.testCredentials('user-id', 'secondApi', {
+					id: '2',
+					name: 'Second',
+					type: 'secondApi',
+					data: {},
+				}),
+			).resolves.toEqual({ status: 'OK', message: 'Connection successful!' });
+
+			finishFirst();
+			await expect(first).resolves.toEqual({ status: 'OK', message: 'Connection successful!' });
+
+			// Both runs are over. Each engine context must still resolve its own node
+			// type copy; with one shared registry the second run deleted the first one's.
+			const [firstCtx, secondCtx] = (RoutingNode as unknown as Mock).mock.calls.map(
+				(call) => call[0] as ExecuteContext,
+			);
+			const requestUrl = (ctx: ExecuteContext) =>
+				ctx.workflow.nodeTypes.getByNameAndVersion('n8n-nodes-base.noOp', 1).description
+					.properties[0].routing?.request?.url;
+			expect(requestUrl(firstCtx)).toBe(urls.firstApi);
+			expect(requestUrl(secondCtx)).toBe(urls.secondApi);
 		});
 	});
 

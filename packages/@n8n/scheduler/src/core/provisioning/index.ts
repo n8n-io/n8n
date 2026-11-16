@@ -1,6 +1,15 @@
 export { provision, deprovision } from './provision';
 export { scheduleFingerprint } from './schedule-identity';
 export { createJobProvisioner } from './provisioner';
+export { findOutdatedJobs, resolveCoreRunOptions } from './run-options';
+export type {
+	MisfireGraceAdjustment,
+	OutdatedJobIds,
+	RequestedRunOptions,
+	ResolvedRunOptions,
+	RunOptionDefaults,
+	RunOptions,
+} from './run-options';
 export type { JobProvisioner, JobProvisionerDeps, OwnedScope } from './provisioner';
 export type {
 	ProvisionTransaction,
@@ -18,4 +27,5 @@ export type {
 	ExistingJob,
 	ProvisionedJob,
 	ProvisionSummary,
+	StoredJobs,
 } from './types';

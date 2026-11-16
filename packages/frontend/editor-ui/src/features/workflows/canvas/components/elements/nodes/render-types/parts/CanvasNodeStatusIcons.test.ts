@@ -4,7 +4,12 @@ import {
 } from '@/features/workflows/canvas/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
-import { EditorEnabledFeaturesKey, WorkflowDocumentStoreKey, VIEWS } from '@/app/constants';
+import {
+	EditorEnabledFeaturesKey,
+	WorkflowDocumentStoreKey,
+	VIEWS,
+	type EditorEnabledFeatures,
+} from '@/app/constants';
 import { createTestNode } from '@/__tests__/mocks';
 import {
 	createWorkflowDocumentId,
@@ -12,13 +17,21 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
-import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
+import {
+	CanvasNodeDirtiness,
+	CanvasNodeRenderType,
+	type CanvasNodeData,
+} from '../../../../../canvas.types';
 import { createTestingPinia } from '@pinia/testing';
+import { getActivePinia, setActivePinia } from 'pinia';
 import { computed, type ComputedRef } from 'vue';
 import type { IPinData } from 'n8n-workflow';
+import type { Scope } from '@n8n/permissions';
 import type * as actualVueRouter from 'vue-router';
 import { type RouteLocationNormalizedLoadedGeneric, useRoute } from 'vue-router';
 import CanvasNodeStatusIcons from './CanvasNodeStatusIcons.vue';
+import userEvent from '@testing-library/user-event';
+import { screen } from '@testing-library/vue';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal();
@@ -31,7 +44,6 @@ vi.mock('vue-router', async (importOriginal) => {
 const pinnedDataByNodeName: IPinData = {};
 const executionPinDataByNodeId = new Map<string, ComputedRef<IPinData[string] | undefined>>();
 const executionIssuesByNodeId = new Map<string, ComputedRef<string[]>>();
-let isExecutionDataDisplayed = false;
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
@@ -40,9 +52,9 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 		injectCanvasRenderData: vi.fn(() => ({
 			value: actual.createEmptyCanvasRenderData({
 				pinnedDataByNodeName,
-				executionPinDataByNodeId,
+				getDisplayedExecutionPinData: (nodeId: string) =>
+					executionPinDataByNodeId.get(nodeId)?.value,
 				executionIssuesByNodeId,
-				isExecutionDataDisplayed,
 			}),
 		})),
 	};
@@ -67,7 +79,6 @@ describe('CanvasNodeStatusIcons', () => {
 		}
 		executionPinDataByNodeId.clear();
 		executionIssuesByNodeId.clear();
-		isExecutionDataDisplayed = false;
 	});
 
 	it.each([
@@ -112,6 +123,94 @@ describe('CanvasNodeStatusIcons', () => {
 		},
 	);
 
+	describe('showNodeIssues host flag', () => {
+		const validationIssues = { visible: true, validation: ['Parameter "Project" is required.'] };
+
+		const renderWithFeatures = (
+			features: EditorEnabledFeatures | undefined,
+			data: Partial<CanvasNodeData> = {},
+		) =>
+			renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({ data }),
+						...(features ? { [EditorEnabledFeaturesKey]: computed(() => features) } : {}),
+					},
+				},
+			});
+
+		it.each([
+			{ label: 'no host features', features: undefined },
+			{ label: 'the flag omitted', features: {} },
+			{ label: 'the flag set to true', features: { showNodeIssues: true } },
+		])('should render validation issues with $label', ({ features }) => {
+			const { getByTestId } = renderWithFeatures(features, { issues: validationIssues });
+
+			expect(getByTestId('node-issues')).toBeInTheDocument();
+		});
+
+		it('should hide validation issues when the host sets the flag to false', () => {
+			const { queryByTestId } = renderWithFeatures(
+				{ showNodeIssues: false },
+				{ issues: validationIssues },
+			);
+
+			expect(queryByTestId('node-issues')).not.toBeInTheDocument();
+		});
+
+		it('should hide execution errors when the host sets the flag to false', () => {
+			executionIssuesByNodeId.set(
+				'node',
+				computed(() => ['Request failed']),
+			);
+
+			const { queryByTestId } = renderWithFeatures({ showNodeIssues: false });
+
+			expect(queryByTestId('node-issues')).not.toBeInTheDocument();
+		});
+
+		it('should hide the credential setup warning when the host sets the flag to false', () => {
+			const document = useWorkflowDocumentStore(createWorkflowDocumentId('workflow'));
+			vi.spyOn(document, 'getNodeById').mockReturnValue({
+				...createTestNode({ id: 'node', credentials: {} }),
+				issues: { credentials: { slackApi: ['Select a credential'] } },
+			});
+
+			const { queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({
+							data: { issues: { visible: true, validation: ['Select a credential'] } },
+						}),
+						[WorkflowDocumentStoreKey]: computed(() => document),
+						[EditorEnabledFeaturesKey]: computed(() => ({
+							credentialSetupWarnings: true,
+							showNodeIssues: false,
+						})),
+					},
+				},
+			});
+
+			expect(queryByTestId('node-setup-required')).not.toBeInTheDocument();
+			expect(queryByTestId('node-issues')).not.toBeInTheDocument();
+		});
+
+		it('should keep the deprecated icon when the host sets the flag to false', () => {
+			const { getByTestId, queryByTestId } = renderWithFeatures(
+				{ showNodeIssues: false },
+				{
+					issues: validationIssues,
+					render: { type: CanvasNodeRenderType.Default, options: { deprecated: true } },
+				},
+			);
+
+			expect(getByTestId('canvas-node-status-deprecated')).toBeInTheDocument();
+			expect(queryByTestId('node-issues')).not.toBeInTheDocument();
+		});
+	});
+
 	it('should render correctly for a pinned node', () => {
 		pinnedDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
 
@@ -149,7 +248,6 @@ describe('CanvasNodeStatusIcons', () => {
 			'node',
 			computed(() => [{ json: { key: 'value' } }]),
 		);
-		isExecutionDataDisplayed = true;
 
 		const { getByTestId } = renderComponent({
 			global: {
@@ -168,13 +266,10 @@ describe('CanvasNodeStatusIcons', () => {
 		expect(getByTestId('canvas-node-status-pinned')).toBeInTheDocument();
 	});
 
-	it('should not render the pinned icon for execution pin data outside execution preview mode', () => {
-		executionPinDataByNodeId.set(
-			'node',
-			computed(() => [{ json: { key: 'value' } }]),
-		);
+	it('should render the pinned icon for workflow pin data without execution pin data', () => {
+		pinnedDataByNodeName['Test Node'] = [{ json: { key: 'value' } }];
 
-		const { queryByTestId, getByTestId } = renderComponent({
+		const { getByTestId, queryByTestId } = renderComponent({
 			global: {
 				provide: {
 					...createCanvasProvide(),
@@ -188,30 +283,8 @@ describe('CanvasNodeStatusIcons', () => {
 			},
 		});
 
-		expect(queryByTestId('canvas-node-status-pinned')).not.toBeInTheDocument();
-		expect(getByTestId('canvas-node-status-success')).toBeInTheDocument();
-	});
-
-	it('should ignore workflow pin data when displaying an execution without pin data for the node', () => {
-		pinnedDataByNodeName['Test Node'] = [{ json: { stale: true } }];
-		isExecutionDataDisplayed = true;
-
-		const { queryByTestId, getByTestId } = renderComponent({
-			global: {
-				provide: {
-					...createCanvasProvide(),
-					...createCanvasNodeProvide({
-						data: {
-							execution: { status: 'success', running: false },
-							runData: { outputMap: {}, iterations: 1, visible: true },
-						},
-					}),
-				},
-			},
-		});
-
-		expect(queryByTestId('canvas-node-status-pinned')).not.toBeInTheDocument();
-		expect(getByTestId('canvas-node-status-success')).toBeInTheDocument();
+		expect(getByTestId('canvas-node-status-pinned')).toBeInTheDocument();
+		expect(queryByTestId('canvas-node-status-success')).not.toBeInTheDocument();
 	});
 
 	it('should use the pinned icon when both workflow and execution pin data are present', () => {
@@ -293,6 +366,42 @@ describe('CanvasNodeStatusIcons', () => {
 		});
 
 		expect(queryByTestId('canvas-node-status-success')).not.toBeInTheDocument();
+	});
+
+	describe('deprecated node', () => {
+		const renderDeprecated = () =>
+			renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({
+							data: {
+								issues: { visible: true, validation: ['Parameter "Code" is required.'] },
+								render: { type: CanvasNodeRenderType.Default, options: { deprecated: true } },
+							},
+						}),
+					},
+				},
+			});
+
+		it('should render the deprecated icon ahead of validation issues', () => {
+			const { getByTestId, queryByTestId } = renderDeprecated();
+
+			expect(getByTestId('canvas-node-status-deprecated')).toBeInTheDocument();
+			expect(queryByTestId('node-issues')).not.toBeInTheDocument();
+		});
+
+		it('should render execution errors ahead of the deprecated icon', () => {
+			executionIssuesByNodeId.set(
+				'node',
+				computed(() => ['Request failed']),
+			);
+
+			const { getByTestId, queryByTestId } = renderDeprecated();
+
+			expect(getByTestId('node-issues')).toBeInTheDocument();
+			expect(queryByTestId('canvas-node-status-deprecated')).not.toBeInTheDocument();
+		});
 	});
 
 	it('should render correctly for a dirty node that has run successfully', () => {
@@ -381,6 +490,87 @@ describe('CanvasNodeStatusIcons', () => {
 
 			expect(queryByTestId('node-restricted')).toBeInTheDocument();
 			expect(queryByTestId('node-not-installed')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('sub-workflow with a restricted node type', () => {
+		beforeEach(() => {
+			typeAvailabilityPoliciesStore.getNodeTypeAvailability.mockReturnValue({
+				name: 'n8n-nodes-base.executeWorkflow',
+				available: true,
+			});
+		});
+
+		function renderExecuteWorkflowNode(scopes: Scope[]) {
+			// The testing pinia stubs actions, so the document gets a pinia of its own to set scopes.
+			const canvasPinia = getActivePinia();
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			const document = useWorkflowDocumentStore(createWorkflowDocumentId('parent'));
+			document.setScopes(scopes);
+			setActivePinia(canvasPinia);
+			vi.spyOn(document, 'getNodeById').mockReturnValue(
+				createTestNode({
+					id: 'node',
+					type: 'n8n-nodes-base.executeWorkflow',
+					parameters: { workflowId: { __rl: true, mode: 'list', value: 'child' } },
+				}),
+			);
+			typeAvailabilityPoliciesStore.getSubWorkflowCheck.mockReturnValue({
+				draft: [
+					{
+						kind: 'node-type-unavailable',
+						checkId: 'node-type-availability',
+						message: 'blocked',
+						subject: 'n8n-nodes-base.set',
+						subjectType: 'nodeType',
+						scope: 'project',
+					},
+				],
+				published: null,
+			});
+
+			return renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({
+							id: 'node',
+							data: { type: 'n8n-nodes-base.executeWorkflow' },
+						}),
+						[WorkflowDocumentStoreKey]: computed(() => document),
+					},
+				},
+			});
+		}
+
+		it('should render the warning badge for a builder of the parent', () => {
+			const { queryByTestId } = renderExecuteWorkflowNode(['workflow:update']);
+
+			expect(typeAvailabilityPoliciesStore.fetchSubWorkflowCheck).toHaveBeenCalledWith(
+				'parent',
+				'child',
+				{ force: false },
+			);
+			expect(queryByTestId('node-sub-workflow-restricted')).toBeInTheDocument();
+		});
+
+		it('should name the blocked node types and the scope in the tooltip', async () => {
+			const { getByTestId } = renderExecuteWorkflowNode(['workflow:update']);
+
+			await userEvent.hover(getByTestId('node-sub-workflow-restricted').firstElementChild!);
+
+			expect(
+				await screen.findByText("Restricted in the sub-workflow's project: 'n8n-nodes-base.set'.", {
+					exact: false,
+				}),
+			).toBeInTheDocument();
+		});
+
+		it('should not check for a user who cannot update the parent', () => {
+			const { queryByTestId } = renderExecuteWorkflowNode(['workflow:read']);
+
+			expect(typeAvailabilityPoliciesStore.fetchSubWorkflowCheck).not.toHaveBeenCalled();
+			expect(queryByTestId('node-sub-workflow-restricted')).not.toBeInTheDocument();
 		});
 	});
 });

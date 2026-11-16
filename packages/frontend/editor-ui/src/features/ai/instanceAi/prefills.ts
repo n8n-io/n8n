@@ -3,6 +3,7 @@ import {
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
 	type InstanceAiPrefillType,
 	type InstanceAiPrefillTypeReported,
+	type InstanceAiPrefillPayload,
 } from '@n8n/api-types';
 
 /**
@@ -26,6 +27,7 @@ export {
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
 	type InstanceAiPrefillType,
 	type InstanceAiPrefillTypeReported,
+	type InstanceAiPrefillPayload,
 };
 
 /** Who wrote the message being sent. Required at every send boundary. */
@@ -52,6 +54,23 @@ export type InstanceAiMessageAuthorship =
 export type InstanceAiPrefillDeclaration = { prefillType: InstanceAiPrefillType };
 
 export const USER_TYPED_MESSAGE: InstanceAiMessageAuthorship = { kind: 'user_typed' };
+
+/**
+ * Resolves who wrote a sent message. Composers and Assistant agent hosts both
+ * call it, so every send path reports authorship the same way.
+ */
+export function resolveAuthorship(
+	message: string,
+	prefill: InstanceAiPrefillPayload | null,
+): InstanceAiMessageAuthorship {
+	if (!prefill) return USER_TYPED_MESSAGE;
+	return {
+		kind: 'prefill',
+		prefillType: prefill.prefillType,
+		...(prefill.prefillId ? { prefillId: prefill.prefillId } : {}),
+		promptModified: message.trim() !== prefill.text.trim(),
+	};
+}
 
 const INSTANCE_AI_PREFILL_TYPE_SET: ReadonlySet<string> = new Set(INSTANCE_AI_PREFILL_TYPES);
 

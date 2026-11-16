@@ -19,6 +19,10 @@ import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 const MESSAGE_CONTEXT_METADATA_KEY = 'currentMessageContext';
 const CONTINUE_AS_METADATA_KEY = 'continueAs';
 const BOUND_THREADS_METADATA_KEY = 'boundThreads';
+const SENT_MESSAGES_METADATA_KEY = 'sentMessages';
+
+/** Older entries drop out, so the metadata of a busy thread stays small. */
+const MAX_SENT_MESSAGES_PER_THREAD = 50;
 
 @Service()
 export class IntegrationMessageContextService implements IntegrationMessageContextStore {
@@ -96,6 +100,34 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		return isSessionBinding(value) ? value : null;
 	}
 
+	async recordSentMessage(
+		derivedThreadId: string,
+		messageId: string,
+		origin: SessionBinding,
+	): Promise<void> {
+		const existing = await this.threadRepository.findOneBy({ id: derivedThreadId });
+		const previous = this.parseMetadata(existing?.metadata)[SENT_MESSAGES_METADATA_KEY];
+		const entries = isRecord(previous) ? Object.entries(previous) : [];
+		const sentMessages = Object.fromEntries(
+			[...entries.filter(([id]) => id !== messageId), [messageId, origin]].slice(
+				-MAX_SENT_MESSAGES_PER_THREAD,
+			),
+		);
+		await this.writeMetadata(derivedThreadId, origin.resourceId, {
+			[SENT_MESSAGES_METADATA_KEY]: sentMessages,
+		});
+	}
+
+	async resolveSentMessage(
+		derivedThreadId: string,
+		messageId: string,
+	): Promise<SessionBinding | null> {
+		const thread = await this.threadRepository.findOneBy({ id: derivedThreadId });
+		const sentMessages = this.parseMetadata(thread?.metadata)[SENT_MESSAGES_METADATA_KEY];
+		const value = isRecord(sentMessages) ? sentMessages[messageId] : undefined;
+		return isSessionBinding(value) ? value : null;
+	}
+
 	async unbindSession(derivedThreadId: string): Promise<void> {
 		await this.writeMetadata(derivedThreadId, undefined, {
 			[CONTINUE_AS_METADATA_KEY]: undefined,
@@ -130,7 +162,7 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 			await this.threadRepository.save(existing);
 			return;
 		}
-		await this.ensureResource(origin.resourceId);
+		await this.resourceRepository.ensureExists(origin.resourceId);
 		await this.threadRepository.save(
 			this.threadRepository.create({
 				id: derivedThreadId,
@@ -154,7 +186,7 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 			await this.threadRepository.save(existing);
 			return;
 		}
-		await this.ensureResource(originThreadId);
+		await this.resourceRepository.ensureExists(originThreadId);
 		await this.threadRepository.save(
 			this.threadRepository.create({
 				id: originThreadId,
@@ -182,7 +214,7 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 			return;
 		}
 
-		await this.ensureResource(resourceId ?? threadId);
+		await this.resourceRepository.ensureExists(resourceId ?? threadId);
 		await this.threadRepository.save(
 			this.threadRepository.create({
 				id: threadId,
@@ -191,15 +223,6 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 				metadata: JSON.stringify(metadata),
 			}),
 		);
-	}
-
-	private async ensureResource(resourceId: string): Promise<void> {
-		const exists = await this.resourceRepository.existsBy({ id: resourceId });
-		if (!exists) {
-			await this.resourceRepository.save(
-				this.resourceRepository.create({ id: resourceId, metadata: null }),
-			);
-		}
 	}
 
 	private parseMetadata(value: string | null | undefined): Record<string, unknown> {

@@ -2,11 +2,11 @@ operationId: deleteVariable
 tags:
   - Variables
 summary: Delete a variable
-description: Delete a variable from your instance.
+description: |-
+  Delete a variable from your instance.
+
+  Requires the `variable:delete` API key scope.
 x-required-scope: variable:delete
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -23,3 +23,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

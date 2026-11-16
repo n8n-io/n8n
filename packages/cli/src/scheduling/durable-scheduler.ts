@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
@@ -15,11 +16,11 @@ import { InstanceSettings, Tracing } from 'n8n-core';
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
 import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
-import { isDurablePollerChainEnabled } from './poll-trigger-node/durable-poller-chain';
 import { PollTriggerTaskHandler } from './poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
 import { createScheduledJobOwnerRegistry } from './scheduled-job-owner-registry';
 import { createSchedulerTracer } from './scheduler-tracer';
+import { reportSystemTaskOverlaps } from './system-tasks/system-task-overlap-reporter';
 import { SystemTaskScheduledJobOwner } from './system-tasks/system-task-scheduled-job-owner';
 import { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
 
@@ -47,8 +48,10 @@ export class DurableScheduler implements Scheduler {
 		workflowOwner: WorkflowScheduledJobOwner,
 		agentOwner: AgentScheduledJobOwner,
 		systemTaskOwner: SystemTaskScheduledJobOwner,
+		eventService: EventService,
 	) {
 		const config = globalConfig.scheduler;
+		// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 		const enabled = config.enabled && instanceSettings.instanceType === 'main';
 		const tracer = createSchedulerTracer(tracing);
 		this.scheduler = enabled
@@ -106,6 +109,8 @@ export class DurableScheduler implements Scheduler {
 						maxConcurrentPasses: config.maxConcurrentPasses,
 					},
 					now: async () => await tasks.readDbTime(),
+					onHeldByConcurrencyLimit: (occurrences) =>
+						reportSystemTaskOverlaps(eventService, occurrences),
 					onEvent: ({ level, message, context }) => logger[level](message, context),
 					tracer,
 				})
@@ -113,7 +118,6 @@ export class DurableScheduler implements Scheduler {
 		if (enabled) {
 			warnOnMisfireGrace(logger, config);
 			warnOnDrainRate(logger, config);
-			warnOnPollTimeout(logger, globalConfig);
 		}
 		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);
 		this.registerTaskHandler(pollTriggerTaskHandler.taskType, pollTriggerTaskHandler);
@@ -175,34 +179,13 @@ function warnOnMisfireGrace(logger: Logger, config: GlobalConfig['scheduler']): 
  * running.
  */
 function warnOnDrainRate(logger: Logger, config: GlobalConfig['scheduler']): void {
-	const { materializationIntervalSeconds, minIntervalSeconds } = config;
-	// The fastest a schedule can legally fire: the operator's floor if they set
-	// one, otherwise the fastest an interval can be at all.
-	const fastestIntervalSeconds = minIntervalSeconds > 0 ? minIntervalSeconds : 1;
-	const drainSeconds = DEFAULT_MATERIALIZER_OPTIONS.maxPerJob * fastestIntervalSeconds;
+	const { materializationIntervalSeconds } = config;
+	// The fastest a schedule can fire is once per second.
+	const drainSeconds = DEFAULT_MATERIALIZER_OPTIONS.maxPerJob;
 	if (materializationIntervalSeconds > drainSeconds) {
 		logger.warn(
 			'Scheduler materialization interval is long enough that a pass may never fully drain the busiest possible schedule; under the coalesce misfire policy such a schedule could stop producing catch-up runs entirely',
-			{ materializationIntervalSeconds, fastestIntervalSeconds },
-		);
-	}
-}
-
-/**
- * Warn when a poll may still be in flight after the lease on its occurrence has
- * expired: the reaper can then reclaim the occurrence and another instance can
- * start the same poll while the first one is still running. Equality counts
- * too, since the poll deadline only starts after the occurrence's setup reads.
- */
-function warnOnPollTimeout(logger: Logger, globalConfig: GlobalConfig): void {
-	const { pollTimeoutSeconds, leaseDurationSeconds } = globalConfig.scheduler;
-	if (
-		isDurablePollerChainEnabled(globalConfig.scheduler, globalConfig.workflows) &&
-		pollTimeoutSeconds >= leaseDurationSeconds
-	) {
-		logger.warn(
-			'Scheduler poll timeout reaches the lease duration; a poll can still be running when its lease expires and another instance takes the run over',
-			{ pollTimeoutSeconds, leaseDurationSeconds },
+			{ materializationIntervalSeconds },
 		);
 	}
 }

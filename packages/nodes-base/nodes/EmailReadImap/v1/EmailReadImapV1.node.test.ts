@@ -69,10 +69,23 @@ const start = async (
 
 	const trigger = mockDeep<ITriggerFunctions>();
 	const staticData: IDataObject = {};
+	let insideIsolateScope = false;
+	const parametersReadInIsolateScope: string[] = [];
 	trigger.getCredentials.mockResolvedValue(credentials as unknown as IDataObject);
 	trigger.getNode.mockReturnValue({ typeVersion: 1 } as INode);
 	trigger.getWorkflowStaticData.mockReturnValue(staticData);
+	trigger.helpers.withExpressionIsolate.mockImplementation(async (fn) => {
+		insideIsolateScope = true;
+		try {
+			return await fn();
+		} finally {
+			insideIsolateScope = false;
+		}
+	});
 	trigger.getNodeParameter.mockImplementation((name: string) => {
+		if (insideIsolateScope) {
+			parametersReadInIsolateScope.push(name);
+		}
 		if (name === 'format') return params.format;
 		if (name === 'mailbox') return 'INBOX';
 		if (name === 'postProcessAction') return params.postProcessAction ?? 'nothing';
@@ -107,7 +120,7 @@ const start = async (
 		connect.mockRestore();
 	};
 
-	return { client, trigger, staticData, stop };
+	return { client, trigger, staticData, parametersReadInIsolateScope, stop };
 };
 
 const run = async (
@@ -228,6 +241,20 @@ describe('EmailReadImapV1 output', () => {
 			});
 
 			expect(client.flagsAdded).toEqual([{ range: '101,102', flags: ['\\SEEN'] }]);
+		});
+	});
+
+	describe('expression isolate', () => {
+		it('reads the fetch parameters inside an expression isolate scope', async () => {
+			const { client, trigger, parametersReadInIsolateScope, stop } = await start([PLAIN_ONLY], {
+				format: 'simple',
+			});
+
+			client.emit('exists', { path: 'INBOX', count: 1, prevCount: 0 });
+			await vi.waitFor(() => expect(trigger.emit).toHaveBeenCalled());
+			await stop();
+
+			expect(parametersReadInIsolateScope).toEqual(['format', 'downloadAttachments']);
 		});
 	});
 });

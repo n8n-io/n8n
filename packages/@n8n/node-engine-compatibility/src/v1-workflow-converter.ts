@@ -23,7 +23,7 @@ import { isRecord } from './guards';
 import type { TriggerStepConfig, V1NodeStepConfig } from './types';
 
 /**
- * Converts a v1 workflow (node-based JSON) into the Engine 2.0 `WorkflowGraph`.
+ * Converts a v1 workflow (node-based JSON) into the Engine v2 `WorkflowGraph`.
  *
  * A pure, deterministic topology translation: it maps nodes and connections to
  * graph nodes and edges and never executes anything. Supported surface is kept
@@ -57,13 +57,30 @@ import type { TriggerStepConfig, V1NodeStepConfig } from './types';
  * loops entered mid-body, and loops with more than one candidate entry are
  * all rejected.
  */
+export interface ConvertOptions {
+	/**
+	 * Let the named root be a non-trigger node. v1 starts a partial run at the
+	 * nearest node with run data when no trigger has any; its outputs then stand
+	 * in for the trigger payload.
+	 */
+	allowNonTriggerRoot?: boolean;
+}
+
 export class V1WorkflowConverter {
-	convert(workflow: IWorkflowBase, firedTriggerName?: string): WorkflowGraph {
-		const trigger = this.resolveFiredTrigger(workflow, firedTriggerName);
+	convert(
+		workflow: IWorkflowBase,
+		firedTriggerName?: string,
+		options: ConvertOptions = {},
+	): WorkflowGraph {
+		const trigger = this.resolveFiredTrigger(workflow, firedTriggerName, options);
 		// Rooted first: a disabled node must not cut the reachable set short.
 		const rooted = trigger === undefined ? workflow : rootAt(workflow, trigger);
 
-		const liveNodes = rooted.nodes.filter((node) => node.disabled !== true);
+		// In canvas order, top to bottom and then left to right, as v1 orders the
+		// branches it runs. Anything that reads the graph in node order sees the same order.
+		const liveNodes = rooted.nodes
+			.filter((node) => node.disabled !== true)
+			.sort((a, b) => a.position[1] - b.position[1] || a.position[0] - b.position[0]);
 		const disabledNodeIds = rooted.nodes
 			.filter((node) => node.disabled === true)
 			.map((node) => node.id);
@@ -82,6 +99,7 @@ export class V1WorkflowConverter {
 	private resolveFiredTrigger(
 		workflow: IWorkflowBase,
 		firedTriggerName?: string,
+		options: ConvertOptions = {},
 	): INode | undefined {
 		const liveNodes = workflow.nodes.filter((node) => node.disabled !== true);
 
@@ -89,8 +107,11 @@ export class V1WorkflowConverter {
 			const fired = liveNodes.find((node) => node.name === firedTriggerName);
 			if (fired === undefined) throw new UnknownTriggerError(firedTriggerName);
 			// A non-trigger named here would lose its own work: the step drops its
-			// parameters and stands in for the payload.
-			if (!isTriggerNodeType(fired.type)) throw new NotATriggerError(fired.name, fired.type);
+			// parameters and stands in for the payload. A caller that supplies that
+			// payload, as a partial run does, may opt in.
+			if (!options.allowNonTriggerRoot && !isTriggerNodeType(fired.type)) {
+				throw new NotATriggerError(fired.name, fired.type);
+			}
 			return fired;
 		}
 

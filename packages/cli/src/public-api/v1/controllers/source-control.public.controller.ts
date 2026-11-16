@@ -6,9 +6,10 @@ import {
 	SourceControlPushResponsePublicDto,
 	SourceControlStatusPublicDto,
 	SourceControlStatusQueryPublicDto,
+	type SourceControlledFile,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -25,13 +26,12 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ConflictError } from '@n8n/errors';
 import { getTrackingInformationFromPullResult } from '@/modules/source-control.ee/source-control-helper.ee';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
 
 const tags = ['SourceControl'];
 
@@ -54,7 +54,7 @@ export class SourceControlPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, SourceControlStatusPublicDto)
 	async getSourceControlStatus(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Query query: SourceControlStatusQueryPublicDto,
 	): Promise<SourceControlStatusPublicDto> {
@@ -68,7 +68,7 @@ export class SourceControlPublicController {
 			direction: query.direction,
 			preferLocalVersion: query.direction === 'push',
 			verbose: false,
-			origin: 'publicApi',
+			publicApi: req.publicApiClient,
 		});
 
 		// `verbose: false` above guarantees a flat file list at runtime, narrow explicitly rather than casting.
@@ -95,7 +95,7 @@ export class SourceControlPublicController {
 			'The push includes files with unresolved conflicts. Retry with `force: true` to push anyway.',
 	})
 	async pushSourceControl(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Body body: SourceControlPushRequestPublicDto,
 	): Promise<SourceControlPushResponsePublicDto> {
@@ -112,7 +112,7 @@ export class SourceControlPublicController {
 				fileNames: body.fileNames,
 				force: body.force,
 			},
-			'publicApi',
+			req.publicApiClient,
 		);
 
 		if (result.statusCode === 409) {
@@ -143,11 +143,10 @@ export class SourceControlPublicController {
 			'`status: modified`. Retry with `force: true` to discard local changes.',
 	})
 	async pullSourceControl(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		res: Response,
 		@Body({ required: true }) body: PullWorkFolderRequestDto,
-	): Promise<void> {
-		// Writes the response directly preserving migrated endpoints contract
+	): Promise<SourceControlledFile[] | undefined> {
 		if (!this.sourceControlPreferencesService.isSourceControlConnected()) {
 			res
 				.status(400)
@@ -156,20 +155,25 @@ export class SourceControlPublicController {
 		}
 
 		try {
-			const result = await this.sourceControlService.pullWorkfolder(req.user, body);
+			const result = await this.sourceControlService.pullWorkfolder(
+				req.user,
+				body,
+				req.publicApiClient,
+			);
 
 			if (result.statusCode === 200) {
 				this.eventService.emit('source-control-user-pulled-api', {
 					...getTrackingInformationFromPullResult(req.user.id, result.statusResult),
 					forced: body.force ?? false,
 				});
-				res.status(200).json(result.statusResult);
-				return;
+				return result.statusResult;
 			}
 
 			res.status(409).json(result.statusResult);
+			return;
 		} catch (error) {
 			res.status(400).send((error as { message: string }).message);
+			return;
 		}
 	}
 }

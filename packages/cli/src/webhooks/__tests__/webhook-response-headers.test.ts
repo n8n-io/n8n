@@ -6,7 +6,12 @@ import type { Response } from 'express';
 import { getHtmlSandboxCSP } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { applyFormSandboxCSP, WebhookResponseHeaders } from '@/webhooks/webhook-response-headers';
+import {
+	applyFormSandboxCSP,
+	applySandboxCSP,
+	setRouteSandboxSetting,
+	WebhookResponseHeaders,
+} from '@/webhooks/webhook-response-headers';
 
 describe('WebhookResponseHeaders', () => {
 	const logger = mockInstance(Logger);
@@ -353,13 +358,75 @@ describe('WebhookResponseHeaders', () => {
 			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		});
 
-		it('should set no policy when form sandboxing is disabled', () => {
+		it('should remove the policy when form sandboxing is disabled', () => {
 			securityConfig.disableFormHtmlSandboxing = true;
 			const res = mock<Response>();
 
 			applyFormSandboxCSP(res);
 
 			expect(res.setHeader).not.toHaveBeenCalled();
+			expect(res.removeHeader).toHaveBeenCalledWith('Content-Security-Policy');
+		});
+	});
+
+	describe('applySandboxCSP', () => {
+		const securityConfig = Container.get(SecurityConfig);
+
+		afterEach(() => {
+			securityConfig.disableWebhookHtmlSandboxing = false;
+		});
+
+		it('should set the sandbox policy', () => {
+			const res = mock<Response>();
+
+			applySandboxCSP(res);
+
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
+		});
+
+		it('should leave the policy unchanged when webhook sandboxing is disabled', () => {
+			securityConfig.disableWebhookHtmlSandboxing = true;
+			const res = mock<Response>();
+
+			applySandboxCSP(res);
+
+			expect(res.setHeader).not.toHaveBeenCalled();
+			expect(res.removeHeader).not.toHaveBeenCalled();
+		});
+
+		describe('on a form route', () => {
+			afterEach(() => {
+				securityConfig.disableFormHtmlSandboxing = false;
+			});
+
+			it('should follow the form setting instead of the webhook setting', () => {
+				securityConfig.disableFormHtmlSandboxing = true;
+				const res = mock<Response>({ locals: {} });
+				setRouteSandboxSetting(res, 'form');
+
+				applySandboxCSP(res);
+
+				expect(res.setHeader).not.toHaveBeenCalled();
+			});
+
+			it('should set the policy when only webhook sandboxing is disabled', () => {
+				securityConfig.disableWebhookHtmlSandboxing = true;
+				const res = mock<Response>({ locals: {} });
+				setRouteSandboxSetting(res, 'form');
+
+				applySandboxCSP(res);
+
+				expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
+			});
+		});
+
+		it('should use the fallback setting outside webhook and form routes', () => {
+			securityConfig.disableWebhookHtmlSandboxing = true;
+			const res = mock<Response>({ locals: {} });
+
+			applySandboxCSP(res, 'form');
+
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getHtmlSandboxCSP());
 		});
 	});
 });

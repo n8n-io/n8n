@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { N8nActionDropdown, N8nButton, N8nIconButton } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -9,6 +9,7 @@ import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import type { AgentResource } from '../types';
 import { hasBlockingIssues } from '../utils/validationIssues';
+import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
 import AgentValidationTooltip from './AgentValidationTooltip.vue';
 
 const props = withDefaults(
@@ -17,6 +18,8 @@ const props = withDefaults(
 		projectId: string;
 		agentId: string;
 		isSaving?: boolean;
+		isUnsaved?: boolean;
+		showPublishTimeline?: boolean;
 		beforeRevertToPublished?: () => Promise<void> | void;
 		/**
 		 * Static, authoritative readiness result. `null` means unknown/stale
@@ -39,6 +42,8 @@ const props = withDefaults(
 const { canUpdate, canPublish, canUnpublish } = useAgentPermissions(() => props.projectId);
 
 const emit = defineEmits<{
+	'publish-ready': [ready: boolean];
+	'open-publish-timeline': [];
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
 	reverted: [agent: AgentResource];
@@ -51,7 +56,7 @@ type AgentPublishState = 'not-published' | 'published-no-changes' | 'published-w
 
 const publishState = computed((): AgentPublishState => {
 	if (!props.agent?.activeVersionId) return 'not-published';
-	if (props.agent.versionId !== props.agent.activeVersionId) return 'published-with-changes';
+	if (hasAgentUnpublishedChanges(props.agent)) return 'published-with-changes';
 	return 'published-no-changes';
 });
 
@@ -101,6 +106,8 @@ const isPublishDisabled = computed(
 		isConfigInvalid.value,
 );
 
+watch(isPublishDisabled, (disabled) => emit('publish-ready', !disabled), { immediate: true });
+
 const dropdownActions = computed(() => {
 	const actions: Array<ActionDropdownItem<string>> = [
 		{
@@ -123,6 +130,14 @@ const dropdownActions = computed(() => {
 		});
 	}
 
+	if (props.showPublishTimeline) {
+		actions.push({
+			id: 'publish-timeline',
+			label: locale.baseText('workflowHistory.action.viewTimeline'),
+			disabled: !props.agent || props.isUnsaved,
+		});
+	}
+
 	actions.push({
 		id: 'unpublish',
 		label: locale.baseText('agents.publish.dropdown.unpublish'),
@@ -136,9 +151,19 @@ const dropdownActions = computed(() => {
 
 async function onPublishClick() {
 	if (isPublishDisabled.value) return;
+	const { projectId, agentId } = props;
 	if (props.beforePublish && !(await props.beforePublish())) return;
-	const updated = await publish(props.projectId, props.agentId);
-	if (updated) emit('published', updated);
+	if (projectId !== props.projectId || agentId !== props.agentId) return;
+	const versionId = props.agent?.versionId;
+	if (!versionId) return;
+	const updated = await publish(
+		projectId,
+		agentId,
+		undefined,
+		() => projectId === props.projectId && agentId === props.agentId,
+	);
+	if (updated && projectId === props.projectId && agentId === props.agentId)
+		emit('published', updated);
 }
 
 useKeybindings({
@@ -148,7 +173,13 @@ useKeybindings({
 	},
 });
 
+defineExpose({ publish: onPublishClick });
+
 async function onDropdownSelect(action: string) {
+	if (action === 'publish-timeline') {
+		if (props.showPublishTimeline && props.agent && !props.isUnsaved) emit('open-publish-timeline');
+		return;
+	}
 	if (action === 'publish') {
 		await onPublishClick();
 		return;
@@ -223,7 +254,7 @@ async function onDropdownSelect(action: string) {
 .buttonGroup {
 	display: inline-flex;
 	border: var(--border);
-	border-radius: var(--radius--3xs);
+	border-radius: var(--radius--full);
 }
 
 .groupButtonLeft,

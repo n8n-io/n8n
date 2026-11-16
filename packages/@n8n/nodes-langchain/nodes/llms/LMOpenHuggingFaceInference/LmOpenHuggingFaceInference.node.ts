@@ -14,6 +14,8 @@ import {
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 
+import { getRequiredApiKey } from '@utils/helpers';
+
 export class LmOpenHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Hugging Face Inference Model',
@@ -153,10 +155,9 @@ export class LmOpenHuggingFaceInference implements INodeType {
 		// That's why mistral's model is the default value
 		// It is one of the few models that seem to work out of the box
 		// Other models are returning "Model x/y is not supported for task text-generation and provider z. Supported task: conversational."
-		// https://github.com/langchain-ai/langchainjs/discussions/8434#discussioncomment-13603787
 		const model = new HuggingFaceInference({
 			model: modelName,
-			apiKey: credentials.apiKey as string,
+			apiKey: getRequiredApiKey(this.getNode(), credentials.apiKey),
 			...options,
 			callbacks: [new N8nLlmTracing(this)],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),

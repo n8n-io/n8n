@@ -5,6 +5,7 @@ import type { IconSize } from '../../types';
 import type { ButtonProps } from '../../types/button';
 import { cn } from '../../utils/cn';
 import N8nIcon from '../N8nIcon';
+import N8nSpinner from '../N8nSpinner';
 
 const $style = useCssModule();
 const attrs = useAttrs();
@@ -25,13 +26,6 @@ const props = withDefaults(defineProps<ButtonProps>(), {
 const effectiveSize = computed(() => {
 	if (props.size === 'mini' || props.size === 'xmini') return 'xsmall';
 	return props.size;
-});
-
-// Map legacy variant values to current ones
-const effectiveVariant = computed(() => {
-	if (props.variant === 'highlight') return 'ghost';
-	if (props.variant === 'highlight-fill') return 'ghost';
-	return props.variant;
 });
 
 const computedIconSize = computed((): IconSize | undefined => {
@@ -56,7 +50,7 @@ const classes = computed(() =>
 	cn(
 		'button',
 		$style.button,
-		$style[effectiveVariant.value],
+		$style[props.variant],
 		$style[effectiveSize.value],
 		props.loading && $style.loading,
 		props.iconOnly && $style.iconOnly,
@@ -101,17 +95,13 @@ const handleClick = (event: MouseEvent) => {
 		:aria-live="attrs['aria-live'] ?? 'polite'"
 		@click="handleClick"
 	>
-		<Transition name="n8n-button-fade">
-			<div v-if="loading" :class="$style['loading-container']">
-				<div :class="[$style['loading-spinner'], 'n8n-spinner']">
-					<N8nIcon icon="loader" :size="computedIconSize" transform-origin="center" />
-				</div>
-			</div>
-		</Transition>
+		<div v-if="loading" :class="$style['loading-container']">
+			<N8nSpinner type="grid" :size="computedIconSize" aria-hidden="true" />
+		</div>
 
 		<div :class="$style['button-inner']">
-			<slot v-if="!loading" name="icon">
-				<N8nIcon v-if="icon && !loading" :icon="icon" :size="computedIconSize" />
+			<slot name="icon">
+				<N8nIcon v-if="icon" :icon="icon" :fallback-icon="fallbackIcon" :size="computedIconSize" />
 			</slot>
 
 			<span v-if="label">{{ label }}</span>
@@ -128,7 +118,6 @@ const handleClick = (event: MouseEvent) => {
 
 <style lang="scss" module>
 @use '../../css/mixins/focus';
-@use '../../css/mixins/motion';
 
 .button {
 	appearance: none;
@@ -145,7 +134,7 @@ const handleClick = (event: MouseEvent) => {
 
 	height: var(--button--height);
 	padding: var(--button--padding);
-	border-radius: var(--button--radius);
+	border-radius: var(--radius--full);
 	font-size: var(--button--font-size);
 
 	--button--color--background: transparent;
@@ -201,43 +190,72 @@ const handleClick = (event: MouseEvent) => {
 	&.xsmall {
 		--button--height: var(--height--xs);
 		--button--padding: 0 var(--spacing--2xs);
-		--button--radius: var(--radius--3xs);
+		--button--radius: var(--radius--xs);
 		--button--font-size: var(--font-size--2xs);
 	}
 
 	&.small {
 		--button--height: var(--height--sm);
 		--button--padding: 0 var(--spacing--xs);
-		--button--radius: var(--radius--3xs);
+		--button--radius: var(--radius--xs);
 		--button--font-size: var(--font-size--xs);
 	}
 
 	&.medium {
 		--button--height: var(--height--md);
 		--button--padding: 0 var(--spacing--xs);
-		--button--radius: var(--radius--3xs);
+		--button--radius: var(--radius--xs);
 		--button--font-size: var(--font-size--sm);
 	}
 
 	&.large {
 		--button--height: var(--height--lg);
 		--button--padding: 0 var(--spacing--sm);
-		--button--radius: var(--radius--2xs);
+		--button--radius: var(--radius--sm);
 		--button--font-size: var(--font-size--sm);
 	}
 
 	&.xlarge {
 		--button--height: var(--height--xl);
 		--button--padding: 0 var(--spacing--sm);
-		--button--radius: var(--radius--xs);
+		--button--radius: var(--radius--sm);
 		--button--font-size: var(--font-size--md);
 	}
 
 	&.solid {
+		--button--color--background: var(--color--primary);
+		--button--color--background-hover: color-mix(
+			in srgb,
+			var(--color--primary),
+			light-dark(var(--color--neutral-white), var(--color--neutral-black)) 10%
+		);
+		--button--color--background-active: color-mix(
+			in srgb,
+			var(--color--primary),
+			light-dark(var(--color--neutral-white), var(--color--neutral-black)) 12%
+		);
+		--button--color: var(--text-color--inverse);
+		--button--border-color: var(--color--primary);
+		--button--border-color--hover: color-mix(
+			in srgb,
+			var(--button--border-color),
+			light-dark(var(--color--neutral-white), var(--color--neutral-black)) 10%
+		);
+		--button--border-color--active: color-mix(
+			in srgb,
+			var(--button--border-color),
+			light-dark(var(--color--neutral-white), var(--color--neutral-black)) 12%
+		);
+		--button--border--shadow: 0 0 0 1px var(--button--border-color);
+		--button--border--shadow--hover: 0 0 0 1px var(--button--border-color--hover);
+		--button--border--shadow--active: 0 0 0 1px var(--button--border-color--active);
+	}
+
+	&.brand {
 		--button--color--background: var(--background--brand);
 		--button--color--background-hover: var(--background--brand--hover);
 		--button--color--background-active: var(--background--brand--active);
-		--button--color: var(--color--neutral-white);
+		--button--color: var(--color--neutral-black);
 		--button--shadow: var(--shadow--xs);
 		--button--shadow--hover: var(--shadow--xs);
 		--button--shadow--active: var(--shadow--xs);
@@ -249,7 +267,7 @@ const handleClick = (event: MouseEvent) => {
 		--button--border--shadow--active: 0 0 0 1px var(--button--border-color--active);
 	}
 
-	&.subtle {
+	&.outline {
 		--button--color--background: var(--background--surface);
 		--button--color--background-hover: color-mix(
 			in srgb,
@@ -261,34 +279,20 @@ const handleClick = (event: MouseEvent) => {
 			var(--button--color--background),
 			light-dark(var(--color--neutral-black), var(--color--neutral-white)) 10%
 		);
+		--button--border-color: var(--border-color);
+		--button--border-color--hover: color-mix(
+			in srgb,
+			var(--button--border-color),
+			light-dark(var(--color--neutral-black), var(--color--neutral-white)) 5%
+		);
+		--button--border-color--active: color-mix(
+			in srgb,
+			var(--button--border-color),
+			light-dark(var(--color--neutral-black), var(--color--neutral-white)) 10%
+		);
 		--button--shadow: var(--shadow--xs);
 		--button--shadow--hover: var(--shadow--xs);
 		--button--shadow--active: var(--shadow--xs);
-		--button--border-color: var(--border-color);
-		--button--border-color--hover: light-dark(
-			var(--color--black-alpha-200),
-			var(--color--white-alpha-200)
-		);
-		--button--border-color--active: light-dark(
-			var(--color--black-alpha-300),
-			var(--color--white-alpha-300)
-		);
-		--button--border--shadow: 0 0 0 1px var(--button--border-color);
-		--button--border--shadow--hover: 0 0 0 1px var(--button--border-color--hover);
-		--button--border--shadow--active: 0 0 0 1px var(--button--border-color--active);
-	}
-
-	&.outline {
-		--button--color--background: transparent;
-		--button--border-color: var(--border-color);
-		--button--border-color--hover: light-dark(
-			var(--color--black-alpha-200),
-			var(--color--white-alpha-200)
-		);
-		--button--border-color--active: light-dark(
-			var(--color--black-alpha-300),
-			var(--color--white-alpha-300)
-		);
 		--button--border--shadow: 0 0 0 1px var(--button--border-color);
 		--button--border--shadow--hover: 0 0 0 1px var(--button--border-color--hover);
 		--button--border--shadow--active: 0 0 0 1px var(--button--border-color--active);
@@ -367,6 +371,12 @@ const handleClick = (event: MouseEvent) => {
 		}
 	}
 
+	// Anchor and clip the spinner until its exit animation ends, so its slide adds no scrollbar.
+	&:has(> .loading-container) {
+		position: relative;
+		overflow: clip;
+	}
+
 	&.loading {
 		pointer-events: none;
 	}
@@ -383,8 +393,11 @@ const handleClick = (event: MouseEvent) => {
 	}
 }
 
+// Cover the whole button so the spinner stays centered, also in an inline-flex dropdown trigger.
 .loading-container {
-	height: auto;
+	position: absolute;
+	inset: 0;
+	grid-area: auto;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -404,40 +417,9 @@ const handleClick = (event: MouseEvent) => {
 	}
 }
 
+// Hide the content but keep it in layout, so a loading button keeps its width.
 .loading-container + .button-inner {
 	pointer-events: none;
 	opacity: 0;
-}
-
-.loading-spinner {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	@include motion.spin;
-}
-
-/* TODO: Move to global animations css library */
-:global(.n8n-button-fade-enter-active),
-:global(.n8n-button-fade-leave-active) {
-	--easing--ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
-	transition:
-		opacity 0.2s var(--easing--ease-out),
-		transform 0.2s var(--easing--ease-out);
-
-	@media (prefers-reduced-motion: reduce) {
-		transition: opacity 0.1s;
-	}
-}
-
-:global(.n8n-button-fade-enter-from),
-:global(.n8n-button-fade-leave-to) {
-	opacity: 0;
-	transform: translateY(4px);
-	filter: blur(2px);
-
-	@media (prefers-reduced-motion: reduce) {
-		transform: none;
-		filter: none;
-	}
 }
 </style>

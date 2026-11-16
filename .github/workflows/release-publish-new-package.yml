@@ -1,7 +1,16 @@
-name: 'Release: Publish New Package'
-run-name: "Release: Publish New Package (${{ inputs['package-path'] }})"
+name: 'Release: Setup Trusted Publishing for Package'
+run-name: "Release: Setup Trusted Publishing (${{ inputs['package-path'] }})"
 
 on:
+  workflow_call:
+    inputs:
+      package-path:
+        description: 'Path to the package to configure'
+        required: true
+        type: string
+    secrets:
+      NPM_DIST_TAG_AND_INITIAL_PUBLISH_TOKEN:
+        required: true
   workflow_dispatch:
     inputs:
       package-path:
@@ -10,8 +19,11 @@ on:
         type: string
 
 concurrency:
-  group: release-new-package-${{ github.event.inputs.package-path }}
+  group: release-new-package-${{ inputs.package-path }}
   cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   publish-to-npm:
@@ -22,36 +34,86 @@ jobs:
 
     steps:
       - name: Check branch
-        if: github.ref != 'refs/heads/master'
         run: |
-          echo "::error::This workflow can only be run from the master branch"
-          exit 1
+          if [[ "$GITHUB_REF" != 'refs/heads/master' && "$GITHUB_REF" != refs/heads/release/* ]]; then
+            echo "::error::This workflow can only run from master or a release branch."
+            exit 1
+          fi
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
 
-      - name: Check package does not already exist on NPM
-        working-directory: ${{ github.event.inputs.package-path }}
+      - name: Read package metadata
+        id: package
+        working-directory: ${{ inputs.package-path }}
         run: |
           PACKAGE_NAME=$(node -p "require('./package.json').name")
-          if [ "$PACKAGE_NAME" = "n8n-monorepo" ]; then
-            echo "::error::Package 'n8n-monorepo' cannot be published."
+          PACKAGE_PRIVATE=$(node -p "Boolean(require('./package.json').private)")
+          if [ "$PACKAGE_NAME" = "n8n-monorepo" ] || [ "$PACKAGE_PRIVATE" = "true" ]; then
+            echo "::error::Package '$PACKAGE_NAME' is private and cannot be published."
             exit 1
           fi
-          if npm view "$PACKAGE_NAME" > /dev/null 2>&1; then
-            echo "::error::Package '$PACKAGE_NAME' already exists on NPM. Use the regular release workflow for updates."
-            exit 1
-          fi
-          echo "Package '$PACKAGE_NAME' does not exist on NPM yet. Proceeding with publish."
+          echo "name=$PACKAGE_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Configure NPM token
         env:
           NPM_TOKEN: ${{ secrets.NPM_DIST_TAG_AND_INITIAL_PUBLISH_TOKEN }}
         run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
 
-      - name: Publish package
-        working-directory: ${{ github.event.inputs.package-path }}
-        run: pnpm publish --access public --no-git-checks
+      - name: Check package on NPM
+        id: registry
+        env:
+          PACKAGE_NAME: ${{ steps.package.outputs.name }}
+        run: |
+          ENCODED_NAME=$(node -p "encodeURIComponent(process.env.PACKAGE_NAME)")
+          STATUS=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "https://registry.npmjs.org/$ENCODED_NAME")
+          case "$STATUS" in
+            200) echo "exists=true" >> "$GITHUB_OUTPUT" ;;
+            404) echo "exists=false" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "::error::The npm registry returned HTTP $STATUS for '$PACKAGE_NAME'."
+              exit 1
+              ;;
+          esac
+
+      - name: Publish throwaway package version
+        if: steps.registry.outputs.exists == 'false'
+        working-directory: ${{ inputs.package-path }}
+        run: |
+          npm pkg set version=0.0.0-tp
+          pnpm publish --access public --tag rc --no-git-checks
+
+      - name: Check existing trusted publishers
+        id: trust
+        env:
+          PACKAGE_NAME: ${{ steps.package.outputs.name }}
+        run: |
+          TRUST_CONFIGS=$(npm trust list "$PACKAGE_NAME" --json)
+          echo "$TRUST_CONFIGS"
+          if TRUST_CONFIGS="$TRUST_CONFIGS" node -e '
+            if (!process.env.TRUST_CONFIGS.trim()) process.exit(1);
+            const config = JSON.parse(process.env.TRUST_CONFIGS);
+            const isConfigured = config.repository === "n8n-io/n8n" &&
+              config.file === "release-publish.yml" &&
+              config.environment === "npm" &&
+              config.permissions?.includes("createPackage");
+            process.exit(isConfigured ? 0 : 1);
+          '; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure trusted publishing
+        if: steps.trust.outputs.configured == 'false'
+        env:
+          PACKAGE_NAME: ${{ steps.package.outputs.name }}
+        run: npm trust github "$PACKAGE_NAME" --repo n8n-io/n8n --file release-publish.yml --env npm --allow-publish --yes
+
+      - name: Summarize trusted publishing setup
+        env:
+          PACKAGE_NAME: ${{ steps.package.outputs.name }}
+        run: echo "Trusted publishing for $PACKAGE_NAME must complete its first release-publish.yml publish within two days." >> "$GITHUB_STEP_SUMMARY"

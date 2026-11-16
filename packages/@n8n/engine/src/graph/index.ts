@@ -5,9 +5,11 @@ export type {
 	GraphNode,
 	StepConfig,
 	StepType,
+	StoredWorkflowGraph,
 	WorkflowGraph,
 } from './workflow-graph';
 export {
+	createNodeLabeler,
 	findTriggerNode,
 	getDescendantNodeIds,
 	getPredecessorNodeIds,

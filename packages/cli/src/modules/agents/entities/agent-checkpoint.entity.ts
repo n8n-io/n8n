@@ -21,6 +21,7 @@ export class AgentCheckpoint extends WithTimestamps {
 		nullable: true,
 		comment: 'SDK thread key from checkpoint state. Execution history is optional.',
 	})
+	@Index()
 	threadId: string | null;
 
 	@Column({ type: 'text', nullable: true })

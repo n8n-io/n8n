@@ -102,7 +102,7 @@ const size = 'small';
 }
 
 .tooltipTitle {
-	font-weight: 600;
+	font-weight: var(--font-weight--medium);
 	font-size: inherit;
 	line-height: inherit;
 }

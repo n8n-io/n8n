@@ -6,19 +6,20 @@ import type {
 	INodeProperties,
 	ResourceMapperField,
 } from 'n8n-workflow';
-import { NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
+import { NodeOperationError, requestPath, setSafeObjectProperty } from 'n8n-workflow';
 
-import { type CollectionSearchOptions, searchGraphCollection } from '../helpers/graphSearch';
+import { type CollectionSearchOptions, searchGraphCollection } from '../../helpers/graphSearch';
 import {
 	addUniqueConstraintHint,
 	assertPathSegment,
+	autoMapInputData,
 	HYPERLINK_WRITE_HEADERS,
 	NON_INDEXED_QUERY_HEADERS,
 	nonIndexedFilterThresholdError,
 	odataFieldEqualsClause,
-} from '../helpers/utils';
-import { resolveSiteId } from '../site';
-import { microsoftApiRequest, microsoftApiRequestAllItems } from '../transport';
+} from '../../helpers/utils';
+import { resolveSiteId } from '../../site';
+import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 
 /** Keeps the item field hidden until a list is chosen. */
 export const untilListSelected = { list: [''] };
@@ -61,12 +62,12 @@ export async function getItems(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	let endpoint = '';
+	let endpoint = requestPath``;
 	if (!paginationToken) {
 		// In load-options contexts getNodeParameter's 2nd arg is a fallback, not an item index.
 		const siteId = await resolveSiteId.call(this, 0);
 		const list = String(this.getNodeParameter('list', 0, { extractValue: true }));
-		endpoint = `/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(list)}/items`;
+		endpoint = requestPath`/v1.0/sites/${siteId}/lists/${list}/items`;
 	}
 
 	return await searchGraphCollection.call<
@@ -121,7 +122,7 @@ export async function lookupItemIdByColumns(
 			this,
 			'value',
 			'GET',
-			`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/items`,
+			requestPath`/v1.0/sites/${siteId}/lists/${listIdOrTitle}/items`,
 			{},
 			{ $filter: filter },
 			2,
@@ -161,17 +162,18 @@ export async function resolveMatchedItemIds(
 
 /**
  * Resolves the resource mapper into the item's effective column values — from
- * the input JSON in auto-map mode (schema-unknown keys dropped), otherwise
- * from the mapper's own value. The mapper's shipped default is `{ value: null }`
- * and the `{}` fallback only covers undefined — coalesce so
- * create-with-server-defaults survives.
+ * the input JSON in auto-map mode (schema-unknown keys dropped, an empty schema
+ * rejected), otherwise from the mapper's own value. The mapper's shipped
+ * default is `{ value: null }` and the `{}` fallback only covers undefined —
+ * coalesce so create-with-server-defaults survives.
  */
 export function resolveItemMapperValues(this: IExecuteFunctions, i: number): IDataObject {
 	if (this.getNodeParameter('columns.mappingMode', i) === 'autoMapInputData') {
-		const schema = this.getNodeParameter('columns.schema', i, []) as ResourceMapperField[];
-		const knownColumns = new Set(schema.map((field) => field.id));
-		return Object.fromEntries(
-			Object.entries(this.getInputData()[i].json).filter(([key]) => knownColumns.has(key)),
+		return autoMapInputData(
+			this.getNode(),
+			this.getNodeParameter('columns.schema', i, []) as ResourceMapperField[],
+			this.getInputData()[i].json,
+			i,
 		);
 	}
 	return (this.getNodeParameter('columns.value', i, {}) ?? {}) as IDataObject;
@@ -241,12 +243,12 @@ export async function updateItemFields(
 	itemId = assertPathSegment(this.getNode(), itemId, 'Item');
 	const { fields, hasHyperlink } = buildItemFieldsPayload(value, schema);
 
-	const itemPath = `/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(listIdOrTitle)}/items/${encodeURIComponent(itemId)}`;
+	const itemPath = requestPath`/v1.0/sites/${siteId}/lists/${listIdOrTitle}/items/${itemId}`;
 	try {
 		await microsoftApiRequest.call(
 			this,
 			'PATCH',
-			`${itemPath}/fields`,
+			requestPath`${itemPath}/fields`,
 			fields,
 			{},
 			undefined,

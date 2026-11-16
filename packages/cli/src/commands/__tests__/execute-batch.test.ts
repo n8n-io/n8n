@@ -1,4 +1,5 @@
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { PostHogClient } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
@@ -11,7 +12,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type SelectQueryBuilder } from '@n8n/typeorm';
-import type { IRun } from 'n8n-workflow';
+import { createEmptyRunExecutionData, type INode, type IRun } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -25,7 +26,6 @@ import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
-import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
@@ -59,10 +59,10 @@ mockInstance(AuthRolesService);
 mockInstance(BinaryDataRepository);
 
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
-deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
-deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
+deploymentKeyRepository.findActiveIdentifier.mockResolvedValue(null);
+deploymentKeyRepository.seedActiveIdentifier.mockResolvedValue(undefined);
 
-test('should start a task runner', async () => {
+test('should start a task runner and the policy modules', async () => {
 	// arrange
 
 	const workflow = mock<WorkflowEntity>({
@@ -93,9 +93,12 @@ test('should start a task runner', async () => {
 		GlobalConfig,
 		mock<GlobalConfig>({
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			nodes: {},
 		}),
 	);
+
+	const initModules = vi.spyOn(Container.get(ModuleRegistry), 'initModules');
 
 	const cmd = new ExecuteBatch();
 	// @ts-expect-error Protected property
@@ -111,8 +114,57 @@ test('should start a task runner', async () => {
 	// assert
 
 	expect(taskRunnerModule.start).toHaveBeenCalledTimes(1);
+	expect(initModules).toHaveBeenCalledWith(expect.anything(), [
+		'policy-infrastructure',
+		'type-availability-policies',
+	]);
+	expect(initModules).toHaveBeenCalledWith(expect.anything(), ['execution-ledger']);
 });
 
 test('execute:batch needs the expression engine', () => {
 	expect(new ExecuteBatch().needsExpressionEngine).toBe(true);
 });
+
+test.each([true, false])(
+	'starts from the selected trigger when pinned data is %s',
+	async (pinned) => {
+		const startingNode = mock<INode>({
+			name: 'Execute Workflow Trigger',
+			type: 'n8n-nodes-base.executeWorkflowTrigger',
+			notes: '',
+		});
+		const workflow = mock<WorkflowEntity>({
+			id: '123',
+			nodes: [
+				mock<INode>({
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					notes: '',
+				}),
+				startingNode,
+			],
+			pinData: pinned ? { [startingNode.name]: [{ json: {} }] } : undefined,
+		});
+		ExecuteBatch.instanceOwner = mock<User>({ id: 'owner-id' });
+		ExecuteBatch.cancelled = false;
+		workflowRunner.run.mockResolvedValue('execution-id');
+		activeExecutions.getPostExecutePromise.mockResolvedValue({
+			...mock<IRun>(),
+			startedAt: new Date('2026-01-01T00:00:00Z'),
+			stoppedAt: new Date('2026-01-01T00:00:01Z'),
+			data: createEmptyRunExecutionData(),
+		});
+		workflowRunner.run.mockClear();
+
+		const result = await new ExecuteBatch().startThread(workflow);
+
+		expect(result.error).toBeUndefined();
+		expect(result.executionStatus).toBe('success');
+		expect(workflowRunner.run).toHaveBeenCalledExactlyOnceWith({
+			executionMode: 'cli',
+			triggerToStartFrom: { name: startingNode.name },
+			workflowData: workflow,
+			userId: 'owner-id',
+		});
+	},
+);

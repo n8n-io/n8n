@@ -1,4 +1,5 @@
 import { inTest, Logger } from '@n8n/backend-common';
+import { CodeExecutionBackend, EventService } from '@n8n/backend-services';
 import { TaskRunnersConfig } from '@n8n/config';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -6,7 +7,6 @@ import { sleep } from '@n8n/utils/sleep';
 import { ErrorReporter } from 'n8n-core';
 import * as a from 'node:assert/strict';
 
-import { EventService } from '@/events/event.service';
 import type { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';
 import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 import type { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
@@ -98,6 +98,11 @@ export class TaskRunnerModule {
 		);
 		this.taskRequester = Container.get(LocalTaskRequester);
 		Container.set(TaskRequester, this.taskRequester);
+
+		const { TaskRunnerCodeExecutionBackend } = await import(
+			'@/task-runners/task-runner-code-execution-backend.js'
+		);
+		Container.set(CodeExecutionBackend, Container.get(TaskRunnerCodeExecutionBackend));
 	}
 
 	private async loadTaskBroker() {
@@ -108,6 +113,9 @@ export class TaskRunnerModule {
 		this.taskBrokerWsServer = Container.get(TaskBrokerWsServer);
 
 		await this.taskBrokerHttpServer.start();
+		if (this.runnerConfig.port === 0) {
+			this.runnerConfig.port = this.taskBrokerHttpServer.port;
+		}
 	}
 
 	private async startInternalTaskRunners() {

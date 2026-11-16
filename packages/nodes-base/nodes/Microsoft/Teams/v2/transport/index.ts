@@ -1,9 +1,15 @@
-import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	RequestPath,
+} from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import {
 	buildMicrosoftGraphPath,
 	createMicrosoftGraphTransport,
+	type MicrosoftGraphContext,
 	type MicrosoftGraphCredentialType,
 	type MicrosoftGraphPathSegment,
 	rewriteNotFound,
@@ -11,6 +17,8 @@ import {
 	SP_HIDE,
 	validateMicrosoftGraphId,
 } from '@utils/microsoft/transport';
+
+import { TEAMS_FORBIDDEN_HINTS } from './forbiddenHints';
 
 // Thin facade over the shared Microsoft Graph transport kernel: operations,
 // listSearch and the Trigger all import the transport from this path.
@@ -30,7 +38,10 @@ const {
 	getGraphBaseUrl,
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
-} = createMicrosoftGraphTransport({ defaultCredentialType: 'microsoftTeamsOAuth2Api' });
+} = createMicrosoftGraphTransport({
+	defaultCredentialType: 'microsoftTeamsOAuth2Api',
+	forbiddenHints: TEAMS_FORBIDDEN_HINTS,
+});
 
 export {
 	getTeamsCredentialType,
@@ -45,12 +56,10 @@ export {
  * (App `Team.ReadBasic.All`). OAuth2 keeps the per-user `/v1.0/me/joinedTeams`.
  * Shared by `getTeams` (listSearch) and `fetchAllTeams` (trigger).
  */
-export function joinedTeamsEndpoint(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
-): string {
+export function joinedTeamsEndpoint(this: MicrosoftGraphContext): RequestPath {
 	return getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH
-		? '/v1.0/teams'
-		: '/v1.0/me/joinedTeams';
+		? requestPath`/v1.0/teams`
+		: requestPath`/v1.0/me/joinedTeams`;
 }
 
 /**

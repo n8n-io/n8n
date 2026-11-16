@@ -19,7 +19,7 @@ import type {
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CollaborationState } from '@/collaboration/collaboration.state';
 import { Push } from '@/push';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 describe('CollaborationService', () => {
 	mockInstance(Push, new Push(mock(), mock(), mock(), mock(), mock()));

@@ -1,5 +1,5 @@
 import { generateNanoId, type OperationContext, type TransactionRunner } from '@n8n/db';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
@@ -95,6 +95,27 @@ describe('row locks depend on the driver', () => {
 
 			expect(entityManager.findOne).toHaveBeenCalledWith(TypeAvailabilityPolicyScope, {
 				where: { id: 'scope-1' },
+			});
+		});
+
+		it('locks findScopeByIdAndKind on Postgres when forUpdate is requested', async () => {
+			setDriver(entityManager, 'postgres');
+
+			await repository.findScopeByIdAndKind('scope-1', 'credential-types', ROOT, true);
+
+			expect(entityManager.findOne).toHaveBeenCalledWith(TypeAvailabilityPolicyScope, {
+				where: { id: 'scope-1', kind: 'credential-types' },
+				lock: { mode: 'pessimistic_write' },
+			});
+		});
+
+		it('does not lock findScopeByIdAndKind without forUpdate, even on Postgres', async () => {
+			setDriver(entityManager, 'postgres');
+
+			await repository.findScopeByIdAndKind('scope-1', 'credential-types', ROOT);
+
+			expect(entityManager.findOne).toHaveBeenCalledWith(TypeAvailabilityPolicyScope, {
+				where: { id: 'scope-1', kind: 'credential-types' },
 			});
 		});
 

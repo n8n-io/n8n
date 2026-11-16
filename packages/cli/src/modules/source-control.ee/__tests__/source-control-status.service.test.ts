@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import {
 	GLOBAL_ADMIN_ROLE,
@@ -16,8 +17,7 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { EventService } from '@/events/event.service';
+import { ForbiddenError } from '@n8n/errors';
 
 import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
@@ -376,6 +376,7 @@ describe('getStatus', () => {
 		).rejects.toThrowError(ForbiddenError);
 
 		expect(gitService.resetBranch).not.toHaveBeenCalled();
+		expect(gitService.pull).not.toHaveBeenCalled();
 	});
 
 	it('should allow push status for a user with project source control push access', async () => {
@@ -892,7 +893,7 @@ describe('getStatus', () => {
 	describe('telemetry', () => {
 		const user = globalAdminUserWithId;
 
-		it('emits `source-control-user-started-push-ui` with publicApi: false when origin is not set', async () => {
+		it('emits `source-control-user-started-push-ui` with publicApi: false when no public API client is set', async () => {
 			await sourceControlStatusService.getStatus(user, {
 				direction: 'push',
 				verbose: false,
@@ -905,35 +906,21 @@ describe('getStatus', () => {
 			);
 		});
 
-		it('emits `source-control-user-started-push-ui` with publicApi: false when origin is `ui`', async () => {
+		it('emits `source-control-user-started-push-ui` with the public API client', async () => {
 			await sourceControlStatusService.getStatus(user, {
 				direction: 'push',
 				verbose: false,
 				preferLocalVersion: true,
-				origin: 'ui',
+				publicApi: 'editor_ui',
 			});
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'source-control-user-started-push-ui',
-				expect.objectContaining({ userId: user.id, publicApi: false }),
+				expect.objectContaining({ userId: user.id, publicApi: 'editor_ui' }),
 			);
 		});
 
-		it('emits `source-control-user-started-push-ui` with publicApi: true when origin is `publicApi`', async () => {
-			await sourceControlStatusService.getStatus(user, {
-				direction: 'push',
-				verbose: false,
-				preferLocalVersion: true,
-				origin: 'publicApi',
-			});
-
-			expect(eventService.emit).toHaveBeenCalledWith(
-				'source-control-user-started-push-ui',
-				expect.objectContaining({ userId: user.id, publicApi: true }),
-			);
-		});
-
-		it('emits `source-control-user-started-pull-ui` with publicApi: false when origin is not set', async () => {
+		it('emits `source-control-user-started-pull-ui` with publicApi: false when no public API client is set', async () => {
 			await sourceControlStatusService.getStatus(user, {
 				direction: 'pull',
 				verbose: false,
@@ -946,17 +933,17 @@ describe('getStatus', () => {
 			);
 		});
 
-		it('emits `source-control-user-started-pull-ui` with publicApi: true when origin is `publicApi`', async () => {
+		it('emits `source-control-user-started-pull-ui` with the public API client', async () => {
 			await sourceControlStatusService.getStatus(user, {
 				direction: 'pull',
 				verbose: false,
 				preferLocalVersion: false,
-				origin: 'publicApi',
+				publicApi: 'other',
 			});
 
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'source-control-user-started-pull-ui',
-				expect.objectContaining({ userId: user.id, publicApi: true }),
+				expect.objectContaining({ userId: user.id, publicApi: 'other' }),
 			);
 		});
 	});

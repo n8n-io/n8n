@@ -1,13 +1,17 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { nextTick } from 'vue';
-import { mockedStore } from '@/__tests__/utils';
+import type { CommunityNodeType } from '@n8n/api-types';
+import type { PublicInstalledPackage } from 'n8n-workflow';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import { nextTick, ref } from 'vue';
 
-import { useInstalledCommunityPackage } from './useInstalledCommunityPackage';
-import { useCommunityNodesStore } from '../communityNodes.store';
+import { mockedStore } from '@/__tests__/utils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
-import type { ExtendedPublicInstalledPackage } from '../communityNodes.utils';
+import { useCommunityNodesStore } from '../communityNodes.store';
+import { useInstalledCommunityPackage } from './useInstalledCommunityPackage';
 import type * as n8nWorkflow from 'n8n-workflow';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
@@ -18,16 +22,16 @@ vi.mock('n8n-workflow', async (importOriginal) => {
 	};
 });
 
-vi.mock('../communityNodes.utils', () => ({
-	fetchInstalledPackageInfo: vi.fn(),
-}));
-
-// Import mocked functions
 import { isCommunityPackageName } from 'n8n-workflow';
-import { fetchInstalledPackageInfo } from '../communityNodes.utils';
 
 const mockIsCommunityPackageName = vi.mocked(isCommunityPackageName);
-const mockFetchInstalledPackageInfo = vi.mocked(fetchInstalledPackageInfo);
+const communityPackage = (): PublicInstalledPackage => ({
+	packageName: '@test/n8n-nodes-test',
+	installedVersion: '1.0.0',
+	installedNodes: [],
+	createdAt: new Date(),
+	updatedAt: new Date(),
+});
 
 describe('useInstalledCommunityPackage', () => {
 	beforeEach(() => {
@@ -35,228 +39,134 @@ describe('useInstalledCommunityPackage', () => {
 		vi.clearAllMocks();
 	});
 
-	describe('computed properties', () => {
-		it('should handle nodeTypeName parsing correctly', () => {
-			mockIsCommunityPackageName.mockReturnValue(true);
-			const composable = useInstalledCommunityPackage('@test/n8n-nodes-test.TestNode');
-			expect(composable.isCommunityNode.value).toBe(true);
-		});
+	it('identifies community nodes', () => {
+		mockIsCommunityPackageName.mockReturnValue(true);
 
-		it('should return false for isCommunityNode when nodeTypeName is undefined', () => {
-			const composable = useInstalledCommunityPackage();
-			expect(composable.isCommunityNode.value).toBe(false);
-		});
+		const { isCommunityNode } = useInstalledCommunityPackage('@test/n8n-nodes-test.TestNode');
 
-		it('should compute isCommunityNode correctly when nodeTypeName is provided and is community', () => {
-			mockIsCommunityPackageName.mockReturnValue(true);
-
-			const { isCommunityNode } = useInstalledCommunityPackage('@test/n8n-nodes-test.TestNode');
-
-			expect(isCommunityNode.value).toBe(true);
-			expect(mockIsCommunityPackageName).toHaveBeenCalledWith('@test/n8n-nodes-test.TestNode');
-		});
-
-		it('should compute isCommunityNode as false when nodeTypeName is provided but not community', () => {
-			mockIsCommunityPackageName.mockReturnValue(false);
-
-			const { isCommunityNode } = useInstalledCommunityPackage('n8n-nodes-base.HttpRequest');
-
-			expect(isCommunityNode.value).toBe(false);
-			expect(mockIsCommunityPackageName).toHaveBeenCalledWith('n8n-nodes-base.HttpRequest');
-		});
-
-		it('should compute isCommunityNode as false when nodeTypeName is undefined', () => {
-			const { isCommunityNode } = useInstalledCommunityPackage();
-
-			expect(isCommunityNode.value).toBe(false);
-			expect(mockIsCommunityPackageName).not.toHaveBeenCalled();
-		});
-
-		it('should compute isUpdateCheckAvailable correctly when user is instance owner and node is community', () => {
-			const usersStore = mockedStore(useUsersStore);
-			usersStore.isAdminOrOwner = true;
-			mockIsCommunityPackageName.mockReturnValue(true);
-
-			const { isUpdateCheckAvailable } = useInstalledCommunityPackage(
-				'@test/n8n-nodes-test.TestNode',
-			);
-
-			expect(isUpdateCheckAvailable.value).toBe(true);
-		});
-
-		it('should compute isUpdateCheckAvailable as false when user is not instance owner', () => {
-			const usersStore = mockedStore(useUsersStore);
-			usersStore.isAdminOrOwner = false;
-			mockIsCommunityPackageName.mockReturnValue(true);
-
-			const { isUpdateCheckAvailable } = useInstalledCommunityPackage(
-				'@test/n8n-nodes-test.TestNode',
-			);
-
-			expect(isUpdateCheckAvailable.value).toBe(false);
-		});
-
-		it('should compute isUpdateCheckAvailable as false when node is not community', () => {
-			const usersStore = mockedStore(useUsersStore);
-			usersStore.isAdminOrOwner = true;
-			mockIsCommunityPackageName.mockReturnValue(false);
-
-			const { isUpdateCheckAvailable } = useInstalledCommunityPackage('n8n-nodes-base.HttpRequest');
-
-			expect(isUpdateCheckAvailable.value).toBe(false);
-		});
+		expect(isCommunityNode.value).toBe(true);
+		expect(mockIsCommunityPackageName).toHaveBeenCalledWith('@test/n8n-nodes-test.TestNode');
 	});
 
-	describe('initInstalledPackage', () => {
-		it('should return undefined when packageName is empty', async () => {
-			const { initInstalledPackage } = useInstalledCommunityPackage();
+	it('does not identify built-in or missing node types as community nodes', () => {
+		mockIsCommunityPackageName.mockReturnValue(false);
 
-			const result = await initInstalledPackage();
-
-			expect(result).toBeUndefined();
-			expect(mockFetchInstalledPackageInfo).not.toHaveBeenCalled();
-		});
-
-		it('should return undefined when node is not a community node', async () => {
-			mockIsCommunityPackageName.mockReturnValue(false);
-
-			const { initInstalledPackage } = useInstalledCommunityPackage('n8n-nodes-base.HttpRequest');
-
-			const result = await initInstalledPackage();
-
-			expect(result).toBeUndefined();
-			expect(mockFetchInstalledPackageInfo).not.toHaveBeenCalled();
-		});
-
-		it('should fetch and set installedPackage when conditions are met', async () => {
-			const mockPackage: ExtendedPublicInstalledPackage = {
-				packageName: '@test/n8n-nodes-test',
-				installedVersion: '1.0.0',
-				installedNodes: [],
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				unverifiedUpdate: false,
-			};
-
-			mockIsCommunityPackageName.mockReturnValue(true);
-			mockFetchInstalledPackageInfo.mockResolvedValue(mockPackage);
-
-			const { initInstalledPackage, installedPackage } = useInstalledCommunityPackage(
-				'@test/n8n-nodes-test.TestNode',
-			);
-
-			const result = await initInstalledPackage();
-
-			expect(mockFetchInstalledPackageInfo).toHaveBeenCalledWith('@test/n8n-nodes-test');
-			expect(result).toStrictEqual(mockPackage);
-			expect(installedPackage.value).toStrictEqual(mockPackage);
-		});
-
-		it('should handle fetchInstalledPackageInfo returning undefined', async () => {
-			mockIsCommunityPackageName.mockReturnValue(true);
-			mockFetchInstalledPackageInfo.mockResolvedValue(undefined);
-
-			const { initInstalledPackage, installedPackage } = useInstalledCommunityPackage(
-				'@test/n8n-nodes-test.TestNode',
-			);
-
-			const result = await initInstalledPackage();
-
-			expect(mockFetchInstalledPackageInfo).toHaveBeenCalledWith('@test/n8n-nodes-test');
-			expect(result).toBeUndefined();
-			expect(installedPackage.value).toBeUndefined();
-		});
+		expect(useInstalledCommunityPackage('n8n-nodes-base.HttpRequest').isCommunityNode.value).toBe(
+			false,
+		);
+		expect(useInstalledCommunityPackage().isCommunityNode.value).toBe(false);
 	});
 
-	describe('watcher functionality', () => {
-		it('should call initInstalledPackage when installedPackages changes', async () => {
-			const communityNodesStore = mockedStore(useCommunityNodesStore);
-			const mockPackage: ExtendedPublicInstalledPackage = {
-				packageName: '@test/n8n-nodes-test',
-				installedVersion: '1.0.0',
-				installedNodes: [],
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				unverifiedUpdate: false,
-			};
+	it('allows owners and admins to update community packages', () => {
+		const usersStore = mockedStore(useUsersStore);
+		usersStore.isAdminOrOwner = true;
+		mockIsCommunityPackageName.mockReturnValue(true);
 
-			mockIsCommunityPackageName.mockReturnValue(true);
-			mockFetchInstalledPackageInfo.mockResolvedValue(mockPackage);
+		const { canUpdatePackage } = useInstalledCommunityPackage('@test/n8n-nodes-test.TestNode');
 
-			// Initialize the composable
-			const { installedPackage } = useInstalledCommunityPackage('@test/n8n-nodes-test.TestNode');
-
-			// Simulate store change
-			communityNodesStore.installedPackages = {
-				'@test/n8n-nodes-test': mockPackage,
-			};
-
-			await nextTick();
-
-			expect(mockFetchInstalledPackageInfo).toHaveBeenCalledWith('@test/n8n-nodes-test');
-			expect(installedPackage.value).toStrictEqual(mockPackage);
-		});
-
-		it('should not call initInstalledPackage when packageName is empty', async () => {
-			const communityNodesStore = mockedStore(useCommunityNodesStore);
-
-			// Initialize the composable without nodeTypeName
-			useInstalledCommunityPackage();
-
-			// Simulate store change
-			const mockSomePackage: ExtendedPublicInstalledPackage = {
-				packageName: 'some-package',
-				installedVersion: '1.0.0',
-				installedNodes: [],
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				unverifiedUpdate: false,
-			};
-			communityNodesStore.installedPackages = {
-				'some-package': mockSomePackage,
-			};
-
-			await nextTick();
-
-			expect(mockFetchInstalledPackageInfo).not.toHaveBeenCalled();
-		});
-
-		it('should not call initInstalledPackage when package is not in installedPackages', async () => {
-			const communityNodesStore = mockedStore(useCommunityNodesStore);
-			mockIsCommunityPackageName.mockReturnValue(true);
-
-			// Initialize the composable
-			useInstalledCommunityPackage('@test/n8n-nodes-test.TestNode');
-
-			// Simulate store change with different package
-			const mockDifferentPackage: ExtendedPublicInstalledPackage = {
-				packageName: 'different-package',
-				installedVersion: '1.0.0',
-				installedNodes: [],
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				unverifiedUpdate: false,
-			};
-			communityNodesStore.installedPackages = {
-				'different-package': mockDifferentPackage,
-			};
-
-			await nextTick();
-
-			expect(mockFetchInstalledPackageInfo).not.toHaveBeenCalled();
-		});
+		expect(canUpdatePackage.value).toBe(true);
 	});
 
-	describe('return values', () => {
-		it('should return all expected properties and functions', () => {
-			const result = useInstalledCommunityPackage('@test/n8n-nodes-test.TestNode');
+	it('does not allow members to update community packages', () => {
+		const usersStore = mockedStore(useUsersStore);
+		usersStore.isAdminOrOwner = false;
+		mockIsCommunityPackageName.mockReturnValue(true);
 
-			expect(result).toHaveProperty('installedPackage');
-			expect(result).toHaveProperty('isUpdateCheckAvailable');
-			expect(result).toHaveProperty('isCommunityNode');
-			expect(result).toHaveProperty('initInstalledPackage');
+		const { canUpdatePackage } = useInstalledCommunityPackage('@test/n8n-nodes-test.TestNode');
 
-			expect(typeof result.initInstalledPackage).toBe('function');
+		expect(canUpdatePackage.value).toBe(false);
+	});
+
+	it('reacts when a newer verified version becomes available', async () => {
+		const communityNodesStore = mockedStore(useCommunityNodesStore);
+		const nodeTypesStore = mockedStore(useNodeTypesStore);
+		const settingsStore = mockedStore(useSettingsStore);
+		const latestVerifiedVersion = ref('1.0.0');
+
+		mockIsCommunityPackageName.mockReturnValue(true);
+		communityNodesStore.getInstalledPackage.mockResolvedValue(communityPackage());
+		vi.spyOn(nodeTypesStore, 'communityNodeType', 'get').mockReturnValue(
+			vi.fn(() => mock<CommunityNodeType>({ npmVersion: latestVerifiedVersion.value })),
+		);
+		Object.defineProperty(settingsStore, 'isCommunityNodesFeatureEnabled', {
+			get: () => true,
 		});
+		Object.defineProperty(settingsStore, 'isUnverifiedPackagesEnabled', {
+			get: () => false,
+		});
+		settingsStore.settings.communityNodesManagedByEnv = false;
+
+		const { hasUpdateAvailable, initInstalledPackage } = useInstalledCommunityPackage(
+			'@test/n8n-nodes-test.TestNode',
+		);
+		await initInstalledPackage();
+		expect(hasUpdateAvailable.value).toBe(false);
+
+		latestVerifiedVersion.value = '1.1.0';
+		await nextTick();
+
+		expect(hasUpdateAvailable.value).toBe(true);
+	});
+
+	it('fetches the installed package for a community node', async () => {
+		const communityNodesStore = mockedStore(useCommunityNodesStore);
+		const installed = communityPackage();
+		mockIsCommunityPackageName.mockReturnValue(true);
+		communityNodesStore.getInstalledPackage.mockResolvedValue(installed);
+
+		const { initInstalledPackage, installedPackage } = useInstalledCommunityPackage(
+			'@test/n8n-nodes-test.TestNode',
+		);
+		const result = await initInstalledPackage();
+
+		expect(communityNodesStore.getInstalledPackage).toHaveBeenCalledWith('@test/n8n-nodes-test');
+		expect(result).toStrictEqual(installed);
+		expect(installedPackage.value).toStrictEqual(installed);
+	});
+
+	it('does not fetch an installed package without a community node type', async () => {
+		const communityNodesStore = mockedStore(useCommunityNodesStore);
+		mockIsCommunityPackageName.mockReturnValue(false);
+
+		expect(await useInstalledCommunityPackage().initInstalledPackage()).toBeUndefined();
+		expect(
+			await useInstalledCommunityPackage('n8n-nodes-base.HttpRequest').initInstalledPackage(),
+		).toBeUndefined();
+		expect(communityNodesStore.getInstalledPackage).not.toHaveBeenCalled();
+	});
+
+	it('updates when the installed package changes', async () => {
+		const communityNodesStore = mockedStore(useCommunityNodesStore);
+		const installed = communityPackage();
+		mockIsCommunityPackageName.mockReturnValue(true);
+		communityNodesStore.getInstalledPackage.mockResolvedValue(installed);
+
+		const { installedPackage } = useInstalledCommunityPackage('@test/n8n-nodes-test.TestNode');
+		communityNodesStore.installedPackages = {
+			'@test/n8n-nodes-test': installed,
+		};
+		await nextTick();
+
+		expect(installedPackage.value).toStrictEqual(installed);
+	});
+
+	it('clears the installed package when the node type changes', async () => {
+		const communityNodesStore = mockedStore(useCommunityNodesStore);
+		const installed = communityPackage();
+		const nodeTypeName = ref('@test/n8n-nodes-test.TestNode');
+		mockIsCommunityPackageName.mockReturnValue(true);
+		communityNodesStore.getInstalledPackage.mockResolvedValue(installed);
+		communityNodesStore.installedPackages = {
+			'@test/n8n-nodes-test': installed,
+		};
+
+		const { installedPackage, initInstalledPackage } = useInstalledCommunityPackage(nodeTypeName);
+		await initInstalledPackage();
+		expect(installedPackage.value).toStrictEqual(installed);
+
+		nodeTypeName.value = '@test/n8n-nodes-other.OtherNode';
+		await nextTick();
+
+		expect(installedPackage.value).toBeUndefined();
 	});
 });

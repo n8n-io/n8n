@@ -2,24 +2,24 @@ import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
 import type { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
-import { NodeOperationError, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError, type IExecuteFunctions } from 'n8n-workflow';
 
 import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import { toParserInputText } from '@utils/output_parsers/parserInput';
 import { getTracingConfig } from '@utils/tracing';
 
+import { toClassificationResult, type Category, type ClassificationResult } from './classification';
 import { SYSTEM_PROMPT_TEMPLATE } from './constants';
 
 export async function processItem(
 	ctx: IExecuteFunctions,
 	itemIndex: number,
-	item: INodeExecutionData,
 	llm: BaseLanguageModel,
 	parser: StructuredOutputParser<any> | OutputFixingParser<any>,
-	categories: Array<{ category: string; description: string }>,
+	categories: Category[],
 	multiClassPrompt: string,
 	fallbackPrompt: string | undefined,
-): Promise<Record<string, unknown>> {
+): Promise<ClassificationResult> {
 	const input = ctx.getNodeParameter('inputText', itemIndex) as string;
 
 	if (!input) {
@@ -28,8 +28,6 @@ export async function processItem(
 			`Text to classify for item ${itemIndex} is not defined`,
 		);
 	}
-
-	item.pairedItem = { item: itemIndex };
 
 	const inputPrompt = new HumanMessage(input);
 
@@ -64,7 +62,7 @@ export async function processItem(
 		.withConfig(getTracingConfig(ctx));
 
 	try {
-		return await chain.invoke(messages);
+		return toClassificationResult(await chain.invoke(messages), categories);
 	} catch (error) {
 		throw wrapLangChainParserError(error, ctx.getNode(), itemIndex);
 	}

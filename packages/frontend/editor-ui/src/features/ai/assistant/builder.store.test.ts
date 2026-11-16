@@ -42,7 +42,6 @@ const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
 	enabled: true,
 	apiHost: 'host',
 	apiKey: 'key',
-	autocapture: false,
 	disableSessionRecording: true,
 	debug: false,
 	proxy: 'proxy',
@@ -162,7 +161,7 @@ describe('AI Builder store', () => {
 		settingsStore.setSettings(
 			merge({}, defaultSettings, {
 				posthog: DEFAULT_POSTHOG_SETTINGS,
-				aiAssistant: { enabled: true, setup: true },
+				aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
 			}),
 		);
 		window.posthog = {

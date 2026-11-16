@@ -5,6 +5,59 @@ import ToolResultRenderer from '../components/ToolResultRenderer.vue';
 const renderComponent = createComponentRenderer(ToolResultRenderer);
 
 describe('ToolResultRenderer', () => {
+	it.each([
+		{ mediaType: 'image/png', selector: 'img' },
+		{ mediaType: 'application/pdf', selector: 'iframe' },
+	])('renders tagged $mediaType data with and without text', ({ mediaType, selector }) => {
+		const file = { type: 'file', data: { type: 'data', data: 'YWJj' }, mediaType };
+		const { container, getByText, rerender } = renderComponent({
+			props: {
+				toolName: 'read_file',
+				result: { type: 'content', value: [file] },
+			},
+		});
+
+		expect(container.querySelector(selector)?.getAttribute('src')).toBe(
+			`data:${mediaType};base64,YWJj`,
+		);
+		if (mediaType === 'application/pdf') {
+			expect(container.querySelector('embed')).not.toBeInTheDocument();
+			expect(container.querySelector('iframe')?.getAttribute('title')).toBeTruthy();
+		}
+
+		return rerender({
+			result: { type: 'content', value: [{ type: 'text', text: 'file result' }, file] },
+		}).then(() => {
+			expect(getByText('file result')).toBeInTheDocument();
+			expect(container.querySelector(selector)?.getAttribute('src')).toBe(
+				`data:${mediaType};base64,YWJj`,
+			);
+		});
+	});
+
+	it.each([
+		null,
+		{ type: 'data', data: 123 },
+		{ type: 'url', url: 'https://example.test/file.png' },
+		{ type: 'reference', reference: 'file-123' },
+	])('ignores unsupported tagged file data: %j', (data) => {
+		const { container, getByText } = renderComponent({
+			props: {
+				toolName: 'read_file',
+				result: {
+					type: 'content',
+					value: [
+						{ type: 'text', text: 'file result' },
+						{ type: 'file', data, mediaType: 'image/png' },
+					],
+				},
+			},
+		});
+
+		expect(getByText('file result')).toBeInTheDocument();
+		expect(container.querySelector('img, iframe')).not.toBeInTheDocument();
+	});
+
 	it('renders MCP image content', () => {
 		const { container, getByText } = renderComponent({
 			props: {

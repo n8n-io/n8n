@@ -11,6 +11,7 @@ import {
 	DeleteDateColumn,
 } from '@n8n/typeorm';
 import type { SimpleColumnType } from '@n8n/typeorm/driver/types/ColumnTypes';
+import type { ExecutionTracingContext } from 'n8n-workflow';
 import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 
 import { DateTimeColumn, datetimeColumnType, jsonColumnType } from './abstract-entity';
@@ -23,6 +24,7 @@ import { bigintStringToNumber, idStringifier } from '../utils/transformers';
 export type ExecutionDataStorageLocation = 'db' | 'fs' | 's3' | 'az';
 
 @Entity()
+@Index(['workflowId'])
 @Index(['workflowId', 'id'])
 @Index(['waitTill', 'id'])
 @Index(['finished', 'id'])
@@ -94,7 +96,7 @@ export class ExecutionEntity {
 	storedAt: ExecutionDataStorageLocation;
 
 	@Column({ type: jsonColumnType, nullable: true })
-	tracingContext: { traceparent: string; tracestate?: string } | null;
+	tracingContext: ExecutionTracingContext | null;
 	/**
 	 * Optional caller-supplied key that uniquely identifies this logical
 	 * execution. Enforced unique via an index, so concurrent attempts
@@ -123,6 +125,10 @@ export class ExecutionEntity {
 	 */
 	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })
 	binaryDataSizeBytes: number;
+
+	/** Resume attempts since the execution last entered `waiting` or `new`. Reset once it runs. */
+	@Column({ type: 'smallint', default: 0 })
+	resumeAttempts: number;
 
 	/**
 	 * Version id of the workflow this execution ran, denormalized from the data

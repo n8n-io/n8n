@@ -1,3 +1,4 @@
+import { usePostHog } from '@/app/stores/posthog.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
@@ -18,6 +19,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 import * as projectsApi from '@/features/collaboration/projects/projects.api';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 
 const mockAuthorize = vi.fn();
 const mockIsOAuthCredentialType = vi.fn(() => true);
@@ -85,6 +87,7 @@ const mockedProjectsApi = vi.mocked(projectsApi);
 describe('CredentialsView', () => {
 	beforeEach(async () => {
 		createTestingPinia({ initialState });
+		mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
 		await router.push('/');
 		await router.isReady();
 
@@ -116,6 +119,7 @@ describe('CredentialsView', () => {
 				id: '1',
 				name: 'test',
 				type: 'test',
+				description: 'Use for production reports',
 				createdAt: '2021-05-05T00:00:00Z',
 				updatedAt: '2021-05-05T00:00:00Z',
 				isManaged: false,
@@ -125,6 +129,9 @@ describe('CredentialsView', () => {
 		projectsStore.isProjectHome = false;
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('resources-list-item')).toBeVisible();
+		expect(getByTestId('credential-card-description')).toHaveTextContent(
+			'Use for production reports',
+		);
 	});
 
 	it('should disable cards based on permissions', () => {
@@ -169,6 +176,15 @@ describe('CredentialsView', () => {
 				name: CREDENTIAL_SELECT_MODAL_KEY,
 				data: {},
 			});
+		});
+
+		it('loads the policy of the project that a new credential goes to', async () => {
+			await router.push('/team-1/credentials');
+			const policies = mockedStore(useTypeAvailabilityPoliciesStore);
+
+			renderComponent();
+
+			expect(policies.fetchForProject).toHaveBeenCalledWith('team-1');
 		});
 
 		it('should not show the modal on the route if the user has no scope to create credential in the project', async () => {

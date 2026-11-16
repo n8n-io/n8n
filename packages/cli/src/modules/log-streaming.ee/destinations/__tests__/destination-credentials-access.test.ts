@@ -2,8 +2,8 @@ import type { CredentialsEntity, User } from '@n8n/db';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { CredentialsFinderService } from '@n8n/backend-services';
+import { ForbiddenError } from '@n8n/errors';
 
 import { assertUserCanUseDestinationCredentials } from '../destination-credentials-access';
 
@@ -40,9 +40,12 @@ describe('assertUserCanUseDestinationCredentials', () => {
 		await expect(
 			assertUserCanUseDestinationCredentials(credentialsFinderService, user, options),
 		).rejects.toThrow(ForbiddenError);
-		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
-			'credential:read',
-		]);
+		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+			'cred-1',
+			user,
+			['credential:read'],
+			{ excludeSeeOnlyRoles: true },
+		);
 	});
 
 	it('resolves when the user can access every referenced credential', async () => {

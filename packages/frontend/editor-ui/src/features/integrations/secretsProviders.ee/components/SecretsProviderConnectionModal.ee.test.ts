@@ -15,6 +15,7 @@ import { nextTick } from 'vue';
 import { createProjectListItem } from '@/features/collaboration/projects/__tests__/utils';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import orderBy from 'lodash/orderBy';
+import { flushPromises } from '@vue/test-utils';
 
 // Factory function for creating mock connection data
 const createMockConnectionData = (overrides: Partial<SecretProviderConnection> = {}) => ({
@@ -315,6 +316,37 @@ describe('SecretsProviderConnectionModal', () => {
 			}
 
 			expect(mockConnectionModal.saveConnection).toHaveBeenCalled();
+		});
+
+		it('should scroll to the connection alert after saving', async () => {
+			// Regression for LIGO-689: save feedback is rendered above the settings form.
+			mockConnectionModal.connection.connectionState.value = 'error';
+			mockConnectionModal.saveConnection.mockResolvedValueOnce(undefined);
+
+			const { container } = renderComponent({
+				props: {
+					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+					data: {
+						providerTypes: mockProviderTypes,
+					},
+				},
+			});
+
+			const contentArea = container.querySelector('[class*="contentArea"]');
+			expect(contentArea).toBeInstanceOf(HTMLElement);
+			if (!(contentArea instanceof HTMLElement)) return;
+
+			contentArea.scrollTop = 400;
+			const saveButton = container.querySelector(
+				'[data-test-id="secrets-provider-connection-save-button"] button',
+			);
+			expect(saveButton).toBeInstanceOf(HTMLElement);
+			if (!(saveButton instanceof HTMLElement)) return;
+
+			await userEvent.click(saveButton);
+			await flushPromises();
+
+			expect(contentArea.scrollTop).toBe(0);
 		});
 	});
 

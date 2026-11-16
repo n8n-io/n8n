@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { toPathSegment } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { handleOperationError, simplifyObjects } from '../../helpers/utils';
 import { notionApiRequestV3 } from '../../transport';
@@ -42,6 +42,10 @@ export const description: INodeProperties[] = [
 		default: true,
 		displayOptions: { show: { resource: ['database'], operation: ['get'] } },
 		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: {
+			propertyHint:
+				'When true, returns only id, name, and url. Set false to retain the native database response, including data_sources. This operation returns database metadata, not database-page property values. Match verification output fixtures to the selected output mode.',
+		},
 	},
 ];
 
@@ -55,7 +59,7 @@ export async function get(this: IExecuteFunctions, items: INodeExecutionData[]) 
 			let response: IDataObject | IDataObject[] = await notionApiRequestV3.call(
 				this,
 				'GET',
-				`/databases/${toPathSegment(databaseId)}`,
+				requestPath`/databases/${databaseId}`,
 			);
 			if (this.getNodeParameter('simple', i) as boolean) {
 				response = simplifyObjects(response, false, 3);

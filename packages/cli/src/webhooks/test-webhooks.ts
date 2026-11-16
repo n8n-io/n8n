@@ -2,10 +2,11 @@ import { Logger } from '@n8n/backend-common';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
-import { ExecutionContextService, InstanceSettings } from 'n8n-core';
+import { ExecutionContextService, HookContext, InstanceSettings } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	classifyTriggerIdentity,
+	FORM_TRIGGER_NODE_TYPE,
 	WebhookPathTakenError,
 	Workflow,
 } from 'n8n-workflow';
@@ -23,13 +24,14 @@ import {
 	TEST_WEBHOOK_TIMEOUT,
 	TEST_WEBHOOK_TIMEOUT_BUFFER,
 } from '@/constants';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { SingleWebhookTriggerError } from '@/errors/single-webhook-trigger.error';
 import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import { removeTrailingSlash } from '@/utils';
 import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
@@ -46,6 +48,7 @@ import { WebhookService } from './webhook.service';
 import type {
 	IWebhookResponseCallbackData,
 	IWebhookManager,
+	RegisteredTestWebhooks,
 	WebhookAccessControlOptions,
 	WebhookRequest,
 } from './webhook.types';
@@ -71,6 +74,7 @@ export class TestWebhooks implements IWebhookManager {
 		private readonly publisher: Publisher,
 		private readonly webhookService: WebhookService,
 		private readonly executionContextService: ExecutionContextService,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	private timeouts: { [webhookKey: string]: NodeJS.Timeout } = {};
@@ -202,6 +206,7 @@ export class TestWebhooks implements IWebhookManager {
 								data: { workflowId: webhook?.workflowId, executionId },
 							},
 							pushRef,
+							webhook.userId,
 						);
 					}
 				} catch (error) {
@@ -221,9 +226,7 @@ export class TestWebhooks implements IWebhookManager {
 						command: 'clear-test-webhooks',
 						payload: { webhookKey: key, workflowEntity, pushRef },
 					});
-					// Response (if any) was already sent via WebhookHelpers.executeWebhook's
-					// callback; resolve to settle promise to be safe and avoid hanging.
-					resolve({ noWebhookResponse: true });
+					// Only the response callback passed to executeWebhook settles the promise.
 					return;
 				}
 
@@ -392,10 +395,13 @@ export class TestWebhooks implements IWebhookManager {
 	}
 
 	/**
-	 * Return whether activating a workflow requires listening for webhook calls.
-	 * For every webhook call to listen for, also activate the webhook.
+	 * Register a test webhook for every webhook call the manual run must listen for.
+	 *
+	 * @returns The unique names of the nodes whose test webhooks were registered, in
+	 * registration order, and the test URL of each registered Form Trigger. No node
+	 * names means the run does not need to listen for a webhook call.
 	 */
-	async needsWebhook(options: {
+	async registerWebhooks(options: {
 		userId: string;
 		workflowEntity: IWorkflowBase;
 		additionalData: IWorkflowExecuteAdditionalData;
@@ -408,7 +414,7 @@ export class TestWebhooks implements IWebhookManager {
 		n8nAuthCookie?: string;
 		/** How long the test webhook stays registered, at most `TEST_WEBHOOK_MAX_TIMEOUT`. Defaults to `TEST_WEBHOOK_TIMEOUT`. */
 		timeoutMs?: number;
-	}) {
+	}): Promise<RegisteredTestWebhooks> {
 		const {
 			userId,
 			workflowEntity,
@@ -440,7 +446,7 @@ export class TestWebhooks implements IWebhookManager {
 			// If we have a preferred trigger with data, we don't have to listen for a
 			// webhook.
 			if (triggerToStartFrom?.data) {
-				return false;
+				return { nodeNames: [], formTestUrls: [] };
 			}
 
 			// If we have a preferred trigger without data we only want to listen for
@@ -450,8 +456,17 @@ export class TestWebhooks implements IWebhookManager {
 			}
 
 			if (!webhooks.some((w) => w.webhookDescription.restartWebhook !== true)) {
-				return false; // no webhooks found to start a workflow
+				return { nodeNames: [], formTestUrls: [] }; // no webhooks found to start a workflow
 			}
+
+			// Creating a webhook calls the node's webhook methods with its credentials
+			// before any run starts, and the webhook phase can load sub-nodes with theirs.
+			// So it must pass the check that the run passes, on the same nodes.
+			await this.credentialsPermissionChecker.check(
+				workflowEntity.id,
+				workflowEntity.nodes,
+				userId,
+			);
 
 			// A non-positive or oversized delay would fire the cancel timer at once, so clamp it.
 			const timeoutDuration =
@@ -483,6 +498,8 @@ export class TestWebhooks implements IWebhookManager {
 				n8nAuthCookie,
 			);
 
+			const registeredNodes = new Set<string>();
+
 			for (const webhook of webhooks) {
 				webhook.path = removeTrailingSlash(webhook.path);
 
@@ -503,7 +520,7 @@ export class TestWebhooks implements IWebhookManager {
 				const registrationByKey = await this.registrations.get(key);
 
 				if (runData && webhook.node in runData) {
-					return false;
+					return { nodeNames: [], formTestUrls: [] };
 				}
 
 				// if registration already exists and is not a test webhook created by this user in this workflow throw an error
@@ -555,6 +572,8 @@ export class TestWebhooks implements IWebhookManager {
 					// early and cancels the new registration.
 					if (this.timeouts[key] !== timeout) this.clearTimeout(key);
 					this.timeouts[key] = timeout;
+
+					registeredNodes.add(webhook.node);
 				} catch (error) {
 					await this.deactivateWebhooks(workflow);
 
@@ -564,10 +583,38 @@ export class TestWebhooks implements IWebhookManager {
 				}
 			}
 
-			return true;
+			const formTestUrls = webhooks
+				.filter(
+					(webhook) =>
+						webhook.httpMethod === 'GET' &&
+						workflow.getNode(webhook.node)?.type === FORM_TRIGGER_NODE_TYPE,
+				)
+				.map((webhook) => this.getTestUrl(workflow, webhook, additionalData))
+				.filter((url) => url !== undefined);
+
+			return { nodeNames: [...registeredNodes], formTestUrls };
 		} finally {
 			await workflow.expression.releaseIsolate();
 		}
+	}
+
+	/** Builds the test URL with the helper that nodes use to tell services their webhook URL. */
+	private getTestUrl(
+		workflow: Workflow,
+		webhook: IWebhookData,
+		additionalData: IWorkflowExecuteAdditionalData,
+	) {
+		const node = workflow.getNode(webhook.node);
+		if (!node) return undefined;
+
+		return new HookContext(
+			workflow,
+			node,
+			additionalData,
+			'manual',
+			'manual',
+			webhook,
+		).getNodeWebhookUrl(webhook.webhookDescription.name);
 	}
 
 	async cancelWebhook(workflowId: string) {
@@ -580,7 +627,7 @@ export class TestWebhooks implements IWebhookManager {
 
 			if (!registration) continue;
 
-			const { pushRef, workflowEntity } = registration;
+			const { pushRef, workflowEntity, webhook } = registration;
 
 			const workflow = this.toWorkflow(workflowEntity);
 
@@ -590,7 +637,11 @@ export class TestWebhooks implements IWebhookManager {
 
 			if (pushRef !== undefined) {
 				try {
-					this.push.send({ type: 'testWebhookDeleted', data: { workflowId } }, pushRef);
+					this.push.send(
+						{ type: 'testWebhookDeleted', data: { workflowId } },
+						pushRef,
+						webhook.userId,
+					);
 				} catch {
 					// Could not inform editor, probably is not connected anymore. So simply go on.
 				}

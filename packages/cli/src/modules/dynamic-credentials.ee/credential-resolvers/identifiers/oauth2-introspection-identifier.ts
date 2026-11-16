@@ -8,7 +8,7 @@ import { IdentifierValidationError, ITokenIdentifier } from './identifier-interf
 import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';
 import { assertAudience, OAuth2OptionsSchema, sha256 } from './oauth2-utils';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 // Cap at 5 minutes to ensure periodic revalidation
 const MAX_TOKEN_CACHE_TIMEOUT = 5 * Time.minutes.toMilliseconds;

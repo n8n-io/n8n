@@ -1,6 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
 import type { IDataObject } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import {
 	databricksApiRequest,
@@ -26,7 +26,10 @@ export interface ListJobRunsParams {
 type JobRunsListResponse = { runs?: DatabricksJobRun[]; next_page_token?: string };
 
 function isJobRunsListResponse(value: unknown): value is JobRunsListResponse {
-	return isRecord(value) && (value.runs === undefined || Array.isArray(value.runs));
+	return (
+		isRecord(value) &&
+		(value.runs === undefined || (Array.isArray(value.runs) && value.runs.every(isRecord)))
+	);
 }
 
 function toQuery(params: ListJobRunsParams): IDataObject {
@@ -49,13 +52,17 @@ async function fetchJobRunsPage(
 	host: string,
 	params: ListJobRunsParams,
 ): Promise<Page<DatabricksJobRun>> {
-	const response: unknown = await databricksApiRequest(context, credentialType, {
-		method: 'GET',
-		url: `${host}/api/2.2/jobs/runs/list`,
-		qs: toQuery(params),
-		headers: { Accept: 'application/json' },
-		json: true,
-	});
+	const response: unknown = await databricksApiRequest(
+		context,
+		credentialType,
+		requestUrl`${host}/api/2.2/jobs/runs/list`,
+		{
+			method: 'GET',
+			qs: toQuery(params),
+			headers: { Accept: 'application/json' },
+			json: true,
+		},
+	);
 	if (!isJobRunsListResponse(response)) {
 		throw new NodeOperationError(
 			context.getNode(),

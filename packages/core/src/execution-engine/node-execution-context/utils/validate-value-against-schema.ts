@@ -219,7 +219,10 @@ export const validateValueAgainstSchema = (
 	} else if (
 		propertyDescription.type === 'resourceMapper' &&
 		parameterPath[1] === 'value' &&
-		typeof parameterValue === 'object'
+		typeof parameterValue === 'object' &&
+		// A mapper with no mapped fields stores `value: null` (the resource mapper UI
+		// resets to it when its dependency changes), so there is nothing to validate
+		parameterValue !== null
 	) {
 		validationResult = validateResourceMapperValue(
 			parameterName,

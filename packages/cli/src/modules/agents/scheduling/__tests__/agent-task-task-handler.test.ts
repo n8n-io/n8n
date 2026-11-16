@@ -34,6 +34,7 @@ describe('AgentTaskTaskHandler', () => {
 		status: 'running',
 		attempts: 0,
 		maxAttempts: 1,
+		timeoutSeconds: 300,
 		leaseEpoch: 1,
 		...overrides,
 	});
@@ -89,15 +90,19 @@ describe('AgentTaskTaskHandler', () => {
 		});
 	});
 
-	it('skips the tick without dispatching when the previous run still holds the lock', async () => {
-		agentTaskService.startScheduledRun.mockResolvedValue('skipped-active');
+	it.each(['skipped-active', 'skipped-disabled'] as const)(
+		'completes a %s tick without dispatching or removing the schedule',
+		async (outcome) => {
+			agentTaskService.startScheduledRun.mockResolvedValue(outcome);
 
-		const decision = await handler.execute(buildTask(), report);
+			const decision = await handler.execute(buildTask(), report);
 
-		expect(decision).toBe(report.notDispatched());
-		expect(onDispatch).not.toHaveBeenCalled();
-		expect(registrar.reconcile).not.toHaveBeenCalled();
-	});
+			expect(decision).toBe(report.notDispatched());
+			expect(onDispatch).not.toHaveBeenCalled();
+			expect(registrar.reconcile).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalled();
+		},
+	);
 
 	it('reports dispatched after handing the run off', async () => {
 		const decision = await handler.execute(buildTask(), report);

@@ -14,7 +14,8 @@ import { randomUUID } from 'crypto';
 import type * as express from 'express';
 import type { IncomingMessage } from 'http';
 import type { CredentialCheckResult, Logger } from 'n8n-workflow';
-import { jsonParse, OperationalError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { ExecutionCoordinator } from './execution/ExecutionCoordinator';
 import type { ExecutionStrategy } from './execution/ExecutionStrategy';
@@ -665,6 +666,7 @@ export class McpServer {
 						return MessageFormatter.formatToolResult(
 							result,
 							MessageFormatter.isErrorResult(result),
+							requestedTool?.metadata?.isFromToolkit === true,
 						);
 					}
 
@@ -673,7 +675,11 @@ export class McpServer {
 						messageId: extra.requestId?.toString(),
 					});
 
-					return MessageFormatter.formatToolResult(result, MessageFormatter.isErrorResult(result));
+					return MessageFormatter.formatToolResult(
+						result,
+						MessageFormatter.isErrorResult(result),
+						requestedTool?.metadata?.isFromToolkit === true,
+					);
 				} catch (error) {
 					const errorObject = error instanceof Error ? error : new Error(String(error));
 					this.logger.error(`Error while executing Tool ${toolName}: ${errorObject.message}`, {

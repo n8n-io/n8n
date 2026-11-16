@@ -32,9 +32,9 @@ describe('TypeAvailabilityPolicyProjectController route access scopes', () => {
 		},
 	);
 
-	it('is gated by the node type policies license feature', () => {
+	it('is gated by the type availability policies license feature', () => {
 		for (const { route } of routeCases) {
-			expect(route.licenseFeature).toBe(LICENSE_FEATURES.NODE_TYPE_POLICIES);
+			expect(route.licenseFeature).toBe(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES);
 		}
 	});
 });

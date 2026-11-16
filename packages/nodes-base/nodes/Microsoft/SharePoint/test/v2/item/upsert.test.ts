@@ -1,4 +1,5 @@
 import type { IDataObject, IExecuteFunctions, INode, ResourceMapperValue } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -6,15 +7,15 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 import * as itemActions from '../../../v2/actions/item';
 import { versionDescription } from '../../../v2/actions/versionDescription';
 import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
-import type * as _importType0 from '../../../v2/transport';
-import * as transport from '../../../v2/transport';
+import type * as _importType0 from '../../../transport';
+import * as transport from '../../../transport';
 
 // Real transport module except the network helpers, so getSharePointCredentialType
 // keeps its real behavior. microsoftApiRequestAllItems is stubbed too: the item
 // lookup routes through it, and stubbing it lets a test hand back the matched
 // rows directly (its real paging is covered in lookup.test.ts).
-vi.mock('../../../v2/transport', async () => {
-	const originalModule = await vi.importActual<typeof _importType0>('../../../v2/transport');
+vi.mock('../../../transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../transport');
 	return {
 		...originalModule,
 		microsoftApiRequest: vi.fn(),
@@ -25,7 +26,7 @@ vi.mock('../../../v2/transport', async () => {
 const SITE_ID = 'site1';
 const LIST_ID = 'list1';
 const ITEM_ID = 'item1';
-const ITEMS_PATH = `/v1.0/sites/${SITE_ID}/lists/${LIST_ID}/items`;
+const ITEMS_PATH = requestPath`/v1.0/sites/${SITE_ID}/lists/${LIST_ID}/items`;
 
 const GRAPH_ITEM_REPLY: IDataObject = {
 	id: ITEM_ID,
@@ -107,7 +108,7 @@ describe('Microsoft SharePoint v2 — Item: Create or Update', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'PATCH',
-			`${ITEMS_PATH}/${ITEM_ID}/fields`,
+			requestPath`${ITEMS_PATH}/${ITEM_ID}/fields`,
 			{ Title: 'Title 2' },
 			{},
 			undefined,
@@ -116,7 +117,7 @@ describe('Microsoft SharePoint v2 — Item: Create or Update', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			2,
 			'GET',
-			`${ITEMS_PATH}/${ITEM_ID}`,
+			requestPath`${ITEMS_PATH}/${ITEM_ID}`,
 			{},
 			{ $expand: 'fields' },
 		);
@@ -223,7 +224,7 @@ describe('Microsoft SharePoint v2 — Item: Create or Update', () => {
 		expect(apiRequest).toHaveBeenNthCalledWith(
 			1,
 			'PATCH',
-			`${ITEMS_PATH}/${ITEM_ID}/fields`,
+			requestPath`${ITEMS_PATH}/${ITEM_ID}/fields`,
 			{ Link: { Url: 'https://example.com', Description: 'Example' } },
 			{},
 			undefined,

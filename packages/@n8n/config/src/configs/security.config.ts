@@ -61,7 +61,7 @@ export class SecurityConfig {
 	 * Separate multiple patterns with semicolons. Default blocks `.git`. Set to empty to disable pattern-based blocking.
 	 */
 	@Env('N8N_BLOCK_FILE_PATTERNS')
-	blockFilePatterns: string = '^(?:[^/]*/)*\\.git(?:/.*)?$';
+	blockFilePatterns: string = '(?:^|/)\\.git(?:/|$)';
 
 	/**
 	 * In a [security audit](https://docs.n8n.io/hosting/securing/security-audit/), how many days for a workflow to be considered abandoned if not executed.
@@ -71,7 +71,8 @@ export class SecurityConfig {
 
 	/**
 	 * The [Content-Security-Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) n8n serves
-	 * on its HTML pages, replacing the nonce-based default policy. Two formats are accepted:
+	 * on its responses, except on scripts and on `304 Not Modified`, replacing the nonce-based
+	 * default policy. Webhook, form and MCP endpoint responses do not get it. Two formats are accepted:
 	 *
 	 * - a [helmet.js](https://helmetjs.github.io/#content-security-policy) nested directives object,
 	 *   e.g. `{ "frame-ancestors": ["http://localhost:3000"] }`

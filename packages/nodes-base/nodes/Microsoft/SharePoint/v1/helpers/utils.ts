@@ -7,11 +7,18 @@ import type {
 	JsonObject,
 	ResourceMapperValue,
 } from 'n8n-workflow';
-import { jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import {
+	jsonParse,
+	NodeApiError,
+	NodeOperationError,
+	requestPath,
+	toPathSegment,
+} from 'n8n-workflow';
 
 import { escapeODataValue } from '@utils/query-escaping';
 
 import type { IErrorResponse } from './interfaces';
+import { autoMapInputData } from '../../helpers/utils';
 import { microsoftSharePointApiRequest } from '../transport';
 
 export const escapeFilterValue = escapeODataValue;
@@ -125,6 +132,15 @@ export async function itemColumnsPreSend(
 	const mapperValue = this.getNodeParameter('columns') as ResourceMapperValue;
 	const operation = this.getNodeParameter('operation') as string;
 
+	if (mapperValue.mappingMode === 'autoMapInputData') {
+		mapperValue.value = autoMapInputData(
+			this.getNode(),
+			mapperValue.schema,
+			this.getInputData().json,
+			this.getItemIndex(),
+		) as ResourceMapperValue['value'];
+	}
+
 	if (['upsert', 'update'].includes(operation) && mapperValue.matchingColumns?.length > 0) {
 		if (!mapperValue.matchingColumns.includes('id')) {
 			const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
@@ -133,12 +149,12 @@ export async function itemColumnsPreSend(
 			const response = await microsoftSharePointApiRequest.call(
 				this,
 				'GET',
-				`/sites/${site}/lists/${list}/items`,
+				requestPath`/sites/${site}/lists/${list}/items`,
 				{},
 				{
 					$filter: mapperValue.matchingColumns
-						.map((x) => `fields/${x} eq '${mapperValue.value![x]}'`)
-						.join(' and'),
+						.map((x) => `fields/${x} eq '${escapeFilterValue(mapperValue.value![x])}'`)
+						.join(' and '),
 				},
 				{
 					Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly',
@@ -162,13 +178,13 @@ export async function itemColumnsPreSend(
 						},
 					);
 				}
-				requestOptions.url += '/' + mapperValue.value.id;
+				requestOptions.url += '/' + toPathSegment(mapperValue.value.id);
 				delete mapperValue.value.id;
 				requestOptions.method = 'PATCH';
 			}
 		} else if (operation === 'update') {
 			if (mapperValue.matchingColumns.includes('id') && mapperValue.value?.id) {
-				requestOptions.url += '/' + mapperValue.value.id;
+				requestOptions.url += '/' + toPathSegment(mapperValue.value.id);
 				delete mapperValue.value.id;
 			} else {
 				throw new NodeOperationError(

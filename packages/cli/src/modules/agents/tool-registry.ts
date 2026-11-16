@@ -19,6 +19,8 @@ export interface ToolRegistryEntry {
 
 export type ToolRegistry = Map<string, ToolRegistryEntry>;
 
+export type ReferencedToolKind = Exclude<ToolRegistryEntry['kind'], 'tool'>;
+
 /**
  * Build a registry mapping tool name -> { kind, workflowId?, workflowName?, triggerType? }.
  * Reads metadata attached to each BuiltTool (populated by workflow-tool-factory for workflow tools).

@@ -3,15 +3,19 @@ import {
 	type IExecuteFunctions,
 	type IDataObject,
 	NodeOperationError,
+	requestPath,
 } from 'n8n-workflow';
 
 import { escapeODataValue } from '@utils/query-escaping';
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { throwIfChatUnsupported } from './sharedGuard';
 import { stampItemIndexOnError, validateUserTargetId } from '../../../../GenericFunctions';
 import { userRLC } from '../../descriptions';
-import { resolveUserTarget, userTargetMessages } from '../../helpers/utils';
+import {
+	aadUserConversationMember,
+	resolveUserTarget,
+	userTargetMessages,
+} from '../../helpers/utils';
 import { getGraphBaseUrl, microsoftApiRequest, SP_HIDE } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -116,9 +120,6 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number) {
 	// https://learn.microsoft.com/en-us/graph/api/chat-post?view=graph-rest-1.0
 
-	// App-only Graph has no signed-in user to create a chat for; fail before any request.
-	throwIfChatUnsupported.call(this);
-
 	const node = this.getNode();
 	const chatType = this.getNodeParameter('chatType', i) as 'oneOnOne' | 'group';
 	// The `''` fallback is required: `Workflow` strips hidden parameters before execution,
@@ -153,7 +154,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const me = (await microsoftApiRequest.call(
 		this,
 		'GET',
-		'/v1.0/me',
+		requestPath`/v1.0/me`,
 		{},
 		// `userType` is not in the default `/me` property set, so it has to be selected. The
 		// principal name is the dedupe seed below, so it has to come along.
@@ -200,7 +201,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 				id = value;
 			} else {
 				const user = await resolveUserTarget.call(this, value, i, label);
-				id = user.id as string;
+				id = user.id;
 			}
 
 			const key = id.toLowerCase();
@@ -239,11 +240,12 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const baseUrl = await getGraphBaseUrl.call(this);
 
 	const toMember = (member: { id: string; role: string; tenantId?: string }) => ({
-		'@odata.type': '#microsoft.graph.aadUserConversationMember',
-		roles: [member.role],
 		// Two escaping layers hold this bind: percent-encode the id for the URL (a B2B guest UPN
 		// truncates at its `#` otherwise), then double any quote for the OData literal.
-		'user@odata.bind': `${baseUrl}/v1.0/users('${escapeODataValue(encodeURIComponent(member.id))}')`,
+		...aadUserConversationMember(
+			`${baseUrl}/v1.0/users('${escapeODataValue(encodeURIComponent(member.id))}')`,
+			member.role,
+		),
 		...(member.tenantId ? { tenantId: member.tenantId } : {}),
 	});
 
@@ -254,5 +256,5 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	// Graph rejects a topic on a one-on-one chat.
 	if (chatType === 'group' && topic) body.topic = topic;
 
-	return await microsoftApiRequest.call(this, 'POST', '/v1.0/chats', body);
+	return await microsoftApiRequest.call(this, 'POST', requestPath`/v1.0/chats`, body);
 }

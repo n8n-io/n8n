@@ -6,6 +6,11 @@ import * as utilities from '../../../../utils/utilities';
 import { Github } from '../../Github.node';
 import type * as _importType0 from '../../../../utils/utilities';
 
+vi.mock('../../../../utils/utilities', async () => ({
+	...(await vi.importActual<typeof _importType0>('../../../../utils/utilities')),
+	getFileSha: vi.fn().mockResolvedValue('mockedSHA'),
+}));
+
 describe('Test Github Node', () => {
 	describe('Workflow Dispatch', () => {
 		const now = 1683028800000;
@@ -88,10 +93,6 @@ describe('Test Github Node', () => {
 				};
 
 				vi.spyOn(utilities, 'removeTrailingSlash');
-				vi.mock('../../../../utils/utilities', async () => ({
-					...(await vi.importActual<typeof _importType0>('../../../../utils/utilities')),
-					getFileSha: vi.fn().mockResolvedValue('mockedSHA'),
-				}));
 			});
 
 			it('should call remove trailing slash', async () => {
@@ -124,7 +125,9 @@ describe('Test Github Node', () => {
 						json: true,
 						method: 'GET',
 						qs: {},
-						uri: 'https://api.github.com/repos/me/repo/contents/path%2Fto%2Ffile',
+						uri: expect.objectContaining({
+							value: 'https://api.github.com/repos/me/repo/contents/path%2Fto%2Ffile',
+						}),
 					},
 				);
 			});
@@ -179,7 +182,7 @@ describe('Test Github Node', () => {
 					requestWithAuthentication: vi
 						.fn()
 						.mockImplementation(async (_credentialType, options) => {
-							if (options.uri.includes('dispatches') && options.method === 'POST') {
+							if (String(options.uri).includes('dispatches') && options.method === 'POST') {
 								const error: any = new Error('Not Found');
 								error.statusCode = 404;
 								error.message = 'Not Found';
@@ -360,9 +363,11 @@ describe('Test Github Node', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'POST',
-					uri: expect.stringContaining(
-						`/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`,
-					),
+					uri: expect.objectContaining({
+						value: expect.stringContaining(
+							`/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`,
+						),
+					}),
 					body: expect.objectContaining({
 						ref: 'main',
 						inputs: expect.objectContaining({
@@ -435,7 +440,9 @@ describe('Test Github Node', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'PUT',
-					uri: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/disable`,
+					uri: expect.objectContaining({
+						value: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/disable`,
+					}),
 				}),
 			);
 		});
@@ -477,7 +484,9 @@ describe('Test Github Node', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'PUT',
-					uri: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/enable`,
+					uri: expect.objectContaining({
+						value: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/enable`,
+					}),
 				}),
 			);
 		});
@@ -519,7 +528,9 @@ describe('Test Github Node', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'GET',
-					uri: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}`,
+					uri: expect.objectContaining({
+						value: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}`,
+					}),
 				}),
 			);
 		});
@@ -561,7 +572,9 @@ describe('Test Github Node', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'GET',
-					uri: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/timing`,
+					uri: expect.objectContaining({
+						value: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/timing`,
+					}),
 				}),
 			);
 		});
@@ -641,7 +654,7 @@ describe('Test Github Node', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://api.github.com/issues',
+					uri: expect.objectContaining({ value: 'https://api.github.com/issues' }),
 					qs: expect.not.objectContaining({ state: 'closed' }),
 				}),
 			);
@@ -667,7 +680,7 @@ describe('Test Github Node', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://api.github.com/issues',
+					uri: expect.objectContaining({ value: 'https://api.github.com/issues' }),
 					qs: expect.objectContaining({ state: 'closed' }),
 				}),
 			);
@@ -693,7 +706,7 @@ describe('Test Github Node', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://api.github.com/issues',
+					uri: expect.objectContaining({ value: 'https://api.github.com/issues' }),
 					qs: expect.objectContaining({ labels: 'bug' }),
 				}),
 			);

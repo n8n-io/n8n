@@ -3,6 +3,7 @@ import {
 	type INodeExecutionData,
 	type INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { requestAllFiles } from './helpers';
 import { wrapData } from '../../../../utils/utilities';
@@ -73,7 +74,7 @@ export async function execute(
 	const sessionIds = this.getNodeParameter('sessionIds', index, '') as string;
 	const outputSingleItem = this.getNodeParameter('outputSingleItem', index, true) as boolean;
 
-	const endpoint = '/files';
+	const endpoint = requestPath`/files`;
 	let files: IAirtopResponse[] = [];
 
 	const responseData = returnAll
@@ -88,7 +89,7 @@ export async function execute(
 	 * Returns the files in one of two formats:
 	 * - A single JSON item containing an array of all files (when outputSingleItem = true)
 	 * - Multiple JSON items, one per file
-	 * Data structure reference: https://docs.n8n.io/courses/level-two/chapter-1/#data-structure-of-n8n
+	 * Data structure reference: https://docs.n8n.io/build/work-with-data/understand-n8ns-data-structure
 	 */
 	if (outputSingleItem) {
 		return this.helpers.returnJsonArray({ ...responseData });

@@ -1,46 +1,20 @@
-import type { AiPreferenceScope, AiPreferenceUserDto } from '@n8n/api-types';
-import {
-	aiPreferenceScopeOf,
-	CONTEXT_PREFERENCES_ENABLED_VARIANT,
-	CONTEXT_PREFERENCES_FLAG,
+import type {
+	AiPreferenceScope,
+	AiPreferenceSortOption,
+	AiPreferenceUserDto,
 } from '@n8n/api-types';
+import { AI_PREFERENCES_SORT_OPTIONS, aiPreferenceScopeOf } from '@n8n/api-types';
+import type { TableOptions } from '@n8n/design-system';
 import { getResourcePermissions } from '@n8n/permissions';
+import { ResponseError } from '@n8n/rest-api-client';
 
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 
+import { CONTEXT_DEFAULT_SORT_BY } from './context.constants';
 import type { Preference, PreferencePermissions } from './context.types';
-
-/**
- * Multivariate flag: only `variant` enables the surface.
- * Local override: `window.featureFlags.override('111_context_preferences', 'variant')`
- */
-export function isContextPreferencesEnabled(): boolean {
-	return usePostHog().isVariantEnabled(
-		CONTEXT_PREFERENCES_FLAG,
-		CONTEXT_PREFERENCES_ENABLED_VARIANT,
-	);
-}
-
-const FLAG_WAIT_TIMEOUT_MS = 3000;
-
-/** Waits for a pending client-side flag evaluation before a deep link fails closed. */
-export async function isContextPreferencesEnabledOnceEvaluated(): Promise<boolean> {
-	const posthog = usePostHog();
-	if (posthog.hasPendingFeatureFlags()) {
-		let timeoutId: number | undefined;
-		await Promise.race([
-			posthog.waitForFeatureFlags(),
-			new Promise<void>((resolve) => {
-				timeoutId = window.setTimeout(resolve, FLAG_WAIT_TIMEOUT_MS);
-			}),
-		]);
-		if (timeoutId !== undefined) window.clearTimeout(timeoutId);
-	}
-	return isContextPreferencesEnabled();
-}
 
 export function preferenceScope(row: Pick<Preference, 'userId' | 'projectId'>): AiPreferenceScope {
 	return aiPreferenceScopeOf(row);
@@ -82,6 +56,31 @@ export function preferenceUserName(user: AiPreferenceUserDto | null): string {
 	return fullName || user.email || '';
 }
 
+/** The table sort as a list endpoint takes it. A column the endpoint cannot sort is dropped. */
+export function toSortOption<T extends string>(
+	sortBy: TableOptions['sortBy'],
+	options: readonly T[],
+): T | undefined {
+	const [sort] = sortBy.length > 0 ? sortBy : CONTEXT_DEFAULT_SORT_BY;
+	const option = `${sort.id}:${sort.desc ? 'desc' : 'asc'}`;
+	return options.find((candidate) => candidate === option);
+}
+
+export function toPreferenceSortOption(
+	sortBy: TableOptions['sortBy'],
+): AiPreferenceSortOption | undefined {
+	return toSortOption(sortBy, AI_PREFERENCES_SORT_OPTIONS);
+}
+
+/** A third click on a sorted column turns its order around instead of clearing the sort. */
+export function keepSortOnClear(
+	previous: TableOptions['sortBy'],
+	next: TableOptions['sortBy'],
+): TableOptions['sortBy'] {
+	const [last] = previous;
+	return next.length > 0 || !last ? next : [{ id: last.id, desc: !last.desc }];
+}
+
 /** The API reports row scopes in the `aiPreference` namespace whatever granted them. */
 export function toPreferencePermissions(row: Preference): PreferencePermissions {
 	const permissions = getResourcePermissions(row.scopes).aiPreference;
@@ -102,4 +101,47 @@ export function canWriteProjectScope(projectId: string | null | undefined): bool
 export function canWriteInstanceScope(): boolean {
 	const { currentUser } = useUsersStore();
 	return getResourcePermissions(currentUser?.globalScopes).aiPreference?.create === true;
+}
+
+/* The same two checks for skills, which have their own scopes. */
+
+export function canWriteProjectSkillScope(projectId: string | null | undefined): boolean {
+	if (!projectId) return false;
+	const project = useProjectsStore().myProjects.find((candidate) => candidate.id === projectId);
+	return getResourcePermissions(project?.scopes).projectSkill?.create === true;
+}
+
+export function canWriteInstanceSkillScope(): boolean {
+	const { currentUser } = useUsersStore();
+	return getResourcePermissions(currentUser?.globalScopes).skill?.create === true;
+}
+
+/**
+ * Skills are on while the agents module is on. The skills module cannot be
+ * disabled then. The skills routes answer 404 while skills are off.
+ */
+export function isContextSkillsEnabled(): boolean {
+	return useSettingsStore().isModuleActive('agents');
+}
+
+/** The service builds the cap message from the scope and the number, so match the fixed part. */
+const SCOPE_FULL_MESSAGE = 'cannot hold more than';
+
+/**
+ * Why a save from the settings page did not land, in the same words the assistant surfaces use.
+ * The status is what the service throws: 409 for the duplicate check, 403 for a scope the user
+ * may not write. A 400 covers the per-scope cap and several malformed requests alike, so only
+ * the cap message counts as `scope_full`. Anything else is `failed`, which keeps a form bug out
+ * of the number that reviews the cap.
+ */
+export function preferenceWriteRejectionReason(
+	error: unknown,
+): 'duplicate' | 'scope_full' | 'not_permitted' | 'failed' {
+	if (!(error instanceof ResponseError)) return 'failed';
+	if (error.httpStatusCode === 409) return 'duplicate';
+	if (error.httpStatusCode === 403) return 'not_permitted';
+	if (error.httpStatusCode === 400 && error.message.includes(SCOPE_FULL_MESSAGE)) {
+		return 'scope_full';
+	}
+	return 'failed';
 }

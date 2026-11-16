@@ -5,12 +5,14 @@ import { Memoized } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { toResult } from '@n8n/utils/result';
 import { createHash, randomBytes } from 'crypto';
-import { UserError, jsonParse, ALPHABET } from 'n8n-workflow';
+import { jsonParse, ALPHABET } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { customAlphabet } from 'nanoid';
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'path';
 
+import { instanceTypeFromArgv } from './instance-type';
 import { WorkerMissingEncryptionKey } from './worker-missing-encryption-key.error';
 
 const nanoid = customAlphabet(ALPHABET, 16);
@@ -34,13 +36,8 @@ type Settings = ReadOnlySettings & WritableSettings;
  * package dependency: `@n8n/db` depends on `n8n-core` at runtime.
  */
 export type DeploymentStateRepo = {
-	findActiveByType(type: string): Promise<{ value: string } | null>;
-	insertOrIgnore(entity: {
-		type: string;
-		value: string;
-		status: string;
-		algorithm: null;
-	}): Promise<void>;
+	findActiveIdentifier(type: string): Promise<{ value: string } | null>;
+	seedActiveIdentifier(type: string, value: string): Promise<void>;
 	findActiveSigningSecret(type: string, opts?: { rewrapLegacy?: boolean }): Promise<string | null>;
 	seedSigningSecret(type: string, secret: string): Promise<void>;
 };
@@ -102,8 +99,7 @@ export class InstanceSettings {
 		private readonly config: InstanceSettingsConfig,
 		private readonly logger: Logger,
 	) {
-		const command = process.argv[2] as InstanceType;
-		this.instanceType = ['webhook', 'worker'].includes(command) ? command : 'main';
+		this.instanceType = instanceTypeFromArgv(process.argv);
 
 		this.hostId = `${this.instanceType}-${this.isDocker ? os.hostname() : nanoid()}`;
 		this.settings = this.loadOrCreate();
@@ -165,14 +161,14 @@ export class InstanceSettings {
 			set(envValue);
 			return;
 		}
-		const existing = await repo.findActiveByType(type);
+		const existing = await repo.findActiveIdentifier(type);
 		if (existing) {
 			set(existing.value);
 			return;
 		}
 		if (!canSeed) return;
-		await repo.insertOrIgnore({ type, value: get(), status: 'active', algorithm: null });
-		const winner = await repo.findActiveByType(type);
+		await repo.seedActiveIdentifier(type, get());
+		const winner = await repo.findActiveIdentifier(type);
 		if (winner) set(winner.value);
 	}
 
@@ -336,7 +332,7 @@ export class InstanceSettings {
 
 			if (encryptionKeyFromEnv && encryptionKey !== encryptionKeyFromEnv) {
 				throw new UserError(
-					`Mismatching encryption keys. The encryption key in the settings file ${this.settingsFile} does not match the N8N_ENCRYPTION_KEY env var. Please make sure both keys match. More information: https://docs.n8n.io/hosting/environment-variables/configuration-methods/#encryption-key`,
+					`Mismatching encryption keys. The encryption key in the settings file ${this.settingsFile} does not match the N8N_ENCRYPTION_KEY env var. Please make sure both keys match. More information: https://docs.n8n.io/deploy/host-n8n/configure-n8n/basic-configuration/configuration-examples/set-a-custom-encryption-key`,
 				);
 			}
 
