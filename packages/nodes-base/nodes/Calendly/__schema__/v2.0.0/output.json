@@ -24,13 +24,13 @@
 					"type": "string"
 				},
 				"first_name": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"invitee_scheduled_by": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"last_name": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"name": {
 					"type": "string"
@@ -46,7 +46,7 @@
 								"type": "string"
 							},
 							"position": {
-								"type": "integer"
+								"type": "number"
 							},
 							"question": {
 								"type": "string"
@@ -64,7 +64,7 @@
 					"type": "boolean"
 				},
 				"routing_form_submission": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"scheduled_event": {
 					"properties": {
@@ -101,13 +101,13 @@
 						"invitees_counter": {
 							"properties": {
 								"active": {
-									"type": "integer"
+									"type": "number"
 								},
 								"limit": {
-									"type": "integer"
+									"type": "number"
 								},
 								"total": {
-									"type": "integer"
+									"type": "number"
 								}
 							},
 							"type": "object"
@@ -115,7 +115,7 @@
 						"location": {
 							"properties": {
 								"join_url": {
-									"type": "string"
+									"type": ["null", "string"]
 								},
 								"status": {
 									"type": "string"
@@ -147,7 +147,7 @@
 					"type": "object"
 				},
 				"scheduling_method": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"status": {
 					"type": "string"
@@ -160,14 +160,14 @@
 					"properties": {
 						"salesforce_uuid": {},
 						"utm_campaign": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"utm_content": {},
 						"utm_medium": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"utm_source": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"utm_term": {}
 					},

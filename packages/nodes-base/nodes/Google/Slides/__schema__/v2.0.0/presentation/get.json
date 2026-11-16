@@ -39,13 +39,13 @@
 															"type": "number"
 														},
 														"leftOffset": {
-															"type": ["integer", "number"]
+															"type": "number"
 														},
 														"rightOffset": {
 															"type": "number"
 														},
 														"topOffset": {
-															"type": ["integer", "number"]
+															"type": "number"
 														}
 													},
 													"type": "object"
@@ -60,7 +60,7 @@
 																"solidFill": {
 																	"properties": {
 																		"alpha": {
-																			"type": "integer"
+																			"type": "number"
 																		},
 																		"color": {
 																			"properties": {
@@ -82,7 +82,7 @@
 														"weight": {
 															"properties": {
 																"magnitude": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"unit": {
 																	"type": "string"
@@ -99,7 +99,7 @@
 															"type": "string"
 														},
 														"alpha": {
-															"type": "integer"
+															"type": "number"
 														},
 														"blurRadius": {
 															"properties": {
@@ -126,10 +126,10 @@
 														"transform": {
 															"properties": {
 																"scaleX": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"scaleY": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"unit": {
 																	"type": "string"
@@ -149,7 +149,7 @@
 										"placeholder": {
 											"properties": {
 												"index": {
-													"type": "integer"
+													"type": "number"
 												},
 												"type": {
 													"type": "string"
@@ -168,7 +168,7 @@
 										"placeholder": {
 											"properties": {
 												"index": {
-													"type": "integer"
+													"type": "number"
 												},
 												"parentObjectId": {
 													"type": "string"
@@ -187,7 +187,7 @@
 															"type": "string"
 														},
 														"fontScale": {
-															"type": "integer"
+															"type": "number"
 														}
 													},
 													"type": "object"
@@ -205,7 +205,7 @@
 																"solidFill": {
 																	"properties": {
 																		"alpha": {
-																			"type": "integer"
+																			"type": "number"
 																		},
 																		"color": {
 																			"properties": {
@@ -227,7 +227,7 @@
 														"weight": {
 															"properties": {
 																"magnitude": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"unit": {
 																	"type": "string"
@@ -244,7 +244,7 @@
 															"type": "string"
 														},
 														"alpha": {
-															"type": ["integer", "number"]
+															"type": "number"
 														},
 														"blurRadius": {
 															"properties": {
@@ -271,10 +271,10 @@
 														"transform": {
 															"properties": {
 																"scaleX": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"scaleY": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"unit": {
 																	"type": "string"
@@ -296,7 +296,7 @@
 														"solidFill": {
 															"properties": {
 																"alpha": {
-																	"type": ["integer", "number"]
+																	"type": "number"
 																},
 																"color": {
 																	"properties": {
@@ -342,7 +342,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -383,7 +383,7 @@
 																									"type": "string"
 																								},
 																								"weight": {
-																									"type": "integer"
+																									"type": "number"
 																								}
 																							},
 																							"type": "object"
@@ -404,7 +404,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -455,7 +455,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -506,7 +506,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -557,7 +557,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -608,7 +608,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -659,7 +659,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -710,7 +710,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -761,7 +761,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -829,7 +829,7 @@
 																"type": "object"
 															},
 															"endIndex": {
-																"type": "integer"
+																"type": "number"
 															},
 															"paragraphMarker": {
 																"properties": {
@@ -845,7 +845,7 @@
 																				"type": "string"
 																			},
 																			"nestingLevel": {
-																				"type": "integer"
+																				"type": "number"
 																			}
 																		},
 																		"type": "object"
@@ -859,7 +859,7 @@
 																				"type": "string"
 																			},
 																			"lineSpacing": {
-																				"type": ["integer", "number"]
+																				"type": "number"
 																			},
 																			"spaceBelow": {
 																				"properties": {
@@ -879,7 +879,7 @@
 																"type": "object"
 															},
 															"startIndex": {
-																"type": "integer"
+																"type": "number"
 															},
 															"textRun": {
 																"properties": {
@@ -894,7 +894,7 @@
 																			"fontSize": {
 																				"properties": {
 																					"magnitude": {
-																						"type": ["integer", "number"]
+																						"type": "number"
 																					},
 																					"unit": {
 																						"type": "string"
@@ -951,7 +951,7 @@
 										"height": {
 											"properties": {
 												"magnitude": {
-													"type": "integer"
+													"type": "number"
 												},
 												"unit": {
 													"type": "string"
@@ -962,7 +962,7 @@
 										"width": {
 											"properties": {
 												"magnitude": {
-													"type": "integer"
+													"type": "number"
 												},
 												"unit": {
 													"type": "string"
@@ -982,10 +982,10 @@
 											"type": "number"
 										},
 										"translateX": {
-											"type": ["integer", "number"]
+											"type": "number"
 										},
 										"translateY": {
-											"type": ["integer", "number"]
+											"type": "number"
 										},
 										"unit": {
 											"type": "string"
@@ -1060,7 +1060,7 @@
 															"type": "string"
 														},
 														"fontScale": {
-															"type": "integer"
+															"type": "number"
 														}
 													},
 													"type": "object"
@@ -1078,7 +1078,7 @@
 																"solidFill": {
 																	"properties": {
 																		"alpha": {
-																			"type": "integer"
+																			"type": "number"
 																		},
 																		"color": {
 																			"properties": {
@@ -1100,7 +1100,7 @@
 														"weight": {
 															"properties": {
 																"magnitude": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"unit": {
 																	"type": "string"
@@ -1117,7 +1117,7 @@
 															"type": "string"
 														},
 														"alpha": {
-															"type": "integer"
+															"type": "number"
 														},
 														"blurRadius": {
 															"properties": {
@@ -1144,10 +1144,10 @@
 														"transform": {
 															"properties": {
 																"scaleX": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"scaleY": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"unit": {
 																	"type": "string"
@@ -1169,20 +1169,20 @@
 														"solidFill": {
 															"properties": {
 																"alpha": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"color": {
 																	"properties": {
 																		"rgbColor": {
 																			"properties": {
 																				"blue": {
-																					"type": ["integer", "number"]
+																					"type": "number"
 																				},
 																				"green": {
-																					"type": ["integer", "number"]
+																					"type": "number"
 																				},
 																				"red": {
-																					"type": "integer"
+																					"type": "number"
 																				}
 																			},
 																			"type": "object"
@@ -1232,7 +1232,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -1271,7 +1271,7 @@
 																									"type": "string"
 																								},
 																								"weight": {
-																									"type": "integer"
+																									"type": "number"
 																								}
 																							},
 																							"type": "object"
@@ -1301,7 +1301,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -1340,7 +1340,7 @@
 																									"type": "string"
 																								},
 																								"weight": {
-																									"type": "integer"
+																									"type": "number"
 																								}
 																							},
 																							"type": "object"
@@ -1370,7 +1370,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -1409,7 +1409,7 @@
 																									"type": "string"
 																								},
 																								"weight": {
-																									"type": "integer"
+																									"type": "number"
 																								}
 																							},
 																							"type": "object"
@@ -1439,7 +1439,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -1478,7 +1478,7 @@
 																									"type": "string"
 																								},
 																								"weight": {
-																									"type": "integer"
+																									"type": "number"
 																								}
 																							},
 																							"type": "object"
@@ -1508,7 +1508,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -1547,7 +1547,7 @@
 																									"type": "string"
 																								},
 																								"weight": {
-																									"type": "integer"
+																									"type": "number"
 																								}
 																							},
 																							"type": "object"
@@ -1577,7 +1577,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -1616,7 +1616,7 @@
 																									"type": "string"
 																								},
 																								"weight": {
-																									"type": "integer"
+																									"type": "number"
 																								}
 																							},
 																							"type": "object"
@@ -1646,7 +1646,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -1685,7 +1685,7 @@
 																									"type": "string"
 																								},
 																								"weight": {
-																									"type": "integer"
+																									"type": "number"
 																								}
 																							},
 																							"type": "object"
@@ -1715,7 +1715,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -1754,7 +1754,7 @@
 																									"type": "string"
 																								},
 																								"weight": {
-																									"type": "integer"
+																									"type": "number"
 																								}
 																							},
 																							"type": "object"
@@ -1784,7 +1784,7 @@
 																						"fontSize": {
 																							"properties": {
 																								"magnitude": {
-																									"type": ["integer", "number"]
+																									"type": "number"
 																								},
 																								"unit": {
 																									"type": "string"
@@ -1823,7 +1823,7 @@
 																									"type": "string"
 																								},
 																								"weight": {
-																									"type": "integer"
+																									"type": "number"
 																								}
 																							},
 																							"type": "object"
@@ -1868,7 +1868,7 @@
 																			"fontSize": {
 																				"properties": {
 																					"magnitude": {
-																						"type": ["integer", "number"]
+																						"type": "number"
 																					},
 																					"unit": {
 																						"type": "string"
@@ -1879,6 +1879,7 @@
 																			"foregroundColor": {
 																				"properties": {
 																					"opaqueColor": {
+																						"additionalProperties": true,
 																						"properties": {
 																							"themeColor": {
 																								"type": "string"
@@ -1907,7 +1908,7 @@
 																						"type": "string"
 																					},
 																					"weight": {
-																						"type": "integer"
+																						"type": "number"
 																					}
 																				},
 																				"type": "object"
@@ -1922,7 +1923,7 @@
 																"type": "object"
 															},
 															"endIndex": {
-																"type": "integer"
+																"type": "number"
 															},
 															"paragraphMarker": {
 																"properties": {
@@ -1938,7 +1939,7 @@
 																				"type": "string"
 																			},
 																			"nestingLevel": {
-																				"type": "integer"
+																				"type": "number"
 																			}
 																		},
 																		"type": "object"
@@ -1976,7 +1977,7 @@
 																				"type": "object"
 																			},
 																			"lineSpacing": {
-																				"type": "integer"
+																				"type": "number"
 																			},
 																			"spaceAbove": {
 																				"properties": {
@@ -1989,7 +1990,7 @@
 																			"spaceBelow": {
 																				"properties": {
 																					"magnitude": {
-																						"type": ["integer", "number"]
+																						"type": "number"
 																					},
 																					"unit": {
 																						"type": "string"
@@ -2007,7 +2008,7 @@
 																"type": "object"
 															},
 															"startIndex": {
-																"type": "integer"
+																"type": "number"
 															},
 															"textRun": {
 																"properties": {
@@ -2031,7 +2032,7 @@
 																			"fontSize": {
 																				"properties": {
 																					"magnitude": {
-																						"type": ["integer", "number"]
+																						"type": "number"
 																					},
 																					"unit": {
 																						"type": "string"
@@ -2070,7 +2071,7 @@
 																						"type": "string"
 																					},
 																					"weight": {
-																						"type": "integer"
+																						"type": "number"
 																					}
 																				},
 																				"type": "object"
@@ -2097,7 +2098,7 @@
 										"height": {
 											"properties": {
 												"magnitude": {
-													"type": "integer"
+													"type": "number"
 												},
 												"unit": {
 													"type": "string"
@@ -2108,7 +2109,7 @@
 										"width": {
 											"properties": {
 												"magnitude": {
-													"type": "integer"
+													"type": "number"
 												},
 												"unit": {
 													"type": "string"
@@ -2128,10 +2129,10 @@
 											"type": "number"
 										},
 										"translateX": {
-											"type": ["integer", "number"]
+											"type": "number"
 										},
 										"translateY": {
-											"type": ["integer", "number"]
+											"type": "number"
 										},
 										"unit": {
 											"type": "string"
@@ -2154,13 +2155,13 @@
 												"color": {
 													"properties": {
 														"blue": {
-															"type": ["integer", "number"]
+															"type": "number"
 														},
 														"green": {
-															"type": ["integer", "number"]
+															"type": "number"
 														},
 														"red": {
-															"type": ["integer", "number"]
+															"type": "number"
 														}
 													},
 													"type": "object"
@@ -2181,7 +2182,7 @@
 									"solidFill": {
 										"properties": {
 											"alpha": {
-												"type": "integer"
+												"type": "number"
 											},
 											"color": {
 												"properties": {
@@ -2224,7 +2225,7 @@
 									"placeholder": {
 										"properties": {
 											"index": {
-												"type": "integer"
+												"type": "number"
 											},
 											"type": {
 												"type": "string"
@@ -2240,7 +2241,7 @@
 														"type": "string"
 													},
 													"fontScale": {
-														"type": "integer"
+														"type": "number"
 													}
 												},
 												"type": "object"
@@ -2258,7 +2259,7 @@
 															"solidFill": {
 																"properties": {
 																	"alpha": {
-																		"type": "integer"
+																		"type": "number"
 																	},
 																	"color": {
 																		"properties": {
@@ -2280,7 +2281,7 @@
 													"weight": {
 														"properties": {
 															"magnitude": {
-																"type": "integer"
+																"type": "number"
 															},
 															"unit": {
 																"type": "string"
@@ -2297,7 +2298,7 @@
 														"type": "string"
 													},
 													"alpha": {
-														"type": "integer"
+														"type": "number"
 													},
 													"blurRadius": {
 														"properties": {
@@ -2324,10 +2325,10 @@
 													"transform": {
 														"properties": {
 															"scaleX": {
-																"type": "integer"
+																"type": "number"
 															},
 															"scaleY": {
-																"type": "integer"
+																"type": "number"
 															},
 															"unit": {
 																"type": "string"
@@ -2349,20 +2350,20 @@
 													"solidFill": {
 														"properties": {
 															"alpha": {
-																"type": "integer"
+																"type": "number"
 															},
 															"color": {
 																"properties": {
 																	"rgbColor": {
 																		"properties": {
 																			"blue": {
-																				"type": "integer"
+																				"type": "number"
 																			},
 																			"green": {
-																				"type": "integer"
+																				"type": "number"
 																			},
 																			"red": {
-																				"type": "integer"
+																				"type": "number"
 																			}
 																		},
 																		"type": "object"
@@ -2412,7 +2413,7 @@
 																					"fontSize": {
 																						"properties": {
 																							"magnitude": {
-																								"type": "integer"
+																								"type": "number"
 																							},
 																							"unit": {
 																								"type": "string"
@@ -2451,7 +2452,7 @@
 																								"type": "string"
 																							},
 																							"weight": {
-																								"type": "integer"
+																								"type": "number"
 																							}
 																						},
 																						"type": "object"
@@ -2481,7 +2482,7 @@
 																					"fontSize": {
 																						"properties": {
 																							"magnitude": {
-																								"type": "integer"
+																								"type": "number"
 																							},
 																							"unit": {
 																								"type": "string"
@@ -2520,7 +2521,7 @@
 																								"type": "string"
 																							},
 																							"weight": {
-																								"type": "integer"
+																								"type": "number"
 																							}
 																						},
 																						"type": "object"
@@ -2550,7 +2551,7 @@
 																					"fontSize": {
 																						"properties": {
 																							"magnitude": {
-																								"type": "integer"
+																								"type": "number"
 																							},
 																							"unit": {
 																								"type": "string"
@@ -2589,7 +2590,7 @@
 																								"type": "string"
 																							},
 																							"weight": {
-																								"type": "integer"
+																								"type": "number"
 																							}
 																						},
 																						"type": "object"
@@ -2619,7 +2620,7 @@
 																					"fontSize": {
 																						"properties": {
 																							"magnitude": {
-																								"type": "integer"
+																								"type": "number"
 																							},
 																							"unit": {
 																								"type": "string"
@@ -2658,7 +2659,7 @@
 																								"type": "string"
 																							},
 																							"weight": {
-																								"type": "integer"
+																								"type": "number"
 																							}
 																						},
 																						"type": "object"
@@ -2688,7 +2689,7 @@
 																					"fontSize": {
 																						"properties": {
 																							"magnitude": {
-																								"type": "integer"
+																								"type": "number"
 																							},
 																							"unit": {
 																								"type": "string"
@@ -2727,7 +2728,7 @@
 																								"type": "string"
 																							},
 																							"weight": {
-																								"type": "integer"
+																								"type": "number"
 																							}
 																						},
 																						"type": "object"
@@ -2757,7 +2758,7 @@
 																					"fontSize": {
 																						"properties": {
 																							"magnitude": {
-																								"type": "integer"
+																								"type": "number"
 																							},
 																							"unit": {
 																								"type": "string"
@@ -2796,7 +2797,7 @@
 																								"type": "string"
 																							},
 																							"weight": {
-																								"type": "integer"
+																								"type": "number"
 																							}
 																						},
 																						"type": "object"
@@ -2826,7 +2827,7 @@
 																					"fontSize": {
 																						"properties": {
 																							"magnitude": {
-																								"type": "integer"
+																								"type": "number"
 																							},
 																							"unit": {
 																								"type": "string"
@@ -2865,7 +2866,7 @@
 																								"type": "string"
 																							},
 																							"weight": {
-																								"type": "integer"
+																								"type": "number"
 																							}
 																						},
 																						"type": "object"
@@ -2895,7 +2896,7 @@
 																					"fontSize": {
 																						"properties": {
 																							"magnitude": {
-																								"type": "integer"
+																								"type": "number"
 																							},
 																							"unit": {
 																								"type": "string"
@@ -2934,7 +2935,7 @@
 																								"type": "string"
 																							},
 																							"weight": {
-																								"type": "integer"
+																								"type": "number"
 																							}
 																						},
 																						"type": "object"
@@ -2964,7 +2965,7 @@
 																					"fontSize": {
 																						"properties": {
 																							"magnitude": {
-																								"type": "integer"
+																								"type": "number"
 																							},
 																							"unit": {
 																								"type": "string"
@@ -3003,7 +3004,7 @@
 																								"type": "string"
 																							},
 																							"weight": {
-																								"type": "integer"
+																								"type": "number"
 																							}
 																						},
 																						"type": "object"
@@ -3027,7 +3028,7 @@
 												"items": {
 													"properties": {
 														"endIndex": {
-															"type": "integer"
+															"type": "number"
 														},
 														"paragraphMarker": {
 															"properties": {
@@ -3043,7 +3044,7 @@
 																			"type": "string"
 																		},
 																		"nestingLevel": {
-																			"type": "integer"
+																			"type": "number"
 																		}
 																	},
 																	"type": "object"
@@ -3081,7 +3082,7 @@
 																			"type": "object"
 																		},
 																		"lineSpacing": {
-																			"type": "integer"
+																			"type": "number"
 																		},
 																		"spaceAbove": {
 																			"properties": {
@@ -3109,7 +3110,7 @@
 															"type": "object"
 														},
 														"startIndex": {
-															"type": "integer"
+															"type": "number"
 														},
 														"textRun": {
 															"properties": {
@@ -3133,7 +3134,7 @@
 																		"fontSize": {
 																			"properties": {
 																				"magnitude": {
-																					"type": "integer"
+																					"type": "number"
 																				},
 																				"unit": {
 																					"type": "string"
@@ -3172,7 +3173,7 @@
 																					"type": "string"
 																				},
 																				"weight": {
-																					"type": "integer"
+																					"type": "number"
 																				}
 																			},
 																			"type": "object"
@@ -3199,7 +3200,7 @@
 									"height": {
 										"properties": {
 											"magnitude": {
-												"type": "integer"
+												"type": "number"
 											},
 											"unit": {
 												"type": "string"
@@ -3210,7 +3211,7 @@
 									"width": {
 										"properties": {
 											"magnitude": {
-												"type": "integer"
+												"type": "number"
 											},
 											"unit": {
 												"type": "string"
@@ -3230,10 +3231,10 @@
 										"type": "number"
 									},
 									"translateX": {
-										"type": ["integer", "number"]
+										"type": "number"
 									},
 									"translateY": {
-										"type": "integer"
+										"type": "number"
 									},
 									"unit": {
 										"type": "string"
@@ -3286,20 +3287,20 @@
 								"solidFill": {
 									"properties": {
 										"alpha": {
-											"type": "integer"
+											"type": "number"
 										},
 										"color": {
 											"properties": {
 												"rgbColor": {
 													"properties": {
 														"blue": {
-															"type": "integer"
+															"type": "number"
 														},
 														"green": {
-															"type": "integer"
+															"type": "number"
 														},
 														"red": {
-															"type": "integer"
+															"type": "number"
 														}
 													},
 													"type": "object"
@@ -3327,7 +3328,7 @@
 				"height": {
 					"properties": {
 						"magnitude": {
-							"type": "integer"
+							"type": "number"
 						},
 						"unit": {
 							"type": "string"
@@ -3338,7 +3339,7 @@
 				"width": {
 					"properties": {
 						"magnitude": {
-							"type": "integer"
+							"type": "number"
 						},
 						"unit": {
 							"type": "string"
@@ -3383,7 +3384,7 @@
 															"type": "number"
 														},
 														"topOffset": {
-															"type": ["integer", "number"]
+															"type": "number"
 														}
 													},
 													"type": "object"
@@ -3398,7 +3399,7 @@
 																"solidFill": {
 																	"properties": {
 																		"alpha": {
-																			"type": "integer"
+																			"type": "number"
 																		},
 																		"color": {
 																			"properties": {
@@ -3423,7 +3424,7 @@
 														"weight": {
 															"properties": {
 																"magnitude": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"unit": {
 																	"type": "string"
@@ -3440,7 +3441,7 @@
 															"type": "string"
 														},
 														"alpha": {
-															"type": ["integer", "number"]
+															"type": "number"
 														},
 														"blurRadius": {
 															"properties": {
@@ -3467,10 +3468,10 @@
 														"transform": {
 															"properties": {
 																"scaleX": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"scaleY": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"unit": {
 																	"type": "string"
@@ -3503,7 +3504,7 @@
 															"type": "string"
 														},
 														"fontScale": {
-															"type": ["integer", "number"]
+															"type": "number"
 														}
 													},
 													"type": "object"
@@ -3521,7 +3522,7 @@
 																"solidFill": {
 																	"properties": {
 																		"alpha": {
-																			"type": "integer"
+																			"type": "number"
 																		},
 																		"color": {
 																			"properties": {
@@ -3543,7 +3544,7 @@
 														"weight": {
 															"properties": {
 																"magnitude": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"unit": {
 																	"type": "string"
@@ -3560,7 +3561,7 @@
 															"type": "string"
 														},
 														"alpha": {
-															"type": ["integer", "number"]
+															"type": "number"
 														},
 														"blurRadius": {
 															"properties": {
@@ -3587,10 +3588,10 @@
 														"transform": {
 															"properties": {
 																"scaleX": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"scaleY": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"unit": {
 																	"type": "string"
@@ -3612,20 +3613,20 @@
 														"solidFill": {
 															"properties": {
 																"alpha": {
-																	"type": ["integer", "number"]
+																	"type": "number"
 																},
 																"color": {
 																	"properties": {
 																		"rgbColor": {
 																			"properties": {
 																				"blue": {
-																					"type": ["integer", "number"]
+																					"type": "number"
 																				},
 																				"green": {
-																					"type": ["integer", "number"]
+																					"type": "number"
 																				},
 																				"red": {
-																					"type": ["integer", "number"]
+																					"type": "number"
 																				}
 																			},
 																			"type": "object"
@@ -3651,7 +3652,7 @@
 													"items": {
 														"properties": {
 															"endIndex": {
-																"type": "integer"
+																"type": "number"
 															},
 															"paragraphMarker": {
 																"properties": {
@@ -3674,7 +3675,7 @@
 																			"indentFirstLine": {
 																				"properties": {
 																					"magnitude": {
-																						"type": ["integer", "number"]
+																						"type": "number"
 																					},
 																					"unit": {
 																						"type": "string"
@@ -3685,7 +3686,7 @@
 																			"indentStart": {
 																				"properties": {
 																					"magnitude": {
-																						"type": ["integer", "number"]
+																						"type": "number"
 																					},
 																					"unit": {
 																						"type": "string"
@@ -3694,7 +3695,7 @@
 																				"type": "object"
 																			},
 																			"lineSpacing": {
-																				"type": ["integer", "number"]
+																				"type": "number"
 																			},
 																			"spaceAbove": {
 																				"properties": {
@@ -3722,7 +3723,7 @@
 																"type": "object"
 															},
 															"startIndex": {
-																"type": "integer"
+																"type": "number"
 															},
 															"textRun": {
 																"properties": {
@@ -3746,7 +3747,7 @@
 																			"fontSize": {
 																				"properties": {
 																					"magnitude": {
-																						"type": ["integer", "number"]
+																						"type": "number"
 																					},
 																					"unit": {
 																						"type": "string"
@@ -3799,7 +3800,7 @@
 																						"type": "string"
 																					},
 																					"weight": {
-																						"type": "integer"
+																						"type": "number"
 																					}
 																				},
 																				"type": "object"
@@ -3826,7 +3827,7 @@
 										"height": {
 											"properties": {
 												"magnitude": {
-													"type": "integer"
+													"type": "number"
 												},
 												"unit": {
 													"type": "string"
@@ -3837,7 +3838,7 @@
 										"width": {
 											"properties": {
 												"magnitude": {
-													"type": "integer"
+													"type": "number"
 												},
 												"unit": {
 													"type": "string"
@@ -3857,10 +3858,10 @@
 											"type": "number"
 										},
 										"translateX": {
-											"type": ["integer", "number"]
+											"type": "number"
 										},
 										"translateY": {
-											"type": ["integer", "number"]
+											"type": "number"
 										},
 										"unit": {
 											"type": "string"
@@ -3918,7 +3919,7 @@
 														"placeholder": {
 															"properties": {
 																"index": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"parentObjectId": {
 																	"type": "string"
@@ -3934,7 +3935,7 @@
 																"autofit": {
 																	"properties": {
 																		"fontScale": {
-																			"type": "integer"
+																			"type": "number"
 																		}
 																	},
 																	"type": "object"
@@ -3977,7 +3978,7 @@
 														"height": {
 															"properties": {
 																"magnitude": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"unit": {
 																	"type": "string"
@@ -3988,7 +3989,7 @@
 														"width": {
 															"properties": {
 																"magnitude": {
-																	"type": "integer"
+																	"type": "number"
 																},
 																"unit": {
 																	"type": "string"
@@ -4008,10 +4009,10 @@
 															"type": "number"
 														},
 														"translateX": {
-															"type": ["integer", "number"]
+															"type": "number"
 														},
 														"translateY": {
-															"type": "integer"
+															"type": "number"
 														},
 														"unit": {
 															"type": "string"

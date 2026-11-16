@@ -37,7 +37,7 @@
 							"type": "string"
 						},
 						"input_cost": {
-							"type": ["integer", "number"]
+							"type": "number"
 						},
 						"output_cost": {
 							"type": "number"
@@ -60,29 +60,29 @@
 					"type": "object"
 				},
 				"input_tokens": {
-					"type": "integer"
+					"type": "number"
 				},
 				"input_tokens_details": {
 					"properties": {
 						"cache_creation_input_tokens": {
-							"type": "integer"
+							"type": "number"
 						},
 						"cache_read_input_tokens": {
-							"type": "integer"
+							"type": "number"
 						},
 						"cached_tokens": {
-							"type": "integer"
+							"type": "number"
 						}
 					},
 					"type": "object"
 				},
 				"output_tokens": {
-					"type": "integer"
+					"type": "number"
 				},
 				"output_tokens_details": {
 					"properties": {
 						"reasoning_tokens": {
-							"type": "integer"
+							"type": "number"
 						}
 					},
 					"type": "object"
@@ -95,7 +95,7 @@
 									"type": "number"
 								},
 								"invocation": {
-									"type": "integer"
+									"type": "number"
 								}
 							},
 							"type": "object"
@@ -104,7 +104,7 @@
 					"type": "object"
 				},
 				"total_tokens": {
-					"type": "integer"
+					"type": "number"
 				}
 			},
 			"type": "object"

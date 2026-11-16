@@ -131,7 +131,7 @@
 								"type": "object"
 							},
 							"href": {
-								"type": "string"
+								"type": ["null", "string"]
 							},
 							"plain_text": {
 								"type": "string"

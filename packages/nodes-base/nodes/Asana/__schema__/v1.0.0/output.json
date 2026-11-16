@@ -29,7 +29,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"resource": {
 			"properties": {
@@ -54,7 +54,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		}
 	},
 	"type": "object"

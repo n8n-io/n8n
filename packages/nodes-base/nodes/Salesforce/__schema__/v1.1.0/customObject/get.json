@@ -25,7 +25,7 @@
 			"type": "boolean"
 		},
 		"LastActivityDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"LastModifiedById": {
 			"type": "string"
@@ -34,10 +34,10 @@
 			"type": "string"
 		},
 		"LastReferencedDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"LastViewedDate": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"Name": {
 			"type": "string"

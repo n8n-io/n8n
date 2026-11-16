@@ -28,7 +28,7 @@
 			"type": "string"
 		},
 		"score": {
-			"type": "integer"
+			"type": "number"
 		},
 		"smtp_check": {
 			"type": "boolean"

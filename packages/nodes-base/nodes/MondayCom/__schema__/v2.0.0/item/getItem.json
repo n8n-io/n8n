@@ -12,6 +12,7 @@
 			"type": "object"
 		},
 		"columns": {
+			"additionalProperties": true,
 			"properties": {
 				"Subitems": {}
 			},
@@ -46,7 +47,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"state": {
 			"type": "string"

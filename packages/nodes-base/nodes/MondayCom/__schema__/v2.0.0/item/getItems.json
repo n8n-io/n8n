@@ -7,13 +7,13 @@
 						"type": "string"
 					},
 					"text": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"type": {
 						"type": "string"
 					},
 					"value": {
-						"type": "string"
+						"type": ["null", "string"]
 					}
 				},
 				"type": "object"

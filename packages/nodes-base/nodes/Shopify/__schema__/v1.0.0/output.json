@@ -13,7 +13,7 @@
 			"type": "string"
 		},
 		"id": {
-			"type": "integer"
+			"type": "number"
 		},
 		"image": {
 			"properties": {
@@ -25,16 +25,16 @@
 					"type": "string"
 				},
 				"height": {
-					"type": "integer"
+					"type": "number"
 				},
 				"id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"position": {
-					"type": "integer"
+					"type": "number"
 				},
 				"product_id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"src": {
 					"type": "string"
@@ -44,15 +44,15 @@
 				},
 				"variant_ids": {
 					"items": {
-						"type": "integer"
+						"type": "number"
 					},
 					"type": "array"
 				},
 				"width": {
-					"type": "integer"
+					"type": "number"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"images": {
 			"items": {
@@ -65,16 +65,16 @@
 						"type": "string"
 					},
 					"height": {
-						"type": "integer"
+						"type": "number"
 					},
 					"id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"position": {
-						"type": "integer"
+						"type": "number"
 					},
 					"product_id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"src": {
 						"type": "string"
@@ -84,12 +84,12 @@
 					},
 					"variant_ids": {
 						"items": {
-							"type": "integer"
+							"type": "number"
 						},
 						"type": "array"
 					},
 					"width": {
-						"type": "integer"
+						"type": "number"
 					}
 				},
 				"type": "object"
@@ -115,7 +115,7 @@
 						"type": "string"
 					},
 					"barcode": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"barcodes": {
 						"items": {
@@ -130,47 +130,47 @@
 						"type": "array"
 					},
 					"compare_at_price": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"created_at": {
 						"type": "string"
 					},
 					"id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"image_id": {
-						"type": "integer"
+						"type": ["null", "number"]
 					},
 					"inventory_item_id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"inventory_policy": {
 						"type": "string"
 					},
 					"inventory_quantity": {
-						"type": "integer"
+						"type": "number"
 					},
 					"old_inventory_quantity": {
-						"type": "integer"
+						"type": "number"
 					},
 					"option1": {
 						"type": "string"
 					},
 					"option2": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"option3": {},
 					"position": {
-						"type": "integer"
+						"type": "number"
 					},
 					"price": {
 						"type": "string"
 					},
 					"product_id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"sku": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"taxable": {
 						"type": "boolean"

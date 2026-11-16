@@ -2,19 +2,27 @@
  * Merges the output schemas that telemetry recorded for one node operation
  * into a single `__schema__` file. Each sample comes from a different
  * workflow, so a key that only some workflows have is user data (a form
- * field, a sheet column) and is dropped. Follows the rules of
- * `schema-harvest`: no `required`, and null widens to unknown.
+ * field, a sheet column) and is dropped. An object that keeps some keys
+ * while samples add their own stays open (`additionalProperties: true`).
+ * Like `schema-harvest`, it never emits `required`, and a key that is only
+ * ever null widens to unknown.
  */
 
 /** A UUID or a long hex digest names a record, not a field. */
 const OPAQUE_KEY =
 	/^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{32,})$/i;
 
-/** Every concrete type a schema allows, reading `anyOf` as a union. */
+/** Below this share of stable keys, samples add user-defined keys to an object. */
+const MIN_STABLE_KEY_SHARE = 0.8;
+
+/**
+ * Every concrete type a schema allows, reading `anyOf` as a union. An integer
+ * reads as a number: a sample cannot prove that a value is never fractional.
+ */
 function typesOf(schema) {
 	if (Array.isArray(schema.anyOf)) return schema.anyOf.flatMap(typesOf);
 	if (schema.type === undefined) return [];
-	return [schema.type].flat();
+	return [schema.type].flat().map((t) => (t === 'integer' ? 'number' : t));
 }
 
 function membersOfType(schemas, type) {
@@ -35,24 +43,33 @@ function mergeProperties(objects, minShare) {
 	return properties;
 }
 
-function mergeSchemaList(schemas, minShare) {
-	const types = [...new Set(schemas.flatMap(typesOf))].filter((t) => t !== 'null').sort();
-	if (types.length === 0) return {};
-	if (types.length > 1) return { type: types };
+/** Properties of the object members, open when samples add their own keys. */
+function mergeObjectShape(objects, minShare) {
+	const properties = mergeProperties(objects, minShare);
+	if (Object.keys(properties).length === 0) return {};
+	const open = stableKeyShare(objects) < MIN_STABLE_KEY_SHARE;
+	return open ? { properties, additionalProperties: true } : { properties };
+}
 
-	const [type] = types;
-	if (type === 'object') {
-		const properties = mergeProperties(membersOfType(schemas, type), minShare);
-		// No shared keys means user-defined keys: describe an open object, not an empty one.
-		return Object.keys(properties).length ? { type, properties } : { type };
-	}
-	if (type === 'array') {
-		const items = membersOfType(schemas, type)
-			.map((s) => s.items)
-			.filter(Boolean);
-		return { type, items: items.length ? mergeSchemaList(items, minShare) : {} };
-	}
-	return { type };
+function mergeArrayItems(arrays, minShare) {
+	const items = arrays.map((s) => s.items).filter(Boolean);
+	return { items: items.length ? mergeSchemaList(items, minShare) : {} };
+}
+
+function mergeSchemaList(schemas, minShare) {
+	const types = [...new Set(schemas.flatMap(typesOf))].sort();
+	const realTypes = types.filter((t) => t !== 'null');
+	if (realTypes.length === 0) return {};
+
+	return {
+		type: types.length === 1 ? types[0] : types,
+		...(realTypes.includes('object')
+			? mergeObjectShape(membersOfType(schemas, 'object'), minShare)
+			: {}),
+		...(realTypes.includes('array')
+			? mergeArrayItems(membersOfType(schemas, 'array'), minShare)
+			: {}),
+	};
 }
 
 /**

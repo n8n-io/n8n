@@ -24,7 +24,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"id": {
 			"type": "string"

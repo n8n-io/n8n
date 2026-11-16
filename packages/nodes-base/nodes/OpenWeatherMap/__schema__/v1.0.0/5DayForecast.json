@@ -17,28 +17,28 @@
 					"type": "string"
 				},
 				"id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"name": {
 					"type": "string"
 				},
 				"population": {
-					"type": "integer"
+					"type": "number"
 				},
 				"sunrise": {
-					"type": "integer"
+					"type": "number"
 				},
 				"sunset": {
-					"type": "integer"
+					"type": "number"
 				},
 				"timezone": {
-					"type": "integer"
+					"type": "number"
 				}
 			},
 			"type": "object"
 		},
 		"cnt": {
-			"type": "integer"
+			"type": "number"
 		},
 		"cod": {
 			"type": "string"
@@ -49,13 +49,13 @@
 					"clouds": {
 						"properties": {
 							"all": {
-								"type": "integer"
+								"type": "number"
 							}
 						},
 						"type": "object"
 					},
 					"dt": {
-						"type": "integer"
+						"type": "number"
 					},
 					"dt_txt": {
 						"type": "string"
@@ -69,16 +69,16 @@
 								"type": "number"
 							},
 							"grnd_level": {
-								"type": "integer"
+								"type": "number"
 							},
 							"humidity": {
-								"type": "integer"
+								"type": "number"
 							},
 							"pressure": {
-								"type": "integer"
+								"type": "number"
 							},
 							"sea_level": {
-								"type": "integer"
+								"type": "number"
 							},
 							"temp": {
 								"type": "number"
@@ -96,7 +96,7 @@
 						"type": "object"
 					},
 					"pop": {
-						"type": ["integer", "number"]
+						"type": "number"
 					},
 					"rain": {
 						"properties": {
@@ -115,7 +115,7 @@
 						"type": "object"
 					},
 					"visibility": {
-						"type": "integer"
+						"type": "number"
 					},
 					"weather": {
 						"items": {
@@ -127,7 +127,7 @@
 									"type": "string"
 								},
 								"id": {
-									"type": "integer"
+									"type": "number"
 								},
 								"main": {
 									"type": "string"
@@ -140,7 +140,7 @@
 					"wind": {
 						"properties": {
 							"deg": {
-								"type": "integer"
+								"type": "number"
 							},
 							"gust": {
 								"type": "number"
@@ -157,7 +157,7 @@
 			"type": "array"
 		},
 		"message": {
-			"type": "integer"
+			"type": "number"
 		}
 	},
 	"type": "object"

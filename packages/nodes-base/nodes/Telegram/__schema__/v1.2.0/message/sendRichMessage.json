@@ -11,7 +11,7 @@
 							"type": "string"
 						},
 						"id": {
-							"type": "integer"
+							"type": "number"
 						},
 						"type": {
 							"type": "string"
@@ -20,7 +20,7 @@
 					"type": "object"
 				},
 				"date": {
-					"type": "integer"
+					"type": "number"
 				},
 				"from": {
 					"properties": {
@@ -28,7 +28,7 @@
 							"type": "string"
 						},
 						"id": {
-							"type": "integer"
+							"type": "number"
 						},
 						"is_bot": {
 							"type": "boolean"
@@ -40,7 +40,7 @@
 					"type": "object"
 				},
 				"message_id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"rich_message": {
 					"properties": {
@@ -48,6 +48,25 @@
 							"items": {
 								"properties": {
 									"text": {
+										"items": {
+											"properties": {
+												"text": {
+													"type": "string"
+												},
+												"type": {
+													"type": "string"
+												}
+											},
+											"type": ["object", "string"]
+										},
+										"properties": {
+											"text": {
+												"type": "string"
+											},
+											"type": {
+												"type": "string"
+											}
+										},
 										"type": ["array", "object", "string"]
 									},
 									"type": {

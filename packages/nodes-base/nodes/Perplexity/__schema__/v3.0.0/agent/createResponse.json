@@ -4,14 +4,14 @@
 			"type": "boolean"
 		},
 		"completed_at": {
-			"type": "integer"
+			"type": ["null", "number"]
 		},
 		"created_at": {
-			"type": "integer"
+			"type": "number"
 		},
 		"error": {},
 		"frequency_penalty": {
-			"type": "integer"
+			"type": "number"
 		},
 		"id": {
 			"type": "string"
@@ -22,13 +22,13 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"instructions": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"max_output_tokens": {
-			"type": "integer"
+			"type": ["null", "number"]
 		},
 		"max_tool_calls": {},
 		"metadata": {
@@ -82,7 +82,7 @@
 			"type": "boolean"
 		},
 		"presence_penalty": {
-			"type": "integer"
+			"type": "number"
 		},
 		"previous_response_id": {},
 		"prompt_cache_key": {},
@@ -93,7 +93,7 @@
 				},
 				"summary": {}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"safety_identifier": {},
 		"service_tier": {
@@ -106,7 +106,7 @@
 			"type": "boolean"
 		},
 		"temperature": {
-			"type": "integer"
+			"type": "number"
 		},
 		"text": {
 			"properties": {
@@ -136,10 +136,10 @@
 			"type": "array"
 		},
 		"top_logprobs": {
-			"type": "integer"
+			"type": "number"
 		},
 		"top_p": {
-			"type": "integer"
+			"type": "number"
 		},
 		"truncation": {
 			"type": "string"
@@ -155,7 +155,7 @@
 							"type": "string"
 						},
 						"input_cost": {
-							"type": ["integer", "number"]
+							"type": "number"
 						},
 						"output_cost": {
 							"type": "number"
@@ -167,35 +167,35 @@
 					"type": "object"
 				},
 				"input_tokens": {
-					"type": "integer"
+					"type": "number"
 				},
 				"input_tokens_details": {
 					"properties": {
 						"cache_creation_input_tokens": {
-							"type": "integer"
+							"type": "number"
 						},
 						"cache_read_input_tokens": {
-							"type": "integer"
+							"type": "number"
 						},
 						"cached_tokens": {
-							"type": "integer"
+							"type": "number"
 						}
 					},
 					"type": "object"
 				},
 				"output_tokens": {
-					"type": "integer"
+					"type": "number"
 				},
 				"output_tokens_details": {
 					"properties": {
 						"reasoning_tokens": {
-							"type": "integer"
+							"type": "number"
 						}
 					},
 					"type": "object"
 				},
 				"total_tokens": {
-					"type": "integer"
+					"type": "number"
 				}
 			},
 			"type": "object"

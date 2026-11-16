@@ -91,7 +91,7 @@
 					"type": "string"
 				},
 				"updated": {
-					"type": "integer"
+					"type": "number"
 				},
 				"user_id": {
 					"type": "string"
@@ -112,7 +112,7 @@
 			"type": "string"
 		},
 		"reply_count": {
-			"type": "integer"
+			"type": "number"
 		},
 		"reply_users": {
 			"items": {
@@ -121,7 +121,7 @@
 			"type": "array"
 		},
 		"reply_users_count": {
-			"type": "integer"
+			"type": "number"
 		},
 		"subscribed": {
 			"type": "boolean"

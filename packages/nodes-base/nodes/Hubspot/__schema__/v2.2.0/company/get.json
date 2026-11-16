@@ -13,7 +13,7 @@
 						"type": "string"
 					},
 					"timestamp": {
-						"type": "integer"
+						"type": "number"
 					}
 				},
 				"type": "object"
@@ -21,7 +21,7 @@
 			"type": "array"
 		},
 		"companyId": {
-			"type": "integer"
+			"type": "number"
 		},
 		"isDeleted": {
 			"type": "boolean"
@@ -31,9 +31,10 @@
 			"type": "array"
 		},
 		"portalId": {
-			"type": "integer"
+			"type": "number"
 		},
 		"properties": {
+			"additionalProperties": true,
 			"properties": {
 				"address": {
 					"properties": {
@@ -41,13 +42,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -72,15 +73,15 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"updatedByUserId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -102,13 +103,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -133,15 +134,15 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"updatedByUserId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -163,13 +164,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -191,12 +192,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -218,13 +219,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -249,12 +250,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -276,13 +277,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -304,15 +305,15 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"updatedByUserId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -334,13 +335,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -365,12 +366,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -392,10 +393,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -408,7 +409,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -421,12 +422,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -445,10 +446,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -461,7 +462,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -474,12 +475,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -498,13 +499,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -526,15 +527,15 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"updatedByUserId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -556,13 +557,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -587,12 +588,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -614,13 +615,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -645,12 +646,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -672,13 +673,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -703,12 +704,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -730,10 +731,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -746,7 +747,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -759,12 +760,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -783,10 +784,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -799,7 +800,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -812,12 +813,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -836,10 +837,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -852,7 +853,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -865,12 +866,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -889,10 +890,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -905,7 +906,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -918,12 +919,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -942,10 +943,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -958,7 +959,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -971,12 +972,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -995,10 +996,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1011,7 +1012,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -1024,12 +1025,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1048,10 +1049,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1064,7 +1065,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -1077,12 +1078,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1101,10 +1102,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1117,7 +1118,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -1130,12 +1131,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1154,10 +1155,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1170,7 +1171,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -1183,12 +1184,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1207,10 +1208,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1223,7 +1224,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -1236,12 +1237,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1263,10 +1264,10 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -1294,7 +1295,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -1319,7 +1320,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1348,7 +1349,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -1371,10 +1372,10 @@
 						},
 						"sourceId": {},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -1396,15 +1397,15 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"updatedByUserId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -1427,7 +1428,7 @@
 						},
 						"sourceId": {},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1450,12 +1451,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -1477,10 +1478,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1493,7 +1494,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -1506,12 +1507,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1533,7 +1534,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1546,7 +1547,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -1559,12 +1560,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1583,10 +1584,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1599,7 +1600,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -1612,12 +1613,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1636,10 +1637,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1652,7 +1653,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -1665,12 +1666,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1689,13 +1690,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -1707,7 +1708,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -1717,7 +1718,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1737,10 +1738,10 @@
 						},
 						"sourceId": {},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -1762,15 +1763,15 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"updatedByUserId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -1795,7 +1796,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1808,7 +1809,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -1824,7 +1825,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1843,13 +1844,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -1874,12 +1875,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -1901,13 +1902,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -1932,12 +1933,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -1959,13 +1960,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -1990,12 +1991,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -2017,13 +2018,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -2048,12 +2049,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -2075,13 +2076,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -2106,12 +2107,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -2133,10 +2134,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -2149,7 +2150,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -2162,12 +2163,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -2186,13 +2187,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -2220,7 +2221,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -2242,13 +2243,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -2276,7 +2277,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -2298,10 +2299,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -2314,7 +2315,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -2330,7 +2331,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -2349,13 +2350,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -2383,7 +2384,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -2405,13 +2406,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -2439,7 +2440,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -2461,10 +2462,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -2477,7 +2478,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -2490,12 +2491,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -2514,13 +2515,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -2545,12 +2546,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -2575,7 +2576,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -2604,7 +2605,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -2629,10 +2630,10 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -2660,7 +2661,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -2685,10 +2686,10 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -2716,7 +2717,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -2741,7 +2742,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -2754,7 +2755,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -2767,12 +2768,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -2791,13 +2792,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -2822,15 +2823,15 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"updatedByUserId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -2852,10 +2853,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -2878,12 +2879,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -2905,13 +2906,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -2936,12 +2937,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -2963,10 +2964,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -2979,7 +2980,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -2992,12 +2993,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -3019,7 +3020,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -3032,7 +3033,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -3048,7 +3049,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -3067,10 +3068,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -3083,7 +3084,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -3096,12 +3097,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -3120,10 +3121,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -3136,7 +3137,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -3149,12 +3150,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -3173,10 +3174,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -3189,7 +3190,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -3202,12 +3203,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -3226,10 +3227,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -3242,7 +3243,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -3255,12 +3256,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -3282,7 +3283,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -3295,7 +3296,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -3311,7 +3312,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -3330,13 +3331,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -3361,15 +3362,15 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"updatedByUserId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -3391,13 +3392,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -3422,15 +3423,15 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"updatedByUserId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -3452,13 +3453,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -3483,12 +3484,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -3510,13 +3511,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -3538,15 +3539,15 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"updatedByUserId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -3568,13 +3569,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -3596,15 +3597,15 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"updatedByUserId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -3629,10 +3630,10 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -3644,7 +3645,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -3657,12 +3658,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -3681,13 +3682,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -3712,12 +3713,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -3742,7 +3743,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -3755,7 +3756,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -3771,7 +3772,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -3793,7 +3794,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -3806,7 +3807,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -3822,7 +3823,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -3841,10 +3842,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -3857,7 +3858,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -3870,12 +3871,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -3894,10 +3895,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -3910,7 +3911,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -3923,12 +3924,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -3950,7 +3951,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -3963,7 +3964,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -3979,7 +3980,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -3998,10 +3999,10 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -4014,7 +4015,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -4027,12 +4028,12 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -4054,10 +4055,10 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -4069,7 +4070,7 @@
 										"type": "string"
 									},
 									"persistenceTimestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"source": {
 										"type": "string"
@@ -4085,7 +4086,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -4104,13 +4105,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -4132,15 +4133,15 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"updatedByUserId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -4162,13 +4163,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -4190,15 +4191,15 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"updatedByUserId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -4220,13 +4221,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -4248,15 +4249,15 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"updatedByUserId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -4279,10 +4280,10 @@
 						},
 						"sourceId": {},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -4304,15 +4305,15 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"updatedByUserId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -4334,13 +4335,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -4365,15 +4366,15 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"updatedByUserId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"
@@ -4395,13 +4396,13 @@
 							"type": "string"
 						},
 						"sourceId": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {
-							"type": "integer"
+							"type": ["null", "number"]
 						},
 						"value": {
 							"type": "string"
@@ -4423,15 +4424,15 @@
 									},
 									"sourceVid": {
 										"items": {
-											"type": "integer"
+											"type": "number"
 										},
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"updatedByUserId": {
-										"type": "integer"
+										"type": "number"
 									},
 									"useTimestampAsPersistenceTimestamp": {
 										"type": "boolean"

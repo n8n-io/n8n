@@ -1,7 +1,7 @@
 {
 	"properties": {
 		"board_folder_id": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"board_kind": {
 			"type": "string"
@@ -30,7 +30,7 @@
 			"type": "string"
 		},
 		"description": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"folder": {
 			"properties": {
@@ -41,7 +41,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"groups": {
 			"items": {
@@ -70,7 +70,7 @@
 			"type": "string"
 		},
 		"items_count": {
-			"type": "integer"
+			"type": "number"
 		},
 		"name": {
 			"type": "string"

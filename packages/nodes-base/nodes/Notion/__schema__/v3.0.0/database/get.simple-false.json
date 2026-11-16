@@ -14,7 +14,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"created_time": {
 			"type": "string"
@@ -34,7 +34,7 @@
 			"type": "array"
 		},
 		"database_type": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"description": {
 			"items": {
@@ -92,7 +92,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"id": {
 			"type": "string"
@@ -121,7 +121,7 @@
 			"type": "object"
 		},
 		"public_url": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"request_id": {
 			"type": "string"

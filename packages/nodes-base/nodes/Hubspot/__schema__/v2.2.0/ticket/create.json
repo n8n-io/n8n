@@ -4,13 +4,13 @@
 			"type": "boolean"
 		},
 		"objectId": {
-			"type": "integer"
+			"type": "number"
 		},
 		"objectType": {
 			"type": "string"
 		},
 		"portalId": {
-			"type": "integer"
+			"type": "number"
 		},
 		"properties": {
 			"properties": {
@@ -37,7 +37,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -66,7 +66,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -102,7 +102,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -131,7 +131,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -167,7 +167,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -196,7 +196,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -232,7 +232,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -261,7 +261,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -297,7 +297,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -326,7 +326,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -362,7 +362,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -391,7 +391,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -427,7 +427,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -456,7 +456,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -492,7 +492,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -521,7 +521,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -555,7 +555,7 @@
 						},
 						"sourceUpstreamDeployable": {},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -581,7 +581,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -617,7 +617,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -646,7 +646,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -682,7 +682,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -711,7 +711,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -747,7 +747,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -776,7 +776,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -812,7 +812,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -841,7 +841,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -877,7 +877,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -906,7 +906,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -942,7 +942,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -971,7 +971,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1007,7 +1007,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1036,7 +1036,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1072,7 +1072,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1101,7 +1101,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1137,7 +1137,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1166,7 +1166,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1202,7 +1202,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1231,7 +1231,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1267,7 +1267,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1296,7 +1296,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1332,7 +1332,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1361,7 +1361,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1397,7 +1397,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1426,7 +1426,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"
@@ -1462,7 +1462,7 @@
 							"type": "string"
 						},
 						"timestamp": {
-							"type": "integer"
+							"type": "number"
 						},
 						"updatedByUserId": {},
 						"value": {
@@ -1491,7 +1491,7 @@
 										"type": "array"
 									},
 									"timestamp": {
-										"type": "integer"
+										"type": "number"
 									},
 									"value": {
 										"type": "string"

@@ -1,22 +1,22 @@
 {
 	"properties": {
 		"appId": {
-			"type": "integer"
+			"type": "number"
 		},
 		"attemptNumber": {
-			"type": "integer"
+			"type": "number"
 		},
 		"changeSource": {
 			"type": "string"
 		},
 		"eventId": {
-			"type": "integer"
+			"type": "number"
 		},
 		"occurredAt": {
-			"type": "integer"
+			"type": "number"
 		},
 		"portalId": {
-			"type": "integer"
+			"type": "number"
 		},
 		"propertyName": {
 			"type": "string"
@@ -28,7 +28,7 @@
 			"type": "string"
 		},
 		"subscriptionId": {
-			"type": "integer"
+			"type": "number"
 		},
 		"subscriptionType": {
 			"type": "string"

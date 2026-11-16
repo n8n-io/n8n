@@ -1,7 +1,7 @@
 {
 	"properties": {
 		"country": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"created": {
 			"type": "string"

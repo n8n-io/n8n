@@ -85,7 +85,7 @@
 				"extensions": {
 					"properties": {
 						"position": {
-							"type": "integer"
+							"type": "number"
 						}
 					},
 					"type": "object"
@@ -135,7 +135,7 @@
 			"type": "object"
 		},
 		"score": {
-			"type": ["integer", "number"]
+			"type": "number"
 		},
 		"title": {
 			"type": "string"

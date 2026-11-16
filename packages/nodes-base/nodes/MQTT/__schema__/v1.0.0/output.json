@@ -1,3 +1,19 @@
 {
-	"type": ["array", "object"]
+	"properties": {
+		"message": {
+			"properties": {
+				"Humedad": {
+					"type": "number"
+				},
+				"Temperatura": {
+					"type": "number"
+				}
+			},
+			"type": ["number", "object", "string"]
+		},
+		"topic": {
+			"type": "string"
+		}
+	},
+	"type": "object"
 }

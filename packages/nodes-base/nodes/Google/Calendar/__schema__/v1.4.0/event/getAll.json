@@ -63,7 +63,7 @@
 			"type": "object"
 		},
 		"sequence": {
-			"type": "integer"
+			"type": "number"
 		},
 		"start": {
 			"properties": {

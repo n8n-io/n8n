@@ -4,19 +4,19 @@
 			"type": "string"
 		},
 		"audioLength": {
-			"type": "integer"
+			"type": "number"
 		},
 		"audioSize": {
-			"type": "integer"
+			"type": "number"
 		},
 		"audioUrl": {
 			"type": "string"
 		},
 		"usageCharacters": {
-			"type": "integer"
+			"type": "number"
 		},
 		"wordCount": {
-			"type": "integer"
+			"type": "number"
 		}
 	},
 	"type": "object"

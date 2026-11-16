@@ -100,7 +100,7 @@
 			"type": "string"
 		},
 		"sizeEstimate": {
-			"type": "integer"
+			"type": "number"
 		},
 		"subject": {
 			"type": "string"

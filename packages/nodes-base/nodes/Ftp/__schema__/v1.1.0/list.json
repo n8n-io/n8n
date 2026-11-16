@@ -4,7 +4,7 @@
 			"type": "string"
 		},
 		"group": {
-			"type": ["integer", "string"]
+			"type": ["number", "string"]
 		},
 		"longname": {
 			"type": "string"
@@ -16,7 +16,7 @@
 			"type": "string"
 		},
 		"owner": {
-			"type": ["integer", "string"]
+			"type": ["number", "string"]
 		},
 		"path": {
 			"type": "string"
@@ -36,7 +36,7 @@
 			"type": "object"
 		},
 		"size": {
-			"type": "integer"
+			"type": "number"
 		},
 		"type": {
 			"type": "string"

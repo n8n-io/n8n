@@ -18,10 +18,10 @@
 					"type": "string"
 				},
 				"description": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"name": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"nodeGroups": {
 					"items": {
@@ -68,6 +68,7 @@
 								"type": "string"
 							},
 							"parameters": {
+								"additionalProperties": true,
 								"properties": {
 									"assignments": {
 										"properties": {
@@ -145,7 +146,7 @@
 														"type": "string"
 													},
 													"version": {
-														"type": "integer"
+														"type": "number"
 													}
 												},
 												"type": "object"
@@ -168,6 +169,7 @@
 										"type": "object"
 									},
 									"filters": {
+										"additionalProperties": true,
 										"properties": {
 											"conditions": {
 												"items": {
@@ -202,6 +204,7 @@
 										"type": "string"
 									},
 									"options": {
+										"additionalProperties": true,
 										"properties": {
 											"waitForSubWorkflow": {
 												"type": "boolean"
@@ -279,6 +282,7 @@
 												"type": "array"
 											},
 											"value": {
+												"additionalProperties": true,
 												"properties": {
 													"mode": {
 														"type": "string"
@@ -311,7 +315,7 @@
 							},
 							"position": {
 								"items": {
-									"type": "integer"
+									"type": "number"
 								},
 								"type": "array"
 							},
@@ -348,7 +352,7 @@
 								"type": "string"
 							},
 							"id": {
-								"type": "integer"
+								"type": "number"
 							},
 							"userId": {
 								"type": "string"
@@ -377,7 +381,7 @@
 			"type": "string"
 		},
 		"description": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"id": {
 			"type": "string"
@@ -394,7 +398,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"name": {
 			"type": "string"
@@ -444,6 +448,7 @@
 						"type": "string"
 					},
 					"parameters": {
+						"additionalProperties": true,
 						"properties": {
 							"assignments": {
 								"properties": {
@@ -521,7 +526,7 @@
 												"type": "string"
 											},
 											"version": {
-												"type": "integer"
+												"type": "number"
 											}
 										},
 										"type": "object"
@@ -544,6 +549,7 @@
 								"type": "object"
 							},
 							"filters": {
+								"additionalProperties": true,
 								"properties": {
 									"conditions": {
 										"items": {
@@ -578,6 +584,7 @@
 								"type": "string"
 							},
 							"options": {
+								"additionalProperties": true,
 								"properties": {
 									"waitForSubWorkflow": {
 										"type": "boolean"
@@ -655,6 +662,7 @@
 										"type": "array"
 									},
 									"value": {
+										"additionalProperties": true,
 										"properties": {
 											"mode": {
 												"type": "string"
@@ -687,7 +695,7 @@
 					},
 					"position": {
 						"items": {
-							"type": "integer"
+							"type": "number"
 						},
 						"type": "array"
 					},
@@ -706,7 +714,7 @@
 			"type": "array"
 		},
 		"pinData": {
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"settings": {
 			"properties": {
@@ -721,16 +729,16 @@
 		},
 		"sourceWorkflowId": {},
 		"staticData": {
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"triggerCount": {
-			"type": "integer"
+			"type": "number"
 		},
 		"updatedAt": {
 			"type": "string"
 		},
 		"versionCounter": {
-			"type": "integer"
+			"type": "number"
 		},
 		"versionId": {
 			"type": "string"

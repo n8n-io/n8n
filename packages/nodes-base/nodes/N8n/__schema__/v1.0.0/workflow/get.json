@@ -18,10 +18,10 @@
 					"type": "string"
 				},
 				"description": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"name": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"nodeGroups": {
 					"items": {
@@ -62,7 +62,7 @@
 								"type": "string"
 							},
 							"maxTries": {
-								"type": "integer"
+								"type": "number"
 							},
 							"name": {
 								"type": "string"
@@ -71,6 +71,7 @@
 								"type": "string"
 							},
 							"parameters": {
+								"additionalProperties": true,
 								"properties": {
 									"assignments": {
 										"properties": {
@@ -144,7 +145,7 @@
 												"type": "array"
 											},
 											"value": {
-												"type": "object"
+												"type": ["null", "object"]
 											}
 										},
 										"type": "object"
@@ -178,7 +179,7 @@
 															"type": "object"
 														},
 														"rightValue": {
-															"type": ["boolean", "integer", "string"]
+															"type": ["boolean", "number", "string"]
 														}
 													},
 													"type": "object"
@@ -197,7 +198,7 @@
 														"type": "string"
 													},
 													"version": {
-														"type": "integer"
+														"type": "number"
 													}
 												},
 												"type": "object"
@@ -263,6 +264,7 @@
 										"type": "string"
 									},
 									"options": {
+										"additionalProperties": true,
 										"properties": {
 											"response": {
 												"properties": {
@@ -284,7 +286,7 @@
 												"type": "object"
 											},
 											"timeout": {
-												"type": ["integer", "string"]
+												"type": ["number", "string"]
 											},
 											"waitForSubWorkflow": {
 												"type": "boolean"
@@ -390,7 +392,7 @@
 							},
 							"position": {
 								"items": {
-									"type": "integer"
+									"type": "number"
 								},
 								"type": "array"
 							},
@@ -404,7 +406,7 @@
 								"type": "number"
 							},
 							"waitBetweenTries": {
-								"type": "integer"
+								"type": "number"
 							},
 							"webhookId": {
 								"type": "string"
@@ -433,7 +435,7 @@
 								"type": "string"
 							},
 							"id": {
-								"type": "integer"
+								"type": "number"
 							},
 							"userId": {
 								"type": "string"
@@ -450,10 +452,10 @@
 					"type": "array"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"activeVersionId": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"connections": {
 			"type": "object"
@@ -462,7 +464,7 @@
 			"type": "string"
 		},
 		"description": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"id": {
 			"type": "string"
@@ -479,7 +481,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"name": {
 			"type": "string"
@@ -523,7 +525,7 @@
 						"type": "string"
 					},
 					"maxTries": {
-						"type": "integer"
+						"type": "number"
 					},
 					"name": {
 						"type": "string"
@@ -532,6 +534,7 @@
 						"type": "string"
 					},
 					"parameters": {
+						"additionalProperties": true,
 						"properties": {
 							"assignments": {
 								"properties": {
@@ -602,7 +605,7 @@
 										"type": "array"
 									},
 									"value": {
-										"type": "object"
+										"type": ["null", "object"]
 									}
 								},
 								"type": "object"
@@ -636,7 +639,7 @@
 													"type": "object"
 												},
 												"rightValue": {
-													"type": ["boolean", "integer", "string"]
+													"type": ["boolean", "number", "string"]
 												}
 											},
 											"type": "object"
@@ -655,7 +658,7 @@
 												"type": "string"
 											},
 											"version": {
-												"type": "integer"
+												"type": "number"
 											}
 										},
 										"type": "object"
@@ -685,6 +688,7 @@
 								"type": "string"
 							},
 							"options": {
+								"additionalProperties": true,
 								"properties": {
 									"response": {
 										"properties": {
@@ -706,7 +710,7 @@
 										"type": "object"
 									},
 									"timeout": {
-										"type": ["integer", "string"]
+										"type": ["number", "string"]
 									},
 									"waitForSubWorkflow": {
 										"type": "boolean"
@@ -751,7 +755,7 @@
 					},
 					"position": {
 						"items": {
-							"type": "integer"
+							"type": "number"
 						},
 						"type": "array"
 					},
@@ -765,7 +769,7 @@
 						"type": "number"
 					},
 					"waitBetweenTries": {
-						"type": "integer"
+						"type": "number"
 					},
 					"webhookId": {
 						"type": "string"
@@ -787,16 +791,16 @@
 					"type": "string"
 				},
 				"parentFolderId": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"updatedAt": {
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"pinData": {
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"settings": {
 			"properties": {
@@ -830,14 +834,14 @@
 								"type": "string"
 							},
 							"creatorId": {
-								"type": "string"
+								"type": ["null", "string"]
 							},
 							"customTelemetryTags": {
 								"items": {},
 								"type": "array"
 							},
 							"description": {
-								"type": "string"
+								"type": ["null", "string"]
 							},
 							"icon": {
 								"properties": {
@@ -848,7 +852,7 @@
 										"type": "string"
 									}
 								},
-								"type": "object"
+								"type": ["null", "object"]
 							},
 							"id": {
 								"type": "string"
@@ -884,12 +888,13 @@
 		},
 		"sourceWorkflowId": {},
 		"staticData": {
+			"additionalProperties": true,
 			"properties": {
 				"global": {
 					"type": "object"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"tags": {
 			"items": {
@@ -912,13 +917,13 @@
 			"type": "array"
 		},
 		"triggerCount": {
-			"type": "integer"
+			"type": "number"
 		},
 		"updatedAt": {
 			"type": "string"
 		},
 		"versionCounter": {
-			"type": "integer"
+			"type": "number"
 		},
 		"versionId": {
 			"type": "string"
