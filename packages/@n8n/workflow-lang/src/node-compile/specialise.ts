@@ -817,7 +817,10 @@ const HELPERS: Record<string, string> = {
 	}
 }`,
 	__deepCopy: `function __deepCopy(value: any): any {
-	return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+	if (typeof value === 'string') return value;
+	if (value === undefined || value === null || typeof value === 'boolean') return value;
+	if (typeof value === 'number' && value - value === 0) return value === 0 ? 0 : value;
+	return JSON.parse(JSON.stringify(value));
 }`,
 	__parameterValue: `function __parameterValue(entry: any): any {
 	if (entry.error !== undefined) {

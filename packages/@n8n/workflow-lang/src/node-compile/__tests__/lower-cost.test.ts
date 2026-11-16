@@ -403,6 +403,47 @@ return [await all(a), await api(b)];`,
 	});
 });
 
+describe('lowerCost: values for each item', () => {
+	const request = `async function __request(options, wrapped, legacy) {
+	return await ctx.http({ url: options.uri, inject: wrapped });
+}`;
+
+	it('does not make a literal of a URL or a body that an item gives', () => {
+		const out = lowerCost(
+			`${request}
+async function api(path, body) {
+	const options = { method: 'POST', uri: \`https://x.test/\${path}\`, body, json: true };
+	return await __request(options, true, true);
+}
+for (let i = 0; i < __items.length; i++) {
+	await api(__deepCopy(__perItem[i]["path"]), { text: __deepCopy(__perItem[i]["text"]) });
+}`,
+			false,
+		);
+		expect(flat(out.code)).toContain('url: options.uri,');
+		expect(flat(out.code)).toContain('body: __plain(__sendBody(options.body)),');
+		expect(flat(out.code)).toContain("method: 'POST',");
+		expect(flat(out.code)).toContain('uri: `https://x.test/${path}`, body');
+		expect(flat(out.code)).toContain('__deepCopy(__perItem[i]["path"])');
+	});
+
+	it('makes a pattern once when the loop uses it for each item', () => {
+		const out = lowerCost(
+			`for (let i = 0; i < __items.length; i++) {
+	if (/a+b/i.test(__perItem[i]["text"])) await one();
+	await two(text.replace(/x/g, ''), /top/.test(text), () => /inner/.test(text));
+}
+const first = /top/.test(text);`,
+			false,
+		);
+		expect(flat(out.code)).toContain('const __pattern0 = /a+b/i; const __pattern1 = /top/; for (');
+		expect(flat(out.code)).toContain('__pattern0.test(__perItem[i]["text"])');
+		expect(flat(out.code)).toContain("text.replace(/x/g, '')");
+		expect(flat(out.code)).toContain('__pattern1.test(text), () => /inner/.test(text)');
+		expect(flat(out.code)).toContain('const first = /top/.test(text);');
+	});
+});
+
 describe('foldTextMethod', () => {
 	it('gives the value of a text method on constants', () => {
 		expect(foldTextMethod('/path', 'startsWith', ['https'])).toEqual({ value: false });

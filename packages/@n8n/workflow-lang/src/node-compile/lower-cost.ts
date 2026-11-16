@@ -1409,6 +1409,83 @@ export function lowerConstants(code: string, evaluate?: Evaluate): string {
 	return text;
 }
 
+const PATTERN = '__pattern';
+const MAX_PATTERNS = 16;
+const PATTERN_READERS = new Set(['replace', 'match', 'split', 'search']);
+
+function loopAround(n: ts.Node): ts.IterationStatement | undefined {
+	let found: ts.IterationStatement | undefined;
+	let at: ts.Node = n.parent;
+	while (!ts.isSourceFile(at) && !ts.isFunctionLike(at)) {
+		if (ts.isIterationStatement(at, false)) found = at;
+		at = at.parent;
+	}
+	if (!found) return undefined;
+	const holder = found.parent;
+	return ts.isBlock(holder) || ts.isSourceFile(holder) ? found : undefined;
+}
+
+function isPatternRead(n: ts.RegularExpressionLiteral): boolean {
+	const p = n.parent;
+	if (ts.isPropertyAccessExpression(p) && p.expression === n && p.name.text === 'test')
+		return ts.isCallExpression(p.parent) && p.parent.expression === p;
+	if (!ts.isCallExpression(p) || p.arguments[0] !== n) return false;
+	const callee = p.expression;
+	return ts.isPropertyAccessExpression(callee) && PATTERN_READERS.has(callee.name.text);
+}
+
+function hoistPatterns(sf: ts.SourceFile): string | undefined {
+	const made = new Map<ts.IterationStatement, Map<string, string>>();
+	const changes = new Map<ts.Node, ts.Identifier>();
+	let count = 0;
+	let taken = false;
+	const visit = (n: ts.Node) => {
+		if (ts.isIdentifier(n) && n.text.startsWith(PATTERN)) taken = true;
+		const loop = ts.isRegularExpressionLiteral(n) && isPatternRead(n) ? loopAround(n) : undefined;
+		if (ts.isRegularExpressionLiteral(n) && loop) {
+			const flags = n.text.slice(n.text.lastIndexOf('/') + 1);
+			if (!flags.includes('g') && !flags.includes('y')) {
+				const names = made.get(loop) ?? new Map<string, string>();
+				made.set(loop, names);
+				let name = names.get(n.text);
+				if (name === undefined && count < MAX_PATTERNS) {
+					name = `${PATTERN}${count++}`;
+					names.set(n.text, name);
+				}
+				if (name !== undefined) changes.set(n, f.createIdentifier(name));
+			}
+		}
+		ts.forEachChild(n, visit);
+	};
+	visit(sf);
+	if (taken || count === 0) return undefined;
+	const lifted = (loop: ts.IterationStatement, names: Map<string, string>): ts.Node[] => {
+		const body = ts.visitNode(loop, function swap(n: ts.Node): ts.Node {
+			return changes.get(n) ?? ts.visitEachChild(n, swap, undefined);
+		});
+		const declared = [...names].map(([text, name]) =>
+			f.createVariableStatement(
+				undefined,
+				f.createVariableDeclarationList(
+					[
+						f.createVariableDeclaration(
+							name,
+							undefined,
+							undefined,
+							f.createRegularExpressionLiteral(text),
+						),
+					],
+					ts.NodeFlags.Const,
+				),
+			),
+		);
+		return [...declared, body];
+	};
+	const outer = new Map<ts.Node, Replacement>();
+	for (const [loop, names] of made) outer.set(loop, lifted(loop, names));
+	return rewrite(sf, outer, []);
+}
+
 export function lowerCost(code: string, holdsBytes: boolean, evaluate?: Evaluate): LoweredCode {
 	let text = lowerConstants(code, evaluate);
 	const helpers = new Set<string>();
@@ -1421,6 +1498,8 @@ export function lowerCost(code: string, holdsBytes: boolean, evaluate?: Evaluate
 	}
 	const counted = lowerItems(parse(text));
 	if (counted !== undefined) text = counted;
+	const hoisted = hoistPatterns(parse(text));
+	if (hoisted !== undefined) text = hoisted;
 	return {
 		code: text,
 		items: counted === undefined ? ITEMS_WRAPPED : ITEMS_COUNTED,
