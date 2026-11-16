@@ -1,0 +1,32 @@
+packages/cli/src/modules/code-sandbox/__tests__/code-sandbox-backend.test.ts
+  h_8fb27e0cdf6d1e 13-18,73,81,102-109,115,117,124,169,182,185,197,241-285
+packages/cli/src/modules/code-sandbox/__tests__/sandbox-scope-client.test.ts
+  h_8fb27e0cdf6d1e 2,6-17,21-23,25,27,31-32,35-36,38-52,55-56,60,63-66,71,74-82,85,87-125,127-327
+packages/cli/src/modules/code-sandbox/code-sandbox-backend.ts
+  h_8fb27e0cdf6d1e 36-44,57,125,240,280-285,295-310,312-322,324-331,335-336,343-344,375-376,378-379,478-479,481,487-497,500-501,535,579,595,631
+packages/cli/src/modules/code-sandbox/code-sandbox-lifecycle.ts
+  h_8fb27e0cdf6d1e 4,7,12,16
+packages/cli/src/modules/code-sandbox/code-sandbox-timings.ts
+  h_8fb27e0cdf6d1e 20,22-24,26,28-30
+packages/cli/src/modules/code-sandbox/code-sandbox.config.ts
+  h_8fb27e0cdf6d1e 27,31-34,42-45,49-52,69
+packages/cli/src/modules/code-sandbox/code-sandbox.module.ts
+  h_8fb27e0cdf6d1e 26,36-37
+packages/cli/src/modules/code-sandbox/sandbox-scope-client.ts
+  h_8fb27e0cdf6d1e 3,5-7,11,13-21,23-24,26-27,29-32,37-45,48-49,51-52,56-64,66-104,107-108,110-111,113-114,116-117,119-120,124,130,139-147,151-154,156,158,160-162,164-170,173-183,185-188,191-194,198-224,229-238,240-254,256-267,270-298,302-304,307-315,318-330,332,334-341,344-347,353,362-368,373-382
+packages/cli/src/modules/code-sandbox/task-api-client.ts
+  h_8fb27e0cdf6d1e 29-30,36-37,43-45,183-187,291-306
+spike/code-sandbox/README.md
+  h_8fb27e0cdf6d1e 22-43,134,170-171,173-174,179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "25ff1d804e1a08c709afd14adccf851e9b02d422",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

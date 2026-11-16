@@ -1,0 +1,24 @@
+packages/@n8n/ai-utilities/src/__tests__/utils/n8n-llm-tracing.test.ts
+  s_ef5630e31dac6b::t_7ac563aeb490a6 514-546
+  s_ef5630e31dac6b::t_a51e4d71c2466a 949-969
+packages/@n8n/ai-utilities/src/utils/n8n-llm-tracing.ts
+  s_ef5630e31dac6b::t_c0974c09db1194 233-234
+  s_ef5630e31dac6b::t_cd3e79ae55e3b2 70-81
+  s_ef5630e31dac6b::t_c57e34dcc01a51 201-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "02c91ddcd9371e333011371ddfd167ecc4e0324c",
+  "prompts": {},
+  "sessions": {
+    "s_ef5630e31dac6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d7d2ad0-1e01-4f11-81da-b038ac49484c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
