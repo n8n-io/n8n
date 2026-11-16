@@ -12,6 +12,8 @@ describe('useWebSocketClient', () => {
 	afterEach(() => {
 		vi.clearAllTimers();
 		vi.clearAllMocks();
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
 	});
 
 	test('should create WebSocket connection with provided URL', () => {

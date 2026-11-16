@@ -11,9 +11,17 @@ export default {
 			type: 'select',
 			options: ['top', 'top-end', 'top-start', 'bottom', 'bottom-end', 'bottom-start'],
 		},
+		theme: {
+			type: 'select',
+			options: ['default', 'dark'],
+		},
 		size: {
 			type: 'select',
-			options: ['mini', 'small', 'medium'],
+			options: ['xsmall', 'small', 'medium', 'large', 'xlarge'],
+		},
+		iconSize: {
+			type: 'select',
+			options: ['xsmall', 'small', 'medium', 'large', 'xlarge'],
 		},
 	},
 	parameters: {
@@ -36,14 +44,12 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nActionToggle,
 	},
-	template: `<div style="height:300px; width:300px; display:flex; align-items:center; justify-content:center">
-			<n8n-action-toggle v-bind="args" @action="onAction" />
-		</div>`,
+	template: '<n8n-action-toggle v-bind="args" @action="onAction" />',
 	methods,
 });
 
-export const ActionToggle = Template.bind({});
-ActionToggle.args = {
+export const Default = Template.bind({});
+Default.args = {
 	actions: [
 		{
 			label: 'Go',
@@ -52,6 +58,70 @@ ActionToggle.args = {
 		{
 			label: 'Stop',
 			value: 'stop',
+		},
+	],
+};
+
+export const Variants: StoryFn = () => ({
+	components: { N8nActionToggle },
+	setup() {
+		return {
+			actions: [
+				{ label: 'Go', value: 'go' },
+				{ label: 'Stop', value: 'stop' },
+			],
+		};
+	},
+	template: `
+		<div style="display: flex; gap: 24px; align-items: flex-start;">
+			<n8n-action-toggle theme="default" :actions="actions" />
+			<div style="padding: 12px; background: var(--color--background--shade-2);">
+				<n8n-action-toggle theme="dark" :actions="actions" />
+			</div>
+		</div>
+	`,
+});
+
+export const Sizes: StoryFn = () => ({
+	components: { N8nActionToggle },
+	setup() {
+		return {
+			actions: [
+				{ label: 'Go', value: 'go' },
+				{ label: 'Stop', value: 'stop' },
+			],
+		};
+	},
+	template: `
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--sm);">
+			<div style="display: flex; align-items: center; gap: var(--spacing--xs);">
+				<n8n-action-toggle :actions="actions" />
+				<span>Default: button small (28px), icon small (12px)</span>
+			</div>
+			<div style="display: flex; align-items: center; gap: var(--spacing--xs);">
+				<n8n-action-toggle :actions="actions" theme="dark" icon-size="medium" />
+				<span>Workflow and folder cards: button small (28px), icon medium (14px)</span>
+			</div>
+			<div style="display: flex; align-items: center; gap: var(--spacing--xs);">
+				<n8n-action-toggle :actions="actions" theme="dark" size="xsmall" />
+				<span>NDV parameter options: button xsmall (24px), icon small (12px)</span>
+			</div>
+		</div>
+	`,
+});
+
+export const WithDisabledTooltip = Template.bind({});
+WithDisabledTooltip.args = {
+	actions: [
+		{
+			label: 'Duplicate',
+			value: 'duplicate',
+		},
+		{
+			label: 'Delete',
+			value: 'delete',
+			disabled: true,
+			tooltip: 'This item is assigned and can’t be deleted.',
 		},
 	],
 };

@@ -5,8 +5,9 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, jsonParse, NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, jsonParse, NodeOperationError, requestUrl } from 'n8n-workflow';
 import MailComposer from 'nodemailer/lib/mail-composer';
 export namespace BrevoNode {
 	type ValidEmailFields = { to: string } | { sender: string } | { cc: string } | { bcc: string };
@@ -131,7 +132,11 @@ export namespace BrevoNode {
 		}
 
 		function validateEmailStrings(input: ValidEmailFields): ValidatedEmail {
-			const composer = new MailComposer({ ...input });
+			const composer = new MailComposer({
+				...input,
+				disableFileAccess: true,
+				disableUrlAccess: true,
+			});
 			const addressFields = composer.compile().getAddresses();
 
 			const fieldFetcher = new Map<string, () => Email[] | Email>([
@@ -184,13 +189,20 @@ export namespace BrevoNode {
 			return result as ValidatedEmail;
 		}
 
+		// v1 stored recipients under a misspelled key. v1.1 (NODE-5367) corrects
+		// the spelling; this picks which key each version actually reads.
+		function isLegacyVersion(this: IExecuteSingleFunctions): boolean {
+			return this.getNode().typeVersion < 1.1;
+		}
+
 		export async function validateAndCompileCCEmails(
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
-			const ccData = this.getNodeParameter(
-				'additionalFields.receipientsCC.receipientCc',
-			) as JsonObject;
+			const path = isLegacyVersion.call(this)
+				? 'additionalFields.receipientsCC.receipientCc'
+				: 'additionalFields.recipientsCC.recipientCc';
+			const ccData = this.getNodeParameter(path) as JsonObject;
 			const { cc } = ccData;
 			const { body } = requestOptions;
 			const data = validateEmailStrings({ cc: cc as string });
@@ -203,9 +215,10 @@ export namespace BrevoNode {
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
-			const bccData = this.getNodeParameter(
-				'additionalFields.receipientsBCC.receipientBcc',
-			) as JsonObject;
+			const path = isLegacyVersion.call(this)
+				? 'additionalFields.receipientsBCC.receipientBcc'
+				: 'additionalFields.recipientsBCC.recipientBcc';
+			const bccData = this.getNodeParameter(path) as JsonObject;
 			const { bcc } = bccData;
 			const { body } = requestOptions;
 			const data = validateEmailStrings({ bcc: bcc as string });
@@ -218,7 +231,9 @@ export namespace BrevoNode {
 			this: IExecuteSingleFunctions,
 			requestOptions: IHttpRequestOptions,
 		): Promise<IHttpRequestOptions> {
-			const to = this.getNodeParameter('receipients') as string;
+			const to = this.getNodeParameter(
+				isLegacyVersion.call(this) ? 'receipients' : 'recipients',
+			) as string;
 			const { body } = requestOptions;
 			const data = validateEmailStrings({ to });
 			Object.assign(body!, data);
@@ -301,14 +316,13 @@ export namespace BrevoWebhookApi {
 	]);
 
 	export const fetchWebhooks = async (ref: IHookFunctions, type: string): Promise<Webhooks> => {
-		const endpoint = `${baseURL}/webhooks?type=${type}`;
-
-		const options: IRequestOptions = {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 			method: 'GET',
 			headers: {
 				Accept: 'application/json',
 			},
-			uri: endpoint,
+			uri: requestUrl`${baseURL}/webhooks`,
+			qs: { type },
 		};
 
 		const webhooks = (await ref.helpers.requestWithAuthentication.call(
@@ -326,14 +340,12 @@ export namespace BrevoWebhookApi {
 		events: string[],
 		url: string,
 	): Promise<WebhookId> => {
-		const endpoint = `${baseURL}/webhooks`;
-
-		const options: IRequestOptions = {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 			method: 'POST',
 			headers: {
 				Accept: 'application/json',
 			},
-			uri: endpoint,
+			uri: requestUrl`${baseURL}/webhooks`,
 			body: {
 				events,
 				type,
@@ -351,15 +363,14 @@ export namespace BrevoWebhookApi {
 	};
 
 	export const deleteWebhook = async (ref: IHookFunctions, webhookId: string) => {
-		const endpoint = `${baseURL}/webhooks/${webhookId}`;
 		const body = {};
 
-		const options: IRequestOptions = {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 			method: 'DELETE',
 			headers: {
 				Accept: 'application/json',
 			},
-			uri: endpoint,
+			uri: requestUrl`${baseURL}/webhooks/${webhookId}`,
 			body,
 		};
 

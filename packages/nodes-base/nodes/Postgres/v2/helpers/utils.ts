@@ -127,6 +127,20 @@ export function parsePostgresError(
 	});
 }
 
+/**
+ * Wrap an error thrown while loading node parameters (resource mapper columns,
+ * dropdown options, list search) into a user-facing `NodeOperationError`.
+ * These run during node configuration and routinely fail for reasons the user
+ * controls (missing table, bad credentials, unreachable host). Passing the
+ * message as a string makes the error `warning` level, so it is shown to the
+ * user but not reported to Sentry as if it were an n8n bug.
+ */
+export function parseParameterLoadingError(node: INode, error: unknown): NodeOperationError {
+	if (error instanceof NodeOperationError) return error;
+	const message = error instanceof Error ? error.message : String(error);
+	return new NodeOperationError(node, message);
+}
+
 export function addWhereClauses(
 	_node: INode,
 	_itemIndex: number,

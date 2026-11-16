@@ -3,10 +3,10 @@ import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
 import {
 	N8nEmptyState,
 	N8nActionDropdown,
-	N8nIcon,
 	N8nIconButton,
 	N8nTableBase,
 	N8nTooltip,
+	N8nText,
 } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -74,17 +74,17 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 
 <template>
 	<div :class="$style.panel" data-testid="agent-vector-stores-panel">
-		<div v-if="props.vectorStores.length > 0" :class="$style.toolbar">
-			<span :class="$style.title" data-testid="agent-vector-stores-title">
-				{{ i18n.baseText('agents.builder.vectorStores.panel.title') }}
-				<N8nTooltip
-					:content="i18n.baseText('agents.builder.vectorStores.panel.titleTooltip')"
-					placement="top"
-				>
-					<N8nIcon icon="circle-help" size="small" :class="$style.titleIcon" />
-				</N8nTooltip>
-			</span>
+		<div :class="$style.toolbar">
+			<div :class="$style.headerText">
+				<N8nText bold data-testid="agent-vector-stores-title">
+					{{ i18n.baseText('agents.builder.vectorStores.panel.title') }}
+				</N8nText>
+				<N8nText color="text-light" step="sm">
+					{{ i18n.baseText('agents.builder.vectorStores.panel.titleTooltip') }}
+				</N8nText>
+			</div>
 			<N8nTooltip
+				v-if="props.vectorStores.length > 0"
 				:content="i18n.baseText('agents.builder.vectorStores.panel.connectButton')"
 				placement="top"
 			>
@@ -172,7 +172,7 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 .panel {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--xs);
 	width: 100%;
 }
 
@@ -184,18 +184,15 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 	width: 100%;
 }
 
-.title {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--medium);
-	line-height: var(--line-height--sm);
-}
+.headerText {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	min-width: 0;
 
-.titleIcon {
-	color: var(--text-color--subtler);
+	> span {
+		text-wrap: balance;
+	}
 }
 
 .tableContainer {

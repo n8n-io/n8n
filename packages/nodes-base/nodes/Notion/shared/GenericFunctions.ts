@@ -17,8 +17,17 @@ import type {
 	IPollFunctions,
 	IRequestOptions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
+import {
+	requestPath,
+	requestUrl,
+	NodeApiError,
+	NodeOperationError,
+	safeRegex,
+	setSafeObjectProperty,
+} from 'n8n-workflow';
 import { validate as uuidValidate } from 'uuid';
 
 import { blockUrlExtractionRegexp, databasePageUrlValidationRegexp } from './constants';
@@ -48,34 +57,29 @@ const apiVersion: { [key: number]: string } = {
 export async function notionApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 
 	body: any = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'headers'> = {},
 ): Promise<any> {
 	try {
-		let options: IRequestOptions = {
-			headers: {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
+			headers: option.headers ?? {
 				'Notion-Version': apiVersion[this.getNode().typeVersion],
 			},
 			method,
 			qs,
 			body,
-			uri: uri || `https://api.notion.com/v1${resource}`,
+			uri: requestUrl`https://api.notion.com/v1${resource}`,
 			json: true,
 		};
-		options = Object.assign({}, options, option);
 		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
-		if (!uri) {
-			const authentication = this.getNodeParameter('authentication', 0, 'apiKey') as string;
-			const credentialType = authentication === 'oAuth2' ? 'notionOAuth2Api' : 'notionApi';
-			return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-		}
-		return await this.helpers.request(options);
+		const authentication = this.getNodeParameter('authentication', 0, 'apiKey') as string;
+		const credentialType = authentication === 'oAuth2' ? 'notionOAuth2Api' : 'notionApi';
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -85,7 +89,7 @@ export async function notionApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
@@ -133,7 +137,7 @@ export async function notionApiRequestGetBlockChildrens(
 				this,
 				'results',
 				'GET',
-				`/blocks/${block.id}/children`,
+				requestPath`/blocks/${block.id}/children`,
 			);
 
 			childrens = (childrens || []).map((entry: IDataObject) => ({
@@ -873,6 +877,23 @@ export type FileRecord = {
 	};
 };
 
+async function downloadFile(this: IExecuteFunctions | IPollFunctions, uri: string) {
+	try {
+		return await this.helpers.request({
+			headers: {
+				'Notion-Version': apiVersion[this.getNode().typeVersion],
+			},
+			method: 'GET',
+			qs: {},
+			uri,
+			json: false,
+			encoding: null,
+		});
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
+
 export async function downloadFiles(
 	this: IExecuteFunctions | IPollFunctions,
 	records: FileRecord[],
@@ -889,14 +910,9 @@ export async function downloadFiles(
 			if (record.properties[key].type === 'files') {
 				if (record.properties[key].files.length) {
 					for (const [index, file] of record.properties[key].files.entries()) {
-						const data = await notionApiRequest.call(
+						const data = await downloadFile.call(
 							this,
-							'GET',
-							'',
-							{},
-							{},
 							(file?.file?.url as string) || (file?.external?.url as string),
-							{ json: false, encoding: null },
 						);
 						element.binary![`${key}_${index}`] = await this.helpers.prepareBinaryData(
 							data as Buffer,
@@ -1113,8 +1129,7 @@ export function extractDatabaseMentionRLC(blockValues: IDataObject[]) {
 				if (txt.textType === 'mention' && txt.mentionType === 'database') {
 					if (typeof txt.database === 'object' && txt.database.__rl) {
 						if (txt.database.__regex) {
-							const regex = new RegExp(txt.database.__regex);
-							const extracted = regex.exec(txt.database.value);
+							const extracted = safeRegex.exec(txt.database.__regex, txt.database.value);
 							txt.database = extracted![1];
 						} else {
 							txt.database = txt.database.value;

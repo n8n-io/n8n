@@ -7,6 +7,8 @@ import {
 	readonly,
 	ref,
 	shallowReactive,
+	shallowReadonly,
+	shallowRef,
 	type ComputedRef,
 } from 'vue';
 import { createEventHook } from '@vueuse/core';
@@ -15,11 +17,13 @@ import type {
 	ExecutionStatus,
 	ExecutionSummary,
 	IPinData,
+	IRunData,
 	IRunExecutionData,
 	ITaskData,
 	ITaskStartedData,
 } from 'n8n-workflow';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
+import type { AgentNodeCapability, AgentNodeProgress } from '@n8n/api-types';
 import type {
 	IExecutionResponse,
 	IExecutionsStopData,
@@ -51,6 +55,11 @@ import type {
 	NodesSetPayload,
 } from './workflowDocument/useWorkflowDocumentNodes';
 import type { ExecutionOutputMap } from '@/app/types/executionData';
+import { AGENT_CAPABILITY_ACTIVE_MIN_DURATION } from '@/app/constants/durations';
+import {
+	capabilityActivityKeys,
+	type AgentCapabilityActivityKey,
+} from '@/features/agents/utils/agentCapabilityActivity';
 
 const EMPTY_EXECUTION_ISSUES_BY_NODE_NAME = new Map<string, ComputedRef<string[]>>();
 const EMPTY_EXECUTION_PIN_DATA_BY_NODE_NAME: IPinData = {};
@@ -58,6 +67,11 @@ const EMPTY_EXECUTION_STATUS_BY_NODE_ID = new Map<string, ComputedRef<ExecutionS
 const EMPTY_EXECUTION_RUN_DATA_BY_NODE_ID = new Map<string, ComputedRef<ITaskData[] | null>>();
 const EMPTY_EXECUTION_RUN_DATA_OUTPUT_MAP_BY_NODE_ID = new Map<string, ExecutionOutputMap>();
 const EMPTY_EXECUTION_WAITING_BY_NODE_ID = new Map<string, ComputedRef<string | undefined>>();
+const EMPTY_EXECUTION_ISSUES_BY_NODE_ID = new Map<string, ComputedRef<string[]>>();
+const EMPTY_EXECUTION_PIN_DATA_BY_NODE_ID = new Map<
+	string,
+	ComputedRef<IPinData[string] | undefined>
+>();
 
 export type WorkflowExecutionStateChangePayload = {
 	documentId: WorkflowDocumentId;
@@ -121,7 +135,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		 * an execution id. `promotePendingExecution(executionId)` migrates this
 		 * payload into a real execution-data store keyed by the new id.
 		 */
-		const pendingExecution = ref<IExecutionResponse | null>(null);
+		const pendingExecution = shallowRef<IExecutionResponse | null>(null);
 		const executionWaitingForWebhook = ref(false);
 		const isInDebugMode = ref(false);
 		const chatMessages = ref<string[]>([]);
@@ -156,7 +170,103 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		 * isolated per workflow document. Read purely via Vue reactivity; it is
 		 * intentionally not wired into the change-event mechanism below.
 		 */
-		const executingNode = useExecutingNode();
+		const executingNode = useExecutingNode({
+			engineType: () => documentStore.settings.engineType,
+		});
+		const activeAgentCapabilityCalls = shallowReactive(
+			new Map<
+				string,
+				{
+					nodeId: string;
+					nodeName: string;
+					capability: AgentNodeCapability;
+					startedAt: number;
+				}
+			>(),
+		);
+		const latestAgentProgressByCapabilityCall = new Map<
+			string,
+			{ nodeName: string; sequenceNumber: number }
+		>();
+		const agentCapabilityRemovalTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+		const activeAgentCapabilityKeysByNodeId = computed(() => {
+			const keysByNodeId = new Map<string, Set<AgentCapabilityActivityKey>>();
+			for (const call of activeAgentCapabilityCalls.values()) {
+				const keys = keysByNodeId.get(call.nodeId) ?? new Set<AgentCapabilityActivityKey>();
+				for (const key of capabilityActivityKeys(call.capability)) keys.add(key);
+				keysByNodeId.set(call.nodeId, keys);
+			}
+			return keysByNodeId;
+		});
+
+		function capabilityCallKey(data: AgentNodeProgress['data']): string {
+			return `${data.executionId}:${data.nodeId}:${data.runIndex}:${data.itemIndex}:${data.toolCallId}`;
+		}
+
+		function removeAgentCapabilityCall(key: string) {
+			const timer = agentCapabilityRemovalTimers.get(key);
+			if (timer) clearTimeout(timer);
+			agentCapabilityRemovalTimers.delete(key);
+			activeAgentCapabilityCalls.delete(key);
+		}
+
+		function clearAgentNodeProgress(nodeName: string) {
+			for (const [key, call] of activeAgentCapabilityCalls) {
+				if (call.nodeName === nodeName) removeAgentCapabilityCall(key);
+			}
+			for (const [key, call] of latestAgentProgressByCapabilityCall) {
+				if (call.nodeName === nodeName) latestAgentProgressByCapabilityCall.delete(key);
+			}
+		}
+
+		function clearAgentProgress() {
+			for (const timer of agentCapabilityRemovalTimers.values()) clearTimeout(timer);
+			agentCapabilityRemovalTimers.clear();
+			activeAgentCapabilityCalls.clear();
+			latestAgentProgressByCapabilityCall.clear();
+		}
+
+		function handleAgentNodeProgress({ data }: AgentNodeProgress) {
+			if (activeExecutionId.value !== data.executionId) return;
+
+			const callKey = capabilityCallKey(data);
+			const latest = latestAgentProgressByCapabilityCall.get(callKey);
+			if (latest && data.sequenceNumber <= latest.sequenceNumber) return;
+			latestAgentProgressByCapabilityCall.set(callKey, {
+				nodeName: data.nodeName,
+				sequenceNumber: data.sequenceNumber,
+			});
+
+			if (data.status === 'running') {
+				const existing = activeAgentCapabilityCalls.get(callKey);
+				const removalTimer = agentCapabilityRemovalTimers.get(callKey);
+				if (removalTimer) clearTimeout(removalTimer);
+				agentCapabilityRemovalTimers.delete(callKey);
+				activeAgentCapabilityCalls.set(callKey, {
+					nodeId: data.nodeId,
+					nodeName: data.nodeName,
+					capability: data.capability,
+					startedAt: existing?.startedAt ?? Date.now(),
+				});
+				return;
+			}
+
+			const call = activeAgentCapabilityCalls.get(callKey);
+			if (!call) return;
+			const remainingDuration = Math.max(
+				0,
+				AGENT_CAPABILITY_ACTIVE_MIN_DURATION - (Date.now() - call.startedAt),
+			);
+			if (remainingDuration === 0) {
+				removeAgentCapabilityCall(callKey);
+				return;
+			}
+			agentCapabilityRemovalTimers.set(
+				callKey,
+				setTimeout(() => removeAgentCapabilityCall(callKey), remainingDuration),
+			);
+		}
 
 		const onWorkflowExecutionStateChange = createEventHook<WorkflowExecutionStateChangeEvent>();
 
@@ -193,9 +303,8 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		 *    -> the displayed executionData store (preserved after active is cleared)
 		 *  - otherwise null
 		 *
-		 * Typed as a mutable `IExecutionResponse` for consumers (the executionData
-		 * store exposes a readonly ref); treat it as read-only — all writes go
-		 * through the store actions.
+		 * Typed as a mutable `IExecutionResponse` for consumers; treat it as
+		 * read-only — all writes go through the store actions.
 		 */
 		const activeExecution = computed<IExecutionResponse | null>(() => {
 			if (activeExecutionId.value === null) return pendingExecution.value;
@@ -206,12 +315,9 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 						? displayedExecutionId.value
 						: undefined;
 			if (executionId === undefined) return null;
-			const executionDataStore = useExecutionDataStore(createExecutionDataId(executionId));
-			// Track the timestamp so in-place mutations that preserve the execution
-			// object reference still propagate to consumers (same defensive pattern
-			// as `activeExecutionRunData`).
-			void executionDataStore.executionResultDataLastUpdate;
-			return executionDataStore.execution as IExecutionResponse | null;
+			// Every executionData store mutation replaces the execution object, so
+			// its identity is the change signal.
+			return useExecutionDataStore(createExecutionDataId(executionId)).execution;
 		});
 
 		/**
@@ -238,14 +344,44 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 				typeof displayedExecutionId.value === 'string',
 		);
 
+		// Drops the entries whose name now belongs to a different node than the one
+		// that produced them.
+		function dropRunDataOfReplacedNodes(
+			runData: IRunData | null,
+			executedNodes: ReadonlyArray<{ id: string; name: string }> | undefined,
+		): IRunData | null {
+			if (!runData || !executedNodes?.length) {
+				return runData;
+			}
+
+			const executedIdByName = new Map(executedNodes.map((node) => [node.name, node.id]));
+			const entries = Object.entries(runData);
+			const kept = entries.filter(([nodeName]) => {
+				const executedId = executedIdByName.get(nodeName);
+				const currentId = documentStore.getNodeByName(nodeName)?.id;
+
+				return !executedId || !currentId || executedId === currentId;
+			});
+
+			// Same object when nothing was dropped: this runs on every execution
+			// push and consumers downstream gate on reference identity.
+			return kept.length === entries.length ? runData : Object.fromEntries(kept);
+		}
+
 		const activeExecutionRunData = computed(() => {
 			const executionId = getResolvedActiveExecutionId();
-			if (!executionId) return null;
+			if (!executionId) {
+				return null;
+			}
+
+			// Every executionData store mutation that changes runData replaces the
+			// runData object, so its identity is the change signal.
 			const executionDataStore = useExecutionDataStore(createExecutionDataId(executionId));
-			// Track the timestamp so in-place mutations to runData (which keep
-			// the runData object reference) still propagate.
-			void executionDataStore.executionResultDataLastUpdate;
-			return executionDataStore.executionRunData;
+
+			return dropRunDataOfReplacedNodes(
+				executionDataStore.executionRunData,
+				executionDataStore.execution?.workflowData?.nodes,
+			);
 		});
 
 		const activeExecutionExecutedNode = computed(() => {
@@ -342,13 +478,23 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			return useExecutionDataStore(createExecutionDataId(executionId)).executionWaitingByNodeId;
 		});
 
+		const activeExecutionIssuesByNodeId = computed(() => {
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return EMPTY_EXECUTION_ISSUES_BY_NODE_ID;
+			return useExecutionDataStore(createExecutionDataId(executionId)).executionIssuesByNodeId;
+		});
+
+		const activeExecutionPinDataByNodeId = computed(() => {
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return EMPTY_EXECUTION_PIN_DATA_BY_NODE_ID;
+			return useExecutionDataStore(createExecutionDataId(executionId)).executionPinDataByNodeId;
+		});
+
 		const lastSuccessfulExecution = computed<IExecutionResponse | null>(() => {
 			const lid = lastSuccessfulExecutionId.value;
 			if (!lid) return null;
-			// Mutable-typed for consumers (the executionData store exposes a
-			// readonly ref); treat it as read-only.
-			return useExecutionDataStore(createExecutionDataId(lid))
-				.execution as IExecutionResponse | null;
+			// Mutable-typed for consumers; treat it as read-only.
+			return useExecutionDataStore(createExecutionDataId(lid)).execution;
 		});
 
 		const isWorkflowRunning = computed(() => {
@@ -477,6 +623,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			runningScopes.clear();
 			executionRunningByNodeId.clear();
 			executionWaitingForNextByNodeId.clear();
+			clearAgentProgress();
 		});
 
 		/**
@@ -502,6 +649,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		// --- Write API ---
 
 		function setActiveExecutionId(value: string | null | undefined) {
+			if (activeExecutionId.value !== value) clearAgentProgress();
 			// When transitioning to a real execution id while a pending scaffold
 			// is staged (e.g. REST response arrives before executionStarted push),
 			// migrate the scaffold into the id-keyed executionData store so the
@@ -568,6 +716,21 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 				stoppedAt: stopData.stoppedAt,
 			};
 			fireChange(CHANGE_ACTION.UPDATE, 'pendingExecution');
+		}
+
+		/**
+		 * Copies the IN_PROGRESS store's execution into the pending scaffold.
+		 * Writers to the IN_PROGRESS store call this while a run is pending, so
+		 * `activeExecution` and `promotePendingExecution` see their change.
+		 * No-op when there is no pending scaffold.
+		 */
+		function syncPendingExecution() {
+			if (!pendingExecution.value) return;
+			setPendingExecution(
+				useExecutionDataStore(
+					createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
+				).getExecutionSnapshot(),
+			);
 		}
 
 		/**
@@ -794,6 +957,9 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 					nameData.new,
 				);
 			}
+			if (activeExecutionId.value === null) {
+				syncPendingExecution();
+			}
 
 			renameExecutionStateNode(nameData.old, nameData.new);
 
@@ -832,6 +998,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			lastSuccessfulExecutionId.value = null;
 			stoppedExecutionId.value = null;
 			executingNode.clearNodeExecutionQueue();
+			clearAgentProgress();
 			fireChange(CHANGE_ACTION.DELETE, 'state');
 		}
 
@@ -869,6 +1036,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 				);
 				executionDataStore.clearExecutionStartedData();
 				executionDataStore.markAsStopped(stopData);
+				syncPendingExecution();
 				if (stopData) {
 					applyStopDataToPendingExecution(stopData);
 				}
@@ -893,7 +1061,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			activeExecutionId: readonly(activeExecutionId),
 			displayedExecutionId: readonly(displayedExecutionId),
 			previousExecutionId: readonly(previousExecutionId),
-			pendingExecution: readonly(pendingExecution),
+			pendingExecution: shallowReadonly(pendingExecution),
 			executionWaitingForWebhook: readonly(executionWaitingForWebhook),
 			isInDebugMode: readonly(isInDebugMode),
 			chatMessages: readonly(chatMessages),
@@ -921,6 +1089,9 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			activeExecutionRunDataByNodeId,
 			activeExecutionRunDataOutputMapByNodeId,
 			activeExecutionWaitingByNodeId,
+			activeExecutionIssuesByNodeId,
+			activeExecutionPinDataByNodeId,
+			activeAgentCapabilityKeysByNodeId,
 			executionRunningByNodeId,
 			executionWaitingForNextByNodeId,
 			resolveExecutionTriggerNodeName,
@@ -953,6 +1124,8 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			setActiveExecutionRunData,
 			clearActiveExecutionStartedData,
 			addActiveNodeExecutionStartedData,
+			handleAgentNodeProgress,
+			clearAgentNodeProgress,
 			renameActiveExecutionNode,
 			resetExecutionState,
 			markExecutionAsStopped,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { IconColor } from '@n8n/design-system';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { type IconName } from '@n8n/design-system';
 
 import { N8nIcon, N8nText } from '@n8n/design-system';
 const props = withDefaults(
@@ -64,7 +64,7 @@ function toggle() {
 	padding: 0 var(--spacing--sm) var(--spacing--sm) var(--spacing--sm);
 
 	b {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 </style>

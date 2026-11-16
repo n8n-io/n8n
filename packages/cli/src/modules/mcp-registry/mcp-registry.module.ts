@@ -3,6 +3,7 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
+import { inE2ETests } from '@/constants';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 @BackendModule({ name: 'mcp-registry' })
@@ -13,9 +14,18 @@ export class McpRegistryModule implements ModuleInterface {
 
 		await import('./mcp-registry.controller.js');
 
-		if (process.env.E2E_TESTS === 'true') {
+		if (inE2ETests) {
 			await import('./mcp-registry-test.controller.js');
 		}
+	}
+
+	async systemTasks() {
+		if (inE2ETests) {
+			return [];
+		}
+
+		const { McpRegistryRefreshTask } = await import('./mcp-registry-refresh.task.js');
+		return [McpRegistryRefreshTask];
 	}
 
 	async entities() {

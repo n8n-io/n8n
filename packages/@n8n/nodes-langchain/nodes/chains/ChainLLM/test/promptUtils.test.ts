@@ -3,7 +3,7 @@ import { BaseMessage, HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, PromptTemplate } from '@langchain/core/prompts';
 import { FakeLLM, FakeChatModel } from '@langchain/core/utils/testing';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -340,7 +340,7 @@ describe('promptUtils', () => {
 
 			const result = await parser(message);
 
-			expect(message).not.toBeInstanceOf(BaseMessage);
+			expect(BaseMessage.prototype.isPrototypeOf(message)).toBe(false);
 			expect(BaseMessage.isInstance(message)).toBe(true);
 			expect(mockOutputParser.parse).toHaveBeenCalledWith('Cross-module text content');
 			expect(result).toEqual(parsedResult);

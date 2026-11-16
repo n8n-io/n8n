@@ -63,7 +63,7 @@ function isRequireCall(call: CallExpression): boolean {
 
 function moduleSpecifierFromCall(call: CallExpression): string | undefined {
 	if (isRequireCall(call)) {
-		return stringLiteralArg(call.arguments[0] as Node | undefined);
+		return stringLiteralArg(call.arguments[0]);
 	}
 	return undefined;
 }

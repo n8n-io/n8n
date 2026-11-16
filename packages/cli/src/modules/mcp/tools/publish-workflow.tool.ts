@@ -1,9 +1,11 @@
 import {
 	type WorkflowPublishBlockedDetails,
 	type WorkflowPublishBlockedReason,
-	workflowPublishBlockedDetailsSchema,
+	workflowPublishBlockedDetailsShape,
+	workflowVersionDescriptionSchema,
+	workflowVersionNameSchema,
 } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { jsonStringify } from 'n8n-workflow';
 import z from 'zod';
@@ -31,6 +33,12 @@ const inputSchema = z.object({
 		.describe(
 			'Optional version ID to publish. If not provided, publishes the current draft version.',
 		),
+	name: workflowVersionNameSchema.describe(
+		'Optional name for the published version. Workflow history shows this name. Use a short label that identifies the version, for example "Add Slack notification". If the version already has a name, this value replaces it.',
+	),
+	description: workflowVersionDescriptionSchema.describe(
+		'Optional description for the published version. Workflow history shows this description. Summarize what changed in this version and why. If the version already has a description, this value replaces it.',
+	),
 });
 
 type PublishWorkflowOutput = {
@@ -45,9 +53,8 @@ const outputSchema = {
 	workflowId: z.string(),
 	activeVersionId: z.string().nullable(),
 	error: z.string().optional(),
-	reason: workflowPublishBlockedDetailsSchema.shape.reason.optional(),
-	workflowReviewRequestId:
-		workflowPublishBlockedDetailsSchema.shape.workflowReviewRequestId.optional(),
+	reason: workflowPublishBlockedDetailsShape.reason.optional(),
+	workflowReviewRequestId: workflowPublishBlockedDetailsShape.workflowReviewRequestId.optional(),
 } satisfies z.ZodRawShape;
 
 /** Only these two failures carry a machine-readable reason; anything else reports just its message. */
@@ -65,6 +72,7 @@ export const createPublishWorkflowTool = (
 	workflowService: WorkflowService,
 	telemetry: Telemetry,
 	collaborationService: CollaborationService,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'publish_workflow',
 	config: {
@@ -80,7 +88,7 @@ export const createPublishWorkflowTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ workflowId, versionId }: z.infer<typeof inputSchema>) => {
+	handler: async ({ workflowId, versionId, name, description }: z.infer<typeof inputSchema>) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'publish_workflow',
@@ -92,10 +100,18 @@ export const createPublishWorkflowTool = (
 
 			await collaborationService.ensureWorkflowEditable(workflowId);
 
-			const activatedWorkflow = await workflowService.activateWorkflow(user, workflowId, {
-				versionId,
-				source: 'n8n-mcp',
-			});
+			const activatedWorkflow = await workflowService.activateWorkflow(
+				user,
+				workflowId,
+				{
+					versionId,
+					name,
+					description,
+					source: 'n8n-mcp',
+					publishHistory: 'none',
+				},
+				ctx,
+			);
 
 			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 

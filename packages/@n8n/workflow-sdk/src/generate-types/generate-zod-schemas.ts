@@ -10,22 +10,22 @@
  * This allows them to be loaded at runtime via require() without compilation.
  */
 
-import type {
-	NodeProperty,
-	NodeTypeDescription,
-	DiscriminatorCombination,
-	DiscriminatorTree,
-	AIInputTypeInfo,
-} from './generate-types';
-// eslint-disable-next-line import-x/no-cycle -- TODO: Refactor shared types/utils to break cycle
 import {
+	type NodeProperty,
+	type NodeTypeDescription,
+	type DiscriminatorCombination,
+	type DiscriminatorTree,
+	type AIInputTypeInfo,
+	DISPLAY_ONLY_PROPERTY_TYPES,
 	extractDiscriminatorCombinations,
 	getPropertiesForCombination,
 	filterPropertiesForVersion,
 	buildDiscriminatorTree,
 	extractAIInputTypesFromBuilderHint,
+	isCustomApiCall,
 	narrowDisplayOptionsByDisabled,
-} from './generate-types';
+} from './node-type-description';
+import { checkConditions } from '../validation/display-options';
 
 // =============================================================================
 // Constants
@@ -33,21 +33,6 @@ import {
 
 /** Indentation string for generated code (2 spaces per level) */
 const INDENT = '  ';
-
-/** Custom API Call operations don't have fixed schemas - skip them */
-const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
-
-function isCustomApiCall(operation: string): boolean {
-	return operation === CUSTOM_API_CALL_KEY;
-}
-
-/**
- * Property types that don't carry runtime data and are skipped from generated
- * Zod schemas — they exist only as UI hints in the workflow JSON.
- *
- * Note: `button` and `icon` are not in this list — they can carry data.
- */
-const DISPLAY_ONLY_PROPERTY_TYPES = new Set(['notice', 'curlImport', 'credentials', 'callout']);
 
 /**
  * Runtime shape for `type: 'icon'` properties (see N8nIconPicker).
@@ -75,6 +60,7 @@ const GENERIC_AUTH_TYPE_VALUES = [
 	'httpHeaderAuth',
 	'httpQueryAuth',
 	'httpCustomAuth',
+	'httpTemplatedCustomAuth',
 	'oAuth1Api',
 	'oAuth2Api',
 ] as const;
@@ -372,7 +358,7 @@ export function extractDefaultsForDisplayOptions(
 	// Find defaults for referenced properties
 	for (const propName of referencedProps) {
 		const prop = allProperties.find((p) => p.name === propName);
-		if (prop && prop.default !== undefined) {
+		if (prop?.default !== undefined) {
 			defaults[propName] = prop.default;
 		}
 	}
@@ -1513,6 +1499,32 @@ export function generateSchemaIndexFile(node: NodeTypeDescription, versions: num
 	return lines.join('\n');
 }
 
+/**
+ * Resolve the default of the `operation` property that applies to `resource`.
+ *
+ * Nodes commonly declare one `operation` property per resource, each gated by
+ * `displayOptions.show.resource` and carrying its own default. Picking the first
+ * `operation` property regardless of resource applies one resource's default to
+ * all of them, which rejects valid configs that omit `operation` (the editor
+ * strips values equal to the default on save).
+ */
+function findOperationDefaultForResource(
+	node: NodeTypeDescription,
+	resource: string,
+): NodeProperty['default'] {
+	const operationProps = node.properties.filter((p) => p.name === 'operation');
+
+	const scoped = operationProps.find((p) => {
+		const shown = p.displayOptions?.show?.resource;
+		return shown !== undefined && checkConditions(shown, [resource]);
+	});
+	if (scoped) return scoped.default;
+
+	// Nodes with a single resource-agnostic `operation` property have no
+	// resource condition to match against.
+	return operationProps.find((p) => p.displayOptions?.show?.resource === undefined)?.default;
+}
+
 // =============================================================================
 // Split Version Schema Generation (for nodes with resource/operation discriminators)
 // =============================================================================
@@ -1690,9 +1702,14 @@ export function generateDiscriminatorSchemaFile(
 	// Add discriminator fields as literals (with defaults if they have matching defaults)
 	for (const [key, value] of Object.entries(combo)) {
 		if (value !== undefined) {
-			// Check if this discriminator has a matching default value in node properties
-			const discProp = node.properties?.find((p) => p.name === key);
-			const hasMatchingDefault = discProp?.default === value;
+			// Check if this discriminator has a matching default value in node properties.
+			// `operation` is resolved against the combo's resource, since nodes declare one
+			// `operation` property per resource.
+			const defaultValue =
+				key === 'operation' && combo.resource !== undefined
+					? findOperationDefaultForResource(node, combo.resource)
+					: node.properties?.find((p) => p.name === key)?.default;
+			const hasMatchingDefault = defaultValue === value;
 
 			if (hasMatchingDefault) {
 				// Accept undefined and default to the expected value
@@ -1779,8 +1796,7 @@ export function generateResourceIndexSchemaFile(
 	lines.push('');
 
 	// Find default for 'operation' discriminator
-	const operationProp = node.properties.find((p) => p.name === 'operation');
-	const operationDefault = operationProp?.default;
+	const operationDefault = findOperationDefaultForResource(node, resource);
 
 	// Export factory function via module.exports - receives all helpers and passes them through
 	lines.push('module.exports = function getSchema(helpers) {');

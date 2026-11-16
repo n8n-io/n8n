@@ -12,9 +12,15 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { attributionForScenario } from './attribution';
 import type { EvalLogger } from './logger';
 import { reseedScenarioTables, type ScenarioSeedContext } from './seed-tables';
-import { isTransientExecutionAbort, MAX_EXEC_ATTEMPTS } from './transient-error';
+import {
+	throwIfFrameworkIssue,
+	throwIfServerBudgetStop,
+	isTransientExecutionAbort,
+	MAX_EXEC_ATTEMPTS,
+} from './transient-error';
 import { buildWorkflowContextBlock } from './workflow-context';
 import { isMockableTriggerNodeType } from '../../src/tools/workflows/workflow-json-utils';
 import { type VerifierAttemptDebug, verifyChecklist } from '../checklist/verifier';
@@ -52,6 +58,8 @@ export async function writeScenarioVerificationSnapshot(input: {
 	result: ChecklistResult | undefined;
 	verificationResults: ChecklistResult[];
 	verifierAttempts: VerifierAttemptDebug[];
+	/** The verifier's exact input, for a replay on another judge model. */
+	verifierInput: { checklist: ChecklistItem[]; artifact: VerificationArtifact };
 	buildTrace?: BuildTrace;
 	logger: EvalLogger;
 	/** --output-dir; falls back to EVAL_DATA_DIR. Concurrent eval children share
@@ -77,6 +85,7 @@ export async function writeScenarioVerificationSnapshot(input: {
 					result: input.result ?? null,
 					verificationResults: input.verificationResults,
 					verifierAttempts: input.verifierAttempts,
+					verifierInput: input.verifierInput,
 					buildTrace: input.buildTrace ?? null,
 				},
 				null,
@@ -276,6 +285,10 @@ async function runScenario(
 			logger,
 		);
 	}
+	// The server keeps these rows; it fills every other table the workflow uses.
+	const seededDataTableIds = seedContext
+		? (scenario.seedDataTables ?? []).map((table) => seedContext.tableIdsByName[table.name])
+		: undefined;
 
 	const execStart = Date.now();
 	let evalResult = await client.executeWithLlmMock(
@@ -283,6 +296,7 @@ async function runScenario(
 		scenario.dataSetup,
 		timeoutMs,
 		pinNodes,
+		seededDataTableIds,
 	);
 	// DB write races abort the execution before any node runs and are reported
 	// in-band (success:false), bypassing the throw-based transient retry —
@@ -303,8 +317,13 @@ async function runScenario(
 			scenario.dataSetup,
 			timeoutMs,
 			pinNodes,
+			seededDataTableIds,
 		);
 	}
+	// Killed for time, not by the builder — throw so the timeout path classifies it.
+	throwIfServerBudgetStop(evalResult);
+	throwIfFrameworkIssue(evalResult);
+
 	const execMs = Date.now() - execStart;
 
 	const pinTag = pinNodes ? ` pinned=${pinNodes.join(',')}` : '';
@@ -344,6 +363,7 @@ async function runScenario(
 		result,
 		verificationResults,
 		verifierAttempts: verification.attempts,
+		verifierInput: { checklist: scenarioChecklist, artifact },
 		buildTrace,
 		logger,
 		outputDir,
@@ -360,6 +380,7 @@ async function runScenario(
 		`No verification result — verifier exhausted all attempts${attemptErrors.length > 0 ? ` (${attemptErrors.join('; ')})` : ''}`;
 	const failureCategory = result?.failureCategory ?? (result ? undefined : 'verification_failure');
 	const rootCause = result?.rootCause;
+	const attribution = attributionForScenario({ passed, incomplete, failureCategory });
 
 	const categoryLabel = failureCategory ? ` [${failureCategory}]` : '';
 	const statusLabel = incomplete ? 'INCOMPLETE (excluded from scoring)' : passed ? 'PASS' : 'FAIL';
@@ -378,6 +399,7 @@ async function runScenario(
 		score: passed ? 1 : 0,
 		reasoning,
 		failureCategory,
+		attribution,
 		rootCause,
 		...(incomplete ? { incomplete: true } : {}),
 	};
@@ -421,12 +443,8 @@ function elideMiddle<T>(items: T[], max: number): { head: T[]; tail: T[]; omitte
 	};
 }
 
-function isObjectRecord(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
-
 function isNodeOutputs(value: unknown): value is Record<string, unknown[][]> {
-	if (!isObjectRecord(value)) return false;
+	if (!isRecord(value)) return false;
 	return Object.values(value).every(
 		(branches) => Array.isArray(branches) && branches.every((branch) => Array.isArray(branch)),
 	);
@@ -452,14 +470,14 @@ function getDownstreamsByBranch(
 ): string[][] {
 	if (!connections) return [];
 	const nodeConns = connections[nodeName];
-	if (!isObjectRecord(nodeConns)) return [];
+	if (!isRecord(nodeConns)) return [];
 	const typeConns = nodeConns[connectionType];
 	if (!Array.isArray(typeConns)) return [];
 	return typeConns.map((branch) => {
 		if (!Array.isArray(branch)) return [];
 		const targets: string[] = [];
 		for (const c of branch) {
-			if (isObjectRecord(c) && typeof c.node === 'string') targets.push(c.node);
+			if (isRecord(c) && typeof c.node === 'string') targets.push(c.node);
 		}
 		return targets;
 	});
@@ -595,6 +613,11 @@ function buildScenarioContextBlock(
 		`**Pinned nodes** (synthetic input): ${pinnedNodes.join(', ') || 'none'}`,
 		`**Real nodes** (executed with actual logic): ${realNodes.join(', ') || 'none'}`,
 		`**Did not run** (no execution data): ${didNotRun.join(', ') || 'none'}`,
+		// Verifiers read a sub-node's absence from the mocked/pinned lists as "the
+		// harness skipped mocking this model" and charged the root's own crash to
+		// the mock layer (TRUST-508/510).
+		'',
+		'> An AI sub-node (language model, memory, tool, embeddings) only produces execution data when its root node reaches it, and is served through that root — it never appears under mocked or pinned. Listed above it means the root was pinned or the root failed before invoking it, NOT that the harness declined to mock it. A vendor call the harness could not intercept is always a FRAMEWORK ISSUE flag in Pre-analysis.',
 		'',
 	);
 

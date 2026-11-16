@@ -21,15 +21,11 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		InlineTextEdit,
 	},
-	template: `
-		<div class="story">
-			<InlineTextEdit v-bind="args" />
-		</div>
-	`,
+	template: '<InlineTextEdit v-bind="args" />',
 });
 
-export const primary = Template.bind({});
-primary.args = {
+export const Default = Template.bind({});
+Default.args = {
 	modelValue: 'Test',
 };
 

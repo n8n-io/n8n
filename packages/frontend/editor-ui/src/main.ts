@@ -8,7 +8,6 @@ import '@vue-flow/node-resizer/dist/style.css';
 
 import 'vue-json-pretty/lib/styles.css';
 import '@n8n/design-system/css/index.scss';
-// import '@n8n/design-system/css/tailwind/index.css';
 
 import '@/main.scss';
 import '@/features/ai/assistant/aiBuilderDiff.scss';
@@ -27,10 +26,15 @@ import { GlobalComponentsPlugin } from '@/app/plugins/components';
 import { GlobalDirectivesPlugin } from '@/app/plugins/directives';
 
 import { createPinia, PiniaVuePlugin } from 'pinia';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { ChartJSPlugin } from '@/app/plugins/chartjs';
 import { SentryPlugin } from '@/app/plugins/sentry';
 import { registerVitePreloadErrorHandler } from '@/app/plugins/vitePreloadError';
 import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer';
+import { registerEagerModals } from '@/app/modals.manifest';
+import { registerComponentSlots } from '@/app/componentSlots.manifest';
+import { registerShellCapabilities } from '@/app/capabilities.manifest';
+import { registerUpgradeRedirectGuard } from '@/app/upgradeRedirectGuard.manifest';
 import { installRenderTracker } from '@/app/dev/render-tracker';
 
 import type { VueScanOptions } from 'z-vue-scan';
@@ -49,11 +53,25 @@ app.use(SentryPlugin);
 // We do this here so landing straight on a module page works
 registerModuleRoutes(router);
 
+// Always-on modals, needed before login — see modals.manifest.ts
+registerEagerModals();
+
+// Shell-hosted components modules render — see componentSlots.manifest.ts
+registerComponentSlots();
+
+// Shell actions modules call — see capabilities.manifest.ts
+registerShellCapabilities();
+
+// The upgrade-CTA guard modules rely on — see upgradeRedirectGuard.manifest.ts
+registerUpgradeRedirectGuard();
+
 app.use(TelemetryPlugin);
 app.use(PiniaVuePlugin);
 app.use(GlobalComponentsPlugin);
 app.use(GlobalDirectivesPlugin);
 app.use(pinia);
+// Settings embedded in the page are ready before the first request, so modules can use them
+useSettingsStore().applyEmbeddedSettings();
 app.use(router);
 app.use(i18nInstance);
 app.use(ChartJSPlugin);

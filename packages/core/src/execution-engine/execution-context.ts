@@ -1,6 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { type IRunExecutionData, type Workflow, type WorkflowExecuteMode } from 'n8n-workflow';
+import {
+	toErrorWorkflowContext,
+	type IExecutionContext,
+	type IRunExecutionData,
+	type Workflow,
+	type WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 import { assertExecutionDataExists, type PreExecutionAdditionalData } from '@/utils/assertions';
 
@@ -27,9 +33,10 @@ import { ExecutionContextService } from './execution-context.service';
  * The function follows a priority-based approach to establish execution context:
  *
  * ### 1. Preserve Existing Context (Webhook Resume)
- * If `executionData.runtimeData` already exists, the function returns immediately without
- * modification. This preserves context when workflows resume from database (e.g., after
- * waiting for a webhook or manual continuation).
+ * If `executionData.runtimeData` already exists, the function returns immediately, keeping
+ * that context. This preserves context when workflows resume from database (e.g., after
+ * waiting for a webhook or manual continuation). An error run still passes its context
+ * through {@link contextAllowedFor}, which the branches below cannot reach.
  *
  * ### 2. Inherit from Parent Execution (Sub-workflows)
  * If `runExecutionData.parentExecution` exists, creates a new context by inheriting all
@@ -38,12 +45,12 @@ import { ExecutionContextService } from './execution-context.service';
  * - `source`: Set to current execution mode
  * - `parentExecutionId`: Tracks the parent execution ID
  *
- * This applies to sub-workflows invoked via "Execute Workflow" node.
+ * This applies to sub-workflows invoked via "Execute Workflow" node, and to error
+ * workflows — `executeErrorWorkflow` populates `parentExecution` as well.
  *
- * ### 3. Inherit from Start Node Metadata (Error Workflows)
+ * ### 3. Inherit from Start Node Metadata
  * If `startItem.metadata.parentExecution.executionContext` exists, creates a new context
- * by inheriting from the parent context. This applies to error workflows that need to
- * preserve the original workflow's context.
+ * by inheriting from the parent context. Reached only when branch 2 did not apply.
  *
  * ### 4. Create Fresh Context (New Executions)
  * For new root executions, creates a fresh context with:
@@ -56,7 +63,8 @@ import { ExecutionContextService } from './execution-context.service';
  *
  * ## Context Inheritance Pattern
  * When inheriting context, the strategy is:
- * 1. Spread all parent context fields (credentials, custom fields, etc.)
+ * 1. Spread the inheritable parent context fields (see {@link contextAllowedFor}:
+ *    everything for a sub-workflow, non-identity fields only for an error workflow)
  * 2. Override `establishedAt` with current timestamp
  * 3. Override `source` with current execution mode
  * 4. Add `parentExecutionId` to track lineage
@@ -101,6 +109,35 @@ import { ExecutionContextService } from './execution-context.service';
  * @see IWorkflowExecuteAdditionalData for additional execution data
  * @see RelatedExecution for parent execution context propagation
  */
+/**
+ * Second gate on the identity carrier reaching an error workflow.
+ *
+ * `executeErrorWorkflow` already strips the carrier when it builds the error
+ * payload. This refuses one even if a caller passes it, so the boundary does not
+ * depend on every present and future call site getting it right. Every way a
+ * context enters an error run passes through here: the two inheritance branches
+ * below (`executeErrorWorkflow` populates both `parentExecution` and the start
+ * item's metadata) and a context the run data already carries, which the early
+ * return would otherwise hand on unfiltered.
+ *
+ * The remaining source, `additionalData.encryptedRunnerIdentity`, cannot be
+ * filtered — it IS a carrier — so an error run must not read it at all.
+ */
+function contextAllowedFor(
+	context: IExecutionContext,
+	mode: WorkflowExecuteMode,
+): IExecutionContext;
+function contextAllowedFor(
+	context: IExecutionContext | undefined,
+	mode: WorkflowExecuteMode,
+): IExecutionContext | undefined;
+function contextAllowedFor(
+	context: IExecutionContext | undefined,
+	mode: WorkflowExecuteMode,
+): IExecutionContext | undefined {
+	return mode === 'error' ? toErrorWorkflowContext(context) : context;
+}
+
 export const establishExecutionContext = async (
 	workflow: Workflow,
 	runExecutionData: IRunExecutionData,
@@ -111,9 +148,27 @@ export const establishExecutionContext = async (
 
 	const executionData = runExecutionData.executionData;
 
+	// Call the execution context service to augment the context with any hook-based data
+	const executionContextService = Container.get(ExecutionContextService);
+
 	if (executionData.runtimeData) {
-		// Context is already established, no further action needed.
-		// This can happen, when a workflow is resumed from the database.
+		// Context is already established (e.g. established at webhook mint time,
+		// before the real executionId existed, or resumed from the database).
+		// Bind the now-known executionId to any sealed carrier so credential
+		// resolution can gate on executionPath. No-op for legacy (subject-less)
+		// carriers and when executionId is undefined; idempotent on resume.
+		// A retry reloads the original run's data under a NEW executionId, so its
+		// id must join the sealed carrier's path (allowInherit) or resolution would
+		// reject it. Resume keeps the same id, so the bind stays a no-op regardless.
+		//
+		// Filter first: an error run that already has a context (resumed from the
+		// database, or established by an earlier call on the main process) skips
+		// the inheritance branches below, so this is where its gate has to sit.
+		executionData.runtimeData = await executionContextService.maybeBindExecutionId(
+			contextAllowedFor(executionData.runtimeData, mode),
+			additionalData?.executionId,
+			{ allowInherit: mode === 'retry' },
+		);
 		return;
 	}
 
@@ -126,8 +181,17 @@ export const establishExecutionContext = async (
 		source: mode,
 	};
 
-	if (additionalData?.encryptedRunnerIdentity) {
+	// An error workflow reports a failure; it never acts as the failed run's user.
+	// A carrier handed in here would land on the context after the inheritance
+	// branches spread it, so it has to be refused at the source.
+	if (mode !== 'error' && additionalData?.encryptedRunnerIdentity) {
 		executionData.runtimeData.credentials = additionalData.encryptedRunnerIdentity;
+		if (executionData.runtimeData.credentials) {
+			executionData.runtimeData = await executionContextService.maybeBindExecutionId(
+				executionData.runtimeData,
+				additionalData.executionId,
+			);
+		}
 	}
 
 	if (runExecutionData.parentExecution) {
@@ -137,10 +201,16 @@ export const establishExecutionContext = async (
 		// and the mode in which it is running, while still retaining all other contextual information
 		// from the parent execution.
 		executionData.runtimeData = {
-			...(runExecutionData.parentExecution.executionContext ?? {}),
+			...(contextAllowedFor(runExecutionData.parentExecution.executionContext, mode) ?? {}),
 			...executionData.runtimeData,
 			parentExecutionId: runExecutionData.parentExecution.executionId,
 		};
+
+		executionData.runtimeData = await executionContextService.maybeBindExecutionId(
+			executionData.runtimeData,
+			additionalData?.executionId,
+			{ allowInherit: true },
+		);
 
 		// The child inherits the parent's context, but its OWN execution record must
 		// still reflect context derived from the child workflow — most importantly
@@ -184,15 +254,32 @@ export const establishExecutionContext = async (
 	// and can inherit context from there
 	if (startItem.metadata?.parentExecution?.executionContext) {
 		executionData.runtimeData = {
-			...startItem.metadata.parentExecution.executionContext,
+			...contextAllowedFor(startItem.metadata.parentExecution.executionContext, mode),
 			...executionData.runtimeData,
 			parentExecutionId: startItem.metadata.parentExecution.executionId,
 		};
+
+		// Bind this execution's id to any inherited sealed carrier so it stays
+		// resolvable within its own execution (mirrors the parentExecution branch).
+		executionData.runtimeData = await executionContextService.maybeBindExecutionId(
+			executionData.runtimeData,
+			additionalData?.executionId,
+			{ allowInherit: true },
+		);
+
+		// Re-run the global sub-execution hooks against the child workflow so its own
+		// record reflects context derived from itself (redaction policy, private-
+		// credential flag), merged with the inherited parent context. Without this a
+		// policy'd or private-credential child called by a policy-less parent would
+		// not redact its own record. Mirrors the `runExecutionData.parentExecution`
+		// branch above.
+		executionData.runtimeData = await executionContextService.augmentSubExecutionContext(
+			workflow,
+			startItem,
+			executionData.runtimeData,
+		);
 		return;
 	}
-
-	// Call the execution context service to augment the context with any hook-based data
-	const executionContextService = Container.get(ExecutionContextService);
 
 	try {
 		const { context, triggerItems } =

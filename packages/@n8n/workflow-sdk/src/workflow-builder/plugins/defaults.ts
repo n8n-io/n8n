@@ -16,15 +16,19 @@ import {
 	disconnectedNodeValidator,
 	expressionPathValidator,
 	expressionPrefixValidator,
+	executeWorkflowValidator,
 	filterNodeValidator,
 	fromAiValidator,
 	httpRequestValidator,
+	duplicateNodeIdValidator,
+	mockOutputEnvelopeValidator,
 	maxNodesValidator,
 	memorySessionKeyValidator,
 	mergeNodeValidator,
 	missingTriggerValidator,
 	noNodesValidator,
 	setNodeValidator,
+	structuredOutputParserValidator,
 	subnodeConnectionValidator,
 	toolNodeValidator,
 	unknownConfigKeysValidator,
@@ -46,11 +50,13 @@ const coreValidators: ValidatorPlugin[] = [
 	noNodesValidator, // Check if workflow has any nodes
 	missingTriggerValidator, // Check if workflow has a trigger
 	maxNodesValidator, // Check max nodes per type constraint
+	duplicateNodeIdValidator, // Two nodes may not claim one stable node id
 
 	// Node-specific validators (high priority)
 	agentValidator,
 	chainLlmValidator,
 	httpRequestValidator,
+	structuredOutputParserValidator,
 	toolNodeValidator,
 	fromAiValidator,
 	memorySessionKeyValidator,
@@ -60,11 +66,13 @@ const coreValidators: ValidatorPlugin[] = [
 	setNodeValidator,
 	mergeNodeValidator,
 	filterNodeValidator,
+	executeWorkflowValidator,
 
 	// Expression validators (lower priority)
 	expressionPrefixValidator,
 	dateMethodValidator,
 	expressionPathValidator, // Workflow-level validator
+	mockOutputEnvelopeValidator, // Mock items are raw $json, not runtime envelopes
 
 	// Structural validators (lowest priority)
 	disconnectedNodeValidator, // Workflow-level validator

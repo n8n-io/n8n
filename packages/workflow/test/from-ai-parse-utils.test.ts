@@ -30,6 +30,13 @@ describe('extractFromAICalls', () => {
 		['{{ $fromAI("a", "b", "string", "5") }}', ['a', 'b', 'string', '5']],
 		['{{ $fromAI("a", "b", "string", "true") }}', ['a', 'b', 'string', 'true']],
 		['{{ $fromAI("a", "b", "string", "{}") }}', ['a', 'b', 'string', '{}']],
+		// The type argument is accepted case-insensitively, so it has to be normalized
+		// before it is used to coerce the default value.
+		['{{ $fromAI("a", "b", "String", "true") }}', ['a', 'b', 'string', 'true']],
+		['{{ $fromAI("a", "b", "STRING", "5") }}', ['a', 'b', 'string', '5']],
+		['{{ $fromAI("a", "b", "String", "{}") }}', ['a', 'b', 'string', '{}']],
+		['{{ $fromAI("a", "b", "Number", "5") }}', ['a', 'b', 'number', 5]],
+		['{{ $fromAI("a", "b", "Boolean", "true") }}', ['a', 'b', 'boolean', true]],
 	])('should parse args as expected for %s', (formula, [key, description, type, defaultValue]) => {
 		expect(extractFromAICalls(formula)).toEqual([
 			{
@@ -208,6 +215,33 @@ describe('isFromAIOnlyExpression', () => {
 	it('should handle unbalanced parentheses gracefully', () => {
 		expect(isFromAIOnlyExpression('={{ $fromAI("key" }}')).toBe(false);
 	});
+
+	it.each([
+		"=$fromAI('url')",
+		'=$fromAI("key", "desc", "string")',
+		'={{ $fromAI("key", "desc", "number", -1.5) }}',
+		'={{ $fromAI("key", "desc", "string", null) }}',
+		'={{ $fromAI("key", "desc", "json", \'{"a": {"b": 1} }\') }}',
+		'={{ $fromAI("key", "single { and } braces") }}',
+		`={{ ${FROM_AI_AUTO_GENERATED_MARKER} $fromAI('Name', \`\`, 'string') }}`,
+	])('should accept literal-only $fromAI expression: %s', (expr) => {
+		expect(isFromAIOnlyExpression(expr)).toBe(true);
+	});
+
+	it.each([
+		// Expression blocks inside quoted arguments are evaluated by the engine
+		"=$fromAI('{{ 7*6 }}')",
+		"=$fromAI('url', '{{ $vars.anything }}')",
+		'=$fromAI("url", "{{ $vars.anything }}")',
+		'=$fromAI(`url`, `{{ $vars.anything }}`)',
+		"={{ $fromAI('url', '}} {{ $vars.anything }}') }}",
+		"={{ $fromAI('url', '{{ 7*6 }}') }}",
+		"={{ $fromAI('url') }} {{ $vars.anything }}",
+		"=prefix {{ $fromAI('url') }}",
+		"={{ $fromAI('url')",
+	])('should reject expression blocks inside $fromAI arguments: %s', (expr) => {
+		expect(isFromAIOnlyExpression(expr)).toBe(false);
+	});
 });
 
 describe('findDisallowedChatToolExpressions', () => {
@@ -222,6 +256,11 @@ describe('findDisallowedChatToolExpressions', () => {
 				body: '={{ $fromAI("body", "Request body") }}',
 			}),
 		).toEqual([]);
+	});
+
+	it('should detect expression blocks inside $fromAI arguments', () => {
+		const value = "=$fromAI('url', '{{ $vars.anything }}')";
+		expect(findDisallowedChatToolExpressions({ url: value })).toEqual([{ path: 'url', value }]);
 	});
 
 	it('should detect disallowed expressions in flat objects', () => {

@@ -3,10 +3,12 @@ import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INode,
+	INodeParameters,
+	INodeProperties,
 	INodeExecutionData,
 	INodeParameterResourceLocator,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { displayParameter, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { SlackV2 } from '../../V2/SlackV2.node';
 import * as GenericFunctions from '../../V2/GenericFunctions';
@@ -93,7 +95,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.kick',
+				requestPath`/conversations.kick`,
 				{
 					channel: 'C123456789',
 					user: 'U987654321',
@@ -127,7 +129,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.join',
+				requestPath`/conversations.join`,
 				{
 					channel: 'C123456789',
 				},
@@ -172,7 +174,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/conversations.list',
+				requestPath`/conversations.list`,
 				{},
 				expect.objectContaining({ types: 'public_channel,private_channel' }),
 			);
@@ -196,7 +198,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/conversations.list',
+				requestPath`/conversations.list`,
 				{},
 				expect.objectContaining({ types: 'public_channel,private_channel' }),
 			);
@@ -229,7 +231,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/conversations.history',
+				requestPath`/conversations.history`,
 				{},
 				{
 					channel: 'C123456789',
@@ -310,7 +312,7 @@ describe('SlackV2', () => {
 			expect(slackApiRequestAllItemsSpy).toHaveBeenCalledWith(
 				'messages',
 				'GET',
-				'/conversations.history',
+				requestPath`/conversations.history`,
 				{},
 				{
 					channel: 'C123456789',
@@ -353,7 +355,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.invite',
+				requestPath`/conversations.invite`,
 				{
 					channel: 'C123456789',
 					users: 'U111111111,U222222222',
@@ -387,7 +389,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.invite',
+				requestPath`/conversations.invite`,
 				{
 					channel: 'C123456789',
 					users: 'U111111111,U222222222',
@@ -412,7 +414,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.leave',
+				requestPath`/conversations.leave`,
 				{
 					channel: 'C123456789',
 				},
@@ -458,7 +460,7 @@ describe('SlackV2', () => {
 			expect(slackApiRequestAllItemsSpy).toHaveBeenCalledWith(
 				'members',
 				'GET',
-				'/conversations.members',
+				requestPath`/conversations.members`,
 				{},
 				{
 					channel: 'C123456789',
@@ -504,7 +506,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.open',
+				requestPath`/conversations.open`,
 				{
 					users: 'U111111111,U222222222',
 					return_im: true,
@@ -544,7 +546,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.rename',
+				requestPath`/conversations.rename`,
 				{
 					channel: 'C123456789',
 					name: 'new-channel-name',
@@ -594,7 +596,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/conversations.replies',
+				requestPath`/conversations.replies`,
 				{},
 				{
 					channel: 'C123456789',
@@ -640,7 +642,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.setPurpose',
+				requestPath`/conversations.setPurpose`,
 				{
 					channel: 'C123456789',
 					purpose: 'New channel purpose',
@@ -684,7 +686,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.setTopic',
+				requestPath`/conversations.setTopic`,
 				{
 					channel: 'C123456789',
 					topic: 'New channel topic',
@@ -717,7 +719,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/conversations.unarchive',
+				requestPath`/conversations.unarchive`,
 				{
 					channel: 'C123456789',
 				},
@@ -770,7 +772,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/chat.postEphemeral',
+				requestPath`/chat.postEphemeral`,
 				expect.objectContaining({
 					channel: 'C123456789',
 					text: 'Test ephemeral message',
@@ -815,7 +817,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/chat.postEphemeral',
+				requestPath`/chat.postEphemeral`,
 				expect.objectContaining({
 					user: '@john.doe',
 				}),
@@ -844,7 +846,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/chat.postEphemeral',
+				requestPath`/chat.postEphemeral`,
 				expect.objectContaining({
 					channel: 'U123456789',
 					user: 'U123456789',
@@ -874,7 +876,7 @@ describe('SlackV2', () => {
 
 				expect(slackApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/reactions.add',
+					requestPath`/reactions.add`,
 					{
 						channel: 'C123456789',
 						name: 'thumbs_up',
@@ -903,7 +905,7 @@ describe('SlackV2', () => {
 
 				expect(slackApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/reactions.remove',
+					requestPath`/reactions.remove`,
 					{
 						channel: 'C123456789',
 						name: 'thumbs_up',
@@ -942,7 +944,7 @@ describe('SlackV2', () => {
 
 				expect(slackApiRequestSpy).toHaveBeenCalledWith(
 					'GET',
-					'/reactions.get',
+					requestPath`/reactions.get`,
 					{},
 					{
 						channel: 'C123456789',
@@ -980,7 +982,7 @@ describe('SlackV2', () => {
 
 				expect(slackApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/stars.add',
+					requestPath`/stars.add`,
 					{
 						channel: 'C123456789',
 						timestamp: '1234567890.123456',
@@ -1011,7 +1013,7 @@ describe('SlackV2', () => {
 
 				expect(slackApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/stars.add',
+					requestPath`/stars.add`,
 					{
 						channel: 'C123456789',
 						file: 'F123456789',
@@ -1042,7 +1044,7 @@ describe('SlackV2', () => {
 
 				expect(slackApiRequestSpy).toHaveBeenCalledWith(
 					'POST',
-					'/stars.remove',
+					requestPath`/stars.remove`,
 					{
 						channel: 'C123456789',
 						file: 'F123456789',
@@ -1079,7 +1081,7 @@ describe('SlackV2', () => {
 				expect(slackApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'items',
 					'GET',
-					'/stars.list',
+					requestPath`/stars.list`,
 					{},
 					{},
 				);
@@ -1121,7 +1123,7 @@ describe('SlackV2', () => {
 
 				expect(slackApiRequestSpy).toHaveBeenCalledWith(
 					'GET',
-					'/stars.list',
+					requestPath`/stars.list`,
 					{},
 					{
 						limit: 10,
@@ -1210,7 +1212,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/files.upload',
+				requestPath`/files.upload`,
 				{},
 				{},
 				{ 'Content-Type': 'multipart/form-data' },
@@ -1284,7 +1286,7 @@ describe('SlackV2', () => {
 			expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
 				1,
 				'GET',
-				'/files.getUploadURLExternal',
+				requestPath`/files.getUploadURLExternal`,
 				{},
 				{
 					filename: 'test.txt',
@@ -1313,7 +1315,7 @@ describe('SlackV2', () => {
 			expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
 				3,
 				'POST',
-				'/files.completeUploadExternal',
+				requestPath`/files.completeUploadExternal`,
 				{
 					channels: 'C123456789',
 					initial_comment: 'Test upload',
@@ -1367,7 +1369,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/files.upload',
+				requestPath`/files.upload`,
 				{
 					channels: 'C123456789',
 					content: 'This is text file content',
@@ -1422,7 +1424,7 @@ describe('SlackV2', () => {
 			expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
 				1,
 				'GET',
-				'/files.getUploadURLExternal',
+				requestPath`/files.getUploadURLExternal`,
 				{},
 				{
 					filename: 'test.txt',
@@ -1482,7 +1484,7 @@ describe('SlackV2', () => {
 			expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
 				1,
 				'GET',
-				'/files.getUploadURLExternal',
+				requestPath`/files.getUploadURLExternal`,
 				{},
 				{
 					filename: 'custom-name.txt',
@@ -1511,7 +1513,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/files.list',
+				requestPath`/files.list`,
 				{},
 				expect.objectContaining({ types: 'images,pdfs' }),
 			);
@@ -1535,7 +1537,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/files.list',
+				requestPath`/files.list`,
 				{},
 				expect.objectContaining({ types: 'images,pdfs' }),
 			);
@@ -1757,7 +1759,7 @@ describe('SlackV2', () => {
 				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
 					1,
 					'GET',
-					'/usergroups.list',
+					requestPath`/usergroups.list`,
 					{},
 					{
 						include_users: true,
@@ -1769,7 +1771,7 @@ describe('SlackV2', () => {
 				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
 					2,
 					'POST',
-					'/usergroups.users.update',
+					requestPath`/usergroups.users.update`,
 					{
 						usergroup: 'S123456789',
 						users: 'U000000000,U111111111,U222222222',
@@ -1828,7 +1830,7 @@ describe('SlackV2', () => {
 				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
 					2,
 					'POST',
-					'/usergroups.users.update',
+					requestPath`/usergroups.users.update`,
 					expect.objectContaining({
 						users: 'U111111111,U222222222', // No duplicates
 					}),
@@ -1875,7 +1877,7 @@ describe('SlackV2', () => {
 				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
 					2,
 					'POST',
-					'/usergroups.users.update',
+					requestPath`/usergroups.users.update`,
 					expect.objectContaining({
 						users: 'U111111111',
 					}),
@@ -1954,7 +1956,7 @@ describe('SlackV2', () => {
 				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
 					1,
 					'GET',
-					'/usergroups.list',
+					requestPath`/usergroups.list`,
 					{},
 					{
 						include_users: true,
@@ -1966,7 +1968,7 @@ describe('SlackV2', () => {
 				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
 					2,
 					'GET',
-					'/users.info',
+					requestPath`/users.info`,
 					{},
 					{ user: 'U111111111' },
 				);
@@ -1974,7 +1976,7 @@ describe('SlackV2', () => {
 				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
 					3,
 					'GET',
-					'/users.info',
+					requestPath`/users.info`,
 					{},
 					{ user: 'U222222222' },
 				);
@@ -2161,7 +2163,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/users.lookupByEmail',
+				requestPath`/users.lookupByEmail`,
 				{},
 				{ email: 'jane@example.com' },
 			);
@@ -2225,7 +2227,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/chat.scheduleMessage',
+				requestPath`/chat.scheduleMessage`,
 				{
 					channel: 'C123456789',
 					post_at: 1893456000,
@@ -2255,7 +2257,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/chat.deleteScheduledMessage',
+				requestPath`/chat.deleteScheduledMessage`,
 				{
 					channel: 'C123456789',
 					scheduled_message_id: 'Q1298393284',
@@ -2292,7 +2294,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/chat.scheduledMessages.list',
+				requestPath`/chat.scheduledMessages.list`,
 				{},
 				{ limit: 10 },
 			);
@@ -2332,7 +2334,7 @@ describe('SlackV2', () => {
 
 			expect(slackApiRequestSpy).toHaveBeenCalledWith(
 				'GET',
-				'/chat.scheduledMessages.list',
+				requestPath`/chat.scheduledMessages.list`,
 				{},
 				{
 					channel: 'C123456789',
@@ -2366,7 +2368,7 @@ describe('SlackV2', () => {
 			expect(slackApiRequestAllItemsSpy).toHaveBeenCalledWith(
 				'scheduled_messages',
 				'GET',
-				'/chat.scheduledMessages.list',
+				requestPath`/chat.scheduledMessages.list`,
 				{},
 				{},
 			);
@@ -2482,7 +2484,7 @@ describe('SlackV2', () => {
 					mockLoadOptionsFunctions,
 					'members',
 					'GET',
-					'/users.list',
+					requestPath`/users.list`,
 					{},
 					{ limit: 200, cursor: 'page-2' },
 					expect.objectContaining({ onFail: 'stop' }),
@@ -2513,6 +2515,44 @@ describe('SlackV2', () => {
 					'U111111111',
 				]);
 			});
+		});
+	});
+	describe('Message Operations - Search parameter visibility', () => {
+		const searchProps = (typeVersion: number) => {
+			const description = new SlackV2({
+				displayName: 'Slack',
+				name: 'slack',
+				group: ['output'],
+				description: 'Consume Slack API',
+			}).description;
+
+			const base = { resource: 'message', operation: 'search' };
+			const isShown = (property: INodeProperties, nodeValues: INodeParameters) =>
+				displayParameter(nodeValues, property, { typeVersion }, description);
+
+			// Mirror the editor: a parameter that is not displayed never lands in the node's
+			// values, so returnAll must be absent (not false) on versions that hide it.
+			const showsReturnAll = description.properties.some(
+				(property) => property.name === 'returnAll' && isShown(property, base),
+			);
+			const nodeValues = showsReturnAll ? { ...base, returnAll: false } : base;
+
+			return description.properties
+				.filter((property) => isShown(property, nodeValues))
+				.map((property) => property.name);
+		};
+
+		it('should offer Return All only up to 2.6', () => {
+			expect(searchProps(2.6)).toContain('returnAll');
+			expect(searchProps(2.7)).not.toContain('returnAll');
+		});
+
+		// Limit is declared twice so that dropping Return All in 2.7 does not hide it: the
+		// <= 2.6 variant is only shown when returnAll is false, which no longer resolves.
+		it('should offer exactly one Limit on both sides of the version split', () => {
+			for (const typeVersion of [2.6, 2.7]) {
+				expect(searchProps(typeVersion).filter((name) => name === 'limit')).toHaveLength(1);
+			}
 		});
 	});
 });

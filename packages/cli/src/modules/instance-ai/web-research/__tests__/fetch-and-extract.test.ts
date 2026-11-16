@@ -4,10 +4,10 @@ import type {
 	CustomFetch,
 	HttpTransport,
 	SsrfBridge,
-	SsrfOption,
 	SsrfProtectionService,
 } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import { createResultError, createResultOk } from '@n8n/utils/result';
 import dns from 'node:dns';
@@ -125,6 +125,54 @@ describe('fetchAndExtract', () => {
 
 		expect(result.content).toBe(text);
 		expect(result.truncated).toBe(false);
+	});
+
+	it.each([
+		['application/json', '{"type":"object","properties":{"prompt":{"type":"string"}}}'],
+		['application/json; charset=utf-8', '[{"id":1},{"id":2}]'],
+		['application/schema+json', '{"$schema":"http://json-schema.org/draft-07/schema#"}'],
+		['application/atom+xml', '<feed><entry>One</entry></feed>'],
+		['application/xml', '<?xml version="1.0"?><feed><entry>One</entry></feed>'],
+		['text/xml', '<rss><channel><title>News</title></channel></rss>'],
+		['text/csv', 'name,email\nAda,ada@example.com'],
+		['application/x-yaml', 'openapi: 3.0.0\ninfo:\n  title: API'],
+	])('returns the raw body for %s', async (contentType, body) => {
+		const { transport } = mockTransport(async () => createMockResponse(body, { contentType }));
+
+		const result = await fetchAndExtract('https://example.com/schema', { transport });
+
+		expect(result.content).toBe(body);
+		expect(result.truncated).toBe(false);
+		expect(result.contentLength).toBe(body.length);
+	});
+
+	it('extracts markdown from XHTML', async () => {
+		const xhtml =
+			'<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Doc</title></head><body><article><h1>Guide</h1><p>Read the setup steps before you start the service.</p></article></body></html>';
+		const { transport } = mockTransport(async () =>
+			createMockResponse(xhtml, { contentType: 'application/xhtml+xml' }),
+		);
+
+		const result = await fetchAndExtract('https://example.com/doc.xhtml', { transport });
+
+		expect(result.content).not.toContain('<article>');
+		expect(result.content).toContain('Read the setup steps');
+	});
+
+	it('truncates a JSON body to maxContentLength', async () => {
+		const body = JSON.stringify({ data: 'x'.repeat(200) });
+		const { transport } = mockTransport(async () =>
+			createMockResponse(body, { contentType: 'application/json' }),
+		);
+
+		const result = await fetchAndExtract('https://example.com/data.json', {
+			transport,
+			maxContentLength: 50,
+		});
+
+		expect(result.content).toBe(body.slice(0, 50));
+		expect(result.truncated).toBe(true);
+		expect(result.contentLength).toBe(body.length);
 	});
 
 	it('truncates content exceeding maxContentLength', async () => {
@@ -327,10 +375,17 @@ describe('fetchAndExtract', () => {
 
 		// Builds a real transport (the wiring the adapter service performs) so the
 		// SSRF (and optional authorize) interceptors run for real against the
-		// redirecting server below.
-		function realTransport(ssrf: SsrfOption, authorize?: (url: URL) => Promise<void>) {
-			return new OutboundHttp(mock<SsrfProtectionService>(), mock<Logger>()).transport({
-				ssrf,
+		// redirecting server below. A given bridge is installed as the instance's
+		// protection service; `'disabled'` builds an unsafe transport instead.
+		function realTransport(ssrf: SsrfBridge | 'disabled', authorize?: (url: URL) => Promise<void>) {
+			const service =
+				ssrf === 'disabled' ? mock<SsrfProtectionService>() : mock<SsrfProtectionService>(ssrf);
+			return new OutboundHttp(
+				service,
+				mock<SsrfProtectionConfig>({ enabled: true }),
+				mock<Logger>(),
+			).transport({
+				useDefaultSsrfPolicy: ssrf === 'disabled' ? 'unsafe' : 'safe',
 				authorize,
 			});
 		}

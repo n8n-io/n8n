@@ -4,6 +4,9 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
+
+import { escapeBackslashQuotedValue } from '@utils/query-escaping';
 
 import type { SearchFilter } from '../helpers/interfaces';
 import { DRIVE, RLC_DRIVE_DEFAULT, RLC_FOLDER_DEFAULT } from '../helpers/interfaces';
@@ -29,10 +32,10 @@ export async function fileSearch(
 ): Promise<INodeListSearchResult> {
 	const query: string[] = ['trashed = false'];
 	if (filter) {
-		query.push(`name contains '${filter.replace("'", "\\'")}'`);
+		query.push(`name contains '${escapeBackslashQuotedValue(filter)}'`);
 	}
 	query.push(`mimeType != '${DRIVE.FOLDER}'`);
-	const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
+	const res = await googleApiRequest.call(this, 'GET', requestPath`/drive/v3/files`, undefined, {
 		q: query.join(' and '),
 		pageToken: paginationToken,
 		fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
@@ -59,8 +62,8 @@ export async function driveSearch(
 ): Promise<INodeListSearchResult> {
 	let res = { drives: [], nextPageToken: undefined };
 
-	res = await googleApiRequest.call(this, 'GET', '/drive/v3/drives', undefined, {
-		q: filter ? `name contains '${filter.replace("'", "\\'")}'` : undefined,
+	res = await googleApiRequest.call(this, 'GET', requestPath`/drive/v3/drives`, undefined, {
+		q: filter ? `name contains '${escapeBackslashQuotedValue(filter)}'` : undefined,
 		pageToken: paginationToken,
 	});
 
@@ -115,7 +118,7 @@ export async function folderSearch(
 ): Promise<INodeListSearchResult> {
 	const query: string[] = [];
 	if (filter) {
-		query.push(`name contains '${filter.replace("'", "\\'")}'`);
+		query.push(`name contains '${escapeBackslashQuotedValue(filter)}'`);
 	}
 	query.push(`mimeType = '${DRIVE.FOLDER}'`);
 
@@ -145,7 +148,7 @@ export async function folderSearch(
 	}
 	updateDriveScopes(qs, driveId?.value as string);
 
-	const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, qs);
+	const res = await googleApiRequest.call(this, 'GET', requestPath`/drive/v3/files`, undefined, qs);
 
 	const results: INodeListSearchItems[] = [];
 

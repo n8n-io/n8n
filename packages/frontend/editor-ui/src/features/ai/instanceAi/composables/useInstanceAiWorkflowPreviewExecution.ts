@@ -1,5 +1,7 @@
 import { onBeforeUnmount, shallowRef, watch } from 'vue';
 import type { IPinData } from 'n8n-workflow';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useAiSimulatedExecutionsStore } from '@/app/stores/aiSimulatedExecutions.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
@@ -7,13 +9,20 @@ import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionSt
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ExecutionResult } from '../canvasPreview.utils';
-import { useThread } from '../instanceAi.store';
+import { useArtifactThread } from '../artifactThread';
 
 interface UseInstanceAiWorkflowPreviewExecutionOptions {
 	workflowId: () => string;
 	executionResult: () => ExecutionResult | undefined;
 	reportWorkflowFailures: (executionId: string, workflowId: string) => void;
+	reportWorkflowSuccess?: (workflowId: string) => void;
+	/** Pane the artifact renders in. Its size gates the logs panel auto-open. */
+	paneElement: () => HTMLElement | null;
 }
+
+// Below this pane size an open logs panel hides most of the canvas (INS-1192).
+const LOGS_AUTO_OPEN_MIN_PANE_WIDTH = 650;
+const LOGS_AUTO_OPEN_MIN_PANE_HEIGHT = 600;
 
 function hasPinData(pinData: IPinData | undefined): pinData is IPinData {
 	return pinData !== undefined && Object.keys(pinData).length > 0;
@@ -45,12 +54,75 @@ export function useInstanceAiWorkflowPreviewExecution(
 	const pushStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
 	const logsStore = useLogsStore();
+	const aiSimulatedExecutionsStore = useAiSimulatedExecutionsStore();
 	// Thread runtime owns the user-run memory so it survives the preview unmounting
 	// on a tab switch and is reachable here without prop-drilling (INS-611).
-	const thread = useThread();
+	const thread = useArtifactThread();
+	const telemetry = useTelemetry();
 	const latestAgentExecution = shallowRef<IExecutionResponse>();
 	const supersededAgentExecutionId = shallowRef<string | null>(null);
 	let latestExecutionLoadRequest = 0;
+
+	// True while this composable toggles the panel, so the watcher below can tell
+	// its own toggles from the user's.
+	let isTogglingLogsAutomatically = false;
+	// The thread runtime keeps the auto-open bookkeeping because this composable
+	// is recreated on every tab switch.
+	const logsPanelMemory = thread.logsPanelMemory;
+
+	function isPaneLargeEnoughForLogs(): boolean {
+		const rect = options.paneElement()?.getBoundingClientRect();
+		return (
+			rect !== undefined &&
+			rect.width >= LOGS_AUTO_OPEN_MIN_PANE_WIDTH &&
+			rect.height >= LOGS_AUTO_OPEN_MIN_PANE_HEIGHT
+		);
+	}
+
+	// A preview behind another artifact tab stays mounted but hidden. Runs of a
+	// tab the user does not see leave the panel as it is.
+	function isPaneVisible(): boolean {
+		const pane = options.paneElement();
+		return pane !== null && getComputedStyle(pane).visibility !== 'hidden';
+	}
+
+	function openLogsAutomatically() {
+		isTogglingLogsAutomatically = true;
+		logsStore.toggleOpen(true);
+		isTogglingLogsAutomatically = false;
+		telemetry.track('User toggled log view', {
+			new_state: 'attached',
+			source: 'auto',
+			context: 'artifact',
+		});
+	}
+
+	// Users rarely discover the logs panel on their own, so open it when the
+	// latest run of this artifact's workflow fails (INS-860). The panel selects
+	// the failing node by itself. A run start does not open the panel: a
+	// successful run would open and collapse it, and the canvas would jump
+	// (AST-1973). Skip it when the user collapsed the panel in this thread or
+	// the pane is small.
+	function openLogsForFailedRun(executionId: string) {
+		if (!isPaneVisible()) return;
+		if (executionId !== logsPanelMemory.latestStartedExecutionIds.get(options.workflowId())) {
+			return;
+		}
+		if (logsStore.isOpen || logsPanelMemory.collapsedByUser) return;
+		if (!isPaneLargeEnoughForLogs()) return;
+		openLogsAutomatically();
+	}
+
+	// A collapse this composable did not make is the user's. It stops the
+	// auto-open for the rest of the thread.
+	watch(
+		() => logsStore.isOpen,
+		(isOpen) => {
+			if (isTogglingLogsAutomatically) return;
+			if (!isOpen) logsPanelMemory.collapsedByUser = true;
+		},
+		{ flush: 'sync' },
+	);
 
 	function applyExecution(execution: IExecutionResponse): boolean {
 		const workflowId = options.workflowId();
@@ -96,6 +168,14 @@ export function useInstanceAiWorkflowPreviewExecution(
 
 	async function showExecutionResult(executionResult: ExecutionResult | undefined) {
 		if (!executionResult) return;
+		// Record which node outputs of this agent execution are fabricated
+		// fixtures, so the NDV can label them and guard the pin affordance.
+		if (executionResult.simulatedNodeNames?.length) {
+			aiSimulatedExecutionsStore.markSimulatedNodes(
+				executionResult.executionId,
+				executionResult.simulatedNodeNames,
+			);
+		}
 		if (hasManualExecution()) return;
 		if (supersededAgentExecutionId.value === executionResult.executionId) return;
 
@@ -134,10 +214,7 @@ export function useInstanceAiWorkflowPreviewExecution(
 	const removeExecutionStartedListener = pushStore.addEventListener((event) => {
 		if (event.type !== 'executionStarted') return;
 		if (event.data.workflowId !== options.workflowId()) return;
-		// Users rarely discover the logs panel on their own, so open it whenever a
-		// run (user- or agent-made) starts for this artifact's workflow — watching
-		// data flow through the nodes is the payoff of the run (INS-860).
-		logsStore.toggleOpen(true);
+		logsPanelMemory.latestStartedExecutionIds.set(options.workflowId(), event.data.executionId);
 		const executionState = useWorkflowExecutionStateStore(
 			createWorkflowDocumentId(options.workflowId()),
 		);
@@ -165,7 +242,12 @@ export function useInstanceAiWorkflowPreviewExecution(
 	const removeExecutionFinishedListener = pushStore.addEventListener((event) => {
 		if (event.type !== 'executionFinished') return;
 		if (event.data.workflowId !== options.workflowId()) return;
+		if (event.data.status === 'success') {
+			options.reportWorkflowSuccess?.(event.data.workflowId);
+			return;
+		}
 		if (event.data.status !== 'error' && event.data.status !== 'crashed') return;
+		openLogsForFailedRun(event.data.executionId);
 		if (event.data.source === 'instance_ai') return;
 		options.reportWorkflowFailures(event.data.executionId, event.data.workflowId);
 	});

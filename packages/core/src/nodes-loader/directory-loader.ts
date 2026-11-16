@@ -17,7 +17,8 @@ import type {
 	KnownNodesAndCredentials,
 	NodeLoader,
 } from 'n8n-workflow';
-import { isExpression, isSubNodeType, UnexpectedError, UserError } from 'n8n-workflow';
+import { isExpression, isSubNodeType } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { readdirSync, realpathSync } from 'node:fs';
 import * as path from 'path';
 
@@ -38,6 +39,7 @@ function toJSON(this: ICredentialType) {
 	return {
 		...this,
 		authenticate: typeof this.authenticate === 'function' ? {} : this.authenticate,
+		test: typeof this.test === 'function' ? {} : this.test,
 	};
 }
 
@@ -211,6 +213,11 @@ export abstract class DirectoryLoader implements NodeLoader {
 				: tempNode.description.version;
 		}
 
+		const nodeDescriptions = this.getVersionedNodeTypeAll(tempNode).map(
+			({ description }) => description,
+		);
+		nodeDescriptions.forEach(validateNodeDescription);
+
 		this.known.nodes[nodeType] = {
 			className: tempNode.constructor.name,
 			sourcePath: filePath,
@@ -226,10 +233,7 @@ export abstract class DirectoryLoader implements NodeLoader {
 			version: nodeVersion,
 		});
 
-		this.getVersionedNodeTypeAll(tempNode).forEach(({ description }) => {
-			validateNodeDescription(description);
-			this.types.nodes.push(description);
-		});
+		this.types.nodes.push(...nodeDescriptions);
 
 		for (const credential of this.getCredentialsForNode(tempNode)) {
 			if (!this.nodesByCredential[credential.name]) {
@@ -259,10 +263,7 @@ export abstract class DirectoryLoader implements NodeLoader {
 	/** Loads a credential class from a file, and fixes icons */
 	loadCredentialFromFile(filePath: string): void {
 		const tempCredential = this.loadClass<ICredentialType>(filePath);
-		// Add serializer method "toJSON" to the class so that authenticate method (if defined)
-		// gets mapped to the authenticate attribute before it is sent to the client.
-		// The authenticate property is used by the client to decide whether or not to
-		// include the credential type in the predefined credentials (HTTP node)
+		// Keep function-based authentication and tests visible in client metadata.
 		Object.assign(tempCredential, { toJSON });
 
 		this.fixIconPaths(tempCredential, filePath);

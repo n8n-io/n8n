@@ -13,9 +13,12 @@
         "mailNickname": {
             "type": "string"
         },
+        "securityIdentifier": {
+            "type": "string"
+        },
         "userPrincipalName": {
             "type": "string"
         }
     },
-    "version": 7
+    "version": 8
 }

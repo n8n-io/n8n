@@ -10,7 +10,7 @@ import { mfaEventBus } from '../auth.eventBus';
 import { onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { toRefs } from '@vueuse/core';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 import { N8nButton, N8nCard, N8nFormInputs, N8nHeading, N8nText } from '@n8n/design-system';
 // ---------------------------------------------------------------------------
@@ -241,7 +241,7 @@ onMounted(() => {
 			</div>
 			<div :class="$style.footer">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					float="left"
 					:label="i18.baseText('mfa.button.back')"
 					size="large"

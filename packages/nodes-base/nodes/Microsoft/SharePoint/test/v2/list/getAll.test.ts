@@ -3,7 +3,7 @@ import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../../v2/actions/versionDescription';
-import { LIST_SIMPLIFY_SELECT } from '../../../v2/helpers/utils';
+import { LIST_SIMPLIFY_SELECT } from '../../../helpers/utils';
 import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
 
 // microsoftApiRequestAllItems calls microsoftApiRequest as a same-module
@@ -11,8 +11,8 @@ import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
 // wouldn't intercept that internal call. Stubbing the network helper one
 // layer down instead (as transport/index.test.ts does) keeps both
 // microsoftApiRequest and microsoftApiRequestAllItems real and end-to-end.
-const SITE_ID = 'contoso.sharepoint.com,g1,g2';
-const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
+const SITE_ID =
+	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
 const GRAPH_BASE_URL = 'https://graph.microsoft.com';
 
 // Realistic Graph shape: @odata.etag rides on each item; @odata.context lives
@@ -102,7 +102,7 @@ describe('Microsoft SharePoint v2 — List: Get Many', () => {
 		expect(ctx.helpers.requestOAuth2).toHaveBeenCalledWith(
 			'microsoftOAuth2Api',
 			expect.objectContaining({
-				uri: `${GRAPH_BASE_URL}/v1.0/sites/${ENCODED_SITE_ID}/lists`,
+				uri: expect.objectContaining({ value: `${GRAPH_BASE_URL}/v1.0/sites/${SITE_ID}/lists` }),
 				qs: { $select: LIST_SIMPLIFY_SELECT },
 			}),
 		);
@@ -123,7 +123,7 @@ describe('Microsoft SharePoint v2 — List: Get Many', () => {
 		expect(ctx.helpers.requestOAuth2).toHaveBeenCalledWith(
 			'microsoftOAuth2Api',
 			expect.objectContaining({
-				uri: `${GRAPH_BASE_URL}/v1.0/sites/${ENCODED_SITE_ID}/lists`,
+				uri: expect.objectContaining({ value: `${GRAPH_BASE_URL}/v1.0/sites/${SITE_ID}/lists` }),
 				qs: {},
 			}),
 		);
@@ -243,7 +243,7 @@ describe('Microsoft SharePoint v2 — List: Get Many', () => {
 		expect(ctx.helpers.requestOAuth2).toHaveBeenCalledWith(
 			'microsoftOAuth2Api',
 			expect.objectContaining({
-				uri: `${GRAPH_BASE_URL}/v1.0/sites/${ENCODED_SITE_ID}/lists`,
+				uri: expect.objectContaining({ value: `${GRAPH_BASE_URL}/v1.0/sites/${SITE_ID}/lists` }),
 				qs: { $top: 5 },
 			}),
 		);
@@ -267,7 +267,9 @@ describe('Microsoft SharePoint v2 — List: Get Many', () => {
 			1,
 			'microsoftOAuth2Api',
 			expect.objectContaining({
-				uri: `${GRAPH_BASE_URL}/v1.0/sites/contoso.sharepoint.com:/sites/site1`,
+				uri: expect.objectContaining({
+					value: `${GRAPH_BASE_URL}/v1.0/sites/contoso.sharepoint.com:/sites/site1`,
+				}),
 				qs: { $select: 'id' },
 			}),
 		);
@@ -275,7 +277,7 @@ describe('Microsoft SharePoint v2 — List: Get Many', () => {
 			2,
 			'microsoftOAuth2Api',
 			expect.objectContaining({
-				uri: `${GRAPH_BASE_URL}/v1.0/sites/${ENCODED_SITE_ID}/lists`,
+				uri: expect.objectContaining({ value: `${GRAPH_BASE_URL}/v1.0/sites/${SITE_ID}/lists` }),
 				qs: { $select: LIST_SIMPLIFY_SELECT },
 			}),
 		);

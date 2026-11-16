@@ -1,24 +1,26 @@
 import { Logger } from '@n8n/backend-common';
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { OperationContext, User, WorkflowEntity } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { ProjectService } from '@/services/project.service.ee';
+import { WEBHOOK_CONFLICT_MESSAGE } from '@/webhooks/constants';
+import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { orderBySubWorkflowDependencies } from './sub-workflow-ordering';
 import type { PersistedWorkflowOutcome, PersistedWorkflowPlanItem } from './workflow-import.types';
-import { decideWorkflowPublishingAction } from './workflow-publishing-policy';
 import {
 	WorkflowPublishingPolicy,
+	type PublishingAction,
 	type WorkflowPublishingBlockedReason,
-	type WorkflowPublishingContext,
 	type WorkflowPublishingOutcome,
 } from './workflow-publishing-policy.types';
 import type { PackageWorkflowRequirement } from '../../spec/requirements.schema';
+import { blockedPublishingOutcome } from '../publishing';
 
 export interface WorkflowPublishingResult {
 	workflow: WorkflowEntity;
@@ -30,6 +32,9 @@ export type PackagePublishingResults = ReadonlyMap<string, WorkflowPublishingRes
 
 export interface PackagePublishingRequest {
 	user: User;
+	publicApi: PublicApiCaller;
+	/** The caller's operation context. Audit events read the login of a service account from it. */
+	ctx?: OperationContext;
 	/** Every workflow the package wrote, across all of its projects. */
 	persisted: PersistedWorkflowOutcome[];
 	policy: WorkflowPublishingPolicy;
@@ -49,6 +54,7 @@ export class WorkflowPublisher {
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
 		private readonly workflowService: WorkflowService,
+		private readonly webhookService: WebhookService,
 	) {}
 
 	/**
@@ -60,22 +66,33 @@ export class WorkflowPublisher {
 	 */
 	async applyToPackage({
 		user,
+		publicApi,
+		ctx,
 		persisted,
-		policy,
 		subWorkflowRequirements,
 	}: PackagePublishingRequest): Promise<PackagePublishingResults> {
 		const results = new Map<string, WorkflowPublishingResult>();
+		const claimedPaths = new Set<string>();
 
 		for (const outcome of orderBySubWorkflowDependencies(persisted, subWorkflowRequirements)) {
 			if (outcome.status === 'skipped') continue;
+
+			const webhookKeys = this.webhookKeysOnPublish(outcome);
 
 			const result = await this.apply(
 				user,
 				outcome.item,
 				outcome.workflow,
-				policy,
 				outcome.blockedFromPublish,
+				webhookKeys.some((key) => claimedPaths.has(key)),
+				publicApi,
+				ctx,
 			);
+
+			if (result.publishing.state === 'published') {
+				for (const key of webhookKeys) claimedPaths.add(key);
+			}
+
 			// Publish reloads the workflow without parentFolder; restore it for the import summary.
 			result.workflow.parentFolder =
 				result.workflow.parentFolder ??
@@ -86,6 +103,23 @@ export class WorkflowPublisher {
 		}
 
 		return results;
+	}
+
+	/**
+	 * Webhooks the workflow would register, empty unless the policy will publish it. The sweep
+	 * tracks these itself because activation checks `webhook_entity`, whose rows the publication
+	 * service writes asynchronously: a workflow published moments earlier isn't there yet, so the
+	 * check passes and the workflow is reported published while its registration fails after.
+	 */
+	private webhookKeysOnPublish(
+		outcome: Extract<PersistedWorkflowOutcome, { status: 'created' | 'updated' }>,
+	): string[] {
+		if (outcome.blockedFromPublish) return [];
+
+		const action = outcome.item.publishingAction;
+		if (action !== 'publish') return [];
+
+		return this.webhookService.getStaticWebhookKeys(outcome.workflow.nodes);
 	}
 
 	/**
@@ -132,74 +166,70 @@ export class WorkflowPublisher {
 		user: User,
 		item: PersistedWorkflowPlanItem,
 		workflow: WorkflowEntity,
-		policy: WorkflowPublishingPolicy,
 		blockedReason?: WorkflowPublishingBlockedReason,
+		webhookContested = false,
+		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
 	): Promise<WorkflowPublishingResult> {
-		const action = decideWorkflowPublishingAction(policy, toPublishingContext(item, workflow));
+		const action = item.publishingAction;
 
 		if (action === 'noop') {
 			return { workflow, publishing: { state: 'unchanged' } };
 		}
 
 		if (action === 'publish' && blockedReason) {
-			// A prior published version may still be active after an update; report
-			// that the live publish state is unchanged rather than "blocked".
-			if (workflow.activeVersionId) {
-				return {
-					workflow,
-					publishing: {
-						state: 'unchanged',
-						skippedPublishReason: blockedReason,
-					},
-				};
-			}
-
 			return {
 				workflow,
-				publishing: { state: 'blocked', blockedReason },
+				publishing: blockedPublishingOutcome(blockedReason, Boolean(workflow.activeVersionId)),
 			};
+		}
+
+		if (action === 'publish' && webhookContested) {
+			return this.failed(workflow, action, WEBHOOK_CONFLICT_MESSAGE);
 		}
 
 		try {
 			if (action === 'publish') {
 				return {
-					workflow: await this.workflowService.activateWorkflow(user, workflow.id, {
-						versionId: workflow.versionId,
-						source: 'import',
-					}),
+					workflow: await this.workflowService.activateWorkflow(
+						user,
+						workflow.id,
+						{ versionId: workflow.versionId, source: 'import', publicApi },
+						ctx,
+					),
 					publishing: { state: 'published' },
 				};
 			}
 
 			return {
-				workflow: await this.workflowService.deactivateWorkflow(user, workflow.id, {
-					source: 'import',
-				}),
+				workflow: await this.workflowService.deactivateWorkflow(
+					user,
+					workflow.id,
+					{ source: 'import', publicApi },
+					ctx,
+				),
 				publishing: { state: 'unpublished' },
 			};
 		} catch (error) {
-			// Content import already succeeded; a publish/unpublish failure (e.g. a
-			// triggerless workflow under `publish-all`) must not fail the import.
-			// Keep the post-save state and surface the reason for diagnostics.
-			const message = ensureError(error).message;
-			this.logger.warn('Failed to apply publishing policy to imported workflow', {
-				workflowId: workflow.id,
-				action,
-				error: message,
-			});
-			return { workflow, publishing: { state: 'failed', error: message } };
+			return this.failed(workflow, action, ensureError(error).message);
 		}
 	}
-}
 
-function toPublishingContext(
-	item: PersistedWorkflowPlanItem,
-	workflow: WorkflowEntity,
-): WorkflowPublishingContext {
-	return {
-		status: item.action === 'create' ? 'created' : 'updated',
-		sourcePublished: item.sourcePublished,
-		currentlyPublished: !!workflow.activeVersionId,
-		isArchived: workflow.isArchived,
-	};
+	/**
+	 * Content import already succeeded; a publish/unpublish failure (e.g. a triggerless workflow
+	 * under `publish-all`) must not fail the import. Keep the post-save state and surface the
+	 * reason for diagnostics.
+	 */
+	private failed(
+		workflow: WorkflowEntity,
+		action: PublishingAction,
+		error: string,
+	): WorkflowPublishingResult {
+		this.logger.warn('Failed to apply publishing policy to imported workflow', {
+			workflowId: workflow.id,
+			action,
+			error,
+		});
+		return { workflow, publishing: { state: 'failed', error } };
+	}
 }

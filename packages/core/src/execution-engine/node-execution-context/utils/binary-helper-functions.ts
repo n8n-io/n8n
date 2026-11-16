@@ -16,13 +16,12 @@ import type {
 import {
 	NodeOperationError,
 	fileTypeFromMimeType,
-	UserError,
-	UnexpectedError,
 	isBinaryValue,
 	BINARY_MODE_COMBINED,
 	BINARY_MODE_SEPARATE,
 	sanitizeFilename,
 } from 'n8n-workflow';
+import { UserError, UnexpectedError } from '@n8n/errors';
 import path from 'path';
 import type { Readable } from 'stream';
 import { URL } from 'url';
@@ -236,6 +235,14 @@ export async function copyBinaryFile(
 	);
 }
 
+export const getNodeBinaryHelperFunctions = (
+	workflow: { id: string },
+	additionalData: IWorkflowExecuteAdditionalData,
+) => ({
+	copyBinaryFile: async (filePath: string, fileName: string, mimeType?: string) =>
+		await copyBinaryFile(workflow.id, additionalData.executionId!, filePath, fileName, mimeType),
+});
+
 /**
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
@@ -260,12 +267,16 @@ export async function prepareBinaryData(
 					const parsed = new URL(responseUrl);
 					parsed.username = '';
 					parsed.password = '';
+					parsed.search = '';
+					parsed.hash = '';
 					sanitizedUrl = parsed.toString();
 					urlPathname = parsed.pathname;
 				}
+				const requestPathname = binaryData.req?.path
+					? new URL(binaryData.req.path, 'http://localhost').pathname
+					: undefined;
 				filePath =
-					binaryData.contentDisposition?.filename ??
-					(urlPathname ?? binaryData.req?.path)?.slice(1);
+					binaryData.contentDisposition?.filename ?? (urlPathname ?? requestPathname)?.slice(1);
 				fullUrl = sanitizedUrl;
 			} catch {}
 		}

@@ -72,6 +72,23 @@ export interface VideoGenerationResponse {
 	};
 }
 
+export interface VideoGenerationV2Response {
+	task_id?: string;
+}
+
+export interface VideoTaskV2QueryResponse {
+	task?: {
+		status?: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+		content?: {
+			url?: string;
+		};
+		error?: {
+			code?: string;
+			message?: string;
+		};
+	};
+}
+
 export interface T2AResponse {
 	data: {
 		audio: string;

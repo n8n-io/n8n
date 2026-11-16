@@ -18,6 +18,24 @@ describe('workflow publication blocker details', () => {
 		},
 	);
 
+	test.each(['review_pending', 'changes_requested'] as const)(
+		'rejects the "%s" reason without a review request ID',
+		(reason) => {
+			const details = { reason };
+
+			expect(workflowPublishBlockedDetailsSchema.safeParse(details).success).toBe(false);
+			expect(isWorkflowPublishBlockedDetails(details)).toBe(false);
+		},
+	);
+
+	test.each(['insufficient_api_key_scope', 'insufficient_permissions'] as const)(
+		'accepts the "%s" reason on its own, and with the saved version',
+		(reason) => {
+			expect(isWorkflowPublishBlockedDetails({ reason })).toBe(true);
+			expect(isWorkflowPublishBlockedDetails({ reason, versionId: 'version-1' })).toBe(true);
+		},
+	);
+
 	test.each([
 		undefined,
 		{},

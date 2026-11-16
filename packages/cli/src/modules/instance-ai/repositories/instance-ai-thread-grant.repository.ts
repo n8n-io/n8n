@@ -21,6 +21,11 @@ export class InstanceAiThreadGrantRepository extends Repository<InstanceAiThread
 			.execute();
 	}
 
+	/** Drop a grant. A no-op when the key was never granted. */
+	async revoke(threadId: string, userId: string, grantKey: string): Promise<void> {
+		await this.delete({ threadId, userId, grantKey });
+	}
+
 	/** The grant keys this user holds in this thread. */
 	async findKeys(threadId: string, userId: string): Promise<Set<string>> {
 		const rows = await this.find({

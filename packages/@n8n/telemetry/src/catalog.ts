@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod/v4';
 
 import type { TelemetryEventRegistry } from './define';
@@ -7,6 +8,7 @@ export type TelemetryCatalogProperty = {
 	type: string;
 	optional: boolean;
 	description?: string;
+	deprecated?: boolean;
 };
 
 export type TelemetryCatalogEntry = {
@@ -18,11 +20,8 @@ export type TelemetryCatalogEntry = {
 	properties: TelemetryCatalogProperty[];
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
-
 function typeSummary(schema: Record<string, unknown>): string {
+	if ('const' in schema) return JSON.stringify(schema.const);
 	if (Array.isArray(schema.enum)) {
 		return schema.enum.map((value) => JSON.stringify(value)).join(' | ');
 	}
@@ -40,24 +39,34 @@ export function buildCatalog(registry: TelemetryEventRegistry): TelemetryCatalog
 		for (const [key, entry] of Object.entries(events)) {
 			const schema: unknown = z.toJSONSchema(entry.properties);
 			const schemaRecord = isRecord(schema) ? schema : {};
-			const required = new Set(Array.isArray(schemaRecord.required) ? schemaRecord.required : []);
-			const schemaProperties = isRecord(schemaRecord.properties)
-				? Object.entries(schemaRecord.properties)
-				: [];
+			const variants = (
+				Array.isArray(schemaRecord.anyOf) ? schemaRecord.anyOf.filter(isRecord) : [schemaRecord]
+			).map((variant) => ({
+				required: new Set(Array.isArray(variant.required) ? variant.required : []),
+				properties: isRecord(variant.properties) ? variant.properties : {},
+			}));
+			const propertyNames = new Set(variants.flatMap((variant) => Object.keys(variant.properties)));
 			catalog.push({
 				domain,
 				key,
 				name: entry.name,
 				description: entry.description,
 				deprecated: schemaRecord.deprecated === true,
-				properties: schemaProperties.map(([propertyName, property]) => {
-					const propertyRecord = isRecord(property) ? property : {};
+				properties: [...propertyNames].map((propertyName) => {
+					const propertyVariants = variants
+						.map((variant) => variant.properties[propertyName])
+						.filter(isRecord);
+					const description = propertyVariants.find(
+						(property) => typeof property.description === 'string',
+					)?.description;
 					return {
 						name: propertyName,
-						type: typeSummary(propertyRecord),
-						optional: !required.has(propertyName),
-						...(typeof propertyRecord.description === 'string'
-							? { description: propertyRecord.description }
+						type: [...new Set(propertyVariants.map(typeSummary))].join(' | '),
+						optional: variants.some((variant) => !variant.required.has(propertyName)),
+						...(typeof description === 'string' ? { description } : {}),
+						...(propertyVariants.length > 0 &&
+						propertyVariants.every((property) => property.deprecated === true)
+							? { deprecated: true }
 							: {}),
 					};
 				}),
@@ -80,7 +89,7 @@ export function formatCatalog(catalog: TelemetryCatalogEntry[]): string {
 		for (const property of entry.properties) {
 			const propertyDescription = property.description ? ` — ${property.description}` : '';
 			lines.push(
-				`    ${property.name}${property.optional ? '?' : ''}: ${property.type}${propertyDescription}`,
+				`    ${property.name}${property.optional ? '?' : ''}: ${property.type}${property.deprecated ? ' (deprecated)' : ''}${propertyDescription}`,
 			);
 		}
 	}

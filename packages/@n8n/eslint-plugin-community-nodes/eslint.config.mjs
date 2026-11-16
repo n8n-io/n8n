@@ -1,15 +1,14 @@
 import { defineConfig } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { backendConfig } from '@n8n/eslint-config/backend';
 import eslintPlugin from 'eslint-plugin-eslint-plugin';
 
 export default defineConfig([
-	nodeConfig,
+	backendConfig,
 	eslintPlugin.configs.recommended,
 	{
 		files: ['src/**/*.ts'],
 		languageOptions: {
 			parserOptions: {
-				project: './tsconfig.json',
 				allowDefaultProject: true,
 			},
 		},

@@ -3,6 +3,7 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { githubApiRequest } from '../shared/transport';
 
 type RepositorySearchItem = {
@@ -30,7 +31,7 @@ export async function getRepositories(
 	};
 
 	try {
-		responseData = await githubApiRequest.call(this, 'GET', '/search/repositories', {
+		responseData = await githubApiRequest.call(this, 'GET', requestPath`/search/repositories`, {
 			q,
 			page,
 			per_page,
@@ -46,5 +47,5 @@ export async function getRepositories(
 	}));
 
 	const nextPaginationToken = page * per_page < responseData.total_count ? page + 1 : undefined;
-	return { results, paginationToken: nextPaginationToken };
+	return { results, paginationToken: nextPaginationToken?.toString() };
 }

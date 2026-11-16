@@ -1,15 +1,18 @@
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import type { OutboundHttp } from '@n8n/backend-network';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentModelCatalogService } from '../agent-model-catalog.service';
+import type { AgentDefaultModelResolverService } from '../agent-default-model-resolver.service';
 import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
 
 const fetchProviderCatalog = vi.fn();
 vi.mock('@n8n/agents', () => ({
 	fetchProviderCatalog: (...args: unknown[]) => fetchProviderCatalog(...args) as unknown,
 }));
+vi.mock('@/utils/ai-proxy-fetch', () => ({ createAiProxyFetch: vi.fn(() => vi.fn()) }));
 
 const user = mock<User>({ id: 'user-1' });
 const credentialId = 'cred-1';
@@ -50,8 +53,15 @@ const catalogFixture = {
 
 function makeService() {
 	const lookupService = mock<BuilderModelLiveLookupService>();
-	const service = new AgentModelCatalogService(mockLogger(), lookupService);
-	return { service, lookupService };
+	const defaultModelResolver = mock<AgentDefaultModelResolverService>();
+	const logger = mockLogger();
+	const service = new AgentModelCatalogService(
+		logger,
+		lookupService,
+		defaultModelResolver,
+		mock<OutboundHttp>(),
+	);
+	return { service, lookupService, defaultModelResolver, logger };
 }
 
 describe('AgentModelCatalogService', () => {
@@ -63,9 +73,11 @@ describe('AgentModelCatalogService', () => {
 	it('keeps catalog models the provider still reports live, with catalog metadata, and prunes the rest', async () => {
 		const { service, lookupService } = makeService();
 		// Provider reports Sonnet but not Opus — Opus (retired) must be pruned.
-		lookupService.list.mockResolvedValue([
-			{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
-		]);
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'curated',
+			models: [{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' }],
+		});
 
 		const result = await service.getProviderModels(user, 'project-1', 'anthropic', credentialId);
 
@@ -76,7 +88,7 @@ describe('AgentModelCatalogService', () => {
 			name: 'Claude Sonnet 4.6',
 			cost: { input: 3, output: 15 },
 		});
-		expect(lookupService.list).toHaveBeenCalledWith(
+		expect(lookupService.lookup).toHaveBeenCalledWith(
 			user,
 			'project-1',
 			credentialId,
@@ -85,12 +97,31 @@ describe('AgentModelCatalogService', () => {
 		);
 	});
 
+	it('returns the verified default model when the resolver selects one in the response', async () => {
+		const { service, lookupService, defaultModelResolver } = makeService();
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'curated',
+			models: [{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' }],
+		});
+		defaultModelResolver.resolveFromVerifiedModelIds.mockReturnValue({
+			model: 'anthropic/claude-sonnet-4-6',
+			credential: credentialId,
+		});
+
+		const result = await service.getProviderModels(user, 'project-1', 'anthropic', credentialId);
+
+		expect(result.defaultModelId).toBe('claude-sonnet-4-6');
+	});
+
 	it('verifies against the gateway allowlist for the n8n Connect managed tag', async () => {
 		const { service, lookupService } = makeService();
 		// Gateway serves only Sonnet — the retired/unsupported Opus must be pruned.
-		lookupService.list.mockResolvedValue([
-			{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
-		]);
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'managed',
+			models: [{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' }],
+		});
 
 		const result = await service.getProviderModels(
 			user,
@@ -101,7 +132,7 @@ describe('AgentModelCatalogService', () => {
 
 		expect(result.verified).toBe(true);
 		expect(result.models.map((m) => m.id)).toEqual(['claude-sonnet-4-6']);
-		expect(lookupService.list).toHaveBeenCalledWith(
+		expect(lookupService.lookup).toHaveBeenCalledWith(
 			user,
 			'project-1',
 			AI_GATEWAY_MANAGED_TAG,
@@ -110,9 +141,9 @@ describe('AgentModelCatalogService', () => {
 		);
 	});
 
-	it('flags a failed managed lookup as unavailable instead of an empty allowlist', async () => {
+	it('does not use the static catalog when a managed lookup throws before returning a policy', async () => {
 		const { service, lookupService } = makeService();
-		lookupService.list.mockRejectedValue(new Error('gateway unreachable'));
+		lookupService.lookup.mockRejectedValue(new Error('gateway unreachable'));
 
 		const result = await service.getProviderModels(
 			user,
@@ -123,8 +154,13 @@ describe('AgentModelCatalogService', () => {
 
 		// No static-catalog fallback for a managed slot: it would offer models the
 		// gateway won't serve. But an outage must not read as "allowlist is empty".
-		expect(result.models).toEqual([]);
-		expect(result.unavailable).toBe(true);
+		expect(result).toEqual({
+			provider: 'anthropic',
+			verified: true,
+			unavailable: true,
+			models: [],
+		});
+		expect(fetchProviderCatalog).not.toHaveBeenCalled();
 	});
 
 	it('uses the gateway exact (snapshot) id for the managed tag, not the catalog alias', async () => {
@@ -144,9 +180,11 @@ describe('AgentModelCatalogService', () => {
 			},
 		});
 		// The gateway returns the dated snapshot — its allowlist matches this, not the alias.
-		lookupService.list.mockResolvedValue([
-			{ name: 'Claude Haiku 4.5', value: 'claude-haiku-4-5-20251001' },
-		]);
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'managed',
+			models: [{ name: 'Claude Haiku 4.5', value: 'claude-haiku-4-5-20251001' }],
+		});
 
 		const result = await service.getProviderModels(
 			user,
@@ -162,9 +200,43 @@ describe('AgentModelCatalogService', () => {
 		]);
 	});
 
+	it('returns the snapshot id as the default when the gateway lists only the dated snapshot', async () => {
+		const { service, lookupService, defaultModelResolver } = makeService();
+		// The gateway exposes only the dated snapshot of the maintained default;
+		// the resolver matches it via its snapshot-stripped alias and returns the
+		// callable snapshot id, which must survive the membership check.
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'managed',
+			models: [{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6-20251001' }],
+		});
+		defaultModelResolver.resolveFromVerifiedModelIds.mockReturnValue({
+			model: 'anthropic/claude-sonnet-4-6-20251001',
+			credential: AI_GATEWAY_MANAGED_TAG,
+		});
+
+		const result = await service.getProviderModels(
+			user,
+			'project-1',
+			'anthropic',
+			AI_GATEWAY_MANAGED_TAG,
+		);
+
+		expect(defaultModelResolver.resolveFromVerifiedModelIds).toHaveBeenCalledWith(
+			'anthropic',
+			AI_GATEWAY_MANAGED_TAG,
+			['claude-sonnet-4-6-20251001'],
+		);
+		expect(result.defaultModelId).toBe('claude-sonnet-4-6-20251001');
+	});
+
 	it('leaves reasoning support unknown for managed models missing from the catalog', async () => {
 		const { service, lookupService } = makeService();
-		lookupService.list.mockResolvedValue([{ name: 'Claude Brand New', value: 'claude-brand-new' }]);
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'managed',
+			models: [{ name: 'Claude Brand New', value: 'claude-brand-new' }],
+		});
 
 		const result = await service.getProviderModels(
 			user,
@@ -204,9 +276,11 @@ describe('AgentModelCatalogService', () => {
 		});
 		// …while Anthropic's API lists the dated snapshot only. The snapshot must
 		// verify its alias; the retired alias with no live counterpart stays pruned.
-		lookupService.list.mockResolvedValue([
-			{ name: 'Claude Haiku 4.5', value: 'claude-haiku-4-5-20251001' },
-		]);
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'curated',
+			models: [{ name: 'Claude Haiku 4.5', value: 'claude-haiku-4-5-20251001' }],
+		});
 
 		const result = await service.getProviderModels(user, 'project-1', 'anthropic', credentialId);
 
@@ -217,10 +291,14 @@ describe('AgentModelCatalogService', () => {
 	it('does not add live models that are missing from the catalog', async () => {
 		const { service, lookupService } = makeService();
 		// Live list includes a model models.dev has no entry for, alongside a known one.
-		lookupService.list.mockResolvedValue([
-			{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
-			{ name: 'Claude Brand New', value: 'claude-brand-new' },
-		]);
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'curated',
+			models: [
+				{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
+				{ name: 'Claude Brand New', value: 'claude-brand-new' },
+			],
+		});
 
 		const result = await service.getProviderModels(user, 'project-1', 'anthropic', credentialId);
 
@@ -229,11 +307,86 @@ describe('AgentModelCatalogService', () => {
 		expect(result.models.map((m) => m.id)).toEqual(['claude-sonnet-4-6']);
 	});
 
+	it('keeps the gateway label of a google model missing from the catalog', async () => {
+		const { service, lookupService } = makeService();
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'managed',
+			models: [{ name: 'Gemini Brand New', value: 'models/gemini-brand-new' }],
+		});
+
+		const result = await service.getProviderModels(
+			user,
+			'project-1',
+			'google',
+			AI_GATEWAY_MANAGED_TAG,
+		);
+
+		expect(result.models).toEqual([
+			expect.objectContaining({ id: 'gemini-brand-new', name: 'Gemini Brand New' }),
+		]);
+	});
+
+	it('prefers the gateway name over the catalog name and keeps its priority for a managed model', async () => {
+		const { service, lookupService } = makeService();
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'managed',
+			models: [
+				{ name: 'Gemini 2.5 Flash (Gateway)', value: 'models/gemini-2.5-flash', priority: 10 },
+				{ name: 'models/gemini-2.5-flash-lite', value: 'models/gemini-2.5-flash-lite' },
+			],
+		});
+
+		const result = await service.getProviderModels(
+			user,
+			'project-1',
+			'google',
+			AI_GATEWAY_MANAGED_TAG,
+		);
+
+		expect(result.models).toEqual([
+			expect.objectContaining({
+				id: 'gemini-2.5-flash',
+				name: 'Gemini 2.5 Flash (Gateway)',
+				reasoning: true,
+				priority: 10,
+			}),
+			expect.objectContaining({ id: 'gemini-2.5-flash-lite', name: 'gemini-2.5-flash-lite' }),
+		]);
+	});
+
+	it('falls back to the catalog name or the id when the gateway reports no name', async () => {
+		const { service, lookupService } = makeService();
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'managed',
+			models: [
+				{ name: '', value: 'models/gemini-2.5-flash' },
+				{ name: '', value: 'models/gemini-brand-new', priority: 5 },
+			],
+		});
+
+		const result = await service.getProviderModels(
+			user,
+			'project-1',
+			'google',
+			AI_GATEWAY_MANAGED_TAG,
+		);
+
+		expect(result.models).toEqual([
+			expect.objectContaining({ id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' }),
+			{ id: 'gemini-brand-new', name: 'gemini-brand-new', toolCall: true, priority: 5 },
+		]);
+	});
+
 	it('strips the "models/" prefix from google model ids before matching', async () => {
 		const { service, lookupService } = makeService();
-		lookupService.list.mockResolvedValue([
-			{ name: 'models/gemini-2.5-flash', value: 'models/gemini-2.5-flash' },
-		]);
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'curated',
+			models: [{ name: 'models/gemini-2.5-flash', value: 'models/gemini-2.5-flash' }],
+		});
 
 		const result = await service.getProviderModels(user, 'project-1', 'google', credentialId);
 
@@ -244,12 +397,86 @@ describe('AgentModelCatalogService', () => {
 
 	it('falls back to the catalog list (verified: false) when the live lookup fails', async () => {
 		const { service, lookupService } = makeService();
-		lookupService.list.mockRejectedValue(new Error('provider is down'));
+		lookupService.lookup.mockRejectedValue(new Error('provider is down'));
 
 		const result = await service.getProviderModels(user, 'project-1', 'anthropic', credentialId);
 
 		expect(result.verified).toBe(false);
 		expect(result.models.map((m) => m.id).sort()).toEqual(['claude-opus-4-0', 'claude-sonnet-4-6']);
+	});
+
+	it('uses only exact live models for a custom OpenAI-compatible endpoint', async () => {
+		const { service, lookupService } = makeService();
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'endpoint-only',
+			models: [
+				{ name: 'Gemini 2.5 Flash', value: 'gemini-2.5-flash' },
+				{ name: 'GLM 4.5', value: 'glm-4.5' },
+				{ name: '', value: 'qwen3-coder' },
+			],
+		});
+
+		const result = await service.getProviderModels(user, 'project-1', 'openai', credentialId);
+
+		expect(result).toEqual({
+			provider: 'openai',
+			verified: true,
+			models: [
+				{ id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', toolCall: true },
+				{ id: 'glm-4.5', name: 'GLM 4.5', toolCall: true },
+				{ id: 'qwen3-coder', name: 'qwen3-coder', toolCall: true },
+			],
+		});
+		expect(fetchProviderCatalog).not.toHaveBeenCalled();
+	});
+
+	it('returns the default model when a custom endpoint exposes it', async () => {
+		const { service, lookupService, defaultModelResolver } = makeService();
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'endpoint-only',
+			models: [
+				{ name: 'GLM 4.5', value: 'glm-4.5' },
+				{ name: 'GPT-5 mini', value: 'gpt-5-mini' },
+			],
+		});
+		defaultModelResolver.resolveFromVerifiedModelIds.mockReturnValue({
+			model: 'openai/gpt-5-mini',
+			credential: credentialId,
+		});
+
+		const result = await service.getProviderModels(user, 'project-1', 'openai', credentialId);
+
+		expect(defaultModelResolver.resolveFromVerifiedModelIds).toHaveBeenCalledWith(
+			'openai',
+			credentialId,
+			['glm-4.5', 'gpt-5-mini'],
+		);
+		expect(result.defaultModelId).toBe('gpt-5-mini');
+	});
+
+	it('reports a custom OpenAI-compatible endpoint as unavailable without catalog fallback', async () => {
+		const { service, lookupService, logger } = makeService();
+		lookupService.lookup.mockResolvedValue({
+			status: 'unavailable',
+			policy: 'endpoint-only',
+			error: new Error('endpoint unavailable'),
+		});
+
+		const result = await service.getProviderModels(user, 'project-1', 'openai', credentialId);
+
+		expect(result).toEqual({
+			provider: 'openai',
+			verified: true,
+			unavailable: true,
+			models: [],
+		});
+		expect(fetchProviderCatalog).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('Live model list failed'),
+			expect.objectContaining({ provider: 'openai', error: 'endpoint unavailable' }),
+		);
 	});
 
 	it('falls back to the catalog list (verified: false) when no credential is provided', async () => {
@@ -259,7 +486,7 @@ describe('AgentModelCatalogService', () => {
 
 		expect(result.verified).toBe(false);
 		expect(result.models).toHaveLength(2);
-		expect(lookupService.list).not.toHaveBeenCalled();
+		expect(lookupService.lookup).not.toHaveBeenCalled();
 	});
 
 	it('falls back to the catalog list for providers without a live lookup', async () => {
@@ -283,15 +510,99 @@ describe('AgentModelCatalogService', () => {
 
 		expect(result.verified).toBe(false);
 		expect(result.models).toHaveLength(1);
-		expect(lookupService.list).not.toHaveBeenCalled();
+		expect(lookupService.lookup).not.toHaveBeenCalled();
+	});
+
+	describe('azure-openai', () => {
+		it('offers the exact deployment names of the Foundry project, without the catalog', async () => {
+			const { service, lookupService } = makeService();
+			lookupService.lookupAzureFoundryDeployments.mockResolvedValue({
+				status: 'success',
+				policy: 'endpoint-only',
+				models: [{ name: 'my-chat (gpt-4.1)', value: 'my-chat' }],
+			});
+
+			const result = await service.getProviderModels(
+				user,
+				'project-1',
+				'azure-openai',
+				credentialId,
+			);
+
+			expect(result).toEqual({
+				provider: 'azure-openai',
+				verified: true,
+				models: [{ id: 'my-chat', name: 'my-chat (gpt-4.1)', toolCall: true }],
+			});
+			expect(lookupService.lookupAzureFoundryDeployments).toHaveBeenCalledWith(
+				user,
+				'project-1',
+				credentialId,
+			);
+			expect(fetchProviderCatalog).not.toHaveBeenCalled();
+		});
+
+		it('reports why the deployments are unavailable, without a catalog fallback', async () => {
+			const { service, lookupService } = makeService();
+			lookupService.lookupAzureFoundryDeployments.mockResolvedValue({
+				status: 'unavailable',
+				policy: 'endpoint-only',
+				error: undefined,
+				reason: 'project_missing',
+			});
+
+			const result = await service.getProviderModels(
+				user,
+				'project-1',
+				'azure-openai',
+				credentialId,
+			);
+
+			expect(result).toEqual({
+				provider: 'azure-openai',
+				verified: true,
+				unavailable: true,
+				unavailableReason: 'project_missing',
+				models: [],
+			});
+		});
+
+		it('does not send the n8n Connect managed tag to the Foundry lookup', async () => {
+			const { service, lookupService } = makeService();
+
+			await service.getProviderModels(user, 'project-1', 'azure-openai', AI_GATEWAY_MANAGED_TAG);
+
+			expect(lookupService.lookupAzureFoundryDeployments).not.toHaveBeenCalled();
+		});
+
+		it('does not use the catalog when the credential cannot be read', async () => {
+			const { service, lookupService } = makeService();
+			lookupService.lookupAzureFoundryDeployments.mockRejectedValue(new Error('not accessible'));
+
+			const result = await service.getProviderModels(
+				user,
+				'project-1',
+				'azure-openai',
+				credentialId,
+			);
+
+			expect(result).toEqual({
+				provider: 'azure-openai',
+				verified: true,
+				unavailable: true,
+				models: [],
+			});
+		});
 	});
 
 	it('still returns live models (verified: true) when the catalog fetch fails', async () => {
 		const { service, lookupService } = makeService();
 		fetchProviderCatalog.mockRejectedValue(new Error('models.dev unreachable'));
-		lookupService.list.mockResolvedValue([
-			{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
-		]);
+		lookupService.lookup.mockResolvedValue({
+			status: 'success',
+			policy: 'curated',
+			models: [{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' }],
+		});
 
 		const result = await service.getProviderModels(user, 'project-1', 'anthropic', credentialId);
 
@@ -305,7 +616,11 @@ describe('AgentModelCatalogService', () => {
 	it('returns an empty unverified list when both the lookup and the catalog fail', async () => {
 		const { service, lookupService } = makeService();
 		fetchProviderCatalog.mockRejectedValue(new Error('models.dev unreachable'));
-		lookupService.list.mockRejectedValue(new Error('provider is down'));
+		lookupService.lookup.mockResolvedValue({
+			status: 'unavailable',
+			policy: 'curated',
+			error: new Error('provider is down'),
+		});
 
 		const result = await service.getProviderModels(user, 'project-1', 'anthropic', credentialId);
 

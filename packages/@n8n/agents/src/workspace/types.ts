@@ -140,7 +140,6 @@ export interface WorkspaceSandbox {
 	readonly provider: string;
 	status: ProviderStatus;
 	getInstructions?(): string;
-	getDefaultCommandEnv?(): NodeJS.ProcessEnv;
 	executeCommand?(
 		command: string,
 		args?: string[],
@@ -150,6 +149,8 @@ export interface WorkspaceSandbox {
 	start?(): Promise<void>;
 	stop?(): Promise<void>;
 	destroy?(): Promise<void>;
+	/** Delete the provider-side sandbox by identity, regardless of local ownership. */
+	deleteRemote?(): Promise<void>;
 	_start?(): Promise<void>;
 	_stop?(): Promise<void>;
 	_destroy?(): Promise<void>;
@@ -211,6 +212,12 @@ export interface WorkspaceConfig {
 	name?: string;
 	filesystem?: WorkspaceFilesystem;
 	sandbox?: WorkspaceSandbox;
+	/**
+	 * Starts preparing the workspace in the background. The runtime calls it
+	 * when the model begins a tool call that uses the workspace. It must be safe
+	 * to call more than once. The runtime logs a thrown error and ignores a rejection.
+	 */
+	prewarm?: () => void | Promise<void>;
 }
 
 export interface MountResult {

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useBuilderMessages } from './useBuilderMessages';
-import type { ChatUI } from '@n8n/design-system/types/assistant';
+import type { ChatUI } from '@n8n/design-system';
 import type { ChatRequest } from '../assistant.types';
 
 // Mock useI18n to return the keys instead of translations

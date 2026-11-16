@@ -1,3 +1,4 @@
+import { shallowRef, toValue, type MaybeRefOrGetter } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -13,13 +14,40 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import { ResourceType } from '../projects.utils';
+import { ProjectTypes } from '../projects.types';
 import type { ProjectSharingData } from 'n8n-workflow';
+import type {
+	TransferPreview,
+	TransferPreviewTarget,
+} from '@n8n/frontend-module-type-availability-policies';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 
 const isPrivateCredentialsEnabled = { value: false };
 vi.mock('@/features/resolvers/composables/usePrivateCredentials', () => ({
 	usePrivateCredentials: () => ({ isEnabled: isPrivateCredentialsEnabled }),
 }));
+
+const transferPreviewMock = vi.hoisted(() => ({
+	preview: undefined as unknown,
+	target: undefined as MaybeRefOrGetter<unknown>,
+	destination: undefined as MaybeRefOrGetter<unknown>,
+}));
+
+vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => {
+	const actual =
+		await importOriginal<typeof import('@n8n/frontend-module-type-availability-policies')>();
+	return {
+		...actual,
+		useTransferPreview: (
+			target: MaybeRefOrGetter<unknown>,
+			destination: MaybeRefOrGetter<unknown>,
+		) => {
+			transferPreviewMock.target = target;
+			transferPreviewMock.destination = destination;
+			return { preview: transferPreviewMock.preview };
+		},
+	};
+});
 
 const renderComponent = createComponentRenderer(ProjectMoveResourceModal, {
 	pinia: createTestingPinia(),
@@ -41,6 +69,7 @@ let credentialsStore: MockedStore<typeof useCredentialsStore>;
 describe('ProjectMoveResourceModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		transferPreviewMock.preview = shallowRef<TransferPreview | null>(null);
 		isPrivateCredentialsEnabled.value = false;
 		telemetry = useTelemetry();
 		projectsStore = mockedStore(useProjectsStore);
@@ -182,13 +211,13 @@ describe('ProjectMoveResourceModal', () => {
 					id: '1',
 					name: 'PG Credential',
 					credentialType: 'postgres',
-					currentUserHasAccess: true,
+					currentUserCanUse: true,
 				},
 				{
 					id: '2',
 					name: 'Notion Credential',
 					credentialType: 'notion',
-					currentUserHasAccess: true,
+					currentUserCanUse: true,
 				},
 			],
 		};
@@ -309,6 +338,50 @@ describe('ProjectMoveResourceModal', () => {
 
 			expect(queryByTestId('project-move-resource-modal-resolvable-warning')).toBeNull();
 		});
+
+		describe('destination filter', () => {
+			const personalProject = createProjectListItem(ProjectTypes.Personal);
+			const teamProject = {
+				...createProjectListItem(ProjectTypes.Team),
+				name: 'Team destination',
+			};
+
+			beforeEach(() => {
+				projectsStore.searchProjects.mockResolvedValue({
+					count: 2,
+					data: [personalProject, teamProject],
+				});
+			});
+
+			it('hides personal projects for a resolvable credential', async () => {
+				const { getByTestId } = renderComponent({ props: props(true) });
+
+				const dropdownItems = await getDropdownItems(getByTestId('project-sharing-select'));
+
+				expect(dropdownItems).toHaveLength(1);
+				expect(dropdownItems[0]).toHaveTextContent('Team destination');
+			});
+
+			it('hides personal projects even when private credentials are disabled', async () => {
+				// the backend rejects the move on `isResolvable` alone, regardless of the module
+				isPrivateCredentialsEnabled.value = false;
+
+				const { getByTestId } = renderComponent({ props: props(true) });
+
+				const dropdownItems = await getDropdownItems(getByTestId('project-sharing-select'));
+
+				expect(dropdownItems).toHaveLength(1);
+				expect(dropdownItems[0]).toHaveTextContent('Team destination');
+			});
+
+			it('keeps personal projects for a non-resolvable credential', async () => {
+				const { getByTestId } = renderComponent({ props: props(false) });
+
+				const dropdownItems = await getDropdownItems(getByTestId('project-sharing-select'));
+
+				expect(dropdownItems).toHaveLength(2);
+			});
+		});
 	});
 
 	it('should prevent duplicate submissions when button clicked multiple times', async () => {
@@ -321,8 +394,8 @@ describe('ProjectMoveResourceModal', () => {
 
 		// Make moveResourceToProject take time to simulate slow operation
 		let resolveMove: () => void;
-		const movePromise = new Promise<void>((resolve) => {
-			resolveMove = resolve;
+		const movePromise = new Promise<undefined>((resolve) => {
+			resolveMove = () => resolve(undefined);
 		});
 		projectsStore.moveResourceToProject.mockReturnValue(movePromise);
 
@@ -359,5 +432,84 @@ describe('ProjectMoveResourceModal', () => {
 		// Resolve the operation
 		resolveMove!();
 		await movePromise;
+	});
+
+	describe('transfer policy warning', () => {
+		const destinationProject = createProjectListItem(ProjectTypes.Team);
+		const restrictedPreview: TransferPreview = {
+			restricted: [
+				{
+					kind: 'credential-type-unavailable',
+					checkId: 'credential-type-availability',
+					message: 'blocked',
+					subject: 'slackApi',
+					subjectType: 'credentialType',
+					scope: 'instance',
+				},
+			],
+			unpublishReasons: [],
+			workflowsToUnpublish: [],
+			checkFailed: false,
+		};
+
+		const setPreview = (preview: TransferPreview | null) => {
+			(transferPreviewMock.preview as ReturnType<typeof shallowRef>).value = preview;
+		};
+		const currentTarget = () => toValue(transferPreviewMock.target) as TransferPreviewTarget | null;
+
+		const propsFor = (
+			resourceType: ResourceType.Workflow | ResourceType.Credential,
+		): ComponentProps<typeof ProjectMoveResourceModal> => ({
+			modalName: PROJECT_MOVE_RESOURCE_MODAL,
+			data: {
+				resourceType,
+				resourceTypeLabel: resourceType,
+				resource: createTestWorkflow({ id: 'resource-1', name: 'My resource' }),
+			},
+		});
+
+		beforeEach(() => {
+			projectsStore.searchProjects.mockResolvedValue({ count: 1, data: [destinationProject] });
+			workflowsListStore.fetchWorkflow.mockResolvedValue(createTestWorkflow());
+		});
+
+		it.each([
+			[ResourceType.Workflow, 'workflow'],
+			[ResourceType.Credential, 'credential'],
+		] as const)('should build a %s target from the resource id', (resourceType, expected) => {
+			renderComponent({ props: propsFor(resourceType) });
+
+			expect(currentTarget()).toEqual({ resourceType: expected, id: 'resource-1' });
+		});
+
+		it('should not render the warning when there is no preview', async () => {
+			const { queryByTestId } = renderComponent({ props: propsFor(ResourceType.Credential) });
+			await vi.waitFor(() => expect(projectsStore.searchProjects).toHaveBeenCalled());
+
+			expect(queryByTestId('transfer-policy-warning')).toBeNull();
+		});
+
+		it('should render the warning naming the selected project for a credential preview', async () => {
+			setPreview(restrictedPreview);
+			const { getByTestId } = renderComponent({ props: propsFor(ResourceType.Credential) });
+
+			const items = await getDropdownItems(getByTestId('project-sharing-select'));
+			await userEvent.click(items[0]);
+
+			await vi.waitFor(() => expect(getByTestId('transfer-policy-warning')).toBeVisible());
+			expect(getByTestId('transfer-policy-warning')).toHaveTextContent(
+				destinationProject.name as string,
+			);
+		});
+
+		it('should pass the selected project id as the preview destination', async () => {
+			const { getByTestId } = renderComponent({ props: propsFor(ResourceType.Workflow) });
+			expect(toValue(transferPreviewMock.destination)).toBeUndefined();
+
+			const items = await getDropdownItems(getByTestId('project-sharing-select'));
+			await userEvent.click(items[0]);
+
+			expect(toValue(transferPreviewMock.destination)).toBe(destinationProject.id);
+		});
 	});
 });

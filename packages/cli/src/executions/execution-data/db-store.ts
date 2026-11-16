@@ -1,4 +1,4 @@
-import { ExecutionData, ExecutionDataRepository, In } from '@n8n/db';
+import { ExecutionData, ExecutionDataRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
@@ -59,7 +59,9 @@ export class DbStore {
 		{ executionId }: ExecutionRef,
 		tx?: EntityManager,
 	): Promise<ExecutionDataPayload | null> {
-		const repo = tx ? tx.getRepository(ExecutionData) : this.repository;
+		if (!tx) return await this.repository.findPayloadByExecutionId(executionId, {});
+
+		const repo = tx.getRepository(ExecutionData);
 		const result = await repo.findOne({
 			where: { executionId },
 			select: ['data', 'workflowData', 'workflowVersionId'],
@@ -68,11 +70,21 @@ export class DbStore {
 		return result;
 	}
 
-	async readWorkflowData({ executionId }: ExecutionRef): Promise<BundleWorkflowSnapshot | null> {
-		const result = await this.repository.findOne({
-			where: { executionId },
-			select: ['workflowData', 'workflowVersionId'],
-		});
+	/**
+	 * Read only the workflow-snapshot columns of a row, leaving the `data` column unread. Callers
+	 * that are about to overwrite the run data use this to avoid loading it, which matters inside a
+	 * transaction: on SQLite that transaction holds the process-wide write connection.
+	 */
+	async readWorkflowData(
+		{ executionId }: ExecutionRef,
+		tx?: EntityManager,
+	): Promise<BundleWorkflowSnapshot | null> {
+		const result = tx
+			? await tx.getRepository(ExecutionData).findOne({
+					where: { executionId },
+					select: ['workflowData', 'workflowVersionId'],
+				})
+			: await this.repository.findWorkflowSnapshotByExecutionId(executionId, {});
 
 		if (!result) return null;
 
@@ -80,17 +92,7 @@ export class DbStore {
 	}
 
 	async getDataByteSize({ executionId }: ExecutionRef): Promise<number | null> {
-		// LENGTH() avoids loading the column into memory. It counts characters, not bytes, but the
-		// data is a near-ASCII flatted string, so it's close enough to guard on.
-		const row = await this.repository
-			.createQueryBuilder('d')
-			.select('LENGTH(d.data)', 'size')
-			.where('d.executionId = :executionId', { executionId })
-			.getRawOne<{ size: number | string | null }>();
-
-		if (!row || row.size === null) return null;
-
-		return Number(row.size);
+		return await this.repository.getDataByteSize(executionId, {});
 	}
 
 	async readMany(refs: ExecutionRef[]) {
@@ -102,10 +104,7 @@ export class DbStore {
 		// Batch the IN-clause so an unbounded set of ids cannot exceed the DB's
 		// limit on bound parameters (SQLite caps near 1000).
 		for (const batch of chunk(ids, MAX_READ_BATCH_SIZE)) {
-			const rows = await this.repository.find({
-				where: { executionId: In(batch) },
-				select: ['executionId', 'data', 'workflowData', 'workflowVersionId'],
-			});
+			const rows = await this.repository.findPayloadsByExecutionIds(batch, {});
 
 			for (const row of rows) {
 				payloads.set(row.executionId, {

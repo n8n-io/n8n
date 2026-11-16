@@ -1,4 +1,4 @@
-import { computed, type Ref } from 'vue';
+import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
@@ -14,8 +14,7 @@ import {
 	CHAT_VIEW,
 	providerDisplayNames,
 } from '@/features/ai/chatHub/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import CommandBarItemTitle from '@/features/shared/commandBar/components/CommandBarItemTitle.vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const ITEM_ID = {
 	NEW_SESSION: 'new-session',
@@ -25,11 +24,8 @@ const ITEM_ID = {
 	STOP_MESSAGE_GENERATION: 'stop-message-generation',
 } as const;
 
-export function useChatHubCommands(options: {
-	lastQuery: Ref<string>;
-}): CommandGroup {
+export function useChatHubCommands(): CommandGroup {
 	const i18n = useI18n();
-	const { lastQuery } = options;
 	const router = useRouter();
 	const route = useRoute();
 	const chatStore = useChatStore();
@@ -78,52 +74,29 @@ export function useChatHubCommands(options: {
 		}
 	}
 
-	const filteredSesssions = computed<ChatHubSessionDto[]>(() => {
-		const trimmed = (lastQuery.value || '').trim().toLowerCase();
+	const sessions = computed<ChatHubSessionDto[]>(() =>
+		Object.values(chatStore.sessions.byId).filter(
+			(session): session is ChatHubSessionDto => !!session,
+		),
+	);
 
-		const allSesssions = Object.values(chatStore.sessions.byId) ?? [];
+	const availableModels = computed<ChatModelDto[]>(() =>
+		Object.values(chatStore.agents)
+			.flatMap((available) => available.models)
+			.filter((model) => {
+				if (!model.metadata.available) return false;
 
-		if (!trimmed) {
-			return allSesssions.filter((session): session is ChatHubSessionDto => !!session);
-		}
-
-		const filtered = allSesssions.filter(
-			(session): session is ChatHubSessionDto =>
-				!!session && (session.title?.toLowerCase().includes(trimmed) ?? false),
-		);
-
-		return filtered;
-	});
-
-	const filteredModels = computed<ChatModelDto[]>(() => {
-		const trimmed = (lastQuery.value || '').trim().toLowerCase();
-
-		const allModels = Object.values(chatStore.agents).flatMap((available) => available.models);
-
-		if (!trimmed) {
-			return allModels;
-		}
-
-		const filtered = allModels.filter((model) => {
-			if (!model.metadata.available) return false;
-
-			const provider = model.model.provider;
-			if (isLlmProvider(provider)) {
-				const settings = settingsStore.moduleSettings?.['chat-hub']?.providers[provider];
-				if (settings && !settings.enabled) {
-					return false;
+				const provider = model.model.provider;
+				if (isLlmProvider(provider)) {
+					const settings = settingsStore.moduleSettings?.['chat-hub']?.providers[provider];
+					if (settings && !settings.enabled) {
+						return false;
+					}
 				}
-			}
 
-			return (
-				model.name?.toLowerCase().includes(trimmed) ||
-				model.model.provider?.toLowerCase().includes(trimmed) ||
-				providerDisplayNames[model.model.provider]?.toLowerCase().includes(trimmed)
-			);
-		});
-
-		return filtered;
-	});
+				return true;
+			}),
+	);
 
 	const openSessionCommand = (session: ChatHubSessionDto, isRoot: boolean): CommandBarItem => {
 		let title = session.title;
@@ -148,7 +121,7 @@ export function useChatHubCommands(options: {
 	};
 
 	const openSessionCommands = computed<CommandBarItem[]>(() => {
-		return filteredSesssions.value.map((session) => openSessionCommand(session, false));
+		return sessions.value.map((session) => openSessionCommand(session, false));
 	});
 
 	const deleteSessionCommand = (session: ChatHubSessionDto, isRoot: boolean): CommandBarItem => {
@@ -173,7 +146,7 @@ export function useChatHubCommands(options: {
 	};
 
 	const deleteSessionCommands = computed<CommandBarItem[]>(() => {
-		return filteredSesssions.value.map((session) => deleteSessionCommand(session, false));
+		return sessions.value.map((session) => deleteSessionCommand(session, false));
 	});
 
 	const newSessionWithModelCommand = (model: ChatModelDto): CommandBarItem => {
@@ -181,13 +154,8 @@ export function useChatHubCommands(options: {
 
 		return {
 			id,
-			title: {
-				component: CommandBarItemTitle,
-				props: {
-					title: providerDisplayNames[model.model.provider],
-					suffix: model.name,
-				},
-			},
+			title: providerDisplayNames[model.model.provider],
+			description: model.name,
 			section: i18n.baseText('commandBar.chat.newWithModel'),
 			keywords: [model.name, providerDisplayNames[model.model.provider]],
 			handler: () => {
@@ -197,7 +165,7 @@ export function useChatHubCommands(options: {
 	};
 
 	const newSessionWithCommands = computed<CommandBarItem[]>(() => {
-		return filteredModels.value.map((model) => newSessionWithModelCommand(model));
+		return availableModels.value.map((model) => newSessionWithModelCommand(model));
 	});
 
 	const chatHubCommands = computed<CommandBarItem[]>(() => {

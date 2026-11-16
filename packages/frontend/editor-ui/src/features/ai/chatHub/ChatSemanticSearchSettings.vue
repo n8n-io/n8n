@@ -16,7 +16,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
 import { useChatStore } from './chat.store';
 import { storeToRefs } from 'pinia';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { updateSemanticSearchSettingsApi } from './chat.api';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -265,7 +265,7 @@ watch(
 							app-name=""
 							:credential-type="vectorStoreCredentialType ?? ''"
 							:selected-credential-id="settings.vectorStore.credentialId"
-							create-button-variant="subtle"
+							create-button-variant="outline"
 							@credential-selected="onVectorStoreCredentialSelected"
 							@credential-deleted="onVectorStoreCredentialSelected(null)"
 						/>
@@ -319,7 +319,7 @@ watch(
 									: ''
 							"
 							:selected-credential-id="settings.embeddingModel.credentialId"
-							create-button-variant="subtle"
+							create-button-variant="outline"
 							@credential-selected="onEmbeddingCredentialSelected"
 							@credential-deleted="onEmbeddingCredentialSelected(null)"
 						/>

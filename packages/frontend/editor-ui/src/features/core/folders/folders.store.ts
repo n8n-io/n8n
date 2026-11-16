@@ -1,3 +1,4 @@
+import type { FolderTransferResult } from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
@@ -16,7 +17,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 
 const BREADCRUMBS_MIN_LOADING_TIME = 300;
 
@@ -232,8 +233,8 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 		destinationProjectId: string,
 		destinationParentFolderId?: string,
 		shareCredentials?: string[],
-	): Promise<void> {
-		await workflowsEEApi.moveFolderToProject(
+	): Promise<FolderTransferResult> {
+		const result = await workflowsEEApi.moveFolderToProject(
 			rootStore.restApiContext,
 			projectId,
 			folderId,
@@ -244,6 +245,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 
 		// Update the cache after moving the folder
 		delete breadcrumbsCache.value[folderId];
+		return result;
 	}
 
 	async function fetchFolderContent(

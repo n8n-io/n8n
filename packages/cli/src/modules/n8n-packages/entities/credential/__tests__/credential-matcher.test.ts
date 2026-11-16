@@ -1,11 +1,13 @@
+import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import type { Project, SlimProject, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
+import type { PackageCredentialRequirement } from '../../../spec/requirements.schema';
 import type { CredentialMatcherContext, UsableCredential } from '../credential-matcher';
 import { CredentialMatcherFactory } from '../credential-matcher-factory';
 import { createFailure } from '../credential.types';
@@ -31,7 +33,7 @@ const credentialsService = mock<CredentialsService>();
 const credentialTypes = mock<CredentialTypes>();
 const targetProject = mock<Project>({ id: 'project-target' });
 const targetProjectRef = mock<SlimProject>({ id: targetProject.id });
-const user = mock<User>({ id: 'user-1' });
+const user = mock<User>({ id: 'user-1', role: GLOBAL_OWNER_ROLE });
 
 function createMatcherFactory(): CredentialMatcherFactory {
 	Container.set(
@@ -61,35 +63,203 @@ describe('IdBasedCredentialMatcher', () => {
 		vi.clearAllMocks();
 		credentialTypes.recognizes.mockReturnValue(true);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+		credentialsService.findUsageScopes.mockResolvedValue(new Map());
 		context = { projectId: targetProject.id, user };
 		matcherFactory = createMatcherFactory();
 	});
 
 	it('reports a missing credential when the user cannot use it in the target project', async () => {
-		const requirement = {
+		const requirement: PackageCredentialRequirement = {
 			id: 'cred-global',
 			name: 'Global',
 			type: 'httpBasicAuth',
-			usedByWorkflows: ['wf-1'],
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 		};
 
 		const result = await matcherFactory.getMatcher('id-only').match([requirement], context);
 
 		expect(result.successes).toEqual(new Map());
-		expect(result.failures).toEqual([createFailure(requirement, 'not_found')]);
+		expect(result.failures).toEqual([
+			{ ...createFailure(requirement, 'not_found'), reason: 'not-on-instance' },
+		]);
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId: targetProject.id,
+			excludePersonalRoute: false,
 		});
+	});
+
+	it('gives no reason for a missing credential when the user cannot read all credentials', async () => {
+		const member = mock<User>({ id: 'member-1', role: GLOBAL_MEMBER_ROLE });
+		const requirement: PackageCredentialRequirement = {
+			id: 'cred-other',
+			name: 'Other',
+			type: 'httpBasicAuth',
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+		};
+
+		const result = await matcherFactory
+			.getMatcher('id-only')
+			.match([requirement], { ...context, user: member });
+
+		expect(result.failures).toEqual([createFailure(requirement, 'not_found')]);
+		expect(credentialsService.findUsageScopes).not.toHaveBeenCalled();
+	});
+
+	it.each(['id-only', 'name-and-type'] as const)(
+		'resolves an untyped Agent credential through %s',
+		async (mode) => {
+			const requirement: PackageCredentialRequirement = {
+				id: 'source',
+				usedBy: [{ kind: 'agent', id: 'agent' }],
+			};
+			const targetId = mode === 'id-only' ? 'source' : 'target';
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([usable(targetId)]);
+			if (mode === 'name-and-type') context.credentialBindings = new Map([['source', targetId]]);
+			const resolution = await matcherFactory.getMatcher(mode).match([requirement], context);
+			expect(resolution).toEqual({ successes: new Map([['source', targetId]]), failures: [] });
+			if (mode === 'name-and-type') {
+				delete context.credentialBindings;
+				expect(
+					(await matcherFactory.getMatcher(mode).match([requirement], context)).failures,
+				).toEqual([createFailure(requirement, 'unknown_type')]);
+			}
+		},
+	);
+
+	it.each(['githubApi', undefined])(
+		'keeps personal-route credentials available only to workflow consumers with Agent type %s',
+		async (type) => {
+			const workflowRequirement: PackageCredentialRequirement = {
+				id: 'workflow-personal',
+				name: 'Personal',
+				type: 'githubApi',
+				usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+			};
+			const agentRequirement: PackageCredentialRequirement = {
+				id: 'agent-personal',
+				type,
+				usedBy: [{ kind: 'agent', id: 'agent-1' }],
+			};
+			const mixedRequirement: PackageCredentialRequirement = {
+				...workflowRequirement,
+				id: 'mixed-personal',
+				usedBy: [...workflowRequirement.usedBy, ...agentRequirement.usedBy],
+			};
+			const sharedRequirement = { ...agentRequirement, id: 'agent-shared' };
+			credentialsService.findUsageScopes.mockResolvedValue(
+				new Map([
+					['agent-personal', 'project'],
+					['mixed-personal', 'project'],
+				]),
+			);
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockImplementation(
+				async (_user, { excludePersonalRoute }) => {
+					const shared = [usable('agent-shared')];
+					if (excludePersonalRoute) return shared;
+					return [
+						...shared,
+						usable('workflow-personal'),
+						usable('agent-personal'),
+						usable('mixed-personal'),
+					];
+				},
+			);
+
+			const result = await matcherFactory
+				.getMatcher('id-only')
+				.match(
+					[workflowRequirement, agentRequirement, mixedRequirement, sharedRequirement],
+					context,
+				);
+
+			expect(result).toEqual({
+				successes: new Map([
+					['workflow-personal', 'workflow-personal'],
+					['agent-shared', 'agent-shared'],
+				]),
+				failures: [
+					{ ...createFailure(agentRequirement, 'not_found'), reason: 'access-required' },
+					{ ...createFailure(mixedRequirement, 'not_found'), reason: 'access-required' },
+				],
+			});
+		},
+	);
+
+	it.each(['id-only', 'name-and-type', 'type-only'] as const)(
+		'rejects an explicit personal-route binding for Agent consumers in %s mode',
+		async (mode) => {
+			const workflowRequirement: PackageCredentialRequirement = {
+				id: 'workflow-source',
+				name: 'Source GitHub',
+				type: 'githubApi',
+				usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+			};
+			const agentRequirement: PackageCredentialRequirement = {
+				...workflowRequirement,
+				id: 'agent-source',
+				usedBy: [{ kind: 'agent', id: 'agent-1' }],
+			};
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockImplementation(
+				async (_user, { excludePersonalRoute }) =>
+					excludePersonalRoute ? [] : [usable('target-personal')],
+			);
+			credentialsService.findUsageScopes.mockResolvedValue(
+				new Map([['target-personal', 'project']]),
+			);
+
+			const result = await matcherFactory
+				.getMatcher(mode)
+				.match([workflowRequirement, agentRequirement], {
+					...context,
+					credentialBindings: new Map([
+						['workflow-source', 'target-personal'],
+						['agent-source', 'target-personal'],
+					]),
+				});
+
+			expect(result).toEqual({
+				successes: new Map([['workflow-source', 'target-personal']]),
+				failures: [
+					{
+						...createFailure(agentRequirement, 'not_found'),
+						reason: 'access-required',
+						targetId: 'target-personal',
+					},
+				],
+			});
+		},
+	);
+
+	it('leaves out the personal route when asked, and reports that the credential needs access', async () => {
+		credentialsService.findUsageScopes.mockResolvedValue(new Map([['cred-personal', 'project']]));
+		const requirement: PackageCredentialRequirement = {
+			id: 'cred-personal',
+			name: 'Personal',
+			type: 'httpBasicAuth',
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
+		};
+
+		const result = await matcherFactory
+			.getMatcher('id-only')
+			.match([requirement], { ...context, excludePersonalRoute: true });
+
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId: targetProject.id,
+			excludePersonalRoute: true,
+		});
+		expect(result.failures).toEqual([
+			{ ...createFailure(requirement, 'not_found'), reason: 'access-required' },
+		]);
 	});
 
 	it('does not query the database for unknown credential types', async () => {
 		credentialTypes.recognizes.mockReturnValue(false);
 
-		const requirement = {
+		const requirement: PackageCredentialRequirement = {
 			id: 'cred-x',
 			name: 'Unknown',
 			type: 'unknownCredentialType',
-			usedByWorkflows: ['wf-1'],
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 		};
 
 		const result = await matcherFactory.getMatcher('id-only').match([requirement], context);
@@ -109,7 +279,7 @@ describe('IdBasedCredentialMatcher', () => {
 					id: 'cred-manifest',
 					name: 'Manifest GitHub',
 					type: 'githubApi',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			],
 			context,
@@ -130,7 +300,7 @@ describe('IdBasedCredentialMatcher', () => {
 					id: 'cred-shared',
 					name: 'Shared',
 					type: 'githubApi',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			],
 			context,
@@ -151,7 +321,7 @@ describe('IdBasedCredentialMatcher', () => {
 					id: 'cred-global',
 					name: 'Global',
 					type: 'httpBasicAuth',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			],
 			context,
@@ -166,17 +336,19 @@ describe('IdBasedCredentialMatcher', () => {
 		// custom role granting workflow:import without credential:read yields an empty result.
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
 
-		const requirement = {
+		const requirement: PackageCredentialRequirement = {
 			id: 'cred-manifest',
 			name: 'Manifest GitHub',
 			type: 'githubApi',
-			usedByWorkflows: ['wf-1'],
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 		};
 
 		const result = await matcherFactory.getMatcher('id-only').match([requirement], context);
 
 		expect(result.successes).toEqual(new Map());
-		expect(result.failures).toEqual([createFailure(requirement, 'not_found')]);
+		expect(result.failures).toEqual([
+			{ ...createFailure(requirement, 'not_found'), reason: 'not-on-instance' },
+		]);
 	});
 
 	it('only binds requested ids even when more are usable in the project', async () => {
@@ -191,7 +363,7 @@ describe('IdBasedCredentialMatcher', () => {
 					id: 'cred-manifest',
 					name: 'Manifest GitHub',
 					type: 'githubApi',
-					usedByWorkflows: ['wf-1'],
+					usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 				},
 			],
 			context,
@@ -206,11 +378,11 @@ describe('IdBasedCredentialMatcher', () => {
 			usable('target-cred'),
 		]);
 
-		const requirement = {
+		const requirement: PackageCredentialRequirement = {
 			id: 'source-cred',
 			name: 'Source GitHub',
 			type: 'githubApi',
-			usedByWorkflows: ['wf-1'],
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 		};
 
 		const result = await matcherFactory.getMatcher('id-only').match([requirement], {
@@ -227,11 +399,11 @@ describe('IdBasedCredentialMatcher', () => {
 			usable('source-cred'),
 		]);
 
-		const requirement = {
+		const requirement: PackageCredentialRequirement = {
 			id: 'source-cred',
 			name: 'Source GitHub',
 			type: 'githubApi',
-			usedByWorkflows: ['wf-1'],
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 		};
 
 		const result = await matcherFactory.getMatcher('id-only').match([requirement], {
@@ -241,7 +413,11 @@ describe('IdBasedCredentialMatcher', () => {
 
 		expect(result.successes).toEqual(new Map());
 		expect(result.failures).toEqual([
-			{ ...createFailure(requirement, 'not_found'), targetId: 'target-missing' },
+			{
+				...createFailure(requirement, 'not_found'),
+				reason: 'not-on-instance',
+				targetId: 'target-missing',
+			},
 		]);
 	});
 
@@ -250,11 +426,11 @@ describe('IdBasedCredentialMatcher', () => {
 			usable('target-cred', 'slackApi'),
 		]);
 
-		const requirement = {
+		const requirement: PackageCredentialRequirement = {
 			id: 'source-cred',
 			name: 'Source GitHub',
 			type: 'githubApi',
-			usedByWorkflows: ['wf-1'],
+			usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 		};
 
 		const result = await matcherFactory.getMatcher('id-only').match([requirement], {
@@ -278,17 +454,18 @@ describe('NameAndTypeCredentialMatcher', () => {
 	let context: CredentialMatcherContext;
 	let matcherFactory: CredentialMatcherFactory;
 
-	const requirement = {
+	const requirement: PackageCredentialRequirement = {
 		id: 'source-cred',
 		name: 'Production GitHub',
 		type: 'githubApi',
-		usedByWorkflows: ['wf-1'],
+		usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 	};
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		credentialTypes.recognizes.mockReturnValue(true);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+		credentialsService.findUsageScopes.mockResolvedValue(new Map());
 		context = { projectId: targetProject.id, user };
 		matcherFactory = createMatcherFactory();
 	});
@@ -552,17 +729,18 @@ describe('TypeOnlyCredentialMatcher', () => {
 	let context: CredentialMatcherContext;
 	let matcherFactory: CredentialMatcherFactory;
 
-	const requirement = {
+	const requirement: PackageCredentialRequirement = {
 		id: 'source-cred',
 		name: 'Irrelevant name',
 		type: 'githubApi',
-		usedByWorkflows: ['wf-1'],
+		usedBy: [{ kind: 'workflow', id: 'wf-1' }],
 	};
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		credentialTypes.recognizes.mockReturnValue(true);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+		credentialsService.findUsageScopes.mockResolvedValue(new Map());
 		context = { projectId: targetProject.id, user };
 		matcherFactory = createMatcherFactory();
 	});

@@ -39,7 +39,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 	})),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
 		moduleSettings: mockModuleSettings,
 	})),

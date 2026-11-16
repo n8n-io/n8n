@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
 
@@ -7,7 +8,7 @@ async function baseModelSearch(
 	modelFilter: (model: string) => boolean,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const response = await apiRequest.call(this, 'GET', '/api/v1/models', {
+	const response = await apiRequest.call(this, 'GET', requestPath`/api/v1/models`, {
 		qs: { page_size: 200 },
 	});
 
@@ -39,6 +40,7 @@ export async function textModelSearch(
 			!model.includes('-ocr') &&
 			!model.includes('-image') &&
 			!model.includes('-t2i') &&
+			!model.includes('-i2i') &&
 			!model.includes('-t2v') &&
 			!model.includes('-i2v') &&
 			!model.includes('-kf2v') &&
@@ -67,7 +69,7 @@ export async function imageGenerationModelSearch(
 ): Promise<INodeListSearchResult> {
 	return await baseModelSearch.call(
 		this,
-		(model) => model.includes('-image') || model.includes('-t2i'),
+		(model) => model.includes('-image') || model.includes('-t2i') || model.includes('-i2i'),
 		filter,
 	);
 }

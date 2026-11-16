@@ -49,9 +49,7 @@ describe('TabBar', () => {
 		await rerender({ modelValue: 'executions' });
 
 		const tabs = await findAllByRole('radio');
-		const executionsTab = tabs[1];
-		const executionsTabButton = executionsTab.querySelector('.button');
-
-		expect(executionsTabButton).toHaveClass('active');
+		expect(tabs[0]).not.toBeChecked();
+		expect(tabs[1]).toBeChecked();
 	});
 });

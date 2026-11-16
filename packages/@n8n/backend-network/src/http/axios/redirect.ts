@@ -1,16 +1,19 @@
 import { AxiosError, type AxiosRequestConfig, type AxiosResponse } from 'axios';
 import type { AgentOptions } from 'https';
 import type { IHttpRequestOptions } from 'n8n-workflow';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { invokeAxios } from './invoke';
 import {
 	buildTargetUrl,
+	CREDENTIAL_HEADER_PATTERN,
 	getRedirectLocation,
 	getUrlFromProxyConfig,
 	isProxyPotentiallyActive,
 	isRedirectStatus,
+	isSameHostHttpsUpgrade,
 	resolveProxyOption,
+	sniFor,
 	throwIfDomainNotAllowed,
 	tryParseUrl,
 	validateUrlSsrf,
@@ -99,7 +102,7 @@ function headerPatternsToDropOnRedirect(
 	return [
 		/^host$/i,
 		...(downgradeToGet ? [/^content-/i] : []),
-		...(stripCredentials ? [/^authorization$/i, /^proxy-authorization$/i, /^cookie$/i] : []),
+		...(stripCredentials ? [CREDENTIAL_HEADER_PATTERN] : []),
 	];
 }
 
@@ -120,12 +123,11 @@ function buildRedirectHopAgents(
 	nextUrl: string,
 	policy: SsrfRedirectPolicy,
 ): Pick<AxiosRequestConfig, 'httpAgent' | 'httpsAgent'> {
-	const host = tryParseUrl(nextUrl)?.hostname;
 	const customProxyUrl = policy.proxyConfig ? getUrlFromProxyConfig(policy.proxyConfig) : null;
 	const proxy = resolveProxyOption(customProxyUrl);
 	return buildNodeAgents(proxy, policy.ssrf, {
 		...policy.agentOptions,
-		...(host ? { servername: host } : {}),
+		servername: sniFor(tryParseUrl(nextUrl)?.hostname),
 	});
 }
 
@@ -157,7 +159,9 @@ function buildRedirectHopConfig(
 ): AxiosRequestConfig {
 	const downgradeToGet = redirectDowngradesToGet(prevConfig.method ?? 'GET', status);
 	const stripCredentials =
-		isCrossOrigin(originalUrl, nextUrl) && !policy.sendCredentialsOnCrossOriginRedirect;
+		isCrossOrigin(originalUrl, nextUrl) &&
+		!isSameHostHttpsUpgrade(originalUrl, nextUrl) &&
+		!policy.sendCredentialsOnCrossOriginRedirect;
 
 	return {
 		...prevConfig,

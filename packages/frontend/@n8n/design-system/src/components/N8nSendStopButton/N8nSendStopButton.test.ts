@@ -1,8 +1,7 @@
 import { fireEvent } from '@testing-library/vue';
 
-import { createComponentRenderer } from '@n8n/design-system/__tests__/render';
-
 import N8nSendStopButton from './N8nSendStopButton.vue';
+import { createComponentRenderer } from '../../__tests__/render';
 
 const renderComponent = createComponentRenderer(N8nSendStopButton);
 
@@ -179,9 +178,9 @@ describe('N8nSendStopButton', () => {
 			});
 
 			const button = container.querySelector('button');
-			expect(button).toHaveAttribute('data-variant', 'solid');
+			expect(button).toHaveAttribute('data-variant', 'brand');
 			expect(button).toHaveAttribute('data-size', 'medium');
-			expect(button).toHaveAttribute('data-icon-size', 'large');
+			expect(button).toHaveAttribute('data-icon-size', 'medium');
 			expect(button).toHaveAttribute('data-icon-only', 'true');
 			expect(button).toHaveAttribute('data-icon', 'arrow-up');
 			expect(button).not.toHaveAttribute('disabled');
@@ -210,7 +209,7 @@ describe('N8nSendStopButton', () => {
 			});
 
 			const button = container.querySelector('button');
-			expect(button).toHaveAttribute('data-variant', 'solid');
+			expect(button).toHaveAttribute('data-variant', 'brand');
 			expect(button).toHaveAttribute('data-size', 'small');
 			expect(button).toHaveAttribute('data-icon-only', '');
 		});

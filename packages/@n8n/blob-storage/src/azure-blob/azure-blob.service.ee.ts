@@ -4,7 +4,7 @@ import { BlobServiceClient, StorageSharedKeyCredential } from '@azure/storage-bl
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { PassThrough, Readable, pipeline } from 'node:stream';
 
 import { AzureBlobConfig } from './azure-blob.config';
@@ -59,14 +59,21 @@ export class AzureBlobService {
 			this.logger.debug('Checking connection to Azure Blob container', {
 				container: this.config.containerName,
 			});
-			const exists = await this.containerClient.exists();
-			if (!exists) {
+			// Do not use containerClient.exists() here. That calls Get Container
+			// Properties, which Azure rejects (403) for container-scoped SAS even
+			// when the container is present and the SAS is valid.
+			const pager = this.containerClient.listBlobsFlat().byPage({ maxPageSize: 1 });
+			await pager.next();
+		} catch (e) {
+			const statusCode =
+				typeof e === 'object' && e !== null && 'statusCode' in e
+					? (e as { statusCode?: number }).statusCode
+					: undefined;
+			if (statusCode === 404) {
 				throw new UserError(
 					`Azure Blob container "${this.config.containerName}" does not exist or is not accessible.`,
 				);
 			}
-		} catch (e) {
-			if (e instanceof UserError) throw e;
 			this.handleError(e);
 		}
 	}

@@ -10,7 +10,7 @@ describe('WorkflowVersionForm', () => {
 	});
 
 	it('should render version name and description inputs', () => {
-		const { getByTestId } = renderComponent({
+		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
 				versionName: '',
 				description: '',
@@ -21,6 +21,17 @@ describe('WorkflowVersionForm', () => {
 
 		expect(getByTestId('version-name-input')).toBeInTheDocument();
 		expect(getByTestId('description-input')).toBeInTheDocument();
+		// character counters stay hidden while the fields are empty
+		expect(queryByTestId('workflow-version-name-character-count')).not.toBeInTheDocument();
+		expect(queryByTestId('workflow-version-description-character-count')).not.toBeInTheDocument();
+	});
+
+	it('should label the description input without an optional marker', () => {
+		const { getByText } = renderComponent({
+			props: { versionName: '', description: '' },
+		});
+
+		expect(getByText('Describe changes')).toBeInTheDocument();
 	});
 
 	it('should update versionName model when input changes', async () => {
@@ -88,8 +99,8 @@ describe('WorkflowVersionForm', () => {
 	it('should respect maxlength constraints', () => {
 		const { getByTestId } = renderComponent({
 			props: {
-				versionName: '',
-				description: '',
+				versionName: 'v1.0.0',
+				description: 'Test',
 				versionNameTestId: 'version-name-input',
 				descriptionTestId: 'description-input',
 			},
@@ -100,6 +111,8 @@ describe('WorkflowVersionForm', () => {
 
 		expect(versionInput).toHaveAttribute('maxlength', '128');
 		expect(descriptionInput).toHaveAttribute('maxlength', '2048');
+		expect(getByTestId('workflow-version-name-character-count')).toHaveTextContent('6/128');
+		expect(getByTestId('workflow-version-description-character-count')).toHaveTextContent('4/2048');
 	});
 
 	it('should expose focusInput method', () => {

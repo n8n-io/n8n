@@ -1,11 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, IRequestOptions } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { sleep } from '@n8n/utils/sleep';
 import {
 	slackApiRequest,
 	slackApiRequestAllItems,
 	slackApiRequestAllItemsWithRateLimit,
+	searchContextItems,
 	formatUserLabel,
 	processThreadOptions,
 	getMessageContent,
@@ -46,7 +47,27 @@ describe('Slack V2 > GenericFunctions', () => {
 				.fn()
 				.mockResolvedValue(mockResponse);
 
-			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow();
+			await expect(
+				slackApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`),
+			).rejects.toThrow();
+		});
+
+		it('should not accept a request target in the options', async () => {
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockResolvedValue({ ok: true });
+			const option: IRequestOptions = { url: 'https://example.com/other' };
+
+			await slackApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				requestPath`/test`,
+				{},
+				{},
+				{},
+				// @ts-expect-error a wider options value must not set the request target
+				option,
+			);
 		});
 
 		it('should not handle paid_teams_only error if simple:false', async () => {
@@ -56,8 +77,45 @@ describe('Slack V2 > GenericFunctions', () => {
 				.mockResolvedValue(mockResponse);
 
 			await expect(
-				slackApiRequest.call(mockExecuteFunctions, 'GET', '/test', {}, {}, {}, { simple: false }),
+				slackApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					requestPath`/test`,
+					{},
+					{},
+					{},
+					{ simple: false },
+				),
 			).resolves.toEqual(mockResponse);
+		});
+
+		it('should encode a path value that contains a slash', async () => {
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockResolvedValue({ ok: true });
+			const action = 'postMessage/users.list';
+
+			await slackApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/chat.${action}`);
+
+			const [, options] = vi.mocked(mockExecuteFunctions.helpers.requestWithAuthentication).mock
+				.calls[0];
+			expect(String(options.uri)).toBe('https://slack.com/api/chat.postMessage%2Fusers.list');
+		});
+
+		it('should send a full upload URL unchanged', async () => {
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockResolvedValue({ ok: true });
+
+			await slackApiRequest.call(
+				mockExecuteFunctions,
+				'POST',
+				'https://files.slack.com/upload/v1/ABC123',
+			);
+
+			const [, options] = vi.mocked(mockExecuteFunctions.helpers.requestWithAuthentication).mock
+				.calls[0];
+			expect(options.uri).toBe('https://files.slack.com/upload/v1/ABC123');
 		});
 
 		it('should handle missing_scope error with needed scopes', async () => {
@@ -72,21 +130,55 @@ describe('Slack V2 > GenericFunctions', () => {
 
 			// Test that the function throws the correct error type and message
 			// Using .rejects ensures the test fails if slackApiRequest doesn't throw
-			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
-				NodeOperationError,
-			);
-			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
-				'Your Slack credential is missing required Oauth Scopes',
-			);
+			await expect(
+				slackApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`),
+			).rejects.toThrow(NodeOperationError);
+			await expect(
+				slackApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`),
+			).rejects.toThrow('Your Slack credential is missing required Oauth Scopes');
 
 			// Test specific error properties by catching the thrown error
 			await expect(
-				slackApiRequest.call(mockExecuteFunctions, 'GET', '/test'),
+				slackApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`),
 			).rejects.toMatchObject({
 				description: 'Add the following scope(s) to your Slack App: channels:read,users:read',
 				level: 'warning',
 			});
 		});
+
+		it.each(['ratelimited', 'rate_limited'])('should handle %s error', async (error) => {
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockResolvedValue({ ok: false, error });
+
+			await expect(
+				slackApiRequest.call(mockExecuteFunctions, 'POST', requestPath`/assistant.search.context`),
+			).rejects.toMatchObject({
+				message: `Slack error response: "${error}"`,
+				description: expect.stringContaining('web-api/rate-limits'),
+				level: 'warning',
+			});
+		});
+
+		it.each(['not_allowed_token_type', 'invalid_action_token'])(
+			'should handle %s error',
+			async (error) => {
+				mockExecuteFunctions.helpers.requestWithAuthentication = vi
+					.fn()
+					.mockResolvedValue({ ok: false, error });
+
+				await expect(
+					slackApiRequest.call(
+						mockExecuteFunctions,
+						'POST',
+						requestPath`/assistant.search.context`,
+					),
+				).rejects.toMatchObject({
+					message: 'This Slack operation requires a user token',
+					level: 'warning',
+				});
+			},
+		);
 
 		it('should handle missing_scope error without needed scopes', async () => {
 			const mockResponse = {
@@ -97,13 +189,13 @@ describe('Slack V2 > GenericFunctions', () => {
 				.fn()
 				.mockResolvedValue(mockResponse);
 
-			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
-				NodeOperationError,
-			);
+			await expect(
+				slackApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`),
+			).rejects.toThrow(NodeOperationError);
 
 			// Test detailed error properties
 			try {
-				await slackApiRequest.call(mockExecuteFunctions, 'GET', '/test');
+				await slackApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`);
 				throw new Error('Expected slackApiRequest to throw');
 			} catch (error) {
 				if (error.message === 'Expected slackApiRequest to throw') {
@@ -122,12 +214,12 @@ describe('Slack V2 > GenericFunctions', () => {
 				.fn()
 				.mockResolvedValue(mockResponse);
 
-			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
-				NodeOperationError,
-			);
+			await expect(
+				slackApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`),
+			).rejects.toThrow(NodeOperationError);
 
 			try {
-				await slackApiRequest.call(mockExecuteFunctions, 'GET', '/test');
+				await slackApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`);
 			} catch (error) {
 				expect(error).toBeInstanceOf(NodeOperationError);
 				expect(error.message).toBe(
@@ -146,12 +238,12 @@ describe('Slack V2 > GenericFunctions', () => {
 				.fn()
 				.mockResolvedValue(mockResponse);
 
-			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
-				NodeOperationError,
-			);
+			await expect(
+				slackApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`),
+			).rejects.toThrow(NodeOperationError);
 
 			try {
-				await slackApiRequest.call(mockExecuteFunctions, 'GET', '/test');
+				await slackApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`);
 			} catch (error) {
 				expect(error).toBeInstanceOf(NodeOperationError);
 				expect(error.message).toBe('Slack error response: "some_other_error"');
@@ -166,21 +258,21 @@ describe('Slack V2 > GenericFunctions', () => {
 				.fn()
 				.mockRejectedValue(transportError);
 
-			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
-				NodeOperationError,
-			);
-			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow(
-				'fetch failed',
-			);
+			await expect(
+				slackApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`),
+			).rejects.toThrow(NodeOperationError);
+			await expect(
+				slackApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`),
+			).rejects.toThrow('fetch failed');
 		});
 
 		it('should not re-wrap an error that is already a NodeOperationError', async () => {
 			const opError = new NodeOperationError(mockExecuteFunctions.getNode(), 'boom');
 			mockExecuteFunctions.helpers.requestWithAuthentication = vi.fn().mockRejectedValue(opError);
 
-			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toBe(
-				opError,
-			);
+			await expect(
+				slackApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`),
+			).rejects.toBe(opError);
 		});
 
 		it('should add message_timestamp and remove ts when response contains ts', async () => {
@@ -193,7 +285,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				.fn()
 				.mockResolvedValue(mockResponse);
 
-			const result = await slackApiRequest.call(mockExecuteFunctions, 'GET', '/test');
+			const result = await slackApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`);
 
 			expect(result).toEqual({
 				ok: true,
@@ -212,7 +304,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				.fn()
 				.mockResolvedValue(mockResponse);
 
-			const result = await slackApiRequest.call(mockExecuteFunctions, 'GET', '/test');
+			const result = await slackApiRequest.call(mockExecuteFunctions, 'GET', requestPath`/test`);
 
 			expect(result).toEqual({
 				ok: true,
@@ -237,7 +329,7 @@ describe('Slack V2 > GenericFunctions', () => {
 			await slackApiRequestAllItems.bind(mockExecuteFunctions)(
 				'channels',
 				'GET',
-				'conversations.list',
+				requestPath`/conversations.list`,
 			);
 
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
@@ -251,7 +343,7 @@ describe('Slack V2 > GenericFunctions', () => {
 					},
 					json: true,
 					method: 'GET',
-					uri: expect.any(String),
+					uri: expect.objectContaining({ value: 'https://slack.com/api/conversations.list' }),
 				}),
 				expect.any(Object),
 			);
@@ -272,7 +364,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'channels',
 				'GET',
-				'conversations.list',
+				requestPath`/conversations.list`,
 				{},
 				{ limit: 50 },
 			);
@@ -288,7 +380,7 @@ describe('Slack V2 > GenericFunctions', () => {
 					},
 					json: true,
 					method: 'GET',
-					uri: expect.any(String),
+					uri: expect.objectContaining({ value: 'https://slack.com/api/conversations.list' }),
 				}),
 				expect.any(Object),
 			);
@@ -305,7 +397,12 @@ describe('Slack V2 > GenericFunctions', () => {
 				.fn()
 				.mockResolvedValue(mockResponse);
 
-			await slackApiRequestAllItems.call(mockExecuteFunctions, 'files', 'GET', 'files.list');
+			await slackApiRequestAllItems.call(
+				mockExecuteFunctions,
+				'files',
+				'GET',
+				requestPath`/files.list`,
+			);
 
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'slackApi',
@@ -318,7 +415,7 @@ describe('Slack V2 > GenericFunctions', () => {
 					},
 					json: true,
 					method: 'GET',
-					uri: expect.any(String),
+					uri: expect.objectContaining({ value: 'https://slack.com/api/files.list' }),
 				}),
 				expect.any(Object),
 			);
@@ -347,7 +444,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'files',
 				'GET',
-				'files.list',
+				requestPath`/files.list`,
 			);
 
 			expect(result).toEqual([{ id: '1' }, { id: '2' }]);
@@ -377,7 +474,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'channels',
 				'GET',
-				'conversations.list',
+				requestPath`/conversations.list`,
 			);
 
 			expect(result).toEqual([{ id: 'ch1' }, { id: 'ch2' }]);
@@ -398,7 +495,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'messages',
 				'GET',
-				'search.messages',
+				requestPath`/search.messages`,
 			);
 
 			expect(result).toEqual([{ text: 'test' }]);
@@ -416,7 +513,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'channels',
 				'GET',
-				'conversations.list',
+				requestPath`/conversations.list`,
 			);
 
 			expect(result).toEqual([]);
@@ -428,6 +525,45 @@ describe('Slack V2 > GenericFunctions', () => {
 			vi.clearAllMocks();
 			(sleep as Mock).mockResolvedValue(undefined);
 		});
+
+		it.each([false, true])(
+			'reports Slack API errors with HTTP 200, after a page: %s',
+			async (afterPage) => {
+				const request = vi.fn();
+				if (afterPage) {
+					request.mockResolvedValueOnce({
+						statusCode: 200,
+						body: {
+							ok: true,
+							channels: [{ id: 'ch1' }],
+							response_metadata: { next_cursor: 'next' },
+						},
+					});
+				}
+				request.mockResolvedValue({
+					statusCode: 200,
+					body: { ok: false, error: 'missing_scope', needed: 'channels:read' },
+				});
+				mockExecuteFunctions.helpers.requestWithAuthentication = request;
+
+				await expect(
+					slackApiRequestAllItemsWithRateLimit(
+						mockExecuteFunctions,
+						'channels',
+						'GET',
+						requestPath`/conversations.list`,
+						{},
+						{},
+						{ onFail: 'stop' },
+					),
+				).rejects.toMatchObject({
+					message: 'Your Slack credential is missing required Oauth Scopes',
+					description: 'Add the following scope(s) to your Slack App: channels:read',
+				});
+				expect(request).toHaveBeenCalledTimes(afterPage ? 2 : 1);
+				expect(sleep).not.toHaveBeenCalled();
+			},
+		);
 
 		it('should paginate successfully without rate limits', async () => {
 			const responses = [
@@ -458,7 +594,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'channels',
 				'GET',
-				'conversations.list',
+				requestPath`/conversations.list`,
 			);
 
 			expect(result.data).toEqual([{ id: 'ch1' }, { id: 'ch2' }]);
@@ -494,7 +630,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'channels',
 				'GET',
-				'conversations.list',
+				requestPath`/conversations.list`,
 			);
 
 			expect(result.data).toEqual([{ id: 'ch1' }]);
@@ -531,7 +667,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'channels',
 				'GET',
-				'conversations.list',
+				requestPath`/conversations.list`,
 			);
 
 			expect(result.data).toEqual([{ id: 'ch1' }]);
@@ -565,7 +701,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'channels',
 				'GET',
-				'conversations.list',
+				requestPath`/conversations.list`,
 				{},
 				{},
 				{ fallbackDelay: 10000 },
@@ -605,7 +741,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'channels',
 				'GET',
-				'conversations.list',
+				requestPath`/conversations.list`,
 				{},
 				{},
 				{ maxRetries: 3 },
@@ -637,7 +773,7 @@ describe('Slack V2 > GenericFunctions', () => {
 					mockExecuteFunctions,
 					'channels',
 					'GET',
-					'conversations.list',
+					requestPath`/conversations.list`,
 					{},
 					{},
 					{ maxRetries: 2 },
@@ -676,7 +812,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'channels',
 				'GET',
-				'conversations.list',
+				requestPath`/conversations.list`,
 				{},
 				{},
 				{ maxRetries: 2, onFail: 'stop' },
@@ -716,7 +852,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'channels',
 				'GET',
-				'conversations.list',
+				requestPath`/conversations.list`,
 				{},
 				{},
 				{ maxRetries: 1, onFail: 'stop' },
@@ -758,7 +894,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'messages',
 				'GET',
-				'search.messages',
+				requestPath`/search.messages`,
 				{},
 				{},
 				{ maxRetries: 1, onFail: 'stop' },
@@ -810,7 +946,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'channels',
 				'GET',
-				'conversations.list',
+				requestPath`/conversations.list`,
 			);
 
 			expect(result.data).toEqual([{ id: 'ch1' }, { id: 'ch2' }]);
@@ -834,7 +970,7 @@ describe('Slack V2 > GenericFunctions', () => {
 					mockExecuteFunctions,
 					'channels',
 					'GET',
-					'conversations.list',
+					requestPath`/conversations.list`,
 				),
 			).rejects.toThrow(/Slack error response: "Internal Server Error"/);
 
@@ -857,7 +993,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'files',
 				'GET',
-				'files.list',
+				requestPath`/files.list`,
 			);
 
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
@@ -900,7 +1036,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'channels',
 				'GET',
-				'conversations.list',
+				requestPath`/conversations.list`,
 			);
 
 			expect(result.data).toEqual([{ id: 'ch1' }, { id: 'ch2' }]);
@@ -924,7 +1060,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'messages',
 				'GET',
-				'search.messages',
+				requestPath`/search.messages`,
 			);
 
 			expect(result.data).toEqual([{ text: 'test' }]);
@@ -957,7 +1093,7 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'channels',
 				'GET',
-				'conversations.list',
+				requestPath`/conversations.list`,
 			);
 
 			// Should use default fallbackDelay of 30000
@@ -979,10 +1115,91 @@ describe('Slack V2 > GenericFunctions', () => {
 				mockExecuteFunctions,
 				'channels',
 				'GET',
-				'conversations.list',
+				requestPath`/conversations.list`,
 			);
 
 			expect(result.data).toEqual([]);
+		});
+	});
+
+	describe('searchContextItems', () => {
+		const page = (messages: object[], nextCursor: string) => ({
+			ok: true,
+			results: { messages },
+			response_metadata: { next_cursor: nextCursor },
+		});
+
+		it('should follow the cursor until it is empty', async () => {
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockResolvedValueOnce(page([{ content: 'one' }], 'cursor-2'))
+				.mockResolvedValueOnce(page([{ content: 'two' }], ''));
+
+			const result = await searchContextItems.call(mockExecuteFunctions, { query: 'test' }, 50);
+
+			expect(result).toEqual([{ content: 'one' }, { content: 'two' }]);
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
+			expect(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mock.calls[0][1].body,
+			).toEqual({ query: 'test', limit: 20 });
+			expect(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mock.calls[1][1].body,
+			).toEqual({ query: 'test', limit: 20, cursor: 'cursor-2' });
+		});
+
+		it('should cap the page size at 20 and stop once maxResults is reached', async () => {
+			const first = Array.from({ length: 20 }, (_, index) => ({ content: `msg-${index}` }));
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockResolvedValueOnce(page(first, 'cursor-2'))
+				.mockResolvedValueOnce(page([{ content: 'msg-20' }, { content: 'msg-21' }], 'cursor-3'));
+
+			const result = await searchContextItems.call(mockExecuteFunctions, { query: 'test' }, 22);
+
+			expect(result).toHaveLength(22);
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
+			expect(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mock.calls[0][1].body,
+			).toEqual({ query: 'test', limit: 20 });
+			expect(
+				(mockExecuteFunctions.helpers.requestWithAuthentication as Mock).mock.calls[1][1].body,
+			).toEqual({ query: 'test', limit: 2, cursor: 'cursor-2' });
+		});
+
+		it('should keep the collected results when the pagination cap is hit', async () => {
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockResolvedValueOnce(page([{ content: 'one' }], 'cursor-2'))
+				.mockResolvedValueOnce({ ok: false, error: 'page_limit_exceeded' });
+
+			const result = await searchContextItems.call(mockExecuteFunctions, { query: 'test' }, 50);
+
+			expect(result).toEqual([{ content: 'one' }]);
+		});
+
+		it('should still throw on any other error mid-pagination', async () => {
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockResolvedValueOnce(page([{ content: 'one' }], 'cursor-2'))
+				.mockResolvedValueOnce({ ok: false, error: 'missing_scope', needed: 'search:read.im' });
+
+			await expect(
+				searchContextItems.call(mockExecuteFunctions, { query: 'test' }, 50),
+			).rejects.toMatchObject({
+				message: 'Your Slack credential is missing required Oauth Scopes',
+				description: 'Add the following scope(s) to your Slack App: search:read.im',
+			});
+		});
+
+		it('should stop on an empty page even when a cursor is returned', async () => {
+			mockExecuteFunctions.helpers.requestWithAuthentication = vi
+				.fn()
+				.mockResolvedValue(page([], 'cursor-2'));
+
+			const result = await searchContextItems.call(mockExecuteFunctions, { query: 'test' }, 50);
+
+			expect(result).toEqual([]);
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -1283,6 +1500,35 @@ describe('Slack V2 > GenericFunctions', () => {
 					blocks: 'invalid-blocks-format',
 					text: 'Test text',
 				});
+			});
+
+			// A bare Block Kit array (`[ {...} ]`) is what `ensureType: 'object'` yields for a
+			// blocksUi string holding the array without the `{ blocks: [...] }` wrapper. Slack
+			// then gets a body with no `blocks` key and renders nothing, without erroring.
+			it('should drop the blocks when blocksUi is a bare array instead of a blocks object', () => {
+				const mockBlocksUI = [
+					{
+						type: 'section',
+						text: {
+							type: 'mrkdwn',
+							text: 'Hello World',
+						},
+					},
+				];
+
+				(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
+					(param: string, _index: number) => {
+						if (param === 'messageType') return 'block';
+						if (param === 'otherOptions.includeLinkToWorkflow') return false;
+						if (param === 'text') return 'Fallback text';
+						if (param === 'blocksUi') return mockBlocksUI;
+						return undefined;
+					},
+				);
+
+				const result = getMessageContent.call(mockExecuteFunctions, 0, 2.1, 'instance-123');
+
+				expect(result.blocks).toBeUndefined();
 			});
 
 			it('should add text property when text parameter is provided', () => {

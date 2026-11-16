@@ -7,6 +7,7 @@
 // lives here because it reads or writes LangSmith state.
 // ---------------------------------------------------------------------------
 
+import { isRecord } from '@n8n/utils/is-record';
 import { Client } from 'langsmith';
 import { evaluate } from 'langsmith/evaluation';
 import type { EvaluationResult } from 'langsmith/evaluation';
@@ -20,14 +21,10 @@ import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { createEvalSession, MAX_CONCURRENT_BUILDS } from './eval-session';
 import { expandWithIterations } from './iterations';
 import { computePassRatePerIter, summarizeMcpBuildSpend, type RowSink } from './persist';
-import {
-	isPlainObject,
-	parseTargetOutput,
-	reshapeLangSmithRuns,
-	type TargetOutput,
-} from './reshape';
+import { parseTargetOutput, reshapeLangSmithRuns, type TargetOutput } from './reshape';
 import { partialIsolationWarning } from '../cli/args';
 import type { CliArgs } from '../cli/args';
+import type { AssistantRuntime } from '../clients/assistant-agents-api';
 import { bucketFromEvaluation } from '../comparison/bucket-from-evaluation';
 import { compareBuckets, type ComparisonOutcome } from '../comparison/compare';
 import { fetchBaselineBucket, findLatestBaseline } from '../comparison/fetch-baseline';
@@ -257,6 +254,7 @@ export async function runWithLangSmith(config: RunConfig): Promise<{
 			sideBand.buildExpectations,
 			lanes[0]?.baseUrl,
 			sideBand.runDebug,
+			sideBand.harnessUsage,
 		);
 		const evaluation = aggregateResults(allRunResults, args.iterations);
 
@@ -272,6 +270,7 @@ export async function runWithLangSmith(config: RunConfig): Promise<{
 			// is the in-n8n agent and args.buildModel is unused.
 			buildModel: args.buildViaMcp ? args.buildModel : undefined,
 			mcpBuildSpend,
+			assistantRuntime: args.assistantRuntime,
 		});
 
 		await writePerRunPassMetrics({
@@ -361,6 +360,8 @@ async function updateExperimentAggregates(config: {
 	 *  next to build_model so the experiment carries its own cost record — the
 	 *  external build isn't traced, so LangSmith can't compute this itself. */
 	mcpBuildSpend?: McpBuildSpend[];
+	/** Recorded only for the Agents runtime, so Instance AI experiments keep their metadata. */
+	assistantRuntime?: AssistantRuntime;
 }): Promise<void> {
 	const { lsClient, experimentName, runs, evaluation, buildDurations, totalDurationMs, logger } =
 		config;
@@ -384,6 +385,7 @@ async function updateExperimentAggregates(config: {
 		unique_builds: uniqueBuilds,
 		pass_rate_per_iter: computePassRatePerIter(evaluation),
 		...(config.buildModel ? { build_model: config.buildModel } : {}),
+		...(config.assistantRuntime === 'agents' ? { assistant_runtime: 'agents' } : {}),
 		...(spend ? { total_build_cost_usd: spend.totalCostUsd, avg_build_turns: spend.avgTurns } : {}),
 	};
 
@@ -391,8 +393,8 @@ async function updateExperimentAggregates(config: {
 		const project = await lsClient.readProject({ projectName: experimentName });
 		// `updateProject` replaces `extra` wholesale — preserve it so auto-set
 		// fields (splits, etc.) survive. Narrow via typeof guards rather than `as`.
-		const existingExtra = isPlainObject(project.extra) ? project.extra : {};
-		const existingMetadata = isPlainObject(existingExtra.metadata) ? existingExtra.metadata : {};
+		const existingExtra = isRecord(project.extra) ? project.extra : {};
+		const existingMetadata = isRecord(existingExtra.metadata) ? existingExtra.metadata : {};
 		await lsClient.updateProject(project.id, {
 			projectExtra: existingExtra,
 			metadata: { ...existingMetadata, ...aggregates },

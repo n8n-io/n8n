@@ -6,7 +6,7 @@ import type {
 	INode,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { brandfetchApiRequest, fetchAndPrepareBinaryData } from '../../v2/GenericFunctions';
@@ -44,18 +44,18 @@ describe('BrandfetchV2', () => {
 		});
 
 		it.each([
-			['domain', 'n8n.io', '/brands/domain/n8n.io'],
-			['ticker', 'AAPL', '/brands/ticker/AAPL'],
-			['crypto', 'BTC', '/brands/crypto/BTC'],
-			['isin', 'US0378331005', '/brands/isin/US0378331005'],
-		])('should call the explicit %s route', async (_type, _identifier, resource) => {
+			['domain', 'n8n.io'],
+			['ticker', 'AAPL'],
+			['crypto', 'BTC'],
+			['isin', 'US0378331005'],
+		])('should call the explicit %s route', async (type, identifier) => {
 			const method: IHttpRequestMethods = 'GET';
 
-			await brandfetchApiRequest.call(mockThis, method, resource);
+			await brandfetchApiRequest.call(mockThis, method, requestPath`/brands/${type}/${identifier}`);
 
 			expect(mockThis.helpers.requestWithAuthentication).toHaveBeenCalledWith('brandfetchApi', {
 				method: 'GET',
-				url: `https://api.brandfetch.io/v2${resource}`,
+				url: requestUrl`https://api.brandfetch.io/v2/brands/${type}/${identifier}`,
 				json: true,
 			});
 		});
@@ -64,14 +64,14 @@ describe('BrandfetchV2', () => {
 			await brandfetchApiRequest.call(
 				mockThis,
 				'POST',
-				'/brands/domain/n8n.io',
+				requestPath`/brands/domain/n8n.io`,
 				{ key: 'value' },
 				{ filter: 'logo' },
 			);
 
 			expect(mockThis.helpers.requestWithAuthentication).toHaveBeenCalledWith('brandfetchApi', {
 				method: 'POST',
-				url: 'https://api.brandfetch.io/v2/brands/domain/n8n.io',
+				url: requestUrl`https://api.brandfetch.io/v2/brands/domain/n8n.io`,
 				json: true,
 				body: { key: 'value' },
 				qs: { filter: 'logo' },
@@ -82,7 +82,7 @@ describe('BrandfetchV2', () => {
 			(mockThis.helpers.requestWithAuthentication as Mock).mockResolvedValue(undefined);
 
 			await expect(
-				brandfetchApiRequest.call(mockThis, 'GET', '/context/n8n.io'),
+				brandfetchApiRequest.call(mockThis, 'GET', requestPath`/context/n8n.io`),
 			).resolves.toBeUndefined();
 		});
 
@@ -93,7 +93,7 @@ describe('BrandfetchV2', () => {
 			});
 
 			await expect(
-				brandfetchApiRequest.call(mockThis, 'GET', '/brands/domain/missing'),
+				brandfetchApiRequest.call(mockThis, 'GET', requestPath`/brands/domain/missing`),
 			).rejects.toThrow(NodeApiError);
 		});
 
@@ -101,7 +101,7 @@ describe('BrandfetchV2', () => {
 			(mockThis.helpers.requestWithAuthentication as Mock).mockRejectedValue(new Error('boom'));
 
 			await expect(
-				brandfetchApiRequest.call(mockThis, 'GET', '/brands/domain/n8n.io'),
+				brandfetchApiRequest.call(mockThis, 'GET', requestPath`/brands/domain/n8n.io`),
 			).rejects.toThrow(NodeApiError);
 		});
 	});

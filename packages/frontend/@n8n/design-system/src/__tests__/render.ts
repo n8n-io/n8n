@@ -1,6 +1,6 @@
 import { render } from '@testing-library/vue';
 
-import { N8nPlugin } from '@n8n/design-system/plugin';
+import { N8nPlugin } from '../plugin';
 
 type Component = Parameters<typeof render>[0];
 type RenderOptions = Parameters<typeof render>[1];

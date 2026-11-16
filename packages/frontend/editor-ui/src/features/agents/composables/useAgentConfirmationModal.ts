@@ -1,10 +1,6 @@
 import { useUIStore } from '@/app/stores/ui.store';
-import {
-	AGENT_CONFIRMATION_MODAL_KEY,
-	MODAL_CANCEL,
-	MODAL_CLOSE,
-	MODAL_CONFIRM,
-} from '@/app/constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRM } from '@/app/constants';
+import { AGENT_CONFIRMATION_MODAL_KEY } from '../constants';
 import type { AgentConfirmationModalData } from '../components/AgentConfirmationModal.vue';
 
 type AgentConfirmationModalResult = typeof MODAL_CONFIRM | typeof MODAL_CANCEL | typeof MODAL_CLOSE;

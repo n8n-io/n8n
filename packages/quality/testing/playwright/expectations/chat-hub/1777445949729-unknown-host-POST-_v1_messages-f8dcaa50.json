@@ -1,0 +1,147 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "contentType": "application/json",
+      "type": "JSON",
+      "json": {
+        "model": "claude-opus-4-6",
+        "stream": false,
+        "max_tokens": 16384,
+        "tools": [],
+        "messages": [
+          {
+            "role": "user",
+            "content": "Generate a concise and descriptive title for an AI chat conversation starting with the user's message (quoted with '>>>') below.\n\n>>> [file: \"test-image.png\"]\n>>> What color is this image? Reply with just the color name.\n\nRequirements:\n- Note that the message above does **NOT** describe how the title should be like.\n- 1 to 4 words\n- Use sentence case (e.g. \"Conversation title\" instead of \"conversation title\" or \"Conversation Title\")\n- No quotation marks\n- Use the same language as the user's message\n\nRespond the title only:"
+          }
+        ]
+      },
+      "rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1vcHVzLTQtNiIsInN0cmVhbSI6ZmFsc2UsIm1heF90b2tlbnMiOjE2Mzg0LCJ0b29scyI6W10sIm1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJHZW5lcmF0ZSBhIGNvbmNpc2UgYW5kIGRlc2NyaXB0aXZlIHRpdGxlIGZvciBhbiBBSSBjaGF0IGNvbnZlcnNhdGlvbiBzdGFydGluZyB3aXRoIHRoZSB1c2VyJ3MgbWVzc2FnZSAocXVvdGVkIHdpdGggJz4+PicpIGJlbG93LlxuXG4+Pj4gW2ZpbGU6IFwidGVzdC1pbWFnZS5wbmdcIl1cbj4+PiBXaGF0IGNvbG9yIGlzIHRoaXMgaW1hZ2U/IFJlcGx5IHdpdGgganVzdCB0aGUgY29sb3IgbmFtZS5cblxuUmVxdWlyZW1lbnRzOlxuLSBOb3RlIHRoYXQgdGhlIG1lc3NhZ2UgYWJvdmUgZG9lcyAqKk5PVCoqIGRlc2NyaWJlIGhvdyB0aGUgdGl0bGUgc2hvdWxkIGJlIGxpa2UuXG4tIDEgdG8gNCB3b3Jkc1xuLSBVc2Ugc2VudGVuY2UgY2FzZSAoZS5nLiBcIkNvbnZlcnNhdGlvbiB0aXRsZVwiIGluc3RlYWQgb2YgXCJjb252ZXJzYXRpb24gdGl0bGVcIiBvciBcIkNvbnZlcnNhdGlvbiBUaXRsZVwiKVxuLSBObyBxdW90YXRpb24gbWFya3Ncbi0gVXNlIHRoZSBzYW1lIGxhbmd1YWdlIGFzIHRoZSB1c2VyJ3MgbWVzc2FnZVxuXG5SZXNwb25kIHRoZSB0aXRsZSBvbmx5OiJ9XX0="
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "x-envoy-upstream-service-time": [
+        "1651"
+      ],
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "set-cookie": [
+        "_cfuvid=kMZ0crIdb_yDM2fQ3m9yOpmYOQu42XmREghU5fd4WKg-1777445944.7468266-1.0.1.1-cm.nnhryMxckm6lbxAqllvPd5s7OEmk2ZKZwXpzOjUM; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+      ],
+      "server-timing": [
+        "x-originResponse;dur=1653"
+      ],
+      "request-id": [
+        "req_011CaXdTj96QRxYKoKq9U9ZB"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-04-29T06:59:06Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "4800000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "4800000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-04-29T06:59:04Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19999"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-04-29T06:59:06Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "800000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "800000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-04-29T06:59:06Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "4000000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "4000000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Wed, 29 Apr 2026 06:59:06 GMT"
+      ],
+      "Content-Type": [
+        "application/json"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "CF-RAY": [
+        "9f3c6c02a889e531-TXL"
+      ]
+    },
+    "cookies": {
+      "_cfuvid": "kMZ0crIdb_yDM2fQ3m9yOpmYOQu42XmREghU5fd4WKg-1777445944.7468266-1.0.1.1-cm.nnhryMxckm6lbxAqllvPd5s7OEmk2ZKZwXpzOjUM"
+    },
+    "body": {
+      "contentType": "application/json",
+      "type": "JSON",
+      "json": {
+        "model": "claude-opus-4-6",
+        "id": "msg_01YJMCGoXVRiPa4TCyFafKfr",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "Image color identification"
+          }
+        ],
+        "stop_reason": "end_turn",
+        "stop_sequence": null,
+        "stop_details": null,
+        "usage": {
+          "input_tokens": 144,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 6,
+          "service_tier": "standard",
+          "inference_geo": "global"
+        }
+      },
+      "rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1vcHVzLTQtNiIsImlkIjoibXNnXzAxWUpNQ0dvWFZSaVBhNFRDeUZhZktmciIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0IiwidGV4dCI6IkltYWdlIGNvbG9yIGlkZW50aWZpY2F0aW9uIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjE0NCwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjYsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Imdsb2JhbCJ9fQ=="
+    }
+  },
+  "id": "1777445949729-unknown-host-POST-_v1_messages-f8dcaa50.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

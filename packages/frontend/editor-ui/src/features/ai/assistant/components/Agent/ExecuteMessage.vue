@@ -315,7 +315,6 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 			<!-- Unpin All Section (hidden when post-execution follow-ups provide the same actions) -->
 			<div v-if="showUnpinSection && !showPostExecutionFollowUps" :class="$style.unpinSection">
 				<N8nButton
-					type="secondary"
 					size="medium"
 					icon="pin"
 					:label="i18n.baseText('aiAssistant.builder.executeMessage.unpinAll')"
@@ -506,7 +505,7 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 
 .followUpsTitle {
 	font-size: var(--font-size--md);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	line-height: 1.45;
 	color: var(--color--text);
 	margin-bottom: var(--spacing--2xs);

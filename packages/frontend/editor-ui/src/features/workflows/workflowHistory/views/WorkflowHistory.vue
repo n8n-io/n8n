@@ -28,7 +28,7 @@ import Modal from '@/app/components/Modal.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
@@ -37,7 +37,7 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import type { IUser } from 'n8n-workflow';
 
 import { N8nBadge, N8nHeading, N8nIcon, N8nTabs } from '@n8n/design-system';
-import type { TabOptions } from '@n8n/design-system/types';
+import type { TabOptions } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
 import type { WorkflowVersionFormModalEventBusEvents } from '../components/WorkflowVersionFormModal.vue';
@@ -124,10 +124,15 @@ const publishedWorkflowVersionId = computed(() => {
 	return publishedVersionId;
 });
 
+// One slow action at a time, so a repeated click cannot clone twice.
+const pendingVersionId = ref<WorkflowVersionId | null>(null);
+
 const actions = computed<Array<UserAction<IUser>>>(() =>
 	availableActionTypes.value.map((value) => ({
 		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
 		disabled:
+			(pendingVersionId.value !== null &&
+				(value === 'clone' || value === 'restore' || value === 'download')) ||
 			(value === 'clone' && !workflowPermissions.value.create) ||
 			((value === 'restore' || value === 'name') && !workflowPermissions.value.update) ||
 			((value === 'publish' || value === 'unpublish') && !workflowPermissions.value.publish),
@@ -319,7 +324,7 @@ const publishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryActi
 
 				if (success) {
 					// Refresh the published workflow to get the latest publishedVersion from workflowPublishHistory
-					publishedWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value);
+					publishedWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value) ?? null;
 
 					// Update the history list with the new name, description, and workflowPublishHistory
 					const historyItem = workflowHistory.value.find(
@@ -377,7 +382,7 @@ const unpublishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAc
 			return;
 		}
 
-		publishedWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value);
+		publishedWorkflow.value = workflowsListStore.getWorkflowById(workflowId.value) ?? null;
 
 		toast.showMessage({
 			title: i18n.baseText('workflowHistory.action.unpublish.success.title'),
@@ -390,6 +395,7 @@ const unpublishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAc
 	uiStore.openModalWithData({
 		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 		data: {
+			workflowId: workflowId.value,
 			versionName: data.versionName,
 			eventBus: unpublishEventBus,
 		},
@@ -457,6 +463,19 @@ const nameWorkflowVersion = async (id: WorkflowVersionId, data: WorkflowHistoryA
 	});
 };
 
+const runSlowAction = async (id: WorkflowVersionId, run: () => Promise<void>) => {
+	if (pendingVersionId.value) {
+		return;
+	}
+
+	pendingVersionId.value = id;
+	try {
+		await run();
+	} finally {
+		pendingVersionId.value = null;
+	}
+};
+
 const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 	try {
 		switch (action) {
@@ -465,16 +484,22 @@ const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 				sendTelemetry('User opened version in new tab');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.DOWNLOAD:
-				await workflowHistoryStore.downloadVersion(workflowId.value, id, data);
-				sendTelemetry('User downloaded version');
+				await runSlowAction(id, async () => {
+					await workflowHistoryStore.downloadVersion(workflowId.value, id, data);
+					sendTelemetry('User downloaded version');
+				});
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.CLONE:
-				await cloneWorkflowVersion(id, data);
-				sendTelemetry('User cloned version');
+				await runSlowAction(id, async () => {
+					await cloneWorkflowVersion(id, data);
+					sendTelemetry('User cloned version');
+				});
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
-				await restoreWorkflowVersion(id);
-				sendTelemetry('User restored version');
+				await runSlowAction(id, async () => {
+					await restoreWorkflowVersion(id);
+					sendTelemetry('User restored version');
+				});
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.PUBLISH:
 				publishWorkflowVersion(id, data);
@@ -624,7 +649,7 @@ watchEffect(async () => {
 				{{ publishedWorkflow?.name }}
 			</N8nHeading>
 			<span v-if="publishedWorkflow?.isArchived">
-				<N8nBadge class="ml-s" theme="tertiary" bold data-test-id="workflow-archived-tag">
+				<N8nBadge class="ml-s" variant="outline" data-test-id="workflow-archived-tag">
 					{{ i18n.baseText('workflows.item.archived') }}
 				</N8nBadge>
 			</span>
@@ -656,6 +681,7 @@ watchEffect(async () => {
 				:evaluated-prune-time-in-hours="workflowHistoryStore.evaluatedPruneTime"
 				:is-list-loading="isListLoading"
 				:published-version-id="publishedWorkflowVersionId"
+				:pending-version-id="pendingVersionId"
 				:is-workflow-diffs-enabled="isWorkflowDiffsEnabled"
 				@action="onAction"
 				@preview="onPreview"
@@ -663,7 +689,9 @@ watchEffect(async () => {
 				@load-more="loadMore"
 				@upgrade="onUpgrade"
 			/>
+			<!-- Keep pagination state scoped to one workflow. -->
 			<WorkflowPublishTimelineContent
+				:key="workflowId"
 				v-if="canRender && activeTab === 'publishTimeline'"
 				:workflow-id="workflowId"
 				:selected-version-id="versionId"
@@ -679,6 +707,7 @@ watchEffect(async () => {
 				:actions="actions"
 				:is-list-loading="isListLoading"
 				:is-first-item-shown="isFirstItemShown"
+				:pending-version-id="pendingVersionId"
 				@action="onAction"
 			/>
 		</div>
@@ -733,18 +762,8 @@ watchEffect(async () => {
 	align-items: center;
 	padding: var(--spacing--xs) 0 0 var(--spacing--sm);
 	border-left: var(--border-width) var(--border-style) var(--color--foreground);
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 	position: relative;
-
-	&::after {
-		content: '';
-		position: absolute;
-		bottom: 1px;
-		left: 0;
-		right: 0;
-		height: var(--border-width);
-		background-color: var(--color--foreground);
-		z-index: 1;
-	}
 }
 
 .closeButton {

@@ -14,6 +14,7 @@ import {
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
 	NODE_GROUPS_REFERENCE,
+	SDK_LANGUAGE_REFERENCE,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
 
 // NOTE: CODING_GUIDELINES and DESIGN_GUIDANCE are MCP-only constants defined
@@ -89,23 +90,8 @@ const SECTIONS: Record<Exclude<SdkReferenceSection, 'all'>, string> = {
 
 /**
  * Get the full SDK reference content or a filtered section.
- *
- * Node-group docs are gated behind `includeGroups` (fed from the
- * `canvasGroupsEnabled` feature flag): when false, the groups section is omitted
- * everywhere so the output is byte-identical to before the flag existed.
  */
-export function getSdkReferenceContent(
-	section?: SdkReferenceSection,
-	options: { includeGroups?: boolean } = {},
-): string {
-	const { includeGroups = false } = options;
-
-	// The groups section only exists when the flag is on; otherwise even an
-	// explicit request yields nothing.
-	if (section === 'groups') {
-		return includeGroups ? SECTIONS.groups : '';
-	}
-
+export function getSdkReferenceContent(section?: SdkReferenceSection): string {
 	if (section && section !== 'all' && section in SECTIONS) {
 		return SECTIONS[section];
 	}
@@ -114,6 +100,11 @@ export function getSdkReferenceContent(
 		'# n8n Workflow SDK Reference',
 		'',
 		SECTIONS.import,
+		'',
+		// Language rules for the restricted SDK subset (what the AST interpreter
+		// accepts). The node-groups docs ride inside it, so this is the single
+		// place group content enters the full reference.
+		SDK_LANGUAGE_REFERENCE,
 		'',
 		SECTIONS.patterns,
 		'',
@@ -128,6 +119,5 @@ export function getSdkReferenceContent(
 		SECTIONS.guidelines,
 		'',
 		SECTIONS.design,
-		...(includeGroups ? ['', SECTIONS.groups] : []),
 	].join('\n');
 }

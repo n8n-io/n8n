@@ -7,29 +7,32 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { BrowserExtensionTraceContext } from '@n8n/instance-ai';
 import type {
 	BrowserConnection,
 	CDPRelayServer,
 	CreateCredentialPayload,
-	SecretsBuffer,
 	ToolContext,
 } from '@n8n/mcp-browser';
-import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { timingSafeEqual } from 'node:crypto';
-import { mkdir } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { Push } from '@/push';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 
 import { BrowserLocalMcpServer } from './browser-local-mcp-server';
 import {
+	createBrowserCredential,
+	createBrowserWorkDir,
+	createInMemorySecretsBuffer,
+} from './browser.helpers';
+import {
 	BROWSER_USE_WS_NAMESPACE,
 	CDP_TOKEN_HEADER,
+	EXTENSION_VERSION_QUERY_PARAM,
+	parseExtensionVersion,
 	type BrowserUseUpgradeRequest,
 } from './browser-use-ws.constants';
 
@@ -47,6 +50,7 @@ interface BrowserSession {
 	hasConnectedOnce: boolean;
 	connected: boolean;
 	connectedAt: Date | null;
+	extensionVersion: string | null;
 	connection: BrowserConnection;
 	mcpServer: BrowserLocalMcpServer;
 }
@@ -116,6 +120,15 @@ export class InstanceAiBrowserSessionService {
 		return this.sessions.get(userId)?.connected ?? false;
 	}
 
+	getExtensionTraceContext(userId: string): BrowserExtensionTraceContext {
+		const session = this.sessions.get(userId);
+		if (!session?.connected) return { connectionState: 'disconnected' };
+		return {
+			connectionState: 'connected',
+			...(session.extensionVersion !== null ? { version: session.extensionVersion } : {}),
+		};
+	}
+
 	handleExtensionUpgrade(req: BrowserUseUpgradeRequest): void {
 		const session = this.sessionsBySessionId.get(req.params.sessionId);
 		const token = typeof req.query.token === 'string' ? req.query.token : null;
@@ -123,6 +136,7 @@ export class InstanceAiBrowserSessionService {
 			req.ws.close(4003, 'Invalid auth token');
 			return;
 		}
+		session.extensionVersion = parseExtensionVersion(req.query[EXTENSION_VERSION_QUERY_PARAM]);
 		session.relay.attachExtension(req.ws);
 	}
 
@@ -168,13 +182,17 @@ export class InstanceAiBrowserSessionService {
 				cdpConnectHeaders: { [CDP_TOKEN_HEADER]: cdpToken },
 			},
 		);
-		const workDir = join(tmpdir(), 'n8n-instance-ai-browser', userId);
-		await mkdir(workDir, { recursive: true });
+		const workDir = await createBrowserWorkDir('n8n-instance-ai-browser', userId);
 		const toolContext: ToolContext = {
 			dir: workDir,
 			secretsBuffer: createInMemorySecretsBuffer(),
 			createCredential: async (payload: CreateCredentialPayload) =>
-				await this.createCredential(userId, payload),
+				await createBrowserCredential(
+					this.userRepository,
+					this.credentialsService,
+					userId,
+					payload,
+				),
 		};
 
 		const session: BrowserSession = {
@@ -187,6 +205,7 @@ export class InstanceAiBrowserSessionService {
 			hasConnectedOnce: false,
 			connected: false,
 			connectedAt: null,
+			extensionVersion: null,
 			connection: toolkit.connection,
 			mcpServer: new BrowserLocalMcpServer(toolkit, toolContext, this.logger),
 		};
@@ -221,8 +240,14 @@ export class InstanceAiBrowserSessionService {
 			name: 'browser_connect',
 			arguments: {},
 		});
-		this.telemetry.track('Instance AI Browser connected', { user_id: userId });
-		this.logger.info('Browser Use extension connected', { userId });
+		this.telemetry.track('Instance AI Browser connected', {
+			user_id: userId,
+			browser_extension_version: session.extensionVersion,
+		});
+		this.logger.info('Browser Use extension connected', {
+			userId,
+			extensionVersion: session.extensionVersion,
+		});
 		this.pushState(userId);
 	}
 
@@ -281,22 +306,6 @@ export class InstanceAiBrowserSessionService {
 		);
 	}
 
-	private async createCredential(
-		userId: string,
-		payload: CreateCredentialPayload,
-	): Promise<{ credentialId: string }> {
-		const user = await this.userRepository.findOne({
-			where: { id: userId },
-			relations: ['role'],
-		});
-		if (!user) {
-			throw new UnexpectedError('User for browser session not found');
-		}
-
-		const credential = await this.credentialsService.createUnmanagedCredential(payload, user);
-		return { credentialId: credential.id };
-	}
-
 	private buildExtensionEndpoint(session: BrowserSession): string {
 		const token = encodeURIComponent(session.relayAuthToken);
 		return `${this.getPublicWsBaseUrl()}${BROWSER_USE_WS_NAMESPACE}/extension/${session.sessionId}?token=${token}`;
@@ -311,21 +320,4 @@ export class InstanceAiBrowserSessionService {
 		const scheme = base.protocol === 'https:' ? 'wss' : 'ws';
 		return `${scheme}://${base.host}`;
 	}
-}
-
-function createInMemorySecretsBuffer(): SecretsBuffer {
-	const store = new Map<string, Map<string, string>>();
-	return {
-		capture(credentialsKey: string, field: string, value: string): void {
-			const fields = store.get(credentialsKey) ?? new Map<string, string>();
-			fields.set(field, value);
-			store.set(credentialsKey, fields);
-		},
-		getFields(credentialsKey: string): Map<string, string> | undefined {
-			return store.get(credentialsKey);
-		},
-		clear(credentialsKey: string): void {
-			store.delete(credentialsKey);
-		},
-	};
 }

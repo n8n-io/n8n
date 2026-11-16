@@ -1,0 +1,879 @@
+{
+	"name": "Hubspot - Request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "f22f2391-b69c-5af2-85c6-e9e3981f417e",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "contactList",
+				"by": "id",
+				"id": 204727,
+				"listId": 7
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.2,
+			"position": [300, 0],
+			"id": "324d27e4-dca5-5f01-a272-af4ab5676b9c",
+			"name": "V2 Contact List Add",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "contactList",
+				"operation": "remove",
+				"id": 204727,
+				"listId": 7
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.2,
+			"position": [300, 200],
+			"id": "926ac718-b7cc-57a0-9d2a-7cea2ad29a0f",
+			"name": "V2 Contact List Remove",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "engagement",
+				"operation": "get",
+				"engagementId": {
+					"__rl": true,
+					"value": "29090716",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.2,
+			"position": [300, 400],
+			"id": "8870369e-7758-5d8a-8d97-d4955a6067ab",
+			"name": "V2 Engagement Get",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "engagement",
+				"operation": "delete",
+				"engagementId": {
+					"__rl": true,
+					"value": "29090716",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.2,
+			"position": [300, 600],
+			"id": "068c7e4d-344e-5854-a1e9-a6ec2b021fa5",
+			"name": "V2 Engagement Delete",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "ticket",
+				"operation": "get",
+				"ticketId": {
+					"__rl": true,
+					"value": "176602",
+					"mode": "id"
+				},
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.2,
+			"position": [300, 800],
+			"id": "a318d8c3-8eb3-558b-8e72-595e0c2a29b4",
+			"name": "V2 Ticket Get",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "ticket",
+				"operation": "update",
+				"ticketId": {
+					"__rl": true,
+					"value": "176602",
+					"mode": "id"
+				},
+				"updateFields": {
+					"ticketName": "Printer issue"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.2,
+			"position": [300, 1000],
+			"id": "aa8666ce-2ee5-5f4f-a7e9-743a7364aeff",
+			"name": "V2 Ticket Update",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "ticket",
+				"operation": "delete",
+				"ticketId": {
+					"__rl": true,
+					"value": "176602",
+					"mode": "id"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.2,
+			"position": [300, 1200],
+			"id": "49ceea18-c1b5-53d5-9e92-743d4efd777d",
+			"name": "V2 Ticket Delete",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "contactList",
+				"by": "id",
+				"id": "204728",
+				"listId": "8"
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [300, 1400],
+			"id": "a43b9a3c-d23a-5e72-90e2-a93088f6c3ee",
+			"name": "V1 Contact List Add",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "contactList",
+				"operation": "remove",
+				"id": "204728",
+				"listId": "8"
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [300, 1600],
+			"id": "1bdcff19-ab70-5b36-9f5a-428666032abe",
+			"name": "V1 Contact List Remove",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "contact",
+				"operation": "delete",
+				"contactId": "204728"
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"id": "e93384c7-d89c-5446-b966-19f74f2fbbb5",
+			"name": "V1 Contact Delete",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "company",
+				"operation": "get",
+				"companyId": "5832272",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [300, 2000],
+			"id": "cacbee16-7d9a-5dee-8055-9e27100c3b99",
+			"name": "V1 Company Get",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "company",
+				"operation": "update",
+				"companyId": "5832272",
+				"updateFields": {
+					"name": "Acme Corp"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [300, 2200],
+			"id": "e6722eb1-d7b6-5643-bfd5-27486fa43889",
+			"name": "V1 Company Update",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "company",
+				"operation": "searchByDomain",
+				"domain": "acme.example.com",
+				"limit": 2,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [300, 2400],
+			"id": "eda19655-0cb4-59a9-8ee3-98dd10948da7",
+			"name": "V1 Company Search By Domain",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "deal",
+				"operation": "get",
+				"dealId": "1645821",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [300, 2600],
+			"id": "e9d38fdc-43eb-5fb7-a458-7553ff19be7f",
+			"name": "V1 Deal Get",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "deal",
+				"operation": "update",
+				"dealId": "1645821",
+				"updateFields": {
+					"dealName": "Acme deal"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [300, 2800],
+			"id": "3b05672f-adbb-58e1-b5af-c295aa919624",
+			"name": "V1 Deal Update",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "engagement",
+				"operation": "get",
+				"engagementId": "29090717"
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [300, 3000],
+			"id": "4777b4fc-c53d-53dc-a42a-92216a89a7c6",
+			"name": "V1 Engagement Get",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "engagement",
+				"operation": "delete",
+				"engagementId": "29090717"
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [300, 3200],
+			"id": "31846701-b8c0-5de0-a6b3-7ecd2b8ef71d",
+			"name": "V1 Engagement Delete",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "form",
+				"operation": "getFields",
+				"formId": "b1b2c3d4-5e6f-4a1b-8c2d-3e4f5a6b7c8d"
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [300, 3400],
+			"id": "8d8bf4fe-73f0-5483-b7a8-8c699e648f3d",
+			"name": "V1 Form Get Fields",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "form",
+				"operation": "submit",
+				"formId": "b1b2c3d4-5e6f-4a1b-8c2d-3e4f5a6b7c8d",
+				"additionalFields": {},
+				"contextUi": {},
+				"lengalConsentUi": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [300, 3600],
+			"id": "5d3bd79c-4272-5263-a919-c1b477fad8c0",
+			"name": "V1 Form Submit",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "ticket",
+				"operation": "get",
+				"ticketId": "176603",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [300, 3800],
+			"id": "06810e8f-ff4e-518f-8f3f-4f3c63d3e427",
+			"name": "V1 Ticket Get",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "ticket",
+				"operation": "update",
+				"ticketId": "176603",
+				"updateFields": {
+					"ticketName": "Printer issue"
+				}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [300, 4000],
+			"id": "489be64f-d156-53a1-a3b3-68a61a1e3c39",
+			"name": "V1 Ticket Update",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "ticket",
+				"operation": "delete",
+				"ticketId": "176603"
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [300, 4200],
+			"id": "86433c70-2b88-5396-abaf-88964d89b59c",
+			"name": "V1 Ticket Delete",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "contact",
+				"operation": "upsert",
+				"email": "a%2Bb@example.com",
+				"resolveData": false,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 1,
+			"position": [600, 0],
+			"id": "7c1d2e3f-4a5b-4c6d-8e7f-000000000001",
+			"name": "V1 Contact Upsert Encoded Email",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "contact",
+				"operation": "upsert",
+				"email": "c%2Bd@example.com",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.2,
+			"position": [600, 200],
+			"id": "7c1d2e3f-4a5b-4c6d-8e7f-000000000002",
+			"name": "V2.2 Contact Upsert Encoded Email",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "appToken",
+				"resource": "contact",
+				"operation": "upsert",
+				"email": "e%2Bf@example.com",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.hubspot",
+			"typeVersion": 2.3,
+			"position": [600, 400],
+			"id": "7c1d2e3f-4a5b-4c6d-8e7f-000000000003",
+			"name": "V2.3 Contact Upsert Encoded Email",
+			"credentials": {
+				"hubspotAppToken": {
+					"id": "1",
+					"name": "HubSpot App Token"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"V2 Contact List Add": [
+			{
+				"json": {
+					"updated": [204727],
+					"discarded": [],
+					"invalidVids": [],
+					"invalidEmails": []
+				}
+			}
+		],
+		"V2 Contact List Remove": [
+			{
+				"json": {
+					"updated": [204727],
+					"discarded": [],
+					"invalidVids": [],
+					"invalidEmails": []
+				}
+			}
+		],
+		"V2 Engagement Get": [
+			{
+				"json": {
+					"engagement": {
+						"id": 29090716,
+						"type": "TASK"
+					},
+					"associations": {},
+					"metadata": {}
+				}
+			}
+		],
+		"V2 Engagement Delete": [
+			{
+				"json": {
+					"vid": "29090716",
+					"deleted": true
+				}
+			}
+		],
+		"V2 Ticket Get": [
+			{
+				"json": {
+					"objectId": 176602,
+					"properties": {
+						"subject": {
+							"value": "Printer issue"
+						}
+					}
+				}
+			}
+		],
+		"V2 Ticket Update": [
+			{
+				"json": {
+					"objectId": 176602,
+					"properties": {
+						"subject": {
+							"value": "Printer issue"
+						}
+					}
+				}
+			}
+		],
+		"V2 Ticket Delete": [
+			{
+				"json": {
+					"vid": "176602",
+					"deleted": true
+				}
+			}
+		],
+		"V1 Contact List Add": [],
+		"V1 Contact List Remove": [],
+		"V1 Contact Delete": [
+			{
+				"json": {
+					"vid": 204728,
+					"deleted": true
+				}
+			}
+		],
+		"V1 Company Get": [
+			{
+				"json": {
+					"companyId": 5832271,
+					"properties": {
+						"name": {
+							"value": "Acme Corp"
+						}
+					}
+				}
+			}
+		],
+		"V1 Company Update": [
+			{
+				"json": {
+					"companyId": 5832271,
+					"properties": {
+						"name": {
+							"value": "Acme Corp"
+						}
+					}
+				}
+			}
+		],
+		"V1 Company Search By Domain": [
+			{
+				"json": {
+					"companyId": 5832271,
+					"properties": {
+						"name": {
+							"value": "Acme Corp"
+						}
+					}
+				}
+			}
+		],
+		"V1 Deal Get": [
+			{
+				"json": {
+					"dealId": 1645820,
+					"properties": {
+						"dealname": {
+							"value": "Acme deal"
+						}
+					}
+				}
+			}
+		],
+		"V1 Deal Update": [
+			{
+				"json": {
+					"dealId": 1645820,
+					"properties": {
+						"dealname": {
+							"value": "Acme deal"
+						}
+					}
+				}
+			}
+		],
+		"V1 Engagement Get": [
+			{
+				"json": {
+					"engagement": {
+						"id": 29090716,
+						"type": "TASK"
+					},
+					"associations": {},
+					"metadata": {}
+				}
+			}
+		],
+		"V1 Engagement Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"V1 Form Get Fields": [
+			{
+				"json": {
+					"name": "email",
+					"label": "Email"
+				}
+			}
+		],
+		"V1 Form Submit": [
+			{
+				"json": {
+					"inlineMessage": "Thanks for submitting the form."
+				}
+			}
+		],
+		"V1 Ticket Get": [
+			{
+				"json": {
+					"objectId": 176602,
+					"properties": {
+						"subject": {
+							"value": "Printer issue"
+						}
+					}
+				}
+			}
+		],
+		"V1 Ticket Update": [
+			{
+				"json": {
+					"objectId": 176602,
+					"properties": {
+						"subject": {
+							"value": "Printer issue"
+						}
+					}
+				}
+			}
+		],
+		"V1 Ticket Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "V2 Contact List Add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V2 Contact List Remove",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V2 Engagement Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V2 Engagement Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V2 Ticket Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V2 Ticket Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V2 Ticket Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Contact List Add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Contact List Remove",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Contact Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Company Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Company Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Company Search By Domain",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Deal Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Deal Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Engagement Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Engagement Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Form Get Fields",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Form Submit",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Ticket Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Ticket Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Ticket Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V1 Contact Upsert Encoded Email",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V2.2 Contact Upsert Encoded Email",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "V2.3 Contact Upsert Encoded Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

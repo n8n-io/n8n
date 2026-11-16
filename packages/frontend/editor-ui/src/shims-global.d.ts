@@ -1,5 +1,4 @@
 /// <reference types="vite/client" />
-/// <reference types="vite-plugin-comlink/client" />
 /// <reference types="wa-sqlite/src/types" />
 
 import 'vue-router';
@@ -50,6 +49,8 @@ declare global {
 	interface Window {
 		BASE_PATH: string;
 		REST_ENDPOINT: string;
+		/** Public settings that the backend embeds in the page. See `EMBEDDED_SETTINGS_GLOBAL`. */
+		__n8nSettings?: FrontendSettings;
 		n8nExternalHooks?: PartialDeep<ExternalHooks>;
 		preventNodeViewBeforeUnload?: boolean;
 		maxPinnedDataSize?: number;

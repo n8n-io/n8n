@@ -1,18 +1,18 @@
 import { Container } from '@n8n/di';
-import {
-	type IConnection,
-	type IDataObject,
-	type IExecuteData,
-	type INode,
-	type INodeExecutionData,
-	type IRunData,
-	type IRunNodeResponse,
-	type ITaskMetadata,
-	type EngineRequest,
-	type Workflow,
-	type EngineResponse,
-	UnexpectedError,
+import type {
+	IConnection,
+	IDataObject,
+	IExecuteData,
+	INode,
+	INodeExecutionData,
+	IRunData,
+	IRunNodeResponse,
+	ITaskMetadata,
+	EngineRequest,
+	Workflow,
+	EngineResponse,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { ErrorReporter } from '../errors/error-reporter';
 
@@ -268,7 +268,12 @@ export function handleRequest({
 		return { nodesToBeExecuted: [] };
 	}
 
-	// 3. add current node back to the bottom of the stack
+	// 3. under executionOrder v1 reverse the actions to run the requests in the order the root requested them to run
+	if (workflow.settings.executionOrder === 'v1') {
+		nodesToBeExecuted.reverse();
+	}
+
+	// 4. add current node back to the bottom of the stack
 	nodesToBeExecuted.unshift({
 		inputConnectionData: result.connectionData,
 		parentOutputIndex: 0,

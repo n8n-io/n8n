@@ -14,9 +14,24 @@ import {
 	computeChangedOverrides,
 	computeChangedCatalogEntries,
 	markDirtyByRootChanges,
+	markAllPackagesDirty,
 	propagateDirtyTransitively,
 	computeNewVersion,
 } from './bump-versions.mjs';
+
+describe('markAllPackagesDirty', () => {
+	it('marks every package dirty', () => {
+		const packageMap = {
+			foo: { isDirty: false },
+			bar: { isDirty: true },
+		};
+
+		markAllPackagesDirty(packageMap);
+
+		assert.equal(packageMap.foo.isDirty, true);
+		assert.equal(packageMap.bar.isDirty, true);
+	});
+});
 
 describe('generateExperimentalVersion', () => {
 	it('appends -exp.g<sha> to a stable version', () => {
@@ -39,7 +54,10 @@ describe('generateExperimentalVersion', () => {
 	});
 
 	it('throws on an invalid version string', () => {
-		assert.throws(() => generateExperimentalVersion('not-a-version', 'abcd1234'), /Invalid version/);
+		assert.throws(
+			() => generateExperimentalVersion('not-a-version', 'abcd1234'),
+			/Invalid version/,
+		);
 	});
 
 	it('throws when sha is missing', () => {
@@ -71,6 +89,26 @@ describe('getOverrides', () => {
 			}),
 			{ lodash: '^4.0.0', underscore: '^1.0.0' },
 		);
+	});
+
+	it('returns workspace overrides when package.json has none', () => {
+		assert.deepEqual(getOverrides({}, { overrides: { lodash: '^4.0.0' } }), { lodash: '^4.0.0' });
+	});
+
+	it('lets workspace overrides win over package.json for the same key', () => {
+		assert.deepEqual(
+			getOverrides(
+				{ pnpm: { overrides: { lodash: '^3.0.0', underscore: '^1.0.0' } } },
+				{ overrides: { lodash: '^4.0.0' } },
+			),
+			{ lodash: '^4.0.0', underscore: '^1.0.0' },
+		);
+	});
+
+	it('sees no change when an override only moves from package.json to the workspace file', () => {
+		const atTag = getOverrides({ pnpm: { overrides: { lodash: '^4.0.0' } } }, {});
+		const current = getOverrides({}, { overrides: { lodash: '^4.0.0' } });
+		assert.deepEqual(computeChangedOverrides(current, atTag), new Set());
 	});
 });
 

@@ -39,9 +39,6 @@ const approvalCardText = [
 	'Approval required',
 	'The agent wants to run this tool: Send Telegram message',
 	'Tool: Send Telegram message',
-	'Input: {',
-	'  "text": "Ship it?"',
-	'}',
 ].join('\n');
 
 function approvalSuspensionStream(): StreamChunk[] {
@@ -156,6 +153,7 @@ describe('Telegram recorded integration replay', () => {
 			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
 				expect.objectContaining({
 					message: 'hey',
+					author: { id: '123456789', name: 'sofiadev' },
 					integrationType: 'telegram',
 				}),
 			);
@@ -168,11 +166,11 @@ describe('Telegram recorded integration replay', () => {
 					channelId: 'telegram:123456789',
 				},
 			});
-			const sentMessages = ctx.apiCalls.filter((call) => call.method === 'sendMessage');
+			const sentMessages = ctx.apiCalls.filter((call) => call.method === 'sendRichMessage');
 			expect(sentMessages).toHaveLength(1);
 			expect(sentMessages[0]?.body).toMatchObject({
 				chat_id: '123456789',
-				text: 'Test response',
+				rich_message: { markdown: 'Test response' },
 			});
 		} finally {
 			await ctx.shutdown();
@@ -224,6 +222,51 @@ describe('Telegram recorded integration replay', () => {
 			await blockedCtx.shutdown();
 		}
 	});
+
+	it.each([
+		{
+			label: 'unlisted user without a username',
+			sender: { from: { id: 333, is_bot: false, first_name: 'alice_dev' } },
+		},
+		{
+			label: 'unlisted user with a numeric first name',
+			sender: { from: { id: 444, is_bot: false, first_name: '5123456789' } },
+		},
+		{
+			label: 'message sent on behalf of a chat',
+			sender: {
+				from: undefined,
+				sender_chat: { id: -100555, type: 'channel', title: 'alice_dev' },
+			},
+		},
+	])(
+		'in private mode, checks the allowlist against the Telegram user ID and username ($label)',
+		async ({ sender }) => {
+			const originalMessage = telegramFixtures.mention.message;
+			if (!originalMessage) throw new Error('Telegram mention fixture must include a message');
+			const payload = {
+				...telegramFixtures.mention,
+				message: {
+					...originalMessage,
+					...sender,
+				},
+			};
+			const ctx = await createTelegramReplayContext(telegramFixtures, {
+				integration: {
+					type: 'telegram',
+					credentialId: 'cred-telegram',
+					settings: { accessMode: 'private', allowedUsers: ['alice_dev', '5123456789'] },
+				},
+			});
+			try {
+				await ctx.sendTelegramWebhook(payload);
+
+				expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			} finally {
+				await ctx.shutdown();
+			}
+		},
+	);
 
 	it.each([
 		{ buttonIndex: 0, approved: true, outcome: '✅ Approved by Alice' },
@@ -324,7 +367,7 @@ describe('Telegram recorded integration replay', () => {
 		}
 	});
 
-	it('leaves non-approval Telegram cards unchanged after callbacks', async () => {
+	it('settles non-approval Telegram cards and invalidates sibling callbacks', async () => {
 		const ctx = await createTelegramReplayContext(telegramFixtures, {
 			stream: [
 				{
@@ -334,7 +377,10 @@ describe('Telegram recorded integration replay', () => {
 					toolName: 'custom_card',
 					suspendPayload: {
 						title: 'Choose an action',
-						components: [{ type: 'button', label: 'Continue', value: 'continue' }],
+						components: [
+							{ type: 'button', label: 'Continue', value: 'continue' },
+							{ type: 'button', label: 'Cancel', value: 'cancel' },
+						],
 					},
 				},
 				{ type: 'finish', finishReason: 'stop' },
@@ -343,11 +389,19 @@ describe('Telegram recorded integration replay', () => {
 		try {
 			await ctx.sendTelegramWebhook(telegramFixtures.mention);
 
-			const callbackData = getTelegramInlineCallbackData(ctx.lastApiCall('sendMessage'));
-			await clickTelegramCard(ctx, callbackData ?? '', 'Choose an action');
+			const cardMessage = ctx.lastApiCall('sendMessage');
+			const continueCallback = getTelegramInlineCallbackData(cardMessage, 0);
+			const cancelCallback = getTelegramInlineCallbackData(cardMessage, 1);
+			await clickTelegramCard(ctx, continueCallback ?? '', 'Choose an action');
+			await clickTelegramCard(ctx, cancelCallback ?? '', 'Choose an action');
 
 			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledTimes(1);
-			expect(ctx.lastApiCall('editMessageText')).toBeUndefined();
+			expect(ctx.lastApiCall('editMessageText')?.body).toMatchObject({
+				chat_id: '123456',
+				message_id: 1000,
+				text: 'Choose an action\n\n✅ Continue selected by Alice',
+				reply_markup: { inline_keyboard: [] },
+			});
 		} finally {
 			await ctx.shutdown();
 		}
@@ -370,9 +424,57 @@ describe('Telegram recorded integration replay', () => {
 					target: { type: 'dm', userId: '123456', threadId: 'telegram:123456' },
 				},
 			});
-			expect(ctx.lastApiCall('sendMessage')?.body).toMatchObject({
+			expect(ctx.lastApiCall('sendRichMessage')?.body).toMatchObject({
 				chat_id: '123456',
-				text: 'DM from agent',
+				rich_message: { markdown: 'DM from agent' },
+			});
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('sends send_dm text as Markdown', async () => {
+		const ctx = await createTelegramReplayContext(telegramFixtures);
+		try {
+			await ctx.actionExecutor.execute({
+				descriptor: ctx.descriptor,
+				action: 'send_dm',
+				input: { userId: '123456', message: { text: '**Headline**\nAT&T <ok>' } },
+				awaitResponse: false,
+			});
+
+			expect(ctx.lastApiCall('sendMessage')).toBeUndefined();
+			expect(ctx.lastApiCall('sendRichMessage')?.body).toMatchObject({
+				chat_id: '123456',
+				rich_message: { markdown: '**Headline**\nAT&T <ok>' },
+			});
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('edits messages with text as Markdown', async () => {
+		const ctx = await createTelegramReplayContext(telegramFixtures);
+		try {
+			const sent = await ctx.actionExecutor.execute({
+				descriptor: ctx.descriptor,
+				action: 'send_dm',
+				input: { userId: '123456', message: { text: 'Draft' } },
+				awaitResponse: false,
+			});
+			if (!sent.ok || !sent.messageContext) throw new Error('send_dm failed');
+
+			await ctx.actionExecutor.execute({
+				descriptor: ctx.descriptor,
+				action: 'edit_message',
+				input: { messageId: sent.messageContext.messageId, message: { text: '**Final**' } },
+				currentMessageContext: sent.messageContext,
+				awaitResponse: false,
+			});
+
+			expect(ctx.lastApiCall('editMessageText')?.body).toMatchObject({
+				chat_id: '123456',
+				rich_message: { markdown: '**Final**' },
 			});
 		} finally {
 			await ctx.shutdown();

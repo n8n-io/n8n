@@ -1,7 +1,9 @@
+import type { SerializedVariable } from '@n8n/api-types';
 import type { Variables } from '@n8n/db';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { pickVariableForProject } from 'n8n-workflow';
+import { ZodError } from 'zod';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
@@ -9,16 +11,16 @@ import { VariableSerializer } from './variable.serializer';
 import type {
 	VariableExportRequest,
 	VariableExportResult,
-	WorkflowVariableRequirement,
+	VariableRequirement,
 } from './variable.types';
-import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
+import { projectScopedDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
 import { PackageExportBlockedError } from '../package-export.errors';
+import { addRequirementUsage, type RequirementUsage } from '../requirement-source';
 
-interface ResolvedName {
+interface ResolvedName extends RequirementUsage {
 	name: string;
-	usedByWorkflows: string[];
 	variables: Array<Variables | undefined>;
 }
 
@@ -44,7 +46,9 @@ export class VariableExporter {
 			return { entries: [], requirements: [] };
 		}
 
-		const workflowIds = [...new Set(request.requirements.map((r) => r.workflowId))];
+		const workflowIds = [
+			...new Set(request.requirements.flatMap((r) => ('workflowId' in r ? [r.workflowId] : []))),
+		];
 		// The unfiltered list is what runtime resolves against; the user-filtered
 		// list defines what the caller may bundle. Resolving on the unfiltered list
 		// and then gating on accessibility keeps export in lockstep with runtime
@@ -65,80 +69,62 @@ export class VariableExporter {
 
 		this.assertNoBundledVariableCollision(resolvedNames, request.projectTargetsById);
 
-		// One allocator per base directory: `variables/` and each
-		// `projects/<slug>/variables/` suffix collisions independently.
-		const allocators = new Map<string, UniqueFilenameAllocator>();
-		const allocatorFor = (baseDir: string) => {
-			const existing = allocators.get(baseDir);
-			if (existing) return existing;
-			const created = new UniqueFilenameAllocator(baseDir, 'variable');
-			allocators.set(baseDir, created);
-			return created;
-		};
-
 		const entries: ManifestEntry[] = [];
 		const bundledVariableIds = new Set<string>();
 		const requirements: PackageVariableRequirement[] = [];
 
-		for (const { name, usedByWorkflows, variables } of resolvedNames) {
-			let aggregateValue: string | undefined;
-			let everyWorkflowResolvedToSameValue = true;
-
+		for (const { name, usedBy, variables } of resolvedNames) {
 			for (const variable of variables) {
-				if (!isBundleableVariable(variable)) {
-					everyWorkflowResolvedToSameValue = false;
-					continue;
-				}
-
-				if (aggregateValue === undefined) {
-					aggregateValue = variable.value;
-				} else if (aggregateValue !== variable.value) {
-					everyWorkflowResolvedToSameValue = false;
-				}
+				if (!isBundleableVariable(variable)) continue;
 
 				if (bundledVariableIds.has(variable.id)) continue;
 				bundledVariableIds.add(variable.id);
 
-				const baseDir = this.resolveBaseDir(variable, request.projectTargetsById);
-				const target = allocatorFor(baseDir).allocate(variable.key);
-				request.writer.writeDirectory(target);
-				request.writer.writeFile(
-					`${target}/variable.json`,
-					JSON.stringify(
-						this.variableSerializer.serialize(variable, {
-							includeValue: request.includeVariableValues,
-						}),
-						null,
-						'\t',
+				entries.push(
+					await writeManifestEntry(
+						request.writer,
+						'variables',
+						projectScopedDirectory('variables', variable.project?.id, request.projectTargetsById),
+						{ id: variable.id, name: variable.key },
+						this.serializeOrBlock(variable, request.includeVariableValues),
 					),
 				);
-				entries.push({ id: variable.id, name: variable.key, target });
 			}
 
-			requirements.push({
-				name,
-				...(request.includeVariableValues &&
-				everyWorkflowResolvedToSameValue &&
-				aggregateValue !== undefined
-					? { value: aggregateValue }
-					: {}),
-				usedByWorkflows,
-			});
+			requirements.push({ name, usedBy });
 		}
 
 		return { entries, requirements };
 	}
 
 	/**
+	 * Import parses the same schema, so a contract-breaking row cannot be bundled. Name the row and the
+	 * broken rule instead of letting a raw parse failure surface as an unexplained 500.
+	 */
+	private serializeOrBlock(variable: Variables, includeValue: boolean): SerializedVariable {
+		try {
+			return this.variableSerializer.serialize(variable, { includeValue });
+		} catch (error) {
+			if (!(error instanceof ZodError)) throw error;
+
+			throw new PackageExportBlockedError(
+				`Variable "${variable.key}" does not match the expected format. Export aborted.`,
+				{
+					description: `${error.issues
+						.map((issue) => issue.message)
+						.join('; ')}. Fix the variable and retry the export.`,
+				},
+			);
+		}
+	}
+
+	/**
 	 * Turns the flat requirement list into one entry per variable name.
-	 * Each entry records which workflows use the name and, for each of those
-	 * workflows, the variable its `$vars.<name>` would read at runtime —
-	 * project-scoped beats a same-key global, via the same precedence rule
-	 * runtime uses. A pick the caller cannot see yields `undefined`, so a
-	 * hidden project variable never falls back to the global it shadows.
+	 * Resolve each consumer's variable with the same project precedence as runtime.
+	 * A hidden project variable must not fall back to the global it shadows.
 	 */
 	private resolveRequirements(
-		requirements: WorkflowVariableRequirement[],
+		requirements: VariableRequirement[],
 		projectIdByWorkflowId: Map<string, string>,
 		allVariables: Variables[],
 		accessibleIds: Set<string>,
@@ -150,32 +136,30 @@ export class VariableExporter {
 			else variablesByKey.set(variable.key, [variable]);
 		}
 
-		const resolveForWorkflow = (name: string, workflowId: string) => {
-			const workflowProjectId = projectIdByWorkflowId.get(workflowId);
-			const picked = pickVariableForProject(
-				variablesByKey.get(name) ?? [],
+		const resolved = new Map<string, ResolvedName>();
+		for (const requirement of requirements) {
+			const projectId =
+				'workflowId' in requirement
+					? projectIdByWorkflowId.get(requirement.workflowId)
+					: requirement.projectId;
+			const name = requirement.variableName;
+			const picked = pickVariableForProject(variablesByKey.get(name) ?? [], name, projectId);
+			const entry: ResolvedName = resolved.get(name) ?? {
 				name,
-				workflowProjectId,
-			);
-			return picked && accessibleIds.has(picked.id) ? picked : undefined;
-		};
-
-		return [...this.groupByName(requirements)].map(([name, usedByWorkflows]) => ({
-			name,
-			usedByWorkflows,
-			variables: usedByWorkflows.map((workflowId) => resolveForWorkflow(name, workflowId)),
-		}));
-	}
-
-	private resolveBaseDir(variable: Variables, projectTargetsById?: Map<string, string>): string {
-		if (!projectTargetsById || projectTargetsById.size === 0) return 'variables';
-		const prefix = variable.project ? projectTargetsById.get(variable.project.id) : undefined;
-		return prefix ? `${prefix}/variables` : 'variables';
+				usedBy: [],
+				variables: [],
+			};
+			addRequirementUsage(entry, requirement);
+			entry.variables.push(picked && accessibleIds.has(picked.id) ? picked : undefined);
+			resolved.set(name, entry);
+		}
+		return [...resolved.values()];
 	}
 
 	private async resolveWorkflowProjects(workflowIds: string[]): Promise<Map<string, string>> {
-		const owners = await this.sharedWorkflowRepository.findByWorkflowIds(workflowIds);
-		return new Map(owners.map((owner) => [owner.workflowId, owner.project.id]));
+		if (workflowIds.length === 0) return new Map();
+		const owners = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
+		return new Map([...owners].map(([workflowId, project]) => [workflowId, project.id]));
 	}
 
 	/**
@@ -218,26 +202,11 @@ export class VariableExporter {
 		const idByDir = new Map<string, string>();
 		for (const variable of variables) {
 			if (!isBundleableVariable(variable)) continue;
-			const dir = this.resolveBaseDir(variable, projectTargetsById);
+			const dir = projectScopedDirectory('variables', variable.project?.id, projectTargetsById);
 			const previousId = idByDir.get(dir);
 			if (previousId !== undefined && previousId !== variable.id) return true;
 			idByDir.set(dir, variable.id);
 		}
 		return false;
-	}
-
-	private groupByName(requirements: WorkflowVariableRequirement[]): Map<string, string[]> {
-		const grouped = new Map<string, string[]>();
-		for (const requirement of requirements) {
-			const workflowIds = grouped.get(requirement.variableName);
-			if (workflowIds) {
-				if (!workflowIds.includes(requirement.workflowId)) {
-					workflowIds.push(requirement.workflowId);
-				}
-			} else {
-				grouped.set(requirement.variableName, [requirement.workflowId]);
-			}
-		}
-		return grouped;
 	}
 }

@@ -1,0 +1,118 @@
+import type { FrontendModuleSettings } from '@n8n/api-types';
+import { mockedStore, type MockedStore } from '@n8n/frontend-test-utils';
+import type { IUser } from '@n8n/rest-api-client/api/users';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { createTestingPinia } from '@pinia/testing';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { reactive } from 'vue';
+
+import * as insightsApi from './insights.api';
+import { useInsightsStore } from './insights.store';
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
+	useRoute: () => reactive({}),
+}));
+vi.mock('./insights.api');
+
+const mockFilter = { projectId: 'test-project' };
+const mockData = [
+	{
+		date: '2023-01-01',
+		values: {
+			total: 100,
+			failed: 10,
+			failureRate: 10,
+			timeSaved: 50,
+			averageRunTime: 5,
+			succeeded: 90,
+		},
+	},
+];
+
+describe('useInsightsStore', () => {
+	let insightsStore: ReturnType<typeof useInsightsStore>;
+	let settingsStore: MockedStore<typeof useSettingsStore>;
+	let rootStore: MockedStore<typeof useRootStore>;
+	let usersStore: MockedStore<typeof useUsersStore>;
+
+	beforeEach(() => {
+		createTestingPinia();
+
+		settingsStore = mockedStore(useSettingsStore);
+		rootStore = mockedStore(useRootStore);
+		usersStore = mockedStore(useUsersStore);
+
+		rootStore.restApiContext = {
+			baseUrl: 'http://localhost',
+			pushRef: 'pushRef',
+		};
+
+		usersStore.currentUser = { globalScopes: ['insights:list'] } as IUser;
+
+		insightsStore = useInsightsStore();
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	describe('charts data fetcher', () => {
+		it('should use fetchInsightsTimeSaved when dashboard is disabled', async () => {
+			settingsStore.moduleSettings = { insights: { dashboard: false } } as FrontendModuleSettings;
+
+			vi.mocked(insightsApi.fetchInsightsTimeSaved).mockResolvedValue(mockData);
+
+			await insightsStore.charts.execute(0, mockFilter);
+
+			expect(insightsApi.fetchInsightsTimeSaved).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				mockFilter,
+			);
+			expect(insightsApi.fetchInsightsByTime).not.toHaveBeenCalled();
+		});
+
+		it('should use fetchInsightsByTime when dashboard is enabled', async () => {
+			settingsStore.moduleSettings = { insights: { dashboard: true } } as FrontendModuleSettings;
+
+			vi.mocked(insightsApi.fetchInsightsByTime).mockResolvedValue(mockData);
+
+			await insightsStore.charts.execute(0, mockFilter);
+
+			expect(insightsApi.fetchInsightsByTime).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				mockFilter,
+			);
+			expect(insightsApi.fetchInsightsTimeSaved).not.toHaveBeenCalled();
+		});
+
+		it('should use fetchInsightsTimeSaved when dashboard setting is undefined', async () => {
+			settingsStore.moduleSettings = { insights: {} } as FrontendModuleSettings;
+
+			vi.mocked(insightsApi.fetchInsightsTimeSaved).mockResolvedValue(mockData);
+
+			await insightsStore.charts.execute(0, mockFilter);
+
+			expect(insightsApi.fetchInsightsTimeSaved).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				mockFilter,
+			);
+			expect(insightsApi.fetchInsightsByTime).not.toHaveBeenCalled();
+		});
+
+		it('should work without filter parameter', async () => {
+			settingsStore.moduleSettings = { insights: { dashboard: true } } as FrontendModuleSettings;
+
+			vi.mocked(insightsApi.fetchInsightsByTime).mockResolvedValue(mockData);
+
+			await insightsStore.charts.execute();
+
+			expect(insightsApi.fetchInsightsByTime).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				undefined,
+			);
+		});
+	});
+});

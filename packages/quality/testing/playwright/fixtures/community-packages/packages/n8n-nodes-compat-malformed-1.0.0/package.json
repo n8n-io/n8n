@@ -1,0 +1,12 @@
+{
+	"name": "n8n-nodes-compat-malformed",
+	"version": "1.0.0",
+	"description": "Compatibility fixture: n8nNodesApiVersion is not a level at all",
+	"license": "MIT",
+	"keywords": ["n8n-community-node-package"],
+	"files": ["dist"],
+	"n8n": {
+		"n8nNodesApiVersion": "not-a-level",
+		"nodes": ["dist/CompatProbe.node.js"]
+	}
+}

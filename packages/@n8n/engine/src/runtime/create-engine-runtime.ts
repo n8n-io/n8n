@@ -1,0 +1,240 @@
+import type { DataSource } from '@n8n/typeorm';
+import type { Application } from 'express';
+
+import type { AdmittanceService } from '../admittance';
+import { MIN_SECRET_LENGTH } from '../auth';
+import type { IdentityVerifier } from '../auth/identity.types';
+import { UnexpectedError } from '../common';
+import { createStores } from '../database';
+import type { EngineStores } from '../database';
+import type { ExternalDependencies } from '../dependencies';
+import {
+	assertValidStalenessThresholds,
+	CancelExecutionService,
+	ExecutionQueryService,
+	ExecutionStartHandler,
+	OrchestrationWorker,
+	ResumeRequestService,
+	StartExecutionService,
+	StepReadyHandler,
+	StepSettledHandler,
+	StepWorker,
+	WaitSweeper,
+} from '../execution';
+import type { StalenessThresholds } from '../execution';
+import {
+	BatchingLifecycleEventPublisher,
+	LifecycleEventPublisherFactory,
+	noopLifecycleEventPublisher,
+} from '../lifecycle-events';
+import type { LifecycleEventPublisher } from '../lifecycle-events';
+import { createConsoleLogger, type EngineLogger } from '../logging';
+import { InMemoryWorkQueue } from '../queue';
+import type { OrchestrationMessage, StepMessage } from '../queue';
+import {
+	DEFAULT_RECONCILIATION_BATCH_SIZE,
+	DEFAULT_RECONCILIATION_INTERVAL_MS,
+	QueuedExecutionDetector,
+	QueuedExecutionRepair,
+	ReconciliationSweeper,
+} from '../reconciliation';
+import type { ExecutionResponseSender } from '../response-channel';
+import { createEngineServer } from '../server';
+
+export interface EngineRuntimeOptions {
+	/** The data plane database, already initialized and migrated. */
+	dataSource: DataSource;
+	admittance: AdmittanceService;
+	/** Verifies the identity token on every `/api` request. No default: an unauthenticated engine must never boot by omission. */
+	identityVerifier: IdentityVerifier;
+	/** Where the engine writes its own messages. Defaults to the console. */
+	logger?: EngineLogger;
+	/**
+	 * Where an execution sends responses. The host owns it. No default: a host
+	 * that discards responses says so with `noopExecutionResponseSender`.
+	 */
+	responseSender: ExecutionResponseSender;
+	/**
+	 * Builds the capabilities the engine does not own. It receives the engine's
+	 * stores, because a `v1-node` executor reads step data through them and the
+	 * runtime owns them.
+	 *
+	 * Standalone mode omits it, so `v1-node` steps fail as unimplemented: the v1
+	 * executor lives in `@n8n/node-engine-compatibility`, which depends on this
+	 * package, so only an integrated host can supply it.
+	 */
+	externalDependencies?: (stores: EngineStores) => ExternalDependencies;
+	/**
+	 * Verifies the tokens that resume URLs carry. If it changes, every open
+	 * resume URL stops working. Absent or empty, both resume routes answer 501.
+	 */
+	resumeSecret?: string;
+	/** How often to fire waits whose deadline has passed. Defaults to a minute. */
+	waitSweepIntervalMs?: number;
+	/** How many handlers each queue runs at once. Defaults to 1 each. */
+	concurrency?: { step?: number; orchestration?: number };
+	/**
+	 * How long a row can stay `queued` or `running` before the engine treats it
+	 * as stuck. Defaults to `DEFAULT_STALENESS_THRESHOLDS`.
+	 */
+	staleness?: StalenessThresholds;
+	/** How often the engine searches for stuck rows. Defaults to a minute. */
+	reconciliationIntervalMs?: number;
+}
+
+/** A built engine, ready for a host to serve. */
+export interface EngineRuntime {
+	/** The engine HTTP app. The host decides where, and whether, to listen. */
+	app: Application;
+	/** Starts consuming the engine's queues. */
+	start(): void;
+	/** Stops the engine's workers. The host still owns its listener and its `DataSource`. */
+	stop(): Promise<void>;
+}
+
+/**
+ * Builds a working engine from the adapters a host chooses.
+ *
+ * The engine keeps its internal topology here — which handler goes into which
+ * worker, which queue feeds which handler, and the start and stop order — so no
+ * host can get it wrong. A host keeps only its own choices: the database, the
+ * admittance policy, the external dependencies and the HTTP listener.
+ */
+export function createEngineRuntime({
+	dataSource,
+	admittance,
+	identityVerifier,
+	logger = createConsoleLogger(),
+	responseSender,
+	externalDependencies,
+	resumeSecret: givenResumeSecret,
+	waitSweepIntervalMs,
+	concurrency = {},
+	staleness,
+	reconciliationIntervalMs = DEFAULT_RECONCILIATION_INTERVAL_MS,
+}: EngineRuntimeOptions): EngineRuntime {
+	// An empty value is how an unset environment variable usually arrives.
+	const resumeSecret = givenResumeSecret || undefined;
+	// Refused here and not at the first request: a weak secret would otherwise
+	// fail every resume without a word.
+	if (resumeSecret !== undefined && resumeSecret.length < MIN_SECRET_LENGTH) {
+		throw new UnexpectedError(
+			`The resume secret must be at least ${MIN_SECRET_LENGTH} characters long`,
+		);
+	}
+
+	// Refused here and not at the first write: an invalid threshold would
+	// otherwise fail every write of a row that becomes `queued` or `running`.
+	if (staleness !== undefined) assertValidStalenessThresholds(staleness);
+
+	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger, {
+		concurrency: concurrency.orchestration,
+	});
+	const stepQueue = new InMemoryWorkQueue<StepMessage>(logger, { concurrency: concurrency.step });
+	const { executionStore, stepStore, executionViewStore } = createStores(dataSource, staleness);
+	// Built once, not per handler: the factory must not run twice.
+	const dependencies =
+		externalDependencies?.({ executionStore, stepStore, executionViewStore }) ?? {};
+	const lifecycleEventPublisher: LifecycleEventPublisher = dependencies.lifecycleEventCallback
+		? new BatchingLifecycleEventPublisher(dependencies.lifecycleEventCallback)
+		: noopLifecycleEventPublisher;
+	const lifecycleEventPublisherFactory = new LifecycleEventPublisherFactory(
+		lifecycleEventPublisher,
+	);
+
+	const orchestrationWorker = new OrchestrationWorker(
+		orchestrationQueue,
+		new ExecutionStartHandler(
+			executionStore,
+			stepStore,
+			orchestrationQueue,
+			lifecycleEventPublisherFactory,
+		),
+		new StepSettledHandler(
+			executionStore,
+			stepStore,
+			stepQueue,
+			orchestrationQueue,
+			lifecycleEventPublisherFactory,
+			responseSender,
+		),
+	);
+	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
+	const reconciliationSweeper = new ReconciliationSweeper(
+		[
+			new QueuedExecutionDetector(
+				executionStore,
+				reconciliationIntervalMs,
+				DEFAULT_RECONCILIATION_BATCH_SIZE,
+			),
+		],
+		{
+			'execution-queued-no-message': new QueuedExecutionRepair(executionStore, orchestrationQueue),
+		},
+		logger,
+	);
+	// One start path for every execution: the API and a step's sub-execution both admit
+	// and validate here, and only this path can set a parent link.
+	const startExecution = new StartExecutionService(
+		admittance,
+		executionStore,
+		stepStore,
+		orchestrationQueue,
+	);
+	const stepWorker = new StepWorker(
+		stepQueue,
+		new StepReadyHandler(
+			executionStore,
+			stepStore,
+			orchestrationQueue,
+			dependencies,
+			lifecycleEventPublisherFactory,
+			responseSender,
+			startExecution,
+			// A deadline set after the sweeper armed would otherwise wait for its next pass.
+			() => waitSweeper.noteSuspended(),
+		),
+	);
+
+	const { app } = createEngineServer({
+		startExecution,
+		cancelExecution: new CancelExecutionService(
+			executionStore,
+			stepStore,
+			lifecycleEventPublisherFactory,
+			responseSender,
+			stepQueue,
+		),
+		executionQuery: new ExecutionQueryService(executionViewStore),
+		resumeRequests:
+			resumeSecret === undefined
+				? undefined
+				: new ResumeRequestService(executionStore, stepStore, stepQueue, resumeSecret),
+		identityVerifier,
+		logger,
+	});
+
+	return {
+		app,
+
+		start: () => {
+			orchestrationWorker.start();
+			stepWorker.start();
+			waitSweeper.start();
+			reconciliationSweeper.start();
+		},
+
+		stop: async () => {
+			// TODO(CAT-3882): drain in-flight work instead. Stopping a worker waits
+			// only for whatever it is mid-handling; anything queued behind it is
+			// dropped, since the in-memory queues die with the process.
+
+			// The sweepers stop first: they feed the queues, so nothing lands
+			// there after the workers have drained.
+			await Promise.all([waitSweeper.stop(), reconciliationSweeper.stop()]);
+			await Promise.all([orchestrationWorker.stop(), stepWorker.stop()]);
+			// After the workers are quiet, so the last events still reach the host.
+			await lifecycleEventPublisher.stop();
+		},
+	};
+}

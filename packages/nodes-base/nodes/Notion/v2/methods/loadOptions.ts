@@ -1,5 +1,6 @@
 import moment from 'moment-timezone';
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import {
 	extractPageId,
@@ -15,7 +16,11 @@ export async function getDatabaseProperties(
 	const databaseId = this.getCurrentNodeParameter('databaseId', {
 		extractValue: true,
 	}) as string;
-	const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
+	const { properties } = await notionApiRequest.call(
+		this,
+		'GET',
+		requestPath`/databases/${databaseId}`,
+	);
 	for (const key of Object.keys(properties as IDataObject)) {
 		//remove parameters that cannot be set from the API.
 		if (
@@ -53,7 +58,11 @@ export async function getFilterProperties(
 	const databaseId = this.getCurrentNodeParameter('databaseId', {
 		extractValue: true,
 	}) as string;
-	const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
+	const { properties } = await notionApiRequest.call(
+		this,
+		'GET',
+		requestPath`/databases/${databaseId}`,
+	);
 	for (const key of Object.keys(properties as IDataObject)) {
 		returnData.push({
 			name: `${key}`,
@@ -85,7 +94,11 @@ export async function getPropertySelectValues(
 	}) as string;
 	const resource = this.getCurrentNodeParameter('resource') as string;
 	const operation = this.getCurrentNodeParameter('operation') as string;
-	const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
+	const { properties } = await notionApiRequest.call(
+		this,
+		'GET',
+		requestPath`/databases/${databaseId}`,
+	);
 	if (resource === 'databasePage') {
 		if (['multi_select', 'select', 'status'].includes(type) && operation === 'getAll') {
 			return properties[name][type].options.map((option: IDataObject) => ({
@@ -110,7 +123,7 @@ export async function getPropertySelectValues(
 
 export async function getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const users = await notionApiRequestAllItems.call(this, 'results', 'GET', '/users');
+	const users = await notionApiRequestAllItems.call(this, 'results', 'GET', requestPath`/users`);
 	for (const user of users) {
 		if (user.type === 'person') {
 			returnData.push({
@@ -131,8 +144,12 @@ export async function getDatabaseIdFromPage(
 	);
 	const {
 		parent: { database_id: databaseId },
-	} = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
-	const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
+	} = await notionApiRequest.call(this, 'GET', requestPath`/pages/${pageId}`);
+	const { properties } = await notionApiRequest.call(
+		this,
+		'GET',
+		requestPath`/databases/${databaseId}`,
+	);
 	for (const key of Object.keys(properties as IDataObject)) {
 		//remove parameters that cannot be set from the API.
 		if (
@@ -176,8 +193,12 @@ export async function getDatabaseOptionsFromPage(
 	const [name, type] = (this.getCurrentNodeParameter('&key') as string).split('|');
 	const {
 		parent: { database_id: databaseId },
-	} = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
-	const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
+	} = await notionApiRequest.call(this, 'GET', requestPath`/pages/${pageId}`);
+	const { properties } = await notionApiRequest.call(
+		this,
+		'GET',
+		requestPath`/databases/${databaseId}`,
+	);
 	return properties[name][type].options.map((option: IDataObject) => ({
 		name: option.name,
 		value: option.name,

@@ -1,18 +1,19 @@
 import type { CreateFolderDto, DeleteFolderDto, UpdateFolderDto } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import type {
 	FolderWithWorkflowAndSubFolderCount,
 	FolderWithWorkflowAndSubFolderCountAndPath,
+	OperationContext,
 	User,
 } from '@n8n/db';
 import { Folder, FolderTagMappingRepository, FolderRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { In, type EntityManager } from '@n8n/typeorm';
-import { UserError, PROJECT_ROOT } from 'n8n-workflow';
+import type { EntityManager } from '@n8n/typeorm';
+import { PROJECT_ROOT } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { EventService } from '@/events/event.service';
 import type { ListQuery } from '@/requests';
-// eslint-disable-next-line import-x/no-cycle
 import { WorkflowService } from '@/workflows/workflow.service';
 
 export interface SimpleFolderNode {
@@ -56,11 +57,19 @@ export class FolderService {
 	}
 
 	async getFoldersByIds(folderIds: string[]): Promise<Folder[]> {
-		if (folderIds.length === 0) return [];
-		return await this.folderRepository.find({
-			where: { id: In(folderIds) },
-			relations: { homeProject: true },
+		return await this.folderRepository.findManyByIds(folderIds);
+	}
+
+	/** Every folder a project holds, flat, with the parent each one sits under (`null` at the root). */
+	async getFolderPlacementsInProject(
+		projectId: string,
+	): Promise<Array<{ id: string; name: string; parentFolderId: string | null }>> {
+		const folders = await this.folderRepository.find({
+			where: { homeProject: { id: projectId } },
+			select: { id: true, name: true, parentFolderId: true },
 		});
+
+		return folders.map(({ id, name, parentFolderId }) => ({ id, name, parentFolderId }));
 	}
 
 	async updateFolder(
@@ -158,14 +167,19 @@ export class FolderService {
 	 *
 	 * If any workflows were active this will also deactivate those workflows.
 	 */
-	async flattenAndArchive(user: User, folderId: string, projectId: string): Promise<void> {
+	async flattenAndArchive(
+		user: User,
+		folderId: string,
+		projectId: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
 		const workflowIds = await this.workflowRepository.getAllWorkflowIdsInHierarchy(
 			folderId,
 			projectId,
 		);
 
 		for (const workflowId of workflowIds) {
-			await this.workflowService.archive(user, workflowId, { skipArchived: true });
+			await this.workflowService.archive(user, workflowId, { skipArchived: true }, ctx);
 		}
 
 		await this.workflowRepository.moveToFolder(workflowIds, PROJECT_ROOT);
@@ -176,11 +190,12 @@ export class FolderService {
 		folderId: string,
 		projectId: string,
 		{ transferToFolderId }: DeleteFolderDto,
+		ctx: OperationContext = {},
 	) {
 		await this.findFolderInProjectOrFail(folderId, projectId);
 
 		if (!transferToFolderId) {
-			await this.flattenAndArchive(user, folderId, projectId);
+			await this.flattenAndArchive(user, folderId, projectId, ctx);
 			await this.folderRepository.delete({ id: folderId });
 			this.eventService.emit('folder-deleted', { folderId, projectId });
 			return;
@@ -316,7 +331,10 @@ export class FolderService {
 		};
 	}
 
-	async getManyAndCount(projectId: string, options: ListQuery.Options) {
+	async getManyAndCount(
+		projectId: string,
+		options: ListQuery.Options,
+	): Promise<[FolderWithWorkflowAndSubFolderCountAndPath[], number]> {
 		options.filter = { ...options.filter, projectId, isArchived: false };
 		// eslint-disable-next-line prefer-const
 		let [folders, count] = await this.folderRepository.getManyAndCount(options);

@@ -1,16 +1,15 @@
 import type { AgentsConfig } from '@n8n/config';
-import { trace } from '@opentelemetry/api';
+import { trace, type Tracer } from '@opentelemetry/api';
+import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentRunTracingService, modelIdFromSnapshot } from '../agent-run-tracing.service';
 
-vi.mock('@opentelemetry/api', () => ({
-	trace: { getTracer: vi.fn(() => ({ startSpan: vi.fn(), startActiveSpan: vi.fn() })) },
-}));
-
 describe('AgentRunTracingService', () => {
+	let getTracer: MockInstance<typeof trace.getTracer>;
+
 	beforeEach(() => {
-		vi.clearAllMocks();
+		getTracer = vi.spyOn(trace, 'getTracer').mockReturnValue(mock<Tracer>());
 	});
 
 	const baseMetadata = {
@@ -36,7 +35,7 @@ describe('AgentRunTracingService', () => {
 		const built = await service.build(baseMetadata);
 
 		expect(built).toBeUndefined();
-		expect(trace.getTracer).not.toHaveBeenCalled();
+		expect(getTracer).not.toHaveBeenCalled();
 	});
 
 	it('builds telemetry from a fresh tracer fetch when tracing is enabled', async () => {
@@ -46,8 +45,8 @@ describe('AgentRunTracingService', () => {
 		await service.build(baseMetadata);
 		await service.build(baseMetadata);
 
-		expect(trace.getTracer).toHaveBeenCalledTimes(2);
-		expect(trace.getTracer).toHaveBeenCalledWith('@n8n/agents');
+		expect(getTracer).toHaveBeenCalledTimes(2);
+		expect(getTracer).toHaveBeenCalledWith('@n8n/agents');
 	});
 
 	it('never marks the built telemetry as LangSmith, so root spans stay generic', async () => {
@@ -156,6 +155,30 @@ describe('AgentRunTracingService', () => {
 		// the AgentRunTracingMetadata union — a non-workflow source can't carry
 		// it, enforced at compile time rather than filtered at runtime.
 		await service.build({ ...baseMetadata, source: 'slack', executionId: 'exec-1' });
+	});
+
+	it('marks workflow-sourced runs as rootAnchored: false only when a parent context was found, and leaves other sources anchored', async () => {
+		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
+		const service = new AgentRunTracingService(agentsConfig);
+
+		const workflowBuilt = await service.build({
+			...baseMetadata,
+			source: 'workflow',
+			executionId: 'exec-1',
+			hasParentContext: true,
+		});
+		expect(workflowBuilt?.rootAnchored).toBe(false);
+
+		const workflowBuiltWithoutParent = await service.build({
+			...baseMetadata,
+			source: 'workflow',
+			executionId: 'exec-1',
+			hasParentContext: false,
+		});
+		expect(workflowBuiltWithoutParent?.rootAnchored).toBeUndefined();
+
+		const slackBuilt = await service.build({ ...baseMetadata, source: 'slack' });
+		expect(slackBuilt?.rootAnchored).toBeUndefined();
 	});
 
 	it('includes user_id and model_id only when provided', async () => {

@@ -6,6 +6,8 @@ import {
 	type IClusterCheck,
 } from '@n8n/decorators';
 
+import { buildCheckResult } from './build-check-result';
+
 const CHECK_CODE = 'cluster.split-brain';
 const AUDIT_DETECTED = 'n8n.audit.cluster.split-brain.detected';
 const AUDIT_RESOLVED = 'n8n.audit.cluster.split-brain.resolved';
@@ -15,7 +17,6 @@ const AUDIT_RESOLVED = 'n8n.audit.cluster.split-brain.resolved';
  * current leader set, used to deduplicate `detected` audit events across runs.
  */
 function computeFingerprint(instances: Iterable<InstanceRegistration>): {
-	splitBrain: boolean;
 	fingerprint: string;
 	leaders: Array<{ instanceKey: string; hostId: string; instanceType: string }>;
 } {
@@ -28,11 +29,8 @@ function computeFingerprint(instances: Iterable<InstanceRegistration>): {
 		}))
 		.sort((a, b) => a.instanceKey.localeCompare(b.instanceKey));
 
-	const splitBrain = leaders.length > 1;
-
 	return {
-		splitBrain,
-		fingerprint: splitBrain ? leaders.map((l) => l.instanceKey).join('|') : '',
+		fingerprint: leaders.map((l) => l.instanceKey).join('|'),
 		leaders,
 	};
 }
@@ -48,29 +46,19 @@ export class SplitBrainCheck implements IClusterCheck {
 		const current = computeFingerprint(context.currentState.values());
 		const previous = computeFingerprint(context.previousState.values());
 
-		if (!current.splitBrain) {
-			if (previous.splitBrain) {
-				return { auditEvents: [{ eventName: AUDIT_RESOLVED, payload: {} }] };
-			}
-			return {};
-		}
-
 		const leaderKeys = current.leaders.map((l) => l.instanceKey);
-		const result: ClusterCheckResult = {
-			warnings: [
-				{
-					code: CHECK_CODE,
-					message: `Detected ${current.leaders.length} instances claiming leader role: ${leaderKeys.join(', ')}`,
-					severity: 'error',
-					context: { leaders: current.leaders },
-				},
-			],
-		};
 
-		if (current.fingerprint !== previous.fingerprint) {
-			result.auditEvents = [{ eventName: AUDIT_DETECTED, payload: { leaders: current.leaders } }];
-		}
-
-		return result;
+		return buildCheckResult({
+			hasProblem: current.leaders.length > 1,
+			hadProblem: previous.leaders.length > 1,
+			fingerprint: current.fingerprint,
+			previousFingerprint: previous.fingerprint,
+			code: CHECK_CODE,
+			severity: 'error',
+			message: `Detected ${current.leaders.length} instances claiming leader role: ${leaderKeys.join(', ')}`,
+			context: { leaders: current.leaders },
+			auditDetected: AUDIT_DETECTED,
+			auditResolved: AUDIT_RESOLVED,
+		});
 	}
 }

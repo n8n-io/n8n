@@ -3,7 +3,7 @@ import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
 import {
 	isNodeTypeClass,
-	findClassProperty,
+	findNodeDescriptionObject,
 	getStringLiteralValue,
 	isFileType,
 	createRule,
@@ -93,12 +93,12 @@ export const NoEmojiInOptionsRule = createRule({
 					return;
 				}
 
-				const descriptionProperty = findClassProperty(node, 'description');
-				if (!descriptionProperty?.value) {
+				const description = findNodeDescriptionObject(node);
+				if (!description) {
 					return;
 				}
 
-				traverse(descriptionProperty.value);
+				traverse(description);
 			},
 		};
 	},

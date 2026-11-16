@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { DateTime } from 'luxon';
 import type { ApiKey } from '@n8n/api-types';
-import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader, TableOptions } from '@n8n/design-system';
 import { N8nActionDropdown, N8nDataTableServer, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 
@@ -189,7 +189,6 @@ const headers = computed<Array<TableHeader<ApiKey>>>(() => [
 						:items="getRowActions(item)"
 						placement="bottom-end"
 						activator-size="small"
-						activator-icon="ellipsis-vertical"
 						data-test-id="api-key-actions-toggle"
 						@select="(action) => onAction(action, item)"
 					/>

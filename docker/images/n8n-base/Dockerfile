@@ -1,7 +1,8 @@
-# Pinned to a multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
-# The tag is the human-readable version; Docker resolves by the digest. Bump the tag and
-# digest together when updating the base image.
-FROM dhi.io/node:24.18.0-alpine3.24-dev@sha256:d508453231109fbe96a39045ecc794ac18f8b99ca218a0806833d65bb2750e03
+# check=skip=InvalidDefaultArgInFrom
+# docker/docker-bake.hcl sets the DHI reference of the current Node version.
+# build-base-image.yml sets it for the older Node versions.
+ARG DHI_REF
+FROM ${DHI_REF}
 
 # Install all dependencies in a single layer to minimize image size
 RUN apk add --no-cache busybox-binsh && \
@@ -22,7 +23,8 @@ RUN apk add --no-cache busybox-binsh && \
         tini \
         tzdata \
         ca-certificates \
-        libc6-compat && \
+        libc6-compat \
+        librdkafka && \
     # Cleanup
     rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* && \
     apk del apk-tools

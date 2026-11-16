@@ -1,14 +1,18 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { ApiKey, User, UserRepository } from '@n8n/db';
+import type { ApiKey, OperationContext, User, PersonRepository } from '@n8n/db';
+import { Person } from '@n8n/db';
 import { PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
+import type { SecurityContext } from '@n8n/permissions';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { UrlService } from '@/services/url.service';
+import type { EventService, UrlService } from '@n8n/backend-services';
 import type { InviteEmailData, PasswordResetData } from '@/user-management/email/interfaces';
 import { NodeMailer } from '@/user-management/email/node-mailer';
 import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
+import { mockServiceAccount } from '@test/mock-objects';
 
 // This suite renders real email templates from disk; opt out of the global fs mocks.
 vi.unmock('node:fs/promises');
@@ -65,13 +69,14 @@ describe('UserManagementMailer', () => {
 			},
 		});
 		const urlService = mock<UrlService>();
-		const userRepository = mock<UserRepository>();
+		const personRepository = mock<PersonRepository>();
+		const eventService = mock<EventService>();
 		const userManagementMailer = new UserManagementMailer(
 			config,
 			mock(),
-			userRepository,
+			personRepository,
 			urlService,
-			mock(),
+			eventService,
 		);
 
 		beforeEach(() => {
@@ -104,13 +109,13 @@ describe('UserManagementMailer', () => {
 		});
 
 		it('should send workflow share notifications', async () => {
-			const sharer = mock<User>({ firstName: 'Sharer', email: 'sharer@user.com' });
+			const sharer = Object.assign(new Person(), { firstName: 'Sharer', email: 'sharer@user.com' });
 			const newShareeIds = ['recipient1', 'recipient2'];
 			const workflow = mock<IWorkflowBase>({ id: 'workflow1', name: 'Test Workflow' });
-			userRepository.getEmailsByIds.mockResolvedValue([
+			personRepository.getEmailsByIds.mockResolvedValue([
 				{ id: 'recipient1', email: 'recipient1@user.com' },
 				{ id: 'recipient2', email: 'recipient2@user.com' },
-			] as User[]);
+			]);
 			const result = await userManagementMailer.notifyWorkflowShared({
 				sharer,
 				newShareeIds,
@@ -132,13 +137,54 @@ describe('UserManagementMailer', () => {
 			});
 		});
 
+		it.each([
+			[
+				'a workflow',
+				async (sharer: User) =>
+					await userManagementMailer.notifyWorkflowShared({
+						sharer,
+						newShareeIds: ['recipient1'],
+						workflow: mock<IWorkflowBase>({ id: 'workflow1', name: 'Test Workflow' }),
+					}),
+				'Deploy bot has shared an n8n workflow with you',
+			],
+			[
+				'a credential',
+				async (sharer: User) =>
+					await userManagementMailer.notifyCredentialsShared({
+						sharer,
+						newShareeIds: ['recipient1'],
+						credentialsName: 'Test Credentials',
+					}),
+				'Deploy bot has shared an n8n credential with you',
+			],
+			[
+				'a project',
+				async (sharer: User) =>
+					await userManagementMailer.notifyProjectShared({
+						sharer,
+						newSharees: [{ userId: 'recipient1', role: PROJECT_EDITOR_ROLE_SLUG }],
+						project: { id: 'project1', name: 'Test Project' },
+					}),
+				'Deploy bot has invited you to a project',
+			],
+		])('should name a service account that shares %s by its name', async (_, share, subject) => {
+			personRepository.getEmailsByIds.mockResolvedValue([
+				{ id: 'recipient1', email: 'recipient1@user.com' },
+			]);
+
+			await share(mockServiceAccount());
+
+			expect(nodeMailer.sendMail).toHaveBeenCalledWith(expect.objectContaining({ subject }));
+		});
+
 		it('should send credentials share notifications', async () => {
-			const sharer = mock<User>({ firstName: 'Sharer', email: 'sharer@user.com' });
+			const sharer = Object.assign(new Person(), { firstName: 'Sharer', email: 'sharer@user.com' });
 			const newShareeIds = ['recipient1', 'recipient2'];
-			userRepository.getEmailsByIds.mockResolvedValue([
+			personRepository.getEmailsByIds.mockResolvedValue([
 				{ id: 'recipient1', email: 'recipient1@user.com' },
 				{ id: 'recipient2', email: 'recipient2@user.com' },
-			] as User[]);
+			]);
 			const result = await userManagementMailer.notifyCredentialsShared({
 				sharer,
 				newShareeIds,
@@ -159,20 +205,54 @@ describe('UserManagementMailer', () => {
 			});
 		});
 
+		it.each([
+			[
+				'crashes' as const,
+				'because its executions repeatedly crashed',
+				'Please review its recent executions',
+			],
+			[
+				'memory-pressure' as const,
+				'because n8n repeatedly stopped its executions to keep the instance from running out of memory',
+				'Memory can also run high because of other work.',
+			],
+		])(
+			'should name the reason %s in workflow deactivation emails',
+			async (reason, text, nextStep) => {
+				const recipient = mock<User>({ id: 'owner-1' });
+				const workflow = mock<IWorkflowBase>({ id: 'workflow1', name: 'Test Workflow' });
+				personRepository.getEmailsByIds.mockResolvedValue([
+					{ id: 'owner-1', email: 'owner@user.com' },
+				]);
+
+				const result = await userManagementMailer.notifyWorkflowAutodeactivated({
+					recipient,
+					workflow,
+					reason,
+				});
+
+				expect(result.emailSent).toBe(true);
+				const body = nodeMailer.sendMail.mock.calls[0][0].body as string;
+				expect(body.replace(/\s+/g, ' ')).toContain(text);
+				expect(body.replace(/\s+/g, ' ')).toContain(nextStep);
+				expect(body).toContain('href="https://n8n.url/workflow/workflow1"');
+			},
+		);
+
 		it('should send api key revoked notifications', async () => {
 			const apiKey = mock<ApiKey>({
 				id: 'key-1',
 				label: 'Test 123',
 				apiKey: 'n8n_api_xxxxxxxaaa5',
 				userId: 'owner-1',
-				user: mock<User>({
+				user: Object.assign(new Person(), {
 					id: 'owner-1',
 					email: 'owner@example.com',
 					firstName: 'Maria',
 					lastName: 'Silva',
 				}),
 			});
-			const revoker = mock<User>({
+			const revoker = Object.assign(new Person(), {
 				firstName: 'Jan',
 				lastName: 'Ostrówka',
 				email: 'jan@acme.test',
@@ -191,7 +271,7 @@ describe('UserManagementMailer', () => {
 			expect(callBody).toContain('Test 123');
 			expect(callBody).toContain('aaa5');
 			expect(callBody).toContain('Jan Ostrówka');
-			expect(callBody).toMatch(/\d{1,2} [A-Z][a-z]{2} \d{4}/);
+			expect(callBody).toMatch(/\d{1,2} [A-Z][a-z]{2,3} \d{4}/);
 		});
 
 		it('falls back to the revoker email when no name is set', async () => {
@@ -200,13 +280,13 @@ describe('UserManagementMailer', () => {
 				label: 'Test 123',
 				apiKey: 'n8n_api_xxxxxxxaaa5',
 				userId: 'owner-1',
-				user: mock<User>({
+				user: Object.assign(new Person(), {
 					id: 'owner-1',
 					email: 'owner@example.com',
 					firstName: 'Maria',
 				}),
 			});
-			const revoker = mock<User>({
+			const revoker = Object.assign(new Person(), {
 				firstName: undefined,
 				lastName: undefined,
 				email: 'jan@acme.test',
@@ -218,8 +298,51 @@ describe('UserManagementMailer', () => {
 			expect(callBody).toContain('jan@acme.test');
 		});
 
+		it('does not send an api key revoked notification when the key owner is a service account', async () => {
+			const apiKey = mock<ApiKey>({
+				id: 'key-1',
+				label: 'Test 123',
+				apiKey: 'n8n_api_xxxxxxxaaa5',
+				userId: 'sa-1',
+				user: mockServiceAccount({ id: 'sa-1' }),
+			});
+			const revoker = Object.assign(new Person(), {
+				firstName: 'Jan',
+				lastName: 'Ostrówka',
+				email: 'jan@acme.test',
+			});
+
+			const result = await userManagementMailer.notifyApiKeyRevoked({ apiKey, revoker });
+
+			expect(result).toEqual({ emailSent: false });
+			expect(nodeMailer.sendMail).not.toHaveBeenCalled();
+		});
+
+		it('names a service account revoker by its name in the api key revoked notification', async () => {
+			const apiKey = mock<ApiKey>({
+				id: 'key-1',
+				label: 'Test 123',
+				apiKey: 'n8n_api_xxxxxxxaaa5',
+				userId: 'owner-1',
+				user: Object.assign(new Person(), {
+					id: 'owner-1',
+					email: 'owner@example.com',
+					firstName: 'Maria',
+				}),
+			});
+
+			const result = await userManagementMailer.notifyApiKeyRevoked({
+				apiKey,
+				revoker: mockServiceAccount({ id: 'sa-1' }, 'Deploy bot'),
+			});
+
+			expect(result.emailSent).toBe(true);
+			const callBody = nodeMailer.sendMail.mock.calls[0][0].body as string;
+			expect(callBody).toContain('Deploy bot');
+		});
+
 		it('should send mcp client revoked notifications', async () => {
-			const revoker = mock<User>({
+			const revoker = Object.assign(new Person(), {
 				firstName: 'Jan',
 				lastName: 'Ostrówka',
 				email: 'jan@acme.test',
@@ -241,33 +364,39 @@ describe('UserManagementMailer', () => {
 			const callBody = nodeMailer.sendMail.mock.calls[0][0].body as string;
 			expect(callBody).toContain('Claude Code');
 			expect(callBody).toContain('Jan Ostrówka');
-			expect(callBody).toMatch(/\d{1,2} [A-Z][a-z]{2} \d{4}/);
+			expect(callBody).toMatch(/\d{1,2} [A-Z][a-z]{2,3} \d{4}/);
 		});
 
-		it('should send project share notifications', async () => {
-			const sharer = mock<User>({ firstName: 'Sharer', email: 'sharer@user.com' });
+		it('should send project share notifications and report them with the public API client', async () => {
+			const sharer = Object.assign(new Person(), { firstName: 'Sharer', email: 'sharer@user.com' });
 			const newSharees = [
 				{ userId: 'recipient1', role: PROJECT_EDITOR_ROLE_SLUG },
 				{ userId: 'recipient2', role: PROJECT_VIEWER_ROLE_SLUG },
 			];
 			const project = { id: 'project1', name: 'Test Project' };
-			userRepository.getEmailsByIds.mockResolvedValue([
+			personRepository.getEmailsByIds.mockResolvedValue([
 				{
 					id: 'recipient1',
 					email: 'recipient1@user.com',
-				} as User,
+				},
 				{
 					id: 'recipient2',
 					email: 'recipient2@user.com',
-				} as User,
+				},
 			]);
 			const result = await userManagementMailer.notifyProjectShared({
 				sharer,
 				newSharees,
 				project,
+				publicApi: 'other',
 			});
 
 			expect(result.emailSent).toBe(true);
+			expect(eventService.emit).toHaveBeenCalledWith('user-transactional-email-sent', {
+				userId: sharer.id,
+				messageType: 'Project shared',
+				publicApi: 'other',
+			});
 			expect(nodeMailer.sendMail).toHaveBeenCalledTimes(2);
 			newSharees.forEach((sharee, index) => {
 				expect(nodeMailer.sendMail).toHaveBeenCalledWith({
@@ -281,6 +410,104 @@ describe('UserManagementMailer', () => {
 					`You have been added to the <b>${project.name}</b> project as ${sharee.role.replace('project:', '')}`,
 				);
 			});
+		});
+
+		describe('login id on the email-failed event', () => {
+			const logger = mock<Logger>();
+			const eventService = mock<EventService>();
+			const failingMailer = new UserManagementMailer(
+				config,
+				logger,
+				personRepository,
+				urlService,
+				eventService,
+			);
+
+			const shareProject = async (ctx?: OperationContext) =>
+				await failingMailer
+					.notifyProjectShared({
+						sharer: Object.assign(new Person(), { firstName: 'Sharer' }),
+						newSharees: [{ userId: 'recipient1', role: PROJECT_EDITOR_ROLE_SLUG }],
+						project: { id: 'project1', name: 'Test Project' },
+						ctx,
+					})
+					.catch(() => undefined);
+
+			beforeEach(() => {
+				personRepository.getEmailsByIds.mockResolvedValue([
+					{ id: 'recipient1', email: 'recipient1@user.com' },
+				]);
+				logger.info.mockImplementation(() => {
+					throw new Error('Logging failed');
+				});
+			});
+
+			it('passes the login id to the email-failed event', async () => {
+				await shareProject({ security: mock<SecurityContext>({ subIdentityId: 'login-1' }) });
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'email-failed',
+					expect.objectContaining({ messageType: 'Project shared', loginId: 'login-1' }),
+				);
+			});
+
+			it('emits no login id without an operation context', async () => {
+				await shareProject();
+
+				const call = eventService.emit.mock.calls.find(([name]) => name === 'email-failed');
+				expect(call?.[1]).toMatchObject({ loginId: undefined });
+			});
+		});
+
+		it('should send a migration findings email with one link per workflow', async () => {
+			const result = await userManagementMailer.migrationFindings({
+				email,
+				firstName: 'Grace',
+				notifierName: 'Ada Lovelace',
+				ruleTitle: 'Removed nodes',
+				targetVersion: 'v3',
+				workflows: [
+					{ id: 'wf-1', name: 'Billing sync' },
+					{ id: 'wf-2', name: 'Lead intake' },
+				],
+				reportUrl: 'https://n8n.url/settings/migration-report/removed-nodes-v3',
+			});
+
+			expect(result.emailSent).toBe(true);
+			expect(nodeMailer.sendMail).toHaveBeenCalledWith({
+				body: expect.stringContaining(
+					'href="https://n8n.url/settings/migration-report/removed-nodes-v3"',
+				),
+				emailRecipients: email,
+				subject: 'Your workflows need changes before the upgrade to n8n v3',
+			});
+			const callBody = nodeMailer.sendMail.mock.calls[0][0].body;
+			expect(callBody).toContain('Hi Grace,');
+			expect(callBody).toContain('Ada Lovelace asked you');
+			expect(callBody).toContain('Removed nodes');
+			expect(callBody).toContain('<a href="https://n8n.url/workflow/wf-1">Billing sync</a>');
+			expect(callBody).toContain('<a href="https://n8n.url/workflow/wf-2">Lead intake</a>');
+		});
+
+		it('should send an agent budget alert email', async () => {
+			const result = await userManagementMailer.agentBudgetAlert({
+				email,
+				firstName: 'Ada',
+				agentName: 'Support Agent',
+				agentUrl: 'https://n8n.url/projects/project-1/agents/agent-1',
+				alertThresholdPercent: 80,
+			});
+
+			expect(result.emailSent).toBe(true);
+			expect(nodeMailer.sendMail).toHaveBeenCalledWith({
+				body: expect.stringContaining('href="https://n8n.url/projects/project-1/agents/agent-1"'),
+				emailRecipients: email,
+				subject: 'Your agent reached its monthly budget alert',
+			});
+			const callBody = nodeMailer.sendMail.mock.calls[0][0].body;
+			expect(callBody).toContain('Support Agent');
+			expect(callBody).toContain('80%');
+			expect(callBody).toContain('Hi Ada,');
 		});
 	});
 });

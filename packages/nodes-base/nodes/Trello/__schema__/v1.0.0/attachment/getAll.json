@@ -13,6 +13,9 @@
         "idMember": {
             "type": "string"
         },
+        "isMalicious": {
+            "type": "boolean"
+        },
         "isUpload": {
             "type": "boolean"
         },
@@ -54,9 +57,12 @@
                 }
             }
         },
+        "sourceView": {
+            "type": "null"
+        },
         "url": {
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

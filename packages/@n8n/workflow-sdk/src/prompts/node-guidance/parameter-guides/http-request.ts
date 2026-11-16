@@ -12,10 +12,12 @@ Instead, ALWAYS use n8n's built-in credential system:
 
 1. Set \`authentication\` to \`"genericCredentialType"\`
 2. Set \`genericAuthType\` to the appropriate credential type:
-   - \`"httpHeaderAuth"\` - For API keys sent in headers (X-API-Key, Authorization, etc.)
-   - \`"httpBearerAuth"\` - For Bearer token authentication
-   - \`"httpQueryAuth"\` - For API keys sent as query parameters
-   - \`"httpBasicAuth"\` - For username/password authentication
+   - \`"httpTemplatedCustomAuth"\` - PREFERRED for new credentials whose auth fits header/query/body
+     values: API keys and bearer tokens alike (\`Authorization: Bearer <token>\` becomes the template
+     \`{"headers":{"Authorization":"Bearer {{api_key}}"}}\` — do not use httpBearerAuth for it)
+   - \`"httpHeaderAuth"\` / \`"httpBearerAuth"\` / \`"httpQueryAuth"\` - only when reusing an existing
+     credential of that type
+   - \`"httpBasicAuth"\` - For username/password authentication (base64 pair — not templatable)
    - \`"oAuth2Api"\` - For OAuth 2.0 authentication
 
 **DO NOT:**
@@ -123,7 +125,7 @@ Expected Output:
   "method": "POST",
   "url": "https://api.example.com/data",
   "authentication": "genericCredentialType",
-  "genericAuthType": "httpHeaderAuth",
+  "genericAuthType": "httpTemplatedCustomAuth",
   "sendHeaders": true,
   "headerParameters": {
     "parameters": [
@@ -150,6 +152,6 @@ Expected Output:
   "options": {}
 }
 
-Note: The API key is handled by the httpHeaderAuth credential, NOT hardcoded in the header parameters.
+Note: The API key is handled by the httpTemplatedCustomAuth credential, NOT hardcoded in the header parameters.
 The user will configure their API key securely in n8n's credential manager.`,
 };

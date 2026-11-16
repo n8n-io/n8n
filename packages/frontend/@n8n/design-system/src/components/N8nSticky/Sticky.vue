@@ -161,8 +161,11 @@ const onInputScroll = (event: WheelEvent) => {
 // Custom colors - text contrast and theme-aware borders
 .customColor {
 	--sticky--color--text: var(--sticky--color--text--custom);
-	--color--text--shade-1: var(--sticky--color--text--custom);
 	--sticky--border-color: var(--sticky--border-color--custom-light);
+	.wrapper,
+	.footer {
+		--color--text--shade-1: var(--sticky--color--text--custom);
+	}
 }
 
 :global(body[data-theme='dark']) .customColor {
@@ -191,6 +194,7 @@ const onInputScroll = (event: WheelEvent) => {
 	padding: var(--spacing--5xs) var(--spacing--2xs) 0 var(--spacing--2xs);
 	display: flex;
 	justify-content: flex-end;
+	color: var(--sticky--color--text);
 }
 
 .color-2 {

@@ -1,18 +1,38 @@
+import type { AgentCreationResource } from '@/features/agents/types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
+	AgentJsonConfig,
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
+	InstanceAiThreadHistoryQuery,
+	InstanceAiThreadHistoryResponse,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadStatusResponse,
 	InstanceAiRunDebugResponse,
 	InstanceAiThreadDebugRunsResponse,
+	AssistantThreadTabsResponse,
+	AssistantThreadTabsState,
 } from '@n8n/api-types';
 
 export async function fetchThreads(
 	context: IRestApiContext,
 ): Promise<InstanceAiThreadListResponse> {
 	return await makeRestApiRequest(context, 'GET', '/instance-ai/threads');
+}
+
+export async function fetchThreadHistory(
+	context: IRestApiContext,
+	query: InstanceAiThreadHistoryQuery,
+): Promise<InstanceAiThreadHistoryResponse> {
+	return await makeRestApiRequest(context, 'GET', '/instance-ai/threads/history', query);
+}
+
+export async function fetchThread(
+	context: IRestApiContext,
+	threadId: string,
+): Promise<{ thread: InstanceAiThreadInfo }> {
+	return await makeRestApiRequest(context, 'GET', `/instance-ai/threads/${threadId}`);
 }
 
 export async function deleteThread(context: IRestApiContext, threadId: string): Promise<void> {
@@ -39,15 +59,51 @@ export async function updateThreadMetadata(
 	});
 }
 
+export async function fetchThreadTabs(
+	context: IRestApiContext,
+	threadId: string,
+): Promise<AssistantThreadTabsResponse> {
+	return await makeRestApiRequest(context, 'GET', `/instance-ai/threads/${threadId}/tabs`);
+}
+
+export async function saveThreadTabs(
+	context: IRestApiContext,
+	threadId: string,
+	state: AssistantThreadTabsState,
+): Promise<AssistantThreadTabsResponse> {
+	return await makeRestApiRequest(context, 'PUT', `/instance-ai/threads/${threadId}/tabs`, state);
+}
+
+/**
+ * Persist the thread's pending new-agent artifact under the client-minted id and
+ * bind it to the thread in one request. Converges with a concurrent chat build on
+ * the same id instead of failing, and the response arriving IS the guarantee that
+ * the binding is durable.
+ */
+export async function persistPendingAgent(
+	context: IRestApiContext,
+	threadId: string,
+	payload: { projectId: string; agentId: string; name: string; config?: AgentJsonConfig },
+): Promise<{ agent: AgentCreationResource; thread: InstanceAiThreadInfo }> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/instance-ai/threads/${threadId}/agent`,
+		payload,
+	);
+}
+
 export async function fetchThreadMessages(
 	context: IRestApiContext,
 	threadId: string,
 	limit?: number,
 	page?: number,
+	cursor?: string,
 ): Promise<InstanceAiRichMessagesResponse> {
 	const params = new URLSearchParams();
 	if (limit !== undefined) params.set('limit', String(limit));
 	if (page !== undefined) params.set('page', String(page));
+	if (cursor !== undefined) params.set('cursor', cursor);
 	const qs = params.toString();
 	return await makeRestApiRequest(
 		context,

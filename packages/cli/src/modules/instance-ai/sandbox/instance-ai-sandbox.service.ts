@@ -1,21 +1,30 @@
 import { createHash } from 'node:crypto';
 
+import { SandboxAcquisitionError, SandboxNotReadyError } from '@n8n/agents/sandbox';
+import { getN8nVersion } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import {
 	createSandbox,
 	createWorkspace,
+	isSandboxWorkspaceInitialized,
 	setupSandboxWorkspace,
+	traceSandboxOperation,
+	withSandboxLifecycleTrace,
+	type BuilderTemplatesService,
+	type ServiceProxyConfig,
 	type InstanceAiContext,
 	type Logger,
 	type ManagedBackgroundTask,
 	type SandboxConfig,
+	type VerifiedWorkspaceBundles,
 } from '@n8n/instance-ai';
 import type { ErrorReporter } from 'n8n-core';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { lowercaseUuidSchema } from '@n8n/api-types';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
+import { v5 as uuidv5 } from 'uuid';
 
-import { N8N_VERSION } from '@/constants';
 import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
 import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from '../sandbox-provider';
@@ -27,9 +36,12 @@ const DEFAULT_SANDBOX_TTL_MS = 15 * 60 * 1000;
 
 /** Cached runtime sandbox + workspace pair for a single thread. */
 export type RuntimeSandboxEntry = {
+	userId: string;
 	sandbox: NonNullable<Awaited<ReturnType<typeof createSandbox>>>;
 	workspace: NonNullable<ReturnType<typeof createWorkspace>>;
 	configFingerprint: string;
+	/** Prebaked bundles already verified in this sandbox, shared across runs. */
+	verifiedBundles: VerifiedWorkspaceBundles;
 	setupComplete: boolean;
 	setupPromise: Promise<void> | undefined;
 	expiresAt: number;
@@ -58,28 +70,71 @@ function slugifySandboxLabel(value: string, maxLen: number): string {
 		.replace(/[-.]+$/, '');
 }
 
-function getThreadScopedSandboxName(threadId: string): string {
+/**
+ * How a thread id becomes a sandbox identity. Each scheme has its own base
+ * name, so two runtimes that receive the same thread id never share a sandbox.
+ * - `instance-ai`: the Assistant v1 runtime. Never change it: existing
+ *   sandboxes are found again by this name.
+ * - `assistant`: the Assistant agent on the Agents runtime. The thread id must
+ *   be a lowercase UUID, and the name always keeps the full thread id.
+ */
+export type SandboxIdentityScheme = 'instance-ai' | 'assistant';
+
+function getThreadScopedSandboxName(threadId: string, scheme: SandboxIdentityScheme): string {
+	if (scheme === 'assistant') {
+		// Daytona names are lowercase, so a thread id that is not canonical could
+		// give the same name as another thread id.
+		if (!lowercaseUuidSchema.safeParse(threadId).success) {
+			throw new UnexpectedError('The Assistant sandbox identity needs a lowercase UUID thread ID');
+		}
+		return `assistant-${threadId}`;
+	}
 	return `instance-ai-thread-${threadId}`;
 }
 
-function buildThreadScopedSandboxName(threadId: string, namePrefix: string | undefined): string {
+function buildThreadScopedSandboxName(
+	threadId: string,
+	namePrefix: string | undefined,
+	scheme: SandboxIdentityScheme,
+): string {
+	if (scheme === 'assistant') return buildAssistantSandboxName(threadId, namePrefix);
+
 	const parts: string[] = [];
 	if (namePrefix) {
 		const prefixSlug = slugifySandboxName(namePrefix, NAME_PREFIX_SLUG_MAX_LEN);
 		if (prefixSlug) parts.push(prefixSlug);
 	}
-	const threadSlug = slugifySandboxName(getThreadScopedSandboxName(threadId), SANDBOX_NAME_MAX_LEN);
+	const threadSlug = slugifySandboxName(
+		getThreadScopedSandboxName(threadId, 'instance-ai'),
+		SANDBOX_NAME_MAX_LEN,
+	);
 	if (threadSlug) parts.push(threadSlug);
 	const name = slugifySandboxName(parts.join('-'), SANDBOX_NAME_MAX_LEN);
 	if (!name) throw new UnexpectedError('Failed to build thread-scoped sandbox name');
 	return name;
 }
 
+/**
+ * The base name is already a valid name, and it stays complete. When the name
+ * is too long, shorten the prefix: it is the same for all threads of the
+ * instance, so a shorter prefix cannot make two threads share a name.
+ */
+function buildAssistantSandboxName(threadId: string, namePrefix: string | undefined): string {
+	const baseName = getThreadScopedSandboxName(threadId, 'assistant');
+	const prefixBudget = Math.min(
+		NAME_PREFIX_SLUG_MAX_LEN,
+		SANDBOX_NAME_MAX_LEN - baseName.length - 1,
+	);
+	const prefixSlug = namePrefix ? slugifySandboxName(namePrefix, prefixBudget) : '';
+	return prefixSlug ? `${prefixSlug}-${baseName}` : baseName;
+}
+
 function buildThreadScopedSandboxLabels(
 	threadId: string,
 	namePrefix: string | undefined,
+	scheme: SandboxIdentityScheme,
 ): Record<string, string> {
-	const baseName = getThreadScopedSandboxName(threadId);
+	const baseName = getThreadScopedSandboxName(threadId, scheme);
 	const labels: Record<string, string> = {
 		'n8n-builder': slugifySandboxLabel(baseName, SANDBOX_LABEL_MAX_LEN),
 		thread_id: slugifySandboxLabel(threadId, SANDBOX_LABEL_MAX_LEN),
@@ -88,16 +143,41 @@ function buildThreadScopedSandboxLabels(
 	return labels;
 }
 
-function withThreadScopedSandboxIdentity(config: SandboxConfig, threadId: string): SandboxConfig {
-	if (!config.enabled || config.provider !== 'daytona') return config;
+/**
+ * Fixed UUIDv5 namespace for deriving thread-scoped n8n-sandbox ids. Never
+ * change it: any main must be able to recompute the id of a sandbox created
+ * by an older process to reattach to it.
+ */
+const N8N_SANDBOX_THREAD_ID_NAMESPACE = '5e6c2f7a-93a1-4b0e-8f27-c1d6a3b9e514';
 
-	const name = buildThreadScopedSandboxName(threadId, config.namePrefix);
+/** The n8n sandbox service only accepts lowercase UUID ids, so hash the thread-scoped name into a stable UUIDv5. */
+function buildThreadScopedSandboxUuid(threadId: string, scheme: SandboxIdentityScheme): string {
+	return uuidv5(getThreadScopedSandboxName(threadId, scheme), N8N_SANDBOX_THREAD_ID_NAMESPACE);
+}
+
+/**
+ * Give the sandbox a deterministic, thread-derived identity so any process —
+ * after a restart, a cache eviction, or on another main — resolves the same
+ * remote sandbox instead of creating a duplicate and orphaning the old one.
+ */
+function withThreadScopedSandboxIdentity(
+	config: SandboxConfig,
+	threadId: string,
+	scheme: SandboxIdentityScheme,
+): SandboxConfig {
+	if (!config.enabled) return config;
+
+	if (config.provider === 'n8n-sandbox') {
+		return { ...config, id: buildThreadScopedSandboxUuid(threadId, scheme) };
+	}
+
+	const name = buildThreadScopedSandboxName(threadId, config.namePrefix, scheme);
 	return {
 		...config,
 		id: name,
 		name,
 		labels: {
-			...buildThreadScopedSandboxLabels(threadId, config.namePrefix),
+			...buildThreadScopedSandboxLabels(threadId, config.namePrefix, scheme),
 			...config.labels,
 		},
 	};
@@ -141,6 +221,13 @@ export type InstanceAiSandboxServiceOptions = {
 	backgroundTasks: InstanceAiSandboxBackgroundTasks;
 	settingsService: InstanceAiSandboxSettings;
 	aiService: InstanceAiSandboxProxy;
+	getTemplatesService: () => BuilderTemplatesService;
+	/** How thread ids become sandbox identities. Defaults to `instance-ai`. */
+	identityScheme?: SandboxIdentityScheme;
+	resolveTracingConfig?: (
+		threadId: string,
+		userId?: string,
+	) => Promise<{ userId: string; proxyConfig?: ServiceProxyConfig }>;
 };
 
 /**
@@ -148,16 +235,18 @@ export type InstanceAiSandboxServiceOptions = {
  *
  * Each conversation thread gets a single shared sandbox + workspace, created
  * lazily on first use and reused across runs and background tasks. Sandbox
- * names are deterministic (derived from the thread ID) so a restarted process
- * — or another main in a multi-main deployment — reconnects to the same remote
+ * identities are deterministic (derived from the thread ID — a name for
+ * Daytona, a UUIDv5 for the n8n sandbox service) so a restarted process — or
+ * another main in a multi-main deployment — reconnects to the same remote
  * sandbox instead of spawning a duplicate. An in-process TTL drops idle cache
- * entries so the map cannot grow without bound; provider auto-stop reclaims the
- * remote sandbox itself, so an idle eviction never destroys live work.
+ * entries so the map cannot grow without bound; the provider reclaims the
+ * remote sandbox itself (Daytona auto-stop, sandbox-service idle reaping), so
+ * an idle eviction never destroys live work.
  */
 export class InstanceAiSandboxService {
 	/**
 	 * Shared runtime workspaces keyed by thread ID. This is only an in-process
-	 * cache; deterministic sandbox names let providers reconnect after restart
+	 * cache; deterministic sandbox identities let providers reconnect after restart
 	 * or from another main when the thread uses the workspace again.
 	 */
 	private readonly sandboxes = new Map<string, RuntimeSandboxEntry>();
@@ -165,10 +254,13 @@ export class InstanceAiSandboxService {
 	/** In-flight runtime workspace creations keyed by thread ID. */
 	private readonly sandboxCreations = new Map<
 		string,
-		{ fingerprint: string; promise: Promise<RuntimeSandboxEntry | undefined> }
+		{ userId: string; fingerprint: string; promise: Promise<RuntimeSandboxEntry | undefined> }
 	>();
 
 	private cacheGeneration = 0;
+
+	/** Run in which the last sandbox start of each thread failed, keyed by thread ID. */
+	private readonly failedStartRuns = new Map<string, string>();
 
 	constructor(private readonly options: InstanceAiSandboxServiceOptions) {}
 
@@ -178,6 +270,10 @@ export class InstanceAiSandboxService {
 
 	private get instanceAiConfig(): InstanceAiConfig {
 		return this.options.config;
+	}
+
+	private get identityScheme(): SandboxIdentityScheme {
+		return this.options.identityScheme ?? 'instance-ai';
 	}
 
 	getSandboxConfigFromEnv(): SandboxConfig {
@@ -215,7 +311,7 @@ export class InstanceAiSandboxService {
 				daytonaApiKey: daytonaApiKey || undefined,
 				image: sandboxImage || undefined,
 				snapshot: sandboxSnapshot || undefined,
-				n8nVersion: N8N_VERSION || undefined,
+				n8nVersion: getN8nVersion() || undefined,
 				timeout: sandboxTimeout,
 				namePrefix: sandboxNamePrefix || undefined,
 				ephemeral: sandboxEphemeral,
@@ -234,6 +330,7 @@ export class InstanceAiSandboxService {
 			serviceUrl: requireN8nSandboxServiceUrl(n8nSandboxServiceUrl),
 			apiKey: n8nSandboxServiceApiKey || undefined,
 			timeout: sandboxTimeout,
+			ephemeral: sandboxEphemeral,
 		};
 	}
 
@@ -298,46 +395,91 @@ export class InstanceAiSandboxService {
 		threadId: string,
 		user: User,
 	): Promise<RuntimeSandboxEntry | undefined> {
-		const cacheGeneration = this.cacheGeneration;
-		const cacheState = await this.resolveSandboxCacheState(user);
-		if (cacheGeneration !== this.cacheGeneration) {
-			return await this.getOrCreateWorkspaceEntry(threadId, user);
-		}
-		const existing = this.sandboxes.get(threadId);
-		if (existing) {
-			if (
-				existing.configFingerprint !== cacheState.fingerprint ||
-				(this.isSandboxEntryExpired(existing) && !this.isSandboxInUse(threadId))
-			) {
-				this.evictSandboxEntry(threadId, existing);
-			} else {
-				this.touchSandboxEntry(threadId, existing);
-				return existing;
-			}
-		}
+		let outcome = 'acquired';
+		return await traceSandboxOperation(
+			'acquire',
+			{
+				inputs: { threadId },
+				processResult: (entry) => ({
+					outputs: {
+						outcome: entry ? outcome : 'disabled',
+						sandboxId: entry?.sandbox.id,
+						provider: entry?.sandbox.provider,
+					},
+				}),
+			},
+			async () => {
+				const cacheGeneration = this.cacheGeneration;
+				const cacheState = await traceSandboxOperation(
+					'resolve-config',
+					{ inputs: { threadId } },
+					async () => await this.resolveSandboxCacheState(user),
+				);
+				if (cacheGeneration !== this.cacheGeneration) {
+					return await this.getOrCreateWorkspaceEntry(threadId, user);
+				}
+				const existing = this.sandboxes.get(threadId);
+				if (existing) {
+					this.assertSandboxOwner(threadId, existing.userId, user);
+					if (
+						existing.configFingerprint !== cacheState.fingerprint ||
+						(this.isSandboxEntryExpired(existing) && !this.isSandboxInUse(threadId))
+					) {
+						this.evictSandboxEntry(
+							threadId,
+							existing,
+							existing.configFingerprint !== cacheState.fingerprint ? 'config_changed' : 'idle',
+						);
+					} else {
+						this.touchSandboxEntry(threadId, existing);
+						outcome = 'cached';
+						return existing;
+					}
+				}
 
-		const pending = this.sandboxCreations.get(threadId);
-		if (pending?.fingerprint === cacheState.fingerprint) return await pending.promise;
+				const pending = this.sandboxCreations.get(threadId);
+				if (pending) this.assertSandboxOwner(threadId, pending.userId, user);
+				if (pending?.fingerprint === cacheState.fingerprint) {
+					outcome = 'shared_acquisition';
+					return await pending.promise;
+				}
 
-		const creation = this.createWorkspaceEntry(threadId, user, cacheState);
-		const pendingCreation = { fingerprint: cacheState.fingerprint, promise: creation };
-		this.sandboxCreations.set(threadId, pendingCreation);
-		try {
-			const entry = await creation;
-			if (
-				entry &&
-				cacheGeneration === this.cacheGeneration &&
-				this.sandboxCreations.get(threadId) === pendingCreation
-			) {
-				this.sandboxes.set(threadId, entry);
-				this.scheduleSandboxExpiry(threadId, entry);
-			}
-			return entry;
-		} finally {
-			if (this.sandboxCreations.get(threadId) === pendingCreation) {
-				this.sandboxCreations.delete(threadId);
-			}
-		}
+				const creation = this.createWorkspaceEntry(threadId, user, cacheState);
+				const pendingCreation = {
+					userId: user.id,
+					fingerprint: cacheState.fingerprint,
+					promise: creation,
+				};
+				this.sandboxCreations.set(threadId, pendingCreation);
+				try {
+					const entry = await creation;
+					if (
+						entry &&
+						cacheGeneration === this.cacheGeneration &&
+						this.sandboxCreations.get(threadId) === pendingCreation
+					) {
+						this.sandboxes.set(threadId, entry);
+						this.scheduleSandboxExpiry(threadId, entry);
+					}
+					return entry;
+				} finally {
+					if (this.sandboxCreations.get(threadId) === pendingCreation) {
+						this.sandboxCreations.delete(threadId);
+					}
+				}
+			},
+		);
+	}
+
+	/**
+	 * A thread has one owner, so its cached sandbox must belong to the caller.
+	 * The entry also holds credentials of the user who created it.
+	 */
+	private assertSandboxOwner(threadId: string, ownerId: string, user: User): void {
+		if (ownerId === user.id) return;
+		throw new UnexpectedError('The cached sandbox of the thread belongs to a different user', {
+			extra: { threadId },
+		});
 	}
 
 	/** Get or create the shared runtime sandbox + workspace for a thread. */
@@ -355,9 +497,23 @@ export class InstanceAiSandboxService {
 		entry: RuntimeSandboxEntry,
 		context: InstanceAiContext,
 	): Promise<void> {
-		if (entry.setupComplete) return;
+		if (entry.setupComplete) {
+			// The n8n sandbox service can remove a sandbox while this entry is cached
+			// (idle reaping, runner restart), and the provider recreates it empty. The
+			// marker inside the sandbox is the only reliable record of setup.
+			if (
+				entry.sandbox.provider !== 'n8n-sandbox' ||
+				(await isSandboxWorkspaceInitialized(entry.workspace))
+			) {
+				return;
+			}
+			entry.setupComplete = false;
+			entry.verifiedBundles.clear();
+		}
 
-		entry.setupPromise ??= setupSandboxWorkspace(entry.workspace, context)
+		entry.setupPromise ??= setupSandboxWorkspace(entry.workspace, context, {
+			verifiedBundles: entry.verifiedBundles,
+		})
 			.then(() => {
 				entry.setupComplete = true;
 			})
@@ -376,31 +532,69 @@ export class InstanceAiSandboxService {
 		const config = withThreadScopedSandboxIdentity(
 			cacheState.config ?? (await this.resolveSandboxConfig(user)),
 			threadId,
+			this.identityScheme,
 		);
 		if (!config.enabled) return undefined;
 
-		const sandbox = await createSandbox(config, {
+		// After a failed start the sandbox is usually still starting. Later starts in the
+		// same run only check on it, so each retry does not wait minutes again.
+		const runId = this.options.runState.getActiveRunId(threadId);
+		const quickStart =
+			config.provider === 'daytona' &&
+			runId !== undefined &&
+			this.failedStartRuns.get(threadId) === runId;
+
+		const sandbox = await createSandbox(quickStart ? { ...config, quickStart } : config, {
 			logger: this.logger,
 			errorReporter: this.options.errorReporter,
 			useSnapshotFallback: true,
+			templatesService: this.options.getTemplatesService(),
 		});
 		const workspace = createWorkspace(sandbox);
 		if (!sandbox || !workspace) return undefined;
 		try {
-			await workspace.init();
+			await traceSandboxOperation(
+				'start',
+				{ inputs: { threadId, sandboxId: sandbox.id, provider: sandbox.provider } },
+				async () => await workspace.init(),
+			);
 		} catch (error) {
+			if (runId !== undefined) this.failedStartRuns.set(threadId, runId);
 			try {
-				await workspace.destroy();
+				await traceSandboxOperation(
+					'cleanup-failed-start',
+					{ inputs: { threadId, sandboxId: sandbox.id } },
+					async () => await workspace.destroy(),
+				);
 			} catch {
 				// Best-effort cleanup when the sandbox cannot start
 			}
+			// A quick check that finds the sandbox still starting is expected, so it is not reported.
+			if (quickStart && error instanceof SandboxNotReadyError) {
+				throw new OperationalError(
+					`The sandbox is not ready yet. It can still be starting, so try again shortly. Reason: ${error.message}`,
+					{ cause: error },
+				);
+			}
+			// Only the generic transient wrap is downgraded to a non-reported warning.
+			// Classified subclasses (name conflict, sandbox not ready) keep their identity
+			// so they stay visible in Sentry as distinct issues.
+			if (
+				error instanceof SandboxAcquisitionError &&
+				error.constructor === SandboxAcquisitionError
+			) {
+				throw new OperationalError(error.message, { cause: error });
+			}
 			throw error;
 		}
+		this.failedStartRuns.delete(threadId);
 
 		const entry: RuntimeSandboxEntry = {
+			userId: user.id,
 			sandbox,
 			workspace,
 			configFingerprint: cacheState.fingerprint,
+			verifiedBundles: new Map(),
 			setupComplete: false,
 			setupPromise: undefined,
 			expiresAt: this.nextSandboxExpiry(),
@@ -430,7 +624,12 @@ export class InstanceAiSandboxService {
 		}
 	}
 
-	private evictSandboxEntry(threadId: string, entry: RuntimeSandboxEntry): void {
+	private evictSandboxEntry(
+		threadId: string,
+		entry: RuntimeSandboxEntry,
+		reason = 'settings_changed',
+		detached = false,
+	): void {
 		if (this.sandboxes.get(threadId) !== entry) return;
 
 		this.sandboxes.delete(threadId);
@@ -438,16 +637,44 @@ export class InstanceAiSandboxService {
 			clearTimeout(entry.cleanupTimer);
 			entry.cleanupTimer = undefined;
 		}
+		void withSandboxLifecycleTrace(
+			threadId,
+			'evict-cache',
+			{
+				reason,
+				sandboxId: entry.sandbox.id,
+				provider: entry.sandbox.provider,
+				occurredAt: new Date().toISOString(),
+				remoteDestroyed: false,
+			},
+			async () => {},
+			{ resolveConfig: this.lifecycleTraceConfig(threadId, entry.userId), detached },
+		).catch(() => {
+			// Cache eviction does not depend on trace delivery.
+		});
 	}
 
 	/** Destroy and remove the shared runtime workspace for a thread. */
-	async destroySandbox(threadId: string, reason = 'thread_cleanup'): Promise<void> {
+	async destroySandbox(
+		threadId: string,
+		reason = 'thread_cleanup',
+		userId?: string,
+	): Promise<void> {
 		const entry = this.sandboxes.get(threadId);
-		if (!entry?.sandbox) return;
+		if (!entry?.sandbox) {
+			await this.destroyUncachedSandbox(threadId, reason, userId);
+			return;
+		}
 
-		this.evictSandboxEntry(threadId, entry);
+		this.evictSandboxEntry(threadId, entry, reason);
 		try {
-			await entry.workspace?.destroy();
+			await withSandboxLifecycleTrace(
+				threadId,
+				'destroy',
+				{ reason, sandboxId: entry.sandbox.id, provider: entry.sandbox.provider },
+				async () => await entry.workspace.destroy(),
+				{ resolveConfig: this.lifecycleTraceConfig(threadId, entry.userId) },
+			);
 		} catch (error) {
 			this.logger.warn('Failed to destroy sandbox', {
 				threadId,
@@ -455,6 +682,72 @@ export class InstanceAiSandboxService {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
+	}
+
+	/**
+	 * Delete the remote sandbox for a thread with no cache entry (after a
+	 * restart or an idle eviction). Only the n8n-sandbox provider supports
+	 * this: its id is recomputable from the thread id, and a delete for an id
+	 * that never existed is a cheap 404. Daytona is left to its own
+	 * auto-stop/auto-delete lifecycle.
+	 */
+	private async destroyUncachedSandbox(
+		threadId: string,
+		reason: string,
+		userId?: string,
+	): Promise<void> {
+		try {
+			if (
+				!this.instanceAiConfig.sandboxEnabled ||
+				normalizeSandboxProvider(this.instanceAiConfig.sandboxProvider) !== 'n8n-sandbox'
+			)
+				return;
+
+			await withSandboxLifecycleTrace(
+				threadId,
+				'destroy',
+				{ reason, cached: false },
+				async () => {
+					const base = this.getSandboxConfigFromEnv();
+					if (!base.enabled || base.provider !== 'n8n-sandbox') return;
+
+					const settings = await this.options.settingsService.resolveN8nSandboxConfig();
+					const config = withThreadScopedSandboxIdentity(
+						{
+							...base,
+							serviceUrl: settings.serviceUrl ?? base.serviceUrl,
+							apiKey: settings.apiKey ?? base.apiKey,
+						},
+						threadId,
+						this.identityScheme,
+					);
+					// Constructing the adapter makes no remote calls; destroy() issues the delete.
+					const sandbox = await createSandbox(config, {
+						logger: this.logger,
+						errorReporter: this.options.errorReporter,
+					});
+					await traceSandboxOperation(
+						'destroy-remote',
+						{
+							inputs: { sandboxId: sandbox?.id, provider: base.provider },
+						},
+						async () => await sandbox?.destroy?.(),
+					);
+				},
+				{ resolveConfig: this.lifecycleTraceConfig(threadId, userId) },
+			);
+		} catch (error) {
+			this.logger.warn('Failed to destroy sandbox', {
+				threadId,
+				reason,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private lifecycleTraceConfig(threadId: string, userId?: string) {
+		const resolve = this.options.resolveTracingConfig;
+		return resolve ? async () => await resolve(threadId, userId) : undefined;
 	}
 
 	private get sandboxTtlMs(): number {
@@ -487,8 +780,10 @@ export class InstanceAiSandboxService {
 		if (this.sandboxTtlMs <= 0) return;
 		if (entry.cleanupTimer) clearTimeout(entry.cleanupTimer);
 
-		// Provider auto-stop handles remote Daytona sandboxes. This timer only
-		// drops our in-process cache entry so the map cannot grow indefinitely.
+		// The provider reclaims the remote sandbox (Daytona auto-stop, sandbox-service
+		// idle reaping), and the deterministic identity lets a later request reattach
+		// while it is still alive. This timer only drops our in-process cache entry
+		// so the map cannot grow indefinitely.
 		const delay = Math.max(0, entry.expiresAt - Date.now());
 		entry.cleanupTimer = setTimeout(() => {
 			const current = this.sandboxes.get(threadId);
@@ -497,7 +792,7 @@ export class InstanceAiSandboxService {
 				this.touchSandboxEntry(threadId, entry);
 				return;
 			}
-			this.evictSandboxEntry(threadId, entry);
+			this.evictSandboxEntry(threadId, entry, 'idle', true);
 		}, delay);
 		entry.cleanupTimer.unref();
 	}

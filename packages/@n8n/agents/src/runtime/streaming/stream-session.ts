@@ -1,4 +1,5 @@
 import { StreamWriterGuard } from './stream-writer-guard';
+import { createAbortError } from '../../sdk/abort';
 import type { StreamChunk } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
@@ -29,10 +30,10 @@ export interface StreamSessionDeps {
 	 */
 	persistTurnOnAbort?: () => Promise<void>;
 	/**
-	 * Usage + model to stamp on the terminal finish chunk of an aborted run, so a
-	 * cancelled run still bills the tokens consumed before the stop.
+	 * Usage + model to stamp on the terminal finish chunk of an aborted or failed
+	 * run, so a run cut short still bills the tokens consumed before the stop.
 	 */
-	getAbortFinish?: () => { usage?: TokenUsage; model?: string };
+	getTerminalFinish?: () => { usage?: TokenUsage; model?: string };
 }
 
 /**
@@ -108,10 +109,13 @@ export function startStreamSession(deps: StreamSessionDeps): ReadableStream<Stre
 			}
 			await deps.cleanupRun();
 			await deps.flushTelemetry(deps.options);
+			// Attach usage on both abort and error shutdowns: turns completed before
+			// a mid-run failure were already reported to the sink and must still be
+			// billed on the terminal chunk.
 			await guard.fail(
-				isAbort ? new Error('Agent run was aborted') : error,
+				isAbort ? createAbortError('Agent run was aborted') : error,
 				'error',
-				isAbort ? deps.getAbortFinish?.() : undefined,
+				deps.getTerminalFinish?.(),
 			);
 		})
 		.finally(() => {

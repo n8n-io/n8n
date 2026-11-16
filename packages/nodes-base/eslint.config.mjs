@@ -1,11 +1,116 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
-import nodesBasePlugin from 'eslint-plugin-n8n-nodes-base';
+import { nodesConfig } from '@n8n/eslint-config/nodes';
 import { n8nCommunityNodesPlugin } from '@n8n/eslint-plugin-community-nodes';
 
+import { databricksUserAgentRestriction } from './nodes/Databricks/eslint-user-agent-restriction.mjs';
+import { kafkaImportRestrictions } from './nodes/Kafka/eslint-import-restrictions.mjs';
+
+// Deprecated nodes get no more fixes, so the path segment rule does not check them:
+// https://docs.n8n.io/integrations/builtin/deprecated-nodes
+// Convert to File and Extract from File use files from ICalendar and
+// SpreadsheetFile, so those files stay checked.
+const deprecatedNodes = [
+	'./nodes/Cron/**',
+	'./nodes/Function/**',
+	'./nodes/FunctionItem/**',
+	'./nodes/HtmlExtract/**',
+	'./nodes/ICalendar/ICalendar.node.ts',
+	'./nodes/Interval/**',
+	'./nodes/ItemLists/**',
+	'./nodes/Line/**',
+	'./nodes/MoveBinaryData/**',
+	'./nodes/Orbit/**',
+	'./nodes/ReadBinaryFile/**',
+	'./nodes/ReadBinaryFiles/**',
+	'./nodes/ReadPdf/**',
+	'./nodes/Simulate/**',
+	'./nodes/SpreadsheetFile/**',
+	'!./nodes/SpreadsheetFile/description.ts',
+	'!./nodes/SpreadsheetFile/v2/fromFile.operation.ts',
+	'./nodes/WorkflowTrigger/**',
+	'./nodes/WriteBinaryFile/**',
+];
+
+// Request URLs must come from requestPath or requestUrl, or be a constant string.
+// These folders still send a full URL on purpose (a next page link, a URL from a
+// response, a record or the user) or hit a limit of the rule. Remove a folder from
+// the list when its findings are fixed. Run `pnpm lint:request-target` to see them.
+const requestTargetPending = [
+	'./nodes/Airtable/**',
+	'./nodes/Airtop/**',
+	'./nodes/ApiTemplateIo/**',
+	'./nodes/Asana/**',
+	'./nodes/Aws/**',
+	'./nodes/Bitbucket/**',
+	'./nodes/Bitly/**',
+	'./nodes/Brandfetch/**',
+	'./nodes/Cisco/**',
+	'./nodes/Databricks/**',
+	'./nodes/Discord/**',
+	'./nodes/E2eTest/**',
+	'./nodes/ExecuteWorkflow/**',
+	'./nodes/Flow/**',
+	'./nodes/Freshdesk/**',
+	'./nodes/Google/Chat/**',
+	'./nodes/Google/CloudStorage/**',
+	'./nodes/Google/Drive/**',
+	'./nodes/Google/Sheet/**',
+	'./nodes/Google/Slides/**',
+	'./nodes/Google/YouTube/**',
+	'./nodes/Gotify/**',
+	'./nodes/GraphQL/**',
+	'./nodes/HelpScout/**',
+	'./nodes/HttpRequest/**',
+	'./nodes/Intercom/**',
+	'./nodes/InvoiceNinja/**',
+	'./nodes/Jira/**',
+	'./nodes/Keap/**',
+	'./nodes/KoBoToolbox/**',
+	'./nodes/LinkedIn/**',
+	'./nodes/Microsoft/Dataverse/**',
+	'./nodes/Microsoft/Dynamics/**',
+	'./nodes/Microsoft/Entra/**',
+	'./nodes/Microsoft/Excel/**',
+	'./nodes/Microsoft/ExcelSharePoint/**',
+	'./nodes/Microsoft/OneDrive/**',
+	'./nodes/Microsoft/Outlook/**',
+	'./nodes/Microsoft/SharePoint/**',
+	'./nodes/Microsoft/Teams/**',
+	'./nodes/Microsoft/ToDo/**',
+	'./nodes/MondayCom/**',
+	'./nodes/Nasa/**',
+	'./nodes/NocoDB/**',
+	'./nodes/Notion/**',
+	'./nodes/OneSimpleApi/**',
+	'./nodes/Orbit/**',
+	'./nodes/PayPal/**',
+	'./nodes/Pushbullet/**',
+	'./nodes/RssFeedRead/**',
+	'./nodes/S3/**',
+	'./nodes/Salesforce/**',
+	'./nodes/SecurityScorecard/**',
+	'./nodes/SentryIo/**',
+	'./nodes/Shopify/**',
+	'./nodes/Slack/**',
+	'./nodes/Spotify/**',
+	'./nodes/Supabase/**',
+	'./nodes/SurveyMonkey/**',
+	'./nodes/Telegram/**',
+	'./nodes/WooCommerce/**',
+	'./nodes/Zendesk/**',
+];
+
 export default defineConfig(
-	nodeConfig,
-	globalIgnores(['scenarios/**', 'scripts/**']),
+	nodesConfig,
+	// This config fragment lives under nodes/ so it sits next to the code it
+	// governs, but it's not lintable TS source — same reason eslint.config.mjs
+	// itself is never linted.
+	globalIgnores([
+		'scenarios/**',
+		'scripts/**',
+		'./nodes/Databricks/eslint-user-agent-restriction.mjs',
+		'./nodes/Kafka/eslint-import-restrictions.mjs',
+	]),
 	{
 		plugins: {
 			'@n8n/community-nodes': n8nCommunityNodesPlugin,
@@ -15,62 +120,27 @@ export default defineConfig(
 			'@n8n/community-nodes/credential-documentation-url': ['error', { allowSlugs: true }],
 			'@n8n/community-nodes/node-class-description-icon-missing': 'warn',
 			'@n8n/community-nodes/cred-class-field-icon-missing': 'warn',
+			'n8n-local-rules/no-dynamic-regexp': 'error',
+			'n8n-local-rules/require-escaped-query-values': 'error',
 
-			// TODO: remove all the following rules
-			eqeqeq: 'warn',
-			'id-denylist': 'warn',
-			'no-empty': 'warn',
-			'no-useless-escape': 'warn',
-			'no-prototype-builtins': 'warn',
-			'no-case-declarations': 'warn',
 			'no-ex-assign': 'warn',
 			'no-control-regex': 'warn',
 			'no-constant-condition': 'warn',
-			'no-async-promise-executor': 'warn',
 			'no-dupe-else-if': 'warn',
-			'no-extra-boolean-cast': 'warn',
 			'no-fallthrough': 'warn',
 
-			'import-x/extensions': 'warn',
-			'import-x/no-default-export': 'warn',
 			'import-x/export': 'warn',
-			'import-x/order': 'warn',
-			'import-x/no-default-export': 'warn',
 			'import-x/no-extraneous-dependencies': 'warn',
 
-			'n8n-local-rules/no-argument-spread': 'warn', // TODO: mark error
 			'@n8n/community-nodes/no-builder-hint-leakage': 'error',
 
-			'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
-			'@typescript-eslint/naming-convention': ['warn'],
-			'@typescript-eslint/no-explicit-any': 'warn', //812 warnings, better to fix in separate PR
-			'@typescript-eslint/no-non-null-assertion': 'warn', //665 errors, better to fix in separate PR
-			'@typescript-eslint/no-unsafe-assignment': 'warn', //7084 problems, better to fix in separate PR
-			'@typescript-eslint/no-unsafe-call': 'warn', //541 errors, better to fix in separate PR
-			'@typescript-eslint/no-unsafe-member-access': 'warn', //4591 errors, better to fix in separate PR
-			'@typescript-eslint/no-unsafe-return': 'warn', //438 errors, better to fix in separate PR
+			'@typescript-eslint/ban-ts-comment': 'off',
 			'@typescript-eslint/no-unused-expressions': ['error', { allowTernary: true }],
-			'@typescript-eslint/restrict-template-expressions': 'warn', //1152 errors, better to fix in separate PR
-			'@typescript-eslint/unbound-method': 'warn',
-			'@typescript-eslint/prefer-nullish-coalescing': 'warn',
-			'@typescript-eslint/no-base-to-string': 'warn',
-			'@typescript-eslint/no-redundant-type-constituents': 'warn',
-			'@typescript-eslint/no-unsafe-argument': 'warn',
-			'@typescript-eslint/no-unsafe-function-type': 'warn',
-			'@typescript-eslint/prefer-optional-chain': 'warn',
-			'@typescript-eslint/restrict-plus-operands': 'warn',
-			'@typescript-eslint/no-unnecessary-type-assertion': 'warn',
-			'@typescript-eslint/require-await': 'warn',
-			'@typescript-eslint/no-duplicate-type-constituents': 'warn',
-			'@typescript-eslint/no-empty-object-type': 'warn',
 			'@typescript-eslint/prefer-promise-reject-errors': 'warn',
 		},
 	},
 	{
 		files: ['./credentials/*.ts'],
-		plugins: {
-			'n8n-nodes-base': nodesBasePlugin,
-		},
 		rules: {
 			'n8n-nodes-base/cred-class-field-authenticate-type-assertion': 'error',
 			'n8n-nodes-base/cred-class-field-display-name-missing-oauth2': 'error',
@@ -88,9 +158,6 @@ export default defineConfig(
 	},
 	{
 		files: ['./nodes/**/*.ts'],
-		plugins: {
-			'n8n-nodes-base': nodesBasePlugin,
-		},
 		rules: {
 			'n8n-nodes-base/node-class-description-credentials-name-unsuffixed': 'error',
 			'n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node': 'error',
@@ -180,11 +247,49 @@ export default defineConfig(
 			'n8n-nodes-base/node-param-type-options-password-missing': 'error',
 		},
 	},
+	// Request path values must go through toPathSegment. The rule checks only
+	// the node folders in this list. Add a node folder when its paths are encoded.
+	// When all nodes are encoded, this list becomes './nodes/**/*.ts'. Then remove
+	// the sentence about this list from .agents/review-rules/security/node-input-safety.md.
+	// An exception needs the next-line form and a reason.
+	{
+		files: [
+			'./nodes/Adalo/**/*.ts',
+			'./nodes/Currents/**/*.ts',
+			'./nodes/Elastic/**/*.ts',
+			'./nodes/HighLevel/**/*.ts',
+			'./nodes/N8n/**/*.ts',
+			'./nodes/Notion/**/*.ts',
+			'./nodes/Supabase/**/*.ts',
+		],
+		ignores: deprecatedNodes,
+		rules: {
+			'n8n-local-rules/require-encoded-path-segments': 'error',
+			'n8n-local-rules/require-disable-reason': [
+				'error',
+				{ rules: ['n8n-local-rules/require-encoded-path-segments'] },
+			],
+		},
+	},
+	{
+		files: ['./nodes/**/*.ts'],
+		ignores: [...requestTargetPending, ...deprecatedNodes],
+		rules: {
+			'n8n-local-rules/require-request-target': 'error',
+		},
+	},
 	{
 		files: ['**/*.test.ts', '**/test/**/*.ts'],
 		rules: {
 			'import-x/no-extraneous-dependencies': 'off',
 			'n8n-nodes-base/node-filename-against-convention': 'off',
+			'n8n-local-rules/no-dynamic-regexp': 'off',
+			'n8n-local-rules/require-escaped-query-values': 'off',
+			'n8n-local-rules/require-encoded-path-segments': 'off',
+			'n8n-local-rules/require-disable-reason': 'off',
+			'n8n-local-rules/require-request-target': 'off',
 		},
 	},
+	...databricksUserAgentRestriction,
+	...kafkaImportRestrictions,
 );

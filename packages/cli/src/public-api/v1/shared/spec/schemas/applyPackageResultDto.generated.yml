@@ -1,0 +1,364 @@
+oneOf:
+  - type: object
+    properties:
+      environmentId:
+        type: string
+        minLength: 1
+        maxLength: 36
+      git:
+        type: object
+        properties:
+          commitSha:
+            type: string
+          branchName:
+            type: string
+        required:
+          - commitSha
+          - branchName
+      status:
+        type: string
+        enum:
+          - applied
+      counts:
+        type: object
+        properties:
+          projects:
+            type: object
+            properties:
+              created:
+                type: integer
+                minimum: 0
+              updated:
+                type: integer
+                minimum: 0
+              skipped:
+                type: integer
+                minimum: 0
+              deleted:
+                type: integer
+                minimum: 0
+            required:
+              - created
+              - updated
+              - skipped
+              - deleted
+          folders:
+            type: object
+            properties:
+              created:
+                type: integer
+                minimum: 0
+              updated:
+                type: integer
+                minimum: 0
+                description: Existing folders that Apply moved or renamed to match the branch.
+              skipped:
+                type: integer
+                minimum: 0
+              moved:
+                type: integer
+                minimum: 0
+                description: Updated folders that Apply moved under another parent of their project. Included in `updated`.
+              renamed:
+                type: integer
+                minimum: 0
+                description: Updated folders that Apply gave the name on the branch. Included in `updated`.
+              removed:
+                type: integer
+                minimum: 0
+            required:
+              - created
+              - updated
+              - skipped
+              - moved
+              - renamed
+              - removed
+          workflows:
+            type: object
+            properties:
+              created:
+                type: integer
+                minimum: 0
+              updated:
+                type: integer
+                minimum: 0
+              skipped:
+                type: integer
+                minimum: 0
+              moved:
+                type: integer
+                minimum: 0
+                description: Updated workflows that Apply also moved to another folder of their project. Included in `updated`.
+              archived:
+                type: integer
+                minimum: 0
+              deleted:
+                type: integer
+                minimum: 0
+              publishing:
+                type: object
+                properties:
+                  published:
+                    type: integer
+                    minimum: 0
+                  unpublished:
+                    type: integer
+                    minimum: 0
+                  unchanged:
+                    type: integer
+                    minimum: 0
+                  blocked:
+                    type: integer
+                    minimum: 0
+                  failed:
+                    type: integer
+                    minimum: 0
+                required:
+                  - published
+                  - unpublished
+                  - unchanged
+                  - blocked
+                  - failed
+            required:
+              - created
+              - updated
+              - skipped
+              - moved
+              - archived
+              - deleted
+              - publishing
+          credentials:
+            type: object
+            properties:
+              matched:
+                type: integer
+                minimum: 0
+              stubbed:
+                type: integer
+                minimum: 0
+              updated:
+                type: integer
+                minimum: 0
+            required:
+              - matched
+              - stubbed
+              - updated
+          dataTables:
+            type: object
+            properties:
+              matched:
+                type: integer
+                minimum: 0
+              created:
+                type: integer
+                minimum: 0
+              updated:
+                type: integer
+                minimum: 0
+            required:
+              - matched
+              - created
+              - updated
+          variables:
+            type: object
+            properties:
+              matched:
+                type: integer
+                minimum: 0
+              created:
+                type: integer
+                minimum: 0
+              updated:
+                type: integer
+                minimum: 0
+              stubbed:
+                type: integer
+                minimum: 0
+              missing:
+                type: integer
+                minimum: 0
+            required:
+              - matched
+              - created
+              - updated
+              - stubbed
+              - missing
+          tags:
+            type: object
+            properties:
+              matched:
+                type: integer
+                minimum: 0
+              created:
+                type: integer
+                minimum: 0
+              renamed:
+                type: integer
+                minimum: 0
+              reconciled:
+                type: integer
+                minimum: 0
+              skipped:
+                type: integer
+                minimum: 0
+            required:
+              - matched
+              - created
+              - renamed
+              - reconciled
+              - skipped
+        required:
+          - projects
+          - folders
+          - workflows
+          - credentials
+          - dataTables
+          - variables
+          - tags
+      warnings:
+        type: array
+        items:
+          type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - variable
+            code:
+              type: string
+              enum:
+                - variable-shadowed
+            name:
+              type: string
+              minLength: 1
+            scope:
+              type: object
+              properties:
+                kind:
+                  type: string
+                  enum:
+                    - global
+              required:
+                - kind
+            consumers:
+              type: array
+              items:
+                type: object
+                properties:
+                  project:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        minLength: 1
+                      name:
+                        type: string
+                    required:
+                      - id
+                      - name
+                  workflows:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          minLength: 1
+                        name:
+                          type: string
+                      required:
+                        - id
+                        - name
+                    minItems: 1
+                required:
+                  - project
+                  - workflows
+              minItems: 1
+          required:
+            - kind
+            - code
+            - name
+            - scope
+            - consumers
+    required:
+      - environmentId
+      - git
+      - status
+      - counts
+      - warnings
+  - type: object
+    properties:
+      environmentId:
+        type: string
+        minLength: 1
+        maxLength: 36
+      git:
+        type: object
+        properties:
+          commitSha:
+            type: string
+          branchName:
+            type: string
+        required:
+          - commitSha
+          - branchName
+      status:
+        type: string
+        enum:
+          - blocked
+      check:
+        $ref: promotionApplyCheck.generated.yml
+    required:
+      - environmentId
+      - git
+      - status
+      - check
+  - type: object
+    properties:
+      environmentId:
+        type: string
+        minLength: 1
+        maxLength: 36
+      git:
+        type: object
+        properties:
+          commitSha:
+            type: string
+          branchName:
+            type: string
+        required:
+          - commitSha
+          - branchName
+      status:
+        type: string
+        enum:
+          - source-changed
+    required:
+      - environmentId
+      - git
+      - status
+  - type: object
+    properties:
+      environmentId:
+        type: string
+        minLength: 1
+        maxLength: 36
+      git:
+        type: object
+        properties:
+          commitSha:
+            type: string
+          branchName:
+            type: string
+        required:
+          - commitSha
+          - branchName
+      status:
+        type: string
+        enum:
+          - preview-changed
+    required:
+      - environmentId
+      - git
+      - status
+type: object

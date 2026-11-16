@@ -1,6 +1,6 @@
 import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { computed, inject, provide, shallowRef, watchEffect, type ShallowRef } from 'vue';
+import { computed, inject, provide, ref, shallowRef, watchEffect, type ShallowRef } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
@@ -39,7 +39,7 @@ import { assignNodeId, serializeNode } from '@/app/utils/nodes/nodeTransforms';
 import type { WorkflowObjectAccessors } from '../types';
 import type { IWorkflowDb } from '@/Interface';
 import type { INode, ProjectSharingData } from 'n8n-workflow';
-import { deepCopy, nodeIssuesToString } from 'n8n-workflow';
+import { deepCopy, nodeIssuesToString, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import type { Scope } from '@n8n/permissions';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
@@ -112,6 +112,22 @@ void (0 as unknown as [
 
 export type WorkflowDocumentId = `${string}@${string}`;
 
+/**
+ * `GET /workflows/:id` only assembles `homeProject` when the sharing license
+ * is active; otherwise it returns the raw `shared` relation instead. Derive
+ * the owning project from `shared` so features that depend on `homeProject`
+ * (e.g. the evaluations wizard) work regardless of the sharing license.
+ */
+export function deriveHomeProject(
+	workflow: Pick<IWorkflowDb, 'homeProject' | 'shared'>,
+): ProjectSharingData | null {
+	return (
+		workflow.homeProject ??
+		workflow.shared?.find((share) => share.role === 'workflow:owner')?.project ??
+		null
+	);
+}
+
 export function createWorkflowDocumentId(
 	workflowId: string,
 	version: string = 'latest',
@@ -176,6 +192,7 @@ export function getWorkflowDocumentStoreId(id: string) {
 export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 	return defineStore(getWorkflowDocumentStoreId(id), () => {
 		const [workflowId, workflowVersion] = id.split('@');
+		const hydrated = ref(false);
 
 		const nodeTypesStore = useNodeTypesStore();
 
@@ -234,6 +251,32 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			allNodes: workflowDocumentNodes.allNodes,
 			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
 			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
+			connectionsBySourceNode: workflowDocumentConnections.connectionsBySourceNode,
+			connectionsByDestinationNode: workflowDocumentConnections.connectionsByDestinationNode,
+			// The editor only has the node description, so it reads the `trigger` group
+			// where the server reads the type's trigger/webhook/poll implementation.
+			isTriggerLike: (node) => nodeTypesStore.isTriggerNode(node.type),
+			canOutputMain: (node) => {
+				const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				// Unknown type answers "yes", so a half-built graph is never written off
+				// as unable to affect a run.
+				if (!nodeType) return true;
+				try {
+					// Evaluated, not read off the description: several vector stores build
+					// `outputs` from an expression, and reading the raw expression would
+					// call them main-path nodes. The server evaluates it the same way.
+					return NodeHelpers.getNodeOutputs(
+						{ expression: workflowDocumentExpression.getExpressionHandler() },
+						node,
+						nodeType,
+					).some(
+						(output) =>
+							(typeof output === 'string' ? output : output.type) === NodeConnectionTypes.Main,
+					);
+				} catch {
+					return true;
+				}
+			},
 			nodesById: workflowDocumentNodes.nodesById,
 			onNodesChange: workflowDocumentNodes.onNodesChange,
 			nodeIssuesToString,
@@ -298,6 +341,10 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			return data;
 		}
 
+		function setHydrated(value: boolean) {
+			hydrated.value = value;
+		}
+
 		function hydrate(workflow: IWorkflowDb) {
 			if (workflow.id !== workflowId) {
 				throw new Error(
@@ -319,7 +366,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				activeVersion: workflow.activeVersion ?? null,
 			});
 			workflowDocumentIsArchived.setIsArchived(workflow.isArchived ?? false);
-			workflowDocumentHomeProject.setHomeProject(workflow.homeProject ?? null);
+			workflowDocumentHomeProject.setHomeProject(deriveHomeProject(workflow));
 			workflowDocumentSharedWithProjects.setSharedWithProjects(workflow.sharedWithProjects ?? []);
 			workflowDocumentScopes.setScopes(workflow.scopes ?? []);
 			workflowDocumentTags.setTags(workflow.tags ?? []);
@@ -348,9 +395,11 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				settings: workflow.settings ?? { ...DEFAULT_SETTINGS },
 				pinData: workflow.pinData ?? {},
 			});
+			setHydrated(true);
 		}
 
 		function reset() {
+			setHydrated(false);
 			workflowDocumentName.setName('');
 			workflowDocumentDescription.setDescription('');
 			workflowDocumentActive.setActiveState({ activeVersionId: null, activeVersion: null });
@@ -395,6 +444,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			return {
 				id: workflowId,
 				connectionsBySourceNode: workflowDocumentConnections.connectionsBySourceNode.value,
+				connectionsByDestinationNode:
+					workflowDocumentConnections.connectionsByDestinationNode.value,
 				pinData: workflowDocumentPinData.getPinDataSnapshot(),
 				expression: workflowDocumentExpression.getExpressionHandler(),
 				getNode: workflowDocumentNodes.getNodeByName,
@@ -440,6 +491,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			documentId: id,
 			workflowId,
 			workflowVersion,
+			hydrated,
 			...workflowDocumentName,
 			...workflowDocumentActive,
 			...workflowDocumentPublicationStatus,
@@ -466,6 +518,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentNodesIssues,
 			...workflowDocumentNodeGroups,
 			removeAllNodes,
+			setHydrated,
 			hydrate,
 			reset,
 			getSnapshot,
@@ -493,6 +546,20 @@ export function disposeWorkflowDocumentStore(store: WorkflowDocumentStore) {
 	if (pinia) {
 		delete pinia.state.value[store.$id];
 	}
+}
+
+/**
+ * The live store for this document if one exists — never creates one.
+ * Existence is read from pinia's state registry: creation writes the key,
+ * `disposeWorkflowDocumentStore` deletes it. The `in` check is reactive, so
+ * a computed caller follows dispose/recreate cycles.
+ */
+export function useExistingWorkflowDocumentStore(
+	id: WorkflowDocumentId,
+): WorkflowDocumentStore | undefined {
+	const pinia = getActivePinia();
+	if (!pinia || !(getWorkflowDocumentStoreId(id) in pinia.state.value)) return undefined;
+	return useWorkflowDocumentStore(id);
 }
 
 /**

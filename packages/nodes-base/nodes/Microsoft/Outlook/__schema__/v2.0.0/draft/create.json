@@ -46,6 +46,25 @@
                 "type": "string"
             }
         },
+        "ccRecipients": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "changeKey": {
             "type": "string"
         },
@@ -124,6 +143,9 @@
         "sentDateTime": {
             "type": "string"
         },
+        "subject": {
+            "type": "string"
+        },
         "toRecipients": {
             "type": "array",
             "items": {
@@ -147,5 +169,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

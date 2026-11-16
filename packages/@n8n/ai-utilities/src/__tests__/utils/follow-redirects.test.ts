@@ -55,8 +55,36 @@ describe('fetchFollowingRedirects', () => {
 		});
 
 		expect(onBeforeHop).toHaveBeenCalledTimes(2);
-		expect(onBeforeHop).toHaveBeenNthCalledWith(1, 'https://example.com/start');
-		expect(onBeforeHop).toHaveBeenNthCalledWith(2, 'https://example.com/relative');
+		expect(onBeforeHop).toHaveBeenNthCalledWith(1, 'https://example.com/start', {
+			crossedOrigin: false,
+		});
+		expect(onBeforeHop).toHaveBeenNthCalledWith(2, 'https://example.com/relative', {
+			crossedOrigin: false,
+		});
+	});
+
+	it('treats crossedOrigin as permanent, even when the chain returns to the original origin', async () => {
+		const fetcher = mockFetcher()
+			.mockResolvedValueOnce(makeRedirect(307, 'https://other.example.com/away'))
+			.mockResolvedValueOnce(makeRedirect(307, 'https://example.com/back'))
+			.mockResolvedValueOnce(makeResponse(200));
+		const onBeforeHop = vi.fn();
+
+		await fetchFollowingRedirects(
+			fetcher,
+			'https://example.com',
+			{ headers: { authorization: 'Bearer secret' } },
+			{ onBeforeHop },
+		);
+
+		expect(onBeforeHop.mock.calls.map((call) => call[1])).toEqual([
+			{ crossedOrigin: false },
+			{ crossedOrigin: true },
+			{ crossedOrigin: true },
+		]);
+		// Credential headers stripped on the cross-origin hop are not restored either
+		const hop3Headers = new Headers((fetcher.mock.calls[2][1] as RequestInit).headers);
+		expect(hop3Headers.get('authorization')).toBeNull();
 	});
 
 	it('aborts the chain when onBeforeHop throws', async () => {
@@ -142,6 +170,40 @@ describe('fetchFollowingRedirects', () => {
 		expect(fetcher.mock.calls[1][1]).toEqual(
 			expect.objectContaining({ method: 'POST', body: 'payload' }),
 		);
+	});
+
+	it('strips credential headers when a redirect crosses origins', async () => {
+		const fetcher = mockFetcher()
+			.mockResolvedValueOnce(makeRedirect(307, 'https://other.example.com/target'))
+			.mockResolvedValueOnce(makeResponse(200));
+
+		await fetchFollowingRedirects(fetcher, 'https://example.com', {
+			headers: {
+				authorization: 'Bearer secret',
+				cookie: 'session=abc',
+				'proxy-authorization': 'Basic xyz',
+				'content-type': 'application/json',
+			},
+		});
+
+		const hop2Headers = new Headers((fetcher.mock.calls[1][1] as RequestInit).headers);
+		expect(hop2Headers.get('authorization')).toBeNull();
+		expect(hop2Headers.get('cookie')).toBeNull();
+		expect(hop2Headers.get('proxy-authorization')).toBeNull();
+		expect(hop2Headers.get('content-type')).toBe('application/json');
+	});
+
+	it('keeps credential headers on a same-origin redirect', async () => {
+		const fetcher = mockFetcher()
+			.mockResolvedValueOnce(makeRedirect(307, '/moved'))
+			.mockResolvedValueOnce(makeResponse(200));
+
+		await fetchFollowingRedirects(fetcher, 'https://example.com/start', {
+			headers: { authorization: 'Bearer secret' },
+		});
+
+		const hop2Headers = new Headers((fetcher.mock.calls[1][1] as RequestInit).headers);
+		expect(hop2Headers.get('authorization')).toBe('Bearer secret');
 	});
 
 	it('preserves a URL input object on the first hop', async () => {

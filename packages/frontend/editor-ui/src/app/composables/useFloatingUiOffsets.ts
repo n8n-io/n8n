@@ -2,10 +2,14 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { WorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { computed, type Ref } from 'vue';
 
 const ASSISTANT_FLOATING_BUTTON_SIZE = 42;
+const ASK_AI_OFFSET = 16;
 
 /**
  * Called from `App.vue`, which sits above the workflow document provide tree
@@ -17,25 +21,28 @@ export function useFloatingUiOffsets(workflowDocumentId: Readonly<Ref<WorkflowDo
 	const assistantStore = useAssistantStore();
 	const chatPanelStore = useChatPanelStore();
 	const logsStore = useLogsStore();
+	const bannersStore = useBannersStore();
+	const uiStore = useUIStore();
+	const settingsStore = useSettingsStore();
 
 	const ndvStore = computed(() =>
 		workflowDocumentId.value ? useNDVStore(workflowDocumentId.value) : null,
 	);
 
-	const isNDVV2 = computed(() => true);
-	const askAiOffset = computed(() => (ndvStore.value?.isNDVOpen && !isNDVV2.value ? 48 : 16));
-
 	return {
-		askAiFloatingButtonBottomOffset: computed(() => `${askAiOffset.value}px`),
+		askAiFloatingButtonBottomOffset: computed(() => `${ASK_AI_OFFSET}px`),
 		toastBottomOffset: computed(() => {
 			const logsPanelOffset =
 				ndvStore.value?.isNDVOpen || chatPanelStore.isOpen ? 0 : logsStore.height;
 			const assistantOffset = assistantStore.isFloatingButtonShown
-				? ASSISTANT_FLOATING_BUTTON_SIZE + askAiOffset.value
+				? ASSISTANT_FLOATING_BUTTON_SIZE + ASK_AI_OFFSET
 				: 0;
 
 			return `${logsPanelOffset + assistantOffset}px`;
 		}),
 		toastRightOffset: computed(() => (chatPanelStore.isOpen ? `${chatPanelStore.width}px` : '0px')),
+		toastTopOffset: computed(() =>
+			settingsStore.isCanvasOnly ? '0px' : `${bannersStore.bannersHeight + uiStore.headerHeight}px`,
+		),
 	};
 }

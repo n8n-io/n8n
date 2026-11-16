@@ -1,7 +1,7 @@
 import { mockDeep } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
 import type { IPollFunctions, INode, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { SalesforceTrigger } from '../SalesforceTrigger.node';
@@ -87,7 +87,7 @@ describe('SalesforceTrigger', () => {
 				const result =
 					await trigger.methods!.loadOptions!.getCustomObjects.call(mockLoadOptionsFunctions);
 
-				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', '/sobjects');
+				expect(salesforceApiRequestSpy).toHaveBeenCalledWith('GET', requestPath`/sobjects`);
 				expect(sortOptionsSpy).toHaveBeenCalled();
 
 				expect(result).toEqual([
@@ -125,6 +125,30 @@ describe('SalesforceTrigger', () => {
 
 				expect(result).toEqual([]);
 			});
+		});
+	});
+
+	describe('Authentication', () => {
+		it('should offer both OAuth2 and JWT credentials', () => {
+			const credentials = trigger.description.credentials ?? [];
+
+			const oAuth2 = credentials.find((c) => c.name === 'salesforceOAuth2Api');
+			const jwt = credentials.find((c) => c.name === 'salesforceJwtApi');
+
+			expect(oAuth2?.displayOptions?.show?.authentication).toEqual(['oAuth2']);
+			expect(jwt?.displayOptions?.show?.authentication).toEqual(['jwt']);
+		});
+
+		it('should expose an authentication selector defaulting to OAuth2', () => {
+			const authentication = trigger.description.properties.find(
+				(p) => p.name === 'authentication',
+			);
+
+			expect(authentication?.default).toBe('oAuth2');
+			expect(authentication?.options).toEqual([
+				{ name: 'OAuth2', value: 'oAuth2' },
+				{ name: 'OAuth2 JWT', value: 'jwt' },
+			]);
 		});
 	});
 
@@ -182,7 +206,7 @@ describe('SalesforceTrigger', () => {
 			expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 				'records',
 				'GET',
-				'/query',
+				requestPath`/query`,
 				{},
 				expect.objectContaining({
 					q: 'SELECT id,name,type FROM Account WHERE CreatedDate >= 2023-01-01T00:00:00.000Z',

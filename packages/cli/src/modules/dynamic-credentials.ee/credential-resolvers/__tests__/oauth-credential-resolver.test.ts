@@ -311,6 +311,23 @@ describe('OAuthCredentialResolver', () => {
 			});
 		});
 
+		describe('option parsing', () => {
+			it('should accept a blank expectedAudience from the resolver form', async () => {
+				// The form sends every rendered property, so an untouched optional field
+				// arrives as '' and must read as "not configured" rather than invalid.
+				await expect(
+					resolver.validateOptions({
+						metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+						validation: 'oauth2-introspection',
+						clientId: 'test-client',
+						clientSecret: 'test-secret',
+						subjectClaim: 'sub',
+						expectedAudience: '',
+					}),
+				).resolves.toBeUndefined();
+			});
+		});
+
 		describe('identifier routing', () => {
 			it('should use introspection identifier when validation is oauth2-introspection', async () => {
 				const credentialId = 'cred-123';

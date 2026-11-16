@@ -1,6 +1,12 @@
 import { setActivePinia, createPinia } from 'pinia';
+import { useToast } from '@n8n/composables/useToast';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { FrontendModuleSettings, InstanceAiUserPreferencesResponse } from '@n8n/api-types';
+import type { FrontendModuleSettings } from '@n8n/api-types';
+import { usePostHog } from '@/app/stores/posthog.store';
+import {
+	INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT,
+	INSTANCE_AI_SETUP_PANEL_EXPERIMENT,
+} from '@/app/constants/experiments';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
@@ -30,33 +36,47 @@ vi.mock('@n8n/i18n', () => ({
 	i18n: { baseText: (key: string) => key },
 }));
 
+const device = { supportsBrowserUse: true };
+
+vi.mock('../utils/browserUseSupport', () => ({
+	isBrowserUseSupportedOnDevice: () => device.supportsBrowserUse,
+}));
+
 const mockFetchSettings = vi.fn();
 const mockUpdateSettings = vi.fn();
-const mockFetchPreferences = vi.fn();
-const mockUpdatePreferences = vi.fn();
 const mockFetchServiceCredentials = vi.fn().mockResolvedValue([]);
 const mockFetchInstanceModelCredentials = vi.fn().mockResolvedValue([]);
-const mockCreateGatewayLink = vi.fn();
-const mockDisconnectGatewaySession = vi.fn();
+const mockFetchModelCatalog = vi.fn();
+const mockVerifyModel = vi.fn();
+const mockVerifySandbox = vi.fn();
+const mockVerifySearch = vi.fn();
+const mockCreateBrowserLink = vi.fn();
+const mockDisconnectBrowserSession = vi.fn();
+const mockGetBrowserStatus = vi.fn();
+const mockFetchUserPreferences = vi.fn();
+const mockUpdateUserPreferences = vi.fn();
 
 vi.mock('../instanceAi.settings.api', () => ({
 	fetchSettings: (...args: unknown[]) => mockFetchSettings(...args),
 	updateSettings: (...args: unknown[]) => mockUpdateSettings(...args),
-	fetchPreferences: (...args: unknown[]) => mockFetchPreferences(...args),
-	updatePreferences: (...args: unknown[]) => mockUpdatePreferences(...args),
 	fetchServiceCredentials: (...args: unknown[]) => mockFetchServiceCredentials(...args),
 	fetchInstanceModelCredentials: (...args: unknown[]) => mockFetchInstanceModelCredentials(...args),
+	fetchModelCatalog: (...args: unknown[]) => mockFetchModelCatalog(...args),
+	verifyModel: (...args: unknown[]) => mockVerifyModel(...args),
+	verifySandbox: (...args: unknown[]) => mockVerifySandbox(...args),
+	verifySearch: (...args: unknown[]) => mockVerifySearch(...args),
+	fetchUserPreferences: (...args: unknown[]) => mockFetchUserPreferences(...args),
+	updateUserPreferences: (...args: unknown[]) => mockUpdateUserPreferences(...args),
 }));
 
-const mockGetGatewayStatus = vi.fn();
 vi.mock('../instanceAi.api', () => ({
-	createGatewayLink: (...args: unknown[]) => mockCreateGatewayLink(...args),
-	disconnectGatewaySession: (...args: unknown[]) => mockDisconnectGatewaySession(...args),
-	getGatewayStatus: (...args: unknown[]) => mockGetGatewayStatus(...args),
+	createBrowserLink: (...args: unknown[]) => mockCreateBrowserLink(...args),
+	disconnectBrowserSession: (...args: unknown[]) => mockDisconnectBrowserSession(...args),
+	getBrowserStatus: (...args: unknown[]) => mockGetBrowserStatus(...args),
 }));
 
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 type InstanceAiModuleSettings = NonNullable<FrontendModuleSettings['instance-ai']>;
@@ -66,7 +86,7 @@ function makeModuleSettings(
 ): InstanceAiModuleSettings {
 	return {
 		enabled: true,
-		localGatewayDisabled: false,
+		mcpConnectionsAvailable: true,
 		browserUseEnabled: true,
 		proxyEnabled: false,
 		cloudManaged: false,
@@ -74,6 +94,8 @@ function makeModuleSettings(
 		workflowBuilderAvailable: true,
 		sandboxUnavailableReason: null,
 		runDebugEnabled: false,
+		workflowSuggestionsEnabled: false,
+		assistantAgentEnabled: false,
 		...overrides,
 	};
 }
@@ -85,19 +107,13 @@ function setModuleSettings(
 	settingsStore.moduleSettings = { 'instance-ai': makeModuleSettings(instanceAi) };
 }
 
-function setUserPreference(
-	store: ReturnType<typeof useInstanceAiSettingsStore>,
-	prefs: Partial<InstanceAiUserPreferencesResponse> | null,
-) {
-	(store as unknown as { preferences: typeof prefs }).preferences = prefs;
-}
-
 describe('useInstanceAiSettingsStore', () => {
 	let store: ReturnType<typeof useInstanceAiSettingsStore>;
 	let settingsStore: ReturnType<typeof useSettingsStore>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		device.supportsBrowserUse = true;
 		vi.mocked(hasPermission).mockReturnValue(false);
 		setActivePinia(createPinia());
 		store = useInstanceAiSettingsStore();
@@ -126,11 +142,25 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
+	it.each(['control', 'variant', false, undefined])('uses the setup panel flag %s', (variant) => {
+		if (variant !== undefined)
+			usePostHog().overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: variant };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(variant === 'variant');
+	});
+
+	it('updates the setup flow when the standard feature flag override changes', () => {
+		const posthog = usePostHog();
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(false);
+		posthog.overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: 'variant' };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(true);
+		posthog.overrides[INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name] = { value: 'control' };
+		expect(store.isInstanceAiSetupPanelEnabled).toBe(false);
+	});
+
 	describe('isInstanceAiDisabled', () => {
 		it('returns true when module settings has enabled=false', () => {
 			setModuleSettings(settingsStore, {
 				enabled: false,
-				localGatewayDisabled: false,
 				proxyEnabled: false,
 				cloudManaged: false,
 			});
@@ -140,7 +170,6 @@ describe('useInstanceAiSettingsStore', () => {
 		it('returns false when module settings has enabled=true', () => {
 			setModuleSettings(settingsStore, {
 				enabled: true,
-				localGatewayDisabled: false,
 				proxyEnabled: false,
 				cloudManaged: false,
 			});
@@ -153,76 +182,18 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
-	describe('isLocalGatewayDisabledByAdmin', () => {
-		it('defaults to true when module settings have not loaded yet', () => {
+	describe('isMcpAvailable', () => {
+		it('uses public module settings', () => {
+			setModuleSettings(settingsStore, { mcpConnectionsAvailable: true });
+			expect(store.isMcpAvailable).toBe(true);
+
+			setModuleSettings(settingsStore, { mcpConnectionsAvailable: false });
+			expect(store.isMcpAvailable).toBe(false);
+		});
+
+		it('returns false before module settings load', () => {
 			settingsStore.moduleSettings = {};
-			expect(store.isLocalGatewayDisabledByAdmin).toBe(true);
-		});
-
-		it('returns true when admin flag is set', () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: true,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			expect(store.isLocalGatewayDisabledByAdmin).toBe(true);
-		});
-
-		it('returns false when admin flag is not set even if user preference is', () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			store.$patch({ preferences: { localGatewayDisabled: true } });
-			expect(store.isLocalGatewayDisabledByAdmin).toBe(false);
-		});
-	});
-
-	describe('isLocalGatewayDisabled', () => {
-		it('returns true when admin flag is set', () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: true,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			expect(store.isLocalGatewayDisabled).toBe(true);
-		});
-
-		it('returns true when user preference is set', () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			store.$patch({ preferences: { localGatewayDisabled: true } });
-			expect(store.isLocalGatewayDisabled).toBe(true);
-		});
-
-		it('returns true when both admin flag and user preference are set', () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: true,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			store.$patch({ preferences: { localGatewayDisabled: true } });
-			expect(store.isLocalGatewayDisabled).toBe(true);
-		});
-
-		it('returns false when neither admin flag nor user preference is set', () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			store.$patch({ preferences: { localGatewayDisabled: false } });
-			expect(store.isLocalGatewayDisabled).toBe(false);
+			expect(store.isMcpAvailable).toBe(false);
 		});
 	});
 
@@ -230,7 +201,6 @@ describe('useInstanceAiSettingsStore', () => {
 		it('returns true when proxyEnabled is true in module settings', () => {
 			setModuleSettings(settingsStore, {
 				enabled: true,
-				localGatewayDisabled: false,
 				proxyEnabled: true,
 				cloudManaged: false,
 			});
@@ -240,7 +210,6 @@ describe('useInstanceAiSettingsStore', () => {
 		it('returns false when proxyEnabled is false', () => {
 			setModuleSettings(settingsStore, {
 				enabled: true,
-				localGatewayDisabled: false,
 				proxyEnabled: false,
 				cloudManaged: false,
 			});
@@ -252,7 +221,6 @@ describe('useInstanceAiSettingsStore', () => {
 		it('returns true when cloudManaged is true in module settings', () => {
 			setModuleSettings(settingsStore, {
 				enabled: true,
-				localGatewayDisabled: false,
 				proxyEnabled: false,
 				cloudManaged: true,
 			});
@@ -262,7 +230,6 @@ describe('useInstanceAiSettingsStore', () => {
 		it('returns false when cloudManaged is false', () => {
 			setModuleSettings(settingsStore, {
 				enabled: true,
-				localGatewayDisabled: false,
 				proxyEnabled: false,
 				cloudManaged: false,
 			});
@@ -294,6 +261,50 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
+	describe('isAssistantAgentEnabled', () => {
+		it('is true when the backend registered the Assistant agent', () => {
+			setModuleSettings(settingsStore, { assistantAgentEnabled: true });
+
+			expect(store.isAssistantAgentEnabled).toBe(true);
+		});
+
+		it('is false when the Assistant is off, or when the backend has no agent', () => {
+			setModuleSettings(settingsStore, { enabled: false, assistantAgentEnabled: true });
+			expect(store.isAssistantAgentEnabled).toBe(false);
+
+			setModuleSettings(settingsStore, {});
+			expect(store.isAssistantAgentEnabled).toBe(false);
+		});
+	});
+
+	describe('newThreadsUseAssistantAgent', () => {
+		const setRollout = (value: boolean) => {
+			usePostHog().overrides[INSTANCE_AI_ASSISTANT_AGENT_EXPERIMENT.name] = { value };
+		};
+
+		it('is true when the backend registered the Assistant agent and the user is in the rollout', () => {
+			setModuleSettings(settingsStore, { assistantAgentEnabled: true });
+			setRollout(true);
+
+			expect(store.newThreadsUseAssistantAgent).toBe(true);
+		});
+
+		it('is false for a user outside the rollout', () => {
+			setModuleSettings(settingsStore, { assistantAgentEnabled: true });
+			setRollout(false);
+
+			expect(store.isAssistantAgentEnabled).toBe(true);
+			expect(store.newThreadsUseAssistantAgent).toBe(false);
+		});
+
+		it('is false when the backend has no agent, even in the rollout', () => {
+			setModuleSettings(settingsStore, {});
+			setRollout(true);
+
+			expect(store.newThreadsUseAssistantAgent).toBe(false);
+		});
+	});
+
 	describe('settings persistence', () => {
 		const response = {
 			enabled: true,
@@ -312,7 +323,6 @@ describe('useInstanceAiSettingsStore', () => {
 			modelEnvConfigured: false,
 			sandboxEnvConfigured: false,
 			searchEnvConfigured: false,
-			localGatewayDisabled: false,
 		};
 
 		beforeEach(() => {
@@ -337,41 +347,108 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(store.settings).toEqual(response);
 			expect(settingsStore.moduleSettings['instance-ai']?.enabled).toBe(true);
 		});
+
+		it('keeps the Assistant agent setting when it applies saved settings', async () => {
+			setModuleSettings(settingsStore, { enabled: false, assistantAgentEnabled: true });
+
+			await store.persistEnabled(true);
+
+			expect(settingsStore.moduleSettings['instance-ai']?.assistantAgentEnabled).toBe(true);
+		});
 	});
 
 	describe('refreshModuleSettings', () => {
-		it('fetches preferences when they are not loaded yet', async () => {
-			const prefsResponse = {
-				credentialId: null,
-				credentialType: null,
-				credentialName: null,
-				modelName: 'gpt-4',
-				localGatewayDisabled: false,
-			};
-			mockFetchPreferences.mockResolvedValue(prefsResponse);
+		it('reloads the module settings', async () => {
 			settingsStore.getModuleSettings = vi.fn().mockResolvedValue(undefined);
 
 			await store.refreshModuleSettings();
 
-			expect(mockFetchPreferences).toHaveBeenCalled();
-			expect(store.preferences).toEqual(prefsResponse);
+			expect(settingsStore.getModuleSettings).toHaveBeenCalledOnce();
+		});
+	});
+
+	describe('onboarding verification', () => {
+		it('delegates model, sandbox, and search checks to the settings API', async () => {
+			mockVerifyModel.mockResolvedValue({ ok: true, latencyMs: 10 });
+			mockVerifySandbox.mockResolvedValue({ ok: true, startupMs: 20 });
+			mockVerifySearch.mockResolvedValue({ ok: true, resultCount: 10 });
+			const modelPayload = { modelName: 'gpt-5.6-sol' };
+			const sandboxPayload = { provider: 'n8n-sandbox' as const };
+			const searchPayload = {
+				connection: { type: 'braveSearchApi', data: { apiKey: 'key' } },
+			};
+
+			await expect(store.verifyModel(modelPayload)).resolves.toEqual({ ok: true, latencyMs: 10 });
+			await expect(store.verifySandbox(sandboxPayload)).resolves.toEqual({
+				ok: true,
+				startupMs: 20,
+			});
+			await expect(store.verifySearch(searchPayload)).resolves.toEqual({
+				ok: true,
+				resultCount: 10,
+			});
+
+			expect(mockVerifyModel).toHaveBeenCalledWith(
+				{ baseUrl: 'http://localhost:5678/rest' },
+				modelPayload,
+			);
+			expect(mockVerifySandbox).toHaveBeenCalledWith(
+				{ baseUrl: 'http://localhost:5678/rest' },
+				sandboxPayload,
+			);
+			expect(mockVerifySearch).toHaveBeenCalledWith(
+				{ baseUrl: 'http://localhost:5678/rest' },
+				searchPayload,
+			);
+		});
+	});
+
+	describe('model catalog', () => {
+		const response = {
+			models: {
+				anthropic: [{ id: 'claude-opus-5-5', name: 'Claude Opus 5.5' }],
+				openai: [],
+				openrouter: [],
+			},
+		};
+
+		it('de-duplicates in-flight requests and keeps the successful catalog', async () => {
+			let resolveFetch: (value: typeof response) => void = () => {};
+			mockFetchModelCatalog.mockImplementation(
+				async () =>
+					await new Promise<typeof response>((resolve) => {
+						resolveFetch = resolve;
+					}),
+			);
+
+			const first = store.loadModelCatalog();
+			const second = store.loadModelCatalog();
+			expect(store.isModelCatalogLoading).toBe(true);
+			expect(mockFetchModelCatalog).toHaveBeenCalledOnce();
+
+			resolveFetch(response);
+			await Promise.all([first, second]);
+			expect(store.modelCatalog).toEqual(response.models);
+			expect(store.isModelCatalogLoading).toBe(false);
+
+			await store.loadModelCatalog();
+			expect(mockFetchModelCatalog).toHaveBeenCalledOnce();
 		});
 
-		it('does not fetch preferences when they are already loaded', async () => {
-			store.$patch({
-				preferences: {
-					credentialId: null,
-					credentialType: null,
-					credentialName: null,
-					modelName: 'gpt-4',
-					localGatewayDisabled: false,
-				},
-			});
-			settingsStore.getModuleSettings = vi.fn().mockResolvedValue(undefined);
+		it('allows a retry after a failed or empty response', async () => {
+			mockFetchModelCatalog
+				.mockRejectedValueOnce(new Error('offline'))
+				.mockResolvedValueOnce({ models: { anthropic: [], openai: [], openrouter: [] } })
+				.mockResolvedValueOnce(response);
 
-			await store.refreshModuleSettings();
+			await store.loadModelCatalog();
+			expect(store.modelCatalog).toBeNull();
+			await store.loadModelCatalog();
+			expect(store.modelCatalog).toBeNull();
+			await store.loadModelCatalog();
 
-			expect(mockFetchPreferences).not.toHaveBeenCalled();
+			expect(store.modelCatalog).toEqual(response.models);
+			expect(mockFetchModelCatalog).toHaveBeenCalledTimes(3);
 		});
 	});
 
@@ -392,12 +469,12 @@ describe('useInstanceAiSettingsStore', () => {
 	});
 
 	describe('syncInstanceAiFlagIntoGlobalModuleSettings', () => {
-		it('preserves cloudManaged when syncing admin settings', async () => {
+		it('preserves module flags when syncing admin settings', async () => {
 			setModuleSettings(settingsStore, {
 				enabled: false,
-				localGatewayDisabled: false,
 				proxyEnabled: true,
 				cloudManaged: true,
+				workflowSuggestionsEnabled: true,
 			});
 
 			const adminResponse = {
@@ -411,7 +488,6 @@ describe('useInstanceAiSettingsStore', () => {
 				daytonaCredentialId: null,
 				n8nSandboxCredentialId: null,
 				searchCredentialId: null,
-				localGatewayDisabled: false,
 			};
 
 			mockUpdateSettings.mockResolvedValue(adminResponse);
@@ -422,6 +498,7 @@ describe('useInstanceAiSettingsStore', () => {
 
 			const ms = settingsStore.moduleSettings['instance-ai'];
 			expect(ms?.cloudManaged).toBe(true);
+			expect(ms?.workflowSuggestionsEnabled).toBe(true);
 			expect(ms?.proxyEnabled).toBe(true);
 			expect(ms?.enabled).toBe(true);
 			expect(ms?.sandboxEnabled).toBe(false);
@@ -430,170 +507,175 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
-	describe('connections', () => {
-		it('shows only a disconnected Browser Use row when the gateway is disabled for the user', () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: true,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
+	describe('unexpected disconnects', () => {
+		it('tracks Browser Use disconnects observed in the current session', async () => {
+			mockGetBrowserStatus
+				.mockResolvedValueOnce({ connected: true, connectedAt: '2026-01-01', toolCategories: [] })
+				.mockResolvedValueOnce({ connected: false, connectedAt: null, toolCategories: [] });
 
-			expect(store.connections).toHaveLength(1);
-			expect(store.connections[0]).toMatchObject({
-				type: 'browser-use',
-				status: 'disconnected',
-			});
-		});
+			await store.fetchBrowserStatus();
+			expect(store.browserUseConnectionStatus).toBe('connected');
+			await store.fetchBrowserStatus();
+			expect(store.browserUseConnectionStatus).toBe('disconnected');
 
-		it('shows disconnected Computer Use and Browser Use rows when enabled but not paired', () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			setUserPreference(store, { localGatewayDisabled: false });
-
-			expect(store.connections).toHaveLength(2);
-			expect(store.connections[0]).toMatchObject({
-				type: 'computer-use',
-				status: 'disconnected',
-			});
-			expect(store.connections[1]).toMatchObject({
-				type: 'browser-use',
-				status: 'disconnected',
-			});
-		});
-
-		it('shows Computer Use as connected and adds Browser Use row when browser category is present', async () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			mockGetGatewayStatus.mockResolvedValue({
-				connected: true,
-				directory: '/Users/test/project',
-				hostIdentifier: 'host-1',
-				toolCategories: [{ name: 'browser', enabled: true }],
-			});
-			setUserPreference(store, { localGatewayDisabled: false });
-			await store.fetchGatewayStatus();
-
-			expect(store.connections).toHaveLength(2);
-			expect(store.connections[0]).toMatchObject({
-				type: 'computer-use',
-				name: '/Users/test/project',
-				status: 'connected',
-			});
-			expect(store.connections[1]).toMatchObject({
-				type: 'browser-use',
-				status: 'connected',
-			});
-		});
-
-		it('shows a disconnected Browser Use row when connected without a browser tool category', async () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			mockGetGatewayStatus.mockResolvedValue({
-				connected: true,
-				directory: '/Users/test/project',
-				hostIdentifier: 'host-1',
-				toolCategories: [{ name: 'filesystem', enabled: true }],
-			});
-			setUserPreference(store, { localGatewayDisabled: false });
-			await store.fetchGatewayStatus();
-
-			expect(store.connections).toHaveLength(2);
-			expect(store.connections[0]).toMatchObject({ type: 'computer-use', status: 'connected' });
-			expect(store.connections[1]).toMatchObject({ type: 'browser-use', status: 'disconnected' });
+			mockDisconnectBrowserSession.mockResolvedValue(undefined);
+			await store.disconnectBrowserUse();
+			expect(store.browserUseConnectionStatus).toBe('none');
 		});
 	});
 
-	describe('setup command', () => {
-		beforeEach(() => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
+	describe('isBrowserUseAvailable', () => {
+		it('is available when the admin allows Browser Use and the device supports it', () => {
+			setModuleSettings(settingsStore, { browserUseEnabled: true });
+
+			expect(store.isBrowserUseAvailable).toBe(true);
+		});
+
+		it('is unavailable when the admin disabled Browser Use', () => {
+			setModuleSettings(settingsStore, { browserUseEnabled: false });
+
+			expect(store.isBrowserUseAvailable).toBe(false);
+		});
+
+		it('is unavailable on phones and tablets', () => {
+			device.supportsBrowserUse = false;
+			setModuleSettings(settingsStore, { browserUseEnabled: true });
+
+			expect(store.isBrowserUseAvailable).toBe(false);
+		});
+
+		it('is unavailable while the module settings have not loaded', () => {
+			settingsStore.moduleSettings = {};
+
+			expect(store.isBrowserUseAvailable).toBe(false);
+		});
+	});
+
+	describe('approval mode', () => {
+		it('starts in Manual without a choice until the preferences load', () => {
+			expect(store.approvalMode).toBe('manual');
+			expect(store.approvalModesAvailable).toBe(false);
+		});
+
+		it('loads the mode and whether the user can choose one', async () => {
+			mockFetchUserPreferences.mockResolvedValue({
+				approvalMode: 'auto',
+				approvalModesAvailable: true,
 			});
-			setUserPreference(store, { localGatewayDisabled: false });
+
+			await store.fetchPreferences();
+
+			expect(store.approvalMode).toBe('auto');
+			expect(store.approvalModesAvailable).toBe(true);
 		});
 
-		afterEach(() => {
-			vi.useRealTimers();
+		it('keeps Manual without a choice when the preferences fail to load', async () => {
+			mockFetchUserPreferences.mockRejectedValue(new Error('offline'));
+
+			await store.fetchPreferences();
+
+			expect(store.approvalMode).toBe('manual');
+			expect(store.approvalModesAvailable).toBe(false);
 		});
 
-		it('clears stale command state while fetching a new setup command', async () => {
-			let resolveRequest: (value: {
-				command: string;
-				expiresAt: string;
-				ttlSeconds: number;
-			}) => void = () => {};
-			mockCreateGatewayLink.mockReturnValue(
-				new Promise((resolve) => {
-					resolveRequest = resolve;
-				}),
+		it('saves a new mode', async () => {
+			mockUpdateUserPreferences.mockResolvedValue({
+				approvalMode: 'auto',
+				approvalModesAvailable: true,
+			});
+
+			await expect(store.setApprovalMode('auto')).resolves.toBe(true);
+
+			expect(mockUpdateUserPreferences).toHaveBeenCalledWith(expect.anything(), {
+				approvalMode: 'auto',
+			});
+			expect(store.approvalMode).toBe('auto');
+		});
+
+		it('restores the previous mode and shows an error when the save fails', async () => {
+			const error = new Error('not available');
+			mockUpdateUserPreferences.mockRejectedValue(error);
+
+			await expect(store.setApprovalMode('auto')).resolves.toBe(false);
+
+			expect(store.approvalMode).toBe('manual');
+			expect(vi.mocked(useToast)().showError).toHaveBeenCalledWith(
+				error,
+				'instanceAi.approvalMode.saveError',
 			);
-			store.setupCommand = 'old command';
-			store.setupCommandExpiresAt = '2026-01-01T00:00:00.000Z';
-			store.setupCommandTtlSeconds = 1;
-			store.setupCommandFetchedAt = 1;
-
-			const request = store.fetchSetupCommand();
-
-			expect(store.setupCommand).toBeNull();
-			expect(store.setupCommandExpiresAt).toBeNull();
-			expect(store.setupCommandTtlSeconds).toBeNull();
-			expect(store.setupCommandFetchedAt).toBeNull();
-
-			resolveRequest({
-				command: 'new command',
-				expiresAt: '2026-01-01T00:05:00.000Z',
-				ttlSeconds: 300,
-			});
-			await request;
-
-			expect(store.setupCommand).toBe('new command');
 		});
 
-		it('uses the request start time as setup command countdown baseline', async () => {
-			vi.useFakeTimers();
-			vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
-			mockCreateGatewayLink.mockImplementation(async () => {
-				vi.setSystemTime(new Date('2026-01-01T00:00:10.000Z'));
-				return {
-					command: 'command',
-					expiresAt: '2026-01-01T00:05:00.000Z',
-					ttlSeconds: 300,
-				};
+		it('shows the saved mode again when two saves in a row fail', async () => {
+			mockFetchUserPreferences.mockResolvedValue({
+				approvalMode: 'auto',
+				approvalModesAvailable: true,
 			});
+			await store.fetchPreferences();
+			let failFirstSave: (error: Error) => void = () => {};
+			mockUpdateUserPreferences
+				.mockReturnValueOnce(new Promise((_resolve, reject) => (failFirstSave = reject)))
+				.mockRejectedValueOnce(new Error('offline'));
 
-			await store.fetchSetupCommand();
+			const firstSave = store.setApprovalMode('manual');
+			const secondSave = store.setApprovalMode('auto');
+			await vi.waitFor(() => expect(mockUpdateUserPreferences).toHaveBeenCalledTimes(1));
+			failFirstSave(new Error('offline'));
 
-			expect(store.setupCommandFetchedAt).toBe(new Date('2026-01-01T00:00:00.000Z').getTime());
+			await expect(Promise.all([firstSave, secondSave])).resolves.toEqual([false, false]);
+			expect(store.approvalMode).toBe('auto');
 		});
 
-		it('clears setup command state on disconnect', async () => {
-			mockDisconnectGatewaySession.mockResolvedValue(undefined);
-			store.setupCommand = 'old command';
-			store.setupCommandExpiresAt = '2026-01-01T00:00:00.000Z';
-			store.setupCommandTtlSeconds = 1;
-			store.setupCommandFetchedAt = 1;
+		it('does not save the mode that is already set', async () => {
+			await expect(store.setApprovalMode('manual')).resolves.toBe(true);
 
-			await store.disconnectComputerUse();
+			expect(mockUpdateUserPreferences).not.toHaveBeenCalled();
+		});
 
-			expect(store.setupCommand).toBeNull();
-			expect(store.setupCommandExpiresAt).toBeNull();
-			expect(store.setupCommandTtlSeconds).toBeNull();
-			expect(store.setupCommandFetchedAt).toBeNull();
+		it('keeps a saved mode when an older load returns after the save', async () => {
+			let finishLoad: (value: unknown) => void = () => {};
+			mockFetchUserPreferences.mockReturnValue(new Promise((resolve) => (finishLoad = resolve)));
+			mockUpdateUserPreferences.mockResolvedValue({
+				approvalMode: 'auto',
+				approvalModesAvailable: true,
+			});
+
+			const load = store.fetchPreferences();
+			await store.setApprovalMode('auto');
+			finishLoad({ approvalMode: 'manual', approvalModesAvailable: true });
+			await load;
+
+			expect(store.approvalMode).toBe('auto');
+		});
+
+		it('sends the saves one at a time, so the last pick wins on the server', async () => {
+			let finishFirstSave: (value: unknown) => void = () => {};
+			mockUpdateUserPreferences
+				.mockReturnValueOnce(new Promise((resolve) => (finishFirstSave = resolve)))
+				.mockResolvedValueOnce({ approvalMode: 'manual', approvalModesAvailable: true });
+
+			const firstSave = store.setApprovalMode('auto');
+			const secondSave = store.setApprovalMode('manual');
+			await vi.waitFor(() => expect(mockUpdateUserPreferences).toHaveBeenCalledTimes(1));
+			finishFirstSave({ approvalMode: 'auto', approvalModesAvailable: true });
+			await Promise.all([firstSave, secondSave]);
+
+			expect(mockUpdateUserPreferences).toHaveBeenLastCalledWith(expect.anything(), {
+				approvalMode: 'manual',
+			});
+			expect(store.approvalMode).toBe('manual');
+		});
+
+		it('loads the preferences again only after a failed load', async () => {
+			mockFetchUserPreferences
+				.mockRejectedValueOnce(new Error('offline'))
+				.mockResolvedValue({ approvalMode: 'auto', approvalModesAvailable: true });
+
+			await store.fetchPreferences();
+			await store.fetchPreferencesAfterFailure();
+			await store.fetchPreferencesAfterFailure();
+
+			expect(mockFetchUserPreferences).toHaveBeenCalledTimes(2);
+			expect(store.approvalModesAvailable).toBe(true);
 		});
 	});
 });

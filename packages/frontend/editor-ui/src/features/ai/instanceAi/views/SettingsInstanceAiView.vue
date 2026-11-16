@@ -1,15 +1,16 @@
 <script lang="ts" setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import {
 	N8nBadge,
 	N8nButton,
-	N8nDropdownMenu,
+	N8nCallout,
 	N8nEmptyState,
-	N8nIcon,
+	N8nEnterpriseReadinessBadge,
+	N8nExternalLink,
 	N8nLoading,
 	N8nOption,
-	N8nPreviewTag,
 	N8nSelect,
+	N8nSettingsEnableRow,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
@@ -18,40 +19,53 @@ import {
 	N8nSettingsSection,
 	N8nSwitch,
 	N8nText,
-	type DropdownMenuItemProps,
 	type EmptyStateIconCards,
 } from '@n8n/design-system';
-import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-types';
+import {
+	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	type InstanceAiPermissions,
+	type InstanceAiPermissionMode,
+} from '@n8n/api-types';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
-import { useRouter } from 'vue-router';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
-import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
-import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
+// Experiment cleanup: remove with openWorkflowInAssistant.
+import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
+import { isContextSkillsEnabled } from '@/features/settings/context/context.utils';
+import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { SANDBOX_PROVIDER_LABELS, type InstanceAiConnectionKind } from '../constants';
+import { useSetupPageViewTelemetry } from '../instanceAiSetup.telemetry';
+import type { InstanceAiConnectionKind } from '../constants';
 import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
+import SandboxSettingsRow from '../components/settings/SandboxSettingsRow.vue';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const message = useMessage();
-const router = useRouter();
+const toast = useToast();
+const telemetry = useTelemetry();
 const settingsStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
 const store = useInstanceAiSettingsStore();
 const { isTestingCredential, testSavedCredential } = useInstanceCredentialTest();
+const {
+	modelCredential,
+	modelConfigured: isModelConfigured,
+	sandboxCredentialId,
+	sandboxConfigured: isSandboxConfigured,
+	searchCredential,
+	searchState,
+} = useInstanceAiConfiguration();
 
-const { isFeatureEnabled: isMcpConnectionsExperimentEnabled } =
-	useInstanceAiMcpConnectionsExperiment();
-const { isFeatureEnabled: isBrowserUseEnabled } = useInstanceAiBrowserUseExperiment();
-const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
-
-const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-ai-assistant-preview';
+const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
+const DATA_SHARING_DOCS_URL =
+	'https://docs.n8n.io/build/ways-of-building-workflows/use-the-ai-assistant#ai-usage-settings';
 
 const isAdmin = computed(() => store.canManage);
 const isEnabled = computed(
@@ -62,19 +76,27 @@ const isMcpAccessEnabled = computed(() => store.settings?.mcpAccessEnabled ?? tr
 const isSelfManaged = computed(() => !store.isProxyEnabled && !store.isCloudManaged);
 const showCredentialsRows = computed(() => isAdmin.value && isSelfManaged.value);
 const showSandboxRow = computed(() => isAdmin.value && !store.isCloudManaged);
+const isModelConnectionEnvManaged = computed(
+	() =>
+		isSelfManaged.value &&
+		(store.settings?.envManaged?.model.provider ?? store.settings?.modelEnvConfigured ?? false),
+);
+const isModelNameEnvManaged = computed(
+	() => isSelfManaged.value && (store.settings?.envManaged?.model.model ?? false),
+);
+const isModelReadOnly = computed(
+	() => isModelConnectionEnvManaged.value && isModelNameEnvManaged.value,
+);
+const isSandboxEnvManaged = computed(
+	() => isSelfManaged.value && (store.settings?.sandboxEnvConfigured ?? false),
+);
+const isSearchEnvManaged = computed(
+	() => isSelfManaged.value && (store.settings?.searchEnvConfigured ?? false),
+);
 
-const modelCredential = computed(() =>
-	store.instanceModelCredentials.find(
-		(credential) => credential.id === store.settings?.modelCredentialId,
-	),
-);
-const isModelConfigured = computed(() =>
-	Boolean(
-		store.settings?.modelEnvConfigured ||
-			(store.settings?.modelCredentialId && store.settings.modelName),
-	),
-);
 const modelValue = computed(() => {
+	if (isModelConnectionEnvManaged.value)
+		return i18n.baseText('instanceAi.onboarding.foundOnServer');
 	if (store.settings?.modelCredentialId) {
 		const typeLabel = modelCredential.value ? credentialTypeLabel(modelCredential.value.type) : '';
 		const modelName = store.settings.modelName ?? '';
@@ -83,56 +105,23 @@ const modelValue = computed(() => {
 	return i18n.baseText('settings.n8nAgent.modelCredential.env.value');
 });
 const modelDescription = computed<{ key: BaseTextKey; warning: boolean } | null>(() => {
-	if (store.settings?.modelCredentialId && store.settings.modelName) return null;
-	if (store.settings?.modelEnvConfigured)
+	if (isModelConnectionEnvManaged.value)
 		return { key: 'settings.n8nAgent.modelCredential.env.description', warning: false };
-	return { key: 'settings.n8nAgent.modelCredential.missing.description', warning: !isOff.value };
+	if ((store.settings?.modelCredentialId && store.settings.modelName) || isOff.value) return null;
+	return { key: 'settings.n8nAgent.modelCredential.missing.description', warning: true };
 });
 
-const sandboxCredentialId = computed(() =>
-	store.settings?.sandboxProvider === 'daytona'
-		? store.settings?.daytonaCredentialId
-		: store.settings?.n8nSandboxCredentialId,
-);
-const isSandboxConfigured = computed(() =>
-	Boolean(sandboxCredentialId.value ?? store.settings?.sandboxEnvConfigured),
-);
-const sandboxValue = computed(() => {
-	if (sandboxCredentialId.value) {
-		return store.settings?.sandboxProvider === 'daytona'
-			? SANDBOX_PROVIDER_LABELS.daytona
-			: SANDBOX_PROVIDER_LABELS['n8n-sandbox'];
-	}
-	return i18n.baseText('settings.n8nAgent.sandbox.env.value');
-});
-const sandboxDescription = computed<{ key: BaseTextKey; warning: boolean }>(() => {
-	if (sandboxCredentialId.value)
-		return { key: 'settings.n8nAgent.sandbox.set.description', warning: false };
-	if (store.settings?.sandboxEnvConfigured)
-		return { key: 'settings.n8nAgent.sandbox.env.description', warning: false };
-	return { key: 'settings.n8nAgent.sandbox.missing.description', warning: !isOff.value };
-});
-
-const searchCredential = computed(() =>
-	store.serviceCredentials.find(
-		(credential) => credential.id === store.settings?.searchCredentialId,
-	),
-);
-const searchState = computed<'set' | 'env' | 'notset'>(() => {
-	if (store.settings?.searchCredentialId) return 'set';
-	if (store.settings?.searchEnvConfigured) return 'env';
-	return 'notset';
-});
 const searchValue = computed(() => {
-	if (searchState.value === 'env') return i18n.baseText('settings.n8nAgent.search.env.value');
+	if (isSearchEnvManaged.value) return i18n.baseText('instanceAi.onboarding.foundOnServer');
+	if (searchState.value === 'disabled') return i18n.baseText('instanceAi.onboarding.disabled');
 	return searchCredential.value ? credentialTypeLabel(searchCredential.value.type) : '';
 });
 
-const isSetupRequired = computed(
+/** Mirrors the backend `setupCompleted`: only a direct self-managed instance needs setup. */
+const isSetupComplete = computed(
 	() =>
-		isEnabled.value &&
-		((showCredentialsRows.value && !isModelConfigured.value) ||
-			(showSandboxRow.value && !isSandboxConfigured.value)),
+		!showCredentialsRows.value ||
+		(isModelConfigured.value && isSandboxConfigured.value && searchState.value !== 'notset'),
 );
 const neverConfigured = computed(() => {
 	if (isEnabled.value) return false;
@@ -146,24 +135,13 @@ const emptyStateIcon: EmptyStateIconCards = {
 	sides: ['workflow', 'message-square', 'search', 'bot'],
 };
 
-const disableMenuItems: Array<DropdownMenuItemProps<string>> = [
-	{
-		id: 'disable',
-		label: i18n.baseText('settings.n8nAgent.status.disable'),
-		icon: { type: 'icon', value: 'power' },
-	},
-];
-
 const PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
 	'require_approval',
 	'always_allow',
 	'blocked',
 ];
 
-const MCP_TOOL_PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
-	'require_approval',
-	'always_allow',
-];
+const PREFERENCE_PERMISSION_OPTIONS: InstanceAiPermissionMode[] = ['always_allow', 'blocked'];
 
 const PERMISSION_OPTION_LABEL: Record<InstanceAiPermissionMode, BaseTextKey> = {
 	require_approval: 'settings.n8nAgent.permissions.needsApproval',
@@ -174,6 +152,7 @@ const PERMISSION_OPTION_LABEL: Record<InstanceAiPermissionMode, BaseTextKey> = {
 interface PermissionGroup {
 	id: string;
 	labelKey: BaseTextKey;
+	descriptionKey?: BaseTextKey;
 	keys: Array<keyof InstanceAiPermissions>;
 }
 
@@ -193,6 +172,11 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 		],
 	},
 	{
+		id: 'nodes',
+		labelKey: 'settings.n8nAgent.permissions.group.nodes',
+		keys: ['executeNode'],
+	},
+	{
 		id: 'folders',
 		labelKey: 'settings.n8nAgent.permissions.group.folders',
 		keys: ['createFolder', 'deleteFolder'],
@@ -200,36 +184,46 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'dataTables',
 		labelKey: 'settings.n8nAgent.permissions.group.dataTables',
-		keys: ['createDataTable', 'mutateDataTableSchema', 'mutateDataTableRows'],
+		keys: ['createDataTable', 'mutateDataTableSchema', 'mutateDataTableRows', 'deleteDataTable'],
 	},
 	{
 		id: 'credentials',
 		labelKey: 'settings.n8nAgent.permissions.group.credentials',
-		keys: ['deleteCredential'],
+		keys: ['createCredential', 'deleteCredential'],
 	},
 	{
 		id: 'system',
 		labelKey: 'settings.n8nAgent.permissions.group.system',
-		keys: ['readFilesystem', 'cleanupTestExecutions'],
+		keys: ['cleanupTestExecutions'],
 	},
 	{
 		id: 'web',
 		labelKey: 'settings.n8nAgent.permissions.group.web',
 		keys: ['fetchUrl', 'webSearch'],
 	},
+	{
+		id: 'mcp',
+		labelKey: 'settings.n8nAgent.permissions.group.mcp',
+		descriptionKey: 'settings.n8nAgent.permissions.group.mcpDescription',
+		keys: ['mcpRead', 'mcpWrite'],
+	},
+	{
+		id: 'preferences',
+		labelKey: 'settings.n8nAgent.permissions.group.preferences',
+		keys: ['createPreference'],
+	},
 ];
 
-const MCP_PERMISSION_GROUP: PermissionGroup = {
-	id: 'mcp',
-	labelKey: 'settings.n8nAgent.permissions.group.mcp',
-	keys: ['executeMcpTool'],
+const SKILLS_PERMISSION_GROUP: PermissionGroup = {
+	id: 'skills',
+	labelKey: 'settings.n8nAgent.permissions.group.skills',
+	keys: ['createSkill', 'updateSkill', 'deleteSkill'],
 };
 
-const permissionGroups = computed(() =>
-	isMcpConnectionsExperimentEnabled.value
-		? [...PERMISSION_GROUPS, MCP_PERMISSION_GROUP]
-		: PERMISSION_GROUPS,
-);
+const permissionGroups = computed(() => [
+	...PERMISSION_GROUPS,
+	...(isContextSkillsEnabled() ? [SKILLS_PERMISSION_GROUP] : []),
+]);
 
 const expandedGroups = reactive<Record<string, boolean>>({});
 
@@ -240,8 +234,11 @@ function isGroupLocked(group: PermissionGroup) {
 function groupSummary(group: PermissionGroup) {
 	if (group.id === 'mcp' && !isMcpAccessEnabled.value)
 		return i18n.baseText('settings.n8nAgent.permissions.group.mcpDisabled');
+	// Each key has its own default, so compare against that one. Comparing
+	// against `require_approval` counts an untouched Preferences group, whose
+	// default is `always_allow`, as an exception.
 	const exceptions = group.keys.filter(
-		(key) => store.getPermission(key) !== 'require_approval',
+		(key) => store.getPermission(key) !== DEFAULT_INSTANCE_AI_PERMISSIONS[key],
 	).length;
 	if (exceptions === 0) return i18n.baseText('settings.n8nAgent.permissions.group.default');
 	if (exceptions === 1) return i18n.baseText('settings.n8nAgent.permissions.group.exception');
@@ -251,130 +248,152 @@ function groupSummary(group: PermissionGroup) {
 }
 
 function permissionOptionsFor(key: keyof InstanceAiPermissions) {
-	return key === 'executeMcpTool' ? MCP_TOOL_PERMISSION_OPTIONS : PERMISSION_OPTIONS;
+	if (key === 'createPreference') return PREFERENCE_PERMISSION_OPTIONS;
+	return PERMISSION_OPTIONS;
 }
 
 /** Exactly one dialog can be active; transitions between steps never observe an all-closed state. */
 const activeDialog = ref<InstanceAiConnectionKind | null>(null);
+/** True while walking through the missing setup items, so saving one dialog opens the next. */
 const setupChain = ref(false);
-const enableAfterSetup = ref(false);
-
-watch(activeDialog, (dialog) => {
-	if (dialog !== null) return;
-	setupChain.value = false;
-	enableAfterSetup.value = false;
-});
+/** The switch shows on while the walkthrough runs; `enabled` is saved only once setup is complete. */
+const isEnabling = ref(false);
+const isSwitchOn = computed(() => isEnabled.value || isEnabling.value);
+/** Saved credentials that turning on still has to test. Each one is tested at most once. */
+let credentialsToTest = new Set<'model' | 'sandbox'>();
 
 function setDialogOpen(kind: InstanceAiConnectionKind, isOpen: boolean) {
-	if (isOpen) activeDialog.value = kind;
-	else if (activeDialog.value === kind) activeDialog.value = null;
+	if (isOpen) {
+		activeDialog.value = kind;
+	} else if (activeDialog.value === kind) {
+		// Dialogs in the walkthrough don't close themselves, so this is a cancel.
+		activeDialog.value = null;
+		setupChain.value = false;
+		isEnabling.value = false;
+	}
 }
 
 function openModelDialog() {
+	if (isModelReadOnly.value) return;
 	setupChain.value = false;
-	activeDialog.value = 'model';
-}
-
-function openModelSetup() {
-	setupChain.value = !isSandboxConfigured.value;
 	activeDialog.value = 'model';
 }
 
 function openSandboxDialog() {
+	if (isSandboxEnvManaged.value) return;
 	setupChain.value = false;
 	activeDialog.value = 'sandbox';
 }
 
-/** Returns whether the chain may continue (false only when enabling failed). */
-async function finishSetup(): Promise<boolean> {
+function openSearchDialog() {
+	if (isSearchEnvManaged.value) return;
 	setupChain.value = false;
-	if (!enableAfterSetup.value) return true;
-
-	enableAfterSetup.value = false;
-	return await store.persistEnabled(true);
+	activeDialog.value = 'search';
 }
 
-async function handleModelSaved() {
-	if (setupChain.value) {
-		activeDialog.value = 'sandbox';
-		return;
+/** A saved credential can stop working, so turning on tests it once. Other paths skip the test. */
+async function savedCredentialWorks(kind: 'model' | 'sandbox'): Promise<boolean> {
+	if (!isEnabling.value || !credentialsToTest.delete(kind)) return true;
+	if (kind === 'model') {
+		const id = store.settings?.modelCredentialId;
+		const credential = modelCredential.value;
+		if (!id) return true;
+		return !!credential && (await testSavedCredential(id, credential.name, credential.type));
 	}
-	await finishSetup();
+	if (!sandboxCredentialId.value) return true;
+	const type = store.settings?.sandboxProvider === 'daytona' ? 'daytonaApi' : 'httpHeaderAuth';
+	return await testSavedCredential(sandboxCredentialId.value, 'n8n Assistant sandbox', type);
 }
 
-async function handleSandboxSaved() {
-	// The optional search step never gates enablement; enable first, then offer it.
-	const chainSearch = setupChain.value && searchState.value === 'notset';
-	if (!(await finishSetup())) return;
-	if (chainSearch) {
-		setupChain.value = true;
-		activeDialog.value = 'search';
+async function nextSetupDialog(): Promise<InstanceAiConnectionKind | null> {
+	if (
+		showCredentialsRows.value &&
+		(!isModelConfigured.value || !(await savedCredentialWorks('model')))
+	) {
+		return 'model';
 	}
+	// An environment-configured sandbox has no dialog. It only needs to be switched on.
+	if (!(await enableEnvironmentSandboxIfNeeded())) return null;
+	if (
+		showSandboxRow.value &&
+		!isSandboxEnvManaged.value &&
+		(!isSandboxConfigured.value || !(await savedCredentialWorks('sandbox')))
+	) {
+		return 'sandbox';
+	}
+	if (showCredentialsRows.value && searchState.value === 'notset') return 'search';
+	return null;
+}
+
+/**
+ * Opens the dialog for the first missing setup item. When none is left, it closes the
+ * walkthrough and saves a pending switch-on.
+ */
+async function continueSetup() {
+	setupChain.value = true;
+	const next = await nextSetupDialog();
+	if (!setupChain.value) return;
+	setupChain.value = next !== null;
+	activeDialog.value = next;
+	// The admin saves this credential in its dialog, so the walkthrough does not test it again.
+	if (next === 'model' || next === 'sandbox') credentialsToTest.delete(next);
+	if (next !== null || !isEnabling.value) return;
+	if (isSetupComplete.value) await store.persistEnabled(true);
+	isEnabling.value = false;
+}
+
+async function handleDialogSaved() {
+	if (setupChain.value) await continueSetup();
 }
 
 function credentialTypeLabel(type: string) {
 	return credentialsStore.getCredentialTypeByName(type)?.displayName ?? type;
 }
 
+async function enableEnvironmentSandboxIfNeeded(): Promise<boolean> {
+	if (!isSandboxEnvManaged.value || isSandboxConfigured.value) return true;
+	store.setField('sandboxEnabled', true);
+	return await store.save();
+}
+
+useSetupPageViewTelemetry('settings');
+
+// With approval modes on, Ask first can be confirmed by the automatic check of Auto mode.
+const permissionsDescription = computed(() => {
+	const description = i18n.baseText('settings.n8nAgent.permissions.description');
+	return store.approvalModesAvailable
+		? `${description} ${i18n.baseText('settings.n8nAgent.permissions.askFirst.description')}`
+		: description;
+});
+
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.n8nAgent'));
 	void store.fetch();
+	void store.fetchPreferences();
 	void credentialsStore.fetchCredentialTypes(false);
 });
 
-async function handleEnable() {
-	if (!showCredentialsRows.value && (!showSandboxRow.value || isSandboxConfigured.value)) {
+async function enable() {
+	credentialsToTest = new Set(
+		showCredentialsRows.value && store.canManageInstanceCredentials ? ['model', 'sandbox'] : [],
+	);
+	if (isSetupComplete.value && credentialsToTest.size === 0) {
 		await store.persistEnabled(true);
 		return;
 	}
-
-	enableAfterSetup.value = true;
-	if (showCredentialsRows.value && !isModelConfigured.value) {
-		openModelSetup();
-		return;
-	}
-
-	const modelCredentialId = store.settings?.modelCredentialId;
-	if (
-		showCredentialsRows.value &&
-		modelCredentialId &&
-		store.canManageInstanceCredentials &&
-		(!modelCredential.value ||
-			!(await testSavedCredential(
-				modelCredentialId,
-				modelCredential.value.name,
-				modelCredential.value.type,
-			)))
-	) {
-		openModelSetup();
-		return;
-	}
-
-	if (showSandboxRow.value && !isSandboxConfigured.value) {
-		openSandboxDialog();
-		return;
-	}
-
-	if (showSandboxRow.value && sandboxCredentialId.value && store.canManageInstanceCredentials) {
-		const isDaytona = store.settings?.sandboxProvider === 'daytona';
-		if (
-			!(await testSavedCredential(
-				sandboxCredentialId.value,
-				'AI Assistant sandbox',
-				isDaytona ? 'daytonaApi' : 'httpHeaderAuth',
-			))
-		) {
-			openSandboxDialog();
-			return;
-		}
-	}
-
-	await finishSetup();
+	isEnabling.value = true;
+	await continueSetup();
 }
 
-async function handleStatusAction(action: string) {
-	if (action !== 'disable') return;
+function onEnabledChange(value: boolean) {
+	if (value) {
+		void enable();
+		return;
+	}
+	void confirmDisable();
+}
 
+async function confirmDisable() {
 	const confirmed = await message.confirm(
 		i18n.baseText('settings.n8nAgent.status.disable.description'),
 		{
@@ -384,11 +403,6 @@ async function handleStatusAction(action: string) {
 		},
 	);
 	if (confirmed === MODAL_CONFIRM) await store.persistEnabled(false);
-}
-
-function handleComputerUseToggle(value: boolean) {
-	store.setField('localGatewayDisabled', !value);
-	void store.save();
 }
 
 function handleBrowserUseToggle(value: boolean) {
@@ -406,8 +420,32 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 	void store.save();
 }
 
-function openAiUsageSettings() {
-	void router.push({ name: VIEWS.AI_SETTINGS });
+// Data sharing is an instance-wide AI setting, not part of the assistant's own
+// settings, so it is read and saved through the settings store.
+const isDataSharingEnabled = computed(() => settingsStore.isAiDataSharingEnabled);
+const isSavingDataSharing = ref(false);
+const canToggleDataSharing = computed(
+	() =>
+		!isOff.value &&
+		store.canManageAiUsage &&
+		!isDataSharingEnabled.value &&
+		!isSavingDataSharing.value,
+);
+
+// The setting is deprecated: it can only be turned on, so the switch locks once it is.
+async function handleDataSharingToggle(value: boolean) {
+	if (!value || !canToggleDataSharing.value) return;
+
+	isSavingDataSharing.value = true;
+	try {
+		await settingsStore.updateAiDataSharingSettings(true);
+		toast.showMessage({ title: i18n.baseText('settings.ai.updated.success'), type: 'success' });
+		telemetry.track('User changed AI Usage settings', { allow_sending_parameter_values: true });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.ai.updated.error'));
+	} finally {
+		isSavingDataSharing.value = false;
+	}
 }
 </script>
 
@@ -419,8 +457,11 @@ function openAiUsageSettings() {
 			:docs-url="DOCS_URL"
 			:docs-label="i18n.baseText('settings.n8nAgent.docsLabel')"
 		>
-			<template #titleTrailing>
-				<N8nPreviewTag size="medium" />
+			<template v-if="settingsStore.isEnterprisePlan" #titleTrailing>
+				<N8nEnterpriseReadinessBadge
+					size="xsmall"
+					data-test-id="n8n-agent-enterprise-readiness-badge"
+				/>
 			</template>
 		</N8nSettingsPageHeader>
 
@@ -432,9 +473,9 @@ function openAiUsageSettings() {
 			:heading="i18n.baseText('settings.n8nAgent.empty.title')"
 			:description="i18n.baseText('settings.n8nAgent.empty.description')"
 			:button-text="isAdmin ? i18n.baseText('settings.n8nAgent.empty.enable') : undefined"
-			:button-disabled="store.isSaving || isTestingCredential"
+			:button-disabled="store.isSaving || isEnabling || isTestingCredential"
 			button-variant="solid"
-			@click:button="handleEnable"
+			@click:button="enable"
 		>
 			<template v-if="isAdmin" #additionalContent>
 				<N8nText size="small" color="text-light">
@@ -446,70 +487,20 @@ function openAiUsageSettings() {
 		<template v-else-if="isAdmin">
 			<N8nSettingsSection>
 				<N8nSettingsRowGroup>
-					<N8nSettingsRow
+					<N8nSettingsEnableRow
 						:title="i18n.baseText('settings.n8nAgent.enable.label')"
 						:description="i18n.baseText('settings.n8nAgent.enable.description')"
-					>
-						<template #action>
-							<N8nButton
-								v-if="isOff"
-								variant="solid"
-								size="medium"
-								:label="i18n.baseText('settings.n8nAgent.status.enable')"
-								:disabled="store.isSaving || isTestingCredential"
-								data-test-id="n8n-agent-enable-button"
-								@click="handleEnable"
-							/>
-							<N8nDropdownMenu
-								v-else
-								:items="disableMenuItems"
-								placement="bottom-end"
-								data-test-id="n8n-agent-status-menu"
-								@select="handleStatusAction"
-							>
-								<template #trigger>
-									<N8nButton
-										variant="outline"
-										size="medium"
-										:disabled="store.isSaving"
-										:aria-label="i18n.baseText('settings.n8nAgent.status.manage')"
-									>
-										<span :class="$style.statusLabel">
-											<span
-												:class="[
-													$style.statusDot,
-													isSetupRequired ? $style.statusDotWarning : $style.statusDotSuccess,
-												]"
-												aria-hidden="true"
-											/>
-											{{
-												isSetupRequired
-													? i18n.baseText('settings.n8nAgent.status.setupRequired')
-													: i18n.baseText('settings.n8nAgent.status.enabled')
-											}}
-											<N8nIcon icon="chevron-down" size="small" />
-										</span>
-									</N8nButton>
-								</template>
-								<template #item-leading="{ item }">
-									<N8nIcon
-										v-if="item.icon?.type === 'icon'"
-										:class="$style.danger"
-										:icon="item.icon.value"
-										size="small"
-									/>
-								</template>
-								<template #item-label="{ item }">
-									<span :class="$style.danger">{{ item.label }}</span>
-								</template>
-							</N8nDropdownMenu>
-						</template>
-					</N8nSettingsRow>
-
+						:enabled="isSwitchOn"
+						:disabled="store.isSaving || isEnabling || isTestingCredential"
+						switch-test-id="n8n-agent-enable-toggle"
+						@update:enabled="onEnabledChange"
+					/>
+				</N8nSettingsRowGroup>
+				<N8nSettingsRowGroup v-if="isEnabled && (showCredentialsRows || showSandboxRow)">
 					<N8nSettingsRow
 						v-if="showCredentialsRows"
 						:class="{ [$style.dim]: isOff }"
-						:clickable="!isOff && isModelConfigured"
+						:clickable="!isOff && isModelConfigured && !isModelReadOnly"
 						data-test-id="n8n-agent-model-row"
 						@click="openModelDialog"
 					>
@@ -533,62 +524,51 @@ function openAiUsageSettings() {
 								:label="i18n.baseText('settings.n8nAgent.modelCredential.add')"
 								:disabled="store.isSaving"
 								data-test-id="n8n-agent-model-add"
-								@click="openModelSetup"
+								@click="continueSetup"
 							/>
+							<N8nText
+								v-else-if="isModelReadOnly"
+								size="small"
+								color="text-light"
+								data-test-id="n8n-agent-model-env-value"
+							>
+								{{ modelValue }}
+							</N8nText>
 							<N8nSettingsRowConfigure v-else :value="modelValue" />
 						</template>
 					</N8nSettingsRow>
 
-					<N8nSettingsRow
+					<SandboxSettingsRow
 						v-if="showSandboxRow"
 						:class="{ [$style.dim]: isOff }"
-						:clickable="!isOff && isSandboxConfigured"
-						data-test-id="n8n-agent-sandbox-row"
-						@click="openSandboxDialog"
-					>
-						<template #info>
-							<N8nText bold size="medium" color="text-dark">
-								{{ i18n.baseText('settings.n8nAgent.sandbox.label') }}
-							</N8nText>
-							<N8nText size="small" :color="sandboxDescription.warning ? 'warning' : 'text-light'">
-								{{ i18n.baseText(sandboxDescription.key) }}
-							</N8nText>
-						</template>
-						<template v-if="!isOff" #action>
-							<N8nButton
-								v-if="!isSandboxConfigured"
-								variant="solid"
-								size="medium"
-								:label="i18n.baseText('settings.n8nAgent.sandbox.add')"
-								:disabled="store.isSaving"
-								data-test-id="n8n-agent-sandbox-add"
-								@click="openSandboxDialog"
-							/>
-							<N8nSettingsRowConfigure v-else :value="sandboxValue" />
-						</template>
-					</N8nSettingsRow>
+						:disabled="isOff"
+						@configure="openSandboxDialog"
+						@enable="enableEnvironmentSandboxIfNeeded"
+					/>
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 
+			<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+			<DefaultEditorSetting v-if="isEnabled" />
+
 			<N8nSettingsSection
-				v-if="showCredentialsRows || isComputerUseExperimentEnabled || isBrowserUseEnabled"
+				v-if="isEnabled"
 				:title="i18n.baseText('settings.n8nAgent.capabilities.title')"
 				:description="i18n.baseText('settings.n8nAgent.capabilities.description')"
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
 						v-if="showCredentialsRows"
-						:class="{ [$style.dim]: isOff }"
-						:clickable="!isOff && searchState !== 'notset'"
+						:clickable="!isOff && searchState !== 'notset' && !isSearchEnvManaged"
 						data-test-id="n8n-agent-search-row"
-						@click="activeDialog = 'search'"
+						@click="openSearchDialog"
 					>
 						<template #info>
 							<span :class="$style.titleWithTag">
 								<N8nText bold size="medium" color="text-dark">
 									{{ i18n.baseText('settings.n8nAgent.search.label') }}
 								</N8nText>
-								<N8nBadge theme="success" size="xsmall">
+								<N8nBadge variant="success" size="xsmall">
 									{{ i18n.baseText('settings.n8nAgent.search.recommended') }}
 								</N8nBadge>
 							</span>
@@ -608,38 +588,27 @@ function openAiUsageSettings() {
 								:label="i18n.baseText('settings.n8nAgent.search.setup')"
 								:disabled="store.isSaving"
 								data-test-id="n8n-agent-search-setup"
-								@click="activeDialog = 'search'"
+								@click="openSearchDialog"
 							/>
+							<N8nText
+								v-else-if="isSearchEnvManaged"
+								size="small"
+								color="text-light"
+								data-test-id="n8n-agent-search-env-value"
+							>
+								{{ searchValue }}
+							</N8nText>
 							<N8nSettingsRowConfigure v-else :value="searchValue" />
 						</template>
 					</N8nSettingsRow>
 
 					<N8nSettingsRow
-						v-if="isComputerUseExperimentEnabled"
-						:class="{ [$style.dim]: isOff }"
-						:title="i18n.baseText('settings.n8nAgent.computerUse.label')"
-						:description="i18n.baseText('settings.n8nAgent.computerUse.description')"
-					>
-						<template #action>
-							<N8nSwitch
-								:model-value="!(store.settings?.localGatewayDisabled ?? false)"
-								:disabled="store.isSaving || isOff"
-								:aria-label="i18n.baseText('settings.n8nAgent.computerUse.label')"
-								data-test-id="n8n-agent-computer-use-toggle"
-								@update:model-value="handleComputerUseToggle"
-							/>
-						</template>
-					</N8nSettingsRow>
-
-					<N8nSettingsRow
-						v-if="isBrowserUseEnabled"
-						:class="{ [$style.dim]: isOff }"
 						:title="i18n.baseText('settings.n8nAgent.browserUse.label')"
 						:description="i18n.baseText('settings.n8nAgent.browserUse.description')"
 					>
 						<template #action>
 							<N8nSwitch
-								:model-value="store.settings?.browserUseEnabled ?? true"
+								:model-value="!isOff && (store.settings?.browserUseEnabled ?? true)"
 								:disabled="store.isSaving || isOff"
 								:aria-label="i18n.baseText('settings.n8nAgent.browserUse.label')"
 								data-test-id="n8n-agent-browser-use-toggle"
@@ -651,19 +620,18 @@ function openAiUsageSettings() {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection
-				v-if="isMcpConnectionsExperimentEnabled"
+				v-if="isEnabled"
 				:title="i18n.baseText('settings.n8nAgent.mcp.title')"
 				:description="i18n.baseText('settings.n8nAgent.mcp.description')"
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
-						:class="{ [$style.dim]: isOff }"
 						:title="i18n.baseText('settings.n8nAgent.mcpAccess.label')"
 						:description="i18n.baseText('settings.n8nAgent.mcpAccess.description')"
 					>
 						<template #action>
 							<N8nSwitch
-								:model-value="isMcpAccessEnabled"
+								:model-value="!isOff && isMcpAccessEnabled"
 								:disabled="store.isSaving || isOff"
 								:aria-label="i18n.baseText('settings.n8nAgent.mcpAccess.label')"
 								data-test-id="n8n-agent-mcp-access-toggle"
@@ -675,15 +643,16 @@ function openAiUsageSettings() {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection
+				v-if="isEnabled"
 				:title="i18n.baseText('settings.n8nAgent.permissions.title')"
-				:description="i18n.baseText('settings.n8nAgent.permissions.description')"
+				:description="permissionsDescription"
 			>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
 						v-for="group in permissionGroups"
 						:key="group.id"
 						v-model="expandedGroups[group.id]"
-						:class="{ [$style.dim]: isGroupLocked(group) }"
+						:class="{ [$style.dim]: !isOff && isGroupLocked(group) }"
 						:title="i18n.baseText(group.labelKey)"
 						:expandable="!isGroupLocked(group)"
 						:expand-label="groupSummary(group)"
@@ -695,6 +664,14 @@ function openAiUsageSettings() {
 						</template>
 						<template #expanded>
 							<div :class="$style.permissionList">
+								<N8nText
+									v-if="group.descriptionKey"
+									:class="$style.permissionDescription"
+									size="small"
+									color="text-light"
+								>
+									{{ i18n.baseText(group.descriptionKey) }}
+								</N8nText>
 								<div v-for="key in group.keys" :key="key" :class="$style.permissionRow">
 									<N8nText size="small" color="text-dark">
 										{{ i18n.baseText(`settings.n8nAgent.permissions.${key}` as BaseTextKey) }}
@@ -724,79 +701,102 @@ function openAiUsageSettings() {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection
+				v-if="isEnabled"
 				:title="i18n.baseText('settings.n8nAgent.dataSharing.title')"
-				:description="i18n.baseText('settings.n8nAgent.dataSharing.description')"
 			>
+				<template #description>
+					<N8nText size="small" color="text-base">
+						{{ i18n.baseText('settings.n8nAgent.dataSharing.description') }}
+						<!-- Same docs phrase as N8nSettingsPageHeader: lead-in, inline external link, icon. -->
+						<span :class="$style.docsPhrase">
+							{{ i18n.baseText('settings.n8nAgent.dataSharing.docsLeadingText') }}
+							<N8nExternalLink
+								inline
+								size="xsmall"
+								:href="DATA_SHARING_DOCS_URL"
+								data-test-id="n8n-agent-data-sharing-docs-link"
+							>
+								{{ i18n.baseText('settings.n8nAgent.dataSharing.docsLabel') }}
+							</N8nExternalLink>
+						</span>
+					</N8nText>
+				</template>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
-						:class="{ [$style.dim]: isOff }"
-						:title="i18n.baseText('settings.n8nAgent.dataSharing.manage.label')"
-						:description="i18n.baseText('settings.n8nAgent.dataSharing.manage.description')"
-						:clickable="!isOff && store.canManageAiUsage"
-						data-test-id="n8n-agent-data-sharing-row"
-						@click="openAiUsageSettings"
+						:title="i18n.baseText('settings.ai.allowSendingSchema.label')"
+						:description="i18n.baseText('settings.ai.allowSendingSchema.description')"
+						data-test-id="n8n-agent-data-sharing-schema-row"
 					>
-						<template v-if="!isOff && store.canManageAiUsage" #action>
-							<N8nSettingsRowConfigure />
+						<template #action>
+							<N8nSwitch
+								:model-value="!isOff"
+								disabled
+								:aria-label="i18n.baseText('settings.ai.allowSendingSchema.label')"
+								data-test-id="n8n-agent-data-sharing-schema-toggle"
+							/>
+						</template>
+					</N8nSettingsRow>
+					<N8nSettingsRow
+						:title="i18n.baseText('settings.ai.allowSendingParameterValues.label')"
+						:description="i18n.baseText('settings.n8nAgent.dataSharing.values.description')"
+						data-test-id="n8n-agent-data-sharing-values-row"
+					>
+						<template #action>
+							<N8nSwitch
+								:model-value="!isOff && isDataSharingEnabled"
+								:disabled="!canToggleDataSharing"
+								:aria-label="i18n.baseText('settings.ai.allowSendingParameterValues.label')"
+								data-test-id="n8n-agent-data-sharing-values-toggle"
+								@update:model-value="handleDataSharingToggle"
+							/>
 						</template>
 					</N8nSettingsRow>
 				</N8nSettingsRowGroup>
+				<N8nCallout
+					v-if="!isDataSharingEnabled"
+					theme="warning"
+					data-test-id="n8n-agent-data-sharing-deprecation-notice"
+				>
+					{{ i18n.baseText('settings.ai.allowSendingParameterValues.deprecated') }}
+					<template v-if="!settingsStore.isCloudDeployment">
+						{{ i18n.baseText('settings.ai.allowSendingParameterValues.deprecated.envVar') }}
+					</template>
+				</N8nCallout>
 			</N8nSettingsSection>
 		</template>
 
+		<!-- Experiment cleanup: remove with openWorkflowInAssistant. Members see
+		none of the admin sections above, so they get the row on its own. -->
+		<DefaultEditorSetting v-if="!isAdmin && !store.isLoading && !neverConfigured && isEnabled" />
+
 		<ConnectionDialog
-			v-if="showCredentialsRows"
+			v-if="showCredentialsRows && !isModelReadOnly"
 			kind="model"
 			:open="activeDialog === 'model'"
 			:setup="setupChain"
 			@update:open="setDialogOpen('model', $event)"
-			@saved="handleModelSaved"
+			@saved="handleDialogSaved"
 		/>
 		<ConnectionDialog
-			v-if="showSandboxRow"
+			v-if="showSandboxRow && !isSandboxEnvManaged"
 			kind="sandbox"
 			:open="activeDialog === 'sandbox'"
 			:setup="showCredentialsRows && setupChain"
 			@update:open="setDialogOpen('sandbox', $event)"
-			@saved="handleSandboxSaved"
-			@back="activeDialog = 'model'"
+			@saved="handleDialogSaved"
 		/>
 		<ConnectionDialog
-			v-if="showCredentialsRows"
+			v-if="showCredentialsRows && !isSearchEnvManaged"
 			kind="search"
 			:open="activeDialog === 'search'"
 			:setup="setupChain"
 			@update:open="setDialogOpen('search', $event)"
-			@back="activeDialog = 'sandbox'"
+			@saved="handleDialogSaved"
 		/>
 	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
-.statusLabel {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-.statusDot {
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: var(--radius--full);
-}
-
-.statusDotSuccess {
-	background: var(--text-color--success);
-}
-
-.statusDotWarning {
-	background: var(--text-color--warning);
-}
-
-.danger {
-	color: var(--text-color--danger);
-}
-
 .titleWithTag {
 	display: inline-flex;
 	align-items: center;
@@ -808,11 +808,20 @@ function openAiUsageSettings() {
 	pointer-events: none;
 }
 
+/* Keeps "lead-in + link + icon" on one line, as the page header does. */
+.docsPhrase {
+	white-space: nowrap;
+}
+
 .permissionList {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
-	padding: 0 0 var(--spacing--2xs) var(--spacing--sm);
+	padding: var(--spacing--2xs) var(--spacing--sm);
+}
+
+.permissionDescription {
+	padding-bottom: var(--spacing--2xs);
 }
 
 .permissionRow {

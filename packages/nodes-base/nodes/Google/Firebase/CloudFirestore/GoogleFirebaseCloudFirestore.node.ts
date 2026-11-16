@@ -7,15 +7,19 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, jsonParse } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath, requestUrl } from 'n8n-workflow';
+
+import { parseAndResolveQueryParameters } from '@utils/query-parameters';
 
 import { collectionFields, collectionOperations } from './CollectionDescription';
 import { documentFields, documentOperations } from './DocumentDescription';
 import {
+	documentsPath,
 	fullDocumentToJson,
 	googleApiRequest,
 	googleApiRequestAllItems,
 	jsonToDocument,
+	toPathValue,
 } from './GenericFunctions';
 import { generatePairedItemData } from '../../../../utils/utilities';
 
@@ -26,7 +30,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:googleFirebaseCloudFirestore.png',
 		group: ['input'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		description: 'Interact with Google Firebase - Cloud Firestore API',
 		schemaPath: 'Google/Firebase/CloudFirestore',
@@ -105,10 +109,10 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					this,
 					'results',
 					'GET',
-					'',
+					requestPath``,
 					{},
 					{},
-					'https://firebase.googleapis.com/v1beta1/projects',
+					requestUrl`https://firebase.googleapis.com/v1beta1/projects`,
 				);
 				// @ts-ignore
 				const returnData = collections.map((o) => ({
@@ -154,7 +158,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				responseData = await googleApiRequest.call(
 					this,
 					'POST',
-					`/${projectId}/databases/${database}/documents:batchGet`,
+					requestPath`/${projectId}/databases/${database}/documents:batchGet`,
 					{ documents: documentList },
 				);
 
@@ -193,7 +197,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						const document = { fields: {} };
 						columnList.map((column) => {
 							// @ts-ignore
-							if (item.json[column]) {
+							if (Object.prototype.hasOwnProperty.call(item.json, column)) {
 								// @ts-ignore
 								document.fields[column] = jsonToDocument(item.json[column] as IDataObject);
 							} else {
@@ -204,7 +208,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/${projectId}/databases/${database}/documents/${collection}`,
+							documentsPath(projectId, database, collection, nodeVersion),
 							document,
 							{ documentId },
 						);
@@ -237,14 +241,14 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 								this,
 								'documents',
 								'GET',
-								`/${projectId}/databases/${database}/documents/${collection}`,
+								documentsPath(projectId, database, collection, nodeVersion),
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
 							const getAllResponse = (await googleApiRequest.call(
 								this,
 								'GET',
-								`/${projectId}/databases/${database}/documents/${collection}`,
+								documentsPath(projectId, database, collection, nodeVersion),
 								{},
 								{ pageSize: limit },
 							)) as IDataObject;
@@ -290,7 +294,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						await googleApiRequest.call(
 							this,
 							'DELETE',
-							`/${projectId}/databases/${database}/documents/${collection}/${documentId}`,
+							requestPath`${documentsPath(projectId, database, collection, nodeVersion)}/${toPathValue(nodeVersion, documentId)}`,
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
@@ -315,7 +319,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					const document = {};
 					columnList.map((column) => {
 						// @ts-ignore
-						if (item.json.hasOwnProperty(column)) {
+						if (Object.prototype.hasOwnProperty.call(item.json, column)) {
 							// @ts-ignore
 							document[column] = jsonToDocument(item.json[column] as IDataObject);
 						} else {
@@ -340,7 +344,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				const { writeResults, status } = await googleApiRequest.call(
 					this,
 					'POST',
-					`/${projectId}/databases/${database}/documents:batchWrite`,
+					requestPath`/${projectId}/databases/${database}/documents:batchWrite`,
 					{ writes: updates },
 				);
 
@@ -363,11 +367,18 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				await Promise.all(
 					items.map(async (_: IDataObject, i: number) => {
 						const query = this.getNodeParameter('query', i) as string;
+						const queryParameters = this.getNodeParameter('queryParameters', i, '[]');
+						const body = parseAndResolveQueryParameters(
+							query,
+							queryParameters,
+							this.getNode(),
+							i,
+						) as IDataObject;
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/${projectId}/databases/${database}/documents:runQuery`,
-							jsonParse(query),
+							requestPath`/${projectId}/databases/${database}/documents:runQuery`,
+							body,
 						);
 
 						responseData = responseData.map(
@@ -409,7 +420,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 								this,
 								'collectionIds',
 								'POST',
-								`/${projectId}/databases/${database}/documents:listCollectionIds`,
+								requestPath`/${projectId}/databases/${database}/documents:listCollectionIds`,
 							);
 							// @ts-ignore
 							responseData = getAllResponse.map((o) => ({ name: o }));
@@ -418,7 +429,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 							const getAllResponse = (await googleApiRequest.call(
 								this,
 								'POST',
-								`/${projectId}/databases/${database}/documents:listCollectionIds`,
+								requestPath`/${projectId}/databases/${database}/documents:listCollectionIds`,
 								{},
 								{ pageSize: limit },
 							)) as IDataObject;

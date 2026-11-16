@@ -26,8 +26,6 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
 	MODAL_CONFIRM,
-	SLACK_NODE_TYPE,
-	TELEGRAM_NODE_TYPE,
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -46,18 +44,10 @@ import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import {
-	filterTelegramHitlParameters,
-	useEnhancedHitlTelegramExperiment,
-} from '@/experiments/enhancedHitlTelegram';
-import {
-	filterSlackHitlParameters,
-	useEnhancedHitlSlackExperiment,
-} from '@/experiments/enhancedHitlSlack';
-import {
 	getParameterTypeOption,
 	type ParameterOptionsOverrides,
 } from '@/features/ndv/shared/ndv.utils';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 import { captureException } from '@sentry/vue';
 import { throttledWatch } from '@vueuse/core';
 import get from 'lodash/get';
@@ -101,6 +91,8 @@ type Props = {
 	optionsOverrides?: ParameterOptionsOverrides;
 	assignmentCollectionEditableValueIndices?: Record<string, number[]>;
 	layout?: 'inline';
+	parameterIssues?: Record<string, string[]>;
+	fromAiDisabledParameters?: string[];
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -124,8 +116,6 @@ const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
-const { isFeatureEnabled: isEnhancedHitlTelegramEnabled } = useEnhancedHitlTelegramExperiment();
-const { isFeatureEnabled: isEnhancedHitlSlackEnabled } = useEnhancedHitlSlackExperiment();
 const {
 	dismissCallout,
 	isCalloutDismissed,
@@ -198,14 +188,7 @@ const parameterItems = ref<ParameterComputedData[]>([]);
 let previousParameterNames: string[] = [];
 
 throttledWatch(
-	[
-		() => props.parameters,
-		() => props.nodeValues,
-		node,
-		hasChatOrManualChatParent,
-		isEnhancedHitlTelegramEnabled,
-		isEnhancedHitlSlackEnabled,
-	],
+	[() => props.parameters, () => props.nodeValues, node, hasChatOrManualChatParent],
 	async () => {
 		// Pre-calculate disabled state map
 		const disabledMap: Record<string, boolean> = {};
@@ -246,19 +229,6 @@ throttledWatch(
 			(node.value.typeVersion ?? 0) >= 3.1
 		) {
 			filteredParameters = updateAgentParameters(parameters, node.value.name);
-		} else if (
-			node.value &&
-			node.value.type === TELEGRAM_NODE_TYPE &&
-			!isEnhancedHitlTelegramEnabled.value
-		) {
-			filteredParameters = filterTelegramHitlParameters(parameters);
-		} else if (
-			node.value &&
-			// usableAsTool appends `Tool` to the node type; gate the tool variant too.
-			(node.value.type === SLACK_NODE_TYPE || node.value.type === `${SLACK_NODE_TYPE}Tool`) &&
-			!isEnhancedHitlSlackEnabled.value
-		) {
-			filteredParameters = filterSlackHitlParameters(parameters);
 		} else {
 			filteredParameters = parameters;
 		}
@@ -484,9 +454,7 @@ function updateAgentParameters(parameters: INodeProperties[], nodeName: string) 
 				return {
 					...option,
 					disabled: true,
-					description:
-						option.description ??
-						i18n.baseText('parameterInputList.autoRequiresChatTriggerDescription'),
+					description: i18n.baseText('parameterInputList.autoRequiresChatTriggerDescription'),
 				};
 			}),
 		};
@@ -633,7 +601,10 @@ async function getDependentParametersValues(parameter: INodeProperties): Promise
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
-			parameterPath = resolveRelativePath(props.path, parameterPath);
+			// '&recordType' means the recordType next to this parameter. resolveRelativePath
+			// replaces the last path segment, so give it this parameter's path, not the list path:
+			// 'parameters.entries.entry[1].attributes' -> 'entries.entry[1].recordType'
+			parameterPath = resolveRelativePath(getPath(parameter.name), parameterPath);
 
 			returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
 		}
@@ -877,7 +848,7 @@ watch(
 					<template #trailingContent>
 						<N8nIcon
 							icon="x"
-							title="Dismiss"
+							:title="i18n.baseText('generic.dismiss')"
 							size="medium"
 							type="secondary"
 							class="callout-dismiss"
@@ -1028,6 +999,7 @@ watch(
 			/>
 			<AssignmentCollection
 				v-else-if="item.parameter.type === 'assignmentCollection'"
+				class="parameter-item"
 				:parameter="item.parameter"
 				:value="getParameterValue<AssignmentCollectionValue>(item.parameter.name)"
 				:path="item.path"
@@ -1059,6 +1031,8 @@ watch(
 					:key="node?.name"
 					:parameter="item.parameter"
 					:hide-issues="hiddenIssuesInputs.includes(item.parameter.name)"
+					:external-issues="parameterIssues?.[item.parameter.name]"
+					:disable-from-ai="fromAiDisabledParameters?.includes(item.parameter.name)"
 					:value="getParameterValue(item.parameter.name)"
 					:display-options="item.showOptions"
 					:options-overrides="optionsOverrides"
@@ -1098,6 +1072,8 @@ watch(
 </template>
 
 <style lang="scss">
+@use '@/app/css/variables' as *;
+
 .parameter-input-list-wrapper {
 	--input--color--background--disabled: var(--color--background);
 	.icon-button {
@@ -1144,7 +1120,7 @@ watch(
 		padding: 0.7em;
 
 		a {
-			font-weight: var(--font-weight--bold);
+			font-weight: var(--font-weight--medium);
 		}
 	}
 

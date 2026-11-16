@@ -7,7 +7,7 @@ class BuildContext {
 		this.githubOutput = process.env.GITHUB_OUTPUT || null;
 	}
 
-	determine({ event, pr, branch, version, releaseType, pushEnabled }) {
+	determine({ event, pr, branch, version, releaseType, pushEnabled, includeArm64 }) {
 		let context = {
 			version: '',
 			release_type: '',
@@ -37,7 +37,9 @@ class BuildContext {
 				case 'workflow_dispatch':
 					context.version = `branch-${this.sanitizeBranch(branch)}`;
 					context.release_type = 'branch';
-					context.platforms = ['linux/amd64'];
+					// Manual pre-merge proof (e.g. a native-binary check) can opt into arm64;
+					// defaults to amd64-only like other non-release branch builds.
+					context.platforms = includeArm64 ? ['linux/amd64', 'linux/arm64'] : ['linux/amd64'];
 					break;
 
 				case 'push':
@@ -88,7 +90,7 @@ class BuildContext {
 
 	buildMatrix(platforms) {
 		const runners = {
-			'linux/amd64': 'blacksmith-4vcpu-ubuntu-2204',
+			'linux/amd64': 'blacksmith-8vcpu-ubuntu-2204',
 			'linux/arm64': 'blacksmith-8vcpu-ubuntu-2204-arm',
 		};
 
@@ -152,6 +154,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 			releaseType: getArg('release-type'),
 			pushEnabled:
 				pushEnabledArg === 'true' ? true : pushEnabledArg === 'false' ? false : undefined,
+			includeArm64: getArg('include-arm64') === 'true',
 		});
 
 		const matrix = context.buildMatrix(result.platforms);

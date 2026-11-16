@@ -36,4 +36,10 @@ describe('AiTransformDeprecatedRule', () => {
 			expect(result.issues[0].nodeId).toBe('node-Transform A');
 		});
 	});
+
+	describe('getMetadata()', () => {
+		it('should report an executionsFail impact because the node is removed on 3.x', () => {
+			expect(rule.getMetadata().impact).toBe('executionsFail');
+		});
+	});
 });

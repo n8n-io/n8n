@@ -73,7 +73,7 @@ describe('SettingsAiGatewayView', () => {
 			await waitFor(() => expect(screen.getByTestId('settings-ai-gateway')).toBeInTheDocument());
 			const store = useAiGatewayStore();
 			await waitFor(() => expect(store.balance).toBe(42));
-			expect(screen.getByText('$42.00 remaining')).toBeInTheDocument();
+			expect(screen.getByText('$42.00 left')).toBeInTheDocument();
 		});
 
 		it('should not render the balance before data loads', () => {
@@ -82,7 +82,7 @@ describe('SettingsAiGatewayView', () => {
 
 			expect(screen.queryByTestId('ai-gateway-topup-button')).not.toBeNull(); // button present
 			// number not yet visible (balance undefined)
-			expect(screen.queryByText('$42.00 remaining')).not.toBeInTheDocument();
+			expect(screen.queryByText('$42.00 left')).not.toBeInTheDocument();
 		});
 
 		it('should open top-up modal when "Top up credits" button is clicked', async () => {
@@ -97,9 +97,11 @@ describe('SettingsAiGatewayView', () => {
 
 			await userEvent.click(screen.getByTestId('ai-gateway-topup-button'));
 
-			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
-				data: {},
+			await waitFor(() => {
+				expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+					name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+					data: { variant: 'member' },
+				});
 			});
 		});
 	});
@@ -164,14 +166,14 @@ describe('SettingsAiGatewayView', () => {
 			mockGetGatewayUsage.mockResolvedValue({ entries: MOCK_ENTRIES, total: 100 });
 			renderComponent();
 			await waitFor(() => expect(screen.getByText('gemini-pro')).toBeInTheDocument());
-			await waitFor(() => expect(screen.getByText('$42.00 remaining')).toBeInTheDocument());
+			await waitFor(() => expect(screen.getByText('$42.00 left')).toBeInTheDocument());
 
 			mockGetGatewayWallet.mockClear();
 			mockGetGatewayWallet.mockResolvedValue({ balance: 35, budget: 100 });
 			await userEvent.click(screen.getByRole('button', { name: /refresh/i }));
 
 			await waitFor(() => expect(mockGetGatewayWallet).toHaveBeenCalledOnce());
-			await waitFor(() => expect(screen.getByText('$35.00 remaining')).toBeInTheDocument());
+			await waitFor(() => expect(screen.getByText('$35.00 left')).toBeInTheDocument());
 		});
 	});
 

@@ -1,0 +1,17 @@
+{
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.go.json",
+		"@n8n/typescript-config/tsconfig.backend.go.json"
+	],
+	"compilerOptions": {
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+		"lib": ["es2023", "dom"],
+		"types": ["node", "vitest/globals"],
+		"strict": true,
+		"strictFunctionTypes": false,
+		"strictPropertyInitialization": false,
+		"useUnknownInCatchVariables": false
+	},
+	"include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"]
+}

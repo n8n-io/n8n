@@ -3,7 +3,7 @@ import { WorkflowReviewRequestRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
-import type { WorkflowPublishGuard } from '@/workflows/workflow-publish-guard-proxy.service';
+import type { WorkflowPublishGuard } from '@n8n/backend-services';
 
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
 
@@ -17,8 +17,10 @@ export class WorkflowReviewPublishGuard implements WorkflowPublishGuard {
 	async assertCanPublish(workflowId: string): Promise<void> {
 		if (!(await this.featureGate.isAvailable())) return;
 
-		const request =
-			await this.workflowReviewRequestRepository.findOpenRequestForWorkflow(workflowId);
+		const request = await this.workflowReviewRequestRepository.findOpenRequestForWorkflow(
+			workflowId,
+			{},
+		);
 		if (!request) return;
 
 		const reason: WorkflowPublishBlockedReason =

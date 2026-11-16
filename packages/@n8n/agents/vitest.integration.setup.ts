@@ -124,7 +124,13 @@ const MODELS_DEV_FIXTURE = {
 	},
 };
 
-const SENSITIVE_RESPONSE_HEADERS = ['anthropic-organization-id'];
+const SENSITIVE_RESPONSE_HEADERS = [
+	'openai-organization',
+	'openai-project',
+	'anthropic-organization-id',
+	'anthropic-workspace-id',
+	'set-cookie',
+];
 const ENCODING_RESPONSE_HEADERS = ['content-encoding', 'content-length', 'transfer-encoding'];
 
 function sanitizeCassette(defs: nock.Definition[]): nock.Definition[] {
@@ -173,6 +179,7 @@ function decodeCompressedJsonResponse(
 if (IS_REPLAY_MODE) {
 	process.env.OPENAI_API_KEY = 'sk-proj-1234567890';
 	process.env.ANTHROPIC_API_KEY = 'sk-proj-1234567890';
+	process.env.VERCEL_AI_GATEWAY_API_KEY = 'vercel-test-replay';
 }
 
 if (IS_RECORD_MODE || IS_REPLAY_MODE) {

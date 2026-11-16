@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	APPROVAL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
+	WAIT_TOOL_NAME,
 	type AgentPersistedMessageContentPart,
 	type AgentPersistedMessageDto,
 } from '@n8n/api-types';
@@ -66,6 +67,73 @@ describe('rebuildInteractiveFromHistory', () => {
 		expect(result?.toolName).toBe(APPROVAL_TOOL_NAME);
 		expect(result?.resolvedAt).toBeDefined();
 		expect(result?.resolvedValue).toEqual({ approved: false });
+	});
+
+	// The workflow tool's name is per-workflow, so the payload's own marker is
+	// what makes the card renderable here as well as on the chat platforms.
+	it('rebuilds an OPEN waiting card from a Wait-node suspend payload', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'approval_workflow',
+			toolCallId: 'call-wait-1',
+			input: { input: 'go' },
+			suspendPayload: {
+				type: 'workflow_wait',
+				title: 'Waiting on "Approval workflow"',
+				components: [
+					{ type: 'section', text: 'The "Approval workflow" workflow is paused.' },
+					{ type: 'button', label: 'Check for the result', value: 'continue', style: 'primary' },
+					{ type: 'button', label: 'Stop waiting', value: 'cancel', style: 'danger' },
+				],
+			},
+			state: 'suspended',
+		});
+
+		expect(result?.toolName).toBe(WAIT_TOOL_NAME);
+		expect(result?.input).toEqual({
+			card: {
+				title: 'Waiting on "Approval workflow"',
+				components: [
+					{ type: 'section', text: 'The "Approval workflow" workflow is paused.' },
+					{ type: 'button', label: 'Check for the result', value: 'continue', style: 'primary' },
+					{ type: 'button', label: 'Stop waiting', value: 'cancel', style: 'danger' },
+				],
+			},
+		});
+		expect(result?.resolvedAt).toBeUndefined();
+	});
+
+	it('resolves the waiting card with the button the user clicked', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'approval_workflow',
+			toolCallId: 'call-wait-1',
+			suspendPayload: {
+				type: 'workflow_wait',
+				title: 'Waiting on "Approval workflow"',
+				components: [{ type: 'button', value: 'cancel' }],
+			},
+			output: { type: 'button', value: 'cancel' },
+			state: 'done',
+		});
+
+		expect(result?.resolvedAt).toBe(1);
+		expect(result?.resolvedValue).toEqual({ type: 'button', value: 'cancel' });
+	});
+
+	it('does not show a declined nested approval as approved from the delegate result', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'delegate_subagent',
+			toolCallId: 'call-delegate-1',
+			input: { subAgentId: 'inline', taskName: 'Research API' },
+			suspendPayload: {
+				type: 'approval',
+				toolName: 'http_request',
+				args: { url: 'https://example.com' },
+			},
+			output: { status: 'completed', answer: 'The request was declined.' },
+			state: 'done',
+		});
+
+		expect(result?.resolvedValue).toBeUndefined();
 	});
 });
 
@@ -611,19 +679,31 @@ describe('buildDisplayGroups — interactive payloads', () => {
 });
 
 describe('applyOpenSuspensions', () => {
-	it('stamps the runId onto a matching open interactive card', () => {
+	it('rebuilds a nested approval and leaves resolved cards closed', () => {
+		const delegateInput = {
+			subAgentId: 'inline',
+			taskName: 'research_api',
+			goal: 'Research the requested API',
+			context: 'Use the configured research agent',
+		};
+		const suspendPayload = {
+			type: 'approval',
+			toolName: 'http_request',
+			args: { url: 'https://example.com/data' },
+		};
 		const chat: ChatMessage[] = [
 			{
 				id: 'm1',
 				role: 'assistant',
 				content: '',
-				toolCalls: [{ tool: 'tool_a', toolCallId: 'c-open', state: 'suspended' }],
-				interactive: {
-					toolName: APPROVAL_TOOL_NAME,
-					toolCallId: 'c-open',
-					input: { type: 'approval', toolName: 'tool_a', args: {} },
-				},
-				status: 'awaitingUser',
+				toolCalls: [
+					{
+						tool: 'delegate_subagent',
+						toolCallId: 'parent-tool-call-1',
+						input: delegateInput,
+						state: 'running',
+					},
+				],
 			},
 			{
 				id: 'm2',
@@ -641,10 +721,26 @@ describe('applyOpenSuspensions', () => {
 			},
 		];
 
-		const result = applyOpenSuspensions(chat, [{ toolCallId: 'c-open', runId: 'run-42' }]);
+		const result = applyOpenSuspensions(chat, [
+			{
+				toolCallId: 'parent-tool-call-1',
+				runId: 'parent-run-1',
+				suspendPayload,
+			},
+		]);
 
-		expect(result[0].interactive?.runId).toBe('run-42');
-		// Resolved card not in the suspension list — runId stays undefined.
+		expect(result[0].toolCalls?.[0]).toMatchObject({
+			input: delegateInput,
+			suspendPayload,
+			state: 'suspended',
+			runId: 'parent-run-1',
+		});
+		expect(result[0].interactive).toMatchObject({
+			toolName: APPROVAL_TOOL_NAME,
+			input: suspendPayload,
+			runId: 'parent-run-1',
+		});
+		expect(result[0].status).toBe('awaitingUser');
 		expect(result[1].interactive?.runId).toBeUndefined();
 	});
 
@@ -715,5 +811,32 @@ describe('applyOpenSuspensions', () => {
 		];
 		applyOpenSuspensions(chat, [{ toolCallId: 'unknown', runId: 'run-x' }]);
 		expect(chat[0].interactive).toBeUndefined();
+	});
+});
+
+describe('background task signals in history', () => {
+	it('keeps a signal-only message and its stable execution ID', () => {
+		const backgroundJobSignal = {
+			tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+		} as const;
+		const messages = convertDbMessages([
+			{
+				id: 'wake:assistant',
+				executionId: 'wake',
+				role: 'assistant',
+				content: [],
+				executionStatus: 'running',
+				backgroundTaskSignal: { tasks: [...backgroundJobSignal.tasks] },
+			},
+		]);
+		expect(messages).toHaveLength(1);
+		expect(messages[0]).toMatchObject({ executionId: 'wake', content: '', backgroundJobSignal });
+		expect(buildDisplayGroups(messages)).toEqual([
+			{
+				id: 'wake:background-job-signal',
+				kind: 'backgroundJobSignal',
+				signal: backgroundJobSignal,
+			},
+		]);
 	});
 });

@@ -1,10 +1,15 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, WAIT_INDEFINITELY } from 'n8n-workflow';
 import nock from 'nock';
 
 import * as utilities from '../../../../utils/utilities';
 import { Github } from '../../Github.node';
 import type * as _importType0 from '../../../../utils/utilities';
+
+vi.mock('../../../../utils/utilities', async () => ({
+	...(await vi.importActual<typeof _importType0>('../../../../utils/utilities')),
+	getFileSha: vi.fn().mockResolvedValue('mockedSHA'),
+}));
 
 describe('Test Github Node', () => {
 	describe('Workflow Dispatch', () => {
@@ -88,10 +93,6 @@ describe('Test Github Node', () => {
 				};
 
 				vi.spyOn(utilities, 'removeTrailingSlash');
-				vi.mock('../../../../utils/utilities', async () => ({
-					...(await vi.importActual<typeof _importType0>('../../../../utils/utilities')),
-					getFileSha: vi.fn().mockResolvedValue('mockedSHA'),
-				}));
 			});
 
 			it('should call remove trailing slash', async () => {
@@ -124,7 +125,9 @@ describe('Test Github Node', () => {
 						json: true,
 						method: 'GET',
 						qs: {},
-						uri: 'https://api.github.com/repos/me/repo/contents/path%2Fto%2Ffile',
+						uri: expect.objectContaining({
+							value: 'https://api.github.com/repos/me/repo/contents/path%2Fto%2Ffile',
+						}),
 					},
 				);
 			});
@@ -179,7 +182,7 @@ describe('Test Github Node', () => {
 					requestWithAuthentication: vi
 						.fn()
 						.mockImplementation(async (_credentialType, options) => {
-							if (options.uri.includes('dispatches') && options.method === 'POST') {
+							if (String(options.uri).includes('dispatches') && options.method === 'POST') {
 								const error: any = new Error('Not Found');
 								error.statusCode = 404;
 								error.message = 'Not Found';
@@ -360,9 +363,11 @@ describe('Test Github Node', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'POST',
-					uri: expect.stringContaining(
-						`/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`,
-					),
+					uri: expect.objectContaining({
+						value: expect.stringContaining(
+							`/repos/${owner}/${repository}/actions/workflows/${workflowId}/dispatches`,
+						),
+					}),
 					body: expect.objectContaining({
 						ref: 'main',
 						inputs: expect.objectContaining({
@@ -435,7 +440,9 @@ describe('Test Github Node', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'PUT',
-					uri: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/disable`,
+					uri: expect.objectContaining({
+						value: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/disable`,
+					}),
 				}),
 			);
 		});
@@ -477,7 +484,9 @@ describe('Test Github Node', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'PUT',
-					uri: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/enable`,
+					uri: expect.objectContaining({
+						value: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/enable`,
+					}),
 				}),
 			);
 		});
@@ -519,7 +528,9 @@ describe('Test Github Node', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'GET',
-					uri: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}`,
+					uri: expect.objectContaining({
+						value: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}`,
+					}),
 				}),
 			);
 		});
@@ -561,7 +572,9 @@ describe('Test Github Node', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'GET',
-					uri: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/timing`,
+					uri: expect.objectContaining({
+						value: `https://api.github.com/repos/${owner}/${repository}/actions/workflows/${workflowId}/timing`,
+					}),
 				}),
 			);
 		});
@@ -641,7 +654,7 @@ describe('Test Github Node', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://api.github.com/issues',
+					uri: expect.objectContaining({ value: 'https://api.github.com/issues' }),
 					qs: expect.not.objectContaining({ state: 'closed' }),
 				}),
 			);
@@ -667,7 +680,7 @@ describe('Test Github Node', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://api.github.com/issues',
+					uri: expect.objectContaining({ value: 'https://api.github.com/issues' }),
 					qs: expect.objectContaining({ state: 'closed' }),
 				}),
 			);
@@ -693,10 +706,109 @@ describe('Test Github Node', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'GET',
-					uri: 'https://api.github.com/issues',
+					uri: expect.objectContaining({ value: 'https://api.github.com/issues' }),
 					qs: expect.objectContaining({ labels: 'bug' }),
 				}),
 			);
+		});
+	});
+
+	describe('Dispatch and Wait - Limit Wait Time', () => {
+		const now = 1683028800000;
+		let githubNode: Github;
+		let mockExecutionContext: any;
+
+		// Only the `limitWaitTime` values vary between these tests; everything else is a
+		// valid dispatchAndWait configuration.
+		const setLimitWaitTime = (values: object | undefined) => {
+			mockExecutionContext.getNodeParameter.mockImplementation(
+				(parameterName: string, _itemIndex: number, defaultValue: unknown) => {
+					if (parameterName === 'options.limitWaitTime.values') return values ?? defaultValue;
+					if (parameterName === 'resource') return 'workflow';
+					if (parameterName === 'operation') return 'dispatchAndWait';
+					if (parameterName === 'authentication') return 'accessToken';
+					if (parameterName === 'owner') return 'testOwner';
+					if (parameterName === 'repository') return 'testRepository';
+					if (parameterName === 'workflowId') return 147025216;
+					if (parameterName === 'ref') return 'main';
+					if (parameterName === 'inputs') return '{}';
+					return defaultValue;
+				},
+			);
+		};
+
+		beforeEach(() => {
+			vi.useFakeTimers({ now });
+			githubNode = new Github();
+			mockExecutionContext = {
+				getNode: vi.fn().mockReturnValue({ name: 'Github' }),
+				getNodeParameter: vi.fn(),
+				getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+				continueOnFail: vi.fn().mockReturnValue(false),
+				putExecutionToWait: vi.fn(),
+				setMetadata: vi.fn(),
+				getCredentials: vi.fn().mockResolvedValue({
+					server: 'https://api.github.com',
+					user: 'test',
+					accessToken: 'test',
+				}),
+				helpers: {
+					returnJsonArray: vi.fn().mockReturnValue([{ json: {} }]),
+					requestWithAuthentication: vi.fn().mockResolvedValue({}),
+					constructExecutionMetaData: vi.fn().mockReturnValue([{ json: {} }]),
+				},
+				getWorkflowDataProxy: vi.fn().mockReturnValue({
+					$execution: { resumeUrl: 'https://example.com/webhook' },
+				}),
+			};
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should wait indefinitely when no limit is set', async () => {
+			setLimitWaitTime(undefined);
+
+			await githubNode.execute.call(mockExecutionContext);
+
+			expect(mockExecutionContext.putExecutionToWait).toHaveBeenCalledWith(WAIT_INDEFINITELY);
+		});
+
+		it('should wait for the configured time interval', async () => {
+			setLimitWaitTime({
+				limitType: 'afterTimeInterval',
+				resumeAmount: 30,
+				resumeUnit: 'minutes',
+			});
+
+			await githubNode.execute.call(mockExecutionContext);
+
+			expect(mockExecutionContext.putExecutionToWait).toHaveBeenCalledWith(
+				new Date(now + 30 * 60 * 1000),
+			);
+		});
+
+		it('should wait until the configured date and time', async () => {
+			const maxDateAndTime = '2023-05-02T12:00:00.000Z';
+			setLimitWaitTime({ limitType: 'atSpecifiedTime', maxDateAndTime });
+
+			await githubNode.execute.call(mockExecutionContext);
+
+			expect(mockExecutionContext.putExecutionToWait).toHaveBeenCalledWith(
+				new Date(maxDateAndTime),
+			);
+		});
+
+		it('should throw for an invalid date and time without dispatching the workflow', async () => {
+			setLimitWaitTime({ limitType: 'atSpecifiedTime', maxDateAndTime: 'not-a-date' });
+
+			await expect(githubNode.execute.call(mockExecutionContext)).rejects.toThrow(
+				NodeOperationError,
+			);
+
+			expect(mockExecutionContext.helpers.requestWithAuthentication).not.toHaveBeenCalled();
+			expect(mockExecutionContext.putExecutionToWait).not.toHaveBeenCalled();
 		});
 	});
 });

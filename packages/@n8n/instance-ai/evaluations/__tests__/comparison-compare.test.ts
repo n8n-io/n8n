@@ -207,14 +207,16 @@ describe('compareBuckets', () => {
 			trialTotal: 10,
 		});
 		const cats = compareBuckets(pr, base).failureCategories;
-		// All five known categories are always present (some at 0/0 — renderer
-		// drops those). The unknown `-` category is dropped here with a warning.
+		// Every known category is always present (some at 0/0 — renderer drops
+		// those). The unknown `-` category is dropped here with a warning.
 		expect(cats.map((c) => c.category).sort()).toEqual([
 			'build_failure',
 			'builder_issue',
+			'expectations_failed',
 			'framework_issue',
 			'mock_issue',
 			'verification_failure',
+			'verification_gap',
 		]);
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining('"-"'));
 		warn.mockRestore();

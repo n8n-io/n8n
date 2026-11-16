@@ -31,6 +31,11 @@ export class SamlPreferencesAttributeMapping extends Z.class({
 	lastName: z.string(),
 	/** SAML attribute mapped to the user's principal name. */
 	userPrincipalName: z.string(),
+	/**
+	 * SAML attribute that states whether the identity provider verified the user's email.
+	 * Accepted values are `true` and `false`, case-insensitive.
+	 */
+	emailVerified: z.string().optional(),
 	/** SAML attribute mapped to the n8n instance role. */
 	n8nInstanceRole: z.string().optional(),
 	/** Each element in the array is formatted like "<projectId>:<role>" */
@@ -54,6 +59,12 @@ export class SamlPreferences extends Z.class({
 	authnRequestsSigned: z.boolean().default(false),
 	wantAssertionsSigned: z.boolean().default(true),
 	wantMessageSigned: z.boolean().default(true),
+	/**
+	 * Whether the identity provider must assert a verified email before a login is
+	 * linked to an existing user by email. When disabled, only an explicit negative
+	 * assertion is rejected. Optional so that stored settings and the UI stay valid.
+	 */
+	emailVerifiedRequired: z.boolean().optional(),
 
 	/** PEM-encoded private key for signing SAML AuthnRequests. Stored encrypted at rest. */
 	signingPrivateKey: z.string().optional(),
@@ -82,6 +93,7 @@ export class UpdateSamlConfigurationDto extends Z.class({
 		firstName: z.string(),
 		lastName: z.string(),
 		userPrincipalName: z.string(),
+		emailVerified: z.string(),
 		n8nInstanceRole: z.string(),
 		n8nProjectRoles: z.array(z.string()),
 	}),
@@ -94,6 +106,7 @@ export class UpdateSamlConfigurationDto extends Z.class({
 	authnRequestsSigned: z.boolean(),
 	wantAssertionsSigned: z.boolean(),
 	wantMessageSigned: z.boolean(),
+	emailVerifiedRequired: z.boolean(),
 	signingPrivateKey: z.string(),
 	signingCertificate: z.string(),
 	acsBinding: SamlLoginBindingSchema,

@@ -15,6 +15,7 @@ import { UnexpectedError, UserError } from './errors';
 import { isExpression } from './expressions/expression-helpers';
 import { isFromAIOnlyExpression } from './from-ai-parse-utils';
 import { NodeConnectionTypes } from './interfaces';
+import { safeRegex } from './safe-regex';
 import type {
 	FieldType,
 	IContextObject,
@@ -297,7 +298,7 @@ export function getNodeFeatures(
 	return features;
 }
 
-const getPropertyValues = (
+export const getPropertyValues = (
 	nodeValues: INodeParameters | ICredentialDataDecryptedObject,
 	propertyName: string,
 	node: Pick<INode, 'typeVersion'> | null,
@@ -393,7 +394,7 @@ export const checkConditions = (
 				if (key === 'regex') {
 					return (
 						typeof propertyValue === 'string' &&
-						new RegExp(targetValue as string).test(propertyValue)
+						safeRegex.test(targetValue as string, propertyValue)
 					);
 				}
 				if (key === 'exists') {
@@ -511,6 +512,120 @@ export function displayParameterPath(
 }
 
 /**
+ * Returns the credential types a node actively uses given its current configuration,
+ * or `null` when the active set cannot be determined statically. A credential type is
+ * active when:
+ * - its description in the node type is currently displayed (its `displayOptions` match), or
+ * - it is referenced by the `nodeCredentialType` / `genericAuthType` parameters — nodes like
+ *   HTTP Request select credential types dynamically through these parameters instead of
+ *   declaring them in the node type description.
+ *
+ * Returns `null` when the node type description is unavailable, a credential-type
+ * parameter is an expression (it only resolves at runtime), or evaluating the
+ * configuration throws. Callers must fall back conservatively for their use case:
+ * treat all referenced credentials as active when validating, and clean nothing
+ * when removing stale entries.
+ */
+export function getActiveCredentialTypes(
+	node: INode,
+	nodeTypeDescription: INodeTypeDescription | null,
+): Set<string> | null {
+	if (!nodeTypeDescription) {
+		return null;
+	}
+
+	try {
+		// Saved nodes drop parameters that hold their default value, but the Workflow
+		// constructor restores those defaults before a node reads its credentials.
+		// Resolve the same defaults here so the credential display options evaluate
+		// what execution evaluates. Resolved values win — this keeps nested defaults
+		// and stripped expression prefixes in step with execution — and raw values
+		// fill in only the parameters the node type does not declare.
+		const resolved =
+			getNodeParameters(
+				nodeTypeDescription.properties ?? [],
+				node.parameters,
+				true,
+				true,
+				node,
+				nodeTypeDescription,
+			) ?? {};
+		const declaredNames = new Set((nodeTypeDescription.properties ?? []).map((p) => p.name));
+		const parameters: INodeParameters = { ...resolved };
+		for (const name of Object.keys(node.parameters)) {
+			if (!declaredNames.has(name)) parameters[name] = node.parameters[name];
+		}
+
+		const activeTypes = new Set<string>();
+
+		for (const credentialDescription of nodeTypeDescription.credentials ?? []) {
+			if (displayParameter(parameters, credentialDescription, node, nodeTypeDescription)) {
+				activeTypes.add(credentialDescription.name);
+			}
+		}
+
+		const { nodeCredentialType, genericAuthType } = parameters;
+		for (const paramName of ['nodeCredentialType', 'genericAuthType'] as const) {
+			const paramValue = paramName === 'nodeCredentialType' ? nodeCredentialType : genericAuthType;
+			if (typeof paramValue !== 'string' || !paramValue) {
+				continue;
+			}
+
+			// These parameters select the credential type dynamically, so their own
+			// displayOptions (e.g. shown only for a given `authentication` value) decide
+			// whether the value they hold is actually in use. A stale value left over from
+			// a previous selection must not be reported as active just because it's
+			// non-empty. Node types that don't declare the property at all (e.g. tests)
+			// keep the previous, unconditional behaviour.
+			const paramDescription = (nodeTypeDescription.properties ?? []).find(
+				(p) => p.name === paramName,
+			);
+			if (
+				paramDescription &&
+				!displayParameter(parameters, paramDescription, node, nodeTypeDescription)
+			) {
+				continue;
+			}
+
+			// Checked after the hidden check: a hidden parameter holds no active value,
+			// expression or not, so a leftover expression must not make the whole node
+			// indeterminable and block cleanup.
+			if (isExpression(paramValue)) {
+				return null;
+			}
+
+			activeTypes.add(paramValue);
+		}
+
+		return activeTypes;
+	} catch {
+		// Malformed display options must not break callers that never evaluated them before
+		return null;
+	}
+}
+
+const CREDENTIAL_TYPE_PARAMETERS = ['nodeCredentialType', 'genericAuthType'] as const;
+
+export function getRequestedCredentialTypes(
+	node: INode,
+	getNodeTypeDescription: () => INodeTypeDescription | null,
+): string[] {
+	const types = new Set(Object.keys(node.credentials ?? {}));
+
+	const named = CREDENTIAL_TYPE_PARAMETERS.map((name) => node.parameters?.[name]).filter(
+		(value): value is string => typeof value === 'string' && value !== '',
+	);
+	if (named.length > 0) {
+		const active = getActiveCredentialTypes(node, getNodeTypeDescription());
+		for (const type of named) if (active?.has(type)) types.add(type);
+	}
+
+	if (node.extendsCredential) types.add(node.extendsCredential);
+
+	return [...types];
+}
+
+/**
  * Returns the context data
  *
  * @param {IRunExecutionData} runExecutionData The run execution data
@@ -625,8 +740,10 @@ function getParameterResolveOrder(
 		// Parameter has dependencies
 		for (const dependency of parameterDependencies[property.name]) {
 			if (!resolvedParameters.includes(dependency)) {
-				if (dependency.charAt(0) === '/') {
-					// Assume that root level dependencies are resolved
+				if (!Object.hasOwn(parameterDependencies, dependency)) {
+					// Not a parameter of this level (e.g. a `/root.path`), so it cannot be
+					// resolved here. `displayParameter` looks the value up later and hides
+					// the parameter if it is missing.
 					continue;
 				}
 				// Dependencies for that parameter are still missing so
@@ -1169,6 +1286,19 @@ export function getNodeInputs(
 	workflow: WorkflowForNodeHelpers,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
+	options: {
+		/**
+		 * Surface a broken `inputs` expression instead of reporting no inputs.
+		 * Swallowing suits rendering; a caller judging validity wants the error.
+		 *
+		 * Only a thrown error counts. An expression that evaluates but yields a
+		 * non-list is left alone: that is almost always an unconfigured node
+		 * (the LangChain Code node maps over an empty `Inputs` collection), and
+		 * the engine reads the same case as "no inputs" and runs. Failing here
+		 * would block publishing a workflow the runtime is happy with.
+		 */
+		throwOnExpressionError?: boolean;
+	} = {},
 ): Array<NodeConnectionType | INodeInputConfiguration> {
 	if (Array.isArray(nodeTypeData?.inputs)) {
 		return nodeTypeData.inputs;
@@ -1183,6 +1313,7 @@ export function getNodeInputs(
 			{},
 		) || []) as NodeConnectionType[];
 	} catch (e) {
+		if (options.throwOnExpressionError) throw e;
 		console.warn('Could not calculate inputs dynamically for node: ', node.name);
 		return [];
 	}
@@ -1284,14 +1415,10 @@ export function getNodeParametersIssues(
 
 /**
  * Returns the node's issues as a flat list of human-readable strings,
- * covering execution errors, parameter/credential/input issues, and unknown node types.
+ * covering parameter/credential/input issues and unknown node types.
  */
 export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
 	const messages: string[] = [];
-
-	if (issues.execution !== undefined) {
-		messages.push('Execution Error.');
-	}
 
 	for (const propertyIssues of [issues.parameters, issues.credentials, issues.input]) {
 		if (propertyIssues === undefined) continue;
@@ -1327,9 +1454,8 @@ const validateResourceLocatorParameter = (
 		for (const validation of parameterMode.validation) {
 			if (validation && (validation as INodePropertyModeValidation).type === 'regex') {
 				const regexValidation = validation as INodePropertyRegexValidation;
-				const regex = new RegExp(`^${regexValidation.properties.regex}$`);
 
-				if (!regex.test(valueToValidate)) {
+				if (!safeRegex.test(`^${regexValidation.properties.regex}$`, valueToValidate)) {
 					validationErrors.push(regexValidation.properties.errorMessage);
 				}
 			}
@@ -1734,10 +1860,6 @@ export function mergeIssues(destination: INodeIssues, source: INodeIssues | null
 		return;
 	}
 
-	if (source.execution === true) {
-		destination.execution = true;
-	}
-
 	const objectProperties = ['parameters', 'credentials'];
 
 	let destinationProperty: INodeIssueObjectProperty;
@@ -1820,7 +1942,7 @@ export function isExecutable(
 	);
 }
 
-export function isNodeWithWorkflowSelector(node: INode) {
+export function isNodeWithWorkflowSelector(node: Pick<INode, 'type'>) {
 	return [
 		EXECUTE_WORKFLOW_NODE_TYPE,
 		WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
@@ -2081,11 +2203,37 @@ export function getToolDescriptionForNode(
 /**
  * Attempts to retrieve the ID of a subworkflow from a execute workflow node.
  */
-export function getSubworkflowId(node: INode): string | undefined {
+export function getSubworkflowId(node: {
+	type: string;
+	parameters: Record<string, unknown>;
+}): string | undefined {
 	if (isNodeWithWorkflowSelector(node) && isResourceLocatorValue(node.parameters.workflowId)) {
 		return node.parameters.workflowId.value as string;
 	}
 	return;
+}
+
+/** Read a database workflow reference without evaluating expressions. */
+export function getStaticSubworkflowId(node: {
+	type: string;
+	parameters: Record<string, unknown>;
+}): string | undefined {
+	if (!isNodeWithWorkflowSelector(node)) return undefined;
+	const { source = 'database' } = node.parameters;
+	if (source !== 'database') return undefined;
+	const value = getSubworkflowId(node) ?? node.parameters.workflowId;
+	if (typeof value !== 'string') return undefined;
+	const trimmed = value.trim();
+	return trimmed === '' || trimmed.startsWith('=') ? undefined : trimmed;
+}
+
+export function setStaticSubworkflowId(
+	node: { parameters: Record<string, unknown> },
+	workflowId: string,
+): void {
+	const stored = node.parameters.workflowId;
+	if (isResourceLocatorValue(stored)) stored.value = workflowId;
+	else node.parameters.workflowId = workflowId;
 }
 
 /**

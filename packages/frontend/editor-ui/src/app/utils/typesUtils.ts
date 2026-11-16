@@ -60,10 +60,6 @@ export function convertToDisplayDate(epochTime: number) {
 	return dateformat(epochTime, 'yyyy-mm-dd HH:MM:ss');
 }
 
-export function convertToHumanReadableDate(epochTime: number) {
-	return dateformat(epochTime, 'd mmmm, yyyy @ HH:MM Z');
-}
-
 export function stringSizeInBytes(input: string | IDataObject | IDataObject[] | undefined): number {
 	if (input === undefined) return 0;
 
@@ -73,12 +69,6 @@ export function stringSizeInBytes(input: string | IDataObject | IDataObject[] | 
 export function toMegaBytes(bytes: number, decimalPlaces: number = 2): number {
 	const megabytes = bytes / 1024 / 1024;
 	return parseFloat(megabytes.toFixed(decimalPlaces));
-}
-
-export function formatBytes(sizeInBytes: number): string {
-	if (sizeInBytes < 1024) return `${sizeInBytes}B`;
-	if (sizeInBytes < 1024 * 1024) return `${Math.round(sizeInBytes / 1024)}KB`;
-	return `${Math.round(sizeInBytes / (1024 * 1024))}MB`;
 }
 
 export function shorten(s: string, limit: number, keep: number) {

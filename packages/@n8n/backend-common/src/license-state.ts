@@ -1,7 +1,7 @@
 import type { BooleanLicenseFeature } from '@n8n/constants';
 import { LICENSE_FEATURES, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { FeatureReturnType, LicenseProvider } from './types';
 
@@ -70,6 +70,10 @@ export class LicenseState {
 		return this.isLicensed(LICENSE_FEATURES.WORKFLOW_REVIEWS);
 	}
 
+	isExecutionLimitsLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.EXECUTION_LIMITS);
+	}
+
 	isSharingLicensed() {
 		return this.isLicensed('feat:sharing');
 	}
@@ -112,6 +116,14 @@ export class LicenseState {
 
 	isAiGatewayLicensed() {
 		return this.isLicensed('feat:aiGateway');
+	}
+
+	isAiGatewayCloudUbbLicensed() {
+		return this.isLicensed('feat:aiGatewayCloudUbb');
+	}
+
+	isAiAssistantCloudUbbEntitlementLicensed() {
+		return this.isLicensed('feat:aiAssistantCloudUbbEntitlement');
 	}
 
 	isAdvancedExecutionFiltersLicensed() {
@@ -164,6 +176,10 @@ export class LicenseState {
 
 	isWorkerViewLicensed() {
 		return this.isLicensed('feat:workerView');
+	}
+
+	isWorkerPoolsLicensed() {
+		return this.isLicensed('feat:workerPools');
 	}
 
 	isProjectRoleAdminLicensed() {

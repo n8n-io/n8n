@@ -49,10 +49,27 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	template: '<n8n-loading v-bind="args"></n8n-loading>',
 });
 
-export const Loading = Template.bind({});
-Loading.args = {
+export const Default = Template.bind({});
+Default.args = {
 	variant: 'p',
 };
+
+export const Variants: StoryFn = () => ({
+	components: { N8nLoading },
+	template: `
+		<div style="display: flex; flex-direction: column; gap: 16px;">
+			<n8n-loading variant="p" :rows="2" />
+			<n8n-loading variant="text" />
+			<n8n-loading variant="h1" />
+			<n8n-loading variant="h3" />
+			<n8n-loading variant="caption" />
+			<n8n-loading variant="button" />
+			<n8n-loading variant="image" />
+			<n8n-loading variant="circle" />
+			<n8n-loading variant="rect" />
+		</div>
+	`,
+});
 
 export const SpinnerVariants: StoryFn = () => ({
 	components: {
@@ -63,9 +80,9 @@ export const SpinnerVariants: StoryFn = () => ({
 			<n8n-spinner type="dots" size="small" />
 			<n8n-spinner type="dots" size="medium" />
 			<n8n-spinner type="dots" size="large" />
-			<n8n-spinner type="ring" size="small" />
-			<n8n-spinner type="ring" size="medium" />
-			<n8n-spinner type="ring" size="large" />
+			<n8n-spinner type="brand" size="small" />
+			<n8n-spinner type="brand" size="medium" />
+			<n8n-spinner type="brand" size="large" />
 		</div>
 	`,
 });

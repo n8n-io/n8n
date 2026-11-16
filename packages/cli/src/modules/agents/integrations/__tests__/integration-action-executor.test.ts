@@ -48,18 +48,29 @@ import type { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
+import type { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integration-action-executor';
+import { inheritIntegrationMessageContext } from '../integration-message-context';
+import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
-import { LinearIntegration } from '../platforms/linear-integration';
-import { SlackIntegration } from '../platforms/slack-integration';
+import type { IntegrationMessageContext } from '../integration-tool-types';
+import { LinearIntegration } from '../platforms/linear/linear-integration';
+import { SlackIntegration } from '../platforms/slack/slack-integration';
+import { TeamsIntegration } from '../platforms/teams/teams-integration';
+import { TelegramIntegration } from '../platforms/telegram/telegram-integration';
+import type { UrlService } from '@n8n/backend-services';
+import type { InstanceSettings } from 'n8n-core';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
+import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
+import { AgentOutboundFiles } from '../agent-outbound-files.service';
+import type { AgentSandboxFilesService } from '../../agent-sandbox-files.service';
 
 const slack: AgentIntegrationConfig = {
 	type: 'slack',
@@ -74,6 +85,11 @@ const linear: AgentIntegrationConfig = {
 const telegram: AgentIntegrationConfig = {
 	type: 'telegram',
 	credentialId: 'cred-telegram',
+};
+
+const discord: AgentIntegrationConfig = {
+	type: 'discord',
+	credentialId: 'cred-discord',
 };
 
 class ShortCallbackTelegramIntegration extends AgentChatIntegration {
@@ -94,6 +110,14 @@ class ShortCallbackTelegramIntegration extends AgentChatIntegration {
 
 	readonly needsShortCallbackData = true;
 
+	buildOriginDraft() {
+		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -101,7 +125,7 @@ class ShortCallbackTelegramIntegration extends AgentChatIntegration {
 
 function buildRegistry(): ChatIntegrationRegistry {
 	const registry = new ChatIntegrationRegistry();
-	registry.register(new SlackIntegration());
+	registry.register(new SlackIntegration(mock<AgentRepository>()));
 	registry.register(new LinearIntegration(mock<Logger>(), mock<OutboundHttp>()));
 	return registry;
 }
@@ -127,8 +151,13 @@ describe('ChatIntegrationActionExecutor', () => {
 		chat.thread.mockReturnValue(sentThread as never);
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -138,12 +167,12 @@ describe('ChatIntegrationActionExecutor', () => {
 			awaitResponse: false,
 		});
 
-		expect(chatIntegrationService.getChatInstance).toHaveBeenCalledWith('agent-1', {
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledWith('agent-1', {
 			type: 'slack',
 			credentialId: 'cred-a',
 		});
 		expect(chat.channel).toHaveBeenCalledWith('slack:C123');
-		expect(channel.post).toHaveBeenCalledWith('Hello channel');
+		expect(channel.post).toHaveBeenCalledWith({ markdown: 'Hello channel' });
 		expect(chat.thread).toHaveBeenCalledWith('slack:C123:123.456');
 		expect(sentThread.subscribe).toHaveBeenCalled();
 		expect(result).toEqual({
@@ -162,6 +191,53 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 	});
 
+	it('lets a slow Slack message finish after the context query deadline', async () => {
+		vi.useFakeTimers();
+		try {
+			const sentMessage = { id: '123.456', threadId: 'slack:C123:123.456' };
+			const channel = {
+				post: vi.fn().mockImplementation(
+					async () =>
+						await new Promise((resolve) => {
+							setTimeout(() => resolve(sentMessage), 35_000);
+						}),
+				),
+			};
+			const chat = mock<ChatInstance>();
+			chat.channel.mockReturnValue(channel as never);
+			chat.thread.mockReturnValue({ subscribe: vi.fn().mockResolvedValue(undefined) } as never);
+			const service = mock<ChatIntegrationService>();
+			service.getChatInstanceForTools.mockResolvedValue(chat);
+			const executor = new ChatIntegrationActionExecutor(
+				service,
+				buildRegistry(),
+				new ChannelRateLimitGuard(),
+				mock<AgentOutboundFiles>(),
+			);
+			const settled = vi.fn();
+			const result = executor.execute({
+				descriptor: getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0],
+				action: 'send_channel_message',
+				input: { channelId: 'C123', message: { text: 'Hello channel' } },
+				awaitResponse: false,
+			});
+			void result.then(settled, settled);
+
+			await vi.advanceTimersByTimeAsync(31_000);
+			expect(channel.post).toHaveBeenCalledTimes(1);
+			expect(settled).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(4_000);
+			await expect(result).resolves.toMatchObject({
+				ok: true,
+				messageContext: { messageId: sentMessage.id },
+			});
+			expect(channel.post).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('does not subscribe channel message threads for non-Slack integrations', async () => {
 		const sentMessage = {
 			id: 'linear-message-1',
@@ -176,8 +252,13 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -188,7 +269,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 
 		expect(chat.channel).toHaveBeenCalledWith('linear:team-1');
-		expect(channel.post).toHaveBeenCalledWith('Hello channel');
+		expect(channel.post).toHaveBeenCalledWith({ markdown: 'Hello channel' });
 		expect(chat.thread).not.toHaveBeenCalled();
 		expect(result).toMatchObject({
 			ok: true,
@@ -217,19 +298,216 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.openDM.mockResolvedValue(thread as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(undefined);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
-		await executor.execute({
+		const result = await executor.execute({
 			descriptor,
 			action: 'send_dm',
 			input: { userId: 'U123', message: { text: 'Hello' } },
 			awaitResponse: false,
 		});
 
-		expect(thread.post).toHaveBeenCalledWith('Hello');
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledWith('agent-1', slack);
+		expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
 		expect(thread.subscribe).toHaveBeenCalled();
+		expect(result).toEqual({
+			ok: true,
+			messageContext: {
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				target: {
+					type: 'dm',
+					userId: 'U123',
+					threadId: 'slack:D123:123.456',
+				},
+				messageId: '123.456',
+				updatedAt: expect.any(String),
+			},
+		});
+	});
+
+	it('opens a WhatsApp DM on the WhatsApp adapter instead of inferring it from the user ID', async () => {
+		const sentMessage = { id: 'wamid.1', threadId: 'whatsapp:111:447700900123' };
+		const thread = {
+			id: 'whatsapp:111:447700900123',
+			post: vi.fn().mockResolvedValue(sentMessage),
+		};
+		const adapter = { openDM: vi.fn().mockResolvedValue('whatsapp:111:447700900123') };
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(adapter);
+		chat.thread.mockReturnValue(thread as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors(
+			[{ type: 'whatsapp', credentialId: 'cred-whatsapp' }],
+			'agent-1',
+		)[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: '447700900123', message: { text: 'Hello' } },
+			awaitResponse: false,
+		});
+
+		expect(chat.getAdapter).toHaveBeenCalledWith('whatsapp');
+		expect(adapter.openDM).toHaveBeenCalledWith('447700900123');
+		expect(chat.openDM).not.toHaveBeenCalled();
+		expect(chat.thread).toHaveBeenCalledWith('whatsapp:111:447700900123');
+		expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
+		expect(result).toMatchObject({
+			ok: true,
+			messageContext: {
+				target: { type: 'dm', userId: '447700900123', threadId: 'whatsapp:111:447700900123' },
+				messageId: 'wamid.1',
+			},
+		});
+	});
+
+	it('returns an unsupported-action error when the WhatsApp adapter cannot open a DM', async () => {
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({});
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors(
+			[{ type: 'whatsapp', credentialId: 'cred-whatsapp' }],
+			'agent-1',
+		)[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: '447700900123', message: { text: 'Hello' } },
+			awaitResponse: false,
+		});
+
+		expect(result).toMatchObject({ ok: false });
+		expect(chat.openDM).not.toHaveBeenCalled();
+	});
+
+	it('falls back to chat.openDM when a non-WhatsApp adapter cannot open a DM', async () => {
+		const thread = { id: 'telegram:42', post: vi.fn().mockResolvedValue({ id: '1' }) };
+		const chat = mock<ChatInstance>();
+		chat.openDM.mockResolvedValue(thread as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1')[0];
+
+		await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: '42', message: { text: 'Hello' } },
+			awaitResponse: false,
+		});
+
+		expect(chat.getAdapter).toHaveBeenCalledWith('telegram');
+		expect(chat.openDM).toHaveBeenCalledWith('42');
+	});
+
+	it('re-anchors a Slack DM at the sent message ts when openDM returns the channel pseudo-thread', async () => {
+		// openDM returns the conversation-scoped pseudo-thread (empty thread_ts);
+		// follow-ups arrive in the thread anchored at the sent message's own ts.
+		const sentMessage = { id: '100.200', threadId: 'slack:D123:' };
+		const dmThread = {
+			id: 'slack:D123:',
+			post: vi.fn().mockResolvedValue(sentMessage),
+		};
+		const sentThread = {
+			id: 'slack:D123:100.200',
+			subscribe: vi.fn().mockResolvedValue(undefined),
+		};
+		const chat = mock<ChatInstance>();
+		chat.openDM.mockResolvedValue(dmThread as never);
+		chat.thread.mockReturnValue(sentThread as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: 'U123', message: { text: 'Hello' } },
+			awaitResponse: false,
+		});
+
+		expect(chat.thread).toHaveBeenCalledWith('slack:D123:100.200');
+		expect(sentThread.subscribe).toHaveBeenCalled();
+		expect(result).toMatchObject({
+			ok: true,
+			messageContext: {
+				target: { type: 'dm', userId: 'U123', threadId: 'slack:D123:100.200' },
+				messageId: '100.200',
+			},
+		});
+	});
+
+	it('re-anchors a Slack channel post at the sent message ts', async () => {
+		// A top-level channel post returns the channel pseudo-thread (empty
+		// thread_ts); threaded replies arrive anchored at the sent message ts.
+		const sentMessage = { id: '456.789', threadId: 'slack:C123:' };
+		const channel = { post: vi.fn().mockResolvedValue(sentMessage) };
+		const sentThread = { subscribe: vi.fn().mockResolvedValue(undefined) };
+		const chat = mock<ChatInstance>();
+		chat.channel.mockReturnValue(channel as never);
+		chat.thread.mockReturnValue(sentThread as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_channel_message',
+			input: { channelId: 'C123', message: { text: 'Scheduled update' } },
+			awaitResponse: false,
+		});
+
+		expect(chat.thread).toHaveBeenCalledWith('slack:C123:456.789');
+		expect(sentThread.subscribe).toHaveBeenCalled();
+		expect(result).toMatchObject({
+			ok: true,
+			messageContext: {
+				target: { type: 'channel', channelId: 'slack:C123', threadId: 'slack:C123:456.789' },
+				messageId: '456.789',
+			},
+		});
 	});
 
 	it('posts generic message card buttons with their labels', async () => {
@@ -244,10 +522,15 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.thread.mockReturnValue(thread as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const registry = buildRegistry();
 		Container.set(ChatIntegrationRegistry, registry);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -306,8 +589,8 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.thread.mockReturnValue(thread as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const shortenCallback = vi.fn(async (_actionId: string, _value: string) => ({
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const shortenCallback = vi.fn(async (_actionId: string, _value: string, _label?: string) => ({
 			id: 'short1234',
 			value: '',
 		}));
@@ -317,7 +600,12 @@ describe('ChatIntegrationActionExecutor', () => {
 		const registry = buildRegistry();
 		registry.register(new ShortCallbackTelegramIntegration());
 		Container.set(ChatIntegrationRegistry, registry);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -350,13 +638,15 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 
 		expect(result).toEqual(expect.objectContaining({ ok: true }));
-		expect(chatIntegrationService.getShortenCallback).toHaveBeenCalledWith('agent-1', {
-			type: 'telegram',
-			credentialId: 'cred-telegram',
-		});
+		expect(chatIntegrationService.getShortenCallback).toHaveBeenCalledWith(
+			'agent-1',
+			{ type: 'telegram', credentialId: 'cred-telegram' },
+			{ groupId: JSON.stringify(['run-1234567890', 'tool-call-1234567890']) },
+		);
 		expect(shortenCallback).toHaveBeenCalledWith(
 			'resume:run-1234567890:tool-call-1234567890:0',
 			JSON.stringify({ type: 'button', value: 'approve' }),
+			'Approve',
 		);
 		expect(mockButton).toHaveBeenLastCalledWith({
 			id: 'short1234',
@@ -375,10 +665,15 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ editMessage });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const registry = buildRegistry();
 		registry.register(new ShortCallbackTelegramIntegration());
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
 			actions: ['respond', 'send_dm', 'edit_message'],
 		}))[0];
@@ -400,7 +695,9 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 
 		expect(chat.getAdapter).toHaveBeenCalledWith('telegram');
-		expect(editMessage).toHaveBeenCalledWith('telegram:123456', '123456:1000', 'Updated status');
+		expect(editMessage).toHaveBeenCalledWith('telegram:123456', '123456:1000', {
+			markdown: 'Updated status',
+		});
 		expect(result).toEqual({
 			ok: true,
 			messageContext: {
@@ -416,10 +713,15 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ editMessage });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const registry = buildRegistry();
 		registry.register(new ShortCallbackTelegramIntegration());
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
 			actions: ['respond', 'send_dm', 'edit_message'],
 		}))[0];
@@ -452,10 +754,15 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({});
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const registry = buildRegistry();
 		registry.register(new ShortCallbackTelegramIntegration());
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
 			actions: ['respond', 'send_dm', 'edit_message'],
 		}))[0];
@@ -491,7 +798,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ editMessage });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 		const shortenCallback = vi.fn(async (_actionId: string, _value: string) => ({
 			id: 'short1234',
 			value: '',
@@ -502,7 +809,12 @@ describe('ChatIntegrationActionExecutor', () => {
 		const registry = buildRegistry();
 		registry.register(new ShortCallbackTelegramIntegration());
 		Container.set(ChatIntegrationRegistry, registry);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
 			actions: ['respond', 'send_dm', 'edit_message'],
 		}))[0];
@@ -538,6 +850,12 @@ describe('ChatIntegrationActionExecutor', () => {
 		expect(shortenCallback).toHaveBeenCalledWith(
 			'resume:run-1:tool-1:0',
 			JSON.stringify({ type: 'button', value: 'approve' }),
+			'Approve',
+		);
+		expect(chatIntegrationService.getShortenCallback).toHaveBeenCalledWith(
+			'agent-1',
+			{ type: 'telegram', credentialId: 'cred-telegram' },
+			{ groupId: JSON.stringify(['run-1', 'tool-1']) },
 		);
 		expect(editMessage).toHaveBeenCalledWith(
 			'telegram:123456',
@@ -559,8 +877,13 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -610,8 +933,13 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -651,6 +979,139 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 	});
 
+	it('adds Discord reactions to the inbound message after sending a DM', async () => {
+		const addReaction = vi.fn().mockResolvedValue(undefined);
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ addReaction });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([discord], 'agent-1')[0];
+		const inboundThreadId = 'discord:800000000000000001:700000000000000001:600000000000000001';
+		const inboundTarget = {
+			type: 'thread' as const,
+			threadId: inboundThreadId,
+			channelId: 'discord:800000000000000001:700000000000000001',
+		};
+		const currentMessageContext = {
+			integrationConnectionId: 'discord:cred-discord',
+			platform: 'discord',
+			target: {
+				type: 'dm' as const,
+				userId: 'user-1',
+				threadId: 'discord:@me:dm-thread',
+			},
+			messageId: 'dm-message',
+			replyTarget: inboundTarget,
+			replyMessageId: 'message-1',
+			updatedAt: '2026-08-04T00:00:00.000Z',
+		};
+
+		const explicitReaction = await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji: '✅', messageId: 'message-1' },
+			awaitResponse: false,
+			currentMessageContext,
+		});
+		expect(explicitReaction).toMatchObject({
+			ok: true,
+			reaction: { emoji: '✅', threadId: inboundThreadId, messageId: 'message-1' },
+			messageContext: {
+				integrationConnectionId: 'discord:cred-discord',
+				platform: 'discord',
+				target: {
+					type: 'dm',
+					userId: 'user-1',
+					threadId: 'discord:@me:dm-thread',
+				},
+				messageId: 'dm-message',
+			},
+		});
+
+		const nextMessageContext =
+			explicitReaction.ok && 'messageContext' in explicitReaction
+				? explicitReaction.messageContext
+				: undefined;
+		await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji: '📨' },
+			awaitResponse: false,
+			currentMessageContext: nextMessageContext,
+		});
+
+		expect(addReaction).toHaveBeenNthCalledWith(1, inboundThreadId, 'message-1', '✅');
+		expect(addReaction).toHaveBeenNthCalledWith(2, 'discord:@me:dm-thread', 'dm-message', '📨');
+	});
+
+	it('keeps an explicit reaction thread current when its message ID matches the reply target', async () => {
+		const addReaction = vi.fn().mockResolvedValue(undefined);
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({ addReaction });
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([discord], 'agent-1')[0];
+		const explicitThreadId = 'discord:800000000000000001:700000000000000002:600000000000000001';
+
+		const explicitReaction = await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji: '✅', threadId: explicitThreadId, messageId: 'message-1' },
+			awaitResponse: false,
+			currentMessageContext: {
+				integrationConnectionId: 'discord:cred-discord',
+				platform: 'discord',
+				target: {
+					type: 'dm',
+					userId: 'user-1',
+					threadId: 'discord:@me:dm-thread',
+				},
+				messageId: 'dm-message',
+				replyTarget: {
+					type: 'thread',
+					threadId: 'discord:800000000000000001:700000000000000001:600000000000000001',
+					channelId: 'discord:800000000000000001:700000000000000001',
+				},
+				replyMessageId: 'message-1',
+				updatedAt: '2026-08-04T00:00:00.000Z',
+			},
+		});
+		expect(explicitReaction).toMatchObject({
+			ok: true,
+			messageContext: {
+				target: { type: 'thread', threadId: explicitThreadId },
+				messageId: 'message-1',
+			},
+		});
+
+		const nextMessageContext =
+			explicitReaction.ok && 'messageContext' in explicitReaction
+				? explicitReaction.messageContext
+				: undefined;
+		await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji: '📨' },
+			awaitResponse: false,
+			currentMessageContext: nextMessageContext,
+		});
+
+		expect(addReaction).toHaveBeenNthCalledWith(1, explicitThreadId, 'message-1', '✅');
+		expect(addReaction).toHaveBeenNthCalledWith(2, explicitThreadId, 'message-1', '📨');
+	});
+
 	it('returns a structured error when a Slack reaction has no message target', async () => {
 		const slackAdapter = {
 			addReaction: vi.fn().mockResolvedValue(undefined),
@@ -658,8 +1119,13 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -681,8 +1147,13 @@ describe('ChatIntegrationActionExecutor', () => {
 
 	it('returns a structured error when the selected connection is unavailable', async () => {
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(undefined);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(undefined);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -733,8 +1204,13 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -833,8 +1309,13 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -900,8 +1381,13 @@ describe('ChatIntegrationActionExecutor', () => {
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue({ client: linearClient });
 		const chatIntegrationService = mock<ChatIntegrationService>();
-		chatIntegrationService.getChatInstance.mockReturnValue(chat);
-		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
 		const result = await executor.execute({
@@ -960,15 +1446,17 @@ describe('ChatIntegrationActionExecutor', () => {
 	});
 
 	describe('respond in chat-triggered turns', () => {
+		const chatTurnTarget = {
+			type: 'thread' as const,
+			threadId: 'slack:C123:123.456',
+			channelId: 'slack:C123',
+		};
 		const chatTurnContext = {
 			integrationConnectionId: 'slack:cred-a',
 			platform: 'slack',
-			target: {
-				type: 'thread' as const,
-				threadId: 'slack:C123:123.456',
-				channelId: 'slack:C123',
-			},
+			target: chatTurnTarget,
 			replyExpectation: 'required' as const,
+			replyTarget: chatTurnTarget,
 			updatedAt: '2026-05-18T10:00:00.000Z',
 		};
 
@@ -977,10 +1465,15 @@ describe('ChatIntegrationActionExecutor', () => {
 			const chat = mock<ChatInstance>();
 			chat.thread.mockReturnValue(thread as never);
 			const chatIntegrationService = mock<ChatIntegrationService>();
-			chatIntegrationService.getChatInstance.mockReturnValue(chat);
+			chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
 			const registry = buildRegistry();
 			Container.set(ChatIntegrationRegistry, registry);
-			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+			const executor = new ChatIntegrationActionExecutor(
+				chatIntegrationService,
+				registry,
+				new ChannelRateLimitGuard(),
+				mock<AgentOutboundFiles>(),
+			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 			return { executor, descriptor, thread };
 		}
@@ -1038,7 +1531,26 @@ describe('ChatIntegrationActionExecutor', () => {
 			});
 
 			expect(result).toEqual(expect.objectContaining({ ok: true }));
-			expect(thread.post).toHaveBeenCalledWith('Task update');
+			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Task update' });
+		});
+
+		it('allows a text-only respond after the action target changes', async () => {
+			const { executor, descriptor, thread } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'DM follow-up' } },
+				awaitResponse: false,
+				currentMessageContext: {
+					...chatTurnContext,
+					target: { type: 'dm', userId: 'U123', threadId: 'slack:D123:' },
+					replyTarget: chatTurnContext.target,
+				},
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(thread.post).toHaveBeenCalledWith({ markdown: 'DM follow-up' });
 		});
 	});
 
@@ -1056,7 +1568,12 @@ describe('ChatIntegrationActionExecutor', () => {
 
 		it('succeeds without touching the chat instance when the reply is optional', async () => {
 			const chatIntegrationService = mock<ChatIntegrationService>();
-			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+			const executor = new ChatIntegrationActionExecutor(
+				chatIntegrationService,
+				buildRegistry(),
+				new ChannelRateLimitGuard(),
+				mock<AgentOutboundFiles>(),
+			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 			const result = await executor.execute({
@@ -1072,12 +1589,43 @@ describe('ChatIntegrationActionExecutor', () => {
 				silent: true,
 				note: expect.stringContaining('No reply will be sent'),
 			});
-			expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+			expect(chatIntegrationService.getChatInstanceForTools).not.toHaveBeenCalled();
+		});
+
+		it('returns the reason for the run record', async () => {
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			const executor = new ChatIntegrationActionExecutor(
+				chatIntegrationService,
+				buildRegistry(),
+				new ChannelRateLimitGuard(),
+				mock<AgentOutboundFiles>(),
+			);
+			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'do_not_respond',
+				input: { reason: 'not delivered, no suitable template' },
+				awaitResponse: false,
+				currentMessageContext: { ...slackMessageContext, replyExpectation: 'optional' },
+			});
+
+			expect(result).toEqual({
+				ok: true,
+				silent: true,
+				reason: 'not delivered, no suitable template',
+				note: expect.stringContaining('No reply will be sent'),
+			});
 		});
 
 		it('rejects when the reply expectation is required', async () => {
 			const chatIntegrationService = mock<ChatIntegrationService>();
-			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+			const executor = new ChatIntegrationActionExecutor(
+				chatIntegrationService,
+				buildRegistry(),
+				new ChannelRateLimitGuard(),
+				mock<AgentOutboundFiles>(),
+			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 			const result = await executor.execute({
@@ -1092,12 +1640,17 @@ describe('ChatIntegrationActionExecutor', () => {
 				ok: false,
 				error: { code: 'REPLY_REQUIRED', message: expect.stringContaining('reply is expected') },
 			});
-			expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+			expect(chatIntegrationService.getChatInstanceForTools).not.toHaveBeenCalled();
 		});
 
 		it('rejects when the reply expectation is unset or the message context is missing', async () => {
 			const chatIntegrationService = mock<ChatIntegrationService>();
-			const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+			const executor = new ChatIntegrationActionExecutor(
+				chatIntegrationService,
+				buildRegistry(),
+				new ChannelRateLimitGuard(),
+				mock<AgentOutboundFiles>(),
+			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
 			for (const currentMessageContext of [slackMessageContext, undefined]) {
@@ -1114,7 +1667,670 @@ describe('ChatIntegrationActionExecutor', () => {
 					error: { code: 'REPLY_REQUIRED', message: expect.any(String) },
 				});
 			}
-			expect(chatIntegrationService.getChatInstance).not.toHaveBeenCalled();
+			expect(chatIntegrationService.getChatInstanceForTools).not.toHaveBeenCalled();
+		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Rate-limit handling
+// ---------------------------------------------------------------------------
+
+describe('ChatIntegrationActionExecutor — rate-limit handling', () => {
+	it('returns RATE_LIMIT_EXCEEDED when the adapter throws a 429', async () => {
+		const slackAdapter = {
+			addReaction: vi
+				.fn()
+				.mockRejectedValue(Object.assign(new Error('rate limited'), { response: { status: 429 } })),
+		};
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(slackAdapter);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const guard = new ChannelRateLimitGuard();
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			guard,
+			mock<AgentOutboundFiles>(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji: 'eyes' },
+			awaitResponse: false,
+			currentMessageContext: {
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				target: {
+					type: 'thread',
+					threadId: 'slack:C123:123.456',
+					channelId: 'slack:C123',
+				},
+				messageId: '123.456',
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			},
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				code: 'RATE_LIMIT_EXCEEDED',
+				message: expect.stringContaining('Slack'),
+			},
+		});
+		expect(guard.isBlocked('slack:cred-a')).toBe(true);
+	});
+
+	it('does not call the adapter again on a blocked connection', async () => {
+		const slackAdapter = {
+			addReaction: vi
+				.fn()
+				.mockRejectedValue(Object.assign(new Error('rate limited'), { response: { status: 429 } })),
+		};
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(slackAdapter);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const guard = new ChannelRateLimitGuard();
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			guard,
+			mock<AgentOutboundFiles>(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+		const ctx: IntegrationMessageContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: {
+				type: 'thread',
+				threadId: 'slack:C123:123.456',
+				channelId: 'slack:C123',
+			},
+			messageId: '123.456',
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		};
+
+		// First call: 429 → records the block
+		await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji: 'eyes' },
+			awaitResponse: false,
+			currentMessageContext: ctx,
+		});
+
+		expect(slackAdapter.addReaction).toHaveBeenCalledTimes(1);
+
+		// Second call: blocked → adapter never called
+		const result2 = await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji: 'thumbsup' },
+			awaitResponse: false,
+			currentMessageContext: ctx,
+		});
+
+		expect(slackAdapter.addReaction).toHaveBeenCalledTimes(1);
+		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledTimes(1);
+		expect(result2).toEqual({
+			ok: false,
+			error: {
+				code: 'RATE_LIMIT_EXCEEDED',
+				message: expect.stringContaining('Slack'),
+			},
+		});
+	});
+
+	it('still returns ACTION_FAILED for a non-429 error', async () => {
+		const slackAdapter = {
+			addReaction: vi.fn().mockRejectedValue(new Error('network failure')),
+		};
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(slackAdapter);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const guard = new ChannelRateLimitGuard();
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			guard,
+			mock<AgentOutboundFiles>(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji: 'eyes' },
+			awaitResponse: false,
+			currentMessageContext: {
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				target: {
+					type: 'thread',
+					threadId: 'slack:C123:123.456',
+					channelId: 'slack:C123',
+				},
+				messageId: '123.456',
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			},
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				code: 'ACTION_FAILED',
+				message: 'network failure',
+			},
+		});
+		expect(guard.isBlocked('slack:cred-a')).toBe(false);
+	});
+});
+
+describe('ChatIntegrationActionExecutor — Teams sends without an inbound message', () => {
+	const teams: AgentIntegrationConfig = { type: 'teams', credentialId: 'cred-teams' };
+
+	function setup(adapter: Record<string, unknown> = {}) {
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new TeamsIntegration(mock<Logger>(), mock<AgentRepository>()));
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(adapter);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			registry,
+			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([teams], 'agent-1')[0];
+		return { chat, executor, descriptor };
+	}
+
+	it('opens a DM for an Entra object ID through the Teams adapter', async () => {
+		const objectId = '6b1f0c4e-1111-4222-8333-944455556666';
+		const thread = {
+			id: 'teams:dm',
+			post: vi.fn().mockResolvedValue({ id: 'msg-1', threadId: 'teams:dm' }),
+		};
+		const openDM = vi.fn().mockResolvedValue('teams:dm');
+		const { chat, executor, descriptor } = setup({ openDM });
+		chat.thread.mockReturnValue(thread as never);
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: objectId, message: { text: 'Morning brief' } },
+			awaitResponse: false,
+		});
+
+		expect(openDM).toHaveBeenCalledWith(objectId);
+		expect(chat.openDM).not.toHaveBeenCalled();
+		expect(thread.post).toHaveBeenCalledWith({ markdown: 'Morning brief' });
+		expect(result).toMatchObject({
+			ok: true,
+			messageContext: { target: { type: 'dm', userId: objectId, threadId: 'teams:dm' } },
+		});
+	});
+
+	it('posts to a raw Teams conversation ID', async () => {
+		const channel = { post: vi.fn().mockResolvedValue({ id: 'msg-1' }) };
+		const encodeThreadId = vi.fn(() => 'teams:encoded');
+		const { chat, executor, descriptor } = setup({ encodeThreadId });
+		chat.channel.mockReturnValue(channel as never);
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_channel_message',
+			input: { channelId: '19:abc@thread.tacv2', message: { text: 'Morning brief' } },
+			awaitResponse: false,
+		});
+
+		expect(encodeThreadId).toHaveBeenCalledWith(
+			expect.objectContaining({ conversationId: '19:abc@thread.tacv2' }),
+		);
+		expect(chat.channel).toHaveBeenCalledWith('teams:encoded');
+		expect(channel.post).toHaveBeenCalledWith({ markdown: 'Morning brief' });
+		expect(result).toMatchObject({ ok: true });
+	});
+
+	it('explains a refused send instead of passing the adapter error through', async () => {
+		const openDM = vi
+			.fn()
+			.mockRejectedValue(
+				Object.assign(new Error('Permission denied'), { code: 'PERMISSION_DENIED' }),
+			);
+		const { executor, descriptor } = setup({ openDM });
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: '29:abc', message: { text: 'Morning brief' } },
+			awaitResponse: false,
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: { code: 'PERMISSION_NOT_GRANTED', message: expect.stringContaining('installed') },
+		});
+	});
+
+	describe('files', () => {
+		const fileScope = { projectId: 'project-1', threadId: 'thread-1' };
+		const currentMessageContext: IntegrationMessageContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: { type: 'thread', threadId: 'slack:C123:123.456', channelId: 'slack:C123' },
+			replyExpectation: 'required',
+			replyTarget: { type: 'thread', threadId: 'slack:C123:123.456', channelId: 'slack:C123' },
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		};
+		const chartFile = {
+			id: 'file-1',
+			binaryDataId: 'filesystem-v2:agents/a/attachments/file-1',
+			fileName: 'chart.png',
+			mimeType: 'image/png',
+			fileSizeBytes: 3,
+		};
+
+		function buildExecutor(integration: AgentIntegrationConfig = slack, files = [chartFile]) {
+			const sent = { id: '123.457', threadId: 'slack:C123:123.457' };
+			const thread = { post: vi.fn().mockResolvedValue(sent), subscribe: vi.fn() };
+			const channel = { post: vi.fn().mockResolvedValue(sent) };
+			const chat = mock<ChatInstance>();
+			chat.thread.mockReturnValue(thread as never);
+			chat.channel.mockReturnValue(channel as never);
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+			const attachmentService = mock<AgentChatAttachmentService>();
+			attachmentService.getReadable.mockImplementation(
+				async (fileId) => (files.find((file) => file.id === fileId) as never) ?? null,
+			);
+			attachmentService.getBuffer.mockResolvedValue(Buffer.from('png'));
+			const registry = buildRegistry();
+			registry.register(
+				new TelegramIntegration(
+					mock<Logger>(),
+					mock<UrlService>(),
+					mock<AgentRepository>(),
+					mock<InstanceSettings>(),
+					mock<OutboundHttp>(),
+				),
+			);
+			const executor = new ChatIntegrationActionExecutor(
+				chatIntegrationService,
+				registry,
+				new ChannelRateLimitGuard(),
+				new AgentOutboundFiles(attachmentService, registry, {
+					resolveFileRefs: async (refs: string[]) => refs,
+				} as unknown as AgentSandboxFilesService),
+			);
+			const descriptor = getIntegrationToolConnectionDescriptors([integration], 'agent-1')[0];
+			return { executor, descriptor, thread, channel, attachmentService };
+		}
+
+		it('queues the files of a respond in a chat-triggered turn for the final reply', async () => {
+			const { executor, descriptor, thread, attachmentService } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Here is the chart' }, fileIds: ['file-1'] },
+				awaitResponse: false,
+				currentMessageContext,
+				fileScope,
+			});
+
+			expect(result).toEqual({
+				ok: true,
+				queuedFileIds: ['file-1'],
+				note: expect.stringContaining('final reply'),
+			});
+			expect(attachmentService.getReadable).toHaveBeenCalledWith('file-1', fileScope);
+			expect(attachmentService.getBuffer).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('records the queued files of the run in the message context', async () => {
+			const { executor, descriptor } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Here is the chart' }, fileIds: ['file-1'] },
+				awaitResponse: false,
+				runId: 'run-1',
+				currentMessageContext,
+				fileScope,
+			});
+
+			expect(result).toMatchObject({
+				ok: true,
+				queuedFileIds: ['file-1'],
+				messageContext: { queuedFiles: { runId: 'run-1', fileIds: ['file-1'] } },
+			});
+		});
+
+		it('returns the limit error when the files of all responds of the run are too many', async () => {
+			const files = Array.from({ length: 31 }, (_, index) => ({
+				...chartFile,
+				id: `file-${index}`,
+			}));
+			const { executor, descriptor, thread } = buildExecutor(slack, files);
+			const earlierFileIds = files.slice(0, 30).map((file) => file.id);
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'One more' }, fileIds: ['file-30'] },
+				awaitResponse: false,
+				runId: 'run-1',
+				currentMessageContext: {
+					...currentMessageContext,
+					queuedFiles: { runId: 'run-1', fileIds: earlierFileIds },
+				},
+				fileScope,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: {
+					code: 'FILE_UPLOAD_LIMIT_EXCEEDED',
+					message: expect.stringContaining('the 30 files that you queued before'),
+				},
+			});
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('counts the files that the run queued before a resume', async () => {
+			const files = Array.from({ length: 31 }, (_, index) => ({
+				...chartFile,
+				id: `file-${index}`,
+			}));
+			const { executor, descriptor, thread } = buildExecutor(slack, files);
+			// The click on an approval card gives a new context without queued files.
+			const resumeContext = inheritIntegrationMessageContext(currentMessageContext, {
+				...currentMessageContext,
+				queuedFiles: { runId: 'r1', fileIds: files.slice(0, 30).map((file) => file.id) },
+			});
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'One more' }, fileIds: ['file-30'] },
+				awaitResponse: false,
+				runId: 'r1',
+				currentMessageContext: resumeContext,
+				fileScope,
+			});
+
+			expect(result).toMatchObject({ ok: false, error: { code: 'FILE_UPLOAD_LIMIT_EXCEEDED' } });
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('ignores files that another run queued', async () => {
+			const files = Array.from({ length: 31 }, (_, index) => ({
+				...chartFile,
+				id: `file-${index}`,
+			}));
+			const { executor, descriptor } = buildExecutor(slack, files);
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'One more' }, fileIds: ['file-30'] },
+				awaitResponse: false,
+				runId: 'run-2',
+				currentMessageContext: {
+					...currentMessageContext,
+					queuedFiles: { runId: 'run-1', fileIds: files.slice(0, 30).map((file) => file.id) },
+				},
+				fileScope,
+			});
+
+			expect(result).toMatchObject({
+				ok: true,
+				messageContext: { queuedFiles: { runId: 'run-2', fileIds: ['file-30'] } },
+			});
+		});
+
+		it('posts the files of a respond outside chat-triggered turns at once', async () => {
+			const { executor, descriptor, thread } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Here is the chart' }, fileIds: ['file-1'] },
+				awaitResponse: false,
+				currentMessageContext: { ...currentMessageContext, replyExpectation: undefined },
+				fileScope,
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(thread.post).toHaveBeenCalledWith({
+				markdown: 'Here is the chart',
+				files: [{ data: Buffer.from('png'), filename: 'chart.png', mimeType: 'image/png' }],
+			});
+		});
+
+		it('uploads files with a channel message card', async () => {
+			const { executor, descriptor, channel } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'send_channel_message',
+				input: {
+					channelId: 'C123',
+					message: { card: { components: [{ type: 'section', text: 'Weekly report' }] } },
+					fileIds: ['file-1'],
+				},
+				awaitResponse: false,
+				fileScope,
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(channel.post).toHaveBeenCalledWith({
+				card: expect.objectContaining({ type: 'card' }),
+				files: [expect.objectContaining({ filename: 'chart.png' })],
+			});
+		});
+
+		it('posts a respond card with files at once in a chat-triggered turn', async () => {
+			const { executor, descriptor, thread } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: {
+					message: { card: { components: [{ type: 'section', text: 'Chart' }] } },
+					fileIds: ['file-1'],
+				},
+				awaitResponse: false,
+				currentMessageContext,
+				fileScope,
+			});
+
+			expect(result).toEqual(
+				expect.objectContaining({ ok: true, messageContext: expect.anything() }),
+			);
+			expect(thread.post).toHaveBeenCalledWith({
+				card: expect.objectContaining({ type: 'card' }),
+				files: [expect.objectContaining({ filename: 'chart.png' })],
+			});
+		});
+
+		it('posts Telegram files as attachments typed by MIME type', async () => {
+			const { executor, descriptor, thread } = buildExecutor(telegram);
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Here is the chart' }, fileIds: ['file-1'] },
+				awaitResponse: false,
+				currentMessageContext: {
+					...currentMessageContext,
+					integrationConnectionId: 'telegram:cred-telegram',
+					platform: 'telegram',
+					replyExpectation: undefined,
+				},
+				fileScope,
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(thread.post).toHaveBeenCalledWith({
+				markdown: 'Here is the chart',
+				attachments: [
+					{ type: 'image', data: Buffer.from('png'), name: 'chart.png', mimeType: 'image/png' },
+				],
+			});
+		});
+
+		it('posts Telegram images and documents as separate messages with the text on the first', async () => {
+			const report = {
+				...chartFile,
+				id: 'file-2',
+				fileName: 'report.pdf',
+				mimeType: 'application/pdf',
+			};
+			const { executor, descriptor, thread } = buildExecutor(telegram, [chartFile, report]);
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Files' }, fileIds: ['file-1', 'file-2'] },
+				awaitResponse: false,
+				currentMessageContext: {
+					...currentMessageContext,
+					integrationConnectionId: 'telegram:cred-telegram',
+					platform: 'telegram',
+					replyExpectation: undefined,
+				},
+				fileScope,
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(thread.post).toHaveBeenCalledTimes(2);
+			expect(thread.post).toHaveBeenNthCalledWith(1, {
+				markdown: 'Files',
+				attachments: [expect.objectContaining({ type: 'image', name: 'chart.png' })],
+			});
+			expect(thread.post).toHaveBeenNthCalledWith(2, {
+				raw: '',
+				attachments: [expect.objectContaining({ type: 'file', name: 'report.pdf' })],
+			});
+		});
+
+		it('returns FILE_NOT_FOUND when the thread cannot read a file', async () => {
+			const { executor, descriptor, thread, attachmentService } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Chart' }, fileIds: ['file-1', 'other-file'] },
+				awaitResponse: false,
+				currentMessageContext,
+				fileScope,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: { code: 'FILE_NOT_FOUND', message: expect.stringContaining('other-file') },
+			});
+			expect(attachmentService.getBuffer).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('returns FILE_UPLOAD_LIMIT_EXCEEDED for a Slack file above the platform limit', async () => {
+			const { executor, descriptor, thread, attachmentService } = buildExecutor();
+			attachmentService.getReadable.mockResolvedValue({
+				...chartFile,
+				fileSizeBytes: 1025 * 1024 * 1024,
+			} as never);
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Chart' }, fileIds: ['file-1'] },
+				awaitResponse: false,
+				currentMessageContext,
+				fileScope,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: {
+					code: 'FILE_UPLOAD_LIMIT_EXCEEDED',
+					message: 'File "chart.png" is 1025 MB. The slack integration sends files up to 1024 MB.',
+				},
+			});
+			expect(attachmentService.getBuffer).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('returns FILE_UPLOAD_LIMIT_EXCEEDED for more files than one action sends', async () => {
+			const { executor, descriptor, attachmentService } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'send_dm',
+				input: {
+					userId: 'U123',
+					message: { text: 'Charts' },
+					fileIds: Array.from({ length: 31 }, (_, index) => `file-${index}`),
+				},
+				awaitResponse: false,
+				fileScope,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: { code: 'FILE_UPLOAD_LIMIT_EXCEEDED', message: expect.stringContaining('30 files') },
+			});
+			expect(attachmentService.getReadable).not.toHaveBeenCalled();
+		});
+
+		it('returns UNSUPPORTED_ACTION on a platform that cannot send files', async () => {
+			const { executor, descriptor, attachmentService } = buildExecutor(linear);
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Chart' }, fileIds: ['file-1'] },
+				awaitResponse: false,
+				currentMessageContext: {
+					...currentMessageContext,
+					integrationConnectionId: 'linear:cred-linear',
+				},
+				fileScope,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: { code: 'UNSUPPORTED_ACTION', message: expect.stringContaining("can't send files") },
+			});
+			expect(attachmentService.getReadable).not.toHaveBeenCalled();
+		});
+
+		it('returns NO_THREAD_CONTEXT when the run has no thread', async () => {
+			const { executor, descriptor } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Chart' }, fileIds: ['file-1'] },
+				awaitResponse: false,
+				currentMessageContext,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: { code: 'NO_THREAD_CONTEXT', message: expect.any(String) },
+			});
 		});
 	});
 });

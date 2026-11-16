@@ -5,14 +5,19 @@ import {
 	DeactivateWorkflowDto,
 	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
+	ListCallableSubworkflowsQueryDto,
 	ManualRunDto,
+	TransferPreviewQueryDto,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
+	type CallableSubworkflowsResponse,
 	type WorkflowPublicationStatus,
+	type WorkflowTransferPreview,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { OutboundHttp, SsrfBlockedIpError, SsrfProtectionService } from '@n8n/backend-network';
-import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { OutboundHttp, SsrfBlockedIpError } from '@n8n/backend-network';
+import { EventService } from '@n8n/backend-services';
+import { GlobalConfig } from '@n8n/config';
 import {
 	AuthenticatedRequest,
 	ProjectRelationRepository,
@@ -41,10 +46,7 @@ import express from 'express';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 import { AuthService } from '@/auth/auth.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExecutionService } from '@/executions/execution.service';
 import { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
@@ -67,6 +69,7 @@ import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
+import { toUserLike } from '@/utils/to-user-like';
 
 @RestController('/workflows')
 export class WorkflowsController {
@@ -89,8 +92,6 @@ export class WorkflowsController {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly executionService: ExecutionService,
 		private readonly collaborationService: CollaborationService,
-		private readonly ssrfConfig: SsrfProtectionConfig,
-		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 		private readonly ownershipService: OwnershipService,
@@ -117,9 +118,6 @@ export class WorkflowsController {
 
 		const savedWorkflowWithMetaData =
 			this.enterpriseWorkflowService.addOwnerAndSharings(savedWorkflow);
-		// @ts-expect-error: This is added as part of addOwnerAndSharings but
-		// shouldn't be returned to the frontend
-		delete savedWorkflowWithMetaData.shared;
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 
@@ -128,6 +126,7 @@ export class WorkflowsController {
 		return { ...savedWorkflowWithMetaData, scopes, checksum };
 	}
 
+	// oxlint-disable-next-line typescript/no-deprecated
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getAll(req: WorkflowRequest.GetMany, res: express.Response) {
 		try {
@@ -140,9 +139,13 @@ export class WorkflowsController {
 			const { workflows: data, count } = await this.workflowService.getMany(
 				req.user,
 				req.listQueryOptions,
-				!!req.query.includeScopes,
-				userCanListProjectFolders && !!req.query.includeFolders,
-				!!req.query.onlySharedWithMe,
+				{
+					includeScopes: !!req.query.includeScopes,
+					includeFolders: userCanListProjectFolders && !!req.query.includeFolders,
+					onlySharedWithMe: !!req.query.onlySharedWithMe,
+					// The list UI renders the publication badge
+					includePublicationStatus: true,
+				},
 			);
 
 			res.json({ count, data });
@@ -207,6 +210,7 @@ export class WorkflowsController {
 	async getWorkflow(req: WorkflowRequest.Get) {
 		const { workflowId } = req.params;
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isSharingEnabled()) {
 			const relations: FindOptionsRelations<WorkflowEntity> = {
 				shared: {
@@ -228,6 +232,7 @@ export class WorkflowsController {
 					includeTags: !this.globalConfig.tags.disabled,
 					includeParentFolder: true,
 					includeActiveVersion: true,
+					publishHistory: 'latestActivation',
 				},
 			);
 
@@ -240,10 +245,6 @@ export class WorkflowsController {
 			const workflowWithMetaData = enterpriseWorkflowService.addOwnerAndSharings(workflow);
 
 			await enterpriseWorkflowService.addCredentialsToWorkflow(workflowWithMetaData, req.user);
-
-			// @ts-expect-error: This is added as part of addOwnerAndSharings but
-			// shouldn't be returned to the frontend
-			delete workflowWithMetaData.shared;
 
 			const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 			const checksum = await calculateWorkflowChecksum(workflow);
@@ -261,6 +262,7 @@ export class WorkflowsController {
 				includeTags: !this.globalConfig.tags.disabled,
 				includeParentFolder: true,
 				includeActiveVersion: true,
+				publishHistory: 'latestActivation',
 			},
 		);
 
@@ -277,7 +279,9 @@ export class WorkflowsController {
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 		const checksum = await calculateWorkflowChecksum(workflow);
 
-		return { ...workflow, scopes, checksum };
+		const workflowWithMetaData = this.enterpriseWorkflowService.addOwnerAndSharings(workflow);
+
+		return { ...workflowWithMetaData, scopes, checksum };
 	}
 
 	/**
@@ -305,7 +309,15 @@ export class WorkflowsController {
 
 		await this.collaborationService.validateWriteLock(req.user.id, clientId, workflowId, 'update');
 
-		const { tags, parentFolderId, aiBuilderAssisted, expectedChecksum, autosaved, ...rest } = body;
+		const {
+			tags,
+			parentFolderId,
+			aiBuilderAssisted,
+			expectedChecksum,
+			autosaved,
+			restoredFromVersionId,
+			...rest
+		} = body;
 
 		// Validate timeSavedMode if present
 		if (
@@ -318,6 +330,7 @@ export class WorkflowsController {
 		const updateData = createWorkflowEntityFromPayload(rest);
 
 		// Credential tamper protection is enforced centrally in WorkflowService.update
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isSharingEnabled = this.license.isSharingEnabled();
 		const updatedWorkflow = await this.workflowService.update(req.user, updateData, workflowId, {
 			tagIds: tags,
@@ -326,6 +339,7 @@ export class WorkflowsController {
 			expectedChecksum,
 			aiBuilderAssisted,
 			autosaved,
+			restoredFromVersionId,
 		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
@@ -460,6 +474,7 @@ export class WorkflowsController {
 			name,
 			description,
 			expectedChecksum,
+			publishHistory: 'latestActivation',
 		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
@@ -539,13 +554,7 @@ export class WorkflowsController {
 				dbWorkflow.id,
 			);
 			this.eventService.emit('workflow-executed', {
-				user: {
-					id: req.user.id,
-					email: req.user.email,
-					firstName: req.user.firstName,
-					lastName: req.user.lastName,
-					role: req.user.role,
-				},
+				user: toUserLike(req.user),
 				workflowId: dbWorkflow.id,
 				workflowName: dbWorkflow.name,
 				executionId: result.executionId,
@@ -641,6 +650,21 @@ export class WorkflowsController {
 		});
 	}
 
+	@Get('/:workflowId/transfer-preview')
+	@ProjectScope('workflow:move')
+	async transferPreview(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Query query: TransferPreviewQueryDto,
+	): Promise<WorkflowTransferPreview> {
+		return await this.enterpriseWorkflowService.previewWorkflowTransfer(
+			req.user,
+			workflowId,
+			query.destinationProjectId,
+		);
+	}
+
 	@Put('/:workflowId/transfer')
 	@ProjectScope('workflow:move')
 	async transfer(
@@ -702,6 +726,22 @@ export class WorkflowsController {
 		return await this.workflowPublicationStatusService.getStatus(workflowId);
 	}
 
+	/**
+	 * Lists the workflows that this workflow can call as sub-workflows. Only
+	 * editors of the parent can add a sub-workflow call, so this requires
+	 * `workflow:update` on the parent.
+	 */
+	@Get('/:workflowId/callable-subworkflows')
+	@ProjectScope('workflow:update')
+	async getCallableSubworkflows(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Query query: ListCallableSubworkflowsQueryDto,
+	): Promise<CallableSubworkflowsResponse> {
+		return await this.workflowService.getCallableSubworkflows(req.user, workflowId, query);
+	}
+
 	@Post('/with-node-types')
 	async getWorkflowsWithNodesIncluded(req: AuthenticatedRequest, res: express.Response) {
 		try {
@@ -730,10 +770,8 @@ export class WorkflowsController {
 	}
 
 	private async fetchWorkflowFromUrl(url: string) {
-		const client = this.outboundHttp.requests({
-			// user-supplied URL
-			ssrf: this.ssrfConfig.enabled ? this.ssrfProtectionService : 'disabled',
-		});
+		// user-supplied URL, so the default safe mode applies
+		const client = this.outboundHttp.requests();
 
 		try {
 			return await client.request<IWorkflowResponse>({ method: 'GET', url });

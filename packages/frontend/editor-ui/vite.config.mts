@@ -1,19 +1,23 @@
+// Each import in this file must resolve with no build step.
+// Put an import that needs a `dist` in `vitest.config.mts`.
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
-import { defineConfig, mergeConfig, type UserConfig } from 'vite';
+import { defineConfig, type Plugin, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import svgLoader from 'vite-svg-loader';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { codecovVitePlugin } from '@codecov/vite-plugin';
 
-import { vitestConfig } from '@n8n/vitest-config/frontend';
 import icons from 'unplugin-icons/vite';
 import { lucideIconsPlugin } from '../@n8n/design-system/src/icons/lucide/vite';
 import browserslistToEsbuild from 'browserslist-to-esbuild';
-import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
 import { isLocaleFile, sendLocaleUpdate } from './vite/i18n-locales-hmr-helpers';
 import { nodePopularityPlugin } from './vite/vite-plugin-node-popularity.mjs';
+import { editorUiAliases } from './vite/aliases.mjs';
+import { devServerPlugin } from './vite/dev-ports.mjs';
+// Imported from source, not from `@n8n/constants`: this file must resolve with no build step.
+import { HTML_NONCE_PLACEHOLDER } from '../../@n8n/constants/src/csp';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
@@ -23,88 +27,78 @@ const browsers = browserslist.loadConfig({ path: process.cwd() });
 
 const packagesDir = resolve(__dirname, '..', '..');
 
-const alias = [
-	{ find: '@', replacement: resolve(__dirname, 'src') },
-	{ find: 'stream', replacement: 'stream-browserify' },
-	// Stub out @n8n/expression-runtime for browser build (it pulls in isolated-vm, a Node.js-only native module)
-	{
-		find: '@n8n/expression-runtime',
-		replacement: resolve(__dirname, 'vite/expression-runtime-stub.ts'),
-	},
-	// Ensure bare imports resolve to sources (not dist)
-	{ find: '@n8n/i18n', replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src') },
-	{ find: '@n8n/chat-hub', replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src') },
-	{ find: '@n8n/tournament', replacement: resolve(packagesDir, '@n8n', 'tournament', 'src') },
-	{
-		find: /^@n8n\/chat(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),
-	},
-	{
-		find: /^@n8n\/chat-hub(.+)$/,
-		replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src$1'),
-	},
-	{
-		find: /^@n8n\/api-requests(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'api-requests', 'src$1'),
-	},
-	{
-		find: /^@n8n\/composables(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'composables', 'src$1'),
-	},
-	{
-		find: /^@n8n\/frontend-module-sdk$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'frontend-module-sdk', 'src/index.ts'),
-	},
-	{
-		find: /^@n8n\/constants(.+)$/,
-		replacement: resolve(packagesDir, '@n8n', 'constants', 'src$1'),
-	},
-	{
-		find: /^@n8n\/design-system$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src/index.ts'),
-	},
-	{
-		find: /^@n8n\/design-system(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src$1'),
-	},
-	{
-		find: /^@n8n\/i18n(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src$1'),
-	},
-	{
-		find: /^@n8n\/stores(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'stores', 'src$1'),
-	},
-	{
-		find: /^@n8n\/telemetry$/,
-		replacement: resolve(packagesDir, '@n8n', 'telemetry', 'src/index.ts'),
-	},
-	{
-		find: /^@n8n\/telemetry(.+)$/,
-		replacement: resolve(packagesDir, '@n8n', 'telemetry', 'src$1'),
-	},
-	{
-		find: /^@n8n\/utils(.+)$/,
-		replacement: resolve(packagesDir, '@n8n', 'utils', 'src$1'),
-	},
-	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
-		find: new RegExp(`^lodash.${name}$`, 'i'),
-		replacement: `lodash/${name}`,
-	})),
-	{
-		find: /^lodash\.(.+)$/,
-		replacement: 'lodash/$1',
-	},
-	{
-		// For sanitize-html
-		find: 'source-map-js',
-		replacement: resolve(__dirname, 'vite/source-map-js-shim'),
-	},
-];
+// zod is the only single-instance-sensitive library the frontend bundles; dedupe it so
+// Vite resolves it to a single copy. The other curated libs are backend-only.
+const singleInstanceDedupe = ['zod'];
 
-const { RELEASE: release } = process.env;
+const alias = editorUiAliases(__dirname, packagesDir);
+
+const { RELEASE: release, SENTRY_AUTH_TOKEN: sentryAuthToken } = process.env;
+
+/**
+ * Shim `node:fs` for browser builds.
+ *
+ * `QuickJsBridge` imports `readFileSync` statically for its Node-only bundle
+ * read. The dev server externalizes `node:fs` behind a proxy that throws on any
+ * property access, which breaks the editor boot as soon as the module is
+ * evaluated — the production build tolerates the same import.
+ *
+ * The alias has to beat the generic `node:fs` alias that nodePolyfills installs
+ * in its own config() hook. mergeAlias prepends incoming aliases, so the last
+ * plugin to run config() ends up first in the array; `enforce: 'post'` puts this
+ * one last. A regex find keeps it to `node:fs` exactly: a string find is a
+ * prefix match and would also rewrite `node:fs/promises`.
+ *
+ * Not in test mode: `vitest.config.mts` merges this config, and unit tests run
+ * on Node, where `node:fs` is real and several of them use it.
+ */
+const nodeFsShimPlugin = (): UserConfig['plugins'][number] => ({
+	name: 'node-fs-shim',
+	enforce: 'post',
+	config(_config, env) {
+		if (env.mode === 'test') return {};
+		return {
+			resolve: {
+				alias: [
+					{
+						find: /^node:fs$/,
+						replacement: resolve(__dirname, 'vite/node-fs-shim.ts'),
+					},
+				],
+			},
+		};
+	},
+});
+
+/**
+ * Modules that the entry imports statically, directly or through other modules.
+ *
+ * Rolldown splits this graph into hundreds of small shared chunks, and `index.html` preloads
+ * each of them. `codeSplitting` below puts the graph into one vendor chunk and one app chunk.
+ * Lazy routes keep the automatic splitting.
+ */
+const entryGraph = new Set<string>();
+
+const entryGraphPlugin = (): Plugin => ({
+	name: 'entry-graph',
+	apply: 'build',
+	buildEnd() {
+		entryGraph.clear();
+		const pending = [resolve(__dirname, 'src/main.ts')];
+		for (let id = pending.pop(); id; id = pending.pop()) {
+			if (entryGraph.has(id)) continue;
+			entryGraph.add(id);
+			pending.push(...(this.getModuleInfo(id)?.importedIds ?? []));
+		}
+	},
+});
+
+const isVendorModule = (id: string) => /[\\/]node_modules[\\/]/.test(id);
 
 const plugins: UserConfig['plugins'] = [
+	entryGraphPlugin(),
+	devServerPlugin(process.env),
+	nodeFsShimPlugin(),
 	nodePopularityPlugin(),
 	lucideIconsPlugin(),
 	icons({
@@ -152,13 +146,6 @@ const plugins: UserConfig['plugins'] = [
 			],
 		},
 	}),
-	...(release
-		? [
-				legacy({
-					modernTargets: browsers,
-				}),
-			]
-		: []),
 	{
 		name: 'Insert config script',
 		transformIndexHtml: (html, ctx) => {
@@ -167,15 +154,16 @@ const plugins: UserConfig['plugins'] = [
 			return ctx.server
 				? html
 						.replace('%CONFIG_TAGS%', '')
-						.replaceAll('/{{BASE_PATH}}', '//localhost:5678')
+						.replace(
+							'<script src="/{{BASE_PATH}}/static/base-path.js" type="text/javascript"></script>',
+							'<script type="text/javascript">window.BASE_PATH = "/";</script>',
+						)
+						.replaceAll('/{{BASE_PATH}}/', '/')
+						.replaceAll('/{{BASE_PATH}}', '')
 						.replaceAll('/{{REST_ENDPOINT}}', '/rest')
 				: html;
 		},
 	},
-	// For sanitize-html
-	// nodePolyfills({
-	// 	include: ['fs', 'path', 'url', 'util', 'timers'],
-	// }),
 	{
 		name: 'i18n-locales-hmr',
 		configureServer(server) {
@@ -202,15 +190,27 @@ const plugins: UserConfig['plugins'] = [
 				sentryVitePlugin({
 					org: 'n8nio',
 					project: 'instance-frontend',
-					authToken: process.env.SENTRY_AUTH_TOKEN,
+					authToken: sentryAuthToken,
+					// Stop the deletion hook if the Sentry upload fails.
+					errorHandler: (error) => {
+						throw error;
+					},
 					telemetry: false,
 					release: {
 						name: `n8n@${release}`,
+						// `Sentry.init` gets the release from the backend config (see `plugins/sentry.ts`),
+						// so the plugin does not have to add a release snippet to each chunk.
+						inject: false,
+					},
+					sourcemaps: {
+						// Sentry keeps these maps, so the image does not need them (156MB).
+						// Keep the maps if upload credentials are not available.
+						filesToDeleteAfterUpload: sentryAuthToken ? ['./dist/**/*.map'] : undefined,
 					},
 				}),
 			]
 		: []),
-	// Only run on non-release builds to prevent double upload from @vitejs/plugin-legacy
+	// Only run on non-release builds.
 	...(process.env.CODECOV_TOKEN && !release
 		? [
 				codecovVitePlugin({
@@ -225,44 +225,56 @@ const plugins: UserConfig['plugins'] = [
 
 const target = browserslistToEsbuild(browsers);
 
-export default mergeConfig(
-	defineConfig({
-		define: {
-			// This causes test to fail but is required for actually running it
-			// ...(NODE_ENV !== 'test' ? { 'global': 'globalThis' } : {}),
-			...(NODE_ENV === 'development' ? { 'process.env': {} } : {}),
-			BASE_PATH: `'${publicPath}'`,
-		},
-		plugins,
-		resolve: { alias },
-		base: publicPath,
-		envPrefix: ['VUE', 'N8N_ENV_FEAT'],
-		css: {
-			preprocessorMaxWorkers: 2,
-			preprocessorOptions: {
-				scss: {
-					additionalData: [
-						'',
-						'@use "@/app/css/_variables.scss" as *;',
-						'@use "@n8n/design-system/css/mixins" as mixins;',
-					].join('\n'),
+export default defineConfig({
+	define: {
+		// This causes test to fail but is required for actually running it
+		// ...(NODE_ENV !== 'test' ? { 'global': 'globalThis' } : {}),
+		...(NODE_ENV === 'development' ? { 'process.env': {} } : {}),
+		BASE_PATH: `'${publicPath}'`,
+	},
+	plugins,
+	// Marks every script, style and stylesheet link Vite emits, so the backend can swap in
+	// the request's nonce when it serves the page. Vite stamps these last, after other
+	// plugins have appended their own tags, which a plugin of ours could not reach.
+	html: { cspNonce: HTML_NONCE_PLACEHOLDER },
+	resolve: { alias, dedupe: singleInstanceDedupe },
+	base: publicPath,
+	envPrefix: ['VUE', 'N8N_ENV_FEAT'],
+	build: {
+		minify: !!release,
+		// Coverage builds emit INLINE maps so browser V8 coverage carries the
+		// map in the script source and monocart resolves offsets back to src.
+		// 'hidden' writes the maps but omits the sourceMappingURL comment.
+		// Deleted maps then cause no 404 in devtools.
+		sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : release ? 'hidden' : false,
+		target,
+		cssTarget: target,
+		rolldownOptions: {
+			output: {
+				codeSplitting: {
+					// Do not set `maxSize`. Split groups can import each other in a cycle,
+					// which changes the module execution order and breaks the app at startup.
+					groups: [
+						{
+							name: 'vendor',
+							test: (id) => entryGraph.has(id) && isVendorModule(id),
+							priority: 2,
+						},
+						{ name: 'app', test: (id) => entryGraph.has(id), priority: 1 },
+					],
 				},
 			},
 		},
-		build: {
-			minify: !!release,
-			// Coverage builds emit INLINE maps so browser V8 coverage carries the
-			// map in the script source and monocart resolves offsets back to src.
-			sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : !!release,
-			target,
-		},
-		optimizeDeps: {
-			exclude: ['wa-sqlite'],
-			rolldownOptions: {},
-		},
-		worker: {
-			format: 'es',
-		},
-	}),
-	vitestConfig,
-);
+	},
+	server: {
+		// Transform the entry graph when the server starts, not on the first page load.
+		warmup: { clientFiles: ['./src/main.ts'] },
+	},
+	optimizeDeps: {
+		exclude: ['wa-sqlite'],
+		rolldownOptions: {},
+	},
+	worker: {
+		format: 'es',
+	},
+});

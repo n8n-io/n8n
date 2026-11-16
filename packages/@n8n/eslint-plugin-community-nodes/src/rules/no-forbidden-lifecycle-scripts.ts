@@ -41,7 +41,7 @@ export const NoForbiddenLifecycleScriptsRule = createRule({
 				}
 
 				const scriptsProp = findJsonProperty(node, 'scripts');
-				if (!scriptsProp || scriptsProp.value.type !== AST_NODE_TYPES.ObjectExpression) {
+				if (scriptsProp?.value.type !== AST_NODE_TYPES.ObjectExpression) {
 					return;
 				}
 

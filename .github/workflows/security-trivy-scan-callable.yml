@@ -1,4 +1,5 @@
 name: Security - Scan Docker Image With Trivy
+run-name: 'Trivy scan of ${{ inputs.image_ref }}'
 
 on:
   workflow_dispatch:
@@ -23,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout for VEX file
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
             security/vex.openvex.json
@@ -38,17 +39,27 @@ jobs:
         run: node .github/scripts/retry.mjs --attempts 4 --delay 15 -- docker pull "$IMAGE_REF"
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # v0.34.1
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         id: trivy_scan
         with:
           image-ref: ${{ inputs.image_ref }}
-          version: 'v0.69.2'
+          version: 'v0.76.2'
           format: 'json'
           output: 'trivy-results.json'
           severity: 'CRITICAL,HIGH,MEDIUM,LOW'
           ignore-unfixed: false
           exit-code: '0'
           trivy-config: 'security/trivy.yaml'
+
+      - name: Upload Trivy results
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          # Both callers scan different images against the same reusable workflow,
+          # so scope the artifact name to the caller job to keep it unique.
+          name: trivy-results-${{ github.job }}
+          path: trivy-results.json
+          retention-days: 14
 
       - name: Calculate vulnerability counts
         id: process_results

@@ -3,15 +3,36 @@ import type {
 	AnthropicThinkingConfig,
 	GoogleThinkingConfig,
 	JSONObject,
+	OpenAIReasoningEffort,
 	OpenAIThinkingConfig,
-	ReasoningLevel,
 	ThinkingConfig,
 	XaiThinkingConfig,
 } from '../../types';
 
 export interface ProviderQuirks {
+	/**
+	 * Namespace used in AI SDK `providerOptions` / `providerMetadata`.
+	 * Defaults to the registry key. Vertex Anthropic still speaks the Anthropic
+	 * Messages wire format, so its quirks emit under `anthropic`.
+	 */
+	providerOptionsNamespace?: string;
 	/** providerMetadata keys on reasoning parts that must be copied to providerOptions and survive replay. */
 	reasoningReplayKeys?: string[];
+	/** Provider merges adjacent assistant messages into one; replayable reasoning may only survive on the last of them. */
+	mergesAdjacentAssistantMessages?: boolean;
+	/**
+	 * Provider replays reasoning from the part's text itself, with no
+	 * providerMetadata involved — keep reasoning blocks that carry no replayable
+	 * metadata on the current tool chain (after the last user message). Older
+	 * turns still drop them.
+	 */
+	replayReasoningText?: boolean;
+	/**
+	 * Replay tool-call IDs exactly as the provider returned them. Otherwise the
+	 * runtime replaces IDs outside `[A-Za-z0-9_-]` with a hash, because Anthropic
+	 * rejects them.
+	 */
+	keepsToolCallIds?: boolean;
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
 	toolProviderOptionDefaults?: JSONObject;
 	/** Provider defaults to strict JSON Schema validation for structured output; relax for raw user schemas. */
@@ -20,15 +41,47 @@ export interface ProviderQuirks {
 	thinkingToProviderOptions?: (
 		thinking: ThinkingConfig,
 		modelId: string,
+		endpoint: ThinkingEndpoint,
 	) => Record<string, Record<string, unknown>>;
-	/**
-	 * Provider options the generic reasoning level alone doesn't produce. The AI
-	 * SDK maps the level itself, so this only fills gaps it leaves open.
-	 */
-	reasoningToProviderOptions?: (
-		reasoning: ReasoningLevel,
-		modelId: string,
-	) => Record<string, Record<string, unknown>> | undefined;
+}
+
+/** Where the model's requests go, for options that only the provider's own API accepts. */
+export interface ThinkingEndpoint {
+	/** The model calls the provider's own API, not a proxy, gateway, or custom base URL. */
+	isOfficialApi: boolean;
+}
+
+/**
+ * Shared Anthropic Messages thinking mapping (also used by Vertex Anthropic).
+ * `blockBinding` applies to the adaptive shape only: the budget shape does not accept it.
+ */
+function anthropicThinkingToProviderOptions(
+	thinking: ThinkingConfig,
+	modelId: string,
+	blockBinding?: { prefixMismatchBehavior: 'drop_block' },
+): Record<string, Record<string, unknown>> {
+	const cfg = thinking as AnthropicThinkingConfig;
+	const adaptive = cfg.mode === 'adaptive' ? cfg : undefined;
+	if (anthropicUsesAdaptiveThinking(modelId)) {
+		return {
+			anthropic: {
+				thinking: {
+					type: 'adaptive',
+					display: adaptive?.display ?? 'summarized',
+					...(blockBinding !== undefined ? { blockBinding } : {}),
+				},
+				effort: adaptive?.effort ?? 'medium',
+			},
+		};
+	}
+	const budgetTokens = cfg.mode === 'adaptive' ? undefined : cfg.budgetTokens;
+	const effort = cfg.mode === 'adaptive' ? undefined : cfg.effort;
+	return {
+		anthropic: {
+			thinking: { type: 'enabled', budgetTokens: budgetTokens ?? 10000 },
+			...(effort !== undefined ? { effort } : {}),
+		},
+	};
 }
 
 /** Anthropic model families that take the adaptive thinking API. */
@@ -48,6 +101,21 @@ function anthropicUsesAdaptiveThinking(modelId: string): boolean {
 	return modelId.includes('claude-');
 }
 
+/** Map effort to top-level `reasoningEffort` (OpenAI-compatible chat). */
+function reasoningEffortQuirk(
+	provider: ProviderId,
+	defaultEffort?: OpenAIReasoningEffort,
+): ProviderQuirks {
+	return {
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as OpenAIThinkingConfig;
+			const reasoningEffort = cfg.reasoningEffort ?? defaultEffort;
+			if (reasoningEffort === undefined) return {};
+			return { [provider]: { reasoningEffort } };
+		},
+	};
+}
+
 /**
  * Declarative registry of provider-specific behavior the AI SDK doesn't
  * normalize away. Each entry documents why the quirk exists and its upstream
@@ -60,6 +128,11 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// exposes them in providerMetadata, not providerOptions. Shim until the
 		// provider copies them itself on replay.
 		reasoningReplayKeys: ['signature', 'redactedData'],
+		// QUIRK(anthropic): the provider merges adjacent assistant messages into
+		// one API message. Thinking blocks are only valid inside the response
+		// that produced them, so a merged message with signed reasoning from two
+		// responses is rejected with "thinking blocks ... cannot be modified".
+		mergesAdjacentAssistantMessages: true,
 		// QUIRK(anthropic): defaults every function tool to eager_input_streaming,
 		// which forwards the model's raw argument tokens without server-side JSON
 		// validation — malformed inputs (e.g. unquoted string values) then reach
@@ -70,35 +143,32 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		// QUIRK(anthropic): the two thinking APIs are mutually exclusive — an
 		// adaptive model rejects `type: 'enabled'` and vice versa — so the model
 		// decides the shape and the config only fills in its details.
-		thinkingToProviderOptions: (thinking, modelId) => {
-			const cfg = thinking as AnthropicThinkingConfig;
-			const adaptive = cfg.mode === 'adaptive' ? cfg : undefined;
-			if (anthropicUsesAdaptiveThinking(modelId)) {
-				return {
-					anthropic: {
-						thinking: { type: 'adaptive', display: adaptive?.display ?? 'summarized' },
-						effort: adaptive?.effort ?? 'medium',
-					},
-				};
-			}
-			const budgetTokens = cfg.mode === 'adaptive' ? undefined : cfg.budgetTokens;
-			return {
-				anthropic: {
-					thinking: { type: 'enabled', budgetTokens: budgetTokens ?? 10000 },
-				},
-			};
-		},
-		// QUIRK(anthropic): adaptive models default `display` to "omitted", so the
-		// generic reasoning level on its own buys thinking whose text never comes
-		// back — signed, billed, and invisible. Ask for the text; the SDK still
-		// derives the effort from the level.
-		reasoningToProviderOptions: (reasoning, modelId) => {
-			if (reasoning === 'none' || reasoning === 'provider-default') return undefined;
-			if (!anthropicUsesAdaptiveThinking(modelId)) return undefined;
-			return { anthropic: { thinking: { type: 'adaptive', display: 'summarized' } } };
-		},
+		// QUIRK(anthropic): Anthropic binds signed thinking to the content before
+		// it. The runtime rewrites that content on purpose (mid-run observation,
+		// deferred tool and skill instructions), so ask Anthropic to drop stale
+		// thinking blocks instead of rejecting the request. Only Anthropic's own
+		// API accepts `block_binding`: proxies that forward to Vertex reject it.
+		thinkingToProviderOptions: (thinking, modelId, { isOfficialApi }) =>
+			anthropicThinkingToProviderOptions(
+				thinking,
+				modelId,
+				isOfficialApi ? { prefixMismatchBehavior: 'drop_block' } : undefined,
+			),
+	},
+	// Vertex Claude uses AnthropicLanguageModel under the hood — providerOptions
+	// stay under the `anthropic` namespace even though the model id prefix differs.
+	'google-vertex-anthropic': {
+		providerOptionsNamespace: 'anthropic',
+		toolProviderOptionDefaults: { eagerInputStreaming: false },
+		thinkingToProviderOptions: (thinking, modelId) =>
+			anthropicThinkingToProviderOptions(thinking, modelId),
 	},
 	openai: {
+		// QUIRK(openai): OpenAI-compatible gateways can store data in the
+		// tool-call ID and read it back on the next request. LiteLLM stores
+		// Gemini's thought signature there in standard base64, so a changed ID
+		// makes Gemini reject the request.
+		keepsToolCallIds: true,
 		// QUIRK(openai): the Responses API pairs each function_call item with a
 		// reasoning item; dropping the reasoning part from history makes the next
 		// request fail with "function_call was provided without its required
@@ -147,14 +217,45 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 			return { xai: { reasoningEffort: cfg.reasoningEffort ?? 'high' } };
 		},
 	},
+	// custom/*: only forward an explicit effort — no provider-level default.
+	custom: {
+		...reasoningEffortQuirk('custom'),
+		// QUIRK(custom): OpenAI-compatible vendors return chain-of-thought as
+		// `reasoning_content` and expect it back within a tool-call chain
+		// (DeepSeek's thinking mode rejects the request without it).
+		// @ai-sdk/openai-compatible re-emits `reasoning_content` from replayed
+		// reasoning parts on its own, but attaches no providerMetadata to them, so
+		// the runtime keeps the parts by text alone, on the current tool chain only.
+		replayReasoningText: true,
+		// QUIRK(custom): same as openai, see keepsToolCallIds there.
+		keepsToolCallIds: true,
+	},
+	moonshotai: reasoningEffortQuirk('moonshotai'),
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {
 	return PROVIDER_QUIRKS[providerId as ProviderId] ?? {};
 }
 
-export function providerIdFromModelId(modelId: string): string {
-	return modelId.split('/')[0];
+/**
+ * Default completion-token cap for reasoning-heavy models whose providers
+ * otherwise apply a much lower fallback.
+ * Context windows are often 131072 shared input+output; requesting the full
+ * window as max_tokens overflows once any prompt tokens are present.
+ */
+export const HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS = 65_536;
+
+/**
+ * Provider/model-specific default for AI SDK `maxOutputTokens`. Unknown models
+ * otherwise fall back to a 4096 cap that reasoning-heavy agent turns can exhaust
+ * before emitting text or tool calls.
+ */
+export function resolveDefaultMaxOutputTokens(modelId: string): number | undefined {
+	const normalizedModelId = modelId.toLowerCase();
+	if (normalizedModelId.includes('kimi-k3') || normalizedModelId.startsWith('minimax/')) {
+		return HIGH_REASONING_DEFAULT_MAX_OUTPUT_TOKENS;
+	}
+	return undefined;
 }
 
 /** Merge every registered tool providerOptions default under its provider namespace; explicit tool values win. */
@@ -164,7 +265,8 @@ export function applyToolProviderOptionDefaults(
 	const result = { ...toolProviderOptions };
 	for (const [provider, quirks] of Object.entries(PROVIDER_QUIRKS)) {
 		if (!quirks.toolProviderOptionDefaults) continue;
-		result[provider] = { ...quirks.toolProviderOptionDefaults, ...result[provider] };
+		const namespace = quirks.providerOptionsNamespace ?? provider;
+		result[namespace] = { ...quirks.toolProviderOptionDefaults, ...result[namespace] };
 	}
 	return result;
 }

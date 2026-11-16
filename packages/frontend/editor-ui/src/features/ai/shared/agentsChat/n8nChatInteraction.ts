@@ -1,4 +1,8 @@
-import { richMessageSchema } from '@n8n/api-types';
+import {
+	richCardComponentSchema,
+	richMessageSchema,
+	WORKFLOW_WAIT_SUSPEND_TYPE,
+} from '@n8n/api-types';
 import type { RichCard, RichCardComponent, RichCardComponentType } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -71,6 +75,25 @@ export function parseIntegrationActionCard(input: unknown): N8nChatInteractionIn
 /** Parse a persisted/live chat_action tool input into a renderable card, or undefined. */
 export function parseN8nChatActionInput(input: unknown): N8nChatInteractionInput | undefined {
 	return parseIntegrationActionCard(input);
+}
+
+/**
+ * Suspend payload of a workflow tool parked on a Wait node — the same card the
+ * chat platforms render, so it goes through the same card renderer here.
+ *
+ * @see buildWaitCard in packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+ */
+const waitSuspendPayloadSchema = z.object({
+	type: z.literal(WORKFLOW_WAIT_SUSPEND_TYPE),
+	title: z.string(),
+	components: z.array(richCardComponentSchema).min(1),
+});
+
+/** Parse a Wait-node suspend payload into a renderable card, or undefined. */
+export function parseWaitSuspendPayload(payload: unknown): N8nChatInteractionInput | undefined {
+	const parsed = waitSuspendPayloadSchema.safeParse(payload);
+	if (!parsed.success) return undefined;
+	return { card: { title: parsed.data.title, components: parsed.data.components } };
 }
 
 /**

@@ -1,40 +1,43 @@
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+import uniqBy from 'lodash/uniqBy';
 import { pickVariableForProject } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-import { variableBlockingFailures, variableMissingModeCreates } from './variable-missing-mode';
 import {
-	computeVariableLimitFailure,
-	createFailure,
-	dedupeCreationsByDestination,
-	destinationKey,
-} from './variable.types';
+	variableBlockingFailures,
+	variableMissingModeCreates,
+	variableMissingModeUsesPackageValue,
+} from './variable-missing-mode';
+import { computeVariableLimitFailure, destinationKey } from './variable.types';
 import type {
 	VariableApplyResult,
+	VariableConflict,
 	VariableCreation,
 	VariableImportPlan,
 	VariableImportRequest,
 	VariableLimitFailure,
+	VariableMatch,
+	VariableOverwrite,
 	VariableResolutionFailure,
 } from './variable.types';
+import { VariableConflictPolicy } from '../../n8n-packages.types';
 import type { ImportContext } from '../../n8n-packages.types';
 
 @Service()
 export class VariableImporter {
 	constructor(private readonly variablesService: VariablesService) {}
 
-	async plan(
-		context: ImportContext,
-		request: VariableImportRequest,
-		options: { projectPendingCreation?: boolean } = {},
-	): Promise<VariableImportPlan> {
+	/** Resolves requirements against the target project then global, mirroring runtime `$vars` precedence. */
+	async plan(context: ImportContext, request: VariableImportRequest): Promise<VariableImportPlan> {
 		const requirements = request.requirements ?? [];
-		if (requirements.length === 0) return { matched: [], missing: [], creations: [] };
+		if (requirements.length === 0) {
+			return { matched: [], missing: [], creations: [], conflicts: [], overwrites: [] };
+		}
 
 		const allVariables = await this.variablesService.getAllCached();
 		const variablesByKey = new Map<string, typeof allVariables>();
@@ -44,36 +47,57 @@ export class VariableImporter {
 			else variablesByKey.set(variable.key, [variable]);
 		}
 
-		const matched: string[] = [];
+		const matched: VariableMatch[] = [];
 		const missing: VariableResolutionFailure[] = [];
 		const creations: VariableCreation[] = [];
-		const createStub = variableMissingModeCreates(request.missingMode);
+		const conflicts: VariableConflict[] = [];
+		const overwrites: VariableOverwrite[] = [];
+		const createsMissing = variableMissingModeCreates(request.missingMode);
+		const usesPackageValue = variableMissingModeUsesPackageValue(request.missingMode);
+		const comparesValues = request.conflictPolicy !== VariableConflictPolicy.KeepExisting;
+		const overwritesConflicts = request.conflictPolicy === VariableConflictPolicy.Overwrite;
 
 		for (const requirement of requirements) {
-			const picked = pickVariableForProject(
-				variablesByKey.get(requirement.name) ?? [],
-				requirement.name,
-				context.projectId,
-			);
+			const candidates = variablesByKey.get(requirement.name) ?? [];
+			const picked = pickVariableForProject(candidates, requirement.name, context.projectId);
 			if (picked) {
-				matched.push(requirement.name);
+				const scopes: VariableMatch['scopes'] = [];
+				if (candidates.some(({ project }) => project?.id === context.projectId)) {
+					scopes.push('project');
+				}
+				if (candidates.some(({ project }) => !project)) scopes.push('global');
+				matched.push({ name: requirement.name, scopes });
+
+				const packageValue = requirement.packageValue;
+				// An empty bundled value is nothing to write, the same way a creation treats it as a stub.
+				if (!comparesValues || !packageValue || packageValue === picked.value) {
+					continue;
+				}
+
+				const scope = picked.project ? { projectId: picked.project.id } : {};
+				conflicts.push({ name: requirement.name, ...scope });
+				if (overwritesConflicts) {
+					overwrites.push({
+						variableId: picked.id,
+						name: requirement.name,
+						...scope,
+						value: packageValue,
+					});
+				}
 				continue;
 			}
-			missing.push(createFailure(requirement));
-			if (createStub) {
+			missing.push({ name: requirement.name });
+			if (createsMissing) {
+				const value = usesPackageValue ? requirement.packageValue : undefined;
 				creations.push({
 					name: requirement.name,
 					...(requirement.globalPlacement ? {} : { projectId: context.projectId }),
-					usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
+					...(value !== undefined ? { value } : {}),
 				});
 			}
 		}
 
-		if (creations.length > 0) {
-			await this.assertCanCreate(context, creations, options.projectPendingCreation ?? false);
-		}
-
-		return { matched, missing, creations };
+		return { matched, missing, creations, conflicts, overwrites };
 	}
 
 	/** Deduplicates by destination first: one global variable planned by several scopes is one new row. */
@@ -81,7 +105,7 @@ export class VariableImporter {
 		if (creations.length === 0) return undefined;
 
 		return computeVariableLimitFailure(
-			dedupeCreationsByDestination(creations),
+			uniqBy(creations, destinationKey),
 			await this.variablesService.getRemainingVariableQuota(),
 		);
 	}
@@ -93,10 +117,19 @@ export class VariableImporter {
 		return variableBlockingFailures(request.missingMode, plan);
 	}
 
+	blockingConflicts(request: VariableImportRequest, plan: VariableImportPlan): VariableConflict[] {
+		return request.conflictPolicy === VariableConflictPolicy.Fail ? plan.conflicts : [];
+	}
+
+	/**
+	 * Re-checks the destination against a fresh cache before each create, so a variable an earlier
+	 * scope of this import already created is skipped rather than duplicated. `VariablesService.create`
+	 * refreshes that cache, which is what makes the cross-scope dedupe work.
+	 */
 	async apply(context: ImportContext, plan: VariableImportPlan): Promise<VariableApplyResult> {
+		const created: string[] = [];
 		const stubbed: string[] = [];
 		const skippedExisting: string[] = [];
-		let createdCount = 0;
 
 		for (const creation of plan.creations) {
 			if (await this.variableExistsAtDestination(creation)) {
@@ -105,14 +138,22 @@ export class VariableImporter {
 			}
 
 			try {
-				await this.variablesService.create(context.user, {
-					key: creation.name,
-					type: 'string',
-					value: '',
-					...(creation.projectId ? { projectId: creation.projectId } : {}),
-				});
-				stubbed.push(creation.name);
-				createdCount += 1;
+				await this.variablesService.create(
+					context.user,
+					{
+						key: creation.name,
+						type: 'string',
+						value: creation.value ?? '',
+						...(creation.projectId ? { projectId: creation.projectId } : {}),
+					},
+					context.ctx,
+				);
+				// A bundled-but-empty value still leaves the user something to fill in, so it is a stub.
+				if (creation.value) {
+					created.push(creation.name);
+				} else {
+					stubbed.push(creation.name);
+				}
 			} catch (error) {
 				// One error type covers both "key taken here" and "quota full" (LIGO-880), so re-check
 				// the destination: a row means a concurrent writer won the race, no row means a real overrun.
@@ -127,10 +168,26 @@ export class VariableImporter {
 			}
 		}
 
+		const updated: string[] = [];
+		for (const overwrite of plan.overwrites) {
+			const current = await this.variablesService.getCached(overwrite.variableId);
+			// Nothing to write if another writer deleted the row, or an earlier scope already applied it.
+			if (!current || current.value === overwrite.value) continue;
+
+			await this.variablesService.update(
+				context.user,
+				overwrite.variableId,
+				{ value: overwrite.value },
+				context.ctx,
+			);
+			updated.push(overwrite.name);
+		}
+
 		return {
+			created: [...new Set(created)],
 			stubbed: [...new Set(stubbed)],
 			skippedExisting: [...new Set(skippedExisting)],
-			createdCount,
+			updated: [...new Set(updated)],
 		};
 	}
 
@@ -143,26 +200,67 @@ export class VariableImporter {
 		);
 	}
 
-	private async assertCanCreate(
+	private targetScopes(targets: Array<{ projectId?: string }>, skipProjectId?: string) {
+		const projectIds = new Set<string>();
+		for (const { projectId } of targets) {
+			if (projectId && projectId !== skipProjectId) projectIds.add(projectId);
+		}
+
+		return {
+			touchesGlobal: targets.some(({ projectId }) => !projectId),
+			projectIds,
+		};
+	}
+
+	async assertCanCreate(
 		context: ImportContext,
 		creations: VariableCreation[],
 		projectPendingCreation: boolean,
 	): Promise<void> {
-		const needsGlobal = creations.some((creation) => !creation.projectId);
-		const needsProject = creations.some((creation) => creation.projectId);
+		// A project this import is about to create has no scopes to look up yet; the user becomes its
+		// admin on creation, and `VariablesService.create` re-checks at apply time.
+		const { touchesGlobal, projectIds } = this.targetScopes(
+			creations,
+			projectPendingCreation ? context.projectId : undefined,
+		);
 
-		if (needsGlobal && !hasGlobalScope(context.user, 'variable:create')) {
+		if (touchesGlobal && !hasGlobalScope(context.user, 'variable:create')) {
 			throw new ForbiddenError('You are not allowed to create global variables');
 		}
 
-		// A project this import is about to create has no scopes to look up yet; the user becomes its
-		// admin on creation, and `VariablesService.create` re-checks at apply time.
-		if (needsProject && !projectPendingCreation) {
-			const allowed = await userHasScopes(context.user, ['projectVariable:create'], false, {
-				projectId: context.projectId,
-			});
-			if (!allowed) {
+		for (const projectId of projectIds) {
+			const projectVariableCreationAllowed = await userHasScopes(
+				context.user,
+				['projectVariable:create'],
+				false,
+				{
+					projectId,
+				},
+			);
+			if (!projectVariableCreationAllowed) {
 				throw new ForbiddenError('You are not allowed to create variables in this project');
+			}
+		}
+	}
+
+	async assertCanUpdate(context: ImportContext, overwrites: VariableOverwrite[]): Promise<void> {
+		const { touchesGlobal, projectIds } = this.targetScopes(overwrites);
+
+		if (touchesGlobal && !hasGlobalScope(context.user, 'variable:update')) {
+			throw new ForbiddenError('You are not allowed to update global variables');
+		}
+
+		for (const projectId of projectIds) {
+			const projectVariableUpdateAllowed = await userHasScopes(
+				context.user,
+				['projectVariable:update'],
+				false,
+				{
+					projectId,
+				},
+			);
+			if (!projectVariableUpdateAllowed) {
+				throw new ForbiddenError('You are not allowed to update variables in this project');
 			}
 		}
 	}

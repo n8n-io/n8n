@@ -4,20 +4,29 @@ import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilit
 import type { AgentJsonToolConfig } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
-import type { IDataObject, INodeParameters, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { isToolType, nodeNameToToolName } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeCredentialsDetails,
+	INodeParameters,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
+import { nodeNameToToolName } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { EphemeralNodeExecutor } from '@/node-execution';
-import { NodeTypes } from '@/node-types';
+import { resolveToolNodeType, type EphemeralNodeExecutor } from '@/node-execution';
+import { NodeTypesProviderMissingError, NodeTypesProxy } from '@n8n/backend-services';
 
-import type { InstrumentToolAdditionalData } from '../agent-runtime-instrumentation';
+import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
+import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
+import { toPolicyRefusalResult } from './policy-refusal';
 
 type NodeToolInputSchema = JSONSchema7 | z.ZodType;
 
 export interface NodeToolFactoryContext {
 	executor: EphemeralNodeExecutor;
 	projectId: string;
+	/** Owner of the files that the tool returns. Absent for inline agents. */
+	agentId?: string;
 	/** Eval-only additionalData decoration — absent on every production path. */
 	instrumentToolAdditionalData?: InstrumentToolAdditionalData;
 }
@@ -25,30 +34,24 @@ export interface NodeToolFactoryContext {
 /**
  * Shape the config's credential map for the executor. Both introspection (at
  * tool-registration time) and invocation (at LLM-call time) need to hand the
- * executor a `Record<slot, { id, name }>`, and both want to drop entries whose
- * credential hasn't been persisted yet (no id).
+ * executor an `INodeCredentialsDetails` map, and both drop entries whose
+ * credential hasn't been persisted yet (no id). n8n Connect managed slots have
+ * no stored id — the executor mints them per execution — so they are carried
+ * through by their `__aiGatewayManaged` flag rather than by id.
  */
 function toExecutorCredentials(
 	credentials: Extract<AgentJsonToolConfig, { type: 'node' }>['node']['credentials'],
-): Record<string, { id: string; name: string }> | undefined {
+): Record<string, INodeCredentialsDetails> | undefined {
 	if (!credentials) return undefined;
-	const out: Record<string, { id: string; name: string }> = {};
+	const out: Record<string, INodeCredentialsDetails> = {};
 	for (const [slot, ref] of Object.entries(credentials)) {
-		if (ref.id) out[slot] = { id: ref.id, name: ref.name };
+		if ('__aiGatewayManaged' in ref) {
+			out[slot] = { id: null, name: ref.name, __aiGatewayManaged: true };
+		} else if (ref.id) {
+			out[slot] = { id: ref.id, name: ref.name };
+		}
 	}
 	return Object.keys(out).length > 0 ? out : undefined;
-}
-
-function resolveToolNodeType(nodeType: string, nodeTypeVersion: number): string {
-	if (isToolType(nodeType)) return nodeType;
-
-	const toolNodeType = `${nodeType}Tool`;
-	try {
-		Container.get(NodeTypes).getByNameAndVersion(toolNodeType, nodeTypeVersion);
-		return toolNodeType;
-	} catch {
-		return nodeType;
-	}
 }
 
 function createNativeStringToolInputSchema(description: string): z.ZodType {
@@ -82,11 +85,19 @@ function createNativeStringToolInputSchema(description: string): z.ZodType {
 async function resolveInputSchema(
 	toolSchema: Extract<AgentJsonToolConfig, { type: 'node' }>,
 	ctx: NodeToolFactoryContext,
-): Promise<NodeToolInputSchema> {
+): Promise<{ schema: NodeToolInputSchema; acceptsFiles: boolean }> {
 	const collectedArguments = extractFromAIParameters(
 		(toolSchema.node.nodeParameters ?? {}) as INodeParameters,
 	);
-	if (collectedArguments.length > 0) return createZodSchemaFromArgs(collectedArguments);
+	// Supply-data tools take JSON only, so only these schemas accept files.
+	// A `$fromAI('files')` argument keeps its meaning, so the tool then takes no files.
+	if (collectedArguments.length > 0) {
+		const schema = createZodSchemaFromArgs(collectedArguments);
+		if (collectedArguments.some(({ key }) => key === 'files')) {
+			return { schema, acceptsFiles: false };
+		}
+		return { schema: schema.extend({ files: FILES_INPUT_SCHEMA }), acceptsFiles: true };
+	}
 
 	let nodeType;
 	const nodeTypeName = resolveToolNodeType(
@@ -94,14 +105,15 @@ async function resolveInputSchema(
 		toolSchema.node.nodeTypeVersion,
 	);
 	try {
-		nodeType = Container.get(NodeTypes).getByNameAndVersion(
+		nodeType = Container.get(NodeTypesProxy).getByNameAndVersion(
 			nodeTypeName,
 			toolSchema.node.nodeTypeVersion,
 		);
-	} catch {
+	} catch (error) {
+		if (error instanceof NodeTypesProviderMissingError) throw error;
 		// If the node type can't be resolved here, fall through — the executor
 		// will surface a clearer error at invocation time.
-		return { type: 'object', properties: {} };
+		return { schema: { type: 'object', properties: {} }, acceptsFiles: false };
 	}
 
 	if (typeof nodeType.supplyData === 'function') {
@@ -113,16 +125,21 @@ async function resolveInputSchema(
 			credentials: toExecutorCredentials(toolSchema.node.credentials) ?? null,
 		});
 
-		if (introspected) return introspected as NodeToolInputSchema;
+		if (introspected) {
+			return { schema: introspected as NodeToolInputSchema, acceptsFiles: false };
+		}
 
-		return createNativeStringToolInputSchema(
-			toolSchema.description ??
-				nodeType.description.description ??
-				`The query or input text to pass to ${toolSchema.node.nodeType}.`,
-		);
+		return {
+			schema: createNativeStringToolInputSchema(
+				toolSchema.description ??
+					nodeType.description.description ??
+					`The query or input text to pass to ${toolSchema.node.nodeType}.`,
+			),
+			acceptsFiles: false,
+		};
 	}
 
-	return { type: 'object', properties: {} };
+	return { schema: z.object({ files: FILES_INPUT_SCHEMA }).passthrough(), acceptsFiles: true };
 }
 
 /**
@@ -152,19 +169,38 @@ export async function resolveNodeTool(
 			}
 		: {};
 
+	const { schema, acceptsFiles } = await resolveInputSchema(toolSchema, ctx);
 	const built = new Tool(sanitizedName)
 		.description(toolSchema.description ?? `Execute the ${nodeType} node`)
-		.input(await resolveInputSchema(toolSchema, ctx))
-		.handler(async (input: Record<string, unknown>) => {
+		.input(schema)
+		.handler(async (toolInput: Record<string, unknown>, toolCtx) => {
+			const { files, ...rest } = toolInput;
+			const input = acceptsFiles ? rest : toolInput;
+			const inputFiles =
+				acceptsFiles && files
+					? await Container.get(AgentFileBridge).toBinary(files, {
+							projectId: ctx.projectId,
+							threadId: toolCtx.persistence?.threadId,
+						})
+					: undefined;
 			const result = await ctx.executor.executeInline({
 				nodeType,
 				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
 				nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
 				credentialDetails: toExecutorCredentials(toolSchema.node.credentials),
-				inputData: [{ json: input as IDataObject }],
+				inputData: [
+					{ json: input as IDataObject, ...(inputFiles && { binary: inputFiles.binary }) },
+				],
 				projectId: ctx.projectId,
 				...instrumentedExecution,
 			});
+			// A refusal is returned, not thrown: thrown errors reach the chat as plain text.
+			if (result.status === 'error' && result.violations) {
+				return toPolicyRefusalResult(
+					result.error ?? result.violations[0].message,
+					result.violations,
+				);
+			}
 			// Throw on the executor's structured error so the agent runtime
 			// flags the tool-result with `isError: true` and the recorder
 			// marks the timeline entry as a failed call. Returning the error
@@ -172,7 +208,27 @@ export async function resolveNodeTool(
 			if (result.status === 'error') {
 				throw new Error(result.error ?? `Node "${toolSchema.node.nodeType}" failed to execute`);
 			}
-			return result;
+			if (!result.data.some((item) => item.binary)) return result;
+			// Without a thread there is no scope for the files, so the binary is dropped.
+			const persistence = toolCtx.persistence;
+			if (!persistence?.threadId || !persistence.resourceId)
+				return { ...result, data: result.data.map(({ json }) => ({ json })) };
+			const adopted = await Container.get(AgentFileBridge).adoptFromItems(
+				result.data,
+				{
+					agentId: ctx.agentId ?? null,
+					projectId: ctx.projectId,
+					threadId: persistence.threadId,
+					resourceId: persistence.resourceId,
+				},
+				inputFiles?.stored,
+			);
+			return {
+				...result,
+				data: adopted.items,
+				files: adopted.files,
+				...(adopted.skippedFiles.length > 0 && { skippedFiles: adopted.skippedFiles }),
+			};
 		})
 		.build();
 
@@ -188,7 +244,7 @@ export async function resolveNodeTool(
 			// can render the real node config alongside the LLM's runtime
 			// input. Without this the synthetic execution viewer shows empty
 			// parameters and input/output read as the same thing.
-			nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
+			nodeParameters: toolSchema.node.nodeParameters,
 		},
 	};
 }

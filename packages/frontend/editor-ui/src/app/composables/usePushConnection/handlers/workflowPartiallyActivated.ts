@@ -5,8 +5,9 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { clearPendingActivationModal } from '@/app/composables/workflowPublicationConfirmation';
 import type { PushHandlerOptions } from './types';
 
 export async function workflowPartiallyActivated(
@@ -20,6 +21,9 @@ export async function workflowPartiallyActivated(
 	const uiStore = useUIStore();
 
 	const { workflowId, activeVersionId } = data;
+
+	// A partial publication gets its own warning toast; no need to show modal
+	clearPendingActivationModal(workflowId);
 
 	if (workflowDocumentStore.workflowId !== workflowId) {
 		return;

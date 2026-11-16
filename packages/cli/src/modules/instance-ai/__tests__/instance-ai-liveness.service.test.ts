@@ -74,7 +74,6 @@ function createLivenessService() {
 		),
 	};
 	const eventBus = {
-		getEventsForRun: vi.fn((_threadId: string, _runId: string) => [] as InstanceAiEvent[]),
 		publish: vi.fn((_threadId: string, _event: InstanceAiEvent) => {}),
 	};
 	const finalizeCancelledSuspendedRun = vi.fn(
@@ -231,19 +230,33 @@ describe('InstanceAiLivenessService', () => {
 
 	it('deduplicates timeout notices per run', () => {
 		const { service, eventBus } = createLivenessService();
-		eventBus.getEventsForRun.mockReturnValue([
-			{
-				type: 'text-delta',
-				runId: 'run-1',
-				agentId: 'agent-001',
-				responseId: 'run-timeout:run-1',
-				payload: { text: 'Already published' },
-			},
-		]);
 
 		service.publishRunTimeoutNotice('thread-1', 'run-1');
+		service.publishRunTimeoutNotice('thread-1', 'run-1');
 
-		expect(eventBus.publish).not.toHaveBeenCalled();
+		expect(eventBus.publish).toHaveBeenCalledTimes(1);
+		expect(eventBus.publish).toHaveBeenCalledWith(
+			'thread-1',
+			expect.objectContaining({ responseId: 'run-timeout:run-1' }),
+		);
+	});
+
+	it('publishes a notice per run, and evicts the oldest dedupe entry past the cap', () => {
+		const { service, eventBus } = createLivenessService();
+
+		service.publishRunTimeoutNotice('thread-1', 'run-a');
+		service.publishRunTimeoutNotice('thread-1', 'run-b');
+		expect(eventBus.publish).toHaveBeenCalledTimes(2);
+
+		// Push `run-a` out of the capped FIFO, after which its notice can repeat —
+		// the accepted trade-off for a bounded guard.
+		for (let i = 0; i < InstanceAiLivenessService.NOTICE_DEDUPE_CACHE_SIZE; i++) {
+			service.publishRunTimeoutNotice('thread-1', `filler-${i}`);
+		}
+		eventBus.publish.mockClear();
+		service.publishRunTimeoutNotice('thread-1', 'run-a');
+
+		expect(eventBus.publish).toHaveBeenCalledTimes(1);
 	});
 
 	it('keeps sweeping run state when background task timeout handling fails', async () => {

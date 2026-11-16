@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
@@ -7,15 +8,21 @@ import type { RunInTransaction, Scheduler, TaskHandler } from '@n8n/scheduler';
 import {
 	createScheduler,
 	pollLookaheadSeconds,
+	withOwnerKeys,
 	DEFAULT_MATERIALIZER_OPTIONS,
 } from '@n8n/scheduler';
 import { InstanceSettings, Tracing } from 'n8n-core';
 
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
+import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
 import { PollTriggerTaskHandler } from './poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
+import { createScheduledJobOwnerRegistry } from './scheduled-job-owner-registry';
 import { createSchedulerTracer } from './scheduler-tracer';
+import { reportSystemTaskOverlaps } from './system-tasks/system-task-overlap-reporter';
+import { SystemTaskScheduledJobOwner } from './system-tasks/system-task-scheduled-job-owner';
+import { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
 
 /**
  * The database-backed {@link Scheduler} and its process lifecycle (the run side).
@@ -38,8 +45,13 @@ export class DurableScheduler implements Scheduler {
 		scheduleTriggerTaskHandler: ScheduleTriggerTaskHandler,
 		pollTriggerTaskHandler: PollTriggerTaskHandler,
 		metrics: PrometheusSchedulerMetricsService,
+		workflowOwner: WorkflowScheduledJobOwner,
+		agentOwner: AgentScheduledJobOwner,
+		systemTaskOwner: SystemTaskScheduledJobOwner,
+		eventService: EventService,
 	) {
 		const config = globalConfig.scheduler;
+		// oxlint-disable-next-line typescript/no-deprecated -- the in-memory scheduler will be removed in a future version
 		const enabled = config.enabled && instanceSettings.instanceType === 'main';
 		const tracer = createSchedulerTracer(tracing);
 		this.scheduler = enabled
@@ -69,21 +81,36 @@ export class DurableScheduler implements Scheduler {
 						retentionSeconds: config.retentionSeconds,
 						failedRetentionSeconds: config.failedRetentionSeconds,
 					},
+					reconciliation: config.ownerReconciliationEnabled
+						? {
+								jobStore: jobs,
+								owners: createScheduledJobOwnerRegistry(workflowOwner, agentOwner, systemTaskOwner),
+								options: {
+									settleSeconds: config.ownerSettleSeconds,
+									quarantineGraceSeconds: config.ownerQuarantineGraceSeconds,
+									batchSize: config.ownerReconciliationBatchSize,
+								},
+							}
+						: undefined,
 					lifecycle: {
 						materializerIntervalSeconds: config.materializationIntervalSeconds,
 						executorIntervalSeconds: config.executorIntervalSeconds,
 						reaperIntervalSeconds: config.reaperIntervalSeconds,
 						retentionIntervalSeconds: config.retentionIntervalSeconds,
+						reconciliationIntervalSeconds: config.ownerReconciliationIntervalSeconds,
 						materializerTimeoutSeconds: config.materializationTimeoutSeconds,
 						executorTimeoutSeconds: config.executorTimeoutSeconds,
 						reaperTimeoutSeconds: config.reaperTimeoutSeconds,
 						retentionTimeoutSeconds: config.retentionTimeoutSeconds,
+						reconciliationTimeoutSeconds: config.ownerReconciliationTimeoutSeconds,
 						jitterRatio: config.jitterRatio,
 						concurrencyMode:
 							globalConfig.database.type === 'postgresdb' ? 'concurrent' : 'sequential',
 						maxConcurrentPasses: config.maxConcurrentPasses,
 					},
 					now: async () => await tasks.readDbTime(),
+					onHeldByConcurrencyLimit: (occurrences) =>
+						reportSystemTaskOverlaps(eventService, occurrences),
 					onEvent: ({ level, message, context }) => logger[level](message, context),
 					tracer,
 				})
@@ -94,6 +121,10 @@ export class DurableScheduler implements Scheduler {
 		}
 		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);
 		this.registerTaskHandler(pollTriggerTaskHandler.taskType, pollTriggerTaskHandler);
+	}
+
+	isActive(): boolean {
+		return this.scheduler !== undefined;
 	}
 
 	registerTaskHandler(taskType: string, handler: TaskHandler): void {
@@ -148,15 +179,13 @@ function warnOnMisfireGrace(logger: Logger, config: GlobalConfig['scheduler']): 
  * running.
  */
 function warnOnDrainRate(logger: Logger, config: GlobalConfig['scheduler']): void {
-	const { materializationIntervalSeconds, minIntervalSeconds } = config;
-	// The fastest a schedule can legally fire: the operator's floor if they set
-	// one, otherwise the fastest an interval can be at all.
-	const fastestIntervalSeconds = minIntervalSeconds > 0 ? minIntervalSeconds : 1;
-	const drainSeconds = DEFAULT_MATERIALIZER_OPTIONS.maxPerJob * fastestIntervalSeconds;
+	const { materializationIntervalSeconds } = config;
+	// The fastest a schedule can fire is once per second.
+	const drainSeconds = DEFAULT_MATERIALIZER_OPTIONS.maxPerJob;
 	if (materializationIntervalSeconds > drainSeconds) {
 		logger.warn(
 			'Scheduler materialization interval is long enough that a pass may never fully drain the busiest possible schedule; under the coalesce misfire policy such a schedule could stop producing catch-up runs entirely',
-			{ materializationIntervalSeconds, fastestIntervalSeconds },
+			{ materializationIntervalSeconds },
 		);
 	}
 }
@@ -170,8 +199,10 @@ export function buildMaterializerTransaction(
 		await dataSource.transaction(
 			async (manager) =>
 				await work({
-					claimDueJobs: async (limit, lookaheadMs) =>
-						await jobs.claimDue(manager, limit, lookaheadMs),
+					claimDueJobs: async (limit, lookaheadMs) => {
+						const claimed = await jobs.claimDue(manager, limit, lookaheadMs);
+						return claimed === undefined ? undefined : withOwnerKeys(claimed);
+					},
 					recordOccurrences: async (occurrences) =>
 						await tasks.insertIgnoringDuplicates(manager, occurrences),
 					retireSuperseded: async (superseded) => await tasks.updateToMissed(manager, superseded),

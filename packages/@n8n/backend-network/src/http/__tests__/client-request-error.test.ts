@@ -2,9 +2,88 @@ import {
 	httpStatusFromError,
 	isAxiosError,
 	isConnectionRefusedError,
+	isDnsFailure,
 	isHttpRequestError,
+	isTransportFailure,
 	markHttpRequestError,
 } from '../client-request-error';
+
+const withCode = (code: string, message = 'socket failure') =>
+	Object.assign(new Error(message), { code });
+
+describe('isTransportFailure', () => {
+	it.each([
+		'ECONNABORTED',
+		'ECONNREFUSED',
+		'ECONNRESET',
+		'EHOSTUNREACH',
+		'ENETDOWN',
+		'ENETUNREACH',
+		'EPIPE',
+		'ETIMEDOUT',
+		'UND_ERR_BODY_TIMEOUT',
+		'UND_ERR_CONNECT_TIMEOUT',
+		'UND_ERR_HEADERS_TIMEOUT',
+		'UND_ERR_SOCKET',
+	])('is true for %s', (code) => {
+		expect(isTransportFailure(withCode(code))).toBe(true);
+	});
+
+	it("is true for undici's bare mid-stream termination, which carries no code", () => {
+		expect(isTransportFailure(new TypeError('terminated'))).toBe(true);
+	});
+
+	it('reads the code off the cause chain, not just the top-level error', () => {
+		const wrapped = new Error('AI_APICallError', {
+			cause: new TypeError('fetch failed', {
+				cause: withCode('UND_ERR_SOCKET', 'other side closed'),
+			}),
+		});
+		expect(isTransportFailure(wrapped)).toBe(true);
+	});
+
+	it('is false for DNS failures, which isDnsFailure owns', () => {
+		expect(isTransportFailure(withCode('ENOTFOUND'))).toBe(false);
+		expect(isTransportFailure(withCode('EAI_AGAIN'))).toBe(false);
+	});
+
+	it('is false for unrelated errors and non-errors', () => {
+		expect(isTransportFailure(new Error('terminated'))).toBe(false);
+		expect(isTransportFailure(new TypeError('kaboom'))).toBe(false);
+		expect(isTransportFailure(withCode('EACCES'))).toBe(false);
+		expect(isTransportFailure(undefined)).toBe(false);
+		expect(isTransportFailure('ECONNRESET')).toBe(false);
+	});
+
+	it('terminates on a cyclic cause chain', () => {
+		const first: Error & { cause?: unknown } = new Error('first');
+		const second: Error & { cause?: unknown } = new Error('second');
+		first.cause = second;
+		second.cause = first;
+		expect(isTransportFailure(first)).toBe(false);
+
+		const selfReferential: Error & { cause?: unknown } = new Error('loop');
+		selfReferential.cause = selfReferential;
+		expect(isTransportFailure(selfReferential)).toBe(false);
+	});
+});
+
+describe('isDnsFailure', () => {
+	it.each(['ENOTFOUND', 'EAI_AGAIN'])('is true for %s', (code) => {
+		expect(isDnsFailure(withCode(code))).toBe(true);
+	});
+
+	it('reads the code off the cause chain', () => {
+		expect(isDnsFailure(new TypeError('fetch failed', { cause: withCode('ENOTFOUND') }))).toBe(
+			true,
+		);
+	});
+
+	it('is false for socket-level failures, which isTransportFailure owns', () => {
+		expect(isDnsFailure(withCode('ECONNRESET'))).toBe(false);
+		expect(isDnsFailure(new TypeError('terminated'))).toBe(false);
+	});
+});
 
 describe('isHttpRequestError', () => {
 	const transportError = (props: Record<string, unknown>) =>

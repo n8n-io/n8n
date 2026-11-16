@@ -5,6 +5,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	AI_UNCATEGORIZED_CATEGORY,
 	CUSTOM_API_CALL_KEY,
+	NODE_CREATOR_OPEN_SOURCES,
 	REGULAR_NODE_CREATOR_VIEW,
 } from '@/app/constants';
 import type { ActionsRecord, INodeCreateElement, INodeUi, SimplifiedNodeType } from '@/Interface';
@@ -19,13 +20,14 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { mockCommandCreateElement } from './__tests__/utils';
 
 const workflow_id = 'workflow-id';
 const category_name = 'category-name';
@@ -148,21 +150,25 @@ describe('useNodeCreatorStore', () => {
 			settingsStore.isAiGatewayEnabled = true;
 			const aiGatewayStore = mockedStore(useAiGatewayStore);
 			aiGatewayStore.fetchConfig = vi.fn();
+			aiGatewayStore.fetchWallet = vi.fn();
 
 			nodeCreatorStore.onCreatorOpened({ source, mode, workflow_id });
 
 			expect(aiGatewayStore.fetchConfig).toHaveBeenCalled();
+			expect(aiGatewayStore.fetchWallet).toHaveBeenCalled();
 		});
 
-		it('does not fetch the gateway config when AI Gateway is disabled', () => {
+		it('does not fetch the gateway config or wallet when AI Gateway is disabled', () => {
 			const settingsStore = mockedStore(useSettingsStore);
 			settingsStore.isAiGatewayEnabled = false;
 			const aiGatewayStore = mockedStore(useAiGatewayStore);
 			aiGatewayStore.fetchConfig = vi.fn();
+			aiGatewayStore.fetchWallet = vi.fn();
 
 			nodeCreatorStore.onCreatorOpened({ source, mode, workflow_id });
 
 			expect(aiGatewayStore.fetchConfig).not.toHaveBeenCalled();
+			expect(aiGatewayStore.fetchWallet).not.toHaveBeenCalled();
 		});
 	});
 
@@ -278,7 +284,7 @@ describe('useNodeCreatorStore', () => {
 		});
 	});
 
-	it('tracks when search filter is updated, ignoring custom actions in count', () => {
+	it('tracks when search filter is updated, ignoring custom actions and commands in count', () => {
 		const newValue = 'new-value';
 		const subcategory = 'subcategory';
 		const title = 'title';
@@ -316,6 +322,7 @@ describe('useNodeCreatorStore', () => {
 				name: '@author/n8n-nodes-community-node2',
 			},
 		} as INodeCreateElement;
+		const mockCommand = mockCommandCreateElement({ key: 'group' });
 
 		nodeCreatorStore.onCreatorOpened({
 			source,
@@ -324,7 +331,14 @@ describe('useNodeCreatorStore', () => {
 		});
 		nodeCreatorStore.onNodeFilterChanged({
 			newValue,
-			filteredNodes: [mockCustom, mockRegular, mockTrigger, mockCommunity1, mockCommunity2],
+			filteredNodes: [
+				mockCustom,
+				mockCommand,
+				mockRegular,
+				mockTrigger,
+				mockCommunity1,
+				mockCommunity2,
+			],
 			filterMode: REGULAR_NODE_CREATOR_VIEW,
 			subcategory,
 			title,
@@ -562,11 +576,13 @@ describe('useNodeCreatorStore', () => {
 					},
 				],
 			} as ActionsRecord<SimplifiedNodeType[]>;
+			nodeCreatorStore.openSource = NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT;
 
 			await nodeCreatorStore.openNodeCreatorWithNode('test-wf-id', nodeName);
 			expect(mockUseNDVStore.unsetActiveNodeName).toHaveBeenCalled();
 			expect(mockUseNodeTypesStore.getNodeType).toHaveBeenCalledWith('test-type');
 			expect(nodeCreatorStore.isCreateNodeActive).toBe(true);
+			expect(nodeCreatorStore.openSource).toBe('');
 			expect(mockedPrepareCommunityNodeDetailsViewStack).toHaveBeenCalledWith(
 				{
 					key: nodeType.name,

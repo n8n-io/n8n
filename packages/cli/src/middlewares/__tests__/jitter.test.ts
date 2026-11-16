@@ -1,7 +1,13 @@
+import { sleep } from '@n8n/utils/sleep';
 import type { Request, Response } from 'express';
 import type { Mock, MockInstance } from 'vitest';
 
 import { createJitterMiddleware } from '../jitter';
+
+vi.mock('@n8n/utils/sleep', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/utils/sleep')>();
+	return { sleep: vi.fn(actual.sleep) };
+});
 
 describe('createJitterMiddleware', () => {
 	let mockReq: Request;
@@ -67,6 +73,19 @@ describe('createJitterMiddleware', () => {
 		await vi.advanceTimersByTimeAsync(1);
 		await promise;
 
+		expect(mockNext).toHaveBeenCalledTimes(1);
+	});
+
+	it('should delay through the shared sleep helper', async () => {
+		randomSpy.mockReturnValue(0.5);
+		const middleware = createJitterMiddleware({ minMs: 100, maxMs: 200 });
+
+		const promise = middleware(mockReq, mockRes, mockNext);
+
+		await vi.advanceTimersByTimeAsync(150);
+		await promise;
+
+		expect(sleep).toHaveBeenCalledWith(150);
 		expect(mockNext).toHaveBeenCalledTimes(1);
 	});
 

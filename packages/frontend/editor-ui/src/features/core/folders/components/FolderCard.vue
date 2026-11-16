@@ -7,7 +7,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import type { UserAction, FolderResource } from '@/Interface';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
-import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { PathItem } from '@n8n/design-system';
 import { useFoldersStore } from '../folders.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { type IUser } from 'n8n-workflow';
@@ -155,7 +155,7 @@ const cardBreadcrumbs = computed<PathItem[]>(() => {
 						projectId: props.data.homeProject?.id,
 						folderId: props.data.parentFolder.id,
 					},
-				}).href,
+				}).fullPath,
 			},
 		];
 	}
@@ -174,7 +174,7 @@ const getFolderUrl = (folderId: string) => {
 			folderId,
 		},
 		query: route.query,
-	}).href;
+	}).fullPath;
 };
 
 const onAction = async (action: string) => {
@@ -217,14 +217,13 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 <template>
 	<div data-test-id="folder-card">
 		<RouterLink :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
-			<N8nCard :class="$style.card">
+			<N8nCard :class="$style.card" hoverable>
 				<template #prepend>
 					<N8nIcon
 						data-test-id="folder-card-icon"
+						size="xlarge"
 						:class="$style['folder-icon']"
 						icon="folder"
-						size="xlarge"
-						:stroke-width="1"
 					/>
 				</template>
 				<template #header>
@@ -232,7 +231,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 						<N8nHeading tag="h2" bold size="small" data-test-id="folder-card-name">
 							{{ data.name }}
 						</N8nHeading>
-						<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+						<N8nBadge v-if="readOnly" class="ml-3xs" variant="outline">
 							{{ i18n.baseText('workflows.item.readonly') }}
 						</N8nBadge>
 					</div>
@@ -330,8 +329,9 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 									<N8nIconButton
 										:class="['action-toggle', $style['actions-menu']]"
 										variant="ghost"
-										icon="ellipsis-vertical"
-										size="medium"
+										icon="ellipsis-12"
+										size="small"
+										icon-size="medium"
 										role="button"
 										:aria-controls="dropdownId"
 									/>
@@ -371,18 +371,9 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 </template>
 
 <style lang="scss" module>
-.card {
-	transition: box-shadow 0.3s ease;
-	cursor: pointer;
-
-	&:hover {
-		box-shadow: var(--shadow--card-hover);
-	}
-}
+@use '@n8n/design-system/css/mixins/breakpoints';
 
 .folder-icon {
-	width: var(--spacing--xl);
-	height: var(--spacing--xl);
 	flex-shrink: 0;
 	color: var(--color--text);
 	align-content: center;
@@ -428,7 +419,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	width: 200px;
 }
 
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.card {
 		flex-wrap: wrap;
 

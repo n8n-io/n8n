@@ -69,7 +69,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 			props: ['modelValue', 'placeholder', 'clearable', 'size'],
 			emits: ['update:modelValue'],
 			template: `
-				<div data-test-id="secrets-providers-search">
+				<div data-test-id="secrets-providers-search" :data-size="size">
 					<input
 						:value="modelValue"
 						:placeholder="placeholder"
@@ -124,7 +124,7 @@ vi.mock('@n8n/composables/useToast', () => ({
 	})),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
 		moduleSettings: {
 			'external-secrets': {
@@ -317,6 +317,19 @@ describe('ProjectExternalSecrets', () => {
 			});
 		});
 
+		it('should render the search field at the default input size, level with the add button', async () => {
+			renderComponent();
+
+			await vi.waitFor(() => {
+				expect(screen.getByTestId('secrets-providers-search')).toBeInTheDocument();
+			});
+
+			// No size override: the field keeps the design-system default (large), the height
+			// of every other input on the project settings page. The button matches that row.
+			expect(screen.getByTestId('secrets-providers-search')).not.toHaveAttribute('data-size');
+			expect(screen.getByTestId('external-secrets-add-button')).toHaveClass('large');
+		});
+
 		it('should filter secrets by name', async () => {
 			renderComponent();
 			const user = userEvent.setup();
@@ -450,7 +463,7 @@ describe('ProjectExternalSecrets', () => {
 		});
 
 		it('should not fetch data when feature is disabled', async () => {
-			const { useSettingsStore } = await import('@/app/stores/settings.store');
+			const { useSettingsStore } = await import('@n8n/stores/settings.store');
 			vi.mocked(useSettingsStore).mockReturnValue({
 				moduleSettings: {
 					'external-secrets': {

@@ -2,7 +2,7 @@ import { reactive } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import { mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
@@ -38,17 +38,9 @@ vi.mock('@/features/shared/tags/components/AnnotationTagsDropdown.ee.vue', () =>
 	},
 }));
 
-vi.mock('@/features/shared/tags/components/WorkflowTagsDropdown.vue', () => ({
-	default: {
-		name: 'WorkflowTagsDropdown',
-		template: '<div data-test-id="executions-filter-tags-select"></div>',
-	},
-}));
-
 const defaultFilterState: ExecutionFilterType = {
 	status: 'all',
 	workflowId: 'all',
-	tags: [],
 	annotationTags: [],
 	startDate: '',
 	endDate: '',
@@ -182,6 +174,25 @@ describe('ExecutionsFilter', () => {
 		expect(filterChangedEvent[1]).toEqual([defaultFilterState]);
 		expect(queryByTestId('executions-filter-reset-button')).not.toBeInTheDocument();
 		expect(queryByTestId('execution-filter-badge')).not.toBeInTheDocument();
+	});
+
+	test('starts from the initial filters without emitting a change', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: { initialFilters: { ...defaultFilterState, status: 'error' } },
+		});
+
+		expect(getByTestId('execution-filter-badge')).toHaveTextContent('1');
+		expect(emitted().filterChanged).toBeUndefined();
+
+		await userEvent.click(getByTestId('executions-filter-button'));
+		await userEvent.click(getByTestId('executions-filter-annotation-vote-select'));
+		await userEvent.click(
+			getByTestId('executions-filter-annotation-vote-select').querySelectorAll('li')[1],
+		);
+
+		expect(emitted().filterChanged).toEqual([
+			[{ ...defaultFilterState, status: 'error', vote: 'up' }],
+		]);
 	});
 
 	test('shows annotation filters when advanced filters are enabled', async () => {

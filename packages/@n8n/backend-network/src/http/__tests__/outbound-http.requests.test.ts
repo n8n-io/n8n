@@ -1,8 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { SsrfBridge, SsrfProtectionService } from '../../ssrf';
+import type { SsrfProtectionService } from '../../ssrf';
 import { httpRequest } from '../axios/request';
 import { OutboundHttp } from '../outbound-http';
 
@@ -18,8 +19,8 @@ function makeService(): SsrfProtectionService {
 	return mock<SsrfProtectionService>();
 }
 
-function makeFacade(service: SsrfProtectionService = makeService()): OutboundHttp {
-	return new OutboundHttp(service, mock<Logger>());
+function makeFacade(service: SsrfProtectionService = makeService(), enabled = true): OutboundHttp {
+	return new OutboundHttp(service, mock<SsrfProtectionConfig>({ enabled }), mock<Logger>());
 }
 
 const REQUEST: IHttpRequestOptions = { url: 'https://example.test/x', method: 'GET' };
@@ -36,7 +37,7 @@ describe('OutboundHttp.requests', () => {
 
 		expect(res).toEqual({ statusCode: 200, body: 'ok' });
 		expect(mockedHttpRequest).toHaveBeenCalledTimes(1);
-		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, expect.anything());
+		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, expect.anything(), undefined);
 	});
 
 	it('uses the container SSRF service as the bridge by default', async () => {
@@ -45,24 +46,23 @@ describe('OutboundHttp.requests', () => {
 
 		await client.request(REQUEST);
 
-		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, service);
+		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, service, undefined);
 	});
 
-	it('passes an explicit SSRF bridge through to the request', async () => {
-		const bridge = mock<SsrfBridge>();
-		const client = makeFacade().requests({ ssrf: bridge });
+	it('omits the bridge when the instance disables SSRF protection', async () => {
+		const client = makeFacade(makeService(), false).requests();
 
 		await client.request(REQUEST);
 
-		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, bridge);
+		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, undefined, undefined);
 	});
 
 	it('omits the bridge when SSRF protection is disabled', async () => {
-		const client = makeFacade().requests({ ssrf: 'disabled' });
+		const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 		await client.request(REQUEST);
 
-		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, undefined);
+		expect(mockedHttpRequest).toHaveBeenCalledWith(REQUEST, undefined, undefined);
 	});
 
 	describe('bound baseURL', () => {
@@ -77,6 +77,7 @@ describe('OutboundHttp.requests', () => {
 					baseURL: 'https://vault.test/v1/',
 				}),
 				expect.anything(),
+				undefined,
 			);
 		});
 
@@ -88,6 +89,7 @@ describe('OutboundHttp.requests', () => {
 			expect(mockedHttpRequest).toHaveBeenCalledWith(
 				expect.objectContaining({ baseURL: 'https://other.test/' }),
 				expect.anything(),
+				undefined,
 			);
 		});
 	});
@@ -101,6 +103,7 @@ describe('OutboundHttp.requests', () => {
 			expect(mockedHttpRequest).toHaveBeenCalledWith(
 				expect.objectContaining({ timeout: 5000 }),
 				expect.anything(),
+				undefined,
 			);
 		});
 
@@ -112,6 +115,7 @@ describe('OutboundHttp.requests', () => {
 			expect(mockedHttpRequest).toHaveBeenCalledWith(
 				expect.objectContaining({ timeout: 1000 }),
 				expect.anything(),
+				undefined,
 			);
 		});
 	});
@@ -129,6 +133,7 @@ describe('OutboundHttp.requests', () => {
 					headers: { 'X-Vault-Namespace': 'admin', Accept: 'text/plain' },
 				}),
 				expect.anything(),
+				undefined,
 			);
 		});
 
@@ -142,6 +147,7 @@ describe('OutboundHttp.requests', () => {
 			expect(mockedHttpRequest).toHaveBeenCalledWith(
 				expect.objectContaining({ headers: { 'content-type': 'text/plain' } }),
 				expect.anything(),
+				undefined,
 			);
 		});
 
@@ -159,11 +165,13 @@ describe('OutboundHttp.requests', () => {
 				1,
 				expect.objectContaining({ headers: { Authorization: 'Bearer first' } }),
 				expect.anything(),
+				undefined,
 			);
 			expect(mockedHttpRequest).toHaveBeenNthCalledWith(
 				2,
 				expect.objectContaining({ headers: { Authorization: 'Bearer second' } }),
 				expect.anything(),
+				undefined,
 			);
 		});
 
@@ -175,6 +183,7 @@ describe('OutboundHttp.requests', () => {
 			expect(mockedHttpRequest).toHaveBeenCalledWith(
 				expect.objectContaining({ headers: {} }),
 				expect.anything(),
+				undefined,
 			);
 		});
 	});

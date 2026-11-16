@@ -64,7 +64,7 @@ const completeOperations: INodeProperties[] = [
 		name: 'model',
 		type: 'options',
 		description:
-			'The model which will generate the completion. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
+			'The model which will generate the completion. <a href="https://developers.openai.com/api/docs/models">Learn more</a>.',
 		displayOptions: {
 			show: {
 				operation: ['complete'],
@@ -149,7 +149,7 @@ const editOperations: INodeProperties[] = [
 		name: 'model',
 		type: 'options',
 		description:
-			'The model which will generate the edited version. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
+			'The model which will generate the edited version. <a href="https://developers.openai.com/api/docs/models">Learn more</a>.',
 		displayOptions: {
 			show: {
 				operation: ['edit'],
@@ -222,7 +222,7 @@ const moderateOperations: INodeProperties[] = [
 		name: 'model',
 		type: 'options',
 		description:
-			'The model which will classify the text. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
+			'The model which will classify the text. <a href="https://developers.openai.com/api/docs/models">Learn more</a>.',
 		displayOptions: {
 			show: {
 				resource: ['text'],

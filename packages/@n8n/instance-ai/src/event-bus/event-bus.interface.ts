@@ -13,7 +13,11 @@ export interface StoredEvent {
 
 type Unsubscribe = () => void;
 
-/** Domain-level interface -- no transport details leak through. */
+/**
+ * Domain-level interface -- no transport details leak through. Publish and
+ * subscribe only: events are persisted to `instance_ai_events`, and every read
+ * (replay, run-scoped, cursor seeding) goes through the durable event log.
+ */
 export interface InstanceAiEventBus {
 	/**
 	 * Publish an event to a thread channel.
@@ -26,32 +30,4 @@ export interface InstanceAiEventBus {
 	 * Returns an unsubscribe function.
 	 */
 	subscribe(threadId: string, handler: (storedEvent: StoredEvent) => void): Unsubscribe;
-
-	/**
-	 * Retrieve all persisted events for a thread with id > afterId.
-	 * Used for replay on reconnect.
-	 * Returns events in id order (ascending).
-	 */
-	getEventsAfter(threadId: string, afterId: number): StoredEvent[];
-
-	/**
-	 * Retrieve all persisted events for a thread that belong to a specific run.
-	 * More efficient than getEventsAfter(threadId, 0) + filter when only one
-	 * run's events are needed (e.g. building agent tree snapshots).
-	 */
-	getEventsForRun(threadId: string, runId: string): InstanceAiEvent[];
-
-	/**
-	 * Retrieve all persisted events for a thread that belong to any of the
-	 * specified runs. Used for rebuilding merged assistant turns that span
-	 * multiple auto-follow-up runs.
-	 */
-	getEventsForRuns(threadId: string, runIds: string[]): InstanceAiEvent[];
-
-	/**
-	 * Get the next event ID that will be assigned for a thread.
-	 * Used to seed the frontend's SSE replay cursor after message hydration.
-	 * Async because multi-main implementations read a shared sequence.
-	 */
-	getNextEventId(threadId: string): Promise<number>;
 }

@@ -1,7 +1,7 @@
 import { computed, inject } from 'vue';
 
 import { EditorEnabledFeaturesKey, type EditorFeature } from '@/app/constants/injectionKeys';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 /**
@@ -38,11 +38,13 @@ export function useEditorContext() {
 			case 'instanceAi':
 				// Mirrors useInstanceAiAvailable() (the feature-layer gate) with
 				// app-layer primitives so this base composable imports no feature:
-				// the module is active, an admin hasn't disabled it, and the user
-				// may message Instance AI.
+				// the module is active, enabled, ready (or admin-fixable), and the
+				// user may message Instance AI.
 				return (
 					settings.isModuleActive('instance-ai') &&
 					settings.moduleSettings['instance-ai']?.enabled !== false &&
+					(settings.moduleSettings['instance-ai']?.setupCompleted === true ||
+						hasPermission(['rbac'], { rbac: { scope: 'instanceAi:manage' } })) &&
 					hasPermission(['rbac'], { rbac: { scope: 'instanceAi:message' } })
 				);
 		}

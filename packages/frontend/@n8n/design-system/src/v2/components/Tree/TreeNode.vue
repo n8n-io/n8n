@@ -90,15 +90,15 @@ function getCustomNodeProps(
 
 <template>
 	<RekaTreeItem
+		v-slot="{ handleToggle, handleSelect, isExpanded, isSelected }"
 		as-child
 		v-bind="flattenedItem.bind"
 		:disabled="isItemDisabled"
-		v-slot="{ handleToggle, handleSelect, isExpanded, isSelected }"
 	>
 		<slot v-bind="buildNodeContext(handleToggle, handleSelect, isExpanded)">
 			<component
-				v-if="node"
 				:is="node"
+				v-if="node"
 				v-bind="getCustomNodeProps(handleToggle, handleSelect, isExpanded, isSelected)"
 			/>
 			<TreeNodeDefault

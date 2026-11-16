@@ -1,12 +1,9 @@
+import { BaseError } from '@n8n/errors';
+
+export { UnexpectedError } from '@n8n/errors';
+
 /**
  * Thrown when the engine reaches a code path that isn't implemented yet.
- *
- * Local because the engine avoids depending on `n8n-workflow`/`@n8n/core`.
- * TODO(CAT-3798): move the engine's error types to a shared lib.
+ * Not a `UserError`, because that level is not reported to Sentry.
  */
-export class UnimplementedError extends Error {
-	constructor(message: string) {
-		super(message);
-		this.name = 'UnimplementedError';
-	}
-}
+export class UnimplementedError extends BaseError {}

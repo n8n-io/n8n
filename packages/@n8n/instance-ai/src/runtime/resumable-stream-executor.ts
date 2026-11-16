@@ -1,4 +1,5 @@
-import type { RedactionOptions, StreamResult } from '@n8n/agents';
+import { isFinishReason } from '@n8n/agents';
+import type { FinishReason, StreamResult } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { randomUUID } from 'node:crypto';
@@ -10,13 +11,21 @@ import type {
 	OrchestratorRunStopSignal,
 } from './orchestrator-run-control';
 import { isQuotaExhaustedError, mapAgentChunkToEvent } from '../stream/map-chunk';
-import { OutputRedactor } from '../stream/output-redaction';
 import { UsageAccumulator, type RunTokenUsage } from '../stream/usage-accumulator';
 import { WorkSummaryAccumulator, type WorkSummary } from '../stream/work-summary-accumulator';
 import { parseSuspension, resumeAgentStream } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
 
 type ConfirmationRequestEvent = Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
+
+/** Event types that show the user the agent has started to respond. */
+const RESPONSE_CHUNK_TYPES: ReadonlyArray<InstanceAiEvent['type']> = [
+	'text-delta',
+	'reasoning-delta',
+	'tool-input-start',
+	// Some providers send a complete tool call without a `tool-input-start`.
+	'tool-call',
+];
 
 export interface ResumableStreamSource {
 	runId?: string;
@@ -38,10 +47,10 @@ export interface ResumableStreamContext {
 	signal: AbortSignal;
 	logger: Logger;
 	onActivity?: () => void;
+	/** Called for each response chunk (text, reasoning, tool call), just before its event is published. */
+	onResponseChunk?: () => void;
 	/** Stop consuming after the current chunk has been mapped and published. */
 	stopSignal?: () => OrchestratorRunStopSignal | undefined;
-	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
-	outputRedaction?: RedactionOptions | false;
 }
 
 export interface ManualSuspensionControl {
@@ -87,6 +96,12 @@ export interface ExecuteResumableStreamResult {
 	usage?: RunTokenUsage;
 	/** Reason this stream stopped early after publishing the current chunk. */
 	stopReason?: OrchestratorRunHandoffReason;
+	/** Terminal `finish` chunk's reason; `'max-iterations'` means the agent ran out of steps. */
+	finishReason?: FinishReason;
+	/** Parsed SDK output. The caller validates its domain schema. */
+	structuredOutput?: unknown;
+	/** Observed model turns. Absent when the provider emits no step events. */
+	stepCount?: number;
 }
 
 function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
@@ -185,11 +200,15 @@ export function normalizeStreamSource(result: unknown): ResumableStreamSource {
 
 	if (isNativeStreamResult(result)) {
 		const [eventStream, textStream] = result.stream.tee();
+		const text = collectNativeStreamText(textStream);
+
+		// Structured-output callers do not need to await the text branch.
+		void text.catch(() => undefined);
 
 		return {
 			runId: result.runId,
 			fullStream: readableStreamToAsyncIterable(eventStream),
-			text: collectNativeStreamText(textStream),
+			text,
 		};
 	}
 
@@ -201,11 +220,13 @@ function buildCancelledResult(
 	text: Promise<string> | undefined,
 	workSummaryAccumulator: WorkSummaryAccumulator,
 	usageAccumulator: UsageAccumulator,
+	nativeStepIndex: number,
 ): ExecuteResumableStreamResult {
 	return {
 		status: 'cancelled',
 		agentRunId,
 		text,
+		stepCount: nativeStepIndex || undefined,
 		workSummary: workSummaryAccumulator.toSummary(),
 		usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 	};
@@ -247,10 +268,10 @@ function recordSuspension(
 }
 
 /**
- * Publish redacted events, holding back the primary confirmation-request event in
+ * Publish events, holding back the primary confirmation-request event in
  * manual mode and de-duplicating it. Returns the updated confirmation-tracking state.
  */
-function publishRedactedEvents(
+function publishEvents(
 	events: InstanceAiEvent[],
 	args: {
 		suspension: SuspensionInfo | undefined;
@@ -271,9 +292,8 @@ function publishRedactedEvents(
 
 		if (event.type === 'confirmation-request') {
 			const isPrimarySuspension =
-				suspension !== undefined &&
-				event.payload.requestId === suspension.requestId &&
-				event.payload.toolCallId === suspension.toolCallId;
+				event.payload.requestId === suspension?.requestId &&
+				event.payload.toolCallId === suspension?.toolCallId;
 			if (!isPrimarySuspension || confirmationEventPublished || confirmationEvent) {
 				shouldPublishEvent = false;
 			}
@@ -298,6 +318,8 @@ function publishRedactedEvents(
 
 interface StreamPassResult {
 	cancelled: boolean;
+	finishReason?: FinishReason;
+	structuredOutput?: unknown;
 	stopReason?: OrchestratorRunHandoffReason;
 	suspension?: SuspensionInfo;
 	hasError: boolean;
@@ -310,7 +332,7 @@ interface StreamPassResult {
 }
 
 /**
- * Consume one stream until it ends (or is cancelled), publishing redacted events,
+ * Consume one stream until it ends (or is cancelled), publishing events,
  * accumulating usage/work, and capturing the first suspension. Returns the pass
  * outcome plus the updated response-id / step counters for the next pass.
  */
@@ -320,18 +342,11 @@ async function consumeStreamPass(args: {
 	options: ExecuteResumableStreamOptions;
 	workSummaryAccumulator: WorkSummaryAccumulator;
 	usageAccumulator: UsageAccumulator;
-	outputRedactor: OutputRedactor;
 	currentResponseId: string | undefined;
 	nativeStepIndex: number;
 }): Promise<StreamPassResult> {
-	const {
-		activeStream,
-		activeAgentRunId,
-		options,
-		workSummaryAccumulator,
-		usageAccumulator,
-		outputRedactor,
-	} = args;
+	const { activeStream, activeAgentRunId, options, workSummaryAccumulator, usageAccumulator } =
+		args;
 	let currentResponseId = args.currentResponseId;
 	let nativeStepIndex = args.nativeStepIndex;
 	/**
@@ -352,6 +367,8 @@ async function consumeStreamPass(args: {
 	let pendingConfirmation: Promise<Record<string, unknown>> | undefined;
 	let confirmationEvent: ConfirmationRequestEvent | undefined;
 	let confirmationEventPublished = false;
+	let finishReason: FinishReason | undefined;
+	let structuredOutput: unknown;
 	const drainedCorrectionsForResume: string[] = [];
 
 	for await (const chunk of activeStream) {
@@ -383,6 +400,10 @@ async function consumeStreamPass(args: {
 
 		options.context.onActivity?.();
 		usageAccumulator.observe(chunk);
+		if (isRecord(chunk) && chunk.type === 'finish') {
+			finishReason = isFinishReason(chunk.finishReason) ? chunk.finishReason : undefined;
+			structuredOutput = chunk.structuredOutput;
+		}
 
 		if (isRecord(chunk) && chunk.type === 'start-step') {
 			nativeStepIndex += 1;
@@ -436,12 +457,14 @@ async function consumeStreamPass(args: {
 		const isFinishStep = isRecord(chunk) && chunk.type === 'finish-step';
 		if ((mappedEvent && !isDeltaChunk) || isFinishStep) syntheticSegmentId = undefined;
 
-		// Scan/redact secrets & PII before events reach the user. Buffered
-		// delta text is released here at structural boundaries, so this may
-		// expand into several events (or none, while text is held back).
-		const events = mappedEvent ? outputRedactor.processEvent(mappedEvent) : [];
+		const events = mappedEvent ? [mappedEvent] : [];
+		// The first thing the user sees the agent do: answer text, visible reasoning
+		// or the start of a tool call.
+		if (mappedEvent && RESPONSE_CHUNK_TYPES.includes(mappedEvent.type)) {
+			options.context.onResponseChunk?.();
+		}
 
-		const published = publishRedactedEvents(events, {
+		const published = publishEvents(events, {
 			suspension,
 			confirmationEvent,
 			confirmationEventPublished,
@@ -463,6 +486,8 @@ async function consumeStreamPass(args: {
 			return {
 				cancelled: false,
 				stopReason: stopSignal.reason,
+				finishReason,
+				structuredOutput,
 				suspension,
 				hasError,
 				error,
@@ -476,7 +501,9 @@ async function consumeStreamPass(args: {
 	}
 
 	return {
-		cancelled: false,
+		cancelled: options.context.signal.aborted,
+		finishReason,
+		structuredOutput,
 		suspension,
 		hasError,
 		error,
@@ -496,13 +523,6 @@ export async function executeResumableStream(
 	let text = options.stream.text;
 	const workSummaryAccumulator = new WorkSummaryAccumulator();
 	const usageAccumulator = new UsageAccumulator();
-	const outputRedactor = new OutputRedactor({
-		logger: options.context.logger,
-		threadId: options.context.threadId,
-		runId: options.context.runId,
-		agentId: options.context.agentId,
-		options: options.context.outputRedaction,
-	});
 
 	let currentResponseId: string | undefined;
 	let nativeStepIndex = 0;
@@ -514,7 +534,6 @@ export async function executeResumableStream(
 			options,
 			workSummaryAccumulator,
 			usageAccumulator,
-			outputRedactor,
 			currentResponseId,
 			nativeStepIndex,
 		});
@@ -522,19 +541,26 @@ export async function executeResumableStream(
 		nativeStepIndex = pass.nativeStepIndex;
 
 		if (pass.cancelled) {
-			return buildCancelledResult(activeAgentRunId, text, workSummaryAccumulator, usageAccumulator);
+			return buildCancelledResult(
+				activeAgentRunId,
+				text,
+				workSummaryAccumulator,
+				usageAccumulator,
+				nativeStepIndex,
+			);
 		}
 
 		const { suspension, hasError, error, pendingConfirmation, confirmationEvent } = pass;
 		const { drainedCorrectionsForResume } = pass;
 
-		for (const flushed of outputRedactor.flush()) {
-			workSummaryAccumulator.observe(flushed);
-			options.context.eventBus.publish(options.context.threadId, flushed);
-		}
-
 		if (options.context.signal.aborted) {
-			return buildCancelledResult(activeAgentRunId, text, workSummaryAccumulator, usageAccumulator);
+			return buildCancelledResult(
+				activeAgentRunId,
+				text,
+				workSummaryAccumulator,
+				usageAccumulator,
+				nativeStepIndex,
+			);
 		}
 
 		if (pass.stopReason) {
@@ -543,6 +569,9 @@ export async function executeResumableStream(
 				agentRunId: activeAgentRunId,
 				text,
 				...(error !== undefined ? { error } : {}),
+				finishReason: pass.finishReason,
+				structuredOutput: pass.structuredOutput,
+				stepCount: nativeStepIndex || undefined,
 				workSummary: workSummaryAccumulator.toSummary(),
 				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 				stopReason: pass.stopReason,
@@ -555,6 +584,9 @@ export async function executeResumableStream(
 				agentRunId: activeAgentRunId,
 				text,
 				...(error !== undefined ? { error } : {}),
+				finishReason: pass.finishReason,
+				structuredOutput: pass.structuredOutput,
+				stepCount: nativeStepIndex || undefined,
 				workSummary: workSummaryAccumulator.toSummary(),
 				usage: usageAccumulator.hasUsage() ? usageAccumulator.toUsage() : undefined,
 			};
@@ -563,6 +595,9 @@ export async function executeResumableStream(
 		if (options.control.mode === 'manual') {
 			return {
 				status: 'suspended',
+				structuredOutput: pass.structuredOutput,
+				finishReason: pass.finishReason,
+				stepCount: nativeStepIndex || undefined,
 				agentRunId: activeAgentRunId,
 				text,
 				suspension,

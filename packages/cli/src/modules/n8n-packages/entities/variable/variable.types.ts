@@ -1,9 +1,12 @@
 import type { User } from '@n8n/db';
 
 import type { PackageWriter } from '../../io/package-writer';
+import type { VariableConflictPolicy, VariableMissingMode } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
-import type { VariableMissingMode } from '../../n8n-packages.types';
+import type { RequirementSource } from '../requirement-source';
+
+export type VariableRequirement = RequirementSource & { variableName: string };
 
 export interface WorkflowVariableRequirement {
 	workflowId: string;
@@ -12,7 +15,7 @@ export interface WorkflowVariableRequirement {
 
 export interface VariableExportRequest {
 	user: User;
-	requirements: WorkflowVariableRequirement[];
+	requirements: VariableRequirement[];
 	writer: PackageWriter;
 	includeVariableValues: boolean;
 	projectTargetsById?: Map<string, string>;
@@ -24,24 +27,37 @@ export interface VariableExportResult {
 }
 
 export type PlacedVariableRequirement = PackageVariableRequirement & {
-	/** When true a created stub lands at global scope; otherwise in the context's project. */
 	globalPlacement: boolean;
+	/** Value of the variable file the package bundles for this scope, if any. */
+	packageValue?: string;
 };
 
 export interface VariableImportRequest {
 	requirements: PlacedVariableRequirement[] | undefined;
 	missingMode: VariableMissingMode;
+	conflictPolicy: VariableConflictPolicy;
 }
 
 export interface VariableResolutionFailure {
 	name: string;
-	usedByWorkflows: string[];
 }
 
 export interface VariableCreation {
 	name: string;
 	projectId?: string;
-	usedByWorkflows: string[];
+	value?: string;
+}
+
+export interface VariableConflict {
+	name: string;
+	projectId?: string;
+}
+
+export interface VariableOverwrite {
+	variableId: string;
+	name: string;
+	projectId?: string;
+	value: string;
 }
 
 export interface VariableLimitFailure {
@@ -49,14 +65,6 @@ export interface VariableLimitFailure {
 	remaining: number;
 	requested: number;
 	names: string[];
-	usedByWorkflows: string[];
-}
-
-export function createFailure(requirement: PackageVariableRequirement): VariableResolutionFailure {
-	return {
-		name: requirement.name,
-		usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
-	};
 }
 
 export function destinationKey(destination: { name: string; projectId?: string }): string {
@@ -65,21 +73,20 @@ export function destinationKey(destination: { name: string; projectId?: string }
 		: `global:${destination.name}`;
 }
 
-export function dedupeCreationsByDestination(creations: VariableCreation[]): VariableCreation[] {
-	const byDestination = new Map<string, VariableCreation>();
-	for (const creation of creations) {
-		const key = destinationKey(creation);
-		const existing = byDestination.get(key);
-		if (!existing) {
-			// Copied because the caller goes on to apply these creations.
-			byDestination.set(key, { ...creation, usedByWorkflows: [...creation.usedByWorkflows] });
-			continue;
-		}
-		existing.usedByWorkflows = [
-			...new Set([...existing.usedByWorkflows, ...creation.usedByWorkflows]),
-		].sort();
+/**
+ * Scopes resolve independently, so two can land on one row — a global neither shadows — and disagree
+ * about its value, where the last write would silently win.
+ */
+export function divergentOverwrites(overwrites: VariableOverwrite[]): VariableOverwrite[] {
+	const firstValueByRow = new Map<string, string>();
+	const divergent = new Set<string>();
+	for (const { variableId, value } of overwrites) {
+		const seen = firstValueByRow.get(variableId);
+		if (seen === undefined) firstValueByRow.set(variableId, value);
+		else if (seen !== value) divergent.add(variableId);
 	}
-	return [...byDestination.values()];
+
+	return overwrites.filter(({ variableId }) => divergent.has(variableId));
 }
 
 /** Reports the planned creations that do not fit the remaining quota. `quota` of `null` means unlimited. */
@@ -94,18 +101,27 @@ export function computeVariableLimitFailure(
 		remaining: quota.remaining,
 		requested: creations.length,
 		names: [...new Set(creations.map((creation) => creation.name))].sort(),
-		usedByWorkflows: [...new Set(creations.flatMap((creation) => creation.usedByWorkflows))].sort(),
 	};
 }
 
+/** A requirement that the target resolves. */
+export interface VariableMatch {
+	name: string;
+	/** Scopes that hold a variable with this name for the target project. Runtime `$vars` reads the project one first. */
+	scopes: Array<'project' | 'global'>;
+}
+
 export interface VariableImportPlan {
-	matched: string[];
+	matched: VariableMatch[];
 	missing: VariableResolutionFailure[];
 	creations: VariableCreation[];
+	conflicts: VariableConflict[];
+	overwrites: VariableOverwrite[];
 }
 
 export interface VariableApplyResult {
+	created: string[];
 	stubbed: string[];
 	skippedExisting: string[];
-	createdCount: number;
+	updated: string[];
 }

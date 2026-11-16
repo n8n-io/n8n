@@ -7,6 +7,7 @@ import type {
 	INodeExecutionData,
 	IPairedItemData,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -264,7 +265,7 @@ describe('NotionV3', () => {
 
 		expect(mockNotionApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/pages',
+			requestPath`/pages`,
 			expect.objectContaining({
 				parent: { type: 'data_source_id', data_source_id: 'data-source-id' },
 				children: [{ object: 'block', type: 'paragraph', paragraph: { rich_text: [] } }],
@@ -315,7 +316,7 @@ describe('NotionV3', () => {
 
 		expect(mockNotionApiRequest).toHaveBeenCalledWith(
 			'PATCH',
-			'/blocks/parent-block-id/children',
+			requestPath`/blocks/parent-block-id/children`,
 			expect.objectContaining({
 				position: {
 					type: 'after_block',
@@ -374,7 +375,7 @@ describe('NotionV3', () => {
 
 		expect(mockNotionApiRequest).toHaveBeenCalledWith(
 			'PATCH',
-			'/blocks/parent-block-id/children',
+			requestPath`/blocks/parent-block-id/children`,
 			expect.objectContaining({
 				children: [
 					{
@@ -427,7 +428,7 @@ describe('NotionV3', () => {
 
 		expect(mockNotionApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/pages/block-id/markdown',
+			requestPath`/pages/block-id/markdown`,
 			{},
 			{ include_transcript: true },
 		);
@@ -456,7 +457,7 @@ describe('NotionV3', () => {
 
 		expect(mockNotionApiRequest).toHaveBeenCalledWith(
 			'GET',
-			'/pages/550e8400e29b41d4a716446655440000/markdown',
+			requestPath`/pages/550e8400e29b41d4a716446655440000/markdown`,
 			{},
 			{},
 		);
@@ -505,7 +506,7 @@ describe('NotionV3', () => {
 
 		expect(mockNotionApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/pages',
+			requestPath`/pages`,
 			expect.objectContaining({
 				parent: { page_id: 'parent-page-id' },
 				markdown: '# Content',
@@ -527,10 +528,50 @@ describe('NotionV3', () => {
 
 		await node.execute.call(context);
 
-		expect(mockNotionApiRequest).toHaveBeenCalledWith('PATCH', '/pages/page-id/markdown', {
-			type: 'replace_content',
-			replace_content: { new_str: '# New content' },
+		expect(mockNotionApiRequest).toHaveBeenCalledWith(
+			'PATCH',
+			requestPath`/pages/page-id/markdown`,
+			{
+				type: 'replace_content',
+				replace_content: { new_str: '# New content' },
+			},
+		);
+	});
+
+	it('encodes a page ID as one URL path segment', async () => {
+		mockNotionApiRequest.mockResolvedValueOnce({ object: 'page_markdown', id: 'page-id' });
+
+		const context = createMockExecuteFunction({
+			resource: 'page',
+			operation: 'updateMarkdown',
+			pageId: { __rl: true, mode: 'id', value: 'page/id?view#section' },
+			markdownUpdateType: 'replace_content',
+			markdown: '# New content',
 		});
+
+		await node.execute.call(context);
+
+		expect(mockNotionApiRequest).toHaveBeenCalledWith(
+			'PATCH',
+			requestPath`/pages/page%2Fid%3Fview%23section/markdown`,
+			{
+				type: 'replace_content',
+				replace_content: { new_str: '# New content' },
+			},
+		);
+	});
+
+	it('rejects a dot path segment before sending a request', async () => {
+		const context = createMockExecuteFunction({
+			resource: 'page',
+			operation: 'updateMarkdown',
+			pageId: { __rl: true, mode: 'id', value: '..' },
+			markdownUpdateType: 'replace_content',
+			markdown: '# New content',
+		});
+
+		await expect(node.execute.call(context)).rejects.toThrow('Invalid identifier');
+		expect(mockNotionApiRequest).not.toHaveBeenCalled();
 	});
 
 	it('extracts page IDs from full URLs with page query parameters', async () => {
@@ -553,7 +594,7 @@ describe('NotionV3', () => {
 
 		expect(mockNotionApiRequest).toHaveBeenCalledWith(
 			'PATCH',
-			'/pages/550e8400e29b41d4a716446655440000/markdown',
+			requestPath`/pages/550e8400e29b41d4a716446655440000/markdown`,
 			{
 				type: 'replace_content',
 				replace_content: { new_str: '# New content' },
@@ -580,18 +621,22 @@ describe('NotionV3', () => {
 
 		await node.execute.call(context);
 
-		expect(mockNotionApiRequest).toHaveBeenCalledWith('PATCH', '/pages/page-id/markdown', {
-			type: 'update_content',
-			update_content: {
-				content_updates: [
-					{
-						old_str: 'Old text',
-						new_str: 'New text',
-						replace_all_matches: true,
-					},
-				],
+		expect(mockNotionApiRequest).toHaveBeenCalledWith(
+			'PATCH',
+			requestPath`/pages/page-id/markdown`,
+			{
+				type: 'update_content',
+				update_content: {
+					content_updates: [
+						{
+							old_str: 'Old text',
+							new_str: 'New text',
+							replace_all_matches: true,
+						},
+					],
+				},
 			},
-		});
+		);
 	});
 
 	it('maps status properties from statusValue', async () => {
@@ -622,7 +667,7 @@ describe('NotionV3', () => {
 
 		expect(mockNotionApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/pages',
+			requestPath`/pages`,
 			expect.objectContaining({
 				properties: expect.objectContaining({
 					Status: {
@@ -662,7 +707,7 @@ describe('NotionV3', () => {
 
 		expect(mockNotionApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/pages',
+			requestPath`/pages`,
 			expect.objectContaining({
 				properties: expect.objectContaining({
 					['Strange | Column']: {
@@ -704,7 +749,7 @@ describe('NotionV3', () => {
 
 		expect(mockNotionApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/pages',
+			requestPath`/pages`,
 			expect.objectContaining({
 				properties: expect.objectContaining({
 					Due: {
@@ -751,7 +796,7 @@ describe('NotionV3', () => {
 
 		expect(mockNotionApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/pages',
+			requestPath`/pages`,
 			expect.objectContaining({
 				properties: expect.objectContaining({
 					Due: {
@@ -789,7 +834,7 @@ describe('NotionV3', () => {
 
 		expect(mockNotionApiRequest).toHaveBeenCalledWith(
 			'PATCH',
-			'/pages/page-id',
+			requestPath`/pages/page-id`,
 			expect.objectContaining({
 				properties: {
 					Due: {
@@ -827,7 +872,7 @@ describe('NotionV3', () => {
 
 		expect(mockNotionApiRequest).toHaveBeenCalledWith(
 			'PATCH',
-			'/pages/page-id',
+			requestPath`/pages/page-id`,
 			expect.objectContaining({
 				properties: {
 					Due: {
@@ -896,7 +941,7 @@ describe('NotionV3', () => {
 
 		expect(mockNotionApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/pages',
+			requestPath`/pages`,
 			expect.objectContaining({
 				properties: expect.objectContaining({
 					Assignee: {
@@ -959,14 +1004,14 @@ describe('NotionV3', () => {
 		expect(mockNotionApiRequestAllItems).toHaveBeenCalledWith(
 			'results',
 			'GET',
-			'/blocks/parent-block-id/children',
+			requestPath`/blocks/parent-block-id/children`,
 			{},
 			{},
 		);
 		expect(mockNotionApiRequestAllItems).toHaveBeenCalledWith(
 			'results',
 			'GET',
-			'/blocks/child-block-id/children',
+			requestPath`/blocks/child-block-id/children`,
 		);
 		expect(result[0].map((item) => item.json.id)).toEqual(['child-block-id', 'nested-block-id']);
 	});
@@ -1010,7 +1055,7 @@ describe('NotionV3', () => {
 		expect(mockNotionApiRequestAllItems).toHaveBeenCalledWith(
 			'results',
 			'POST',
-			'/data_sources/data-source-id/query',
+			requestPath`/data_sources/data-source-id/query`,
 			{
 				filter: {
 					and: [
@@ -1063,7 +1108,7 @@ describe('NotionV3', () => {
 		expect(mockNotionApiRequestAllItems).toHaveBeenCalledWith(
 			'results',
 			'POST',
-			'/data_sources/data-source-id/query',
+			requestPath`/data_sources/data-source-id/query`,
 			{
 				filter: {
 					or: [
@@ -1209,7 +1254,7 @@ describe('NotionV3', () => {
 		expect(mockNotionApiRequestAllItems).toHaveBeenCalledWith(
 			'results',
 			'POST',
-			'/search',
+			requestPath`/search`,
 			expect.objectContaining({
 				query: 'Roadmap',
 				filter: { property: 'object', value: 'page' },
@@ -1251,29 +1296,33 @@ describe('NotionV3', () => {
 
 		await node.execute.call(context);
 
-		expect(mockNotionApiRequest).toHaveBeenCalledWith('PATCH', '/blocks/parent-block-id/children', {
-			children: [
-				expect.objectContaining({
-					type: 'paragraph',
-					paragraph: { rich_text: [{ text: { content: 'Paragraph text' } }] },
-				}),
-				expect.objectContaining({
-					type: 'heading_1',
-					heading_1: { rich_text: [{ text: { content: 'Heading text' } }] },
-				}),
-				expect.objectContaining({
-					type: 'to_do',
-					to_do: {
-						checked: true,
-						rich_text: [{ text: { content: 'Task text' } }],
-					},
-				}),
-				expect.objectContaining({
-					type: 'child_page',
-					child_page: { title: 'Nested child page' },
-				}),
-			],
-		});
+		expect(mockNotionApiRequest).toHaveBeenCalledWith(
+			'PATCH',
+			requestPath`/blocks/parent-block-id/children`,
+			{
+				children: [
+					expect.objectContaining({
+						type: 'paragraph',
+						paragraph: { rich_text: [{ text: { content: 'Paragraph text' } }] },
+					}),
+					expect.objectContaining({
+						type: 'heading_1',
+						heading_1: { rich_text: [{ text: { content: 'Heading text' } }] },
+					}),
+					expect.objectContaining({
+						type: 'to_do',
+						to_do: {
+							checked: true,
+							rich_text: [{ text: { content: 'Task text' } }],
+						},
+					}),
+					expect.objectContaining({
+						type: 'child_page',
+						child_page: { title: 'Nested child page' },
+					}),
+				],
+			},
+		);
 	});
 
 	it('gets a data source directly', async () => {
@@ -1288,7 +1337,29 @@ describe('NotionV3', () => {
 
 		await node.execute.call(context);
 
-		expect(mockNotionApiRequest).toHaveBeenCalledWith('GET', '/data_sources/data-source-id');
+		expect(mockNotionApiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`/data_sources/data-source-id`,
+		);
+	});
+
+	it('encodes a database ID as one URL path segment', async () => {
+		mockNotionApiRequest.mockResolvedValueOnce({ object: 'database', id: 'database-id' });
+
+		const context = createMockExecuteFunction({
+			resource: 'database',
+			operation: 'get',
+			'databaseId.value': 'parent/child?view#section',
+			databaseId: { __rl: true, mode: 'id', value: 'parent/child?view#section' },
+			simple: false,
+		});
+
+		await node.execute.call(context);
+
+		expect(mockNotionApiRequest).toHaveBeenCalledWith(
+			'GET',
+			requestPath`/databases/parent%2Fchild%3Fview%23section`,
+		);
 	});
 
 	it('simplifies a data source get response', async () => {
@@ -1349,7 +1420,7 @@ describe('NotionV3', () => {
 		expect(mockNotionApiRequestAllItems).toHaveBeenCalledWith(
 			'results',
 			'POST',
-			'/search',
+			requestPath`/search`,
 			expect.objectContaining({
 				filter: { property: 'object', value: 'data_source' },
 				query: 'Tasks',

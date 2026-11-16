@@ -8,6 +8,7 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import snowflake from 'snowflake-sdk';
 
+import { resolveQueryReplacementSegments } from '@utils/sql-query-parameters';
 import { getResolvables } from '@utils/utilities';
 
 import {
@@ -16,7 +17,6 @@ import {
 	escapeSnowflakeIdentifier,
 	escapeSnowflakeObjectIdentifier,
 	execute,
-	getConnectionOptions,
 	prepareQueryResults,
 	type SnowflakeCredential,
 } from './GenericFunctions';
@@ -265,16 +265,13 @@ export class Snowflake implements INodeType {
 		}
 
 		const nodeVersion = this.getNode().typeVersion;
-		const connectionOptions = getConnectionOptions(snowflakeCredential, nodeVersion);
-		const connection = snowflake.createConnection(connectionOptions);
-
-		await connect(connection);
+		const connection = await connect(snowflakeCredential, this.getNode());
 
 		// Destroy on failure too, otherwise the leaked session keeps its table locks.
 		try {
 			// Render non-finite numbers (NaN, Infinity) in VARIANT/OBJECT/ARRAY columns as
 			// null so the column output is always valid JSON for the parser above.
-			await execute(connection, 'ALTER SESSION SET STRICT_JSON_OUTPUT = TRUE', []);
+			await execute(connection, 'ALTER SESSION SET STRICT_JSON_OUTPUT = TRUE', [], this.getNode());
 
 			let returnData: INodeExecutionData[] = [];
 			const items = this.getInputData();
@@ -292,13 +289,17 @@ export class Snowflake implements INodeType {
 						query = query.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
 					}
 
-					const options = this.getNodeParameter('options', i, {}) as IDataObject;
+					const options = this.getNodeParameter('options', i, {});
 					const rawReplacement = options.queryReplacement;
 					let binds: snowflake.Bind[] = [];
 
 					if (rawReplacement !== undefined && rawReplacement !== '') {
 						if (typeof rawReplacement === 'string') {
-							binds = rawReplacement.split(',').map((entry) => entry.trim());
+							binds = resolveQueryReplacementSegments.call(
+								this,
+								i,
+								rawReplacement,
+							) as snowflake.Bind[];
 						} else if (Array.isArray(rawReplacement)) {
 							binds = rawReplacement as snowflake.Bind[];
 						} else {
@@ -310,7 +311,7 @@ export class Snowflake implements INodeType {
 						}
 					}
 
-					const responseData = await execute(connection, query, binds);
+					const responseData = await execute(connection, query, binds, this.getNode(), i);
 					const executionData = await prepareQueryResults.call(
 						this,
 						responseData as IDataObject[] | undefined,
@@ -334,7 +335,7 @@ export class Snowflake implements INodeType {
 				const query = `INSERT INTO ${quotedTable} (${quotedColumns.join(',')}) VALUES (${columns.map(() => '?').join(',')})`;
 				const data = this.helpers.copyInputItems(items, columns);
 				const binds = data.map((element) => [...Object.values(element)]);
-				await execute(connection, query, binds as snowflake.Binds);
+				await execute(connection, query, binds as snowflake.Binds, this.getNode());
 				data.forEach((d, i) => {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(d),
@@ -373,7 +374,7 @@ export class Snowflake implements INodeType {
 					return rowBinds;
 				});
 				for (let i = 0; i < binds.length; i++) {
-					await execute(connection, query, binds[i] as snowflake.Binds);
+					await execute(connection, query, binds[i] as snowflake.Binds, this.getNode(), i);
 				}
 				data.forEach((d, i) => {
 					const executionData = this.helpers.constructExecutionMetaData(
@@ -386,7 +387,7 @@ export class Snowflake implements INodeType {
 
 			return [returnData];
 		} finally {
-			await destroy(connection);
+			await destroy(connection, this.getNode());
 		}
 	}
 }

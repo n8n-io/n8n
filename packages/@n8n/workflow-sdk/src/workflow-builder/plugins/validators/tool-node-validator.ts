@@ -38,7 +38,7 @@ export const toolNodeValidator: ValidatorPlugin = {
 			const nodeType = provider.getByNameAndVersion(node.type, Number(node.version));
 			const properties = nodeType?.description?.properties;
 			// If provider returns info and properties is empty array, skip validation
-			if (properties !== undefined && properties.length === 0) {
+			if (properties?.length === 0) {
 				return issues;
 			}
 		}

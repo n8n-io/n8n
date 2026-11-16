@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { type MockedStore, mockedStore, getTooltip } from '@/__tests__/utils';
+import { type MockedStore, mockedStore, getTooltip, queryTooltip } from '@/__tests__/utils';
 import { mockNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { nodeViewEventBus } from '@/app/event-bus';
 import {
@@ -267,6 +267,51 @@ describe('NodeExecuteButton', () => {
 		await waitFor(() => {
 			const tooltip = getTooltip();
 			expect(tooltip).toHaveTextContent('Enable node to execute');
+		});
+	});
+
+	describe('test step tooltip visibility', () => {
+		const POPUP_COUNT_KEY = 'N8N_NODE_TEST_STEP_POPUP_COUNT';
+		const tooltip = 'Execute previous nodes';
+
+		beforeEach(() => {
+			vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(
+				mockNode({ name: 'test-node', type: SET_NODE_TYPE }),
+			);
+		});
+
+		afterEach(() => {
+			localStorage.removeItem(POPUP_COUNT_KEY);
+		});
+
+		it('keeps showing the tooltip on an icon-only button past the popup limit', async () => {
+			localStorage.setItem(POPUP_COUNT_KEY, '10');
+
+			const { getByRole } = renderComponent({ props: { tooltip, iconOnly: true } });
+
+			await userEvent.hover(getByRole('button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent(tooltip));
+		});
+
+		it('shows the tooltip on a labeled button below the popup limit', async () => {
+			localStorage.setItem(POPUP_COUNT_KEY, '0');
+
+			const { getByRole } = renderComponent({ props: { tooltip } });
+
+			await userEvent.hover(getByRole('button'));
+
+			await waitFor(() => expect(getTooltip()).toHaveTextContent(tooltip));
+		});
+
+		it('stops showing the tooltip on a labeled button past the popup limit', async () => {
+			localStorage.setItem(POPUP_COUNT_KEY, '10');
+
+			const { getByRole } = renderComponent({ props: { tooltip } });
+
+			await userEvent.hover(getByRole('button'));
+
+			expect(queryTooltip()).toBeNull();
 		});
 	});
 

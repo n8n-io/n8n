@@ -2,10 +2,11 @@ import FormData from 'form-data';
 import isEmpty from 'lodash/isEmpty';
 import { extension } from 'mime-types';
 import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
-import { jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { getSendAndWaitConfig } from '../../../../utils/sendAndWait/utils';
 import { capitalize, createUtmCampaignLink } from '../../../../utils/utilities';
+import { moderationReasonLabels } from '../actions/common.description';
 import { discordApiMultiPartRequest, discordApiRequest } from '../transport';
 
 export const createSimplifyFunction =
@@ -89,6 +90,22 @@ export function prepareErrorData(this: IExecuteFunctions, error: any, i: number)
 		this.helpers.returnJsonArray({ error: error.message, description }),
 		{ itemData: { item: i } },
 	);
+}
+
+// Builds the headers carrying Discord's audit-log reason from the node's
+// reason/reasonCustom parameters. Empty object when no reason is set.
+export function getAuditLogReasonHeaders(this: IExecuteFunctions, itemIndex: number): IDataObject {
+	const reason = this.getNodeParameter('reason', itemIndex, '') as string;
+
+	const text =
+		reason === 'other'
+			? (this.getNodeParameter('reasonCustom', itemIndex, '') as string)
+			: moderationReasonLabels[reason];
+
+	if (!text) return {};
+
+	// Discord requires the header value to be URL-encoded (it accepts non-ASCII reasons)
+	return { 'X-Audit-Log-Reason': encodeURIComponent(text) };
 }
 
 export function prepareOptions(options: IDataObject, guildId?: string) {
@@ -251,7 +268,7 @@ export async function checkAccessToChannel(
 	let guildId = '';
 
 	try {
-		const channel = await discordApiRequest.call(this, 'GET', `/channels/${channelId}`);
+		const channel = await discordApiRequest.call(this, 'GET', requestPath`/channels/${channelId}`);
 		guildId = channel.guild_id;
 	} catch (error) {}
 
@@ -311,7 +328,11 @@ export async function sendDiscordMessage(
 
 		if (isOAuth2) {
 			try {
-				await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/members/${userId}`);
+				await discordApiRequest.call(
+					this,
+					'GET',
+					requestPath`/guilds/${guildId}/members/${userId}`,
+				);
 			} catch (error) {
 				if (error instanceof NodeApiError && error.httpCode === '404') {
 					throw new NodeOperationError(
@@ -330,7 +351,7 @@ export async function sendDiscordMessage(
 		}
 
 		channelId = (
-			(await discordApiRequest.call(this, 'POST', '/users/@me/channels', {
+			(await discordApiRequest.call(this, 'POST', requestPath`/users/@me/channels`, {
 				recipient_id: userId,
 			})) as IDataObject
 		).id as string;
@@ -368,11 +389,16 @@ export async function sendDiscordMessage(
 		response = await discordApiMultiPartRequest.call(
 			this,
 			'POST',
-			`/channels/${channelId}/messages`,
+			requestPath`/channels/${channelId}/messages`,
 			multiPartBody,
 		);
 	} else {
-		response = await discordApiRequest.call(this, 'POST', `/channels/${channelId}/messages`, body);
+		response = await discordApiRequest.call(
+			this,
+			'POST',
+			requestPath`/channels/${channelId}/messages`,
+			body,
+		);
 	}
 
 	const executionData = this.helpers.constructExecutionMetaData(

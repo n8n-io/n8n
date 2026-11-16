@@ -1,11 +1,11 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
+import { OnLeaderStepdown, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ActiveWorkflowTriggers, ErrorReporter, InstanceSettings } from 'n8n-core';
 
-import { EventService } from '@/events/event.service';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 
@@ -19,7 +19,8 @@ const STUCK_LOCK_WARN_AFTER_PASSES = 3;
 
 /**
  * Tears down in-memory triggers on leader stepdown and shutdown, and — as a
- * safeguard — periodically sweeps the registry while not leader: a trigger
+ * safeguard — sweeps the registry while not leader (driven by the
+ * reconciler's loop, which ticks the sweep on non-leader instances): a trigger
  * registration on a non-leader should never exist, so anything found is torn
  * down and reported.
  *
@@ -35,7 +36,6 @@ const STUCK_LOCK_WARN_AFTER_PASSES = 3;
  */
 @Service()
 export class PublishedWorkflowTriggerDeactivator {
-	private ghostTriggerJanitorInterval: NodeJS.Timeout | undefined;
 	private isShuttingDown = false;
 	private consecutiveLockSkipsByWorkflowId: Map<string, number> = new Map();
 
@@ -50,6 +50,10 @@ export class PublishedWorkflowTriggerDeactivator {
 		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
+	}
+
+	private get leaseMs(): number {
+		return this.workflowsConfig.publicationOutboxLeaseSeconds * Time.seconds.toMilliseconds;
 	}
 
 	/**
@@ -72,7 +76,7 @@ export class PublishedWorkflowTriggerDeactivator {
 
 		const ghosts: string[] = [];
 
-		// Nothing may escape this method: the interval callback driving it has
+		// Nothing may escape this method: the loop tick driving it runs with
 		// nobody awaiting it, so an escaped rejection would crash the process.
 		try {
 			const workflowIds = this.activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds();
@@ -118,9 +122,15 @@ export class PublishedWorkflowTriggerDeactivator {
 					continue;
 				}
 				this.consecutiveLockSkipsByWorkflowId.delete(workflowId);
-				const result = await this.lifecycleLock.runExclusive(workflowId, async () => {
-					if (this.instanceSettings.isLeader && !this.isShuttingDown) return false;
-					return await this.activeWorkflowTriggers.remove(workflowId);
+				const result = await this.lifecycleLock.runExclusive({
+					workflowId,
+					fn: async () => {
+						if (this.instanceSettings.isLeader && !this.isShuttingDown) return false;
+						return await this.activeWorkflowTriggers.remove(workflowId);
+					},
+					// The lock was free a moment ago; a holder that took it since is a
+					// record in flight, which settles within its lease.
+					signal: AbortSignal.timeout(this.leaseMs),
 				});
 				if (result) {
 					deactivatedWorkflows.push(workflowId);
@@ -132,30 +142,8 @@ export class PublishedWorkflowTriggerDeactivator {
 		return deactivatedWorkflows;
 	}
 
-	@OnLeaderStepdown()
-	startGhostTriggerJanitor(): void {
-		if (!this.workflowsConfig.useWorkflowPublicationService) return;
-		if (this.isShuttingDown) return;
-		if (this.ghostTriggerJanitorInterval) return;
-		this.consecutiveLockSkipsByWorkflowId = new Map();
-
-		this.ghostTriggerJanitorInterval = setInterval(
-			async () => await this.sweepGhostTriggers(),
-			this.workflowsConfig.publicationReconcileIntervalSeconds * Time.seconds.toMilliseconds,
-		);
-	}
-
-	@OnLeaderTakeover()
-	stopGhostTriggerJanitor(): void {
-		if (this.ghostTriggerJanitorInterval) {
-			clearInterval(this.ghostTriggerJanitorInterval);
-			this.ghostTriggerJanitorInterval = undefined;
-		}
-	}
-
 	@OnShutdown()
 	shutdown(): void {
 		this.isShuttingDown = true;
-		this.stopGhostTriggerJanitor();
 	}
 }

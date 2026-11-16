@@ -1,3 +1,5 @@
+import type { INode } from 'n8n-workflow';
+
 import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
 import { BreakingChangeCategory } from '../../../types';
 import { ProcessEnvAccessRule } from '../process-env-access.rule';
@@ -10,6 +12,17 @@ describe('ProcessEnvAccessRule', () => {
 		rule = new ProcessEnvAccessRule();
 	});
 
+	it('should not be affected by a node that has no parameters', async () => {
+		const node = { ...createNode('Start', 'n8n-nodes-base.manualTrigger'), parameters: undefined };
+		const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+			node as unknown as INode,
+		]);
+
+		const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+
+		expect(result.isAffected).toBe(false);
+	});
+
 	describe('getMetadata()', () => {
 		it('should return correct metadata', () => {
 			const metadata = rule.getMetadata();
@@ -19,7 +32,7 @@ describe('ProcessEnvAccessRule', () => {
 				title: 'Block process.env Access in Expressions and Code nodes',
 				description: 'Direct access to process.env is blocked by default for security',
 				category: BreakingChangeCategory.workflow,
-				severity: 'low',
+				impact: 'executionsFail',
 			});
 		});
 	});

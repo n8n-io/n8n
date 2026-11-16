@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { verifySignature } from './AsanaTriggerHelpers';
 import { asanaApiRequest, getWorkspaces } from './GenericFunctions';
@@ -120,7 +120,13 @@ export class AsanaTrigger implements INodeType {
 
 				const workspace = this.getNodeParameter('workspace') as string;
 
-				const { data } = await asanaApiRequest.call(this, 'GET', '/webhooks', {}, { workspace });
+				const { data } = await asanaApiRequest.call(
+					this,
+					'GET',
+					requestPath`/webhooks`,
+					{},
+					{ workspace },
+				);
 
 				for (const webhook of data) {
 					if (webhook.resource.gid === resource && webhook.target === webhookUrl) {
@@ -151,7 +157,7 @@ export class AsanaTrigger implements INodeType {
 					target: webhookUrl,
 				};
 
-				const responseData = await asanaApiRequest.call(this, 'POST', '/webhooks', body);
+				const responseData = await asanaApiRequest.call(this, 'POST', requestPath`/webhooks`, body);
 
 				if (responseData.data === undefined || responseData.data.gid === undefined) {
 					// Required data is missing so was not successful
@@ -159,6 +165,12 @@ export class AsanaTrigger implements INodeType {
 				}
 
 				webhookData.webhookId = responseData.data.gid as string;
+
+				// Asana also returns the webhook's verification secret in this response
+				const hookSecret = responseData['X-Hook-Secret'];
+				if (typeof hookSecret === 'string' && hookSecret.length > 0) {
+					webhookData.hookSecret = hookSecret;
+				}
 
 				return true;
 			},
@@ -169,7 +181,12 @@ export class AsanaTrigger implements INodeType {
 					const body = {};
 
 					try {
-						await asanaApiRequest.call(this, 'DELETE', `/webhooks/${webhookData.webhookId}`, body);
+						await asanaApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/webhooks/${webhookData.webhookId}`,
+							body,
+						);
 					} catch (error) {
 						return false;
 					}
@@ -191,14 +208,11 @@ export class AsanaTrigger implements INodeType {
 		const headerData = this.getHeaderData() as IDataObject;
 		const req = this.getRequestObject();
 
-		const webhookData = this.getWorkflowStaticData('node');
-
 		if (headerData['x-hook-secret'] !== undefined) {
-			// Is a create webhook confirmation request
-			webhookData.hookSecret = headerData['x-hook-secret'];
-
+			// Is a create webhook confirmation request; the secret itself is
+			// captured from the create-webhook API response, not from this header
 			const res = this.getResponseObject();
-			res.set('X-Hook-Secret', webhookData.hookSecret as string);
+			res.set('X-Hook-Secret', headerData['x-hook-secret'] as string);
 			res.status(200).end();
 
 			return {

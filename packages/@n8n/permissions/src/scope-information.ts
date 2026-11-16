@@ -22,6 +22,35 @@ export const ALL_SCOPES = buildResourceScopes();
 export const ALL_API_KEY_SCOPES = buildApiKeyScopes();
 
 export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
+	'app:create': { displayName: 'Create app', description: 'Create apps in a project.' },
+	'app:read': { displayName: 'View app', description: 'View app details and versions.' },
+	'app:update': { displayName: 'Edit app', description: 'Edit apps in a project.' },
+	'app:delete': { displayName: 'Delete app', description: 'Delete apps and their versions.' },
+	'app:list': {
+		displayName: 'List apps',
+		description: 'List apps in a project.',
+	},
+	'aiPreference:read': {
+		displayName: 'Read AI Preferences',
+		description:
+			'Allows reading the AI preferences saved for the instance, the user, and their projects.',
+	},
+	'skill:read': {
+		displayName: 'Read Skills',
+		description: 'Allows reading instance skills.',
+	},
+	'skill:update': {
+		displayName: 'Update Skills',
+		description: 'Allows editing and saving instance skills.',
+	},
+	'projectSkill:read': {
+		displayName: 'Read Project Skills',
+		description: 'Allows reading the skills of a project.',
+	},
+	'projectSkill:update': {
+		displayName: 'Update Project Skills',
+		description: 'Allows editing and saving the skills of a project.',
+	},
 	'agent:create': {
 		displayName: 'Create Agent',
 		description: 'Allows creating new agents in a project.',
@@ -29,6 +58,14 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'agent:read': {
 		displayName: 'Read Agent',
 		description: 'Allows reading agent configuration and history.',
+	},
+	'agent:export': {
+		displayName: 'Export Agent',
+		description: 'Allows including agents in a portable package export.',
+	},
+	'agent:import': {
+		displayName: 'Import Agent',
+		description: 'Allows importing agents from a portable package.',
 	},
 	'agent:update': {
 		displayName: 'Update Agent',
@@ -57,6 +94,45 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'aiAssistant:manage': {
 		displayName: 'Manage AI Usage',
 		description: 'Allows managing AI Usage settings.',
+	},
+	'execution:read': {
+		displayName: 'View Execution',
+		description: 'Allows viewing executions of workflows the role can view.',
+	},
+	'execution:list': {
+		displayName: 'List Executions',
+		description: 'Allows listing executions of workflows the role can view.',
+	},
+	'execution:delete': {
+		displayName: 'Delete Execution',
+		description: 'Allows deleting executions of workflows in the project.',
+	},
+	'executionLimit:read': {
+		displayName: 'View Execution Limits',
+		description:
+			'Allows viewing the instance execution limit, the default for new projects, and the limit of every project.',
+	},
+	'executionLimit:update': {
+		displayName: 'Change Execution Limits',
+		description:
+			'Allows setting and removing the instance execution limit, the default for new projects, and the limit of every project.',
+	},
+	'projectExecutionLimit:read': {
+		displayName: 'View Project Execution Limit',
+		description: 'Allows viewing the execution limit of the project.',
+	},
+	'projectExecutionLimit:update': {
+		displayName: 'Change Project Execution Limit',
+		description: 'Allows setting and removing the execution limit of the project.',
+	},
+	'nodeTypePolicy:manage': {
+		displayName: 'Manage Node Type Policies',
+		description: 'Allows managing which node types are available, on the instance or in a project.',
+	},
+	'credentialTypePolicy:manage': {
+		displayName: 'Manage Credential Type Policies',
+		description:
+			'Allows managing which credential types are available, on the instance or in a project.',
 	},
 	'encryptionKey:manage': {
 		displayName: 'Manage Encryption Keys',
@@ -90,6 +166,11 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Export Project',
 		description: 'Allows including projects in a portable package export.',
 	},
+	'project:manageMembers': {
+		displayName: 'Manage Project Members',
+		description:
+			"Allows adding members to a project, changing a member's project role, and removing members.",
+	},
 	'credential:unshare': {
 		displayName: 'Unshare Credential',
 		description: 'Allows removing credential shares.',
@@ -102,6 +183,11 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage End-User Credential',
 		description:
 			"Allows creating, deleting, and changing the type of end-user credentials, which resolve to each user's own connection.",
+	},
+	'credential:use': {
+		displayName: 'Use Credential',
+		description:
+			'Allows using any credential on the instance in a workflow, without being a member of its project. Without it, a role that can read credentials sees them but cannot select, test, or run them.',
 	},
 	'credential:manageInstance': {
 		displayName: 'Manage provider connections',
@@ -127,5 +213,57 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'role:manageProject': {
 		displayName: 'Manage project roles',
 		description: 'Allows creating, editing, and deleting project role definitions.',
+	},
+	'promotions:create': {
+		displayName: 'Create promotion setup',
+		description: 'Allows creating promotion providers and environments.',
+	},
+	'promotions:read': {
+		displayName: 'Read promotion setup',
+		description:
+			'Allows reading promotion providers, environments, the projects linked to each environment, and the Apply package projects that are missing on this instance.',
+	},
+	'promotions:update': {
+		displayName: 'Update promotion setup',
+		description: 'Allows updating promotion providers and environments.',
+	},
+	'promotions:delete': {
+		displayName: 'Delete promotion setup',
+		description: 'Allows deleting promotion providers and environments.',
+	},
+	'promotions:list': {
+		displayName: 'List promotion setup',
+		description: 'Allows listing promotion providers and environments.',
+	},
+	'promotions:discover': {
+		displayName: 'Discover promotion locations',
+		description: 'Allows listing the locations that a promotion provider can reach.',
+	},
+	'promotions:connect': {
+		displayName: 'Connect promotion environment',
+		description: 'Allows connecting this instance to a promotion environment and disconnecting it.',
+	},
+	'promotions:promote': {
+		displayName: 'Promote',
+		description:
+			'Allows previewing and promoting changes from team projects to a promotion environment.',
+	},
+	'promotions:manageProjects': {
+		displayName: 'Manage promotion environment projects',
+		description: 'Allows adding projects to and removing projects from a promotion environment.',
+	},
+	'promotions:apply': {
+		displayName: 'Apply',
+		description:
+			'Allows previewing and applying changes from a promotion environment to this instance.',
+	},
+	'promotions:readReviews': {
+		displayName: 'Read promotion reviews',
+		description: 'Allows listing promotion reviews and viewing their status and changes.',
+	},
+	'promotions:approveReviews': {
+		displayName: 'Approve promotion reviews',
+		description:
+			'Allows approving promotion reviews, which adds their changes to the promotion environment.',
 	},
 };

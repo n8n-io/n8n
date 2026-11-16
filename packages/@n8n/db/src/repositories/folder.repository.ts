@@ -1,10 +1,15 @@
 import { Service } from '@n8n/di';
 import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { Folder, FolderTagMapping, TagEntity } from '../entities';
 import type { FolderWithWorkflowAndSubFolderCountAndPath, ListQuery } from '../entities/types-db';
+import { chunkIds } from '../utils/chunk-ids';
+import { parseListQuerySortBy } from '../utils/list-query-sort';
+
+// oxlint-disable-next-line typescript/no-deprecated
+type FolderListQueryOptions = ListQuery.Options;
 
 @Service()
 export class FolderRepository extends Repository<Folder> {
@@ -12,7 +17,32 @@ export class FolderRepository extends Repository<Folder> {
 		super(Folder, dataSource.manager);
 	}
 
-	async getManyAndCount(options: ListQuery.Options = {}) {
+	async findExistingIds(folderIds: string[]): Promise<Set<string>> {
+		const ids = new Set<string>();
+
+		for (const chunk of chunkIds(folderIds)) {
+			const found = await this.find({ select: { id: true }, where: { id: In(chunk) } });
+			for (const { id } of found) ids.add(id);
+		}
+
+		return ids;
+	}
+
+	async findManyByIds(folderIds: string[]): Promise<Folder[]> {
+		const folders = new Map<string, Folder>();
+
+		for (const chunk of chunkIds(folderIds)) {
+			const found = await this.find({
+				where: { id: In(chunk) },
+				relations: { homeProject: true },
+			});
+			for (const folder of found) folders.set(folder.id, folder);
+		}
+
+		return [...folders.values()];
+	}
+
+	async getManyAndCount(options: FolderListQueryOptions = {}) {
 		const query = this.getManyQuery(options);
 		return (await query.getManyAndCount()) as unknown as [
 			FolderWithWorkflowAndSubFolderCountAndPath[],
@@ -20,12 +50,12 @@ export class FolderRepository extends Repository<Folder> {
 		];
 	}
 
-	async getMany(options: ListQuery.Options = {}) {
+	async getMany(options: FolderListQueryOptions = {}) {
 		const query = this.getManyQuery(options);
 		return (await query.getMany()) as unknown as FolderWithWorkflowAndSubFolderCountAndPath[];
 	}
 
-	getManyQuery(options: ListQuery.Options = {}): SelectQueryBuilder<Folder> {
+	getManyQuery(options: FolderListQueryOptions = {}): SelectQueryBuilder<Folder> {
 		const query = this.createQueryBuilder('folder');
 
 		this.applySelections(query, options.select, options.filter);
@@ -38,8 +68,8 @@ export class FolderRepository extends Repository<Folder> {
 
 	private applySelections(
 		query: SelectQueryBuilder<Folder>,
-		select?: ListQuery.Options['select'],
-		filter?: ListQuery.Options['filter'],
+		select?: FolderListQueryOptions['select'],
+		filter?: FolderListQueryOptions['filter'],
 	): void {
 		if (select) {
 			this.applyCustomSelect(query, select, filter);
@@ -50,7 +80,7 @@ export class FolderRepository extends Repository<Folder> {
 
 	private applyWorkflowCountSelect(
 		query: SelectQueryBuilder<Folder>,
-		filter?: ListQuery.Options['filter'],
+		filter?: FolderListQueryOptions['filter'],
 	): void {
 		if (typeof filter?.isArchived === 'boolean') {
 			query.loadRelationCountAndMap('folder.workflowCount', 'folder.workflows', 'workflow', (qb) =>
@@ -65,7 +95,7 @@ export class FolderRepository extends Repository<Folder> {
 
 	private applyDefaultSelect(
 		query: SelectQueryBuilder<Folder>,
-		filter?: ListQuery.Options['filter'],
+		filter?: FolderListQueryOptions['filter'],
 	): void {
 		this.applyWorkflowCountSelect(query, filter);
 
@@ -84,8 +114,8 @@ export class FolderRepository extends Repository<Folder> {
 
 	private applyCustomSelect(
 		query: SelectQueryBuilder<Folder>,
-		select?: ListQuery.Options['select'],
-		filter?: ListQuery.Options['filter'],
+		select?: FolderListQueryOptions['select'],
+		filter?: FolderListQueryOptions['filter'],
 	): void {
 		const selections = ['folder.id'];
 
@@ -95,7 +125,7 @@ export class FolderRepository extends Repository<Folder> {
 		query.select(selections);
 	}
 
-	private addBasicFields(selections: string[], select?: ListQuery.Options['select']): void {
+	private addBasicFields(selections: string[], select?: FolderListQueryOptions['select']): void {
 		if (select?.name) selections.push('folder.name');
 		if (select?.createdAt) selections.push('folder.createdAt');
 		if (select?.updatedAt) selections.push('folder.updatedAt');
@@ -104,8 +134,8 @@ export class FolderRepository extends Repository<Folder> {
 	private addRelationFields(
 		query: SelectQueryBuilder<Folder>,
 		selections: string[],
-		select?: ListQuery.Options['select'],
-		filter?: ListQuery.Options['filter'],
+		select?: FolderListQueryOptions['select'],
+		filter?: FolderListQueryOptions['filter'],
 	): void {
 		if (select?.project) {
 			query.leftJoin('folder.homeProject', 'homeProject');
@@ -147,7 +177,7 @@ export class FolderRepository extends Repository<Folder> {
 
 	private applyFilters(
 		query: SelectQueryBuilder<Folder>,
-		filter?: ListQuery.Options['filter'],
+		filter?: FolderListQueryOptions['filter'],
 	): void {
 		if (!filter) return;
 
@@ -164,7 +194,7 @@ export class FolderRepository extends Repository<Folder> {
 
 	private applyBasicFilters(
 		query: SelectQueryBuilder<Folder>,
-		filter: ListQuery.Options['filter'],
+		filter: FolderListQueryOptions['filter'],
 	): void {
 		if (filter?.folderIds && Array.isArray(filter.folderIds)) {
 			query.andWhere('folder.id IN (:...folderIds)', {
@@ -228,13 +258,8 @@ export class FolderRepository extends Repository<Folder> {
 			return;
 		}
 
-		const [field, order] = this.parseSortingParams(sortBy);
-		this.applySortingByField(query, field, order);
-	}
-
-	private parseSortingParams(sortBy: string): [string, 'DESC' | 'ASC'] {
-		const [field, order] = sortBy.split(':');
-		return [field, order?.toLowerCase() === 'desc' ? 'DESC' : 'ASC'];
+		const { column, direction } = parseListQuerySortBy(sortBy);
+		this.applySortingByField(query, column, direction);
 	}
 
 	private applySortingByField(
@@ -251,10 +276,29 @@ export class FolderRepository extends Repository<Folder> {
 		}
 	}
 
-	private applyPagination(query: SelectQueryBuilder<Folder>, options: ListQuery.Options): void {
+	private applyPagination(
+		query: SelectQueryBuilder<Folder>,
+		options: FolderListQueryOptions,
+	): void {
 		if (options?.take) {
 			query.skip(options.skip ?? 0).take(options.take);
 		}
+	}
+
+	/** Folders in a project whose name matches exactly, case-insensitively — not a
+	 *  `LIKE` scan, so a caller resolving a known name is never crowded out of a
+	 *  capped, `updatedAt`-ordered page by unrelated folders sharing a substring.
+	 *  Ordered by id: every match shares the same name by construction, so name
+	 *  gives no tiebreaker, and leaving order to the query planner would make a
+	 *  capped page non-deterministic across calls or database backends. */
+	async findManyByExactName(projectId: string, name: string, take: number): Promise<Folder[]> {
+		return await this.createQueryBuilder('folder')
+			.select(['folder.id', 'folder.name'])
+			.where('folder.projectId = :projectId', { projectId })
+			.andWhere('LOWER(folder.name) = LOWER(:name)', { name })
+			.orderBy('folder.id', 'ASC')
+			.take(take)
+			.getMany();
 	}
 
 	async findOneOrFailFolderInProject(
@@ -395,28 +439,35 @@ export class FolderRepository extends Repository<Folder> {
 	async getAllFolderIdsInSubtrees(parentFolderIds: string[]): Promise<string[]> {
 		if (parentFolderIds.length === 0) return [];
 
-		// Base case: the direct children of any requested parent.
-		const baseQuery = this.createQueryBuilder('f')
-			.select('f.id', 'id')
-			.where('f.parentFolderId IN (:...parentFolderIds)', { parentFolderIds });
+		// Subtrees are independent, so each chunk resolves in its own recursive
+		// query and the ids are merged — a folder reachable from two chunks lands once.
+		const ids = new Set<string>();
 
-		// Recursive case: descendants of folders already in the tree.
-		const recursiveQuery = this.createQueryBuilder('child')
-			.select('child.id', 'id')
-			.innerJoin('folder_tree', 'parent', 'child.parentFolderId = parent.id');
+		for (const chunk of chunkIds(parentFolderIds)) {
+			// Base case: the direct children of any requested parent.
+			const baseQuery = this.createQueryBuilder('f')
+				.select('f.id', 'id')
+				.where('f.parentFolderId IN (:...parentFolderIds)', { parentFolderIds: chunk });
 
-		const query = this.createQueryBuilder()
-			.addCommonTableExpression(
-				`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
-				'folder_tree',
-				{ recursive: true },
-			)
-			.select('DISTINCT tree.id', 'id')
-			.from('folder_tree', 'tree')
-			.setParameters(baseQuery.getParameters());
+			// Recursive case: descendants of folders already in the tree.
+			const recursiveQuery = this.createQueryBuilder('child')
+				.select('child.id', 'id')
+				.innerJoin('folder_tree', 'parent', 'child.parentFolderId = parent.id');
 
-		const result = await query.getRawMany<{ id: string }>();
-		return result.map((row) => row.id);
+			const query = this.createQueryBuilder()
+				.addCommonTableExpression(
+					`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
+					'folder_tree',
+					{ recursive: true },
+				)
+				.select('DISTINCT tree.id', 'id')
+				.from('folder_tree', 'tree')
+				.setParameters(baseQuery.getParameters());
+
+			for (const row of await query.getRawMany<{ id: string }>()) ids.add(row.id);
+		}
+
+		return [...ids];
 	}
 
 	async getFolderPathsToRoot(folderIds: string[]): Promise<Map<string, string[]>> {

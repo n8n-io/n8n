@@ -1,25 +1,26 @@
 import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../v2/actions/versionDescription';
 import { fileRLC, getFiles } from '../../v2/file';
-import { SEARCH_PAGE_LIMIT } from '../../v2/helpers/graphSearch';
+import { SEARCH_PAGE_LIMIT } from '../../helpers/graphSearch';
 import { MicrosoftSharePointV2 } from '../../v2/MicrosoftSharePointV2.node';
-import * as transport from '../../v2/transport';
-import type * as _importType0 from '../../v2/transport';
+import * as transport from '../../transport';
+import type * as _importType0 from '../../transport';
 
-vi.mock('../../v2/transport', async () => {
-	const originalModule = await vi.importActual<typeof _importType0>('../../v2/transport');
+vi.mock('../../transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../transport');
 	return {
 		...originalModule,
 		microsoftApiRequest: vi.fn(),
 	};
 });
 
-const SITE_ID = 'contoso.sharepoint.com,g1,g2';
-const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
+const SITE_ID =
+	'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
 const FOLDER_ID = '01SPEVVYBKV2ZKHGJASRA2HC7MOGBMUMAA';
 
 describe('Microsoft SharePoint v2 — file selection', () => {
@@ -40,7 +41,9 @@ describe('Microsoft SharePoint v2 — file selection', () => {
 		setParams({ site: { mode: 'id', value: SITE_ID }, folder: FOLDER_ID });
 	});
 
-	it('lists only files from the chosen folder, asking Graph for files and re-checking the reply', async () => {
+	// No $filter is sent: the children collection rejects one with "Operation not
+	// supported", so the files are filtered from the reply instead.
+	it('lists only files from the chosen folder, filtering the reply rather than the query', async () => {
 		apiRequest.mockResolvedValue({
 			value: [
 				{ id: 'file-1', name: 'report.csv', file: { mimeType: 'text/csv' } },
@@ -54,14 +57,13 @@ describe('Microsoft SharePoint v2 — file selection', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
-			`/v1.0/sites/${ENCODED_SITE_ID}/drive/items/${FOLDER_ID}/children`,
+			requestPath`/v1.0/sites/${SITE_ID}/drive/items/${FOLDER_ID}/children`,
 			{},
 			{
 				$select: 'id,name,file',
-				$filter: 'file ne null',
 			},
 		);
-		// Folders and ID-less entries are dropped even if Graph ignores the filter;
+		// Folders and ID-less entries are dropped from the reply;
 		// the API's order is kept (pages concatenate in the editor)
 		expect(result.results).toEqual([
 			{ name: 'report.csv', value: 'file-1' },
@@ -97,7 +99,7 @@ describe('Microsoft SharePoint v2 — file selection', () => {
 		const result = await getFiles.call(ctx, 'report');
 
 		expect(apiRequest).toHaveBeenCalledTimes(2);
-		expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
+		expect(apiRequest).toHaveBeenLastCalledWith('GET', expect.anything(), {}, {}, nextLink);
 		expect(result.results).toEqual([{ name: 'Report.pdf', value: 'file-2' }]);
 		expect(result.paginationToken).toBeUndefined();
 	});
@@ -143,7 +145,7 @@ describe('Microsoft SharePoint v2 — file selection', () => {
 		const result = await getFiles.call(ctx);
 
 		expect(apiRequest).toHaveBeenCalledTimes(2);
-		expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
+		expect(apiRequest).toHaveBeenLastCalledWith('GET', expect.anything(), {}, {}, nextLink);
 		expect(result.results).toEqual([{ name: 'Report.pdf', value: 'file-2' }]);
 	});
 

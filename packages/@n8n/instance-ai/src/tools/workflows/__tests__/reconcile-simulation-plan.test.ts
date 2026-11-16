@@ -1,10 +1,21 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
+// Spy on the real classifier so the existing cases keep its behaviour.
+vi.mock('../classify-node-destructiveness.service', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../classify-node-destructiveness.service')>();
+	return { ...actual, classifyNodesForSimulation: vi.fn(actual.classifyNodesForSimulation) };
+});
+
+import { agentToolWorkflow } from '../../../__tests__/agent-tool-workflow';
 import type {
 	NodeSimulationVerdict,
 	WorkflowBuildOutcome,
 } from '../../../workflow-loop/workflow-loop-state';
-import { CREDENTIALLESS_AI_ROOT_SIMULATION_REASON } from '../plan-verification-simulation';
+import {
+	CREDENTIALLESS_AI_ROOT_SIMULATION_REASON,
+	DECLARED_OUTPUT_SIMULATION_REASON,
+} from '../plan-verification-simulation';
+import { classifyNodesForSimulation } from '../classify-node-destructiveness.service';
 import { reconcileSimulationPlan } from '../reconcile-simulation-plan';
 import { type CredentialEntry, type CredentialMap } from '../resolve-credentials';
 
@@ -70,6 +81,72 @@ function makeWorkflow(nodes: TestNode[]): WorkflowJSON {
 // ---------------------------------------------------------------------------
 
 describe('reconcileSimulationPlan', () => {
+	it.each([
+		{ operation: 'send', declared: false, expected: 'simulate' },
+		{ operation: 'get', declared: false, expected: 'execute' },
+		{ operation: 'get', declared: true, expected: 'simulate' },
+	])(
+		'reconciles attached $operation tools with declared output: $declared',
+		async ({ operation, declared, expected }) => {
+			const workflow = agentToolWorkflow(3.1, 3);
+			workflow.nodes[2].parameters = { operation };
+			workflow.nodes[2].credentials = { slackApi: { id: 'cred-1', name: 'Tool account' } };
+			const reason = declared ? DECLARED_OUTPUT_SIMULATION_REASON : MOCKED_CREDENTIAL_REASON;
+			const patch = await reconcileSimulationPlan({
+				workflow,
+				buildOutcome: makeBuildOutcome({
+					mockedNodeNames: ['Write'],
+					mockedCredentialsByNode: { Write: ['slackApi'] },
+					nodeSimulationPlan: [{ ...mockedVerdict('Write'), reason }],
+					simulationFixtures: { Write: [{ id: 'fixture' }] },
+				}),
+				availableCredentials: makeCredentialMap([
+					{ id: 'cred-1', name: 'Tool account', type: 'slackApi' },
+				]),
+			});
+			expect(patch?.nodeSimulationPlan).toEqual([
+				expect.objectContaining({ nodeName: 'Write', verdict: expected }),
+			]);
+			expect(patch?.nodeSimulationPlan?.[0].reason).not.toBe(MOCKED_CREDENTIAL_REASON);
+			expect(patch?.simulationFixtures?.Write).toEqual(
+				expected === 'simulate' ? [{ id: 'fixture' }] : undefined,
+			);
+		},
+	);
+
+	it('passes the models and the usage callback to the classifier', async () => {
+		const workflow = agentToolWorkflow(3.1, 3);
+		workflow.nodes[2].parameters = { operation: 'send' };
+		workflow.nodes[2].credentials = { slackApi: { id: 'cred-1', name: 'Tool account' } };
+		const modelFetch = vi.fn();
+		const onHelperUsage = vi.fn();
+
+		await reconcileSimulationPlan({
+			workflow,
+			buildOutcome: makeBuildOutcome({
+				mockedNodeNames: ['Write'],
+				mockedCredentialsByNode: { Write: ['slackApi'] },
+				nodeSimulationPlan: [mockedVerdict('Write')],
+			}),
+			availableCredentials: makeCredentialMap([
+				{ id: 'cred-1', name: 'Tool account', type: 'slackApi' },
+			]),
+			model: 'anthropic/claude-opus-5-5',
+			utilityModel: 'anthropic/claude-haiku-5-5',
+			modelFetch,
+			onHelperUsage,
+		});
+
+		expect(classifyNodesForSimulation).toHaveBeenCalledWith(
+			expect.objectContaining({
+				model: 'anthropic/claude-opus-5-5',
+				utilityModel: 'anthropic/claude-haiku-5-5',
+				modelFetch,
+				onHelperUsage,
+			}),
+		);
+	});
+
 	it('returns undefined when the outcome has no mocked credentials', async () => {
 		const patch = await reconcileSimulationPlan({
 			buildOutcome: makeBuildOutcome(),

@@ -1,7 +1,6 @@
 import type { TagEntity, ITagWithCountDb } from '@n8n/db';
-import { TagRepository } from '@n8n/db';
+import { isUniqueConstraintError, TagRepository, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { QueryFailedError } from '@n8n/typeorm';
 
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -10,21 +9,12 @@ type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : 
 
 type Action = 'Create' | 'Update';
 
-// n8n supports postgres (SQLSTATE 23505) and sqlite (SQLITE_CONSTRAINT_UNIQUE,
-// or the older SQLITE_CONSTRAINT with a "UNIQUE constraint" message).
-function isUniqueConstraintViolation(error: unknown): error is QueryFailedError {
-	if (!(error instanceof QueryFailedError)) return false;
-	const driver = (error as { driverError?: { code?: unknown } }).driverError;
-	const code = driver && typeof driver.code !== 'undefined' ? String(driver.code) : undefined;
-	if (code === '23505' || code === 'SQLITE_CONSTRAINT_UNIQUE') return true;
-	return code === 'SQLITE_CONSTRAINT' && /UNIQUE constraint/i.test(error.message);
-}
-
 @Service()
 export class TagService {
 	constructor(
 		private externalHooks: ExternalHooks,
 		private tagRepository: TagRepository,
+		private txRunner: TransactionRunner,
 	) {}
 
 	toEntity(attrs: { name: string; id?: string }) {
@@ -47,6 +37,19 @@ export class TagService {
 		return await savedTag;
 	}
 
+	/**
+	 * Re-keys an existing tag to a new id, moving its workflow, folder and
+	 * agent mappings along. Does not run the `tag.beforeUpdate`/`afterUpdate`
+	 * external hooks: those model name edits, and no id-change hook contract
+	 * exists.
+	 */
+	async reconcileTagId(oldId: string, newId: string) {
+		await this.txRunner.run(
+			{},
+			async (ctx) => await this.tagRepository.reconcileTagId(oldId, newId, ctx),
+		);
+	}
+
 	async delete(id: string) {
 		await this.externalHooks.run('tag.beforeDelete', [id]);
 
@@ -61,17 +64,10 @@ export class TagService {
 		options?: T,
 	): Promise<GetAllResult<T>> {
 		if (options?.withUsageCount) {
-			const qb = this.tagRepository
-				.createQueryBuilder('tag')
-				.select(['tag.id', 'tag.name', 'tag.createdAt', 'tag.updatedAt'])
-				.loadRelationCountAndMap('tag.usageCount', 'tag.workflowMappings', 'wm', (qb2) =>
-					qb2.leftJoin('wm.workflows', 'workflow').where('workflow.isArchived = :isArchived', {
-						isArchived: false,
-					}),
-				);
-			if (options.orderByName) qb.orderBy('tag.name', 'ASC');
-			if (options.limit !== undefined) qb.limit(options.limit);
-			const tags = await qb.getMany();
+			const tags = await this.tagRepository.findAllWithUsageCount({
+				orderByName: options.orderByName,
+				limit: options.limit,
+			});
 
 			return tags as GetAllResult<T>;
 		}
@@ -110,6 +106,14 @@ export class TagService {
 	async getByNames(names: string[]): Promise<TagEntity[]> {
 		if (names.length === 0) return [];
 		return await this.tagRepository.findManyByName(names);
+	}
+
+	async getAllByWorkflowId(workflowId: string): Promise<TagEntity[]> {
+		return await this.tagRepository.findBy({ workflows: { id: workflowId } });
+	}
+
+	async getAllByAgentId(agentId: string): Promise<TagEntity[]> {
+		return await this.tagRepository.findAllByAgentId(agentId);
 	}
 
 	/**
@@ -165,7 +169,7 @@ export class TagService {
 				const created = await this.save(this.toEntity({ name }), 'create');
 				result.push(created);
 			} catch (error) {
-				if (!isUniqueConstraintViolation(error)) throw error;
+				if (!isUniqueConstraintError(error)) throw error;
 				const raced = await this.tagRepository.findOneBy({ name });
 				if (!raced) throw error;
 				result.push(raced);

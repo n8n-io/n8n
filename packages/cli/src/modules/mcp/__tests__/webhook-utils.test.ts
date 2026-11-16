@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import { User } from '@n8n/db';
-import type { SharedCredentials } from '@n8n/db';
+import type { CredentialsEntity } from '@n8n/db';
 import type {
 	INode,
 	INodeCredentials,
@@ -9,7 +10,12 @@ import type {
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -20,28 +26,19 @@ const mockCredentialsService = (
 	impl: (id: string) => ICredentialDataDecryptedObject | Promise<ICredentialDataDecryptedObject>,
 ): CredentialsService =>
 	mockInstance(CredentialsService, {
-		async getOne(_user: User, id: string, _includeDecryptedData: boolean) {
-			const data = await impl(id);
-			return {
-				name: 'MockCredentialsService',
-				type: 'mock',
-				shared: [] as SharedCredentials[],
-				isManaged: false,
-				isGlobal: false,
-				isResolvable: false,
-				usageScope: 'project',
-				resolverId: null,
-				resolvableAllowFallback: false,
-				id,
-				// Methods present on entities via WithTimestampsAndStringId mixin
-				generateId() {},
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				setUpdateDate() {},
-				data,
-			};
+		async decrypt(credential: CredentialsEntity) {
+			return await impl(credential.id);
 		},
 	});
+
+const credentialsFinderService = mock<CredentialsFinderService>();
+
+beforeEach(() => {
+	credentialsFinderService.findCredentialForUser.mockReset();
+	credentialsFinderService.findCredentialForUser.mockImplementation(async (id) =>
+		mock<CredentialsEntity>({ id }),
+	);
+});
 
 const createWebhookNode = (
 	overrides: Partial<INode> & { parameters?: INodeParameters; credentials?: INodeCredentials } = {},
@@ -99,6 +96,7 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -118,6 +116,7 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -137,6 +136,7 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -152,6 +152,7 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -168,6 +169,7 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -189,11 +191,70 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			credsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
 		);
 		expect(res).toContain('requires a header with name "X-API-Key"');
+		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
+			'credential:read',
+			'credential:update',
+		]);
+	});
+
+	it('still describes a headerAuth webhook when the user cannot edit the credential', async () => {
+		const node = createWebhookNode({
+			name: 'Secured Webhook',
+			parameters: { authentication: 'headerAuth', path: 'secured', httpMethod: 'POST' },
+			credentials: { httpHeaderAuth: { id: 'cred-unreadable', name: 'HeaderAuth' } },
+		});
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+		const credsService = mockCredentialsService(() => ({ name: 'X-Hidden-Header' }));
+
+		const res = await getWebhookDetails(
+			user,
+			[node],
+			baseUrl,
+			credsService,
+			credentialsFinderService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
+
+		expect(res).toContain('Node name: Secured Webhook');
+		expect(res).toContain(
+			'Production URL: https://example.com/webhook/wf-1/secured%20webhook/secured',
+		);
+		expect(res).toContain('HTTP Method: POST');
+		expect(res).toContain('requires header authentication');
+		expect(res).not.toContain('X-Hidden-Header');
+		expect(res).not.toContain('No credentials required');
+	});
+
+	it('keeps the jwtAuth requirement when the credential cannot be decrypted', async () => {
+		const node = createWebhookNode({
+			parameters: { authentication: 'jwtAuth', path: 'a' },
+			credentials: { jwtAuth: { id: 'cred-unreadable', name: 'JwtAuth' } },
+		});
+		const credsService = mockCredentialsService(() => {
+			throw new Error('Credential could not be decrypted');
+		});
+
+		const res = await getWebhookDetails(
+			user,
+			[node],
+			baseUrl,
+			credsService,
+			credentialsFinderService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
+
+		expect(res).toContain('requires JWT authentication');
+		expect(res).not.toContain('No credentials required');
 	});
 
 	it('describes jwtAuth with shared secret', async () => {
@@ -210,6 +271,7 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			credsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -231,11 +293,42 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			credsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
 		);
 		expect(res).toContain('requires JWT private and public keys');
+	});
+
+	it('degrades gracefully when a draft webhook node was persisted without a parameters key', async () => {
+		// Regression (ADO-5355): drafts can hold skeleton nodes with no `parameters`
+		// key at all; reading them must not crash get_workflow_details.
+		const node = createWebhookNode({ webhookId: '3dd18038-ce87-4004-a6e8-5d4a3216066d' });
+		delete (node as Partial<INode>).parameters;
+
+		const res = await getWebhookDetails(
+			user,
+			[node],
+			baseUrl,
+			mockCredentialsService(() => ({})),
+			credentialsFinderService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
+
+		expect(res).toContain('Node name: Webhook');
+		// Without a path parameter the URL falls back to the node's webhookId
+		expect(res).toContain(
+			'Production URL: https://example.com/webhook/3dd18038-ce87-4004-a6e8-5d4a3216066d',
+		);
+		expect(res).toContain(
+			'Test URL: https://example.com/webhook-test/3dd18038-ce87-4004-a6e8-5d4a3216066d',
+		);
+		expect(res).toContain('HTTP Method: GET');
+		expect(res).toContain('respond immediately');
+		expect(res).toContain('No credentials required');
 	});
 
 	it('describes responseNode response mode', async () => {
@@ -245,6 +338,7 @@ describe('getWebhookDetails', () => {
 			[node],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -261,6 +355,7 @@ describe('getWebhookDetails', () => {
 			[nodeAll],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -275,6 +370,7 @@ describe('getWebhookDetails', () => {
 			[nodeBin],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -289,6 +385,7 @@ describe('getWebhookDetails', () => {
 			[nodeNo],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -301,6 +398,7 @@ describe('getWebhookDetails', () => {
 			[nodeDefault],
 			baseUrl,
 			mockCredentialsService(() => ({})),
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -333,6 +431,7 @@ describe('getTriggerDetails', () => {
 			[],
 			baseUrl,
 			credentialsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -349,6 +448,7 @@ describe('getTriggerDetails', () => {
 			[createTriggerNode()],
 			baseUrl,
 			credentialsService,
+			credentialsFinderService,
 			nodeTypes,
 			endpoints,
 			workflowId,
@@ -357,5 +457,70 @@ describe('getTriggerDetails', () => {
 		expect(res).toContain('cannot be executed through MCP');
 		expect(res).not.toContain('no production triggers');
 		expect(res).not.toContain('manual mode');
+	});
+
+	it('does not crash when trigger nodes were persisted without a parameters key', async () => {
+		// Regression (ADO-5355): same skeleton-node shape as the webhook case, for
+		// the form trigger branch that reads parameters.formFields.
+		const webhook = createWebhookNode();
+		delete (webhook as Partial<INode>).parameters;
+		const form = createTriggerNode({ name: 'Form Trigger', type: FORM_TRIGGER_NODE_TYPE });
+		delete (form as Partial<INode>).parameters;
+
+		const res = await getTriggerDetails(
+			user,
+			[webhook, form],
+			[],
+			baseUrl,
+			credentialsService,
+			credentialsFinderService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
+
+		expect(res).toContain('Node name: Webhook');
+		expect(res).toContain('Node name: Form Trigger');
+		expect(res).toContain('Form fields: "N/A"');
+	});
+
+	it('documents triggerNodeName and the execute_workflow payload for each trigger type', async () => {
+		const webhook = createWebhookNode({ name: 'Webhook' });
+		const chat = createTriggerNode({
+			name: 'Chat Trigger',
+			type: CHAT_TRIGGER_NODE_TYPE,
+		});
+		const form = createTriggerNode({
+			name: 'Form Trigger',
+			type: FORM_TRIGGER_NODE_TYPE,
+			parameters: { formFields: { values: [{ fieldLabel: 'email' }] } },
+		});
+		const schedule = createTriggerNode({
+			name: 'Schedule Trigger',
+			type: SCHEDULE_TRIGGER_NODE_TYPE,
+		});
+
+		const res = await getTriggerDetails(
+			user,
+			[webhook, chat, form, schedule],
+			[],
+			baseUrl,
+			credentialsService,
+			credentialsFinderService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
+
+		expect(res).toContain(
+			'{ triggerNodeName: "<node name>", inputs: { webhookData: { headers?, query?, body? } } }',
+		);
+		expect(res).toContain('{ triggerNodeName: "<node name>", inputs: { chatInput: "<message>" } }');
+		expect(res).toContain(
+			'{ triggerNodeName: "<node name>", inputs: { formData: { FIELD_NAME: VALUE } } }',
+		);
+		expect(res).not.toContain('formData: Array<');
+		expect(res).toContain('{ triggerNodeName: "<node name>" }');
+		expect(res).toContain('do not take inputs');
 	});
 });

@@ -16,6 +16,21 @@ interface CodeFlowBody {
 	client_assertion?: string;
 }
 
+// Sent exactly once with the flow's value — a stale copy baked into the
+// authorization URL would break the callback or PKCE validation.
+const FLOW_OWNED_PARAMS = new Set([
+	'client_id',
+	'redirect_uri',
+	'response_type',
+	'state',
+	'scope',
+	'code_challenge',
+	'code_challenge_method',
+]);
+
+// May legitimately repeat (RFC 8707 resource indicators), so never deduplicated.
+const REPEATABLE_PARAMS = new Set(['resource']);
+
 /**
  * Support authorization code OAuth 2.0 grant.
  *
@@ -35,7 +50,7 @@ export class CodeFlow {
 
 		const url = new URL(options.authorizationUri);
 
-		const queryParams = {
+		const queryParams: Record<string, string | string[] | undefined> = {
 			...options.query,
 			client_id: options.clientId,
 			redirect_uri: options.redirectUri,
@@ -46,8 +61,21 @@ export class CodeFlow {
 		};
 
 		for (const [key, value] of Object.entries(queryParams)) {
-			if (value !== null && value !== undefined) {
-				url.searchParams.append(key, value);
+			if (value === null || value === undefined) continue;
+			if (REPEATABLE_PARAMS.has(key)) {
+				for (const entry of Array.isArray(value) ? value : [value]) {
+					url.searchParams.append(key, entry);
+				}
+				continue;
+			}
+			const param = Array.isArray(value) ? value.join(',') : value;
+			if (FLOW_OWNED_PARAMS.has(key)) {
+				// An empty flow value (e.g. a blank scope) must not evict a URL-carried value.
+				if (param === '' && url.searchParams.has(key)) continue;
+				url.searchParams.set(key, param);
+			} else if (!url.searchParams.has(key)) {
+				// A key already on the URL is the user's explicit choice; our default falls back.
+				url.searchParams.append(key, param);
 			}
 		}
 

@@ -8,13 +8,15 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 import { Builder } from 'xml2js';
 
 import { s3ApiRequestREST, s3ApiRequestSOAP, s3ApiRequestSOAPAllItems } from './GenericFunctions';
+import { uriEncodeS3CopySource } from '../../credentials/common/aws/utils';
 import { bucketFields, bucketOperations } from '../Aws/S3/V1/BucketDescription';
 import { fileFields, fileOperations } from '../Aws/S3/V1/FileDescription';
 import { folderFields, folderOperations } from '../Aws/S3/V1/FolderDescription';
+import { objectKeyPath } from '../Aws/S3/utils';
 
 export class S3 implements INodeType {
 	description: INodeTypeDescription = {
@@ -149,7 +151,7 @@ export class S3 implements INodeType {
 							this,
 							`${name}`,
 							'PUT',
-							'',
+							requestPath``,
 							data,
 							qs,
 							headers,
@@ -166,7 +168,7 @@ export class S3 implements INodeType {
 					if (operation === 'delete') {
 						const name = this.getNodeParameter('name', i) as string;
 
-						await s3ApiRequestSOAP.call(this, name, 'DELETE', '', '', {}, headers);
+						await s3ApiRequestSOAP.call(this, name, 'DELETE', requestPath``, '', {}, headers);
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ success: true }),
@@ -183,7 +185,7 @@ export class S3 implements INodeType {
 								'ListAllMyBucketsResult.Buckets.Bucket',
 								'',
 								'GET',
-								'',
+								requestPath``,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
@@ -192,7 +194,7 @@ export class S3 implements INodeType {
 								'ListAllMyBucketsResult.Buckets.Bucket',
 								'',
 								'GET',
-								'',
+								requestPath``,
 								'',
 								qs,
 							);
@@ -237,7 +239,7 @@ export class S3 implements INodeType {
 
 						qs['list-type'] = 2;
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', requestPath``, '', {
 							location: '',
 						});
 
@@ -249,7 +251,7 @@ export class S3 implements INodeType {
 								'ListBucketResult.Contents',
 								bucketName,
 								'GET',
-								'',
+								requestPath``,
 								'',
 								qs,
 								{},
@@ -262,7 +264,7 @@ export class S3 implements INodeType {
 								this,
 								bucketName,
 								'GET',
-								'',
+								requestPath``,
 								'',
 								qs,
 								{},
@@ -290,20 +292,20 @@ export class S3 implements INodeType {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const folderName = this.getNodeParameter('folderName', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						let path = `/${folderName}/`;
+						let path = requestPath`${objectKeyPath(folderName)}/`;
 
 						if (additionalFields.requesterPays) {
 							headers['x-amz-request-payer'] = 'requester';
 						}
 						if (additionalFields.parentFolderKey) {
-							path = `/${additionalFields.parentFolderKey}${folderName}/`;
+							path = requestPath`${objectKeyPath(`${additionalFields.parentFolderKey}${folderName}`)}/`;
 						}
 						if (additionalFields.storageClass) {
 							headers['x-amz-storage-class'] = snakeCase(
 								additionalFields.storageClass as string,
 							).toUpperCase();
 						}
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', requestPath``, '', {
 							location: '',
 						});
 
@@ -332,7 +334,7 @@ export class S3 implements INodeType {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const folderKey = this.getNodeParameter('folderKey', i) as string;
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', requestPath``, '', {
 							location: '',
 						});
 
@@ -343,7 +345,7 @@ export class S3 implements INodeType {
 							'ListBucketResult.Contents',
 							bucketName,
 							'GET',
-							'/',
+							requestPath`/`,
 							'',
 							{ 'list-type': 2, prefix: folderKey },
 							{},
@@ -357,7 +359,7 @@ export class S3 implements INodeType {
 								this,
 								bucketName,
 								'DELETE',
-								`/${folderKey}`,
+								objectKeyPath(folderKey),
 								'',
 								qs,
 								{},
@@ -395,7 +397,7 @@ export class S3 implements INodeType {
 								this,
 								bucketName,
 								'POST',
-								'/',
+								requestPath`/`,
 								data,
 								{ delete: '' },
 								headers,
@@ -428,7 +430,7 @@ export class S3 implements INodeType {
 
 						qs['list-type'] = 2;
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', requestPath``, '', {
 							location: '',
 						});
 
@@ -440,7 +442,7 @@ export class S3 implements INodeType {
 								'ListBucketResult.Contents',
 								bucketName,
 								'GET',
-								'',
+								requestPath``,
 								'',
 								qs,
 								{},
@@ -454,7 +456,7 @@ export class S3 implements INodeType {
 								'ListBucketResult.Contents',
 								bucketName,
 								'GET',
-								'',
+								requestPath``,
 								'',
 								qs,
 								{},
@@ -486,7 +488,10 @@ export class S3 implements INodeType {
 						const destinationPath = this.getNodeParameter('destinationPath', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						headers['x-amz-copy-source'] = sourcePath;
+						// The signature covers this header, but an HTTP header cannot carry a
+						// non-ASCII byte, so the client rewrites the value after signing and S3
+						// rejects the mismatch. Encode it the same way the signed path is encoded.
+						headers['x-amz-copy-source'] = uriEncodeS3CopySource(sourcePath);
 
 						if (additionalFields.requesterPays) {
 							headers['x-amz-request-payer'] = 'requester';
@@ -564,9 +569,11 @@ export class S3 implements INodeType {
 
 						const bucketName = destinationParts[1];
 
-						const destination = `/${destinationParts.slice(2, destinationParts.length).join('/')}`;
+						const destination = objectKeyPath(
+							destinationParts.slice(2, destinationParts.length).join('/'),
+						);
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', requestPath``, '', {
 							location: '',
 						});
 
@@ -605,7 +612,7 @@ export class S3 implements INodeType {
 							);
 						}
 
-						let region = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						let region = await s3ApiRequestSOAP.call(this, bucketName, 'GET', requestPath``, '', {
 							location: '',
 						});
 
@@ -615,7 +622,7 @@ export class S3 implements INodeType {
 							this,
 							bucketName,
 							'GET',
-							`/${fileKey}`,
+							objectKeyPath(fileKey),
 							'',
 							qs,
 							{},
@@ -664,7 +671,7 @@ export class S3 implements INodeType {
 							qs.versionId = options.versionId as string;
 						}
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', requestPath``, '', {
 							location: '',
 						});
 
@@ -674,7 +681,7 @@ export class S3 implements INodeType {
 							this,
 							bucketName,
 							'DELETE',
-							`/${fileKey}`,
+							objectKeyPath(fileKey),
 							'',
 							qs,
 							{},
@@ -707,7 +714,7 @@ export class S3 implements INodeType {
 
 						qs['list-type'] = 2;
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', requestPath``, '', {
 							location: '',
 						});
 
@@ -719,7 +726,7 @@ export class S3 implements INodeType {
 								'ListBucketResult.Contents',
 								bucketName,
 								'GET',
-								'',
+								requestPath``,
 								'',
 								qs,
 								{},
@@ -733,7 +740,7 @@ export class S3 implements INodeType {
 								'ListBucketResult.Contents',
 								bucketName,
 								'GET',
-								'',
+								requestPath``,
 								'',
 								qs,
 								{},
@@ -765,7 +772,7 @@ export class S3 implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const tagsValues = (this.getNodeParameter('tagsUi', i) as IDataObject)
 							.tagsValues as IDataObject[];
-						let path = '/';
+						let path = '';
 						let body;
 
 						if (additionalFields.requesterPays) {
@@ -773,7 +780,7 @@ export class S3 implements INodeType {
 						}
 
 						if (additionalFields.parentFolderKey) {
-							path = `/${additionalFields.parentFolderKey}/`;
+							path = `${additionalFields.parentFolderKey}/`;
 						}
 						if (additionalFields.storageClass) {
 							headers['x-amz-storage-class'] = snakeCase(
@@ -841,7 +848,7 @@ export class S3 implements INodeType {
 							headers['x-amz-tagging'] = tags.join('&');
 						}
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', '', '', {
+						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'GET', requestPath``, '', {
 							location: '',
 						});
 
@@ -860,7 +867,7 @@ export class S3 implements INodeType {
 								this,
 								bucketName,
 								'PUT',
-								`${path}${fileName || binaryData.fileName}`,
+								objectKeyPath(`${path}${fileName || binaryData.fileName}`),
 								body,
 								qs,
 								headers,
@@ -880,7 +887,7 @@ export class S3 implements INodeType {
 								this,
 								bucketName,
 								'PUT',
-								`${path}${fileName}`,
+								objectKeyPath(`${path}${fileName}`),
 								body,
 								qs,
 								headers,

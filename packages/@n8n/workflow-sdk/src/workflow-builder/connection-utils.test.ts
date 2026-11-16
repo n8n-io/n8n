@@ -39,6 +39,7 @@ function createGraphNode(instance: NodeInstance<string, string, unknown>): Graph
 function createMockRegistry(): PluginRegistry {
 	return {
 		isCompositeType: () => false,
+		findCompositeHandler: () => undefined,
 		resolveCompositeHeadName: () => undefined,
 	} as unknown as PluginRegistry;
 }
@@ -159,6 +160,7 @@ describe('resolveTargetNodeName', () => {
 		const nodes = new Map<string, GraphNode>();
 		const registry = {
 			isCompositeType: () => false,
+			findCompositeHandler: (target: unknown) => (target === composite ? {} : undefined),
 			resolveCompositeHeadName: (target: unknown) => {
 				if (target === composite) return 'Composite Head';
 				return undefined;
@@ -168,5 +170,25 @@ describe('resolveTargetNodeName', () => {
 		const result = resolveTargetNodeName(composite, nodes, registry);
 
 		expect(result).toBe('Composite Head');
+	});
+
+	it('resolves a composite head through the live nodes map after an auto-rename', () => {
+		const headNode = createNode({ id: 'head-id', name: 'Prep' });
+		const composite = { someComposite: true };
+		const nodes = new Map<string, GraphNode>();
+		// Head was auto-renamed from "Prep" to "Prep 1"
+		nodes.set('Prep 1', createGraphNode(headNode));
+		const registry = {
+			isCompositeType: () => false,
+			findCompositeHandler: (target: unknown) =>
+				target === composite
+					? { getHeadNodeName: () => ({ name: headNode.name, id: headNode.id }) }
+					: undefined,
+			resolveCompositeHeadName: () => undefined,
+		} as unknown as PluginRegistry;
+
+		const result = resolveTargetNodeName(composite, nodes, registry);
+
+		expect(result).toBe('Prep 1');
 	});
 });

@@ -21,6 +21,10 @@ import {
 	EXECUTE_WORKFLOW_NODE_TYPE_TEST,
 } from './ResourceMapper.test.constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	ResourceMapperRefreshEmptySchemaKey,
+	ResourceMapperSchemaAutoRefreshKey,
+} from '@/app/constants';
 
 let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
@@ -81,12 +85,82 @@ describe('ResourceMapper.vue', () => {
 		).toBe(MAPPING_COLUMNS_RESPONSE.fields.length + 1);
 	});
 
+	// Read-only renders pass full props without `{ merge: true }`: lodash merge
+	// mutates the shared DEFAULT_SETUP, and a leaked `isReadOnly` would stop every
+	// later test from fetching.
+	const readOnlyWithSavedSchema = () =>
+		renderComponent({
+			props: {
+				isReadOnly: true,
+				node: createTestNode({
+					parameters: {
+						columns: {
+							mappingMode: 'defineBelow',
+							value: { 'First name': 'Ada' },
+							schema: UPDATED_SCHEMA,
+						},
+					},
+				}),
+				parameter: createTestNodeProperties({
+					name: 'columns',
+					type: 'resourceMapper',
+					typeOptions: {
+						resourceMapper: {
+							mode: 'upsert',
+							resourceMapperMethod: 'getMappingColumns',
+						} as ResourceMapperTypeOptions,
+					},
+				}),
+			},
+		});
+
 	it('renders correctly in read only mode', async () => {
-		const { getByTestId } = renderComponent({ props: { isReadOnly: true } });
+		const { getByTestId } = readOnlyWithSavedSchema();
 		await waitAllPromises();
 		expect(getByTestId('mapping-mode-select').querySelector('input')).toBeDisabled();
 		expect(getByTestId('matching-column-select').querySelector('input')).toBeDisabled();
 		expect(getByTestId('mapping-fields-container').querySelector('input')).toBeDisabled();
+	});
+
+	it('does not fetch fields in read only mode and renders the saved schema', async () => {
+		const { getByTestId } = readOnlyWithSavedSchema();
+		await waitAllPromises();
+
+		expect(fetchFieldsSpy).not.toHaveBeenCalled();
+		// Every field of the saved schema that is not removed
+		expect(
+			getByTestId('mapping-fields-container').querySelectorAll('.parameter-input').length,
+		).toBe(4);
+	});
+
+	it('does not fetch fields in read only mode without a saved schema', async () => {
+		renderComponent({ props: { isReadOnly: true } });
+		await waitAllPromises();
+
+		expect(fetchFieldsSpy).not.toHaveBeenCalled();
+	});
+
+	it('does not fetch fields in read only mode when a dependency changes', async () => {
+		const { rerender } = renderComponent({
+			props: {
+				isReadOnly: true,
+				dependentParametersValues: null,
+				node: createTestNode({
+					parameters: { columns: { mappingMode: 'defineBelow', value: null } },
+				}),
+			},
+			global: {
+				provide: {
+					[ResourceMapperRefreshEmptySchemaKey as symbol]: true,
+				},
+			},
+		});
+		await waitAllPromises();
+
+		await rerender({ dependentParametersValues: 'table-id' });
+		await waitAllPromises();
+
+		expect(fetchFieldsSpy).not.toHaveBeenCalled();
 	});
 
 	it('renders add mode properly', async () => {
@@ -352,6 +426,30 @@ describe('ResourceMapper.vue', () => {
 		expect(fetchFieldsSpy).toHaveBeenCalledTimes(1);
 	});
 
+	it('fetches an empty schema when its dependency first becomes available', async () => {
+		fetchFieldsSpy.mockResolvedValueOnce(null);
+		const { rerender } = renderComponent({
+			props: {
+				dependentParametersValues: null,
+				node: createTestNode({
+					parameters: { columns: { mappingMode: 'defineBelow', value: null } },
+				}),
+			},
+			global: {
+				provide: {
+					[ResourceMapperRefreshEmptySchemaKey as symbol]: true,
+				},
+			},
+		});
+		await waitAllPromises();
+		fetchFieldsSpy.mockClear();
+
+		await rerender({ dependentParametersValues: 'table-id' });
+		await waitAllPromises();
+
+		expect(fetchFieldsSpy).toHaveBeenCalledTimes(1);
+	});
+
 	it('should not fetch fields if schema is already fetched', async () => {
 		renderComponent({
 			props: {
@@ -376,7 +474,65 @@ describe('ResourceMapper.vue', () => {
 		expect(fetchFieldsSpy).not.toHaveBeenCalled();
 	});
 
-	it('reconciles an incomplete cached schema with the live source when refreshIncompleteSchemaOnOpen is set', async () => {
+	describe('reading the saved value', () => {
+		const parameter = createTestNodeProperties({
+			name: 'columns',
+			typeOptions: { resourceMapper: { mode: 'add' } as ResourceMapperTypeOptions },
+		});
+		const savedValue = (firstName: string) => ({
+			mappingMode: 'defineBelow',
+			value: { 'First name': firstName },
+			schema: UPDATED_SCHEMA,
+		});
+
+		it('reads a top-level mapper', async () => {
+			const { getByDisplayValue } = renderComponent({
+				props: {
+					parameter,
+					path: 'parameters.columns',
+					node: createTestNode({ parameters: { columns: savedValue('Ana') } }),
+				},
+			});
+			await waitAllPromises();
+
+			expect(getByDisplayValue('Ana')).toBeInTheDocument();
+		});
+
+		it('reads a top-level mapper when the path has no parameters prefix', async () => {
+			const { getByDisplayValue } = renderComponent({
+				props: {
+					parameter,
+					path: 'columns',
+					node: createTestNode({ parameters: { columns: savedValue('Ana') } }),
+				},
+			});
+			await waitAllPromises();
+
+			expect(getByDisplayValue('Ana')).toBeInTheDocument();
+		});
+
+		it('reads a mapper inside a fixedCollection entry', async () => {
+			const { getByDisplayValue, queryByDisplayValue } = renderComponent({
+				props: {
+					parameter,
+					path: 'parameters.entries.entry[1].columns',
+					node: createTestNode({
+						parameters: {
+							entries: {
+								entry: [{ columns: savedValue('Bob') }, { columns: savedValue('Ana') }],
+							},
+						},
+					}),
+				},
+			});
+			await waitAllPromises();
+
+			expect(getByDisplayValue('Ana')).toBeInTheDocument();
+			expect(queryByDisplayValue('Bob')).not.toBeInTheDocument();
+		});
+	});
+
+	it('reconciles an incomplete cached schema by default when refreshIncompleteSchemaOnOpen is set', async () => {
 		// A cached schema that is structurally incomplete (missing the
 		// loader-populated `readOnly`), as produced by an AI builder rather than
 		// a real load. After reconciling, the rendered fields should match the
@@ -425,6 +581,54 @@ describe('ResourceMapper.vue', () => {
 		const mappingContainer = getByTestId('mapping-fields-container');
 		expect(mappingContainer.textContent).not.toContain('cached_only_field');
 		expect(mappingContainer.textContent).toContain('First name');
+	});
+
+	it('keeps an incomplete cached schema when automatic refresh is disabled', async () => {
+		const incompleteCachedSchema = [
+			{
+				id: 'cached_only_field',
+				displayName: 'cached_only_field',
+				required: false,
+				defaultMatch: false,
+				display: true,
+				type: 'string',
+				canBeUsedToMatch: true,
+				removed: false,
+			},
+		];
+
+		const { getByTestId } = renderComponent({
+			props: {
+				node: createTestNode({
+					parameters: {
+						columns: {
+							schema: incompleteCachedSchema,
+						},
+					},
+				}),
+				parameter: createTestNodeProperties({
+					name: 'columns',
+					typeOptions: {
+						resourceMapper: {
+							mode: 'add',
+							resourceMapperMethod: 'getMappingColumns',
+							refreshIncompleteSchemaOnOpen: true,
+						} as ResourceMapperTypeOptions,
+					},
+				}),
+			},
+			global: {
+				provide: {
+					[ResourceMapperSchemaAutoRefreshKey as symbol]: false,
+				},
+			},
+		});
+		await waitAllPromises();
+
+		expect(fetchFieldsSpy).toHaveBeenCalledTimes(1);
+		const mappingContainer = getByTestId('mapping-fields-container');
+		expect(mappingContainer.textContent).toContain('cached_only_field');
+		expect(mappingContainer.textContent).not.toContain('First name');
 	});
 
 	it('does not reintroduce an incomplete field when reconciling a matching-id schema', async () => {

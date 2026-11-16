@@ -4,7 +4,7 @@ import { Container } from '@n8n/di';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
+import { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 
 import { ExecutionRedactionService } from '../executions/execution-redaction.service';
 import { RedactionModule } from '../redaction.module';

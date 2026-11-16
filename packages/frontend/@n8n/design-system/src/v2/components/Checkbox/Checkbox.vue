@@ -3,9 +3,8 @@ import { reactivePick } from '@vueuse/core';
 import { CheckboxIndicator, CheckboxRoot, Label, Primitive, useForwardProps } from 'reka-ui';
 import { computed, useAttrs, useId } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-
 import type { CheckboxEmits, CheckboxProps, CheckboxSlots } from './Checkbox.types';
+import Icon from '../../../components/N8nIcon/Icon.vue';
 
 defineOptions({ inheritAttrs: false });
 
@@ -68,7 +67,7 @@ function onUpdate(value: boolean | 'indeterminate') {
 	flex-direction: row;
 	gap: var(--spacing--2xs);
 	cursor: pointer;
-	color: white;
+	color: var(--text-color--inverse);
 	&[data-disabled] {
 		cursor: not-allowed;
 	}
@@ -79,12 +78,12 @@ function onUpdate(value: boolean | 'indeterminate') {
 	background: transparent;
 	width: 16px;
 	height: 16px;
-	border-radius: var(--radius);
+	border-radius: var(--radius--3xs);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	border: var(--border);
-	color: white;
+	color: var(--text-color--inverse);
 	cursor: inherit;
 	flex-shrink: 0;
 
@@ -96,12 +95,13 @@ function onUpdate(value: boolean | 'indeterminate') {
 		&[data-disabled] {
 			background: var(--color--foreground);
 			border-color: var(--color--foreground);
+			color: var(--color--text--tint-1);
 		}
 	}
 
 	&:focus-visible {
-		box-shadow: 0 0 0 2px var(--color--secondary);
-		outline: none;
+		outline: var(--focus--border-width) solid var(--focus--outline-color);
+		border-color: var(--focus--border-color);
 		z-index: 1;
 	}
 }

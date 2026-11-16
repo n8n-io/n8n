@@ -17,7 +17,8 @@ const props = withDefaults(
 		disabled?: boolean;
 		connected?: boolean;
 		loading?: boolean;
-		publishing?: boolean;
+		/** Sets the label at the small size, to sit with the other labels of a stepper. */
+		compactLabel?: boolean;
 		showConnectButton?: boolean;
 		showDisconnectButton?: boolean;
 		showEditButton?: boolean;
@@ -37,7 +38,6 @@ const props = withDefaults(
 		disabled: false,
 		connected: false,
 		loading: false,
-		publishing: false,
 		showConnectButton: false,
 		showDisconnectButton: false,
 		showEditButton: true,
@@ -62,15 +62,13 @@ const canEdit = computed(() => props.showEditButton && !props.connected && !!pro
 const selectedCredentialName = computed(
 	() => props.credentials.find((c) => c.id === props.modelValue)?.name ?? '',
 );
-const connectDisabled = computed(
-	() => !props.modelValue || props.loading || props.publishing || props.disabled,
-);
+const connectDisabled = computed(() => !props.modelValue || props.loading || props.disabled);
 </script>
 
 <template>
 	<div :class="$style.connectForm">
 		<label :class="$style.label">
-			<N8nText size="small" bold>
+			<N8nText v-bind="compactLabel ? { size: 'small' } : { step: 'sm' }" bold>
 				{{ integrationLabel }}
 				{{ i18n.baseText('agents.builder.addTrigger.credential') }}
 			</N8nText>
@@ -145,7 +143,7 @@ const connectDisabled = computed(
 				v-if="showConnectButton"
 				variant="outline"
 				:disabled="connectDisabled"
-				:loading="loading || publishing"
+				:loading="loading"
 				size="large"
 				:data-testid="`${integrationType}-connect-button`"
 				@click="emit('connect')"
@@ -171,7 +169,7 @@ const connectDisabled = computed(
 .connectForm {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	width: 100%;
 }
 

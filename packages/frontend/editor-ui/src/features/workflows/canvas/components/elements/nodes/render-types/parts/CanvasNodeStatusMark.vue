@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { N8nIcon } from '@n8n/design-system';
-import type { IconSize } from '@n8n/design-system/types';
+import type { IconSize } from '@n8n/design-system';
 
 const STATUS_ICONS = {
 	success: 'node-success',
@@ -33,7 +33,7 @@ const {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--5xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 
 .success {

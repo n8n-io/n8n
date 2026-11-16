@@ -1,4 +1,5 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 vi.mock('../transport', () => ({
@@ -45,6 +46,8 @@ describe('AlibabaCloud listSearch', () => {
 		'qwen-image',
 		'qwen-image-plus',
 		'wan2.6-t2i',
+		'wan2.5-t2i-preview',
+		'wan2.5-i2i-preview',
 		'z-image-turbo',
 		'wan2.6-t2v',
 		'wan2.6-i2v',
@@ -69,6 +72,7 @@ describe('AlibabaCloud listSearch', () => {
 			expect(values).not.toContain('qwen-image');
 			expect(values).not.toContain('wan2.6-t2v');
 			expect(values).not.toContain('wan2.6-i2v');
+			expect(values).not.toContain('wan2.5-i2i-preview');
 		});
 
 		it('should apply search filter', async () => {
@@ -107,6 +111,8 @@ describe('AlibabaCloud listSearch', () => {
 			expect(values).toContain('qwen-image');
 			expect(values).toContain('qwen-image-plus');
 			expect(values).toContain('wan2.6-t2i');
+			expect(values).toContain('wan2.5-t2i-preview');
+			expect(values).toContain('wan2.5-i2i-preview');
 			expect(values).not.toContain('qwen3.5-flash');
 			expect(values).not.toContain('wan2.6-t2v');
 		});
@@ -146,7 +152,7 @@ describe('AlibabaCloud listSearch', () => {
 			await textModelSearch.call(mockLoadOptionsFunctions);
 
 			expect(mockApiRequest).toHaveBeenCalledTimes(1);
-			expect(mockApiRequest).toHaveBeenCalledWith('GET', '/api/v1/models', {
+			expect(mockApiRequest).toHaveBeenCalledWith('GET', requestPath`/api/v1/models`, {
 				qs: { page_size: 200 },
 			});
 		});

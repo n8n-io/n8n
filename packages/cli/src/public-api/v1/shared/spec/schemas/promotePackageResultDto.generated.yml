@@ -1,0 +1,74 @@
+type: object
+properties:
+  environmentId:
+    type: string
+    minLength: 1
+    maxLength: 36
+  counts:
+    type: object
+    properties:
+      workflows:
+        type: integer
+        minimum: 0
+      folders:
+        type: integer
+        minimum: 0
+      credentials:
+        type: integer
+        minimum: 0
+      dataTables:
+        type: integer
+        minimum: 0
+      variables:
+        type: integer
+        minimum: 0
+      tags:
+        type: integer
+        minimum: 0
+    required:
+      - workflows
+      - folders
+      - credentials
+      - dataTables
+      - variables
+      - tags
+  git:
+    type: object
+    properties:
+      commitSha:
+        type: string
+      branchName:
+        type: string
+    required:
+      - commitSha
+      - branchName
+  review:
+    type: object
+    properties:
+      reviewId:
+        type: string
+        minLength: 1
+        maxLength: 36
+      number:
+        type: integer
+      webUrl:
+        type: string
+    required:
+      - reviewId
+      - number
+      - webUrl
+  warnings:
+    type: array
+    items:
+      type: object
+      properties:
+        message:
+          type: string
+        linkUrl:
+          type: string
+      required:
+        - message
+required:
+  - environmentId
+  - counts
+  - git

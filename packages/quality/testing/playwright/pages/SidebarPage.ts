@@ -1,0 +1,218 @@
+import { expect, type Locator } from '@playwright/test';
+
+import { BasePage } from './BasePage';
+
+/** Any page of a project: /projects/<id>/workflows, /projects/<id>/credentials, ... */
+const PROJECT_ROUTE = /\/projects\/[^/]+\//;
+
+export class SidebarPage extends BasePage {
+	get container() {
+		return this.page.locator('#side-menu');
+	}
+
+	async clickHomeButton() {
+		await this.container.getByTestId('project-home-menu-item').click();
+	}
+
+	async universalAdd() {
+		await this.container.getByTestId('universal-add').click();
+	}
+
+	/** Dismiss an open navigation dropdown/menu by clicking away from it. */
+	async dismissMenu() {
+		await this.page.locator('body').click();
+	}
+
+	get visibleNavigationMenu() {
+		return this.getVisiblePopper();
+	}
+
+	getVisibleNavigationSubmenu(label: string): Locator {
+		return this.visibleNavigationMenu
+			.getByRole('menuitem', { name: label, exact: true })
+			.and(this.page.locator('[aria-haspopup="menu"]'));
+	}
+
+	getVisibleNavigationLink(label: string, hrefPart: string): Locator {
+		return this.visibleNavigationMenu.locator(`a[href*="${hrefPart}"]`).filter({ hasText: label });
+	}
+
+	async clickHomeMenuItem() {
+		await this.container.getByTestId('project-home-menu-item').click();
+	}
+
+	/**
+	 * Both project clicks wait for the project route. A click issued while a list
+	 * view is still initializing can be cancelled by that view's own
+	 * `router.replace` of its query string; then the page stays where it was and
+	 * the caller's assertions run against the wrong list.
+	 */
+	async clickPersonalMenuItem() {
+		await this.container.getByTestId('project-personal-menu-item').click();
+		await this.page.waitForURL(PROJECT_ROUTE);
+	}
+
+	async clickWorkflowsLink(): Promise<void> {
+		// Not scoped to `this.container` (#side-menu): after selecting a project these
+		// links render as project-header tabs in the main content area, outside the sidebar.
+		await this.page.getByRole('link', { name: 'Workflows' }).click();
+	}
+
+	async clickCredentialsLink(): Promise<void> {
+		// See clickWorkflowsLink: the link can live in the project header, not the sidebar.
+		await this.page.getByRole('link', { name: 'Credentials' }).click();
+	}
+
+	getProjectButtonInUniversalAdd(): Locator {
+		return this.visibleNavigationMenu.getByRole('menuitem').filter({ hasText: 'New project' });
+	}
+
+	async addWorkflowFromUniversalAdd(projectName: string) {
+		await this.universalAdd();
+		await expect(this.visibleNavigationMenu).toBeVisible();
+		// "New workflow" only has a submenu when team projects exist; otherwise it's
+		// a direct route to the personal project.
+		const submenu = this.getVisibleNavigationSubmenu('New workflow');
+		if ((await submenu.count()) > 0) {
+			await submenu.hover();
+			await this.getVisibleNavigationLink(projectName, '/workflow/new').click();
+		} else {
+			await this.visibleNavigationMenu.getByText('New workflow').click();
+		}
+	}
+
+	async openNewCredentialDialogForProject(projectName: string) {
+		await this.universalAdd();
+		await expect(this.visibleNavigationMenu).toBeVisible();
+		// "New credential" only has a submenu when team projects exist; otherwise it's
+		// a direct route to create the credential in the personal project.
+		const submenu = this.getVisibleNavigationSubmenu('New credential');
+		if ((await submenu.count()) > 0) {
+			await submenu.hover();
+			await this.getVisibleNavigationLink(projectName, '/credentials/create').click();
+		} else {
+			await this.visibleNavigationMenu.getByText('New credential', { exact: true }).click();
+		}
+	}
+
+	getProjectMenuItems(): Locator {
+		return this.container.getByTestId('project-menu-item');
+	}
+
+	async clickProjectMenuItem(projectName: string) {
+		await this.expand();
+		await this.getProjectMenuItems().filter({ hasText: projectName }).click();
+		await this.page.waitForURL(PROJECT_ROUTE);
+	}
+
+	getSettings(): Locator {
+		return this.container.getByTestId('main-sidebar-settings');
+	}
+
+	// The account row at the bottom opens a menu with the user's own links, help, and sign out.
+	getAccountMenuTrigger(): Locator {
+		return this.container.getByTestId('main-sidebar-account-trigger');
+	}
+
+	getAccountMenu(): Locator {
+		return this.page.getByTestId('main-sidebar-account-menu');
+	}
+
+	async openAccountMenu(): Promise<void> {
+		await this.getAccountMenuTrigger().click();
+		await expect(this.getAccountMenu()).toBeVisible();
+	}
+
+	getLogoutMenuItem(): Locator {
+		return this.page.getByTestId('main-sidebar-log-out');
+	}
+
+	getAboutModal(): Locator {
+		return this.page.getByTestId('about-modal');
+	}
+
+	getHelp(): Locator {
+		return this.page.getByTestId('main-sidebar-account-help');
+	}
+
+	getWhatsNewMenuItem(): Locator {
+		return this.page.getByTestId('main-sidebar-account-whats-new');
+	}
+
+	async clickHelpMenuItem(): Promise<void> {
+		await this.openAccountMenu();
+		await this.getHelp().click();
+	}
+
+	async clickWhatsNewMenuItem(): Promise<void> {
+		await this.openAccountMenu();
+		await this.getWhatsNewMenuItem().click();
+	}
+
+	async clickAboutMenuItem(): Promise<void> {
+		await this.clickHelpMenuItem();
+		await this.page.getByTestId('main-sidebar-help-about').click();
+	}
+
+	async openAboutModalViaShortcut(): Promise<void> {
+		await this.page.keyboard.press('Alt+Meta+o');
+	}
+
+	async closeAboutModal(): Promise<void> {
+		await this.getAboutModal().getByTestId('dialog-close-button').click();
+	}
+
+	getAdminPanel(): Locator {
+		return this.page.getByTestId('main-sidebar-account-cloud-console');
+	}
+
+	getTrialBanner(): Locator {
+		return this.page.getByTestId('banners-TRIAL');
+	}
+
+	getTemplatesLink(): Locator {
+		return this.container.getByTestId('main-sidebar-templates').locator('a');
+	}
+
+	// The sidebar no longer lists updates; the nudge is the one in the What's new modal.
+	getVersionUpdateItem(): Locator {
+		return this.page.getByTestId('whats-new-modal-next-versions-link');
+	}
+
+	getSourceControlPushButton(): Locator {
+		return this.container.getByTestId('main-sidebar-source-control-push');
+	}
+
+	getSourceControlPullButton(): Locator {
+		return this.container.getByTestId('main-sidebar-source-control-pull');
+	}
+
+	getSourceControlConnectedIndicator(): Locator {
+		return this.container.getByTestId('main-sidebar-source-control-connected');
+	}
+
+	async clickSignout(): Promise<void> {
+		await this.expand();
+		await this.openAccountMenu();
+		await this.getLogoutMenuItem().click();
+	}
+
+	async signOutFromWorkflows(): Promise<void> {
+		await this.page.goto('/workflows');
+		await this.clickSignout();
+	}
+
+	async expand() {
+		// The account row is on every sidebar, so it marks the sidebar as rendered.
+		await expect(this.getAccountMenuTrigger()).toBeVisible();
+
+		const logo = this.container.getByTestId('n8n-logo');
+		const isExpanded = await logo.isVisible();
+
+		if (!isExpanded) {
+			const collapseButton = this.container.locator('#toggle-sidebar-button');
+			await expect(collapseButton).toBeVisible();
+			await collapseButton.click();
+		}
+	}
+}

@@ -20,7 +20,7 @@ import { useReferencedAgentSummary } from './useReferencedAgentSummary';
  * Both are instantiated unconditionally (each idles in the other's mode), so
  * toggling the node's mode switches surfaces without remounting the NDV.
  *
- * MUST be created in the stable NDV container (`NodeDetailsViewV2`), NOT in
+ * MUST be created in the stable NDV container (`NodeDetailsView`), NOT in
  * `NodeSettings`, so it survives node switches. Provide the return via
  * {@link NdvAgentConfigKey}; `NodeSettings` + the NDV agent surfaces inject it.
  * No-ops for non-agent nodes, so it is safe to instantiate for every node.
@@ -54,5 +54,5 @@ export function useNdvAgentConfig(
 
 export type UseNdvAgentConfigReturn = ReturnType<typeof useNdvAgentConfig>;
 
-/** Provided by `NodeDetailsViewV2`, injected by `NodeSettings` + the NDV agent wrappers. */
+/** Provided by `NodeDetailsView`, injected by `NodeSettings` + the NDV agent wrappers. */
 export const NdvAgentConfigKey: InjectionKey<UseNdvAgentConfigReturn> = Symbol('NdvAgentConfig');

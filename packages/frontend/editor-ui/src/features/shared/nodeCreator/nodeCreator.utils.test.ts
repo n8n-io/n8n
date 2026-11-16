@@ -19,17 +19,28 @@ import {
 	getHumanInTheLoopCallout,
 	getRootSearchCallouts,
 	getSendAndWaitNodes,
+	getNodeCreatorSearchItems,
 	matchesAliasForConnectBoost,
 	nodeTypesToCreateElements,
 	mapToolSubcategoryIcon,
+	getNodeItemRestriction,
+	isNodeItemRestricted,
 	searchNodes,
+	sinkRestrictedNodesLast,
+	withoutRestrictedNodes,
 } from './nodeCreator.utils';
 import {
 	mockActionCreateElement,
+	mockCommandCreateElement,
 	mockNodeCreateElement,
 	mockSectionCreateElement,
 	mockSimplifiedNodeType,
+	mockViewCreateElement,
 } from './__tests__/utils';
+import {
+	mockRestrictedCredentialTypes,
+	mockRestrictedNodeTypes,
+} from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 
@@ -57,9 +68,9 @@ import {
 } from '@/app/constants';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ settings: {}, isAskAiEnabled: true })),
 }));
 
@@ -68,6 +79,7 @@ vi.mock('@/app/stores/aiGateway.store', async (importOriginal) => ({
 	useAiGatewayStore: vi.fn(() => ({
 		isNodeSupported: vi.fn(() => false),
 		isNodeTypeVersionSupported: vi.fn(() => true),
+		creditsLabelKey: 'generic.freeCredits',
 	})),
 }));
 
@@ -78,7 +90,30 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	})),
 }));
 
+const inlineAgentsFlag = { enabled: false };
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: vi.fn(() => ({
+		isFeatureEnabled: vi.fn(() => inlineAgentsFlag.enabled),
+	})),
+}));
+
 describe('NodeCreator - utils', () => {
+	describe('getNodeCreatorSearchItems', () => {
+		it('includes nodes and commands but excludes navigation views', () => {
+			const node = mockSimplifiedNodeType({ name: 'node' });
+			const navigationView = mockViewCreateElement({ key: 'navigation' });
+			const command = mockCommandCreateElement({ key: 'command' });
+
+			const result = getNodeCreatorSearchItems([node], [navigationView, command]);
+
+			expect(result.map((item) => item.key)).toEqual(['node', 'command']);
+			expect(result[0]).toMatchObject({
+				type: 'node',
+				properties: node,
+			});
+		});
+	});
+
 	describe('groupItemsInSections', () => {
 		it('should handle multiple sections (with "other" section)', () => {
 			const node1 = mockNodeCreateElement({ key: 'popularNode' });
@@ -783,6 +818,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 			vi.mocked(useNodeTypesStore).mockReturnValue({
 				getNodeVersions: vi.fn(() => [1, 1.1]),
@@ -792,6 +828,32 @@ describe('NodeCreator - utils', () => {
 		it('should show Free credits badge when latest version meets the minimum', () => {
 			const [result] = finalizeItems([makeGatewayNode()]) as NodeCreateElement[];
 			expect(result.properties.tag).toEqual({ text: 'Free credits', pill: true });
+		});
+
+		it('should show n8n credits badge after a top-up or depleted allowance', () => {
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.n8nCredits',
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+
+			const [result] = finalizeItems([makeGatewayNode()]) as NodeCreateElement[];
+			expect(result.properties.tag).toEqual({ text: 'Gateway credits', pill: true, type: 'info' });
+		});
+
+		it('should retag credits when the wallet arrives after the first finalize', () => {
+			const items = [makeGatewayNode()];
+			const [first] = finalizeItems(items) as NodeCreateElement[];
+			expect(first.properties.tag).toEqual({ text: 'Free credits', pill: true });
+
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.n8nCredits',
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+
+			const [second] = finalizeItems(items) as NodeCreateElement[];
+			expect(second.properties.tag).toEqual({ text: 'Gateway credits', pill: true, type: 'info' });
 		});
 
 		it('should suppress Free credits badge when latest version is below the minimum', () => {
@@ -821,6 +883,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported,
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			finalizeItems([makeGatewayNode('my-node')]);
@@ -836,6 +899,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported,
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			finalizeItems([makeGatewayNode('my-node')]);
@@ -853,6 +917,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn(() => true),
 				isNodeTypeVersionSupported,
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			finalizeItems([makeGatewayNode('my-node')]);
@@ -864,6 +929,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn((name: string) => name === 'llamaParsePlatform'),
 				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			const [result] = finalizeItems([
@@ -878,6 +944,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn((name: string) => name === '@vendor/n8n-nodes-connect.connect'),
 				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 
 			const [result] = finalizeItems([
@@ -934,6 +1001,37 @@ describe('NodeCreator - utils', () => {
 		});
 	});
 
+	describe('finalizeItems - inline agents node name', () => {
+		const makeMessageAnAgentNode = () =>
+			mockNodeCreateElement(undefined, {
+				name: MESSAGE_AN_AGENT_NODE_TYPE,
+				displayName: 'Message an Agent',
+			});
+
+		beforeEach(() => {
+			inlineAgentsFlag.enabled = false;
+		});
+
+		it('keeps the shipped Message an Agent name when the flag is off', () => {
+			const [result] = finalizeItems([makeMessageAnAgentNode()]) as NodeCreateElement[];
+			expect(result.properties.displayName).toBe('Message an Agent');
+		});
+
+		it('renames the item to AI Agent V2 when the flag is on', () => {
+			inlineAgentsFlag.enabled = true;
+			const [result] = finalizeItems([makeMessageAnAgentNode()]) as NodeCreateElement[];
+			expect(result.properties.displayName).toBe('AI Agent V2');
+		});
+
+		it('does not rename other nodes when the flag is on', () => {
+			inlineAgentsFlag.enabled = true;
+			const [result] = finalizeItems([
+				mockNodeCreateElement(undefined, { name: AGENT_NODE_TYPE, displayName: 'AI Agent' }),
+			]) as NodeCreateElement[];
+			expect(result.properties.displayName).toBe('AI Agent');
+		});
+	});
+
 	describe('showsAiGatewaySection', () => {
 		it.each<[string, ViewStack, boolean]>([
 			['Language Models list', { connectionType: NodeConnectionTypes.AiLanguageModel }, true],
@@ -973,6 +1071,7 @@ describe('NodeCreator - utils', () => {
 			vi.mocked(useAiGatewayStore).mockReturnValue({
 				isNodeSupported: vi.fn((name: string) => name.startsWith('supported')),
 				isNodeTypeVersionSupported: vi.fn(() => true),
+				creditsLabelKey: 'generic.freeCredits',
 			} as unknown as ReturnType<typeof useAiGatewayStore>);
 			vi.mocked(useNodeTypesStore).mockReturnValue({
 				getNodeVersions: vi.fn(() => [1]),
@@ -1064,6 +1163,25 @@ describe('NodeCreator - utils', () => {
 			['pd', ['pdf'], false],
 		])('matches "%s" against %j -> %s', (query, aliases, expected) => {
 			expect(matchesAliasForConnectBoost(query, aliases)).toBe(expected);
+		});
+	});
+
+	describe('searchNodes', () => {
+		it('searches command descriptions without searching node descriptions', () => {
+			const node = mockNodeCreateElement(
+				{ key: 'node' },
+				{ name: 'node', displayName: 'Node', description: 'A container node' },
+			);
+			const command = mockCommandCreateElement({
+				key: 'group',
+				properties: {
+					title: 'Group',
+					description: 'Add an organisational container to your workflow',
+					icon: 'group',
+				},
+			});
+
+			expect(searchNodes('container', [node, command]).map((item) => item.key)).toEqual(['group']);
 		});
 	});
 
@@ -1325,6 +1443,103 @@ describe('NodeCreator - utils', () => {
 
 		it('does not surface the rag starter callout unless it is enabled', () => {
 			expect(getRootSearchCallouts('rag', {}, [])).toEqual([]);
+		});
+	});
+});
+
+describe('node item restriction lookups', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+	});
+
+	it('reports a restricted type with its scope', () => {
+		mockRestrictedNodeTypes({ 'n8n-nodes-base.gmail': 'project' });
+
+		expect(getNodeItemRestriction('n8n-nodes-base.gmail')).toMatchObject({ scope: 'project' });
+		expect(isNodeItemRestricted('n8n-nodes-base.gmail')).toBe(true);
+		expect(isNodeItemRestricted('n8n-nodes-base.slack')).toBe(false);
+	});
+
+	it('maps a credential-only node to the HTTP Request node it wraps', () => {
+		mockRestrictedNodeTypes({ 'n8n-nodes-base.httpRequest': 'instance' });
+
+		expect(isNodeItemRestricted('n8n-creds-base.sysdigApi')).toBe(true);
+	});
+
+	it('hides a credential-only node whose credential type is restricted and keeps HTTP Request and its siblings', () => {
+		mockRestrictedNodeTypes();
+		mockRestrictedCredentialTypes({ virusTotalApi: 'instance' });
+		const items = [
+			'n8n-nodes-base.httpRequest',
+			'n8n-creds-base.virusTotalApi',
+			'n8n-creds-base.sysdigApi',
+		].map((key) => mockNodeCreateElement({ key }));
+
+		expect(withoutRestrictedNodes(items, isNodeItemRestricted).map((item) => item.key)).toEqual([
+			'n8n-nodes-base.httpRequest',
+			'n8n-creds-base.sysdigApi',
+		]);
+		expect(getNodeItemRestriction('n8n-creds-base.virusTotalApi')).toMatchObject({
+			scope: 'instance',
+		});
+	});
+});
+
+describe('restricted node helpers', () => {
+	const node = (key: string) => mockNodeCreateElement({ key });
+	const isRestricted = (name: string) => name.startsWith('blocked');
+
+	describe('withoutRestrictedNodes', () => {
+		it('drops restricted nodes at the top level', () => {
+			const items = [node('a'), node('blocked-1'), node('c')];
+
+			expect(withoutRestrictedNodes(items, isRestricted).map((i) => i.key)).toEqual(['a', 'c']);
+		});
+
+		it('drops restricted nodes inside a section and keeps the section', () => {
+			const section = mockSectionCreateElement({ children: [node('a'), node('blocked-1')] });
+
+			const [result] = withoutRestrictedNodes([section], isRestricted);
+
+			expect(result.type).toBe('section');
+			expect((result as SectionCreateElement).children.map((c) => c.key)).toEqual(['a']);
+		});
+
+		it('drops a section whose every child is restricted', () => {
+			const section = mockSectionCreateElement({ children: [node('blocked-1')] });
+
+			expect(withoutRestrictedNodes([node('a'), section], isRestricted).map((i) => i.key)).toEqual([
+				'a',
+			]);
+		});
+	});
+
+	describe('sinkRestrictedNodesLast', () => {
+		it('moves restricted nodes after every available node and keeps both orders', () => {
+			const items = [node('blocked-1'), node('a'), node('blocked-2'), node('b')];
+
+			expect(sinkRestrictedNodesLast(items, isRestricted).map((i) => i.key)).toEqual([
+				'a',
+				'b',
+				'blocked-1',
+				'blocked-2',
+			]);
+		});
+
+		it('sinks inside a section and keeps the section in place', () => {
+			const section = mockSectionCreateElement({
+				key: 'section',
+				children: [node('blocked-1'), node('a')],
+			});
+			const items = [section, node('b'), node('blocked-2')];
+
+			const result = sinkRestrictedNodesLast(items, isRestricted);
+
+			expect(result.map((i) => i.key)).toEqual(['section', 'b', 'blocked-2']);
+			expect((result[0] as SectionCreateElement).children.map((c) => c.key)).toEqual([
+				'a',
+				'blocked-1',
+			]);
 		});
 	});
 });

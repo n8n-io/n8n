@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { isRecord } from '@n8n/utils/is-record';
+
 import type { ClientOAuth2Options, ClientOAuth2RequestObject } from './client-oauth2';
 import { ERROR_RESPONSES } from './constants';
 
@@ -23,9 +25,20 @@ export class AuthError extends Error {
 		message: string,
 		readonly body: any,
 		readonly code = 'EAUTH',
+		/** True when `message` is the text of an `error` object in the server response. */
+		readonly fromErrorObject = false,
 	) {
 		super(message);
 	}
+}
+
+const UNREADABLE_ERROR_MESSAGE = 'The OAuth2 server rejected the request';
+
+/** Some servers (e.g. Meta Graph API) send `error` as an object with its own `message`. */
+function getErrorObjectText(value: unknown): string | undefined {
+	return isRecord(value) && typeof value.message === 'string' && value.message
+		? value.message
+		: undefined;
 }
 
 /**
@@ -35,14 +48,26 @@ export function getAuthError(body: {
 	error: string;
 	error_description?: string;
 }): Error | undefined {
-	const message: string | undefined =
-		ERROR_RESPONSES[body.error] ?? body.error_description ?? body.error;
+	const message: unknown = ERROR_RESPONSES[body.error] ?? body.error_description ?? body.error;
 
-	if (message) {
-		return new AuthError(message, body);
+	if (!message) return undefined;
+	if (typeof message === 'string') return new AuthError(message, body);
+
+	const errorObjectText = getErrorObjectText(message);
+	return errorObjectText
+		? new AuthError(errorObjectText, body, undefined, true)
+		: new AuthError(UNREADABLE_ERROR_MESSAGE, body);
+}
+
+/**
+ * Parse a string as a URL, returning `null` when it is not parseable.
+ */
+export function tryParseUrl(url: string): URL | null {
+	try {
+		return new URL(url);
+	} catch {
+		return null;
 	}
-
-	return undefined;
 }
 
 /**

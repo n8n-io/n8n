@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { DialogClose } from 'reka-ui';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import { useI18n } from '../../composables/useI18n';
+import Icon from '../N8nIcon/Icon.vue';
 
 export interface DialogCloseProps {
 	/**
@@ -11,6 +12,8 @@ export interface DialogCloseProps {
 }
 
 defineProps<DialogCloseProps>();
+
+const { t } = useI18n();
 </script>
 
 <template>
@@ -20,7 +23,7 @@ defineProps<DialogCloseProps>();
 	<DialogClose
 		v-else
 		:class="$style['close-button']"
-		aria-label="Close dialog"
+		:aria-label="t('dialog.close')"
 		data-test-id="dialog-close-button"
 	>
 		<slot>
@@ -33,14 +36,12 @@ defineProps<DialogCloseProps>();
 @use '@n8n/design-system/css/mixins/focus';
 
 .close-button {
-	position: absolute;
-	top: var(--spacing--sm);
-	right: var(--spacing--sm);
 	display: inline-flex;
+	flex-shrink: 0;
 	align-items: center;
 	justify-content: center;
-	width: var(--spacing--lg);
-	height: var(--spacing--lg);
+	width: var(--n8n-dialog-close--size, var(--spacing--lg));
+	height: var(--n8n-dialog-close--size, var(--spacing--lg));
 	padding: 0;
 	border: none;
 	border-radius: var(--radius);
@@ -52,6 +53,13 @@ defineProps<DialogCloseProps>();
 		background-color: var(--color--background);
 	}
 
-	@include focus.focus-visible-ring;
+	&:focus {
+		outline: none;
+	}
+
+	&:focus-visible {
+		@include focus.focus-ring;
+		box-shadow: inset 0 0 0 var(--border-width, 1px) var(--focus--border-color);
+	}
 }
 </style>

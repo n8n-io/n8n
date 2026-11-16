@@ -1,19 +1,17 @@
 <script lang="ts" setup>
-import { computed, ref, useCssModule } from 'vue';
-import { ElSwitch } from 'element-plus';
-import { N8nAlertDialog, N8nText } from '@n8n/design-system';
+import { ref } from 'vue';
+import { N8nAlertDialog, N8nSettingsEnableRow, N8nSettingsRowGroup } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
 import { useToast } from '@n8n/composables/useToast';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const props = defineProps<{
 	initialEnabled: boolean;
 	managedByEnv: boolean;
 }>();
 
-const $style = useCssModule();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const i18n = useI18n();
@@ -23,16 +21,13 @@ const enabled = ref(props.initialEnabled);
 const showDisableDialog = ref(false);
 const isSaving = ref(false);
 
-const toggleValue = computed({
-	get: () => enabled.value,
-	set: (value: boolean) => {
-		if (!value) {
-			showDisableDialog.value = true;
-			return;
-		}
-		void persist(true);
-	},
-});
+function onToggle(value: boolean) {
+	if (!value) {
+		showDisableDialog.value = true;
+		return;
+	}
+	void persist(true);
+}
 
 async function persist(value: boolean): Promise<void> {
 	const previousValue = enabled.value;
@@ -70,24 +65,17 @@ function confirmDisable() {
 
 <template>
 	<div>
-		<div :class="$style.settingsContainer">
-			<div :class="$style.settingsContainerInfo">
-				<N8nText :bold="true">
-					{{ i18n.baseText('settings.security.workflowReviews.enable.title') }}
-				</N8nText>
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('settings.security.workflowReviews.enable.description') }}
-				</N8nText>
-			</div>
-			<div :class="$style.settingsContainerAction">
-				<ElSwitch
-					v-model="toggleValue"
-					size="large"
-					:disabled="managedByEnv || isSaving"
-					data-test-id="security-workflow-reviews-toggle"
-				/>
-			</div>
-		</div>
+		<N8nSettingsRowGroup>
+			<N8nSettingsEnableRow
+				:title="i18n.baseText('settings.security.workflowReviews.enable.title')"
+				:description="i18n.baseText('settings.security.workflowReviews.enable.description')"
+				:enabled="enabled"
+				:disabled="managedByEnv || isSaving"
+				show-preview-badge
+				switch-test-id="security-workflow-reviews-toggle"
+				@update:enabled="onToggle"
+			/>
+		</N8nSettingsRowGroup>
 
 		<N8nAlertDialog
 			:open="showDisableDialog"
@@ -99,32 +87,3 @@ function confirmDisable() {
 		/>
 	</div>
 </template>
-
-<style module>
-.settingsContainer {
-	display: flex;
-	align-items: center;
-	padding-left: var(--spacing--sm);
-	justify-content: space-between;
-	flex-shrink: 0;
-}
-
-.settingsContainerInfo {
-	display: flex;
-	padding: var(--spacing--2xs) 0;
-	flex-direction: column;
-	justify-content: center;
-	align-items: flex-start;
-	gap: var(--spacing--5xs);
-	flex: 1;
-	min-width: 0;
-}
-
-.settingsContainerAction {
-	display: flex;
-	padding: var(--spacing--md) var(--spacing--sm);
-	justify-content: flex-end;
-	align-items: center;
-	flex-shrink: 0;
-}
-</style>

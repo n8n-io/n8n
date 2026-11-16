@@ -13,6 +13,23 @@ function validCase(overrides: Record<string, unknown> = {}): Record<string, unkn
 	};
 }
 
+/** A minimal valid inline seed: one user message and one workflow. */
+function inlineSeed(): Record<string, unknown> {
+	return {
+		mode: 'inline',
+		messages: [
+			{
+				id: 'm1',
+				type: 'llm',
+				role: 'user',
+				createdAt: '2026-06-29T09:00:00.000Z',
+				content: [{ type: 'text', text: 'build it' }],
+			},
+		],
+		workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name: 'Batch loop', nodes: [], connections: {} }],
+	};
+}
+
 describe('casesFromExportedFiles', () => {
 	it('parses an exported suite into test cases with file slugs', () => {
 		const cases = casesFromExportedFiles({ 'contact-form.json': validCase() }, { suite: 'demo' });
@@ -29,11 +46,12 @@ describe('casesFromExportedFiles', () => {
 		expect(cases[0].testCase.outcomeExpectations).toEqual(['has a trigger']);
 	});
 
-	it('keeps an inline conversationSeed on a suite-sourced case', () => {
+	it('keeps an inline seed on a suite-sourced case', () => {
 		const cases = casesFromExportedFiles(
 			{
 				'repair-it.json': validCase({
-					conversationSeed: {
+					seed: {
+						mode: 'inline',
 						messages: [
 							{
 								id: 'm1',
@@ -49,16 +67,36 @@ describe('casesFromExportedFiles', () => {
 			},
 			{ suite: 'demo' },
 		);
-		expect(cases[0].testCase.conversationSeed?.workflows[0].id).toBe('wKk3RmT9xQ2bVn7L');
+		const seed = cases[0].testCase.seed;
+		expect(seed?.mode === 'inline' && seed.workflows[0].id).toBe('wKk3RmT9xQ2bVn7L');
 	});
 
-	it('refuses a suite-sourced case that points at a seed FILE', () => {
+	// The normalizer whitelists to the schema's keys, so a hosted case carrying a
+	// pre-union seed key would be STRIPPED and run unseeded — silently grading a
+	// seeded case as build-from-scratch. Each removed key needs a raw-body guard.
+	it.each([
+		['seedFile', 'repair-it.seed'],
+		['conversationSeed', { messages: [] }],
+		['priorConversation', [{ role: 'user', text: 'earlier' }]],
+		['seedThread', { threadId: 't1' }],
+	])('refuses a suite-sourced case carrying the legacy %s key', (key, value) => {
+		expect(() =>
+			casesFromExportedFiles({ 'repair-it.json': validCase({ [key]: value }) }, { suite: 'demo' }),
+		).toThrow(`${key}: no longer supported`);
+	});
+
+	it('names every legacy seed key a case carries, not just the first', () => {
 		expect(() =>
 			casesFromExportedFiles(
-				{ 'repair-it.json': validCase({ seedFile: 'repair-it.seed' }) },
+				{
+					'repair-it.json': validCase({
+						priorConversation: [{ role: 'user', text: 'earlier' }],
+						seedThread: { threadId: 't1' },
+					}),
+				},
 				{ suite: 'demo' },
 			),
-		).toThrow(/seedFile/);
+		).toThrow(/repair-it\.json[\s\S]*priorConversation[\s\S]*seedThread/);
 	});
 
 	it('aggregates validation errors and names the offending file', () => {
@@ -68,6 +106,85 @@ describe('casesFromExportedFiles', () => {
 				{ suite: 'demo' },
 			),
 		).toThrow(/broken\.json/);
+	});
+
+	it('skips an invalid case with a warning and keeps the valid ones', () => {
+		const logger = { warn: vi.fn() };
+		const cases = casesFromExportedFiles(
+			{
+				'good.json': validCase(),
+				'valid-seed.json': validCase({ seed: inlineSeed() }),
+				'newer-field.json': validCase({ seed: { ...inlineSeed(), someFutureField: [] } }),
+			},
+			{ suite: 'demo', logger },
+		);
+
+		expect(cases.map((c) => c.fileSlug)).toEqual(['good', 'valid-seed']);
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringMatching(/newer-field\.json[\s\S]*someFutureField[\s\S]*Skipping 1 case/),
+		);
+	});
+
+	it.each([
+		['a removed seed key', { seedThread: { threadId: 't1' } }],
+		['an empty inline seed', { seed: { mode: 'inline' } }],
+		['no execution scenarios', { executionScenarios: [] }],
+		[
+			'an attachment to a workflow the seed does not declare',
+			{
+				seed: inlineSeed(),
+				conversation: [{ role: 'user', text: 'fix it', attach: { workflow: 'missing-id' } }],
+			},
+		],
+		[
+			'a newer seed field next to an authoring bug',
+			{ seed: { mode: 'inline', someFutureField: [] } },
+		],
+	])(
+		'fails the load on an authoring bug (%s), even with a valid case beside it',
+		(_, overrides) => {
+			expect(() =>
+				casesFromExportedFiles(
+					{ 'good.json': validCase(), 'broken.json': validCase(overrides) },
+					{ suite: 'demo', logger: { warn: vi.fn() } },
+				),
+			).toThrow(/broken\.json/);
+		},
+	);
+
+	it('skips a case whose seed mode this harness does not know', () => {
+		const logger = { warn: vi.fn() };
+		const cases = casesFromExportedFiles(
+			{
+				'good.json': validCase(),
+				'newer-mode.json': validCase({ seed: { mode: 'someFutureMode' } }),
+			},
+			{ suite: 'demo', logger },
+		);
+		expect(cases.map((c) => c.fileSlug)).toEqual(['good']);
+		expect(logger.warn).toHaveBeenCalledWith(expect.stringMatching(/newer-mode\.json/));
+	});
+
+	it('fails when every case the filter selects is invalid, even if another case is valid', () => {
+		expect(() =>
+			casesFromExportedFiles(
+				{
+					'other.json': validCase(),
+					'wanted.json': validCase({ executionScenarios: [] }),
+				},
+				{ suite: 'demo', filter: 'wanted', logger: { warn: vi.fn() } },
+			),
+		).toThrow(/wanted\.json/);
+	});
+
+	it('does not report an invalid case the filter leaves out', () => {
+		const logger = { warn: vi.fn() };
+		const cases = casesFromExportedFiles(
+			{ 'keep-me.json': validCase(), 'broken.json': validCase({ executionScenarios: [] }) },
+			{ suite: 'demo', filter: 'keep', logger },
+		);
+		expect(cases.map((c) => c.fileSlug)).toEqual(['keep-me']);
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
 	it('applies --filter by file slug', () => {

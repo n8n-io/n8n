@@ -1,13 +1,72 @@
-import type { ListAgentsQueryDto } from '@n8n/api-types';
+import isEqual from 'lodash/isEqual';
+import {
+	DEFAULT_AGENTS_LIST_LIMIT,
+	N8N_CHAT_INTEGRATION_TYPE,
+	isCredentialAgentIntegration,
+} from '@n8n/api-types';
+import type {
+	AgentIntegrationConfig,
+	AgentListFilter,
+	AgentsListSortBy,
+	AgentVectorStoreProvider,
+	ListAgentsOptions,
+} from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
+import {
+	AgentTagMapping,
+	BaseRepository,
+	chunkIds,
+	escapeLike,
+	LIKE_ESCAPE_CLAUSE,
+	ServiceAccountRepository,
+	TransactionRunner,
+	type OperationContext,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, IsNull, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
+import { UnexpectedError } from '@n8n/errors';
+import { DataSource, In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
+import { randomUUID } from 'node:crypto';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import { Agent } from '../entities/agent.entity';
-
-export type AgentSummary = Pick<
+import {
 	Agent,
-	'id' | 'name' | 'projectId' | 'activeVersionId' | 'availableInMCP' | 'updatedAt'
+	isProjectAgent,
+	type ProjectAgent,
+	type ProjectScoped,
+} from '../entities/agent.entity';
+import type { AgentDefinitionMetadata } from '../utils/agent-definition';
+
+export interface AgentListResult {
+	count: number;
+	data: ProjectAgent[];
+}
+
+export type AgentSummary = ProjectScoped<
+	Pick<Agent, 'id' | 'name' | 'projectId' | 'activeVersionId' | 'availableInMCP' | 'updatedAt'>
 >;
+
+/** Instance agents are code-defined and read-only, so project queries must not see them. */
+const projectScope = 'project' as const;
+const projectScopeSql = "agent.scope = 'project'";
+/** The same filter for UPDATE builders, which have no `agent` alias. */
+const projectScopeUpdateSql = "scope = 'project'";
+
+export interface PublishedAgentVectorStores {
+	agentId: string;
+	vectorStoreProviders: AgentVectorStoreProvider[];
+}
+
+/** In-memory twin of `AgentRepository.publishedN8nChatSql`: the published integrations carry n8n Chat. */
+export function hasN8nChatChannel(integrations: Array<{ type: string }> | undefined): boolean {
+	return (
+		integrations?.some((integration) => integration.type === N8N_CHAT_INTEGRATION_TYPE) ?? false
+	);
+}
+
+/** Integration and publication state for channel runtime decisions. */
+export type AgentIntegrationState = Pick<Agent, 'integrations' | 'versionId' | 'activeVersionId'>;
+
+export type AgentImportIdentity = Pick<Agent, 'id' | 'name' | 'projectId'>;
 
 export type AgentSummaryFilters = {
 	query?: string;
@@ -17,17 +76,156 @@ export type AgentSummaryFilters = {
 };
 
 @Service()
-export class AgentRepository extends Repository<Agent> {
-	constructor(dataSource: DataSource) {
-		super(Agent, dataSource.manager);
+export class AgentRepository extends BaseRepository<Agent> {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly globalConfig: GlobalConfig,
+		private readonly serviceAccountRepository: ServiceAccountRepository,
+	) {
+		super(Agent, dataSource.manager, transactionRunner);
 	}
 
-	async findByProjectId(projectId: string): Promise<Agent[]> {
-		return await this.find({
-			where: { projectId },
+	/** Whether tags are readable on agents: reads join `agent.tags` only then. */
+	private get tagsEnabled(): boolean {
+		return !this.globalConfig.tags.disabled;
+	}
+
+	/**
+	 * Insert-only create. `save()` on an entity whose id is already set is an
+	 * upsert, so an id minted by the client that already names a row would
+	 * update that row instead of colliding on the primary key.
+	 */
+	async insertNew(agent: Agent, ctx: OperationContext = {}): Promise<void> {
+		// `schema` is a free-form JSON column, which QueryDeepPartialEntity
+		// cannot express, so cast at this boundary.
+		await this.managerFor(ctx).insert(Agent, agent as QueryDeepPartialEntity<Agent>);
+	}
+
+	/**
+	 * Replaces the tag mappings of one agent with the given tag ids, in a
+	 * single transaction: a delete followed by the inserts, so a failure
+	 * leaves the previous mappings in place. An empty list clears the tags.
+	 */
+	async overwriteTagMappings(agentId: string, tagIds: string[], ctx: OperationContext = {}) {
+		// Duplicates would collide on the composite primary key.
+		const uniqueTagIds = [...new Set(tagIds)];
+		return await this.runInTransaction(ctx, async (tx) => {
+			await tx.delete(AgentTagMapping, { agentId });
+			if (uniqueTagIds.length === 0) return;
+			await tx.insert(
+				AgentTagMapping,
+				uniqueTagIds.map((tagId) => ({ agentId, tagId })),
+			);
+		});
+	}
+
+	async lockForVersionCapture(id: string, ctx: OperationContext): Promise<Agent | null> {
+		const manager = this.managerFor(ctx);
+		const agent = await manager.findOne(Agent, {
+			where: { id, scope: projectScope },
+			...(this.manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
+		});
+
+		if (agent && !agent.versionId) {
+			agent.versionId = randomUUID();
+			await manager.update(
+				Agent,
+				{ id },
+				{ versionId: agent.versionId, updatedAt: agent.updatedAt },
+			);
+		}
+
+		return agent;
+	}
+
+	async hasRevision(id: string, revision: number, ctx: OperationContext = {}): Promise<boolean> {
+		return await this.managerFor(ctx).existsBy(Agent, { id, revision });
+	}
+
+	async findByProjectId(projectId: string): Promise<ProjectAgent[]> {
+		const agents = await this.find({
+			where: { projectId, scope: projectScope },
 			relations: { activeVersion: true },
 			order: { updatedAt: 'DESC' },
 		});
+		return agents.filter(isProjectAgent);
+	}
+
+	async findForExport(
+		agentIds: string[],
+		projectIds: string[] | null,
+		options: { includeActiveVersion: boolean },
+	): Promise<ProjectAgent[]> {
+		if (agentIds.length === 0 || projectIds?.length === 0) return [];
+		// Keep both ID filters below the database parameter limit.
+		const projectBatches = projectIds === null ? [null] : chunkIds([...new Set(projectIds)]);
+		const agents: ProjectAgent[] = [];
+		for (const ids of chunkIds([...new Set(agentIds)])) {
+			for (const projects of projectBatches) {
+				const found = await this.find({
+					where: {
+						id: In(ids),
+						scope: 'project',
+						...(projects === null ? {} : { projectId: In(projects) }),
+					},
+					relations: { activeVersion: options.includeActiveVersion },
+				});
+				agents.push(...found.filter(isProjectAgent));
+			}
+		}
+		return agents.sort((left, right) => left.id.localeCompare(right.id));
+	}
+
+	async findIdsInProjectsForExport(
+		projectIds: string[],
+		{ includeArchived = false }: { includeArchived?: boolean } = {},
+	): Promise<string[]> {
+		const ids: string[] = [];
+		const archivedFilter = includeArchived ? {} : { isArchived: false };
+		for (const projects of chunkIds([...new Set(projectIds)])) {
+			const agents = await this.find({
+				select: ['id'],
+				where: { projectId: In(projects), ...archivedFilter },
+			});
+			ids.push(...agents.map(({ id }) => id));
+		}
+		return ids.sort();
+	}
+
+	async findExistingIds(agentIds: string[]): Promise<Set<string>> {
+		const ids = new Set<string>();
+		for (const chunk of chunkIds(agentIds)) {
+			const agents = await this.find({ select: ['id'], where: { id: In(chunk) } });
+			for (const { id } of agents) ids.add(id);
+		}
+		return ids;
+	}
+
+	async findImportCandidates(
+		projectId: string,
+		sourceAgentIds: string[],
+	): Promise<AgentImportIdentity[]> {
+		const agents: AgentImportIdentity[] = [];
+		for (const ids of chunkIds([...new Set(sourceAgentIds)])) {
+			agents.push(
+				...(await this.find({
+					select: ['id', 'name', 'projectId'],
+					where: { projectId, id: In(ids) },
+				})),
+			);
+		}
+		return agents;
+	}
+
+	async findImportIdOwners(agentIds: string[]): Promise<Array<Pick<Agent, 'id' | 'projectId'>>> {
+		const agents: Array<Pick<Agent, 'id' | 'projectId'>> = [];
+		for (const ids of chunkIds([...new Set(agentIds)])) {
+			agents.push(...(await this.find({ select: ['id', 'projectId'], where: { id: In(ids) } })));
+		}
+		return agents;
 	}
 
 	/**
@@ -50,13 +248,18 @@ export class AgentRepository extends Repository<Agent> {
 				'agent.availableInMCP',
 				'agent.updatedAt',
 			])
+			.where(projectScopeSql)
+			.andWhere('agent.isArchived = :isArchived', { isArchived: false })
 			.orderBy('agent.updatedAt', 'DESC');
 
 		if (projectIds !== null) {
-			query.where('agent.projectId IN (:...projectIds)', { projectIds });
+			query.andWhere('agent.projectId IN (:...projectIds)', { projectIds });
 		}
 		if (options.query) {
-			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${options.query}%` });
+			// `%` and `_` in the search match themselves, as in the skill search.
+			query.andWhere(`LOWER(agent.name) LIKE :query ${LIKE_ESCAPE_CLAUSE}`, {
+				query: `%${escapeLike(options.query.toLowerCase())}%`,
+			});
 		}
 		if (options.publishedOnly) {
 			query.andWhere('agent.activeVersionId IS NOT NULL');
@@ -68,14 +271,17 @@ export class AgentRepository extends Repository<Agent> {
 			query.take(options.limit);
 		}
 
-		return await query.getMany();
+		return (await query.getMany()).filter(isProjectAgent);
 	}
 
 	async findByProjectIdsPaginated(
 		projectIds: string[] | null,
-		options: ListAgentsQueryDto,
-		{ withProject = false }: { withProject?: boolean } = {},
-	): Promise<{ count: number; data: Agent[] }> {
+		options: ListAgentsOptions,
+		{
+			withProject = false,
+			usageCounts,
+		}: { withProject?: boolean; usageCounts?: Map<string, number> } = {},
+	): Promise<AgentListResult> {
 		if (projectIds?.length === 0) return { count: 0, data: [] };
 
 		const query = this.createQueryBuilder('agent').leftJoinAndSelect(
@@ -83,40 +289,227 @@ export class AgentRepository extends Repository<Agent> {
 			'activeVersion',
 		);
 
+		if (this.tagsEnabled) {
+			query.leftJoinAndSelect('agent.tags', 'tags');
+		}
+
 		// Only cross-project consumers (MCP settings) label each agent by its home
 		// project; the overview lists don't read it, so they skip the extra join.
 		if (withProject) {
 			query.leftJoinAndSelect('agent.project', 'project');
 		}
 
+		query.where(projectScopeSql);
 		if (projectIds !== null) {
-			query.where('agent.projectId IN (:...projectIds)', { projectIds });
+			query.andWhere('agent.projectId IN (:...projectIds)', { projectIds });
 		}
 		this.applyFilters(query, options.filter);
-		this.applySorting(query, options.sortBy);
-		query.skip(options.skip).take(options.take);
+		this.applySorting(query, options.sortBy, usageCounts);
+		// `offset`/`limit` are the HTTP-agnostic names; TypeORM's `skip`/`take`
+		// dedupe the joined tag rows. The default limit keeps a programmatic
+		// caller that omits `limit` from querying unboundedly.
+		query.skip(options.offset ?? 0).take(options.limit ?? DEFAULT_AGENTS_LIST_LIMIT);
 
 		const [data, count] = await query.getManyAndCount();
-		return { count, data };
+		return { count, data: data.filter(isProjectAgent) };
+	}
+
+	/**
+	 * The n8n Chat page list: agents reachable over n8n Chat in `reachableProjectIds`
+	 * (any project when null), plus every agent in `ownedProjectIds` whether or
+	 * not it is published to n8n Chat, so the owner can make it available.
+	 */
+	async findN8nChatListPaginated(
+		reachableProjectIds: string[] | null,
+		ownedProjectIds: string[],
+		options: ListAgentsOptions,
+		usageCounts?: Map<string, number>,
+	): Promise<AgentListResult> {
+		if (reachableProjectIds?.length === 0 && ownedProjectIds.length === 0) {
+			return { count: 0, data: [] };
+		}
+
+		const query = this.createQueryBuilder('agent')
+			.leftJoinAndSelect('agent.activeVersion', 'activeVersion')
+			.leftJoinAndSelect('agent.project', 'project')
+			.where(projectScopeSql);
+
+		const published = this.publishedN8nChatSql();
+		const reachableOrOwned: string[] = [];
+		if (reachableProjectIds === null) reachableOrOwned.push(published);
+		else if (reachableProjectIds.length > 0) {
+			reachableOrOwned.push(`(agent.projectId IN (:...reachableProjectIds) AND ${published})`);
+		}
+		if (ownedProjectIds.length > 0)
+			reachableOrOwned.push('agent.projectId IN (:...ownedProjectIds)');
+		query.andWhere(`(${reachableOrOwned.join(' OR ')})`, {
+			reachableProjectIds,
+			ownedProjectIds,
+			n8nChatType: N8N_CHAT_INTEGRATION_TYPE,
+		});
+
+		// `true` is the default page view: drop it so owned drafts stay in the list.
+		// `false` still narrows the list to the agents not in n8n Chat yet.
+		// n8n Chat never lists archived agents, so the request cannot include them.
+		this.applyFilters(query, {
+			...options.filter,
+			availableInChat: options.filter?.availableInChat === false ? false : undefined,
+			includeArchived: false,
+		});
+		this.applySorting(query, options.sortBy, usageCounts);
+		// The default limit keeps a caller that omits `limit` from querying unboundedly.
+		query.skip(options.offset ?? 0).take(options.limit ?? DEFAULT_AGENTS_LIST_LIMIT);
+
+		const [data, count] = await query.getManyAndCount();
+		return { count, data: data.filter(isProjectAgent) };
+	}
+
+	/**
+	 * Adds the shared n8n Chat reachability predicate to an already-started
+	 * `agent` query: the given projects (or any, when `projectIds` is null)
+	 * and {@link applyFilters}'s `availableInChat` predicate. Callers add their
+	 * own `where` first — this only appends `andWhere` clauses, so it never
+	 * discards a condition a caller already set. Shared by
+	 * `findChatReachableIds` and `findChatReachableById` so both stay in
+	 * lockstep. {@link findN8nChatListPaginated} ORs the same predicate with
+	 * the owned projects, so keep the two in step.
+	 */
+	private chatReachableQuery(
+		query: SelectQueryBuilder<Agent>,
+		projectIds: string[] | null,
+	): SelectQueryBuilder<Agent> {
+		query.andWhere(projectScopeSql);
+		if (projectIds !== null) {
+			query.andWhere('agent.projectId IN (:...projectIds)', { projectIds });
+		}
+		this.applyFilters(query, { availableInChat: true });
+		return query;
+	}
+
+	/** Ids of the agents the user can reach over n8n Chat: published config carries the channel. */
+	async findChatReachableIds(projectIds: string[] | null): Promise<string[]> {
+		if (projectIds?.length === 0) return [];
+
+		// `availableInChat` reads `activeVersion.schema`, so the join must exist
+		// even though the select list drops it again.
+		const query = this.createQueryBuilder('agent')
+			.leftJoin('agent.activeVersion', 'activeVersion')
+			.select(['agent.id']);
+
+		const rows = await this.chatReachableQuery(query, projectIds).getMany();
+		return rows.map((row) => row.id);
+	}
+
+	/**
+	 * One agent reachable over n8n Chat: in one of the given projects (or any
+	 * project, when `projectIds` is null) and its published config carries the
+	 * channel. Loads `project` too — the chat page labels the agent with it.
+	 */
+	async findChatReachableById(
+		id: string,
+		projectIds: string[] | null,
+	): Promise<ProjectAgent | null> {
+		if (projectIds?.length === 0) return null;
+
+		const query = this.createQueryBuilder('agent')
+			.leftJoinAndSelect('agent.activeVersion', 'activeVersion')
+			.leftJoinAndSelect('agent.project', 'project')
+			.where('agent.id = :id', { id });
+
+		return projectAgentOrNull(await this.chatReachableQuery(query, projectIds).getOne());
 	}
 
 	private applyFilters(
 		query: SelectQueryBuilder<Agent>,
-		filter: ListAgentsQueryDto['filter'],
+		filter: AgentListFilter | undefined,
 	): void {
+		if (!filter?.includeArchived) {
+			query.andWhere('agent.isArchived = :isArchived', { isArchived: false });
+		}
 		if (filter?.query) {
 			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${filter.query}%` });
+		}
+		if (filter?.ids) {
+			query.andWhere('agent.id IN (:...ids)', { ids: filter.ids });
+		}
+		if (filter?.tags && filter.tags.length > 0) {
+			this.applyTagsFilter(query, filter.tags);
 		}
 		if (filter?.availableInMCP !== undefined) {
 			query.andWhere('agent.availableInMCP = :availableInMCP', {
 				availableInMCP: filter.availableInMCP,
 			});
 		}
+		if (filter?.availableInChat !== undefined) {
+			const carriesChannel = this.publishedN8nChatSql();
+			query.andWhere(filter.availableInChat ? carriesChannel : `NOT (${carriesChannel})`, {
+				n8nChatType: N8N_CHAT_INTEGRATION_TYPE,
+			});
+		}
+		if (filter?.active !== undefined) {
+			query.andWhere(
+				filter.active ? 'agent.activeVersionId IS NOT NULL' : 'agent.activeVersionId IS NULL',
+			);
+		}
+		if (filter?.projectId) {
+			query.andWhere('agent.projectId = :filterProjectId', { filterProjectId: filter.projectId });
+		}
+	}
+
+	/**
+	 * Keeps only the agents that carry **all** the given tag ids. The mapping
+	 * rows are grouped per agent and the distinct tag count must match, so a
+	 * partial overlap drops the agent — the same semantics as the workflow
+	 * list's tag filter.
+	 */
+	private applyTagsFilter(query: SelectQueryBuilder<Agent>, tagIds: string[]): void {
+		// Duplicates would demand more distinct mappings than a tag pair can
+		// hold, so count the deduped list.
+		const uniqueTagIds = [...new Set(tagIds)];
+		const subQuery = query
+			.subQuery()
+			.select('atm.agentId')
+			.from(AgentTagMapping, 'atm')
+			.where('atm.tagId IN (:...tagIds)', { tagIds: uniqueTagIds })
+			.groupBy('atm.agentId')
+			.having('COUNT(DISTINCT atm.tagId) = :tagCount', { tagCount: uniqueTagIds.length });
+
+		query.andWhere(`agent.id IN (${subQuery.getQuery()})`).setParameters({
+			tagIds: uniqueTagIds,
+			tagCount: uniqueTagIds.length,
+		});
+	}
+
+	// Reachability is a property of the **published** config, not the draft:
+	// publish is what moves the channel live, and a draft edit must not change
+	// what production chat serves (see `AgentRepository.isN8nChatPublished`).
+	// So this reads `activeVersion.schema.integrations`, which also makes a
+	// separate `activeVersionId IS NOT NULL` check unnecessary — an agent with
+	// no active version has no snapshot to match.
+	// The column is JSON, so the predicate walks the array with each dialect's
+	// own functions and compares each entry's `type`. A text match over the
+	// column would also hit the literal elsewhere in it, in a Telegram
+	// allowlist entry of the same name for one. The match stays in SQL (not
+	// filtered in memory, unlike `findByIntegrationCredential`) so `count` and
+	// pagination stay correct. `COALESCE` keeps a missing or null `schema` out
+	// of the JSON functions, which reject a non-array argument.
+	// Binds `:n8nChatType`; callers set it.
+	private publishedN8nChatSql(): string {
+		const isPostgres = this.manager.connection.options.type === 'postgres';
+		const publishedChannels = isPostgres
+			? 'COALESCE("activeVersion"."schema"->\'integrations\', \'[]\'::json)'
+			: 'COALESCE(json_extract("activeVersion"."schema", \'$.integrations\'), \'[]\')';
+		return isPostgres
+			? `EXISTS (SELECT 1 FROM json_array_elements(${publishedChannels}) AS integration ` +
+					"WHERE integration->>'type' = :n8nChatType)"
+			: `EXISTS (SELECT 1 FROM json_each(${publishedChannels}) AS integration ` +
+					"WHERE json_extract(integration.value, '$.type') = :n8nChatType)";
 	}
 
 	private applySorting(
 		query: SelectQueryBuilder<Agent>,
-		sortBy?: ListAgentsQueryDto['sortBy'],
+		sortBy?: AgentsListSortBy,
+		usageCounts?: Map<string, number>,
 	): void {
 		const [field = 'updatedAt', direction = 'desc'] = sortBy?.split(':') ?? [];
 		const sortDirection = direction.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
@@ -128,7 +521,39 @@ export class AgentRepository extends Repository<Agent> {
 			return;
 		}
 
+		if (field === 'usage') {
+			this.applyUsageSorting(query, usageCounts);
+			return;
+		}
+
 		query.orderBy(`agent.${field}`, sortDirection);
+	}
+
+	/**
+	 * Ranks by each agent's pre-counted n8n Chat thread usage, so the agents the
+	 * chat user actually talks to rise to the top. Ties (including agents with
+	 * no usage) fall back to `createdAt` DESC, then `id` DESC.
+	 */
+	private applyUsageSorting(
+		query: SelectQueryBuilder<Agent>,
+		usageCounts?: Map<string, number>,
+	): void {
+		if (!usageCounts || usageCounts.size === 0) {
+			query.orderBy('agent.createdAt', 'DESC').addOrderBy('agent.id', 'DESC');
+			return;
+		}
+
+		const agentIds = [...usageCounts.keys()];
+		const cases = agentIds.map((_, i) => `WHEN :usageAgent${i} THEN :usageCount${i}`).join(' ');
+		agentIds.forEach((id, i) => {
+			query.setParameter(`usageAgent${i}`, id).setParameter(`usageCount${i}`, usageCounts.get(id));
+		});
+
+		query
+			.addSelect(`CASE agent.id ${cases} ELSE 0 END`, 'agent_usage_count')
+			.orderBy('agent_usage_count', 'DESC')
+			.addOrderBy('agent.createdAt', 'DESC')
+			.addOrderBy('agent.id', 'DESC');
 	}
 
 	/**
@@ -140,71 +565,182 @@ export class AgentRepository extends Repository<Agent> {
 	 * published snapshot (or `null`) in a single query, which is what the publish button uses
 	 * to compute its state (published vs. unpublished, has changes vs. up to date).
 	 */
-	async findByIdAndProjectId(id: string, projectId: string): Promise<Agent | null> {
-		return await this.findOne({
-			where: { id, projectId },
-			relations: { activeVersion: true },
-		});
+	async findByIdAndProjectId(id: string, projectId: string): Promise<ProjectAgent | null> {
+		return projectAgentOrNull(
+			await this.findOne({
+				where: { id, projectId, scope: projectScope },
+				relations: { activeVersion: true, ...(this.tagsEnabled ? { tags: true } : {}) },
+			}),
+		);
+	}
+
+	async isN8nChatPublished(id: string, projectId: string): Promise<boolean> {
+		const agent = await this.findByIdAndProjectId(id, projectId);
+		return hasN8nChatChannel(agent?.activeVersion?.schema?.integrations);
 	}
 
 	/**
 	 * Finds an agent by ID alone. Agent IDs are globally unique, so this is safe
 	 * for callers whose access check does not hinge on a specific project (e.g.
-	 * users with global agent scopes).
+	 * users with global agent scopes). Returns no instance agent.
 	 */
-	async findById(id: string): Promise<Agent | null> {
-		return await this.findOne({
-			where: { id },
-			relations: { activeVersion: true },
-		});
+	async findById(id: string, ctx: OperationContext = {}): Promise<ProjectAgent | null> {
+		return projectAgentOrNull(
+			await this.managerFor(ctx).findOne(Agent, {
+				where: { id, scope: projectScope },
+				relations: { activeVersion: true, ...(this.tagsEnabled ? { tags: true } : {}) },
+			}),
+		);
 	}
 
-	async findByIdInProjects(id: string, projectIds: string[]): Promise<Agent | null> {
-		if (projectIds.length === 0) return null;
-		return await this.findOne({
-			where: { id, projectId: In(projectIds) },
-			relations: { activeVersion: true },
+	/**
+	 * Creates or renames the row of a code-defined instance agent. The row
+	 * anchors threads, executions and queue items through foreign keys. It
+	 * stores no config, because the runtime comes from code.
+	 */
+	async ensureInstanceAgent(id: string, name: string): Promise<void> {
+		// Two mains can start at the same time: the second insert of the id must not fail.
+		await this.createQueryBuilder()
+			.insert()
+			.into(Agent)
+			.values({ id, name, scope: 'instance', projectId: null, schema: null })
+			.orIgnore()
+			.execute();
+		const existing = await this.findOneOrFail({
+			select: ['id', 'name', 'scope', 'identityId'],
+			where: { id },
 		});
+		if (existing.scope !== 'instance') {
+			throw new UnexpectedError(`Agent "${id}" exists as a project agent`);
+		}
+		if (existing.name !== name) {
+			await this.runInTransaction({}, async (tx, ctx) => {
+				await tx.update(Agent, { id, scope: 'instance' }, { name });
+				await this.renameIdentity(existing, name, ctx);
+			});
+		}
+	}
+
+	async findIdentityId(id: string): Promise<string | null> {
+		const agent = await this.findOne({ select: ['identityId'], where: { id } });
+		return agent?.identityId ?? null;
+	}
+
+	/** Sets the identity only when the agent has none. Returns false when another write set it first. */
+	async linkIdentity(id: string, identityId: string, ctx: OperationContext): Promise<boolean> {
+		const result = await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({ identityId })
+			.where('id = :id AND "identityId" IS NULL', { id })
+			.execute();
+		return (result.affected ?? 0) > 0;
+	}
+
+	async findDependencyIndexAgentIdsBatch(
+		afterId: string | null,
+		batchSize: number,
+	): Promise<Array<Pick<Agent, 'id'>>> {
+		const query = this.createQueryBuilder('agent')
+			.select(['agent.id'])
+			.where(projectScopeSql)
+			.orderBy('agent.id', 'ASC')
+			.take(batchSize);
+
+		if (afterId !== null) {
+			query.andWhere('agent.id > :afterId', { afterId });
+		}
+
+		return await query.getMany();
+	}
+
+	async findSummariesByIds(
+		ids: string[],
+	): Promise<Array<ProjectScoped<Pick<Agent, 'id' | 'name' | 'projectId'>>>> {
+		if (ids.length === 0) return [];
+
+		const agents = await this.find({
+			select: ['id', 'name', 'projectId'],
+			where: { id: In(ids), scope: projectScope },
+		});
+		return agents.filter(isProjectAgent);
+	}
+
+	async findByIdInProjects(id: string, projectIds: string[]): Promise<ProjectAgent | null> {
+		if (projectIds.length === 0) return null;
+		return projectAgentOrNull(
+			await this.findOne({
+				where: { id, projectId: In(projectIds), scope: projectScope },
+				relations: { activeVersion: true },
+			}),
+		);
 	}
 
 	/** Ownership check only — skips `findByIdAndProjectId`'s `activeVersion` load. */
 	async existsByIdAndProjectId(id: string, projectId: string): Promise<boolean> {
-		return await this.exists({ where: { id, projectId } });
+		return await this.exists({ where: { id, projectId, scope: projectScope } });
+	}
+
+	/** Lightweight project-id lookup — avoids loading the full agent config. */
+	async getProjectIdById(id: string): Promise<string | null> {
+		const result = await this.findOne({
+			select: ['projectId'],
+			where: { id, scope: projectScope },
+		});
+		return result?.projectId ?? null;
+	}
+
+	/** Name and home project for the budget-alert email. Skips the config JSON. */
+	async findBudgetAlertTarget(
+		id: string,
+	): Promise<ProjectScoped<Pick<Agent, 'name' | 'projectId'>> | null> {
+		const agent = await this.findOne({
+			select: ['name', 'projectId'],
+			where: { id, scope: projectScope },
+		});
+		if (!agent || !isProjectAgent(agent)) return null;
+		return { name: agent.name, projectId: agent.projectId };
 	}
 
 	async findByIdsAndProjectId(
 		ids: string[],
 		projectId: string,
-	): Promise<Array<Pick<Agent, 'id' | 'activeVersionId'>>> {
+	): Promise<Array<Pick<Agent, 'id' | 'name' | 'activeVersionId'>>> {
 		if (ids.length === 0) return [];
 		return await this.find({
-			select: ['id', 'activeVersionId'],
-			where: { id: In(ids), projectId },
+			select: ['id', 'name', 'activeVersionId'],
+			where: { id: In(ids), projectId, scope: projectScope },
 		});
 	}
 
 	async findMcpAvailabilityCandidates(
 		where: { ids: string[] } | { projectIds: string[] } | { all: true },
-	): Promise<Array<Pick<Agent, 'id' | 'projectId' | 'availableInMCP'>>> {
+	): Promise<Array<ProjectScoped<Pick<Agent, 'id' | 'projectId' | 'availableInMCP'>>>> {
 		if ('ids' in where && where.ids.length === 0) return [];
 		if ('projectIds' in where && where.projectIds.length === 0) return [];
 
 		const criteria =
 			'ids' in where
-				? { id: In(where.ids) }
+				? { id: In(where.ids), scope: projectScope, isArchived: false }
 				: 'projectIds' in where
-					? { projectId: In(where.projectIds) }
-					: undefined;
+					? { projectId: In(where.projectIds), scope: projectScope, isArchived: false }
+					: { scope: projectScope, isArchived: false };
 
-		return await this.find({
+		const agents = await this.find({
 			select: ['id', 'projectId', 'availableInMCP'],
 			where: criteria,
 		});
+		return agents.filter(isProjectAgent);
 	}
 
-	async setAvailableInMCP(agentIds: string[], availableInMCP: boolean): Promise<void> {
-		if (agentIds.length === 0) return;
-		await this.update({ id: In(agentIds) }, { availableInMCP });
+	/** Skips archived agents. Returns the number of agents that the update changed. */
+	async setAvailableInMCP(agentIds: string[], availableInMCP: boolean): Promise<number> {
+		if (agentIds.length === 0) return 0;
+		const result = await this.update(
+			{ id: In(agentIds), scope: projectScope, isArchived: false },
+			{ availableInMCP, revision: () => 'revision + 1' },
+		);
+		return result.affected ?? 0;
 	}
 
 	/**
@@ -214,17 +750,138 @@ export class AgentRepository extends Repository<Agent> {
 	 */
 	async claimSetupCompleted(id: string, completedAt: Date): Promise<boolean> {
 		const result = await this.update(
-			{ id, setupCompletedAt: IsNull() },
+			{ id, scope: projectScope, setupCompletedAt: IsNull() },
 			{ setupCompletedAt: completedAt },
 		);
 
 		return (result.affected ?? 0) > 0;
 	}
 
-	async findPublished(): Promise<Agent[]> {
-		return await this.createQueryBuilder('agent')
+	/** Read current channel state without loading the agent definition. */
+	async findIntegrationState(id: string): Promise<AgentIntegrationState | null> {
+		return await this.findOne({
+			select: ['integrations', 'versionId', 'activeVersionId'],
+			where: { id, scope: projectScope },
+		});
+	}
+
+	/**
+	 * Fence channel changes against draft and publication writes.
+	 * Advance the revision so stale draft saves cannot overwrite the channels.
+	 * Return false on a conflict so the caller can reapply its delta to fresh state.
+	 */
+	async updateIntegrations(
+		id: string,
+		integrations: AgentIntegrationConfig[],
+		expected: Pick<Agent, 'revision' | 'versionId' | 'activeVersionId'>,
+		versionId: string | null,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx)
+			.getRepository(Agent)
+			.update(
+				{
+					id,
+					scope: projectScope,
+					revision: expected.revision,
+					versionId: expected.versionId ?? IsNull(),
+					activeVersionId: expected.activeVersionId ?? IsNull(),
+					// An archive does not advance the revision.
+					isArchived: false,
+				},
+				{
+					integrations,
+					versionId,
+					revision: () => 'revision + 1',
+					publicationRevision: () => '"publicationRevision" + 1',
+				},
+			);
+
+		return (result.affected ?? 0) > 0;
+	}
+
+	async findPublished(): Promise<ProjectAgent[]> {
+		const agents = await this.createQueryBuilder('agent')
 			.innerJoinAndSelect('agent.activeVersion', 'activeVersion')
+			.where(projectScopeSql)
 			.getMany();
+		return agents.filter(isProjectAgent);
+	}
+
+	/** The ids of all agents with a published version. Loads no version rows. */
+	async findPublishedAgentIds(): Promise<string[]> {
+		const rows = await this.find({
+			where: { activeVersionId: Not(IsNull()), scope: projectScope },
+			select: ['id'],
+		});
+		return rows.map((row) => row.id);
+	}
+
+	/**
+	 * The published version id of an agent, or `null` when the agent is missing
+	 * or unpublished. Loads no version row, so callers that only need the id do
+	 * not pay for the version's JSON columns.
+	 */
+	async findActiveVersionId(agentId: string): Promise<string | null> {
+		const row = await this.findOne({
+			where: { id: agentId, scope: projectScope },
+			select: ['id', 'activeVersionId'],
+		});
+		return row?.activeVersionId ?? null;
+	}
+
+	/** The ids, from the given list, that belong to an agent with a published version. */
+	async findPublishedIds(agentIds: string[]): Promise<Set<string>> {
+		if (agentIds.length === 0) return new Set();
+
+		const rows = await this.find({
+			where: { id: In(agentIds), activeVersionId: Not(IsNull()), scope: projectScope },
+			select: ['id'],
+		});
+		return new Set(rows.map((row) => row.id));
+	}
+
+	/**
+	 * Finds agents whose `integrations` JSON column contains an entry matching the
+	 * given `type` + `credentialId`, anywhere on the instance, excluding
+	 * `excludeAgentId`.
+	 *
+	 * Instance-wide, unlike `findByIntegrationCredential`: a vendor app such as an
+	 * Entra or Slack registration is bound to one bot at the vendor, so an agent
+	 * in another project breaks a setup just as surely as one in this project.
+	 *
+	 * Reads only the columns the predicate and the caller need, so an instance
+	 * with large agent configurations does not transfer and parse all of them.
+	 */
+	async findByIntegrationCredentialAnyProject(
+		type: string,
+		credentialId: string,
+		excludeAgentId: string,
+	): Promise<Array<Pick<Agent, 'id' | 'name' | 'integrations'>>> {
+		const agents = await this.find({
+			select: ['id', 'name', 'integrations'],
+			where: { scope: projectScope },
+		});
+		return agents.filter(
+			(agent) =>
+				agent.id !== excludeAgentId &&
+				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
+		);
+	}
+
+	/**
+	 * Finds every agent with a channel of the given type in its `integrations`
+	 * JSON column. The `LIKE` is a portable pre-filter; it can match another
+	 * field, so the exact check still runs in memory.
+	 */
+	async findWithIntegrationType(type: string): Promise<Array<Pick<Agent, 'id' | 'integrations'>>> {
+		const agents = await this.createQueryBuilder('agent')
+			.select(['agent.id', 'agent.integrations'])
+			.where(`CAST(agent.integrations AS TEXT) LIKE :pattern ${LIKE_ESCAPE_CLAUSE}`, {
+				pattern: `%${escapeLike(JSON.stringify(type))}%`,
+			})
+			.getMany();
+		return agents.filter((agent) => (agent.integrations ?? []).some((i) => i.type === type));
 	}
 
 	/**
@@ -244,12 +901,206 @@ export class AgentRepository extends Repository<Agent> {
 		credentialId: string,
 		projectId: string,
 		excludeAgentId: string,
-	): Promise<Agent[]> {
-		const agents = await this.find({ where: { projectId } });
-		return agents.filter(
-			(agent) =>
-				agent.id !== excludeAgentId &&
-				(agent.integrations ?? []).some((i) => i.type === type && i.credentialId === credentialId),
+	): Promise<ProjectAgent[]> {
+		const agents = await this.find({ where: { projectId, scope: projectScope } });
+		return agents
+			.filter(isProjectAgent)
+			.filter(
+				(agent) =>
+					agent.id !== excludeAgentId &&
+					(agent.integrations ?? []).some(
+						(i) => i.type === type && i.credentialId === credentialId,
+					),
+			);
+	}
+
+	/**
+	 * Sets the archive state of an unpublished agent. Advances the publication
+	 * revision so a publication that started before the change loses its fence.
+	 * Returns false when the agent is published or already has this archive state.
+	 */
+	async setArchived(id: string, isArchived: boolean): Promise<boolean> {
+		const result = await this.update(
+			{ id, scope: projectScope, activeVersionId: IsNull(), isArchived: !isArchived },
+			{ isArchived, publicationRevision: () => '"publicationRevision" + 1' },
+		);
+		return (result.affected ?? 0) > 0;
+	}
+
+	/**
+	 * Draft writes do not conflict with publication of a fixed saved version.
+	 * `archive` marks the agent archived in the same write as the unpublication.
+	 */
+	async setActiveVersionFenced(
+		id: string,
+		publicationRevision: number,
+		activeVersionId: string | null,
+		ctx: OperationContext = {},
+		{ archive = false }: { archive?: boolean } = {},
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({
+				activeVersionId,
+				publicationRevision: () => '"publicationRevision" + 1',
+				...(archive ? { isArchived: true } : {}),
+			})
+			.where('id = :id AND "publicationRevision" = :publicationRevision', {
+				id,
+				publicationRevision,
+			})
+			.andWhere(projectScopeUpdateSql)
+			.execute();
+		return (result.affected ?? 0) > 0;
+	}
+
+	/**
+	 * Persists a draft edit behind its own optimistic revision fence. Writes only the draft-owned columns and bumps
+	 * `revision` in SQL, so it can neither clobber `activeVersionId` written by
+	 * a concurrent publish nor mask that publish by writing a stale in-memory
+	 * revision over the row. On a win the in-memory entity's `revision` and
+	 * `updatedAt` are synced to what was written. Returns whether this caller
+	 * won the fence.
+	 */
+	async saveDraftFenced(
+		agent: Agent,
+		ctx: OperationContext = {},
+		metadata: AgentDefinitionMetadata = {},
+		options: { allowArchivedUpdate?: boolean } = {},
+	): Promise<boolean> {
+		// The agent name is also the name of its identity, so both writes share one transaction.
+		return await this.runInTransaction(
+			ctx,
+			async (_tx, txCtx) => await this.writeDraftFenced(agent, txCtx, metadata, options),
 		);
 	}
+
+	private async writeDraftFenced(
+		agent: Agent,
+		ctx: OperationContext,
+		metadata: AgentDefinitionMetadata,
+		{ allowArchivedUpdate = false }: { allowArchivedUpdate?: boolean },
+	): Promise<boolean> {
+		const expectedRevision = agent.revision;
+		const previous = await this.managerFor(ctx).findOne(Agent, {
+			where: { id: agent.id },
+			select: ['integrations', 'name', 'identityId'],
+		});
+		const connectionsChanged = !isEqual(
+			(previous?.integrations ?? []).filter(isCredentialAgentIntegration),
+			(agent.integrations ?? []).filter(isCredentialAgentIntegration),
+		);
+		// Written explicitly (instead of the builder's CURRENT_TIMESTAMP default)
+		// so the in-memory entity can report the exact persisted timestamp.
+		const updatedAt = new Date();
+		const query = this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({
+				name: agent.name,
+				schema: agent.schema,
+				integrations: agent.integrations,
+				tools: agent.tools,
+				versionId: agent.versionId,
+				...(metadata.availableInMCP !== undefined
+					? { availableInMCP: metadata.availableInMCP }
+					: {}),
+				updatedAt,
+				revision: () => 'revision + 1',
+				...(connectionsChanged ? { publicationRevision: () => '"publicationRevision" + 1' } : {}),
+			})
+			.where('id = :id AND revision = :expected', { id: agent.id, expected: expectedRevision })
+			.andWhere(projectScopeUpdateSql);
+		// Archiving does not change the revision. The write must check the stored state.
+		if (!allowArchivedUpdate) query.andWhere('"isArchived" = :isArchived', { isArchived: false });
+		const result = await query.execute();
+		const won = (result.affected ?? 0) > 0;
+		if (won) {
+			// Before the in-memory fields change, so a failed rename leaves the caller's agent as stored.
+			await this.renameIdentity(previous, agent.name, ctx);
+			if (metadata.availableInMCP !== undefined) agent.availableInMCP = metadata.availableInMCP;
+			agent.revision = expectedRevision + 1;
+			agent.updatedAt = updatedAt;
+		}
+		return won;
+	}
+
+	/**
+	 * Keeps the identity and its personal project named after the agent, as a
+	 * person's personal project follows the person. A blank name keeps the last one.
+	 */
+	private async renameIdentity(
+		previous: Pick<Agent, 'name' | 'identityId'> | null,
+		name: string,
+		ctx: OperationContext,
+	) {
+		if (!previous?.identityId || previous.name === name || name.trim() === '') return;
+		await this.serviceAccountRepository.rename(previous.identityId, name, ctx);
+	}
+
+	/** The project of each agent, to send an update push to the right project. */
+	async findProjectIdsByIds(
+		ids: string[],
+		ctx: OperationContext = {},
+	): Promise<Array<ProjectScoped<Pick<Agent, 'id' | 'projectId'>>>> {
+		const agents: Array<Pick<Agent, 'id' | 'projectId'>> = [];
+		// In batches: a skill can have more followers than SQLite allows bound parameters.
+		for (const chunk of chunkIds([...new Set(ids)])) {
+			agents.push(
+				...(await this.managerFor(ctx).find(Agent, {
+					where: { id: In(chunk) },
+					select: ['id', 'projectId'],
+				})),
+			);
+		}
+		return agents.filter(isProjectAgent);
+	}
+
+	async updateDraftSchema(
+		agent: Pick<Agent, 'id' | 'schema' | 'updatedAt'>,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({ schema: agent.schema, updatedAt: agent.updatedAt })
+			.where('id = :id', { id: agent.id })
+			.andWhere(projectScopeUpdateSql)
+			.execute();
+	}
+
+	/**
+	 * Returns up to `limit` published project agents, sorted by id.
+	 * For each agent, it lists the vector store providers of the published version. The draft is ignored.
+	 * To read the next page, pass the last `agentId` of this page as `afterId`.
+	 */
+	async findPublishedVectorStoreProvidersPage(
+		afterId: string | null,
+		limit: number,
+	): Promise<PublishedAgentVectorStores[]> {
+		const query = this.createQueryBuilder('agent')
+			.innerJoin('agent.activeVersion', 'activeVersion')
+			.select(['agent.id', 'activeVersion.versionId', 'activeVersion.schema'])
+			.where(projectScopeSql)
+			.orderBy('agent.id', 'ASC')
+			.limit(limit);
+
+		if (afterId) {
+			query.andWhere('agent.id > :afterId', { afterId });
+		}
+
+		const agents = await query.getMany();
+
+		return agents.map((agent) => ({
+			agentId: agent.id,
+			vectorStoreProviders: (agent.activeVersion?.schema?.vectorStores ?? []).map(
+				(vectorStore) => vectorStore.provider,
+			),
+		}));
+	}
+}
+
+function projectAgentOrNull(agent: Agent | null): ProjectAgent | null {
+	return agent && isProjectAgent(agent) ? agent : null;
 }

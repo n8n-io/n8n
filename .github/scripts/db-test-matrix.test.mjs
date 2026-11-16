@@ -1,0 +1,288 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+
+import {
+	buildJobMatrices,
+	buildMatrix,
+	INTEGRATION_SHARDS,
+	readPostgresVersions,
+	POSTGRES_VERSIONS_PATH,
+} from './db-test-matrix.mjs';
+
+// node --test ./.github/scripts/db-test-matrix.test.mjs
+
+const versions = () => ({
+	primary: 'postgres:18.4-alpine',
+	matrix: [
+		{ major: 16, support: 'compatibility', image: 'postgres:16.14-alpine' },
+		{ major: 17, support: 'supported', image: 'postgres:17.10-alpine' },
+		{ major: 18, support: 'supported', image: 'postgres:18.4-alpine' },
+	],
+});
+
+describe('postgres-versions.json', () => {
+	it('is valid, so the DB workflow can build a matrix from it', () => {
+		assert.doesNotThrow(() => buildMatrix(readPostgresVersions()));
+	});
+
+	it('covers the supported range plus one compatibility major', () => {
+		const { matrix } = readPostgresVersions();
+
+		const supported = matrix.filter((entry) => entry.support === 'supported');
+		const compatibility = matrix.filter((entry) => entry.support === 'compatibility');
+
+		assert.equal(supported.length, 2, `${POSTGRES_VERSIONS_PATH}: expected two supported majors`);
+		assert.equal(
+			compatibility.length,
+			1,
+			`${POSTGRES_VERSIONS_PATH}: expected one compatibility major`,
+		);
+		assert.ok(compatibility[0].major < Math.min(...supported.map((entry) => entry.major)));
+	});
+});
+
+describe('buildMatrix', () => {
+	it('emits one leg per database', () => {
+		const legs = buildMatrix(versions());
+
+		assert.deepEqual(
+			legs.map((leg) => leg.name),
+			['SQLite Pooled', 'Postgres 16', 'Postgres 17', 'Postgres 18'],
+		);
+	});
+
+	it('passes each Postgres leg its own pinned image', () => {
+		const legs = buildMatrix(versions());
+
+		assert.deepEqual(
+			legs.filter((leg) => leg.TEST_IMAGE_POSTGRES).map((leg) => leg.TEST_IMAGE_POSTGRES),
+			['postgres:16.14-alpine', 'postgres:17.10-alpine', 'postgres:18.4-alpine'],
+		);
+		assert.equal(legs[0].TEST_IMAGE_POSTGRES, undefined, 'SQLite leg needs no Postgres image');
+	});
+
+	it('runs every leg against both the integration and the migration suite', () => {
+		for (const leg of buildMatrix(versions())) {
+			assert.ok(leg['test-cmd'], `${leg.name} has no test command`);
+			assert.ok(leg['migration-cmd'], `${leg.name} has no migration command`);
+		}
+	});
+
+	it('collects coverage on the primary Postgres leg in pr scope only', () => {
+		const legs = buildMatrix(versions(), 'pr');
+
+		const collecting = legs.filter((leg) => leg.collectCoverage === 'true');
+		assert.deepEqual(
+			collecting.map((leg) => leg.name),
+			['Postgres 18'],
+		);
+	});
+
+	it('does not collect coverage in full scope', () => {
+		const legs = buildMatrix(versions(), 'full');
+
+		assert.equal(
+			legs.some((leg) => leg.collectCoverage === 'true'),
+			false,
+		);
+	});
+
+	it('checks schema docs on the primary Postgres leg only', () => {
+		const legs = buildMatrix(versions());
+
+		const checkingPostgresSchema = legs.filter(
+			(leg) => leg['schema-check-cmd'] === 'pnpm --filter=@n8n/db schema:check:postgres',
+		);
+		assert.deepEqual(
+			checkingPostgresSchema.map((leg) => leg.name),
+			['Postgres 18'],
+		);
+		const skipping = legs.filter((leg) => leg['schema-check-cmd'] === '');
+		assert.deepEqual(
+			skipping.map((leg) => leg.name),
+			['Postgres 16', 'Postgres 17'],
+		);
+	});
+
+	it('still checks the SQLite schema docs', () => {
+		const legs = buildMatrix(versions());
+
+		assert.equal(legs[0]['schema-check-cmd'], 'pnpm --filter=@n8n/db schema:check:sqlite');
+	});
+
+	it('rejects a primary that is not the newest major', () => {
+		const stale = { ...versions(), primary: 'postgres:17.10-alpine' };
+
+		assert.throws(() => buildMatrix(stale), /"primary".*must be the newest/);
+	});
+
+	it('rejects majors that are not in ascending order', () => {
+		const unsorted = versions();
+		[unsorted.matrix[0], unsorted.matrix[1]] = [unsorted.matrix[1], unsorted.matrix[0]];
+
+		assert.throws(() => buildMatrix(unsorted), /ascending major, got 17, 16, 18/);
+	});
+
+	it('rejects a floating image tag', () => {
+		const floating = {
+			primary: 'postgres:18-alpine',
+			matrix: [{ major: 18, image: 'postgres:18-alpine' }],
+		};
+
+		assert.throws(() => buildMatrix(floating), /must pin an exact minor/);
+	});
+
+	it('rejects an image whose major disagrees with its entry', () => {
+		const mismatched = {
+			primary: 'postgres:17.10-alpine',
+			matrix: [{ major: 18, image: 'postgres:17.10-alpine' }],
+		};
+
+		assert.throws(() => buildMatrix(mismatched), /does not match major 18/);
+	});
+
+	it('rejects an empty matrix', () => {
+		assert.throws(() => buildMatrix({ primary: 'postgres:18.4-alpine', matrix: [] }), /non-empty/);
+	});
+
+	it('keeps only SQLite and the primary Postgres leg in pr scope', () => {
+		const legs = buildMatrix(versions(), 'pr');
+
+		assert.deepEqual(
+			legs.map((leg) => leg.name),
+			['SQLite Pooled', 'Postgres 18'],
+		);
+	});
+
+	it('keeps SQLite and the primary Postgres leg without coverage in queue scope', () => {
+		const legs = buildMatrix(versions(), 'queue');
+
+		assert.deepEqual(
+			legs.map((leg) => [leg.name, leg.collectCoverage]),
+			[
+				['SQLite Pooled', 'false'],
+				['Postgres 18', 'false'],
+			],
+		);
+		assert.equal(legs[1]['schema-check-cmd'], 'pnpm --filter=@n8n/db schema:check:postgres');
+	});
+
+	it('keeps every Postgres leg in full scope', () => {
+		const legs = buildMatrix(versions(), 'full');
+
+		assert.deepEqual(
+			legs.map((leg) => leg.name),
+			['SQLite Pooled', 'Postgres 16', 'Postgres 17', 'Postgres 18'],
+		);
+	});
+
+	it('validates the full version list even in pr scope', () => {
+		const stale = { ...versions(), primary: 'postgres:17.10-alpine' };
+
+		assert.throws(() => buildMatrix(stale, 'pr'), /"primary".*must be the newest/);
+	});
+
+	it('rejects an unknown scope', () => {
+		assert.throws(() => buildMatrix(versions(), 'nightly'), /Unknown scope/);
+	});
+});
+
+describe('buildJobMatrices', () => {
+	const shardFlags = Array.from(
+		{ length: INTEGRATION_SHARDS },
+		(_, i) => `--shard=${i + 1}/${INTEGRATION_SHARDS}`,
+	);
+
+	it('splits the integration suite of every leg, SQLite and Postgres alike', () => {
+		const { integration } = buildJobMatrices(versions());
+
+		for (const leg of buildMatrix(versions())) {
+			const jobs = integration.filter((job) => job.name.startsWith(`${leg.name} Integration`));
+			assert.deepEqual(
+				jobs.map((job) => job['test-cmd']),
+				shardFlags.map((flag) => `${leg['test-cmd']} ${flag}`),
+			);
+		}
+	});
+
+	it('runs the unsharded steps once per leg, on the first shard', () => {
+		const { integration } = buildJobMatrices(versions());
+
+		assert.deepEqual(
+			integration.filter((job) => job['packaged-modules-cmd']).map((job) => job.name),
+			[
+				'Postgres 16 Integration (1/2)',
+				'Postgres 17 Integration (1/2)',
+				'Postgres 18 Integration (1/2)',
+			],
+		);
+		assert.deepEqual(
+			integration.filter((job) => job['schema-check-cmd']).map((job) => job.name),
+			['SQLite Pooled Integration (1/2)', 'Postgres 18 Integration (1/2)'],
+		);
+	});
+
+	it('keeps the SQLite integration jobs in pr scope without the CLI integration signal', () => {
+		const { integration } = buildJobMatrices(versions(), 'pr');
+
+		assert.deepEqual(
+			integration.map((job) => job.name),
+			[
+				'SQLite Pooled Integration (1/2)',
+				'SQLite Pooled Integration (2/2)',
+				'Postgres 18 Integration (1/2)',
+				'Postgres 18 Integration (2/2)',
+			],
+		);
+	});
+
+	it('drops the SQLite integration jobs when the CLI integration job runs and moves their schema check', () => {
+		const { integration, migration } = buildJobMatrices(versions(), 'pr', {
+			cliIntegrationRuns: true,
+		});
+
+		assert.deepEqual(
+			integration.map((job) => job.name),
+			['Postgres 18 Integration (1/2)', 'Postgres 18 Integration (2/2)'],
+		);
+		assert.equal(
+			integration[0]['schema-check-cmd'],
+			'pnpm --filter=@n8n/db schema:check:postgres && pnpm --filter=@n8n/db schema:check:sqlite',
+		);
+		assert.deepEqual(
+			migration.map((job) => job.name),
+			['SQLite Pooled Migrations', 'Postgres 18 Migrations'],
+		);
+	});
+
+	it('moves the SQLite schema check to the primary Postgres leg in queue scope', () => {
+		const { integration } = buildJobMatrices(versions(), 'queue', { cliIntegrationRuns: true });
+
+		assert.deepEqual(
+			integration.map((job) => job.name),
+			['Postgres 18 Integration (1/2)', 'Postgres 18 Integration (2/2)'],
+		);
+		assert.equal(
+			integration[0]['schema-check-cmd'],
+			'pnpm --filter=@n8n/db schema:check:postgres && pnpm --filter=@n8n/db schema:check:sqlite',
+		);
+	});
+
+	it('does not split the migration suite', () => {
+		const { migration } = buildJobMatrices(versions());
+
+		assert.deepEqual(
+			migration.map((job) => job.name),
+			[
+				'SQLite Pooled Migrations',
+				'Postgres 16 Migrations',
+				'Postgres 17 Migrations',
+				'Postgres 18 Migrations',
+			],
+		);
+		assert.equal(
+			migration.some((job) => job['migration-cmd'].includes('--shard')),
+			false,
+		);
+	});
+});

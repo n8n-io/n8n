@@ -12,8 +12,19 @@ export interface ExecutionEnqueuedEvent {
 	executionId: string;
 }
 
+/**
+ * A step has reached a terminal state — completed, failed, or skipped.
+ * Carries ids only, like `step:ready` — the consumer reads the step row
+ * for the outcome.
+ */
+export interface StepSettledEvent {
+	type: 'step:settled';
+	executionId: string;
+	stepId: string;
+}
+
 /** Messages consumed by the orchestration worker. */
-export type OrchestrationMessage = ExecutionEnqueuedEvent;
+export type OrchestrationMessage = ExecutionEnqueuedEvent | StepSettledEvent;
 
 export interface StepReadyEvent {
 	type: 'step:ready';
@@ -21,16 +32,23 @@ export interface StepReadyEvent {
 	stepId: string;
 }
 
-/** Messages consumed by the step worker (CAT-2870). */
+/** Messages consumed by the step worker. */
 export type StepMessage = StepReadyEvent;
 
 export interface WorkQueue<TMessage> {
 	publish(message: TMessage): Promise<void>;
-	/** Register the single consumer; dispatch begins for queued and future messages. */
+	/**
+	 * Register the single consumer; dispatch begins for queued and future
+	 * messages. The adapter runs up to its concurrency limit of handlers at once
+	 * and does not promise a delivery order. When a handler finishes, the adapter
+	 * starts the next queued message. A handler that throws frees its slot. Its
+	 * error affects only its own message.
+	 */
 	start(handler: (message: TMessage) => Promise<void>): void;
 	/**
-	 * Stop consuming; awaits any in-flight handler and leaves queued messages
-	 * unconsumed. Never blocks on work no longer being dispatched.
+	 * Stop consuming. Starts no new message, waits for every in-flight handler
+	 * and leaves queued messages unconsumed. Never blocks on work no longer
+	 * being dispatched.
 	 */
 	stop(): Promise<void>;
 }

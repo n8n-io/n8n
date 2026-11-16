@@ -6,12 +6,10 @@ import {
 } from 'n8n-workflow';
 import {
 	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
-	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
-	SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
+	getWorkflowToolIncompatibilityReason,
 } from '@n8n/api-types';
 import nodePopularity from 'virtual:node-popularity-data';
 
-import { AI_SECTION_RECOMMENDED_TOOLS } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { ToolCategoryKey } from '@/features/shared/toolsConnection/types';
@@ -19,10 +17,6 @@ import type { IWorkflowDb } from '@/Interface';
 import { isMcpRelatedNodeType } from './useMcpServerAdapter';
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
-const supportedWorkflowToolTriggerTypes = new Set<string>(SUPPORTED_WORKFLOW_TOOL_TRIGGERS);
-const incompatibleWorkflowToolBodyNodeTypes = new Set<string>(
-	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
-);
 const hiddenAvailableToolNodeTypes = new Set<string>(
 	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
 );
@@ -37,38 +31,20 @@ function isHiddenAvailableToolType(nodeType: INodeTypeDescription): boolean {
 	return hiddenAvailableToolNodeTypes.has(nodeType.name);
 }
 
-function hasToolsSubcategory(nodeType: INodeTypeDescription, subcategory: string): boolean {
-	return nodeType.codex?.subcategories?.Tools?.includes(subcategory) ?? false;
-}
-
-export function isAvailableN8nToolType(nodeType: INodeTypeDescription): boolean {
-	return hasToolsSubcategory(nodeType, AI_SECTION_RECOMMENDED_TOOLS);
-}
-
 export function isWorkflowCompatibleWithAgentTools(workflow: IWorkflowDb): boolean {
-	const nodes = workflow.nodes ?? [];
-	const hasSupportedTrigger = nodes.some((node) =>
-		supportedWorkflowToolTriggerTypes.has(node.type),
-	);
-	const hasIncompatibleBodyNode = nodes.some((node) =>
-		incompatibleWorkflowToolBodyNodeTypes.has(node.type),
-	);
-	return hasSupportedTrigger && !hasIncompatibleBodyNode;
+	return getWorkflowToolIncompatibilityReason(workflow) === null;
 }
 
 /**
  * Tab a node type belongs to in the tools connection modal.
  *
- * Community packages list alongside first-party ones in the app-action tab, but
- * are still matched first, by provenance rather than install state: that stops a
- * third-party package claiming the n8n tab through a self-declared "Recommended
- * Tools" codex subcategory. Nothing is taken from the MCP tab, which only
- * matches first-party names.
+ * MCP tools keep their own tab. All other tools use the n8n nodes tab.
+ * Community packages are still matched first by provenance so they cannot
+ * claim another category through their metadata.
  */
 export function toolCategoryForNodeType(nodeType: INodeTypeDescription): ToolCategoryKey {
 	if (isCommunityPackageName(nodeType.name)) return 'app-action';
 	if (isMcpRelatedNodeType(nodeType.name)) return 'mcp';
-	if (isAvailableN8nToolType(nodeType)) return 'n8n';
 	return 'app-action';
 }
 
@@ -77,7 +53,7 @@ export function toolCategoryForNodeType(nodeType: INodeTypeDescription): ToolCat
  * truth. Every category `toolCategoryForNodeType` can return must appear here:
  * `indexOf` returns -1 for a missing one, which would sort it ahead of the rest.
  */
-const NODE_CATEGORY_ORDER: ToolCategoryKey[] = ['mcp', 'n8n', 'app-action'];
+const NODE_CATEGORY_ORDER: ToolCategoryKey[] = ['mcp', 'app-action'];
 
 function nodeTypeOrderRank(nodeType: INodeTypeDescription): number {
 	return NODE_CATEGORY_ORDER.indexOf(toolCategoryForNodeType(nodeType));
@@ -136,15 +112,28 @@ export function useAgentToolCatalog() {
 		),
 	);
 
-	async function loadWorkflows(projectId?: string): Promise<void> {
+	async function loadWorkflows(projectId?: string): Promise<boolean> {
 		try {
+			// `connections` is needed to scope the compatibility check to nodes
+			// actually reachable from a supported trigger. A null `activeVersionId`
+			// marks unpublished workflows (shown by the tool config panel).
 			projectWorkflows.value = await workflowsListStore.searchWorkflows({
 				projectId,
-				triggerNodeTypes: [...SUPPORTED_WORKFLOW_TOOL_TRIGGERS],
-				select: ['id', 'name', 'description', 'isArchived', 'nodes', 'updatedAt'],
+				select: [
+					'id',
+					'name',
+					'description',
+					'isArchived',
+					'activeVersionId',
+					'nodes',
+					'connections',
+					'updatedAt',
+				],
 			});
+			return true;
 		} catch (error) {
 			console.warn('[useAgentToolCatalog] failed to load workflows for project', error);
+			return false;
 		}
 	}
 

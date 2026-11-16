@@ -1,7 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import crypto from 'crypto';
-import { HITL_CALLBACK_PREFIX, TELEGRAM_HITL_WEBHOOK_SUFFIX } from 'n8n-core';
+import {
+	HITL_CALLBACK_PREFIX,
+	HITL_CALLBACK_PREFIX_V2,
+	TELEGRAM_HITL_WEBHOOK_SUFFIX,
+} from 'n8n-core';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -12,6 +16,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
+import type { TelegramWebhookInfo } from './GenericFunctions';
 import { apiRequest, getSecretToken } from './GenericFunctions';
 import { deriveHitlSecretToken } from './hitl/tokens';
 import type { IEvent } from './IEvent';
@@ -235,14 +240,18 @@ export class TelegramTrigger implements INodeType {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const endpoint = 'getWebhookInfo';
-				const webhookReturnData = await apiRequest.call(this, 'POST', endpoint, {});
+				const webhookReturnData = (await apiRequest.call(
+					this,
+					'POST',
+					endpoint,
+					{},
+				)) as TelegramWebhookInfo;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
-				if (webhookReturnData.result.url === webhookUrl) {
-					return true;
-				}
-
-				return false;
+				// A response without a result carries no registered URL, so report that no
+				// webhook exists. The caller then creates one, which surfaces a problem with
+				// the endpoint as a node error.
+				return webhookReturnData?.result?.url === webhookUrl;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
@@ -318,7 +327,14 @@ export class TelegramTrigger implements INodeType {
 			}
 		}
 
-		if (bodyData.callback_query?.data?.startsWith(HITL_CALLBACK_PREFIX)) {
+		// Only versions that verified the secret above may forward, because forwarding
+		// attaches the HITL secret token to the request.
+		const callbackData = bodyData.callback_query?.data;
+		if (
+			nodeVersion > 1 &&
+			(callbackData?.startsWith(HITL_CALLBACK_PREFIX) ||
+				callbackData?.startsWith(HITL_CALLBACK_PREFIX_V2))
+		) {
 			// Forward the raw update to the fixed HITL endpoint instead of starting this
 			// trigger's workflow. This trigger never learns HITL internals; the endpoint
 			// and the Telegram node's own webhook handler do all verification. Best-effort:

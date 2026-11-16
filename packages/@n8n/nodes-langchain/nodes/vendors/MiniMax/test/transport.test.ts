@@ -1,8 +1,14 @@
 import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
-import { apiRequest, pollVideoTask, getVideoDownloadUrl } from '../transport';
+import {
+	apiRequest,
+	generateVideo,
+	pollVideoTask,
+	pollVideoTaskV2,
+	getVideoDownloadUrl,
+} from '../transport';
 
 vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn(),
@@ -36,15 +42,20 @@ describe('MiniMax Transport', () => {
 			const mockResponse = { choices: [{ message: { content: 'hello' } }] };
 			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue(mockResponse);
 
-			const result = await apiRequest.call(mockExecuteFunctions, 'POST', '/chat/completions', {
-				body: { model: 'MiniMax-M2.7', messages: [] },
-			});
+			const result = await apiRequest.call(
+				mockExecuteFunctions,
+				'POST',
+				requestPath`/v1/chat/completions`,
+				{
+					body: { model: 'MiniMax-M2.7', messages: [] },
+				},
+			);
 
 			expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'minimaxApi',
 				expect.objectContaining({
 					method: 'POST',
-					url: 'https://api.minimax.io/v1/chat/completions',
+					url: requestUrl`https://api.minimax.io/v1/chat/completions`,
 					body: { model: 'MiniMax-M2.7', messages: [] },
 					json: true,
 				}),
@@ -55,7 +66,7 @@ describe('MiniMax Transport', () => {
 		it('should pass through query string parameters', async () => {
 			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({});
 
-			await apiRequest.call(mockExecuteFunctions, 'GET', '/query/video_generation', {
+			await apiRequest.call(mockExecuteFunctions, 'GET', requestPath`/v1/query/video_generation`, {
 				qs: { task_id: 'task-123' },
 			});
 
@@ -63,7 +74,7 @@ describe('MiniMax Transport', () => {
 				'minimaxApi',
 				expect.objectContaining({
 					method: 'GET',
-					url: 'https://api.minimax.io/v1/query/video_generation',
+					url: requestUrl`https://api.minimax.io/v1/query/video_generation`,
 					qs: { task_id: 'task-123' },
 				}),
 			);
@@ -76,12 +87,50 @@ describe('MiniMax Transport', () => {
 			});
 			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({});
 
-			await apiRequest.call(mockExecuteFunctions, 'GET', '/files/retrieve');
+			await apiRequest.call(mockExecuteFunctions, 'GET', requestPath`/v1/files/retrieve`);
 
 			expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
 				'minimaxApi',
 				expect.objectContaining({
-					url: 'https://api.minimaxi.com/v1/files/retrieve',
+					url: requestUrl`https://api.minimaxi.com/v1/files/retrieve`,
+				}),
+			);
+		});
+	});
+
+	it('should encode path values that contain a slash', async () => {
+		mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({
+			task: { status: 'succeeded', content: { url: 'https://cdn.minimax.io/videos/h3.mp4' } },
+		});
+
+		await pollVideoTaskV2.call(mockExecuteFunctions, 'task_1/files', 0);
+
+		expect(
+			String(mockExecuteFunctions.helpers.httpRequestWithAuthentication.mock.calls[0][1].url),
+		).toBe('https://api.minimax.io/v2/query/video_generation/task_1%2Ffiles');
+	});
+
+	describe('versioned API URLs', () => {
+		it.each([
+			['https://api.minimax.io/v1', 'https://api.minimax.io/v2/video_generation'],
+			['https://api.minimaxi.com/v1', 'https://api.minimaxi.com/v2/video_generation'],
+		])('should derive the V2 URL from %s', async (credentialUrl, expectedUrl) => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				apiKey: 'test-key',
+				url: credentialUrl,
+			});
+			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({});
+
+			await apiRequest.call(mockExecuteFunctions, 'POST', requestPath`/v2/video_generation`, {
+				body: { model: 'MiniMax-H3' },
+			});
+
+			expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'minimaxApi',
+				expect.objectContaining({
+					method: 'POST',
+					url: requestUrl`${expectedUrl}`,
+					body: { model: 'MiniMax-H3' },
 				}),
 			);
 		});
@@ -129,6 +178,107 @@ describe('MiniMax Transport', () => {
 			await expect(pollVideoTask.call(mockExecuteFunctions, 'task-timeout', 0)).rejects.toThrow(
 				/did not complete within the maximum polling time/,
 			);
+		});
+	});
+
+	describe('pollVideoTaskV2', () => {
+		it('should return video URL when task status is succeeded', async () => {
+			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({
+				task: {
+					status: 'succeeded',
+					content: { url: 'https://cdn.minimax.io/videos/h3.mp4' },
+				},
+			});
+
+			const result = await pollVideoTaskV2.call(mockExecuteFunctions, 'task-h3', 0);
+
+			expect(result).toEqual({
+				videoUrl: 'https://cdn.minimax.io/videos/h3.mp4',
+				status: 'succeeded',
+			});
+			expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'minimaxApi',
+				expect.objectContaining({
+					method: 'GET',
+					url: requestUrl`https://api.minimax.io/v2/query/video_generation/task-h3`,
+				}),
+			);
+		});
+
+		it('should throw NodeOperationError when task status is failed', async () => {
+			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({
+				task: {
+					status: 'failed',
+					error: { code: '1026', message: 'Content rejected' },
+				},
+			});
+
+			await expect(pollVideoTaskV2.call(mockExecuteFunctions, 'task-h3', 0)).rejects.toThrow(
+				'Task failed: [1026] Content rejected',
+			);
+		});
+
+		it('should stop polling when execution is cancelled', async () => {
+			const abortController = new AbortController();
+			abortController.abort();
+			mockExecuteFunctions.getExecutionCancelSignal.mockReturnValue(abortController.signal);
+
+			await expect(pollVideoTaskV2.call(mockExecuteFunctions, 'task-h3', 0)).rejects.toThrow();
+			expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it('should throw timeout error when max poll attempts are exceeded', async () => {
+			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({
+				task: { status: 'running' },
+			});
+
+			await expect(pollVideoTaskV2.call(mockExecuteFunctions, 'task-timeout', 0)).rejects.toThrow(
+				/did not complete within the maximum polling time/,
+			);
+		});
+	});
+
+	describe('generateVideo', () => {
+		it('should create and resolve a V2 video task', async () => {
+			mockExecuteFunctions.helpers.httpRequestWithAuthentication
+				.mockResolvedValueOnce({ task_id: 'task-h3' })
+				.mockResolvedValueOnce({
+					task: {
+						status: 'succeeded',
+						content: { url: 'https://cdn.minimax.io/videos/h3.mp4' },
+					},
+				});
+
+			const result = await generateVideo.call(mockExecuteFunctions, 'v2', {
+				model: 'MiniMax-H3',
+			});
+
+			expect(result).toEqual({
+				videoUrl: 'https://cdn.minimax.io/videos/h3.mp4',
+				taskId: 'task-h3',
+			});
+		});
+
+		it('should preserve the V1 file ID output', async () => {
+			mockExecuteFunctions.helpers.httpRequestWithAuthentication
+				.mockResolvedValueOnce({
+					task_id: 'task-v1',
+					base_resp: { status_code: 0, status_msg: 'success' },
+				})
+				.mockResolvedValueOnce({ status: 'Success', file_id: 'file-v1' })
+				.mockResolvedValueOnce({
+					file: { download_url: 'https://cdn.minimax.io/videos/v1.mp4' },
+				});
+
+			const result = await generateVideo.call(mockExecuteFunctions, 'v1', {
+				model: 'MiniMax-Hailuo-2.3',
+			});
+
+			expect(result).toEqual({
+				videoUrl: 'https://cdn.minimax.io/videos/v1.mp4',
+				taskId: 'task-v1',
+				fileId: 'file-v1',
+			});
 		});
 	});
 

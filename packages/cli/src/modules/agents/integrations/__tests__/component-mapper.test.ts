@@ -1,4 +1,7 @@
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import type { AgentRepository } from '../../repositories/agent.repository';
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/naming-convention -- mocks the Slack-style SDK (PascalCase components) and intentionally uses any-based factory wrappers */
 // Define mocks inline inside the factory to avoid vi.mock hoisting issues
 type MockFn = Mock<(...args: any[]) => any>;
@@ -70,7 +73,7 @@ vi.mock('../esm-loader', () => {
 
 import { ComponentMapper } from '../component-mapper';
 import { ChatIntegrationRegistry } from '../agent-chat-integration';
-import { SlackIntegration } from '../platforms/slack-integration';
+import { SlackIntegration } from '../platforms/slack/slack-integration';
 import { Container } from '@n8n/di';
 
 describe('ComponentMapper', () => {
@@ -319,9 +322,13 @@ describe('ComponentMapper', () => {
 			expect(mockCard).toHaveBeenCalledWith(expect.objectContaining({ title: 'Schedule session' }));
 		});
 
-		it('should wrap button values using resume schema with approved property', async () => {
+		it.each([
+			['true', { approved: true }],
+			['false', { approved: false }],
+			['session', { approved: true, scope: 'session' }],
+		])('wraps approval button value %s', async (value, decision) => {
 			const payload = {
-				components: [{ type: 'button', label: 'Approve', value: 'true', style: 'primary' }],
+				components: [{ type: 'button', label: 'Approve', value, style: 'primary' }],
 			};
 			const resumeSchema = {
 				type: 'object',
@@ -331,7 +338,7 @@ describe('ComponentMapper', () => {
 			await mapper.toCard(payload, runId, toolCallId, resumeSchema);
 
 			expect(mockButton).toHaveBeenCalledWith(
-				expect.objectContaining({ value: JSON.stringify({ approved: true }) }),
+				expect.objectContaining({ value: JSON.stringify(decision) }),
 			);
 		});
 
@@ -438,6 +445,44 @@ describe('ComponentMapper', () => {
 			expect(mockActions).toHaveBeenCalled();
 		});
 
+		it('passes a select id through verbatim only when it exactly matches the generated resume: shape for this run', async () => {
+			const payload = {
+				components: [
+					{
+						type: 'select' as const,
+						id: `resume:${runId}:${toolCallId}:0`,
+						label: 'Difficulty',
+						options: [{ label: 'Easy', value: 'easy' }],
+					},
+				],
+			};
+			await mapper.toCard(payload, runId, toolCallId);
+			expect(mockSelect).toHaveBeenCalledWith(
+				expect.objectContaining({ id: `resume:${runId}:${toolCallId}:0` }),
+			);
+		});
+
+		it('does not treat a select id merely starting with "resume:" from a different run as generated', async () => {
+			const payload = {
+				components: [
+					{
+						type: 'select' as const,
+						id: 'resume:other-run:other-tool:0',
+						label: 'Difficulty',
+						options: [{ label: 'Easy', value: 'easy' }],
+					},
+				],
+			};
+			await mapper.toCard(payload, runId, toolCallId);
+			// Falls back to the normal ri-sel: wrapping — the id is treated as an
+			// opaque component id, not parsed as our own generated shape.
+			expect(mockSelect).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: `ri-sel:resume:other-run:other-tool:0:${runId}:${toolCallId}`,
+				}),
+			);
+		});
+
 		it('should map radio_select components wrapped in Actions', async () => {
 			const payload = {
 				components: [
@@ -465,7 +510,7 @@ describe('ComponentMapper', () => {
 
 		it('should preserve radio_select components for Slack cards', async () => {
 			const registry = new ChatIntegrationRegistry();
-			registry.register(new SlackIntegration());
+			registry.register(new SlackIntegration(mock<AgentRepository>()));
 			Container.set(ChatIntegrationRegistry, registry);
 
 			const payload = {

@@ -1,13 +1,17 @@
+import { agentEvalVerdictSchema } from '@n8n/api-types';
 import type {
 	AgentEvalDatasetRecord,
+	AgentEvalVerdict,
+	AgentEvalRatingRecord,
 	AgentEvalResultRecord,
 	AgentEvalRunRecord,
 	DataTableDatasetRef,
 	DatasetRef,
 	GoogleSheetsDatasetRef,
 } from '@n8n/api-types';
-import type { AgentEvalDataset, AgentEvalResult, AgentEvalRun } from '@n8n/db';
-import { UnexpectedError } from 'n8n-workflow';
+import type { AgentEvalDataset, AgentEvalRating, AgentEvalResult, AgentEvalRun } from '@n8n/db';
+import type { JsonObject } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 /**
  * Entity → wire-record mappers. Mapped field-by-field so dates serialize as ISO
@@ -76,6 +80,18 @@ export function toRunRecord(run: AgentEvalRun): AgentEvalRunRecord {
 	};
 }
 
+/**
+ * Narrows the entity's generic `JsonObject` column to the typed verdict shape.
+ * Only this module ever writes the column (with the completed result, or through
+ * `updateVerdict` for a user's acceptance), so a row that fails this parse means a future schema change left stale data behind —
+ * reads as ungraded rather than throwing.
+ */
+function toVerdictRecord(verdict: JsonObject | null): AgentEvalVerdict | null {
+	if (!verdict) return null;
+	const parsed = agentEvalVerdictSchema.safeParse(verdict);
+	return parsed.success ? parsed.data : null;
+}
+
 export function toResultRecord(result: AgentEvalResult): AgentEvalResultRecord {
 	return {
 		id: result.id,
@@ -87,11 +103,25 @@ export function toResultRecord(result: AgentEvalResult): AgentEvalResultRecord {
 		output: result.output,
 		toolCalls: result.toolCalls,
 		metrics: result.metrics,
+		verdict: toVerdictRecord(result.verdict),
 		runAt: toIso(result.runAt),
 		completedAt: toIso(result.completedAt),
 		errorCode: result.errorCode,
 		errorDetails: result.errorDetails,
 		createdAt: result.createdAt.toISOString(),
 		updatedAt: result.updatedAt.toISOString(),
+	};
+}
+
+export function toRatingRecord(rating: AgentEvalRating): AgentEvalRatingRecord {
+	return {
+		id: rating.id,
+		resultId: rating.resultId,
+		vote: rating.vote,
+		comment: rating.comment,
+		correction: rating.correction,
+		ratedById: rating.ratedById,
+		createdAt: rating.createdAt.toISOString(),
+		updatedAt: rating.updatedAt.toISOString(),
 	};
 }

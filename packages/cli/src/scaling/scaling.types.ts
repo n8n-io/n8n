@@ -3,6 +3,7 @@ import type Bull from 'bull';
 import type {
 	ExecutionError,
 	ExecutionStatus,
+	IDataObject,
 	IExecuteResponsePromiseData,
 	IRun,
 	StructuredChunk,
@@ -20,10 +21,15 @@ export type JobData = {
 	executionId: string;
 	loadStaticData: boolean;
 	pushRef?: string;
+	/** The user who owns `pushRef`, so the worker can route push messages to that user. */
+	pushRefUserId?: string;
 	streamingEnabled?: boolean;
+	/** What on main awaits this run's outcome, see IWorkflowExecutionDataProcess. */
+	callerAwaitsOutcome?: 'none' | 'response' | 'completion';
 	restartExecutionId?: string;
 	projectId?: string;
 	projectName?: string;
+	poolName?: string;
 
 	/** Manual-execution identity, so offloaded manual runs resolve private credentials on the worker. */
 	encryptedRunnerIdentity?: string;
@@ -44,6 +50,8 @@ export type JobData = {
 		/** The n8n node name that provides this tool. */
 		sourceNodeName?: string;
 	};
+	/** The MCP request as node input, so the worker gives the tool node the same `$json` as direct mode. */
+	mcpToolInput?: IDataObject;
 };
 
 export type JobResult = {
@@ -86,9 +94,12 @@ export type JobFinishedProps = {
 	waitTill?: Date | null;
 	startedAt: Date;
 	stoppedAt: Date;
+	failedBeforeStart?: true;
+	nodeTimeSavedMinutes?: number;
 };
 
 /** Message sent by worker to main to report a job has finished. */
+// oxlint-disable-next-line typescript/no-deprecated
 export type JobFinishedMessage = JobFinishedMessageV1 | JobFinishedMessageV2;
 
 /** @deprecated Old format without execution result details. */
@@ -142,6 +153,11 @@ export type AbortJobMessage = {
 
 export type RunningJob = RunningJobSummary & {
 	run: PCancelable<IRun>;
+	/**
+	 * Present only when the job may be suspended at worker shutdown. Returns
+	 * false while the run still owes its webhook caller a response.
+	 */
+	suspend?: () => boolean;
 };
 
 export type QueueRecoveryContext = {

@@ -1,6 +1,7 @@
 import moment from 'moment-timezone';
 import {
 	type IExecuteFunctions,
+	requestPath,
 	type IDataObject,
 	type ILoadOptionsFunctions,
 	type INodeExecutionData,
@@ -162,10 +163,10 @@ export class Zoom implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				qs = {};
-				//https://marketplace.zoom.us/docs/api-reference/zoom-api/
+				//https://developers.zoom.us/docs/api/
 				if (resource === 'meeting') {
 					if (operation === 'get') {
-						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meeting
+						//https://developers.zoom.us/docs/api/meetings/#tag/meetings/get/meetings/{meetingId}
 						const meetingId = this.getNodeParameter('meetingId', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -177,10 +178,16 @@ export class Zoom implements INodeType {
 							qs.occurrence_id = additionalFields.occurrenceId as string;
 						}
 
-						responseData = await zoomApiRequest.call(this, 'GET', `/meetings/${meetingId}`, {}, qs);
+						responseData = await zoomApiRequest.call(
+							this,
+							'GET',
+							requestPath`/meetings/${meetingId}`,
+							{},
+							qs,
+						);
 					}
 					if (operation === 'getAll') {
-						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetings
+						//https://developers.zoom.us/docs/api/meetings/#tag/meetings/get/users/{userId}/meetings
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const filters = this.getNodeParameter('filters', i);
@@ -193,18 +200,24 @@ export class Zoom implements INodeType {
 								this,
 								'meetings',
 								'GET',
-								'/users/me/meetings',
+								requestPath`/users/me/meetings`,
 								{},
 								qs,
 							);
 						} else {
 							qs.page_size = this.getNodeParameter('limit', i);
-							responseData = await zoomApiRequest.call(this, 'GET', '/users/me/meetings', {}, qs);
+							responseData = await zoomApiRequest.call(
+								this,
+								'GET',
+								requestPath`/users/me/meetings`,
+								{},
+								qs,
+							);
 							responseData = responseData.meetings;
 						}
 					}
 					if (operation === 'delete') {
-						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingdelete
+						//https://developers.zoom.us/docs/api/meetings/#tag/meetings/delete/meetings/{meetingId}
 						const meetingId = this.getNodeParameter('meetingId', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.scheduleForReminder) {
@@ -218,14 +231,14 @@ export class Zoom implements INodeType {
 						responseData = await zoomApiRequest.call(
 							this,
 							'DELETE',
-							`/meetings/${meetingId}`,
+							requestPath`/meetings/${meetingId}`,
 							{},
 							qs,
 						);
 						responseData = { success: true };
 					}
 					if (operation === 'create') {
-						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingcreate
+						//https://developers.zoom.us/docs/api/meetings/#tag/meetings/post/users/{userId}/meetings
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {};
@@ -320,10 +333,16 @@ export class Zoom implements INodeType {
 							body.agenda = additionalFields.agenda as string;
 						}
 
-						responseData = await zoomApiRequest.call(this, 'POST', '/users/me/meetings', body, qs);
+						responseData = await zoomApiRequest.call(
+							this,
+							'POST',
+							requestPath`/users/me/meetings`,
+							body,
+							qs,
+						);
 					}
 					if (operation === 'update') {
-						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingupdate
+						//https://developers.zoom.us/docs/api/meetings/#tag/meetings/patch/meetings/{meetingId}
 						const meetingId = this.getNodeParameter('meetingId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i);
 
@@ -415,7 +434,7 @@ export class Zoom implements INodeType {
 						responseData = await zoomApiRequest.call(
 							this,
 							'PATCH',
-							`/meetings/${meetingId}`,
+							requestPath`/meetings/${meetingId}`,
 							body,
 							qs,
 						);
@@ -425,7 +444,7 @@ export class Zoom implements INodeType {
 				}
 				// if (resource === 'meetingRegistrant') {
 				// 	if (operation === 'create') {
-				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingregistrantcreate
+				// 		//https://developers.zoom.us/docs/api/meetings/#tag/invitation-registration/post/meetings/{meetingId}/registrants
 				// 		const meetingId = this.getNodeParameter('meetingId', i) as string;
 				// 		const emailId = this.getNodeParameter('email', i) as string;
 				// 		body.email = emailId;
@@ -483,7 +502,7 @@ export class Zoom implements INodeType {
 				// 		);
 				// 	}
 				// 	if (operation === 'getAll') {
-				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingregistrants
+				// 		//https://developers.zoom.us/docs/api/meetings/#tag/invitation-registration/get/meetings/{meetingId}/registrants
 				// 		const meetingId = this.getNodeParameter('meetingId', i) as string;
 				// 		const additionalFields = this.getNodeParameter(
 				// 			'additionalFields',
@@ -506,7 +525,7 @@ export class Zoom implements INodeType {
 
 				// 	}
 				// 	if (operation === 'update') {
-				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetingregistrantstatus
+				// 		//https://developers.zoom.us/docs/api/meetings/#tag/invitation-registration/put/meetings/{meetingId}/registrants/status
 				// 		const meetingId = this.getNodeParameter('meetingId', i) as string;
 				// 		const additionalFields = this.getNodeParameter(
 				// 			'additionalFields',
@@ -529,7 +548,7 @@ export class Zoom implements INodeType {
 				// }
 				// if (resource === 'webinar') {
 				// 	if (operation === 'create') {
-				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/webinars/webinarcreate
+				// 		//https://developers.zoom.us/docs/api/meetings/#tag/webinars/post/users/{userId}/webinars
 				// 		const userId = this.getNodeParameter('userId', i) as string;
 				// 		const additionalFields = this.getNodeParameter(
 				// 			'additionalFields',
@@ -620,7 +639,7 @@ export class Zoom implements INodeType {
 				// 		);
 				// 	}
 				// 	if (operation === 'get') {
-				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/webinars/webinar
+				// 		//https://developers.zoom.us/docs/api/meetings/#tag/webinars/get/webinars/{webinarId}
 				// 		const webinarId = this.getNodeParameter('webinarId', i) as string;
 
 				// 		const additionalFields = this.getNodeParameter(
@@ -646,7 +665,7 @@ export class Zoom implements INodeType {
 				// 		);
 				// 	}
 				// 	if (operation === 'getAll') {
-				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/webinars/webinars
+				// 		//https://developers.zoom.us/docs/api/meetings/#tag/webinars/get/users/{userId}/webinars
 				// 		const userId = this.getNodeParameter('userId', i) as string;
 				// 		const returnAll = this.getNodeParameter('returnAll', i);
 				// 		if (returnAll) {
@@ -658,7 +677,7 @@ export class Zoom implements INodeType {
 				// 		}
 				// 	}
 				// 	if (operation === 'delete') {
-				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/webinars/webinardelete
+				// 		//https://developers.zoom.us/docs/api/meetings/#tag/webinars/delete/webinars/{webinarId}
 				// 		const webinarId = this.getNodeParameter('webinarId', i) as string;
 				// 		const additionalFields = this.getNodeParameter(
 				// 			'additionalFields',
@@ -680,7 +699,7 @@ export class Zoom implements INodeType {
 				// 		responseData = { success: true };
 				// 	}
 				// 	if (operation === 'update') {
-				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/webinars/webinarupdate
+				// 		//https://developers.zoom.us/docs/api/meetings/#tag/webinars/patch/webinars/{webinarId}
 				// 		const webinarId = this.getNodeParameter('webinarId', i) as string;
 				// 		const additionalFields = this.getNodeParameter(
 				// 			'additionalFields',

@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useToast } from '@n8n/composables/useToast';
 
 import { renderComponent } from '@/__tests__/render';
@@ -187,6 +187,39 @@ describe('SettingsApiView', () => {
 
 		expect(screen.getByText('Create API key')).toBeInTheDocument();
 		expect(screen.getByText('Control n8n programmatically using the')).toBeInTheDocument();
+	});
+
+	describe('layout width', () => {
+		const FULL_WIDTH_CLASS = /fullWidth/;
+
+		const layoutContentClass = (): string | undefined =>
+			screen.getByTestId('api-keys-header').parentElement?.className;
+
+		beforeEach(() => {
+			settingsStore.isPublicApiEnabled = true;
+			cloudStore.userIsTrialing = false;
+		});
+
+		it('does not stretch the layout when there are no keys', () => {
+			apiKeysStore.apiKeys = [];
+			apiKeysStore.totalAllCount = 0;
+
+			renderComponent(SettingsApiView);
+
+			expect(layoutContentClass()).not.toMatch(FULL_WIDTH_CLASS);
+		});
+
+		it('stretches the layout when the key table shows', () => {
+			apiKeysStore.apiKeys = [makeKey()];
+			apiKeysStore.allCount = 1;
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.totalMineCount = 1;
+			apiKeysStore.totalAllCount = 1;
+
+			renderComponent(SettingsApiView);
+
+			expect(layoutContentClass()).toMatch(FULL_WIDTH_CLASS);
+		});
 	});
 
 	it('renders the table when keys exist, with swagger hint', () => {

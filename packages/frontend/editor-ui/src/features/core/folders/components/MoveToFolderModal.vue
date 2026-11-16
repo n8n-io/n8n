@@ -8,6 +8,8 @@ import { useFoldersStore } from '../folders.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useDependencies } from '@/app/composables/useDependencies';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { type EventBus, createEventBus } from '@n8n/utils/event-bus';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
@@ -20,8 +22,8 @@ import type {
 	ICredentialsResponse,
 	IUsedCredential,
 } from '@/features/credentials/credentials.types';
+import type { ResolvedDependency } from '@n8n/api-types';
 import { getResourcePermissions } from '@n8n/permissions';
-import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import Modal from '@/app/components/Modal.vue';
 import MoveToFolderDropdown from './MoveToFolderDropdown.vue';
 import ProjectMoveResourceModalCredentialsList from '@/features/collaboration/projects/components/ProjectMoveResourceModalCredentialsList.vue';
@@ -35,6 +37,14 @@ import {
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useToast } from '@n8n/composables/useToast';
 import { I18nT } from 'vue-i18n';
+import {
+	TransferPolicyWarning,
+	useTransferPreview,
+	type TransferPreviewTarget,
+} from '@n8n/frontend-module-type-availability-policies';
+import PolicyViolationTypeIcon from '@/app/components/PolicyViolationTypeIcon.vue';
+import { usePolicyViolationLabels } from '@/app/composables/usePolicyViolationLabels';
+import { useUnpublishedByMoveToast } from '@/app/composables/useUnpublishedByMoveToast';
 
 import { N8nButton, N8nCallout, N8nCheckbox, N8nText, N8nTooltip } from '@n8n/design-system';
 /**
@@ -73,7 +83,11 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowsStore = useWorkflowsStore();
+const settingsStore = useSettingsStore();
+const { fetchDependencies, fetchFolderDependencies, getDependencies } = useDependencies();
 const toast = useToast();
+const { labelOf } = usePolicyViolationLabels();
+const unpublishedByMoveToast = useUnpublishedByMoveToast();
 
 const selectedFolder = ref<ChangeLocationSearchResult | null>(null);
 const selectedProject = ref<ProjectSharingData | null>(projectsStore.currentProject);
@@ -94,6 +108,9 @@ const isTransferringOwnership = computed(() => {
 const workflowCount = ref(0);
 const subFolderCount = ref(0);
 
+const isSharingEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
+);
 const shareUsedCredentials = ref(false);
 const usedCredentials = ref<IUsedCredential[]>([]);
 const allCredentials = ref<ICredentialsResponse[]>([]);
@@ -101,6 +118,7 @@ const shareableCredentials = computed(() =>
 	allCredentials.value.filter(
 		(credential) =>
 			isTransferringOwnership.value &&
+			isSharingEnabled.value &&
 			getResourcePermissions(credential.scopes).credential.share &&
 			usedCredentials.value.find((uc) => uc.id === credential.id),
 	),
@@ -110,7 +128,10 @@ const unShareableCredentials = computed(() =>
 		(acc, uc) => {
 			const credential = credentialsStore.getCredentialById(uc.id);
 			const credentialPermissions = getResourcePermissions(credential?.scopes).credential;
-			if (!credentialPermissions.share) {
+			if (
+				!credentialPermissions.share ||
+				(isTransferringOwnership.value && !isSharingEnabled.value)
+			) {
 				if (credentialPermissions.read) {
 					acc.push(credential);
 				} else {
@@ -122,6 +143,8 @@ const unShareableCredentials = computed(() =>
 		[] as Array<IUsedCredential | ICredentialsResponse>,
 	),
 );
+
+const resourceDependencies = ref<ResolvedDependency[]>([]);
 
 const searchFn = useAvailableProjectSearch();
 const filterFn = (p: ProjectListItem) =>
@@ -217,6 +240,8 @@ const onSubmit = async () => {
 				type: 'project',
 			};
 
+	// The project picker stays enabled while the move runs.
+	const movedToProjectName = targetProjectName.value;
 	loading.value = true;
 
 	try {
@@ -231,13 +256,14 @@ const onSubmit = async () => {
 					? shareableCredentials.value.map((c) => c.id)
 					: undefined;
 
-				await foldersStore.moveFolderToProject(
+				const result = await foldersStore.moveFolderToProject(
 					projectsStore.currentProject?.id ?? '',
 					props.data.resource.id,
 					selectedProject.value.id,
 					destinationParentFolderId,
 					shareCredentials,
 				);
+				unpublishedByMoveToast.showForFolder(result, movedToProjectName);
 
 				props.data.workflowListEventBus.emit('folder-transferred', {
 					source: {
@@ -285,12 +311,17 @@ const onSubmit = async () => {
 					? shareableCredentials.value.map((c) => c.id)
 					: undefined;
 
-				await projectsStore.moveResourceToProject(
+				const result = await projectsStore.moveResourceToProject(
 					'workflow',
 					props.data.resource.id,
 					selectedProject.value.id,
 					destinationParentFolderId,
 					shareCredentials,
+				);
+				unpublishedByMoveToast.showForWorkflow(
+					result,
+					props.data.resource.name,
+					movedToProjectName,
 				);
 
 				props.data.workflowListEventBus.emit('workflow-transferred', {
@@ -378,13 +409,48 @@ const descriptionMessage = computed(() => {
 
 const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
 
-const isFolderSelectable = computed(() => {
-	return isOwnPersonalProject.value || !isPersonalProject.value;
-});
-
 // If there is not current project (e.g. on the Overview page), default to the resource's home project
 const currentResourceProjectId = computed(() => {
 	return projectsStore.currentProject?.id ?? props.data.resource.homeProjectId;
+});
+
+// Deliberately not `isTransferringOwnership`: that one also picks the submit branch, and the
+// Overview and Shared pages have no current project, so comparing against it there would route a
+// same-project move down the transfer path.
+const isChangingProject = computed(
+	() => selectedProject.value && selectedProject.value.id !== currentResourceProjectId.value,
+);
+
+// Data tables belong to a single project and can't be shared, so they only survive a move if the
+// destination already owns them.
+const usedDataTables = computed(() =>
+	isChangingProject.value
+		? resourceDependencies.value.filter(
+				(dep) => dep.type === 'dataTableId' && dep.projectId !== selectedProject.value?.id,
+			)
+		: [],
+);
+
+const transferPreviewTarget = computed((): TransferPreviewTarget | null => {
+	if (!isChangingProject.value) return null;
+	if (props.data.resourceType === 'workflow') {
+		return { resourceType: 'workflow', id: props.data.resource.id };
+	}
+	if (!currentResourceProjectId.value) return null;
+	return {
+		resourceType: 'folder',
+		id: props.data.resource.id,
+		projectId: currentResourceProjectId.value,
+	};
+});
+
+const { preview: transferPreview } = useTransferPreview(
+	transferPreviewTarget,
+	() => selectedProject.value?.id,
+);
+
+const isFolderSelectable = computed(() => {
+	return isOwnPersonalProject.value || !isPersonalProject.value;
 });
 
 onMounted(async () => {
@@ -395,22 +461,27 @@ onMounted(async () => {
 		const [workflow, credentials] = await Promise.all([
 			workflowsListStore.fetchWorkflow(props.data.resource.id),
 			credentialsStore.fetchAllCredentials(),
+			fetchDependencies([props.data.resource.id], 'workflow'),
 		]);
 
 		usedCredentials.value = workflow?.usedCredentials ?? [];
 		allCredentials.value = credentials;
+		resourceDependencies.value =
+			getDependencies(props.data.resource.id, 'workflow')?.dependencies ?? [];
 	} else {
 		if (projectsStore.currentProject?.id && currentFolder.value?.id) {
-			const [used, credentials] = await Promise.all([
-				await foldersStore.fetchFolderUsedCredentials(
+			const [used, credentials, dependencies] = await Promise.all([
+				foldersStore.fetchFolderUsedCredentials(
 					projectsStore.currentProject.id,
 					currentFolder.value.id,
 				),
 				credentialsStore.fetchAllCredentials(),
+				fetchFolderDependencies(projectsStore.currentProject.id, currentFolder.value.id),
 			]);
 
 			usedCredentials.value = used;
 			allCredentials.value = credentials;
+			resourceDependencies.value = dependencies;
 		}
 	}
 });
@@ -432,7 +503,7 @@ onMounted(async () => {
 			>
 				{{ descriptionMessage }}
 			</p>
-			<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.content">
+			<div v-if="projectsStore.isTeamProjectFeatureEnabled" :class="$style.content">
 				<div :class="$style.block">
 					<N8nText color="text-dark">
 						{{ i18n.baseText('folders.move.modal.project.label') }}
@@ -444,6 +515,19 @@ onMounted(async () => {
 						:filter-fn="filterFn"
 						:placeholder="i18n.baseText('folders.move.modal.project.placeholder')"
 					/>
+					<TransferPolicyWarning
+						v-if="transferPreview && selectedProject"
+						:class="$style.calloutSpacing"
+						:preview="transferPreview"
+						:resource-type="props.data.resourceType"
+						:project-id="selectedProject.id"
+						:project-name="targetProjectName"
+						:label-of="labelOf"
+					>
+						<template #icon="{ violation }">
+							<PolicyViolationTypeIcon :violation="violation" />
+						</template>
+					</TransferPolicyWarning>
 				</div>
 
 				<div v-if="isTransferringOwnership" :class="$style.block">
@@ -471,7 +555,7 @@ onMounted(async () => {
 						</div>
 					</N8nText>
 				</div>
-			</EnterpriseEdition>
+			</div>
 			<template v-if="selectedProject && isFolderSelectable">
 				<div :class="$style.block">
 					<N8nText color="text-dark">
@@ -526,7 +610,7 @@ onMounted(async () => {
 			</N8nCheckbox>
 			<N8nCallout
 				v-if="shareableCredentials.length && !shareUsedCredentials"
-				:class="$style.credentialsCallout"
+				:class="$style.calloutSpacing"
 				theme="warning"
 				data-test-id="move-modal-used-credentials-warning"
 			>
@@ -552,11 +636,44 @@ onMounted(async () => {
 					</template>
 				</I18nT>
 			</div>
+			<N8nCallout
+				v-if="usedDataTables.length"
+				theme="warning"
+				:class="$style.calloutSpacing"
+				data-test-id="move-modal-data-tables-warning"
+			>
+				<I18nT
+					:keypath="
+						data.resourceType === 'workflow'
+							? 'folders.move.modal.message.usedDataTables.workflow'
+							: 'folders.move.modal.message.usedDataTables.folder'
+					"
+					scope="global"
+				>
+					<template #dataTables>
+						<N8nTooltip placement="top">
+							<span :class="$style.tooltipText">{{
+								i18n.baseText('folders.move.modal.message.usedDataTables.count', {
+									adjustToNumber: usedDataTables.length,
+									interpolate: { count: usedDataTables.length },
+								})
+							}}</span>
+							<template #content>
+								<ul :class="$style.dataTablesList">
+									<li v-for="dataTable in usedDataTables" :key="dataTable.id">
+										{{ dataTable.name }}
+									</li>
+								</ul>
+							</template>
+						</N8nTooltip>
+					</template>
+				</I18nT>
+			</N8nCallout>
 		</template>
 		<template #footer="{ close }">
 			<div :class="$style.footer">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					:label="i18n.baseText('generic.cancel')"
 					:disabled="loading"
 					float="right"
@@ -608,7 +725,13 @@ onMounted(async () => {
 	text-decoration: underline;
 }
 
-.credentialsCallout {
+.calloutSpacing {
 	margin-top: var(--spacing--sm);
+}
+
+.dataTablesList {
+	list-style-type: none;
+	padding: 0;
+	margin: 0;
 }
 </style>

@@ -52,6 +52,9 @@
                                 "due_date": {
                                     "type": "null"
                                 },
+                                "due_date_time": {
+                                    "type": "boolean"
+                                },
                                 "group_assignee": {
                                     "type": "null"
                                 },
@@ -61,14 +64,23 @@
                                 "name": {
                                     "type": "string"
                                 },
+                                "orderindex": {
+                                    "type": "integer"
+                                },
                                 "parent": {
                                     "type": "null"
                                 },
                                 "resolved": {
                                     "type": "boolean"
                                 },
+                                "sent_due_date_notif": {
+                                    "type": "null"
+                                },
                                 "start_date": {
                                     "type": "null"
+                                },
+                                "start_date_time": {
+                                    "type": "boolean"
                                 }
                             }
                         }
@@ -122,6 +134,9 @@
                     "name": {
                         "type": "string"
                     },
+                    "required": {
+                        "type": "boolean"
+                    },
                     "type": {
                         "type": "string"
                     },
@@ -130,6 +145,9 @@
                         "properties": {
                             "new_drop_down": {
                                 "type": "boolean"
+                            },
+                            "number_format": {
+                                "type": "string"
                             },
                             "options": {
                                 "type": "array",
@@ -170,11 +188,17 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "chain_id": {
+                        "type": "string"
+                    },
                     "date_created": {
                         "type": "string"
                     },
                     "depends_on": {
                         "type": "string"
+                    },
+                    "lag_ms": {
+                        "type": "null"
                     },
                     "task_id": {
                         "type": "string"
@@ -418,5 +442,5 @@
             }
         }
     },
-    "version": 2
+    "version": 4
 }

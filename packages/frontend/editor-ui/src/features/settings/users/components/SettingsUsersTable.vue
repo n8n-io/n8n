@@ -2,17 +2,17 @@
 import { computed, ref } from 'vue';
 import { ROLE, type UsersList } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader, TableOptions } from '@n8n/design-system';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import SettingsUsersRoleCell from './SettingsUsersRoleCell.vue';
 import SettingsUsersProjectsCell from './SettingsUsersProjectsCell.vue';
 import SettingsUsersActionsCell from './SettingsUsersActionsCell.vue';
 import SettingsUsersLastActiveCell from './SettingsUsersLastActiveCell.vue';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
+import type { UsersInfoProps } from '@n8n/design-system';
 
 import { N8nDataTableServer, N8nText, N8nUserInfo, type UserAction } from '@n8n/design-system';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
 type Item = UsersList['items'][number];
 
@@ -43,7 +43,8 @@ const headers = ref<Array<TableHeader<Item>>>([
 	{
 		title: i18n.baseText('settings.users.table.header.user'),
 		key: 'name',
-		width: 300,
+		// Same as the project members table: room for an email plus its Pending badge on one line.
+		width: 400,
 		value(row) {
 			return {
 				...row,
@@ -155,6 +156,7 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 			:items="rows"
 			:items-length="data.count"
 			:page-sizes="[10, 25, 50]"
+			:pin-columns="1"
 			@update:options="emit('update:options', $event)"
 		>
 			<template #[`item.name`]="{ value }">
