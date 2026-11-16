@@ -346,10 +346,10 @@ async function capture(
 const strayPercent = /%(?![0-9A-Fa-f]{2})/;
 const strayPercentGlobal = new RegExp(strayPercent.source, 'g');
 
-const rawInLegacyPath = /[[\]|;]/;
+const rawInLegacyPath = /[[\]|;^]/;
 const encodeRawPathCharacters = (url: string) =>
 	url.replace(/^[^?]*/, (path) =>
-		path.replace(/[[\]|;]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`),
+		path.replace(/[[\]|;^]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`),
 	);
 
 const hasDotSegment = (key: string) =>
@@ -462,7 +462,7 @@ describe('AWS S3 request regression', () => {
 								}
 
 								if (operation.keyInPath && legacySigner === 'true' && rawInLegacyPath.test(key)) {
-									// Expected difference with the legacy signer: "[", "]", "|" and ";" in a key are
+									// Expected difference with the legacy signer: "[", "]", "|", ";" and "^" in a key are
 									// percent-encoded in the path. Before, they were sent raw. The signature is the same,
 									// except when the signer has no service name: it then encodes the path again.
 									expected = expected.map((request, index) => {
