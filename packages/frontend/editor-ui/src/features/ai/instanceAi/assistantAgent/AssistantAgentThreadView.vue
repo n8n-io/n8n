@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type {
 	AgentJsonConfig,
+	AgentSseEvent,
 	InstanceAiAttachment,
 	InstanceAiHandoffContext,
 	InstanceAiNodesAttachment,
@@ -96,7 +97,11 @@ import {
 	readNodesAttachment,
 	toNodesComposerAttachment,
 } from './assistantNodeAttachments';
-import { useAssistantAgentMessageTelemetry } from './useAssistantAgentMessageTelemetry';
+import {
+	useAssistantAgentMessageTelemetry,
+	type AssistantAgentSendingMessage,
+} from './useAssistantAgentMessageTelemetry';
+import { useAssistantAgentTurnTelemetry } from './useAssistantAgentTurnTelemetry';
 import {
 	ASSISTANT_AGENT_SETUP_SAVED,
 	useAssistantAgentSetupSavedTelemetry,
@@ -248,6 +253,23 @@ const trace = useAssistantAgentTrace({
 	threadId: props.threadId,
 	messages: () => panel.value?.messages ?? [],
 });
+
+const turnTelemetry = useAssistantAgentTurnTelemetry({
+	threadId: props.threadId,
+	isStreaming: () => panel.value?.isStreaming ?? false,
+	isStreamAttached: () => panel.value?.isStreamAttached ?? false,
+	isSubmitting: () => panel.value?.isSubmitting ?? false,
+	hasOpenInteraction: () => panel.value?.hasOpenInteraction ?? false,
+});
+
+function onMessageSending(message: AssistantAgentSendingMessage): void {
+	turnTelemetry.trackSubmit(messageTelemetry.trackSend(message));
+}
+
+function onStreamEvent(event: AgentSseEvent): void {
+	trace.recordEvent(event);
+	turnTelemetry.handleStreamEvent(event);
+}
 
 const setupSavedTelemetry = useAssistantAgentSetupSavedTelemetry({
 	threadId: props.threadId,
@@ -737,9 +759,9 @@ function removeStagedNodes(chipId: string): void {
 						:client-context="clientContext"
 						:interaction-extensions="interactionExtensions"
 						:show-attach-button="false"
-						@stream-event="trace.recordEvent"
+						@stream-event="onStreamEvent"
 						@session-created="onSessionCreated"
-						@message-sending="messageTelemetry.trackSend"
+						@message-sending="onMessageSending"
 						@draft-cleared="messageTelemetry.setPrefill(null)"
 						@message-accepted="onMessageAccepted"
 						@update:streaming="onStreamingChange"
