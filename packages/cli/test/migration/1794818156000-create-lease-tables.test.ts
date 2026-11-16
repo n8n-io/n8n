@@ -115,7 +115,7 @@ describe('CreateLeaseTables migration', () => {
 					'data',
 					'dataHash',
 					'group',
-					'sessionId',
+					'leaseSessionId',
 					'fencingToken',
 					'claimedAt',
 					'readyAt',
@@ -184,7 +184,7 @@ describe('CreateLeaseTables migration', () => {
 		await withContext(async (context) => {
 			for (const suffix of [
 				'lease_session_kind_expiresAt',
-				'lease_kind_sessionId',
+				'lease_kind_leaseSessionId',
 				'lease_kind_group',
 			]) {
 				expect(await indexExists(context, `IDX_${context.tablePrefix}${suffix}`)).toBe(true);
@@ -192,10 +192,10 @@ describe('CreateLeaseTables migration', () => {
 		});
 	});
 
-	it('keeps sessionId, fencingToken and revoked out of unique indexes and foreign keys', async () => {
+	it('keeps leaseSessionId, fencingToken and revoked out of unique indexes and foreign keys', async () => {
 		await withContext(async (context) => {
 			const table = await getTable(context, 'lease');
-			const guarded = ['sessionId', 'fencingToken', 'revoked'];
+			const guarded = ['leaseSessionId', 'fencingToken', 'revoked'];
 
 			const uniqueColumns = [
 				...table.indices.filter((i) => i.isUnique).flatMap((i) => i.columnNames),

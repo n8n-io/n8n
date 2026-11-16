@@ -1540,11 +1540,11 @@ erDiagram
   VARCHAR_24_ kind PK
   TEXT lastError
   DATETIME lastErrorAt
+  VARCHAR_36_ leaseSessionId
   DATETIME nextAttemptAt
   DATETIME readyAt
   BOOLEAN revoked
   DATETIME revokedAt
-  VARCHAR_36_ sessionId
   INTEGER startAttempts
   DATETIME updatedAt
 }

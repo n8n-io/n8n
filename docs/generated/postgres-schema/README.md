@@ -1554,11 +1554,11 @@ erDiagram
   varchar_24_ kind
   text lastError
   timestamp_3__with_time_zone lastErrorAt
+  varchar_36_ leaseSessionId
   timestamp_3__with_time_zone nextAttemptAt
   timestamp_3__with_time_zone readyAt
   boolean revoked
   timestamp_3__with_time_zone revokedAt
-  varchar_36_ sessionId
   integer startAttempts
   timestamp_3__with_time_zone updatedAt
 }

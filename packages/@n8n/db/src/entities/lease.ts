@@ -4,7 +4,7 @@ import { DateTimeColumn, WithTimestamps } from './abstract-entity';
 import { bigintStringToNumber } from '../utils/transformers';
 
 @Entity({ name: 'lease' })
-@Index(['kind', 'sessionId'])
+@Index(['kind', 'leaseSessionId'])
 @Index(['kind', 'group'])
 export class Lease extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 24 })
@@ -23,7 +23,7 @@ export class Lease extends WithTimestamps {
 	group: string | null;
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
-	sessionId: string | null;
+	leaseSessionId: string | null;
 
 	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })
 	fencingToken: number;

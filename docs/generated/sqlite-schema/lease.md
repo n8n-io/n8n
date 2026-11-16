@@ -12,7 +12,7 @@ CREATE TABLE "lease" (
 			"data" TEXT NOT NULL,
 			"dataHash" VARCHAR(64) NOT NULL,
 			"group" VARCHAR(255) NULL,
-			"sessionId" VARCHAR(36) NULL,
+			"leaseSessionId" VARCHAR(36) NULL,
 			"fencingToken" INTEGER NOT NULL DEFAULT 0 CONSTRAINT "CHK_lease_fencingToken" CHECK ("fencingToken" >= 0),
 			"claimedAt" DATETIME NULL,
 			"readyAt" DATETIME NULL,
@@ -44,11 +44,11 @@ CREATE TABLE "lease" (
 | kind | VARCHAR(24) |  | false |  |  |  |
 | lastError | TEXT |  | true |  |  |  |
 | lastErrorAt | DATETIME |  | true |  |  |  |
+| leaseSessionId | VARCHAR(36) |  | true |  |  |  |
 | nextAttemptAt | DATETIME |  | true |  |  |  |
 | readyAt | DATETIME |  | true |  |  |  |
 | revoked | BOOLEAN | 0 | false |  |  |  |
 | revokedAt | DATETIME |  | true |  |  |  |
-| sessionId | VARCHAR(36) |  | true |  |  |  |
 | startAttempts | INTEGER | 0 | false |  |  |  |
 | updatedAt | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f','NOW') | false |  |  |  |
 
@@ -67,7 +67,7 @@ CREATE TABLE "lease" (
 | Name | Definition |
 | ---- | ---------- |
 | IDX_lease_kind_group | CREATE INDEX "IDX_lease_kind_group" ON "lease" ("kind", "group") |
-| IDX_lease_kind_sessionId | CREATE INDEX "IDX_lease_kind_sessionId" ON "lease" ("kind", "sessionId") |
+| IDX_lease_kind_leaseSessionId | CREATE INDEX "IDX_lease_kind_leaseSessionId" ON "lease" ("kind", "leaseSessionId") |
 | sqlite_autoindex_lease_1 | PRIMARY KEY (kind, key) |
 
 ## Relations
@@ -87,11 +87,11 @@ erDiagram
   VARCHAR_24_ kind PK
   TEXT lastError
   DATETIME lastErrorAt
+  VARCHAR_36_ leaseSessionId
   DATETIME nextAttemptAt
   DATETIME readyAt
   BOOLEAN revoked
   DATETIME revokedAt
-  VARCHAR_36_ sessionId
   INTEGER startAttempts
   DATETIME updatedAt
 }

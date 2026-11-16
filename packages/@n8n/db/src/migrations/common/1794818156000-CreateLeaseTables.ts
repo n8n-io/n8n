@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-/** No unique index or foreign key may cover `lease.sessionId`, `lease.fencingToken` or `lease.revoked`, so their updates stay no-key updates. */
+/** No unique index or foreign key may cover `lease.leaseSessionId`, `lease.fencingToken` or `lease.revoked`, so their updates stay no-key updates. */
 export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 	async up({ escape, isPostgres, runQuery, tablePrefix }: MigrationContext) {
 		const kind = escape.tableName('lease_kind');
@@ -42,7 +42,7 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 			"data" TEXT NOT NULL,
 			"dataHash" VARCHAR(64) NOT NULL,
 			"group" VARCHAR(255) NULL,
-			"sessionId" VARCHAR(36) NULL,
+			"leaseSessionId" VARCHAR(36) NULL,
 			"fencingToken" ${bigint} NOT NULL DEFAULT 0 CONSTRAINT "CHK_${tablePrefix}lease_fencingToken" CHECK ("fencingToken" >= 0),
 			"claimedAt" ${ts} NULL,
 			"readyAt" ${ts} NULL,
@@ -57,7 +57,7 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 			PRIMARY KEY ("kind", "key")
 		)`);
 		await runQuery(
-			`CREATE INDEX ${escape.indexName('lease_kind_sessionId')} ON ${lease} ("kind", "sessionId")`,
+			`CREATE INDEX ${escape.indexName('lease_kind_leaseSessionId')} ON ${lease} ("kind", "leaseSessionId")`,
 		);
 		await runQuery(
 			`CREATE INDEX ${escape.indexName('lease_kind_group')} ON ${lease} ("kind", "group")`,
