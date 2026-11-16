@@ -75,17 +75,19 @@ const isMintCall = (e: ts.Node): e is ts.CallExpression =>
 
 const f = ts.factory;
 
-const REQUEST_SOURCE = `async function __request(options, wrapped) {
+const REQUEST_SOURCE = `async function __request(options, wrapped, legacy) {
 	const auth = options.auth;
-	const form = options.form;
 	const headers = __assign({}, __plain(options.headers ?? {}));
+	const parts = legacy ? __formParts(options, headers) : undefined;
+	const form = parts === undefined ? options.form : undefined;
 	if (form !== undefined && form !== null) headers['content-type'] = 'application/x-www-form-urlencoded';
 	const response = await ctx.http({
 		method: options.method ?? 'GET',
 		url: options.uri ?? options.url,
 		headers,
 		qs: __plain(options.qs ?? {}),
-		body: form !== undefined && form !== null ? __form(__plain(form)) : __plain(options.body),
+		body: parts !== undefined ? undefined : form !== undefined && form !== null ? __form(__plain(form)) : __plain(__sendBody(options.body)),
+		multipart: parts,
 		basicAuth: auth ? { user: auth.user ?? auth.username ?? '', password: auth.pass ?? auth.password ?? '' } : undefined,
 		inject: wrapped,
 		credential,
@@ -208,6 +210,106 @@ const HELPERS: Record<string, string> = {
 	}
 	return parts.join('&');
 }`,
+	__sendBody: `function __sendBody(body: any): any {
+	if (body !== null && body !== undefined && typeof body === 'object' && body.$bytes === true) throw new Error('a request body of file bytes has no compiled form');
+	return body;
+}`,
+	__formParts: `function __formParts(options: any, headers: any): any {
+	const files: any = options.formData;
+	if (files === undefined) return undefined;
+	let type: any = undefined;
+	let typed: boolean = false;
+	for (const key of Object.keys(headers)) {
+		if (!typed && String(key).toLowerCase() === 'content-type') {
+			type = headers[key];
+			typed = true;
+		}
+	}
+	let fields: any = files;
+	if (typeof type === 'string' && type.includes('multipart/form-data')) {
+		const body: any = options.body;
+		if (body !== undefined && body !== null && (typeof body !== 'object' || Array.isArray(body) || body.$bytes === true)) throw new Error('a multipart body from a value that is not an object has no compiled form');
+		fields = __assign(__assign({}, body ?? {}), files);
+	} else if (options.form !== undefined && options.body === undefined) {
+		return undefined;
+	}
+	if (fields === null || typeof fields !== 'object' || Array.isArray(fields)) throw new Error('a multipart body from a value that is not an object has no compiled form');
+	const parts: any[] = [];
+	for (const [name, field] of Object.entries(fields)) {
+		const values: any[] = Array.isArray(field) ? field : [field];
+		for (const given of values) parts.push(__formPart(name, given));
+	}
+	return parts;
+}`,
+	__formPart: `function __formPart(name: string, given: any): any {
+	let value: any = given;
+	let options: any = {};
+	if (given !== null && given !== undefined && typeof given === 'object' && !Array.isArray(given) && Object.keys(given).includes('value') && Object.keys(given).includes('options')) {
+		value = given.value;
+		options = typeof given.options === 'string' ? { filename: given.options } : given.options;
+		if (options === undefined || options === null || options === false || options === 0 || options === '') options = {};
+		if (typeof options !== 'object' || Array.isArray(options)) throw new Error('a form field with options that are not an object has no compiled form');
+	}
+	if (typeof value === 'number' || value === null || value === undefined) value = String(value);
+	if (options.filepath !== undefined || options.header !== undefined) throw new Error('a form field with a file path or a header has no compiled form');
+	const fileName: any = options.filename;
+	const contentType: any = options.contentType;
+	const named: boolean = fileName !== undefined && fileName !== null && fileName !== '' && fileName !== false && fileName !== 0;
+	const typed: boolean = contentType !== undefined && contentType !== null && contentType !== '' && contentType !== false && contentType !== 0;
+	if (typeof value === 'string') {
+		if (named || typed) throw new Error('a form field of text with a file name or a content type has no compiled form');
+		return { name, value };
+	}
+	if (typeof value !== 'object' || value.$bytes !== true) throw new Error('a form field that is not text, a number or file bytes has no compiled form');
+	if ((named && typeof fileName !== 'string') || (typed && typeof contentType !== 'string')) throw new Error('a form file with a name or a content type that is not text has no compiled form');
+	if (value.id !== undefined && !(named && typed)) throw new Error('a form file from a file store without a file name and a content type has no compiled form');
+	if (named && !typed) throw new Error('a form file with a content type that comes from its file name has no compiled form');
+	const binary: any = { data: value.data };
+	if (value.id !== undefined) binary.id = value.id;
+	binary.mimeType = typed ? contentType : 'application/octet-stream';
+	if (named) {
+		let end: number = fileName.length;
+		while (end > 0 && fileName.charAt(end - 1) === '/') end -= 1;
+		const base: string = fileName.slice(0, end).split('/').pop() ?? '';
+		if (base !== '') binary.fileName = base;
+	}
+	return { name, binary };
+}`,
+	__binaryOf: `function __binaryOf(items: any, index: any, name: any): any {
+	if (typeof name !== 'string') throw new Error('binary data from a value that is not a property name has no compiled form');
+	const json: any = items[index].json;
+	const files: any = json !== null && json !== undefined && typeof json === 'object' ? json.$binary : undefined;
+	if (files === undefined) throw __error("This operation expects the node's input data to contain a binary file '" + name + "', but none was found [item " + index + ']', 'NodeOperationError', { description: 'Make sure that the previous node outputs a binary file' });
+	if (files === null || typeof files !== 'object' || Array.isArray(files)) throw new Error('binary data that is not an object has no compiled form');
+	const file: any = Object.keys(files).includes(name) ? files[name] : undefined;
+	if (file === undefined) throw __error("The item has no binary field '" + name + "' [item " + index + ']', 'NodeOperationError', { description: 'Check that the parameter where you specified the input binary field name is correct, and that it matches a field in the binary input' });
+	return file;
+}`,
+	__fileBytes: `function __fileBytes(data: any): any {
+	if (typeof data !== 'string') throw new Error('file bytes from a value that is not base64 text has no compiled form');
+	if (data.length % 4 !== 0) throw new Error('file bytes from base64 text that is not padded has no compiled form');
+	const padding: number = data.endsWith('==') ? 2 : data.endsWith('=') ? 1 : 0;
+	return { $bytes: true, data, length: (data.length / 4) * 3 - padding };
+}`,
+	__storedBytes: `function __storedBytes(id: any): any {
+	const mode: string = typeof id === 'string' ? id.split(':')[0] : '';
+	if (typeof id !== 'string' || (mode !== 'filesystem-v2' && mode !== 'filesystem') || !id.startsWith(mode + ':')) throw new Error('file bytes that are not in the file system store of n8n has no compiled form');
+	return { $bytes: true, data: mode, id };
+}`,
+	__inputBytes: `function __inputBytes(items: any, index: any, name: any): any {
+	if (typeof name !== 'string') throw new Error('binary data from a value that is not a property name has no compiled form');
+	const files: any = items[index].json.$binary;
+	if (files === null || files === undefined || typeof files !== 'object' || Array.isArray(files) || !Object.keys(files).includes(name)) throw new Error('file bytes of a binary property that the item does not have has no compiled form');
+	const file: any = files[name];
+	if (file.id === undefined || file.id === null || file.id === '') return __fileBytes(file.data);
+	if (typeof file.bytes !== 'number') throw new Error('file bytes in a file store without a size has no compiled form');
+	const stored: any = __storedBytes(file.id);
+	stored.length = file.bytes;
+	return stored;
+}`,
+	__storedMetadata: `function __storedMetadata(id: any): any {
+	throw new Error('the metadata of binary data in a file store has no compiled form');
+}`,
 	__getPath: `function __getPath(value: any, path: any, fallback: any): any {
 	if (Array.isArray(path)) return __get(value, path, '', fallback);
 	const text: string = String(path);
@@ -248,7 +350,10 @@ const HELPERS: Record<string, string> = {
 	__plain: '',
 	__wrap: `function __wrap(items: any): any {
 	const out: any[] = [];
-	for (const json of items ?? [{}]) out.push({ json });
+	for (const json of items ?? [{}]) {
+		const files: any = json !== null && json !== undefined && typeof json === 'object' ? json.$binary : undefined;
+		out.push(files === undefined ? { json } : { json, binary: files });
+	}
 	return out;
 }`,
 	__out: `function __out(result: any): any {
@@ -684,9 +789,13 @@ const HELPER_USES: Record<string, string[]> = {
 	__assertParam: ['__error'],
 	__toNumber: ['__error'],
 	__missing: ['__error'],
+	__binaryOf: ['__error'],
+	__inputBytes: ['__fileBytes', '__storedBytes'],
 };
 
 const LIMIT_TEXT = 'has no compiled form';
+const BYTES_USE =
+	'file bytes have a compiled form only as a file of a multipart request and with `length`';
 
 const BUFFER_ENCODINGS: Record<string, string> = {
 	utf8: 'utf8',
@@ -701,6 +810,32 @@ function bufferEncoding(e: ts.Expression | undefined): string | undefined {
 	return ts.isStringLiteral(e) && Object.hasOwn(BUFFER_ENCODINGS, e.text)
 		? BUFFER_ENCODINGS[e.text]
 		: undefined;
+}
+
+const BYTES_HELPERS = new Set(['__fileBytes', '__inputBytes', '__storedBytes']);
+
+function isBase64Buffer(e: ts.Node): e is ts.CallExpression {
+	return (
+		ts.isCallExpression(e) &&
+		ts.isPropertyAccessExpression(e.expression) &&
+		ts.isIdentifier(e.expression.expression) &&
+		e.expression.expression.text === 'Buffer' &&
+		e.expression.name.text === 'from' &&
+		e.arguments.length === 2 &&
+		!ts.isSpreadElement(e.arguments[0]) &&
+		bufferEncoding(e.arguments[1]) === 'base64'
+	);
+}
+
+function givesBytes(e: ts.Expression): boolean {
+	const value = ts.isAwaitExpression(e) || ts.isParenthesizedExpression(e) ? e.expression : e;
+	if (value !== e) return givesBytes(value);
+	return (
+		isBase64Buffer(value) ||
+		(ts.isCallExpression(value) &&
+			ts.isIdentifier(value.expression) &&
+			BYTES_HELPERS.has(value.expression.text))
+	);
 }
 
 function mentionsBuffer(n: ts.Node): boolean {
@@ -1547,6 +1682,27 @@ class Specialiser {
 			if (isThisCall(node, 'helpers', 'returnJsonArray'))
 				return this.helper('__jsonArray', ...args(node));
 			if (isThisCall(node, 'helpers', 'constructExecutionMetaData')) return args(node)[0];
+			const binaryCall = ts.isAwaitExpression(node) ? node.expression : node;
+			if (
+				isThisCall(binaryCall, 'helpers', 'assertBinaryData') &&
+				binaryCall.arguments.length === 2
+			)
+				return this.helper('__binaryOf', f.createIdentifier('__items'), ...args(binaryCall));
+			if (
+				isThisCall(binaryCall, 'helpers', 'getBinaryDataBuffer') &&
+				binaryCall.arguments.length === 2
+			)
+				return this.helper('__inputBytes', f.createIdentifier('__items'), ...args(binaryCall));
+			if (
+				isThisCall(binaryCall, 'helpers', 'getBinaryStream') &&
+				(binaryCall.arguments.length === 1 || binaryCall.arguments.length === 2)
+			)
+				return this.helper('__storedBytes', args(binaryCall)[0]);
+			if (
+				isThisCall(binaryCall, 'helpers', 'getBinaryMetadata') &&
+				binaryCall.arguments.length === 1
+			)
+				return this.helper('__storedMetadata', ...args(binaryCall));
 			if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
 				const { expression: target, name } = node.expression;
 
@@ -1571,8 +1727,19 @@ class Specialiser {
 						node.arguments.length - 1,
 					);
 					const options = args(node, optionsAt)[0];
-					for (const used of ['__apiError', '__assign', '__form', '__formText'])
+					for (const used of [
+						'__apiError',
+						'__assign',
+						'__form',
+						'__formText',
+						'__formParts',
+						'__formPart',
+						'__sendBody',
+					])
 						this.helpers.add(used);
+					const helperName =
+						viaCall && ts.isPropertyAccessExpression(target) ? target.name.text : name.text;
+					const legacy = !helperName.startsWith('httpRequest');
 					const typeArgument = viaCall ? node.arguments[1] : undefined;
 					const authenticate =
 						wrapped &&
@@ -1585,6 +1752,7 @@ class Specialiser {
 						'__request',
 						authenticate ? f.createAwaitExpression(call(authenticate, options)) : options,
 						wrapped ? f.createTrue() : f.createFalse(),
+						legacy ? f.createTrue() : f.createFalse(),
 					);
 				}
 
@@ -5135,6 +5303,19 @@ class Specialiser {
 					);
 				}
 			}
+			const held =
+				ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n)
+					? n.expression
+					: undefined;
+			const sized = ts.isPropertyAccessExpression(n) && n.name.text === 'length';
+			if (isBase64Buffer(n)) {
+				this.helpers.add('__fileBytes');
+				return call('__fileBytes', ts.visitNode(n.arguments[0], visit) as ts.Expression);
+			}
+			if (held !== undefined && isBase64Buffer(held) && !sized) {
+				this.error('code', BYTES_USE);
+				return n;
+			}
 			if (ts.isIdentifier(n) && n.text === 'Buffer' && isValueUse(n))
 				this.error(
 					'code',
@@ -5145,9 +5326,40 @@ class Specialiser {
 		return ts.visitNode(root, visit);
 	}
 
+	private bytesUses(root: ts.Node) {
+		const names = new Set<string>();
+		const collect = (n: ts.Node) => {
+			if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer) {
+				if (givesBytes(n.initializer)) names.add(n.name.text);
+			}
+			if (
+				ts.isBinaryExpression(n) &&
+				n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+				ts.isIdentifier(n.left) &&
+				givesBytes(n.right)
+			)
+				names.add(n.left.text);
+			ts.forEachChild(n, collect);
+		};
+		collect(root);
+		if (names.size === 0) return;
+		const check = (n: ts.Node) => {
+			const held =
+				ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n)
+					? n.expression
+					: undefined;
+			const sized = ts.isPropertyAccessExpression(n) && n.name.text === 'length';
+			if (held && ts.isIdentifier(held) && names.has(held.text) && !sized)
+				this.error('code', `${BYTES_USE}: '${held.text}'`);
+			ts.forEachChild(n, check);
+		};
+		check(root);
+	}
+
 	private print(): string {
 		const code: string[] = [];
 		let body = '';
+		for (const { node } of this.output) this.bytesUses(node);
 		const buffers = this.output.some((o) => mentionsBuffer(o.node));
 		if (buffers) this.helpers.add('__bufferText');
 		const guarded = [...this.helpers].some((h) => HELPERS[h]?.includes(LIMIT_TEXT));

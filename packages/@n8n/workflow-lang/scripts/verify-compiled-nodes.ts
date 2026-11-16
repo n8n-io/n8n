@@ -27,7 +27,12 @@ import type { NodeSources } from '../src/node-compile/convert.ts';
 import { evaluateInSandbox } from '../src/node-compile/evaluate-node.ts';
 import { verifiedKey } from '../src/node-compile/convert.ts';
 import type { EquivalenceCase } from '../src/nodes/__tests__/equivalence.ts';
-import { disposeRecorder, recorderAvailable } from '../src/nodes/__tests__/v1-recorder.ts';
+import {
+	disposeRecorder,
+	recordV1,
+	recordV1Cached,
+	recorderAvailable,
+} from '../src/nodes/__tests__/v1-recorder.ts';
 
 type Json = Record<string, unknown>;
 interface Property {
@@ -66,6 +71,26 @@ const add = (into: Record<string, number>, from: Record<string, number> | undefi
 };
 const filter = new RegExp(one === undefined ? (pattern ?? '.') : `^${one}$`, 'i');
 const PARALLEL = 6;
+const UPLOAD_ANSWER = {
+	upload_url: 'https://files.example.com/upload/v1/abc',
+	file_id: 'F1',
+	file: { id: 'F1' },
+	files: [{ id: 'F1' }],
+};
+const FILE_ITEMS = [
+	{
+		$binary: {
+			data: {
+				data: Buffer.from('hello bytes').toString('base64'),
+				mimeType: 'text/plain',
+				fileName: 'notes/hello.txt',
+				fileExtension: 'txt',
+				fileSize: '11 B',
+				bytes: 11,
+			},
+		},
+	},
+];
 const MAX_BLOCKERS = 20;
 
 if (!recorderAvailable() || !existsSync(join(base, 'dist/known/nodes.json'))) {
@@ -432,25 +457,26 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					continue;
 				}
 				if (!other) compiledCount++;
+				const readsFiles = /__(binaryOf|inputBytes)\(__items/.test(compiled.source);
 				const token = compiled.mints.length > 0 ? [MINTED_TOKEN_RESPONSE] : [];
 				const make = (
 					label: string,
 					p: Json,
 					responses: EquivalenceCase['responses'],
+					items: EquivalenceCase['items'] = readsFiles ? FILE_ITEMS : undefined,
 				): EquivalenceCase => ({
 					name: `${type}@${version} ${label}`,
 					type,
 					typeVersion: version,
 					parameters: p,
+					...(items ? { items } : {}),
 					...(credential
 						? { credential: { type: credential, data: fakeCredential(credential) } }
 						: {}),
 					responses,
 				});
-				const ok = [
-					...token,
-					{ body: { ok: true, id: 'r1', result: { id: 'r1' }, data: [{ id: 'r1' }] } },
-				];
+				const plain = { ok: true, id: 'r1', result: { id: 'r1' }, data: [{ id: 'r1' }] };
+				const ok = [...token, { body: readsFiles ? { ...plain, ...UPLOAD_ANSWER } : plain }];
 				const bad = [...token, { status: 400, body: { message: 'bad request' } }];
 				try {
 					const difference =
@@ -459,6 +485,23 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					if (difference !== undefined) {
 						why(`v1: ${difference}`, weight);
 						continue;
+					}
+					if (readsFiles) {
+						const withFile = await (CACHE ? recordV1Cached : recordV1)(make('ok', parameters, ok));
+						if (withFile.error !== undefined) {
+							why(`v1: the case with a file fails: ${withFile.error}`, weight);
+							continue;
+						}
+						const withoutFile = await differenceFromV1(
+							make('no file', parameters, ok, [{}]),
+							sources,
+							registry,
+							checking,
+						);
+						if (withoutFile !== undefined) {
+							why(`v1: without a file: ${withoutFile}`, weight);
+							continue;
+						}
 					}
 					let names = compiled.changed;
 
