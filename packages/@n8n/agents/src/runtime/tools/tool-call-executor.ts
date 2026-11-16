@@ -437,9 +437,7 @@ export class ToolCallExecutor {
 		for (const id of Object.keys(ctx.pendingResume.pendingToolCalls)) {
 			if (id === ctx.pendingResume.resumeToolCallId) continue;
 			const entry = ctx.pendingResume.pendingToolCalls[id];
-			const target = resolveToolCallTarget(ctx.toolMap, entry.toolName, entry.input, {
-				resume: entry.suspended,
-			});
+			const target = resolveToolCallTarget(ctx.toolMap, entry.toolName, entry.input);
 			const tool = target?.tool;
 			const params = this.pendingToolCallParams(entry, ctx, ctx.pendingResume.resumeData);
 			if (target?.dispatchedBy) params.input = target.input as JSONValue;
@@ -497,9 +495,7 @@ export class ToolCallExecutor {
 	): Promise<void> {
 		for (const entry of Object.values(pending)) {
 			if (!entry.suspended) continue;
-			const target = resolveToolCallTarget(ctx.toolMap, entry.toolName, entry.input, {
-				resume: true,
-			});
+			const target = resolveToolCallTarget(ctx.toolMap, entry.toolName, entry.input);
 			if (!target?.tool.onCancellation) continue;
 			const tool = target.tool;
 			const params = this.pendingToolCallParams(entry, ctx);

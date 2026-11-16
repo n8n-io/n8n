@@ -104,8 +104,6 @@ async function grantBatchActions(context: InstanceAiContext, plan: ChangePlan) {
  * The runtime validates a resumed call against this schema before the handler
  * runs, so stored inputs of the former write tools are converted first. The
  * preprocess step does not change the JSON schema that the model sees.
- * The former names resolve only on resume: a stored input passed the old
- * schema, but a new call in an old shape could be read as another change.
  */
 const toolInputSchema = z.preprocess(
 	normalizeLegacyInput,
@@ -116,8 +114,7 @@ export function createChangeDataTablesTool(context: InstanceAiContext) {
 	const tool = new Tool(CHANGE_DATA_TABLES_TOOL_NAME)
 		.description(DESCRIPTION)
 		.input(toolInputSchema)
-		.legacyNames(...DATA_TABLE_WRITE_TOOL_NAMES)
-		.legacyForResumeOnly();
+		.legacyNames(...DATA_TABLE_WRITE_TOOL_NAMES);
 	for (const formerName of FORMER_DATA_TABLES_TOOL_NAMES) {
 		tool.legacyActions(formerName, ...DATA_TABLE_WRITE_TOOL_ACTIONS);
 	}

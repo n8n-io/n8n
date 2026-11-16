@@ -1471,34 +1471,6 @@ describe('AgentRuntime — execution counters', () => {
 		expect(resumed.finishReason).not.toBe('error');
 	});
 
-	it('resumes a suspended call under a former name that is for resume only', async () => {
-		const suspendTool = makeInterruptibleTool();
-		const { runtime } = createRuntimeWithTools([suspendTool], 1);
-
-		generateText.mockResolvedValueOnce(
-			makeGenerateWithToolCalls([
-				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
-			]),
-		);
-
-		const first = await runtime.generate('needs approval');
-		const { runId, toolCallId } = first.pendingSuspend![0];
-
-		Object.assign(suspendTool, {
-			name: 'approve_v2',
-			legacyNames: ['approve'],
-			legacyResumeOnly: true,
-		});
-
-		generateText.mockResolvedValueOnce(makeGenerateSuccess('approved'));
-		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
-
-		expect(resumed.error).toBeUndefined();
-		expect(resumed.toolCalls).toEqual(
-			expect.arrayContaining([expect.objectContaining({ output: { approved: true } })]),
-		);
-	});
-
 	it('resumes a suspended call of a split tool in the tool that owns its action', async () => {
 		const resumedBy: string[] = [];
 		const makeActionTool = (name: string, handlerLabel: string): BuiltTool => ({

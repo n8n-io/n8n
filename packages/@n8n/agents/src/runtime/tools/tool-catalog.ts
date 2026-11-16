@@ -3,8 +3,8 @@ import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 import { isZodSchema } from '../../utils/zod';
-import type { BuiltTool, ToolResolveOptions } from '../../types/sdk/tool';
-import { callAction, mayResolveLegacyCall } from './tool-adapter';
+import type { BuiltTool } from '../../types/sdk/tool';
+import { callAction } from './tool-adapter';
 import { filterTools, rankTools } from './tool-search';
 
 export const FIND_TOOLS_TOOL_NAME = 'find_tools';
@@ -177,8 +177,8 @@ export class ToolCatalog {
 	}
 
 	/** A deferred tool by name. Resolves legacy names and legacy split tools by `input.action`. */
-	getTool(name: string, input?: unknown, options?: ToolResolveOptions): BuiltTool | undefined {
-		return this.lookup(name, input, options)?.tool;
+	getTool(name: string, input?: unknown): BuiltTool | undefined {
+		return this.lookup(name, input)?.tool;
 	}
 
 	/** One line for each tool group: `- <name> (<summary>): tool1, tool2`. Names only. */
@@ -199,18 +199,13 @@ export class ToolCatalog {
 		return lines.join('\n');
 	}
 
-	private lookup(
-		name: string,
-		input?: unknown,
-		options?: ToolResolveOptions,
-	): ToolCatalogEntry | undefined {
+	private lookup(name: string, input?: unknown): ToolCatalogEntry | undefined {
 		const direct = this.entries.get(name);
 		if (direct) return direct;
 		const action = callAction(input);
 		const byAction =
 			action === undefined ? undefined : this.currentNameByLegacyAction.get(name)?.get(action);
-		const entry = this.entries.get(byAction ?? this.currentNameByLegacyName.get(name) ?? name);
-		return entry && mayResolveLegacyCall(entry.tool, name, options) ? entry : undefined;
+		return this.entries.get(byAction ?? this.currentNameByLegacyName.get(name) ?? name);
 	}
 
 	private createFindTool(): BuiltTool {
@@ -237,15 +232,15 @@ export class ToolCatalog {
 				'Run a tool from the tool catalog. Get its input schema with find_tools first. Pass its input as arguments, with the argument names and types the schema gives.',
 			inputSchema: callToolInputSchema,
 			dispatch: {
-				resolve: (input, options) => {
+				resolve: (input) => {
 					const parsed = callToolInputSchema.safeParse(input);
 					if (!parsed.success) return undefined;
 					const args = parsed.data.arguments ?? {};
-					const entry = this.lookup(parsed.data.tool, args, options);
+					const entry = this.lookup(parsed.data.tool, args);
 					return entry ? { tool: entry.tool, input: args } : undefined;
 				},
-				wrap: (toolName, input, options) => {
-					const entry = this.lookup(toolName, input, options);
+				wrap: (toolName, input) => {
+					const entry = this.lookup(toolName, input);
 					if (!entry) return undefined;
 					// Copy: the caller's input is also kept for suspension and resume.
 					const args = { ...toArguments(input) };

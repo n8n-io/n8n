@@ -104,9 +104,7 @@ export class ToolCallRunner {
 		// A tool from the tool catalog called by its own name runs as if it came through
 		// call_tool. Skills and tool results name tool catalog tools directly, and some
 		// models then call them by that name. Invalid input returns the schema.
-		const target = resolveToolCallTarget(toolMap, toolName, callParams.input, {
-			resume: callParams.previouslySuspended === true,
-		});
+		const target = resolveToolCallTarget(toolMap, toolName, callParams.input);
 
 		if (!target) {
 			const hint = toolMap.has(CALL_TOOL_TOOL_NAME)
