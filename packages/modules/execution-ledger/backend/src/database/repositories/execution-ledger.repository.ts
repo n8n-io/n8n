@@ -28,6 +28,8 @@ export type NewExecutionLedgerRow = Omit<ExecutionLedgerRow, 'id'>;
 
 type RawLedgerRow = Record<keyof ExecutionLedgerRow, unknown>;
 
+export type ExecutionLedgerBacklogStats = { rows: number; oldestOccurredAt: Date | null };
+
 /** The only reader and writer of `execution_ledger`. */
 @Service()
 export class ExecutionLedgerRepository {
@@ -81,6 +83,24 @@ export class ExecutionLedgerRepository {
 		return rows.map(toLedgerRow);
 	}
 
+	/** Counts the rows that no fold has claimed yet, and finds the oldest one. */
+	async getBacklogStats(): Promise<ExecutionLedgerBacklogStats> {
+		const manager = this.table.managerFor({});
+		const table = manager.connection.driver.escape(this.table.metadata.tableName);
+		const [stats] = await this.query<{ rows: unknown; oldest: unknown }>(
+			manager,
+			`SELECT COUNT(*) AS "rows", MIN("occurredAt") AS "oldest" FROM ${table}`,
+			[],
+		);
+		const oldest = stats?.oldest;
+
+		return {
+			rows: Number(stats?.rows ?? 0),
+			oldestOccurredAt:
+				oldest instanceof Date || typeof oldest === 'string' ? parseDbTime(oldest) : null,
+		};
+	}
+
 	/**
 	 * The sqlite-pooled driver drops the rows of a DELETE ... RETURNING. A SELECT and then a
 	 * DELETE up to the last id is exact, because the write lock stops new inserts in between.
@@ -99,13 +119,13 @@ export class ExecutionLedgerRepository {
 		return rows;
 	}
 
-	private async query(
+	private async query<T = RawLedgerRow>(
 		manager: EntityManager,
 		rawSql: string,
 		rawParams: unknown[],
-	): Promise<RawLedgerRow[]> {
+	): Promise<T[]> {
 		const { sql, params } = toDialectQuery(this.isPostgres, rawSql, rawParams);
-		const rows: RawLedgerRow[] = await manager.query(sql, params);
+		const rows: T[] = await manager.query(sql, params);
 		return rows;
 	}
 }

@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import {
 	type AfterFoldCommit,
 	DbLockUnavailableError,
@@ -14,7 +15,11 @@ import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionLedgerRepository } from '../../database/repositories/execution-ledger.repository';
-import { ExecutionLedgerFoldService, FOLD_BATCH_SIZE } from '../execution-ledger-fold.service';
+import {
+	ExecutionLedgerFoldService,
+	FOLD_BATCH_SIZE,
+	FOLD_FAILURE_ALERT_THRESHOLD,
+} from '../execution-ledger-fold.service';
 import { FoldStepFailedError } from '../fold-step-failed.error';
 
 vi.mock('@n8n/db', async (importOriginal) => ({
@@ -38,6 +43,7 @@ describe('ExecutionLedgerFoldService', () => {
 	let errorReporter: ReturnType<typeof mock<ErrorReporter>>;
 	let dbLockService: ReturnType<typeof mock<DbLockService>>;
 	let repository: ReturnType<typeof mock<ExecutionLedgerRepository>>;
+	let eventService: ReturnType<typeof mock<EventService>>;
 	let registry: FoldStepRegistry;
 	let service: ExecutionLedgerFoldService;
 	let tryWithLockContext: typeof dbLockService.tryWithLockContext;
@@ -60,6 +66,7 @@ describe('ExecutionLedgerFoldService', () => {
 		errorReporter = mock<ErrorReporter>();
 		dbLockService = mock<DbLockService>();
 		repository = mock<ExecutionLedgerRepository>();
+		eventService = mock<EventService>();
 		tryWithLockContext = dbLockService.tryWithLockContext;
 		claimBatch = repository.claimBatch;
 		tryWithLockContext.mockImplementation(async (_key, fn) => await fn(ctx));
@@ -71,6 +78,7 @@ describe('ExecutionLedgerFoldService', () => {
 			dbLockService,
 			repository,
 			registry,
+			eventService,
 		);
 	});
 
@@ -254,6 +262,120 @@ describe('ExecutionLedgerFoldService', () => {
 				await service.foldBatch();
 			}
 			expect(scopedLogger.warn).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('metrics events', () => {
+		const failingStep = () =>
+			addStep('bad', async () => {
+				throw new Error('step broke');
+			});
+
+		const failOnce = async () =>
+			await service.foldBatch().then(
+				() => undefined,
+				(e: unknown) => e as FoldStepFailedError,
+			);
+
+		const emitted = (event: string) =>
+			eventService.emit.mock.calls.filter(([name]) => name === event);
+
+		it('emits succeeded with the row count after a committed batch', async () => {
+			addStep('first');
+			claimBatch.mockResolvedValue(rowsOf(3));
+
+			await service.foldBatch();
+
+			expect(eventService.emit).toHaveBeenCalledWith('execution-ledger-fold-succeeded', {
+				rows: 3,
+			});
+		});
+
+		it('emits succeeded with 0 rows when the lock is held and the claim is empty', async () => {
+			addStep('first');
+			claimBatch.mockResolvedValue([]);
+
+			await service.foldBatch();
+
+			expect(eventService.emit).toHaveBeenCalledWith('execution-ledger-fold-succeeded', {
+				rows: 0,
+			});
+		});
+
+		it('emits nothing when no step is registered', async () => {
+			await service.foldBatch();
+
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('emits nothing when the lock is held', async () => {
+			addStep('first');
+			tryWithLockContext.mockRejectedValue(lockHeld());
+
+			await service.foldBatch();
+
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('emits step-failed with the step and attempt, and not succeeded', async () => {
+			failingStep();
+
+			await failOnce();
+
+			expect(eventService.emit).toHaveBeenCalledWith('execution-ledger-fold-step-failed', {
+				step: 'bad',
+				attempt: 1,
+			});
+			expect(emitted('execution-ledger-fold-succeeded')).toHaveLength(0);
+		});
+
+		it('counts the attempt up on the same batch', async () => {
+			failingStep();
+
+			await failOnce();
+			await failOnce();
+
+			expect(emitted('execution-ledger-fold-step-failed').map(([, payload]) => payload)).toEqual([
+				{ step: 'bad', attempt: 1 },
+				{ step: 'bad', attempt: 2 },
+			]);
+		});
+
+		it('carries firstLedgerId and the fold step tag on the thrown error', async () => {
+			failingStep();
+			claimBatch.mockResolvedValue(rowsOf(2, '42'));
+
+			const error = await failOnce();
+
+			expect(error?.firstLedgerId).toBe('42');
+			expect(error?.tags).toMatchObject({ foldStep: 'bad' });
+		});
+
+		it('logs an error once, at the alert threshold attempt only', async () => {
+			failingStep();
+			const errorCalls: number[] = [];
+
+			for (let attempt = 1; attempt <= FOLD_FAILURE_ALERT_THRESHOLD + 1; attempt++) {
+				await failOnce();
+				errorCalls.push(scopedLogger.error.mock.calls.length);
+			}
+
+			expect(errorCalls).toEqual([0, 0, 1, 1]);
+			expect(scopedLogger.error).toHaveBeenCalledWith(expect.any(String), {
+				step: 'bad',
+				attempt: 3,
+				firstLedgerId: '1',
+			});
+		});
+
+		it('still resolves with the row count when emit throws after a commit', async () => {
+			addStep('first');
+			claimBatch.mockResolvedValue(rowsOf(4));
+			eventService.emit.mockImplementation(() => {
+				throw new Error('listener broke');
+			});
+
+			await expect(service.foldBatch()).resolves.toBe(4);
 		});
 	});
 

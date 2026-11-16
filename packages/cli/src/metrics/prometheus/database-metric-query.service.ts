@@ -7,7 +7,7 @@ import {
 	type WorkflowPublicationOutboxStatus,
 	WorkflowRepository,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 
 import { CachedMetricQueryFactory } from './cached-metric-query';
 
@@ -18,6 +18,9 @@ export type WorkflowStatistics = Awaited<
 type PublicationStats = Partial<
 	Record<WorkflowPublicationOutboxStatus, { count: number; oldestMs: number }>
 >;
+
+/** The ledger backlog, as JSON so the cache can hold it. */
+export type LedgerBacklogState = { rows: number; oldestMs: number | null };
 
 /** The stored schedule of one durable system task, as JSON so the cache can hold it. */
 export type DurableJobState = {
@@ -75,6 +78,19 @@ export class DatabaseMetricQueryService {
 					byStatus[status] = { count, oldestMs: oldestCreatedAt.getTime() };
 				}
 				return byStatus;
+			},
+		});
+	}
+
+	/** Call only while the `execution-ledger` module is active. It owns the table. */
+	executionLedgerBacklog(ttlMs: number) {
+		return this.cachedQueries.create<LedgerBacklogState>({
+			cacheKey: 'metrics:execution-ledger:backlog:v1',
+			ttlMs,
+			query: async () => {
+				const { ExecutionLedgerBacklog } = await import('@n8n/backend-module-execution-ledger');
+				const { rows, oldestOccurredAt } = await Container.get(ExecutionLedgerBacklog).getStats();
+				return { rows, oldestMs: oldestOccurredAt?.getTime() ?? null };
 			},
 		});
 	}

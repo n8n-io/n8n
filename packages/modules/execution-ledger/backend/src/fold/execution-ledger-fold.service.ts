@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService, type EventMap } from '@n8n/backend-services';
 import {
 	type AfterFoldCommit,
 	DbLock,
@@ -14,6 +15,7 @@ import { ErrorReporter } from 'n8n-core';
 
 import { FoldStepFailedError } from './fold-step-failed.error';
 import { ExecutionLedgerRepository } from '../database/repositories/execution-ledger.repository';
+import type { ExecutionLedgerMetricsEventMap } from '../execution-ledger-metrics.events';
 
 export const FOLD_BATCH_SIZE = 5000;
 
@@ -22,6 +24,9 @@ const BATCH_DELAY_MS = 250;
 
 /** Consecutive lock skips after which the fold warns that something else holds the lock. */
 const SKIP_WARN_THRESHOLD = 5;
+
+/** Failures in a row on the same batch after which the fold logs an alert. */
+export const FOLD_FAILURE_ALERT_THRESHOLD = 3;
 
 /**
  * Moves claimed ledger rows into the tables of every registered fold step, in one transaction
@@ -40,6 +45,7 @@ export class ExecutionLedgerFoldService {
 		private readonly dbLockService: DbLockService,
 		private readonly repository: ExecutionLedgerRepository,
 		private readonly stepRegistry: FoldStepRegistry,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('execution-ledger');
 	}
@@ -94,7 +100,13 @@ export class ExecutionLedgerFoldService {
 							if (stepWork) afterCommit.push(stepWork);
 						} catch (error) {
 							if (error instanceof FoldTransactionLostError) throw error;
-							throw new FoldStepFailedError(step.name, this.recordFailure(rows[0].id), error);
+							const firstLedgerId = rows[0].id;
+							throw new FoldStepFailedError(
+								step.name,
+								this.recordFailure(firstLedgerId),
+								firstLedgerId,
+								error,
+							);
 						}
 					}
 					return { claimed: rows.length, afterCommit };
@@ -105,11 +117,13 @@ export class ExecutionLedgerFoldService {
 				this.registerLockSkip();
 				return 0;
 			}
+			if (error instanceof FoldStepFailedError) this.reportStepFailure(error);
 			throw error;
 		}
 
 		this.consecutiveLockSkips = 0;
 		if (folded.claimed > 0) this.failedBatch = undefined;
+		this.emitMetric('execution-ledger-fold-succeeded', { rows: folded.claimed });
 
 		for (const work of folded.afterCommit) {
 			try {
@@ -127,6 +141,30 @@ export class ExecutionLedgerFoldService {
 		const failures = this.failedBatch?.key === batchKey ? this.failedBatch.failures + 1 : 1;
 		this.failedBatch = { key: batchKey, failures };
 		return failures;
+	}
+
+	private reportStepFailure({ step, attempt, firstLedgerId }: FoldStepFailedError) {
+		this.emitMetric('execution-ledger-fold-step-failed', { step, attempt });
+		// Logged once per batch, since the task runner already logs every failed run.
+		if (attempt !== FOLD_FAILURE_ALERT_THRESHOLD) return;
+
+		this.logger.error('Execution ledger fold step keeps failing on the same batch', {
+			step,
+			attempt,
+			firstLedgerId,
+		});
+	}
+
+	/** A throwing listener must not fail a fold that already committed. */
+	private emitMetric<E extends keyof ExecutionLedgerMetricsEventMap>(
+		event: E,
+		payload: EventMap[E],
+	) {
+		try {
+			this.eventService.emit(event, payload);
+		} catch {
+			// Deliberately swallowed, see above.
+		}
 	}
 
 	/** Persistent skips suggest another deployment on the same database holds the lock. */
