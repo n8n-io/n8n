@@ -1,7 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
-import { truncateMessage } from './error-handling';
+import { messageFromBody, truncateMessage } from './error-handling';
 import { oauth2BasicCredentials } from './headers';
 import type { OAuth2Login } from './types';
 
@@ -53,31 +53,52 @@ export function clientCredentialsTokenRequest(login: OAuth2Login): TokenRequest 
 	};
 }
 
-function reasonFor(text: string, status: number): string {
-	const stated = (() => {
-		try {
-			const parsed: unknown = JSON.parse(text);
-			if (!isRecord(parsed)) return undefined;
-			if (typeof parsed.error_description === 'string') return parsed.error_description;
-			if (isRecord(parsed.error) && typeof parsed.error.message === 'string') {
-				return parsed.error.message;
-			}
-			if (typeof parsed.error === 'string') return parsed.error;
-		} catch {}
-		return undefined;
-	})();
+function refusedToSignIn(text: string, status: number): UserError {
+	const stated = messageFromBody(text.trim());
+	const reason =
+		stated === undefined ? `the login server answered ${status}` : truncateMessage(stated);
 
-	if (stated === undefined) return `the login server answered ${status}`;
-	return truncateMessage(stated);
+	return new UserError(`Could not sign in to the gateway: ${reason}`, {
+		description: 'Check the token URL, client ID, client secret and scope on the credential.',
+	});
+}
+
+/** RFC 6749 section 5.1 makes the type part of the grant, and every other type is proof of possession. */
+function assertBearerType(parsed: unknown): void {
+	const stated = isRecord(parsed) ? parsed.token_type : undefined;
+	if (typeof stated !== 'string' || stated.toLowerCase() === 'bearer') return;
+
+	throw new UserError(`The login server returned a ${stated} token, which n8n cannot send`, {
+		description: 'Ask the login server for a Bearer token, which this credential sends.',
+	});
 }
 
 /** Trimmed because `Headers` trims it anyway, and a padded token is not worth sending. */
-export function accessTokenIn(parsed: unknown): string {
+function accessTokenIn(parsed: unknown): string {
+	assertBearerType(parsed);
 	const stated =
 		isRecord(parsed) && typeof parsed.access_token === 'string' ? parsed.access_token : '';
 	const token = stated.trim();
-	if (token.length === 0) throw new OperationalError('The login server returned no access token');
+	if (token.length === 0) {
+		throw new UserError('The login server returned no access token', {
+			description: 'Check the client ID, client secret and scope on the credential.',
+		});
+	}
 	return token;
+}
+
+function bodyText(body: unknown): string {
+	if (typeof body === 'string') return body;
+	return body === undefined ? '' : JSON.stringify(body);
+}
+
+/** The shape `returnFullResponse` gives: a refusal states its reason in the body, not in the error thrown in its place. */
+export function accessTokenInResponse(response: unknown): string {
+	const full: Record<string, unknown> = isRecord(response) ? response : {};
+	const status = typeof full.statusCode === 'number' ? full.statusCode : 0;
+
+	if (status >= 200 && status < 300) return accessTokenIn(full.body);
+	throw refusedToSignIn(bodyText(full.body), status);
 }
 
 function statedLifetime(parsed: unknown): number {
@@ -118,24 +139,23 @@ export function createClientCredentialsTokenSource(
 	const request = async (): Promise<CachedToken> => {
 		const { timeout, ...init } = clientCredentialsTokenRequest(login);
 		const deadline = AbortSignal.timeout(timeout);
-		const response = await fetchToken(login.tokenUrl, { ...init, signal: deadline }).catch(
-			(error: unknown) => {
-				if (!deadline.aborted) throw error;
-				throw new UserError(
-					`Could not sign in to the gateway: the login server did not answer within ${timeout / 1000} seconds`,
-					{ description: 'Check that the token URL is reachable from this n8n instance.' },
-				);
-			},
-		);
-		const text = await response.text();
-		if (!response.ok) {
-			const reason = reasonFor(text, response.status);
-			throw new UserError(`Could not sign in to the gateway: ${reason}`, {
-				description: 'Check the token URL, client ID, client secret and scope on the credential.',
-			});
-		}
-		const token = readToken(text);
-		return token;
+
+		// The body is read under the same deadline, so the read belongs in the same handler
+		const read = async () => {
+			const response = await fetchToken(login.tokenUrl, { ...init, signal: deadline });
+			return { ok: response.ok, status: response.status, text: await response.text() };
+		};
+
+		const { ok, status, text } = await read().catch((error: unknown) => {
+			if (!deadline.aborted) throw error;
+			throw new UserError(
+				`Could not sign in to the gateway: the login server did not answer within ${timeout / 1000} seconds`,
+				{ description: 'Check that the token URL is reachable from this n8n instance.' },
+			);
+		});
+
+		if (!ok) throw refusedToSignIn(text, status);
+		return readToken(text);
 	};
 
 	return {

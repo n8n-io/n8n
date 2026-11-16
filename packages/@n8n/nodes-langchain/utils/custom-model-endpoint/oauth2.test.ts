@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { clientCredentialsTokenRequest, createClientCredentialsTokenSource } from './oauth2';
 import type { OAuth2Login } from './types';
@@ -122,21 +122,44 @@ describe('createClientCredentialsTokenSource', () => {
 	});
 
 	describe('when the login server refuses', () => {
-		it("gives the server's own reason", async () => {
-			const { fetchImpl } = granting(
-				{ error: 'invalid_client', error_description: 'Client authentication failed' },
+		const refusing = (body: string, status: number) =>
+			(async () => new Response(body, { status })) as typeof fetch;
+
+		it.each<[string, string, number, string]>([
+			[
+				'the description of the OAuth2 error',
+				JSON.stringify({
+					error: 'invalid_client',
+					error_description: 'Client authentication failed',
+				}),
 				401,
-			);
-			const source = createClientCredentialsTokenSource(login(), fetchImpl);
+				'Client authentication failed',
+			],
+			[
+				'the bare error code when that is all there is',
+				JSON.stringify({ error: 'invalid_scope' }),
+				400,
+				'invalid_scope',
+			],
+			[
+				'the message of a body already shaped for the client',
+				JSON.stringify({ error: { message: 'Client authentication failed' } }),
+				401,
+				'Client authentication failed',
+			],
+			[
+				'the title of the page a proxy refused with',
+				'<html><head><title>Access Denied: corporate proxy rule 42</title></head></html>',
+				403,
+				'Access Denied: corporate proxy rule 42',
+			],
+			['a plain text refusal', 'Unauthorized\n', 401, 'Unauthorized'],
+			['the status when the body states no reason', JSON.stringify({}), 503, 'answered 503'],
+			['the status when there is no body at all', '', 503, 'answered 503'],
+		])('gives %s', async (_name, body, status, expected) => {
+			const source = createClientCredentialsTokenSource(login(), refusing(body, status));
 
-			await expect(source.getToken()).rejects.toThrow('Client authentication failed');
-		});
-
-		it('falls back to the status when it gives no reason', async () => {
-			const { fetchImpl } = granting({}, 503);
-			const source = createClientCredentialsTokenSource(login(), fetchImpl);
-
-			await expect(source.getToken()).rejects.toThrow('answered 503');
+			await expect(source.getToken()).rejects.toThrow(expected);
 		});
 	});
 
@@ -149,21 +172,49 @@ describe('createClientCredentialsTokenSource', () => {
 		);
 	});
 
-	it.each([
-		['the field is missing', { token_type: 'Bearer' }],
-		['the field is empty', { access_token: '' }],
+	it.each(['Bearer', 'bearer', 'BEARER', undefined])(
+		'sends a token the login server typed %s',
+		async (token_type) => {
+			const { fetchImpl } = granting({ ...GRANT, token_type });
+
+			await expect(createClientCredentialsTokenSource(login(), fetchImpl).getToken()).resolves.toBe(
+				'tok-abc-9f2a71c4',
+			);
+		},
+	);
+
+	it.each(['DPoP', 'mac'])(
+		'names the type when the login server grants a %s token',
+		async (token_type) => {
+			const { fetchImpl } = granting({ ...GRANT, token_type });
+
+			await expect(
+				createClientCredentialsTokenSource(login(), fetchImpl).getToken(),
+			).rejects.toThrow(token_type);
+		},
+	);
+
+	// A login server that grants nothing usable is a credential to correct, not a blip to retry
+	it.each<[string, Record<string, unknown>, string]>([
+		['the field is missing', { token_type: 'Bearer' }, 'no access token'],
+		['the field is empty', { access_token: '' }, 'no access token'],
 		[
 			'the field holds nothing but whitespace, which is sent as nothing at all',
-			{
-				access_token: '  ',
-			},
+			{ access_token: '  ' },
+			'no access token',
 		],
-	])('fails when %s', async (_name, grant) => {
+	])('reports what the user has to correct when %s', async (_name, grant, expected) => {
 		const { fetchImpl } = granting(grant);
 
-		await expect(createClientCredentialsTokenSource(login(), fetchImpl).getToken()).rejects.toThrow(
-			'no access token',
-		);
+		const error = await createClientCredentialsTokenSource(login(), fetchImpl)
+			.getToken()
+			.then(
+				() => undefined,
+				(reason: Error) => reason,
+			);
+
+		expect(error).toBeInstanceOf(UserError);
+		expect(error?.message).toContain(expected);
 	});
 
 	it('gives the token request a deadline of its own, not the one an inference request gets', async () => {
@@ -175,29 +226,50 @@ describe('createClientCredentialsTokenSource', () => {
 		expect(clientCredentialsTokenRequest(login()).timeout).toBe(30_000);
 	});
 
-	it('says the deadline passed, rather than handing back the abort the runtime threw', async () => {
-		const controller = new AbortController();
+	describe('when the deadline passes', () => {
 		const expired = new DOMException('This operation was aborted', 'TimeoutError');
-		const deadline = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal);
-		const stalling = (async (_url: RequestInfo | URL, init?: RequestInit) =>
-			await new Promise<Response>((_resolve, reject) => {
-				init?.signal?.addEventListener('abort', () => reject(expired));
-				controller.abort(expired);
-			})) as typeof fetch;
 
-		const error = await createClientCredentialsTokenSource(login(), stalling)
-			.getToken()
-			.then(
-				() => undefined,
-				(reason: Error) => reason,
+		/** Nothing arrives at all: the request is still waiting for the first byte. */
+		const beforeAnyHeaders = (controller: AbortController) =>
+			(async (_url: RequestInfo | URL, init?: RequestInit) =>
+				await new Promise<Response>((_resolve, reject) => {
+					init?.signal?.addEventListener('abort', () => reject(expired));
+					controller.abort(expired);
+				})) as typeof fetch;
+
+		/** The headers arrive and the body then stalls, so the read is what the deadline cuts. */
+		const afterHeaders = (controller: AbortController) =>
+			(async (_url: RequestInfo | URL, init?: RequestInit) => {
+				const body = new ReadableStream<Uint8Array>({
+					start: (stream) => {
+						init?.signal?.addEventListener('abort', () => stream.error(expired));
+						setTimeout(() => controller.abort(expired), 0);
+					},
+				});
+				return new Response(body, { status: 200 });
+			}) as typeof fetch;
+
+		it.each<[string, (controller: AbortController) => typeof fetch]>([
+			['before any headers arrive', beforeAnyHeaders],
+			['while the body is still being read', afterHeaders],
+		])('says the deadline passed %s', async (_name, stalling) => {
+			const controller = new AbortController();
+			const deadline = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal);
+
+			const error = await createClientCredentialsTokenSource(login(), stalling(controller))
+				.getToken()
+				.then(
+					() => undefined,
+					(reason: Error) => reason,
+				);
+
+			expect(deadline).toHaveBeenCalledWith(30_000);
+			expect(error).toBeInstanceOf(UserError);
+			expect(error?.message).toBe(
+				'Could not sign in to the gateway: the login server did not answer within 30 seconds',
 			);
-
-		expect(deadline).toHaveBeenCalledWith(30_000);
-		expect(error).toBeInstanceOf(UserError);
-		expect(error?.message).toBe(
-			'Could not sign in to the gateway: the login server did not answer within 30 seconds',
-		);
-		deadline.mockRestore();
+			deadline.mockRestore();
+		});
 	});
 
 	it('does not follow a redirect, which would replay the secret to another origin', async () => {
