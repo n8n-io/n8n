@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SelfHealingConfigurationDto } from '@n8n/api-types';
 import {
+	EnterprisePlanKey,
 	N8nActionToggle,
 	N8nAvatar,
 	N8nButton,
@@ -17,13 +18,14 @@ import {
 } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
+import { featureMaturity } from '@n8n/frontend-constants/feature-maturity';
 import {
 	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
 	SELF_HEALING_CONFIGURATION_VIEW,
 	type SelfHealingLocation,
 } from '@n8n/frontend-constants/self-healing';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, inject, nextTick, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { useSelfHealingStore } from '../self-healing.store';
@@ -33,6 +35,11 @@ const props = withDefaults(defineProps<{ projectId: string; variant?: SelfHealin
 	variant: 'projectSettings',
 });
 const isPersonalTab = computed(() => props.variant === 'personalTab');
+const enterprisePlan = inject(
+	EnterprisePlanKey,
+	computed(() => false),
+);
+const selfHealingMaturity = featureMaturity.selfHealing;
 const store = useSelfHealingStore();
 const rootStore = useRootStore();
 const i18n = useI18n();
@@ -224,7 +231,11 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 		<!-- The personal tab shows the Preview badge on the tab itself. -->
 		<h3 v-if="!isPersonalTab" :class="$style.heading">
 			<label>{{ i18n.baseText('selfHealing.config.heading') }}</label>
-			<N8nFeatureMaturityBadges feature="selfHealing" placement="title" />
+			<N8nFeatureMaturityBadges
+				:show-preview="selfHealingMaturity.preview"
+				:show-enterprise="selfHealingMaturity.limitedEnterpriseSupport && enterprisePlan"
+				test-id="self-healing"
+			/>
 		</h3>
 		<slot v-if="isPersonalTab && loading" name="loading" />
 		<N8nButton v-else-if="failed" type="button" variant="outline" @click="load">{{

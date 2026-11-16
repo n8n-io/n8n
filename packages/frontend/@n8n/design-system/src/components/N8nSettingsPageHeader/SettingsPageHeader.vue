@@ -5,7 +5,11 @@ import { computed, useSlots, watchEffect } from 'vue';
 import { useI18n } from '../../composables/useI18n';
 import N8nExternalLink from '../N8nExternalLink';
 import N8nFeatureMaturityBadges from '../FeatureMaturityBadges/FeatureMaturityBadges.vue';
-import { readFeatureMaturity } from '../FeatureMaturityBadges/featureMaturityState';
+import {
+	readFeatureMaturity,
+	resolveFeatureMaturityBadges,
+	useEnterprisePlan,
+} from '../FeatureMaturityBadges/featureMaturityState';
 import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
 
@@ -62,11 +66,17 @@ const resolvedDocsLabel = computed(() => props.docsLabel ?? t('settingsPageHeade
 const resolvedDocsLeadingText = computed(
 	() => props.docsLeadingText ?? t('settingsPageHeader.docsLeadingText'),
 );
+const enterprisePlan = useEnterprisePlan();
 const featureDocsUrl = computed(() =>
 	props.feature ? readFeatureMaturity(props.feature).docsUrl : undefined,
 );
 const resolvedDocsUrl = computed(() => props.docsUrl ?? featureDocsUrl.value);
-const showFeatureBadges = computed(() => Boolean(props.showBadges && props.feature));
+const featureBadges = computed(() =>
+	resolveFeatureMaturityBadges(props.feature, props.showBadges, enterprisePlan.value),
+);
+const showFeatureBadges = computed(
+	() => featureBadges.value.showPreview || featureBadges.value.showEnterprise,
+);
 const showTitleRow = computed(() => showFeatureBadges.value || Boolean(slots.titleTrailing));
 
 // Default-on means a developer who forgets to wire a docs URL is nudged (not silently broken):
@@ -91,7 +101,12 @@ if (import.meta.env.DEV) {
 			<N8nHeading :tag="headingTag" :class="$style.title" step="xl" color="text-dark">
 				{{ title }}
 			</N8nHeading>
-			<N8nFeatureMaturityBadges v-if="showFeatureBadges" :feature="feature" placement="title" />
+			<N8nFeatureMaturityBadges
+				v-if="showFeatureBadges"
+				:show-preview="featureBadges.showPreview"
+				:show-enterprise="featureBadges.showEnterprise"
+				:test-id="featureBadges.testId"
+			/>
 			<slot name="titleTrailing" />
 		</div>
 		<N8nHeading v-else :tag="headingTag" :class="$style.title" step="xl" color="text-dark">

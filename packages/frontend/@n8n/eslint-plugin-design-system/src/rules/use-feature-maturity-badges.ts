@@ -39,7 +39,7 @@ export const UseFeatureMaturityBadgesRule = ESLintUtils.RuleCreator.withoutDocs(
 		},
 		messages: {
 			useFeatureMaturityBadges:
-				'Use N8nFeatureMaturityBadges instead of {{name}}. The shared component reads the feature list.',
+				'Use N8nFeatureMaturityBadges instead of {{name}}. Pass show-preview and show-enterprise.',
 		},
 		schema: [],
 	},

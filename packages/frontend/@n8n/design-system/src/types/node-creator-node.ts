@@ -5,6 +5,6 @@ export type NodeCreatorTag = {
 	type?: (typeof ElTag)['type'];
 	/** When true, renders as N8nBadge instead of ElTag. */
 	pill?: boolean;
-	/** When true, renders Preview through `N8nFeatureMaturityBadges`. `text` overrides the default label. */
+	/** When true, renders the Preview badge through `N8nFeatureMaturityBadges`. */
 	preview?: boolean;
 };

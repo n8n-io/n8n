@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import {
-	showsFeatureMaturityBadges,
-	type FeatureMaturityId,
-} from '@n8n/frontend-constants/feature-maturity';
+import type { FeatureMaturityId } from '@n8n/frontend-constants/feature-maturity';
 import { computed, useId } from 'vue';
 
 import N8nFeatureMaturityBadges from '../FeatureMaturityBadges/FeatureMaturityBadges.vue';
 import {
-	readFeatureMaturity,
+	resolveFeatureMaturityBadges,
 	useEnterprisePlan,
 } from '../FeatureMaturityBadges/featureMaturityState';
 import N8nSettingsRow from '../N8nSettingsRow';
@@ -55,6 +52,9 @@ const slots = defineSlots<{
 
 const enabled = defineModel<boolean>({ default: false });
 const enterprisePlan = useEnterprisePlan();
+const featureBadges = computed(() =>
+	resolveFeatureMaturityBadges(props.feature, props.showBadges, enterprisePlan.value),
+);
 // The title and the description label this switch. A custom action keeps the text plain.
 const switchId = `settings-enable-switch-${useId()}`;
 const labelFor = computed(() => (slots.action ? undefined : switchId));
@@ -69,10 +69,7 @@ const switchBindings = computed(() => ({
 }));
 // Skip the trailing slot when nothing would render, so the title does not keep an empty gap.
 const renderBadges = computed(
-	() =>
-		props.showBadges &&
-		props.feature !== undefined &&
-		showsFeatureMaturityBadges(readFeatureMaturity(props.feature), enterprisePlan.value),
+	() => featureBadges.value.showPreview || featureBadges.value.showEnterprise,
 );
 </script>
 
@@ -85,7 +82,11 @@ const renderBadges = computed(
 		:label-for="labelFor"
 	>
 		<template v-if="renderBadges" #titleTrailing>
-			<N8nFeatureMaturityBadges :feature="feature" placement="enable" />
+			<N8nFeatureMaturityBadges
+				:show-preview="featureBadges.showPreview"
+				:show-enterprise="featureBadges.showEnterprise"
+				:test-id="featureBadges.testId"
+			/>
 		</template>
 		<template #action>
 			<slot name="action">

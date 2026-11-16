@@ -1,8 +1,8 @@
 /**
  * Which features show Preview and Limited enterprise support.
- * Pass an id to `N8nSettingsPageHeader`, `N8nSettingsEnableRow`, or `N8nFeatureMaturityBadges`.
+ * Pass an id to `N8nSettingsPageHeader` or `N8nSettingsEnableRow`.
  * Set `show-badges` on the page title or on the enable row. The badges stay on that part.
- * The page title uses the larger badge. The enable row uses the smaller badge.
+ * Other surfaces pass `show-preview` and `show-enterprise` to `N8nFeatureMaturityBadges`.
  *
  * Some entries have no settings title yet: OAuth JWE, token exchange, node policies,
  * and the Microsoft Agent 365 trigger. Pass the id when that title exists.
@@ -12,7 +12,7 @@ export type FeatureMaturity = {
 	preview: boolean;
 	/** Show Limited enterprise support on an enterprise plan. */
 	limitedEnterpriseSupport: boolean;
-	/** Documentation page for the enterprise badge tooltip. */
+	/** Documentation page for the settings header link. */
 	docsUrl?: string;
 };
 

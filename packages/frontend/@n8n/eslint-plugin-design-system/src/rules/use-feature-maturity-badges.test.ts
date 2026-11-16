@@ -19,11 +19,11 @@ ruleTester.run('use-feature-maturity-badges', UseFeatureMaturityBadgesRule, {
 	valid: [
 		{
 			filename: 'Component.vue',
-			code: vue('<N8nFeatureMaturityBadges feature="agents" />'),
+			code: vue('<N8nFeatureMaturityBadges show-preview show-enterprise />'),
 		},
 		{
 			filename: 'Component.vue',
-			code: vue('<N8nFeatureMaturityBadges preview />'),
+			code: vue('<N8nFeatureMaturityBadges show-preview />'),
 		},
 		{
 			filename: 'PromotionPreviewBadges.vue',

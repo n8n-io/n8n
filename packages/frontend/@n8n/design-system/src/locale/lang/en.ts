@@ -84,7 +84,6 @@ export default {
 	'codeBlock.expand': 'Expand code',
 	'codeBlock.collapse': 'Collapse code',
 	'previewBadge.preview': 'Preview',
-	'maturityBadge.docsLink': 'Learn more',
 	'enterpriseReadinessBadge.limited': 'Limited enterprise readiness',
 	'enterpriseReadinessBadge.tooltip': "Some enterprise capabilities don't cover this feature yet.",
 	'settingsPageHeader.docsLeadingText': 'Learn more in the ',

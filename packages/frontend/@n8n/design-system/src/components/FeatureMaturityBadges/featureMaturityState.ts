@@ -32,6 +32,24 @@ export function readFeatureMaturity(id: FeatureMaturityId): FeatureMaturity {
 	return featureMaturity[id];
 }
 
+/** The badges a settings surface should pass to `N8nFeatureMaturityBadges`. */
+export function resolveFeatureMaturityBadges(
+	id: FeatureMaturityId | undefined,
+	showBadges: boolean,
+	enterprisePlan: boolean,
+): { showPreview: boolean; showEnterprise: boolean; testId?: string } {
+	if (!showBadges || id === undefined) {
+		return { showPreview: false, showEnterprise: false };
+	}
+
+	const entry = readFeatureMaturity(id);
+	return {
+		showPreview: entry.preview,
+		showEnterprise: entry.limitedEnterpriseSupport && enterprisePlan,
+		testId: featureMaturityTestId(id),
+	};
+}
+
 /** The plan provided by the app. False when the app provided none. */
 export function useEnterprisePlan(): ComputedRef<boolean> {
 	return inject(
