@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onUpdated, useTemplateRef } from 'vue';
+import { nextTick, onMounted, onUpdated, provide, useTemplateRef } from 'vue';
+import { attachmentGroupContextKey } from './AttachmentGroup.context';
 
 defineSlots<{
 	/** Attachment items supplied by the feature component. */
@@ -59,12 +60,58 @@ function focus() {
 }
 
 function onFocusIn(event: FocusEvent) {
+	const previousTarget = event.relatedTarget;
+	if (
+		previousTarget instanceof HTMLElement &&
+		previousTarget !== document.body &&
+		!group.value?.contains(previousTarget)
+	) {
+		returnFocusTarget = previousTarget;
+	}
+
 	const items = getItems();
-	const item = items.find((candidate) => candidate === event.target);
+	const item =
+		items.find((candidate) => candidate === event.target) ??
+		items.find(
+			(candidate) =>
+				event.target instanceof Node && candidate.parentElement?.contains(event.target),
+		);
 	if (!item) return;
 	activeItem = item;
 	updateTabStops(items);
 }
+
+async function restoreFocusAfterRemoval(
+	removedItem: HTMLElement,
+	nextItem: HTMLElement | undefined,
+	returnTarget: HTMLElement | undefined,
+) {
+	await nextTick();
+
+	const remainingItems = getItems();
+	if (remainingItems.includes(removedItem)) return;
+
+	activeItem = nextItem;
+	updateTabStops(remainingItems);
+	if (nextItem && remainingItems.includes(nextItem)) {
+		returnFocusTarget = returnTarget;
+		nextItem.focus();
+	} else if (returnTarget?.isConnected) {
+		returnFocusTarget = undefined;
+		returnTarget.focus();
+	}
+}
+
+async function onRemoveStart(removedItem: HTMLElement) {
+	const items = getItems();
+	const index = items.indexOf(removedItem);
+	if (index === -1) return;
+
+	const nextItem = items[index + 1] ?? items[index - 1];
+	await restoreFocusAfterRemoval(removedItem, nextItem, returnFocusTarget);
+}
+
+provide(attachmentGroupContextKey, { onRemoveStart });
 
 /** Select the focus target before the attachment starts removal. */
 function onKeydownCapture(event: KeyboardEvent) {
@@ -90,18 +137,7 @@ async function onKeydown(event: KeyboardEvent) {
 		const { removedItem, nextItem, returnTarget } = targets;
 
 		event.stopPropagation();
-		await nextTick();
-		const remainingItems = getItems();
-		if (remainingItems.includes(removedItem)) return;
-		activeItem = nextItem;
-		updateTabStops(remainingItems);
-		if (nextItem) {
-			returnFocusTarget = returnTarget;
-			nextItem.focus();
-		} else if (returnTarget?.isConnected) {
-			returnFocusTarget = undefined;
-			returnTarget.focus();
-		}
+		await restoreFocusAfterRemoval(removedItem, nextItem, returnTarget);
 		return;
 	}
 
@@ -158,10 +194,10 @@ defineExpose({
 	<div
 		ref="group"
 		:class="$style.group"
+		@focusin="onFocusIn"
 		@keydown.capture="onKeydownCapture"
 		@keydown="onKeydown"
 		@keydown.esc="onEscape"
-		@focusin="onFocusIn"
 		@focusout="onFocusOut"
 	>
 		<slot />

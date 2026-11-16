@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { formatBytes } from '@n8n/utils/number/bytes';
 import { usePreferredReducedMotion } from '@vueuse/core';
-import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from '../../../composables/useI18n';
 import N8nIcon from '../../N8nIcon';
 import N8nIconButton from '../../N8nIconButton';
 import N8nText from '../../N8nText';
 import N8nTooltip from '../../N8nTooltip';
+import { attachmentGroupContextKey } from '../AttachmentGroup/AttachmentGroup.context';
 import type { AttachmentEmits, AttachmentProps } from './Attachment.types';
 import poofSprite from './mono-poof-sprite.svg?url';
 
@@ -16,6 +17,7 @@ const props = withDefaults(defineProps<AttachmentProps>(), {
 const emit = defineEmits<AttachmentEmits>();
 
 const { t } = useI18n();
+const attachmentGroup = inject(attachmentGroupContextKey, null);
 
 /** Keep the source frame timing, but omit its loop pause. */
 const POOF_DURATION_MS = 520;
@@ -86,6 +88,8 @@ function removeAttachment() {
 	if (isRemoving.value) return;
 	poofRect.value = attachmentRoot.value?.getBoundingClientRect();
 	isRemoving.value = true;
+	const attachment = attachmentRoot.value?.querySelector<HTMLElement>('.n8n-attachment');
+	if (attachment && attachmentGroup) void attachmentGroup.onRemoveStart(attachment);
 	emit('remove-start');
 	if (reducedMotion.value === 'reduce') {
 		finishRemoval();

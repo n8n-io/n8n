@@ -208,6 +208,72 @@ describe('N8nAttachmentGroup', function describeComponent() {
 		}
 	});
 
+	it('moves focus to the next attachment when its remove button is activated', async () => {
+		const user = userEvent.setup();
+		const origin = document.createElement('textarea');
+		document.body.append(origin);
+		origin.focus();
+		const wrapper = mount(N8nAttachmentGroup, {
+			attachTo: document.body,
+			slots: {
+				default: () => [
+					h(N8nAttachment, { fileName: 'first.pdf', mimeType: 'application/pdf' }),
+					h(N8nAttachment, { fileName: 'second.pdf', mimeType: 'application/pdf' }),
+				],
+			},
+		});
+
+		try {
+			const [first, second] = wrapper.findAll('.n8n-attachment');
+			const removeButton = wrapper.find('[data-test-id="attachment-remove"]')
+				.element as HTMLButtonElement;
+			await user.tab();
+			expect(document.activeElement).toBe(first.element);
+			await user.tab();
+			expect(document.activeElement).toBe(removeButton);
+			await user.keyboard('{Enter}');
+			await nextTick();
+
+			expect(first.attributes('aria-hidden')).toBe('true');
+			expect(document.activeElement).toBe(second.element);
+			await user.keyboard('{Escape}');
+			expect(document.activeElement).toBe(origin);
+		} finally {
+			wrapper.unmount();
+			origin.remove();
+		}
+	});
+
+	it('returns focus to the input when its only attachment is removed', async () => {
+		const user = userEvent.setup();
+		const origin = document.createElement('textarea');
+		document.body.append(origin);
+		origin.focus();
+		const wrapper = mount(N8nAttachmentGroup, {
+			attachTo: document.body,
+			slots: {
+				default: () => h(N8nAttachment, { fileName: 'only.pdf', mimeType: 'application/pdf' }),
+			},
+		});
+
+		try {
+			const attachment = wrapper.get('.n8n-attachment').element;
+			const removeButton = wrapper.find('[data-test-id="attachment-remove"]')
+				.element as HTMLButtonElement;
+			await user.tab();
+			await user.tab();
+			expect(document.activeElement).toBe(removeButton);
+			await user.keyboard('{Enter}');
+			await nextTick();
+
+			expect(attachment).toHaveAttribute('aria-hidden', 'true');
+			expect(document.activeElement).toBe(origin);
+		} finally {
+			wrapper.unmount();
+			origin.remove();
+		}
+	});
+
 	it('does nothing when the group is empty', () => {
 		const wrapper = mount(N8nAttachmentGroup);
 		const activeElement = document.activeElement;
