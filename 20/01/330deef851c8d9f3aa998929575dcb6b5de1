@@ -1,0 +1,26 @@
+packages/cli/src/webhooks/test-webhooks.ts
+  s_06fc4a3eebd292::t_394f8c0ce82406 651-653,660,665
+packages/cli/test/integration/public-api/workflow-run.test.ts
+  s_06fc4a3eebd292::t_2322202f09ca37 324-327
+  s_06fc4a3eebd292::t_e860ce069c5acd 17
+packages/@n8n/api-types/src/dto/workflows/run-workflow-public.dto.ts
+  s_06fc4a3eebd292::t_6d8b45ee7ff38d 29-30
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/runWorkflow.generated.yml
+  s_06fc4a3eebd292::t_3c2d11ff73750d 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2001330deef851c8d9f3aa998929575dcb6b5de1",
+  "prompts": {},
+  "sessions": {
+    "s_06fc4a3eebd292": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fbd68ab-5524-436f-933c-230ffa062c5b",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
