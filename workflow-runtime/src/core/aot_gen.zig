@@ -8,6 +8,7 @@ fn f_00e1b88641429dd5(cx: *aot.Cx) void {
     @setEvalBranchQuota(1176);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 18);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -281,6 +282,7 @@ fn f_015ee38ccf96fbbb(cx: *aot.Cx) void {
     @setEvalBranchQuota(2392);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 46);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -2350,6 +2352,7 @@ fn f_018251beb598a580(cx: *aot.Cx) void {
     @setEvalBranchQuota(2684);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 45);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -4864,6 +4867,7 @@ fn f_0297df27c3f0de0f(cx: *aot.Cx) void {
     @setEvalBranchQuota(1036);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 6);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -4929,6 +4933,7 @@ fn f_02f6383db3107326(cx: *aot.Cx) void {
     @setEvalBranchQuota(1724);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 27);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -6012,6 +6017,7 @@ fn f_03056cdc53d6aafd(cx: *aot.Cx) void {
     @setEvalBranchQuota(1596);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 26);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -6908,6 +6914,7 @@ fn f_0338443269eab3d1(cx: *aot.Cx) void {
     @setEvalBranchQuota(1056);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -7002,6 +7009,7 @@ fn f_04c31edfbedcd0fb(cx: *aot.Cx) void {
     @setEvalBranchQuota(1108);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -7175,6 +7183,7 @@ fn f_04c8d37b219b29be(cx: *aot.Cx) void {
     @setEvalBranchQuota(2672);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 51);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -9661,6 +9670,7 @@ fn f_065f96d934623319(cx: *aot.Cx) void {
     @setEvalBranchQuota(1036);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 6);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -9726,6 +9736,7 @@ fn f_09770552adb5ffc8(cx: *aot.Cx) void {
     @setEvalBranchQuota(1008);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 3);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -9749,6 +9760,7 @@ fn f_0bbf99ba626ad89f(cx: *aot.Cx) void {
     @setEvalBranchQuota(1136);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 16);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -9964,6 +9976,7 @@ fn f_0c362de1495f9320(cx: *aot.Cx) void {
     @setEvalBranchQuota(1020);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 6);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -10005,6 +10018,7 @@ fn f_0db5dafa2e20cf0c(cx: *aot.Cx) void {
     @setEvalBranchQuota(1060);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 6);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -10105,6 +10119,7 @@ fn f_0eb63a079e852984(cx: *aot.Cx) void {
     @setEvalBranchQuota(2724);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 51);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -12657,6 +12672,7 @@ fn f_0f51cb977aa2bb66(cx: *aot.Cx) void {
     @setEvalBranchQuota(1012);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 2);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -12686,6 +12702,7 @@ fn f_0fed33de24eba6d5(cx: *aot.Cx) void {
     @setEvalBranchQuota(1396);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 21);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -13288,6 +13305,7 @@ fn f_107a6a2fa4193240(cx: *aot.Cx) void {
     @setEvalBranchQuota(1396);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 21);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -13890,6 +13908,7 @@ fn f_112e1af6caa66e27(cx: *aot.Cx) void {
     @setEvalBranchQuota(1028);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 5);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -13943,6 +13962,7 @@ fn f_11d1a31777cc129a(cx: *aot.Cx) void {
     @setEvalBranchQuota(1976);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 32);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -15406,6 +15426,7 @@ fn f_136b3afe87f4c69b(cx: *aot.Cx) void {
     @setEvalBranchQuota(3148);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 68);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -18606,6 +18627,7 @@ fn f_136eb7be8b80f983(cx: *aot.Cx) void {
     @setEvalBranchQuota(1396);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 22);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -19202,6 +19224,7 @@ fn f_138862cbbbce3dee(cx: *aot.Cx) void {
     @setEvalBranchQuota(1128);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 12);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -19405,6 +19428,7 @@ fn f_13e86b134860bc01(cx: *aot.Cx) void {
     @setEvalBranchQuota(1064);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 12);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -19512,6 +19536,7 @@ fn f_158acf8320eddef1(cx: *aot.Cx) void {
     @setEvalBranchQuota(1140);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 7);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -19731,6 +19756,7 @@ fn f_17aeeb9c104f2dee(cx: *aot.Cx) void {
     @setEvalBranchQuota(1236);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 17);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -20091,6 +20117,7 @@ fn f_19590a6821eb95f0(cx: *aot.Cx) void {
     @setEvalBranchQuota(1100);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 6);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -20252,6 +20279,7 @@ fn f_1e2634a9b86dbc62(cx: *aot.Cx) void {
     @setEvalBranchQuota(1632);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 25);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -21200,6 +21228,7 @@ fn f_1ee1a97f5dc1a14e(cx: *aot.Cx) void {
     @setEvalBranchQuota(1672);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 24);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -22213,6 +22242,7 @@ fn f_1f95c5f22fe9e8e1(cx: *aot.Cx) void {
     @setEvalBranchQuota(1472);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 44);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -22921,6 +22951,7 @@ fn f_22ffeb2c1c8264af(cx: *aot.Cx) void {
     @setEvalBranchQuota(2472);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 39);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -25122,6 +25153,7 @@ fn f_232f494189f6e20f(cx: *aot.Cx) void {
     @setEvalBranchQuota(1472);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 44);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -25830,6 +25862,7 @@ fn f_238135b2b2174dff(cx: *aot.Cx) void {
     @setEvalBranchQuota(1904);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 49);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -27180,6 +27213,7 @@ fn f_266d3320827c8267(cx: *aot.Cx) void {
     @setEvalBranchQuota(2336);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 33);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -29165,6 +29199,7 @@ fn f_27b14c55386b64aa(cx: *aot.Cx) void {
     @setEvalBranchQuota(1644);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 28);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -30137,6 +30172,7 @@ fn f_27c75c56d73b309c(cx: *aot.Cx) void {
     @setEvalBranchQuota(1060);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 5);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -30238,6 +30274,7 @@ fn f_27eafa347571f182(cx: *aot.Cx) void {
     @setEvalBranchQuota(1048);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -30321,6 +30358,7 @@ fn f_289ea93bdc89284f(cx: *aot.Cx) void {
     @setEvalBranchQuota(1012);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 2);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -30350,6 +30388,7 @@ fn f_2a252a8c00f3d80b(cx: *aot.Cx) void {
     @setEvalBranchQuota(3656);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 44);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -34296,6 +34335,7 @@ fn f_2bda39703fa831f1(cx: *aot.Cx) void {
     @setEvalBranchQuota(1968);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 31);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -35747,6 +35787,7 @@ fn f_2c7629b050be4b25(cx: *aot.Cx) void {
     @setEvalBranchQuota(1112);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 8);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -35923,6 +35964,7 @@ fn f_2e1555362dd4c428(cx: *aot.Cx) void {
     @setEvalBranchQuota(1056);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 8);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -36017,6 +36059,7 @@ fn f_2e61bc86306fe52c(cx: *aot.Cx) void {
     @setEvalBranchQuota(1220);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 20);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -36356,6 +36399,7 @@ fn f_2f3cc1c85a455a4b(cx: *aot.Cx) void {
     @setEvalBranchQuota(1128);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 11);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -36558,6 +36602,7 @@ fn f_2fb4c6836495ecac(cx: *aot.Cx) void {
     @setEvalBranchQuota(1088);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 6);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -36701,6 +36746,7 @@ fn f_302eea451a5a1b0b(cx: *aot.Cx) void {
     @setEvalBranchQuota(1080);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 14);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -36832,6 +36878,7 @@ fn f_31ef10cddd7a12f5(cx: *aot.Cx) void {
     @setEvalBranchQuota(2016);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 39);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -38350,6 +38397,8 @@ fn f_31ef10cddd7a12f5(cx: *aot.Cx) void {
 fn f_330b5e1868021d2c(cx: *aot.Cx) void {
     @setEvalBranchQuota(1012);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 1);
+    const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -38379,6 +38428,7 @@ fn f_3385fafb8eb20456(cx: *aot.Cx) void {
     @setEvalBranchQuota(1024);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 5);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -38426,6 +38476,7 @@ fn f_338c64128a283f3b(cx: *aot.Cx) void {
     @setEvalBranchQuota(1232);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -38782,6 +38833,7 @@ fn f_340d31a0208c5bc3(cx: *aot.Cx) void {
     @setEvalBranchQuota(1464);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 24);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -39484,6 +39536,7 @@ fn f_3470fc72d1e178bf(cx: *aot.Cx) void {
     @setEvalBranchQuota(1040);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 4);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -39554,6 +39607,7 @@ fn f_34b2533189c14026(cx: *aot.Cx) void {
     @setEvalBranchQuota(1112);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 17);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -39733,6 +39787,7 @@ fn f_354373f92f616893(cx: *aot.Cx) void {
     @setEvalBranchQuota(2032);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 33);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -41276,6 +41331,7 @@ fn f_365884306a6d1dc7(cx: *aot.Cx) void {
     @setEvalBranchQuota(1096);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 14);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -41431,6 +41487,7 @@ fn f_36f6f5daafc9ede4(cx: *aot.Cx) void {
     @setEvalBranchQuota(1052);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 4);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -41520,6 +41577,7 @@ fn f_37276d9cac17d0e5(cx: *aot.Cx) void {
     @setEvalBranchQuota(3520);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 62);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -45285,6 +45343,7 @@ fn f_374db0889d36f593(cx: *aot.Cx) void {
     @setEvalBranchQuota(1300);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 16);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -45742,6 +45801,7 @@ fn f_37ea029f735c10bb(cx: *aot.Cx) void {
     @setEvalBranchQuota(1736);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 23);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -46849,6 +46909,7 @@ fn f_39289cac94d28f9d(cx: *aot.Cx) void {
     @setEvalBranchQuota(1600);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 20);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -47751,6 +47812,7 @@ fn f_3a20cd42fee8b793(cx: *aot.Cx) void {
     @setEvalBranchQuota(1064);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -47858,6 +47920,7 @@ fn f_3a810dc0ea84860e(cx: *aot.Cx) void {
     @setEvalBranchQuota(1332);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 7);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -48367,6 +48430,7 @@ fn f_3b52b4ea2fd1e060(cx: *aot.Cx) void {
     @setEvalBranchQuota(1176);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 10);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -48642,6 +48706,7 @@ fn f_3b66685b71486a42(cx: *aot.Cx) void {
     @setEvalBranchQuota(1108);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -48815,6 +48880,7 @@ fn f_3d3493a6a82c8ac1(cx: *aot.Cx) void {
     @setEvalBranchQuota(1276);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 26);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -49232,6 +49298,7 @@ fn f_3f0f266e3980db46(cx: *aot.Cx) void {
     @setEvalBranchQuota(1620);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 24);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -50165,6 +50232,7 @@ fn f_3f7ca0657db32289(cx: *aot.Cx) void {
     @setEvalBranchQuota(1388);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 21);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -50748,6 +50816,7 @@ fn f_421403684f1d3c6e(cx: *aot.Cx) void {
     @setEvalBranchQuota(1008);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 1);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -50771,6 +50840,7 @@ fn f_422ecbde6f4336b0(cx: *aot.Cx) void {
     @setEvalBranchQuota(1244);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 13);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -51144,6 +51214,7 @@ fn f_429d0c9b6485eeb9(cx: *aot.Cx) void {
     @setEvalBranchQuota(1232);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -51500,6 +51571,7 @@ fn f_46168b0b22d8a5ff(cx: *aot.Cx) void {
     @setEvalBranchQuota(1836);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 28);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -52749,6 +52821,7 @@ fn f_463d31fea77be99f(cx: *aot.Cx) void {
     @setEvalBranchQuota(1028);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 4);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -52802,6 +52875,7 @@ fn f_466a9500166d47fb(cx: *aot.Cx) void {
     @setEvalBranchQuota(1600);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 29);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -53706,6 +53780,7 @@ fn f_473585b49a4a8a50(cx: *aot.Cx) void {
     @setEvalBranchQuota(1040);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 7);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -53777,6 +53852,7 @@ fn f_477f181e76d4b4aa(cx: *aot.Cx) void {
     @setEvalBranchQuota(1032);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 8);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -53836,6 +53912,7 @@ fn f_479cbcd874d02504(cx: *aot.Cx) void {
     @setEvalBranchQuota(2472);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 41);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -56028,6 +56105,7 @@ fn f_4b98a84b6f96e797(cx: *aot.Cx) void {
     @setEvalBranchQuota(1924);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 33);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -57412,6 +57490,7 @@ fn f_4c06c8d76af2792f(cx: *aot.Cx) void {
     @setEvalBranchQuota(1892);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 26);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -58750,6 +58829,7 @@ fn f_4c12adcd256ba241(cx: *aot.Cx) void {
     @setEvalBranchQuota(1348);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 19);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -59275,6 +59355,7 @@ fn f_4c6285f7d3339181(cx: *aot.Cx) void {
     @setEvalBranchQuota(1068);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 10);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -59387,6 +59468,7 @@ fn f_4cd5d1079b225161(cx: *aot.Cx) void {
     @setEvalBranchQuota(3504);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 46);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -63137,6 +63219,7 @@ fn f_4e8f2a1c7a2e9aee(cx: *aot.Cx) void {
     @setEvalBranchQuota(1008);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 3);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -63160,6 +63243,7 @@ fn f_4e91e7ed9d721a5a(cx: *aot.Cx) void {
     @setEvalBranchQuota(1300);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 24);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -63614,6 +63698,7 @@ fn f_4fe4ca2afeebb963(cx: *aot.Cx) void {
     @setEvalBranchQuota(1052);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 5);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -63702,6 +63787,7 @@ fn f_52063d6d03b8c111(cx: *aot.Cx) void {
     @setEvalBranchQuota(1828);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 33);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -64953,6 +65039,7 @@ fn f_521fad3d98dd35cd(cx: *aot.Cx) void {
     @setEvalBranchQuota(1520);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 22);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -65734,6 +65821,7 @@ fn f_52551065f793fd88(cx: *aot.Cx) void {
     @setEvalBranchQuota(2552);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 67);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -68032,6 +68120,7 @@ fn f_53597299a5116406(cx: *aot.Cx) void {
     @setEvalBranchQuota(1092);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 13);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -68181,6 +68270,7 @@ fn f_53aa1c4c4d1860c5(cx: *aot.Cx) void {
     @setEvalBranchQuota(1048);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -68264,6 +68354,7 @@ fn f_54d83bb22e69db0e(cx: *aot.Cx) void {
     @setEvalBranchQuota(2512);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 48);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -70511,6 +70602,7 @@ fn f_55923f9337a45198(cx: *aot.Cx) void {
     @setEvalBranchQuota(4896);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 96);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -76300,6 +76392,7 @@ fn f_568c898766dbd21a(cx: *aot.Cx) void {
     @setEvalBranchQuota(1048);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -76383,6 +76476,7 @@ fn f_5717d595e8e2f206(cx: *aot.Cx) void {
     @setEvalBranchQuota(1424);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 19);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -77021,6 +77115,7 @@ fn f_572f4741b7fb43ab(cx: *aot.Cx) void {
     @setEvalBranchQuota(1016);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 3);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -77056,6 +77151,7 @@ fn f_5bf288178fe2c4d5(cx: *aot.Cx) void {
     @setEvalBranchQuota(1992);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 41);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -78535,6 +78631,7 @@ fn f_5c2b6d80e437d4a7(cx: *aot.Cx) void {
     @setEvalBranchQuota(1076);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 5);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -78659,6 +78756,7 @@ fn f_5d6128b37c845352(cx: *aot.Cx) void {
     @setEvalBranchQuota(1040);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 5);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -78729,6 +78827,7 @@ fn f_5fbec4799772238f(cx: *aot.Cx) void {
     @setEvalBranchQuota(1288);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 21);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -79170,6 +79269,7 @@ fn f_6144c3a465f911e9(cx: *aot.Cx) void {
     @setEvalBranchQuota(1112);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 16);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -79349,6 +79449,7 @@ fn f_62633395f36a35e3(cx: *aot.Cx) void {
     @setEvalBranchQuota(1472);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 44);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -80057,6 +80158,7 @@ fn f_62d13c679858758a(cx: *aot.Cx) void {
     @setEvalBranchQuota(1072);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 14);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -80176,6 +80278,7 @@ fn f_637e7864a031666d(cx: *aot.Cx) void {
     @setEvalBranchQuota(12680);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 206);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -97497,6 +97600,7 @@ fn f_66d7e3fbb9765935(cx: *aot.Cx) void {
     @setEvalBranchQuota(1128);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 17);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -97700,6 +97804,7 @@ fn f_67d5b71a6234e528(cx: *aot.Cx) void {
     @setEvalBranchQuota(1188);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -97992,6 +98097,7 @@ fn f_6909be870d4612da(cx: *aot.Cx) void {
     @setEvalBranchQuota(1520);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 25);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -98778,6 +98884,7 @@ fn f_6b4f6a7a4f0f708f(cx: *aot.Cx) void {
     @setEvalBranchQuota(1136);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -98993,6 +99100,7 @@ fn f_6bcc5635c48470ca(cx: *aot.Cx) void {
     @setEvalBranchQuota(1048);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 6);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -99074,6 +99182,7 @@ fn f_6bfbfd2a1a5ab133(cx: *aot.Cx) void {
     @setEvalBranchQuota(1168);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 13);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -99336,6 +99445,7 @@ fn f_6c19098e497c5b2d(cx: *aot.Cx) void {
     @setEvalBranchQuota(4496);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 88);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -104524,6 +104634,7 @@ fn f_6cb421ee110bdbc7(cx: *aot.Cx) void {
     @setEvalBranchQuota(1192);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 12);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -104821,6 +104932,7 @@ fn f_6dc91aecbb36c24a(cx: *aot.Cx) void {
     @setEvalBranchQuota(1084);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 6);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -104957,6 +105069,7 @@ fn f_6f19639a6de84d71(cx: *aot.Cx) void {
     @setEvalBranchQuota(1388);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 24);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -105540,6 +105653,7 @@ fn f_6faf327d929b618e(cx: *aot.Cx) void {
     @setEvalBranchQuota(1012);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 2);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -105569,6 +105683,7 @@ fn f_71c9fa49d6ed6147(cx: *aot.Cx) void {
     @setEvalBranchQuota(1128);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -105772,6 +105887,7 @@ fn f_7344d3d18461e92c(cx: *aot.Cx) void {
     @setEvalBranchQuota(1876);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 43);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -107078,6 +107194,7 @@ fn f_73fb7e81a543d3a4(cx: *aot.Cx) void {
     @setEvalBranchQuota(1408);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 13);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -107692,6 +107809,7 @@ fn f_7506a3fdbaafde11(cx: *aot.Cx) void {
     @setEvalBranchQuota(1100);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 8);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -107853,6 +107971,7 @@ fn f_75085c573f553843(cx: *aot.Cx) void {
     @setEvalBranchQuota(1624);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 24);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -108791,6 +108910,7 @@ fn f_76b7ccdffc8da318(cx: *aot.Cx) void {
     @setEvalBranchQuota(1288);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -109229,6 +109349,7 @@ fn f_794161a7de3d1dd8(cx: *aot.Cx) void {
     @setEvalBranchQuota(1760);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 21);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -110362,6 +110483,7 @@ fn f_7b97b4e37a15c1ca(cx: *aot.Cx) void {
     @setEvalBranchQuota(1376);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 21);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -110933,6 +111055,7 @@ fn f_7bd7c6501fda5252(cx: *aot.Cx) void {
     @setEvalBranchQuota(1072);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 14);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -111052,6 +111175,7 @@ fn f_7e893264063c9a31(cx: *aot.Cx) void {
     @setEvalBranchQuota(1180);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 8);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -111332,6 +111456,7 @@ fn f_7e98f6f06991685a(cx: *aot.Cx) void {
     @setEvalBranchQuota(1100);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -111491,6 +111616,7 @@ fn f_7f559bc09e2c05b0(cx: *aot.Cx) void {
     @setEvalBranchQuota(1396);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 21);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -112093,6 +112219,7 @@ fn f_7fb2c700a4261fcf(cx: *aot.Cx) void {
     @setEvalBranchQuota(1360);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 16);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -112644,6 +112771,7 @@ fn f_80b51b9dcec97fbc(cx: *aot.Cx) void {
     @setEvalBranchQuota(1160);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 10);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -112894,6 +113022,7 @@ fn f_81a961fdd7c25a4b(cx: *aot.Cx) void {
     @setEvalBranchQuota(1104);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 11);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -113061,6 +113190,7 @@ fn f_82d33263b686b38e(cx: *aot.Cx) void {
     @setEvalBranchQuota(1080);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 13);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -113192,6 +113322,7 @@ fn f_844b5817a36c98d3(cx: *aot.Cx) void {
     @setEvalBranchQuota(1772);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 48);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -114347,6 +114478,7 @@ fn f_844dca7f92820278(cx: *aot.Cx) void {
     @setEvalBranchQuota(1100);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 11);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -114508,6 +114640,7 @@ fn f_86c436031485d914(cx: *aot.Cx) void {
     @setEvalBranchQuota(1076);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 5);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -114633,6 +114766,7 @@ fn f_888230391de74fcb(cx: *aot.Cx) void {
     @setEvalBranchQuota(2008);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 23);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -116124,6 +116258,7 @@ fn f_8932acb6ccbaa994(cx: *aot.Cx) void {
     @setEvalBranchQuota(1052);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 5);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -116212,6 +116347,7 @@ fn f_89522f161c0a202a(cx: *aot.Cx) void {
     @setEvalBranchQuota(1416);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 19);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -116846,6 +116982,7 @@ fn f_8c7920e7cc26436d(cx: *aot.Cx) void {
     @setEvalBranchQuota(1420);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 16);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -117484,6 +117621,7 @@ fn f_8f65e78941f809a0(cx: *aot.Cx) void {
     @setEvalBranchQuota(2636);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 34);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -119923,6 +120061,7 @@ fn f_8f77b20064e2de15(cx: *aot.Cx) void {
     @setEvalBranchQuota(8040);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 115);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -130306,6 +130445,7 @@ fn f_8fbf231cae95751b(cx: *aot.Cx) void {
     @setEvalBranchQuota(1472);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 44);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -131014,6 +131154,7 @@ fn f_90f6b2d09970f8b4(cx: *aot.Cx) void {
     @setEvalBranchQuota(1380);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 14);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -131587,6 +131728,7 @@ fn f_9243f9c91a3a42e7(cx: *aot.Cx) void {
     @setEvalBranchQuota(1140);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 18);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -131808,6 +131950,7 @@ fn f_92d1b1f69be42073(cx: *aot.Cx) void {
     @setEvalBranchQuota(1420);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 22);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -132445,6 +132588,7 @@ fn f_94def3140bb5bcfc(cx: *aot.Cx) void {
     @setEvalBranchQuota(1956);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 34);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -133872,6 +134016,7 @@ fn f_94e5006157439aa1(cx: *aot.Cx) void {
     @setEvalBranchQuota(1332);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 18);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -134372,6 +134517,7 @@ fn f_9743b7b7cbc76722(cx: *aot.Cx) void {
     @setEvalBranchQuota(1072);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 14);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -134491,6 +134637,7 @@ fn f_97f0b5b191f36435(cx: *aot.Cx) void {
     @setEvalBranchQuota(1048);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -134574,6 +134721,7 @@ fn f_980ef3b73015c47b(cx: *aot.Cx) void {
     @setEvalBranchQuota(1032);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -134633,6 +134781,7 @@ fn f_982d2c65c6fb90fd(cx: *aot.Cx) void {
     @setEvalBranchQuota(2704);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 43);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -137169,6 +137318,7 @@ fn f_986c2c48d5bdb65b(cx: *aot.Cx) void {
     @setEvalBranchQuota(1040);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 3);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -137240,6 +137390,7 @@ fn f_9870857b5275e89d(cx: *aot.Cx) void {
     @setEvalBranchQuota(1092);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 6);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -137389,6 +137540,7 @@ fn f_991e34e93c6cc34c(cx: *aot.Cx) void {
     @setEvalBranchQuota(4688);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 84);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -142867,6 +143019,7 @@ fn f_9afa0d22f67fb384(cx: *aot.Cx) void {
     @setEvalBranchQuota(1044);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -142944,6 +143097,7 @@ fn f_9b4a6093fb79fa82(cx: *aot.Cx) void {
     @setEvalBranchQuota(1860);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 29);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -144231,6 +144385,7 @@ fn f_9b76f531aa64fe78(cx: *aot.Cx) void {
     @setEvalBranchQuota(1120);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 11);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -144422,6 +144577,7 @@ fn f_9d6042b1770e0a1f(cx: *aot.Cx) void {
     @setEvalBranchQuota(1632);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 23);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -145362,6 +145518,7 @@ fn f_9e47908b52da96dc(cx: *aot.Cx) void {
     @setEvalBranchQuota(1048);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 5);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -145445,6 +145602,7 @@ fn f_9eaec6076c018544(cx: *aot.Cx) void {
     @setEvalBranchQuota(1244);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 13);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -145819,6 +145977,7 @@ fn f_9eb7679485d5724c(cx: *aot.Cx) void {
     @setEvalBranchQuota(1076);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -145943,6 +146102,7 @@ fn f_9edf99db1ee517ba(cx: *aot.Cx) void {
     @setEvalBranchQuota(1420);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 22);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -146581,6 +146741,7 @@ fn f_9fc5ae22abc1f2bc(cx: *aot.Cx) void {
     @setEvalBranchQuota(1012);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 3);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -146610,6 +146771,7 @@ fn f_a05f8b6554562ee2(cx: *aot.Cx) void {
     @setEvalBranchQuota(1396);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 21);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -147212,6 +147374,7 @@ fn f_a0618a8b0a161b37(cx: *aot.Cx) void {
     @setEvalBranchQuota(1056);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 6);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -147305,6 +147468,7 @@ fn f_a0e2ff3b6b997445(cx: *aot.Cx) void {
     @setEvalBranchQuota(1032);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 3);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -147364,6 +147528,7 @@ fn f_a130f99b864048d3(cx: *aot.Cx) void {
     @setEvalBranchQuota(1056);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 6);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -147458,6 +147623,7 @@ fn f_a131dcf57c4dac8e(cx: *aot.Cx) void {
     @setEvalBranchQuota(1500);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 13);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -148215,6 +148381,7 @@ fn f_a1c24b70886566d2(cx: *aot.Cx) void {
     @setEvalBranchQuota(1016);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 5);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -148250,6 +148417,7 @@ fn f_a35fa90fe4edee6c(cx: *aot.Cx) void {
     @setEvalBranchQuota(1304);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 13);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -148713,6 +148881,7 @@ fn f_a40dacecb6a2045a(cx: *aot.Cx) void {
     @setEvalBranchQuota(1472);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 44);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -149421,6 +149590,7 @@ fn f_a43aa468f8b995be(cx: *aot.Cx) void {
     @setEvalBranchQuota(1012);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 3);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -149450,6 +149620,7 @@ fn f_a461f08c77ec01fd(cx: *aot.Cx) void {
     @setEvalBranchQuota(1060);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 13);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -149551,6 +149722,7 @@ fn f_a4d2dc937651c39a(cx: *aot.Cx) void {
     @setEvalBranchQuota(1556);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 21);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -150388,6 +150560,7 @@ fn f_a4d541ede98777fa(cx: *aot.Cx) void {
     @setEvalBranchQuota(1376);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 19);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -150958,6 +151131,7 @@ fn f_a63f7eb43f2e0fee(cx: *aot.Cx) void {
     @setEvalBranchQuota(1276);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 16);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -151378,6 +151552,7 @@ fn f_a7ced987e57b5d7e(cx: *aot.Cx) void {
     @setEvalBranchQuota(1120);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 18);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -151569,6 +151744,7 @@ fn f_a8640ab237caf420(cx: *aot.Cx) void {
     @setEvalBranchQuota(1428);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 16);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -152219,6 +152395,7 @@ fn f_a867856e58198cd0(cx: *aot.Cx) void {
     @setEvalBranchQuota(1816);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 25);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -153449,6 +153626,7 @@ fn f_a8b0a0bc2bc04a29(cx: *aot.Cx) void {
     @setEvalBranchQuota(1012);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 3);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -153478,6 +153656,7 @@ fn f_a9a6dcb22f3dfbca(cx: *aot.Cx) void {
     @setEvalBranchQuota(1076);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -153603,6 +153782,7 @@ fn f_aab1676517b3a13d(cx: *aot.Cx) void {
     @setEvalBranchQuota(2268);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 13);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -155512,6 +155692,7 @@ fn f_ab1896c86c313f36(cx: *aot.Cx) void {
     @setEvalBranchQuota(1324);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 16);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -156007,6 +156188,7 @@ fn f_ab3e75e06a062be8(cx: *aot.Cx) void {
     @setEvalBranchQuota(1172);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 13);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -156272,6 +156454,7 @@ fn f_ac013422976853d6(cx: *aot.Cx) void {
     @setEvalBranchQuota(1588);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 22);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -157159,6 +157342,7 @@ fn f_adc8bbb11ae00338(cx: *aot.Cx) void {
     @setEvalBranchQuota(1472);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 44);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -157867,6 +158051,7 @@ fn f_af200f074d4cd4f3(cx: *aot.Cx) void {
     @setEvalBranchQuota(1180);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 13);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -158147,6 +158332,7 @@ fn f_afcb4dc900435129(cx: *aot.Cx) void {
     @setEvalBranchQuota(4596);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 91);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -163503,6 +163689,7 @@ fn f_b0bf4a5a15a85ac9(cx: *aot.Cx) void {
     @setEvalBranchQuota(2160);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 35);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -165235,6 +165422,7 @@ fn f_b109d3028ede839e(cx: *aot.Cx) void {
     @setEvalBranchQuota(1148);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 5);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -165466,6 +165654,7 @@ fn f_b2558d092e183112(cx: *aot.Cx) void {
     @setEvalBranchQuota(1192);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -165763,6 +165952,7 @@ fn f_b4fe849ac84d332a(cx: *aot.Cx) void {
     @setEvalBranchQuota(1216);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 10);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -166096,6 +166286,7 @@ fn f_b55196cbffc62c4a(cx: *aot.Cx) void {
     @setEvalBranchQuota(1040);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 7);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -166167,6 +166358,7 @@ fn f_b5b3720b6eecd0f6(cx: *aot.Cx) void {
     @setEvalBranchQuota(1056);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -166262,6 +166454,7 @@ fn f_b7315eda164de288(cx: *aot.Cx) void {
     @setEvalBranchQuota(1372);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 15);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -166828,6 +167021,7 @@ fn f_b888c7bb719683ec(cx: *aot.Cx) void {
     @setEvalBranchQuota(1056);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -166923,6 +167117,7 @@ fn f_b8ef608b1e50b889(cx: *aot.Cx) void {
     @setEvalBranchQuota(1008);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 3);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -166946,6 +167141,7 @@ fn f_b99a8f25c8a161c5(cx: *aot.Cx) void {
     @setEvalBranchQuota(1684);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 30);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -167974,6 +168170,7 @@ fn f_bb2700800d207047(cx: *aot.Cx) void {
     @setEvalBranchQuota(1040);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 3);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -168045,6 +168242,7 @@ fn f_bd2e4f25f56e21d1(cx: *aot.Cx) void {
     @setEvalBranchQuota(2640);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 44);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -170492,6 +170690,7 @@ fn f_bd519f174d023a93(cx: *aot.Cx) void {
     @setEvalBranchQuota(1104);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 5);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -170658,6 +170857,7 @@ fn f_bdd61a2dbd9e07be(cx: *aot.Cx) void {
     @setEvalBranchQuota(1020);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 3);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -170699,6 +170899,7 @@ fn f_be4fe910825ee032(cx: *aot.Cx) void {
     @setEvalBranchQuota(2004);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 33);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -172203,6 +172404,7 @@ fn f_bf1153a83122eae0(cx: *aot.Cx) void {
     @setEvalBranchQuota(1052);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 7);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -172292,6 +172494,7 @@ fn f_c0b01871dd8113cf(cx: *aot.Cx) void {
     @setEvalBranchQuota(1736);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 28);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -173394,6 +173597,7 @@ fn f_c1f637ae8fe16b84(cx: *aot.Cx) void {
     @setEvalBranchQuota(1548);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 20);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -174221,6 +174425,7 @@ fn f_c2ff9e9d71e3597c(cx: *aot.Cx) void {
     @setEvalBranchQuota(1088);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 14);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -174364,6 +174569,7 @@ fn f_c4153cdc994b3009(cx: *aot.Cx) void {
     @setEvalBranchQuota(1132);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 10);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -174571,6 +174777,7 @@ fn f_c4d5ab33629ceff1(cx: *aot.Cx) void {
     @setEvalBranchQuota(2004);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 31);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -176071,6 +176278,7 @@ fn f_c50327b792af86e5(cx: *aot.Cx) void {
     @setEvalBranchQuota(1420);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 22);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -176709,6 +176917,7 @@ fn f_c51eda6e465d71ba(cx: *aot.Cx) void {
     @setEvalBranchQuota(1384);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 16);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -177290,6 +177499,7 @@ fn f_c5aa81fe202729a7(cx: *aot.Cx) void {
     @setEvalBranchQuota(1564);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 17);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -178147,6 +178357,7 @@ fn f_c5ba8316d59a86e9(cx: *aot.Cx) void {
     @setEvalBranchQuota(1068);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 4);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -178260,6 +178471,7 @@ fn f_c6e1f5940cf5ab11(cx: *aot.Cx) void {
     @setEvalBranchQuota(1160);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -178511,6 +178723,7 @@ fn f_ca05bf41e74d0e93(cx: *aot.Cx) void {
     @setEvalBranchQuota(1080);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 14);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -178642,6 +178855,7 @@ fn f_ca10e8ce69d40e8f(cx: *aot.Cx) void {
     @setEvalBranchQuota(2368);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 47);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -180694,6 +180908,7 @@ fn f_cac063750cfa5cd3(cx: *aot.Cx) void {
     @setEvalBranchQuota(1112);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 17);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -180873,6 +181088,7 @@ fn f_cac6f0828ce1a4b8(cx: *aot.Cx) void {
     @setEvalBranchQuota(1012);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 3);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -180902,6 +181118,7 @@ fn f_cbb7927f4228df11(cx: *aot.Cx) void {
     @setEvalBranchQuota(2100);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 36);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -182538,6 +182755,7 @@ fn f_cc3f11a4966bc458(cx: *aot.Cx) void {
     @setEvalBranchQuota(2460);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 42);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -184718,6 +184936,7 @@ fn f_ccd9567ba7e3e8aa(cx: *aot.Cx) void {
     @setEvalBranchQuota(1016);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 5);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -184753,6 +184972,7 @@ fn f_cd48da3e59bc760b(cx: *aot.Cx) void {
     @setEvalBranchQuota(2336);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 40);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -186746,6 +186966,7 @@ fn f_ce5f119e817a5674(cx: *aot.Cx) void {
     @setEvalBranchQuota(1080);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 14);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -186877,6 +187098,7 @@ fn f_ceb1373c556d1669(cx: *aot.Cx) void {
     @setEvalBranchQuota(1508);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 22);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -187640,6 +187862,7 @@ fn f_cf90525a4778729d(cx: *aot.Cx) void {
     @setEvalBranchQuota(1884);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 46);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -188965,6 +189188,7 @@ fn f_d0118ba53f00a072(cx: *aot.Cx) void {
     @setEvalBranchQuota(2444);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 37);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -191116,6 +191340,7 @@ fn f_d0b488ddf44d8b52(cx: *aot.Cx) void {
     @setEvalBranchQuota(1044);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 7);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -191193,6 +191418,7 @@ fn f_d115325d6f558942(cx: *aot.Cx) void {
     @setEvalBranchQuota(1352);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 15);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -191729,6 +191955,7 @@ fn f_d11ca7c7ae11677e(cx: *aot.Cx) void {
     @setEvalBranchQuota(1040);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 4);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -191800,6 +192027,7 @@ fn f_d14233b7343c8f7a(cx: *aot.Cx) void {
     @setEvalBranchQuota(1048);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 7);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -191882,6 +192110,7 @@ fn f_d1d0d2c2490b24a6(cx: *aot.Cx) void {
     @setEvalBranchQuota(1220);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 13);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -192219,6 +192448,7 @@ fn f_d1de96237d46f688(cx: *aot.Cx) void {
     @setEvalBranchQuota(2932);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 27);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -195083,6 +195313,7 @@ fn f_d27b7dc1f818d51a(cx: *aot.Cx) void {
     @setEvalBranchQuota(1188);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 19);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -195374,6 +195605,7 @@ fn f_d2ba1c9fdbaf0450(cx: *aot.Cx) void {
     @setEvalBranchQuota(2464);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 39);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -197557,6 +197789,7 @@ fn f_d2ba62b7f01da0b5(cx: *aot.Cx) void {
     @setEvalBranchQuota(1468);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 23);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -198265,6 +198498,7 @@ fn f_d40677068c255251(cx: *aot.Cx) void {
     @setEvalBranchQuota(1040);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 3);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -198336,6 +198570,7 @@ fn f_d510452232f86d56(cx: *aot.Cx) void {
     @setEvalBranchQuota(3608);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 55);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -202209,6 +202444,7 @@ fn f_d659cdcbb214dff2(cx: *aot.Cx) void {
     @setEvalBranchQuota(1052);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -202297,6 +202533,7 @@ fn f_d69788650be08736(cx: *aot.Cx) void {
     @setEvalBranchQuota(1032);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 3);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -202356,6 +202593,7 @@ fn f_d88a7a0e60b7fa45(cx: *aot.Cx) void {
     @setEvalBranchQuota(1404);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 25);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -202964,6 +203202,7 @@ fn f_da910e7d7d330438(cx: *aot.Cx) void {
     @setEvalBranchQuota(1056);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 5);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -203057,6 +203296,7 @@ fn f_dae4df81949551f5(cx: *aot.Cx) void {
     @setEvalBranchQuota(9072);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 135);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -215030,6 +215270,7 @@ fn f_db83d2df32acd066(cx: *aot.Cx) void {
     @setEvalBranchQuota(1056);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 6);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -215125,6 +215366,7 @@ fn f_dcea5488853dc9fb(cx: *aot.Cx) void {
     @setEvalBranchQuota(3596);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 64);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -218970,6 +219212,7 @@ fn f_dd45f454340618f6(cx: *aot.Cx) void {
     @setEvalBranchQuota(4276);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 54);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -223843,6 +224086,7 @@ fn f_dd75c93ea0952984(cx: *aot.Cx) void {
     @setEvalBranchQuota(1396);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 21);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -224445,6 +224689,7 @@ fn f_de3b49be179663d9(cx: *aot.Cx) void {
     @setEvalBranchQuota(1052);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 4);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -224533,6 +224778,7 @@ fn f_dec7b90351f25196(cx: *aot.Cx) void {
     @setEvalBranchQuota(1360);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 5);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -225084,6 +225330,7 @@ fn f_dfc04c1f06929de5(cx: *aot.Cx) void {
     @setEvalBranchQuota(1284);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 16);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -225517,6 +225764,7 @@ fn f_e0bc58bcfb096957(cx: *aot.Cx) void {
     @setEvalBranchQuota(1736);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 38);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -226627,6 +226875,7 @@ fn f_e20746447ea625bf(cx: *aot.Cx) void {
     @setEvalBranchQuota(1828);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 30);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -227867,6 +228116,7 @@ fn f_e223ead2a4d57fd0(cx: *aot.Cx) void {
     @setEvalBranchQuota(1096);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 14);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -228022,6 +228272,7 @@ fn f_e2dbd2e6bf773c65(cx: *aot.Cx) void {
     @setEvalBranchQuota(1088);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 7);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -228165,6 +228416,7 @@ fn f_e32f8ca61ff58f05(cx: *aot.Cx) void {
     @setEvalBranchQuota(1016);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 3);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -228200,6 +228452,7 @@ fn f_e496f12bf26eb4c0(cx: *aot.Cx) void {
     @setEvalBranchQuota(1032);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 3);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -228259,6 +228512,7 @@ fn f_e670dc4e684dd041(cx: *aot.Cx) void {
     @setEvalBranchQuota(1412);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 20);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -228885,6 +229139,7 @@ fn f_e6c6510452f257ea(cx: *aot.Cx) void {
     @setEvalBranchQuota(1272);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 16);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -229301,6 +229556,7 @@ fn f_e8a0f18c0056272c(cx: *aot.Cx) void {
     @setEvalBranchQuota(1344);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 19);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -229820,6 +230076,7 @@ fn f_ea6fcc817574f370(cx: *aot.Cx) void {
     @setEvalBranchQuota(1296);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 13);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -230271,6 +230528,7 @@ fn f_eb2c08c279cbc48c(cx: *aot.Cx) void {
     @setEvalBranchQuota(2396);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 40);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -232352,6 +232610,7 @@ fn f_eb913d8f74f83a87(cx: *aot.Cx) void {
     @setEvalBranchQuota(1064);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 5);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -232458,6 +232717,7 @@ fn f_ec2184ea9d8528fc(cx: *aot.Cx) void {
     @setEvalBranchQuota(1412);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 21);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -233084,6 +233344,7 @@ fn f_ed806d8f374a1648(cx: *aot.Cx) void {
     @setEvalBranchQuota(1040);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 7);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -233155,6 +233416,7 @@ fn f_eecea5ab406c7413(cx: *aot.Cx) void {
     @setEvalBranchQuota(1244);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 9);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -233531,6 +233793,7 @@ fn f_ef3548259f71b251(cx: *aot.Cx) void {
     @setEvalBranchQuota(2656);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 44);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -235999,6 +236262,7 @@ fn f_f0532759fc074de0(cx: *aot.Cx) void {
     @setEvalBranchQuota(1040);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 7);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -236070,6 +236334,7 @@ fn f_f087750243a2d822(cx: *aot.Cx) void {
     @setEvalBranchQuota(1280);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 15);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -236497,6 +236762,7 @@ fn f_f1697a58225231a0(cx: *aot.Cx) void {
     @setEvalBranchQuota(1032);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 6);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -236556,6 +236822,7 @@ fn f_f302618f72025ec0(cx: *aot.Cx) void {
     @setEvalBranchQuota(1024);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 8);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -236603,6 +236870,7 @@ fn f_f90b3066eebbf884(cx: *aot.Cx) void {
     @setEvalBranchQuota(1288);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 22);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -237041,6 +237309,7 @@ fn f_faf7a5e2a7cc2fde(cx: *aot.Cx) void {
     @setEvalBranchQuota(1084);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 11);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -237177,6 +237446,7 @@ fn f_fdd66d7964d2c206(cx: *aot.Cx) void {
     @setEvalBranchQuota(1068);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 5);
     const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;
@@ -237288,6 +237558,8 @@ fn f_fdd66d7964d2c206(cx: *aot.Cx) void {
 fn f_ff83a0488d46721e(cx: *aot.Cx) void {
     @setEvalBranchQuota(1004);
     std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == 1);
+    const R = cx.R;
+    _ = &R;
     const pc = sw: switch (cx.fr.pc) {
         0 => {
             if (cx.n == cx.budget) break :sw 0;

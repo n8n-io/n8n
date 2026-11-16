@@ -80,7 +80,8 @@ pub fn emit(w: *std.Io.Writer, m: *const module.Module, fi: u32, ident: []const 
     try w.print("/// {s}\nfn {s}(cx: *aot.Cx) void {{\n", .{ m.str(fe.name), ident });
     try w.print("    @setEvalBranchQuota({d});\n", .{1000 + 4 * code.len});
     try w.print("    std.debug.assert(cx.vm.m.funcs[cx.fr.func].nregs == {d});\n", .{fe.nregs});
-    try w.writeAll(if (usesRegs(code)) "    const R = cx.R;\n" else "");
+    // `_ = &R` keeps the build right for a function whose instructions do not read a register.
+    try w.writeAll("    const R = cx.R;\n    _ = &R;\n");
     // The counter stays in `cx`: as a local it needs a value merge at each
     // prong, and LLVM then dispatches each `continue` through the jump
     // table in large functions (measured: +45% cycles on Sheets).
@@ -92,17 +93,6 @@ pub fn emit(w: *std.Io.Writer, m: *const module.Module, fi: u32, ident: []const 
         try w.writeAll("        },\n");
     }
     try w.writeAll("        else => |p| break :sw p,\n    };\n    cx.fr.pc = pc;\n}\n\n");
-}
-
-/// True when the generated code reads registers itself.
-fn usesRegs(code: []align(1) const module.Instr) bool {
-    for (code) |ins| switch (@as(Op, @fromBackingInt(ins.op))) {
-        .nop, .jmp => {},
-        .mov, .loadk, .loads, .loadi, .loadundef, .loadnull, .loadbool, .add, .sub, .mul, .mod, .lt, .le, .gt, .ge => return true,
-        .seq, .sne, .not, .isnullish, .jt, .jf, .jnullish, .getprop, .setprop, .newobj, .newarr, .push, .getelem, .calln => return true,
-        else => {},
-    };
-    return false;
 }
 
 fn emitBody(w: *std.Io.Writer, m: *const module.Module, ins: module.Instr, pc: u32) std.Io.Writer.Error!void {
