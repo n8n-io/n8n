@@ -2,17 +2,24 @@
  * One tool for every data table write. The agent sends an ordered list of
  * changes and the user approves the list once.
  */
-import { CHANGE_DATA_TABLES_TOOL_NAME } from '@n8n/api-types';
+import { CHANGE_DATA_TABLES_TOOL_NAME, buildDataTablesSessionGrantKey } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
 import type { z } from 'zod';
 
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../../types';
+import { batchNeedsApproval, buildApprovalRequest } from './change-data-tables.approval';
 import {
 	changeDataTablesInputSchema,
 	type ChangeDataTablesInput,
 } from './change-data-tables.schema';
-import { validateChanges } from './change-data-tables.validate';
+import { validateChanges, type ChangePlan } from './change-data-tables.validate';
+import {
+	confirmationResumeSchema,
+	confirmationSuspendSchema,
+	type ConfirmationToolContext,
+	type ResumeData,
+} from './confirmation';
 
 const DESCRIPTION =
 	'Create, change, or delete data tables, their columns, and their rows. Send all the changes ' +
@@ -47,19 +54,48 @@ function invalidInputResult(error: z.ZodError) {
 	};
 }
 
-async function handleChanges(context: InstanceAiContext, input: unknown) {
+async function handleChanges(
+	context: InstanceAiContext,
+	input: unknown,
+	ctx: ConfirmationToolContext,
+) {
 	const parsed = parseStrict(input);
 	if (!parsed.ok) return parsed.result;
+	// On resume the handler runs again with the same input, so tables may have changed meanwhile.
 	const validation = await validateChanges(context, parsed.input);
 	if (!validation.ok) return validation.error;
-	// Placeholder until the approval and run stages exist.
-	return { success: true, validated: true, changes: validation.plan.changes.length };
+	const { plan } = validation;
+	if (ctx.resumeData) return await resumeChanges(context, plan, ctx.resumeData);
+	if (batchNeedsApproval(context, plan)) return await ctx.suspend(buildApprovalRequest(plan));
+	return runChanges(plan);
+}
+
+async function resumeChanges(context: InstanceAiContext, plan: ChangePlan, resumeData: ResumeData) {
+	if (!resumeData.approved) {
+		return { denied: true, reason: 'User denied the action', changes: plan.changes.length };
+	}
+	if (resumeData.scope === 'session') await grantBatchActions(context, plan);
+	return runChanges(plan);
+}
+
+async function grantBatchActions(context: InstanceAiContext, plan: ChangePlan) {
+	const actions = new Set(plan.changes.map(({ change }) => change.action));
+	for (const action of actions) {
+		await context.grantSessionToolApproval?.(buildDataTablesSessionGrantKey(action));
+	}
+}
+
+// Placeholder until the run stage exists.
+function runChanges(plan: ChangePlan) {
+	return { success: true, validated: true, changes: plan.changes.length };
 }
 
 export function createChangeDataTablesTool(context: InstanceAiContext) {
 	return new Tool(CHANGE_DATA_TABLES_TOOL_NAME)
 		.description(DESCRIPTION)
 		.input(sanitizeInputSchema(changeDataTablesInputSchema))
-		.handler(async (input) => await handleChanges(context, input))
+		.suspend(confirmationSuspendSchema)
+		.resume(confirmationResumeSchema)
+		.handler(async (input, ctx) => await handleChanges(context, input, ctx))
 		.build();
 }

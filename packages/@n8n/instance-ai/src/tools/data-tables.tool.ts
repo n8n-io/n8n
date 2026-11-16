@@ -7,10 +7,6 @@ import {
 	DATA_TABLE_TOOL_ACTIONS,
 	DATA_TABLE_TOOL_NAME_BY_ACTION,
 	getLegacyBuilderToolActions,
-	instanceAiApprovalDetailsSchema,
-	instanceAiApprovalResumeSchema,
-	buildDataTablesSessionGrantKey,
-	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
 import type { DataTableToolAction, InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
@@ -26,37 +22,19 @@ import {
 	filterSchema,
 	filterSchemaWithMinOne,
 } from './data-tables/schemas';
-
-const confirmationSuspendSchema = z.object({
-	requestId: z.string(),
-	message: z.string(),
-	approvalDetails: instanceAiApprovalDetailsSchema.optional(),
-	resourceName: z.string().optional(),
-	severity: instanceAiConfirmationSeveritySchema,
-});
-
-const confirmationResumeSchema = instanceAiApprovalResumeSchema;
-
-type ResumeData = z.infer<typeof confirmationResumeSchema>;
-
-interface ConfirmationToolContext {
-	resumeData: ResumeData | undefined;
-	suspend: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
-}
-
-function hasSessionGrant(context: InstanceAiContext, action: string): boolean {
-	return context.sessionApprovedToolKeys?.has(buildDataTablesSessionGrantKey(action)) === true;
-}
-
-async function persistSessionGrantIfRequested(
-	context: InstanceAiContext,
-	action: string,
-	resumeData: ResumeData | undefined,
-): Promise<void> {
-	if (resumeData?.approved && resumeData.scope === 'session') {
-		await context.grantSessionToolApproval?.(buildDataTablesSessionGrantKey(action));
-	}
-}
+import {
+	confirmationResumeSchema,
+	confirmationSuspendSchema,
+	hasSessionGrant,
+	persistSessionGrantIfRequested,
+	type ConfirmationToolContext,
+} from './data-tables/confirmation';
+import {
+	MAX_DESCRIBED_ROWS,
+	describeRowChanges,
+	describeRowFilter,
+	previewRow,
+} from './data-tables/preview';
 
 /**
  * Check if an error (or its cause chain) is a DataTableNameConflictError.
@@ -105,57 +83,6 @@ async function assertTableInThreadProject(
 /** Name shown in the approval card title. Falls back to the id when the agent passed no name. */
 function dataTableResourceName(input: DataTableReferenceInput): string {
 	return input.dataTableName ?? input.dataTableId;
-}
-
-function describeRowFilter(filter: z.infer<typeof filterSchema>): string {
-	const conditions = {
-		eq: 'is',
-		neq: 'is not',
-		like: 'matches the text pattern',
-		ilike: 'matches the text pattern (ignoring case)',
-		gt: 'is greater than',
-		gte: 'is greater than or equal to',
-		lt: 'is less than',
-		lte: 'is less than or equal to',
-	};
-	return filter.filters
-		.map(({ columnName, condition, value }) => {
-			if (value === null && (condition === 'eq' || condition === 'neq')) {
-				return `"${columnName}" ${condition === 'eq' ? 'has no value' : 'has a value'}`;
-			}
-			if (
-				(condition === 'like' || condition === 'ilike') &&
-				typeof value === 'string' &&
-				!value.includes('%')
-			) {
-				return `"${columnName}" contains ${JSON.stringify(value)}${condition === 'ilike' ? ' (ignoring case)' : ' (matching case)'}`;
-			}
-			return `"${columnName}" ${conditions[condition]} ${JSON.stringify(value)}`;
-		})
-		.join(` ${filter.type} `);
-}
-
-const MAX_DESCRIBED_COLUMNS = 5;
-const MAX_DESCRIBED_ROWS = 3;
-
-function previewRow(data: Record<string, unknown>) {
-	const entries = Object.entries(data);
-	return {
-		values: entries.slice(0, MAX_DESCRIBED_COLUMNS).map(([column, value]) => {
-			const text = value === null || value === undefined ? null : JSON.stringify(value);
-			return { column, value: text && text.length > 100 ? `${text.slice(0, 100)}…` : text };
-		}),
-		remainingColumns: Math.max(0, entries.length - MAX_DESCRIBED_COLUMNS),
-	};
-}
-
-function describeRowChanges(data: Record<string, unknown>): string {
-	const { values, remainingColumns } = previewRow(data);
-	const described = values.map(({ column, value }) => `"${column}" to ${value ?? 'no value'}`);
-	if (remainingColumns > 0) {
-		described.push(`${remainingColumns} more ${remainingColumns === 1 ? 'column' : 'columns'}`);
-	}
-	return described.join(', ');
 }
 
 const listAction = z.object({

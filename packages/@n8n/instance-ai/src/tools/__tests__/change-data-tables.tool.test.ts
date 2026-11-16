@@ -1,4 +1,8 @@
-import { DATA_TABLE_WRITE_TOOL_ACTIONS } from '@n8n/api-types';
+import {
+	DATA_TABLE_WRITE_TOOL_ACTIONS,
+	buildDataTablesSessionGrantKey,
+	buildOwnedDataTableGrantKey,
+} from '@n8n/api-types';
 import { UserError } from '@n8n/errors';
 import { zodSchema } from 'ai';
 import { z } from 'zod';
@@ -9,7 +13,7 @@ import { OutsideThreadProjectError } from '../../errors/outside-thread-project.e
 import type { DataTableColumnInfo, InstanceAiContext } from '../../types';
 import { changeDataTablesInputSchema } from '../data-tables/change-data-tables.schema';
 import { createChangeDataTablesTool } from '../data-tables/change-data-tables.tool';
-import { createMockContext, suspendCtx } from './data-table-tools-test-utils';
+import { createMockContext, resumeCtx, suspendCtx } from './data-table-tools-test-utils';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -53,6 +57,37 @@ function expectNoCardAndNoWrites(context: InstanceAiContext, suspend: ReturnType
 	for (const method of WRITE_METHODS) {
 		expect(context.dataTableService[method]).not.toHaveBeenCalled();
 	}
+}
+
+/** Every write allowed, so a valid batch skips the card and reaches the run stage. */
+const ALLOW_ALL = {
+	createDataTable: 'always_allow',
+	deleteDataTable: 'always_allow',
+	mutateDataTableSchema: 'always_allow',
+	mutateDataTableRows: 'always_allow',
+} as const;
+
+async function resumeBatch(context: InstanceAiContext, input: unknown, approved: boolean) {
+	return await executeTool(
+		createChangeDataTablesTool(context),
+		input,
+		resumeCtx(approved, approved ? 'session' : undefined),
+	);
+}
+
+/** The payload of the only card the tool showed. */
+function cardOf(suspend: ReturnType<typeof vi.fn>) {
+	expect(suspend).toHaveBeenCalledTimes(1);
+	return suspend.mock.calls[0][0] as {
+		requestId: string;
+		message: string;
+		resourceName?: string;
+		severity: string;
+		approvalDetails: {
+			action: string;
+			changes: Array<{ tableName: string; details: { action: string } }>;
+		};
+	};
 }
 
 const createA = {
@@ -236,7 +271,7 @@ describe('change_data_tables tool', () => {
 
 	describe('valid batches', () => {
 		it('accepts changes to a table created earlier in the batch without a lookup', async () => {
-			const context = contextWithTables();
+			const context = contextWithTables({}, { permissions: ALLOW_ALL });
 			const { result, suspend } = await runBatch(context, {
 				changes: [
 					createA,
@@ -252,7 +287,7 @@ describe('change_data_tables tool', () => {
 		});
 
 		it('accepts renaming a column that an earlier change adds', async () => {
-			const context = contextWithTables({ 'dt-T': [column('name')] });
+			const context = contextWithTables({ 'dt-T': [column('name')] }, { permissions: ALLOW_ALL });
 			const { result } = await runBatch(context, {
 				changes: [
 					{ action: 'add-column', table: 'T', column: 'X', type: 'string' },
@@ -264,7 +299,7 @@ describe('change_data_tables tool', () => {
 		});
 
 		it('accepts a column ID for a column deletion', async () => {
-			const context = contextWithTables({ 'dt-T': [column('name')] });
+			const context = contextWithTables({ 'dt-T': [column('name')] }, { permissions: ALLOW_ALL });
 			const { result } = await runBatch(context, {
 				changes: [{ action: 'delete-column', table: 'T', column: 'col-name' }],
 			});
@@ -287,7 +322,7 @@ describe('change_data_tables tool', () => {
 		});
 
 		it('uses the table reference as is when the service cannot resolve references', async () => {
-			const context = createMockContext({ assertInThreadProject: vi.fn() });
+			const context = createMockContext({ assertInThreadProject: vi.fn(), permissions: ALLOW_ALL });
 			context.dataTableService.getSchema = vi.fn().mockResolvedValue([column('a')]);
 			const { result } = await runBatch(context, {
 				projectId: 'proj-1',
@@ -439,11 +474,7 @@ describe('change_data_tables tool', () => {
 			const context = contextWithTables({ 'dt-T': [column('name')] });
 			const { result, suspend } = await runBatch(context, { changes: [change] });
 
-			expect(result).toMatchObject({
-				success: false,
-				changeIndex: 0,
-				error: expect.stringContaining('set by n8n'),
-			});
+			expect(result).toMatchObject({ success: false, changeIndex: 0 });
 			expectNoCardAndNoWrites(context, suspend);
 		});
 
@@ -459,7 +490,7 @@ describe('change_data_tables tool', () => {
 		});
 
 		it('accepts filters on system columns and rows that use columns added in the batch', async () => {
-			const context = contextWithTables({ 'dt-T': [column('name')] });
+			const context = contextWithTables({ 'dt-T': [column('name')] }, { permissions: ALLOW_ALL });
 			const { result } = await runBatch(context, {
 				changes: [
 					{ action: 'add-column', table: 'T', column: 'age', type: 'number' },
@@ -473,8 +504,216 @@ describe('change_data_tables tool', () => {
 		});
 	});
 
+	describe('approval', () => {
+		const insertIntoA = { action: 'insert-rows', table: 'A', rows: [{ email: 'a@b.c' }] };
+		const addColumnToB = { action: 'add-column', table: 'B', column: 'x', type: 'string' };
+		const filterOn = (columnName: string) => ({
+			type: 'and',
+			filters: [{ columnName, condition: 'eq', value: 'x' }],
+		});
+		const filterOnName = filterOn('name');
+
+		it('shows one card that lists every change of a batch in order', async () => {
+			const context = contextWithTables({ 'dt-B': [column('name')] });
+			const { suspend } = await runBatch(context, {
+				changes: [createA, insertIntoA, addColumnToB],
+			});
+
+			const card = cardOf(suspend);
+			expect(card.approvalDetails.action).toBe('data-table-changes');
+			expect(
+				card.approvalDetails.changes.map(({ tableName, details }) => [tableName, details.action]),
+			).toEqual([
+				['A', 'create-table'],
+				['A', 'insert-rows'],
+				['B', 'add-column'],
+			]);
+			expect(card.requestId).toEqual(expect.any(String));
+			expect(card.message).toEqual(expect.any(String));
+		});
+
+		it('builds the details of each change from the batch', async () => {
+			const context = contextWithTables({ 'dt-T': [column('name')] });
+			const { suspend } = await runBatch(context, {
+				changes: [
+					createA,
+					{ action: 'rename-column', table: 'T', column: 'col-name', newName: 'full' },
+					{ action: 'insert-rows', table: 'T', rows: [{ full: 'a' }] },
+					{ action: 'update-rows', table: 'T', filter: filterOn('full'), data: { full: 'b' } },
+					{ action: 'delete-column', table: 'T', column: 'full' },
+				],
+			});
+
+			const details = cardOf(suspend).approvalDetails.changes.map((change) => change.details);
+			expect(details).toEqual([
+				{ action: 'create-table', columns: [{ name: 'email', columnType: 'string' }] },
+				{ action: 'rename-column', column: 'name', newName: 'full' },
+				{
+					action: 'insert-rows',
+					count: 1,
+					rows: [{ values: [{ column: 'full', value: '"a"' }], remainingColumns: 0 }],
+				},
+				{
+					action: 'update-rows',
+					changes: { values: [{ column: 'full', value: '"b"' }], remainingColumns: 0 },
+					filter: filterOn('full'),
+				},
+				{ action: 'delete-column', column: 'full' },
+			]);
+		});
+
+		it('previews only the first rows of a large insert', async () => {
+			const context = contextWithTables({ 'dt-T': [column('name')] });
+			const rows = Array.from({ length: 10 }, (_, i) => ({ name: `n${i}` }));
+			const { suspend } = await runBatch(context, {
+				changes: [{ action: 'insert-rows', table: 'T', rows }],
+			});
+
+			const [{ details }] = cardOf(suspend).approvalDetails.changes;
+			expect(details).toMatchObject({ action: 'insert-rows', count: 10 });
+			expect((details as unknown as { rows: unknown[] }).rows.length).toBeLessThan(10);
+		});
+
+		it('runs without a card when every change is always allowed', async () => {
+			const context = contextWithTables({ 'dt-B': [column('name')] }, { permissions: ALLOW_ALL });
+			const { result, suspend } = await runBatch(context, {
+				changes: [createA, insertIntoA, addColumnToB],
+			});
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ success: true });
+		});
+
+		it('shows the card for the whole batch when only one change needs approval', async () => {
+			const context = contextWithTables(
+				{ 'dt-B': [column('name')] },
+				{ permissions: { createDataTable: 'always_allow' } },
+			);
+			const { suspend } = await runBatch(context, { changes: [createA, addColumnToB] });
+
+			const actions = cardOf(suspend).approvalDetails.changes.map((c) => c.details.action);
+			expect(actions).toEqual(['create-table', 'add-column']);
+		});
+
+		it('skips the card for changes to a table the thread owns', async () => {
+			const context = contextWithTables(
+				{ 'dt-1': [column('name')] },
+				{ sessionApprovedToolKeys: new Set([buildOwnedDataTableGrantKey('dt-1')]) },
+			);
+			const { result, suspend } = await runBatch(context, {
+				changes: [
+					{ action: 'add-column', table: 'dt-1', column: 'x', type: 'string' },
+					{ action: 'insert-rows', table: 'dt-1', rows: [{ x: 'a' }] },
+				],
+			});
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ success: true });
+		});
+
+		it('shows a destructive card when the batch deletes an owned table', async () => {
+			const context = contextWithTables(
+				{},
+				{ sessionApprovedToolKeys: new Set([buildOwnedDataTableGrantKey('dt-1')]) },
+			);
+			const { suspend } = await runBatch(context, {
+				changes: [{ action: 'delete', table: 'dt-1' }],
+			});
+
+			expect(cardOf(suspend).severity).toBe('destructive');
+		});
+
+		it('treats a table created earlier in the batch as owned', async () => {
+			const context = contextWithTables({}, { permissions: { createDataTable: 'always_allow' } });
+			const { result, suspend } = await runBatch(context, { changes: [createA, insertIntoA] });
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ success: true });
+		});
+
+		it('skips the card when session grants cover every action', async () => {
+			const keys = ['create', 'insert-rows', 'add-column'].map(buildDataTablesSessionGrantKey);
+			const context = contextWithTables(
+				{ 'dt-B': [column('name')] },
+				{ sessionApprovedToolKeys: new Set(keys) },
+			);
+			const { result, suspend } = await runBatch(context, {
+				changes: [createA, insertIntoA, addColumnToB],
+			});
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ success: true });
+		});
+
+		it.each([
+			{
+				changes: [createA, { action: 'delete-rows', table: 'B', filter: filterOnName }],
+				severity: 'destructive',
+			},
+			{ changes: [createA, addColumnToB], severity: 'warning' },
+			{ changes: [createA], severity: 'info' },
+		])('uses the highest severity of the batch ($severity)', async ({ changes, severity }) => {
+			const context = contextWithTables({ 'dt-B': [column('name')] });
+			const { suspend } = await runBatch(context, { changes });
+
+			expect(cardOf(suspend).severity).toBe(severity);
+		});
+
+		it('names the table when the batch changes one table', async () => {
+			const context = contextWithTables();
+			const { suspend } = await runBatch(context, { changes: [createA, insertIntoA] });
+
+			expect(cardOf(suspend).resourceName).toBe('A');
+		});
+
+		it('does not name a single table when the batch changes several tables', async () => {
+			const context = contextWithTables({ 'dt-B': [column('name')] });
+			const { suspend } = await runBatch(context, { changes: [createA, addColumnToB] });
+
+			const { resourceName } = cardOf(suspend);
+			expect(resourceName).toEqual(expect.any(String));
+			expect(resourceName).not.toBe('A');
+			expect(resourceName).not.toBe('B');
+		});
+
+		it('runs no change and grants nothing when the user denies the card', async () => {
+			const context = contextWithTables({}, { grantSessionToolApproval: vi.fn() });
+			const result = await resumeBatch(context, { changes: [createA, insertIntoA] }, false);
+
+			expect(result).toMatchObject({ denied: true });
+			expect(context.grantSessionToolApproval).not.toHaveBeenCalled();
+			for (const method of WRITE_METHODS) {
+				expect(context.dataTableService[method]).not.toHaveBeenCalled();
+			}
+		});
+
+		it('grants each distinct action once when the user approves for the session', async () => {
+			const grantSessionToolApproval = vi.fn();
+			const context = contextWithTables({ 'dt-B': [column('name')] }, { grantSessionToolApproval });
+			const result = await resumeBatch(
+				context,
+				{ changes: [createA, insertIntoA, insertIntoA, addColumnToB] },
+				true,
+			);
+
+			expect(result).toMatchObject({ success: true });
+			const granted = grantSessionToolApproval.mock.calls.map(([key]) => key);
+			expect(granted.sort()).toEqual(
+				['create', 'insert-rows', 'add-column'].map(buildDataTablesSessionGrantKey).sort(),
+			);
+		});
+
+		it('validates the batch again on resume and runs nothing when it fails', async () => {
+			const context = contextWithTables({}, { grantSessionToolApproval: vi.fn() });
+			const result = await resumeBatch(context, { changes: [createA, createA] }, true);
+
+			expect(result).toMatchObject({ success: false, changeIndex: 1 });
+			expect(context.grantSessionToolApproval).not.toHaveBeenCalled();
+		});
+	});
+
 	it('accepts creating a table again after the batch deletes it', async () => {
-		const context = contextWithTables();
+		const context = contextWithTables({}, { permissions: ALLOW_ALL });
 		const { result } = await runBatch(context, {
 			changes: [createA, { action: 'delete', table: 'A' }, createA],
 		});
