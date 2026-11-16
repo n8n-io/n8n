@@ -14,7 +14,7 @@
 					"type": "object"
 				},
 				"id": {
-					"type": ["integer", "string"]
+					"type": ["number", "string"]
 				},
 				"lastNodeExecuted": {
 					"type": "string"
@@ -23,7 +23,7 @@
 					"type": "string"
 				},
 				"retryOf": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"url": {
 					"type": "string"

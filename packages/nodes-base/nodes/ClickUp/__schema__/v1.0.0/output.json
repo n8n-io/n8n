@@ -7,10 +7,58 @@
 			"items": {
 				"properties": {
 					"after": {
-						"type": ["object", "string"]
+						"properties": {
+							"color": {
+								"type": "string"
+							},
+							"orderindex": {
+								"type": "number"
+							},
+							"status": {
+								"type": "string"
+							},
+							"type": {
+								"type": "string"
+							}
+						},
+						"type": ["null", "object", "string"]
 					},
 					"before": {
-						"type": ["array", "object", "string"]
+						"items": {
+							"properties": {
+								"creator": {
+									"type": "number"
+								},
+								"name": {
+									"type": "string"
+								},
+								"project_id": {
+									"type": "string"
+								},
+								"tag_bg": {
+									"type": "string"
+								},
+								"tag_fg": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"properties": {
+							"color": {
+								"type": "string"
+							},
+							"orderindex": {
+								"type": "number"
+							},
+							"status": {
+								"type": ["null", "string"]
+							},
+							"type": {
+								"type": "string"
+							}
+						},
+						"type": ["array", "null", "object", "string"]
 					},
 					"data": {
 						"properties": {
@@ -33,33 +81,33 @@
 						"type": "string"
 					},
 					"source": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"type": {
-						"type": "integer"
+						"type": "number"
 					},
 					"user": {
 						"properties": {
 							"color": {
-								"type": "string"
+								"type": ["null", "string"]
 							},
 							"email": {
 								"type": "string"
 							},
 							"id": {
-								"type": "integer"
+								"type": "number"
 							},
 							"initials": {
 								"type": "string"
 							},
 							"profilePicture": {
-								"type": "string"
+								"type": ["null", "string"]
 							},
 							"role": {
-								"type": "integer"
+								"type": ["null", "number"]
 							},
 							"role_subtype": {
-								"type": "integer"
+								"type": ["null", "number"]
 							},
 							"username": {
 								"type": "string"

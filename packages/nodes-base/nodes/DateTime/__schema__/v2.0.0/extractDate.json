@@ -2,7 +2,7 @@
 	"additionalProperties": true,
 	"properties": {
 		"datePart": {
-			"type": "integer"
+			"type": "number"
 		}
 	},
 	"type": "object"

@@ -20,7 +20,7 @@
 							"type": "string"
 						},
 						"timeoutMinutes": {
-							"type": "integer"
+							"type": "number"
 						}
 					},
 					"type": "object"

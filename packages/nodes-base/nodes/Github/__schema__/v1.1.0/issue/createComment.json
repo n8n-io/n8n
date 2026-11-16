@@ -13,7 +13,7 @@
 			"type": "string"
 		},
 		"id": {
-			"type": "integer"
+			"type": "number"
 		},
 		"issue_url": {
 			"type": "string"
@@ -43,7 +43,7 @@
 					"type": "string"
 				},
 				"id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"name": {
 					"type": "string"
@@ -75,7 +75,7 @@
 							"type": "string"
 						},
 						"id": {
-							"type": "integer"
+							"type": "number"
 						},
 						"login": {
 							"type": "string"
@@ -137,37 +137,37 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"pin": {},
 		"reactions": {
 			"properties": {
 				"-1": {
-					"type": "integer"
+					"type": "number"
 				},
 				"+1": {
-					"type": "integer"
+					"type": "number"
 				},
 				"confused": {
-					"type": "integer"
+					"type": "number"
 				},
 				"eyes": {
-					"type": "integer"
+					"type": "number"
 				},
 				"heart": {
-					"type": "integer"
+					"type": "number"
 				},
 				"hooray": {
-					"type": "integer"
+					"type": "number"
 				},
 				"laugh": {
-					"type": "integer"
+					"type": "number"
 				},
 				"rocket": {
-					"type": "integer"
+					"type": "number"
 				},
 				"total_count": {
-					"type": "integer"
+					"type": "number"
 				},
 				"url": {
 					"type": "string"
@@ -205,7 +205,7 @@
 					"type": "string"
 				},
 				"id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"login": {
 					"type": "string"

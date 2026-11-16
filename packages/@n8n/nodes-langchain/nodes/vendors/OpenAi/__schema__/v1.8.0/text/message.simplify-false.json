@@ -7,7 +7,7 @@
 						"type": "string"
 					},
 					"index": {
-						"type": "integer"
+						"type": "number"
 					},
 					"logprobs": {},
 					"message": {
@@ -32,7 +32,7 @@
 			"type": "array"
 		},
 		"created": {
-			"type": "integer"
+			"type": "number"
 		},
 		"id": {
 			"type": "string"
@@ -47,46 +47,46 @@
 			"type": "string"
 		},
 		"system_fingerprint": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"usage": {
 			"properties": {
 				"completion_tokens": {
-					"type": "integer"
+					"type": "number"
 				},
 				"completion_tokens_details": {
 					"properties": {
 						"accepted_prediction_tokens": {
-							"type": "integer"
+							"type": "number"
 						},
 						"audio_tokens": {
-							"type": "integer"
+							"type": "number"
 						},
 						"reasoning_tokens": {
-							"type": "integer"
+							"type": "number"
 						},
 						"rejected_prediction_tokens": {
-							"type": "integer"
+							"type": "number"
 						}
 					},
 					"type": "object"
 				},
 				"prompt_tokens": {
-					"type": "integer"
+					"type": "number"
 				},
 				"prompt_tokens_details": {
 					"properties": {
 						"audio_tokens": {
-							"type": "integer"
+							"type": "number"
 						},
 						"cached_tokens": {
-							"type": "integer"
+							"type": "number"
 						}
 					},
 					"type": "object"
 				},
 				"total_tokens": {
-					"type": "integer"
+					"type": "number"
 				}
 			},
 			"type": "object"

@@ -29,7 +29,7 @@
 						"type": "string"
 					},
 					"index": {
-						"type": "integer"
+						"type": "number"
 					}
 				},
 				"type": "object"
@@ -45,10 +45,10 @@
 		"usageMetadata": {
 			"properties": {
 				"candidatesTokenCount": {
-					"type": "integer"
+					"type": "number"
 				},
 				"promptTokenCount": {
-					"type": "integer"
+					"type": "number"
 				},
 				"promptTokensDetails": {
 					"items": {
@@ -57,7 +57,7 @@
 								"type": "string"
 							},
 							"tokenCount": {
-								"type": "integer"
+								"type": "number"
 							}
 						},
 						"type": "object"
@@ -68,10 +68,10 @@
 					"type": "string"
 				},
 				"thoughtsTokenCount": {
-					"type": "integer"
+					"type": "number"
 				},
 				"totalTokenCount": {
-					"type": "integer"
+					"type": "number"
 				}
 			},
 			"type": "object"

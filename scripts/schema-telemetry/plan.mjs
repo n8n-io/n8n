@@ -6,6 +6,9 @@
  * `<operation>.<param>-<value>.json`, which the resolvers pick by parameter value.
  */
 
+/** Nodes whose output items are their input items, so no schema can describe them. */
+const PASS_THROUGH_NODES = new Set(['n8n-nodes-base.editImage']);
+
 /** "1.2" → "v1.2.0", the on-disk version folder name. */
 function versionDir(version) {
 	return 'v' + String(version).split('.').concat(['0', '0']).slice(0, 3).join('.');
@@ -60,6 +63,8 @@ function planWithoutOperation(group, entry, base, defaultOf) {
 export function planSchemaFile(group, index, { defaultOf }) {
 	const entry = index.get(group.node_type);
 	if (!entry) return { skip: `unknown node ${group.node_type}` };
+	if (PASS_THROUGH_NODES.has(group.node_type))
+		return { skip: 'the node passes its input items through' };
 	if (![null, undefined, 'true', 'false'].includes(group.simplify)) {
 		return { skip: 'simplify flag holds an expression' };
 	}

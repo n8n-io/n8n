@@ -1,6 +1,136 @@
 {
 	"properties": {
 		"data": {
+			"properties": {
+				"cteProc": {
+					"properties": {
+						"$": {
+							"properties": {
+								"versao": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"CTe": {
+							"properties": {
+								"infCte": {
+									"properties": {
+										"$": {
+											"properties": {
+												"Id": {
+													"type": "string"
+												}
+											},
+											"type": "object"
+										},
+										"dest": {
+											"properties": {
+												"xNome": {
+													"type": "string"
+												}
+											},
+											"type": "object"
+										},
+										"emit": {
+											"properties": {
+												"enderEmit": {
+													"properties": {
+														"UF": {
+															"type": "string"
+														}
+													},
+													"type": "object"
+												}
+											},
+											"type": "object"
+										},
+										"ide": {
+											"properties": {
+												"dhEmi": {
+													"type": "string"
+												},
+												"nCT": {
+													"type": "string"
+												},
+												"toma3": {
+													"properties": {
+														"toma": {
+															"type": "string"
+														}
+													},
+													"type": "object"
+												}
+											},
+											"type": "object"
+										},
+										"imp": {
+											"properties": {
+												"ICMS": {
+													"properties": {
+														"ICMS00": {
+															"properties": {
+																"CST": {
+																	"type": "string"
+																},
+																"pICMS": {
+																	"type": "string"
+																},
+																"vBC": {
+																	"type": "string"
+																},
+																"vICMS": {
+																	"type": "string"
+																}
+															},
+															"type": "object"
+														}
+													},
+													"type": "object"
+												}
+											},
+											"type": "object"
+										},
+										"rem": {
+											"properties": {
+												"xNome": {
+													"type": "string"
+												}
+											},
+											"type": "object"
+										},
+										"vPrest": {
+											"properties": {
+												"Comp": {
+													"items": {
+														"properties": {
+															"vComp": {
+																"type": "string"
+															},
+															"xNome": {
+																"type": "string"
+															}
+														},
+														"type": "object"
+													},
+													"type": "array"
+												},
+												"vTPrest": {
+													"type": "string"
+												}
+											},
+											"type": "object"
+										}
+									},
+									"type": "object"
+								}
+							},
+							"type": "object"
+						}
+					},
+					"type": "object"
+				}
+			},
 			"type": ["object", "string"]
 		}
 	},

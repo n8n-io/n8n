@@ -7,10 +7,10 @@
 			"type": "array"
 		},
 		"comments_count": {
-			"type": "integer"
+			"type": "number"
 		},
 		"created": {
-			"type": "integer"
+			"type": "number"
 		},
 		"display_as_bot": {
 			"type": "boolean"
@@ -77,10 +77,10 @@
 			"type": "string"
 		},
 		"original_h": {
-			"type": "integer"
+			"type": "number"
 		},
 		"original_w": {
-			"type": "integer"
+			"type": "number"
 		},
 		"permalink": {
 			"type": "string"
@@ -103,7 +103,7 @@
 			"type": "object"
 		},
 		"size": {
-			"type": "integer"
+			"type": "number"
 		},
 		"thumb_160": {
 			"type": "string"
@@ -112,10 +112,10 @@
 			"type": "string"
 		},
 		"thumb_360_h": {
-			"type": "integer"
+			"type": "number"
 		},
 		"thumb_360_w": {
-			"type": "integer"
+			"type": "number"
 		},
 		"thumb_64": {
 			"type": "string"
@@ -127,7 +127,7 @@
 			"type": "string"
 		},
 		"timestamp": {
-			"type": "integer"
+			"type": "number"
 		},
 		"title": {
 			"type": "string"

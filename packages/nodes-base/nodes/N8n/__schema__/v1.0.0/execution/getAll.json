@@ -12,13 +12,13 @@
 		"retryOf": {},
 		"retrySuccessId": {},
 		"startedAt": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"status": {
 			"type": "string"
 		},
 		"stoppedAt": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"waitTill": {},
 		"workflowId": {

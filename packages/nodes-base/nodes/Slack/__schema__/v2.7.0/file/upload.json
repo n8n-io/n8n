@@ -7,10 +7,10 @@
 			"type": "array"
 		},
 		"comments_count": {
-			"type": "integer"
+			"type": "number"
 		},
 		"created": {
-			"type": "integer"
+			"type": "number"
 		},
 		"display_as_bot": {
 			"type": "boolean"
@@ -84,10 +84,10 @@
 			"type": "object"
 		},
 		"size": {
-			"type": "integer"
+			"type": "number"
 		},
 		"timestamp": {
-			"type": "integer"
+			"type": "number"
 		},
 		"title": {
 			"type": "string"

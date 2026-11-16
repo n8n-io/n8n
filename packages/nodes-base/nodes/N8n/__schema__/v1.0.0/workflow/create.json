@@ -45,6 +45,7 @@
 						"type": "string"
 					},
 					"parameters": {
+						"additionalProperties": true,
 						"properties": {
 							"authentication": {
 								"type": "string"
@@ -78,7 +79,7 @@
 													"type": "object"
 												},
 												"rightValue": {
-													"type": ["boolean", "integer", "string"]
+													"type": ["boolean", "number", "string"]
 												}
 											},
 											"type": "object"
@@ -97,7 +98,7 @@
 												"type": "string"
 											},
 											"version": {
-												"type": "integer"
+												"type": "number"
 											}
 										},
 										"type": "object"
@@ -127,10 +128,12 @@
 								"type": "string"
 							},
 							"options": {
+								"additionalProperties": true,
 								"properties": {
 									"response": {
 										"properties": {
 											"response": {
+												"additionalProperties": true,
 												"properties": {
 													"responseFormat": {
 														"type": "string"
@@ -142,7 +145,7 @@
 										"type": "object"
 									},
 									"timeout": {
-										"type": "integer"
+										"type": "number"
 									}
 								},
 								"type": "object"
@@ -161,7 +164,7 @@
 					},
 					"position": {
 						"items": {
-							"type": "integer"
+							"type": "number"
 						},
 						"type": "array"
 					},
@@ -251,13 +254,13 @@
 			"type": "array"
 		},
 		"triggerCount": {
-			"type": "integer"
+			"type": "number"
 		},
 		"updatedAt": {
 			"type": "string"
 		},
 		"versionCounter": {
-			"type": "integer"
+			"type": "number"
 		},
 		"versionId": {
 			"type": "string"

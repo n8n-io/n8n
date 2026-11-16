@@ -4,7 +4,7 @@
 			"type": "string"
 		},
 		"app_id": {
-			"type": "integer"
+			"type": "number"
 		},
 		"billing_address": {
 			"properties": {
@@ -12,13 +12,13 @@
 					"type": "string"
 				},
 				"address2": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"city": {
 					"type": "string"
 				},
 				"company": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"country": {
 					"type": "string"
@@ -33,31 +33,31 @@
 					"type": "string"
 				},
 				"latitude": {
-					"type": "number"
+					"type": ["null", "number"]
 				},
 				"longitude": {
-					"type": "number"
+					"type": ["null", "number"]
 				},
 				"name": {
 					"type": "string"
 				},
 				"phone": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"province": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"province_code": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"zip": {
-					"type": "string"
+					"type": ["null", "string"]
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"browser_ip": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"buyer_accepts_marketing": {
 			"type": "boolean"
@@ -65,18 +65,18 @@
 		"cancel_reason": {},
 		"cancelled_at": {},
 		"cart_token": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"checkout_id": {
-			"type": "integer"
+			"type": ["null", "number"]
 		},
 		"checkout_token": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"client_details": {
 			"properties": {
 				"accept_language": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"browser_height": {},
 				"browser_ip": {
@@ -88,10 +88,10 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"closed_at": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"company": {},
 		"confirmation_number": {
@@ -101,7 +101,7 @@
 			"type": "boolean"
 		},
 		"contact_email": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"created_at": {
 			"type": "string"
@@ -245,16 +245,16 @@
 				"default_address": {
 					"properties": {
 						"address1": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"address2": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"city": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"company": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"country": {
 							"type": "string"
@@ -266,7 +266,7 @@
 							"type": "string"
 						},
 						"customer_id": {
-							"type": "integer"
+							"type": "number"
 						},
 						"default": {
 							"type": "boolean"
@@ -275,36 +275,36 @@
 							"type": "string"
 						},
 						"id": {
-							"type": "integer"
+							"type": "number"
 						},
 						"last_name": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"name": {
 							"type": "string"
 						},
 						"phone": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"province": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"province_code": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"zip": {
-							"type": "string"
+							"type": ["null", "string"]
 						}
 					},
 					"type": "object"
 				},
 				"email": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"email_marketing_consent": {
 					"properties": {
 						"consent_updated_at": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"opt_in_level": {
 							"type": "string"
@@ -313,31 +313,31 @@
 							"type": "string"
 						}
 					},
-					"type": "object"
+					"type": ["null", "object"]
 				},
 				"first_name": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"last_name": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"multipass_identifier": {},
 				"note": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"phone": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"sms_marketing_consent": {
 					"properties": {
 						"consent_collected_from": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"consent_updated_at": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"opt_in_level": {
 							"type": "string"
@@ -346,7 +346,7 @@
 							"type": "string"
 						}
 					},
-					"type": "object"
+					"type": ["null", "object"]
 				},
 				"state": {
 					"type": "string"
@@ -371,7 +371,7 @@
 			"type": "object"
 		},
 		"customer_locale": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"device_id": {},
 		"discount_applications": {
@@ -436,7 +436,7 @@
 			"type": "string"
 		},
 		"fulfillment_status": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"fulfillments": {
 			"items": {
@@ -448,7 +448,7 @@
 						"type": "string"
 					},
 					"id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"line_items": {
 						"items": {
@@ -461,7 +461,7 @@
 									"type": "array"
 								},
 								"current_quantity": {
-									"type": "integer"
+									"type": "number"
 								},
 								"discount_allocations": {
 									"items": {
@@ -497,7 +497,7 @@
 												"type": "object"
 											},
 											"discount_application_index": {
-												"type": "integer"
+												"type": "number"
 											}
 										},
 										"type": "object"
@@ -509,22 +509,22 @@
 									"type": "array"
 								},
 								"fulfillable_quantity": {
-									"type": "integer"
+									"type": "number"
 								},
 								"fulfillment_service": {
 									"type": "string"
 								},
 								"fulfillment_status": {
-									"type": "string"
+									"type": ["null", "string"]
 								},
 								"gift_card": {
 									"type": "boolean"
 								},
 								"grams": {
-									"type": "integer"
+									"type": "number"
 								},
 								"id": {
-									"type": "integer"
+									"type": "number"
 								},
 								"name": {
 									"type": "string"
@@ -593,14 +593,14 @@
 									"type": "boolean"
 								},
 								"product_id": {
-									"type": "integer"
+									"type": "number"
 								},
 								"properties": {
 									"items": {},
 									"type": "array"
 								},
 								"quantity": {
-									"type": "integer"
+									"type": "number"
 								},
 								"requires_shipping": {
 									"type": "boolean"
@@ -692,13 +692,13 @@
 									"type": "object"
 								},
 								"variant_id": {
-									"type": "integer"
+									"type": "number"
 								},
 								"variant_inventory_management": {
-									"type": "string"
+									"type": ["null", "string"]
 								},
 								"variant_title": {
-									"type": "string"
+									"type": ["null", "string"]
 								},
 								"vendor": {
 									"type": "string"
@@ -709,13 +709,13 @@
 						"type": "array"
 					},
 					"location_id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"name": {
 						"type": "string"
 					},
 					"order_id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"origin_address": {
 						"type": "object"
@@ -731,10 +731,10 @@
 						"type": "string"
 					},
 					"tracking_company": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"tracking_number": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"tracking_numbers": {
 						"items": {
@@ -743,7 +743,7 @@
 						"type": "array"
 					},
 					"tracking_url": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"tracking_urls": {
 						"items": {
@@ -760,10 +760,10 @@
 			"type": "array"
 		},
 		"id": {
-			"type": "integer"
+			"type": "number"
 		},
 		"landing_site": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"landing_site_ref": {},
 		"line_items": {
@@ -777,7 +777,7 @@
 						"type": "array"
 					},
 					"current_quantity": {
-						"type": "integer"
+						"type": "number"
 					},
 					"discount_allocations": {
 						"items": {
@@ -813,7 +813,7 @@
 									"type": "object"
 								},
 								"discount_application_index": {
-									"type": "integer"
+									"type": "number"
 								}
 							},
 							"type": "object"
@@ -825,22 +825,22 @@
 						"type": "array"
 					},
 					"fulfillable_quantity": {
-						"type": "integer"
+						"type": "number"
 					},
 					"fulfillment_service": {
 						"type": "string"
 					},
 					"fulfillment_status": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"gift_card": {
 						"type": "boolean"
 					},
 					"grams": {
-						"type": "integer"
+						"type": "number"
 					},
 					"id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"name": {
 						"type": "string"
@@ -879,7 +879,7 @@
 						"type": "boolean"
 					},
 					"product_id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"properties": {
 						"items": {
@@ -896,13 +896,13 @@
 						"type": "array"
 					},
 					"quantity": {
-						"type": "integer"
+						"type": "number"
 					},
 					"requires_shipping": {
 						"type": "boolean"
 					},
 					"sku": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"tax_lines": {
 						"items": {
@@ -988,13 +988,13 @@
 						"type": "object"
 					},
 					"variant_id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"variant_inventory_management": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"variant_title": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"vendor": {
 						"type": "string"
@@ -1005,7 +1005,7 @@
 			"type": "array"
 		},
 		"location_id": {
-			"type": "integer"
+			"type": ["null", "number"]
 		},
 		"merchant_business_entity_id": {
 			"type": "string"
@@ -1015,7 +1015,7 @@
 			"type": "string"
 		},
 		"note": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"note_attributes": {
 			"items": {
@@ -1032,10 +1032,10 @@
 			"type": "array"
 		},
 		"number": {
-			"type": "integer"
+			"type": "number"
 		},
 		"order_number": {
-			"type": "integer"
+			"type": "number"
 		},
 		"order_status_url": {
 			"type": "string"
@@ -1050,7 +1050,7 @@
 		},
 		"payment_terms": {},
 		"phone": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"po_number": {},
 		"presentment_currency": {
@@ -1061,7 +1061,7 @@
 		},
 		"reference": {},
 		"referring_site": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"refunds": {
 			"items": {
@@ -1077,7 +1077,7 @@
 						"type": "array"
 					},
 					"id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"note": {
 						"type": "string"
@@ -1116,19 +1116,19 @@
 									"type": "object"
 								},
 								"id": {
-									"type": "integer"
+									"type": "number"
 								},
 								"kind": {
 									"type": "string"
 								},
 								"order_id": {
-									"type": "integer"
+									"type": "number"
 								},
 								"reason": {
 									"type": "string"
 								},
 								"refund_id": {
-									"type": "integer"
+									"type": "number"
 								},
 								"tax_amount": {
 									"type": "string"
@@ -1166,7 +1166,7 @@
 						"type": "array"
 					},
 					"order_id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"processed_at": {
 						"type": "string"
@@ -1175,7 +1175,7 @@
 						"items": {
 							"properties": {
 								"id": {
-									"type": "integer"
+									"type": "number"
 								},
 								"line_item": {
 									"properties": {
@@ -1187,7 +1187,7 @@
 											"type": "array"
 										},
 										"current_quantity": {
-											"type": "integer"
+											"type": "number"
 										},
 										"discount_allocations": {
 											"items": {},
@@ -1198,7 +1198,7 @@
 											"type": "array"
 										},
 										"fulfillable_quantity": {
-											"type": "integer"
+											"type": "number"
 										},
 										"fulfillment_service": {
 											"type": "string"
@@ -1210,10 +1210,10 @@
 											"type": "boolean"
 										},
 										"grams": {
-											"type": "integer"
+											"type": "number"
 										},
 										"id": {
-											"type": "integer"
+											"type": "number"
 										},
 										"name": {
 											"type": "string"
@@ -1282,14 +1282,14 @@
 											"type": "boolean"
 										},
 										"product_id": {
-											"type": "integer"
+											"type": "number"
 										},
 										"properties": {
 											"items": {},
 											"type": "array"
 										},
 										"quantity": {
-											"type": "integer"
+											"type": "number"
 										},
 										"requires_shipping": {
 											"type": "boolean"
@@ -1381,7 +1381,7 @@
 											"type": "object"
 										},
 										"variant_id": {
-											"type": "integer"
+											"type": "number"
 										},
 										"variant_inventory_management": {
 											"type": "string"
@@ -1396,13 +1396,13 @@
 									"type": "object"
 								},
 								"line_item_id": {
-									"type": "integer"
+									"type": "number"
 								},
 								"location_id": {
-									"type": "integer"
+									"type": "number"
 								},
 								"quantity": {
-									"type": "integer"
+									"type": "number"
 								},
 								"restock_type": {
 									"type": "string"
@@ -1524,7 +1524,7 @@
 									"type": "string"
 								},
 								"id": {
-									"type": "integer"
+									"type": "number"
 								},
 								"kind": {
 									"type": "string"
@@ -1532,10 +1532,10 @@
 								"location_id": {},
 								"message": {},
 								"order_id": {
-									"type": "integer"
+									"type": "number"
 								},
 								"parent_id": {
-									"type": "integer"
+									"type": "number"
 								},
 								"payment_id": {
 									"type": "string"
@@ -1561,7 +1561,7 @@
 									"type": "boolean"
 								},
 								"user_id": {
-									"type": "integer"
+									"type": "number"
 								}
 							},
 							"type": "object"
@@ -1569,7 +1569,7 @@
 						"type": "array"
 					},
 					"user_id": {
-						"type": "integer"
+						"type": "number"
 					}
 				},
 				"type": "object"
@@ -1582,13 +1582,13 @@
 					"type": "string"
 				},
 				"address2": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"city": {
 					"type": "string"
 				},
 				"company": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"country": {
 					"type": "string"
@@ -1603,34 +1603,34 @@
 					"type": "string"
 				},
 				"latitude": {
-					"type": "number"
+					"type": ["null", "number"]
 				},
 				"longitude": {
-					"type": "number"
+					"type": ["null", "number"]
 				},
 				"name": {
 					"type": "string"
 				},
 				"phone": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"province": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"province_code": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"zip": {
-					"type": "string"
+					"type": ["null", "string"]
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"shipping_lines": {
 			"items": {
 				"properties": {
 					"carrier_identifier": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"code": {
 						"type": "string"
@@ -1670,13 +1670,13 @@
 						"type": "object"
 					},
 					"id": {
-						"type": "integer"
+						"type": "number"
 					},
 					"is_removed": {
 						"type": "boolean"
 					},
 					"phone": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"price": {
 						"type": "string"
@@ -1710,7 +1710,7 @@
 					},
 					"requested_fulfillment_service_id": {},
 					"source": {
-						"type": "string"
+						"type": ["null", "string"]
 					},
 					"tax_lines": {
 						"items": {
@@ -2072,13 +2072,13 @@
 			"type": "string"
 		},
 		"total_weight": {
-			"type": "integer"
+			"type": "number"
 		},
 		"updated_at": {
 			"type": "string"
 		},
 		"user_id": {
-			"type": "integer"
+			"type": ["null", "number"]
 		}
 	},
 	"type": "object"

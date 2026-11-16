@@ -18,7 +18,7 @@
 			"type": "boolean"
 		},
 		"child_order": {
-			"type": "integer"
+			"type": "number"
 		},
 		"color": {
 			"type": "string"
@@ -30,10 +30,10 @@
 			"type": "string"
 		},
 		"default_order": {
-			"type": "integer"
+			"type": "number"
 		},
 		"default_order_key": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"description": {
 			"type": "string"
@@ -67,10 +67,10 @@
 			"type": "string"
 		},
 		"order_key": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"parent_id": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"public_access": {
 			"type": "boolean"

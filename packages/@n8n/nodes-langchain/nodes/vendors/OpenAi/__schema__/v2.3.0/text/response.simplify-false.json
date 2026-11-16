@@ -6,7 +6,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"background": {
 			"type": "boolean"
@@ -20,13 +20,13 @@
 			"type": "object"
 		},
 		"completed_at": {
-			"type": "integer"
+			"type": ["null", "number"]
 		},
 		"created_at": {
-			"type": "integer"
+			"type": "number"
 		},
 		"frequency_penalty": {
-			"type": "integer"
+			"type": "number"
 		},
 		"id": {
 			"type": "string"
@@ -37,16 +37,16 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"instructions": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"max_output_tokens": {
-			"type": "integer"
+			"type": ["null", "number"]
 		},
 		"max_tool_calls": {
-			"type": "integer"
+			"type": ["null", "number"]
 		},
 		"metadata": {
 			"type": "object"
@@ -68,10 +68,10 @@
 									"items": {
 										"properties": {
 											"end_index": {
-												"type": "integer"
+												"type": "number"
 											},
 											"start_index": {
-												"type": "integer"
+												"type": "number"
 											},
 											"title": {
 												"type": "string"
@@ -143,7 +143,7 @@
 			"type": "boolean"
 		},
 		"presence_penalty": {
-			"type": "integer"
+			"type": "number"
 		},
 		"previous_response_id": {},
 		"prompt_cache_key": {},
@@ -153,16 +153,16 @@
 		"reasoning": {
 			"properties": {
 				"context": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"effort": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"mode": {
 					"type": "string"
 				},
 				"summary": {
-					"type": "string"
+					"type": ["null", "string"]
 				}
 			},
 			"type": "object"
@@ -178,7 +178,7 @@
 			"type": "boolean"
 		},
 		"temperature": {
-			"type": "integer"
+			"type": "number"
 		},
 		"text": {
 			"properties": {
@@ -204,35 +204,35 @@
 				"image_gen": {
 					"properties": {
 						"input_tokens": {
-							"type": "integer"
+							"type": "number"
 						},
 						"input_tokens_details": {
 							"properties": {
 								"image_tokens": {
-									"type": "integer"
+									"type": "number"
 								},
 								"text_tokens": {
-									"type": "integer"
+									"type": "number"
 								}
 							},
 							"type": "object"
 						},
 						"output_tokens": {
-							"type": "integer"
+							"type": "number"
 						},
 						"output_tokens_details": {
 							"properties": {
 								"image_tokens": {
-									"type": "integer"
+									"type": "number"
 								},
 								"text_tokens": {
-									"type": "integer"
+									"type": "number"
 								}
 							},
 							"type": "object"
 						},
 						"total_tokens": {
-							"type": "integer"
+							"type": "number"
 						}
 					},
 					"type": "object"
@@ -240,7 +240,7 @@
 				"web_search": {
 					"properties": {
 						"num_requests": {
-							"type": "integer"
+							"type": "number"
 						}
 					},
 					"type": "object"
@@ -286,10 +286,10 @@
 			"type": "array"
 		},
 		"top_logprobs": {
-			"type": "integer"
+			"type": "number"
 		},
 		"top_p": {
-			"type": ["integer", "number"]
+			"type": "number"
 		},
 		"truncation": {
 			"type": "string"
@@ -297,32 +297,32 @@
 		"usage": {
 			"properties": {
 				"input_tokens": {
-					"type": "integer"
+					"type": "number"
 				},
 				"input_tokens_details": {
 					"properties": {
 						"cache_write_tokens": {
-							"type": "integer"
+							"type": "number"
 						},
 						"cached_tokens": {
-							"type": "integer"
+							"type": "number"
 						}
 					},
 					"type": "object"
 				},
 				"output_tokens": {
-					"type": "integer"
+					"type": "number"
 				},
 				"output_tokens_details": {
 					"properties": {
 						"reasoning_tokens": {
-							"type": "integer"
+							"type": "number"
 						}
 					},
 					"type": "object"
 				},
 				"total_tokens": {
-					"type": "integer"
+					"type": "number"
 				}
 			},
 			"type": "object"

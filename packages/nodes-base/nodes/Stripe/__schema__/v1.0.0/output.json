@@ -4,28 +4,28 @@
 			"type": "string"
 		},
 		"created": {
-			"type": "integer"
+			"type": "number"
 		},
 		"data": {
 			"properties": {
 				"object": {
 					"properties": {
 						"amount": {
-							"type": "integer"
+							"type": "number"
 						},
 						"application": {},
 						"application_fee_amount": {},
 						"created": {
-							"type": "integer"
+							"type": "number"
 						},
 						"currency": {
 							"type": "string"
 						},
 						"customer": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"description": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"id": {
 							"type": "string"
@@ -41,7 +41,7 @@
 						},
 						"on_behalf_of": {},
 						"payment_intent": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"shipping": {},
 						"statement_descriptor": {},
@@ -65,18 +65,18 @@
 			"type": "string"
 		},
 		"pending_webhooks": {
-			"type": "integer"
+			"type": "number"
 		},
 		"request": {
 			"properties": {
 				"id": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"idempotency_key": {
-					"type": "string"
+					"type": ["null", "string"]
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"type": {
 			"type": "string"

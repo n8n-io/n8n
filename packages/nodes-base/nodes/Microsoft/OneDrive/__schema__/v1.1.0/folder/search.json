@@ -43,7 +43,7 @@
 		"folder": {
 			"properties": {
 				"childCount": {
-					"type": "integer"
+					"type": "number"
 				}
 			},
 			"type": "object"
@@ -91,7 +91,7 @@
 			"type": "object"
 		},
 		"size": {
-			"type": "integer"
+			"type": "number"
 		},
 		"webUrl": {
 			"type": "string"

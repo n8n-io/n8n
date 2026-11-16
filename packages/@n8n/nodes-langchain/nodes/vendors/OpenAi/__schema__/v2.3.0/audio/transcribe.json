@@ -6,7 +6,7 @@
 		"usage": {
 			"properties": {
 				"seconds": {
-					"type": "integer"
+					"type": "number"
 				},
 				"type": {
 					"type": "string"

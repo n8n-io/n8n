@@ -212,3 +212,19 @@ describe('planSchemaFile defaults', () => {
 		assert.match(plan.skip, /default/);
 	});
 });
+
+describe('planSchemaFile pass-through nodes', () => {
+	it('skips a node that passes its input items through', () => {
+		const passThrough = new Map([
+			...index,
+			['n8n-nodes-base.editImage', { dir: 'nodes/EditImage', noOperationSiblings: [] }],
+		]);
+		const plan = planSchemaFile(
+			group({ node_type: 'n8n-nodes-base.editImage', node_version: '2', operation: 'rotate' }),
+			passThrough,
+			opts,
+		);
+
+		assert.match(plan.skip, /passes its input/);
+	});
+});

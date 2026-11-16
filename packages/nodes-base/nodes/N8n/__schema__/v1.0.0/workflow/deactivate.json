@@ -12,7 +12,7 @@
 			"type": "string"
 		},
 		"description": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"id": {
 			"type": "string"
@@ -29,7 +29,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"name": {
 			"type": "string"
@@ -73,6 +73,7 @@
 						"type": "string"
 					},
 					"parameters": {
+						"additionalProperties": true,
 						"properties": {
 							"authentication": {
 								"type": "string"
@@ -106,7 +107,7 @@
 													"type": "object"
 												},
 												"rightValue": {
-													"type": ["boolean", "integer", "string"]
+													"type": ["boolean", "number", "string"]
 												}
 											},
 											"type": "object"
@@ -125,7 +126,7 @@
 												"type": "string"
 											},
 											"version": {
-												"type": "integer"
+												"type": "number"
 											}
 										},
 										"type": "object"
@@ -137,7 +138,7 @@
 								"type": "string"
 							},
 							"height": {
-								"type": "integer"
+								"type": "number"
 							},
 							"jsCode": {
 								"type": "string"
@@ -195,7 +196,7 @@
 					},
 					"position": {
 						"items": {
-							"type": "integer"
+							"type": "number"
 						},
 						"type": "array"
 					},
@@ -214,7 +215,7 @@
 			"type": "array"
 		},
 		"pinData": {
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"settings": {
 			"properties": {
@@ -242,14 +243,14 @@
 								"type": "string"
 							},
 							"creatorId": {
-								"type": "string"
+								"type": ["null", "string"]
 							},
 							"customTelemetryTags": {
 								"items": {},
 								"type": "array"
 							},
 							"description": {
-								"type": "string"
+								"type": ["null", "string"]
 							},
 							"icon": {
 								"properties": {
@@ -260,7 +261,7 @@
 										"type": "string"
 									}
 								},
-								"type": "object"
+								"type": ["null", "object"]
 							},
 							"id": {
 								"type": "string"
@@ -296,16 +297,16 @@
 		},
 		"sourceWorkflowId": {},
 		"staticData": {
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"triggerCount": {
-			"type": "integer"
+			"type": "number"
 		},
 		"updatedAt": {
 			"type": "string"
 		},
 		"versionCounter": {
-			"type": "integer"
+			"type": "number"
 		},
 		"versionId": {
 			"type": "string"

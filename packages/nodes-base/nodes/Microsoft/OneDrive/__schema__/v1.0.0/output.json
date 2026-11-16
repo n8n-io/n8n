@@ -19,7 +19,7 @@
 			"type": "string"
 		},
 		"size": {
-			"type": "integer"
+			"type": "number"
 		},
 		"webUrl": {
 			"type": "string"

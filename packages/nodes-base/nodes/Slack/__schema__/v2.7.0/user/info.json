@@ -57,7 +57,7 @@
 					"type": "string"
 				},
 				"huddle_state_expiration_ts": {
-					"type": "integer"
+					"type": "number"
 				},
 				"image_1024": {
 					"type": "string"
@@ -122,7 +122,7 @@
 					"type": "array"
 				},
 				"status_expiration": {
-					"type": "integer"
+					"type": "number"
 				},
 				"status_text": {
 					"type": "string"
@@ -152,10 +152,10 @@
 			"type": "string"
 		},
 		"tz_offset": {
-			"type": "integer"
+			"type": "number"
 		},
 		"updated": {
-			"type": "integer"
+			"type": "number"
 		},
 		"who_can_share_contact_card": {
 			"type": "string"

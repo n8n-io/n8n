@@ -149,3 +149,15 @@ describe('buildFiles node type', () => {
 		assert.equal(files[0].nodeType, 'n8n-nodes-base.gmail');
 	});
 });
+
+describe('buildFiles root', () => {
+	it('ignores samples whose root is not an object, because item json is always an object', () => {
+		const { files } = buildFiles(
+			[row({ samples: [schema(['id']), JSON.stringify({ type: 'string' })] })],
+			index,
+			{ exists: noFiles, defaultOf },
+		);
+
+		assert.deepEqual(files[0].schema, { type: 'object', properties: { id: { type: 'string' } } });
+	});
+});

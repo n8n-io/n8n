@@ -4,7 +4,7 @@
 			"type": "string"
 		},
 		"created": {
-			"type": "integer"
+			"type": "number"
 		},
 		"creator": {
 			"type": "string"
@@ -111,7 +111,7 @@
 					"type": "string"
 				},
 				"last_set": {
-					"type": "integer"
+					"type": "number"
 				},
 				"value": {
 					"type": "string"
@@ -131,7 +131,7 @@
 					"type": "string"
 				},
 				"last_set": {
-					"type": "integer"
+					"type": "number"
 				},
 				"value": {
 					"type": "string"
@@ -140,10 +140,10 @@
 			"type": "object"
 		},
 		"unlinked": {
-			"type": "integer"
+			"type": "number"
 		},
 		"updated": {
-			"type": "integer"
+			"type": "number"
 		}
 	},
 	"type": "object"

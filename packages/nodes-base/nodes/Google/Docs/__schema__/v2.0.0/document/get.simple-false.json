@@ -6,7 +6,7 @@
 					"items": {
 						"properties": {
 							"endIndex": {
-								"type": "integer"
+								"type": "number"
 							},
 							"paragraph": {
 								"properties": {
@@ -14,10 +14,10 @@
 										"items": {
 											"properties": {
 												"endIndex": {
-													"type": "integer"
+													"type": "number"
 												},
 												"startIndex": {
-													"type": "integer"
+													"type": "number"
 												},
 												"textRun": {
 													"properties": {
@@ -32,7 +32,7 @@
 																"fontSize": {
 																	"properties": {
 																		"magnitude": {
-																			"type": ["integer", "number"]
+																			"type": "number"
 																		},
 																		"unit": {
 																			"type": "string"
@@ -53,7 +53,7 @@
 																							"type": "number"
 																						},
 																						"red": {
-																							"type": ["integer", "number"]
+																							"type": "number"
 																						}
 																					},
 																					"type": "object"
@@ -86,7 +86,7 @@
 											"spaceAbove": {
 												"properties": {
 													"magnitude": {
-														"type": "integer"
+														"type": "number"
 													},
 													"unit": {
 														"type": "string"
@@ -97,7 +97,7 @@
 											"spaceBelow": {
 												"properties": {
 													"magnitude": {
-														"type": "integer"
+														"type": "number"
 													},
 													"unit": {
 														"type": "string"
@@ -131,7 +131,7 @@
 								"type": "object"
 							},
 							"startIndex": {
-								"type": "integer"
+								"type": "number"
 							}
 						},
 						"type": "object"
@@ -168,7 +168,7 @@
 				"marginBottom": {
 					"properties": {
 						"magnitude": {
-							"type": ["integer", "number"]
+							"type": "number"
 						},
 						"unit": {
 							"type": "string"
@@ -179,7 +179,7 @@
 				"marginFooter": {
 					"properties": {
 						"magnitude": {
-							"type": ["integer", "number"]
+							"type": "number"
 						},
 						"unit": {
 							"type": "string"
@@ -190,7 +190,7 @@
 				"marginHeader": {
 					"properties": {
 						"magnitude": {
-							"type": ["integer", "number"]
+							"type": "number"
 						},
 						"unit": {
 							"type": "string"
@@ -201,7 +201,7 @@
 				"marginLeft": {
 					"properties": {
 						"magnitude": {
-							"type": ["integer", "number"]
+							"type": "number"
 						},
 						"unit": {
 							"type": "string"
@@ -212,7 +212,7 @@
 				"marginRight": {
 					"properties": {
 						"magnitude": {
-							"type": ["integer", "number"]
+							"type": "number"
 						},
 						"unit": {
 							"type": "string"
@@ -223,7 +223,7 @@
 				"marginTop": {
 					"properties": {
 						"magnitude": {
-							"type": ["integer", "number"]
+							"type": "number"
 						},
 						"unit": {
 							"type": "string"
@@ -232,14 +232,14 @@
 					"type": "object"
 				},
 				"pageNumberStart": {
-					"type": "integer"
+					"type": "number"
 				},
 				"pageSize": {
 					"properties": {
 						"height": {
 							"properties": {
 								"magnitude": {
-									"type": ["integer", "number"]
+									"type": "number"
 								},
 								"unit": {
 									"type": "string"
@@ -250,7 +250,7 @@
 						"width": {
 							"properties": {
 								"magnitude": {
-									"type": ["integer", "number"]
+									"type": "number"
 								},
 								"unit": {
 									"type": "string"
@@ -452,7 +452,7 @@
 										"type": "boolean"
 									},
 									"lineSpacing": {
-										"type": "integer"
+										"type": "number"
 									},
 									"namedStyleType": {
 										"type": "string"
@@ -471,7 +471,7 @@
 									"spaceAbove": {
 										"properties": {
 											"magnitude": {
-												"type": ["integer", "number"]
+												"type": "number"
 											},
 											"unit": {
 												"type": "string"
@@ -482,7 +482,7 @@
 									"spaceBelow": {
 										"properties": {
 											"magnitude": {
-												"type": ["integer", "number"]
+												"type": "number"
 											},
 											"unit": {
 												"type": "string"
@@ -510,7 +510,7 @@
 									"fontSize": {
 										"properties": {
 											"magnitude": {
-												"type": ["integer", "number"]
+												"type": "number"
 											},
 											"unit": {
 												"type": "string"
@@ -560,7 +560,7 @@
 												"type": "string"
 											},
 											"weight": {
-												"type": "integer"
+												"type": "number"
 											}
 										},
 										"type": "object"

@@ -1,13 +1,13 @@
 {
 	"properties": {
 		"bytes": {
-			"type": "integer"
+			"type": "number"
 		},
 		"created_at": {
-			"type": "integer"
+			"type": "number"
 		},
 		"expires_at": {
-			"type": "integer"
+			"type": ["null", "number"]
 		},
 		"filename": {
 			"type": "string"

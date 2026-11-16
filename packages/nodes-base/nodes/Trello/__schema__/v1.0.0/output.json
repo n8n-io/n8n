@@ -12,7 +12,7 @@
 							"type": "string"
 						}
 					},
-					"type": "object"
+					"type": ["null", "object"]
 				},
 				"data": {
 					"properties": {
@@ -36,7 +36,7 @@
 									"type": "string"
 								},
 								"idShort": {
-									"type": "integer"
+									"type": "number"
 								},
 								"name": {
 									"type": "string"
@@ -48,6 +48,7 @@
 							"type": "object"
 						},
 						"old": {
+							"additionalProperties": true,
 							"properties": {
 								"idList": {
 									"type": "string"
@@ -133,7 +134,7 @@
 							"type": "string"
 						},
 						"idMemberReferrer": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"initials": {
 							"type": "string"
@@ -170,7 +171,7 @@
 							"type": "object"
 						}
 					},
-					"type": "object"
+					"type": ["null", "object"]
 				},
 				"id": {
 					"type": "string"
@@ -293,13 +294,13 @@
 							"type": "string"
 						},
 						"backgroundColor": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"backgroundDarkColor": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"backgroundDarkImage": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"backgroundImage": {
 							"type": "string"
@@ -308,18 +309,18 @@
 							"items": {
 								"properties": {
 									"height": {
-										"type": "integer"
+										"type": "number"
 									},
 									"url": {
 										"type": "string"
 									},
 									"width": {
-										"type": "integer"
+										"type": "number"
 									}
 								},
 								"type": "object"
 							},
-							"type": "array"
+							"type": ["array", "null"]
 						},
 						"backgroundTile": {
 							"type": "boolean"
@@ -379,7 +380,7 @@
 							"type": "boolean"
 						},
 						"sharedSourceUrl": {
-							"type": "string"
+							"type": ["null", "string"]
 						},
 						"showCompleteStatus": {
 							"type": "boolean"
@@ -422,7 +423,7 @@
 					"type": "string"
 				},
 				"consecutiveFailures": {
-					"type": "integer"
+					"type": "number"
 				},
 				"description": {
 					"type": "string"

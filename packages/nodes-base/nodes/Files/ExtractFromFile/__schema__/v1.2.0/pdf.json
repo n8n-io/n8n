@@ -12,7 +12,7 @@
 					"type": "string"
 				},
 				"EncryptFilterName": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"IsAcroFormPresent": {
 					"type": "boolean"
@@ -30,7 +30,7 @@
 					"type": "boolean"
 				},
 				"Language": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"ModDate": {
 					"type": "string"
@@ -48,10 +48,10 @@
 			"type": "object"
 		},
 		"numpages": {
-			"type": "integer"
+			"type": "number"
 		},
 		"numrender": {
-			"type": "integer"
+			"type": "number"
 		},
 		"text": {
 			"type": "string"

@@ -4,7 +4,7 @@
 		"timeDifference": {
 			"properties": {
 				"days": {
-					"type": ["integer", "number"]
+					"type": "number"
 				}
 			},
 			"type": "object"

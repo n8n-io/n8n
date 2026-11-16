@@ -38,6 +38,7 @@
 			"type": "string"
 		},
 		"end": {
+			"additionalProperties": true,
 			"properties": {
 				"dateTime": {
 					"type": "string"
@@ -86,7 +87,7 @@
 			"type": "object"
 		},
 		"sequence": {
-			"type": "integer"
+			"type": "number"
 		},
 		"start": {
 			"properties": {

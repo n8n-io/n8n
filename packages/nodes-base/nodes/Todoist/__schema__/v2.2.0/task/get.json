@@ -7,28 +7,28 @@
 			"type": "string"
 		},
 		"assigned_by_uid": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"checked": {
 			"type": "boolean"
 		},
 		"child_order": {
-			"type": "integer"
+			"type": "number"
 		},
 		"completed_at": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"completed_by_uid": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"completed_count": {
-			"type": "integer"
+			"type": "number"
 		},
 		"content": {
 			"type": "string"
 		},
 		"day_order": {
-			"type": "integer"
+			"type": "number"
 		},
 		"deadline": {
 			"properties": {
@@ -39,7 +39,7 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"description": {
 			"type": "string"
@@ -59,10 +59,10 @@
 					"type": "string"
 				},
 				"timezone": {
-					"type": "string"
+					"type": ["null", "string"]
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"duration": {},
 		"id": {
@@ -81,28 +81,28 @@
 			"type": "array"
 		},
 		"note_count": {
-			"type": "integer"
+			"type": "number"
 		},
 		"order_key": {
 			"type": "string"
 		},
 		"parent_id": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"postponed_count": {
-			"type": "integer"
+			"type": "number"
 		},
 		"priority": {
-			"type": "integer"
+			"type": "number"
 		},
 		"project_id": {
 			"type": "string"
 		},
 		"responsible_uid": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"section_id": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"updated_at": {
 			"type": "string"

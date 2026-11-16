@@ -4,7 +4,7 @@
 			"items": {
 				"properties": {
 					"confidenceScore": {
-						"type": ["integer", "number"]
+						"type": "number"
 					},
 					"executionFailed": {
 						"type": "boolean"

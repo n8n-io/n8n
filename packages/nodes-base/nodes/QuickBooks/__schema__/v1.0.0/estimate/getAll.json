@@ -117,7 +117,7 @@
 			"items": {
 				"properties": {
 					"Amount": {
-						"type": ["integer", "number"]
+						"type": "number"
 					},
 					"CustomExtensions": {
 						"items": {},
@@ -133,7 +133,7 @@
 						"type": "string"
 					},
 					"LineNum": {
-						"type": "integer"
+						"type": "number"
 					},
 					"SalesItemLineDetail": {
 						"properties": {
@@ -160,7 +160,7 @@
 								"type": "object"
 							},
 							"Qty": {
-								"type": "integer"
+								"type": "number"
 							},
 							"TaxClassificationRef": {
 								"properties": {
@@ -179,7 +179,7 @@
 								"type": "object"
 							},
 							"UnitPrice": {
-								"type": ["integer", "number"]
+								"type": "number"
 							}
 						},
 						"type": "object"
@@ -259,7 +259,7 @@
 			"type": "object"
 		},
 		"TotalAmt": {
-			"type": ["integer", "number"]
+			"type": "number"
 		},
 		"TxnDate": {
 			"type": "string"
@@ -273,7 +273,7 @@
 					"items": {
 						"properties": {
 							"Amount": {
-								"type": ["integer", "number"]
+								"type": "number"
 							},
 							"DetailType": {
 								"type": "string"
@@ -281,13 +281,13 @@
 							"TaxLineDetail": {
 								"properties": {
 									"NetAmountTaxable": {
-										"type": ["integer", "number"]
+										"type": "number"
 									},
 									"PercentBased": {
 										"type": "boolean"
 									},
 									"TaxPercent": {
-										"type": ["integer", "number"]
+										"type": "number"
 									},
 									"TaxRateRef": {
 										"properties": {
@@ -306,7 +306,7 @@
 					"type": "array"
 				},
 				"TotalTax": {
-					"type": ["integer", "number"]
+					"type": "number"
 				},
 				"TxnTaxCodeRef": {
 					"properties": {

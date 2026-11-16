@@ -1,12 +1,13 @@
 {
 	"properties": {
 		"payload": {
+			"additionalProperties": true,
 			"properties": {
 				"exp": {
-					"type": ["integer", "number"]
+					"type": "number"
 				},
 				"iat": {
-					"type": ["integer", "number"]
+					"type": "number"
 				}
 			},
 			"type": "object"

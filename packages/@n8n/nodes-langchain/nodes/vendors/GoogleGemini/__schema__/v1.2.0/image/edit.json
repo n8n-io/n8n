@@ -1,7 +1,7 @@
 {
 	"properties": {
 		"bytes": {
-			"type": "integer"
+			"type": "number"
 		},
 		"fileExtension": {
 			"type": "string"

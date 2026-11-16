@@ -1,23 +1,23 @@
 {
 	"properties": {
 		"binaryDataSizeBytes": {
-			"type": "integer"
+			"type": "number"
 		},
 		"createdAt": {
 			"type": "string"
 		},
 		"deduplicationKey": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"deletedAt": {},
 		"finished": {
 			"type": "boolean"
 		},
 		"id": {
-			"type": "integer"
+			"type": "number"
 		},
 		"jsonSizeBytes": {
-			"type": "integer"
+			"type": "number"
 		},
 		"mode": {
 			"type": "string"
@@ -42,13 +42,13 @@
 					"type": "string"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		},
 		"usedPrivateCredentials": {
 			"type": "boolean"
 		},
 		"waitTill": {
-			"type": "string"
+			"type": ["null", "string"]
 		},
 		"workflowId": {
 			"type": "string"

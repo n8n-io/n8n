@@ -37,6 +37,7 @@
 			"type": "string"
 		},
 		"fields": {
+			"additionalProperties": true,
 			"properties": {
 				"_ComplianceFlags": {
 					"type": "string"

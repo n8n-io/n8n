@@ -7,16 +7,16 @@
 				},
 				"archive_time": {},
 				"channel": {
-					"type": "integer"
+					"type": ["null", "number"]
 				},
 				"channel_id": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"close_time": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"creator_user_id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"currency": {
 					"type": "string"
@@ -25,51 +25,51 @@
 					"type": "object"
 				},
 				"expected_close_date": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"first_won_time": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"is_archived": {
 					"type": "boolean"
 				},
 				"label_ids": {
 					"items": {
-						"type": "integer"
+						"type": "number"
 					},
 					"type": "array"
 				},
 				"lost_reason": {},
 				"lost_time": {},
 				"org_id": {
-					"type": "integer"
+					"type": ["null", "number"]
 				},
 				"origin": {
 					"type": "string"
 				},
 				"origin_id": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"owner_id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"person_id": {
-					"type": "integer"
+					"type": ["null", "number"]
 				},
 				"pipeline_id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"probability": {
-					"type": "integer"
+					"type": ["null", "number"]
 				},
 				"stage_change_time": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"stage_id": {
-					"type": "integer"
+					"type": "number"
 				},
 				"status": {
 					"type": "string"
@@ -78,16 +78,16 @@
 					"type": "string"
 				},
 				"update_time": {
-					"type": "string"
+					"type": ["null", "string"]
 				},
 				"value": {
-					"type": "integer"
+					"type": "number"
 				},
 				"visible_to": {
 					"type": "string"
 				},
 				"won_time": {
-					"type": "string"
+					"type": ["null", "string"]
 				}
 			},
 			"type": "object"
@@ -98,7 +98,7 @@
 					"type": "string"
 				},
 				"attempt": {
-					"type": "integer"
+					"type": "number"
 				},
 				"change_source": {
 					"type": "string"
@@ -157,7 +157,7 @@
 					"type": "object"
 				}
 			},
-			"type": "object"
+			"type": ["null", "object"]
 		}
 	},
 	"type": "object"
