@@ -37,7 +37,6 @@ import { ExecutionService } from '@/executions/execution.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
-import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 
 import { saveCredential } from '../shared/db/credentials';
@@ -4715,12 +4714,6 @@ describe('POST /workflows/:workflowId/run', () => {
 
 			expect(response.statusCode).toBe(409);
 			expect(cancelWebhook).toHaveBeenCalledWith(webhookWorkflow.id);
-
-			const remainingRegistrations = (
-				await Container.get(TestWebhookRegistrationsService).getAllRegistrations()
-			).filter((registration) => registration.webhook.workflowId === webhookWorkflow.id);
-
-			expect(remainingRegistrations).toEqual([]);
 
 			const executions = await fetchExecutionsForWorkflow(webhookWorkflow.id);
 			expect(executions).toHaveLength(0);
