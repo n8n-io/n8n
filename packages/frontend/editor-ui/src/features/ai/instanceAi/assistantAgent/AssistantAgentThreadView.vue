@@ -2,6 +2,7 @@
 import type {
 	AgentJsonConfig,
 	AgentSseEvent,
+	AssistantAgentTargetsState,
 	InstanceAiAttachment,
 	InstanceAiHandoffContext,
 	InstanceAiNodesAttachment,
@@ -334,6 +335,20 @@ provideArtifactAgentTargets(agentTargets.agentTargets);
 // Set from the preview tabs below, which need the thread first.
 const activeArtifactId = ref<string>();
 
+// The saved agent of a new thread, from its subject. The server has the bindings only after the
+// first message. A pending agent shows after it: saving it from the preview needs the thread.
+const launchAgentTargets = ((): AssistantAgentTargetsState | null => {
+	const subject = launch?.subject;
+	if (subject?.type !== 'agent' || subject.pending) return null;
+	const { id: agentId, projectId, name } = subject;
+	return {
+		bound: { agentId, projectId, ...(name ? { name } : {}) },
+		pending: null,
+		targets: [],
+		previewSession: null,
+	};
+})();
+
 // The apps of the thread metadata, and the saved app of a new thread before the server has it.
 const appTargets = computed(() => {
 	const targets = getAppTargetsFromThreadMetadata(
@@ -370,7 +385,7 @@ const thread = useAssistantArtifactThread({
 		);
 	},
 	pendingWorkflowAttachment: handoff.workflow,
-	agentTargets: () => agentTargets.state.value,
+	agentTargets: () => agentTargets.state.value ?? launchAgentTargets,
 	appTargets: () => appTargets.value,
 	activeArtifactId: () => activeArtifactId.value,
 });
@@ -379,6 +394,7 @@ provideArtifactThread(thread);
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
+	initialAgentId: () => launchAgentTargets?.bound?.agentId,
 	initialAppId: () => requestedAppId.value ?? appTargets.value[0]?.appId,
 	tabsStorage: {
 		// A new thread has no stored tabs, and the server does not know it before its first message.

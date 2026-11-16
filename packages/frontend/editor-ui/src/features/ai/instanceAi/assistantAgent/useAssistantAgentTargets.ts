@@ -48,6 +48,8 @@ export function useAssistantAgentTargets(options: UseAssistantAgentTargetsOption
 
 	const agentTargets: ArtifactAgentTargets = {
 		bind: async (target) => {
+			// The first message binds the subject of a new thread, and the server does not know it yet.
+			if (!options.canLoad()) return;
 			const { bound, pending } = state.value ?? {};
 			if (
 				bound?.agentId === target.agentId &&
