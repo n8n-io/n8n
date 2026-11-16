@@ -1,0 +1,136 @@
+operationId: getAgent
+tags:
+  - Agent
+summary: Retrieve an agent
+description: |-
+  Retrieve one agent by ID. The response carries the agent configuration that the update endpoint writes back.
+
+  Requires the `agent:read` API key scope.
+x-required-scope: agent:read
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the agent.
+    name: agentId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            projectId:
+              type: string
+            project:
+              type: object
+              nullable: true
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                type:
+                  type: string
+              required:
+                - id
+                - name
+                - type
+            availableInMCP:
+              type: boolean
+            isArchived:
+              type: boolean
+            versionId:
+              type: string
+              nullable: true
+            activeVersionId:
+              type: string
+              nullable: true
+            createdAt:
+              type: string
+            updatedAt:
+              type: string
+            config:
+              type: object
+              nullable: true
+            configHash:
+              type: string
+              nullable: true
+            tools:
+              type: object
+              additionalProperties:
+                type: object
+                description: 'A custom tool: the code it runs and its descriptor.'
+                properties:
+                  code:
+                    type: string
+                  descriptor:
+                    type: object
+                    description: The tool descriptor. `name` is required; other fields pass through.
+                    properties:
+                      name:
+                        type: string
+                    required:
+                      - name
+                    additionalProperties: true
+                required:
+                  - code
+                  - descriptor
+            activeVersion:
+              type: object
+              nullable: true
+              properties:
+                versionId:
+                  type: string
+                integrations:
+                  type: array
+                  items:
+                    type: object
+                    description: A channel integration. `type` picks the platform.
+                    properties:
+                      type:
+                        type: string
+                        description: The integration type, for example `slack` or `webhook`.
+                      credentialId:
+                        type: string
+                      settings:
+                        type: object
+                        description: Platform-specific integration settings.
+                      approval:
+                        type: object
+                        description: Channel actions that need approval before they run.
+                    required:
+                      - type
+                      - credentialId
+              required:
+                - versionId
+                - integrations
+          required:
+            - id
+            - name
+            - projectId
+            - project
+            - availableInMCP
+            - isArchived
+            - versionId
+            - activeVersionId
+            - createdAt
+            - updatedAt
+            - config
+            - configHash
+            - tools
+            - activeVersion
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

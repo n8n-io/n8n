@@ -113,6 +113,8 @@ function makeExecutionStore(
 		finishExecution: vi.fn().mockResolvedValue(null),
 		cancelExecution: vi.fn().mockResolvedValue(null),
 		loadSeededOutputs: vi.fn().mockResolvedValue(new Map()),
+		findStaleQueuedExecutions: vi.fn(),
+		renewQueuedExecution: vi.fn(),
 		refreshLiveStatus: vi.fn(),
 	};
 }

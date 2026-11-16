@@ -42,6 +42,18 @@ export const POLICY_MANAGE_SCOPE = {
 	credential: 'credentialTypePolicy:manage',
 } as const satisfies Record<RestrictedTypeKind, Scope>;
 
+/** Owned by this module, so the shell links to the pages without holding one of their identifiers. */
+export const POLICIES_LANDING_VIEW = 'TypeAvailabilityPoliciesView';
+export const INSTANCE_POLICY_VIEW = 'TypeAvailabilityInstancePolicyView';
+
+/** The order of the tabs on the instance policy page. */
+export const POLICY_KINDS = ['node', 'credential'] as const satisfies RestrictedTypeKind[];
+
+export const POLICY_TAB_LABEL_KEY: Record<RestrictedTypeKind, BaseTextKey> = {
+	node: 'typeAvailabilityPolicies.instancePolicy.tabs.node',
+	credential: 'typeAvailabilityPolicies.instancePolicy.tabs.credential',
+};
+
 export type ContactAudience = NodeTypeAvailabilityScope;
 
 export type RestrictionContact = ContactAudience | 'optIn';
