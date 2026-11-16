@@ -913,6 +913,8 @@ function credentialTypeOf(e: ts.Expression | undefined): string {
 
 const CONTEXT_PARAMS: string[] = [];
 const SELF = '__self';
+const EXECUTE_CONTEXT_MEMBERS = new Set(['getInputData', 'getNodeParameter', 'getNode', 'helpers']);
+const NO_DISPATCH = '__NODISPATCH';
 const REQUEST_HELPERS = new Set([
 	'request',
 	'httpRequest',
@@ -1097,7 +1099,12 @@ interface Unit {
 	withContext: boolean;
 	self?: string;
 	credentialType?: string;
+	isStatic?: boolean;
 }
+
+type FieldShape = { cls: string } | { table: Map<string, string> };
+
+const MAX_TABLE_HOPS = 4;
 
 const MAX_PARSED = 256;
 
@@ -1499,6 +1506,15 @@ class Specialiser {
 			if (isThisCall(node, 'getNodeParameter'))
 				return this.parameter(f.updateCallExpression(node, node.expression, undefined, args(node)));
 			if (isThisCall(node, 'getInputData')) return f.createIdentifier('__items');
+			if (
+				ts.isBinaryExpression(node) &&
+				node.operatorToken.kind === ts.SyntaxKind.InKeyword &&
+				node.right.kind === ts.SyntaxKind.ThisKeyword &&
+				ts.isStringLiteral(node.left) &&
+				unit.credentialType === undefined &&
+				EXECUTE_CONTEXT_MEMBERS.has(node.left.text)
+			)
+				return f.createTrue();
 			if (isThisCall(node, 'continueOnFail'))
 				return this.input.continueOnFail ? f.createTrue() : f.createFalse();
 			if (node.kind === ts.SyntaxKind.ThisKeyword) {
@@ -3377,7 +3393,18 @@ class Specialiser {
 
 	private resolveChains(root: ts.Node, unit: Unit): ts.Node {
 		const bound = bindingsOf(root);
-		const target = (e: ts.Expression, withContext: boolean): string | undefined => {
+		const tables = new Map<string, Map<string, ts.Expression>>();
+		const aliases = new Map<string, ts.Expression>();
+		const resolve = (
+			e: ts.Expression,
+			hops = 0,
+		):
+			| {
+					alias: string;
+					node?: NonNullable<Resolved['node']> | ts.MethodDeclaration;
+					file: FileModel;
+			  }
+			| undefined => {
 			const keys: string[] = [];
 			let cur = e;
 			for (;;) {
@@ -3392,20 +3419,243 @@ class Specialiser {
 					cur = cur.expression;
 				} else break;
 			}
-			if (!ts.isIdentifier(cur) || keys.length === 0 || bound.has(cur.text)) return undefined;
-			let found = this.member(unit.file, cur.text);
-			for (const key of keys)
-				found = found && !found.node ? this.exported(found.file, key) : undefined;
-			if (!found?.node) return undefined;
+			if (!ts.isIdentifier(cur)) return undefined;
+			if (bound.has(cur.text)) {
+				const same = aliases.get(cur.text);
+				const entry = same ?? (keys.length > 0 ? tables.get(cur.text)?.get(keys[0]) : undefined);
+				if (!entry || hops >= MAX_TABLE_HOPS) return undefined;
+				return resolve(
+					keys
+						.slice(same ? 0 : 1)
+						.reduce((inner, key) => f.createPropertyAccessExpression(inner, key), entry),
+					hops + 1,
+				);
+			}
 			const alias = [cur.text, ...keys].join('_');
-			if (!this.units.has(alias)) {
-				const next: Unit = { name: alias, node: found.node, file: found.file, withContext };
+			let found = this.member(unit.file, cur.text);
+			for (const [k, key] of keys.entries()) {
+				if (found?.node && ts.isClassDeclaration(found.node) && k === keys.length - 1) {
+					const method = this.staticMethodOf(found.node, key);
+					return method ? { alias, node: method, file: found.file } : undefined;
+				}
+				found = found && !found.node ? this.exported(found.file, key) : undefined;
+			}
+			return found ? { alias, node: found.node, file: found.file } : undefined;
+		};
+		const locate = (e: ts.Expression) => {
+			const found = ts.isIdentifier(e) ? undefined : resolve(e);
+			return found?.node ? { alias: found.alias, node: found.node, file: found.file } : undefined;
+		};
+		const target = (e: ts.Expression, withContext: boolean): string | undefined => {
+			const located = locate(e);
+			if (!located) return undefined;
+			const { alias, node, file } = located;
+			const isStatic = ts.isMethodDeclaration(node);
+			if (isStatic && !withContext && node.body && mentionsThis(node.body)) {
+				this.error(
+					unit.name,
+					`the static method '${alias}' uses \`this\`, and a call does not give the n8n context`,
+				);
+				return undefined;
+			}
+			const known = this.units.get(alias);
+			if (known) {
+				if (isStatic && known.node !== node)
+					this.error(unit.name, `two declarations have the name '${alias}'`);
+			} else {
+				const next: Unit = {
+					name: alias,
+					node,
+					file,
+					withContext,
+					...(isStatic ? { isStatic } : {}),
+				};
 				this.units.set(alias, next);
 				this.queue.push(next);
 			}
 			return alias;
 		};
-		const visit = (n: ts.Node): ts.Node => {
+		const usesOf = new Map<string, ts.Identifier[]>();
+		const madeAt = new Map<string, number>();
+		const scopes = new Map<string, ts.Node>();
+		const hoisted = (n: ts.Node): boolean =>
+			n !== root && (ts.isFunctionDeclaration(n) || (!!n.parent && hoisted(n.parent)));
+		const inside = (n: ts.Node, scope: ts.Node | undefined): boolean =>
+			n === scope || (!!n.parent && n !== root && inside(n.parent, scope));
+		const early = (use: ts.Identifier): boolean =>
+			use.pos < (madeAt.get(use.text) ?? Infinity) ||
+			hoisted(use) ||
+			!inside(use, scopes.get(use.text));
+		const isPath = (e: ts.Expression): boolean =>
+			ts.isIdentifier(e) ||
+			(ts.isPropertyAccessExpression(e) && isPath(e.expression)) ||
+			(ts.isElementAccessExpression(e) &&
+				ts.isStringLiteral(e.argumentExpression) &&
+				isPath(e.expression));
+		const bare = new Set<string>();
+		const assigned = new Map<string, ts.ExpressionStatement[]>();
+		const direct = (n: ts.Node): boolean =>
+			ts.isBlock(n.parent) &&
+			(ts.isFunctionLike(n.parent.parent) ? n.parent.parent === root : direct(n.parent));
+		const collect = (n: ts.Node) => {
+			if (ts.isIdentifier(n) && isValueUse(n) && bound.get(n.text) === 1)
+				usesOf.set(n.text, [...(usesOf.get(n.text) ?? []), n]);
+			if (
+				ts.isVariableDeclaration(n) &&
+				ts.isIdentifier(n.name) &&
+				bound.get(n.name.text) === 1 &&
+				ts.isVariableStatement(n.parent.parent)
+			) {
+				scopes.set(n.name.text, n.parent.parent.parent);
+				if (!n.initializer) bare.add(n.name.text);
+				else if ((n.parent.flags & ts.NodeFlags.Const) !== 0 && isPath(n.initializer)) {
+					aliases.set(n.name.text, n.initializer);
+					madeAt.set(n.name.text, n.end);
+				}
+			}
+			if (
+				ts.isExpressionStatement(n) &&
+				ts.isBinaryExpression(n.expression) &&
+				n.expression.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+				ts.isIdentifier(n.expression.left)
+			)
+				assigned.set(n.expression.left.text, [...(assigned.get(n.expression.left.text) ?? []), n]);
+			if (
+				ts.isVariableDeclaration(n) &&
+				ts.isIdentifier(n.name) &&
+				bound.get(n.name.text) === 1 &&
+				(n.parent.flags & ts.NodeFlags.Const) !== 0 &&
+				ts.isVariableStatement(n.parent.parent) &&
+				n.initializer &&
+				ts.isObjectLiteralExpression(n.initializer) &&
+				n.initializer.properties.length > 0
+			) {
+				const table = new Map<string, ts.Expression>();
+				const plain = n.initializer.properties.every((p) => {
+					if (!ts.isPropertyAssignment(p)) return false;
+					const key =
+						ts.isIdentifier(p.name) || ts.isStringLiteral(p.name) ? p.name.text : undefined;
+					if (key === undefined || key === '__proto__' || table.has(key)) return false;
+					table.set(key, p.initializer);
+					return ts.isPropertyAccessExpression(p.initializer);
+				});
+				if (plain) {
+					tables.set(n.name.text, table);
+					madeAt.set(n.name.text, n.end);
+				}
+			}
+			ts.forEachChild(n, collect);
+		};
+		collect(root);
+		const stores = new Map<string, ts.ExpressionStatement>();
+		for (const name of bare) {
+			const [store, ...more] = assigned.get(name) ?? [];
+			if (
+				!store ||
+				more.length > 0 ||
+				!direct(store) ||
+				!ts.isBinaryExpression(store.expression) ||
+				!isPath(store.expression.right)
+			)
+				continue;
+			aliases.set(name, store.expression.right);
+			madeAt.set(name, store.end);
+			stores.set(name, store);
+		}
+		const topOf = (use: ts.Identifier): ts.Expression => {
+			let top: ts.Expression = use;
+			while (
+				(ts.isPropertyAccessExpression(top.parent) ||
+					(ts.isElementAccessExpression(top.parent) &&
+						ts.isStringLiteral(top.parent.argumentExpression))) &&
+				top.parent.expression === top
+			)
+				top = top.parent;
+			return top;
+		};
+		const calledMember = (use: ts.Identifier): ts.Expression | undefined => {
+			const top = topOf(use);
+			const made = top.parent;
+			if (top === use || !ts.isCallExpression(made)) return undefined;
+			if (early(use)) return undefined;
+			const plain = made.expression === top;
+			const withContext =
+				ts.isIdentifier(made.expression) &&
+				made.expression.text === '__CTXCALL' &&
+				made.arguments[0] === top;
+			return plain || withContext ? top : undefined;
+		};
+		const denied = (use: ts.Identifier): boolean =>
+			ts.isPrefixUnaryExpression(use.parent) &&
+			use.parent.operator === ts.SyntaxKind.ExclamationToken &&
+			ts.isIfStatement(use.parent.parent) &&
+			use.parent.parent.expression === use.parent &&
+			aliases.has(use.text);
+		const sameAs = (use: ts.Identifier): boolean => {
+			const called = calledMember(use);
+			if (called) return locate(called) !== undefined;
+			const store = stores.get(use.text)?.expression;
+			if (store && ts.isBinaryExpression(store) && store.left === use)
+				return inside(use, scopes.get(use.text));
+			if (early(use)) return false;
+			const top = topOf(use);
+			const made = top.parent;
+			if (ts.isVariableDeclaration(made) && ts.isIdentifier(made.name))
+				return aliases.get(made.name.text) === top;
+			if (ts.isBinaryExpression(made) && ts.isIdentifier(made.left))
+				return made.right === top && aliases.get(made.left.text) === top;
+			if (!denied(use)) return false;
+			const found = resolve(use);
+			return (
+				!!found &&
+				(!found.node ||
+					ts.isFunctionDeclaration(found.node) ||
+					ts.isClassDeclaration(found.node) ||
+					ts.isMethodDeclaration(found.node))
+			);
+		};
+		for (let round = 0; round <= tables.size + aliases.size; round++) {
+			const before = tables.size + aliases.size;
+			for (const [name, table] of [...tables]) {
+				const uses = (usesOf.get(name) ?? []).map(calledMember);
+				const sound =
+					uses.length > 0 &&
+					[...table.values()].every((entry) => locate(entry) !== undefined) &&
+					uses.every((use) => use !== undefined && locate(use) !== undefined);
+				if (!sound) tables.delete(name);
+			}
+			for (const [name, same] of [...aliases]) {
+				const uses = usesOf.get(name) ?? [];
+				const read = uses.length > (stores.has(name) ? 1 : 0);
+				if (!read || resolve(same) === undefined || !uses.every(sameAs)) aliases.delete(name);
+			}
+			if (tables.size + aliases.size === before) break;
+		}
+		const visit = (n: ts.Node): ts.Node | undefined => {
+			if (
+				ts.isExpressionStatement(n) &&
+				[...stores].some(([name, st]) => st === n && aliases.has(name))
+			)
+				return undefined;
+			if (ts.isPrefixUnaryExpression(n) && ts.isIdentifier(n.operand) && denied(n.operand))
+				return f.createFalse();
+			if (ts.isVariableStatement(n)) {
+				const kept = n.declarationList.declarations.filter(
+					(d) =>
+						!(ts.isIdentifier(d.name) && (tables.has(d.name.text) || aliases.has(d.name.text))),
+				);
+				if (kept.length === 0) return undefined;
+				if (kept.length < n.declarationList.declarations.length)
+					return ts.visitEachChild(
+						f.updateVariableStatement(
+							n,
+							n.modifiers,
+							f.updateVariableDeclarationList(n.declarationList, kept),
+						),
+						visit,
+						undefined,
+					);
+			}
 			const out = ts.visitEachChild(n, visit, undefined);
 			if (!ts.isCallExpression(out)) return out;
 			if (ts.isIdentifier(out.expression) && out.expression.text === '__CTXCALL') {
@@ -3420,7 +3670,37 @@ class Specialiser {
 			const alias = target(out.expression, false);
 			return alias ? call(alias, ...out.arguments) : out;
 		};
-		return ts.visitNode(root, visit);
+		return ts.visitNode(root, visit) ?? root;
+	}
+
+	private staticMethodOf(cls: ts.ClassDeclaration, name: string): ts.MethodDeclaration | undefined {
+		const uses = (n: ts.Node): boolean =>
+			n.kind === ts.SyntaxKind.SuperKeyword || (ts.forEachChild(n, uses) ?? false);
+		return cls.members.find(
+			(m): m is ts.MethodDeclaration =>
+				ts.isMethodDeclaration(m) &&
+				ts.isIdentifier(m.name) &&
+				m.name.text === name &&
+				!!m.body &&
+				!m.asteriskToken &&
+				!uses(m) &&
+				!!ts.getModifiers(m)?.some((x) => x.kind === ts.SyntaxKind.StaticKeyword),
+		);
+	}
+
+	private lowerStatic(source: ts.MethodDeclaration, unit: Unit) {
+		return this.parsedFunction(
+			f.createFunctionDeclaration(
+				ts.getModifiers(source)?.filter((x) => x.kind === ts.SyntaxKind.AsyncKeyword),
+				undefined,
+				unit.name,
+				undefined,
+				source.parameters,
+				undefined,
+				source.body ?? f.createBlock([]),
+			),
+			unit,
+		);
 	}
 
 	private readonly thisParameters = new Map<string, Set<number>>();
@@ -3662,7 +3942,12 @@ class Specialiser {
 		);
 	}
 
-	private methodUnit(cls: string, name: string, where: string): string | undefined {
+	private methodUnit(
+		cls: string,
+		name: string,
+		where: string,
+		asContext?: true,
+	): string | undefined {
 		const method = this.methodOf(cls, name);
 		const owner = this.units.get(cls);
 		if (!method || !owner) return undefined;
@@ -3670,6 +3955,11 @@ class Specialiser {
 		const known = this.units.get(alias);
 		if (known) {
 			if (known.node !== method) this.error(where, `two declarations have the name '${alias}'`);
+			else if (known.isStatic !== asContext)
+				this.error(
+					where,
+					`the method '${name}' of the class '${cls}' gets the object in one call and the n8n context in a different call`,
+				);
 			return alias;
 		}
 		const unit: Unit = {
@@ -3677,7 +3967,7 @@ class Specialiser {
 			node: method,
 			file: owner.file,
 			withContext: true,
-			self: cls,
+			...(asContext ? { isStatic: true } : { self: cls }),
 		};
 		this.units.set(alias, unit);
 		this.queue.push(unit);
@@ -3775,6 +4065,72 @@ class Specialiser {
 		);
 	}
 
+	private readonly fieldShapes = new Map<string, Map<string, FieldShape>>();
+
+	private readonly givenKeys = new Map<string, Map<number, string | undefined>>();
+
+	private shapesOf(cls: string): Map<string, FieldShape> {
+		const known = this.fieldShapes.get(cls);
+		if (known) return known;
+		const shapes = new Map<string, FieldShape>();
+		this.fieldShapes.set(cls, shapes);
+		const owner = this.units.get(cls);
+		if (!owner || !ts.isClassDeclaration(owner.node)) return shapes;
+		const made = (e: ts.Expression): string | undefined => {
+			if (!ts.isNewExpression(e) || !ts.isIdentifier(e.expression)) return undefined;
+			const found = this.member(owner.file, e.expression.text)?.node;
+			return found && ts.isClassDeclaration(found) ? e.expression.text : undefined;
+		};
+		const shapeOf = (e: ts.Expression): FieldShape | undefined => {
+			const direct = made(e);
+			if (direct !== undefined) return { cls: direct };
+			if (!ts.isObjectLiteralExpression(e) || e.properties.length === 0) return undefined;
+			const table = new Map<string, string>();
+			for (const p of e.properties) {
+				if (!ts.isPropertyAssignment(p)) return undefined;
+				const key = ts.isIdentifier(p.name) || ts.isStringLiteral(p.name) ? p.name.text : undefined;
+				const member = made(p.initializer);
+				if (key === undefined || key === '__proto__' || member === undefined || table.has(key))
+					return undefined;
+				table.set(key, member);
+			}
+			return { table };
+		};
+		const stores = new Map<string, number>();
+		const note = (field: string, value: ts.Expression) => {
+			const shape = shapeOf(value);
+			if (!shape) return;
+			stores.set(field, (stores.get(field) ?? 0) + 1);
+			shapes.set(field, shape);
+		};
+		for (const m of owner.node.members) {
+			if (
+				ts.isPropertyDeclaration(m) &&
+				ts.isIdentifier(m.name) &&
+				m.initializer &&
+				!ts.getModifiers(m)?.some((x) => x.kind === ts.SyntaxKind.StaticKeyword)
+			)
+				note(m.name.text, m.initializer);
+			if (!ts.isConstructorDeclaration(m)) continue;
+			for (const st of m.body?.statements ?? []) {
+				if (
+					ts.isExpressionStatement(st) &&
+					ts.isBinaryExpression(st.expression) &&
+					st.expression.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+					ts.isPropertyAccessExpression(st.expression.left) &&
+					st.expression.left.expression.kind === ts.SyntaxKind.ThisKeyword
+				)
+					note(st.expression.left.name.text, st.expression.right);
+			}
+		}
+		for (const [field, count] of stores) if (count !== 1) shapes.delete(field);
+		for (const shape of shapes.values()) {
+			for (const member of 'cls' in shape ? [shape.cls] : shape.table.values())
+				if (!this.units.has(member)) this.need(member, owner.file, false, cls);
+		}
+		return shapes;
+	}
+
 	private resolveInstances(root: ts.Node, unit: Unit): ts.Node {
 		const bound = bindingsOf(root);
 		const classNamed = (name: string): boolean => {
@@ -3825,9 +4181,108 @@ class Specialiser {
 				);
 		}
 
+		const tableOf = (e: ts.Expression): Map<string, string> | undefined => {
+			if (!ts.isPropertyAccessExpression(e)) return undefined;
+			const owner = classOf(e.expression);
+			const shape = owner === undefined ? undefined : this.shapesOf(owner).get(e.name.text);
+			return shape && 'table' in shape ? shape.table : undefined;
+		};
+		const classOf = (e: ts.Expression): string | undefined => {
+			if (ts.isIdentifier(e)) return instances.get(e.text);
+			if (ts.isPropertyAccessExpression(e)) {
+				const owner = classOf(e.expression);
+				if (owner !== undefined) {
+					const shape = this.shapesOf(owner).get(e.name.text);
+					return shape && 'cls' in shape ? shape.cls : undefined;
+				}
+				return tableOf(e.expression)?.get(e.name.text);
+			}
+			if (ts.isElementAccessExpression(e) && ts.isStringLiteral(e.argumentExpression))
+				return tableOf(e.expression)?.get(e.argumentExpression.text);
+			return undefined;
+		};
+		const sanctioned = new Set<ts.Node>();
+		if (own !== undefined && ts.isClassDeclaration(unit.node) && ts.isFunctionDeclaration(root)) {
+			const shapes = this.shapesOf(own);
+			const mentionsSelf = (n: ts.Node): boolean =>
+				(ts.isIdentifier(n) && n.text === SELF) || (ts.forEachChild(n, mentionsSelf) ?? false);
+			const made = (e: ts.Expression): string | undefined =>
+				ts.isCallExpression(e) && ts.isIdentifier(e.expression) && classNamed(e.expression.text)
+					? e.expression.text
+					: undefined;
+			const stores = (value: ts.Expression, shape: FieldShape): ts.Expression[] | undefined => {
+				if ('cls' in shape) return made(value) === shape.cls ? [value] : undefined;
+				if (!ts.isObjectLiteralExpression(value)) return undefined;
+				if (value.properties.length !== shape.table.size) return undefined;
+				const members: ts.Expression[] = [];
+				for (const p of value.properties) {
+					if (!ts.isPropertyAssignment(p)) return undefined;
+					const key = ts.isIdentifier(p.name) || ts.isStringLiteral(p.name) ? p.name.text : '';
+					if (shape.table.get(key) !== made(p.initializer)) return undefined;
+					members.push(p.initializer);
+				}
+				return members;
+			};
+			const fieldStore = (st: ts.Statement): ts.BinaryExpression | undefined =>
+				ts.isExpressionStatement(st) &&
+				ts.isBinaryExpression(st.expression) &&
+				st.expression.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+				ts.isPropertyAccessExpression(st.expression.left) &&
+				ts.isIdentifier(st.expression.left.expression) &&
+				st.expression.left.expression.text === SELF
+					? st.expression
+					: undefined;
+			const statements = root.body?.statements ?? [];
+			const stored = new Set<string>();
+			let last = -1;
+			statements.forEach((st, k) => {
+				const store = fieldStore(st);
+				if (!store || !ts.isPropertyAccessExpression(store.left)) return;
+				const field = store.left.name.text;
+				const shape = shapes.get(field);
+				if (!shape || stored.has(field)) return;
+				if (ts.isIdentifier(store.right) && store.right.text === 'undefined') {
+					sanctioned.add(store.left);
+					return;
+				}
+				const members = stores(store.right, shape);
+				if (!members) return;
+				stored.add(field);
+				sanctioned.add(store.left);
+				for (const member of members) sanctioned.add(member);
+				last = k;
+			});
+			for (const field of shapes.keys()) {
+				if (!stored.has(field))
+					this.error(
+						unit.name,
+						`the constructor does not store the object of the field '${field}' in a plain statement`,
+					);
+			}
+			const quiet = statements.slice(1, last + 1).every((st) => {
+				const store = fieldStore(st);
+				return !!store && !mentionsSelf(store.right);
+			});
+			if (!quiet)
+				this.error(
+					unit.name,
+					'the constructor uses the object before it stores the objects of its fields',
+				);
+		}
+		const expected = (key: ts.Identifier): string | undefined => {
+			if (!ts.isFunctionDeclaration(root) || bound.get(key.text) !== 1) return undefined;
+			const at = root.parameters.findIndex(
+				(p) => ts.isIdentifier(p.name) && p.name.text === key.text && !p.dotDotDotToken,
+			);
+			return at < 0 ? undefined : this.givenKeys.get(unit.name)?.get(at);
+		};
 		const pass = (callee: string, given: readonly ts.Expression[]): ts.Expression[] =>
 			given.map((argument, k) => {
-				const cls = ts.isIdentifier(argument) ? instances.get(argument.text) : undefined;
+				const keys = this.givenKeys.get(callee) ?? new Map<number, string | undefined>();
+				const text = ts.isStringLiteral(argument) ? argument.text : undefined;
+				keys.set(k, keys.has(k) && keys.get(k) !== text ? undefined : text);
+				this.givenKeys.set(callee, keys);
+				const cls = classOf(argument);
 				const objects = this.instanceParameters.get(callee) ?? new Map<number, string>();
 				const plain = this.plainParameters.get(callee) ?? new Set<number>();
 				if (cls === undefined) {
@@ -3861,11 +4316,53 @@ class Specialiser {
 		const visit = (n: ts.Node): ts.Node => {
 			if (ts.isCallExpression(n)) {
 				const target = n.expression;
-				const receiver =
-					ts.isPropertyAccessExpression(target) && ts.isIdentifier(target.expression)
-						? target.expression
+				const borrowed =
+					ts.isIdentifier(target) && target.text === '__CTXCALL' ? n.arguments[0] : undefined;
+				const lender =
+					borrowed && ts.isPropertyAccessExpression(borrowed)
+						? classOf(borrowed.expression)
 						: undefined;
-				const cls = receiver ? instances.get(receiver.text) : undefined;
+				if (lender !== undefined && borrowed && ts.isPropertyAccessExpression(borrowed)) {
+					const method = this.methodUnit(lender, borrowed.name.text, unit.name, true);
+					if (method !== undefined) return call(method, ...pass(method, n.arguments.slice(1)));
+				}
+				const receiver = ts.isPropertyAccessExpression(target) ? target.expression : undefined;
+				const cls = receiver ? classOf(receiver) : undefined;
+				const picked =
+					receiver && ts.isElementAccessExpression(receiver)
+						? tableOf(receiver.expression)
+						: undefined;
+				if (
+					picked &&
+					receiver &&
+					cls === undefined &&
+					ts.isElementAccessExpression(receiver) &&
+					ts.isPropertyAccessExpression(target)
+				) {
+					const key = receiver.argumentExpression;
+					if (!ts.isIdentifier(key) || instances.has(key.text)) {
+						this.error(unit.name, 'an object is picked from a table by a key that is not a name');
+						return n;
+					}
+					let chain: ts.Expression = call(NO_DISPATCH);
+					const only = expected(key);
+					for (const [name, member] of [...picked].reverse()) {
+						if (only !== undefined && only !== name) continue;
+						const method = this.methodUnit(member, target.name.text, unit.name);
+						if (method === undefined) continue;
+						const object = /^[A-Za-z_$][\w$]*$/.test(name)
+							? f.createPropertyAccessExpression(receiver.expression, name)
+							: f.createElementAccessExpression(receiver.expression, f.createStringLiteral(name));
+						chain = f.createConditionalExpression(
+							f.createStrictEquality(key, f.createStringLiteral(name)),
+							undefined,
+							call(method, ...pass(method, [object, ...n.arguments])),
+							undefined,
+							chain,
+						);
+					}
+					return f.createParenthesizedExpression(chain);
+				}
 				if (receiver && cls !== undefined && ts.isPropertyAccessExpression(target)) {
 					const method = this.methodUnit(cls, target.name.text, unit.name);
 					if (method !== undefined)
@@ -3882,6 +4379,7 @@ class Specialiser {
 					const made = n.parent;
 					if (
 						classNamed(target.text) &&
+						!sanctioned.has(n) &&
 						!(
 							ts.isVariableDeclaration(made) &&
 							ts.isIdentifier(made.name) &&
@@ -3895,13 +4393,18 @@ class Specialiser {
 					return f.updateCallExpression(n, target, undefined, pass(target.text, n.arguments));
 				}
 			}
-			if (ts.isPropertyAccessExpression(n) && ts.isIdentifier(n.expression)) {
-				const cls = instances.get(n.expression.text);
+			if (ts.isPropertyAccessExpression(n)) {
+				const cls = classOf(n.expression);
 				if (cls !== undefined) {
 					if (this.methodOf(cls, n.name.text))
 						this.error(
 							unit.name,
 							`the method '${n.name.text}' of the class '${cls}' is used as a value`,
+						);
+					if (this.shapesOf(cls).has(n.name.text) && !sanctioned.has(n))
+						this.error(
+							unit.name,
+							`the field '${n.name.text}' of the class '${cls}' holds an object of a class and is used as a value`,
 						);
 					const key = `${cls}.${n.name.text}`;
 					if (!this.fieldReads.has(key)) this.fieldReads.set(key, unit.name);
@@ -4000,7 +4503,9 @@ class Specialiser {
 			? this.lowerClass(source, unit)
 			: ts.isMethodDeclaration(source) && unit.self !== undefined
 				? this.lowerMethod(source, unit)
-				: undefined;
+				: ts.isMethodDeclaration(source) && unit.isStatic
+					? this.lowerStatic(source, unit)
+					: undefined;
 		const statement = lowered
 			? lowered.node
 			: ts.isClassDeclaration(source)
@@ -4119,6 +4624,13 @@ class Specialiser {
 			if (!reached.has(this.output[k].name)) this.output.splice(k, 1);
 		}
 		for (const { name, node } of this.output) {
+			const open = (n: ts.Node): boolean =>
+				(ts.isIdentifier(n) && n.text === NO_DISPATCH) || (ts.forEachChild(n, open) ?? false);
+			if (open(node))
+				this.error(
+					name,
+					'an object is picked from a table by a key that is not a constant, or the object has no such method',
+				);
 			const walk = (n: ts.Node): boolean =>
 				isWholeCredential(n) || (ts.forEachChild(n, walk) ?? false);
 			if (walk(node)) {
@@ -4754,6 +5266,12 @@ function bindingsOf(root: ts.Node): Map<string, number> {
 	};
 	walk(root);
 	return counts;
+}
+
+function mentionsThis(n: ts.Node): boolean {
+	if (n.kind === ts.SyntaxKind.ThisKeyword) return true;
+	if (ts.isFunctionExpression(n) || ts.isFunctionDeclaration(n) || ts.isClassLike(n)) return false;
+	return ts.forEachChild(n, mentionsThis) ?? false;
 }
 
 function isValueUse(n: ts.Identifier): boolean {

@@ -213,3 +213,279 @@ export class Sample {
 		);
 	});
 });
+
+describe('node compiler: handler tables, static methods and module aliases', () => {
+	const run = (files: Record<string, string>, parameters: Record<string, unknown> = {}) =>
+		specialiseNode({
+			type: 'n8n-nodes-base.sample',
+			version: 1,
+			entry: '/n/Sample.node.js',
+			readFile: (path) => files[path],
+			parameters,
+			instanceId: null,
+		});
+	const handlers = `
+export class GetHandler {
+	async handle(ctx, id) {
+		return await ctx.helpers.request({ method: 'GET', uri: 'https://api.example.test/' + id });
+	}
+}
+export class DeleteHandler {
+	async handle(ctx, id) {
+		return missingName(ctx, id);
+	}
+}
+export class Service {
+	handlers = { get: new GetHandler(), delete: new DeleteHandler() };
+	async run(ctx, operation, id) {
+		return await this.handlers[operation].handle(ctx, id);
+	}
+	keys() {
+		return Object.keys(this.handlers);
+	}
+}`;
+	const serviceNode = (body: string) => `
+import { Service } from './Service';
+export class Sample {
+	async execute() {
+		const service = new Service();
+		const operation = this.getNodeParameter('operation', 0);
+		${body}
+	}
+}`;
+	const viaService =
+		"return [this.helpers.returnJsonArray(await service.run(this, operation, 'a'))];";
+
+	it('calls the method of the object that a constant key picks from a table', () => {
+		const result = run(
+			{ '/n/Sample.node.js': serviceNode(viaService), '/n/Service.js': handlers },
+			{ operation: 'get' },
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain('GetHandler_handle(');
+		expect(result.source).not.toContain('missingName');
+		expect(result.source).not.toContain('__NODISPATCH');
+	});
+
+	it('refuses a table key that is not a constant', () => {
+		const result = run({
+			'/n/Sample.node.js': serviceNode(
+				"return [this.helpers.returnJsonArray(await service.run(this, this.getInputData()[0].json.op, 'a'))];",
+			),
+			'/n/Service.js': handlers.replace('return missingName(ctx, id);', 'return id;'),
+		});
+		expect(result.errors.join('\n')).toContain('by a key that is not a constant');
+	});
+
+	it('refuses a key that the table does not hold', () => {
+		const result = run(
+			{ '/n/Sample.node.js': serviceNode(viaService), '/n/Service.js': handlers },
+			{ operation: 'toString' },
+		);
+		expect(result.errors.join('\n')).toContain('by a key that is not a constant');
+	});
+
+	it('refuses a table of objects that the code uses as a value', () => {
+		const result = run(
+			{
+				'/n/Sample.node.js': serviceNode('return [[{ json: { keys: service.keys() } }]];'),
+				'/n/Service.js': handlers,
+			},
+			{ operation: 'get' },
+		);
+		expect(result.errors.join('\n')).toContain(
+			"the field 'handlers' of the class 'Service' holds an object of a class and is used as a value",
+		);
+	});
+
+	const inner = `
+export class Inner {
+	value() {
+		return 1;
+	}
+}`;
+
+	it('refuses a second store to a field that holds an object', () => {
+		const result = run({
+			'/n/Sample.node.js': serviceNode('service.reset(); return [[]];'),
+			'/n/Service.js': `${inner}
+export class Service {
+	inner = new Inner();
+	reset() {
+		this.inner = undefined;
+	}
+}`,
+		});
+		expect(result.errors.join('\n')).toContain(
+			"the field 'inner' of the class 'Service' holds an object of a class and is used as a value",
+		);
+	});
+
+	it('calls a method of an object that a field holds', () => {
+		const result = run({
+			'/n/Sample.node.js': serviceNode('return [[{ json: { value: service.read() } }]];'),
+			'/n/Service.js': `${inner}
+export class Service {
+	inner;
+	constructor() {
+		this.inner = new Inner();
+	}
+	read() {
+		return this.inner.value();
+	}
+}`,
+		});
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain('Inner_value(__self.inner)');
+	});
+
+	it('refuses a constructor that uses the object before it stores the objects of its fields', () => {
+		const result = run({
+			'/n/Sample.node.js': serviceNode('return [[{ json: { value: service.first } }]];'),
+			'/n/Service.js': `${inner}
+export class Service {
+	constructor() {
+		this.first = this.read();
+		this.inner = new Inner();
+	}
+	read() {
+		return this.inner.value();
+	}
+}`,
+		});
+		expect(result.errors.join('\n')).toContain(
+			'the constructor uses the object before it stores the objects of its fields',
+		);
+	});
+
+	const statics = `
+export class Methods {
+	static async fetch(id) {
+		return await this.helpers.request({ method: 'GET', uri: Methods.join(id) });
+	}
+	static join(id) {
+		return 'https://api.example.test/' + id;
+	}
+	static self() {
+		return this.join('a');
+	}
+}`;
+	const staticNode = (body: string) => `
+import { Methods as Api } from './Methods';
+export class Sample {
+	async execute() {
+		const resource = this.getNodeParameter('resource', 0);
+		const operations = { item: Api.fetch };
+		${body}
+	}
+}`;
+
+	it('compiles a static method that a constant key picks from a local table', () => {
+		const result = run(
+			{
+				'/n/Sample.node.js': staticNode(
+					"return [this.helpers.returnJsonArray(await operations[resource].call(this, 'a'))];",
+				),
+				'/n/Methods.js': statics,
+			},
+			{ resource: 'item' },
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain('__request');
+		expect(result.source).not.toContain('operations');
+	});
+
+	it('keeps the error for a local table that the code uses as a value', () => {
+		const result = run(
+			{
+				'/n/Sample.node.js': staticNode(
+					"return [[{ json: { keys: Object.keys(operations), data: await operations[resource].call(this, 'a') } }]];",
+				),
+				'/n/Methods.js': statics,
+			},
+			{ resource: 'item' },
+		);
+		expect(result.errors.join('\n')).toContain("the class 'Api' is used as a value");
+	});
+
+	it('refuses a static method that uses `this` in a call without the n8n context', () => {
+		const result = run(
+			{
+				'/n/Sample.node.js': staticNode('return [[{ json: { url: Api.self() } }]];'),
+				'/n/Methods.js': statics,
+			},
+			{ resource: 'item' },
+		);
+		expect(result.errors.join('\n')).toContain('a call does not give the n8n context');
+	});
+
+	it('compiles a method that a call gives the n8n context in place of the object', () => {
+		const result = run({
+			'/n/Sample.node.js': `
+import { Mapper } from './Mapper';
+export class Sample {
+	async execute() {
+		const mapper = new Mapper();
+		const fields = await mapper.load.call(this, 'a');
+		return [this.helpers.returnJsonArray(mapper.keep(fields))];
+	}
+}`,
+			'/n/Mapper.js': `
+export class Mapper {
+	async load(id) {
+		return await this.helpers.request({ method: 'GET', uri: 'https://api.example.test/' + id });
+	}
+	keep(fields) {
+		return fields;
+	}
+}`,
+		});
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain('__request');
+		expect(result.source).not.toContain('Mapper_load(mapper');
+	});
+
+	const moduleFiles = (body: string) => ({
+		'/n/Sample.node.js': `
+import * as item from './item';
+export class Sample {
+	async execute() {
+		const operation = this.getNodeParameter('operation', 0);
+		let resourceModule;
+		resourceModule = item;
+		const operationModule = resourceModule[operation];
+		if (!operationModule) {
+			throw new Error('not known');
+		}
+		${body}
+	}
+}`,
+		'/n/item.js': "import * as get from './get';\nexport { get };",
+		'/n/get.js': `
+export async function execute(id) {
+	return await this.helpers.request({ method: 'GET', uri: 'https://api.example.test/' + id });
+}`,
+	});
+
+	it('calls a function of a module that a variable holds', () => {
+		const result = run(
+			moduleFiles(
+				"return [this.helpers.returnJsonArray(await operationModule.execute.call(this, 'a'))];",
+			),
+			{ operation: 'get' },
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain('__request');
+		expect(result.source).not.toContain('resourceModule');
+	});
+
+	it('keeps the error for a module that the code uses as a value', () => {
+		const result = run(
+			moduleFiles(
+				"return [[{ json: { keys: Object.keys(operationModule), data: await operationModule.execute.call(this, 'a') } }]];",
+			),
+			{ operation: 'get' },
+		);
+		expect(result.errors.join('\n')).toContain('target that is not known at compile time');
+	});
+});
