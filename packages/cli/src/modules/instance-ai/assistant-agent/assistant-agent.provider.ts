@@ -189,7 +189,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		const workflowIds = await createThreadTemporaryWorkflowMarkers(memory, threadId).list();
 		if (workflowIds.length === 0) return undefined;
 		return async () => {
-			const user = await this.userRepository.findOneBy({ id: userId });
+			const user = await this.userRepository.findByIdWithRole(userId);
 			if (!user) return;
 			const markers = createSnapshotTemporaryWorkflowMarkers(workflowIds);
 			const { workflowService } = this.adapterService.createContext(user, {

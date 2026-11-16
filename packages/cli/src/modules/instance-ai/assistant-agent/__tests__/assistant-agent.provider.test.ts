@@ -91,7 +91,7 @@ function setup() {
 	const sentry = mock<ErrorReporter>();
 	const errorReporter = new InstanceAiErrorReporterService(logger, sentry);
 	const userRepository = mock<UserRepository>();
-	userRepository.findOneBy.mockResolvedValue(user);
+	userRepository.findByIdWithRole.mockResolvedValue(user);
 	adapterService.createContext.mockReturnValue(
 		environment.context as ReturnType<InstanceAiAdapterService['createContext']>,
 	);
@@ -255,7 +255,7 @@ describe('AssistantAgentProvider', () => {
 
 			await afterDeletion?.();
 
-			expect(userRepository.findOneBy).toHaveBeenCalledWith({ id: 'user-1' });
+			expect(userRepository.findByIdWithRole).toHaveBeenCalledWith('user-1');
 			expect(adapterService.createContext).toHaveBeenCalledWith(
 				user,
 				expect.objectContaining({ threadId: 'thread-1' }),
@@ -284,7 +284,7 @@ describe('AssistantAgentProvider', () => {
 
 		it('archives nothing when the user no longer exists', async () => {
 			const { provider, archiveIfAiTemporary, userRepository } = setup();
-			userRepository.findOneBy.mockResolvedValue(null);
+			userRepository.findByIdWithRole.mockResolvedValue(null);
 
 			const afterDeletion = await provider.onBeforeThreadDeletion(deletionScope(['wf-1']));
 			await afterDeletion?.();
