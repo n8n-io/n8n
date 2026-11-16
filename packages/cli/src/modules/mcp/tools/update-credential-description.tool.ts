@@ -3,7 +3,7 @@ import {
 	updateCredentialDescriptionSchema,
 	UPDATE_CREDENTIAL_DESCRIPTION_TOOL_DESCRIPTION,
 } from '@n8n/api-types';
-import type { User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import { z } from 'zod';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -17,6 +17,7 @@ export const createUpdateCredentialDescriptionTool = (
 	user: User,
 	credentialsService: CredentialsService,
 	telemetry: Telemetry,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof updateCredentialDescriptionSchema.shape> => ({
 	name: SHARED_BUILDER_TOOL_NAMES.UPDATE_CREDENTIAL_DESCRIPTION,
 	config: {
@@ -39,7 +40,7 @@ export const createUpdateCredentialDescriptionTool = (
 		};
 		try {
 			const { credentialId, description } = updateCredentialDescriptionSchema.parse(input);
-			await credentialsService.updateDescription(user, credentialId, description);
+			await credentialsService.updateDescription(user, credentialId, description, ctx);
 			const output = { success: true };
 			telemetryPayload.results = { success: true };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);

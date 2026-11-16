@@ -2,8 +2,9 @@ import type { Logger } from '@n8n/backend-common';
 import type { EventService, Publisher } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import { PublicApiRateLimitConfig } from '@n8n/config';
-import type { Settings, SettingsRepository } from '@n8n/db';
+import type { OperationContext, Settings, SettingsRepository } from '@n8n/db';
 import { BadRequestError } from '@n8n/errors';
+import type { SecurityContext } from '@n8n/permissions';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -219,6 +220,26 @@ describe('PublicApiRateLimitSettingsService', () => {
 
 				expect(eventService.emit).not.toHaveBeenCalled();
 			});
+		});
+
+		it('passes the login id of the operation context to the policy event', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await service.saveSettings(stored, actor, ctx);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'instance-policies-updated',
+				expect.objectContaining({ loginId: 'login-1' }),
+			);
+		});
+
+		it('emits no login id without an operation context', async () => {
+			await service.saveSettings(stored, actor);
+
+			const [, payload] = eventService.emit.mock.calls[0];
+			expect(payload).toMatchObject({ loginId: undefined });
 		});
 	});
 

@@ -24,7 +24,7 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
-import type { User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
@@ -530,6 +530,7 @@ export class McpAgentToolsService {
 		registerResource: RegisterResourceFn,
 		user: User,
 		allowedToolNames?: Set<string>,
+		ctx: OperationContext = {},
 	): void {
 		const isCallAgentAvailable = allowedToolNames?.has(MCP_CALL_AGENT_TOOL_NAME) ?? true;
 		const registerIfAllowed = <Input extends z.ZodRawShape>(tool: ToolDefinition<Input>): void => {
@@ -549,7 +550,7 @@ export class McpAgentToolsService {
 		registerIfAllowed(this.listAgentVersionsTool(user));
 		registerIfAllowed(this.listAgentSessionsTool(user));
 		registerIfAllowed(this.getAgentSessionTool(user));
-		registerIfAllowed(this.archiveAgentTool(user));
+		registerIfAllowed(this.archiveAgentTool(user, ctx));
 		registerIfAllowed(this.discoverAssetsTool(user));
 		registerIfAllowed(this.verifyMcpServerTool(user));
 		registerIfAllowed(this.updateIntegrationTool(user));
@@ -1125,7 +1126,10 @@ export class McpAgentToolsService {
 		};
 	}
 
-	private archiveAgentTool(user: User): ToolDefinition<typeof agentIdentityShape> {
+	private archiveAgentTool(
+		user: User,
+		ctx: OperationContext,
+	): ToolDefinition<typeof agentIdentityShape> {
 		return {
 			name: 'archive_agent',
 			config: {
@@ -1144,7 +1148,14 @@ export class McpAgentToolsService {
 				await this.run(user, 'archive_agent', { agentId }, async () => {
 					const { projectId } = await this.resolveAgent(user, agentId);
 					await this.assertScope(user, projectId, 'agent:delete');
-					await this.agentPublishService.archiveAgent(agentId, projectId, user, undefined, 'mcp');
+					await this.agentPublishService.archiveAgent(
+						agentId,
+						projectId,
+						user,
+						undefined,
+						'mcp',
+						ctx,
+					);
 					return { ok: true, archived: true, agentId };
 				}),
 		};

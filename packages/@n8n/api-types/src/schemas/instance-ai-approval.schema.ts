@@ -77,3 +77,34 @@ export const instanceAiApprovalDetailsSchema = z.discriminatedUnion('action', [
 ]);
 
 export type InstanceAiApprovalDetails = z.infer<typeof instanceAiApprovalDetailsSchema>;
+
+/**
+ * How the Assistant treats an action set to Ask first. `manual` shows the
+ * approval card. `auto` lets a judge model run the action or show the card.
+ */
+export const instanceAiApprovalModeSchema = z.enum(['manual', 'auto']);
+export type InstanceAiApprovalMode = z.infer<typeof instanceAiApprovalModeSchema>;
+
+/** A user's approval mode, as `GET` and `PUT /assistant/preferences` return it. */
+export const instanceAiApprovalPreferencesSchema = z.object({
+	/** The mode that applies to this user's next run. Always `manual` when approval modes are off. */
+	approvalMode: instanceAiApprovalModeSchema,
+	/** Whether the user can choose an approval mode. */
+	approvalModesAvailable: z.boolean(),
+});
+export type InstanceAiApprovalPreferences = z.infer<typeof instanceAiApprovalPreferencesSchema>;
+
+/** What ran an action without a card in Auto mode: the judge model, or the rule for low-risk actions. */
+export const instanceAiAutoApprovalDeciderSchema = z.enum(['judge', 'rule']);
+export type InstanceAiAutoApprovalDecider = z.infer<typeof instanceAiAutoApprovalDeciderSchema>;
+
+/** An Ask first action that Auto mode ran without a card. The thread shows it as a collapsed line. */
+export const autoApprovalPayloadSchema = z.object({
+	toolCallId: z.string(),
+	/** What the action does, in the words the card would have used. */
+	message: z.string(),
+	/** Why the action needed no card. */
+	reason: z.string(),
+	decidedBy: instanceAiAutoApprovalDeciderSchema,
+});
+export type InstanceAiAutoApprovalPayload = z.infer<typeof autoApprovalPayloadSchema>;

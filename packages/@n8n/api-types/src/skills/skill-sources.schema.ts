@@ -20,6 +20,8 @@ export const SKILL_SOURCE_REASONS = [
 	'parse_error',
 	'blocked_by_check',
 	'review_required',
+	'stale',
+	'name_clash',
 	'name_taken',
 	'duplicate_source',
 	'credential_invalid',
@@ -226,6 +228,11 @@ export type SkillSyncedFrom = {
 /** The credentials that can read a private source in a scope, for the credential select. */
 export class ListSkillSourceCredentialsQueryDto extends Z.class(skillSourceScope) {}
 
+/** Replaces the credential only after n8n verifies that it can read the source. */
+export class ReplaceSkillSourceCredentialDto extends Z.class({
+	credentialId: z.string().min(1).max(36),
+}) {}
+
 /** A credential that a source in the scope accepts and that the user can use. */
 export type SkillSourceCredentialOption = { id: string; name: string; type: string };
 
@@ -265,13 +272,7 @@ export type SkillSourceRepositoryList = {
 };
 
 /** Health of a source, based on its latest check result. */
-export type SkillSourceHealth =
-	| 'connected'
-	| 'credential_issue'
-	| 'source_unavailable'
-	| 'unreachable'
-	| 'delayed'
-	| 'check_failed';
+export type SkillSourceHealth = 'connected' | 'credential_issue' | 'source_unavailable' | 'delayed';
 
 /** One connected source, for its group row in the skills table. */
 export type SkillSourceListItem = {
@@ -297,11 +298,83 @@ export type SkillSourceListItem = {
 	updatesBlocked: number;
 	health: SkillSourceHealth;
 	lastCheckedAt: string | null;
+	/** Names of synced skills whose folders are gone. Their saved versions still work. */
+	missingSkills: string[];
+	/** Whether the user may replace the credential of this source. */
+	canReplaceCredential: boolean;
 	/** Whether the user may review updates and check the source now. */
 	canReview: boolean;
 	/** Whether the user may delete the source and its synced skills. */
 	canDelete: boolean;
 };
+
+const reviewedUpdate = {
+	contentHash: z.string().regex(/^[a-f0-9]{64}$/),
+	baseVersionId: z.string().min(1).max(36),
+};
+
+export class ReviewSkillSourceUpdateQueryDto extends Z.class(reviewedUpdate) {}
+
+/** Applies every selected update in one transaction. */
+export class AcceptSkillSourceUpdatesDto extends Z.class({
+	updates: z
+		.array(z.object({ skillId: z.string().min(1).max(36), ...reviewedUpdate }))
+		.min(1)
+		.max(SKILL_SOURCE_MAX_SKILLS)
+		.refine(
+			(updates) => new Set(updates.map(({ skillId }) => skillId)).size === updates.length,
+			'Select each skill once',
+		),
+	reviewedWarnings: z.boolean().default(false),
+}) {}
+
+export class SkillSourceCommitQueryDto extends Z.class({
+	revision: z.string().min(1).max(255),
+}) {}
+
+export type SkillUpdateCommit = {
+	revision: string;
+	webUrl: string | null;
+	message: string | null;
+	author: string | null;
+	date: string | null;
+};
+
+export type SkillPendingUpdate = {
+	revisionUrl: string | null;
+	skillId: string;
+	name: string;
+	location: string;
+	webUrl: string;
+	contentHash: string;
+	baseVersionId: string;
+	revision: string;
+	check: SkillScanResult;
+	nameClash: { name: string; where: 'scope' | 'agent' } | null;
+	changes: { added: number; removed: number };
+	nextVersion: number;
+};
+
+export type SkillSourceUpdates = {
+	updates: SkillPendingUpdate[];
+	commit: SkillUpdateCommit | null;
+};
+
+export type SkillUpdateFile = {
+	path: string;
+	before: string;
+	after: string;
+	status?: 'added' | 'removed';
+};
+
+/** Names are limited to agents the user can read. */
+export type SkillUpdateAgents = {
+	agents: Array<{ id: string; name: string }>;
+	hiddenAgentCount: number;
+};
+
+export type SkillUpdateReview = SkillUpdateAgents & { files: SkillUpdateFile[] };
+export type SkillSourceAcceptResponse = SkillUpdateAgents & { updatedCount: number };
 
 /** A refused source delete names only the agents that the user may read. */
 export const skillSourceDeleteBlockSchema = z.object({

@@ -14,11 +14,12 @@ import type {
 import { isPromotionGitHostType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import { ProjectRepository, TransactionRunner, type User } from '@n8n/db';
+import { ProjectRepository, TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isDeepStrictEqual } from 'node:util';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { loginIdOf } from '@/events/login-id';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { PromotionEnvironment } from './database/entities/promotion-environment.entity';
@@ -102,6 +103,7 @@ export class PromotionEnvironmentsService {
 	async create(
 		input: CreatePromotionEnvironmentDto,
 		actor: User,
+		ctx: OperationContext = {},
 	): Promise<PromotionEnvironmentPublicDto> {
 		const provider = await this.providersService.getEntity(input.providerId);
 		this.gitService.validateRemoteUrl(input.remote.remoteUrl, provider.authType);
@@ -133,6 +135,7 @@ export class PromotionEnvironmentsService {
 			...('createBranchOnPromotion' in settings && {
 				createBranchOnPromotion: settings.createBranchOnPromotion,
 			}),
+			loginId: loginIdOf(ctx),
 		});
 
 		return await this.toPublic(Object.assign(environment, { provider }));
@@ -167,6 +170,7 @@ export class PromotionEnvironmentsService {
 		id: string,
 		input: UpdatePromotionEnvironmentDto,
 		actor: User,
+		ctx: OperationContext = {},
 	): Promise<PromotionEnvironmentPublicDto> {
 		const current = await this.getEntity(id);
 
@@ -198,7 +202,7 @@ export class PromotionEnvironmentsService {
 			(settings !== undefined && this.changesCheckoutBranch(current, settings));
 
 		const updateRows = async () =>
-			await this.txRunner.run({}, async (ctx) => {
+			await this.txRunner.run({}, async (trxCtx) => {
 				const updated = await this.environmentRepository.updateEnvironment(
 					id,
 					current.providerId,
@@ -208,7 +212,7 @@ export class PromotionEnvironmentsService {
 						...(input.providerId !== undefined && { providerId: input.providerId }),
 						...(settings && { settings }),
 					},
-					ctx,
+					trxCtx,
 				);
 				if (!updated) {
 					throw new ConflictError(
@@ -216,7 +220,7 @@ export class PromotionEnvironmentsService {
 					);
 				}
 				if (!invalidatesOpenReviews(current, { provider, remote })) return 0;
-				return await this.reviewRepository.closeOpenByEnvironmentId(id, new Date(), ctx);
+				return await this.reviewRepository.closeOpenByEnvironmentId(id, new Date(), trxCtx);
 			});
 		const closed = changesCheckout
 			? await this.checkoutCleanup.changeCheckoutSettings(id, updateRows)
@@ -241,6 +245,7 @@ export class PromotionEnvironmentsService {
 				direction: current.direction,
 				environmentScope: current.scope,
 				changedFields,
+				loginId: loginIdOf(ctx),
 			});
 		}
 		return await this.findOne(id);
@@ -250,7 +255,7 @@ export class PromotionEnvironmentsService {
 	 * Cascades to this environment's project links and closes its open reviews. The
 	 * provider stays, because other environments may use it.
 	 */
-	async delete(id: string, actor: User): Promise<void> {
+	async delete(id: string, actor: User, ctx: OperationContext = {}): Promise<void> {
 		const {
 			id: environmentId,
 			name,
@@ -263,13 +268,13 @@ export class PromotionEnvironmentsService {
 			environmentId,
 			async () =>
 				// Close first: the delete clears the environment of its reviews.
-				await this.txRunner.run({}, async (ctx) => {
+				await this.txRunner.run({}, async (trxCtx) => {
 					const closed = await this.reviewRepository.closeOpenByEnvironmentId(
 						environmentId,
 						new Date(),
-						ctx,
+						trxCtx,
 					);
-					const deleted = await this.environmentRepository.deleteEnvironment(environmentId, ctx);
+					const deleted = await this.environmentRepository.deleteEnvironment(environmentId, trxCtx);
 					return { closed, deleted };
 				}),
 		);
@@ -284,6 +289,7 @@ export class PromotionEnvironmentsService {
 				repository: repositoryForEvents(remote),
 				direction,
 				environmentScope: scope,
+				loginId: loginIdOf(ctx),
 			});
 		}
 	}

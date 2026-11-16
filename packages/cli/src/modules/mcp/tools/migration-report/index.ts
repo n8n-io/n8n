@@ -1,7 +1,7 @@
 import type { BreakingChangeVersion } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { UrlService } from '@n8n/backend-services';
-import { WorkflowRepository, type User } from '@n8n/db';
+import { WorkflowRepository, type OperationContext, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
@@ -49,13 +49,14 @@ export function registerMigrationReportTools(
 	registerTool: RegisterToolFn,
 	user: User,
 	targetVersion: BreakingChangeVersion,
+	ctx: OperationContext = {},
 ): ReadWorkflowMigrationFindings {
 	const deps = resolveDeps(targetVersion);
 
 	registerTool(createGetMigrationReportTool(user, deps));
 	registerTool(createGetMigrationFindingsTool(user, deps));
 
-	registerTool(createMigrateWorkflowTool(user, deps));
+	registerTool(createMigrateWorkflowTool(user, deps, ctx));
 	registerTool(createSetMigrationFindingStatusTool(user, deps));
 
 	return async (workflowId) => await readWorkflowMigrationFindings(deps, workflowId);
