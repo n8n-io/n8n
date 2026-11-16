@@ -3,6 +3,13 @@ import ts from 'typescript';
 import { CODE_HELPERS } from '../convert/code-native/helpers.ts';
 import { translateCode } from '../convert/code-native/translate.ts';
 import { commonJsToModule, isCommonJs } from './commonjs.ts';
+import {
+	bindMoment,
+	MOMENT_HELPER_USES,
+	MOMENT_HELPERS,
+	MOMENT_PACKAGE,
+	momentZoneUse,
+} from './moment.ts';
 
 export interface SpecialiseInput {
 	type: string;
@@ -50,6 +57,8 @@ export interface SpecialiseResult {
 	derivations?: CredentialDerivation[];
 
 	retyped?: (moduleType: string) => string;
+
+	zones?: string[];
 }
 
 export interface CredentialDerivation {
@@ -500,6 +509,7 @@ const HELPERS: Record<string, string> = {
 		.replaceAll(')', '%29')
 		.replaceAll('~', '%7E');
 }`,
+	...MOMENT_HELPERS,
 };
 
 const PURE_GLOBALS = new Set([
@@ -585,6 +595,10 @@ const PACKAGE_HELPERS: Record<string, Record<string, string>> = {
 	},
 };
 
+function isLuxon(imported: { from: string; name: string } | undefined): boolean {
+	return imported?.from === 'luxon' && imported.name === 'DateTime';
+}
+
 function packageHelper(imported: { from: string; name: string }): string | undefined {
 	const slash = imported.from.indexOf('/');
 	const pkg =
@@ -603,6 +617,7 @@ const HELPER_USES: Record<string, string[]> = {
 	__urlCanParse: ['__url', '__urlText', '__isLimit'],
 	__urlParam: ['__urlDecode'],
 	__urlForm: ['__urlFormText'],
+	...MOMENT_HELPER_USES,
 };
 
 const LIMIT_TEXT = 'has no compiled form';
@@ -627,7 +642,14 @@ function mentionsBuffer(n: ts.Node): boolean {
 	return ts.forEachChild(n, mentionsBuffer) ?? false;
 }
 
-const TEXT_HELPERS = new Set(['__changeCase', '__url', '__urlCanParse', '__urlParam', '__urlForm']);
+const TEXT_HELPERS = new Set([
+	'__changeCase',
+	'__url',
+	'__urlCanParse',
+	'__urlParam',
+	'__urlForm',
+	...Object.keys(MOMENT_HELPERS),
+]);
 
 const URL_PROPERTIES = new Set([
 	'href',
@@ -1631,6 +1653,22 @@ class Specialiser {
 				['url', 'node:url'].includes(unit.file.imports.get('URLSearchParams')?.from ?? 'url')
 			)
 				return this.helper('__urlForm', ...args(node.expression.expression));
+			if (ts.isCallExpression(node)) {
+				const moment = bindMoment(node, {
+					isMoment: (name) => {
+						const imported = unit.file.imports.get(name.text);
+						return (
+							!localNames.has(name.text) &&
+							imported?.name === 'default' &&
+							imported.from === MOMENT_PACKAGE
+						);
+					},
+					visit: (e) => ts.visitNode(e, visit) as ts.Expression,
+					helper: (name, ...list) => this.helper(name, ...list),
+					error: (message) => this.error(unit.name, message),
+				});
+				if (moment) return moment;
+			}
 			if (
 				ts.isCallExpression(node) &&
 				ts.isIdentifier(node.expression) &&
@@ -3810,7 +3848,8 @@ class Specialiser {
 				isValueUse(n) &&
 				!bound.has(n.text) &&
 				!GLOBALS.has(n.text) &&
-				!n.text.startsWith('__')
+				!n.text.startsWith('__') &&
+				!(n.text === 'DateTime' && isLuxon(unit.file.imports.get(n.text)))
 			) {
 				free.add(n.text);
 			}
@@ -4301,7 +4340,15 @@ class Specialiser {
 		const source = this.print();
 		if (this.errors.length > 0) return { errors: this.errors, notes: this.notes, linked };
 		const derivations = [...this.derivations].map(([name, code]) => ({ name, code }));
-		return { source, errors: [], notes: this.notes, linked, derivations, retyped: this.retyped };
+		return {
+			source,
+			errors: [],
+			notes: this.notes,
+			linked,
+			derivations,
+			retyped: this.retyped,
+			zones: [...this.zones].sort(),
+		};
 	}
 
 	private bufferText(root: ts.Node): ts.Node {
@@ -4412,14 +4459,23 @@ class Specialiser {
 			kind: 'code',
 			hasNode: () => false,
 			nodeCode: { globals },
+			timezone: this.input.timezone,
 		});
 		if (!translated.ok) {
 			for (const b of translated.blockers) this.error('code', `${b.feature}: ${b.message}`);
 			return '';
 		}
 		const t = translated.translation;
-		if (t.zones.size > 0)
-			this.error('code', 'dates in a time zone have no compiled form in node code yet');
+		if (t.zones.size > 0 && this.input.timezone === undefined)
+			this.error('code', 'dates in a time zone need the time zone of the workflow');
+		for (const zone of t.zones) this.zones.add(zone);
+		const zonesOf = (n: ts.Node) => {
+			const use = momentZoneUse(n);
+			if (use?.error !== undefined) this.error('code', use.error);
+			if (use?.zone !== undefined) this.zones.add(use.zone);
+			ts.forEachChild(n, zonesOf);
+		};
+		for (const { node } of this.output) zonesOf(node);
 		if (t.usesMatchProps)
 			this.error(
 				'code',
@@ -4460,6 +4516,8 @@ ${t.body}
 	}
 
 	private retyped: ((type: string) => string) | undefined;
+
+	private readonly zones = new Set<string>();
 }
 
 function bindingsOf(root: ts.Node): Map<string, number> {

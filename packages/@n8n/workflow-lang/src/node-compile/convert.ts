@@ -99,6 +99,8 @@ export interface CompiledNode {
 	derivations: CredentialDerivation[];
 
 	changed: string[];
+
+	zones: string[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -218,6 +220,7 @@ export function compileNodeInstance(
 		dynamic: Object.keys(parameters).filter((name) => hasExpression(parameters[name])),
 		resolved: parameters,
 		derivations: result.derivations ?? [],
+		zones: result.zones ?? [],
 
 		changed: [...changed, ...Object.values(credentials).flatMap((c) => c.classes)],
 	};

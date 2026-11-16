@@ -11,6 +11,23 @@ import { compileNodeInstance } from '../convert.ts';
 import { evaluateDerivation } from '../evaluate-node.ts';
 
 export const V1_TIMEZONE = 'America/New_York';
+export const V1_NOW = Date.UTC(2024, 0, 15, 17, 30, 0);
+const READS_CLOCK = /\bDate\.now\(\)|\bnew Date\(\)/;
+
+async function atFixedClock<T>(work: () => Promise<T>): Promise<T> {
+	const real = Date;
+	globalThis.Date = new Proxy(real, {
+		construct: (target, args: unknown[], newTarget) =>
+			Reflect.construct(target, args.length === 0 ? [V1_NOW] : args, newTarget),
+		apply: (target) => new target(V1_NOW).toString(),
+		get: (target, key) => (key === 'now' ? () => V1_NOW : Reflect.get(target, key)),
+	});
+	try {
+		return await work();
+	} finally {
+		globalThis.Date = real;
+	}
+}
 
 type Registry = Parameters<typeof deriveInject>[0];
 
@@ -90,14 +107,19 @@ export default workflow({
 `;
 	const fixture = {
 		trigger: { body: {}, headers: {}, query: {} },
-		now: 0,
+		now: V1_NOW,
 		seed: 1,
 		effects: { Node: c.responses.map((r) => ({ status: 200, headers: {}, ...r })) },
 	};
 	const out = await runReference(source, fixture, {
 		extraNodes: { [compiled.file]: compiled.source },
 	});
-	const v1 = await within(8000, options.cache === true ? recordV1Cached(c) : recordV1(c));
+	const record = options.cache === true ? recordV1Cached : recordV1;
+	const v1 = READS_CLOCK.test(compiled.source)
+		? await atFixedClock(
+				async () => await within(8000, record({ ...c, name: `${c.name} at ${V1_NOW}` })),
+			)
+		: await within(8000, record(c));
 
 	const data: Record<string, unknown> = withDerivedValues(credentialType ?? '', {
 		...(registry.get(credentialType ?? '')?.defaults ?? {}),
