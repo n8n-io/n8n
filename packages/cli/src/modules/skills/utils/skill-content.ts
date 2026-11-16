@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { skillContentHash, type SkillContent } from './skill-content-hash';
 import type { SkillFile } from '../database/entities/skill-file.entity';
 import type { SkillFrontmatter, SkillVersion } from '../database/entities/skill-version.entity';
+import type { SkillSourceType } from '../database/entities/skill-source-connection.entity';
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
 
 /** Where a skill lives: a project, or the instance (null). */
@@ -114,7 +115,13 @@ export interface AssistantSkillFileContent {
 }
 
 /** A skill as the MCP skills extension serves it: the latest saved version. */
-export type McpSkillContent = { id: string; projectId: string | null; skill: AgentSkill };
+export type McpSkillContent = {
+	id: string;
+	projectId: string | null;
+	skill: AgentSkill;
+	/** Set for a synced skill. */
+	origin?: { provider: SkillSourceType; access: 'public' | 'credential' };
+};
 
 /**
  * The content of one version. Skills ignore `allowedTools`: the frontmatter, the

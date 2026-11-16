@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from 'crypto';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { CipherWrapper } from './interface';
 

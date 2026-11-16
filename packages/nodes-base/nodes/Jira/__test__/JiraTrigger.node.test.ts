@@ -7,6 +7,7 @@ import type {
 	INode,
 	IWebhookFunctions,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 import jwt from 'jsonwebtoken';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
@@ -88,12 +89,14 @@ describe('JiraTrigger', () => {
 			expect(mockExistsRequest).toHaveBeenCalledTimes(2);
 			expect(mockExistsRequest).toHaveBeenCalledWith(
 				expect.any(String),
-				expect.objectContaining({ uri: 'https://jira.local/rest/api/2/serverInfo' }),
+				expect.objectContaining({ uri: requestUrl`https://jira.local/rest/api/2/serverInfo` }),
 				undefined,
 			);
 			expect(mockExistsRequest).toHaveBeenCalledWith(
 				expect.any(String),
-				expect.objectContaining({ uri: 'https://jira.local/rest/jira-webhook/1.0/webhooks' }),
+				expect.objectContaining({
+					uri: requestUrl`https://jira.local/rest/jira-webhook/1.0/webhooks`,
+				}),
 				undefined,
 			);
 			expect(staticData.endpoint).toBe('/jira-webhook/1.0/webhooks');
@@ -110,7 +113,7 @@ describe('JiraTrigger', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'POST',
-					uri: 'https://jira.local/rest/jira-webhook/1.0/webhooks',
+					uri: requestUrl`https://jira.local/rest/jira-webhook/1.0/webhooks`,
 					body: expect.objectContaining({
 						events: ['jira:issue_created'],
 						excludeBody: false,
@@ -134,7 +137,7 @@ describe('JiraTrigger', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'DELETE',
-					uri: 'https://jira.local/rest/jira-webhook/1.0/webhooks/1',
+					uri: requestUrl`https://jira.local/rest/jira-webhook/1.0/webhooks/1`,
 				}),
 				undefined,
 			);
@@ -155,12 +158,12 @@ describe('JiraTrigger', () => {
 			expect(mockExistsRequest).toHaveBeenCalledTimes(2);
 			expect(mockExistsRequest).toHaveBeenCalledWith(
 				expect.any(String),
-				expect.objectContaining({ uri: 'https://jira.local/rest/api/2/serverInfo' }),
+				expect.objectContaining({ uri: requestUrl`https://jira.local/rest/api/2/serverInfo` }),
 				undefined,
 			);
 			expect(mockExistsRequest).toHaveBeenCalledWith(
 				expect.any(String),
-				expect.objectContaining({ uri: 'https://jira.local/rest/webhooks/1.0/webhook' }),
+				expect.objectContaining({ uri: requestUrl`https://jira.local/rest/webhooks/1.0/webhook` }),
 				undefined,
 			);
 			expect(staticData.endpoint).toBe('/webhooks/1.0/webhook');
@@ -177,7 +180,7 @@ describe('JiraTrigger', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'POST',
-					uri: 'https://jira.local/rest/webhooks/1.0/webhook',
+					uri: requestUrl`https://jira.local/rest/webhooks/1.0/webhook`,
 					body: expect.objectContaining({
 						events: ['jira:issue_created'],
 						excludeBody: false,
@@ -201,7 +204,7 @@ describe('JiraTrigger', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'DELETE',
-					uri: 'https://jira.local/rest/webhooks/1.0/webhook/1',
+					uri: requestUrl`https://jira.local/rest/webhooks/1.0/webhook/1`,
 				}),
 				undefined,
 			);
@@ -258,7 +261,7 @@ describe('JiraTrigger', () => {
 			expect(mockExistsRequest).toHaveBeenCalledTimes(1);
 			expect(mockExistsRequest).toHaveBeenCalledWith(
 				'jiraSoftwareCloudOAuth2Api',
-				expect.objectContaining({ uri: baseApiUrl, method: 'GET' }),
+				expect.objectContaining({ uri: requestUrl`${baseApiUrl}`, method: 'GET' }),
 				OAUTH2_RETRY_OPTIONS,
 			);
 			expect(staticData.endpoint).toBe('/api/3/webhook');
@@ -279,7 +282,7 @@ describe('JiraTrigger', () => {
 				'jiraSoftwareCloudOAuth2Api',
 				expect.objectContaining({
 					method: 'POST',
-					uri: baseApiUrl,
+					uri: requestUrl`${baseApiUrl}`,
 					body: {
 						url: 'https://n8n.local/webhook/id',
 						webhooks: [{ events: ['comment_created'], jqlFilter: 'project = TEST' }],
@@ -303,7 +306,7 @@ describe('JiraTrigger', () => {
 				'jiraSoftwareCloudOAuth2Api',
 				expect.objectContaining({
 					method: 'DELETE',
-					uri: baseApiUrl,
+					uri: requestUrl`${baseApiUrl}`,
 					body: { webhookIds: [1000] },
 				}),
 				OAUTH2_RETRY_OPTIONS,
@@ -364,7 +367,7 @@ describe('JiraTrigger', () => {
 				'jiraSoftwareCloudOAuth2Api',
 				expect.objectContaining({
 					method: 'PUT',
-					uri: `${baseApiUrl}/refresh`,
+					uri: requestUrl`${baseApiUrl}/refresh`,
 					body: { webhookIds: [2000] },
 				}),
 				OAUTH2_RETRY_OPTIONS,
@@ -462,7 +465,7 @@ describe('JiraTrigger', () => {
 				'jiraSoftwareCloudOAuth2Api',
 				expect.objectContaining({
 					method: 'PUT',
-					uri: `${baseApiUrl}/refresh`,
+					uri: requestUrl`${baseApiUrl}/refresh`,
 					body: { webhookIds: [3000] },
 				}),
 				OAUTH2_RETRY_OPTIONS,
@@ -603,7 +606,7 @@ describe('JiraTrigger', () => {
 				'jiraSoftwareCloudOAuth2Api',
 				expect.objectContaining({
 					method: 'POST',
-					uri: baseApiUrl,
+					uri: requestUrl`${baseApiUrl}`,
 					body: expect.objectContaining({
 						webhooks: [{ events: expectedFiltered, jqlFilter: 'project = TEST' }],
 					}),
@@ -835,12 +838,12 @@ describe('JiraTrigger', () => {
 			expect(mockExistsRequest).toHaveBeenCalledTimes(2);
 			expect(mockExistsRequest).toHaveBeenCalledWith(
 				expect.any(String),
-				expect.objectContaining({ uri: 'https://jira.local/rest/api/2/serverInfo' }),
+				expect.objectContaining({ uri: requestUrl`https://jira.local/rest/api/2/serverInfo` }),
 				undefined,
 			);
 			expect(mockExistsRequest).toHaveBeenCalledWith(
 				expect.any(String),
-				expect.objectContaining({ uri: 'https://jira.local/rest/webhooks/1.0/webhook' }),
+				expect.objectContaining({ uri: requestUrl`https://jira.local/rest/webhooks/1.0/webhook` }),
 				undefined,
 			);
 			expect(staticData.endpoint).toBe('/webhooks/1.0/webhook');
@@ -857,7 +860,7 @@ describe('JiraTrigger', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'POST',
-					uri: 'https://jira.local/rest/webhooks/1.0/webhook',
+					uri: requestUrl`https://jira.local/rest/webhooks/1.0/webhook`,
 					body: expect.objectContaining({
 						events: ['jira:issue_created'],
 						excludeBody: false,
@@ -881,7 +884,7 @@ describe('JiraTrigger', () => {
 				expect.any(String),
 				expect.objectContaining({
 					method: 'DELETE',
-					uri: 'https://jira.local/rest/webhooks/1.0/webhook/1',
+					uri: requestUrl`https://jira.local/rest/webhooks/1.0/webhook/1`,
 				}),
 				undefined,
 			);

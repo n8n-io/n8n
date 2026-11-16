@@ -1,0 +1,721 @@
+{
+	"name": "Asana Request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "9d10445e-0fa6-51cf-b812-4ec49ee3fde5",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "subtask",
+				"operation": "create",
+				"taskId": "1204000000000001",
+				"name": "Draft",
+				"otherProperties": {}
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "b176556f-9edc-5787-b7f6-cb3f4f19941c",
+			"name": "Subtask > Create",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "subtask",
+				"operation": "getAll",
+				"taskId": "1204000000000001",
+				"returnAll": true,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"id": "c16eb70b-a1fa-598a-9f66-87df7604a6f4",
+			"name": "Subtask > Get Many",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "create",
+				"workspace": "1201234567890001",
+				"name": "Write report",
+				"otherProperties": {}
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"id": "d43256fb-523a-5b70-b3ba-e6dce2476c88",
+			"name": "Task > Create",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "delete",
+				"id": "1204000000000003"
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"id": "d89093d4-c956-5981-a017-c808babdcab0",
+			"name": "Task > Delete",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "get",
+				"id": "1204000000000004"
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 800],
+			"id": "a00b5639-5176-53f8-8372-51ea06c72f65",
+			"name": "Task > Get",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "getAll",
+				"returnAll": true,
+				"filters": {
+					"project": "1205000000000001"
+				}
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 1000],
+			"id": "020379e7-59d3-5da6-b8d1-4742b16961ec",
+			"name": "Task > Get Many",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "move",
+				"id": "1204000000000007",
+				"projectId": "1205000000000001",
+				"section": "1206000000000001"
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"id": "31451f1c-dc1e-5115-9ff0-e7ce8eb599e1",
+			"name": "Task > Move",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "update",
+				"id": "1204000000000008",
+				"otherProperties": {
+					"name": "Renamed"
+				}
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 1400],
+			"id": "fa1da319-9028-5e64-9e41-1d7f9c93e100",
+			"name": "Task > Update",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "search",
+				"workspace": "1201234567890001",
+				"searchTaskProperties": {}
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 1600],
+			"id": "dd81ab99-0fa7-57c2-a2ec-d14ac15e1845",
+			"name": "Task > Search",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "taskComment",
+				"operation": "add",
+				"id": "1204000000000001",
+				"text": "Looks good",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"id": "2c48dbcc-0671-5e35-952b-c3b90336250a",
+			"name": "Task Comment > Add",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "taskComment",
+				"operation": "remove",
+				"id": "1207000000000002"
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 2000],
+			"id": "3b7f9840-4417-54aa-b70b-78a76827cbf4",
+			"name": "Task Comment > Remove",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "taskTag",
+				"operation": "add",
+				"id": "1204000000000001",
+				"tag": "1208000000000001"
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 2200],
+			"id": "e8dee207-86b5-5d48-bb3d-14aada8c9e41",
+			"name": "Task Tag > Add",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "taskTag",
+				"operation": "remove",
+				"id": "1204000000000001",
+				"tag": "1208000000000001"
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 2400],
+			"id": "a096f4dc-a888-5566-870f-939c5da1052e",
+			"name": "Task Tag > Remove",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "taskProject",
+				"operation": "add",
+				"id": "1204000000000001",
+				"project": "1205000000000001",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 2600],
+			"id": "b8b6a5c3-cfc5-54d5-8249-06cb5629a10b",
+			"name": "Task Project > Add",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "taskProject",
+				"operation": "remove",
+				"id": "1204000000000001",
+				"project": "1205000000000001"
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 2800],
+			"id": "32a85f2b-afcb-56b8-8195-e2280f8e679e",
+			"name": "Task Project > Remove",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"userId": "1209000000000001"
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 3000],
+			"id": "66b2f6d7-932d-5d09-8402-93c9d6541893",
+			"name": "User > Get",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getAll",
+				"workspace": "1201234567890001"
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 3200],
+			"id": "4116eaeb-fdb7-5eb6-8e41-81f4be7e7e11",
+			"name": "User > Get Many",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "create",
+				"name": "Launch",
+				"workspace": "1201234567890001",
+				"team": "1210000000000001",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 3400],
+			"id": "004ca63f-19f5-58fb-965e-83443e5609c2",
+			"name": "Project > Create",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "delete",
+				"id": "1205000000000003"
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 3600],
+			"id": "ac8b2315-0021-5518-ad4c-bbd30845cb34",
+			"name": "Project > Delete",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "get",
+				"id": "1205000000000004"
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 3800],
+			"id": "05830125-ef3b-5500-8a41-76a48f27c15f",
+			"name": "Project > Get",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "getAll",
+				"workspace": "1201234567890001",
+				"returnAll": true,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 4000],
+			"id": "6f304a75-e50c-557d-92c9-044ab052a8a7",
+			"name": "Project > Get Many",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "project",
+				"operation": "update",
+				"workspace": "1201234567890001",
+				"id": "1205000000000006",
+				"updateFields": {
+					"name": "Relaunch"
+				}
+			},
+			"type": "n8n-nodes-base.asana",
+			"typeVersion": 1,
+			"position": [300, 4200],
+			"id": "ce280b25-ae53-5ee7-ab6e-90da2c656c5a",
+			"name": "Project > Update",
+			"credentials": {
+				"asanaApi": {
+					"id": "1",
+					"name": "Test credential"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Subtask > Create": [
+			{
+				"json": {
+					"gid": "1204000000000101"
+				}
+			}
+		],
+		"Subtask > Get Many": [
+			{
+				"json": {
+					"gid": "1204000000000102"
+				}
+			}
+		],
+		"Task > Create": [
+			{
+				"json": {
+					"gid": "1204000000000002"
+				}
+			}
+		],
+		"Task > Delete": [
+			{
+				"json": {}
+			}
+		],
+		"Task > Get": [
+			{
+				"json": {
+					"gid": "1204000000000004"
+				}
+			}
+		],
+		"Task > Get Many": [
+			{
+				"json": {
+					"gid": "1204000000000005"
+				}
+			},
+			{
+				"json": {
+					"gid": "1204000000000006"
+				}
+			}
+		],
+		"Task > Move": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Task > Update": [
+			{
+				"json": {
+					"gid": "1204000000000008"
+				}
+			}
+		],
+		"Task > Search": [
+			{
+				"json": {
+					"gid": "1204000000000009"
+				}
+			}
+		],
+		"Task Comment > Add": [
+			{
+				"json": {
+					"gid": "1207000000000001"
+				}
+			}
+		],
+		"Task Comment > Remove": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Task Tag > Add": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Task Tag > Remove": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Task Project > Add": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Task Project > Remove": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"User > Get": [
+			{
+				"json": {
+					"gid": "1209000000000001"
+				}
+			}
+		],
+		"User > Get Many": [
+			{
+				"json": {
+					"gid": "1209000000000002"
+				}
+			}
+		],
+		"Project > Create": [
+			{
+				"json": {
+					"gid": "1205000000000002"
+				}
+			}
+		],
+		"Project > Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Project > Get": [
+			{
+				"json": {
+					"gid": "1205000000000004"
+				}
+			}
+		],
+		"Project > Get Many": [
+			{
+				"json": {
+					"gid": "1205000000000005"
+				}
+			}
+		],
+		"Project > Update": [
+			{
+				"json": {
+					"gid": "1205000000000006"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Subtask > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Subtask > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task > Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task > Move",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task > Search",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Comment > Add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Comment > Remove",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Tag > Add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Tag > Remove",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Project > Add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Task Project > Remove",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "User > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Project > Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Project > Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Project > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Project > Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Project > Update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

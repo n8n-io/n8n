@@ -1,4 +1,5 @@
 import type { StoredWorkflowGraph } from '../graph';
+import type { LifecycleEventSubscription } from '../lifecycle-events';
 import type { ResponseExpectation } from '../response-channel';
 import type {
 	CallerContext,
@@ -30,6 +31,8 @@ interface BaseExecutionRecord {
 	responseExpectation: ResponseExpectation;
 	/** The parent link, or `null` for a top-level execution. */
 	parent: ParentLink | null;
+	/** Which lifecycle events the caller subscribes to. Missing or `null` means none. */
+	lifecycleEventSubscription?: LifecycleEventSubscription | null;
 }
 
 /**
@@ -57,7 +60,13 @@ export class ExecutionNotFoundError extends Error {
 	}
 }
 
-/** Persistence interface for executions. */
+/**
+ * Persistence interface for executions.
+ *
+ * A write that makes an execution `queued` also records when the engine treats
+ * it as stuck in that status (see `StalenessThresholds`). A transition out of
+ * `queued` clears that time.
+ */
 export interface ExecutionStore {
 	/** Persist a new execution record under the caller-minted `record.id`. */
 	createExecution(record: NewExecutionRecord): Promise<void>;

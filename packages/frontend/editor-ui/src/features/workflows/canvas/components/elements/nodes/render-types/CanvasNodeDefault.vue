@@ -59,15 +59,9 @@ const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value
 const hasExecutionErrors = computed(
 	() => (renderData.value.executionIssuesByNodeId.get(id.value)?.value?.length ?? 0) > 0,
 );
-const hasPinnedData = computed(
-	() =>
-		!renderData.value.isExecutionDataDisplayed &&
-		!!renderData.value.pinnedDataByNodeName[name.value],
-);
+const hasPinnedData = computed(() => !!renderData.value.pinnedDataByNodeName[name.value]);
 const hasExecutionPinData = computed(
-	() =>
-		renderData.value.isExecutionDataDisplayed &&
-		!!renderData.value.executionPinDataByNodeId.get(id.value)?.value,
+	() => !!renderData.value.getDisplayedExecutionPinData(id.value),
 );
 const hasSubstitutedOutput = computed(() => hasPinnedData.value || hasExecutionPinData.value);
 const { mainOutputs, mainOutputConnections, mainInputs, mainInputConnections, nonMainInputs } =
@@ -290,8 +284,12 @@ function onActivate(event: MouseEvent) {
 
 		&.running::after,
 		&.waiting::after {
-			border-radius: var(--trigger-node--radius) var(--radius--lg) var(--radius--lg)
-				var(--trigger-node--radius);
+			border-top-left-radius: calc(
+				var(--trigger-node--radius) + var(--canvas-node--status-radius-offset)
+			);
+			border-bottom-left-radius: calc(
+				var(--trigger-node--radius) + var(--canvas-node--status-radius-offset)
+			);
 		}
 	}
 
@@ -304,7 +302,9 @@ function onActivate(event: MouseEvent) {
 
 		&.running::after,
 		&.waiting::after {
-			border-radius: calc(var(--canvas-node--height) / 2);
+			border-radius: calc(
+				var(--canvas-node--height) / 2 + var(--canvas-node--status-radius-offset)
+			);
 		}
 
 		.statusIcons {
@@ -421,7 +421,11 @@ function onActivate(event: MouseEvent) {
 /* stylelint-disable */
 .running::after,
 .waiting::after {
-	@include styles.status-animated-after;
+	$status-inset: 3px;
+	@include styles.status-animated-after($status-inset);
+	// The pseudo-element starts at the padding edge. Keep its curve concentric with the node.
+	--canvas-node--status-radius-offset: calc(#{$status-inset} - var(--canvas-node--border-width));
+	border-radius: calc(var(--radius--lg) + var(--canvas-node--status-radius-offset));
 }
 
 .running::after {

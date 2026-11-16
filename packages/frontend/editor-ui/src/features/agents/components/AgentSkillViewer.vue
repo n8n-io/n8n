@@ -466,7 +466,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 }
 
 .panel .readOnlyMarkdown {
-	--n8n-markdown--base-font-size: var(--font-size--sm);
+	--n8n-markdown--font-size--base: var(--font-size--sm);
 
 	:global(p),
 	:global(li) {

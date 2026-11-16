@@ -4,6 +4,7 @@ import type {
 	INodeProperties,
 	NodeApiError,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import { processAirtableError } from '../../helpers/utils';
@@ -42,7 +43,7 @@ export async function execute(
 			const responseData: TablesResponse = await apiRequest.call(
 				this,
 				'GET',
-				`meta/bases/${baseId}/tables`,
+				requestPath`meta/bases/${baseId}/tables`,
 			);
 
 			const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData.tables), {

@@ -258,13 +258,16 @@ describe.skipIf(!enabled)('production n8n Chat with a real model', () => {
 			}),
 		);
 		const versionId = randomUUID();
-		await Container.get(AgentHistoryRepository).saveVersion({
-			versionId,
-			agentId: agent.id,
-			schema: storedAgentConfig({ ...schema, integrations: [chatIntegration] }),
-			tools,
-			publishedBy: owner,
-		});
+		await Container.get(AgentHistoryRepository).saveVersion(
+			{
+				versionId,
+				agentId: agent.id,
+				schema: storedAgentConfig({ ...schema, integrations: [chatIntegration] }),
+				tools,
+				publishedBy: owner,
+			},
+			{},
+		);
 		await repository.update({ id: agent.id }, { activeVersionId: versionId });
 		return { owner, project, agent, versionId };
 	}

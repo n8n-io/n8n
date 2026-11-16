@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, requestPath, updateDisplayOptions } from 'n8n-workflow';
 import { apiRequest, pollTaskResult } from '../../transport';
 import type { IModelStudioRequestBody } from '../../helpers/interfaces';
 import { modelRLC } from '../descriptions';
@@ -297,7 +297,7 @@ export async function execute(
 	const createResponse = await apiRequest.call(
 		this,
 		'POST',
-		'/api/v1/services/aigc/video-generation/video-synthesis',
+		requestPath`/api/v1/services/aigc/video-generation/video-synthesis`,
 		{
 			headers: {
 				'X-DashScope-Async': 'enable',

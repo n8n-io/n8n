@@ -6,6 +6,7 @@ import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { In, LessThan, LessThanOrEqual, MoreThanOrEqual, And, Not } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
+import { ErrorReporter } from 'n8n-core';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { mock } from 'vitest-mock-extended';
@@ -30,6 +31,7 @@ describe('ExecutionRepository', () => {
 	});
 	const logger = mockInstance(Logger);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
+	const errorReporter = mockInstance(ErrorReporter);
 	const transactionRunner = mock<TransactionRunner>();
 	Container.set(TransactionRunner, transactionRunner);
 	const executionRepository = Container.get(ExecutionRepository);
@@ -235,6 +237,63 @@ describe('ExecutionRepository', () => {
 				});
 				expect(result).toBe(mockCount);
 			});
+		});
+	});
+
+	describe('reportInvalidExecutions', () => {
+		test('should report the loaded row fields of each execution without data', () => {
+			const execution = Object.assign(new ExecutionEntity(), {
+				id: '42',
+				storedAt: 'fs',
+				status: 'success',
+				mode: 'manual',
+				finished: true,
+				createdAt: new Date('2026-11-01T10:00:00.000Z'),
+				startedAt: new Date('2026-11-01T10:00:01.000Z'),
+				stoppedAt: new Date('2026-11-01T10:00:02.000Z'),
+				jsonSizeBytes: 1024,
+				deletedAt: null,
+				retryOf: null,
+			});
+
+			executionRepository.reportInvalidExecutions([execution]);
+
+			const [error] = errorReporter.error.mock.calls[0];
+			expect(error).toMatchObject({
+				message: 'Found executions without executionData',
+				extra: { executionIds: ['42'] },
+			});
+			expect(error).toHaveProperty('extra.executions', [
+				{
+					id: '42',
+					storedAt: 'fs',
+					status: 'success',
+					mode: 'manual',
+					finished: true,
+					createdAt: '2026-11-01T10:00:00.000Z',
+					startedAt: '2026-11-01T10:00:01.000Z',
+					stoppedAt: '2026-11-01T10:00:02.000Z',
+					jsonSizeBytes: 1024,
+				},
+			]);
+		});
+
+		test('should report all ids but the row fields of at most 20 executions', () => {
+			const executions = Array.from({ length: 25 }, (_, i) =>
+				Object.assign(new ExecutionEntity(), { id: String(i) }),
+			);
+
+			executionRepository.reportInvalidExecutions(executions);
+
+			const [error] = errorReporter.error.mock.calls[0];
+			expect(error).toHaveProperty(
+				'extra.executionIds',
+				executions.map(({ id }) => id),
+			);
+			expect(error).toHaveProperty(
+				'extra.executions',
+				executions.slice(0, 20).map(({ id }) => ({ id })),
+			);
 		});
 	});
 

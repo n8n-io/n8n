@@ -8,10 +8,11 @@ import type {
 	ResponseType,
 } from 'axios';
 import axios from 'axios';
-import { BaseError, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { BaseError } from '@n8n/errors';
 import type { GenericValue, IDataObject } from 'n8n-workflow';
 
-import type { IRestApiContext } from './types';
+import type { IRestApiContext, PublicApiContext } from './types';
 
 export const NO_NETWORK_ERROR_CODE = 999;
 export const STREAM_SEPARATOR = '⧉⇋⇋➽⌑⧉§§\n';
@@ -258,6 +259,23 @@ export async function makeRestApiRequest<T>(
 
 	// All cli rest api endpoints return data wrapped in `data` key
 	return response.data as T;
+}
+
+export async function makePublicApiRequest<T>(
+	context: PublicApiContext,
+	method: Method,
+	endpoint: string,
+	data?: GenericValue | GenericValue[],
+) {
+	const response = await request({
+		method,
+		baseURL: context.baseUrl,
+		endpoint,
+		headers: context.headers,
+		data,
+	});
+
+	return response as T;
 }
 
 export async function get(

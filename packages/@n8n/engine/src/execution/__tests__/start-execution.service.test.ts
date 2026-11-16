@@ -274,6 +274,46 @@ describe('StartExecutionService', () => {
 		);
 	});
 
+	it('stores the lifecycle event subscription as given', async () => {
+		const admittance: AdmittanceService = {
+			evaluate: vi.fn().mockResolvedValue({ accept: true }),
+		};
+		const store = makeStore();
+		const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
+
+		await service.start({
+			workflowId: 'wf-1',
+			graph: sampleGraph,
+			workflow: sampleWorkflow,
+			executionId: 'exec-id-1',
+			callerContext: { hostMode: 'manual' },
+			lifecycleEventSubscription: { kind: 'all' },
+		});
+
+		expect(store.createExecution).toHaveBeenCalledWith(
+			expect.objectContaining({ lifecycleEventSubscription: { kind: 'all' } }),
+		);
+	});
+
+	it('stores no lifecycle event subscription when the caller sends none', async () => {
+		const admittance: AdmittanceService = {
+			evaluate: vi.fn().mockResolvedValue({ accept: true }),
+		};
+		const store = makeStore();
+		const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
+
+		await service.start({
+			workflowId: 'wf-1',
+			graph: sampleGraph,
+			workflow: sampleWorkflow,
+			executionId: 'exec-id-1',
+			callerContext: { hostMode: 'trigger' },
+		});
+
+		const [record] = vi.mocked(store.createExecution).mock.calls[0];
+		expect(record.lifecycleEventSubscription).toBeUndefined();
+	});
+
 	it('defaults mode to production, triggerOutputs to null and the expectation to none', async () => {
 		const admittance: AdmittanceService = {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
@@ -424,7 +464,7 @@ describe('StartExecutionService', () => {
 			const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
 
 			await expect(service.start({ ...base, seededSteps: { a: [[], []] } })).rejects.toThrow(
-				/seeded with 2 passes/,
+				'Node "A" is seeded with 2 passes',
 			);
 			expect(store.createExecution).not.toHaveBeenCalled();
 		});
@@ -469,7 +509,7 @@ describe('StartExecutionService', () => {
 
 			await expect(
 				service.start({ ...base, graph: loopGraph, seededSteps: { [nodeId]: [[]] } }),
-			).rejects.toThrow(/inside the loop of loop/);
+			).rejects.toThrow('inside the loop of "Loop"');
 			expect(store.createExecution).not.toHaveBeenCalled();
 		});
 	});

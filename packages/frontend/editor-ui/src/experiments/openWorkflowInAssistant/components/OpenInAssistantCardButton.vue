@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { N8nAssistantIcon, N8nButton, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import type { WorkflowResource } from '@/Interface';
@@ -46,7 +46,7 @@ async function onClick() {
 			data-test-id="workflow-card-open-in-assistant"
 			@click="onClick"
 		>
-			<N8nAssistantIcon size="medium" />
+			<N8nIcon icon="n8n-assistant" :size="12" />
 		</N8nButton>
 	</N8nTooltip>
 </template>

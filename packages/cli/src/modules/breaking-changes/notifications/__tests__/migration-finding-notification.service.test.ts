@@ -1,6 +1,6 @@
 import type { UrlService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { User, UserRepository } from '@n8n/db';
+import { Person, type UserRepository } from '@n8n/db';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
@@ -21,15 +21,15 @@ import {
 } from '../migration-finding-notification.service';
 
 const RULE_ID = 'removed-nodes-v3';
-const notifier = {
+const notifier = Object.assign(new Person(), {
 	id: 'admin',
 	firstName: 'Ada',
 	lastName: 'Lovelace',
 	email: 'ada@n8n.io',
-} as User;
+});
 
-function user(id: string, email: string | null = `${id}@example.com`): User {
-	return { id, firstName: id, lastName: null, email } as unknown as User;
+function user(id: string, email: string | null = `${id}@example.com`): Person {
+	return Object.assign(new Person(), { id, firstName: id, lastName: null, email });
 }
 
 function finding(
@@ -48,6 +48,7 @@ function finding(
 			name: `Flow ${workflowId}`,
 			activeVersionId: null,
 			updatedAt: new Date(),
+			isArchived: false,
 		},
 	};
 }
@@ -127,7 +128,7 @@ describe('MigrationFindingNotificationService', () => {
 					{ id: 'wf-1', name: 'Flow wf-1' },
 					{ id: 'wf-2', name: 'Flow wf-2' },
 				],
-				reportUrl: `https://n8n.example/settings/migration-report/${RULE_ID}`,
+				reportUrl: `https://n8n.example/settings/migration-report/${RULE_ID}?owner=me`,
 			});
 			expect(findingRepository.markNotifiedForIds).toHaveBeenCalledWith([1, 2], expect.anything());
 			expect(findingRepository.markNotifiedForIds).toHaveBeenCalledWith([3], expect.anything());

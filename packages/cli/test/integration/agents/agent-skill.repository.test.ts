@@ -1,11 +1,11 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
 import { AgentPublishHistory } from '@/modules/agents/entities/agent-publish-history.entity';
-import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import {
@@ -21,7 +21,7 @@ const manyUnknownIds = () => Array.from({ length: 33_000 }, (_, i) => `skill_unk
 describe('AgentSkillRepository', () => {
 	let agentSkills: AgentSkillRepository;
 	let agents: AgentRepository;
-	let histories: AgentHistoryRepository;
+	let histories: Repository<AgentHistory>;
 	let project: Project;
 	let otherProject: Project;
 
@@ -30,7 +30,7 @@ describe('AgentSkillRepository', () => {
 		await testDb.init();
 		agentSkills = Container.get(AgentSkillRepository);
 		agents = Container.get(AgentRepository);
-		histories = Container.get(AgentHistoryRepository);
+		histories = Container.get(DataSource).getRepository(AgentHistory);
 		project = await createTeamProject('Team');
 		otherProject = await createTeamProject('Other team');
 	});
@@ -425,30 +425,8 @@ describe('AgentSkillRepository', () => {
 		});
 	});
 
-	describe('AgentRepository.markFollowerDraftsChanged', () => {
-		it('gives an agent in sync with its published version a new draft version id', async () => {
-			const agent = await createAgent('Support', { inSync: true });
-
-			const changed = await agents.markFollowerDraftsChanged([agent.id]);
-
-			const reloaded = await agents.findOneByOrFail({ id: agent.id });
-			expect(changed).toEqual([agent.id]);
-			expect(reloaded.versionId).not.toBe(reloaded.activeVersionId);
-			expect(reloaded.revision).toBe(agent.revision + 1);
-		});
-
-		it('gives an already modified draft a new fixed-content ID', async () => {
-			const agent = await createAgent('Support');
-
-			const changed = await agents.markFollowerDraftsChanged([agent.id]);
-
-			const reloaded = await agents.findOneByOrFail({ id: agent.id });
-			expect(changed).toEqual([agent.id]);
-			expect(reloaded.versionId).not.toBe(agent.versionId);
-		});
-
+	describe('AgentRepository.findProjectIdsByIds', () => {
 		it('writes nothing for no agents', async () => {
-			expect(await agents.markFollowerDraftsChanged([])).toEqual([]);
 			expect(await agents.findProjectIdsByIds([])).toEqual([]);
 		});
 

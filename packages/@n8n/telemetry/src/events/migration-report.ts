@@ -39,4 +39,25 @@ export const MIGRATION_REPORT_TELEMETRY = defineTelemetryEvents({
 				),
 		}),
 	},
+	USER_OPENED_MIGRATION_FINDING_IN_ASSISTANT: {
+		name: 'User opened migration finding in Assistant',
+		description:
+			'A user clicked to fix or review one migration report finding with n8n Assistant, from the finding row or from an automated migration that refused or left work behind. Fires once per click, after the hand-off resolved.',
+		properties: z.object({
+			rule_id: z.string(),
+			workflow_id: z.string(),
+			action: z.enum(['fix', 'review']).describe('The Assistant action the rule offers'),
+			automated_migration: z
+				.enum(['refused', 'partial'])
+				.optional()
+				.describe(
+					'Set when the user continued from an automated migration that refused or left work',
+				),
+			outcome: z
+				.enum(['started', 'busy', 'failed', 'setup'])
+				.describe(
+					"The hand-off result: 'setup' sent the user to finish Assistant setup, 'busy' dropped a repeated click",
+				),
+		}),
+	},
 });

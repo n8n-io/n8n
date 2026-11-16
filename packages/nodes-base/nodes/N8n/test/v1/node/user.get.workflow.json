@@ -1,0 +1,107 @@
+{
+	"name": "User get",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "8e3f4a5b-6c7d-4e8f-a091-1c2d3e4f5a6b",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [640, 360]
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"userId": "123e4567-e89b-12d3-a456-426614174000"
+			},
+			"id": "9f4a5b6c-7d8e-4f90-b1a2-2d3e4f5a6b7c",
+			"name": "Get by ID",
+			"type": "n8n-nodes-base.n8n",
+			"typeVersion": 1,
+			"position": [900, 360],
+			"credentials": {
+				"n8nApi": {
+					"id": "7",
+					"name": "n8n account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"userId": "jane.doe@example.com",
+				"includeRole": true
+			},
+			"id": "0a5b6c7d-8e9f-4a01-82b3-3e4f5a6b7c8d",
+			"name": "Get by email",
+			"type": "n8n-nodes-base.n8n",
+			"typeVersion": 1,
+			"position": [1160, 360],
+			"credentials": {
+				"n8nApi": {
+					"id": "7",
+					"name": "n8n account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Get by ID",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get by ID": {
+			"main": [
+				[
+					{
+						"node": "Get by email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"pinData": {
+		"Get by ID": [
+			{
+				"json": {
+					"id": "123e4567-e89b-12d3-a456-426614174000",
+					"email": "john.doe@example.com",
+					"firstName": "John",
+					"lastName": "Doe",
+					"isPending": false,
+					"createdAt": "2026-01-01T00:00:00.000Z",
+					"updatedAt": "2026-01-02T00:00:00.000Z",
+					"mfaEnabled": false
+				}
+			}
+		],
+		"Get by email": [
+			{
+				"json": {
+					"id": "223e4567-e89b-12d3-a456-426614174001",
+					"email": "jane.doe@example.com",
+					"firstName": "Jane",
+					"lastName": "Doe",
+					"isPending": false,
+					"createdAt": "2026-01-03T00:00:00.000Z",
+					"updatedAt": "2026-01-04T00:00:00.000Z",
+					"mfaEnabled": false,
+					"role": "global:member"
+				}
+			}
+		]
+	}
+}

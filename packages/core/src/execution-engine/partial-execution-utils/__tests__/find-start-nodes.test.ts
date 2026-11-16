@@ -523,6 +523,63 @@ describe('findStartNodes', () => {
 			expect(startNodes.size).toBe(1);
 			expect(startNodes).toContain(destination);
 		});
+
+		//               PD              ►►
+		// ┌───────┐1   ┌──────────┐0   ┌───────────┐
+		// │trigger├────►pinnedNode├────►destination│
+		// └───────┘    └────┬─────┘    └─────▲─────┘
+		//                  0│  ┌─────────┐   │
+		//                   └──►errorNode├───┘
+		//                      └─────────┘
+		test('does not follow the outputs of a pinned node other than the first one', () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger' });
+			const pinnedNode = createNodeData({ name: 'pinnedNode' });
+			const errorNode = createNodeData({ name: 'errorNode' });
+			const destination = createNodeData({ name: 'destinationNode' });
+			const graph = new DirectedGraph()
+				.addNodes(trigger, pinnedNode, errorNode, destination)
+				.addConnections(
+					{ from: trigger, to: pinnedNode },
+					{ from: pinnedNode, outputIndex: 0, to: destination, inputIndex: 0 },
+					{ from: pinnedNode, outputIndex: 1, to: errorNode },
+					{ from: errorNode, to: destination, inputIndex: 1 },
+				);
+			const pinData: IPinData = { [pinnedNode.name]: [{ json: { value: 1 } }] };
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+			};
+
+			// ACT
+			const startNodes = findStartNodes({ graph, trigger, destination, runData, pinData });
+
+			// ASSERT
+			expect(startNodes).toEqual(new Set([destination]));
+		});
+
+		//               PD              ►►
+		// ┌───────┐1   ┌──────────┐0   ┌───────────┐
+		// │trigger├────►pinnedNode├────►destination│
+		// └───────┘    └──────────┘    └───────────┘
+		test('does not follow a node that is pinned with no items', () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger' });
+			const pinnedNode = createNodeData({ name: 'pinnedNode' });
+			const destination = createNodeData({ name: 'destinationNode' });
+			const graph = new DirectedGraph()
+				.addNodes(trigger, pinnedNode, destination)
+				.addConnections({ from: trigger, to: pinnedNode }, { from: pinnedNode, to: destination });
+			const pinData: IPinData = { [pinnedNode.name]: [] };
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { value: 1 } }])],
+			};
+
+			// ACT
+			const startNodes = findStartNodes({ graph, trigger, destination, runData, pinData });
+
+			// ASSERT
+			expect(startNodes.size).toBe(0);
+		});
 	});
 
 	describe('custom loop logic', () => {

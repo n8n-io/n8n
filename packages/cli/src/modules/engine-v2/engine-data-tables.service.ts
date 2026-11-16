@@ -1,14 +1,13 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import {
+	DataTableNotFoundError,
 	DataTableProxyService,
 	dataTableNotFoundInProject,
 	isAllowedNode,
-} from '@/modules/data-table/data-table-proxy.service';
-import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
+} from '@n8n/backend-module-data-table';
+import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { OwnershipService } from '@/services/ownership.service';
 
 import type {

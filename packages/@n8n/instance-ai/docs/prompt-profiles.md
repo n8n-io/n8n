@@ -9,9 +9,7 @@ The internal `self-healing-v1` configuration uses `createSelfHealingAgent` direc
 It is not registered in the chat profile catalog or accepted as a public prompt pin.
 See the [self-healing contract](../../../cli/src/modules/instance-ai/self-healing/README.md).
 
-The initial profiles are `default@1` and `progressive@1`. The general system
-prompt is the same in both. The progressive profile changes the workflow
-skills.
+`default@1` is the standard profile. It has no skill variants.
 
 `concise@1` (INS-1195) keeps every `default@1` policy and skill. It changes only
 the system prompt version, which selects a different `## Communication Style`
@@ -32,34 +30,23 @@ The flag is off by default. Its enabled arm is `variant`.
 
 ## Selection and recovery
 
-Selection reads a version and a mode, and **any version beats any mode**.
-
 The version is the first of: the request's `promptVersion` for this turn, the
 version already selected for the thread (both share one slot, so a request pin
-replaces the thread's), then the instance-wide operator pin
-`N8N_INSTANCE_AI_PROMPT_VERSION`. Only when all three are empty does the mode
-decide: the thread's stored build mode, else the backend experiment assignment.
+replaces the thread's), the instance-wide operator pin
+`N8N_INSTANCE_AI_PROMPT_VERSION`, then `concise@1` when the concise style flag
+is on. Otherwise selection uses `default@1`. The flag is read again on each user
+turn, and checkpoints do not store it.
 
-The concise style flag sits below all three pins. It selects `concise@1` only
-when the mode resolves to `default`. A thread that started in progressive mode,
-or a user in the progressive arm, keeps the progressive profile. Like the
-experiment assignment, the flag is read again on each user turn, and
-checkpoints do not store it.
-
-Because a version outranks a mode, pinning a `default`-mode profile such as
-`concise@1` also overrides a progressive building assignment. The operator pin
-is instance-wide so the two system prompts never fragment the prompt cache
-within one instance. An unknown pin fails the run instead of silently serving
-the default profile; the rest of n8n is unaffected.
+The operator pin is instance-wide so the two system prompts never fragment the
+prompt cache within one instance. An unknown pin fails the run instead of
+silently serving the default profile; the rest of n8n is unaffected.
 
 Internal follow-ups retain the selected version. Checkpoints store the request
 pin in `persistence.hostMetadata.promptVersion`. They do not store the operator
 pin or the experiment assignment, so a resumed run derives those again. Change
 or remove `N8N_INSTANCE_AI_PROMPT_VERSION` while a run is suspended, and the
-resumed run uses the new value. Build mode differs: the checkpoint stores it and
-recovery restores it exactly. If a stored version is no longer registered
+resumed run uses the new value. If a stored version is no longer registered
 after deployment, recovery selects the default profile and records `fallbackFrom`.
-Legacy checkpoints use their saved mode, or default when no valid mode exists.
 An unknown explicit request pin is rejected instead of silently falling back.
 
 ## Define a variant
@@ -91,7 +78,6 @@ From this package:
 
 ```sh
 pnpm prompts:print --profile default@1
-pnpm prompts:print --profile progressive@1
 pnpm prompts:print --profile concise@1
 ```
 
@@ -105,7 +91,7 @@ Traces include `prompt_configuration` and the rendered `system_prompt_hash`.
 Thread status includes `promptConfiguration` with the selected version and skill
 hash. Both include fallback information when available.
 
-Trace metadata also includes `prompt_version`, such as `progressive@1`, for
+Trace metadata also includes `prompt_version`, such as `concise@1`, for
 filtering. The same property is sent with `instance_ai_run_finished`,
 `Builder sent message`, `Builder satisfied user intent`, and
 `Builder generation errored`. It identifies the resolved profile for that run,
@@ -114,8 +100,7 @@ including after a resume. Events omit it when no resolved profile is available.
 ## Evaluate profiles
 
 Set `promptVersion` in a local eval case, or set `N8N_EVAL_PROMPT_VERSION` for a
-suite. Case version pins take precedence. An explicit case mode also overrides
-suite settings. The runner sends the selected pin with every user message and
+suite. Case version pins take precedence. The runner sends the selected pin with every user message and
 rejects unknown versions before provisioning resources.
 
 Eval rows carry the backend's selected version and skill hash in
@@ -148,6 +133,6 @@ their selected version until that user turn ends. New turns resolve the assignme
 again, and active IDs load their bodies from the newly selected catalog.
 
 To retire a version, remove its profile entry after deciding whether existing
-checkpoints may use the default fallback. Remove unreferenced variants and fragments
-and update the mode-to-profile defaults. Run the selection, recovery, and behavior
-tests. Do not leave profile-specific conditions in the general system prompt.
+checkpoints may use the default fallback. Remove unreferenced variants and
+fragments. Run the selection, recovery, and behavior tests. Do not leave
+profile-specific conditions in the general system prompt.

@@ -269,18 +269,20 @@ const dataTableSchemaOperationSchema = z
 	])
 	.openapi(dataTableSchemaOperationOpenApi);
 
+export const dataTableUnresolvedKindSchema = z.enum([
+	'missing',
+	'id-conflict',
+	'name-conflict',
+	'schema-incompatible',
+	'module-disabled',
+	'permission-denied',
+	'column-id-conflict',
+]);
+
 const dataTableUnresolvedIssueSchema = z
 	.object({
 		type: z.literal('data-table-unresolved'),
-		kind: z.enum([
-			'missing',
-			'id-conflict',
-			'name-conflict',
-			'schema-incompatible',
-			'module-disabled',
-			'permission-denied',
-			'column-id-conflict',
-		]),
+		kind: dataTableUnresolvedKindSchema,
 		sourceId: z.string().optional().openapi(dataTableUnresolvedFieldDocs.sourceId),
 		name: z.string().optional(),
 		existingProjectId: z
@@ -323,16 +325,18 @@ const dataTableUnresolvedIssueSchema = z
 	})
 	.openapi(dataTableUnresolvedIssueOpenApi);
 
+export const tagUnresolvedKindSchema = z.enum([
+	'rename-drift',
+	'name-collision',
+	'invalid-name',
+	'invalid-id',
+	'permission-denied',
+]);
+
 const tagUnresolvedIssueSchema = z
 	.object({
 		type: z.literal('tag-unresolved'),
-		kind: z.enum([
-			'rename-drift',
-			'name-collision',
-			'invalid-name',
-			'invalid-id',
-			'permission-denied',
-		]),
+		kind: tagUnresolvedKindSchema,
 		sourceId: z.string().optional().openapi(tagUnresolvedFieldDocs.sourceId),
 		name: z.string().optional().openapi(tagUnresolvedFieldDocs.name),
 		missingScope: z

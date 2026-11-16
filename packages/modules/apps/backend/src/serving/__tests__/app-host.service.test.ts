@@ -10,7 +10,8 @@ function setup({
 	baseUrl = 'https://apps.example.com',
 	proxyHops = 0,
 	deploymentType = 'default',
-	host = 'n8n.example.net',
+	deploymentName = '',
+	instanceBaseUrl = 'https://n8n.example.net',
 } = {}) {
 	const config = new AppsConfig();
 	config.baseUrl = baseUrl;
@@ -18,11 +19,11 @@ function setup({
 		config,
 		mock<GlobalConfig>({
 			proxy_hops: proxyHops,
-			host,
 			deployment: mock<GlobalConfig['deployment']>({ type: deploymentType }),
+			sentry: mock<GlobalConfig['sentry']>({ deploymentName }),
 		}),
 		mock<UrlService>({
-			getInstanceBaseUrl: () => 'https://n8n.example.net',
+			getInstanceBaseUrl: () => instanceBaseUrl,
 			getWebhookBaseUrl: () => 'https://hooks.example.net',
 		}),
 	);
@@ -119,16 +120,27 @@ describe('AppHostService', () => {
 	});
 
 	describe('Cloud hosts', () => {
-		const cloud = { deploymentType: 'cloud', host: 'foo.app.n8n.cloud' };
+		const cloud = { deploymentType: 'cloud', deploymentName: 'foo' };
 
-		it('uses the configured instance host for app and callback URLs', () => {
-			const hosts = setup(cloud);
+		it('uses the deployment name for app and callback URLs', () => {
+			const hosts = setup({ ...cloud, instanceBaseUrl: 'https://bar.app.n8n.cloud' });
 
 			expect(hosts.origin('sales')).toBe('https://sales--foo.apps.example.com');
 			expect(hosts.callbackUrl({ id: 'app-id', namespace: 'sales' })).toBe(
 				'https://sales--foo.apps.example.com/_n8n/auth/app-id/callback',
 			);
-			expect(setup({ host: cloud.host }).origin('sales')).toBe('https://sales.apps.example.com');
+			expect(setup({ deploymentName: 'foo' }).origin('sales')).toBe(
+				'https://sales.apps.example.com',
+			);
+		});
+
+		it('falls back to the instance base URL hostname', () => {
+			const hosts = setup({
+				deploymentType: 'cloud',
+				instanceBaseUrl: 'https://foo.app.n8n.cloud',
+			});
+
+			expect(hosts.origin('sales')).toBe('https://sales--foo.apps.example.com');
 		});
 
 		it('only resolves namespaces for the configured instance', () => {
@@ -152,7 +164,7 @@ describe('AppHostService', () => {
 
 		it('limits the combined instance and app label to 63 characters', () => {
 			const instance = 'x'.repeat(20);
-			const hosts = setup({ ...cloud, host: `${instance}.app.n8n.cloud` });
+			const hosts = setup({ ...cloud, deploymentName: instance });
 			const namespace = 'a'.repeat(41);
 			const origin = `https://${namespace}--${instance}.apps.example.com`;
 
@@ -191,7 +203,7 @@ describe('AppHostService', () => {
 		});
 
 		it('does not confuse an instance named like the preview marker with a preview host', () => {
-			const hosts = setup({ ...cloud, host: 'preview-foo.app.n8n.cloud' });
+			const hosts = setup({ ...cloud, deploymentName: 'preview-foo' });
 
 			expect(hosts.namespace(request('sales--preview-foo.apps.example.com'))).toBe('sales');
 			expect(
@@ -213,7 +225,9 @@ describe('AppHostService', () => {
 		it.each(['invalid_name', 'preview--foo'])(
 			'rejects an instance name that cannot form an app host: %s',
 			(name) => {
-				expect(() => setup({ ...cloud, host: `${name}.app.n8n.cloud` })).toThrow('Set N8N_HOST');
+				expect(() => setup({ ...cloud, deploymentName: name })).toThrow(
+					'Set DEPLOYMENT_NAME to a valid name, or leave it unset and use an instance base URL with a valid first hostname label.',
+				);
 			},
 		);
 	});

@@ -1,5 +1,6 @@
 import type {
 	CallerContext,
+	SubExecutionResumeCause,
 	ExecutionMode,
 	StepSlots,
 	TriggerOutputs,
@@ -60,6 +61,11 @@ export interface StepExecutionRequest {
 	 * plane side via the execution response channel.
 	 */
 	respond: ResponseEmitter;
+	/**
+	 * Set when a sub-execution the step waited for has ended. The executor
+	 * answers the node's sub-execution call from it instead of asking for a sub-execution again.
+	 */
+	resume?: SubExecutionResumeCause;
 }
 
 /**
