@@ -1,0 +1,36 @@
+OWNERS
+  h_8fb27e0cdf6d1e 33
+codecov.yml
+  h_8fb27e0cdf6d1e 82
+packages/@n8n/code-task-contract/README.md
+  h_8fb27e0cdf6d1e 1,19,25
+packages/@n8n/code-task-contract/package.json
+  h_8fb27e0cdf6d1e 2
+packages/@n8n/code-task-contract/src/__tests__/parse.test.ts
+  h_8fb27e0cdf6d1e 4,23,159,172,187,199,212,239,252,263,274,285,295,304
+packages/@n8n/code-task-contract/src/constants.ts
+  h_8fb27e0cdf6d1e 6
+packages/@n8n/code-task-contract/src/index.ts
+  h_8fb27e0cdf6d1e 2
+packages/@n8n/code-task-contract/src/parse.ts
+  h_8fb27e0cdf6d1e 5,32,35
+packages/@n8n/code-task-contract/src/task-input.ts
+  h_8fb27e0cdf6d1e 15,88
+packages/@n8n/code-task-contract/src/task-result.ts
+  h_8fb27e0cdf6d1e 3,25,37
+pnpm-lock.yaml
+  h_8fb27e0cdf6d1e 2349
+scripts/lint-parity/layers.json
+  h_8fb27e0cdf6d1e 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aaf35a76104b06d20994bdcf74677116a9c99ef2",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
