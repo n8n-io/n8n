@@ -100,10 +100,7 @@ function hasOptions(value: unknown): value is SuppliedModel {
 	);
 }
 
-/**
- * Returns the options that `supplyModel` attached to this model, or `undefined`.
- * The result can hold an API key, so do not log or serialize it.
- */
+/** Returns the options that `supplyModel` attached to this model, or `undefined`. */
 export function getSuppliedModelOptions(response: unknown): SupplyModelOptions | undefined {
 	return hasOptions(response) ? response[SUPPLIED_MODEL_OPTIONS] : undefined;
 }
