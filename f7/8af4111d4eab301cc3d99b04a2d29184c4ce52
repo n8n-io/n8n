@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/shared/toolConfig/__tests__/NodeToolSettingsContent.test.ts
+  s_67791ba69a1c7a::t_7437f1182d1c72 557-566,570-580,582-586,589,591,593-594
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_67791ba69a1c7a::t_823234691ba5b2 261-264,266-268,270-279,281-285,287-290,292,294-301,303-306,308-318,321-324,326-330
+  s_67791ba69a1c7a::t_d74695b5dba55c 362,364
+packages/frontend/editor-ui/src/app/stores/ui.store.test.ts
+  s_67791ba69a1c7a::t_823234691ba5b2 299-311,313-329
+packages/frontend/editor-ui/src/features/shared/toolConfig/NodeToolSettingsContent.vue
+  s_67791ba69a1c7a::t_d4ced51df461b6 223
+  s_67791ba69a1c7a::t_2669f9789c7c1b 224-232
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.test.ts
+  s_67791ba69a1c7a::t_823234691ba5b2 412-439,441-446,448-449
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_67791ba69a1c7a::t_2669f9789c7c1b 1960-1963,1966-1971,1986-1990,2001-2007
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f78af4111d4eab301cc3d99b04a2d29184c4ce52",
+  "prompts": {},
+  "sessions": {
+    "s_67791ba69a1c7a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1e53c-6d5a-77e2-82bf-5563ed9116bd",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
