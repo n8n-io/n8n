@@ -52,7 +52,7 @@ const DESIGN_GUIDANCE = `Design guidance:
 // eligibility check in the save results, which is never out of date.
 const ENGINE_REFERENCE = `## Execution engine
 
-A workflow runs on engine v1 or engine v2. The engine is \`settings.engineType\` ("v1" or "v2"); unset means the instance default. Set it in code with \`.settings({ engineType: 'v1' })\` only when a save result tells you engine v2 cannot run the workflow and the user needs the feature it names.
+A workflow runs on engine v1 or engine v2. The engine is \`settings.engineType\` ("v1" or "v2"); unset means the instance default. Set it in code as the third argument of \`workflow()\`, for example \`workflow('my-id', 'My Name', { engineType: 'v1' })\`, and only when a save result tells you engine v2 cannot run the workflow and the user needs the feature it names.
 
 How engine v2 runs a workflow:
 - Branches that leave the same node run in parallel, in no fixed order. Engine v1 runs them one after another in connection order. When branch B must run after branch A, connect A to B; do not rely on their order on the canvas.

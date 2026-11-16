@@ -174,9 +174,9 @@ export function describeEngineDecision(decision: EngineDecision) {
 	const blocking = decision.reasons.filter((reason) => reason.severity === 'blocking');
 	const note =
 		decision.source === 'downgraded'
-			? `The workflow is set to engine v1 because engine v2 cannot run it yet: ${summarize(blocking)}. Leave it on v1, or change the workflow and set engineType to "v2".`
+			? `The workflow is set to engine v1 because engine v2 cannot run it yet. ${summarize(blocking)} Leave it on v1, or change the workflow and set engineType to "v2".`
 			: decision.source === 'blocked'
-				? `The workflow asks for engine v2, but engine v2 cannot run it: ${summarize(blocking)}. Change the workflow, or set engineType to "v1".`
+				? `The workflow asks for engine v2, but engine v2 cannot run it. ${summarize(blocking)} Change the workflow, or set engineType to "v1".`
 				: undefined;
 
 	return {
