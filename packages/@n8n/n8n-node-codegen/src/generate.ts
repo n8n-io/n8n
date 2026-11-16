@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
+import { buildProperties, renderProperties } from './build-properties';
 import { loadOverrides } from './overrides';
 import { formatReport } from './report';
 import { resolveOperations } from './resolve-operations';
@@ -11,12 +12,14 @@ export interface GenerateConfig {
 	envelopeFile: string;
 	routesFile: string;
 	overridesFile: string;
+	outputFile: string;
 	spec: SpecOptions;
 }
 
 export interface GenerateResult {
 	report: string;
 	errors: string[];
+	content: string;
 }
 
 async function loadSpec(config: GenerateConfig): Promise<Spec> {
@@ -33,5 +36,10 @@ export async function generate(config: GenerateConfig): Promise<GenerateResult> 
 		loadOverrides(config.overridesFile),
 	]);
 	const { rows, errors } = resolveOperations(spec, overrides);
-	return { report: formatReport(rows), errors };
+	const inNode = rows.filter((row) => row.excludeReason === undefined);
+	return {
+		report: formatReport(rows),
+		errors,
+		content: renderProperties(buildProperties(inNode, config.spec)),
+	};
 }

@@ -25,6 +25,7 @@
     "@redocly/cli": "^2.76.0",
     "@types/node": "catalog:",
     "@types/pluralize": "^0.0.33",
+    "n8n-workflow": "workspace:*",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "tsx": "catalog:",

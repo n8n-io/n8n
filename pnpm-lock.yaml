@@ -3751,6 +3751,9 @@ importers:
       '@types/pluralize':
         specifier: ^0.0.33
         version: 0.0.33
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)

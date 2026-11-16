@@ -29,11 +29,14 @@ const schemaSchema: z.ZodType<Schema> = z.lazy(() =>
 			format: z.string().optional(),
 			enum: z.array(z.unknown()).optional(),
 			default: z.unknown().optional(),
+			minimum: z.number().optional(),
+			maximum: z.number().optional(),
 			description: z.string().optional(),
 			readOnly: z.boolean().optional(),
 			deprecated: z.boolean().optional(),
 			items: schemaSchema.optional(),
 			properties: z.record(schemaSchema).optional(),
+			anyOf: z.array(schemaSchema).optional(),
 			required: z.array(z.string()).optional(),
 		})
 		.passthrough(),
@@ -152,9 +155,7 @@ function readParameters(operation: Operation, options: SpecOptions) {
 			}
 			continue;
 		}
-		if (paginated && (name === options.cursorParameter || name === options.limitParameter)) {
-			continue;
-		}
+		if (name === options.cursorParameter) continue;
 		const { schema } = parameter;
 		parameters.push({
 			name,
@@ -175,7 +176,7 @@ function readParameters(operation: Operation, options: SpecOptions) {
 		blockers.push(`${responseTypes[0]} response`);
 	}
 
-	return { parameters, paginated, blockers };
+	return { parameters, paginated, emptyResponse: responseTypes.length === 0, blockers };
 }
 
 export interface SpecDocuments {
@@ -221,6 +222,8 @@ export function readSpec(documents: SpecDocuments, options: SpecOptions): Spec {
 
 	return {
 		tags,
-		operations: [...operations.values()].sort((a, b) => a.operationId.localeCompare(b.operationId)),
+		operations: [...operations.values()].sort((a, b) =>
+			a.operationId.localeCompare(b.operationId, 'en'),
+		),
 	};
 }

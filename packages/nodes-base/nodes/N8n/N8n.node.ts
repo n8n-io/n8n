@@ -2,6 +2,8 @@ import type { INodeTypeBaseDescription, IVersionedNodeType } from 'n8n-workflow'
 import { VersionedNodeType } from 'n8n-workflow';
 
 import { N8nV1 } from './v1/N8nV1.node';
+// Uncomment along with the v2 registration below to test v2 locally.
+// import { N8nV2 } from './v2/N8nV2.node';
 
 export class N8n extends VersionedNodeType {
 	constructor() {
@@ -17,6 +19,7 @@ export class N8n extends VersionedNodeType {
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new N8nV1(baseDescription),
+			// 2: new N8nV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

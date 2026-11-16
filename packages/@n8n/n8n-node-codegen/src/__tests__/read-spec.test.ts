@@ -134,6 +134,7 @@ describe('readSpec', () => {
 					tag: workflow,
 					deprecated: false,
 					paginated: false,
+					emptyResponse: false,
 					parameters: [
 						{
 							name: 'name',
@@ -161,6 +162,7 @@ describe('readSpec', () => {
 					tag: executions,
 					deprecated: false,
 					paginated: false,
+					emptyResponse: true,
 					parameters: [
 						{
 							name: 'id',
@@ -180,6 +182,7 @@ describe('readSpec', () => {
 					tag: workflow,
 					deprecated: false,
 					paginated: true,
+					emptyResponse: false,
 					parameters: [
 						{
 							name: 'name',
@@ -188,6 +191,13 @@ describe('readSpec', () => {
 							deprecated: false,
 							schema: { type: 'string' },
 							description: 'Only workflows with this name.',
+						},
+						{
+							name: 'limit',
+							location: 'query',
+							required: false,
+							deprecated: false,
+							schema: { type: 'number' },
 						},
 					],
 					blockers: [],
