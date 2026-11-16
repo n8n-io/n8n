@@ -8,7 +8,10 @@
  *   node scripts/schema-telemetry/schema-telemetry.mjs --write    # write files
  *   node scripts/schema-telemetry/schema-telemetry.mjs --from <export.json> --write
  *
- * Options: --days 30  --min-workflows 20  --samples 20  --min-share 0.5  --max-gb 40
+ * Options: --days 90  --min-workflows 5  --agree-below 20  --samples 20  --min-share 0.5  --max-gb 120
+ *
+ * A group seen in fewer than --agree-below workflows is written only when its
+ * samples agree on their top-level keys.
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -32,11 +35,12 @@ const PACKAGES = [
 
 const { values: args } = parseArgs({
 	options: {
-		days: { type: 'string', default: '30' },
-		'min-workflows': { type: 'string', default: '20' },
+		days: { type: 'string', default: '90' },
+		'min-workflows': { type: 'string', default: '5' },
+		'agree-below': { type: 'string', default: '20' },
 		samples: { type: 'string', default: '20' },
 		'min-share': { type: 'string', default: '0.5' },
-		'max-gb': { type: 'string', default: '40' },
+		'max-gb': { type: 'string', default: '120' },
 		from: { type: 'string' },
 		write: { type: 'boolean', default: false },
 	},
@@ -170,6 +174,8 @@ function main() {
 		exists: (file) => existsSync(join(repoRoot, file)),
 		defaultOf: createDefaultLookup(index),
 		minShare: Number(args['min-share']),
+		minWorkflows: Number(args['agree-below']),
+		minSamples: Number(args['min-workflows']),
 	});
 	report(result, index);
 

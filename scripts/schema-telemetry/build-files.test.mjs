@@ -21,7 +21,7 @@ const row = (overrides) => ({
 	operation: 'get',
 	simplify_param: null,
 	simplify: null,
-	workflows: '10',
+	workflows: '20',
 	samples: [schema(['id'])],
 	...overrides,
 });
@@ -42,7 +42,7 @@ describe('buildFiles', () => {
 
 		assert.equal(files.length, 1);
 		assert.equal(files[0].file, 'nodes/Google/Gmail/__schema__/v2.2.0/message/get.json');
-		assert.equal(files[0].workflows, 20);
+		assert.equal(files[0].workflows, 40);
 		assert.deepEqual(Object.keys(files[0].schema.properties), ['id', 'snippet']);
 	});
 
@@ -138,7 +138,7 @@ describe('buildFiles filters', () => {
 			{ exists: noFiles, defaultOf },
 		);
 
-		assert.match(skipped[0].reason, /older version/);
+		assert.match(skipped[0].reason, /not the chosen version/);
 	});
 });
 
@@ -159,5 +159,90 @@ describe('buildFiles root', () => {
 		);
 
 		assert.deepEqual(files[0].schema, { type: 'object', properties: { id: { type: 'string' } } });
+	});
+});
+
+describe('buildFiles small groups', () => {
+	const fiveOf = (keys) => Array.from({ length: 5 }, () => schema(keys));
+
+	it('writes a file for a group under 20 workflows when the samples agree', () => {
+		const { files } = buildFiles(
+			[row({ workflows: '5', samples: fiveOf(['id', 'snippet']) })],
+			index,
+			{
+				exists: noFiles,
+				defaultOf,
+			},
+		);
+
+		assert.deepEqual(Object.keys(files[0].schema.properties), ['id', 'snippet']);
+	});
+
+	it('skips a group under 20 workflows when one sample adds its own key', () => {
+		const samples = [...fiveOf(['id']).slice(1), schema(['id', 'Customer Name'])];
+		const result = buildFiles([row({ workflows: '5', samples })], index, {
+			exists: noFiles,
+			defaultOf,
+		});
+
+		assert.deepEqual(result.files, []);
+		assert.match(result.skipped[0].reason, /samples disagree/);
+	});
+
+	it('keeps a key that half of the samples in a small group have', () => {
+		const samples = [...fiveOf(['id']).slice(0, 2), ...fiveOf(['id', 'labels']).slice(0, 3)];
+		const { files } = buildFiles([row({ workflows: '5', samples })], index, {
+			exists: noFiles,
+			defaultOf,
+		});
+
+		assert.deepEqual(Object.keys(files[0].schema.properties), ['id', 'labels']);
+	});
+
+	it('skips a group under 20 workflows with fewer than 5 samples', () => {
+		const result = buildFiles(
+			[row({ workflows: '5', samples: fiveOf(['id']).slice(0, 4) })],
+			index,
+			{ exists: noFiles, defaultOf },
+		);
+
+		assert.deepEqual(result.files, []);
+		assert.match(result.skipped[0].reason, /too few samples/);
+	});
+});
+
+describe('buildFiles small groups and versions', () => {
+	const fiveOf = (keys) => Array.from({ length: 5 }, () => schema(keys));
+
+	it('keeps an older version with 20 workflows over a newer version with fewer', () => {
+		const { files } = buildFiles(
+			[
+				row({ node_version: '2.1' }),
+				row({ node_version: '2.2', workflows: '5', samples: fiveOf(['id']) }),
+			],
+			index,
+			{ exists: noFiles, defaultOf },
+		);
+
+		assert.deepEqual(
+			files.map((f) => f.file),
+			['nodes/Google/Gmail/__schema__/v2.1.0/message/get.json'],
+		);
+	});
+
+	it('uses the newest small version when no version has 20 workflows', () => {
+		const { files } = buildFiles(
+			[
+				row({ node_version: '2.1', workflows: '5', samples: fiveOf(['id']) }),
+				row({ node_version: '2.2', workflows: '6', samples: fiveOf(['id']) }),
+			],
+			index,
+			{ exists: noFiles, defaultOf },
+		);
+
+		assert.deepEqual(
+			files.map((f) => f.file),
+			['nodes/Google/Gmail/__schema__/v2.2.0/message/get.json'],
+		);
 	});
 });
