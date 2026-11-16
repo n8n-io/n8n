@@ -1,6 +1,6 @@
 import type { ClientOptions } from '@langchain/openai';
+import { UserError } from '@n8n/errors';
 import type { ICredentialDataDecryptedObject, INode } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
 
 import type { CustomModelEndpointFetchContext } from './auth-fetch';
 import { createCustomModelEndpointAuthFetch, createEndpointBaseFetch } from './auth-fetch';
