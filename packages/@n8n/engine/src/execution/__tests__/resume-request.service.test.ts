@@ -93,29 +93,20 @@ function setup({
 
 const rejection = (code: string) => expect.objectContaining({ code });
 
-describe('ResumeRequestService.locate', () => {
+describe('ResumeRequestService.locateByToken with an execution-bound token', () => {
 	it('names the one step that accepts a request', async () => {
 		const { service } = setup({ waiting: [[accepting('s1'), deadlineOnly]] });
 
-		await expect(service.locate(executionId, token)).resolves.toEqual({
-			stepId: 's1',
-			nodeId: 'node-s1',
+		await expect(service.locateByToken(executionId, token)).resolves.toEqual({
+			executionId,
+			target: { stepId: 's1', nodeId: 'node-s1' },
 		});
-	});
-
-	it('rejects a token for another execution before it reads a step', async () => {
-		const { service, loadWaitingSteps } = setup({ waiting: [[accepting('s1')]] });
-
-		await expect(service.locate(otherExecutionId, token)).rejects.toEqual(
-			rejection('invalid_token'),
-		);
-		expect(loadWaitingSteps).not.toHaveBeenCalled();
 	});
 
 	it('refuses two steps that accept a request at once', async () => {
 		const { service } = setup({ waiting: [[accepting('s1'), accepting('s2')]] });
 
-		await expect(service.locate(executionId, token)).rejects.toEqual(rejection('ambiguous'));
+		await expect(service.locateByToken(executionId, token)).rejects.toEqual(rejection('ambiguous'));
 	});
 
 	it.each(['queued', 'running', 'waiting'] as const)(
@@ -126,7 +117,9 @@ describe('ResumeRequestService.locate', () => {
 				status,
 			});
 
-			await expect(service.locate(executionId, token)).resolves.toMatchObject({ stepId: 's1' });
+			await expect(service.locateByToken(executionId, token)).resolves.toMatchObject({
+				target: { stepId: 's1' },
+			});
 			expect(loadWaitingSteps).toHaveBeenCalledTimes(2);
 		},
 	);
@@ -138,7 +131,7 @@ describe('ResumeRequestService.locate', () => {
 		});
 		const startedAt = Date.now();
 
-		await service.locate(executionId, token);
+		await service.locateByToken(executionId, token);
 
 		expect(Date.now() - startedAt).toBeGreaterThanOrEqual(45);
 	});
@@ -146,19 +139,27 @@ describe('ResumeRequestService.locate', () => {
 	it('holds by default for more than one check', async () => {
 		const { service } = setup({ waiting: [[], [accepting('s1')]], serviceHold: 'default' });
 
-		await expect(service.locate(executionId, token)).resolves.toMatchObject({ stepId: 's1' });
+		await expect(service.locateByToken(executionId, token)).resolves.toMatchObject({
+			target: { stepId: 's1' },
+		});
 	});
 
 	it('answers null when the step-bound wait ends during the hold', async () => {
 		const { service } = setup({ waiting: [[stepBound()], []] });
 
-		await expect(service.locate(executionId, token)).resolves.toBeNull();
+		await expect(service.locateByToken(executionId, token)).resolves.toEqual({
+			executionId,
+			target: null,
+		});
 	});
 
 	it('answers null once the hold runs out', async () => {
 		const { service, loadWaitingSteps } = setup();
 
-		await expect(service.locate(executionId, token)).resolves.toBeNull();
+		await expect(service.locateByToken(executionId, token)).resolves.toEqual({
+			executionId,
+			target: null,
+		});
 		expect(loadWaitingSteps).toHaveBeenCalledTimes(hold.attempts);
 	});
 
@@ -168,7 +169,10 @@ describe('ResumeRequestService.locate', () => {
 			status: 'completed',
 		});
 
-		await expect(service.locate(executionId, token)).resolves.toBeNull();
+		await expect(service.locateByToken(executionId, token)).resolves.toEqual({
+			executionId,
+			target: null,
+		});
 		expect(loadWaitingSteps).toHaveBeenCalledTimes(1);
 	});
 
@@ -178,7 +182,10 @@ describe('ResumeRequestService.locate', () => {
 		async (status) => {
 			const { service } = setup({ waiting: [[accepting('s1'), accepting('s2')]], status });
 
-			await expect(service.locate(executionId, token)).resolves.toBeNull();
+			await expect(service.locateByToken(executionId, token)).resolves.toEqual({
+				executionId,
+				target: null,
+			});
 		},
 	);
 
@@ -189,32 +196,39 @@ describe('ResumeRequestService.locate', () => {
 		};
 		const { service } = setup({ waiting: [[stepBound, accepting('s1')]] });
 
-		await expect(service.locate(executionId, token)).resolves.toMatchObject({ stepId: 's1' });
+		await expect(service.locateByToken(executionId, token)).resolves.toMatchObject({
+			target: { stepId: 's1' },
+		});
 	});
 
 	it('refuses an execution whose waits are only step bound once the hold runs out', async () => {
 		const { service, loadWaitingSteps } = setup({ waiting: [[stepBound(), deadlineOnly]] });
 
-		await expect(service.locate(executionId, token)).rejects.toEqual(rejection('step_bound_only'));
+		await expect(service.locateByToken(executionId, token)).rejects.toEqual(
+			rejection('step_bound_only'),
+		);
 		expect(loadWaitingSteps).toHaveBeenCalledTimes(hold.attempts);
 	});
 
 	it('answers null for a wait that only its deadline can end', async () => {
 		const { service } = setup({ waiting: [[deadlineOnly]] });
 
-		await expect(service.locate(executionId, token)).resolves.toBeNull();
+		await expect(service.locateByToken(executionId, token)).resolves.toEqual({
+			executionId,
+			target: null,
+		});
 	});
 
 	it('refuses an execution that does not exist', async () => {
 		const { service } = setup({ status: 'missing' });
 
-		await expect(service.locate(executionId, token)).rejects.toEqual(rejection('not_found'));
+		await expect(service.locateByToken(executionId, token)).rejects.toEqual(rejection('not_found'));
 	});
 
 	it.each(stepTokens)('rejects %s', async (_, stepToken) => {
 		const { service } = setup({ waiting: [[stepBound()]] });
 
-		await expect(service.locate(executionId, stepToken)).rejects.toEqual(
+		await expect(service.locateByToken(executionId, stepToken)).rejects.toEqual(
 			rejection('invalid_token'),
 		);
 	});
@@ -222,15 +236,6 @@ describe('ResumeRequestService.locate', () => {
 
 describe('ResumeRequestService.locateByToken', () => {
 	const located = { executionId, target: { stepId, nodeId: `node-${stepId}` } };
-
-	it('locates the execution-bound wait of the execution that the id names', async () => {
-		const { service } = setup({ waiting: [[accepting('s1')]] });
-
-		await expect(service.locateByToken(executionId, token)).resolves.toEqual({
-			executionId,
-			target: { stepId: 's1', nodeId: 'node-s1' },
-		});
-	});
 
 	it.each(stepTokens)('locates the step-bound wait that %s names', async (_, stepToken) => {
 		const { service } = setup({ step: stepBound() });

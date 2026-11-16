@@ -70,6 +70,7 @@ import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import { AgentOutboundFiles } from '../agent-outbound-files.service';
+import type { AgentSandboxFilesService } from '../../agent-sandbox-files.service';
 
 const slack: AgentIntegrationConfig = {
 	type: 'slack',
@@ -171,7 +172,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			credentialId: 'cred-a',
 		});
 		expect(chat.channel).toHaveBeenCalledWith('slack:C123');
-		expect(channel.post).toHaveBeenCalledWith('Hello channel');
+		expect(channel.post).toHaveBeenCalledWith({ markdown: 'Hello channel' });
 		expect(chat.thread).toHaveBeenCalledWith('slack:C123:123.456');
 		expect(sentThread.subscribe).toHaveBeenCalled();
 		expect(result).toEqual({
@@ -268,7 +269,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 
 		expect(chat.channel).toHaveBeenCalledWith('linear:team-1');
-		expect(channel.post).toHaveBeenCalledWith('Hello channel');
+		expect(channel.post).toHaveBeenCalledWith({ markdown: 'Hello channel' });
 		expect(chat.thread).not.toHaveBeenCalled();
 		expect(result).toMatchObject({
 			ok: true,
@@ -315,7 +316,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 
 		expect(chatIntegrationService.getChatInstanceForTools).toHaveBeenCalledWith('agent-1', slack);
-		expect(thread.post).toHaveBeenCalledWith('Hello');
+		expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
 		expect(thread.subscribe).toHaveBeenCalled();
 		expect(result).toEqual({
 			ok: true,
@@ -367,7 +368,7 @@ describe('ChatIntegrationActionExecutor', () => {
 		expect(adapter.openDM).toHaveBeenCalledWith('447700900123');
 		expect(chat.openDM).not.toHaveBeenCalled();
 		expect(chat.thread).toHaveBeenCalledWith('whatsapp:111:447700900123');
-		expect(thread.post).toHaveBeenCalledWith('Hello');
+		expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
 		expect(result).toMatchObject({
 			ok: true,
 			messageContext: {
@@ -694,7 +695,9 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 
 		expect(chat.getAdapter).toHaveBeenCalledWith('telegram');
-		expect(editMessage).toHaveBeenCalledWith('telegram:123456', '123456:1000', 'Updated status');
+		expect(editMessage).toHaveBeenCalledWith('telegram:123456', '123456:1000', {
+			markdown: 'Updated status',
+		});
 		expect(result).toEqual({
 			ok: true,
 			messageContext: {
@@ -1528,7 +1531,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			});
 
 			expect(result).toEqual(expect.objectContaining({ ok: true }));
-			expect(thread.post).toHaveBeenCalledWith('Task update');
+			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Task update' });
 		});
 
 		it('allows a text-only respond after the action target changes', async () => {
@@ -1547,7 +1550,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			});
 
 			expect(result).toEqual(expect.objectContaining({ ok: true }));
-			expect(thread.post).toHaveBeenCalledWith('DM follow-up');
+			expect(thread.post).toHaveBeenCalledWith({ markdown: 'DM follow-up' });
 		});
 	});
 
@@ -1868,7 +1871,7 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 
 		expect(openDM).toHaveBeenCalledWith(objectId);
 		expect(chat.openDM).not.toHaveBeenCalled();
-		expect(thread.post).toHaveBeenCalledWith('Morning brief');
+		expect(thread.post).toHaveBeenCalledWith({ markdown: 'Morning brief' });
 		expect(result).toMatchObject({
 			ok: true,
 			messageContext: { target: { type: 'dm', userId: objectId, threadId: 'teams:dm' } },
@@ -1892,7 +1895,7 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 			expect.objectContaining({ conversationId: '19:abc@thread.tacv2' }),
 		);
 		expect(chat.channel).toHaveBeenCalledWith('teams:encoded');
-		expect(channel.post).toHaveBeenCalledWith('Morning brief');
+		expect(channel.post).toHaveBeenCalledWith({ markdown: 'Morning brief' });
 		expect(result).toMatchObject({ ok: true });
 	});
 
@@ -1963,7 +1966,9 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 				chatIntegrationService,
 				registry,
 				new ChannelRateLimitGuard(),
-				new AgentOutboundFiles(attachmentService, registry),
+				new AgentOutboundFiles(attachmentService, registry, {
+					resolveFileRefs: async (refs: string[]) => refs,
+				} as unknown as AgentSandboxFilesService),
 			);
 			const descriptor = getIntegrationToolConnectionDescriptors([integration], 'agent-1')[0];
 			return { executor, descriptor, thread, channel, attachmentService };
@@ -2108,7 +2113,7 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 
 			expect(result).toEqual(expect.objectContaining({ ok: true }));
 			expect(thread.post).toHaveBeenCalledWith({
-				raw: 'Here is the chart',
+				markdown: 'Here is the chart',
 				files: [{ data: Buffer.from('png'), filename: 'chart.png', mimeType: 'image/png' }],
 			});
 		});
@@ -2178,7 +2183,7 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 
 			expect(result).toEqual(expect.objectContaining({ ok: true }));
 			expect(thread.post).toHaveBeenCalledWith({
-				raw: 'Here is the chart',
+				markdown: 'Here is the chart',
 				attachments: [
 					{ type: 'image', data: Buffer.from('png'), name: 'chart.png', mimeType: 'image/png' },
 				],
@@ -2211,7 +2216,7 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 			expect(result).toEqual(expect.objectContaining({ ok: true }));
 			expect(thread.post).toHaveBeenCalledTimes(2);
 			expect(thread.post).toHaveBeenNthCalledWith(1, {
-				raw: 'Files',
+				markdown: 'Files',
 				attachments: [expect.objectContaining({ type: 'image', name: 'chart.png' })],
 			});
 			expect(thread.post).toHaveBeenNthCalledWith(2, {
@@ -2240,11 +2245,11 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 
-		it('returns FILE_UPLOAD_LIMIT_EXCEEDED for a Slack file above the send cap', async () => {
+		it('returns FILE_UPLOAD_LIMIT_EXCEEDED for a Slack file above the platform limit', async () => {
 			const { executor, descriptor, thread, attachmentService } = buildExecutor();
 			attachmentService.getReadable.mockResolvedValue({
 				...chartFile,
-				fileSizeBytes: 60 * 1024 * 1024,
+				fileSizeBytes: 1025 * 1024 * 1024,
 			} as never);
 
 			const result = await executor.execute({
@@ -2260,7 +2265,7 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 				ok: false,
 				error: {
 					code: 'FILE_UPLOAD_LIMIT_EXCEEDED',
-					message: 'File "chart.png" is 60 MB. The slack integration sends files up to 50 MB.',
+					message: 'File "chart.png" is 1025 MB. The slack integration sends files up to 1024 MB.',
 				},
 			});
 			expect(attachmentService.getBuffer).not.toHaveBeenCalled();

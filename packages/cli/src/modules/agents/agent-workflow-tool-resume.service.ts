@@ -8,7 +8,7 @@ import { InstanceSettings } from 'n8n-core';
 import type { RelatedAgentRun } from 'n8n-workflow';
 import { isTerminalExecutionStatus } from 'n8n-workflow';
 
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import { collectResultData } from '@/workflows/callable/callable-workflow-result';
 
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';

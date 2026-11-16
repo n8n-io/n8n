@@ -192,6 +192,10 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'execution:list',
 	'execution:reveal',
 	'execution:delete',
+	'executionLimit:read',
+	'executionLimit:update',
+	'projectExecutionLimit:read',
+	'projectExecutionLimit:update',
 	'apiKey:manage',
 	'apiKey:create',
 	'apiKey:update',
@@ -210,6 +214,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'roleMappingRule:delete',
 	'roleMappingRule:list',
 	'otel:manage',
+	'workflowSettings:manage',
 	'trustedSource:create',
 	'trustedSource:read',
 	'trustedSource:update',
@@ -261,3 +266,6 @@ export const GLOBAL_CHAT_USER_SCOPES: Scope[] = [
 	'chatHubAgent:delete',
 	'chatHubAgent:list',
 ];
+
+/** An agent gets access only through shares to its personal project, never from its global role. */
+export const GLOBAL_AGENT_SCOPES: Scope[] = [];

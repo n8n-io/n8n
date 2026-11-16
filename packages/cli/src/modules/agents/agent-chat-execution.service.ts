@@ -1,12 +1,11 @@
 import { LockNamespace, LockService } from '@n8n/backend-common';
 import type { SerializableAgentState } from '@n8n/agents';
-import { OnPubSubEvent } from '@n8n/decorators';
+import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { NotFoundError } from '@n8n/errors';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 
 import { AgentExecutionService } from './agent-execution.service';
 import { SESSION_STOPPED_REASON } from './agent-session-stop-reason';

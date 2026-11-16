@@ -1,5 +1,10 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, UrlService, WorkflowPublishedDataService } from '@n8n/backend-services';
+import {
+	CodeExecutionBackend,
+	EventService,
+	UrlService,
+	WorkflowPublishedDataService,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, type NodesConfig, WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, Project, WorkflowHistory } from '@n8n/db';
@@ -12,6 +17,9 @@ import {
 import { Container } from '@n8n/di';
 import { ExecutionLifecycleHooks, ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
 import type {
+	EnvProviderState,
+	IExecuteData,
+	IExecuteFunctions,
 	IWorkflowBase,
 	IExecuteWorkflowInfo,
 	IWorkflowExecuteAdditionalData,
@@ -26,6 +34,7 @@ import type {
 	IExecutionContext,
 	IRunExecutionData,
 	IWorkflowExecutionDataProcess,
+	Workflow,
 } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 import { OperationalError } from '@n8n/errors';
@@ -65,6 +74,7 @@ import {
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
+import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -137,7 +147,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 	Container.set(CredentialsHelper, credentialsHelper);
 	Container.set(ExternalSecretsProxy, externalSecretsProxy);
 	const executionRepository = mockInstance(ExecutionRepository);
-	mockInstance(ExecutionPersistence);
+	const executionPersistenceMock = mockInstance(ExecutionPersistence);
+	executionPersistenceMock.deleteInFlightExecution.mockResolvedValue({ ended: false });
+	executionPersistenceMock.saveExecutionOutcome.mockResolvedValue({ updated: true, ended: false });
 	mockInstance(ExecutionDataRepository);
 	mockInstance(Telemetry);
 	const workflowRepository = mockInstance(WorkflowRepository);
@@ -218,6 +230,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				}),
 			);
 			activeExecutions.add.mockResolvedValue(EXECUTION_ID);
+			credentialsPermissionChecker.check.mockResolvedValue({ personalCredentialsCount: 0 });
 			workflowPreExecute.run.mockResolvedValue(undefined);
 			processRunExecutionData.mockReturnValue(getCancelablePromise(runWithData));
 			ownershipService.getWorkflowProjectCached.mockResolvedValue(
@@ -520,6 +533,28 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(credentialsPermissionChecker.checkForUser).not.toHaveBeenCalled();
 			});
 
+			it('reports the personal credentials count of a database sub-workflow to telemetry', async () => {
+				credentialsPermissionChecker.check.mockResolvedValue({ personalCredentialsCount: 2 });
+
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'db-id', code: undefined }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+					}),
+				);
+
+				const [additionalDataIntegrated] = vi.mocked(WorkflowExecute).mock.calls[0];
+				eventService.emit.mockClear();
+				await additionalDataIntegrated.hooks?.runHook('workflowExecuteAfter', [runWithData, {}]);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'workflow-post-execute',
+					expect.objectContaining({ telemetryMetadata: { personalCredentialsCount: 2 } }),
+				);
+			});
+
 			it('falls back to the project check for an inline sub-workflow without a triggering user', async () => {
 				const workflowData = subWorkflowData();
 				await executeWorkflow(
@@ -687,9 +722,14 @@ describe('WorkflowExecuteAdditionalData', () => {
 					new Error('Node "Trigger" does not have access to the credential'),
 				);
 			const failPolicyCheck = () =>
-				vi
-					.mocked(Container.get(SubworkflowPolicyChecker).check)
-					.mockRejectedValueOnce(new Error('Target workflow refuses this caller'));
+				vi.mocked(Container.get(SubworkflowPolicyChecker).check).mockRejectedValueOnce(
+					new SubworkflowPolicyDenialError({
+						subworkflowId: 'sub-id',
+						subworkflowProject: mock<Project>({ type: 'team', name: 'Team Project' }),
+						hasReadAccess: false,
+						instanceUrl: 'http://localhost:5678',
+					}),
+				);
 
 			it('starts the sub-workflow error workflow and fails the caller', async () => {
 				failCredentialCheck();
@@ -718,10 +758,13 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(WorkflowExecute).not.toHaveBeenCalled();
 			});
 
-			it('records the failure without the error workflow when the sub-workflow policy refuses the caller', async () => {
+			it('records the failure without the error workflow and keeps the warning level when the sub-workflow policy refuses the caller', async () => {
 				failPolicyCheck();
 
-				await expect(runSubWorkflow(false)).rejects.toThrow('refuses this caller');
+				const run = runSubWorkflow(false);
+
+				await expect(run).rejects.toThrow('cannot be called by this workflow');
+				await expect(run).rejects.toMatchObject({ level: 'warning', shouldReport: false });
 
 				expect(WorkflowExecute).not.toHaveBeenCalled();
 				expect(executeErrorWorkflow).not.toHaveBeenCalled();
@@ -743,7 +786,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					if (doNotWaitToFinish) {
 						await expect(run).resolves.toEqual({ executionId: EXECUTION_ID, data: [null] });
 					} else {
-						await expect(run).rejects.toThrow('refuses this caller');
+						await expect(run).rejects.toThrow('cannot be called by this workflow');
 					}
 
 					await vi.waitFor(() =>
@@ -2157,6 +2200,75 @@ describe('WorkflowExecuteAdditionalData', () => {
 			const additionalData = await getBase({ userId });
 
 			expect(additionalData.userId).toBe(userId);
+		});
+
+		describe('code tasks', () => {
+			const codeExecutionBackend = mock<CodeExecutionBackend>();
+
+			beforeEach(() => {
+				Container.set(CodeExecutionBackend, codeExecutionBackend);
+			});
+
+			it('asks the code execution backend whether it can run the task type', async () => {
+				codeExecutionBackend.getStatus.mockReturnValue({ available: false, reason: 'offline' });
+				const additionalData = await getBase();
+
+				expect(additionalData.getRunnerStatus?.('python')).toEqual({
+					available: false,
+					reason: 'offline',
+				});
+				expect(codeExecutionBackend.getStatus).toHaveBeenCalledWith('python');
+			});
+
+			it('hands a code task to the code execution backend', async () => {
+				codeExecutionBackend.runTask.mockResolvedValue({ ok: true, result: [] });
+				const additionalData = await getBase();
+				const executeFunctions = mock<IExecuteFunctions>();
+				const node = mock<INode>();
+				const workflow = mock<Workflow>();
+				const runExecutionData = mock<IRunExecutionData>();
+				const envProviderState = mock<EnvProviderState>();
+				const executeData = mock<IExecuteData>();
+
+				const result = await additionalData.startRunnerTask(
+					additionalData,
+					'javascript',
+					{ code: 'return []' },
+					executeFunctions,
+					{ main: [] },
+					node,
+					workflow,
+					runExecutionData,
+					1,
+					2,
+					'Code',
+					[],
+					{},
+					'manual',
+					envProviderState,
+					executeData,
+				);
+
+				expect(result).toEqual({ ok: true, result: [] });
+				expect(codeExecutionBackend.runTask).toHaveBeenCalledExactlyOnceWith({
+					additionalData,
+					taskType: 'javascript',
+					settings: { code: 'return []' },
+					executeFunctions,
+					inputData: { main: [] },
+					node,
+					workflow,
+					runExecutionData,
+					runIndex: 1,
+					itemIndex: 2,
+					activeNodeName: 'Code',
+					connectionInputData: [],
+					siblingParameters: {},
+					mode: 'manual',
+					envProviderState,
+					executeData,
+				});
+			});
 		});
 
 		describe('listAgents', () => {

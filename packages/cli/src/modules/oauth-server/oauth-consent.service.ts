@@ -71,9 +71,7 @@ export class OAuthConsentService {
 		try {
 			const sessionPayload = this.oauthSessionService.verifySession(sessionToken);
 
-			const client = await this.oauthClientRepository.findOne({
-				where: { id: sessionPayload.clientId },
-			});
+			const client = await this.oauthClientRepository.findById(sessionPayload.clientId, {});
 
 			if (!client) {
 				return null;

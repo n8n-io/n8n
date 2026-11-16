@@ -9,6 +9,13 @@ export async function fetchAssistantAgentThreadTabs(
 	return await makeRestApiRequest(context, 'GET', `/assistant/threads/${threadId}/tabs`);
 }
 
+export async function fetchAssistantAgentThreadCredits(
+	context: IRestApiContext,
+	threadId: string,
+): Promise<{ creditsUsed: number | null }> {
+	return await makeRestApiRequest(context, 'GET', `/assistant/threads/${threadId}/credits`);
+}
+
 export async function saveAssistantAgentThreadTabs(
 	context: IRestApiContext,
 	threadId: string,

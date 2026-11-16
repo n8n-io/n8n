@@ -1,17 +1,21 @@
 import type {
 	InboxItem,
 	InboxSelfHealingItem,
+	InboxSourceType,
 	InboxWorkflowReviewItem,
 	ListInboxResponse,
+	SelfHealingStatusDto,
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import * as api from './inbox.api';
+import * as selfHealingApi from './self-healing/selfHealingResults.api';
 import { createInboxListSlice, useInboxStore } from './inbox.store';
 
 vi.mock('./inbox.api');
+vi.mock('./self-healing/selfHealingResults.api');
 
 const waitingOrClosedRequest = vi.fn<typeof api.fetchInbox>();
 const authoredRequest = vi.fn<typeof api.fetchInbox>();
@@ -441,4 +445,98 @@ it('loads the counts when an approved review is not in a loaded page', async () 
 		expect(store.openCount).toBe(1);
 		expect(store.closedCount).toBe(2);
 	});
+});
+
+describe('empty state kind', () => {
+	function setAvailableTypes(availableTypes: InboxSourceType[]) {
+		useSettingsStore().settings.inbox = { enabled: true, availableTypes, failedTypes: [] };
+	}
+
+	it.each([
+		[['workflow_review'], 'reviews'],
+		[['workflow_review', 'self_healing_result'], 'reviewsAndSelfHealing'],
+		[['promotion_review', 'self_healing_result'], 'reviewsAndSelfHealing'],
+	] as const)('uses review copy when a review source is available: %j', async (types, kind) => {
+		setAvailableTypes([...types]);
+		vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockResolvedValue({
+			isReviewer: false,
+			setupProjectId: 'personal',
+		});
+		const store = useInboxStore();
+		store.reset();
+		await store.refreshListAndSummary();
+
+		expect(store.emptyKind).toBe(kind);
+	});
+
+	it.each([
+		[{ isReviewer: false, setupProjectId: 'personal' }, 'selfHealingSetup'],
+		[{ isReviewer: true, setupProjectId: 'personal' }, 'selfHealing'],
+		[{ isReviewer: false, setupProjectId: null }, 'selfHealing'],
+	] as const)('uses self-healing copy for status %j', async (status, kind) => {
+		setAvailableTypes(['self_healing_result']);
+		vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockResolvedValue(status);
+		const store = useInboxStore();
+		store.reset();
+		await store.refreshListAndSummary();
+
+		expect(selfHealingApi.fetchSelfHealingStatus).toHaveBeenCalledTimes(1);
+		expect(store.emptyKind).toBe(kind);
+	});
+
+	it('shows no setup prompt when the status request fails', async () => {
+		setAvailableTypes(['self_healing_result']);
+		vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockRejectedValue(new Error('offline'));
+		const store = useInboxStore();
+		store.reset();
+		await store.refreshListAndSummary();
+
+		expect(store.emptyKind).toBe('selfHealing');
+	});
+
+	it.each([[['workflow_review']], [['workflow_review', 'self_healing_result']]] as const)(
+		'does not request the status when the empty state does not use it: %j',
+		async (types) => {
+			setAvailableTypes([...types]);
+			const store = useInboxStore();
+			store.reset();
+			await store.refreshListAndSummary();
+
+			expect(selfHealingApi.fetchSelfHealingStatus).not.toHaveBeenCalled();
+			expect(store.emptyKindPending).toBe(false);
+		},
+	);
+
+	it('shows the setup prompt on the Open tab only', async () => {
+		setAvailableTypes(['self_healing_result']);
+		vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockResolvedValue({
+			isReviewer: false,
+			setupProjectId: 'personal',
+		});
+		const store = useInboxStore();
+		store.reset();
+		await store.refreshListAndSummary();
+		store.activeTab = 'closed';
+
+		expect(store.emptyKind).toBe('selfHealing');
+	});
+
+	it.each(['succeeds', 'fails'] as const)(
+		'is pending until the status request %s',
+		async (outcome) => {
+			setAvailableTypes(['self_healing_result']);
+			const status = createDeferredPromise<SelfHealingStatusDto>();
+			vi.mocked(selfHealingApi.fetchSelfHealingStatus).mockReturnValue(status.promise);
+			const store = useInboxStore();
+			store.reset();
+			const refresh = store.refreshListAndSummary();
+			await vi.waitFor(() => expect(store.isEmpty).toBe(true));
+
+			expect(store.emptyKindPending).toBe(true);
+			if (outcome === 'succeeds') status.resolve({ isReviewer: false, setupProjectId: 'personal' });
+			else status.reject(new Error('offline'));
+			await refresh;
+			expect(store.emptyKindPending).toBe(false);
+		},
+	);
 });

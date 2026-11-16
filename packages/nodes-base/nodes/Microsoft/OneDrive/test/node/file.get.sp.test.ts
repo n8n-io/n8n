@@ -12,7 +12,7 @@ import { credentials } from '../credentials';
 describe('Test MicrosoftOneDrive, Service Principal file:get smoke', () => {
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')
-		.get('/users/jane%40contoso.com/drive/items/FILE123')
+		.get('/users/jane@contoso.com/drive/items/FILE123')
 		.reply(200, {
 			id: 'FILE123',
 			name: 'report.txt',

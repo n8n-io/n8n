@@ -1,19 +1,27 @@
 import type { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-utils';
 import {
+	GLOBAL_AGENT_ROLE,
 	PROJECT_ADMIN_ROLE,
 	PROJECT_EDITOR_ROLE,
 	PROJECT_OWNER_ROLE,
 	PROJECT_VIEWER_ROLE,
+	Person,
 	ProjectRepository,
 	RoleRepository,
 	UserRepository,
 } from '@n8n/db';
-import type { Project, User } from '@n8n/db';
+import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 
 import { cleanupRolesAndScopes, createCustomRoleWithScopeSlugs } from '../shared/db/roles';
-import { createMember, createOwner, createUser } from '../shared/db/users';
+import {
+	createMember,
+	createOwner,
+	createServiceAccountWithProject,
+	createUser,
+} from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
 
@@ -21,8 +29,8 @@ describe('RoleController - Integration Tests', () => {
 	const testServer = setupTestServer({ endpointGroups: ['role'] });
 	let ownerAgent: SuperAgentTest;
 	let memberAgent: SuperAgentTest;
-	let owner: User;
-	let member: User;
+	let owner: Person;
+	let member: Person;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -229,6 +237,15 @@ describe('RoleController - Integration Tests', () => {
 	});
 
 	describe('GET /roles/:slug/assignments/:projectId/members', () => {
+		// Accounts a single test creates. The file shares one database, and some
+		// global role listings still fail for a service account (IAM-1888).
+		const scratchUserIds: string[] = [];
+
+		afterEach(async () => {
+			if (scratchUserIds.length === 0) return;
+			await Container.get(UserRepository).delete(scratchUserIds.splice(0));
+		});
+
 		it('should return only members with the specified role', async () => {
 			const project = await createTeamProject('Members Test', owner);
 			await linkUserToProject(member, project, 'project:editor');
@@ -244,6 +261,67 @@ describe('RoleController - Integration Tests', () => {
 			expect(response.body.data.members[0].role).toBe('project:editor');
 		});
 
+		it('should list a service account with its name and kind', async () => {
+			const project = await createTeamProject('Service Account Members Test', owner);
+			const serviceAccount = await createServiceAccountWithProject(GLOBAL_AGENT_ROLE);
+			scratchUserIds.push(serviceAccount.id);
+			await linkUserToProject(member, project, 'project:editor');
+			await linkUserToProject(serviceAccount, project, 'project:editor');
+
+			const response = await ownerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/${project.id}/members`)
+				.expect(200);
+
+			expect(response.body.data.members).toHaveLength(2);
+			expect(response.body.data.members).toEqual(
+				expect.arrayContaining([
+					{
+						userId: member.id,
+						firstName: member.firstName,
+						lastName: member.lastName,
+						email: member.email,
+						role: 'project:editor',
+						kind: 'person',
+					},
+					{
+						userId: serviceAccount.id,
+						firstName: 'Deploy bot',
+						lastName: null,
+						email: '',
+						role: 'project:editor',
+						kind: 'service',
+					},
+				]),
+			);
+		});
+
+		it('should list a person without an email or a name', async () => {
+			const project = await createTeamProject('Person Without Email Test', owner);
+			const person = await createUser();
+			scratchUserIds.push(person.id);
+			await Container.get(DataSource).manager.update(Person, person.id, {
+				email: null,
+				firstName: null,
+				lastName: null,
+			} as unknown as Partial<Person>);
+			await linkUserToProject(person, project, 'project:editor');
+
+			const response = await ownerAgent
+				.get(`/roles/${PROJECT_EDITOR_ROLE.slug}/assignments/${project.id}/members`)
+				.expect(200);
+
+			expect(response.body.data.members).toEqual([
+				{
+					userId: person.id,
+					firstName: null,
+					lastName: null,
+					email: '',
+					role: 'project:editor',
+					kind: 'person',
+				},
+			]);
+		});
+
 		it('should require role:manage scope (deny member)', async () => {
 			const project = await createTeamProject('Auth Test');
 
@@ -254,7 +332,7 @@ describe('RoleController - Integration Tests', () => {
 	});
 
 	describe('project assignments visibility for a delegated role manager', () => {
-		let roleManager: User;
+		let roleManager: Person;
 		let roleManagerAgent: SuperAgentTest;
 		let ownProject: Project;
 		let otherProject: Project;

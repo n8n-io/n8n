@@ -85,6 +85,13 @@ const skillSourceStatus = z
 	.enum(['success', 'failure'])
 	.describe('Whether the action succeeded. A failure carries a reason code');
 
+const skillSourceHealth = z.enum([
+	'connected',
+	'credential_issue',
+	'source_unavailable',
+	'delayed',
+]);
+
 const skillSourceReason = z
 	.enum([...SKILL_SOURCE_REASONS, 'unexpected'])
 	.optional()
@@ -450,6 +457,21 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			...skillOrigin,
 		}),
 	},
+	USER_CHANGED_SKILL_SOURCE_SCOPE: {
+		name: 'User changed skill source scope',
+		description:
+			'A source scope move committed or failed. Read-only previews do not emit this event.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			from_scope_type: skillSourceScopeType,
+			to_scope_type: skillSourceScopeType,
+			skill_count: z.number(),
+			status: skillSourceStatus,
+			reason: z.enum([...SKILL_SOURCE_REASONS, 'agent_in_use', 'unexpected']).optional(),
+		}),
+	},
+
 	USER_CONNECTED_SKILL_SOURCE: {
 		name: 'User connected skill source',
 		description:
@@ -471,7 +493,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_IMPORTED_SKILLS_FROM_SOURCE: {
 		name: 'User imported skills from source',
 		description:
-			'A user imported skills from a source. Fires once the import commits, also when it imported nothing, with the reason code. Counts only, never names or content.',
+			'A user imported skills from a source. Fires once the import commits, also when it imported nothing, with the reason code. Counts and file extensions only, never names, paths or content.',
 		properties: z.object({
 			user_id: userId,
 			provider: skillSourceProvider,
@@ -494,6 +516,16 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 					'Imported skills that the security check flagged for review, after "I reviewed the warnings"',
 				),
 			skipped_files: z.number().describe('Files of the imported skills that the import left out'),
+			skipped_file_extensions: z
+				.record(z.string(), z.number())
+				.describe(
+					'The `skipped_files` by lowercase extension, such as `{ ".py": 3, ".png": 2 }`. `none` counts files with no extension. `other` counts extensions outside a fixed list of known file types, and the extensions after the 20 most common',
+				),
+			skipped_script_files: z
+				.number()
+				.describe(
+					'The `skipped_files` that are scripts or code, such as `.py`, `.sh`, `.js` or `.ts`. The security check flags these for review',
+				),
 			status: skillSourceStatus,
 			reason: skillSourceReason,
 		}),
@@ -555,6 +587,53 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 				),
 			status: skillSourceStatus,
 			reason: skillSourceReason,
+		}),
+	},
+	USER_REVIEWED_SKILL_UPDATE: {
+		name: 'User reviewed skill update',
+		description:
+			'A user reviewed a pending skill update. Fires for each selected skill after the transaction succeeds or fails.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			kind: z.literal('update').describe('An update to an existing synced skill'),
+			action: z.enum(['accept', 'skip']),
+			verdict: z.enum(['pass', 'needs_review', 'blocked']),
+			bulk: z.boolean().describe('Whether the request selected more than one skill'),
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
+	USER_DELETED_SKILL_SOURCE: {
+		name: 'User deleted skill source',
+		description:
+			'A user deleted a source and its synced skills. Fires after the transaction commits or fails. An agent draft or published pin blocks the delete with reason skills_in_use. Contains no skill, source, agent, or project names.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			status: skillSourceStatus,
+			reason: z.enum(['skills_in_use', 'unexpected']).optional(),
+		}),
+	},
+	USER_UPDATED_SKILL_SOURCE_CREDENTIAL: {
+		name: 'User updated skill source credential',
+		description:
+			'A user replaced the credential of a skill source. Fires after validation and the write succeed or fail. Contains no credential names, identifiers, or secrets.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
+	SKILL_SOURCE_HEALTH_CHANGED: {
+		name: 'Skill source health changed',
+		description:
+			'A source check or credential replacement changed the health of a skill source. Repeated results do not report. Carries no user id, so it reaches BigQuery and not PostHog.',
+		properties: z.object({
+			provider: skillSourceProvider,
+			previous_health: skillSourceHealth,
+			health: skillSourceHealth,
 		}),
 	},
 	USER_STOPPED_SKILL_SYNC: {
