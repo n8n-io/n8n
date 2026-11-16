@@ -1,6 +1,10 @@
 import type { IConnections, INode } from 'n8n-workflow';
 
-import { checkEngineV2Eligibility, type EngineV2ReasonCode } from '../index';
+import {
+	checkEngineV2Eligibility,
+	type EngineV2ReasonCode,
+	type EngineV2ReasonKind,
+} from '../index';
 
 /** `[from, to, outputIndex = 0, inputIndex = 0]` */
 type Connection = [string, string, number?, number?];
@@ -53,6 +57,7 @@ describe('graph rules', () => {
 		connections: Connection[];
 		disabled?: string[];
 		code: EngineV2ReasonCode;
+		kind: EngineV2ReasonKind;
 		node?: string;
 	}>([
 		{
@@ -63,6 +68,7 @@ describe('graph rules', () => {
 				['B', 'A'],
 			],
 			code: 'CYCLE_WITHOUT_SPLIT_IN_BATCHES',
+			kind: 'temporary',
 			node: 'A',
 		},
 		{
@@ -74,6 +80,7 @@ describe('graph rules', () => {
 			],
 			disabled: ['Disabled'],
 			code: 'CYCLE_WITHOUT_SPLIT_IN_BATCHES',
+			kind: 'temporary',
 			node: 'A',
 		},
 		{
@@ -86,6 +93,7 @@ describe('graph rules', () => {
 				['C', 'A'],
 			],
 			code: 'CYCLE_WITHOUT_SPLIT_IN_BATCHES',
+			kind: 'temporary',
 			node: 'A',
 		},
 		{
@@ -97,18 +105,21 @@ describe('graph rules', () => {
 				['Loop', 'After', 0],
 			],
 			code: 'LOOP_ENTERED_MID_BODY',
+			kind: 'permanent',
 			node: 'Body',
 		},
 		{
 			shape: 'a loop entered at its Split In Batches node and at a body node',
 			connections: [...simpleLoop, ['Trigger', 'Body', 0, 1]],
 			code: 'LOOP_ENTERED_MID_BODY',
+			kind: 'permanent',
 			node: 'Body',
 		},
 		{
 			shape: 'a loop with two entry connections',
 			connections: [...simpleLoop, ['Trigger', 'Before'], ['Before', 'Loop']],
 			code: 'LOOP_MULTIPLE_ENTRIES',
+			kind: 'temporary',
 			node: 'Loop',
 		},
 		{
@@ -120,6 +131,7 @@ describe('graph rules', () => {
 				['LoopB', 'LoopA', 1],
 			],
 			code: 'LOOP_MULTIPLE_ENTRIES',
+			kind: 'temporary',
 			node: 'LoopA',
 		},
 		{
@@ -132,6 +144,7 @@ describe('graph rules', () => {
 				['Loop', 'After', 0],
 			],
 			code: 'LOOP_MULTIPLE_RETURNS',
+			kind: 'temporary',
 			node: 'Loop',
 		},
 		{
@@ -145,18 +158,21 @@ describe('graph rules', () => {
 				['LoopOuter', 'After', 0],
 			],
 			code: 'NESTED_LOOP',
+			kind: 'temporary',
 			node: 'LoopInner',
 		},
 		{
 			shape: 'a loop that a body node leaves',
 			connections: [...simpleLoop, ['Body', 'Side', 1]],
 			code: 'LOOP_EXITS_MID_BODY',
+			kind: 'temporary',
 			node: 'Body',
 		},
 		{
 			shape: 'a loop that the loop output leaves',
 			connections: [...simpleLoop, ['Loop', 'Side', 1]],
 			code: 'LOOP_EXITS_MID_BODY',
+			kind: 'temporary',
 			node: 'Loop',
 		},
 		{
@@ -167,6 +183,7 @@ describe('graph rules', () => {
 				['If', 'Join', 1],
 			],
 			code: 'INPUT_SLOT_CONVERGENCE',
+			kind: 'temporary',
 			node: 'Join',
 		},
 		{
@@ -179,6 +196,7 @@ describe('graph rules', () => {
 			],
 			disabled: ['Disabled'],
 			code: 'INPUT_SLOT_CONVERGENCE',
+			kind: 'temporary',
 			node: 'Join',
 		},
 		{
@@ -193,6 +211,7 @@ describe('graph rules', () => {
 			],
 			disabled: ['Disabled'],
 			code: 'NODE_REACHED_ONLY_THROUGH_DISABLED_NODE',
+			kind: 'invalid',
 			node: 'Side',
 		},
 		{
@@ -204,6 +223,7 @@ describe('graph rules', () => {
 				['Body', 'Loop'],
 			],
 			code: 'LOOP_DONE_OUTPUT_FEEDS_BODY',
+			kind: 'permanent',
 			node: 'Loop',
 		},
 		{
@@ -215,6 +235,7 @@ describe('graph rules', () => {
 				['Loop', 'After', 0],
 			],
 			code: 'LOOP_INPUT_NOT_FIRST',
+			kind: 'permanent',
 			node: 'Loop',
 		},
 		{
@@ -226,6 +247,7 @@ describe('graph rules', () => {
 				['Loop', 'After', 0],
 			],
 			code: 'LOOP_INPUT_NOT_FIRST',
+			kind: 'permanent',
 			node: 'Loop',
 		},
 		{
@@ -236,6 +258,7 @@ describe('graph rules', () => {
 				['Loop', 'After', 0],
 			],
 			code: 'LOOP_WITHOUT_RETURN',
+			kind: 'permanent',
 			node: 'Loop',
 		},
 		{
@@ -247,21 +270,26 @@ describe('graph rules', () => {
 				['LoopOuter', 'After', 0],
 			],
 			code: 'LOOP_WITHOUT_RETURN',
+			kind: 'permanent',
 			node: 'LoopInner',
 		},
-	])('blocks $shape with code $code', ({ connections, disabled, code, node }) => {
-		const result = check(connections, disabled);
+	])(
+		'blocks $shape with code $code and kind $kind',
+		({ connections, disabled, code, kind, node }) => {
+			const result = check(connections, disabled);
 
-		expect(result.eligible).toBe(false);
-		expect(result.reasons).toEqual([
-			{
-				code,
-				severity: 'blocking',
-				message: expect.any(String),
-				...(node && { nodeId: node.toLowerCase(), nodeName: node }),
-			},
-		]);
-	});
+			expect(result.eligible).toBe(false);
+			expect(result.reasons).toEqual([
+				{
+					code,
+					kind,
+					severity: 'blocking',
+					message: expect.any(String),
+					...(node && { nodeId: node.toLowerCase(), nodeName: node }),
+				},
+			]);
+		},
+	);
 
 	it.each<{ shape: string; connections: Connection[]; disabled?: string[] }>([
 		{ shape: 'a simple loop', connections: simpleLoop },

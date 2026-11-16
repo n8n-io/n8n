@@ -7,7 +7,8 @@ import {
 } from 'n8n-workflow';
 
 import { findStronglyConnectedComponents } from './strongly-connected-components';
-import type { EngineV2Reason, EngineV2ReasonCode } from './types';
+import { makeReason } from './reason';
+import type { EngineV2Reason, EngineV2ReasonCode, EngineV2ReasonKind } from './types';
 
 const SPLIT_IN_BATCHES_TYPE = 'n8n-nodes-base.splitInBatches';
 
@@ -18,7 +19,12 @@ interface Edge {
 	inputIndex: number;
 }
 
-type MakeReason = (code: EngineV2ReasonCode, message: string, nodeName?: string) => EngineV2Reason;
+type MakeReason = (
+	code: EngineV2ReasonCode,
+	kind: EngineV2ReasonKind,
+	problem: string,
+	nodeName?: string,
+) => EngineV2Reason;
 
 interface Loop {
 	loopNode: string;
@@ -47,11 +53,13 @@ function findReasonsForTrigger(
 	trigger: INode,
 ): EngineV2Reason[] {
 	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
-	const reason: MakeReason = (code, message, nodeName) => {
-		const node = nodeName === undefined ? undefined : nodesByName.get(nodeName);
-		if (node === undefined) return { code, severity: 'blocking', message };
-		return { code, severity: 'blocking', nodeId: node.id, nodeName: node.name, message };
-	};
+	const reason: MakeReason = (code, kind, problem, nodeName) =>
+		makeReason({
+			code,
+			kind,
+			problem,
+			node: nodeName === undefined ? undefined : nodesByName.get(nodeName),
+		});
 	const isLoopNode = (name: string) => nodesByName.get(name)?.type === SPLIT_IN_BATCHES_TYPE;
 
 	const { liveNodes, edges } = toTriggerGraph(nodes, connections, trigger);
@@ -90,7 +98,8 @@ function findReasonsForTrigger(
 				reasons.push(
 					reason(
 						'CYCLE_WITHOUT_SPLIT_IN_BATCHES',
-						`"${first.name}" is part of a cycle without a Split In Batches node. Engine v2 runs only cycles through a Split In Batches node.`,
+						'temporary',
+						`"${first.name}" is part of a cycle without a Split In Batches node. Engine v2 does not support cycles without a Split In Batches node yet.`,
 						first.name,
 					),
 				);
@@ -98,7 +107,8 @@ function findReasonsForTrigger(
 				reasons.push(
 					reason(
 						'LOOP_ENTERED_MID_BODY',
-						`A connection enters the loop at "${midBodyEntry}". Engine v2 needs every loop to start at its Split In Batches node.`,
+						'permanent',
+						`A connection enters the loop at "${midBodyEntry}". Engine v2 needs every loop to start at its Split In Batches node. Connect it to the Split In Batches node instead.`,
 						midBodyEntry,
 					),
 				);
@@ -106,6 +116,7 @@ function findReasonsForTrigger(
 				reasons.push(
 					reason(
 						'LOOP_MULTIPLE_ENTRIES',
+						'temporary',
 						`The loop through ${quote(entries)} has more than one Split In Batches node where it starts. Engine v2 does not support this yet.`,
 						entries[0],
 					),
@@ -128,6 +139,7 @@ function findReasonsForTrigger(
 		...withoutReturn.map((name) =>
 			reason(
 				'LOOP_WITHOUT_RETURN',
+				'permanent',
 				`No connection returns to "${name}". Engine v2 runs a Split In Batches node only as a loop, so connect the end of the loop back to it.`,
 				name,
 			),
@@ -152,6 +164,7 @@ function findLoopShapeReasons(
 		reasons.push(
 			reason(
 				'NESTED_LOOP',
+				'temporary',
 				`The loop of "${inner}" is inside the loop of "${loopNode}". Engine v2 does not support nested loops yet.`,
 				inner,
 			),
@@ -162,6 +175,7 @@ function findLoopShapeReasons(
 		reasons.push(
 			reason(
 				'LOOP_MULTIPLE_RETURNS',
+				'temporary',
 				`${returns.length} connections return to "${loopNode}". Engine v2 does not support more than one return connection for a loop yet.`,
 				loopNode,
 			),
@@ -173,6 +187,7 @@ function findLoopShapeReasons(
 		reasons.push(
 			reason(
 				'LOOP_MULTIPLE_ENTRIES',
+				'temporary',
 				`${entries.length} connections enter the loop of "${loopNode}". Engine v2 does not support more than one connection into a loop yet.`,
 				loopNode,
 			),
@@ -183,7 +198,8 @@ function findLoopShapeReasons(
 		reasons.push(
 			reason(
 				'LOOP_INPUT_NOT_FIRST',
-				`A connection goes into an input of "${loopNode}" other than the first. Engine v2 needs every connection into a Split In Batches node to use its first input.`,
+				'permanent',
+				`A connection goes into an input of "${loopNode}" other than the first. Engine v2 needs every connection into a Split In Batches node to use its first input. Connect it to the first input.`,
 				loopNode,
 			),
 		);
@@ -193,7 +209,8 @@ function findLoopShapeReasons(
 		reasons.push(
 			reason(
 				'LOOP_DONE_OUTPUT_FEEDS_BODY',
-				`The done output of "${loopNode}" connects to a node inside its own loop. A node cannot run both in each pass and after the loop.`,
+				'permanent',
+				`The done output of "${loopNode}" connects to a node inside its own loop. A node cannot run both in each pass and after the loop. Connect the done output to a node after the loop.`,
 				loopNode,
 			),
 		);
@@ -207,6 +224,7 @@ function findLoopShapeReasons(
 		reasons.push(
 			reason(
 				'LOOP_EXITS_MID_BODY',
+				'temporary',
 				`"${from}" connects to a node outside the loop of "${loopNode}". Engine v2 does not support a way out of the loop other than the done output of "${loopNode}" yet.`,
 				from,
 			),
@@ -240,6 +258,7 @@ function findCutOffReasons(
 	return [...new Set(cutOff.map((e) => e.from))].map((name) =>
 		reason(
 			'NODE_REACHED_ONLY_THROUGH_DISABLED_NODE',
+			'invalid',
 			`"${name}" gets data only through an input of a disabled node other than the first. Engine v2 would wait for it forever. Enable the disabled node, or connect "${name}" another way.`,
 			name,
 		),
@@ -267,6 +286,7 @@ function findInputSlotReasons(
 		.map((slot) =>
 			reason(
 				'INPUT_SLOT_CONVERGENCE',
+				'temporary',
 				`${slot.count} connections go into input ${slot.inputIndex + 1} of "${slot.to}". Engine v2 does not support more than one connection into one input yet.`,
 				slot.to,
 			),
