@@ -6,7 +6,13 @@ import { Service } from '@n8n/di';
  * to block. With no provider registered, publishing is allowed.
  */
 export interface WorkflowPublishGuard {
-	assertCanPublish(workflowId: string): Promise<void>;
+	assertCanPublish(workflowId: string, target: WorkflowPublishTarget): Promise<void>;
+}
+
+export interface WorkflowPublishTarget {
+	versionId: string;
+	/** A source control pull publishes what the repository holds, so only an open review blocks it. */
+	fromSourceControlPull?: boolean;
 }
 
 @Service()
@@ -17,7 +23,7 @@ export class WorkflowPublishGuardProxy implements WorkflowPublishGuard {
 		this.provider = provider;
 	}
 
-	async assertCanPublish(workflowId: string): Promise<void> {
-		await this.provider?.assertCanPublish(workflowId);
+	async assertCanPublish(workflowId: string, target: WorkflowPublishTarget): Promise<void> {
+		await this.provider?.assertCanPublish(workflowId, target);
 	}
 }

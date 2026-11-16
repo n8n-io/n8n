@@ -1,6 +1,6 @@
 import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
-import type { Project, User } from '@n8n/db';
+import type { Project, User, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository, WorkflowReviewRequestRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
@@ -10,7 +10,7 @@ import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.s
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
-import { createMember } from '@test-integration/db/users';
+import { addApiKey, createMember } from '@test-integration/db/users';
 import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
@@ -27,7 +27,7 @@ const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
 
 const testServer = utils.setupTestServer({
-	endpointGroups: ['workflow-reviews', 'workflows'],
+	endpointGroups: ['workflow-reviews', 'workflows', 'publicApi'],
 	enabledFeatures: ['feat:workflowReviews'],
 	modules: ['workflow-reviews'],
 });
@@ -62,7 +62,7 @@ beforeAll(async () => {
 beforeEach(async () => {
 	testServer.license.enable('feat:workflowReviews');
 	await testDb.truncate([...REVIEW_TABLES]);
-	await policyService.set(true);
+	await policyService.update({ enabled: true, alwaysRequired: false });
 	stubWorkflowValidation(workflowValidationService);
 
 	({ owner, member, ownerProject, teamProject, ownerAgent } = await seedReviewActors(
@@ -87,6 +87,39 @@ async function createOpenReview(
 
 const publishedVersionOf = async (workflowId: string) =>
 	(await workflowEntityRepository.findOneByOrFail({ id: workflowId })).activeVersionId;
+
+const requireApproval = async () => await policyService.update({ alwaysRequired: true });
+
+/** A team project workflow with its first version live and a second version not yet published. */
+async function createLiveTeamWorkflow() {
+	const { workflow, versionId: liveVersionId } = await createReviewableWorkflow(teamProject);
+	await ownerAgent
+		.post(`/workflows/${workflow.id}/activate`)
+		.send({ versionId: liveVersionId })
+		.expect(200);
+
+	const newVersionId = uuid();
+	await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+	return { workflow, liveVersionId, newVersionId };
+}
+
+async function seedTeamReview(
+	workflowId: string,
+	versionId: string,
+	review: {
+		state?: 'open' | 'closed';
+		decision?: 'pending' | 'changes_requested' | 'approved';
+	} = {},
+) {
+	return await seedReview({
+		projectId: teamProject.id,
+		workflowId,
+		versionId,
+		author: member,
+		...review,
+	});
+}
 
 describe('publishing a workflow under review', () => {
 	test.each([
@@ -223,6 +256,165 @@ describe('publishing a workflow under review', () => {
 		await ownerAgent.post(`/workflows/${workflow.id}/deactivate`).send({}).expect(200);
 
 		expect(await publishedVersionOf(workflow.id)).toBeNull();
+	});
+});
+
+describe('publishing when the instance always requires an approved review', () => {
+	test.each([
+		['no review', undefined],
+		['only an approved review of the live version', { pinned: 'live', decision: 'approved' }],
+		[
+			'only a closed review of this version without approval',
+			{ pinned: 'new', decision: 'changes_requested' },
+		],
+	] as const)('rejects a team project version with %s', async (_case, review) => {
+		const { workflow, liveVersionId, newVersionId } = await createLiveTeamWorkflow();
+		if (review) {
+			await seedTeamReview(workflow.id, review.pinned === 'live' ? liveVersionId : newVersionId, {
+				state: 'closed',
+				decision: review.decision,
+			});
+		}
+		await requireApproval();
+
+		const response = await ownerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: newVersionId })
+			.expect(409);
+
+		expect(response.body.meta).toEqual({
+			reason: 'review_required',
+			versionId: newVersionId,
+			validationError: true,
+		});
+		expect(response.body.message).toContain('Submit this version for review');
+		expect(await publishedVersionOf(workflow.id)).toBe(liveVersionId);
+	});
+
+	test('publishes a version when its review is approved', async () => {
+		const { workflow, newVersionId } = await createLiveTeamWorkflow();
+		const request = await seedTeamReview(workflow.id, newVersionId);
+		await requireApproval();
+
+		const response = await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		expect(response.body.data.autoPublish).toEqual({ status: 'published' });
+		expect(await publishedVersionOf(workflow.id)).toBe(newVersionId);
+	});
+
+	test('rolls back to an earlier version that has an approved review', async () => {
+		const { workflow, versionId: firstVersionId } = await createReviewableWorkflow(teamProject);
+		const secondVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: secondVersionId });
+		for (const versionId of [firstVersionId, secondVersionId]) {
+			await seedTeamReview(workflow.id, versionId, { state: 'closed', decision: 'approved' });
+		}
+		await requireApproval();
+
+		for (const versionId of [firstVersionId, secondVersionId, firstVersionId]) {
+			await ownerAgent.post(`/workflows/${workflow.id}/activate`).send({ versionId }).expect(200);
+		}
+
+		expect(await publishedVersionOf(workflow.id)).toBe(firstVersionId);
+	});
+
+	test('saves an API key update as a draft and rejects its publish', async () => {
+		const { workflow, liveVersionId } = await createLiveTeamWorkflow();
+		await requireApproval();
+		const { apiKey } = await addApiKey(owner);
+
+		const response = await testServer
+			.publicApiAgentWithApiKey(apiKey)
+			.put(`/workflows/${workflow.id}`)
+			.send({
+				name: workflow.name,
+				nodes: workflow.nodes.map((node) => ({ ...node, position: [100, 100] })),
+				connections: workflow.connections,
+				settings: workflow.settings ?? {},
+			})
+			.expect(409);
+
+		const stored = await workflowEntityRepository.findOneByOrFail({ id: workflow.id });
+		expect(response.body.reason).toBe('review_required');
+		expect(response.body.versionId).toBe(stored.versionId);
+		expect(stored.versionId).not.toBe(liveVersionId);
+		expect(stored.activeVersionId).toBe(liveVersionId);
+	});
+
+	test('keeps an unapproved live version live when its settings change', async () => {
+		const { workflow, liveVersionId } = await createLiveTeamWorkflow();
+		await requireApproval();
+		activeWorkflowManager.add.mockClear();
+
+		await Container.get(WorkflowService).update(
+			owner,
+			{ settings: { saveManualExecutions: true } } as WorkflowEntity,
+			workflow.id,
+			{ forceSave: true },
+		);
+
+		expect(activeWorkflowManager.add).toHaveBeenCalledWith(
+			workflow.id,
+			'update',
+			undefined,
+			expect.anything(),
+		);
+		expect(await publishedVersionOf(workflow.id)).toBe(liveVersionId);
+	});
+
+	test('publishes an unapproved team version through a source control pull', async () => {
+		const { workflow, newVersionId } = await createLiveTeamWorkflow();
+		await requireApproval();
+
+		await Container.get(WorkflowService).activateWorkflowFromSourceControlPull(
+			owner,
+			workflow.id,
+			newVersionId,
+		);
+
+		expect(await publishedVersionOf(workflow.id)).toBe(newVersionId);
+	});
+
+	test('rejects a source control pull publish while a review is open', async () => {
+		const { workflow, liveVersionId, newVersionId } = await createLiveTeamWorkflow();
+		await seedTeamReview(workflow.id, newVersionId);
+		await requireApproval();
+
+		await expect(
+			Container.get(WorkflowService).activateWorkflowFromSourceControlPull(
+				owner,
+				workflow.id,
+				newVersionId,
+			),
+		).rejects.toMatchObject({ details: { reason: 'review_pending' } });
+		expect(await publishedVersionOf(workflow.id)).toBe(liveVersionId);
+	});
+
+	test('publishes an unapproved version of a personal workflow', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow(owner);
+		await requireApproval();
+
+		await ownerAgent.post(`/workflows/${workflow.id}/activate`).send({ versionId }).expect(200);
+
+		expect(await publishedVersionOf(workflow.id)).toBe(versionId);
+	});
+
+	test.each([
+		['workflow reviews are turned off', { enabled: false, alwaysRequired: true }],
+		['approval is required only when configured', { enabled: true, alwaysRequired: false }],
+	])('publishes an unapproved team version when %s', async (_case, policy) => {
+		const { workflow, newVersionId } = await createLiveTeamWorkflow();
+		await policyService.update(policy);
+
+		await ownerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: newVersionId })
+			.expect(200);
+
+		expect(await publishedVersionOf(workflow.id)).toBe(newVersionId);
 	});
 });
 

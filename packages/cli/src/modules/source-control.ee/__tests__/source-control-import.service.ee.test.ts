@@ -689,7 +689,7 @@ describe('SourceControlImportService', () => {
 				expect.anything(),
 			);
 			expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
-			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(workflowService.activateWorkflowFromSourceControlPull).not.toHaveBeenCalled();
 		});
 
 		it('should keep existing inactive workflows inactive', async () => {
@@ -737,7 +737,7 @@ describe('SourceControlImportService', () => {
 				expect.anything(),
 			);
 			expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
-			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(workflowService.activateWorkflowFromSourceControlPull).not.toHaveBeenCalled();
 		});
 
 		it('should preserve existing active workflow active version', async () => {
@@ -785,7 +785,7 @@ describe('SourceControlImportService', () => {
 				expect.anything(),
 			);
 			expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
-			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(workflowService.activateWorkflowFromSourceControlPull).not.toHaveBeenCalled();
 		});
 
 		it('should clear active state when local workflow is archived with a lingering active version', async () => {
@@ -831,7 +831,7 @@ describe('SourceControlImportService', () => {
 				}),
 				expect.anything(),
 			);
-			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(workflowService.activateWorkflowFromSourceControlPull).not.toHaveBeenCalled();
 		});
 
 		it('should unpublish archived workflows even if they were previously published', async () => {
@@ -880,7 +880,7 @@ describe('SourceControlImportService', () => {
 				expect.anything(),
 			);
 			expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(mockPerson, 'workflow1');
-			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			expect(workflowService.activateWorkflowFromSourceControlPull).not.toHaveBeenCalled();
 		});
 
 		describe('workflow mutation hooks on pull-archive', () => {
@@ -1053,7 +1053,7 @@ describe('SourceControlImportService', () => {
 					}),
 					expect.anything(),
 				);
-				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+				expect(workflowService.activateWorkflowFromSourceControlPull).not.toHaveBeenCalled();
 				expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
 			});
 
@@ -1093,7 +1093,7 @@ describe('SourceControlImportService', () => {
 					}),
 					expect.anything(),
 				);
-				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+				expect(workflowService.activateWorkflowFromSourceControlPull).not.toHaveBeenCalled();
 				expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
 			});
 
@@ -1128,13 +1128,11 @@ describe('SourceControlImportService', () => {
 					expect.anything(),
 				);
 
-				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+				expect(workflowService.activateWorkflowFromSourceControlPull).toHaveBeenCalledWith(
 					mockPerson,
 					'workflow1',
-					expect.objectContaining({
-						// versionId must be preserved from remote file for change detection to work correctly
-						versionId: 'remote-version-123',
-					}),
+					// versionId must be preserved from remote file for change detection to work correctly
+					'remote-version-123',
 				);
 			});
 
@@ -1177,13 +1175,11 @@ describe('SourceControlImportService', () => {
 
 				// Should be unpublished first and then published
 				expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(mockPerson, 'workflow1');
-				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+				expect(workflowService.activateWorkflowFromSourceControlPull).toHaveBeenCalledWith(
 					mockPerson,
 					'workflow1',
-					expect.objectContaining({
-						// versionId must be preserved from remote file for change detection to work correctly
-						versionId: 'v2',
-					}),
+					// versionId must be preserved from remote file for change detection to work correctly
+					'v2',
 				);
 			});
 
@@ -1218,8 +1214,12 @@ describe('SourceControlImportService', () => {
 					'all',
 				);
 
+				expect(workflowPublishGuard.assertCanPublish).toHaveBeenCalledWith('workflow1', {
+					versionId: 'v2',
+					fromSourceControlPull: true,
+				});
 				expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
-				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+				expect(workflowService.activateWorkflowFromSourceControlPull).not.toHaveBeenCalled();
 				expect(workflowRepository.upsertImportedContent).toHaveBeenCalledWith(
 					expect.objectContaining({
 						versionId: 'v2',
@@ -1253,7 +1253,7 @@ describe('SourceControlImportService', () => {
 				};
 				workflowRepository.findByIds.mockResolvedValue([]);
 				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
-				workflowService.activateWorkflow.mockRejectedValue(
+				workflowService.activateWorkflowFromSourceControlPull.mockRejectedValue(
 					new WorkflowPublishBlockedError({
 						reason: 'changes_requested',
 						workflowReviewRequestId: 'review-2',
@@ -1335,16 +1335,16 @@ describe('SourceControlImportService', () => {
 
 				// Workflow1 should be unpublished (was previously published) and then published
 				expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(mockPerson, 'workflow1');
-				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+				expect(workflowService.activateWorkflowFromSourceControlPull).toHaveBeenCalledWith(
 					mockPerson,
 					'workflow1',
-					expect.any(Object),
+					expect.any(String),
 				);
 				// Workflow2 should not be published (was previously unpublished)
-				expect(workflowService.activateWorkflow).not.toHaveBeenCalledWith(
+				expect(workflowService.activateWorkflowFromSourceControlPull).not.toHaveBeenCalledWith(
 					mockPerson,
 					'workflow2',
-					expect.any(Object),
+					expect.any(String),
 				);
 			});
 
@@ -1378,7 +1378,7 @@ describe('SourceControlImportService', () => {
 				// Should unpublish the previously active workflow
 				expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(mockPerson, 'workflow1');
 				// Should NOT publish archived workflow
-				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+				expect(workflowService.activateWorkflowFromSourceControlPull).not.toHaveBeenCalled();
 				// Should import as unpublished
 				expect(workflowRepository.upsertImportedContent).toHaveBeenCalledWith(
 					expect.objectContaining({
@@ -1428,13 +1428,11 @@ describe('SourceControlImportService', () => {
 					expect.anything(),
 				);
 				// Should publish with new version after history is saved
-				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+				expect(workflowService.activateWorkflowFromSourceControlPull).toHaveBeenCalledWith(
 					mockPerson,
 					'workflow1',
-					expect.objectContaining({
-						// versionId must be preserved from remote file for change detection to work correctly
-						versionId: 'new-version',
-					}),
+					// versionId must be preserved from remote file for change detection to work correctly
+					'new-version',
 				);
 			});
 
@@ -1462,7 +1460,9 @@ describe('SourceControlImportService', () => {
 				folderRepository.find.mockResolvedValue([]);
 				sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 				workflowRepository.upsertImportedContent.mockResolvedValue('workflow1');
-				workflowService.activateWorkflow.mockRejectedValue(new Error('Activation failed'));
+				workflowService.activateWorkflowFromSourceControlPull.mockRejectedValue(
+					new Error('Activation failed'),
+				);
 
 				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
 
@@ -1521,7 +1521,7 @@ describe('SourceControlImportService', () => {
 				);
 
 				// Should NOT attempt to republish since unpublish failed
-				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+				expect(workflowService.activateWorkflowFromSourceControlPull).not.toHaveBeenCalled();
 
 				// Should return activation error
 				expect(result).toEqual([
@@ -1576,7 +1576,7 @@ describe('SourceControlImportService', () => {
 				);
 
 				// Should NOT attempt to republish since unpublish failed
-				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+				expect(workflowService.activateWorkflowFromSourceControlPull).not.toHaveBeenCalled();
 
 				// Should return activation error
 				expect(result).toEqual([

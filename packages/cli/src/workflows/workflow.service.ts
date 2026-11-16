@@ -167,6 +167,16 @@ type WorkflowUpdateOptions = {
 	restoredVersionSettings?: VersionedWorkflowSettings;
 };
 
+type ActivateWorkflowOptions = {
+	versionId?: string;
+	name?: string;
+	description?: string;
+	expectedChecksum?: string;
+	source?: WorkflowActionSource;
+	publicApi?: PublicApiCaller;
+	publishHistory?: PublishHistoryScope;
+};
+
 export type PreparedWorkflowUpdate = {
 	user: User;
 	previousWorkflow: WorkflowEntity;
@@ -1271,23 +1281,44 @@ export class WorkflowService {
 	 * @param options - Optional versionId, name and description updates
 	 * @returns The activated workflow
 	 */
-	// eslint-disable-next-line complexity
 	async activateWorkflow(
 		user: User,
 		workflowId: string,
-		options?: {
-			versionId?: string;
-			name?: string;
-			description?: string;
-			expectedChecksum?: string;
-			source?: WorkflowActionSource;
-			publicApi?: PublicApiCaller;
-			publishHistory?: PublishHistoryScope;
-		},
+		options?: ActivateWorkflowOptions,
 		ctx: OperationContext = {},
 	): Promise<WorkflowEntity> {
-		const source = options?.source ?? 'ui';
-		const publicApi = options?.publicApi ?? false;
+		return await this._activateWorkflow(
+			user,
+			workflowId,
+			{ ...options, fromSourceControlPull: false },
+			ctx,
+		);
+	}
+
+	/**
+	 * Publishes a version that a source control pull imported. Only an open review blocks it.
+	 * `SourceControlImportService` is the single caller.
+	 */
+	async activateWorkflowFromSourceControlPull(
+		user: User,
+		workflowId: string,
+		versionId: string,
+	): Promise<WorkflowEntity> {
+		return await this._activateWorkflow(user, workflowId, {
+			versionId,
+			fromSourceControlPull: true,
+		});
+	}
+
+	// eslint-disable-next-line complexity
+	private async _activateWorkflow(
+		user: User,
+		workflowId: string,
+		options: ActivateWorkflowOptions & { fromSourceControlPull: boolean },
+		ctx: OperationContext = {},
+	): Promise<WorkflowEntity> {
+		const source = options.source ?? 'ui';
+		const publicApi = options.publicApi ?? false;
 		const loginId = loginIdOf(ctx);
 
 		let workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
@@ -1320,7 +1351,7 @@ export class WorkflowService {
 			throw new BadRequestError('Cannot activate an archived workflow.');
 		}
 
-		const versionIdToActivate = options?.versionId ?? workflow.versionId;
+		const versionIdToActivate = options.versionId ?? workflow.versionId;
 		const previousActiveVersionId = workflow.activeVersionId;
 
 		// Reached with access to the workflow but not the right to release a version, so there is no
@@ -1352,7 +1383,7 @@ export class WorkflowService {
 			throw error;
 		}
 
-		if (options?.expectedChecksum) {
+		if (options.expectedChecksum) {
 			await this._detectConflicts(workflow, options.expectedChecksum);
 		}
 
@@ -1415,7 +1446,10 @@ export class WorkflowService {
 		// races — accepted, because both outcomes degrade gracefully (the approval
 		// stands and auto-publish reports `failed`).`.
 		if (versionIdToActivate !== previousActiveVersionId) {
-			await this.workflowPublishGuard.assertCanPublish(workflowId);
+			await this.workflowPublishGuard.assertCanPublish(workflowId, {
+				versionId: versionIdToActivate,
+				fromSourceControlPull: options.fromSourceControlPull,
+			});
 		}
 
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
@@ -1515,7 +1549,7 @@ export class WorkflowService {
 			userId: user.id,
 		});
 
-		if (options?.name !== undefined || options?.description !== undefined) {
+		if (options.name !== undefined || options.description !== undefined) {
 			const updateFields: UpdateWorkflowHistoryVersionDto = {};
 			if (options.name !== undefined) updateFields.name = options.name;
 			if (options.description !== undefined) updateFields.description = options.description;
@@ -1536,7 +1570,7 @@ export class WorkflowService {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
 		}
 
-		const publishHistory = options?.publishHistory ?? 'all';
+		const publishHistory = options.publishHistory ?? 'all';
 		if (updatedWorkflow.activeVersion && publishHistory !== 'none') {
 			updatedWorkflow.activeVersion.workflowPublishHistory =
 				await this.workflowPublishHistoryRepository.findByVersion(

@@ -1,4 +1,4 @@
-import { workflowReviewsPolicySchema } from '@n8n/api-types';
+import { type WorkflowReviewsPolicy, workflowReviewsPolicySchema } from '@n8n/api-types';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
@@ -12,7 +12,7 @@ const DEFAULT_POLICY = { enabled: false };
 export class WorkflowReviewPolicyService {
 	constructor(private readonly settingsRepository: SettingsRepository) {}
 
-	async get(): Promise<{ enabled: boolean }> {
+	async get(): Promise<WorkflowReviewsPolicy> {
 		const row = await this.settingsRepository.findByKey(WORKFLOW_REVIEW_POLICY_SETTINGS_KEY);
 		if (!row) {
 			return DEFAULT_POLICY;
@@ -28,8 +28,16 @@ export class WorkflowReviewPolicyService {
 		return parsed.data;
 	}
 
-	async set(enabled: boolean): Promise<{ enabled: boolean }> {
-		const parsed = workflowReviewsPolicySchema.safeParse({ enabled });
+	async set(enabled: boolean): Promise<WorkflowReviewsPolicy> {
+		return await this.update({ enabled });
+	}
+
+	async update(patch: Partial<WorkflowReviewsPolicy>): Promise<WorkflowReviewsPolicy> {
+		const merged = { ...(await this.get()) };
+		if (patch.enabled !== undefined) merged.enabled = patch.enabled;
+		if (patch.alwaysRequired !== undefined) merged.alwaysRequired = patch.alwaysRequired;
+
+		const parsed = workflowReviewsPolicySchema.safeParse(merged);
 		if (!parsed.success) {
 			throw new UserError('Invalid workflow reviews settings');
 		}
