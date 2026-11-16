@@ -12,6 +12,7 @@ import {
 	type INodeTypeDescription,
 	type JsonObject,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import {
@@ -103,7 +104,7 @@ export class HaloPSA implements INodeType {
 					this,
 					'sites',
 					'GET',
-					'/site',
+					requestPath`/site`,
 					tokens.access_token,
 				)) as IDataObject[];
 
@@ -124,7 +125,7 @@ export class HaloPSA implements INodeType {
 					this,
 					'clients',
 					'GET',
-					'/Client',
+					requestPath`/Client`,
 					tokens.access_token,
 				)) as IDataObject[];
 
@@ -144,7 +145,7 @@ export class HaloPSA implements INodeType {
 				const response = (await haloPSAApiRequest.call(
 					this,
 					'GET',
-					'/TicketType',
+					requestPath`/TicketType`,
 					tokens.access_token,
 					{},
 				)) as IDataObject[];
@@ -179,7 +180,7 @@ export class HaloPSA implements INodeType {
 				const response = (await haloPSAApiRequest.call(
 					this,
 					'GET',
-					'/agent',
+					requestPath`/agent`,
 					tokens.access_token,
 					{},
 				)) as IDataObject[];
@@ -246,7 +247,7 @@ export class HaloPSA implements INodeType {
 						responseData = await haloPSAApiRequest.call(
 							this,
 							'POST',
-							'/client',
+							requestPath`/client`,
 							tokens.access_token,
 							[body],
 						);
@@ -263,7 +264,7 @@ export class HaloPSA implements INodeType {
 						responseData = await haloPSAApiRequest.call(
 							this,
 							'DELETE',
-							`/client/${clientId}`,
+							requestPath`/client/${clientId}`,
 							tokens.access_token,
 						);
 					}
@@ -274,7 +275,7 @@ export class HaloPSA implements INodeType {
 						const response = await haloPSAApiRequest.call(
 							this,
 							'GET',
-							`/client/${clientId}`,
+							requestPath`/client/${clientId}`,
 							tokens.access_token,
 						);
 						responseData = simplify
@@ -295,7 +296,7 @@ export class HaloPSA implements INodeType {
 								this,
 								'clients',
 								'GET',
-								'/client',
+								requestPath`/client`,
 								tokens.access_token,
 								{},
 								qs,
@@ -306,7 +307,7 @@ export class HaloPSA implements INodeType {
 							const { clients } = await haloPSAApiRequest.call(
 								this,
 								'GET',
-								'/client',
+								requestPath`/client`,
 								tokens.access_token,
 								{},
 								qs,
@@ -329,7 +330,7 @@ export class HaloPSA implements INodeType {
 						responseData = await haloPSAApiRequest.call(
 							this,
 							'POST',
-							'/client',
+							requestPath`/client`,
 							tokens.access_token,
 							[body],
 						);
@@ -359,7 +360,7 @@ export class HaloPSA implements INodeType {
 						responseData = await haloPSAApiRequest.call(
 							this,
 							'POST',
-							'/site',
+							requestPath`/site`,
 							tokens.access_token,
 							[body],
 						);
@@ -370,7 +371,7 @@ export class HaloPSA implements INodeType {
 						responseData = await haloPSAApiRequest.call(
 							this,
 							'DELETE',
-							`/site/${siteId}`,
+							requestPath`/site/${siteId}`,
 							tokens.access_token,
 						);
 					}
@@ -381,7 +382,7 @@ export class HaloPSA implements INodeType {
 						const response = await haloPSAApiRequest.call(
 							this,
 							'GET',
-							`/site/${siteId}`,
+							requestPath`/site/${siteId}`,
 							tokens.access_token,
 						);
 						responseData = simplify
@@ -402,7 +403,7 @@ export class HaloPSA implements INodeType {
 								this,
 								'sites',
 								'GET',
-								'/site',
+								requestPath`/site`,
 								tokens.access_token,
 								{},
 								qs,
@@ -413,7 +414,7 @@ export class HaloPSA implements INodeType {
 							const { sites } = await haloPSAApiRequest.call(
 								this,
 								'GET',
-								'/site',
+								requestPath`/site`,
 								tokens.access_token,
 								{},
 								qs,
@@ -436,7 +437,7 @@ export class HaloPSA implements INodeType {
 						responseData = await haloPSAApiRequest.call(
 							this,
 							'POST',
-							'/site',
+							requestPath`/site`,
 							tokens.access_token,
 							[body],
 						);
@@ -468,7 +469,7 @@ export class HaloPSA implements INodeType {
 						responseData = await haloPSAApiRequest.call(
 							this,
 							'POST',
-							'/tickets',
+							requestPath`/tickets`,
 							tokens.access_token,
 							[body],
 						);
@@ -479,7 +480,7 @@ export class HaloPSA implements INodeType {
 						responseData = await haloPSAApiRequest.call(
 							this,
 							'DELETE',
-							`/tickets/${ticketId}`,
+							requestPath`/tickets/${ticketId}`,
 							tokens.access_token,
 						);
 					}
@@ -490,7 +491,7 @@ export class HaloPSA implements INodeType {
 						const response = await haloPSAApiRequest.call(
 							this,
 							'GET',
-							`/tickets/${ticketId}`,
+							requestPath`/tickets/${ticketId}`,
 							tokens.access_token,
 						);
 						responseData = simplify
@@ -511,7 +512,7 @@ export class HaloPSA implements INodeType {
 								this,
 								'tickets',
 								'GET',
-								'/tickets',
+								requestPath`/tickets`,
 								tokens.access_token,
 								{},
 								qs,
@@ -522,7 +523,7 @@ export class HaloPSA implements INodeType {
 							const { tickets } = await haloPSAApiRequest.call(
 								this,
 								'GET',
-								'/tickets',
+								requestPath`/tickets`,
 								tokens.access_token,
 								{},
 								qs,
@@ -545,7 +546,7 @@ export class HaloPSA implements INodeType {
 						responseData = await haloPSAApiRequest.call(
 							this,
 							'POST',
-							'/tickets',
+							requestPath`/tickets`,
 							tokens.access_token,
 							[body],
 						);
@@ -576,7 +577,7 @@ export class HaloPSA implements INodeType {
 						responseData = await haloPSAApiRequest.call(
 							this,
 							'POST',
-							'/users',
+							requestPath`/users`,
 							tokens.access_token,
 							[body],
 						);
@@ -587,7 +588,7 @@ export class HaloPSA implements INodeType {
 						responseData = await haloPSAApiRequest.call(
 							this,
 							'DELETE',
-							`/users/${userId}`,
+							requestPath`/users/${userId}`,
 							tokens.access_token,
 						);
 					}
@@ -598,7 +599,7 @@ export class HaloPSA implements INodeType {
 						const response = await haloPSAApiRequest.call(
 							this,
 							'GET',
-							`/users/${userId}`,
+							requestPath`/users/${userId}`,
 							tokens.access_token,
 						);
 						responseData = simplify
@@ -619,7 +620,7 @@ export class HaloPSA implements INodeType {
 								this,
 								'users',
 								'GET',
-								'/users',
+								requestPath`/users`,
 								tokens.access_token,
 								{},
 								qs,
@@ -630,7 +631,7 @@ export class HaloPSA implements INodeType {
 							const { users } = await haloPSAApiRequest.call(
 								this,
 								'GET',
-								'/users',
+								requestPath`/users`,
 								tokens.access_token,
 								{},
 								qs,
@@ -653,7 +654,7 @@ export class HaloPSA implements INodeType {
 						responseData = await haloPSAApiRequest.call(
 							this,
 							'POST',
-							'/users',
+							requestPath`/users`,
 							tokens.access_token,
 							[body],
 						);

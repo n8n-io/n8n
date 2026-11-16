@@ -4,7 +4,7 @@ import type {
 	INodeParameterResourceLocator,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { type GraphSearchReply } from '../helpers/utils';
 import { resolveSiteId } from '../site';
@@ -69,7 +69,7 @@ export async function getLists(
 		response = (await microsoftApiRequest.call(
 			this,
 			'GET',
-			'',
+			requestPath`/v1.0/sites/${siteId}/lists`,
 			{},
 			{},
 			paginationToken,
@@ -78,7 +78,7 @@ export async function getLists(
 		response = (await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/v1.0/sites/${encodeURIComponent(siteId)}/lists`,
+			requestPath`/v1.0/sites/${siteId}/lists`,
 			{},
 			{ $select: 'id,displayName' },
 		)) as ListSearchReply;

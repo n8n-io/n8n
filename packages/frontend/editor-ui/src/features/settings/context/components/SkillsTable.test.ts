@@ -389,7 +389,10 @@ describe('SkillsTable', () => {
 			updatesBlocked: 0,
 			health: 'connected',
 			lastCheckedAt: null,
+			missingSkills: [],
+			canReplaceCredential: false,
 			canReview: true,
+			canDelete: true,
 			...overrides,
 		});
 
@@ -437,11 +440,11 @@ describe('SkillsTable', () => {
 
 		it('names the source menu and keeps health visible without review permission', () => {
 			const { getByRole, queryByTestId } = renderGrouped({
-				sources: [source({ canReview: false, health: 'unreachable', updatesAvailable: 2 })],
+				sources: [source({ canReview: false, health: 'source_unavailable', updatesAvailable: 2 })],
 			});
 
 			expect(getByRole('button', { name: 'Actions for acme/skills · main' })).toBeInTheDocument();
-			expect(getByRole('button', { name: 'Unreachable' })).toBeInTheDocument();
+			expect(getByRole('button', { name: 'Source unavailable' })).toBeInTheDocument();
 			expect(queryByTestId('skill-group-updates')).toBeNull();
 		});
 
@@ -518,7 +521,7 @@ describe('SkillsTable', () => {
 
 		it('shows no update badge to a user who cannot review, and only Open in GitHub', async () => {
 			const { getByTestId, queryByTestId } = renderGrouped({
-				sources: [source({ updatesAvailable: 2, canReview: false })],
+				sources: [source({ updatesAvailable: 2, canReview: false, canDelete: false })],
 			});
 
 			expect(queryByTestId('skill-group-updates')).toBeNull();
@@ -527,6 +530,27 @@ describe('SkillsTable', () => {
 				expect(document.querySelector('[data-test-id="action-openInGitHub"]')).toBeInTheDocument(),
 			);
 			expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeNull();
+			expect(document.querySelector('[data-test-id="action-deleteSource"]')).toBeNull();
+		});
+
+		it('offers Delete source with delete permission even without update permission', async () => {
+			const row = source({ canReview: false });
+			const { getByTestId, emitted } = renderGrouped({ sources: [row] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-deleteSource"]')).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-deleteSource"]')!);
+			expect(emitted('deleteSource')).toEqual([[row]]);
+		});
+
+		it('hides Delete source from users with update permission but no delete permission', async () => {
+			const { getByTestId } = renderGrouped({ sources: [source({ canDelete: false })] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeInTheDocument(),
+			);
+			expect(document.querySelector('[data-test-id="action-deleteSource"]')).toBeNull();
 		});
 
 		it('checks a source for updates from its menu', async () => {
@@ -541,6 +565,25 @@ describe('SkillsTable', () => {
 			await userEvent.click(document.querySelector('[data-test-id="action-checkNow"]')!);
 
 			expect(emitted('checkSource')).toEqual([[source()]]);
+		});
+
+		it('offers credential replacement only when the source permits it', async () => {
+			const row = source({ canReplaceCredential: true });
+			const { getByTestId, emitted, rerender } = renderGrouped({ sources: [row] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(
+					document.querySelector('[data-test-id="action-replaceCredential"]'),
+				).toBeInTheDocument(),
+			);
+			await userEvent.click(document.querySelector('[data-test-id="action-replaceCredential"]')!);
+			expect(emitted('replaceCredential')).toEqual([[row]]);
+			await rerender({ sources: [source({ canReview: true, canReplaceCredential: false })] });
+			await userEvent.click(within(getByTestId('skill-group-actions')).getByRole('button'));
+			await waitFor(() =>
+				expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeInTheDocument(),
+			);
+			expect(document.querySelector('[data-test-id="action-replaceCredential"]')).toBeNull();
 		});
 
 		it('opens the repository in GitHub', async () => {

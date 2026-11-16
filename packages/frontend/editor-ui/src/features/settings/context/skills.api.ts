@@ -172,6 +172,36 @@ export async function listSkillSources(context: IRestApiContext): Promise<SkillS
 	return await makeRestApiRequest<SkillSourceListItem[]>(context, 'GET', SOURCES_ENDPOINT);
 }
 
+/** Deletes a source and its synced skills. */
+export async function deleteSkillSource(context: IRestApiContext, sourceId: string): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `${SOURCES_ENDPOINT}/${sourceId}`);
+}
+
+function sourceCredentialEndpoint(source: Pick<SkillSourceListItem, 'id' | 'projectId'>) {
+	return `${source.projectId ? `/projects/${source.projectId}` : ''}${SOURCES_ENDPOINT}/${source.id}`;
+}
+
+export async function getSkillSourceReplacementCredentials(
+	context: IRestApiContext,
+	source: Pick<SkillSourceListItem, 'id' | 'projectId'>,
+): Promise<SkillSourceCredentialOption[]> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`${sourceCredentialEndpoint(source)}/credentials`,
+	);
+}
+
+export async function replaceSkillSourceCredential(
+	context: IRestApiContext,
+	source: Pick<SkillSourceListItem, 'id' | 'projectId'>,
+	credentialId: string,
+): Promise<void> {
+	await makeRestApiRequest(context, 'POST', `${sourceCredentialEndpoint(source)}/credential`, {
+		credentialId,
+	});
+}
+
 /** Check for updates on one source. */
 export async function checkSkillSource(
 	context: IRestApiContext,

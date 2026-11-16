@@ -1376,7 +1376,10 @@ describe('SettingsSkillsView', () => {
 				updatesBlocked: 0,
 				health: 'connected' as const,
 				lastCheckedAt: null,
+				missingSkills: [],
+				canReplaceCredential: true,
 				canReview: true,
+				canDelete: true,
 			};
 
 			async function renderWithSource() {
@@ -1409,6 +1412,25 @@ describe('SettingsSkillsView', () => {
 					expect.objectContaining({ groupBy: 'source' }),
 				);
 				expect(view.getByTestId('skill-group-title')).toHaveTextContent('acme/skills · main');
+			});
+
+			it('confirms source deletion and reloads the sources, skills, and creators', async () => {
+				const view = await renderWithSource();
+				await userEvent.click(view.getByTestId('skill-group-actions').querySelector('button')!);
+				const action = await screen.findByTestId('action-deleteSource');
+				await userEvent.click(action);
+				const dialog = await screen.findByRole('dialog');
+				expect(dialog).toHaveTextContent("This can't be undone.");
+				expect(skillsStore.deleteSource).not.toHaveBeenCalled();
+				skillsStore.fetchSkills.mockClear();
+				skillsStore.fetchSources.mockClear();
+				skillsStore.fetchCreators.mockClear();
+				await userEvent.click(within(dialog).getByRole('button', { name: 'Delete source' }));
+				await waitFor(() => expect(skillsStore.deleteSource).toHaveBeenCalledWith('src-1'));
+				await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
+				expect(skillsStore.fetchSources).toHaveBeenCalled();
+				expect(skillsStore.fetchCreators).toHaveBeenCalled();
+				await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 			});
 
 			it('opens and focuses the page of a duplicate source', async () => {
@@ -1625,10 +1647,6 @@ describe('SettingsSkillsView', () => {
 
 			it.each([
 				{
-					reason: 'rate_limited',
-					text: 'GitHub limits how often n8n can read it. Try again in a few minutes.',
-				},
-				{
 					reason: 'credential_missing',
 					text: 'The credential of this source no longer exists, or this scope can no longer use it.',
 				},
@@ -1650,7 +1668,7 @@ describe('SettingsSkillsView', () => {
 				const view = await renderWithSource();
 				skillsStore.checkSource.mockRejectedValue(new Error('Network down'));
 				skillsStore.fetchSources.mockImplementation(async () => {
-					const failedSource = { ...source, health: 'unreachable' as const };
+					const failedSource = { ...source, health: 'source_unavailable' as const };
 					skillsStore.sources = [failedSource];
 					return [failedSource];
 				});
@@ -1658,9 +1676,26 @@ describe('SettingsSkillsView', () => {
 				await clickCheck(view);
 
 				await waitFor(() =>
-					expect(view.getByRole('button', { name: 'Unreachable' })).toBeInTheDocument(),
+					expect(view.getByRole('button', { name: 'Source unavailable' })).toBeInTheDocument(),
 				);
 				expect(view.queryByTestId('skill-group-checking')).toBeNull();
+			});
+
+			it('reports a rate limit as delayed checking instead of an error', async () => {
+				skillsStore.checkSource.mockRejectedValue(
+					new ResponseError('Wait', { meta: { reason: 'rate_limited' } }),
+				);
+				const view = await renderWithSource();
+				await clickCheck(view);
+				await waitFor(() =>
+					expect(showMessageMock).toHaveBeenCalledWith({
+						title: 'Checking delayed',
+						message: 'GitHub has limited requests. n8n will check again later.',
+						type: 'info',
+					}),
+				);
+				expect(showErrorMock).not.toHaveBeenCalled();
+				expect(skillsStore.fetchSources).toHaveBeenCalled();
 			});
 
 			it('keeps the error of a failure without a reason', async () => {

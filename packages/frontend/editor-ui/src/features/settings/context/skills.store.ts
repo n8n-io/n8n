@@ -157,6 +157,19 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return response;
 	}
 
+	/** Deletes a source and its synced skills. The caller reloads the lists. */
+	async function deleteSource(sourceId: string): Promise<void> {
+		await api.deleteSkillSource(rootStore.restApiContext, sourceId);
+	}
+
+	async function fetchReplacementCredentials(source: SkillSourceListItem) {
+		return await api.getSkillSourceReplacementCredentials(rootStore.restApiContext, source);
+	}
+
+	async function replaceSourceCredential(source: SkillSourceListItem, credentialId: string) {
+		await api.replaceSkillSourceCredential(rootStore.restApiContext, source, credentialId);
+	}
+
 	/** Check for updates on one source. The caller reloads the lists. */
 	async function checkSource(sourceId: string) {
 		return await api.checkSkillSource(rootStore.restApiContext, sourceId);
@@ -188,5 +201,8 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		collapsedSources,
 		fetchSources,
 		checkSource,
+		deleteSource,
+		fetchReplacementCredentials,
+		replaceSourceCredential,
 	};
 });

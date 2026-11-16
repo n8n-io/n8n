@@ -3,7 +3,7 @@ tags:
   - Agent
 summary: Delete an agent
 description: |-
-  Delete an agent and its associated resources.
+  Delete an agent and its associated resources. The agent is deleted right away: it does not need to be archived first, and a published agent with live channels is deleted too. This matches the workflow delete endpoint.
 
   Requires the `agent:delete` API key scope.
 x-required-scope: agent:delete

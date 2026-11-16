@@ -11,10 +11,11 @@ import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 
+import { sanitizeSandboxErrorDetail } from '@/utils/sanitize-sandbox-error-detail';
+
 import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
 import {
 	AgentSandboxRuntimeService,
-	sanitizeSandboxErrorDetail,
 	type AgentSandboxRuntime,
 } from './agent-sandbox-runtime.service';
 import {

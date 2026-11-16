@@ -51,7 +51,7 @@ import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
-import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentPublishService } from '../agent-publish.service';
@@ -65,6 +65,7 @@ import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracke
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentDefinitionService } from '../agent-definition.service';
+import type { AgentServiceAccountService } from '../agent-service-account.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 
 import type { AgentTaskService } from '../agent-task.service';
@@ -142,7 +143,6 @@ function makeRuntimeReconstructionService(
 	return new AgentRuntimeReconstructionService(
 		mock<Logger>(),
 		mock<AgentRepository>(),
-		mock<KnowledgeFileRepository>(),
 		mock<ActiveExecutions>(),
 		mock<WorkflowRepository>(),
 		mock<N8NCheckpointStorage>(),
@@ -155,7 +155,7 @@ function makeRuntimeReconstructionService(
 		mock<AiService>(),
 		outboundHttp,
 		mock<AgentWorkspaceService>(),
-		mock<AgentKnowledgeMirrorService>(),
+		mock<KnowledgeRetrievalService>(),
 		mock<CredentialsFinderService>(),
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
@@ -302,6 +302,9 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				agentTaskRepository,
 				skillRefs,
 				new AgentPolicyService(new PolicyEnforcementService()),
+				mock<CredentialsFinderService>({
+					findCredentialForUser: async (id: string) => ({ id }) as never,
+				}),
 			),
 			mock<AgentSetupCompletionService>(),
 			transactionRunner,
@@ -412,6 +415,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentDefinitionService>(),
 			mock<GlobalConfig>({ tags: { disabled: false } }),
 			mock<TagService>(),
+			mock<AgentServiceAccountService>(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

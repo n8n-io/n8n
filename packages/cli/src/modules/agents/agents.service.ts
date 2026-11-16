@@ -19,7 +19,7 @@ import {
 	type AgentN8nChatThreadSummary,
 	type AgentN8nChatThreadsResponse,
 	type AgentSkill,
-	type ListAgentsQueryDto,
+	type ListAgentsOptions,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService, ProjectScopeService } from '@n8n/backend-services';
@@ -59,6 +59,7 @@ import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { AgentConfigPreparationService } from './agent-config-preparation.service';
 import { AgentSaveCompletionService } from './agent-save-completion.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
+import { AgentServiceAccountService } from './agent-service-account.service';
 import type { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { getAgentConfigHash } from './utils/agent-config-hash';
@@ -76,6 +77,7 @@ import { N8nChatFlagService } from './integrations/platforms/n8n-chat/n8n-chat-f
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { fromAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
+import { visitAgentCredentialReferences } from './utils/visit-agent-credential-references';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import {
 	AgentRepository,
@@ -185,6 +187,7 @@ export class AgentsService {
 		private readonly definitionService: AgentDefinitionService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
+		private readonly agentServiceAccount: AgentServiceAccountService,
 	) {}
 
 	/**
@@ -352,6 +355,7 @@ export class AgentsService {
 		options: DraftAgentCreateOptions,
 	) {
 		return await this.transactionRunner.run({}, async (ctx) => {
+			await this.agentServiceAccount.assignToNewAgent(agent, ctx);
 			// Insert-only: a reused client id must not overwrite the winning draft.
 			await this.agentRepository.insertNew(agent, ctx);
 			if (options.tagIds !== undefined) {
@@ -485,6 +489,7 @@ export class AgentsService {
 			{ projectId },
 		);
 		const importedSkillRefs = await Container.get(TransactionRunner).run({}, async (ctx) => {
+			await this.agentServiceAccount.assignToNewAgent(agent, ctx);
 			try {
 				await this.agentRepository.insertNew(agent, ctx);
 			} catch (error) {
@@ -533,9 +538,14 @@ export class AgentsService {
 				(credential) => credential.id,
 			),
 		);
+		// A copy adds every credential it keeps, so each one needs usage rights, not only read access.
+		const referencedIds = new Set<string>();
+		visitAgentCredentialReferences(schema, ({ id }) => {
+			if (accessibleCredentialIds.has(id)) referencedIds.add(id);
+		});
 		const sanitized = sanitizeUnknownAgentCredentials(
 			sanitizeAgentJsonConfig(schema),
-			accessibleCredentialIds,
+			await this.configPreparation.filterUsableCredentialIds(referencedIds, user),
 		) as AgentJsonConfig;
 
 		const { schemaConfig, integrations } = decomposeJsonConfig(sanitized);
@@ -552,7 +562,7 @@ export class AgentsService {
 
 	async findByProjectIdPaginated(
 		projectId: string,
-		options: ListAgentsQueryDto,
+		options: ListAgentsOptions,
 	): Promise<AgentListResult> {
 		return await this.addListSkillVersions(
 			await this.agentRepository.findByProjectIdsPaginated([projectId], options),
@@ -755,7 +765,7 @@ export class AgentsService {
 	 */
 	async findChatReachableByUserPaginated(
 		user: User,
-		options: ListAgentsQueryDto,
+		options: ListAgentsOptions,
 	): Promise<AgentChatListResponse> {
 		if (!(await this.settingsService.getEnabled())) return { count: 0, data: [] };
 		const [projectIds, ownedProjectIds] = await Promise.all([
@@ -860,7 +870,7 @@ export class AgentsService {
 	/** The agents overview list: every project where the user holds `agent:list`. */
 	async findListableByUserPaginated(
 		user: User,
-		options: ListAgentsQueryDto,
+		options: ListAgentsOptions,
 	): Promise<AgentListResult> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:list']);
 		return await this.addListSkillVersions(

@@ -4,7 +4,7 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -58,7 +58,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		qs.purpose = options.purpose as string;
 	}
 
-	const { data } = await apiRequest.call(this, 'GET', '/files', { qs });
+	const { data } = await apiRequest.call(this, 'GET', requestPath`/files`, { qs });
 
 	return (data || []).map((file: IDataObject) => ({
 		json: file,

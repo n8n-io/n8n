@@ -20,7 +20,7 @@ export const questionsOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '={{"/api/card/" + $parameter.questionId}}',
+						url: '=/api/card/{{ toPathSegment($parameter.questionId) }}',
 					},
 				},
 				action: 'Get a questions',
@@ -44,7 +44,7 @@ export const questionsOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '={{"/api/card/" + $parameter.questionId + "/query/" + $parameter.format}}',
+						url: '=/api/card/{{ toPathSegment($parameter.questionId) }}/query/{{ toPathSegment($parameter.format) }}',
 						returnFullResponse: true,
 						encoding: 'arraybuffer',
 					},

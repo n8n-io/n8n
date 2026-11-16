@@ -84,7 +84,11 @@ export class AgentsPublicController {
 	@ApiKeyScope('agent:delete')
 	@ProjectScope('agent:delete')
 	@ApiSummary('Delete an agent')
-	@ApiDescription('Delete an agent and its associated resources.')
+	@ApiDescription(
+		'Delete an agent and its associated resources. The agent is deleted right away: ' +
+			'it does not need to be archived first, and a published agent with live channels is ' +
+			'deleted too. This matches the workflow delete endpoint.',
+	)
 	@ApiTags(['Agent'])
 	@ApiResponse(200, DeletedAgentPublicDto)
 	@ApiErrorResponse(404)

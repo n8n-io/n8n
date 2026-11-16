@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
+import { NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -143,7 +143,7 @@ describe('listSearch -> getLakebaseProjects', () => {
 			'databricksOAuth2Api',
 			expect.objectContaining({
 				method: 'GET',
-				url: `${HOST}/api/2.0/postgres/projects`,
+				url: requestUrl`${HOST}/api/2.0/postgres/projects`,
 				qs: { page_size: 100, page_token: 'p1' },
 			}),
 		);
@@ -261,7 +261,7 @@ describe('listSearch -> getLakebaseBranches', () => {
 		expect(apiMock(context)).toHaveBeenCalledWith(
 			'databricksOAuth2Api',
 			expect.objectContaining({
-				url: `${HOST}/api/2.0/postgres/projects/spike-test/branches`,
+				url: requestUrl`${HOST}/api/2.0/postgres/projects/spike-test/branches`,
 				qs: { page_size: 100, page_token: 'p1' },
 			}),
 		);
@@ -283,7 +283,11 @@ describe('listSearch -> getLakebaseBranches', () => {
 
 		expect(apiMock(context)).toHaveBeenCalledWith(
 			'databricksOAuth2Api',
-			expect.objectContaining({ url: expect.stringContaining('/projects/a%20b/branches') }),
+			expect.objectContaining({
+				url: expect.objectContaining({
+					value: expect.stringContaining('/projects/a%20b/branches'),
+				}),
+			}),
 		);
 	});
 });
@@ -317,7 +321,7 @@ describe('listSearch -> getLakebaseDatabases', () => {
 		expect(apiMock(context)).toHaveBeenCalledWith(
 			'databricksOAuth2Api',
 			expect.objectContaining({
-				url: `${HOST}/api/2.0/postgres/projects/spike-test/branches/production/databases`,
+				url: requestUrl`${HOST}/api/2.0/postgres/projects/spike-test/branches/production/databases`,
 				qs: { page_size: 100, page_token: 'p1' },
 			}),
 		);
@@ -563,7 +567,7 @@ describe('resolveLakebaseRestBase', () => {
 		expect(apiMock(context)).toHaveBeenCalledWith(
 			'databricksOAuth2Api',
 			expect.objectContaining({
-				url: `${HOST}/api/2.0/postgres/projects/spike-test/branches/production/endpoints`,
+				url: requestUrl`${HOST}/api/2.0/postgres/projects/spike-test/branches/production/endpoints`,
 				returnFullResponse: true,
 			}),
 		);
@@ -579,7 +583,9 @@ describe('resolveLakebaseRestBase', () => {
 			1,
 			'databricksOAuth2Api',
 			expect.objectContaining({
-				url: expect.stringContaining('/projects/a%20b/branches/c%2Fd/endpoints'),
+				url: expect.objectContaining({
+					value: expect.stringContaining('/projects/a%20b/branches/c%2Fd/endpoints'),
+				}),
 			}),
 		);
 	});
@@ -726,7 +732,7 @@ describe('resolveLakebaseSchemaUrl', () => {
 			1,
 			'databricksOAuth2Api',
 			expect.objectContaining({
-				url: `${HOST}/api/2.0/postgres/projects/spike-test/branches/production/endpoints`,
+				url: requestUrl`${HOST}/api/2.0/postgres/projects/spike-test/branches/production/endpoints`,
 			}),
 		);
 	});

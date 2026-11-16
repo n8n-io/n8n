@@ -6,8 +6,10 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 /**
  * Make an API request to HackerNews
@@ -16,13 +18,13 @@ import { NodeApiError } from 'n8n-workflow';
 export async function hackerNewsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs: IDataObject,
 ): Promise<any> {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		qs,
-		uri: `http://hn.algolia.com/api/v1/${endpoint}`,
+		uri: requestUrl`http://hn.algolia.com/api/v1/${endpoint}`,
 		json: true,
 	};
 
@@ -42,7 +44,7 @@ export async function hackerNewsApiRequest(
 export async function hackerNewsApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	qs: IDataObject,
 ): Promise<any> {
 	qs.hitsPerPage = 100;

@@ -38,6 +38,14 @@ describe('CreateAgentDto', () => {
 			'Use config for initial configuration or schema for duplication, not both.',
 		);
 	});
+
+	it('trims the name', () => {
+		expect(CreateAgentDto.parse({ name: '  Agent  ' })).toMatchObject({ name: 'Agent' });
+	});
+
+	it.each(['', '   ', 'a'.repeat(129)])('rejects the name %j', (name) => {
+		expect(CreateAgentDto.safeParse({ name }).success).toBe(false);
+	});
 });
 
 describe('CreateAgentPublicDto', () => {
