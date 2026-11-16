@@ -1,5 +1,5 @@
 import type { DataSource } from '@n8n/typeorm';
-import type { Application } from 'express';
+import type { Application, RequestHandler } from 'express';
 
 import type { AdmittanceService } from '../admittance';
 import { MIN_SECRET_LENGTH } from '../auth';
@@ -30,7 +30,7 @@ import {
 import type { LifecycleEventPublisher } from '../lifecycle-events';
 import { createConsoleLogger, type EngineLogger } from '../logging';
 import { InMemoryWorkQueue } from '../queue';
-import type { OrchestrationMessage, StepMessage } from '../queue';
+import type { OrchestrationMessage, StepMessage, WorkQueue } from '../queue';
 import {
 	DEFAULT_RECONCILIATION_BATCH_SIZE,
 	DEFAULT_RECONCILIATION_INTERVAL_MS,
@@ -44,6 +44,15 @@ import {
 } from '../reconciliation';
 import type { ExecutionResponseSender } from '../response-channel';
 import { createEngineServer } from '../server';
+
+/** Host-owned instrumentation. The runtime applies each wrapper once. */
+export interface EngineRuntimeInstrumentation {
+	wrapStores(stores: EngineStores): EngineStores;
+	wrapQueue<TMessage extends OrchestrationMessage | StepMessage>(
+		name: 'orchestration' | 'step',
+		queue: WorkQueue<TMessage>,
+	): WorkQueue<TMessage>;
+}
 
 export interface EngineRuntimeOptions {
 	/** The data plane database, already initialized and migrated. */
@@ -84,6 +93,9 @@ export interface EngineRuntimeOptions {
 	staleness?: StalenessThresholds;
 	/** How often the engine searches for stuck rows. Defaults to a minute. */
 	reconciliationIntervalMs?: number;
+	instrumentation?: EngineRuntimeInstrumentation;
+	/** Runs on API requests before authentication and body parsing. */
+	requestMiddleware?: RequestHandler;
 }
 
 /** A built engine, ready for a host to serve. */
@@ -116,6 +128,8 @@ export function createEngineRuntime({
 	concurrency = {},
 	staleness,
 	reconciliationIntervalMs = DEFAULT_RECONCILIATION_INTERVAL_MS,
+	instrumentation,
+	requestMiddleware,
 }: EngineRuntimeOptions): EngineRuntime {
 	// An empty value is how an unset environment variable usually arrives.
 	const resumeSecret = givenResumeSecret || undefined;
@@ -131,14 +145,23 @@ export function createEngineRuntime({
 	// otherwise fail every write of a row that becomes `queued` or `running`.
 	if (staleness !== undefined) assertValidStalenessThresholds(staleness);
 
-	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger, {
+	const rawOrchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger, {
 		concurrency: concurrency.orchestration,
 	});
-	const stepQueue = new InMemoryWorkQueue<StepMessage>(logger, { concurrency: concurrency.step });
-	const { executionStore, stepStore, executionViewStore } = createStores(dataSource, staleness);
+	const rawStepQueue = new InMemoryWorkQueue<StepMessage>(logger, {
+		concurrency: concurrency.step,
+	});
+	const orchestrationQueue = instrumentation
+		? instrumentation.wrapQueue('orchestration', rawOrchestrationQueue)
+		: rawOrchestrationQueue;
+	const stepQueue = instrumentation
+		? instrumentation.wrapQueue('step', rawStepQueue)
+		: rawStepQueue;
+	const rawStores = createStores(dataSource, staleness);
+	const stores = instrumentation ? instrumentation.wrapStores(rawStores) : rawStores;
+	const { executionStore, stepStore, executionViewStore } = stores;
 	// Built once, not per handler: the factory must not run twice.
-	const dependencies =
-		externalDependencies?.({ executionStore, stepStore, executionViewStore }) ?? {};
+	const dependencies = externalDependencies?.(stores) ?? {};
 	const lifecycleEventPublisher: LifecycleEventPublisher = dependencies.lifecycleEventCallback
 		? new BatchingLifecycleEventPublisher(dependencies.lifecycleEventCallback)
 		: noopLifecycleEventPublisher;
@@ -236,6 +259,7 @@ export function createEngineRuntime({
 				: new ResumeRequestService(executionStore, stepStore, stepQueue, resumeSecret),
 		identityVerifier,
 		logger,
+		requestMiddleware,
 	});
 
 	return {

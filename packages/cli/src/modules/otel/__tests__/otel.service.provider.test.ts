@@ -220,6 +220,47 @@ describe('OtelService on the startup OTel setup', () => {
 		expect(configureHook.buildOutboundBaggage({ [ATTR.PROJECT_ID]: 'p1' })).toEqual({});
 	});
 
+	describe('initFromConfig', () => {
+		const startEngineSpan = () => trace.getTracer('n8n-engine-v2').startSpan('engine.execute');
+
+		it('exports engine spans from environment settings without loading persisted settings', async () => {
+			otelSettingsService.loadSettings.mockRejectedValue(new Error('No control plane database'));
+
+			await service.initFromConfig(enabledSettings);
+			startEngineSpan().end();
+
+			expect(otelSettingsService.loadSettings).not.toHaveBeenCalled();
+			expect((await exportedAfterFlush()).map(({ span }) => span.name)).toEqual(['engine.execute']);
+		});
+
+		it('keeps one exporter when environment startup runs twice', async () => {
+			await service.initFromConfig(enabledSettings);
+			vi.mocked(OTLPTraceExporter).mockClear();
+			await service.initFromConfig(enabledSettings);
+			startEngineSpan().end();
+
+			expect(OTLPTraceExporter).not.toHaveBeenCalled();
+			expect(await exportedAfterFlush()).toHaveLength(1);
+			expect(otelSettingsService.loadSettings).not.toHaveBeenCalled();
+		});
+
+		it('records no spans from disabled environment settings', async () => {
+			vi.mocked(OTLPTraceExporter).mockClear();
+			await service.initFromConfig(disabledSettings);
+
+			expect(startEngineSpan().isRecording()).toBe(false);
+			expect(OTLPTraceExporter).not.toHaveBeenCalled();
+			expect(otelSettingsService.loadSettings).not.toHaveBeenCalled();
+		});
+
+		it('shuts down without loading persisted settings', async () => {
+			await service.initFromConfig(enabledSettings);
+			await service.shutdown();
+
+			expect(otelSettingsService.loadSettings).not.toHaveBeenCalled();
+		});
+	});
+
 	it('exports every span field unchanged apart from the resource', async () => {
 		await service.init();
 

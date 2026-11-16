@@ -105,6 +105,17 @@ export class OtelService {
 		);
 	}
 
+	/**
+	 * Applies settings from the environment without reading the control plane
+	 * database, for a process that has no access to it.
+	 */
+	async initFromConfig(settings: OtelConfig): Promise<void> {
+		if (this.isShutDown) return;
+
+		this.warnUnknownPropagators();
+		await this.applySettings(settings);
+	}
+
 	readonly applySavedSettings = latestWins(async () => {
 		if (this.isShutDown) return;
 

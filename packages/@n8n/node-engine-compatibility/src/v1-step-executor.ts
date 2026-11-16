@@ -32,10 +32,13 @@ import { SubWorkflowCalls } from './sub-workflow-calls';
 import { attachResponseHooks } from './v1-response-hooks';
 import type {
 	ExecutableNodeType,
+	NodeExecutionTraceContext,
 	NodeRunResult,
 	RunNodeParams,
 	V1NodeStepConfig,
 	V1StepExecutorDeps,
+	V1StepExecutorInstrumentation,
+	V1StepExecutorMeasurement,
 } from './types';
 import type { DurableWaitExecuteContext } from './v1-adapters';
 import { toV1ErrorDetails } from './v1-error-details';
@@ -91,6 +94,14 @@ function toStepResult(
 	};
 }
 
+const NO_MEASUREMENT: V1StepExecutorMeasurement = { end() {}, fail() {} };
+
+const NO_INSTRUMENTATION: V1StepExecutorInstrumentation = {
+	run: async (_phase, _metadata, operation) => await operation(),
+	runSync: (_phase, _metadata, operation) => operation(),
+	start: () => NO_MEASUREMENT,
+};
+
 /**
  * Runs `v1-node` steps by adapting them to the v1 node runtime.
  *
@@ -102,60 +113,121 @@ export class V1StepExecutor implements IStepExecutor {
 	constructor(private readonly deps: V1StepExecutorDeps) {}
 
 	async execute(request: StepExecutionRequest): Promise<StepExecutionResult> {
-		this.validateExpressionEngine();
+		this.validateExpressionEngine(request.node);
 		const stepConfig = this.validateStepConfig(request.node);
 		const nodeType = this.resolveNodeType(stepConfig);
-		const stepData = await this.deps.loadStepData(request.context);
+		const hooks = this.deps.instrumentation ?? NO_INSTRUMENTATION;
+		const metadata: NodeExecutionTraceContext = {
+			executionId: request.context.executionId,
+			stepId: request.context.stepId,
+			workflowId: request.context.workflowId,
+			iteration: request.context.iteration,
+			nodeId: request.node.id,
+			nodeType: stepConfig.nodeType,
+		};
 
-		const node = toV1Node(request.node, stepConfig);
-		// Engine v2 cannot route a chat reply to a step yet. Fail before the node
-		// sends the message. The Chat node waits in every version and operation.
-		if (node.type === CHAT_NODE_TYPE) {
-			throw new UnsupportedWaitError(node.name, 'an approval');
+		const stepData = await hooks.run(
+			'load-data',
+			metadata,
+			async () => await this.deps.loadStepData(request.context),
+		);
+		const { node, execution, workflow } = hooks.runSync('adapter-setup', metadata, () => {
+			const node = toV1Node(request.node, stepConfig);
+			// Engine v2 cannot route a chat reply to a step yet. Fail before the node
+			// sends the message. The Chat node waits in every version and operation.
+			if (node.type === CHAT_NODE_TYPE) {
+				throw new UnsupportedWaitError(node.name, 'an approval');
+			}
+
+			const execution = toV1Execution(
+				stepData.graph,
+				stepData.outputsByNode,
+				request.node.id,
+				request.context.iteration,
+			);
+			const workflow = toV1Workflow(
+				request.context.workflowId,
+				node,
+				execution,
+				this.deps.nodeTypes,
+			);
+			return { node, execution, workflow };
+		});
+		const additionalData = await hooks.run(
+			'additional-data',
+			metadata,
+			async () => await this.deps.additionalDataFactory(toAdditionalDataContext(request.context)),
+		);
+		const context = hooks.runSync('context-setup', metadata, () => {
+			attachResponseHooks(additionalData, request);
+			return toV1ExecuteContext({
+				node,
+				workflow,
+				execution,
+				source: toV1Sources(stepData.graph).get(node.id) ?? [],
+				additionalData,
+				stepContext: request.context,
+				itemsByConnection: fromStepInputs(request.inputs),
+				resumeToken: this.deps.resumeToken?.({ executionId: request.context.executionId }),
+				subWorkflowCalls: new SubWorkflowCalls(node, request.context, this.deps.resolveSubWorkflow),
+				subExecutionResume: request.resume,
+				resumeMinters: {
+					stepBoundResumeToken: this.deps.stepBoundResumeToken,
+					approvalCallback: this.deps.approvalCallback,
+				},
+			});
+		});
+
+		// Entry stops before the callback. Neither token makes itself the body's parent.
+		let entering: V1StepExecutorMeasurement | undefined = hooks.start('isolate-enter', metadata);
+		let exiting: V1StepExecutorMeasurement | undefined;
+		let callbackFailed = false;
+		let callbackError: unknown;
+		try {
+			return await workflow.expression.withIsolate(async () => {
+				entering?.end();
+				entering = undefined;
+				try {
+					const nodeResult = await this.runNode({ nodeType, context }, hooks, metadata);
+					return hooks.runSync('result-conversion', metadata, () =>
+						toStepResult(context, nodeResult),
+					);
+				} catch (error) {
+					callbackFailed = true;
+					callbackError = error;
+					throw error;
+				} finally {
+					exiting = hooks.start('isolate-exit', metadata);
+				}
+			});
+		} catch (error) {
+			if (entering) entering.fail();
+			else if (!callbackFailed || error !== callbackError) exiting?.fail();
+			throw error;
+		} finally {
+			entering?.end();
+			exiting?.end();
 		}
-
-		const execution = toV1Execution(
-			stepData.graph,
-			stepData.outputsByNode,
-			request.node.id,
-			request.context.iteration,
-		);
-		const workflow = toV1Workflow(request.context.workflowId, node, execution, this.deps.nodeTypes);
-
-		const additionalData = await this.deps.additionalDataFactory(
-			toAdditionalDataContext(request.context),
-		);
-		attachResponseHooks(additionalData, request);
-
-		const context = toV1ExecuteContext({
-			node,
-			workflow,
-			execution,
-			source: toV1Sources(stepData.graph).get(node.id) ?? [],
-			additionalData,
-			stepContext: request.context,
-			itemsByConnection: fromStepInputs(request.inputs),
-			resumeToken: this.deps.resumeToken?.({ executionId: request.context.executionId }),
-			subWorkflowCalls: new SubWorkflowCalls(node, request.context, this.deps.resolveSubWorkflow),
-			subExecutionResume: request.resume,
-			resumeMinters: {
-				stepBoundResumeToken: this.deps.stepBoundResumeToken,
-				approvalCallback: this.deps.approvalCallback,
-			},
-		});
-
-		return await workflow.expression.withIsolate(async () => {
-			const nodeResult = await this.runNode({ nodeType, context });
-			return toStepResult(context, nodeResult);
-		});
 	}
 
-	private validateExpressionEngine(): void {
-		// Any isolated engine works here — v1 steps only need the pooled
-		// evaluator that initExpressionEngine() sets up; 'legacy' has none.
-		if (Expression.getActiveImplementation() === 'legacy') {
-			throw new VmExpressionEngineRequiredError();
-		}
+	private validateExpressionEngine(node: GraphNode): void {
+		if (Expression.getActiveImplementation() !== 'legacy') return;
+		const config = node.config;
+		if (
+			this.deps.allowLegacyNoopBenchmark === true &&
+			node.type === 'v1-node' &&
+			isV1NodeStepConfig(config) &&
+			config.nodeType === 'n8n-nodes-base.noOp' &&
+			config.typeVersion === 1 &&
+			// The CP adds the NoOp's hidden default when it prepares the graph.
+			Object.entries(config.parameters).every(
+				([name, value]) => name === 'emptyGroupAnchor' && value === false,
+			) &&
+			config.credentials === undefined &&
+			!config.continueOnFail
+		)
+			return;
+		throw new VmExpressionEngineRequiredError();
 	}
 
 	private validateStepConfig({ type, name, config }: GraphNode): V1NodeStepConfig {
@@ -188,12 +260,23 @@ export class V1StepExecutor implements IStepExecutor {
 	 * failure with `continueOnFail` passes the input items through as output.
 	 * A null result yields no output.
 	 */
-	private async runNode({ nodeType, context }: RunNodeParams): Promise<INodeExecutionData[][]> {
-		let result: NodeRunResult;
-		try {
-			const value = isNodeClassInstance(nodeType)
+	private async runNode(
+		{ nodeType, context }: RunNodeParams,
+		hooks: V1StepExecutorInstrumentation,
+		metadata: NodeExecutionTraceContext,
+	): Promise<INodeExecutionData[][]> {
+		const callNode = async () =>
+			isNodeClassInstance(nodeType)
 				? await nodeType.execute(context)
 				: await nodeType.execute.call(context);
+		let result: NodeRunResult;
+		try {
+			const value = this.deps.traceNodeExecution
+				? await this.deps.traceNodeExecution(
+						{ ...metadata, nodeType: context.getNode().type },
+						callNode,
+					)
+				: await callNode();
 			result = { ok: true, value };
 		} catch (error) {
 			result = { ok: false, error };
@@ -201,19 +284,22 @@ export class V1StepExecutor implements IStepExecutor {
 
 		const { closeFunctions } = context;
 		if (closeFunctions.length > 0) {
-			const closeResults = await Promise.allSettled(closeFunctions.map(async (fn) => await fn()));
-			if (result.ok) {
-				const rejected = closeResults.find(
-					(closeResult): closeResult is PromiseRejectedResult => closeResult.status === 'rejected',
-				);
-				if (rejected) {
-					throw rejected.reason instanceof Error
-						? rejected.reason
-						: new UnexpectedError("Error on node's close function", {
-								extra: { nodeName: context.getNode().name },
-							});
+			await hooks.run('cleanup', metadata, async () => {
+				const closeResults = await Promise.allSettled(closeFunctions.map(async (fn) => await fn()));
+				if (result.ok) {
+					const rejected = closeResults.find(
+						(closeResult): closeResult is PromiseRejectedResult =>
+							closeResult.status === 'rejected',
+					);
+					if (rejected) {
+						throw rejected.reason instanceof Error
+							? rejected.reason
+							: new UnexpectedError("Error on node's close function", {
+									extra: { nodeName: context.getNode().name },
+								});
+					}
 				}
-			}
+			});
 		}
 
 		if (!result.ok) {
