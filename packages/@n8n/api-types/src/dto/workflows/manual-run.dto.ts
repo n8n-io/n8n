@@ -5,7 +5,7 @@ import { z } from 'zod';
 const isObject = (val: unknown): boolean =>
 	typeof val === 'object' && val !== null && !Array.isArray(val);
 
-const destinationNodeSchema = z.object({
+export const destinationNodeSchema = z.object({
 	nodeName: z.string(),
 	mode: z.enum(['inclusive', 'exclusive']),
 }) satisfies z.ZodType<IDestinationNode>;

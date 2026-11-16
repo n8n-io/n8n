@@ -12,6 +12,8 @@ import {
 	ListWorkflowsQueryDto,
 	PublishWorkflowPublicDto,
 	RetrievedWorkflowPublicDto,
+	RunWorkflowPublicDto,
+	StartedWorkflowRunPublicDto,
 	TagIdsPublicDto,
 	TransferWorkflowPublicDto,
 	UpdatedWorkflowPublicDto,
@@ -61,7 +63,7 @@ import type { Response } from 'express';
 import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { ResponseError, BadRequestError, NotFoundError } from '@n8n/errors';
+import { ConflictError, ResponseError, BadRequestError, NotFoundError } from '@n8n/errors';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
@@ -74,9 +76,14 @@ import {
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { TagService } from '@/services/tag.service';
+import { toUserLike } from '@/utils/to-user-like';
+import { TestWebhooks } from '@/webhooks/test-webhooks';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -103,6 +110,10 @@ const PUBLISH_CONFLICT_DESCRIPTION =
 	'`workflowReviewRequestId` are present), publication of a version without an approved ' +
 	'review when the instance requires one (then `reason` is `review_required` and `versionId` ' +
 	'is present), or a webhook path conflict.';
+
+const RUN_NEEDS_TRIGGER_EVENT_MESSAGE =
+	'The run data does not reach the destination node from a trigger, and the trigger needs an ' +
+	'external event to start. Add run data for the trigger node to `runData`, or pin data on the trigger.';
 
 function toPublicJson(value: unknown): Record<string, unknown> | null {
 	return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -230,6 +241,9 @@ export class WorkflowsPublicController {
 		private readonly tagService: TagService,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly workflowDependencyQueryService: WorkflowDependencyQueryService,
+		private readonly workflowExecutionService: WorkflowExecutionService,
+		private readonly ownershipService: OwnershipService,
+		private readonly testWebhooks: TestWebhooks,
 	) {}
 
 	private get workflowTagsEnabled(): boolean {
@@ -928,6 +942,91 @@ export class WorkflowsPublicController {
 		);
 
 		return toDependencyListPublicDto(result[workflowId], pagination);
+	}
+
+	@Post('/:workflowId/run')
+	@ApiKeyScope('workflow:execute')
+	@ProjectScope('workflow:execute')
+	@ApiSummary('Run a workflow with existing run data')
+	@ApiDescription(
+		'Start a manual execution of the latest saved version of a workflow. n8n reuses the given ' +
+			'run data and runs the nodes up to the destination node. The call returns when the ' +
+			'execution starts. It does not wait for the execution to finish. The user must also ' +
+			'have the `workflow:execute` project scope.',
+	)
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, StartedWorkflowRunPublicDto)
+	@ApiErrorResponse(400, {
+		description:
+			'The request body is invalid, or `destinationNode.nodeName` is not a node in the workflow.',
+	})
+	@ApiErrorResponse(403, {
+		description:
+			'The API key or the user does not have the required permission, or the instance is in read-only mode.',
+	})
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409, { description: RUN_NEEDS_TRIGGER_EVENT_MESSAGE })
+	async runWorkflow(
+		req: PublicApiRequest,
+		_res: Response,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
+		@Body body: RunWorkflowPublicDto,
+	): Promise<StartedWorkflowRunPublicDto> {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
+			'workflow:execute',
+		]);
+		if (!workflow) throw new NotFoundError('Not Found');
+
+		const destinationNodeExists = workflow.nodes.some(
+			(node) => node.name === body.destinationNode.nodeName,
+		);
+		if (!destinationNodeExists) {
+			throw new BadRequestError(
+				`The workflow has no node named "${body.destinationNode.nodeName}"`,
+			);
+		}
+
+		const runPayload = {
+			runData: body.runData,
+			destinationNode: body.destinationNode,
+			dirtyNodeNames: body.dirtyNodeNames,
+		};
+		const result = await this.workflowExecutionService.executeManually(
+			workflow,
+			runPayload,
+			req.user,
+		);
+
+		if (!('executionId' in result)) {
+			// Without this, the test webhook stays registered and any caller of its URL starts a run
+			await this.testWebhooks.cancelWebhook(workflow.id);
+			throw new ConflictError(RUN_NEEDS_TRIGGER_EVENT_MESSAGE);
+		}
+
+		await this.emitWorkflowExecuted(req, workflow, result.executionId);
+
+		return { executionId: result.executionId };
+	}
+
+	private async emitWorkflowExecuted(
+		req: PublicApiRequest,
+		workflow: WorkflowEntity,
+		executionId: string,
+	) {
+		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+			this.ownershipService,
+			workflow.id,
+		);
+
+		this.eventService.emit('workflow-executed', {
+			user: toUserLike(req.user),
+			workflowId: workflow.id,
+			workflowName: workflow.name,
+			executionId,
+			projectId,
+			projectName,
+			source: 'user-manual',
+		});
 	}
 
 	/**
