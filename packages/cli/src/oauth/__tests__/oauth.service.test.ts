@@ -4583,7 +4583,7 @@ describe('OauthService', () => {
 				});
 
 				it('should use the instance metadata document URL as the client ID without registering', async () => {
-					const oauthCredentials = makeDcrCredentials({ clientSecret: 'stale-secret' });
+					const oauthCredentials = makeDcrCredentials({ clientSecret: 'stale-secret', scope: '' });
 					const toUpdate = {};
 					const toDelete: string[] = [];
 					vi.mocked(httpClientMock.get).mockResolvedValueOnce({ data: cimdMetadata() });
@@ -4605,6 +4605,7 @@ describe('OauthService', () => {
 						accessTokenUrl: 'https://auth.example.com/oauth2/token',
 						grantType: 'pkce',
 						usePkce: true,
+						scope: '',
 						clientId: 'https://n8n.example.com/rest/oauth2-credential/client-metadata.json',
 					});
 					expect(toDelete).toEqual(['authentication', 'clientSecret']);
