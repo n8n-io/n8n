@@ -15,9 +15,7 @@ export function formatApprovalDetails(details: InstanceAiApprovalDetails): strin
 	const i18n = useI18n();
 	const t = i18n.baseText.bind(i18n);
 	const join = (items: string[]) => items.join(t('instanceAi.approval.listSeparator'));
-	const preview = (
-		row: Extract<InstanceAiApprovalDetails, { action: 'update-rows' }>['changes'],
-	) => {
+	const preview = (row: RowPreview) => {
 		const values = row.values.map(({ column, value }) =>
 			t(value === null ? 'instanceAi.approval.emptyValue' : 'instanceAi.approval.value', {
 				interpolate: { column, value: value ?? '' },
@@ -76,40 +74,6 @@ export function formatApprovalDetails(details: InstanceAiApprovalDetails): strin
 		return join(visible);
 	};
 
-	const insertRowsLines = (
-		details: Extract<InstanceAiApprovalDetails, { action: 'insert-rows' }>,
-	) => {
-		const lines = [
-			t('instanceAi.approval.addRows', {
-				adjustToNumber: details.count,
-				interpolate: { count: details.count },
-			}),
-		];
-		details.rows.forEach((row, index) => {
-			const changes = preview(row);
-			lines.push(
-				t(changes ? 'instanceAi.approval.row' : 'instanceAi.approval.emptyRow', {
-					interpolate: { index: index + 1, changes },
-				}),
-			);
-		});
-		const remaining = details.count - details.rows.length;
-		if (remaining > 0)
-			lines.push(
-				t('instanceAi.approval.moreRows', {
-					adjustToNumber: remaining,
-					interpolate: { count: remaining },
-				}),
-			);
-		return lines;
-	};
-	// One batch change can take several lines: row previews get a line each.
-	const changeLines = (change: InstanceAiDataTableChangeDetails): string[] => {
-		if (change.action === 'create-table') return [createTableText(change.columns)];
-		if (change.action === 'insert-rows') return insertRowsLines(change);
-		return [formatApprovalDetails(change)];
-	};
-
 	switch (details.action) {
 		case 'edit-workflow':
 			return details.summary?.replace(/\s+/g, ' ').trim() || t('instanceAi.approval.editWorkflow');
@@ -129,7 +93,7 @@ export function formatApprovalDetails(details: InstanceAiApprovalDetails): strin
 				interpolate: { column: details.column, name: details.newName },
 			});
 		case 'insert-rows':
-			return insertRowsLines(details).join('\n\n');
+			return insertRowsLines(details, t, preview).join('\n\n');
 		case 'update-rows':
 			return t(
 				details.filter.filters.length > 1
@@ -266,10 +230,12 @@ export function formatApprovalDetails(details: InstanceAiApprovalDetails): strin
 			return lines.join('\n\n');
 		}
 		case 'data-table-changes':
-			return formatDataTableChanges(details.changes, changeLines);
+			return formatDataTableChanges(details.changes, t, preview);
 	}
 }
 
+type Translate = ReturnType<typeof useI18n>['baseText'];
+type RowPreview = Extract<InstanceAiApprovalDetails, { action: 'update-rows' }>['changes'];
 type DataTableChanges = Extract<
 	InstanceAiApprovalDetails,
 	{ action: 'data-table-changes' }
@@ -279,34 +245,70 @@ type CreateTableColumns = Extract<
 	{ action: 'create-table' }
 >['columns'];
 
-function createTableText(columns: CreateTableColumns): string {
-	const i18n = useI18n();
-	if (columns.length === 0) return i18n.baseText('instanceAi.approval.createTable.noColumns');
+function createTableText(columns: CreateTableColumns, t: Translate): string {
+	if (columns.length === 0) return t('instanceAi.approval.createTable.noColumns');
 	const columnList = columns
 		.map(({ name, columnType }) =>
-			i18n.baseText('instanceAi.approval.columnWithType', {
-				interpolate: {
-					column: name,
-					type: i18n.baseText(`instanceAi.approval.columnType.${columnType}`),
-				},
+			t('instanceAi.approval.columnWithType', {
+				interpolate: { column: name, type: t(`instanceAi.approval.columnType.${columnType}`) },
 			}),
 		)
-		.join(i18n.baseText('instanceAi.approval.listSeparator'));
-	return i18n.baseText('instanceAi.approval.createTable', {
-		interpolate: { columns: columnList },
-	});
+		.join(t('instanceAi.approval.listSeparator'));
+	return t('instanceAi.approval.createTable', { interpolate: { columns: columnList } });
 }
 
-/** Changes grouped by table name, in the order the batch first names each table. */
+function insertRowsLines(
+	details: Extract<InstanceAiApprovalDetails, { action: 'insert-rows' }>,
+	t: Translate,
+	preview: (row: RowPreview) => string,
+): string[] {
+	const lines = [
+		t('instanceAi.approval.addRows', {
+			adjustToNumber: details.count,
+			interpolate: { count: details.count },
+		}),
+	];
+	details.rows.forEach((row, index) => {
+		const changes = preview(row);
+		lines.push(
+			t(changes ? 'instanceAi.approval.row' : 'instanceAi.approval.emptyRow', {
+				interpolate: { index: index + 1, changes },
+			}),
+		);
+	});
+	const remaining = details.count - details.rows.length;
+	if (remaining > 0)
+		lines.push(
+			t('instanceAi.approval.moreRows', {
+				adjustToNumber: remaining,
+				interpolate: { count: remaining },
+			}),
+		);
+	return lines;
+}
+
+/** One batch change can take several lines: row previews get a line each. */
+function changeLines(
+	change: InstanceAiDataTableChangeDetails,
+	t: Translate,
+	preview: (row: RowPreview) => string,
+): string[] {
+	if (change.action === 'create-table') return [createTableText(change.columns, t)];
+	if (change.action === 'insert-rows') return insertRowsLines(change, t, preview);
+	return [formatApprovalDetails(change)];
+}
+
+/** Changes grouped by table, in the order the batch first names each table. */
 function groupByTable(
 	changes: DataTableChanges,
-	describe: (details: InstanceAiDataTableChangeDetails) => string[],
-): Map<string, string[]> {
-	const groups = new Map<string, string[]>();
-	for (const { tableName, details } of changes) {
-		groups.set(tableName, [...(groups.get(tableName) ?? []), ...describe(details)]);
+): Array<{ name: string; changes: DataTableChanges }> {
+	const groups = new Map<string, { name: string; changes: DataTableChanges }>();
+	for (const change of changes) {
+		const group = groups.get(change.tableKey) ?? { name: change.tableName, changes: [] };
+		group.changes.push(change);
+		groups.set(change.tableKey, group);
 	}
-	return groups;
+	return [...groups.values()];
 }
 
 /**
@@ -315,16 +317,17 @@ function groupByTable(
  */
 function formatDataTableChanges(
 	changes: DataTableChanges,
-	describe: (details: InstanceAiDataTableChangeDetails) => string[],
+	t: Translate,
+	preview: (row: RowPreview) => string,
 ): string {
-	const i18n = useI18n();
-	const groups = [...groupByTable(changes, describe)];
-	if (groups.length === 1) return groups[0][1].join('\n');
-	return groups
-		.map(([name, lines]) =>
-			[i18n.baseText('instanceAi.approval.tableHeader', { interpolate: { name } }), ...lines].join(
-				'\n',
-			),
+	const blocks = groupByTable(changes).map(({ name, changes: tableChanges }) => ({
+		name,
+		lines: tableChanges.flatMap(({ details }) => changeLines(details, t, preview)),
+	}));
+	if (blocks.length === 1) return blocks[0].lines.join('\n');
+	return blocks
+		.map(({ name, lines }) =>
+			[t('instanceAi.approval.tableHeader', { interpolate: { name } }), ...lines].join('\n'),
 		)
 		.join('\n\n');
 }
@@ -332,20 +335,20 @@ function formatDataTableChanges(
 /** Title of a batch card: the table name for one table, otherwise the number of tables. */
 function formatDataTableChangesTitle(changes: DataTableChanges): string {
 	const i18n = useI18n();
-	const tableNames = [...new Set(changes.map(({ tableName }) => tableName))];
-	if (tableNames.length === 1) {
+	const tables = groupByTable(changes);
+	if (tables.length === 1) {
 		return i18n.baseText('instanceAi.confirmation.resourcePrompt', {
 			interpolate: {
 				action: i18n.baseText('instanceAi.tools.change_data_tables.imperativeWithResource'),
-				name: tableNames[0],
+				name: tables[0].name,
 			},
 		});
 	}
 	return i18n.baseText('instanceAi.confirmation.allowPrompt', {
 		interpolate: {
 			action: i18n.baseText('instanceAi.tools.change_data_tables.imperativeWithCount', {
-				adjustToNumber: tableNames.length,
-				interpolate: { count: tableNames.length },
+				adjustToNumber: tables.length,
+				interpolate: { count: tables.length },
 			}),
 		},
 	});

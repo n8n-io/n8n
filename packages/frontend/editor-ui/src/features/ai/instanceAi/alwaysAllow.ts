@@ -13,6 +13,7 @@ import {
 	getExecutionCallAction,
 	getWorkspaceCallAction,
 	isFormerWorkflowsTool,
+	isSessionGrantableDataTableAction,
 	resolveBuilderToolName,
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
@@ -64,22 +65,12 @@ function resolveAlwaysAllowWorkflowId(
 	return '';
 }
 
-/**
- * Batch actions that the backend never grants for the session. They match the
- * destructive severity of the `change_data_tables` tool.
- */
-const DESTRUCTIVE_DATA_TABLE_ACTIONS = new Set<DataTableWriteToolAction>([
-	'delete',
-	'delete-column',
-	'delete-rows',
-]);
-
 /** The distinct actions of a `change_data_tables` call that the backend grants for the session. */
 function grantableBatchActions(args: Record<string, unknown>): DataTableWriteToolAction[] {
 	const changes: unknown[] = Array.isArray(args.changes) ? args.changes : [];
 	const actions = new Set(changes.map((change) => (isRecord(change) ? change.action : undefined)));
 	return DATA_TABLE_WRITE_TOOL_ACTIONS.filter(
-		(action) => actions.has(action) && !DESTRUCTIVE_DATA_TABLE_ACTIONS.has(action),
+		(action) => actions.has(action) && isSessionGrantableDataTableAction(action),
 	);
 }
 

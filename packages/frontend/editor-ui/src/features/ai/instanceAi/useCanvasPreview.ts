@@ -595,14 +595,13 @@ export function useCanvasPreview({
 
 	// --- Close data table preview if the active table is deleted ---
 
-	// A batch can delete several tables at once.
-	const latestDeletedDataTableIds = computed(() =>
-		getLatestDeletedDataTableIds(thread.artifactTurns),
+	// A batch can delete several tables at once. The joined key changes only when the deletion does.
+	const latestDeletedDataTablesKey = computed(() =>
+		getLatestDeletedDataTableIds(thread.artifactTurns).join(),
 	);
 
-	watch(latestDeletedDataTableIds, (deletedIds, previousIds) => {
-		// The list is new on every recompute, so act only when the deletion changed.
-		if (deletedIds.join() === previousIds?.join()) return;
+	watch(latestDeletedDataTablesKey, () => {
+		const deletedIds = getLatestDeletedDataTableIds(thread.artifactTurns);
 		const deletedId = activeTabId.value;
 		if (deletedId && deletedIds.includes(deletedId)) {
 			const remaining = openTabs.value.filter((t) => t.id !== deletedId);

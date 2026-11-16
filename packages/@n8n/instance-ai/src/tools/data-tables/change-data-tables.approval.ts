@@ -2,7 +2,11 @@
  * Decides whether a batch of data table changes needs the user's approval, and
  * builds the one card that lists every change of the batch.
  */
-import { buildOwnedDataTableGrantKey } from '@n8n/api-types';
+import {
+	buildOwnedDataTableGrantKey,
+	DATA_TABLE_CHANGE_SEVERITY,
+	isSessionGrantableDataTableAction,
+} from '@n8n/api-types';
 import type {
 	DataTableWriteToolAction,
 	InstanceAiApprovalDetails,
@@ -27,17 +31,6 @@ import {
 	previewRow,
 	type RowFilter,
 } from './preview';
-
-const CHANGE_SEVERITY = {
-	create: 'info',
-	delete: 'destructive',
-	'add-column': 'warning',
-	'delete-column': 'destructive',
-	'rename-column': 'warning',
-	'insert-rows': 'warning',
-	'update-rows': 'warning',
-	'delete-rows': 'destructive',
-} as const satisfies Record<DataTableWriteToolAction, InstanceAiConfirmationSeverity>;
 
 const SEVERITY_RANK = { info: 0, warning: 1, destructive: 2 } as const satisfies Record<
 	InstanceAiConfirmationSeverity,
@@ -72,7 +65,7 @@ function isOwnedTable(context: InstanceAiContext, table: PlannedTable): boolean 
  */
 export function sessionGrantableActions(plan: ChangePlan): DataTableWriteToolAction[] {
 	const actions = new Set(plan.changes.map(({ change }) => change.action));
-	return [...actions].filter((action) => CHANGE_SEVERITY[action] !== 'destructive');
+	return [...actions].filter(isSessionGrantableDataTableAction);
 }
 
 // ── Card ───────────────────────────────────────────────────────────────────
@@ -85,6 +78,7 @@ export function buildApprovalRequest(plan: ChangePlan): ConfirmationSuspendPaylo
 			action: 'data-table-changes',
 			changes: plan.changes.map((planned) => ({
 				tableName: planned.table.name,
+				tableKey: tableKey(planned.table),
 				details: buildDetails(planned),
 			})),
 		} satisfies InstanceAiApprovalDetails,
@@ -95,7 +89,7 @@ export function buildApprovalRequest(plan: ChangePlan): ConfirmationSuspendPaylo
 
 function highestSeverity(plan: ChangePlan): InstanceAiConfirmationSeverity {
 	return plan.changes
-		.map(({ change }) => CHANGE_SEVERITY[change.action])
+		.map(({ change }) => DATA_TABLE_CHANGE_SEVERITY[change.action])
 		.reduce<InstanceAiConfirmationSeverity>(
 			(highest, next) => (SEVERITY_RANK[next] > SEVERITY_RANK[highest] ? next : highest),
 			'info',
@@ -109,8 +103,9 @@ function describeTables(plan: ChangePlan): string {
 	return tables.size === 1 ? only : `${tables.size} tables`;
 }
 
+/** Stable within the batch: an existing table by ID, a new table by the change that creates it. */
 function tableKey(table: PlannedTable): string {
-	return table.kind === 'existing' ? `existing:${table.id}` : `created:${table.name}`;
+	return table.kind === 'existing' ? `existing:${table.id}` : `created:${table.changeIndex}`;
 }
 
 /**

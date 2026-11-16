@@ -571,6 +571,20 @@ describe('change_data_tables tool', () => {
 			expect(card.message).toEqual(expect.any(String));
 		});
 
+		it('gives the changes of one table the same table key', async () => {
+			const context = contextWithTables({ 'dt-B': [column('name')] });
+			const { suspend } = await runBatch(context, {
+				changes: [createA, addColumnToB, insertIntoA],
+			});
+
+			const [createKey, addColumnKey, insertKey] = cardOf(suspend).approvalDetails.changes.map(
+				({ tableKey }) => tableKey,
+			);
+			expect(insertKey).toBe(createKey);
+			expect(addColumnKey).not.toBe(createKey);
+			expect(addColumnKey).toContain('dt-B');
+		});
+
 		it('builds the details of each change from the batch', async () => {
 			const context = contextWithTables({ 'dt-T': [column('name')] });
 			const { suspend } = await runBatch(context, {

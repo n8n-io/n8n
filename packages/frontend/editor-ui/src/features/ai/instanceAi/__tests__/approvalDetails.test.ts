@@ -34,9 +34,9 @@ describe('approval details', () => {
 			const output = formatApprovalDetails({
 				action: 'data-table-changes',
 				changes: [
-					{ tableName: 'Leads', details: addEmail },
-					{ tableName: 'Orders', details: deleteTable },
-					{ tableName: 'Leads', details: renameNote },
+					{ tableName: 'Leads', tableKey: 'existing:leads', details: addEmail },
+					{ tableName: 'Orders', tableKey: 'existing:orders', details: deleteTable },
+					{ tableName: 'Leads', tableKey: 'existing:leads', details: renameNote },
 				],
 			});
 			const blocks = output.split('\n\n').map((block) => block.split('\n'));
@@ -54,12 +54,32 @@ describe('approval details', () => {
 			expect(orders[1]).toBe(formatApprovalDetails(deleteTable));
 		});
 
+		it('keeps two tables with the same name apart', () => {
+			const output = formatApprovalDetails({
+				action: 'data-table-changes',
+				changes: [
+					{ tableName: 'Leads', tableKey: 'existing:dt-1', details: addEmail },
+					{ tableName: 'Leads', tableKey: 'existing:dt-2', details: renameNote },
+				],
+			});
+			const blocks = output.split('\n\n').map((block) => block.split('\n'));
+			expect(blocks).toHaveLength(2);
+			expect(blocks.map(([header]) => header)).toEqual([
+				expect.stringContaining('Leads'),
+				expect.stringContaining('Leads'),
+			]);
+			expect(blocks.map((block) => block.slice(1))).toEqual([
+				[formatApprovalDetails(addEmail)],
+				[formatApprovalDetails(renameNote)],
+			]);
+		});
+
 		it('lists the changes of one table without a table header', () => {
 			const output = formatApprovalDetails({
 				action: 'data-table-changes',
 				changes: [
-					{ tableName: 'Leads', details: addEmail },
-					{ tableName: 'Leads', details: renameNote },
+					{ tableName: 'Leads', tableKey: 'existing:leads', details: addEmail },
+					{ tableName: 'Leads', tableKey: 'existing:leads', details: renameNote },
 				],
 			});
 			expect(output.split('\n')).toEqual([
@@ -72,8 +92,8 @@ describe('approval details', () => {
 			const output = formatApprovalDetails({
 				action: 'data-table-changes',
 				changes: [
-					{ tableName: 'Leads', details: insertRow },
-					{ tableName: 'Orders', details: deleteTable },
+					{ tableName: 'Leads', tableKey: 'existing:leads', details: insertRow },
+					{ tableName: 'Orders', tableKey: 'existing:orders', details: deleteTable },
 				],
 			});
 			const blocks = output.split('\n\n').map((block) => block.split('\n'));
@@ -87,6 +107,7 @@ describe('approval details', () => {
 				changes: [
 					{
 						tableName: 'Leads',
+						tableKey: 'created:Leads',
 						details: {
 							action: 'create-table',
 							columns: [
@@ -109,6 +130,7 @@ describe('approval details', () => {
 			action: 'data-table-changes',
 			changes: tableNames.map((tableName) => ({
 				tableName,
+				tableKey: `existing:${tableName.toLowerCase()}`,
 				details: { action: 'delete-table' },
 			})),
 		});
@@ -121,6 +143,23 @@ describe('approval details', () => {
 			});
 			expect(title).toContain('Leads');
 			expect(title).not.toContain('instanceAi.');
+		});
+
+		it('counts two tables with the same name as several tables', () => {
+			const title = formatApprovalTitle({
+				toolName: CHANGE_DATA_TABLES_TOOL_NAME,
+				resourceName: '2 tables',
+				approvalDetails: {
+					action: 'data-table-changes',
+					changes: ['dt-1', 'dt-2'].map((id) => ({
+						tableName: 'Leads',
+						tableKey: `existing:${id}`,
+						details: { action: 'delete-table' },
+					})),
+				},
+			});
+			expect(title).toContain('2');
+			expect(title).not.toContain('Leads');
 		});
 
 		it('counts the tables when a batch changes several tables', () => {

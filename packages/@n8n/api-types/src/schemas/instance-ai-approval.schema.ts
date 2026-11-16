@@ -1,5 +1,28 @@
 import { z } from 'zod';
 
+import type { DataTableWriteToolAction } from '../builder-tool-names';
+import type { InstanceAiConfirmationSeverity } from './instance-ai.schema';
+
+/** Severity of each data table change. A batch card takes the highest severity of its changes. */
+export const DATA_TABLE_CHANGE_SEVERITY = {
+	create: 'info',
+	delete: 'destructive',
+	'add-column': 'warning',
+	'delete-column': 'destructive',
+	'rename-column': 'warning',
+	'insert-rows': 'warning',
+	'update-rows': 'warning',
+	'delete-rows': 'destructive',
+} as const satisfies Record<DataTableWriteToolAction, InstanceAiConfirmationSeverity>;
+
+/**
+ * Whether approving a data table change for the session grants the action for
+ * the rest of the thread. Destructive actions always ask again.
+ */
+export function isSessionGrantableDataTableAction(action: DataTableWriteToolAction): boolean {
+	return DATA_TABLE_CHANGE_SEVERITY[action] !== 'destructive';
+}
+
 const valuePreviewSchema = z.object({ column: z.string(), value: z.string().nullable() });
 const rowPreviewSchema = z.object({
 	values: z.array(valuePreviewSchema),
@@ -73,7 +96,14 @@ export const instanceAiApprovalDetailsSchema = z.discriminatedUnion('action', [
 	z.object({
 		action: z.literal('data-table-changes'),
 		changes: z
-			.array(z.object({ tableName: z.string(), details: dataTableChangeDetailsSchema }))
+			.array(
+				z.object({
+					tableName: z.string(),
+					/** Groups the changes of one table. Two tables can share a name. */
+					tableKey: z.string(),
+					details: dataTableChangeDetailsSchema,
+				}),
+			)
 			.min(1),
 	}),
 	z.object({ action: z.literal('archive-workflow'), name: z.string(), id: z.string() }),

@@ -1035,6 +1035,8 @@ export {
 	instanceAiApprovalModeSchema,
 	instanceAiAutoApprovalDeciderSchema,
 	autoApprovalPayloadSchema,
+	DATA_TABLE_CHANGE_SEVERITY,
+	isSessionGrantableDataTableAction,
 	type InstanceAiApprovalDetails,
 	type InstanceAiDataTableChangeDetails,
 	type InstanceAiApprovalMode,
