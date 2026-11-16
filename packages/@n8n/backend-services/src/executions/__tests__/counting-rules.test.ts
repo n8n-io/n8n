@@ -339,7 +339,20 @@ describe('toLedgerOutcome', () => {
 		});
 	});
 
-	test.each([() => true, 'unknown-reason', 1, false])(
+	test('treats a reason this version does not know as start failed', () => {
+		const data = { resultData: { failedBeforeStart: 'futureReason' as never } };
+		expect(toLedgerOutcome({ mode: 'webhook', status: 'error', startedAt, data })).toEqual({
+			outcome: 'blocked',
+			blockedBy: 'startFailed',
+		});
+	});
+
+	test('does not bill a run that carries a reason this version does not know', () => {
+		const data = { resultData: { failedBeforeStart: 'futureReason' as never } };
+		expect(isBillableExecution({ mode: 'webhook', status: 'error', startedAt, data })).toBe(false);
+	});
+
+	test.each([() => true, 1, false])(
 		'does not block on a marker value that is not a reason (%s)',
 		(marker) => {
 			const data = { resultData: { failedBeforeStart: marker as never } };

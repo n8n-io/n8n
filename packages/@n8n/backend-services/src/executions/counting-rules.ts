@@ -204,8 +204,9 @@ function toLedgerBlockedBy(reason: ExecutionBlockedReason): Exclude<LedgerBlocke
 function toBlockedReason(run: CompletedRun): ExecutionBlockedReason | undefined {
 	const marker = run.data?.resultData?.failedBeforeStart;
 	if (isExecutionBlockedReason(marker)) return marker;
-	// No runner took the run, or the marker has no reason.
-	if (run.startedAt === null || marker === true) return 'startFailed';
+	// A newer instance can write a reason this one does not know. The run is still blocked.
+	const hasMarker = marker === true || typeof marker === 'string';
+	if (run.startedAt === null || hasMarker) return 'startFailed';
 	return undefined;
 }
 
