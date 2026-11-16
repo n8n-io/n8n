@@ -107,7 +107,11 @@ describe('redactOutboundRequest', () => {
 			server: 'linear',
 			method: 'POST',
 			headers: { 'mcp-session-id': 's-1' },
-			body: { jsonrpc: '2.0', method: 'tools/call', params: { arguments: { token: '[REDACTED]' } } },
+			body: {
+				jsonrpc: '2.0',
+				method: 'tools/call',
+				params: { arguments: { token: '[REDACTED]' } },
+			},
 		});
 		expect(search).toEqual({
 			protocol: 'web_search',

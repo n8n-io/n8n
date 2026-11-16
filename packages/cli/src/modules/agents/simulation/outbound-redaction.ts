@@ -65,7 +65,8 @@ function toJsonBody(value: unknown): unknown {
 	if (value instanceof FormData) {
 		const fields: Record<string, unknown> = {};
 		for (const [name, entry] of value.entries()) {
-			fields[name] = typeof entry === 'string' ? entry : `[file ${entry.name}, ${entry.size} bytes]`;
+			fields[name] =
+				typeof entry === 'string' ? entry : `[file ${entry.name}, ${entry.size} bytes]`;
 		}
 		return fields;
 	}

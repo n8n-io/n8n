@@ -331,8 +331,13 @@ describe('SimulationSession', () => {
 		});
 		const { mcpFetch } = session.instrumentation();
 
-		await mcpFetch!('acct_a')('https://mcp.example.com/mcp?key=key-a', { method: 'POST', body: '{}' });
-		await mcpFetch!('acct_b')(new Request('https://mcp.example.com/mcp?key=key-b', { method: 'POST', body: '{}' }));
+		await mcpFetch!('acct_a')('https://mcp.example.com/mcp?key=key-a', {
+			method: 'POST',
+			body: '{}',
+		});
+		await mcpFetch!('acct_b')(
+			new Request('https://mcp.example.com/mcp?key=key-b', { method: 'POST', body: '{}' }),
+		);
 
 		const [[first], [second]] = world.handleRequest.mock.calls;
 		expect(first).toMatchObject({ protocol: 'mcp', server: 'acct_a' });
@@ -537,7 +542,6 @@ describe('SimulationSession', () => {
 		await expect(runTool(session, workflowTool, 'tc-2')).rejects.toThrow(SimulationBlockedError);
 		expect(handler).not.toHaveBeenCalled();
 	});
-
 
 	it('blocks a chat integration tool with the reason the list gives it', async () => {
 		const session = new SimulationSession({

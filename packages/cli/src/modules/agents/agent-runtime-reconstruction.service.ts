@@ -1225,7 +1225,12 @@ export class AgentRuntimeReconstructionService {
 			agent.tool(integrationTool(createIntegrationContextTool({ descriptor, queryExecutor })));
 			agent.tool(
 				integrationTool(
-					createIntegrationActionTool({ descriptor, messageContextStore, actionExecutor, projectId }),
+					createIntegrationActionTool({
+						descriptor,
+						messageContextStore,
+						actionExecutor,
+						projectId,
+					}),
 				),
 			);
 		}
