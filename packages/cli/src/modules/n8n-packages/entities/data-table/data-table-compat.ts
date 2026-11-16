@@ -1,7 +1,7 @@
 import type { SerializedDataTable, SerializedDataTableColumn } from '@n8n/api-types';
 import type { DataTableColumnType } from 'n8n-workflow';
 
-import { pairDataTableColumns } from '@/modules/data-table/utils/pair-columns';
+import { pairDataTableColumns } from '@n8n/backend-module-data-table';
 
 import type { DataTableColumnTypeMismatch, DataTableSchemaOperation } from './data-table.types';
 

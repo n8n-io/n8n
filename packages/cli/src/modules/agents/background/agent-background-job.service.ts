@@ -4,19 +4,16 @@ import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import type {
-	ExecutionStatus,
-	INodeExecutionData,
-	IRunData,
-	ITaskData,
-	TerminalExecutionStatus,
-} from 'n8n-workflow';
+import type { ExecutionStatus, IRunData, TerminalExecutionStatus } from 'n8n-workflow';
 import { isTerminalExecutionStatus, WorkflowOperationError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
-
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
+import {
+	collectResultData,
+	collectResultItems,
+} from '@/workflows/callable/callable-workflow-result';
 
 import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
@@ -94,44 +91,6 @@ export function settlementStatusForExecution(
 	if (status === 'success') return 'completed';
 	if (status === 'canceled') return 'cancelled';
 	return 'failed';
-}
-
-/** Extract the items produced by the last run of a node. */
-function outputItemsFromNodeRuns(nodeRuns: ITaskData[]): INodeExecutionData[] {
-	const lastRun = nodeRuns[nodeRuns.length - 1];
-	if (!lastRun?.data?.main) return [];
-	return lastRun.data.main.flatMap((items) => items ?? []);
-}
-
-/** Build a map from node name to output items. Items keep their binary data. */
-export function collectResultItems(
-	runData: IRunData,
-	allOutputs: boolean,
-): Record<string, INodeExecutionData[]> {
-	const nodeNames = allOutputs ? Object.keys(runData) : Object.keys(runData).slice(-1);
-	const resultItems: Record<string, INodeExecutionData[]> = {};
-	for (const nodeName of nodeNames) {
-		const outputItems = outputItemsFromNodeRuns(runData[nodeName]);
-		if (outputItems.length > 0) resultItems[nodeName] = outputItems;
-	}
-	return resultItems;
-}
-
-/** Map each node's output items to their JSON. */
-export function toResultData(
-	resultItems: Record<string, INodeExecutionData[]>,
-): Record<string, unknown> {
-	return Object.fromEntries(
-		Object.entries(resultItems).map(([nodeName, items]) => [
-			nodeName,
-			items.map((item) => item.json),
-		]),
-	);
-}
-
-/** Build the resultData map from an execution's runData. */
-export function collectResultData(runData: IRunData, allOutputs: boolean): Record<string, unknown> {
-	return toResultData(collectResultItems(runData, allOutputs));
 }
 
 /**
@@ -281,11 +240,14 @@ export class AgentBackgroundJobService {
 	 * A storage error must not block the settle, so it logs and returns no files.
 	 */
 	async storeOutputFiles(
-		job: Pick<AgentBackgroundJob, 'id' | 'parentAgentId' | 'parentThreadId' | 'pauseRequestId'>,
+		job: Pick<
+			AgentBackgroundJob,
+			'id' | 'parentAgentId' | 'parentThreadId' | 'parentResourceId' | 'pauseRequestId'
+		>,
 		runData: IRunData,
 	): Promise<JobOutputFiles> {
 		const items = Object.values(collectResultItems(runData, Boolean(job.pauseRequestId))).flat();
-		if (!items.some((item) => item.binary)) return NO_OUTPUT_FILES;
+		if (!items.some((item) => item.binary) || !job.parentResourceId) return NO_OUTPUT_FILES;
 		try {
 			const projectId = await this.threadRepository.findProjectId(job.parentThreadId);
 			if (!projectId) return NO_OUTPUT_FILES;
@@ -293,6 +255,7 @@ export class AgentBackgroundJobService {
 				agentId: job.parentAgentId,
 				projectId,
 				threadId: job.parentThreadId,
+				resourceId: job.parentResourceId,
 			});
 			return {
 				files: files.length > 0 ? files : null,

@@ -1,7 +1,7 @@
 import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { Logger } from '@n8n/backend-common';
 import { testDb, testModules } from '@n8n/backend-test-utils';
-import { AuthIdentity, User, UserRepository } from '@n8n/db';
+import { AuthIdentity, type Person, User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, In } from '@n8n/typeorm';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -63,7 +63,7 @@ let tokens: OAuthTokenService;
 let consentService: OAuthConsentService;
 let server: OAuthServerService;
 const sessions = mock<OAuthSessionService>();
-let user: User;
+let person: Person;
 let otherUser: User;
 const clientId = 'shared-client';
 const grantEntities = [AccessToken, RefreshToken, AuthorizationCode, UserConsent];
@@ -130,8 +130,8 @@ beforeEach(async () => {
 	const hooks = new UserDeactivationHooks();
 	hooks.register('oauth-server', async (userId, ctx) => await grants.deleteUserGrants(userId, ctx));
 	Container.set(UserDeactivationHooks, hooks);
-	user = await createUser();
-	await dataSource.manager.save(AuthIdentity.create(user, user.id));
+	person = await createUser();
+	await dataSource.manager.save(AuthIdentity.create(person, person.id));
 	otherUser = await createUser();
 	await dataSource.getRepository(OAuthClient).save({
 		id: clientId,
@@ -140,7 +140,7 @@ beforeEach(async () => {
 		grantTypes: ['authorization_code', 'refresh_token'],
 		tokenEndpointAuthMethod: 'none',
 	});
-	await seedGrant(user.id);
+	await seedGrant(person.id);
 	await seedGrant(otherUser.id);
 });
 
@@ -192,23 +192,26 @@ async function expectGrantCounts(userId: string, count: number) {
 }
 
 it('clears the user grants on deactivation and requires consent after reactivation', async () => {
-	await processUsers([], [], [user.id], true);
-	expect((await dataSource.manager.findOneByOrFail(User, { id: user.id })).disabled).toBe(true);
-	expect(await dataSource.manager.findOneBy(AuthIdentity, { userId: user.id })).toBeNull();
-	await expectGrantCounts(user.id, 0);
+	await processUsers([], [], [person.id], true);
+	expect((await dataSource.manager.findOneByOrFail(User, { id: person.id })).disabled).toBe(true);
+	expect(await dataSource.manager.findOneBy(AuthIdentity, { userId: person.id })).toBeNull();
+	await expectGrantCounts(person.id, 0);
 	await expectGrantCounts(otherUser.id, 1);
 	expect(await dataSource.manager.count(OAuthClient, { where: { id: clientId } })).toBe(1);
 
-	user.disabled = false;
-	await dataSource.manager.save(user);
+	person.disabled = false;
+	await dataSource.manager.save(person);
 	await expect(
-		tokens.validateAndRotateRefreshToken(`refresh-${user.id}`, clientId),
+		tokens.validateAndRotateRefreshToken(`refresh-${person.id}`, clientId),
 	).rejects.toBeInstanceOf(InvalidGrantError);
 	await expect(
-		Container.get(OAuthAuthorizationCodeService).findAuthorizationCode(`code-${user.id}`, clientId),
+		Container.get(OAuthAuthorizationCodeService).findAuthorizationCode(
+			`code-${person.id}`,
+			clientId,
+		),
 	).resolves.toBeNull();
 	await expect(
-		consentService.tryReuseConsent(user, {
+		consentService.tryReuseConsent(person, {
 			clientId,
 			resource: resourceUrl,
 			redirectUri: 'https://example.com/callback',
@@ -216,9 +219,9 @@ it('clears the user grants on deactivation and requires consent after reactivati
 			state: null,
 		}),
 	).resolves.toBeNull();
-	await expectGrantCounts(user.id, 0);
+	await expectGrantCounts(person.id, 0);
 	await expect(
-		server.exchangeAuthorizationCode(mock({ client_id: clientId }), `code-${user.id}`),
+		server.exchangeAuthorizationCode(mock({ client_id: clientId }), `code-${person.id}`),
 	).rejects.toBeInstanceOf(InvalidGrantError);
 
 	sessions.verifySession.mockReturnValue({
@@ -228,7 +231,7 @@ it('clears the user grants on deactivation and requires consent after reactivati
 		codeChallenge: 'new-challenge',
 		state: null,
 	});
-	const { redirectUrl } = await consentService.handleConsentDecision('new-session', user, true);
+	const { redirectUrl } = await consentService.handleConsentDecision('new-session', person, true);
 	const code = new URL(redirectUrl).searchParams.get('code')!;
 	vi.spyOn(tokens, 'generateTokenPair').mockReturnValue({
 		accessToken: 'new-access',
@@ -237,7 +240,7 @@ it('clears the user grants on deactivation and requires consent after reactivati
 	});
 	const result = await server.exchangeAuthorizationCode(mock({ client_id: clientId }), code);
 	expect(result).toMatchObject({ access_token: 'new-access', refresh_token: 'new-refresh' });
-	await expectGrantCounts(user.id, 1);
+	await expectGrantCounts(person.id, 1);
 	await expect(
 		server.exchangeAuthorizationCode(mock({ client_id: clientId }), code),
 	).rejects.toBeInstanceOf(InvalidGrantError);
@@ -246,19 +249,19 @@ it('clears the user grants on deactivation and requires consent after reactivati
 it('keeps the code available when token persistence fails', async () => {
 	vi.spyOn(tokens, 'generateTokenPair').mockReturnValue({
 		accessToken: 'incomplete-access',
-		refreshToken: `refresh-${user.id}`,
+		refreshToken: `refresh-${person.id}`,
 		audience: resourceUrl,
 	});
 	await expect(
-		server.exchangeAuthorizationCode(mock({ client_id: clientId }), `code-${user.id}`),
+		server.exchangeAuthorizationCode(mock({ client_id: clientId }), `code-${person.id}`),
 	).rejects.toThrow();
 	expect(
 		await dataSource.manager.findOneBy(AccessToken, { token: 'incomplete-access' }),
 	).toBeNull();
 	expect(
-		await dataSource.manager.findOneByOrFail(AuthorizationCode, { code: `code-${user.id}` }),
+		await dataSource.manager.findOneByOrFail(AuthorizationCode, { code: `code-${person.id}` }),
 	).toMatchObject({ used: false });
-	await expectGrantCounts(user.id, 1);
+	await expectGrantCounts(person.id, 1);
 });
 
 it('checks code expiry again after it acquires the user lock', async () => {
@@ -270,18 +273,18 @@ it('checks code expiry again after it acquires the user lock', async () => {
 		return found;
 	});
 	await expect(
-		server.exchangeAuthorizationCode(mock({ client_id: clientId }), `code-${user.id}`),
+		server.exchangeAuthorizationCode(mock({ client_id: clientId }), `code-${person.id}`),
 	).rejects.toBeInstanceOf(InvalidGrantError);
 	expect(
-		await dataSource.manager.findOneByOrFail(AuthorizationCode, { code: `code-${user.id}` }),
+		await dataSource.manager.findOneByOrFail(AuthorizationCode, { code: `code-${person.id}` }),
 	).toMatchObject({ used: false });
-	await expectGrantCounts(user.id, 1);
+	await expectGrantCounts(person.id, 1);
 });
 
 it('keeps grants when an enabled user changes their profile', async () => {
-	user.firstName = 'Updated';
-	await dataSource.manager.save(user);
-	await expectGrantCounts(user.id, 1);
+	person.firstName = 'Updated';
+	await dataSource.manager.save(person);
+	await expectGrantCounts(person.id, 1);
 });
 
 it('rolls back LDAP deactivation when grant cleanup fails', async () => {
@@ -290,26 +293,26 @@ it('rolls back LDAP deactivation when grant cleanup fails', async () => {
 		await original(...args);
 		throw new Error('Abort cleanup');
 	});
-	await expect(processUsers([], [], [user.id], true)).rejects.toThrow('Abort cleanup');
-	expect((await dataSource.manager.findOneByOrFail(User, { id: user.id })).disabled).toBe(false);
-	expect(await dataSource.manager.findOneBy(AuthIdentity, { userId: user.id })).not.toBeNull();
-	await expectGrantCounts(user.id, 1);
+	await expect(processUsers([], [], [person.id], true)).rejects.toThrow('Abort cleanup');
+	expect((await dataSource.manager.findOneByOrFail(User, { id: person.id })).disabled).toBe(false);
+	expect(await dataSource.manager.findOneBy(AuthIdentity, { userId: person.id })).not.toBeNull();
+	await expectGrantCounts(person.id, 1);
 	await expectGrantCounts(otherUser.id, 1);
 });
 
 it('deactivates LDAP users when the OAuth module is inactive', async () => {
 	Container.set(UserDeactivationHooks, new UserDeactivationHooks());
 	const cleanup = vi.spyOn(grants, 'deleteUserGrants');
-	await processUsers([], [], [user.id], true);
-	expect((await dataSource.manager.findOneByOrFail(User, { id: user.id })).disabled).toBe(true);
-	expect(await dataSource.manager.findOneBy(AuthIdentity, { userId: user.id })).toBeNull();
+	await processUsers([], [], [person.id], true);
+	expect((await dataSource.manager.findOneByOrFail(User, { id: person.id })).disabled).toBe(true);
+	expect(await dataSource.manager.findOneBy(AuthIdentity, { userId: person.id })).toBeNull();
 	expect(cleanup).not.toHaveBeenCalled();
 });
 
 it('clears pre-existing disabled-user grants when the module initializes', async () => {
-	await dataSource.manager.update(User, { id: user.id }, { disabled: true });
+	await dataSource.manager.update(User, { id: person.id }, { disabled: true });
 	await grants.deleteGrantsForDisabledUsers();
-	await expectGrantCounts(user.id, 0);
+	await expectGrantCounts(person.id, 0);
 	await expectGrantCounts(otherUser.id, 1);
 });
 
@@ -328,7 +331,7 @@ it('clears disabled-user grants across batches while keeping active-user grants'
 			}),
 		).toBe(0);
 	}
-	await expectGrantCounts(user.id, 1);
+	await expectGrantCounts(person.id, 1);
 	await expectGrantCounts(otherUser.id, 1);
 });
 
@@ -350,7 +353,7 @@ it.runIf(process.env.DB_TYPE === 'postgresdb')(
 			refreshToken: randomUUID(),
 			audience: resourceUrl,
 		});
-		const rotating = tokens.validateAndRotateRefreshToken(`refresh-${user.id}`, clientId);
+		const rotating = tokens.validateAndRotateRefreshToken(`refresh-${person.id}`, clientId);
 		await admitted.promise;
 		const updating = createDeferredPromise<number>();
 		const disabling = peerGrants.runInTransaction({}, async (manager, ctx) => {
@@ -358,8 +361,8 @@ it.runIf(process.env.DB_TYPE === 'postgresdb')(
 				'SELECT pg_backend_pid() AS pid',
 			);
 			updating.resolve(pid);
-			await manager.save(User, { id: user.id, disabled: true });
-			await peerGrants.deleteUserGrants(user.id, ctx);
+			await manager.save(User, { id: person.id, disabled: true });
+			await peerGrants.deleteUserGrants(person.id, ctx);
 		});
 		try {
 			await expectBlocked(await updating.promise);
@@ -368,7 +371,7 @@ it.runIf(process.env.DB_TYPE === 'postgresdb')(
 		}
 
 		await Promise.all([rotating, disabling]);
-		await expectGrantCounts(user.id, 0);
+		await expectGrantCounts(person.id, 0);
 	},
 );
 
@@ -378,8 +381,8 @@ it.runIf(process.env.DB_TYPE === 'postgresdb')(
 		const disabled = createDeferredPromise();
 		const release = createDeferredPromise();
 		const disabling = peerGrants.runInTransaction({}, async (manager, ctx) => {
-			await manager.save(User, { id: user.id, disabled: true });
-			await peerGrants.deleteUserGrants(user.id, ctx);
+			await manager.save(User, { id: person.id, disabled: true });
+			await peerGrants.deleteUserGrants(person.id, ctx);
 			disabled.resolve();
 			await release.promise;
 		});
@@ -388,7 +391,7 @@ it.runIf(process.env.DB_TYPE === 'postgresdb')(
 			'SELECT pg_backend_pid() AS pid',
 		);
 		const work = vi.fn();
-		const issuing = expect(gate.runForActiveUser(user.id, work)).rejects.toBeInstanceOf(
+		const issuing = expect(gate.runForActiveUser(person.id, work)).rejects.toBeInstanceOf(
 			InvalidGrantError,
 		);
 		try {
@@ -398,7 +401,7 @@ it.runIf(process.env.DB_TYPE === 'postgresdb')(
 		}
 		await Promise.all([disabling, issuing]);
 		expect(work).not.toHaveBeenCalled();
-		await expectGrantCounts(user.id, 0);
+		await expectGrantCounts(person.id, 0);
 	},
 );
 
@@ -408,8 +411,8 @@ it.runIf(process.env.DB_TYPE === 'postgresdb')(
 		const disabled = createDeferredPromise();
 		const release = createDeferredPromise();
 		const disabling = peerGrants.runInTransaction({}, async (manager, ctx) => {
-			await manager.save(User, { id: user.id, disabled: true });
-			await peerGrants.deleteUserGrants(user.id, ctx);
+			await manager.save(User, { id: person.id, disabled: true });
+			await peerGrants.deleteUserGrants(person.id, ctx);
 			disabled.resolve();
 			await release.promise;
 		});
@@ -417,15 +420,17 @@ it.runIf(process.env.DB_TYPE === 'postgresdb')(
 		const [{ pid }] = await dataSource.query<Array<{ pid: number }>>(
 			'SELECT pg_backend_pid() AS pid',
 		);
-		const reactivating = dataSource.manager.update(User, { id: user.id }, { disabled: false });
+		const reactivating = dataSource.manager.update(User, { id: person.id }, { disabled: false });
 		try {
 			await expectBlocked(pid);
 		} finally {
 			release.resolve();
 			await Promise.all([disabling, reactivating]);
 		}
-		expect((await dataSource.manager.findOneByOrFail(User, { id: user.id })).disabled).toBe(false);
-		await expectGrantCounts(user.id, 0);
+		expect((await dataSource.manager.findOneByOrFail(User, { id: person.id })).disabled).toBe(
+			false,
+		);
+		await expectGrantCounts(person.id, 0);
 		await expectGrantCounts(otherUser.id, 1);
 	},
 );

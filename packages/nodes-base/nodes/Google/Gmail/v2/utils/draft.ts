@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import type { IEmail } from '@utils/sendAndWait/interfaces';
 
@@ -37,7 +38,7 @@ export async function addThreadHeadersToEmail(
 	const thread = await googleApiRequest.call(
 		this,
 		'GET',
-		`/gmail/v1/users/me/threads/${threadId}`,
+		requestPath`/gmail/v1/users/me/threads/${threadId}`,
 		{},
 		{ format: 'metadata', metadataHeaders: ['Message-ID'] },
 	);

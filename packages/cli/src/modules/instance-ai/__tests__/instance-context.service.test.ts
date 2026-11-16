@@ -917,7 +917,9 @@ describe('InstanceContextService', () => {
 			expect(expansion?.entry.id).toBe(10);
 			// The entry itself is not repeated inside its own history.
 			expect(expansion?.resourceHistory.map((other) => other.id)).toEqual([4]);
-			expect(expansion?.liveRecordHint).toBe('get_workflow(workflowId="wf-1")');
+			expect(expansion?.liveRecordHint).toBe(
+				'call_tool({ tool: "get_workflow", arguments: { workflowId: "wf-1" } })',
+			);
 			expect(activityEventRepository.findByResource).toHaveBeenCalledWith(
 				expect.objectContaining({ projectIds: [PROJECT_ID] }),
 			);

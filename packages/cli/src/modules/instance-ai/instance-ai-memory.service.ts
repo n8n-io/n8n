@@ -32,6 +32,7 @@ import {
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import type { InstanceAiCheckpoint } from './entities/instance-ai-checkpoint.entity';
+import { toRestorableMessages } from './restorable-messages';
 import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 import {
@@ -49,29 +50,6 @@ export interface InstanceAiThreadLaunchMetadata {
 	source: InstanceAiThreadSource;
 	origin: InstanceAiThreadOrigin;
 	sourceContext?: Record<string, unknown>;
-}
-
-function isRestorableMessage(
-	value: Record<string, unknown> & { createdAt: Date },
-): value is AgentDbMessage & Record<string, unknown> {
-	if (typeof value.id !== 'string' || value.id.length === 0) return false;
-	if (value.type === 'custom') return typeof value.data === 'object' && value.data !== null;
-	return typeof value.role === 'string' && Array.isArray(value.content);
-}
-
-/** Coerce a wire-format seed message (ISO `createdAt`) into a persistable
- *  AgentDbMessage, or undefined if it fails the structural contract. */
-function toRestorableMessage(value: Record<string, unknown>): AgentDbMessage | undefined {
-	const rawCreatedAt = value.createdAt;
-	const createdAt =
-		rawCreatedAt instanceof Date
-			? rawCreatedAt
-			: typeof rawCreatedAt === 'string'
-				? new Date(rawCreatedAt)
-				: undefined;
-	if (!createdAt || Number.isNaN(createdAt.getTime())) return undefined;
-	const candidate = { ...value, createdAt };
-	return isRestorableMessage(candidate) ? candidate : undefined;
 }
 
 function messageCreatedAtMs(message: AgentDbMessage): number {
@@ -99,25 +77,44 @@ interface HistoryWindow {
  * are not written until its turn commits, so clipping there would hide the turn
  * the user is watching.
  *
- * An older page stops where the next page starts — NOT at its own newest
- * message. A turn's tree is written when its run ends, after the assistant row
- * it pairs with (the parser pairs a tree to the newest message at or before
- * it), so a bound at the page's own newest message drops the tree of the turn
- * the page ends on and no other page claims it either.
+ * An older page stops where the next page starts (its cursor), NOT at its own
+ * newest message. A turn's tree is written when its run ends, after the
+ * assistant row it pairs with (the parser pairs a tree to the newest message
+ * at or before it), so a bound at the page's own newest message drops the tree
+ * of the turn the page ends on and no other page claims it either.
  *
  * An empty newest page carries no bounds at all: a thread whose only activity
  * is a first, still-running turn has no message rows yet and must still render.
  * An empty older page is out of range — nothing to pair a tree with, and no
  * bounds to read it with, so it hydrates nothing (`undefined`).
  */
-function historyWindow(
-	messages: AgentDbMessage[],
-	page: number,
-	newerBoundaryAt?: Date,
-): HistoryWindow | undefined {
-	if (messages.length === 0) return page === 0 ? {} : undefined;
+function historyWindow(messages: AgentDbMessage[], before?: Date): HistoryWindow | undefined {
+	if (messages.length === 0) return before ? undefined : {};
 	const since = new Date(messageCreatedAtMs(messages[0]));
-	return newerBoundaryAt ? { since, before: newerBoundaryAt } : { since };
+	return before ? { since, before } : { since };
+}
+
+/** Keyset cursor for rich message reads: the oldest message the client has. */
+const messageCursorSchema = z.object({
+	createdAt: z.string().datetime(),
+	id: z.string().min(1).max(256),
+});
+
+function encodeMessageCursor(message: { id: string; createdAt: string | Date }): string {
+	return Buffer.from(JSON.stringify({ createdAt: message.createdAt, id: message.id })).toString(
+		'base64url',
+	);
+}
+
+function decodeMessageCursor(cursor: string): { createdAt: Date; id: string } {
+	try {
+		const parsed = messageCursorSchema.parse(
+			JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')),
+		);
+		return { createdAt: new Date(parsed.createdAt), id: parsed.id };
+	} catch {
+		throw new BadRequestError('Invalid thread messages cursor');
+	}
 }
 
 /**
@@ -447,17 +444,7 @@ export class InstanceAiMemoryService {
 		threadId: string,
 		messages: Array<Record<string, unknown>>,
 	): Promise<{ restored: number }> {
-		const restorable: AgentDbMessage[] = [];
-		for (const [index, raw] of messages.entries()) {
-			const message = toRestorableMessage(raw);
-			if (!message) {
-				throw new BadRequestError(
-					`Seed message at index ${index} is not a valid agent message (id, createdAt, and role+content or type:custom+data are required)`,
-				);
-			}
-			restorable.push(message);
-		}
-
+		const restorable = toRestorableMessages(messages);
 		await this.agentMemory.saveMessages({ threadId, resourceId: userId, messages: restorable });
 		return { restored: restorable.length };
 	}
@@ -488,7 +475,8 @@ export class InstanceAiMemoryService {
 		threadId: string,
 		options?: {
 			limit?: number;
-			page?: number;
+			/** `nextCursor` of the previous (newer) page. */
+			cursor?: string;
 			excludeRunIds?: string[];
 			/** Live in-flight group ids from run state — the durable-log fold
 			 *  cannot rely on persisted run-start rows alone to map an excluded
@@ -496,17 +484,15 @@ export class InstanceAiMemoryService {
 			excludeMessageGroupIds?: string[];
 		},
 	): Promise<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>> {
-		const page = options?.page ?? 0;
+		const before = options?.cursor ? decodeMessageCursor(options.cursor) : undefined;
 		const result = await this.agentMemory.listMessages({
 			threadId,
 			limit: options?.limit ?? 50,
-			page,
-			// The next page's first message is this page's upper bound.
-			withNewerBoundary: true,
+			before,
 		});
 
 		// Hydrate trees only for the page we are about to render.
-		const pageWindow = historyWindow(result.messages, page, result.newerBoundaryAt);
+		const pageWindow = historyWindow(result.messages, before?.createdAt);
 
 		// The fold's suspension carve-out: a HITL-suspended run legitimately has
 		// no run-finish, so its turn still folds (the confirmation card and the
@@ -528,11 +514,25 @@ export class InstanceAiMemoryService {
 					options?.excludeMessageGroupIds,
 				);
 
-		const messages = parseStoredMessages(result.messages, snapshots);
+		let messages = parseStoredMessages(result.messages, snapshots);
+		let nextCursor: string | undefined;
+		if (result.hasMore) {
+			// Start the page at its first user message so no turn is split across two
+			// pages: the parser merges a turn's rows only when it sees all of them. The
+			// older page reads the cut rows again. A turn longer than one page cannot
+			// be kept whole, so its page continues from the oldest row.
+			const firstUserIndex = messages.findIndex((message) => message.role === 'user');
+			if (firstUserIndex >= 0) {
+				messages = messages.slice(firstUserIndex);
+				nextCursor = encodeMessageCursor(messages[0]);
+			} else if (result.messages[0]) {
+				nextCursor = encodeMessageCursor(result.messages[0]);
+			}
+		}
 		await this.flagExpiredConfirmations(messages);
 
 		const projectId = await this.agentMemory.getThreadProjectId(threadId);
-		return { threadId, projectId: projectId ?? undefined, messages };
+		return { threadId, projectId: projectId ?? undefined, messages, nextCursor };
 	}
 
 	/**

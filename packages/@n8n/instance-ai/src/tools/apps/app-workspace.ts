@@ -67,6 +67,23 @@ export async function checkOutDraft(
 	return baseVersionId;
 }
 
+/**
+ * Install the `@n8n/app-sdk` of this instance into `apps/node_modules`. Module
+ * resolution in each app folder finds it there, and `npm ci` in an app folder
+ * does not remove it. n8n installs the same SDK when it builds an app.
+ */
+export async function installSdk(workspace: Workspace, apps: InstanceAiAppService) {
+	const root = joinWorkspacePath(await getWorkspaceRoot(workspace), 'apps');
+	const dir = escapeSingleQuotes(`${root}/node_modules/@n8n/app-sdk`);
+	const archive = `${root}/.app-sdk.tgz`;
+	await writeFileViaSandbox(workspace, archive, await apps.exportSdk());
+	const tarball = escapeSingleQuotes(archive);
+	await run(
+		workspace,
+		`rm -rf '${dir}' && mkdir -p '${dir}' && tar -xzf '${tarball}' --no-same-owner -C '${dir}' && rm -f '${tarball}'`,
+	);
+}
+
 /** The app folder as a gzip tar archive, without installed dependencies and build output. */
 export async function packAppFolder(workspace: Workspace, appId: string) {
 	const paths = await appPaths(workspace, appId);

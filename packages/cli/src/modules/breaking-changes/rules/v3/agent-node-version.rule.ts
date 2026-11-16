@@ -28,6 +28,7 @@ export class AgentNodeVersionRule implements IBreakingChangeWorkflowRule {
 				'AI Agent versions below 2 are removed. After the update, AI Agent nodes that are currently on a version below 2 will run with version 2 behavior, which only supports the Tools Agent.',
 			category: BreakingChangeCategory.workflow,
 			impact: 'behaviorChanges',
+			assistant: 'fix',
 		};
 	}
 

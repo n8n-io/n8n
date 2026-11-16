@@ -1,5 +1,6 @@
 import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
 import {
+	createNodeLabeler,
 	deriveLoops,
 	findTriggerNode,
 	getDescendantNodeIds,
@@ -8,6 +9,7 @@ import {
 	type StoredWorkflowGraph,
 	type WorkflowGraph,
 } from '../graph';
+import type { LifecycleEventSubscription } from '../lifecycle-events';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ResponseExpectation } from '../response-channel';
 import { ExecutionNotFoundError, type ExecutionStore } from './execution-store';
@@ -39,6 +41,8 @@ export interface StartExecutionRequest {
 	callerContext: CallerContext;
 	/** What kind of a response the caller expects. Defaults to 'none' */
 	responseExpectation?: ResponseExpectation;
+	/** Which lifecycle events the caller subscribes to. Missing means none. */
+	lifecycleEventSubscription?: LifecycleEventSubscription;
 	/**
 	 * Caller-minted, so the caller can record state against the run before it
 	 * starts. The engine never mints one.
@@ -109,11 +113,12 @@ export class StartExecutionService {
 			callerContext: request.callerContext,
 			responseExpectation: request.responseExpectation ?? { kind: 'none' },
 			parent: request.parent ?? null,
+			lifecycleEventSubscription: request.lifecycleEventSubscription,
 		});
 
-		// TODO(CAT-2938): the persist above and this publish aren't atomic — a
-		// crash between them leaves the execution 'queued' until the
-		// reconciliation sweep (not yet built) re-dispatches it.
+		// The persist above and this publish aren't atomic. A crash between them
+		// leaves the execution 'queued' until the reconciliation sweeper
+		// publishes the event again.
 		await this.workQueue.publish({
 			type: 'execution:enqueued',
 			executionId,
@@ -200,6 +205,7 @@ function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): vo
 	const loopByMember = new Map(
 		deriveLoops(graph).flatMap((loop) => [...loop.memberIds].map((id) => [id, loop] as const)),
 	);
+	const name = createNodeLabeler(graph);
 	for (const [nodeId, passes] of Object.entries(seededSteps)) {
 		if (nodeId === trigger?.id) {
 			throw new GraphValidationError(
@@ -208,18 +214,18 @@ function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): vo
 		}
 		if (!reachable.has(nodeId)) {
 			throw new GraphValidationError(
-				`Seeded step names node ${nodeId}, which the trigger does not reach`,
+				`Seeded step names node ${name(nodeId)}, which the trigger does not reach`,
 			);
 		}
 		const loop = loopByMember.get(nodeId);
 		if (loop) {
 			throw new GraphValidationError(
-				`Seeded step names node ${nodeId}, which is inside the loop of ${loop.batchNodeId}; a loop member runs once per pass and cannot be seeded`,
+				`Seeded step names node ${name(nodeId)}, which is inside the loop of ${name(loop.batchNodeId)}; a loop member runs once per pass and cannot be seeded`,
 			);
 		}
 		if (passes.length !== 1) {
 			throw new GraphValidationError(
-				`Node ${nodeId} is seeded with ${passes.length} passes, and a node outside a loop has one`,
+				`Node ${name(nodeId)} is seeded with ${passes.length} passes, and a node outside a loop has one`,
 			);
 		}
 	}

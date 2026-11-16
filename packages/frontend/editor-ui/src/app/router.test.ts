@@ -4,7 +4,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import router, { routes } from '@/app/router';
 import { VIEWS } from '@/app/constants';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
-import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
+import { PROMOTIONS_SETTINGS_VIEW } from '@n8n/frontend-module-promotions';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants/experiments';
 

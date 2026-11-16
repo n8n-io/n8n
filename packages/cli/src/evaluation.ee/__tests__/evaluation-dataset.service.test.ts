@@ -8,8 +8,7 @@ import type { IConnections, IRunData } from 'n8n-workflow';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
-import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import { type DataTableColumn, type DataTableService } from '@n8n/backend-module-data-table';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 

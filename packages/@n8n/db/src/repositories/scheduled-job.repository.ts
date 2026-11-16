@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { ScheduledJob } from '../entities/scheduled-job';
 import type { ScheduledJobOwner, ScheduledJobOwnerRef } from '../entities/scheduled-job';
@@ -16,6 +16,11 @@ export interface JobAdvance {
 	nextRunAt: Date | null;
 	lastFiredAt: Date | null;
 }
+
+/** The schedule state of one job and the time of its newest dispatch. */
+export type JobScheduleState = Pick<ScheduledJob, 'ownerId' | 'nextRunAt' | 'lastDispatchedAt'> & {
+	runnable: boolean;
+};
 
 /** A job row to insert; remaining bookkeeping columns take their schema defaults. */
 export type NewScheduledJob = Pick<
@@ -162,17 +167,16 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	 * The owner id and schedule state of every job owners of one kind hold.
 	 * A job is runnable when the scheduler will claim it: enabled and not quarantined.
 	 */
-	async findScheduleStatesByOwnerType(
-		ownerType: string,
-	): Promise<Array<Pick<ScheduledJob, 'ownerId' | 'nextRunAt'> & { runnable: boolean }>> {
+	async findScheduleStatesByOwnerType(ownerType: string): Promise<JobScheduleState[]> {
 		const rows = await this.find({
 			where: { ownerType },
-			select: ['ownerId', 'enabled', 'nextRunAt', 'orphanedAt'],
+			select: ['ownerId', 'enabled', 'nextRunAt', 'orphanedAt', 'lastDispatchedAt'],
 		});
-		return rows.map(({ ownerId, enabled, nextRunAt, orphanedAt }) => ({
+		return rows.map(({ ownerId, enabled, nextRunAt, orphanedAt, lastDispatchedAt }) => ({
 			ownerId,
 			nextRunAt,
 			runnable: enabled && orphanedAt === null,
+			lastDispatchedAt,
 		}));
 	}
 

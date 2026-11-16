@@ -600,28 +600,6 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
-	describe('findSettings', () => {
-		it('selects only the settings column', async () => {
-			const settings: IWorkflowSettings = { engineType: 'v2' };
-			const findOneSpy = vi
-				.spyOn(workflowRepository, 'findOne')
-				.mockResolvedValue(Object.assign(new WorkflowEntity(), { settings }));
-
-			await expect(workflowRepository.findSettings('workflow1')).resolves.toEqual(settings);
-
-			expect(findOneSpy).toHaveBeenCalledWith({
-				select: ['settings'],
-				where: { id: 'workflow1' },
-			});
-		});
-
-		it('returns undefined for a workflow that does not exist', async () => {
-			vi.spyOn(workflowRepository, 'findOne').mockResolvedValue(null);
-
-			await expect(workflowRepository.findSettings('missing')).resolves.toBeUndefined();
-		});
-	});
-
 	describe('getIdsAfter', () => {
 		it('should return the first ids when no cursor is given', async () => {
 			const findSpy = vi
@@ -694,6 +672,24 @@ describe('WorkflowRepository', () => {
 			expect(findOneSpy).toHaveBeenCalledWith({
 				select: ['id', 'name', 'active', 'activeVersionId', 'versionId', 'nodes', 'updatedAt'],
 				where: { id: 'a' },
+			});
+		});
+	});
+
+	describe('countUnarchived', () => {
+		it('should count only the workflows that are not archived', async () => {
+			const countSpy = vi.spyOn(workflowRepository, 'count').mockResolvedValue(3);
+
+			expect(await workflowRepository.countUnarchived()).toBe(3);
+			expect(countSpy).toHaveBeenCalledWith({ where: { isArchived: false } });
+		});
+
+		it('should count only the given workflows that are not archived', async () => {
+			const countSpy = vi.spyOn(workflowRepository, 'count').mockResolvedValue(1);
+
+			expect(await workflowRepository.countUnarchived(['a', 'b'])).toBe(1);
+			expect(countSpy).toHaveBeenCalledWith({
+				where: { id: In(['a', 'b']), isArchived: false },
 			});
 		});
 	});

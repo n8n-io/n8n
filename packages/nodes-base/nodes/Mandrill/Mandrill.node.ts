@@ -11,7 +11,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError, requestPath } from 'n8n-workflow';
 
 import {
 	getGoogleAnalyticsDomainsArray,
@@ -690,7 +690,12 @@ export class Mandrill implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				let templates;
 				try {
-					templates = await mandrillApiRequest.call(this, '/templates', 'POST', '/list');
+					templates = await mandrillApiRequest.call(
+						this,
+						requestPath`/templates`,
+						'POST',
+						requestPath`/list`,
+					);
 				} catch (error) {
 					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
@@ -871,13 +876,19 @@ export class Mandrill implements INodeType {
 						body.template_name = template;
 						emailSentResponse = mandrillApiRequest.call(
 							this,
-							'/messages',
+							requestPath`/messages`,
 							'POST',
-							'/send-template',
+							requestPath`/send-template`,
 							body,
 						);
 					} else if (operation === 'sendHtml') {
-						emailSentResponse = mandrillApiRequest.call(this, '/messages', 'POST', '/send', body);
+						emailSentResponse = mandrillApiRequest.call(
+							this,
+							requestPath`/messages`,
+							'POST',
+							requestPath`/send`,
+							body,
+						);
 					}
 
 					responseData = await emailSentResponse;

@@ -1,13 +1,19 @@
 import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
-import type { Agent as RuntimeAgent, ExecutionOptions, RunOptions, StreamChunk } from '@n8n/agents';
+import {
+	PromptCacheParamsError,
+	type Agent as RuntimeAgent,
+	type ExecutionOptions,
+	type RunOptions,
+	type StreamChunk,
+} from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { AiConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { JSONSchema7 } from 'json-schema';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -44,6 +50,7 @@ import type { IntegrationMessageContext } from '../integrations/integration-tool
 import type { ToolRegistry } from '../tool-registry';
 import type { WorkflowAgentStreamObserver } from '../workflow-agent-stream';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
+import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 const aiConfigMock = mock<AiConfig>();
 
@@ -174,6 +181,7 @@ function makeService() {
 			mock<AgentMessageSteeringService>(),
 			mock<AgentToolApprovalService>(),
 			knowledgeUsageTracker,
+			mock<AgentSandboxFilesService>(),
 		),
 		telemetry,
 		credentialsService,
@@ -1440,6 +1448,43 @@ describe('AgentWorkflowExecutionService', () => {
 				{ type: 'response-delta', delta: 'partial answer' },
 			]);
 		});
+
+		it.each([
+			['without', undefined],
+			['with', { type: 'object', properties: { answer: { type: 'string' } } } as JSONSchema7],
+		])(
+			'shows the prompt caching guidance in the node error %s structured output',
+			async (_label, outputSchema) => {
+				const { service, reconstructionService } = makeService();
+				const providerError = Object.assign(new Error('Bad Request'), {
+					statusCode: 400,
+					responseBody: JSON.stringify({
+						error: { message: "bedrock does not support parameters: ['prompt_cache_key']" },
+					}),
+				});
+				const runtime = makeRuntime([
+					{ type: 'error', error: new PromptCacheParamsError(providerError) },
+					{ type: 'finish', finishReason: 'error' },
+				]);
+				reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+
+				const execution = service.executeInlineForWorkflow(
+					inlinePayload,
+					'hello',
+					'execution-1',
+					'thread-1',
+					projectId,
+					undefined,
+					undefined,
+					outputSchema,
+				);
+
+				const guidance = expect.stringContaining(
+					"This model endpoint doesn't accept prompt caching parameters. Turn off Prompt caching in the agent's settings.",
+				);
+				await expect(execution).rejects.toMatchObject({ message: guidance, description: guidance });
+			},
+		);
 
 		it('surfaces inline compile failures as an OperationalError', async () => {
 			const { service, reconstructionService } = makeService();

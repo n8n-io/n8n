@@ -15,6 +15,7 @@ export const GEN_AI_ATTR = {
 	USAGE_OUTPUT_TOKENS: 'gen_ai.usage.output_tokens',
 	AGENT_NAME: 'gen_ai.agent.name',
 	AGENT_ID: 'gen_ai.agent.id',
+	TOOL_NAME: 'gen_ai.tool.name',
 } as const;
 
 export const N8N_USAGE_REPORTED_ATTR = 'n8n.llm.usage_reported';

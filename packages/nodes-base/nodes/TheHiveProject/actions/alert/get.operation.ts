@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
 
@@ -52,10 +53,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const alertId = this.getNodeParameter('alertId', i, '', { extractValue: true }) as string;
 	const options = this.getNodeParameter('options', i, {});
 
-	responseData = await theHiveApiRequest.call(this, 'GET', `/v1/alert/${alertId}`);
+	responseData = await theHiveApiRequest.call(this, 'GET', requestPath`/v1/alert/${alertId}`);
 
 	if (responseData && options.includeSimilarAlerts) {
-		const similarAlerts = await theHiveApiRequest.call(this, 'POST', '/v1/query', {
+		const similarAlerts = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, {
 			query: [
 				{
 					_name: 'getAlert',
@@ -74,7 +75,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	if (responseData && options.includeSimilarCases) {
-		const similarCases = await theHiveApiRequest.call(this, 'POST', '/v1/query', {
+		const similarCases = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, {
 			query: [
 				{
 					_name: 'getAlert',

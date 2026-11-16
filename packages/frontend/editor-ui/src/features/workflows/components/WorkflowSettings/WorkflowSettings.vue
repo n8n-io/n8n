@@ -26,6 +26,7 @@ import {
 	N8nIconButton,
 	N8nOption,
 	N8nSelect,
+	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -38,6 +39,7 @@ import {
 	BINARY_MODE_COMBINED,
 	BINARY_MODE_SEPARATE,
 	channelsToPolicy,
+	pickVersionedSettings,
 	policyToChannels,
 } from 'n8n-workflow';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
@@ -69,7 +71,7 @@ import type { RedactionFloor } from '@n8n/api-types';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import WorkflowCustomTelemetryTags from '@/features/workflows/components/WorkflowSettings/WorkflowCustomTelemetryTags.vue';
 
-import { ElCol, ElRow, ElSwitch } from 'element-plus';
+import { ElCol, ElRow } from 'element-plus';
 
 const i18n = useI18n();
 const externalHooks = useExternalHooks();
@@ -272,6 +274,13 @@ const engineType = computed({
 	set(value: 'v1' | 'v2') {
 		workflowSettings.value.engineType = value;
 	},
+});
+
+// Production keeps running the published engine until the user publishes again.
+const isEngineTypeChangePendingPublish = computed(() => {
+	const activeVersion = workflowDocumentStore.value.activeVersion;
+	if (!activeVersion) return false;
+	return pickVersionedSettings(activeVersion.settings).engineType !== engineType.value;
 });
 
 const isProductionRedactionLockedByFloor = computed(
@@ -1068,6 +1077,19 @@ onBeforeUnmount(() => {
 							</template>
 							<N8nIcon icon="circle-help" />
 						</N8nTooltip>
+						<N8nTooltip v-if="isEngineTypeChangePendingPublish" placement="top">
+							<template #content>
+								{{ i18n.baseText('workflowSettings.engineType.appliesOnPublish') }}
+							</template>
+							<N8nBadge
+								variant="warning"
+								leading-icon="clock"
+								:class="$style['engine-type-pending-badge']"
+								data-test-id="workflow-settings-engine-type-pending-publish"
+							>
+								{{ i18n.baseText('workflowSettings.engineType.appliesOnPublish.badge') }}
+							</N8nBadge>
+						</N8nTooltip>
 					</ElCol>
 					<ElCol :span="14" class="ignore-key-press-canvas">
 						<N8nSelect
@@ -1680,13 +1702,15 @@ onBeforeUnmount(() => {
 										}}</span
 									>
 								</template>
-								<ElSwitch
+								<N8nSwitch
+									:class="$style['setting-switch']"
+									size="large"
 									:disabled="!isDataRedactionLicensed || readOnlyEnv || isCallerRedactionLocked"
-									:label="i18n.baseText('workflowSettings.redactCallerExecutions')"
+									:aria-label="i18n.baseText('workflowSettings.redactCallerExecutions')"
 									:model-value="workflowSettings.redactCallerExecutions !== false"
 									data-test-id="workflow-settings-redact-caller-executions"
 									@update:model-value="toggleRedactCallerExecutions"
-								></ElSwitch>
+								/>
 							</N8nTooltip>
 						</ElCol>
 					</ElRow>
@@ -1703,13 +1727,15 @@ onBeforeUnmount(() => {
 					</ElCol>
 					<ElCol :span="14">
 						<div>
-							<ElSwitch
-								ref="inputField"
+							<N8nSwitch
+								:class="$style['setting-switch']"
+								size="large"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
+								:aria-label="i18n.baseText('workflowSettings.timeoutWorkflow')"
 								:model-value="(workflowSettings.executionTimeout ?? -1) > -1"
 								data-test-id="workflow-settings-timeout-workflow"
 								@update:model-value="toggleTimeout"
-							></ElSwitch>
+							/>
 						</div>
 					</ElCol>
 				</ElRow>
@@ -1779,13 +1805,15 @@ onBeforeUnmount(() => {
 								<template #content>
 									{{ mcpToggleTooltip }}
 								</template>
-								<ElSwitch
-									ref="inputField"
+								<N8nSwitch
+									id="availableInMCP"
+									:class="$style['setting-switch']"
+									size="large"
 									:disabled="mcpToggleDisabled"
 									:model-value="workflowSettings.availableInMCP ?? false"
 									data-test-id="workflow-settings-available-in-mcp"
 									@update:model-value="toggleAvailableInMCP"
-								></ElSwitch>
+								/>
 							</N8nTooltip>
 						</div>
 					</ElCol>
@@ -1950,7 +1978,7 @@ onBeforeUnmount(() => {
 		align-items: center;
 	}
 
-	:global(.el-switch) {
+	.setting-switch {
 		padding: var(--spacing--md) 0;
 	}
 }
@@ -1980,6 +2008,15 @@ onBeforeUnmount(() => {
 		svg {
 			opacity: 1;
 		}
+	}
+}
+
+.engine-type-pending-badge {
+	margin-left: var(--spacing--3xs);
+
+	// `.setting-name` hides label icons until hover. The badge icon stays visible.
+	svg {
+		opacity: 1;
 	}
 }
 

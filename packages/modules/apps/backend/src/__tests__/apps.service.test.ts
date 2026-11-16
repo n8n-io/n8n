@@ -1,6 +1,6 @@
 import { CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ProjectScopeService, UrlService } from '@n8n/backend-services';
+import { EventService, ProjectScopeService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { DbLock, DbLockService, type OperationContext, type User } from '@n8n/db';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
@@ -22,11 +22,13 @@ function createService({ deploymentType = 'default', host = 'n8n.example.net' } 
 	const locks = mock<DbLockService>();
 	const workspaces = mock<AppWorkspaceService>();
 	const logger = mock<Logger>();
+	const events = mock<EventService>();
 	const configuredHosts = new AppHostService(
 		mock<AppsConfig>({ baseUrl: 'https://apps.example.com' }),
 		mock<GlobalConfig>({
 			host,
 			deployment: mock<GlobalConfig['deployment']>({ type: deploymentType }),
+			sentry: mock<GlobalConfig['sentry']>({ deploymentName: host.split('.')[0] }),
 		}),
 		mock<UrlService>({
 			getInstanceBaseUrl: () => 'https://n8n.example.net',
@@ -46,6 +48,7 @@ function createService({ deploymentType = 'default', host = 'n8n.example.net' } 
 		workspaces,
 		logger,
 		hosts,
+		events,
 	);
 	return {
 		service,
@@ -56,6 +59,7 @@ function createService({ deploymentType = 'default', host = 'n8n.example.net' } 
 		workspaces,
 		logger,
 		hosts,
+		events,
 	};
 }
 
@@ -153,7 +157,7 @@ describe('AppsService', () => {
 		const dto = UpdateAppDto.parse({
 			name: 'Updated app',
 			namespace: 'updated-app',
-			visibility: 'public',
+			visibility: 'instance',
 		});
 		const app = mock<App>({
 			id: appId,
@@ -176,7 +180,7 @@ describe('AppsService', () => {
 			projectId: 'project-1',
 			name: 'Updated app',
 			namespace: 'updated-app',
-			visibility: 'public',
+			visibility: 'instance',
 			draftVersionId: '22222222-2222-4222-8222-222222222222',
 			publishedVersionId: '33333333-3333-4333-8333-333333333333',
 			createdAt: '2026-10-13T00:00:00.000Z',
@@ -370,5 +374,112 @@ describe('AppsService', () => {
 
 		await expect(service.deleteApp('project-1', appId)).resolves.toBeUndefined();
 		expect(logger.warn).toHaveBeenCalledWith('Could not delete app sandbox.', { appId, error });
+	});
+
+	describe('telemetry events', () => {
+		const appId = '11111111-1111-4111-8111-111111111111';
+		const actor = { userId: 'user-1', threadId: 'thread-1' };
+		const appRow = (fields: Partial<App>) =>
+			mock<App>({
+				id: appId,
+				publishedVersionId: null,
+				createdAt: new Date('2026-10-13T00:00:00.000Z'),
+				updatedAt: new Date('2026-10-13T00:00:00.000Z'),
+				...fields,
+			});
+
+		it('emits app-created with the actor', async () => {
+			const { service, appRepository, events } = createService();
+			const dto = CreateAppDto.parse({ name: 'App', namespace: 'app', visibility: 'instance' });
+			appRepository.projectExists.mockResolvedValue(true);
+			appRepository.createApp.mockResolvedValue(appRow({ projectId: 'project-1', ...dto }));
+
+			await service.createApp('project-1', dto, { actor });
+
+			expect(events.emit).toHaveBeenCalledExactlyOnceWith('app-created', {
+				...actor,
+				appId,
+				projectId: 'project-1',
+				visibility: 'instance',
+			});
+		});
+
+		it('emits no app-created when the project is missing', async () => {
+			const { service, appRepository, events } = createService();
+			appRepository.projectExists.mockResolvedValue(false);
+
+			await expect(
+				service.createApp('project-1', CreateAppDto.parse({ name: 'App', namespace: 'app' })),
+			).rejects.toThrow(NotFoundError);
+			expect(events.emit).not.toHaveBeenCalled();
+		});
+
+		it('emits app-visibility-changed only when the visibility changes', async () => {
+			const { service, appRepository, events } = createService();
+			appRepository.findInProject.mockResolvedValue(
+				mock<App>({ id: appId, visibility: 'project' }),
+			);
+			appRepository.updateApp.mockResolvedValue(appRow({ visibility: 'instance' }));
+
+			await service.updateApp('project-1', appId, { visibility: 'instance' }, { userId: 'user-1' });
+
+			expect(events.emit).toHaveBeenCalledExactlyOnceWith('app-visibility-changed', {
+				userId: 'user-1',
+				appId,
+				from: 'project',
+				to: 'instance',
+			});
+		});
+
+		it('emits nothing when a save keeps the visibility', async () => {
+			const { service, appRepository, events } = createService();
+			appRepository.findInProject.mockResolvedValue(
+				mock<App>({ id: appId, visibility: 'instance' }),
+			);
+			appRepository.updateApp.mockResolvedValue(appRow({ visibility: 'instance' }));
+
+			await service.updateApp('project-1', appId, { visibility: 'instance' });
+
+			expect(events.emit).not.toHaveBeenCalled();
+		});
+
+		it('does not read the app before an update without visibility', async () => {
+			const { service, appRepository, events } = createService();
+			appRepository.updateApp.mockResolvedValue(appRow({ visibility: 'instance' }));
+
+			await service.updateApp('project-1', appId, { name: 'Renamed' });
+
+			expect(appRepository.findInProject).not.toHaveBeenCalled();
+			expect(events.emit).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			{ publishedVersionId: '33333333-3333-4333-8333-333333333333', wasPublished: true },
+			{ publishedVersionId: null, wasPublished: false },
+		])(
+			'emits app-deleted with wasPublished $wasPublished',
+			async ({ publishedVersionId, wasPublished }) => {
+				const { service, appRepository, events } = createService();
+				appRepository.findInProject.mockResolvedValue(mock<App>({ id: appId, publishedVersionId }));
+				appRepository.deleteInProject.mockResolvedValue(true);
+
+				await service.deleteApp('project-1', appId, { userId: 'user-1' });
+
+				expect(events.emit).toHaveBeenCalledExactlyOnceWith('app-deleted', {
+					userId: 'user-1',
+					appId,
+					wasPublished,
+				});
+			},
+		);
+
+		it('emits no app-deleted when nothing was deleted', async () => {
+			const { service, appRepository, events } = createService();
+			appRepository.findInProject.mockResolvedValue(mock<App>({ id: appId }));
+			appRepository.deleteInProject.mockResolvedValue(false);
+
+			await expect(service.deleteApp('project-1', appId)).rejects.toThrow(NotFoundError);
+			expect(events.emit).not.toHaveBeenCalled();
+		});
 	});
 });

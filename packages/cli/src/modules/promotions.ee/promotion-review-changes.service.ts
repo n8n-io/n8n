@@ -8,6 +8,7 @@ import {
 	type PromotionReviewWarning,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
+import { accountSummary } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -190,6 +191,12 @@ export class PromotionReviewChangesService {
  * itself, so a merged or closed review diffs against the base that the host recorded. A review
  * that n8n closed counts as finished.
  */
+/** A service account shows its name. A person without a name shows the email, else nothing. */
+function displayNameOrEmail(user: User): string | null {
+	const { firstName, lastName, email } = accountSummary(user);
+	return [firstName, lastName].filter(Boolean).join(' ') || email;
+}
+
 function baselineOf(
 	review: PromotionReview,
 	mergeRequest: GitLabMergeRequest,
@@ -231,9 +238,7 @@ function outcomeOf(
 			: mergeRequest.closed_by?.name;
 	const hostAt = state === 'merged' ? mergeRequest.merged_at : mergeRequest.closed_at;
 	const approver = state === 'merged' ? review.approvedBy : null;
-	const approverName = approver
-		? [approver.firstName, approver.lastName].filter(Boolean).join(' ') || approver.email
-		: null;
+	const approverName = approver ? displayNameOrEmail(approver) : null;
 	return {
 		state,
 		at: hostAt ?? null,

@@ -445,10 +445,12 @@ describe('UserSelect', () => {
 	});
 
 	it('should show the avatar of the selected user when showAvatar is set', async () => {
-		const { getByTestId } = renderComponent({
-			props: { users: sampleUsers, modelValue: 'u1', showAvatar: true },
+		const { getByTestId, queryByTestId, rerender } = renderComponent({
+			props: { users: sampleUsers, showAvatar: true },
 		});
 
+		expect(queryByTestId('user-select-avatar')).not.toBeInTheDocument();
+		await rerender({ modelValue: 'u1' });
 		await waitFor(() => expect(getByTestId('user-select-avatar')).toHaveTextContent('AS'));
 	});
 

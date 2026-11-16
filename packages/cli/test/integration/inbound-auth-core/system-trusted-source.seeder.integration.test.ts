@@ -4,6 +4,7 @@ import { testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import type { TrustedSourceConfigInput } from '@n8n/inbound-auth';
 import { DataSource, type Repository } from '@n8n/typeorm';
+import { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { TrustedSourceEntity } from '@/modules/inbound-auth-core/database/entities/trusted-source.entity';
@@ -89,9 +90,16 @@ describe('SystemTrustedSourceSeeder (integration)', () => {
 			status: 'unchecked',
 			metadata: null,
 			lastCheckedAt: null,
-			configVersion: 1,
+			configVersion: 2,
 		});
 		expect(all[0].config).not.toContain('local-keystore');
+		// Reads migrate on demand, so check the stored document: a new instance seeds the latest
+		// version and never needs a migration.
+		expect(JSON.parse(await Container.get(Cipher).decryptV2(all[0].config))).toMatchObject({
+			version: 2,
+			surfaces: { 'public-api': {}, 'instance-mcp': {}, trigger: {}, apps: {} },
+			identity: { provision: { person: 'off' } },
+		});
 		expect(await store.getByIssuer(baseUrl)).toMatchObject({
 			id: ID,
 			managedBy: 'system',
@@ -184,7 +192,7 @@ describe('SystemTrustedSourceSeeder (integration)', () => {
 		expect(logger.error).not.toHaveBeenCalled();
 	});
 
-	it.each<[string, (store: TrustedSourceDbStore) => Promise<void>]>([
+	it.each<[string, (store: TrustedSourceDbStore) => Promise<unknown>]>([
 		['rename it', async (s) => await s.update(ID, { name: 'Renamed' })],
 		[
 			'change its config',

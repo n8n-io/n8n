@@ -1,0 +1,216 @@
+{
+	"name": "grist-requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"docId": "pS6pXwGCmSkJ",
+				"tableId": "Contacts",
+				"returnAll": true,
+				"additionalOptions": {}
+			},
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Get Many",
+			"type": "n8n-nodes-base.grist",
+			"typeVersion": 1,
+			"position": [220, 120],
+			"credentials": {
+				"gristApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"docId": "pS6pXwGCmSkJ",
+				"tableId": "Leads",
+				"fieldsToSend": {
+					"properties": [
+						{
+							"fieldId": "Name",
+							"fieldValue": "Ada"
+						}
+					]
+				}
+			},
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Create",
+			"type": "n8n-nodes-base.grist",
+			"typeVersion": 1,
+			"position": [220, 240],
+			"credentials": {
+				"gristApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"docId": "pS6pXwGCmSkJ",
+				"tableId": "People",
+				"rowId": "7",
+				"fieldsToSend": {
+					"properties": [
+						{
+							"fieldId": "Name",
+							"fieldValue": "Grace"
+						}
+					]
+				}
+			},
+			"id": "00000000-0000-4000-8000-000000000003",
+			"name": "Update",
+			"type": "n8n-nodes-base.grist",
+			"typeVersion": 1,
+			"position": [220, 360],
+			"credentials": {
+				"gristApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"docId": "pS6pXwGCmSkJ",
+				"tableId": "People",
+				"rowId": "7"
+			},
+			"id": "00000000-0000-4000-8000-000000000004",
+			"name": "Delete",
+			"type": "n8n-nodes-base.grist",
+			"typeVersion": 1,
+			"position": [220, 480],
+			"credentials": {
+				"gristApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "upsert",
+				"docId": "pS6pXwGCmSkJ",
+				"tableId": "Accounts",
+				"upsertCriteria": {
+					"properties": [
+						{
+							"fieldId": "Email",
+							"fieldValue": "ada@example.com"
+						}
+					]
+				},
+				"fieldsToSend": {
+					"properties": [
+						{
+							"fieldId": "Name",
+							"fieldValue": "Ada"
+						}
+					]
+				}
+			},
+			"id": "00000000-0000-4000-8000-000000000005",
+			"name": "Upsert",
+			"type": "n8n-nodes-base.grist",
+			"typeVersion": 1,
+			"position": [220, 600],
+			"credentials": {
+				"gristApi": {
+					"id": "1",
+					"name": "Test account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Many": [
+			{
+				"json": {
+					"id": 1,
+					"Name": "Ada"
+				}
+			}
+		],
+		"Create": [
+			{
+				"json": {
+					"id": 7,
+					"Name": "Ada"
+				}
+			}
+		],
+		"Update": [
+			{
+				"json": {
+					"id": "7",
+					"Name": "Grace"
+				}
+			}
+		],
+		"Delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"Upsert": [
+			{
+				"json": {
+					"id": 9,
+					"Name": "Ada"
+				}
+			}
+		]
+	},
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Upsert",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
