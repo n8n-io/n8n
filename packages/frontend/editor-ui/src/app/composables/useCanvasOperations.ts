@@ -1314,7 +1314,7 @@ export function useCanvasOperations() {
 	): INodeUi {
 		checkMaxNodesOfTypeReached(nodeTypeDescription);
 
-		const { nodeData, isUnanchored } = resolveNodeData(node, nodeTypeDescription, {
+		const { nodeData, isAnchored } = resolveNodeData(node, nodeTypeDescription, {
 			viewport: options.viewport,
 		});
 		if (!nodeData) {
@@ -1322,7 +1322,7 @@ export function useCanvasOperations() {
 		}
 		// An unanchored card keeps its top-left and grows down when it is measured,
 		// so that re-centering cannot move it back onto the node it was pushed away from
-		if (isAgentNodeV2(nodeData) && !options.keepPristine && !isUnanchored) {
+		if (isAgentNodeV2(nodeData) && !options.keepPristine && isAnchored) {
 			agentNodeCanvasGeometryStore.setPendingCenterY(
 				workflowDocumentStore.value.workflowId,
 				nodeData.id,
@@ -1620,14 +1620,14 @@ export function useCanvasOperations() {
 		}
 
 		// The size of the node can depend on its parameters, so resolve them first
-		const { position, isUnanchored } = resolveNodePlacement(
+		const { position, isAnchored } = resolveNodePlacement(
 			{ ...nodeData, position: node.position },
 			nodeTypeDescription,
 			{ viewport: options.viewport },
 		);
 		nodeData.position = position;
 
-		return { nodeData, isUnanchored };
+		return { nodeData, isAnchored };
 	}
 
 	async function loadNodeTypesProperties(
@@ -1682,14 +1682,14 @@ export function useCanvasOperations() {
 	}
 
 	/**
-	 * Resolves the position of a new node. The placement is unanchored when no
-	 * position, connection or node anchors it, and it falls back to the last click.
+	 * Resolves the position of a new node. The placement is anchored when a
+	 * position, a connection or a node sets it. Otherwise it falls back to the last click.
 	 */
 	function resolveNodePlacement(
 		node: Omit<INodeUi, 'position'> & { position?: INodeUi['position'] },
 		nodeTypeDescription: INodeTypeDescription,
 		options: { viewport?: ViewportBoundaries } = {},
-	): { position: XYPosition; isUnanchored: boolean } {
+	): { position: XYPosition; isAnchored: boolean } {
 		// Available when
 		// - clicking the plus button of a node handle
 		// - dragging an edge / connection of a node handle
@@ -1725,7 +1725,7 @@ export function useCanvasOperations() {
 					viewport: options.viewport,
 					normalize: false,
 				}),
-				isUnanchored: false,
+				isAnchored: true,
 			};
 		}
 
@@ -1797,7 +1797,7 @@ export function useCanvasOperations() {
 							);
 						}
 
-						return { position: getNewNodePosition(position), isUnanchored: false };
+						return { position: getNewNodePosition(position), isAnchored: true };
 					}
 				}
 
@@ -1968,9 +1968,8 @@ export function useCanvasOperations() {
 			}
 		}
 
-		let isUnanchored = false;
+		const isAnchored = position !== undefined;
 		if (!position) {
-			isUnanchored = true;
 			if (nodeTypesStore.isTriggerNode(node.type) && triggerNodes.value.length === 0) {
 				// When added node is a trigger, and it's the first one added to the canvas
 				// we place it at root to replace the canvas add button
@@ -1983,7 +1982,7 @@ export function useCanvasOperations() {
 			}
 		}
 
-		return { position: getNewNodePosition(position), isUnanchored };
+		return { position: getNewNodePosition(position), isAnchored };
 	}
 
 	function resolveNodeName(node: INodeUi) {
