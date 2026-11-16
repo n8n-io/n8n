@@ -21,6 +21,7 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeConnectionTypes, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
+import { i18n } from '@n8n/i18n';
 import type { ViewportBoundaries } from '@/features/workflows/canvas/canvas.types';
 import {
 	getRectOfNodes,
@@ -406,8 +407,7 @@ export function getGenericHints({
 		const stringifiedParameters = JSON.stringify(workflowNode.parameters);
 		if (!stringifiedParameters.includes('$fromAI')) {
 			nodeHints.push({
-				message:
-					'No parameters are set up to be filled by AI. Click on the ✨ button next to a parameter to allow AI to set its value.',
+				message: i18n.baseText('ndv.nodeHints.noFromAiParameters'),
 				location: 'outputPane',
 				whenToDisplay: 'afterExecution',
 			});
@@ -418,7 +418,9 @@ export function getGenericHints({
 	if (hasNodeRun && workflowNode.parameters.limit) {
 		if (nodeOutputData.length === workflowNode.parameters.limit) {
 			nodeHints.push({
-				message: `Limit of ${workflowNode.parameters.limit} items reached. There may be more items that aren't being returned. Tweak the 'Return All' or 'Limit' parameters to access more items.`,
+				message: i18n.baseText('ndv.nodeHints.limitReached', {
+					interpolate: { limit: nodeOutputData.length },
+				}),
 				location: 'outputPane',
 				whenToDisplay: 'afterExecution',
 			});
@@ -433,8 +435,7 @@ export function getGenericHints({
 		const executeOnce = getNodeByName(node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({
-				message:
-					'This node runs multiple times, once for each input item. Use ‘Execute Once’ in the node settings if you want to run it only once.',
+				message: i18n.baseText('ndv.nodeHints.runsForEachItem'),
 				location: 'outputPane',
 			});
 		}
@@ -445,7 +446,7 @@ export function getGenericHints({
 		const executeOnce = getNodeByName(node.name)?.executeOnce;
 		if (!executeOnce) {
 			nodeHints.push({
-				message: 'This action will run only once, for the first input item',
+				message: i18n.baseText('ndv.nodeHints.sendAndWaitRunsOnce'),
 				location: 'outputPane',
 			});
 		}
@@ -474,7 +475,10 @@ export function getGenericHints({
 
 		if (expressionInFieldName.length > 0) {
 			nodeHints.push({
-				message: `An expression is used in 'Fields to Set' in ${expressionInFieldName.length === 1 ? 'field' : 'fields'} ${expressionInFieldName.join(', ')}, did you mean to use it in the value instead?`,
+				message: i18n.baseText('ndv.nodeHints.expressionInFieldName', {
+					adjustToNumber: expressionInFieldName.length,
+					interpolate: { fields: expressionInFieldName.join(', ') },
+				}),
 				whenToDisplay: 'beforeExecution',
 				location: 'outputPane',
 			});
@@ -488,7 +492,7 @@ export function getGenericHints({
 
 		if (!firstNodesInLoop.length) {
 			nodeHints.push({
-				message: "No nodes connected to the 'loop' output of this node",
+				message: i18n.baseText('ndv.nodeHints.loopOutputNotConnected'),
 				whenToDisplay: 'beforeExecution',
 				location: 'outputPane',
 			});
@@ -497,8 +501,7 @@ export function getGenericHints({
 				const nodeChilds = workflowUtils.getChildNodes(connections, nodeInConnection.node) || [];
 				if (!nodeChilds.includes(node.name)) {
 					nodeHints.push({
-						message:
-							"The last node in the branch of the 'loop' output must be connected back to the input of this node to loop correctly",
+						message: i18n.baseText('ndv.nodeHints.loopNotConnectedBack'),
 						whenToDisplay: 'beforeExecution',
 						location: 'outputPane',
 					});
