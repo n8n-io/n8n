@@ -101,6 +101,8 @@ export interface CompiledNode {
 	mints: CredentialMint[];
 
 	changed: string[];
+
+	zones: string[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -221,6 +223,7 @@ export function compileNodeInstance(
 		resolved: parameters,
 		derivations: result.derivations ?? [],
 		mints: result.mints ?? [],
+		zones: result.zones ?? [],
 
 		changed: [...changed, ...Object.values(credentials).flatMap((c) => c.classes)],
 	};

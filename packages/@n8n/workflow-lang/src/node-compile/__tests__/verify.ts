@@ -16,6 +16,23 @@ import { evaluateDerivation } from '../evaluate-node.ts';
 import type { CredentialMint } from '../specialise.ts';
 
 export const V1_TIMEZONE = 'America/New_York';
+export const V1_NOW = Date.UTC(2024, 0, 15, 17, 30, 0);
+const READS_CLOCK = /\bDate\.now\(\)|\bnew Date\(\)/;
+
+async function atFixedClock<T>(work: () => Promise<T>): Promise<T> {
+	const real = Date;
+	globalThis.Date = new Proxy(real, {
+		construct: (target, args: unknown[], newTarget) =>
+			Reflect.construct(target, args.length === 0 ? [V1_NOW] : args, newTarget),
+		apply: (target) => new target(V1_NOW).toString(),
+		get: (target, key) => (key === 'now' ? () => V1_NOW : Reflect.get(target, key)),
+	});
+	try {
+		return await work();
+	} finally {
+		globalThis.Date = real;
+	}
+}
 
 type Registry = Parameters<typeof deriveInject>[0];
 
@@ -184,8 +201,14 @@ export default workflow({
 	},
 });
 `;
-	const record = async (testCase: EquivalenceCase) =>
+	const recordPlain = async (testCase: EquivalenceCase) =>
 		await within(8000, options.cache === true ? recordV1Cached(testCase) : recordV1(testCase));
+	const record = async (testCase: EquivalenceCase) =>
+		READS_CLOCK.test(compiled.source)
+			? await atFixedClock(
+					async () => await recordPlain({ ...testCase, name: `${testCase.name} at ${V1_NOW}` }),
+				)
+			: await recordPlain(testCase);
 	const minted =
 		compiled.mints.length > 0 ? await recordWithMints(c, compiled.mints, record) : undefined;
 	if (typeof minted === 'string') return minted;
@@ -195,7 +218,7 @@ export default workflow({
 		: c.responses;
 	const fixture = {
 		trigger: { body: {}, headers: {}, query: {} },
-		now: 0,
+		now: V1_NOW,
 		seed: 1,
 		effects: { Node: responses.map((r) => ({ status: 200, headers: {}, ...r })) },
 	};

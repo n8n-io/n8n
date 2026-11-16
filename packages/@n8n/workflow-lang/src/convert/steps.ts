@@ -404,6 +404,7 @@ export function tryCompiledNode(c: NodeContext): boolean {
 	// As for a library node: v1 gives the node all items, and the module runs once for each item.
 	const parameters = c.compiled(dynamic, '', { flattenResourceLocators: false });
 	c.addNode(compiled.file, compiled.source);
+	for (const zone of compiled.zones) c.scope.useZone?.(zone);
 	c.info(
 		'node-compiled',
 		`The node runs as code that is compiled from its source (${compiled.type}).`,
