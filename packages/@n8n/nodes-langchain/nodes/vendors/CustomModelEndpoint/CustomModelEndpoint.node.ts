@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { OpenAI } from 'openai';
 import type { ChatCompletion, ChatCompletionCreateParamsNonStreaming } from 'openai/resources';
 import {
@@ -188,8 +189,10 @@ export class CustomModelEndpoint implements INodeType {
 		 * travel on the request instead of the transport.
 		 */
 		const runOptions = this.getNodeParameter('options', 0, {}) as Options;
-		const sendContextHeaders = this.getNodeParameter('sendContextHeaders', 0, true) as boolean;
-		const contextHeaders = sendContextHeaders ? n8nContextHeaders(this) : {};
+		const contextHeadersFor = (itemIndex: number) =>
+			(this.getNodeParameter('sendContextHeaders', itemIndex, true) as boolean)
+				? n8nContextHeaders(this)
+				: {};
 
 		/**
 		 * The transport resolves this record per request, so rewriting it between items
@@ -197,7 +200,7 @@ export class CustomModelEndpoint implements INodeType {
 		 * the layer that wins over the credential's gateway headers, which is where the
 		 * sub-node puts them. Safe because the loop below is sequential.
 		 */
-		const requestHeaders: Record<string, string> = { ...contextHeaders };
+		const requestHeaders: Record<string, string> = { ...contextHeadersFor(0) };
 
 		const { configuration } = createCustomModelEndpointConfig(this, credential, {
 			credentialType,
@@ -238,10 +241,19 @@ export class CustomModelEndpoint implements INodeType {
 					...(hasExtraBody ? parseExtraBody(this, extraBody, itemIndex) : {}),
 				};
 
+				// `stream` makes the SDK return a Stream, so there is no body for the node to read
+				if ('stream' in body && body.stream) {
+					throw new NodeOperationError(this.getNode(), 'This node cannot stream the answer', {
+						itemIndex,
+						description:
+							'Remove "stream" from Extra Body. The node reads the whole answer before it passes the item on.',
+					});
+				}
+
 				for (const key of Object.keys(requestHeaders)) delete requestHeaders[key];
 				Object.assign(
 					requestHeaders,
-					contextHeaders,
+					contextHeadersFor(itemIndex),
 					toHeaderRecord(
 						Object.fromEntries(
 							headerRows.flatMap(({ name, value }) => {
@@ -271,10 +283,20 @@ export class CustomModelEndpoint implements INodeType {
 					pairedItem: { item: itemIndex },
 				});
 			} catch (error) {
-				if (!this.continueOnFail()) throw error;
+				// The SDK wraps anything the transport throws in `APIConnectionError`, whose
+				// message is always "Connection error." and whose real reason is on `cause`.
+				// Without unwrapping, a blocked domain, a refused login and a DNS failure read alike.
+				const reason = isRecord(error) && error.cause instanceof Error ? error.cause : error;
+
+				if (!this.continueOnFail()) {
+					throw new NodeOperationError(this.getNode(), reason as Error, {
+						itemIndex,
+						description: isRecord(reason) ? (reason.description as string | undefined) : undefined,
+					});
+				}
 
 				returnData.push({
-					json: { error: (error as Error).message },
+					json: { error: (reason as Error).message },
 					pairedItem: { item: itemIndex },
 				});
 			}
