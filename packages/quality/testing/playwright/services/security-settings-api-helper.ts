@@ -12,8 +12,9 @@ import { TestError } from '../Types';
  *   - GET  /rest/settings/security
  *   - POST /rest/settings/security
  *
- * Both are gated by the `feat:personalSpacePolicy` license and the
- * `securitySettings:manage` global scope, so enable that license before use.
+ * Both need the `securitySettings:manage` global scope and the
+ * `feat:personalSpacePolicy` or `feat:workflowReviews` license. Personal space
+ * and redaction fields need `feat:personalSpacePolicy`.
  */
 export class SecuritySettingsApiHelper {
 	constructor(private readonly api: ApiHelpers) {}
@@ -42,7 +43,7 @@ export class SecuritySettingsApiHelper {
 
 	/**
 	 * Turns the instance-wide workflow reviews policy on or off. Needs
-	 * `feat:workflowReviews` as well as the license noted above.
+	 * `feat:workflowReviews`.
 	 */
 	async setWorkflowReviewsEnabled(enabled: boolean): Promise<void> {
 		const response = await this.api.request.post('/rest/settings/security', {

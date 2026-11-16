@@ -666,7 +666,10 @@ export class FrontendService {
 		// TODO: read from settings
 		this.settings.mfa.enforced = await this.mfaService.isMFAEnforced();
 
-		if (this.licenseState.isWorkflowReviewsLicensed()) {
+		if (
+			this.licenseState.isWorkflowReviewsLicensed() &&
+			this.moduleRegistry.isActive('workflow-reviews')
+		) {
 			this.settings.workflowReviews = await this.workflowReviewPolicyService.get();
 		} else {
 			delete this.settings.workflowReviews;

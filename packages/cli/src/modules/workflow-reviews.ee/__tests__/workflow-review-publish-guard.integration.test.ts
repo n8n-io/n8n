@@ -1,4 +1,5 @@
 import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
+import { EventService } from '@n8n/backend-services';
 import { WorkflowsConfig } from '@n8n/config';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository, WorkflowReviewRequestRepository } from '@n8n/db';
@@ -27,7 +28,7 @@ const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
 
 const testServer = utils.setupTestServer({
-	endpointGroups: ['workflow-reviews', 'workflows', 'publicApi'],
+	endpointGroups: ['workflow-reviews', 'workflows', 'publicApi', 'security-settings'],
 	enabledFeatures: ['feat:workflowReviews'],
 	modules: ['workflow-reviews'],
 });
@@ -37,6 +38,7 @@ let member: User;
 let ownerProject: Project;
 let teamProject: Project;
 let ownerAgent: SuperAgentTest;
+let memberAgent: SuperAgentTest;
 
 let requestRepository: WorkflowReviewRequestRepository;
 let workflowEntityRepository: WorkflowRepository;
@@ -65,7 +67,7 @@ beforeEach(async () => {
 	await policyService.update({ enabled: true, alwaysRequired: false });
 	stubWorkflowValidation(workflowValidationService);
 
-	({ owner, member, ownerProject, teamProject, ownerAgent } = await seedReviewActors(
+	({ owner, member, ownerProject, teamProject, ownerAgent, memberAgent } = await seedReviewActors(
 		testServer.authAgentFor,
 	));
 });
@@ -415,6 +417,109 @@ describe('publishing when the instance always requires an approved review', () =
 			.expect(200);
 
 		expect(await publishedVersionOf(workflow.id)).toBe(newVersionId);
+	});
+});
+
+describe('changing the review settings', () => {
+	const saveSettings = async (agent: SuperAgentTest, body: object) =>
+		await agent.post('/settings/security').send(body);
+
+	test('rejects a user without the security settings scope who changes Require approval', async () => {
+		const response = await saveSettings(memberAgent, { workflowReviews: { alwaysRequired: true } });
+
+		expect(response.status).toBe(403);
+		expect((await policyService.get()).alwaysRequired).toBe(false);
+	});
+
+	test('records one instance policy event when Require approval changes', async () => {
+		const eventService = Container.get(EventService);
+		const settingEvents: Array<{ settingName: string; value: unknown }> = [];
+		const listener = ({ settingName, value }: { settingName: string; value: unknown }) =>
+			settingEvents.push({ settingName, value });
+		eventService.on('instance-policies-updated', listener);
+
+		try {
+			for (let i = 0; i < 2; i++) {
+				const response = await saveSettings(ownerAgent, {
+					workflowReviews: { alwaysRequired: true },
+				});
+				expect(response.status).toBe(200);
+			}
+		} finally {
+			eventService.off('instance-policies-updated', listener);
+		}
+
+		expect(settingEvents).toEqual([
+			{ settingName: 'workflow_reviews_approval_required', value: true },
+		]);
+	});
+
+	test('keeps Require approval when workflow reviews are turned off and on again', async () => {
+		for (const workflowReviews of [
+			{ alwaysRequired: true },
+			{ enabled: false },
+			{ enabled: true },
+		]) {
+			expect((await saveSettings(ownerAgent, { workflowReviews })).status).toBe(200);
+		}
+
+		expect(await policyService.get()).toEqual({ enabled: true, alwaysRequired: true });
+	});
+
+	test('keeps open reviews and live versions when approval becomes required', async () => {
+		const { workflow, liveVersionId, newVersionId } = await createLiveTeamWorkflow();
+		const request = await seedTeamReview(workflow.id, newVersionId);
+
+		expect(
+			(await saveSettings(ownerAgent, { workflowReviews: { alwaysRequired: true } })).status,
+		).toBe(200);
+
+		expect(await publishedVersionOf(workflow.id)).toBe(liveVersionId);
+		expect(await requestRepository.findOpenRequestForWorkflow(workflow.id, {})).toMatchObject({
+			id: request.id,
+		});
+		const response = await ownerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: newVersionId })
+			.expect(409);
+		expect(response.body.meta.reason).toBe('review_pending');
+	});
+
+	describe('with the workflow reviews license and not the personal space policy license', () => {
+		beforeEach(() => {
+			testServer.license.disable('feat:personalSpacePolicy');
+		});
+
+		test('reads the workflow review settings', async () => {
+			const response = await ownerAgent.get('/settings/security').expect(200);
+
+			expect(response.body.data.workflowReviews).toEqual({ enabled: true, alwaysRequired: false });
+		});
+
+		test('saves the workflow review settings and returns the full policy', async () => {
+			const response = await saveSettings(ownerAgent, {
+				workflowReviews: { alwaysRequired: true },
+			});
+
+			expect(response.status).toBe(200);
+			expect(response.body.data.workflowReviews).toEqual({ enabled: true, alwaysRequired: true });
+		});
+
+		test.each([
+			['a personal space setting', { personalSpacePublishing: false }],
+			['the redaction floor', { redactionEnforcement: { floor: 'all' } }],
+			[
+				'a review setting together with a personal space setting',
+				{ workflowReviews: { alwaysRequired: true }, personalSpaceSharing: false },
+			],
+		])('rejects %s and writes nothing', async (_case, body) => {
+			const before = (await ownerAgent.get('/settings/security').expect(200)).body.data;
+
+			expect((await saveSettings(ownerAgent, body)).status).toBe(403);
+
+			const after = (await ownerAgent.get('/settings/security').expect(200)).body.data;
+			expect(after).toEqual(before);
+		});
 	});
 });
 

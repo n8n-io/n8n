@@ -435,6 +435,7 @@ describe('FrontendService', () => {
 
 		it('should refresh the workflow reviews policy on every settings fetch', async () => {
 			licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
+			moduleRegistry.isActive.mockImplementation((name) => name === 'workflow-reviews');
 			workflowReviewPolicyService.get
 				.mockResolvedValueOnce({ enabled: true })
 				.mockResolvedValueOnce({ enabled: false });
@@ -446,6 +447,16 @@ describe('FrontendService', () => {
 			const refreshedSettings = await service.getSettings();
 			expect(refreshedSettings.workflowReviews).toEqual({ enabled: false });
 			expect(workflowReviewPolicyService.get).toHaveBeenCalledTimes(2);
+		});
+
+		it('should omit the workflow reviews policy when the workflow reviews module is not active', async () => {
+			licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
+			workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.workflowReviews).toBeUndefined();
 		});
 
 		it('should cache dynamic banner filters for 30 seconds', async () => {
