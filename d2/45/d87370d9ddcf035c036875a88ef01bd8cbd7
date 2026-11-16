@@ -1,0 +1,23 @@
+packages/@n8n/expression-runtime/src/bridge/__tests__/quickjs-bridge.test.ts
+  s_00433a18116613::t_6b73307dacce18 248-284
+packages/@n8n/telemetry/src/events/expressions.ts
+  s_00433a18116613::t_b9c885f515d12e 121-126
+packages/@n8n/expression-runtime/src/evaluator/error-classification.ts
+  s_00433a18116613::t_b9c885f515d12e 28-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d245d87370d9ddcf035c036875a88ef01bd8cbd7",
+  "prompts": {},
+  "sessions": {
+    "s_00433a18116613": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6bd4430-7093-48c9-89a2-024f292826b1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
