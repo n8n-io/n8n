@@ -289,6 +289,40 @@ describe('LoadNodesAndCredentials', () => {
 			});
 			expect(result).toEqual('/nodes-base/dist/nodes/Test/__schema__/v1.0.0.json');
 		});
+
+		it('should use the schemaPath that the node declares', () => {
+			const type = { description: { properties: [], schemaPath: 'Test/TestTrigger' } };
+			vi.spyOn(instance, 'getNode').mockReturnValue({
+				sourcePath: 'Test.node.js',
+				type: type as unknown as INodeType,
+			});
+
+			const result = instance.resolveSchema({
+				node: 'n8n-nodes-base.test',
+				version: '1.0.0',
+				resource: 'account',
+				operation: 'get',
+			});
+			expect(result).toEqual(
+				'/nodes-base/dist/nodes/Test/TestTrigger/__schema__/v1.0.0/account/get.json',
+			);
+		});
+
+		it('should ignore a schemaPath that leaves the package nodes folder', () => {
+			const type = { description: { properties: [], schemaPath: '../../elsewhere' } };
+			vi.spyOn(instance, 'getNode').mockReturnValue({
+				sourcePath: 'Test.node.js',
+				type: type as unknown as INodeType,
+			});
+
+			const result = instance.resolveSchema({
+				node: 'n8n-nodes-base.test',
+				version: '1.0.0',
+				resource: 'account',
+				operation: 'get',
+			});
+			expect(result).toEqual('/nodes-base/dist/nodes/Test/__schema__/v1.0.0/account/get.json');
+		});
 	});
 
 	describe('createOutputSchemaLookup', () => {
@@ -408,6 +442,43 @@ describe('LoadNodesAndCredentials', () => {
 					instance.createOutputSchemaLookup()({ ...lookupRef, parameters: { simple: true } }),
 				).toEqual(plainSchema);
 			});
+		});
+
+		it('should load the schema from the schemaPath folder that the node declares', () => {
+			const packageNodes = join(nodesDir, 'pkg', 'dist', 'nodes');
+			const triggerSchemaDir = join(
+				packageNodes,
+				'Shared',
+				'SharedTrigger',
+				'__schema__',
+				'v1.0.0',
+			);
+			mkdirSync(triggerSchemaDir, { recursive: true });
+			writeFileSync(
+				join(triggerSchemaDir, 'output.json'),
+				JSON.stringify({ type: 'object', title: 'trigger' }),
+			);
+			mkdirSync(join(packageNodes, 'Shared', '__schema__', 'v1.0.0'), { recursive: true });
+			writeFileSync(
+				join(packageNodes, 'Shared', '__schema__', 'v1.0.0', 'output.json'),
+				JSON.stringify({ type: 'object', title: 'sibling' }),
+			);
+			instance.knownNodes['n8n-nodes-base.sharedTrigger'] = {
+				className: 'SharedTrigger',
+				sourcePath: join(packageNodes, 'Shared', 'SharedTrigger.node.js'),
+			};
+			const type = { description: { properties: [], schemaPath: 'Shared/SharedTrigger' } };
+			vi.spyOn(instance, 'getNode').mockReturnValue({
+				sourcePath: 'SharedTrigger.node.js',
+				type: type as unknown as INodeType,
+			});
+
+			expect(
+				instance.createOutputSchemaLookup()({
+					type: 'n8n-nodes-base.sharedTrigger',
+					typeVersion: 1,
+				}),
+			).toEqual({ type: 'object', title: 'trigger' });
 		});
 
 		it('should return undefined for unknown nodes or missing schemas', () => {
