@@ -9,8 +9,8 @@
 | expiresAt | timestamp(3) with time zone |  | false |  |  |  |
 | hostId | varchar(255) |  | false |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
-| kind | varchar(24) |  | false |  |  |  |
-| leaseSeconds | integer |  | false |  |  |  |
+| leaseDurationSeconds | integer |  | false |  |  |  |
+| leaseKind | varchar(24) |  | false |  |  |  |
 
 ## Constraints
 
@@ -21,15 +21,15 @@
 | lease_session_expiresAt_not_null | n | NOT NULL "expiresAt" |
 | lease_session_hostId_not_null | n | NOT NULL "hostId" |
 | lease_session_id_not_null | n | NOT NULL id |
-| lease_session_kind_not_null | n | NOT NULL kind |
-| lease_session_leaseSeconds_not_null | n | NOT NULL "leaseSeconds" |
+| lease_session_leaseDurationSeconds_not_null | n | NOT NULL "leaseDurationSeconds" |
+| lease_session_leaseKind_not_null | n | NOT NULL "leaseKind" |
 | lease_session_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_lease_session_kind_expiresAt | CREATE INDEX "IDX_lease_session_kind_expiresAt" ON public.lease_session USING btree (kind, "expiresAt") |
+| IDX_lease_session_leaseKind_expiresAt | CREATE INDEX "IDX_lease_session_leaseKind_expiresAt" ON public.lease_session USING btree ("leaseKind", "expiresAt") |
 | lease_session_pkey | CREATE UNIQUE INDEX lease_session_pkey ON public.lease_session USING btree (id) |
 
 ## Relations
@@ -44,8 +44,8 @@ erDiagram
   timestamp_3__with_time_zone expiresAt
   varchar_255_ hostId
   varchar_36_ id
-  varchar_24_ kind
-  integer leaseSeconds
+  integer leaseDurationSeconds
+  varchar_24_ leaseKind
 }
 ```
 

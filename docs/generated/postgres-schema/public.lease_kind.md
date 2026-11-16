@@ -5,22 +5,22 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| fullPassAt | timestamp(3) with time zone |  | true |  |  |  |
+| fencingTokenCounter | bigint | 0 | false |  |  |  |
 | kind | varchar(24) |  | false |  |  |  |
-| syncExpiresAt | timestamp(3) with time zone |  | true |  |  |  |
-| syncHolder | varchar(36) |  | true |  |  |  |
-| tokenCounter | bigint | 0 | false |  |  |  |
+| lastFullSyncAt | timestamp(3) with time zone |  | true |  |  |  |
+| syncLockExpiresAt | timestamp(3) with time zone |  | true |  |  |  |
+| syncLockRoundId | varchar(36) |  | true |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_lease_kind_tokenCounter | CHECK | CHECK (("tokenCounter" >= 0)) |
+| CHK_lease_kind_fencingTokenCounter | CHECK | CHECK (("fencingTokenCounter" >= 0)) |
 | lease_kind_createdAt_not_null | n | NOT NULL "createdAt" |
+| lease_kind_fencingTokenCounter_not_null | n | NOT NULL "fencingTokenCounter" |
 | lease_kind_kind_not_null | n | NOT NULL kind |
 | lease_kind_pkey | PRIMARY KEY | PRIMARY KEY (kind) |
-| lease_kind_tokenCounter_not_null | n | NOT NULL "tokenCounter" |
 | lease_kind_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
@@ -37,11 +37,11 @@ erDiagram
 
 "public.lease_kind" {
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone fullPassAt
+  bigint fencingTokenCounter
   varchar_24_ kind
-  timestamp_3__with_time_zone syncExpiresAt
-  varchar_36_ syncHolder
-  bigint tokenCounter
+  timestamp_3__with_time_zone lastFullSyncAt
+  timestamp_3__with_time_zone syncLockExpiresAt
+  varchar_36_ syncLockRoundId
   timestamp_3__with_time_zone updatedAt
 }
 ```

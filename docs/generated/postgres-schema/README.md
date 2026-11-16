@@ -1548,27 +1548,27 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   text data
   varchar_64_ dataHash
+  integer failedStartAttempts
+  varchar_255_ fanOutGroup
   bigint fencingToken
-  varchar_255_ group
   varchar_255_ key
-  varchar_24_ kind
   text lastError
   timestamp_3__with_time_zone lastErrorAt
+  varchar_24_ leaseKind
   varchar_36_ leaseSessionId
-  timestamp_3__with_time_zone nextAttemptAt
+  timestamp_3__with_time_zone nextStartAttemptAt
   timestamp_3__with_time_zone readyAt
   boolean revoked
   timestamp_3__with_time_zone revokedAt
-  integer startAttempts
   timestamp_3__with_time_zone updatedAt
 }
 "public.lease_kind" {
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone fullPassAt
+  bigint fencingTokenCounter
   varchar_24_ kind
-  timestamp_3__with_time_zone syncExpiresAt
-  varchar_36_ syncHolder
-  bigint tokenCounter
+  timestamp_3__with_time_zone lastFullSyncAt
+  timestamp_3__with_time_zone syncLockExpiresAt
+  varchar_36_ syncLockRoundId
   timestamp_3__with_time_zone updatedAt
 }
 "public.lease_session" {
@@ -1577,8 +1577,8 @@ erDiagram
   timestamp_3__with_time_zone expiresAt
   varchar_255_ hostId
   varchar_36_ id
-  varchar_24_ kind
-  integer leaseSeconds
+  integer leaseDurationSeconds
+  varchar_24_ leaseKind
 }
 "public.mcp_registry_server" {
   timestamp_3__with_time_zone createdAt

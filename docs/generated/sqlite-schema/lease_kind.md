@@ -8,10 +8,10 @@
 ```sql
 CREATE TABLE "lease_kind" (
 			"kind" VARCHAR(24) NOT NULL PRIMARY KEY,
-			"tokenCounter" INTEGER NOT NULL DEFAULT 0 CONSTRAINT "CHK_lease_kind_tokenCounter" CHECK ("tokenCounter" >= 0),
-			"syncHolder" VARCHAR(36) NULL,
-			"syncExpiresAt" DATETIME NULL,
-			"fullPassAt" DATETIME NULL,
+			"fencingTokenCounter" INTEGER NOT NULL DEFAULT 0 CONSTRAINT "CHK_lease_kind_fencingTokenCounter" CHECK ("fencingTokenCounter" >= 0),
+			"syncLockRoundId" VARCHAR(36) NULL,
+			"syncLockExpiresAt" DATETIME NULL,
+			"lastFullSyncAt" DATETIME NULL,
 			"createdAt" DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW')),
 			"updatedAt" DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW'))
 		)
@@ -24,18 +24,18 @@ CREATE TABLE "lease_kind" (
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f','NOW') | false |  |  |  |
-| fullPassAt | DATETIME |  | true |  |  |  |
+| fencingTokenCounter | INTEGER | 0 | false |  |  |  |
 | kind | VARCHAR(24) |  | false |  |  |  |
-| syncExpiresAt | DATETIME |  | true |  |  |  |
-| syncHolder | VARCHAR(36) |  | true |  |  |  |
-| tokenCounter | INTEGER | 0 | false |  |  |  |
+| lastFullSyncAt | DATETIME |  | true |  |  |  |
+| syncLockExpiresAt | DATETIME |  | true |  |  |  |
+| syncLockRoundId | VARCHAR(36) |  | true |  |  |  |
 | updatedAt | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f','NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("tokenCounter" >= 0) |
+| - | CHECK | CHECK ("fencingTokenCounter" >= 0) |
 | kind | PRIMARY KEY | PRIMARY KEY (kind) |
 | sqlite_autoindex_lease_kind_1 | PRIMARY KEY | PRIMARY KEY (kind) |
 
@@ -53,11 +53,11 @@ erDiagram
 
 "lease_kind" {
   DATETIME createdAt
-  DATETIME fullPassAt
+  INTEGER fencingTokenCounter
   VARCHAR_24_ kind PK
-  DATETIME syncExpiresAt
-  VARCHAR_36_ syncHolder
-  INTEGER tokenCounter
+  DATETIME lastFullSyncAt
+  DATETIME syncLockExpiresAt
+  VARCHAR_36_ syncLockRoundId
   DATETIME updatedAt
 }
 ```

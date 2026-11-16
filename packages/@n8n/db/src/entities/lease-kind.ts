@@ -9,14 +9,14 @@ export class LeaseKind extends WithTimestamps {
 	kind: string;
 
 	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })
-	tokenCounter: number;
+	fencingTokenCounter: number;
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
-	syncHolder: string | null;
+	syncLockRoundId: string | null;
 
 	@DateTimeColumn({ nullable: true })
-	syncExpiresAt: Date | null;
+	syncLockExpiresAt: Date | null;
 
 	@DateTimeColumn({ nullable: true })
-	fullPassAt: Date | null;
+	lastFullSyncAt: Date | null;
 }

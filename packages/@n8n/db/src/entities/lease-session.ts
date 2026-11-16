@@ -3,13 +3,13 @@ import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 import { DateTimeColumn, WithCreatedAt } from './abstract-entity';
 
 @Entity({ name: 'lease_session' })
-@Index(['kind', 'expiresAt'])
+@Index(['leaseKind', 'expiresAt'])
 export class LeaseSession extends WithCreatedAt {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	id: string;
 
 	@Column({ type: 'varchar', length: 24 })
-	kind: string;
+	leaseKind: string;
 
 	@Column({ type: 'varchar', length: 255 })
 	hostId: string;
@@ -18,7 +18,7 @@ export class LeaseSession extends WithCreatedAt {
 	bootId: string;
 
 	@Column({ type: 'int' })
-	leaseSeconds: number;
+	leaseDurationSeconds: number;
 
 	@DateTimeColumn()
 	expiresAt: Date;

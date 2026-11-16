@@ -4,11 +4,11 @@ import { DateTimeColumn, WithTimestamps } from './abstract-entity';
 import { bigintStringToNumber } from '../utils/transformers';
 
 @Entity({ name: 'lease' })
-@Index(['kind', 'leaseSessionId'])
-@Index(['kind', 'group'])
+@Index(['leaseKind', 'leaseSessionId'])
+@Index(['leaseKind', 'fanOutGroup'])
 export class Lease extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 24 })
-	kind: string;
+	leaseKind: string;
 
 	@PrimaryColumn({ type: 'varchar', length: 255 })
 	key: string;
@@ -20,7 +20,7 @@ export class Lease extends WithTimestamps {
 	dataHash: string;
 
 	@Column({ type: 'varchar', length: 255, nullable: true })
-	group: string | null;
+	fanOutGroup: string | null;
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	leaseSessionId: string | null;
@@ -41,10 +41,10 @@ export class Lease extends WithTimestamps {
 	revokedAt: Date | null;
 
 	@Column({ type: 'int', default: 0 })
-	startAttempts: number;
+	failedStartAttempts: number;
 
 	@DateTimeColumn({ nullable: true })
-	nextAttemptAt: Date | null;
+	nextStartAttemptAt: Date | null;
 
 	@Column({ type: 'text', nullable: true })
 	lastError: string | null;

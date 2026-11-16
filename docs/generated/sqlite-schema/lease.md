@@ -7,24 +7,24 @@
 
 ```sql
 CREATE TABLE "lease" (
-			"kind" VARCHAR(24) NOT NULL,
+			"leaseKind" VARCHAR(24) NOT NULL,
 			"key" VARCHAR(255) NOT NULL,
 			"data" TEXT NOT NULL,
 			"dataHash" VARCHAR(64) NOT NULL,
-			"group" VARCHAR(255) NULL,
+			"fanOutGroup" VARCHAR(255) NULL,
 			"leaseSessionId" VARCHAR(36) NULL,
 			"fencingToken" INTEGER NOT NULL DEFAULT 0 CONSTRAINT "CHK_lease_fencingToken" CHECK ("fencingToken" >= 0),
 			"claimedAt" DATETIME NULL,
 			"readyAt" DATETIME NULL,
 			"revoked" BOOLEAN NOT NULL DEFAULT 0,
 			"revokedAt" DATETIME NULL,
-			"startAttempts" INTEGER NOT NULL DEFAULT 0 CONSTRAINT "CHK_lease_startAttempts" CHECK ("startAttempts" >= 0),
-			"nextAttemptAt" DATETIME NULL,
+			"failedStartAttempts" INTEGER NOT NULL DEFAULT 0 CONSTRAINT "CHK_lease_failedStartAttempts" CHECK ("failedStartAttempts" >= 0),
+			"nextStartAttemptAt" DATETIME NULL,
 			"lastError" TEXT NULL,
 			"lastErrorAt" DATETIME NULL,
 			"createdAt" DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW')),
 			"updatedAt" DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW')),
-			PRIMARY KEY ("kind", "key")
+			PRIMARY KEY ("leaseKind", "key")
 		)
 ```
 
@@ -38,18 +38,18 @@ CREATE TABLE "lease" (
 | createdAt | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f','NOW') | false |  |  |  |
 | data | TEXT |  | false |  |  |  |
 | dataHash | VARCHAR(64) |  | false |  |  |  |
+| failedStartAttempts | INTEGER | 0 | false |  |  |  |
+| fanOutGroup | VARCHAR(255) |  | true |  |  |  |
 | fencingToken | INTEGER | 0 | false |  |  |  |
-| group | VARCHAR(255) |  | true |  |  |  |
 | key | VARCHAR(255) |  | false |  |  |  |
-| kind | VARCHAR(24) |  | false |  |  |  |
 | lastError | TEXT |  | true |  |  |  |
 | lastErrorAt | DATETIME |  | true |  |  |  |
+| leaseKind | VARCHAR(24) |  | false |  |  |  |
 | leaseSessionId | VARCHAR(36) |  | true |  |  |  |
-| nextAttemptAt | DATETIME |  | true |  |  |  |
+| nextStartAttemptAt | DATETIME |  | true |  |  |  |
 | readyAt | DATETIME |  | true |  |  |  |
 | revoked | BOOLEAN | 0 | false |  |  |  |
 | revokedAt | DATETIME |  | true |  |  |  |
-| startAttempts | INTEGER | 0 | false |  |  |  |
 | updatedAt | DATETIME | STRFTIME('%Y-%m-%d %H:%M:%f','NOW') | false |  |  |  |
 
 ## Constraints
@@ -57,18 +57,18 @@ CREATE TABLE "lease" (
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | - | CHECK | CHECK ("fencingToken" >= 0) |
-| - | CHECK | CHECK ("startAttempts" >= 0) |
+| - | CHECK | CHECK ("failedStartAttempts" >= 0) |
 | key | PRIMARY KEY | PRIMARY KEY (key) |
-| kind | PRIMARY KEY | PRIMARY KEY (kind) |
-| sqlite_autoindex_lease_1 | PRIMARY KEY | PRIMARY KEY (kind, key) |
+| leaseKind | PRIMARY KEY | PRIMARY KEY (leaseKind) |
+| sqlite_autoindex_lease_1 | PRIMARY KEY | PRIMARY KEY (leaseKind, key) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_lease_kind_group | CREATE INDEX "IDX_lease_kind_group" ON "lease" ("kind", "group") |
-| IDX_lease_kind_leaseSessionId | CREATE INDEX "IDX_lease_kind_leaseSessionId" ON "lease" ("kind", "leaseSessionId") |
-| sqlite_autoindex_lease_1 | PRIMARY KEY (kind, key) |
+| IDX_lease_leaseKind_fanOutGroup | CREATE INDEX "IDX_lease_leaseKind_fanOutGroup" ON "lease" ("leaseKind", "fanOutGroup") |
+| IDX_lease_leaseKind_leaseSessionId | CREATE INDEX "IDX_lease_leaseKind_leaseSessionId" ON "lease" ("leaseKind", "leaseSessionId") |
+| sqlite_autoindex_lease_1 | PRIMARY KEY (leaseKind, key) |
 
 ## Relations
 
@@ -81,18 +81,18 @@ erDiagram
   DATETIME createdAt
   TEXT data
   VARCHAR_64_ dataHash
+  INTEGER failedStartAttempts
+  VARCHAR_255_ fanOutGroup
   INTEGER fencingToken
-  VARCHAR_255_ group
   VARCHAR_255_ key PK
-  VARCHAR_24_ kind PK
   TEXT lastError
   DATETIME lastErrorAt
+  VARCHAR_24_ leaseKind PK
   VARCHAR_36_ leaseSessionId
-  DATETIME nextAttemptAt
+  DATETIME nextStartAttemptAt
   DATETIME readyAt
   BOOLEAN revoked
   DATETIME revokedAt
-  INTEGER startAttempts
   DATETIME updatedAt
 }
 ```

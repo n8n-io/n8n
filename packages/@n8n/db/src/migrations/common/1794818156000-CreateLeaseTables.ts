@@ -15,52 +15,52 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 
 		await runQuery(`CREATE TABLE ${kind} (
 			"kind" VARCHAR(24) NOT NULL PRIMARY KEY,
-			"tokenCounter" ${bigint} NOT NULL DEFAULT 0 CONSTRAINT "CHK_${tablePrefix}lease_kind_tokenCounter" CHECK ("tokenCounter" >= 0),
-			"syncHolder" VARCHAR(36) NULL,
-			"syncExpiresAt" ${ts} NULL,
-			"fullPassAt" ${ts} NULL,
+			"fencingTokenCounter" ${bigint} NOT NULL DEFAULT 0 CONSTRAINT "CHK_${tablePrefix}lease_kind_fencingTokenCounter" CHECK ("fencingTokenCounter" >= 0),
+			"syncLockRoundId" VARCHAR(36) NULL,
+			"syncLockExpiresAt" ${ts} NULL,
+			"lastFullSyncAt" ${ts} NULL,
 			"createdAt" ${ts} NOT NULL DEFAULT ${nowDefault},
 			"updatedAt" ${ts} NOT NULL DEFAULT ${nowDefault}
 		)`);
 
 		await runQuery(`CREATE TABLE ${session} (
 			"id" VARCHAR(36) NOT NULL PRIMARY KEY,
-			"kind" VARCHAR(24) NOT NULL,
+			"leaseKind" VARCHAR(24) NOT NULL,
 			"hostId" VARCHAR(255) NOT NULL,
 			"bootId" VARCHAR(36) NOT NULL,
-			"leaseSeconds" INTEGER NOT NULL,
+			"leaseDurationSeconds" INTEGER NOT NULL,
 			"expiresAt" ${ts} NOT NULL,
 			"createdAt" ${ts} NOT NULL DEFAULT ${nowDefault}
 		)`);
 		await runQuery(
-			`CREATE INDEX ${escape.indexName('lease_session_kind_expiresAt')} ON ${session} ("kind", "expiresAt")`,
+			`CREATE INDEX ${escape.indexName('lease_session_leaseKind_expiresAt')} ON ${session} ("leaseKind", "expiresAt")`,
 		);
 
 		await runQuery(`CREATE TABLE ${lease} (
-			"kind" VARCHAR(24) NOT NULL,
+			"leaseKind" VARCHAR(24) NOT NULL,
 			"key" VARCHAR(255) NOT NULL,
 			"data" TEXT NOT NULL,
 			"dataHash" VARCHAR(64) NOT NULL,
-			"group" VARCHAR(255) NULL,
+			"fanOutGroup" VARCHAR(255) NULL,
 			"leaseSessionId" VARCHAR(36) NULL,
 			"fencingToken" ${bigint} NOT NULL DEFAULT 0 CONSTRAINT "CHK_${tablePrefix}lease_fencingToken" CHECK ("fencingToken" >= 0),
 			"claimedAt" ${ts} NULL,
 			"readyAt" ${ts} NULL,
 			"revoked" BOOLEAN NOT NULL DEFAULT ${falseValue},
 			"revokedAt" ${ts} NULL,
-			"startAttempts" INTEGER NOT NULL DEFAULT 0 CONSTRAINT "CHK_${tablePrefix}lease_startAttempts" CHECK ("startAttempts" >= 0),
-			"nextAttemptAt" ${ts} NULL,
+			"failedStartAttempts" INTEGER NOT NULL DEFAULT 0 CONSTRAINT "CHK_${tablePrefix}lease_failedStartAttempts" CHECK ("failedStartAttempts" >= 0),
+			"nextStartAttemptAt" ${ts} NULL,
 			"lastError" TEXT NULL,
 			"lastErrorAt" ${ts} NULL,
 			"createdAt" ${ts} NOT NULL DEFAULT ${nowDefault},
 			"updatedAt" ${ts} NOT NULL DEFAULT ${nowDefault},
-			PRIMARY KEY ("kind", "key")
+			PRIMARY KEY ("leaseKind", "key")
 		)`);
 		await runQuery(
-			`CREATE INDEX ${escape.indexName('lease_kind_leaseSessionId')} ON ${lease} ("kind", "leaseSessionId")`,
+			`CREATE INDEX ${escape.indexName('lease_leaseKind_leaseSessionId')} ON ${lease} ("leaseKind", "leaseSessionId")`,
 		);
 		await runQuery(
-			`CREATE INDEX ${escape.indexName('lease_kind_group')} ON ${lease} ("kind", "group")`,
+			`CREATE INDEX ${escape.indexName('lease_leaseKind_fanOutGroup')} ON ${lease} ("leaseKind", "fanOutGroup")`,
 		);
 
 		if (isPostgres) {

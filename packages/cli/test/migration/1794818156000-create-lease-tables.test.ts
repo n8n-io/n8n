@@ -75,7 +75,7 @@ describe('CreateLeaseTables migration', () => {
 
 	async function insertLease(context: TestMigrationContext, values: Record<string, unknown> = {}) {
 		const row = {
-			kind: 'trigger',
+			leaseKind: 'trigger',
 			key: randomUUID(),
 			data: '{}',
 			dataHash: 'hash',
@@ -97,32 +97,40 @@ describe('CreateLeaseTables migration', () => {
 			expect(await columns('lease_kind')).toEqual(
 				[
 					'kind',
-					'tokenCounter',
-					'syncHolder',
-					'syncExpiresAt',
-					'fullPassAt',
+					'fencingTokenCounter',
+					'syncLockRoundId',
+					'syncLockExpiresAt',
+					'lastFullSyncAt',
 					'createdAt',
 					'updatedAt',
 				].sort(),
 			);
 			expect(await columns('lease_session')).toEqual(
-				['id', 'kind', 'hostId', 'bootId', 'leaseSeconds', 'expiresAt', 'createdAt'].sort(),
+				[
+					'id',
+					'leaseKind',
+					'hostId',
+					'bootId',
+					'leaseDurationSeconds',
+					'expiresAt',
+					'createdAt',
+				].sort(),
 			);
 			expect(await columns('lease')).toEqual(
 				[
-					'kind',
+					'leaseKind',
 					'key',
 					'data',
 					'dataHash',
-					'group',
+					'fanOutGroup',
 					'leaseSessionId',
 					'fencingToken',
 					'claimedAt',
 					'readyAt',
 					'revoked',
 					'revokedAt',
-					'startAttempts',
-					'nextAttemptAt',
+					'failedStartAttempts',
+					'nextStartAttemptAt',
 					'lastError',
 					'lastErrorAt',
 					'createdAt',
@@ -133,18 +141,21 @@ describe('CreateLeaseTables migration', () => {
 	});
 
 	it.each([
-		['lease_kind', ['kind', 'tokenCounter', 'createdAt', 'updatedAt']],
-		['lease_session', ['id', 'kind', 'hostId', 'bootId', 'leaseSeconds', 'expiresAt', 'createdAt']],
+		['lease_kind', ['kind', 'fencingTokenCounter', 'createdAt', 'updatedAt']],
+		[
+			'lease_session',
+			['id', 'leaseKind', 'hostId', 'bootId', 'leaseDurationSeconds', 'expiresAt', 'createdAt'],
+		],
 		[
 			'lease',
 			[
-				'kind',
+				'leaseKind',
 				'key',
 				'data',
 				'dataHash',
 				'fencingToken',
 				'revoked',
-				'startAttempts',
+				'failedStartAttempts',
 				'createdAt',
 				'updatedAt',
 			],
@@ -158,9 +169,9 @@ describe('CreateLeaseTables migration', () => {
 	});
 
 	it.each([
-		['lease_kind', 'tokenCounter', zero],
+		['lease_kind', 'fencingTokenCounter', zero],
 		['lease', 'fencingToken', zero],
-		['lease', 'startAttempts', zero],
+		['lease', 'failedStartAttempts', zero],
 		['lease', 'revoked', isSqlite ? '0' : 'false'],
 	])('sets the default of %s.%s to %s', async (name, column, expected) => {
 		await withContext(async (context) => {
@@ -172,7 +183,7 @@ describe('CreateLeaseTables migration', () => {
 	it.each([
 		['lease_kind', ['kind']],
 		['lease_session', ['id']],
-		['lease', ['kind', 'key']],
+		['lease', ['leaseKind', 'key']],
 	])('sets the primary key of %s', async (name, expected) => {
 		await withContext(async (context) => {
 			const table = await getTable(context, name);
@@ -183,9 +194,9 @@ describe('CreateLeaseTables migration', () => {
 	it('creates the lookup indexes', async () => {
 		await withContext(async (context) => {
 			for (const suffix of [
-				'lease_session_kind_expiresAt',
-				'lease_kind_leaseSessionId',
-				'lease_kind_group',
+				'lease_session_leaseKind_expiresAt',
+				'lease_leaseKind_leaseSessionId',
+				'lease_leaseKind_fanOutGroup',
 			]) {
 				expect(await indexExists(context, `IDX_${context.tablePrefix}${suffix}`)).toBe(true);
 			}
@@ -208,14 +219,14 @@ describe('CreateLeaseTables migration', () => {
 
 	it('accepts a zero token counter and rejects a negative one', async () => {
 		await withContext(async (context) => {
-			await expect(insertKind(context, { tokenCounter: 0 })).resolves.not.toThrow();
-			await expect(insertKind(context, { tokenCounter: -1 })).rejects.toThrow(
-				`CHK_${context.tablePrefix}lease_kind_tokenCounter`,
+			await expect(insertKind(context, { fencingTokenCounter: 0 })).resolves.not.toThrow();
+			await expect(insertKind(context, { fencingTokenCounter: -1 })).rejects.toThrow(
+				`CHK_${context.tablePrefix}lease_kind_fencingTokenCounter`,
 			);
 		});
 	});
 
-	it.each(['fencingToken', 'startAttempts'])(
+	it.each(['fencingToken', 'failedStartAttempts'])(
 		'accepts a zero %s and rejects a negative one',
 		async (column) => {
 			await withContext(async (context) => {

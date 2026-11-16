@@ -8,10 +8,10 @@
 ```sql
 CREATE TABLE "lease_session" (
 			"id" VARCHAR(36) NOT NULL PRIMARY KEY,
-			"kind" VARCHAR(24) NOT NULL,
+			"leaseKind" VARCHAR(24) NOT NULL,
 			"hostId" VARCHAR(255) NOT NULL,
 			"bootId" VARCHAR(36) NOT NULL,
-			"leaseSeconds" INTEGER NOT NULL,
+			"leaseDurationSeconds" INTEGER NOT NULL,
 			"expiresAt" DATETIME NOT NULL,
 			"createdAt" DATETIME NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f','NOW'))
 		)
@@ -28,8 +28,8 @@ CREATE TABLE "lease_session" (
 | expiresAt | DATETIME |  | false |  |  |  |
 | hostId | VARCHAR(255) |  | false |  |  |  |
 | id | VARCHAR(36) |  | false |  |  |  |
-| kind | VARCHAR(24) |  | false |  |  |  |
-| leaseSeconds | INTEGER |  | false |  |  |  |
+| leaseDurationSeconds | INTEGER |  | false |  |  |  |
+| leaseKind | VARCHAR(24) |  | false |  |  |  |
 
 ## Constraints
 
@@ -42,7 +42,7 @@ CREATE TABLE "lease_session" (
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_lease_session_kind_expiresAt | CREATE INDEX "IDX_lease_session_kind_expiresAt" ON "lease_session" ("kind", "expiresAt") |
+| IDX_lease_session_leaseKind_expiresAt | CREATE INDEX "IDX_lease_session_leaseKind_expiresAt" ON "lease_session" ("leaseKind", "expiresAt") |
 | sqlite_autoindex_lease_session_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -57,8 +57,8 @@ erDiagram
   DATETIME expiresAt
   VARCHAR_255_ hostId
   VARCHAR_36_ id PK
-  VARCHAR_24_ kind
-  INTEGER leaseSeconds
+  INTEGER leaseDurationSeconds
+  VARCHAR_24_ leaseKind
 }
 ```
 

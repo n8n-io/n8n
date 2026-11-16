@@ -1534,27 +1534,27 @@ erDiagram
   DATETIME createdAt
   TEXT data
   VARCHAR_64_ dataHash
+  INTEGER failedStartAttempts
+  VARCHAR_255_ fanOutGroup
   INTEGER fencingToken
-  VARCHAR_255_ group
   VARCHAR_255_ key PK
-  VARCHAR_24_ kind PK
   TEXT lastError
   DATETIME lastErrorAt
+  VARCHAR_24_ leaseKind PK
   VARCHAR_36_ leaseSessionId
-  DATETIME nextAttemptAt
+  DATETIME nextStartAttemptAt
   DATETIME readyAt
   BOOLEAN revoked
   DATETIME revokedAt
-  INTEGER startAttempts
   DATETIME updatedAt
 }
 "lease_kind" {
   DATETIME createdAt
-  DATETIME fullPassAt
+  INTEGER fencingTokenCounter
   VARCHAR_24_ kind PK
-  DATETIME syncExpiresAt
-  VARCHAR_36_ syncHolder
-  INTEGER tokenCounter
+  DATETIME lastFullSyncAt
+  DATETIME syncLockExpiresAt
+  VARCHAR_36_ syncLockRoundId
   DATETIME updatedAt
 }
 "lease_session" {
@@ -1563,8 +1563,8 @@ erDiagram
   DATETIME expiresAt
   VARCHAR_255_ hostId
   VARCHAR_36_ id PK
-  VARCHAR_24_ kind
-  INTEGER leaseSeconds
+  INTEGER leaseDurationSeconds
+  VARCHAR_24_ leaseKind
 }
 "mcp_registry_server" {
   datetime_3_ createdAt
