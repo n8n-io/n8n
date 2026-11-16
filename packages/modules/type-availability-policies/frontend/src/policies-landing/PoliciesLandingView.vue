@@ -35,7 +35,7 @@ onMounted(() => {
 <template>
 	<N8nSettingsLayout
 		show-back
-		:back-label="i18n.baseText('typeAvailabilityPolicies.landing.back')"
+		:back-label="i18n.baseText('typeAvailabilityPolicies.backToPolicies')"
 		:class="$style.layout"
 		data-test-id="policies-landing-view"
 		@back="onBack"

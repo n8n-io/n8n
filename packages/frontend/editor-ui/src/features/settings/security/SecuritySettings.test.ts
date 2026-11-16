@@ -7,12 +7,7 @@ import SecuritySettings from './SecuritySettings.vue';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { useRBACStore } from '@n8n/stores/rbac.store';
-import type { Scope } from '@n8n/permissions';
-import {
-	INSTANCE_POLICY_VIEW,
-	POLICIES_LANDING_VIEW,
-} from '@n8n/frontend-module-type-availability-policies';
+import { ref } from 'vue';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 
@@ -42,6 +37,16 @@ vi.mock('@n8n/rest-api-client/api/public-api-rate-limit-settings', () => {
 		updatePublicApiRateLimitSettings: vi.fn(),
 	};
 });
+
+const policyAccess = vi.hoisted(() => ({ canManage: false }));
+vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/frontend-module-type-availability-policies')>()),
+	// The access rules have their own tests in the module, so the row only reads the result.
+	usePolicyAdminAccess: () => ({
+		canManagePolicies: ref(policyAccess.canManage),
+		entryRouteName: ref('PolicyEntryView'),
+	}),
+}));
 
 const routerPush = vi.fn();
 vi.mock('vue-router', async (importOriginal) => ({
@@ -101,20 +106,12 @@ describe('SecuritySettings', () => {
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] = false;
 		checkEnvFeatureFlag.mockReturnValue(false);
 		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
-		settingsStore.isModuleActive = vi.fn().mockReturnValue(false);
-		useRBACStore().setGlobalScopes([]);
+		policyAccess.canManage = false;
 	});
 
 	describe('node and credential policies', () => {
-		const enablePolicies = (scopes: Scope[]) => {
-			settingsStore.isModuleActive = vi.fn(
-				(moduleName: string) => moduleName === 'type-availability-policies',
-			);
-			useRBACStore().setGlobalScopes(scopes);
-		};
-
-		it('shows the row to a user with a global policy scope on a licensed instance', async () => {
-			enablePolicies(['nodeTypePolicy:manage']);
+		it('shows the row with a Preview badge to a user who can manage the policies', async () => {
+			policyAccess.canManage = true;
 			const { findByTestId, getByTestId } = renderView();
 
 			const row = await findByTestId('security-type-policies-row');
@@ -125,36 +122,16 @@ describe('SecuritySettings', () => {
 			expect(getByTestId('security-type-policies-section')).toHaveTextContent('Access control');
 		});
 
-		it('opens the landing page from the row', async () => {
-			enablePolicies(['nodeTypePolicy:manage', 'credentialTypePolicy:manage']);
+		it('opens the entry page of the policies from the row', async () => {
+			policyAccess.canManage = true;
 			const { findByTestId } = renderView();
 
 			await userEvent.click(await findByTestId('security-type-policies-row'));
 
-			expect(routerPush).toHaveBeenCalledWith({ name: POLICIES_LANDING_VIEW });
+			expect(routerPush).toHaveBeenCalledWith({ name: 'PolicyEntryView' });
 		});
 
-		it('opens the instance policy page directly for a user with one policy scope', async () => {
-			enablePolicies(['nodeTypePolicy:manage']);
-			const { findByTestId } = renderView();
-
-			await userEvent.click(await findByTestId('security-type-policies-row'));
-
-			expect(routerPush).toHaveBeenCalledWith({ name: INSTANCE_POLICY_VIEW });
-		});
-
-		it('hides the row when the module is not active, as on an unlicensed instance', async () => {
-			useRBACStore().setGlobalScopes(['nodeTypePolicy:manage', 'credentialTypePolicy:manage']);
-			const { queryByTestId } = renderView();
-
-			await waitFor(() => expect(getSecuritySettings).toHaveBeenCalled());
-
-			expect(queryByTestId('security-type-policies-section')).not.toBeInTheDocument();
-		});
-
-		it('hides the row from a user who holds the policy scopes only in a project', async () => {
-			enablePolicies([]);
-			useRBACStore().addProjectScope('nodeTypePolicy:manage', { projectId: 'project-1' });
+		it('hides the row from a user who cannot manage the policies', async () => {
 			const { queryByTestId } = renderView();
 
 			await waitFor(() => expect(getSecuritySettings).toHaveBeenCalled());

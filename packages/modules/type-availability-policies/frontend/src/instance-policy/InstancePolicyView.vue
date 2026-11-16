@@ -46,7 +46,7 @@ const back = computed(() =>
 			}
 		: {
 				name: VIEWS.SECURITY_SETTINGS,
-				label: i18n.baseText('typeAvailabilityPolicies.landing.back'),
+				label: i18n.baseText('typeAvailabilityPolicies.backToPolicies'),
 			},
 );
 
