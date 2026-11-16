@@ -44,6 +44,15 @@ function assertAbsoluteHttpUrl(baseUrl: string): void {
 				'Set Base URL to the root of your gateway, such as https://gateway.example.com/v1.',
 		});
 	}
+
+	// The transport refuses a URL that carries a login and repeats the whole URL, password
+	// included, in the error it throws. The credential has its own fields for a login.
+	if (parsed.username !== '' || parsed.password !== '') {
+		throw new UserError('The Base URL of the credential carries a user name or a password', {
+			description:
+				'Take them out of the URL, and set the login on the credential with Authentication.',
+		});
+	}
 }
 
 /**
