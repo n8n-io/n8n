@@ -29,6 +29,9 @@ pub const Gym = struct {
     nports: u32 = 0,
     /// `127.0.0.1:<port>` of the gym's resolver, or empty.
     dns: []const u8 = "",
+    /// The gym runs on another machine (`GYM_REMOTE`): a connection to its
+    /// address goes there, and nothing goes to loopback.
+    remote: bool = false,
 
     /// Read GYM_ADDR, GYM_HOSTS, GYM_DNS and GYM_PORT_MAP. The strings must
     /// outlive the result (they come from the process environment).
@@ -38,6 +41,7 @@ pub const Gym = struct {
         g.setPatterns(getenv("GYM_HOSTS") orelse "");
         try g.setPortMap(getenv("GYM_PORT_MAP") orelse "");
         g.dns = getenv("GYM_DNS") orelse "";
+        g.remote = if (getenv("GYM_REMOTE")) |value| value.len > 0 else false;
         return g;
     }
 
@@ -86,6 +90,7 @@ pub const Gym = struct {
 
     /// Where a connection to `a` really goes.
     pub fn redirect(g: *const Gym, a: sys.Addr) sys.Addr {
+        if (g.remote) return a;
         const loop = sys.Addr.ip4(.{ 127, 0, 0, 1 }, 0);
         if (!a.v6) {
             if (std.mem.eql(u8, a.ip[0..4], &g.addr)) return withPort(loop, g.mappedPort(a.port) orelse a.port);
@@ -162,6 +167,13 @@ test "host patterns follow contract.MatchHost" {
     try std.testing.expect(!g.matches("aiplatform.googleapis.com"));
     try std.testing.expect(!g.matches("us-aiplatform.googleapis.com.evil"));
     try std.testing.expect(!g.matches("us-other.googleapis.com"));
+}
+
+test "a remote gym gets no redirect to loopback" {
+    var g: Gym = .{ .addr = .{ 10, 0, 0, 9 }, .remote = true };
+    try g.setPortMap("443=18443");
+    const there = sys.Addr.ip4(.{ 10, 0, 0, 9 }, 443);
+    try std.testing.expect(g.redirect(there).eql(there));
 }
 
 test "port map and redirects" {

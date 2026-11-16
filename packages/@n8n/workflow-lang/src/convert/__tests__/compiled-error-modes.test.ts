@@ -78,20 +78,20 @@ const description = {
 	],
 };
 
-function sources(errorItem: string, conditions: string[]): NodeSources {
+function sources(errorItem: string, conditions: string[], each = [EACH_ID]): NodeSources {
 	const source = probeSource(errorItem);
 	return {
 		entry: (type) => (type === TYPE ? ENTRY : undefined),
 		readFile: (path) => (path === ENTRY ? source : undefined),
 		description: (type) => (type === TYPE ? description : undefined),
-		verified: { [`${TYPE}@1:.`]: ['id', 'strict', ...conditions] },
+		verified: { [`${TYPE}@1:.`]: ['id', 'strict', ...each, ...conditions] },
 	};
 }
 
 const REGULAR = '@onError=continueRegularOutput';
 const ERROR_OUTPUT = '@onError=continueErrorOutput';
 const BY_POSITION = '@errorItems=position';
-const EACH_ITEM = '@items=each';
+const EACH_ID = '@each=id';
 
 function workflowWith(settings: Record<string, unknown>, strict = false) {
 	const errorOutput = settings.onError === 'continueErrorOutput';
@@ -202,10 +202,15 @@ describe('a compiled node under the error settings of the node', () => {
 		expect(await run(regularOnly, { onError: 'continueErrorOutput' }, [OK('A')])).toMatchObject({
 			fallback: ['Probe'],
 		});
-		expect(await run(stopOnly, {}, [OK('A')])).toMatchObject({ fallback: ['Probe'] });
-		expect((await run(sources(PAIRED, [EACH_ITEM]), {}, [OK('A')])).result).toEqual({
-			Good: [{ name: 'A' }, { name: 'A' }],
+		expect(await run(sources(PAIRED, [], []), {}, [OK('A')])).toMatchObject({
+			fallback: ['Probe'],
 		});
+		expect(
+			await run(sources(PAIRED, [REGULAR], []), { onError: 'continueRegularOutput' }, [OK('A')]),
+		).toMatchObject({ fallback: ['Probe'] });
+		const once = await run(stopOnly, {}, [OK('A')]);
+		expect(once.result).toEqual({ Good: [{ name: 'A' }, { name: 'A' }] });
+		expect(once.source).toContain('parameters: { each: probeParameters },');
 	});
 
 	it('gives the error item of the node under "continue on fail"', async () => {
