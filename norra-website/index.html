@@ -3973,7 +3973,7 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
     </div>
   </div>
 </footer>
-<script>window.NORRA_ENV = 'hosting'; window.NORRA_I18N_LAZY = true; window.NORRA_I18N_VER = '2ff49253ed';</script>
+<script>window.NORRA_ENV = 'hosting'; window.NORRA_I18N_LAZY = true; window.NORRA_I18N_VER = '62924f8cd3';</script>
 <script>
 /* ===== src/core.js ===== */
 /* =========================================================================
@@ -13744,7 +13744,7 @@ NORRA.recht.page = function (o) {
   return NORRA.recht.note(NORRA.recht.COMMENT) +
     '<section class="wrap legal rk-legal"><div class="rk-head reveal"><p class="eyebrow">Rechtliches</p><h1>' + o.title + '</h1>' +
     '<p class="rk-lede">' + o.lede + '</p></div>' + facts +
-    '<div class="rk-bar"><p class="rk-stand">Stand: ' + NORRA.recht.ph('Datum') + '</p>' +
+    '<div class="rk-bar"><p class="rk-stand">Stand: November 2026</p>' +
     '<button type="button" class="rk-all" data-rk-all aria-expanded="false">' + ico('list', 14) + '<span>Alle öffnen</span></button></div>' +
     secs + '<p class="rk-switch">' + o.switchLink + '</p></section>';
 };
@@ -13773,12 +13773,10 @@ NORRA.pages.impressum = function (el) {
     title: 'Impressum', lede: 'Angaben zum Anbieter dieser Website.',
     switchLink: 'Zum Umgang mit Daten: <a href="#datenschutz">Datenschutz</a>.',
     facts: [
-      ['Anbieter', ph('Firmenname') + ' ' + ph('Rechtsform') + '<br>' + ph('Strasse und Nr.') + '<br>' + ph('PLZ Ort') + ', ' + ph('Land')],
-      ['Kontakt', NORRA.copyLine(NORRA.CONTACT.email) + '<br>Telefon ' + ph('Telefonnummer')],
-      ['Vertretungsberechtigt', ph('Vorname Name, Funktion')],
-      ['Register', ph('Handelsregisteramt bzw. Registergericht') + '<br>' + ph('CHE-… / HRB …')],
-      ['UID / MWST', ph('UID bzw. USt-IdNr.')],
-      ['Verantwortlich für den Inhalt', ph('Vorname Name') + ', Anschrift wie oben']
+      ['Anbieter', 'Harles E-Commerce<br>Inhaber: Niklas Dean Harles<br>Brunnacker 8<br>5712 Beinwil am See<br>Schweiz'],
+      ['Kontakt', NORRA.copyLine(NORRA.CONTACT.email) + '<br>Telefon <a href="tel:+41784067099">+41 78 406 70 99</a>'],
+      ['Verantwortlich für den Inhalt', 'Niklas Dean Harles, Anschrift wie oben'],
+      ['Hosting', 'Website: Vercel Inc., USA<br>KI-Agenten (Telefon und Chat): Retell AI, Inc., USA']
     ],
     sections: [
       ['rk-haftung', 'Haftung',
@@ -13788,9 +13786,9 @@ NORRA.pages.impressum = function (el) {
         '<p>Betriebe wie Salon Mira oder Studio Belle sind erfundene Beispiele. Zahlen sind als Beispiel- oder Richtwerte gekennzeichnet. ' +
         '55 Sprachen, ca. 0,6 s Antwortzeit und über 99,9 % Verfügbarkeit sind Werte der zugrunde liegenden Plattform.</p>'],
       ['rk-rechte', 'Urheberrecht und Bildnachweis',
-        '<p>Texte und Gestaltung sind urheberrechtlich geschützt. Bilder und Videos: ' + ph('Bildquellen und Lizenzen') + '.</p>'],
+        '<p>Texte und Gestaltung sind urheberrechtlich geschützt. Bilder und Videos: eigene Aufnahmen und lizenziertes Stockmaterial.</p>'],
       ['rk-streit', 'Streitbeilegung',
-        '<p>Wir nehmen nicht an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teil. ' + ph('bitte prüfen') + '</p>']
+        '<p>Wir nehmen nicht an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teil.</p>']
     ]
   });
 };
@@ -13802,28 +13800,25 @@ NORRA.pages.datenschutz = function (el) {
     title: 'Datenschutz', lede: 'Welche Daten wir bearbeiten, wozu und welche Rechte Sie haben.',
     switchLink: 'Angaben zum Anbieter: <a href="#impressum">Impressum</a>.',
     facts: [
-      ['Verantwortlich', ph('Firmenname') + '<br>' + ph('Strasse und Nr.') + ', ' + ph('PLZ Ort') + ', ' + ph('Land')],
+      ['Verantwortlich', 'Harles E-Commerce, Niklas Dean Harles<br>Brunnacker 8, 5712 Beinwil am See, Schweiz'],
       ['Kontakt', NORRA.copyLine(NORRA.CONTACT.email)],
       ['Kein Tracking', 'Keine Analyse- oder Werbe-Cookies.']
     ],
     sections: [
       ['ds-verantwortlich', 'Verantwortliche Stelle',
-        '<p>' + ph('Firmenname') + ', ' + ph('Strasse und Nr.') + ', ' + ph('PLZ Ort') + ', ' + ph('Land') + ', E-Mail: ' + mail + '.</p>' +
-        '<p>Datenschutzberater bzw. -beauftragter: ' + ph('Name und Kontakt, falls vorhanden') + '. ' +
-        'Vertretung in der EU (Art. 27 DSGVO): ' + ph('Name und Adresse, falls erforderlich') + '.</p>'],
+        '<p>Harles E-Commerce, Inhaber Niklas Dean Harles, Brunnacker 8, 5712 Beinwil am See, Schweiz. E-Mail: ' + mail + ', Telefon +41 78 406 70 99.</p>'],
       ['ds-grundlagen', 'Grundsätze und Rechtsgrundlagen',
         '<p>Wir bearbeiten Personendaten nach dem Schweizer Datenschutzgesetz (revDSG) und, soweit anwendbar, nach der DSGVO. Nur was für den Zweck nötig ist.</p>' +
         list(['Einwilligung (Art. 6 Abs. 1 lit. a DSGVO)', 'Vertrag und vorvertragliche Anfragen (lit. b)', 'Gesetzliche Pflichten (lit. c)', 'Berechtigte Interessen, z. B. sicherer Betrieb (lit. f)'])],
       ['ds-hosting', 'Hosting und Server-Logs',
-        '<p>Diese Website wird bei ' + ph('Hosting-Anbieter, Sitz') + ' betrieben. Beim Aufruf fallen technisch nötige Daten an: ' +
+        '<p>Diese Website wird bei Vercel Inc. (USA) betrieben. Beim Aufruf fallen technisch nötige Daten an: ' +
         'IP-Adresse, Zeitpunkt, aufgerufene Seite, Browser und Betriebssystem. Zweck: sicherer und stabiler Betrieb (berechtigtes Interesse). ' +
-        'Löschung nach ' + ph('Anzahl') + ' Tagen.</p>'],
+        'Die Protokolle werden nach den Fristen des Anbieters gelöscht.</p>'],
       ['ds-kontakt', 'Kontaktformular und E-Mail',
         '<p>Wenn Sie uns schreiben, bearbeiten wir Ihre Angaben (Name, E-Mail, optional Unternehmen, Telefon, Branche, Interesse, Nachricht), um Ihre Anfrage zu beantworten.</p>' +
-        '<p>Das Formular übermittelt die Angaben über den Formulardienst Web3Forms (' + ph('Anbieter und Sitz laut Web3Forms') + ') per E-Mail an uns. ' +
-        'Dabei kann eine Übermittlung in ein Land ohne angemessenes Datenschutzniveau stattfinden, abgesichert durch ' + ph('Standardvertragsklauseln oder andere Garantie') + '. ' +
-        'Ist das Formular nicht aktiv, bereitet die Website nur eine E-Mail vor, die Sie selbst senden.</p>' +
-        '<p>Unser Postfach liegt bei ' + ph('E-Mail-Anbieter, Sitz') + '. Anfragen löschen wir, sobald sie erledigt sind und keine Aufbewahrungspflicht besteht.</p>'],
+        '<p>Das Formular übermittelt die Angaben über den Formulardienst Web3Forms (web3forms.com) per E-Mail an uns. ' +
+        'Dabei können Daten in Länder ausserhalb der Schweiz und des EWR gelangen.</p>' +
+        '<p>Unser Postfach liegt bei Gmail (Google LLC, USA). Anfragen löschen wir, sobald sie erledigt sind und keine Aufbewahrungspflicht besteht.</p>'],
       ['ds-schriften', 'Schriftarten',
         '<p>Diese Website lädt Schriftarten von Google Fonts (Google Ireland Limited, Irland; Google LLC, USA). Dabei wird Ihre IP-Adresse an Google übermittelt. ' +
         'Grundlage ist unser berechtigtes Interesse an einer einheitlichen Darstellung.</p>'],
@@ -13833,7 +13828,7 @@ NORRA.pages.datenschutz = function (el) {
       ['ds-agents', 'KI-Agenten für Kundinnen und Kunden',
         '<p>Betreiben wir für Ihren Betrieb einen Agent, bearbeiten wir Gesprächs- und Nachrichtendaten in Ihrem Auftrag, auf Grundlage eines Auftragsverarbeitungsvertrags (AVV).</p>' +
         list(['Verarbeitung in der EU, wo verfügbar', 'Schwärzung sensibler Angaben in Transkripten', 'Aufbewahrung und Löschung nach Ihrer Vorgabe',
-          'Unterauftragsverarbeiter (Agent-Plattform, Modellanbieter, Telefonie): ' + ph('Liste der Unterauftragsverarbeiter')]) +
+          'Agent-Plattform: Retell AI, Inc. (USA)', 'Sprachmodelle je nach Einrichtung: OpenAI, Anthropic oder Google (USA)', 'Telefonie je nach Einrichtung: Twilio oder Telnyx (USA)']) +
         '<p>Sicherheitszertifizierungen wie SOC 2 oder ISO 27001 hält die zugrunde liegende Plattform, nicht Norra.</p>'],
       ['ds-ausland', 'Bekanntgabe ins Ausland',
         '<p>Einige Dienstleister sitzen ausserhalb der Schweiz und des EWR. Wir übermitteln Daten dorthin nur mit Angemessenheitsbeschluss ' +
@@ -13841,7 +13836,7 @@ NORRA.pages.datenschutz = function (el) {
       ['ds-rechte', 'Ihre Rechte',
         '<p>Sie können Auskunft, Berichtigung, Löschung, Einschränkung und Herausgabe Ihrer Daten verlangen, der Bearbeitung widersprechen ' +
         'und eine Einwilligung jederzeit für die Zukunft widerrufen. Schreiben Sie an ' + mail + '.</p>' +
-        '<p>Beschwerden: in der Schweiz beim Eidgenössischen Datenschutz- und Öffentlichkeitsbeauftragten (EDÖB), in der EU bei der zuständigen Aufsichtsbehörde: ' + ph('Aufsichtsbehörde') + '.</p>'],
+        '<p>Beschwerden: in der Schweiz beim Eidgenössischen Datenschutz- und Öffentlichkeitsbeauftragten (EDÖB), in der EU bei der Aufsichtsbehörde Ihres Wohnsitzlandes.</p>'],
       ['ds-sicherheit', 'Sicherheit',
         '<p>Die Übertragung ist per TLS verschlüsselt. Wir treffen angemessene technische und organisatorische Massnahmen.</p>'],
       ['ds-aenderungen', 'Änderungen',
