@@ -6,6 +6,8 @@ description: |-
   **Beta** — breaking changes may still occur without major version bump.
 
   Returns a cursor-paginated list of providers, without their public configuration.
+
+  Requires the `promotions:list` API key scope.
 x-required-scope: promotions:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml

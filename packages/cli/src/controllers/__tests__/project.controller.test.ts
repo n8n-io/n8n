@@ -321,6 +321,7 @@ describe('ProjectController', () => {
 					email: 'admin@n8n.io',
 					firstName: 'Ada',
 					lastName: 'Min',
+					kind: 'person',
 					globalRole: { slug: 'global:admin', displayName: 'Admin' },
 				},
 			]);
@@ -363,9 +364,13 @@ describe('ProjectController', () => {
 
 			const result = await controller.getProject(scopedReq, makeRes(), 'p1');
 
-			expect(result.relations).toEqual([{ ...adminUser, role: 'project:editor' }]);
+			expect(result.relations).toEqual([{ ...adminUser, kind: 'person', role: 'project:editor' }]);
 			expect(result.implicitMembers).toEqual([
-				{ ...adminUser, globalRole: { slug: 'global:admin', displayName: 'Admin' } },
+				{
+					...adminUser,
+					kind: 'person',
+					globalRole: { slug: 'global:admin', displayName: 'Admin' },
+				},
 			]);
 		});
 
@@ -399,7 +404,13 @@ describe('ProjectController', () => {
 
 			const result = await controller.getProject(scopedReq, makeRes(), 'p1');
 
-			const member = { id: 'sa-1', email: '', firstName: 'Deploy bot', lastName: '' };
+			const member = {
+				id: 'sa-1',
+				email: '',
+				firstName: 'Deploy bot',
+				lastName: '',
+				kind: 'service',
+			};
 			expect(result.relations).toEqual([{ ...member, role: 'project:editor' }]);
 			expect(result.implicitMembers).toEqual([
 				{ ...member, globalRole: { slug: 'global:admin', displayName: 'Admin' } },

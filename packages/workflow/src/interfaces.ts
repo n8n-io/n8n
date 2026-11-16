@@ -21,6 +21,7 @@ import type {
 	LOG_LEVELS,
 	BINARY_MODE_COMBINED,
 	BINARY_MODE_SEPARATE,
+	WORKFLOW_ENGINE_TYPES,
 } from './constants';
 
 import type {
@@ -45,6 +46,7 @@ import type { Result } from '@n8n/utils/result';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
+import type { RequestPath, RequestUrl } from './request-target';
 
 export type { WorkflowExecuteModeValues as WorkflowExecuteMode } from './execution-context';
 
@@ -469,7 +471,7 @@ export interface ICredentialType {
 		this: IHttpRequestHelper,
 		credentials: ICredentialDataDecryptedObject,
 	) => Promise<IDataObject>;
-	test?: ICredentialTestRequest;
+	test?: ICredentialTestRequest | ICredentialTestFunction;
 	genericAuth?: boolean;
 	httpRequestNode?: ICredentialHttpRequestNode;
 	supportedNodes?: string[];
@@ -606,6 +608,16 @@ export type IgnoreStatusErrorConfig = {
 	/** Ignore HTTP status errors except for the specified status codes */
 	except: number[];
 };
+
+type RequestTargetField = 'url' | 'uri';
+
+export type WithRequestTarget<T, K extends RequestTargetField = 'url'> = Omit<
+	T,
+	RequestTargetField | 'baseURL'
+> & { [P in Exclude<RequestTargetField, K> & keyof T]?: undefined } & (
+		| ({ baseURL: string } & Record<K, RequestPath>)
+		| ({ baseURL?: undefined } & Record<K, RequestUrl>)
+	);
 
 /** used in helpers.httpRequest(WithAuthentication) */
 export interface IHttpRequestOptions {
@@ -1047,17 +1059,24 @@ export interface NodeEgressFilter {
 	validateRedirectSync(url: string): void;
 }
 
+export type LegacyRequestOptions =
+	| IRequestOptions
+	| WithRequestTarget<IRequestOptions, 'uri'>
+	| WithRequestTarget<IRequestOptions, 'url'>;
+
 export interface RequestHelperFunctions {
-	httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
+	httpRequest(
+		requestOptions: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions>,
+	): Promise<any>;
 	httpRequestWithAuthentication(
 		this: IAllExecuteFunctions,
 		credentialsType: string,
-		requestOptions: IHttpRequestOptions,
+		requestOptions: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions>,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
 	): Promise<any>;
 	requestWithAuthenticationPaginated(
 		this: IAllExecuteFunctions,
-		requestOptions: IRequestOptions,
+		requestOptions: LegacyRequestOptions,
 		itemIndex: number,
 		paginationOptions: PaginationOptions,
 		credentialsType?: string,
@@ -1069,7 +1088,7 @@ export interface RequestHelperFunctions {
 	 * @deprecated Use .httpRequest instead
 	 * @see RequestHelperFunctions.httpRequest
 	 */
-	request(uriOrObject: string | IRequestOptions, options?: IRequestOptions): Promise<any>;
+	request(uriOrObject: string | LegacyRequestOptions, options?: LegacyRequestOptions): Promise<any>;
 	/**
 	 * @deprecated Use .httpRequestWithAuthentication instead
 	 * @see RequestHelperFunctions.requestWithAuthentication
@@ -1077,7 +1096,7 @@ export interface RequestHelperFunctions {
 	requestWithAuthentication(
 		this: IAllExecuteFunctions,
 		credentialsType: string,
-		requestOptions: IRequestOptions,
+		requestOptions: LegacyRequestOptions,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
 		itemIndex?: number,
 	): Promise<any>;
@@ -1088,7 +1107,7 @@ export interface RequestHelperFunctions {
 	requestOAuth1(
 		this: IAllExecuteFunctions,
 		credentialsType: string,
-		requestOptions: IRequestOptions,
+		requestOptions: LegacyRequestOptions,
 	): Promise<any>;
 	/**
 	 * @deprecated Use .httpRequestWithAuthentication instead
@@ -1097,7 +1116,7 @@ export interface RequestHelperFunctions {
 	requestOAuth2(
 		this: IAllExecuteFunctions,
 		credentialsType: string,
-		requestOptions: IRequestOptions,
+		requestOptions: LegacyRequestOptions,
 		oAuth2Options?: IOAuth2Options,
 	): Promise<any>;
 	refreshOAuth2Token(
@@ -3848,6 +3867,7 @@ interface IWorkflowHistory {
 	connections: IConnections;
 	nodeGroups: IWorkflowGroup[];
 	authors: string;
+	settings?: IWorkflowSettings;
 	name: string | null;
 	description: string | null;
 	createdAt: Date;
@@ -3913,6 +3933,8 @@ export interface IWorkflowExecutionDataProcess {
 	pinData?: IPinData;
 	retryOf?: string | null;
 	pushRef?: string;
+	/** The user who owns `pushRef`, set only on a worker from the job data. */
+	pushRefUserId?: string;
 	startNodes?: StartNodeData[];
 	workflowData: IWorkflowBase;
 	userId?: string;
@@ -4115,6 +4137,8 @@ export interface IWorkflowExecuteAdditionalData {
 	sendDataToUI?: (type: string, data: IDataObject | IDataObject[]) => void;
 	/** Editor session of a top-level run. Not passed on to sub-executions. */
 	pushRef?: string;
+	/** The user who owns `pushRef`. */
+	pushRefUserId?: string;
 	formBaseUrl: string;
 	formWaitingBaseUrl: string;
 	formTestBaseUrl: string;
@@ -4214,6 +4238,8 @@ export namespace WorkflowSettings {
 
 export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BINARY_MODE_COMBINED;
 
+export type WorkflowEngineType = (typeof WORKFLOW_ENGINE_TYPES)[number];
+
 export interface IWorkflowSettings {
 	timezone?: 'DEFAULT' | string;
 	errorWorkflow?: 'DEFAULT' | string;
@@ -4225,7 +4251,7 @@ export interface IWorkflowSettings {
 	saveExecutionProgress?: 'DEFAULT' | boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
-	engineType?: 'v1' | 'v2';
+	engineType?: WorkflowEngineType;
 	binaryMode?: WorkflowSettingsBinaryMode;
 	timeSavedPerExecution?: number;
 	timeSavedMode?: 'fixed' | 'dynamic';
@@ -4390,6 +4416,8 @@ export interface INodeGraphItem {
 	toolSettings?: IDataObject; //various langchain tool's settings
 	sql?: string; //merge node combineBySql, cloud only
 	workflow_id?: string; //@n8n/n8n-nodes-langchain.toolWorkflow and n8n-nodes-base.executeWorkflow
+	agent_source?: 'inline' | 'referenced'; // n8n-nodes-base.messageAnAgent(Tool)
+	agent_id?: string; // n8n-nodes-base.messageAnAgent(Tool), referenced agent with a fixed id
 	response_mode?: string; // @n8n/n8n-nodes-langchain.chatTrigger, n8n-nodes-base.webhook selected response mode
 	public_chat?: boolean; // @n8n/n8n-nodes-langchain.chatTrigger
 	runs?: number;
@@ -4681,6 +4709,10 @@ export interface IUserSettings {
 	};
 	mcpJsonNudge?: {
 		impressions: number;
+	};
+	mcpPreferencesNote?: {
+		impressions: number;
+		lastShownAt?: number;
 	};
 }
 

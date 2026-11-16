@@ -122,8 +122,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		pageSize = 50,
 	): Promise<{ data: McpAgent[]; count: number }> {
 		const { data, count } = await fetchMcpAgents(rootStore.restApiContext, {
-			skip: (page - 1) * pageSize,
-			take: pageSize,
+			offset: (page - 1) * pageSize,
+			limit: pageSize,
 			availableInMCP: true,
 		});
 		return { data, count };
@@ -414,8 +414,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	}
 
 	async function getMcpEligibleAgents(options?: {
-		take?: number;
-		skip?: number;
+		limit?: number;
+		offset?: number;
 		query?: string;
 	}): Promise<{ count: number; data: McpAgent[] }> {
 		return await fetchMcpAgents(rootStore.restApiContext, options);

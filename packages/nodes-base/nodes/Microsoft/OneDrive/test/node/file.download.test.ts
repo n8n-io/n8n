@@ -1,7 +1,8 @@
 import type { IncomingMessage } from 'http';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import { type IHttpRequestMethods, type IExecuteFunctions, UnexpectedError } from 'n8n-workflow';
+import type { IHttpRequestMethods, IExecuteFunctions } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import * as genericFunctions from '../../GenericFunctions';
 import { MicrosoftOneDrive } from '../../MicrosoftOneDrive.node';
@@ -10,7 +11,7 @@ import type * as _importType0 from '../../GenericFunctions';
 vi.mock('../../GenericFunctions', async () => ({
 	...(await vi.importActual<typeof _importType0>('../../GenericFunctions')),
 	microsoftApiRequest: vi.fn(async function (_: IHttpRequestMethods, resource: string) {
-		if (resource === '/drive/items/fileID') {
+		if (String(resource) === '/items/fileID') {
 			return {
 				name: 'MyFile',
 				'@microsoft.graph.downloadUrl': 'https://test.com/file',
@@ -19,7 +20,7 @@ vi.mock('../../GenericFunctions', async () => ({
 				},
 			};
 		}
-		if (resource === '/drive/items/fileID/content') {
+		if (String(resource) === '/items/fileID/content') {
 			throw new UnexpectedError('Error');
 		}
 	}),

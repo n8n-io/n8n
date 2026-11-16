@@ -8,10 +8,12 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IRequestOptions,
+	RequestUrl,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import {
+	getApiUrl,
 	getFields,
 	getPortals,
 	getScripts,
@@ -23,6 +25,7 @@ import {
 	parseQuery,
 	parseScripts,
 	parseSort,
+	toPathValue,
 } from './GenericFunctions';
 
 export class FileMaker implements INodeType {
@@ -32,7 +35,8 @@ export class FileMaker implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:filemaker.png',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Retrieve data from the FileMaker data API',
 		defaults: {
 			name: 'FileMaker',
@@ -684,20 +688,19 @@ export class FileMaker implements INodeType {
 			throw new NodeOperationError(this.getNode(), error as string);
 		}
 
-		let requestOptions: IRequestOptions;
-
 		const host = credentials.host as string;
 		const database = credentials.db as string;
 
-		const url = `https://${host}/fmi/data/v1`;
+		const url = getApiUrl(host);
 
 		const action = this.getNodeParameter('action', 0) as string;
+		const { typeVersion } = this.getNode();
 
 		for (let i = 0; i < items.length; i++) {
 			try {
 				// Reset all values
-				requestOptions = {
-					uri: '',
+				let uri: RequestUrl;
+				const requestOptions: Omit<IRequestOptions, 'uri' | 'url' | 'baseURL'> = {
 					headers: {
 						Authorization: `Bearer ${token}`,
 					},
@@ -705,17 +708,17 @@ export class FileMaker implements INodeType {
 					json: true,
 				};
 
-				const layout = this.getNodeParameter('layout', i) as string;
+				const layout = toPathValue(typeVersion, this.getNodeParameter('layout', i) as string);
 
 				if (action === 'record') {
 					const recid = this.getNodeParameter('recid', i) as string;
-					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
+					uri = requestUrl`${url}/databases/${database}/layouts/${layout}/records/${recid}`;
 					requestOptions.qs = {
 						portal: JSON.stringify(parsePortals.call(this, i)),
 						...parseScripts.call(this, i),
 					};
 				} else if (action === 'records') {
-					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records`;
+					uri = requestUrl`${url}/databases/${database}/layouts/${layout}/records`;
 					requestOptions.qs = {
 						_offset: this.getNodeParameter('offset', i),
 						_limit: this.getNodeParameter('limit', i),
@@ -727,7 +730,7 @@ export class FileMaker implements INodeType {
 						requestOptions.body.sort = sort;
 					}
 				} else if (action === 'find') {
-					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/_find`;
+					uri = requestUrl`${url}/databases/${database}/layouts/${layout}/_find`;
 					requestOptions.method = 'POST';
 					requestOptions.body = {
 						query: parseQuery.call(this, i),
@@ -741,7 +744,7 @@ export class FileMaker implements INodeType {
 						requestOptions.body.sort = sort;
 					}
 				} else if (action === 'create') {
-					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records`;
+					uri = requestUrl`${url}/databases/${database}/layouts/${layout}/records`;
 					requestOptions.method = 'POST';
 					requestOptions.headers!['Content-Type'] = 'application/json';
 
@@ -753,7 +756,7 @@ export class FileMaker implements INodeType {
 					};
 				} else if (action === 'edit') {
 					const recid = this.getNodeParameter('recid', i) as string;
-					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
+					uri = requestUrl`${url}/databases/${database}/layouts/${layout}/records/${recid}`;
 					requestOptions.method = 'PATCH';
 					requestOptions.headers!['Content-Type'] = 'application/json';
 
@@ -764,15 +767,14 @@ export class FileMaker implements INodeType {
 						...parseScripts.call(this, i),
 					};
 				} else if (action === 'performscript') {
-					const scriptName = this.getNodeParameter('script', i) as string;
-					requestOptions.uri =
-						url + `/databases/${database}/layouts/${layout}/script/${scriptName}`;
+					const scriptName = toPathValue(typeVersion, this.getNodeParameter('script', i) as string);
+					uri = requestUrl`${url}/databases/${database}/layouts/${layout}/script/${scriptName}`;
 					requestOptions.qs = {
 						'script.param': this.getNodeParameter('scriptParam', i),
 					};
 				} else if (action === 'duplicate') {
 					const recid = this.getNodeParameter('recid', i) as string;
-					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
+					uri = requestUrl`${url}/databases/${database}/layouts/${layout}/records/${recid}`;
 					requestOptions.method = 'POST';
 					requestOptions.headers!['Content-Type'] = 'application/json';
 					requestOptions.qs = {
@@ -780,7 +782,7 @@ export class FileMaker implements INodeType {
 					};
 				} else if (action === 'delete') {
 					const recid = this.getNodeParameter('recid', i) as string;
-					requestOptions.uri = url + `/databases/${database}/layouts/${layout}/records/${recid}`;
+					uri = requestUrl`${url}/databases/${database}/layouts/${layout}/records/${recid}`;
 					requestOptions.method = 'DELETE';
 					requestOptions.qs = {
 						...parseScripts.call(this, i),
@@ -796,7 +798,7 @@ export class FileMaker implements INodeType {
 				// Now that the options are all set make the actual http request
 				let response;
 				try {
-					response = await this.helpers.request(requestOptions);
+					response = await this.helpers.request({ ...requestOptions, uri });
 				} catch (error) {
 					response = error.error;
 				}

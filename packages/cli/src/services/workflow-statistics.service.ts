@@ -3,6 +3,7 @@ import { EventService, isBillableExecution } from '@n8n/backend-services';
 import { DatabaseConfig } from '@n8n/config';
 import type { CrashedExecution } from '@n8n/db';
 import {
+	isPerson,
 	SettingsRepository,
 	StatisticsNames,
 	WorkflowRepository,
@@ -242,7 +243,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
 			userId = owner?.id ?? null;
 
-			if (owner && !owner.settings?.userActivated) {
+			if (owner && isPerson(owner) && !owner.settings?.userActivated) {
 				await this.userService.updateSettings(owner.id, {
 					firstSuccessfulWorkflowId: workflowId,
 					userActivated: true,

@@ -41,7 +41,10 @@ import {
 } from '../execution-lifecycle-hooks';
 import { UnsavedManualExecutionService } from '../unsaved-manual-execution.service';
 
-import { ExecutionPersistence } from '@/executions/execution-persistence';
+import {
+	ExecutionPersistence,
+	type ExecutionOutcomeSaveResult,
+} from '@/executions/execution-persistence';
 
 import { ExternalHooks } from '@/external-hooks';
 import { MemoryStoppedExecutions } from '@/memory-guard/memory-stopped-executions';
@@ -223,6 +226,9 @@ describe('Execution Lifecycle Hooks', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		executionPersistence.saveExecutionOutcome.mockResolvedValue({ updated: true, ended: true });
+		executionPersistence.deleteInFlightExecution.mockResolvedValue({ ended: true });
+		executionPersistence.softDeleteWithOutcome.mockResolvedValue({ ended: true });
 		executionsConfig.preExecuteErrorCreatesExecution = false;
 		vi.stubEnv('N8N_ENV_FEAT_SUBWORKFLOW_PROGRESS', undefined);
 		userRepository.findOne.mockResolvedValue(mock<User>());
@@ -492,7 +498,10 @@ describe('Execution Lifecycle Hooks', () => {
 	const statisticsTests = () => {
 		describe('statistics events', () => {
 			it('workflowExecuteAfter should emit workflowExecutionCompleted statistics event', async () => {
-				executionPersistence.updateExistingExecution.mockResolvedValueOnce(true);
+				executionPersistence.saveExecutionOutcome.mockResolvedValueOnce({
+					updated: true,
+					ended: true,
+				});
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
@@ -599,8 +608,8 @@ describe('Execution Lifecycle Hooks', () => {
 				async (_mode, createHooks) => {
 					workflowData.settings = { saveDataErrorExecution: 'all' };
 					const saveStarted = createDeferredPromise();
-					const saveFinished = createDeferredPromise<boolean>();
-					executionPersistence.updateExistingExecution.mockImplementationOnce(async () => {
+					const saveFinished = createDeferredPromise<ExecutionOutcomeSaveResult>();
+					executionPersistence.saveExecutionOutcome.mockImplementationOnce(async () => {
 						saveStarted.resolve();
 						return await saveFinished.promise;
 					});
@@ -611,7 +620,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 					expect(recorder.contexts).toHaveLength(0);
 
-					saveFinished.resolve(true);
+					saveFinished.resolve({ updated: true, ended: true });
 					await completion;
 
 					expect(recorder.contexts).toHaveLength(1);
@@ -665,6 +674,62 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(await runModuleHandler(workerHooks)).toMatchObject({ executedInThisProcess: true });
 				expect(await runModuleHandler(regularHooks)).toMatchObject({
 					executedInThisProcess: true,
+				});
+			});
+
+			describe('endedByThisSave', () => {
+				it.each([
+					[
+						'regular',
+						() =>
+							getLifecycleHooksForRegularMain(
+								{ executionMode: 'trigger', workflowData },
+								executionId,
+							),
+					],
+					[
+						'worker',
+						() =>
+							getLifecycleHooksForScalingWorker(
+								{ executionMode: 'trigger', workflowData },
+								executionId,
+							),
+					],
+					[
+						'sub-execution',
+						() => getLifecycleHooksForSubExecutions('integrated', executionId, workflowData),
+					],
+				] as const)('should follow the result of the %s save', async (_mode, createHooks) => {
+					workflowData.settings = { saveDataSuccessExecution: 'all' };
+					const hooks = createHooks();
+
+					expect(await runModuleHandler(hooks)).toMatchObject({ endedByThisSave: true });
+
+					executionPersistence.saveExecutionOutcome.mockResolvedValueOnce({
+						updated: true,
+						ended: false,
+					});
+					expect(await runModuleHandler(hooks)).toMatchObject({ endedByThisSave: false });
+				});
+
+				it('should follow the result of deleting a run that is not saved', async () => {
+					workflowData.settings = { saveDataSuccessExecution: 'none' };
+					const hooks = getLifecycleHooksForRegularMain(
+						{ executionMode: 'trigger', workflowData },
+						executionId,
+					);
+					executionPersistence.deleteInFlightExecution.mockResolvedValueOnce({ ended: false });
+
+					expect(await runModuleHandler(hooks)).toMatchObject({ endedByThisSave: false });
+				});
+
+				it('should be false for a process that only enqueued the run', async () => {
+					const hooks = getLifecycleHooksForScalingMain(
+						{ executionMode: 'trigger', workflowData },
+						executionId,
+					);
+
+					expect(await runModuleHandler(hooks)).toMatchObject({ endedByThisSave: false });
 				});
 			});
 		});
@@ -740,7 +805,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [stoppedRun(), {}]);
 
-				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledWith(
 					executionId,
 					expect.objectContaining({
 						status: 'error',
@@ -773,7 +838,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
 
-				expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+				expect(executionPersistence.saveExecutionOutcome).not.toHaveBeenCalled();
 				workflowData.settings = {};
 			});
 
@@ -788,7 +853,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
-				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledWith(
 					executionId,
 					expect.objectContaining({ status: 'success' }),
 					{ requireNotCanceled: true },
@@ -808,11 +873,10 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
 
-				expect(push.send).not.toHaveBeenCalledWith(
-					expect.objectContaining({ type: 'nodeExecuteAfterData' }),
-					pushRef,
-					true,
-				);
+				const dataPushes = vi
+					.mocked(push.send)
+					.mock.calls.filter(([message]) => message.type === 'nodeExecuteAfterData');
+				expect(dataPushes).toEqual([]);
 			});
 
 			it('should save progress only while the execution is running', async () => {
@@ -902,6 +966,7 @@ describe('Execution Lifecycle Hooks', () => {
 						data: { executionId, nodeName, sequenceNumber: 0, data: taskStartedData },
 					},
 					pushRef,
+					userId,
 				);
 			});
 		});
@@ -980,6 +1045,7 @@ describe('Execution Lifecycle Hooks', () => {
 						},
 					},
 					pushRef,
+					userId,
 				);
 
 				expect(push.send).toHaveBeenNthCalledWith(
@@ -996,6 +1062,7 @@ describe('Execution Lifecycle Hooks', () => {
 						},
 					},
 					pushRef,
+					userId,
 					true,
 				);
 			});
@@ -1068,6 +1135,7 @@ describe('Execution Lifecycle Hooks', () => {
 					1,
 					expect.objectContaining({ type: 'nodeExecuteAfter' }),
 					pushRef,
+					userId,
 				);
 
 				// nodeExecuteAfterData contains redacted data
@@ -1083,6 +1151,7 @@ describe('Execution Lifecycle Hooks', () => {
 						},
 					},
 					pushRef,
+					userId,
 					true,
 				);
 			});
@@ -1104,6 +1173,39 @@ describe('Execution Lifecycle Hooks', () => {
 
 				expect(userRepository.findOne).toHaveBeenCalled();
 				expect(redactionProxy.processExecution).toHaveBeenCalledTimes(1);
+			});
+
+			it('should redact data for the user who owns the push reference', async () => {
+				const pushRefUserId = 'push-owner';
+				const pushOwner = mock<User>({ id: pushRefUserId });
+				userRepository.findOne.mockResolvedValue(pushOwner);
+				lifecycleHooks = getLifecycleHooksForRegularMain(
+					{
+						executionMode: 'manual',
+						workflowData,
+						pushRef,
+						pushRefUserId,
+						userId: 'run-user',
+					},
+					executionId,
+				);
+
+				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+
+				expect(userRepository.findOne).toHaveBeenCalledWith({
+					where: { id: pushRefUserId },
+					relations: ['role'],
+				});
+				expect(redactionProxy.processExecution).toHaveBeenCalledWith(expect.anything(), {
+					user: pushOwner,
+					keepOriginal: true,
+				});
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteAfterData' }),
+					pushRef,
+					pushRefUserId,
+					true,
+				);
 			});
 
 			it('should skip nodeExecuteAfterData push when userId is not provided (e.g. webhook execution missing userId)', async () => {
@@ -1129,13 +1231,13 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(push.send).toHaveBeenCalledWith(
 					expect.objectContaining({ type: 'nodeExecuteAfter' }),
 					pushRef,
+					undefined,
 				);
 
-				expect(push.send).not.toHaveBeenCalledWith(
-					expect.objectContaining({ type: 'nodeExecuteAfterData' }),
-					pushRef,
-					true,
-				);
+				const dataPushes = vi
+					.mocked(push.send)
+					.mock.calls.filter(([message]) => message.type === 'nodeExecuteAfterData');
+				expect(dataPushes).toEqual([]);
 			});
 
 			it('should skip nodeExecuteAfterData push when user cannot be resolved (fail-closed)', async () => {
@@ -1160,14 +1262,14 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(push.send).toHaveBeenCalledWith(
 					expect.objectContaining({ type: 'nodeExecuteAfter' }),
 					pushRef,
+					userId,
 				);
 
 				// nodeExecuteAfterData is NOT sent
-				expect(push.send).not.toHaveBeenCalledWith(
-					expect.objectContaining({ type: 'nodeExecuteAfterData' }),
-					pushRef,
-					true,
-				);
+				const dataPushes = vi
+					.mocked(push.send)
+					.mock.calls.filter(([message]) => message.type === 'nodeExecuteAfterData');
+				expect(dataPushes).toEqual([]);
 
 				expect(redactionProxy.processExecution).not.toHaveBeenCalled();
 			});
@@ -1191,6 +1293,7 @@ describe('Execution Lifecycle Hooks', () => {
 						},
 					},
 					pushRef,
+					userId,
 				);
 			});
 
@@ -1269,6 +1372,7 @@ describe('Execution Lifecycle Hooks', () => {
 						}),
 					}),
 					pushRef,
+					userId,
 				);
 			});
 
@@ -1286,6 +1390,7 @@ describe('Execution Lifecycle Hooks', () => {
 						}),
 					}),
 					pushRef,
+					userId,
 				);
 				expect(redactionProxy.processExecution).not.toHaveBeenCalled();
 			});
@@ -1302,6 +1407,7 @@ describe('Execution Lifecycle Hooks', () => {
 						}),
 					}),
 					pushRef,
+					userId,
 				);
 			});
 		});
@@ -1319,6 +1425,7 @@ describe('Execution Lifecycle Hooks', () => {
 						},
 					},
 					pushRef,
+					userId,
 				);
 			});
 
@@ -1331,6 +1438,7 @@ describe('Execution Lifecycle Hooks', () => {
 						data: { executionId },
 					},
 					pushRef,
+					userId,
 				);
 			});
 
@@ -1368,7 +1476,7 @@ describe('Execution Lifecycle Hooks', () => {
 				it('should update execution with proper data', async () => {
 					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
-					expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+					expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledWith(
 						executionId,
 						expect.objectContaining({
 							finished: true,
@@ -1393,7 +1501,7 @@ describe('Execution Lifecycle Hooks', () => {
 							{ workflowId, executionId, storedAt: 'db' },
 							{ status: run.status, finished: run.finished, stoppedAt: run.stoppedAt },
 						);
-						expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+						expect(executionPersistence.saveExecutionOutcome).not.toHaveBeenCalled();
 					},
 				);
 
@@ -1423,14 +1531,13 @@ describe('Execution Lifecycle Hooks', () => {
 
 						expect(executionRepository.softDelete).toHaveBeenCalledWith(executionId);
 						expect(unsavedManualExecutionService.keep).toHaveBeenCalledWith(executionId);
-						expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+						expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledWith(
 							executionId,
 							expect.objectContaining({ status: 'error', data: failedRun.data }),
 							{ requireNotCanceled: true, includeDeleted: true },
 						);
 						const [deleteOrder] = executionRepository.softDelete.mock.invocationCallOrder;
-						const [writeOrder] =
-							executionPersistence.updateExistingExecution.mock.invocationCallOrder;
+						const [writeOrder] = executionPersistence.saveExecutionOutcome.mock.invocationCallOrder;
 						expect(deleteOrder).toBeLessThan(writeOrder);
 					});
 
@@ -1445,24 +1552,29 @@ describe('Execution Lifecycle Hooks', () => {
 
 						await lifecycleHooks.runHook('workflowExecuteAfter', [canceledRun, {}]);
 
-						expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+						expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledWith(
 							executionId,
 							expect.objectContaining({ status: 'canceled' }),
 							{ includeDeleted: true },
 						);
 					});
 
-					it('should not keep run data when no user can read the execution', async () => {
+					it('should soft delete with the final state in one write when no user can read the execution', async () => {
 						unsavedManualExecutionService.keep.mockResolvedValue(false);
 
 						await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
-						expect(executionRepository.softDelete).toHaveBeenCalledWith(executionId);
-						expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+						expect(executionPersistence.softDeleteWithOutcome).toHaveBeenCalledWith(executionId, {
+							status: 'success',
+							finished: true,
+							stoppedAt: successfulRun.stoppedAt,
+						});
+						expect(executionRepository.softDelete).not.toHaveBeenCalled();
+						expect(executionPersistence.saveExecutionOutcome).not.toHaveBeenCalled();
 					});
 
 					it('should not fail the run when keeping its data fails', async () => {
-						executionPersistence.updateExistingExecution.mockRejectedValueOnce(
+						executionPersistence.saveExecutionOutcome.mockRejectedValueOnce(
 							new Error('Storage unavailable'),
 						);
 
@@ -1637,6 +1749,85 @@ describe('Execution Lifecycle Hooks', () => {
 					'workflows/test-workflow-id/executions/temp/binary_data/123',
 					'workflows/test-workflow-id/executions/test-execution-id/binary_data/123',
 				);
+			});
+		});
+
+		describe('user of the pushRef', () => {
+			const EDITOR_ID = 'editor';
+
+			it('sends push events to the stored user of the pushRef', async () => {
+				const executionData = Object.assign(
+					createRunExecutionData({ resultData: { runData: {} } }),
+					{
+						pushRefUserId: EDITOR_ID,
+					},
+				);
+				lifecycleHooks = getLifecycleHooksForRegularMain(
+					{
+						executionMode: 'manual',
+						workflowData,
+						pushRef,
+						retryOf,
+						userId: 'publisher',
+						executionData,
+					},
+					executionId,
+				);
+
+				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteBefore' }),
+					pushRef,
+					EDITOR_ID,
+				);
+			});
+
+			it('sends push events to the stored manual run user when no pushRef user is stored', async () => {
+				const executionData = createRunExecutionData({
+					resultData: { runData: {} },
+					manualData: { userId: EDITOR_ID },
+				});
+				lifecycleHooks = getLifecycleHooksForRegularMain(
+					{
+						executionMode: 'manual',
+						workflowData,
+						pushRef,
+						retryOf,
+						userId: undefined,
+						executionData,
+					},
+					executionId,
+				);
+
+				await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+
+				expect(push.send).toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'nodeExecuteBefore' }),
+					pushRef,
+					EDITOR_ID,
+				);
+			});
+
+			it('stores the user of the pushRef when a manual run goes to waiting', async () => {
+				lifecycleHooks = createHooks();
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
+
+				const payload = executionPersistence.saveExecutionOutcome.mock.calls[0][1];
+				expect(payload.data?.pushRefUserId).toBe(userId);
+			});
+
+			it('stores no user of the pushRef when a manual run without a pushRef goes to waiting', async () => {
+				lifecycleHooks = getLifecycleHooksForRegularMain(
+					{ executionMode: 'manual', workflowData, retryOf, userId },
+					executionId,
+				);
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
+
+				const payload = executionPersistence.saveExecutionOutcome.mock.calls[0][1];
+				expect(payload.data?.pushRefUserId).toBeUndefined();
 			});
 		});
 
@@ -1954,6 +2145,45 @@ describe('Execution Lifecycle Hooks', () => {
 			]);
 		});
 
+		describe('user of the pushRef', () => {
+			const createHooksWithUser = () =>
+				getLifecycleHooksForScalingWorker(
+					{ executionMode: 'manual', workflowData, pushRef, retryOf, userId },
+					executionId,
+				);
+
+			it('stores the user of the pushRef when a manual run goes to waiting', async () => {
+				lifecycleHooks = createHooksWithUser();
+
+				await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
+
+				const payload = executionPersistence.saveExecutionOutcome.mock.calls[0][1];
+				expect(payload.data?.pushRefUserId).toBe(userId);
+			});
+
+			describe('on a worker process', () => {
+				beforeEach(() => {
+					mockInstance(InstanceSettings, { isWorker: true });
+				});
+
+				afterEach(() => {
+					mockInstance(InstanceSettings);
+				});
+
+				it('sends push events to the user of the pushRef on a worker', async () => {
+					lifecycleHooks = createHooksWithUser();
+
+					await lifecycleHooks.runHook('nodeExecuteBefore', [nodeName, taskStartedData]);
+
+					expect(push.send).toHaveBeenCalledWith(
+						expect.objectContaining({ type: 'nodeExecuteBefore' }),
+						pushRef,
+						userId,
+					);
+				});
+			});
+		});
+
 		describe('saving static data', () => {
 			it('should skip saving static data for manual executions', async () => {
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, staticData]);
@@ -2078,7 +2308,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
 
-				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledWith(
 					executionId,
 					expect.objectContaining({
 						finished: true,
@@ -2090,11 +2320,14 @@ describe('Execution Lifecycle Hooks', () => {
 
 			it('should update execution data without a guard condition when the worker itself reports canceled', async () => {
 				const lifecycleHooks = createHooks('trigger');
-				executionPersistence.updateExistingExecution.mockResolvedValueOnce(true);
+				executionPersistence.saveExecutionOutcome.mockResolvedValueOnce({
+					updated: true,
+					ended: true,
+				});
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [canceledRunWithMetadata, {}]);
 
-				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledWith(
 					executionId,
 					expect.objectContaining({
 						finished: false,
@@ -2110,7 +2343,10 @@ describe('Execution Lifecycle Hooks', () => {
 
 			it('should not emit workflowExecutionCompleted when the guarded update is blocked', async () => {
 				const lifecycleHooks = createHooks('trigger');
-				executionPersistence.updateExistingExecution.mockResolvedValueOnce(false);
+				executionPersistence.saveExecutionOutcome.mockResolvedValueOnce({
+					updated: false,
+					ended: false,
+				});
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
 
@@ -2122,7 +2358,10 @@ describe('Execution Lifecycle Hooks', () => {
 
 			it('should still emit workflowExecutionCompleted when the update succeeds', async () => {
 				const lifecycleHooks = createHooks('trigger');
-				executionPersistence.updateExistingExecution.mockResolvedValueOnce(true);
+				executionPersistence.saveExecutionOutcome.mockResolvedValueOnce({
+					updated: true,
+					ended: true,
+				});
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRunWithMetadata, {}]);
 
@@ -2135,8 +2374,8 @@ describe('Execution Lifecycle Hooks', () => {
 
 		describe('discarding run data for unsaved successful executions', () => {
 			const getUpdatePayload = () => {
-				expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
-				return executionPersistence.updateExistingExecution.mock.calls[0][1];
+				expect(executionPersistence.saveExecutionOutcome).toHaveBeenCalledTimes(1);
+				return executionPersistence.saveExecutionOutcome.mock.calls[0][1];
 			};
 
 			afterEach(() => {
@@ -2429,7 +2668,7 @@ describe('Execution Lifecycle Hooks', () => {
 					);
 					expect(
 						binaryDataService.duplicateBinaryData.mock.invocationCallOrder.at(-1),
-					).toBeLessThan(executionPersistence.updateExistingExecution.mock.invocationCallOrder[0]);
+					).toBeLessThan(executionPersistence.saveExecutionOutcome.mock.invocationCallOrder[0]);
 				},
 			);
 
@@ -2459,6 +2698,7 @@ describe('Execution Lifecycle Hooks', () => {
 				parameters: {},
 			};
 			const rootPushRef = 'root-push-ref';
+			const rootPushRefUserId = 'root-user-id';
 
 			function buildHooks(childWorkflowData: IWorkflowBase = workflowData) {
 				return getLifecycleHooksForSubExecutions(
@@ -2466,7 +2706,12 @@ describe('Execution Lifecycle Hooks', () => {
 					executionId,
 					childWorkflowData,
 					undefined,
-					{ parentExecution, parentNode, parentPushRef: rootPushRef },
+					{
+						parentExecution,
+						parentNode,
+						parentPushRef: rootPushRef,
+						parentPushRefUserId: rootPushRefUserId,
+					},
 				);
 			}
 
@@ -2545,6 +2790,7 @@ describe('Execution Lifecycle Hooks', () => {
 						},
 					},
 					rootPushRef,
+					rootPushRefUserId,
 				);
 			});
 

@@ -1,5 +1,5 @@
 import type { GetQuickConnectApiKeyDto } from '@n8n/api-types';
-import type { AuthenticatedRequest, User } from '@n8n/db';
+import type { AuthenticatedRequest, Person } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { QuickConnectController } from '../quick-connect.controller';
@@ -16,11 +16,11 @@ describe('QuickConnectController', () => {
 
 	describe('getCredentialData', () => {
 		it('should call service with correct parameters', async () => {
-			const user = mock<User>({
+			const person = mock<Person>({
 				id: 'user-123',
 				email: 'test@example.com',
 			});
-			const req = mock<AuthenticatedRequest>({ user });
+			const req = mock<AuthenticatedRequest>({ user: person });
 			const body: GetQuickConnectApiKeyDto = {
 				quickConnectType: 'firecrawl',
 			};
@@ -30,16 +30,16 @@ describe('QuickConnectController', () => {
 
 			const result = await controller.getCredentialData(req, {}, body);
 
-			expect(service.getCredentialData).toHaveBeenCalledWith('firecrawl', user);
+			expect(service.getCredentialData).toHaveBeenCalledWith('firecrawl', person);
 			expect(result).toEqual(expectedResult);
 		});
 
 		it('should pass through service errors', async () => {
-			const user = mock<User>({
+			const person = mock<Person>({
 				id: 'user-123',
 				email: 'test@example.com',
 			});
-			const req = mock<AuthenticatedRequest>({ user });
+			const req = mock<AuthenticatedRequest>({ user: person });
 			const body: GetQuickConnectApiKeyDto = {
 				quickConnectType: 'invalid',
 			};
@@ -48,15 +48,15 @@ describe('QuickConnectController', () => {
 			service.getCredentialData = vi.fn().mockRejectedValue(error);
 
 			await expect(controller.getCredentialData(req, {}, body)).rejects.toThrow(error);
-			expect(service.getCredentialData).toHaveBeenCalledWith('invalid', user);
+			expect(service.getCredentialData).toHaveBeenCalledWith('invalid', person);
 		});
 
 		it('should handle different quickConnectTypes', async () => {
-			const user = mock<User>({
+			const person = mock<Person>({
 				id: 'user-456',
 				email: 'another@example.com',
 			});
-			const req = mock<AuthenticatedRequest>({ user });
+			const req = mock<AuthenticatedRequest>({ user: person });
 			const body: GetQuickConnectApiKeyDto = {
 				quickConnectType: 'custom-provider',
 			};
@@ -66,7 +66,7 @@ describe('QuickConnectController', () => {
 
 			const result = await controller.getCredentialData(req, {}, body);
 
-			expect(service.getCredentialData).toHaveBeenCalledWith('custom-provider', user);
+			expect(service.getCredentialData).toHaveBeenCalledWith('custom-provider', person);
 			expect(result).toEqual(expectedResult);
 		});
 	});

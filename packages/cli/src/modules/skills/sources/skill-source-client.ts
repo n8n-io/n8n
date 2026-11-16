@@ -65,6 +65,8 @@ export type FetchedSkill = {
 	fidelity: SkillSourceFidelityWarning[];
 	/** Paths of the remote files that the content leaves out, such as scripts. */
 	skippedFiles: string[];
+	/** The files in `skippedFiles` that n8n left out because it cannot store them. */
+	unstorableFiles?: string[];
 };
 
 /**

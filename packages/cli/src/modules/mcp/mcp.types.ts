@@ -197,6 +197,7 @@ export type UserConnectedToMCPEventPayload = {
 	http_status?: number;
 	mcp_apps_enabled?: boolean;
 	mcp_apps_variant?: McpAppsTelemetryVariant;
+	'$feature/140_mcp_empty_preferences_note'?: string;
 	error?: string;
 };
 

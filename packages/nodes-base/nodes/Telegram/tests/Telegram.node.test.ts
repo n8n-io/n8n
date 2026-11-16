@@ -98,6 +98,9 @@ describe('Telegram node', () => {
 				'file_1.pdf',
 				'application/pdf',
 			);
+			expect(String(apiRequestSpy.mock.calls[1][5])).toBe(
+				'https://api.telegram.org/file/bottest-token/documents/file_1.pdf',
+			);
 		});
 
 		it('should fallback to application/octet-stream if the mime type cannot be determined', async () => {

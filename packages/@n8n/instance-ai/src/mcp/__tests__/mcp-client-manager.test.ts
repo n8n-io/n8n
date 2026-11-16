@@ -17,7 +17,7 @@ vi.mock('../../agent/sanitize-mcp-schemas', () => ({
 
 import { McpClient } from '@n8n/agents';
 import { createResultError, createResultOk } from '@n8n/utils/result';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { sanitizeMcpToolSchemas } from '../../agent/sanitize-mcp-schemas';
 import type { SsrfUrlValidator } from '../mcp-client-manager';

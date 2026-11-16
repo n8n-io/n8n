@@ -18,6 +18,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		WorkflowEditorLockedError,
 		FolderResolutionError,
 		formatRedactedError,
+		resolveSampleFileMarkers: (item: unknown) => ({ json: item }),
 		wrapUntrustedData(content: string, source: string, label?: string): string {
 			const esc = (s: string) =>
 				s
@@ -80,10 +81,8 @@ import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	ASSISTANT_SKILLS_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
@@ -1963,7 +1962,7 @@ import {
 } from '@n8n/backend-services';
 import { type DataTableRepository, type DataTableService } from '@n8n/backend-module-data-table';
 
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	AppNamespaceTakenError,
 	WorkflowEditorLockedError,
@@ -2118,6 +2117,29 @@ function createNodeAdapterServiceForTests(
 		nodeCatalogService,
 	};
 }
+
+describe('createContext models', () => {
+	it('keeps the main and utility models on the context', () => {
+		const { service, mockUser } = createNodeAdapterServiceForTests([]);
+		const utilityModelId = 'anthropic/claude-haiku-5-5';
+
+		const context = service.createContext(mockUser, {
+			modelId: 'anthropic/claude-opus-5-5',
+			utilityModelId,
+		});
+
+		expect(context.modelId).toBe('anthropic/claude-opus-5-5');
+		expect(context.utilityModelId).toBe(utilityModelId);
+	});
+
+	it('leaves the utility model unset when none is resolved', () => {
+		const { service, mockUser } = createNodeAdapterServiceForTests([]);
+
+		const context = service.createContext(mockUser, { modelId: 'openai/gpt-6.1-sol' });
+
+		expect(context).not.toHaveProperty('utilityModelId');
+	});
+});
 
 describe('executeNodeService adapter', () => {
 	const executeRequest = {
@@ -5187,6 +5209,27 @@ describe('createWorkflowAdapter', () => {
 			);
 		});
 
+		it('restores the version-scoped settings of the version', async () => {
+			const { adapter, mockWorkflowService, mockWorkflowHistoryService } =
+				createWorkflowAdapterForTests();
+			mockWorkflowHistoryService.getVersion.mockResolvedValue({
+				versionId: 'v-1',
+				nodes: [],
+				connections: {},
+				nodeGroups: [],
+				settings: { engineType: 'v1' },
+			});
+
+			await adapter.restoreVersion?.('wf-1', 'v-1');
+
+			expect(mockWorkflowService.update).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				'wf-1',
+				expect.objectContaining({ restoredVersionSettings: { engineType: 'v1' } }),
+			);
+		});
+
 		it('keeps a committed update when notifying open editors fails', async () => {
 			const { adapter, mockCollaborationService, mockLogger } = createWorkflowAdapterForTests();
 			mockCollaborationService.broadcastWorkflowUpdate.mockRejectedValue(new Error('push is down'));
@@ -6392,6 +6435,83 @@ describe('createExecutionAdapter run()', () => {
 		expect(runData.executionData?.manualData?.suppressErrorWorkflow).toBe(true);
 	});
 
+	describe('time-based Wait nodes', () => {
+		const workflowWithWaits = () => ({
+			id: 'wf-1',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1,
+					parameters: {},
+					position: [0, 0],
+				},
+				{
+					id: 'node-2',
+					name: 'Wait Before Retry',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					parameters: { resume: 'timeInterval', amount: 15, unit: 'seconds' },
+					position: [200, 0],
+				},
+				{
+					id: 'node-3',
+					name: 'Wait For Approval',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					parameters: { resume: 'webhook' },
+					position: [400, 0],
+				},
+				{
+					id: 'node-4',
+					name: 'Wait On Other Branch',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					parameters: { resume: 'timeInterval', amount: 30, unit: 'seconds' },
+					position: [400, 200],
+				},
+			],
+		});
+
+		const waitParameters = (nodes: INode[], name: string) =>
+			nodes.find((node) => node.name === name)?.parameters;
+
+		it('runs time-based waits without the delay in a verification run and reports them', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests(workflowWithWaits(), {
+				execution: makeExecution({
+					status: 'success',
+					runData: {
+						'Schedule Trigger': [makeTaskData([{ ok: true }])],
+						'Wait Before Retry': [makeTaskData([{ ok: true }])],
+					},
+				}),
+			});
+
+			const result = await adapter.run('wf-1', undefined, { isVerificationRun: true });
+
+			const { nodes } = mockWorkflowRunner.run.mock.calls[0][0].workflowData;
+			expect(waitParameters(nodes, 'Wait Before Retry')).toMatchObject({ amount: 0 });
+			expect(waitParameters(nodes, 'Wait For Approval')).toEqual({ resume: 'webhook' });
+			// The wait on the unreached branch is rewritten too, but the run did not reach it.
+			expect(waitParameters(nodes, 'Wait On Other Branch')).toMatchObject({ amount: 0 });
+			expect(result.executedNodeNames).toContain('Wait Before Retry');
+			expect(result.skippedWaitNodeNames).toEqual(['Wait Before Retry']);
+		});
+
+		it('keeps the real wait duration in a run the user asked for', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests(workflowWithWaits(), {
+				execution: makeExecution({ status: 'success' }),
+			});
+
+			const result = await adapter.run('wf-1');
+
+			const { nodes } = mockWorkflowRunner.run.mock.calls[0][0].workflowData;
+			expect(waitParameters(nodes, 'Wait Before Retry')).toMatchObject({ amount: 15 });
+			expect(result).not.toHaveProperty('skippedWaitNodeNames');
+		});
+	});
+
 	it('leaves the error workflow enabled for a run the user asked for', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',
@@ -6473,6 +6593,35 @@ describe('createExecutionAdapter run()', () => {
 				status: 'error',
 				error: 'Node "Schedule Trigger" uses the credential "Bot", which you cannot use',
 			}),
+		);
+	});
+
+	it('refuses a run the user cannot make through their own access, before it starts', async () => {
+		const node = { id: 'n1', name: 'Send', type: 'n8n-nodes-base.slack', typeVersion: 1 };
+		const { adapter, mockWorkflowRunner, mockExecutionPersistence, mockTelemetry } =
+			createRunAdapterForTests({ id: 'wf-1', nodes: [node] }, { threadId: 'thread-1' });
+		const checker = mock<CredentialsPermissionChecker>();
+		const message = 'Node "Send" uses the credential "Bot", which you cannot use';
+		const description = 'Ask an admin of the project "Team" to share this credential with you.';
+		checker.checkForUser.mockRejectedValue(new UserError(message, { description }));
+		vi.mocked(Container.get).mockImplementation(((token: unknown) =>
+			token === CredentialsPermissionChecker
+				? checker
+				: mockExecutionPersistence) as typeof Container.get);
+
+		await expect(adapter.run('wf-1')).resolves.toEqual({
+			executionId: '',
+			status: 'error',
+			error: `${message}. ${description}`,
+		});
+		expect(checker.checkForUser).toHaveBeenCalledWith('user-1', [node], {
+			ignoreGlobalUseScope: true,
+		});
+		expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		// The description names the project, so telemetry gets the message only.
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({ status: 'error', error: message }),
 		);
 	});
 
@@ -6721,6 +6870,30 @@ describe('createExecutionAdapter runStep()', () => {
 
 		await expect(runStep('wf-1', 'Nope', undefined)).rejects.toThrow('has no node named "Nope"');
 		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+	});
+
+	it('refuses a step the user cannot run through their own access, before it starts', async () => {
+		const harness = createRunAdapterForTests(chainWorkflow, { threadId: 'thread-1' });
+		const checker = mock<CredentialsPermissionChecker>();
+		checker.checkForUser.mockRejectedValue(
+			new UserError('Node "Send" uses the credential "Bot", which you cannot use'),
+		);
+		vi.mocked(Container.get).mockImplementation(((token: unknown) =>
+			token === CredentialsPermissionChecker
+				? checker
+				: harness.mockExecutionPersistence) as typeof Container.get);
+		const runStep = harness.adapter.runStep as NonNullable<typeof harness.adapter.runStep>;
+
+		await expect(runStep('wf-1', 'Send', undefined)).resolves.toMatchObject({
+			executionId: '',
+			status: 'error',
+			error: 'Node "Send" uses the credential "Bot", which you cannot use',
+		});
+		expect(harness.mockWorkflowRunner.run).not.toHaveBeenCalled();
+		expect(harness.mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({ status: 'error' }),
+		);
 	});
 
 	it('rejects a disabled node instead of starting a run the engine would refuse', async () => {
@@ -7594,6 +7767,49 @@ describe('getGatewayConfigOrNull', () => {
 	});
 });
 
+describe('createCredentialAdapter — getAiGatewayNodeRejection', () => {
+	const geminiType = '@n8n/n8n-nodes-langchain.googleGemini';
+
+	async function getRejection(parameters: NodeJSON['parameters'], options?: { enabled?: boolean }) {
+		const adapter = createAdapterWithGatewayMock(
+			vi.fn().mockResolvedValue({
+				nodes: [geminiType],
+				credentialTypes: ['googlePalmApi'],
+				providerConfig: {},
+				supportedActions: { [geminiType]: { text: ['message'] } },
+			}),
+			{ enabled: options?.enabled },
+		);
+		const description = {
+			properties: [
+				{ displayName: 'Resource', name: 'resource', type: 'options', default: 'text' },
+				{ displayName: 'Operation', name: 'operation', type: 'options', default: 'message' },
+			],
+		};
+		(adapter as unknown as { nodeTypes: Pick<NodeTypesProxy, 'getByNameAndVersion'> }).nodeTypes = {
+			getByNameAndVersion: vi.fn(
+				() => ({ description }) as unknown as ReturnType<NodeTypesProxy['getByNameAndVersion']>,
+			),
+		};
+		const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+		return await adapter.createContext(mockUser).credentialService.getAiGatewayNodeRejection!(
+			{ type: geminiType, typeVersion: 1, parameters },
+			'googlePalmApi',
+		);
+	}
+
+	it.each([
+		[{}, undefined],
+		[{ resource: 'image' }, 'image.message not supported'],
+	])('judges %j by the action it runs with node defaults', async (parameters, expected) => {
+		await expect(getRejection(parameters)).resolves.toBe(expected);
+	});
+
+	it('returns nothing when Gateway credits are off', async () => {
+		await expect(getRejection({ resource: 'image' }, { enabled: false })).resolves.toBeUndefined();
+	});
+});
+
 describe('trackGatewayAvailability', () => {
 	async function callTrack(adapter: InstanceAiAdapterService) {
 		await (
@@ -7825,7 +8041,6 @@ describe('resolveExperimentGates', () => {
 	const allEnabled = {
 		[CONFIG_EVALUATIONS_FLAG]: CONFIG_EVALUATIONS_ENABLED_VARIANT,
 		[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
-		[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 		[INSTANCE_AI_CONCISE_STYLE_FLAG]: INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 		[INSTANCE_AI_SETUP_PANEL_FLAG]: INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
 		[INSTANCE_AI_NODE_USAGE_FLAG]: true,
@@ -7840,7 +8055,6 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: true,
 			conversationHistoryEnabled: true,
-			progressiveBuildingEnabled: true,
 			conciseStyleEnabled: true,
 			setupPanelEnabled: true,
 			setupPanelVariant: 'variant',
@@ -7935,7 +8149,6 @@ describe('resolveExperimentGates', () => {
 		stubContainer({
 			[CONFIG_EVALUATIONS_FLAG]: 'control',
 			[INSTANCE_AI_CONVERSATION_HISTORY_FLAG]: 'control',
-			[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG]: 'control',
 			[INSTANCE_AI_CONCISE_STYLE_FLAG]: 'control',
 			[INSTANCE_AI_SETUP_PANEL_FLAG]: 'control',
 			[INSTANCE_AI_NODE_USAGE_FLAG]: false,
@@ -7948,7 +8161,6 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
-			progressiveBuildingEnabled: false,
 			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			setupPanelVariant: 'control',
@@ -7998,7 +8210,6 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
-			progressiveBuildingEnabled: false,
 			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,
@@ -8017,7 +8228,6 @@ describe('resolveExperimentGates', () => {
 			credentialDescriptionsEnabled: false,
 			configEvalsEnabled: false,
 			conversationHistoryEnabled: false,
-			progressiveBuildingEnabled: false,
 			conciseStyleEnabled: false,
 			setupPanelEnabled: false,
 			nodeUsageEnabled: false,

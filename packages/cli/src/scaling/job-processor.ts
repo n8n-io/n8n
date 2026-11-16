@@ -37,7 +37,10 @@ import type {
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
-import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import {
+	getLifecycleHooksForScalingWorker,
+	getPushRefUserId,
+} from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { prepareExecutionDataForDbUpdate } from '@/execution-lifecycle/shared/shared-hook-functions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
@@ -232,25 +235,27 @@ export class JobProcessor {
 
 		const { pushRef } = job.data;
 
-		const lifecycleHooks = getLifecycleHooksForScalingWorker(
-			{
-				executionMode: execution.mode,
-				workflowData: execution.workflowData,
-				retryOf: execution.retryOf,
-				pushRef,
-				userId: execution.data.manualData?.userId,
-				source: execution.data.manualData?.source,
-				suppressErrorWorkflow: execution.data.manualData?.suppressErrorWorkflow,
-			},
-			executionId,
-		);
+		const hooksData: IWorkflowExecutionDataProcess = {
+			executionMode: execution.mode,
+			workflowData: execution.workflowData,
+			executionData: execution.data,
+			retryOf: execution.retryOf,
+			pushRef,
+			pushRefUserId: job.data.pushRefUserId,
+			userId: execution.data.manualData?.userId,
+			source: execution.data.manualData?.source,
+			suppressErrorWorkflow: execution.data.manualData?.suppressErrorWorkflow,
+		};
+		const lifecycleHooks = getLifecycleHooksForScalingWorker(hooksData, executionId);
 		additionalData.hooks = lifecycleHooks;
 
 		if (pushRef) {
+			additionalData.pushRef = pushRef;
+			additionalData.pushRefUserId = getPushRefUserId(hooksData);
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef,
+				userId: additionalData.pushRefUserId,
 			});
-			additionalData.pushRef = pushRef;
 		}
 
 		// An older main sends no value. Assume the strictest, so nothing is parked

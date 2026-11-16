@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import {
 	allEvents,
@@ -17,6 +17,7 @@ import {
 	jiraSoftwareCloudApiRequest,
 	jiraSoftwareCloudApiRequestAllItems,
 	refreshJiraWebhook,
+	toWebhookEndpoint,
 	OAUTH2_WEBHOOK_REFRESH_INTERVAL_MS,
 	OAUTH2_WEBHOOK_EXPIRY_BUFFER_MS,
 	OAUTH2_SUPPORTED_WEBHOOK_EVENTS,
@@ -553,7 +554,7 @@ export class JiraTrigger implements INodeType {
 				const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
 				const endpoint = await getWebhookEndpoint.call(this);
-				webhookData.endpoint = endpoint;
+				webhookData.endpoint = endpoint.toString();
 
 				if (jiraVersion === 'cloudOAuth2') {
 					const response = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET', {});
@@ -609,7 +610,7 @@ export class JiraTrigger implements INodeType {
 				let events = this.getNodeParameter('events', []) as string[];
 				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 				const webhookData = this.getWorkflowStaticData('node');
-				const endpoint = webhookData.endpoint as string;
+				const endpoint = toWebhookEndpoint(webhookData.endpoint as string);
 				const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
 				let authenticateWebhook = false;
@@ -677,7 +678,7 @@ export class JiraTrigger implements INodeType {
 						const projects = (await jiraSoftwareCloudApiRequestAllItems.call(
 							this,
 							'values',
-							'/api/2/project/search',
+							requestPath`/api/2/project/search`,
 							'GET',
 						)) as JiraProject[];
 
@@ -756,17 +757,17 @@ export class JiraTrigger implements INodeType {
 				const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
 				if (webhookData.webhookId !== undefined) {
-					const baseUrl = webhookData.endpoint as string;
 					const webhookId = webhookData.webhookId as string;
 
 					try {
+						const baseUrl = toWebhookEndpoint(webhookData.endpoint as string);
 						if (jiraVersion === 'cloudOAuth2') {
 							// Dynamic Webhooks API deletes by body, not path parameter
 							await jiraSoftwareCloudApiRequest.call(this, baseUrl, 'DELETE', {
 								webhookIds: [parseInt(webhookId, 10)],
 							});
 						} else {
-							const endpoint = `${baseUrl}/${webhookId}`;
+							const endpoint = requestPath`${baseUrl}/${webhookId}`;
 							await jiraSoftwareCloudApiRequest.call(this, endpoint, 'DELETE', {});
 						}
 					} catch (error) {
@@ -795,7 +796,7 @@ export class JiraTrigger implements INodeType {
 
 				if (webhookId && endpoint) {
 					try {
-						await refreshJiraWebhook.call(this, endpoint, webhookId);
+						await refreshJiraWebhook.call(this, toWebhookEndpoint(endpoint), webhookId);
 						webhookData.lastRefreshed = Date.now();
 					} catch {
 						// Non-fatal: the webhook keeps working until Atlassian expires it

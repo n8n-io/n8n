@@ -37,11 +37,18 @@ export type StepMessage = StepReadyEvent;
 
 export interface WorkQueue<TMessage> {
 	publish(message: TMessage): Promise<void>;
-	/** Register the single consumer; dispatch begins for queued and future messages. */
+	/**
+	 * Register the single consumer; dispatch begins for queued and future
+	 * messages. The adapter runs up to its concurrency limit of handlers at once
+	 * and does not promise a delivery order. When a handler finishes, the adapter
+	 * starts the next queued message. A handler that throws frees its slot. Its
+	 * error affects only its own message.
+	 */
 	start(handler: (message: TMessage) => Promise<void>): void;
 	/**
-	 * Stop consuming; awaits any in-flight handler and leaves queued messages
-	 * unconsumed. Never blocks on work no longer being dispatched.
+	 * Stop consuming. Starts no new message, waits for every in-flight handler
+	 * and leaves queued messages unconsumed. Never blocks on work no longer
+	 * being dispatched.
 	 */
 	stop(): Promise<void>;
 }
