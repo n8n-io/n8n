@@ -161,6 +161,26 @@ describe('CompiledWorkflowCompiler: nodes with conditions on a credential', () =
 		expect(convertWorkflow).toHaveBeenCalledTimes(2);
 	});
 
+	it('runs a node in the fallback host after it reached a limit that v1 does not have', async () => {
+		credentials.unprovenFlagNodes.mockResolvedValue([]);
+		const compiled = await compiler.compile(input);
+		expect(compiled.nodes.Acme).toBe('code');
+
+		// The first report of a node is new. The second report changes nothing.
+		expect(compiler.runInHost('wf1', 'Acme')).toBe(true);
+		expect(compiler.runInHost('wf1', 'Acme')).toBe(false);
+
+		const inHost = await compiler.compile(input);
+		expect(inHost.ok).toBe(true);
+		expect(inHost.module?.toString()).toBe('host');
+		expect(inHost.nodes.Acme).toBe('host');
+		expect(inHost.key).not.toBe(compiled.key);
+
+		// Another workflow with the same nodes keeps its compiled node.
+		const other = await compiler.compile({ ...input, id: 'wf2' });
+		expect(other.nodes.Acme).toBe('code');
+	});
+
 	it('does not ask for the conditions when nodes are not compiled from their code', async () => {
 		compiler = new CompiledWorkflowCompiler(
 			processes,

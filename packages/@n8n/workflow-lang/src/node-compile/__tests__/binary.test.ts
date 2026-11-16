@@ -151,12 +151,49 @@ describe('node compiler: binary data', () => {
 		expect(JSON.stringify(out.result)).toContain("The item has no binary field 'data' [item 0]");
 	});
 
-	it('stops for the metadata of a file in a file store', async () => {
+	it('reads the metadata of a file in a file store with a service call of the runtime', async () => {
 		const stored = { ...FILE, data: 'filesystem-v2', id: STORED_ID };
-		const out = await run(upload(WITH_OPTIONS), [{ $binary: { data: stored } }]);
-		expect(out.status).toBe('error');
-		expect(out.effects).toEqual([]);
-		expect(JSON.stringify(out.result)).toContain('has no compiled form');
+		const metadata = { fileName: 'hello.txt', mimeType: 'text/plain', fileSize: 2048 };
+		const out = await run(
+			upload(WITH_OPTIONS),
+			[{ $binary: { data: stored } }],
+			[metadata, { status: 200, headers: {}, body: { ok: true } }],
+		);
+		expect(out.status).toBe('ok');
+		expect(out.result).toEqual([{ size: 2048, response: { ok: true } }]);
+		expect(out.effects.map((e) => e.kind)).toEqual(['service', 'http']);
+		expect(out.effects[0]?.args).toEqual({
+			service: 'binaryData',
+			op: 'metadata',
+			args: { id: STORED_ID },
+		});
+		const request: unknown = out.effects[1]?.args;
+		expect(request).toMatchObject({
+			multipart: [
+				{ name: 'channel', value: 'C1' },
+				{ name: 'count', value: '3' },
+				{
+					name: 'file',
+					binary: {
+						data: 'filesystem-v2',
+						id: STORED_ID,
+						mimeType: 'text/plain',
+						fileName: 'hello.txt',
+					},
+				},
+			],
+		});
+	});
+
+	it('fails the step when the runtime cannot read the metadata', async () => {
+		const stored = { ...FILE, data: 'filesystem-v2', id: STORED_ID };
+		const out = await run(
+			upload(WITH_OPTIONS),
+			[{ $binary: { data: stored } }],
+			[{ $error: 'service: binaryData.metadata: the id is not an id of the file system store' }],
+		);
+		expect(out.status).toBe('needs_attention');
+		expect(out.effects.map((e) => e.kind)).toEqual(['service']);
 	});
 
 	it('sends a file of the file store by its id', async () => {

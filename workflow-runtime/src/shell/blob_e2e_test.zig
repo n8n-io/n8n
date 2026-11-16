@@ -8,6 +8,8 @@ const egress = @import("egress.zig");
 const request = @import("request.zig");
 const blob_store = @import("blob_store.zig");
 const binary_store = @import("binary_store.zig");
+const http2 = @import("http2.zig");
+const hpack = @import("hpack.zig");
 
 const kind_conn: u8 = 3;
 const kind_dns: u8 = 5;
@@ -147,6 +149,182 @@ const Server = struct {
     }
 };
 
+/// An HTTP/2 server without TLS (prior knowledge), one connection and one
+/// stream at a time. `GET /files/...` answers with the file and its names,
+/// as the windows of the client allow; a request with a body keeps the
+/// body and answers `{"ok":true}`. It gives the client its window back as
+/// the body arrives, so a body larger than the first window goes on.
+const H2Peer = struct {
+    lfd: c_int,
+    stop: std.atomic.Value(bool) = .init(false),
+    failed: ?[]const u8 = null,
+    upload: []u8,
+    upload_len: usize = 0,
+    reader: http2.Reader,
+    dec: hpack.Decoder,
+    rbuf: []u8,
+    out: []u8,
+    sid: u32 = 0,
+    /// The answer of the stream is the file.
+    file: bool = false,
+    /// The request is complete: the answer goes out.
+    answer: bool = false,
+    headers_sent: bool = false,
+    sent: u32 = 0,
+    window: i64 = http2.default_window,
+    conn_window: i64 = http2.default_window,
+    client_initial: i64 = http2.default_window,
+    acks: u32 = 0,
+    /// Body bytes of the request whose window the client gets back.
+    recv: u32 = 0,
+    /// The most bytes that the client had to hold back for a window.
+    data_frames: u32 = 0,
+
+    pub const Err = error{Failed};
+
+    fn make(a: std.mem.Allocator, lfd: c_int) !*H2Peer {
+        const peer = try a.create(H2Peer);
+        peer.* = .{
+            .lfd = lfd,
+            .upload = try a.alloc(u8, file_bytes + 4096),
+            .reader = http2.Reader.init(try a.alloc(u8, 64 << 10), http2.default_max_frame),
+            .dec = hpack.Decoder.init(try a.alloc(u8, 4096), try a.alloc(hpack.Entry, hpack.entriesFor(4096)), try a.alloc(u8, 8192)),
+            .rbuf = try a.alloc(u8, 16 << 10),
+            .out = try a.alloc(u8, 64 << 10),
+        };
+        return peer;
+    }
+
+    pub fn onDataStart(s: *H2Peer, _: u32, flow: u32, _: bool) Err!void {
+        s.recv += flow;
+        s.data_frames += 1;
+    }
+    pub fn onData(s: *H2Peer, _: u32, bytes: []const u8) Err!void {
+        if (s.upload_len + bytes.len > s.upload.len) return error.Failed;
+        @memcpy(s.upload[s.upload_len..][0..bytes.len], bytes);
+        s.upload_len += bytes.len;
+    }
+    pub fn onDataEnd(s: *H2Peer, _: u32, end_stream: bool) Err!void {
+        if (end_stream) s.answer = true;
+    }
+    pub fn onHeaders(s: *H2Peer, sid: u32, block: []const u8, end_stream: bool) Err!void {
+        const Path = struct {
+            file: bool = false,
+            pub const Err = error{};
+            pub fn field(q: *@This(), name: []const u8, value: []const u8) @This().Err!void {
+                if (std.mem.eql(u8, name, ":path")) q.file = std.mem.startsWith(u8, value, "/files/");
+            }
+        };
+        var path: Path = .{};
+        s.dec.decode(block, &path) catch return error.Failed;
+        s.sid = sid;
+        s.file = path.file;
+        s.headers_sent = false;
+        s.sent = 0;
+        s.window = s.client_initial;
+        if (end_stream) s.answer = true else s.upload_len = 0;
+    }
+    pub fn onRst(_: *H2Peer, _: u32, _: http2.ErrorCode) Err!void {}
+    pub fn onSetting(s: *H2Peer, id: u16, v: u32) Err!void {
+        if (id != 4) return;
+        s.window += @as(i64, v) - s.client_initial;
+        s.client_initial = v;
+    }
+    pub fn onSettingsEnd(s: *H2Peer, ack: bool) Err!void {
+        if (!ack) s.acks += 1;
+    }
+    pub fn onPing(_: *H2Peer, _: [8]u8, _: bool) Err!void {}
+    pub fn onGoaway(_: *H2Peer, _: u32, _: http2.ErrorCode) Err!void {}
+    pub fn onWindowUpdate(s: *H2Peer, sid: u32, inc: u32) Err!void {
+        if (sid == 0) s.conn_window += inc else if (sid == s.sid) s.window += inc;
+    }
+
+    fn run(s: *H2Peer) void {
+        s.serve() catch |e| {
+            s.failed = @errorName(e);
+        };
+    }
+
+    /// The frames of the answer that fit in `out` and in the windows now.
+    fn answerFrames(s: *H2Peer, len: *usize) !void {
+        const out = s.out;
+        if (!s.headers_sent) {
+            var hl: usize = len.* + http2.frame_header_len;
+            try hpack.encodeField(out, &hl, ":status", "200", false);
+            if (s.file) {
+                try hpack.encodeField(out, &hl, "content-type", "application/pdf", false);
+                try hpack.encodeField(out, &hl, "content-disposition", "attachment; filename=\"h2 report.pdf\"", false);
+                try hpack.encodeField(out, &hl, "content-length", std.fmt.comptimePrint("{d}", .{file_bytes}), false);
+            } else {
+                try hpack.encodeField(out, &hl, "content-type", "application/json", false);
+            }
+            try http2.frameHeaderBlock(out, len, s.sid, hl - len.* - http2.frame_header_len, http2.default_max_frame, false);
+            s.headers_sent = true;
+        }
+        const small = "{\"ok\":true}";
+        const body_len: u32 = if (s.file) file_bytes else small.len;
+        var frames: u32 = 0;
+        while (s.sent < body_len and out.len - len.* > http2.frame_header_len + 1024 and frames < 64) : (frames += 1) {
+            const room: i64 = @intCast(out.len - len.* - http2.frame_header_len);
+            const n: u32 = @intCast(@min(@as(i64, body_len - s.sent), s.window, s.conn_window, 16384, room));
+            if (n == 0) break;
+            try http2.writeDataHeader(out, len, s.sid, n, s.sent + n == body_len);
+            for (out[len.*..][0..n], 0..) |*b, i| b.* = if (s.file) fileByte(s.sent + i) else small[s.sent + i];
+            len.* += n;
+            s.sent += n;
+            s.window -= n;
+            s.conn_window -= n;
+        }
+        if (s.sent == body_len) {
+            s.answer = false;
+            s.sid = 0;
+        }
+    }
+
+    fn serve(s: *H2Peer) !void {
+        var waited: u32 = 0;
+        const fd = while (waited < 10_000) : (waited += 1) {
+            if (sys.acceptOne(s.lfd)) |fd| break fd;
+            if (s.stop.load(.acquire)) return;
+            waitFor(s.lfd, false);
+        } else return error.NoClient;
+        defer sys.close(fd);
+        sys.setNonBlocking(fd);
+        var len: usize = 0;
+        try http2.writeSettings(s.out, &len, &.{.{ .max_concurrent_streams, 1 }});
+        try Server.sendAll(fd, s.out[0..len]);
+        var pre: [24]u8 = @splat(0);
+        var got: usize = 0;
+        var tries: u32 = 0;
+        while (got < pre.len and tries < 10_000) : (tries += 1) switch (sys.readSome(fd, pre[got..])) {
+            .n => |k| got += k,
+            .again => {
+                if (s.stop.load(.acquire)) return;
+                waitFor(fd, false);
+            },
+            .closed => return error.Closed,
+        };
+        if (!std.mem.eql(u8, &pre, http2.preface)) return error.BadPreface;
+        var rounds: u32 = 0;
+        while (!s.stop.load(.acquire) and rounds < 1_000_000) : (rounds += 1) {
+            switch (sys.readSome(fd, s.rbuf)) {
+                .n => |k| try s.reader.feed(s.rbuf[0..k], s),
+                .again => {},
+                .closed => return,
+            }
+            len = 0;
+            while (s.acks > 0) : (s.acks -= 1) try http2.writeSettingsAck(s.out, &len);
+            if (s.recv > 0) {
+                try http2.writeWindowUpdate(s.out, &len, 0, s.recv);
+                if (s.sid != 0 and !s.answer) try http2.writeWindowUpdate(s.out, &len, s.sid, s.recv);
+                s.recv = 0;
+            }
+            if (s.answer) try s.answerFrames(&len);
+            if (len > 0) try Server.sendAll(fd, s.out[0..len]) else waitFor(fd, false);
+        }
+    }
+};
+
 /// The sink of the egress client: plain results are kept, and a response
 /// to store goes to the store, as the shard does (`server.zig` `egressStored`).
 const Sink = struct {
@@ -175,10 +353,10 @@ const Sink = struct {
         }
     }
 
-    fn stored(ctx: *anyopaque, exec_id: u64, seq: u32, h: blob_store.Handle, resp: egress.Response, url_path: []const u8, expected: ?u64, whole: bool) bool {
+    fn stored(ctx: *anyopaque, exec_id: u64, seq: u32, h: blob_store.Handle, resp: egress.Response, url_path: []const u8, expected: ?u64) bool {
         const s: *Sink = @ptrCast(@alignCast(ctx));
         // The body is never in the response: it comes to the store in pieces.
-        std.debug.assert(resp.body.len == 0 and !whole);
+        std.debug.assert(resp.body.len == 0);
         s.store.begin(h, .{
             .exec_id = exec_id,
             .seq = seq,
@@ -217,7 +395,8 @@ const Loop = struct {
         const deadline = sys.nowMs() + 20_000;
         while (sys.nowMs() < deadline) {
             if (l.sink.results >= results and (!want_stored or l.store.nextDone() != null)) return;
-            const k = l.poller.wait(&ready, 5);
+            // Held operations run in every round: a short wait keeps the test fast.
+            const k = l.poller.wait(&ready, if (l.held) 1 else 5);
             for (ready[0..k]) |ev| {
                 const kind: u8 = @intCast(ev.token >> 56);
                 const idx: u32 = @truncate(ev.token);
@@ -260,7 +439,7 @@ test "a response becomes a stored file of n8n, and a request sends a stored file
     }
     try t.expect(lfd >= 0);
     defer sys.close(lfd);
-    var server: Server = .{ .lfd = lfd, .upload = try a.alloc(u8, file_bytes), .buf = try a.alloc(u8, file_bytes + 4096) };
+    var server: Server = .{ .lfd = lfd, .upload = try a.alloc(u8, file_bytes + 4096), .buf = try a.alloc(u8, file_bytes + 8192) };
     const th = try std.Thread.spawn(.{}, Server.run, .{&server});
     defer th.join();
     defer server.stop.store(true, .release);
@@ -277,7 +456,7 @@ test "a response becomes a stored file of n8n, and a request sends a stored file
     var loop: Loop = .{ .poller = &poller, .client = client, .sink = &sink, .store = store };
 
     // Download: the body goes to the store, and the result is a handle.
-    var args_buf: [512]u8 = undefined;
+    var args_buf: [1024]u8 = undefined;
     var args = try std.fmt.bufPrint(&args_buf, "{{\"url\":\"http://127.0.0.1:{d}/files/q3?token=1\",\"method\":\"GET\",\"responseBinary\":{{}}}}", .{port});
     client.start(1, 0, args, null, null, 0, 0, sys.nowMs());
     try loop.until(0, true);
@@ -304,11 +483,44 @@ test "a response becomes a stored file of n8n, and a request sends a stored file
     try t.expectEqual(@as(usize, file_bytes), server.upload_len);
     for (server.upload[0..server.upload_len], 0..) |b, i| if (b != fileByte(i)) return error.StoredBytesDiffer;
     try t.expectEqualStrings("application/pdf", std.mem.sliceTo(&server.upload_type, 0));
+    // The file is larger than a read buffer of the store: it went out in pieces, and
+    // no large buffer of the client held it (the largest body here has 1 MB, and two exist).
+    try t.expect(file_bytes > store.cfg.block_bytes);
+    try t.expectEqual(@as(u64, 1), client.counters.uploads);
+    try t.expectEqual(@as(u32, 2), client.nbig_free);
+    try t.expect(!store.busy());
+
+    // The stored file as a part of a form: the parts in memory go around the bytes of the file.
+    server.upload_len = 0;
+    args = try std.fmt.bufPrint(&args_buf, "{{\"url\":\"http://127.0.0.1:{d}/upload\",\"method\":\"PUT\",\"multipart\":[{{\"name\":\"title\",\"value\":\"q3\"}},{{\"name\":\"file\",\"binary\":{{\"data\":\"filesystem-v2\",\"id\":\"{s}\",\"mimeType\":\"application/pdf\",\"fileName\":\"q3.pdf\"}}}},{{\"name\":\"tail\",\"value\":\"end\"}}]}}", .{ port, id });
+    client.start(4, 0, args, null, null, 0, 0, sys.nowMs());
+    try loop.until(2, false);
+    try t.expectEqualStrings("", sink.err[0..sink.err_len]);
+    try t.expectEqual(@as(u32, 200), sink.status);
+    const form = server.upload[0..server.upload_len];
+    const part_head = "content-disposition: form-data; name=\"file\"; filename=\"q3.pdf\"\r\ncontent-type: application/pdf\r\n\r\n";
+    const file_at = (std.mem.indexOf(u8, form, part_head) orelse return error.TestExpectedEqual) + part_head.len;
+    try t.expect(std.mem.indexOf(u8, form[0..file_at], "name=\"title\"\r\n\r\nq3\r\n") != null);
+    try t.expect(form.len > file_at + file_bytes);
+    for (form[file_at..][0..file_bytes], 0..) |b, i| if (b != fileByte(i)) return error.StoredBytesDiffer;
+    const after = form[file_at + file_bytes ..];
+    try t.expect(std.mem.startsWith(u8, after, "\r\n------wfrt") and std.mem.endsWith(u8, after, "--\r\n"));
+    try t.expect(std.mem.indexOf(u8, after, "name=\"tail\"\r\n\r\nend\r\n") != null);
+    try t.expectEqual(@as(u32, 4), client.nrfree);
+    try t.expectEqual(@as(u32, client.cfg.max_uploads), client.nup_free);
+
+    // A stored file that is not there fails the request before it is sent.
+    args = try std.fmt.bufPrint(&args_buf, "{{\"url\":\"http://127.0.0.1:{d}/upload\",\"method\":\"PUT\",\"body\":{{\"$binary\":{{\"data\":\"filesystem-v2\",\"id\":\"filesystem-v2:workflows/wf-e2e/executions/wfrt-1/binary_data/none\"}}}}}}", .{port});
+    client.start(5, 0, args, null, null, 0, 0, sys.nowMs());
+    try t.expectEqual(@as(u32, 3), sink.results);
+    try t.expect(std.mem.indexOf(u8, sink.err[0..sink.err_len], "the stored file could not be read: open the file") != null);
+    try t.expectEqual(@as(u32, client.cfg.max_uploads), client.nup_free);
+    try t.expect(!store.busy());
 
     // Another status keeps its body, and the row of the store is free again.
     args = try std.fmt.bufPrint(&args_buf, "{{\"url\":\"http://127.0.0.1:{d}/missing\",\"method\":\"GET\",\"responseBinary\":{{\"fileName\":\"x\"}}}}", .{port});
     client.start(3, 0, args, null, null, 0, 0, sys.nowMs());
-    try loop.until(2, false);
+    try loop.until(4, false);
     try t.expectEqual(@as(u32, 404), sink.status);
     try t.expectEqualStrings("nope", sink.body[0..sink.body_len]);
     try t.expect(store.nextDone() == null and !store.busy());
@@ -327,6 +539,10 @@ const Rig = struct {
     lfd: c_int = -1,
     port: u16 = 0,
     server: Server = undefined,
+    /// The server of an HTTP/2 rig. Null: `server` answers, over HTTP/1.1.
+    peer: ?*H2Peer = null,
+    rule_buf: [64]u8 = @splat(0),
+    rules: [1]egress.Rule = @splat(.{ .host = "" }),
     thread: std.Thread = undefined,
     store: *blob_store.Store = undefined,
     poller: sys.Poller = undefined,
@@ -336,6 +552,11 @@ const Rig = struct {
     loop: Loop = undefined,
 
     fn start(g: *Rig, blocks: u32) !void {
+        return g.startWith(blocks, false);
+    }
+
+    /// `h2`: the server and the client speak HTTP/2, with the smallest windows.
+    fn startWith(g: *Rig, blocks: u32, h2: bool) !void {
         const a = g.arena.allocator();
         const root = try std.fmt.bufPrint(&g.root_buf, ".zig-cache/tmp/{s}", .{g.tmp.sub_path});
         g.root_len = root.len;
@@ -346,8 +567,14 @@ const Rig = struct {
             break;
         }
         try std.testing.expect(g.lfd >= 0);
-        g.server = .{ .lfd = g.lfd, .upload = &.{}, .buf = try a.alloc(u8, 8192) };
-        g.thread = try std.Thread.spawn(.{}, Server.run, .{&g.server});
+        g.server = .{ .lfd = g.lfd, .upload = try a.alloc(u8, file_bytes + 4096), .buf = try a.alloc(u8, file_bytes + 8192) };
+        if (h2) {
+            g.peer = try H2Peer.make(a, g.lfd);
+            g.rules[0] = try egress.Rule.parse(try std.fmt.bufPrint(&g.rule_buf, "127.0.0.1:{d} h2=prior conns=1", .{g.port}));
+            g.thread = try std.Thread.spawn(.{}, H2Peer.run, .{g.peer.?});
+        } else {
+            g.thread = try std.Thread.spawn(.{}, Server.run, .{&g.server});
+        }
         g.store = try a.create(blob_store.Store);
         try g.store.init(a, .{ .root = root, .max_transfers = 2, .block_bytes = 4096, .buffer_bytes = 4096 * @as(u64, blocks) }, kind_file);
         if (blocks > 0) g.store.holdOps(&g.ops);
@@ -355,7 +582,14 @@ const Rig = struct {
         g.sink = .{ .store = g.store };
         g.client = try a.create(egress.Client);
         // The file has 150,000 bytes: more than a response body can have here.
-        try g.client.init(a, .{ .max_conns = 2, .max_reqs = 4, .big_slots = 1, .max_body = 32 << 10, .blobs = g.store }, .{ .ctx = &g.sink, .done = Sink.done, .stored = Sink.stored }, &g.poller, kind_conn, kind_dns);
+        var cfg: egress.Config = .{ .max_conns = 2, .max_reqs = 4, .big_slots = 1, .max_body = 32 << 10, .blobs = g.store };
+        if (h2) {
+            cfg.rules = &g.rules;
+            cfg.h2_conns = 2;
+            cfg.h2_stream_window = http2.default_window;
+            cfg.h2_conn_window = http2.default_window;
+        }
+        try g.client.init(a, cfg, .{ .ctx = &g.sink, .done = Sink.done, .stored = Sink.stored }, &g.poller, kind_conn, kind_dns);
         g.loop = .{ .poller = &g.poller, .client = g.client, .sink = &g.sink, .store = g.store, .held = blocks > 0 };
     }
 
@@ -364,6 +598,7 @@ const Rig = struct {
         g.poller.deinit();
         g.store.deinit();
         g.server.stop.store(true, .release);
+        if (g.peer) |peer| peer.stop.store(true, .release);
         g.thread.join();
         sys.close(g.lfd);
         g.tmp.cleanup();
@@ -377,6 +612,28 @@ const Rig = struct {
         g.client.start(exec_id, 0, args, null, null, 0, 0, sys.nowMs());
         try g.loop.until(0, true);
         return g.store.nextDone() orelse error.TestExpectedEqual;
+    }
+
+    /// Send the stored file `id` as the body of a request, and wait for the answer.
+    /// The bytes that the server got are the bytes of the file.
+    fn upload(g: *Rig, exec_id: u64, id: []const u8) !void {
+        var args_buf: [512]u8 = undefined;
+        const args = try std.fmt.bufPrint(&args_buf, "{{\"url\":\"http://127.0.0.1:{d}/upload\",\"method\":\"PUT\",\"body\":{{\"$binary\":{{\"data\":\"filesystem-v2\",\"id\":\"{s}\"}}}}}}", .{ g.port, id });
+        const before = g.sink.results;
+        g.client.start(exec_id, 0, args, null, null, 0, 0, sys.nowMs());
+        try g.loop.until(before + 1, false);
+        try std.testing.expectEqualStrings("", g.sink.err[0..g.sink.err_len]);
+        try std.testing.expectEqual(@as(u32, 200), g.sink.status);
+        try std.testing.expectEqualStrings("{\"ok\":true}", g.sink.body[0..g.sink.body_len]);
+        const got = if (g.peer) |peer| peer.upload[0..peer.upload_len] else g.server.upload[0..g.server.upload_len];
+        try std.testing.expectEqual(@as(usize, file_bytes), got.len);
+        for (got, 0..) |b, i| if (b != fileByte(i)) return error.StoredBytesDiffer;
+        // The files are closed, and every row and read buffer is free again.
+        try std.testing.expect(!g.store.busy());
+        try std.testing.expectEqual(@as(u32, g.store.cfg.source_buffers), g.store.nsrc_free);
+        try std.testing.expectEqual(@as(u32, g.client.cfg.max_uploads), g.client.nup_free);
+        try std.testing.expectEqual(@as(u32, 0), g.client.nup_poll);
+        try std.testing.expectEqual(@as(u32, 4), g.client.nrfree);
     }
 
     /// The stored file of the result `d` has the bytes of the file of the server.
@@ -431,6 +688,72 @@ test "a store without a free block stops the read of the socket, and the respons
     try std.testing.expectEqual(@as(u32, 0), g.client.npaused);
     try std.testing.expectEqual(@as(u32, 0), g.sink.results);
     try std.testing.expect(!g.server.failed);
+}
+
+test "a request sends a stored file in pieces while the reads of the file complete later" {
+    var g: Rig = .{ .arena = std.heap.ArenaAllocator.init(std.testing.allocator), .tmp = std.testing.tmpDir(.{}) };
+    // The operations of the store wait for the loop, as on the ring. A read buffer has 4096 bytes.
+    try g.start(2);
+    defer g.stop();
+    const d = try g.download(1, "/files/a");
+    try g.expectFile(d);
+    var id_buf: [256]u8 = undefined;
+    const id = try std.fmt.bufPrint(&id_buf, "{s}", .{text(d.payload[d.head_len..], "id")});
+    g.store.take(d);
+
+    const ran = g.loop.held_ran;
+    try g.upload(2, id);
+    // The file was opened for its size, and again for its bytes. Each piece of
+    // 4096 bytes was one read that the send waited for.
+    try std.testing.expectEqual(@as(u64, 2), g.store.counters.sources);
+    try std.testing.expect(g.client.counters.upload_waits >= file_bytes / 4096);
+    try std.testing.expect(g.loop.held_ran - ran >= file_bytes / 4096);
+    // No large buffer held the body.
+    try std.testing.expectEqual(@as(u32, 1), g.client.nbig_free);
+    try std.testing.expect(!g.server.failed);
+}
+
+/// Over HTTP/2: a response larger than the body limit goes to its file in
+/// pieces, and a request sends that file in pieces. `blocks`: as `Rig.start`.
+/// Returns the times that bytes of the response waited for the store.
+fn h2RoundTrip(blocks: u32) !u64 {
+    var g: Rig = .{ .arena = std.heap.ArenaAllocator.init(std.testing.allocator), .tmp = std.testing.tmpDir(.{}) };
+    try g.startWith(blocks, true);
+    defer g.stop();
+    const peer = g.peer orelse return error.TestExpectedEqual;
+    const d = try g.download(1, "/files/a");
+    if (!d.ok) std.debug.print("h2 download: {s}\n", .{d.payload});
+    try g.expectFile(d);
+    const result = d.payload[d.head_len..];
+    try std.testing.expectEqualStrings("h2 report.pdf", text(result, "fileName"));
+    try std.testing.expectEqualStrings("application/pdf", text(result, "mimeType"));
+    var id_buf: [256]u8 = undefined;
+    const id = try std.fmt.bufPrint(&id_buf, "{s}", .{text(result, "id")});
+    g.store.take(d);
+    // The result came from the store, and the request is free again.
+    try std.testing.expectEqual(@as(u32, 0), g.sink.results);
+    try std.testing.expectEqual(@as(u32, 4), g.client.nrfree);
+    try std.testing.expectEqual(@as(u32, 0), g.client.nh2_pending);
+    try std.testing.expectEqual(@as(u32, 1), g.client.nbig_free);
+    try std.testing.expectEqual(@as(u64, 1), g.client.counters.h2_conns);
+
+    try g.upload(2, id);
+    // The body is larger than the first window of the server: more than one DATA frame.
+    try std.testing.expect(peer.data_frames > file_bytes / http2.default_max_frame);
+    try std.testing.expectEqual(@as(u64, 1), g.client.counters.h2_conns);
+    if (peer.failed) |why| std.debug.print("h2 peer: {s}\n", .{why});
+    try std.testing.expect(peer.failed == null);
+    return g.client.counters.stored_pauses;
+}
+
+test "h2: a response goes to its file in pieces, and a request sends a stored file in pieces" {
+    // The store takes every byte at once: nothing waits.
+    try std.testing.expectEqual(@as(u64, 0), try h2RoundTrip(0));
+}
+
+test "h2: with a store that has no free block the bytes wait, and with reads that complete later the send waits" {
+    // Two blocks of 4096 bytes: bytes waited in the response area until the store had room.
+    try std.testing.expect(try h2RoundTrip(2) > 0);
 }
 
 test "responseBinary without a binary data store fails the request at its start" {

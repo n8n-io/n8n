@@ -296,6 +296,25 @@ export class CompiledEngineSync {
 	}
 
 	/**
+	 * A node of a workflow failed on a limit of `wfrt` that v1 does not have. The node runs in
+	 * the fallback host from now on: each published module of the workflow compiles again and
+	 * loads again. The run that reached the limit stays failed. A manual run compiles at each
+	 * run, so its next run has the node in the host.
+	 */
+	async onRuntimeLimit(workflowId: string, nodeName: string) {
+		if (!this.compiler.runInHost(workflowId, nodeName)) return;
+		this.logger.info(
+			`Node "${nodeName}" of workflow ${workflowId} reached a limit of wfrt that the v1 engine does not have. It runs in the fallback host from the next run.`,
+			{ workflowId },
+		);
+		if (!this.connected) return;
+		for (const entry of this.loaded.values()) {
+			if (entry.workflowData.id !== workflowId) continue;
+			if (await this.compileAgain(entry)) await this.push(entry);
+		}
+	}
+
+	/**
 	 * Compiles a published workflow again with the credentials of now, and keeps the new
 	 * artifact when it is another one. True when the artifact changed. A manual run compiles
 	 * at each run, and a compile with errors keeps the loaded module.
