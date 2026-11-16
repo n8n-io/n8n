@@ -19,7 +19,6 @@ export type FeatureMaturityEntry = {
 	docsUrl?: string;
 };
 
-/** Feature id to badge flags. A missing id renders no feature badges. */
 export type FeatureMaturityCatalog = {
 	readonly [id: string]: FeatureMaturityEntry | undefined;
 };
@@ -27,7 +26,6 @@ export type FeatureMaturityCatalog = {
 export const FeatureMaturityKey: InjectionKey<MaybeRefOrGetter<FeatureMaturityCatalog>> =
 	Symbol('FeatureMaturity');
 
-/** The feature list provided by the app. Empty when the app provided none. */
 export function useFeatureMaturityCatalog(): ComputedRef<FeatureMaturityCatalog> {
 	const provided = inject(FeatureMaturityKey, {});
 	return computed(() => toValue(provided));
