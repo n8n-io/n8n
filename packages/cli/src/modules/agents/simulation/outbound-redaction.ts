@@ -83,6 +83,8 @@ function redactUrl(url: string): string {
 	}
 	parsed.username = '';
 	parsed.password = '';
+	// A fragment never reaches a server, and a token can hide there.
+	parsed.hash = '';
 	parsed.pathname = redactText(parsed.pathname).text;
 	// Value by value: a pattern run over the whole query could swallow the parameters after it.
 	const query = new URLSearchParams();

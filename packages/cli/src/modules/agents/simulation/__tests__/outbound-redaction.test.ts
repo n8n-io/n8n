@@ -89,6 +89,16 @@ describe('redactOutboundRequest', () => {
 		expect(urlEncoded.body).toEqual({ grant: 'x', client_secret: '[REDACTED]' });
 	});
 
+	it('drops the URL fragment, where a typed-in token could hide', () => {
+		const request = redactHttp({
+			protocol: 'http',
+			method: 'GET',
+			url: 'https://example.com/hook?page=2#xoxb-1234567890-abcdefghij',
+		});
+
+		expect(request.url).toBe('https://example.com/hook?page=2');
+	});
+
 	it('redacts fields by name in a body that is already serialized', () => {
 		const json = redactHttp({
 			protocol: 'http',
