@@ -1116,14 +1116,17 @@ describe('ExecutionService', () => {
 				concurrencyControl.has.mockReturnValue(true);
 				activeExecutions.has.mockReturnValue(false);
 				waitTracker.has.mockReturnValue(false);
-				executionRepository.stopBeforeRun.mockResolvedValue(mock<IExecutionResponse>());
+				const stoppedAt = new Date();
+				executionRepository.markAsCanceled.mockResolvedValue([
+					{ id: '123', workflowId: 'wf', mode: 'trigger', startedAt: null, stoppedAt },
+				]);
 
 				const req = mock<ExecutionRequest.Stop>({ params: { id: execution.id } });
 
 				/**
 				 * Act
 				 */
-				await executionService.stop(req.params.id, [execution.id]);
+				const result = await executionService.stop(req.params.id, [execution.id]);
 
 				/**
 				 * Assert
@@ -1135,6 +1138,22 @@ describe('ExecutionService', () => {
 				expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
 				expect(waitTracker.stopExecution).not.toHaveBeenCalled();
 				expect(executionPersistence.updateExistingExecution).not.toHaveBeenCalled();
+				expect(executionRepository.markAsCanceled).toHaveBeenCalledWith(['123']);
+				expect(result).toMatchObject({ status: 'canceled', stoppedAt });
+			});
+
+			it('should return the finished run when a queued run finished before the stop', async () => {
+				const execution = mock<IExecutionResponse>({ id: '123', status: 'new', mode: 'trigger' });
+				const finished = mock<IExecutionResponse>({ id: '123', status: 'success' });
+				executionPersistence.findWithUnflattenedData
+					.mockResolvedValueOnce(execution)
+					.mockResolvedValueOnce(finished);
+				concurrencyControl.has.mockReturnValue(true);
+				executionRepository.markAsCanceled.mockResolvedValue([]);
+
+				const result = await executionService.stop('123', ['wf']);
+
+				expect(result).toMatchObject({ status: 'success' });
 			});
 		});
 

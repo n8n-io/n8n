@@ -8,7 +8,7 @@ import { CHAT_NODE_TYPE, CHAT_TOOL_NODE_TYPE, RESPOND_TO_WEBHOOK_NODE_TYPE } fro
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { NodeTypes } from '../../node-types';
-import { ChatExecutionManager } from '../chat-execution-manager';
+import { CHAT_CANCELABLE_STATUSES, ChatExecutionManager } from '../chat-execution-manager';
 import type { ChatMessage } from '../chat-service.types';
 
 /**
@@ -162,7 +162,7 @@ describe('chat resume — real node-type onMessage mapping', () => {
 		}
 
 		beforeEach(() => {
-			executionRepository.update.mockClear();
+			executionRepository.markAsCanceled.mockClear();
 		});
 
 		it('cancels an abandoned chat execution', async () => {
@@ -170,9 +170,9 @@ describe('chat resume — real node-type onMessage mapping', () => {
 
 			await manager.cancelExecution('1');
 
-			expect(executionRepository.update).toHaveBeenCalledWith(
-				{ id: '1' },
-				{ status: 'canceled', stoppedAt: expect.any(Date) },
+			expect(executionRepository.markAsCanceled).toHaveBeenCalledWith(
+				['1'],
+				CHAT_CANCELABLE_STATUSES,
 			);
 		});
 
@@ -183,7 +183,7 @@ describe('chat resume — real node-type onMessage mapping', () => {
 
 			await manager.cancelExecution('1');
 
-			expect(executionRepository.update).not.toHaveBeenCalled();
+			expect(executionRepository.markAsCanceled).not.toHaveBeenCalled();
 		});
 
 		it('does not cancel a plain Wait execution the socket does not drive', async () => {
@@ -193,7 +193,7 @@ describe('chat resume — real node-type onMessage mapping', () => {
 
 			await manager.cancelExecution('1');
 
-			expect(executionRepository.update).not.toHaveBeenCalled();
+			expect(executionRepository.markAsCanceled).not.toHaveBeenCalled();
 		});
 	});
 

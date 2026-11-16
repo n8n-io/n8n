@@ -703,7 +703,7 @@ export class ExecutionService {
 	private async stopInRegularMode(execution: IExecutionResponse) {
 		if (this.concurrencyControl.has(execution.id)) {
 			this.concurrencyControl.remove({ mode: execution.mode, executionId: execution.id });
-			return await this.executionRepository.stopBeforeRun(execution);
+			return await this.stopBeforeRun(execution);
 		}
 
 		if (this.activeExecutions.has(execution.id)) {
@@ -746,6 +746,24 @@ export class ExecutionService {
 		}
 	}
 
+	private async stopBeforeRun(execution: IExecutionResponse): Promise<IExecutionResponse> {
+		const [canceled] = await this.executionRepository.markAsCanceled([execution.id]);
+		if (canceled) {
+			return { ...execution, status: 'canceled', stoppedAt: canceled.stoppedAt, waitTill: null };
+		}
+
+		// Nothing changed, so the run finished first and its own outcome is the answer.
+		return await this.findCurrentOrThrow(execution);
+	}
+
+	private async findCurrentOrThrow(execution: IExecutionResponse) {
+		const current = await this.executionPersistence.findWithUnflattenedData(execution.id, [
+			execution.workflowId,
+		]);
+		if (!current) throw new MissingExecutionStopError(execution.id);
+		return current;
+	}
+
 	private async stopDuringRun(execution: IExecutionResponse): Promise<IExecutionResponse> {
 		const expectedStatus = execution.status;
 		const error = new ManualExecutionCancelledError(execution.id);
@@ -766,10 +784,7 @@ export class ExecutionService {
 			{ requireStatus: expectedStatus },
 		);
 		if (!stopped) {
-			const current = await this.executionPersistence.findWithUnflattenedData(execution.id, [
-				execution.workflowId,
-			]);
-			if (!current) throw new MissingExecutionStopError(execution.id);
+			const current = await this.findCurrentOrThrow(execution);
 			if (current.status === 'canceled') return current;
 			this.assertStoppable(current);
 			return this.globalConfig.executions.mode === 'regular'

@@ -3,6 +3,7 @@ import type { IExecutionResponse, Project } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ExecuteContext, isEngineRequest } from 'n8n-core';
 import type {
+	ExecutionStatus,
 	IBinaryKeyData,
 	INodeExecutionData,
 	IWorkflowExecutionDataProcess,
@@ -26,6 +27,13 @@ import { findResumeNode, redirectIfToolExecutor } from './utils';
 import { NodeTypes } from '../node-types';
 import { OwnershipService } from '../services/ownership.service';
 import { stripToolSuffix } from '../utils';
+
+/** A `new` run may still be queued to start, so an idle socket leaves it alone. */
+export const CHAT_CANCELABLE_STATUSES: readonly ExecutionStatus[] = [
+	'running',
+	'waiting',
+	'unknown',
+];
 
 @Service()
 export class ChatExecutionManager {
@@ -69,12 +77,7 @@ export class ChatExecutionManager {
 
 		if (!this.isChatDrivenExecution(execution)) return;
 
-		if (['running', 'waiting', 'unknown'].includes(execution.status)) {
-			await this.executionRepository.update(
-				{ id: executionId },
-				{ status: 'canceled', stoppedAt: new Date() },
-			);
-		}
+		await this.executionRepository.markAsCanceled([executionId], CHAT_CANCELABLE_STATUSES);
 	}
 
 	async findExecution(executionId: string) {
