@@ -2,9 +2,13 @@ import type { IExecuteFunctions, ISupplyDataFunctions } from 'n8n-workflow';
 
 const PRINTABLE_ASCII = /^[ -~]*$/;
 
-/** A header carries latin-1, so a Cyrillic or emoji workflow name travels percent-encoded. */
+/**
+ * A header carries latin-1, so a Cyrillic or emoji workflow name travels percent-encoded.
+ * A name holding a literal `%` is encoded too, so a gateway that decodes these headers
+ * reads every one of them the same way and never trips over a stray escape.
+ */
 function headerSafe(value: string): string {
-	return PRINTABLE_ASCII.test(value) ? value : encodeURIComponent(value);
+	return PRINTABLE_ASCII.test(value) && !value.includes('%') ? value : encodeURIComponent(value);
 }
 
 /**
