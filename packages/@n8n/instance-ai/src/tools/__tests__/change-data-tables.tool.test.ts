@@ -1,4 +1,5 @@
 import { DATA_TABLE_WRITE_TOOL_ACTIONS } from '@n8n/api-types';
+import { UserError } from '@n8n/errors';
 import { zodSchema } from 'ai';
 import { z } from 'zod';
 
@@ -169,7 +170,7 @@ describe('change_data_tables tool', () => {
 			const context = contextWithTables();
 			context.dataTableService.resolveTableReference = vi
 				.fn()
-				.mockRejectedValue(new Error('Data table "Missing" not found'));
+				.mockRejectedValue(new UserError('Data table "Missing" not found'));
 			const { result, suspend } = await runBatch(context, {
 				changes: [createA, { action: 'insert-rows', table: 'Missing', rows: [{ a: 1 }] }],
 			});
@@ -307,7 +308,8 @@ describe('change_data_tables tool', () => {
 			const context = contextWithTables({ 'dt-T': [column('a')] });
 			context.dataTableService.resolveTableReference = vi.fn(
 				async (ref: string, options?: { permission?: string }) => {
-					if (options?.permission === 'writeRow') throw new Error(`Data table "${ref}" not found`);
+					if (options?.permission === 'writeRow')
+						throw new UserError(`Data table "${ref}" not found`);
 					return { id: 'dt-T', name: 'T', projectId: 'proj-1' };
 				},
 			);
@@ -324,7 +326,9 @@ describe('change_data_tables tool', () => {
 			context.dataTableService.resolveTableReference = vi
 				.fn()
 				.mockRejectedValue(
-					new Error('Data table name "T" is ambiguous across accessible projects (p1, p2)'),
+					new UserError(
+						'Data table name "T" is ambiguous across accessible projects (p1, p2); pass the UUID or include a `projectId` to disambiguate.',
+					),
 				);
 			const { result } = await runBatch(context, { changes: [{ action: 'delete', table: 'T' }] });
 
@@ -350,7 +354,7 @@ describe('change_data_tables tool', () => {
 			const context = contextWithTables();
 			context.dataTableService.getSchema = vi
 				.fn()
-				.mockRejectedValue(new Error('Data table "dt-T" not found'));
+				.mockRejectedValue(new UserError('Data table "dt-T" not found'));
 			const { result } = await runBatch(context, {
 				changes: [{ action: 'add-column', table: 'T', column: 'X', type: 'string' }],
 			});
@@ -426,6 +430,32 @@ describe('change_data_tables tool', () => {
 				error: expect.stringContaining(`changes[${changeIndex}]`),
 			});
 			expectNoCardAndNoWrites(context, suspend);
+		});
+
+		it.each([
+			{ action: 'insert-rows', table: 'T', rows: [{ name: 'Ann', id: 7 }] },
+			{ action: 'update-rows', table: 'T', filter: filterOn('name'), data: { updatedAt: 'x' } },
+		])('rejects writing a system column in $action', async (change) => {
+			const context = contextWithTables({ 'dt-T': [column('name')] });
+			const { result, suspend } = await runBatch(context, { changes: [change] });
+
+			expect(result).toMatchObject({
+				success: false,
+				changeIndex: 0,
+				error: expect.stringContaining('set by n8n'),
+			});
+			expectNoCardAndNoWrites(context, suspend);
+		});
+
+		it('throws a not-found failure that is not a user error', async () => {
+			const context = contextWithTables();
+			context.dataTableService.resolveTableReference = vi
+				.fn()
+				.mockRejectedValue(new Error('Data table "T" not found'));
+
+			await expect(
+				runBatch(context, { changes: [{ action: 'delete', table: 'T' }] }),
+			).rejects.toThrow('not found');
 		});
 
 		it('accepts filters on system columns and rows that use columns added in the batch', async () => {

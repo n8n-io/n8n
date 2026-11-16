@@ -12,7 +12,7 @@
  *
  * Rows that an insert or update writes, and row filters, may only name columns
  * that the table has at that point in the batch. Filters may also use the
- * system columns (`id`, `createdAt`, `updatedAt`).
+ * system columns (`id`, `createdAt`, `updatedAt`), which rows cannot write.
  */
 import type { DataTableWriteToolAction, InstanceAiPermissions } from '@n8n/api-types';
 import { UnexpectedError, UserError } from '@n8n/errors';
@@ -189,7 +189,7 @@ async function applyTableChange(
 		case 'rename-column':
 			return { column: await applyRenameColumn(view, table, index, change) };
 		case 'insert-rows':
-			await assertColumnsExist(
+			await assertWritableColumns(
 				view,
 				table,
 				index,
@@ -197,7 +197,7 @@ async function applyTableChange(
 			);
 			return {};
 		case 'update-rows':
-			await assertColumnsExist(view, table, index, Object.keys(change.data));
+			await assertWritableColumns(view, table, index, Object.keys(change.data));
 			await assertFilterColumnsExist(view, table, index, change.filter);
 			return {};
 		case 'delete-rows':
@@ -284,23 +284,9 @@ async function resolveReference(
 
 // ── Lookup failures ────────────────────────────────────────────────────────
 
-/** Failures the adapter reports about the table itself, with a hint for each. */
-const LOOKUP_PROBLEMS = [
-	{ pattern: /ambiguous/i, hint: 'Pass the table ID, or set projectId to pick the project.' },
-	{ pattern: /does not belong to project/i, hint: 'Pass the table ID without projectId.' },
-	{
-		pattern: /not found/i,
-		hint: 'Check that you have access to it, run list_data_tables to find it, or create it earlier in the batch.',
-	},
-];
-
-/** A problem the model can fix, or undefined for failures such as a lost database connection. */
+/** The service throws a user error for a table it cannot find or pick; other failures are not the model's to fix. */
 function describeLookupFailure(error: unknown): string | undefined {
-	if (!(error instanceof Error)) return undefined;
-	const message = error.message.replace(/\.$/, '');
-	const problem = LOOKUP_PROBLEMS.find(({ pattern }) => pattern.test(message));
-	if (problem) return `${message}. ${problem.hint}`;
-	return error instanceof UserError ? `${message}.` : undefined;
+	return error instanceof UserError ? error.message.replace(/\.$/, '') : undefined;
 }
 
 async function guardLookup<T>(index: number, lookUp: () => Promise<T>): Promise<T> {
@@ -309,7 +295,10 @@ async function guardLookup<T>(index: number, lookUp: () => Promise<T>): Promise<
 	} catch (error) {
 		const problem = describeLookupFailure(error);
 		if (problem === undefined) throw error;
-		throw new InvalidChangeError(index, problem);
+		throw new InvalidChangeError(
+			index,
+			`${problem}. If the table does not exist yet, create it earlier in the batch.`,
+		);
 	}
 }
 
@@ -377,6 +366,23 @@ async function assertColumnsExist(
 	const columns = await loadColumns(view, table, index);
 	const missing = names.find((name) => !columns.has(name) && !allowed.includes(name));
 	if (missing !== undefined) throw missingColumnError(table, index, missing);
+}
+
+/** Rows may set only the table's own columns, never the system columns. */
+async function assertWritableColumns(
+	view: BatchView,
+	table: TableView,
+	index: number,
+	names: string[],
+) {
+	const system = names.find((name) => DATA_TABLE_SYSTEM_COLUMNS.includes(name));
+	if (system !== undefined) {
+		throw new InvalidChangeError(
+			index,
+			`"${system}" is a system column. Its values are set by n8n and cannot be written. Remove it from the row values.`,
+		);
+	}
+	await assertColumnsExist(view, table, index, names);
 }
 
 async function assertFilterColumnsExist(

@@ -2718,6 +2718,13 @@ describe('createDataTableAdapter', () => {
 			await expect(adapter.getSchema('dt-1')).rejects.toThrow('Data table "dt-1" not found');
 		});
 
+		it('rejects a table it cannot find with a user error', async () => {
+			mockedUserHasScopes.mockResolvedValue(false);
+			const { adapter } = createDataTableAdapterForTests();
+
+			await expect(adapter.resolveTableReference?.('dt-1')).rejects.toThrow(UserError);
+		});
+
 		it('resolves table references with the requested permission scope', async () => {
 			const { adapter } = createDataTableAdapterForTests();
 
