@@ -9,6 +9,7 @@ import { deriveServiceName } from '@/features/credentials/templatedAuth.utils';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+import { toOverrideCredentials } from '@/features/credentials/credentials.utils';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import {
@@ -311,7 +312,10 @@ onMounted(async () => {
 	try {
 		await Promise.all([
 			props.projectId
-				? credentialsStore.fetchUsableCredentials({ projectId: props.projectId })
+				? credentialsStore.fetchUsableCredentials({
+						projectId: props.projectId,
+						forAssistant: true,
+					})
 				: credentialsStore.fetchAllCredentials(),
 			credentialsStore.fetchCredentialTypes(false),
 		]);
@@ -370,19 +374,11 @@ const hasExistingCredentials = computed(() => {
 const dropdownCredentials = computed<ICredentialsResponse[] | undefined>(() => {
 	const req = currentRequest.value;
 	if (!req?.existingCredentials?.length) return undefined;
-	return req.existingCredentials.map((c) => {
-		const stored = credentialsStore.getCredentialById(c.id);
-		return stored && stored.type === req.credentialType
-			? stored
-			: {
-					id: c.id,
-					name: c.name,
-					type: req.credentialType,
-					isManaged: false,
-					createdAt: '',
-					updatedAt: '',
-				};
-	});
+	return toOverrideCredentials(
+		req.existingCredentials,
+		req.credentialType,
+		credentialsStore.getCredentialById,
+	);
 });
 
 function hasEasySetup(credentialType: string): boolean {
@@ -716,6 +712,7 @@ async function handleSetupAutomatically() {
 								:project-id="projectId"
 								:suggested-credential-name="currentRequest.suggestedName"
 								standalone
+								for-assistant
 								hide-issues
 								:instance-ai-credential-help="instanceAiCredentialHelp"
 								:skip-auto-select="

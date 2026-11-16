@@ -1,3 +1,4 @@
+import type { FrontendModuleSettings } from '@n8n/api-types';
 import type { EntityClass, ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -8,6 +9,24 @@ import { Container } from '@n8n/di';
  */
 @BackendModule({ name: 'knowledge' })
 export class KnowledgeModule implements ModuleInterface {
+	/**
+	 * Settings exposed to the frontend under `/rest/module-settings`. The editor
+	 * rejects an upload with these limits before the request, so a configured
+	 * limit shows up as the friendly client message and not as a server error.
+	 */
+	async settings() {
+		const { KnowledgeConfig } = await import('./knowledge.config.js');
+		const config = Container.get(KnowledgeConfig);
+
+		return {
+			limits: {
+				maxFileSizeBytes: config.maxFileSizeBytes,
+				maxFilesPerUpload: config.maxFilesPerUpload,
+				maxTotalSizeBytes: config.maxTotalSizeBytes,
+			},
+		} satisfies FrontendModuleSettings['knowledge'];
+	}
+
 	async init() {
 		// Register blob backends for knowledge files. The fs backend is always
 		// available; s3/az reuse the clients base-command already initialized

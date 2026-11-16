@@ -12,13 +12,17 @@ import {
 	type ListSkillSourceRepositoriesQueryDto,
 	type SkillSourceCredentialOption,
 	type SkillSourceRepositoryList,
+	type SkillSourceListItem,
+	type SkillSourceDeleteBlock,
+	skillNameKey,
 } from '@n8n/api-types';
+import { ProjectScopeService } from '@n8n/backend-services';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
-import { v7 as uuidv7 } from 'uuid';
+import { v7 as uuidv7, validate as isUuid } from 'uuid';
 
 import type { SkillSourceType } from '../database/entities/skill-source-connection.entity';
 import {
@@ -48,13 +52,17 @@ import {
 	type SkillTarget,
 } from '../utils/skill-content';
 import { skillContentHash } from '../utils/skill-content-hash';
+import { skillPreview } from '../utils/skill-preview';
+import { skillSourceHealth } from '../utils/skill-source-health';
+import { countSkippedFiles } from '../utils/skipped-files';
 import { SkillAccessService } from './skill-access.service';
 import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
 import type { ResolvedSkillSourceCredential } from './skill-source-credentials.contracts';
-import { isNameTaken } from './skill.policy';
+import { isNameTaken, nextFreeName } from './skill.policy';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillService } from './skill.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
+import { SkillUsageProxy } from './skill-usage-proxy.service';
 import { SkillsTelemetry, type SkillSourceTelemetryReason } from './skills-telemetry.service';
 
 /** Skills fetched at the same time from one source. */
@@ -101,9 +109,8 @@ type ReadSkill = {
 };
 
 /**
- * Connects sources and imports their skills. A source lives in one scope, and its skills get
- * that scope. The service checks access itself, and writes skills only through
- * `SkillService.createTrusted`, so the skill rules stay in one place.
+ * Manages sources and their synced skills. A source and its skills share one scope.
+ * The service checks access itself and imports skills through `SkillService.createTrusted`.
  */
 @Service()
 export class SkillSourceService {
@@ -118,6 +125,8 @@ export class SkillSourceService {
 		private readonly skillsTelemetry: SkillsTelemetry,
 		private readonly scanner: SkillSecurityScanner,
 		private readonly credentials: SkillSourceCredentialsProxy,
+		private readonly skillUsage: SkillUsageProxy,
+		private readonly projectScopeService: ProjectScopeService,
 	) {}
 
 	/**
@@ -153,19 +162,24 @@ export class SkillSourceService {
 			return {
 				source: { type: source.type, ...client.describe(locator), webUrl: client.webUrl(locator) },
 				duplicate,
-				skills: skills.map(
-					(read): DiscoveredSkill => ({
+				skills: skills.map((read): DiscoveredSkill => {
+					const preview = read.fetched
+						? skillPreview(read.fetched.content)
+						: { files: [], truncated: false };
+					return {
 						key: read.key,
 						location: client.location(read.ref),
 						name: read.skill?.name ?? read.fetched?.content.name ?? null,
 						description: read.skill?.description ?? read.fetched?.content.description ?? null,
 						skippedFiles: read.fetched?.skippedFiles ?? [],
+						previewFiles: preview.files,
+						previewTruncated: preview.truncated,
 						nameTaken: nameTaken(read),
 						error: read.error ?? null,
 						check: read.check ?? null,
 						webUrl: client.webUrl(locator, read.ref),
-					}),
-				),
+					};
+				}),
 				truncated: discovered.truncated,
 				tooDeep: discovered.tooDeep,
 			};
@@ -211,6 +225,118 @@ export class SkillSourceService {
 		}
 	}
 
+	/** Visible sources and pending update counts for the skills table. */
+	async list(user: User): Promise<SkillSourceListItem[]> {
+		await this.flagGate.assertEnabled(user);
+		const projectIds = await this.skillAccess.visibleSourceProjects(user);
+		const sources = await this.sourceRepository.findVisibleSources(projectIds);
+		const shown = sources.flatMap((source) => {
+			const client = this.clients.get(source.type);
+			return client ? [{ source, client }] : [];
+		});
+		const [counts, projects, canReview, canDelete] = await Promise.all([
+			this.sourceRepository.countLinksBySource(shown.map(({ source }) => source.id)),
+			this.skillRepository.findProjects(shown.flatMap(({ source }) => source.projectId ?? [])),
+			this.skillAccess.accessCheck(user, 'update'),
+			this.skillAccess.accessCheck(user, 'delete'),
+		]);
+		return shown.map(({ source, client }) => {
+			const project = source.projectId ? projects.get(source.projectId) : undefined;
+			const count = counts.get(source.id) ?? { skills: 0, available: 0, blocked: 0 };
+			return {
+				id: source.id,
+				type: source.type,
+				...client.describe(source.locator),
+				webUrl: client.webUrl(source.locator),
+				projectId: source.projectId,
+				projectName: project?.name ?? null,
+				projectType: project ? (project.type === 'personal' ? 'personal' : 'team') : null,
+				projectIcon: project?.icon ?? null,
+				skillCount: count.skills,
+				updatesAvailable: canReview(source) ? count.available : 0,
+				updatesBlocked: canReview(source) ? count.blocked : 0,
+				health: skillSourceHealth(source.lastErrorReason),
+				lastCheckedAt: source.lastCheckedAt?.toISOString() ?? null,
+				canReview: canReview(source),
+				canDelete: canDelete(source),
+			};
+		});
+	}
+
+	/** Deletes a source and all its synced skills, only when no agent uses any of them. */
+	async delete(user: User, sourceId: string): Promise<void> {
+		await this.flagGate.assertEnabled(user);
+		const source = isUuid(sourceId) ? await this.sourceRepository.findById(sourceId) : null;
+		if (!source || !(await this.skillAccess.canOnSource(user, source, 'view'))) {
+			throw new NotFoundError('Source not found');
+		}
+		// Resolve permissions before the transaction so a one-connection pool can run the delete.
+		const canDelete = await this.skillAccess.accessCheck(user, 'delete');
+		if (!canDelete(source)) {
+			throw new ForbiddenError('You are not allowed to delete this source.');
+		}
+		const readable = await this.projectScopeService.getProjectIds(user, ['agent:read']);
+		try {
+			await this.txRunner.run({}, async (ctx) => {
+				const locked = await this.sourceRepository.findForDelete(sourceId, ctx);
+				if (!locked) throw new NotFoundError('Source not found');
+				if (!canDelete(locked)) {
+					throw new ForbiddenError('You are not allowed to delete this source.');
+				}
+				const links = await this.sourceRepository.findLinksBySource(sourceId, ctx);
+				// Attaches and publishes wait until the usage check and delete end.
+				await this.skillRepository.lockForEdit(
+					links.map(({ skillId }) => skillId),
+					ctx,
+				);
+				// Stop syncing or a skill delete may have finished while the locks waited.
+				const current = await this.sourceRepository.findLinksBySource(sourceId, ctx);
+				const agentIds = new Set<string>();
+				for (const { skillId } of current) {
+					for (const id of await this.skillUsage.findUsingAgentIds(skillId, ctx)) agentIds.add(id);
+				}
+				if (agentIds.size > 0) {
+					const agents = await this.skillUsage.findAgents([...agentIds], ctx);
+					const visible = [...agents].filter(
+						([, agent]) => readable === null || readable.includes(agent.projectId),
+					);
+					const projects = await this.skillRepository.findProjects(
+						visible.map(([, agent]) => agent.projectId),
+						ctx,
+					);
+					const block: SkillSourceDeleteBlock = {
+						reason: 'skills_in_use',
+						agents: visible.map(([agentId, agent]) => ({
+							agentId,
+							agentName: agent.name,
+							projectId: agent.projectId,
+							projectName: projects.get(agent.projectId)?.name ?? agent.projectId,
+						})),
+						hiddenAgents: agentIds.size - visible.length,
+					};
+					throw new ConflictError(
+						'Remove the skills from these agents before you delete the source.',
+						undefined,
+						block,
+					);
+				}
+				for (const { skillId } of current) await this.skillRepository.deleteSkill(skillId, ctx);
+				await this.sourceRepository.deleteSource(sourceId, ctx);
+			});
+		} catch (error) {
+			await this.skillsTelemetry.deletedSource(
+				{
+					provider: source.type,
+					status: 'failure',
+					reason: error instanceof ConflictError ? 'skills_in_use' : 'unexpected',
+				},
+				user.id,
+			);
+			throw error;
+		}
+		await this.skillsTelemetry.deletedSource({ provider: source.type, status: 'success' }, user.id);
+	}
+
 	// ---------------------------------------------------------------- steps
 
 	private async importSkills(
@@ -224,10 +350,11 @@ export class SkillSourceService {
 		const reviewed = new Set(reviewedSkillKeys);
 		const failed: SkillSourceConnectResponse['failed'] = [];
 		const imported: SkillSourceConnectResponse['imported'] = [];
-		let skippedFiles = 0;
+		const skippedPaths: string[] = [];
 		let needsReview = 0;
 		const access = source.auth?.credentialId ? 'credential' : 'public';
-		const track = async (status: 'success' | 'failure', reason?: SkillSourceTelemetryReason) =>
+		const track = async (status: 'success' | 'failure', reason?: SkillSourceTelemetryReason) => {
+			const skipped = countSkippedFiles(skippedPaths);
 			await this.skillsTelemetry.importedFromSource(
 				{
 					provider: source.type,
@@ -239,12 +366,15 @@ export class SkillSourceService {
 					name_taken: failed.filter((failure) => failure.reason === 'name_taken').length,
 					blocked: failed.filter((failure) => failure.reason === 'blocked_by_check').length,
 					needs_review: needsReview,
-					skipped_files: skippedFiles,
+					skipped_files: skippedPaths.length,
+					skipped_file_extensions: skipped.extensions,
+					skipped_script_files: skipped.scripts,
 					status,
 					...(reason ? { reason } : {}),
 				},
 				user.id,
 			);
+		};
 
 		const sourceId = uuidv7();
 		let discovered: Discovered;
@@ -299,16 +429,23 @@ export class SkillSourceService {
 					if (error instanceof DuplicateSkillSourceError) throw duplicateError('scope');
 					throw error;
 				}
-				// Read in the transaction, so a skill created meanwhile is not shadowed. Each import
-				// adds its name, so two picked skills with one name do not both come in.
-				const names = await this.skillRepository.findLatestNamesInTarget(target, ctx);
+				// Read in the transaction, so a skill created meanwhile is not shadowed. A name that
+				// the scope already had fails. A source can hold two skills with one name, so a name
+				// that this import took gets the first free number ("ponytail 2").
+				const existing = await this.skillRepository.findLatestNamesInTarget(target, ctx);
+				const names = [...existing];
 				for (const read of importable) {
-					const { skill, fetched } = read;
-					if (!skill || !fetched) continue;
-					if (isNameTaken(skill.name, names)) {
-						failed.push({ key: read.key, name: skill.name, reason: 'name_taken' });
+					const { skill: fetchedSkill, fetched } = read;
+					if (!fetchedSkill || !fetched) continue;
+					if (isNameTaken(fetchedSkill.name, existing)) {
+						failed.push({ key: read.key, name: fetchedSkill.name, reason: 'name_taken' });
 						continue;
 					}
+					const name = nextFreeName(
+						fetchedSkill.name,
+						new Set(names.map((taken) => skillNameKey(taken.name))),
+					);
+					const skill = { ...fetchedSkill, name };
 					const { frontmatter } = fetched.content;
 					const skillId = await this.skillService.createTrusted(
 						{
@@ -328,14 +465,15 @@ export class SkillSourceService {
 							sourceId,
 							remoteRef: read.ref,
 							baseRevision: fetched.revision,
-							baseContentHash: skillContentHash(toSkillContent(skill, frontmatter)),
+							// The source content, so the check does not take the new name for an update.
+							baseContentHash: skillContentHash(toSkillContent(fetchedSkill, frontmatter)),
 							skippedFiles: fetched.skippedFiles,
 						},
 						ctx,
 					);
-					names.push({ skillId, name: skill.name });
-					imported.push({ key: read.key, skillId, name: skill.name });
-					skippedFiles += fetched.skippedFiles.length;
+					names.push({ skillId, name });
+					imported.push({ key: read.key, skillId, name });
+					skippedPaths.push(...fetched.skippedFiles);
 					if (read.check?.verdict === 'needs_review') needsReview += 1;
 				}
 				if (imported.length === 0) {
@@ -346,7 +484,7 @@ export class SkillSourceService {
 		} catch (error) {
 			// The transaction rolled back, so nothing came in.
 			imported.length = 0;
-			skippedFiles = 0;
+			skippedPaths.length = 0;
 			needsReview = 0;
 			await track('failure', telemetryReasonOf(error));
 			throw error;

@@ -11,13 +11,14 @@ export class Lemlist extends VersionedNodeType {
 			name: 'lemlist',
 			icon: 'file:lemlist.svg',
 			group: ['transform'],
-			defaultVersion: 2,
+			defaultVersion: 2.1,
 			description: 'Consume the Lemlist API',
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new LemlistV1(baseDescription),
 			2: new LemlistV2(baseDescription),
+			2.1: new LemlistV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

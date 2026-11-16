@@ -1,0 +1,98 @@
+{
+	"name": "CloudFirestore Collection request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "f1e2d3c4-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"authentication": "googleFirebaseCloudFirestoreOAuth2Api",
+				"resource": "collection",
+				"operation": "getAll",
+				"projectId": "test-project",
+				"database": "(default)",
+				"limit": 2
+			},
+			"type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+			"typeVersion": 1.1,
+			"position": [300, 0],
+			"id": "f1e2d3c4-0000-4000-8000-000000000001",
+			"name": "Get Collections",
+			"credentials": {
+				"googleFirebaseCloudFirestoreOAuth2Api": {
+					"id": "f1e2d3c4-cred",
+					"name": "CloudFirestore OAuth2"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "googleFirebaseCloudFirestoreOAuth2Api",
+				"resource": "collection",
+				"operation": "getAll",
+				"projectId": "test-project",
+				"database": "inventory-db",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+			"typeVersion": 1.1,
+			"position": [300, 200],
+			"id": "f1e2d3c4-0000-4000-8000-000000000002",
+			"name": "Get All Collections",
+			"credentials": {
+				"googleFirebaseCloudFirestoreOAuth2Api": {
+					"id": "f1e2d3c4-cred",
+					"name": "CloudFirestore OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Collections": [
+			{
+				"json": {
+					"name": "users"
+				}
+			},
+			{
+				"json": {
+					"name": "orders"
+				}
+			}
+		],
+		"Get All Collections": [
+			{
+				"json": {
+					"name": "products"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get Collections",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get All Collections",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

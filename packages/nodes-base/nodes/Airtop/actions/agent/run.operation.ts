@@ -3,7 +3,9 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
+	RequestUrl,
 } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 
 import type { AgentInvocationResponse, AgentParametersInput } from './agent.types';
 import {
@@ -166,7 +168,7 @@ export async function execute(
 	const validatedAgentParameters = validateAgentParameters.call(this, agentParameters);
 
 	const { webhookId } = await getAgentDetails.call(this, agentId);
-	const invokeUrl = `${AIRTOP_HOOKS_BASE_URL}/agents/${agentId}/webhooks/${webhookId}`;
+	const invokeUrl = requestUrl`${AIRTOP_HOOKS_BASE_URL}/agents/${agentId}/webhooks/${webhookId}`;
 
 	// Pass the chosen browser profile through to the agent webhook. Omitted when empty so
 	// the agent falls back to its default profile.
@@ -174,7 +176,7 @@ export async function execute(
 
 	const invocationResponse = await apiRequest.call<
 		IExecuteFunctions,
-		['POST', string, IDataObject, IDataObject],
+		['POST', RequestUrl, IDataObject, IDataObject],
 		Promise<AgentInvocationResponse>
 	>(this, 'POST', invokeUrl, validatedAgentParameters, query);
 

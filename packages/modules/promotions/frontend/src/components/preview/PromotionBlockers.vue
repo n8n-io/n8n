@@ -129,6 +129,10 @@ const conflictRow = (conflict: HardConflict, index: number): BlockerRow => {
 		const type = conflict.kind === 'tag' ? 'tag' : 'dataTable';
 		return {
 			...row,
+			detail:
+				conflict.kind === 'tag'
+					? i18n.baseText(`promotions.bindings.conflicts.tag-conflict.${conflict.reason}`)
+					: i18n.baseText(`promotions.bindings.conflicts.data-table-conflict.${conflict.reason}`),
 			icon: resourceIcon(type),
 			// An import-wide issue, such as a disabled module, names no table or tag.
 			name:
@@ -311,6 +315,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 								<N8nText step="2xs" color="text-light">
 									<PromotionWorkflowLinks
 										:workflows="row.usedBy"
+										list
 										@inspect="emit('inspect', $event)"
 									/>
 								</N8nText>
@@ -402,6 +407,7 @@ const isCreateDisabled = computed(() => props.busy || bindings.isBusy.value);
 									<N8nText step="2xs" color="text-light">
 										<PromotionWorkflowLinks
 											:workflows="usedBy(table.consumers)"
+											list
 											@inspect="emit('inspect', $event)"
 										/>
 									</N8nText>

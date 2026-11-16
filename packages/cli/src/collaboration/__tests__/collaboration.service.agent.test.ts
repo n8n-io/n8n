@@ -88,7 +88,7 @@ describe('CollaborationService — agent messages', () => {
 
 		await service.handleUserMessage(userId, 'client-1', msg);
 
-		expect(state.releaseAgentWriteLockIfHolder).toHaveBeenCalledWith('agent-1', 'client-1');
+		expect(state.releaseAgentWriteLockIfHolder).toHaveBeenCalledWith('agent-1', 'client-1', userId);
 		expect(state.removeAgentCollaborator).toHaveBeenCalledWith('agent-1', 'client-1');
 	});
 
@@ -176,7 +176,7 @@ describe('CollaborationService — agent messages', () => {
 
 		await service.handleUserMessage(userId, 'client-1', msg);
 
-		expect(state.releaseAgentWriteLockIfHolder).toHaveBeenCalledWith('agent-1', 'client-1');
+		expect(state.releaseAgentWriteLockIfHolder).toHaveBeenCalledWith('agent-1', 'client-1', userId);
 	});
 
 	it('does not release the lock on agentWriteAccessReleaseRequested when a different client holds it', async () => {

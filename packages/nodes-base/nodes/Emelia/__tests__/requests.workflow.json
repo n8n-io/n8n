@@ -1,0 +1,88 @@
+{
+	"name": "Emelia request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "00000000-0000-4000-8000-000000000000",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"operation": "get",
+				"campaignId": "64b7f1c2e4b0a1d2c3e4f5a6"
+			},
+			"type": "n8n-nodes-base.emelia",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "00000000-0000-4000-8000-000000000001",
+			"name": "Get Campaign",
+			"credentials": {
+				"emeliaApi": {
+					"id": "cred1",
+					"name": "Emelia account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "contactList",
+				"operation": "getAll",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.emelia",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "00000000-0000-4000-8000-000000000002",
+			"name": "Get Many Contact Lists",
+			"credentials": {
+				"emeliaApi": {
+					"id": "cred1",
+					"name": "Emelia account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Campaign": [
+			{
+				"json": {
+					"_id": "64b7f1c2e4b0a1d2c3e4f5a6",
+					"name": "Onboarding"
+				}
+			}
+		],
+		"Get Many Contact Lists": [
+			{
+				"json": {
+					"_id": "64b7f1c2e4b0a1d2c3e4f5b7",
+					"name": "Leads"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get Campaign",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Many Contact Lists",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

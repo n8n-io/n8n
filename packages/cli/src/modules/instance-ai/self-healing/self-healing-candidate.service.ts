@@ -150,7 +150,8 @@ export class SelfHealingCandidateService {
 			mockedNodeNames: candidate.credentialResolution.mockedNodeNames,
 			declaredOutputFixtures: candidate.declaredOutputFixtures,
 			outputSchemaLookup: context.outputSchemaLookup,
-			fallbackModelConfig: context.modelId,
+			model: context.modelId,
+			utilityModel: context.utilityModelId,
 			modelFetch: context.modelFetch,
 			logger: this.logger,
 		});

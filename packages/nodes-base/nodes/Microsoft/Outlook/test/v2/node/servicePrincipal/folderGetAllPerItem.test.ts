@@ -21,7 +21,7 @@ describe('Test MicrosoftOutlookV2, Service Principal => folder:getAll per-item m
 	beforeAll(() => {
 		nock('https://graph.microsoft.com')
 			.matchHeader('Authorization', 'Bearer test-access-token')
-			.get('/v1.0/users/usera%40example.com/mailFolders')
+			.get('/v1.0/users/usera@example.com/mailFolders')
 			.query({ $top: 50 })
 			.reply(200, {
 				value: [{ id: 'folder-a', displayName: 'Inbox A', childFolderCount: 1 }],
@@ -31,7 +31,7 @@ describe('Test MicrosoftOutlookV2, Service Principal => folder:getAll per-item m
 		// fetch must stay on mailbox A.
 		nock('https://graph.microsoft.com')
 			.matchHeader('Authorization', 'Bearer test-access-token')
-			.get('/v1.0/users/usera%40example.com/mailFolders/folder-a/childFolders')
+			.get('/v1.0/users/usera@example.com/mailFolders/folder-a/childFolders')
 			.query({ $top: 100 })
 			.reply(200, {
 				value: [{ id: 'sub-a', displayName: 'Sub A', childFolderCount: 0 }],
@@ -39,7 +39,7 @@ describe('Test MicrosoftOutlookV2, Service Principal => folder:getAll per-item m
 
 		nock('https://graph.microsoft.com')
 			.matchHeader('Authorization', 'Bearer test-access-token')
-			.get('/v1.0/users/userb%40example.com/mailFolders')
+			.get('/v1.0/users/userb@example.com/mailFolders')
 			.query({ $top: 50 })
 			.reply(200, {
 				value: [{ id: 'folder-b', displayName: 'Inbox B', childFolderCount: 1 }],
@@ -47,7 +47,7 @@ describe('Test MicrosoftOutlookV2, Service Principal => folder:getAll per-item m
 
 		nock('https://graph.microsoft.com')
 			.matchHeader('Authorization', 'Bearer test-access-token')
-			.get('/v1.0/users/userb%40example.com/mailFolders/folder-b/childFolders')
+			.get('/v1.0/users/userb@example.com/mailFolders/folder-b/childFolders')
 			.query({ $top: 100 })
 			.reply(200, {
 				value: [{ id: 'sub-b', displayName: 'Sub B', childFolderCount: 0 }],

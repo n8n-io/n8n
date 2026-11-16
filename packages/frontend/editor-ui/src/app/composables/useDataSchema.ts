@@ -23,7 +23,7 @@ import {
 	type ITaskDataConnections,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
-import { ref } from 'vue';
+import { ref, toRaw } from 'vue';
 import { type IconName } from '@n8n/design-system';
 import { DATA_TYPE_ICON_MAP } from '@/app/constants';
 import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
@@ -102,7 +102,8 @@ export function useDataSchema() {
 		excludeValues = false,
 		collapseArrays = false,
 	) {
-		const [head, ...tail] = data;
+		// Merge raw items: a merge through reactive proxies is about ten times slower
+		const [head, ...tail] = toRaw(data).map((item) => toRaw(item));
 
 		return getSchema(merge({}, head, ...tail, head), undefined, excludeValues, collapseArrays);
 	}

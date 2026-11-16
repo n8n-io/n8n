@@ -9,7 +9,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import {
 	keysToSnakeCase,
@@ -124,7 +124,7 @@ export class PagerDuty implements INodeType {
 					this,
 					'escalation_policies',
 					'GET',
-					'/escalation_policies',
+					requestPath`/escalation_policies`,
 				);
 				for (const escalationPolicy of escalationPolicies) {
 					const escalationPolicyName = escalationPolicy.name;
@@ -144,7 +144,7 @@ export class PagerDuty implements INodeType {
 					this,
 					'priorities',
 					'GET',
-					'/priorities',
+					requestPath`/priorities`,
 				);
 				for (const priority of priorities) {
 					const priorityName = priority.name;
@@ -166,7 +166,7 @@ export class PagerDuty implements INodeType {
 					this,
 					'services',
 					'GET',
-					'/services',
+					requestPath`/services`,
 				);
 				for (const service of services) {
 					const serviceName = service.name;
@@ -255,10 +255,9 @@ export class PagerDuty implements INodeType {
 						responseData = await pagerDutyApiRequest.call(
 							this,
 							'POST',
-							'/incidents',
+							requestPath`/incidents`,
 							{ incident: body },
 							{},
-							undefined,
 							{ from: email },
 						);
 						responseData = responseData.incident;
@@ -266,7 +265,11 @@ export class PagerDuty implements INodeType {
 					//https://api-reference.pagerduty.com/#!/Incidents/get_incidents_id
 					if (operation === 'get') {
 						const incidentId = this.getNodeParameter('incidentId', i) as string;
-						responseData = await pagerDutyApiRequest.call(this, 'GET', `/incidents/${incidentId}`);
+						responseData = await pagerDutyApiRequest.call(
+							this,
+							'GET',
+							requestPath`/incidents/${incidentId}`,
+						);
 						responseData = responseData.incident;
 					}
 					//https://api-reference.pagerduty.com/#!/Incidents/get_incidents
@@ -291,13 +294,19 @@ export class PagerDuty implements INodeType {
 								this,
 								'incidents',
 								'GET',
-								'/incidents',
+								requestPath`/incidents`,
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
-							responseData = await pagerDutyApiRequest.call(this, 'GET', '/incidents', {}, qs);
+							responseData = await pagerDutyApiRequest.call(
+								this,
+								'GET',
+								requestPath`/incidents`,
+								{},
+								qs,
+							);
 							responseData = responseData.incidents;
 						}
 					}
@@ -353,10 +362,9 @@ export class PagerDuty implements INodeType {
 						responseData = await pagerDutyApiRequest.call(
 							this,
 							'PUT',
-							`/incidents/${incidentId}`,
+							requestPath`/incidents/${incidentId}`,
 							{ incident: body },
 							{},
-							undefined,
 							{ from: email },
 						);
 						responseData = responseData.incident;
@@ -374,10 +382,9 @@ export class PagerDuty implements INodeType {
 						responseData = await pagerDutyApiRequest.call(
 							this,
 							'POST',
-							`/incidents/${incidentId}/notes`,
+							requestPath`/incidents/${incidentId}/notes`,
 							{ note: body },
 							{},
-							undefined,
 							{ from: email },
 						);
 					}
@@ -390,7 +397,7 @@ export class PagerDuty implements INodeType {
 								this,
 								'notes',
 								'GET',
-								`/incidents/${incidentId}/notes`,
+								requestPath`/incidents/${incidentId}/notes`,
 								{},
 								qs,
 							);
@@ -399,7 +406,7 @@ export class PagerDuty implements INodeType {
 							responseData = await pagerDutyApiRequest.call(
 								this,
 								'GET',
-								`/incidents/${incidentId}/notes`,
+								requestPath`/incidents/${incidentId}/notes`,
 								{},
 								qs,
 							);
@@ -414,7 +421,7 @@ export class PagerDuty implements INodeType {
 						responseData = await pagerDutyApiRequest.call(
 							this,
 							'GET',
-							`/log_entries/${logEntryId}`,
+							requestPath`/log_entries/${logEntryId}`,
 						);
 						responseData = responseData.log_entry;
 					}
@@ -429,13 +436,19 @@ export class PagerDuty implements INodeType {
 								this,
 								'log_entries',
 								'GET',
-								'/log_entries',
+								requestPath`/log_entries`,
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
-							responseData = await pagerDutyApiRequest.call(this, 'GET', '/log_entries', {}, qs);
+							responseData = await pagerDutyApiRequest.call(
+								this,
+								'GET',
+								requestPath`/log_entries`,
+								{},
+								qs,
+							);
 							responseData = responseData.log_entries;
 						}
 					}
@@ -444,7 +457,11 @@ export class PagerDuty implements INodeType {
 					//https://developer.pagerduty.com/api-reference/reference/REST/openapiv3.json/paths/~1users~1%7Bid%7D/get
 					if (operation === 'get') {
 						const userId = this.getNodeParameter('userId', i) as string;
-						responseData = await pagerDutyApiRequest.call(this, 'GET', `/users/${userId}`);
+						responseData = await pagerDutyApiRequest.call(
+							this,
+							'GET',
+							requestPath`/users/${userId}`,
+						);
 						responseData = responseData.user;
 					}
 				}

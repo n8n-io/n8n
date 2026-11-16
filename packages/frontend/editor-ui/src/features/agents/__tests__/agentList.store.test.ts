@@ -19,7 +19,7 @@ describe('agentList.store', () => {
 		await store.fetchTotalCount();
 
 		expect(store.totalCount).toBe(2);
-		expect(listAgentsPageGlobal).toHaveBeenCalledWith(expect.anything(), { take: 1 });
+		expect(listAgentsPageGlobal).toHaveBeenCalledWith(expect.anything(), { limit: 1 });
 	});
 
 	it('refreshes the count when the last agent is removed', async () => {
