@@ -12,6 +12,10 @@ n8n process, for example n8n Cloud.
 - Types use plain data only: no entities, no TypeORM, no Express.
 - Errors carry a contract `code` (`HooksApiErrorV1`). Do not match on error
   classes or messages.
+- V1 is the surface n8n Cloud uses. Self-hosted hook authors are consumers too,
+  and the same rules protect them.
+- A middleware cannot pass data to the handler. Read what you need again in the
+  handler.
 
 ## How drift is caught
 
@@ -52,14 +56,44 @@ async function registerV1(api) {
 		console.log('[hooks-poc] owner set up', owner);
 	}
 
-	api.http?.registerRoute({
-		method: 'get',
-		path: '/cloud/admin/executions/:executionId/workflow',
-		handler: async ({ params }) => {
-			const workflowId = await api.workflows.getWorkflowIdForExecution(params.executionId);
-			return workflowId ? { status: 200, body: { workflowId } } : { status: 404 };
-		},
-	});
+	const http = api.http;
+	if (http) {
+		// n8n does not authenticate this route. The handler checks the caller.
+		http.registerRoute({
+			method: 'get',
+			path: '/cloud/admin/executions/:executionId/workflow',
+			middlewares: [],
+			handler: async ({ params }) => {
+				const workflowId = await api.workflows.getWorkflowIdForExecution(params.executionId);
+				return workflowId ? { status: 200, body: { workflowId } } : { status: 404 };
+			},
+		});
+
+		// n8n authenticates the caller as an n8n user and checks a global scope.
+		http.registerRoute({
+			method: 'get',
+			path: '/cloud/admin/whoami',
+			middlewares: [
+				http.middlewares.sessionAuthentication,
+				http.middlewares.requireGlobalScope('workflow:list'),
+			],
+			// `security` is typed optional because it depends on the middlewares. Narrow it.
+			handler: async ({ security }) =>
+				security ? { status: 200, body: security.subject } : { status: 401 },
+		});
+
+		// The extension brings its own middleware. A response ends the request,
+		// `undefined` continues. Compare a real secret with `crypto.timingSafeEqual`.
+		http.registerRoute({
+			method: 'get',
+			path: '/cloud/admin/limits',
+			middlewares: [
+				async ({ headers }) =>
+					headers['x-cloud-key'] === process.env.CLOUD_KEY ? undefined : { status: 401 },
+			],
+			handler: async () => ({ status: 200, body: { limits: {} } }),
+		});
+	}
 
 	api.hooks.workflow.onPreExecute(async ({ workflow, mode }) => {
 		console.log(`[hooks-poc] preExecute ${workflow.id} (${mode})`);

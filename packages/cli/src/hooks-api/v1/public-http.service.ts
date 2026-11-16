@@ -1,11 +1,36 @@
 import { Logger } from '@n8n/backend-common';
+import { isAuthenticatedRequest, principalFromUser } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { HttpApiV1, HttpRequestV1, HttpRouteV1 } from '@n8n/hooks-api';
-import type { Request, Router as ExpressRouter } from 'express';
+import { UserError } from '@n8n/errors';
+import type {
+	HttpApiV1,
+	HttpMethodV1,
+	HttpMiddlewareFnV1,
+	HttpMiddlewaresV1,
+	HttpMiddlewareV1,
+	HttpRequestV1,
+	HttpRouteV1,
+	SecurityContextV1,
+} from '@n8n/hooks-api';
+import { type Scope, scopeSchema } from '@n8n/permissions';
+import type { Request, Router as ExpressRouter, RequestHandler } from 'express';
 import { Router } from 'express';
-import { UnexpectedError } from 'n8n-workflow';
+
+import { ControllerRegistry } from '@/controller.registry';
 
 type QueryV1 = HttpRequestV1['query'];
+
+type RouteFlags = Parameters<ControllerRegistry['buildMiddlewares']>[0];
+
+const isHttpMiddlewareFnV1 = (
+	value: HttpMiddlewareFnV1 | HttpMiddlewareV1,
+): value is HttpMiddlewareFnV1 => typeof value === 'function';
+
+const toSecurityV1 = (req: Request): SecurityContextV1 | undefined => {
+	if (!isAuthenticatedRequest(req)) return undefined;
+	const { role: _role, ...subject } = principalFromUser(req.user);
+	return { subject, authMethod: 'session-cookie' };
+};
 
 const toQueryV1 = (query: Request['query']): QueryV1 => {
 	const result: QueryV1 = {};
@@ -15,6 +40,16 @@ const toQueryV1 = (query: Request['query']): QueryV1 => {
 	}
 	return result;
 };
+
+const toRequestV1 = (method: HttpMethodV1, req: Request): HttpRequestV1 => ({
+	method,
+	path: req.path,
+	params: toParamsV1(req.params),
+	query: toQueryV1(req.query),
+	headers: req.headers,
+	body: toJsonBodyV1(req),
+	security: toSecurityV1(req),
+});
 
 /** The contract exposes a parsed JSON body, or `undefined` when the request has none. */
 const toJsonBodyV1 = (req: Request): unknown => {
@@ -30,9 +65,14 @@ const toParamsV1 = (params: Request['params']): HttpRequestV1['params'] => {
 	return result;
 };
 
+const isScope = (value: string): value is Scope => scopeSchema.safeParse(value).success;
+
 @Service()
 export class PublicHttpService implements HttpApiV1 {
 	readonly version = 1;
+	readonly middlewares: HttpMiddlewaresV1;
+
+	private readonly provided = new WeakMap<HttpMiddlewareV1, RouteFlags>();
 
 	/**
 	 * Mounted after the built-in API routes and before the editor UI fallback,
@@ -40,24 +80,33 @@ export class PublicHttpService implements HttpApiV1 {
 	 */
 	readonly router: ExpressRouter = Router();
 
-	constructor(private readonly logger: Logger) {}
-
-	registerRoute({ method, path, handler }: HttpRouteV1): void {
-		if (!path.startsWith('/')) {
-			throw new UnexpectedError('Route path must start with "/"', { extra: { path } });
-		}
-
-		this.router[method](path, async (req, res) => {
-			try {
-				const response = await handler({
-					method,
-					path: req.path,
-					params: toParamsV1(req.params),
-					query: toQueryV1(req.query),
-					headers: req.headers,
-					body: toJsonBodyV1(req),
+	constructor(
+		private readonly logger: Logger,
+		private readonly controllerRegistry: ControllerRegistry,
+	) {
+		this.middlewares = {
+			sessionAuthentication: this.provide('sessionAuthentication', { skipAuth: false }),
+			requireGlobalScope: (scope) => {
+				if (!isScope(scope)) throw new UserError(`Unknown scope "${scope}"`);
+				return this.provide(`requireGlobalScope(${scope})`, {
+					skipAuth: true,
+					accessScope: { scope, globalOnly: true },
 				});
+			},
+		};
+	}
 
+	private provide(name: string, flags: RouteFlags): HttpMiddlewareV1 {
+		const handle: HttpMiddlewareV1 = Object.freeze({ name });
+		this.provided.set(handle, flags);
+		return handle;
+	}
+
+	private toExpress(method: HttpMethodV1, path: string, fn: HttpMiddlewareFnV1): RequestHandler {
+		return async (req, res, next) => {
+			try {
+				const response = await fn(toRequestV1(method, req));
+				if (response === undefined) return next();
 				res.status(response.status);
 				if (response.headers) res.set(response.headers);
 				if (response.body === undefined) res.end();
@@ -66,8 +115,42 @@ export class PublicHttpService implements HttpApiV1 {
 				this.logger.error('Extension route failed', { method, path, error });
 				res.status(500).json({ message: 'Internal server error' });
 			}
-		});
+		};
+	}
 
+	/** Reached only when the handler returned nothing. */
+	private readonly noResponse: RequestHandler = (req, res) => {
+		this.logger.error('Extension route returned no response', {
+			method: req.method,
+			path: req.path,
+		});
+		res.status(500).json({ message: 'Internal server error' });
+	};
+
+	registerRoute({ method, path, middlewares, handler }: HttpRouteV1): void {
+		if (!path.startsWith('/')) {
+			throw new UserError('Route path must start with "/"', { extra: { path } });
+		}
+
+		const chain: RequestHandler[] = [];
+		let authenticated = false;
+
+		for (const middleware of middlewares) {
+			if (isHttpMiddlewareFnV1(middleware)) {
+				chain.push(this.toExpress(method, path, middleware));
+				continue;
+			}
+
+			const flags = this.provided.get(middleware);
+			if (!flags) throw new UserError('Unknown middleware. Use one from api.http.middlewares');
+			if (flags.accessScope && !authenticated) {
+				throw new UserError('requireGlobalScope needs sessionAuthentication before it');
+			}
+			if (!flags.skipAuth) authenticated = true;
+			chain.push(...this.controllerRegistry.buildMiddlewares(flags, []));
+		}
+
+		this.router[method](path, ...chain, this.toExpress(method, path, handler), this.noResponse);
 		this.logger.debug('Registered extension route', { method, path });
 	}
 }

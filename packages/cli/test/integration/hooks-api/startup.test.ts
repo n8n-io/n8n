@@ -28,6 +28,7 @@ let dataDir: string;
 let eventsFile: string;
 let baseUrl: string;
 let authCookie: string;
+let ownerId: string;
 
 const getFreePort = async () =>
 	await new Promise<number>((resolvePort, reject) => {
@@ -175,6 +176,7 @@ beforeAll(async () => {
 		body: JSON.stringify({ emailOrLdapLoginId: 'owner@example.com', password: 'Password123' }),
 	});
 	expect(login.status).toBe(200);
+	ownerId = ((await login.json()) as { data: { id: string } }).data.id;
 	authCookie = login.headers
 		.getSetCookie()
 		.map((cookie) => cookie.split(';')[0])
@@ -217,6 +219,40 @@ describe('Hooks API on n8n startup', () => {
 		expect(asJson.status).toBe(404);
 		expect(asHtml.status).toBe(404);
 		expect(await asHtml.text()).toBe('');
+	});
+
+	it('authenticates a session route with the n8n login and passes the caller as a principal', async () => {
+		const path = `${baseUrl}/hooks-api-test/whoami`;
+
+		const anonymous = await fetch(path);
+		// The session is bound to the browser id the login sent.
+		const asOwner = await fetch(path, {
+			headers: { cookie: authCookie, 'browser-id': 'hooks-api-startup-test' },
+		});
+
+		expect(anonymous.status).toBe(401);
+		expect(asOwner.status).toBe(200);
+		expect(await asOwner.json()).toEqual({
+			subject: {
+				id: ownerId,
+				type: 'person',
+				email: 'owner@example.com',
+				firstName: 'Jane',
+				lastName: 'Doe',
+			},
+			authMethod: 'session-cookie',
+		});
+	});
+
+	it('runs a middleware from the hook file before the handler', async () => {
+		const path = `${baseUrl}/hooks-api-test/with-key`;
+
+		const withoutKey = await fetch(path);
+		const withKey = await fetch(path, { headers: { 'x-hooks-api-test-key': 'secret' } });
+
+		expect(withoutKey.status).toBe(401);
+		expect(withKey.status).toBe(200);
+		expect(await withKey.json()).toEqual({ ok: true });
 	});
 
 	it('runs the pre-execute handler for a real execution, and the execution is found by ID', async () => {

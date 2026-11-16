@@ -7,7 +7,7 @@
  * expectation is a breaking change and needs a new contract version.
  */
 import { testDb } from '@n8n/backend-test-utils';
-import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, isPerson, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { HooksApiErrorV1, HooksApiV1, OwnerSetupInputV1 } from '@n8n/hooks-api';
 
@@ -79,6 +79,8 @@ describe('OwnershipApiV1 contract', () => {
 			const created = await api.ownership.setupOwner(owner);
 
 			const stored = await Container.get(UserRepository).findOneByOrFail({ id: created.id });
+			// Only a person has a password. The owner is always a person.
+			if (!isPerson(stored)) throw new Error('Stored owner is not a person');
 			expect(stored.password).not.toBe(owner.password);
 			await expect(
 				Container.get(PasswordUtility).compare(owner.password, stored.password),

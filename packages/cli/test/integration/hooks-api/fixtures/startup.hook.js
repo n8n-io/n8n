@@ -19,14 +19,40 @@ exports.register = async (api) => {
 		password: 'Password123',
 	});
 
-	v1.http?.registerRoute({
-		method: 'get',
-		path: '/hooks-api-test/executions/:executionId/workflow',
-		handler: async ({ params }) => {
-			const workflowId = await v1.workflows.getWorkflowIdForExecution(params.executionId);
-			return workflowId ? { status: 200, body: { workflowId } } : { status: 404 };
-		},
-	});
+	const http = v1.http;
+	if (http) {
+		http.registerRoute({
+			method: 'get',
+			path: '/hooks-api-test/executions/:executionId/workflow',
+			middlewares: [],
+			handler: async ({ params }) => {
+				const workflowId = await v1.workflows.getWorkflowIdForExecution(params.executionId);
+				return workflowId ? { status: 200, body: { workflowId } } : { status: 404 };
+			},
+		});
+
+		// n8n's own session auth and scope check, as the editor's REST routes use them.
+		http.registerRoute({
+			method: 'get',
+			path: '/hooks-api-test/whoami',
+			middlewares: [
+				http.middlewares.sessionAuthentication,
+				http.middlewares.requireGlobalScope('workflow:list'),
+			],
+			handler: async ({ security }) => ({ status: 200, body: security }),
+		});
+
+		// A middleware the extension brings itself, for example an API key check.
+		http.registerRoute({
+			method: 'get',
+			path: '/hooks-api-test/with-key',
+			middlewares: [
+				async ({ headers }) =>
+					headers['x-hooks-api-test-key'] === 'secret' ? undefined : { status: 401 },
+			],
+			handler: async () => ({ status: 200, body: { ok: true } }),
+		});
+	}
 
 	v1.hooks.workflow.onPreExecute(async (event) => {
 		record({ type: 'preExecute', ...event });

@@ -1,4 +1,4 @@
-import type { User } from '@n8n/db';
+import { Person } from '@n8n/db';
 import { BadRequestError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
@@ -10,7 +10,8 @@ describe('PublicOwnershipService', () => {
 	const ownershipService = mock<OwnershipService>();
 	const service = new PublicOwnershipService(ownershipService);
 
-	const owner = mock<User>({
+	// A real `Person`: the adapter only maps the owner when it is a person.
+	const owner = Object.assign(new Person(), {
 		id: 'user-1',
 		email: 'owner@example.com',
 		firstName: 'Jane',
