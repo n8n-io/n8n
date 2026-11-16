@@ -367,6 +367,26 @@ function isCredentialMarker(e: ts.Node): e is ts.CallExpression {
 }
 
 const CREDENTIAL_PREFIX = '__CREDENTIAL_';
+const isWholeCredential = (e: ts.Node): e is ts.Identifier =>
+	ts.isIdentifier(e) && e.text.startsWith(CREDENTIAL_PREFIX);
+function plainBindings(
+	pattern: ts.ObjectBindingPattern,
+): Array<{ name: string; field: string }> | undefined {
+	const out: Array<{ name: string; field: string }> = [];
+	for (const e of pattern.elements) {
+		const key = e.propertyName ?? e.name;
+		if (!ts.isIdentifier(e.name) || !ts.isIdentifier(key) || e.initializer || e.dotDotDotToken)
+			return undefined;
+		out.push({ name: e.name.text, field: key.text });
+	}
+	return out;
+}
+const EQUALITY_OPERATORS = new Set<ts.SyntaxKind>([
+	ts.SyntaxKind.EqualsEqualsEqualsToken,
+	ts.SyntaxKind.ExclamationEqualsEqualsToken,
+	ts.SyntaxKind.EqualsEqualsToken,
+	ts.SyntaxKind.ExclamationEqualsToken,
+]);
 
 function credentialTypeOf(e: ts.Expression | undefined): string {
 	const callExpression = e && ts.isAwaitExpression(e) ? e.expression : e;
@@ -1231,7 +1251,9 @@ class Specialiser {
 						: '`this` as a value has no compiled form',
 				);
 			}
-			if (ts.isIdentifier(node) && node.text.startsWith(CREDENTIAL_PREFIX)) {
+			const returned =
+				isWholeCredential(node) && ts.isReturnStatement(node.parent) && where !== 'execute';
+			if (isWholeCredential(node) && !returned) {
 				this.error(
 					where,
 					'the credential is used as a whole value: only its fields can go into a request',
@@ -1405,6 +1427,7 @@ class Specialiser {
 		let settled = false;
 		for (let round = 0; round < MAX_FOLD_ROUNDS && !settled; round++) {
 			this.changed = false;
+			cur = this.renew(cur, this.separateCredentials(cur.node));
 			cur = this.renew(cur, this.propagate(cur.node, where));
 			cur = this.renew(cur, this.flow(cur.node));
 			cur = this.renew(cur, this.reduce(cur.node));
@@ -1504,6 +1527,67 @@ class Specialiser {
 			return ts.visitEachChild(n, visit, undefined);
 		};
 		return ts.visitNode(root, visit);
+	}
+
+	private separateCredentials(root: ts.Node): ts.Node {
+		const declared = new Map<string, ts.Block[]>();
+		const find = (n: ts.Node) => {
+			const list = n.parent;
+			const statement = list?.parent;
+			const block = statement?.parent;
+			if (
+				ts.isVariableDeclaration(n) &&
+				ts.isIdentifier(n.name) &&
+				n.initializer &&
+				isWholeCredential(n.initializer) &&
+				ts.isVariableDeclarationList(list) &&
+				(list.flags & ts.NodeFlags.Const) !== 0 &&
+				statement &&
+				ts.isVariableStatement(statement) &&
+				block &&
+				ts.isBlock(block)
+			) {
+				declared.set(n.name.text, [...(declared.get(n.name.text) ?? []), block]);
+			}
+			ts.forEachChild(n, find);
+		};
+		find(root);
+		const counts = bindingsOf(root);
+		const scopes = new Map<ts.Node, Map<string, string>>();
+		for (const [name, blocks] of declared) {
+			if (blocks.length < 2 || counts.get(name) !== blocks.length) continue;
+			const nested = blocks.some((block) => {
+				for (let up: ts.Node | undefined = block.parent; up; up = up.parent)
+					if (blocks.some((other) => other === up)) return true;
+				return false;
+			});
+			const fresh = blocks.map((_, k) => `${name}__${k}`);
+			if (nested || new Set(blocks).size !== blocks.length || fresh.some((id) => counts.has(id)))
+				continue;
+			blocks.forEach((block, k) => {
+				const names = scopes.get(block) ?? new Map<string, string>();
+				names.set(name, fresh[k]);
+				scopes.set(block, names);
+			});
+		}
+		if (scopes.size === 0) return root;
+		this.changed = true;
+		const visit = (n: ts.Node, names: Map<string, string>): ts.Node => {
+			const own = scopes.get(n);
+			const inner = own ? new Map([...names, ...own]) : names;
+			if (ts.isShorthandPropertyAssignment(n) && inner.has(n.name.text)) {
+				return f.createPropertyAssignment(
+					n.name.text,
+					f.createIdentifier(inner.get(n.name.text) ?? n.name.text),
+				);
+			}
+			if (ts.isIdentifier(n) && inner.has(n.text)) {
+				const declares = ts.isVariableDeclaration(n.parent) && n.parent.name === n;
+				if (declares || isValueUse(n)) return f.createIdentifier(inner.get(n.text) ?? n.text);
+			}
+			return ts.visitEachChild(n, (c) => visit(c, inner), undefined);
+		};
+		return visit(root, new Map());
 	}
 
 	private propagate(root: ts.Node, where: string): ts.Node {
@@ -1741,6 +1825,12 @@ class Specialiser {
 			if (ts.isShorthandPropertyAssignment(n) && constants.has(n.name.text)) {
 				return f.createPropertyAssignment(n.name.text, expressionOf(constants.get(n.name.text)));
 			}
+			const shorthandField = ts.isShorthandPropertyAssignment(n)
+				? fieldTexts.get(n.name.text)
+				: undefined;
+			if (ts.isShorthandPropertyAssignment(n) && shorthandField) {
+				return f.createPropertyAssignment(n.name.text, shorthandField);
+			}
 			if (ts.isIdentifier(n) && isValueUse(n)) {
 				if (constants.has(n.text)) return expressionOf(constants.get(n.text));
 				const fieldText = fieldTexts.get(n.text);
@@ -1753,7 +1843,21 @@ class Specialiser {
 					call.arguments.includes(n) &&
 					ts.isIdentifier(call.expression) &&
 					!call.expression.text.startsWith('__');
-				if (credentials.has(n.text) && argument) {
+				const presence =
+					call &&
+					((ts.isBinaryExpression(call) && EQUALITY_OPERATORS.has(call.operatorToken.kind)) ||
+						(ts.isPrefixUnaryExpression(call) && call.operator === ts.SyntaxKind.ExclamationToken));
+				const destructured =
+					call &&
+					ts.isVariableDeclaration(call) &&
+					call.initializer === n &&
+					ts.isObjectBindingPattern(call.name);
+				const keyed =
+					call &&
+					ts.isElementAccessExpression(call) &&
+					call.expression === n &&
+					ts.isStringLiteralLike(call.argumentExpression);
+				if (credentials.has(n.text) && (argument || presence || destructured || keyed)) {
 					return f.createIdentifier(CREDENTIAL_PREFIX + (credentials.get(n.text) ?? ''));
 				}
 				if (credentials.has(n.text)) {
@@ -2063,7 +2167,12 @@ class Specialiser {
 					ts.isWhileStatement(st) ||
 					ts.isDoStatement(st)
 				) {
-					const body = branch(st.statement, empty());
+					const around = empty();
+					for (const [name, held] of env.scalars) {
+						if (typeof held === 'object' && held !== null && !assigned.has(name))
+							around.scalars.set(name, held);
+					}
+					const body = branch(st.statement, around);
 					const reading = copy(env);
 					for (const name of assigned) reading.scalars.delete(name);
 					const source = ts.isForOfStatement(st) ? st.expression : undefined;
@@ -2166,8 +2275,56 @@ class Specialiser {
 					const value = compare(op, left.value, right.value);
 					if (value !== NO_FOLD) return done(expressionOf(value));
 				}
+				const absent = (lit: { value: Literal } | undefined) =>
+					lit !== undefined && (lit.value === undefined || lit.value === null);
+				if (
+					EQUALITY_OPERATORS.has(op) &&
+					((isWholeCredential(n.left) && absent(right)) ||
+						(isWholeCredential(n.right) && absent(left)))
+				) {
+					return done(
+						expressionOf(
+							op === ts.SyntaxKind.ExclamationEqualsEqualsToken ||
+								op === ts.SyntaxKind.ExclamationEqualsToken,
+						),
+					);
+				}
+			}
+			if (
+				ts.isElementAccessExpression(n) &&
+				isWholeCredential(n.expression) &&
+				ts.isStringLiteralLike(n.argumentExpression)
+			) {
+				return done(
+					this.credentialField(
+						n.expression.text.slice(CREDENTIAL_PREFIX.length),
+						n.argumentExpression.text,
+					),
+				);
+			}
+			if (
+				ts.isVariableDeclaration(n) &&
+				ts.isObjectBindingPattern(n.name) &&
+				n.initializer &&
+				isWholeCredential(n.initializer)
+			) {
+				const type = n.initializer.text.slice(CREDENTIAL_PREFIX.length);
+				const bindings = plainBindings(n.name);
+				if (bindings) {
+					return done(
+						bindings.map((b) =>
+							f.createVariableDeclaration(
+								b.name,
+								undefined,
+								undefined,
+								this.credentialField(type, b.field),
+							),
+						),
+					);
+				}
 			}
 			if (ts.isPrefixUnaryExpression(n) && n.operator === ts.SyntaxKind.ExclamationToken) {
+				if (isWholeCredential(n.operand)) return done(f.createFalse());
 				const operand = literalOf(n.operand);
 				if (operand) return done(expressionOf(!operand.value));
 			}
@@ -3040,7 +3197,8 @@ class Specialiser {
 			const specialised = this.specialiseParameters();
 			const folded = this.foldPureCalls();
 			const inlined = this.inlineCalls();
-			if (!specialised && !folded && !inlined) break;
+			const returned = this.inlineCredentialResults();
+			if (!specialised && !folded && !inlined && !returned) break;
 		}
 		const reached = new Set<string>(['execute']);
 		for (let k = 0; k < this.output.length + 1; k++) {
@@ -3058,6 +3216,55 @@ class Specialiser {
 		for (let k = this.output.length - 1; k >= 0; k--) {
 			if (!reached.has(this.output[k].name)) this.output.splice(k, 1);
 		}
+		for (const { name, node } of this.output) {
+			const walk = (n: ts.Node): boolean =>
+				isWholeCredential(n) || (ts.forEachChild(n, walk) ?? false);
+			if (walk(node)) {
+				this.error(
+					name,
+					'the credential is used as a whole value: only its fields can go into a request',
+				);
+			}
+		}
+	}
+
+	private inlineCredentialResults(): boolean {
+		const results = new Map<string, string>();
+		for (const { name, node } of this.output) {
+			if (!ts.isFunctionDeclaration(node) || !node.body || name === 'execute') continue;
+			let only: ts.Statement | undefined = node.body;
+			while (only && ts.isBlock(only))
+				only = only.statements.length === 1 ? only.statements[0] : undefined;
+			if (
+				only &&
+				ts.isReturnStatement(only) &&
+				only.expression &&
+				isWholeCredential(only.expression)
+			)
+				results.set(name, only.expression.text);
+		}
+		if (results.size === 0) return false;
+		let changed = false;
+		for (const entry of this.output) {
+			if (results.has(entry.name)) continue;
+			let touched = false;
+			const visit = (input: ts.Node): ts.Node => {
+				const n = ts.visitEachChild(input, visit, undefined);
+				if (ts.isAwaitExpression(n) && isWholeCredential(n.expression)) return n.expression;
+				if (!ts.isCallExpression(n) || !ts.isIdentifier(n.expression)) return n;
+				const result = results.get(n.expression.text);
+				if (result === undefined || !n.arguments.every((a) => ts.isIdentifier(a) || literalOf(a)))
+					return n;
+				touched = true;
+				return f.createIdentifier(result);
+			};
+			const next = ts.visitNode(entry.node, visit);
+			if (touched) {
+				changed = true;
+				this.refold(entry, next);
+			}
+		}
+		return changed;
 	}
 
 	private inlineCount = 0;

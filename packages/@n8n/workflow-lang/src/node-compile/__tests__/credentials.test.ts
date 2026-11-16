@@ -102,6 +102,128 @@ describe('credentials in the node compiler', () => {
 	});
 });
 
+describe('a credential as a whole value', () => {
+	const node = (body: string, helpers = '') => `
+${helpers}
+export class Acme {
+	async execute() {
+${body}
+		return [this.helpers.returnJsonArray(response)];
+	}
+}`;
+	const request = (headers: string) =>
+		`await this.helpers.request({ method: 'GET', uri: 'https://api.acme.test/v1/items', headers: ${headers} })`;
+
+	it('folds a check that the credential is there, and reads fields by pattern and by key', () => {
+		const result = compileWith(
+			node(`
+		const credentials = await this.getCredentials('acmeApi');
+		if (credentials === undefined) throw new Error('No credentials got returned!');
+		const { apiKey, accountName: account } = credentials;
+		const response = ${request("{ 'X-Key': apiKey, 'X-Account': account, 'X-Hook': credentials['webhook-secret'] }")};`),
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.source).not.toContain('No credentials got returned');
+		expect(result.source).toContain('{{$credentials.apiKey}}');
+		expect(result.source).toContain('{{$credentials.accountName}}');
+		expect(result.source).toContain('{{$credentials.webhook-secret}}');
+	});
+
+	it('follows the credential into a function that reads its fields', () => {
+		const result = compileWith(
+			node(
+				`
+		const credentials = await this.getCredentials('acmeApi');
+		const response = ${request('headersOf(credentials)')};`,
+				`function headersOf(credentials) {
+	if (credentials === undefined) throw new Error('No credentials got returned!');
+	const { apiKey, accountName } = credentials;
+	return { apiKey, 'X-Account': accountName };
+}`,
+			),
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.source).not.toContain('No credentials got returned');
+		expect(result.source).toContain('{{$credentials.apiKey}}');
+		expect(result.source).toContain('{{$credentials.accountName}}');
+	});
+
+	it('keeps credentials with the same name in different branches apart', () => {
+		const result = compileWith(
+			node(`
+		const headers = {};
+		const items = this.getInputData();
+		if (items.length > 1) {
+			const credentials = await this.getCredentials('acmeApi');
+			headers['X-Key'] = credentials.apiKey;
+		} else {
+			const credentials = await this.getCredentials('acmeTokenApi');
+			headers['X-Token'] = credentials.token;
+		}
+		const response = ${request('headers')};`),
+			{ acmeApi: { apiKey: 'not-read' }, acmeTokenApi: { token: 'https://public.acme.test' } },
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain('not-read');
+		expect(result.source).toContain('https://public.acme.test');
+	});
+
+	it('takes the credential that a function returns', () => {
+		const result = compileWith(
+			node(
+				`
+		const { apiKey } = await pick.call(this);
+		const response = ${request("{ 'X-Key': apiKey }")};`,
+				`async function pick() {
+	const authentication = this.getNodeParameter('authentication', 0, 'key');
+	if (authentication === 'key') {
+		return await this.getCredentials('acmeApi');
+	} else {
+		return await this.getCredentials('acmeOAuth2Api');
+	}
+}`,
+			),
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain('{{$credentials.apiKey}}');
+	});
+
+	it('knows the credential of a variable inside a loop when a branch before the loop set it', () => {
+		const result = compileWith(
+			node(`
+		const authentication = this.getNodeParameter('authentication', 0, 'key');
+		let credentials;
+		if (authentication === 'key') {
+			credentials = await this.getCredentials('acmeApi');
+		} else {
+			credentials = await this.getCredentials('acmeOAuth2Api');
+		}
+		let response;
+		for (let i = 0; i < 1; i++) {
+			response = ${request("{ 'X-Key': credentials.apiKey }")};
+		}`),
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain('{{$credentials.apiKey}}');
+	});
+
+	it.each([
+		['a comparison with a value', "if (credentials === 'x') throw new Error('no');"],
+		['a place in an object', 'const holder = { credentials };\n\t\tconsole.log(holder);'],
+		['a pattern with a default', "const { apiKey = 'x' } = credentials;\n\t\tconsole.log(apiKey);"],
+		['a computed key', 'console.log(credentials[this.getNodeParameter("field", 0)]);'],
+	])('does not compile %s', (_, statement) => {
+		const result = compileWith(
+			node(`
+		const credentials = await this.getCredentials('acmeApi');
+		${statement}
+		const response = ${request("{ 'X-Key': credentials.apiKey }")};`),
+		);
+		expect(result.source).toBeUndefined();
+		expect(result.errors.join(' ')).toContain('used as a whole value');
+	});
+});
+
 describe('publish-time evaluation', () => {
 	it('does not fold a call whose result JSON cannot hold', () => {
 		const source = `
