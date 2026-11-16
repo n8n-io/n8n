@@ -2,7 +2,6 @@ import { findNodeTypeReasons } from './node-type-rule';
 import { rootWorkflow } from './reachable-nodes';
 import { findSettingsReasons } from './settings-rules';
 import { findTriggerIdentityReasons } from './trigger-identity-rule';
-import { findTriggerWaitReasons } from './trigger-wait-rule';
 import type { EngineV2Eligibility, EngineV2EligibilityWorkflow } from './types';
 
 /**
@@ -19,7 +18,6 @@ export function checkEngineV2Eligibility(
 	const reasons = [
 		...findSettingsReasons(rooted.settings ?? {}),
 		...findTriggerIdentityReasons(rooted.nodes),
-		...findTriggerWaitReasons(rooted.nodes),
 		...findNodeTypeReasons(rooted.nodes),
 	];
 	return { eligible: reasons.every((reason) => reason.severity !== 'blocking'), reasons };

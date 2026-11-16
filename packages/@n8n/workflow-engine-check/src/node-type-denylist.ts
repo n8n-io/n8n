@@ -29,5 +29,18 @@ export const NODE_TYPE_DENYLIST: readonly NodeTypeDenylistEntry[] = [
 	{ type: 'n8n-nodes-base.messageAnAgent', code: 'MESSAGE_AN_AGENT_NODE', ticket: 'CET-783' },
 	{ type: 'n8n-nodes-base.evaluation', code: 'EVALUATION_NODE', ticket: 'CET-784' },
 	{ type: 'n8n-nodes-base.evaluationTrigger', code: 'EVALUATION_NODE', ticket: 'CET-784' },
+	// These triggers can wait for their run to finish before they take the next message,
+	// and engine v2 refuses that (`EngineV2ActiveTriggers` in cli). Their settings decide
+	// whether they wait, but the check blocks them in every mode for now:
+	// - Kafka: v1.1 waits without Parallel Processing. v1.3 and v2 wait unless Resolve
+	//   Offset is Immediately. v1 and v1.2 never wait.
+	// - RabbitMQ: waits when Delete From Queue When is not Immediately, or when a Parallel
+	//   Message Processing Limit is set.
+	// - AMQP: waits with Parallel Processing off.
+	// - MQTT: waits unless Parallel Processing is on.
+	{ type: 'n8n-nodes-base.kafkaTrigger', code: 'TRIGGER_WAITS_FOR_RUN', ticket: 'CET-299' },
+	{ type: 'n8n-nodes-base.rabbitmqTrigger', code: 'TRIGGER_WAITS_FOR_RUN', ticket: 'CET-299' },
+	{ type: 'n8n-nodes-base.amqpTrigger', code: 'TRIGGER_WAITS_FOR_RUN', ticket: 'CET-299' },
+	{ type: 'n8n-nodes-base.mqttTrigger', code: 'TRIGGER_WAITS_FOR_RUN', ticket: 'CET-299' },
 	{ type: '@n8n/n8n-nodes-langchain.', code: 'AI_NODE', ticket: 'CET-780' },
 ];

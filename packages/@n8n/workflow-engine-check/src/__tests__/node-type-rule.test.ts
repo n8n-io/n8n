@@ -55,6 +55,13 @@ describe('node type rule', () => {
 			reason: { code: 'MCP_SERVER_TRIGGER', severity: 'blocking' },
 		},
 		{
+			case: 'a trigger that can wait for its run, whatever its settings',
+			node: node('n8n-nodes-base.rabbitmqTrigger', 1, {
+				parameters: { options: { acknowledge: 'immediately' } },
+			}),
+			reason: { code: 'TRIGGER_WAITS_FOR_RUN', severity: 'blocking' },
+		},
+		{
 			case: 'a community node',
 			node: node('n8n-nodes-community-example.example'),
 			reason: { code: 'COMMUNITY_NODE', severity: 'blocking' },
@@ -68,6 +75,7 @@ describe('node type rule', () => {
 		expect(check([denied]).reasons).toEqual([
 			{
 				...reason,
+				kind: 'temporary',
 				nodeId: 'node-id',
 				nodeName: 'Node',
 				message: expect.stringContaining('"Node"'),
@@ -161,6 +169,10 @@ describe('node type rule', () => {
 			  "n8n-nodes-base.messageAnAgent: MESSAGE_AN_AGENT_NODE CET-783",
 			  "n8n-nodes-base.evaluation: EVALUATION_NODE CET-784",
 			  "n8n-nodes-base.evaluationTrigger: EVALUATION_NODE CET-784",
+			  "n8n-nodes-base.kafkaTrigger: TRIGGER_WAITS_FOR_RUN CET-299",
+			  "n8n-nodes-base.rabbitmqTrigger: TRIGGER_WAITS_FOR_RUN CET-299",
+			  "n8n-nodes-base.amqpTrigger: TRIGGER_WAITS_FOR_RUN CET-299",
+			  "n8n-nodes-base.mqttTrigger: TRIGGER_WAITS_FOR_RUN CET-299",
 			  "@n8n/n8n-nodes-langchain.: AI_NODE CET-780",
 			]
 		`);
