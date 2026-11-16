@@ -38,6 +38,7 @@ Add a row when a new difference is found. The sources are `docs/spec.md`, the RE
 | 140 of 18,782 certified bundles do not match v1 in the replay (99.25%) | `progress.md` | The focus runs |
 | A node with "continue on fail" or an error output is not compiled from its source | this work | Errors with the description and the HTTP code of v1 |
 | Request options without a compiled form: full responses, nested form values, streams | verifier, 2026-11-16 | The options one by one, each with the check against v1 |
+| A compiled node drops its execution hints (`this.addExecutionHints`): the output data is the same, the editor shows no hint | node compiler, 2026-11-16 | A place for hints in the run result of a node |
 | A statement that branches on a secret credential field does not compile (Mailchimp reads the data centre from the API key) | verifier, 2026-11-16 | Decide: evaluate such a condition at publish, which puts one bit of the secret in the module |
 | Python Code nodes run in a process that is not a sandbox | spec section 10 | n8n's task runner |
 | Polling triggers in a manual run poll in the host | spec 9.8 | Done by n8n when it runs the trigger; check |

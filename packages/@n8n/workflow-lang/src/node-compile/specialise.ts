@@ -117,6 +117,34 @@ const GLOBALS = new Set([
 	'Buffer',
 ]);
 
+const UNSAFE_PROPERTIES = [
+	'__proto__',
+	'prototype',
+	'constructor',
+	'getPrototypeOf',
+	'setPrototypeOf',
+	'getOwnPropertyDescriptor',
+	'getOwnPropertyDescriptors',
+	'defineProperty',
+	'defineProperties',
+	'mainModule',
+	'binding',
+	'_linkedBinding',
+	'_load',
+	'prepareStackTrace',
+	'__lookupGetter__',
+	'__lookupSetter__',
+	'__defineGetter__',
+	'__defineSetter__',
+	'caller',
+	'callee',
+	'arguments',
+	'getBuiltinModule',
+	'dlopen',
+	'execve',
+	'loadEnvFile',
+];
+
 const HELPERS: Record<string, string> = {
 	__apiError: `function __apiError(cause: any, options: any): any {
 	if (cause !== null && cause !== undefined && typeof cause === 'object' && cause.name === 'NodeApiError') return cause;
@@ -253,6 +281,31 @@ const HELPERS: Record<string, string> = {
 }`,
 	__deepCopy: `function __deepCopy(value: any): any {
 	return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+}`,
+	__isLocator: `function __isLocator(value: any): boolean {
+	if (value === null || value === undefined || typeof value !== 'object') return false;
+	const keys: any = Object.keys(value);
+	return keys.includes('mode') && keys.includes('value') && keys.includes('__rl');
+}`,
+	__setSafe: `function __setSafe(target: any, property: any, value: any): void {
+	if (typeof property !== 'string') throw new Error('a safe property name that is not text has no compiled form');
+	const unsafe: any = ${JSON.stringify(UNSAFE_PROPERTIES)};
+	if (!unsafe.includes(property)) target[property] = value;
+}`,
+	__assertParam: `function __assertParam(name: any, value: any, type: string): void {
+	if (typeof value !== type) throw __error('Parameter "' + name + '" is not ' + type, 'NodeOperationError', undefined);
+}`,
+	__toNumber: `function __toNumber(value: any): number {
+	if (value !== null && typeof value === 'object') throw new Error('a number from an object or an array has no compiled form');
+	const parsed: number = Number(value);
+	if (isNaN(parsed)) throw __error('Failed to parse value to number', 'UserError', undefined);
+	return parsed;
+}`,
+	__hints: `function __hints(hints: any): void {
+	return;
+}`,
+	__missing: `function __missing(name: string): any {
+	throw __error('Could not get parameter "' + name + '"', 'UserError', undefined);
 }`,
 	__get: `function __get(value: any, keys: any, whole: string, fallback: any): any {
 	if (value === null || value === undefined) return fallback;
@@ -582,7 +635,16 @@ const PACKAGE_HELPERS: Record<string, Record<string, string>> = {
 		jsonParse: '__jsonParse',
 		deepCopy: '__deepCopy',
 		toPathSegment: '__toPathSegment',
+		isResourceLocatorValue: '__isLocator',
+		setSafeObjectProperty: '__setSafe',
+		tryToParseNumber: '__toNumber',
 	},
+};
+
+const PARAMETER_ASSERTIONS: Record<string, string> = {
+	assertParamIsString: 'string',
+	assertParamIsNumber: 'number',
+	assertParamIsBoolean: 'boolean',
 };
 
 function packageHelper(imported: { from: string; name: string }): string | undefined {
@@ -603,6 +665,9 @@ const HELPER_USES: Record<string, string[]> = {
 	__urlCanParse: ['__url', '__urlText', '__isLimit'],
 	__urlParam: ['__urlDecode'],
 	__urlForm: ['__urlFormText'],
+	__assertParam: ['__error'],
+	__toNumber: ['__error'],
+	__missing: ['__error'],
 };
 
 const LIMIT_TEXT = 'has no compiled form';
@@ -1327,7 +1392,8 @@ class Specialiser {
 		const absent =
 			!fallback || (literalOf(fallback) !== undefined && literalOf(fallback)?.value === undefined);
 		if (late && absent) return node;
-		return fallback ?? f.createIdentifier('undefined');
+		if (absent) return this.helper('__missing', f.createStringLiteral(nameArg.text));
+		return fallback;
 	}
 
 	private defaultOf(name: string): ts.Expression | undefined {
@@ -1444,6 +1510,8 @@ class Specialiser {
 					typeVersion: this.input.version,
 				});
 			}
+			if (isThisCall(node, 'addExecutionHints'))
+				return this.helper('__hints', f.createArrayLiteralExpression(args(node)));
 			if (isThisCall(node, 'helpers', 'returnJsonArray'))
 				return this.helper('__jsonArray', ...args(node));
 			if (isThisCall(node, 'helpers', 'constructExecutionMetaData')) return args(node)[0];
@@ -1649,6 +1717,19 @@ class Specialiser {
 						...args(node),
 						f.createStringLiteral(style),
 						f.createStringLiteral(delimiter),
+					);
+				}
+				if (
+					imported?.from === 'n8n-workflow' &&
+					Object.hasOwn(PARAMETER_ASSERTIONS, imported.name) &&
+					node.arguments.length === 3
+				) {
+					const [name, value] = args(node);
+					return this.helper(
+						'__assertParam',
+						name,
+						value,
+						f.createStringLiteral(PARAMETER_ASSERTIONS[imported.name]),
 					);
 				}
 				if (helper === '__get') {

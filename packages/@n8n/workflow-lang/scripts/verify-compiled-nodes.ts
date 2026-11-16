@@ -177,6 +177,7 @@ function required(node: LoadedNode, version: number, start: Json): Json {
 		if (name in out) continue;
 		if (type === 'string' && value === '') out[name] = 'v1';
 		else if (type === 'json' && value === '') out[name] = '{}';
+		else if (type === 'number' && value === undefined) out[name] = 1;
 		else if (type === 'resourceLocator') out[name] = { __rl: true, mode: 'id', value: 'id1' };
 	}
 	return out;
