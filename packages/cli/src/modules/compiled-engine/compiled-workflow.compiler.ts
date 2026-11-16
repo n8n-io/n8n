@@ -235,6 +235,8 @@ export class CompiledWorkflowCompiler {
 			.update(input.trigger ?? '')
 			// A module holds the public fields of its credentials: other fields give another module.
 			.update(JSON.stringify([this.compileNodes, ...publicCredentials.entries()]))
+			// A node that stores a response compiles only when `wfrt` has the file store.
+			.update(this.processes.storesResponses ? 'stores-responses' : '')
 			.digest('hex');
 
 		const inMemory = this.cache.get(key);
@@ -296,6 +298,7 @@ export class CompiledWorkflowCompiler {
 							this.nodeTypes,
 							publicCredentials,
 							this.credentialTypes,
+							this.processes.storesResponses,
 						),
 					}
 				: {}),

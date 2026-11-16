@@ -22,6 +22,7 @@ const usage =
     \\  sim [--seeds N] [--first S] [--execs E] [--crash PER_MILLE]
     \\  serve --port P [--shards N] [--log-dir D] [--fallback SOCK] [--fallback-wait-ms MS] [--stats]
     \\        [--credentials FILE] [--egress-max-body-mb M] [--egress-big-slots K] [--insecure-tls]
+    \\        [--binary-max-file-mb M] [--binary-buffer-mb M] [--binary-max-transfers N]
     \\        [--admin-port P --admin-secret-env VAR] [--event-queue-mb M] [--max-outbox-mb M] [--test-clock]
     \\        [--profile embedded] [--max-conns N] [--max-request-mb M] [--request-big-slots K]
     \\        [--step-events-sample N] [--max-zones N] [--max-static-data N] [--static-data-kb K] [--max-service-calls N] [--service-call-kb K] [--service-timeout-ms MS] [--max-renewals N] [--renewal-kb K] [--max-modules N] [--max-routes N] [--max-schedules N] [--module-store-mb M] [--ca-file CA.pem] [--gym-env]
@@ -254,6 +255,9 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
         if (std.mem.eql(u8, k, "--rbuf-kb")) opts.rbuf = 1024 * try std.fmt.parseInt(u32, v, 10);
         if (std.mem.eql(u8, k, "--egress-max-body-mb")) opts.egress_max_body = (try std.fmt.parseInt(u32, v, 10)) << 20;
         if (std.mem.eql(u8, k, "--egress-big-slots")) opts.egress_big_slots = try std.fmt.parseInt(u32, v, 10);
+        if (std.mem.eql(u8, k, "--binary-max-file-mb")) opts.binary_max_file = @as(u64, try std.fmt.parseInt(u32, v, 10)) << 20;
+        if (std.mem.eql(u8, k, "--binary-buffer-mb")) opts.binary_buffer = @as(u64, try std.fmt.parseInt(u32, v, 10)) << 20;
+        if (std.mem.eql(u8, k, "--binary-max-transfers")) opts.binary_max_transfers = @max(1, try std.fmt.parseInt(u16, v, 10));
         if (std.mem.eql(u8, k, "--admin-port")) opts.admin_port = try std.fmt.parseInt(u16, v, 10);
         // A profile sets several sizes; flags after it override them.
         if (std.mem.eql(u8, k, "--profile")) {
@@ -550,4 +554,7 @@ test {
     _ = @import("shell/static_data_test.zig");
     _ = @import("shell/outbox_test.zig");
     _ = @import("shell/binary_store.zig");
+    _ = @import("shell/blob_store.zig");
+    _ = @import("shell/binary_names_test.zig");
+    _ = @import("shell/blob_e2e_test.zig");
 }

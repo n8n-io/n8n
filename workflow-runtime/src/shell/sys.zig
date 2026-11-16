@@ -358,6 +358,100 @@ pub fn close(fd: c_int) void {
     _ = c.close(fd);
 }
 
+// ---- files of the binary data store (blob_store.zig) ------------------------
+
+/// One operation on the files of the binary data store, as data. The store
+/// makes it; `fileOpNow` runs it at once (it can block), and `uring.zig`
+/// queues it on the ring of the shard. Both give the result as io_uring
+/// does: 0 or more for success, a negative errno for a failure.
+///
+/// A name is one path segment, so no operation walks a path: with
+/// `O_NOFOLLOW` on every open, no step of a path follows a symbolic link.
+pub const FileOp = struct {
+    kind: Kind,
+    /// The directory of `name` (`mkdir`, `open`, `rename`, `unlink`), or the
+    /// file (`read`, `write`, `close`).
+    fd: c_int,
+    name: [*:0]const u8 = "",
+    /// `rename`: the new name, in the same directory.
+    to: [*:0]const u8 = "",
+    how: Open = .dir,
+    /// `read`: the bytes go here. It stays untouched until the result.
+    into: []u8 = &.{},
+    /// `write`: these bytes. They stay unchanged until the result.
+    from: []const u8 = &.{},
+    offset: u64 = 0,
+
+    pub const Kind = enum(u8) { mkdir, open, read, write, close, rename, unlink };
+    /// `dir`: an existing directory. `read`: an existing file. `create`: a
+    /// new file for writing; a name that exists is an error.
+    pub const Open = enum(u8) { dir, read, create };
+};
+
+/// Directories and files get the modes that Node.js gives them for n8n,
+/// before the umask.
+pub const dir_mode: c.mode_t = 0o777;
+pub const file_mode: c.mode_t = 0o666;
+
+/// The flags of an open of the store. Never a symbolic link, never a
+/// terminal, and closed in a child process.
+pub fn openFlags(how: FileOp.Open) c.O {
+    return switch (how) {
+        .dir => .{ .ACCMODE = .RDONLY, .DIRECTORY = true, .NOFOLLOW = true, .CLOEXEC = true },
+        .read => .{ .ACCMODE = .RDONLY, .NOFOLLOW = true, .CLOEXEC = true, .NOCTTY = true },
+        .create => .{ .ACCMODE = .WRONLY, .CREAT = true, .EXCL = true, .NOFOLLOW = true, .CLOEXEC = true, .NOCTTY = true },
+    };
+}
+
+fn fileResult(rc: anytype) i32 {
+    if (rc >= 0) return @intCast(@min(rc, std.math.maxInt(i32)));
+    return -@as(i32, @backingInt(c.errno(rc)));
+}
+
+/// Run a file operation now. It can block: the ring of a shard runs the
+/// same operation without that (`uring.zig`). A read or a write moves at
+/// most 1 GB, so the count fits the result.
+pub fn fileOpNow(op: FileOp) i32 {
+    const max_io = 1 << 30;
+    return switch (op.kind) {
+        .mkdir => fileResult(c.mkdirat(op.fd, op.name, dir_mode)),
+        .open => fileResult(c.openat(op.fd, op.name, openFlags(op.how), file_mode)),
+        .read => fileResult(c.pread(op.fd, op.into.ptr, @min(op.into.len, max_io), @intCast(op.offset))),
+        .write => fileResult(c.pwrite(op.fd, op.from.ptr, @min(op.from.len, max_io), @intCast(op.offset))),
+        .close => fileResult(c.close(op.fd)),
+        .rename => fileResult(c.renameat(op.fd, op.name, op.fd, op.to)),
+        .unlink => fileResult(c.unlinkat(op.fd, op.name, 0)),
+    };
+}
+
+/// The result of a `mkdir` of a directory that exists.
+pub fn isExists(res: i32) bool {
+    return res == -@as(i32, @backingInt(c.E.EXIST));
+}
+
+/// Open the root directory of the binary data store. The root is the
+/// operator's setting, so a symbolic link in it is followed.
+pub fn openDir(path: [:0]const u8) error{OpenDir}!c_int {
+    const fd = c.open(path, .{ .ACCMODE = .RDONLY, .DIRECTORY = true, .CLOEXEC = true }, @as(c.mode_t, 0));
+    if (fd < 0) return error.OpenDir;
+    return fd;
+}
+
+/// Make the symbolic link `name` in the directory `dir` (tests of the store).
+pub fn symlinkAt(target: [*:0]const u8, dir: c_int, name: [*:0]const u8) bool {
+    return c.symlinkat(target, dir, name) == 0;
+}
+
+/// The size of an open file, or null when the system does not give it.
+pub fn fileSize(fd: c_int) ?u64 {
+    const end = c.lseek(fd, 0, c.SEEK.END);
+    return if (end < 0) null else @intCast(end);
+}
+
+pub fn processId() u32 {
+    return @intCast(c.getpid());
+}
+
 extern "c" fn inet_pton(af: c_int, src: [*:0]const u8, dst: *anyopaque) c_int;
 
 /// Parse an IPv6 literal without brackets, for example "::1".

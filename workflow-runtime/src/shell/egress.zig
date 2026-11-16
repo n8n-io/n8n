@@ -38,6 +38,7 @@ const dns = @import("dns.zig");
 const gym_mod = @import("gym.zig");
 const creds = @import("creds.zig");
 const request = @import("request.zig");
+const blob_store = @import("blob_store.zig");
 const Out = creds.Out;
 
 /// HTTP/2 use for an origin.
@@ -201,6 +202,9 @@ pub const Config = struct {
     pool: Pool = .shared,
     insecure_tls: bool = false,
     credentials: ?*const creds.Store = null,
+    /// The binary data store of the shard, for `responseBinary`. Null: no
+    /// storage path is set, and such a request fails at its start.
+    blobs: ?*blob_store.Store = null,
     /// `--ca-file`: more trusted CA certificates.
     ca_file: ?[:0]const u8 = null,
     /// `--gym-env`: the ai-gym's name and address rules.
@@ -236,6 +240,11 @@ pub const Result = union(enum) { ok: Response, err: []const u8 };
 pub const Sink = struct {
     ctx: *anyopaque,
     done: *const fn (ctx: *anyopaque, exec_id: u64, seq: u32, r: Result) void,
+    /// A 2xx response of a request with `responseBinary`: the sink gives
+    /// `h` and the body to the binary data store, or gives `h` back.
+    /// `url_path` is the path of the URL that answered. Null: such a request
+    /// fails at its start.
+    stored: ?*const fn (ctx: *anyopaque, exec_id: u64, seq: u32, h: blob_store.Handle, r: Response, url_path: []const u8) void = null,
 };
 
 /// Counters for `--stats` and the tests.
@@ -335,6 +344,9 @@ const Req = struct {
     /// The response's content-length, read while its headers decode.
     clen: ?u64 = null,
     last_io_ms: i64 = 0,
+    /// The row of the binary data store that waits for the response of a
+    /// request with `responseBinary`. `.none` for every other request.
+    stored: blob_store.Handle = .none,
 };
 
 const Origin = struct {
@@ -678,10 +690,50 @@ pub const Client = struct {
         r.on_wire = false;
         c.resetStream(ri);
         if (!c.build(ri, args, st, idem_key)) return;
+        // The one branch that a request without `responseBinary` pays here.
+        if (r.built.stores and !c.reserveStored(ri, args)) return;
         r.state = .active;
         c.active += 1;
         c.parseReqUrl(ri);
         c.route(ri) catch {};
+    }
+
+    /// A row of the binary data store for the response of this request;
+    /// false when there is none (the request failed and was reported).
+    fn reserveStored(c: *Client, ri: u32, args: []const u8) bool {
+        const r = &c.reqs[ri];
+        std.debug.assert(r.built.stores and r.stored == .none);
+        const blobs = c.cfg.blobs orelse {
+            c.failFree(ri, "http: responseBinary needs the binary data store of n8n in filesystem mode (WFRT_BINARY_DATA_STORAGE_PATH is not set)");
+            return false;
+        };
+        const opts = http.member(args, "responseBinary") orelse "{}";
+        r.stored = blobs.reserve(opts) catch |e| {
+            switch (e) {
+                error.Full => c.failFreeFmt(ri, "http: too many stored responses are in flight ({d}, --binary-max-transfers); the step can run again (limit)", .{blobs.cfg.max_transfers}),
+                error.TooLong => c.failFree(ri, "http: fileName or mimeType of responseBinary is too long"),
+            }
+            return false;
+        };
+        return true;
+    }
+
+    /// The response of a request with `responseBinary`. A 2xx status goes
+    /// to the store through the sink; another status has its usual body.
+    fn doneStored(c: *Client, ri: u32, resp: Response) void {
+        const r = &c.reqs[ri];
+        const h = r.stored;
+        r.stored = .none;
+        std.debug.assert(h != .none);
+        const stored = c.sink.stored orelse unreachable; // `reserveStored` needs the store, and the store comes with this sink.
+        const blobs = c.cfg.blobs orelse unreachable; // As above: the handle came from it.
+        if (resp.status < 200 or resp.status > 299) {
+            blobs.release(h);
+            return c.sink.done(c.sink.ctx, r.exec_id, r.seq, .{ .ok = resp });
+        }
+        const target = r.url.target;
+        const path = target[0 .. std.mem.indexOfScalar(u8, target, '?') orelse target.len];
+        stored(c.sink.ctx, r.exec_id, r.seq, h, resp, path);
     }
 
     /// Build the request; false when it failed (and was reported).
@@ -1805,7 +1857,8 @@ pub const Client = struct {
             if (!failed) c.pending_pump = true;
             return;
         }
-        c.sink.done(c.sink.ctx, r.exec_id, r.seq, .{ .ok = .{ .status = h.status, .header_lines = h.lines, .body = cn.body_buf[0..cn.body_len], .json = h.json } });
+        const resp: Response = .{ .status = h.status, .header_lines = h.lines, .body = cn.body_buf[0..cn.body_len], .json = h.json };
+        if (r.stored != .none) c.doneStored(ri, resp) else c.sink.done(c.sink.ctx, r.exec_id, r.seq, .{ .ok = resp });
         cn.req = none;
         c.freeReq(ri);
         c.finishConn(ci, keep);
@@ -2597,7 +2650,8 @@ pub const Client = struct {
             return;
         };
         const trimmed = if (std.mem.endsWith(u8, lines, "\r\n")) lines[0 .. lines.len - 2] else lines;
-        c.sink.done(c.sink.ctx, r.exec_id, r.seq, .{ .ok = .{ .status = r.status, .header_lines = trimmed, .body = area[r.hdr_len..][0..r.body_len], .json = r.json } });
+        const resp: Response = .{ .status = r.status, .header_lines = trimmed, .body = area[r.hdr_len..][0..r.body_len], .json = r.json };
+        if (r.stored != .none) c.doneStored(ri, resp) else c.sink.done(c.sink.ctx, r.exec_id, r.seq, .{ .ok = resp });
         c.freeReq(ri);
     }
 
@@ -2916,8 +2970,17 @@ pub const Client = struct {
     fn failReq(c: *Client, ri: u32, msg: []const u8) void {
         const r = &c.reqs[ri];
         std.debug.assert(r.state == .active);
+        if (r.stored != .none) c.dropStored(ri);
         c.sink.done(c.sink.ctx, r.exec_id, r.seq, .{ .err = msg });
         c.freeReq(ri);
+    }
+
+    /// The request failed: its row of the binary data store is free again.
+    fn dropStored(c: *Client, ri: u32) void {
+        const r = &c.reqs[ri];
+        std.debug.assert(r.stored != .none);
+        if (c.cfg.blobs) |blobs| blobs.release(r.stored);
+        r.stored = .none;
     }
 
     /// Fail a request that never left `start`.
