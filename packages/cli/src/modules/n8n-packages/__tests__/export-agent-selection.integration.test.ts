@@ -7,8 +7,12 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
+import { FolderFinderService } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
@@ -30,6 +34,7 @@ import {
 import { CapturingWriter } from '../io/__tests__/utils/capturing-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { serializedAgentSchema } from '../spec/serialized/agent.schema';
+import { importPackageRequest } from './fixtures/import-request';
 import { executeWorkflowNode } from './utils/test-builders';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 
@@ -46,7 +51,7 @@ beforeAll(async () => {
 	await testDb.init();
 	repository = Container.get(AgentRepository);
 	exporter = Container.get(AgentSelectionExporter);
-});
+}, 60_000);
 
 afterAll(async () => await testDb.terminate());
 
@@ -445,3 +450,210 @@ it.each([undefined, true, false])(
 		);
 	},
 );
+
+it('exports folder ancestors once for Agents that share a folder', async () => {
+	const folder = await createFolder(project, { name: 'Team', resourceType: 'agent' });
+	const childFolder = await createFolder(project, {
+		name: 'Support',
+		resourceType: 'agent',
+		parentFolder: folder,
+	});
+	await repository.update(parent.id, { parentFolderId: childFolder.id });
+	await repository.update(child.id, { projectId: project.id, parentFolderId: childFolder.id });
+	const findChains = vi.spyOn(
+		Container.get(FolderFinderService),
+		'findFolderAncestorChainsForUser',
+	);
+	const writer = new CapturingWriter();
+
+	const result = await exporter.export({ user: owner, writer, agentIds: [parent.id, child.id] });
+
+	expect(findChains).toHaveBeenCalledExactlyOnceWith([childFolder.id], owner, ['folder:read']);
+	expect(result.folderEntries?.map(({ id }) => id)).toEqual([folder.id, childFolder.id]);
+	expect(result.agentEntries).toHaveLength(2);
+
+	for (const entry of result.agentEntries) {
+		expect(entry.target).toContain(`${result.folderEntries?.[1].target}/agents/`);
+	}
+
+	const serialized = writer.files
+		.filter(({ path }) => path.endsWith('/folder.json'))
+		.map(({ content }) => JSON.parse(content));
+
+	expect(serialized).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({ id: folder.id, resourceType: 'agent' }),
+			expect.objectContaining({
+				id: childFolder.id,
+				resourceType: 'agent',
+				parentFolderId: folder.id,
+			}),
+		]),
+	);
+});
+
+it.each([undefined, false, true])(
+	'exports archived Agents from a selected folder with includeArchived=%s',
+	async (includeArchived) => {
+		const folder = await createFolder(project, { name: 'Support', resourceType: 'agent' });
+		await repository.update(parent.id, { parentFolderId: folder.id, isArchived: true });
+		const active = await repository.save({
+			id: 'active',
+			name: 'Active',
+			projectId: project.id,
+			parentFolderId: folder.id,
+			schema: null,
+		});
+
+		const result = await exporter.export({
+			user: owner,
+			writer: new CapturingWriter(),
+			folderIds: [folder.id],
+			includeArchived,
+		});
+
+		expect(result.agentIds.sort()).toEqual(
+			includeArchived ? [active.id, parent.id].sort() : [active.id],
+		);
+	},
+);
+
+it('exports an archived Agent selected by ID with its folder ancestors', async () => {
+	const folder = await createFolder(project, { name: 'Support', resourceType: 'agent' });
+	await repository.update(parent.id, { parentFolderId: folder.id, isArchived: true });
+
+	const result = await exporter.export({
+		user: owner,
+		writer: new CapturingWriter(),
+		agentIds: [parent.id],
+	});
+
+	expect(result.agentIds).toEqual([parent.id]);
+	expect(result.folderEntries?.map(({ id }) => id)).toEqual([folder.id]);
+});
+
+it.each([undefined, false, true])(
+	'exports Agent folder trees with includeAgents=%s',
+	async (includeAgents) => {
+		const workflowFolder = await createFolder(project, { name: 'Workflows' });
+		const agentFolder = await createFolder(project, { name: 'Agents', resourceType: 'agent' });
+		const nested = await createFolder(project, {
+			name: 'Support',
+			resourceType: 'agent',
+			parentFolder: agentFolder,
+		});
+		const empty = await createFolder(project, { name: 'Empty', resourceType: 'agent' });
+		await repository.update(parent.id, { parentFolderId: nested.id });
+		const workflow = await createWorkflow(
+			{ name: 'Support workflow', parentFolder: workflowFolder },
+			project,
+		);
+		const writer = new CapturingWriter();
+		const { manifest } = await Container.get(N8nPackagesService).exportPackageToWriter(
+			{ user: owner, projectIds: [project.id], includeAgents },
+			writer,
+		);
+
+		expect(manifest.workflows?.map(({ id }) => id)).toEqual([workflow.id]);
+		expect(manifest.folders?.map(({ id }) => id).sort()).toEqual(
+			(includeAgents === false
+				? [workflowFolder.id]
+				: [workflowFolder.id, agentFolder.id, nested.id, empty.id]
+			).sort(),
+		);
+		expect(manifest.agents?.map(({ id }) => id) ?? []).toEqual(
+			includeAgents === false ? [] : [parent.id],
+		);
+		expect(writer.files.some(({ path }) => path.endsWith('/agent.json'))).toBe(
+			includeAgents !== false,
+		);
+	},
+);
+
+it('exports workflows without requiring access to excluded Agent folders', async () => {
+	const member = await createMember();
+	const role = await createCustomRoleWithScopeSlugs(['project:export', 'workflow:export']);
+	await linkUserToProject(member, project, role.slug);
+	await createFolder(project, { name: 'Agents', resourceType: 'agent' });
+	const workflow = await createWorkflow({ name: 'Root workflow', nodes: [] }, project);
+	const { manifest } = await Container.get(N8nPackagesService).exportPackageToWriter(
+		{ user: member, projectIds: [project.id], includeAgents: false },
+		new CapturingWriter(),
+	);
+
+	expect(manifest.workflows?.map(({ id }) => id)).toEqual([workflow.id]);
+	expect(manifest.folders ?? []).toEqual([]);
+	expect(manifest.agents ?? []).toEqual([]);
+});
+
+it.each([
+	{ mode: 'whole', hasAgents: true },
+	{ mode: 'selection', hasAgents: true },
+	{ mode: 'whole', hasAgents: false },
+	{ mode: 'selection', hasAgents: false },
+])(
+	'keeps $mode directory imports of Agent resources disabled with hasAgents=$hasAgents',
+	async ({ mode, hasAgents }) => {
+		const folder = await createFolder(project, { name: 'Support', resourceType: 'agent' });
+		const parentFolderId = hasAgents ? folder.id : null;
+		await repository.update(parent.id, {
+			projectId: hasAgents ? project.id : otherProject.id,
+			parentFolderId,
+		});
+		const sourceDir = await mkdtemp(path.join(tmpdir(), 'agent-directory-import-'));
+		const service = Container.get(N8nPackagesService);
+
+		try {
+			await service.exportPackageToDirectory(
+				{ user: owner, projectIds: [project.id] },
+				{ targetDir: sourceDir },
+			);
+			await repository.update(parent.id, { name: 'Local Agent' });
+			const request = importPackageRequest({
+				user: owner,
+				packageBuffer: Buffer.alloc(0),
+			});
+			const imported =
+				mode === 'whole'
+					? service.importPackageFromDirectory(request, { sourceDir })
+					: service.importPackageSelectionFromDirectory(
+							request,
+							{ sourceDir },
+							{
+								selectedProjectId: project.id,
+								selectedWorkflowIds: [],
+								selectedFolderIds: [folder.id],
+							},
+						);
+
+			await expect(imported).rejects.toThrow(
+				hasAgents
+					? 'Agent packages require the ordinary archive import endpoint.'
+					: 'Agent folders require the ordinary archive import endpoint.',
+			);
+			expect(await repository.findById(parent.id)).toMatchObject({
+				name: 'Local Agent',
+				parentFolderId,
+				isArchived: false,
+			});
+		} finally {
+			await rm(sourceDir, { recursive: true, force: true });
+		}
+	},
+);
+
+it('omits folder Agents when the caller has only folder access', async () => {
+	const user = await createMember();
+	const role = await createCustomRoleWithScopeSlugs(['folder:read']);
+	await linkUserToProject(user, project, role.slug);
+	const folder = await createFolder(project, { resourceType: 'agent' });
+	await repository.update(parent.id, { parentFolderId: folder.id });
+
+	const result = await exporter.export({
+		user,
+		writer: new CapturingWriter(),
+		folderIds: [folder.id],
+	});
+
+	expect(result.agentIds).toEqual([]);
+});

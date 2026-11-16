@@ -48,6 +48,7 @@ describe('search-folders MCP tool', () => {
 		await tool.handler(
 			{
 				projectId: args.projectId,
+				resourceType: 'workflow',
 				query: args.query as string,
 				limit: args.limit as number,
 			},
@@ -96,7 +97,8 @@ describe('search-folders MCP tool', () => {
 
 		expect(folderService.getManyAndCount).toHaveBeenCalledWith('proj-1', {
 			filter: {},
-			select: { name: true, parentFolder: true, path: true, updatedAt: true },
+			resourceType: 'workflow',
+			select: { name: true, parentFolder: true, path: true, updatedAt: true, resourceType: true },
 			take: 100,
 		});
 	});
@@ -110,7 +112,8 @@ describe('search-folders MCP tool', () => {
 
 		expect(folderService.getManyAndCount).toHaveBeenCalledWith('proj-1', {
 			filter: { name: 'prod' },
-			select: { name: true, parentFolder: true, path: true, updatedAt: true },
+			resourceType: 'workflow',
+			select: { name: true, parentFolder: true, path: true, updatedAt: true, resourceType: true },
 			take: 100,
 		});
 	});

@@ -199,6 +199,11 @@ export class AgentImporter {
 					},
 				);
 			}
+			if (item.parentFolderId !== undefined) {
+				await this.agentsService.move(agent.id, context.projectId, item.parentFolderId);
+				agent.parentFolderId = item.parentFolderId;
+			}
+
 			agent = await this.applyArchiveTransition(context, item, agent);
 			const channels = item.channels.map((channel) => this.withSetupUrl(channel, agent));
 			outcomes.push({

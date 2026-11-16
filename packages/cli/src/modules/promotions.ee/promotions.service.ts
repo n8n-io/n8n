@@ -537,6 +537,7 @@ export class PromotionsService {
 					projectIds: [selection.projectId],
 					projectWorkflowIds: selection.workflowIds,
 					projectFolderIds: selection.folderIds,
+					includeAgents: false,
 					includeVariableValues: true,
 					canExportVariableValues: request.canExportVariableValues,
 					includeTags: true,
