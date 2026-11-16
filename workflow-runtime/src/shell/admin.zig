@@ -14,6 +14,9 @@ pub const Route = union(enum) {
     delete_workflow: []const u8,
     /// `GET /_admin/workflows/<id>/static-data` (spec 9.7).
     get_static_data: []const u8,
+    /// `PUT /_admin/workflows/<id>/credentials`: new values for some
+    /// credential slots of a loaded workflow; the module stays.
+    put_workflow_credentials: []const u8,
     list_workflows,
     put_credentials,
     put_variables,
@@ -44,7 +47,10 @@ pub fn route(method: []const u8, target: []const u8) Route {
     const eq = std.mem.eql;
     if (eq(u8, a, "workflows")) {
         if (b == null or b.?.len == 0) return if (eq(u8, method, "GET") and c == null) .list_workflows else .not_found;
-        if (c) |sub| return if (eq(u8, sub, "static-data") and eq(u8, method, "GET")) .{ .get_static_data = b.? } else .not_found;
+        if (c) |sub| {
+            if (eq(u8, sub, "credentials") and eq(u8, method, "PUT")) return .{ .put_workflow_credentials = b orelse "" };
+            return if (eq(u8, sub, "static-data") and eq(u8, method, "GET")) .{ .get_static_data = b.? } else .not_found;
+        }
         if (eq(u8, method, "PUT")) return .{ .put_workflow = b.? };
         if (eq(u8, method, "DELETE")) return .{ .delete_workflow = b.? };
         return .not_found;
@@ -764,6 +770,8 @@ test "admin routes" {
     const t = std.testing;
     try t.expectEqualStrings("wf1", route("PUT", "/_admin/workflows/wf1").put_workflow);
     try t.expectEqualStrings("wf1", route("DELETE", "/_admin/workflows/wf1").delete_workflow);
+    try t.expectEqualStrings("wf1", route("PUT", "/_admin/workflows/wf1/credentials").put_workflow_credentials);
+    try t.expect(route("GET", "/_admin/workflows/wf1/credentials") == .not_found);
     try t.expect(route("GET", "/_admin/workflows") == .list_workflows);
     try t.expect(route("PUT", "/_admin/credentials") == .put_credentials);
     try t.expect(route("POST", "/_admin/executions") == .start_execution);

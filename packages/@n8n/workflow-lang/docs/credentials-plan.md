@@ -56,12 +56,83 @@ flowchart LR
 |---|---|---|
 | Publish | Decrypts each credential of the workflow, calls `publicCredential`, converts, compiles, loads the module, sends the credentials document (as today) | Once for each workflow version |
 | A credential is saved | Compares the public fields with those of the last publish. Changed: republish every workflow that uses the credential. Not changed (a secret was rotated): send the new values only | Once for each change |
-| An OAuth2 token expires | The runtime gets 401 (or the status in `tokenExpiredStatusCode`), calls `refreshOAuth2` with the credential id, n8n refreshes and sends the new token. Requests that wait for the same slot go again after one refresh | Once for each expiry, not for each request |
+| A credential value expires (OAuth2 token, minted token, session token) | The runtime asks for a renewal (see "Renewal"). n8n renews the credential once and sends only the new values. Requests that wait for the same slot go again after one renewal | Once for each expiry, not for each request |
 | An execution | Nothing | 0 |
 
 n8n must keep, for each published workflow version, the hash of the public fields of each credential that it
 used. That is what tells a rotation from a change of meaning. The module identity includes that hash, so two
 workflows with the same node and other credential settings get other modules.
+
+### Renewal (built)
+
+One protocol renews every credential value that expires. The secret stays in n8n.
+
+**Which slots.** n8n adds a `renewal` member to a slot of the credentials document when it can renew the slot:
+
+```json
+"<slot>": { "type": "…", "data": { … }, "inject": { … },
+            "renewal": { "status": [401], "expiresAt": 1794845744000 } }
+```
+
+- `status`: the response statuses that mean "the value expired". For OAuth2 it is `tokenExpiredStatusCode` of
+  the credential, else 401, as in `requestOAuth2` of n8n-core. For the other kinds it is 401. At most 8.
+- `expiresAt`: the time in milliseconds at which the value expires. n8n sets it for minted tokens only.
+
+| Kind | What n8n does for a renewal | v1 code with the same effect |
+|---|---|---|
+| OAuth2 (also the client-credentials grant) | `refreshOAuth2Token` of n8n-core, which saves the token | `requestOAuth2`, after a 401 |
+| Minted Google service-account token | Signs and exchanges a new token | `getGoogleAccessToken`, for each request |
+| Credential type with `preAuthentication` and an expirable property | `CredentialsHelper.preAuthentication` with `expired = true`, which saves the token | `httpRequestWithAuthentication`, after a 401 |
+
+**When the runtime asks.**
+
+1. Before a request: the value expires in less than 60 seconds. The check is one comparison of the clock with
+   the first expiry of the document.
+2. After a response with a status of `status`.
+
+In both cases the request waits, the runtime sends a service call, and the request goes when the answer comes.
+A request gets at most one renewal and one resend: a second expiry status goes to the step. A request with a
+multipart body gets the renewal and no resend, as in v1. All other requests are sent again, also POST, as in v1.
+
+**The call.** `{"service":"credentials","op":"renew","args":{"credentialId":"<slot>"}}` on the service channel
+(spec section 9.9). The call id is the id of the `http` effect. The shard does not block: the request is a row
+of a table (`renew.zig`) until the answer comes.
+
+**What n8n does.**
+
+1. It finds the credential of the slot in the loaded workflow. Another credential is refused.
+2. It renews the credential. Calls for the same credential at the same time share one renewal.
+3. For each loaded workflow that uses the credential (also a manual run), it builds the slots of that credential
+   and sends them: `PUT /_admin/workflows/<id>/credentials`. The body has only these slots. The runtime puts
+   them into the document of the workflow. The module and the other slots stay. Minted tokens are made once
+   for a renewal and shared by the workflows.
+4. It answers the call. On an error the answer has the message, and the step fails with it.
+
+**The timer.** For a published workflow with minted tokens, n8n starts the same renewal 5 minutes before the
+first expiry. This is an optimisation: requests do not wait. Without the timer the runtime asks by itself.
+
+**Limits.** The runtime keeps at most `--max-renewals` requests (default 256) with args of at most
+`--renewal-kb` KB (default 64). A request above a limit runs without a renewal. n8n runs at most 1,024
+renewals at the same time. Requests in the runtime share a renewal for each workflow and slot; n8n shares it
+for each credential.
+
+```mermaid
+sequenceDiagram
+  participant S as Step
+  participant R as wfrt
+  participant N as n8n
+  participant A as API
+  S->>R: http effect (slot)
+  R->>A: request (old token)
+  A-->>R: 401
+  R->>N: service event: credentials.renew (slot)
+  N->>N: renew the credential (one for all callers)
+  N->>R: PUT /_admin/workflows/<id>/credentials (changed slots)
+  N->>R: answer
+  R->>A: request (new token), once
+  A-->>R: response
+  R-->>S: result
+```
 
 ### What the runtime does (plan)
 

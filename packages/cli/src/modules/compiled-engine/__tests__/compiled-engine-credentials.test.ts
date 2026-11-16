@@ -18,7 +18,11 @@ import type { CredentialsHelper } from '@/credentials-helper';
 import type { NodeTypes } from '@/node-types';
 
 import type { CredentialSlotBinding } from '../compiled-engine.types';
-import { CompiledEngineCredentials, earliestMintExpiry } from '../compiled-engine-credentials';
+import {
+	CompiledEngineCredentials,
+	earliestMintExpiry,
+	mintExpiries,
+} from '../compiled-engine-credentials';
 
 vi.mock('@/workflow-execute-additional-data', () => ({ getBase: vi.fn() }));
 
@@ -124,6 +128,92 @@ describe('CompiledEngineCredentials', () => {
 		});
 	});
 
+	describe('renewal', () => {
+		it('tells wfrt that an OAuth2 slot is renewed on 401', async () => {
+			const document = await credentials().buildDocument('wf1', [binding]);
+			expect(document.oauth).toMatchObject({ renewal: { status: [401] } });
+		});
+
+		it('uses the expiry statuses of the credential, as n8n-core does', async () => {
+			helper.getDecrypted.mockResolvedValue({
+				grantType: 'clientCredentials',
+				accessTokenUrl: tokenUrl,
+				tokenExpiredStatusCode: [403, '419'],
+				oauthTokenData: { access_token: 'old' },
+			});
+			const document = await credentials().buildDocument('wf1', [binding]);
+			expect(document.oauth).toMatchObject({ renewal: { status: [403, 419] } });
+		});
+
+		it('gives no renewal to a credential whose values do not expire', async () => {
+			helper.getDecrypted.mockResolvedValue({ apiKey: 'k' });
+			const plain = { ...binding, slot: 'plain', type: 'httpHeaderAuth' };
+			const document = await credentials().buildDocument('wf1', [plain]);
+			expect(document.plain).toBeDefined();
+			expect(document.plain).not.toHaveProperty('renewal');
+			await expect(credentials().renew(plain, 'wf1', false)).rejects.toThrow(
+				'n8n cannot renew a credential of type "httpHeaderAuth"',
+			);
+		});
+
+		it('refreshes an OAuth2 credential when wfrt asks for a renewal', async () => {
+			await credentials().renew(binding, 'wf1', false);
+			expect(helper.updateCredentialsOauthTokenData).toHaveBeenCalledTimes(1);
+			expect(helper.updateCredentialsOauthTokenData.mock.calls[0][2].oauthTokenData).toMatchObject({
+				access_token: 'new',
+			});
+		});
+
+		describe('a credential with preAuthentication', () => {
+			const session: CredentialSlotBinding = {
+				slot: 'session',
+				type: 'sessionApi',
+				credentialId: 'cred3',
+				credentialName: 'Session',
+			};
+
+			beforeEach(() => {
+				credentialTypes.recognizes.mockReturnValue(true);
+				credentialTypes.getParentTypes.mockReturnValue([]);
+				credentialTypes.getByName.mockReturnValue({
+					name: 'sessionApi',
+					displayName: 'Session',
+					properties: [
+						{
+							displayName: 'Session token',
+							name: 'sessionToken',
+							type: 'hidden',
+							typeOptions: { expirable: true },
+							default: '',
+						},
+					],
+					preAuthentication: async () => ({ sessionToken: 'unused' }),
+				});
+				helper.getDecrypted.mockResolvedValue({ user: 'u', sessionToken: '' });
+				helper.preAuthentication.mockResolvedValue({ sessionToken: 's2' });
+			});
+
+			it('gets a new session token as v1 does after a 401, with the helper that saves it', async () => {
+				await credentials().renew(session, 'wf1', false);
+				expect(helper.preAuthentication).toHaveBeenCalledTimes(1);
+				const [, data, type, node, expired] = helper.preAuthentication.mock.calls[0];
+				expect(data).toEqual({ user: 'u', sessionToken: '' });
+				expect(type).toBe('sessionApi');
+				expect(node.credentials).toEqual({ sessionApi: { id: 'cred3', name: 'Session' } });
+				expect(expired).toBe(true);
+			});
+
+			it('fills an empty session token when it builds the document, and marks the slot', async () => {
+				const document = await credentials().buildDocument('wf1', [session]);
+				expect(helper.preAuthentication.mock.calls[0][4]).toBe(false);
+				expect(document.session).toMatchObject({
+					data: { sessionToken: 's2' },
+					renewal: { status: [401] },
+				});
+			});
+		});
+	});
+
 	describe('minted tokens', () => {
 		const serviceAccount: CredentialSlotBinding = {
 			slot: 'sa',
@@ -186,6 +276,11 @@ describe('CompiledEngineCredentials', () => {
 			expect(minted.m1.access_token).toBe('minted');
 			expect(minted.m1.expires_at).toBeGreaterThanOrEqual(before + 3599_000);
 			expect(earliestMintExpiry(document)).toBe(minted.m1.expires_at);
+			expect(mintExpiries(document).get('sa')).toBe(minted.m1.expires_at);
+			// `wfrt` renews before this time, and after a 401.
+			expect(document.sa).toMatchObject({
+				renewal: { status: [401], expiresAt: minted.m1.expires_at },
+			});
 			const assertion = new URLSearchParams(form).get('assertion') ?? '';
 			const claims = JSON.parse(
 				Buffer.from(assertion.split('.')[1], 'base64url').toString('utf8'),
@@ -203,6 +298,27 @@ describe('CompiledEngineCredentials', () => {
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(JSON.stringify(logger.warn.mock.calls)).toContain('invalid_grant');
 			expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('PRIVATE KEY');
+		});
+
+		it('makes one token for the workflows of a renewal, and fails the renewal on an error', async () => {
+			nock('https://oauth2.googleapis.com')
+				.post('/token')
+				.once()
+				.reply(200, { access_token: 'shared', expires_in: 3599, token_type: 'Bearer' });
+			const minted = new Map();
+			const options = { strict: true, minted };
+
+			const first = await credentials().buildDocument('wf1', [serviceAccount], {}, mints, options);
+			const second = await credentials().buildDocument('wf2', [serviceAccount], {}, mints, options);
+
+			expect(first.sa).toMatchObject({ data: { n8nMinted: { m1: { access_token: 'shared' } } } });
+			expect(second.sa).toEqual(first.sa);
+			expect(minted.size).toBe(1);
+
+			nock('https://oauth2.googleapis.com').post('/token').reply(400, { error: 'invalid_grant' });
+			await expect(
+				credentials().buildDocument('wf1', [serviceAccount], {}, mints, { strict: true }),
+			).rejects.toThrow();
 		});
 
 		it('does not make a token when the scopes are not the scopes of n8n', async () => {

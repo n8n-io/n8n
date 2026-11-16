@@ -24,7 +24,7 @@ const usage =
     \\        [--credentials FILE] [--egress-max-body-mb M] [--egress-big-slots K] [--insecure-tls]
     \\        [--admin-port P --admin-secret-env VAR] [--event-queue-mb M] [--max-outbox-mb M] [--test-clock]
     \\        [--profile embedded] [--max-conns N] [--max-request-mb M] [--request-big-slots K]
-    \\        [--step-events-sample N] [--max-zones N] [--max-static-data N] [--static-data-kb K] [--max-service-calls N] [--service-call-kb K] [--service-timeout-ms MS] [--max-modules N] [--max-routes N] [--max-schedules N] [--module-store-mb M] [--ca-file CA.pem] [--gym-env]
+    \\        [--step-events-sample N] [--max-zones N] [--max-static-data N] [--static-data-kb K] [--max-service-calls N] [--service-call-kb K] [--service-timeout-ms MS] [--max-renewals N] [--renewal-kb K] [--max-modules N] [--max-routes N] [--max-schedules N] [--module-store-mb M] [--ca-file CA.pem] [--gym-env]
     \\        [--slots N] [--target-rate R --vendor-latency-ms L [--memory-mb M]]
     \\        [--egress-max-requests N] [--egress-max-conns N] [--egress-max-origins N]
     \\        [--egress-origin-conns N] [--egress-origin-inflight N] [--egress-origin-queue N] [--egress-origin-rate R] [--egress-origin-burst B]
@@ -336,6 +336,8 @@ fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8)
         if (std.mem.eql(u8, k, "--max-service-calls")) opts.max_service_calls = std.math.clamp(try std.fmt.parseInt(u32, v, 10), 1, 1 << 16);
         if (std.mem.eql(u8, k, "--service-call-kb")) opts.service_call_kb = std.math.clamp(try std.fmt.parseInt(u32, v, 10), 1, 64 << 10);
         if (std.mem.eql(u8, k, "--service-timeout-ms")) opts.service_timeout_ms = std.math.clamp(try std.fmt.parseInt(i64, v, 10), 1, 24 * 3600 * 1000);
+        if (std.mem.eql(u8, k, "--max-renewals")) opts.max_renewals = std.math.clamp(try std.fmt.parseInt(u32, v, 10), 1, 1 << 16);
+        if (std.mem.eql(u8, k, "--renewal-kb")) opts.renewal_kb = std.math.clamp(try std.fmt.parseInt(u32, v, 10), 1, 64 << 10);
         if (std.mem.eql(u8, k, "--step-events-sample")) opts.step_event_sample = try std.fmt.parseInt(u32, v, 10);
         if (std.mem.eql(u8, k, "--max-modules")) opts.max_modules = try std.fmt.parseInt(u16, v, 10);
         if (std.mem.eql(u8, k, "--max-routes")) opts.max_routes = @max(1, try std.fmt.parseInt(u32, v, 10));
@@ -533,6 +535,7 @@ fn runCorpus(gpa: std.mem.Allocator, io: std.Io, out: *std.Io.Writer, dir_path: 
 test {
     _ = @import("shell/http.zig");
     _ = @import("shell/creds.zig");
+    _ = @import("shell/renew.zig");
     _ = @import("shell/request.zig");
     _ = @import("shell/egress.zig");
     _ = @import("shell/retry_test.zig");

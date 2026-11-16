@@ -150,8 +150,44 @@ describe('CompiledServiceCalls', () => {
 			args: { credentialId: 'cred1' },
 		});
 		expect(answer).toEqual({ ok: true, result: { ok: true } });
-		expect(credentials.refreshOAuth2).toHaveBeenCalledWith(slot, 'wf1');
-		expect(sync.onCredentialChanged).toHaveBeenCalledWith('cred1');
+		// One protocol: the renewal is shared, and only credential values go to `wfrt`.
+		expect(sync.renewCredential).toHaveBeenCalledWith('cred1', 'wf1~manual');
+		expect(sync.onCredentialChanged).not.toHaveBeenCalled();
+	});
+
+	it('renews the credential of a slot when wfrt asks, also in a manual run', async () => {
+		const slot = {
+			slot: 'Google Docs:googleApi',
+			type: 'googleApi',
+			credentialId: 'cred2',
+			credentialName: 'Service account',
+		};
+		sync.findLoaded.mockReturnValue({ artifact: { slots: [slot] } } as unknown as LoadedWorkflow);
+		const event = parseWfrtEvent(line) as WfrtServiceEvent;
+		const answer = await makeCalls().run({
+			...event,
+			service: 'credentials',
+			op: 'renew',
+			// `wfrt` names the slot of the request.
+			args: { credentialId: 'Google Docs:googleApi' },
+		});
+		expect(answer).toEqual({ ok: true, result: { ok: true } });
+		expect(sync.findLoaded).toHaveBeenCalledWith('wf1~manual');
+		expect(sync.renewCredential).toHaveBeenCalledWith('cred2', 'wf1~manual');
+	});
+
+	it('answers with the error of n8n when the renewal fails', async () => {
+		const slot = { slot: 'oauth', type: 'oAuth2Api', credentialId: 'cred1', credentialName: 'O' };
+		sync.findLoaded.mockReturnValue({ artifact: { slots: [slot] } } as unknown as LoadedWorkflow);
+		sync.renewCredential.mockRejectedValue(new Error('Reconnect the credential'));
+		const event = parseWfrtEvent(line) as WfrtServiceEvent;
+		const answer = await makeCalls().run({
+			...event,
+			service: 'credentials',
+			op: 'renew',
+			args: { credentialId: 'oauth' },
+		});
+		expect(answer).toEqual({ ok: false, error: { message: 'Reconnect the credential' } });
 	});
 
 	it('refuses a credential that the workflow does not use', async () => {
@@ -173,7 +209,7 @@ describe('CompiledServiceCalls', () => {
 			ok: false,
 			error: { message: 'The workflow does not use this credential' },
 		});
-		expect(credentials.refreshOAuth2).not.toHaveBeenCalled();
+		expect(sync.renewCredential).not.toHaveBeenCalled();
 		expect(sync.onCredentialChanged).not.toHaveBeenCalled();
 	});
 
