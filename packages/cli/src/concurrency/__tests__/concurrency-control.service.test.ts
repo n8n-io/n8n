@@ -1,6 +1,7 @@
 import type { EventService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { WorkflowExecuteMode as ExecutionMode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -682,6 +683,33 @@ describe('ConcurrencyControlService', () => {
 					expect(executionCancelService.markAsCanceled).toHaveBeenCalledWith(['1', '2', '3']);
 				},
 			);
+
+			it('should wait for the ledger rows of the canceled executions', async () => {
+				globalConfig.executions.concurrency.productionLimit = 2;
+				const service = new ConcurrencyControlService(
+					logger,
+					executionCancelService,
+					telemetry,
+					eventService,
+					globalConfig,
+					license,
+					new ProductionHold(eventService),
+				);
+				const rows = createDeferredPromise<undefined>();
+				executionCancelService.markAsCanceled.mockResolvedValue({
+					canceled: [],
+					recorded: rows.promise,
+				});
+
+				let removed = false;
+				const removing = service.removeAll(['1']).then(() => (removed = true));
+				await new Promise((resolve) => setImmediate(resolve));
+				expect(removed).toBe(false);
+
+				rows.resolve(undefined);
+				await removing;
+				expect(removed).toBe(true);
+			});
 		});
 
 		describe('get queue', () => {
