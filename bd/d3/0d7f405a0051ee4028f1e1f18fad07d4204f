@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceMoveDialog.vue
+  s_3f90602cbb1671::t_6ea89eedad630f 7,65,70
+  s_3f90602cbb1671::t_1b0e3a9de85676 64,66,71-74,217-230,284-296,298-303,316,318-319,321-334,336,338,341-388,391-395,397,400-443,446,492-495,498-501,506-509,513,516,519,522-523,527-530,533-535,538-543,547,554-556,559-560
+  s_3f90602cbb1671::t_864b342808c637 17,23,30,75,489-490,496-497,502-505,510-512,514,518,520-521,524-526,531-532,536-537,545-546,553,557-558
+  s_3f90602cbb1671::t_99d21d178f7183 67-69
+  s_3f90602cbb1671::t_4ab6eda3725438 304-315,317
+  s_3f90602cbb1671::t_054af4c6761a42 515,517
+  s_3f90602cbb1671::t_0db32d9f862571 476-477,491,548-550
+packages/frontend/@n8n/design-system/src/components/N8nDataTableServer/N8nDataTableServer.vue
+  s_3f90602cbb1671::t_a8d8c7ff0d3389 598,729-731
+  s_3f90602cbb1671::t_4ab6eda3725438 593-596
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_3f90602cbb1671::t_e323d926ca29ee 435-438
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3f90602cbb1671::t_864b342808c637 4106-4113,4115-4116,4118,4128,4130
+  s_3f90602cbb1671::t_4ab6eda3725438 4114,4126
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceMoveDialog.test.ts
+  s_3f90602cbb1671::t_4ab6eda3725438 270
+  s_3f90602cbb1671::t_1b0e3a9de85676 286-298,301-312
+  s_3f90602cbb1671::t_054af4c6761a42 272,284-285,299-300
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillModal.test.ts
+  s_3f90602cbb1671::t_054af4c6761a42 2054
+  s_3f90602cbb1671::t_1b0e3a9de85676 2026-2053
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillModal.vue
+  s_3f90602cbb1671::t_1b0e3a9de85676 522-525,548-556
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bdd30d7f405a0051ee4028f1e1f18fad07d4204f",
+  "prompts": {},
+  "sessions": {
+    "s_3f90602cbb1671": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cfd0-acd2-7921-a2e2-a79f65f339f6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

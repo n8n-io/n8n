@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/useAssistantAgentTurnTelemetry.test.ts
+  s_06b06b12289ec6::t_ece4aa9c245481 215-253
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/useAssistantAgentTurnTelemetry.ts
+  s_06b06b12289ec6::t_ece4aa9c245481 142-154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cc7716042a169ba557eb5326e7a54c1f72f392f6",
+  "prompts": {},
+  "sessions": {
+    "s_06b06b12289ec6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc380d60-1b16-4440-830e-87923bc75b40",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

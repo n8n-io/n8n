@@ -1,0 +1,126 @@
+packages/@n8n/backend-common/src/index.ts
+  h_8fb27e0cdf6d1e 13,15
+packages/@n8n/backend-common/src/utils/__tests__/path-util.test.ts
+  h_8fb27e0cdf6d1e 6,8,15-60
+packages/@n8n/backend-common/src/utils/path-util.ts
+  h_8fb27e0cdf6d1e 5-36
+packages/@n8n/config/src/index.ts
+  h_8fb27e0cdf6d1e 175-178
+packages/@n8n/config/test/config.test.ts
+  h_8fb27e0cdf6d1e 54
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/ChatTrigger.node.ts
+  h_8fb27e0cdf6d1e 1151-1152,1161
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/__test__/templates.test.ts
+  h_8fb27e0cdf6d1e 26,504-557,559-585,693-694,721-722
+packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/templates.ts
+  h_8fb27e0cdf6d1e 338,352,403-412,428,447
+packages/cli/src/__tests__/abstract-server.test.ts
+  h_8fb27e0cdf6d1e 73
+packages/cli/src/__tests__/controller.registry.test.ts
+  h_8fb27e0cdf6d1e 41-45,60
+packages/cli/src/__tests__/load-nodes-and-credentials.test.ts
+  h_8fb27e0cdf6d1e 139,144,149,154,158-167,171,180,190
+packages/cli/src/abstract-server.ts
+  h_8fb27e0cdf6d1e 56-58,121-127,131-142,266-269,273,279,285,292,301,306-309,316,320,325-328
+packages/cli/src/auth/__tests__/auth-service-browser-id-whitelist.test.ts
+  h_8fb27e0cdf6d1e 24-26,40,67-75,79-83,85-92
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  h_8fb27e0cdf6d1e 56-58,71,187,203,239,372,416,435,454,496,765,817,830,844,1118,1170,1391,1396-1401,1405-1409,1411-1422
+packages/cli/src/auth/auth.service.ts
+  h_8fb27e0cdf6d1e 117,120-124,128,131,134-135,140,143-146,149,152,293-298,360-361
+packages/cli/src/commands/__tests__/execute-batch.test.ts
+  h_8fb27e0cdf6d1e 95-97
+packages/cli/src/commands/__tests__/execute.test.ts
+  h_8fb27e0cdf6d1e 84-86
+packages/cli/src/commands/start.ts
+  h_8fb27e0cdf6d1e 163-166,187-189
+packages/cli/src/controller.registry.ts
+  h_8fb27e0cdf6d1e 41,57-63
+packages/cli/src/deprecation/deprecation.service.ts
+  h_8fb27e0cdf6d1e 193-198
+packages/cli/src/load-nodes-and-credentials.ts
+  h_8fb27e0cdf6d1e 255,271-274
+packages/cli/src/metrics/prometheus/__tests__/route-metrics.service.test.ts
+  h_8fb27e0cdf6d1e 3,10,26-34,48,153-182
+packages/cli/src/metrics/prometheus/route-metrics.service.ts
+  h_8fb27e0cdf6d1e 1,10,21,53-57,60-67
+packages/cli/src/modules/dynamic-credentials.ee/__tests__/dynamic-credentials.controller.test.ts
+  h_8fb27e0cdf6d1e 46,73,804-859
+packages/cli/src/modules/dynamic-credentials.ee/dynamic-credentials.controller.ts
+  h_8fb27e0cdf6d1e 54,275-292
+packages/cli/src/public-api/__tests__/index.test.ts
+  h_8fb27e0cdf6d1e 2-10,12-25
+packages/cli/src/public-api/index.ts
+  h_8fb27e0cdf6d1e 38-49,51,53-66,70-73,113,119-121,128-132,134,145,171,176,180-181,185,189-200,220,248
+packages/cli/src/public-api/v1/handlers/discover/discover.service.ts
+  h_8fb27e0cdf6d1e 37,161
+packages/cli/src/push/__tests__/index.test.ts
+  h_8fb27e0cdf6d1e 47,58,79,95-102
+packages/cli/src/push/index.ts
+  h_8fb27e0cdf6d1e 69,72,74,94,96
+packages/cli/src/server.ts
+  h_8fb27e0cdf6d1e 195-197,233-236,240-252,270,272,309,334-339,344,412-413,419-423,453-454,485-490,497,500,577,583,596-598,600-607,623,629,648-650
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  h_8fb27e0cdf6d1e 37
+packages/@n8n/backend-services/src/services/__tests__/path-resolving.service.test.ts
+  h_8fb27e0cdf6d1e 1-371
+packages/@n8n/backend-services/src/services/__tests__/url.service.test.ts
+  h_8fb27e0cdf6d1e 4,12-120,125,128,136-137,145,148,156-157,162-164,204,208,215-216,228,231
+packages/cli/src/services/__tests__/user.service.test.ts
+  h_8fb27e0cdf6d1e 60-63
+packages/@n8n/backend-services/src/services/path-resolving.service.ts
+  h_8fb27e0cdf6d1e 1-67,71-213
+packages/@n8n/backend-services/src/services/url.service.ts
+  h_8fb27e0cdf6d1e 5,11-18,60,63,65
+packages/cli/src/utils/health-endpoint.util.ts
+  h_8fb27e0cdf6d1e 1,28-31,35-39
+packages/cli/src/webhooks/__tests__/waiting-webhooks.test.ts
+  h_8fb27e0cdf6d1e 52-54,63,810-822,825-830,832,834-839,841-844,882-884,893
+packages/cli/src/webhooks/waiting-webhooks.ts
+  h_8fb27e0cdf6d1e 125,232-245
+packages/cli/test/integration/public-api/base-path.test.ts
+  h_8fb27e0cdf6d1e 1-36
+packages/cli/test/integration/shared/types.ts
+  h_8fb27e0cdf6d1e 100
+packages/cli/test/integration/shared/utils/test-server.ts
+  h_8fb27e0cdf6d1e 1,85-90,103-108,114,116-119,121-126,143,189,222
+packages/cli/test/unit/utils/health-endpoint.util.test.ts
+  h_8fb27e0cdf6d1e 71,80-90
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.test.ts
+  h_8fb27e0cdf6d1e 9-12,241-276
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.vue
+  h_8fb27e0cdf6d1e 312-313
+packages/frontend/@n8n/design-system/src/shims-global.d.ts
+  h_8fb27e0cdf6d1e 1-8
+packages/frontend/@n8n/frontend-utils/src/htmlUtils.ts
+  h_8fb27e0cdf6d1e 30-31
+packages/frontend/@n8n/frontend-utils/src/shims-global.d.ts
+  h_8fb27e0cdf6d1e 1-8
+packages/quality/environments/containers/services/load-balancer.ts
+  h_8fb27e0cdf6d1e 3,13,37,41,46,71,103,115,127
+packages/quality/environments/containers/services/n8n.ts
+  h_8fb27e0cdf6d1e 11,265-268
+packages/quality/environments/containers/stack.ts
+  h_8fb27e0cdf6d1e 369-373,508-509
+packages/quality/testing/playwright/composables/TestEntryComposer.ts
+  h_8fb27e0cdf6d1e 20
+packages/quality/testing/playwright/helpers/NavigationHelper.ts
+  h_8fb27e0cdf6d1e 23-27,31-34,40,51,62,67,76,84,92,100,115,126,136,147,162,170,178,186,194,202,210,218,226,234,242,250,266,274,282
+packages/quality/testing/playwright/pages/InstanceAiPage.ts
+  h_8fb27e0cdf6d1e 14-17,30-33,35,48,110
+packages/quality/testing/playwright/pages/n8nPage.ts
+  h_8fb27e0cdf6d1e 170-172,178,192,261,272,279
+packages/quality/testing/playwright/tests/e2e/custom-base-path.spec.ts
+  h_8fb27e0cdf6d1e 1-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "459d58d218630a5986a1bbad073b299f41933c5d",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

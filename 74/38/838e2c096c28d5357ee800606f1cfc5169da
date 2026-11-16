@@ -1,0 +1,36 @@
+packages/cli/src/modules/agents/builder/skills/human-review.skill.ts
+  s_dfe3f914c8bb46::t_f6152b44d8bc51 1-99
+  s_dfe3f914c8bb46::t_55ae42a3b60002 100-101
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_dfe3f914c8bb46::t_5f6de2f03f99b6 40-41,197-221
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_dfe3f914c8bb46::t_2ea625cb0d18e9 38-40
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_dfe3f914c8bb46::t_27a6c258148cd9 259-262
+packages/cli/src/modules/agents/builder/skills/index.ts
+  s_dfe3f914c8bb46::t_b8d04a489007cd 6,30
+packages/cli/src/modules/agents/builder/skills/node-tools.skill.ts
+  s_dfe3f914c8bb46::t_7b472174f1418e 120-121
+packages/frontend/@n8n/design-system/src/components/N8nIcon/nodes/agent-decision-response.svg
+  s_dfe3f914c8bb46::t_37ecda59b82833 9
+packages/frontend/@n8n/design-system/src/components/N8nIcon/nodes/agent-decision-trigger.svg
+  s_dfe3f914c8bb46::t_9e0255c59eaddf 9
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigForm.vue
+  s_dfe3f914c8bb46::t_173596d53e0618 505
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7438838e2c096c28d5357ee800606f1cfc5169da",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

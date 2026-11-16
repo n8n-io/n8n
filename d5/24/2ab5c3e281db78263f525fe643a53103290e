@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/simulation/test-run-credentials-helper.ts
+  s_a88340529c4722::t_57ded2fac2fb7c 1-79
+packages/cli/src/modules/agents/simulation/outbound-redaction.ts
+  s_a88340529c4722::t_9dcc838ae3665e 42-46,48-49
+  s_a88340529c4722::t_9ed55fbadd83ee 40-41
+  s_a88340529c4722::t_81996bd02665e8 50
+packages/cli/src/modules/agents/simulation/__tests__/outbound-redaction.test.ts
+  s_a88340529c4722::t_500d6d0e071284 3,5,7,9,12,25,29-30,33-35,38-39,42-43,47,49,53,60,66,72,75-76,79-82,84
+packages/cli/src/modules/agents/simulation/__tests__/simulated-write-sends-nothing.test.ts
+  s_a88340529c4722::t_efa5115901d46e 69-77
+packages/cli/src/modules/agents/simulation/__tests__/simulation-session.test.ts
+  s_a88340529c4722::t_535a791ae5b197 560,567,569-578,603-604
+packages/cli/src/modules/agents/simulation/__tests__/test-run-credentials-helper.test.ts
+  s_a88340529c4722::t_4a9c42f36b5054 1-60
+packages/cli/src/modules/agents/simulation/simulation-session.ts
+  s_a88340529c4722::t_b60e9fd2bf746e 24-25,236-238,324,360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d5242ab5c3e281db78263f525fe643a53103290e",
+  "prompts": {},
+  "sessions": {
+    "s_a88340529c4722": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f32cad09-c2ae-42bb-971a-14c0acd9e1ec",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
