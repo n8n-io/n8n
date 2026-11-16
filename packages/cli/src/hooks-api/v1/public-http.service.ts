@@ -10,9 +10,10 @@ import type {
 	HttpMiddlewareV1,
 	HttpRequestV1,
 	HttpRouteV1,
+	PrincipalV1,
 	SecurityContextV1,
 } from '@n8n/hooks-api';
-import { type Scope, scopeSchema } from '@n8n/permissions';
+import { type Principal, type Scope, scopeSchema } from '@n8n/permissions';
 import type { Request, Router as ExpressRouter, RequestHandler } from 'express';
 import { Router } from 'express';
 
@@ -26,10 +27,18 @@ const isHttpMiddlewareFnV1 = (
 	value: HttpMiddlewareFnV1 | HttpMiddlewareV1,
 ): value is HttpMiddlewareFnV1 => typeof value === 'function';
 
+/** The contract says an unavailable field is absent, so no key holds `undefined`. */
+const toPrincipalV1 = ({ id, type, email, firstName, lastName }: Principal): PrincipalV1 => {
+	const principal: PrincipalV1 = { id, type };
+	if (email !== undefined) principal.email = email;
+	if (firstName !== undefined) principal.firstName = firstName;
+	if (lastName !== undefined) principal.lastName = lastName;
+	return principal;
+};
+
 const toSecurityV1 = (req: Request): SecurityContextV1 | undefined => {
 	if (!isAuthenticatedRequest(req)) return undefined;
-	const { role: _role, ...subject } = principalFromUser(req.user);
-	return { subject, authMethod: 'session-cookie' };
+	return { subject: toPrincipalV1(principalFromUser(req.user)), authMethod: 'session-cookie' };
 };
 
 const toQueryV1 = (query: Request['query']): QueryV1 => {

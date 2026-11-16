@@ -58,6 +58,11 @@ describe('PublicHttpService', () => {
 	beforeEach(() => {
 		calls = [];
 		buildMiddlewares.mockClear();
+		Object.assign(owner, {
+			email: 'owner@example.com',
+			firstName: 'Jane',
+			lastName: 'Doe',
+		});
 	});
 
 	it('should call the handler with a plain request and send its response as JSON', async () => {
@@ -277,6 +282,25 @@ describe('PublicHttpService', () => {
 				},
 				authMethod: 'session-cookie',
 			});
+		});
+
+		it('should omit principal fields the person does not have', async () => {
+			const service = createService();
+			let received: HttpRequestV1 | undefined;
+			service.registerRoute({
+				method: 'get',
+				path: '/cloud/admin/whoami',
+				middlewares: [service.middlewares.sessionAuthentication],
+				handler: async (req) => {
+					received = req;
+					return { status: 204 };
+				},
+			});
+			Object.assign(owner, { email: null, firstName: null, lastName: null });
+
+			await request(createApp(service)).get('/cloud/admin/whoami');
+
+			expect(Object.keys(received?.security?.subject ?? {})).toEqual(['id', 'type']);
 		});
 
 		it('should have no security context on a route without session authentication', async () => {
