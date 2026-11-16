@@ -115,7 +115,7 @@ type ReadSkill = {
 	ref: RemoteSkillRef;
 	fetched?: FetchedSkill;
 	skill?: AgentSkill;
-	error?: { reason: SkillSourceReason; message: string };
+	error?: { reason: SkillSourceReason; message: string; contentHash?: string };
 	/** Absent when the skill is gone from the source. */
 	check?: SkillScanResult;
 };
@@ -594,7 +594,7 @@ export class SkillSourceService {
 									key: read.key,
 									contentHash: read.fetched
 										? skillContentHash(storedContentOf(read.fetched.content))
-										: await unreadableSkillHash(read.error?.message ?? ''),
+										: await unreadableSkillHash(read.error?.message ?? '', read.error?.contentHash),
 									verdict: read.check?.verdict ?? 'blocked',
 									skipped: true,
 								}),
@@ -888,7 +888,11 @@ export class SkillSourceService {
 			return {
 				key,
 				ref,
-				error: { reason, message: getErrorMessage(error) },
+				error: {
+					reason,
+					message: getErrorMessage(error),
+					...(error instanceof SkillParseError ? { contentHash: error.contentHash } : {}),
+				},
 				...(error instanceof SkillParseError ? { check: this.scanner.scanUnreadable(error) } : {}),
 			};
 		}

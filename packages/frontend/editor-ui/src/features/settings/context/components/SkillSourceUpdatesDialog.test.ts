@@ -129,9 +129,10 @@ const newSkill = (overrides: Partial<SkillNewUpdate> = {}): SkillNewUpdate => ({
 
 it('shows new skills unchecked and imports only the selected new skill', async () => {
 	const skill = newSkill();
+	const unchecked = newSkill({ key: JSON.stringify({ path: 'skills/xlsx' }), name: 'xlsx' });
 	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
 		updates: [],
-		newSkills: [skill],
+		newSkills: [skill, unchecked],
 		commit: null,
 	});
 	vi.mocked(store.acceptSourceUpdates).mockResolvedValue({
@@ -143,7 +144,9 @@ it('shows new skills unchecked and imports only the selected new skill', async (
 	const view = render();
 	const checkbox = await view.findByRole('checkbox', { name: 'pdf' });
 	expect(checkbox).not.toBeChecked();
-	expect(view.getByTestId('skill-update-new')).toHaveTextContent('New');
+	expect(view.getByRole('checkbox', { name: 'xlsx' })).not.toBeChecked();
+	for (const badge of view.getAllByTestId('skill-update-new'))
+		expect(badge).toHaveTextContent('New');
 	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
 	expect(store.fetchSourceUpdate).not.toHaveBeenCalled();
 	await userEvent.click(checkbox);
@@ -153,6 +156,12 @@ it('shows new skills unchecked and imports only the selected new skill', async (
 		newSkills: [{ key: skill.key, contentHash: skill.contentHash }],
 		skippedNewSkills: [],
 		reviewedWarnings: false,
+	});
+	expect(showMessage).toHaveBeenCalledWith({
+		type: 'success',
+		dangerouslyUseHTMLString: false,
+		title: 'Imported 1 skill',
+		message: '',
 	});
 });
 
@@ -174,6 +183,30 @@ it('hides a new skill from the count but keeps it available for a later import',
 	expect(view.getByRole('checkbox', { name: 'pdf' })).toBeEnabled();
 	expect(view.getByRole('checkbox', { name: 'pdf' })).not.toBeChecked();
 	expect(view.emitted().close).toBeUndefined();
+});
+
+it('reports agent impact when new skills and updates are accepted together', async () => {
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [update('docx')],
+		newSkills: [newSkill()],
+		commit: null,
+	});
+	vi.mocked(store.acceptSourceUpdates).mockResolvedValue({
+		updatedCount: 1,
+		importedCount: 1,
+		agents: [{ id: 'agent-1', name: 'Support' }],
+		hiddenAgentCount: 0,
+	});
+	const view = render();
+	await userEvent.click(await view.findByRole('checkbox', { name: 'pdf' }));
+	await userEvent.click(view.getByTestId('skill-updates-accept'));
+	expect(showMessage).toHaveBeenCalledWith({
+		type: 'success',
+		dangerouslyUseHTMLString: false,
+		title: 'Imported 1 skill; Updated 1 skill',
+		message:
+			'Agent drafts that follow these skills will use the updates: Support. Published agents keep their pinned versions until you publish again.',
+	});
 });
 
 it('never enables a blocked new skill', async () => {

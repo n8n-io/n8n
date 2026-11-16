@@ -1,6 +1,7 @@
 import type {
 	AcceptSkillSourceUpdatesDto,
 	ReviewSkillSourceUpdateQueryDto,
+	SkillNewUpdate,
 	SkillPendingUpdate,
 	SkillScanResult,
 	SkillSourceAcceptResponse,
@@ -159,9 +160,17 @@ export class SkillSyncService {
 			});
 		}
 		const revision = updates[0]?.revision;
-		const newSkills = source.unlinkedSkills?.length
-			? await this.newSkills.review(source, client, await this.authOf(source, client))
-			: [];
+		let newSkills: SkillNewUpdate[] = [];
+		if (source.unlinkedSkills?.length) {
+			try {
+				newSkills = await this.newSkills.review(source, client, await this.authOf(source, client));
+			} catch (error) {
+				this.logger.warn('Could not read new skills for source review', {
+					sourceId,
+					reason: skillSourceReasonOf(error),
+				});
+			}
+		}
 		return {
 			updates,
 			newSkills,
@@ -885,8 +894,8 @@ export class SkillSyncService {
 
 	/**
 	 * The content and hash that a check compares, and how the security check rates it. A
-	 * SKILL.md that n8n cannot parse has no content: its parse error stands for it, so the same
-	 * broken file is reported once, and the check blocks it, as at import.
+	 * SKILL.md that n8n cannot parse keeps only its hash, so the same broken file is reported
+	 * once, and the check blocks it, as at import.
 	 */
 	private async candidateOf(
 		fetched: Fetched,
@@ -896,7 +905,7 @@ export class SkillSyncService {
 			const { unreadable } = fetched;
 			return {
 				content: null,
-				hash: await unreadableSkillHash(unreadable.message),
+				hash: await unreadableSkillHash(unreadable.message, unreadable.contentHash),
 				rate: () => this.scanner.scanUnreadable(unreadable),
 			};
 		}

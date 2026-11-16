@@ -11,6 +11,7 @@ import {
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { isRecord } from '@n8n/utils/is-record';
+import { sha256 } from '@n8n/utils/sha256';
 import { LRUCache } from 'lru-cache';
 import type { Readable } from 'node:stream';
 import pLimit from 'p-limit';
@@ -274,9 +275,13 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const inRepository = (file: string) => (path ? `${path}/${file}` : file);
 		const skillFile = inRepository(SKILL_FILE);
 		if (archive.oversized.has(skillFile)) {
-			throw new SkillParseError(`The SKILL.md of ${path || '/'} is larger than 1 MB.`);
+			throw new SkillParseError(
+				`The SKILL.md of ${path || '/'} is larger than 1 MB.`,
+				archive.oversized.get(skillFile),
+			);
 		}
-		if (!archive.text.has(skillFile)) {
+		const skillText = archive.text.get(skillFile);
+		if (skillText === undefined) {
 			throw new SkillSourceNotFoundError(`The skill folder ${path || '/'} has no SKILL.md.`, {
 				skill: true,
 			});
@@ -288,14 +293,21 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 			.filter((file) => !archive.oversized.has(inRepository(file)))
 			.map((file) => ({ path: file, content: archive.text.get(inRepository(file)) ?? '' }));
 		const folderName = path.split('/').at(-1) || parsed.repository;
-		const { content, skippedFiles, unstorableFiles } = readSkillFolder(folderName, files);
-		return {
-			content,
-			revision: sha,
-			fidelity: [],
-			skippedFiles: [...skippedFiles, ...oversized],
-			unstorableFiles,
-		};
+		try {
+			const { content, skippedFiles, unstorableFiles } = readSkillFolder(folderName, files);
+			return {
+				content,
+				revision: sha,
+				fidelity: [],
+				skippedFiles: [...skippedFiles, ...oversized],
+				unstorableFiles,
+			};
+		} catch (error) {
+			if (error instanceof SkillParseError) {
+				throw new SkillParseError(error.message, await sha256(skillText));
+			}
+			throw error;
+		}
 	}
 
 	/**

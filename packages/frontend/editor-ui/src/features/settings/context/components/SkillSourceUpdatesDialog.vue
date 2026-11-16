@@ -275,10 +275,12 @@ async function accept() {
 			skippedNewSkills: [],
 			reviewedWarnings: reviewed.value,
 		});
-		const description = [
-			impactText(result),
-			i18n.baseText('settings.context.skills.updates.publishedUnchanged'),
-		].join(' ');
+		const description = result.updatedCount
+			? [
+					impactText(result),
+					i18n.baseText('settings.context.skills.updates.publishedUnchanged'),
+				].join(' ')
+			: '';
 		showMessage({
 			type: 'success',
 			dangerouslyUseHTMLString: false,

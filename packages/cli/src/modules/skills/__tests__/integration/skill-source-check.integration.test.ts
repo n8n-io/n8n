@@ -247,6 +247,41 @@ describe('Skill source checks', () => {
 			expect((await sourceOf(sourceId)).unlinkedSkills![0].skipped).toBe(false);
 		});
 
+		describe.each([false, true])('unreadable new skills with initial omission %s', (omitted) => {
+			it.each([
+				{ kind: 'invalid YAML', content: '---\nname: [\n---\nBroken.' },
+				{ kind: 'oversized file', content: 'x'.repeat(1024 * 1024 + 1) },
+			])('counts a hidden $kind again only when its content changes', async ({ content }) => {
+				if (omitted) pushChange({ 'skills/pdf/SKILL.md': content });
+				const { sourceId } = await importAll(['docx', 'xlsx']);
+				if (!omitted) {
+					pushChange({ 'skills/pdf/SKILL.md': content });
+					await sync().checkAll();
+				}
+				const skill = (await review(sourceId)).newSkills![0];
+				expect(skill.check?.verdict).toBe('blocked');
+				if (!omitted) await act(sourceId, { skippedNewSkills: [skill] });
+
+				pushChange({ 'README.md': 'A source change without a skill change.' });
+				await sync().checkAll();
+				expect((await sources())[0].newSkillsAvailable).toBe(0);
+				expect((await review(sourceId)).newSkills![0]).toMatchObject({
+					contentHash: skill.contentHash,
+					skipped: true,
+				});
+
+				pushChange({ 'skills/pdf/SKILL.md': content.replace(/.$/, '!') });
+				await sync().checkAll();
+				expect((await sources())[0].newSkillsAvailable).toBe(1);
+				const changed = (await review(sourceId)).newSkills![0];
+				expect(changed.contentHash).not.toBe(skill.contentHash);
+				expect(changed).toMatchObject({ skipped: false, check: skill.check });
+				expect((await sourceOf(sourceId)).unlinkedSkills).toEqual([
+					{ key: skill.key, contentHash: changed.contentHash, verdict: 'blocked', skipped: false },
+				]);
+			});
+		});
+
 		it('imports an initial omission through explicit review without an upstream change', async () => {
 			const { sourceId } = await importAll(['docx']);
 			expect((await sourceOf(sourceId)).unlinkedSkills).toEqual([
@@ -398,6 +433,36 @@ describe('Skill source checks', () => {
 			await sync().checkAll();
 			return { ...imported, reviewed: await review(imported.sourceId) };
 		};
+
+		it.each(['rate_limited', 'unreachable', 'credential_missing'] as const)(
+			'keeps stored updates reviewable and acceptable when new skills fail with %s',
+			async (reason) => {
+				const { sourceId, docx } = await importAll(['docx']);
+				pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'Updated docx.') });
+				await sync().checkAll();
+				const stored = await review(sourceId);
+				expect(stored.newSkills).toHaveLength(1);
+				if (reason === 'credential_missing') {
+					await db().update(SkillSourceConnection, { id: sourceId }, { credentialRequired: true });
+				} else {
+					github.failWith = reason === 'rate_limited' ? 429 : 503;
+				}
+
+				const reviewed = await review(sourceId);
+				expect(reviewed).toEqual({ ...stored, newSkills: [] });
+				const update = reviewed.updates[0];
+				const detail = await editor
+					.get(`/skill-sources/${sourceId}/updates/${docx}`)
+					.query({ contentHash: update.contentHash, baseVersionId: update.baseVersionId })
+					.expect(200);
+				expect(detail.body.data.files[0].after).toContain('Updated docx.');
+				await accept(sourceId, reviewed);
+				expect(await findLatestSkillVersion(docx)).toMatchObject({
+					version: 2,
+					instructions: 'Updated docx.',
+				});
+			},
+		);
 
 		it('keeps unselected updates pending and compares newer content with the saved version', async () => {
 			const { sourceId, docx, xlsx, reviewed } = await changed();

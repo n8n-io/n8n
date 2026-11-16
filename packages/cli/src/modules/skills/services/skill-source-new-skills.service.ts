@@ -96,7 +96,7 @@ export class SkillSourceNewSkillsService {
 						return {
 							key,
 							ref,
-							contentHash: await unreadableSkillHash(error.message),
+							contentHash: await unreadableSkillHash(error.message, error.contentHash),
 							check: this.scanner.scanUnreadable(error),
 						};
 					}
