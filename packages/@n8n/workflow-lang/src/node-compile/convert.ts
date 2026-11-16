@@ -2,7 +2,13 @@ import { compile } from '../compiler/index.ts';
 import { getNodeParameters } from '../convert/node-parameters.ts';
 import type { PublicCredential } from '../credentials/public.ts';
 import type { NodeDescription } from '../convert/node-parameters.ts';
-import type { CredentialDerivation, CredentialMint, ParameterKind } from './specialise.ts';
+import type {
+	CredentialDerivation,
+	CredentialMint,
+	ParameterKind,
+	PublishFacts,
+	RandomShape,
+} from './specialise.ts';
 import { hasExpression, specialiseNode } from './specialise.ts';
 import { VERIFIED } from './verified.generated.ts';
 
@@ -100,6 +106,8 @@ export interface CompiledNode {
 
 	mints: CredentialMint[];
 
+	randoms: RandomShape[];
+
 	changed: string[];
 
 	zones: string[];
@@ -151,6 +159,7 @@ export function compileNodeInstance(
 
 	credentials: Record<string, PublicCredential> = {},
 	timezone?: string,
+	facts?: PublishFacts,
 ): CompiledNode | { errors: string[] } {
 	const entry = sources.entry(node.type, node.version);
 	const description = sources.description(node.type, node.version);
@@ -204,6 +213,7 @@ export function compileNodeInstance(
 		credentialEntry: sources.credentialEntry,
 		timezone,
 		instanceId,
+		facts,
 		credentialFields: Object.fromEntries(
 			Object.entries(credentials).map(([type, c]) => [type, c.fields]),
 		),
@@ -224,6 +234,7 @@ export function compileNodeInstance(
 		derivations: result.derivations ?? [],
 		mints: result.mints ?? [],
 		zones: result.zones ?? [],
+		randoms: result.randoms ?? [],
 
 		changed: [...changed, ...Object.values(credentials).flatMap((c) => c.classes)],
 	};

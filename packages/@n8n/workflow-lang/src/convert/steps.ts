@@ -363,6 +363,12 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		c.instance?.id,
 		credentials,
 		c.scope.timezone,
+		{
+			// The facts that are constant when the workflow is published (`this.getWorkflow().id`,
+			// `this.getInstanceBaseUrl()`).
+			...(c.scope.workflowId === '' ? {} : { workflow: { id: c.scope.workflowId } }),
+			...(c.instance ? { instanceBaseUrl: c.instance.baseUrl } : {}),
+		},
 	);
 	if ('errors' in compiled) {
 		c.info('node-compile', `The node source does not compile: ${compiled.errors.join('; ')}`);

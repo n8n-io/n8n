@@ -6,7 +6,7 @@
 import { xmlContent, xmlParse, xmlSnippet } from '../reference/xml-lib.ts';
 import { asciiRange, base64Utf8 } from '../reference/ascii-lib.ts';
 import type { ModuleData } from '../compiler/module.ts';
-import { EFFECT_KIND_NAMES, OP_NAMES, Op } from '../compiler/opcodes.ts';
+import { EFFECT_KIND_NAMES, EffectKind, OP_NAMES, Op } from '../compiler/opcodes.ts';
 import type { EffectRecord, Fixture, ReferenceOutput, TraceRecord } from '../reference/runner.ts';
 import { callDate } from '../reference/date-lib.ts';
 import { executionInfo, jsonCopy, splitmix64, traceRecord } from '../reference/runner.ts';
@@ -702,6 +702,15 @@ export function runModule(
 						const s = m.steps[stepIndex];
 						const kind = EFFECT_KIND_NAMES[ins.x];
 						const args = R[ins.c];
+						// The wait of a library node (spec 4.2): it uses no result of the fixture.
+						if (kind === 'wait' && s.kind !== EffectKind.wait) {
+							effects.push({ step: s.name, kind, args: clone(args) });
+							if (isRecord(args) && typeof args.duration === 'number')
+								clock += Math.max(0, args.duration);
+							f.resume = { ok: true, value: undefined };
+							queue.push(f);
+							return;
+						}
 						let attempt = 0;
 						let result: unknown;
 						for (;;) {

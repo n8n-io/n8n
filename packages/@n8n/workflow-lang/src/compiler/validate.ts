@@ -443,12 +443,14 @@ export function validateFile(
 				method &&
 				method !== 'http' &&
 				method !== 'service' &&
-				method !== 'staticData'
+				method !== 'staticData' &&
+				method !== 'random' &&
+				method !== 'wait'
 			) {
 				report(
 					node,
 					'WL012',
-					'A library node can use only ctx.http, ctx.service and ctx.staticData.',
+					'A library node can use only ctx.http, ctx.service, ctx.staticData, ctx.random and ctx.wait.',
 					'Use ctx.http.',
 				);
 			}

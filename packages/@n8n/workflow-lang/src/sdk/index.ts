@@ -401,6 +401,14 @@ export interface NodeCtx {
 	service<T = unknown>(request: ServiceRequest): Promise<T>;
 	/** The workflow static data, as `Ctx.staticData` (spec 9.7). Library polls keep their cursor there. */
 	staticData(type: 'global' | 'node', node?: string): Record<string, unknown>;
+	/** A number in [0, 1) from the execution PRNG, as `Ctx.random`. Glue. */
+	random(): number;
+	/**
+	 * A pause of `duration` milliseconds inside the step of the `ctx.node` call
+	 * (spec 4.2). A timer ends it: the execution suspends and no thread waits.
+	 * It has no step of its own and no result.
+	 */
+	wait(call: { duration: number }): Promise<void>;
 }
 
 /**
