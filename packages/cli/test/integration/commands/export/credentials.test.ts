@@ -1,5 +1,4 @@
 import { CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
-import { PostHogClient } from '@n8n/backend-services';
 import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { CredentialsEntity, CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -9,6 +8,7 @@ import path from 'path';
 
 import { ExportCredentialsCommand } from '@/commands/export/credentials';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { PostHogClient } from '@/posthog';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
 import { createCredentials, encryptCredentialData } from '../../shared/db/credentials';
