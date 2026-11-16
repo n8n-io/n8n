@@ -19,8 +19,9 @@ import {
 } from './conditions.ts';
 import type { NodeContext } from './context.ts';
 import { NodeFailure } from './context.ts';
+import { deletePathCode, readPathCode, writePathCode } from './helpers.ts';
 import type { TranslatedValue } from './expression.ts';
-import { INDEX, ITEM, isExpression, segments } from './expression.ts';
+import { constantText, INDEX, ITEM, isExpression, jsonLiteral, segments } from './expression.ts';
 import { camelIdentifier } from './naming.ts';
 import { lowerFallback } from './steps.ts';
 import { isRecord, text } from './types.ts';
@@ -471,22 +472,27 @@ export function lowerSet(c: NodeContext): void {
 					'jsonOutput',
 				);
 			}
+			const constant = constantText(rawJson);
+			const folded = constant === null ? null : jsonLiteral(constant);
+			if (folded !== null) rawCode = flat(folded);
 			// v1 puts the text of each value into the JSON text, then parses it.
 			// v1 (`resolveRawData`) evaluates each part alone: a part that throws a TypeError
 			// is undefined, which `String` writes as "undefined".
-			c.helper('toText');
-			c.helper('orUndefined');
-			c.helper('parseRawJson');
-			const t = c.compiled(rawJson.replace(/^=+/, '='), 'jsonOutput', {
-				templatePart: (code) => `toText(${code.replace(/^orNull\(/, 'orUndefined(')})`,
-			});
-			usage.item ||= t.usage.item;
-			usage.index ||= t.usage.index;
-			const text = flat(t.code);
-			const parts = segments(rawJson.replace(/^=+/, ''));
-			const pure = parts.length === 1 && parts[0].expression !== undefined;
-			// v1 parses with `repairJSON`: a bare `undefined` (from a part outside quotes) becomes null.
-			rawCode = `parseRawJson(${pure ? `toText(orUndefined(() => ${text}))` : text})`;
+			if (folded === null) {
+				c.helper('toText');
+				c.helper('orUndefined');
+				c.helper('parseRawJson');
+				const t = c.compiled(rawJson.replace(/^=+/, '='), 'jsonOutput', {
+					templatePart: (code) => `toText(${code.replace(/^orNull\(/, 'orUndefined(')})`,
+				});
+				usage.item ||= t.usage.item;
+				usage.index ||= t.usage.index;
+				const text = flat(t.code);
+				const parts = segments(rawJson.replace(/^=+/, ''));
+				const pure = parts.length === 1 && parts[0].expression !== undefined;
+				// v1 parses with `repairJSON`: a bare `undefined` (from a part outside quotes) becomes null.
+				rawCode = `parseRawJson(${pure ? `toText(orUndefined(() => ${text}))` : text})`;
+			}
 		}
 	}
 	const dotted = values.some(([name]) => dot && (name.includes('.') || name.includes('[')));
@@ -527,12 +533,11 @@ export function lowerSet(c: NodeContext): void {
 			w.line('const item: Json = {};');
 			break;
 		case 'selected': {
-			c.helper('getPath');
 			w.line('const item: Json = {};');
 			for (const key of splitList(p.includeFields)) {
 				const target = dot && key.includes('.') ? (key.split('.').pop() ?? key) : key;
 				w.line(
-					`item[${str(target)}] = ${dot ? `getPath(${ITEM}, ${str(key)})` : `${ITEM}[${str(key)}]`};`,
+					`item[${str(target)}] = ${dot ? readPathCode(ITEM, key, c.helper) : `${ITEM}[${str(key)}]`};`,
 				);
 			}
 			break;
@@ -542,8 +547,7 @@ export function lowerSet(c: NodeContext): void {
 			w.line(`const item: Json = copyJson(${ITEM});`);
 			for (const key of splitList(p.excludeFields)) {
 				if (dot) {
-					c.helper('unsetPath');
-					w.line(`unsetPath(item, ${str(key)});`);
+					w.line(deletePathCode('item', key, c.helper));
 				} else {
 					w.line(`delete item[${str(key)}];`);
 				}
@@ -560,8 +564,7 @@ export function lowerSet(c: NodeContext): void {
 			if (dot) c.helper('setPath');
 			w.line(dot ? `setPath(item, ${computed}, ${code});` : `item[${computed}] = ${code};`);
 		} else if (dot && (name.includes('.') || name.includes('['))) {
-			c.helper('setPath');
-			w.line(`setPath(item, ${str(name)}, ${code});`);
+			w.line(writePathCode('item', name, code, c.helper));
 		} else {
 			w.line(`item[${str(name)}] = ${code};`);
 		}
@@ -973,6 +976,8 @@ export function lowerRespond(c: NodeContext): void {
 			break;
 		case 'json': {
 			const rb = p.responseBody ?? '';
+			const constant = constantText(rb);
+			const constantBody = constant === null ? null : jsonLiteral(constant);
 			if (rb === '') {
 				// v1 sends no body for an empty field.
 				body = 'undefined';
@@ -983,6 +988,8 @@ export function lowerRespond(c: NodeContext): void {
 					// v1 fails when the node runs, not before.
 					body = `((): Json => { throw new Error(${str("Invalid JSON in 'Response Body' field")}); })()`;
 				}
+			} else if (constantBody !== null) {
+				body = flat(constantBody);
 			} else {
 				c.helper('jsonValue');
 				body = `jsonValue(${value(rb, 'responseBody')})`;

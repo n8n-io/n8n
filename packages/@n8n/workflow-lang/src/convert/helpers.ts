@@ -8,6 +8,7 @@
  * plain JSON values.
  */
 
+import { str } from './code.ts';
 import { CODE_HELPERS } from './code-native/helpers.ts';
 
 interface HelperSource {
@@ -23,43 +24,104 @@ const HELPERS: Record<string, HelperSource> = {
 		source: `/** Splits a lodash-style path such as \`a.b[0].c\` into keys. */
 function pathOf(path: string): string[] {
 	const keys: string[] = [];
-	let current = '';
-	for (let k = 0; k < path.length; k++) {
-		const c = path.charAt(k);
-		const quote = c === '[' ? path.charAt(k + 1) : '';
-		if (quote === '"' || quote === "'") {
-			// A quoted key, as lodash reads it: \`['a.b [c]']\` is the key \`a.b [c]\`.
-			let text = '';
-			let end = -1;
-			for (let j = k + 2; j < path.length; j++) {
-				const d = path.charAt(j);
-				if (d === '\\\\' && j + 1 < path.length) {
-					text += path.charAt(j + 1);
-					j++;
-				} else if (d === quote && path.charAt(j + 1) === ']') {
-					end = j + 1;
-					break;
-				} else {
-					text += d;
-				}
-			}
-			if (end !== -1) {
-				if (current !== '') keys.push(current);
-				current = '';
-				keys.push(text);
-				k = end;
-				continue;
-			}
-		}
-		if (c === '.' || c === '[' || c === ']') {
-			if (current !== '') keys.push(current);
-			current = '';
-		} else {
-			current += c;
-		}
+	if (path.indexOf('[') < 0 && path.indexOf(']') < 0) {
+		if (path.indexOf('.') < 0) return path === '' ? [] : [path];
+		for (const part of path.split('.')) if (part !== '') keys.push(part);
+		return keys;
 	}
-	if (current !== '') keys.push(current);
+	const size = path.length;
+	// A quote that has no end from one start has no end from a later start.
+	let openDouble = false;
+	let openSingle = false;
+	let start = 0;
+	let k = 0;
+	while (k < size) {
+		const c = path.charCodeAt(k);
+		if (c === 91 && k + 1 < size) {
+			const quote = path.charCodeAt(k + 1);
+			if ((quote === 34 && !openDouble) || (quote === 39 && !openSingle)) {
+				// A quoted key, as lodash reads it: \`['a.b [c]']\` is the key \`a.b [c]\`.
+				let text = '';
+				let from = k + 2;
+				let end = -1;
+				let j = from;
+				while (j < size) {
+					const d = path.charCodeAt(j);
+					if (d === 92 && j + 1 < size) {
+						text += path.slice(from, j);
+						from = j + 1;
+						j += 2;
+					} else if (d === quote && j + 1 < size && path.charCodeAt(j + 1) === 93) {
+						end = j + 1;
+						break;
+					} else {
+						j++;
+					}
+				}
+				if (end !== -1) {
+					if (start < k) keys.push(path.slice(start, k));
+					keys.push(text + path.slice(from, end - 1));
+					k = end + 1;
+					start = k;
+					continue;
+				}
+				if (quote === 34) openDouble = true;
+				else openSingle = true;
+			}
+		}
+		if (c === 46 || c === 91 || c === 93) {
+			if (start < k) keys.push(path.slice(start, k));
+			start = k + 1;
+		}
+		k++;
+	}
+	if (start < size) keys.push(path.slice(start, size));
 	return keys;
+}`,
+	},
+	getKeys: {
+		uses: [],
+		source: `/** As \`getPath\`, with the keys of the path (\`pathOf\`) from the caller. */
+function getKeys(value: Json, path: string, keys: string[]): Json {
+	if (value != null && typeof value === 'object' && value[path] !== undefined) return value[path];
+	let current = value;
+	for (const key of keys) {
+		if (current == null) return undefined;
+		current = current[key];
+	}
+	return current;
+}`,
+	},
+	setKeys: {
+		uses: [],
+		source: `/** As \`setPath\`, with the keys of the path (\`pathOf\`) from the caller. */
+function setKeys(target: Json, path: string, keys: string[], value: Json): void {
+	if (target[path] !== undefined) {
+		target[path] = value;
+		return;
+	}
+	let current = target;
+	for (let k = 0; k < keys.length - 1; k++) {
+		const key = keys[k];
+		if (current[key] == null || typeof current[key] !== 'object') {
+			const next = keys[k + 1];
+			current[key] = String(Number(next)) === next ? [] : {};
+		}
+		current = current[key];
+	}
+	current[keys[keys.length - 1]] = value;
+}`,
+	},
+	unsetKeys: {
+		uses: [],
+		source: `/** As \`unsetPath\`, with the keys of the path (\`pathOf\`) from the caller. */
+function unsetKeys(target: Json, keys: string[]): void {
+	let current = target;
+	for (let k = 0; k < keys.length - 1; k++) {
+		current = current[keys[k]];
+		if (current == null || typeof current !== 'object') return;
+	}
+	delete current[keys[keys.length - 1]];
 }`,
 	},
 	getPath: {
@@ -504,7 +566,7 @@ function mergeByPosition(
 }`,
 	},
 	mergeByFields: {
-		uses: ['getPath', 'deepMerge', 'shallowMerge', 'withSuffix', 'sameJson'],
+		uses: ['pathOf', 'getKeys', 'deepMerge', 'shallowMerge', 'withSuffix', 'sameJson'],
 		source: `/** The Merge node, mode "Combine by matching fields". */
 function mergeByFields(
 	input1: Json[],
@@ -514,7 +576,10 @@ function mergeByFields(
 ): Json[] {
 	const join: string = options.joinMode;
 	const from: string = options.outputDataFrom;
-	const read = (item: Json, field: string) => (options.dotNotation ? getPath(item, field) : item[field]);
+	const dotNotation: boolean = options.dotNotation;
+	const paths: string[][][] = fields.map((pair) => (dotNotation ? [pathOf(pair[0]), pathOf(pair[1])] : []));
+	const read = (item: Json, f: number, side: number) =>
+		dotNotation ? getKeys(item, fields[f][side], paths[f][side]) : item[fields[f][side]];
 	if (input1.length === 0 || input2.length === 0) {
 		if (input1.length === 0 && join === 'keepNonMatches' && from === 'input1') return [];
 		if (input2.length === 0 && join === 'keepNonMatches' && from === 'input2') return [];
@@ -527,7 +592,7 @@ function mergeByFields(
 	const unmatched1: Json[] = [];
 	const used: boolean[] = input2.map(() => false);
 	for (const entry of input1) {
-		const lookup: Json[] = fields.map((pair) => read(entry, pair[0]));
+		const lookup: Json[] = fields.map((pair, f) => read(entry, f, 0));
 		if (lookup.some((v) => v === undefined)) {
 			unmatched1.push(entry);
 			continue;
@@ -537,7 +602,7 @@ function mergeByFields(
 			const other = input2[k];
 			let equal = true;
 			for (let f = 0; f < fields.length; f++) {
-				if (!sameJson(lookup[f], read(other, fields[f][1]))) equal = false;
+				if (!sameJson(lookup[f], read(other, f, 1))) equal = false;
 			}
 			if (equal) {
 				matches.push(other);
@@ -615,17 +680,20 @@ function lessThan(a: Json, b: Json): boolean {
 }`,
 	},
 	sortItems: {
-		uses: ['getPath', 'lessThan', 'sameJson'],
+		uses: ['pathOf', 'getKeys', 'lessThan', 'sameJson'],
 		source: `/** The Sort node, type "Simple": a stable sort; strings compare in lower case. */
 function sortItems(items: Json[], fields: Json[][], dotNotation: boolean): Json[] {
-	const read = (item: Json, name: string) => {
-		const v = dotNotation ? getPath(item, name) : item[name];
+	const paths: string[][] = fields.map((field) => (dotNotation ? pathOf(field[0]) : []));
+	const read = (item: Json, k: number) => {
+		const name: string = fields[k][0];
+		const v = dotNotation ? getKeys(item, name, paths[k]) : item[name];
 		return typeof v === 'string' ? v.toLowerCase() : v;
 	};
 	return items.slice().sort((a, b) => {
-		for (const field of fields) {
-			const x = read(a, field[0]);
-			const y = read(b, field[0]);
+		for (let k = 0; k < fields.length; k++) {
+			const field = fields[k];
+			const x = read(a, k);
+			const y = read(b, k);
 			if (!sameJson(x, y)) return (lessThan(x, y) ? -1 : 1) * field[1];
 		}
 		return 0;
@@ -633,7 +701,7 @@ function sortItems(items: Json[], fields: Json[][], dotNotation: boolean): Json[
 }`,
 	},
 	removeDuplicates: {
-		uses: ['getPath', 'pathsOf'],
+		uses: ['pathOf', 'getKeys', 'pathsOf'],
 		source: `/** The Remove Duplicates node, operation "Remove items repeated within current input". */
 function removeDuplicates(items: Json[], compare: string, fields: string[], dotNotation: boolean): Json[] {
 	if (items.length === 0) return [];
@@ -649,11 +717,13 @@ function removeDuplicates(items: Json[], compare: string, fields: string[], dotN
 	}
 	// v1 \`validateInputData\` (node version 2): a null value is accepted, a missing value
 	// or a value of a different type stops the node.
-	for (const key of keys) {
+	const paths: string[][] = keys.map((key) => (dotNotation ? pathOf(key) : []));
+	for (let k = 0; k < keys.length; k++) {
+		const key = keys[k];
 		if (key === '') throw new Error('Name of field to compare is blank');
 		let type = '';
 		for (const item of items) {
-			const value = dotNotation ? getPath(item, key) : item[key];
+			const value = dotNotation ? getKeys(item, key, paths[k]) : item[key];
 			if (value === null) continue;
 			if (value === undefined) throw new Error(\`'\${key}' field is missing from some input items\`);
 			if (type !== '' && type !== typeof value) throw new Error(\`'\${key}' isn't always the same type\`);
@@ -663,7 +733,7 @@ function removeDuplicates(items: Json[], compare: string, fields: string[], dotN
 	const seen: Record<string, boolean> = {};
 	const out: Json[] = [];
 	for (const item of items) {
-		const id = JSON.stringify(keys.map((key) => (dotNotation ? getPath(item, key) : item[key])));
+		const id = JSON.stringify(keys.map((key, k) => (dotNotation ? getKeys(item, key, paths[k]) : item[key])));
 		if (seen[id]) continue;
 		seen[id] = true;
 		out.push(item);
@@ -689,7 +759,7 @@ function pathsOf(value: Json, prefix: string): string[] {
 }`,
 	},
 	splitOut: {
-		uses: ['getPath', 'setPath', 'unsetPath', 'copyJson'],
+		uses: ['pathOf', 'getKeys', 'setKeys', 'unsetKeys', 'copyJson'],
 		source: `/** The Split Out node. */
 function splitOut(
 	items: Json[],
@@ -700,20 +770,36 @@ function splitOut(
 	dotNotation: boolean,
 ): Json[] {
 	const out: Json[] = [];
+	// One field without a destination: the fields of an object element are the row.
+	const spread = include === 'noOtherFields' && fields.length === 1 && destinations[0] === undefined;
+	const byPath = dotNotation && destinations.length > 0;
+	// The keys of each path, split one time for all items.
+	const fieldKeys: string[][] = [];
+	const nameKeys: string[][] = [];
+	const includeKeys: string[][] = [];
+	if (dotNotation) {
+		for (let f = 0; f < fields.length; f++) {
+			fieldKeys.push(pathOf(fields[f]));
+			if (destinations.length > 0) nameKeys.push(pathOf(destinations[f] || fields[f]));
+		}
+		if (include === 'selectedOtherFields') {
+			for (const field of includeFields) includeKeys.push(pathOf(field));
+		}
+	}
 	for (const item of items) {
 		const rows: Json[] = [];
 		fields.forEach((field, f) => {
 			const name = destinations[f] || field;
-			let list = dotNotation ? getPath(item, field) : item[field];
+			let list = dotNotation ? getKeys(item, field, fieldKeys[f]) : item[field];
 			if (list === undefined) list = [];
 			if (typeof list !== 'object' || list === null) list = [list];
 			if (!Array.isArray(list)) list = Object.values(list);
 			list.forEach((element: Json, k: number) => {
 				if (rows[k] === undefined) rows[k] = {};
-				if (typeof element === 'object' && element !== null && include === 'noOtherFields' && destinations[f] === undefined && fields.length === 1) {
+				if (spread && typeof element === 'object' && element !== null) {
 					rows[k] = Object.assign({}, rows[k], element);
-				} else if (dotNotation && destinations.length > 0) {
-					setPath(rows[k], name, copyJson(element));
+				} else if (byPath) {
+					setKeys(rows[k], name, nameKeys[f], copyJson(element));
 				} else {
 					rows[k][name] = element;
 				}
@@ -722,13 +808,16 @@ function splitOut(
 		for (const row of rows) {
 			if (include === 'allOtherFields') {
 				const rest = copyJson(item);
-				for (const field of fields) {
-					if (dotNotation) unsetPath(rest, field);
-					else delete rest[field];
+				for (let f = 0; f < fields.length; f++) {
+					if (dotNotation) unsetKeys(rest, fieldKeys[f]);
+					else delete rest[fields[f]];
 				}
 				out.push(Object.assign({}, rest, row));
 			} else if (include === 'selectedOtherFields') {
-				for (const field of includeFields) row[field] = dotNotation ? getPath(item, field) : item[field];
+				for (let f = 0; f < includeFields.length; f++) {
+					const field = includeFields[f];
+					row[field] = dotNotation ? getKeys(item, field, includeKeys[f]) : item[field];
+				}
 				out.push(row);
 			} else {
 				out.push(row);
@@ -739,7 +828,7 @@ function splitOut(
 }`,
 	},
 	aggregateFields: {
-		uses: ['getPath', 'setPath'],
+		uses: ['pathOf', 'getKeys', 'setPath'],
 		source: `/** The Aggregate node, mode "Individual fields". Each spec is [field, output name]. */
 function aggregateFields(
 	items: Json[],
@@ -751,8 +840,9 @@ function aggregateFields(
 	const out: Json = {};
 	for (const spec of specs) {
 		const values: Json[] = [];
+		const keys: string[] = dotNotation ? pathOf(spec[0]) : [];
 		for (const item of items) {
-			let value = dotNotation ? getPath(item, spec[0]) : item[spec[0]];
+			let value = dotNotation ? getKeys(item, spec[0], keys) : item[spec[0]];
 			if (!keepMissing) {
 				if (Array.isArray(value)) value = value.filter((v: Json) => v !== null);
 				else if (value == null) continue;
@@ -979,19 +1069,21 @@ function v1Add(engine: Json, node: string, input: number, items: Json[], source:
  */
 function v1Done(engine: Json, job: Json, out: Json[][] | null): void {
 	if (out === null) return;
-	const runIndex = engine.runs[job.node] ?? 0;
-	engine.runs[job.node] = runIndex + 1;
-	if (engine.lastNode === job.node) engine.lastRuns.push(out);
+	const name: string = job.node;
+	const runs = engine.runs;
+	const runIndex = runs[name] ?? 0;
+	runs[name] = runIndex + 1;
+	if (engine.lastNode === name) engine.lastRuns.push(out);
 	else {
-		engine.lastNode = job.node;
+		engine.lastNode = name;
 		engine.lastRuns = [out];
 	}
-	const children = engine.graph.children[job.node] ?? [];
+	const children = engine.graph.children[name] ?? [];
 	for (const [output, node, input] of children) {
 		const items = out[output];
 		if (items === undefined || items === null || items.length === 0) continue;
 		v1Add(engine, node, input, items, {
-			previousNode: job.node,
+			previousNode: name,
 			previousNodeOutput: output,
 			previousNodeRun: runIndex,
 		});
@@ -1367,3 +1459,86 @@ export function helperSources(names: Iterable<string>): string[] {
 
 /** Every function name that a helper declares, so node lists do not take them. */
 export const HELPER_NAMES: string[] = [...Object.keys(HELPERS), 'mergeInto'];
+
+/** The keys of a lodash-style path: what the helper `pathOf` gives for the same text. */
+export function pathKeys(path: string): string[] {
+	const keys: string[] = [];
+	let current = '';
+	for (let k = 0; k < path.length; k++) {
+		const c = path.charAt(k);
+		const quote = c === '[' ? path.charAt(k + 1) : '';
+		if (quote === '"' || quote === "'") {
+			let text = '';
+			let end = -1;
+			for (let j = k + 2; j < path.length; j++) {
+				const d = path.charAt(j);
+				if (d === '\\' && j + 1 < path.length) {
+					text += path.charAt(j + 1);
+					j++;
+				} else if (d === quote && path.charAt(j + 1) === ']') {
+					end = j + 1;
+					break;
+				} else {
+					text += d;
+				}
+			}
+			if (end !== -1) {
+				if (current !== '') keys.push(current);
+				current = '';
+				keys.push(text);
+				k = end;
+				continue;
+			}
+		}
+		if (c === '.' || c === '[' || c === ']') {
+			if (current !== '') keys.push(current);
+			current = '';
+		} else {
+			current += c;
+		}
+	}
+	if (current !== '') keys.push(current);
+	return keys;
+}
+
+const keyList = (keys: string[]) => `[${keys.map((k) => str(k)).join(', ')}]`;
+
+/**
+ * Code that reads a constant path of `target`, as the helper `getPath` reads it. The
+ * converter splits the path, so the run does not. `helper` records the helper that the
+ * code calls.
+ */
+export function readPathCode(target: string, path: string, helper: (name: string) => void): string {
+	const keys = pathKeys(path);
+	// A key that is an array index stays in the helper, which reads it as an element.
+	if (keys.length === 1 && keys[0] === path && String(Number(path)) !== path) {
+		return `${target}?.[${str(path)}]`;
+	}
+	helper('getKeys');
+	return `getKeys(${target}, ${str(path)}, ${keyList(keys)})`;
+}
+
+/** A statement that writes a constant path of `target`, as the helper `setPath` writes it. */
+export function writePathCode(
+	target: string,
+	path: string,
+	value: string,
+	helper: (name: string) => void,
+): string {
+	const keys = pathKeys(path);
+	if (keys.length === 1 && keys[0] === path) return `${target}[${str(path)}] = ${value};`;
+	helper('setKeys');
+	return `setKeys(${target}, ${str(path)}, ${keyList(keys)}, ${value});`;
+}
+
+/** A statement that deletes a constant path of `target`, as the helper `unsetPath` deletes it. */
+export function deletePathCode(
+	target: string,
+	path: string,
+	helper: (name: string) => void,
+): string {
+	const keys = pathKeys(path);
+	if (keys.length === 1) return `delete ${target}[${str(keys[0])}];`;
+	helper('unsetKeys');
+	return `unsetKeys(${target}, ${keyList(keys)});`;
+}

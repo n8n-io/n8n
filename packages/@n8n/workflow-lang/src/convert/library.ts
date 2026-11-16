@@ -20,7 +20,7 @@ import { literal, raw, str } from './code.ts';
 import type { NodeContext } from './context.ts';
 import { NodeFailure } from './context.ts';
 import type { TranslatedValue, Usage } from './expression.ts';
-import { emptyUsage, INDEX, ITEM } from './expression.ts';
+import { constantText, emptyUsage, INDEX, ITEM, jsonLiteral } from './expression.ts';
 import { isClusterRoot, LANGCHAIN_PREFIX, lowerAiNode, lowerHostNode } from './host-node.ts';
 import type { Paging } from './http-pagination.ts';
 import { emitPaging, readPaging } from './http-pagination.ts';
@@ -514,6 +514,9 @@ function lowerHttpLibrary(c: NodeContext): void {
 			}
 		}
 		const t = c.compiled(value, path);
+		const constant = constantText(value);
+		const folded = constant === null ? null : jsonLiteral(constant);
+		if (folded !== null) return { ...t, code: folded };
 		c.helper('jsonValue');
 		return { ...t, code: raw(`jsonValue(${flatCode(t.code)})`) };
 	};
