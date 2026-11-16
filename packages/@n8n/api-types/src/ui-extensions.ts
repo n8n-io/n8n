@@ -39,12 +39,27 @@ export const uiExtensionViewIconSchema = z
 	.max(64)
 	.regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Use a kebab-case icon name, such as "chart-column"');
 
+const uiExtensionNodeSchema = z.object({
+	name: z.string(),
+	type: z.string(),
+	/** The name of the node type, such as "Slack". Missing when the type is unknown. */
+	displayName: z.string().optional(),
+	/** The name that n8n gives a new node of this type, such as "Edit Fields". */
+	defaultName: z.string().optional(),
+	isTrigger: z.boolean().optional(),
+	disabled: z.boolean().optional(),
+});
+
 const uiExtensionWorkflowSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	active: z.boolean(),
-	nodes: z.array(z.object({ name: z.string(), type: z.string() })),
+	nodes: z.array(uiExtensionNodeSchema),
+	/** Whether the workflow settings name an error workflow. */
+	hasErrorWorkflow: z.boolean().optional(),
 });
+
+export type UiExtensionNode = z.infer<typeof uiExtensionNodeSchema>;
 
 export const uiExtensionPageContextSchema = z.discriminatedUnion('page', [
 	z.object({

@@ -1,6 +1,18 @@
-import type { UiExtensionPageContext } from '@n8n/api-types';
+import type { UiExtensionNode, UiExtensionPageContext } from '@n8n/api-types';
 
 import type { SidePanelView } from './ui-extensions.types';
+
+/** Copies only the node fields of the contract. */
+function copyNode(node: UiExtensionNode): UiExtensionNode {
+	return {
+		name: node.name,
+		type: node.type,
+		...(node.displayName !== undefined && { displayName: node.displayName }),
+		...(node.defaultName !== undefined && { defaultName: node.defaultName }),
+		...(node.isTrigger !== undefined && { isTrigger: node.isTrigger }),
+		...(node.disabled !== undefined && { disabled: node.disabled }),
+	};
+}
 
 /**
  * The context that one view may see. A view can send out anything that it sees,
@@ -26,7 +38,10 @@ export function contextForView(
 					id: workflow.id,
 					name: workflow.name,
 					active: workflow.active,
-					nodes: workflow.nodes.map((node) => ({ name: node.name, type: node.type })),
+					nodes: workflow.nodes.map(copyNode),
+					...(workflow.hasErrorWorkflow !== undefined && {
+						hasErrorWorkflow: workflow.hasErrorWorkflow,
+					}),
 				},
 			};
 		}

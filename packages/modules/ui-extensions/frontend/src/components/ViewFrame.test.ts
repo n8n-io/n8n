@@ -102,8 +102,10 @@ describe('ViewFrame', () => {
 		expect(received[0]).toMatchObject({ context: { page: 'workflow', workflow: null } });
 	});
 
-	it('sends the strings of the built-in view, with their placeholders', async () => {
-		const { received, fromFrame } = renderFrame({ view: { ...mcpView, builtin: true } });
+	it('sends the strings of the built-in view', async () => {
+		const { received, fromFrame } = renderFrame({
+			view: { ...mcpView, id: 'builtin:page-summary', builtin: true },
+		});
 
 		fromFrame(ready);
 		await vi.waitFor(() => expect(received).toHaveLength(1));
@@ -111,7 +113,7 @@ describe('ViewFrame', () => {
 		expect(received[0]).toMatchObject({
 			strings: {
 				'uiExtensions.pageSummary.workflows.heading': 'Workflows',
-				'uiExtensions.pageSummary.workflow.nodeCount': 'Nodes: {count}',
+				'uiExtensions.view.hiddenWorkflow': "This view can't see the open workflow.",
 			},
 		});
 	});

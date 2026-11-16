@@ -6,10 +6,13 @@ import { nextTick } from 'vue';
 import { useUsersStore } from '@n8n/stores/users.store';
 
 import * as api from './ui-extensions.api';
+import { BUILTIN_VIEWS } from './ui-extensions.builtin';
 import { BUILTIN_PAGE_SUMMARY_VIEW_ID } from './ui-extensions.constants';
 import { useSidePanelStore } from './ui-extensions.store';
 
 vi.mock('./ui-extensions.api');
+
+const BUILTIN_IDS = BUILTIN_VIEWS.map((view) => view.id);
 
 const view = (id: string, updatedAt = '2026-01-01T00:00:00.000Z'): UiExtensionView => ({
 	id,
@@ -33,15 +36,20 @@ describe('useSidePanelStore', () => {
 
 		await store.fetchViews();
 
-		expect(store.views.map((v) => v.id)).toEqual([BUILTIN_PAGE_SUMMARY_VIEW_ID, 'a', 'b']);
-		expect(store.views[0]).toMatchObject({ builtin: true, title: 'Page summary' });
-		expect(store.views[1].builtin).toBe(false);
+		expect(store.views.map((v) => v.id)).toEqual([...BUILTIN_IDS, 'a', 'b']);
+		expect(store.views.map((v) => v.title).slice(0, 3)).toEqual([
+			'Page summary',
+			'Integrations',
+			'Checklist',
+		]);
+		expect(store.views.slice(0, 3).every((v) => v.builtin)).toBe(true);
+		expect(store.views[3].builtin).toBe(false);
 	});
 
 	it('shows the built-in view before any fetch', () => {
 		const store = useSidePanelStore();
 
-		expect(store.views.map((v) => v.id)).toEqual([BUILTIN_PAGE_SUMMARY_VIEW_ID]);
+		expect(store.views.map((v) => v.id)).toEqual(BUILTIN_IDS);
 		expect(store.activeView.id).toBe(BUILTIN_PAGE_SUMMARY_VIEW_ID);
 	});
 
@@ -113,7 +121,7 @@ describe('useSidePanelStore', () => {
 		);
 		await store.fetchViews();
 
-		expect(store.views).toHaveLength(1);
+		expect(store.views).toHaveLength(BUILTIN_IDS.length);
 	});
 
 	it('keeps the views on another error', async () => {
@@ -124,7 +132,7 @@ describe('useSidePanelStore', () => {
 		vi.mocked(api.fetchUiExtensionViews).mockRejectedValueOnce(new Error('offline'));
 		await store.fetchViews();
 
-		expect(store.views).toHaveLength(2);
+		expect(store.views).toHaveLength(BUILTIN_IDS.length + 1);
 	});
 
 	it('ignores a response that arrives after a newer one', async () => {
@@ -138,7 +146,7 @@ describe('useSidePanelStore', () => {
 		slow.resolve([view('old')]);
 		await first;
 
-		expect(store.views.map((v) => v.id)).toEqual([BUILTIN_PAGE_SUMMARY_VIEW_ID, 'new']);
+		expect(store.views.map((v) => v.id)).toEqual([...BUILTIN_IDS, 'new']);
 	});
 
 	it('keeps a good response that arrives after a newer request failed', async () => {
@@ -154,7 +162,7 @@ describe('useSidePanelStore', () => {
 		slow.resolve([view('new')]);
 		await first;
 
-		expect(store.views.map((v) => v.id)).toEqual([BUILTIN_PAGE_SUMMARY_VIEW_ID, 'new']);
+		expect(store.views.map((v) => v.id)).toEqual([...BUILTIN_IDS, 'new']);
 		expect(store.activeViewId).toBe('new');
 	});
 
@@ -169,7 +177,7 @@ describe('useSidePanelStore', () => {
 		respond([view('b')]);
 		await store.fetchViews();
 
-		expect(store.views.map((v) => v.id)).toEqual([BUILTIN_PAGE_SUMMARY_VIEW_ID, 'b']);
+		expect(store.views.map((v) => v.id)).toEqual([...BUILTIN_IDS, 'b']);
 		expect(store.isOpen).toBe(false);
 	});
 
@@ -187,7 +195,7 @@ describe('useSidePanelStore', () => {
 		slow.resolve([view('a')]);
 		await first;
 
-		expect(store.views.map((v) => v.id)).toEqual([BUILTIN_PAGE_SUMMARY_VIEW_ID, 'b']);
+		expect(store.views.map((v) => v.id)).toEqual([...BUILTIN_IDS, 'b']);
 	});
 
 	it('keeps the panel state and the width in local storage, inside the limits', async () => {

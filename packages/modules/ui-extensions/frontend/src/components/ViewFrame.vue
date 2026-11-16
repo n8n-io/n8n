@@ -11,7 +11,7 @@ import { N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
-import { PAGE_SUMMARY_COUNT_KEYS, PAGE_SUMMARY_STRING_KEYS } from '../ui-extensions.constants';
+import { builtinViewStrings, getBuiltinView } from '../ui-extensions.builtin';
 import { contextForView } from '../ui-extensions.context';
 import { buildViewDocument, VIEW_FRAME_SANDBOX } from '../ui-extensions.frame';
 import type { SidePanelView, ViewRuntimeAssets } from '../ui-extensions.types';
@@ -44,19 +44,11 @@ const context = computed(() =>
 	contextForView(props.view, props.pageContext, props.workflowAvailableInMcp),
 );
 
-// The view fills the `{count}` placeholder itself, with `n8n.t(key, { count })`.
-const strings = computed<Record<string, string>>(() =>
-	props.view.builtin
-		? Object.fromEntries(
-				PAGE_SUMMARY_STRING_KEYS.map((key) => [
-					key,
-					PAGE_SUMMARY_COUNT_KEYS.has(key)
-						? i18n.baseText(key, { interpolate: { count: '{count}' } })
-						: i18n.baseText(key),
-				]),
-			)
-		: {},
-);
+// A built-in view fills each `{name}` placeholder itself, with `n8n.t(key, params)`.
+const strings = computed<Record<string, string>>(() => {
+	const builtin = props.view.builtin ? getBuiltinView(props.view.id) : undefined;
+	return builtin ? builtinViewStrings(builtin, (key, options) => i18n.baseText(key, options)) : {};
+});
 
 const errorText = computed(() =>
 	viewError.value === null

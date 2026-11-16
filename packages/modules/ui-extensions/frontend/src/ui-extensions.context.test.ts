@@ -56,7 +56,23 @@ describe('contextForView', () => {
 		expect(contextForView(mcpView, other, false)).toEqual(other);
 	});
 
-	it('copies only the node name and type', () => {
+	it('copies the node facts and the error workflow flag of the contract', () => {
+		const withFacts: UiExtensionPageContext = {
+			...workflowContext,
+			workflow: {
+				...workflowContext.workflow!,
+				hasErrorWorkflow: true,
+				nodes: [
+					{ name: 'Start', type: 't', displayName: 'Webhook', isTrigger: true, disabled: false },
+				],
+			},
+		};
+
+		expect(contextForView(mcpView, withFacts, true)).toEqual(withFacts);
+		expect(contextForView(mcpView, withFacts, false)).toMatchObject({ workflow: null });
+	});
+
+	it('copies only the node fields of the contract', () => {
 		const withExtra = {
 			...workflowContext,
 			workflow: {

@@ -7,8 +7,8 @@ import { useLocalStorage } from '@vueuse/core';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
-import pageSummarySource from './examples/pageSummary.view.js?raw';
 import { fetchUiExtensionViews } from './ui-extensions.api';
+import { BUILTIN_VIEWS } from './ui-extensions.builtin';
 import {
 	BUILTIN_PAGE_SUMMARY_VIEW_ID,
 	SIDE_PANEL_DEFAULT_WIDTH,
@@ -39,18 +39,20 @@ export const useSidePanelStore = defineStore('uiExtensionsSidePanel', () => {
 		BUILTIN_PAGE_SUMMARY_VIEW_ID,
 	);
 
-	const builtinView = computed<SidePanelView>(() => ({
-		id: BUILTIN_PAGE_SUMMARY_VIEW_ID,
-		title: i18n.baseText('uiExtensions.pageSummary.title'),
-		icon: 'file-text',
-		source: pageSummarySource,
-		updatedAt: '',
-		builtin: true,
-	}));
+	const builtinViews = computed<SidePanelView[]>(() =>
+		BUILTIN_VIEWS.map((view) => ({
+			id: view.id,
+			title: i18n.baseText(view.titleKey),
+			icon: view.icon,
+			source: view.source,
+			updatedAt: '',
+			builtin: true,
+		})),
+	);
 
-	/** The built-in view first, then the views of the user from the oldest change. */
+	/** The built-in views first, then the views of the user from the oldest change. */
 	const views = computed<SidePanelView[]>(() => [
-		builtinView.value,
+		...builtinViews.value,
 		...[...userViews.value]
 			.sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))
 			.map((view) => ({ ...view, builtin: false })),
@@ -67,7 +69,7 @@ export const useSidePanelStore = defineStore('uiExtensionsSidePanel', () => {
 	});
 
 	const activeView = computed(
-		() => views.value.find((view) => view.id === activeViewId.value) ?? builtinView.value,
+		() => views.value.find((view) => view.id === activeViewId.value) ?? views.value[0],
 	);
 
 	const width = computed({

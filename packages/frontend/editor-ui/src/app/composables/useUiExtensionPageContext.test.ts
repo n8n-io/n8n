@@ -2,13 +2,14 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { reactive, shallowRef, type ShallowRef } from 'vue';
 
-import { createTestNode } from '@/__tests__/mocks';
+import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { VIEWS } from '@/app/constants';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 	type WorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
 import { useUiExtensionPageContext } from './useUiExtensionPageContext';
@@ -53,11 +54,64 @@ describe(useUiExtensionPageContext, () => {
 					id: 'wf-1',
 					name: 'Payroll',
 					active: false,
-					nodes: [{ name: 'Start', type: 'n8n-nodes-base.manualTrigger' }],
+					nodes: [{ name: 'Start', type: 'n8n-nodes-base.manualTrigger', disabled: false }],
+					hasErrorWorkflow: false,
 				},
 			});
 		},
 	);
+
+	it('adds the node type facts and the error workflow setting', () => {
+		route.name = VIEWS.WORKFLOW;
+		useNodeTypesStore().setNodeTypes([
+			mockNodeTypeDescription({
+				name: 'n8n-nodes-base.manualTrigger',
+				displayName: 'Manual Trigger',
+				group: ['trigger'],
+			}),
+			// The mock makes any `group` a trigger group, so a non-trigger passes none.
+			mockNodeTypeDescription({ name: 'n8n-nodes-base.slack', displayName: 'Slack' }),
+			mockNodeTypeDescription({ name: 'n8n-nodes-base.set', displayName: 'Edit Fields (Set)' }),
+		]);
+		const store = documentStore.value!;
+		store.setNodes([
+			createTestNode({ name: 'Start', type: 'n8n-nodes-base.manualTrigger' }),
+			createTestNode({ name: 'Tell sales', type: 'n8n-nodes-base.slack', disabled: true }),
+			createTestNode({ name: 'Mystery', type: 'n8n-nodes-community.unknown' }),
+			createTestNode({ name: 'Edit Fields', type: 'n8n-nodes-base.set' }),
+		]);
+		store.mergeSettings({ errorWorkflow: 'wf-errors' });
+
+		const { pageContext } = useUiExtensionPageContext(documentStore);
+
+		expect(pageContext.value).toMatchObject({
+			workflow: {
+				hasErrorWorkflow: true,
+				nodes: [
+					{ name: 'Start', displayName: 'Manual Trigger', isTrigger: true, disabled: false },
+					{ name: 'Tell sales', displayName: 'Slack', isTrigger: false, disabled: true },
+					{ name: 'Mystery', type: 'n8n-nodes-community.unknown', disabled: false },
+					{
+						name: 'Edit Fields',
+						displayName: 'Edit Fields (Set)',
+						defaultName: 'n8n-nodes-base.set',
+					},
+				],
+			},
+		});
+		expect(
+			pageContext.value.page === 'workflow' && pageContext.value.workflow?.nodes[2],
+		).not.toHaveProperty('displayName');
+	});
+
+	it.each([['DEFAULT'], ['']])('reads the error workflow %j as no error workflow', (value) => {
+		route.name = VIEWS.WORKFLOW;
+		documentStore.value!.mergeSettings({ errorWorkflow: value });
+
+		const { pageContext } = useUiExtensionPageContext(documentStore);
+
+		expect(pageContext.value).toMatchObject({ workflow: { hasErrorWorkflow: false } });
+	});
 
 	it('gives no workflow while none is loaded', () => {
 		route.name = VIEWS.WORKFLOW;

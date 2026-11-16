@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
 /** Routes that show one workflow on the canvas. */
@@ -23,6 +24,11 @@ const WORKFLOWS_ROUTES = new Set<string>([
 	VIEWS.PROJECTS_FOLDERS,
 ]);
 
+/** `DEFAULT` and an empty value mean that the workflow has no error workflow. */
+function hasErrorWorkflow(errorWorkflow: string | undefined): boolean {
+	return !!errorWorkflow && errorWorkflow !== 'DEFAULT';
+}
+
 /**
  * The page context that side panel views get: which page is open and what is on
  * it. This is the full context. The side panel removes what a view may not see.
@@ -32,6 +38,7 @@ export function useUiExtensionPageContext(
 ) {
 	const route = useRoute();
 	const workflowsListStore = useWorkflowsListStore();
+	const nodeTypesStore = useNodeTypesStore();
 
 	const routeName = computed(() => (typeof route.name === 'string' ? route.name : null));
 
@@ -48,7 +55,20 @@ export function useUiExtensionPageContext(
 							id: store.workflowId,
 							name: store.name,
 							active: store.active,
-							nodes: store.allNodes.map((node) => ({ name: node.name, type: node.type })),
+							nodes: store.allNodes.map((node) => {
+								const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+								return {
+									name: node.name,
+									type: node.type,
+									...(nodeType && {
+										displayName: nodeType.displayName,
+										defaultName: nodeType.defaults.name ?? nodeType.displayName,
+										isTrigger: nodeType.group.includes('trigger'),
+									}),
+									disabled: node.disabled === true,
+								};
+							}),
+							hasErrorWorkflow: hasErrorWorkflow(store.settings?.errorWorkflow),
 						}
 					: null,
 			};
