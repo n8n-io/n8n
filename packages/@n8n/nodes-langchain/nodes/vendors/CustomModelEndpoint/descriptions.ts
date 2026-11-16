@@ -1,5 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import { sharedOptions } from '@utils/custom-model-endpoint/descriptions';
+
 export const messagesField: INodeProperties = {
 	displayName: 'Messages',
 	name: 'messages',
@@ -42,6 +44,26 @@ export const messagesField: INodeProperties = {
  * body themselves, and a gateway in front of several providers may accept only one
  * of the two whatever the model name suggests.
  */
+const tokenCapFields: INodeProperties[] = [
+	{
+		displayName: 'Max Completion Tokens',
+		name: 'maxCompletionTokens',
+		type: 'number',
+		default: -1,
+		description: 'The cap on the tokens generated, sent as max_completion_tokens',
+	},
+	{
+		displayName: 'Maximum Number of Tokens',
+		name: 'maxTokens',
+		type: 'number',
+		default: -1,
+		description: 'The cap on the tokens generated, sent as max_tokens',
+	},
+];
+
+/** The chat model's single auto-switching cap, and a retry count the node does not own. */
+const REPLACED = new Set(['maxTokens', 'maxRetries']);
+
 export const actionNodeOptions: INodeProperties = {
 	displayName: 'Options',
 	name: 'options',
@@ -49,77 +71,7 @@ export const actionNodeOptions: INodeProperties = {
 	placeholder: 'Add Option',
 	description: 'Additional options to add',
 	default: {},
-	options: [
-		{
-			displayName: 'Frequency Penalty',
-			name: 'frequencyPenalty',
-			type: 'number',
-			default: 0,
-			typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
-			description:
-				"Positive values penalise tokens by how often they have appeared, lowering the model's tendency to repeat a line",
-		},
-		{
-			displayName: 'Max Completion Tokens',
-			name: 'maxCompletionTokens',
-			type: 'number',
-			default: -1,
-			description: 'The cap on the tokens generated, sent as max_completion_tokens',
-		},
-		{
-			displayName: 'Maximum Number of Tokens',
-			name: 'maxTokens',
-			type: 'number',
-			default: -1,
-			description: 'The cap on the tokens generated, sent as max_tokens',
-		},
-		{
-			displayName: 'Presence Penalty',
-			name: 'presencePenalty',
-			type: 'number',
-			default: 0,
-			typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
-			description:
-				"Positive values penalise tokens that have appeared at all, raising the model's tendency to change subject",
-		},
-		{
-			displayName: 'Sampling Temperature',
-			name: 'temperature',
-			type: 'number',
-			default: 0.7,
-			typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 },
-			description: 'Lower values make the answer more deterministic and repetitive',
-		},
-		{
-			displayName: 'Seed',
-			name: 'seed',
-			type: 'number',
-			default: 0,
-			description: 'Ask the provider to sample deterministically. Not every provider honours it.',
-		},
-		{
-			displayName: 'Stop Sequences',
-			name: 'stop',
-			type: 'string',
-			default: '',
-			placeholder: 'e.g. END,STOP',
-			description: 'Comma-separated strings that end the answer when the model produces one',
-		},
-		{
-			displayName: 'Timeout',
-			name: 'timeout',
-			type: 'number',
-			default: 360000,
-			description: 'How long one request may take, in milliseconds',
-		},
-		{
-			displayName: 'Top P',
-			name: 'topP',
-			type: 'number',
-			default: 1,
-			typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
-			description:
-				'Nucleus sampling: 0.5 considers half of the likelihood-weighted options. Change this or the temperature, not both.',
-		},
-	],
+	options: [...sharedOptions.filter(({ name }) => !REPLACED.has(name)), ...tokenCapFields].sort(
+		(left, right) => left.displayName.localeCompare(right.displayName),
+	),
 };

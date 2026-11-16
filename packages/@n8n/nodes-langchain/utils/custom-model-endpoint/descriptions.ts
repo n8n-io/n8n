@@ -79,7 +79,9 @@ export const requestHeaderFields: INodeProperties[] = [
 	},
 ];
 
-const sharedOptions: INodeProperties[] = [
+/** Shared so a change to a gateway option reaches both nodes. The action node drops
+ * the two it replaces and composes the rest. */
+export const sharedOptions: INodeProperties[] = [
 	{
 		displayName: 'Frequency Penalty',
 		name: 'frequencyPenalty',

@@ -264,7 +264,8 @@ describe('CustomModelEndpoint', () => {
 		ctx.getNodeParameter = vi
 			.fn()
 			.mockImplementation((name: string, i: number, fallback: unknown) => {
-				if (name === 'headers.header') return [{ name: 'x-item', value: `v${i}` }];
+				// A name only item 0 sends, so a leak into item 1 cannot hide behind an overwrite
+				if (name === 'headers.header') return i === 0 ? [{ name: 'x-first', value: 'set' }] : [];
 				if (name === 'model') return 'gpt-4o';
 				if (name === 'messages.message') return [{ role: 'user', content: 'hi' }];
 				if (name === 'sendContextHeaders') return false;
@@ -281,7 +282,7 @@ describe('CustomModelEndpoint', () => {
 			.mocked(createCustomModelEndpointConfig)
 			.mock.calls.map((call) => call[2].requestHeaders);
 
-		expect(records).toEqual([{ 'x-item': 'v0' }, { 'x-item': 'v1' }]);
+		expect(records).toEqual([{ 'x-first': 'set' }, {}]);
 	});
 
 	it('builds one transport for each item', async () => {
