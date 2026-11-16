@@ -1,6 +1,8 @@
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
+
 import '../openapi-extend';
 import {
 	MAX_AGENT_CHAT_ATTACHMENT_BASE64_LENGTH,
@@ -40,6 +42,7 @@ import {
 	MAX_ITEMS_PER_PAGE,
 	createLimitValidator,
 	offsetValidator,
+	publicApiPaginationSchema,
 } from '../dto/pagination/pagination.dto';
 import { booleanFromString } from '../schemas/boolean-from-string';
 import { nullableObjectGuardSchema } from '../schemas/object-guard.schema';
@@ -349,18 +352,53 @@ const agentProjectResponseSchema = z
 	})
 	.nullable();
 
+// OpenAPI metadata only: the runtime guard stays permissive, because stored
+// configs predate the current write schema. The metadata documents the fields
+// every integration carries, so generated clients can work with a channel.
+const agentIntegrationResponseMetadata: ZodOpenAPIMetadata = {
+	type: 'object',
+	description: 'A channel integration. `type` picks the platform.',
+	properties: {
+		type: {
+			type: 'string',
+			description: 'The integration type, for example `slack` or `webhook`.',
+		},
+		credentialId: { type: 'string' },
+		settings: { type: 'object', description: 'Platform-specific integration settings.' },
+		approval: {
+			type: 'object',
+			description: 'Channel actions that need approval before they run.',
+		},
+	},
+	required: ['type', 'credentialId'],
+};
+
 const agentActiveVersionResponseSchema = z
 	.object({
 		versionId: z.string(),
 		integrations: z.array(
-			z.custom<AgentIntegrationConfig>(isPlainObject).openapi({ type: 'object' }),
+			z.custom<AgentIntegrationConfig>(isPlainObject).openapi(agentIntegrationResponseMetadata),
 		),
 	})
 	.nullable();
 
 const agentToolEntrySchema = z
 	.custom<{ code: string; descriptor: { name: string } }>(isPlainObject)
-	.openapi({ type: 'object' });
+	.openapi({
+		type: 'object',
+		description: 'A custom tool: the code it runs and its descriptor.',
+		properties: {
+			code: { type: 'string' },
+			descriptor: {
+				type: 'object',
+				description: 'The tool descriptor. `name` is required; other fields pass through.',
+				properties: { name: { type: 'string' } },
+				required: ['name'],
+				additionalProperties: true,
+			},
+		},
+		required: ['code', 'descriptor'],
+	});
 
 const agentPublicShape = {
 	id: z.string(),
@@ -417,6 +455,35 @@ export class DeletedAgentPublicDto extends Z.class(deletedAgentPublicSchema.shap
 
 /** Response of the Public API `POST /agents`. Builder-only state stays off this shape. */
 export class CreatedAgentPublicDto extends AgentPublicDto {}
+
+/** Query of the Public API `GET /agents`. Pick `limit` off the schema: `offset` is the decoded cursor field, never a client-facing param. */
+export class ListAgentsPublicQueryDto extends Z.class({
+	cursor: z.string().optional(),
+	limit: publicApiPaginationSchema.limit,
+	/** Narrows the list to one project. */
+	projectId: z.string().min(1).optional(),
+}) {}
+
+/** Row of the Public API `GET /agents`. `config` stays off the row: a list row is not a full-replace body. */
+export const agentListPublicItemSchema = z.object(agentPublicShape).pick({
+	id: true,
+	name: true,
+	projectId: true,
+	availableInMCP: true,
+	isArchived: true,
+	versionId: true,
+	activeVersionId: true,
+	createdAt: true,
+	updatedAt: true,
+});
+
+export class AgentListPublicItemDto extends Z.class(agentListPublicItemSchema.shape) {}
+
+/** Response of the Public API `GET /agents`: one cursor page of agents. */
+export class AgentListPublicDto extends Z.class({
+	data: z.array(agentListPublicItemSchema),
+	nextCursor: z.string().nullable(),
+}) {}
 
 const agentListItemShape = {
 	id: z.string(),
