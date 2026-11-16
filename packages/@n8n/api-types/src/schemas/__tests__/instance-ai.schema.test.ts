@@ -1,3 +1,4 @@
+import { DATA_TABLE_TOOL_ACTIONS } from '../../builder-tool-names';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	base64EncodedSize,
@@ -807,7 +808,11 @@ describe('data-tables session grant keys', () => {
 	});
 
 	it('builds an owned-table key that differs from every action key', () => {
-		expect(buildOwnedDataTableGrantKey('dt-1')).toBe('data-tables:owned:dt-1');
+		const actionKeys = DATA_TABLE_TOOL_ACTIONS.map(buildDataTablesSessionGrantKey);
+		expect(actionKeys).not.toContain(buildOwnedDataTableGrantKey('x'));
+	});
+
+	it('encodes the table id in the owned-table key', () => {
 		expect(buildOwnedDataTableGrantKey('a/b:c')).toBe('data-tables:owned:a%2Fb%3Ac');
 	});
 });

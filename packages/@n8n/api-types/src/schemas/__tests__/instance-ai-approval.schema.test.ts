@@ -26,6 +26,15 @@ describe('instanceAiApprovalDetailsSchema data-table-changes', () => {
 		expect(instanceAiApprovalDetailsSchema.parse(details)).toEqual(details);
 	});
 
+	it('rejects an empty batch', () => {
+		const result = instanceAiApprovalDetailsSchema.safeParse({
+			action: 'data-table-changes',
+			changes: [],
+		});
+
+		expect(result.success).toBe(false);
+	});
+
 	it('rejects a change with an unknown action', () => {
 		const result = instanceAiApprovalDetailsSchema.safeParse({
 			action: 'data-table-changes',

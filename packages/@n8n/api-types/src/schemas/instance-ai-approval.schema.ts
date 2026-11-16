@@ -45,35 +45,36 @@ const deleteRowsDetails = z.object({
 	filter: filterPreviewSchema,
 });
 
+/** Variants shared by single-action cards and batch items. Add a new one here only. */
+const dataTableDetailsVariants = [
+	deleteTableDetails,
+	addColumnDetails,
+	deleteColumnDetails,
+	renameColumnDetails,
+	insertRowsDetails,
+	updateRowsDetails,
+	deleteRowsDetails,
+] as const;
+
 /** One change in a `data-table-changes` batch. Only a batch shows table creation. */
 const dataTableChangeDetailsSchema = z.discriminatedUnion('action', [
 	z.object({
 		action: z.literal('create-table'),
 		columns: z.array(z.object({ name: z.string(), columnType: columnTypeSchema })),
 	}),
-	deleteTableDetails,
-	addColumnDetails,
-	deleteColumnDetails,
-	renameColumnDetails,
-	insertRowsDetails,
-	updateRowsDetails,
-	deleteRowsDetails,
+	...dataTableDetailsVariants,
 ]);
 
 export type InstanceAiDataTableChangeDetails = z.infer<typeof dataTableChangeDetailsSchema>;
 
 export const instanceAiApprovalDetailsSchema = z.discriminatedUnion('action', [
 	z.object({ action: z.literal('edit-workflow'), summary: z.string().optional() }),
-	deleteTableDetails,
-	addColumnDetails,
-	deleteColumnDetails,
-	renameColumnDetails,
-	insertRowsDetails,
-	updateRowsDetails,
-	deleteRowsDetails,
+	...dataTableDetailsVariants,
 	z.object({
 		action: z.literal('data-table-changes'),
-		changes: z.array(z.object({ tableName: z.string(), details: dataTableChangeDetailsSchema })),
+		changes: z
+			.array(z.object({ tableName: z.string(), details: dataTableChangeDetailsSchema }))
+			.min(1),
 	}),
 	z.object({ action: z.literal('archive-workflow'), name: z.string(), id: z.string() }),
 	z.object({ action: z.literal('restore-workflow'), name: z.string(), id: z.string() }),
