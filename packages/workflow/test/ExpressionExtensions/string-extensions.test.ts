@@ -166,6 +166,9 @@ describe('Data Transformation Functions', () => {
 		test('.toSnakeCase should work on a string', () => {
 			expect(evaluate('={{ "I am a test!".toSnakeCase() }}')).toEqual('i_am_a_test');
 			expect(evaluate('={{ "i_am_a_test".toSnakeCase() }}')).toEqual('i_am_a_test');
+			expect(evaluate('={{ "first\u00A0name".toSnakeCase() }}')).toEqual('first_name');
+			expect(evaluate('={{ "first\tname".toSnakeCase() }}')).toEqual('first_name');
+			expect(evaluate('={{ "first\u2003name".toSnakeCase() }}')).toEqual('first_name');
 		});
 
 		test('.toSentenceCase should work on a string', () => {
