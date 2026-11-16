@@ -172,7 +172,7 @@ export class License implements LicenseProvider {
 			return;
 		}
 
-		await this.manager.activate(activationKey, eulaUri);
+		await this.manager.activate(activationKey, { eulaUri });
 		this.logger.debug('License activated');
 	}
 
