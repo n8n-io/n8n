@@ -68,6 +68,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { McpEngineV2Service } from './mcp-engine-v2.service';
 import { McpPostSaveMetricsService } from './mcp-post-save-metrics.service';
 import { McpConfig } from './mcp.config';
 import {
@@ -528,6 +529,12 @@ export class McpService {
 			async () => await import('@modelcontextprotocol/server'),
 		);
 
+		// Resolved here rather than injected: the service is small, but every test that
+		// builds `McpService` by hand would otherwise have to supply it.
+		const engineV2 = Container.get(McpEngineV2Service);
+		// `undefined` when the engine-v2 module is off, and then no tool mentions engines.
+		const engineContext = engineV2.context();
+
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
 		const n8nConnectAvailable = builderEnabled
 			? (await this.aiGatewayService.isAvailable()).available
@@ -576,6 +583,10 @@ export class McpService {
 						? (MIGRATION_REPORT_TARGET_VERSION ?? undefined)
 						: undefined,
 					credentialDescriptionsEnabled: featureFlags.credentialDescriptionsEnabled === true,
+					engine:
+						builderInstructionsEnabled && engineContext
+							? { defaultEngineType: engineContext.defaultEngineType }
+							: undefined,
 				}),
 			},
 		);
@@ -614,12 +625,10 @@ export class McpService {
 			this.workflowFinderService,
 			this.telemetry,
 			this.executionRedactionServiceProxy,
+			engineV2,
 		);
 		registerIfAllowed(getExecutionTool);
 
-		// TODO(CAT-4510): the search lists engine v2 executions, but
-		// `get_workflow_execution` above still reads only the control plane, so an
-		// agent cannot fetch a v2 result it just found.
 		const searchExecutionsTool = createSearchExecutionsTool(
 			user,
 			this.executionListService,
@@ -709,6 +718,7 @@ export class McpService {
 			this.telemetry,
 			this,
 			this.logger,
+			engineV2,
 		);
 		registerIfAllowed(testWorkflowTool);
 
@@ -1059,6 +1069,9 @@ export class McpService {
 		// verified-but-uninstalled tier.
 		const communityNodeDiscovery = this.mcpConfig.communityNodeDiscoveryEnabled;
 		const installToolAvailable = await this.isInstallToolAvailable(user, allowedToolNames);
+		// The same singleton `getServer` resolved; see the note there.
+		const engineContext = Container.get(McpEngineV2Service).context();
+
 		const uninstalledNodeOptions = communityNodeDiscovery
 			? {
 					findUninstalledNodeTypes: async (nodeTypes: string[]) =>
@@ -1095,7 +1108,9 @@ export class McpService {
 		);
 		registerIfAllowed(exploreNodeResourcesTool);
 
-		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
+		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes, {
+			engineContext,
+		});
 		registerIfAllowed(validateTool);
 
 		const validateNodeTool = createValidateNodeTool(user, this.telemetry);
@@ -1112,7 +1127,7 @@ export class McpService {
 			this.projectRepository,
 			dataTableOps,
 			this.aiGatewayService,
-			uninstalledNodeOptions,
+			{ ...uninstalledNodeOptions, engineContext },
 			this.logger,
 			this.postSaveMetrics,
 			ctx,
@@ -1222,6 +1237,7 @@ export class McpService {
 			{
 				...uninstalledNodeOptions,
 				readMigrationFindings,
+				engineContext,
 			},
 			this.logger,
 			this.postSaveMetrics,
@@ -1242,6 +1258,8 @@ export class McpService {
 
 		await this.registerInstallCommunityNodeTool(user, registerIfAllowed, installToolAvailable, ctx);
 
+		const sdkReferenceOptions = { engineV2Available: engineContext !== undefined };
+
 		// SDK reference as MCP resource — for clients that support resources.
 		registerResource({
 			name: 'workflow-sdk-reference',
@@ -1255,7 +1273,7 @@ export class McpService {
 					{
 						uri: 'n8n://workflow-sdk/reference',
 						mimeType: 'text/plain',
-						text: getSdkReferenceContent(),
+						text: getSdkReferenceContent(undefined, sdkReferenceOptions),
 					},
 				],
 			}),
@@ -1263,7 +1281,7 @@ export class McpService {
 
 		// SDK reference tool — always registered alongside the MCP resource above,
 		// so all clients can access the SDK reference regardless of resource support.
-		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry);
+		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry, sdkReferenceOptions);
 		registerIfAllowed(sdkRefTool);
 	}
 

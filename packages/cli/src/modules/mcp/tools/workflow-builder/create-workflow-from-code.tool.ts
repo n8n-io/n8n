@@ -30,6 +30,14 @@ import {
 	trackAutoassignOutcomes,
 } from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
+import {
+	applyEngineDecision,
+	decideEngine,
+	describeEngineDecision,
+	ENGINE_V2_INCOMPATIBLE_ERROR_CODE,
+	type EngineContext,
+	engineOutputSchema,
+} from './engine-eligibility';
 import { getErrorCode } from './error-code.utils';
 import { validateScheduleTriggerIntervals } from './schedule-trigger-validation';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
@@ -69,6 +77,11 @@ export type CreateWorkflowFromCodeToolOptions = {
 	findUninstalledNodeTypes?: FindUninstalledNodeTypes;
 	/** Whether this session can call the install tool; steers the warning text. */
 	installToolAvailable?: boolean;
+	/**
+	 * What the instance offers in execution engines. Absent when the engine-v2
+	 * module is off, in which case the tool never mentions engines.
+	 */
+	engineContext?: EngineContext;
 };
 
 function normalizeWorkflowDescription(description?: string) {
@@ -190,6 +203,7 @@ const outputSchema = {
 		.describe(
 			'Actionable hint for recovering from the error. When present, follow the suggested action before retrying.',
 		),
+	engine: engineOutputSchema,
 	warnings: z
 		.array(
 			z.object({
@@ -440,6 +454,34 @@ export const createCreateWorkflowFromCodeTool = (
 
 			stripNullCredentialStubs(newWorkflow.nodes);
 
+			// Engine v2 if possible, else v1: a workflow that names no engine and cannot
+			// run on v2 is put on v1 here, before the instance default would put it on v2.
+			// A workflow that names v2 and cannot run on it is refused instead.
+			const engineDecision = options.engineContext
+				? decideEngine(newWorkflow, options.engineContext)
+				: undefined;
+			if (engineDecision?.source === 'blocked') {
+				const engine = describeEngineDecision(engineDecision);
+				const errorMessage = engine.note ?? 'Engine v2 cannot run this workflow.';
+				telemetryPayload.results = {
+					success: false,
+					error: errorMessage,
+					data: { engineReasonCodes: engineDecision.reasons.map((reason) => reason.code) },
+				};
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+				const output = {
+					error: errorMessage,
+					errorCode: ENGINE_V2_INCOMPATIBLE_ERROR_CODE,
+					engine,
+				};
+				return {
+					content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+					structuredContent: output,
+					isError: true,
+				};
+			}
+			newWorkflow.settings = applyEngineDecision(newWorkflow.settings, engineDecision);
+
 			// Structural group rules (no triggers, single connected subgraph, no
 			// non-main connection crossing the group boundary) aren't checked by the
 			// parser above. Validate them here, before the shared persistence layer's
@@ -546,6 +588,7 @@ export const createCreateWorkflowFromCodeTool = (
 					: undefined,
 				note: notes.length ? notes.join(' ') : undefined,
 				skippedGroups: skippedGroups.length > 0 ? skippedGroups : undefined,
+				engine: engineDecision ? describeEngineDecision(engineDecision) : undefined,
 			};
 
 			const ceilingWarning = topLevelItemsWarning(savedWorkflow);

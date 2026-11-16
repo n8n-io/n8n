@@ -47,6 +47,26 @@ const DESIGN_GUIDANCE = `Design guidance:
 - **Fan out independent side effects**: For workflows that send email, notify chat, write to storage, and respond to a webhook, branch all side-effect nodes from normalized data instead of chaining them. Set \`onError: 'continueRegularOutput'\` on independent external action nodes when one failed action should not block the others.
 - **Pay attention to @builderHint annotations** in the type definitions — they provide critical guidance on how to correctly configure node parameters.`;
 
+// Served only when the instance offers engine v2. It describes how v2 runs a
+// workflow differently, not what v2 refuses: the refusals come from the
+// eligibility check in the save results, which is never out of date.
+const ENGINE_REFERENCE = `## Execution engine
+
+A workflow runs on engine v1 or engine v2. The engine is \`settings.engineType\` ("v1" or "v2"); unset means the instance default. Set it in code with \`.settings({ engineType: 'v1' })\` only when a save result tells you engine v2 cannot run the workflow and the user needs the feature it names.
+
+How engine v2 runs a workflow:
+- Branches that leave the same node run in parallel, in no fixed order. Engine v1 runs them one after another in connection order. When branch B must run after branch A, connect A to B; do not rely on their order on the canvas.
+- A disabled node passes its input through unchanged on every output. Engine v1 passes it through on the first output only.
+- Loops are supported only through the Loop Over Items (Split In Batches) node, entered through that node. Any other cycle is refused.
+- Engine v2 runs sub-workflows that are saved in n8n, through the Execute Sub-workflow node, once for each run of the node.
+- Engine v2 keeps execution data in its own store. Execution ids are UUIDs, and the test and execution tools read them the same way as engine v1 executions.
+
+The save results report which nodes and settings engine v2 does not run yet. Treat a reason of kind "temporary" as a gap engine v2 will close, "permanent" as something to design around, and "invalid" as a workflow error on any engine.`;
+
+const ENGINE_UNAVAILABLE_REFERENCE = `## Execution engine
+
+This instance runs workflows on engine v1 only. Do not set \`settings.engineType\`.`;
+
 /**
  * Section keys for filtered SDK reference content
  */
@@ -60,7 +80,13 @@ export type SdkReferenceSection =
 	| 'guidelines'
 	| 'design'
 	| 'groups'
+	| 'engine'
 	| 'all';
+
+export interface SdkReferenceOptions {
+	/** Whether the instance offers engine v2. Decides which engine section is served. */
+	engineV2Available?: boolean;
+}
 
 const SDK_IMPORT_SECTION = `## SDK Import Statement\n\n\`\`\`javascript\n${SDK_IMPORT_STATEMENT}\n\`\`\``;
 
@@ -76,7 +102,7 @@ const DESIGN_GUIDANCE_SECTION = `## Design Guidance\n\n${DESIGN_GUIDANCE}`;
 // shared verbatim with Instance AI, so it is served as-is (no extra wrapper).
 const GROUPS_SECTION = NODE_GROUPS_REFERENCE;
 
-const SECTIONS: Record<Exclude<SdkReferenceSection, 'all'>, string> = {
+const STATIC_SECTIONS: Record<Exclude<SdkReferenceSection, 'all' | 'engine'>, string> = {
 	import: SDK_IMPORT_SECTION,
 	patterns: WORKFLOW_PATTERNS_SECTION,
 	patterns_detailed: WORKFLOW_PATTERNS_DETAILED_SECTION,
@@ -91,7 +117,15 @@ const SECTIONS: Record<Exclude<SdkReferenceSection, 'all'>, string> = {
 /**
  * Get the full SDK reference content or a filtered section.
  */
-export function getSdkReferenceContent(section?: SdkReferenceSection): string {
+export function getSdkReferenceContent(
+	section?: SdkReferenceSection,
+	options: SdkReferenceOptions = {},
+): string {
+	const SECTIONS: Record<Exclude<SdkReferenceSection, 'all'>, string> = {
+		...STATIC_SECTIONS,
+		engine: options.engineV2Available ? ENGINE_REFERENCE : ENGINE_UNAVAILABLE_REFERENCE,
+	};
+
 	if (section && section !== 'all' && section in SECTIONS) {
 		return SECTIONS[section];
 	}
@@ -119,5 +153,7 @@ export function getSdkReferenceContent(section?: SdkReferenceSection): string {
 		SECTIONS.guidelines,
 		'',
 		SECTIONS.design,
+		// Only an instance with engine v2 has anything to say about engines.
+		...(options.engineV2Available ? ['', SECTIONS.engine] : []),
 	].join('\n');
 }

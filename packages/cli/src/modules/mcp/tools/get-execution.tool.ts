@@ -10,7 +10,9 @@ import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
+import { isExecutionIdV2 } from '@/executions/execution-id';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { McpEngineV2Service } from '@/modules/mcp/mcp-engine-v2.service';
 import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -69,6 +71,7 @@ export const createGetExecutionTool = (
 	workflowFinderService: WorkflowFinderService,
 	telemetry: Telemetry,
 	executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
+	engineV2: McpEngineV2Service,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'get_workflow_execution',
 	config: {
@@ -109,7 +112,13 @@ export const createGetExecutionTool = (
 			// split into branches so TypeScript can narrow each return type.
 			let execution;
 			let executionData: IRunExecutionData | null | undefined;
-			if (includeData) {
+			if (isExecutionIdV2(executionId)) {
+				// A v2 execution has no control-plane row. The data plane has no
+				// metadata-only read that is cheaper, so both branches read the same.
+				const v2Execution = await engineV2.readExecution(executionId, workflowId, user);
+				execution = v2Execution;
+				executionData = includeData ? (v2Execution?.data ?? null) : undefined;
+			} else if (includeData) {
 				const fullExecution = await Container.get(ExecutionPersistence).findWithUnflattenedData(
 					executionId,
 					[workflowId],

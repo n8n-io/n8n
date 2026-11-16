@@ -68,6 +68,12 @@ export const workflowSettingsObjectSchema = z.object({
 		.enum(['v0', 'v1'])
 		.describe('Node execution order. "v1" is the default for new workflows; "v0" is legacy.')
 		.optional(),
+	engineType: z
+		.enum(['v1', 'v2'])
+		.describe(
+			'The execution engine the workflow runs on. Set "v1" when the save result reports that engine v2 cannot run the workflow and the user needs the feature it names. Set "v2" to move a workflow back to engine v2 after the blocking feature is gone.',
+		)
+		.optional(),
 	saveExecutionProgress: z
 		.union([z.boolean(), z.literal('DEFAULT')])
 		.describe(
