@@ -375,6 +375,17 @@ describe('getNewNodePosition', () => {
 		const result = getNewNodePosition(nodes, [784, -48], { size: [1440, 96] });
 		expect(result).toEqual([784, -48]);
 	});
+
+	it('should ignore a node with a position or size that is not a finite number', () => {
+		const nodes: INodeUi[] = [
+			createTestNode({ id: '1', position: [Number.NaN, 0], type: SET_NODE_TYPE }),
+			createTestNode({ id: '2', position: [0, 0], type: SET_NODE_TYPE }),
+		];
+		const result = getNewNodePosition(nodes, [0, 0], {
+			getNodeSize: (node) => (node.id === '2' ? [Infinity, 96] : DEFAULT_NODE_SIZE),
+		});
+		expect(result).toEqual([0, 0]);
+	});
 });
 
 const testNodes: INode[] = [
