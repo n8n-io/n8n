@@ -1,0 +1,51 @@
+{
+	"id": "two-branches-1",
+	"name": "Two branches",
+	"nodes": [
+		{
+			"id": "c0000000-0000-4000-8000-000000000001",
+			"name": "Start",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "c0000000-0000-4000-8000-000000000002",
+			"name": "Left",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [220, -100],
+			"parameters": {}
+		},
+		{
+			"id": "c0000000-0000-4000-8000-000000000003",
+			"name": "Right",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [220, 100],
+			"parameters": {}
+		},
+		{
+			"id": "c0000000-0000-4000-8000-000000000004",
+			"name": "End",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"parameters": {}
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{ "node": "Left", "type": "main", "index": 0 },
+					{ "node": "Right", "type": "main", "index": 0 }
+				]
+			]
+		},
+		"Left": { "main": [[{ "node": "End", "type": "main", "index": 0 }]] },
+		"Right": { "main": [[{ "node": "End", "type": "main", "index": 0 }]] }
+	},
+	"settings": { "executionOrder": "v1" }
+}

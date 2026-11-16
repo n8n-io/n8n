@@ -26,14 +26,18 @@ export function isUndiciMessage(message: unknown): message is { request: UndiciR
 }
 
 export function toHttpRequest(request: UndiciRequest, url: URL): HttpRequest {
-	const { body } = request;
 	return {
 		method: request.method,
 		url: url.href,
 		headers: toHeaderRecord(headerEntries(request.headers)),
-		body:
-			typeof body === 'string' || body instanceof Uint8Array ? Buffer.from(body).toString() : '',
+		body: bodyText(request.body),
 	};
+}
+
+function bodyText(body: unknown): string {
+	if (typeof body === 'string' || body instanceof Uint8Array) return Buffer.from(body).toString();
+	if (body === undefined || body === null) return '';
+	return '[stream]';
 }
 
 function headerEntries(headers: unknown): Array<[string, unknown]> {

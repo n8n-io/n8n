@@ -84,7 +84,7 @@ export class WorkflowTestResult {
 				{ workflow: this.context.handle.name },
 			);
 		}
-		return this.node(endNodes[0]).runs.at(-1)?.output ?? [];
+		return this.node(endNodes[0]).runs.flatMap((run) => run.output);
 	}
 
 	node(node: string | NodeReference): NodeResult {

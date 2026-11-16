@@ -141,7 +141,7 @@ test('runs the sales workflow as a real child', async () => {
 
 | Field | Meaning |
 | --- | --- |
-| `result.output` | JSON of the items from the end node. Throws if more than one end node ran. |
+| `result.output` | JSON of the items from all runs of the end node, in run order. Throws if more than one end node ran. |
 | `result.response` | The webhook response: status, headers, and body. Only for webhook triggers. |
 | `result.staticData` | The workflow static data at the end of the execution. |
 | `result.customData` | The execution custom data that the workflow set. |
@@ -149,7 +149,7 @@ test('runs the sales workflow as a real child', async () => {
 | `result.workflow(name).runs` | One entry for each run of a child. Each entry has `calledBy`, `node(name)`, and `output`. |
 | `run.input`, `run.output`, `run.outputs` | JSON of the items that entered and left the node. |
 | `run.parameters` | The resolved parameters, one entry for each input item. |
-| `run.requests` | The HTTP requests that the node made. |
+| `run.requests` | The HTTP requests that the node made. A streamed request body shows as `[stream]`. |
 | `run.error` | The error, if the node failed. |
 
 `result.node(node)` also has `input`, `output`, `outputs`, `parameters`, `requests`, and `error`. These read the only run. They throw if the node ran more than one time or did not run.
