@@ -133,7 +133,7 @@ describe('mergeSamples', () => {
 	});
 
 	it('drops keys that are record ids', () => {
-		const key = '0f8fad5b-d9cb-469f-a165-70867728950e';
+		const key = '00000000-0000-4000-8000-000000000000';
 		const merged = mergeSamples([
 			obj({ id: { type: 'string' }, [key]: { type: 'string' } }),
 			obj({ id: { type: 'string' }, [key]: { type: 'string' } }),
