@@ -2575,7 +2575,7 @@ function resolveParameterVariants(
 		return undefined;
 	}
 
-	const property = props.find((p) => p.name === param);
+	const property = findPropertyAtPath(props, param);
 	const valueType = property ? getParameterValueType(property) : undefined;
 	if (!property || !valueType) return undefined;
 
@@ -2600,8 +2600,38 @@ function resolveParameterVariants(
 	};
 }
 
+type VariantProperty = Pick<NodePropertyOption, 'type' | 'default'>;
+
+/**
+ * The property a variant parameter names: a top-level property, or an option
+ * of a collection for a dotted path such as `options.simplifyOutput`.
+ */
+function findPropertyAtPath(props: NodeProperty[], param: string): VariantProperty | undefined {
+	const [first, ...rest] = param.split('.');
+	let current: NodeProperty | NodePropertyOption | undefined = props.find((p) => p.name === first);
+	for (const name of rest) {
+		if (current?.type !== 'collection') return undefined;
+		current = current.options?.find((option) => option.name === name);
+	}
+	return current;
+}
+
+/**
+ * The TypeScript constraint that sets a variant parameter, nesting a dotted
+ * path: `options.simplifyOutput` → `options: { simplifyOutput: false }`.
+ */
+function parameterConstraint(param: string, valueType: string, optional: boolean): string {
+	const mark = optional ? '?:' : ':';
+	return param
+		.split('.')
+		.reduceRight(
+			(inner, name) => (inner ? `${name}${mark} { ${inner} }` : `${name}${mark} ${valueType}`),
+			'',
+		);
+}
+
 /** The value type of a boolean parameter, or of an options parameter whose default is a string, number or boolean. */
-function getParameterValueType(property: NodeProperty): ParameterValueType | undefined {
+function getParameterValueType(property: VariantProperty): ParameterValueType | undefined {
 	if (property.type === 'boolean') {
 		return typeof property.default === 'boolean' ? 'boolean' : undefined;
 	}
@@ -2658,19 +2688,19 @@ function generateParameterVariantTypes(
 	const members = [
 		{
 			node: nodeOf(defaultValue),
-			constraint: `${param}?: ${parameterValueLiteral(variants, defaultValue)}`,
+			constraint: parameterConstraint(param, parameterValueLiteral(variants, defaultValue), true),
 			output: names.output,
 		},
 		...others.map(({ value }) => ({
 			node: nodeOf(value),
-			constraint: `${param}: ${parameterValueLiteral(variants, value)}`,
+			constraint: parameterConstraint(param, parameterValueLiteral(variants, value), false),
 			output: outputOf(value),
 		})),
 	];
 	const allOutputs = members.map((member) => member.output).join(' | ');
 	members.push({
 		node: `${names.base}${toPascalCase(param)}ExpressionNode`,
-		constraint: `${param}: Expression<${variants.valueType}>`,
+		constraint: parameterConstraint(param, `Expression<${variants.valueType}>`, false),
 		output: allOutputs,
 	});
 
@@ -3249,10 +3279,12 @@ export function generateSingleVersionTypeFile(
 				? findSchemaForOperation(outputSchemas, configInfo.resource, configInfo.operation)
 				: undefined;
 
-		// Fallback for nodes without resource/operation discriminators:
-		// use root-level schema files (resource === '')
+		// Fallback for nodes without resource/operation discriminators: use a
+		// root-level schema file (resource === ''). Prefer `output.json`, because a
+		// trigger can share its schema folder with an action's root-level files.
 		if (!matchingSchema && !configInfo.resource && !configInfo.operation) {
-			matchingSchema = outputSchemas.find((s) => s.resource === '');
+			const rootSchemas = outputSchemas.filter((s) => s.resource === '');
+			matchingSchema = rootSchemas.find((s) => s.operation === 'output') ?? rootSchemas[0];
 		}
 
 		if (matchingSchema) {
