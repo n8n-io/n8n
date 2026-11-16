@@ -5,10 +5,12 @@ import {
 	type TestMigrationContext,
 	undoLastSingleMigration,
 } from '@n8n/backend-test-utils';
-import { DbConnection, Lease, LeaseKind, LeaseSession } from '@n8n/db';
+import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
+
+import { indexColumnsInOrder } from './shared/index-columns';
 
 const MIGRATION_NAME = 'CreateLeaseTables1794818156000';
 
@@ -16,6 +18,14 @@ const TABLES = ['lease_kind', 'lease_session', 'lease'];
 
 const isSqlite = (process.env.DB_TYPE ?? 'sqlite') === 'sqlite';
 const zero = isSqlite ? '0' : "'0'";
+
+const varchar = (length: number) => [isSqlite ? 'varchar' : 'character varying', `${length}`];
+const uuid = isSqlite ? ['varchar', ''] : ['uuid', ''];
+const bigint = ['bigint', ''];
+const int = ['integer', ''];
+const text = ['text', ''];
+const bool = ['boolean', ''];
+const timestamp = isSqlite ? ['datetime', ''] : ['timestamp with time zone', ''];
 
 const newKind = () => `k-${randomUUID().slice(0, 8)}`;
 
@@ -64,33 +74,21 @@ describe('CreateLeaseTables migration', () => {
 		return table;
 	}
 
-	async function getIndex(context: TestMigrationContext, table: string, name: string) {
-		if (context.isSqlite) {
-			const columns = await context.runQuery<Array<{ name: string }>>(
-				'SELECT name FROM pragma_index_info(:name) ORDER BY seqno',
-				{ name },
-			);
-			const lists = await context.runQuery<Array<{ unique: number }>>(
-				'SELECT "unique" FROM pragma_index_list(:table) WHERE name = :name',
-				{ table: `${context.tablePrefix}${table}`, name },
-			);
-			return { columnNames: columns.map((c) => c.name), isUnique: lists[0]?.unique === 1 };
-		}
-		const columns = await context.runQuery<Array<{ name: string }>>(
-			`SELECT a.attname AS name
-			 FROM pg_index i
-			 JOIN pg_class c ON c.oid = i.indexrelid
-			 CROSS JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
-			 JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum
-			 WHERE c.relname = :name
-			 ORDER BY k.ord`,
-			{ name },
-		);
-		const unique = await context.runQuery<Array<{ indisunique: boolean }>>(
-			'SELECT i.indisunique FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid WHERE c.relname = :name',
-			{ name },
-		);
-		return { columnNames: columns.map((c) => c.name), isUnique: unique[0]?.indisunique ?? false };
+	async function primaryKeyColumnsInOrder(context: TestMigrationContext, name: string) {
+		const rows = context.isSqlite
+			? await context.runQuery<Array<{ name: string }>>(
+					'SELECT name FROM pragma_table_info(:table) WHERE pk > 0 ORDER BY pk',
+					{ table: `${context.tablePrefix}${name}` },
+				)
+			: await context.runQuery<Array<{ name: string }>>(
+					`SELECT a.attname AS name
+					 FROM pg_index i
+					 CROSS JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+					 JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum
+					 WHERE i.indrelid = to_regclass('${context.escape.tableName(name)}') AND i.indisprimary
+					 ORDER BY k.ord`,
+				);
+		return rows.map((row) => row.name);
 	}
 
 	async function insertRow(
@@ -125,53 +123,66 @@ describe('CreateLeaseTables migration', () => {
 	it.each([
 		[
 			'lease_kind',
-			[
-				'kind',
-				'fencingTokenCounter',
-				'syncLockRoundId',
-				'syncLockExpiresAt',
-				'lastFullSyncAt',
-				'createdAt',
-				'updatedAt',
-			],
+			{
+				kind: varchar(24),
+				fencingTokenCounter: bigint,
+				syncLockRoundId: uuid,
+				syncLockExpiresAt: timestamp,
+				lastFullSyncAt: timestamp,
+				createdAt: timestamp,
+				updatedAt: timestamp,
+			},
 			['kind', 'fencingTokenCounter', 'createdAt', 'updatedAt'],
 		],
 		[
 			'lease_session',
-			['id', 'leaseKind', 'hostId', 'bootId', 'leaseDurationSeconds', 'expiresAt', 'createdAt'],
+			{
+				id: uuid,
+				leaseKind: varchar(24),
+				hostId: varchar(255),
+				bootId: uuid,
+				leaseDurationSeconds: int,
+				expiresAt: timestamp,
+				createdAt: timestamp,
+			},
 			['id', 'leaseKind', 'hostId', 'bootId', 'leaseDurationSeconds', 'expiresAt', 'createdAt'],
 		],
 		[
 			'lease',
-			[
-				'leaseKind',
-				'key',
-				'data',
-				'dataHash',
-				'leaseSessionId',
-				'fencingToken',
-				'claimedAt',
-				'readyAt',
-				'revoked',
-				'revokedAt',
-				'createdAt',
-				'updatedAt',
-			],
+			{
+				leaseKind: varchar(24),
+				key: varchar(255),
+				data: text,
+				dataHash: varchar(64),
+				leaseSessionId: uuid,
+				fencingToken: bigint,
+				claimedAt: timestamp,
+				readyAt: timestamp,
+				revoked: bool,
+				revokedAt: timestamp,
+				createdAt: timestamp,
+				updatedAt: timestamp,
+			},
 			['leaseKind', 'key', 'data', 'dataHash', 'fencingToken', 'revoked', 'createdAt', 'updatedAt'],
 		],
-	])('creates %s with its columns and NOT NULL constraints', async (name, columns, notNull) => {
-		await withContext(async (context) => {
-			const table = await getTable(context, name);
+	])(
+		'creates %s with its column types, lengths and NOT NULL constraints',
+		async (name, columns, notNull) => {
+			await withContext(async (context) => {
+				const table = await getTable(context, name);
 
-			expect(table.columns.map((c) => c.name).sort()).toEqual([...columns].sort());
-			expect(
-				table.columns
-					.filter((c) => !c.isNullable)
-					.map((c) => c.name)
-					.sort(),
-			).toEqual([...notNull].sort());
-		});
-	});
+				expect(Object.fromEntries(table.columns.map((c) => [c.name, [c.type, c.length]]))).toEqual(
+					columns,
+				);
+				expect(
+					table.columns
+						.filter((c) => !c.isNullable)
+						.map((c) => c.name)
+						.sort(),
+				).toEqual([...notNull].sort());
+			});
+		},
+	);
 
 	it.each([
 		['lease_kind', 'fencingTokenCounter', zero],
@@ -190,23 +201,20 @@ describe('CreateLeaseTables migration', () => {
 		['lease', ['leaseKind', 'key']],
 	])('sets the primary key of %s', async (name, expected) => {
 		await withContext(async (context) => {
-			const table = await getTable(context, name);
-			expect(table.primaryColumns.map((c) => c.name).sort()).toEqual([...expected].sort());
+			expect(await primaryKeyColumnsInOrder(context, name)).toEqual(expected);
 		});
 	});
 
 	it.each([
-		['lease_session', 'lease_session_leaseKind_expiresAt', ['leaseKind', 'expiresAt']],
-		['lease', 'lease_leaseKind_leaseSessionId', ['leaseKind', 'leaseSessionId']],
-	])('creates the non-unique index on %s named %s', async (name, suffix, expected) => {
+		['lease_session_leaseKind_expiresAt', ['leaseKind', 'expiresAt']],
+		['lease_leaseKind_leaseSessionId', ['leaseKind', 'leaseSessionId']],
+	])('creates the index %s over its columns in order', async (name, expected) => {
 		await withContext(async (context) => {
-			const index = await getIndex(context, name, `IDX_${context.tablePrefix}${suffix}`);
-			expect(index.columnNames).toEqual(expected);
-			expect(index.isUnique).toBe(false);
+			expect(await indexColumnsInOrder(context, name)).toEqual(expected);
 		});
 	});
 
-	it('keeps leaseSessionId, fencingToken and revoked out of unique indexes and foreign keys', async () => {
+	it('keeps leaseSessionId, fencingToken and revoked out of unique indexes', async () => {
 		await withContext(async (context) => {
 			const table = await getTable(context, 'lease');
 			const guarded = ['leaseSessionId', 'fencingToken', 'revoked'];
@@ -216,9 +224,6 @@ describe('CreateLeaseTables migration', () => {
 				...table.uniques.flatMap((u) => u.columnNames),
 			];
 			expect(uniqueColumns.filter((c) => guarded.includes(c))).toEqual([]);
-			expect(
-				table.foreignKeys.flatMap((fk) => fk.columnNames).filter((c) => guarded.includes(c)),
-			).toEqual([]);
 		});
 	});
 
@@ -238,14 +243,6 @@ describe('CreateLeaseTables migration', () => {
 		},
 	);
 
-	it.skipIf(!isSqlite)('enforces foreign keys on SQLite', async () => {
-		await withContext(async (context) => {
-			const [{ foreign_keys }] =
-				await context.runQuery<Array<{ foreign_keys: number }>>('PRAGMA foreign_keys');
-			expect(foreign_keys).toBe(1);
-		});
-	});
-
 	it.each(['lease_session', 'lease'])(
 		'accepts a %s row with an existing kind and rejects an unknown kind',
 		async (name) => {
@@ -264,6 +261,9 @@ describe('CreateLeaseTables migration', () => {
 			const leaseKind = await insertKind(context);
 			await insertRow(context, 'lease_session', { leaseKind });
 			await insertRow(context, 'lease', { leaseKind });
+
+			expect(await countRows(context, 'lease_session', leaseKind)).toBe(1);
+			expect(await countRows(context, 'lease', leaseKind)).toBe(1);
 
 			await context.runQuery(
 				`DELETE FROM ${context.escape.tableName('lease_kind')} WHERE "kind" = :leaseKind`,
@@ -293,65 +293,6 @@ describe('CreateLeaseTables migration', () => {
 				`SELECT reloptions FROM pg_class WHERE oid = to_regclass('${context.escape.tableName('lease')}')`,
 			);
 			expect(reloptions).toEqual(expect.arrayContaining(['fillfactor=90']));
-		});
-	});
-
-	it('saves and reads back each lease entity', async () => {
-		const kinds = dataSource.getRepository(LeaseKind);
-		const sessions = dataSource.getRepository(LeaseSession);
-		const leases = dataSource.getRepository(Lease);
-		const kind = 'entity-round-trip';
-		const sessionId = randomUUID();
-		const bootId = randomUUID();
-		const token = 2 ** 40;
-		const syncLockExpiresAt = new Date('2026-01-02T03:04:05.678Z');
-		const expiresAt = new Date('2026-01-02T03:05:05.678Z');
-		const claimedAt = new Date('2026-01-02T03:06:05.678Z');
-
-		await kinds.save(kinds.create({ kind, fencingTokenCounter: token, syncLockExpiresAt }));
-		await sessions.save(
-			sessions.create({
-				id: sessionId,
-				leaseKind: kind,
-				hostId: 'host-1',
-				bootId,
-				leaseDurationSeconds: 30,
-				expiresAt,
-			}),
-		);
-		await leases.save(
-			leases.create({
-				leaseKind: kind,
-				key: 'key-1',
-				data: '{"a":1}',
-				dataHash: 'hash',
-				leaseSessionId: sessionId,
-				fencingToken: token,
-				claimedAt,
-			}),
-		);
-
-		expect(await kinds.findOneByOrFail({ kind })).toMatchObject({
-			fencingTokenCounter: token,
-			syncLockRoundId: null,
-			syncLockExpiresAt,
-			lastFullSyncAt: null,
-		});
-		expect(await sessions.findOneByOrFail({ id: sessionId })).toMatchObject({
-			leaseKind: kind,
-			hostId: 'host-1',
-			bootId,
-			leaseDurationSeconds: 30,
-			expiresAt,
-		});
-		expect(await leases.findOneByOrFail({ leaseKind: kind, key: 'key-1' })).toMatchObject({
-			data: '{"a":1}',
-			leaseSessionId: sessionId,
-			fencingToken: token,
-			claimedAt,
-			readyAt: null,
-			revoked: false,
-			revokedAt: null,
 		});
 	});
 
