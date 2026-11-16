@@ -26,7 +26,7 @@ import { locale } from '@n8n/design-system';
 import { registerTimeAgoLocale } from '@/app/utils/timeAgoLocale';
 import { loadLanguage, setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
-import { getLocaleCatalog } from '@n8n/rest-api-client/api/settings';
+import { getLocaleCatalog, loadLocaleCatalog } from '@n8n/rest-api-client/api/settings';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
 import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
@@ -119,7 +119,13 @@ watch(
 	async (newLocale) => {
 		if (newLocale !== 'en') {
 			try {
-				const messages = await getLocaleCatalog(rootStore.restApiContext, newLocale);
+				const configured = settingsStore.settings.availableLocales?.find(
+					({ code }) => code === newLocale,
+				);
+				// A locale that the settings don't list has no catalog. The request returns 404.
+				const messages = configured
+					? await loadLocaleCatalog(rootStore.restApiContext, configured)
+					: await getLocaleCatalog(rootStore.restApiContext, newLocale);
 				// A newer locale change started while this catalog was loading.
 				if (newLocale !== effectiveLocale.value) return;
 				loadLanguage(newLocale, messages);

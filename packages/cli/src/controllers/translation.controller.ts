@@ -1,7 +1,7 @@
 import { safeJoinPath } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Get, RestController } from '@n8n/decorators';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { access } from 'fs/promises';
 
 import { NODES_BASE_DIR } from '@/constants';
@@ -14,7 +14,7 @@ export const NODE_HEADERS_PATH = safeJoinPath(NODES_BASE_DIR, 'dist/nodes/header
 
 export declare namespace TranslationRequest {
 	export type Credential = Request<{}, {}, {}, { credentialType: string }>;
-	export type Locale = Request<{ code: string }>;
+	export type Locale = Request<{ code: string }, {}, {}, { v?: string }>;
 }
 
 @RestController('/')
@@ -65,10 +65,18 @@ export class TranslationController {
 
 	// Unauthenticated because the sign-in page also renders in the instance default locale.
 	@Get('/locales/:code', { allowUnauthenticated: true })
-	async getLocaleCatalog(req: TranslationRequest.Locale) {
+	async getLocaleCatalog(req: TranslationRequest.Locale, res: Response) {
 		const { code } = req.params;
-		const catalog = await this.localeService.getUiCatalog(code);
-		if (!catalog) throw new NotFoundError(`Unknown locale: "${code}"`);
-		return catalog;
+		const result = await this.localeService.getUiCatalog(code);
+		if (!result) throw new NotFoundError(`Unknown locale: "${code}"`);
+
+		// The client asks with the content hash from the settings. A URL with the current hash
+		// always returns this content, so the browser can keep it. Any other URL (a file edited
+		// after startup, or no hash) must not be cached under that URL.
+		res.setHeader(
+			'Cache-Control',
+			req.query.v === result.hash ? 'public, max-age=31536000, immutable' : 'no-store',
+		);
+		return result.catalog;
 	}
 }

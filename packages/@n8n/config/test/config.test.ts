@@ -68,6 +68,7 @@ describe('GlobalConfig', () => {
 		locales: {
 			available: {},
 			userOverride: false,
+			versionedBaseUrl: '',
 		},
 		hideUsagePage: false,
 		deployment: {

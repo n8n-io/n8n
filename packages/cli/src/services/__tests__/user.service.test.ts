@@ -350,7 +350,7 @@ describe('UserService', () => {
 
 		describe('locale', () => {
 			beforeEach(() => {
-				globalConfig.locales = { available: {}, userOverride: true };
+				globalConfig.locales = { available: {}, userOverride: true, versionedBaseUrl: '' };
 				localeService.isAvailable.mockReset();
 			});
 

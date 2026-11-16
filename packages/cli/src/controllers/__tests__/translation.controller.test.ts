@@ -1,4 +1,5 @@
 import type { GlobalConfig } from '@n8n/config';
+import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import type { TranslationRequest } from '@/controllers/translation.controller';
@@ -68,19 +69,41 @@ describe('TranslationController', () => {
 	});
 
 	describe('getLocaleCatalog', () => {
+		const catalog = { 'generic.save': 'Speichern' };
+		const hash = 'abc123';
+		const createRequest = (code: string, query: TranslationRequest.Locale['query'] = {}) =>
+			mock<TranslationRequest.Locale>({ params: { code }, query });
+
 		it('should throw 404 on an unknown locale', async () => {
 			localeService.getUiCatalog.calledWith('xx').mockResolvedValue(null);
-			const req = mock<TranslationRequest.Locale>({ params: { code: 'xx' } });
 
-			await expect(controller.getLocaleCatalog(req)).rejects.toThrow(NotFoundError);
+			await expect(
+				controller.getLocaleCatalog(createRequest('xx'), mock<Response>()),
+			).rejects.toThrow(NotFoundError);
 		});
 
-		it('should return the catalog of an available locale', async () => {
-			const catalog = { 'generic.save': 'Speichern' };
-			localeService.getUiCatalog.calledWith('de').mockResolvedValue(catalog);
-			const req = mock<TranslationRequest.Locale>({ params: { code: 'de' } });
+		it('should return the catalog and let the browser keep it when the hash matches', async () => {
+			localeService.getUiCatalog.calledWith('de').mockResolvedValue({ catalog, hash });
+			const res = mock<Response>();
 
-			expect(await controller.getLocaleCatalog(req)).toEqual(catalog);
+			expect(await controller.getLocaleCatalog(createRequest('de', { v: hash }), res)).toEqual(
+				catalog,
+			);
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Cache-Control',
+				'public, max-age=31536000, immutable',
+			);
+		});
+
+		it.each([
+			['a different hash', { v: 'outdated' }],
+			['no hash', {}],
+		])('should return the catalog without caching for %s', async (_, query) => {
+			localeService.getUiCatalog.calledWith('de').mockResolvedValue({ catalog, hash });
+			const res = mock<Response>();
+
+			expect(await controller.getLocaleCatalog(createRequest('de', query), res)).toEqual(catalog);
+			expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
 		});
 	});
 });
