@@ -9,8 +9,8 @@ type Waits = boolean | 'unknown';
 
 interface WaitingTrigger {
 	waits: (node: INode) => Waits;
-	/** The setting change that stops the trigger from waiting. */
-	fix: (node: INode) => string;
+	/** The display name of the setting that decides whether the trigger waits. */
+	setting: (node: INode) => string;
 }
 
 const isExpression = (value: unknown) => typeof value === 'string' && value.startsWith('=');
@@ -32,8 +32,6 @@ function readOption(node: INode, name: string): unknown {
 const waitsWhen = (value: unknown, waits: (value: unknown) => boolean): Waits =>
 	value === EXPRESSION ? 'unknown' : waits(value);
 
-const TURN_ON_PARALLEL_PROCESSING = 'Turn on Parallel Processing in the options.';
-
 /** Each entry copies how the trigger's own code decides to wait for its run. */
 const WAITING_TRIGGERS: Record<string, WaitingTrigger> = {
 	'n8n-nodes-base.kafkaTrigger': {
@@ -49,8 +47,7 @@ const WAITING_TRIGGERS: Record<string, WaitingTrigger> = {
 				(mode) => (mode ?? 'onCompletion') !== 'immediately',
 			);
 		},
-		fix: (node) =>
-			node.typeVersion === 1.1 ? TURN_ON_PARALLEL_PROCESSING : 'Set Resolve Offset to Immediately.',
+		setting: (node) => (node.typeVersion === 1.1 ? 'Parallel Processing' : 'Resolve Offset'),
 	},
 	'n8n-nodes-base.rabbitmqTrigger': {
 		waits: (node) => {
@@ -64,17 +61,19 @@ const WAITING_TRIGGERS: Record<string, WaitingTrigger> = {
 				(limit) => limit !== undefined && limit !== -1,
 			);
 		},
-		fix: () =>
-			'Set Delete From Queue When to Immediately and remove the Parallel Message Processing Limit.',
+		setting: (node) =>
+			readOption(node, 'acknowledge') === undefined
+				? 'Parallel Message Processing Limit'
+				: 'Delete From Queue When',
 	},
 	'n8n-nodes-base.amqpTrigger': {
 		waits: (node) =>
 			waitsWhen(readOption(node, 'parallelProcessing'), (enabled) => enabled === false),
-		fix: () => TURN_ON_PARALLEL_PROCESSING,
+		setting: () => 'Parallel Processing',
 	},
 	'n8n-nodes-base.mqttTrigger': {
 		waits: (node) => waitsWhen(readOption(node, 'parallelProcessing'), (enabled) => !enabled),
-		fix: () => TURN_ON_PARALLEL_PROCESSING,
+		setting: () => 'Parallel Processing',
 	},
 };
 
@@ -88,10 +87,11 @@ export function findTriggerWaitReasons(nodes: INode[]): EngineV2Reason[] {
 		if (!trigger || node.disabled === true) return [];
 		const waits = trigger.waits(node);
 		if (waits === false) return [];
+		const setting = trigger.setting(node);
 		const message =
 			waits === true
-				? `Engine v2 cannot run the "${node.name}" trigger yet, because it waits for its execution to finish. ${trigger.fix(node)}`
-				: `Engine v2 cannot run the "${node.name}" trigger if it waits for its execution to finish. An expression decides this. ${trigger.fix(node)}`;
+				? `Engine v2 cannot run the "${node.name}" trigger yet: its "${setting}" setting makes it wait for its execution to finish.`
+				: `Engine v2 cannot run the "${node.name}" trigger if it waits for its execution to finish. An expression sets its "${setting}" setting, so the check cannot tell.`;
 		return [
 			{
 				code: 'TRIGGER_WAITS_FOR_RUN',

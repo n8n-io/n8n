@@ -123,4 +123,31 @@ describe('trigger wait rule', () => {
 			reasons: [expect.objectContaining({ code: 'TRIGGER_WAITS_FOR_RUN', severity: 'warning' })],
 		});
 	});
+
+	// Engine v2 should not push users toward settings that weaken delivery guarantees.
+	it.each<[string, INode, string]>([
+		['a Kafka trigger v2', trigger('kafkaTrigger', 2), 'Resolve Offset'],
+		['a Kafka trigger v1.1', trigger('kafkaTrigger', 1.1), 'Parallel Processing'],
+		[
+			'a RabbitMQ trigger with a delete mode',
+			trigger('rabbitmqTrigger', 1, { options: { acknowledge: 'executionFinishes' } }),
+			'Delete From Queue When',
+		],
+		[
+			'a RabbitMQ trigger with a parallel message limit',
+			trigger('rabbitmqTrigger', 1, { options: { parallelMessages: 5 } }),
+			'Parallel Message Processing Limit',
+		],
+		[
+			'an AMQP trigger',
+			trigger('amqpTrigger', 1, { options: { parallelProcessing: false } }),
+			'Parallel Processing',
+		],
+		['an MQTT trigger', trigger('mqttTrigger', 1), 'Parallel Processing'],
+	])('names the setting that makes %s wait, without asking to change it', (_, node, setting) => {
+		const [reason] = check(node).reasons;
+
+		expect(reason.message).toContain(`"${setting}"`);
+		expect(reason.message).not.toMatch(/\b(Set|Turn on|remove)\b/);
+	});
 });
