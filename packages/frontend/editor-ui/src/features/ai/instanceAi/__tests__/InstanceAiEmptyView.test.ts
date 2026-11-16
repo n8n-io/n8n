@@ -55,8 +55,12 @@ const {
 		workflowPreviewsAboveAssistantEnabled: { value: false },
 		workflowPreviewsAboveAssistantVariant: { value: null as 'control' | 'variant' | null },
 		// EOF Experiment cleanup
+<<<<<<< HEAD
 		splitBelowInputVariant: { value: false },
 		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+=======
+		// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
+>>>>>>> 99163e29 (feat: Implements v3 iteration of existing n8n Assistant taxonomy experiment (#43692))
 		inspirationFromTaxonomyVariant: { value: undefined as string | undefined },
 		inspirationFromTaxonomyTreatmentEnabled: { value: false },
 		// EOF Experiment cleanup
@@ -268,16 +272,14 @@ vi.mock('@/experiments/instanceAiPersonalizedPromptSuggestions', () => ({
 	resolvePersonalizedPromptSuggestions: experimentMocks.resolvePersonalizedPromptSuggestions,
 }));
 
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 vi.mock('@/experiments/instanceAiInspirationFromTaxonomy', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	useInstanceAiInspirationFromTaxonomyExperiment: () => ({
 		currentVariant: experimentMocks.inspirationFromTaxonomyVariant,
 		isTreatmentVariant: experimentMocks.inspirationFromTaxonomyTreatmentEnabled,
 		isRowsVariant: computed(
-			() =>
-				experimentMocks.inspirationFromTaxonomyVariant.value === 'variant' ||
-				experimentMocks.inspirationFromTaxonomyVariant.value === 'variant-bis',
+			() => experimentMocks.inspirationFromTaxonomyVariant.value === 'variant',
 		),
 	}),
 }));
@@ -740,8 +742,12 @@ describe('InstanceAiEmptyView', () => {
 		experimentMocks.workflowPreviewsAboveAssistantEnabled.value = false;
 		experimentMocks.workflowPreviewsAboveAssistantVariant.value = null;
 		// EOF Experiment cleanup
+<<<<<<< HEAD
 		experimentMocks.splitBelowInputVariant.value = false;
 		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+=======
+		// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
+>>>>>>> 99163e29 (feat: Implements v3 iteration of existing n8n Assistant taxonomy experiment (#43692))
 		experimentMocks.inspirationFromTaxonomyVariant.value = undefined;
 		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = false;
 		// EOF Experiment cleanup
@@ -1092,7 +1098,7 @@ describe('InstanceAiEmptyView', () => {
 		vi.useRealTimers();
 	});
 
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	it('shows taxonomy row suggestions and exposes the variant for a sales respondent', () => {
 		experimentMocks.inspirationFromTaxonomyVariant.value = 'variant';
 		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = true;
@@ -1106,7 +1112,7 @@ describe('InstanceAiEmptyView', () => {
 
 		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('6');
 		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
-			'v6-taxonomy',
+			'v7-taxonomy',
 		);
 		expect(getByTestId('instance-ai-input-suggestions-component-name')).toHaveTextContent(
 			'TaxonomyPromptSuggestions',
@@ -1118,34 +1124,7 @@ describe('InstanceAiEmptyView', () => {
 			TELEMETRY_EVENT.INSTANCE_AI.INSPIRATION_FROM_TAXONOMY_EXPOSED,
 			{
 				variant: 'variant',
-				'$feature/129_aia_inspiration_from_taxonomy_v2': 'variant',
-			},
-		);
-		expect(usePostHog().setTaxonomyInspirationEligible).toHaveBeenCalledWith(true);
-	});
-
-	it('shows the alternate suggestion catalog for variant-bis', () => {
-		experimentMocks.inspirationFromTaxonomyVariant.value = 'variant-bis';
-		appSettingsStoreMock.isCloudDeployment = true;
-		cloudPlanStoreMock.state.initialized = true;
-		cloudPlanStoreMock.currentUserCloudInfo = {
-			information: { what_team_are_you_on: 'Marketing' },
-		};
-
-		const { getByTestId } = renderView();
-
-		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('6');
-		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
-			'v6-taxonomy-bis',
-		);
-		expect(getByTestId('instance-ai-input-suggestion-telemetry-payload')).toHaveTextContent(
-			'"suggestion_catalog_version":"v6-taxonomy-bis"',
-		);
-		expect(telemetryTrack).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.INSTANCE_AI.INSPIRATION_FROM_TAXONOMY_EXPOSED,
-			{
-				variant: 'variant-bis',
-				'$feature/129_aia_inspiration_from_taxonomy_v2': 'variant-bis',
+				'$feature/142_aia_inspiration_from_taxonomy_v3': 'variant',
 			},
 		);
 		expect(usePostHog().setTaxonomyInspirationEligible).toHaveBeenCalledWith(true);
@@ -1229,7 +1208,7 @@ describe('InstanceAiEmptyView', () => {
 		const { getByTestId } = renderView();
 
 		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
-			'v6-taxonomy',
+			'v7-taxonomy',
 		);
 		expect(experimentMocks.resolvePersonalizedPromptSuggestions).not.toHaveBeenCalled();
 	});
@@ -1531,7 +1510,7 @@ describe('InstanceAiEmptyView', () => {
 	});
 	// EOF Experiment cleanup
 
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	it('keeps the default empty state for a sales-and-marketing control user and still records exposure', () => {
 		experimentMocks.inspirationFromTaxonomyVariant.value = 'control';
 		appSettingsStoreMock.isCloudDeployment = true;
@@ -1549,7 +1528,7 @@ describe('InstanceAiEmptyView', () => {
 			TELEMETRY_EVENT.INSTANCE_AI.INSPIRATION_FROM_TAXONOMY_EXPOSED,
 			{
 				variant: 'control',
-				'$feature/129_aia_inspiration_from_taxonomy_v2': 'control',
+				'$feature/142_aia_inspiration_from_taxonomy_v3': 'control',
 			},
 		);
 		expect(usePostHog().setTaxonomyInspirationEligible).toHaveBeenCalledWith(true);
