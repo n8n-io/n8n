@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, onBeforeUnmount, reactive } from 'vue';
-import { N8nAttachment, N8nAttachmentGroup } from '@n8n/design-system';
+import { N8nAttachment, N8nAttachmentGroup, N8nIcon } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
 import { getChatAttachmentUrl } from '../composables/useAgentApi';
@@ -15,10 +16,11 @@ const props = defineProps<{
 }>();
 
 const rootStore = useRootStore();
+const i18n = useI18n();
 /** Use the API URL when no panel provides a URL builder. */
 const attachmentUrlBuilder = inject(AGENT_ATTACHMENT_URL_KEY, null);
 
-/** Disable links to files whose server preview failed. */
+/** Show an unavailable status for files whose server preview failed. */
 const unavailableKeys = reactive(new Set<string>());
 
 /** Reuse each local preview URL until the component unmounts. */
@@ -85,23 +87,74 @@ onBeforeUnmount(() => {
 
 <template>
 	<N8nAttachmentGroup :class="$style.attachments" data-testid="agent-chat-message-attachments">
-		<N8nAttachment
-			v-for="item in items"
-			:key="item.key"
-			:file-name="item.attachment.fileName"
-			:mime-type="item.attachment.mimeType"
-			:size-bytes="item.attachment.sizeBytes"
-			:src="item.imageSrc"
-			:href="unavailableKeys.has(item.key) ? undefined : item.href"
-			:download="!isImage(item.attachment) ? item.attachment.fileName : undefined"
-			:is-removable="false"
-			@error="item.href && unavailableKeys.add(item.key)"
-		/>
+		<template v-for="item in items" :key="item.key">
+			<span
+				v-if="unavailableKeys.has(item.key)"
+				:class="[$style.fileChip, $style.unavailable]"
+				:title="item.attachment.fileName"
+				:aria-label="`${item.attachment.fileName}, ${i18n.baseText('agents.chat.attachments.unavailable')}`"
+				role="img"
+				data-testid="agent-chat-attachment-unavailable"
+			>
+				<N8nIcon icon="triangle-alert" size="small" aria-hidden="true" />
+				<span :class="$style.fileName">{{ item.attachment.fileName }}</span>
+				<span :class="$style.fileSize">
+					{{ i18n.baseText('agents.chat.attachments.unavailable') }}
+				</span>
+			</span>
+			<N8nAttachment
+				v-else
+				:file-name="item.attachment.fileName"
+				:mime-type="item.attachment.mimeType"
+				:size-bytes="item.attachment.sizeBytes"
+				:src="item.imageSrc"
+				:href="item.href"
+				:download="!isImage(item.attachment) ? item.attachment.fileName : undefined"
+				:is-removable="false"
+				@error="item.href && unavailableKeys.add(item.key)"
+			/>
+		</template>
 	</N8nAttachmentGroup>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/_focus.scss' as focus;
+
 .attachments {
 	justify-content: inherit;
+}
+
+.fileChip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	max-width: 240px;
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	background: var(--color--foreground--tint-2);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--shade-1);
+}
+
+.fileName {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.fileSize {
+	color: var(--text-color--subtler);
+	white-space: nowrap;
+}
+
+.unavailable {
+	color: var(--color--text--tint-1);
+	cursor: default;
+
+	&:focus-visible {
+		@include focus.focus-ring-with-border;
+	}
 }
 </style>

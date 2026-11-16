@@ -1,4 +1,3 @@
-/* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern: @vue/test-utils is a transitive devDep */
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import type { ChatMessageAttachment } from '@/features/ai/shared/agentsChat/types';
@@ -72,10 +71,10 @@ describe('AgentChatMessageAttachments', () => {
 
 		await wrapper.find('img').trigger('error');
 
-		expect(wrapper.find('img').exists()).toBe(false);
-		const attachment = wrapper.find('figure.n8n-attachment');
-		expect(attachment.exists()).toBe(true);
-		expect(attachment.text()).toContain('photo.png');
+		const unavailableAttachment = wrapper.find('[data-testid="agent-chat-attachment-unavailable"]');
+		expect(unavailableAttachment.exists()).toBe(true);
+		expect(unavailableAttachment.text()).toContain('photo.png');
+		expect(unavailableAttachment.text()).toContain('agents.chat.attachments.unavailable');
 		expect(wrapper.find('a').exists()).toBe(false);
 	});
 
