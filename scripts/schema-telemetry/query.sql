@@ -1,11 +1,13 @@
 -- Output schemas that n8n Cloud recorded after manual executions, grouped by
 -- node type, version, resource, operation and simplify flag. Returns up to
 -- @samples schemas per group, one per workflow, for groups seen in at least
--- @min_workflows workflows. Filter on _PARTITIONDATE: a filter on `timestamp`
+-- @min_workflows workflows. Samples cover each account once before any
+-- account a second time, so one account cannot fill a small group. Filter on _PARTITIONDATE: a filter on `timestamp`
 -- scans the whole table (about 850 GB).
 WITH nodes AS (
   SELECT
     workflow_id,
+    user_id,
     JSON_VALUE(node, '$.type') AS node_type,
     JSON_VALUE(node, '$.typeVersion') AS node_version,
     JSON_VALUE(node, '$.parameters.resource') AS resource,
@@ -48,11 +50,19 @@ one_per_workflow AS (
       AND COALESCE(operation, '') != '__CUSTOM_API_CALL__'
   )
   WHERE rn = 1
+),
+spread AS (
+  SELECT *, ROW_NUMBER() OVER (
+    PARTITION BY node_type, node_version, resource, operation, simplify_param, simplify, user_id
+    ORDER BY FARM_FINGERPRINT(workflow_id)
+  ) AS user_rank
+  FROM one_per_workflow
 )
 SELECT
   node_type, node_version, resource, operation, simplify_param, simplify,
   COUNT(*) AS workflows,
-  ARRAY_AGG(output_schema ORDER BY FARM_FINGERPRINT(workflow_id) LIMIT @samples) AS samples
-FROM one_per_workflow
+  COUNT(DISTINCT user_id) AS users,
+  ARRAY_AGG(output_schema ORDER BY user_rank, FARM_FINGERPRINT(workflow_id) LIMIT @samples) AS samples
+FROM spread
 GROUP BY node_type, node_version, resource, operation, simplify_param, simplify
 HAVING workflows >= @min_workflows

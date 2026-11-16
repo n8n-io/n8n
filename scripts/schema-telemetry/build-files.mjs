@@ -11,6 +11,11 @@ function compareVersions(a, b) {
 	return 0;
 }
 
+/** Accounts that a row comes from; an export without `users` counts workflows. */
+function accountsOf(row) {
+	return Number(row.users ?? row.workflows);
+}
+
 /** The newest version of each node operation, by `key`. */
 function newestVersions(rows, key) {
 	const newest = new Map();
@@ -24,13 +29,13 @@ function newestVersions(rows, key) {
 
 /**
  * Keeps the newest version of each node operation; version fallback covers
- * older ones. A version with at least `minWorkflows` workflows wins over a
- * newer, smaller one, because its samples filter user-defined keys better.
+ * older ones. A version with at least `minWorkflows` workflows from
+ * `minSamples` accounts wins over a newer, smaller one, because its samples filter user-defined keys better.
  */
-function splitByNewestVersion(rows, minWorkflows) {
+function splitByNewestVersion(rows, { minWorkflows, minSamples }) {
 	const key = (r) => [r.node_type, r.resource, r.operation].join('|');
 	const newestLarge = newestVersions(
-		rows.filter((r) => Number(r.workflows) >= minWorkflows),
+		rows.filter((r) => Number(r.workflows) >= minWorkflows && accountsOf(r) >= minSamples),
 		key,
 	);
 	const newestAny = newestVersions(rows, key);
@@ -63,22 +68,32 @@ function groupRowsByFile(rows, index, defaultOf) {
 			skipped.push({ group: row, reason: plan.skip });
 			continue;
 		}
-		const entry = byFile.get(plan.file) ?? { samples: [], workflows: 0, nodeType: row.node_type };
-		entry.samples.push(...parseSamples(row.samples));
+		const entry = byFile.get(plan.file) ?? {
+			samples: [],
+			workflows: 0,
+			accounts: 0,
+			nodeType: row.node_type,
+		};
+		const accounts = accountsOf(row);
+		// The query orders samples by account rank: the first `users` are one per account.
+		entry.samples.push(...parseSamples(row.samples.slice(0, accounts)));
 		entry.workflows += Number(row.workflows);
+		entry.accounts += accounts;
 		byFile.set(plan.file, entry);
 	}
 	return { byFile, skipped, schemaPaths };
 }
 
 /**
- * A group seen in fewer than `minWorkflows` workflows is too small for the
- * share thresholds to filter user-defined keys. It is kept only when every
- * top-level key of every sample recurs in at least half of the samples.
+ * A group from fewer than `minSamples` accounts is skipped. A group seen in
+ * fewer than `minWorkflows` workflows is too small for the share thresholds
+ * to filter user-defined keys. It is kept only when every top-level key of
+ * every sample recurs in at least half of the samples.
  * Subsampling the large groups shows that this rule accepts about 1% of
  * user-shaped groups at 5 samples, and none at 12.
  */
-function smallGroupSkip(samples, workflows, { minWorkflows, minSamples }) {
+function smallGroupSkip(samples, { workflows, accounts }, { minWorkflows, minSamples }) {
+	if (accounts < minSamples) return 'too few accounts';
 	if (workflows >= minWorkflows) return undefined;
 	if (samples.length < minSamples) return 'small group: too few samples';
 	if (stableKeyShare(samples, { recurringShare: 0.5 }) < 1) return 'small group: samples disagree';
@@ -86,9 +101,9 @@ function smallGroupSkip(samples, workflows, { minWorkflows, minSamples }) {
 }
 
 /** Merges the samples of one file, or says why the file is skipped. */
-function mergeFile({ samples, workflows }, { minShare, minWorkflows, minSamples }) {
+function mergeFile({ samples, workflows, accounts }, { minShare, minWorkflows, minSamples }) {
 	const objects = samples.filter((sample) => sample.type === 'object');
-	const skip = smallGroupSkip(objects, workflows, { minWorkflows, minSamples });
+	const skip = smallGroupSkip(objects, { workflows, accounts }, { minWorkflows, minSamples });
 	if (skip) return { skip };
 	const schema = mergeSamples(objects, { minShare });
 	if (!schema.properties) return { skip: 'user-shaped output with no stable keys' };
@@ -110,7 +125,7 @@ export function buildFiles(
 	index,
 	{ exists, defaultOf, minShare, minWorkflows = 20, minSamples = 5 },
 ) {
-	const { keep, older } = splitByNewestVersion(rows, minWorkflows);
+	const { keep, older } = splitByNewestVersion(rows, { minWorkflows, minSamples });
 	const { byFile, skipped, schemaPaths } = groupRowsByFile(keep, index, defaultOf);
 	skipped.push(
 		...older.map((group) => ({ group, reason: 'not the chosen version of the operation' })),

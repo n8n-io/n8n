@@ -246,3 +246,57 @@ describe('buildFiles small groups and versions', () => {
 		);
 	});
 });
+
+describe('buildFiles accounts', () => {
+	const copies = (n, keys) => Array.from({ length: n }, () => schema(keys));
+
+	it('uses one sample per account, so one account cannot add its own keys', () => {
+		const samples = [...copies(5, ['id']), ...copies(3, ['id', 'Dateiname'])];
+		const { files } = buildFiles([row({ workflows: '8', users: '5', samples })], index, {
+			exists: noFiles,
+			defaultOf,
+		});
+
+		assert.deepEqual(files[0].schema, { type: 'object', properties: { id: { type: 'string' } } });
+	});
+
+	it('skips a group of 20 or more workflows from fewer than 5 accounts', () => {
+		const result = buildFiles(
+			[row({ workflows: '30', users: '3', samples: copies(20, ['id']) })],
+			index,
+			{ exists: noFiles, defaultOf },
+		);
+
+		assert.deepEqual(result.files, []);
+		assert.match(result.skipped[0].reason, /too few accounts/);
+	});
+
+	it('keeps the rules for 20 or more workflows when they come from fewer than 20 accounts', () => {
+		const samples = [...copies(4, ['id']), schema(['id', 'labels']), ...copies(5, ['id'])];
+		const { files } = buildFiles([row({ workflows: '30', users: '6', samples })], index, {
+			exists: noFiles,
+			defaultOf,
+		});
+
+		assert.deepEqual(Object.keys(files[0].schema.properties), ['id']);
+	});
+});
+
+describe('buildFiles accounts and versions', () => {
+	it('does not prefer an older version whose workflows come from fewer than 20 accounts', () => {
+		const five = Array.from({ length: 5 }, () => schema(['id']));
+		const { files } = buildFiles(
+			[
+				row({ node_version: '2.1', workflows: '30', users: '3', samples: five }),
+				row({ node_version: '2.2', workflows: '5', users: '5', samples: five }),
+			],
+			index,
+			{ exists: noFiles, defaultOf },
+		);
+
+		assert.deepEqual(
+			files.map((f) => f.file),
+			['nodes/Google/Gmail/__schema__/v2.2.0/message/get.json'],
+		);
+	});
+});
