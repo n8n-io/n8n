@@ -6,6 +6,7 @@ import type { Request, Response } from 'express';
 import type {
 	ExecutionStatus,
 	IExecuteResponsePromiseData,
+	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	IWorkflowSettings,
 	WorkflowExecuteMode,
@@ -39,6 +40,19 @@ export interface CompiledEngineProvider {
 
 	/** Stops the triggers of a workflow in `wfrt`. */
 	deactivate(workflowId: string): Promise<void>;
+
+	/**
+	 * The ids of the trigger and poll nodes that n8n runs for a compiled workflow: every
+	 * one except the trigger that `wfrt` runs itself (a Webhook or a schedule). When such a
+	 * node fires, n8n starts the run in `wfrt` with the items of the node.
+	 */
+	n8nTriggerNodeIds(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>): Set<string>;
+
+	/**
+	 * True when `wfrt` serves the webhook of this node itself (a Webhook node). The webhook
+	 * of another node (a trigger of an app) runs the node in n8n, which then starts the run.
+	 */
+	servesWebhook(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>, nodeName: string): boolean;
 
 	/** Sends a production webhook request to `wfrt` and writes its response. */
 	forwardWebhook(input: {

@@ -246,12 +246,12 @@ export function planTrigger(
 		diag({
 			severity: 'warning',
 			code: 'unsupported-trigger',
-			message: `${why} The converter puts a webhook in its place; the request body is the trigger item.`,
+			message: `${why} The converter puts a webhook in its place; the request body is the trigger item, or the list of trigger items.`,
 		});
 		return {
 			imports: ['webhook'],
 			triggers: [`webhook<Json>({ path: ${str(slug(workflowName))}, method: 'POST' })`],
-			items: '[trigger.body ?? {}]',
+			items: '(Array.isArray(trigger.body) ? trigger.body : [trigger.body ?? {}])',
 			native: false,
 		};
 	};

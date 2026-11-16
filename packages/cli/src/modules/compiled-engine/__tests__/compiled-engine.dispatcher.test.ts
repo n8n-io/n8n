@@ -20,6 +20,7 @@ import {
 	CompiledEngineDispatcher,
 	effectSeqOf,
 	findTriggerNode,
+	isRuntimeTrigger,
 	toResumeValue,
 } from '../compiled-engine.dispatcher';
 import type { CompiledArtifact, WfrtEvent } from '../compiled-engine.types';
@@ -698,6 +699,58 @@ describe('CompiledEngineDispatcher', () => {
 		const run = dispatcher.calls.at(-1)?.args[0] as IRun;
 		expect(run.status).toBe('error');
 		expect(run.data.resultData.error?.message).toBe('wfrt is down');
+	});
+});
+
+describe('a run that a trigger of n8n starts', () => {
+	it('starts at the trigger that fired, with all its items', async () => {
+		const { dispatcher, client, sync } = setup();
+		const gmail: INode = {
+			id: 'g1',
+			name: 'Gmail Trigger',
+			type: 'n8n-nodes-base.gmailTrigger',
+			typeVersion: 1,
+			position: [0, 200],
+			parameters: {},
+		};
+		const triggered = { ...workflowData, nodes: [...workflowData.nodes, gmail] };
+		await dispatcher.runManual({
+			executionMode: 'trigger',
+			workflowData: triggered,
+			executionData: createRunExecutionData({
+				executionData: {
+					nodeExecutionStack: [
+						{
+							node: gmail,
+							data: { main: [[{ json: { id: 'm1' } }, { json: { id: 'm2' } }]] },
+							source: null,
+						},
+					],
+				},
+			}),
+		});
+		await dispatcher.drain();
+
+		expect(sync.prepareManualRun).toHaveBeenCalledWith(triggered, 'Gmail Trigger');
+		expect(client.startExecution).toHaveBeenCalledWith(
+			expect.objectContaining({
+				trigger: expect.objectContaining({ body: [{ id: 'm1' }, { id: 'm2' }] }),
+			}),
+		);
+	});
+
+	it('tells the triggers that wfrt runs from the triggers that n8n runs', () => {
+		expect(isRuntimeTrigger(findTriggerNode(workflowData))).toBe(true);
+		expect(
+			isRuntimeTrigger({
+				id: 'g1',
+				name: 'Gmail Trigger',
+				type: 'n8n-nodes-base.gmailTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			}),
+		).toBe(false);
 	});
 });
 

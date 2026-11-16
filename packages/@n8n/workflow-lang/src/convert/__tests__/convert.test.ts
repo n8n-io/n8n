@@ -267,7 +267,9 @@ describe('convertWorkflow', () => {
 			),
 		);
 		expect(r.ok).toBe(true);
-		expect(r.source).toContain('const start: Json[] = [trigger.body ?? {}];');
+		expect(r.source).toContain(
+			'const start: Json[] = (Array.isArray(trigger.body) ? trigger.body : [trigger.body ?? {}]);',
+		);
 		expect(r.diagnostics.map((d) => d.code).sort()).toEqual([
 			'pinned-data',
 			'unreachable',

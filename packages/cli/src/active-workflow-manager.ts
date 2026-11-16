@@ -703,6 +703,19 @@ export class ActiveWorkflowManager {
 						additionalData,
 						resolveWorkflowData,
 					});
+				} else if (runsOnCompiledEngine && this.shouldAddNonWebhookTriggers()) {
+					// `wfrt` runs a Webhook or a schedule itself. n8n runs every other trigger and
+					// poller of a compiled workflow; a run that one starts goes to `wfrt`.
+					const nodeIds = compiledEngine.get().n8nTriggerNodeIds(dbWorkflow);
+					if (nodeIds.size > 0) {
+						await this.addNonWebhookTriggers(dbWorkflow, workflow, {
+							activationMode,
+							executionMode: 'trigger',
+							additionalData,
+							resolveWorkflowData,
+							nodeIds,
+						});
+					}
 				}
 
 				triggerCount = this.countTriggers(workflow, additionalData);

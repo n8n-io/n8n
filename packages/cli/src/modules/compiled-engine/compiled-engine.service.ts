@@ -7,7 +7,11 @@ import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Request, Response } from 'express';
-import type { IExecuteResponsePromiseData, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import type {
+	IExecuteResponsePromiseData,
+	IWorkflowBase,
+	IWorkflowExecutionDataProcess,
+} from 'n8n-workflow';
 
 import type { CompiledEngineProvider } from '@/services/compiled-engine-bridge.service';
 import { CompiledEngineBridge } from '@/services/compiled-engine-bridge.service';
@@ -15,7 +19,11 @@ import { CompiledEngineBridge } from '@/services/compiled-engine-bridge.service'
 import { CompiledEngineProcesses } from './compiled-engine-processes';
 import { CompiledEngineSync } from './compiled-engine-sync.service';
 import { CompiledEngineConfig } from './compiled-engine.config';
-import { CompiledEngineDispatcher } from './compiled-engine.dispatcher';
+import {
+	CompiledEngineDispatcher,
+	findTriggerNode,
+	isRuntimeTrigger,
+} from './compiled-engine.dispatcher';
 import type { WfrtAck, WfrtEvent, WfrtEventCursor } from './compiled-engine.types';
 import { isSequencedEvent } from './compiled-engine.types';
 import { CompiledExecutionStore } from './compiled-execution.store';
@@ -337,6 +345,19 @@ export class CompiledEngineService implements CompiledEngineProvider {
 
 	async stop(executionId: string) {
 		return await this.dispatcher.stop(executionId);
+	}
+
+	n8nTriggerNodeIds(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>): Set<string> {
+		const kept = findTriggerNode(workflow);
+		const runtime = isRuntimeTrigger(kept) ? kept?.id : undefined;
+		return new Set(
+			workflow.nodes.filter((node) => !node.disabled && node.id !== runtime).map((node) => node.id),
+		);
+	}
+
+	servesWebhook(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>, nodeName: string): boolean {
+		const kept = findTriggerNode(workflow);
+		return kept?.name === nodeName && kept.type === 'n8n-nodes-base.webhook';
 	}
 
 	async forwardWebhook({

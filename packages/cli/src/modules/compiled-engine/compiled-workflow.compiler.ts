@@ -32,6 +32,8 @@ export interface CompileInput {
 	nodes: INode[];
 	connections: IConnections;
 	settings?: IWorkflowSettings | null;
+	/** The trigger node to start from, by name. The default is the converter's choice. */
+	trigger?: string;
 }
 
 interface StepInfo {
@@ -228,6 +230,7 @@ export class CompiledWorkflowCompiler {
 			.update(JSON.stringify(workflowJson))
 			.update(JSON.stringify([...subWorkflows.entries()]))
 			.update(getGlobalState().defaultTimezone)
+			.update(input.trigger ?? '')
 			// A module holds the public fields of its credentials: other fields give another module.
 			.update(JSON.stringify([this.compileNodes, ...publicCredentials.entries()]))
 			.digest('hex');
@@ -273,6 +276,7 @@ export class CompiledWorkflowCompiler {
 			instance?: { baseUrl: string; id: string };
 		} = {
 			name: input.name,
+			...(input.trigger === undefined ? {} : { trigger: input.trigger }),
 			resolveWorkflow: (id: string) => subWorkflows.get(id),
 			timezone: getGlobalState().defaultTimezone,
 			instance: {

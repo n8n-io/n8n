@@ -31,6 +31,20 @@ flowchart LR
   the fallback host the credential of each step. Unpublish and delete unload
   it. A changed credential reloads the workflows that use it. Credentials are
   decrypted in memory and never written to disk.
+- **Triggers.** n8n core owns the triggers, not the engine: `ActiveWorkflowManager`
+  starts the `trigger` and `poll` functions of trigger nodes, and the webhook routes run
+  the `webhook` function of a trigger node of an app. The engine only gets a start node
+  and its items. So for a compiled workflow:
+  - `wfrt` runs one Webhook node or one schedule trigger itself (the trigger that the
+    converter keeps);
+  - n8n runs every other trigger and poller, as for v1 (`n8nTriggerNodeIds`). When one
+    fires, `WorkflowRunner` gives the run to the dispatcher, which compiles the workflow
+    with that trigger as the start and starts it in `wfrt` with the items of the trigger
+    as the body of the stand-in webhook;
+  - a request to the webhook of a trigger of an app runs the node in n8n
+    (`servesWebhook` is false), which then starts the run in the same way.
+  Such a run uses the path of a manual run: n8n makes the execution row, and the run has
+  `trace: true`. Binary data of trigger items is not passed yet.
 - **Manual runs.** `WorkflowRunner` sends the run to the dispatcher. It
   creates the execution row, loads the draft module as `<id>~manual` (no
   triggers), and starts the execution with `trace: true`. Events become the

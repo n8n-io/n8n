@@ -116,8 +116,8 @@ export class CompiledEngineSync {
 	}
 
 	/** Compiles the given workflow and loads it, with no triggers, for one manual run. */
-	async prepareManualRun(workflowData: IWorkflowBase): Promise<LoadedWorkflow> {
-		const artifact = await this.compile(workflowData);
+	async prepareManualRun(workflowData: IWorkflowBase, trigger?: string): Promise<LoadedWorkflow> {
+		const artifact = await this.compile(workflowData, trigger);
 		if (!artifact.ok) {
 			throw new UserError(
 				`The workflow cannot run on the compiled engine. ${describeErrors(artifact)}`,
@@ -136,8 +136,9 @@ export class CompiledEngineSync {
 		return entry;
 	}
 
-	async compile(workflowData: IWorkflowBase) {
+	async compile(workflowData: IWorkflowBase, trigger?: string) {
 		return await this.compiler.compile({
+			...(trigger === undefined ? {} : { trigger }),
 			id: workflowData.id,
 			name: workflowData.name,
 			versionId: workflowData.versionId ?? '',

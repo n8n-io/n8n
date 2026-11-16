@@ -92,6 +92,22 @@ const TRIGGER_RANK: Record<string, number> = {
 	'n8n-nodes-base.scheduleTrigger': 1,
 };
 
+/** The trigger types that `wfrt` runs itself. n8n runs every other trigger and poller. */
+const RUNTIME_TRIGGER_TYPES = new Set([
+	'n8n-nodes-base.webhook',
+	'n8n-nodes-base.scheduleTrigger',
+	'n8n-nodes-base.cron',
+	'n8n-nodes-base.interval',
+]);
+
+export function isRuntimeTrigger(node: INode | undefined): boolean {
+	return node !== undefined && RUNTIME_TRIGGER_TYPES.has(node.type);
+}
+
+function isTriggerType(type: string): boolean {
+	return /trigger$/i.test(type) || RUNTIME_TRIGGER_TYPES.has(type);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -199,8 +215,14 @@ export class CompiledEngineDispatcher {
 			);
 		}
 
-		const loaded = await this.sync.prepareManualRun(workflowData);
 		const triggerNode = this.manualTriggerNode(data);
+		// A run that a trigger of n8n started (a poller, a trigger of an app) begins at that
+		// trigger: the module is compiled with it as the start.
+		const startedBy =
+			triggerNode && isTriggerType(triggerNode.type) && !isRuntimeTrigger(triggerNode)
+				? triggerNode.name
+				: undefined;
+		const loaded = await this.sync.prepareManualRun(workflowData, startedBy);
 		const trigger = this.manualTriggerValue(data, loaded.artifact, triggerNode);
 
 		const executionId = await this.activeExecutions.add(data);
@@ -249,7 +271,20 @@ export class CompiledEngineDispatcher {
 	): unknown {
 		const kind = isRecord(artifact.triggers[0]) ? artifact.triggers[0].kind : undefined;
 		if (kind === 'schedule') return { scheduledAt: Date.now() };
-		const fromStack = data.executionData?.executionData?.nodeExecutionStack[0]?.data.main[0]?.[0];
+		const stackItems = data.executionData?.executionData?.nodeExecutionStack[0]?.data.main[0];
+		// A trigger that n8n runs has a stand-in webhook in the module: the request body is the
+		// list of the items that the trigger gave.
+		if (triggerNode && !isRuntimeTrigger(triggerNode) && stackItems && stackItems.length > 0) {
+			return {
+				method: 'POST',
+				path: '',
+				headers: {},
+				params: {},
+				query: {},
+				body: stackItems.map((item) => item.json),
+			};
+		}
+		const fromStack = stackItems?.[0];
 		const fromStart = data.triggerToStartFrom?.data?.data?.main[0]?.[0];
 		const pinned = triggerNode ? data.pinData?.[triggerNode.name]?.[0] : undefined;
 		const json = (fromStack ?? fromStart ?? pinned)?.json;
