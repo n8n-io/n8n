@@ -1,0 +1,16 @@
+packages/quality/environments/containers/services/task-runner.ts
+  h_8fb27e0cdf6d1e 19-22,28-29
+packages/quality/environments/containers/tests/task-runner.test.ts
+  h_8fb27e0cdf6d1e 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3cd5b32bf2ffb79d60b690f782fa9596b17f1074",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

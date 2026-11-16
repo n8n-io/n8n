@@ -1,0 +1,19 @@
+packages/cli/src/server.ts
+  s_cd6bf4fe71a5af::t_5fc435183d22bd 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4d8631011942b8a13d0ba0edcc63347bd6218011",
+  "prompts": {},
+  "sessions": {
+    "s_cd6bf4fe71a5af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c702170f-fcca-4850-ad70-b348fdc80b85",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

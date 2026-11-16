@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_62ee85ce3f6f91::t_5081bd1cb4a2f8 1023
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantRuntime.ts
+  s_62ee85ce3f6f91::t_1e603293269c87 1,3-8,10
+  s_62ee85ce3f6f91::t_9f5b4f2407700e 2,9
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/GatewayResourceDecision.vue
+  s_62ee85ce3f6f91::t_1e603293269c87 10,47,91
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_62ee85ce3f6f91::t_4d448057b9bc19 17,578-602
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/GatewayResourceDecision.test.ts
+  s_62ee85ce3f6f91::t_4d448057b9bc19 6,42,46-57
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_62ee85ce3f6f91::t_1e603293269c87 32,63,536
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupActions.test.ts
+  s_62ee85ce3f6f91::t_187cc5d63cf9dc 1-2,10,174-193
+  s_62ee85ce3f6f91::t_4d448057b9bc19 159
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/composables/useWorkflowSetupTelemetry.ts
+  s_62ee85ce3f6f91::t_0a0f77faade3df 39-45
+  s_62ee85ce3f6f91::t_5081bd1cb4a2f8 4,7,29,68,82
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_62ee85ce3f6f91::t_1e603293269c87 97,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f774aee4eac0c31c5a3117394bfdaeddb60012d2",
+  "prompts": {},
+  "sessions": {
+    "s_62ee85ce3f6f91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24bcf20b-3f2d-482b-86d6-c5e066cd57df",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

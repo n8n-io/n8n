@@ -1,0 +1,39 @@
+packages/nodes-base/nodes/ReadPdf/test/ReadPDF.workflow.json
+  s_439f58ceef210d::t_914df1c59796de 57
+packages/nodes-base/nodes/ReadPdf/test/ReadPDF-encrypted.workflow.json
+  s_439f58ceef210d::t_914df1c59796de 60
+jest.config.js
+  s_439f58ceef210d::t_988dacb43c871f 41
+packages/nodes-base/package.json
+  s_439f58ceef210d::t_1da16ee2367da3 939
+packages/nodes-base/utils/binary.ts
+  s_439f58ceef210d::t_0305b44de9b1cc 175,178-181
+packages/nodes-base/utils/__tests__/binary.test.ts
+  s_439f58ceef210d::t_f7f2978759b829 2-7
+  s_439f58ceef210d::t_d8addc66b45b4a 8,11,20-22
+  s_439f58ceef210d::t_2fe6cc14e6736d 104-133
+  s_439f58ceef210d::t_ecfae1cfe8ccdb 23-24
+pnpm-lock.yaml
+  s_439f58ceef210d::t_3f26fcdf3c3b65 3187-3188,6506-6507,6512-6513,6518-6519,6524-6525,6530-6531,6537-6538,6544-6545,6551-6552,6558-6559,6565-6572,6577-6578,15129-15131,22859-22862,22865,22868,22871,22874,22877,22880,22883,22886,22889,22892,22894-22904,33578,33580
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67e719e4292f9f824917d063342ce47b9579fa3a",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_439f58ceef210d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff603004-b890-4d87-aac4-a51b54bb885b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

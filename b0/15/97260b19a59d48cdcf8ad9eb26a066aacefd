@@ -1,0 +1,60 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/WouldHaveHappenedPreview.test.ts
+  s_9af1b09aa006a5::t_53f8bb2a6a01f1 1-74,77,79-395
+  s_9af1b09aa006a5::t_8f568ce2afca09 75-76,78
+  s_9af1b09aa006a5::t_724e7dd548aed3 396-485
+packages/frontend/editor-ui/src/features/agents/__tests__/wouldHaveHappened.utils.test.ts
+  s_9af1b09aa006a5::t_e7fabbb3ce8f68 1-66
+  s_9af1b09aa006a5::t_9d1a9907144385 67-91
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedField.vue
+  s_9af1b09aa006a5::t_23cb6db8a71496 1-40
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedSummary.vue
+  s_9af1b09aa006a5::t_3cfc98487c67d7 1-40
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedTableRow.vue
+  s_9af1b09aa006a5::t_afd4fc0da34dec 1-65
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedChatMessage.vue
+  s_9af1b09aa006a5::t_8e0e04cc00686e 1-56
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedEmail.vue
+  s_9af1b09aa006a5::t_05065c01b3d88e 1-69
+  s_9af1b09aa006a5::t_b0c09de80b5095 70-75
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedIssue.vue
+  s_9af1b09aa006a5::t_5fec5cabe0af83 1-67
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedCalendarEvent.vue
+  s_9af1b09aa006a5::t_d385dcba098bcd 1-84
+  s_9af1b09aa006a5::t_e6f4f98c496e6e 85-87
+packages/frontend/editor-ui/src/features/agents/components/testRun/wouldHaveHappened.types.ts
+  s_9af1b09aa006a5::t_d0a42e0a36a166 1-89
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedList.vue
+  s_9af1b09aa006a5::t_7ce5dd3c959503 1-65
+  s_9af1b09aa006a5::t_7b6ccf84e7d352 66-67
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedPreview.vue
+  s_9af1b09aa006a5::t_130b116b12c0ea 1-23
+  s_9af1b09aa006a5::t_672a08fd4da4f6 24-39
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedText.vue
+  s_9af1b09aa006a5::t_f0bfb091414b7e 1-80
+  s_9af1b09aa006a5::t_f3be945e9b3d00 81-93
+packages/frontend/editor-ui/src/features/agents/components/testRun/wouldHaveHappened.utils.ts
+  s_9af1b09aa006a5::t_a8bc876e45a91d 1-88
+  s_9af1b09aa006a5::t_e3868508c9ed2e 89-136
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedGeneric.vue
+  s_9af1b09aa006a5::t_10801faafd42e7 1-53
+packages/frontend/editor-ui/src/features/agents/components/testRun/WouldHaveHappenedCard.vue
+  s_9af1b09aa006a5::t_617faaf2f598d1 1-154
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_9af1b09aa006a5::t_13ad3da250e6e8 9265-9292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b01597260b19a59d48cdcf8ad9eb26a066aacefd",
+  "prompts": {},
+  "sessions": {
+    "s_9af1b09aa006a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1eb6b7e9-1b4b-40b6-a96a-2131e0d0c9cf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_5f5efe371ad2e2::t_4d97300b5245b5 1460,1473,1490,2157,2183
+packages/@n8n/telemetry/src/events/credentials.ts
+  s_5f5efe371ad2e2::t_4d97300b5245b5 47-52
+packages/cli/src/events/__tests__/activity-event-relay.test.ts
+  s_5f5efe371ad2e2::t_4d97300b5245b5 477
+packages/cli/src/events/maps/relay.event-map.ts
+  s_5f5efe371ad2e2::t_4d97300b5245b5 58,152,210,216,222,228,239,247,354,364,418,424,429,434,439,444,449,454,459,490,499,504,510,537,550,602,619,852,872,881
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_5f5efe371ad2e2::t_4d97300b5245b5 807-808,841,856-863
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_5f5efe371ad2e2::t_4d97300b5245b5 63,215-224,550,590,608,1125,1134,1144,1237,1549,1565,1577,1585,1656,1675,1881,2523,2530,2537,2544,2554,2561,2571,2581,2615,2640,2702,2714
+packages/@n8n/telemetry/src/events/workflow.ts
+  s_5f5efe371ad2e2::t_4d97300b5245b5 109-114
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_5f5efe371ad2e2::t_4d97300b5245b5 595,600,610,666,674,687,713,720,732,2029,2037,2050,2059,2222-2234,2236,2263,2872,2886,3046,3057
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c1173da232c356c6b943c962c61964bb800419d1",
+  "prompts": {},
+  "sessions": {
+    "s_5f5efe371ad2e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea9eb03b-1625-4e8a-aa9d-f5838b441133",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

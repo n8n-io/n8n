@@ -1,0 +1,49 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderBrowser.test.ts
+  s_b86bd8b73ec329::t_94256a843ea1cc 54,103
+  s_b86bd8b73ec329::t_6c864afc02202e 124,130
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  ai_agent 265-271
+  s_b86bd8b73ec329::t_74a5fa34189cf3 376-381
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b86bd8b73ec329::t_df89f74b26e0ae 1007
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderBrowser.vue
+  s_b86bd8b73ec329::t_74a5fa34189cf3 221-223,261-262,266,306,308,312,319
+  s_b86bd8b73ec329::t_94256a843ea1cc 263
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.test.ts
+  s_b86bd8b73ec329::t_df89f74b26e0ae 180-214
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  s_b86bd8b73ec329::t_74a5fa34189cf3 110,668,692,699
+  s_b86bd8b73ec329::t_5db4c5dd860139 786-789
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderToolbar.vue
+  s_b86bd8b73ec329::t_74a5fa34189cf3 1,3-20,22-24,28-31,37-40,54-59,61,65-66
+  ai_agent 32-34,36
+  s_b86bd8b73ec329::t_91d0414c35013b 51
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_59270bcc1c75b9::t_1f3b6a55c4d3dd 255-256
+  s_b86bd8b73ec329::t_a020e2c18f382e 38,401-406,408-410,412-415,427-429,436,440-443
+  s_b86bd8b73ec329::t_5db4c5dd860139 103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e85ec7f88a744977bf8638812db4f13a3e382773",
+  "prompts": {},
+  "sessions": {
+    "s_59270bcc1c75b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6f0208db-1247-4519-b410-1b1bf7dfc1ff",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-credential-conflict.integration.test.ts
+  s_4d6c6789dcfbdf::t_5eacd9b0ae3276 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae7919b2f85f4e42b4e6e5ae2a3688af86aed364",
+  "prompts": {},
+  "sessions": {
+    "s_4d6c6789dcfbdf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d4b1-34f2-76d0-8d2d-84fae9d683ef",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,83 @@
+packages/cli/src/services/folder.service.ts
+  s_b86bd8b73ec329::t_d0d78974add429 333
+  s_b86bd8b73ec329::t_b7ea1e9d18aee1 329-332,334
+packages/@n8n/db/src/repositories/folder.repository.ts
+  s_b86bd8b73ec329::t_b7ea1e9d18aee1 48-60
+packages/cli/src/modules/agents/__tests__/agent-folder.service.test.ts
+  s_b86bd8b73ec329::t_4c3ad1eb8ab35e 1-60
+docs/generated/sqlite-schema/agents.md
+  ai_agent 9
+docs/generated/sqlite-schema/README.md
+  ai_agent 41
+docs/generated/postgres-schema/public.folder.md
+  ai_agent 63
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderDialog.vue
+  s_b86bd8b73ec329::t_bf23a10b659f51 99,215,301-302,305-311,334,341-342
+packages/cli/test/integration/agents/agent-folders.test.ts
+  s_b86bd8b73ec329::t_1a99f679721f07 7-8,15-17,29-30,39,177,185-186,190,193-244,246-253,263-292,298-347,352-360,362-369,371-375,377-392
+  s_b86bd8b73ec329::t_f6d6a25f3e6b8e 254-262
+  s_b86bd8b73ec329::t_e33156ee1ff6a4 245
+  s_b86bd8b73ec329::t_7cedf8dc09feac 45
+  s_b86bd8b73ec329::t_7c41c23f0dcb7f 293-297
+  s_b86bd8b73ec329::t_103d92f9101185 9
+  s_b86bd8b73ec329::t_d0d78974add429 395-433
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_b86bd8b73ec329::t_f6d6a25f3e6b8e 309-335,355-356,363-364
+  s_b86bd8b73ec329::t_1dd4b782c2a634 187-193,336-354,357-362
+  s_b86bd8b73ec329::t_3246aab3c6d6c4 730-731,774-776,781-784
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_b86bd8b73ec329::t_3246aab3c6d6c4 48
+  s_b86bd8b73ec329::t_4c3ad1eb8ab35e 42-47,49
+packages/cli/src/modules/agents/__tests__/agent.repository.test.ts
+  s_b86bd8b73ec329::t_d89e47d87a2a43 453,474
+packages/cli/src/services/__tests__/agent-folder-operations.test.ts
+  s_b86bd8b73ec329::t_4c3ad1eb8ab35e 66,70-71,74,78-79,81-82,86,94-95,98-99,101,103
+  s_b86bd8b73ec329::t_d0d78974add429 67,80,96-97,100,102
+docs/generated/postgres-schema/public.agents_tags.md
+  ai_agent 47
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderDialog.test.ts
+  s_b86bd8b73ec329::t_4c3ad1eb8ab35e 230,234-237,251-278
+docs/generated/postgres-schema/README.md
+  ai_agent 41
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_b86bd8b73ec329::t_527b91e1b78c14 5,104,236-255,263,361,547-556
+  s_b86bd8b73ec329::t_d89e47d87a2a43 164
+  s_b86bd8b73ec329::t_3246aab3c6d6c4 231-235
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_b86bd8b73ec329::t_f6d6a25f3e6b8e 656
+  s_b86bd8b73ec329::t_d0d78974add429 681-694
+  s_b86bd8b73ec329::t_b7ea1e9d18aee1 615-618,620,624
+packages/cli/src/modules/n8n-packages/__tests__/export-agent-selection.integration.test.ts
+  s_b86bd8b73ec329::t_7c41c23f0dcb7f 478-517
+docs/generated/sqlite-schema/agents_tags.md
+  ai_agent 58
+packages/cli/src/services/folder-content.service.ts
+  s_b86bd8b73ec329::t_d0d78974add429 20
+  s_b86bd8b73ec329::t_b7ea1e9d18aee1 19
+packages/cli/src/modules/agents/agent-folder.service.ts
+  s_b86bd8b73ec329::t_b7ea1e9d18aee1 7,14,45,50-54
+  s_b86bd8b73ec329::t_d0d78974add429 57-64
+packages/cli/src/modules/n8n-packages/entities/agent/agent-selection.exporter.ts
+  s_b86bd8b73ec329::t_b7ea1e9d18aee1 172-174
+docs/generated/sqlite-schema/folder.md
+  ai_agent 69
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b86bd8b73ec329::t_bf23a10b659f51 1008-1009
+  s_b86bd8b73ec329::t_527b91e1b78c14 9495
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f463b02785e5feac23b3573ce28fbfdb87f9459c",
+  "prompts": {},
+  "sessions": {
+    "s_b86bd8b73ec329": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5ff-a9a5-7263-8c36-bf54b75e063d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/@n8n/backend-services/src/code-execution/code-execution-backend.ts
+  h_8fb27e0cdf6d1e 1-52
+packages/@n8n/backend-services/src/index.ts
+  h_8fb27e0cdf6d1e 24-28
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  h_8fb27e0cdf6d1e 2-7,20-22,37,2203-2271
+packages/cli/src/modules/engine-v2/__tests__/engine-additional-data.test.ts
+  h_8fb27e0cdf6d1e 2,41,58,144-146,149,152-153,180-183,185,189-194,196-197
+packages/cli/src/modules/engine-v2/engine-additional-data.ts
+  h_8fb27e0cdf6d1e 2,92,134-171
+packages/cli/src/task-runners/__tests__/task-runner-code-execution-backend.test.ts
+  h_8fb27e0cdf6d1e 1-82
+packages/cli/src/task-runners/task-runner-code-execution-backend.ts
+  h_8fb27e0cdf6d1e 1-42
+packages/cli/src/task-runners/task-runner-module.ts
+  h_8fb27e0cdf6d1e 2,101-105
+packages/cli/src/workflow-execute-additional-data.ts
+  h_8fb27e0cdf6d1e 7,1031,1048,1056
+packages/cli/test/integration/task-runners/task-runner-module.internal.test.ts
+  h_8fb27e0cdf6d1e 1,7,44-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "afc93f08f2bc318c739a88622c2d6eac77abb1f9",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

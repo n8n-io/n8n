@@ -1,0 +1,22 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  h_8a472ace01776f 8308,9734-9735
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalTryRow.test.ts
+  h_8a472ace01776f 3,304-342
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalCaseRow.vue
+  h_8a472ace01776f 7,11-12,41
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalExpectations.vue
+  h_8a472ace01776f 1-60
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalTryRow.vue
+  h_8a472ace01776f 28,53,233-239,285,287-292,294,297-298,305-326,505,512-517,521-522
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "16ae0e404af05c840844829bc902f0ea13e6debb",
+  "prompts": {},
+  "humans": {
+    "h_8a472ace01776f": {
+      "author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

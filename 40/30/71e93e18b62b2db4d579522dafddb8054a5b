@@ -1,0 +1,50 @@
+.agents/specs/rig.md
+  h_8fb27e0cdf6d1e 38,128,157-160,163-164,246-248,264,596-621,632-633,770-798,944-945,1056-1073,1150-1154
+packages/quality/environments/rig/README.md
+  h_8fb27e0cdf6d1e 12,16-48,227,283-285
+packages/quality/environments/rig/src/cli.ts
+  h_8fb27e0cdf6d1e 9,51
+packages/quality/environments/rig/src/commands/doctor.ts
+  h_8fb27e0cdf6d1e 8,19-20,22-30,116-194,321,399-422,478
+packages/quality/environments/rig/src/commands/env.ts
+  h_8fb27e0cdf6d1e 9,107-110,115
+packages/quality/environments/rig/src/commands/lifecycle.ts
+  h_8fb27e0cdf6d1e 9,31-32,36,256-259,382-395
+packages/quality/environments/rig/src/commands/running.ts
+  h_8fb27e0cdf6d1e 16-17,263,381,393
+packages/quality/environments/rig/src/commands/tools.ts
+  h_8fb27e0cdf6d1e 2,19,169,216-226
+packages/quality/environments/rig/src/config/global-config.ts
+  h_8fb27e0cdf6d1e 11-13,30-40,47-54,100-105,121-132,141-146
+packages/quality/environments/rig/src/integrations/browser.ts
+  h_8fb27e0cdf6d1e 1-149
+packages/quality/environments/rig/src/integrations/editor.ts
+  h_8fb27e0cdf6d1e 1-160
+packages/quality/environments/rig/src/runtime/session.ts
+  h_8fb27e0cdf6d1e 11-12,335,344-365
+packages/quality/environments/rig/src/services/compose.ts
+  h_8fb27e0cdf6d1e 3,6,18-24,59,84,103,115,118,140-141,144-145,147,150-151,160,162-164,166,171-259,271-272,274-275,278-279,284-293,301-302,306,311-316,320-324
+packages/quality/environments/rig/src/services/runtime.ts
+  h_8fb27e0cdf6d1e 1-138
+packages/quality/environments/rig/src/services/tunnel.ts
+  h_8fb27e0cdf6d1e 79-83,110
+packages/quality/environments/rig/src/ui/output.ts
+  h_8fb27e0cdf6d1e 47-65,107,111
+packages/quality/environments/rig/test/integrations.test.ts
+  h_8fb27e0cdf6d1e 1-126
+packages/quality/environments/rig/test/runtime.test.ts
+  h_8fb27e0cdf6d1e 1-107
+packages/quality/environments/rig/test/source.test.ts
+  h_8fb27e0cdf6d1e 73,82-84,88,92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "403071e93e18b62b2db4d579522dafddb8054a5b",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
