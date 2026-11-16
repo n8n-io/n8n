@@ -89,14 +89,12 @@ function getOpenAiModel(ctx: ISupplyDataFunctions, model: OpenAiModel) {
 
 // `Symbol.for` resolves to the same key from the ESM and the CJS build, so the
 // source is found even when both copies of this package are loaded.
-const SUPPLIED_MODEL_SOURCE = Symbol.for('@n8n/ai-utilities.suppliedModelSource');
+const SUPPLIED_MODEL_SOURCE: unique symbol = Symbol.for('@n8n/ai-utilities.suppliedModelSource');
 
-function isSupplyModelOptions(value: unknown): value is SupplyModelOptions {
-	if (typeof value !== 'object' || value === null) return false;
-	if ('type' in value && value.type === 'openai') {
-		return 'baseUrl' in value && 'model' in value && 'apiKey' in value;
-	}
-	return 'generate' in value && typeof value.generate === 'function';
+type WithSource = { [SUPPLIED_MODEL_SOURCE]: SupplyModelOptions };
+
+function hasSource(value: unknown): value is WithSource {
+	return typeof value === 'object' && value !== null && Object.hasOwn(value, SUPPLIED_MODEL_SOURCE);
 }
 
 /**
@@ -113,9 +111,7 @@ function recordSource(response: object, source: SupplyModelOptions) {
  * derived from it, for example by `bindTools`, return `undefined`.
  */
 export function getSuppliedModelSource(response: unknown): SupplyModelOptions | undefined {
-	if (typeof response !== 'object' || response === null) return undefined;
-	const source: unknown = Object.getOwnPropertyDescriptor(response, SUPPLIED_MODEL_SOURCE)?.value;
-	return isSupplyModelOptions(source) ? source : undefined;
+	return hasSource(response) ? response[SUPPLIED_MODEL_SOURCE] : undefined;
 }
 
 export function supplyModel(ctx: ISupplyDataFunctions, model: SupplyModelOptions): SupplyData {

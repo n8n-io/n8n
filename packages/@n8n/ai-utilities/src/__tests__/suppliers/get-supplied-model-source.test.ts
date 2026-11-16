@@ -133,7 +133,6 @@ describe('getSuppliedModelSource', () => {
 			'a LangChain model that supplyModel did not create',
 			new ChatOpenAI({ apiKey: 'k', model: 'm' }),
 		],
-		['an object with an unrelated value under the key', { [SOURCE_KEY]: 42 }],
 	])('returns undefined for %s', (_label, value) => {
 		expect(getSuppliedModelSource(value)).toBeUndefined();
 	});
