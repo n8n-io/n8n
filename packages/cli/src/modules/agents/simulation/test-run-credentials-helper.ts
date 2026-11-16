@@ -3,7 +3,9 @@ import { buildEvalMockCredentials } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentials,
+	IHttpRequestHelper,
 	IHttpRequestOptions,
+	INode,
 	INodeProperties,
 	IRequestOptionsSimplified,
 } from 'n8n-workflow';
@@ -60,15 +62,19 @@ export class TestRunCredentialsHelper extends ICredentialsHelper {
 	}
 
 	async preAuthentication(
-		_helpers: unknown,
+		_helpers: IHttpRequestHelper,
 		credentials: ICredentialDataDecryptedObject,
+		_typeName: string,
+		_node: INode,
+		_credentialsExpired: boolean,
 	): Promise<ICredentialDataDecryptedObject | undefined> {
 		return await Promise.resolve(credentials);
 	}
 
 	async runPreAuthentication(
-		_helpers: unknown,
+		_helpers: IHttpRequestHelper,
 		credentials: ICredentialDataDecryptedObject,
+		_typeName?: string,
 	): Promise<ICredentialDataDecryptedObject | undefined> {
 		return await Promise.resolve(credentials);
 	}

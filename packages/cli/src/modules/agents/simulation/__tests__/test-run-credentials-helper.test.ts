@@ -1,6 +1,9 @@
 import { mock } from 'vitest-mock-extended';
 import type {
 	ICredentialsHelper,
+	IHttpRequestHelper,
+	IHttpRequestOptions,
+	INode,
 	INodeProperties,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
@@ -40,6 +43,40 @@ describe('TestRunCredentialsHelper', () => {
 		expect(credentials.accessToken).not.toBe('xoxb-real-token');
 		expect(credentials.region).toBe('eu');
 		expect(credentials.oauthTokenData).toBeDefined();
+	});
+
+	it('skips auth and pre-auth, so no real token is fetched or applied', async () => {
+		const { inner, helper } = setup();
+		const options: IHttpRequestOptions = { url: 'https://slack.com/api/chat.postMessage' };
+		const credentials = { accessToken: 'placeholder' };
+
+		await expect(helper.authenticate(credentials, 'slackApi', options)).resolves.toBe(options);
+		await expect(
+			helper.preAuthentication(
+				mock<IHttpRequestHelper>(),
+				credentials,
+				'slackApi',
+				mock<INode>(),
+				true,
+			),
+		).resolves.toBe(credentials);
+		await expect(
+			helper.runPreAuthentication(mock<IHttpRequestHelper>(), credentials),
+		).resolves.toBe(credentials);
+
+		expect(inner.authenticate).not.toHaveBeenCalled();
+		expect(inner.preAuthentication).not.toHaveBeenCalled();
+		expect(inner.runPreAuthentication).not.toHaveBeenCalled();
+	});
+
+	it('answers credential type questions from the real helper', () => {
+		const { inner, helper } = setup();
+		inner.getParentTypes.mockReturnValue(['oAuth2Api']);
+		inner.isCredentialUsableByNode.mockReturnValue(true);
+
+		expect(helper.getParentTypes('slackOAuth2Api')).toEqual(['oAuth2Api']);
+		expect(helper.isCredentialUsableByNode('slackApi', 'n8n-nodes-base.slack')).toBe(true);
+		expect(helper.getCredentialsProperties('slackApi')).toBe(slackProperties);
 	});
 
 	it('never writes a credential back', async () => {
