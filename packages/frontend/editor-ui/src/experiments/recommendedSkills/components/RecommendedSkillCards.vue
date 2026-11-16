@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nBadge, N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 
 import {
 	RECOMMENDED_SKILLS,
@@ -54,14 +54,14 @@ onMounted(() => {
 						</span>
 						<N8nText bold color="text-dark">{{ recommended.name }}</N8nText>
 					</span>
-					<N8nBadge
+					<span
 						v-if="entryPoint === 'create_menu' && addedSkillIds.includes(recommended.id)"
-						variant="success"
-						leading-icon="check"
+						:class="$style.added"
 						data-test-id="recommended-skill-added"
 					>
-						{{ i18n.baseText('experiments.recommendedSkills.added') }}
-					</N8nBadge>
+						<N8nIcon icon="check" :size="14" aria-hidden="true" />
+						{{ i18n.baseText('tools.connection.action.added') }}
+					</span>
 				</template>
 				<N8nText tag="p" size="small" color="text-base" :class="$style.cardText">
 					{{ i18n.baseText(recommended.cardTextKey) }}
@@ -115,6 +115,15 @@ onMounted(() => {
 	border-radius: var(--radius--3xs);
 	background-color: var(--background--subtle);
 	color: var(--text-color--subtle);
+}
+
+.added {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	color: var(--color--success);
+	font-size: var(--font-size--2xs);
+	white-space: nowrap;
 }
 
 .cardText {
