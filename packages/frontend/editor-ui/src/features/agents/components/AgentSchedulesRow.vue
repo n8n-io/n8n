@@ -27,8 +27,11 @@ const props = withDefaults(
 		ensureAgentPersisted?: () => Promise<void>;
 		validationIssues?: AgentConfigValidationIssue[];
 		previewDisabledReason?: string;
+		/** Hides the add buttons, for when the parent supplies its own. */
+		hideAdd?: boolean;
 	}>(),
 	{
+		hideAdd: false,
 		taskRefs: () => [],
 		disabled: false,
 		isRunnable: false,
@@ -183,6 +186,13 @@ function taskScheduleTooltip(task: TaskRow): string {
 	return description;
 }
 
+/** Opens the modal to create a new schedule. */
+function openAddSchedule() {
+	openTaskModal(null);
+}
+
+defineExpose({ openAddSchedule });
+
 onMounted(reloadTasks);
 
 watch(
@@ -197,7 +207,11 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.scheduleRow">
+	<div
+		v-if="!props.hideAdd || taskRows.length > 0 || taskErrorMessage"
+		:class="$style.scheduleRow"
+		:inert="props.disabled || undefined"
+	>
 		<N8nText v-if="taskRows.length > 0" bold :class="$style.rowLabel">
 			{{ i18n.baseText('agents.builder.tasks.title') }}
 		</N8nText>
@@ -227,7 +241,7 @@ watch(
 				</AgentItemContextMenu>
 
 				<N8nTooltip
-					v-if="taskIndex === taskRows.length - 1"
+					v-if="!props.hideAdd && taskIndex === taskRows.length - 1"
 					as-child
 					:content="i18n.baseText('agents.builder.tasks.add')"
 					placement="top"
@@ -250,7 +264,7 @@ watch(
 			</div>
 
 			<N8nButton
-				v-if="taskRows.length === 0"
+				v-if="!props.hideAdd && taskRows.length === 0"
 				:class="$style.addButtonEmpty"
 				variant="ghost"
 				size="medium"

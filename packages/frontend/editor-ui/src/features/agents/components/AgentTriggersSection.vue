@@ -9,7 +9,14 @@ import type {
 	AgentJsonTaskConfig,
 	TeamsFileAccessConsentState,
 } from '@n8n/api-types';
-import { updatedIconSet, type IconName } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDropdownMenu,
+	N8nIcon,
+	updatedIconSet,
+	type DropdownMenuItemProps,
+	type IconName,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -348,6 +355,28 @@ function openTeamsAfterFileAccessConsent(integrations: Array<{ type: string }>) 
 
 defineExpose({ openChannelModal });
 
+type AddTriggerAction = 'channel' | 'schedule';
+
+const schedulesRowRef = ref<InstanceType<typeof AgentSchedulesRow> | null>(null);
+
+const addTriggerItems = computed<Array<DropdownMenuItemProps<AddTriggerAction>>>(() => [
+	{
+		id: 'channel',
+		label: i18n.baseText('agents.builder.channel.add'),
+		icon: { type: 'icon', value: 'message-square' },
+	},
+	{
+		id: 'schedule',
+		label: i18n.baseText('agents.builder.tasks.add'),
+		icon: { type: 'icon', value: 'clock' },
+	},
+]);
+
+function onAddTriggerSelect(action: AddTriggerAction) {
+	if (action === 'channel') openChannelModal();
+	else schedulesRowRef.value?.openAddSchedule();
+}
+
 function handleChannelDisconnected(channelType: string) {
 	const channels = props.connectedTriggers.filter((channel) => channel !== channelType);
 	emit('update:connected-triggers', channels);
@@ -364,9 +393,8 @@ function handleChannelDisconnected(channelType: string) {
 			:label="i18n.baseText('agents.builder.channel.title')"
 			:item-count="channelRows.length"
 			:add-label="i18n.baseText('agents.builder.channel.add')"
-			add-button-test-id="agent-channels-add-channel"
 			:disabled="props.disabled"
-			@add="openChannelModal"
+			hide-add
 		>
 			<AgentItemContextMenu
 				v-for="channel in channelRows"
@@ -406,6 +434,8 @@ function handleChannelDisconnected(channelType: string) {
 		</AgentChipRow>
 
 		<AgentSchedulesRow
+			ref="schedulesRowRef"
+			hide-add
 			:preview-disabled-reason="props.previewDisabledReason"
 			:task-refs="props.taskRefs"
 			:disabled="props.disabled"
@@ -421,6 +451,29 @@ function handleChannelDisconnected(channelType: string) {
 			@tasks-changed="emit('tasks-changed')"
 			@preview-task="emit('preview-task', $event)"
 		/>
+
+		<N8nDropdownMenu
+			:items="addTriggerItems"
+			placement="bottom-start"
+			:disabled="props.disabled"
+			data-testid="agent-triggers-add-menu"
+			@select="onAddTriggerSelect"
+		>
+			<template #trigger>
+				<N8nButton
+					:class="$style.addTriggerButton"
+					variant="ghost"
+					size="medium"
+					:disabled="props.disabled"
+					data-testid="agent-triggers-add-trigger"
+				>
+					<template #icon>
+						<N8nIcon icon="plus" :size="16" />
+					</template>
+					{{ i18n.baseText('agents.builder.triggers.add') }}
+				</N8nButton>
+			</template>
+		</N8nDropdownMenu>
 
 		<AgentChannelModal
 			v-if="channelModalOpen"
@@ -459,6 +512,17 @@ function handleChannelDisconnected(channelType: string) {
 
 .disabled {
 	opacity: 0.5;
+}
+
+.addTriggerButton {
+	--button--color: var(--text-color--subtler);
+	align-self: flex-start;
+	margin-left: calc(-1 * var(--spacing--xs));
+
+	&:hover {
+		--button--color: var(--text-color);
+		background-color: transparent;
+	}
 }
 
 .channelChip {
