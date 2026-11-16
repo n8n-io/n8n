@@ -1,6 +1,5 @@
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH, CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import { getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
-import { PostHogClient } from '@n8n/backend-services';
 import { CredentialsEntity, DbLock, DbLockService, InstanceCredentialAssignment } from '@n8n/db';
 import type { ContentImportContext, PolicyViolation } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -18,6 +17,7 @@ import type { InstanceCredentialUse } from '@/credentials/instance-credential-us
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
+import { PostHogClient } from '@/posthog';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
 import {
