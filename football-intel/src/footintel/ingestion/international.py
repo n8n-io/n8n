@@ -27,6 +27,9 @@ log = logging.getLogger(__name__)
 NATIONAL_COUNTRY = "International"  # Team.country of every national team
 ACTIVE_SINCE = "2014-01-01"
 MODEL_NAME = "national_elo"
+# National teams that play their home matches in another country (checked 2026-11-16): the
+# fixture lists them at home, but they have no home crowd. Remove a team when it plays at home again.
+HOME_ABROAD = {"Ukraine", "Israel"}
 
 
 def sync_international(engine: Engine, settings: Settings) -> RunStats:
@@ -117,7 +120,8 @@ def predict_national(engine: Engine, settings: Settings, horizon_days: int = PRE
     db = db.dropna(subset=["home", "away"])
     db["date"] = pd.to_datetime(db["kickoff_date"])
     db["kind"] = db["code"].map(intl.KIND_BY_CODE).fillna("tournament")
-    db["neutral"] = db["neutral_venue"].fillna(False).astype(bool)
+    # Teams that host their home matches abroad play on neutral ground (D83).
+    db["neutral"] = db["neutral_venue"].fillna(False).astype(bool) | db["home"].isin(HOME_ABROAD)
 
     rated, elo = national.ratings(_history(file, db))
     model = national.fit(rated)

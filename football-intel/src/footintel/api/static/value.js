@@ -14,7 +14,10 @@ function learnMine(ms) {
     if (t) for (const n of [m.home, m.away]) if (t === "*" || t.includes(n)) MINE.add(n);
   }
 }
-const isMine = (m) => MINE.has(m.home) || MINE.has(m.away);
+/* National teams (D83): every match with bookmaker prices, and every DR Congo match. */
+const NATIONAL_ALWAYS = new Set(["DR Congo"]);
+const nationalMine = (m) => !!m.market || NATIONAL_ALWAYS.has(m.home) || NATIONAL_ALWAYS.has(m.away);
+const isMine = (m) => (String(m.competition).startsWith("INT-") ? nationalMine(m) : MINE.has(m.home) || MINE.has(m.away));
 const norm = (x) => String(x).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 function shown(m) {
   if (state.q) return norm(`${m.home} ${m.away}`).includes(norm(state.q));
