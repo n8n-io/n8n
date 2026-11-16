@@ -264,6 +264,7 @@ describe('AgentSkillViewer', () => {
 		const click = clickLink(wrapper);
 
 		expect(click.defaultPrevented).toBe(false);
+		expect(wrapper.find('a').attributes('target')).toBe('_blank');
 		expect(wrapper.emitted('select:path')).toBeUndefined();
 	});
 
