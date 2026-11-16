@@ -53,20 +53,33 @@ outcome changes when the credential changes. A flag gives the outcome to node co
 - **Verification.** The verifier computes the flags from the test credential. It then changes one field of
   the test credential at a time (empty, long, absent, the other boolean) to get other flag values, and compares
   each with v1. The verified list holds each set of values that agrees with v1
-  (`@flags=f2ad9326f:0`, `@flags=f2ad9326f:1`). The converter gives these sets to n8n as a guard. n8n writes
-  the flags of a node instance only when their values are one of the sets. For other values, the node fails
-  with "The credential has no value for a condition of this node".
+  (`@flags=f2ad9326f:0`, `@flags=f2ad9326f:1`). The converter gives these sets to n8n as a guard, with the
+  name of the node. n8n writes the flags of a node instance only when their values are one of the sets.
+- **Values that were not checked.** A node must not fail where v1 succeeds. When a credential gives the
+  conditions of a node values that are not one of the sets, n8n compiles the workflow again with that node in
+  the fallback host (`CompiledEngineCredentials.unprovenFlagNodes`, `NodeSources.runsInHost`). The artifact
+  key has the names of these nodes. n8n decides this at each compile: at publish, at a manual run, when a
+  credential changes, and after a renewal of a credential with such a node. When the values are checked
+  again, n8n loads the module with the compiled node again. Only when n8n could not decide (a document built
+  from an older artifact) the flags are withheld, and the node fails with "The credential has no value for a
+  condition of this node".
 
-What the runtime must do (not built, `workflow-runtime` is a different card):
+What the runtime does (`workflow-runtime`):
 
-- `src/core/lib.zig`: add the native `ctx.credentialFlag(slot, name)`. Accept a name only when it has the form
-  `f` and eight hex digits and when the META list `credentialFlags` of the module has it. Return only a JSON
-  boolean. Throw an Error with the message above for each other case.
-- The core has no credentials. The shell must give the flags to the core when an execution starts (as it gives
-  the static data): for each slot of the workflow, the members of `data.n8nDerived` that have a flag name and a
-  boolean value. The execution keeps this copy, so a replay takes the same branches after a credential
-  changes.
-- A flag is not in a log. The copy of an execution is in the event log only as booleans by name.
+- `src/core/lib.zig`: the native `ctx.credentialFlag(slot, name)`. It accepts a name only when it has the form
+  `f` and eight hex digits and when the META list `credentialFlags` of the module has it. It returns only a
+  boolean. It throws an Error with the message above for each other case.
+- The core has no credentials. The shell gives the flags of a workflow to the core in a `credential_flags`
+  event, each time the credentials document of the workflow arrives (with the workflow, or alone): for each
+  slot, the members of `data.n8nDerived` that have a flag name and a boolean value
+  (`src/core/cred_flags.zig`, `creds.flagsDoc`). An execution copies the flags of its workflow when it starts.
+  It keeps this copy, so a credential that changes during the execution does not change its branches.
+- **Replay.** The `credential_flags` event is an input in the event log, as booleans by name. A replay after
+  a crash gives each execution the flags that it had, also when the credential changed since. This is the
+  only place where a flag is durable. No log line and no message has a name or a value of a flag.
+- **Limits.** The flags of one workflow are at most 4,096 bytes (about 200 flags). Above that the workflow
+  gets none, and the shell says so with the workflow id. Flags are for workflows that n8n loads; a module
+  that starts with `--module` has none. A slot name with a character that JSON escapes finds no flag.
 
 ## Control plane and data plane
 
@@ -154,8 +167,26 @@ of a table (`renew.zig`) until the answer comes.
 **The timer.** For a published workflow with minted tokens, n8n starts the same renewal 5 minutes before the
 first expiry. This is an optimisation: requests do not wait. Without the timer the runtime asks by itself.
 
-**Limits.** The runtime keeps at most `--max-renewals` requests (default 256) with args of at most
-`--renewal-kb` KB (default 64). A request above a limit runs without a renewal. n8n runs at most 1,024
+**What a request costs.** A request whose value is valid has no row and no copy of its args. Before the
+request: one comparison of the clock with the first expiry of the document. After the response: one
+comparison of the status with the lowest status that means "expired" for a document (400, or lower when a
+document says so). A row starts only when a renewal is needed. It holds the names of the slot, the workflow
+and the step. The core still has the args of an effect that waits for its result, and gives them again for
+the resend (`core.State.pendingDispatch`). So the size of the args is no limit.
+
+**The options of the node.** A request can carry `skipTokenRefresh: true` and `tokenExpiredStatusCode` (a
+number or a list), as the OAuth2 options of n8n-core. The node compiler writes them for a node that gives
+them; the HTTP Request library node gives the status of its credential type. The slot says `oauth2: true`
+(the options count) and `statusDefault: true` (the credential has no statuses of its own, so those of the
+request take the place of 401). A request with `inject: false` has no renewal, as a plain request helper
+of v1.
+
+**Limits.** At most `--max-renewals` requests (default 256) can wait for a renewal or go again at one time.
+A request that needs a renewal and gets no row does not run without it: its step fails with a limit error
+that names the flag, and can run again. The step never gets the "expired" response of such a request as
+the answer of the service. Two cases still give the response to the step without a renewal: the execution
+left memory during the request (a long wait in another branch), or the batch memory has no room for its
+args. A status below 400 that only a node gives (no document has it) is not seen. n8n runs at most 1,024
 renewals at the same time. Requests in the runtime share a renewal for each workflow and slot; n8n shares it
 for each credential.
 
