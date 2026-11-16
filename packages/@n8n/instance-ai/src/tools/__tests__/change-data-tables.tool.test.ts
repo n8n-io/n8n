@@ -7,6 +7,7 @@ import {
 	buildOwnedDataTableGrantKey,
 } from '@n8n/api-types';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
+import type { JSONValue } from '@n8n/utils/json/to-json-value';
 import { UnexpectedError, UserError } from '@n8n/errors';
 import { zodSchema } from 'ai';
 import { z } from 'zod';
@@ -1177,7 +1178,7 @@ describe('change_data_tables tool', () => {
 			const tool = createChangeDataTablesTool(context);
 			const convert = tool.legacyResumeOnly?.convert;
 			if (!convert) throw new Error('Expected the tool to convert stored calls');
-			const parsed = parseToolInput(tool, convert(formerName, input));
+			const parsed = parseToolInput(tool, convert(formerName, input as JSONValue));
 			if (!parsed.success) return { success: false, error: parsed.error.message };
 			return await executeTool(tool, parsed.data, resumeCtx(approved, scope));
 		}

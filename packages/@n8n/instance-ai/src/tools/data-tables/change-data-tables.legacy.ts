@@ -11,6 +11,7 @@ import {
 	type DataTableWriteToolAction,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+import { toJsonValue, type JSONValue } from '@n8n/utils/json/to-json-value';
 import type { z } from 'zod';
 
 import type { ChangeDataTablesInput, DataTableChange } from './change-data-tables.schema';
@@ -70,7 +71,7 @@ function toChange(input: LegacyWriteInput): DataTableChange {
  * parsed it, so unknown keys are dropped. Any other input returns unchanged,
  * so batch validation rejects it.
  */
-export function convertFormerDataTableCall(formerName: string, input: unknown): unknown {
+export function convertFormerDataTableCall(formerName: string, input: JSONValue): JSONValue {
 	if (!isRecord(input)) return input;
 	const action = getDataTableCallAction(formerName, input.action);
 	if (!isWriteAction(action)) return input;
@@ -78,5 +79,6 @@ export function convertFormerDataTableCall(formerName: string, input: unknown): 
 	if (!parsed.success) return input;
 	const batch: ChangeDataTablesInput = { changes: [toChange(parsed.data)] };
 	if (parsed.data.projectId !== undefined) batch.projectId = parsed.data.projectId;
-	return batch;
+	// The batch comes from stored JSON, so this keeps every value as it is.
+	return toJsonValue(batch);
 }

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { Tool } from '../../sdk/tool';
-import type { BuiltTool } from '../../types';
+import type { BuiltTool, LegacyCallConverter } from '../../types';
 import { fixToolCall } from '../tools/fix-tool-call';
 import {
 	buildToolMap,
@@ -202,7 +202,7 @@ describe('tool legacy names', () => {
 	});
 
 	it('stores a resume-only converter on the built tool', () => {
-		const convert = (_formerName: string, input: unknown) => input;
+		const convert: LegacyCallConverter = (_formerName, input) => input;
 		const tool = new Tool('current')
 			.description('current')
 			.input(z.object({}))

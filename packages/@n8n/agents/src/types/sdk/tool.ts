@@ -141,7 +141,7 @@ export interface ToolCancellationContext extends ToolContext {
 }
 
 /** Turns the stored input of a call under a former tool name into the current tool's input. */
-export type LegacyCallConverter = (formerName: string, input: unknown) => unknown;
+export type LegacyCallConverter = (formerName: string, input: JSONValue) => JSONValue;
 
 export interface BuiltTool {
 	readonly name: string;

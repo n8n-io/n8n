@@ -1,5 +1,4 @@
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
-import { isRecord } from '@n8n/utils/is-record';
 import type { JSONSchema7 } from 'json-schema';
 
 import {
@@ -76,8 +75,9 @@ function getToolResumeJsonSchema(
  * The tool name and input that a call asked for, before a former name or
  * `call_tool` resolved it. The input keeps fields such as `action`.
  */
-function requestedCall(toolName: string, input: unknown): { name: string; input: unknown } {
-	if (toolName !== CALL_TOOL_TOOL_NAME || !isRecord(input) || typeof input.tool !== 'string') {
+function requestedCall(toolName: string, input: JSONValue): { name: string; input: JSONValue } {
+	const isObject = typeof input === 'object' && input !== null && !Array.isArray(input);
+	if (toolName !== CALL_TOOL_TOOL_NAME || !isObject || typeof input.tool !== 'string') {
 		return { name: toolName, input };
 	}
 	return { name: input.tool, input: input.arguments ?? {} };
@@ -131,7 +131,7 @@ export class ToolCallRunner {
 		const params: ProcessToolCallParams = resumeOnly
 			? {
 					...callParams,
-					input: resumeOnly.convert(requested.name, requested.input) as JSONValue,
+					input: resumeOnly.convert(requested.name, requested.input),
 				}
 			: target.dispatchedBy
 				? { ...callParams, input: target.input as JSONValue }
