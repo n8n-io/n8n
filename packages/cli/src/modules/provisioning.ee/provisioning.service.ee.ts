@@ -4,9 +4,10 @@ import {
 	ProvisioningConfigPatchDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, Publisher } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
+	type Person,
 	RoleRepository,
 	RoleMappingRuleRepository,
 	Settings,
@@ -19,14 +20,13 @@ import {
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { GLOBAL_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { GLOBAL_OWNER_ROLE_SLUG, isReservedGlobalRole } from '@n8n/permissions';
 import { Not, In } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { ZodError } from 'zod';
 
 import { BadRequestError } from '@n8n/errors';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 import { isSamlOrOidcLoginEnabled } from '@/sso.ee/sso-helpers';
@@ -82,9 +82,9 @@ export class ProvisioningService {
 			return;
 		}
 
-		if (dbRole.slug === globalOwnerRoleSlug && user.role.slug !== globalOwnerRoleSlug) {
+		if (isReservedGlobalRole(dbRole.slug) && user.role.slug !== dbRole.slug) {
 			this.logger.warn(
-				`Skipping instance role provisioning. Cannot assign owner role: ${globalOwnerRoleSlug} to user: ${user.id}`,
+				`Skipping instance role provisioning. Cannot assign reserved role: ${dbRole.slug} to user: ${user.id}`,
 				{ userId: user.id, roleSlug: dbRole.slug },
 			);
 			return;
@@ -152,7 +152,7 @@ export class ProvisioningService {
 		const fallbackRole = await this.roleRepository.findOne({
 			where: { slug: defaultInstanceRole },
 		});
-		if (fallbackRole?.roleType !== 'global') {
+		if (fallbackRole?.roleType !== 'global' || isReservedGlobalRole(fallbackRole.slug)) {
 			this.logger.warn(
 				`Skipping instance role provisioning. Default condition role ${defaultInstanceRole} is not an assignable global role`,
 				{ userId: user.id },
@@ -408,7 +408,7 @@ export class ProvisioningService {
 				? await this.roleRepository.findOne({ where: { slug: value } })
 				: null;
 
-		if (!role || role.roleType !== 'global' || role.slug === GLOBAL_OWNER_ROLE_SLUG) {
+		if (!role || role.roleType !== 'global' || isReservedGlobalRole(role.slug)) {
 			throw new BadRequestError(
 				`defaultInstanceRole must be "${BLOCK_ACCESS_ASSIGNMENT}" or the slug of an assignable global role`,
 			);
@@ -627,10 +627,10 @@ export class ProvisioningService {
 			return;
 		}
 
-		if (dbRole.slug === GLOBAL_OWNER_ROLE_SLUG && user.role.slug !== GLOBAL_OWNER_ROLE_SLUG) {
+		if (isReservedGlobalRole(dbRole.slug) && user.role.slug !== dbRole.slug) {
 			this.logger.warn(
-				`Skipping instance role provisioning. Cannot assign owner role: ${GLOBAL_OWNER_ROLE_SLUG} to user: ${user.id}`,
-				{ userId: user.id, roleSlug: GLOBAL_OWNER_ROLE_SLUG },
+				`Skipping instance role provisioning. Cannot assign reserved role: ${dbRole.slug} to user: ${user.id}`,
+				{ userId: user.id, roleSlug: dbRole.slug },
 			);
 			return;
 		}
@@ -788,21 +788,21 @@ export class ProvisioningService {
 
 	private async isAssignableGlobalRole(roleSlug: unknown): Promise<boolean> {
 		if (typeof roleSlug !== 'string' || roleSlug.length === 0) return false;
-		// Provisioning can never assign owner, so an owner claim does not count
-		// as a role assignment and cannot bypass a Block default condition.
-		if (roleSlug === GLOBAL_OWNER_ROLE_SLUG) return false;
+		// Provisioning can never assign a reserved role, so such a claim does not
+		// count as a role assignment and cannot bypass a Block default condition.
+		if (isReservedGlobalRole(roleSlug)) return false;
 		const role = await this.roleRepository.findOne({ where: { slug: roleSlug } });
 		return role?.roleType === 'global';
 	}
 
 	async provisionExpressionMappedRolesForUser(
-		user: User,
+		person: Person,
 		context: RoleResolverContext,
 	): Promise<void> {
 		if (!(await this.isExpressionMappingEnabled())) return;
 
-		const previousInstanceRole = user.role.slug;
-		const previousProjectRoles = await this.getPreviousProjectRoles(user.id);
+		const previousInstanceRole = person.role.slug;
+		const previousProjectRoles = await this.getPreviousProjectRoles(person.id);
 
 		const config = await this.buildRoleMappingConfig();
 		const resolved = await this.roleResolverService.resolveRoles(config, context);
@@ -814,7 +814,7 @@ export class ProvisioningService {
 		]);
 
 		this.logger.debug('SSO role resolution complete', {
-			userId: user.id,
+			userId: person.id,
 			provider: context.$provider,
 			claimKeys: Object.keys(context.$claims ?? {}).sort(),
 			matchedInstanceRuleId: resolved.instanceRole.matchedRuleId,
@@ -822,7 +822,7 @@ export class ProvisioningService {
 			matchedProjectRuleIds: [...resolved.projectRoles.values()].map((r) => r.matchedRuleId),
 		});
 
-		await this.applyResolvedRoles(user, resolved, {
+		await this.applyResolvedRoles(person, resolved, {
 			instanceRole: instanceRolesManaged,
 			projectRoles: projectRolesManaged,
 		});
@@ -840,8 +840,8 @@ export class ProvisioningService {
 			: [];
 
 		this.eventService.emit('expression-mapping-roles-resolved', {
-			userId: user.id,
-			userEmail: user.email,
+			userId: person.id,
+			userEmail: person.email,
 			provider: context.$provider,
 			instanceRole: {
 				...newInstanceRole,

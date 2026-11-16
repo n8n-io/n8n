@@ -44,10 +44,11 @@ import {
 	CHAT_TOOL_NODE_TYPE,
 	RESPOND_TO_WEBHOOK_NODE_TYPE,
 	CHAT_HITL_TOOL_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
 } from '../constants';
 import type { WorkflowObjectAccessors } from '../types';
 import type { useWorkflowDocumentStore } from '../stores/workflowDocument.store';
-import type { Mocked } from 'vitest';
+import type { MockInstance, Mocked } from 'vitest';
 
 type Writable<T> = { -readonly [K in keyof T]: T[K] };
 
@@ -181,6 +182,7 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
 		binaryDataMode: 'filesystem',
+		formTestUrl: 'http://localhost:5678/form-test',
 	}),
 }));
 
@@ -437,6 +439,63 @@ describe('useRunWorkflow({ router })', () => {
 
 			const result = await runWorkflow({});
 			expect(result).toEqual(mockExecutionResponse);
+		});
+
+		describe('form trigger popup', () => {
+			const formTrigger = createTestNode({
+				name: 'Form Trigger',
+				type: FORM_TRIGGER_NODE_TYPE,
+				parameters: { path: 'form-path' },
+			});
+			let windowOpenSpy: MockInstance;
+
+			beforeEach(() => {
+				windowOpenSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+				vi.mocked(pushConnectionStore).isConnected = true;
+				mockDocumentStore.serialize.mockReturnValue({
+					id: 'workflowId',
+					nodes: [formTrigger],
+				} as unknown as WorkflowData);
+			});
+
+			it('should open the popup at the form test URL the backend returns', async () => {
+				const formTestUrl = 'http://localhost:5678/webhook-test/v1-form/n8n-form';
+				vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({
+					waitingForWebhook: true,
+					formTestUrls: [formTestUrl],
+				});
+				const { runWorkflow } = useRunWorkflow({ router });
+
+				await runWorkflow({});
+
+				expect(windowOpenSpy).toHaveBeenCalledTimes(1);
+				expect(windowOpenSpy).toHaveBeenCalledWith(
+					formTestUrl,
+					expect.any(String),
+					expect.any(String),
+				);
+			});
+
+			it('should not open the popup if the backend returns no form test URLs', async () => {
+				vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({
+					waitingForWebhook: true,
+					formTestUrls: [],
+				});
+				const { runWorkflow } = useRunWorkflow({ router });
+
+				await runWorkflow({});
+
+				expect(windowOpenSpy).not.toHaveBeenCalled();
+			});
+
+			it('should not open the popup if the response contains an execution ID', async () => {
+				vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({ executionId: '123' });
+				const { runWorkflow } = useRunWorkflow({ router });
+
+				await runWorkflow({});
+
+				expect(windowOpenSpy).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('save before execute behavior with N8N_WORKFLOWS_AUTOSAVE_DISABLED', () => {

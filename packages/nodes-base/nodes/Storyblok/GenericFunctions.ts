@@ -6,31 +6,30 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function storyblokApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	option: IDataObject = {},
 ) {
 	const authenticationMethod = this.getNodeParameter('source', 0) as string;
 
-	let options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
 		method,
 		qs,
 		body,
-		uri: '',
+		uri: requestUrl`https://api.storyblok.com${resource}`,
 		json: true,
 	};
-
-	options = Object.assign({}, options, option);
 
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
@@ -39,13 +38,11 @@ export async function storyblokApiRequest(
 	if (authenticationMethod === 'contentApi') {
 		const credentials = await this.getCredentials('storyblokContentApi');
 
-		options.uri = `https://api.storyblok.com${resource}`;
-
 		Object.assign(options.qs ?? {}, { token: credentials.apiKey });
 	} else {
 		const credentials = await this.getCredentials('storyblokManagementApi');
 
-		options.uri = `https://mapi.storyblok.com${resource}`;
+		options.uri = requestUrl`https://mapi.storyblok.com${resource}`;
 
 		if (options.headers) {
 			Object.assign(options.headers, { Authorization: credentials.accessToken });
@@ -63,7 +60,7 @@ export async function storyblokApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
 	propertyName: string,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {

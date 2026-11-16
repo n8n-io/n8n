@@ -3,15 +3,12 @@ import { readPlanTaskContext } from '../plans/agent-plan-task-context';
 import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
-	getWorkflowToolIncompatibilityReason,
 	WORKFLOW_WAIT_ACTION_CANCEL,
 	WORKFLOW_WAIT_ACTION_CHECK,
-	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME,
 	WORKFLOW_WAIT_SUSPEND_TYPE,
 	type AgentJsonToolConfig,
 	type AgentToolOutputFile,
 	type AgentToolSkippedFile,
-	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -36,12 +33,11 @@ import type {
 import {
 	createRunExecutionData,
 	isTerminalExecutionStatus,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	TimeoutExecutionCancelledError,
-	OperationalError,
 	isIndefiniteWait,
 } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
@@ -52,49 +48,38 @@ import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks
 import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
+import {
+	detectTriggerNode,
+	inferInputSchema,
+	validateCompatibility,
+} from '@/workflows/callable/callable-workflow-input';
+import type {
+	CallableWorkflowLoader,
+	CallableWorkflowReference,
+} from '@/workflows/callable/callable-workflow-loader.service';
+import {
+	collectResultData,
+	collectResultItems,
+	normaliseExecutionStatus,
+	toResultData,
+} from '@/workflows/callable/callable-workflow-result';
+import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
 import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
-import { WorkflowToolUnavailableError } from './workflow-tool-unavailable-error';
-import type {
-	WorkflowToolWorkflowLoader,
-	WorkflowToolWorkflowReference,
-} from './workflow-tool-workflow-loader.service';
 import {
 	AgentBackgroundJobService,
-	collectResultData,
-	collectResultItems,
 	EXECUTION_OUTCOME_UNKNOWN_ERROR,
 	serializeWorkflowJobResult,
 	settlementStatusForExecution,
-	toResultData,
 } from '../background/agent-background-job.service';
 import { sanitizeToolName } from '../json-config/agent-config-composition';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-
-/**
- * Map a supported trigger node type to the input-schema key the workflow tool
- * builds against. Keys are sourced from `SUPPORTED_WORKFLOW_TOOL_TRIGGERS` in
- * `@n8n/api-types` so the backend compatibility check and the frontend
- * Available list can't drift.
- */
-const SUPPORTED_TRIGGERS: Record<string, string> = {
-	[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE]: 'executeWorkflow',
-};
-
-// Compile-time check: `SUPPORTED_TRIGGERS` must cover every trigger the shared
-// list declares. Adding a trigger to `SUPPORTED_WORKFLOW_TOOL_TRIGGERS` without
-// adding its input-schema mapping here will fail this assertion.
-const _assertSupportedTriggersInSync: Record<
-	(typeof SUPPORTED_WORKFLOW_TOOL_TRIGGERS)[number],
-	string
-> = SUPPORTED_TRIGGERS;
-void _assertSupportedTriggersInSync;
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 
@@ -184,7 +169,7 @@ function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromis
 export type WorkflowToolExecutionMode = Extract<WorkflowExecuteMode, 'manual' | 'integrated'>;
 
 export interface WorkflowToolContext {
-	workflowLoader: WorkflowToolWorkflowLoader;
+	workflowLoader: CallableWorkflowLoader;
 	executor: EphemeralNodeExecutor;
 	workflowRunner: WorkflowRunner;
 	subworkflowPolicyChecker: SubworkflowPolicyChecker;
@@ -217,171 +202,6 @@ export interface WorkflowToolRunContext extends WorkflowToolContext {
 	abortSignal?: AbortSignal;
 	/** Stamped onto sub-executions so a Wait node finishing can wake this run. */
 	agentRun?: RelatedAgentRun;
-}
-
-// ---------------------------------------------------------------------------
-// 1. detectTriggerNode
-// ---------------------------------------------------------------------------
-
-interface DetectedTrigger {
-	node: INode;
-	triggerType: string;
-}
-
-export function detectTriggerNode(workflow: WorkflowEntity): DetectedTrigger {
-	const nodes = workflow.nodes ?? [];
-
-	for (const node of nodes) {
-		const triggerType = SUPPORTED_TRIGGERS[node.type];
-		if (triggerType) {
-			return { node, triggerType };
-		}
-	}
-
-	throw noSupportedTriggerError(workflow);
-}
-
-function noSupportedTriggerError(workflow: WorkflowEntity): WorkflowToolUnavailableError {
-	return new WorkflowToolUnavailableError(
-		'incompatible',
-		`Workflow "${workflow.name}" needs a '${WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME}' trigger to run as an agent tool.`,
-	);
-}
-
-// ---------------------------------------------------------------------------
-// 2. validateCompatibility
-// ---------------------------------------------------------------------------
-
-export function validateCompatibility(workflow: WorkflowEntity): void {
-	const incompatibility = getWorkflowToolIncompatibilityReason(workflow);
-	if (!incompatibility) return;
-
-	if (incompatibility.reason === 'incompatible_nodes') {
-		// Re-resolve node names here (the shared function only returns types) so the
-		// thrown message stays actionable for a developer reading the agent log.
-		// Skip disabled nodes — they don't execute, so they aren't the problem.
-		const nodes = workflow.nodes ?? [];
-		const names = nodes
-			.filter((n) => !n.disabled && incompatibility.nodeTypes.includes(n.type))
-			.map((n) => `${n.name} (${n.type})`)
-			.join(', ');
-		throw new WorkflowToolUnavailableError(
-			'incompatible',
-			`Workflow "${workflow.name}" contains nodes that aren't supported as agent tools: ${names}. ` +
-				'Remove them or pick another workflow.',
-		);
-	}
-
-	throw noSupportedTriggerError(workflow);
-}
-
-// ---------------------------------------------------------------------------
-// 3. inferInputSchema
-// ---------------------------------------------------------------------------
-
-/** Execute Workflow Trigger `inputSource` values (mirror nodes-base constants). */
-const INPUT_SOURCE = 'inputSource';
-const WORKFLOW_INPUTS = 'workflowInputs';
-const JSON_EXAMPLE = 'jsonExample';
-const PASSTHROUGH = 'passthrough';
-
-/**
- * Map an n8n-field primitive type to the matching Zod type.
- * String fields coerce so numeric IDs (e.g. Telegram chatId) do not hard-fail.
- * Fields are nullable/optional to match the trigger's null fallback for missing keys.
- */
-function fieldTypeToZod(type: string | undefined, label: string): z.ZodTypeAny {
-	const described = (schema: z.ZodTypeAny) => schema.describe(label).nullable().optional();
-
-	switch (type) {
-		case 'number':
-			return described(z.coerce.number());
-		case 'boolean':
-			// Do not coerce — Boolean("false") === true.
-			return described(z.boolean());
-		case 'array':
-			return described(z.array(z.unknown()));
-		case 'object':
-			return described(z.record(z.unknown()));
-		case 'any':
-			return described(z.unknown());
-		default:
-			// string (and unknown type labels) — coerce so numbers/booleans stringify
-			return described(z.coerce.string());
-	}
-}
-
-export type WorkflowInputFieldDef = { name: string; type?: string };
-
-/** Apply the trigger's version-specific default before workflow execution adds node defaults. */
-function getExecuteWorkflowInputSource(triggerNode: INode): string {
-	const params = triggerNode.parameters ?? {};
-	const inputSource = params[INPUT_SOURCE];
-	const defaultInputSource = triggerNode.typeVersion >= 1.1 ? WORKFLOW_INPUTS : PASSTHROUGH;
-	return typeof inputSource === 'string' ? inputSource : defaultInputSource;
-}
-
-/** Declared field defs from an Execute Workflow Trigger (empty for passthrough). */
-export function listWorkflowInputFields(triggerNode: INode): WorkflowInputFieldDef[] {
-	const params = triggerNode.parameters ?? {};
-	const inputSource = getExecuteWorkflowInputSource(triggerNode);
-
-	if (inputSource === PASSTHROUGH) return [];
-
-	if (inputSource === JSON_EXAMPLE) {
-		const jsonExample = params[JSON_EXAMPLE] as string | undefined;
-		if (!jsonExample) return [];
-		let parsed: unknown;
-		try {
-			parsed = JSON.parse(jsonExample);
-		} catch {
-			return [];
-		}
-		if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return [];
-		return Object.entries(parsed as Record<string, unknown>).map(([name, value]) => ({
-			name,
-			type: value === null ? 'any' : Array.isArray(value) ? 'array' : typeof value,
-		}));
-	}
-
-	// workflowInputs (default)
-	const workflowInputs = params[WORKFLOW_INPUTS] as
-		| { values?: Array<{ name: string; type?: string }> }
-		| undefined;
-
-	return (workflowInputs?.values ?? []).filter(
-		(field): field is WorkflowInputFieldDef =>
-			typeof field.name === 'string' && field.name.length > 0,
-	);
-}
-
-function schemaFromFieldDefs(fields: WorkflowInputFieldDef[]): z.ZodObject<z.ZodRawShape> | null {
-	const shape: z.ZodRawShape = {};
-	for (const field of fields) {
-		shape[field.name] = fieldTypeToZod(field.type, field.name);
-	}
-	return Object.keys(shape).length > 0 ? z.object(shape) : null;
-}
-
-export function inferInputSchema(
-	triggerNode: INode,
-	triggerType: string,
-): z.ZodObject<z.ZodRawShape> {
-	switch (triggerType) {
-		case 'executeWorkflow': {
-			const inputSource = getExecuteWorkflowInputSource(triggerNode);
-			if (inputSource === PASSTHROUGH) {
-				return z.object({}).catchall(z.unknown());
-			}
-			return (
-				schemaFromFieldDefs(listWorkflowInputFields(triggerNode)) ??
-				z.object({}).catchall(z.unknown())
-			);
-		}
-
-		default:
-			return z.object({}).catchall(z.unknown());
-	}
 }
 
 type WorkflowToolInputsConfig = NonNullable<
@@ -660,15 +480,6 @@ async function withWorkflowCancellation<T>(
 // 5. extractResult
 // ---------------------------------------------------------------------------
 
-/** Map an execution's raw status into the tool's simplified status value. */
-function normaliseExecutionStatus(status: string | undefined): string {
-	if (status === 'error' || status === 'crashed') return 'error';
-	if (status === 'canceled') return 'canceled';
-	if (status === 'running' || status === 'new') return 'running';
-	if (status === 'waiting') return 'waiting';
-	return 'success';
-}
-
 function formatResult(
 	executionId: string,
 	status: string | undefined,
@@ -791,11 +602,17 @@ async function finishResult(
 	inputFiles = new Map<string, AgentToolOutputFile>(),
 ): Promise<WorkflowToolResult> {
 	const { wait: _wait, items, ...rest } = result;
-	const threadId = ctx.persistence?.threadId;
-	if (!threadId || !items) return rest;
+	const persistence = ctx.persistence;
+	if (!persistence?.threadId || !persistence.resourceId || !items) return rest;
+	const { threadId, resourceId } = persistence;
 
 	const bridge = Container.get(AgentFileBridge);
-	const scope = { agentId: context.agentId ?? null, projectId: context.projectId, threadId };
+	const scope = {
+		agentId: context.agentId ?? null,
+		projectId: context.projectId,
+		threadId,
+		resourceId,
+	};
 	const data = { ...rest.data };
 	const files: AgentToolOutputFile[] = [];
 	const skippedFiles: AgentToolSkippedFile[] = [];
@@ -835,7 +652,7 @@ async function backgroundWaitingExecution(
 	result: WorkflowToolExecutionResult,
 	context: WorkflowToolRunContext,
 	ctx: WaitToolContext,
-	reference: WorkflowToolWorkflowReference,
+	reference: CallableWorkflowReference,
 	allOutputs: boolean,
 	/** Input files of the tool call, so an unchanged input file keeps its file ID. */
 	inputFiles?: Map<string, AgentToolOutputFile>,
@@ -1128,7 +945,7 @@ export function buildUnavailableWorkflowTool(
 
 function toReference(
 	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
-): WorkflowToolWorkflowReference {
+): CallableWorkflowReference {
 	return {
 		workflowName: descriptor.workflow,
 		...(descriptor.workflowId !== undefined ? { workflowId: descriptor.workflowId } : {}),
@@ -1147,7 +964,7 @@ async function buildWorkflowTool(
 		},
 	);
 	if (!workflow) {
-		throw new WorkflowToolUnavailableError(
+		throw new CallableWorkflowUnavailableError(
 			'not_found',
 			`Workflow "${descriptor.workflow}" not found`,
 		);
@@ -1169,7 +986,7 @@ function assembleWorkflowTool(
 	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
 	context: WorkflowToolContext,
 	tool: {
-		reference: WorkflowToolWorkflowReference;
+		reference: CallableWorkflowReference;
 		inputSchema: z.AnyZodObject;
 		triggerType?: string;
 	},
@@ -1329,13 +1146,13 @@ function assembleWorkflowTool(
 
 async function loadCurrentWorkflow(
 	context: WorkflowToolContext,
-	reference: WorkflowToolWorkflowReference,
+	reference: CallableWorkflowReference,
 ) {
 	const workflow = await context.workflowLoader.loadWorkflow(context.projectId, reference, {
 		usePublishedVersion: context.usePublishedWorkflowVersion === true,
 	});
 	if (!workflow) {
-		throw new WorkflowToolUnavailableError(
+		throw new CallableWorkflowUnavailableError(
 			'not_found',
 			`Workflow "${reference.workflowName}" is no longer accessible`,
 		);

@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import type { CheckpointStore, SerializableAgentState } from '@n8n/agents';
 import { LessThan } from '@n8n/typeorm';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 import { InstanceAiCheckpointRepository } from '../repositories/instance-ai-checkpoint.repository';
 

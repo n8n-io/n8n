@@ -1,7 +1,12 @@
 import type { PromotionResource } from '@n8n/api-types';
 import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
-import { ProjectRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import type { Person } from '@n8n/db';
+import {
+	GLOBAL_OWNER_ROLE,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import assert from 'node:assert';
@@ -15,7 +20,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { buildWorkflowReferencingCredential } from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { saveCredential } from '@test-integration/db/credentials';
-import { createOwner } from '@test-integration/db/users';
+import { createOwner, createUserShell } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
@@ -52,7 +57,7 @@ const server = setupTestServer({
 const author = ['-c', 'user.name=Reviewer', '-c', 'user.email=reviewer@example.com'];
 let remoteFolder: string;
 let remoteSeed: Promise<TestRemote> | undefined;
-let owner: User;
+let owner: Person;
 let environmentId: string;
 /** What GitLab reports for each merge request, by iid. */
 let hostMergeRequests: Map<number, GitLabMergeRequest>;
@@ -393,6 +398,30 @@ describe('when the host dropped the commits of a finished review', () => {
 			state: 'merged',
 			at: null,
 			by: [owner.firstName, owner.lastName].join(' '),
+			webUrl: hostMergeRequests.get(review.iid)?.web_url,
+		});
+	}, 60_000);
+
+	it('names the token user when the n8n approver has no name and no email', async () => {
+		const { review, headSha, baseSha } = await promoteAndLose();
+		const approver = await createUserShell(GLOBAL_OWNER_ROLE);
+		await Container.get(PromotionReviewRepository).update(review.reviewId, {
+			approvedById: approver.id,
+			approvedAt: new Date('2026-10-03T09:00:00.000Z'),
+			lastStateChangeAt: new Date('2026-10-20T09:00:00.000Z'),
+		});
+		finishOnHost(review.iid, {
+			state: 'merged',
+			merge_user: { name: 'Ada Lovelace' },
+			diff_refs: { base_sha: baseSha, head_sha: headSha },
+		});
+
+		const changes = await changesOf(review.reviewId);
+
+		expect(changes.outcome).toEqual({
+			state: 'merged',
+			at: null,
+			by: 'Ada Lovelace',
 			webUrl: hostMergeRequests.get(review.iid)?.web_url,
 		});
 	}, 60_000);

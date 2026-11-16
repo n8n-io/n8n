@@ -4,7 +4,9 @@ import {
 	type SkillSourceCheckResponse,
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
+	type SkillSourceListItem,
 } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -15,6 +17,7 @@ import { GLOBAL_OWNER_ROLE, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import nock from 'nock';
+import { randomUUID } from 'node:crypto';
 
 import { createSkill, deleteAllSkills, findLatestSkillVersion } from '../../testing';
 import { SkillSourceConnection } from '../../database/entities/skill-source-connection.entity';
@@ -26,7 +29,6 @@ import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.er
 import { SkillSourceRepository } from '../../database/repositories/skill-source.repository';
 import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
-import { PostHogClient } from '@/posthog';
 
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -84,7 +86,7 @@ describe('Skill source checks', () => {
 		await db().delete(SkillSourceConnection, {});
 		postHog.getFeatureFlags.mockResolvedValue({ [SKILL_SYNC_FLAG]: true });
 		// The rate limit budget lives in memory on the service, so one test's limit stays there.
-		(Reflect.get(sync(), 'retryAt') as Map<string, number>).clear();
+		(Reflect.get(sync(), 'backoff') as Map<string, unknown>).clear();
 		github.start();
 		github.push('acme/skills', FILES);
 	});
@@ -92,6 +94,7 @@ describe('Skill source checks', () => {
 	afterEach(() => {
 		github.stop();
 		vi.restoreAllMocks();
+		vi.useRealTimers();
 	});
 
 	/** Imports every skill of the repository into the team, and answers their ids by name. */
@@ -132,11 +135,15 @@ describe('Skill source checks', () => {
 	const age = async (sourceId: string) =>
 		await db().update(SkillSourceConnection, { id: sourceId }, { lastCheckedAt: new Date(0) });
 
-	const checkNow = async (agent: SuperAgentTest, skillId: string, status = 200) =>
-		(await agent.post(`/skill-sources/skills/${skillId}/check`).send().expect(status)).body as {
+	/** Check for updates on the source of the skill. A skill with no source posts an unknown id. */
+	const checkNow = async (agent: SuperAgentTest, skillId: string, status = 200) => {
+		const link = await db().findOneBy(SkillSourceLink, { skillId });
+		const sourceId = link?.sourceId ?? randomUUID();
+		return (await agent.post(`/skill-sources/${sourceId}/check`).send().expect(status)).body as {
 			data: SkillSourceCheckResponse;
 			meta?: { reason: string };
 		};
+	};
 
 	describe('the check of a source', () => {
 		it('costs one request when the source did not change', async () => {
@@ -323,7 +330,8 @@ describe('Skill source checks', () => {
 		});
 
 		it('keeps a skill whose folder is gone, and checks the others', async () => {
-			const { docx, xlsx } = await importAll();
+			const { sourceId, docx, xlsx } = await importAll();
+			const version = await findLatestSkillVersion(xlsx);
 			const files = github.files('acme/skills');
 			delete files['skills/xlsx/SKILL.md'];
 			github.push('acme/skills', { ...files, 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
@@ -331,7 +339,21 @@ describe('Skill source checks', () => {
 			await sync().checkAll();
 
 			expect(await linkOf(docx)).toMatchObject({ state: 'update_available' });
-			expect(await linkOf(xlsx)).toMatchObject({ state: 'up_to_date', pendingContentHash: null });
+			expect(await linkOf(xlsx)).toMatchObject({
+				state: 'source_unavailable',
+				pendingContentHash: null,
+			});
+			expect(await findLatestSkillVersion(xlsx)).toEqual(version);
+			const sources = (await viewer.get('/skill-sources').expect(200)).body
+				.data as SkillSourceListItem[];
+			expect(sources.find(({ id }) => id === sourceId)?.missingSkills).toEqual(['xlsx']);
+			await viewer.get(`/skills/${xlsx}`).expect(200);
+			pushChange({ 'skills/xlsx/SKILL.md': skillMd('xlsx') });
+			await sync().checkAll();
+			expect(await linkOf(xlsx)).toMatchObject({ state: 'up_to_date' });
+			expect((await viewer.get('/skill-sources').expect(200)).body.data[0].missingSkills).toEqual(
+				[],
+			);
 		});
 
 		it('blocks an update whose SKILL.md n8n cannot parse, and reports it once', async () => {
@@ -356,6 +378,27 @@ describe('Skill source checks', () => {
 			);
 		});
 
+		it('keeps a pending update when its folder disappears and restores it when the folder returns', async () => {
+			const { docx } = await importAll();
+			pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
+			await sync().checkAll();
+			const pending = (await linkOf(docx)).pendingContentHash;
+			const files = github.files('acme/skills');
+			delete files['skills/docx/SKILL.md'];
+			github.push('acme/skills', files);
+			await sync().checkAll();
+			expect(await linkOf(docx)).toMatchObject({
+				state: 'source_unavailable',
+				pendingContentHash: pending,
+			});
+			pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
+			await sync().checkAll();
+			expect(await linkOf(docx)).toMatchObject({
+				state: 'update_available',
+				pendingContentHash: pending,
+			});
+		});
+
 		it('stores each update once when two checks of a source run at the same time', async () => {
 			const updateFound = vi.spyOn(Container.get(SkillsTelemetry), 'updateFound');
 			const { sourceId, docx } = await importAll();
@@ -378,6 +421,7 @@ describe('Skill source checks', () => {
 			// A secondary rate limit sends `retry-after` with a 403.
 			{ failure: { status: 403, headers: { 'retry-after': '1' } }, reason: 'rate_limited' },
 		])('stores $reason on the source when GitHub answers $failure', async ({ failure, reason }) => {
+			const healthChanged = vi.spyOn(Container.get(SkillsTelemetry), 'sourceHealthChanged');
 			const { sourceId, docx } = await importAll();
 			github.failWith = failure;
 
@@ -385,12 +429,19 @@ describe('Skill source checks', () => {
 
 			expect(await sourceOf(sourceId)).toMatchObject({ lastErrorReason: reason });
 			expect(await linkOf(docx)).toMatchObject({ state: 'up_to_date' });
+			const [row] = (await viewer.get('/skill-sources').expect(200)).body
+				.data as SkillSourceListItem[];
+			expect(row.health).toBe(reason === 'rate_limited' ? 'delayed' : 'source_unavailable');
+			await sync().checkAll();
+			expect(healthChanged).toHaveBeenCalledTimes(1);
+			expect(healthChanged.mock.calls[0][0]).not.toHaveProperty('user_id');
 
 			github.failWith = undefined;
 			await sync().checkAll();
 			expect(await sourceOf(sourceId)).toMatchObject({
 				lastErrorReason: reason === 'rate_limited' ? 'rate_limited' : null,
 			});
+			expect(healthChanged).toHaveBeenCalledTimes(reason === 'rate_limited' ? 1 : 2);
 		});
 
 		it('waits as long as GitHub asked after a rate limit, with no request', async () => {
@@ -410,14 +461,54 @@ describe('Skill source checks', () => {
 			await importAll();
 			github.failWith = { status: 429, headers: { 'retry-after': '600' } };
 			await sync().checkAll();
-			const retryAt = Reflect.get(sync(), 'retryAt') as Map<string, number>;
-			const until = retryAt.get('public:github');
+			const backoff = Reflect.get(sync(), 'backoff') as Map<string, unknown>;
+			const until = backoff.get('public:github');
 
 			await sync().checkAll();
 			await sync().checkAll();
 
-			expect(retryAt.get('public:github')).toBe(until);
+			expect(backoff.get('public:github')).toBe(until);
 		});
+
+		it.each([false, true])(
+			'backs off repeated limits and resets after success (changed: %s)',
+			async (changed) => {
+				const { sourceId } = await importAll();
+				vi.spyOn(Math, 'random').mockReturnValue(0);
+				vi.useFakeTimers({ toFake: ['Date'] });
+				const start = Date.now();
+				github.failWith = { status: 429, headers: { 'retry-after': '1' } };
+				const requests = () => github.requests.refs;
+
+				await sync().checkAll();
+				const first = requests();
+				vi.setSystemTime(start + 59_999);
+				await sync().checkAll();
+				expect(requests()).toBe(first);
+
+				vi.setSystemTime(start + 60_000);
+				await sync().checkAll();
+				expect(requests()).toBe(first + 1);
+				vi.setSystemTime(start + 179_999);
+				await sync().checkAll();
+				expect(requests()).toBe(first + 1);
+
+				github.failWith = undefined;
+				if (changed) pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
+				vi.setSystemTime(start + 180_000);
+				await sync().checkAll();
+				expect(requests()).toBe(first + 2);
+				expect(await sourceOf(sourceId)).toMatchObject({ lastErrorReason: null });
+
+				github.failWith = 429;
+				await sync().checkAll();
+				expect(requests()).toBe(first + 3);
+				github.failWith = undefined;
+				vi.setSystemTime(start + 240_000);
+				await sync().checkAll();
+				expect(requests()).toBe(first + 4);
+			},
+		);
 
 		it('keeps the check time of a source that waits, so it goes first next time', async () => {
 			const { sourceId } = await importAll();
@@ -505,6 +596,39 @@ describe('Skill source checks', () => {
 				expect((await sourceOf(sourceId)).lastCheckedAt?.getTime()).toBe(later.getTime());
 			});
 
+			it.each([
+				{ earlierReason: 'unreachable', newerReason: null },
+				{ earlierReason: null, newerReason: 'unreachable' },
+			])(
+				'stores a newer $newerReason result after an earlier $earlierReason result',
+				async ({ earlierReason, newerReason }) => {
+					const { sourceId } = await importAll();
+					await age(sourceId);
+					await db().update(
+						SkillSourceConnection,
+						{ id: sourceId },
+						{ lastErrorReason: newerReason },
+					);
+					if (newerReason) github.failWith = 500;
+					const recordCheck = repository().recordCheck.bind(repository());
+					vi.spyOn(repository(), 'recordCheck').mockImplementationOnce(async (id, result) => {
+						// Both checks read the same health. The earlier check finishes first.
+						expect(
+							await recordCheck(id, {
+								checkedAt: new Date(result.checkedAt.getTime() - 1),
+								errorReason: earlierReason,
+								credentialId: result.credentialId,
+							}),
+						).toBe(true);
+						return await recordCheck(id, result);
+					});
+
+					await sync().checkAll();
+
+					expect(await sourceOf(sourceId)).toMatchObject({ lastErrorReason: newerReason });
+				},
+			);
+
 			it('lets one Check now claim the minute', async () => {
 				const { sourceId } = await importAll();
 				await age(sourceId);
@@ -546,6 +670,34 @@ describe('Skill source checks', () => {
 				expect((await sourceOf(sourceId)).probeCursor).toBeNull();
 				await sync().checkAll();
 				expect((await linkOf(docx)).pendingContent).toMatchObject({ instructions: 'v2' });
+			});
+
+			it('retries availability when another check changed an otherwise unchanged link', async () => {
+				const { sourceId, docx } = await importAll();
+				pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
+				await sync().checkAll();
+				const pendingHash = (await linkOf(docx)).pendingContentHash;
+				const revision = pushChange({ 'README.md': '# Changed\n' });
+				const findLinks = repository().findLinksBySource.bind(repository());
+				vi.spyOn(repository(), 'findLinksBySource').mockImplementationOnce(async (id) => {
+					const links = await findLinks(id);
+					await repository().setLinkAvailability(await linkOf(docx), true);
+					return links;
+				});
+
+				await sync().checkAll();
+
+				expect((await sourceOf(sourceId)).probeCursor).toBeNull();
+				expect(await linkOf(docx)).toMatchObject({
+					state: 'source_unavailable',
+					pendingContentHash: pendingHash,
+				});
+				await sync().checkAll();
+				expect((await sourceOf(sourceId)).probeCursor).toBe(revision);
+				expect(await linkOf(docx)).toMatchObject({
+					state: 'update_available',
+					pendingContentHash: pendingHash,
+				});
 			});
 		});
 
@@ -667,7 +819,7 @@ describe('Skill source checks', () => {
 			const rows = body.data.data as SkillListItem[];
 			expect(rows.find((row) => row.id === xlsx)).toMatchObject({
 				syncState: 'update_available',
-				canCheckForUpdates: true,
+				sourceId: expect.any(String),
 			});
 			expect(rows.find((row) => row.id === docx)).toMatchObject({ syncState: 'up_to_date' });
 		});

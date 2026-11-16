@@ -137,6 +137,9 @@ export class DiscordIntegration extends AgentChatIntegration {
 		'A Discord mention is answered inside a thread created off that message. Use send_channel_message when the reply belongs in the channel itself rather than that thread.',
 	];
 
+	// A bot can attach up to 10 files of 10 MiB each in a server without boosts.
+	readonly fileUploadLimits = { maxFiles: 10, maxFileBytes: 10 * 1024 * 1024 };
+
 	readonly needsShortCallbackData = true;
 
 	readonly disableStreaming = true;

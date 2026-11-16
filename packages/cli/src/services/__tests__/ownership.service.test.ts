@@ -4,6 +4,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import {
 	isPerson,
 	isServiceAccount,
+	Person,
 	Project,
 	SharedWorkflow,
 	User,
@@ -13,6 +14,7 @@ import {
 	ProjectRepository,
 	SharedWorkflowRepository,
 	UserRepository,
+	PersonRepository,
 	GLOBAL_OWNER_ROLE,
 	PROJECT_OWNER_ROLE,
 } from '@n8n/db';
@@ -30,6 +32,7 @@ import { CacheService } from '@n8n/backend-services';
 
 describe('OwnershipService', () => {
 	const userRepository = mockInstance(UserRepository);
+	const personRepository = mockInstance(PersonRepository);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 	const projectRelationRepository = mockInstance(ProjectRelationRepository);
 	const projectRepository = mockInstance(ProjectRepository);
@@ -49,6 +52,7 @@ describe('OwnershipService', () => {
 		projectRepository,
 		workflowProjectService,
 		userRepository,
+		personRepository,
 		settingsRepository,
 	);
 
@@ -373,7 +377,7 @@ describe('OwnershipService', () => {
 
 	describe('setupOwner()', () => {
 		it('should throw a BadRequestError if the instance owner is already setup', async () => {
-			userRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(true);
+			personRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(true);
 
 			const execution = ownershipService.setupOwner(mock());
 			await expect(execution).rejects.toThrow(BadRequestError);
@@ -387,7 +391,7 @@ describe('OwnershipService', () => {
 		});
 
 		it('should throw a BadRequestError if the shell user is not found', async () => {
-			userRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
+			personRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
 			userRepository.findOne.mockResolvedValueOnce(null);
 
 			const execution = ownershipService.setupOwner(mock());
@@ -398,7 +402,7 @@ describe('OwnershipService', () => {
 		});
 
 		it('should setup the instance owner successfully', async () => {
-			const user = mock<User>({
+			const person = Object.assign(new Person(), {
 				id: 'userId',
 				role: GLOBAL_OWNER_ROLE,
 				authIdentities: [],
@@ -411,16 +415,16 @@ describe('OwnershipService', () => {
 				lastName: 'Doe',
 			};
 
-			//	not quite perfect as we hash the password.
-			const expected = { ...user, ...payload, id: 'newUserId' };
-
-			userRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
-			userRepository.findOne.mockResolvedValueOnce(user);
-			userRepository.save.mockResolvedValueOnce(expected);
+			personRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
+			userRepository.findOne.mockResolvedValueOnce(person);
+			// `save` updates the entity in place, as TypeORM does.
+			userRepository.save.mockImplementationOnce(
+				async (entity) => Object.assign(entity, { id: 'newUserId' }) as User,
+			);
 
 			const actual = await ownershipService.setupOwner(payload);
 
-			expect(userRepository.save).toHaveBeenCalledWith(user, { transaction: false });
+			expect(userRepository.save).toHaveBeenCalledWith(person, { transaction: false });
 			expect(eventService.emit).toHaveBeenCalledWith('instance-owner-setup', {
 				userId: 'newUserId',
 			});
@@ -428,7 +432,7 @@ describe('OwnershipService', () => {
 		});
 
 		it('should normalize email to lowercase', async () => {
-			const user = mock<User>({
+			const person = Object.assign(new Person(), {
 				id: 'userId',
 				role: GLOBAL_OWNER_ROLE,
 				authIdentities: [],
@@ -441,35 +445,35 @@ describe('OwnershipService', () => {
 				lastName: 'Doe',
 			};
 
-			userRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
-			userRepository.findOne.mockResolvedValueOnce(user);
-			userRepository.save.mockResolvedValueOnce(user);
+			personRepository.hasClaimedInstanceOwner.mockResolvedValueOnce(false);
+			userRepository.findOne.mockResolvedValueOnce(person);
+			userRepository.save.mockResolvedValueOnce(person);
 
 			await ownershipService.setupOwner(payload);
 
-			expect(user.email).toBe('admin@example.com');
+			expect(person.email).toBe('admin@example.com');
 		});
 
 		it('should skip hasInstanceOwner check when override is true', async () => {
-			const user = mock<User>({
+			const person = Object.assign(new Person(), {
 				id: 'userId',
 				role: GLOBAL_OWNER_ROLE,
 				authIdentities: [],
 			});
 
-			userRepository.findOne.mockResolvedValueOnce(user);
-			userRepository.save.mockResolvedValueOnce(user);
+			userRepository.findOne.mockResolvedValueOnce(person);
+			userRepository.save.mockResolvedValueOnce(person);
 
 			await ownershipService.setupOwner(
 				{ email: 'a@b.com', password: 'hash', firstName: 'A', lastName: 'B' },
 				{ overwriteExisting: true },
 			);
 
-			expect(userRepository.hasClaimedInstanceOwner).not.toHaveBeenCalled();
+			expect(personRepository.hasClaimedInstanceOwner).not.toHaveBeenCalled();
 		});
 
 		it('should use pre-hashed password when preHashed is true', async () => {
-			const user = mock<User>({
+			const person = Object.assign(new Person(), {
 				id: 'userId',
 				role: GLOBAL_OWNER_ROLE,
 				authIdentities: [],
@@ -477,15 +481,15 @@ describe('OwnershipService', () => {
 
 			const preHashedPassword = '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
 
-			userRepository.findOne.mockResolvedValueOnce(user);
-			userRepository.save.mockResolvedValueOnce(user);
+			userRepository.findOne.mockResolvedValueOnce(person);
+			userRepository.save.mockResolvedValueOnce(person);
 
 			await ownershipService.setupOwner(
 				{ email: 'a@b.com', password: preHashedPassword, firstName: 'A', lastName: 'B' },
 				{ overwriteExisting: true, passwordIsHashed: true },
 			);
 
-			expect(user.password).toBe(preHashedPassword);
+			expect(person.password).toBe(preHashedPassword);
 			expect(passwordUtility.hash).not.toHaveBeenCalled();
 		});
 	});

@@ -148,6 +148,26 @@ describe('model helper', () => {
 			expect((result.originalException as GuardrailError).guardrailName).toBe('test-guardrail');
 		});
 
+		it('should return failed GuardrailResult when chain construction throws', async () => {
+			vi.mocked(MockChatPromptTemplate.fromMessages).mockImplementationOnce(() => {
+				throw new Error('Cannot pipe invalid model');
+			});
+
+			const result = await runLLMValidation('test-guardrail', 'Test input', {
+				model: mockModel,
+				prompt: 'Test prompt',
+				threshold: 0.5,
+			});
+
+			expect(result).toEqual({
+				guardrailName: 'test-guardrail',
+				tripwireTriggered: true,
+				executionFailed: true,
+				originalException: expect.any(GuardrailError),
+				info: {},
+			});
+		});
+
 		it('should return failed GuardrailResult when agent does not call tool', async () => {
 			vi.mocked(MockAgentExecutor.invoke).mockImplementation(() => {});
 

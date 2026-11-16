@@ -109,6 +109,7 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 					.map((credential) => ({
 						id: credential.id,
 						name: credential.name,
+						type: credential.type,
 						typeDisplayName: credentialsStore.getCredentialTypeByName(credential.type)?.displayName,
 						homeProject: credential.homeProject,
 					}));
@@ -131,9 +132,12 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 		syncSelectedConnectedCredentials();
 	}
 
-	function createCredential() {
+	function createCredential(credentialType?: string) {
 		const integration = currentIntegration.value;
-		const [primaryCredentialType] = integration?.credentialTypes ?? [];
+		// A channel with several credential types names the one to create.
+		const primaryCredentialType =
+			integration?.credentialTypes.find((type) => type === credentialType) ??
+			integration?.credentialTypes[0];
 		if (!integration || !primaryCredentialType) return;
 
 		const existing = credentialsByType.value[integration.type] ?? [];

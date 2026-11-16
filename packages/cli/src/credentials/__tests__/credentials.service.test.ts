@@ -1,11 +1,11 @@
 import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
-import type { PostHogClient } from '@/posthog';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import {
 	type EventService,
 	type RoleService,
 	type CredentialsFinderService,
+	type PostHogClient,
 } from '@n8n/backend-services';
 import type {
 	CredentialsRepository,
@@ -21,6 +21,7 @@ import type {
 	DbLockService,
 	TransactionRunner,
 	ProjectRelation,
+	OperationContext,
 } from '@n8n/db';
 import {
 	CredentialIdConflictError,
@@ -31,6 +32,7 @@ import {
 	type Role,
 } from '@n8n/db';
 import type { PolicyCleared } from '@n8n/decorators';
+import type { SecurityContext } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
@@ -164,6 +166,7 @@ describe('CredentialsService', () => {
 		transactionRunner,
 		policyEnforcementService,
 		credentialDescriptions,
+		mock(), // credentialsPermissionChecker
 	);
 
 	beforeEach(() => {
@@ -579,6 +582,26 @@ describe('CredentialsService', () => {
 				expect(eventService.emit).not.toHaveBeenCalled();
 			},
 		);
+
+		it('passes the login id to the credentials-updated event', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await service.updateDescription(ownerUser, credential.id, 'New', ctx);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'credentials-updated',
+				expect.objectContaining({ loginId: 'login-1' }),
+			);
+		});
+
+		it('emits no login id without an operation context', async () => {
+			await service.updateDescription(ownerUser, credential.id, 'New');
+
+			const call = eventService.emit.mock.calls.find(([name]) => name === 'credentials-updated');
+			expect(call?.[1]).toMatchObject({ loginId: undefined });
+		});
 
 		it('uses and validates the description returned by the hook', async () => {
 			externalHooks.run.mockImplementation(async (_name, parameters) => {
@@ -1891,6 +1914,63 @@ describe('CredentialsService', () => {
 			const emittedEventNames = eventService.emit.mock.calls.map((call) => call[0]);
 			expect(emittedEventNames).not.toContain('private-credential-deleted');
 		});
+
+		describe('login id on the deleted event', () => {
+			const projectCredential = () => {
+				const credential = mock<CredentialsEntity>({
+					id: 'project-credential',
+					type: 'gmailOAuth2',
+					usageScope: 'project',
+					isResolvable: false,
+				});
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+				credentialsRepository.remove.mockResolvedValue(credential);
+				return credential;
+			};
+
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			it('passes the login id to the credentials-deleted event', async () => {
+				const credential = projectCredential();
+
+				await service.delete(ownerUser, credential.id, {}, ctx);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'credentials-deleted',
+					expect.objectContaining({ loginId: 'login-1' }),
+				);
+			});
+
+			it('passes the login id when an instance credential is deleted', async () => {
+				const credential = mock<CredentialsEntity>({
+					id: 'instance-credential',
+					usageScope: 'instance',
+					isResolvable: false,
+				});
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+				credentialsRepository.deleteInstanceCredentialIfUnassigned.mockResolvedValue({
+					status: 'deleted',
+				});
+
+				await service.delete(ownerUser, credential.id, { includeInstanceCredentials: true }, ctx);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'credentials-deleted',
+					expect.objectContaining({ loginId: 'login-1' }),
+				);
+			});
+
+			it('emits no login id without an operation context', async () => {
+				const credential = projectCredential();
+
+				await service.delete(ownerUser, credential.id);
+
+				const call = eventService.emit.mock.calls.find(([name]) => name === 'credentials-deleted');
+				expect(call?.[1]).toMatchObject({ loginId: undefined });
+			});
+		});
 	});
 
 	describe('deleteUnowned', () => {
@@ -2169,6 +2249,114 @@ describe('CredentialsService', () => {
 			await service.update(credential.id, encrypted, ownerActor);
 
 			expect(connectionStatusProxy.findMyConnections).not.toHaveBeenCalled();
+		});
+
+		describe('description handling', () => {
+			const storedDescription = 'Stored reporting account';
+
+			const setUpUpdate = () => {
+				const stored = Object.assign(new CredentialsEntity(), {
+					id: 'described-credential',
+					name: 'Reporting',
+					type: 'apiKey',
+					description: storedDescription,
+				});
+				storeCredential(stored);
+				const transactionManager = mock<EntityManager>();
+				transactionManager.findOneBy.mockImplementation(async () =>
+					Object.assign(new CredentialsEntity(), stored),
+				);
+				setRepositoryTransaction(transactionManager);
+				return stored;
+			};
+
+			const buildPayload = (
+				stored: CredentialsEntity,
+				extra: Partial<ICredentialsDb> = {},
+			): ICredentialsDb => ({
+				id: stored.id,
+				name: stored.name,
+				type: stored.type,
+				data: 'encrypted',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				...extra,
+			});
+
+			const hookSetsDescription = (description: string) => {
+				externalHooks.run.mockImplementation(async (_hookName, params) => {
+					(params as [ICredentialsDb])[0].description = description;
+				});
+			};
+
+			it('persists and returns the description when the flag is enabled', async () => {
+				const stored = setUpUpdate();
+				const payload = buildPayload(stored, { description: 'New description' });
+
+				const result = await service.update(stored.id, payload, ownerActor);
+
+				expect(credentialsRepository.updateContent).toHaveBeenCalledWith(
+					stored.id,
+					expect.objectContaining({ description: 'New description' }),
+					expect.anything(),
+				);
+				expect(result?.description).toBe(storedDescription);
+				expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledOnce();
+			});
+
+			it('keeps a hook-added description when the flag is enabled', async () => {
+				const stored = setUpUpdate();
+				hookSetsDescription('From hook');
+
+				await service.update(stored.id, buildPayload(stored), ownerActor);
+
+				expect(credentialsRepository.updateContent).toHaveBeenCalledWith(
+					stored.id,
+					expect.objectContaining({ description: 'From hook' }),
+					expect.anything(),
+				);
+			});
+
+			it.each([false, undefined])(
+				'keeps the description out of the write and the response when the flag is %s',
+				async (enabled) => {
+					postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
+					const stored = setUpUpdate();
+					let hookInput: ICredentialsDb | undefined;
+					externalHooks.run.mockImplementation(async (_hookName, params) => {
+						hookInput = { ...(params as [ICredentialsDb])[0] };
+					});
+					const payload = buildPayload(stored, { description: 'New description' });
+
+					const result = await service.update(stored.id, payload, ownerActor);
+
+					expect(hookInput).not.toHaveProperty('description');
+					const [, written] = credentialsRepository.updateContent.mock.calls[0];
+					expect(written).not.toHaveProperty('description');
+					expect(result).not.toBeNull();
+					expect(result).not.toHaveProperty('description');
+					expect(stored.description).toBe(storedDescription);
+					expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledOnce();
+				},
+			);
+
+			it.each([false, undefined])(
+				'keeps a hook-added description out of the write and the response when the flag is %s',
+				async (enabled) => {
+					postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
+					const stored = setUpUpdate();
+					hookSetsDescription('From hook');
+
+					const result = await service.update(stored.id, buildPayload(stored), ownerActor);
+
+					const [, written] = credentialsRepository.updateContent.mock.calls[0];
+					expect(written).not.toHaveProperty('description');
+					expect(result).not.toBeNull();
+					expect(result).not.toHaveProperty('description');
+					expect(stored.description).toBe(storedDescription);
+					expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledOnce();
+				},
+			);
 		});
 	});
 

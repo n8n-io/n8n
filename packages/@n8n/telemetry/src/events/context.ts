@@ -69,6 +69,13 @@ const skillMethod = z
 /** The type of a Skill Sync source. */
 const skillSourceProvider = z.enum(['github']).describe('The type of the source, such as GitHub');
 
+/** Whether n8n reads a source with a credential. */
+const skillSourceAccess = z
+	.enum(['public', 'credential'])
+	.describe(
+		'Whether n8n reads the source with a credential. `public` reads it without one, also after its credential is deleted. `credential` does not mean the source is private',
+	);
+
 /** Where a source puts its skills. */
 const skillSourceScopeType = z
 	.enum(['global', 'team', 'personal'])
@@ -78,12 +85,29 @@ const skillSourceStatus = z
 	.enum(['success', 'failure'])
 	.describe('Whether the action succeeded. A failure carries a reason code');
 
+const skillSourceHealth = z.enum([
+	'connected',
+	'credential_issue',
+	'source_unavailable',
+	'delayed',
+]);
+
 const skillSourceReason = z
 	.enum([...SKILL_SOURCE_REASONS, 'unexpected'])
 	.optional()
 	.describe(
 		'Reason code of a failure, such as `not_found`, `duplicate_source` or `name_taken`. `unexpected` is a failure with no known reason. A success carries only `too_many_skills` or `too_deep`, when the source had skills that n8n did not list. Absent on other successes',
 	);
+
+/** Where a synced skill comes from. Both are absent for a skill that Skill Sync did not import. */
+const skillOrigin = {
+	source_provider: skillSourceProvider
+		.optional()
+		.describe('The type of the source of a synced skill, such as GitHub'),
+	source_access: skillSourceAccess
+		.optional()
+		.describe('Whether n8n reads the source of a synced skill with a credential'),
+};
 
 const preferenceExampleId = z
 	.enum(['workflows', 'agents', 'credentials', 'answers'])
@@ -389,6 +413,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			project_id: skillProjectId,
 			source: skillSource,
 			method: skillMethod,
+			...skillOrigin,
 		}),
 	},
 	USER_UPDATED_SKILL: {
@@ -429,6 +454,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			file: z
 				.enum(['skill_md', 'reference'])
 				.describe('`skill_md` is the SKILL.md file. `reference` is a file under `references/`'),
+			...skillOrigin,
 		}),
 	},
 	USER_CONNECTED_SKILL_SOURCE: {
@@ -438,9 +464,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			user_id: userId,
 			provider: skillSourceProvider,
-			access: z
-				.enum(['public', 'credential'])
-				.describe('`public` reads a public source without a credential'),
+			access: skillSourceAccess,
 			scope_type: skillSourceScopeType,
 			duplicate_result: z
 				.enum(['none', 'warning', 'blocked'])
@@ -454,10 +478,11 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_IMPORTED_SKILLS_FROM_SOURCE: {
 		name: 'User imported skills from source',
 		description:
-			'A user imported skills from a source. Fires once the import commits, also when it imported nothing, with the reason code. Counts only, never names or content.',
+			'A user imported skills from a source. Fires once the import commits, also when it imported nothing, with the reason code. Counts and file extensions only, never names, paths or content.',
 		properties: z.object({
 			user_id: userId,
 			provider: skillSourceProvider,
+			access: skillSourceAccess,
 			scope_type: skillSourceScopeType,
 			first_or_more: z
 				.enum(['first', 'more'])
@@ -476,6 +501,16 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 					'Imported skills that the security check flagged for review, after "I reviewed the warnings"',
 				),
 			skipped_files: z.number().describe('Files of the imported skills that the import left out'),
+			skipped_file_extensions: z
+				.record(z.string(), z.number())
+				.describe(
+					'The `skipped_files` by lowercase extension, such as `{ ".py": 3, ".png": 2 }`. `none` counts files with no extension. `other` counts extensions outside a fixed list of known file types, and the extensions after the 20 most common',
+				),
+			skipped_script_files: z
+				.number()
+				.describe(
+					'The `skipped_files` that are scripts or code, such as `.py`, `.sh`, `.js` or `.ts`. The security check flags these for review',
+				),
 			status: skillSourceStatus,
 			reason: skillSourceReason,
 		}),
@@ -537,6 +572,38 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 				),
 			status: skillSourceStatus,
 			reason: skillSourceReason,
+		}),
+	},
+	USER_DELETED_SKILL_SOURCE: {
+		name: 'User deleted skill source',
+		description:
+			'A user deleted a source and its synced skills. Fires after the transaction commits or fails. An agent draft or published pin blocks the delete with reason skills_in_use. Contains no skill, source, agent, or project names.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			status: skillSourceStatus,
+			reason: z.enum(['skills_in_use', 'unexpected']).optional(),
+		}),
+	},
+	USER_UPDATED_SKILL_SOURCE_CREDENTIAL: {
+		name: 'User updated skill source credential',
+		description:
+			'A user replaced the credential of a skill source. Fires after validation and the write succeed or fail. Contains no credential names, identifiers, or secrets.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
+	SKILL_SOURCE_HEALTH_CHANGED: {
+		name: 'Skill source health changed',
+		description:
+			'A source check or credential replacement changed the health of a skill source. Repeated results do not report. Carries no user id, so it reaches BigQuery and not PostHog.',
+		properties: z.object({
+			provider: skillSourceProvider,
+			previous_health: skillSourceHealth,
+			health: skillSourceHealth,
 		}),
 	},
 	USER_STOPPED_SKILL_SYNC: {

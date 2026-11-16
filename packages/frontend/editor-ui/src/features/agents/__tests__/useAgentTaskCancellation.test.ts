@@ -5,7 +5,7 @@ import { flushPromises } from '@vue/test-utils';
 import { effectScope, reactive, ref, type EffectScope } from 'vue';
 
 import { useAgentTaskCancellation } from '../composables/useAgentTaskCancellation';
-import { getAgentTaskCancellation } from '../composables/useAgentApi';
+import { type AgentChatChannel, getAgentTaskCancellation } from '../composables/useAgentApi';
 
 vi.mock('../composables/useAgentApi', () => ({
 	getAgentTaskCancellation: vi.fn(),
@@ -36,6 +36,7 @@ const event: PushMessage = {
 };
 let scope: EffectScope;
 const thread = ref('thread');
+const channel = ref<AgentChatChannel>('chat');
 
 function create() {
 	scope = effectScope();
@@ -45,6 +46,7 @@ function create() {
 			projectId: () => 'project',
 			agentId: () => 'agent',
 			threadId: () => thread.value,
+			channel: () => channel.value,
 			active: () => true,
 			planId: () => null,
 			requestStop,
@@ -55,7 +57,31 @@ function create() {
 beforeEach(() => {
 	vi.resetAllMocks();
 	thread.value = 'thread';
+	channel.value = 'chat';
 	vi.mocked(getAgentTaskCancellation).mockResolvedValue(null);
+});
+
+it('reads the cancellation state from the route of the current channel', async () => {
+	create();
+	await flushPromises();
+	expect(getAgentTaskCancellation).toHaveBeenLastCalledWith(
+		expect.anything(),
+		'project',
+		'agent',
+		'thread',
+		'chat',
+	);
+
+	channel.value = 'n8n-chat';
+	await flushPromises();
+
+	expect(getAgentTaskCancellation).toHaveBeenLastCalledWith(
+		expect.anything(),
+		'project',
+		'agent',
+		'thread',
+		'n8n-chat',
+	);
 });
 
 afterEach(() => scope.stop());

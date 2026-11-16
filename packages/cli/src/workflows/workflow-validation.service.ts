@@ -24,6 +24,7 @@ import type {
 	INodes,
 	IConnections,
 	INodeType,
+	INodeTypes,
 	IWorkflowSettings,
 	ICredentialType,
 } from 'n8n-workflow';
@@ -32,7 +33,6 @@ import { STARTING_NODES } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
-import type { NodeTypes } from '@/node-types';
 import { withExpressionIsolate } from '@/utils';
 
 export interface WorkflowValidationResult {
@@ -80,7 +80,7 @@ export class WorkflowValidationService {
 	private executableNodeNames(
 		nodes: INode[],
 		connections: IConnections,
-		nodeTypes: NodeTypes,
+		nodeTypes: INodeTypes,
 	): Set<string> {
 		return getReachableNodeNames(
 			nodes,
@@ -100,7 +100,7 @@ export class WorkflowValidationService {
 	private validateNodeConfiguration(
 		nodes: INode[],
 		connections: IConnections,
-		nodeTypes: NodeTypes,
+		nodeTypes: INodeTypes,
 	): WorkflowValidationResult {
 		try {
 			const executable = this.executableNodeNames(nodes, connections, nodeTypes);
@@ -355,7 +355,7 @@ export class WorkflowValidationService {
 	async validateForActivation(
 		nodes: INodes,
 		connections: IConnections,
-		nodeTypes: NodeTypes,
+		nodeTypes: INodeTypes,
 	): Promise<WorkflowValidationResult> {
 		// Validate workflow entry points: active, poll, webhook, or schedule triggers.
 		const triggerValidation = validateWorkflowHasTriggerLikeNode(nodes, nodeTypes, STARTING_NODES);
@@ -390,7 +390,7 @@ export class WorkflowValidationService {
 	async validateRequiredInputsConnected(
 		nodes: INode[],
 		connections: IConnections,
-		nodeTypes: NodeTypes,
+		nodeTypes: INodeTypes,
 	): Promise<WorkflowValidationResult> {
 		// Transient, so dynamic `inputs` expressions can be evaluated. Built over
 		// shallow node copies because the constructor reassigns `node.parameters`
@@ -490,7 +490,7 @@ export class WorkflowValidationService {
 	 */
 	async validateDynamicCredentials(
 		nodes: INode[],
-		nodeTypes: NodeTypes,
+		nodeTypes: INodeTypes,
 		workflowSettings?: IWorkflowSettings,
 	): Promise<WorkflowValidationResult> {
 		const credentialIds = this.collectCredentialIds(nodes);
@@ -631,7 +631,7 @@ export class WorkflowValidationService {
 	 */
 	private classifyTriggerIdentities(
 		nodes: INode[],
-		nodeTypes: NodeTypes,
+		nodeTypes: INodeTypes,
 	): {
 		allTriggersProvideExternalIdentity: boolean;
 		allTriggersProvideN8nIdentity: boolean;

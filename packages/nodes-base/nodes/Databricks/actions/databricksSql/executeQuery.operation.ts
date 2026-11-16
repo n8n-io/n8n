@@ -1,4 +1,4 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { sleep } from '@n8n/utils/sleep';
@@ -31,19 +31,23 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	// For queries that exceed 50s, on_wait_timeout=CONTINUE puts the statement
 	// in async mode and Step 2 polls until it finishes.
 	// See: https://docs.databricks.com/api/workspace/statementexecution/executestatement#wait_timeout
-	const executeResponse = (await databricksApiRequest(this, credentialType, {
-		method: 'POST',
-		url: `${host}/api/2.0/sql/statements`,
-		body: {
-			warehouse_id: warehouseId,
-			statement: query,
-			wait_timeout: '50s',
-			on_wait_timeout: 'CONTINUE',
-			...(parameters.length > 0 && { parameters }),
+	const executeResponse = (await databricksApiRequest(
+		this,
+		credentialType,
+		requestUrl`${host}/api/2.0/sql/statements`,
+		{
+			method: 'POST',
+			body: {
+				warehouse_id: warehouseId,
+				statement: query,
+				wait_timeout: '50s',
+				on_wait_timeout: 'CONTINUE',
+				...(parameters.length > 0 && { parameters }),
+			},
+			headers: { 'Content-Type': 'application/json' },
+			json: true,
 		},
-		headers: { 'Content-Type': 'application/json' },
-		json: true,
-	})) as DatabricksStatementResponse;
+	)) as DatabricksStatementResponse;
 
 	const statementId = executeResponse.statement_id;
 
@@ -61,12 +65,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	) {
 		await sleep(5000);
 
-		queryResult = (await databricksApiRequest(this, credentialType, {
-			method: 'GET',
-			url: `${host}/api/2.0/sql/statements/${statementId}`,
-			headers: { Accept: 'application/json' },
-			json: true,
-		})) as DatabricksStatementResponse;
+		queryResult = (await databricksApiRequest(
+			this,
+			credentialType,
+			requestUrl`${host}/api/2.0/sql/statements/${statementId}`,
+			{
+				method: 'GET',
+				headers: { Accept: 'application/json' },
+				json: true,
+			},
+		)) as DatabricksStatementResponse;
 
 		status = queryResult.status.state;
 		retries++;
@@ -106,12 +114,16 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	while (chunkIndex < totalChunks) {
-		const chunkResponse = (await databricksApiRequest(this, credentialType, {
-			method: 'GET',
-			url: `${host}/api/2.0/sql/statements/${statementId}/result/chunks/${chunkIndex}`,
-			headers: { Accept: 'application/json' },
-			json: true,
-		})) as { data_array?: unknown[][] };
+		const chunkResponse = (await databricksApiRequest(
+			this,
+			credentialType,
+			requestUrl`${host}/api/2.0/sql/statements/${statementId}/result/chunks/${chunkIndex}`,
+			{
+				method: 'GET',
+				headers: { Accept: 'application/json' },
+				json: true,
+			},
+		)) as { data_array?: unknown[][] };
 
 		if (chunkResponse.data_array) {
 			for (const row of chunkResponse.data_array) {

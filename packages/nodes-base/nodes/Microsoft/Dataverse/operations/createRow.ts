@@ -1,4 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import type { OperationDefinition } from './types';
 import {
 	applyLookupBindings,
@@ -50,7 +51,7 @@ export const createRow: OperationDefinition = {
 		const options = ctx.getNodeParameter('createOptions', i, {}) as IDataObject;
 		return await executeRequest(ctx, credentialType, {
 			method: 'POST',
-			path: `/${entitySet}`,
+			path: requestPath`/${entitySet}`,
 			body,
 			options,
 			prefer: { returnRepresentation: true },

@@ -7,6 +7,11 @@ export const TYPE_AVAILABILITY_POLICIES_MODULE_ID = 'type-availability-policies'
 
 export const TYPE_AVAILABILITY_POLICIES_STORE_ID = 'typeAvailabilityPolicies';
 
+export const RESTRICTED_NODE_POPOVER_WIDTH = 254;
+
+/** The default gap between the popover card and the row it explains. */
+export const RESTRICTED_NODE_POPOVER_SIDE_OFFSET = 24;
+
 export const SCOPE_LABEL_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
 	instance: 'typeAvailabilityPolicies.restrictedNode.scope.instance',
 	project: 'typeAvailabilityPolicies.restrictedNode.scope.project',
@@ -96,7 +101,11 @@ export const RESTRICTION_CONTACT_COPY: Record<
 
 export const CONTACT_DIALOG_COPY: Record<
 	ContactAudience,
-	{ title: BaseTextKey; empty: BaseTextKey; description: Record<RestrictedTypeKind, BaseTextKey> }
+	{
+		title: BaseTextKey;
+		empty: BaseTextKey;
+		description: Record<RestrictedTypeKind | 'several', BaseTextKey>;
+	}
 > = {
 	instance: {
 		title: 'typeAvailabilityPolicies.contactAdmin.title',
@@ -104,6 +113,7 @@ export const CONTACT_DIALOG_COPY: Record<
 		description: {
 			node: 'typeAvailabilityPolicies.contactAdmin.description',
 			credential: 'typeAvailabilityPolicies.contactAdmin.credentialType.description',
+			several: 'typeAvailabilityPolicies.contactAdmin.several.description',
 		},
 	},
 	project: {
@@ -112,6 +122,7 @@ export const CONTACT_DIALOG_COPY: Record<
 		description: {
 			node: 'typeAvailabilityPolicies.contactProjectAdmin.description',
 			credential: 'typeAvailabilityPolicies.contactProjectAdmin.credentialType.description',
+			several: 'typeAvailabilityPolicies.contactProjectAdmin.several.description',
 		},
 	},
 };

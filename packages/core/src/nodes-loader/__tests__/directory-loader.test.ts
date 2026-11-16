@@ -7,7 +7,7 @@ import type {
 	INodeTypeDescription,
 	IVersionedNodeType,
 } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy, jsonParse } from 'n8n-workflow';
 import * as fs from 'node:fs';
 import * as fsPromises from 'node:fs/promises';
 
@@ -677,6 +677,19 @@ describe('DirectoryLoader', () => {
 
 			const serialized = deepCopy(credWithAuth);
 			expect(serialized.authenticate).toEqual({});
+		});
+
+		it('keeps a function-based credential test discoverable in serialized metadata', () => {
+			const loader = new CustomDirectoryLoader(directory);
+			const test = vi.fn();
+			mockCredential1.test = test;
+
+			loader.loadCredentialFromFile('dist/Credential1.js');
+
+			const serialized = jsonParse<ICredentialType>(JSON.stringify(loader.types.credentials[0]));
+			expect(serialized.test).toEqual({});
+			expect(loader.getCredential('credential1').type.test).toBe(test);
+			expect(test).not.toHaveBeenCalled();
 		});
 
 		it('should store credential extends and supported nodes info', () => {

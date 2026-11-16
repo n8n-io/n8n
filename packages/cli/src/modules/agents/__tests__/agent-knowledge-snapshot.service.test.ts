@@ -1,19 +1,22 @@
 import { mock } from 'vitest-mock-extended';
 
-import { AgentKnowledgeSnapshotService } from '../agent-knowledge-snapshot.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 import type {
-	AgentFileRepository,
+	KnowledgeFileRepository,
 	AgentKnowledgeTotals,
-} from '../repositories/agent-file.repository';
+} from '@/modules/knowledge/repositories/knowledge-file.repository';
+
+import { AgentKnowledgeSnapshotService } from '../agent-knowledge-snapshot.service';
 import type { AgentRepository, PublishedAgentVectorStores } from '../repositories/agent.repository';
 
 describe('AgentKnowledgeSnapshotService', () => {
 	function makeService(
 		pages: PublishedAgentVectorStores[][],
 		fileTotals: Record<string, AgentKnowledgeTotals> = {},
+		{ isKnowledgeActive = true } = {},
 	) {
 		const agentRepository = mock<AgentRepository>();
-		const agentFileRepository = mock<AgentFileRepository>();
+		const agentFileRepository = mock<KnowledgeFileRepository>();
 
 		for (const page of pages) {
 			agentRepository.findPublishedVectorStoreProvidersPage.mockResolvedValueOnce(page);
@@ -30,8 +33,13 @@ describe('AgentKnowledgeSnapshotService', () => {
 		);
 
 		return {
-			service: new AgentKnowledgeSnapshotService(agentRepository, agentFileRepository),
+			service: new AgentKnowledgeSnapshotService(
+				agentRepository,
+				agentFileRepository,
+				makeKnowledgeAvailabilityService({ isKnowledgeActive }),
+			),
 			agentRepository,
+			agentFileRepository,
 		};
 	}
 
@@ -61,6 +69,34 @@ describe('AgentKnowledgeSnapshotService', () => {
 			vector_store_count: 3,
 			vector_store_providers: { pinecone: 2, qdrant: 1 },
 		});
+	});
+
+	it('counts no files and does not read the file totals when the knowledge module is inactive', async () => {
+		const { service, agentFileRepository } = makeService(
+			[
+				[
+					{ agentId: 'files-only', vectorStoreProviders: [] },
+					{ agentId: 'both', vectorStoreProviders: ['pinecone'] },
+				],
+			],
+			{
+				'files-only': { fileCount: 2, totalBytes: 300 },
+				both: { fileCount: 1, totalBytes: 50 },
+			},
+			{ isKnowledgeActive: false },
+		);
+
+		await expect(service.collect()).resolves.toEqual({
+			published_agent_count: 2,
+			published_with_files_count: 0,
+			published_with_vector_stores_count: 1,
+			published_with_both_count: 0,
+			knowledge_file_count: 0,
+			knowledge_total_bytes: 0,
+			vector_store_count: 1,
+			vector_store_providers: { pinecone: 1 },
+		});
+		expect(agentFileRepository.getKnowledgeTotalsByAgentIds).not.toHaveBeenCalled();
 	});
 
 	it('returns zero counts when no agent is published', async () => {

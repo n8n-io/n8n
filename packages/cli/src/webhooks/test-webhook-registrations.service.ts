@@ -1,12 +1,8 @@
 import { isObjectLiteral } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import {
-	type IWebhookData,
-	type IWorkflowBase,
-	type IDestinationNode,
-	UserError,
-} from 'n8n-workflow';
+import type { IWebhookData, IWorkflowBase, IDestinationNode } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import {
 	TEST_WEBHOOK_MAX_TIMEOUT,

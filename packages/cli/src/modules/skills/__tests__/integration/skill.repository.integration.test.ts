@@ -1,4 +1,5 @@
 import { ASSISTANT_SKILLS_FLAG } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -8,12 +9,12 @@ import {
 } from '@n8n/backend-test-utils';
 import { TransactionRunner, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
 import type { AgentScope } from '@/modules/agents/entities/agent.entity';
 
-import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
@@ -28,7 +29,6 @@ import { SkillRuntimeService } from '../../services/skill-runtime.service';
 import { SkillService } from '../../services/skill.service';
 import type { AssistantSkillContext } from '../../utils/skill-content';
 import * as fixtures from '../../testing';
-import { PostHogClient } from '@/posthog';
 
 import { createOwner, createUser } from '@test-integration/db/users';
 
@@ -51,7 +51,7 @@ describe('SkillRepository', () => {
 	let owner: User;
 	let agentSkills: AgentSkillRepository;
 	let agents: AgentRepository;
-	let histories: AgentHistoryRepository;
+	let histories: Repository<AgentHistory>;
 	let txRunner: TransactionRunner;
 	let user: User;
 	let project: Project;
@@ -63,7 +63,7 @@ describe('SkillRepository', () => {
 		skills = Container.get(SkillRepository);
 		agentSkills = Container.get(AgentSkillRepository);
 		agents = Container.get(AgentRepository);
-		histories = Container.get(AgentHistoryRepository);
+		histories = Container.get(DataSource).getRepository(AgentHistory);
 		txRunner = Container.get(TransactionRunner);
 		registerSkillUsage();
 		skillRuntime = Container.get(SkillRuntimeService);
@@ -818,7 +818,7 @@ describe('SkillRepository', () => {
 	});
 
 	describe('findProjects', () => {
-		it('maps project ids to names and types', async () => {
+		it('maps project ids to names, types, and icons', async () => {
 			const personal = await getPersonalProject(user);
 
 			const projects = await skills.findProjects([
@@ -830,9 +830,9 @@ describe('SkillRepository', () => {
 
 			expect(projects).toEqual(
 				new Map([
-					[project.id, { name: 'Team', type: 'team' }],
-					[otherProject.id, { name: 'Other team', type: 'team' }],
-					[personal.id, { name: personal.name, type: 'personal' }],
+					[project.id, { name: 'Team', type: 'team', icon: null }],
+					[otherProject.id, { name: 'Other team', type: 'team', icon: null }],
+					[personal.id, { name: personal.name, type: 'personal', icon: null }],
 				]),
 			);
 		});

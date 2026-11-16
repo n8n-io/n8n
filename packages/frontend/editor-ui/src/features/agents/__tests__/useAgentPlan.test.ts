@@ -3,7 +3,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { flushPromises } from '@vue/test-utils';
 import { effectScope, reactive, ref, type EffectScope } from 'vue';
 import { useAgentPlan } from '../composables/useAgentPlan';
-import { getAgentPlan } from '../composables/useAgentApi';
+import { getAgentPlan, type AgentChatChannel } from '../composables/useAgentApi';
 import { planSnapshot, planTask, planView } from './fixtures/agent-plan';
 
 vi.mock('../composables/useAgentApi', () => ({ getAgentPlan: vi.fn() }));
@@ -26,7 +26,7 @@ const event: PushMessage = {
 const thread = ref<string | undefined>('thread');
 let scope: EffectScope;
 
-function create() {
+function create(channel?: AgentChatChannel) {
 	scope = effectScope();
 
 	return scope.run(() =>
@@ -35,6 +35,7 @@ function create() {
 			agentId: () => 'agent',
 			threadId: () => thread.value,
 			active: () => true,
+			...(channel ? { channel: () => channel } : {}),
 		}),
 	)!;
 }
@@ -168,4 +169,18 @@ it('rejects a lower edit revision from a later read', async () => {
 	await state.refresh();
 
 	expect(state.plan.value?.revision).toBe(3);
+});
+
+it('does not load a plan on the system channel', async () => {
+	const state = create('system');
+	await flushPromises();
+
+	onEvent({
+		type: 'agentExecutionUpdated',
+		data: { ...event.data, executionId: 'execution' },
+	});
+	await flushPromises();
+
+	expect(getAgentPlan).not.toHaveBeenCalled();
+	expect(state.plan.value).toBeNull();
 });

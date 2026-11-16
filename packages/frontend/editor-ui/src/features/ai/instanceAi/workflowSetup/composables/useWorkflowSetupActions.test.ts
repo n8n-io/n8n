@@ -1,4 +1,5 @@
-import { computed, nextTick, ref, type ComputedRef, type Ref } from 'vue';
+import { computed, defineComponent, nextTick, ref, type ComputedRef, type Ref } from 'vue';
+import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -6,6 +7,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
+import { ASSISTANT_RUNTIME } from '../../assistantRuntime';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { makeWorkflowSetupSection } from '../__tests__/factories';
 import { useWorkflowSetupActions } from './useWorkflowSetupActions';
@@ -154,6 +156,7 @@ describe('useWorkflowSetupActions', () => {
 					workflow_id: 'workflow-1',
 					thread_id: 'thread-1',
 					session_id: 'session-1',
+					runtime: 'instance-ai',
 				});
 				if (typeof variant === 'string') {
 					expect(payload).toMatchObject({
@@ -167,6 +170,27 @@ describe('useWorkflowSetupActions', () => {
 			}
 		},
 	);
+
+	it('reports the runtime that an Assistant agent thread provides', async () => {
+		let h: Harness | undefined;
+		mount(
+			defineComponent({
+				setup() {
+					h = setupHarness();
+					return () => null;
+				},
+			}),
+			{ global: { provide: { [ASSISTANT_RUNTIME as symbol]: 'agents' } } },
+		);
+		h!.completedSet.add(h!.sectionA.id);
+		await h!.actions.apply();
+
+		expect(telemetryTrack.mock.calls.map(([event, payload]) => [event, payload.runtime])).toEqual([
+			['Instance AI workflow setup step shown', 'agents'],
+			['Instance AI workflow setup step handled', 'agents'],
+			['User finished providing input', 'agents'],
+		]);
+	});
 
 	it('tracks the active setup step when it is shown', () => {
 		setupHarness();

@@ -17,8 +17,8 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@n8n/errors';
 import { AgentDraftService } from '@/modules/agents/agent-draft.service';
-import type { DataTable } from '@/modules/data-table/data-table.entity';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import { type DataTable, type DataTableService } from '@n8n/backend-module-data-table';
+
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { FolderService } from '@/services/folder.service';
@@ -338,8 +338,8 @@ describe('EvalThreadRestoreService', () => {
 
 		// The failed seed too: activation can throw after its triggers are registered.
 		expect(workflowService.deactivateWorkflowAsSystem.mock.calls).toEqual([
-			['wf-first'],
-			['wf-second'],
+			['wf-first', 'instance-ai-eval-rollback'],
+			['wf-second', 'instance-ai-eval-rollback'],
 		]);
 	});
 
@@ -349,8 +349,8 @@ describe('EvalThreadRestoreService', () => {
 		await service.unpublishWorkflows(['wf-first', 'wf-second']);
 
 		expect(workflowService.deactivateWorkflowAsSystem.mock.calls).toEqual([
-			['wf-first'],
-			['wf-second'],
+			['wf-first', 'instance-ai-eval-rollback'],
+			['wf-second', 'instance-ai-eval-rollback'],
 		]);
 	});
 
@@ -361,7 +361,10 @@ describe('EvalThreadRestoreService', () => {
 
 		await service.deleteWorkflows(['wf-live']);
 
-		expect(workflowService.deactivateWorkflowAsSystem).toHaveBeenCalledExactlyOnceWith('wf-live');
+		expect(workflowService.deactivateWorkflowAsSystem).toHaveBeenCalledExactlyOnceWith(
+			'wf-live',
+			'instance-ai-eval-rollback',
+		);
 		expect(workflowService.deactivateWorkflowAsSystem.mock.invocationCallOrder[0]).toBeLessThan(
 			workflowPublishedVersionRepo.getPublishedVersionId.mock.invocationCallOrder[0],
 		);

@@ -181,12 +181,41 @@ export type ExecutorWaitDeclaration = Exclude<WaitDeclaration, { subExecutionId:
 export type ResumeBinding = 'execution' | 'step';
 
 /**
- * What ended a step's wait, recorded on the row when it resumed. No node code
- * runs on a resume. A deadline carries nothing: the declaration already holds
- * the outputs to emit. A request carries the outputs the node's resume path
- * produced where the request arrived, and the engine emits them unread.
+ * What a sub-execution hands back to the step that waited for it: the
+ * outputs of every terminal step that completed, in graph order and then by
+ * pass. Kept apart per step, so the consumer decides how to combine them, and
+ * the engine never reads into a slot.
  */
-export type ResumeCause = { kind: 'deadline' } | { kind: 'request'; outputs: StepSlots };
+export type SubExecutionResult = Array<{ nodeId: string; iteration: number; outputs: StepSlots }>;
+
+/**
+ * A sub-execution ended, so its awaiting parent step resumes. Unlike the
+ * other causes, this one re-runs the node: the shim answers the node's
+ * `executeWorkflow` call from `result`, or throws `error`, instead of starting
+ * a sub-execution again. A sub-execution that failed carries the error of the step that
+ * failed it; a cancelled one carries an error that says so.
+ */
+export type SubExecutionResumeCause = {
+	kind: 'subExecution';
+	executionId: string;
+} & SubExecutionOutcome;
+
+/** How a sub-execution ended, and what it hands back. */
+export type SubExecutionOutcome =
+	| { status: 'completed'; result: SubExecutionResult }
+	| { status: 'failed' | 'cancelled'; error: StepError };
+
+/**
+ * What ended a step's wait, recorded on the row when it resumed. A deadline
+ * carries nothing: the declaration already holds the outputs to emit. A request
+ * carries the outputs the node's resume path produced where the request
+ * arrived, and the engine emits them unread. Neither runs node code; a sub-execution
+ * resume does, see `SubExecutionResumeCause`.
+ */
+export type ResumeCause =
+	| { kind: 'deadline' }
+	| { kind: 'request'; outputs: StepSlots }
+	| SubExecutionResumeCause;
 
 /**
  * An executor's wait with no deadline and no resume request would never end,
@@ -212,8 +241,8 @@ export interface StepError {
 	stack?: string;
 	/**
 	 * Step-type-specific error detail, persisted without inspection — the engine
-	 * owns only `name`/`message`/`stack`. Unpopulated until executors have a way
-	 * to hand structured detail across the seam; they only throw today.
+	 * owns only `name`/`message`/`stack`. An executor supplies it with
+	 * `attachStepErrorDetails`.
 	 */
 	details?: JsonValue;
 }
