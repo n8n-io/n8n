@@ -600,8 +600,7 @@ const HELPERS: Record<string, string> = {
 			const error: any = item.json === null || item.json === undefined ? undefined : item.json.error;
 			again = error !== undefined && error !== null && error !== false;
 		}
-		if (item.pairedItem === null) throw new Error('an output item with the paired item null has no compiled form');
-		paired.push(item.pairedItem === undefined ? null : item.pairedItem);
+		paired.push(__pairOf(item.pairedItem));
 		if (item.error === undefined) items.push(__outItem(item, __noBytes(__plain(item.json))));
 		else {
 			failed.push(items.length);
@@ -620,8 +619,7 @@ const HELPERS: Record<string, string> = {
 			const error: any = item.json === null || item.json === undefined ? undefined : item.json.error;
 			again = error !== undefined && error !== null && error !== false;
 		}
-		if (item.pairedItem === null) throw new Error('an output item with the paired item null has no compiled form');
-		paired.push(item.pairedItem === undefined ? null : item.pairedItem);
+		paired.push(__pairOf(item.pairedItem));
 		if (item.error === undefined) items.push(__outItem(item, __plain(item.json)));
 		else {
 			failed.push(items.length);
@@ -635,6 +633,14 @@ const HELPERS: Record<string, string> = {
 	const out: any[] = [];
 	for (let k = 0; k < list.length; k++) out.push([k, list[k]]);
 	return out;
+}`,
+	__pairOf: `function __pairOf(pair: any): any {
+	if (pair === undefined) return null;
+	if (pair === null) throw new Error('an output item with the paired item null has no compiled form');
+	return typeof pair === 'number' ? [pair] : pair;
+}`,
+	__pairAt: `function __pairAt(index: any): any {
+	return typeof index === 'number' ? index : { item: index };
 }`,
 	__withPaired: `function __withPaired(list: any, options: any): any {
 	const out: any[] = [];
@@ -1379,7 +1385,7 @@ const HELPER_USES: Record<string, string[]> = {
 	__inputBytes: ['__fileBytes', '__storedBytes'],
 	...MOMENT_HELPER_USES,
 	__out: ['__outItem', '__assign'],
-	__outPaired: ['__outItem', '__assign', '__failedJson'],
+	__outPaired: ['__outItem', '__assign', '__failedJson', '__pairOf'],
 	__outFailed: ['__outItem', '__assign', '__failedJson'],
 	__mimeLookup: ['__pathParts', '__extName', '__MIME'],
 	__prepareBinary: [

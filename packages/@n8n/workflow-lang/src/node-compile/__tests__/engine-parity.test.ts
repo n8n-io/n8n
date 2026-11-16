@@ -33,6 +33,7 @@ function sources(pairErrors: boolean, once: boolean): NodeSources {
 				'pairErrors',
 				'twice',
 				'whole',
+				'pairs',
 				'@each=id',
 				'@each=id@continueRegularOutput',
 				'@each=id@continueErrorOutput',
@@ -130,6 +131,15 @@ const SCENARIOS: Scenario[] = [
 		answers: [OK, BAD, OK],
 		parameters: { twice: true },
 	},
+	...['number', 'list', 'last', 'outside'].map(
+		(pairs): Scenario => ({
+			label: `paired item of an error item: ${pairs}`,
+			settings: {},
+			answers: [OK, BAD, OK],
+			parameters: { pairs },
+			onlyOnce: true,
+		}),
+	),
 	{
 		label: 'whole node: one error item for all items',
 		settings: {},

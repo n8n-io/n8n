@@ -101,7 +101,13 @@ async function run(
 	id: string,
 	list: Array<Record<string, unknown>>,
 	settings: Record<string, unknown> = {},
-	conditions = ['@each=id', '@each=id@continueRegularOutput', REGULAR],
+	conditions = [
+		'@each=id',
+		'@each=id@continueRegularOutput',
+		'@eachError',
+		'@eachError@continueRegularOutput',
+		REGULAR,
+	],
 ) {
 	const result = convertWorkflow(workflowWith(id, settings), {
 		nodeSources: sources(conditions),
@@ -172,6 +178,35 @@ describe('a compiled node with a parameter that reads the item', () => {
 		expect(out.status).toBe('ok');
 		expect(out.source).toContain('each: [');
 		expect(out.source).toContain('items: [$json],');
+		expect(out.urls).toEqual(['a', 'c']);
+		expect(out.result).toMatchObject({ Probe: [{ ok: true }, { error: NO_NODE }, { ok: true }] });
+	});
+
+	it('runs in the host when the node with a failed expression is not checked against v1', async () => {
+		const items = [{ id: 'a' }, { id: 'b' }];
+		expect(await run(FAILS_FOR_B, items, {}, ['@each=id'])).toMatchObject({ fallback: ['Probe'] });
+		expect(await run(BY_ITEM, items, {}, ['@each=id'])).toMatchObject({ status: 'ok' });
+		const regular = ['@each=id', '@each=id@continueRegularOutput', '@eachError', REGULAR];
+		expect(
+			await run(FAILS_FOR_B, items, { onError: 'continueRegularOutput' }, regular),
+		).toMatchObject({ fallback: ['Probe'] });
+	});
+
+	it('gives the error of an expression to the node in one call under "continue on fail"', async () => {
+		const out = await run(
+			FAILS_FOR_B,
+			[{ id: 'a' }, { id: 'b' }, { id: 'c' }],
+			{ onError: 'continueRegularOutput' },
+			[
+				'@each=id',
+				'@each=id@continueRegularOutput',
+				'@eachError@continueRegularOutput',
+				'@oneCall=continueRegularOutput',
+				REGULAR,
+			],
+		);
+		expect(out.status).toBe('ok');
+		expect(out.source).toContain('parameters: { each: probeParameters },');
 		expect(out.urls).toEqual(['a', 'c']);
 		expect(out.result).toMatchObject({ Probe: [{ ok: true }, { error: NO_NODE }, { ok: true }] });
 	});
@@ -249,7 +284,7 @@ export class Probe implements INodeType {
 							],
 						}
 					: undefined,
-			verified: { [`${TYPE}@1:.`]: ['id', 'mode', '@each=id', '@each=mode'] },
+			verified: { [`${TYPE}@1:.`]: ['id', 'mode', '@each=id', '@each=mode', '@eachError'] },
 		};
 	};
 

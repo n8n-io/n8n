@@ -1185,9 +1185,11 @@ function splitErrorItemsByPosition(result: Json[], input: Json[], out: Json[], e
 		source: `/**
  * The index of the input item that v1 pairs with output item \`k\` of a node run: the paired
  * item that the node gave (\`pair\`), or v1's own pairing by position when the node gave none
- * (assignPairedItems). -1 when v1 finds no input item.
+ * (assignPairedItems). -1 when v1 finds no input item. A compiled node gives a number for the
+ * paired item \`{ item: number }\`, and a list with the number for a paired item that is a number.
  */
 function pairedInputIndex(pair: Json, k: number, inputCount: number, outputCount: number): number {
+	if (typeof pair === 'number') return pair >= 0 && pair < inputCount && Math.floor(pair) === pair ? pair : -1;
 	let found: Json = pair;
 	if (found === null || found === undefined) {
 		if (inputCount === 1 || outputCount === 1) return 0;
@@ -1264,7 +1266,7 @@ function splitPairedErrorItems(result: Json, input: Json[], out: Json[], errors:
 			errors.push(item);
 			continue;
 		}
-		if (!isErrorItem(item)) {
+		if (typeof item !== 'object' || !item.error || !isErrorItem(item)) {
 			out.push(item);
 			continue;
 		}

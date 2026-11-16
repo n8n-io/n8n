@@ -3,9 +3,15 @@ import { decodeModule } from '../../compiler/decode.ts';
 import { runReference } from '../../reference/runner.ts';
 import { runModule } from '../../testing/vm.ts';
 import type { NodeSources } from '../convert.ts';
-import { compileNodeInstance, isVerified, itemParameterNames, valueAtPath } from '../convert.ts';
+import {
+	compileNodeInstance,
+	deferredVerified,
+	isVerified,
+	itemParameterNames,
+	valueAtPath,
+} from '../convert.ts';
 import { specialiseNode } from '../specialise.ts';
-import { itemParameterEntries } from './verify.ts';
+import { FAILING_VALUE, itemFailureExpression, itemParameterEntries } from './verify.ts';
 
 const ENTRY = '/acme/Acme.node.ts';
 const TYPE = 'n8n-nodes-acme.acme';
@@ -419,6 +425,67 @@ describe('the check of a parameter with an expression against v1', () => {
 		expect(isVerified(sources(['id', '@each=other']), TYPE, 1, byItem)).toBe(false);
 		expect(isVerified(sources(['id', '@each=id']), TYPE, 1, byItem)).toBe(true);
 		expect(isVerified(sources(['id']), TYPE, 1, compiledWith({ id: 'fixed' }))).toBe(true);
+	});
+
+	it('needs the condition of the parameter for the error setting of the instance', () => {
+		const regular = compileNodeInstance(
+			sources([]),
+			{ type: TYPE, version: 1, parameters: BY_ITEM },
+			null,
+			{},
+			undefined,
+			undefined,
+			'continueRegularOutput',
+		);
+		if ('errors' in regular) throw new Error(regular.errors.join('; '));
+		const mode = '@onError=continueRegularOutput';
+		expect(isVerified(sources(['id', mode, '@each=id']), TYPE, 1, regular)).toBe(false);
+		expect(
+			isVerified(sources(['id', mode, '@each=id@continueErrorOutput']), TYPE, 1, regular),
+		).toBe(false);
+		expect(
+			isVerified(sources(['id', mode, '@each=id@continueRegularOutput']), TYPE, 1, regular),
+		).toBe(true);
+	});
+
+	it('needs the check of a failed expression when the module defers the error of a parameter', () => {
+		const deferred = compileNodeInstance(
+			sources([]),
+			{ type: TYPE, version: 1, parameters: BY_ITEM },
+			null,
+			{},
+			undefined,
+			undefined,
+			'stopWorkflow',
+			['id'],
+		);
+		if ('errors' in deferred) throw new Error(deferred.errors.join('; '));
+		expect(deferred.deferred).toEqual(['id']);
+		expect(deferredVerified(sources(['id', '@each=id']), TYPE, 1, deferred)).toBe(false);
+		expect(deferredVerified(sources(['id', '@each=id', '@eachError']), TYPE, 1, deferred)).toBe(
+			true,
+		);
+		expect(deferredVerified(sources(['id', '@each=id']), TYPE, 1, compiledWith(BY_ITEM))).toBe(
+			true,
+		);
+	});
+
+	it('gives the entry of a failed expression as the error of the expression', () => {
+		const parameters = { id: itemFailureExpression('id'), name: '={{ $json.name }}' };
+		const entries = itemParameterEntries(
+			parameters,
+			['id', 'name'],
+			[
+				{ id: 'a', name: 'x' },
+				{ id: FAILING_VALUE, name: 'y' },
+			],
+			['name'],
+			['id'],
+		);
+		expect(entries).toEqual([
+			{ id: { value: 'a' }, name: 'x' },
+			{ id: { error: { message: "Referenced node doesn't exist" } } },
+		]);
 	});
 
 	it('makes the entries of the items as v1 resolves the expressions', () => {

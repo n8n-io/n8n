@@ -120,6 +120,23 @@ export function itemParameterCondition(name: string, mode: ErrorMode = 'stopWork
 		: `${ITEM_PARAMETER_PREFIX}${name}@${mode}`;
 }
 
+export const ITEM_ERROR = '@eachError';
+
+export function itemErrorCondition(mode: ErrorMode = 'stopWorkflow'): string {
+	return mode === 'stopWorkflow' ? ITEM_ERROR : `${ITEM_ERROR}@${mode}`;
+}
+
+export function deferredVerified(
+	sources: NodeSources,
+	type: string,
+	version: number,
+	compiled: CompiledNode,
+): boolean {
+	if (compiled.deferred.length === 0) return true;
+	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
+	return names?.includes(itemErrorCondition(compiled.errorMode)) === true;
+}
+
 export function oneCallCondition(mode: ErrorMode): string {
 	return `${ONE_CALL_PREFIX}${mode}`;
 }

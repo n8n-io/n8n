@@ -134,6 +134,56 @@ return __out([returnData]);`;
 		expect(out.helpers.sort()).toEqual(['__plainList', '__pushJson']);
 	});
 
+	it('pushes the JSON values and the error of a failed item under a "continue" setting', () => {
+		const out = lowerCost(body('').replace('__out(', '__outFailed('), false);
+		expect(flat(out.code)).toContain('__pushJsonFailed(returnData, responseData);');
+		expect(flat(out.code)).toContain('return __plainList(returnData);');
+		expect(out.helpers.sort()).toEqual(['__plainList', '__pushJsonFailed']);
+	});
+
+	it('pushes the JSON values and the paired items in two lists', () => {
+		const paired = `
+const returnData = [];
+for (let i = 0; i < items.length; i++) {
+	const responseData = await api(i);
+	const executionData = __withPaired(__jsonArray(responseData), { itemData: { item: i } });
+	for (const __each$executionData of __spreadList(executionData, "executionData"))
+		returnData.push(__each$executionData);
+	returnData.push({ json: { a: 1 }, pairedItem: { item: i } });
+	returnData.push({ json: { b: 1 }, pairedItem: pairOf(i) });
+	returnData.push({ json: { c: 1 } });
+}
+return __outPaired([returnData]);`;
+		const out = lowerCost(paired, false);
+		const code = flat(out.code);
+		expect(code).toContain('const __pairs = [];');
+		expect(code).toContain('__pushPaired(returnData, __pairs, responseData, __pairAt(i));');
+		expect(code).toContain('returnData.push({ a: 1 }); __pairs.push(__pairAt(i));');
+		expect(code).toContain('returnData.push({ b: 1 }); __pairs.push(__pairOf(pairOf(i)));');
+		expect(code).toContain('returnData.push({ c: 1 }); __pairs.push(null);');
+		expect(code).toContain('return __pairedOut(__plainList(returnData), __pairs);');
+		expect(out.helpers.sort()).toEqual([
+			'__itemJson',
+			'__pairAt',
+			'__pairOf',
+			'__pairedOut',
+			'__plainList',
+			'__pushPaired',
+		]);
+	});
+
+	it.each([
+		['an item with an error', 'returnData.push({ json: {}, error: failure });'],
+		['an item with other fields', 'returnData.push({ json: {}, binary: files });'],
+		['an item that is not a literal', 'returnData.push(made);'],
+	])('keeps the general paired output for %s', (_label, push) => {
+		const out = lowerCost(
+			`const returnData = [];\n${push}\nreturn __outPaired([returnData]);`,
+			false,
+		);
+		expect(flat(out.code)).toContain('return __outPaired([returnData]);');
+	});
+
 	it('keeps the general output when other code reads the list', () => {
 		const out = lowerCost(body('if (returnData.length > 3) break;'), false);
 		expect(flat(out.code)).toContain('return __out([returnData]);');

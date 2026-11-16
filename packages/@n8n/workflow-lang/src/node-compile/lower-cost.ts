@@ -22,21 +22,22 @@ export const COST_HELPERS: Record<string, string> = {
 		for (const json of list) out.push(json !== null && json !== undefined && json.json ? json.json : json);
 	} else out.push(given !== null && given !== undefined && given.json ? given.json : given);
 }`,
-	__pushPair: `function __pushPair(out: any, pairs: any, json: any, pair: any): any {
-	if (pair === null) throw new Error('an output item with the paired item null has no compiled form');
-	out.push(json);
-	pairs.push(pair === undefined ? null : pair);
-}`,
-	__pushPaired: `function __pushPaired(out: any, pairs: any, data: any, options: any): any {
-	const pair: any = options === undefined ? undefined : options.itemData;
-	if (pair === null) throw new Error('an output item with the paired item null has no compiled form');
-	const list: any = Array.isArray(data) ? data : [data];
-	for (const json of list) {
-		if (json === null || json === undefined || !json.json) out.push(json);
-		else if (json.error !== undefined || json.pairedItem !== undefined || json.binary !== undefined) throw new Error('an item of a response with the fields of an item has no compiled form');
-		else out.push(json.json);
-		pairs.push(pair === undefined ? null : pair);
+	__pushPaired: `function __pushPaired(out: any, pairs: any, data: any, pair: any): any {
+	if (Array.isArray(data)) {
+		const list: any = data;
+		for (const json of list) {
+			out.push(__itemJson(json));
+			pairs.push(pair);
+		}
+	} else {
+		out.push(__itemJson(data));
+		pairs.push(pair);
 	}
+}`,
+	__itemJson: `function __itemJson(json: any): any {
+	if (json === null || json === undefined || !json.json) return json;
+	if (json.error !== undefined || json.pairedItem !== undefined || json.binary !== undefined) throw new Error('an item of a response with the fields of an item has no compiled form');
+	return json.json;
 }`,
 	__pairedOut: `function __pairedOut(items: any, paired: any): any {
 	const first: any = items[0];
@@ -648,6 +649,18 @@ function pushedValue(statement: ts.Statement | undefined, list: string): ts.Expr
 	return ts.isSpreadElement(e.arguments[0]) ? undefined : e.arguments[0];
 }
 
+function soleProperty(e: ts.Expression, name: string): ts.Expression | undefined {
+	if (!ts.isObjectLiteralExpression(e) || e.properties.length !== 1) return undefined;
+	const [property] = e.properties;
+	if (ts.isShorthandPropertyAssignment(property))
+		return property.name.text === name ? f.createIdentifier(name) : undefined;
+	return ts.isPropertyAssignment(property) &&
+		ts.isIdentifier(property.name) &&
+		property.name.text === name
+		? property.initializer
+		: undefined;
+}
+
 function lowerOutput(sf: ts.SourceFile): { code: string; helpers: string[] } | undefined {
 	const last = sf.statements[sf.statements.length - 1];
 	if (!last || !ts.isReturnStatement(last) || !last.expression) return undefined;
@@ -680,6 +693,7 @@ function lowerOutput(sf: ts.SourceFile): { code: string; helpers: string[] } | u
 		const value = pushedValue(statement, list.text);
 		if (!value) return undefined;
 		if (paired && ts.isObjectLiteralExpression(value)) {
+			if (value.properties.length === 0) return undefined;
 			const [json, pair, ...more] = value.properties.map((property) =>
 				ts.isPropertyAssignment(property) && ts.isIdentifier(property.name)
 					? { name: property.name.text, value: property.initializer }
@@ -689,16 +703,33 @@ function lowerOutput(sf: ts.SourceFile): { code: string; helpers: string[] } | u
 			);
 			if (json?.name !== 'json' || more.length > 0) return undefined;
 			if (value.properties.length === 2 && pair?.name !== 'pairedItem') return undefined;
-			helpers.add('__pushPair');
+			const index = pair ? soleProperty(pair.value, 'item') : undefined;
+			if (pair) helpers.add(index ? '__pairAt' : '__pairOf');
+			const pushTo = (target: string, pushed: ts.Expression) =>
+				f.createExpressionStatement(
+					f.createCallExpression(
+						f.createPropertyAccessExpression(f.createIdentifier(target), 'push'),
+						undefined,
+						[pushed],
+					),
+				);
 			changes.set(
 				statement,
-				f.createExpressionStatement(
-					f.createCallExpression(f.createIdentifier('__pushPair'), undefined, [
-						f.createIdentifier(list.text),
-						f.createIdentifier(PAIRS),
-						json.value,
-						pair?.value ?? f.createIdentifier('undefined'),
-					]),
+				f.createBlock(
+					[
+						pushTo(list.text, json.value),
+						pushTo(
+							PAIRS,
+							pair
+								? f.createCallExpression(
+										f.createIdentifier(index ? '__pairAt' : '__pairOf'),
+										undefined,
+										[index ?? pair.value],
+									)
+								: f.createNull(),
+						),
+					],
+					true,
 				),
 			);
 			continue;
@@ -740,11 +771,24 @@ function lowerOutput(sf: ts.SourceFile): { code: string; helpers: string[] } | u
 				: undefined;
 		const from = withPairs ? withPairs.arguments[0] : given;
 		if (!from || !isCallOf(from, '__jsonArray') || from.arguments.length !== 1) return undefined;
+		const pairOf = (options: ts.Expression): ts.Expression => {
+			const itemData = soleProperty(options, 'itemData');
+			const index = itemData ? soleProperty(itemData, 'item') : undefined;
+			if (index) {
+				helpers.add('__pairAt');
+				return f.createCallExpression(f.createIdentifier('__pairAt'), undefined, [index]);
+			}
+			helpers.add('__pairOf');
+			return f.createCallExpression(f.createIdentifier('__pairOf'), undefined, [
+				itemData ?? f.createPropertyAccessExpression(options, 'itemData'),
+			]);
+		};
 		const block = loop.parent;
 		if (!ts.isBlock(block) && !ts.isSourceFile(block)) return undefined;
 		const at = block.statements.indexOf(loop);
 		if (at < 1 || block.statements[at - 1] !== array) return undefined;
 		helpers.add(paired ? '__pushPaired' : pushJson);
+		if (paired) helpers.add('__itemJson');
 		changes.set(array, null);
 		changes.set(
 			loop,
@@ -757,7 +801,7 @@ function lowerOutput(sf: ts.SourceFile): { code: string; helpers: string[] } | u
 								f.createIdentifier(list.text),
 								f.createIdentifier(PAIRS),
 								from.arguments[0],
-								withPairs ? withPairs.arguments[1] : f.createIdentifier('undefined'),
+								withPairs ? pairOf(withPairs.arguments[1]) : f.createNull(),
 							]
 						: [f.createIdentifier(list.text), from.arguments[0]],
 				),

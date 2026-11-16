@@ -14,6 +14,7 @@ import type { PublicCredential } from '../credentials/public.ts';
 import {
 	compileNodeInstance,
 	callsOnce,
+	deferredVerified,
 	pairsAsV1,
 	errorItemsByPosition,
 	flagGuard,
@@ -471,6 +472,13 @@ export function tryCompiledNode(c: NodeContext): boolean {
 			return false;
 		}
 		compiled = checked;
+		if (!deferredVerified(sources, c.node.type, c.version, compiled)) {
+			c.info(
+				'node-compile',
+				'An expression of a parameter can fail, and the node with a failed expression is not checked against the v1 node.',
+			);
+			return false;
+		}
 		c.helper('parameterOrError');
 	}
 	const valueCode = ({ path, value }: (typeof values)[number]): Code =>

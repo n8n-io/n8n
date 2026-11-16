@@ -207,6 +207,7 @@ export function compileForCheck(
 	credentials: Record<string, PublicCredential>,
 	errorMode: ErrorMode = 'stopWorkflow',
 	pairedOutput = false,
+	deferred: string[] = [],
 ): Compiled {
 	const key = JSON.stringify([
 		instance.type,
@@ -215,6 +216,7 @@ export function compileForCheck(
 		credentials,
 		errorMode,
 		pairedOutput,
+		deferred,
 	]);
 	const found = recent.find((entry) => entry.sources === sources && entry.key === key);
 	if (found) return found.compiled;
@@ -226,7 +228,7 @@ export function compileForCheck(
 		V1_TIMEZONE,
 		V1_FACTS,
 		errorMode,
-		[],
+		deferred,
 		pairedOutput,
 	);
 	recent.push({ sources, key, compiled });
@@ -409,8 +411,25 @@ export function itemFieldExpression(field: string): string {
 	return `={{ $json.${field} }}`;
 }
 
+const FAILS_FOR_ITEM =
+	/^=\{\{ \$json\.([A-Za-z_]\w*) === 'no' \? \$\('No such node'\)\.first\(\)\.json\.id : \$json\.\1 \}\}$/;
+const NO_NODE = "$('No such node')";
+const NO_NODE_MESSAGE = "Referenced node doesn't exist";
+export const FAILING_VALUE = 'no';
+
+export function itemFailureExpression(field: string): string {
+	return `={{ $json.${field} === '${FAILING_VALUE}' ? ${NO_NODE}.first().json.id : $json.${field} }}`;
+}
+
+class ExpressionFailure extends Error {}
+
 function valueForItem(value: unknown, item: Record<string, unknown>): unknown {
 	if (typeof value === 'string') {
+		const failing = FAILS_FOR_ITEM.exec(value)?.[1];
+		if (failing !== undefined) {
+			if (item[failing] === FAILING_VALUE) throw new ExpressionFailure(NO_NODE_MESSAGE);
+			return item[failing];
+		}
 		const field = ITEM_FIELD.exec(value)?.[1];
 		if (field !== undefined) return item[field];
 		if (value.startsWith('='))
@@ -430,13 +449,29 @@ export function itemParameterEntries(
 	paths: string[],
 	items: Array<Record<string, unknown>>,
 	firstOnly: string[] = [],
+	deferred: string[] = [],
 ): Array<Record<string, unknown>> {
+	const entryOf = (path: string, item: Record<string, unknown>): unknown => {
+		if (!deferred.includes(path)) return valueForItem(valueAtPath(parameters, path), item);
+		try {
+			return { value: valueForItem(valueAtPath(parameters, path), item) };
+		} catch (error) {
+			if (!(error instanceof ExpressionFailure)) throw error;
+			return { error: { message: error.message } };
+		}
+	};
 	return items.map((item, k) =>
 		Object.fromEntries(
 			paths
 				.filter((path) => k === 0 || !firstOnly.includes(path))
-				.map((path) => [path, valueForItem(valueAtPath(parameters, path), item)]),
+				.map((path) => [path, entryOf(path, item)]),
 		),
+	);
+}
+
+function failingPaths(compiled: Exclude<Compiled, { errors: string[] }>): string[] {
+	return compiled.itemParameters.filter((path) =>
+		(JSON.stringify(valueAtPath(compiled.resolved, path)) ?? '').includes(NO_NODE),
 	);
 }
 
@@ -453,6 +488,7 @@ function entriesOf(
 				compiled.itemParameters,
 				c.items ?? [{}],
 				compiled.firstItemParameters,
+				compiled.deferred,
 			);
 }
 
@@ -739,15 +775,18 @@ export async function differenceFromV1(
 		return 'node settings have a check only under a "continue" setting';
 	if (options.paired === true && continues)
 		return 'the paired items have a check only when the node stops the workflow';
-	const compiled = compileForCheck(
-		sources,
-		{ type: c.type, version: c.typeVersion, parameters: c.parameters },
-		credentialsOf(c, registry),
-		mode,
+	const pairedOutput =
 		options.paired === true ||
-			(options.pairing === 'once' &&
-				pairedOutputOf(mode === 'continueErrorOutput', errorRetryOf(c.settings ?? {}))),
-	);
+		(options.pairing === 'once' &&
+			pairedOutputOf(mode === 'continueErrorOutput', errorRetryOf(c.settings ?? {})));
+	const instance = { type: c.type, version: c.typeVersion, parameters: c.parameters };
+	const plain = compileForCheck(sources, instance, credentialsOf(c, registry), mode, pairedOutput);
+	if ('errors' in plain) return `does not compile: ${plain.errors[0]}`;
+	const failing = failingPaths(plain);
+	const compiled =
+		failing.length === 0
+			? plain
+			: compileForCheck(sources, instance, credentialsOf(c, registry), mode, pairedOutput, failing);
 	if ('errors' in compiled) return `does not compile: ${compiled.errors[0]}`;
 	const inEngine: EquivalenceCase =
 		options.paired === true
