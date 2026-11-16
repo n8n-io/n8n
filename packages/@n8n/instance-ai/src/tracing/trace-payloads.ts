@@ -33,6 +33,10 @@ const MAX_TOOL_IO_TRACE_DEPTH = 8;
  *  beyond real workflow nesting; scrubbing still applies at every level. */
 const MAX_RAW_PAYLOAD_TRACE_DEPTH = 64;
 const MAX_TRACE_STRING_LENGTH = 2_000;
+/** The user's own text is the most useful trace field, so it gets a much higher cap. */
+const MAX_TRACE_USER_MESSAGE_LENGTH = 100_000;
+const TRACE_USER_MESSAGE_KEY = 'message';
+const TRUNCATED_MARKER_PATTERN = /^\[truncated \d+ chars\]$/;
 const MAX_TOOL_ACTION_DISPLAY_LENGTH = 64;
 const MAX_TRACE_ARRAY_ITEMS = 20;
 const MAX_TRACE_OBJECT_KEYS = 30;
@@ -1357,11 +1361,26 @@ export function sanitizeTraceValue(value: unknown, depth = 0): unknown {
 	return truncateString(Object.prototype.toString.call(value));
 }
 
+/** Idempotent: inputs are re-sanitized on every merge, so an already capped message must not change. */
+function truncateUserMessage(value: string): string {
+	if (value.length <= MAX_TRACE_USER_MESSAGE_LENGTH) {
+		return value;
+	}
+	const rest = value.slice(MAX_TRACE_USER_MESSAGE_LENGTH);
+	if (TRUNCATED_MARKER_PATTERN.test(rest)) {
+		return value;
+	}
+	return `${value.slice(0, MAX_TRACE_USER_MESSAGE_LENGTH)}[truncated ${rest.length} chars]`;
+}
+
 export function sanitizeTracePayload(value: unknown): Record<string, unknown> {
 	if (isRecord(value)) {
 		const sanitized: Record<string, unknown> = {};
 		for (const [key, entryValue] of Object.entries(value)) {
-			sanitized[key] = sanitizeTraceValue(entryValue);
+			sanitized[key] =
+				key === TRACE_USER_MESSAGE_KEY && typeof entryValue === 'string'
+					? truncateUserMessage(entryValue)
+					: sanitizeTraceValue(entryValue);
 		}
 		return sanitized;
 	}

@@ -24,6 +24,7 @@ import {
 	createInternalOperationTraceContext,
 	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
+	mergeTraceRunInputs,
 	redactLangSmithTelemetrySpan,
 	releaseTraceClient,
 	shutdownProductTelemetryProviders,
@@ -440,6 +441,64 @@ describe('createInstanceAiTraceContext', () => {
 		expect(typeof tracing?.rootRun.metadata?.workflow_sdk_version).toBe('string');
 		await startForegroundActor(tracing!);
 		expect(tracing?.orchestratorRun.parentRunId).toBe(tracing?.messageRun.id);
+	});
+
+	it('keeps a long user message whole in the turn inputs', async () => {
+		const message = 'Plan the pilot budget. '.repeat(400);
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message },
+		});
+
+		expect(tracing?.rootRun.inputs?.message).toBe(message);
+	});
+
+	it('caps a very large user message in the turn inputs and marks the cut', async () => {
+		const message = 'a'.repeat(150_000);
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message },
+		});
+
+		const traced = tracing?.rootRun.inputs?.message;
+		expect(typeof traced).toBe('string');
+		expect(traced).toMatch(/^a{100000}\[truncated 50000 chars\]$/);
+	});
+
+	it('keeps the capped user message stable when more inputs merge into the turn', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'a'.repeat(150_000) },
+		});
+		const capped = tracing?.rootRun.inputs?.message;
+
+		mergeTraceRunInputs(tracing?.rootRun, { attachmentCount: 1 });
+
+		expect(tracing?.rootRun.inputs?.message).toBe(capped);
+		expect(tracing?.rootRun.inputs?.attachmentCount).toBe(1);
+	});
+
+	it('still caps long values other than the user message in the turn inputs', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'hi', note: 'b'.repeat(5_000) },
+		});
+
+		expect(tracing?.rootRun.inputs?.note).toBe(`${'b'.repeat(2_000)}...`);
 	});
 
 	it('creates native telemetry with thread and run metadata', async () => {
