@@ -1,0 +1,91 @@
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_f47d4602e7ba0b::t_f33e877c8c7a47 752,1860,1925,2211,2281
+packages/cli/src/modules/n8n-packages/entities/folder/folder-importer.ts
+  s_f47d4602e7ba0b::t_52d577b1d56b2b 74-75
+packages/frontend/editor-ui/src/features/agents/__tests__/useProjectAgentsList.test.ts
+  s_f47d4602e7ba0b::t_803bf5244ea721 4,18,30-46,52-74
+  s_f47d4602e7ba0b::t_cc35fef93ac2cc 47-51
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f47d4602e7ba0b::t_f33e877c8c7a47 1030,1032
+packages/cli/src/modules/n8n-packages/entities/agent/agent-selection.exporter.ts
+  s_f47d4602e7ba0b::t_6ab0147a990700 174-176
+  s_f47d4602e7ba0b::t_52d577b1d56b2b 182
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.test.ts
+  s_f47d4602e7ba0b::t_f33e877c8c7a47 237
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentsListView.test.ts
+  s_f47d4602e7ba0b::t_cc35fef93ac2cc 344-346
+packages/frontend/editor-ui/src/features/agents/composables/useProjectAgentsList.ts
+  s_f47d4602e7ba0b::t_d7b3cd52654caa 28,46
+  s_f47d4602e7ba0b::t_9d4f2ce1a03fa3 57,59,61,63,71,73
+  s_f47d4602e7ba0b::t_f33e877c8c7a47 29-45,47-48,62,65-66,75-77,111-115
+packages/frontend/editor-ui/src/features/core/folders/components/FolderCardSubtitle.vue
+  s_f47d4602e7ba0b::t_f33e877c8c7a47 75
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.ts
+  s_f47d4602e7ba0b::t_f33e877c8c7a47 565
+packages/cli/src/modules/n8n-packages/engine/__tests__/n8n-package-parser.agent.test.ts
+  s_f47d4602e7ba0b::t_f918aec1ce7692 79-81
+packages/cli/src/modules/mcp/__tests__/create-folder.tool.test.ts
+  s_f47d4602e7ba0b::t_cc35fef93ac2cc 46-51,73-99
+  s_f47d4602e7ba0b::t_803bf5244ea721 56
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderBrowser.vue
+  s_f47d4602e7ba0b::t_f33e877c8c7a47 3,37,139,141
+packages/cli/src/modules/agents/__tests__/agent.repository.test.ts
+  s_f47d4602e7ba0b::t_cc35fef93ac2cc 586-591
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_f47d4602e7ba0b::t_52d577b1d56b2b 96,105-109
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderBrowser.test.ts
+  s_f47d4602e7ba0b::t_cc35fef93ac2cc 1-3,338-340
+  s_f47d4602e7ba0b::t_803bf5244ea721 337,341-347
+  s_f47d4602e7ba0b::t_f33e877c8c7a47 362
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionTimelineView.vue
+  s_f47d4602e7ba0b::t_f33e877c8c7a47 190,194-195,202
+  s_f47d4602e7ba0b::t_803bf5244ea721 31
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_f47d4602e7ba0b::t_1964e82eb15e4c 644,654
+  s_f47d4602e7ba0b::t_390f5860817933 327,375,447-449,455-462
+  s_f47d4602e7ba0b::t_cc35fef93ac2cc 443-446,450-454,652-653,655-657
+packages/cli/src/modules/n8n-packages/entities/folder/__tests__/folder-importer.test.ts
+  s_f47d4602e7ba0b::t_cc35fef93ac2cc 137-159
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_f47d4602e7ba0b::t_cc35fef93ac2cc 1-3,9,13-14,16,190,286-299
+packages/frontend/editor-ui/src/features/agents/composables/useCreateAgent.ts
+  s_f47d4602e7ba0b::t_f33e877c8c7a47 31,51-52
+  s_f47d4602e7ba0b::t_803bf5244ea721 2
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent-targets.service.test.ts
+  s_f47d4602e7ba0b::t_cc35fef93ac2cc 155-157
+  s_f47d4602e7ba0b::t_803bf5244ea721 148-154,158-160
+packages/frontend/editor-ui/src/features/agents/composables/useCreateAgent.test.ts
+  s_f47d4602e7ba0b::t_803bf5244ea721 9,22-25,31-41
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderDialog.test.ts
+  s_f47d4602e7ba0b::t_803bf5244ea721 153,157-164
+  s_f47d4602e7ba0b::t_f33e877c8c7a47 184,201,261,411
+  s_f47d4602e7ba0b::t_cc35fef93ac2cc 1-3,154-156
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent-targets.service.ts
+  s_f47d4602e7ba0b::t_52d577b1d56b2b 88,101
+packages/cli/test/integration/agents/agent-folders.test.ts
+  s_f47d4602e7ba0b::t_bfc3ee564fdaed 500-505
+packages/@n8n/telemetry/src/events/platform.ts
+  s_f47d4602e7ba0b::t_f33e877c8c7a47 11,19,27,37
+packages/frontend/editor-ui/src/features/agents/components/AgentFolderDialog.vue
+  s_f47d4602e7ba0b::t_f33e877c8c7a47 3,47,218,220,224,226,232,234,245,247
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_f47d4602e7ba0b::t_f33e877c8c7a47 93,272-275,598
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_f47d4602e7ba0b::t_f33e877c8c7a47 461
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dcf722d3f67773cc6d644544cc1c5d8881806e92",
+  "prompts": {},
+  "sessions": {
+    "s_f47d4602e7ba0b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d536-382e-7c22-8084-f34bb0a03002",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
