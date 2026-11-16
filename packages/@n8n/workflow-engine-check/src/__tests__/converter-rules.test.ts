@@ -1,6 +1,10 @@
 import type { IConnections, INode } from 'n8n-workflow';
 
-import { checkEngineV2Eligibility, type EngineV2ReasonCode } from '../index';
+import {
+	checkEngineV2Eligibility,
+	type EngineV2ReasonCode,
+	type EngineV2ReasonKind,
+} from '../index';
 
 const trigger: INode = {
 	id: 'trigger-id',
@@ -26,6 +30,9 @@ function node(overrides: Partial<INode>): INode {
 const merge = (typeVersion: number, mode: string) =>
 	node({ type: 'n8n-nodes-base.merge', typeVersion, parameters: { mode } });
 
+const executeWorkflow = (parameters: INode['parameters'], typeVersion = 1.2) =>
+	node({ type: 'n8n-nodes-base.executeWorkflow', typeVersion, parameters });
+
 const splitInBatches = (parameters: INode['parameters'], typeVersion = 3) =>
 	node({ type: 'n8n-nodes-base.splitInBatches', typeVersion, parameters });
 
@@ -46,57 +53,73 @@ const toolConnection: IConnections = {
 };
 
 describe('converter rules', () => {
-	it.each<{ shape: string; target: INode; connections?: IConnections; code: EngineV2ReasonCode }>([
+	it.each<{
+		shape: string;
+		target: INode;
+		connections?: IConnections;
+		code: EngineV2ReasonCode;
+		kind: EngineV2ReasonKind;
+	}>([
 		{
 			shape: 'a node with onError continueErrorOutput',
 			target: node({ onError: 'continueErrorOutput' }),
 			code: 'CONTINUE_ERROR_OUTPUT',
+			kind: 'temporary',
 		},
 		{
 			shape: 'a Merge node in chooseBranch mode',
 			target: merge(3, 'chooseBranch'),
 			code: 'MERGE_CHOOSE_BRANCH',
+			kind: 'temporary',
 		},
 		{
 			shape: 'a Merge v2 node with an expression mode',
 			target: merge(2, '={{ "append" }}'),
 			code: 'MERGE_MODE_EXPRESSION',
+			kind: 'permanent',
 		},
 		{
 			shape: 'a Split In Batches node of version 2',
 			target: splitInBatches({ batchSize: 10 }, 2),
 			code: 'SPLIT_IN_BATCHES_VERSION',
+			kind: 'temporary',
 		},
 		{
 			shape: 'a Split In Batches node with options from an expression',
 			target: splitInBatches({ options: '={{ {} }}' }),
 			code: 'SPLIT_IN_BATCHES_OPTIONS_EXPRESSION',
+			kind: 'permanent',
 		},
 		{
 			shape: 'a Split In Batches node with the reset option',
 			target: splitInBatches({ options: { reset: true } }),
 			code: 'SPLIT_IN_BATCHES_RESET',
+			kind: 'temporary',
 		},
 		{
 			shape: 'a Split In Batches node with a batch size expression',
 			target: splitInBatches({ batchSize: '={{ 5 }}' }),
 			code: 'SPLIT_IN_BATCHES_BATCH_SIZE',
+			kind: 'permanent',
 		},
 		{
 			shape: 'a Split In Batches node with a batch size of 0',
 			target: splitInBatches({ batchSize: 0 }),
 			code: 'SPLIT_IN_BATCHES_BATCH_SIZE',
+			kind: 'invalid',
 		},
 		{
 			shape: 'a Split In Batches node with a fractional batch size',
 			target: splitInBatches({ batchSize: 2.5 }),
 			code: 'SPLIT_IN_BATCHES_BATCH_SIZE',
+			kind: 'invalid',
 		},
 		{
 			shape: 'a reachable node with a non-main connection',
 			target: node({}),
 			connections: toolConnection,
 			code: 'NON_MAIN_CONNECTION',
+			kind: 'temporary',
 		},
 		{
 			// The converter checks connection types before it removes disabled nodes.
@@ -104,21 +127,50 @@ describe('converter rules', () => {
 			target: node({ disabled: true }),
 			connections: toolConnection,
 			code: 'NON_MAIN_CONNECTION',
+			kind: 'temporary',
 		},
-	])('blocks $shape with code $code, naming the node', ({ target, connections, code }) => {
-		expect(check(target, connections)).toEqual({
-			eligible: false,
-			reasons: [
-				{
-					code,
-					severity: 'blocking',
-					nodeId: 'node-id',
-					nodeName: 'Node',
-					message: expect.stringContaining('"Node"'),
-				},
-			],
-		});
-	});
+		{
+			shape: 'an Execute Sub-workflow node that runs once for each item',
+			target: executeWorkflow({ mode: 'each' }),
+			code: 'SUB_WORKFLOW_FOR_EACH_ITEM',
+			kind: 'permanent',
+		},
+		{
+			shape: 'an Execute Sub-workflow v1 node that loads a local file',
+			target: executeWorkflow({ source: 'localFile' }, 1),
+			code: 'SUB_WORKFLOW_NOT_IN_DATABASE',
+			kind: 'permanent',
+		},
+		{
+			shape: 'an Execute Sub-workflow v1 node that loads a URL',
+			target: executeWorkflow({ source: 'url' }, 1),
+			code: 'SUB_WORKFLOW_NOT_IN_DATABASE',
+			kind: 'permanent',
+		},
+		{
+			shape: 'an Execute Sub-workflow node with a sub-workflow defined below',
+			target: executeWorkflow({ source: 'parameter' }),
+			code: 'SUB_WORKFLOW_NOT_IN_DATABASE',
+			kind: 'permanent',
+		},
+	])(
+		'blocks $shape with code $code and kind $kind, naming the node',
+		({ target, connections, code, kind }) => {
+			expect(check(target, connections)).toEqual({
+				eligible: false,
+				reasons: [
+					{
+						code,
+						kind,
+						severity: 'blocking',
+						nodeId: 'node-id',
+						nodeName: 'Node',
+						message: expect.stringContaining('"Node"'),
+					},
+				],
+			});
+		},
+	);
 
 	it.each<{ shape: string; target: INode; connections?: IConnections }>([
 		{
@@ -141,6 +193,11 @@ describe('converter rules', () => {
 			shape: 'a disabled node with onError continueErrorOutput',
 			target: node({ onError: 'continueErrorOutput', disabled: true }),
 		},
+		{
+			shape: 'an Execute Sub-workflow node that runs once with all items',
+			target: executeWorkflow({ mode: 'once', source: 'database' }),
+		},
+		{ shape: 'an Execute Sub-workflow node with default settings', target: executeWorkflow({}) },
 		{
 			shape: 'a disabled Merge node in chooseBranch mode',
 			target: { ...merge(3, 'chooseBranch'), disabled: true },
@@ -192,6 +249,13 @@ describe('converter rules', () => {
 			'SPLIT_IN_BATCHES_BATCH_SIZE',
 			'NON_MAIN_CONNECTION',
 		]);
+	});
+
+	it('suggests a migration instead of engine v1 for a permanent reason', () => {
+		const [reason] = check(executeWorkflow({ mode: 'each' })).reasons;
+
+		expect(reason.message).toContain('Loop Over Items');
+		expect(reason.message).not.toContain('engine v1');
 	});
 
 	it('names the connection type in the non-main connection reason', () => {

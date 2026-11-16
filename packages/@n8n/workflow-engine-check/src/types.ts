@@ -26,7 +26,9 @@ export type EngineV2ReasonCode =
 	| 'SPLIT_IN_BATCHES_OPTIONS_EXPRESSION'
 	| 'SPLIT_IN_BATCHES_RESET'
 	| 'SPLIT_IN_BATCHES_BATCH_SIZE'
-	| 'NON_MAIN_CONNECTION';
+	| 'NON_MAIN_CONNECTION'
+	| 'SUB_WORKFLOW_FOR_EACH_ITEM'
+	| 'SUB_WORKFLOW_NOT_IN_DATABASE';
 
 /**
  * - `temporary`: engine v2 will support this later. The message tells the user to run
