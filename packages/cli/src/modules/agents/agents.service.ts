@@ -637,9 +637,8 @@ export class AgentsService {
 
 	/**
 	 * With `projectId`: scoped lookup (internal REST). Without it the agent is
-	 * resolved by ID alone — Public API, where `@ProjectScope` has already
-	 * authorized the user against the agent's project. Returns no instance
-	 * agent.
+	 * resolved by ID alone in Public API, where `@ProjectScope` has already
+	 * authorized the user against the agent's project. Returns no instance agent
 	 */
 	async findById(agentId: string, projectId?: string): Promise<ProjectAgent | null> {
 		return projectId

@@ -604,6 +604,76 @@ export class UpdateAgentDto implements UpdateAgent {
 	}
 }
 
+const updateAgentPublicObjectSchema = z
+	.object({
+		config: AgentJsonConfigSchema.openapi(alsoNullable({ type: 'object' })),
+		baseConfigHash: z.string().nullable().optional(),
+		configHash: z.string().nullable().optional(),
+		id: strippedAgentField,
+		name: strippedAgentField,
+		projectId: strippedAgentField,
+		project: strippedAgentField,
+		availableInMCP: strippedAgentField,
+		isArchived: strippedAgentField,
+		versionId: strippedAgentField,
+		activeVersionId: strippedAgentField,
+		createdAt: strippedAgentField,
+		updatedAt: strippedAgentField,
+		tools: strippedAgentField,
+		skills: strippedAgentField,
+		skillHashes: strippedAgentField,
+		outdatedSkillIds: strippedAgentField,
+		skillVersions: strippedAgentField,
+		isRunnable: strippedAgentField,
+		hasPublishHistory: strippedAgentField,
+		hasVersionHistory: strippedAgentField,
+		activeVersion: strippedAgentField,
+		adopted: strippedAgentField,
+	})
+	.strict();
+
+const updateAgentPublicSchema = updateAgentPublicObjectSchema
+	.superRefine((value, ctx) => {
+		if (value.baseConfigHash === undefined && value.configHash === undefined) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'baseConfigHash or configHash is required',
+				path: ['baseConfigHash'],
+			});
+		}
+	})
+	.transform(({ config, baseConfigHash, configHash }) => ({
+		config,
+		baseConfigHash: baseConfigHash !== undefined ? baseConfigHash : (configHash ?? null),
+	}));
+
+type UpdateAgentPublic = z.infer<typeof updateAgentPublicSchema>;
+
+/**
+ * Body of the Public API `PUT /agents/:agentId`. Accepts a `GET /agents/:agentId`
+ * body: server-managed fields are ignored, not rejected. `configHash` is the
+ * concurrency token when `baseConfigHash` is absent.
+ */
+export class UpdateAgentPublicDto implements UpdateAgentPublic {
+	declare config: UpdateAgentPublic['config'];
+
+	declare baseConfigHash: UpdateAgentPublic['baseConfigHash'];
+
+	static schema = updateAgentPublicSchema;
+
+	constructor(data: z.input<typeof updateAgentPublicObjectSchema>) {
+		Object.assign(this, updateAgentPublicSchema.parse(data));
+	}
+
+	static safeParse(data: unknown) {
+		return updateAgentPublicSchema.safeParse(data);
+	}
+
+	static parse(data: unknown) {
+		return updateAgentPublicSchema.parse(data);
+	}
+}
+
 export class CreateAgentTaskDto extends Z.class({
 	name: agentTaskSchema.shape.name,
 	objective: agentTaskSchema.shape.objective,
