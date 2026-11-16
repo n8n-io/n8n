@@ -40,11 +40,10 @@ instances report these metrics, and only when the module is on. The default pref
 | `execution_ledger_backlog_oldest_row_age_seconds` | gauge | Age of the oldest unclaimed row. 0 when the ledger is empty. |
 | `execution_ledger_fold_last_success_timestamp_seconds` | gauge | Last fold that held the lock and committed. |
 | `execution_ledger_fold_step_failures_total{step}` | counter | Failed fold attempts for each step. |
-| `execution_ledger_fold_step_consecutive_failures{step}` | gauge | Failures in a row on the same batch. 0 after a batch folds. |
 
 The backlog gauges come from a database query. The result is cached for 30 seconds and
-shared by all mains. The other metrics come from the leader, so a former leader keeps
-old values. Use `max()` in alert rules.
+shared by all mains. Any main can run the fold, so a main that stopped folding keeps its
+old fold metrics. Aggregate across mains: `max()` for the timestamp, `sum()` for counters.
 
 After 3 failures in a row on the same batch, the fold logs one error in the
 `execution-ledger` scope with `step`, `attempt` and `firstLedgerId`. Errors that go to Sentry
@@ -55,10 +54,10 @@ Suggested alert rules:
 ```promql
 # Fold lag: no successful fold for 2 minutes.
 time() - max(n8n_execution_ledger_fold_last_success_timestamp_seconds) > 120
-# Same signal from the database. It still works after a restart or a leader change.
+# Same signal from the database. It still works after a restart or when another main takes over.
 max(n8n_execution_ledger_backlog_oldest_row_age_seconds) > 300
-# A step keeps failing on the same batch.
-max by (step) (n8n_execution_ledger_fold_step_consecutive_failures) >= 3
+# A step keeps failing. The fold retries every 5 seconds, so 3 failures take about 15 seconds.
+sum by (step) (increase(n8n_execution_ledger_fold_step_failures_total[1m])) >= 3
 ```
 
 When the module is on but no fold step is registered, the fold claims nothing and the lag

@@ -240,6 +240,22 @@ describe('ExecutionLedgerFoldService', () => {
 				expect(await attemptOf()).toBe(1);
 			});
 
+			it('resets to 1 when another step fails on the same batch', async () => {
+				let laterFails = false;
+				addStep('later', async () => {
+					if (laterFails) throw new Error('later broke');
+					return await Promise.resolve(undefined);
+				});
+				await attemptOf();
+				await attemptOf();
+				setFail(false);
+				laterFails = true;
+
+				const error = await service.foldBatch().catch((e: unknown) => e);
+
+				expect(error).toMatchObject({ step: 'later', attempt: 1 });
+			});
+
 			it('resets after a successful fold', async () => {
 				await attemptOf();
 				setFail(false);
@@ -280,26 +296,16 @@ describe('ExecutionLedgerFoldService', () => {
 		const emitted = (event: string) =>
 			eventService.emit.mock.calls.filter(([name]) => name === event);
 
-		it('emits succeeded with the row count after a committed batch', async () => {
+		it.each([
+			['a committed batch', rowsOf(3)],
+			['an empty claim', []],
+		])('emits succeeded after %s', async (_case, rows) => {
 			addStep('first');
-			claimBatch.mockResolvedValue(rowsOf(3));
+			claimBatch.mockResolvedValue(rows);
 
 			await service.foldBatch();
 
-			expect(eventService.emit).toHaveBeenCalledWith('execution-ledger-fold-succeeded', {
-				rows: 3,
-			});
-		});
-
-		it('emits succeeded with 0 rows when the lock is held and the claim is empty', async () => {
-			addStep('first');
-			claimBatch.mockResolvedValue([]);
-
-			await service.foldBatch();
-
-			expect(eventService.emit).toHaveBeenCalledWith('execution-ledger-fold-succeeded', {
-				rows: 0,
-			});
+			expect(eventService.emit).toHaveBeenCalledWith('execution-ledger-fold-succeeded', {});
 		});
 
 		it('emits nothing when no step is registered', async () => {

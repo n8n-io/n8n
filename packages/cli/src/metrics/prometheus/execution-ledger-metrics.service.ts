@@ -15,7 +15,7 @@ const BACKLOG_CACHE_TTL_MS = 30 * Time.seconds.toMilliseconds;
 
 /**
  * Collects metrics for the execution ledger fold, so an alert can catch a stopped fold
- * before the ledger table grows. Main only, because only the leader folds.
+ * before the ledger table grows. Main only, because only mains fold.
  */
 @Service()
 export class PrometheusExecutionLedgerMetricsService implements PrometheusMetricsCollector {
@@ -81,26 +81,12 @@ export class PrometheusExecutionLedgerMetricsService implements PrometheusMetric
 			labelNames: ['step'],
 		});
 
-		const consecutiveFailures = new promClient.Gauge({
-			name: `${prefix}execution_ledger_fold_step_consecutive_failures`,
-			help: 'Number of failures in a row of a fold step on the same batch. 0 after a batch folds.',
-			labelNames: ['step'],
-		});
-
-		const failedSteps = new Set<string>();
-
-		this.eventService.on('execution-ledger-fold-succeeded', ({ rows }) => {
+		this.eventService.on('execution-ledger-fold-succeeded', () => {
 			lastSuccess.set(Date.now() * Time.milliseconds.toSeconds);
-			// The fold forgets a failed batch only once a batch with rows commits.
-			if (rows > 0) {
-				for (const step of failedSteps) consecutiveFailures.set({ step }, 0);
-			}
 		});
 
-		this.eventService.on('execution-ledger-fold-step-failed', ({ step, attempt }) => {
-			failedSteps.add(step);
+		this.eventService.on('execution-ledger-fold-step-failed', ({ step }) => {
 			stepFailures.inc({ step });
-			consecutiveFailures.set({ step }, attempt);
 		});
 	}
 }

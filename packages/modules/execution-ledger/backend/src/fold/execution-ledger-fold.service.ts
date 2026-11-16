@@ -34,8 +34,8 @@ export const FOLD_FAILURE_ALERT_THRESHOLD = 3;
  */
 @Service()
 export class ExecutionLedgerFoldService {
-	/** The batch that failed last, keyed by its first ledger id. A handover resets it. */
-	private failedBatch: { key: string; failures: number } | undefined;
+	/** The step that failed last, and its batch by first ledger id. A handover resets it. */
+	private failedBatch: { key: string; step: string; failures: number } | undefined;
 
 	private consecutiveLockSkips = 0;
 
@@ -103,7 +103,7 @@ export class ExecutionLedgerFoldService {
 							const firstLedgerId = rows[0].id;
 							throw new FoldStepFailedError(
 								step.name,
-								this.recordFailure(firstLedgerId),
+								this.recordFailure(firstLedgerId, step.name),
 								firstLedgerId,
 								error,
 							);
@@ -123,7 +123,7 @@ export class ExecutionLedgerFoldService {
 
 		this.consecutiveLockSkips = 0;
 		if (folded.claimed > 0) this.failedBatch = undefined;
-		this.emitMetric('execution-ledger-fold-succeeded', { rows: folded.claimed });
+		this.emitMetric('execution-ledger-fold-succeeded', {});
 
 		for (const work of folded.afterCommit) {
 			try {
@@ -136,10 +136,12 @@ export class ExecutionLedgerFoldService {
 		return folded.claimed;
 	}
 
-	/** Returns how many times in a row this batch has failed, this one included. */
-	private recordFailure(batchKey: string): number {
-		const failures = this.failedBatch?.key === batchKey ? this.failedBatch.failures + 1 : 1;
-		this.failedBatch = { key: batchKey, failures };
+	/** Returns how many times in a row this step has failed on this batch, this one included. */
+	private recordFailure(batchKey: string, step: string): number {
+		const { failedBatch } = this;
+		const isSameStreak = failedBatch?.key === batchKey && failedBatch.step === step;
+		const failures = isSameStreak ? failedBatch.failures + 1 : 1;
+		this.failedBatch = { key: batchKey, step, failures };
 		return failures;
 	}
 

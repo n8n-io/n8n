@@ -144,44 +144,21 @@ describe('PrometheusExecutionLedgerMetricsService', () => {
 
 		it('creates no step series before a step fails', () => {
 			expect(metric('execution_ledger_fold_step_failures_total').inc).not.toHaveBeenCalled();
-			expect(metric('execution_ledger_fold_step_consecutive_failures').set).not.toHaveBeenCalled();
 		});
 
-		it('step-failed sets the consecutive gauge to the attempt and counts the failure', () => {
+		it('step-failed counts the failure for that step', () => {
+			emit('execution-ledger-fold-step-failed', { step: 'alpha', attempt: 1 });
 			emit('execution-ledger-fold-step-failed', { step: 'alpha', attempt: 2 });
-			emit('execution-ledger-fold-step-failed', { step: 'alpha', attempt: 3 });
 
-			expect(
-				metric('execution_ledger_fold_step_consecutive_failures').value({ step: 'alpha' }),
-			).toBe(3);
 			expect(metric('execution_ledger_fold_step_failures_total').value({ step: 'alpha' })).toBe(2);
 			expect(
 				metric('execution_ledger_fold_step_failures_total').value({ step: 'beta' }),
 			).toBeUndefined();
 		});
 
-		it('succeeded with rows resets the consecutive gauges and stamps the time', () => {
-			emit('execution-ledger-fold-step-failed', { step: 'alpha', attempt: 3 });
-			emit('execution-ledger-fold-step-failed', { step: 'beta', attempt: 2 });
+		it('succeeded stamps the time of the last successful fold', () => {
+			emit('execution-ledger-fold-succeeded', {});
 
-			emit('execution-ledger-fold-succeeded', { rows: 5 });
-
-			const consecutive = metric('execution_ledger_fold_step_consecutive_failures');
-			expect(consecutive.value({ step: 'alpha' })).toBe(0);
-			expect(consecutive.value({ step: 'beta' })).toBe(0);
-			expect(metric('execution_ledger_fold_last_success_timestamp_seconds').value()).toBe(
-				NOW.getTime() / 1000,
-			);
-		});
-
-		it('succeeded with 0 rows stamps the time but keeps the consecutive gauge', () => {
-			emit('execution-ledger-fold-step-failed', { step: 'alpha', attempt: 3 });
-
-			emit('execution-ledger-fold-succeeded', { rows: 0 });
-
-			expect(
-				metric('execution_ledger_fold_step_consecutive_failures').value({ step: 'alpha' }),
-			).toBe(3);
 			expect(metric('execution_ledger_fold_last_success_timestamp_seconds').value()).toBe(
 				NOW.getTime() / 1000,
 			);
