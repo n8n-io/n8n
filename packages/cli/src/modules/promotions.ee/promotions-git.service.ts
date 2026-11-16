@@ -1,7 +1,8 @@
 import type { PromotionProviderAuthType, PromotionSshKeyType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { chmod, mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
+import type { Dirent } from 'node:fs';
+import { chmod, mkdir, mkdtemp, readdir, rename, rm, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import pLimit from 'p-limit';
@@ -19,9 +20,11 @@ import { BadRequestError, ServiceUnavailableError, UnexpectedError } from '@n8n/
 import {
 	GIT_COMMAND_STALL_TIMEOUT_MS,
 	GIT_READ_CONCURRENCY,
+	PACKAGE_SUBFOLDER,
 	PROMOTION_KEY_COMMENT,
 } from './constants';
 import { PromotionReviewCommitsMissingError } from './promotion-review-commits-missing.error';
+import { deleteTrash, isMissing, moveToTrash } from './promotion-working-directory.service';
 import { PromotionGitError, PromotionLocalGitError } from './promotions-git.error';
 import { buildHttpsGitConfig, buildSshCommand, generateSshKeyPair } from './promotions-git.utils';
 import type { PromotionGitCredentials } from './promotions.types';
@@ -32,6 +35,8 @@ type PromotionGitPaths = {
 	repositoryFolder: string;
 	nextRepositoryFolder: string;
 	sshDir: string;
+	/** Where removed checkouts go before they are deleted. */
+	trashFolder: string;
 };
 
 type GitOperation = {
@@ -54,6 +59,11 @@ type TreeEntry = { path: string; objectName: string; size: number };
 
 /** A full SHA-1 or SHA-256 object name, as `rev-parse` prints it. */
 const COMMIT_SHA = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
+
+/** Lock files that only a write takes. A fetch takes only `refs/remotes` locks, so those stay. */
+const WRITER_LOCK_FILES = ['index.lock', 'HEAD.lock'];
+/** Branch names can contain `/`, so their lock files can sit in subfolders. */
+const LOCAL_BRANCH_REFS = path.join('refs', 'heads');
 
 const BASE_GIT_OPTIONS = {
 	binary: 'git',
@@ -160,10 +170,19 @@ export class PromotionsGitService {
 		return await generateSshKeyPair(keyType, PROMOTION_KEY_COMMENT);
 	}
 
-	async clone({ remoteUrl, credentials, paths, branchName, environmentId }: GitOperation) {
+	/** `beforeSwap` runs just before the new clone replaces the checkout, and can stop it by throwing. */
+	async clone({
+		remoteUrl,
+		credentials,
+		paths,
+		branchName,
+		environmentId,
+		beforeSwap,
+	}: GitOperation & { beforeSwap?: () => void }) {
 		await this.validateBranchName(branchName);
 		await mkdir(paths.rootFolder, { recursive: true });
 		const { repositoryFolder, nextRepositoryFolder, sshDir } = paths;
+		let trashed: string | undefined;
 
 		try {
 			await this.lockCheckout(repositoryFolder, async () => {
@@ -201,7 +220,9 @@ export class PromotionsGitService {
 									'--progress',
 								]);
 							}
-							await rm(repositoryFolder, { recursive: true, force: true });
+							beforeSwap?.();
+							// A rename to trash, so the old checkout leaves its path at once.
+							trashed = await moveToTrash(repositoryFolder, paths.trashFolder);
 							await rename(nextRepositoryFolder, repositoryFolder);
 						},
 					);
@@ -212,6 +233,21 @@ export class PromotionsGitService {
 			});
 		} catch (error) {
 			throw this.mapGitError(error, { environmentId, branchName });
+		} finally {
+			// After the swap, or after a failed rename. Either way the old checkout is not in use.
+			if (trashed) await this.deleteTrashAfterSwap(trashed, environmentId);
+		}
+	}
+
+	/** A failed deletion only leaves disk in use. */
+	private async deleteTrashAfterSwap(trashed: string, environmentId: string) {
+		try {
+			await deleteTrash([trashed]);
+		} catch (error) {
+			this.logger.warn('Failed to delete the old promotion checkout in the trash', {
+				environmentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 
@@ -241,6 +277,7 @@ export class PromotionsGitService {
 		stagePathspec,
 		onCheckoutRestored,
 		rollbackOnFailure = false,
+		beforePush,
 	}: GitOperation & {
 		/** Push to this new branch instead of the configured base branch. */
 		targetBranchName?: string;
@@ -251,6 +288,8 @@ export class PromotionsGitService {
 		/** Called only after the checkout returns to its base commit. */
 		onCheckoutRestored: () => Promise<void>;
 		rollbackOnFailure?: boolean;
+		/** Runs just before the push. A throw stops the push, and the usual recovery runs. */
+		beforePush?: () => void;
 	}): Promise<{ commitSha: string }> {
 		try {
 			return await this.lockCheckout(
@@ -273,6 +312,7 @@ export class PromotionsGitService {
 									commitMessage,
 									stagePathspec,
 									onCheckoutRestored,
+									beforePush,
 								});
 							}
 
@@ -290,6 +330,7 @@ export class PromotionsGitService {
 								await this.commitPackage(git, stagePathspec, commitMessage);
 								const commitSha = (await git.revparse(['HEAD'])).trim();
 
+								beforePush?.();
 								if (force) {
 									await git.push('origin', branchName, ['-f']);
 								} else {
@@ -371,9 +412,77 @@ export class PromotionsGitService {
 							['--progress'],
 						);
 						await git.raw(['reset', '--hard', `origin/${branchName}`]);
+						// `reset --hard` keeps untracked files, and a crashed promotion can leave some in the package.
+						await git.raw(['clean', '-ffdx', '--', PACKAGE_SUBFOLDER]);
 						return { commitSha: (await git.revparse(['HEAD'])).trim() };
 					},
 				);
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/**
+	 * Empties the local base branch before the first push of a branch that the remote does not hold.
+	 * Without a remote-tracking ref, this checkout never saw the branch on the remote, so a local
+	 * commit or package file is left from an earlier attempt that was never pushed. A remote-tracking
+	 * ref means the branch was deleted on the remote, so the local branch stays as it is.
+	 */
+	async prepareCheckoutForFirstPush({
+		paths,
+		branchName,
+		environmentId,
+	}: Pick<GitOperation, 'paths' | 'branchName' | 'environmentId'>): Promise<void> {
+		try {
+			await this.lockCheckout(paths.repositoryFolder, async () => {
+				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+				const trackingRef = `refs/remotes/origin/${branchName}`;
+				const tracked = (
+					await git.raw(['for-each-ref', '--format=%(objectname)', trackingRef])
+				).trim();
+				if (tracked) return;
+
+				const localBranch = `refs/heads/${branchName}`;
+				const head = (
+					await git.raw(['for-each-ref', '--format=%(objectname)', localBranch])
+				).trim();
+				if (head) await git.raw(['update-ref', '-d', localBranch]);
+				await git.raw(['read-tree', '--empty']);
+				// The files of a removed commit are now untracked, so this also removes them.
+				await git.raw(['clean', '-ffdx', '--', PACKAGE_SUBFOLDER]);
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/**
+	 * Removes the Git lock files that only a write takes. Git cannot remove them after a SIGKILL,
+	 * and a leftover file makes every later `git add` and `reset --hard` fail. Call it only under
+	 * the environment lock, before the first write. Reads run without that lock, but a fetch takes
+	 * only `refs/remotes` locks, so this never removes the lock of a running read.
+	 */
+	async removeLeftoverLockFiles({
+		paths,
+		branchName,
+		environmentId,
+	}: Pick<GitOperation, 'paths' | 'branchName' | 'environmentId'>): Promise<void> {
+		const gitDir = path.join(paths.repositoryFolder, '.git');
+		try {
+			await this.lockCheckout(paths.repositoryFolder, async () => {
+				for (const lockFile of await listWriterLockFiles(gitDir)) {
+					try {
+						await unlink(path.join(gitDir, lockFile));
+					} catch (error) {
+						if (isMissing(error)) continue;
+						throw error;
+					}
+					this.logger.debug('Removed a leftover Git lock file from the promotion checkout', {
+						environmentId,
+						lockFile,
+					});
+				}
 			});
 		} catch (error) {
 			throw this.mapGitError(error, { environmentId, branchName });
@@ -400,12 +509,14 @@ export class PromotionsGitService {
 			commitMessage,
 			stagePathspec,
 			onCheckoutRestored,
+			beforePush,
 		}: {
 			branchName: string;
 			targetBranchName: string;
 			commitMessage: string;
 			stagePathspec: string;
 			onCheckoutRestored: () => Promise<void>;
+			beforePush?: () => void;
 		},
 	): Promise<{ commitSha: string }> {
 		const preCommitHead = (
@@ -418,6 +529,7 @@ export class PromotionsGitService {
 		try {
 			await this.commitPackage(git, stagePathspec, commitMessage);
 			const commitSha = (await git.revparse(['HEAD'])).trim();
+			beforePush?.();
 			await git.push('origin', `HEAD:refs/heads/${targetBranchName}`);
 			return { commitSha };
 		} finally {
@@ -952,6 +1064,21 @@ function isRemoteGitError(error: unknown): error is GitError {
 		return REMOTE_GIT_COMMANDS.has(commands[index]);
 	}
 	return false;
+}
+
+/** The writer lock files that can exist, as paths inside `gitDir`. */
+async function listWriterLockFiles(gitDir: string): Promise<string[]> {
+	const refEntries = await readdir(path.join(gitDir, LOCAL_BRANCH_REFS), {
+		recursive: true,
+		withFileTypes: true,
+	}).catch((error: unknown): Dirent[] => {
+		if (isMissing(error)) return [];
+		throw error;
+	});
+	const branchLockFiles = refEntries
+		.filter((entry) => entry.isFile() && entry.name.endsWith('.lock'))
+		.map((entry) => path.relative(gitDir, path.join(entry.parentPath, entry.name)));
+	return [...WRITER_LOCK_FILES, ...branchLockFiles];
 }
 
 async function hasCommit(git: SimpleGit, commitSha: string): Promise<boolean> {

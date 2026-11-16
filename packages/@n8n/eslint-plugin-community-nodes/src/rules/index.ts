@@ -7,6 +7,7 @@ import { CredentialDocumentationUrlRule } from './credential-documentation-url.j
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
 import { CredentialTestRequiredRule } from './credential-test-required.js';
 import { CredentialUnnecessaryPasswordRule } from './credential-unnecessary-password.js';
+import { IconContrastRule } from './icon-contrast.js';
 import { IconPreferThemedVariantsRule } from './icon-prefer-themed-variants.js';
 import { IconValidationRule } from './icon-validation.js';
 import { MissingPairedItemRule } from './missing-paired-item.js';
@@ -20,6 +21,7 @@ import { NoEmojiInOptionsRule } from './no-emoji-in-options.js';
 import { NoForbiddenLifecycleScriptsRule } from './no-forbidden-lifecycle-scripts.js';
 import { NoHardcodedSecretsRule } from './no-hardcoded-secrets.js';
 import { NoHttpRequestWithManualAuthRule } from './no-http-request-with-manual-auth.js';
+import { NoMcpProtocolClientRule } from './no-mcp-protocol-client.js';
 import { NoMonorepoRule } from './no-monorepo.js';
 import { NoOverridesFieldRule } from './no-overrides-field.js';
 import { NoRestrictedGlobalsRule } from './no-restricted-globals.js';
@@ -69,6 +71,7 @@ export const rules = {
 	'no-forbidden-lifecycle-scripts': NoForbiddenLifecycleScriptsRule,
 	'no-hardcoded-secrets': NoHardcodedSecretsRule,
 	'no-http-request-with-manual-auth': NoHttpRequestWithManualAuthRule,
+	'no-mcp-protocol-client': NoMcpProtocolClientRule,
 	'no-monorepo': NoMonorepoRule,
 	'no-overrides-field': NoOverridesFieldRule,
 	'no-runtime-dependencies': NoRuntimeDependenciesRule,
@@ -77,6 +80,7 @@ export const rules = {
 	'no-unsafe-connection-type-cast': NoUnsafeConnectionTypeCastRule,
 	'icon-validation': IconValidationRule,
 	'icon-prefer-themed-variants': IconPreferThemedVariantsRule,
+	'icon-contrast': IconContrastRule,
 	'resource-operation-pattern': ResourceOperationPatternRule,
 	'single-credential-per-node': SingleCredentialPerNodeRule,
 	'trigger-node-conventions': TriggerNodeConventionsRule,

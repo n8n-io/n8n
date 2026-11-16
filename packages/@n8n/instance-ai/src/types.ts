@@ -183,6 +183,11 @@ export interface ExecutionResult {
 	workflowPinnedNodeNames?: string[];
 	/** Nodes whose output items carry file data, which `data` omits. */
 	binaryOutputNodeNames?: string[];
+	/**
+	 * Time-based Wait nodes that a verification run executed without their
+	 * delay. They ran and passed their input through, but did not wait.
+	 */
+	skippedWaitNodeNames?: string[];
 	/** Node-level errors from run data, including continue-on-fail errors. */
 	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
@@ -1737,12 +1742,17 @@ export interface InstanceAiContext {
 	/** True while the thread runs the host-seeded onboarding flow. Presence gates `leave-onboarding`. */
 	onboardingThread?: boolean;
 	/**
-	 * Host-resolved model for the current run (proxy-managed on cloud). Domain
-	 * tools pass it as the fallback for utility LLM calls (simulation fixtures,
-	 * destructiveness classification), which otherwise resolve an eval model
-	 * from environment API keys that proxy-managed deployments don't have.
+	 * Host-resolved main model for the current run (proxy-managed on cloud).
+	 * Domain tools use it for helper calls when no utility model is set.
 	 */
 	modelId?: ModelConfig;
+	/**
+	 * Host-resolved utility model: the configured or default small model on the
+	 * main model's provider. The verification helpers (destructiveness
+	 * classification, simulation fixtures) run on it. Absent →
+	 * utility calls use `modelId`.
+	 */
+	utilityModelId?: ModelConfig;
 	/** Transport for those utility LLM calls. It carries no run labels. */
 	modelFetch?: FetchFn;
 	workflowService: InstanceAiWorkflowService;

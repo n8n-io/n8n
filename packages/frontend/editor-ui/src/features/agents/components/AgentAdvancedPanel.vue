@@ -180,6 +180,8 @@ function anthropicTtlFrom(cfg: AgentJsonConfig | null): AnthropicCacheTtl {
 }
 
 const anthropicTtl = ref<AnthropicCacheTtl>(anthropicTtlFrom(props.config));
+// Caching is on by default for supported models; only an explicit `enabled: false` turns it off.
+const promptCachingEnabled = computed(() => props.config?.config?.promptCaching?.enabled !== false);
 
 watch(
 	() => props.config,
@@ -214,6 +216,16 @@ function onReasoningToggle(value: boolean) {
 function onReasoningLevelChange(value: AgentReasoningLevel) {
 	reasoningLevel.value = value;
 	emitReasoning();
+}
+
+function emitPromptCaching(enabled: boolean) {
+	const ttl = props.config?.config?.promptCaching?.anthropic?.ttl;
+	emit('update:config', {
+		config: {
+			...props.config?.config,
+			promptCaching: { enabled, ...(ttl ? { anthropic: { ttl } } : {}) },
+		},
+	});
 }
 
 function onAnthropicTtlChange(value: AnthropicCacheTtl) {
@@ -294,31 +306,52 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 					</div>
 				</div>
 
-				<div v-if="promptCachingCapability === 'ttl'" :class="$style.settingGroup">
+				<div v-if="promptCachingCapability" :class="$style.settingGroup">
 					<div :class="shared.settingRow">
 						<div :class="shared.settingLabel">
 							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
-								i18n.baseText('agents.builder.advanced.promptCachingTtl.label')
+								i18n.baseText('agents.builder.advanced.promptCaching.label')
 							}}</N8nText>
 							<N8nText size="small" :class="shared.dataEntrySubLabel">
 								{{ i18n.baseText('agents.builder.advanced.promptCaching.hint') }}
 							</N8nText>
 						</div>
-						<N8nSelect
-							:model-value="anthropicTtl"
-							size="small"
+						<N8nSwitch2
+							:model-value="promptCachingEnabled"
 							:disabled="props.disabled"
-							:class="shared.settingControlShort"
-							data-testid="agent-prompt-caching-ttl-select"
-							@update:model-value="(v) => onAnthropicTtlChange(v as AnthropicCacheTtl)"
-						>
-							<N8nOption
-								v-for="opt in ANTHROPIC_CACHE_TTL_OPTIONS"
-								:key="opt"
-								:value="opt"
-								:label="opt"
-							/>
-						</N8nSelect>
+							:class="[$style.switchControl, shared.settingControl]"
+							data-testid="agent-prompt-caching-toggle"
+							data-attr="agent-prompt-caching-toggle"
+							@update:model-value="(v) => emitPromptCaching(Boolean(v))"
+						/>
+					</div>
+
+					<div
+						v-if="promptCachingEnabled && promptCachingCapability === 'ttl'"
+						:class="$style.subSettings"
+					>
+						<div :class="shared.settingRow">
+							<div :class="shared.settingLabel">
+								<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
+									i18n.baseText('agents.builder.advanced.promptCachingTtl.label')
+								}}</N8nText>
+							</div>
+							<N8nSelect
+								:model-value="anthropicTtl"
+								size="small"
+								:disabled="props.disabled"
+								:class="shared.settingControlShort"
+								data-testid="agent-prompt-caching-ttl-select"
+								@update:model-value="(v) => onAnthropicTtlChange(v as AnthropicCacheTtl)"
+							>
+								<N8nOption
+									v-for="opt in ANTHROPIC_CACHE_TTL_OPTIONS"
+									:key="opt"
+									:value="opt"
+									:label="opt"
+								/>
+							</N8nSelect>
+						</div>
 					</div>
 				</div>
 

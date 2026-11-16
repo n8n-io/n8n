@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -23,7 +24,7 @@ export async function addCustomer(
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
-	const endpoint = 'customers';
+	const endpoint = requestPath`customers`;
 	let body = {} as IDataObject;
 	let addressData = address as IDataObject;
 

@@ -8,6 +8,7 @@ import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
 import { AgentMessageList } from '../model/message-list';
 import { fromAiMessages } from '../model/messages';
+import { estimateObservationTokens } from '../model/model-token-counter';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus } from '../state/event-bus';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
@@ -38,7 +39,7 @@ describe('ToolCallRunner large results', () => {
 					},
 				]),
 			);
-			const tokenCounter = vi.fn((text: string) => Math.ceil(text.length / 4));
+			const tokenCounter = (text: string) => Math.ceil(text.length / 5);
 			const runner = new ToolCallRunner({
 				eventBus: new AgentEventBus(),
 				telemetry: new RuntimeTelemetry({
@@ -76,9 +77,13 @@ describe('ToolCallRunner large results', () => {
 			expect(list.responseDelta()).toMatchObject([
 				{ content: [{ type: 'tool-call', state: 'resolved', output: result.modelOutput }] },
 			]);
-			expect(Buffer.byteLength(JSON.stringify(result.modelOutput), 'utf8')).toBeLessThanOrEqual(
+			expect(tokenCounter(JSON.stringify(result.modelOutput))).toBeLessThanOrEqual(
 				MAX_MODEL_TOOL_RESULT_TOKENS,
 			);
+			if (storageMode !== 'writable') {
+				const envelope = result.modelOutput as { head: string; tail: string };
+				expect(envelope.head.length + envelope.tail.length).toBeGreaterThan(200_000);
+			}
 			expect(runner.hasOffloadedToolResults).toBe(storageMode === 'writable');
 			expect(writeFile).toHaveBeenCalledTimes(
 				storageMode === 'writable' || storageMode === 'failed' ? 1 : 0,
@@ -90,8 +95,62 @@ describe('ToolCallRunner large results', () => {
 					expect.objectContaining({ recursive: true, overwrite: true }),
 				);
 			}
-			expect(tokenCounter).not.toHaveBeenCalled();
 		},
+	);
+
+	it.each([false, true])(
+		'preserves a large result within the token limit with storage available: %s',
+		async (storageAvailable) => {
+			const filesystem = new InMemoryFilesystem();
+			const writeFile = vi.spyOn(filesystem, 'writeFile');
+			const output = ' '.repeat(5_200_000);
+			const tool: BuiltTool = {
+				name: 'large_result',
+				description: 'Return a large result',
+				handler: vi.fn().mockResolvedValue(output),
+			};
+			const list = new AgentMessageList();
+			list.addResponse(
+				fromAiMessages([
+					{
+						role: 'assistant',
+						content: [{ type: 'tool-call', toolCallId: 'tc-1', toolName: tool.name, input: {} }],
+					},
+				]),
+			);
+			const runner = new ToolCallRunner({
+				eventBus: new AgentEventBus(),
+				telemetry: new RuntimeTelemetry({
+					name: 'test-agent',
+					model: 'openai/gpt-5',
+					instructions: '',
+				}),
+				concurrency: 1,
+				onCancelled: vi.fn(),
+				tokenCounter: estimateObservationTokens,
+				workspaceFilesystem: storageAvailable ? filesystem : undefined,
+			});
+
+			const result = await runner.processToolCall({
+				toolName: tool.name,
+				toolCallId: 'tc-1',
+				input: {},
+				toolMap: new Map([[tool.name, tool]]),
+				list,
+				runId: 'run-1',
+			});
+
+			if (result.outcome !== 'success') throw new Error('Expected a successful tool call');
+			expect(runner.hasOffloadedToolResults).toBe(false);
+			expect(typeof result.modelOutput).toBe('string');
+			expect(result.modelOutput).toBe(output);
+			expect(result.toolEntry.output).toBe(output);
+			expect(list.responseDelta()).toMatchObject([
+				{ content: [{ type: 'tool-call', state: 'resolved', output }] },
+			]);
+			expect(writeFile).not.toHaveBeenCalled();
+		},
+		35_000,
 	);
 });
 

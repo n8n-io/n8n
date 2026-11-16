@@ -1,0 +1,15 @@
+/*
+  X-Robots-Tag: noindex
+
+# Astro puts a content hash in each file name here, so a file never changes.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The browser can show a prefetched page without a second request. A page can be
+# up to 5 minutes old after a deploy.
+/
+  Cache-Control: public, max-age=300
+/:page/
+  Cache-Control: public, max-age=300
+/how-to/:page/
+  Cache-Control: public, max-age=300

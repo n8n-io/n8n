@@ -28,6 +28,7 @@ import type {
 } from '../../turn-setup/assistant-turn-input.builder';
 import type { AssistantTurnRuntime } from '../../turn-setup/assistant-turn-runtime';
 import { QuotaExhaustedStreamError } from '../../turn-setup/assistant-credits';
+import { AssistantTurnOverrides } from '../../turn-setup/assistant-turn-overrides';
 import { QUOTA_EXHAUSTED_USER_MESSAGE } from '../../user-facing-errors';
 import { AssistantAgentProvider, FILES_ONLY_MESSAGE } from '../assistant-agent.provider';
 import type { AssistantThreadTabsService } from '../assistant-thread-tabs.service';
@@ -36,6 +37,7 @@ import type {
 	AssistantSandboxLease,
 	AssistantSandboxWorkspaceSource,
 } from '../assistant-workspace-source';
+import { createMemory, outcome, routedAt, saveBuild } from './workflow-loop-memory';
 
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/permissions')>()),
@@ -64,7 +66,7 @@ function setup() {
 		context: { workflowService: { archiveIfAiTemporary } },
 		orchestrationContext: {},
 		modelId: 'anthropic/claude-sonnet',
-		skillScope: { profile: { mode: 'default' } },
+		skillScope: { profile: {} },
 	} as unknown as AssistantTurnEnvironment;
 	const turnEnvironment = mock<AssistantTurnEnvironmentFactory>();
 	turnEnvironment.create.mockResolvedValue(environment);
@@ -88,6 +90,8 @@ function setup() {
 	// The real reporter, so that the tests see its filters. Sentry is the mock.
 	const sentry = mock<ErrorReporter>();
 	const errorReporter = new InstanceAiErrorReporterService(logger, sentry);
+	// The real default, so that the tests see "no override" unless a test sets one.
+	const turnOverrides = new AssistantTurnOverrides();
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),
@@ -101,9 +105,11 @@ function setup() {
 		tracer,
 		threadTabs,
 		errorReporter,
+		turnOverrides,
 	);
 	return {
 		provider,
+		turnOverrides,
 		sentry,
 		errorReporter,
 		adapterService,
@@ -187,13 +193,15 @@ describe('AssistantAgentProvider', () => {
 
 		const options = await provider.chatTurnOptions(user, thread, {
 			timeZone: 'UTC',
-			mode: 'progressive',
+			// The turn overrides supply these settings, so the client cannot set them.
+			promptVersion: 'default@1',
+			observerThresholdTokens: 5_000,
 		});
 
 		expect(options).toEqual({
 			runId: expect.stringMatching(/^run_/),
 			messageGroupId: expect.stringMatching(/^mg_/),
-			request: { timeZone: 'UTC', mode: 'progressive' },
+			request: { timeZone: 'UTC' },
 		});
 	});
 
@@ -285,8 +293,43 @@ describe('AssistantAgentProvider', () => {
 			expect(handle.runOptions?.titleText).toBe('Build a digest');
 			expect(handle.hostMetadata).toMatchObject({
 				assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' },
-				buildMode: 'default',
 			});
+		});
+
+		it('reads no thread settings from the turn overrides by default', async () => {
+			const { provider, turnEnvironment } = setup();
+			const turn = startTurn({
+				options: {
+					...startTurn().options,
+					// Stored options of an older turn can still carry these fields.
+					request: {
+						mode: 'progressive',
+						promptVersion: 'default@1',
+						observerThresholdTokens: 5_000,
+					},
+				},
+			});
+
+			const handle = await provider.prepareTurn(turn);
+
+			const { turnState } = turnEnvironment.create.mock.calls[0][1];
+			expect(turnState.getPromptVersion()).toBeUndefined();
+			expect(turnState.getObserverThresholdTokens()).toBeUndefined();
+			expect(handle.hostMetadata).toMatchObject({ promptVersion: null });
+		});
+
+		it('reads the thread settings of the turn from the turn overrides', async () => {
+			const { provider, turnEnvironment, turnOverrides } = setup();
+			vi.spyOn(turnOverrides, 'getPromptVersion').mockReturnValue('concise@1');
+
+			const handle = await provider.prepareTurn(startTurn());
+
+			const { turnState } = turnEnvironment.create.mock.calls[0][1];
+			expect(turnState.getPromptVersion()).toBe('concise@1');
+			// The Assistant agent has no threshold override.
+			expect(turnState.getObserverThresholdTokens()).toBeUndefined();
+			expect(turnOverrides.getPromptVersion).toHaveBeenCalledWith('thread-1');
+			expect(handle.hostMetadata).toMatchObject({ promptVersion: 'concise@1' });
 		});
 
 		it('keeps the element a user picked in an app preview, whatever the node gate says', async () => {
@@ -634,6 +677,56 @@ describe('AssistantAgentProvider', () => {
 						reportId: 'report-1',
 					}),
 				).resolves.toBeUndefined();
+			});
+		});
+
+		describe('workflow setup route', () => {
+			async function turnWithBuild() {
+				const memory = createMemory();
+				await saveBuild(memory, outcome());
+				return { memory, turn: startTurn({ memory }) };
+			}
+
+			it('adds a setup instruction when the agent stops before setup', async () => {
+				const { provider } = setup();
+				const { memory, turn } = await turnWithBuild();
+
+				const handle = await provider.prepareTurn(turn);
+				const instruction = await handle.onCompletingBoundary?.();
+
+				expect(instruction).toMatchObject({ reason: 'workflow_setup' });
+				expect(instruction?.content).toContain('"workflowId": "wf-1"');
+				expect(await routedAt(memory)).toEqual(expect.any(String));
+			});
+
+			it('marks the build when its setup card suspends the turn', async () => {
+				const { provider } = setup();
+				const { memory, turn } = await turnWithBuild();
+
+				const handle = await provider.prepareTurn(turn);
+				handle.onChunk?.({
+					type: 'tool-call-suspended',
+					runId: 'run-1',
+					toolCallId: 'call-1',
+					toolName: 'setup_workflow',
+					suspendPayload: { workflowId: 'wf-1', setupRequests: [] },
+				});
+				await handle.onSettled?.({ executionId: 'exec-1', status: 'suspended' });
+
+				expect(await routedAt(memory)).toEqual(expect.any(String));
+				const resumed = await provider.prepareTurn(startTurn({ memory }));
+				expect(await resumed.onCompletingBoundary?.()).toBeUndefined();
+			});
+
+			it('marks the build when the setup panel announces its checklist', async () => {
+				const { provider, turnEnvironment } = setup();
+				const { memory, turn } = await turnWithBuild();
+
+				await provider.prepareTurn(turn);
+				const runtime: AssistantTurnRuntime = turnEnvironment.create.mock.calls[0][1];
+				await runtime.markWorkflowSetupHandled?.('wf-1');
+
+				expect(await routedAt(memory)).toEqual(expect.any(String));
 			});
 		});
 

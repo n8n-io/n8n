@@ -2,7 +2,7 @@ import type { Embeddings } from '@langchain/core/embeddings';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';

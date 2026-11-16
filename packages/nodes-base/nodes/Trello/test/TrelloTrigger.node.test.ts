@@ -1,3 +1,5 @@
+import { requestPath } from 'n8n-workflow';
+
 import { TrelloTrigger } from '../TrelloTrigger.node';
 
 vi.mock('../TrelloTriggerHelpers', () => ({
@@ -112,7 +114,11 @@ describe('TrelloTrigger', () => {
 
 			expect(result).toBe(true);
 			expect(mockedApiRequest).toHaveBeenCalledTimes(1);
-			expect(mockedApiRequest).toHaveBeenCalledWith('GET', 'webhooks/existing-webhook-id', {});
+			expect(mockedApiRequest).toHaveBeenCalledWith(
+				'GET',
+				requestPath`webhooks/existing-webhook-id`,
+				{},
+			);
 			expect(staticData.webhookId).toBe('existing-webhook-id');
 		});
 
@@ -131,13 +137,13 @@ describe('TrelloTrigger', () => {
 			expect(mockedApiRequest).toHaveBeenNthCalledWith(
 				1,
 				'GET',
-				'webhooks/existing-webhook-id',
+				requestPath`webhooks/existing-webhook-id`,
 				{},
 			);
 			expect(mockedApiRequest).toHaveBeenNthCalledWith(
 				2,
 				'DELETE',
-				'webhooks/existing-webhook-id',
+				requestPath`webhooks/existing-webhook-id`,
 				{},
 			);
 			expect(staticData.webhookId).toBeUndefined();

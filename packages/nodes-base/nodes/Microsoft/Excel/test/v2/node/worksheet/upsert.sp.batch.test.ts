@@ -12,7 +12,7 @@ describe('Test MicrosoftExcelV2, Service Principal worksheet => upsert uses item
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')
 		.get(
-			'/users/alice%40contoso.com/drive/items/01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I/workbook/worksheets/%7BA0883CFE-D27E-4ECC-B94B-981830AAD55B%7D/usedRange',
+			'/users/alice@contoso.com/drive/items/01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I/workbook/worksheets/%7BA0883CFE-D27E-4ECC-B94B-981830AAD55B%7D/usedRange',
 		)
 		.reply(200, {
 			address: 'Sheet1!A1:B3',
@@ -27,7 +27,7 @@ describe('Test MicrosoftExcelV2, Service Principal worksheet => upsert uses item
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')
 		.get(
-			'/users/alice%40contoso.com/drive/items/01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I/workbook/worksheets/%7BA0883CFE-D27E-4ECC-B94B-981830AAD55B%7D/usedRange',
+			'/users/alice@contoso.com/drive/items/01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I/workbook/worksheets/%7BA0883CFE-D27E-4ECC-B94B-981830AAD55B%7D/usedRange',
 		)
 		.query({ select: 'address' })
 		.reply(200, { address: 'Sheet1!A1:B3' });
@@ -36,7 +36,7 @@ describe('Test MicrosoftExcelV2, Service Principal worksheet => upsert uses item
 	nock('https://graph.microsoft.com/v1.0')
 		.matchHeader('Authorization', 'Bearer test-access-token')
 		.patch(
-			"/users/alice%40contoso.com/drive/items/01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I/workbook/worksheets/%7BA0883CFE-D27E-4ECC-B94B-981830AAD55B%7D/range(address='A1:B4')",
+			"/users/alice@contoso.com/drive/items/01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I/workbook/worksheets/%7BA0883CFE-D27E-4ECC-B94B-981830AAD55B%7D/range(address='A1:B4')",
 			{
 				values: [
 					['id', 'data'],

@@ -1,4 +1,5 @@
-import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INode } from 'n8n-workflow';
+import { requestUrl } from 'n8n-workflow';
 import { mockDeep, mockReset } from 'vitest-mock-extended';
 
 import { GoogleCalendar } from '../GoogleCalendar.node';
@@ -15,6 +16,7 @@ describe('GoogleCalendar', () => {
 	beforeEach(() => {
 		mockReset(loadOptionsFunctions);
 		loadOptionsFunctions.getCurrentNodeParameter.mockReturnValue(calendar.id);
+		loadOptionsFunctions.getNode.mockReturnValue({ typeVersion: 1.4 } as INode);
 	});
 
 	describe('loadOptions.getConferenceSolutions', () => {
@@ -36,7 +38,7 @@ describe('GoogleCalendar', () => {
 				'googleCalendarOAuth2Api',
 				expect.objectContaining({
 					method: 'GET',
-					uri: `https://www.googleapis.com/calendar/v3/users/me/calendarList/${calendar.id}`,
+					uri: requestUrl`https://www.googleapis.com/calendar/v3/users/me/calendarList/${calendar.id}`,
 				}),
 			);
 		});

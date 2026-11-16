@@ -8,7 +8,7 @@ import {
 	PostHogClient,
 } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import type { AuthIdentity, Person, PublicUser } from '@n8n/db';
+import type { AuthIdentity, OperationContext, Person, PublicUser } from '@n8n/db';
 import {
 	isPerson,
 	TransactionRunner,
@@ -22,7 +22,6 @@ import {
 	SharedWorkflowRepository,
 	Not,
 	In,
-	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
@@ -50,10 +49,12 @@ import {
 	NotFoundError,
 	UserError,
 } from '@n8n/errors';
+import { loginIdOf } from '@/events/login-id';
 import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import { License } from '@/license';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 import type { UserRequest } from '@/requests';
 import { ScimSwitchReader } from '@/sso.ee/scim-switch-reader';
 import { isSamlOrOidcLoginEnabled, isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
@@ -234,6 +235,8 @@ export class UserService {
 		owner: User,
 		toInviteUsers: { [key: string]: string },
 		role: AssignableGlobalRole,
+		publicApi: PublicApiCaller,
+		ctx: OperationContext = {},
 	) {
 		const domain = this.urlService.getInstanceBaseUrl();
 
@@ -271,7 +274,7 @@ export class UserService {
 						this.eventService.emit('user-transactional-email-sent', {
 							userId: id,
 							messageType: 'New user invite',
-							publicApi: false,
+							publicApi,
 						});
 					}
 
@@ -285,16 +288,18 @@ export class UserService {
 					this.eventService.emit('user-invited', {
 						user: owner,
 						targetUserId: Object.values(toInviteUsers),
-						publicApi: false,
+						publicApi,
 						emailSent: result.emailSent,
 						inviteeRole: role, // same role for all invited users
+						loginId: loginIdOf(ctx),
 					});
 				} catch (e) {
 					if (e instanceof Error) {
 						this.eventService.emit('email-failed', {
 							user: owner,
 							messageType: 'New user invite',
-							publicApi: false,
+							publicApi,
+							loginId: loginIdOf(ctx),
 						});
 						// Do not log inviteAcceptUrl: it contains a live JWT that must not appear in logs
 						this.logger.error('Failed to send email', {
@@ -316,7 +321,12 @@ export class UserService {
 		return `${domain}/signup?token=${token}`;
 	}
 
-	async inviteUsers(owner: User, invitations: Invitation[]) {
+	async inviteUsers(
+		owner: User,
+		invitations: Invitation[],
+		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
+	) {
 		const emails = invitations.map(({ email }) => email);
 
 		const existingUsers = await this.personRepository.findManyByEmail(emails);
@@ -371,6 +381,8 @@ export class UserService {
 			owner,
 			Object.fromEntries(createdUsers),
 			invitations[0].role, // same role for all invited users
+			publicApi,
+			ctx,
 		);
 
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
@@ -554,7 +566,12 @@ export class UserService {
 		return { users, count };
 	}
 
-	async inviteUser(inviter: User, invitations: Invitation[]) {
+	async inviteUser(
+		inviter: User,
+		invitations: Invitation[],
+		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
+	) {
 		if (invitations.length === 0) return [];
 
 		// While SCIM is on, admins can invite the people that the identity provider
@@ -599,7 +616,12 @@ export class UserService {
 			return { email, role };
 		});
 
-		const { usersInvited, usersCreated } = await this.inviteUsers(inviter, attributes);
+		const { usersInvited, usersCreated } = await this.inviteUsers(
+			inviter,
+			attributes,
+			publicApi,
+			ctx,
+		);
 
 		await this.externalHooks.run('user.invited', [usersCreated]);
 
@@ -613,7 +635,13 @@ export class UserService {
 	 * The actor is a user, or the system for a deletion that no user asked for,
 	 * such as a SCIM deletion from the identity provider.
 	 */
-	async deleteUser(actor: User | SystemDeletionActor, idToDelete: string, transferId?: string) {
+	async deleteUser(
+		actor: User | SystemDeletionActor,
+		idToDelete: string,
+		transferId?: string,
+		publicApi: PublicApiCaller = false,
+		ctx: OperationContext = {},
+	) {
 		// A user also has a `kind` (person or service), so test the value.
 		const systemActor = actor.kind === 'system' ? actor : null;
 		const actorUser = actor.kind === 'system' ? null : actor;
@@ -695,7 +723,7 @@ export class UserService {
 
 		const workflowService = await this.getWorkflowService();
 		for (const { workflowId } of ownedSharedWorkflows) {
-			await workflowService.delete(userToDelete, workflowId, true);
+			await workflowService.delete(userToDelete, workflowId, true, { publicApi });
 		}
 
 		const credentialsService = await this.getCredentialsService();
@@ -726,11 +754,12 @@ export class UserService {
 			// No user acts in a system deletion, so the event names the system.
 			user: actorUser,
 			...(systemActor && { source: systemActor.reason }),
-			publicApi: false,
+			publicApi,
 			targetUserOldStatus: isPerson(userToDelete) && userToDelete.isPending ? 'invited' : 'active',
 			targetUserId: idToDelete,
 			migrationStrategy: transferId ? 'transfer_data' : 'delete_data',
 			migrationUserId: transfereeId,
+			loginId: loginIdOf(ctx),
 		});
 
 		await this.externalHooks.run('user.deleted', [await this.toPublic(userToDelete)]);
@@ -738,7 +767,12 @@ export class UserService {
 		return { success: true };
 	}
 
-	async changeGlobalRole(actor: User, id: string, payload: RoleChangeRequestDto) {
+	async changeGlobalRole(
+		actor: User,
+		id: string,
+		payload: RoleChangeRequestDto,
+		publicApi: PublicApiCaller = false,
+	) {
 		const provisioningService = await this.getProvisioningService();
 
 		if (await provisioningService.isInstanceRoleManaged()) {
@@ -754,18 +788,12 @@ export class UserService {
 			throw new NotFoundError(CHANGE_ROLE_ERROR_MESSAGES.NO_USER);
 		}
 
-		if (
-			actor.role.slug === GLOBAL_ADMIN_ROLE.slug &&
-			targetUser.role.slug === GLOBAL_OWNER_ROLE.slug
-		) {
-			throw new ForbiddenError(CHANGE_ROLE_ERROR_MESSAGES.NO_ADMIN_ON_OWNER);
-		}
-
-		if (
-			actor.role.slug === GLOBAL_OWNER_ROLE.slug &&
-			targetUser.role.slug === GLOBAL_OWNER_ROLE.slug
-		) {
-			throw new ForbiddenError(CHANGE_ROLE_ERROR_MESSAGES.NO_OWNER_ON_OWNER);
+		if (targetUser.role.slug === GLOBAL_OWNER_ROLE.slug) {
+			throw new ForbiddenError(
+				actor.role.slug === GLOBAL_OWNER_ROLE.slug
+					? CHANGE_ROLE_ERROR_MESSAGES.NO_OWNER_ON_OWNER
+					: CHANGE_ROLE_ERROR_MESSAGES.NO_ADMIN_ON_OWNER,
+			);
 		}
 
 		await this.changeUserRole(targetUser, payload);
@@ -774,7 +802,7 @@ export class UserService {
 			userId: actor.id,
 			targetUserId: targetUser.id,
 			targetUserNewRole: payload.newRoleName,
-			publicApi: false,
+			publicApi,
 		});
 
 		return { success: true };

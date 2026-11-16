@@ -3,7 +3,7 @@ import type { VectorStore } from '@langchain/core/vectorstores';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { IExecuteFunctions, INode, INodeProperties, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
