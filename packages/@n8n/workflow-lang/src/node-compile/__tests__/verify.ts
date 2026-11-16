@@ -9,7 +9,12 @@ import type {
 } from '../../nodes/__tests__/equivalence.ts';
 import { applyCredential, normalizeRequest } from '../../nodes/__tests__/equivalence.ts';
 import { recordV1, recordV1Cached } from '../../nodes/__tests__/v1-recorder.ts';
+import { compile } from '../../compiler/index.ts';
+import { decodeModule } from '../../compiler/decode.ts';
+import { libraryNodeTypes } from '../../library/node-sources.ts';
 import { runReference } from '../../reference/runner.ts';
+import type { VmCost } from '../../testing/vm.ts';
+import { allocationsOf, emptyCost, runModule } from '../../testing/vm.ts';
 import type { NodeSources } from '../convert.ts';
 import { compileNodeInstance } from '../convert.ts';
 import { evaluateDerivation } from '../evaluate-node.ts';
@@ -257,6 +262,116 @@ async function recordWithMints(
 	return 'the token requests of v1 do not settle';
 }
 
+function workflowSourceOf(
+	c: EquivalenceCase,
+	type: string,
+	parameters: Record<string, unknown>,
+): string {
+	const credentialType = c.credential?.type;
+	return `import { webhook, workflow } from '@n8n/workflow-lang';
+
+export default workflow({
+	triggers: [webhook({ path: 'verify' })],
+	${credentialType ? `credentials: { c: { type: ${JSON.stringify(credentialType)} } },` : ''}
+	async run(ctx) {
+		return await ctx.node({
+			name: 'Node',
+			type: ${JSON.stringify(type)},
+			typeVersion: ${c.typeVersion},
+			parameters: ${JSON.stringify(parameters)},
+			${c.items ? `items: ${JSON.stringify(c.items)},` : ''}
+			${credentialType ? "credential: 'c'," : ''}
+		});
+	},
+});
+`;
+}
+
+const effectsOf = (responses: EquivalenceCase['responses']) => ({
+	Node: responses.map((r) => ({ status: 200, headers: {}, ...r })),
+});
+
+export interface CaseCost {
+	ops: number;
+	allocations: number;
+	calls: number;
+	reads: number;
+	writes: number;
+	branches: number;
+	concats: number;
+	stringUnits: number;
+	effects: number;
+	handWrittenOps?: number;
+	handWrittenAllocations?: number;
+}
+
+const HAND_WRITTEN = new Set(libraryNodeTypes());
+
+function bytecodeCost(
+	source: string,
+	extraNodes: Record<string, string>,
+	responses: EquivalenceCase['responses'],
+): { cost: VmCost; effects: string[] } | undefined {
+	let built: ReturnType<typeof compile>;
+	try {
+		built = compile(source, { extraNodes });
+	} catch {
+		return undefined;
+	}
+	if (!built.ok || built.module === undefined) return undefined;
+	const cost = emptyCost();
+	const out = runModule(
+		decodeModule(built.module),
+		{
+			trigger: { body: {}, headers: {}, query: {} },
+			now: V1_NOW,
+			seed: 1,
+			effects: effectsOf(responses),
+		},
+		{ cost },
+	);
+	return out.status === 'ok' ? { cost, effects: out.effects.map((e) => e.kind) } : undefined;
+}
+
+export function costOfCase(
+	c: EquivalenceCase,
+	sources: NodeSources,
+	registry: Registry,
+): CaseCost | undefined {
+	const compiled = compileForCheck(
+		sources,
+		{ type: c.type, version: c.typeVersion, parameters: c.parameters },
+		credentialsOf(c, registry),
+	);
+	if ('errors' in compiled) return undefined;
+	const responses = c.responses.filter((r) => r !== MINTED_TOKEN_RESPONSE);
+	const mine = bytecodeCost(
+		workflowSourceOf(c, compiled.type, {}),
+		{ [compiled.file]: compiled.source },
+		responses,
+	);
+	if (!mine) return undefined;
+	const out: CaseCost = {
+		ops: mine.cost.ops,
+		allocations: allocationsOf(mine.cost),
+		calls: mine.cost.calls,
+		reads: mine.cost.reads,
+		writes: mine.cost.writes,
+		branches: mine.cost.branches,
+		concats: mine.cost.concats,
+		stringUnits: mine.cost.stringUnits,
+		effects: mine.effects.length,
+	};
+	if (!HAND_WRITTEN.has(c.type)) return out;
+	const theirs = bytecodeCost(workflowSourceOf(c, c.type, c.parameters), {}, responses);
+	if (!theirs || theirs.effects.join() !== mine.effects.join()) return out;
+	return {
+		...out,
+		handWrittenOps: theirs.cost.ops,
+		handWrittenAllocations: allocationsOf(theirs.cost),
+	};
+}
+
 export async function differenceFromV1(
 	c: EquivalenceCase,
 	sources: NodeSources,
@@ -270,23 +385,7 @@ export async function differenceFromV1(
 	);
 	if ('errors' in compiled) return `does not compile: ${compiled.errors[0]}`;
 	const credentialType = c.credential?.type;
-	const source = `import { webhook, workflow } from '@n8n/workflow-lang';
-
-export default workflow({
-	triggers: [webhook({ path: 'verify' })],
-	${credentialType ? `credentials: { c: { type: ${JSON.stringify(credentialType)} } },` : ''}
-	async run(ctx) {
-		return await ctx.node({
-			name: 'Node',
-			type: ${JSON.stringify(compiled.type)},
-			typeVersion: ${c.typeVersion},
-			parameters: {},
-			${c.items ? `items: ${JSON.stringify(c.items)},` : ''}
-			${credentialType ? "credential: 'c'," : ''}
-		});
-	},
-});
-`;
+	const source = workflowSourceOf(c, compiled.type, {});
 	const recordPlain = async (testCase: EquivalenceCase) =>
 		await within(8000, options.cache === true ? recordV1Cached(testCase) : recordV1(testCase));
 	const record = async (testCase: EquivalenceCase) =>
@@ -306,7 +405,7 @@ export default workflow({
 		trigger: { body: {}, headers: {}, query: {} },
 		now: V1_NOW,
 		seed: 1,
-		effects: { Node: responses.map((r) => ({ status: 200, headers: {}, ...r })) },
+		effects: effectsOf(responses),
 	};
 	const runWith = async (seed: number) =>
 		await runReference(
