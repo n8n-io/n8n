@@ -10,8 +10,8 @@ export type InstanceTypeAccess = {
 
 /**
  * Response of `GET /node-type-policies/instance/access` and
- * `GET /credential-type-policies/instance/access`. `matchedRuleId` refers to the rules of this
- * `version`, and a write that sends this `version` back fails if the policy changed since.
+ * `GET /credential-type-policies/instance/access`. A write that sends this `version` back fails
+ * if the policy changed since the read.
  */
 export type InstanceTypeAccessResponse = {
 	scopeId: string | null;

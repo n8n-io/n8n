@@ -292,13 +292,17 @@ there would surface as a write conflict.
 `GET /node-type-policies/instance/access` and `GET /credential-type-policies/instance/access`
 return, for every known type, what the instance policy alone decides: `allow`, `deny` or
 `delegate`. Each entry names the rule that decided it, or has `matchedRuleId: null` when the
-default action decided. The admin UI shows this as the Access of each row, so the client does
-not evaluate rules itself.
+default action decided. It exists so that the admin UI can show the Access of each row without
+evaluating rules.
 
-The route reads the policy once through `getEffectivePolicy` and evaluates every type against
-that read, so the `version` in the response is the version the verdicts come from. It uses the
-same type names as `available-types`, so generated tool variants are included and inherit
-their base type's verdict.
+The route reads the policy once through `getEffectivePolicy`, not the snapshot, and evaluates
+every type against that read. That read is two queries, the scope and then its attachments, so a
+write between them can return newer rules under the older `version`. A write that sends this
+`version` back then fails with a conflict, so no change is lost.
+
+Each route lists the same type names as the builder read of its kind: `available-types` for
+node types, `available-credential-types` for credential types. Generated tool variants are node
+types, and they get the verdict of their base type.
 
 ## The write seal
 
