@@ -44,7 +44,7 @@ The generator makes these parts of the node:
 
 | Spec | Node |
 |------|------|
-| Tag, in the singular: `Executions` | Resource. ID `execution`, display name from `x-displayName` |
+| Tag `Executions` | Resource `execution`, with the display name `Execution`. The generator makes the tag name and `x-displayName` singular |
 | `operationId` | Operation ID |
 | `summary` | Operation name. A deprecated operation gets ` (deprecated)` |
 | Required parameter | Required field, with the parameter name |
@@ -53,9 +53,11 @@ The generator makes these parts of the node:
 | `cursor` query parameter | `Return All` field. When it is off, `limit` sets the number of items |
 | Successful response without a body | The node returns `{ "success": true }` |
 
-The schema of a parameter gives the type and the default of its field. A
-string enum becomes a dropdown, except the enum `"true"`/`"false"`, which
-becomes a boolean. An object or an array becomes a JSON field.
+The schema of a parameter gives the type and the default of its field. If the
+schema has no default, a number gets its `minimum`, or `0` without a
+`minimum`. Other fields get an empty value. A string enum becomes a dropdown,
+except the enum `"true"`/`"false"`, which becomes a boolean. An object or an
+array becomes a JSON field.
 The tests in `src/__tests__/build-properties.test.ts` show each rule.
 
 ### Add an operation to the node
