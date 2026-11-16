@@ -11,7 +11,12 @@
  * conversion of the node fails.
  */
 import type { PublicCredential } from '../credentials/public.ts';
-import { compileNodeInstance, isVerified } from '../node-compile/convert.ts';
+import {
+	compileNodeInstance,
+	flagGuard,
+	isVerified,
+	verifiedFlagKeys,
+} from '../node-compile/convert.ts';
 import { CORE_NODE_TYPES } from './core-types.ts';
 import type { Code } from './code.ts';
 import { literal, raw, str } from './code.ts';
@@ -383,6 +388,24 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		);
 		return false;
 	}
+	// The compiled forms of binary data are those of the `separate` mode. With `combined`, v1 reads
+	// and writes binary data in the JSON of an item, so the node stays in the host.
+	if (compiled.binary && c.scope.binaryMode === 'combined') {
+		c.info(
+			'node-compile',
+			'The node uses binary data and the workflow has the binary mode `combined`, which has no compiled form.',
+		);
+		return false;
+	}
+	// A node that asks for the bytes of a response needs a runtime that stores the body as
+	// binary data (`responseBinary`, spec 7.1). The caller says when its runtime does.
+	if (compiled.storesResponses && c.nodeSources.storesResponses !== true) {
+		c.info(
+			'node-compile',
+			'The node asks for the bytes of a response, and the runtime of the caller does not store a response as binary data.',
+		);
+		return false;
+	}
 	if (compiled.derivations.length > 0) {
 		const slot = c.credential();
 		if (slot === undefined || !c.addCredentialDerivations) {
@@ -393,6 +416,20 @@ export function tryCompiledNode(c: NodeContext): boolean {
 			return false;
 		}
 		c.addCredentialDerivations(slot, compiled.derivations);
+	}
+	if (compiled.flags.length > 0) {
+		const slot = c.credential();
+		if (slot === undefined || !c.addCredentialDerivations) {
+			c.info(
+				'node-compile',
+				'The node source has conditions on its credential, and the caller does not compute them.',
+			);
+			return false;
+		}
+		// The guard holds the flag values that were checked against the v1 node together: n8n
+		// gives the flags to the module only for those.
+		const allowed = verifiedFlagKeys(c.nodeSources, c.node.type, c.version, compiled);
+		c.addCredentialDerivations(slot, [...compiled.flags, flagGuard(compiled, allowed)]);
 	}
 	if (compiled.mints.length > 0) {
 		const slot = c.credential();

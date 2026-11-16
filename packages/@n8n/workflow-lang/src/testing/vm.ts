@@ -5,8 +5,10 @@
  */
 import { xmlContent, xmlParse, xmlSnippet } from '../reference/xml-lib.ts';
 import { asciiRange, base64Utf8 } from '../reference/ascii-lib.ts';
+import { storedResponse } from '../reference/binary-response.ts';
 import type { ModuleData } from '../compiler/module.ts';
 import { EFFECT_KIND_NAMES, EffectKind, OP_NAMES, Op } from '../compiler/opcodes.ts';
+import { CREDENTIAL_FLAG_MISSING, credentialFlagIn } from '../credentials/flags.ts';
 import type { EffectRecord, Fixture, ReferenceOutput, TraceRecord } from '../reference/runner.ts';
 import { callDate } from '../reference/date-lib.ts';
 import { executionInfo, jsonCopy, splitmix64, traceRecord } from '../reference/runner.ts';
@@ -524,6 +526,14 @@ export interface VmOptions {
  */
 export let opCounts: Map<string, number> | undefined;
 
+/** The flag names in the META of a module: the only ones that `ctx.credentialFlag` gives. */
+function declaredCredentialFlags(meta: string): Set<string> {
+	const parsed: unknown = JSON.parse(meta);
+	const list: unknown =
+		typeof parsed === 'object' && parsed !== null ? Reflect.get(parsed, 'credentialFlags') : [];
+	return new Set(Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string') : []);
+}
+
 export function setOpCounts(counts: Map<string, number> | undefined): void {
 	opCounts = counts;
 }
@@ -538,6 +548,7 @@ export function runModule(
 	const consumed = new Map<string, number>();
 	const random = splitmix64(fixture.seed);
 	const statics = new StaticDataDoc(fixture.staticData);
+	const declaredFlags = declaredCredentialFlags(m.meta);
 	let clock = fixture.now;
 	let fuel = options.fuel ?? 50_000_000;
 	const maxDepth = options.maxDepth ?? 1000;
@@ -779,6 +790,14 @@ export function runModule(
 						if (cost) countNativeResult(cost, R[ins.a], R[ins.c]);
 						break;
 					case Op.CALLN:
+						if (m.strings[ins.b] === 'ctx.credentialFlag') {
+							const flag = declaredFlags.has(String(R[ins.c + 1]))
+								? credentialFlagIn(fixture.credentialFlags, R[ins.c], R[ins.c + 1])
+								: undefined;
+							if (flag === undefined) throw { name: 'Error', message: CREDENTIAL_FLAG_MISSING };
+							R[ins.a] = flag;
+							break;
+						}
 						R[ins.a] =
 							m.strings[ins.b] === 'ctx.staticData'
 								? statics.get(R[ins.c], ins.x > 1 ? R[ins.c + 1] : undefined)
@@ -828,7 +847,7 @@ export function runModule(
 						let result: unknown;
 						for (;;) {
 							effects.push({ step: s.name, kind, args: clone(args) });
-							result = nextResult(s.name);
+							result = storedResponse(kind, args, nextResult(s.name));
 							const failed = isRecord(result) && '$error' in result;
 							if (!failed || attempt >= s.retryMax) break;
 							attempt++;

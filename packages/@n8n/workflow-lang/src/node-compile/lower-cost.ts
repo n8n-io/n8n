@@ -376,6 +376,7 @@ function requestForm(name: string, has: (key: RequestKey) => boolean, flags: Req
 		qs: ${has('qs') ? '__plain(options.qs ?? {})' : '{}'},
 		body: ${parts ? `parts !== undefined ? undefined : ${encoded}` : encoded},
 		multipart: ${parts ? 'parts' : 'undefined'},
+		responseBinary: undefined,
 		basicAuth: ${has('auth') ? "auth ? { user: auth.user ?? auth.username ?? '', password: auth.pass ?? auth.password ?? '' } : undefined" : 'undefined'},
 		inject: ${flags.wrapped},
 		credential,
@@ -421,7 +422,7 @@ function lowerRequests(sf: ts.SourceFile): string | undefined {
 			: ts.isObjectLiteralExpression(options)
 				? literalShape(options)
 				: undefined;
-		if (!shape) return;
+		if (!shape || shape.maybe.has('encoding')) return;
 		const has = (key: RequestKey) => shape.maybe.has(key);
 		if (REQUEST_KEYS.every(has) && !shape.headersAreObjects) return;
 		const flags = {
@@ -962,12 +963,12 @@ function lowerConstants(code: string): string {
 	return text;
 }
 
-export function lowerCost(code: string): LoweredCode {
+export function lowerCost(code: string, holdsBytes: boolean): LoweredCode {
 	let text = lowerConstants(code);
 	const helpers = new Set<string>();
 	const requests = lowerRequests(parse(text));
 	if (requests !== undefined) text = requests;
-	const output = lowerOutput(parse(text));
+	const output = holdsBytes ? undefined : lowerOutput(parse(text));
 	if (output) {
 		text = output.code;
 		for (const helper of output.helpers) helpers.add(helper);

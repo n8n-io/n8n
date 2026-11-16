@@ -15,6 +15,11 @@ export interface EquivalenceCase {
 	items?: Array<Record<string, unknown>>;
 	/** The credential type the v1 node uses, and fake credential data. */
 	credential?: { type: string; data: Record<string, unknown> };
+	/**
+	 * True when the compiled node makes binary data from the bytes of a response. The v1 recorder
+	 * then answers a request that asks for bytes with a Buffer, as the HTTP client of n8n does.
+	 */
+	responseBytes?: boolean;
 	/** HTTP responses, in request order. The last one repeats. */
 	responses: Array<{ status?: number; headers?: Record<string, string>; body: unknown }>;
 	/**

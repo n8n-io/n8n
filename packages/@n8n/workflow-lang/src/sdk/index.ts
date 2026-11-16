@@ -233,12 +233,43 @@ export interface HttpCall extends StepOptions {
 	 * request helpers write it without `useQuerystring` (`sort[0][field]=a`).
 	 */
 	qsFormat?: 'repeat' | 'brackets';
+	/** Stores the body of a 2xx response as binary data; the body is `{ $binary: BinaryHandle }`. */
+	responseBinary?: ResponseBinary;
 }
 
 export interface HttpResponse<T> {
 	status: number;
 	headers: Record<string, string>;
 	body: T;
+}
+
+/**
+ * A binary value (spec 7.1): metadata and the id of the bytes in the binary data store of n8n.
+ * The bytes are never in the JSON. Code can read the metadata, and can give the handle to an
+ * effect: in `$binary` of an item, as `binary` of a multipart part, or as `body: { $binary }`.
+ */
+export interface BinaryHandle {
+	id: string;
+	/** The name of the store, as n8n writes it: `filesystem-v2`. */
+	data: string;
+	mimeType: string;
+	fileType?: string;
+	fileName?: string;
+	fileExtension?: string;
+	/** The size as text, as n8n writes it: `1.34 kB`. */
+	fileSize: string;
+	bytes: number;
+}
+
+/**
+ * `responseBinary` of an `http` call (spec 7.1): the runtime streams the body of a 2xx response to
+ * the binary data store, and the `body` of the result is `{ $binary: BinaryHandle }`.
+ */
+export interface ResponseBinary {
+	/** The file name. Without it: the `Content-Disposition` header, else the path of the URL. */
+	fileName?: string;
+	/** The MIME type. Without it: the `Content-Type` header. */
+	mimeType?: string;
 }
 
 export interface CodeCall extends StepOptions {
@@ -384,6 +415,8 @@ export interface HttpRequest {
 	basicAuth?: { user: string; password: string };
 	/** `false`: the credential fills templates only; what it injects is not added (spec 7.1). */
 	inject?: boolean;
+	/** Stores the body of a 2xx response as binary data; the body is `{ $binary: BinaryHandle }`. */
+	responseBinary?: ResponseBinary;
 }
 
 /** A part of a multipart body: a text field, or a file (`binary`, n8n's binary form). */
@@ -409,6 +442,12 @@ export interface NodeCtx {
 	 * It has no step of its own and no result.
 	 */
 	wait(call: { duration: number }): Promise<void>;
+	/**
+	 * The outcome of one condition on the credential of the slot. n8n computes it where the
+	 * credential is stored; the module names it by `id`, a constant `f` and eight hex digits.
+	 * It gives no other value of the credential. It throws when the flag is not there. Glue.
+	 */
+	credentialFlag(slot: string | undefined, id: string): boolean;
 }
 
 /**

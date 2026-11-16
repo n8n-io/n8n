@@ -1,4 +1,7 @@
+import { createHash } from 'node:crypto';
+
 import { withDerivedValues } from '../../credentials/derived.ts';
+import { credentialFlagKey } from '../../credentials/flags.ts';
 import { deriveInject } from '../../credentials/inject.ts';
 import type { PublicCredential } from '../../credentials/public.ts';
 import { publicCredential } from '../../credentials/public.ts';
@@ -12,13 +15,19 @@ import { recordV1, recordV1Cached } from '../../nodes/__tests__/v1-recorder.ts';
 import { compile } from '../../compiler/index.ts';
 import { decodeModule } from '../../compiler/decode.ts';
 import { libraryNodeTypes } from '../../library/node-sources.ts';
+import { referenceHash } from '../../reference/binary-response.ts';
 import { runReference } from '../../reference/runner.ts';
 import type { VmCost } from '../../testing/vm.ts';
 import { allocationsOf, emptyCost, runModule } from '../../testing/vm.ts';
 import type { NodeSources } from '../convert.ts';
 import { compileNodeInstance } from '../convert.ts';
-import { evaluateDerivation } from '../evaluate-node.ts';
-import type { CredentialMint, PublishFacts, RandomShape } from '../specialise.ts';
+import { evaluateDerivation, evaluateFlag } from '../evaluate-node.ts';
+import type {
+	CredentialDerivation,
+	CredentialMint,
+	PublishFacts,
+	RandomShape,
+} from '../specialise.ts';
 
 export const V1_TIMEZONE = 'America/New_York';
 export const V1_NOW = Date.UTC(2024, 0, 15, 17, 30, 0);
@@ -80,6 +89,103 @@ export function sentParts(multipart: unknown): unknown {
 			...(typeof file.mimeType === 'string' ? { contentType: file.mimeType } : {}),
 			data: file.data,
 		};
+	});
+}
+
+function credentialData(c: EquivalenceCase, registry: Registry): Record<string, unknown> {
+	const type = c.credential?.type ?? '';
+	return withDerivedValues(type, {
+		...(registry.get(type)?.defaults ?? {}),
+		...c.credential?.data,
+	});
+}
+
+function flagValues(
+	flags: CredentialDerivation[],
+	data: Record<string, unknown>,
+): Record<string, boolean> | undefined {
+	const values: Record<string, boolean> = {};
+	for (const { name, code } of flags) {
+		const value = evaluateFlag(code, data);
+		if (value === undefined) return undefined;
+		values[name] = value;
+	}
+	return values;
+}
+
+export function flagKeyOf(
+	c: EquivalenceCase,
+	flags: CredentialDerivation[],
+	registry: Registry,
+): string | undefined {
+	const values = flagValues(flags, credentialData(c, registry));
+	return values === undefined
+		? undefined
+		: credentialFlagKey(
+				flags.map((flag) => flag.name),
+				values,
+			);
+}
+
+const MAX_FLAG_VARIANTS = 8;
+const LONG_TEXT = 'x'.repeat(80);
+
+function otherValues(value: unknown, field: string): unknown[] {
+	if (typeof value === 'boolean') return [!value];
+	if (typeof value === 'string') return ['', LONG_TEXT, undefined];
+	if (typeof value === 'number') return [0, 1, undefined];
+	if (value === undefined) return [`fake-${field}`, true];
+	return [];
+}
+
+export function flagVariants(
+	c: EquivalenceCase,
+	flags: CredentialDerivation[],
+	registry: Registry,
+): Array<{ data: Record<string, unknown>; key: string }> {
+	const credential = c.credential;
+	const base = flagKeyOf(c, flags, registry);
+	if (!credential || base === undefined) return [];
+	const classes = JSON.stringify(credentialsOf(c, registry));
+	const fields = new Set<string>();
+	for (const { code } of flags)
+		for (const match of code.matchAll(/\bc\.([A-Za-z_$][\w$]*)/g)) fields.add(match[1]);
+	const seen = new Set([base]);
+	const variants: Array<{ data: Record<string, unknown>; key: string }> = [];
+	for (const field of [...fields].sort()) {
+		for (const value of otherValues(credentialData(c, registry)[field], field)) {
+			if (variants.length >= MAX_FLAG_VARIANTS) return variants;
+			const { [field]: _dropped, ...rest } = credential.data;
+			const data = value === undefined ? rest : { ...rest, [field]: value };
+			const changed = { ...c, credential: { ...credential, data } };
+			if (JSON.stringify(credentialsOf(changed, registry)) !== classes) continue;
+			const key = flagKeyOf(changed, flags, registry);
+			if (key === undefined || seen.has(key)) continue;
+			seen.add(key);
+			variants.push({ data, key });
+		}
+	}
+	return variants;
+}
+
+function storedFile(entry: unknown): unknown {
+	if (!isRecord(entry) || typeof entry.data !== 'string') return entry;
+	const { id, ...rest } = entry;
+	const stored = referenceHash(id);
+	if (stored !== undefined) return { ...rest, data: stored };
+	if (id !== undefined) return entry;
+	const bytes = Buffer.from(entry.data, 'base64');
+	return { ...rest, data: createHash('sha256').update(bytes).digest('hex') };
+}
+
+export function comparableOutput(output: unknown): unknown {
+	if (!Array.isArray(output)) return output;
+	return output.map((item: unknown) => {
+		if (!isRecord(item) || !isRecord(item.$binary)) return item;
+		const { $binary: files, ...json } = item;
+		const compared: Record<string, unknown> = {};
+		for (const [name, entry] of Object.entries(files)) compared[name] = storedFile(entry);
+		return { ...json, $binary: compared };
 	});
 }
 
@@ -384,6 +490,7 @@ export async function differenceFromV1(
 		credentialsOf(c, registry),
 	);
 	if ('errors' in compiled) return `does not compile: ${compiled.errors[0]}`;
+	const asked: EquivalenceCase = compiled.storesResponses ? { ...c, responseBytes: true } : c;
 	const credentialType = c.credential?.type;
 	const source = workflowSourceOf(c, compiled.type, {});
 	const recordPlain = async (testCase: EquivalenceCase) =>
@@ -395,17 +502,21 @@ export async function differenceFromV1(
 				)
 			: await recordPlain(testCase);
 	const minted =
-		compiled.mints.length > 0 ? await recordWithMints(c, compiled.mints, record) : undefined;
+		compiled.mints.length > 0 ? await recordWithMints(asked, compiled.mints, record) : undefined;
 	if (typeof minted === 'string') return minted;
-	const v1 = minted?.v1 ?? (await record(c));
+	const v1 = minted?.v1 ?? (await record(asked));
 	const responses = minted
 		? minted.testCase.responses.filter((_response, k) => !minted.exchanges.has(k))
 		: c.responses;
+	const flags = flagValues(compiled.flags, credentialData(c, registry));
+	if (flags === undefined)
+		return 'a condition on the credential has no value for the test credential';
 	const fixture = {
 		trigger: { body: {}, headers: {}, query: {} },
 		now: V1_NOW,
 		seed: 1,
 		effects: effectsOf(responses),
+		...(compiled.flags.length > 0 ? { credentialFlags: { c: flags } } : {}),
 	};
 	const runWith = async (seed: number) =>
 		await runReference(
@@ -521,7 +632,8 @@ export async function differenceFromV1(
 		others.map((other) => other.result),
 		compiled.randoms,
 	);
-	return JSON.stringify(results.mine) === JSON.stringify(results.theirs)
+	return JSON.stringify(comparableOutput(results.mine)) ===
+		JSON.stringify(comparableOutput(results.theirs))
 		? undefined
 		: 'the output differs';
 }

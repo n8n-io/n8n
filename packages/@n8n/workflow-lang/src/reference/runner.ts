@@ -1,5 +1,6 @@
 import { findNodeDefinition, getProperty, stringLiteralValue } from '../compiler/analysis.ts';
 import { selectNodeSources } from '../library/node-sources.ts';
+import { CREDENTIAL_FLAG_MISSING, credentialFlagIn } from '../credentials/flags.ts';
 import * as sdk from '../sdk/index.ts';
 import ts from 'typescript';
 import { compileFunction } from 'node:vm';
@@ -10,6 +11,7 @@ import { regexExec } from './regex-lib.ts';
 import { StaticDataDoc } from './static-data.ts';
 import { xmlContent, xmlParse, xmlSnippet } from './xml-lib.ts';
 import { asciiIs, asciiIsPrintable, base64Utf8 } from './ascii-lib.ts';
+import { storedResponse } from './binary-response.ts';
 
 /** A differential test fixture (spec section 6). */
 export interface Fixture {
@@ -25,6 +27,15 @@ export interface Fixture {
 	vars?: Record<string, string>;
 	/** The workflow static data at the start (spec 9.7). The output then has the document at the end. */
 	staticData?: Record<string, unknown>;
+	/** What `ctx.credentialFlag(slot, id)` gives, by slot and flag name. */
+	credentialFlags?: Record<string, Record<string, boolean>>;
+}
+
+/** The value of `ctx.credentialFlag(slot, id)` for a fixture: a declared boolean, or an error. */
+export function credentialFlagOf(fixture: Fixture, slot: unknown, id: unknown): boolean {
+	const value = credentialFlagIn(fixture.credentialFlags, slot, id);
+	if (value === undefined) throw new Error(CREDENTIAL_FLAG_MISSING);
+	return value;
 }
 
 export interface FixtureExecution {
@@ -212,7 +223,7 @@ export async function runReference(
 		let result: unknown;
 		for (;;) {
 			effects.push({ step, kind, args: clone(args) });
-			result = nextResult(step);
+			result = storedResponse(kind, args, nextResult(step));
 			const failed = isRecord(result) && '$error' in result;
 			if (!failed || attempt >= retryMax) break;
 			attempt++;
@@ -329,6 +340,7 @@ export async function runReference(
 					staticData: (type: unknown, node: unknown) => statics.get(type, node),
 					random,
 					wait: async (call: unknown) => await pause(step, call),
+					credentialFlag: (slot: unknown, id: unknown) => credentialFlagOf(fixture, slot, id),
 				};
 				return await lib.run(nodeCtx, opts.parameters, opts.items, opts.credential);
 			}

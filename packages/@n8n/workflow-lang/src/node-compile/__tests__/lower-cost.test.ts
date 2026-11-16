@@ -20,13 +20,16 @@ const flat = (code: string) => code.replace(/\s+/g, ' ');
 
 describe('lowerCost: requests', () => {
 	it('gives a request with a known shape its own form', () => {
-		const out = lowerCost(`${REQUEST}
+		const out = lowerCost(
+			`${REQUEST}
 async function api(body) {
 	const options = { method: 'POST', headers: { a: 'b' }, uri: 'https://x.test', body };
 	if (Object.keys(body).length === 0) delete options.body;
 	return await __request(options, true, true);
 }
-return await api({});`);
+return await api({});`,
+			false,
+		);
 		expect(out.code).not.toContain('__request(');
 		expect(out.code).not.toContain('__formParts');
 		expect(out.code).not.toContain('options.auth');
@@ -35,13 +38,16 @@ return await api({});`);
 	});
 
 	it('keeps the copy of the headers and the form when the node can set a form', () => {
-		const out = lowerCost(`${REQUEST}
+		const out = lowerCost(
+			`${REQUEST}
 async function api(form) {
 	const options = { uri: 'https://x.test' };
 	options.form = form;
 	return await __request(options, false, false);
 }
-return await api({});`);
+return await api({});`,
+			false,
+		);
 		expect(flat(out.code)).toContain('const headers = __assign({}, {});');
 		expect(flat(out.code)).toContain('const form = options.form;');
 		expect(flat(out.code)).toContain('throw failure;');
@@ -55,7 +61,7 @@ async function api(extra) {
 	return await __request(options, true, true);
 }
 return await api({ auth: 1 });`;
-		expect(flat(lowerCost(code).code)).toContain('__request(options, true, true)');
+		expect(flat(lowerCost(code, false).code)).toContain('__request(options, true, true)');
 	});
 
 	it('keeps the general request when a key is not a constant', () => {
@@ -66,18 +72,39 @@ async function api(key) {
 	return await __request(options, true, true);
 }
 return await api('auth');`;
-		expect(flat(lowerCost(code).code)).toContain('__request(options, true, true)');
+		expect(flat(lowerCost(code, false).code)).toContain('__request(options, true, true)');
+	});
+
+	it('keeps the general request when the response can be bytes', () => {
+		const code = `${REQUEST}
+async function api() {
+	const options = { uri: 'https://x.test', encoding: null };
+	return await __request(options, true, true);
+}
+return await api();`;
+		expect(flat(lowerCost(code, false).code)).toContain('__request(options, true, true)');
+	});
+
+	it('keeps the general output when the module holds bytes', () => {
+		const code = `const returnData = [];
+returnData.push({ json: await api() });
+return __out([returnData]);`;
+		expect(flat(lowerCost(code, true).code)).toContain('return __out([returnData]);');
+		expect(flat(lowerCost(code, false).code)).toContain('return __plainList(returnData);');
 	});
 
 	it('removes the copy of the options with an empty object', () => {
-		const out = lowerCost(`${REQUEST}
+		const out = lowerCost(
+			`${REQUEST}
 async function api() {
 	const option = {};
 	let options = { uri: 'https://x.test' };
 	options = Object.assign({}, options, option);
 	return await __request(options, true, true);
 }
-return await api();`);
+return await api();`,
+			false,
+		);
 		expect(out.code).not.toContain('Object.assign');
 		expect(out.code).not.toContain('const option');
 	});
@@ -96,7 +123,7 @@ for (let i = 0; i < items.length; i++) {
 return __out([returnData]);`;
 
 	it('pushes the JSON values and counts the items', () => {
-		const out = lowerCost(body(''));
+		const out = lowerCost(body(''), false);
 		expect(flat(out.code)).toContain('__pushJson(returnData, responseData);');
 		expect(flat(out.code)).toContain('return __plainList(returnData);');
 		expect(flat(out.code)).toContain('i < __count');
@@ -105,13 +132,13 @@ return __out([returnData]);`;
 	});
 
 	it('keeps the general output when other code reads the list', () => {
-		const out = lowerCost(body('if (returnData.length > 3) break;'));
+		const out = lowerCost(body('if (returnData.length > 3) break;'), false);
 		expect(flat(out.code)).toContain('return __out([returnData]);');
 		expect(out.helpers).toEqual([]);
 	});
 
 	it('keeps the wrapped items when other code reads an item', () => {
-		const out = lowerCost(body('const file = __binaryOf(__items, i, "data");'));
+		const out = lowerCost(body('const file = __binaryOf(__items, i, "data");'), false);
 		expect(out.items).toContain('__wrap(items0)');
 		expect(out.code).toContain('items.length');
 	});
@@ -171,13 +198,16 @@ return [JSON.stringify(__out([a])), JSON.stringify(__plainList(b))];`,
 
 describe('lowerCost: constants', () => {
 	it('folds a value that the code never changes and the branches that follow', () => {
-		const out = lowerCost(`let returnAll = false;
+		const out = lowerCost(
+			`let returnAll = false;
 const single = ['a:b', 'c:d'];
 if (returnAll) { await all(); } else { await one(); }
 if (single.includes('a:b') || other.includes('a:b')) { await kept(); }
 async function all() {}
 async function one() {}
-async function kept() {}`);
+async function kept() {}`,
+			false,
+		);
 		expect(out.code).not.toContain('returnAll');
 		expect(out.code).not.toContain('single');
 		expect(out.code).not.toContain('all()');
@@ -186,38 +216,53 @@ async function kept() {}`);
 	});
 
 	it('keeps a value that the code changes', () => {
-		const out = lowerCost(`let returnAll = false;
+		const out = lowerCost(
+			`let returnAll = false;
 if (x) returnAll = true;
-if (returnAll) { await all(); }`);
+if (returnAll) { await all(); }`,
+			false,
+		);
 		expect(flat(out.code)).toContain('if (returnAll)');
 	});
 
 	it('keeps a list that other code can change', () => {
-		const out = lowerCost(`const single = ['a'];
+		const out = lowerCost(
+			`const single = ['a'];
 single.push(x);
-if (single.includes('a')) { await kept(); }`);
+if (single.includes('a')) { await kept(); }`,
+			false,
+		);
 		expect(flat(out.code)).toContain("single.includes('a')");
 	});
 
 	it('knows that an argument that no call gives is its empty default', () => {
-		const out = lowerCost(`async function api(body, option = {}) {
+		const out = lowerCost(
+			`async function api(body, option = {}) {
 	const options = { body };
 	if (Object.keys(option).length !== 0) { __assign(options, option); }
 	return options;
 }
-return await api(1);`);
+return await api(1);`,
+			false,
+		);
 		expect(out.code).not.toContain('__assign');
-		const kept = lowerCost(`async function api(body, option = {}) {
+		const kept = lowerCost(
+			`async function api(body, option = {}) {
 	if (Object.keys(option).length !== 0) { return 1; }
 	return 2;
 }
-return [await api(1), await api(1, x)];`);
+return [await api(1), await api(1, x)];`,
+			false,
+		);
 		expect(flat(kept.code)).toContain('Object.keys(option).length !== 0');
 	});
 
 	it('folds the members of a constant object', () => {
-		const out = lowerCost(`const paths = { deal: '/dealFields' };
-if (paths["deal"] !== undefined) { await a(paths.deal); } else { await b(); }`);
+		const out = lowerCost(
+			`const paths = { deal: '/dealFields' };
+if (paths["deal"] !== undefined) { await a(paths.deal); } else { await b(); }`,
+			false,
+		);
 		expect(flat(out.code)).toBe('await a("/dealFields");');
 	});
 });

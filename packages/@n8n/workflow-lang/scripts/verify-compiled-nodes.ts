@@ -23,6 +23,8 @@ import {
 	compileForCheck,
 	costOfCase,
 	differenceFromV1,
+	flagKeyOf,
+	flagVariants,
 	MINTED_TOKEN_RESPONSE,
 } from '../src/node-compile/__tests__/verify.ts';
 import { COST } from '../src/node-compile/cost.generated.ts';
@@ -98,6 +100,26 @@ const FILE_ITEMS = [
 		},
 	},
 ];
+const DOWNLOAD_ANSWER = {
+	headers: { 'content-type': 'application/pdf' },
+	body: {
+		ok: true,
+		id: 'r1',
+		name: 'reports/summary.pdf',
+		result: { id: 'r1', file_path: 'documents/file_7.pdf' },
+		data: [{ id: 'r1' }],
+	},
+};
+const DOWNLOAD_ANSWER_TYPED = {
+	headers: { 'content-type': 'image/png; charset=binary' },
+	body: {
+		ok: true,
+		id: 'r1',
+		name: 'summary',
+		result: { id: 'r1', file_path: 'photos/file_8.jpg' },
+		data: [{ id: 'r1' }],
+	},
+};
 const MAX_BLOCKERS = 20;
 
 if (!recorderAvailable() || !existsSync(join(base, 'dist/known/nodes.json'))) {
@@ -475,19 +497,21 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					p: Json,
 					responses: EquivalenceCase['responses'],
 					items: EquivalenceCase['items'] = readsFiles ? FILE_ITEMS : undefined,
+					data: Json | undefined = credential ? fakeCredential(credential) : undefined,
 				): EquivalenceCase => ({
 					name: `${type}@${version} ${label}`,
 					type,
 					typeVersion: version,
 					parameters: p,
 					...(items ? { items } : {}),
-					...(credential
-						? { credential: { type: credential, data: fakeCredential(credential) } }
-						: {}),
+					...(credential && data ? { credential: { type: credential, data } } : {}),
 					responses,
 				});
+				const makesFiles = compiled.source.includes('__prepareBinary(');
 				const plain = { ok: true, id: 'r1', result: { id: 'r1' }, data: [{ id: 'r1' }] };
-				const ok = [...token, { body: readsFiles ? { ...plain, ...UPLOAD_ANSWER } : plain }];
+				const ok = makesFiles
+					? [...token, DOWNLOAD_ANSWER]
+					: [...token, { body: readsFiles ? { ...plain, ...UPLOAD_ANSWER } : plain }];
 				const bad = [...token, { status: 400, body: { message: 'bad request' } }];
 				try {
 					const difference =
@@ -496,6 +520,18 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					if (difference !== undefined) {
 						why(`v1: ${difference}`, weight);
 						continue;
+					}
+					if (makesFiles) {
+						const unnamed = await differenceFromV1(
+							make('file without an extension', parameters, [...token, DOWNLOAD_ANSWER_TYPED]),
+							sources,
+							registry,
+							checking,
+						);
+						if (unnamed !== undefined) {
+							why(`v1: a file without an extension: ${unnamed}`, weight);
+							continue;
+						}
 					}
 					if (readsFiles) {
 						const withFile = await (CACHE ? recordV1Cached : recordV1)(make('ok', parameters, ok));
@@ -531,7 +567,31 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						why('v1: the other authentication agrees with v1 for fewer parameters', weight);
 						continue;
 					}
-					verified[key] = [...new Set([...(before ?? []), ...names])].sort();
+					const flagKeys: string[] = [];
+					if (compiled.flags.length > 0) {
+						const usual = make('ok', parameters, ok);
+						const usualKey = flagKeyOf(usual, compiled.flags, registry);
+						if (usualKey !== undefined) flagKeys.push(usualKey);
+						for (const variant of flagVariants(usual, compiled.flags, registry)) {
+							const difference =
+								(await differenceFromV1(
+									make('ok', parameters, ok, undefined, variant.data),
+									sources,
+									registry,
+									checking,
+								)) ??
+								(await differenceFromV1(
+									make('error', parameters, bad, undefined, variant.data),
+									sources,
+									registry,
+									checking,
+								));
+							if (difference === undefined) flagKeys.push(variant.key);
+							else if (examples.length < 60)
+								examples.push(`${key} with ${variant.key}: ${difference.slice(0, 160)}`);
+						}
+					}
+					verified[key] = [...new Set([...(before ?? []), ...names, ...flagKeys])].sort();
 					if (MEASURE_COST && !other) {
 						const cost = costOfCase(make('ok', parameters, ok), sources, registry);
 						if (cost) costs[key] = cost;

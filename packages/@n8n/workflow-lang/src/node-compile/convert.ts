@@ -1,4 +1,5 @@
 import { compile } from '../compiler/index.ts';
+import { CREDENTIAL_FLAGS_PREFIX } from '../credentials/flags.ts';
 import { getNodeParameters } from '../convert/node-parameters.ts';
 import type { PublicCredential } from '../credentials/public.ts';
 import type { NodeDescription } from '../convert/node-parameters.ts';
@@ -27,6 +28,8 @@ export interface NodeSources {
 	evaluate?: (code: string) => unknown;
 
 	credentialEntry?: (type: string) => string | undefined;
+
+	storesResponses?: boolean;
 }
 
 export function verifiedKey(
@@ -45,7 +48,43 @@ export function isVerified(
 	compiled: CompiledNode,
 ): boolean {
 	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
-	return names !== undefined && compiled.changed.every((name) => names.includes(name));
+	if (names === undefined || !compiled.changed.every((name) => names.includes(name))) return false;
+	return (
+		compiled.flags.length === 0 || verifiedFlagKeys(sources, type, version, compiled).length > 0
+	);
+}
+
+export function verifiedFlagKeys(
+	sources: NodeSources,
+	type: string,
+	version: number,
+	compiled: CompiledNode,
+): string[] {
+	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
+	const wanted = compiled.flags
+		.map((flag) => flag.name)
+		.sort()
+		.join(',');
+	const flagsOf = (key: string) =>
+		key
+			.slice(CREDENTIAL_FLAGS_PREFIX.length)
+			.split(',')
+			.map((part) => part.slice(0, part.indexOf(':')))
+			.join(',');
+	return (names ?? []).filter(
+		(name) => name.startsWith(CREDENTIAL_FLAGS_PREFIX) && flagsOf(name) === wanted,
+	);
+}
+
+export function flagGuard(compiled: CompiledNode, allowed: string[]): CredentialDerivation {
+	const flags = compiled.flags.map((flag) => flag.name).sort();
+	return {
+		name: `g${hashOf(JSON.stringify([flags, [...allowed].sort()]))}`,
+		code: '',
+		kind: 'guard',
+		flags,
+		allowed: [...allowed].sort(),
+	};
 }
 
 export function nodeDescriptionOf(value: unknown): NodeDescription | undefined {
@@ -104,9 +143,14 @@ export interface CompiledNode {
 
 	derivations: CredentialDerivation[];
 
+	flags: CredentialDerivation[];
+
 	mints: CredentialMint[];
 
 	randoms: RandomShape[];
+	binary: boolean;
+
+	storesResponses: boolean;
 
 	changed: string[];
 
@@ -231,10 +275,13 @@ export function compileNodeInstance(
 		source,
 		dynamic: Object.keys(parameters).filter((name) => hasExpression(parameters[name])),
 		resolved: parameters,
-		derivations: result.derivations ?? [],
+		derivations: (result.derivations ?? []).filter((d) => d.kind === undefined),
+		flags: (result.derivations ?? []).filter((d) => d.kind === 'flag'),
 		mints: result.mints ?? [],
 		zones: result.zones ?? [],
 		randoms: result.randoms ?? [],
+		binary: result.binary === true,
+		storesResponses: result.storesResponses === true,
 
 		changed: [...changed, ...Object.values(credentials).flatMap((c) => c.classes)],
 	};
