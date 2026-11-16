@@ -85,7 +85,7 @@ describe('CreateLeaseTables migration', () => {
 			{ name },
 		);
 		const unique = await context.runQuery<Array<{ indisunique: boolean }>>(
-			`SELECT i.indisunique FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid WHERE c.relname = :name`,
+			'SELECT i.indisunique FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid WHERE c.relname = :name',
 			{ name },
 		);
 		return { columnNames: columns.map((c) => c.name), isUnique: unique[0]?.indisunique === true };
