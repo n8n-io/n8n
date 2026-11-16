@@ -27,6 +27,8 @@ const AGENT_ENTRY_POINTS = new Set([
 	'evaluation/agent-evaluation.contracts',
 	'evaluation/evaluation-config',
 	'simulation/non-http-node-types',
+	'simulation/simulation-backend-registry',
+	'simulation/tool-simulation.contracts',
 	'system-agents/system-agent.types',
 	'system-agents/system-agent-eval.service',
 	'system-agents/system-agent-registration.service',

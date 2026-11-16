@@ -229,6 +229,7 @@ export class AgentMessageQueueService {
 				kind: dispatch.kind,
 				...(dispatch.stopReportId ? { stopReportId: dispatch.stopReportId } : {}),
 				...(dispatch.options ? { options: dispatch.options } : {}),
+				...(dispatch.mode ? { mode: dispatch.mode } : {}),
 			};
 
 			if (dispatch.hidden) origin.hidden = true;
