@@ -6,10 +6,16 @@ export class GymAdmin {
 			method,
 			headers: { 'content-type': 'application/json' },
 			body: body === undefined ? undefined : JSON.stringify(body),
+		}).catch((error: unknown) => {
+			// Name the target and the cause. A bare "fetch failed" does not say which gym is down.
+			const cause =
+				error instanceof Error && error.cause instanceof Error ? error.cause.message : '';
+			throw new Error(`gym ${method} ${this.baseUrl}${path} unreachable: ${cause}`);
 		});
 		const text = await res.text();
 		// Do not put the request body in the error.
-		if (!res.ok) throw new Error(`gym ${method} ${path} failed: ${res.status} ${text.slice(0, 200)}`);
+		if (!res.ok)
+			throw new Error(`gym ${method} ${path} failed: ${res.status} ${text.slice(0, 700)}`);
 		try {
 			return JSON.parse(text);
 		} catch {
@@ -33,18 +39,29 @@ export class GymAdmin {
 		}
 	}
 
-	async issueMcpCredential(tenant: string): Promise<string> {
+	// Issues a bearer for the gym MCP of one service. The field names where the bearer sits. A dot separates nested keys.
+	async issueMcpCredential(
+		tenant: string,
+		service: string,
+		kind: string,
+		field: string,
+	): Promise<string> {
 		const res = await this.call('POST', `/_sim/v1/tenants/${tenant}/credentials`, {
-			credential: 'mcp_oauth',
-			service: 'linear',
+			credential: kind,
+			service,
 		});
-		const token = dig(res, ['credential', 'data', 'access_token']);
-		if (typeof token !== 'string') throw new Error('gym credential has no access_token');
+		const token = dig(res, ['credential', 'data', ...field.split('.')]);
+		if (typeof token !== 'string') throw new Error(`gym credential has no ${field}`);
 		return token;
 	}
 
-	async seed(tenant: string, overlay: unknown): Promise<void> {
-		await this.call('POST', `/_sim/v1/tenants/${tenant}/seed`, overlay);
+	async seed(tenant: string, overlay: unknown): Promise<unknown> {
+		return await this.call('POST', `/_sim/v1/tenants/${tenant}/seed`, overlay);
+	}
+
+	// An admin event of the gym, such as `append_blocks`.
+	async event(tenant: string, event: unknown): Promise<void> {
+		await this.call('POST', `/_sim/v1/tenants/${tenant}/events`, event);
 	}
 
 	async tenantExists(tenant: string): Promise<boolean> {

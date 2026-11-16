@@ -2,12 +2,12 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { CallToolResult, Tool } from '@modelcontextprotocol/sdk/types.js';
 
-import { classifyTool } from './classify';
-import { LINEAR_READ_TOOLS, LINEAR_WRITE_TOOLS } from './linear-tools';
 import type { McpCaller } from './mcp-upstream';
 
 export interface Hydrator {
 	hydrate(toolName: string, args: Record<string, unknown>, result: CallToolResult): Promise<void>;
+	// Optional. Copies the objects a write refers to (such as its parent) from the real service.
+	hydrateWrite?(toolName: string, args: Record<string, unknown>): Promise<void>;
 }
 
 const toolError = (msg: string): CallToolResult => ({
@@ -21,20 +21,31 @@ export class GuardRouter {
 	private gymToolNames?: Set<string>;
 
 	constructor(
-		private readonly deps: { upstream: McpCaller; gym: McpCaller; hydrator: Hydrator },
+		private readonly deps: {
+			upstream: McpCaller;
+			gym: McpCaller;
+			hydrator: Hydrator;
+			readTools: ReadonlySet<string>;
+			writeTools: ReadonlySet<string>;
+		},
 	) {}
 
 	async listTools(): Promise<Tool[]> {
 		const tools = await this.deps.upstream.listTools();
-		return tools.filter((t) => LINEAR_READ_TOOLS.has(t.name) || LINEAR_WRITE_TOOLS.has(t.name));
+		const { readTools, writeTools } = this.deps;
+		return tools.filter((t) => readTools.has(t.name) || writeTools.has(t.name));
 	}
 
 	async callTool(name: string, args: Record<string, unknown>): Promise<CallToolResult> {
-		const route = classifyTool(name);
-		if (route === 'write') {
+		// Only an exact read-list match is a read. Unknown tools are writes.
+		if (!this.deps.readTools.has(name)) {
 			log(name, 'gym');
 			try {
-				return await this.deps.gym.callTool(name, args);
+				// A failed parent read must not block the write. The gym then answers with its own error.
+				await this.deps.hydrator.hydrateWrite?.(name, args).catch(() => undefined);
+				const res = await this.deps.gym.callTool(name, args);
+				if (res.isError) logError(name, 'gym', res);
+				return res;
 			} catch (e) {
 				return toolError(`gym call failed: ${errMsg(e)}`);
 			}
@@ -63,6 +74,7 @@ export class GuardRouter {
 		try {
 			await this.deps.hydrator.hydrate(name, args, upstreamResult);
 			const res = await this.deps.gym.callTool(name, args);
+			if (res.isError) logError(name, 'gym', res);
 			log(name, 'upstream+hydrate+gym');
 			return res;
 		} catch (e) {
@@ -78,7 +90,16 @@ export class GuardRouter {
 	}
 }
 
+// Log the error text of a failed tool result, never the arguments.
+function logError(tool: string, route: string, res: CallToolResult): void {
+	const text = res.content
+		.flatMap((c) => (c.type === 'text' ? [c.text] : []))
+		.join(' ')
+		.slice(0, 300);
+	Container.get(Logger).warn(`mcp-guard ${tool} -> ${route} failed: ${text}`);
+}
+
 // Log tool name and route only. Never log args or tokens.
 function log(tool: string, route: string): void {
-	Container.get(Logger).debug(`mcp-guard ${tool} -> ${route}`);
+	Container.get(Logger).info(`mcp-guard ${tool} -> ${route}`);
 }

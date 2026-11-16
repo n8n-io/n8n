@@ -1,3 +1,5 @@
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 import { createHash } from 'node:crypto';
 
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -65,17 +67,116 @@ export class LinearHydrator implements Hydrator {
 	constructor(private readonly deps: { admin: GymAdmin; tenant: string; upstream: McpCaller }) {}
 
 	async hydrate(
-		_tool: string,
+		tool: string,
 		args: Record<string, unknown>,
 		result: CallToolResult,
 	): Promise<void> {
 		const refs = collectIssueRefs(args, result).filter((r) => !this.seeded.has(`ref:${r}`));
 		for (const ref of refs) {
-			const overlay = await this.buildOverlay(ref);
-			await this.deps.admin.seed(this.deps.tenant, overlay);
-			this.markSeeded(overlay);
-			this.seeded.add(`ref:${ref}`);
+			// A read must not fail because one issue could not be copied.
+			try {
+				const overlay = await this.buildOverlay(ref);
+				await this.deps.admin.seed(this.deps.tenant, overlay);
+				this.markSeeded(overlay);
+				this.seeded.add(`ref:${ref}`);
+			} catch (e) {
+				const msg = e instanceof Error ? e.message.slice(0, 300) : 'unknown error';
+				Container.get(Logger).warn(`mcp-guard linear hydrate skipped an issue: ${msg}`);
+			}
 		}
+		try {
+			await this.hydrateStandalone(tool, args, result);
+		} catch (e) {
+			const msg = e instanceof Error ? e.message.slice(0, 300) : 'unknown error';
+			Container.get(Logger).warn(`mcp-guard linear hydrate skipped ${tool}: ${msg}`);
+		}
+	}
+
+	// Reads that name no issue: teams, statuses, labels and projects. The gym needs them for its own answer.
+	private async hydrateStandalone(
+		tool: string,
+		args: Record<string, unknown>,
+		result: CallToolResult,
+	): Promise<void> {
+		const parsed = parseResult(result);
+		const teams: Obj[] = [];
+		const labels: Obj[] = [];
+		const projects: Obj[] = [];
+		const addTeam = async (t: Obj | undefined): Promise<string | undefined> => {
+			const entry = t && (await this.teamEntry(t));
+			if (!entry) return undefined;
+			if (entry.entry && !teams.some((x) => x.ref === entry.ref)) teams.push(entry.entry);
+			return entry.ref;
+		};
+		if (tool === 'get_team') await addTeam(asObj(parsed, ['team']));
+		if (tool === 'list_teams') for (const t of asList(parsed).slice(0, 10)) await addTeam(t);
+		if (tool === 'list_issue_statuses' || tool === 'list_issue_labels') {
+			const query = str(args.team);
+			if (query) await addTeam(asObj(await this.read('get_team', { query }), ['team']));
+		}
+		if (tool === 'list_issue_labels') {
+			for (const l of asList(parsed)) {
+				const name = str(l.name);
+				if (!name || this.labelRefs.has(name)) continue;
+				const id = uuidOr(l.id, `label:${name}`);
+				labels.push(omitUndef({ id, ref: `label:${id}`, name, color: str(l.color) }));
+			}
+		}
+		if (tool === 'get_project' || tool === 'list_projects') {
+			const items =
+				tool === 'get_project' ? [asObj(parsed, ['project'])] : asList(parsed).slice(0, 20);
+			for (const p of items) {
+				const name = p && str(p.name);
+				if (!p || !name) continue;
+				const id = uuidOr(p.uuid ?? p.id, `project:${name}`);
+				const ref = `project:${id}`;
+				if (this.seeded.has(ref) || projects.some((x) => x.ref === ref)) continue;
+				// A project needs a team in the gym. Use one seeded already, or a placeholder.
+				const team = [...this.teamStates.keys()][0] ?? (await addTeam({ name: 'Team' }));
+				projects.push(
+					omitUndef({
+						id,
+						ref,
+						name,
+						team,
+						description: str(p.description) ?? str(p.summary) ?? '',
+					}),
+				);
+			}
+		}
+		if (teams.length === 0 && labels.length === 0 && projects.length === 0) return;
+		const overlay = { world_version: 1, native: { linear: { teams, labels, projects } } };
+		await this.deps.admin.seed(this.deps.tenant, overlay);
+		this.markSeeded(overlay);
+	}
+
+	// A team with its workflow states. Without an entry the team is seeded already.
+	private async teamEntry(t: Obj): Promise<{ ref: string; entry?: Obj } | undefined> {
+		const name = str(t.name) ?? 'Team';
+		const id = uuidOr(t.id, `team:${name}`);
+		const ref = `team:${id}`;
+		if (this.seeded.has(ref)) return { ref };
+		const statuses = asList(await this.read('list_issue_statuses', { team: str(t.id) ?? name }));
+		const states = statuses.map((x, n) =>
+			omitUndef({
+				id: uuidOr(x.id, `state:${id}:${str(x.name)}`),
+				name: str(x.name),
+				type: str(x.type),
+				color: str(x.color),
+				position: typeof x.position === 'number' ? x.position : n,
+			}),
+		);
+		this.teamStates.set(ref, new Set(states.map((x) => String(x.name))));
+		return {
+			ref,
+			entry: omitUndef({
+				id,
+				ref,
+				key: str(t.key) ?? name.toUpperCase().slice(0, 5),
+				name,
+				states,
+			}),
+		};
 	}
 
 	// Read-only upstream call. A failure gives undefined so optional data can be missing.
@@ -107,8 +208,12 @@ export class LinearHydrator implements Hydrator {
 
 		// Team: key and name from get_team, states from list_issue_statuses.
 		if (!this.seeded.has(teamRef)) {
-			const t = asObj(await this.read('get_team', { query: str(issue.teamId) ?? teamName }), ['team']);
-			const statuses = asList(await this.read('list_issue_statuses', { team: str(issue.teamId) ?? teamName }));
+			const t = asObj(await this.read('get_team', { query: str(issue.teamId) ?? teamName }), [
+				'team',
+			]);
+			const statuses = asList(
+				await this.read('list_issue_statuses', { team: str(issue.teamId) ?? teamName }),
+			);
 			const states = statuses.map((s, n) =>
 				omitUndef({
 					id: uuidOr(s.id, `state:${teamId}:${str(s.name)}`),
@@ -121,16 +226,24 @@ export class LinearHydrator implements Hydrator {
 			// The issue state must exist in the team, even when the list was empty.
 			const stateName = str(issue.status);
 			if (stateName && !states.some((s) => s.name === stateName)) {
-				states.push(omitUndef({
-					id: hashUuid(`state:${teamId}:${stateName}`), name: stateName, type: str(issue.statusType),
-				}));
+				states.push(
+					omitUndef({
+						id: hashUuid(`state:${teamId}:${stateName}`),
+						name: stateName,
+						type: str(issue.statusType),
+					}),
+				);
 			}
 			this.teamStates.set(teamRef, new Set(states.map((s) => String(s.name))));
-			teams.push(omitUndef({
-				id: teamId, ref: teamRef,
-				key: str(t?.key) ?? identMatch?.[1] ?? teamName.toUpperCase().slice(0, 5),
-				name: str(t?.name) ?? teamName, states,
-			}));
+			teams.push(
+				omitUndef({
+					id: teamId,
+					ref: teamRef,
+					key: str(t?.key) ?? identMatch?.[1] ?? teamName.toUpperCase().slice(0, 5),
+					name: str(t?.name) ?? teamName,
+					states,
+				}),
+			);
 		}
 
 		// Users: assignee and creator. get_user gives the email when it is visible.
@@ -140,12 +253,16 @@ export class LinearHydrator implements Hydrator {
 			const userRef = `user:${raw}`;
 			if (!this.seeded.has(userRef) && !users.has(raw)) {
 				const u = asObj(await this.read('get_user', { query: raw }), ['user']);
-				users.set(raw, omitUndef({
-					id: raw, ref: userRef,
-					email: str(u?.email) ?? `${raw}@unknown.invalid`,
-					name: str(u?.name) ?? str(nameRaw),
-					display_name: str(u?.displayName),
-				}));
+				users.set(
+					raw,
+					omitUndef({
+						id: raw,
+						ref: userRef,
+						email: str(u?.email) ?? `${raw}@unknown.invalid`,
+						name: str(u?.name) ?? str(nameRaw),
+						display_name: str(u?.displayName),
+					}),
+				);
 			}
 			return userRef;
 		};
@@ -153,7 +270,9 @@ export class LinearHydrator implements Hydrator {
 		const creator = await addUser(issue.createdById, issue.createdBy);
 
 		// Labels: the issue has names only. Resolve ids from list_issue_labels.
-		const names = Array.isArray(issue.labels) ? issue.labels.filter((l): l is string => typeof l === 'string') : [];
+		const names = Array.isArray(issue.labels)
+			? issue.labels.filter((l): l is string => typeof l === 'string')
+			: [];
 		let labelList: Obj[] | undefined;
 		const labelRefs: string[] = [];
 		for (const name of names) {
@@ -162,7 +281,9 @@ export class LinearHydrator implements Hydrator {
 				labelRefs.push(known);
 				continue;
 			}
-			labelList ??= asList(await this.read('list_issue_labels', { team: str(issue.teamId) ?? teamName }));
+			labelList ??= asList(
+				await this.read('list_issue_labels', { team: str(issue.teamId) ?? teamName }),
+			);
 			const found = labelList.find((l) => l.name === name);
 			const lid = uuidOr(found?.id, `label:${name}`);
 			const lref = `label:${lid}`;
@@ -179,48 +300,64 @@ export class LinearHydrator implements Hydrator {
 			projectRef = `project:${rawProject}`;
 			if (!this.seeded.has(projectRef)) {
 				const p = asObj(await this.read('get_project', { query: rawProject }), ['project']);
-				projects.push(omitUndef({
-					id: rawProject, ref: projectRef,
-					name: str(p?.name) ?? str(issue.project) ?? 'Project',
-					description: str(p?.description) ?? str(p?.summary) ?? '',
-					team: teamRef,
-				}));
+				projects.push(
+					omitUndef({
+						id: rawProject,
+						ref: projectRef,
+						name: str(p?.name) ?? str(issue.project) ?? 'Project',
+						description: str(p?.description) ?? str(p?.summary) ?? '',
+						team: teamRef,
+					}),
+				);
 			}
 		}
 
 		// Comments.
-		const commentRes = await this.read('list_comments', { issueId: issueId });
+		const commentRes = await this.read('list_comments', { issueId });
 		const comments: Obj[] = [];
 		for (const c of asList(commentRes)) {
 			const author = isRecord(c.author) ? c.author : undefined;
-			comments.push(omitUndef({
-				id: uuidOr(c.id, `comment:${issueId}:${str(c.createdAt)}:${str(c.body)}`),
-				user: await addUser(author?.id ?? c.userId, author?.name),
-				body: str(c.body) ?? '',
-				at: str(c.createdAt),
-			}));
+			comments.push(
+				omitUndef({
+					id: uuidOr(c.id, `comment:${issueId}:${str(c.createdAt)}:${str(c.body)}`),
+					user: await addUser(author?.id ?? c.userId, author?.name),
+					body: str(c.body) ?? '',
+					at: str(c.createdAt),
+				}),
+			);
 		}
 
 		const priority = isRecord(issue.priority) ? issue.priority.value : issue.priority;
 		const outIssue = omitUndef({
 			id: issueId,
 			number: identMatch ? Number(identMatch[2]) : undefined,
-			ref: `issue:${issueId}`, team: teamRef,
+			ref: `issue:${issueId}`,
+			team: teamRef,
 			title: str(issue.title) ?? 'Untitled',
 			description: str(issue.description) ?? '',
-			state: this.teamStates.get(teamRef)?.has(String(issue.status)) ? str(issue.status) : undefined,
+			state: this.teamStates.get(teamRef)?.has(String(issue.status))
+				? str(issue.status)
+				: undefined,
 			priority: typeof priority === 'number' ? priority : undefined,
-			due_date: str(issue.dueDate), at: str(issue.createdAt),
-			assignee, creator, labels: labelRefs, project: projectRef, comments,
+			due_date: str(issue.dueDate),
+			at: str(issue.createdAt),
+			assignee,
+			creator,
+			labels: labelRefs,
+			project: projectRef,
+			comments,
 		});
 		return {
 			world_version: 1,
-			native: { linear: { teams, users: [...users.values()], labels, projects, issues: [outIssue] } },
+			native: {
+				linear: { teams, users: [...users.values()], labels, projects, issues: [outIssue] },
+			},
 		};
 	}
 
 	private markSeeded(overlay: Obj): void {
-		const lin = isRecord(overlay.native) && isRecord(overlay.native.linear) ? overlay.native.linear : {};
+		const lin =
+			isRecord(overlay.native) && isRecord(overlay.native.linear) ? overlay.native.linear : {};
 		for (const list of Object.values(lin)) {
 			if (!Array.isArray(list)) continue;
 			for (const o of list) {
@@ -239,8 +376,9 @@ function collectIssueRefs(args: Record<string, unknown>, result: CallToolResult)
 	const walk = (v: unknown): void => {
 		if (Array.isArray(v)) v.forEach(walk);
 		else if (isRecord(v)) {
+			// Only an issue has an identifier such as TRUST-1073 as its id. Projects and teams have a uuid too.
 			const uuid = str(v.uuid);
-			if (uuid && UUID.test(uuid)) found.add(uuid);
+			if (uuid && UUID.test(uuid) && IDENT.test(str(v.id) ?? '')) found.add(uuid);
 			Object.values(v).forEach(walk);
 		}
 	};
