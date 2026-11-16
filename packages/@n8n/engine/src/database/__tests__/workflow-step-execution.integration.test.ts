@@ -848,6 +848,47 @@ describe('workflow_step_execution table (integration)', () => {
 		},
 	);
 
+	it('TypeOrmStepStore.loadStepsByNodeIds returns every pass of the named nodes, with outputs', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		await seedStep({
+			executionId,
+			nodeId: 'a',
+			status: 'completed',
+			outputs: [[{ json: { a: 0 } }]],
+		});
+		await seedStep({
+			executionId,
+			nodeId: 'b',
+			status: 'completed',
+			outputs: [[{ json: { b: 1 } }]],
+			iteration: 1,
+		});
+		await seedStep({
+			executionId,
+			nodeId: 'b',
+			status: 'completed',
+			outputs: [[{ json: { b: 0 } }]],
+		});
+		await seedStep({
+			executionId,
+			nodeId: 'c',
+			status: 'completed',
+			outputs: [[{ json: { c: 0 } }]],
+		});
+
+		const steps = await store.loadStepsByNodeIds(executionId, ['b', 'a']);
+
+		expect(steps.map(({ nodeId, iteration, outputs }) => ({ nodeId, iteration, outputs }))).toEqual(
+			[
+				{ nodeId: 'a', iteration: 0, outputs: [[{ json: { a: 0 } }]] },
+				{ nodeId: 'b', iteration: 0, outputs: [[{ json: { b: 0 } }]] },
+				{ nodeId: 'b', iteration: 1, outputs: [[{ json: { b: 1 } }]] },
+			],
+		);
+		expect(await store.loadStepsByNodeIds(executionId, [])).toEqual([]);
+	});
+
 	it('TypeOrmStepStore.createSteps persists a skipped step (settled at birth)', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
@@ -1132,6 +1173,145 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(await store.loadLatestStepSummaries(executionId, [])).toEqual({});
 	});
 
+	describe('stale_after', () => {
+		const staleness = { queuedMs: 10_000, runningStepMs: 50_000 };
+
+		function stalenessStore(): TypeOrmStepStore {
+			return new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution), staleness);
+		}
+
+		async function loadStaleAfter(id: string): Promise<Date | null> {
+			const row = await dataSource.getRepository(WorkflowStepExecution).findOneOrFail({
+				where: { id },
+			});
+			return row.staleAfter;
+		}
+
+		/** Runs `write`, then checks that it set `stale_after` to its own time plus `thresholdMs`. */
+		async function expectStaleAfter(
+			id: () => string,
+			thresholdMs: number,
+			write: () => Promise<unknown>,
+		): Promise<void> {
+			const before = Date.now();
+			await write();
+			const after = Date.now();
+
+			const staleAfter = await loadStaleAfter(id());
+			expect(staleAfter?.getTime()).toBeGreaterThanOrEqual(before + thresholdMs);
+			expect(staleAfter?.getTime()).toBeLessThanOrEqual(after + thresholdMs);
+		}
+
+		it('createSteps writes the queue threshold on a queued step only', async () => {
+			const executionId = await createExecution();
+			const store = stalenessStore();
+			let created: Array<{ id: string; nodeId: string }> = [];
+
+			await expectStaleAfter(
+				() => created.find((step) => step.nodeId === 'queued')?.id ?? '',
+				staleness.queuedMs,
+				async () => {
+					created = await store.createSteps(executionId, [
+						{ nodeId: 'queued', iteration: 0, status: 'queued' },
+						{ nodeId: 'skipped', iteration: 0, status: 'skipped' },
+						{ nodeId: 'completed', iteration: 0, status: 'completed', outputs: [] },
+					]);
+				},
+			);
+
+			const settled = created.filter((step) => step.nodeId !== 'queued');
+			expect(settled).toHaveLength(2);
+			for (const step of settled) expect(await loadStaleAfter(step.id)).toBeNull();
+		});
+
+		it('claimStep writes the run threshold', async () => {
+			const executionId = await createExecution();
+			const store = stalenessStore();
+			const { id } = await createStep(store, executionId, {
+				nodeId: 'a',
+				iteration: 0,
+				status: 'queued',
+			});
+
+			await expectStaleAfter(
+				() => id,
+				staleness.runningStepMs,
+				async () => await store.claimStep(id),
+			);
+		});
+
+		it('resumeStep writes the queue threshold', async () => {
+			const executionId = await createExecution();
+			const { id } = await seedStep({ executionId, nodeId: 'a', status: 'waiting' });
+
+			await expectStaleAfter(
+				() => id,
+				staleness.queuedMs,
+				async () => await stalenessStore().resumeStep(id, { kind: 'deadline' }),
+			);
+		});
+
+		it('resumeDueSteps writes the queue threshold', async () => {
+			const executionId = await createExecution();
+			const { id } = await seedStep({
+				executionId,
+				nodeId: 'a',
+				status: 'waiting',
+				waitTill: new Date('2020-01-01T00:00:00.000Z'),
+			});
+
+			await expectStaleAfter(
+				() => id,
+				staleness.queuedMs,
+				async () =>
+					await stalenessStore().resumeDueSteps(new Date('2020-01-02T00:00:00.000Z'), 500),
+			);
+		});
+
+		it.each<[string, (store: TypeOrmStepStore, id: string) => Promise<boolean>]>([
+			['completeStep', async (store, id) => await store.completeStep(id, [])],
+			[
+				'suspendStep',
+				async (store, id) =>
+					await store.suspendStep(id, {
+						resumeAt: '2099-01-01T00:00:00.000Z',
+						outputsAtDeadline: [],
+					}),
+			],
+			['failStep', async (store, id) => await store.failStep(id, { name: 'Error', message: 'x' })],
+			['cancelStep', async (store, id) => await store.cancelStep(id)],
+		])('%s clears the value of a running step', async (_name, write) => {
+			const executionId = await createExecution();
+			const store = stalenessStore();
+			const { id } = await createStep(store, executionId, {
+				nodeId: 'a',
+				iteration: 0,
+				status: 'queued',
+			});
+			await store.claimStep(id);
+			expect(await loadStaleAfter(id)).not.toBeNull();
+
+			expect(await write(store, id)).toBe(true);
+
+			expect(await loadStaleAfter(id)).toBeNull();
+		});
+
+		it('cancelPendingSteps clears the value of a queued step', async () => {
+			const executionId = await createExecution();
+			const store = stalenessStore();
+			const { id } = await createStep(store, executionId, {
+				nodeId: 'a',
+				iteration: 0,
+				status: 'queued',
+			});
+			expect(await loadStaleAfter(id)).not.toBeNull();
+
+			await store.cancelPendingSteps(executionId);
+
+			expect(await loadStaleAfter(id)).toBeNull();
+		});
+	});
+
 	it('carries the unique key and the partial indexes in the schema', async () => {
 		const indexes: Array<{ indexname: string; indexdef: string }> = await dataSource.query(
 			"SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'workflow_step_execution'",
@@ -1152,6 +1332,8 @@ describe('workflow_step_execution table (integration)', () => {
 		);
 		expect(byName.idx_workflow_step_execution_unsettled).toContain('(execution_id, status)');
 		expect(byName.idx_workflow_step_execution_unsettled).toContain('WHERE ((status)::text = ANY');
+		expect(byName.idx_workflow_step_execution_stale_after).toContain('(status, stale_after)');
+		expect(byName.idx_workflow_step_execution_stale_after).toContain('WHERE ((status)::text = ANY');
 
 		const [column]: Array<{ is_nullable: string; column_default: string }> = await dataSource.query(
 			`SELECT is_nullable, column_default FROM information_schema.columns

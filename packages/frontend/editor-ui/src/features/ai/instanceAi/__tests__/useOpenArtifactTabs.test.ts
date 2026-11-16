@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { effectScope, ref, type EffectScope } from 'vue';
 import { flushPromises } from '@vue/test-utils';
-import type { InstanceAiThreadTabsState } from '@n8n/api-types';
+import type { AssistantThreadTabsState } from '@n8n/api-types';
 import { DEBOUNCE_TIME } from '@/app/constants';
 import { useOpenArtifactTabs, type ThreadTabsStorage } from '../composables/useOpenArtifactTabs';
 import type { ArtifactTab } from '../useCanvasPreview';
@@ -16,21 +16,21 @@ function dataTableTab(id: string): ArtifactTab {
 	return { id, type: 'data-table', name: `Table ${id}`, icon: 'table', projectId: 'project-1' };
 }
 
-function createStorage(state: InstanceAiThreadTabsState | null = null) {
-	let resolveLoad: (value: InstanceAiThreadTabsState | null) => void = () => {};
+function createStorage(state: AssistantThreadTabsState | null = null) {
+	let resolveLoad: (value: AssistantThreadTabsState | null) => void = () => {};
 	const load = vi.fn(
 		async () =>
-			await new Promise<InstanceAiThreadTabsState | null>((resolve) => {
+			await new Promise<AssistantThreadTabsState | null>((resolve) => {
 				resolveLoad = resolve;
 			}),
 	);
-	const save = vi.fn(async (_state: InstanceAiThreadTabsState) => {});
+	const save = vi.fn(async (_state: AssistantThreadTabsState) => {});
 	const storage: ThreadTabsStorage = { load, save };
 	return {
 		storage,
 		load,
 		save,
-		finishLoad: async (value: InstanceAiThreadTabsState | null = state) => {
+		finishLoad: async (value: AssistantThreadTabsState | null = state) => {
 			resolveLoad(value);
 			await flushPromises();
 		},

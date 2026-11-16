@@ -1,5 +1,6 @@
 import {
 	NodeConnectionTypes,
+	requestPath,
 	type IDataObject,
 	type ILoadOptionsFunctions,
 	type INodeListSearchItems,
@@ -102,7 +103,13 @@ export class Gong implements INodeType {
 					query.cursor = paginationToken;
 				}
 
-				const responseData = await gongApiRequest.call(this, 'GET', '/v2/calls', {}, query);
+				const responseData = await gongApiRequest.call(
+					this,
+					'GET',
+					requestPath`/v2/calls`,
+					{},
+					query,
+				);
 
 				const calls: Array<{
 					id: string;
@@ -139,7 +146,13 @@ export class Gong implements INodeType {
 					query.cursor = paginationToken;
 				}
 
-				const responseData = await gongApiRequest.call(this, 'GET', '/v2/users', {}, query);
+				const responseData = await gongApiRequest.call(
+					this,
+					'GET',
+					requestPath`/v2/users`,
+					{},
+					query,
+				);
 
 				const users: Array<{
 					id: string;

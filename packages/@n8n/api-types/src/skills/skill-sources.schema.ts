@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Z } from '../zod-class';
+import type { ProjectIcon } from '../schemas/project.schema';
 
 /**
  * Why a Skill Sync action failed, or why one skill could not come in. Telemetry and the
@@ -19,6 +20,8 @@ export const SKILL_SOURCE_REASONS = [
 	'parse_error',
 	'blocked_by_check',
 	'review_required',
+	'stale',
+	'name_clash',
 	'name_taken',
 	'duplicate_source',
 	'credential_invalid',
@@ -81,7 +84,7 @@ export type SkillSourceSummary = {
 
 /**
  * Whether the scope can take the source. `blocked`: the same source is in Global or in the
- * chosen scope. `sourceId` is set when the user may add more skills to that source.
+ * chosen scope. `sourceId` is set when the user may add skills to that source.
  * `warning`: the same source is in other projects that the user can see.
  */
 export type SkillSourceDuplicate =
@@ -94,10 +97,10 @@ export const SKILL_SCAN_RULES = [
 	'invalid_skill',
 	'over_limit',
 	'file_skipped',
+	'file_unstorable',
 	'hidden_unicode',
 	'new_url',
 	'permission_change',
-	'suspicious_phrase',
 	'lossy_conversion',
 ] as const;
 
@@ -108,6 +111,18 @@ export type SkillScanSeverity = 'blocked' | 'needs_review' | 'info';
 
 export type SkillScanVerdict = 'pass' | 'needs_review' | 'blocked';
 
+/**
+ * Where a finding is in the preview text of its file (`SkillPreviewFile.text`), so the review
+ * can mark it. `start` and `end` are offsets in that line, and they count the visible markers
+ * of hidden characters. A finding over several lines is marked to the end of its first line.
+ */
+export type SkillScanLocation = {
+	/** From 1. */
+	line: number;
+	start: number;
+	end: number;
+};
+
 export type SkillScanFinding = {
 	rule: SkillScanRule;
 	severity: SkillScanSeverity;
@@ -117,10 +132,23 @@ export type SkillScanFinding = {
 	detail: string;
 	/** The linked domain of a `new_url` finding. */
 	domain?: string;
+	/** Set for a rule that finds text. A frontmatter finding marks its top-level key. */
+	location?: SkillScanLocation;
 };
 
 /** The most severe finding gives the verdict. No one can override `blocked`. */
 export type SkillScanResult = { verdict: SkillScanVerdict; findings: SkillScanFinding[] };
+
+/** One file of a skill as the import keeps it, so a reviewer can read the full skill. */
+export type SkillPreviewFile = {
+	/** `SKILL.md`, or the path of a reference file. */
+	path: string;
+	/**
+	 * The text. SKILL.md shows the name, the description and each frontmatter key on its own
+	 * line. Each hidden character shows as a marker such as `⟦U+200B⟧`.
+	 */
+	text: string;
+};
 
 /** One skill in the picker. */
 export type DiscoveredSkill = {
@@ -133,6 +161,10 @@ export type DiscoveredSkill = {
 	description: string | null;
 	/** Files that the import leaves out, such as scripts. */
 	skippedFiles: string[];
+	/** The files that the import keeps, for the review. Empty when n8n cannot read the skill. */
+	previewFiles: SkillPreviewFile[];
+	/** True when the skill is too large to show in full. `previewFiles` then lists the first files. */
+	previewTruncated: boolean;
 	/** The chosen scope already has a skill with this name. */
 	nameTaken: boolean;
 	error: { reason: SkillSourceReason; message: string } | null;
@@ -158,12 +190,35 @@ export type SkillSourceConnectResponse = {
 	failed: Array<{ key: string; name: string | null; reason: SkillSourceReason }>;
 };
 
+/**
+ * The sync state of one synced skill. `update_available` and `update_blocked` mean that the
+ * source has new content that waits for review, and that the security check blocked it.
+ */
+export type SkillSyncState =
+	| 'up_to_date'
+	| 'update_available'
+	| 'update_blocked'
+	| 'source_unavailable';
+
+/** The answer of Check now. */
+export type SkillSourceCheckResponse = {
+	/** The source, such as `owner/repository`. */
+	label: string;
+	/** Skills of the source with an update that waits for review, after the check. */
+	updatesFound: number;
+	/** True when the source was checked less than a minute ago, so n8n did not check it again. */
+	throttled: boolean;
+	lastCheckedAt: string | null;
+};
+
 /** Where a synced skill comes from, for the "Synced from" banner. */
 export type SkillSyncedFrom = {
 	sourceId: string;
 	type: 'github';
 	/** Such as `owner/repository`. */
 	label: string;
+	/** The branch, or null for a source type without branches. */
+	ref: string | null;
 	/** The page of the skill in the source. */
 	webUrl: string;
 	/** Whether the user may stop syncing the skill, which makes it a normal skill. */
@@ -173,8 +228,27 @@ export type SkillSyncedFrom = {
 /** The credentials that can read a private source in a scope, for the credential select. */
 export class ListSkillSourceCredentialsQueryDto extends Z.class(skillSourceScope) {}
 
+/** Replaces the credential only after n8n verifies that it can read the source. */
+export class ReplaceSkillSourceCredentialDto extends Z.class({
+	credentialId: z.string().min(1).max(36),
+}) {}
+
 /** A credential that a source in the scope accepts and that the user can use. */
 export type SkillSourceCredentialOption = { id: string; name: string; type: string };
+
+/** The n8n credential types that read a private GitHub source. */
+export const GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES = [
+	'githubApi',
+	'githubAppApi',
+	'githubOAuth2Api',
+] as const;
+export type GitHubSkillSourceCredentialType = (typeof GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES)[number];
+
+export function isGitHubSkillSourceCredentialType(
+	type: string,
+): type is GitHubSkillSourceCredentialType {
+	return GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES.some((known) => known === type);
+}
 
 /** The repositories that a credential can read, to pick one in place of a link. */
 export class ListSkillSourceRepositoriesQueryDto extends Z.class({
@@ -196,3 +270,124 @@ export type SkillSourceRepositoryList = {
 	/** True when the credential can read more repositories than n8n lists. */
 	truncated: boolean;
 };
+
+/** Health of a source, based on its latest check result. */
+export type SkillSourceHealth = 'connected' | 'credential_issue' | 'source_unavailable' | 'delayed';
+
+/** One connected source, for its group row in the skills table. */
+export type SkillSourceListItem = {
+	id: string;
+	type: 'github';
+	/** Such as `owner/repository`. */
+	label: string;
+	/** The branch, or null for a source type without branches. */
+	ref: string | null;
+	/** The folder in the source that the source reads. Empty for the whole source. */
+	path: string;
+	webUrl: string;
+	/** Null for a Global source. */
+	projectId: string | null;
+	projectName: string | null;
+	projectType: 'personal' | 'team' | null;
+	projectIcon: ProjectIcon | null;
+	/** Synced skills of the source. */
+	skillCount: number;
+	/** Updates that wait for review and that the security check did not block. */
+	updatesAvailable: number;
+	/** Updates that the security check blocked. */
+	updatesBlocked: number;
+	health: SkillSourceHealth;
+	lastCheckedAt: string | null;
+	/** Names of synced skills whose folders are gone. Their saved versions still work. */
+	missingSkills: string[];
+	/** Whether the user may replace the credential of this source. */
+	canReplaceCredential: boolean;
+	/** Whether the user may review updates and check the source now. */
+	canReview: boolean;
+	/** Whether the user may delete the source and its synced skills. */
+	canDelete: boolean;
+};
+
+const reviewedUpdate = {
+	contentHash: z.string().regex(/^[a-f0-9]{64}$/),
+	baseVersionId: z.string().min(1).max(36),
+};
+
+export class ReviewSkillSourceUpdateQueryDto extends Z.class(reviewedUpdate) {}
+
+/** Applies every selected update in one transaction. */
+export class AcceptSkillSourceUpdatesDto extends Z.class({
+	updates: z
+		.array(z.object({ skillId: z.string().min(1).max(36), ...reviewedUpdate }))
+		.min(1)
+		.max(SKILL_SOURCE_MAX_SKILLS)
+		.refine(
+			(updates) => new Set(updates.map(({ skillId }) => skillId)).size === updates.length,
+			'Select each skill once',
+		),
+	reviewedWarnings: z.boolean().default(false),
+}) {}
+
+export class SkillSourceCommitQueryDto extends Z.class({
+	revision: z.string().min(1).max(255),
+}) {}
+
+export type SkillUpdateCommit = {
+	revision: string;
+	webUrl: string | null;
+	message: string | null;
+	author: string | null;
+	date: string | null;
+};
+
+export type SkillPendingUpdate = {
+	revisionUrl: string | null;
+	skillId: string;
+	name: string;
+	location: string;
+	webUrl: string;
+	contentHash: string;
+	baseVersionId: string;
+	revision: string;
+	check: SkillScanResult;
+	nameClash: { name: string; where: 'scope' | 'agent' } | null;
+	changes: { added: number; removed: number };
+	nextVersion: number;
+};
+
+export type SkillSourceUpdates = {
+	updates: SkillPendingUpdate[];
+	commit: SkillUpdateCommit | null;
+};
+
+export type SkillUpdateFile = {
+	path: string;
+	before: string;
+	after: string;
+	status?: 'added' | 'removed';
+};
+
+/** Names are limited to agents the user can read. */
+export type SkillUpdateAgents = {
+	agents: Array<{ id: string; name: string }>;
+	hiddenAgentCount: number;
+};
+
+export type SkillUpdateReview = SkillUpdateAgents & { files: SkillUpdateFile[] };
+export type SkillSourceAcceptResponse = SkillUpdateAgents & { updatedCount: number };
+
+/** A refused source delete names only the agents that the user may read. */
+export const skillSourceDeleteBlockSchema = z.object({
+	reason: z.literal('skills_in_use'),
+	agents: z.array(
+		z.object({
+			agentId: z.string(),
+			agentName: z.string(),
+			projectId: z.string(),
+			projectName: z.string(),
+		}),
+	),
+	hiddenAgents: z.number().int().nonnegative(),
+});
+
+export type SkillSourceDeleteBlock = z.infer<typeof skillSourceDeleteBlockSchema>;

@@ -28,11 +28,11 @@ function resolveAnthropicEffort(): AnthropicEffort {
 	return ANTHROPIC_EFFORTS.find((supported) => supported === effort) ?? 'medium';
 }
 
-/** An explicit effort wins over the env override. */
+/** An explicit effort wins over the env override and the OpenAI per-model default. */
 export function applyAgentThinking(
 	agent: Agent,
 	modelId: ModelConfig,
-	anthropicEffort?: AnthropicThinkingEffort,
+	effort?: AnthropicThinkingEffort,
 ): void {
 	const provider = resolveModelProvider(modelId);
 
@@ -60,7 +60,7 @@ export function applyAgentThinking(
 
 	if (provider === 'openai') {
 		agent.thinking('openai', {
-			reasoningEffort: isGpt56Model(modelId) ? 'medium' : 'high',
+			reasoningEffort: effort ?? (isGpt56Model(modelId) ? 'medium' : 'high'),
 		});
 		return;
 	}
@@ -68,7 +68,7 @@ export function applyAgentThinking(
 	if (provider === 'anthropic' || provider === 'google-vertex-anthropic') {
 		agent.thinking(provider, {
 			mode: 'adaptive',
-			effort: anthropicEffort ?? resolveAnthropicEffort(),
+			effort: effort ?? resolveAnthropicEffort(),
 		});
 		return;
 	}

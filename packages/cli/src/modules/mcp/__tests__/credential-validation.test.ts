@@ -5,7 +5,7 @@ import { validateWorkflowCredentialReferences } from '../tools/workflow-builder/
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@n8n/errors';
-import type { NodeTypes } from '@/node-types';
+import type { NodeTypesProxy } from '@n8n/backend-services';
 
 const user = { id: 'user-1' } as User;
 const projectId = 'project-1';
@@ -64,7 +64,7 @@ function createMocks({
 			if (!desc) throw new Error(`Unknown node type: ${type}`);
 			return { description: desc };
 		}),
-	} as unknown as NodeTypes;
+	} as unknown as NodeTypesProxy;
 
 	return { credentialsService, nodeTypes };
 }

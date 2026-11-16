@@ -231,7 +231,29 @@ janitor scope
 janitor test-scoped --shard=1/2 --coverage
 ```
 
-**Bailout triggers (force ALL packages):** `pnpm-lock.yaml`, root `package.json`.
+**Turbo cache first: `test-run`.** CI test jobs call `janitor test-run`
+instead of a bare `turbo run`. It does a turbo dry run of the cacheable full
+task (for example `test:unit`) and replays every package whose result is
+cached. Every other package gets the `scope` decision above: skipped packages
+do not run, full packages run the full task (so the result is cached for the
+next push), and scoped packages run the scoped task (`test:unit:changed`). A
+package without a scoped task runs the full task. If the dry run fails, the job
+runs the scoped task (or the full task) for all its packages, as before.
+
+The full task never runs with `--only`: with it, turbo leaves dependency tasks
+out of the hash, and a change in a dependency would replay a stale result. Only
+a job with a scoped task skips packages. A job without one (backend unit,
+backend integration, DB) replays or runs every package, as it did before.
+
+```bash
+janitor test-run --full-task=test:unit --scoped-task=test:unit:changed \
+  --filter=n8n --only --summarize -- --shard=1/2
+```
+
+**Bailout triggers (force ALL packages):** root `package.json`, and
+`pnpm-lock.yaml` when `LOCKFILE_IMPACTED_PACKAGES` is empty or `ALL` (impact
+unknown). With a package list (or `NONE`), a lockfile change forces only the
+packages whose resolved dependencies changed.
 
 **Empty `CHANGED_FILES` means "no signal → run everything", not "nothing
 changed".** A `null`/empty value resolves to all packages (`affected-packages`)
@@ -285,27 +307,38 @@ resolves the editor's `dist` directory at runtime and never imports its code.
 The field must be an array of names that the package declares as workspace
 dependencies. Anything else throws, so a typo cannot silently re-widen CI.
 
-**Global triggers force a full workspace run.** Some changes are invisible to
-a per-package import-graph walk: a lockfile / root-manifest change, or an edit
-to a universal sink (`packages/@n8n/db`, `packages/workflow`, `packages/core`)
-whose runtime coupling to downstream packages isn't expressed as a static
-import the test file can see. For these, scoping to "files in this package"
-would find nothing and emit `SKIP` on every downstream — a silent false green.
+**Global triggers force a full workspace run.** A lockfile or root-manifest
+change can affect any package, so it forces a full run everywhere. Scoping to
+"files in this package" would find nothing and emit `SKIP` on every package — a
+silent false green. The lockfile is the exception when
+`LOCKFILE_IMPACTED_PACKAGES` lists the impacted packages (see the bailout
+triggers above). When the value is empty or `ALL`, the lockfile stays a global
+trigger.
 
-The trigger list lives in one place, `core/global-triggers.ts`
-(`GLOBAL_TRIGGER_FILES` for exact filenames, `GLOBAL_TRIGGER_PREFIXES` for
-directories), and is consulted at **both** layers of the pipeline:
+**Sink packages force a full run in their dependents.** An edit to a sink
+package (`packages/@n8n/db`, `packages/workflow`, `packages/core`,
+`packages/@n8n/vitest-config`) can change behaviour that a dependent's own
+changed files do not import. So the sink package and every package that depends
+on it, directly or transitively, run their full suite, even when they also have
+their own changes. Other packages are not affected: pnpm does not hoist
+workspace packages, so a package cannot load a sink package that it does not
+declare.
 
-* `affectedPackages()` returns every package, so all jobs are listed as
+The lists live in one place, `core/global-triggers.ts` (`GLOBAL_TRIGGER_FILES`
+and `SINK_PACKAGE_PREFIXES`), and are consulted at **both** layers of the
+pipeline:
+
+* `affectedPackages()` returns every package for a global trigger, and the sink
+  package plus its dependents for a sink change, so those jobs are listed as
   affected; and
-* `computeScope()` returns `RUN_FULL` for the package, so each job actually
+* `computeScope()` returns `RUN_FULL` for those packages, so each job actually
   runs its full suite instead of skipping.
 
 Both checks are required — `affectedPackages` alone only decides which jobs are
 *listed*; without the `computeScope` check the job would still `SKIP`. The
-trade-off is over-testing on the rare PRs that touch these paths (the failure
-mode is "ran too much", never "ran nothing"). To add a new universal sink, add
-its directory prefix to `GLOBAL_TRIGGER_PREFIXES`.
+trade-off is over-testing on the PRs that touch these paths (the failure mode
+is "ran too much", never "ran nothing"). To add a sink package, add its
+directory prefix to `SINK_PACKAGE_PREFIXES`.
 
 ## Rules
 

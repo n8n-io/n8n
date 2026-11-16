@@ -45,6 +45,8 @@ export const containerFixtures: Fixtures<object, ContainerWorkerFixtures> = {
 				...override,
 				services: [...new Set([...(base.services ?? []), ...(override.services ?? [])])],
 				env: {
+					// E2E mode reports the Enterprise plan, where the n8n Assistant is off by default.
+					N8N_INSTANCE_AI_ENABLED: 'true',
 					...globalEnv,
 					...base.env,
 					...override.env,

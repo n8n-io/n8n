@@ -11,11 +11,14 @@ export type ChatMessageRole = (typeof CHAT_MESSAGE_ROLE)[keyof typeof CHAT_MESSA
  * - `end`: below the text and tool steps of the message, in arrival order.
  * - `transient`: after the `end` events, only while the turn runs or waits for
  *   the user and the message has no text. A finished turn hides it.
+ * - `thinking`: in the thinking block of the message, before the reasoning. A
+ *   message without a thinking block shows it as a `start` event.
  */
 export const HOST_EVENT_PLACEMENT = {
 	START: 'start',
 	END: 'end',
 	TRANSIENT: 'transient',
+	THINKING: 'thinking',
 } as const;
 export type HostEventPlacement = (typeof HOST_EVENT_PLACEMENT)[keyof typeof HOST_EVENT_PLACEMENT];
 

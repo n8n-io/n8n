@@ -63,6 +63,8 @@ import {
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { loginIdOf } from '@/events/login-id';
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -280,6 +282,7 @@ export class CredentialsService {
 		private readonly transactionRunner: TransactionRunner,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly credentialDescriptions: CredentialDescriptionsService,
+		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 	) {}
 
 	async countConnectedUsers(credentialId: string): Promise<number> {
@@ -726,6 +729,20 @@ export class CredentialsService {
 	}
 
 	/**
+	 * The credentials the user can use in this workflow or project through their
+	 * own access. The n8n Assistant offers only these.
+	 */
+	async getCredentialsAUserCanUseThemselves(
+		user: User,
+		options: Parameters<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>[1],
+	): Promise<WorkflowCredentialResult[]> {
+		return await this.credentialsPermissionChecker.filterUsableThroughOwnAccess(
+			user,
+			await this.getCredentialsAUserCanUseInAWorkflow(user, options),
+		);
+	}
+
+	/**
 	 * The ids, among `candidateCredentials`, that the user can use here only
 	 * via the personal route: granted to the user's own personal project (owned
 	 * by it, or shared with it directly), where the user also belongs to the
@@ -1134,6 +1151,7 @@ export class CredentialsService {
 		user: User,
 		credentialId: string,
 		description: string | null,
+		ctx: OperationContext = {},
 	): Promise<void> {
 		if (!(await this.credentialDescriptions.isEnabled())) {
 			throw new BadRequestError('Credential descriptions are not enabled');
@@ -1191,6 +1209,7 @@ export class CredentialsService {
 			credentialDescriptionLength: savedDescription?.length ?? 0,
 			isDynamic: credential.isResolvable,
 			descriptionOnly: true,
+			loginId: loginIdOf(ctx),
 		});
 	}
 
@@ -1201,9 +1220,12 @@ export class CredentialsService {
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
 		options?: UpdateOptions,
 	) {
-		await this.credentialDescriptions.stripIfDisabled(newCredentialData);
+		// One flag lookup for the whole update, reused for the write payload and the response.
+		const descriptionsEnabled = await this.credentialDescriptions.isEnabled();
+		if (!descriptionsEnabled) this.credentialDescriptions.strip(newCredentialData);
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
-		await this.credentialDescriptions.stripIfDisabled(newCredentialData);
+		// The hook can set the field, so filter again before the write. This reuses the cached flag.
+		if (!descriptionsEnabled) this.credentialDescriptions.strip(newCredentialData);
 
 		const cleared = await this.enforceCredentialUpdate(credentialId, newCredentialData.type, actor);
 		if (cleared === null) return null;
@@ -1256,7 +1278,7 @@ export class CredentialsService {
 		}
 
 		// Reflect connections cleared above by deleteUserEntries, not a stale pre-update value.
-		if (result) await this.credentialDescriptions.stripIfDisabled(result);
+		if (result && !descriptionsEnabled) this.credentialDescriptions.strip(result);
 		const enriched: (CredentialsEntity & CredentialConnectionStatus) | null = result;
 		if (enriched && options?.user) {
 			await this.populateConnectedByMe([enriched], options.user);
@@ -1521,6 +1543,7 @@ export class CredentialsService {
 		user: User,
 		credentialId: string,
 		options: { includeInstanceCredentials?: boolean } = {},
+		ctx: OperationContext = {},
 	): Promise<boolean> {
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
@@ -1568,13 +1591,13 @@ export class CredentialsService {
 				);
 			}
 			if (result.status === 'deleted') {
-				this.emitCredentialDeleted(user, credential, owningProject?.id);
+				this.emitCredentialDeleted(user, credential, owningProject?.id, ctx);
 			}
 			return result.status === 'deleted';
 		}
 
 		await this.credentialsRepository.remove(credential);
-		this.emitCredentialDeleted(user, credential, owningProject?.id);
+		this.emitCredentialDeleted(user, credential, owningProject?.id, ctx);
 		return true;
 	}
 
@@ -1601,6 +1624,7 @@ export class CredentialsService {
 		user: User,
 		credential: CredentialsEntity,
 		projectId: string | undefined,
+		ctx: OperationContext = {},
 	) {
 		this.eventService.emit('credentials-deleted', {
 			user,
@@ -1608,6 +1632,7 @@ export class CredentialsService {
 			credentialId: credential.id,
 			credentialName: credential.name,
 			projectId,
+			loginId: loginIdOf(ctx),
 		});
 
 		if (credential.isResolvable) {
@@ -1632,13 +1657,15 @@ export class CredentialsService {
 	 * Tests a stored credential by id. Takes the user rather than a user id: testing
 	 * makes a live call with the secret, so it has to go through the finder, which
 	 * requires `credential:use` for a caller who is not a member of the credential's
-	 * project. The route's `credential:read` scope decorator cannot express that.
+	 * project and drops project or sharing roles that only hold see-rights. The
+	 * route's `credential:read` scope decorator cannot express either.
 	 */
 	async testById(user: User, credentialId: string) {
 		const storedCredential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			user,
 			['credential:read'],
+			{ excludeSeeOnlyRoles: true },
 		);
 
 		// Dynamic-credential flows only; admins test instance credentials via testWithCredentials
@@ -1655,7 +1682,7 @@ export class CredentialsService {
 			credentials.id,
 			user,
 			['credential:read'],
-			{ includeInstanceCredentials: true },
+			{ includeInstanceCredentials: true, excludeSeeOnlyRoles: true },
 		);
 
 		if (!storedCredential) {
@@ -1688,6 +1715,7 @@ export class CredentialsService {
 			credentialId,
 			user,
 			['credential:read'],
+			{ excludeSeeOnlyRoles: true },
 		);
 
 		if (!storedCredential) {
@@ -2162,6 +2190,7 @@ export class CredentialsService {
 			type: string;
 			projectId: string;
 			data?: ICredentialDataDecryptedObject;
+			description?: string | null;
 		},
 		user: User,
 	): Promise<CredentialsEntity> {
@@ -2173,6 +2202,9 @@ export class CredentialsService {
 			type: opts.type,
 			data,
 		});
+		if (opts.description !== undefined && (await this.credentialDescriptions.isEnabled())) {
+			encryptedCredential.description = parseCredentialDescription(opts.description);
+		}
 
 		const credentialEntity = this.credentialsRepository.create({
 			...encryptedCredential,

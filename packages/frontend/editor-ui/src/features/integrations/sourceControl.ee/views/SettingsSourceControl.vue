@@ -8,6 +8,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useEnvironmentsVersionSwitch } from '@/features/shared/promotions/useEnvironmentsVersionSwitch';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
+import { ENVIRONMENTS_UPGRADE_DOCS_URL } from '@n8n/frontend-module-promotions';
 import { useSourceControlStore } from '../sourceControl.store';
 import {
 	SOURCE_CONTROL_HTTPS_REPO_URL_REGEX,
@@ -297,8 +298,7 @@ watch(connectionType, () => {
 			<N8nCallout v-if="isPromotionsAvailable" theme="info" iconless class="mt-l">
 				<I18nT keypath="settings.sourceControl.switch.callout" tag="span" scope="global">
 					<template #link>
-						<!-- FIXME: link to the environments docs page once it exists. -->
-						<N8nExternalLink inline size="small" href="#">{{
+						<N8nExternalLink inline size="small" :href="ENVIRONMENTS_UPGRADE_DOCS_URL">{{
 							locale.baseText('settings.sourceControl.switch.link')
 						}}</N8nExternalLink>
 					</template>

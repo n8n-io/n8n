@@ -28,14 +28,6 @@ const ROOT_TRIGGERS = [
 
 const CLOSURE_SECTIONS = new Set<string>(PUBLISHED_SECTIONS);
 
-// Remove these once n8n-nodes-base no longer publishes platform bindings as regular dependencies.
-const NPM_INSTALL_EXCLUSIONS = [
-	'@napi-rs/canvas-linux-arm64-musl',
-	'@napi-rs/canvas-linux-x64-musl',
-	'@napi-rs/image-linux-arm64-musl',
-	'@napi-rs/image-linux-x64-musl',
-];
-const NPM_INSTALL_EXCLUSION_REPLACEMENT = 'empty-npm-package';
 const NPM_INSTALL_ALLOWLIST_FILE =
 	'packages/quality/policy/code-health/src/single-instance/verify-npm-install.ts';
 const NPM_INSTALL_ALLOWLIST_NAME = 'EXPECTED_NPM_DUPLICATES';
@@ -94,22 +86,6 @@ export function expectedNpmDuplicateReason(duplicate: ExplainedDuplicate): strin
 		remaining.splice(index, 1);
 	}
 	return expected.reason;
-}
-
-/** Replace Docker-only bindings that npm rejects outside their target platform. */
-export function buildNpmInstallOverrides(
-	packages: string[],
-	tarballByName: Record<string, string>,
-): Record<string, string> {
-	const localPackages = packages.map((name): [string, string] => [
-		name,
-		`file:${tarballByName[name]}`,
-	]);
-	const exclusions = NPM_INSTALL_EXCLUSIONS.map((name): [string, string] => [
-		name,
-		`npm:${NPM_INSTALL_EXCLUSION_REPLACEMENT}@1.0.0`,
-	]);
-	return Object.fromEntries([...localPackages, ...exclusions]);
 }
 
 /** True when a changed file can shift dependency resolution repo-wide, forcing a full check. */
@@ -430,7 +406,7 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 		// Scratch project: install targets as file: deps, force ALL packed workspace deps to their
 		// local tarballs. Third-party deps resolve from the real npm registry.
 		const fileDep = (n: string): [string, string] => [n, `file:${tarballByName[n]}`];
-		const overrides = buildNpmInstallOverrides(toPack, tarballByName);
+		const overrides = Object.fromEntries(toPack.map(fileDep));
 		const deps = Object.fromEntries(targets.map(fileDep));
 		writeFileSync(
 			join(scratch, 'package.json'),
@@ -478,9 +454,7 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 		const failures = curatedDuplicates.filter((duplicate) => !duplicate.allowed);
 		const explained = attributed.filter((dup) => failures.some((f) => f.name === dup.name));
 
-		const nonCurated = duplicates.filter(
-			(d) => !d.isCurated && d.name !== NPM_INSTALL_EXCLUSION_REPLACEMENT,
-		);
+		const nonCurated = duplicates.filter((d) => !d.isCurated);
 		if (nonCurated.length > 0) {
 			groupStart(`Other duplicated packages (report-only, NOT enforced — ${nonCurated.length})`);
 			for (const d of nonCurated) {

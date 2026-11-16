@@ -1,4 +1,8 @@
 import type {
+	AcceptSkillSourceUpdatesDto,
+	ReviewSkillSourceUpdateQueryDto,
+	SkillListCollapsedSource,
+	SkillSourceListItem,
 	ConnectSkillSourceDto,
 	CreateSkillDto,
 	DiscoverSkillSourceDto,
@@ -13,6 +17,7 @@ import type {
 } from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -25,7 +30,13 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 
 	const skills = ref<SkillListItem[]>([]);
 	const count = ref(0);
+	const pageCount = ref<number>();
+	const page = ref<number>();
+	/** The folded sources of the current page, with grouped lists. */
+	const collapsedSources = ref<SkillListCollapsedSource[]>([]);
 	const loading = ref(false);
+	/** Current names for skill artifact tabs, including renames made in the editor. */
+	const skillNames = ref(new Map<string, string>());
 
 	// Only the newest read commits, so a slow earlier search cannot overwrite a later one.
 	let latestRead = 0;
@@ -38,6 +49,9 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 			if (read === latestRead) {
 				skills.value = response.data;
 				count.value = response.count;
+				pageCount.value = response.pageCount;
+				page.value = response.page;
+				collapsedSources.value = response.collapsedSources ?? [];
 			}
 			return response;
 		} finally {
@@ -65,8 +79,30 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return await api.getNewSkillName(rootStore.restApiContext, query);
 	}
 
+	// Only the newest read, save, or Assistant update sets the name, so a slow earlier read cannot
+	// bring back the name from before a rename.
+	const latestNameRequest = new Map<string, number>();
+	let nameRequests = 0;
+
+	function startNameRequest(id: string): number {
+		const request = ++nameRequests;
+		latestNameRequest.set(id, request);
+		return request;
+	}
+
+	function setSkillName(id: string, request: number, name: string) {
+		if (latestNameRequest.get(id) === request) skillNames.value.set(id, name);
+	}
+
+	function updateSkillName(id: string, name: string) {
+		setSkillName(id, startNameRequest(id), name);
+	}
+
 	async function fetchSkill(id: string): Promise<SkillDetail> {
-		return await api.getSkill(rootStore.restApiContext, id);
+		const request = startNameRequest(id);
+		const detail = await api.getSkill(rootStore.restApiContext, id);
+		setSkillName(id, request, detail.name);
+		return detail;
 	}
 
 	async function createSkill(payload: CreateSkillDto): Promise<SkillDetail> {
@@ -74,7 +110,10 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	}
 
 	async function saveSkill(id: string, payload: SaveSkillDto): Promise<SkillSaveResponse> {
-		return await api.saveSkill(rootStore.restApiContext, id, payload);
+		const request = startNameRequest(id);
+		const saved = await api.saveSkill(rootStore.restApiContext, id, payload);
+		setSkillName(id, request, saved.skill.name);
+		return saved;
 	}
 
 	async function deleteSkill(id: string): Promise<void> {
@@ -108,10 +147,61 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		await api.stopSyncingSkill(rootStore.restApiContext, id);
 	}
 
+	const sources = ref<SkillSourceListItem[]>([]);
+	const { next: nextSourcesRead } = useLatestFetch();
+
+	/** The sources that the user can see. A newer read wins, as for skills. */
+	async function fetchSources() {
+		const isLatest = nextSourcesRead();
+		const response = await api.listSkillSources(rootStore.restApiContext);
+		if (!isLatest()) return undefined;
+		sources.value = response;
+		return response;
+	}
+
+	/** Deletes a source and its synced skills. The caller reloads the lists. */
+	async function deleteSource(sourceId: string): Promise<void> {
+		await api.deleteSkillSource(rootStore.restApiContext, sourceId);
+	}
+
+	async function fetchReplacementCredentials(source: SkillSourceListItem) {
+		return await api.getSkillSourceReplacementCredentials(rootStore.restApiContext, source);
+	}
+
+	async function replaceSourceCredential(source: SkillSourceListItem, credentialId: string) {
+		await api.replaceSkillSourceCredential(rootStore.restApiContext, source, credentialId);
+	}
+
+	/** Check for updates on one source. The caller reloads the lists. */
+	async function checkSource(sourceId: string) {
+		return await api.checkSkillSource(rootStore.restApiContext, sourceId);
+	}
+
+	async function fetchSourceUpdates(sourceId: string) {
+		return await api.getSkillSourceUpdates(rootStore.restApiContext, sourceId);
+	}
+	async function fetchSourceUpdate(
+		sourceId: string,
+		skillId: string,
+		reviewed: ReviewSkillSourceUpdateQueryDto,
+	) {
+		return await api.getSkillSourceUpdate(rootStore.restApiContext, sourceId, skillId, reviewed);
+	}
+	async function fetchSourceCommit(sourceId: string, revision: string) {
+		return await api.getSkillSourceCommit(rootStore.restApiContext, sourceId, revision);
+	}
+	async function acceptSourceUpdates(sourceId: string, payload: AcceptSkillSourceUpdatesDto) {
+		return await api.acceptSkillSourceUpdates(rootStore.restApiContext, sourceId, payload);
+	}
+
 	return {
 		skills,
 		count,
+		pageCount,
+		page,
 		loading,
+		skillNames,
+		updateSkillName,
 		fetchSkills,
 		fetchSkillCount,
 		fetchCreators,
@@ -126,5 +216,16 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		discoverSource,
 		connectSource,
 		stopSyncingSkill,
+		sources,
+		collapsedSources,
+		fetchSources,
+		checkSource,
+		fetchSourceUpdates,
+		fetchSourceUpdate,
+		fetchSourceCommit,
+		acceptSourceUpdates,
+		deleteSource,
+		fetchReplacementCredentials,
+		replaceSourceCredential,
 	};
 });

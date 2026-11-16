@@ -120,7 +120,7 @@ export class WorkflowPublishHistoryRepository extends BaseRepository<WorkflowPub
 		return await this.createQueryBuilder('wph')
 			.leftJoinAndSelect('wph.user', 'user')
 			.leftJoin('wph.workflowHistory', 'wh')
-			.addSelect('wh.name')
+			.addSelect(['wh.name', 'wh.settings'])
 			.where('wph.workflowId = :workflowId', { workflowId })
 			.orderBy('wph.createdAt', 'DESC')
 			.addOrderBy('wph.id', 'DESC')

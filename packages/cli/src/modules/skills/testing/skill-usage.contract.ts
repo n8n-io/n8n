@@ -1,7 +1,6 @@
 // The cases that every `SkillUsage` passes: the fake in this folder and the real one of the
 // agents module. A test that uses the fake can trust it as far as these cases go.
-import { UserError } from '@n8n/errors';
-
+import { SkillAgentNameTakenError } from '../errors/skill-agent-name-taken.error';
 import type { SkillUsage } from '../services/skill-usage.contracts';
 
 /**
@@ -57,24 +56,6 @@ export function describeSkillUsageContract(subject: () => SkillUsageSubject) {
 				expect([...agents]).toEqual([
 					[ids.agentId('support'), { name: 'Support', projectId: ids.projectId('p') }],
 				]);
-			});
-		});
-
-		describe('findAgentIdsInProjects', () => {
-			it('answers the agents of these projects only', async () => {
-				const { usage, seed } = subject();
-				const ids = await seed({
-					agents: [
-						{ key: 'a', name: 'A', project: 'p' },
-						{ key: 'b', name: 'B', project: 'p' },
-						{ key: 'c', name: 'C', project: 'q' },
-					],
-					skills: [],
-				});
-
-				const agentIds = await usage.findAgentIdsInProjects([ids.projectId('p')], ctx);
-
-				expect(agentIds.sort()).toEqual([ids.agentId('a'), ids.agentId('b')].sort());
 			});
 		});
 
@@ -293,7 +274,7 @@ export function describeSkillUsageContract(subject: () => SkillUsageSubject) {
 					ctx,
 				);
 
-				await expect(rename).rejects.toThrow(UserError);
+				await expect(rename).rejects.toThrow(SkillAgentNameTakenError);
 				await expect(rename).rejects.toThrow(
 					'Cannot rename to "tone": Support already uses a skill with a name like that.',
 				);
@@ -343,7 +324,7 @@ export function describeSkillUsageContract(subject: () => SkillUsageSubject) {
 			});
 		});
 
-		describe('markFollowersChanged', () => {
+		describe('findFollowingAgentIds', () => {
 			it('answers the agents whose draft follows the latest version of the skill', async () => {
 				const { usage, seed } = subject();
 				const ids = await seed({
@@ -360,7 +341,7 @@ export function describeSkillUsageContract(subject: () => SkillUsageSubject) {
 					publishes: [{ agent: 'published', pins: [{ skill: 'voice', version: 1 }] }],
 				});
 
-				expect(await usage.markFollowersChanged(ids.skillId('voice'), ctx)).toEqual([
+				expect(await usage.findFollowingAgentIds(ids.skillId('voice'), ctx)).toEqual([
 					ids.agentId('following'),
 				]);
 			});

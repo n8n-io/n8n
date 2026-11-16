@@ -397,8 +397,9 @@ export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 					'If an update is rejected, correct it and retry before reporting progress. Read the plan again if the revision changed. ' +
 					'Do not set a task to Paused. Only Stop pauses tasks. ' +
 					'A paused task stays paused until the user asks to continue it. A new message does not resume tasks. ' +
-					'For an explicit continuation request, call resume_background_jobs with planId and only the requested taskIds. Omit taskIds only when the user requests the whole plan. ' +
-					'Pass planTask with planId and the permanent leaf task ID when you delegate background plan work. ' +
+					'For an explicit request to continue tasks of a plan, call background_jobs with action "resume", planId, and only the requested planTaskId values in planTaskIds. Omit planTaskIds only when the user requests the whole plan. ' +
+					'For a stopped group outside a plan, omit planId and planTaskIds. ' +
+					'When you delegate background plan work, pass planTask: { planId, planTaskId }, where planTaskId is the id of a leaf task in the plan. ' +
 					'For sub-agent work on a plan task, always use delegate_subagent with mode: "background", even for short or sequential tasks. ' +
 					'Do not use foreground delegation for plan work. ' +
 					'This rule overrides the default foreground-delegation guidance for plan work. ' +

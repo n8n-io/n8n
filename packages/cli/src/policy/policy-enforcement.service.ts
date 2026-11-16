@@ -21,7 +21,7 @@ import {
 } from '@n8n/decorators';
 import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { withInlineAgentToolNodes } from './policed-agent-nodes';
 import type {

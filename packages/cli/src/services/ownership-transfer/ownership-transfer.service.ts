@@ -1,3 +1,4 @@
+import type { OperationContext } from '@n8n/db';
 import { OwnershipTransferHandlerRegistry } from '@n8n/backend-services';
 import {
 	SharedCredentialsRepository,
@@ -117,16 +118,24 @@ export class OwnershipTransferService {
 	}
 
 	/**
-	 * Remove the private module resources of the given users, for example
-	 * their private system agent sessions. Call it before the users are
-	 * deleted, with or without a transferee: private resources do not move to
-	 * the transferee, and after the delete their owner column is null.
+	 * Clean up user-owned module data before account deletion, with or without
+	 * a transferee. Each module decides which data it must keep for audit history.
 	 */
 	async deleteUserOwnedModuleResources(userIds: string[]): Promise<void> {
 		for (const userId of userIds) {
 			for (const handler of this.transferHandlers.getAll()) {
 				await handler.deleteAllForUser?.(userId);
 			}
+		}
+	}
+
+	async finalizeUserDeletion(
+		userId: string,
+		personalProjectId: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		for (const handler of this.transferHandlers.getAll()) {
+			await handler.finalizeUserDeletion?.(userId, personalProjectId, ctx);
 		}
 	}
 }

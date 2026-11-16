@@ -16,15 +16,17 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, inject, nextTick, onBeforeUnmount, ref } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, provide, ref, watch } from 'vue';
 
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
 import { buildAlwaysAllowKey } from '../alwaysAllow';
 import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
+import { ASSISTANT_RUNTIME } from '../assistantRuntime';
 import {
 	approvalInputs,
+	appBlueprintInputs,
 	continueInputs,
 	getConfirmationType,
 	mcpConnectInputs,
@@ -40,6 +42,7 @@ import GatewayResourceDecision from '../components/GatewayResourceDecision.vue';
 import InstanceAiChannelSetup from '../components/InstanceAiChannelSetup.vue';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
 import InstanceAiMcpConnectCard from '../components/InstanceAiMcpConnectCard.vue';
+import AppBlueprintCard from '../components/AppBlueprintCard.vue';
 import InstanceAiQuestions, { type QuestionAnswer } from '../components/InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
 import type {
@@ -64,6 +67,8 @@ const approvalLabels = useApprovalCardLabels();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
 const threadId = inject(ASSISTANT_AGENT_THREAD_ID, '');
+// The shared cards inside track their own input. Every agents thread renders them here.
+provide(ASSISTANT_RUNTIME, 'agents');
 const submitted = ref(false);
 // Bumped when the chat refuses an answer. The inner cards remount, so they drop
 // their own answered state too.
@@ -77,15 +82,25 @@ function reopen() {
 	attempt.value += 1;
 }
 
+// A tool can suspend again on the same call, for example when n8n rejects the
+// answer. The new request is a new question, so the card opens again.
+watch(
+	() => props.input.requestId,
+	() => reopen(),
+);
+
 // A payload without a project uses the project of the thread.
 const threadProjectId = inject(ASSISTANT_AGENT_PROJECT_ID, undefined);
 const projectId = computed(() => props.input.projectId ?? threadProjectId);
+/** Joins the telemetry with the "Builder asked for input" event, which the backend sends with the request id. */
+const inputThreadId = computed(() => props.input.inputThreadId ?? props.input.requestId);
 
 /** The same order as the current Assistant confirmation panel. */
 const variant = computed(() => {
 	const { input } = props;
 	if (input.inputType === 'questions' && input.questions?.length) return 'questions';
 	if (input.mcpConnectRequest) return 'mcp-connect';
+	if (input.appBlueprint) return 'app-blueprint';
 	if (input.setupRequests?.length) return 'workflow-setup';
 	if (input.credentialRequests?.length) return 'credential-setup';
 	if (input.inputType === 'text') return 'text';
@@ -107,7 +122,7 @@ function trackAnswer(inputs: ConfirmationInputs) {
 		telemetry,
 		{
 			threadId,
-			inputThreadId: props.input.inputThreadId,
+			inputThreadId: inputThreadId.value,
 			instanceId: rootStore.instanceId,
 			// Assistant agent threads keep no launch source yet.
 			actionSource: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
@@ -333,6 +348,17 @@ function onApprovalSelect(key: string) {
 			data-test-id="assistant-agent-mcp-connect"
 			@resolve="onMcpConnectResolve"
 		/>
+		<AppBlueprintCard
+			v-else-if="variant === 'app-blueprint' && input.appBlueprint"
+			:blueprint="input.appBlueprint"
+			:errors="input.appBlueprintErrors"
+			:read-only="isInactive"
+			data-test-id="assistant-agent-app-blueprint"
+			@submit="
+				(body) =>
+					submit(body, body.kind === 'appBlueprint' ? appBlueprintInputs(body.approved) : undefined)
+			"
+		/>
 		<!-- The setup cards keep their own submitted state. -->
 		<InstanceAiWorkflowSetup
 			v-else-if="variant === 'workflow-setup' && input.setupRequests"
@@ -342,7 +368,7 @@ function onApprovalSelect(key: string) {
 			:credential-flow="input.credentialFlow"
 			:workflow-id="input.workflowId"
 			:thread-id="threadId"
-			:input-thread-id="input.inputThreadId"
+			:input-thread-id="inputThreadId"
 			:outcome="workflowSetupOutcome"
 			@apply="onWorkflowSetupApply"
 			@defer="onWorkflowSetupDefer"
@@ -355,7 +381,7 @@ function onApprovalSelect(key: string) {
 			:credential-flow="input.credentialFlow"
 			:require-user-selection="input.requireUserSelection"
 			:thread-id="threadId"
-			:input-thread-id="input.inputThreadId"
+			:input-thread-id="inputThreadId"
 			@decide="(body) => submit(body)"
 		/>
 		<GatewayResourceDecision
@@ -364,7 +390,7 @@ function onApprovalSelect(key: string) {
 			:description="input.resourceDecision.description"
 			:options="input.resourceDecision.options"
 			:thread-id="threadId"
-			:input-thread-id="input.inputThreadId"
+			:input-thread-id="inputThreadId"
 			@decide="(decision) => submit({ kind: 'resourceDecision', resourceDecision: decision })"
 		/>
 		<InstanceAiChannelSetup

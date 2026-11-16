@@ -225,7 +225,7 @@ describe('reconstructSeedFromThread', () => {
 		// eval instance and shown to the judge.
 		const assistant = result.seed.messages.find((m) => m.role === 'assistant')!;
 		const insertBlock = (assistant.content as Array<Record<string, unknown>>).find(
-			(b) => b.toolName === 'data_tables[insert-rows]',
+			(b) => b.toolName === 'insert_data_table_rows',
 		)!;
 		expect((insertBlock.input as Record<string, unknown>).rows).toBe('<1 row(s) omitted>');
 		// Non-row fields are preserved.
@@ -257,7 +257,7 @@ describe('reconstructSeedFromThread', () => {
 		const toolNames = (assistant.content as Array<Record<string, unknown>>)
 			.filter((b) => b.type === 'tool-call')
 			.map((b) => b.toolName);
-		expect(toolNames).toEqual(['data_tables[insert-rows]']);
+		expect(toolNames).toEqual(['insert_data_table_rows']);
 		const insertBlock = (assistant.content as Array<Record<string, unknown>>).find(
 			(b) => b.type === 'tool-call',
 		)!;

@@ -1,6 +1,9 @@
 import type { SerializableAgentState } from '@n8n/agents';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 
+/** In a module without runtime imports, so the eager tool list does not load the lazy tool module. */
+export const BACKGROUND_JOBS_TOOL_NAME = 'background_jobs';
+
 export const AGENT_BACKGROUND_WAKE_OPEN_TAG = '<background-jobs-settled>';
 export const AGENT_BACKGROUND_WAKE_CLOSE_TAG = '</background-jobs-settled>';
 export const AGENT_BACKGROUND_UPDATES_OPEN_TAG = '<background-updates>';
@@ -30,7 +33,7 @@ export function formatPauseHandoff(checkpoint: SerializableAgentState): string {
 
 export function formatWakeMessage(jobs: AgentBackgroundJob[]): string {
 	// Divide the text limit equally so one large result cannot exclude other results.
-	// Mark truncated text so the model can request the full result with check_background_jobs.
+	// Mark truncated text so the model can request the full result with the background jobs check.
 	const perJobBudget = Math.floor(WAKE_RESULT_TEXT_MAX_CHARS / Math.max(jobs.length, 1));
 	const replacementNotice = `\n${REPLACED_PAUSE_GROUP_NOTICE}`;
 	const payload = jobs.map((job) => {
@@ -73,6 +76,8 @@ export function formatWakeMessage(jobs: AgentBackgroundJob[]): string {
 				: {}),
 			...(previousStoppedGroupReplaced ? { previousStoppedGroupReplaced: true } : {}),
 			...(error !== undefined ? { error } : {}),
+			...(job.files?.length ? { files: job.files } : {}),
+			...(job.skippedFiles?.length ? { skippedFiles: job.skippedFiles } : {}),
 			...(truncated ? { truncated: true } : {}),
 		};
 	});

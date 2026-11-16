@@ -9,6 +9,7 @@ import pickBy from 'lodash/pickBy';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	NodeConnectionTypes,
+	getChildNodes,
 	getParentNodes,
 	mapConnectionsByDestination,
 } from 'n8n-workflow';
@@ -30,7 +31,15 @@ export function buildNodeGenAiAttributes(
 	}
 
 	const attributes = pickGenAiAttributes(tracing);
-	return attributes[GEN_AI_ATTR.OPERATION_NAME] ? attributes : undefined;
+	if (attributes[GEN_AI_ATTR.OPERATION_NAME]) return attributes;
+
+	return isConnectedAsTool(node.name, connections)
+		? { [GEN_AI_ATTR.OPERATION_NAME]: 'execute_tool', [GEN_AI_ATTR.TOOL_NAME]: node.name }
+		: undefined;
+}
+
+function isConnectedAsTool(nodeName: string, connections: IConnections): boolean {
+	return getChildNodes(connections, nodeName, NodeConnectionTypes.AiTool, 1).length > 0;
 }
 
 function pickGenAiAttributes(tracing: ITaskMetadata['tracing']): GenAiAttributes {

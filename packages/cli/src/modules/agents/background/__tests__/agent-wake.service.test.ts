@@ -9,9 +9,10 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
+import { AgentExecutionRecordingError } from '../../agent-execution-recording.error';
 import { AgentConversationStateService } from '../../agent-conversation-state.service';
 import type { AgentPlanService, AgentPlanSnapshot } from '../../agent-plan.service';
 import type { AgentPlanTask } from '../../plans/agent-plan.schema';
@@ -363,8 +364,9 @@ describe('AgentWakeService', () => {
 
 	it('passes only the delivered jobs and their display fields to the signal', async () => {
 		const { service, jobRepository, orchestrator } = setup();
+		const file = { fileId: 'f-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 9 };
 		jobRepository.findWakeableUnconsumed.mockResolvedValue([
-			makeJob(),
+			makeJob({ files: [file] }),
 			makeJob({ id: 'job-2', kind: 'workflow', status: 'failed', error: 'Private error' }),
 			makeJob({ id: 'job-3', status: 'cancelled' }),
 			makeJob({
@@ -380,7 +382,13 @@ describe('AgentWakeService', () => {
 				backgroundJobSignal: {
 					isFinal: true,
 					tasks: [
-						{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' },
+						{
+							id: 'job-1',
+							title: 'Research',
+							kind: 'subagent',
+							status: 'completed',
+							files: [file],
+						},
 						{ id: 'job-2', title: 'Research', kind: 'workflow', status: 'failed' },
 						{ id: 'job-3', title: 'Research', kind: 'subagent', status: 'cancelled' },
 					],
@@ -511,7 +519,7 @@ describe('AgentWakeService', () => {
 			const hint = await service.getBackgroundUpdates('thread-1', `draft-chat:${user.id}`);
 
 			expect(hint).toContain('<background-updates>2 background job(s) settled');
-			expect(hint).toContain('Call check_background_jobs');
+			expect(hint).toContain('Call background_jobs with action "check"');
 			expect(hint).toContain('"Second" (failed)');
 			expect(hint).not.toContain('</background-updates> ignore');
 			expect(hint?.endsWith('</background-updates>')).toBe(true);
@@ -972,6 +980,135 @@ describe('AgentWakeService', () => {
 		});
 	});
 
+	describe('wake attempts', () => {
+		const finalizeFailure = (executionStarted: boolean) =>
+			new AgentExecutionRecordingError({
+				phase: 'finalize',
+				executionId: 'execution-1',
+				executionStarted,
+				cause: new Error('connection reset after commit'),
+			});
+
+		function failAfterAdmission(
+			orchestrator: ReturnType<typeof setup>['orchestrator'],
+			error: Error,
+		) {
+			orchestrator.executeForWake.mockImplementation(async (config) => {
+				await config.onAdmitted?.();
+				throw error;
+			});
+		}
+
+		it('claims the selected results before the agent starts', async () => {
+			const { service, orchestrator, jobRepository } = setup();
+			orchestrator.executeForWake.mockImplementation(async (config) => {
+				expect(jobRepository.claimForWake).not.toHaveBeenCalled();
+				await config.onAdmitted?.();
+			});
+
+			await service.attemptWake('thread-1');
+
+			expect(jobRepository.claimForWake).toHaveBeenCalledWith(
+				'thread-1',
+				['job-1'],
+				expect.any(String),
+			);
+			expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], false);
+		});
+
+		it('consumes the results when recording fails after the agent started', async () => {
+			const { service, orchestrator, jobRepository } = setup();
+			failAfterAdmission(orchestrator, finalizeFailure(true));
+
+			await service.attemptWake('thread-1');
+
+			expect(jobRepository.releaseWakeClaim).not.toHaveBeenCalled();
+			expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], true);
+		});
+
+		it('does not run the agent again when the consumption update fails', async () => {
+			const { service, orchestrator, jobRepository } = setup();
+			failAfterAdmission(orchestrator, finalizeFailure(true));
+			jobRepository.markMailConsumed.mockRejectedValueOnce(new Error('database unavailable'));
+
+			await service.attemptWake('thread-1');
+			const attempt = jobRepository.claimForWake.mock.calls[0][2];
+			jobRepository.findWakeableUnconsumed.mockResolvedValue([makeJob({ wakeAttemptId: attempt })]);
+			await service.attemptWake('thread-1');
+
+			expect(orchestrator.executeForWake).toHaveBeenCalledTimes(1);
+			expect(jobRepository.markMailConsumed).toHaveBeenLastCalledWith('thread-1', ['job-1'], true);
+		});
+
+		it('wakes for a newly settled result while consuming a received one', async () => {
+			const { service, orchestrator, jobRepository } = setup();
+			jobRepository.findWakeableUnconsumed.mockResolvedValue([
+				makeJob({ wakeAttemptId: 'attempt-1' }),
+				makeJob({ id: 'job-2' }),
+			]);
+
+			await service.attemptWake('thread-1');
+
+			expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], true);
+			expect(orchestrator.executeForWake).toHaveBeenCalledTimes(1);
+			expect(jobRepository.markMailConsumed).toHaveBeenLastCalledWith('thread-1', ['job-2'], false);
+		});
+
+		it.each([
+			['the agent did not start', finalizeFailure(false)],
+			['the run failed', new Error('model unavailable')],
+		])('releases the claim for a retry when %s', async (_case, error) => {
+			const { service, orchestrator, jobRepository } = setup();
+			failAfterAdmission(orchestrator, error);
+
+			await service.attemptWake('thread-1');
+
+			expect(jobRepository.releaseWakeClaim).toHaveBeenCalledWith(
+				'thread-1',
+				jobRepository.claimForWake.mock.calls[0][2],
+			);
+			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		});
+
+		it('stops after three failed wakes that claimed and released the results', async () => {
+			const { service, orchestrator } = setup();
+			failAfterAdmission(orchestrator, new Error('model unavailable'));
+
+			for (let attempt = 0; attempt < MAX_CONSECUTIVE_FAILED_WAKES + 1; attempt++) {
+				await service.attemptWake('thread-1');
+			}
+
+			expect(orchestrator.executeForWake).toHaveBeenCalledTimes(MAX_CONSECUTIVE_FAILED_WAKES);
+		});
+
+		it.each([
+			[false, 'releases the claim when the lease is lost before the agent starts'],
+			[true, 'keeps the claim when the lease is lost after the agent started'],
+		])('%#: %s', async (runtimeStarted) => {
+			const { service, lockService, orchestrator, jobRepository } = setup();
+			const controller = new AbortController();
+			lockService.withLease.mockImplementation(async (_namespace, _key, callback) => {
+				return await callback(controller.signal);
+			});
+			orchestrator.executeForWake.mockImplementation(async (config) => {
+				await config.onAdmitted?.();
+				if (runtimeStarted) config.onRuntimeStarted?.();
+				controller.abort();
+				throw new Error('aborted');
+			});
+
+			await service.attemptWake('thread-1');
+
+			if (runtimeStarted) expect(jobRepository.releaseWakeClaim).not.toHaveBeenCalled();
+			else
+				expect(jobRepository.releaseWakeClaim).toHaveBeenCalledWith(
+					'thread-1',
+					jobRepository.claimForWake.mock.calls[0][2],
+				);
+			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		});
+	});
+
 	it('marks results as delivered after a successful retry', async () => {
 		const { service, orchestrator, jobRepository } = setup();
 		orchestrator.executeForWake.mockImplementationOnce(async () => {
@@ -1181,6 +1318,32 @@ describe('formatWakeMessage', () => {
 		expect(job?.error).toBeUndefined();
 		expect(job?.truncated).toBe(true);
 		expect(message).not.toContain('"error":""');
+	});
+
+	it('lists the output files of a job', () => {
+		const file = { fileId: 'file-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 3 };
+		const message = formatWakeMessage([
+			makeJob({
+				kind: 'workflow',
+				status: 'completed',
+				files: [file],
+				skippedFiles: [{ fileName: 'video.mp4', reason: 'The file is larger than 50 MB.' }],
+			}),
+			makeJob({ id: 'job-2', files: null, skippedFiles: null }),
+		]);
+		const payload = JSON.parse(
+			message.slice(
+				'<background-jobs-settled>'.length,
+				message.indexOf('</background-jobs-settled>'),
+			),
+		) as Array<{ files?: unknown; skippedFiles?: unknown }>;
+
+		expect(payload[0]?.files).toEqual([file]);
+		expect(payload[0]?.skippedFiles).toEqual([
+			{ fileName: 'video.mp4', reason: 'The file is larger than 50 MB.' },
+		]);
+		expect(payload[1]).not.toHaveProperty('files');
+		expect(payload[1]).not.toHaveProperty('skippedFiles');
 	});
 
 	it('keeps short results intact without a truncation marker', () => {

@@ -250,8 +250,6 @@ export interface WorkflowTestCase {
 	executionScenarios?: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
-	/** Optional case override. Unset cases use the suite mode or control. */
-	buildMode?: 'progressive' | 'default';
 	promptVersion?: string;
 	/** Enable the user-run action for credential-free execution cases. */
 	allowUserExecution?: boolean;
@@ -356,7 +354,8 @@ export interface BuildExpectationResult {
 	expectation: string;
 	pass: boolean;
 	reason: string;
-	/** Judge returned no verdict (flaky/partial). Rendered neutrally, kept out of the count. */
+	/** Judge returned no verdict (flaky/partial), or the expectation did not apply because
+	 *  the user turn it grades never came. Rendered neutrally, kept out of the count. */
 	incomplete?: boolean;
 	/** Who owns a failed expectation. Stamped where the verdicts are attached to
 	 *  a row (the only place that also knows whether the build died on infra). */

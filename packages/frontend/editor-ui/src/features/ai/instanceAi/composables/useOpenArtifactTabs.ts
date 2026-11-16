@@ -1,9 +1,9 @@
 import {
-	MAX_INSTANCE_AI_THREAD_CLOSED_TABS,
-	MAX_INSTANCE_AI_THREAD_OPEN_TABS,
-	type InstanceAiThreadTab,
-	type InstanceAiThreadTabRef,
-	type InstanceAiThreadTabsState,
+	MAX_ASSISTANT_THREAD_CLOSED_TABS,
+	MAX_ASSISTANT_THREAD_OPEN_TABS,
+	type AssistantThreadTab,
+	type AssistantThreadTabRef,
+	type AssistantThreadTabsState,
 } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -13,8 +13,8 @@ import type { ArtifactTab } from '../useCanvasPreview';
 
 /** Loads and saves the open tabs of one thread. */
 export interface ThreadTabsStorage {
-	load: () => Promise<InstanceAiThreadTabsState | null>;
-	save: (state: InstanceAiThreadTabsState) => Promise<void>;
+	load: () => Promise<AssistantThreadTabsState | null>;
+	save: (state: AssistantThreadTabsState) => Promise<void>;
 }
 
 export const ARTIFACT_TAB_ICONS: Record<ArtifactTab['type'], IconName> = {
@@ -25,9 +25,9 @@ export const ARTIFACT_TAB_ICONS: Record<ArtifactTab['type'], IconName> = {
 	app: 'layout-template',
 };
 
-type TabsLayout = Pick<InstanceAiThreadTabsState, 'tabs' | 'closedTabs'>;
+type TabsLayout = Pick<AssistantThreadTabsState, 'tabs' | 'closedTabs'>;
 
-function tabKey(tab: InstanceAiThreadTabRef) {
+function tabKey(tab: AssistantThreadTabRef) {
 	return `${tab.type}:${tab.id}`;
 }
 
@@ -36,10 +36,10 @@ function tabKey(tab: InstanceAiThreadTabRef) {
  * A state over the limit fails to save, and the tabs would be lost on reload.
  */
 function fitWithinTabLimit(layout: TabsLayout, keepKeys: Set<string>): TabsLayout {
-	if (layout.tabs.length <= MAX_INSTANCE_AI_THREAD_OPEN_TABS) return layout;
+	if (layout.tabs.length <= MAX_ASSISTANT_THREAD_OPEN_TABS) return layout;
 	const tabs = [...layout.tabs];
-	const dropped: InstanceAiThreadTabRef[] = [];
-	for (let i = 0; i < tabs.length && tabs.length > MAX_INSTANCE_AI_THREAD_OPEN_TABS; ) {
+	const dropped: AssistantThreadTabRef[] = [];
+	for (let i = 0; i < tabs.length && tabs.length > MAX_ASSISTANT_THREAD_OPEN_TABS; ) {
 		if (keepKeys.has(tabKey(tabs[i]))) {
 			i++;
 			continue;
@@ -53,11 +53,11 @@ function fitWithinTabLimit(layout: TabsLayout, keepKeys: Set<string>): TabsLayou
 		closedTabs: [
 			...layout.closedTabs.filter((closed) => !droppedKeys.has(tabKey(closed))),
 			...dropped,
-		].slice(-MAX_INSTANCE_AI_THREAD_CLOSED_TABS),
+		].slice(-MAX_ASSISTANT_THREAD_CLOSED_TABS),
 	};
 }
 
-function toStoredTab(tab: ArtifactTab): InstanceAiThreadTab {
+function toStoredTab(tab: ArtifactTab): AssistantThreadTab {
 	return {
 		type: tab.type,
 		id: tab.id,
@@ -66,7 +66,7 @@ function toStoredTab(tab: ArtifactTab): InstanceAiThreadTab {
 	};
 }
 
-function fromStoredTab(tab: InstanceAiThreadTab): ArtifactTab {
+function fromStoredTab(tab: AssistantThreadTab): ArtifactTab {
 	return { ...tab, icon: ARTIFACT_TAB_ICONS[tab.type] };
 }
 
@@ -89,7 +89,7 @@ export function useOpenArtifactTabs({
 }) {
 	// `null` until a stored layout loads or the tabs are stored for the first time.
 	const layout = shallowRef<TabsLayout | null>(null);
-	const storedActiveTab = ref<InstanceAiThreadTabRef | null>(null);
+	const storedActiveTab = ref<AssistantThreadTabRef | null>(null);
 	// `undefined` when the stored state has no preview preference.
 	const storedPreviewOpen = ref<boolean>();
 	const isLoaded = ref(!storage);
@@ -156,7 +156,7 @@ export function useOpenArtifactTabs({
 			closedTabs: [
 				...closedTabs.filter((tab) => tabKey(tab) !== closedKey),
 				{ type: closed.type, id: closed.id },
-			].slice(-MAX_INSTANCE_AI_THREAD_CLOSED_TABS),
+			].slice(-MAX_ASSISTANT_THREAD_CLOSED_TABS),
 		};
 		return (tabs[index + 1] ?? tabs[index - 1])?.id;
 	}
@@ -215,7 +215,7 @@ export function useOpenArtifactTabs({
 	let saveTimer: ReturnType<typeof setTimeout> | undefined;
 	let pendingActiveTabId: string | undefined;
 
-	function buildState(activeTabId: string | undefined): InstanceAiThreadTabsState {
+	function buildState(activeTabId: string | undefined): AssistantThreadTabsState {
 		const active = openTabs.value.find((tab) => tab.id === activeTabId);
 		// New artifacts join the tabs on their own, so the tabs can pass the limit here too.
 		const current = {

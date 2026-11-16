@@ -4,6 +4,7 @@ import type { ICredentialDataDecryptedObject, INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
+import { createWorkflowScanContext } from '../../../types';
 import { SlackTriggerSignatureSecretRule } from '../slack-trigger-signature-secret.rule';
 
 const SLACK_TRIGGER = 'n8n-nodes-base.slackTrigger';
@@ -182,6 +183,23 @@ describe('SlackTriggerSignatureSecretRule', () => {
 			]);
 
 			await expect(rule.detectWorkflow(workflow, nodesGroupedByType)).rejects.toThrow();
+		});
+
+		it('should read each credential once for all workflows that share a scan context', async () => {
+			credentialsRepository.getManyByIds.mockResolvedValue([noSecretKey]);
+			const context = createWorkflowScanContext();
+			const first = createWorkflow('wf-1', 'First', [
+				withSlackCredential(createNode('Trigger', SLACK_TRIGGER), noSecretKey.id),
+			]);
+			const second = createWorkflow('wf-2', 'Second', [
+				withSlackCredential(createNode('Trigger', SLACK_TRIGGER), noSecretKey.id),
+			]);
+
+			await rule.detectWorkflow(first.workflow, first.nodesGroupedByType, context);
+			const result = await rule.detectWorkflow(second.workflow, second.nodesGroupedByType, context);
+
+			expect(credentialsRepository.getManyByIds).toHaveBeenCalledTimes(1);
+			expect(result.issues.map((issue) => issue.nodeName)).toEqual(['Trigger']);
 		});
 	});
 

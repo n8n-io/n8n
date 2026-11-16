@@ -9,9 +9,8 @@ import {
 import type { SubAgentSource } from '@n8n/api-types';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { OperationalError, UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, OperationalError, UserError } from '@n8n/errors';
 
 import { AgentExecutionRecordingError } from '../../agent-execution-recording.error';
 import {
@@ -635,6 +634,15 @@ describe('formatSubAgentToolOutput', () => {
 				cost: 0.01,
 			},
 			finishReason: 'stop',
+		});
+	});
+
+	it('tells the parent model when the child files could not be listed', () => {
+		const filesError = 'The files of the sub-agent could not be listed';
+
+		expect(formatSubAgentToolOutput({ ...foregroundResult, filesError })).toMatchObject({
+			status: 'completed',
+			filesError,
 		});
 	});
 });

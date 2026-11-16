@@ -2,7 +2,10 @@ operationId: getWorkflow
 tags:
   - Workflow
 summary: Retrieve a workflow
-description: Retrieve a workflow.
+description: |-
+  Retrieve a workflow.
+
+  Requires the `workflow:read` API key scope.
 x-required-scope: workflow:read
 parameters:
   - schema:
@@ -678,3 +681,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

@@ -8,10 +8,12 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { ProjectService } from '@/services/project.service.ee';
 import { createFolder } from '@test-integration/db/folders';
@@ -50,7 +52,7 @@ afterAll(async () => await testDb.terminate());
 
 beforeEach(async () => {
 	await repository.delete({});
-	await Container.get(AgentHistoryRepository).delete({});
+	await Container.get(DataSource).getRepository(AgentHistory).delete({});
 	await testDb.truncate([
 		'WorkflowEntity',
 		'WorkflowHistory',
@@ -96,13 +98,16 @@ async function setConfig(agent: Agent, config: Partial<AgentJsonConfig>) {
 
 async function publish(agent: Agent) {
 	const definition = await Container.get(AgentDefinitionService).readDraft(agent);
-	const history = await Container.get(AgentHistoryRepository).saveVersion({
-		agentId: agent.id,
-		versionId: `${agent.id}_published`,
-		publishedBy: 'Package test',
-		schema: definition.schema && storedAgentConfig(definition.schema),
-		tools: definition.tools,
-	});
+	const history = await Container.get(AgentHistoryRepository).saveVersion(
+		{
+			agentId: agent.id,
+			versionId: `${agent.id}_published`,
+			publishedBy: 'Package test',
+			schema: definition.schema && storedAgentConfig(definition.schema),
+			tools: definition.tools,
+		},
+		{},
+	);
 	await repository.setActiveVersionFenced(agent.id, agent.publicationRevision, history.versionId);
 }
 

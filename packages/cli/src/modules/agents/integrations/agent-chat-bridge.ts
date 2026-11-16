@@ -18,15 +18,17 @@ import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Attachment, Author, CardElement, Chat, Message, Thread } from 'chat';
-import { UserError, type Logger } from 'n8n-workflow';
+import type { Logger } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { CacheService } from '@n8n/backend-services';
 
-import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import { AgentChatAttachmentService, AgentFileLimitError } from '../agent-chat-attachment.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
-import type {
-	AgentExecutionAdmission,
-	QueuedIntegrationMessage,
+import {
+	queuedAccessSender,
+	type AgentExecutionAdmission,
+	type QueuedIntegrationMessage,
 } from '../types/agent-queued-message';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
@@ -63,8 +65,10 @@ import { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import {
 	AgentChatStreamConsumer,
 	ReplyDeliveryError,
+	type EarlierToolResult,
 	type SuspensionHandlingResult,
 } from './agent-chat-stream-consumer';
+import { AgentOutboundFiles } from './agent-outbound-files.service';
 import { buildSuspendCardPayload } from './agent-chat-suspension-cards';
 import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
@@ -176,6 +180,12 @@ interface AgentExecutor extends Pick<AgentExecutionOrchestratorService, 'resumeF
 
 	/** Optional: a caller that cannot look checkpoints up simply skips the gate. */
 	isResumable?(config: { agentId: string; runId: string }): Promise<boolean>;
+
+	/** The agent thread and earlier tool results of a suspended run. */
+	getSuspendedRun?(config: {
+		agentId: string;
+		runId: string;
+	}): Promise<{ threadId: string; toolResults: EarlierToolResult[] } | null>;
 }
 
 /** An open checkpoint prevents automatic session rotation. */
@@ -285,6 +295,13 @@ export class AgentChatBridge {
 			handleSuspension: this.handleSuspension.bind(this),
 			handleMessage: this.handleMessage.bind(this),
 			isIntegrationActionTool: (toolName) => actionToolNamePattern.test(toolName),
+			postReplyFiles: async (thread, { fileIds, caption, agentThreadId, onPosted }) =>
+				await Container.get(AgentOutboundFiles).postReplyFiles(thread, integration.type, {
+					fileIds,
+					caption,
+					onPosted,
+					scope: { projectId: n8nProjectId, threadId: agentThreadId },
+				}),
 		});
 		this.hitlResumeHandler = new AgentChatHitlResumeHandler({
 			agentId,
@@ -393,6 +410,9 @@ export class AgentChatBridge {
 			async isResumable({ agentId: aid, runId }) {
 				return await Container.get(AgentConversationStateService).isResumable(aid, runId);
 			},
+			async getSuspendedRun({ agentId: aid, runId }) {
+				return await Container.get(AgentConversationStateService).getSuspendedRun(aid, runId);
+			},
 		};
 		return new AgentChatBridge(
 			chat,
@@ -419,7 +439,7 @@ export class AgentChatBridge {
 	private registerHandlers(): void {
 		this.chat.onNewMention(async (thread, message) => {
 			try {
-				if (!this.canUserAccess(message.author)) return;
+				if (!this.canUserAccess(message.author, message.raw)) return;
 				const anchoredThread = this.anchorInboundThread(thread, message);
 				const shouldSubscribe =
 					this.integrationImpl?.shouldSubscribeToNewMention?.({ thread, message }) ?? true;
@@ -446,7 +466,7 @@ export class AgentChatBridge {
 
 		this.chat.onAction(async (event) => {
 			try {
-				if (!this.canUserAccess(event.user)) return;
+				if (!this.canUserAccess(event.user, event.raw)) return;
 				await this.hitlResumeHandler.handleAction(event);
 			} catch (error) {
 				await this.postErrorToThread(event.thread, error);
@@ -464,7 +484,7 @@ export class AgentChatBridge {
 		this.chat.onSlashCommand(RESET_SESSION_COMMAND, async (event) => {
 			const thread = this.chat.thread(event.channel.id);
 			try {
-				if (!this.canUserAccess(event.user)) return;
+				if (!this.canUserAccess(event.user, event.raw)) return;
 				await this.resetSession(thread);
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
@@ -484,7 +504,7 @@ export class AgentChatBridge {
 		const unaddressed =
 			!message.isMention && this.integrationImpl?.shouldHandleUnmentionedMessage !== undefined;
 		try {
-			if (!this.canUserAccess(message.author)) return;
+			if (!this.canUserAccess(message.author, message.raw)) return;
 			if (
 				unaddressed &&
 				!this.integrationImpl?.shouldHandleUnmentionedMessage?.({
@@ -515,8 +535,14 @@ export class AgentChatBridge {
 		}
 	}
 
-	private canUserAccess(author: Author): boolean {
-		return this.integrationImpl?.isUserAllowed?.(author, this.integration) ?? true;
+	private canUserAccess(author: Author, raw: unknown): boolean {
+		return (
+			this.integrationImpl?.isUserAllowed?.(
+				author,
+				this.integration,
+				this.integrationImpl.verifiedSender?.(raw),
+			) ?? true
+		);
 	}
 
 	/**
@@ -589,6 +615,7 @@ export class AgentChatBridge {
 		threadId: string,
 		chunks: AgentExecutionStreamChunk[],
 		cardRecipientId?: string,
+		agentThreadId?: string,
 	): Promise<void> {
 		await this.streamConsumer.consume(
 			(async function* () {
@@ -598,6 +625,7 @@ export class AgentChatBridge {
 			{
 				throwOnDeliveryError: true,
 				...(cardRecipientId ? { actingUserId: cardRecipientId } : {}),
+				...(agentThreadId ? { agentThreadId } : {}),
 			},
 		);
 	}
@@ -662,10 +690,13 @@ export class AgentChatBridge {
 		// (unset) — only fall back to the integration's default when the setting
 		// was never configured at all, not when it was deliberately disabled.
 		// Some integration types (see `AgentIntegrationConfig`) carry no
-		// `settings` field at all, hence the `in` check before reading it.
+		// `settings` field at all, or settings without an idle timeout, hence
+		// the `in` checks before reading it.
 		const configuredIdleTimeoutMinutes =
-			'settings' in this.integration
-				? this.integration.settings?.sessionIdleTimeoutMinutes
+			'settings' in this.integration &&
+			this.integration.settings &&
+			'sessionIdleTimeoutMinutes' in this.integration.settings
+				? this.integration.settings.sessionIdleTimeoutMinutes
 				: undefined;
 		const idleTimeoutMinutes =
 			configuredIdleTimeoutMinutes !== undefined
@@ -1066,6 +1097,9 @@ export class AgentChatBridge {
 					integrationOrigin,
 					episodicScope,
 					sender: { userId, userName, fullName, isBot, isMe },
+					...(this.integrationImpl?.verifiedSender
+						? { verifiedSender: this.integrationImpl.verifiedSender(message.raw) ?? null }
+						: {}),
 					attachments: attachments.length ? attachments : undefined,
 					resourceId: session.memory.resourceId,
 					credentialId: this.integration.credentialId,
@@ -1119,7 +1153,13 @@ export class AgentChatBridge {
 		const replyOptional = payload.messageContext.replyExpectation === 'optional';
 		let statusHandle: ReturnType<typeof onceStatusHandle>;
 		try {
-			if (this.integrationImpl?.isUserAllowed?.(payload.sender, integration) === false) {
+			if (
+				this.integrationImpl?.isUserAllowed?.(
+					payload.sender,
+					integration,
+					queuedAccessSender(payload),
+				) === false
+			) {
 				throw new UserError('You can no longer use this integration');
 			}
 			abortSignal.throwIfAborted();
@@ -1161,6 +1201,7 @@ export class AgentChatBridge {
 				statusHandle,
 				actingUserId: payload.sender.userId,
 				quietErrors: replyOptional,
+				agentThreadId: threadId,
 			});
 		} catch (error) {
 			if (replyOptional) {
@@ -1296,7 +1337,9 @@ export class AgentChatBridge {
 				attachmentNotes.push(
 					error instanceof InboundAttachmentAccessError
 						? `[Attachment "${name}" could not be read: ${error.message}]`
-						: `[Attachment "${name}" could not be processed]`,
+						: error instanceof AgentFileLimitError
+							? `[Attachment "${name}" was skipped: ${error.message}]`
+							: `[Attachment "${name}" could not be processed]`,
 				);
 			}
 		}

@@ -8,6 +8,7 @@ import {
 	type PromotionReviewWarning,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
+import { accountSummary } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -68,7 +69,7 @@ export class PromotionReviewChangesService {
 		if (!headCommitSha) {
 			throw new BadRequestError('GitLab did not report the head commit of the merge request.');
 		}
-		const baseline = baselineOf(mergeRequest);
+		const baseline = baselineOf(target.review, mergeRequest);
 		const outcome = outcomeOf(target.review, mergeRequest);
 		let commits;
 		try {
@@ -78,8 +79,8 @@ export class PromotionReviewChangesService {
 				baseline,
 			});
 		} catch (error) {
-			// The host drops the refs of a finished review. Its outcome is still worth showing.
-			if (!(error instanceof PromotionReviewCommitsMissingError) || !outcome) throw error;
+			// The commits are gone from the host or in another repository. Show how the review ended.
+			if (!(error instanceof PromotionReviewCommitsMissingError)) throw error;
 			if (!('commitSha' in baseline)) throw error;
 			return {
 				baselineCommitSha: baseline.commitSha,
@@ -187,12 +188,21 @@ export class PromotionReviewChangesService {
 /**
  * An open review diffs against its merge base with the target branch, so a rebase on the host
  * does not add the commits of the target branch. After a merge, that merge base is the head
- * itself, so a merged or closed review diffs against the base that the host recorded.
+ * itself, so a merged or closed review diffs against the base that the host recorded. A review
+ * that n8n closed counts as finished.
  */
+/** A service account shows its name. A person without a name shows the email, else nothing. */
+function displayNameOrEmail(user: User): string | null {
+	const { firstName, lastName, email } = accountSummary(user);
+	return [firstName, lastName].filter(Boolean).join(' ') || email;
+}
+
 function baselineOf(
+	review: PromotionReview,
 	mergeRequest: GitLabMergeRequest,
 ): { targetBranchName: string } | { commitSha: string; targetBranchName: string } {
-	if (mergeRequest.state === 'opened' || mergeRequest.state === 'locked') {
+	const isOpen = mergeRequest.state === 'opened' || mergeRequest.state === 'locked';
+	if (isOpen && review.state !== 'closed') {
 		return { targetBranchName: mergeRequest.target_branch };
 	}
 	const commitSha = mergeRequest.diff_refs?.base_sha;
@@ -212,6 +222,15 @@ function outcomeOf(
 	mergeRequest: GitLabMergeRequest,
 ): PromotionReviewOutcome | null {
 	const { state, web_url: webUrl } = mergeRequest;
+	// A close by n8n is final, whatever the host does later.
+	if (review.state === 'closed' && !endedOnHostFirst(review, mergeRequest)) {
+		return {
+			state: 'closed',
+			at: review.lastStateChangeAt?.toISOString() ?? null,
+			by: 'n8n',
+			webUrl,
+		};
+	}
 	if (state !== 'merged' && state !== 'closed') return null;
 	const hostActor =
 		state === 'merged'
@@ -219,15 +238,22 @@ function outcomeOf(
 			: mergeRequest.closed_by?.name;
 	const hostAt = state === 'merged' ? mergeRequest.merged_at : mergeRequest.closed_at;
 	const approver = state === 'merged' ? review.approvedBy : null;
-	const approverName = approver
-		? [approver.firstName, approver.lastName].filter(Boolean).join(' ') || approver.email
-		: null;
+	const approverName = approver ? displayNameOrEmail(approver) : null;
 	return {
 		state,
 		at: hostAt ?? null,
 		by: approverName ?? hostActor ?? null,
 		webUrl,
 	};
+}
+
+/** n8n records a host merge or close only after the host made it. */
+function endedOnHostFirst(review: PromotionReview, mergeRequest: GitLabMergeRequest): boolean {
+	const { state } = mergeRequest;
+	if (state !== 'merged' && state !== 'closed') return false;
+	const endedAt = state === 'merged' ? mergeRequest.merged_at : mergeRequest.closed_at;
+	if (!endedAt || !review.lastStateChangeAt) return true;
+	return new Date(endedAt) <= review.lastStateChangeAt;
 }
 
 function newestBranchName({ runs }: PromotionReview): string | null {

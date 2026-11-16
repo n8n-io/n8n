@@ -1,14 +1,15 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 
-import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { mockDataTableSizeValidator } from '@n8n/backend-module-data-table/testing';
+import { DataTableService } from '@n8n/backend-module-data-table';
 
 import { resolveDataTableNodeId } from '../data-table-rows';
 
 beforeAll(async () => {
-	await testModules.loadModules(['data-table']);
+	await testModules.loadModules(['data-table'], packagedModules);
 	await testDb.init();
 	mockDataTableSizeValidator();
 });

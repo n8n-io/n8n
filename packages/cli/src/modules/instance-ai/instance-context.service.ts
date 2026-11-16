@@ -998,7 +998,7 @@ function renderRuns(runs: RunSummary[], isUpdate: boolean, now: Date): string[] 
 				? `ran ${run.total}×, all succeeded`
 				: `ran ${run.total}×, ${run.failed} failed`;
 		// The failure itself, not the newest run, which on a schedule that has since recovered is a
-		// success. `workflow_builder_executions` fetches the live record from this id.
+		// success. `get_execution` fetches the live record from this id.
 		const failure = run.lastFailedExecutionId
 			? `last failure execution:${run.lastFailedExecutionId}`
 			: '';
@@ -1090,11 +1090,14 @@ function liveRecordHint(
 		InstanceContextScope['surface'],
 		Record<ActivityResourceType, string | undefined>
 	> = {
+		// The chat agent reaches these tools through the tool catalog.
 		conversation: {
-			workflow: row.resourceId ? `get_workflow(workflowId="${row.resourceId}")` : undefined,
+			workflow: row.resourceId
+				? `call_tool({ tool: "get_workflow", arguments: { workflowId: "${row.resourceId}" } })`
+				: undefined,
 			credential: row.resourceId
-				? `list_credentials(ids=["${row.resourceId}"])`
-				: 'list_credentials()',
+				? `call_tool({ tool: "list_credentials", arguments: { ids: ["${row.resourceId}"] } })`
+				: 'call_tool({ tool: "list_credentials", arguments: {} })',
 		},
 		mcp: {
 			workflow: row.resourceId ? `get_workflow_details(workflowId="${row.resourceId}")` : undefined,

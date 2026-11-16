@@ -1,23 +1,19 @@
-import { Args, Flags } from '@oclif/core';
+import { Args } from '@oclif/core';
 
 import { directionArg, toDirection } from './direction';
 import { BaseCommand } from '../../base-command';
-import type { PromotionChangesQuery } from '../../client';
+import type { PromotionPreview } from '../../client';
 
-const SORT_FIELDS: ReadonlyArray<NonNullable<PromotionChangesQuery['sort']>> = [
-	'name',
-	'updatedAt',
-	'status',
-];
-const SORT_ORDERS: ReadonlyArray<NonNullable<PromotionChangesQuery['order']>> = ['asc', 'desc'];
+/** The table cuts long cells, so it names a few workflows and counts the rest. */
+const MAX_LISTED_WORKFLOWS = 3;
 
 export default class PromotionEnvironmentListChanges extends BaseCommand {
 	static override description =
-		'List the workflows that differ between a project and the branch of its promotion environment for one direction.';
+		'Preview what Promote or Apply changes in a project: its projects, folders, workflows, credentials, data tables, variables and tags. The table lists each changed resource with its ID, so you can select it. Select workflows with --workflow and folders with --folder. Credentials, data tables and variables come with the workflows in USEDBY. Use --json for the full preview, including the revision for --expected-preview-revision.';
 
 	static override examples = [
 		'<%= config.bin %> promotion-environment list-changes proj-abc promote',
-		'<%= config.bin %> promotion-environment list-changes proj-abc apply --sort=updatedAt --order=desc',
+		'<%= config.bin %> promotion-environment list-changes proj-abc apply --json',
 	];
 
 	static override args = {
@@ -27,39 +23,61 @@ export default class PromotionEnvironmentListChanges extends BaseCommand {
 
 	static override flags = {
 		...BaseCommand.baseFlags,
-		search: Flags.string({ description: 'Only list workflows whose name matches this text' }),
-		sort: Flags.string({
-			description: 'Field to sort by (server default: name)',
-			options: [...SORT_FIELDS],
-		}),
-		order: Flags.string({
-			description: 'Sort order (server default: asc)',
-			options: [...SORT_ORDERS],
-		}),
 	};
 
 	async run() {
 		const { args, flags } = await this.parse(PromotionEnvironmentListChanges);
 		await this.execute(async () => {
-			const result = await this.getClient(flags).listProjectPromotionChanges(
+			const preview = await this.getClient(flags).listProjectPromotionChanges(
 				args.projectId,
 				toDirection(args.direction),
-				{
-					search: flags.search,
-					sort: SORT_FIELDS.find((field) => field === flags.sort),
-					order: SORT_ORDERS.find((order) => order === flags.order),
-				},
 			);
-			// JSON and jq consumers want the `commitSha` + `changes` wrapper; table
-			// and id-only need the rows themselves, or the array serializes into one
-			// cell (table) or yields nothing (no top-level `id`).
 			if (this.isJsonMode(flags)) {
-				this.output(result, flags);
-			} else {
-				this.output(result.changes, flags, {
-					columns: ['id', 'name', 'type', 'status', 'version', 'updatedAt'],
-				});
+				this.output(preview, flags);
+				return;
 			}
+			if (preview.blocker && !flags.quiet) {
+				this.logToStderr(
+					`The changes of this project are in an open review (${preview.blocker.reviewId}), so none are listed. You can promote again when the review is merged or closed.`,
+				);
+			}
+			this.output(changedRows(preview), flags, {
+				columns: ['type', 'id', 'name', 'change', 'folder', 'usedBy', 'selectable'],
+			});
 		});
 	}
+}
+
+/** One row for each changed resource. Unchanged resources only give context, so they stay in --json. */
+export function changedRows({ resources, dependencies }: PromotionPreview) {
+	const byKey = new Map(resources.map((resource) => [resource.key, resource]));
+	// Until credentials, data tables and variables can be selected (LIGO-1390), users send them by
+	// selecting a workflow that carries them. Remove the column when they become selectable.
+	const usedBy = new Map<string, string[]>();
+	for (const { workflowKey, resourceKey, included } of dependencies) {
+		const workflow = byKey.get(workflowKey);
+		if (!included || !workflow) continue;
+		usedBy.set(resourceKey, [...(usedBy.get(resourceKey) ?? []), workflow.id]);
+	}
+	return resources
+		.filter(({ change }) => change !== 'unchanged')
+		.map(({ key, type, id, name, change, parentKey, selectable }) => {
+			const parent = parentKey === null ? undefined : byKey.get(parentKey);
+			return {
+				type,
+				id,
+				name,
+				change,
+				folder: parent?.type === 'folder' ? parent.name : undefined,
+				usedBy: listIds(usedBy.get(key) ?? []),
+				selectable,
+			};
+		});
+}
+
+function listIds(ids: string[]): string | undefined {
+	if (ids.length === 0) return undefined;
+	const listed = ids.slice(0, MAX_LISTED_WORKFLOWS).join(', ');
+	const more = ids.length - MAX_LISTED_WORKFLOWS;
+	return more > 0 ? `${listed} (+${more} more)` : listed;
 }

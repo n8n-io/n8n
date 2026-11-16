@@ -33,10 +33,10 @@ import type { AutoPublishMode, INode } from 'n8n-workflow';
 import {
 	shouldAutoPublishWorkflow,
 	jsonParse,
-	OperationalError,
-	UnexpectedError,
-	UserError,
+	pickVersionedSettings,
+	versionedSettingsEqual,
 } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
@@ -44,14 +44,19 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { IWorkflowToImport } from '@/interfaces';
-import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableDDLService } from '@/modules/data-table/persistence/data-table-ddl';
-import { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
-import { DataTable } from '@/modules/data-table/data-table.entity';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
+import {
+	DataTableColumn,
+	DataTableColumnRepository,
+	DataTableDDLService,
+	DataTableSizeValidator,
+	DataTable,
+	DataTableRepository,
+	isValidColumnName,
+	isValidDataTableId,
+} from '@n8n/backend-module-data-table';
+
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { isUniqueConstraintError } from '@/response-helper';
@@ -193,6 +198,7 @@ export class SourceControlImportService {
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
+		private readonly workflowIndexService: WorkflowIndexService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -866,7 +872,7 @@ export class SourceControlImportService {
 			this.logger.warn(`Workflow file ${candidate.file}: ${warning}`);
 		}
 
-		const { versionId, nodes, connections, id, owner, nodeGroups } = importedWorkflow;
+		const { versionId, nodes, connections, id, owner, nodeGroups, settings } = importedWorkflow;
 
 		if (!id || !versionId || !nodes || !connections) {
 			this.logger.error(
@@ -963,9 +969,14 @@ export class SourceControlImportService {
 			await this.workflowMutationHooks.afterWorkflowArchived(id, null);
 		}
 
+		const storedWorkflow = await this.workflowRepository.findOneBy({ id });
+		if (storedWorkflow) {
+			await this.workflowIndexService.updateIndexForDraft(storedWorkflow);
+		}
+
 		try {
 			await this.saveOrUpdateWorkflowHistory(
-				{ id, versionId, nodes, connections, nodeGroups },
+				{ id, versionId, nodes, connections, nodeGroups, settings },
 				userId,
 			);
 		} catch (error) {
@@ -2099,7 +2110,7 @@ export class SourceControlImportService {
 
 		for (const workflow of workflows) {
 			if (workflow.activeVersionId !== null) {
-				await this.workflowService.deactivateWorkflowAsSystem(workflow.id);
+				await this.workflowService.deactivateWorkflowAsSystem(workflow.id, 'source-control-pull');
 			}
 			await this.waitForUnpublishToSettle(workflow.id);
 			await this.executionPersistence.hardDeleteByWorkflowId(workflow.id);
@@ -2322,11 +2333,12 @@ export class SourceControlImportService {
 			nodes: IWorkflowToImport['nodes'];
 			connections: IWorkflowToImport['connections'];
 			nodeGroups: IWorkflowToImport['nodeGroups'];
+			settings: IWorkflowToImport['settings'];
 			id: string;
 		},
 		userId: string,
 	): Promise<void> {
-		const { versionId, nodes, connections, nodeGroups, id } = importedWorkflow;
+		const { versionId, nodes, connections, nodeGroups, settings, id } = importedWorkflow;
 
 		// Fetch user for author info
 		const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -2339,20 +2351,26 @@ export class SourceControlImportService {
 			const nodesChanged = !isEqual(existingVersion.nodes, nodes);
 			const connectionsChanged = !isEqual(existingVersion.connections, connections);
 			const nodeGroupsChanged = !isEqual(existingVersion.nodeGroups, nodeGroups);
+			const settingsChanged = !versionedSettingsEqual(existingVersion.settings, settings);
 
 			if (nodesChanged || connectionsChanged || nodeGroupsChanged) {
 				await this.workflowHistoryService.updateVersion(id, versionId, {
 					nodes,
 					connections,
 					nodeGroups,
+					settings: pickVersionedSettings(settings),
 					authors,
+				});
+			} else if (settingsChanged) {
+				await this.workflowHistoryService.updateVersion(id, versionId, {
+					settings: pickVersionedSettings(settings),
 				});
 			}
 		} else {
 			// Create new version history record
 			await this.workflowHistoryService.saveVersion(
 				authors,
-				{ versionId, nodes, connections, nodeGroups },
+				{ versionId, nodes, connections, nodeGroups, settings },
 				id,
 			);
 		}

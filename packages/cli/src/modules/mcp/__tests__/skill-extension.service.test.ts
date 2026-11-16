@@ -259,6 +259,22 @@ describe('McpSkillExtensionService', () => {
 			});
 		});
 
+		it('reports the provider and access of the source of a synced skill', async () => {
+			skillService.readForMcp.mockResolvedValue({
+				...content(releaseNotes, 'project-1'),
+				origin: { provider: 'github', access: 'credential' },
+			});
+
+			await client.request('resources/read', {
+				uri: 'skill://skill_a1/release-notes-writer/references/style.md',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.MCP_READ_SKILL_FILE,
+				expect.objectContaining({ source_provider: 'github', source_access: 'credential' }),
+			);
+		});
+
 		it.each([
 			['the listed URI', 'references/Q%26A%20%231%3F.md'],
 			['a URI built from the SKILL.md text', 'references/Q&A%20%231%3F.md'],

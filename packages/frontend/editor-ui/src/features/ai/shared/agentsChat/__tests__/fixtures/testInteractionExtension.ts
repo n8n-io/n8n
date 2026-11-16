@@ -88,6 +88,7 @@ export const TEST_HOST_EVENT = {
 	START: 'test.start',
 	END: 'test.end',
 	TRANSIENT: 'test.transient',
+	THINKING: 'test.thinking',
 } as const;
 
 export const TestHostEvent = defineComponent({
@@ -128,5 +129,11 @@ export const testHostEventExtensions: readonly AgentsChatInteractionExtension[] 
 		matchHostEvent: matchName(TEST_HOST_EVENT.TRANSIENT),
 		hostEventComponent: TestHostEvent,
 		hostEventPlacement: 'transient',
+	},
+	{
+		key: 'test_host_thinking',
+		matchHostEvent: matchName(TEST_HOST_EVENT.THINKING),
+		hostEventComponent: TestHostEvent,
+		hostEventPlacement: 'thinking',
 	},
 ];

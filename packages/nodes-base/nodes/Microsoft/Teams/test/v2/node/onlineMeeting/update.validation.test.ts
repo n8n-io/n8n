@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { createExecuteContext, meetingHeaders, setParams } from '../helpers';
 import { versionDescription } from '../../../../v2/actions/versionDescription';
@@ -18,7 +19,7 @@ vi.mock('../../../../v2/transport', async () => {
 
 describe('Microsoft Teams V2 — onlineMeeting:update', () => {
 	const meetingId = 'MSpkYzE3Njc0Yy04MWQ5LTRhZGItYmZi';
-	const endpoint = `/v1.0/me/onlineMeetings/${meetingId}`;
+	const endpoint = requestPath`/v1.0/me/onlineMeetings/${meetingId}`;
 	const joinWebUrl =
 		'https://teams.microsoft.com/l/meetup-join/19%3ameeting_ZDE2Nzg0%40thread.v2/0';
 	const byUrl = { __rl: true, mode: 'url', value: joinWebUrl };
@@ -104,7 +105,7 @@ describe('Microsoft Teams V2 — onlineMeeting:update', () => {
 		expect(transport.microsoftApiRequest).toHaveBeenNthCalledWith(
 			1,
 			'GET',
-			'/v1.0/me/onlineMeetings',
+			requestPath`/v1.0/me/onlineMeetings`,
 			{},
 			{ $filter: `JoinWebUrl eq '${joinWebUrl}'` },
 			undefined,
