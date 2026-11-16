@@ -2,11 +2,13 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { NotFoundError, UserError } from '@n8n/errors';
 import {
+	downgradeConfigDocument,
 	migrateToLatest,
 	trustedSourceConfigSchemaFor,
 	TrustedSourceStore,
 	type SurfaceId,
 	type TrustedSource,
+	type TrustedSourceConfig,
 	type TrustedSourceConfigInput,
 	type TrustedSourceConfigLatest,
 	type TrustedSourceMetadata,
@@ -352,18 +354,33 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 	}
 
 	private async ensureAppsSurface(source: TrustedSourceEntity): Promise<void> {
-		const config = trustedSourceConfigSchemaFor('system').parse(
-			jsonParse<unknown>(await this.cipher.decryptV2(source.config)),
-		);
+		let config: TrustedSourceConfig;
+		try {
+			config = await this.parseConfig(source);
+		} catch (error) {
+			// The seeder runs at boot: a row that this release cannot read must not stop it.
+			this.logger.warn('Skipping the apps surface check on an unreadable system trusted source', {
+				id: source.id,
+				reason: ensureError(error).message,
+			});
+			return;
+		}
 		if (config.surfaces.apps === undefined) {
 			config.surfaces.apps = {};
 			await this.trustedSourceRepository.updateById(
 				source.id,
-				{ config: await this.cipher.encryptV2(config) },
+				// The written document is the parsed one, so the version column must follow it.
+				{ configVersion: config.version, config: await this.cipher.encryptV2(config) },
 				{},
 			);
 			await this.invalidateCache(source);
 		}
+	}
+
+	/** The one place that reads a stored config, so every reader accepts the same documents. */
+	private async parseConfig(row: TrustedSourceEntity): Promise<TrustedSourceConfig> {
+		const document = jsonParse<unknown>(await this.cipher.decryptV2(row.config));
+		return trustedSourceConfigSchemaFor(row.managedBy).parse(downgradeConfigDocument(document));
 	}
 
 	private async loadAdminRow(id: string, action: 'update' | 'delete') {
@@ -390,9 +407,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 	private async load(row: TrustedSourceEntity | null): Promise<TrustedSource | undefined> {
 		if (!row) return undefined;
 		try {
-			const document = jsonParse<unknown>(await this.cipher.decryptV2(row.config));
-			const config = trustedSourceConfigSchemaFor(row.managedBy).parse(document);
-			return this.toRuntime(row, migrateToLatest(config));
+			return this.toRuntime(row, migrateToLatest(await this.parseConfig(row)));
 		} catch (error) {
 			this.logger.warn('Skipping unusable trusted source', {
 				id: row.id,

@@ -2,6 +2,7 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import {
 	configMigrations,
+	downgradeConfigDocument,
 	JwtAlgorithmSchema,
 	migrateToLatest,
 	TrustedSourceConfigSchema,
@@ -365,4 +366,59 @@ describe('migrateToLatest', () => {
 			expect(TrustedSourceConfigSchema.safeParse(migrated).success).toBe(true);
 		},
 	);
+});
+
+describe('downgradeConfigDocument', () => {
+	const provisioningIdentity = {
+		...trustedSourceConfigV1Fixture.identity,
+		roleMapping: {
+			mode: 'on-provision',
+			instanceRoleRules: [],
+			projectRoleRules: [],
+			fallbackInstanceRole: 'global:member',
+		},
+	};
+	const versionOne = {
+		...trustedSourceConfigV1Fixture,
+		identity: { ...provisioningIdentity, provision: { human: 'jit' } },
+	};
+	const versionTwo = {
+		...versionOne,
+		version: 2,
+		identity: { ...provisioningIdentity, provision: { person: 'jit' } },
+	};
+
+	test('returns a version 2 document as the version 1 document with the same provisioning mode', () => {
+		const downgraded = downgradeConfigDocument(versionTwo);
+
+		expect(downgraded).toEqual(versionOne);
+		expect(TrustedSourceConfigSchema.parse(downgraded)).toEqual(versionOne);
+	});
+
+	test('takes the provisioning mode from `person` when a version 2 document also holds `human`', () => {
+		const downgraded = downgradeConfigDocument({
+			...versionTwo,
+			identity: { ...provisioningIdentity, provision: { human: 'jit', person: 'off' } },
+		});
+
+		expect(downgraded).toMatchObject({ identity: { provision: { human: 'off' } } });
+	});
+
+	test('returns a version 2 document without an identity block as a document the schema accepts', () => {
+		const parsed = TrustedSourceConfigSchema.parse(
+			downgradeConfigDocument({ ...minimalDocument, version: 2 }),
+		);
+
+		expect(parsed).toMatchObject({ version: 1, identity: { provision: { human: 'off' } } });
+	});
+
+	test.each([
+		{ name: 'a version 1 document', document: versionOne },
+		{ name: 'a document of a later version', document: { ...versionTwo, version: 3 } },
+		{ name: 'a string', document: 'not-a-document' },
+		{ name: 'null', document: null },
+		{ name: 'an array', document: [versionTwo] },
+	])('returns $name unchanged', ({ document }) => {
+		expect(downgradeConfigDocument(document)).toEqual(document);
+	});
 });

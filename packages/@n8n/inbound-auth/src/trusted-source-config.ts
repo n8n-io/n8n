@@ -270,6 +270,34 @@ type ConfigMigration = (config: TrustedSourceConfig) => TrustedSourceConfig;
 /** One step per version, keyed by the version it migrates from. Empty until a v2 exists. */
 export const configMigrations: Record<number, ConfigMigration> = {};
 
+/** Version 2 renamed `identity.provision.human` to `person` and changed nothing else. */
+const VersionTwoDocumentSchema = z
+	.object({
+		version: z.literal(2),
+		identity: z
+			.object({ provision: z.object({ person: z.unknown() }).passthrough().default({}) })
+			.passthrough()
+			.default({}),
+	})
+	.passthrough();
+
+/**
+ * A later release can store a version 2 document, and a rollback to this release must still read
+ * it. This returns the version 1 form of such a document and every other input unchanged, so the
+ * schema stays the only judge of what is valid.
+ */
+export function downgradeConfigDocument(document: unknown): unknown {
+	const parsed = VersionTwoDocumentSchema.safeParse(document);
+	if (!parsed.success) return document;
+	const { identity } = parsed.data;
+	const { person, ...provision } = identity.provision;
+	return {
+		...parsed.data,
+		version: 1,
+		identity: { ...identity, provision: { ...provision, human: person } },
+	};
+}
+
 const LATEST_VERSION = 1;
 
 export type TrustedSourceConfigLatest = Extract<
