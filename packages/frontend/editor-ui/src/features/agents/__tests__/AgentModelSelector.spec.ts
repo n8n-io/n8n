@@ -114,16 +114,17 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
 	...(await importOriginal<typeof typeAvailabilityPolicies>()),
-	useTypeAvailabilityPoliciesStore: () => ({
-		getCredentialTypeAvailability: (name: string) => {
+	useTypeAvailability: () => ({
+		nodeTypeRestriction: () => null,
+		credentialTypeRestriction: (name: string) => {
 			const scope = restrictedCredentialTypes.value[name];
-			return scope ? { name, available: false, scope } : { name, available: true };
+			return scope ? { name, available: false, scope } : null;
 		},
 	}),
 	ContactAdminModal: {
 		name: 'ContactAdminModal',
-		props: ['open', 'nodeTypeName', 'kind', 'audience'],
-		template: '<div v-if="open" data-testid="contact-admin-modal">{{ nodeTypeName }}</div>',
+		props: ['open', 'typeName', 'kind', 'audience'],
+		template: '<div v-if="open" data-testid="contact-admin-modal">{{ typeName }}</div>',
 	},
 }));
 
@@ -445,7 +446,7 @@ describe('AgentModelSelector', () => {
 		expect(wrapper.findComponent({ name: 'ContactAdminModal' }).props()).toEqual({
 			open: true,
 			kind: 'credential',
-			nodeTypeName: 'OpenAI credentials',
+			typeName: 'OpenAI credentials',
 			audience: 'project',
 		});
 	});

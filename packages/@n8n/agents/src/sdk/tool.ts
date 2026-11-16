@@ -21,6 +21,8 @@ export type ApprovalSuspendPayload = z.infer<typeof APPROVAL_SUSPEND_SCHEMA>;
 export const APPROVAL_RESUME_SCHEMA = z.object({
 	approved: z.boolean(),
 	scope: z.enum(['once', 'session']).optional(),
+	/** Why the action was declined. The agent reads it, so it can explain the decline. */
+	reason: z.string().optional(),
 });
 
 export type ApprovalResumePayload = z.infer<typeof APPROVAL_RESUME_SCHEMA>;
@@ -165,7 +167,11 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 			await approvalContext?.onDecision(grantKey, decision);
 			interruptCtx.abortSignal?.throwIfAborted();
 			if (!decision.approved) {
-				return { declined: true, message: `Tool "${currentTool.name}" was not approved` };
+				const message = `Tool "${currentTool.name}" was not approved`;
+				return {
+					declined: true,
+					message: decision.reason ? `${message}: ${decision.reason}` : message,
+				};
 			}
 			if (tool.suspendSchema === undefined) {
 				return await originalHandler(input, interruptCtx);
@@ -239,7 +245,11 @@ export class Tool<
 
 	private toModelOutputFn?: (output: OutputType<TOutput>) => unknown;
 
+	private toTraceOutputFn?: (output: OutputType<TOutput>) => unknown;
+
 	private outputTrustValue?: BuiltTool['outputTrust'];
+
+	private requiresWorkspaceValue?: true;
 
 	private endsTurnFn?: (output: OutputType<TOutput>) => boolean;
 
@@ -363,6 +373,15 @@ export class Tool<
 		return this;
 	}
 
+	/**
+	 * Derive data for the host's execution trace from the handler output.
+	 * The `tool-result` stream chunk carries it as `traceOutput`. The model never sees it.
+	 */
+	toTraceOutput(fn: (output: OutputType<TOutput>) => unknown): this {
+		this.toTraceOutputFn = fn;
+		return this;
+	}
+
 	/** End the run, without another model call, when `fn` returns true for an output. */
 	endsTurnWhen(fn: (output: OutputType<TOutput>) => boolean): this {
 		this.endsTurnFn = fn;
@@ -372,6 +391,12 @@ export class Tool<
 	/** Treat every model-facing result and error from this tool as external reference data. */
 	untrustedOutput(): this {
 		this.outputTrustValue = 'untrusted';
+		return this;
+	}
+
+	/** Mark the handler as one that uses the agent's workspace, so the runtime prepares it early. */
+	requiresWorkspace(): this {
+		this.requiresWorkspaceValue = true;
 		return this;
 	}
 
@@ -459,7 +484,9 @@ export class Tool<
 			handleCancellation: this.handleCancellationValue,
 			toMessage: this.toMessageFn as (output: unknown) => AgentMessage | undefined,
 			toModelOutput: this.toModelOutputFn as ((output: unknown) => unknown) | undefined,
+			toTraceOutput: this.toTraceOutputFn as ((output: unknown) => unknown) | undefined,
 			outputTrust: this.outputTrustValue,
+			...(this.requiresWorkspaceValue ? { requiresWorkspace: true } : {}),
 			endsTurn: this.endsTurnFn as ((output: unknown) => boolean) | undefined,
 			handler: this.handlerFn as (
 				input: unknown,

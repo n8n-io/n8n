@@ -28,6 +28,7 @@ import { policyForFloor, policyMeetsFloor } from '@/modules/redaction/redaction-
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
@@ -37,6 +38,7 @@ import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 import { dropRedactionPolicy } from './utils';
+import { WorkflowEngineDefaults } from './workflow-engine-defaults';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowValidationService } from './workflow-validation.service';
@@ -78,6 +80,7 @@ export class WorkflowCreationService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
+		private readonly workflowEngineDefaults: WorkflowEngineDefaults,
 	) {}
 
 	async prepareBatchContext(
@@ -150,7 +153,7 @@ export class WorkflowCreationService {
 			sourceWorkflowId?: string;
 			autosaved?: boolean;
 			uiContext?: string;
-			publicApi?: boolean;
+			publicApi?: PublicApiCaller;
 			source?: WorkflowActionSource;
 			versionName?: string;
 			versionDescription?: string;
@@ -353,6 +356,8 @@ export class WorkflowCreationService {
 					transactionManager,
 					batchContext?.autoExposeNewWorkflows,
 				);
+
+				newWorkflow.settings = this.workflowEngineDefaults.applyTo(newWorkflow.settings);
 
 				if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
 					newWorkflow.parentFolder = await this.findParentFolderInProjectOrFail(

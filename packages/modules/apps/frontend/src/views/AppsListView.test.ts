@@ -1,9 +1,9 @@
 import type { AppResponse } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
-import { componentRegistry } from '@n8n/frontend-module-sdk';
+import { capabilities, capabilityRegistry, componentRegistry } from '@n8n/frontend-module-sdk';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { defineComponent } from 'vue';
+import { computed, defineComponent } from 'vue';
 
 import { listApps } from '../apps.api';
 import AppsListView from './AppsListView.vue';
@@ -11,6 +11,7 @@ import AppsListView from './AppsListView.vue';
 vi.mock('../apps.api');
 
 const route = vi.hoisted(() => ({ params: {} as Record<string, string> }));
+const createApp = vi.hoisted(() => vi.fn());
 const setCurrentPage = vi.hoisted(() => vi.fn());
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -56,6 +57,7 @@ const app = (id: string): AppResponse => ({
 	visibility: 'project',
 	draftVersionId: null,
 	publishedVersionId: null,
+	publishedUrl: null,
 	createdAt: '2026-10-01T10:00:00.000Z',
 	updatedAt: '2026-10-02T10:00:00.000Z',
 });
@@ -79,17 +81,29 @@ describe('AppsListView', () => {
 		sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '0');
 		componentRegistry.register('resources-list-layout', ResourcesListLayoutStub);
 		componentRegistry.register('project-header', {
-			template: '<div data-test-id="header"><slot /></div>',
+			props: ['mainButton'],
+			template: '<div data-test-id="header" :data-main-button="mainButton"><slot /></div>',
 		});
 		componentRegistry.register('insights-summary', {
 			template: '<div data-test-id="insights-summary" />',
 		});
+		capabilityRegistry.provide(capabilities.projectPermissions, {
+			scopesFor: () => ['app:create', 'app:list'],
+			defaultProjectId: () => 'personal-project',
+			isReadOnly: () => false,
+		});
+		capabilityRegistry.provide(capabilities.createAppAssistantHandoff, () => ({
+			available: computed(() => true),
+			openApp: vi.fn(),
+			createApp,
+		}));
 		vi.mocked(listApps).mockResolvedValue({ data: [app('1'), app('2')], count: 2 });
 	});
 
 	afterEach(() => {
 		sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
 		componentRegistry.clear();
+		capabilityRegistry.clear();
 		route.params = {};
 		vi.clearAllMocks();
 	});
@@ -100,6 +114,7 @@ describe('AppsListView', () => {
 
 		expect(await findAllByTestId('app-card')).toHaveLength(2);
 		expect(getByTestId('header')).toBeInTheDocument();
+		expect(getByTestId('header')).toHaveAttribute('data-main-button', 'app');
 		expect(listApps).toHaveBeenCalledWith(expect.anything(), 'project-1', {
 			skip: 0,
 			take: 50,
@@ -138,9 +153,27 @@ describe('AppsListView', () => {
 
 	it('shows the empty state when there are no apps', async () => {
 		vi.mocked(listApps).mockResolvedValue({ data: [], count: 0 });
-		const { findByTestId } = renderComponent();
+		const { findByTestId, findByText } = renderComponent();
 
 		expect(await findByTestId('apps-empty-state')).toBeInTheDocument();
+		expect(await findByText('Create your first app')).toBeVisible();
+		expect(
+			await findByText(
+				'Give your team a dashboard, form or tracker they open in the browser. It works with your workflows, data tables and agents.',
+			),
+		).toBeVisible();
+	});
+
+	it('starts a pending app from the empty state', async () => {
+		route.params = { projectId: 'project-1' };
+		vi.mocked(listApps).mockResolvedValue({ data: [], count: 0 });
+		const { findByRole } = renderComponent();
+
+		await userEvent.click(await findByRole('button', { name: 'Create app' }));
+
+		const appId = createApp.mock.calls.at(-1)?.[0]?.appId;
+		expect(appId).toEqual(expect.any(String));
+		expect(createApp).toHaveBeenCalledWith({ projectId: 'project-1', appId });
 	});
 
 	it('does not show the empty state while a search is cleared', async () => {

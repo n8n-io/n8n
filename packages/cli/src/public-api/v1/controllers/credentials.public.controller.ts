@@ -60,6 +60,7 @@ import {
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
+import type { PublicApiRequest } from '@/public-api/public-api-client';
 
 /**
  * Allows us to type the input to `toCredentialPublicDto` and have the return type of each service method satisfy that input type.
@@ -216,7 +217,7 @@ export class CredentialsPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	async createCredential(
-		req: AuthenticatedRequest,
+		req: PublicApiRequest,
 		_res: Response,
 		@Body body: CreateCredentialPublicDto,
 	): Promise<CredentialPublicDto> {
@@ -249,11 +250,15 @@ export class CredentialsPublicController {
 			...(includeDescription && {
 				credentialDescriptionLength: credential.description?.length ?? 0,
 			}),
-			publicApi: true,
+			publicApi: req.publicApiClient,
 			projectId: project?.id,
 			projectType: project?.type,
 			isDynamic: credential.isResolvable ?? false,
 			jweEnabled: body.data.jweEnabled === true,
+			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(
+				credential.type,
+				body.data,
+			),
 		});
 
 		return toCredentialPublicDto(credential, includeDescription);
@@ -358,6 +363,10 @@ export class CredentialsPublicController {
 			jweEnabled: credentialData.jweEnabled === true,
 			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(updatedCredential.type),
 			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(
+				updatedCredential.type,
+				credentialData,
+			),
+			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(
 				updatedCredential.type,
 				credentialData,
 			),

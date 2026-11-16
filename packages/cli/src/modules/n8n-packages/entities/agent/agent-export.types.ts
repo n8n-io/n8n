@@ -28,11 +28,14 @@ export interface AgentSelectionExportRequest {
 	projectWorkflowIds?: string[];
 	versionPolicy?: ExportVersionPolicy;
 	dependencyPolicy?: ExportDependencyPolicy;
+	/** Whether project exports include archived Agents. Agents given by id always export. */
+	includeArchived?: boolean;
 	projectTargetsById?: Map<string, string>;
 }
 
 export interface AgentSelectionExportResult {
 	agentEntries: ManifestEntry[];
+	skillEntries: ManifestEntry[];
 	projectEntries: ManifestEntry[];
 	projectTargetsById: Map<string, string>;
 	requirements: ExportRequirements;

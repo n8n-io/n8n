@@ -7,8 +7,6 @@ test.use({
 	capability: {
 		services: ['gitea'],
 		env: {
-			N8N_ENABLED_MODULES: 'promotions',
-			N8N_ENV_FEAT_PROMOTIONS: 'true',
 			TEST_ISOLATION: 'promotions',
 		},
 	},
@@ -24,7 +22,7 @@ test.describe(
 			async ({ n8n, api, services }) => {
 				expect(
 					await api.getActiveModules(),
-					'the promotions module is not active: it needs N8N_ENABLED_MODULES=promotions and a license granting feat:promotions at startup',
+					'the promotions module is not active: it needs a license granting feat:promotions at startup',
 				).toContain('promotions');
 				await api.enableFeature('promotions');
 				const gitea = services.gitea;

@@ -87,6 +87,22 @@ describe('buildWorkflow build project', () => {
 		expect(result).toMatchObject({ buildProjectId: 'build-project', buildUserId: 'build-user' });
 	});
 
+	it('reports a team build project without a build user', async () => {
+		const { client, mocks } = makeClient();
+
+		const result = await buildWorkflow({
+			client,
+			...baseConfig,
+			buildProject: vi.fn().mockResolvedValue({ projectId: 'team-project' }),
+			credentials: [{ type: 'slackApi' }],
+		});
+
+		expect(mocks.ensureThread.mock.calls[0]?.[1]).toBe('team-project');
+		expect(mocks.createCredential.mock.calls[0]?.[4]).toBe('team-project');
+		expect(result.buildProjectId).toBe('team-project');
+		expect(result).not.toHaveProperty('buildUserId');
+	});
+
 	it('keeps the build user on a failed build, so cleanup still removes it', async () => {
 		const { client } = makeClient(vi.fn().mockRejectedValue(new Error('chat send failed')));
 

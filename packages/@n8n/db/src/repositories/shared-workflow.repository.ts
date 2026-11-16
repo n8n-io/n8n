@@ -302,6 +302,15 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		return [...new Set(projectIds)];
 	}
 
+	/** Reads one column and no relation. Pass `ctx` inside a transaction. */
+	async getWorkflowOwningProjectId(workflowId: string, ctx: OperationContext = {}) {
+		const row = await this.managerFor(ctx).findOne(SharedWorkflow, {
+			select: { projectId: true },
+			where: { workflowId, role: 'workflow:owner' },
+		});
+		return row?.projectId;
+	}
+
 	/**
 	 * Pass `ctx` when calling from inside a transaction — the read then runs on that
 	 * transaction's connection instead of checking out a second one, which would

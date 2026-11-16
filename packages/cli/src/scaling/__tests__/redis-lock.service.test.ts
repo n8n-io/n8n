@@ -2,7 +2,7 @@ import { LockNamespace } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { Redis as SingleNodeClient } from 'ioredis';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 

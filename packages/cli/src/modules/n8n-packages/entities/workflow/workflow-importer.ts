@@ -29,7 +29,9 @@ import type {
 	WorkflowImportContext,
 	WorkflowImportPlan,
 	WorkflowPlanItem,
+	WorkflowImportDecision,
 } from './workflow-import.types';
+import { decidePlannedPublishingAction } from './workflow-publishing-policy';
 import { LayoutConflictPolicy } from '../../n8n-packages.types';
 import type {
 	ImportBindingMap,
@@ -91,7 +93,7 @@ export class WorkflowImporter {
 		for (const workflow of prepared) {
 			const existing = existingBySourceWorkflowId.get(workflow.sourceWorkflowId) ?? null;
 			if (existing && ambiguousSourceIds.has(workflow.sourceWorkflowId)) {
-				items.push({ action: 'skip', ...workflow, existing });
+				items.push({ action: 'skip', ...workflow, existing, publishingAction: 'noop' });
 				continue;
 			}
 			const { action, blocked } = decideImportConflictAction(
@@ -99,7 +101,11 @@ export class WorkflowImporter {
 				existing !== null,
 			);
 
-			const item = toPlanItem(workflow, existing, action, options.idPolicy);
+			const decision = toPlanItem(workflow, existing, action, options.idPolicy);
+			const item: WorkflowPlanItem = {
+				...decision,
+				publishingAction: decidePlannedPublishingAction(options.publishingPolicy, decision),
+			};
 			items.push(item);
 
 			if (item.action === 'create' && !blocked) {
@@ -283,7 +289,7 @@ export class WorkflowImporter {
 			return await this.workflowCreationService.createWorkflow(context.user, entity, {
 				projectId: context.projectId,
 				parentFolderId: item.parentFolderId ?? context.folderId ?? undefined,
-				publicApi: true,
+				publicApi: context.publicApi,
 				source: 'import',
 				sourceWorkflowId: item.sourceWorkflowId,
 				...(batchContext ? { batchContext } : {}),
@@ -294,7 +300,7 @@ export class WorkflowImporter {
 		const entity = prepareEntityForPersist(item.entity, bindings);
 
 		const updated = await this.workflowService.update(context.user, entity, item.existing.id, {
-			publicApi: true,
+			publicApi: context.publicApi,
 			source: 'import',
 			allowArchivedUpdate: item.existing.isArchived,
 			...(item.moveToFolderId !== undefined
@@ -324,10 +330,10 @@ export class WorkflowImporter {
 			transition === 'archive'
 				? await this.workflowService.archive(context.user, item.existing.id, {
 						skipArchived: true,
-						publicApi: true,
+						publicApi: context.publicApi,
 					})
 				: await this.workflowService.unarchive(context.user, item.existing.id, {
-						publicApi: true,
+						publicApi: context.publicApi,
 					});
 
 		// The plan already checked `workflow:delete`; this only trips if access changed since.
@@ -395,7 +401,7 @@ function toPlanItem(
 	existing: WorkflowEntity | null,
 	action: ImportDecision['action'],
 	idPolicy: WorkflowIdPolicy,
-): WorkflowPlanItem {
+): WorkflowImportDecision {
 	if (existing === null) {
 		return {
 			action: 'create',

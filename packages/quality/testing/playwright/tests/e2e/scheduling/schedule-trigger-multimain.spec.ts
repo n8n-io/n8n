@@ -22,7 +22,7 @@ test.use(durableScheduleTestConfig);
 test.describe(
 	'Schedule Trigger multi-main (durable scheduler) @mode:multi-main',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Application' }],
 	},
 	() => {
 		test('should fire an activated Schedule Trigger exactly once across the cluster', async ({

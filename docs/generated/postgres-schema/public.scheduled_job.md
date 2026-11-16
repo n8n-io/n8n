@@ -12,6 +12,7 @@
 | id | integer |  | false | [public.scheduled_task](public.scheduled_task.md) |  |  |
 | intervalSeconds | integer |  | true |  |  | Gap between fires in seconds; set only when kind is 'interval'. |
 | kind | varchar(16) |  | false |  |  | Recurrence kind; selects which of the schedule columns below apply. |
+| lastDispatchedAt | timestamp(3) with time zone |  | true |  |  | When the newest occurrence of this job reported its effect. Survives the retention of the occurrence rows. |
 | lastFiredAt | timestamp(3) with time zone |  | true |  |  | Last time an occurrence was materialized; used to recompute nextRunAt. |
 | maxAttempts | integer | 1 | false |  |  | Retry ceiling copied onto each occurrence this job materializes. |
 | misfireGraceSeconds | integer | 60 | false |  |  | How late an occurrence may be before the misfire policy applies to it; an ordinary restart stays inside it. |
@@ -87,6 +88,7 @@ erDiagram
   integer id
   integer intervalSeconds
   varchar_16_ kind
+  timestamp_3__with_time_zone lastDispatchedAt
   timestamp_3__with_time_zone lastFiredAt
   integer maxAttempts
   integer misfireGraceSeconds

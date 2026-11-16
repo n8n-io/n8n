@@ -28,7 +28,7 @@ export const featureMaturity = {
 		docsUrl: ASSISTANT_DOCS_URL,
 	},
 	agents: { preview: true, limitedEnterpriseSupport: true, docsUrl: AGENTS_DOCS_URL },
-	n8nPackages: { preview: true, limitedEnterpriseSupport: false },
+	n8nPackages: { preview: true, limitedEnterpriseSupport: true },
 	workflowReviews: { preview: true, limitedEnterpriseSupport: false },
 	oauthJwe: { preview: true, limitedEnterpriseSupport: false },
 	tokenExchange: { preview: true, limitedEnterpriseSupport: false },

@@ -28,7 +28,7 @@ import type {
 	RunInProvisionTransaction,
 } from '@n8n/scheduler';
 import { Tracing } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
 import { rowSchedule, scheduleColumns } from './schedule-columns';

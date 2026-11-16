@@ -8,7 +8,8 @@ import type {
 import { Folder, FolderTagMappingRepository, FolderRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
-import { UserError, PROJECT_ROOT } from 'n8n-workflow';
+import { PROJECT_ROOT } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import type { ListQuery } from '@/requests';

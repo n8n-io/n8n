@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, LessThan } from '@n8n/typeorm';
+import type { WhereExpressionBuilder } from '@n8n/typeorm';
 import { DiffMetaData, DiffRule, groupWorkflows, SKIP_RULES } from 'n8n-workflow';
 
 import {
@@ -17,6 +18,9 @@ import { TransactionRunner } from '../services/transaction';
 
 @Service()
 export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
+	/** Versions deleted per statement by the history prune, so the SQLite write lock is held briefly. */
+	readonly pruneBatchSize = 100;
+
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(WorkflowHistory, dataSource.manager, transactionRunner);
 	}
@@ -79,6 +83,19 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 		});
 	}
 
+	/** The nodes of the given versions. A version that no longer exists is absent. */
+	async findNodesByVersionIds(
+		versionIds: string[],
+	): Promise<Array<Pick<WorkflowHistory, 'versionId' | 'nodes'>>> {
+		const versions: Array<Pick<WorkflowHistory, 'versionId' | 'nodes'>> = [];
+		for (const chunk of chunkIds(versionIds)) {
+			versions.push(
+				...(await this.find({ select: ['versionId', 'nodes'], where: { versionId: In(chunk) } })),
+			);
+		}
+		return versions;
+	}
+
 	async findVersionSummaries(
 		workflowId: string,
 		versionIds: string[],
@@ -114,11 +131,61 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 	}
 
 	/**
-	 * Delete workflow history records earlier than a given date, except for current and active workflow versions.
-	 * @param date - Delete records created before this date
-	 * @param preserveNamedVersions - If true, also preserve versions with name set
+	 * Deletes versions created before `date` that no workflow, publication, or open review uses,
+	 * in batches of `pruneBatchSize`, and stops before the next batch when `signal` aborts.
+	 * @param preserveNamedVersions - If true, also keeps versions with a name
 	 */
-	async deleteEarlierThanExceptCurrentAndActive(date: Date, preserveNamedVersions = false) {
+	async deleteEarlierThanExceptCurrentAndActive(
+		date: Date,
+		preserveNamedVersions: boolean,
+		signal: AbortSignal,
+	): Promise<void> {
+		let after: string | undefined;
+		let hasMore = true;
+
+		while (hasMore && !signal.aborted) {
+			const versionIds = await this.findPrunableVersionIds(date, preserveNamedVersions, after);
+			if (versionIds.length > 0 && !signal.aborted) {
+				// The keep rules apply again, so a version protected after the select stays.
+				const query = this.manager
+					.createQueryBuilder()
+					.delete()
+					.from(WorkflowHistory)
+					.where('versionId IN (:...versionIds)', { versionIds });
+				this.wherePrunable(query, '', date, preserveNamedVersions);
+				await query.execute();
+			}
+			hasMore = versionIds.length === this.pruneBatchSize;
+			after = versionIds.at(-1);
+		}
+	}
+
+	/** Reads on a read connection, so the scan of the table does not hold the SQLite write lock. */
+	private async findPrunableVersionIds(
+		date: Date,
+		preserveNamedVersions: boolean,
+		after: string | undefined,
+	): Promise<string[]> {
+		const query = this.manager
+			.createQueryBuilder(WorkflowHistory, 'wh')
+			.select('wh.versionId', 'versionId')
+			.orderBy('wh.versionId', 'ASC')
+			.limit(this.pruneBatchSize);
+		this.wherePrunable(query, 'wh.', date, preserveNamedVersions);
+		if (after !== undefined) {
+			query.andWhere('wh.versionId > :after', { after });
+		}
+		const rows = await query.getRawMany<{ versionId: string }>();
+		return rows.map((row) => row.versionId);
+	}
+
+	/** A delete builder quotes bare column names and a select builder quotes only aliased ones, hence `prefix`. */
+	private wherePrunable(
+		query: WhereExpressionBuilder,
+		prefix: '' | 'wh.',
+		date: Date,
+		preserveNamedVersions: boolean,
+	): void {
 		const currentVersionIdsSubquery = this.manager
 			.createQueryBuilder()
 			.subQuery()
@@ -155,21 +222,16 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 			.andWhere('wrrw.workflowVersionId IS NOT NULL')
 			.getQuery();
 
-		const query = this.manager
-			.createQueryBuilder()
-			.delete()
-			.from(WorkflowHistory)
-			.where('createdAt < :date', { date })
-			.andWhere(`versionId NOT IN (${currentVersionIdsSubquery})`)
-			.andWhere(`versionId NOT IN (${activeVersionIdsSubquery})`)
-			.andWhere(`versionId NOT IN (${publishedVersionIdsSubquery})`)
-			.andWhere(`versionId NOT IN (${openReviewPinnedVersionIdsSubquery})`);
+		query
+			.andWhere(`${prefix}createdAt < :date`, { date })
+			.andWhere(`${prefix}versionId NOT IN (${currentVersionIdsSubquery})`)
+			.andWhere(`${prefix}versionId NOT IN (${activeVersionIdsSubquery})`)
+			.andWhere(`${prefix}versionId NOT IN (${publishedVersionIdsSubquery})`)
+			.andWhere(`${prefix}versionId NOT IN (${openReviewPinnedVersionIdsSubquery})`);
 
 		if (preserveNamedVersions) {
-			query.andWhere('name IS NULL');
+			query.andWhere(`${prefix}name IS NULL`);
 		}
-
-		return await query.execute();
 	}
 
 	private makeSkipActiveAndNamedVersionsRule(activeVersions: Set<string>) {

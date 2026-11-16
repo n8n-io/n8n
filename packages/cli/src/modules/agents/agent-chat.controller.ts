@@ -1,8 +1,11 @@
 import {
 	AGENT_CHAT_ERROR_CODES,
 	type AgentBackgroundJobsResponse,
+	type AgentSessionFilesResponse,
 	AgentChatMessageDto,
 	AgentChatCancelDto,
+	AgentTaskCancellationDto,
+	type AgentTaskCancellationState,
 	AgentChatQueueUpdateDto,
 	AgentChatQueueSteerDto,
 	AgentChatQueueReorderDto,
@@ -29,6 +32,9 @@ import { redactDeep } from '@n8n/utils/redaction/redact-text';
 import type { Response } from 'express';
 import { randomUUID } from 'node:crypto';
 
+import { AgentPlanService } from './agent-plan.service';
+import { presentPlan } from './plans/agent-plan-tools';
+import { AgentTaskCancellationService } from './agent-task-cancellation.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -39,6 +45,7 @@ import { AgentChatRelayService } from './agent-chat-relay.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
+import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
 import { AgentExecutionService } from './agent-execution.service';
 import {
 	type AgentSessionMode,
@@ -66,6 +73,7 @@ import {
 @RestController('/projects/:projectId/agents/v2')
 export class AgentChatController {
 	constructor(
+		private readonly taskCancellation: AgentTaskCancellationService,
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly agentTestRunService: AgentTestRunService,
 		private readonly agentTestChatService: AgentTestChatService,
@@ -79,6 +87,7 @@ export class AgentChatController {
 		private readonly messageQueue: AgentMessageQueueService,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly chatRelay: AgentChatRelayService,
+		private readonly plans: AgentPlanService,
 	) {}
 
 	private async requireProductionChat(agentId: string, projectId: string): Promise<void> {
@@ -120,6 +129,37 @@ export class AgentChatController {
 			}))
 		)
 			throw new NotFoundError(`Thread "${threadId}" not found`);
+	}
+
+	/**
+	 * Return the suspended checkpoint of a preview thread. Throw when the checkpoint
+	 * belongs to another user, or to a user draft of a project-scoped thread.
+	 */
+	private async findReadableCheckpoint(
+		thread: AgentExecutionThread | null,
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+	) {
+		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, threadId);
+		if (
+			checkpoint &&
+			(thread?.accessScope === 'project'
+				? userIdFromDraftChatMemoryResourceId(checkpoint.persistence?.resourceId ?? '') !==
+					undefined
+				: checkpoint.persistence?.resourceId !== draftChatMemoryResourceId(userId) ||
+					(!thread &&
+						!(await this.agentExecutionService.canUseDraftThread(
+							threadId,
+							projectId,
+							agentId,
+							userId,
+						))))
+		) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
+		return checkpoint;
 	}
 
 	private assertQueueId(queueId: string): void {
@@ -363,6 +403,7 @@ export class AgentChatController {
 		@Param('agentId') agentId: string,
 		@Param('threadId') threadId: string,
 		@Param('executionId') executionId: string,
+		@Query payload: AgentChatCancelDto = {},
 	) {
 		await this.requireProductionChat(agentId, req.params.projectId);
 		await this.requireProductionThread(threadId, req.params.projectId, agentId, req.user.id);
@@ -374,6 +415,7 @@ export class AgentChatController {
 				executionId,
 				userId: req.user.id,
 				surface: 'n8n-chat',
+				...(payload.scope ? { scope: payload.scope } : {}),
 			}),
 		};
 	}
@@ -385,6 +427,7 @@ export class AgentChatController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 		@Param('runId') runId: string,
+		@Query payload: AgentChatCancelDto = {},
 	) {
 		await this.requireProductionChat(agentId, req.params.projectId);
 		return {
@@ -392,6 +435,7 @@ export class AgentChatController {
 				agentId,
 				runId,
 				resourceId: productionChatMemoryResourceId(req.user.id),
+				...(payload.scope === 'foreground' ? { cancelBackgroundJobs: false } : {}),
 			}),
 		};
 	}
@@ -440,15 +484,32 @@ export class AgentChatController {
 			projectId,
 			userId: req.user.id,
 		});
+		// Agent output files (tool and sandbox) have no resource ID. The thread check below limits them to this user's own session.
 		if (
 			!attachment ||
-			attachment.source !== N8N_CHAT_PRODUCTION_SOURCE ||
-			attachment.resourceId !== productionChatMemoryResourceId(req.user.id)
+			(attachment.source === N8N_CHAT_PRODUCTION_SOURCE &&
+				attachment.resourceId !== productionChatMemoryResourceId(req.user.id))
 		) {
 			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		}
 		await this.requireProductionThread(attachment.threadId, projectId, agentId, req.user.id);
 		await this.chatRelay.streamAttachment(attachment, res);
+	}
+
+	// Same reasoning as `getProductionChatAttachment`: `requireProductionThread`
+	// 404s a thread that isn't this user's own, so `agent:execute` is safe.
+	@Get('/:agentId/n8n-chat/:threadId/files')
+	@ProjectScope('agent:execute')
+	async getProductionSessionFiles(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentSessionFilesResponse> {
+		const { projectId, agentId, threadId } = req.params;
+		await this.requireProductionChat(agentId, projectId);
+		// A new session has no thread until its first execution starts.
+		if (!(await this.agentExecutionService.findThreadById(threadId))) return { files: [] };
+		await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
+		const files = await this.agentChatAttachmentService.listForSession({ projectId, threadId });
+		return { files };
 	}
 
 	// Same reasoning as `getProductionChatMessages`: `messageQueue.listPending`
@@ -753,7 +814,10 @@ export class AgentChatController {
 			await this.requirePreviewThread(threadId, projectId, agentId, req.user.id);
 		}
 
-		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId);
+		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId, {
+			includePaused: true,
+		});
+
 		return this.mapBackgroundJobsToDto(jobs);
 	}
 
@@ -775,6 +839,9 @@ export class AgentChatController {
 				title: scrubSecretsInText(job.title),
 				kind: job.kind,
 				status: job.status,
+				...(job.planId && job.planTaskId
+					? { planTask: { planId: job.planId, planTaskId: job.planTaskId } }
+					: {}),
 				...(job.pauseRequestId ? { pauseRequested: true } : {}),
 				...(job.approval
 					? {
@@ -788,8 +855,167 @@ export class AgentChatController {
 					: {}),
 				startedAt: job.createdAt.toISOString(),
 				...(job.settledAt ? { settledAt: job.settledAt.toISOString() } : {}),
+				...(job.files?.length
+					? {
+							files: job.files.map((file) => ({
+								...file,
+								fileName: scrubSecretsInText(file.fileName),
+							})),
+						}
+					: {}),
 			})),
 		};
+	}
+
+	private async requireTaskThread(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		requireTaskFeatures = true,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+
+		if (
+			!(await this.agentsService.findById(agentId, projectId)) ||
+			!(await this.agentExecutionService.canUseDraftThread(
+				threadId,
+				projectId,
+				agentId,
+				req.user.id,
+				{ previewChat: true, sessionMode: 'existing' },
+			))
+		)
+			throw new NotFoundError('Session not found');
+
+		if (
+			requireTaskFeatures &&
+			!this.agentsConfig.backgroundTasksEnabled &&
+			!this.agentsConfig.planToolsEnabled
+		)
+			throw new BadRequestError('Background tasks are not enabled');
+	}
+
+	@Post('/:agentId/chat/:threadId/task-cancellation')
+	@ProjectScope('agent:execute')
+	async cancelTasks(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		_res: Response,
+		@Body payload: AgentTaskCancellationDto,
+	): Promise<AgentTaskCancellationState> {
+		await this.requireTaskThread(req);
+
+		return await this.taskCancellation.request(req.params.threadId, payload.planId);
+	}
+
+	@Post('/:agentId/chat/:threadId/task-cancellation/stream')
+	@ProjectScope('agent:execute')
+	async streamTaskCancellation(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		res: FlushableResponse,
+		@Body payload: AgentTaskCancellationDto,
+	): Promise<void> {
+		await this.requireTaskThread(req);
+
+		await this.chatRelay.relayQueuedStop(
+			res,
+			req.params.threadId,
+			async (onQueued) =>
+				await this.taskCancellation.request(req.params.threadId, payload.planId, onQueued),
+		);
+	}
+
+	/** n8n Chat counterpart of `requireTaskThread`. */
+	private async requireProductionTaskThread(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+
+		await this.requireProductionChat(agentId, projectId);
+		await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
+
+		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled)
+			throw new BadRequestError('Background tasks are not enabled');
+	}
+
+	@Post('/:agentId/n8n-chat/:threadId/task-cancellation')
+	@ProjectScope('agent:execute')
+	async cancelProductionTasks(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		_res: Response,
+		@Body payload: AgentTaskCancellationDto,
+	): Promise<AgentTaskCancellationState> {
+		await this.requireProductionTaskThread(req);
+
+		return await this.taskCancellation.request(
+			req.params.threadId,
+			payload.planId,
+			undefined,
+			'n8n-chat',
+		);
+	}
+
+	@Post('/:agentId/n8n-chat/:threadId/task-cancellation/stream')
+	@ProjectScope('agent:execute')
+	async streamProductionTaskCancellation(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		res: FlushableResponse,
+		@Body payload: AgentTaskCancellationDto,
+	): Promise<void> {
+		await this.requireProductionTaskThread(req);
+
+		await this.chatRelay.relayQueuedStop(
+			res,
+			req.params.threadId,
+			async (onQueued) =>
+				await this.taskCancellation.request(
+					req.params.threadId,
+					payload.planId,
+					onQueued,
+					'n8n-chat',
+				),
+		);
+	}
+
+	@Get('/:agentId/n8n-chat/:threadId/task-cancellation')
+	@ProjectScope('agent:execute')
+	async getProductionTaskCancellation(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentTaskCancellationState | null> {
+		await this.requireProductionTaskThread(req);
+
+		return await this.taskCancellation.state(req.params.threadId);
+	}
+
+	@Get('/:agentId/n8n-chat/:threadId/plan')
+	@ProjectScope('agent:execute')
+	async getProductionPlan(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+
+		await this.requireProductionChat(agentId, projectId);
+		await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
+
+		return presentPlan(await this.plans.findLatestPlan(threadId, {}));
+	}
+
+	@Get('/:agentId/chat/:threadId/plan')
+	@ProjectScope('agent:execute')
+	async getPlan(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	) {
+		// Reading a plan stays available when the flags are off, so the UI can still show earlier plans.
+		await this.requireTaskThread(req, false);
+
+		return presentPlan(await this.plans.findLatestPlan(req.params.threadId, {}));
+	}
+
+	@Get('/:agentId/chat/:threadId/task-cancellation')
+	@ProjectScope('agent:execute')
+	async getTaskCancellation(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentTaskCancellationState | null> {
+		await this.requireTaskThread(req);
+
+		return await this.taskCancellation.state(req.params.threadId);
 	}
 
 	@Post('/:agentId/chat/:threadId/background-tasks/stop')
@@ -854,23 +1080,13 @@ export class AgentChatController {
 			agentId,
 			userId: req.user.id,
 		});
-		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, threadId);
-		if (
-			checkpoint &&
-			(thread?.accessScope === 'project'
-				? userIdFromDraftChatMemoryResourceId(checkpoint.persistence?.resourceId ?? '') !==
-					undefined
-				: checkpoint.persistence?.resourceId !== draftChatMemoryResourceId(req.user.id) ||
-					(!thread &&
-						!(await this.agentExecutionService.canUseDraftThread(
-							threadId,
-							projectId,
-							agentId,
-							req.user.id,
-						))))
-		) {
-			throw new NotFoundError(`Thread "${threadId}" not found`);
-		}
+		const checkpoint = await this.findReadableCheckpoint(
+			thread,
+			threadId,
+			projectId,
+			agentId,
+			req.user.id,
+		);
 		if (!history && !checkpoint) throw new NotFoundError(`Thread "${threadId}" not found`);
 		return threadMessagesResponse(history, checkpoint);
 	}
@@ -904,10 +1120,42 @@ export class AgentChatController {
 		);
 	}
 
+	@Get('/:agentId/chat/:threadId/files')
+	@ProjectScope('agent:read')
+	async getSessionFiles(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentSessionFilesResponse> {
+		const { projectId, agentId, threadId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const thread = await this.agentExecutionService.findThreadById(threadId);
+		// A new preview session has no thread until its first execution starts.
+		if (!thread) return { files: [] };
+		if (!threadBelongsTo(thread, projectId, agentId, req.user.id)) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
+		if (thread.accessScope === 'user') {
+			await this.requirePreviewThread(threadId, projectId, agentId, req.user.id);
+		}
+		// The same checkpoint check as the message history, so both routes show the same threads.
+		await this.findReadableCheckpoint(thread, threadId, projectId, agentId, req.user.id);
+		// The download route does not serve production chat files, so the list leaves them out.
+		const files = await this.agentChatAttachmentService.listForSession(
+			{ projectId, threadId },
+			N8N_CHAT_PRODUCTION_SOURCE,
+		);
+		return { files };
+	}
+
 	@Get('/:agentId/chat/attachments/:attachmentId')
 	@ProjectScope('agent:read')
 	async getChatAttachment(
-		req: AuthenticatedRequest<{ projectId: string; agentId: string; attachmentId: string }>,
+		req: AuthenticatedRequest<
+			{ projectId: string; agentId: string; attachmentId: string },
+			{},
+			{},
+			{ threadId?: string }
+		>,
 		res: Response,
 	) {
 		const { projectId, agentId, attachmentId } = req.params;
@@ -918,6 +1166,7 @@ export class AgentChatController {
 			agentId,
 			projectId,
 			userId: req.user.id,
+			...(typeof req.query.threadId === 'string' ? { threadId: req.query.threadId } : {}),
 		});
 		if (!attachment) throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		if (attachment.source === N8N_CHAT_PRODUCTION_SOURCE) {

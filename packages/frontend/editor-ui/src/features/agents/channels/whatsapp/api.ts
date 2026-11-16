@@ -1,4 +1,8 @@
-import type { WhatsAppCredentialCheck, WhatsAppWebhookStatus } from '@n8n/api-types';
+import type {
+	WhatsAppCredentialCheck,
+	WhatsAppMetaStatus,
+	WhatsAppWebhookStatus,
+} from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
@@ -34,4 +38,16 @@ export const resetWhatsAppWebhookStatus = async (
 		context,
 		'DELETE',
 		`${integrationPath(projectId, agentId)}/webhook-status`,
+	);
+
+export const getWhatsAppMetaStatus = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	credentialId: string,
+): Promise<WhatsAppMetaStatus> =>
+	await makeRestApiRequest(
+		context,
+		'GET',
+		`${integrationPath(projectId, agentId)}/meta-status/${encodeURIComponent(credentialId)}`,
 	);

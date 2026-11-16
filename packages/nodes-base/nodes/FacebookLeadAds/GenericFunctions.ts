@@ -7,8 +7,10 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestPath, requestUrl } from 'n8n-workflow';
 
 import type {
 	CreateFacebookAppWebhookSubscription,
@@ -22,11 +24,11 @@ import type {
 export async function facebookApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body = {},
 	qs: IDataObject = {},
 ): Promise<any> {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			accept: 'application/json',
 		},
@@ -34,7 +36,7 @@ export async function facebookApiRequest(
 		qs,
 		body,
 		gzip: true,
-		uri: `https://graph.facebook.com/v21.0${resource}`,
+		uri: requestUrl`https://graph.facebook.com/v21.0${resource}`,
 		json: true,
 	};
 
@@ -52,20 +54,20 @@ export async function appAccessTokenRead(
 ): Promise<{ access_token: string }> {
 	const credentials = await this.getCredentials('facebookLeadAdsOAuth2Api');
 
-	const options: IRequestOptions = {
-		headers: {
-			'content-type': 'application/x-www-form-urlencoded',
-		},
-		method: 'POST',
-		form: {
-			client_id: credentials.clientId,
-			client_secret: credentials.clientSecret,
-			grant_type: 'client_credentials',
-		},
-		uri: credentials.accessTokenUrl as string,
-		json: true,
-	};
 	try {
+		const options: WithRequestTarget<IRequestOptions, 'uri'> = {
+			headers: {
+				'content-type': 'application/x-www-form-urlencoded',
+			},
+			method: 'POST',
+			form: {
+				client_id: credentials.clientId,
+				client_secret: credentials.clientSecret,
+				grant_type: 'client_credentials',
+			},
+			uri: requestUrl`${credentials.accessTokenUrl}`,
+			json: true,
+		};
 		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -75,14 +77,14 @@ export async function appAccessTokenRead(
 export async function facebookAppApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body?: { type: 'json'; payload: IDataObject } | { type: 'form'; payload: IDataObject },
 	qs: IDataObject = {},
 ): Promise<any> {
 	const tokenResponse = await appAccessTokenRead.call(this);
 	const appAccessToken = tokenResponse.access_token;
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			accept: 'application/json',
 			authorization: `Bearer ${appAccessToken}`,
@@ -90,7 +92,7 @@ export async function facebookAppApiRequest(
 		method,
 		qs,
 		gzip: true,
-		uri: `https://graph.facebook.com/v21.0${resource}`,
+		uri: requestUrl`https://graph.facebook.com/v21.0${resource}`,
 		json: true,
 	};
 
@@ -114,7 +116,7 @@ export async function appWebhookSubscriptionList(
 	const response = (await facebookAppApiRequest.call(
 		this,
 		'GET',
-		`/${appId}/subscriptions`,
+		requestPath`/${appId}/subscriptions`,
 	)) as FacebookAppWebhookSubscriptionsResponse;
 	return response.data;
 }
@@ -124,7 +126,7 @@ export async function appWebhookSubscriptionCreate(
 	appId: string,
 	subscription: CreateFacebookAppWebhookSubscription,
 ) {
-	return await facebookAppApiRequest.call(this, 'POST', `/${appId}/subscriptions`, {
+	return await facebookAppApiRequest.call(this, 'POST', requestPath`/${appId}/subscriptions`, {
 		type: 'form',
 		payload: { ...subscription },
 	});
@@ -135,7 +137,7 @@ export async function appWebhookSubscriptionDelete(
 	appId: string,
 	object: string,
 ) {
-	return await facebookAppApiRequest.call(this, 'DELETE', `/${appId}/subscriptions`, {
+	return await facebookAppApiRequest.call(this, 'DELETE', requestPath`/${appId}/subscriptions`, {
 		type: 'form',
 		payload: { object },
 	});
@@ -148,7 +150,7 @@ export async function facebookPageList(
 	const response = (await facebookApiRequest.call(
 		this,
 		'GET',
-		'/me/accounts',
+		requestPath`/me/accounts`,
 		{},
 		{ cursor, fields: 'id,name' },
 	)) as FacebookPageListResponse;
@@ -160,20 +162,20 @@ export async function facebookEntityDetail(
 	entityId: string,
 	fields = 'id,name,access_token',
 ): Promise<any> {
-	return await facebookApiRequest.call(this, 'GET', `/${entityId}`, {}, { fields });
+	return await facebookApiRequest.call(this, 'GET', requestPath`/${entityId}`, {}, { fields });
 }
 
 export async function facebookPageApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body = {},
 	qs: IDataObject = {},
 ): Promise<any> {
 	const pageId = this.getNodeParameter('page', '', { extractValue: true }) as string;
 	const page = (await facebookEntityDetail.call(this, pageId)) as FacebookPage;
 	const pageAccessToken = page.access_token;
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			accept: 'application/json',
 			authorization: `Bearer ${pageAccessToken}`,
@@ -182,7 +184,7 @@ export async function facebookPageApiRequest(
 		qs,
 		body,
 		gzip: true,
-		uri: `https://graph.facebook.com/v21.0${resource}`,
+		uri: requestUrl`https://graph.facebook.com/v21.0${resource}`,
 		json: true,
 	};
 
@@ -201,7 +203,7 @@ export async function installAppOnPage(
 	return await facebookPageApiRequest.call(
 		this,
 		'POST',
-		`/${pageId}/subscribed_apps`,
+		requestPath`/${pageId}/subscribed_apps`,
 		{},
 		{ subscribed_fields: fields },
 	);
@@ -215,7 +217,7 @@ export async function facebookFormList(
 	const response = (await facebookPageApiRequest.call(
 		this,
 		'GET',
-		`/${pageId}/leadgen_forms`,
+		requestPath`/${pageId}/leadgen_forms`,
 		{},
 		{ cursor, fields: 'id,name' },
 	)) as FacebookFormListResponse;

@@ -162,6 +162,7 @@ export type StaticRouterMetadata = {
 >;
 
 export interface ControllerMetadata {
+	surface?: 'main' | 'apps';
 	basePath: `/${string}`;
 	// If true, the controller will be registered on the root path without the any prefix
 	registerOnRootPath?: boolean;

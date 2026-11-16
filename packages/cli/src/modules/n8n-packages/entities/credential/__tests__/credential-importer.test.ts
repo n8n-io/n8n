@@ -51,7 +51,12 @@ describe('CredentialImporter', () => {
 
 	let importer: CredentialImporter;
 
-	const context: ImportContext = { user, projectId: targetProject.id, folderId: null };
+	const context: ImportContext = {
+		user,
+		projectId: targetProject.id,
+		folderId: null,
+		publicApi: false,
+	};
 
 	const bindingRequest = (
 		requirements: CredentialBindingRequest['requirements'],
@@ -864,6 +869,7 @@ describe('CredentialImporter', () => {
 				credentialDescriptions.isEnabled.mockResolvedValue(true);
 				credentialsOverwrites.supportsManagedAuth.mockReturnValue(false);
 				credentialsOverwrites.usesManagedAuth.mockReturnValue(false);
+				credentialsOverwrites.getManagedAppVersion.mockReturnValue(2);
 
 				await importer.applyUpdates(
 					context,
@@ -883,6 +889,7 @@ describe('CredentialImporter', () => {
 					jweEnabled: false,
 					supportsManagedAuth: false,
 					usesManagedAuth: false,
+					managedAppVersion: 2,
 				});
 				expect(credentialsOverwrites.usesManagedAuth).toHaveBeenCalledWith('githubApi', {
 					accessToken: EXPRESSION,

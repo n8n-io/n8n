@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agents_observation_cursors" ("agentId" varchar(36) NOT NULL, "observationScopeId" varchar(255) NOT NULL, "lastObservedMessageId" varchar(36) NOT NULL, "lastObservedAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_64e92819f4b413661ed6e2c3c3d" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_87aa187d27ea67eafd164905154" FOREIGN KEY ("observationScopeId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE, PRIMARY KEY ("agentId", "observationScopeId"))
+CREATE TABLE "agents_observation_cursors" ("agentId" varchar(36) NOT NULL, "observationScopeId" varchar(255) NOT NULL, "lastObservedMessageId" varchar(36) NOT NULL, "lastObservedAt" datetime(3) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "resumeFromMessageId" varchar(36), "resumeFromAt" datetime(3), "resumeNotes" text, "lastRequestTokens" integer, "lastModelId" varchar(255), CONSTRAINT "FK_87aa187d27ea67eafd164905154" FOREIGN KEY ("observationScopeId") REFERENCES "agents_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_64e92819f4b413661ed6e2c3c3d" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, PRIMARY KEY ("agentId", "observationScopeId"))
 ```
 
 </details>
@@ -17,17 +17,22 @@ CREATE TABLE "agents_observation_cursors" ("agentId" varchar(36) NOT NULL, "obse
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | false |  | [agents](agents.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| lastModelId | varchar(255) |  | true |  |  |  |
 | lastObservedAt | datetime(3) |  | false |  |  |  |
 | lastObservedMessageId | varchar(36) |  | false |  |  |  |
+| lastRequestTokens | INTEGER |  | true |  |  |  |
 | observationScopeId | varchar(255) |  | false |  | [agents_threads](agents_threads.md) |  |
+| resumeFromAt | datetime(3) |  | true |  |  |  |
+| resumeFromMessageId | varchar(36) |  | true |  |  |  |
+| resumeNotes | TEXT |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (observationScopeId) REFERENCES agents_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | agentId | PRIMARY KEY | PRIMARY KEY (agentId) |
 | observationScopeId | PRIMARY KEY | PRIMARY KEY (observationScopeId) |
 | sqlite_autoindex_agents_observation_cursors_1 | PRIMARY KEY | PRIMARY KEY (agentId, observationScopeId) |
@@ -50,9 +55,14 @@ erDiagram
 "agents_observation_cursors" {
   varchar_36_ agentId PK
   datetime_3_ createdAt
+  varchar_255_ lastModelId
   datetime_3_ lastObservedAt
   varchar_36_ lastObservedMessageId
+  INTEGER lastRequestTokens
   varchar_255_ observationScopeId PK
+  datetime_3_ resumeFromAt
+  varchar_36_ resumeFromMessageId
+  TEXT resumeNotes
   datetime_3_ updatedAt
 }
 "agents" {
@@ -61,6 +71,7 @@ erDiagram
   datetime_3_ createdAt
   varchar_36_ id PK
   TEXT integrations
+  boolean isArchived
   varchar_128_ name
   varchar_255_ projectId FK
   INTEGER publicationRevision

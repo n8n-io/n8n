@@ -52,6 +52,7 @@ export const packageManifestSchema = z
 		sourceId: z.string().min(1),
 		workflows: z.array(workflowManifestEntrySchema).optional(),
 		agents: z.array(manifestEntrySchema).optional(),
+		skills: z.array(manifestEntrySchema).optional(),
 		folders: z.array(manifestEntrySchema).optional(),
 		projects: z.array(manifestEntrySchema).optional(),
 		credentials: z.array(manifestEntrySchema).optional(),
@@ -63,6 +64,7 @@ export const packageManifestSchema = z
 	.superRefine((manifest, ctx) => {
 		assertNoDuplicateIds(manifest.workflows, 'workflow', ctx);
 		assertNoDuplicateIds(manifest.agents, 'Agent', ctx);
+		assertNoDuplicateIds(manifest.skills, 'skill', ctx);
 		assertNoDuplicateIds(manifest.folders, 'folder', ctx);
 		assertNoDuplicateIds(manifest.projects, 'project', ctx);
 		assertNoDuplicateIds(manifest.credentials, 'credential', ctx);

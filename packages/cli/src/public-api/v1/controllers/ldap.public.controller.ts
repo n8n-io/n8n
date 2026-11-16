@@ -44,7 +44,7 @@ export class LdapPublicController {
 	@Licensed(LICENSE_FEATURES.LDAP)
 	@ApiSummary('Retrieve the LDAP configuration')
 	@ApiDescription(
-		'Retrieve the current LDAP configuration, including every field exposed in the UI. The binding admin password is redacted on read. Requires the `ldap:manage` scope and the LDAP feature to be licensed.',
+		'Retrieve the current LDAP configuration, including every field exposed in the UI. The binding admin password is redacted on read. Requires the LDAP feature to be licensed.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, LdapConfigurationPublicDto)
@@ -58,7 +58,7 @@ export class LdapPublicController {
 	@Licensed(LICENSE_FEATURES.LDAP)
 	@ApiSummary('Set the LDAP configuration')
 	@ApiDescription(
-		'Replace the LDAP configuration with the provided full object (partial updates are not supported). For bindingAdminPassword, submit the blanking placeholder from a prior GET to keep the stored password unchanged. Requires the `ldap:manage` scope and the LDAP feature to be licensed. Setting loginEnabled to false is destructive and it deletes all stored LDAP user identities and disables synchronization.',
+		'Replace the LDAP configuration with the provided full object (partial updates are not supported). For bindingAdminPassword, submit the blanking placeholder from a prior GET to keep the stored password unchanged. Requires the LDAP feature to be licensed. Setting loginEnabled to false is destructive and it deletes all stored LDAP user identities and disables synchronization.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, LdapConfigurationPublicDto)
@@ -77,7 +77,7 @@ export class LdapPublicController {
 	@Licensed(LICENSE_FEATURES.LDAP)
 	@ApiSummary('Retrieve LDAP synchronization history')
 	@ApiDescription(
-		'Retrieve the history of LDAP synchronizations, most recent first. Requires the `ldap:sync` scope and the LDAP feature to be licensed.',
+		'Retrieve the history of LDAP synchronizations, most recent first. Requires the LDAP feature to be licensed.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, LdapSyncHistoryListPublicDto)
@@ -100,7 +100,7 @@ export class LdapPublicController {
 	@Licensed(LICENSE_FEATURES.LDAP)
 	@ApiSummary('Trigger an LDAP synchronization')
 	@ApiDescription(
-		'Manually trigger an LDAP synchronization. The response returns the new sync history record. Requires the `ldap:sync` scope and the LDAP feature to be licensed.',
+		'Manually trigger an LDAP synchronization. The response returns the new sync history record. Requires the LDAP feature to be licensed.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, LdapSyncHistoryPublicDto)

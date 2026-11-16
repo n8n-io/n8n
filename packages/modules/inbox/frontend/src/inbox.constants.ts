@@ -1,6 +1,6 @@
 import type { InboxSourceType, InboxState, WorkflowReviewRequestDecision } from '@n8n/api-types';
 
-export const INBOX_VIEW = 'Inbox';
+export { INBOX_VIEW } from '@n8n/frontend-constants/inbox';
 export const INBOX_ASSISTANT_RESULT_VIEW = 'InboxAssistantResult';
 export const INBOX_PROMOTION_REVIEW_VIEW = 'InboxPromotionReview';
 export const INBOX_PAGE_LIMIT = 15;

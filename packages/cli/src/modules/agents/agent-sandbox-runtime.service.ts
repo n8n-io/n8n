@@ -15,12 +15,12 @@ import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { redactText } from '@n8n/utils/redaction/redact-text';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { v5 as uuidv5 } from 'uuid';
 
+import { assertKnowledgePathSegment } from '@/modules/knowledge/files/storage-naming';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 
-import { assertKnowledgePathSegment } from './agent-knowledge-storage';
 import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';

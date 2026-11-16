@@ -84,7 +84,7 @@ export {
 	SSRF_DEFAULT_BLOCKED_IP_RANGES,
 } from './configs/ssrf-protection.config';
 export { EngineConfig } from './configs/engine.config';
-export type { EngineMode } from './configs/engine.config';
+export type { EngineDefaultType, EngineMode } from './configs/engine.config';
 export { ExecutionsConfig } from './configs/executions.config';
 export { MemoryGuardConfig } from './configs/memory-guard.config';
 export { ScalingModeConfig, WorkerPoolConfig } from './configs/scaling-mode.config';
@@ -293,6 +293,16 @@ export class GlobalConfig {
 	/** Public base URL for both test and production webhooks. Successor to the deprecated `WEBHOOK_URL`. */
 	@Env('N8N_WEBHOOK_URL')
 	webhookUrl: string = '';
+
+	/**
+	 * Public base URL that external apps use to send messages to agents through
+	 * the webhook channel. Only main instances serve these requests, so point it
+	 * at your main instances, not at webhook processes. When unset, n8n uses the
+	 * editor base URL, then the webhook URL. Set it when your webhook URL points
+	 * at webhook processes and the editor base URL is unset.
+	 */
+	@Env('N8N_AGENT_WEBHOOK_URL')
+	agentWebhookUrl: string = '';
 
 	/** URLs to external frontend hooks files, separated by semicolons. */
 	@Env('EXTERNAL_FRONTEND_HOOKS_URLS')

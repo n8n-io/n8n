@@ -27,6 +27,7 @@ import * as moduleInitializer from '@/app/moduleInitializer/moduleInitializer';
 import { initializeExpressionEngine } from '@/app/init/expressionEngine';
 import {
 	initializeQuickJsExpressionShadow,
+	notifyQuickJsShadowEditorReady,
 	stopQuickJsExpressionShadow,
 } from '@/experiments/quickjsExpressionShadow/init';
 import { flushPromises } from '@vue/test-utils';
@@ -84,6 +85,7 @@ vi.mock('@/app/init/expressionEngine', () => ({
 // The real one waits for feature flags and loads the QuickJS runtime bundle.
 vi.mock('@/experiments/quickjsExpressionShadow/init', () => ({
 	initializeQuickJsExpressionShadow: vi.fn(async () => {}),
+	notifyQuickJsShadowEditorReady: vi.fn(),
 	stopQuickJsExpressionShadow: vi.fn(),
 }));
 
@@ -196,6 +198,29 @@ describe('Init', () => {
 				expect.objectContaining({
 					title: 'Error connecting to n8n',
 					type: 'error',
+				}),
+			);
+		});
+
+		it('should show the startup error toast when the login hook cannot load the full settings', async () => {
+			const error = new Error('Settings request failed');
+			settingsStore.getSettings.mockRejectedValue(error);
+			let hookResult: Promise<void> | undefined;
+			usersStore.registerLoginHook.mockImplementation((hook) => {
+				const result = Promise.resolve(hook(mock<CurrentUserResponse>({ id: 'userId' })));
+				result.catch(() => {});
+				hookResult = result;
+			});
+
+			await initializeCore();
+
+			await expect(hookResult).rejects.toBe(error);
+			expect(showToast).toHaveBeenCalledTimes(1);
+			expect(showToast).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'Error connecting to n8n',
+					type: 'error',
+					duration: 0,
 				}),
 			);
 		});
@@ -375,6 +400,7 @@ describe('Init', () => {
 			expect(sourceControlSpy).not.toHaveBeenCalled();
 			expect(nodeTranslationSpy).not.toHaveBeenCalled();
 			expect(versionsSpy).not.toHaveBeenCalled();
+			expect(notifyQuickJsShadowEditorReady).not.toHaveBeenCalled();
 			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).not.toHaveBeenCalled();
 			expect(credentialsStore.fetchAllCredentials).not.toHaveBeenCalled();
 			expect(credentialsStore.fetchCredentialTypes).not.toHaveBeenCalled();
@@ -499,6 +525,7 @@ describe('Init', () => {
 			// Modal openers are provided to the decoupled stores at bootstrap.
 			expect(usersStore.registerModalOpeners).toHaveBeenCalled();
 			expect(versionsStore.registerModalOpeners).toHaveBeenCalled();
+			expect(notifyQuickJsShadowEditorReady).toHaveBeenCalledTimes(1);
 
 			await initializeAuthenticatedFeatures();
 

@@ -9,6 +9,7 @@ import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api
 import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
 import {
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	type InstanceAiAgentNode,
 	type InstanceAiCredentialDestination,
 	type InstanceAiTargetApproval,
 } from '@n8n/api-types';
@@ -17,10 +18,12 @@ import { deepCopy } from 'n8n-workflow';
 import { USER_TYPED_MESSAGE } from '../prefills';
 import {
 	createThreadRuntime,
+	getAppTargetsFromThreadMetadata,
 	getAgentBuilderTargetFromThreadMetadata,
 	getAgentBuilderTargetsFromThreadMetadata,
 	getAgentPreviewSessionFromThreadMetadata,
 	getAgentPreviewViewFromThreadMetadata,
+	getPendingAppTargetFromThreadMetadata,
 	type ThreadRuntime,
 } from '../instanceAi.threadRuntime';
 
@@ -250,54 +253,6 @@ describe('cancelRun', () => {
 		expect(vi.mocked(postCancel)).toHaveBeenCalledWith(expect.anything(), 'thread-cancel');
 		expect(runtime.activeRunId).toBeNull();
 		expect(vi.mocked(fetchThreadStatus)).not.toHaveBeenCalled();
-	});
-});
-
-describe('transient workflow references', () => {
-	beforeEach(() => {
-		setupRuntimePinia();
-	});
-
-	it('keeps draft artifacts thread-scoped and removes the final reference', async () => {
-		const registry = createRuntimeRegistry();
-		const first = registry.getOrCreateRuntime('thread-1');
-		const second = registry.getOrCreateRuntime('thread-2');
-		first.upsertTransientWorkflowReference({
-			referenceId: 'draft-1',
-			workflowId: 'wf-1',
-			workflowName: 'Orders',
-		});
-		first.upsertTransientWorkflowReference({
-			referenceId: 'draft-2',
-			workflowId: 'wf-1',
-			workflowName: 'Orders',
-		});
-		await nextTick();
-
-		expect(first.producedArtifacts.get('wf-1')?.name).toBe('Orders');
-		expect(second.producedArtifacts.has('wf-1')).toBe(false);
-
-		first.removeTransientWorkflowReference('draft-1');
-		await nextTick();
-		expect(first.producedArtifacts.has('wf-1')).toBe(true);
-
-		first.removeTransientWorkflowReference('draft-2');
-		await nextTick();
-		expect(first.producedArtifacts.has('wf-1')).toBe(false);
-	});
-
-	it('clears transient references when the runtime resets', async () => {
-		const runtime = createRuntimeRegistry().getOrCreateRuntime('thread-1');
-		runtime.upsertTransientWorkflowReference({
-			referenceId: 'draft-1',
-			workflowId: 'wf-1',
-			workflowName: 'Orders',
-		});
-		runtime.resetState();
-		await nextTick();
-
-		expect(runtime.transientWorkflowReferences.size).toBe(0);
-		expect(runtime.producedArtifacts.has('wf-1')).toBe(false);
 	});
 });
 
@@ -1365,6 +1320,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prompt_modified: null,
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
+				selected_element_count: 0,
 			},
 		);
 		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(
@@ -1380,6 +1336,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prompt_modified: null,
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
+				selected_element_count: 0,
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -1459,6 +1416,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					prompt_modified: false,
 					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 					attachment_count: 0,
+					selected_element_count: 0,
 				},
 			);
 		});
@@ -1488,7 +1446,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		});
 	});
 
-	test('sendMessage reports mention and outbound attachment counts', async () => {
+	test('sendMessage reports mention, attachment, and selected element counts', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -1501,6 +1459,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 					workflowId: 'workflow-1',
 					sets: [{ nodes: [{ id: 'node-1', name: 'Validate' }] }],
 				},
+				{ type: 'element', appId: 'app-1', tagName: 'button' },
 			],
 			mentionCounts: {
 				total: 3,
@@ -1514,7 +1473,8 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
 			expect.objectContaining({
 				mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
-				attachment_count: 2,
+				attachment_count: 3,
+				selected_element_count: 1,
 			}),
 		);
 		warnSpy.mockRestore();
@@ -1524,8 +1484,10 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
 		const runtime = activeRuntime(registry);
 
-		// A new thread's first message is the only trace of the mention: on the wire
-		// it is a plain workflow attachment, like a hand-off would be.
+		// The sent message is the only trace of the mention: on the wire it is a
+		// plain workflow attachment, like a hand-off would be, and the tab comes
+		// with the message rather than with the pick.
+		expect(runtime.producedArtifacts.has('workflow-mentioned')).toBe(false);
 		await runtime.sendMessage('Look at this', {
 			authorship: USER_TYPED_MESSAGE,
 			attachments: [
@@ -1537,8 +1499,26 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		});
 		await nextTick();
 
+		expect(runtime.producedArtifacts.get('workflow-mentioned')?.name).toBe('Orders');
 		expect(runtime.producedArtifactOrigins.get('workflow-mentioned')).toBe('mentioned');
 		expect(runtime.producedArtifactOrigins.get('workflow-handoff')).toBe('attached');
+	});
+
+	test('a refused send leaves no tab and no origin behind for a mentioned workflow', async () => {
+		mockPostMessage.mockRejectedValueOnce(new Error('post failed'));
+		const runtime = activeRuntime(registry);
+
+		const sent = await runtime.sendMessage('Look at this', {
+			authorship: USER_TYPED_MESSAGE,
+			attachments: [{ type: 'workflow', id: 'workflow-mentioned', name: 'Orders' }],
+			mentionCounts: { total: 1, workflow: 1, node: 0, group: 0 },
+			mentionedWorkflowIds: ['workflow-mentioned'],
+		});
+		await nextTick();
+
+		expect(sent).toBe(false);
+		expect(runtime.producedArtifacts.has('workflow-mentioned')).toBe(false);
+		expect(runtime.producedArtifactOrigins.has('workflow-mentioned')).toBe(false);
 	});
 
 	test('sendMessage includes action_source from thread metadata', async () => {
@@ -1565,6 +1545,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prompt_modified: null,
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
+				selected_element_count: 0,
 			},
 		);
 		expect(warnSpy).not.toHaveBeenCalled();
@@ -1595,6 +1576,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prompt_modified: null,
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
+				selected_element_count: 0,
 			},
 		);
 		expect(warnSpy).toHaveBeenCalledWith(
@@ -1630,6 +1612,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				prompt_modified: true,
 				mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 				attachment_count: 0,
+				selected_element_count: 0,
 			},
 		);
 		warnSpy.mockRestore();
@@ -1922,6 +1905,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					tab_visible: false,
 					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 					attachment_count: 0,
+					selected_element_count: 0,
 				},
 			],
 			[
@@ -1937,12 +1921,13 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					tab_visible: false,
 					mention_counts: { total: 0, workflow: 0, node: 0, group: 0 },
 					attachment_count: 0,
+					selected_element_count: 0,
 				},
 			],
 		]);
 	});
 
-	test("repeats the message's mention and attachment counts on the response event", async () => {
+	test("repeats the message's context counts on the response event", async () => {
 		mockPostMessage.mockResolvedValueOnce({ runId: 'run-with-context' });
 
 		await activeRuntime(registry).sendMessage('Compare the workflow and node', {
@@ -1954,6 +1939,7 @@ describe('createThreadRuntime - response timing telemetry', () => {
 					workflowId: 'workflow-1',
 					sets: [{ nodes: [{ id: 'node-1', name: 'Validate' }] }],
 				},
+				{ type: 'element', appId: 'app-1', tagName: 'button' },
 			],
 			mentionCounts: {
 				total: 3,
@@ -1968,7 +1954,8 @@ describe('createThreadRuntime - response timing telemetry', () => {
 		expect(responseMetricCalls()[0][1]).toMatchObject({
 			run_id: 'run-with-context',
 			mention_counts: { total: 3, workflow: 1, node: 1, group: 1 },
-			attachment_count: 2,
+			attachment_count: 3,
+			selected_element_count: 1,
 		});
 	});
 
@@ -3211,7 +3198,7 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 				],
 				children: [],
 				timeline: [],
-			},
+			} satisfies InstanceAiAgentNode,
 			status: 'completed',
 			backgroundTasks: [],
 		};
@@ -3357,6 +3344,57 @@ describe('createThreadRuntime - "User viewed new builder workflow" telemetry', (
 		// The historical build really was hydrated (so "not tracked" is meaningful,
 		// not just an empty no-op hydration).
 		expect(activeRuntime(registry).messages).toHaveLength(1);
+		expect(mockTelemetryTrack).not.toHaveBeenCalledWith(
+			'User viewed new builder workflow',
+			expect.anything(),
+		);
+	});
+
+	test('does not track for a workflow that only appears in an older history page', async () => {
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: activeThreadId,
+			messages: [
+				{
+					id: 'msg-new',
+					role: 'user',
+					createdAt: new Date().toISOString(),
+					content: 'Thanks',
+					reasoning: '',
+					isStreaming: false,
+				},
+			],
+			nextEventId: 11,
+			nextCursor: 'cursor-1',
+		});
+		await activeRuntime(registry).loadHistoricalMessages();
+		const { agentTree } = runSyncWithBuild({
+			runId: 'run-old',
+			messageGroupId: 'mg-old',
+			workflowId: 'wf-old',
+			toolCallId: 'tc-old',
+		});
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: activeThreadId,
+			messages: [
+				{
+					id: 'msg-old',
+					runId: 'run-old',
+					messageGroupId: 'mg-old',
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: '',
+					reasoning: '',
+					isStreaming: false,
+					agentTree,
+				},
+			],
+			nextEventId: 11,
+		});
+
+		await activeRuntime(registry).loadOlderMessages();
+
+		expect(activeRuntime(registry).messages.map((msg) => msg.id)).toEqual(['msg-old', 'msg-new']);
+		expect(activeRuntime(registry).isHydratingThread).toBe(false);
 		expect(mockTelemetryTrack).not.toHaveBeenCalledWith(
 			'User viewed new builder workflow',
 			expect.anything(),
@@ -3529,6 +3567,37 @@ describe('getAgentBuilderTargetsFromThreadMetadata', () => {
 			{ agentId: 'agent-1', projectId: 'project-1' },
 			{ agentId: 'agent-2', projectId: 'project-2' },
 		]);
+	});
+});
+
+describe('app targets from thread metadata', () => {
+	test('reads valid app targets and drops malformed entries', () => {
+		expect(
+			getAppTargetsFromThreadMetadata({
+				instanceAiAppTargets: [
+					{ appId: 'app-1', projectId: 'project-1' },
+					{ appId: 'app-2' },
+					'not-a-target',
+				],
+			}),
+		).toEqual([{ appId: 'app-1', projectId: 'project-1' }]);
+	});
+
+	test('reads a valid pending app target', () => {
+		expect(
+			getPendingAppTargetFromThreadMetadata({
+				instanceAiPendingAppTarget: { appId: 'app-1', projectId: 'project-1' },
+			}),
+		).toEqual({ appId: 'app-1', projectId: 'project-1' });
+	});
+
+	test('returns no app targets for malformed metadata', () => {
+		expect(getAppTargetsFromThreadMetadata({ instanceAiAppTargets: 'not-an-array' })).toEqual([]);
+		expect(
+			getPendingAppTargetFromThreadMetadata({
+				instanceAiPendingAppTarget: { appId: 'app-1' },
+			}),
+		).toBeUndefined();
 	});
 });
 
@@ -3744,5 +3813,112 @@ describe('createThreadRuntime - follow-up run after a reconnect', () => {
 			runtime.pendingConfirmations.map((item) => item.toolCall.confirmation.requestId),
 		).toEqual(['req-move']);
 		expect(runtime.isAwaitingConfirmation).toBe(true);
+	});
+});
+
+describe('createThreadRuntime - older history pages', () => {
+	const threadId = 'thread-older';
+	const message = (
+		id: string,
+		role: 'user' | 'assistant',
+		messageGroupId?: string,
+	): ThreadRuntime['messages'][number] => ({
+		id,
+		role,
+		messageGroupId,
+		createdAt: '2026-01-01T00:00:00.000Z',
+		content: id,
+		reasoning: '',
+		isStreaming: false,
+	});
+
+	async function hydratedRuntime() {
+		const runtime = createRuntimeRegistry().getOrCreateRuntime(threadId);
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId,
+			messages: [message('u2', 'user', 'g2'), message('a2', 'assistant', 'g2')],
+			nextCursor: 'cursor-1',
+			nextEventId: 0,
+		});
+		await runtime.loadHistoricalMessages();
+		return runtime;
+	}
+
+	beforeEach(() => {
+		setupRuntimePinia();
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+	});
+
+	test('prepends older pages until the thread start and skips messages it already has', async () => {
+		const runtime = await hydratedRuntime();
+		expect(runtime.hasOlderMessages).toBe(true);
+
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId,
+			messages: [
+				message('u1', 'user', 'g1'),
+				message('a1', 'assistant', 'g1'),
+				message('a2-older-copy', 'assistant', 'g2'),
+				message('u2', 'user'),
+			],
+			nextEventId: 0,
+		});
+		await runtime.loadOlderMessages();
+
+		expect(mockFetchThreadMessages).toHaveBeenLastCalledWith(
+			expect.anything(),
+			threadId,
+			100,
+			undefined,
+			'cursor-1',
+		);
+		expect(runtime.messages.map((msg) => msg.id)).toEqual(['u1', 'a1', 'u2', 'a2']);
+		expect(runtime.hasOlderMessages).toBe(false);
+
+		await runtime.loadOlderMessages();
+		expect(mockFetchThreadMessages).toHaveBeenCalledTimes(2);
+	});
+
+	test('drops a page that returns after a reset', async () => {
+		const runtime = await hydratedRuntime();
+		let resolveOlder!: (value: Awaited<ReturnType<typeof fetchThreadMessages>>) => void;
+		mockFetchThreadMessages.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveOlder = resolve;
+			}),
+		);
+
+		const loading = runtime.loadOlderMessages();
+		runtime.resetState();
+		resolveOlder({
+			threadId,
+			messages: [message('u1', 'user')],
+			nextCursor: 'cursor-0',
+			nextEventId: 0,
+		});
+		await loading;
+
+		expect(mockFetchThreadMessages).toHaveBeenCalledTimes(2);
+		expect(runtime.messages).toEqual([]);
+		expect(runtime.hasOlderMessages).toBe(false);
+	});
+
+	test('rethrows a failed request and keeps the cursor for a retry', async () => {
+		const runtime = await hydratedRuntime();
+		mockFetchThreadMessages.mockRejectedValueOnce(new Error('fetch failed'));
+
+		await expect(runtime.loadOlderMessages()).rejects.toThrow('fetch failed');
+		expect(runtime.hasOlderMessages).toBe(true);
+
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId,
+			messages: [message('u1', 'user')],
+			nextEventId: 0,
+		});
+		await runtime.loadOlderMessages();
+		expect(runtime.messages.map((msg) => msg.id)).toEqual(['u1', 'u2', 'a2']);
 	});
 });

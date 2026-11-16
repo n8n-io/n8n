@@ -5,11 +5,9 @@ import './zod-extend';
 // resolvePublicApiRoutes()
 import '../controllers';
 
-import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
 import type { RouteConfig } from '@asteasolutions/zod-to-openapi';
-import type { BinaryResponse, ResponseDtoClass } from '@n8n/decorators';
-import { isRecord } from '@n8n/utils/is-record';
-import { UnexpectedError } from 'n8n-workflow';
+import type { ApiKeyScopeRequirement, BinaryResponse, ResponseDtoClass } from '@n8n/decorators';
+import { UnexpectedError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { honorsIdempotencyKey } from '@/idempotency/idempotency-request';
@@ -18,12 +16,9 @@ import {
 	isRequestBodyRequired,
 	resolvePublicApiRoutes,
 	scopeRequirementToString,
+	scopesInRequirement,
 	toOpenApiPathTemplate,
 } from '@/public-api/public-api-route-resolver';
-
-import { applySchemaModifiers } from './schema-modifiers';
-
-const REQUEST_BODY_COMPONENT = 'RequestBody';
 
 const IDEMPOTENCY_KEY_PARAMETER = {
 	$ref: '../../../../shared/spec/parameters/idempotencyKey.yml',
@@ -47,6 +42,7 @@ export const ERROR_RESPONSE_REFS = {
 	413: { $ref: '../../../../shared/spec/responses/contentTooLarge.yml' },
 	415: { $ref: '../../../../shared/spec/responses/unsupportedMediaType.yml' },
 	422: { $ref: '../../../../shared/spec/responses/unprocessableEntity.yml' },
+	429: { $ref: '../../../../shared/spec/responses/tooManyRequests.yml' },
 	500: { $ref: '../../../../shared/spec/responses/internalServerError.yml' },
 	503: { $ref: '../../../../shared/spec/responses/serviceUnavailable.yml' },
 } as const satisfies Record<number, { $ref: string }>;
@@ -71,6 +67,7 @@ export const ERROR_RESPONSE_DESCRIPTIONS: Record<DocumentedErrorStatus, string> 
 	413: 'Content too large.',
 	415: 'Unsupported media type.',
 	422: 'Unprocessable Entity',
+	429: 'Too many requests.',
 	500: 'Internal server error.',
 	503: 'The requested service is temporarily unavailable.',
 };
@@ -183,27 +180,6 @@ function buildRequestBody(
 	};
 }
 
-/**
- * Converts a route's `@Body` DTO into JSON Schema, using the same conversion the build runs when
- * it writes the OpenAPI files. zod-to-openapi can only convert a schema that a registry holds, so
- * this registers one under a throwaway name and then reads the result back out.
- */
-export function buildRequestBodyJsonSchema(
-	route: ResolvedPublicApiRoute,
-): Record<string, unknown> | undefined {
-	if (!route.requestBodyDto) return undefined;
-
-	const registry = new OpenAPIRegistry();
-	registry.register(REQUEST_BODY_COMPONENT, route.requestBodyDto.schema);
-
-	const { components } = new OpenApiGeneratorV3(registry.definitions).generateComponents();
-	const schema = components?.schemas?.[REQUEST_BODY_COMPONENT];
-
-	applySchemaModifiers(schema);
-
-	return isRecord(schema) ? schema : undefined;
-}
-
 /** Documents a success body the controller method writes itself, with its declared headers. */
 export function buildBinarySuccessResponse({ mediaType, description, headers }: BinaryResponse) {
 	const responseHeaders: Record<
@@ -250,9 +226,10 @@ export function buildJsonSuccessResponse(
 /**
  * Response set is derived from what `PublicApiControllerRegistry` actually does at runtime, not
  * invented: the success status is the one `@ApiResponse` declares (and the same one the registry
- * sends), auth always 401s, `@ApiKeyScope` always 403s on mismatch, and a body/query DTO always
- * 400s on failed `.safeParse()`. Anything else - like a 404 from a business-rule lookup that isn't
- * visible in decorator metadata - has to be declared explicitly via `@ApiErrorResponse`.
+ * sends), auth always 401s, rate limiting can return 429, `@ApiKeyScope` always 403s on mismatch,
+ * and a body/query DTO always 400s on failed `.safeParse()`. Anything else - like a 404 from a
+ * business-rule lookup that isn't visible in decorator metadata - has to be declared explicitly
+ * via `@ApiErrorResponse`.
  * A binary `@ApiResponse` documents its media type, description and headers instead of a JSON DTO.
  */
 function buildResponses(
@@ -284,6 +261,7 @@ function buildResponses(
 		}
 	}
 	responses[401] = ERROR_RESPONSE_REFS[401];
+	responses[429] = ERROR_RESPONSE_REFS[429];
 	if (route.apiKeyScope) {
 		responses[403] = ERROR_RESPONSE_REFS[403];
 	}
@@ -322,6 +300,42 @@ function buildResponses(
 	return responses;
 }
 
+function describeRequiredApiKeyScope(requirement: ApiKeyScopeRequirement): string {
+	const scopeList = scopesInRequirement(requirement)
+		.map((scope) => `\`${scope}\``)
+		.join(', ');
+
+	if (typeof requirement === 'string') {
+		return `Requires the ${scopeList} API key scope.`;
+	}
+
+	if ('anyOf' in requirement) {
+		return `Requires one of these API key scopes: ${scopeList}.`;
+	}
+
+	return `Requires all of these API key scopes: ${scopeList}.`;
+}
+
+function buildOperationDescription(route: ResolvedPublicApiRoute): string | undefined {
+	const description = route.description?.trim();
+
+	// GitBook does not render `x-required-scope`. OpenAPI 3.0 cannot scope an `apiKey` requirement.
+	// So we add a human-readable description of the required scope(s) to the operation's description.
+	const requiredScopeSuffix = route.apiKeyScope
+		? describeRequiredApiKeyScope(route.apiKeyScope)
+		: undefined;
+
+	const descriptionComponents = [description, requiredScopeSuffix].filter(
+		(component): component is string => Boolean(component),
+	);
+
+	if (descriptionComponents.length === 0) {
+		return undefined;
+	}
+
+	return descriptionComponents.join('\n\n');
+}
+
 export interface GeneratedDecoratorOperation {
 	/** Where to write the generated fragment, relative to the `v1` directory. */
 	outputPath: string;
@@ -351,6 +365,7 @@ export function getDecoratorGeneratedOperations(
 		const requestParams = buildPathParams(route);
 		const requestBody = buildRequestBody(route);
 		const resource = route.path.split('/').find(Boolean) ?? 'root';
+		const description = buildOperationDescription(route);
 
 		const config: RouteConfig = {
 			method: route.method,
@@ -358,7 +373,7 @@ export function getDecoratorGeneratedOperations(
 			operationId: route.handlerName,
 			...(route.tags?.length ? { tags: route.tags } : {}),
 			...(route.summary ? { summary: route.summary } : {}),
-			...(route.description ? { description: route.description } : {}),
+			...(description ? { description } : {}),
 			...(route.apiKeyScope
 				? { 'x-required-scope': scopeRequirementToString(route.apiKeyScope) }
 				: {}),

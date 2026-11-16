@@ -158,7 +158,10 @@ export class WorkflowRemover {
 		for (const workflow of plan.removals) {
 			// Archiving is the step that unpublishes, and `delete` refuses a published workflow outright,
 			// so it runs first under either policy. `skipArchived` keeps a re-run from erroring.
-			await this.workflowService.archive(context.user, workflow.id, { skipArchived: true });
+			await this.workflowService.archive(context.user, workflow.id, {
+				skipArchived: true,
+				publicApi: context.publicApi,
+			});
 
 			const deleted =
 				plan.deletionPolicy === OverwriteDeletionPolicy.HardDelete &&
@@ -189,7 +192,9 @@ export class WorkflowRemover {
 		workflow: RemovableWorkflow,
 	): Promise<boolean> {
 		try {
-			await this.workflowService.delete(context.user, workflow.id);
+			await this.workflowService.delete(context.user, workflow.id, false, {
+				publicApi: context.publicApi,
+			});
 			return true;
 		} catch (error) {
 			if (error instanceof ConflictError) return false;

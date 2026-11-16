@@ -15,8 +15,9 @@ node -e '
 const fs = require("node:fs");
 const [deadline, npmVersion, retentionMs] = process.argv.slice(1);
 if (Date.now() >= Number(deadline)) process.exit(124);
-if (Number(process.versions.node.split(".")[0]) < 22 || Number(npmVersion.split(".")[0]) < 10) {
-  console.error("App builds need Node.js 22 or later and npm 10 or later.");
+const [nodeMajor, nodeMinor] = process.versions.node.split(".").map(Number);
+if (nodeMajor < 22 || (nodeMajor === 22 && nodeMinor < 12) || Number(npmVersion.split(".")[0]) < 10) {
+  console.error("App builds need Node.js 22.12 or later and npm 10 or later.");
   process.exit(1);
 }
 fs.mkdirSync("app", { recursive: true });
@@ -35,11 +36,15 @@ printf install > "$stage/stage"
 cache_key="$key:$node_version:$npm_version"
 if [ ! -d node_modules ] || [ ! -f "$root/dependencies" ] || [ "$(cat "$root/dependencies")" != "$cache_key" ]; then
   rm -f "$root/dependencies"
-  npm ci --include=dev --no-audit --no-fund 2>&1 | tail -c "$max_log_bytes"
+  npm ci --include=dev --ignore-scripts --no-audit --no-fund --prefer-offline 2>&1 | tail -c "$max_log_bytes"
   printf '%s' "$cache_key" > "$root/dependencies"
 fi
+# npm does not manage the SDK, so install the copy of this instance on every build.
+rm -rf node_modules/@n8n/app-sdk
+mkdir -p node_modules/@n8n/app-sdk
+tar -xzf "$stage/sdk.tgz" -C node_modules/@n8n/app-sdk
 printf build > "$stage/stage"
 ulimit -c 0
-npm run build 2>&1 | tail -c "$max_log_bytes"
+npm run build -- --base=/ 2>&1 | tail -c "$max_log_bytes"
 tar -czf "$stage/bundle.tgz" -C dist .
 `;

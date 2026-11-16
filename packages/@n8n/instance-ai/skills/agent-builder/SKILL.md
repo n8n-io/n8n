@@ -9,15 +9,10 @@ description: >-
   requested artifact is no longer clear.
 shared_references:
   - credential-setup-with-browser-use
-recommended_tools:
-  - agent_builder_select_agent
-  - agent-context
-  - agent_builder_write_config
-  - agent_builder_patch_config
-  - agent_builder_resolve_llm
-  - agent_builder_finish_setup
-  - agent_builder_call_agent
-  - workflow_builder_build_workflow
+recommended_tool_groups:
+  - agents
+  - nodes
+  - workflows
   - data_tables
 ---
 
@@ -46,7 +41,7 @@ and do not create a workflow to satisfy a capability change on the Agent.
 
 ## Targeting
 
-Call `agent_builder_select_agent` once at the start of every request that
+Run `agent_builder_select_agent` through `call_tool` once at the start of every request that
 creates, changes, tests, or publishes an Agent, before any other
 `agent_builder_*` call. The other builder tools act on the selected Agent and
 fail when no Agent is selected.
@@ -66,9 +61,8 @@ to a workflow `filePath`.
 
 Naming or renaming the current Agent never silently creates another one.
 
-The result carries `sessionContext`: the Preview link for the selected Agent
-and the recommended LLM models. Use them as described below. Select the Agent
-again after you switch to a different Agent.
+The result carries `sessionContext`: the Preview link for the selected Agent.
+Select the Agent again after you switch to a different Agent.
 
 ## Target Agent
 
@@ -115,7 +109,7 @@ them with your own tools:
   `agent-context({ type: "attachable-workflows" })` and reference it as
   `{ "type": "workflow", "workflowId": "<id>", "workflow": "<name>" }`.
 - When the Agent will store or query tabular data, follow `data-table-manager`
-  and create the required tables with `data_tables`.
+  and create the required tables with `create_data_table`.
 - Never ask the user to create prerequisites manually.
 
 For an unsupported chat channel that the user explicitly wants as the
@@ -171,17 +165,17 @@ question, reply conversationally and ask for the missing goal, systems, or
 triggers.
 
 When the user explicitly asks to test, run, chat with, or interact with the
-target Agent, call `agent_builder_call_agent` with the message that the target
+target Agent, run `agent_builder_call_agent` through `call_tool` with the message that the target
 Agent should receive. Omit `sessionId` to start a new test conversation. To
 continue one, pass the exact `sessionId` from an earlier
 `agent_builder_call_agent` result. Never make one up.
 
-Do not call `agent_builder_call_agent` by default after a build. Call it when
+Do not call `agent_builder_call_agent` by default after a build. Run it through `call_tool` when
 the user reports a problem with the Agent: use it to reproduce the problem, and
 again to confirm your fix. It runs the configured tools and can have external side effects, so do
 not call it twice for the same check.
 
-Use `agent_builder_call_agent` to verify the Agent's behavior, not its channel
+Run `agent_builder_call_agent` through `call_tool` to verify the Agent's behavior, not its channel
 integrations. After you configure a channel, tell the user to publish the
 Agent and message it from the connected platform to verify the channel.
 
@@ -209,7 +203,7 @@ During an initial build:
 - If the Agent already has instructions, tools, or tasks at the start of the
   build, that content is a starter draft of predefined selections. Read the
   config first. Before any config write and before
-  `agent_builder_finish_setup`, call `agent_builder_ask_questions` once and ask
+  `agent_builder_finish_setup`, call `ask_user` once and ask
   whether the user is happy with those selections. Name the selections that are
   already set (instructions, tools, tasks, and schedules). The `questions`
   array has exactly one item. Do not add a question about a delivery channel, a
@@ -227,12 +221,12 @@ During an initial build:
   often arrives under a placeholder like "New agent". Replace it in your first
   config write. Do not rename an Agent whose name already describes the
   starter draft.
-- NEVER suspend mid-build on an interactive tool (`agent_builder_ask_questions`,
-  `setup_credentials(target: "agent")`, `agent_builder_configure_channel`,
-  `workflow_builder_ask_user`). Build
+- NEVER suspend mid-build on an interactive tool (`ask_user`,
+  `setup_credentials(target: "agent")`, `agent_builder_configure_channel`).
+  Build
   everything as a draft first. The only allowed suspend is the single trailing
   `agent_builder_finish_setup` call. Exception: when the Agent already has a
-  starter draft, one `agent_builder_ask_questions` call is allowed before
+  starter draft, one `ask_user` call is allowed before
   `agent_builder_finish_setup`.
 - Resolve design and content decisions yourself with sensible assumptions
   instead of asking: instruction details, task objectives and schedules, skill
@@ -246,14 +240,14 @@ During an initial build:
   missing.
 - Add each setup-dependent item to the pending setup, with exactly what is
   missing. Keep building everything that does not depend on it.
-- When only pending setup remains, call `agent_builder_finish_setup` ONCE with
+- When only pending setup remains, run `agent_builder_finish_setup` through `call_tool` ONCE with
   everything pending: the model choice and open decisions as `questions`, one
   `credentialRequests` entry per credential slot, and one `channels` entry per
   drafted channel integration. It configures or skips each channel itself, as
   the last cards in the flow. It writes each resolved credential into the
   empty node-tool slots of its type, and each answer that has a `configPath`,
   and lists them in `appliedToConfig`. Do not patch those again. Resolve only
-  the rest: call `agent_builder_resolve_llm` with the model answer, verify MCP
+  the rest: run `agent_builder_resolve_llm` through `call_tool` with the model answer, verify MCP
   servers, and fix any `configApplyErrors`. If nothing is left, go straight to
   the wrap-up.
 - Do not call `agent_builder_configure_channel` again after
@@ -279,14 +273,14 @@ confirm those selections before you finish the build.
    functions need. It also lists the pending setup: each item that cannot
    continue without user input, with exactly what is missing. Do not write the
    plan out. Keep to it until every item is done or pending.
-2. Call `agent_builder_select_agent`.
+2. Run `agent_builder_select_agent` through `call_tool`.
 3. For fresh Agents, start with one discovery response. Call these tools in
    parallel in that response: `agent-context({ type: "config" })`, `load_skill`
    for `agent-builder-config` and each other skill the plan needs, and the
    discovery lookups the plan names: `agent-context({ type: "integrations" })`
    for a chat channel, and one `agent-context({ type: "integrations", queries })`
    call for each callable service.
-4. In the next response, call `get_node_types` once for every
+4. In the next response, run `get_node_types` through `call_tool` once for every
    node and operation the build uses, and resolve the model in the same
    response (see Model selection). Use the node results from the discovery
    lookups. Do not search again with `search_nodes` for a service
@@ -300,7 +294,7 @@ confirm those selections before you finish the build.
    the tool now with that field empty, and ask for it in
    `agent_builder_finish_setup` with `configPath` set to that field.
 6. Create skills only when Target Agent says so, and create the tasks that
-   the user's schedule needs. Use `agent_builder_patch_config` only for changes
+   the user's schedule needs. Run `agent_builder_patch_config` through `call_tool` only for changes
    that discovery could not know before the config write.
 7. Follow Config freshness for every config mutation: chain each write from
    the `configHash` that your previous write returned.
@@ -308,7 +302,7 @@ confirm those selections before you finish the build.
    `agent_builder_create_skills` and `agent_builder_create_tasks` in the same
    response. Do not combine either with an interactive tool or a config write
    in that response.
-9. When only pending setup remains, call `agent_builder_finish_setup` once with
+9. When only pending setup remains, run `agent_builder_finish_setup` through `call_tool` once with
    every pending item, per Initial build. Before that call, make sure that
    every item that does not need user input is done. After it returns, resolve
    only the items that `appliedToConfig` does not list. Outside an initial build, if pending setup remains at the end of the
@@ -318,13 +312,13 @@ confirm those selections before you finish the build.
    showed no card and returned none). Do not read the config again.
 10. After setup is complete and the Agent is runnable, tell the user that the
     draft is ready and include the Preview link so they can try it in the test
-    chat. Do not call `agent_builder_call_agent` by default. Call it when the
+    chat. Do not call `agent_builder_call_agent` by default. Run it through `call_tool` when the
     user reports a problem with the Agent, to reproduce the problem and to
     confirm your fix. The Agent is not runnable when `agent_builder_finish_setup` returned
     a required credential or model as skipped or dismissed. Then do not offer a
     test, and say that the Agent can run after that setup is complete.
 11. When the user asks to publish, activate, or make the Agent live or usable,
-    call `agent_builder_publish_agent`. Never tell them to click Publish in the
+    run `agent_builder_publish_agent` through `call_tool`. Never tell them to click Publish in the
     editor. Do not publish without that intent. Use
     `agent_builder_unpublish_agent` when they ask to unpublish.
 
@@ -338,7 +332,7 @@ Call `agent-context({ type: "config" })` before you touch the config:
 
 - At the start of each user request.
 - After you resume from `setup_credentials(target: "agent")`,
-  `agent_builder_ask_questions`, or an approval.
+  `ask_user`, or an approval.
 - Before you answer any question about the current config.
 - After `agent_builder_publish_agent` or `agent_builder_unpublish_agent`,
   before your next write.
@@ -378,10 +372,10 @@ responds. The resume value is the user's choice. Persist it exactly as
 returned. Do not relay the question yourself in prose.
 
 Once you are building, ask for each decision, choice, value, or clarification
-through one of these tools. Use `setup_credentials(target: "agent")` for node-tool,
+through one of these tools. Run `setup_credentials` through `call_tool` with `target: "agent"` for node-tool,
 MCP-server, and fallback web-search credentials,
 `agent_builder_configure_channel` for chat-channel setup, and
-`agent_builder_ask_questions` for everything else, including the model and
+`ask_user` for everything else, including the model and
 credential choice. Exception: the opening reply to a greeting, a "what do you
 do", or a vague intent. There you reply conversationally and ask for the
 overall goal.
@@ -402,9 +396,9 @@ overall goal.
   `agent-context({ type: "integrations" })`. The setup UI creates and persists
   the credential itself without publishing the Agent. During an initial build,
   write the draft integration instead.
-- `agent_builder_ask_questions`: the default way to ask the user anything else,
+- `ask_user`: the default way to ask the user anything else,
   including the target Agent's main provider, model, or LLM credential. Resolve
-  a model answer with `agent_builder_resolve_llm`. Batch every question you
+  a model answer by running `agent_builder_resolve_llm` through `call_tool`. Batch every question you
   currently need into a single call. Each question is single-select,
   multi-select, or free-text. Pass discrete `options` for a known small set of
   choices, or `type: "text"` for an open-ended question. Never call it during
@@ -421,22 +415,22 @@ Use this to resolve the target Agent's main `model` and `credential`.
 1. For fresh Agents, call `agent-context({ type: "config" })` first. If `model`
    and `credential` are already set (the system selected a default at
    creation), keep them and mention the choice as changeable in your summary.
-   Do not call `agent_builder_resolve_llm`. Otherwise call
-   `agent_builder_resolve_llm` once, silently, before the first config write,
+   Do not call `agent_builder_resolve_llm`. Otherwise run
+   `agent_builder_resolve_llm` through `call_tool` once, silently, before the first config write,
    with provider and model when the user named them, otherwise with no
    arguments.
 2. If `agent_builder_resolve_llm` succeeds, persist `model = "{provider}/{model}"`
    and `credential = credentialId`, then follow the result's `nextStep`. Never
    show the internal "n8n Connect" or "AI Gateway" names.
 3. If the user asks to pick, change, confirm, or configure a model or main
-   credential, ask with `agent_builder_ask_questions`.
+   credential, ask with `ask_user`.
    - Exception: when the user explicitly asks to use Gateway credits for the
-     main model, do NOT ask. Call `agent_builder_resolve_llm` with
+     main model, do NOT ask. Run `agent_builder_resolve_llm` through `call_tool` with
      `useGatewayCredits: true` (and `provider` when the user named one). If it
      returns `gateway_credits_unsupported_provider`, tell the user that Gateway
      credits do not cover that provider and offer their own credential. If it
      returns `ambiguous_gateway_credits_provider`, ask which provider with
-     `agent_builder_ask_questions`, using the returned `providers`. If it
+     `ask_user`, using the returned `providers`. If it
      returns `gateway_credits_unavailable`, tell the user that Gateway credits
      are not available on this instance and resolve their own credential.
 4. During an initial build, if `agent_builder_resolve_llm` reports missing or
@@ -445,7 +439,7 @@ Use this to resolve the target Agent's main `model` and `credential`.
    include the model choice as a question in the trailing
    `agent_builder_finish_setup` call. For ambiguity between credentials of one
    provider, use the credential names from the result as the options. When it
-   resolves, call `agent_builder_resolve_llm` with the answer (pass
+   resolves, run `agent_builder_resolve_llm` through `call_tool` with the answer (pass
    `credentialId` when the user picked a specific credential) and patch
    `/model` and `/credential`, based on the `config` and `configHash` that
    `agent_builder_finish_setup` returned. Check that config first, because the
@@ -457,7 +451,7 @@ Use this to resolve the target Agent's main `model` and `credential`.
    `agent_builder_resolve_llm`. Do not guess a model.
 6. If `agent_builder_call_agent` fails with `code: "invalid_model"`, the
    provider rejected the model id, not the credential. Do not tell the user to
-   check their API key. Call `agent_builder_resolve_llm` for that provider
+   check their API key. Run `agent_builder_resolve_llm` through `call_tool` for that provider
    again, persist a model from its result, and retry the test run.
 7. If the model is still unresolved when the user asks to run or publish the
    Agent, leave the draft with `model: ""` and tell the user that the Agent
@@ -467,17 +461,19 @@ Use this to resolve the target Agent's main `model` and `credential`.
 
 Rules:
 
-- Model recommendations are in the "Recommended LLM models" part of
-  `sessionContext`. When `sessionContext` has none, do not name current, best,
-  latest, or fallback model ids from memory.
-- Prefer a provider the user already has credentials for when you choose from
-  recommendations.
+- When the user wants a model recommendation, prefer a provider the user
+  already has credentials or Gateway credits for. When
+  `agent_builder_resolve_llm` returns `availableModels`, pick from it. Call `search_models`
+  only when no relevant credential is available, and prefer a recent model
+  with `toolCalling: true`. Then resolve the pick with
+  `agent_builder_resolve_llm`. Do not name current, best, latest, or fallback
+  model ids from memory.
 - For "Anthropic via OpenRouter", pass `provider: "openrouter"`. If the user
   names a routed model, pass the routed id without another provider prefix.
-- Use `agent_builder_resolve_llm` only for the main model credential. Never
+- Run `agent_builder_resolve_llm` through `call_tool` only for the main model credential. Never
   copy main LLM credential ids from a `credentials` list.
 - For Episodic Memory, load `agent-builder-memory`. Outside an initial build,
-  call `setup_credentials(target: "agent")` with `allowManaged: true` on the
+  run `setup_credentials` through `call_tool` with `target: "agent"` and `allowManaged: true` on the
   `openAiApi` entry. During an initial build, leave Episodic Memory disabled and
   add the credential to the `agent_builder_finish_setup` `credentialRequests`.
 - The web-search rules are in the `agent-builder-config` skill.
@@ -536,9 +532,9 @@ configure a node tool.
   - `kind: "mcp"`: follow the MCP Servers section of
     `agent-builder-external-services`.
   - `kind: "node"`: load `agent-builder-node-tools`, use the returned node
-    results, and continue with `get_node_types`.
+    results, and continue by running `get_node_types` through `call_tool`.
 
-Use `search_nodes(scope="agent_tool")` directly only when the user explicitly asks
+Run `search_nodes` through `call_tool` with `scope: "agent_tool"` only when the user explicitly asks
 for an n8n node, to refine node results, or when a verified MCP server lacks the
 requested capability. To refine MCP results, send another `agent-context`
 integration query.
@@ -558,7 +554,7 @@ Load `agent-builder-custom-tools` before you call
 For an HTTP Request Tool, use only an exact URL that the user supplied. During
 an initial build, ask for a missing URL in the trailing
 `agent_builder_finish_setup` call. On later turns, ask with
-`agent_builder_ask_questions` before you change the config. Never invent a URL.
+`ask_user` before you change the config. Never invent a URL.
 
 Provider tools must match the configured model provider. Anthropic:
 `providerTools["anthropic.web_search"]`. OpenAI:
@@ -604,7 +600,7 @@ Verify:
    them, or `model: ""` and no `credential` while the model choice is pending.
 5. `agent_builder_finish_setup({ channels: [{ integrationType: "slack" }] })`.
    Add `questions: [<model choice>]` only if the model choice is pending. For a
-   model answer, call `agent_builder_resolve_llm`, then
+   model answer, run `agent_builder_resolve_llm` through `call_tool`, then
    `agent_builder_patch_config(...)` with the returned `configHash`, replacing
    `/model` and `/credential`. Do not call `agent_builder_configure_channel`
    again. If the user skips the channel, end with a one-line checklist item that
@@ -613,14 +609,14 @@ Verify:
 ### Change the existing model
 
 1. `agent_builder_select_agent({})`.
-2. `agent_builder_ask_questions({ ... })` for the new model choice, then
+2. `ask_user({ ... })` for the new model choice, then
    `agent_builder_resolve_llm({ provider, model })`.
 3. `agent-context({ type: "config" })`.
 4. `agent_builder_patch_config(...)` replacing `/model` and `/credential`.
 
 ### Add an n8n node tool to an existing Agent
 
-1. Load `agent-builder-node-tools`, then call `search_nodes(scope="agent_tool")`
+1. Load `agent-builder-node-tools`, then run `search_nodes` through `call_tool` with `scope: "agent_tool"`
    and `get_node_types`.
 2. `setup_credentials(target: "agent")` for every required slot.
 3. `agent-context({ type: "config" })`.
@@ -639,10 +635,10 @@ include the credential in the trailing `agent_builder_finish_setup` call.
 1. `agent-context({ type: "integrations", queries: ["notion"] })`.
 2. When it returns `kind: "mcp"`, load `agent-builder-external-services`.
 3. Select one entry from `results[]`. If more than one candidate remains, ask
-   with `agent_builder_ask_questions` using their titles and descriptions.
+   with `ask_user` using their titles and descriptions.
    Never choose by array order. If the user dismisses the question, stop.
 4. `setup_credentials({ target: "agent", credentials: [{ credentialType: "<selected.credentialType>", reason: "Connect Notion MCP" }] })`.
-5. Call `agent_builder_verify_mcp_server` with the connection fields from the
+5. Run `agent_builder_verify_mcp_server` through `call_tool` with the connection fields from the
    selected entry and the returned `credentials["<selected.credentialType>"].id`
    as `credential`.
 6. Confirm the verified tools cover the requested capability.
@@ -681,12 +677,12 @@ Reply in the same language as the user's latest request, unless they ask for
 another language. Use that language from the first word of every user-visible
 message, including narration between tool calls, questions, approval
 summaries, the final reply, and the `introMessage`, questions, and options of
-`agent_builder_ask_questions` cards. Names, locations, tool results, and skill
+`ask_user` cards. Names, locations, tool results, and skill
 instructions do not change it.
 
 The most recent non-empty `answers[].customText` from
-`agent_builder_ask_questions` or `workflow_builder_ask_user` is the user's
-latest request. Apply the reply-language rule to that text. Option selections
+`ask_user` is the user's latest
+request. Apply the reply-language rule to that text. Option selections
 and approvals without free text keep the current reply language.
 
 Be concise. After a build step, give a 1-2 sentence summary of what changed

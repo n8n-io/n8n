@@ -4,8 +4,6 @@ import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-
 import {
 	createSkillServices,
 	PROJECT,
@@ -15,43 +13,25 @@ import {
 	resetSkillMocks,
 } from './test-utils/skill-services';
 
-vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 vi.mock('@n8n/permissions', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	hasGlobalScope: vi.fn(),
 }));
 
 describe('SkillAccessService', () => {
-	const { skills, skillUsage, txRunner, projectScope, access } = createSkillServices();
+	const { skills, usage, txRunner, projectScope, access } = createSkillServices();
 	const user = mock<User>({ id: 'user-1' });
 
-	beforeEach(() => resetSkillMocks({ skills, skillUsage, txRunner }));
+	beforeEach(async () => await resetSkillMocks({ skills, usage, txRunner }));
 
 	describe('canAccess for update', () => {
 		it('checks projectSkill:update on the project of a project skill', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(true);
+			projectScope.hasScopes.mockResolvedValue(true);
 
 			expect(
 				await access.canAccess(user, skillRow('skill_a', { projectId: PROJECT }), 'update'),
 			).toBe(true);
-			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:update'], false, {
-				projectId: PROJECT,
-			});
-		});
-
-		it('checks projectSkill:update on the project of the agent of an agent skill', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(true);
-			skillUsage.findAgents.mockResolvedValue(
-				new Map([['agent-1', { name: 'Support bot', projectId: PROJECT }]]),
-			);
-
-			expect(
-				await access.canAccess(user, skillRow('skill_a', { agentId: 'agent-1' }), 'update'),
-			).toBe(true);
-			expect(skillUsage.findAgents).toHaveBeenCalledWith(['agent-1'], {});
-			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:update'], false, {
-				projectId: PROJECT,
-			});
+			expect(projectScope.hasScopes).toHaveBeenCalledWith(user, PROJECT, ['projectSkill:update']);
 		});
 
 		it('needs skill:update for an instance skill', async () => {
@@ -75,25 +55,13 @@ describe('SkillAccessService', () => {
 			expect(await access.canAccess(user, skillRow('skill_a'), 'read')).toBe(true);
 		});
 
-		it('needs skill:read for an agent skill whose agent is gone', async () => {
-			vi.mocked(hasGlobalScope).mockReturnValue(false);
-			skillUsage.findAgents.mockResolvedValue(new Map());
-
-			expect(await access.canAccess(user, skillRow('skill_a', { agentId: 'gone' }), 'read')).toBe(
-				false,
-			);
-			expect(hasGlobalScope).toHaveBeenCalledWith(user, 'skill:read');
-		});
-
 		it('checks the scope of the operation on the project of a project skill', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(false);
+			projectScope.hasScopes.mockResolvedValue(false);
 
 			expect(
 				await access.canAccess(user, skillRow('skill_a', { projectId: PROJECT }), 'delete'),
 			).toBe(false);
-			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:delete'], false, {
-				projectId: PROJECT,
-			});
+			expect(projectScope.hasScopes).toHaveBeenCalledWith(user, PROJECT, ['projectSkill:delete']);
 		});
 
 		it('needs skill:delete to delete an instance skill', async () => {
@@ -111,15 +79,11 @@ describe('SkillAccessService', () => {
 
 			const canUpdate = await access.accessCheck(user, 'update');
 
-			expect(canUpdate(skillRow('skill_a', { projectId: PROJECT }), PROJECT)).toBe(true);
-			expect(canUpdate(skillRow('skill_b', { projectId: 'other-project' }), 'other-project')).toBe(
-				false,
-			);
-			// An agent skill is checked against the project of its agent.
-			expect(canUpdate(skillRow('skill_c', { agentId: 'agent-1' }), PROJECT)).toBe(true);
+			expect(canUpdate(skillRow('skill_a', { projectId: PROJECT }))).toBe(true);
+			expect(canUpdate(skillRow('skill_b', { projectId: 'other-project' }))).toBe(false);
 			expect(projectScope.getProjectIds).toHaveBeenCalledTimes(1);
 			expect(projectScope.getProjectIds).toHaveBeenCalledWith(user, ['projectSkill:update']);
-			expect(userHasScopes).not.toHaveBeenCalled();
+			expect(projectScope.hasScopes).not.toHaveBeenCalled();
 		});
 
 		it('allows every project skill when the global role grants the scope', async () => {
@@ -127,9 +91,7 @@ describe('SkillAccessService', () => {
 
 			const canDelete = await access.accessCheck(user, 'delete');
 
-			expect(canDelete(skillRow('skill_a', { projectId: 'any-project' }), 'any-project')).toBe(
-				true,
-			);
+			expect(canDelete(skillRow('skill_a', { projectId: 'any-project' }))).toBe(true);
 		});
 
 		it('applies the canAccess rules to instance skills', async () => {
@@ -139,8 +101,8 @@ describe('SkillAccessService', () => {
 			const canUpdate = await access.accessCheck(user, 'update');
 			const canRead = await access.accessCheck(user, 'read');
 
-			expect(canUpdate(skillRow('skill_c'), null)).toBe(false);
-			expect(canRead(skillRow('skill_c'), null)).toBe(true);
+			expect(canUpdate(skillRow('skill_c'))).toBe(false);
+			expect(canRead(skillRow('skill_c'))).toBe(true);
 		});
 	});
 

@@ -56,7 +56,7 @@ onMounted(() => {
 		</N8nLink>
 		<ContactAdminModal
 			v-model:open="isContactAdminOpen"
-			:node-type-name="adminSubject"
+			:type-name="adminSubject"
 			:kind="adminSubjectKind"
 			:audience="contactCopy.audience"
 		/>

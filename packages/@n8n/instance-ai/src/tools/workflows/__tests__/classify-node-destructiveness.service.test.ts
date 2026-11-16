@@ -356,13 +356,28 @@ describe('classifyNodesForSimulation', () => {
 		});
 	});
 
-	it('simulates a default wait node (1 hour time interval)', async () => {
+	it('executes a default wait node (1 hour time interval) because verification skips the delay', async () => {
 		const verdicts = await classify([
 			trigger,
 			{ name: 'Wait', type: 'n8n-nodes-base.wait', parameters: {} },
 		]);
 		expect(verdictOf(verdicts, 'Wait')).toMatchObject({
-			verdict: 'simulate',
+			verdict: 'execute',
+			source: 'deterministic',
+		});
+	});
+
+	it('executes waits that resume at a specific time because verification skips the delay', async () => {
+		const verdicts = await classify([
+			trigger,
+			{
+				name: 'Wait Until',
+				type: 'n8n-nodes-base.wait',
+				parameters: { resume: 'specificTime', dateTime: '2099-01-01T00:00:00.000Z' },
+			},
+		]);
+		expect(verdictOf(verdicts, 'Wait Until')).toMatchObject({
+			verdict: 'execute',
 			source: 'deterministic',
 		});
 	});

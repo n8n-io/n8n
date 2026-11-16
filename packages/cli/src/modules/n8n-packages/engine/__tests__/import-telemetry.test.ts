@@ -70,6 +70,7 @@ const scope = (input: {
 		user: mock(),
 		projectId: input.projectId,
 		folderId: input.folderId ?? null,
+		publicApi: false,
 	};
 	const dt = input.dataTable ?? { matched: 0, created: 0, requirements: 0 };
 	const vars = input.variables ?? { matched: 0, missing: 0, requirements: 0 };

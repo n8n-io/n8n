@@ -6,29 +6,30 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function tapfiliateApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'resolveWithFullResponse'> = {},
 ) {
 	const credentials = await this.getCredentials('tapfiliateApi');
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {
 			'Api-Key': credentials.apiKey,
 		},
 		method,
 		qs,
 		body,
-		uri: uri || `https://api.tapfiliate.com/1.6${endpoint}`,
+		uri: requestUrl`https://api.tapfiliate.com/1.6${endpoint}`,
 		json: true,
 	};
 
@@ -49,7 +50,7 @@ export async function tapfiliateApiRequest(
 export async function tapfiliateApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 
 	body: IDataObject = {},
 	query: IDataObject = {},
@@ -61,7 +62,7 @@ export async function tapfiliateApiRequestAllItems(
 	query.page = 1;
 
 	do {
-		responseData = await tapfiliateApiRequest.call(this, method, endpoint, body, query, '', {
+		responseData = await tapfiliateApiRequest.call(this, method, endpoint, body, query, {
 			resolveWithFullResponse: true,
 		});
 		returnData.push.apply(returnData, responseData.body as IDataObject[]);

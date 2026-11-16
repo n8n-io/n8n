@@ -378,6 +378,23 @@ describe('native tool catalog', () => {
 		expect(native[id].outputSchema).toBeDefined();
 	});
 
+	it.each(Object.entries(providers))(
+		'adds the words of a deferred tool name to its description for %s',
+		async (_provider, implementation) => {
+			const tools = toAiSdkTools([
+				makeTool('my-workflow-3'),
+				makeTool('Linear_getIssue'),
+				makeTool('Slack'),
+				makeTool('workspace_read_file'),
+			]);
+			const { tools: native } = await applyNativeToolDeferral(tools, implementation, policy);
+			expect(native['my-workflow-3'].description).toBe('Run my-workflow-3. (my workflow 3)');
+			expect(native.Linear_getIssue.description).toBe('Run Linear_getIssue. (linear get issue)');
+			expect(native.Slack.description).toBe('Run Slack.');
+			expect(native.workspace_read_file.description).toBe('Run workspace_read_file.');
+		},
+	);
+
 	it('keeps user tools when the generated search name is occupied', async () => {
 		const tools = toAiSdkTools([makeTool('openai.tool_search')]);
 		const { tools: native } = await applyNativeToolDeferral(tools, openAiToolDeferral, policy);
@@ -406,7 +423,7 @@ describe('native tool catalog', () => {
 		expect(Object.keys(native)).toEqual(Object.keys(tools));
 	});
 
-	it('includes runtime memory tools in the policy', async () => {
+	it('always sends the runtime memory tools eagerly', async () => {
 		const memory = new InMemoryMemory();
 		const { context, aiProviderTools } = makeContext({
 			memory,
@@ -421,9 +438,24 @@ describe('native tool catalog', () => {
 			list,
 		);
 		for (const name of ['recall_memory', 'flag_memory']) {
-			expect(tools.aiTools[name].providerOptions?.anthropic?.deferLoading).toBe(true);
+			expect(tools.aiTools[name].providerOptions?.anthropic?.deferLoading).toBe(false);
 			expect(tools.toolMap.get(name)?.handler).toBeDefined();
 		}
-		expect(tools.staticToolCacheName).toBe('workspace_read_file');
+		// Memory tools are eager and stable, so the last one carries the cache breakpoint.
+		expect(tools.staticToolCacheName).toBe('flag_memory');
+	});
+
+	it('keeps a user tool named recall_memory deferred when episodic memory is off', async () => {
+		const { context, aiProviderTools } = makeContext({
+			tools: [makeTool('workspace_read_file')],
+			deferredTools: [makeTool('recall_memory')],
+		});
+		const tools = await context.buildToolLoopContext(
+			aiProviderTools,
+			{ threadId: 'thread', resourceId: 'user' },
+			undefined,
+			new AgentMessageList(),
+		);
+		expect(tools.aiTools.recall_memory.providerOptions?.anthropic?.deferLoading).toBe(true);
 	});
 });

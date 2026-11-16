@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { TabOptions, UserAction } from '@n8n/design-system';
@@ -28,7 +28,7 @@ import {
 } from '@n8n/frontend-constants/self-healing';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
-import PromotionPreviewBadges from '@/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue';
+import { loadPromotionPreviewBadges } from '@n8n/frontend-module-promotions';
 
 import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
@@ -36,6 +36,10 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
+import { useCreateApp } from '@n8n/frontend-module-apps';
+
+// Lazy, so the badges and their preview code stay out of the boot chunk.
+const PromotionPreviewBadges = defineAsyncComponent(loadPromotionPreviewBadges);
 
 const route = useRoute();
 const router = useRouter();
@@ -46,6 +50,7 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
 const { createAgent } = useCreateAgent();
+const { createApp } = useCreateApp();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
 
@@ -186,6 +191,7 @@ const ACTION_TYPES = {
 	DATA_TABLE: 'dataTable',
 	VARIABLE: 'variable',
 	AGENT: 'agent',
+	APP: 'app',
 	SELF_HEALING: 'selfHealing',
 } as const satisfies Record<string, SlotProjectHeaderMainButton | 'folder'>;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
@@ -238,6 +244,19 @@ const createAgentButton = computed(() => ({
 	disabled: !canCreateAgent.value,
 }));
 
+const canCreateApp = computed(
+	() =>
+		settingsStore.isAppsEnabled &&
+		!sourceControlStore.preferences.branchReadOnly &&
+		Boolean(getResourcePermissions(homeProject.value?.scopes).app?.create),
+);
+const createAppButton = computed(() => ({
+	value: ACTION_TYPES.APP,
+	label: i18n.baseText('projects.header.create.app'),
+	size: 'mini' as const,
+	disabled: !canCreateApp.value,
+}));
+
 const createSelfHealingButton = computed(() => ({
 	value: ACTION_TYPES.SELF_HEALING,
 	label: i18n.baseText('selfHealing.config.create'),
@@ -248,6 +267,9 @@ const createSelfHealingButton = computed(() => ({
 
 const selectedMainButtonType = computed(() => {
 	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isAgentsEnabled) {
+		return ACTION_TYPES.WORKFLOW;
+	}
+	if (props.mainButton === ACTION_TYPES.APP && !settingsStore.isAppsEnabled) {
 		return ACTION_TYPES.WORKFLOW;
 	}
 	return props.mainButton ?? ACTION_TYPES.WORKFLOW;
@@ -265,6 +287,8 @@ const mainButtonConfig = computed(() => {
 			return createSelfHealingButton.value;
 		case ACTION_TYPES.AGENT:
 			return createAgentButton.value;
+		case ACTION_TYPES.APP:
+			return createAppButton.value;
 		case ACTION_TYPES.WORKFLOW:
 		default:
 			return createWorkflowButton.value;
@@ -338,6 +362,14 @@ const menu = computed(() => {
 			value: ACTION_TYPES.AGENT,
 			label: i18n.baseText('projects.header.create.agent'),
 			disabled: !canCreateAgent.value,
+		});
+	}
+
+	if (settingsStore.isAppsEnabled && selectedMainButtonType.value !== ACTION_TYPES.APP) {
+		items.push({
+			value: ACTION_TYPES.APP,
+			label: i18n.baseText('projects.header.create.app'),
+			disabled: !canCreateApp.value,
 		});
 	}
 
@@ -428,6 +460,9 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 	[ACTION_TYPES.AGENT]: (projectId, source) => {
 		createAgent(source, projectId);
 	},
+	[ACTION_TYPES.APP]: (projectId) => {
+		createApp(projectId);
+	},
 } as const;
 
 const sectionDescription = computed(() => {
@@ -461,10 +496,8 @@ const projectDescription = computed(() => {
 const favoriteIcon = computed(() => (isProjectFavorited.value ? 'star-filled' : 'star'));
 
 const projectHeaderRef = ref<HTMLElement | null>(null);
-const { width: projectHeaderWidth } = useElementSize(projectHeaderRef);
-
-const headerActionsRef = ref<HTMLElement | null>(null);
-const { width: headerActionsWidth } = useElementSize(headerActionsRef);
+const projectInfoRef = ref<HTMLElement | null>(null);
+const { width: projectInfoWidth } = useElementSize(projectInfoRef);
 
 const projectSubtitleFontSizeInPxs = ref<number | null>(null);
 
@@ -487,10 +520,9 @@ const projectDescriptionTruncated = computed(() => {
 		return '';
 	}
 
-	const availableTextWidth = projectHeaderWidth.value - headerActionsWidth.value;
 	// Fallback to N8nText component default font-size, small
 	const fontSizeInPixels = projectSubtitleFontSizeInPxs.value ?? 14;
-	return truncateTextToFitWidth(projectDescription.value, availableTextWidth, fontSizeInPixels);
+	return truncateTextToFitWidth(projectDescription.value, projectInfoWidth.value, fontSizeInPixels);
 });
 
 const onSelect = (action: string, source: CreateSource) => {
@@ -508,24 +540,40 @@ const onSelect = (action: string, source: CreateSource) => {
 		<div ref="projectHeaderRef" :class="$style.projectHeader">
 			<div :class="$style.projectDetails">
 				<ProjectIcon v-if="showProjectIcon" :icon="headerIcon" :border-less="true" size="medium" />
-				<div :class="$style.headerActions">
+				<div ref="projectInfoRef" :class="$style.projectInfo">
 					<div :class="$style.titleRow">
 						<N8nHeading
 							v-if="projectName"
+							:class="$style.projectName"
+							:title="projectName"
 							bold
 							tag="h2"
 							size="xlarge"
 							data-test-id="project-name"
 							>{{ projectName }}</N8nHeading
 						>
-						<PromotionPreviewBadges />
+						<N8nIconButton
+							v-if="isTeamProject"
+							:class="[$style.favoriteBtn, isProjectFavorited && $style.favoriteBtnActive]"
+							:icon="favoriteIcon"
+							:aria-label="i18n.baseText(isProjectFavorited ? 'favorites.remove' : 'favorites.add')"
+							variant="ghost"
+							size="medium"
+							data-test-id="project-favorite-btn"
+							@click.stop="onToggleProjectFavorite"
+						/>
+						<PromotionPreviewBadges :class="$style.promotionBadges" />
 					</div>
 					<N8nText v-if="sectionDescription" color="text-light" data-test-id="project-subtitle">
 						{{ sectionDescription }}
 					</N8nText>
 					<template v-else-if="projectDescription">
 						<div :class="$style.projectDescriptionWrapper">
-							<N8nText color="text-light" data-test-id="project-subtitle">
+							<N8nText
+								:class="$style.descriptionText"
+								color="text-light"
+								data-test-id="project-subtitle"
+							>
 								{{ projectDescriptionTruncated || projectDescription }}
 							</N8nText>
 							<div v-if="projectDescriptionTruncated" :class="$style.tooltip">
@@ -534,22 +582,8 @@ const onSelect = (action: string, source: CreateSource) => {
 						</div>
 					</template>
 				</div>
-				<N8nIconButton
-					v-if="isTeamProject"
-					:class="[$style.favoriteBtn, isProjectFavorited && $style.favoriteBtnActive]"
-					:icon="favoriteIcon"
-					:aria-label="i18n.baseText(isProjectFavorited ? 'favorites.remove' : 'favorites.add')"
-					variant="ghost"
-					size="medium"
-					data-test-id="project-favorite-btn"
-					@click.stop="onToggleProjectFavorite"
-				/>
 			</div>
-			<div
-				v-if="route.name !== VIEWS.PROJECT_SETTINGS"
-				ref="headerActionsRef"
-				:class="[$style.headerActions]"
-			>
+			<div v-if="route.name !== VIEWS.PROJECT_SETTINGS" :class="[$style.headerActions]">
 				<N8nTooltip
 					:disabled="!sourceControlStore.preferences.branchReadOnly"
 					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
@@ -594,25 +628,53 @@ const onSelect = (action: string, source: CreateSource) => {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
+	gap: var(--spacing--sm);
 	min-height: var(--spacing--3xl);
 }
 
 .projectDetails {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
+	flex: 1;
+	min-width: 0;
+}
+
+.projectInfo {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+	gap: var(--spacing--4xs);
+}
+
+.projectName {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.promotionBadges {
+	flex-shrink: 0;
 }
 
 .actions {
-	padding: var(--spacing--2xs) 0 var(--spacing--xs);
+	padding: var(--spacing--xs) 0 var(--spacing--xs);
 }
 
 .projectDescriptionWrapper {
 	position: relative;
-	display: inline-block;
 
 	&:hover .tooltip {
 		display: block;
 	}
+}
+
+.descriptionText {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .tooltip {
@@ -629,10 +691,9 @@ const onSelect = (action: string, source: CreateSource) => {
 }
 
 .favoriteBtn {
+	flex-shrink: 0;
 	cursor: pointer;
 	color: var(--color--text--tint-2);
-	margin-top: var(--spacing--5xs);
-	margin-left: var(--spacing--3xs);
 	opacity: 0.8;
 
 	&.favoriteBtnActive {
@@ -644,6 +705,7 @@ const onSelect = (action: string, source: CreateSource) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	min-height: var(--height--md);
 }
 
 .projectDetails:hover .favoriteBtn {
@@ -655,6 +717,10 @@ const onSelect = (action: string, source: CreateSource) => {
 		flex-direction: column;
 		align-items: flex-start;
 		gap: var(--spacing--xs);
+	}
+
+	.projectDetails {
+		width: 100%;
 	}
 
 	.headerActions {

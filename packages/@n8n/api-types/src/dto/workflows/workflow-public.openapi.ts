@@ -52,8 +52,10 @@ export const workflowSettingsFieldDocs = {
 	engineType: {
 		example: 'v1',
 		description:
-			'The execution engine that runs this workflow. It is included in workflow responses ' +
-			'for reference, but any value sent when creating or updating a workflow is ignored.',
+			'The execution engine that runs this workflow. n8n sets it on new workflows when the ' +
+			'instance runs new workflows on engine v2 (`N8N_ENGINE_DEFAULT_TYPE=v2` with the ' +
+			'`engine-v2` module enabled). It is included in workflow responses for reference, but ' +
+			'any value sent when creating or updating a workflow is ignored.',
 	},
 	callerPolicy: {
 		example: 'workflowsFromSameOwner',

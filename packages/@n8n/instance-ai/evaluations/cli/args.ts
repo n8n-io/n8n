@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 
-import { DEFAULT_MCP_BUILD_TIMEOUT_MS } from './mcp-builder';
+import { DEFAULT_MCP_BUILD_TIMEOUT_MS, isolatedClaudeAuthError } from './mcp-builder';
 import { BASELINE_EXPERIMENT_PREFIX } from '../comparison/fetch-baseline';
 
 /** Default LangSmith dataset — the shared Instance AI cohort. */
@@ -197,6 +197,8 @@ export function parseCliArgs(argv: string[]): CliArgs {
 			'--build-via-mcp requires LangSmith experiment tracking — set LANGSMITH_API_KEY. The no-LangSmith direct loop does not support MCP builds.',
 		);
 	}
+	const authError = validated.buildViaMcp ? isolatedClaudeAuthError(validated.buildCwd) : undefined;
+	if (authError) throw new Error(authError);
 	// Build knobs without --build-via-mcp would parse fine and then be silently
 	// ignored — the run would look like it honored them. Fail loudly instead.
 	if (!validated.buildViaMcp && raw.buildOnlyFlags.length > 0) {

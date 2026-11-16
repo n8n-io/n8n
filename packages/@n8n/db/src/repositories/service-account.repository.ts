@@ -1,9 +1,16 @@
 import { Service } from '@n8n/di';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { DataSource } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { BaseRepository } from './base-repository';
-import { type Role, ServiceAccount, ServiceAccountDetails } from '../entities';
+import {
+	Project,
+	ProjectRelation,
+	type Role,
+	ServiceAccount,
+	ServiceAccountDetails,
+} from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 class ServiceAccountTable extends BaseRepository<ServiceAccount> {
@@ -55,6 +62,32 @@ export class ServiceAccountRepository {
 				tx.create(ServiceAccountDetails, { userId: serviceAccount.id, name }),
 			);
 			return serviceAccount;
+		});
+	}
+
+	/**
+	 * Creates the account, its details, its personal project and the owner
+	 * relation in one transaction. The project takes the account name, because a
+	 * service account has no email.
+	 */
+	async createWithPersonalProject(account: NewServiceAccount, ctx: OperationContext = {}) {
+		return await this.table.runInTransaction(ctx, async (tx, txCtx) => {
+			const serviceAccount = await this.create(account, txCtx);
+			const project = await tx.save(
+				tx.create(Project, {
+					type: 'personal',
+					name: account.name,
+					creatorId: serviceAccount.id,
+				}),
+			);
+			await tx.save(
+				tx.create(ProjectRelation, {
+					projectId: project.id,
+					userId: serviceAccount.id,
+					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+				}),
+			);
+			return { serviceAccount, project };
 		});
 	}
 }

@@ -120,4 +120,46 @@ describe('Expression — nested $json shapes (engine parity)', () => {
 			inner: { a: undefined },
 		});
 	});
+
+	describe('fields named like Object.prototype members', () => {
+		const item = {
+			key: 'toString',
+			toString: 'to-string-value',
+			valueOf: 'value-of-value',
+			toLocaleString: 'to-locale-string-value',
+			hasOwnProperty: 'has-own-property-value',
+			isPrototypeOf: 'is-prototype-of-value',
+			propertyIsEnumerable: 'property-is-enumerable-value',
+			row: { toString: 'nested-value' },
+		};
+
+		it.each([
+			'toString',
+			'valueOf',
+			'toLocaleString',
+			'hasOwnProperty',
+			'isPrototypeOf',
+			'propertyIsEnumerable',
+		] as const)('returns the field %s for dot, bracket and computed access', (field) => {
+			expect(evaluate(`={{ $json.${field} }}`, item)).toBe(item[field]);
+			expect(evaluate(`={{ $json['${field}'] }}`, item)).toBe(item[field]);
+			expect(evaluate(`={{ $json[['${field}'][0]] }}`, item)).toBe(item[field]);
+		});
+
+		it('returns the field for a key read from the data', () => {
+			expect(evaluate('={{ $json[$json.key] }}', item)).toBe('to-string-value');
+			expect(evaluate("={{ $json['to' + 'String'] }}", item)).toBe('to-string-value');
+		});
+
+		it('returns the field from a nested object', () => {
+			expect(evaluate('={{ $json.row.toString }}', item)).toBe('nested-value');
+			expect(evaluate("={{ $json.row[['toString'][0]] }}", item)).toBe('nested-value');
+		});
+
+		it('resolves the prototype member when the data has no such field', () => {
+			expect(evaluate('={{ typeof $json.toString }}', { a: 1 })).toBe('function');
+			expect(evaluate('={{ $json.list.toString() }}', { list: [1, 2, 3] })).toBe('1,2,3');
+			expect(evaluate('={{ $json.inner.hasOwnProperty("a") }}', { inner: { a: 1 } })).toBe(true);
+		});
+	});
 });

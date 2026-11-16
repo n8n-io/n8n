@@ -4,7 +4,7 @@ import type {
 	UpdateSelfHealingConfigurationDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { RoleService } from '@n8n/backend-services';
+import { RoleService, type RoleLoader } from '@n8n/backend-services';
 import {
 	ProjectRelationRepository,
 	ProjectRepository,
@@ -27,6 +27,7 @@ import { SelfHealingConfigurationRepository } from './database/self-healing-conf
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 
 export const REVIEWER_SCOPES: Scope[] = ['workflow:read', 'workflow:update'];
+const ACTOR_SCOPES: Scope[] = ['workflow:read', 'workflow:update', 'execution:read'];
 
 const NO_ELIGIBLE_REVIEWER =
 	'No reviewer can edit these workflows. Add a reviewer who can edit them, or give a reviewer edit access.';
@@ -118,6 +119,7 @@ export class SelfHealingConfigurationService {
 
 			configuration.scope = input.scope;
 			configuration.includeAllProjectMembers = input.includeAllProjectMembers;
+			configuration.includeSubWorkflows = input.includeSubWorkflows;
 
 			await this.configurations.saveConfiguration(configuration, ctx);
 			await this.configurations.replaceSelections(configuration, input, ctx);
@@ -191,7 +193,8 @@ export class SelfHealingConfigurationService {
 	}
 
 	private async reviewerRoles(ctx: OperationContext = {}) {
-		const loadRoles = async () => await this.roleRepository.findAll(ctx);
+		let roles: ReturnType<RoleLoader> | undefined;
+		const loadRoles = async () => await (roles ??= this.roleRepository.findAll(ctx));
 		const [projectRoleSlugs, globalRoleSlugs, workflowRoleSlugs] = await Promise.all([
 			this.roles.rolesWithScope('project', REVIEWER_SCOPES, loadRoles),
 			this.roles.rolesWithScope('global', REVIEWER_SCOPES, loadRoles),
@@ -214,13 +217,25 @@ export class SelfHealingConfigurationService {
 		return await this.configurations.hasReviewerWithSharedWorkflowAccess(configuration, roles, ctx);
 	}
 
-	private async canEnable(user: User, projectId: string) {
-		return await userHasScopes(
-			user,
-			['workflow:read', 'workflow:update', 'execution:read'],
-			false,
-			{ projectId },
+	async hasReviewerWhoCanEditAll(
+		configuration: Pick<SelfHealingConfiguration, 'id' | 'projectId'>,
+		workflowIds: string[],
+	) {
+		const roles = await this.reviewerRoles();
+		return await this.configurations.hasReviewerWhoCanEditAll(
+			configuration,
+			roles,
+			workflowIds,
+			{},
 		);
+	}
+
+	async canActOn(user: User, workflowId: string) {
+		return (await this.workflows.findWorkflowHeadForUser(workflowId, user, ACTOR_SCOPES)) !== null;
+	}
+
+	private async canEnable(user: User, projectId: string) {
+		return await userHasScopes(user, ACTOR_SCOPES, false, { projectId });
 	}
 
 	private changeEnabled(
@@ -295,12 +310,9 @@ export class SelfHealingConfigurationService {
 		if (configuration.enabledById) {
 			const user = await this.users.findByIdWithRole(configuration.enabledById, ctx);
 			if (user && !user.disabled) {
-				const workflow = await this.workflows.findWorkflowForUser(
-					workflowId,
-					user,
-					['workflow:read', 'workflow:update', 'execution:read'],
-					{ ctx },
-				);
+				const workflow = await this.workflows.findWorkflowForUser(workflowId, user, ACTOR_SCOPES, {
+					ctx,
+				});
 				if (workflow) return user;
 			}
 		}

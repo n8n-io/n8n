@@ -14,7 +14,7 @@ describe('featureMaturity', () => {
 				limitedEnterpriseSupport: true,
 				docsUrl: 'https://docs.n8n.io/build/build-and-manage-agents',
 			},
-			n8nPackages: { preview: true, limitedEnterpriseSupport: false },
+			n8nPackages: { preview: true, limitedEnterpriseSupport: true },
 			workflowReviews: { preview: true, limitedEnterpriseSupport: false },
 			oauthJwe: { preview: true, limitedEnterpriseSupport: false },
 			tokenExchange: { preview: true, limitedEnterpriseSupport: false },

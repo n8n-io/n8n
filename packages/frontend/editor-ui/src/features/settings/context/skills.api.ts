@@ -1,5 +1,7 @@
 import type {
+	ConnectSkillSourceDto,
 	CreateSkillDto,
+	DiscoverSkillSourceDto,
 	SaveSkillDto,
 	SkillAgentOption,
 	SkillDetail,
@@ -7,12 +9,21 @@ import type {
 	SkillNewNameResponse,
 	SkillSaveResponse,
 	SkillSortOption,
+	SkillSourceCheckResponse,
+	SkillSourceListItem,
+	SkillSourceConnectResponse,
+	SkillSourceCredentialOption,
+	SkillSourceDiscovery,
+	SkillSourceRepositoryList,
 	SkillUserDto,
+	ListSkillSourceCredentialsQueryDto,
+	ListSkillSourceRepositoriesQueryDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
 const ENDPOINT = '/skills';
+const SOURCES_ENDPOINT = '/skill-sources';
 
 /** The request side of `ListSkillsQueryDto`, with numbers as the client holds them. */
 export type SkillListQuery = {
@@ -24,6 +35,12 @@ export type SkillListQuery = {
 	agentId?: string;
 	createdById?: string;
 	sortBy?: SkillSortOption;
+	/** `source` groups the synced skills under their source. */
+	groupBy?: 'source';
+	page?: number;
+	focusSourceId?: string;
+	/** Comma-separated ids of the sources that the user folded. */
+	collapsedSourceIds?: string;
 };
 
 export async function getSkills(
@@ -94,4 +111,89 @@ export async function saveSkill(
 
 export async function deleteSkill(context: IRestApiContext, id: string): Promise<void> {
 	await makeRestApiRequest(context, 'DELETE', `${ENDPOINT}/${id}`);
+}
+
+/** The scope of a source, as the credential and repository lists take it. */
+
+/** The credentials that a source in the scope accepts and that the user can use. */
+export async function getSkillSourceCredentials(
+	context: IRestApiContext,
+	query: ListSkillSourceCredentialsQueryDto,
+): Promise<SkillSourceCredentialOption[]> {
+	return await makeRestApiRequest<SkillSourceCredentialOption[]>(
+		context,
+		'GET',
+		`${SOURCES_ENDPOINT}/credentials`,
+		{ ...query },
+	);
+}
+
+/** The repositories that a credential can read, for the owner and repository selects. */
+export async function getSkillSourceRepositories(
+	context: IRestApiContext,
+	query: ListSkillSourceRepositoriesQueryDto,
+): Promise<SkillSourceRepositoryList> {
+	return await makeRestApiRequest<SkillSourceRepositoryList>(
+		context,
+		'GET',
+		`${SOURCES_ENDPOINT}/repositories`,
+		{ ...query },
+	);
+}
+
+/** Reads a link, with a credential for a private one, and lists the skills in it. Writes nothing. */
+export async function discoverSkillSource(
+	context: IRestApiContext,
+	payload: DiscoverSkillSourceDto,
+): Promise<SkillSourceDiscovery> {
+	return await makeRestApiRequest<SkillSourceDiscovery>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/discover`,
+		payload,
+	);
+}
+
+/** Connects the source in the scope and imports the picked skills as synced skills. */
+export async function connectSkillSource(
+	context: IRestApiContext,
+	payload: ConnectSkillSourceDto,
+): Promise<SkillSourceConnectResponse> {
+	return await makeRestApiRequest<SkillSourceConnectResponse>(
+		context,
+		'POST',
+		SOURCES_ENDPOINT,
+		payload,
+	);
+}
+
+/** The sources that the user can see, for their rows in the skills table. */
+export async function listSkillSources(context: IRestApiContext): Promise<SkillSourceListItem[]> {
+	return await makeRestApiRequest<SkillSourceListItem[]>(context, 'GET', SOURCES_ENDPOINT);
+}
+
+/** Deletes a source and its synced skills. */
+export async function deleteSkillSource(context: IRestApiContext, sourceId: string): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `${SOURCES_ENDPOINT}/${sourceId}`);
+}
+
+/** Check for updates on one source. */
+export async function checkSkillSource(
+	context: IRestApiContext,
+	sourceId: string,
+): Promise<SkillSourceCheckResponse> {
+	return await makeRestApiRequest<SkillSourceCheckResponse>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/${sourceId}/check`,
+	);
+}
+
+/** Stops syncing one skill: it keeps its versions and becomes a normal, editable skill. */
+export async function stopSyncingSkill(context: IRestApiContext, skillId: string): Promise<void> {
+	await makeRestApiRequest<{ ok: true }>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/skills/${skillId}/stop-syncing`,
+	);
 }

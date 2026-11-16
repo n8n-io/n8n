@@ -44,4 +44,17 @@ export class AgentMemoryController {
 		await this.agentMemoryEntriesService.delete(agentId, projectId, entryId);
 		return { success: true };
 	}
+
+	@Delete('/:agentId/memory-captures/:captureId')
+	@ProjectScope('agent:update')
+	async deleteMemoryCapture(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('agentId') agentId: string,
+		@Param('captureId') captureId: string,
+	) {
+		await this.agentMemoryEntriesService.deleteCapture(agentId, projectId, captureId);
+		return { success: true };
+	}
 }

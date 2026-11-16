@@ -1,5 +1,6 @@
 import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
 import {
+	createNodeLabeler,
 	deriveLoops,
 	findTriggerNode,
 	getDescendantNodeIds,
@@ -8,16 +9,20 @@ import {
 	type StoredWorkflowGraph,
 	type WorkflowGraph,
 } from '../graph';
+import type { LifecycleEventSubscription } from '../lifecycle-events';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ResponseExpectation } from '../response-channel';
-import type { ExecutionStore } from './execution-store';
-import type {
-	CallerContext,
-	ExecutionMode,
-	SeededSteps,
-	TriggerOutputs,
-	WorkflowDocument,
+import { ExecutionNotFoundError, type ExecutionStore } from './execution-store';
+import {
+	isLiveExecutionStatus,
+	type CallerContext,
+	type ExecutionMode,
+	type ParentLink,
+	type SeededSteps,
+	type TriggerOutputs,
+	type WorkflowDocument,
 } from './execution.types';
+import { StepNotFoundError, type StepStore } from './step-store';
 
 export interface StartExecutionRequest {
 	workflowId: string;
@@ -36,21 +41,45 @@ export interface StartExecutionRequest {
 	callerContext: CallerContext;
 	/** What kind of a response the caller expects. Defaults to 'none' */
 	responseExpectation?: ResponseExpectation;
+	/** Which lifecycle events the caller subscribes to. Missing means none. */
+	lifecycleEventSubscription?: LifecycleEventSubscription;
 	/**
 	 * Caller-minted, so the caller can record state against the run before it
 	 * starts. The engine never mints one.
 	 */
 	executionId: string;
+	/** The execution and step that asked for this one. Absent for a top-level run. */
+	parent?: ParentLink;
 }
 
 export interface StartExecutionResult {
 	executionId: string;
 }
 
+/** The parent link names a missing row, or a row that cannot start a sub-execution now. */
+export class InvalidParentLinkError extends Error {
+	constructor(
+		readonly reason: InvalidParentLinkReason,
+		detail: string,
+	) {
+		super(`Invalid parent link (${reason}): ${detail}`);
+		this.name = 'InvalidParentLinkError';
+	}
+}
+
+export type InvalidParentLinkReason =
+	| 'execution-not-found'
+	| 'execution-not-live'
+	| 'step-not-found'
+	| 'step-of-another-execution'
+	| 'step-not-waiting'
+	| 'step-not-running';
+
 export class StartExecutionService {
 	constructor(
 		private readonly admittance: AdmittanceService,
 		private readonly executionStore: ExecutionStore,
+		private readonly stepStore: StepStore,
 		private readonly workQueue: WorkQueue<OrchestrationMessage>,
 		private readonly validateGraph: (graph: WorkflowGraph) => void = validateExecutableGraph,
 	) {}
@@ -60,6 +89,7 @@ export class StartExecutionService {
 		// admittance capacity, and nothing is persisted for it.
 		this.validateGraph(request.graph);
 		validateSeededSteps(request.graph, request.seededSteps ?? {});
+		if (request.parent) await this.validateParent(request.parent);
 
 		const decision = await this.admittance.evaluate({ workflowId: request.workflowId });
 		if (!decision.accept) {
@@ -82,6 +112,8 @@ export class StartExecutionService {
 			seededSteps: request.seededSteps,
 			callerContext: request.callerContext,
 			responseExpectation: request.responseExpectation ?? { kind: 'none' },
+			parent: request.parent ?? null,
+			lifecycleEventSubscription: request.lifecycleEventSubscription,
 		});
 
 		// TODO(CAT-2938): the persist above and this publish aren't atomic — a
@@ -94,6 +126,55 @@ export class StartExecutionService {
 
 		return { executionId };
 	}
+
+	/**
+	 * The link has no foreign key: a parent is pruned while its sub-executions
+	 * stay, so the rows are independent and this is where the link is checked.
+	 * The parent must be live and the step must be its own, in the state that
+	 * asks for a sub-execution: suspended when it waits for this one, still
+	 * running when it does not. A step starts nothing once it has settled.
+	 */
+	private async validateParent(parent: ParentLink): Promise<void> {
+		const [status, step] = await Promise.all([
+			this.executionStore.loadExecutionStatus(parent.executionId).catch(absentAsInvalid),
+			this.stepStore.loadStep(parent.stepId).catch(absentAsInvalid),
+		]);
+		if (!isLiveExecutionStatus(status)) {
+			throw new InvalidParentLinkError(
+				'execution-not-live',
+				`execution ${parent.executionId} is ${status}`,
+			);
+		}
+		if (step.executionId !== parent.executionId) {
+			throw new InvalidParentLinkError(
+				'step-of-another-execution',
+				`step ${parent.stepId} belongs to execution ${step.executionId}, not ${parent.executionId}`,
+			);
+		}
+		if (parent.awaited && step.status !== 'waiting') {
+			throw new InvalidParentLinkError(
+				'step-not-waiting',
+				`step ${parent.stepId} is ${step.status}`,
+			);
+		}
+		if (!parent.awaited && step.status !== 'running') {
+			throw new InvalidParentLinkError(
+				'step-not-running',
+				`step ${parent.stepId} is ${step.status}`,
+			);
+		}
+	}
+}
+
+/** A missing parent row is an invalid link, not a lookup failure of its own. */
+function absentAsInvalid(error: unknown): never {
+	if (error instanceof ExecutionNotFoundError) {
+		throw new InvalidParentLinkError('execution-not-found', error.message);
+	}
+	if (error instanceof StepNotFoundError) {
+		throw new InvalidParentLinkError('step-not-found', error.message);
+	}
+	throw error;
 }
 
 /**
@@ -124,6 +205,7 @@ function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): vo
 	const loopByMember = new Map(
 		deriveLoops(graph).flatMap((loop) => [...loop.memberIds].map((id) => [id, loop] as const)),
 	);
+	const name = createNodeLabeler(graph);
 	for (const [nodeId, passes] of Object.entries(seededSteps)) {
 		if (nodeId === trigger?.id) {
 			throw new GraphValidationError(
@@ -132,18 +214,18 @@ function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): vo
 		}
 		if (!reachable.has(nodeId)) {
 			throw new GraphValidationError(
-				`Seeded step names node ${nodeId}, which the trigger does not reach`,
+				`Seeded step names node ${name(nodeId)}, which the trigger does not reach`,
 			);
 		}
 		const loop = loopByMember.get(nodeId);
 		if (loop) {
 			throw new GraphValidationError(
-				`Seeded step names node ${nodeId}, which is inside the loop of ${loop.batchNodeId}; a loop member runs once per pass and cannot be seeded`,
+				`Seeded step names node ${name(nodeId)}, which is inside the loop of ${name(loop.batchNodeId)}; a loop member runs once per pass and cannot be seeded`,
 			);
 		}
 		if (passes.length !== 1) {
 			throw new GraphValidationError(
-				`Node ${nodeId} is seeded with ${passes.length} passes, and a node outside a loop has one`,
+				`Node ${name(nodeId)} is seeded with ${passes.length} passes, and a node outside a loop has one`,
 			);
 		}
 	}

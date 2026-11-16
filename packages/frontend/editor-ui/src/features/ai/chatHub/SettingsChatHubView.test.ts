@@ -156,7 +156,7 @@ describe('SettingsChatHubView', () => {
 		expect(setChatEnabledMock).toHaveBeenCalledWith(true);
 	});
 
-	it('shows the Preview and limited enterprise support badges on the enable row on enterprise', () => {
+	it('shows the Preview and limited enterprise readiness badges on the enable row on enterprise', () => {
 		const { getByRole, getByTestId } = renderComponent();
 
 		const enableRow = getByTestId('chat-hub-enabled-row');
@@ -168,7 +168,7 @@ describe('SettingsChatHubView', () => {
 			getByTestId('chat-hub-preview-badge'),
 		);
 		expect(getByTestId('chat-hub-enterprise-readiness-badge')).toHaveTextContent(
-			'Limited enterprise support',
+			'Limited enterprise readiness',
 		);
 		expect(getByTestId('settings-page-header-docs')).toHaveAttribute(
 			'href',

@@ -22,23 +22,40 @@ describe('serializedCredentialSchema', () => {
 		expect(() => serializedCredentialSchema.parse(credential)).not.toThrow();
 	});
 
-	it('rejects a literal leaf in data', () => {
+	it('accepts plain boolean, string and string list values', () => {
+		// The package reader decides which plain values stay. The schema checks the shape only.
 		const credential = {
 			id: 'cred-1',
-			name: 'GitHub',
-			type: 'githubApi',
-			data: { token: 'ghp_plaintextsecret' },
+			name: 'Postgres',
+			type: 'postgres',
+			data: {
+				allowUnauthorizedCerts: false,
+				ssl: 'require',
+				scopes: ['read', 'write'],
+				caCertificate: '={{ $secrets.ca }}',
+			},
+		};
+
+		expect(() => serializedCredentialSchema.parse(credential)).not.toThrow();
+	});
+
+	it('rejects a number value in data', () => {
+		const credential = {
+			id: 'cred-1',
+			name: 'Postgres',
+			type: 'postgres',
+			data: { port: 5432 },
 		};
 
 		expect(() => serializedCredentialSchema.parse(credential)).toThrow();
 	});
 
-	it('rejects a nested literal leaf in data', () => {
+	it('rejects a null value in data', () => {
 		const credential = {
 			id: 'cred-1',
 			name: 'GitHub',
 			type: 'githubApi',
-			data: { nested: { token: '={{ $vars.ok }}', leak: 'secret' } },
+			data: { token: null },
 		};
 
 		expect(() => serializedCredentialSchema.parse(credential)).toThrow();

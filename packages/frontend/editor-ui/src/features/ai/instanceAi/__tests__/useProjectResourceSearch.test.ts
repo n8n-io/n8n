@@ -7,10 +7,15 @@ const mocks = vi.hoisted(() => ({
 	searchWorkflows: vi.fn(),
 	fetchDataTablesApi: vi.fn(),
 	listAgentsPage: vi.fn(),
+	listApps: vi.fn(),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: {} }),
+}));
+
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({ isAppsEnabled: true }),
 }));
 
 vi.mock('@/app/stores/workflowsList.store', () => ({
@@ -23,6 +28,10 @@ vi.mock('@/features/core/dataTable/dataTable.api', () => ({
 
 vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	listAgentsPage: mocks.listAgentsPage,
+}));
+
+vi.mock('@n8n/frontend-module-apps', () => ({
+	listApps: mocks.listApps,
 }));
 
 const PROJECT_ID = 'project-1';
@@ -48,9 +57,10 @@ describe('useProjectResourceSearch', () => {
 		mocks.searchWorkflows.mockResolvedValue([]);
 		mocks.fetchDataTablesApi.mockResolvedValue({ count: 0, data: [] });
 		mocks.listAgentsPage.mockResolvedValue({ count: 0, data: [] });
+		mocks.listApps.mockResolvedValue({ count: 0, data: [] });
 	});
 
-	it('lists the workflows, data tables and agents of the project, newest edit first', async () => {
+	it('lists project resources newest edit first', async () => {
 		mocks.searchWorkflows.mockResolvedValue([row('wf-1', '2026-09-20T10:00:00.000Z')]);
 		mocks.fetchDataTablesApi.mockResolvedValue({
 			count: 1,
@@ -60,12 +70,28 @@ describe('useProjectResourceSearch', () => {
 			count: 1,
 			data: [row('agent-1', '2026-09-22T10:00:00.000Z')],
 		});
+		mocks.listApps.mockResolvedValue({
+			count: 1,
+			data: [row('app-1', '2026-09-26T10:00:00.000Z')],
+		});
 		const { results, search } = setup();
 
 		await search();
 
-		expect(ids(results.value)).toEqual(['data-table:dt-1', 'agent:agent-1', 'workflow:wf-1']);
+		expect(ids(results.value)).toEqual([
+			'app:app-1',
+			'data-table:dt-1',
+			'agent:agent-1',
+			'workflow:wf-1',
+		]);
 		expect(results.value[0]).toEqual({
+			type: 'app',
+			id: 'app-1',
+			name: 'Name app-1',
+			icon: 'layout-template',
+			projectId: PROJECT_ID,
+		});
+		expect(results.value[1]).toEqual({
 			type: 'data-table',
 			id: 'dt-1',
 			name: 'Name dt-1',
@@ -91,6 +117,12 @@ describe('useProjectResourceSearch', () => {
 			sortBy: 'updatedAt:desc',
 			filter: undefined,
 		});
+		expect(mocks.listApps).toHaveBeenCalledWith({}, PROJECT_ID, {
+			skip: 0,
+			take: 10,
+			sortBy: 'updatedAt:desc',
+			name: undefined,
+		});
 	});
 
 	it('sends the trimmed search text to each request', async () => {
@@ -113,6 +145,12 @@ describe('useProjectResourceSearch', () => {
 			PROJECT_ID,
 			expect.objectContaining({ filter: { query: 'weekly' } }),
 		);
+		expect(mocks.listApps).toHaveBeenCalledWith({}, PROJECT_ID, {
+			skip: 0,
+			take: 10,
+			sortBy: 'updatedAt:desc',
+			name: 'weekly',
+		});
 	});
 
 	it('hides open tabs and asks for extra rows to replace them', async () => {

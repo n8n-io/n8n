@@ -811,6 +811,84 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.error).toEqual(error);
 	});
 
+	it('TypeOrmStepStore.failWaitingStep fails a waiting step and persists the error', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await seedStep({
+			executionId,
+			nodeId: 'a',
+			status: 'waiting',
+			waitDeclaration: { subExecutionId: 'exec-sub' },
+		});
+
+		const error = { name: 'Error', message: 'admittance rejected' };
+		expect(await store.failWaitingStep(id, error)).toBe(true);
+
+		const found = await dataSource
+			.getRepository(WorkflowStepExecution)
+			.findOneOrFail({ where: { id } });
+		expect(found.status).toBe('failed');
+		expect(found.error).toEqual(error);
+	});
+
+	it.each(['queued', 'running'] as const)(
+		'TypeOrmStepStore.failWaitingStep leaves a %s step alone',
+		async (status) => {
+			const executionId = await createExecution();
+			const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+			const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status });
+
+			expect(await store.failWaitingStep(id, { name: 'Error', message: 'x' })).toBe(false);
+
+			const found = await dataSource
+				.getRepository(WorkflowStepExecution)
+				.findOneOrFail({ where: { id } });
+			expect(found.status).toBe(status);
+			expect(found.error).toBeNull();
+		},
+	);
+
+	it('TypeOrmStepStore.loadStepsByNodeIds returns every pass of the named nodes, with outputs', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		await seedStep({
+			executionId,
+			nodeId: 'a',
+			status: 'completed',
+			outputs: [[{ json: { a: 0 } }]],
+		});
+		await seedStep({
+			executionId,
+			nodeId: 'b',
+			status: 'completed',
+			outputs: [[{ json: { b: 1 } }]],
+			iteration: 1,
+		});
+		await seedStep({
+			executionId,
+			nodeId: 'b',
+			status: 'completed',
+			outputs: [[{ json: { b: 0 } }]],
+		});
+		await seedStep({
+			executionId,
+			nodeId: 'c',
+			status: 'completed',
+			outputs: [[{ json: { c: 0 } }]],
+		});
+
+		const steps = await store.loadStepsByNodeIds(executionId, ['b', 'a']);
+
+		expect(steps.map(({ nodeId, iteration, outputs }) => ({ nodeId, iteration, outputs }))).toEqual(
+			[
+				{ nodeId: 'a', iteration: 0, outputs: [[{ json: { a: 0 } }]] },
+				{ nodeId: 'b', iteration: 0, outputs: [[{ json: { b: 0 } }]] },
+				{ nodeId: 'b', iteration: 1, outputs: [[{ json: { b: 1 } }]] },
+			],
+		);
+		expect(await store.loadStepsByNodeIds(executionId, [])).toEqual([]);
+	});
+
 	it('TypeOrmStepStore.createSteps persists a skipped step (settled at birth)', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));

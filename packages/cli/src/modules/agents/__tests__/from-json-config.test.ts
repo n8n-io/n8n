@@ -8,7 +8,7 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
@@ -137,7 +137,7 @@ describe('buildFromJson()', () => {
 							apiKey?: string;
 							baseURL?: string;
 						};
-						reflect?: unknown;
+						consolidate?: unknown;
 					};
 					titleGeneration?: {
 						sync?: boolean;
@@ -189,6 +189,8 @@ describe('buildFromJson()', () => {
 		getMessagesForObservationScope: vi.fn(),
 		getCursor: vi.fn(),
 		setCursor: vi.fn(),
+		getResumeState: vi.fn(),
+		saveResumeState: vi.fn(),
 		acquireObservationLogTaskLock: vi.fn(),
 		releaseObservationLogTaskLock: vi.fn(),
 		episodic: {
@@ -758,6 +760,7 @@ describe('buildFromJson()', () => {
 	});
 
 	it.each([
+		'openai/gpt-5',
 		'anthropic/claude-sonnet-4-5',
 		'openrouter/anthropic/claude-sonnet-4.5',
 		'google-vertex/claude-sonnet-4-5',
@@ -781,7 +784,9 @@ describe('buildFromJson()', () => {
 		expect(snap.promptCaching).toEqual({ enabled: false });
 	});
 
+	// Inline agents have no `config` block, so an inline OpenAI agent sends no cache fields.
 	it.each([
+		'openai/gpt-5',
 		'anthropic/claude-sonnet-4-5',
 		'openrouter/openai/gpt-5',
 		'google-vertex/gemini-2.5-pro',
@@ -1438,7 +1443,37 @@ describe('buildFromJson()', () => {
 			},
 		});
 		expect(getMemoryConfig(agent)?.episodicMemory?.embedder).toBeUndefined();
-		expect(getMemoryConfig(agent)?.episodicMemory?.reflect).toBeUndefined();
+		expect(getMemoryConfig(agent)?.episodicMemory?.consolidate).toBeUndefined();
+	});
+
+	it('sends credential episodic memory embeddings through the model fetch', async () => {
+		const modelFetch = vi.fn();
+		const config = makeConfig({
+			memory: {
+				enabled: true,
+				storage: 'n8n',
+				episodicMemory: { enabled: true, credential: 'openai-key' },
+			},
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: {
+					resolve: vi.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
+					list: vi.fn().mockResolvedValue([]),
+				},
+				memoryFactory: vi.fn().mockReturnValue(makeMockMemoryBackend()),
+				modelFetch,
+			},
+		);
+
+		expect(getMemoryConfig(agent)?.episodicMemory?.embeddingProviderOptions).toEqual({
+			apiKey: 'test-api-key',
+			fetch: modelFetch,
+		});
 	});
 
 	it('configures episodic memory with managed proxy embedding credentials', async () => {
@@ -1484,8 +1519,8 @@ describe('buildFromJson()', () => {
 		});
 	});
 
-	it('configures the episodic memory reflector with a separate credential from embeddings', async () => {
-		const reflectSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryReflectFn');
+	it('configures the episodic memory consolidator with a separate credential from embeddings', async () => {
+		const consolidateSpy = vi.spyOn(AgentsRuntime, 'createEpisodicMemoryConsolidateFn');
 		const credentialProvider = {
 			resolve: vi.fn(async (credentialId: string) => ({
 				apiKey: `${credentialId}-api-key`,
@@ -1518,7 +1553,7 @@ describe('buildFromJson()', () => {
 			},
 		);
 
-		expect(reflectSpy).toHaveBeenCalledWith({
+		expect(consolidateSpy).toHaveBeenCalledWith({
 			id: 'anthropic/claude-sonnet-4-5',
 			apiKey: 'episodic-reflector-key-api-key',
 			baseURL: 'https://episodic-reflector-key.example/v1',

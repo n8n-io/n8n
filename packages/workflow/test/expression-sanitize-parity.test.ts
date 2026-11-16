@@ -17,4 +17,15 @@ describe('engine property denylist parity', () => {
 			expect(() => __sanitize(name)).toThrow(`Cannot access "${name}" due to security concerns`);
 		}
 	});
+
+	// Item fields can be named like any Object.prototype member. A name that the
+	// transform allows must also pass the runtime sanitizer, or `$json[key]`
+	// fails where `$json.key` works.
+	it('allows every transform-allowed Object.prototype name in the runtime sanitizer', () => {
+		const allowedNames = Object.getOwnPropertyNames(Object.prototype).filter(isSafeObjectProperty);
+		expect(allowedNames).toContain('toString');
+		for (const name of allowedNames) {
+			expect(__sanitize(name)).toBe(name);
+		}
+	});
 });

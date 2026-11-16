@@ -768,6 +768,7 @@ function handleSelectAction(params: INodeParameters) {
 			ref="nodeParameterWrapper"
 			:class="[
 				'node-parameters-wrapper',
+				'ph-no-capture',
 				shouldShowStaticScrollbar ? 'with-static-scrollbar' : '',
 				extraParameterWrapperClassName ?? '',
 			]"

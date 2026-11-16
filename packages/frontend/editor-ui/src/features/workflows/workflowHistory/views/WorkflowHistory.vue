@@ -736,18 +736,8 @@ watchEffect(async () => {
 	align-items: center;
 	padding: var(--spacing--xs) 0 0 var(--spacing--sm);
 	border-left: var(--border-width) var(--border-style) var(--color--foreground);
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 	position: relative;
-
-	&::after {
-		content: '';
-		position: absolute;
-		bottom: 1px;
-		left: 0;
-		right: 0;
-		height: var(--border-width);
-		background-color: var(--color--foreground);
-		z-index: 1;
-	}
 }
 
 .closeButton {

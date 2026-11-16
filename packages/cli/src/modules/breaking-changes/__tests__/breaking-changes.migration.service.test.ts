@@ -4,7 +4,7 @@ import type { INode } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { NodeTypes } from '@/node-types';
+import type { NodeTypesProxy } from '@n8n/backend-services';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
@@ -33,7 +33,7 @@ describe('BreakingChangeMigrationService', () => {
 	let workflowFinderService: Mocked<WorkflowFinderService>;
 	let workflowService: Mocked<WorkflowService>;
 	let workflowValidationService: Mocked<WorkflowValidationService>;
-	let nodeTypes: Mocked<NodeTypes>;
+	let nodeTypes: Mocked<NodeTypesProxy>;
 	let service: BreakingChangeMigrationService;
 
 	const buildWorkflow = (nodes: INode[], overrides: Partial<WorkflowEntity> = {}) =>
@@ -50,7 +50,7 @@ describe('BreakingChangeMigrationService', () => {
 		workflowFinderService = mock<WorkflowFinderService>();
 		workflowService = mock<WorkflowService>();
 		workflowValidationService = mock<WorkflowValidationService>();
-		nodeTypes = mock<NodeTypes>();
+		nodeTypes = mock<NodeTypesProxy>();
 
 		service = new BreakingChangeMigrationService(
 			ruleRegistry,
@@ -160,6 +160,17 @@ describe('BreakingChangeMigrationService', () => {
 		});
 		// Untouched node stays as-is.
 		expect(updateData.nodes.find((n) => n.id === otherNode.id)).toEqual(otherNode);
+	});
+
+	it('tags the save with the source of the request', async () => {
+		const aiNode = createNode('Transform', AI_TRANSFORM_NODE_TYPE, { jsCode: 'return items;' });
+		workflowFinderService.findWorkflowForUser.mockResolvedValue(buildWorkflow([aiNode]));
+		workflowService.update.mockResolvedValue(mock<WorkflowEntity>({ versionId: 'new-version' }));
+
+		await service.migrateWorkflow(RULE_ID, 'wf-1', user, { source: 'n8n-mcp' });
+
+		const [, , , updateOptions] = workflowService.update.mock.calls[0];
+		expect(updateOptions).toEqual(expect.objectContaining({ source: 'n8n-mcp' }));
 	});
 
 	it('keeps the connections of a node-for-node migration intact', async () => {

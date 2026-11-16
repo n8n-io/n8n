@@ -272,8 +272,6 @@ export const triggerNodeDescriptorSchema = z.object({
 	nodeType: z.string(),
 });
 
-export type TriggerNodeDescriptor = z.infer<typeof triggerNodeDescriptorSchema>;
-
 /**
  * Per-node execute-vs-simulate verdict for verification runs. Nodes with
  * verdict `simulate` are mocked via per-execution pin data so verification

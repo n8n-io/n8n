@@ -17,6 +17,15 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import { FailedExecutionPortabilityService } from '../failed-execution-portability.service';
 
+const { loadExecutionForViewer } = vi.hoisted(() => ({ loadExecutionForViewer: vi.fn() }));
+vi.mock('@/executions/execution-viewer-reader', () => ({ loadExecutionForViewer }));
+
+/** The execution as `loadExecutionForViewer` returns it: run data unflattened. */
+function viewedExecution(data = makeRunData()) {
+	const { data: _serialized, ...rest } = makeSourceExecution(data);
+	return { ...rest, data };
+}
+
 const user = mock<User>({ id: 'user-1' });
 const projectId = 'project-1';
 const sourceWorkflowId = 'source-workflow';
@@ -180,6 +189,7 @@ describe('FailedExecutionPortabilityService', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(importTime);
 		activeExecutions.has.mockReturnValue(false);
+		loadExecutionForViewer.mockImplementation(async () => viewedExecution());
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(mock());
 		sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue({ id: projectId } as never);
 	});
@@ -424,5 +434,32 @@ describe('FailedExecutionPortabilityService', () => {
 			service.restoreExecution(user, projectId, targetWorkflowId, envelope),
 		).rejects.toThrow('run data has a parent agent run');
 		expect(executionPersistence.create).not.toHaveBeenCalled();
+	});
+
+	it('requires execution:read to export run data', async () => {
+		executionPersistence.findSingleExecution.mockResolvedValue(makeSourceExecution());
+
+		await service.exportExecution(user, projectId, sourceExecutionId);
+
+		expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(sourceWorkflowId, user, [
+			'workflow:read',
+			'execution:read',
+		]);
+		expect(loadExecutionForViewer).toHaveBeenCalledWith(sourceExecutionId, user);
+	});
+
+	it('refuses a run that is redacted for the user', async () => {
+		executionPersistence.findSingleExecution.mockResolvedValue(makeSourceExecution());
+		const redacted = makeRunData();
+		redacted.redactionInfo = {
+			isRedacted: true,
+			reason: 'workflow_redaction_policy',
+			canReveal: true,
+		} as never;
+		loadExecutionForViewer.mockResolvedValue(viewedExecution(redacted));
+
+		await expect(service.exportExecution(user, projectId, sourceExecutionId)).rejects.toThrow(
+			'run data is redacted',
+		);
 	});
 });

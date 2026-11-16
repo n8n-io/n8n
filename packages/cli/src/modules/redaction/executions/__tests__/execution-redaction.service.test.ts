@@ -7,7 +7,7 @@ import type {
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { INode, IRunExecutionData, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
-import { shouldRedactConsoleOutput } from 'n8n-workflow';
+import { shouldRedactExecutionOutput } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError, ScopeForbiddenError } from '@n8n/errors';
@@ -1183,14 +1183,14 @@ describe('ExecutionRedactionService', () => {
 			await service.processExecutions([execution], { user: mockUser });
 			const dataPipelineRedacts = fullItemRedactionStrategy.apply.mock.calls.length > 0;
 
-			expect(shouldRedactConsoleOutput(redaction, undefined, mode, reported)).toBe(
+			expect(shouldRedactExecutionOutput(redaction, undefined, mode, reported)).toBe(
 				dataPipelineRedacts,
 			);
 		});
 	});
 
 	describe('console-gate equivalence', () => {
-		// The console gate (shouldRedactConsoleOutput) and the execution-data
+		// The console gate (shouldRedactExecutionOutput) and the execution-data
 		// pipeline resolve the same snapshot independently; this pins them to
 		// identical answers for every snapshot/mode combination (no dynamic
 		// credentials, no reveal scope — the concerns the console gate lacks).
@@ -1217,7 +1217,7 @@ describe('ExecutionRedactionService', () => {
 			await service.processExecutions([execution], { user: mockUser });
 			const dataPipelineRedacts = fullItemRedactionStrategy.apply.mock.calls.length > 0;
 
-			expect(shouldRedactConsoleOutput(redaction, undefined, mode)).toBe(dataPipelineRedacts);
+			expect(shouldRedactExecutionOutput(redaction, undefined, mode)).toBe(dataPipelineRedacts);
 		});
 	});
 

@@ -28,6 +28,8 @@ export interface AgentChannelViewExpose {
 	saveLabel?: string;
 	/** Runs after a successful save, before the modal closes. Must not throw. */
 	afterSave?: () => Promise<void>;
+	/** False when the channel can be saved without a credential. Defaults to true. */
+	credentialRequired?: boolean;
 	/** Keeps the modal open after connecting. The view emits `done` to close it. */
 	keepOpenAfterConnect?: boolean;
 	/**
@@ -102,7 +104,7 @@ export interface AgentChannelViewProps {
 }
 
 export interface AgentChannelPresentationContext {
-	text: (key: BaseTextKey) => string;
+	text: (key: BaseTextKey, interpolate?: Record<string, string>) => string;
 }
 
 export interface AgentChannelWarningPresentation {

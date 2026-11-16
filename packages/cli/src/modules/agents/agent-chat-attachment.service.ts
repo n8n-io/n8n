@@ -1,14 +1,23 @@
-import { isAttachmentMediaTypeSupported } from '@n8n/api-types';
+import {
+	isAttachmentMediaTypeSupported,
+	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
+	type AgentSessionFile,
+	type AgentToolOutputFile,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { SourceType } from '@n8n/db';
+import { AgentsConfig } from '@n8n/config';
+import { isEntityNotFoundError, type SourceType } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { BuiltFileStore, ContentFileRef } from '@n8n/agents';
 import { BinaryDataService, FileLocation, FileNotFoundError } from 'n8n-core';
-import { OperationalError, UserError, type IBinaryData } from 'n8n-workflow';
+import type { IBinaryData } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
+import { createHash } from 'node:crypto';
 import type { Readable } from 'node:stream';
 
 import { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
+import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentChatAttachmentRepository } from './repositories/agent-chat-attachment.repository';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { AgentFileGrantRepository } from './repositories/agent-file-grant.repository';
@@ -16,6 +25,9 @@ import {
 	draftChatMemoryResourceId,
 	isIntegrationMemoryResourceId,
 	isTaskRunMemoryResourceId,
+	userIdFromDraftChatMemoryResourceId,
+	userIdFromProductionChatMemoryResourceId,
+	userIdFromSystemChatMemoryResourceId,
 } from './utils/agent-memory-scope';
 import { threadBelongsTo } from './utils/agent-thread-access';
 
@@ -25,7 +37,17 @@ const ATTACHMENT_SOURCE_TYPE: SourceType = 'agent_chat_attachment';
 
 const RETENTION_BATCH_SIZE = 500;
 
+/** Sources of files that agents make, as opposed to files that users upload. */
+const GENERATED_SOURCES = ['tool', 'sandbox'];
+
+const BYTES_PER_MB = 1024 * 1024;
+
+/** A file would go over a storage cap of its conversation. The message is for the model or the user. */
+export class AgentFileLimitError extends UserError {}
+
 export interface StoreInboundAttachmentParams {
+	/** Row ID for the file. A new ID is made when it is not set. */
+	id?: string;
 	/** Null for inline agents, which have no `agents` row. */
 	agentId: string | null;
 	projectId: string;
@@ -37,6 +59,12 @@ export interface StoreInboundAttachmentParams {
 	fileName: string;
 	mimeType: string;
 	data: Buffer;
+	/** SHA-256 of `data`, hex, when the caller has it already. */
+	contentHash?: string;
+}
+
+export function hashFileContent(data: Buffer): string {
+	return createHash('sha256').update(data).digest('hex');
 }
 
 /**
@@ -71,11 +99,26 @@ export class AgentChatAttachmentService {
 		private readonly repository: AgentChatAttachmentRepository,
 		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly grantRepository: AgentFileGrantRepository,
+		private readonly projectDeletion: AgentProjectDeletionRepository,
+		private readonly agentsConfig: AgentsConfig,
 	) {}
 
+	/** Largest file that a tool or the sandbox can store. */
+	get maxGeneratedFileBytes(): number {
+		return this.agentsConfig.maxGeneratedFileSizeMb * BYTES_PER_MB;
+	}
+
+	/** Largest file of any source, an upload or a generated file. */
+	get maxStoredFileBytes(): number {
+		return Math.max(MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES, this.maxGeneratedFileBytes);
+	}
+
+	/** @throws {AgentFileLimitError} when the file would go over a cap. */
 	async storeInbound(params: StoreInboundAttachmentParams): Promise<AgentChatAttachment> {
-		const attachmentId = generateNanoId();
+		const attachmentId = params.id ?? generateNanoId();
 		const root = await this.findRootThread(params.threadId);
+		// ponytail: the check reads usage before the insert, so parallel stores can each pass and go over a cap by their sizes. The caps are soft. Lock the root thread if they must be exact.
+		await this.checkLimits(params, root.id);
 		// The download route authorizes by the owning agent, so a file that a
 		// sub-agent makes takes the agent of the root thread.
 		const agentId = root.id === params.threadId ? params.agentId : (root.agentId ?? params.agentId);
@@ -90,33 +133,47 @@ export class AgentChatAttachmentService {
 			params.data,
 			binaryData,
 		);
-		if (!stored.id) {
+		const binaryDataId = stored.id;
+		if (!binaryDataId) {
 			throw new OperationalError(
 				'Agent chat attachments require a persisted binary data storage mode',
 			);
 		}
 
 		try {
-			const attachment = this.repository.create({
-				id: attachmentId,
-				agentId,
-				projectId: params.projectId,
-				threadId: root.id,
-				createdByThreadId: params.threadId,
-				resourceId: params.resourceId ?? null,
-				binaryDataId: stored.id,
-				fileName: params.fileName,
-				mimeType: params.mimeType,
-				fileSizeBytes: params.data.byteLength,
-				source: params.source,
+			return await this.projectDeletion.withWritableProject(params.projectId, async (ctx) => {
+				const resourceId = params.resourceId ?? '';
+				const ownerId =
+					userIdFromDraftChatMemoryResourceId(resourceId) ??
+					userIdFromProductionChatMemoryResourceId(resourceId) ??
+					userIdFromSystemChatMemoryResourceId(resourceId);
+				if (ownerId) {
+					await this.threadRepository.assertOwnerActive({ accessScope: 'user', ownerId }, ctx);
+				}
+				return await this.repository.saveInboundAttachment(
+					{
+						id: attachmentId,
+						agentId,
+						projectId: params.projectId,
+						threadId: root.id,
+						createdByThreadId: params.threadId,
+						resourceId: params.resourceId ?? null,
+						binaryDataId,
+						fileName: params.fileName,
+						mimeType: params.mimeType,
+						fileSizeBytes: params.data.byteLength,
+						source: params.source,
+						contentHash: params.contentHash ?? hashFileContent(params.data),
+					},
+					ctx,
+				);
 			});
-			return await this.repository.save(attachment);
 		} catch (error) {
 			await this.binaryDataService
-				.deleteManyByBinaryDataId([stored.id])
+				.deleteManyByBinaryDataId([binaryDataId])
 				.catch((cleanupError: unknown) =>
 					this.logger.warn('Failed to delete agent chat attachment bytes', {
-						binaryDataId: stored.id,
+						binaryDataId,
 						error: cleanupError,
 					}),
 				);
@@ -138,6 +195,70 @@ export class AgentChatAttachmentService {
 	}
 
 	/**
+	 * The files of a session for the session files list, newest first. A
+	 * sandbox file can have many versions with the same name and bytes, so the
+	 * list keeps the newest file for each name and hash. Older files have no
+	 * hash and all stay. The caller checks access to the session.
+	 */
+	async listForSession(
+		scope: { projectId: string; threadId: string },
+		excludeSource?: string,
+	): Promise<AgentSessionFile[]> {
+		const files = await this.repository.findInThreadNewestFirst(scope, excludeSource, {});
+		const seen = new Set<string>();
+		return files
+			.filter((file) => {
+				if (!file.contentHash) return true;
+				const key = `${file.contentHash}:${file.fileName}`;
+				if (seen.has(key)) return false;
+				seen.add(key);
+				return true;
+			})
+			.map((file) => ({
+				fileId: file.id,
+				fileName: file.fileName,
+				mimeType: file.mimeType,
+				sizeBytes: file.fileSizeBytes,
+				source: file.source,
+				createdAt: file.createdAt.toISOString(),
+			}));
+	}
+
+	/**
+	 * Files with the given content hashes that the thread can read, keyed by
+	 * hash. Each hash maps to its readable files, newest first.
+	 */
+	async findReadableByHashes(
+		hashes: string[],
+		scope: { projectId: string; threadId: string },
+	): Promise<Map<string, AgentChatAttachment[]>> {
+		const result = new Map<string, AgentChatAttachment[]>();
+		if (hashes.length === 0) return result;
+		const root = await this.findRootThread(scope.threadId);
+		const files = await this.repository.findByHashesInThread(
+			hashes,
+			{ projectId: scope.projectId, threadId: root.id },
+			{},
+		);
+		const granted =
+			scope.threadId === root.id
+				? new Set<string>()
+				: await this.grantRepository.findGrantedIds(
+						files.map((file) => file.id),
+						scope.threadId,
+					);
+		for (const file of files) {
+			if (!file.contentHash) continue;
+			const readable =
+				scope.threadId === root.id ||
+				file.createdByThreadId === scope.threadId ||
+				granted.has(file.id);
+			if (readable) result.set(file.contentHash, [...(result.get(file.contentHash) ?? []), file]);
+		}
+		return result;
+	}
+
+	/**
 	 * Let a sub-agent thread read files of its parent. The parent must be able
 	 * to read each file, so grants pass down the delegation chain one level at
 	 * a time.
@@ -151,10 +272,11 @@ export class AgentChatAttachmentService {
 			throw new UserError('Files can only be granted to a sub-agent of this conversation');
 		}
 		const rootId = chain[chain.length - 1].id;
-		const files = await this.repository.findByIdsInThread(attachmentIds, {
-			projectId: scope.projectId,
-			threadId: rootId,
-		});
+		const files = await this.repository.findByIdsInThread(
+			attachmentIds,
+			{ projectId: scope.projectId, threadId: rootId },
+			{},
+		);
 		const creatorById = new Map(files.map((file) => [file.id, file.createdByThreadId]));
 		const granted =
 			scope.parentThreadId === rootId
@@ -171,6 +293,77 @@ export class AgentChatAttachmentService {
 		await this.grantRepository.grant(attachmentIds, scope.childThreadId);
 	}
 
+	/**
+	 * List the files that a sub-agent thread made and let its parent read them.
+	 * The root thread reads them already, but a parent that is not the root
+	 * cannot read them without this grant.
+	 */
+	async returnToParent(scope: {
+		projectId: string;
+		parentThreadId: string;
+		childThreadId: string;
+	}): Promise<AgentToolOutputFile[]> {
+		const chain = await this.threadRepository.findDelegationChain(scope.childThreadId);
+		if (chain[1]?.id !== scope.parentThreadId) {
+			throw new UserError('Files can only be returned to the parent of a sub-agent');
+		}
+		const rootId = chain[chain.length - 1].id;
+		const files = await this.repository.findCreatedByThread(
+			scope.childThreadId,
+			{ projectId: scope.projectId, threadId: rootId },
+			{},
+		);
+		if (scope.parentThreadId !== rootId) {
+			await this.grantRepository.grant(
+				files.map((file) => file.id),
+				scope.parentThreadId,
+			);
+		}
+		return files.map((file) => ({
+			fileId: file.id,
+			fileName: file.fileName,
+			mimeType: file.mimeType,
+			sizeBytes: file.fileSizeBytes,
+		}));
+	}
+
+	/**
+	 * The caps count for the whole delegation tree.
+	 * ponytail: the sum and the insert are not atomic, so parallel stores can
+	 * go a little over a cap. Lock the tree if that matters.
+	 */
+	private async checkLimits(params: StoreInboundAttachmentParams, rootThreadId: string) {
+		const size = params.data.byteLength;
+		const generated = GENERATED_SOURCES.includes(params.source);
+		const config = this.agentsConfig;
+		if (generated && size > this.maxGeneratedFileBytes) {
+			throw new AgentFileLimitError(
+				`File "${params.fileName}" is larger than ${config.maxGeneratedFileSizeMb} MB`,
+			);
+		}
+		const usage = await this.repository.sumUsageInThread(
+			{ projectId: params.projectId, threadId: rootThreadId },
+			GENERATED_SOURCES,
+			{},
+		);
+		if (usage.totalBytes + size > config.maxTotalMb * BYTES_PER_MB) {
+			throw new AgentFileLimitError(
+				`File "${params.fileName}" was not stored: a conversation can store up to ${config.maxTotalMb} MB of files`,
+			);
+		}
+		if (!generated) return;
+		if (usage.sourceCount + 1 > config.maxGeneratedFileCount) {
+			throw new AgentFileLimitError(
+				`File "${params.fileName}" was not stored: tools and the sandbox can store up to ${config.maxGeneratedFileCount} files in a conversation`,
+			);
+		}
+		if (usage.sourceBytes + size > config.maxGeneratedTotalMb * BYTES_PER_MB) {
+			throw new AgentFileLimitError(
+				`File "${params.fileName}" was not stored: tools and the sandbox can store up to ${config.maxGeneratedTotalMb} MB of files in a conversation`,
+			);
+		}
+	}
+
 	private async findRootThread(threadId: string) {
 		const chain = await this.threadRepository.findDelegationChain(threadId);
 		return chain[chain.length - 1];
@@ -181,10 +374,11 @@ export class AgentChatAttachmentService {
 		scope: { projectId: string; threadId: string },
 		rootThreadId: string,
 	): Promise<AgentChatAttachment | null> {
-		const attachment = await this.repository.findByIdInThread(attachmentId, {
-			projectId: scope.projectId,
-			threadId: rootThreadId,
-		});
+		const attachment = await this.repository.findByIdInThread(
+			attachmentId,
+			{ projectId: scope.projectId, threadId: rootThreadId },
+			{},
+		);
 		if (!attachment) return null;
 		if (scope.threadId === rootThreadId || attachment.createdByThreadId === scope.threadId) {
 			return attachment;
@@ -202,16 +396,30 @@ export class AgentChatAttachmentService {
 		attachmentId: string,
 		scope: { agentId: string; resourceId: string; source: string },
 	): Promise<AgentChatAttachment | null> {
-		return await this.repository.findByIdForSystemAgent(attachmentId, scope);
+		return await this.repository.findByIdForSystemAgent(attachmentId, scope, {});
 	}
 
-	/** Return metadata only when the caller can read the session. */
+	/**
+	 * Return metadata only when the caller can read the session. A file of a
+	 * sub-agent session belongs to the agent of the root thread, so give
+	 * `threadId` to check the read grants of that session instead.
+	 */
 	async getForAgent(
 		attachmentId: string,
-		scope: { agentId: string; projectId: string; userId: string },
+		scope: { agentId: string; projectId: string; userId: string; threadId?: string },
 	): Promise<AgentChatAttachment | null> {
-		const attachment = await this.repository.findByIdForAgent(attachmentId, scope);
-		if (!attachment) return null;
+		const attachment = await this.repository.findByIdForAgent(attachmentId, scope, {});
+		if (!attachment) {
+			if (!scope.threadId) return null;
+			const session = await this.threadRepository.findOneBy({ id: scope.threadId });
+			if (!session || !threadBelongsTo(session, scope.projectId, scope.agentId, scope.userId)) {
+				return null;
+			}
+			return await this.getReadable(attachmentId, {
+				projectId: scope.projectId,
+				threadId: scope.threadId,
+			});
+		}
 		const thread = await this.threadRepository.findOneBy({ id: attachment.threadId });
 		if (thread) {
 			return threadBelongsTo(thread, scope.projectId, scope.agentId, scope.userId)
@@ -225,6 +433,26 @@ export class AgentChatAttachmentService {
 			: null;
 	}
 
+	/** Whether the bytes of the file are still in storage. Retention can remove them. */
+	async hasStoredData(attachment: AgentChatAttachment): Promise<boolean> {
+		try {
+			await this.binaryDataService.getMetadata(attachment.binaryDataId);
+			return true;
+		} catch (error) {
+			// Filesystem, S3 and Azure throw FileNotFoundError. Database mode throws EntityNotFoundError.
+			if (error instanceof FileNotFoundError || isEntityNotFoundError(error)) return false;
+			throw error;
+		}
+	}
+
+	async getBuffer(attachment: AgentChatAttachment): Promise<Buffer> {
+		return await this.binaryDataService.getAsBuffer({
+			id: attachment.binaryDataId,
+			data: '',
+			mimeType: attachment.mimeType,
+		});
+	}
+
 	async getStream(attachment: AgentChatAttachment): Promise<Readable> {
 		return await this.binaryDataService.getAsStream(attachment.binaryDataId);
 	}
@@ -235,7 +463,7 @@ export class AgentChatAttachmentService {
 	 */
 	async deleteByIds(attachmentIds: string[]): Promise<void> {
 		if (attachmentIds.length === 0) return;
-		await this.deleteAttachments(await this.repository.findByIds(attachmentIds), {
+		await this.deleteAttachments(await this.repository.findByIds(attachmentIds, {}), {
 			attachmentIds: attachmentIds.join(','),
 		});
 	}
@@ -245,14 +473,33 @@ export class AgentChatAttachmentService {
 		threadId: string,
 		scope: { projectId: string } | { agentId: string },
 	): Promise<void> {
-		await this.deleteAttachments(await this.repository.findByThread(threadId, scope), {
+		await this.deleteAttachments(await this.repository.findByThread(threadId, scope, {}), {
 			threadId,
 		});
 	}
 
 	/** Called before the agent row is removed, so bytes don't outlive the cascading rows. */
 	async deleteByAgent(agentId: string): Promise<void> {
-		await this.deleteAttachments(await this.repository.findBy({ agentId }), { agentId });
+		await this.deleteAttachments(await this.repository.findByAgent(agentId, {}), { agentId });
+	}
+
+	async deleteByProject(projectId: string): Promise<void> {
+		while (true) {
+			const batch = await this.repository.findProjectDeletionBatch(
+				projectId,
+				RETENTION_BATCH_SIZE,
+				{},
+			);
+			if (batch.length === 0) return;
+			await this.binaryDataService.deleteManyByBinaryDataId(
+				batch.map((attachment) => attachment.binaryDataId),
+			);
+			await this.repository.deleteByIds(
+				batch.map((attachment) => attachment.id),
+				{},
+			);
+			if (batch.length < RETENTION_BATCH_SIZE) return;
+		}
 	}
 
 	/**
@@ -271,12 +518,16 @@ export class AgentChatAttachmentService {
 				scope,
 				before,
 				RETENTION_BATCH_SIZE,
+				{},
 			);
 			if (batch.length === 0) break;
 			await this.binaryDataService.deleteManyByBinaryDataId(
 				batch.map((attachment) => attachment.binaryDataId),
 			);
-			await this.repository.delete(batch.map((attachment) => attachment.id));
+			await this.repository.deleteByIds(
+				batch.map((attachment) => attachment.id),
+				{},
+			);
 			deleted += batch.length;
 			if (batch.length < RETENTION_BATCH_SIZE) break;
 		}
@@ -302,7 +553,10 @@ export class AgentChatAttachmentService {
 	): Promise<void> {
 		if (attachments.length === 0) return;
 
-		await this.repository.delete(attachments.map((attachment) => attachment.id));
+		await this.repository.deleteByIds(
+			attachments.map((attachment) => attachment.id),
+			{},
+		);
 		await this.deleteStoredData(
 			attachments.map((attachment) => attachment.binaryDataId),
 			logContext,
@@ -347,7 +601,7 @@ export class AgentChatAttachmentService {
 							{ projectId: scope.projectId, threadId },
 							await rootIdOf(threadId),
 						)
-					: await this.repository.findByIdForAgent(ref.id, scope);
+					: await this.repository.findByIdForAgent(ref.id, scope, {});
 				if (!attachment) return null;
 				try {
 					return await this.binaryDataService.getAsBuffer({

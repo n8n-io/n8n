@@ -16,7 +16,7 @@ export default class ProjectCreate extends BaseCommand {
 		const { flags } = await this.parse(ProjectCreate);
 		await this.execute(async () => {
 			const client = this.getClient(flags);
-			const data = await client.createProject(flags.name);
+			const data = await client.createProject({ name: flags.name });
 			this.output(data, flags);
 		});
 	}

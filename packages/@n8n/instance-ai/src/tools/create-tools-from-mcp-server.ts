@@ -1,11 +1,4 @@
-import {
-	Tool,
-	type AgentMessage,
-	type BuiltTool,
-	hasMcpMediaContent,
-	mcpContentToMessageParts,
-	mcpContentToModelParts,
-} from '@n8n/agents';
+import { Tool, type BuiltTool, hasMcpMediaContent, mcpContentToModelParts } from '@n8n/agents';
 import {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	gatewayConfirmationRequiredPayloadSchema,
@@ -170,16 +163,6 @@ function classifyCredentialCreateError(result: McpToolCallResult): string {
 	if (text.includes('gateway context')) return 'gateway_context_missing';
 	if (text.includes('Access denied by user')) return 'user_denied';
 	return 'credential_create_failed';
-}
-
-function buildNativeMcpMediaMessage(result: unknown): AgentMessage | undefined {
-	const raw = unwrapMcpToolResult(result);
-	if (!raw || !hasMcpMediaContent(raw.content)) return undefined;
-
-	const content = mcpContentToMessageParts(raw.content);
-	if (content.length === 0) return undefined;
-
-	return { role: 'assistant', content };
 }
 
 // ---------------------------------------------------------------------------
@@ -406,7 +389,6 @@ export function createToolsFromLocalMcpServer({
 			.build();
 		const tool = {
 			...baseTool,
-			toMessage: buildNativeMcpMediaMessage,
 			outputTrust: 'untrusted',
 		} satisfies BuiltTool;
 

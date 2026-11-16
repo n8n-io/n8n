@@ -2,11 +2,13 @@ import type {
 	PromotionApplyCheck,
 	PromotionBindingConflict,
 	PromotionBindingConsumer,
-	PromotionBindingPreflightResult,
+	PromotionPreviewCheck,
 	PromotionResource,
 	PromotionResourceChange,
 	PromotionVariableScope,
 } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
+import { jsonParse } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
 import type { PackageImportPlan } from '@/modules/n8n-packages/engine/project-package-importer';
@@ -15,8 +17,10 @@ import type {
 	InventoryWorkflow,
 	PackageDirectoryInventory,
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
+import { formatEntityFile } from '@/modules/n8n-packages/io/entity-file-format';
 import { PACKAGE_ENTITY_LAYOUT } from '@/modules/n8n-packages/io/manifest-entry';
 import type { BlockingIssue } from '@/modules/n8n-packages/n8n-packages.types';
+import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { PackageRequirementConsumer } from '@/modules/n8n-packages/spec/requirements.schema';
 
 import {
@@ -27,7 +31,7 @@ import {
 	type CredentialReference,
 	type ProjectLookup,
 	type VariableReference,
-} from './promotion-binding-preflight.service';
+} from './package-references';
 import type { CrossProjectMoves } from './cross-project-moves';
 import { resourceKey, variableResourceKey } from './promotion-preview';
 
@@ -129,6 +133,26 @@ export function plannedChanges(plan: PackageImportPlan): Map<string, PlannedChan
 	return changes;
 }
 
+/** The manifest without tags. With workflow tags disabled, Apply ignores them. */
+export function withoutTags(manifest: PackageManifest): PackageManifest {
+	return {
+		...manifest,
+		tags: undefined,
+		requirements: manifest.requirements && { ...manifest.requirements, tags: undefined },
+	};
+}
+
+/**
+ * A workflow file without its `tagIds`, so that it matches the export of this instance when
+ * workflow tags are disabled.
+ */
+export function withoutTagIds(content: string): string {
+	const workflow = jsonParse<unknown>(content, { fallbackValue: null });
+	if (!isRecord(workflow) || !('tagIds' in workflow)) return content;
+	const { tagIds: _tagIds, ...rest } = workflow;
+	return formatEntityFile(rest);
+}
+
 /** The package data that the Apply check reads besides the plan. */
 export type ApplyCheckInput = {
 	plan: PackageImportPlan;
@@ -147,7 +171,7 @@ export type ApplyCheckInput = {
  * - a variable must exist in the scope that the branch declares, not only in a fallback scope;
  * - a variable without a file in the package blocks.
  */
-export function toApplyCheck(input: ApplyCheckInput): PromotionApplyCheck {
+export function toPreviewCheck(input: ApplyCheckInput): PromotionPreviewCheck {
 	const { plan, inventory, moves } = input;
 	const projects = new Map(inventory.projects.map((project) => [project.id, project]));
 	const projectOf: ProjectLookup = (id) => {
@@ -164,7 +188,7 @@ export function toApplyCheck(input: ApplyCheckInput): PromotionApplyCheck {
 			projectOf,
 		);
 
-	const result: PromotionBindingPreflightResult = {
+	const result: PromotionApplyCheck = {
 		missingProjects: plan.projectPlan.items
 			.filter(({ action }) => action === 'create')
 			.flatMap(({ sourceProjectId }) => {
@@ -225,13 +249,11 @@ export function toApplyCheck(input: ApplyCheckInput): PromotionApplyCheck {
 	}
 
 	return {
-		preflight: {
-			...result,
-			missingBindings: sortedByJson(result.missingBindings),
-			accessRequirements: sortedByJson(result.accessRequirements),
-			conflicts: sortedByJson(result.conflicts),
-			warnings: sortedByJson(result.warnings),
-		},
+		...result,
+		missingBindings: sortedByJson(result.missingBindings),
+		accessRequirements: sortedByJson(result.accessRequirements),
+		conflicts: sortedByJson(result.conflicts),
+		warnings: sortedByJson(result.warnings),
 		movedWorkflows: moves.workflows,
 		movedFolders: moves.folders,
 	};
@@ -377,7 +399,7 @@ function addCredentialRules(
 	{ plan, inventory, credentials }: ApplyCheckInput,
 	consumersOfIds: (consumers: readonly PackageRequirementConsumer[]) => PromotionBindingConsumer[],
 	projectOf: ProjectLookup,
-	result: PromotionBindingPreflightResult,
+	result: PromotionApplyCheck,
 	handled: Set<BlockingIssue>,
 ): void {
 	const issuesById = new Map<
@@ -502,7 +524,7 @@ function addCredentialRules(
 function addVariableRules(
 	{ plan, variables }: ApplyCheckInput,
 	projectOf: ProjectLookup,
-	result: PromotionBindingPreflightResult,
+	result: PromotionApplyCheck,
 	handled: Set<BlockingIssue>,
 ): void {
 	// Scopes of each matched variable, by consumer project.
@@ -608,7 +630,7 @@ function canonicalJson(value: unknown): string {
  */
 export function previewRevision(
 	resources: PromotionResource[],
-	check: PromotionApplyCheck,
+	check: PromotionPreviewCheck,
 ): string {
 	return createHash('sha256')
 		.update(canonicalJson({ schemaVersion: PREVIEW_SCHEMA_VERSION, resources, check }))

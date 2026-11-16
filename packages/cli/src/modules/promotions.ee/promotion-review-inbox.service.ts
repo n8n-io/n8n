@@ -6,10 +6,11 @@ import {
 	type PromotionReviewRemoteError,
 	type PromotionReviewState,
 } from '@n8n/api-types';
-import { LicenseState, Logger, isEnvFeatureEnabled } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { User } from '@n8n/db';
+import { accountSummary } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	BadRequestError,
@@ -39,8 +40,9 @@ import {
 } from './git-hosts/gitlab-merge-request.client';
 import type { GitLabMergeRequest, MergeRequestRef } from './git-hosts/gitlab-merge-request.types';
 import { PromotionReviewHostResolver } from './promotion-review-host.resolver';
-import { observePromotion } from './promotion-telemetry';
+import { observePromotion, type ClosedHostStatus } from './promotion-telemetry';
 import { approvalNote } from './promotion-review.utils';
+import type { PromotionReviewCloseReason } from './promotions.types';
 
 /** One live look at a review on the host. A failed read says why, and never a state. */
 export type LiveReviewState =
@@ -66,8 +68,9 @@ const UNCONFIRMED_MERGE =
 
 /**
  * Promotion Reviews as an Inbox source, and their approval. The first page of each tab and
- * the counters share one sync of the open reviews with the Git host. An Inbox sync failure
- * never changes the review state.
+ * the counters share one sync of the open reviews with the Git host. A failed host read
+ * never changes the review state. A review whose environment is gone, or no longer uses its
+ * host, can never merge, so the sync closes it.
  */
 @Service()
 export class PromotionReviewInboxService {
@@ -91,7 +94,6 @@ export class PromotionReviewInboxService {
 	isEnabled() {
 		return (
 			this.licenseState.isLicensed(LICENSE_FEATURES.PROMOTIONS) &&
-			isEnvFeatureEnabled('N8N_ENV_FEAT_PROMOTIONS') &&
 			this.sourceControlPreferences.getPreferences().environmentsVersion === 'v2'
 		);
 	}
@@ -185,6 +187,91 @@ export class PromotionReviewInboxService {
 					durationMs: observed.durationMs,
 				}),
 		);
+	}
+
+	/**
+	 * Closes the review within n8n. Reads the host first and records merged or closed states.
+	 * Allows the close when the merge request is missing, or the host configuration is invalid or
+	 * absent. Refuses transient host failures.
+	 */
+	async close(user: User, reviewId: string): Promise<InboxPromotionReviewItem> {
+		if (!this.isEnabled()) throw new ForbiddenError("Promotion reviews aren't enabled.");
+		const review = await this.reviewRepository.findByIdWithRelations(reviewId);
+		if (!review) throw new NotFoundError('Promotion review not found.');
+
+		// Stays null when the close fails before n8n asks the host.
+		let hostStatus: ClosedHostStatus | null = null;
+		return await observePromotion(
+			async () => await this.closeReview(review, (status) => (hostStatus = status)),
+			(observed) =>
+				this.eventService.emit('promotion-review-closed', {
+					user,
+					reviewId: review.id,
+					environmentId: review.environmentId,
+					reviewType: review.type,
+					reviewAgeMs: Date.now() - review.createdAt.getTime(),
+					hostStatus,
+					outcome: observed.ok ? 'closed' : 'failed',
+					...(!observed.ok && { failureKind: observed.failureKind }),
+					durationMs: observed.durationMs,
+				}),
+		);
+	}
+
+	private async closeReview(
+		review: PromotionReview,
+		onHostStatus: (status: ClosedHostStatus) => void,
+	): Promise<InboxPromotionReviewItem> {
+		if (review.state === 'merged' || review.state === 'closed') {
+			throw new ConflictError(
+				`This promotion review is already ${review.state}. Reload the Inbox.`,
+			);
+		}
+
+		const run = (await this.newestRuns([review])).get(review.id);
+		let view: RemoteView = failed('no_connection');
+		try {
+			const host = await this.readMergeRequest(review, run);
+			if (host) view = { mergeRequest: host.mergeRequest, remoteError: null };
+		} catch (error) {
+			// An unexpected error, such as an invalid GitLab response, is a bug and must not read as a host outage.
+			if (!isHostAccessError(error)) throw error;
+			view = failed(remoteErrorOf(error));
+		}
+		const { mergeRequest, remoteError } = view;
+
+		if (mergeRequest) {
+			await this.applyHostState(review, mergeRequest);
+			const hostState = toReviewState(mergeRequest);
+			onHostStatus(hostState);
+			if (hostState === 'merged' || hostState === 'closed') {
+				throw new ConflictError(
+					`The merge request is already ${hostState} on GitLab. Reload the Inbox.`,
+				);
+			}
+		} else if (remoteError) {
+			onHostStatus(remoteError);
+			if (remoteError === 'unreachable') {
+				throw new ServiceUnavailableError("GitLab didn't answer. Try again.");
+			}
+		}
+
+		const at = new Date();
+		const staleBefore = new Date(at.getTime() - APPROVAL_CLAIM_TTL_MS);
+		if (!(await this.reviewRepository.closeByUser(review.id, at, staleBefore, {}))) {
+			const current = await this.reviewRepository.findByIdWithRelations(review.id);
+			if (current?.state === 'merged' || current?.state === 'closed') {
+				throw new ConflictError(
+					`This promotion review is already ${current.state}. Reload the Inbox.`,
+				);
+			}
+			throw new ConflictError(
+				'Someone is approving this promotion review. Wait for the approval to finish, then reload the Inbox.',
+			);
+		}
+		review.state = 'closed';
+		review.lastStateChangeAt = at;
+		return toItem(review, run, view);
 	}
 
 	private async approveReview(
@@ -291,8 +378,9 @@ export class PromotionReviewInboxService {
 		const reviews = await this.reviewRepository.findOpenReviews();
 		const views = await this.readRemote(reviews, await this.newestRuns(reviews));
 		for (const review of reviews) {
-			const mergeRequest = views.get(review.id)?.mergeRequest;
-			if (mergeRequest) await this.applyHostState(review, mergeRequest);
+			const view = views.get(review.id);
+			if (view?.mergeRequest) await this.applyHostState(review, view.mergeRequest);
+			else if (view?.remoteError === 'no_connection') await this.closeUnreachable(review);
 		}
 		return views;
 	}
@@ -359,6 +447,23 @@ export class PromotionReviewInboxService {
 		return { access, ref, mergeRequest };
 	}
 
+	/** Only a review on a host can lose it. A review that lives in n8n stays open. */
+	private async closeUnreachable(review: PromotionReview) {
+		if (!review.remoteReviewId) return;
+		const at = new Date();
+		if (!(await this.reviewRepository.recordHostState(review.id, 'closed', at))) return;
+		review.state = 'closed';
+		review.lastStateChangeAt = at;
+		const reason: PromotionReviewCloseReason = review.environment
+			? 'environment_host_changed'
+			: 'environment_deleted';
+		this.logger.info('Closed a promotion review that can no longer reach its host', {
+			reviewId: review.id,
+			environmentId: review.environmentId,
+			reason,
+		});
+	}
+
 	private async applyHostState(review: PromotionReview, mergeRequest: GitLabMergeRequest) {
 		const state = toReviewState(mergeRequest);
 		if (review.state === 'merged' || review.state === 'closed' || review.state === state) return;
@@ -376,6 +481,13 @@ const failed = (remoteError: PromotionReviewRemoteError): RemoteView => ({
 	mergeRequest: null,
 	remoteError,
 });
+
+/** The errors that the GitLab client throws when it cannot read the merge request. */
+const isHostAccessError = (error: unknown) =>
+	error instanceof NotFoundError ||
+	error instanceof BadRequestError ||
+	error instanceof ServiceUnavailableError ||
+	error instanceof TooManyRequestsError;
 
 // The GitLab client throws BadRequestError for token, certificate, and URL problems,
 // and ServiceUnavailableError or TooManyRequestsError when GitLab cannot answer.
@@ -400,10 +512,7 @@ const toReviewState = ({
 	return detailed_merge_status === 'requested_changes' ? 'changes_requested' : 'open';
 };
 
-const toReviewUser = (user: User | null) =>
-	user
-		? { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email }
-		: null;
+const toReviewUser = (user: User | null) => (user ? accountSummary(user) : null);
 
 const newestFirst = (runs: PromotionRun[]) =>
 	runs.toSorted(

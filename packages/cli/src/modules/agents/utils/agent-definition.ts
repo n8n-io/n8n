@@ -1,4 +1,5 @@
 import type { AgentJsonConfig, AgentSkill, AgentTaskConfig } from '@n8n/api-types';
+import type { OperationContext } from '@n8n/db';
 
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
@@ -24,9 +25,15 @@ export interface PendingSkillRefs {
 /** Complete authored content, before integrations are split from the configuration. */
 export interface CompleteAgentDefinition extends Pick<Agent, 'name' | 'tools'> {
 	config: AgentJsonConfig | null;
-	skills: Record<string, AgentSkill>;
 	tasks: ReadonlyMap<string, AgentTaskConfig>;
 }
+
+/**
+ * Writes the skills that belong to one Agent. A complete save calls it in the Agent's
+ * transaction, after the Agent row exists and before the skill refs are saved. A caller
+ * passes it only when the save changes a skill that the Agent uses.
+ */
+export type AgentSkillWriter = (ctx: OperationContext) => Promise<void>;
 
 /** Omitted metadata stays unchanged on ordinary saves and version restoration. */
 export interface AgentDefinitionMetadata {
@@ -40,10 +47,9 @@ export interface PlannedAgentDestinations {
 }
 
 export function findMissingAgentDefinitionBodies(
-	definition: Pick<CompleteAgentDefinition, 'config' | 'skills' | 'tools' | 'tasks'>,
+	definition: Pick<CompleteAgentDefinition, 'config' | 'tools' | 'tasks'>,
 ) {
 	const references = [
-		['skills', definition.config?.skills ?? [], new Set(Object.keys(definition.skills))],
 		[
 			'tools',
 			definition.config?.tools?.filter((tool) => tool.type === 'custom') ?? [],

@@ -15,6 +15,7 @@ import type { ShadowReport } from './shadowRunner';
 export const DEFAULT_SAMPLE_RATE = 10;
 export const DEFAULT_TIMEOUT_MS = 100;
 export const REPORT_INTERVAL_MS = 5 * 60 * 1000;
+export const IDLE_START_TIMEOUT_MS = 10_000;
 
 const MIN_TIMEOUT_MS = 10;
 // A shadow run blocks the main thread for up to this long, so keep it short.
@@ -26,6 +27,119 @@ let started = false;
 let session = 0;
 
 let stopActiveRun: (() => void) | undefined;
+
+/**
+ * When the shadow engine starts.
+ * - `boot`: at once, while the editor loads.
+ * - `idle`: later, after the editor start, when the browser has no other work to do.
+ * - `boot_only`: at once, because the browser cannot wait for idle time.
+ */
+type StartVariant = 'boot' | 'idle' | 'boot_only';
+
+interface StartupTimings {
+	bundleImportMs?: number;
+	wasmReadyMs?: number;
+	bridgeReadyMs?: number;
+}
+
+/**
+ * A/B test: each page load picks `boot` or `idle` at random, half and half.
+ * The reports then tell if a later start makes the engine start faster.
+ * Safari has no `requestIdleCallback`, so it gets `boot_only` and stays out of the test.
+ */
+function pickStartVariant(): StartVariant {
+	if (typeof window.requestIdleCallback !== 'function') {
+		return 'boot_only';
+	}
+	return Math.random() < 0.5 ? 'idle' : 'boot';
+}
+
+let markEditorReady: () => void = () => {};
+
+const createEditorReady = async () =>
+	await new Promise<void>((resolve) => {
+		markEditorReady = resolve;
+	});
+
+// Resolves when the editor finishes its start after login. A logout replaces it.
+let editorReady = createEditorReady();
+
+/** Tell the shadow run that the editor finished its start after login. */
+export function notifyQuickJsShadowEditorReady() {
+	markEditorReady();
+}
+
+/** Wait until the editor finishes its start after login, then until the browser is idle. */
+async function waitForEditorThenIdle(): Promise<void> {
+	// requestIdleCallback alone can fire while the startup requests still run.
+	// The timeout ends the wait when the editor start fails or does not end.
+	let editorTimeout: ReturnType<typeof setTimeout> | undefined;
+	await Promise.race([
+		editorReady,
+		new Promise<void>((resolve) => {
+			editorTimeout = setTimeout(resolve, IDLE_START_TIMEOUT_MS);
+		}),
+	]);
+	clearTimeout(editorTimeout);
+	await new Promise<void>((resolve) => {
+		window.requestIdleCallback(() => resolve(), { timeout: IDLE_START_TIMEOUT_MS });
+	});
+}
+
+/** Watch the tab visibility. The returned function stops the watch and tells whether the tab stayed visible. */
+function watchVisibility(): () => boolean {
+	let visible = document.visibilityState === 'visible';
+	const onVisibilityChange = () => {
+		if (document.visibilityState !== 'visible') {
+			visible = false;
+		}
+	};
+	document.addEventListener('visibilitychange', onVisibilityChange);
+	return () => {
+		document.removeEventListener('visibilitychange', onVisibilityChange);
+		return visible;
+	};
+}
+
+type FileSource = 'cache' | 'revalidated' | 'network';
+
+const QUICKJS_WASM_FILE = /\/emscripten-module[^/]*\.wasm(\?|$)/;
+
+function fileSource(entry: PerformanceResourceTiming): FileSource {
+	if (entry.transferSize === 0) {
+		return 'cache';
+	}
+	return entry.transferSize < entry.encodedBodySize ? 'revalidated' : 'network';
+}
+
+function isQuickJsWasm(entry: PerformanceEntry): entry is PerformanceResourceTiming {
+	return 'transferSize' in entry && QUICKJS_WASM_FILE.test(entry.name);
+}
+
+/**
+ * Watch the files that the page loads from now on.
+ *
+ * The returned function stops the watch and tells where the browser got the QuickJS WASM file:
+ * - from its cache
+ * - from its cache after a check with the server
+ * - or from the network.
+ * `undefined` when the page did not load the file, or the browser has no size for it.
+ */
+function watchWasmSource(): () => FileSource | undefined {
+	// An observer, not `performance.getEntriesByType()`: the browser drops entries
+	// from that list once it holds 250, but an observer still gets them.
+	const entries: PerformanceResourceTiming[] = [];
+	const collect = (list: PerformanceEntry[]) => entries.push(...list.filter(isQuickJsWasm));
+	const observer = new PerformanceObserver((list) => collect(list.getEntries()));
+	observer.observe({ type: 'resource' });
+	return () => {
+		collect(observer.takeRecords());
+		observer.disconnect();
+		const entry = entries.at(-1);
+		// A file from another origin without `Timing-Allow-Origin` reports every size as 0.
+		return entry && entry.encodedBodySize > 0 ? fileSource(entry) : undefined;
+	};
+}
 
 export interface ShadowSettings {
 	sampleRate: number;
@@ -96,14 +210,38 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 	const settings = readShadowSettings(
 		postHogStore.getFeatureFlagPayload(QUICKJS_EXPRESSION_SHADOW_EXPERIMENT.name),
 	);
-	const telemetry = useTelemetry();
-	const initStart = performance.now();
-	let initDurationMs = 0;
+	const startVariant = pickStartVariant();
+	// Started before the idle wait, because a hidden tab also makes that wait longer.
+	const stopVisibilityWatch = watchVisibility();
+	let idleWaitMs: number | undefined;
+	if (startVariant === 'idle') {
+		const waitStart = performance.now();
+		await waitForEditorThenIdle();
+		idleWaitMs = performance.now() - waitStart;
+		if (startSession !== session) {
+			stopVisibilityWatch();
+			return;
+		}
+	}
 
-	const send = (initStatus: 'ready' | 'failed', report: ShadowReport) => {
+	const telemetry = useTelemetry();
+	const timings: StartupTimings = {};
+	let initDurationMs = 0;
+	let startupVisible = false;
+	let wasmSource: FileSource | undefined;
+
+	const send = (initStatus: 'ready' | 'failed', report: ShadowReport, startupReport = false) => {
 		telemetry.track(TELEMETRY_EVENT.EXPRESSIONS.EXPRESSION_ENGINE_SHADOW_RUN_REPORTED, {
 			quickjs_fe_init_status: initStatus,
+			quickjs_fe_startup_report: startupReport,
 			quickjs_fe_init_duration_ms: initDurationMs,
+			quickjs_fe_start_variant: startVariant,
+			quickjs_fe_idle_wait_ms: idleWaitMs,
+			quickjs_fe_bundle_import_ms: timings.bundleImportMs,
+			quickjs_fe_wasm_ready_ms: timings.wasmReadyMs,
+			quickjs_fe_bridge_ready_ms: timings.bridgeReadyMs,
+			quickjs_fe_startup_visible: startupVisible,
+			quickjs_fe_wasm_source: wasmSource,
 			quickjs_fe_sample_rate: settings.sampleRate,
 			quickjs_fe_timeout_ms: settings.timeoutMs,
 			quickjs_fe_latency_bucket_bounds_ms: LATENCY_BUCKET_BOUNDS_MS,
@@ -111,23 +249,42 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 		});
 	};
 
+	const timed = async <T>(step: keyof StartupTimings, run: () => Promise<T>): Promise<T> => {
+		const stepStart = performance.now();
+		const result = await run();
+		timings[step] = performance.now() - stepStart;
+		return result;
+	};
+
+	const stopWasmSourceWatch = watchWasmSource();
+	const initStart = performance.now();
 	let evaluator: ShadowEvaluator;
 	try {
-		const { default: runtimeBundle } = await import(
-			'@n8n/expression-runtime/runtime-bundle.iife.js?raw'
+		const { default: runtimeBundle } = await timed(
+			'bundleImportMs',
+			async () => await import('@n8n/expression-runtime/runtime-bundle.iife.js?raw'),
 		);
-		evaluator = await Expression.createQuickJsShadowEvaluator({
-			bridgeTimeout: settings.timeoutMs,
-			bridgeMemoryLimit: 128,
-			maxCodeCacheSize: 1024,
-			runtimeBundle,
-		});
+		await timed('wasmReadyMs', async () => await Expression.loadQuickJsWasm());
+		evaluator = await timed(
+			'bridgeReadyMs',
+			async () =>
+				await Expression.createQuickJsShadowEvaluator({
+					bridgeTimeout: settings.timeoutMs,
+					bridgeMemoryLimit: 128,
+					maxCodeCacheSize: 1024,
+					runtimeBundle,
+				}),
+		);
 	} catch {
 		// A policy that blocks WASM ends here; the editor keeps working on legacy.
 		initDurationMs = performance.now() - initStart;
-		if (startSession === session) send('failed', emptyReport());
+		startupVisible = stopVisibilityWatch();
+		wasmSource = stopWasmSourceWatch();
+		if (startSession === session) send('failed', emptyReport(), true);
 		return;
 	}
+	startupVisible = stopVisibilityWatch();
+	wasmSource = stopWasmSourceWatch();
 	initDurationMs = performance.now() - initStart;
 
 	// The user may have logged out, or the main engine switched, while the shadow engine loaded.
@@ -137,6 +294,8 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 	}
 	const shadow = new QuickJsExpressionShadow({ evaluator, sampleRate: settings.sampleRate });
 	Expression.setShadowRunner(shadow);
+	// Sent at once, so a start without sampled expressions is still in the startup data.
+	send('ready', emptyReport(), true);
 
 	const flush = () => {
 		const report = shadow.takeReport();
@@ -166,6 +325,8 @@ export async function initializeQuickJsExpressionShadow(): Promise<void> {
 export function stopQuickJsExpressionShadow() {
 	session += 1;
 	started = false;
+	markEditorReady();
+	editorReady = createEditorReady();
 	stopActiveRun?.();
 	stopActiveRun = undefined;
 }

@@ -6,10 +6,9 @@ import {
 	CREDENTIAL_ONLY_NODE_PREFIX,
 	getCredentialOnlyNodeCredentialType,
 	isCredentialOnlyNodeType,
-	UserError,
 } from 'n8n-workflow';
 
-import { ConflictError, NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 

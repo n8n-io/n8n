@@ -38,6 +38,7 @@ export * from './expression';
 export * from './expressions/expression-helpers';
 export * from './from-ai-parse-utils';
 export * from './node-helpers';
+export * from './node-annotations';
 export * from './node-validation';
 export * from './node-grouping-validation';
 export * from './empty-group-anchor';
@@ -120,9 +121,12 @@ export * from './node-parameters/node-parameter-value-type-guard';
 export * from './node-parameters/path-utils';
 export * from './evaluation-helpers';
 export * from './workflow-diff';
+export type * from './workflow-settings-scope';
 export * from './connections-diff';
 export * from './workflow-environments-helper';
 export { evaluateJmespathQuery, JmespathQueryError } from './jmespath-query';
+export { decodePathValue, requestPath, requestUrl } from './request-target';
+export type { RequestPath, RequestUrl } from './request-target';
 
 export type {
 	DocMetadata,

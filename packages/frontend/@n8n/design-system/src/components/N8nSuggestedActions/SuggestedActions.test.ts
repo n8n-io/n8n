@@ -1,5 +1,5 @@
 import { render, fireEvent } from '@testing-library/vue';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 import N8nSuggestedActions from './SuggestedActions.vue';
 
@@ -206,6 +206,79 @@ describe('N8nSuggestedActions', () => {
 		// Check that update:open event was emitted
 		expect(wrapper.emitted('update:open')).toBeTruthy();
 		expect(wrapper.emitted('update:open')[0]).toEqual([true]);
+	});
+
+	it('emits ignore-click event when ignore link is clicked', async () => {
+		vi.useFakeTimers();
+
+		const wrapper = render(N8nSuggestedActions, {
+			props: {
+				actions: mockActions,
+				open: true,
+				title: 'Test Title',
+			},
+			global: { stubs },
+		});
+
+		const ignoreLinks = wrapper.getAllByTestId('suggested-action-ignore');
+		await fireEvent.click(ignoreLinks[0]);
+
+		// Advance timers to trigger the delayed emission
+		vi.advanceTimersByTime(600);
+
+		expect(wrapper.emitted('ignore-click')).toBeTruthy();
+		expect(wrapper.emitted('ignore-click')[0]).toEqual(['action1']);
+
+		vi.useRealTimers();
+	});
+
+	it('applies ignoring class when action is being ignored', async () => {
+		const wrapper = render(N8nSuggestedActions, {
+			props: {
+				actions: mockActions,
+				open: true,
+				title: 'Test Title',
+			},
+			global: { stubs },
+		});
+
+		const actionItems = wrapper.getAllByTestId('suggested-action-item');
+		const ignoreLinks = wrapper.getAllByTestId('suggested-action-ignore');
+
+		await fireEvent.click(ignoreLinks[0]);
+
+		expect(actionItems[0]).toHaveClass('ignoring');
+	});
+
+	it('shows custom ignore all text when ignoreAllLabel is provided', async () => {
+		const wrapper = render(N8nSuggestedActions, {
+			props: {
+				actions: mockActions,
+				open: true,
+				title: 'Test Title',
+				ignoreAllLabel: 'Ignore for all',
+			},
+			global: { stubs },
+		});
+
+		expect(wrapper.getByTestId('suggested-action-ignore-all')).toBeInTheDocument();
+		expect(wrapper.getByText('Ignore for all')).toBeInTheDocument();
+	});
+
+	it('emits ignore-all event when ignore all link is clicked', async () => {
+		const wrapper = render(N8nSuggestedActions, {
+			props: {
+				actions: mockActions,
+				open: true,
+				title: 'Test Title',
+				ignoreAllLabel: 'Ignore for all',
+			},
+			global: { stubs },
+		});
+
+		await fireEvent.click(wrapper.getByTestId('suggested-action-ignore-all'));
+
+		expect(wrapper.emitted('ignore-all')).toBeTruthy();
 	});
 
 	it('renders more info link when moreInfoLink is provided', async () => {

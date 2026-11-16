@@ -207,6 +207,7 @@ export const useTypeAvailabilityPoliciesStore = defineStore(
 			isEnabled,
 			isLoading,
 			loadedProjectId,
+			requestedProjectId,
 			policyProject,
 			fetchForProject,
 			reload,

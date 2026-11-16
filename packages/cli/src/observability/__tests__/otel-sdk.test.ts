@@ -1,5 +1,7 @@
+import type * as MicrosoftOpenTelemetry from '@microsoft/opentelemetry';
 import { Logger } from '@n8n/backend-common';
 import type { TracingSourcesConfig } from '@n8n/config';
+import { LOWEST_SHUTDOWN_PRIORITY, ShutdownMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import {
 	context,
@@ -12,12 +14,18 @@ import {
 } from '@opentelemetry/api';
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import {
+	AlwaysOffSampler,
 	AlwaysOnSampler,
 	InMemorySpanExporter,
+	ParentBasedSampler,
 	SimpleSpanProcessor,
 	type SpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
+import nock from 'nock';
+import { mkdtemp, readdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import { startObservability } from '../observability-boot';
@@ -26,19 +34,25 @@ import { OtelSdk } from '../otel-sdk';
 type OptIns = {
 	daytona?: boolean;
 	microsoftAgent365?: boolean;
+	exportToMicrosoft?: boolean;
 };
 
 let exporter: InMemorySpanExporter;
 let processor: SimpleSpanProcessor;
 let logger: ReturnType<typeof mock<Logger>>;
 
-function createSdk({ daytona = false, microsoftAgent365 = false }: OptIns = {}) {
+function createSdk({
+	daytona = false,
+	microsoftAgent365 = false,
+	exportToMicrosoft = false,
+}: OptIns = {}) {
 	logger = mock<Logger>();
 	return new OtelSdk(
 		logger,
 		mock<TracingSourcesConfig>({
 			daytonaTracingEnabled: daytona,
 			microsoftAgent365TracingEnabled: microsoftAgent365,
+			microsoftAgent365ExportEnabled: exportToMicrosoft,
 		}),
 	);
 }
@@ -253,6 +267,225 @@ describe('OtelSdk', () => {
 			await sdk.apply({ ...exportingPipeline(), spanProcessors: [failingProcessor] });
 
 			await expect(sdk.shutdown()).rejects.toThrow('ECONNREFUSED');
+		});
+	});
+
+	describe('Microsoft Agent 365 export', () => {
+		// The node loads the CommonJS copy of the package, so the test fills that copy's token cache.
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const microsoft = require('@microsoft/opentelemetry') as typeof MicrosoftOpenTelemetry;
+		const microsoftEndpoint = 'https://agent365.svc.cloud.microsoft';
+		const tracesPath = '/observability/tenants/tenant-1/otlp/agents/agent-1/traces';
+
+		beforeAll(async () => {
+			nock.disableNetConnect();
+			await microsoft.AgenticTokenCacheInstance.refreshObservabilityToken(
+				'agent-1',
+				'tenant-1',
+				mock(),
+				{ exchangeToken: async () => ({ token: 'export-token' }) },
+			);
+		});
+
+		afterEach(() => {
+			nock.cleanAll();
+		});
+
+		afterAll(() => {
+			nock.enableNetConnect();
+		});
+
+		function interceptMicrosoftExport(onBody: (body: unknown) => void = () => {}) {
+			return nock(microsoftEndpoint)
+				.post(tracesPath, (body: unknown) => {
+					onBody(body);
+					return true;
+				})
+				.query({ 'api-version': '1' })
+				.matchHeader('authorization', 'Bearer export-token')
+				.reply(200);
+		}
+
+		async function shutDown(sdk: OtelSdk) {
+			await sdk.shutdown();
+			await sdk.shutdownAgent365Provider();
+		}
+
+		function sendAgentTurn() {
+			microsoft.InvokeAgentScope.start(
+				{ conversationId: 'conversation-1' },
+				{},
+				{ agentId: 'agent-1', tenantId: 'tenant-1' },
+			).dispose();
+		}
+
+		it("sends Agent 365 spans to Microsoft with the agent's token when the customer's OTel is off", async () => {
+			const microsoftExport = interceptMicrosoftExport();
+			const sdk = createSdk({ exportToMicrosoft: true });
+			sdk.start();
+
+			sendAgentTurn();
+			await shutDown(sdk);
+
+			expect(microsoftExport.isDone()).toBe(true);
+		});
+
+		it("keeps Agent 365 spans out of the customer's endpoint without the opt-in", async () => {
+			const microsoftExport = interceptMicrosoftExport();
+			const sdk = await startWithExport({ exportToMicrosoft: true });
+
+			sendAgentTurn();
+			const customerSpans = await exportedSpans();
+			await shutDown(sdk);
+
+			expect(customerSpans).toEqual([]);
+			expect(microsoftExport.isDone()).toBe(true);
+		});
+
+		it("also sends Agent 365 spans to the customer's endpoint with the opt-in", async () => {
+			const microsoftExport = interceptMicrosoftExport();
+			const sdk = await startWithExport({ exportToMicrosoft: true, microsoftAgent365: true });
+
+			sendAgentTurn();
+			const customerSpans = await exportedSpans();
+			await shutDown(sdk);
+
+			expect(customerSpans.map((span) => span.instrumentationScope.name)).toEqual(['Agent365Sdk']);
+			expect(microsoftExport.isDone()).toBe(true);
+		});
+
+		it("gives the customer n8n's resource and Microsoft only the service name", async () => {
+			const originalResourceAttributes = process.env.OTEL_RESOURCE_ATTRIBUTES;
+			process.env.OTEL_RESOURCE_ATTRIBUTES = 'deployment.environment=staging';
+			try {
+				let microsoftResource: unknown;
+				interceptMicrosoftExport((body) => {
+					microsoftResource = (body as { resourceSpans: Array<{ resource: unknown }> })
+						.resourceSpans[0].resource;
+				});
+				const sdk = await startWithExport({ exportToMicrosoft: true, microsoftAgent365: true });
+
+				trace.getTracer('n8n-workflow').startSpan('workflow.execute').end();
+				sendAgentTurn();
+				const [workflowSpan, agentSpan] = await exportedSpans();
+				await shutDown(sdk);
+
+				expect(workflowSpan.resource.attributes['deployment.environment']).toBe('staging');
+				expect(agentSpan.resource.attributes).toEqual(workflowSpan.resource.attributes);
+				expect(microsoftResource).toEqual({
+					attributes: { 'service.name': 'n8n-microsoft-agent-365' },
+				});
+			} finally {
+				if (originalResourceAttributes === undefined) {
+					delete process.env.OTEL_RESOURCE_ATTRIBUTES;
+				} else {
+					process.env.OTEL_RESOURCE_ATTRIBUTES = originalResourceAttributes;
+				}
+			}
+		});
+
+		it('writes nothing to disk and warns when the last send to Microsoft fails', async () => {
+			const originalTmpdir = process.env.TMPDIR;
+			const storageRoot = await mkdtemp(join(tmpdir(), 'n8n-agent-365-'));
+			try {
+				process.env.TMPDIR = storageRoot;
+				nock(microsoftEndpoint).post(tracesPath).query(true).times(4).reply(503);
+				const sdk = createSdk({ exportToMicrosoft: true });
+				sdk.start();
+
+				sendAgentTurn();
+				await sdk.shutdownAgent365Provider();
+
+				expect(await readdir(storageRoot, { recursive: true })).toEqual([]);
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Failed to send the last Microsoft Agent 365 spans to Microsoft',
+					{ error: expect.stringContaining('span export failed') },
+				);
+			} finally {
+				process.env.TMPDIR = originalTmpdir;
+				await rm(storageRoot, { recursive: true });
+			}
+		});
+
+		it("drops a whole Agent 365 trace that the customer's sampler drops, and still sends it to Microsoft", async () => {
+			const microsoftExport = interceptMicrosoftExport();
+			const sdk = createSdk({ exportToMicrosoft: true, microsoftAgent365: true });
+			sdk.start();
+			await sdk.apply({
+				...exportingPipeline(),
+				sampler: new ParentBasedSampler({ root: new AlwaysOffSampler() }),
+			});
+
+			const tracer = trace.getTracer('Agent365Sdk');
+			tracer.startActiveSpan('invoke_agent', (agentSpan) => {
+				tracer.startSpan('chat').end();
+				trace.getTracer('@microsoft/agents-telemetry').startSpan('sendActivity').end();
+				agentSpan.end();
+			});
+			sendAgentTurn();
+			const customerSpans = await exportedSpans();
+			await shutDown(sdk);
+
+			expect(customerSpans).toEqual([]);
+			expect(microsoftExport.isDone()).toBe(true);
+		});
+
+		it('keeps spans that start under an Agent 365 span away from the customer without the opt-in', async () => {
+			interceptMicrosoftExport();
+			const sdk = await startWithExport({ exportToMicrosoft: true });
+
+			trace.getTracer('Agent365Sdk').startActiveSpan('invoke_agent', (agentSpan) => {
+				trace.getTracer('n8n-expression-runtime').startSpan('expression.evaluate').end();
+				agentSpan.end();
+			});
+			const customerSpans = await exportedSpans();
+			await shutDown(sdk);
+
+			expect(customerSpans).toEqual([]);
+		});
+
+		it("shuts down the customer's span processor once", async () => {
+			const sdk = createSdk({ exportToMicrosoft: true, microsoftAgent365: true });
+			sdk.start();
+			const exportingProcessor = mock<SpanProcessor>();
+			await sdk.apply({ ...exportingPipeline(), spanProcessors: [exportingProcessor] });
+
+			await shutDown(sdk);
+
+			expect(exportingProcessor.shutdown).toHaveBeenCalledTimes(1);
+		});
+
+		it('flushes the export to Microsoft in its own shutdown step', () => {
+			const handlers =
+				Container.get(ShutdownMetadata).getHandlersByPriority()[LOWEST_SHUTDOWN_PRIORITY];
+
+			expect(handlers).toContainEqual({
+				serviceClass: OtelSdk,
+				methodName: 'shutdownAgent365Provider',
+			});
+		});
+
+		it('warns that nothing goes to Microsoft when another OTel setup came first', () => {
+			new NodeTracerProvider().register();
+			const sdk = createSdk({ exportToMicrosoft: true });
+
+			sdk.start();
+
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('sends no Microsoft Agent 365 spans to Microsoft'),
+			);
+		});
+
+		it('sends nothing to Microsoft when the export is off', async () => {
+			const microsoftExport = interceptMicrosoftExport();
+			const sdk = createSdk({ exportToMicrosoft: false });
+			sdk.start();
+
+			sendAgentTurn();
+			await shutDown(sdk);
+
+			expect(microsoftExport.isDone()).toBe(false);
 		});
 	});
 

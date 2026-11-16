@@ -2,7 +2,10 @@ operationId: activateWorkflow
 tags:
   - Workflow
 summary: Publish a workflow
-description: 'Deprecated: use POST /workflows/{id}/publish instead. Publish a workflow. In n8n v1, this action was termed activating a workflow.'
+description: |-
+  Deprecated: use POST /workflows/{id}/publish instead. Publish a workflow. In n8n v1, this action was termed activating a workflow.
+
+  Requires the `workflow:activate` API key scope.
 x-required-scope: workflow:activate
 deprecated: true
 parameters:
@@ -62,3 +65,5 @@ responses:
             - message
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

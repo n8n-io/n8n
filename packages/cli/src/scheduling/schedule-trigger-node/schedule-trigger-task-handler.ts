@@ -5,7 +5,8 @@ import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
 import { ErrorReporter } from 'n8n-core';
-import { CRON_NODE_TYPE, UnexpectedError } from 'n8n-workflow';
+import { CRON_NODE_TYPE } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { OwnershipService } from '@/services/ownership.service';

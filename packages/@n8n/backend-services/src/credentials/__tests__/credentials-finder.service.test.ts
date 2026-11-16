@@ -493,7 +493,23 @@ describe('CredentialsFinderService', () => {
 				['credential-1'],
 				expect.objectContaining({ userId: owner.id }),
 			);
-			expect(accessRepository.findGlobalProjectCredentialIds).not.toHaveBeenCalled();
+		});
+
+		it('keeps global credentials when the global override is ignored', async () => {
+			accessRepository.findGlobalProjectCredentialIds.mockResolvedValue(['global-credential']);
+
+			await expect(
+				service.findCredentialIdsWithScopeForUser(
+					['credential-1', 'global-credential'],
+					owner,
+					['credential:read'],
+					{ ignoreGlobalOverride: true },
+				),
+			).resolves.toEqual(new Set(['global-credential']));
+			expect(accessRepository.findGlobalProjectCredentialIds).toHaveBeenCalledWith(
+				['credential-1', 'global-credential'],
+				false,
+			);
 		});
 
 		it('does not load global ids for write scopes', async () => {
@@ -542,6 +558,16 @@ describe('CredentialsFinderService', () => {
 
 			expect(accessRepository.findExistingCredentialIds).not.toHaveBeenCalled();
 			expect(accessRepository.findProjectCredentialIdsForUser).toHaveBeenCalled();
+		});
+
+		it('counts a global credential as usable when instance-wide access is ignored', async () => {
+			accessRepository.findGlobalProjectCredentialIds.mockResolvedValue(['global-credential']);
+
+			await expect(
+				service.findUnusableCredentialsForUser(member, ['global-credential'], {
+					ignoreGlobalUseScope: true,
+				}),
+			).resolves.toEqual([]);
 		});
 
 		it('returns no unusable credentials when personal access remains', async () => {
@@ -634,6 +660,88 @@ describe('CredentialsFinderService', () => {
 
 			await expect(service.findGlobalCredentialById('credential-1')).rejects.toThrow(
 				'database failed',
+			);
+		});
+	});
+
+	describe('excludeSeeOnlyRoles', () => {
+		// A role that holds only `credential:list` / `credential:read` may see a
+		// credential but not drive its secret, so the lookup asks for roles that
+		// hold at least one credential scope beyond those two.
+		const useScopes = expect.arrayContaining(['credential:connect', 'credential:update']);
+		const seeScopes = expect.not.arrayContaining(['credential:read', 'credential:list']);
+
+		it('asks for roles that hold more than see-rights when finding ids', async () => {
+			await service.findCredentialIdsWithScopeForUser(
+				['credential-1'],
+				member,
+				['credential:read'],
+				{
+					excludeSeeOnlyRoles: true,
+				},
+			);
+
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith(
+				'project',
+				['credential:read'],
+				expect.any(Function),
+				useScopes,
+			);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith(
+				'credential',
+				['credential:read'],
+				expect.any(Function),
+				useScopes,
+			);
+			for (const call of roleService.rolesWithScope.mock.calls) {
+				expect(call[3]).toEqual(seeScopes);
+			}
+		});
+
+		it('asks for roles that hold more than see-rights when finding one credential', async () => {
+			await service.findCredentialForUser('credential-1', member, ['credential:read'], {
+				excludeSeeOnlyRoles: true,
+			});
+
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith(
+				'project',
+				['credential:read'],
+				expect.any(Function),
+				useScopes,
+			);
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith(
+				'credential',
+				['credential:read'],
+				expect.any(Function),
+				useScopes,
+			);
+		});
+
+		it('does not filter roles by default', async () => {
+			await service.findCredentialIdsWithScopeForUser(['credential-1'], member, [
+				'credential:read',
+			]);
+
+			expect(roleService.rolesWithScope).toHaveBeenCalled();
+			for (const call of roleService.rolesWithScope.mock.calls) {
+				expect(call[3]).toBeUndefined();
+			}
+		});
+
+		it('keeps the global override for an owner', async () => {
+			await service.findCredentialIdsWithScopeForUser(
+				['credential-1'],
+				owner,
+				['credential:read'],
+				{
+					excludeSeeOnlyRoles: true,
+				},
+			);
+
+			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+			expect(accessRepository.findProjectCredentialIdsForUser).toHaveBeenCalledWith(
+				['credential-1'],
+				null,
 			);
 		});
 	});

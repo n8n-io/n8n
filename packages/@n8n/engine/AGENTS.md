@@ -105,6 +105,13 @@ Reads go through `ExecutionViewStore`, so a reader's type cannot reach
 structural, so an adapter returning whole entities still type-checks and still
 ships every column.
 
+## Error messages name nodes, not IDs
+
+Users see engine errors in the editor, and node IDs mean nothing to them. When
+an error message refers to a node, use the node's name. Use
+`createNodeLabeler(graph)` from `graph/` to get the name in quotes. It falls
+back to the ID when the graph has no node with that ID.
+
 ## Known deviations — the seams to clean up on decomposition
 
 - `DataSource` construction currently lives in `database/`; it is really a

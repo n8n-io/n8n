@@ -112,7 +112,7 @@ it('shows limited enterprise support beside Preview on an enterprise plan', asyn
 	const badge = await findByTestId('agents-enterprise-readiness-badge');
 	const heading = getByRole('heading', { name: 'Agents' });
 
-	expect(badge).toHaveTextContent('Limited enterprise support');
+	expect(badge).toHaveTextContent('Limited enterprise readiness');
 	expect(badge.closest('[data-test-id="settings-row-group"]')).not.toBeNull();
 	expect(heading.parentElement).not.toContainElement(badge);
 });

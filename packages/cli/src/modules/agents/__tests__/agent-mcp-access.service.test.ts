@@ -29,6 +29,7 @@ describe('AgentMcpAccessService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+		agentRepository.setAvailableInMCP.mockImplementation(async (agentIds) => agentIds.length);
 	});
 
 	describe('getAgents', () => {
@@ -115,11 +116,13 @@ describe('AgentMcpAccessService', () => {
 		});
 
 		it('updates only accessible agents not already in the requested state', async () => {
-			agentRepository.findMcpAvailabilityCandidates.mockResolvedValue([
-				candidate('a1', 'project-1', false),
-				candidate('a2', 'project-1', true),
-				candidate('a3', 'project-2', false),
-			]);
+			agentRepository.findMcpAvailabilityCandidates
+				.mockResolvedValueOnce([
+					candidate('a1', 'project-1', false),
+					candidate('a2', 'project-1', true),
+					candidate('a3', 'project-2', false),
+				])
+				.mockResolvedValueOnce([candidate('a1', 'project-1', true)]);
 
 			const result = await service.bulkSetAvailableInMCP(
 				user,
@@ -136,6 +139,26 @@ describe('AgentMcpAccessService', () => {
 				updatedIds: ['a1'],
 				unchangedIds: ['a2'],
 			});
+		});
+
+		it('reports only the agents that hold the requested state after the write', async () => {
+			agentRepository.findMcpAvailabilityCandidates
+				.mockResolvedValueOnce([
+					candidate('a1', 'project-1', false),
+					candidate('a2', 'project-1', false),
+				])
+				.mockResolvedValueOnce([candidate('a1', 'project-1', true)]);
+
+			const result = await service.bulkSetAvailableInMCP(
+				user,
+				{ availableInMCP: true, agentIds: ['a1', 'a2'] } as never,
+				undefined,
+			);
+
+			expect(agentRepository.findMcpAvailabilityCandidates).toHaveBeenLastCalledWith({
+				ids: ['a1', 'a2'],
+			});
+			expect(result).toEqual({ updatedCount: 1, updatedIds: ['a1'], unchangedIds: [] });
 		});
 
 		it('resolves candidates from every user project for allAgents and omits id lists', async () => {

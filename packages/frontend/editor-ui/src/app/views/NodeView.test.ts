@@ -230,6 +230,7 @@ describe('NodeView', () => {
 						},
 						template: `<div>
 							<button data-test-id="canvas-stub-copy" @click="$emit('copy:nodes', copyNodeIds)" />
+							<button data-test-id="canvas-stub-paste" @click="$emit('paste:clipboard')" />
 							<button data-test-id="canvas-stub-replace-first" @click="replaceFirstNode" />
 							<button data-test-id="canvas-stub-select-first-group" @click="selectFirstGroup" />
 							<button
@@ -1222,6 +1223,82 @@ describe('NodeView', () => {
 
 			expect(mockMcpJsonNudgeGate).not.toHaveBeenCalled();
 			expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual(['Existing']);
+		});
+
+		it('pastes workflow JSON from the clipboard through the context menu', async () => {
+			Object.defineProperty(window.navigator, 'clipboard', {
+				value: { readText: vi.fn().mockResolvedValue(pastedJson) },
+				configurable: true,
+			});
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-paste'));
+
+			await waitFor(() =>
+				expect(mockMcpJsonNudgeGate).toHaveBeenCalledWith('paste', expect.any(Function)),
+			);
+			await deferred?.();
+
+			await waitFor(() =>
+				expect(workflowDocumentStore.allNodes.map((node) => node.name)).toEqual([
+					'Existing',
+					'Pasted',
+				]),
+			);
+		});
+
+		it('explains a context menu paste when the clipboard cannot be read', async () => {
+			Object.defineProperty(window.navigator, 'clipboard', {
+				value: { readText: vi.fn().mockRejectedValue(new Error('NotAllowedError')) },
+				configurable: true,
+			});
+			mockShowMessage.mockClear();
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-paste'));
+
+			await waitFor(() =>
+				expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' })),
+			);
+			expect(mockMcpJsonNudgeGate).not.toHaveBeenCalled();
+		});
+
+		it('explains a context menu paste when the clipboard has no workflow data', async () => {
+			Object.defineProperty(window.navigator, 'clipboard', {
+				value: { readText: vi.fn().mockResolvedValue('just some text') },
+				configurable: true,
+			});
+			mockShowMessage.mockClear();
+			const { findByTestId } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-paste'));
+
+			await waitFor(() =>
+				expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' })),
+			);
+			expect(mockMcpJsonNudgeGate).not.toHaveBeenCalled();
+		});
+
+		it('ignores a context menu clipboard read that ends after NodeView has unmounted', async () => {
+			let resolveRead: (text: string) => void = () => {};
+			Object.defineProperty(window.navigator, 'clipboard', {
+				value: {
+					readText: vi.fn(
+						async () => await new Promise<string>((resolve) => (resolveRead = resolve)),
+					),
+				},
+				configurable: true,
+			});
+			mockShowMessage.mockClear();
+			const { findByTestId, unmount } = renderNodeView();
+
+			await userEvent.click(await findByTestId('canvas-stub-paste'));
+			unmount();
+			resolveRead('just some text');
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(mockShowMessage).not.toHaveBeenCalled();
+			expect(mockMcpJsonNudgeGate).not.toHaveBeenCalled();
 		});
 
 		it('drops a deferred paste once NodeView has unmounted', async () => {

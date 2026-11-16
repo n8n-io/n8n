@@ -141,6 +141,9 @@ export class McpSkillExtensionService {
 					scope: found.projectId ? 'project' : 'instance',
 					project_id: found.projectId ?? undefined,
 					file: file.path === SKILL_MD_PATH ? 'skill_md' : 'reference',
+					...(found.origin
+						? { source_provider: found.origin.provider, source_access: found.origin.access }
+						: {}),
 				});
 				return {
 					contents: [{ uri: uri.href, mimeType: 'text/markdown', text: file.content }],

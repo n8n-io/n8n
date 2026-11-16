@@ -4,11 +4,15 @@ import { mock } from 'vitest-mock-extended';
 import { NotFoundError } from '@n8n/errors';
 
 import type { AgentsService } from '../agents.service';
+import { mapAgentListItem } from '../agent-response.mapper';
 import { AgentsListController } from '../agents-list.controller';
+import type { AgentResponseMapper } from '../agent-response.mapper';
 
 describe('AgentsListController', () => {
 	function makeController(agentsService = mock<AgentsService>()) {
-		const controller = new AgentsListController(agentsService);
+		const agentResponseMapper = mock<AgentResponseMapper>();
+		agentResponseMapper.toAgentListItem.mockImplementation((agent) => mapAgentListItem(agent));
+		const controller = new AgentsListController(agentsService, agentResponseMapper);
 		return { controller, agentsService };
 	}
 
@@ -27,7 +31,14 @@ describe('AgentsListController', () => {
 
 		expect(agentsService.findListableByUserPaginated).toHaveBeenCalledWith(user, query);
 		expect(agentsService.findChatReachableByUserPaginated).not.toHaveBeenCalled();
-		expect(res.json).toHaveBeenCalledWith(response);
+		expect(res.json).toHaveBeenCalledWith({
+			count: 2,
+			data: [
+				expect.objectContaining({ id: 'agent-1', hasConfig: false, personalisation: null }),
+				expect.objectContaining({ id: 'agent-2', hasConfig: false, personalisation: null }),
+			],
+		});
+		expect(res.json.mock.calls[0]?.[0].data[0]).not.toHaveProperty('config');
 	});
 
 	it('passes a name filter to the overview list', async () => {

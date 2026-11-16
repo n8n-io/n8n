@@ -37,7 +37,7 @@ describe('FeatureMaturityBadges', () => {
 
 		const shown = render(FeatureMaturityBadges, { props: { ...props, enterprisePlan: true } });
 		expect(shown.getByTestId('feature-enterprise-readiness-badge')).toHaveTextContent(
-			'Limited enterprise support',
+			'Limited enterprise readiness',
 		);
 	});
 

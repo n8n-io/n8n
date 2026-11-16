@@ -31,7 +31,7 @@ vi.mock('openid-client', async (importOriginal) => {
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import type { JwtService, UrlService } from '@n8n/backend-services';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 

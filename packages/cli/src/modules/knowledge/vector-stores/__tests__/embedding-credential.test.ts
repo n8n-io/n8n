@@ -1,7 +1,11 @@
 import type { CredentialProvider } from '@n8n/agents';
+import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
-import { resolveEmbeddingProviderOptionsFromCredential } from '../embedding-credential';
+import {
+	resolveEmbeddingProviderOptionsFromCredential,
+	resolveEpisodicMemoryEmbeddingProviderOptions,
+} from '../embedding-credential';
 
 describe('resolveEmbeddingProviderOptionsFromCredential', () => {
 	it('maps an OpenAI-style credential to apiKey/baseURL', async () => {
@@ -54,5 +58,47 @@ describe('resolveEmbeddingProviderOptionsFromCredential', () => {
 		);
 
 		expect(options).toEqual({ apiKey: 'openai-key' });
+	});
+});
+
+describe('resolveEpisodicMemoryEmbeddingProviderOptions', () => {
+	const proxyFetch = vi.fn();
+
+	it('adds the proxy fetch to a credential embedder', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({ apiKey: 'openai-key' });
+
+		const options = await resolveEpisodicMemoryEmbeddingProviderOptions(
+			'embed-cred',
+			'openai/text-embedding-3-small',
+			credentialProvider,
+			{ fetch: proxyFetch },
+		);
+
+		expect(options).toEqual({ apiKey: 'openai-key', fetch: proxyFetch });
+	});
+
+	it('keeps the fetch of managed embeddings', async () => {
+		const managedFetch = vi.fn();
+		const resolveManaged = vi.fn().mockResolvedValue({ apiKey: 'managed', fetch: managedFetch });
+
+		const options = await resolveEpisodicMemoryEmbeddingProviderOptions(
+			MANAGED_CREDENTIAL_TOKEN,
+			'openai/text-embedding-3-small',
+			mock<CredentialProvider>(),
+			{ resolveManaged, fetch: proxyFetch },
+		);
+
+		expect(options).toEqual({ apiKey: 'managed', fetch: managedFetch });
+	});
+
+	it('returns null when managed embeddings are not available', async () => {
+		const options = await resolveEpisodicMemoryEmbeddingProviderOptions(
+			MANAGED_CREDENTIAL_TOKEN,
+			'openai/text-embedding-3-small',
+			mock<CredentialProvider>(),
+		);
+
+		expect(options).toBeNull();
 	});
 });

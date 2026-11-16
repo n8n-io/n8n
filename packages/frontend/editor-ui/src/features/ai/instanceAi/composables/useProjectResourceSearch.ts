@@ -1,8 +1,10 @@
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, ref, shallowRef } from 'vue';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { listAgentsPage } from '@/features/agents/composables/useAgentApi';
 import { fetchDataTablesApi } from '@/features/core/dataTable/dataTable.api';
+import { listApps } from '@n8n/frontend-module-apps';
 import type { ArtifactTab } from '../useCanvasPreview';
 import { ARTIFACT_TAB_ICONS } from './useOpenArtifactTabs';
 
@@ -16,7 +18,7 @@ function resourceKey(resource: Pick<ArtifactTab, 'type' | 'id'>) {
 }
 
 /**
- * Searches the workflows, data tables and agents of one project, newest edit
+ * Searches the workflows, data tables, agents, and apps of one project, newest edit
  * first. Each type is a separate request, so a type the user cannot list
  * comes back empty without hiding the others.
  */
@@ -29,6 +31,7 @@ export function useProjectResourceSearch({
 	excludedTabs: () => Array<Pick<ArtifactTab, 'type' | 'id'>>;
 }) {
 	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
 	const workflowsListStore = useWorkflowsListStore();
 
 	const resources = shallowRef<ProjectResource[]>([]);
@@ -38,7 +41,13 @@ export function useProjectResourceSearch({
 	const results = computed((): ArtifactTab[] => {
 		const excludedKeys = new Set(excludedTabs().map(resourceKey));
 		const visible = resources.value.filter((resource) => !excludedKeys.has(resourceKey(resource)));
-		const counts: Record<ArtifactTab['type'], number> = { workflow: 0, 'data-table': 0, agent: 0 };
+		const counts: Record<ArtifactTab['type'], number> = {
+			workflow: 0,
+			'data-table': 0,
+			agent: 0,
+			skill: 0,
+			app: 0,
+		};
 		return visible
 			.filter((resource) => ++counts[resource.type] <= RESULTS_PER_TYPE)
 			.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
@@ -103,6 +112,23 @@ export function useProjectResourceSearch({
 		}));
 	}
 
+	async function searchApps(project: string, query: string): Promise<ProjectResource[]> {
+		const { data } = await listApps(rootStore.restApiContext, project, {
+			skip: 0,
+			take: takeFor('app'),
+			sortBy: 'updatedAt:desc',
+			name: query || undefined,
+		});
+		return data.map((app) => ({
+			type: 'app',
+			id: app.id,
+			name: app.name,
+			icon: ARTIFACT_TAB_ICONS.app,
+			projectId: project,
+			updatedAt: app.updatedAt,
+		}));
+	}
+
 	async function search(query = '') {
 		const project = projectId();
 		if (!project) {
@@ -116,11 +142,13 @@ export function useProjectResourceSearch({
 		const current = ++generation;
 		isLoading.value = true;
 		const trimmed = query.trim();
-		const settled = await Promise.allSettled([
+		const searches = [
 			searchWorkflows(project, trimmed),
 			searchDataTables(project, trimmed),
 			searchAgents(project, trimmed),
-		]);
+		];
+		if (settingsStore.isAppsEnabled) searches.push(searchApps(project, trimmed));
+		const settled = await Promise.allSettled(searches);
 		// A newer search started while this one ran, so its results are stale.
 		if (current !== generation) return;
 

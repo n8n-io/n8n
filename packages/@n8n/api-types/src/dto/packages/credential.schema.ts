@@ -1,18 +1,20 @@
-import { containsExpression } from '@n8n/utils/string/contains-expression';
 import { z } from 'zod';
 
-const expressionStringSchema = z
-	.string()
-	.refine(containsExpression, { message: 'credential data values must be n8n expressions' });
-
+/**
+ * A plain value (boolean, string) can only be a value of a field that decides which other
+ * fields show. The package reader checks this against the credential type and drops every other
+ * plain value, so the schema accepts the shape and the reader decides.
+ */
 export type SerializedCredentialDataValue =
 	| string
+	| boolean
 	| SerializedCredentialDataValue[]
 	| { [key: string]: SerializedCredentialDataValue };
 
 const serializedCredentialDataValueSchema: z.ZodType<SerializedCredentialDataValue> = z.lazy(() =>
 	z.union([
-		expressionStringSchema,
+		z.string(),
+		z.boolean(),
 		z.array(serializedCredentialDataValueSchema),
 		z.record(serializedCredentialDataValueSchema),
 	]),

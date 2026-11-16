@@ -5,6 +5,9 @@ import { mkdtemp, mkdir, rm, readFile, copyFile, writeFile } from 'node:fs/promi
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { enrichSbom, loadLicenseConfig } from './enrich-sbom.mjs';
+import { checkSbom, loadSpdxIds } from './check-sbom-licenses.mjs';
+import { qualifiedName, renderSbom } from './render-licenses-md.mjs';
 
 // End-to-end test of the release-blocking license chain: enrich-sbom feeds
 // check-sbom-licenses, driven as real CLIs (main(), arg parsing, exit codes,
@@ -17,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 //
 // Both fixtures are frozen: the SBOM and the override config it needs are a
 // matched pair, so the chain runs strict and no dependency change can break it.
-// The *shipped* license-overrides.json is validated by render-licenses-md.test.mjs.
+// The image tests below use the shipped config to check image-only resolutions.
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(scriptDir, '__fixtures__', 'sample.cdx.json');
@@ -135,5 +138,107 @@ describe('license-generation chain (real CLIs end-to-end)', () => {
 		assert.match(strict.stderr, /not-in-the-sbom/);
 
 		assert.equal(run(ENRICH, [...args, '--lenient-config']).status, 0);
+	});
+});
+
+describe('image license resolutions (shipped config)', () => {
+	let dir;
+	before(async () => {
+		dir = await mkdtemp(path.join(os.tmpdir(), 'image-lic-chain-'));
+	});
+	after(async () => {
+		await rm(dir, { recursive: true, force: true });
+	});
+
+	for (const { component, license } of [
+		{
+			component: {
+				group: '@getzep',
+				name: 'zep-js',
+				version: '2.0.2',
+				purl: 'pkg:npm/%40getzep/zep-js@2.0.2',
+				licenses: [],
+			},
+			license: 'Apache-2.0',
+		},
+		{
+			component: {
+				name: 'sentry',
+				version: '0.45.0',
+				purl: 'pkg:npm/sentry@0.45.0',
+				licenses: [{ license: { name: 'FSL-1.1-Apache-2.0' } }],
+			},
+			license: 'FSL-1.1-ALv2',
+		},
+	]) {
+		it(`resolves ${component.purl} before the image license gate`, async () => {
+			const sbomPath = path.join(dir, `${component.name}.cdx.json`);
+			await writeFile(sbomPath, JSON.stringify({ components: [component] }));
+			const gateArgs = [sbomPath, ...ALLOW_REFS, '--enforce-prefix=pkg:npm/'];
+
+			const rawGate = run(CHECK, gateArgs);
+			assert.equal(rawGate.status, 1, rawGate.stderr);
+			assert.ok(rawGate.stderr.includes(component.purl), rawGate.stderr);
+
+			const enrich = run(ENRICH, [sbomPath, '--lenient-config', '--drop-phantom-npm']);
+			assert.equal(enrich.status, 0, enrich.stderr);
+			const sbom = JSON.parse(await readFile(sbomPath, 'utf-8'));
+			assert.equal(sbom.components.length, 1);
+			assert.equal(sbom.components[0].purl, component.purl);
+			assert.deepEqual(sbom.components[0].licenses, [{ license: { id: license } }]);
+
+			const enrichedGate = run(CHECK, gateArgs);
+			assert.equal(enrichedGate.status, 0, enrichedGate.stderr);
+		});
+	}
+});
+
+describe('release license resolutions (shipped config)', () => {
+	it('resolves packages with missing license metadata in the SBOM and license manifest', async () => {
+		const raw = {
+			components: [
+				{
+					name: 'xmlhttprequest-ssl',
+					version: '2.1.2',
+					purl: 'pkg:npm/xmlhttprequest-ssl@2.1.2',
+					licenses: [],
+				},
+				{
+					name: 'simple-lru-cache',
+					version: '0.0.2',
+					purl: 'pkg:npm/simple-lru-cache@0.0.2',
+					licenses: [],
+				},
+				{
+					name: 'cohere-ai',
+					version: '7.14.0',
+					purl: 'pkg:npm/cohere-ai@7.14.0',
+					licenses: [],
+				},
+				{
+					group: '@kafkajs',
+					name: 'confluent-schema-registry',
+					version: '3.8.0',
+					purl: 'pkg:npm/%40kafkajs/confluent-schema-registry@3.8.0',
+					licenses: [],
+				},
+			],
+		};
+		const gateOptions = { validIds: await loadSpdxIds(), allowRefs: new Set() };
+		assert.equal(checkSbom(raw, gateOptions).failures.length, 4);
+
+		const config = await loadLicenseConfig();
+		const { sbom } = enrichSbom(raw, config);
+		for (const component of sbom.components) {
+			assert.deepEqual(component.licenses, [{ license: { id: 'MIT' } }], component.purl);
+		}
+		assert.deepEqual(checkSbom(sbom, gateOptions).failures, []);
+
+		const { markdown, unresolved } = await renderSbom(sbom, {});
+		assert.deepEqual(unresolved, []);
+		assert.ok(markdown.includes('## MIT\n'));
+		for (const component of raw.components) {
+			assert.ok(markdown.includes(`* ${qualifiedName(component)} ${component.version}\n`));
+		}
 	});
 });

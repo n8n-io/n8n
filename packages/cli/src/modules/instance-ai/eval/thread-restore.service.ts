@@ -32,7 +32,7 @@ import { randomUUID } from 'node:crypto';
 
 import { BadRequestError } from '@n8n/errors';
 import { AgentDraftService } from '@/modules/agents/agent-draft.service';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableService } from '@n8n/backend-module-data-table';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { hasViolations, PolicyViolationError } from '@/policy/policy-violation.error';
 import { FolderService } from '@/services/folder.service';
@@ -471,7 +471,7 @@ export class EvalThreadRestoreService {
 	async unpublishWorkflows(workflowIds: string[]): Promise<void> {
 		for (const id of workflowIds) {
 			try {
-				await this.workflowService.deactivateWorkflowAsSystem(id);
+				await this.workflowService.deactivateWorkflowAsSystem(id, 'instance-ai-eval-rollback');
 			} catch {
 				// best-effort, like deleteWorkflows
 			}
@@ -485,7 +485,7 @@ export class EvalThreadRestoreService {
 		const deadline = Date.now() + 10_000;
 		for (const id of workflowIds) {
 			try {
-				await this.workflowService.deactivateWorkflowAsSystem(id);
+				await this.workflowService.deactivateWorkflowAsSystem(id, 'instance-ai-eval-rollback');
 			} catch {
 				// best-effort
 			}

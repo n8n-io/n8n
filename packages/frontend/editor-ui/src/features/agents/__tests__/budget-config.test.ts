@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { AgentJsonConfig } from '../types';
-import { increasedBudgetConfig, raisedBudgetCaps } from '../utils/budget-config';
+import { increasedBudgetConfig, isBudgetStopCode, raisedBudgetCaps } from '../utils/budget-config';
 
 function configWithBudget(budget?: {
 	monthlyBudgetUsd?: number;
@@ -91,4 +91,20 @@ describe('raisedBudgetCaps', () => {
 			[],
 		);
 	});
+});
+
+describe('isBudgetStopCode', () => {
+	it.each(['budget.monthly', 'budget.session', 'budget.credits'])(
+		'blocks sending on %s',
+		(code) => {
+			expect(isBudgetStopCode(code)).toBe(true);
+		},
+	);
+
+	it.each(['budget.alert', 'budget.misconfigured', 'pii.block'])(
+		'keeps sending open on %s',
+		(code) => {
+			expect(isBudgetStopCode(code)).toBe(false);
+		},
+	);
 });

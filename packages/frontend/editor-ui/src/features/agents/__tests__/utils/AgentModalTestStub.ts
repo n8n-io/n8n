@@ -14,6 +14,8 @@ export const AgentModalTestStub = defineComponent({
 		cancelLabel: { type: String, default: undefined },
 		bodyFlush: { type: Boolean, default: false },
 		stableHeight: { type: Boolean, default: false },
+		fixedSize: { type: Boolean, default: false },
+		headerDividerTone: { type: String, default: 'default' },
 		busy: { type: Boolean, default: false },
 		size: { type: String, default: '2xlarge' },
 		trapFocus: { type: Boolean, default: true },
@@ -30,6 +32,8 @@ export const AgentModalTestStub = defineComponent({
 			:data-trap-focus="trapFocus"
 			:data-disable-outside-pointer-events="disableOutsidePointerEvents"
 			:data-body-flush="bodyFlush"
+			:data-fixed-size="fixedSize"
+			:data-header-divider-tone="headerDividerTone"
 		>
 			<header>
 				<button
@@ -58,6 +62,7 @@ export const AgentModalTestStub = defineComponent({
 			</header>
 			<div v-if="!trapFocus" data-testid="nested-credential-focus-scope" />
 			<main><slot /></main>
+			<aside v-if="$slots.sidePanel" data-testid="agent-modal-side-panel"><slot name="sidePanel" /></aside>
 			<footer
 				v-if="
 					showFooter === true ||
@@ -117,6 +122,7 @@ export const AgentModalMultiStepTestStub = defineComponent({
 			<template #titlePrefix><slot name="titlePrefix" /></template>
 			<template #titleSuffix><slot name="titleSuffix" /></template>
 			<template #headerActions><slot name="headerActions" /></template>
+			<template v-if="$slots.sidePanel" #sidePanel><slot name="sidePanel" /></template>
 			<slot />
 			<template #footerLeft><slot name="footerLeft" /></template>
 			<template #footerBeforeCancel><slot name="footerBeforeCancel" /></template>

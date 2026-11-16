@@ -1,3 +1,5 @@
+import { WorkflowService } from '@/workflows/workflow.service';
+import { ImportOrchestrator } from '../engine/import-orchestrator';
 import { LicenseState } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import {
@@ -1133,7 +1135,7 @@ describe('Package import rejection cases', () => {
 });
 
 describe('Package import event emission', () => {
-	it('emits workflow-created per workflow plus one n8n-package-imported on success', async () => {
+	it("emits workflow-created per workflow with the request's public API client, plus one n8n-package-imported on success", async () => {
 		const owner = await createOwner();
 		const eventService = Container.get(EventService);
 		const emitSpy = vi.spyOn(eventService, 'emit');
@@ -1141,6 +1143,7 @@ describe('Package import event emission', () => {
 		try {
 			await importPackage({
 				user: owner,
+				publicApi: 'editor_ui',
 				packageBuffer: await buildImportPackageBuffer([
 					serializedWorkflow({ id: 'wf-event-1', name: 'Event One' }),
 					serializedWorkflow({ id: 'wf-event-2', name: 'Event Two' }),
@@ -1150,10 +1153,10 @@ describe('Package import event emission', () => {
 			const createdEvents = emitSpy.mock.calls.filter(([name]) => name === 'workflow-created');
 			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-imported');
 
-			expect(createdEvents).toHaveLength(2);
-			expect(
-				createdEvents.every(([, payload]) => (payload as { source: string }).source === 'import'),
-			).toBe(true);
+			expect(createdEvents.map(([, payload]) => payload)).toEqual([
+				expect.objectContaining({ source: 'import', publicApi: 'editor_ui' }),
+				expect.objectContaining({ source: 'import', publicApi: 'editor_ui' }),
+			]);
 			expect(importedEvents).toHaveLength(1);
 
 			const importedPayload = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
@@ -2675,38 +2678,40 @@ describe('credential-missing-mode: create-with-values', () => {
 		});
 	});
 
-	it('rejects a package whose bundled credential data carries literal values', async () => {
+	it('drops a literal value from bundled credential data and creates the credential as a stub', async () => {
 		const owner = await createOwner();
 
-		await expect(
-			importPackage({
-				user: owner,
-				credentialMissingMode: 'create-with-values',
-				packageBuffer: await buildImportPackageBuffer(
-					[
-						serializedWorkflowWithCredential({
-							id: 'wf-leak',
-							name: 'Leaky workflow',
-							credentialId: 'leaky-cred',
-							credentialName: 'Leaky GitHub',
-						}),
+		const result = await importPackage({
+			user: owner,
+			credentialMissingMode: 'create-with-values',
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflowWithCredential({
+						id: 'wf-leak',
+						name: 'Leaky workflow',
+						credentialId: 'leaky-cred',
+						credentialName: 'Leaky GitHub',
+					}),
+				],
+				{
+					sourceId,
+					credentials: [
+						{
+							id: 'leaky-cred',
+							name: 'Leaky GitHub',
+							type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
+							data: { accessToken: 'ghp_literal_secret' },
+						},
 					],
-					{
-						sourceId,
-						credentials: [
-							{
-								id: 'leaky-cred',
-								name: 'Leaky GitHub',
-								type: PACKAGE_GITHUB_CREDENTIAL_TYPE,
-								data: { accessToken: 'ghp_literal_secret' },
-							},
-						],
-					},
-				),
-			}),
-		).rejects.toThrow('failed schema validation');
+				},
+			),
+		});
 
-		expect(await Container.get(CredentialsRepository).count()).toBe(0);
+		// The literal never reaches the destination, so no package data is left to seed from.
+		expect(result.credentials.stubbed).toEqual(['leaky-cred']);
+		expect(result.credentials.seeded).toEqual([]);
+		expect(result.credentials.incomplete).toEqual([]);
+		expect(await Container.get(CredentialsRepository).count()).toBe(1);
 	});
 
 	it('requires the credential:create scope when create-with-values creates a credential, and writes nothing without it', async () => {
@@ -2791,6 +2796,96 @@ describe('Package import workflow publishing policy', () => {
 			parameters: {},
 		},
 	];
+
+	it.each([
+		{
+			publishingPolicy: WorkflowPublishingPolicy.PublishAll,
+			archived: true,
+			sourcePublished: false,
+		},
+		{
+			publishingPolicy: WorkflowPublishingPolicy.MatchSource,
+			archived: true,
+			sourcePublished: true,
+		},
+		{
+			publishingPolicy: WorkflowPublishingPolicy.UnpublishAll,
+			archived: false,
+			sourcePublished: false,
+		},
+		{
+			publishingPolicy: WorkflowPublishingPolicy.MatchSource,
+			archived: false,
+			sourcePublished: false,
+		},
+		{
+			publishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
+			archived: false,
+			sourcePublished: true,
+		},
+	])(
+		'keeps the planned publication action after a state change under $publishingPolicy (archived: $archived)',
+		async ({ publishingPolicy, archived, sourcePublished }) => {
+			const owner = await createOwner();
+			const packageBuffer = await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'planned-workflow',
+					name: 'Planned workflow',
+					isArchived: archived,
+					publishedVersionId: sourcePublished ? WIRE_VERSION_ID : null,
+					nodes: scheduleTriggerNodes(),
+				}),
+			]);
+			const seeded = await importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({
+						id: 'planned-workflow',
+						name: 'Planned workflow',
+						isArchived: archived,
+						publishedVersionId: sourcePublished ? WIRE_VERSION_ID : null,
+						nodes: scheduleTriggerNodes().map((node) => ({
+							...node,
+							name: 'Initial Schedule Trigger',
+						})),
+					}),
+				]),
+			});
+			const workflowId = seeded.workflows[0].localId;
+			const service = Container.get(WorkflowService);
+			const orchestrator = Container.get(ImportOrchestrator);
+			const apply = orchestrator.apply.bind(orchestrator);
+			let activeVersionId: string | null = null;
+			const applySpy = vi.spyOn(orchestrator, 'apply').mockImplementationOnce(async (...args) => {
+				if (archived) {
+					await service.unarchive(owner, workflowId);
+				} else {
+					const published = await service.activateWorkflow(owner, workflowId);
+					activeVersionId = published.activeVersionId;
+				}
+				return await apply(...args);
+			});
+			try {
+				const result = await importPackage({
+					user: owner,
+					packageBuffer,
+					conflictPolicy: ImportConflictPolicy.NewVersion,
+					publishingPolicy,
+					apiKeyScopes: archived
+						? ['workflow:import', 'workflow:delete']
+						: ['workflow:import', 'workflow:activate'],
+				});
+				expect(applySpy).toHaveBeenCalledOnce();
+				expect(result.workflows[0].publishing).toEqual({ state: 'unchanged' });
+				const saved = await Container.get(WorkflowRepository).findOneByOrFail({ id: workflowId });
+				expect(saved.isArchived).toBe(false);
+				expect(saved.activeVersionId).toBe(activeVersionId);
+				if (!archived) expect(saved.versionId).not.toBe(activeVersionId);
+			} finally {
+				applySpy.mockRestore();
+			}
+		},
+	);
 
 	it.each<WorkflowPublishingPolicyValue>([
 		WorkflowPublishingPolicy.PreservePublishedState,
@@ -3161,6 +3256,37 @@ describe('Package import workflow publishing policy', () => {
 			{ state: 'published' },
 			{ state: 'published' },
 		]);
+	});
+
+	it('publishes for an API key with workflow:activate', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			apiKeyScopes: ['workflow:import', 'workflow:activate'],
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'wf-api-key', name: 'API key', nodes: scheduleTriggerNodes() }),
+			]),
+			publishingPolicy: WorkflowPublishingPolicy.PublishAll,
+		});
+
+		expect(result.workflows.map(({ publishing }) => publishing)).toEqual([{ state: 'published' }]);
+	});
+
+	it('requires workflow:activate from an API key when the import publishes', async () => {
+		const owner = await createOwner();
+
+		await expect(
+			importPackage({
+				user: owner,
+				apiKeyScopes: ['workflow:import'],
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'wf-api-key', name: 'API key', nodes: scheduleTriggerNodes() }),
+				]),
+				publishingPolicy: WorkflowPublishingPolicy.PublishAll,
+			}),
+		).rejects.toThrow(ForbiddenError);
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
 	});
 });
 

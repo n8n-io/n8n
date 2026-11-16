@@ -29,6 +29,7 @@ import { PromotionEnvironmentRepository } from './database/repositories/promotio
 import { PromotionProviderRepository } from './database/repositories/promotion-provider.repository';
 import { GitHostClients } from './git-hosts/git-host-clients';
 import type { GitHostDiscoveryQuery } from './git-hosts/git-host.types';
+import { PromotionCheckoutCleanupService } from './promotion-checkout-cleanup.service';
 import { mapPromotionConflicts } from './promotion-conflicts';
 import { observePromotion } from './promotion-telemetry';
 import { PromotionsGitService } from './promotions-git.service';
@@ -51,6 +52,7 @@ export class PromotionProvidersService {
 		private readonly cipher: Cipher,
 		private readonly gitHosts: GitHostClients,
 		private readonly eventService: EventService,
+		private readonly checkoutCleanup: PromotionCheckoutCleanupService,
 	) {}
 
 	async create(
@@ -62,7 +64,11 @@ export class PromotionProvidersService {
 			(observed) =>
 				this.eventService.emit('promotion-provider-created', {
 					user: actor,
-					...(observed.ok && { providerId: observed.result.provider.id }),
+					...(observed.ok && {
+						providerId: observed.result.provider.id,
+						providerName: observed.result.provider.name,
+						hostBaseUrl: gitHostBaseUrl(observed.result.provider),
+					}),
 					providerType: input.type,
 					authType: input.auth.authType,
 					outcome: observed.ok ? 'success' : 'failed',
@@ -155,7 +161,12 @@ export class PromotionProvidersService {
 				this.eventService.emit('promotion-provider-updated', {
 					user: actor,
 					providerId: id,
+					...(observed.ok && {
+						providerName: observed.result.name,
+						hostBaseUrl: gitHostBaseUrl(observed.result),
+					}),
 					providerType: current.type,
+					authType: current.authType,
 					changedFields: [
 						...(input.name !== undefined ? ['name' as const] : []),
 						...(input.auth !== undefined ? ['auth' as const] : []),
@@ -175,6 +186,8 @@ export class PromotionProvidersService {
 		const { id } = current;
 		const { changes, config, credentials } = await this.prepareUpdate(current, input);
 		const updatesAuthentication = input.auth !== undefined || input.config !== undefined;
+		const changesHostUrl =
+			input.config !== undefined && !this.isSameHostUrl(current.config, input.config);
 
 		if (updatesAuthentication) {
 			await this.validateHostAccess(
@@ -197,6 +210,7 @@ export class PromotionProvidersService {
 		} else {
 			await this.providerRepository.updateProvider(id, changes);
 		}
+		if (changesHostUrl) await this.checkoutCleanup.resetCheckoutsForHostChange(id);
 		// Read the row back. A provider deleted in between fails the update.
 		return this.toPublic(await this.getEntity(id));
 	}
@@ -217,7 +231,10 @@ export class PromotionProvidersService {
 		this.eventService.emit('promotion-provider-deleted', {
 			user: actor,
 			providerId: id,
+			providerName: provider.name,
 			providerType: provider.type,
+			authType: provider.authType,
+			hostBaseUrl: gitHostBaseUrl(provider),
 		});
 	}
 
@@ -405,6 +422,16 @@ export class PromotionProvidersService {
 		const parsed = promotionGitSshKeyConfigSchema.safeParse(provider.config);
 		return parsed.success ? parsed.data.keyType : 'ed25519';
 	}
+}
+
+/** Does not throw, so a provider with an unreadable config can still be deleted. */
+function gitHostBaseUrl(provider: {
+	type: PromotionProviderType;
+	config: PromotionProviderConfig;
+}): string | undefined {
+	if (!isPromotionGitHostType(provider.type)) return undefined;
+	const parsed = promotionGitHostConfigSchema.safeParse(provider.config);
+	return parsed.success ? parsed.data.baseUrl : undefined;
 }
 
 /** A row we cannot decrypt or parse. The admin has to replace the credentials. */

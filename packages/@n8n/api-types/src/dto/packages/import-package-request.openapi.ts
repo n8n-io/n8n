@@ -64,9 +64,16 @@ export const importPackageRequestFieldDocs = {
 	},
 	conflictPolicy: {
 		description:
-			'Applies to both Agents and workflows. `new-version` replaces matched definitions. ' +
-			'`fail` rejects the import when a match exists. `skip` leaves matched definitions unchanged. ' +
-			'All policies create entities that have no match. Matched workflows also follow the package ' +
+			'Applies to Agents, workflows and the skills of imported Agents. `new-version` replaces ' +
+			'matched definitions and saves a changed skill as a new version. ' +
+			'`fail` rejects the import when an Agent or workflow matches, or when a matched skill ' +
+			'has other content. A matched skill with the same content is kept. ' +
+			'`skip` leaves matched definitions and skills unchanged. ' +
+			'All policies create entities and skills that have no match. ' +
+			'A new version of a project or instance skill applies to all Agents on the instance that ' +
+			'follow the skill, also Agents that are not in the package. ' +
+			'A skill conflict under `fail` is an `agent-invalid` issue, so it returns 422. ' +
+			'Matched workflows also follow the package ' +
 			'archive state under `new-version`; this change needs `workflow:delete`. ' +
 			'This required field replaces `workflowConflictPolicy`. The old field is rejected.',
 	},
@@ -108,8 +115,9 @@ export const importPackageRequestFieldDocs = {
 			"those details with the package's; a detail the package omits is left as it is, not " +
 			'cleared. `fail` rejects the import before anything is written, with one `project-conflict` ' +
 			'issue per existing project. A package project id belonging to a personal project, or to ' +
-			'a team project the caller cannot update, always rejects the import. Ignored for workflow ' +
-			'packages.',
+			'a team project the caller cannot update, always rejects the import. A new project needs ' +
+			'the `project:create` scope. `overwrite` needs `project:update` only when it changes a ' +
+			'detail. Ignored for workflow packages.',
 	},
 	folderConflictPolicy: {
 		description:
@@ -123,10 +131,14 @@ export const importPackageRequestFieldDocs = {
 			'then removed too, but only once nothing is left inside them. Removals are listed under ' +
 			'`removedWorkflows` and `removedFolders`; see `overwriteDeletionPolicy`. A folder whose ' +
 			'id sits under a different parent, or belongs to another project, always blocks the ' +
-			'import. `overwrite` is project-packages-only, needs the `workflow:delete` and ' +
-			'`folder:delete` scopes, is rejected against a `projectConflictPolicy` other than ' +
-			'`overwrite`, and blocks up front if the caller cannot delete something it would remove. ' +
-			'Folders need the `folder:create` scope and a folders-enabled licence.',
+			'import. `overwrite` is project-packages-only. When it removes a workflow, it needs the ' +
+			'`workflow:delete` scope. When it removes a folder, it needs `folder:delete`. ' +
+			'It is rejected against a `projectConflictPolicy` other than `overwrite`, and blocks ' +
+			'up front if the caller cannot delete something it would remove. ' +
+			'A project package needs the `folder:create` scope only when the import creates a ' +
+			'folder, and a folders-enabled license only when it creates, changes or removes a ' +
+			'folder. A workflow package with folders always needs `folder:create`, ' +
+			'`folder:update` and that license.',
 	},
 	overwriteDeletionPolicy: {
 		description:

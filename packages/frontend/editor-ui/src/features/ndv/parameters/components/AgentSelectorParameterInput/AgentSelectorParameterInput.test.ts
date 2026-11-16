@@ -252,6 +252,35 @@ describe('AgentSelectorParameterInput', () => {
 		expect(emitted()['update:modelValue']).toBeUndefined();
 	});
 
+	it('lists the selected archived agent after a switch from ID mode to list mode', async () => {
+		getAgent.mockResolvedValue({
+			id: 'agent-1',
+			name: 'Archived Agent',
+			projectId: 'proj-1',
+			isArchived: true,
+		});
+
+		const { getByTestId, getAllByTestId, rerender } = renderComponent({
+			props: makeProps({ modelValue: { __rl: true, value: 'agent-1', mode: 'id' } }),
+		});
+		await flushPromises();
+		expect(getAgent).not.toHaveBeenCalled();
+
+		await rerender({ modelValue: { __rl: true, value: 'agent-1', mode: 'list' } });
+		await flushPromises();
+
+		expect(getAgent).toHaveBeenCalledWith(expect.anything(), 'proj-1', 'agent-1');
+		await userEvent.click(getByTestId('rlc-input'));
+		await flushPromises();
+		const archivedItem = getAllByTestId('rlc-item').find((el) =>
+			el.textContent?.includes('Archived Agent'),
+		);
+		expect(archivedItem).toBeDefined();
+		expect(archivedItem?.querySelector('[data-test-id="workflow-archived-tag"]')).toHaveTextContent(
+			'Archived',
+		);
+	});
+
 	it('shows an error with retry that re-fetches the catalog', async () => {
 		listAgentsPage.mockRejectedValueOnce(new Error('boom'));
 

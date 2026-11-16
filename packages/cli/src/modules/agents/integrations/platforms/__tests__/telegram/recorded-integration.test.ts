@@ -224,6 +224,51 @@ describe('Telegram recorded integration replay', () => {
 	});
 
 	it.each([
+		{
+			label: 'unlisted user without a username',
+			sender: { from: { id: 333, is_bot: false, first_name: 'alice_dev' } },
+		},
+		{
+			label: 'unlisted user with a numeric first name',
+			sender: { from: { id: 444, is_bot: false, first_name: '5123456789' } },
+		},
+		{
+			label: 'message sent on behalf of a chat',
+			sender: {
+				from: undefined,
+				sender_chat: { id: -100555, type: 'channel', title: 'alice_dev' },
+			},
+		},
+	])(
+		'in private mode, checks the allowlist against the Telegram user ID and username ($label)',
+		async ({ sender }) => {
+			const originalMessage = telegramFixtures.mention.message;
+			if (!originalMessage) throw new Error('Telegram mention fixture must include a message');
+			const payload = {
+				...telegramFixtures.mention,
+				message: {
+					...originalMessage,
+					...sender,
+				},
+			};
+			const ctx = await createTelegramReplayContext(telegramFixtures, {
+				integration: {
+					type: 'telegram',
+					credentialId: 'cred-telegram',
+					settings: { accessMode: 'private', allowedUsers: ['alice_dev', '5123456789'] },
+				},
+			});
+			try {
+				await ctx.sendTelegramWebhook(payload);
+
+				expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			} finally {
+				await ctx.shutdown();
+			}
+		},
+	);
+
+	it.each([
 		{ buttonIndex: 0, approved: true, outcome: '✅ Approved by Alice' },
 		{ buttonIndex: 1, approved: false, outcome: '🚫 Declined by Alice' },
 	])(

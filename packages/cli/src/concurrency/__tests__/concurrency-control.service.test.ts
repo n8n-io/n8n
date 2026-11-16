@@ -88,7 +88,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
-					new ProductionHold(),
+					new ProductionHold(eventService),
 				);
 
 				/**
@@ -123,7 +123,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
-						new ProductionHold(),
+						new ProductionHold(eventService),
 					);
 				} catch (error) {
 					/**
@@ -151,7 +151,7 @@ describe('ConcurrencyControlService', () => {
 				eventService,
 				globalConfig,
 				license,
-				new ProductionHold(),
+				new ProductionHold(eventService),
 			);
 
 			/**
@@ -180,7 +180,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
-					new ProductionHold(),
+					new ProductionHold(eventService),
 				);
 
 				/**
@@ -208,7 +208,7 @@ describe('ConcurrencyControlService', () => {
 				eventService,
 				globalConfig,
 				license,
-				new ProductionHold(),
+				new ProductionHold(eventService),
 			);
 
 			/**
@@ -243,7 +243,7 @@ describe('ConcurrencyControlService', () => {
 				eventService,
 				globalConfig,
 				license,
-				new ProductionHold(),
+				new ProductionHold(eventService),
 			);
 
 			// No eager queue — pending lazy resolution.
@@ -270,7 +270,7 @@ describe('ConcurrencyControlService', () => {
 				eventService,
 				globalConfig,
 				license,
-				new ProductionHold(),
+				new ProductionHold(eventService),
 			);
 
 			// Fill the queue up to the cap. These first five pass through
@@ -313,7 +313,7 @@ describe('ConcurrencyControlService', () => {
 				eventService,
 				globalConfig,
 				license,
-				new ProductionHold(),
+				new ProductionHold(eventService),
 			);
 
 			await service.throttle({ mode: 'evaluation', executionId: 'eval-1' });
@@ -341,7 +341,7 @@ describe('ConcurrencyControlService', () => {
 				eventService,
 				globalConfig,
 				license,
-				new ProductionHold(),
+				new ProductionHold(eventService),
 			);
 
 			await service.throttle({ mode: 'evaluation', executionId: 'eval-1' });
@@ -378,7 +378,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
-						new ProductionHold(),
+						new ProductionHold(eventService),
 					);
 					const enqueueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -409,7 +409,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
-						new ProductionHold(),
+						new ProductionHold(eventService),
 					);
 					const enqueueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -438,7 +438,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
-					new ProductionHold(),
+					new ProductionHold(eventService),
 				);
 				const enqueueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -470,7 +470,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
-						new ProductionHold(),
+						new ProductionHold(eventService),
 					);
 					const dequeueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -501,7 +501,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
-						new ProductionHold(),
+						new ProductionHold(eventService),
 					);
 					const dequeueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -530,7 +530,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
-					new ProductionHold(),
+					new ProductionHold(eventService),
 				);
 				const dequeueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -562,7 +562,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
-						new ProductionHold(),
+						new ProductionHold(eventService),
 					);
 					const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -593,7 +593,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
-						new ProductionHold(),
+						new ProductionHold(eventService),
 					);
 					const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -622,7 +622,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
-					new ProductionHold(),
+					new ProductionHold(eventService),
 				);
 				const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -655,7 +655,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
-						new ProductionHold(),
+						new ProductionHold(eventService),
 					);
 
 					vi.spyOn(ConcurrencyQueue.prototype, 'getAll').mockReturnValueOnce(
@@ -697,7 +697,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
-					new ProductionHold(),
+					new ProductionHold(eventService),
 				);
 				// @ts-expect-error Private property
 				const queue = service.getQueue('webhook');
@@ -726,7 +726,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
-					new ProductionHold(),
+					new ProductionHold(eventService),
 				);
 				// @ts-expect-error Private property
 				const queue = service.getQueue('evaluation');
@@ -759,7 +759,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
-					new ProductionHold(),
+					new ProductionHold(eventService),
 				);
 				const enqueueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -789,7 +789,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
-					new ProductionHold(),
+					new ProductionHold(eventService),
 				);
 				const enqueueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'enqueue');
 
@@ -820,7 +820,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
-					new ProductionHold(),
+					new ProductionHold(eventService),
 				);
 				const dequeueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -848,7 +848,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
-					new ProductionHold(),
+					new ProductionHold(eventService),
 				);
 				const dequeueSpy = vi.spyOn(ConcurrencyQueue.prototype, 'dequeue');
 
@@ -878,7 +878,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
-					new ProductionHold(),
+					new ProductionHold(eventService),
 				);
 				const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -906,7 +906,7 @@ describe('ConcurrencyControlService', () => {
 					eventService,
 					globalConfig,
 					license,
-					new ProductionHold(),
+					new ProductionHold(eventService),
 				);
 				const removeSpy = vi.spyOn(ConcurrencyQueue.prototype, 'remove');
 
@@ -944,7 +944,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
-						new ProductionHold(),
+						new ProductionHold(eventService),
 					);
 
 					/**
@@ -980,7 +980,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
-						new ProductionHold(),
+						new ProductionHold(eventService),
 					);
 
 					/**
@@ -1015,7 +1015,7 @@ describe('ConcurrencyControlService', () => {
 						eventService,
 						globalConfig,
 						license,
-						new ProductionHold(),
+						new ProductionHold(eventService),
 					);
 
 					/**
@@ -1041,7 +1041,7 @@ describe('ConcurrencyControlService', () => {
 		let hold: ProductionHold;
 
 		beforeEach(() => {
-			hold = new ProductionHold();
+			hold = new ProductionHold(eventService);
 		});
 
 		const createService = () =>

@@ -1,11 +1,13 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { vElementSize } from '@vueuse/components';
-import type { AgentChatResumeDto, AgentJsonConfig } from '@n8n/api-types';
+import type { AgentChatResumeDto, AgentJsonConfig, AgentThreadMemoryDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { N8nRecycleScroller } from '@n8n/design-system';
 import SessionTimelineRow from './SessionTimelineRow.vue';
+import ToolApprovalCard from '@/features/ai/shared/components/ToolApprovalCard.vue';
 import type { TimelineItem } from '../session-timeline.types';
+import type { ApprovalInput, ApprovalResume } from '@/features/ai/shared/agentsChat/types';
 import { filteredTimelineItemIndexes, timelineItemKey } from '../session-timeline.utils';
 import { backgroundJobTimelineLabelKey } from '../utils/background-job-labels';
 
@@ -22,13 +24,22 @@ const props = defineProps<{
 	threadId?: string;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
 	tools?: AgentJsonConfig['tools'];
+	memory?: AgentThreadMemoryDto;
+	onMemoryDeleted?: () => void;
 	selectedIndex: number | null;
 	visibleKinds: Set<string>;
 	searchQuery?: string;
 	noticeIndex?: number;
+	/** Suspension row the open approval belongs to. The card expands under it. */
+	approvalItem?: TimelineItem | null;
+	approval?: ApprovalInput;
+	approvalDisabled?: boolean;
 }>();
 
-const emit = defineEmits<{ select: [index: number | null] }>();
+const emit = defineEmits<{
+	select: [index: number | null];
+	approve: [resumeData: ApprovalResume];
+}>();
 
 const i18n = useI18n();
 const tableRef = ref<HTMLElement | null>(null);
@@ -50,6 +61,8 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.agent');
 		case 'skill':
 			return i18n.baseText('agentSessions.timeline.skill');
+		case 'memory':
+			return i18n.baseText('agentSessions.timeline.memory');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
@@ -110,6 +123,16 @@ const rows = computed<Row[]>(function getRows() {
 const shouldVirtualizeRows = computed(function shouldVirtualize() {
 	return rows.value.length > VIRTUALIZE_AFTER_ROWS;
 });
+
+// The card expands inline under its suspension row, so it is not part of the
+// row model and never touches selectedIndex or arrow-key navigation.
+function showsApprovalRow(row: Row): boolean {
+	return (
+		props.approval !== undefined &&
+		props.approvalItem?.executionId === row.item.executionId &&
+		props.approvalItem?.toolCallId === row.item.toolCallId
+	);
+}
 const tabbableEventIndex = computed(function getTabbableEventIndex() {
 	return rows.value.find((row) => row.index === props.selectedIndex)?.index ?? rows.value[0]?.index;
 });
@@ -294,9 +317,29 @@ onBeforeUnmount(() => {
 							:pending-approval-run-ids="props.pendingApprovalRunIds"
 							:agent-name="props.agentName"
 							:tools="props.tools"
+							:memory="props.memory"
+							:on-memory-deleted="props.onMemoryDeleted"
 							:selected="props.selectedIndex === row.index"
 							:search-query="props.searchQuery"
 							:personalisation="props.personalisation"
+						/>
+					</div>
+					<div
+						v-if="props.approval && showsApprovalRow(row)"
+						:class="$style.approvalRow"
+						data-test-id="timeline-approval-row"
+						role="gridcell"
+						@click.stop
+						@keydown.stop
+					>
+						<ToolApprovalCard
+							:input="props.approval"
+							:agent-name="props.agentName"
+							:tools="props.tools"
+							:disabled="props.approvalDisabled"
+							:auto-focus="false"
+							:use-key-shortcuts="false"
+							@submit="emit('approve', $event)"
 						/>
 					</div>
 					<div v-if="rowIndex < rows.length - 1" :class="$style.divider"><span></span></div>
@@ -343,6 +386,8 @@ onBeforeUnmount(() => {
 							:pending-approval-run-ids="props.pendingApprovalRunIds"
 							:agent-name="props.agentName"
 							:tools="props.tools"
+							:memory="props.memory"
+							:on-memory-deleted="props.onMemoryDeleted"
 							:selected="props.selectedIndex === row.index"
 							:search-query="props.searchQuery"
 							:personalisation="props.personalisation"
@@ -354,6 +399,24 @@ onBeforeUnmount(() => {
 						role="gridcell"
 					>
 						<slot name="notice" />
+					</div>
+					<div
+						v-if="props.approval && showsApprovalRow(row)"
+						:class="$style.approvalRow"
+						data-test-id="timeline-approval-row"
+						role="gridcell"
+						@click.stop
+						@keydown.stop
+					>
+						<ToolApprovalCard
+							:input="props.approval"
+							:agent-name="props.agentName"
+							:tools="props.tools"
+							:disabled="props.approvalDisabled"
+							:auto-focus="false"
+							:use-key-shortcuts="false"
+							@submit="emit('approve', $event)"
+						/>
 					</div>
 					<div v-if="row.id !== rows[rows.length - 1].id" :class="$style.divider">
 						<span></span>
@@ -382,6 +445,11 @@ onBeforeUnmount(() => {
 	width: 100%;
 	max-width: var(--n8n-session-panel--container-width, none);
 	margin: 0 auto;
+}
+
+.approvalRow {
+	width: 100%;
+	padding: var(--spacing--4xs) var(--spacing--sm) var(--spacing--xs);
 }
 
 .empty {

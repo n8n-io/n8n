@@ -1,11 +1,17 @@
-import { ListAgentSessionsQueryDto, type AgentSessionPreviewAccess } from '@n8n/api-types';
+import {
+	AgentTaskApprovalDto,
+	ListAgentSessionsQueryDto,
+	type AgentSessionPreviewAccess,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Delete, Get, Post, ProjectScope, Query, RestController } from '@n8n/decorators';
+import { Body, Delete, Get, Post, ProjectScope, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { NotFoundError } from '@n8n/errors';
 
+import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentMemoryTraceService } from './agent-memory-trace.service';
 import { AgentSessionLangSmithExportService } from './agent-session-langsmith-export.service';
 import { AgentSessionStopService } from './agent-session-stop.service';
 import { SystemAgentRegistry } from './system-agents/system-agent-registry';
@@ -16,7 +22,9 @@ import { parseThreadListLimit } from './utils/parse-thread-list-limit';
 export class AgentThreadsController {
 	constructor(
 		private readonly agentExecutionService: AgentExecutionService,
+		private readonly memoryTraceService: AgentMemoryTraceService,
 		private readonly langsmithExportService: AgentSessionLangSmithExportService,
+		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly systemAgents: SystemAgentRegistry,
 		private readonly sessionStopService: AgentSessionStopService,
 	) {}
@@ -46,14 +54,15 @@ export class AgentThreadsController {
 	async getThread(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	) {
+		const { projectId, agentId, threadId } = req.params;
 		const result = await this.agentExecutionService.getThreadDetail(
-			req.params.threadId,
-			req.params.projectId,
-			req.params.agentId,
+			threadId,
+			projectId,
+			agentId,
 			req.user.id,
 		);
 		if (!result) {
-			throw new NotFoundError(`Thread "${req.params.threadId}" not found`);
+			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
 		const {
 			ownerId: _ownerId,
@@ -70,7 +79,35 @@ export class AgentThreadsController {
 				this.systemAgents.has(result.thread.agentId),
 			),
 		};
-		return { ...result, thread: { ...thread, ...access, source: source ?? null } };
+		const memory = await this.memoryTraceService.getThreadMemory({
+			agentId,
+			projectId,
+			userId: req.user.id,
+			threadId,
+			executions: result.executions,
+		});
+		return { ...result, thread: { ...thread, ...access, source: source ?? null }, memory };
+	}
+
+	@Post('/:agentId/threads/:threadId/approval')
+	@ProjectScope('agent:execute')
+	async resumeTaskApproval(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		// The route registry calls the handler as (req, res, body). This unused
+		// response argument keeps the parsed body in the third position.
+		_res: Response,
+		@Body payload: AgentTaskApprovalDto,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+		await this.agentExecutionOrchestratorService.resumeTaskApproval({
+			projectId,
+			agentId,
+			threadId,
+			user: req.user,
+			toolCallId: payload.toolCallId,
+			resumeData: payload.resumeData,
+		});
+		return { success: true };
 	}
 
 	@Post('/:agentId/threads/:threadId/langsmith-export')

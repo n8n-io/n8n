@@ -49,6 +49,8 @@ export {
 	ExecutionRepository,
 	type CrashedExecution,
 	type ExecutionDeletionCriteria,
+	type ResumableExecutionStatus,
+	type ResumeAttemptClaim,
 	type UpdateExecutionConditions,
 } from './execution.repository';
 export { FolderRepository } from './folder.repository';
@@ -98,7 +100,7 @@ export { SettingsRepository } from './settings.repository';
 export { TagRepository } from './tag.repository';
 export { TestCaseExecutionRepository } from './test-case-execution.repository.ee';
 export { TestRunRepository, type TestRunSummary } from './test-run.repository.ee';
-export { VariablesRepository, type VariableKeyScope } from './variables.repository';
+export { VariablesRepository } from './variables.repository';
 export { WorkflowHistoryRepository } from './workflow-history.repository';
 export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
 export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository';

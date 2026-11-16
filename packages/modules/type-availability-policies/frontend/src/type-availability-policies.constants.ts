@@ -96,7 +96,11 @@ export const RESTRICTION_CONTACT_COPY: Record<
 
 export const CONTACT_DIALOG_COPY: Record<
 	ContactAudience,
-	{ title: BaseTextKey; empty: BaseTextKey; description: Record<RestrictedTypeKind, BaseTextKey> }
+	{
+		title: BaseTextKey;
+		empty: BaseTextKey;
+		description: Record<RestrictedTypeKind | 'several', BaseTextKey>;
+	}
 > = {
 	instance: {
 		title: 'typeAvailabilityPolicies.contactAdmin.title',
@@ -104,6 +108,7 @@ export const CONTACT_DIALOG_COPY: Record<
 		description: {
 			node: 'typeAvailabilityPolicies.contactAdmin.description',
 			credential: 'typeAvailabilityPolicies.contactAdmin.credentialType.description',
+			several: 'typeAvailabilityPolicies.contactAdmin.several.description',
 		},
 	},
 	project: {
@@ -112,6 +117,7 @@ export const CONTACT_DIALOG_COPY: Record<
 		description: {
 			node: 'typeAvailabilityPolicies.contactProjectAdmin.description',
 			credential: 'typeAvailabilityPolicies.contactProjectAdmin.credentialType.description',
+			several: 'typeAvailabilityPolicies.contactProjectAdmin.several.description',
 		},
 	},
 };

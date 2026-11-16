@@ -950,6 +950,12 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 	describe('hydration is scoped to the requested page', () => {
 		const oldAt = new Date('2025-06-01T00:00:00.000Z');
 
+		function cursorFor(id: string, createdAt: Date) {
+			return Buffer.from(JSON.stringify({ createdAt: createdAt.toISOString(), id })).toString(
+				'base64url',
+			);
+		}
+
 		/** A complete, renderable run: start, one tool call, finish. */
 		function runRows(runId: string, when: Date, messageGroupId?: string) {
 			return [
@@ -1032,23 +1038,22 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			expect(result.messages.some((m) => m.runId === 'run_live')).toBe(true);
 		});
 
-		it('stops an older page where the next page starts, not at its own newest message', async () => {
+		it('stops an older page at its cursor, not at its own newest message', async () => {
 			// A turn's tree is written when its run ends — after the assistant row
 			// it pairs with. Clipping at the page's own newest message would drop
 			// the tree of the turn the page ends on, and no other page would claim
 			// it either.
 			const nextPageAt = new Date('2026-01-01T00:00:05.000Z');
-			mockListMessages.mockResolvedValue({
-				messages: [userMessage, assistantMessage],
-				newerBoundaryAt: nextPageAt,
-			});
+			mockListMessages.mockResolvedValue({ messages: [userMessage, assistantMessage] });
 			setLogRows([...runRows('run_recent', at)]);
 
 			const service = createService();
-			await service.getRichMessages('user-1', 'thread-1', { page: 1 });
+			await service.getRichMessages('user-1', 'thread-1', {
+				cursor: cursorFor('msg-next', nextPageAt),
+			});
 
 			expect(mockListMessages).toHaveBeenCalledWith(
-				expect.objectContaining({ page: 1, withNewerBoundary: true }),
+				expect.objectContaining({ before: { createdAt: nextPageAt, id: 'msg-next' } }),
 			);
 			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {
 				since: userMessage.createdAt,
@@ -1056,7 +1061,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			});
 		});
 
-		it('hydrates nothing for an out-of-range older page', async () => {
+		it('hydrates nothing for an empty older page', async () => {
 			// No message rows to pair a tree with, and no bounds to read one
 			// with: an unbounded read here would hydrate the whole thread to
 			// render nothing.
@@ -1064,10 +1069,70 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			setLogRows([...runRows('run_recent', at)]);
 
 			const service = createService();
-			const result = await service.getRichMessages('user-1', 'thread-1', { page: 3 });
+			const result = await service.getRichMessages('user-1', 'thread-1', {
+				cursor: cursorFor('msg-u', userMessage.createdAt),
+			});
 
 			expect(mockEventLogRepository.findRunIdsInWindow).not.toHaveBeenCalled();
 			expect(result.messages).toEqual([]);
+			expect(result.nextCursor).toBeUndefined();
+		});
+
+		it('rejects a cursor it did not issue', async () => {
+			const service = createService();
+			await expect(
+				service.getRichMessages('user-1', 'thread-1', { cursor: 'not-a-cursor' }),
+			).rejects.toThrow('Invalid thread messages cursor');
+			expect(mockListMessages).not.toHaveBeenCalled();
+		});
+
+		it('starts a page with older messages at its first user message', async () => {
+			// The leading rows end a turn that began on the older page. The parser
+			// merges a turn's rows only when it sees all of them, so the older page
+			// reads them again with their user message.
+			const tailOfOlderTurn = {
+				id: 'msg-tail',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'Older turn, last words' }],
+				createdAt: new Date('2025-12-31T23:59:59.000Z'),
+			};
+			mockListMessages.mockResolvedValue({
+				messages: [tailOfOlderTurn, userMessage, assistantMessage],
+				hasMore: true,
+			});
+			setLogRows([]);
+
+			const service = createService();
+			const result = await service.getRichMessages('user-1', 'thread-1');
+
+			expect(result.messages.map((m) => m.id)).toEqual(['msg-u', 'msg-a']);
+			expect(result.nextCursor).toBe(cursorFor('msg-u', userMessage.createdAt));
+		});
+
+		it('continues from the oldest row when a turn is longer than one page', async () => {
+			mockListMessages.mockResolvedValue({ messages: [assistantMessage], hasMore: true });
+			setLogRows([]);
+
+			const service = createService();
+			const result = await service.getRichMessages('user-1', 'thread-1');
+
+			expect(result.messages.map((m) => m.id)).toEqual(['msg-a']);
+			expect(result.nextCursor).toBe(cursorFor('msg-a', assistantMessage.createdAt));
+		});
+
+		it('keeps every message and issues no cursor on the oldest page', async () => {
+			const firstAssistant = { ...assistantMessage, id: 'msg-first', createdAt: oldAt };
+			mockListMessages.mockResolvedValue({
+				messages: [firstAssistant, userMessage, assistantMessage],
+				hasMore: false,
+			});
+			setLogRows([]);
+
+			const service = createService();
+			const result = await service.getRichMessages('user-1', 'thread-1');
+
+			expect(result.messages.map((m) => m.id)).toEqual(['msg-first', 'msg-u', 'msg-a']);
+			expect(result.nextCursor).toBeUndefined();
 		});
 
 		it('widens the window to whole message groups', async () => {
@@ -1075,14 +1140,13 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			// message. Folding the group without it would drop its work from the
 			// turn's tree, so the window has to pull the sibling back in.
 			const afterPage = new Date('2026-01-01T00:00:30.000Z');
-			mockListMessages.mockResolvedValue({
-				messages: [userMessage, assistantMessage],
-				newerBoundaryAt: new Date('2026-01-01T00:00:05.000Z'),
-			});
+			mockListMessages.mockResolvedValue({ messages: [userMessage, assistantMessage] });
 			setLogRows([...runRows('run_parent', at, 'mg-1'), ...runRows('run_bg', afterPage, 'mg-1')]);
 
 			const service = createService();
-			const result = await service.getRichMessages('user-1', 'thread-1', { page: 1 });
+			const result = await service.getRichMessages('user-1', 'thread-1', {
+				cursor: cursorFor('msg-next', new Date('2026-01-01T00:00:05.000Z')),
+			});
 
 			// `run_bg` is outside the page bounds; it rides in on its group.
 			expect(mockEventLogRepository.getForThreadRuns).toHaveBeenCalledWith('thread-1', [

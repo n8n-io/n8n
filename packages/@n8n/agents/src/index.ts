@@ -60,14 +60,16 @@ export type {
 	EpisodicMemoryEntrySource,
 	EpisodicMemoryMethods,
 	EpisodicMemoryPrompts,
-	EpisodicMemoryReflectFn,
-	EpisodicMemoryReflectResult,
-	EpisodicMemoryReflection,
+	EpisodicMemoryConsolidateFn,
+	EpisodicMemoryConsolidateResult,
+	EpisodicMemoryConsolidation,
+	EpisodicMemoryConsolidationFact,
+	EpisodicMemoryConsolidationNeighbour,
+	EpisodicMemoryConsolidatorInput,
+	EpisodicMemoryFactRelation,
 	EpisodicMemoryReflectionApply,
 	EpisodicMemoryReflectionApplyMerge,
-	EpisodicMemoryReflectionMerge,
 	EpisodicMemoryReflectionResult,
-	EpisodicMemoryReflectorInput,
 	EpisodicMemoryScope,
 	EpisodicScopeDecision,
 	ResolvedEpisodicScope,
@@ -99,10 +101,18 @@ export type {
 	OpenAIPromptCachingConfig,
 	PromptCachingConfig,
 	NativeToolDeferralConfig,
+	ToolDeferralConfig,
+	ToolDeferralMode,
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,
+	ObservationResumeState,
+	BuiltObservationResumeStore,
 	ObservationalMemoryConfig,
+	ObservationWindowShares,
+	ObservationLogPlacement,
+	ObservationFailurePolicy,
+	ObservationReflectionMode,
 	BuiltObservationLogStore,
 	BuiltObservationLogTaskLockStore,
 	MemoryTaskUsageReport,
@@ -203,6 +213,7 @@ export type { DatasetRow, EvaluateConfig } from './sdk/evaluate';
 export * as evals from './evals/index';
 export { Telemetry } from './sdk/telemetry';
 export { deriveSubAgentTelemetry } from './runtime/telemetry/sub-agent-telemetry';
+export { X_N8N_FUNCTION_ID_HEADER } from './runtime/telemetry/function-id';
 export { LangSmithTelemetry } from './integrations/langsmith';
 export type { LangSmithTelemetryConfig } from './integrations/langsmith';
 export { Agent } from './sdk/agent';
@@ -211,6 +222,9 @@ export {
 	withPromptSizeBreakdown,
 } from './runtime/loop/prompt-size-usage';
 export type {
+	ContextCueEntry,
+	ContextCueProvider,
+	ContextCueRequest,
 	VolatileInstructionsContext,
 	VolatileInstructionsProvider,
 } from './runtime/loop/agent-runtime';
@@ -221,6 +235,8 @@ export {
 	createRuntimeSkillSource,
 	createRuntimeSkillTools,
 	createSkillLoadTool,
+	findRuntimeSkillEntry,
+	isMainSkillFilePath,
 	extendRuntimeSkillSource,
 	filterRuntimeSkillSource,
 	hashRuntimeSkillRegistry,
@@ -263,6 +279,7 @@ export type {
 	RuntimeSkillRegistry,
 	RuntimeSkillRegistryEntry,
 	RuntimeSkillSource,
+	RuntimeSkillContextUsage,
 	RuntimeSkillState,
 	RuntimeSkillStateScope,
 	RuntimeSkillStateStore,
@@ -276,11 +293,7 @@ export type {
 	CredentialListItem,
 } from './types';
 export { McpClient } from './sdk/mcp-client';
-export {
-	hasMcpMediaContent,
-	mcpContentToMessageParts,
-	mcpContentToModelParts,
-} from './runtime/mcp/mcp-content';
+export { hasMcpMediaContent, mcpContentToModelParts } from './runtime/mcp/mcp-content';
 export type { McpModelContentPart } from './runtime/mcp/mcp-content';
 export { providerTools } from './sdk/provider-tools';
 export { verify } from './sdk/verify';
@@ -302,14 +315,31 @@ export type {
 	CustomAgentMessages,
 	AgentDbMessage,
 } from './types/sdk/message';
-export { stripHydratedFileData } from './types/sdk/message';
+export { isTextMediaType, stripHydratedFileData } from './types/sdk/message';
 export type { BuiltFileStore } from './types/sdk/file-store';
 export type { HandlerExecutor } from './types/sdk/handler-executor';
 export {
 	filterLlmMessages,
 	getCreatedAt,
 	isLlmMessage,
+	isRuntimeContextCue,
 } from './sdk/message';
+export {
+	createContextCueProvider,
+	parseAblatedContextCues,
+	whenSkillLoads,
+	whileSkillActive,
+} from './context-cues';
+export type {
+	ContextCue,
+	ContextCueMatch,
+	ContextCueProviderOptions,
+	ContextCueRetrievalMethod,
+	ContextCueRetrievalTrace,
+	ContextCueSet,
+	ContextCueSetPredicate,
+	ContextCueStepQuery,
+} from './context-cues';
 export { fetchProviderCatalog } from './sdk/catalog';
 export type {
 	ProviderCatalog,
@@ -384,6 +414,7 @@ export { createPlannerTodosTool } from './runtime/tools/planner-todos-tool';
 export type { CreatePlannerTodosToolOptions } from './runtime/tools/planner-todos-tool';
 export type { CreateWriteTodosToolOptions } from './runtime/tools/write-todos-tool';
 export { isAttachmentValidationError } from './runtime/model/attachment-validation-error';
+export { PromptCacheParamsError } from './runtime/model/prompt-cache-params-error';
 export { createEmbeddingModel } from './runtime/model/model-factory';
 export { generateTitleFromMessage } from './runtime/memory/title-generation';
 export {
@@ -425,19 +456,25 @@ export {
 	DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
+	DEFAULT_EPISODIC_MEMORY_CONSOLIDATION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
-	DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
-	buildEpisodicMemoryReflectorPrompt,
-	createEpisodicMemoryReflectFn,
+	buildEpisodicMemoryConsolidatorPrompt,
+	createEpisodicMemoryConsolidateFn,
 } from './runtime/memory/episodic-memory-defaults';
-export type { CreateEpisodicMemoryReflectFnOptions } from './runtime/memory/episodic-memory-defaults';
+export type { CreateEpisodicMemoryConsolidateFnOptions } from './runtime/memory/episodic-memory-defaults';
 export type {
 	MemoryLifecycleState,
 	MemoryLifecycleStatus,
 } from './runtime/memory/memory-lifecycle';
 export { loadReplayedMessages } from './runtime/memory/memory-orchestrator';
+export { settleAbandonedToolCallsInMemory } from './runtime/memory/strip-orphaned-tool-messages';
 export { prepareObservationLogBatchCursor } from './runtime/memory/observation-log-batch';
+export {
+	fromObservationResumeColumns,
+	toObservationResumeColumns,
+	type ObservationResumeColumns,
+} from './runtime/memory/observation-resume-columns';
 export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,

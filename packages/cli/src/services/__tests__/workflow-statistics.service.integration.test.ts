@@ -268,6 +268,33 @@ describe('WorkflowStatisticsService', () => {
 			);
 		});
 
+		test('should count a run that failed before start as a production error, but not in `rootCount`', async () => {
+			// ARRANGE
+			const data = createEmptyRunExecutionData();
+			data.resultData.failedBeforeStart = true;
+			const runData: IRun = {
+				finished: false,
+				status: 'error',
+				data,
+				mode: 'webhook',
+				startedAt: new Date(),
+				storedAt: 'db',
+			};
+
+			// ACT
+			await completeAndFlush(workflowStatisticsService, workflow, runData);
+
+			// ASSERT
+			const statistics = await workflowStatisticsRepository.find();
+			expect(statistics).toHaveLength(1);
+			expect(statistics[0]).toMatchObject({
+				count: 1,
+				rootCount: 0,
+				name: 'production_error',
+				workflowId: workflow.id,
+			});
+		});
+
 		test('should count user-sourced executions as production', async () => {
 			// ARRANGE
 			const runData: IRun = {
