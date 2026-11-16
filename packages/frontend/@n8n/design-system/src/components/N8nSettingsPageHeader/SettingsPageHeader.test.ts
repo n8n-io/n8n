@@ -15,6 +15,18 @@ const featureList = {
 	global: { provide: { [FeatureMaturityKey as symbol]: featureMaturity } },
 };
 
+function catalogWith(id: string, docsUrl: string) {
+	return {
+		global: {
+			provide: {
+				[FeatureMaturityKey as symbol]: {
+					[id]: { preview: false, limitedEnterpriseSupport: false, docsUrl },
+				} satisfies FeatureMaturityCatalog,
+			},
+		},
+	};
+}
+
 describe('N8nSettingsPageHeader', () => {
 	it('renders the title as an h1 by default', () => {
 		render(N8nSettingsPageHeader, { props: { title: 'This instance' } });
@@ -94,12 +106,13 @@ describe('N8nSettingsPageHeader', () => {
 		expect(screen.getByText('Plan, usage and version.')).toBeInTheDocument();
 	});
 
-	it('renders the docs link when a URL is set', () => {
+	it('renders the docs link from the feature entry', () => {
 		render(N8nSettingsPageHeader, {
+			...catalogWith('instance', 'https://docs.n8n.io'),
 			props: {
 				title: 'This instance',
 				description: 'Plan, usage and version.',
-				docsUrl: 'https://docs.n8n.io',
+				feature: 'instance',
 			},
 		});
 
@@ -107,12 +120,13 @@ describe('N8nSettingsPageHeader', () => {
 		expect(link).toHaveAttribute('href', 'https://docs.n8n.io');
 	});
 
-	it('hides the docs link when showDocsLink is false, even when a URL is set', () => {
+	it('hides the docs link when showDocsLink is false, even when the feature has a URL', () => {
 		render(N8nSettingsPageHeader, {
+			...catalogWith('instance', 'https://docs.n8n.io'),
 			props: {
 				title: 'This instance',
 				description: 'Plan, usage and version.',
-				docsUrl: 'https://docs.n8n.io',
+				feature: 'instance',
 				showDocsLink: false,
 			},
 		});
@@ -149,12 +163,13 @@ describe('N8nSettingsPageHeader', () => {
 
 	it('renders custom leading copy and a custom label', () => {
 		render(N8nSettingsPageHeader, {
+			...catalogWith('api', 'https://docs.n8n.io/api/'),
 			props: {
 				title: 'API keys',
 				description: 'Use your API keys to control n8n programmatically.',
 				docsLeadingText: 'Read the ',
 				docsLabel: 'API reference',
-				docsUrl: 'https://docs.n8n.io/api/',
+				feature: 'api',
 			},
 		});
 
@@ -164,10 +179,11 @@ describe('N8nSettingsPageHeader', () => {
 
 	it('drops the leading copy when docsLeadingText is explicitly empty', () => {
 		render(N8nSettingsPageHeader, {
+			...catalogWith('migrationReport', 'https://docs.n8n.io'),
 			props: {
 				title: 'Migration report',
 				description: 'Learn more about all breaking changes in our',
-				docsUrl: 'https://docs.n8n.io',
+				feature: 'migrationReport',
 				docsLeadingText: '',
 			},
 		});
@@ -202,39 +218,13 @@ describe('N8nSettingsPageHeader', () => {
 		);
 	});
 
-	it('lets the page URL override the feature entry', () => {
-		render(N8nSettingsPageHeader, {
-			global: {
-				provide: {
-					[FeatureMaturityKey as symbol]: {
-						agents: {
-							preview: true,
-							limitedEnterpriseSupport: true,
-							docsUrl: 'https://docs.n8n.io/build/build-and-manage-agents',
-						},
-					} satisfies FeatureMaturityCatalog,
-				},
-			},
-			props: {
-				title: 'Agents',
-				description: 'Build agents.',
-				feature: 'agents',
-				docsUrl: 'https://docs.n8n.io/override',
-			},
-		});
-
-		expect(screen.getByRole('link', { name: 'documentation' })).toHaveAttribute(
-			'href',
-			'https://docs.n8n.io/override',
-		);
-	});
-
 	it('renders the docs link as an N8nExternalLink that opens in a new tab', () => {
 		render(N8nSettingsPageHeader, {
+			...catalogWith('instance', 'https://docs.n8n.io'),
 			props: {
 				title: 'This instance',
 				description: 'Plan, usage and version.',
-				docsUrl: 'https://docs.n8n.io',
+				feature: 'instance',
 			},
 		});
 
@@ -245,10 +235,11 @@ describe('N8nSettingsPageHeader', () => {
 
 	it('renders the docs link in the inline treatment, followed by the external-link icon', () => {
 		render(N8nSettingsPageHeader, {
+			...catalogWith('instance', 'https://docs.n8n.io'),
 			props: {
 				title: 'This instance',
 				description: 'Plan, usage and version.',
-				docsUrl: 'https://docs.n8n.io',
+				feature: 'instance',
 			},
 		});
 
@@ -275,7 +266,7 @@ describe('N8nSettingsPageHeader', () => {
 		expect(placeholder).not.toHaveAttribute('href');
 		expect(placeholder).toBeDisabled();
 		expect(screen.queryByRole('link')).not.toBeInTheDocument();
-		expect(warn).toHaveBeenCalledWith(expect.stringContaining('docsUrl'));
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining('feature entry'));
 
 		warn.mockRestore();
 	});
