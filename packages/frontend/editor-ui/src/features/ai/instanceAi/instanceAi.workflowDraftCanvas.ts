@@ -37,10 +37,18 @@ function toIssuesByNodeName(issues: DraftIssue[] = []): Map<string, INodeIssues>
 	return new Map([...byNode].map(([name, parameters]) => [name, { parameters }]));
 }
 
+/**
+ * The canvas id of a draft node. A compile gives new random ids to nodes that the
+ * source does not name an id for, so the name keeps the id the same between
+ * revisions and the canvas does not mount the node again.
+ */
+function canvasNodeId(filePath: string, node: DraftNode): string {
+	return `${filePath}:${node.name}`;
+}
+
 function toNode(node: DraftNode, filePath: string, issues?: INodeIssues): INodeUi {
 	return {
-		// A stable fallback id keeps the canvas from remounting nodes between revisions.
-		id: node.id ?? `${filePath}:${node.name}`,
+		id: canvasNodeId(filePath, node),
 		name: node.name,
 		type: node.type,
 		typeVersion: node.typeVersion,
@@ -88,6 +96,18 @@ export function toDraftWorkflowDb(draft: WorkflowDraft, documentWorkflowId: stri
 			toNode(node, draft.filePath, issuesByNodeName.get(node.name)),
 		),
 		connections: toConnections(draft.workflow.connections),
-		...(draft.workflow.nodeGroups ? { nodeGroups: draft.workflow.nodeGroups } : {}),
+		...(draft.workflow.nodeGroups ? { nodeGroups: toCanvasGroups(draft) } : {}),
 	};
+}
+
+function toCanvasGroups(draft: WorkflowDraft) {
+	const canvasIds = new Map(
+		draft.workflow.nodes.flatMap((node) =>
+			node.id ? [[node.id, canvasNodeId(draft.filePath, node)]] : [],
+		),
+	);
+	return draft.workflow.nodeGroups?.map((group) => ({
+		...group,
+		nodeIds: group.nodeIds.flatMap((id) => canvasIds.get(id) ?? []),
+	}));
 }
