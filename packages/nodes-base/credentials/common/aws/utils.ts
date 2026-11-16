@@ -230,8 +230,7 @@ export function assertSupportedAwsRegion(region: unknown): asserts region is AWS
 /**
  * Validates a user-supplied Bedrock endpoint override and returns the resolved URL.
  * Substitutes the `{region}` placeholder after the region itself is validated, and
- * requires an `http:`/`https:` scheme. The value is credential-holder-configured and
- * treated as trusted; no host allow-listing / SSRF check is applied on this path.
+ * requires an `http:`/`https:` scheme.
  *
  * @throws {UserError} When the region is unsupported, the URL is malformed, or the scheme is not http/https.
  */

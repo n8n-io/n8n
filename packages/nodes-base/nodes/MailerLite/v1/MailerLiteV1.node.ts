@@ -6,7 +6,7 @@ import type {
 	INodeTypeDescription,
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { decodePathValue, NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import { subscriberFields, subscriberOperations } from './SubscriberDescription';
 import {
@@ -105,7 +105,12 @@ export class MailerLiteV1 implements INodeType {
 							}
 						}
 
-						responseData = await mailerliteApiRequest.call(this, 'POST', '/subscribers', body);
+						responseData = await mailerliteApiRequest.call(
+							this,
+							'POST',
+							requestPath`/subscribers`,
+							body,
+						);
 					}
 					//https://developers.mailerlite.com/reference#single-subscriber
 					if (operation === 'get') {
@@ -114,7 +119,7 @@ export class MailerLiteV1 implements INodeType {
 						responseData = await mailerliteApiRequest.call(
 							this,
 							'GET',
-							`/subscribers/${subscriberId}`,
+							requestPath`/subscribers/${decodePathValue(subscriberId)}`,
 						);
 					}
 					//https://developers.mailerlite.com/reference#subscribers
@@ -129,14 +134,20 @@ export class MailerLiteV1 implements INodeType {
 							responseData = await mailerliteApiRequestAllItems.call(
 								this,
 								'GET',
-								'/subscribers',
+								requestPath`/subscribers`,
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
 
-							responseData = await mailerliteApiRequest.call(this, 'GET', '/subscribers', {}, qs);
+							responseData = await mailerliteApiRequest.call(
+								this,
+								'GET',
+								requestPath`/subscribers`,
+								{},
+								qs,
+							);
 						}
 					}
 					//https://developers.mailerlite.com/reference#update-subscriber
@@ -169,7 +180,7 @@ export class MailerLiteV1 implements INodeType {
 						responseData = await mailerliteApiRequest.call(
 							this,
 							'PUT',
-							`/subscribers/${subscriberId}`,
+							requestPath`/subscribers/${decodePathValue(subscriberId)}`,
 							body,
 						);
 					}

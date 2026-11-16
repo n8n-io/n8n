@@ -1,5 +1,8 @@
 import {
 	INSTANCE_AI_PREFILL_TYPES,
+	instanceAiApprovalModeSchema,
+	instanceAiAutoApprovalDeciderSchema,
+	instanceAiConfirmationSeveritySchema,
 	instanceContextAbsenceReasonSchema,
 	instanceContextSurfaceSchema,
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
@@ -9,7 +12,7 @@ import {
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
-import { assistantSurfaceSchema } from '../schemas';
+import { assistantRuntimeSchema as assistantRuntime, assistantSurfaceSchema } from '../schemas';
 import { setupItemProperties, setupTelemetryProperties } from '../setup-properties';
 
 /**
@@ -42,19 +45,31 @@ const setupSnapshotProps = {
 	web_search_provider: z.enum(['brave', 'searxng']).nullable(),
 };
 
-/** The runtimes that run an n8n Assistant thread. */
-export const ASSISTANT_RUNTIMES = ['instance-ai', 'agents'] as const;
-export type AssistantRuntime = (typeof ASSISTANT_RUNTIMES)[number];
-const assistantRuntime = z
-	.enum(ASSISTANT_RUNTIMES)
-	.describe(
-		"The runtime that runs the thread: 'instance-ai' is the current Assistant runtime, 'agents' is the Assistant agent on the Agents runtime",
-	);
+/** Shared by the events that fire when the user leaves with an active run. */
+const isAwaitingUser = z
+	.boolean()
+	.describe('The run is paused until the user answers a confirmation or question');
+
+/** The current turn of the thread when the event fires. Shared by the away events. */
+const currentTurnProps = {
+	turn_number: z
+		.number()
+		.int()
+		.nonnegative()
+		.describe('The current turn: the user messages in the thread so far. The first message is 1'),
+	turn_has_artifact: z
+		.boolean()
+		.describe(
+			'The agent built, changed or opened an artifact in the current turn so far. A resource that the user attached to the message does not count',
+		),
+};
+
+export { ASSISTANT_RUNTIMES, type AssistantRuntime } from '../schemas';
 
 const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
 const workflowPreviewsAboveAssistantVariant = z.enum(['control', 'variant']);
-const taxonomyInspirationVariant = z.enum(['control', 'variant', 'variant-bis']);
+const taxonomyInspirationVariant = z.enum(['control', 'variant']);
 const assistantMentionKind = z.enum(['workflow', 'node', 'group']);
 const assistantMentionTriggerSource = z.enum(['typed', 'button']);
 /** Cap on the query text the empty-search event carries; the emitter cuts to it after redaction. */
@@ -95,6 +110,12 @@ const mentionContextProperties = {
 };
 // Experiment cleanup: remove with openWorkflowInAssistant.
 const openWorkflowInAssistantVariant = z.enum(['control', 'variant']);
+
+const approvalModeProperty = z
+	.enum([...instanceAiApprovalModeSchema.options, 'unavailable'])
+	.describe(
+		'The approval mode of the run: auto or manual. A thread that builds an agent is manual. unavailable while approval modes are off',
+	);
 
 // Both taxonomies are owned by `@n8n/api-types`, beside the request schemas that
 // enforce them; the fallbacks are read-path only, so no caller can declare them.
@@ -340,17 +361,17 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		}),
 	},
 	// EOF Experiment cleanup
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	INSPIRATION_FROM_TAXONOMY_EXPOSED: {
 		name: 'AI Assistant inspiration from taxonomy exposed',
 		description:
-			'A sales-and-marketing respondent assigned to 129_aia_inspiration_from_taxonomy_v2 reached the n8n Assistant empty state, the view that shows the prompt suggestions, including the control variant. Fires once per visit. Does not fire on a thread, nor for the proactive starter, split empty-state, n8n Chat agent picker, or workflow-preview layouts, which replace this suggestion list. Not fired for any other experiment.',
+			'A sales-and-marketing respondent assigned to 142_aia_inspiration_from_taxonomy_v3 reached the n8n Assistant empty state, the view that shows the prompt suggestions, including the control variant. Fires once per visit. Does not fire on a thread, nor for the proactive starter, split empty-state, n8n Chat agent picker, or workflow-preview layouts, which replace this suggestion list. Not fired for any other experiment.',
 		properties: z.object({
 			variant: taxonomyInspirationVariant.describe(
-				'Variant of the 129_aia_inspiration_from_taxonomy_v2 feature flag the user saw: control, variant, or variant-bis',
+				'Variant of the 142_aia_inspiration_from_taxonomy_v3 feature flag the user saw: control or variant',
 			),
 			// eslint-disable-next-line @typescript-eslint/naming-convention -- PostHog feature property
-			'$feature/129_aia_inspiration_from_taxonomy_v2': taxonomyInspirationVariant,
+			'$feature/142_aia_inspiration_from_taxonomy_v3': taxonomyInspirationVariant,
 		}),
 	},
 	// EOF Experiment cleanup
@@ -382,6 +403,85 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
 		}),
 	},
+	APPROVAL_MODE_CHANGED: {
+		name: 'User changed AI Assistant approval mode',
+		description:
+			'The user picked an approval mode in the n8n Assistant chat. Manual shows an approval card for each action set to Ask first. Auto lets a judge model run the action or show the card.',
+		properties: z.object({
+			mode: z.enum(instanceAiApprovalModeSchema.options),
+			previous_mode: z.enum(instanceAiApprovalModeSchema.options),
+			thread_id: z.string().optional(),
+		}),
+	},
+	BUILDER_ASKED_FOR_INPUT: {
+		name: 'Builder asked for input',
+		description:
+			'The n8n Assistant showed a card that waits for the user: an approval, questions, a setup or credential request, or an MCP connection. Fires once per card. input_thread_id joins it with User finished providing input.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string(),
+			input_thread_id: z.string().describe('Joins the card with the answer events of the card'),
+			type: z
+				.string()
+				.describe(
+					"approval, setup, credential-setup, mcp-connect, or the card's input type for other cards",
+				),
+			num_steps: z.number().int().describe('Questions, setup or credential requests on the card'),
+			contains_templated_cred: z.boolean(),
+			tool_call_id: z
+				.string()
+				.optional()
+				.describe(
+					'The tool call that waits for the card. Joins it with AI Assistant decided approval in auto mode',
+				),
+			tool_name: z.string().optional(),
+			severity: z.enum(instanceAiConfirmationSeveritySchema.options).optional(),
+			approval_mode: approvalModeProperty,
+			runtime: assistantRuntime,
+		}),
+	},
+	APPROVAL_DECIDED_IN_AUTO_MODE: {
+		name: 'AI Assistant decided approval in auto mode',
+		description:
+			'Auto mode reviewed an action set to Ask first before its approval card showed. Fires once per reviewed action, with whether the action ran without a card or the card showed.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string(),
+			run_id: z.string(),
+			tool_call_id: z
+				.string()
+				.optional()
+				.describe('Joins the decision with Builder asked for input when the card showed'),
+			tool_name: z.string(),
+			is_mcp_tool: z.boolean(),
+			severity: z.enum(instanceAiConfirmationSeveritySchema.options),
+			route: z
+				.enum(['always-ask', 'low-risk', 'judge'])
+				.describe(
+					'always-ask and low-risk are fixed rules. judge is every other action: the judge model decides, except for an MCP call that is too long to check, which a rule sends to the card (decided_by rule)',
+				),
+			decision: z.enum(['approve', 'ask']).describe('approve ran the action without a card'),
+			decided_by: z.enum(instanceAiAutoApprovalDeciderSchema.options),
+			judge_failed: z.boolean().describe('The judge model failed or timed out, so the card showed'),
+			judge_duration_ms: z.number().optional().describe('The judge model call alone'),
+			review_duration_ms: z
+				.number()
+				.optional()
+				.describe(
+					'The whole review of an action that went to the judge: judge model setup, thread read and judge call',
+				),
+			judge_model: z.string().optional(),
+		}),
+	},
+	USER_STOPPED_RUN: {
+		name: 'User stopped AI Assistant run',
+		description:
+			'The user stopped the n8n Assistant while it was working, for example with the stop button. Fires once per stop request.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string(),
+		}),
+	},
 	DEFAULT_EDITOR_PREFERENCE_CHANGED: {
 		name: 'Default editor preference changed',
 		description: 'The user saved the default-editor preference on the n8n Assistant settings page.',
@@ -406,31 +506,47 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description: 'The user clicked the plus button in the n8n Assistant input.',
 		properties: z.object({}),
 	},
-	// Experiment cleanup (119_surface_assistant_on_workflow_error)
 	USER_VIEWED_FIX_WITH_ASSISTANT_NUDGE: {
 		name: 'User viewed fix with Assistant nudge',
 		description:
 			'The Fix with Assistant button was shown inside a workflow error toast. Fires once for each toast that receives the button.',
 		properties: z.object({
-			variant: z.enum(['control', 'variant']),
-			'$feature/119_surface_assistant_on_workflow_error': z.enum(['control', 'variant']),
+			variant: z
+				.enum(['control', 'variant'])
+				.optional()
+				.meta({ deprecated: true })
+				.describe('Deprecated: the experiment arm. No longer emitted.'),
+			'$feature/119_surface_assistant_on_workflow_error': z
+				.enum(['control', 'variant'])
+				.optional()
+				.meta({ deprecated: true })
+				.describe('Deprecated: PostHog experiment exposure. No longer emitted.'),
 		}),
 	},
 	USER_CLICKED_ERROR_TOAST_FIX_WITH_ASSISTANT: {
 		name: 'User clicked fix with Assistant CTA on error toast',
 		description:
-			'The user clicked the Fix with Assistant button on a workflow error toast. assistant_enabled records whether n8n Assistant was enabled at click time. Enabled opens the Assistant. Disabled opens Assistant settings.',
+			'The user clicked the Fix with Assistant button on a workflow error toast. The click opens n8n Assistant on the failed workflow.',
 		properties: z.object({
 			assistant_enabled: z
 				.boolean()
+				.optional()
+				.meta({ deprecated: true })
 				.describe(
-					'Whether n8n Assistant was enabled. True opens the Assistant. False opens Assistant settings.',
+					'Deprecated: whether n8n Assistant was enabled at click time. No longer emitted. The nudge only renders when Assistant is ready.',
 				),
-			variant: z.enum(['control', 'variant']),
-			'$feature/119_surface_assistant_on_workflow_error': z.enum(['control', 'variant']),
+			variant: z
+				.enum(['control', 'variant'])
+				.optional()
+				.meta({ deprecated: true })
+				.describe('Deprecated: the experiment arm. No longer emitted.'),
+			'$feature/119_surface_assistant_on_workflow_error': z
+				.enum(['control', 'variant'])
+				.optional()
+				.meta({ deprecated: true })
+				.describe('Deprecated: PostHog experiment exposure. No longer emitted.'),
 		}),
 	},
-	// EOF Experiment cleanup
 	TOOLS_LIST_OPENED: {
 		name: 'Instance AI tools list opened',
 		description: 'The user opened the n8n Assistant tools connection modal.',
@@ -525,6 +641,8 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			tab_visible: z
 				.boolean()
 				.describe('Whether the document was visible when the response rendered'),
+			// Optional so the events of the current runtime stay as they are.
+			runtime: assistantRuntime.optional(),
 		}),
 	},
 	BUILDER_SPECCED_TEMPLATED_CRED: {
@@ -810,7 +928,10 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Whether the user edited the pre-filled text before sending. Always false for pre-fills that send without being shown. Null when the user typed the message.',
 				),
+			approval_mode: approvalModeProperty,
 			...mentionContextProperties,
+			// Optional so the events of the current runtime stay as they are.
+			runtime: assistantRuntime.optional(),
 		}),
 	},
 	BUILDER_LISTED_WORKFLOWS: {
@@ -905,6 +1026,61 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					"The reason the agent gave on `leave-onboarding`: 'stop', 'explore' or 'unrelated_request'. Null for the other outcomes, or when the agent gave none",
 				),
+		}),
+	},
+	USER_LEFT_AI_ASSISTANT_THREAD_WITH_ACTIVE_RUN: {
+		name: 'User left AI Assistant thread with an active run',
+		description:
+			'The user left an n8n Assistant thread, for another thread or another page in n8n, while a run was active in it. An active run has started and not finished. It includes a run that is paused until the user answers a confirmation or question.',
+		properties: z.object({
+			thread_id: z.string(),
+			is_awaiting_user: isAwaitingUser,
+			...currentTurnProps,
+		}),
+	},
+	USER_RETURNED_TO_AI_ASSISTANT_THREAD: {
+		name: 'User returned to AI Assistant thread',
+		description:
+			'The user came back to an n8n Assistant thread that they left with an active run. Match it to "User left AI Assistant thread with an active run" by thread_id.',
+		properties: z.object({
+			thread_id: z.string(),
+			is_awaiting_user: isAwaitingUser.describe(
+				'Whether the run is paused until the user answers, when the user returns. Read after the thread has loaded, so it can differ from the value on the leave event',
+			),
+			...currentTurnProps,
+			time_away_ms: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe('Milliseconds between leaving the thread and returning to it'),
+		}),
+	},
+	USER_LEFT_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN: {
+		name: 'User left n8n with an active AI Assistant run',
+		description:
+			'The browser tab with n8n became hidden while an n8n Assistant run was active. This happens when the user switches to another browser tab or app, or closes the tab. An active run has started and not finished. It includes a run that is paused until the user answers a confirmation or question. The backend emits this event, because the browser cannot reliably send events while a tab closes.',
+		properties: z.object({
+			thread_id: z.string(),
+			is_awaiting_user: isAwaitingUser,
+			...currentTurnProps,
+			user_id: z.string(),
+		}),
+	},
+	USER_RETURNED_TO_N8N_WITH_ACTIVE_AI_ASSISTANT_RUN: {
+		name: 'User returned to n8n after leaving with an active AI Assistant run',
+		description:
+			'The browser tab with n8n became visible again after a "User left n8n with an active AI Assistant run" event. The run can have finished while the user was away.',
+		properties: z.object({
+			thread_id: z.string(),
+			is_awaiting_user: isAwaitingUser.describe(
+				'Whether the run is paused until the user answers, when the tab becomes visible. It can differ from the value on the leave event',
+			),
+			...currentTurnProps,
+			time_away_ms: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe('Milliseconds between the tab becoming hidden and visible'),
 		}),
 	},
 	INSTANCE_CONTEXT_TURN: {

@@ -1,9 +1,14 @@
-import { AGENT_BUILDER_TOOL_NAMES, WORKFLOW_BUILDER_TOOL_NAMES } from '@n8n/api-types';
+import {
+	AGENT_BUILDER_TOOL_NAMES,
+	TOOL_CATALOG_CALL_TOOL_NAME,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+} from '@n8n/api-types';
 import { readonly } from 'vue';
 
 import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
 
 import { isAgentEditingAgent, isAgentEditingWorkflow } from '../../canvasPreview.utils';
+import { useResourceRegistry } from '../../useResourceRegistry';
 import {
 	findArchivedAssistantWorkflowIds,
 	findLatestAssistantTasks,
@@ -63,6 +68,60 @@ describe('toArtifactToolCall', () => {
 
 	it('gives an input that is not an object as empty arguments', () => {
 		expect(mapToolCall(toolCall({ input: 'text' })).args).toEqual({});
+	});
+
+	it('reads a tool catalog call as the tool that it runs', () => {
+		const mapped = mapToolCall(
+			toolCall({
+				tool: TOOL_CATALOG_CALL_TOOL_NAME,
+				input: {
+					tool: WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
+					arguments: { filePath: 'src/workflows/main.workflow.ts', name: 'Digest' },
+				},
+			}),
+		);
+
+		expect(mapped.toolName).toBe(WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW);
+		expect(mapped.args).toEqual({ filePath: 'src/workflows/main.workflow.ts', name: 'Digest' });
+		expect(mapped.result).toEqual({ success: true, workflowId: 'wf-1' });
+	});
+
+	it('keeps a tool catalog call that names no tool', () => {
+		const mapped = mapToolCall(
+			toolCall({ tool: TOOL_CATALOG_CALL_TOOL_NAME, input: { arguments: {} } }),
+		);
+
+		expect(mapped.toolName).toBe(TOOL_CATALOG_CALL_TOOL_NAME);
+		expect(mapped.args).toEqual({ arguments: {} });
+	});
+
+	it('registers the workflow that a tool catalog call builds', () => {
+		const messages: ChatMessage[] = [
+			{ id: 'u1', role: 'user', content: 'Build a workflow' },
+			{
+				id: 'a1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					toolCall({
+						tool: TOOL_CATALOG_CALL_TOOL_NAME,
+						input: {
+							tool: WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
+							arguments: { name: 'Digest' },
+						},
+						output: { success: true, workflowId: 'wf-1', workflowName: 'Digest' },
+					}),
+				],
+			},
+		];
+
+		const { producedArtifacts } = useResourceRegistry(() => mapMessages(messages, false));
+
+		expect(producedArtifacts.get('wf-1')).toMatchObject({
+			type: 'workflow',
+			id: 'wf-1',
+			name: 'Digest',
+		});
 	});
 });
 
@@ -221,6 +280,55 @@ describe('toAssistantArtifactTurns', () => {
 			},
 		]);
 		expect(isAgentEditingWorkflow(turns, 'wf-1')).toBe(false);
+	});
+
+	it('keeps the tool that a tool catalog call runs when the resolved copy has no input', () => {
+		const catalogCall = (overrides: Partial<ToolCall>) =>
+			toolCall({ tool: TOOL_CATALOG_CALL_TOOL_NAME, toolCallId: 'tc-build', ...overrides });
+		const messages: ChatMessage[] = [
+			{ id: 'u1', role: 'user', content: 'Build a workflow' },
+			{
+				id: 'a1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					catalogCall({
+						input: {
+							tool: WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
+							arguments: { name: 'Digest' },
+						},
+						output: undefined,
+						state: 'suspended',
+					}),
+				],
+			},
+			{
+				id: 'a2',
+				role: 'assistant',
+				content: 'Done',
+				toolCalls: [
+					catalogCall({
+						input: undefined,
+						output: { success: true, workflowId: 'wf-1', workflowName: 'Digest' },
+						state: 'done',
+					}),
+				],
+			},
+		];
+
+		const turns = mapMessages(messages, false);
+
+		expect(turns[1].toolCalls).toEqual([
+			{
+				toolCallId: 'tc-build',
+				toolName: WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
+				args: { name: 'Digest' },
+				result: { success: true, workflowId: 'wf-1', workflowName: 'Digest' },
+				isLoading: false,
+			},
+		]);
+		const { producedArtifacts } = useResourceRegistry(() => mapMessages(messages, false));
+		expect(producedArtifacts.get('wf-1')).toMatchObject({ type: 'workflow', id: 'wf-1' });
 	});
 });
 

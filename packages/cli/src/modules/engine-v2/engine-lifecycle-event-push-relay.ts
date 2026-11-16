@@ -1,9 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { LifecycleEvent } from '@n8n/engine';
-import { fromStepInputs } from '@n8n/node-engine-compatibility';
+import type { LifecycleEvent, StepError } from '@n8n/engine';
+import { fromStepInputs, fromV1ErrorDetails } from '@n8n/node-engine-compatibility';
 import type { ExecutionStatus, INodeExecutionData, ITaskData } from 'n8n-workflow';
-import { WorkflowOperationError } from 'n8n-workflow';
 
 import { Push } from '@/push';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
@@ -15,12 +14,15 @@ import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connecti
 type StepUpdate = Extract<LifecycleEvent, { stepId: string }>;
 
 /**
- * Placeholder error: no failure detail is available yet, and without an
- * `error` the editor would show a failed step as successful.
- *
- * TODO(CAT-2878 follow-up): carry the real failure through and drop this.
+ * How a step settled. A completed step may have no outputs: the channel
+ * sender drops them from the event when the frame is over its size limit.
  */
-const STEP_FAILURE_DESCRIPTION = 'Engine v2 does not report error detail yet.';
+type StepOutcome =
+	| { status: 'success'; outputs: INodeExecutionData[][] | undefined }
+	| { status: 'error'; error: StepError };
+
+/** What a `nodeExecuteAfter` message reports: an outcome, or a wait with none yet. */
+type StepReport = StepOutcome | { status: 'waiting' };
 
 /**
  * Relays engine lifecycle events to the editor as push messages.
@@ -64,9 +66,12 @@ export class EngineLifecycleEventPushRelay {
 			case 'step:started':
 				return this.onStepStarted(update, session);
 			case 'step:completed':
-				return this.onStepSettled(update, session, fromStepInputs(update.outputs));
+				return this.onStepSettled(update, session, {
+					status: 'success',
+					outputs: update.outputs && fromStepInputs(update.outputs),
+				});
 			case 'step:failed':
-				return this.onStepSettled(update, session, undefined);
+				return this.onStepSettled(update, session, { status: 'error', error: update.error });
 			case 'step:waiting':
 				return this.onStepWaiting(update, session);
 			case 'execution:completed':
@@ -99,8 +104,7 @@ export class EngineLifecycleEventPushRelay {
 		this.sendNodeExecuteBefore(executionId, trigger.nodeName, run, session);
 		this.sendNodeExecuteAfter(executionId, trigger.nodeName, run, session, {
 			executionTime: 0,
-			executionStatus: 'success',
-			outputs: trigger.outputs,
+			report: { status: 'success', outputs: trigger.outputs },
 		});
 	}
 
@@ -122,13 +126,10 @@ export class EngineLifecycleEventPushRelay {
 		this.sendNodeExecuteBefore(update.executionId, update.nodeName, run, session);
 	}
 
-	/**
-	 * @param outputs The step's output slots, or `undefined` when it failed.
-	 */
 	private onStepSettled(
 		update: StepUpdate,
 		session: EngineV2PushSession,
-		outputs: INodeExecutionData[][] | undefined,
+		outcome: StepOutcome,
 	): void {
 		const started = session.steps.get(update.stepId);
 		if (started?.settled) return;
@@ -136,8 +137,7 @@ export class EngineLifecycleEventPushRelay {
 		const run = this.runFor(update, session);
 		this.sendNodeExecuteAfter(update.executionId, update.nodeName, run, session, {
 			executionTime: this.executionTimeOf(update, run),
-			executionStatus: outputs ? 'success' : 'error',
-			outputs,
+			report: outcome,
 		});
 
 		run.settled = true;
@@ -154,8 +154,7 @@ export class EngineLifecycleEventPushRelay {
 		const run = this.runFor(update, session);
 		this.sendNodeExecuteAfter(update.executionId, update.nodeName, run, session, {
 			executionTime: this.executionTimeOf(update, run),
-			executionStatus: 'waiting',
-			outputs: undefined,
+			report: { status: 'waiting' },
 		});
 
 		run.waiting = true;
@@ -184,6 +183,7 @@ export class EngineLifecycleEventPushRelay {
 		this.push.send(
 			{ type: 'executionFinished', data: { executionId, workflowId, status } },
 			session.pushRef,
+			session.userId,
 		);
 
 		// Releasing here makes a redelivered terminal event a no-op.
@@ -208,6 +208,7 @@ export class EngineLifecycleEventPushRelay {
 				},
 			},
 			session.pushRef,
+			session.userId,
 		);
 	}
 
@@ -216,13 +217,10 @@ export class EngineLifecycleEventPushRelay {
 		nodeName: string,
 		run: EngineV2StepRun,
 		session: EngineV2PushSession,
-		result: {
-			executionTime: number;
-			executionStatus: Extract<ExecutionStatus, 'success' | 'error' | 'waiting'>;
-			outputs: INodeExecutionData[][] | undefined;
-		},
+		result: { executionTime: number; report: StepReport },
 	): void {
-		const { executionTime, executionStatus, outputs } = result;
+		const { executionTime, report } = result;
+		const outputs = report.status === 'success' ? report.outputs : undefined;
 		// Every output slot is `main`: no other connection type exists here.
 		const data = outputs ? { main: outputs } : undefined;
 
@@ -232,14 +230,14 @@ export class EngineLifecycleEventPushRelay {
 			// No input lineage to report, so `source` is empty. See CAT-4265.
 			source: [],
 			executionTime,
-			executionStatus,
+			executionStatus: report.status,
 			data,
-			...(executionStatus === 'error'
+			...(report.status === 'error'
 				? {
-						error: new WorkflowOperationError(
-							'Node execution failed',
-							undefined,
-							STEP_FAILURE_DESCRIPTION,
+						error: fromV1ErrorDetails(
+							report.error.name,
+							report.error.message,
+							report.error.details,
 						),
 					}
 				: {}),
@@ -260,9 +258,10 @@ export class EngineLifecycleEventPushRelay {
 				},
 			},
 			session.pushRef,
+			session.userId,
 		);
 
-		// A failed or waiting step has no data, so there's no second message to send.
+		// No data, no second message: the step failed, waits, or its outputs were withheld.
 		if (!data) return;
 
 		// TODO(CAT-2878 follow-up): redact this before sending; needs a resolved
@@ -276,6 +275,7 @@ export class EngineLifecycleEventPushRelay {
 				data: { executionId, nodeName, data: taskData, itemCountByConnectionType },
 			},
 			session.pushRef,
+			session.userId,
 			asBinary,
 		);
 	}

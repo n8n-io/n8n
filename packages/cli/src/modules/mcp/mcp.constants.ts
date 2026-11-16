@@ -37,6 +37,10 @@ export const MCP_DISCOVER_METHOD = 'server/discover';
 
 export { MCP_SKILLS_EXTENSION_FLAG } from '@n8n/api-types';
 
+export const MCP_EMPTY_PREFERENCES_NOTE_FLAG = '140_mcp_empty_preferences_note';
+export const MCP_EMPTY_PREFERENCES_NOTE_MAX_IMPRESSIONS = 3;
+export const MCP_EMPTY_PREFERENCES_NOTE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
 /**
  * Message constants
  */

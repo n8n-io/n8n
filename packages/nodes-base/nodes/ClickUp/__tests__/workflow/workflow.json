@@ -1,0 +1,2136 @@
+{
+	"name": "ClickUp request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "b0500000-0000-4000-8000-000000000000",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "checklist",
+				"operation": "create",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"task": "86a1b2c3d",
+				"name": "Launch"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "b0500000-0000-4000-8000-000000000001",
+			"name": "checklist create",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "checklist",
+				"operation": "delete",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"checklist": "b955c4dc-1a2b-4c3d-8e9f-0a1b2c3d4e5f"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"id": "b0500000-0000-4000-8000-000000000002",
+			"name": "checklist delete",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "checklist",
+				"operation": "update",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"checklist": "b955c4dc-1a2b-4c3d-8e9f-0a1b2c3d4e5f",
+				"updateFields": {
+					"name": "Release"
+				}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"id": "b0500000-0000-4000-8000-000000000003",
+			"name": "checklist update",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "checklistItem",
+				"operation": "create",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"checklist": "b955c4dc-1a2b-4c3d-8e9f-0a1b2c3d4e5f",
+				"name": "Write notes",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"id": "b0500000-0000-4000-8000-000000000004",
+			"name": "checklistItem create",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "checklistItem",
+				"operation": "delete",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"checklist": "b955c4dc-1a2b-4c3d-8e9f-0a1b2c3d4e5f",
+				"checklistItem": "21e08dc8-2b3c-4d5e-9f0a-1b2c3d4e5f60"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 800],
+			"id": "b0500000-0000-4000-8000-000000000005",
+			"name": "checklistItem delete",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "checklistItem",
+				"operation": "update",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"checklist": "b955c4dc-1a2b-4c3d-8e9f-0a1b2c3d4e5f",
+				"checklistItem": "21e08dc8-2b3c-4d5e-9f0a-1b2c3d4e5f60",
+				"updateFields": {
+					"name": "Review notes"
+				}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 1000],
+			"id": "b0500000-0000-4000-8000-000000000006",
+			"name": "checklistItem update",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "comment",
+				"operation": "create",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"commentOn": "task",
+				"id": "86a1b2c3d",
+				"commentText": "Looks good",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"id": "b0500000-0000-4000-8000-000000000007",
+			"name": "comment create",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "comment",
+				"operation": "delete",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"comment": "458315"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 1400],
+			"id": "b0500000-0000-4000-8000-000000000008",
+			"name": "comment delete",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "comment",
+				"operation": "getAll",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"commentsOn": "list",
+				"id": "901200000003",
+				"limit": 1
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 1600],
+			"id": "b0500000-0000-4000-8000-000000000009",
+			"name": "comment getAll",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "comment",
+				"operation": "update",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"comment": "458315",
+				"updateFields": {
+					"commentText": "Updated"
+				}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"id": "b0500000-0000-4000-8000-000000000010",
+			"name": "comment update",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "create",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"name": "Q3"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 2000],
+			"id": "b0500000-0000-4000-8000-000000000011",
+			"name": "folder create",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "delete",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 2200],
+			"id": "b0500000-0000-4000-8000-000000000012",
+			"name": "folder delete",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "get",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 2400],
+			"id": "b0500000-0000-4000-8000-000000000013",
+			"name": "folder get",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "getAll",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"limit": 1,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 2600],
+			"id": "b0500000-0000-4000-8000-000000000014",
+			"name": "folder getAll",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "folder",
+				"operation": "update",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"updateFields": {
+					"name": "Q4"
+				}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 2800],
+			"id": "b0500000-0000-4000-8000-000000000015",
+			"name": "folder update",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "goal",
+				"operation": "create",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"name": "Grow",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 3000],
+			"id": "b0500000-0000-4000-8000-000000000016",
+			"name": "goal create",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "goal",
+				"operation": "delete",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"goal": "e53a033c-900e-462d-a849-4a216b06d930"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 3200],
+			"id": "b0500000-0000-4000-8000-000000000017",
+			"name": "goal delete",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "goal",
+				"operation": "get",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"goal": "e53a033c-900e-462d-a849-4a216b06d930"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 3400],
+			"id": "b0500000-0000-4000-8000-000000000018",
+			"name": "goal get",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "goal",
+				"operation": "getAll",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"limit": 1
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 3600],
+			"id": "b0500000-0000-4000-8000-000000000019",
+			"name": "goal getAll",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "goal",
+				"operation": "update",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"goal": "e53a033c-900e-462d-a849-4a216b06d930",
+				"updateFields": {
+					"name": "Grow more"
+				}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 3800],
+			"id": "b0500000-0000-4000-8000-000000000020",
+			"name": "goal update",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "goalKeyResult",
+				"operation": "create",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"goal": "e53a033c-900e-462d-a849-4a216b06d930",
+				"name": "Signups",
+				"type": "boolean",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 4000],
+			"id": "b0500000-0000-4000-8000-000000000021",
+			"name": "goalKeyResult create",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "goalKeyResult",
+				"operation": "delete",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"keyResult": "947d46ed-8480-49bc-8c57-e569747efe93"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 4200],
+			"id": "b0500000-0000-4000-8000-000000000022",
+			"name": "goalKeyResult delete",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "goalKeyResult",
+				"operation": "update",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"keyResult": "947d46ed-8480-49bc-8c57-e569747efe93",
+				"updateFields": {
+					"name": "Active users"
+				}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 4400],
+			"id": "b0500000-0000-4000-8000-000000000023",
+			"name": "goalKeyResult update",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "create",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"name": "Fix login",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 4600],
+			"id": "b0500000-0000-4000-8000-000000000024",
+			"name": "task create",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "update",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"id": "86a1b2c3d",
+				"updateFields": {
+					"name": "Fix signup"
+				}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 4800],
+			"id": "b0500000-0000-4000-8000-000000000025",
+			"name": "task update",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "get",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"id": "86a1b2c3d"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 5000],
+			"id": "b0500000-0000-4000-8000-000000000026",
+			"name": "task get",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "getAll",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"returnAll": false,
+				"limit": 1,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 5200],
+			"id": "b0500000-0000-4000-8000-000000000027",
+			"name": "task getAll",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "member",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"id": "86a1b2c3d",
+				"returnAll": false,
+				"limit": 1
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 5400],
+			"id": "b0500000-0000-4000-8000-000000000028",
+			"name": "task member",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "setCustomField",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"task": "86a1b2c3d",
+				"field": "de761538-8ae0-42e8-91d9-f1a0cdfbd8b5",
+				"value": "42",
+				"jsonParse": false
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 5600],
+			"id": "b0500000-0000-4000-8000-000000000029",
+			"name": "task setCustomField",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "task",
+				"operation": "delete",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"id": "86a1b2c3d"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 5800],
+			"id": "b0500000-0000-4000-8000-000000000030",
+			"name": "task delete",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "taskTag",
+				"operation": "add",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"taskId": "86a1b2c3d",
+				"tagName": "urgent",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 6000],
+			"id": "b0500000-0000-4000-8000-000000000031",
+			"name": "taskTag add",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "taskTag",
+				"operation": "remove",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"taskId": "86a1b2c3d",
+				"tagName": "urgent",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 6200],
+			"id": "b0500000-0000-4000-8000-000000000032",
+			"name": "taskTag remove",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "taskList",
+				"operation": "add",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"taskId": "86a1b2c3d",
+				"listId": "901200000003"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 6400],
+			"id": "b0500000-0000-4000-8000-000000000033",
+			"name": "taskList add",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "taskList",
+				"operation": "remove",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"taskId": "86a1b2c3d",
+				"listId": "901200000003"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 6600],
+			"id": "b0500000-0000-4000-8000-000000000034",
+			"name": "taskList remove",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "taskDependency",
+				"operation": "create",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"task": "86a1b2c3d",
+				"dependsOnTask": "86a1b2c3e"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 6800],
+			"id": "b0500000-0000-4000-8000-000000000035",
+			"name": "taskDependency create",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "taskDependency",
+				"operation": "delete",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"task": "86a1b2c3d",
+				"dependsOnTask": "86a1b2c3e"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 7000],
+			"id": "b0500000-0000-4000-8000-000000000036",
+			"name": "taskDependency delete",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "timeEntry",
+				"operation": "update",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"timeEntry": "2004673344540003570",
+				"updateFields": {}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 7200],
+			"id": "b0500000-0000-4000-8000-000000000037",
+			"name": "timeEntry update",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "timeEntry",
+				"operation": "getAll",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"returnAll": true,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 7400],
+			"id": "b0500000-0000-4000-8000-000000000038",
+			"name": "timeEntry getAll",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "timeEntry",
+				"operation": "get",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"running": false,
+				"timeEntry": "2004673344540003570"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 7600],
+			"id": "b0500000-0000-4000-8000-000000000039",
+			"name": "timeEntry get",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "timeEntry",
+				"operation": "get",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"running": true
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 7800],
+			"id": "b0500000-0000-4000-8000-000000000040",
+			"name": "timeEntry get current",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "timeEntry",
+				"operation": "create",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"task": "86a1b2c3d",
+				"start": "2024-05-01T09:00:00",
+				"duration": 30,
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 8000],
+			"id": "b0500000-0000-4000-8000-000000000041",
+			"name": "timeEntry create",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "timeEntry",
+				"operation": "start",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"task": "86a1b2c3d",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 8200],
+			"id": "b0500000-0000-4000-8000-000000000042",
+			"name": "timeEntry start",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "timeEntry",
+				"operation": "stop",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 8400],
+			"id": "b0500000-0000-4000-8000-000000000043",
+			"name": "timeEntry stop",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "timeEntry",
+				"operation": "delete",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"timeEntry": "2004673344540003570"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 8600],
+			"id": "b0500000-0000-4000-8000-000000000044",
+			"name": "timeEntry delete",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "timeEntryTag",
+				"operation": "add",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"timeEntryIds": "2004673344540003570",
+				"tagsUi": {
+					"tagsValues": [
+						{
+							"name": "billable",
+							"tag_bg": "#000000",
+							"tag_fg": "#ffffff"
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 8800],
+			"id": "b0500000-0000-4000-8000-000000000045",
+			"name": "timeEntryTag add",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "timeEntryTag",
+				"operation": "getAll",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 9000],
+			"id": "b0500000-0000-4000-8000-000000000046",
+			"name": "timeEntryTag getAll",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "timeEntryTag",
+				"operation": "remove",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"timeEntryIds": "2004673344540003570",
+				"tagNames": ["{\"name\":\"billable\"}"]
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 9200],
+			"id": "b0500000-0000-4000-8000-000000000047",
+			"name": "timeEntryTag remove",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "spaceTag",
+				"operation": "create",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"name": "urgent"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 9400],
+			"id": "b0500000-0000-4000-8000-000000000048",
+			"name": "spaceTag create",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "spaceTag",
+				"operation": "delete",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"name": "urgent"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 9600],
+			"id": "b0500000-0000-4000-8000-000000000049",
+			"name": "spaceTag delete",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "spaceTag",
+				"operation": "getAll",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 9800],
+			"id": "b0500000-0000-4000-8000-000000000050",
+			"name": "spaceTag getAll",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "spaceTag",
+				"operation": "update",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"name": "urgent",
+				"newName": "blocker"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 10000],
+			"id": "b0500000-0000-4000-8000-000000000051",
+			"name": "spaceTag update",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "create",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"folderless": true,
+				"name": "Backlog",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 10200],
+			"id": "b0500000-0000-4000-8000-000000000052",
+			"name": "list create folderless",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "create",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"folderless": false,
+				"name": "Backlog",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 10400],
+			"id": "b0500000-0000-4000-8000-000000000053",
+			"name": "list create",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "member",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"id": "901200000003",
+				"returnAll": false,
+				"limit": 1
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 10600],
+			"id": "b0500000-0000-4000-8000-000000000054",
+			"name": "list member",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "customFields",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 10800],
+			"id": "b0500000-0000-4000-8000-000000000055",
+			"name": "list customFields",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "delete",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 11000],
+			"id": "b0500000-0000-4000-8000-000000000056",
+			"name": "list delete",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "get",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003"
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 11200],
+			"id": "b0500000-0000-4000-8000-000000000057",
+			"name": "list get",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "getAll",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"folderless": true,
+				"limit": 1,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 11400],
+			"id": "b0500000-0000-4000-8000-000000000058",
+			"name": "list getAll folderless",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "getAll",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"folderless": false,
+				"limit": 1,
+				"filters": {}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 11600],
+			"id": "b0500000-0000-4000-8000-000000000059",
+			"name": "list getAll",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"operation": "update",
+				"team": "9012345678",
+				"space": "90120000001",
+				"folder": "90120000002",
+				"list": "901200000003",
+				"updateFields": {
+					"name": "Sprint"
+				}
+			},
+			"type": "n8n-nodes-base.clickUp",
+			"typeVersion": 1,
+			"position": [300, 11800],
+			"id": "b0500000-0000-4000-8000-000000000060",
+			"name": "list update",
+			"credentials": {
+				"clickUpApi": {
+					"id": "credId",
+					"name": "ClickUp account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"checklist create": [
+			{
+				"json": {
+					"id": "b955c4dc-1a2b-4c3d-8e9f-0a1b2c3d4e5f"
+				}
+			}
+		],
+		"checklist delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"checklist update": [
+			{
+				"json": {
+					"id": "b955c4dc-1a2b-4c3d-8e9f-0a1b2c3d4e5f"
+				}
+			}
+		],
+		"checklistItem create": [
+			{
+				"json": {
+					"id": "b955c4dc-1a2b-4c3d-8e9f-0a1b2c3d4e5f"
+				}
+			}
+		],
+		"checklistItem delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"checklistItem update": [
+			{
+				"json": {
+					"id": "b955c4dc-1a2b-4c3d-8e9f-0a1b2c3d4e5f"
+				}
+			}
+		],
+		"comment create": [
+			{
+				"json": {
+					"id": "458315"
+				}
+			}
+		],
+		"comment delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"comment getAll": [
+			{
+				"json": {
+					"id": "458315"
+				}
+			}
+		],
+		"comment update": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"folder create": [
+			{
+				"json": {
+					"id": "90120000002"
+				}
+			}
+		],
+		"folder delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"folder get": [
+			{
+				"json": {
+					"id": "90120000002"
+				}
+			}
+		],
+		"folder getAll": [
+			{
+				"json": {
+					"id": "90120000002"
+				}
+			}
+		],
+		"folder update": [
+			{
+				"json": {
+					"id": "90120000002"
+				}
+			}
+		],
+		"goal create": [
+			{
+				"json": {
+					"id": "e53a033c-900e-462d-a849-4a216b06d930"
+				}
+			}
+		],
+		"goal delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"goal get": [
+			{
+				"json": {
+					"id": "e53a033c-900e-462d-a849-4a216b06d930"
+				}
+			}
+		],
+		"goal getAll": [
+			{
+				"json": {
+					"id": "e53a033c-900e-462d-a849-4a216b06d930"
+				}
+			}
+		],
+		"goal update": [
+			{
+				"json": {
+					"id": "e53a033c-900e-462d-a849-4a216b06d930"
+				}
+			}
+		],
+		"goalKeyResult create": [
+			{
+				"json": {
+					"id": "947d46ed-8480-49bc-8c57-e569747efe93"
+				}
+			}
+		],
+		"goalKeyResult delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"goalKeyResult update": [
+			{
+				"json": {
+					"id": "947d46ed-8480-49bc-8c57-e569747efe93"
+				}
+			}
+		],
+		"task create": [
+			{
+				"json": {
+					"id": "86a1b2c3d"
+				}
+			}
+		],
+		"task update": [
+			{
+				"json": {
+					"id": "86a1b2c3d"
+				}
+			}
+		],
+		"task get": [
+			{
+				"json": {
+					"id": "86a1b2c3d"
+				}
+			}
+		],
+		"task getAll": [
+			{
+				"json": {
+					"id": "86a1b2c3d"
+				}
+			}
+		],
+		"task member": [
+			{
+				"json": {
+					"id": 183
+				}
+			}
+		],
+		"task setCustomField": [
+			{
+				"json": {}
+			}
+		],
+		"task delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"taskTag add": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"taskTag remove": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"taskList add": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"taskList remove": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"taskDependency create": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"taskDependency delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"timeEntry update": [
+			{
+				"json": {
+					"id": "2004673344540003570"
+				}
+			}
+		],
+		"timeEntry getAll": [
+			{
+				"json": {
+					"id": "2004673344540003570"
+				}
+			}
+		],
+		"timeEntry get": [
+			{
+				"json": {
+					"id": "2004673344540003570"
+				}
+			}
+		],
+		"timeEntry get current": [
+			{
+				"json": {
+					"id": "2004673344540003570"
+				}
+			}
+		],
+		"timeEntry create": [
+			{
+				"json": {
+					"id": "2004673344540003570"
+				}
+			}
+		],
+		"timeEntry start": [
+			{
+				"json": {
+					"id": "2004673344540003570"
+				}
+			}
+		],
+		"timeEntry stop": [
+			{
+				"json": {
+					"id": "2004673344540003570"
+				}
+			}
+		],
+		"timeEntry delete": [
+			{
+				"json": {
+					"id": "2004673344540003570"
+				}
+			}
+		],
+		"timeEntryTag add": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"timeEntryTag getAll": [
+			{
+				"json": {
+					"name": "billable"
+				}
+			}
+		],
+		"timeEntryTag remove": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"spaceTag create": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"spaceTag delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"spaceTag getAll": [
+			{
+				"json": {
+					"name": "urgent"
+				}
+			}
+		],
+		"spaceTag update": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"list create folderless": [
+			{
+				"json": {
+					"id": "901200000003"
+				}
+			}
+		],
+		"list create": [
+			{
+				"json": {
+					"id": "901200000003"
+				}
+			}
+		],
+		"list member": [
+			{
+				"json": {
+					"id": 183
+				}
+			}
+		],
+		"list customFields": [
+			{
+				"json": {
+					"id": "de761538-8ae0-42e8-91d9-f1a0cdfbd8b5"
+				}
+			}
+		],
+		"list delete": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		],
+		"list get": [
+			{
+				"json": {
+					"id": "901200000003"
+				}
+			}
+		],
+		"list getAll folderless": [
+			{
+				"json": {
+					"id": "901200000003"
+				}
+			}
+		],
+		"list getAll": [
+			{
+				"json": {
+					"id": "901200000003"
+				}
+			}
+		],
+		"list update": [
+			{
+				"json": {
+					"id": "901200000003"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "checklist create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "checklist delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "checklist update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "checklistItem create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "checklistItem delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "checklistItem update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "comment create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "comment delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "comment getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "comment update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "folder create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "folder delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "folder get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "folder getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "folder update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "goal create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "goal delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "goal get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "goal getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "goal update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "goalKeyResult create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "goalKeyResult delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "goalKeyResult update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "task create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "task update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "task get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "task getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "task member",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "task setCustomField",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "task delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "taskTag add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "taskTag remove",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "taskList add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "taskList remove",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "taskDependency create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "taskDependency delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "timeEntry update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "timeEntry getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "timeEntry get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "timeEntry get current",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "timeEntry create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "timeEntry start",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "timeEntry stop",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "timeEntry delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "timeEntryTag add",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "timeEntryTag getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "timeEntryTag remove",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "spaceTag create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "spaceTag delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "spaceTag getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "spaceTag update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "list create folderless",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "list create",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "list member",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "list customFields",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "list delete",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "list get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "list getAll folderless",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "list getAll",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "list update",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

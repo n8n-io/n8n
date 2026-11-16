@@ -19,7 +19,7 @@ export const metricsOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '={{"/api/metric/" + $parameter.metricId}}',
+						url: '=/api/metric/{{ toPathSegment($parameter.metricId) }}',
 						returnFullResponse: true,
 					},
 				},

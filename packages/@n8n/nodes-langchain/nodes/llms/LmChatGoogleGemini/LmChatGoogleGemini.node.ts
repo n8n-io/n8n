@@ -1,7 +1,8 @@
 import type { SafetySetting } from '@google/generative-ai';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { isRecord } from '@n8n/utils/is-record';
-import { NodeConnectionTypes, OperationalError, UserError } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import type {
 	NodeError,
 	INodeType,
@@ -318,6 +319,8 @@ export class LmChatGoogleGemini implements INodeType {
 			temperature: options.temperature,
 			maxOutputTokens: options.maxOutputTokens,
 			safetySettings,
+			// LangChain defaults to 6 retries, so a failing connection surfaced only after ~3 minutes
+			maxRetries: 2,
 			callbacks: [new N8nLlmTracing(this, { errorDescriptionMapper })],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});

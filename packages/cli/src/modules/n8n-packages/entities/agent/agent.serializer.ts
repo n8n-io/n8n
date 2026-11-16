@@ -21,10 +21,14 @@ type AgentPackageKeyHandling = {
 	integrations: 'transform';
 	tools: 'transform';
 	skills: 'exclude';
+	// Agent tags are not part of packages yet; they travel with the internal
+	// REST API only for now.
+	tags: 'exclude';
 	availableInMCP: 'copy';
 	isArchived: 'copy';
 	project: 'exclude';
 	projectId: 'exclude';
+	parentFolderId: 'exclude';
 	scope: 'exclude';
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
@@ -34,6 +38,8 @@ type AgentPackageKeyHandling = {
 	revision: 'exclude';
 	publicationRevision: 'exclude';
 	setupCompletedAt: 'exclude';
+	identityId: 'exclude';
+	identity: 'exclude';
 };
 
 const serializePayload = definePackageSerializationPayload<

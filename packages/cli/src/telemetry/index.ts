@@ -27,10 +27,14 @@ import type {
 } from '@/interfaces';
 import { License } from '@/license';
 import type { PublicApiClient } from '@/public-api/public-api-client';
+import type { PublicApiResult } from '@/public-api/types';
 
 import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';
 import { summarizeFootprint } from './cluster-footprint';
+
+/** A full queue of 500 events takes under 2 s on a healthy server. */
+const SHUTDOWN_FLUSH_TIMEOUT_MS = 10_000;
 
 type ExecutionTrackDataKey =
 	| 'manual_error'
@@ -57,18 +61,30 @@ interface IExecutionsBuffer {
 
 interface IApiInvocationProperties {
 	user_id: string;
-	path: string;
-	method: string;
+	route: string;
+	result: PublicApiResult;
 	api_version: string;
 	user_agent?: string;
 	client: PublicApiClient;
+}
+
+/** One row for each route, result and caller. A flat list is easier to query in Hex. */
+interface IApiRouteCalls {
+	route: string;
+	result: PublicApiResult;
+	caller: PublicApiClient;
+	calls: number;
 }
 
 interface IApiInvocationsBufferEntry {
 	total_calls: number;
 	first: Date;
 	endpoints: Record<string, number>;
-	endpoints_by_client: { editor_ui: Record<string, number> };
+	endpoints_by_client: {
+		editor_ui: Record<string, number>;
+		n8n_node: Record<string, number>;
+	};
+	routes: IApiRouteCalls[];
 	user_agents: Record<string, number>;
 	clients: Record<PublicApiClient, number>;
 }
@@ -278,12 +294,13 @@ export class Telemetry {
 		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
 			const entry = this.apiInvocationsBuffer[userId];
 			if (entry.total_calls > 0) {
-				this.track('Public API usage', {
+				this.track(TELEMETRY_EVENT.PUBLIC_API.PUBLIC_API_USAGE, {
 					user_id: userId,
 					total_calls: entry.total_calls,
-					first: entry.first,
+					first: entry.first.toISOString(),
 					endpoints: JSON.stringify(entry.endpoints),
 					endpoints_by_client: JSON.stringify(entry.endpoints_by_client),
+					routes: JSON.stringify(entry.routes),
 					user_agents: JSON.stringify(entry.user_agents),
 					clients: JSON.stringify(entry.clients),
 				});
@@ -557,26 +574,35 @@ export class Telemetry {
 	trackApiInvocation(properties: IApiInvocationProperties) {
 		if (!this.rudderStack) return;
 
-		const { user_id, path, method, user_agent, client } = properties;
+		const { user_id, route, result, user_agent, client } = properties;
 
 		const entry = (this.apiInvocationsBuffer[user_id] ??= {
 			total_calls: 0,
 			first: new Date(),
 			endpoints: {},
-			endpoints_by_client: { editor_ui: {} },
+			endpoints_by_client: { editor_ui: {}, n8n_node: {} },
+			routes: [],
 			user_agents: {},
-			clients: { editor_ui: 0, other: 0 },
+			clients: { editor_ui: 0, n8n_node: 0, other: 0 },
 		});
 		entry.total_calls++;
 		entry.clients[client]++;
 
-		const endpointKey = `${method} ${path}`;
-		entry.endpoints[endpointKey] = (entry.endpoints[endpointKey] ?? 0) + 1;
+		entry.endpoints[route] = (entry.endpoints[route] ?? 0) + 1;
 
-		// Only editor UI calls are counted per endpoint for now to help keep event size down.
-		if (client === 'editor_ui') {
-			const editorUiEndpoints = entry.endpoints_by_client.editor_ui;
-			editorUiEndpoints[endpointKey] = (editorUiEndpoints[endpointKey] ?? 0) + 1;
+		// other is left out here. The routes list already counts it.
+		if (client !== 'other') {
+			const clientEndpoints = entry.endpoints_by_client[client];
+			clientEndpoints[route] = (clientEndpoints[route] ?? 0) + 1;
+		}
+
+		const existingRow = entry.routes.find(
+			(row) => row.route === route && row.result === result && row.caller === client,
+		);
+		if (existingRow) {
+			existingRow.calls++;
+		} else {
+			entry.routes.push({ route, result, caller: client, calls: 1 });
 		}
 
 		if (user_agent) {
@@ -591,7 +617,27 @@ export class Telemetry {
 
 	@OnShutdown(LOWEST_SHUTDOWN_PRIORITY)
 	async stopTracking(): Promise<void> {
-		await Promise.all([this.postHog.stop(), this.rudderStack?.flush()]);
+		this.flushBuffers();
+		await Promise.all([this.postHog.stop(), this.flushQueueBeforeExit()]);
+	}
+
+	/**
+	 * flush() sends every queued batch and retries each one, so a telemetry server
+	 * that does not answer can hold it past the graceful shutdown timeout. Give up
+	 * after a fixed time; the events are lost either way.
+	 */
+	private async flushQueueBeforeExit(): Promise<void> {
+		if (!this.rudderStack) return;
+
+		let timer: NodeJS.Timeout | undefined;
+		const deadline = new Promise<void>((resolve) => {
+			timer = setTimeout(resolve, SHUTDOWN_FLUSH_TIMEOUT_MS);
+		});
+		try {
+			await Promise.race([this.rudderStack.flush(), deadline]);
+		} finally {
+			clearTimeout(timer);
+		}
 	}
 
 	// Sets instance group properties and attaches user to instance group.

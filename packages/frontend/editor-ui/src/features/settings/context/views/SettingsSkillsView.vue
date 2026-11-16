@@ -60,10 +60,14 @@ import type {
 	AgentSkillModalScopeOption,
 } from '@/features/agents/components/AgentSkillModal.vue';
 
+import SkillSourceMoveDialog from '../components/SkillSourceMoveDialog.vue';
+import SkillSourceUpdatesDialog from '../components/SkillSourceUpdatesDialog.vue';
 import SkillSourceConnectDialog, {
 	type SkillSourceConnected,
 } from '../components/SkillSourceConnectDialog.vue';
 import SkillsTable from '../components/SkillsTable.vue';
+import SkillSourceDeleteDialog from '../components/SkillSourceDeleteDialog.vue';
+import SkillSourceCredentialDialog from '../components/SkillSourceCredentialDialog.vue';
 import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
 import { CONTEXT_DEFAULT_SORT_BY, SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
 import {
@@ -113,6 +117,9 @@ const { scopeDisplay } = useSkillScopeDisplay();
 const { failedSkillReason, reasonText } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const connectOpen = ref(false);
+const movingSource = ref<SkillSourceListItem | null>(null);
+const sourceToDelete = ref<SkillSourceListItem>();
+const sourceToReplaceCredential = ref<SkillSourceListItem>();
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
@@ -213,6 +220,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${personalProject.id}`,
 			label: i18n.baseText('settings.context.skills.scope.personalProject'),
 			icon: 'user',
+			projectIcon: personalProject.icon,
 			target: { projectId: personalProject.id },
 		});
 	}
@@ -222,6 +230,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
 			label: project.name ?? project.id,
 			icon: 'layers',
+			projectIcon: project.icon,
 			target: { projectId: project.id },
 		});
 	}
@@ -604,7 +613,10 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions')
 		// The current scope is listed even when the user could not create a skill there.
 		const options = scopeOptions.value.some((option) => option.value === currentValue)
 			? scopeOptions.value
-			: [{ value: currentValue, ...scopeDisplay(detail) }, ...scopeOptions.value];
+			: [
+					{ value: currentValue, ...scopeDisplay(detail), projectIcon: detail.projectIcon },
+					...scopeOptions.value,
+				];
 		// A restore keeps the modal open, so the next save must send the hash it produced.
 		let baseSkillHash = detail.skillHash;
 		openModal({
@@ -617,6 +629,8 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions')
 				: {}),
 			scopeOptions: options,
 			initialScope: currentValue,
+			projectType: detail.projectType,
+			projectIcon: detail.projectIcon,
 			...(mcpSkillsEnabled.value ? { availableToMCP: detail.availableToMCP } : {}),
 			...scopeLock(detail),
 			usedBy: detail.usedBy,
@@ -784,8 +798,25 @@ const collapsedSourceIds = useLocalStorage<string[]>(
 
 /** The sources with a check that runs, so their rows show progress. */
 const checkingSourceIds = ref<string[]>([]);
+const reviewSource = ref<SkillSourceListItem | null>(null);
+
+async function onSourceUpdatesChanged() {
+	await Promise.all([load(), loadSources()]);
+}
 
 const tableSources = computed(() => (skillSyncEnabled.value ? skillsStore.sources : undefined));
+
+async function onSourceDeleted() {
+	sourceToDelete.value = undefined;
+	void loadCreators();
+	await loadSources();
+	await load();
+}
+
+async function onSourceCredentialReplaced() {
+	sourceToReplaceCredential.value = undefined;
+	await loadSources();
+}
 
 async function loadSources() {
 	if (!skillSyncEnabled.value) return;
@@ -818,7 +849,14 @@ async function onCheckSource(source: SkillSourceListItem) {
 		result = await skillsStore.checkSource(source.id);
 	} catch (error) {
 		const reason = error instanceof ResponseError ? error.meta?.reason : undefined;
-		// The user cannot pick another credential here, so that reason gets its own text.
+		if (reason === 'rate_limited') {
+			showMessage({
+				title: i18n.baseText('settings.context.skills.sources.health.delayed'),
+				message: i18n.baseText('settings.context.skills.sources.health.delayed.description'),
+				type: 'info',
+			});
+			return;
+		}
 		const text =
 			reason === 'credential_missing'
 				? i18n.baseText('settings.context.skills.checkForUpdates.error.credentialMissing')
@@ -852,6 +890,15 @@ async function onCheckSource(source: SkillSourceListItem) {
 					}),
 		type: 'success',
 	});
+}
+
+async function onSourceMoved(sourceId: string) {
+	movingSource.value = null;
+	showMessage({
+		title: i18n.baseText('settings.context.skills.moveSource.success'),
+		type: 'success',
+	});
+	await onOpenSource(sourceId);
 }
 
 async function onOpenSource(sourceId: string) {
@@ -1046,6 +1093,10 @@ onMounted(async () => {
 			@download="onDownload"
 			@toggle-source="onToggleSource"
 			@check-source="onCheckSource"
+			@move-source="movingSource = $event"
+			@review-source="reviewSource = $event"
+			@delete-source="sourceToDelete = $event"
+			@replace-credential="sourceToReplaceCredential = $event"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
@@ -1085,12 +1136,39 @@ onMounted(async () => {
 			</template>
 		</SkillsTable>
 
+		<SkillSourceMoveDialog
+			v-if="skillSyncEnabled && movingSource"
+			:open="true"
+			:source="movingSource"
+			:scope-options="scopeOptions"
+			@update:open="!$event && (movingSource = null)"
+			@moved="onSourceMoved"
+		/>
+		<SkillSourceUpdatesDialog
+			v-if="skillSyncEnabled && reviewSource"
+			:source="reviewSource"
+			@close="reviewSource = null"
+			@changed="onSourceUpdatesChanged"
+		/>
 		<SkillSourceConnectDialog
 			v-if="skillSyncEnabled"
 			v-model:open="connectOpen"
 			:scope-options="scopeOptions"
 			@connected="onSourceConnected"
 			@open-source="onOpenSource"
+		/>
+		<SkillSourceDeleteDialog
+			v-if="skillSyncEnabled && sourceToDelete"
+			:source="sourceToDelete"
+			@close="sourceToDelete = undefined"
+			@deleted="onSourceDeleted"
+		/>
+		<SkillSourceCredentialDialog
+			v-if="skillSyncEnabled && sourceToReplaceCredential"
+			:key="sourceToReplaceCredential.id"
+			:source="sourceToReplaceCredential"
+			@close="sourceToReplaceCredential = undefined"
+			@replaced="onSourceCredentialReplaced"
 		/>
 		<input
 			ref="skillFolderInput"

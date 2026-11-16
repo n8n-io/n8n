@@ -50,12 +50,14 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ProjectService } from '@/services/project.service.ee';
+import type { Telemetry } from '@/telemetry';
 
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import type { DurableEventLog } from '../event-bus/durable-event-log';
@@ -102,6 +104,7 @@ describe('InstanceAiController', () => {
 	const onboarding = mock<InstanceAiOnboardingService>();
 	const threadTabsService = mock<InstanceAiThreadTabsService>();
 	const globalConfig = mock<GlobalConfig>({ instanceAi: { evalInstance: false } });
+	const telemetry = mock<Telemetry>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
@@ -118,6 +121,7 @@ describe('InstanceAiController', () => {
 		preferenceCardService,
 		globalConfig,
 		threadTabsService,
+		telemetry,
 	);
 
 	const req = mock<AuthenticatedRequest>({ user: { id: USER_ID } });
@@ -162,7 +166,6 @@ describe('InstanceAiController', () => {
 				payload.context,
 				payload.timeZone,
 				payload.pushRef,
-				payload.mode,
 				payload.promptVersion,
 				payload.browserUseAvailable,
 				payload.threadArtifacts,
@@ -195,7 +198,6 @@ describe('InstanceAiController', () => {
 				payloadWithArtifacts.context,
 				payloadWithArtifacts.timeZone,
 				payloadWithArtifacts.pushRef,
-				payloadWithArtifacts.mode,
 				payloadWithArtifacts.promptVersion,
 				payloadWithArtifacts.browserUseAvailable,
 				payloadWithArtifacts.threadArtifacts,
@@ -287,7 +289,6 @@ describe('InstanceAiController', () => {
 				payloadWithPushRef.context,
 				payloadWithPushRef.timeZone,
 				'iframe-push-ref-123',
-				payloadWithPushRef.mode,
 				payloadWithPushRef.promptVersion,
 				payloadWithPushRef.browserUseAvailable,
 				payloadWithPushRef.threadArtifacts,
@@ -295,34 +296,32 @@ describe('InstanceAiController', () => {
 			);
 		});
 
-		it('should forward the build mode and prompt version to startRun', async () => {
-			const payloadWithMode = mock<InstanceAiSendMessageRequest>({
+		it('should forward the prompt version to startRun', async () => {
+			const payloadWithVersion = mock<InstanceAiSendMessageRequest>({
 				observerThresholdTokens: undefined,
 				message: 'build me a workflow',
 				timeZone: 'UTC',
 				attachments: undefined,
-				mode: 'progressive',
-				promptVersion: 'progressive@1',
+				promptVersion: 'concise@1',
 			});
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			instanceAiService.startRun.mockReturnValue('run-5');
 
-			await controller.chat(req, res, THREAD_ID, payloadWithMode);
+			await controller.chat(req, res, THREAD_ID, payloadWithVersion);
 
 			expect(instanceAiService.startRun).toHaveBeenCalledWith(
 				req.user,
 				THREAD_ID,
-				payloadWithMode.message,
-				payloadWithMode.attachments,
-				payloadWithMode.context,
-				payloadWithMode.timeZone,
-				payloadWithMode.pushRef,
-				'progressive',
-				'progressive@1',
-				payloadWithMode.browserUseAvailable,
-				payloadWithMode.threadArtifacts,
-				payloadWithMode.observerThresholdTokens,
+				payloadWithVersion.message,
+				payloadWithVersion.attachments,
+				payloadWithVersion.context,
+				payloadWithVersion.timeZone,
+				payloadWithVersion.pushRef,
+				'concise@1',
+				payloadWithVersion.browserUseAvailable,
+				payloadWithVersion.threadArtifacts,
+				payloadWithVersion.observerThresholdTokens,
 			);
 		});
 
@@ -356,7 +355,6 @@ describe('InstanceAiController', () => {
 				payloadWithContext.context,
 				payloadWithContext.timeZone,
 				payloadWithContext.pushRef,
-				payloadWithContext.mode,
 				payloadWithContext.promptVersion,
 				payloadWithContext.browserUseAvailable,
 				payloadWithContext.threadArtifacts,
@@ -462,7 +460,6 @@ describe('InstanceAiController', () => {
 				nodesPayload.context,
 				nodesPayload.timeZone,
 				nodesPayload.pushRef,
-				nodesPayload.mode,
 				nodesPayload.promptVersion,
 				nodesPayload.browserUseAvailable,
 				nodesPayload.threadArtifacts,
@@ -1013,13 +1010,17 @@ describe('InstanceAiController', () => {
 			expect(scopeOf('cancel')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 		});
 
-		it('should cancel the run', async () => {
+		it('should cancel the run and track the stop', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 
 			const result = await controller.cancel(req, res, THREAD_ID);
 
 			expect(result).toEqual({ ok: true });
 			expect(instanceAiService.routeCancelRun).toHaveBeenCalledWith(THREAD_ID);
+			expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.INSTANCE_AI.USER_STOPPED_RUN, {
+				user_id: USER_ID,
+				thread_id: THREAD_ID,
+			});
 		});
 
 		it('should throw ForbiddenError for other user thread', async () => {
@@ -1631,6 +1632,7 @@ describe('InstanceAiController', () => {
 			const query = mock<InstanceAiThreadMessagesQuery>({
 				limit: 50,
 				page: 0,
+				cursor: 'cursor-1',
 				raw: undefined,
 			});
 
@@ -1640,7 +1642,7 @@ describe('InstanceAiController', () => {
 			expect(instanceAiService.replayUndeliveredTerminalOutcomes).toHaveBeenCalledWith(THREAD_ID);
 			expect(memoryService.getRichMessages).toHaveBeenCalledWith(USER_ID, THREAD_ID, {
 				limit: 50,
-				page: 0,
+				cursor: 'cursor-1',
 			});
 		});
 
@@ -1741,6 +1743,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<InstanceAiPreferenceCardService>(),
 		mock<GlobalConfig>(),
 		mock<InstanceAiThreadTabsService>(),
+		mock<Telemetry>(),
 	);
 
 	beforeEach(() => {

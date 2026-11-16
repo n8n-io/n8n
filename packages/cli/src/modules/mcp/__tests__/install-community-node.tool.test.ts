@@ -1,4 +1,5 @@
-import { User } from '@n8n/db';
+import { type OperationContext, User } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import * as permissions from '@n8n/permissions';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -65,13 +66,14 @@ describe('install_community_node MCP tool', () => {
 		lifecycleService.install.mockResolvedValue(installedPackage());
 	});
 
-	const createTool = () =>
+	const createTool = (ctx?: OperationContext) =>
 		createInstallCommunityNodeTool(
 			user,
 			communityNodeTypesService,
 			lifecycleService,
 			nodeTypes,
 			telemetry,
+			ctx,
 		);
 
 	/** Success payload. Fails loudly if the tool returned an execution error. */
@@ -98,12 +100,22 @@ describe('install_community_node MCP tool', () => {
 		test('installs the package the node type belongs to', async () => {
 			const structured = await call();
 
-			expect(lifecycleService.install).toHaveBeenCalledWith({ name: PACKAGE }, user, 'mcp');
+			expect(lifecycleService.install).toHaveBeenCalledWith({ name: PACKAGE }, user, 'mcp', {});
 			expect(structured).toMatchObject({
 				installed: true,
 				packageName: PACKAGE,
 				version: '1.4.2',
 			});
+		});
+
+		test('passes the operation context to install()', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+
+			await createTool(ctx).handler({ nodeType: NODE_TYPE }, mock());
+
+			expect(lifecycleService.install.mock.calls[0][3]).toBe(ctx);
 		});
 
 		test('returns the node types the package registered', async () => {
@@ -319,7 +331,12 @@ describe('install_community_node MCP tool', () => {
 
 			await call(DOTTED_NODE);
 
-			expect(lifecycleService.install).toHaveBeenCalledWith({ name: DOTTED_PACKAGE }, user, 'mcp');
+			expect(lifecycleService.install).toHaveBeenCalledWith(
+				{ name: DOTTED_PACKAGE },
+				user,
+				'mcp',
+				{},
+			);
 		});
 	});
 

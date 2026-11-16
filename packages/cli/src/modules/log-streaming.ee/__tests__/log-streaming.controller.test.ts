@@ -152,6 +152,7 @@ describe('EventBusController', () => {
 				'cred-1',
 				req.user,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
 			expect(destinationService.addDestination).not.toHaveBeenCalled();
 		});
@@ -178,6 +179,7 @@ describe('EventBusController', () => {
 				'cred-1',
 				req.user,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
 			expect(destinationService.addDestination).toHaveBeenCalled();
 		});
@@ -236,6 +238,7 @@ describe('EventBusController', () => {
 				'cred-1',
 				req.user,
 				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
 			);
 		});
 	});
