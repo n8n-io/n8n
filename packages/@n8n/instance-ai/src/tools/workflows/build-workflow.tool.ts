@@ -7,7 +7,7 @@ import {
 import { Tool, type RuntimeSkillLoader } from '@n8n/agents';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { SDK_IMPORTABLE_FUNCTIONS, type WorkflowJSON } from '@n8n/workflow-sdk';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -1536,7 +1536,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							declaredOutputFixtures: compiled.declaredOutputFixtures,
 							workflowId: saved.id,
 							outputSchemaLookup: context.outputSchemaLookup,
-							fallbackModelConfig: context.modelId,
+							model: context.modelId,
+							utilityModel: context.utilityModelId,
 							modelFetch: context.modelFetch,
 							logger: context.logger,
 						});

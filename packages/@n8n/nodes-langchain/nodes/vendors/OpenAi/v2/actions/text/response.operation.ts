@@ -12,6 +12,7 @@ import {
 	accumulateTokenUsage,
 	jsonParse,
 	NodeOperationError,
+	requestPath,
 	updateDisplayOptions,
 } from 'n8n-workflow';
 import { MODELS_NOT_SUPPORT_FUNCTION_CALLS } from '../../../helpers/constants';
@@ -619,7 +620,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools,
 		builtInTools,
 	});
-	let response = (await apiRequest.call(this, 'POST', '/responses', {
+	let response = (await apiRequest.call(this, 'POST', requestPath`/responses`, {
 		body,
 	})) as ChatResponse;
 
@@ -628,7 +629,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		response = await pollUntilAvailable(
 			this,
 			async () => {
-				return (await apiRequest.call(this, 'GET', `/responses/${response.id}`)) as ChatResponse;
+				return (await apiRequest.call(
+					this,
+					'GET',
+					requestPath`/responses/${response.id}`,
+				)) as ChatResponse;
 			},
 			(response) => {
 				if (response.error) {
@@ -709,7 +714,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			}
 		}
 
-		response = (await apiRequest.call(this, 'POST', '/responses', {
+		response = (await apiRequest.call(this, 'POST', requestPath`/responses`, {
 			body,
 		})) as ChatResponse;
 

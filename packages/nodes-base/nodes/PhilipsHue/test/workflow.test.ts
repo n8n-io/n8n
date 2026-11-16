@@ -35,6 +35,9 @@ describe('PhilipsHue', () => {
 			mock.get('/api/pAtwdCV8NZId25Gk/lights').reply(200, getLightsResponse);
 			mock.put('/api/pAtwdCV8NZId25Gk/lights/1/state').reply(200, updateLightResponse);
 			mock.delete('/api/pAtwdCV8NZId25Gk/lights/1').reply(200, deleteLightResponse);
+			mock
+				.get('/api/pAtwdCV8NZId25Gk/lights/1')
+				.reply(200, { name: 'Hue color lamp 1', type: 'Extended color light' });
 		});
 
 		new NodeTestHarness().setupTests({ credentials });

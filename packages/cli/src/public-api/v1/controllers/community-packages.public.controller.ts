@@ -66,6 +66,7 @@ export class CommunityPackagesPublicController {
 			{ name: body.name, version: body.version },
 			req.user,
 			'publicApi',
+			req.ctx,
 		);
 		const policyRestrictions =
 			await this.communityPackagesLifecycleService.describePolicyRestrictions(installedPackage);
@@ -91,6 +92,7 @@ export class CommunityPackagesPublicController {
 			{ name, version: body.version },
 			req.user,
 			'notFound',
+			req.ctx,
 		);
 
 		return toCommunityPackagePublic(updated);
@@ -109,6 +111,11 @@ export class CommunityPackagesPublicController {
 		_res: Response,
 		@Param('name', communityPackageNameParamSchema) packageName: string,
 	): Promise<void> {
-		await this.communityPackagesLifecycleService.uninstall(packageName, req.user, 'notFound');
+		await this.communityPackagesLifecycleService.uninstall(
+			packageName,
+			req.user,
+			'notFound',
+			req.ctx,
+		);
 	}
 }

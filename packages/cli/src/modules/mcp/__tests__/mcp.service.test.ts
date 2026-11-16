@@ -37,13 +37,17 @@ import {
 	type UserRepository,
 	// EOF Experiment cleanup
 	ProjectRepository,
+	type OperationContext,
 	SharedWorkflowRepository,
 	User,
 } from '@n8n/db';
+import { Container } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
 import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
+import type z from 'zod';
 
 import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 
@@ -80,7 +84,13 @@ import {
 	MCP_SKILLS_EXTENSION_FLAG,
 } from '../mcp.constants';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
-import type { McpAuthContext, McpClientInfo, ToolDefinition } from '../mcp.types';
+import type {
+	McpAuthContext,
+	McpClientInfo,
+	ToolDefinition,
+	ToolHandlerResult,
+} from '../mcp.types';
+import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
 
 // Keep the real mcpAppToolMeta and constants; only the preview-app
 // registration is spied on so its wiring options can be asserted.
@@ -171,6 +181,7 @@ describe('McpService', () => {
 			mockInstance(McpConfig),
 			mockInstance(ExecutionRedactionServiceProxy),
 			instanceWriteAccess,
+			mockInstance(McpPreferencesNoteService),
 		);
 	});
 
@@ -230,6 +241,7 @@ describe('McpService', () => {
 				mockInstance(McpConfig),
 				mockInstance(ExecutionRedactionServiceProxy),
 				mockInstance(InstanceWriteAccessService),
+				mockInstance(McpPreferencesNoteService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -443,6 +455,7 @@ describe('McpService', () => {
 				mockInstance(McpConfig),
 				mockInstance(ExecutionRedactionServiceProxy),
 				mockInstance(InstanceWriteAccessService),
+				mockInstance(McpPreferencesNoteService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
@@ -451,6 +464,7 @@ describe('McpService', () => {
 			const postHogClient = mockInstance(PostHogClient);
 			postHogClient.getFeatureFlags.mockResolvedValue({
 				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
+				'140_mcp_empty_preferences_note': 'variant',
 			});
 			const service = buildResolutionService({ postHogClient });
 
@@ -459,10 +473,26 @@ describe('McpService', () => {
 				mcpApps: { enabled: true, variant: 'variant' },
 				instanceContextEnabled: false,
 				skillsExtensionEnabled: false,
+				preferencesNoteVariant: 'variant',
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
 		});
+
+		it.each([false, true, undefined])(
+			'labels a %s preferences note flag as unassigned',
+			async (flagValue) => {
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags.mockResolvedValue(
+					flagValue === undefined ? {} : { '140_mcp_empty_preferences_note': flagValue },
+				);
+				const service = buildResolutionService({ postHogClient });
+
+				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
+					preferencesNoteVariant: 'unassigned',
+				});
+			},
+		);
 
 		it.each([true, false])(
 			'uses the same instance context answer for two users: %s',
@@ -602,6 +632,7 @@ describe('McpService', () => {
 				mcpApps: { enabled: true, variant: 'env_override' },
 				instanceContextEnabled: false,
 				skillsExtensionEnabled: false,
+				preferencesNoteVariant: 'unassigned',
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
@@ -621,6 +652,7 @@ describe('McpService', () => {
 				mcpApps: { enabled: true, variant: 'env_override' },
 				instanceContextEnabled: true,
 				skillsExtensionEnabled: false,
+				preferencesNoteVariant: 'unassigned',
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
@@ -885,9 +917,13 @@ describe('McpService', () => {
 			name: string,
 			impl: () => Promise<unknown>,
 			args: Record<string, unknown> = {},
-			{ clientInfo, auth }: { clientInfo?: McpClientInfo; auth?: McpAuthContext } = {},
+			{
+				clientInfo,
+				auth,
+				ctx,
+			}: { clientInfo?: McpClientInfo; auth?: McpAuthContext; ctx?: OperationContext } = {},
 		) => {
-			const registerTool = mcpService.createToolRegistrar(server, mcpUser(), clientInfo, auth);
+			const registerTool = mcpService.createToolRegistrar(server, mcpUser(), clientInfo, auth, ctx);
 			const registered = registerTool({
 				name,
 				config: { description: 'test' },
@@ -1374,7 +1410,90 @@ describe('McpService', () => {
 
 			await mcpService.getServer(user, mcpFeatureFlags(), { name: 'Cursor' }, auth);
 
-			expect(registrarSpy).toHaveBeenCalledWith(expect.anything(), user, { name: 'Cursor' }, auth);
+			expect(registrarSpy).toHaveBeenCalledWith(
+				expect.anything(),
+				user,
+				{ name: 'Cursor' },
+				auth,
+				{},
+			);
+		});
+
+		describe('login id of the caller', () => {
+			const loginCtx = (): OperationContext => ({
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			});
+
+			it('should pass the operation context to the registrar', async () => {
+				const registrarSpy = vi.spyOn(mcpService, 'createToolRegistrar');
+				const ctx = loginCtx();
+
+				await mcpService.getServer(mcpUser(), mcpFeatureFlags(), undefined, undefined, ctx);
+
+				expect(registrarSpy.mock.calls[0][4]).toBe(ctx);
+			});
+
+			it('should pass the operation context to the tools the server registers', async () => {
+				const tools = new Map<string, ToolDefinition<z.ZodRawShape, ToolHandlerResult>>();
+				const createRegistrar = mcpService.createToolRegistrar.bind(mcpService);
+				vi.spyOn(mcpService, 'createToolRegistrar').mockImplementation((...args) => {
+					const register = createRegistrar(...args);
+					return (tool) => {
+						tools.set(tool.name, tool);
+						return register(tool);
+					};
+				});
+				const ctx = loginCtx();
+				const credentialsService = Container.get(CredentialsService);
+
+				await mcpService.getServer(
+					mcpUser(),
+					mcpFeatureFlags({ credentialDescriptionsEnabled: true }),
+					undefined,
+					undefined,
+					ctx,
+				);
+				await tools
+					.get('update_credential_description')
+					?.handler({ credentialId: 'cred-1', description: 'Reporting' });
+
+				expect(vi.mocked(credentialsService.updateDescription).mock.calls[0][3]).toBe(ctx);
+			});
+
+			it.each([
+				['succeeds', async () => ({ content: [{ type: 'text' as const, text: 'ok' }] })],
+				[
+					'throws',
+					async () => {
+						throw new Error('boom');
+					},
+				],
+			])('should emit `mcp-tool-called` with the login id when a tool %s', async (_, impl) => {
+				const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+
+				await registerAndInvoke(server, 'my_tool', impl, {}, { ctx: loginCtx() }).catch(
+					() => undefined,
+				);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'mcp-tool-called',
+					expect.objectContaining({ toolName: 'my_tool', loginId: 'login-1' }),
+				);
+			});
+
+			it('should emit `mcp-tool-called` without a login id when there is no context', async () => {
+				const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+
+				await registerAndInvoke(server, 'my_tool', async () => ({
+					content: [{ type: 'text', text: 'ok' }],
+				}));
+
+				const [, payload] = vi
+					.mocked(eventService.emit)
+					.mock.calls.find(([name]) => name === 'mcp-tool-called')!;
+				expect(payload).toMatchObject({ toolName: 'my_tool' });
+				expect((payload as { loginId?: string }).loginId).toBeUndefined();
+			});
 		});
 
 		it('should report an API-key call as such, with no OAuth client', async () => {
@@ -1453,6 +1572,7 @@ describe('McpService', () => {
 				mockInstance(McpConfig),
 				mockInstance(ExecutionRedactionServiceProxy),
 				mockInstance(InstanceWriteAccessService),
+				mockInstance(McpPreferencesNoteService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1514,6 +1634,7 @@ describe('McpService', () => {
 				mockInstance(McpConfig),
 				mockInstance(ExecutionRedactionServiceProxy),
 				mockInstance(InstanceWriteAccessService),
+				mockInstance(McpPreferencesNoteService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1600,6 +1721,7 @@ describe('McpService', () => {
 					mockInstance(McpConfig),
 					mockInstance(ExecutionRedactionServiceProxy),
 					mockInstance(InstanceWriteAccessService),
+					mockInstance(McpPreferencesNoteService),
 				);
 			};
 

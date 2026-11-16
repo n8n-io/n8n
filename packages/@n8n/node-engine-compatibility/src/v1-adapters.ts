@@ -33,12 +33,8 @@ import type {
 	ITaskDataConnections,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import {
-	createRunExecutionData,
-	UnexpectedError,
-	Workflow,
-	WorkflowExecuteModeList,
-} from 'n8n-workflow';
+import { createRunExecutionData, Workflow, WorkflowExecuteModeList } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { supplySubExecutionResult } from './sub-execution-result';
 import type { SubWorkflowCalls } from './sub-workflow-calls';

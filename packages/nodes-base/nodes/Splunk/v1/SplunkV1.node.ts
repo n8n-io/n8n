@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError, requestPath } from 'n8n-workflow';
 
 import {
 	firedAlertOperations,
@@ -109,7 +109,7 @@ export class SplunkV1 implements INodeType {
 	methods = {
 		loadOptions: {
 			async getRoles(this: ILoadOptionsFunctions) {
-				const endpoint = '/services/authorization/roles';
+				const endpoint = requestPath`/services/authorization/roles`;
 				const responseData = (await splunkApiRequest.call(
 					this,
 					'GET',
@@ -147,7 +147,7 @@ export class SplunkV1 implements INodeType {
 
 						// https://docs.splunk.com/Documentation/Splunk/latest/RESTREF/RESTsearch#alerts.2Ffired_alerts
 
-						const endpoint = '/services/alerts/fired_alerts';
+						const endpoint = requestPath`/services/alerts/fired_alerts`;
 						responseData = await splunkApiRequest.call(this, 'GET', endpoint).then(formatFeed);
 					}
 				} else if (resource === 'searchConfiguration') {
@@ -162,14 +162,13 @@ export class SplunkV1 implements INodeType {
 
 						// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTsearch#saved.2Fsearches.2F.7Bname.7D
 
-						const partialEndpoint = '/services/saved/searches/';
 						const searchConfigurationId = getId.call(
 							this,
 							i,
 							'searchConfigurationId',
 							'/search/saved/searches/',
 						); // id endpoint differs from operation endpoint
-						const endpoint = `${partialEndpoint}/${searchConfigurationId}`;
+						const endpoint = requestPath`/services/saved/searches//${searchConfigurationId}`;
 
 						responseData = await splunkApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
@@ -179,14 +178,13 @@ export class SplunkV1 implements INodeType {
 
 						// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTsearch#saved.2Fsearches.2F.7Bname.7D
 
-						const partialEndpoint = '/services/saved/searches/';
 						const searchConfigurationId = getId.call(
 							this,
 							i,
 							'searchConfigurationId',
 							'/search/saved/searches/',
 						); // id endpoint differs from operation endpoint
-						const endpoint = `${partialEndpoint}/${searchConfigurationId}`;
+						const endpoint = requestPath`/services/saved/searches//${searchConfigurationId}`;
 
 						responseData = await splunkApiRequest.call(this, 'GET', endpoint).then(formatFeed);
 					} else if (operation === 'getAll') {
@@ -202,7 +200,7 @@ export class SplunkV1 implements INodeType {
 						populate(options, qs);
 						setCount.call(this, qs, i);
 
-						const endpoint = '/services/saved/searches';
+						const endpoint = requestPath`/services/saved/searches`;
 						responseData = await splunkApiRequest
 							.call(this, 'GET', endpoint, {}, qs)
 							.then(formatFeed);
@@ -242,10 +240,10 @@ export class SplunkV1 implements INodeType {
 							body,
 						);
 
-						const endpoint = '/services/search/jobs';
+						const endpoint = requestPath`/services/search/jobs`;
 						responseData = await splunkApiRequest.call(this, 'POST', endpoint, body);
 
-						const getEndpoint = `/services/search/jobs/${responseData.response.sid}`;
+						const getEndpoint = requestPath`/services/search/jobs/${responseData.response.sid}`;
 						responseData = await splunkApiRequest.call(this, 'GET', getEndpoint).then(formatSearch);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
@@ -256,7 +254,7 @@ export class SplunkV1 implements INodeType {
 
 						const partialEndpoint = '/services/search/jobs/';
 						const searchJobId = getId.call(this, i, 'searchJobId', partialEndpoint);
-						const endpoint = `${partialEndpoint}/${searchJobId}`;
+						const endpoint = requestPath`/services/search/jobs//${searchJobId}`;
 						responseData = await splunkApiRequest.call(this, 'DELETE', endpoint);
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -267,7 +265,7 @@ export class SplunkV1 implements INodeType {
 
 						const partialEndpoint = '/services/search/jobs/';
 						const searchJobId = getId.call(this, i, 'searchJobId', partialEndpoint);
-						const endpoint = `${partialEndpoint}/${searchJobId}`;
+						const endpoint = requestPath`/services/search/jobs//${searchJobId}`;
 						responseData = await splunkApiRequest.call(this, 'GET', endpoint).then(formatSearch);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
@@ -282,7 +280,7 @@ export class SplunkV1 implements INodeType {
 						populate(options, qs);
 						setCount.call(this, qs, i);
 
-						const endpoint = '/services/search/jobs';
+						const endpoint = requestPath`/services/search/jobs`;
 						responseData = (await splunkApiRequest.call(
 							this,
 							'GET',
@@ -321,7 +319,7 @@ export class SplunkV1 implements INodeType {
 						populate(options, qs);
 						setCount.call(this, qs, i);
 
-						const endpoint = `/services/search/jobs/${searchJobId}/results`;
+						const endpoint = requestPath`/services/search/jobs/${searchJobId}/results`;
 						responseData = await splunkApiRequest
 							.call(this, 'GET', endpoint, {}, qs)
 							.then(formatResults);
@@ -350,7 +348,7 @@ export class SplunkV1 implements INodeType {
 
 						populate(additionalFields, body);
 
-						const endpoint = '/services/authentication/users';
+						const endpoint = requestPath`/services/authentication/users`;
 						responseData = (await splunkApiRequest.call(
 							this,
 							'POST',
@@ -365,9 +363,9 @@ export class SplunkV1 implements INodeType {
 
 						// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTaccess#authentication.2Fusers.2F.7Bname.7D
 
-						const partialEndpoint = '/services/authentication/users';
+						const partialEndpoint = '/services/authentication/users/';
 						const userId = getId.call(this, i, 'userId', partialEndpoint);
-						const endpoint = `${partialEndpoint}/${userId}`;
+						const endpoint = requestPath`/services/authentication/users/${userId}`;
 						await splunkApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
 					} else if (operation === 'get') {
@@ -377,9 +375,8 @@ export class SplunkV1 implements INodeType {
 
 						// https://docs.splunk.com/Documentation/Splunk/8.2.2/RESTREF/RESTaccess#authentication.2Fusers.2F.7Bname.7D
 
-						const partialEndpoint = '/services/authentication/users/';
 						const userId = getId.call(this, i, 'userId', '/services/authentication/users/');
-						const endpoint = `${partialEndpoint}/${userId}`;
+						const endpoint = requestPath`/services/authentication/users//${userId}`;
 						responseData = await splunkApiRequest.call(this, 'GET', endpoint).then(formatFeed);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
@@ -391,7 +388,7 @@ export class SplunkV1 implements INodeType {
 						const qs = {} as IDataObject;
 						setCount.call(this, qs, i);
 
-						const endpoint = '/services/authentication/users';
+						const endpoint = requestPath`/services/authentication/users`;
 						responseData = await splunkApiRequest
 							.call(this, 'GET', endpoint, {}, qs)
 							.then(formatFeed);
@@ -417,7 +414,7 @@ export class SplunkV1 implements INodeType {
 
 						const partialEndpoint = '/services/authentication/users/';
 						const userId = getId.call(this, i, 'userId', partialEndpoint);
-						const endpoint = `${partialEndpoint}/${userId}`;
+						const endpoint = requestPath`/services/authentication/users//${userId}`;
 						responseData = await splunkApiRequest
 							.call(this, 'POST', endpoint, body)
 							.then(formatFeed);
