@@ -1,3 +1,6 @@
+## [1.123.97](https://github.com/n8n-io/n8n/compare/n8n@1.123.96...n8n@1.123.97) (2026-11-16)
+
+
 ## [1.123.96](https://github.com/n8n-io/n8n/compare/n8n@1.123.95...n8n@1.123.96) (2026-11-13)
 
 
