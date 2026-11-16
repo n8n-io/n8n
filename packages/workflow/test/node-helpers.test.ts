@@ -17,6 +17,7 @@ import {
 	isExecutable,
 	displayParameter,
 	getActiveCredentialTypes,
+	getRequestedCredentialTypes,
 	makeDescription,
 	getUpdatedToolDescription,
 	getToolDescriptionForNode,
@@ -5508,6 +5509,62 @@ describe('NodeHelpers', () => {
 					true,
 				);
 			});
+		});
+	});
+
+	describe('getRequestedCredentialTypes', () => {
+		const makeNode = (node: Partial<INode> = {}): INode => ({
+			id: '12345',
+			name: 'Test Node',
+			typeVersion: 1,
+			type: 'n8n-nodes-base.httpRequest',
+			position: [1, 1],
+			parameters: {},
+			...node,
+		});
+
+		const description: INodeTypeDescription = {
+			name: 'n8n-nodes-base.httpRequest',
+			version: 1,
+			defaults: {},
+			inputs: [],
+			outputs: [],
+			properties: [],
+			displayName: '',
+			group: [],
+			description: '',
+		};
+
+		it('should return the credentials map keys, a named type, and the extended type in order', () => {
+			const node = makeNode({
+				credentials: { slackApi: { id: '1', name: 'Slack' } },
+				parameters: { authentication: 'predefinedCredentialType', nodeCredentialType: 'githubApi' },
+				extendsCredential: 'virusTotalApi',
+			});
+
+			expect(getRequestedCredentialTypes(node, () => description)).toEqual([
+				'slackApi',
+				'githubApi',
+				'virusTotalApi',
+			]);
+		});
+
+		it('should skip a named type it cannot resolve without a description', () => {
+			const node = makeNode({ parameters: { nodeCredentialType: 'githubApi' } });
+
+			expect(getRequestedCredentialTypes(node, () => null)).toEqual([]);
+		});
+
+		it('should not read the description when no parameter names a type', () => {
+			const getDescription = vi.fn(() => description);
+
+			expect(
+				getRequestedCredentialTypes(
+					makeNode({ extendsCredential: 'virusTotalApi' }),
+					getDescription,
+				),
+			).toEqual(['virusTotalApi']);
+			expect(getDescription).not.toHaveBeenCalled();
 		});
 	});
 

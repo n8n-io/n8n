@@ -449,6 +449,63 @@ describe('workflow_execution table (integration)', () => {
 		expect((await store.loadExecution(id)).parent).toEqual(parent);
 	});
 
+	describe('stale_after', () => {
+		const staleness = { queuedMs: 10_000, runningStepMs: 50_000 };
+
+		function stalenessStore(): TypeOrmExecutionStore {
+			return new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution), staleness);
+		}
+
+		async function loadStaleAfter(id: string): Promise<Date | null> {
+			const row = await dataSource.getRepository(WorkflowExecution).findOneOrFail({
+				where: { id },
+			});
+			return row.staleAfter;
+		}
+
+		it('createExecution writes the queue threshold on a queued execution', async () => {
+			const id = generateId();
+
+			const before = Date.now();
+			await stalenessStore().createExecution(newRecord(id));
+			const after = Date.now();
+
+			const staleAfter = await loadStaleAfter(id);
+			expect(staleAfter?.getTime()).toBeGreaterThanOrEqual(before + staleness.queuedMs);
+			expect(staleAfter?.getTime()).toBeLessThanOrEqual(after + staleness.queuedMs);
+		});
+
+		it('transitionStatus clears the value when the execution leaves queued', async () => {
+			const store = stalenessStore();
+			const id = generateId();
+			await store.createExecution(newRecord(id));
+
+			expect(await store.transitionStatus(id, 'queued', 'running')).toBe(true);
+
+			expect(await loadStaleAfter(id)).toBeNull();
+		});
+
+		it('cancelExecution clears the value of a queued execution', async () => {
+			const store = stalenessStore();
+			const id = generateId();
+			await store.createExecution(newRecord(id));
+
+			expect(await store.cancelExecution(id)).not.toBeNull();
+
+			expect(await loadStaleAfter(id)).toBeNull();
+		});
+
+		it('has a partial index on the value for queued executions', async () => {
+			const [index]: Array<{ indexdef: string }> = await dataSource.query(
+				`SELECT indexdef FROM pg_indexes
+				 WHERE tablename = 'workflow_execution' AND indexname = 'idx_workflow_execution_stale_after'`,
+			);
+
+			expect(index.indexdef).toContain('(stale_after)');
+			expect(index.indexdef).toContain("WHERE ((status)::text = 'queued'");
+		});
+	});
+
 	it('carries the parent CHECK and the partial parent index in the schema', async () => {
 		const indexes: Array<{ indexname: string; indexdef: string }> = await dataSource.query(
 			"SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'workflow_execution'",

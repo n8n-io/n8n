@@ -905,6 +905,32 @@ describe('useWorkflowSaving', () => {
 			}
 		});
 
+		it('should leave the version-scoped settings out of the save with the engine-v2 module', async () => {
+			mockedStore(useSettingsStore).isModuleActive.mockImplementation(
+				(name: string) => name === 'engine-v2',
+			);
+			const workflow = createTestWorkflow({
+				id: 'w-engine',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				settings: { executionOrder: 'v1', engineType: 'v2' },
+			});
+
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflowId(workflow.id);
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+			documentStore.hydrate(workflow);
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			await saveCurrentWorkflow({ id: workflow.id }, true, false, false);
+
+			// Only the settings modal saves the engine, so a stale editor can't overwrite it.
+			const payload = vi.mocked(workflowsStore.updateWorkflow).mock.lastCall?.[1];
+			expect(payload?.settings).not.toHaveProperty('engineType');
+			expect(payload?.settings).toEqual(expect.objectContaining({ executionOrder: 'v1' }));
+		});
+
 		it('should remove invalid node groups before saving and warn the user', async () => {
 			const workflow = createTestWorkflow({
 				id: 'w6',

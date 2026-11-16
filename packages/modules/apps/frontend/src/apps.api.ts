@@ -202,7 +202,7 @@ async function listBindableAgents(context: IRestApiContext, projectId: string, q
 		'GET',
 		`/projects/${projectId}/agents/v2`,
 		{
-			take: BINDABLE_RESOURCE_LIMIT,
+			limit: BINDABLE_RESOURCE_LIMIT,
 			sortBy: 'name:asc',
 			...(query ? { filter: { query } } : {}),
 		},

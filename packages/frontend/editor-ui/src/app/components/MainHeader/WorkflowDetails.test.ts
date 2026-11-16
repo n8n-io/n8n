@@ -416,7 +416,10 @@ describe('WorkflowDetails', () => {
 			};
 			onContinue();
 
-			expect(emitSpy).toHaveBeenCalledWith('importWorkflowData', { data: workflowData });
+			expect(emitSpy).toHaveBeenCalledWith('importWorkflowData', {
+				data: workflowData,
+				warnRestrictedNodes: true,
+			});
 		});
 
 		it('imports the file immediately when the MCP JSON nudge is not eligible', async () => {
@@ -437,7 +440,10 @@ describe('WorkflowDetails', () => {
 			);
 
 			await vi.waitFor(() =>
-				expect(emitSpy).toHaveBeenCalledWith('importWorkflowData', { data: workflowData }),
+				expect(emitSpy).toHaveBeenCalledWith('importWorkflowData', {
+					data: workflowData,
+					warnRestrictedNodes: true,
+				}),
 			);
 			expect(openModalSpy).not.toHaveBeenCalledWith(
 				expect.objectContaining({ name: MCP_JSON_NUDGE_MODAL_KEY }),

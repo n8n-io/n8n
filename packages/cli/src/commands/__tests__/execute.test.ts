@@ -82,6 +82,7 @@ beforeEach(() => {
 		GlobalConfig,
 		mock<GlobalConfig>({
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			nodes: {},
 			expressionEngine: { engine: 'legacy' },
 			// must be numeric: the SIGTERM/SIGINT handlers registered by init() compute
@@ -165,6 +166,7 @@ test('should not init the expression engine for commands that do not need it', a
 		GlobalConfig,
 		mock<GlobalConfig>({
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			nodes: {},
 			expressionEngine: { engine: 'vm' },
 			generic: { gracefulShutdownTimeout: 30 },
@@ -199,6 +201,7 @@ test('should exit with a crash when expression engine init fails', async () => {
 		GlobalConfig,
 		mock<GlobalConfig>({
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			nodes: {},
 			expressionEngine: {
 				engine: 'vm',
@@ -255,6 +258,7 @@ test('reports a native verify mismatch to Sentry without the request scope', asy
 		GlobalConfig,
 		mock<GlobalConfig>({
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			nodes: {},
 			expressionEngine: {
 				engine: 'vm',
@@ -308,6 +312,7 @@ test('stops native verify reports when Sentry turns off', async () => {
 		GlobalConfig,
 		mock<GlobalConfig>({
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			nodes: {},
 			expressionEngine: {
 				engine: 'vm',
@@ -400,6 +405,7 @@ test.each([
 			GlobalConfig,
 			mock<GlobalConfig>({
 				taskRunners: {},
+				codeExecution: { backend: 'task-runners' },
 				nodes: {},
 				expressionEngine: { engine, nativeEvaluation, nativeEvaluationVerifySample: sample },
 				generic: { gracefulShutdownTimeout: 30 },
@@ -436,6 +442,7 @@ test('passes no verify reporter when Sentry is not active', async () => {
 		GlobalConfig,
 		mock<GlobalConfig>({
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			nodes: {},
 			expressionEngine: {
 				engine: 'vm',

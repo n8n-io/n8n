@@ -346,6 +346,9 @@ export { threadProvenanceMetadata } from './tracing/thread-provenance';
 export const createInstanceAiTraceContext: typeof LangsmithTracingMod.createInstanceAiTraceContext =
 	lazyFunction(() => loadLangsmithTracing().createInstanceAiTraceContext);
 
+export const isLangSmithTracingEnabled: typeof LangsmithTracingMod.isLangSmithTracingEnabled =
+	lazyFunction(() => loadLangsmithTracing().isLangSmithTracingEnabled);
+
 export const createInternalOperationTraceContext: typeof LangsmithTracingMod.createInternalOperationTraceContext =
 	lazyFunction(() => loadLangsmithTracing().createInternalOperationTraceContext);
 

@@ -1,4 +1,4 @@
-import { ref, reactive, computed, watch, onScopeDispose, type Ref } from 'vue';
+import { ref, reactive, computed, watch, onScopeDispose, shallowRef, toRaw, type Ref } from 'vue';
 import { useDocumentVisibility } from '@vueuse/core';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { TIME } from '@/app/constants/durations';
@@ -154,6 +154,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const steeringQueueIds = ref(new Set<string>());
 	const isReorderingQueue = ref(false);
 	const consumedQueueIds = new Set<string>();
+	/**
+	 * The first send of a new session shows its message before the run starts, so the
+	 * chat does not flash empty. The run takes the message over, or the send removes it.
+	 */
+	const earlySend = shallowRef<{ message: ChatMessage; queueId?: string }>();
+	// A list rebuilt with `map` or `filter` holds proxies, which `indexOf` does not match.
+	const indexOfMessage = (message: ChatMessage) =>
+		messages.value.findIndex((item) => toRaw(item) === toRaw(message));
 	const steerableExecutionId = ref<string | null>(null);
 	const streams = new Map<AbortController, StreamSession>();
 	/**
@@ -231,7 +239,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const dismissedWarningKeys = new Set<string>();
 
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
-		if (!isStreaming.value) return 'idle';
+		if (!isStreaming.value && !earlySend.value) return 'idle';
 		const lastMsg = messages.value[messages.value.length - 1];
 		if (!lastMsg || lastMsg.role === CHAT_MESSAGE_ROLE.USER) return 'waitingFirstChunk';
 		return 'receiving';
@@ -287,13 +295,18 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			retryCount = 0;
 			clearTimeout(retryTimer);
 			if (!isStreamOpen.value && streamAtStart === streamVersion) {
-				messages.value = restoreBudgetNotices(
+				const history = restoreBudgetNotices(
 					applyOpenSuspensions(
 						convertDbMessages(dbMessages, extensions),
 						openSuspensions,
 						extensions,
 					),
 				);
+				// A new session's history holds its first message only after its run starts.
+				const early = earlySend.value?.message;
+				const hasRun = history.some((message) => message.role === CHAT_MESSAGE_ROLE.USER);
+				messages.value = early && !hasRun ? [...history, early] : history;
+				if (hasRun) earlySend.value = undefined;
 				isRecovering.value = false;
 				if (runningExecutionId !== undefined) activeExecutionId.value = runningExecutionId;
 				if (isCancelling.value) reconcileStop();
@@ -387,7 +400,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				channel.value,
 			);
 			if (!disposed && target === targetKey() && version === queueVersion) {
-				queuedMessages.value = result.items.filter((item) => !consumedQueueIds.has(item.id));
+				queuedMessages.value = result.items.filter(
+					(item) => !consumedQueueIds.has(item.id) && item.id !== earlySend.value?.queueId,
+				);
 				steerableExecutionId.value = result.steerableExecutionId ?? null;
 			}
 		} catch {
@@ -568,6 +583,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	watch(targetKey, () => {
 		detachStream();
 		messages.value = [];
+		earlySend.value = undefined;
 		queuedMessages.value = [];
 		removingQueueIds.value.clear();
 		steeringQueueIds.value.clear();
@@ -1034,6 +1050,8 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		switch (event.type) {
 			case 'message-queued':
 				session.queueId = event.queueId;
+				if (session.userMessage && earlySend.value?.message === session.userMessage)
+					earlySend.value.queueId = event.queueId;
 				acceptedSessionId.value = event.sessionId;
 				detachExcessWaitingStreams();
 				session.onAccepted?.(event.queueId);
@@ -1069,18 +1087,23 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				fatalError.value = null;
 				warnings.value = [];
 				if (session.userMessage) {
-					if (
-						!messages.value.some(
-							(message) =>
-								message.role === CHAT_MESSAGE_ROLE.USER &&
-								message.executionId === event.executionId,
-						)
-					) {
-						messages.value.push({
-							...session.userMessage,
-							content: event.message ?? session.userMessage.content,
-							executionId: event.executionId,
-						});
+					const started = messages.value.some(
+						(message) =>
+							message.role === CHAT_MESSAGE_ROLE.USER && message.executionId === event.executionId,
+					);
+					const startedMessage = {
+						...session.userMessage,
+						content: event.message ?? session.userMessage.content,
+						executionId: event.executionId,
+					};
+					// The run takes the place of the message that its send showed early.
+					const isEarly = earlySend.value?.message === session.userMessage;
+					if (isEarly) earlySend.value = undefined;
+					const earlyIndex = isEarly ? indexOfMessage(session.userMessage) : -1;
+					if (earlyIndex >= 0) {
+						messages.value.splice(earlyIndex, 1, ...(started ? [] : [startedMessage]));
+					} else if (!started) {
+						messages.value.push(startedMessage);
 					}
 				}
 				queueVersion++;
@@ -1875,8 +1898,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				file,
 			})),
 		};
+		// Nothing waits ahead of the first message of a new session, so its run starts
+		// right away. The message shows now, not when the run starts.
+		if (params.newSession?.value === true && messages.value.length === 0) {
+			earlySend.value = { message: userMessage };
+			messages.value.push(userMessage);
+		}
 		return await new Promise<'sent' | 'busy'>((resolve) => {
 			let released = false;
+			let detached = false;
 			const release = (outcome: 'sent' | 'busy' = 'sent') => {
 				if (released) return;
 				released = true;
@@ -1894,13 +1924,27 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				clientContext,
 			)
 				.then(({ outcome }) => {
+					detached = outcome === 'detached';
 					release(outcome === 'busy' ? 'busy' : 'sent');
 				})
 				.catch((error: unknown) => {
 					if (!disposed && target === targetKey())
 						showError(error, locale.baseText('agents.chat.queue.sendError'));
 				})
-				.finally(release);
+				.finally(() => {
+					// A send that did not start a run shows what history and the queue hold.
+					// An accepted message whose stream dropped still runs, so it stays until
+					// history holds it.
+					const early = earlySend.value;
+					if (early?.message === userMessage && !(detached && early.queueId)) {
+						earlySend.value = undefined;
+						const index = indexOfMessage(userMessage);
+						if (index >= 0) messages.value.splice(index, 1);
+						// The queue list hid the accepted message while the chat showed it.
+						if (early.queueId) void refreshQueue();
+					}
+					release();
+				});
 		});
 	}
 

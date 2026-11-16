@@ -1,5 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { OperationContext, User, WorkflowEntity } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import type { INode } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -171,6 +172,19 @@ describe('BreakingChangeMigrationService', () => {
 
 		const [, , , updateOptions] = workflowService.update.mock.calls[0];
 		expect(updateOptions).toEqual(expect.objectContaining({ source: 'n8n-mcp' }));
+	});
+
+	it('passes the operation context to the save', async () => {
+		const aiNode = createNode('Transform', AI_TRANSFORM_NODE_TYPE, { jsCode: 'return items;' });
+		workflowFinderService.findWorkflowForUser.mockResolvedValue(buildWorkflow([aiNode]));
+		workflowService.update.mockResolvedValue(mock<WorkflowEntity>({ versionId: 'new-version' }));
+		const ctx: OperationContext = {
+			security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+		};
+
+		await service.migrateWorkflow(RULE_ID, 'wf-1', user, { source: 'n8n-mcp' }, ctx);
+
+		expect(workflowService.update.mock.calls[0][4]).toBe(ctx);
 	});
 
 	it('keeps the connections of a node-for-node migration intact', async () => {
