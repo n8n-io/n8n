@@ -213,7 +213,7 @@ defineExpose({
 
 	display: flex;
 	flex-direction: row;
-	overflow-x: scroll;
+	overflow-x: auto;
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--4xs);
 	margin-inline: calc(var(--spacing--4xs) * -1);
