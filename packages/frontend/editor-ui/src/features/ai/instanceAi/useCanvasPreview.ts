@@ -26,6 +26,12 @@ import {
 } from './composables/useOpenArtifactTabs';
 import type { ArtifactThread } from './artifactThread';
 import type { ArtifactTurn } from './artifactTurns';
+import {
+	draftTabId,
+	getDraftWorkflowId,
+	type WorkflowDraft,
+	type WorkflowDraftsByFilePath,
+} from './instanceAi.workflowDrafts';
 
 export interface ArtifactTab {
 	id: string;
@@ -37,6 +43,8 @@ export interface ArtifactTab {
 	pending?: boolean;
 	/** The AI is actively mutating this artifact right now. */
 	building?: boolean;
+	/** An unsaved workflow from the builder's source file. Never stored with the thread's tabs. */
+	draft?: boolean;
 }
 
 /** The live view of a running cloud browser task. Never stored with the thread. */
@@ -72,6 +80,10 @@ interface UseCanvasPreviewOptions {
 	tabsStorage?: ThreadTabsStorage;
 	/** The cloud browser tasks of the thread. A runtime without the cloud browser leaves it out. */
 	cloudBrowserTasks?: () => CloudBrowserTask[];
+	/** Unsaved workflows the builder wrote, by source file. */
+	workflowDrafts?: () => WorkflowDraftsByFilePath;
+	/** Drops the drafts that a saved workflow replaced. */
+	dismissWorkflowDrafts?: (workflowId: string) => void;
 }
 
 interface LinkedAgentTarget {
@@ -90,12 +102,29 @@ function getAttachedArtifactId(attachment: InstanceAiAttachment): string | undef
 	return undefined;
 }
 
+function fileName(filePath: string): string {
+	return filePath.split('/').pop() ?? filePath;
+}
+
+function toDraftTab(draft: WorkflowDraft): ArtifactTab {
+	return {
+		id: draftTabId(draft.filePath),
+		type: 'workflow',
+		name: draft.workflow.name || fileName(draft.filePath),
+		icon: ARTIFACT_TAB_ICONS.workflow,
+		building: true,
+		draft: true,
+	};
+}
+
 export function useCanvasPreview({
 	thread,
 	initialAgentId,
 	initialAppId,
 	tabsStorage,
 	cloudBrowserTasks: getCloudBrowserTasks,
+	workflowDrafts = () => ({}),
+	dismissWorkflowDrafts,
 }: UseCanvasPreviewOptions) {
 	const i18n = useI18n();
 	const recentWorkflowsStore = useRecentWorkflowsStore();
@@ -153,6 +182,12 @@ export function useCanvasPreview({
 					building: buildingArtifactIds.value.has(entry.id),
 				});
 			}
+		}
+
+		// A new workflow shows as a draft tab until its saved workflow joins the registry.
+		for (const draft of Object.values(workflowDrafts())) {
+			if (draft.savedWorkflowId || draft.workflowId) continue;
+			result.push(toDraftTab(draft));
 		}
 
 		if (linkedAgent && !result.some((tab) => tab.id === linkedAgent.agentId)) {
@@ -237,7 +272,24 @@ export function useCanvasPreview({
 	// Derived preview state from active tab
 	const activeWorkflowId = computed(() => {
 		const tab = openTabs.value.find((t) => t.id === activeTabId.value);
-		return tab?.type === 'workflow' ? tab.id : null;
+		return tab?.type === 'workflow' && !tab.draft ? tab.id : null;
+	});
+
+	/** The tab id that shows a draft: its own tab, or the tab of its saved workflow. */
+	function draftTargetTabId(draft: WorkflowDraft): string {
+		return getDraftWorkflowId(draft) ?? draftTabId(draft.filePath);
+	}
+
+	/** The newest draft for the tab on screen. It covers the saved canvas until that loads. */
+	const activeWorkflowDraft = computed((): WorkflowDraft | undefined => {
+		const tabId = activeTabId.value;
+		if (tabId === undefined) return undefined;
+		let latest: WorkflowDraft | undefined;
+		for (const draft of Object.values(workflowDrafts())) {
+			if (draftTargetTabId(draft) !== tabId) continue;
+			if (!latest || draft.revision > latest.revision) latest = draft;
+		}
+		return latest;
 	});
 
 	const activeDataTableId = computed(() => {
@@ -405,7 +457,8 @@ export function useCanvasPreview({
 		}
 		// Opening a closed artifact from the chat or the artifacts list shows its tab again.
 		tabs.reopenTab(tabId);
-		if (openTabs.value.find(({ id }) => id === tabId)?.type === 'workflow') {
+		const tab = openTabs.value.find(({ id }) => id === tabId);
+		if (tab?.type === 'workflow' && !tab.draft) {
 			recordWorkflowOpen(tabId);
 		}
 		activeTabId.value = tabId;
@@ -731,6 +784,47 @@ export function useCanvasPreview({
 		}
 	});
 
+	// --- Drafts: show each new draft, follow it to its saved workflow ---
+
+	// Key on file and revision, so each write shows its workflow, but a save does not.
+	const latestDraftKey = computed(() => {
+		let latest: WorkflowDraft | undefined;
+		for (const draft of Object.values(workflowDrafts())) {
+			if (draft.savedWorkflowId) continue;
+			if (!latest || draft.revision > latest.revision) latest = draft;
+		}
+		return latest ? `${latest.filePath}#${latest.revision}` : undefined;
+	});
+	const draftsByKey = computed(
+		() => new Map(Object.values(workflowDrafts()).map((d) => [`${d.filePath}#${d.revision}`, d])),
+	);
+
+	watch(
+		latestDraftKey,
+		(key) => {
+			const draft = key ? draftsByKey.value.get(key) : undefined;
+			if (draft && !thread.isHydratingThread) showAgentArtifact(draftTargetTabId(draft));
+		},
+		{ flush: 'sync' },
+	);
+
+	watch(
+		() => Object.values(workflowDrafts()).filter((draft) => draft.savedWorkflowId),
+		(saved) => {
+			for (const draft of saved) {
+				const workflowId = draft.savedWorkflowId;
+				if (!workflowId) continue;
+				const tabId = draftTabId(draft.filePath);
+				// The draft tab on screen becomes the saved workflow tab.
+				if (activeTabId.value === tabId) activeTabId.value = workflowId;
+				if (userTabId.value === tabId) userTabId.value = workflowId;
+				// A saved draft off screen has nothing left to cover.
+				if (activeTabId.value !== workflowId) dismissWorkflowDrafts?.(workflowId);
+			}
+		},
+		{ flush: 'sync' },
+	);
+
 	// --- Signal persisted builder config mutations onto the agents event bus ---
 	useAgentMutationRefresh(thread);
 
@@ -740,6 +834,7 @@ export function useCanvasPreview({
 		/** False until the stored tabs of the thread load. */
 		tabsLoaded: tabs.isLoaded,
 		activeWorkflowId,
+		activeWorkflowDraft,
 		activeDataTableId,
 		activeDataTableProjectId,
 		activeAgentId,
