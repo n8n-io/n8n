@@ -307,8 +307,10 @@ function handleSavedWorkflowLoaded(workflowId: string) {
 watch(
 	[() => preview.activeTabId.value, () => preview.isPreviewVisible.value],
 	([tabId, previewVisible]) => {
-		// The agent only hears about artifacts, not browser tabs.
-		const isArtifact = preview.openTabs.value.some((tab) => tab.id === tabId && isArtifactTab(tab));
+		// The agent knows saved artifacts only. A browser or draft tab has no id that it can use.
+		const isArtifact = preview.openTabs.value.some(
+			(tab) => tab.id === tabId && isArtifactTab(tab) && !tab.draft,
+		);
 		thread.setActiveArtifactId(previewVisible && isArtifact ? tabId : undefined);
 	},
 	{ immediate: true },
@@ -317,7 +319,8 @@ watch(
 // stored tabs load, the default tabs can still hold closed ones, so send none.
 watch(
 	[() => preview.openTabs.value, () => preview.tabsLoaded.value],
-	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs.filter(isArtifactTab) : null),
+	([tabs, loaded]) =>
+		thread.setOpenTabs(loaded ? tabs.filter((tab) => isArtifactTab(tab) && !tab.draft) : null),
 	{ immediate: true },
 );
 // --- Setup panel (checklist docked above the composer) ---

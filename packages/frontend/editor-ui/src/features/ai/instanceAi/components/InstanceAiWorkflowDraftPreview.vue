@@ -2,7 +2,7 @@
 import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { computed, provide, watch } from 'vue';
+import { computed, nextTick, provide, watch } from 'vue';
 
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import type { CanvasEventBusEvents } from '@/features/workflows/canvas/canvas.types';
@@ -36,7 +36,10 @@ const canvasId = computed(() => `instance-ai-draft-${props.draft.filePath}`);
 watch(
 	() => props.draft.workflow.nodes.map((node) => node.name),
 	(names, previous) => {
-		if (names.some((name) => !previous.includes(name))) eventBus.emit('fitView');
+		// Wait for the canvas to render the new nodes, so the fit includes them.
+		if (names.some((name) => !previous.includes(name))) {
+			void nextTick(() => eventBus.emit('fitView'));
+		}
 	},
 );
 </script>

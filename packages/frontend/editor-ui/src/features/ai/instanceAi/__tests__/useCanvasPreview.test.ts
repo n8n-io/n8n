@@ -212,6 +212,7 @@ describe('useCanvasPreview', () => {
 
 		test('opens a building tab for the draft of a new workflow and shows it', async () => {
 			const ctx = setup();
+			ctx.thread.isStreaming = true;
 
 			ctx.drafts.value = { [fileA]: makeDraft(fileA) };
 			await nextTick();
@@ -222,6 +223,59 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeWorkflowId.value).toBeNull();
 			expect(ctx.activeWorkflowDraft.value?.filePath).toBe(fileA);
 			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('stops the building state of a draft tab when the run stops', async () => {
+			const ctx = setup();
+			ctx.thread.isStreaming = true;
+			ctx.drafts.value = { [fileA]: makeDraft(fileA) };
+			await nextTick();
+
+			ctx.thread.isStreaming = false;
+			await nextTick();
+
+			const tab = ctx.openTabs.value.find((t) => t.draft);
+			expect(tab).toBeDefined();
+			expect(tab?.building).toBeFalsy();
+		});
+
+		test('shows the first draft of another file, even with a lower revision', async () => {
+			const ctx = setup();
+			ctx.drafts.value = { [fileA]: makeDraft(fileA, { revision: 3 }) };
+			await nextTick();
+
+			ctx.drafts.value = { ...ctx.drafts.value, [fileB]: makeDraft(fileB, { revision: 1 }) };
+			await nextTick();
+
+			expect(ctx.activeWorkflowDraft.value?.filePath).toBe(fileB);
+		});
+
+		test('shows the draft of a new run that starts its revisions again', async () => {
+			const ctx = setup();
+			ctx.drafts.value = { [fileA]: makeDraft(fileA, { revision: 3 }) };
+			await nextTick();
+			ctx.drafts.value = { ...ctx.drafts.value, [fileB]: makeDraft(fileB) };
+			await nextTick();
+
+			ctx.drafts.value = { ...ctx.drafts.value, [fileA]: makeDraft(fileA, { revision: 1 }) };
+			await nextTick();
+
+			expect(ctx.activeWorkflowDraft.value?.filePath).toBe(fileA);
+		});
+
+		test('opens a closed draft tab again when its next revision arrives', async () => {
+			const ctx = setup();
+			ctx.drafts.value = { [fileA]: makeDraft(fileA) };
+			await nextTick();
+			ctx.closeTab(ctx.activeTabId.value!);
+			await nextTick();
+
+			ctx.drafts.value = { [fileA]: makeDraft(fileA, { revision: 2 }) };
+			await nextTick();
+
+			const tab = ctx.openTabs.value.find((t) => t.id === ctx.activeTabId.value);
+			expect(tab?.draft).toBe(true);
+			expect(ctx.activeWorkflowDraft.value?.revision).toBe(2);
 		});
 
 		test('shows the draft of a saved workflow on that workflow tab', async () => {

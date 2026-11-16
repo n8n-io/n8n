@@ -28,6 +28,7 @@ import {
 	resolveCredentials,
 } from '../resolve-credentials';
 import type { SetupRequest } from '../setup-workflow.schema';
+import type { WorkflowDraft } from '../workflow-draft-publisher';
 import { analyzeWorkflow, getValidCredentialTypes } from '../setup-workflow.service';
 import {
 	getWorkflowSourceFileBinding,
@@ -1918,7 +1919,7 @@ describe('createBuildWorkflowTool', () => {
 
 	describe('workflow drafts', () => {
 		function withDraftPublisher(source = 'workflow source') {
-			const publish = vi.fn(async () => await Promise.resolve());
+			const publish = vi.fn(async (_draft: WorkflowDraft) => await Promise.resolve());
 			const publishIssues = vi.fn();
 			const made = makeContext({
 				source,
@@ -2002,6 +2003,22 @@ describe('createBuildWorkflowTool', () => {
 			expect(publish).toHaveBeenCalledWith(
 				expect.objectContaining({ filePath, workflowId: 'wf-bound' }),
 			);
+		});
+
+		it('shows the workflow name that the build passes on the draft', async () => {
+			const { context, filePath, publish } = withDraftPublisher();
+			const draftNames: string[] = [];
+			publish.mockImplementation(async (draft: WorkflowDraft) => {
+				draftNames.push(draft.workflow.name);
+				await Promise.resolve();
+			});
+
+			await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				name: 'Daily digest',
+			});
+
+			expect(draftNames).toEqual(['Daily digest']);
 		});
 
 		it('publishes no draft when the source does not compile', async () => {

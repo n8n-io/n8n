@@ -35,6 +35,11 @@ export interface WorkflowDraftPublisher {
 	publishIssues(issues: WorkflowDraftIssues): void;
 }
 
+/** Names each node that has none after its id, as the canvas keys nodes by name. */
+function nameUnnamedNodes(workflow: WorkflowJSON) {
+	for (const node of workflow.nodes) node.name ??= node.id;
+}
+
 function capIssues(issues: InstanceAiWorkflowDraftIssue[]): InstanceAiWorkflowDraftIssue[] {
 	return issues.slice(0, WORKFLOW_DRAFT_ISSUES_MAX).map((issue) => ({
 		...issue,
@@ -56,13 +61,19 @@ export function createWorkflowDraftPublisher(options: {
 }): WorkflowDraftPublisher {
 	const { eventBus, threadId, runId, agentId, context } = options;
 	const revisions = new Map<string, number>();
+	/** The revision of each file that the editor shows. Absent when the last draft failed. */
+	const shownRevisions = new Map<string, number>();
 
 	return {
 		async publish({ filePath, workflowId, workflow }) {
+			// The issues of this build must not go to the draft of an earlier build.
+			shownRevisions.delete(filePath);
+			const revision = (revisions.get(filePath) ?? 0) + 1;
+			revisions.set(filePath, revision);
 			try {
 				const json = structuredClone(workflow);
 				await prepareWorkflowForSave(json, workflowId, context);
-				const revision = (revisions.get(filePath) ?? 0) + 1;
+				nameUnnamedNodes(json);
 				const parsed = workflowDraftPayloadSchema.safeParse({
 					filePath,
 					...(workflowId ? { workflowId } : {}),
@@ -76,13 +87,13 @@ export function createWorkflowDraftPublisher(options: {
 					});
 					return;
 				}
-				revisions.set(filePath, revision);
 				eventBus.publish(threadId, {
 					type: 'workflow-draft',
 					runId,
 					agentId,
 					payload: parsed.data,
 				});
+				shownRevisions.set(filePath, revision);
 			} catch (error) {
 				context.logger.debug('Skipped workflow draft preview', {
 					filePath,
@@ -92,7 +103,7 @@ export function createWorkflowDraftPublisher(options: {
 		},
 
 		publishIssues({ filePath, issues }) {
-			const revision = revisions.get(filePath);
+			const revision = shownRevisions.get(filePath);
 			if (revision === undefined) return;
 			try {
 				const parsed = workflowDraftIssuesPayloadSchema.safeParse({

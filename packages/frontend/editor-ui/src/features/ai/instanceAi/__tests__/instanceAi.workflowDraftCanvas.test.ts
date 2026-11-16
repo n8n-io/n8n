@@ -53,6 +53,17 @@ describe('toDraftWorkflowDb', () => {
 		});
 	});
 
+	it('marks an issue whose code is also an object property name', () => {
+		const withIssues: WorkflowDraft = {
+			...draft(),
+			issues: [{ code: 'constructor', message: 'Odd code', nodeName: 'Set' }],
+		};
+
+		const workflow = toDraftWorkflowDb(withIssues, 'draft-doc');
+
+		expect(workflow.nodes[1].issues).toEqual({ parameters: { constructor: ['Odd code'] } });
+	});
+
 	it('keys the workflow by its own document id and revision', () => {
 		const workflow = toDraftWorkflowDb(draft(), 'draft-doc');
 
@@ -86,7 +97,12 @@ describe('toDraftWorkflowDb', () => {
 			draft({
 				connections: {
 					Start: {
-						main: [[{ node: 'Set', type: 'main', index: 0 }]],
+						main: [
+							[
+								{ node: 'Set', type: 'main', index: 0 },
+								{ node: 'Set', type: 'bogus', index: 0 },
+							],
+						],
 						bogus: [[{ node: 'Set', type: 'bogus', index: 0 }]],
 					},
 				},

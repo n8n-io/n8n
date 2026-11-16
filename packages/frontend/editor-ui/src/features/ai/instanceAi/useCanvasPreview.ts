@@ -106,13 +106,13 @@ function fileName(filePath: string): string {
 	return filePath.split('/').pop() ?? filePath;
 }
 
-function toDraftTab(draft: WorkflowDraft): ArtifactTab {
+function toDraftTab(draft: WorkflowDraft, building: boolean): ArtifactTab {
 	return {
 		id: draftTabId(draft.filePath),
 		type: 'workflow',
 		name: draft.workflow.name || fileName(draft.filePath),
 		icon: ARTIFACT_TAB_ICONS.workflow,
-		building: true,
+		building,
 		draft: true,
 	};
 }
@@ -187,7 +187,7 @@ export function useCanvasPreview({
 		// A new workflow shows as a draft tab until its saved workflow joins the registry.
 		for (const draft of Object.values(workflowDrafts())) {
 			if (draft.savedWorkflowId || draft.workflowId) continue;
-			result.push(toDraftTab(draft));
+			result.push(toDraftTab(draft, isAgentWorking.value));
 		}
 
 		if (linkedAgent && !result.some((tab) => tab.id === linkedAgent.agentId)) {
@@ -787,21 +787,21 @@ export function useCanvasPreview({
 	// --- Drafts: show each new draft, follow it to its saved workflow ---
 
 	// Key on file and revision, so each write shows its workflow, but a save does not.
-	const latestDraftKey = computed(() => {
-		let latest: WorkflowDraft | undefined;
-		for (const draft of Object.values(workflowDrafts())) {
-			if (draft.savedWorkflowId) continue;
-			if (!latest || draft.revision > latest.revision) latest = draft;
-		}
-		return latest ? `${latest.filePath}#${latest.revision}` : undefined;
-	});
+	// Revisions count per file and per run, so a new key marks the newest write.
+	const unsavedDraftKeys = computed(() =>
+		Object.values(workflowDrafts()).flatMap((draft) =>
+			draft.savedWorkflowId ? [] : [`${draft.filePath}#${draft.revision}`],
+		),
+	);
 	const draftsByKey = computed(
 		() => new Map(Object.values(workflowDrafts()).map((d) => [`${d.filePath}#${d.revision}`, d])),
 	);
 
 	watch(
-		latestDraftKey,
-		(key) => {
+		unsavedDraftKeys,
+		(keys, previousKeys = []) => {
+			const previous = new Set(previousKeys);
+			const key = keys.findLast((candidate) => !previous.has(candidate));
 			const draft = key ? draftsByKey.value.get(key) : undefined;
 			if (draft && !thread.isHydratingThread) showAgentArtifact(draftTargetTabId(draft));
 		},
