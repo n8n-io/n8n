@@ -48,23 +48,17 @@ describe('FeatureMaturityBadges', () => {
 		expect(getByTestId('feature-enterprise-readiness-badge')).toBeInTheDocument();
 	});
 
-	it('draws both badges at the same size', () => {
+	it('draws Preview as a dashed badge and enterprise as an outline badge', () => {
 		const wrapper = mount(FeatureMaturityBadges, {
 			props: { showPreview: true, showEnterprise: true },
 		});
 
 		const badges = wrapper.findAllComponents(N8nBadge);
 		expect(badges).toHaveLength(2);
-		expect(badges[0]?.props()).toMatchObject({
-			variant: 'pink',
-			leadingIcon: 'flask-conical',
-			size: 'xxsmall',
-		});
-		expect(badges[1]?.props()).toMatchObject({
-			variant: 'pink',
-			leadingIcon: 'shield-half',
-			size: 'xxsmall',
-		});
+		expect(badges[0]?.props()).toMatchObject({ variant: 'outline', size: 'xxsmall' });
+		expect(badges[0]?.props('leadingIcon')).toBeUndefined();
+		expect(badges[1]?.props()).toMatchObject({ variant: 'outline', size: 'xxsmall' });
+		expect(badges[1]?.props('leadingIcon')).toBeUndefined();
 	});
 
 	it('shows the enterprise tooltip on keyboard focus', async () => {

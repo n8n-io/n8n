@@ -11,7 +11,6 @@ export const BADGE_VARIANT = [
 	'danger',
 	'success',
 	'info',
-	'pink',
 ] as const;
 
 export type BadgeVariant = (typeof BADGE_VARIANT)[number];

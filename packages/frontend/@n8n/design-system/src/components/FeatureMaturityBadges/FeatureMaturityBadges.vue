@@ -39,9 +39,8 @@ const enterpriseTestId = computed(() =>
 	<span v-if="visible" :class="$style.badges">
 		<N8nBadge
 			v-if="showPreview"
-			variant="pink"
 			size="xxsmall"
-			leading-icon="flask-conical"
+			:class="$style.previewBadge"
 			:data-test-id="previewTestId"
 		>
 			{{ t('previewBadge.preview') }}
@@ -53,9 +52,8 @@ const enterpriseTestId = computed(() =>
 			:content="t('enterpriseReadinessBadge.tooltip')"
 		>
 			<N8nBadge
-				variant="pink"
+				variant="outline"
 				size="xxsmall"
-				leading-icon="shield-half"
 				:class="$style.enterpriseBadge"
 				:data-test-id="enterpriseTestId"
 				tabindex="0"
@@ -73,6 +71,12 @@ const enterpriseTestId = computed(() =>
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.previewBadge {
+	border-style: dashed;
+	border-width: 1.5px;
+	--n8n-badge--text-color: var(--text-color--subtle);
 }
 
 .enterpriseBadge {
