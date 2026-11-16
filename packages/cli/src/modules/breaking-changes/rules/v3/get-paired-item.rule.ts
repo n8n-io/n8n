@@ -53,7 +53,7 @@ export class GetPairedItemRule implements IBreakingChangeWorkflowRule {
 
 		return reportAffectedNodes(affectedNodes, (node) => ({
 			title: `Node '${node.name}' uses the removed ${HELPER_NAME} helper`,
-			description: `Expressions in this node call ${HELPER_NAME}, which is removed. They fail to evaluate after the update. Replace each call with $('Node').item, where Node is the name of the node that produced the item.`,
+			description: `Expressions in this node call ${HELPER_NAME}, which is removed. They fail to evaluate after the update. Replace each call with $('Node').item, $('Node').itemMatching(n) or $('Node').pairedItem(n), where Node is the name of the node that produced the item.`,
 			level: 'error',
 		}));
 	}

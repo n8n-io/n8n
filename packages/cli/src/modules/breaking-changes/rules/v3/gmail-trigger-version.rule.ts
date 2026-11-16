@@ -38,7 +38,7 @@ export class GmailTriggerVersionRule implements IBreakingChangeWorkflowRule {
 			{
 				action: 'Adjust Gmail Trigger nodes on versions below 1.4',
 				description:
-					'If a poll can return more than 10 emails and the workflow must process them at once, raise "Max Emails per Poll". If the workflow must run on drafts, enable "Include Drafts" in Filters. If it must run on sent or scheduled emails, replace the trigger with a Schedule Trigger and a Gmail "Get Many messages" operation, for example with the search "in:sent".',
+					'If a poll can return more than 10 emails and the workflow must process them at once, raise "Max Emails per Poll". If the workflow must run on drafts, enable "Include Drafts" in Filters. If it must run on sent or scheduled emails, replace the trigger with a Schedule Trigger and a Gmail "Get Many messages" operation, for example with the search "in:sent" or "in:scheduled".',
 			},
 		];
 	}

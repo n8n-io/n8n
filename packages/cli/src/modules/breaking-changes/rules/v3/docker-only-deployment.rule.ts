@@ -46,7 +46,7 @@ export class DockerOnlyDeploymentRule implements IBreakingChangeInstanceRule {
 				{
 					action: 'Migrate to a Docker-based deployment',
 					description:
-						'Move this instance to the official Docker image before updating. Connect it to the same database, and set N8N_ENCRYPTION_KEY to your current encryption key so that n8n can read your saved credentials.',
+						'Move this instance to the official Docker image before updating. Copy or mount your existing n8n data directory at /home/node/.n8n, connect it to the same external database if you use one, and set N8N_ENCRYPTION_KEY to your current encryption key so that n8n can read your saved credentials.',
 				},
 			],
 		};
