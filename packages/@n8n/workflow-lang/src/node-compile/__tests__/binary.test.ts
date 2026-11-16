@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { compile } from '../../compiler/index.ts';
 import { decodeModule } from '../../compiler/decode.ts';
 import { runReference } from '../../reference/runner.ts';
@@ -56,14 +58,15 @@ const fixture = {
 	effects: { Node: [{ status: 200, headers: {}, body: { ok: true } }] },
 };
 
-async function run(body: string, items: unknown[]) {
+async function run(body: string, items: unknown[], answers?: unknown[]) {
 	const result = probe(body);
 	expect(result.errors).toEqual([]);
 	const nodes = { 'nodes/compiled-node.ts': result.source ?? '' };
 	const compiled = compile(workflowSource(items), { nodes });
 	expect(compiled.diagnostics).toEqual([]);
-	const reference = await runReference(workflowSource(items), fixture, { nodes });
-	const bytecode = runModule(decodeModule(compiled.module ?? new Uint8Array()), fixture);
+	const used = answers === undefined ? fixture : { ...fixture, effects: { Node: answers } };
+	const reference = await runReference(workflowSource(items), used, { nodes });
+	const bytecode = runModule(decodeModule(compiled.module ?? new Uint8Array()), used);
 	expect(JSON.stringify(bytecode)).toBe(JSON.stringify(reference));
 	return reference;
 }
@@ -257,5 +260,157 @@ describe('node compiler: binary data', () => {
 		},
 	])('does not compile $label', ({ body }) => {
 		expect(probe(body).errors.length).toBeGreaterThan(0);
+	});
+});
+
+const BYTES_HASH = createHash('sha256').update('hello bytes').digest('hex');
+const BYTES_ID = `filesystem-v2:workflows/reference/executions/reference/binary_data/${BYTES_HASH}`;
+const PDF = { status: 200, headers: { 'content-type': 'application/pdf' }, body: 'hello bytes' };
+const DOWNLOAD =
+	"const response = await this.helpers.request({ uri: 'https://x.io/files/7', encoding: null, resolveWithFullResponse: true });";
+
+const MADE = `${DOWNLOAD} const made = await this.helpers.prepareBinaryData(response.body, 'a.pdf', 'application/pdf');`;
+
+function download(fileName: string, mimeType: string): string {
+	return `${DOWNLOAD} returnData.push({ json: { status: response.statusCode }, binary: { data: await this.helpers.prepareBinaryData(response.body, ${fileName}, ${mimeType}) } });`;
+}
+
+describe('node compiler: binary data of a response', () => {
+	it('asks the runtime to store the body and gives the binary data of v1', async () => {
+		const out = await run(
+			download("'reports/summary.pdf'", "response.headers['content-type']"),
+			[{}],
+			[PDF],
+		);
+		expect(requestOf(out).responseBinary).toEqual({});
+		expect(out.result).toEqual([
+			{
+				status: 200,
+				$binary: {
+					data: {
+						mimeType: 'application/pdf',
+						fileType: 'pdf',
+						fileExtension: 'pdf',
+						data: 'filesystem-v2',
+						directory: 'reports',
+						fileName: 'summary.pdf',
+						id: BYTES_ID,
+						fileSize: '11 B',
+						bytes: 11,
+					},
+				},
+			},
+		]);
+	});
+
+	it('finds the extension of a MIME type and the MIME type of a file name', async () => {
+		const typed = await run(download("'summary'", "'image/png; charset=binary'"), [{}], [PDF]);
+		expect(typed.result).toMatchObject([
+			{ $binary: { data: { fileName: 'summary', fileExtension: 'png', fileType: 'image' } } },
+		]);
+		const named = await run(download("'a.b/Photo.JPEG'", 'undefined'), [{}], [PDF]);
+		expect(named.result).toMatchObject([
+			{
+				$binary: {
+					data: { mimeType: 'image/jpeg', fileName: 'Photo.JPEG', fileExtension: 'JPEG' },
+				},
+			},
+		]);
+		const unnamed = await run(download('undefined', "'application/x-none'"), [{}], [PDF]);
+		expect(unnamed.result).toEqual([
+			{
+				status: 200,
+				$binary: {
+					data: {
+						mimeType: 'application/x-none',
+						data: 'filesystem-v2',
+						id: BYTES_ID,
+						fileSize: '11 B',
+						bytes: 11,
+					},
+				},
+			},
+		]);
+	});
+
+	it('gives the body without the full response', async () => {
+		const body =
+			"const bytes = await this.helpers.request({ uri: 'https://x.io/f', encoding: null }); returnData.push({ json: {}, binary: { file: await this.helpers.prepareBinaryData(Buffer.from(bytes), 'a.txt') } });";
+		const out = await run(body, [{}], [PDF]);
+		expect(out.result).toMatchObject([
+			{ $binary: { file: { mimeType: 'text/plain', fileName: 'a.txt', id: BYTES_ID } } },
+		]);
+	});
+
+	it('keeps the binary data of the input item', async () => {
+		const body = `${DOWNLOAD} const item = { json: items[i].json, binary: {} }; Object.assign(item.binary, items[i].binary); item.binary.copy = await this.helpers.prepareBinaryData(response.body, 'b.pdf', 'application/pdf'); returnData.push(item);`;
+		const out = await run(body, [{ a: 1, $binary: { data: FILE } }], [PDF]);
+		expect(out.result).toMatchObject([
+			{ a: 1, $binary: { data: FILE, copy: { id: BYTES_ID, fileName: 'b.pdf' } } },
+		]);
+	});
+
+	it.each([
+		{
+			label: 'a MIME type that v1 reads from the bytes',
+			body: download("'summary'", 'undefined'),
+			message: 'binary data with a MIME type that comes from the bytes has no compiled form',
+		},
+		{
+			label: 'bytes in the JSON of an output item',
+			body: `${MADE} returnData.push({ json: { file: response.body }, binary: { data: made } });`,
+			message: 'file bytes inside JSON data has no compiled form',
+		},
+		{
+			label: 'bytes inside a JSON request body',
+			body: `${MADE} await this.helpers.request({ method: 'POST', uri: 'https://x.io/u', body: { nested: { file: response.body, made } }, json: true });`,
+			message: 'file bytes inside JSON data has no compiled form',
+		},
+		{
+			label: 'bytes as a binary property',
+			body: `${MADE} returnData.push({ json: {}, binary: { data: made, other: response.body } });`,
+			message: 'a binary property of an output item that is not binary data has no compiled form',
+		},
+	])('stops for $label', async ({ body, message }) => {
+		const out = await run(body, [{}], [PDF]);
+		expect(out.status).toBe('error');
+		expect(JSON.stringify(out.result)).toContain(message);
+	});
+
+	it('keeps a failed download as the error of v1', async () => {
+		const out = await run(
+			download("'a.pdf'", "'application/pdf'"),
+			[{}],
+			[{ status: 404, headers: {}, body: { message: 'gone' } }],
+		);
+		expect(out.status).toBe('error');
+		expect(JSON.stringify(out.result)).toContain('Request failed with status code 404');
+	});
+
+	it.each([
+		{
+			label: 'the text of a Buffer of a response',
+			body: `${DOWNLOAD} const data = Buffer.from(response.body); returnData.push({ json: { r: data.toString() } });`,
+		},
+		{
+			label: 'a Buffer of a response that is not made into binary data',
+			body: `${DOWNLOAD} const data = Buffer.from(response.body); returnData.push({ json: { r: data } });`,
+		},
+		{
+			label: 'binary data from the bytes of an input item',
+			body: "const bytes = await this.helpers.getBinaryDataBuffer(i, 'data'); returnData.push({ json: {}, binary: { data: await this.helpers.prepareBinaryData(bytes, 'a.txt', 'text/plain') } });",
+		},
+	])('does not compile $label', ({ body }) => {
+		expect(probe(body).errors.length).toBeGreaterThan(0);
+	});
+
+	it('keeps the body of a response as it is when the node does not make binary data', async () => {
+		const out = await run(
+			`${DOWNLOAD} returnData.push({ json: { body: response } });`,
+			[{}],
+			[PDF],
+		);
+		expect(requestOf(out).responseBinary).toBeUndefined();
+		expect(out.result).toEqual([{ body: 'hello bytes' }]);
 	});
 });

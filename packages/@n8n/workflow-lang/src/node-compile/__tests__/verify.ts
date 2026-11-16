@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { Writer } from '../../convert/code.ts';
 import { helperSources } from '../../convert/helpers.ts';
 import { emitContinueLoop, errorRetryOf } from '../../convert/steps.ts';
@@ -13,6 +15,7 @@ import type {
 } from '../../nodes/__tests__/equivalence.ts';
 import { applyCredential, normalizeRequest } from '../../nodes/__tests__/equivalence.ts';
 import { recordV1, recordV1Cached } from '../../nodes/__tests__/v1-recorder.ts';
+import { referenceHash } from '../../reference/binary-response.ts';
 import { runReference } from '../../reference/runner.ts';
 import type { ErrorMode, NodeSources } from '../convert.ts';
 import { compileNodeInstance } from '../convert.ts';
@@ -161,6 +164,27 @@ export function flagVariants(
 		}
 	}
 	return variants;
+}
+
+function storedFile(entry: unknown): unknown {
+	if (!isRecord(entry) || typeof entry.data !== 'string') return entry;
+	const { id, ...rest } = entry;
+	const stored = referenceHash(id);
+	if (stored !== undefined) return { ...rest, data: stored };
+	if (id !== undefined) return entry;
+	const bytes = Buffer.from(entry.data, 'base64');
+	return { ...rest, data: createHash('sha256').update(bytes).digest('hex') };
+}
+
+export function comparableOutput(output: unknown): unknown {
+	if (!Array.isArray(output)) return output;
+	return output.map((item: unknown) => {
+		if (!isRecord(item) || !isRecord(item.$binary)) return item;
+		const { $binary: files, ...json } = item;
+		const compared: Record<string, unknown> = {};
+		for (const [name, entry] of Object.entries(files)) compared[name] = storedFile(entry);
+		return { ...json, $binary: compared };
+	});
 }
 
 type Compiled = ReturnType<typeof compileNodeInstance>;
@@ -429,6 +453,7 @@ export async function differenceFromV1(
 		mode,
 	);
 	if ('errors' in compiled) return `does not compile: ${compiled.errors[0]}`;
+	const asked: EquivalenceCase = compiled.storesResponses ? { ...c, responseBytes: true } : c;
 	const credentialType = c.credential?.type;
 	const plainSource = `import { webhook, workflow } from '@n8n/workflow-lang';
 
@@ -456,9 +481,9 @@ export default workflow({
 				)
 			: await recordPlain(testCase);
 	const minted =
-		compiled.mints.length > 0 ? await recordWithMints(c, compiled.mints, record) : undefined;
+		compiled.mints.length > 0 ? await recordWithMints(asked, compiled.mints, record) : undefined;
 	if (typeof minted === 'string') return minted;
-	const v1 = minted?.v1 ?? (await record(c));
+	const v1 = minted?.v1 ?? (await record(asked));
 	const source = continues
 		? continueWorkflow(compiled.type, c, credentialType, options.pairing ?? 'item')
 		: plainSource;
@@ -588,9 +613,10 @@ export default workflow({
 			return 'the v1 node has more than one output';
 		const mine: unknown[] = Array.isArray(out.result) ? out.result : [];
 		for (let k = 0; k < mine.length; k++) {
-			const expected = theirs[k] ?? [];
-			if (JSON.stringify(mine[k]) !== JSON.stringify(expected))
-				return `output ${k} differs: ${JSON.stringify(mine[k]).slice(0, 70)} / ${JSON.stringify(expected).slice(0, 70)}`;
+			const expected = JSON.stringify(comparableOutput(theirs[k] ?? []));
+			const given = JSON.stringify(comparableOutput(mine[k]));
+			if (given !== expected)
+				return `output ${k} differs: ${given.slice(0, 70)} / ${expected.slice(0, 70)}`;
 		}
 		const pairing = errorPairingOfV1(v1);
 		if (pairing !== undefined) options.pairings?.add(pairing);
@@ -609,7 +635,8 @@ export default workflow({
 		others.map((other) => other.result),
 		compiled.randoms,
 	);
-	return JSON.stringify(results.mine) === JSON.stringify(results.theirs)
+	return JSON.stringify(comparableOutput(results.mine)) ===
+		JSON.stringify(comparableOutput(results.theirs))
 		? undefined
 		: 'the output differs';
 }

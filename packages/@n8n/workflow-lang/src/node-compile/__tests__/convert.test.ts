@@ -181,6 +181,49 @@ describe('node compiler in the converter', () => {
 		expect(isVerified(nodeSources, node.type, node.version, regular)).toBe(false);
 	});
 
+	it('keeps a node that makes binary data in the fallback host for the binary mode `combined`', () => {
+		const download = { resource: 'file', operation: 'get', fileId: 'abc', download: true };
+		const checked: NodeSources = {
+			...nodeSources,
+			storesResponses: true,
+			verified: { 'n8n-nodes-base.telegram@1.2:file.get': ['fileId', 'download'] },
+		};
+		const separate = convertWorkflow(workflowWith(download), { nodeSources: checked, instance });
+		expect(separate.diagnostics.filter((d) => d.code === 'node-compile')).toEqual([]);
+		expect(separate.fallbackNodes).toEqual([]);
+		expect(Object.keys(separate.nodes ?? {})).toHaveLength(1);
+
+		const combined = convertWorkflow(
+			{ ...workflowWith(download), settings: { binaryMode: 'combined' } },
+			{ nodeSources: checked, instance },
+		);
+		expect(combined.fallbackNodes).toEqual(['Telegram']);
+		expect(combined.nodes).toBeUndefined();
+		expect(combined.diagnostics.some((d) => d.message.includes('binary mode `combined`'))).toBe(
+			true,
+		);
+	});
+
+	it('keeps a node that asks for response bytes in the fallback host without a runtime that stores them', () => {
+		const result = convertWorkflow(
+			workflowWith({ resource: 'file', operation: 'get', fileId: 'abc', download: true }),
+			{
+				nodeSources: {
+					...nodeSources,
+					verified: { 'n8n-nodes-base.telegram@1.2:file.get': ['fileId', 'download'] },
+				},
+				instance,
+			},
+		);
+		expect(result.fallbackNodes).toEqual(['Telegram']);
+		expect(result.nodes).toBeUndefined();
+		expect(
+			result.diagnostics.some((d) =>
+				d.message.includes('does not store a response as binary data'),
+			),
+		).toBe(true);
+	});
+
 	it('does not compile a core node with a native lowering from its source', () => {
 		expect(Object.keys(NATIVE).sort()).toEqual([...CORE_NODE_TYPES].sort());
 	});

@@ -11,6 +11,7 @@ import { regexExec } from './regex-lib.ts';
 import { StaticDataDoc } from './static-data.ts';
 import { xmlContent, xmlParse, xmlSnippet } from './xml-lib.ts';
 import { asciiIs, asciiIsPrintable, base64Utf8 } from './ascii-lib.ts';
+import { storedResponse } from './binary-response.ts';
 
 /** A differential test fixture (spec section 6). */
 export interface Fixture {
@@ -222,7 +223,7 @@ export async function runReference(
 		let result: unknown;
 		for (;;) {
 			effects.push({ step, kind, args: clone(args) });
-			result = nextResult(step);
+			result = storedResponse(kind, args, nextResult(step));
 			const failed = isRecord(result) && '$error' in result;
 			if (!failed || attempt >= retryMax) break;
 			attempt++;

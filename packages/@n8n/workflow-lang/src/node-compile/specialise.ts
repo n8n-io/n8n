@@ -3,6 +3,7 @@ import ts from 'typescript';
 import { CODE_HELPERS } from '../convert/code-native/helpers.ts';
 import { translateCode } from '../convert/code-native/translate.ts';
 import { MAX_CREDENTIAL_FLAGS } from '../credentials/flags.ts';
+import { MIME_TABLE } from '../generated/mime-table.generated.ts';
 import { commonJsToModule, isCommonJs } from './commonjs.ts';
 import {
 	bindMoment,
@@ -72,6 +73,9 @@ export interface SpecialiseResult {
 	mints?: CredentialMint[];
 
 	randoms?: RandomShape[];
+	binary?: boolean;
+
+	storesResponses?: boolean;
 
 	retyped?: (moduleType: string) => string;
 
@@ -107,6 +111,7 @@ const REQUEST_SOURCE = `async function __request(options, wrapped, legacy) {
 	const headers = __assign({}, __plain(options.headers ?? {}));
 	const parts = legacy ? __formParts(options, headers) : undefined;
 	const form = parts === undefined ? options.form : undefined;
+	const bytes = legacy ? options.encoding === null : options.encoding === 'arraybuffer';
 	if (form !== undefined && form !== null) headers['content-type'] = 'application/x-www-form-urlencoded';
 	const response = await ctx.http({
 		method: options.method ?? 'GET',
@@ -115,6 +120,7 @@ const REQUEST_SOURCE = `async function __request(options, wrapped, legacy) {
 		qs: __plain(options.qs ?? {}),
 		body: parts !== undefined ? undefined : form !== undefined && form !== null ? __form(__plain(form)) : __plain(__sendBody(options.body)),
 		multipart: parts,
+		responseBinary: bytes ? {} : undefined,
 		basicAuth: auth ? { user: auth.user ?? auth.username ?? '', password: auth.pass ?? auth.password ?? '' } : undefined,
 		inject: wrapped,
 		credential,
@@ -125,6 +131,11 @@ const REQUEST_SOURCE = `async function __request(options, wrapped, legacy) {
 			statusCode: response.status,
 		});
 		throw wrapped ? __apiError(failure, undefined) : failure;
+	}
+	if (bytes) {
+		const body = __responseBytes(response.body);
+		const full = legacy ? options.resolveWithFullResponse === true : options.returnFullResponse === true;
+		return full ? { body, headers: response.headers, statusCode: response.status } : body;
 	}
 	return response.body;
 }`;
@@ -232,6 +243,7 @@ function randomShapes(roots: ts.Node[]): RandomShape[] {
 	for (const root of roots) walk(root);
 	return [...shapes.values()];
 }
+const REQUEST_BYTES = "legacy ? options.encoding === null : options.encoding === 'arraybuffer'";
 
 const GLOBALS = new Set([
 	'undefined',
@@ -462,6 +474,150 @@ const HELPERS: Record<string, string> = {
 	__storedMetadata: `function __storedMetadata(id: any): any {
 	throw new Error('the metadata of binary data in a file store has no compiled form');
 }`,
+	__responseBytes: `function __responseBytes(body: any): any {
+	const entry: any = body !== null && body !== undefined && typeof body === 'object' && !Array.isArray(body) ? body.$binary : undefined;
+	if (entry === null || entry === undefined || typeof entry !== 'object' || typeof entry.id !== 'string' || typeof entry.data !== 'string' || typeof entry.bytes !== 'number') throw new Error('a response of bytes that the runtime did not store has no compiled form');
+	return { $bytes: true, data: entry.data, id: entry.id, length: entry.bytes, response: true };
+}`,
+	__bytesFrom: `function __bytesFrom(value: any): any {
+	if (value === null || value === undefined || typeof value !== 'object' || value.$bytes !== true) throw new Error('a Buffer from a value that is not file bytes has no compiled form');
+	return value;
+}`,
+	__noBytes: `function __noBytes(value: any): any {
+	const work: any[] = [value];
+	let seen: number = 0;
+	while (work.length > 0) {
+		const next: any = work.pop();
+		if (next === null || next === undefined || typeof next !== 'object') continue;
+		seen += 1;
+		if (seen > 100000) throw new Error('JSON data of more than 100000 parts in a node that holds file bytes has no compiled form');
+		if (Array.isArray(next)) {
+			for (const member of next) work.push(member);
+			continue;
+		}
+		if (next.$bytes === true) throw new Error('file bytes inside JSON data has no compiled form');
+		for (const member of Object.values(next)) work.push(member);
+	}
+	return value;
+}`,
+	__sendBodyChecked: `function __sendBody(body: any): any {
+	if (body !== null && body !== undefined && typeof body === 'object' && body.$bytes === true) throw new Error('a request body of file bytes has no compiled form');
+	return __noBytes(body);
+}`,
+	__outChecked: `function __out(result: any): any {
+	const out: any[] = [];
+	for (const item of result[0] ?? []) out.push(__outItem(item, __noBytes(__plain(item.json))));
+	return out;
+}`,
+	__outItem: `function __outItem(item: any, json: any): any {
+	const files: any = item.binary;
+	if (files === undefined) return json;
+	if (files === null || typeof files !== 'object' || Array.isArray(files)) throw new Error('binary data of an output item that is not an object has no compiled form');
+	if (json === null || json === undefined || typeof json !== 'object' || Array.isArray(json)) throw new Error('binary data of an output item without a JSON object has no compiled form');
+	for (const file of Object.values(files)) {
+		const entry: any = file;
+		if (entry === null || entry === undefined || typeof entry !== 'object' || Array.isArray(entry) || entry.$bytes === true || typeof entry.data !== 'string') throw new Error('a binary property of an output item that is not binary data has no compiled form');
+	}
+	if (json.$binary === files) return json;
+	return __assign(__assign({}, json), { $binary: files });
+}`,
+	__extName: `function __extName(base: string): string {
+	let dot: number = -1;
+	for (let k = 0; k < base.length; k++) {
+		if (base.charAt(k) === '.') dot = k;
+	}
+	if (dot <= 0 || base === '..') return '';
+	return base.slice(dot);
+}`,
+	__pathParts: `function __pathParts(path: string): any {
+	if (path === '/') return { dir: '/', base: '', ext: '' };
+	let end: number = path.length;
+	while (end > 1 && path.charAt(end - 1) === '/') end -= 1;
+	let cut: number = -1;
+	for (let k = 0; k < end; k++) {
+		if (path.charAt(k) === '/') cut = k;
+	}
+	const base: string = path.slice(cut + 1, end);
+	return { dir: cut > 0 ? path.slice(0, cut) : cut === 0 ? '/' : '', base, ext: __extName(base).slice(1) };
+}`,
+	__mimeLookup: `function __mimeLookup(path: any): any {
+	if (path === undefined || path === null || path === '' || path === false || path === 0) return false;
+	if (typeof path !== 'string') return false;
+	const written: string = __pathParts('x.' + path).ext;
+	for (let k = 0; k < written.length; k++) {
+		if (written.charCodeAt(k) > 126) throw new Error('the MIME type of a file extension with a character outside ASCII has no compiled form');
+	}
+	const extension: string = written.toLowerCase();
+	if (extension === '' || extension.includes(',') || extension.includes('|')) return false;
+	const at: number = __MIME.indexOf(',' + extension + ',');
+	if (at < 0) return false;
+	let start: number = 0;
+	let next: number = __MIME.indexOf('\\n', 0);
+	while (next >= 0 && next < at) {
+		start = next + 1;
+		next = __MIME.indexOf('\\n', start);
+	}
+	return __MIME.slice(start, __MIME.indexOf('|', start));
+}`,
+	__mimeExtension: `function __mimeExtension(type: string): string {
+	for (let k = 0; k < type.length; k++) {
+		const code: number = type.charCodeAt(k);
+		if ((code < 32 && code !== 9) || code > 126) throw new Error('a MIME type with a character outside printable ASCII has no compiled form');
+	}
+	let start: number = 0;
+	while (start < type.length && (type.charCodeAt(start) === 32 || type.charCodeAt(start) === 9)) start += 1;
+	let end: number = start;
+	while (end < type.length && type.charCodeAt(end) !== 32 && type.charCodeAt(end) !== 9 && type.charCodeAt(end) !== 59) end += 1;
+	const token: string = type.slice(start, end).toLowerCase();
+	if (token === '' || token.includes('|') || token.includes(',')) return '';
+	const at: number = __MIME.indexOf('\\n' + token + '|');
+	if (at < 0) return '';
+	const from: number = at + token.length + 2;
+	return __MIME.slice(from, __MIME.indexOf('|', from));
+}`,
+	__fileType: `function __fileType(type: string): string {
+	if (type.startsWith('application/json')) return 'json';
+	if (type.startsWith('text/html')) return 'html';
+	if (type.startsWith('image/')) return 'image';
+	if (type.startsWith('audio/')) return 'audio';
+	if (type.startsWith('video/')) return 'video';
+	if (type.startsWith('text/') || type.startsWith('application/javascript')) return 'text';
+	if (type.startsWith('application/pdf')) return 'pdf';
+	return '';
+}`,
+	__prettyBytes: `function __prettyBytes(count: number): string {
+	if (count < 0 || count >= 1000000000000 || Math.floor(count) !== count) throw new Error('the size text of a file of this size has no compiled form');
+	if (count < 1) return '0 B';
+	const exponent: number = count < 1000 ? 0 : count < 1000000 ? 1 : count < 1000000000 ? 2 : 3;
+	const scaled: number = count / [1, 1000, 1000000, 1000000000][exponent];
+	const text: string = scaled.toFixed(scaled < 10 ? 2 : scaled < 100 ? 1 : 0);
+	return String(Number(text)) + ' ' + ['B', 'kB', 'MB', 'GB'][exponent];
+}`,
+	__prepareBinary: `function __prepareBinary(value: any, filePath: any, mimeType: any): any {
+	if (value === null || value === undefined || typeof value !== 'object' || value.$bytes !== true || value.response !== true) throw new Error('binary data from bytes that are not the body of a response has no compiled form');
+	const named: boolean = filePath !== undefined && filePath !== null && filePath !== '' && filePath !== false && filePath !== 0;
+	const typed: boolean = mimeType !== undefined && mimeType !== null && mimeType !== '' && mimeType !== false && mimeType !== 0;
+	if ((named && typeof filePath !== 'string') || (typed && typeof mimeType !== 'string')) throw new Error('binary data with a file name or a MIME type that is not text has no compiled form');
+	const found: any = typed ? mimeType : named ? __mimeLookup(filePath) : false;
+	if (found === false) throw new Error('binary data with a MIME type that comes from the bytes has no compiled form');
+	const type: string = found;
+	const out: any = { mimeType: type };
+	const kind: string = __fileType(type);
+	if (kind !== '') out.fileType = kind;
+	const parts: any = named ? __pathParts(filePath) : undefined;
+	const extension: string = parts !== undefined && parts.ext !== '' ? parts.ext : __mimeExtension(type);
+	if (extension !== '') out.fileExtension = extension;
+	out.data = value.data;
+	if (parts !== undefined) {
+		if (parts.dir !== '') out.directory = parts.dir;
+		out.fileName = parts.base;
+	}
+	out.id = value.id;
+	out.fileSize = __prettyBytes(value.length);
+	out.bytes = value.length;
+	return out;
+}`,
+	__MIME: 'const __MIME: string = ' + JSON.stringify(MIME_TABLE) + ';',
 	__getPath: `function __getPath(value: any, path: any, fallback: any): any {
 	if (Array.isArray(path)) return __get(value, path, '', fallback);
 	const text: string = String(path);
@@ -510,7 +666,7 @@ const HELPERS: Record<string, string> = {
 }`,
 	__out: `function __out(result: any): any {
 	const out: any[] = [];
-	for (const item of result[0] ?? []) out.push(__plain(item.json));
+	for (const item of result[0] ?? []) out.push(__outItem(item, __plain(item.json)));
 	return out;
 }`,
 	__jsonArray: `function __jsonArray(data: any): any {
@@ -959,6 +1115,7 @@ const GENERIC_ERRORS = new Set([
 
 const PACKAGE_HELPERS: Record<string, Record<string, string>> = {
 	lodash: { isEmpty: '__isEmpty', get: '__get', set: '__set', omit: '__omitKeys' },
+	'mime-types': { lookup: '__mimeLookup' },
 	'n8n-workflow': {
 		jsonParse: '__jsonParse',
 		deepCopy: '__deepCopy',
@@ -1003,6 +1160,17 @@ const HELPER_USES: Record<string, string[]> = {
 	__binaryOf: ['__error'],
 	__inputBytes: ['__fileBytes', '__storedBytes'],
 	...MOMENT_HELPER_USES,
+	__out: ['__outItem', '__assign'],
+	__mimeLookup: ['__pathParts', '__extName', '__MIME'],
+	__prepareBinary: [
+		'__mimeLookup',
+		'__mimeExtension',
+		'__pathParts',
+		'__extName',
+		'__fileType',
+		'__prettyBytes',
+		'__MIME',
+	],
 };
 
 const LIMIT_TEXT = 'has no compiled form';
@@ -1024,7 +1192,47 @@ function bufferEncoding(e: ts.Expression | undefined): string | undefined {
 		: undefined;
 }
 
-const BYTES_HELPERS = new Set(['__fileBytes', '__inputBytes', '__storedBytes']);
+const BYTES_HELPERS = new Set(['__fileBytes', '__inputBytes', '__storedBytes', '__bytesFrom']);
+const INPUT_BYTES_HELPERS = new Set(['__fileBytes', '__inputBytes', '__storedBytes']);
+const HOLDS_BYTES = [
+	'__fileBytes',
+	'__inputBytes',
+	'__storedBytes',
+	'__bytesFrom',
+	'__prepareBinary',
+];
+const PREPARE_SOURCE =
+	'binary data has a compiled form only from the body of a response: file bytes of an input item cannot become new binary data';
+
+function isPlainBuffer(e: ts.Node): e is ts.CallExpression {
+	return (
+		ts.isCallExpression(e) &&
+		ts.isPropertyAccessExpression(e.expression) &&
+		ts.isIdentifier(e.expression.expression) &&
+		e.expression.expression.text === 'Buffer' &&
+		e.expression.name.text === 'from' &&
+		(e.arguments.length === 1 || e.arguments.length === 2) &&
+		!ts.isSpreadElement(e.arguments[0]) &&
+		(e.arguments.length === 1 || bufferEncoding(e.arguments[1]) === 'utf8')
+	);
+}
+
+function givesInputBytes(e: ts.Expression): boolean {
+	const value =
+		ts.isAwaitExpression(e) ||
+		ts.isParenthesizedExpression(e) ||
+		ts.isAsExpression(e) ||
+		ts.isNonNullExpression(e)
+			? e.expression
+			: e;
+	if (value !== e) return givesInputBytes(value);
+	return (
+		isBase64Buffer(value) ||
+		(ts.isCallExpression(value) &&
+			ts.isIdentifier(value.expression) &&
+			INPUT_BYTES_HELPERS.has(value.expression.text))
+	);
+}
 
 function isBase64Buffer(e: ts.Node): e is ts.CallExpression {
 	return (
@@ -1048,6 +1256,75 @@ function givesBytes(e: ts.Expression): boolean {
 			ts.isIdentifier(value.expression) &&
 			BYTES_HELPERS.has(value.expression.text))
 	);
+}
+
+function uncast(e: ts.Expression): ts.Expression {
+	let value = e;
+	while (
+		ts.isAsExpression(value) ||
+		ts.isParenthesizedExpression(value) ||
+		ts.isNonNullExpression(value) ||
+		ts.isAwaitExpression(value) ||
+		ts.isTypeAssertionExpression(value)
+	)
+		value = value.expression;
+	return value;
+}
+
+function buffersForBinaryData(root: ts.Node, into: Set<ts.Node>) {
+	const held = new Map<string, ts.Node>();
+	const other = new Set<string>();
+	const walk = (n: ts.Node) => {
+		if (
+			ts.isCallExpression(n) &&
+			ts.isIdentifier(n.expression) &&
+			n.expression.text === '__prepareBinary' &&
+			n.arguments.length > 0
+		) {
+			const given = uncast(n.arguments[0]);
+			if (isPlainBuffer(given)) into.add(given);
+			if (isPlainBuffer(given) || !ts.isIdentifier(given)) walk(given);
+			n.arguments.slice(1).forEach(walk);
+			return;
+		}
+		if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer) {
+			const made = uncast(n.initializer);
+			if (isPlainBuffer(made)) {
+				if (held.has(n.name.text)) other.add(n.name.text);
+				held.set(n.name.text, made);
+			} else other.add(n.name.text);
+			walk(n.initializer);
+			return;
+		}
+		if (ts.isIdentifier(n)) other.add(n.text);
+		ts.forEachChild(n, walk);
+	};
+	walk(root);
+	for (const [name, made] of held) if (!other.has(name)) into.add(made);
+}
+
+const BINARY_HELPERS = [
+	'__binaryOf',
+	'__inputBytes',
+	'__storedBytes',
+	'__storedMetadata',
+	'__fileBytes',
+	'__bytesFrom',
+	'__prepareBinary',
+];
+
+function mentionsBinary(n: ts.Node): boolean {
+	if (
+		(ts.isIdentifier(n) || ts.isStringLiteralLike(n)) &&
+		(n.text === 'binary' || n.text === '$binary')
+	)
+		return true;
+	return ts.forEachChild(n, mentionsBinary) ?? false;
+}
+
+function mentionsEncoding(n: ts.Node): boolean {
+	if ((ts.isIdentifier(n) || ts.isStringLiteralLike(n)) && n.text === 'encoding') return true;
+	return ts.forEachChild(n, mentionsEncoding) ?? false;
 }
 
 function mentionsBuffer(n: ts.Node): boolean {
@@ -1966,6 +2243,21 @@ class Specialiser {
 				binaryCall.arguments.length === 1
 			)
 				return this.helper('__storedMetadata', ...args(binaryCall));
+			if (
+				isThisCall(binaryCall, 'helpers', 'prepareBinaryData') &&
+				binaryCall.arguments.length >= 1 &&
+				binaryCall.arguments.length <= 3
+			) {
+				const [bytes, fileName, mimeType] = args(binaryCall);
+				return this.helper(
+					'__prepareBinary',
+					bytes,
+					fileName ?? f.createIdentifier('undefined'),
+					mimeType ?? f.createIdentifier('undefined'),
+				);
+			}
+			if (isThisCall(binaryCall, 'helpers', 'binaryToBuffer') && binaryCall.arguments.length === 1)
+				return this.helper('__bytesFrom', ...args(binaryCall));
 			if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
 				const { expression: target, name } = node.expression;
 
@@ -1998,6 +2290,7 @@ class Specialiser {
 						'__formParts',
 						'__formPart',
 						'__sendBody',
+						'__responseBytes',
 					])
 						this.helpers.add(used);
 					const helperName =
@@ -5756,10 +6049,18 @@ class Specialiser {
 			derivations,
 			mints,
 			randoms: this.randoms,
+			binary:
+				BINARY_HELPERS.some((h) => this.helpers.has(h)) ||
+				this.output.some((o) => mentionsBinary(o.node)),
+			storesResponses: this.storesResponses,
 			retyped: this.retyped,
 			zones: [...this.zones].sort(),
 		};
 	}
+
+	private readonly responseBuffers = new Set<ts.Node>();
+
+	private storesResponses = false;
 
 	private bufferText(root: ts.Node): ts.Node {
 		const visit = (n: ts.Node): ts.Node => {
@@ -5814,6 +6115,10 @@ class Specialiser {
 				this.error('code', BYTES_USE);
 				return n;
 			}
+			if (isPlainBuffer(n) && this.responseBuffers.has(n)) {
+				this.helpers.add('__bytesFrom');
+				return call('__bytesFrom', ts.visitNode(n.arguments[0], visit) as ts.Expression);
+			}
 			if (ts.isIdentifier(n) && n.text === 'Buffer' && isValueUse(n))
 				this.error(
 					'code',
@@ -5840,6 +6145,42 @@ class Specialiser {
 			ts.forEachChild(n, collect);
 		};
 		collect(root);
+		const inputs = new Set<string>();
+		const collectInputs = (n: ts.Node) => {
+			if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer) {
+				if (givesInputBytes(n.initializer)) inputs.add(n.name.text);
+			}
+			if (
+				ts.isBinaryExpression(n) &&
+				n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+				ts.isIdentifier(n.left) &&
+				givesInputBytes(n.right)
+			)
+				inputs.add(n.left.text);
+			ts.forEachChild(n, collectInputs);
+		};
+		collectInputs(root);
+		const prepared = (n: ts.Node) => {
+			if (
+				ts.isCallExpression(n) &&
+				ts.isIdentifier(n.expression) &&
+				n.expression.text === '__prepareBinary' &&
+				n.arguments.length > 0
+			) {
+				let given = n.arguments[0];
+				while (
+					ts.isAsExpression(given) ||
+					ts.isParenthesizedExpression(given) ||
+					ts.isNonNullExpression(given) ||
+					ts.isAwaitExpression(given)
+				)
+					given = given.expression;
+				if (givesInputBytes(given) || (ts.isIdentifier(given) && inputs.has(given.text)))
+					this.error('code', PREPARE_SOURCE);
+			}
+			ts.forEachChild(n, prepared);
+		};
+		prepared(root);
 		if (names.size === 0) return;
 		const check = (n: ts.Node) => {
 			const held =
@@ -5886,6 +6227,7 @@ class Specialiser {
 		let body = '';
 		for (const { node } of this.output) this.bytesUses(node);
 		for (const entry of this.output) entry.node = this.listSources(entry.node);
+		for (const { node } of this.output) buffersForBinaryData(node, this.responseBuffers);
 		const buffers = this.output.some((o) => mentionsBuffer(o.node));
 		if (buffers) this.helpers.add('__bufferText');
 		const guarded = [...this.helpers].some((h) =>
@@ -5925,7 +6267,16 @@ class Specialiser {
 				);
 			}
 		}
-		if (this.helpers.has('__request')) code.unshift(REQUEST_SOURCE);
+		const holdsBytes = HOLDS_BYTES.some((h) => this.helpers.has(h));
+		if (holdsBytes) this.helpers.add('__noBytes');
+		this.storesResponses =
+			this.helpers.has('__request') &&
+			(this.helpers.has('__prepareBinary') || this.helpers.has('__bytesFrom')) &&
+			this.output.some((o) => mentionsEncoding(o.node));
+		if (this.helpers.has('__request'))
+			code.unshift(
+				this.storesResponses ? REQUEST_SOURCE : REQUEST_SOURCE.replace(REQUEST_BYTES, 'false'),
+			);
 		this.helpers.delete('__request');
 		for (const [name, source] of Object.entries(CONTEXT_HELPERS)) {
 			if (this.helpers.delete(name)) code.unshift(source);
@@ -5984,7 +6335,12 @@ class Specialiser {
 		const plain = t.usesCollections
 			? 'function __plain(value: Json): Json {\n\treturn collPlain(value);\n}'
 			: 'function __plain(value: Json): Json {\n\treturn value;\n}';
-		const own = [...this.helpers].sort().map((h) => (h === '__plain' ? plain : HELPERS[h]));
+		const checked: Record<string, string> = holdsBytes
+			? { __sendBody: HELPERS.__sendBodyChecked, __out: HELPERS.__outChecked }
+			: {};
+		const own = [...this.helpers]
+			.sort()
+			.map((h) => (h === '__plain' ? plain : (checked[h] ?? HELPERS[h])));
 		const typed = (type: string) => `import { defineNode } from '@n8n/workflow-lang';
 
 type Json = any;

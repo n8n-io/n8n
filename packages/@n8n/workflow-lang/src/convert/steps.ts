@@ -399,6 +399,24 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		);
 		return false;
 	}
+	// The compiled forms of binary data are those of the `separate` mode. With `combined`, v1 reads
+	// and writes binary data in the JSON of an item, so the node stays in the host.
+	if (compiled.binary && c.scope.binaryMode === 'combined') {
+		c.info(
+			'node-compile',
+			'The node uses binary data and the workflow has the binary mode `combined`, which has no compiled form.',
+		);
+		return false;
+	}
+	// A node that asks for the bytes of a response needs a runtime that stores the body as
+	// binary data (`responseBinary`, spec 7.1). The caller says when its runtime does.
+	if (compiled.storesResponses && c.nodeSources.storesResponses !== true) {
+		c.info(
+			'node-compile',
+			'The node asks for the bytes of a response, and the runtime of the caller does not store a response as binary data.',
+		);
+		return false;
+	}
 	if (compiled.derivations.length > 0) {
 		const slot = c.credential();
 		if (slot === undefined || !c.addCredentialDerivations) {
