@@ -1,8 +1,8 @@
 diff --git a/dist/index.js b/dist/index.js
-index ab5a27df2d1cde5530b33d24d6e30dc67e5be84d..6141dc9a651a2d7a568cc5b7eaa0a20c269437eb 100644
+index 8ed1e3c..ebafab7 100644
 --- a/dist/index.js
 +++ b/dist/index.js
-@@ -25,6 +25,13 @@ var MAX_REPLY_BUTTONS = 3;
+@@ -27,6 +27,13 @@ var MAX_REPLY_BUTTONS = 3;
  var MAX_BUTTON_TITLE_LENGTH = 20;
  var MAX_BODY_LENGTH = 1024;
  var MAX_HEADER_LENGTH = 60;
@@ -16,7 +16,7 @@ index ab5a27df2d1cde5530b33d24d6e30dc67e5be84d..6141dc9a651a2d7a568cc5b7eaa0a20c
  function encodeWhatsAppCallbackData(actionId, value) {
    const payload = { a: actionId };
    if (typeof value === "string") {
-@@ -78,6 +85,42 @@ function cardToWhatsApp(card, options) {
+@@ -80,6 +87,42 @@ function cardToWhatsApp(card, options) {
        }
      };
    }
@@ -59,7 +59,7 @@ index ab5a27df2d1cde5530b33d24d6e30dc67e5be84d..6141dc9a651a2d7a568cc5b7eaa0a20c
    if (options?.allowCtaUrl !== false) {
      const ctaLink = findPromotableCtaLink(card);
      if (ctaLink) {
-@@ -219,6 +262,17 @@ function extractReplyButtons(actions) {
+@@ -221,6 +264,17 @@ function extractReplyButtons(actions) {
    }
    return buttons.slice(0, MAX_REPLY_BUTTONS);
  }

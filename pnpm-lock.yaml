@@ -228,26 +228,26 @@ catalogs:
       specifier: ^12.32.0
       version: 12.32.0
     '@chat-adapter/discord':
-      specifier: 4.37.0
-      version: 4.37.0
+      specifier: 4.39.0
+      version: 4.39.0
     '@chat-adapter/linear':
-      specifier: 4.37.0
-      version: 4.37.0
+      specifier: 4.39.0
+      version: 4.39.0
     '@chat-adapter/slack':
       specifier: 4.39.0
       version: 4.39.0
     '@chat-adapter/state-memory':
-      specifier: 4.37.0
-      version: 4.37.0
+      specifier: 4.39.0
+      version: 4.39.0
     '@chat-adapter/teams':
-      specifier: 4.37.0
-      version: 4.37.0
+      specifier: 4.39.0
+      version: 4.39.0
     '@chat-adapter/telegram':
-      specifier: 4.37.0
-      version: 4.37.0
+      specifier: 4.39.0
+      version: 4.39.0
     '@chat-adapter/whatsapp':
-      specifier: 4.37.0
-      version: 4.37.0
+      specifier: 4.39.0
+      version: 4.39.0
     '@codemirror/autocomplete':
       specifier: 6.20.0
       version: 6.20.0
@@ -558,8 +558,8 @@ catalogs:
       specifier: ^5.4.4
       version: 5.4.4
     chat:
-      specifier: 4.37.0
-      version: 4.37.0
+      specifier: 4.39.0
+      version: 4.39.0
     cheerio:
       specifier: 1.1.0
       version: 1.1.0
@@ -805,7 +805,7 @@ catalogs:
       version: 11.1.1
     vite:
       specifier: ^8.1.6
-      version: 8.3.4
+      version: 8.3.7
     vite-plugin-singlefile:
       specifier: 2.3.3
       version: 2.3.3
@@ -923,7 +923,7 @@ catalogs:
   p-limit-v7:
     p-limit:
       specifier: ^7.3.1
-      version: 7.3.1
+      version: 7.3.3
   sentry:
     '@sentry/core':
       specifier: 11.8.0
@@ -1113,12 +1113,13 @@ overrides:
   pdf-parse>@napi-rs/canvas: 1.0.11
   '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
   toml@<5.0.1: 5.0.1
+  get-uri>basic-ftp: 6.2.6
   '@langchain/langgraph': 1.4.21
   '@langchain/langgraph-checkpoint': 1.1.6
 
 patchedDependencies:
-  '@chat-adapter/teams@4.37.0': af5fb1d38a2af55399bd8b6934e77348a9b061fec6177c101dd9d7a787ae8a6c
-  '@chat-adapter/whatsapp@4.37.0': 950356dafb986b5cc9bd53069f7653b47b790a60b3590495cf53392ea4df2de4
+  '@chat-adapter/teams@4.39.0': aae12484e0d48fa7c4ebc9bd6db97f17587ae4c458dd6b186fdf748cad60a9af
+  '@chat-adapter/whatsapp@4.39.0': bdf07d60cf43691d7f5bff5111d1205d36f62849bea742680713771330455cc7
   '@confluentinc/kafka-javascript@1.9.1': c597d3e3d9d6d0d33588b7dc1e88d55f270ba155721aad464bd7fb03e28f5003
   '@google/generative-ai@0.24.0': 81ecf039d41dad42ab21d944df2ddb6726a70f915cfa7c16e17f56caca3622ad
   '@icetee/ftp@0.3.15': 19c547038e6400d80f724f77c3fad97093f9233d7596bf2dba38d3e0adb7dab9
@@ -1393,10 +1394,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
@@ -1439,7 +1440,7 @@ importers:
         version: 1.0.27(@aws-sdk/credential-provider-node@3.972.80)(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(@smithy/signature-v4@5.7.2)(cheerio@1.1.0)(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.27(a00cc7f1efe9b365767b2e6e55596841)
+        version: 1.1.27(acb39ef5edc933ce61e8780417815eb3)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -1536,10 +1537,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
@@ -1669,10 +1670,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
@@ -1733,10 +1734,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -1763,10 +1764,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/backend-common:
     dependencies:
@@ -2194,10 +2195,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
@@ -2311,10 +2312,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/code-runtime-js:
     devDependencies:
@@ -2341,10 +2342,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/codemirror-lang:
     dependencies:
@@ -2381,10 +2382,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/codemirror-lang-html:
     dependencies:
@@ -2534,10 +2535,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/constants:
     devDependencies:
@@ -2711,10 +2712,10 @@ importers:
         version: '@typescript/typescript6@6.0.2'
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(@typescript/typescript6@6.0.2)(vitest@5.0.1)
@@ -3001,10 +3002,10 @@ importers:
         version: 8.70.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/eslint-plugin-community-nodes:
     dependencies:
@@ -3065,10 +3066,10 @@ importers:
         version: '@typescript/typescript6@6.0.2'
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/expression-runtime:
     dependencies:
@@ -3187,7 +3188,7 @@ importers:
         version: '@typescript/typescript6@6.0.2'
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vue:
         specifier: catalog:frontend
         version: 3.5.26(@typescript/typescript6@6.0.2)
@@ -3233,10 +3234,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/inbound-auth:
     dependencies:
@@ -3273,10 +3274,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -3397,7 +3398,7 @@ importers:
         version: 0.21.1
       p-limit:
         specifier: catalog:p-limit-v7
-        version: 7.3.1
+        version: 7.3.3
       playwright-core:
         specifier: 'catalog:'
         version: 1.62.1
@@ -3412,10 +3413,10 @@ importers:
         version: 7.30.1
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
@@ -3478,10 +3479,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/mcp-apps:
     dependencies:
@@ -3527,7 +3528,7 @@ importers:
         version: typescript@7.0.2
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       rimraf:
         specifier: 'catalog:'
         version: 6.0.1
@@ -3542,16 +3543,16 @@ importers:
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-plugin-singlefile:
         specifier: 'catalog:'
-        version: 2.3.3(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 2.3.3(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vite-svg-loader:
         specifier: catalog:frontend
         version: 5.1.0(vue@3.5.26(typescript@6.0.2))
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
@@ -3664,7 +3665,7 @@ importers:
         version: typescript@7.0.2
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(@typescript/typescript6@6.0.2))
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(@typescript/typescript6@6.0.2))
       '@vue/test-utils':
         specifier: catalog:frontend
         version: 2.4.6
@@ -3682,13 +3683,13 @@ importers:
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-svg-loader:
         specifier: catalog:frontend
         version: 5.1.0(vue@3.5.26(@typescript/typescript6@6.0.2))
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/module-cli:
     dependencies:
@@ -3783,10 +3784,10 @@ importers:
         version: '@typescript/typescript6@6.0.2'
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(@typescript/typescript6@6.0.2)(vitest@5.0.1)
@@ -4255,10 +4256,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/scan-community-package:
     dependencies:
@@ -4365,10 +4366,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
@@ -4402,10 +4403,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/syslog-client:
     dependencies:
@@ -4436,10 +4437,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/task-runner:
     dependencies:
@@ -4518,10 +4519,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
@@ -4564,10 +4565,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/tournament:
     dependencies:
@@ -4604,10 +4605,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/typeorm:
     dependencies:
@@ -4776,10 +4777,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/vitest-config:
     dependencies:
@@ -4801,10 +4802,10 @@ importers:
         version: typescript@7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/workflow-engine-check:
     dependencies:
@@ -4832,10 +4833,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/@n8n/workflow-sdk:
     dependencies:
@@ -4926,25 +4927,25 @@ importers:
         version: 4.8.0(supports-color@8.1.1)
       '@chat-adapter/discord':
         specifier: 'catalog:'
-        version: 4.37.0(ai@7.0.150(zod@3.25.76))(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)(zod@3.25.76)
+        version: 4.39.0(ai@7.0.150(zod@3.25.76))(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)(zod@3.25.76)
       '@chat-adapter/linear':
         specifier: 'catalog:'
-        version: 4.37.0(ai@7.0.150(zod@3.25.76))(graphql@16.11.0)(supports-color@8.1.1)(zod@3.25.76)
+        version: 4.39.0(ai@7.0.150(zod@3.25.76))(graphql@16.11.0)(supports-color@8.1.1)(zod@3.25.76)
       '@chat-adapter/slack':
         specifier: 'catalog:'
         version: 4.39.0(ai@7.0.150(zod@3.25.76))(bufferutil@4.0.9)(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(utf-8-validate@5.0.10)(zod@3.25.76)
       '@chat-adapter/state-memory':
         specifier: 'catalog:'
-        version: 4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+        version: 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
       '@chat-adapter/teams':
         specifier: 'catalog:'
-        version: 4.37.0(patch_hash=af5fb1d38a2af55399bd8b6934e77348a9b061fec6177c101dd9d7a787ae8a6c)(ai@7.0.150(zod@3.25.76))(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(zod@3.25.76)
+        version: 4.39.0(patch_hash=aae12484e0d48fa7c4ebc9bd6db97f17587ae4c458dd6b186fdf748cad60a9af)(ai@7.0.150(zod@3.25.76))(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(zod@3.25.76)
       '@chat-adapter/telegram':
         specifier: 'catalog:'
-        version: 4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+        version: 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
       '@chat-adapter/whatsapp':
         specifier: 'catalog:'
-        version: 4.37.0(patch_hash=950356dafb986b5cc9bd53069f7653b47b790a60b3590495cf53392ea4df2de4)(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+        version: 4.39.0(patch_hash=bdf07d60cf43691d7f5bff5111d1205d36f62849bea742680713771330455cc7)(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
       '@google-cloud/secret-manager':
         specifier: 6.0.1
         version: 6.0.1(supports-color@8.1.1)
@@ -5166,7 +5167,7 @@ importers:
         version: 5.4.4
       chat:
         specifier: 'catalog:'
-        version: 4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+        version: 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
       class-transformer:
         specifier: 0.5.1
         version: 0.5.1
@@ -5587,10 +5588,10 @@ importers:
         version: '@typescript/typescript6@6.0.2'
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(@typescript/typescript6@6.0.2)(vitest@5.0.1)
@@ -5777,10 +5778,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
@@ -5856,7 +5857,7 @@ importers:
         version: 3.0.5
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@vitest/coverage-istanbul':
         specifier: 'catalog:'
         version: 5.0.1(vitest@5.0.1)
@@ -5877,16 +5878,16 @@ importers:
         version: 6.0.2
       unplugin-dts:
         specifier: 'catalog:'
-        version: 1.1.0(@microsoft/api-extractor@7.52.1(@types/node@20.19.41))(@vue/language-core@3.3.11)(esbuild@0.28.1)(rolldown@1.1.5)(supports-color@8.1.1)(typescript@6.0.2)(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 1.1.0(@microsoft/api-extractor@7.52.1(@types/node@20.19.41))(@vue/language-core@3.3.11)(esbuild@0.28.1)(rolldown@1.1.5)(supports-color@8.1.1)(typescript@6.0.2)(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       unplugin-icons:
         specifier: ^0.19.0
         version: 0.19.0(@vue/compiler-sfc@3.5.26)(supports-color@8.1.1)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vize:
         specifier: 'catalog:'
         version: 0.715.0(vue@3.5.26(typescript@6.0.2))
@@ -5974,10 +5975,10 @@ importers:
         version: 6.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
@@ -6116,10 +6117,10 @@ importers:
         version: link:../../../@n8n/vitest-config
       '@storybook/addon-docs':
         specifier: catalog:storybook
-        version: 10.5.10(@types/react@18.3.31)(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 10.5.10(@types/react@18.3.31)(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       '@storybook/vue3-vite':
         specifier: catalog:storybook
-        version: 10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@testing-library/jest-dom':
         specifier: catalog:frontend
         version: 6.9.1
@@ -6149,7 +6150,7 @@ importers:
         version: 2.11.0
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@vitest/coverage-istanbul':
         specifier: 'catalog:'
         version: 5.0.1(vitest@5.0.1)
@@ -6185,7 +6186,7 @@ importers:
         version: 10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10)
       storybook-addon-vue-mdx:
         specifier: 3.0.0
-        version: 3.0.0(@storybook/addon-docs@10.5.10(@types/react@18.3.31)(esbuild@0.28.1)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))(@storybook/builder-vite@10.5.10(esbuild@0.28.1)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vue@3.5.26(typescript@6.0.2))
+        version: 3.0.0(@storybook/addon-docs@10.5.10(@types/react@18.3.31)(esbuild@0.28.1)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))(@storybook/builder-vite@10.5.10(esbuild@0.28.1)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vue@3.5.26(typescript@6.0.2))
       stylelint:
         specifier: 'catalog:'
         version: 16.23.0(supports-color@8.1.1)(typescript@6.0.2)
@@ -6194,19 +6195,19 @@ importers:
         version: 6.0.2
       unplugin-dts:
         specifier: 'catalog:'
-        version: 1.1.0(@microsoft/api-extractor@7.52.1(@types/node@20.19.41))(@vue/language-core@3.3.11)(esbuild@0.28.1)(rolldown@1.1.5)(supports-color@8.1.1)(typescript@6.0.2)(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 1.1.0(@microsoft/api-extractor@7.52.1(@types/node@20.19.41))(@vue/language-core@3.3.11)(esbuild@0.28.1)(rolldown@1.1.5)(supports-color@8.1.1)(typescript@6.0.2)(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       unplugin-icons:
         specifier: catalog:frontend
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-svg-loader:
         specifier: catalog:frontend
         version: 5.1.0(vue@3.5.26(typescript@6.0.2))
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vize:
         specifier: 'catalog:'
         version: 0.715.0(vue@3.5.26(typescript@6.0.2))
@@ -6264,10 +6265,10 @@ importers:
         version: 8.70.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-eslint-parser:
         specifier: ^10.1.3
         version: 10.1.3(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
@@ -6297,10 +6298,10 @@ importers:
         version: 6.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
@@ -6355,10 +6356,10 @@ importers:
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
@@ -6391,7 +6392,7 @@ importers:
         version: 2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
@@ -6416,7 +6417,7 @@ importers:
         version: 4.17.17
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
@@ -6431,7 +6432,7 @@ importers:
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-svg-loader:
         specifier: catalog:frontend
         version: 5.1.0(vue@3.5.26(typescript@6.0.2))
@@ -6477,10 +6478,10 @@ importers:
         version: 6.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
@@ -6495,7 +6496,7 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
 
   packages/frontend/@n8n/i18n:
     dependencies:
@@ -6541,10 +6542,10 @@ importers:
         version: 6.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
@@ -6605,10 +6606,10 @@ importers:
         version: 6.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
@@ -6684,10 +6685,10 @@ importers:
         version: 6.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@5.0.1)
@@ -6745,7 +6746,7 @@ importers:
         version: 10.5.10(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))
       '@storybook/addon-docs':
         specifier: catalog:storybook
-        version: 10.5.10(@types/react@18.3.31)(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 10.5.10(@types/react@18.3.31)(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       '@storybook/addon-themes':
         specifier: catalog:storybook
         version: 10.5.10(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))
@@ -6757,7 +6758,7 @@ importers:
         version: 10.5.10(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vue@3.5.26(typescript@6.0.2))
       '@storybook/vue3-vite':
         specifier: catalog:storybook
-        version: 10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@types/node':
         specifier: ^20.17.50
         version: 20.19.41
@@ -6766,10 +6767,10 @@ importers:
         version: 18.3.31
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@vitest/browser-playwright':
         specifier: 'catalog:'
-        version: 5.0.1(bufferutil@4.0.9)(playwright@1.62.1)(utf-8-validate@5.0.10)(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@5.0.1)
+        version: 5.0.1(bufferutil@4.0.9)(playwright@1.62.1)(utf-8-validate@5.0.10)(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@5.0.1)
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
@@ -6799,7 +6800,7 @@ importers:
         version: 10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10)
       storybook-addon-vue-mdx:
         specifier: 3.0.0
-        version: 3.0.0(@storybook/addon-docs@10.5.10(@types/react@18.3.31)(esbuild@0.28.1)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))(@storybook/builder-vite@10.5.10(esbuild@0.28.1)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vue@3.5.26(typescript@6.0.2))
+        version: 3.0.0(@storybook/addon-docs@10.5.10(@types/react@18.3.31)(esbuild@0.28.1)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))(@storybook/builder-vite@10.5.10(esbuild@0.28.1)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vue@3.5.26(typescript@6.0.2))
       typescript:
         specifier: 'catalog:'
         version: 6.0.2
@@ -6808,13 +6809,13 @@ importers:
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-svg-loader:
         specifier: catalog:frontend
         version: 5.1.0(vue@3.5.26(typescript@6.0.2))
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/frontend/editor-ui:
     dependencies:
@@ -6824,7 +6825,7 @@ importers:
     devDependencies:
       '@codecov/vite-plugin':
         specifier: ^1.9.1
-        version: 1.9.1(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 1.9.1(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       '@codemirror/autocomplete':
         specifier: 'catalog:'
         version: 6.20.0
@@ -7001,7 +7002,7 @@ importers:
         version: 10.70.0(pinia@2.2.4(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2)))(vue@3.5.26(typescript@6.0.2))
       '@storybook/vue3-vite':
         specifier: catalog:storybook
-        version: 10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@testing-library/dom':
         specifier: catalog:frontend
         version: 10.4.1
@@ -7052,7 +7053,7 @@ importers:
         version: 1.6.0(supports-color@8.1.1)(typescript@6.0.2)
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@vitest/coverage-istanbul':
         specifier: 'catalog:'
         version: 5.0.1(vitest@5.0.1)
@@ -7250,16 +7251,16 @@ importers:
         version: 1.2.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-plugin-static-copy:
         specifier: 4.0.0
-        version: 4.0.0(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 4.0.0(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vite-svg-loader:
         specifier: catalog:frontend
         version: 5.1.0(vue@3.5.26(typescript@6.0.2))
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@5.0.1)
@@ -7437,10 +7438,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
@@ -7525,7 +7526,7 @@ importers:
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@vue/test-utils':
         specifier: catalog:frontend
         version: 2.4.6
@@ -7546,13 +7547,13 @@ importers:
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-svg-loader:
         specifier: catalog:frontend
         version: 5.1.0(vue@3.5.26(typescript@6.0.2))
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vize:
         specifier: 'catalog:'
         version: 0.715.0(vue@3.5.26(typescript@6.0.2))
@@ -7652,10 +7653,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
@@ -7725,10 +7726,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
@@ -7771,10 +7772,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/modules/inbox/frontend:
     dependencies:
@@ -7874,7 +7875,7 @@ importers:
         version: 4.17.17
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
@@ -7892,13 +7893,13 @@ importers:
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-svg-loader:
         specifier: catalog:frontend
         version: 5.1.0(vue@3.5.26(typescript@6.0.2))
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vize:
         specifier: 'catalog:'
         version: 0.715.0(vue@3.5.26(typescript@6.0.2))
@@ -7983,10 +7984,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
@@ -8104,7 +8105,7 @@ importers:
         version: 4.17.17
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
@@ -8122,13 +8123,13 @@ importers:
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-svg-loader:
         specifier: catalog:frontend
         version: 5.1.0(vue@3.5.26(typescript@6.0.2))
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vize:
         specifier: 'catalog:'
         version: 0.715.0(vue@3.5.26(typescript@6.0.2))
@@ -8183,7 +8184,7 @@ importers:
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
@@ -8198,10 +8199,10 @@ importers:
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
@@ -8304,7 +8305,7 @@ importers:
         version: 4.17.17
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
@@ -8328,13 +8329,13 @@ importers:
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-svg-loader:
         specifier: catalog:frontend
         version: 5.1.0(vue@3.5.26(typescript@6.0.2))
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@5.0.1)
@@ -8419,7 +8420,7 @@ importers:
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
@@ -8437,13 +8438,13 @@ importers:
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-svg-loader:
         specifier: catalog:frontend
         version: 5.1.0(vue@3.5.26(typescript@6.0.2))
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vize:
         specifier: 'catalog:'
         version: 0.715.0(vue@3.5.26(typescript@6.0.2))
@@ -8555,7 +8556,7 @@ importers:
         version: 4.17.17
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@vue/test-utils':
         specifier: catalog:frontend
         version: 2.4.6
@@ -8576,13 +8577,13 @@ importers:
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-svg-loader:
         specifier: catalog:frontend
         version: 5.1.0(vue@3.5.26(typescript@6.0.2))
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@5.0.1)
@@ -8649,10 +8650,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
@@ -8725,7 +8726,7 @@ importers:
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
@@ -8749,13 +8750,13 @@ importers:
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-svg-loader:
         specifier: catalog:frontend
         version: 5.1.0(vue@3.5.26(typescript@6.0.2))
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vize:
         specifier: 'catalog:'
         version: 0.715.0(vue@3.5.26(typescript@6.0.2))
@@ -8837,7 +8838,7 @@ importers:
         version: 8.1.0(@vue/compiler-sfc@3.5.26)(vue@3.5.26(typescript@6.0.2))
       '@vitejs/plugin-vue':
         specifier: catalog:frontend
-        version: 6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
+        version: 6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
@@ -8852,13 +8853,13 @@ importers:
         version: 23.0.1(@vue/compiler-sfc@3.5.26)
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vite-svg-loader:
         specifier: catalog:frontend
         version: 5.1.0(vue@3.5.26(typescript@6.0.2))
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vize:
         specifier: 'catalog:'
         version: 0.715.0(vue@3.5.26(typescript@6.0.2))
@@ -8916,10 +8917,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
@@ -8974,10 +8975,10 @@ importers:
         version: 6.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/nodes-base:
     dependencies:
@@ -9386,10 +9387,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
@@ -9434,10 +9435,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   packages/quality/efficiency/scale/benchmark:
     dependencies:
@@ -9984,10 +9985,10 @@ importers:
         version: 7.0.2
       vite:
         specifier: 'catalog:'
-        version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+        version: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vitest:
         specifier: 'catalog:'
-        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
@@ -11417,16 +11418,12 @@ packages:
   '@cfworker/json-schema@4.1.0':
     resolution: {integrity: sha512-/vYKi/qMxwNsuIJ9WGWwM2rflY40ZenK3Kh4uR5vB9/Nz12Y7IUN/Xf4wDA7vzPfw0VNh3b/jz4+MjcVgARKJg==}
 
-  '@chat-adapter/discord@4.37.0':
-    resolution: {integrity: sha512-bzISEi/aV0V1uwZsdMOZefUvV9DfDkEd6REhOY9zXe4fqIPILqBZgLOCGTmjfMXujKzkB50fVHamox00kcoDJw==}
+  '@chat-adapter/discord@4.39.0':
+    resolution: {integrity: sha512-9IS4HF0Jw+Ucsm3f7XaXGCGb22Swb/r6FGaHoSDYxOEraQ88pFH5S7xc8//C+pCnqhX7p8QwLB/dYaNxDnl9pw==}
     engines: {node: '>=20'}
 
-  '@chat-adapter/linear@4.37.0':
-    resolution: {integrity: sha512-CYc8WCWxu0QE3/mbNU1VjRzJSgsF+k5yUWlM1rwXb81Z/g2bbvn6bYEzwhZRednFMdS2fG6AMJw7c97ioZ/8Iw==}
-    engines: {node: '>=20'}
-
-  '@chat-adapter/shared@4.37.0':
-    resolution: {integrity: sha512-q/uSBRfcHcHBdweDyx3tRy5teUYUTFR5jyaLzT5hVPwVJR59lTRv2AHxhpixBOL6UQloS3uGexWJUsBXxi/ifg==}
+  '@chat-adapter/linear@4.39.0':
+    resolution: {integrity: sha512-ZcNiM+CmLXtgSrmuTEBVQeGTK74slN/PbCAPRD0LB++lbW982adEuAYiRYURSeYxik6UxlDy5lNO3DKRHJohuA==}
     engines: {node: '>=20'}
 
   '@chat-adapter/shared@4.39.0':
@@ -11437,20 +11434,20 @@ packages:
     resolution: {integrity: sha512-nDBYFEmD9MUobUH+HJbOYwKYcaeoCFJDXVvd41flh5sslpixSUG2SFcz7F3py62jJ9c0YYNEdwprIExO20IyZQ==}
     engines: {node: '>=20'}
 
-  '@chat-adapter/state-memory@4.37.0':
-    resolution: {integrity: sha512-dI3dk+PUxkL1q5FZ7fn7T9nq9SIBnoovw3moTIl8xwuB4kWRNsvFa5CM7H0fGeaDPeyJPR+PQ+rUKPGKumMKTg==}
+  '@chat-adapter/state-memory@4.39.0':
+    resolution: {integrity: sha512-sTslMdRA9MG2MYUF9anD+eatZ1o3Nu64TkQCJ9GrGWfRCefM8DnIG/Op+Ej9XS6XjqOORb3eDJvy6IpvWrfT4A==}
     engines: {node: '>=20'}
 
-  '@chat-adapter/teams@4.37.0':
-    resolution: {integrity: sha512-vlMooVt6jYWd13LLR4dJ+EzU/z1EuXHo+jHCDWrQvsP9syYcllnJEu5Qd6cCma5nA7Ri6OEBGNJhCFWGa+Hctg==}
+  '@chat-adapter/teams@4.39.0':
+    resolution: {integrity: sha512-o46o0bklOJMG6NWra0fivbrKfck8Pt60v/6+NDlYG93ZB7sH7NeObp05d3v8I4Dmj9jK/ggtjjR/r9JTX+G6Kw==}
     engines: {node: '>=20'}
 
-  '@chat-adapter/telegram@4.37.0':
-    resolution: {integrity: sha512-A/lBDH7QUdGzxn+aBUyfg0Dp3uO9AW04Q2iXd4SwAz1t14wVb/gQ+KeI1QB287thgx+uLfr13f0/5Ss58ET11w==}
+  '@chat-adapter/telegram@4.39.0':
+    resolution: {integrity: sha512-mzifgrQ50UTrBOqzcqiixK9FlNUniqgfBSOAXWyufDr/1xTHibbmSxVeHqnuupGEwqOX2o4r7bl0TwoG7qJ2yQ==}
     engines: {node: '>=20'}
 
-  '@chat-adapter/whatsapp@4.37.0':
-    resolution: {integrity: sha512-+PjjwUmz5I/FL7U7zEnf48DiElw6tyvdvLUdMC81YoUBHkbirLBI9prcOYgXoO0H6hodJRuXTACXqMemzJRNng==}
+  '@chat-adapter/whatsapp@4.39.0':
+    resolution: {integrity: sha512-rI35+Iixl/S7J4UYDJEJJ4GhRtjaCDV2JLelMhRV6KJ2h5tQ07OMsTRtwT9PBv91C2bhMaGYOQ2alNkhzcdvVw==}
     engines: {node: '>=20'}
 
   '@chevrotain/types@11.1.2':
@@ -14220,9 +14217,6 @@ packages:
   '@oxc-project/types@0.152.0':
     resolution: {integrity: sha512-oM/5rLBm2tPkg0iBgkH/FOeR3PCDpY19GTgAZjMFM8h9WI9VW7cLgzp6nwtarYKmovavIQZ+Fe/RKX/8C8O/Rw==}
 
-  '@oxc-project/types@0.154.0':
-    resolution: {integrity: sha512-KYOUGQFlLWR+s4QMV2Q9ko38TZm7EdO87Qm7rvZLqk/webse/cDjtyxKhg/47l0byCbs/k46LT8qc4PKjAikzA==}
-
   '@oxc-project/types@0.156.0':
     resolution: {integrity: sha512-1Duyg48TdJNdyhEB8Xn1L36bT9Pv6GUtlKjHxOys8xkaF/rQq3XJE+bAurSK/AgIz5mGFsb77cn9Pb20+WCScw==}
 
@@ -14969,12 +14963,6 @@ packages:
     resolution: {integrity: sha512-FqALmHI8D4o6lk/LRWDnhw95z5eO+eAa6ORjVg09YRR7BkcM6oPHU9uyC0gtQG5vpFLvgpeU4+zEAz2H8APHNw==}
     engines: {node: '>= 10'}
 
-  '@rolldown/binding-android-arm-eabi@1.2.14':
-    resolution: {integrity: sha512-aWR+XKH9+rW7m5fWq/5360J3mHycrx/o6xZM2DQFdJnTMdyP7/WzxPjhtLbVWdKo2y612/4U1bWqb3HQhiF7vg==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm]
-    os: [android]
-
   '@rolldown/binding-android-arm-eabi@1.2.18':
     resolution: {integrity: sha512-ubTG+4KlidvioxjOFdsdEa2F6JVGZb8m2ByJUqQ7fYzUeT1cEn194POcsQ10PKH4p//q0YQn4SB3YpSuzcA1Yg==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -14989,12 +14977,6 @@ packages:
 
   '@rolldown/binding-android-arm64@1.1.5':
     resolution: {integrity: sha512-lZg8fqIv2v7FF237bwMgzGZEJvGL79/s5knJ/i6FmsGF4XXlzccZ4jb+TrFIxtSSxFtIpdsgrPZeMk1I9AFcyQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [android]
-
-  '@rolldown/binding-android-arm64@1.2.14':
-    resolution: {integrity: sha512-QiVxHofl6A8lQU7WAtOUY4QMVZXohxwz7WJJoeh8NBEUyKfIkMRKhYyq8az/1RypNiIXzNTtiS6KwHz0erxYRQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [android]
@@ -15017,12 +14999,6 @@ packages:
     cpu: [arm64]
     os: [darwin]
 
-  '@rolldown/binding-darwin-arm64@1.2.14':
-    resolution: {integrity: sha512-lTQOzHuBIooh3jIr5XINQkjPGEuGy+Dsy0meXDr6Sjty0b99kYgGh4uBC/8mJX1T0kC8d6S0aPP1Y+bHkh6aBw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [darwin]
-
   '@rolldown/binding-darwin-arm64@1.2.18':
     resolution: {integrity: sha512-iUzw9HshVvrWci9gVXjxWS7/M/IcLvNo67vu2c/w9zKBz4hIvPRixdUpIW/iCfhldLaq9ER2hecsI9UY5z0/yA==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -15037,12 +15013,6 @@ packages:
 
   '@rolldown/binding-darwin-x64@1.1.5':
     resolution: {integrity: sha512-Tm+gbfC0aHu1tBA/JvKQh32S0K6YgCHkiAF4/W6xX0K0RmNuc94VeK419dJoE65R5aRxmo+noZQSWrAMF6yb6g==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [darwin]
-
-  '@rolldown/binding-darwin-x64@1.2.14':
-    resolution: {integrity: sha512-hyMKEGatjmBYCs/Q4sbIcL/GqpFEqsX3wc+HYVQ/85A4rxc1o7rPm4DUI4GV4k/h0ITddwFSGpqQunI14GXjTA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [darwin]
@@ -15065,12 +15035,6 @@ packages:
     cpu: [x64]
     os: [freebsd]
 
-  '@rolldown/binding-freebsd-x64@1.2.14':
-    resolution: {integrity: sha512-u371GbXoVXrEgP20PwzoGNOdAOqAMhzo19JzzY+V4YmmnC+DTOoqdbMu+O+54emM59Mik/UdrtWgcuEDKWRPKA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [freebsd]
-
   '@rolldown/binding-freebsd-x64@1.2.18':
     resolution: {integrity: sha512-MM8opLfsLK15oEXDz6iBc0t3ahu+ew9jsAmha+ovZ33hSwYgqo7YmpRITqFTfW7xA71BLEQ3jJdTsaCmhB1c9w==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -15085,12 +15049,6 @@ packages:
 
   '@rolldown/binding-linux-arm-gnueabihf@1.1.5':
     resolution: {integrity: sha512-uML21j2K5TfPGutKxub+M+nLjZIrWjXQ5Grx4lCe/nimTj9B4L63zHpjXLl4y0L3mcm2htEQIb06oCG/szerNw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm]
-    os: [linux]
-
-  '@rolldown/binding-linux-arm-gnueabihf@1.2.14':
-    resolution: {integrity: sha512-BqwKsdZQf6EqVWr8fv2MrDYzAvOZ7+NYFSJESRGs87fkseEhs0TU9TXgRJTkZoRRkxTizyEg1LKUXfU3/78uqg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm]
     os: [linux]
@@ -15110,13 +15068,6 @@ packages:
 
   '@rolldown/binding-linux-arm64-gnu@1.1.5':
     resolution: {integrity: sha512-navSiuTMogvnQoZoM/v+l3ZWo50/NTwSHSzheABx/RCnmUPaKwq9qSo4Br2OYRs21+Fz8uFqITZM3H4opOB0/Q==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [linux]
-    libc: [glibc]
-
-  '@rolldown/binding-linux-arm64-gnu@1.2.14':
-    resolution: {integrity: sha512-SD9kY8M009x/7s57Z1dgUVlP5+uYBgKQK0Tkr1WIWngrtUJmRCW1RJFMY7QDla2khXhmg2i5Io7MUjcmZNZ/KQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
@@ -15143,13 +15094,6 @@ packages:
     os: [linux]
     libc: [musl]
 
-  '@rolldown/binding-linux-arm64-musl@1.2.14':
-    resolution: {integrity: sha512-BJ2CL19M6uuWesMgnqJzgxoI+N+eV7b0A9O9vLV42y+gitC41fNa8KElau1tHVzuLWX5GzEuxMPhAO0tQXQMkg==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [linux]
-    libc: [musl]
-
   '@rolldown/binding-linux-arm64-musl@1.2.18':
     resolution: {integrity: sha512-4oqWItLLYt7IceOnElCct8T2ek5p7PmD7LN04TRJRXGo5f3HtKTgGH6PhYRFK4C2ICkq/LMUU0BVPvvlAKhm8g==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -15164,13 +15108,6 @@ packages:
     os: [linux]
     libc: [glibc]
 
-  '@rolldown/binding-linux-ppc64-gnu@1.2.14':
-    resolution: {integrity: sha512-4+Kl8daPV8NDHaD7mfCcc1pRM+Qg7ab8DyMm5FG5WoZgv4h2i3KFN1CybYBNbQqmuYm7ftJLvmMI1eHYJ22S/Q==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [ppc64]
-    os: [linux]
-    libc: [glibc]
-
   '@rolldown/binding-linux-ppc64-gnu@1.2.18':
     resolution: {integrity: sha512-+AkRly5SrCEgnPhGRfub7pucASYEC2fTsxZg7VCcnozpA2+Wn/gCYy1t7LuJS67/xyJu/7noYBJncDUkbwgw2A==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -15180,13 +15117,6 @@ packages:
 
   '@rolldown/binding-linux-s390x-gnu@1.1.5':
     resolution: {integrity: sha512-gLYb4BIadlfTOYT5gO503n8zQjXflgzpD0FcyKh0Mzx3rqCZKnHoJWV9xe1KXUJ5lx2JfcSHr/mhzS0PC/McAA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [s390x]
-    os: [linux]
-    libc: [glibc]
-
-  '@rolldown/binding-linux-s390x-gnu@1.2.14':
-    resolution: {integrity: sha512-V/h8ePq1fKDrmtFMz6xcCN3DKvuvMRrwwD1q0PkBeeo4DpK64biaKvqWGVxqCeYKqeRk7gE7/iKPxLCn08O97A==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [s390x]
     os: [linux]
@@ -15213,13 +15143,6 @@ packages:
     os: [linux]
     libc: [glibc]
 
-  '@rolldown/binding-linux-x64-gnu@1.2.14':
-    resolution: {integrity: sha512-WxalXzgrLVpKC93xfpaJ3gCXUWzeCr+FRCbDVD2mUAy4L6Vo3lNVz0epUEUpxPWJkLNYUwM4OSIikv36OJ9mLg==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [linux]
-    libc: [glibc]
-
   '@rolldown/binding-linux-x64-gnu@1.2.18':
     resolution: {integrity: sha512-xX1Tt4o5jUMma0vJsXp5eRZA9nOuyigb2dKJMMzZRmzMxLYGE9PaKKSqHPzPvSQgM8ZOEacSTQwDQcwWfh0xmQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -15241,13 +15164,6 @@ packages:
     os: [linux]
     libc: [musl]
 
-  '@rolldown/binding-linux-x64-musl@1.2.14':
-    resolution: {integrity: sha512-3G3tnAmTpdk9jO3GQtyHXqeFD2SlecfTws/Y3M2mmj9nMBwwuLT4kur8sZKeu7ENUHSpVO3cIsm5A52LEWWwlg==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [linux]
-    libc: [musl]
-
   '@rolldown/binding-linux-x64-musl@1.2.18':
     resolution: {integrity: sha512-4VVlGI5K2kociZlW3lSN8VjG3TW5yQIlAcfCdBXMgGjJxZll15Fa4ocRHXHvIVVnwlibCw/NQajJrNDiqqpiiw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -15263,12 +15179,6 @@ packages:
 
   '@rolldown/binding-openharmony-arm64@1.1.5':
     resolution: {integrity: sha512-yc5WrLzXks6zCQfn9Oxr8pORKyl/pF+QjHmW/Qx3qu0oyrrNC+y2JLTU1E2rcWYAmzlnqngWXHQjy51VzW70Vw==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [openharmony]
-
-  '@rolldown/binding-openharmony-arm64@1.2.14':
-    resolution: {integrity: sha512-qyr5XiNGxm2ytx17vvtcJ9nXn6v1gENETi503bJx3OGwZ1tSonj7BosxbMa/xeAfSl5iS9X6KjEWYXLu6v1L7Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [openharmony]
@@ -15301,12 +15211,6 @@ packages:
     cpu: [arm64]
     os: [win32]
 
-  '@rolldown/binding-win32-arm64-msvc@1.2.14':
-    resolution: {integrity: sha512-oA4o5o0S2yB199YyYXDzKUv1Z56Rc+mgOjwm7Z/vJ9Z8igiDPYvoOuDyo6g7AK/ZaF09nPhDKVnGBcYHO11GXA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [arm64]
-    os: [win32]
-
   '@rolldown/binding-win32-arm64-msvc@1.2.18':
     resolution: {integrity: sha512-J2XjWjx/SP+4x0H4r6dz3Vzb5WVkg7re40Do9K7HJ3sK2/xcmZrWwakXlSwaMvOkvruLJCD4CL/3wqsIR/thgg==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -15327,12 +15231,6 @@ packages:
 
   '@rolldown/binding-win32-x64-msvc@1.1.5':
     resolution: {integrity: sha512-tTZuDBPw85tEN5PQi1pnEBzDy0Z49HtScLAbD5t6hyeU92A95pRWaSMw1GZZi/RwgSgUIl0xrSlXIT/9QzvYSA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    cpu: [x64]
-    os: [win32]
-
-  '@rolldown/binding-win32-x64-msvc@1.2.14':
-    resolution: {integrity: sha512-9mE94bf2GZUaR/fUSXCMpBoWkctu421Mi0ORpm4zqfbkjKep7RxzPFa5etcGs5h+2KApoWBOA/hAJa/7saGgEQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
@@ -18396,8 +18294,8 @@ packages:
     resolution: {integrity: sha512-NF+epuEdnUYVlGuhaxbbq+dvJttwLnGY+YixlXlME5KpQ5W3CnXA5cVTneY3SPbPDRkcjMbifrwmFYcClgOZeg==}
     engines: {node: '>= 0.8'}
 
-  basic-ftp@5.3.1:
-    resolution: {integrity: sha512-bopVNp6ugyA150DDuZfPFdt1KZ5a94ZDiwX4hMgZDzF+GttD80lEy8kj98kbyhLXnPvhtIo93mdnLIjpCAeeOw==}
+  basic-ftp@6.2.6:
+    resolution: {integrity: sha512-0EjZCaodOz6yiokv2JA1VyKGNdGxULZ+GGlPgG9tm4d+T/bHtX1hUch8CumDneBfpIbiSdn7TaCGwpM+gwsOlw==}
     engines: {node: '>=10.0.0'}
 
   bcp-47-match@2.0.3:
@@ -18687,21 +18585,6 @@ packages:
   chart.js@4.4.0:
     resolution: {integrity: sha512-vQEj6d+z0dcsKLlQvbKIMYFHd3t8W/7L2vfJIbYcfyPcRx92CsHqECpueN8qVGNlKyDcr5wBrYAYKnfu/9Q1hQ==}
     engines: {pnpm: '>=7'}
-
-  chat@4.37.0:
-    resolution: {integrity: sha512-rXWcVSPY0YiVXLpApYxuS2EbWzXBy3mI1kSAcnF9iPzw98FbDIDq73+Ri0JpUhS1bdVZPhWZgn8bum+Gy8jF3Q==}
-    engines: {node: '>=20'}
-    peerDependencies:
-      ai: ^6.0.182 || ^7.0.0
-      workflow: ^5.0.0-beta.35
-      zod: 3.25.76
-    peerDependenciesMeta:
-      ai:
-        optional: true
-      workflow:
-        optional: true
-      zod:
-        optional: true
 
   chat@4.39.0:
     resolution: {integrity: sha512-o7D+oAbQAYFVoc9+OH8wya11609ybRThNTF3s/5C1LAABGGi6IrxoQQEN/aIe+4h5pmKYzUjXeqTcuOZcpIAZA==}
@@ -23648,10 +23531,6 @@ packages:
     resolution: {integrity: sha512-TYOanM3wGwNGsZN2cVTYPArw454xnXj5qmWF1bEoAc4+cU/ol7GVh7odevjp1FNHduHc3KZMcFduxU5Xc6uJRQ==}
     engines: {node: '>=10'}
 
-  p-limit@7.3.1:
-    resolution: {integrity: sha512-0trZaiG7Y7kN/Egy9a8j47t9osC0Tch4PaIWd9yGF6bvmlk7muExRvGNYb8sXBwEKMoNKsbNN9P8EefuQekE4Q==}
-    engines: {node: '>=20'}
-
   p-limit@7.3.3:
     resolution: {integrity: sha512-SKgVvDU5TNIxQ4r30U75BNLC6a+6GOEjngrk/ysM5+Zu3oJuk1SC5ApzIzY/7PjCEjoVPMWJ0zho/4QUiEB7TQ==}
     engines: {node: '>=20'}
@@ -24778,11 +24657,6 @@ packages:
 
   rolldown@1.1.5:
     resolution: {integrity: sha512-t9z29cJjXf/vxQ8dyhCSpt6H6aSwHTk8cT5I3iy6SMXuFpk5mB6PL6XfC8PCwrPTx93udwKUm9HRteAlTGBLiA==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    hasBin: true
-
-  rolldown@1.2.14:
-    resolution: {integrity: sha512-eTBTTqMR6uHKLgcUqpJP8ntzDI6V4LYA8negAMBEI7gkgVvOdrx6VsvS2Ym+83KhOPdLCHWJu0w7UQFJZhHKNw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
 
@@ -26573,49 +26447,6 @@ packages:
     resolution: {integrity: sha512-M/wqwtOEjgb956/+m5ZrYT/Iq6Hax0OakWbokj8+9PXOnB7b/4AxESHieEtnNEy7ZpjsjYW1/5nK8fATQMmRxw==}
     peerDependencies:
       vue: '>=3.2.13'
-
-  vite@8.3.4:
-    resolution: {integrity: sha512-IftLE8phJhdNRIGNEV4JCCvfNScoZQVfcXaN8TQropWGJtOHcu+iAB9pHcuGvmEb/kddw0LBe/jS8ztdC6xdiQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    hasBin: true
-    peerDependencies:
-      '@types/node': ^20.17.50
-      '@vitejs/devtools': ^0.7.1
-      esbuild: ^0.28.1
-      jiti: '>=1.21.0'
-      less: ^4.0.0
-      sass: ^1.70.0
-      sass-embedded: ^1.70.0
-      stylus: '>=0.54.8'
-      sugarss: ^5.0.0
-      terser: ^5.16.0
-      tsx: ^4.8.1
-      yaml: 2.8.3
-    peerDependenciesMeta:
-      '@types/node':
-        optional: true
-      '@vitejs/devtools':
-        optional: true
-      esbuild:
-        optional: true
-      jiti:
-        optional: true
-      less:
-        optional: true
-      sass:
-        optional: true
-      sass-embedded:
-        optional: true
-      stylus:
-        optional: true
-      sugarss:
-        optional: true
-      terser:
-        optional: true
-      tsx:
-        optional: true
-      yaml:
-        optional: true
 
   vite@8.3.7:
     resolution: {integrity: sha512-oxh0dMxrayBr33ScJvvBJ2HBQ2jc1TBrXKR2NyL/MJ9WPuX19mN2DXWUmywKdyw5RFVQBo8hmtb2FMC0LHrnng==}
@@ -29935,10 +29766,10 @@ snapshots:
 
   '@cfworker/json-schema@4.1.0': {}
 
-  '@chat-adapter/discord@4.37.0(ai@7.0.150(zod@3.25.76))(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)(zod@3.25.76)':
+  '@chat-adapter/discord@4.39.0(ai@7.0.150(zod@3.25.76))(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)(zod@3.25.76)':
     dependencies:
-      '@chat-adapter/shared': 4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
-      chat: 4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      '@chat-adapter/shared': 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      chat: 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
       discord-api-types: 0.37.120
       discord-interactions: 4.4.0
       discord.js: 14.27.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -29950,23 +29781,14 @@ snapshots:
       - workflow
       - zod
 
-  '@chat-adapter/linear@4.37.0(ai@7.0.150(zod@3.25.76))(graphql@16.11.0)(supports-color@8.1.1)(zod@3.25.76)':
+  '@chat-adapter/linear@4.39.0(ai@7.0.150(zod@3.25.76))(graphql@16.11.0)(supports-color@8.1.1)(zod@3.25.76)':
     dependencies:
-      '@chat-adapter/shared': 4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      '@chat-adapter/shared': 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
       '@linear/sdk': 76.0.0(graphql@16.11.0)
-      chat: 4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      chat: 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
     transitivePeerDependencies:
       - ai
       - graphql
-      - supports-color
-      - workflow
-      - zod
-
-  '@chat-adapter/shared@4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)':
-    dependencies:
-      chat: 4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
-    transitivePeerDependencies:
-      - ai
       - supports-color
       - workflow
       - zod
@@ -29995,23 +29817,23 @@ snapshots:
       - workflow
       - zod
 
-  '@chat-adapter/state-memory@4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)':
+  '@chat-adapter/state-memory@4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)':
     dependencies:
-      chat: 4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      chat: 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
     transitivePeerDependencies:
       - ai
       - supports-color
       - workflow
       - zod
 
-  '@chat-adapter/teams@4.37.0(patch_hash=af5fb1d38a2af55399bd8b6934e77348a9b061fec6177c101dd9d7a787ae8a6c)(ai@7.0.150(zod@3.25.76))(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(zod@3.25.76)':
+  '@chat-adapter/teams@4.39.0(patch_hash=aae12484e0d48fa7c4ebc9bd6db97f17587ae4c458dd6b186fdf748cad60a9af)(ai@7.0.150(zod@3.25.76))(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)(zod@3.25.76)':
     dependencies:
-      '@chat-adapter/shared': 4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      '@chat-adapter/shared': 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
       '@microsoft/teams.api': 2.0.16(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       '@microsoft/teams.apps': 2.0.16(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       '@microsoft/teams.cards': 2.0.16
       '@microsoft/teams.graph-endpoints': 2.0.16
-      chat: 4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      chat: 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
     transitivePeerDependencies:
       - ai
       - debug
@@ -30019,20 +29841,20 @@ snapshots:
       - workflow
       - zod
 
-  '@chat-adapter/telegram@4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)':
+  '@chat-adapter/telegram@4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)':
     dependencies:
-      '@chat-adapter/shared': 4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
-      chat: 4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      '@chat-adapter/shared': 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      chat: 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
     transitivePeerDependencies:
       - ai
       - supports-color
       - workflow
       - zod
 
-  '@chat-adapter/whatsapp@4.37.0(patch_hash=950356dafb986b5cc9bd53069f7653b47b790a60b3590495cf53392ea4df2de4)(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)':
+  '@chat-adapter/whatsapp@4.39.0(patch_hash=bdf07d60cf43691d7f5bff5111d1205d36f62849bea742680713771330455cc7)(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)':
     dependencies:
-      '@chat-adapter/shared': 4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
-      chat: 4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      '@chat-adapter/shared': 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      chat: 4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
     transitivePeerDependencies:
       - ai
       - supports-color
@@ -30074,11 +29896,11 @@ snapshots:
       unplugin: 1.11.0
       zod: 3.25.76
 
-  '@codecov/vite-plugin@1.9.1(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))':
+  '@codecov/vite-plugin@1.9.1(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))':
     dependencies:
       '@codecov/bundler-plugin-core': 1.9.1
       unplugin: 1.11.0
-      vite: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
 
   '@codemirror/autocomplete@6.20.0':
     dependencies:
@@ -31267,7 +31089,7 @@ snapshots:
       - '@smithy/hash-node'
       - peggy
 
-  '@langchain/community@1.1.27(a00cc7f1efe9b365767b2e6e55596841)':
+  '@langchain/community@1.1.27(acb39ef5edc933ce61e8780417815eb3)':
     dependencies:
       '@browserbasehq/stagehand': empty-npm-package@1.0.0
       '@ibm-cloud/watsonx-ai': 1.1.2(supports-color@8.1.1)
@@ -33000,8 +32822,6 @@ snapshots:
 
   '@oxc-project/types@0.152.0': {}
 
-  '@oxc-project/types@0.154.0': {}
-
   '@oxc-project/types@0.156.0': {}
 
   '@oxc-project/types@0.97.0': {}
@@ -33469,9 +33289,6 @@ snapshots:
 
   '@resvg/resvg-wasm@2.6.2': {}
 
-  '@rolldown/binding-android-arm-eabi@1.2.14':
-    optional: true
-
   '@rolldown/binding-android-arm-eabi@1.2.18':
     optional: true
 
@@ -33479,9 +33296,6 @@ snapshots:
     optional: true
 
   '@rolldown/binding-android-arm64@1.1.5':
-    optional: true
-
-  '@rolldown/binding-android-arm64@1.2.14':
     optional: true
 
   '@rolldown/binding-android-arm64@1.2.18':
@@ -33493,9 +33307,6 @@ snapshots:
   '@rolldown/binding-darwin-arm64@1.1.5':
     optional: true
 
-  '@rolldown/binding-darwin-arm64@1.2.14':
-    optional: true
-
   '@rolldown/binding-darwin-arm64@1.2.18':
     optional: true
 
@@ -33503,9 +33314,6 @@ snapshots:
     optional: true
 
   '@rolldown/binding-darwin-x64@1.1.5':
-    optional: true
-
-  '@rolldown/binding-darwin-x64@1.2.14':
     optional: true
 
   '@rolldown/binding-darwin-x64@1.2.18':
@@ -33517,9 +33325,6 @@ snapshots:
   '@rolldown/binding-freebsd-x64@1.1.5':
     optional: true
 
-  '@rolldown/binding-freebsd-x64@1.2.14':
-    optional: true
-
   '@rolldown/binding-freebsd-x64@1.2.18':
     optional: true
 
@@ -33527,9 +33332,6 @@ snapshots:
     optional: true
 
   '@rolldown/binding-linux-arm-gnueabihf@1.1.5':
-    optional: true
-
-  '@rolldown/binding-linux-arm-gnueabihf@1.2.14':
     optional: true
 
   '@rolldown/binding-linux-arm-gnueabihf@1.2.18':
@@ -33541,9 +33343,6 @@ snapshots:
   '@rolldown/binding-linux-arm64-gnu@1.1.5':
     optional: true
 
-  '@rolldown/binding-linux-arm64-gnu@1.2.14':
-    optional: true
-
   '@rolldown/binding-linux-arm64-gnu@1.2.18':
     optional: true
 
@@ -33553,25 +33352,16 @@ snapshots:
   '@rolldown/binding-linux-arm64-musl@1.1.5':
     optional: true
 
-  '@rolldown/binding-linux-arm64-musl@1.2.14':
-    optional: true
-
   '@rolldown/binding-linux-arm64-musl@1.2.18':
     optional: true
 
   '@rolldown/binding-linux-ppc64-gnu@1.1.5':
     optional: true
 
-  '@rolldown/binding-linux-ppc64-gnu@1.2.14':
-    optional: true
-
   '@rolldown/binding-linux-ppc64-gnu@1.2.18':
     optional: true
 
   '@rolldown/binding-linux-s390x-gnu@1.1.5':
-    optional: true
-
-  '@rolldown/binding-linux-s390x-gnu@1.2.14':
     optional: true
 
   '@rolldown/binding-linux-s390x-gnu@1.2.18':
@@ -33583,9 +33373,6 @@ snapshots:
   '@rolldown/binding-linux-x64-gnu@1.1.5':
     optional: true
 
-  '@rolldown/binding-linux-x64-gnu@1.2.14':
-    optional: true
-
   '@rolldown/binding-linux-x64-gnu@1.2.18':
     optional: true
 
@@ -33595,9 +33382,6 @@ snapshots:
   '@rolldown/binding-linux-x64-musl@1.1.5':
     optional: true
 
-  '@rolldown/binding-linux-x64-musl@1.2.14':
-    optional: true
-
   '@rolldown/binding-linux-x64-musl@1.2.18':
     optional: true
 
@@ -33605,9 +33389,6 @@ snapshots:
     optional: true
 
   '@rolldown/binding-openharmony-arm64@1.1.5':
-    optional: true
-
-  '@rolldown/binding-openharmony-arm64@1.2.14':
     optional: true
 
   '@rolldown/binding-openharmony-arm64@1.2.18':
@@ -33634,9 +33415,6 @@ snapshots:
   '@rolldown/binding-win32-arm64-msvc@1.1.5':
     optional: true
 
-  '@rolldown/binding-win32-arm64-msvc@1.2.14':
-    optional: true
-
   '@rolldown/binding-win32-arm64-msvc@1.2.18':
     optional: true
 
@@ -33647,9 +33425,6 @@ snapshots:
     optional: true
 
   '@rolldown/binding-win32-x64-msvc@1.1.5':
-    optional: true
-
-  '@rolldown/binding-win32-x64-msvc@1.2.14':
     optional: true
 
   '@rolldown/binding-win32-x64-msvc@1.2.18':
@@ -34502,10 +34277,10 @@ snapshots:
       axe-core: 4.13.0
       storybook: 10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10)
 
-  '@storybook/addon-docs@10.5.10(@types/react@18.3.31)(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))':
+  '@storybook/addon-docs@10.5.10(@types/react@18.3.31)(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))':
     dependencies:
       '@mdx-js/react': 3.0.1(@types/react@18.3.31)(react@18.2.0)
-      '@storybook/csf-plugin': 10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      '@storybook/csf-plugin': 10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       '@storybook/icons': 2.1.0(react@18.2.0)
       '@storybook/react-dom-shim': 10.5.10(@types/react@18.3.31)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))
       react: 18.2.0
@@ -34533,31 +34308,31 @@ snapshots:
       storybook: 10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10)
     optionalDependencies:
       '@vitest/browser': 5.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@5.0.1)
-      '@vitest/browser-playwright': 5.0.1(bufferutil@4.0.9)(playwright@1.62.1)(utf-8-validate@5.0.10)(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@5.0.1)
+      '@vitest/browser-playwright': 5.0.1(bufferutil@4.0.9)(playwright@1.62.1)(utf-8-validate@5.0.10)(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@5.0.1)
       '@vitest/runner': 4.1.9
-      vitest: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
     transitivePeerDependencies:
       - react
 
-  '@storybook/builder-vite@10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))':
+  '@storybook/builder-vite@10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))':
     dependencies:
-      '@storybook/csf-plugin': 10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      '@storybook/csf-plugin': 10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       storybook: 10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10)
       ts-dedent: 2.2.0
-      vite: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
     transitivePeerDependencies:
       - esbuild
       - rollup
       - webpack
 
-  '@storybook/csf-plugin@10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))':
+  '@storybook/csf-plugin@10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))':
     dependencies:
       storybook: 10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10)
       unplugin: 2.3.11
     optionalDependencies:
       esbuild: 0.28.1
       rollup: 2.80.0
-      vite: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
 
   '@storybook/global@5.0.0': {}
 
@@ -34573,14 +34348,14 @@ snapshots:
     optionalDependencies:
       '@types/react': 18.3.31
 
-  '@storybook/vue3-vite@10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))':
+  '@storybook/vue3-vite@10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))':
     dependencies:
-      '@storybook/builder-vite': 10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      '@storybook/builder-vite': 10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       '@storybook/vue3': 10.5.10(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vue@3.5.26(typescript@6.0.2))
       magic-string: 0.30.21
       storybook: 10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10)
       typescript: 5.9.3
-      vite: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vue-component-meta: 3.3.11(typescript@5.9.3)
       vue-docgen-api: 4.76.0(vue@3.5.26(typescript@6.0.2))
     transitivePeerDependencies:
@@ -36119,30 +35894,17 @@ snapshots:
 
   '@vercel/oidc@3.2.0': {}
 
-  '@vitejs/plugin-vue@6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(@typescript/typescript6@6.0.2))':
+  '@vitejs/plugin-vue@6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(@typescript/typescript6@6.0.2))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
-      vite: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vue: 3.5.26(@typescript/typescript6@6.0.2)
 
-  '@vitejs/plugin-vue@6.0.8(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))':
+  '@vitejs/plugin-vue@6.0.8(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vue@3.5.26(typescript@6.0.2))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
-      vite: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
       vue: 3.5.26(typescript@6.0.2)
-
-  '@vitest/browser-playwright@5.0.1(bufferutil@4.0.9)(playwright@1.62.1)(utf-8-validate@5.0.10)(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@5.0.1)':
-    dependencies:
-      '@vitest/browser': 5.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@5.0.1)
-      '@vitest/mocker': 5.0.1(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      playwright: 1.62.1
-      tinyrainbow: 3.1.1
-      vitest: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-    transitivePeerDependencies:
-      - bufferutil
-      - msw
-      - utf-8-validate
-      - vite
 
   '@vitest/browser-playwright@5.0.1(bufferutil@4.0.9)(playwright@1.62.1)(utf-8-validate@5.0.10)(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@5.0.1)':
     dependencies:
@@ -36151,25 +35913,6 @@ snapshots:
       playwright: 1.62.1
       tinyrainbow: 3.1.1
       vitest: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-    transitivePeerDependencies:
-      - bufferutil
-      - msw
-      - utf-8-validate
-      - vite
-    optional: true
-
-  '@vitest/browser@5.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@5.0.1)':
-    dependencies:
-      '@blazediff/core': 1.10.0
-      '@vitest/mocker': 5.0.1(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      '@vitest/ui': 5.0.1(vitest@5.0.1)
-      '@vitest/utils': 5.0.1
-      magic-string: 1.4.2
-      pngjs: 7.0.0
-      sirv: 3.0.2
-      tinyrainbow: 3.1.1
-      vitest: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      ws: 8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - bufferutil
       - msw
@@ -36193,7 +35936,6 @@ snapshots:
       - msw
       - utf-8-validate
       - vite
-    optional: true
 
   '@vitest/coverage-istanbul@5.0.1(vitest@5.0.1)':
     dependencies:
@@ -36249,15 +35991,6 @@ snapshots:
       '@jridgewell/trace-mapping': 0.3.31
       '@vitest/istanbul-lib-coverage': 1.0.1
       obug: 2.2.1
-
-  '@vitest/mocker@5.0.1(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))':
-    dependencies:
-      '@jridgewell/trace-mapping': 0.3.31
-      '@vitest/spy': 5.0.1
-      estree-walker: 3.0.3
-      magic-string: 1.4.2
-    optionalDependencies:
-      vite: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
 
   '@vitest/mocker@5.0.1(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))':
     dependencies:
@@ -37379,7 +37112,7 @@ snapshots:
     dependencies:
       safe-buffer: 5.1.2
 
-  basic-ftp@5.3.1: {}
+  basic-ftp@6.2.6: {}
 
   bcp-47-match@2.0.3: {}
 
@@ -37684,21 +37417,6 @@ snapshots:
   chart.js@4.4.0:
     dependencies:
       '@kurkle/color': 0.3.2
-
-  chat@4.37.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76):
-    dependencies:
-      '@workflow/serde': 4.1.0-beta.2
-      mdast-util-to-string: 4.0.0
-      remark-gfm: 4.0.1(supports-color@8.1.1)
-      remark-parse: 11.0.0(supports-color@8.1.1)
-      remark-stringify: 11.0.0
-      remend: 1.3.0
-      unified: 11.0.5
-    optionalDependencies:
-      ai: 7.0.150(zod@3.25.76)
-      zod: 3.25.76
-    transitivePeerDependencies:
-      - supports-color
 
   chat@4.39.0(ai@7.0.150(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76):
     dependencies:
@@ -40341,7 +40059,7 @@ snapshots:
 
   get-uri@6.0.5(supports-color@8.1.1):
     dependencies:
-      basic-ftp: 5.3.1
+      basic-ftp: 6.2.6
       data-uri-to-buffer: 6.0.2
       debug: 4.4.3(supports-color@8.1.1)
     transitivePeerDependencies:
@@ -43996,10 +43714,6 @@ snapshots:
     dependencies:
       yocto-queue: 0.1.0
 
-  p-limit@7.3.1:
-    dependencies:
-      yocto-queue: 1.2.2
-
   p-limit@7.3.3:
     dependencies:
       yocto-queue: 1.2.2
@@ -45412,27 +45126,6 @@ snapshots:
       '@rolldown/binding-win32-arm64-msvc': 1.1.5
       '@rolldown/binding-win32-x64-msvc': 1.1.5
 
-  rolldown@1.2.14:
-    dependencies:
-      '@oxc-project/types': 0.154.0
-      '@rolldown/pluginutils': 1.0.1
-    optionalDependencies:
-      '@rolldown/binding-android-arm-eabi': 1.2.14
-      '@rolldown/binding-android-arm64': 1.2.14
-      '@rolldown/binding-darwin-arm64': 1.2.14
-      '@rolldown/binding-darwin-x64': 1.2.14
-      '@rolldown/binding-freebsd-x64': 1.2.14
-      '@rolldown/binding-linux-arm-gnueabihf': 1.2.14
-      '@rolldown/binding-linux-arm64-gnu': 1.2.14
-      '@rolldown/binding-linux-arm64-musl': 1.2.14
-      '@rolldown/binding-linux-ppc64-gnu': 1.2.14
-      '@rolldown/binding-linux-s390x-gnu': 1.2.14
-      '@rolldown/binding-linux-x64-gnu': 1.2.14
-      '@rolldown/binding-linux-x64-musl': 1.2.14
-      '@rolldown/binding-openharmony-arm64': 1.2.14
-      '@rolldown/binding-win32-arm64-msvc': 1.2.14
-      '@rolldown/binding-win32-x64-msvc': 1.2.14
-
   rolldown@1.2.18:
     dependencies:
       '@oxc-project/types': 0.156.0
@@ -46206,10 +45899,10 @@ snapshots:
       es-errors: 1.3.0
       internal-slot: 1.1.0
 
-  storybook-addon-vue-mdx@3.0.0(@storybook/addon-docs@10.5.10(@types/react@18.3.31)(esbuild@0.28.1)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))(@storybook/builder-vite@10.5.10(esbuild@0.28.1)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vue@3.5.26(typescript@6.0.2)):
+  storybook-addon-vue-mdx@3.0.0(@storybook/addon-docs@10.5.10(@types/react@18.3.31)(esbuild@0.28.1)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))(@storybook/builder-vite@10.5.10(esbuild@0.28.1)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vue@3.5.26(typescript@6.0.2)):
     dependencies:
-      '@storybook/addon-docs': 10.5.10(@types/react@18.3.31)(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      '@storybook/builder-vite': 10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      '@storybook/addon-docs': 10.5.10(@types/react@18.3.31)(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      '@storybook/builder-vite': 10.5.10(esbuild@0.28.1)(rollup@2.80.0)(storybook@10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
       storybook: 10.5.10(@types/react@18.3.31)(bufferutil@4.0.9)(prettier@3.6.2)(react@18.2.0)(utf-8-validate@5.0.10)
@@ -47377,7 +47070,7 @@ snapshots:
 
   unpipe@1.0.0: {}
 
-  unplugin-dts@1.1.0(@microsoft/api-extractor@7.52.1(@types/node@20.19.41))(@vue/language-core@3.3.11)(esbuild@0.28.1)(rolldown@1.1.5)(supports-color@8.1.1)(typescript@6.0.2)(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
+  unplugin-dts@1.1.0(@microsoft/api-extractor@7.52.1(@types/node@20.19.41))(@vue/language-core@3.3.11)(esbuild@0.28.1)(rolldown@1.1.5)(supports-color@8.1.1)(typescript@6.0.2)(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
     dependencies:
       '@rollup/pluginutils': 5.3.0
       '@volar/typescript': 2.4.28(typescript@6.0.2)
@@ -47394,7 +47087,7 @@ snapshots:
       '@vue/language-core': 3.3.11
       esbuild: 0.28.1
       rolldown: 1.1.5
-      vite: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
     transitivePeerDependencies:
       - supports-color
 
@@ -47596,18 +47289,18 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite-plugin-singlefile@2.3.3(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
+  vite-plugin-singlefile@2.3.3(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
     dependencies:
       micromatch: 4.0.8
-      vite: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
 
-  vite-plugin-static-copy@4.0.0(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
+  vite-plugin-static-copy@4.0.0(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
     dependencies:
       chokidar: 4.0.3
       p-map: 7.0.4
       picocolors: 1.1.1
       tinyglobby: 0.2.15
-      vite: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vite: 8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
 
   vite-svg-loader@5.1.0(vue@3.5.26(@typescript/typescript6@6.0.2)):
     dependencies:
@@ -47618,24 +47311,6 @@ snapshots:
     dependencies:
       svgo: 3.3.5
       vue: 3.5.26(typescript@6.0.2)
-
-  vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3):
-    dependencies:
-      lightningcss: 1.33.0
-      picomatch: 4.0.4
-      postcss: 8.5.31
-      rolldown: 1.2.14
-      tinyglobby: 0.2.17
-    optionalDependencies:
-      '@types/node': 20.19.41
-      esbuild: 0.28.1
-      fsevents: 2.3.3
-      jiti: 2.6.1
-      sass: 1.98.0
-      sass-embedded: 1.98.0
-      terser: 5.16.1
-      tsx: 4.19.3
-      yaml: 2.8.3
 
   vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3):
     dependencies:
@@ -47663,51 +47338,24 @@ snapshots:
     dependencies:
       ts-essentials: 10.0.2(@typescript/typescript6@6.0.2)
       typescript: '@typescript/typescript6@6.0.2'
-      vitest: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   vitest-mock-extended@3.1.0(typescript@6.0.2)(vitest@5.0.1):
     dependencies:
       ts-essentials: 10.0.2(typescript@6.0.2)
       typescript: 6.0.2
-      vitest: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   vitest-mock-extended@3.1.0(typescript@7.0.2)(vitest@5.0.1):
     dependencies:
       ts-essentials: 10.0.2(typescript@7.0.2)
       typescript: 7.0.2
-      vitest: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vitest: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
   vitest-websocket-mock@0.8.0(vitest@5.0.1):
     dependencies:
       mock-socket: 9.3.1
       vitest: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-
-  vitest@5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
-    dependencies:
-      '@types/chai': 5.2.2
-      '@vitest/mocker': 5.0.1(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      chai: 6.2.2
-      es-module-lexer: 2.3.2
-      expect-type: 1.4.0
-      magic-string: 1.4.2
-      obug: 2.2.1
-      picomatch: 4.0.4
-      std-env: 4.2.0
-      tinybench: 6.1.4
-      tinyexec: 1.3.0
-      tinyglobby: 0.2.17
-      vite: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
-      why-is-node-running: 2.3.0
-    optionalDependencies:
-      '@opentelemetry/api': 1.9.1
-      '@types/node': 20.19.41
-      '@vitest/browser-playwright': 5.0.1(bufferutil@4.0.9)(playwright@1.62.1)(utf-8-validate@5.0.10)(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@5.0.1)
-      '@vitest/coverage-istanbul': 5.0.1(vitest@5.0.1)
-      '@vitest/coverage-v8': 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
-      '@vitest/ui': 5.0.1(vitest@5.0.1)
-      jsdom: 23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10)
-    transitivePeerDependencies:
-      - msw
 
   vitest@5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10))(vite@8.3.7(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
     dependencies:
@@ -47733,33 +47381,6 @@ snapshots:
       '@vitest/coverage-v8': 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
       '@vitest/ui': 5.0.1(vitest@5.0.1)
       jsdom: 23.0.1(bufferutil@4.0.9)(supports-color@5.5.0)(utf-8-validate@5.0.10)
-    transitivePeerDependencies:
-      - msw
-
-  vitest@5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)):
-    dependencies:
-      '@types/chai': 5.2.2
-      '@vitest/mocker': 5.0.1(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
-      chai: 6.2.2
-      es-module-lexer: 2.3.2
-      expect-type: 1.4.0
-      magic-string: 1.4.2
-      obug: 2.2.1
-      picomatch: 4.0.4
-      std-env: 4.2.0
-      tinybench: 6.1.4
-      tinyexec: 1.3.0
-      tinyglobby: 0.2.17
-      vite: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
-      why-is-node-running: 2.3.0
-    optionalDependencies:
-      '@opentelemetry/api': 1.9.1
-      '@types/node': 20.19.41
-      '@vitest/browser-playwright': 5.0.1(bufferutil@4.0.9)(playwright@1.62.1)(utf-8-validate@5.0.10)(vite@8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))(vitest@5.0.1)
-      '@vitest/coverage-istanbul': 5.0.1(vitest@5.0.1)
-      '@vitest/coverage-v8': 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
-      '@vitest/ui': 5.0.1(vitest@5.0.1)
-      jsdom: 23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
     transitivePeerDependencies:
       - msw
 
