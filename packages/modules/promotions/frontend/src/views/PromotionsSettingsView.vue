@@ -36,7 +36,6 @@ import { useInstanceProtection } from '../composables/useInstanceProtection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
 import {
 	ENVIRONMENTS_DOCS_URL,
-	ENVIRONMENTS_PLAN_DOCS_URL,
 	PROMOTIONS_ENVIRONMENT_ADD_VIEW,
 	PROMOTIONS_ENVIRONMENT_EDIT_VIEW,
 } from '../promotions.constants';
@@ -165,7 +164,6 @@ async function remove(environment: PromotionEnvironment) {
 			feature="n8nPackages"
 			:title="i18n.baseText('settings.promotions.title')"
 			:description="i18n.baseText('settings.promotions.description')"
-			:docs-url="ENVIRONMENTS_PLAN_DOCS_URL"
 		/>
 
 		<N8nSettingsSection :title="i18n.baseText('settings.promotions.environments.title')">

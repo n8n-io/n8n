@@ -21,11 +21,6 @@ export interface SettingsPageHeaderProps {
 	 * On by default. Set `:show-docs-link="false"` to hide it, including when a URL is set.
 	 */
 	showDocsLink?: boolean;
-	/**
-	 * Documentation page for the inline link at the end of the description.
-	 * Overrides `docsUrl` on the feature entry.
-	 */
-	docsUrl?: string;
 	/** The underlined link word. Defaults to the localized "documentation". */
 	docsLabel?: string;
 	/**
@@ -38,7 +33,7 @@ export interface SettingsPageHeaderProps {
 	/**
 	 * Feature id from the list the app provides.
 	 * The entry decides which badges render beside the title.
-	 * The entry's `docsUrl` renders the documentation link when this page sets none.
+	 * The entry's `docsUrl` is the documentation link.
 	 * The id sets the badge test ids. A camelCase id becomes kebab-case.
 	 * `context` renders `context-preview-badge` and `context-enterprise-readiness-badge`.
 	 */
@@ -54,7 +49,6 @@ defineOptions({ name: 'N8nSettingsPageHeader' });
 const props = withDefaults(defineProps<SettingsPageHeaderProps>(), {
 	description: undefined,
 	showDocsLink: true,
-	docsUrl: undefined,
 	docsLabel: undefined,
 	docsLeadingText: undefined,
 	headingTag: 'h1',
@@ -77,16 +71,16 @@ const catalog = useFeatureMaturityCatalog();
 const featureEntry = computed(() =>
 	props.feature === undefined ? undefined : catalog.value[props.feature],
 );
-// The page URL wins. Otherwise the feature entry supplies the documentation page.
-const resolvedDocsUrl = computed(() => props.docsUrl ?? featureEntry.value?.docsUrl);
+// The feature entry owns the documentation page. A page does not pass a URL.
+const resolvedDocsUrl = computed(() => featureEntry.value?.docsUrl);
 // Default-on means a missing URL still renders a placeholder and warns in development.
 // `:show-docs-link="false"` removes the link even when a URL is set.
 if (import.meta.env.DEV) {
 	watchEffect(() => {
 		if (props.showDocsLink && !resolvedDocsUrl.value) {
 			console.warn(
-				'[N8nSettingsPageHeader] The docs link is enabled but no `docsUrl` was provided. ' +
-					'Set `docs-url`, pass a feature whose entry has `docsUrl`, or pass `:show-docs-link="false"` to remove it.',
+				'[N8nSettingsPageHeader] The docs link is enabled but no feature entry provides a `docsUrl`. ' +
+					'Pass a feature whose entry has `docsUrl`, or pass `:show-docs-link="false"` to remove the link.',
 			);
 		}
 	});

@@ -36,8 +36,6 @@ import { useOtelStore, headersStringToPairs, headersPairsToString } from './otel
 import { createSampleRateFormat, isOtlpProtocol } from './otel.utils';
 import OtelSettingsRow from './OtelSettingsRow.vue';
 
-const OTEL_DOCS_URL = 'https://docs.n8n.io/hosting/logging-monitoring/opentelemetry/';
-
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const toast = useToast();
@@ -427,7 +425,6 @@ watch(
 			feature="openTelemetry"
 			:title="i18n.baseText('settings.opentelemetry.title')"
 			:description="i18n.baseText('settings.opentelemetry.description')"
-			:docs-url="OTEL_DOCS_URL"
 		/>
 
 		<div v-if="otelStore.loading" :class="$style.loading" data-test-id="otel-loading">

@@ -15,7 +15,7 @@ export type FeatureMaturityEntry = {
 	limitedEnterpriseSupport: boolean;
 	/**
 	 * Documentation page for this feature.
-	 * `N8nSettingsPageHeader` renders the link. A page `docs-url` overrides it.
+	 * `N8nSettingsPageHeader` renders the link from this URL.
 	 */
 	docsUrl?: string;
 };

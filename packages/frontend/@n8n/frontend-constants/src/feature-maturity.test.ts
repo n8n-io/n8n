@@ -33,6 +33,32 @@ describe('featureMaturity', () => {
 			nodePolicies: { preview: true, limitedEnterpriseSupport: false },
 			selfHealing: { preview: true, limitedEnterpriseSupport: true },
 			chat: { preview: true, limitedEnterpriseSupport: true },
+			authentication: {
+				preview: false,
+				limitedEnterpriseSupport: false,
+				docsUrl: 'https://docs.n8n.io/administer/manage-users-and-access/verify-user-identity',
+			},
+			sso: {
+				preview: false,
+				limitedEnterpriseSupport: false,
+				docsUrl: 'https://docs.n8n.io/user-management/saml/',
+			},
+			security: {
+				preview: false,
+				limitedEnterpriseSupport: false,
+				docsUrl:
+					'https://docs.n8n.io/deploy/host-n8n/configure-n8n/security/manage-security-policies',
+			},
+			mcp: {
+				preview: false,
+				limitedEnterpriseSupport: false,
+				docsUrl: 'https://docs.n8n.io/connect/connect-to-n8n-mcp-server',
+			},
+			migrationReport: {
+				preview: false,
+				limitedEnterpriseSupport: false,
+				docsUrl: 'https://docs.n8n.io/changelog/v30-breaking-changes',
+			},
 		});
 	});
 });

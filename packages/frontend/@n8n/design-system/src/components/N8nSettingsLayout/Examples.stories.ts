@@ -720,7 +720,7 @@ export const SecurityAndLogin: Story = {
 				<N8nSettingsPageHeader
 					title="Security & login"
 					description="Your 2FA setup, passkeys, active sessions, and authorized OAuth applications."
-					docs-url="https://docs.n8n.io/user-management/"
+					feature="userManagement"
 				/>
 
 				<N8nSettingsSection title="Sign-in" description="How you sign in to n8n.">
@@ -778,7 +778,7 @@ export const PasskeysSubPage: Story = {
 				<N8nSettingsPageHeader
 					title="Passkeys"
 					description="Manage the passkeys you use to sign in with your face, fingerprint, or device PIN."
-					docs-url="https://docs.n8n.io/user-management/"
+					feature="userManagement"
 				/>
 
 				<N8nSettingsSection>
@@ -826,7 +826,7 @@ export const ThisInstance: Story = {
 				<N8nSettingsPageHeader
 					title="This instance"
 					description="Plan, usage, version, updates, instance details, resources, and support for this n8n instance."
-					docs-url="https://docs.n8n.io"
+					feature="instance"
 				/>
 
 				<N8nSettingsSection title="Plan and usage">
@@ -923,7 +923,7 @@ export const ApiKeys: Story = {
 				<N8nSettingsPageHeader
 					title="API keys"
 					description="Use your API keys to control n8n programmatically."
-					docs-url="https://docs.n8n.io/api/"
+					feature="api"
 				/>
 
 				<N8nSettingsSection>
@@ -1021,7 +1021,7 @@ export const ExampleSettingsPage: Story = {
 					<N8nSettingsPageHeader
 						title="General"
 						description="Instance-wide defaults for naming, scheduling, email, and logging."
-						docs-url="https://docs.n8n.io/hosting/configuration/"
+						feature="hosting"
 					/>
 
 					<N8nSettingsSection title="Instance" description="High-impact fields require an explicit save.">
@@ -1822,7 +1822,7 @@ export const ModelContextProtocol: Story = {
 					<N8nSettingsPageHeader
 						title="Instance level MCP"
 						description="Let AI assistants and IDEs connect to this instance over the Model Context Protocol (MCP), then control which tools and workflows they can use."
-						docs-url="${mcpDocsUrl}"
+						feature="mcp"
 					/>
 
 					<!-- Only shown when MCP is ENABLED. While disabled the whole top section (status row +

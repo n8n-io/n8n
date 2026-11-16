@@ -28,7 +28,7 @@ import { useI18n } from '@n8n/i18n';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import type { BreakingChangeLightReportResult, BreakingChangeRuleImpact } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { BREAKING_CHANGES_DOCUMENTATION_URL, TARGET_VERSION_DISPLAY } from './constants';
+import { TARGET_VERSION_DISPLAY } from './constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useToast } from '@n8n/composables/useToast';
 import { saveAs } from 'file-saver';
@@ -221,7 +221,7 @@ const sortedInstanceResults = computed(() => {
 					},
 				})
 			"
-			:docs-url="BREAKING_CHANGES_DOCUMENTATION_URL"
+			feature="migrationReport"
 			:docs-label="i18n.baseText('settings.migrationReport.documentationLink')"
 			docs-leading-text=""
 		/>

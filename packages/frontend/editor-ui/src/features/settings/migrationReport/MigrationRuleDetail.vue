@@ -13,6 +13,7 @@ import {
 	N8nBadge,
 	N8nButton,
 	N8nDataTableServer,
+	N8nExternalLink,
 	N8nIcon,
 	N8nInfoTip,
 	N8nInput,
@@ -505,12 +506,18 @@ watch(
 		<N8nSettingsPageHeader
 			v-else
 			:title="state.ruleTitle"
-			:description="ruleDescription"
-			:show-docs-link="Boolean(state.ruleDocumentationUrl)"
-			:docs-url="state.ruleDocumentationUrl"
-			:docs-label="i18n.baseText('settings.migrationReport.documentation')"
-			docs-leading-text=""
+			:description="state.ruleDocumentationUrl ? undefined : ruleDescription || undefined"
+			:show-docs-link="false"
 		>
+			<!-- The rule URL changes per rule, so it cannot come from the feature list. -->
+			<template v-if="state.ruleDocumentationUrl" #description>
+				<N8nText size="medium" color="text-base">
+					<template v-if="ruleDescription">{{ ruleDescription }} </template>
+					<N8nExternalLink inline size="small" :href="state.ruleDocumentationUrl">
+						{{ i18n.baseText('settings.migrationReport.documentation') }}
+					</N8nExternalLink>
+				</N8nText>
+			</template>
 			<template #titleTrailing>
 				<ImpactTag :impact="state.ruleImpact" />
 				<N8nBadge>

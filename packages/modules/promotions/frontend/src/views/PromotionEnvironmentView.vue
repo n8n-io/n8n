@@ -33,7 +33,7 @@ import PromotionGitHostSelect from '../components/PromotionGitHostSelect.vue';
 import PromotionProviderDialog from '../components/PromotionProviderDialog.vue';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
-import { ENVIRONMENTS_PLAN_DOCS_URL, PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
+import { PROMOTIONS_SETTINGS_VIEW } from '../promotions.constants';
 import {
 	createPromotionEnvironment,
 	deleteProviderIfUnused,
@@ -315,12 +315,15 @@ onBeforeRouteLeave(() => {
 		:back-label="i18n.baseText('settings.promotions.environment.back')"
 		@back="router.push(overview)"
 	>
+		<!-- The n8n Packages entry owns the documentation URL. This page does not show its badges. -->
 		<N8nSettingsPageHeader
+			feature="n8nPackages"
+			hide-preview
+			hide-enterprise
 			:title="pageTitle"
 			:description="
 				direction ? i18n.baseText(`settings.promotions.environment.${direction}.description`) : ''
 			"
-			:docs-url="ENVIRONMENTS_PLAN_DOCS_URL"
 		/>
 
 		<N8nLoading2 v-if="isLoading" :rows="3" :shrink-last="false" />

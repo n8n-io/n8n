@@ -20,7 +20,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { RedactionFloor } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import * as securitySettingsApi from '@n8n/rest-api-client/api/security-settings';
-import { EnterpriseEditionFeature, SECURITY_POLICIES_DOCS_URL } from '@/app/constants';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -193,9 +193,9 @@ const sharingCountText = computed(() => {
 <template>
 	<N8nSettingsLayout :class="$style.layout">
 		<N8nSettingsPageHeader
+			feature="security"
 			:title="i18n.baseText('settings.security')"
 			:description="i18n.baseText('settings.security.description')"
-			:docs-url="SECURITY_POLICIES_DOCS_URL"
 			data-test-id="security-settings-header"
 		/>
 

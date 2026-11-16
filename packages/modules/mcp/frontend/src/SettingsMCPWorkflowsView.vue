@@ -18,7 +18,7 @@ import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@n8n/frontend-constants/workflow
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { McpWorkflow } from './mcp.types';
 import { useMCPStore } from './mcp.store';
-import { LOADING_INDICATOR_TIMEOUT, MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from './mcp.constants';
+import { LOADING_INDICATOR_TIMEOUT, MCP_SETTINGS_VIEW } from './mcp.constants';
 import WorkflowsTable from './components/tabs/WorkflowsTable.vue';
 import MCPConnectWorkflowsModal from './modals/MCPConnectWorkflowsModal.vue';
 
@@ -178,7 +178,7 @@ onMounted(async () => {
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.mcp.workflowsExposed.page.title')"
 			:description="i18n.baseText('settings.mcp.workflowsExposed.page.description')"
-			:docs-url="MCP_DOCS_PAGE_URL"
+			feature="mcp"
 		/>
 		<div data-test-id="mcp-workflows-view">
 			<div :class="$style.actions">

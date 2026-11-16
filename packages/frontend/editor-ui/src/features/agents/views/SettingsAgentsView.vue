@@ -68,7 +68,6 @@ onMounted(async () => {
 			feature="agents"
 			:title="i18n.baseText('settings.agents')"
 			:description="i18n.baseText('settings.agents.description')"
-			docs-url="https://docs.n8n.io/build/build-and-manage-agents"
 			:docs-label="i18n.baseText('settings.agents.docsLabel')"
 			:docs-leading-text="i18n.baseText('settings.agents.docsLeadingText')"
 		/>
