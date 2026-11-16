@@ -1,5 +1,11 @@
-import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INode,
+	RequestUrl,
+} from 'n8n-workflow';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 
 import type { AgentParametersInput, AgentResultResponse, AirtopAgentResponse } from './agent.types';
 import { AIRTOP_HOOKS_BASE_URL, BASE_URL_V2, ERROR_MESSAGES } from '../../constants';
@@ -14,9 +20,9 @@ export async function getAgentDetails(
 ): Promise<AirtopAgentResponse> {
 	return await apiRequest.call<
 		IExecuteFunctions | ILoadOptionsFunctions,
-		['GET', string],
+		['GET', RequestUrl],
 		Promise<AirtopAgentResponse>
-	>(this, 'GET', `${BASE_URL_V2}/agents/${agentId}`);
+	>(this, 'GET', requestUrl`${BASE_URL_V2}/agents/${agentId}`);
 }
 
 /**
@@ -56,12 +62,12 @@ export async function getAgentStatus(
 	agentId: string,
 	invocationId: string,
 ): Promise<AgentResultResponse> {
-	const resultUrl = `${AIRTOP_HOOKS_BASE_URL}/agents/${agentId}/invocations/${invocationId}/result`;
-	return await apiRequest.call<IExecuteFunctions, ['GET', string], Promise<AgentResultResponse>>(
-		this,
-		'GET',
-		resultUrl,
-	);
+	const resultUrl = requestUrl`${AIRTOP_HOOKS_BASE_URL}/agents/${agentId}/invocations/${invocationId}/result`;
+	return await apiRequest.call<
+		IExecuteFunctions,
+		['GET', RequestUrl],
+		Promise<AgentResultResponse>
+	>(this, 'GET', resultUrl);
 }
 
 /**

@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { wrapData } from '../../../../../../utils/utilities';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
@@ -112,7 +113,7 @@ export async function execute(
 		responseData = await apiRequest.call(
 			this,
 			'POST',
-			`/v4/spreadsheets/${sheetName}:batchUpdate`,
+			requestPath`/v4/spreadsheets/${sheetName}:batchUpdate`,
 			{ requests },
 		);
 

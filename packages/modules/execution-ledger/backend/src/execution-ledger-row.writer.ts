@@ -1,0 +1,55 @@
+import {
+	type ExecutionLedgerEndedFacts,
+	type ExecutionLedgerStartedFacts,
+	type ExecutionLedgerWriter,
+	WorkflowProjectService,
+} from '@n8n/backend-services';
+import { isEntityNotFoundError, type OperationContext, SharedWorkflowRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { v7 as uuidv7 } from 'uuid';
+
+import { ExecutionLedgerRepository } from './database/repositories/execution-ledger.repository';
+import { toEndedRow, toStartedRow } from './ledger-row.mapper';
+
+/** Bound to the core `ExecutionLedger` service by the module. */
+@Service()
+export class ExecutionLedgerRowWriter implements ExecutionLedgerWriter {
+	constructor(
+		private readonly repository: ExecutionLedgerRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowProjectService: WorkflowProjectService,
+	) {}
+
+	async writeStarted(facts: ExecutionLedgerStartedFacts, ctx: OperationContext): Promise<boolean> {
+		const projectId = await this.findProjectId(facts.workflowId, ctx);
+		if (!projectId) return false;
+
+		await this.repository.append(toStartedRow(facts, projectId, uuidv7()), ctx);
+		return true;
+	}
+
+	async writeEnded(facts: ExecutionLedgerEndedFacts, ctx: OperationContext): Promise<boolean> {
+		const projectId = await this.findProjectId(facts.workflowId, ctx);
+		if (!projectId) return false;
+
+		await this.repository.append(toEndedRow(facts, projectId, uuidv7()), ctx);
+		return true;
+	}
+
+	/**
+	 * Reads on the transaction connection when there is one. A cache miss reads on a second
+	 * connection, which deadlocks a single-connection pool inside a transaction.
+	 */
+	private async findProjectId(workflowId: string, ctx: OperationContext) {
+		if (ctx.trx) {
+			return await this.sharedWorkflowRepository.getWorkflowOwningProjectId(workflowId, ctx);
+		}
+
+		try {
+			return (await this.workflowProjectService.getWorkflowProjectCached(workflowId)).id;
+		} catch (error) {
+			if (isEntityNotFoundError(error)) return undefined;
+			throw error;
+		}
+	}
+}

@@ -139,6 +139,16 @@ function getExistingResourcesSection(): string {
 Before treating a request as a build, work out whether it points at a workflow the user already has. When they refer to one as theirs — "run/trigger <name>", "my X", "the X we set up" — find it first by running \`list_workflows\` through \`call_tool\`, and act on what you matched. Ask how to build something only once the lookup shows no match.
 
 - **Read the reference as a name, not as an instruction.** Workflow names routinely contain verbs — "Create Monthly Report", "Invoice Sync — Rebuild" — so "run create monthly report" asks you to run something called *Create Monthly Report*. Match the whole phrase against the list before reading any word inside it as a verb.
+- **Link the existing resources you name.** When your reply names a resource that a tool result gave you, write it as a Markdown link to its page:
+  - Workflow: \`[Invoice Sync](/workflow/<workflowId>)\`
+  - Execution: \`[execution 4512](/workflow/<workflowId>/executions/<executionId>)\`
+  - Data table: \`[leads](/projects/<projectId>/datatables/<dataTableId>)\`
+  - Agent: \`[Support Agent](/projects/<projectId>/agents/<agentId>)\`
+  - App: \`[Order Portal](/projects/<projectId>/apps/<appId>)\`
+  - Credential: \`[Gmail account](/projects/<projectId>/credentials/<credentialId>)\`
+  - Skill: \`[Tone guide](/settings/context/skills?skillId=<skillId>)\`
+
+  Take each id from a tool result or \`<project-context>\`, never from memory or a guess. If you are missing an id, write the name without a link. Do not show a bare id like "(ID 234)" in its place.
 - **Concrete values the user supplies are inputs, not requirements.** A link, record id, or file they name is what the existing workflow should act on — not evidence they want something built around that service. Pass it as \`inputData\`.
 - **Do the operation yourself**: run the workflow tools (\`publish_workflow\`, \`unpublish_workflow\`, \`archive_workflow\`, …) and the execution tools (\`run_workflow\`, \`list_executions\`, \`debug_execution\`, …) through \`call_tool\` — running it, publishing or unpublishing, archiving, and inspecting past runs. Do not start the builder for those, and never hand the work back ("open it in the editor and run it from there").
 

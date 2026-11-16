@@ -1,7 +1,11 @@
 import type { DeleteExecutionsDto } from '@n8n/api-types';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import {
+	EventService,
+	ExecutionRedactionServiceProxy,
+	WorkflowVersionedSettingsService,
+} from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -9,6 +13,7 @@ import type {
 	IExecutionBase,
 	IExecutionResponse,
 	IGetExecutionsQueryFilter,
+	OperationContext,
 	User,
 } from '@n8n/db';
 import {
@@ -37,16 +42,19 @@ import {
 	WorkflowOperationError,
 	createEmptyRunExecutionData,
 	createErrorExecutionData,
+	runDataUsedDynamicCredentials,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
+import { loginIdOf } from '@/events/login-id';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import {
 	BadRequestError,
 	ConflictError,
+	ForbiddenError,
 	InternalServerError,
 	NotFoundError,
 	UnexpectedError,
@@ -134,6 +142,7 @@ export class ExecutionService {
 		private readonly ownershipService: OwnershipService,
 		private readonly engineV2ExecutionReader: EngineV2ExecutionReader,
 		private readonly engineDataPlane: EngineDataPlaneProxyService,
+		private readonly workflowVersionedSettings: WorkflowVersionedSettingsService,
 	) {}
 
 	/**
@@ -218,12 +227,9 @@ export class ExecutionService {
 		});
 		if (!canReadExecutions) return undefined;
 
-		// A workflow runs on one engine, and only that engine holds its executions.
-		const settings = await this.workflowRepository.findSettings(workflowId);
-		const execution =
-			settings?.engineType === 'v2'
-				? await this.engineV2ExecutionReader.findLatest({ status: ['success'] }, [workflowId])
-				: await this.lastSuccessfulV1Execution(workflowId);
+		const execution = this.workflowVersionedSettings.isEnabled()
+			? await this.lastSuccessfulExecutionOnEitherEngine(workflowId)
+			: await this.lastSuccessfulExecutionOnEngineV1(workflowId);
 		if (!execution) return undefined;
 
 		await this.executionRedactionServiceProxy.processExecution(execution, {
@@ -233,12 +239,40 @@ export class ExecutionService {
 		return execution;
 	}
 
-	private async lastSuccessfulV1Execution(
+	/**
+	 * Manual runs use the draft engine and production runs use the published one,
+	 * so the latest success can be on either engine.
+	 */
+	private async lastSuccessfulExecutionOnEitherEngine(
+		workflowId: string,
+	): Promise<IExecutionResponse | undefined> {
+		const [v1Execution, v2Execution] = await Promise.all([
+			this.lastSuccessfulExecutionOnEngineV1(workflowId),
+			this.engineV2ExecutionReader.findLatest({ status: ['success'] }, [workflowId]),
+		]);
+		if (!v1Execution || !v2Execution) return v1Execution ?? v2Execution;
+
+		// Both engines pick their newest run by creation. A queued run can start
+		// after a newer one, so comparing start times would mix two orders.
+		return v2Execution.createdAt.getTime() > v1Execution.createdAt.getTime()
+			? v2Execution
+			: v1Execution;
+	}
+
+	private async lastSuccessfulExecutionOnEngineV1(
 		workflowId: string,
 	): Promise<IExecutionResponse | undefined> {
 		const executions = await this.executionPersistence.findMultipleExecutions(
 			{
-				select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId', 'jsonSizeBytes'],
+				select: [
+					'id',
+					'mode',
+					'createdAt',
+					'startedAt',
+					'stoppedAt',
+					'workflowId',
+					'jsonSizeBytes',
+				],
 				where: {
 					workflowId,
 					status: 'success',
@@ -256,17 +290,20 @@ export class ExecutionService {
 		return executions[0];
 	}
 
-	async retry({
-		executionId,
-		options = {},
-		sharedWorkflowIds,
-		user,
-	}: {
-		executionId: string;
-		options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
-		sharedWorkflowIds: string[];
-		user: User;
-	}): Promise<RetriedExecution> {
+	async retry(
+		{
+			executionId,
+			options = {},
+			sharedWorkflowIds,
+			user,
+		}: {
+			executionId: string;
+			options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
+			sharedWorkflowIds: string[];
+			user: User;
+		},
+		ctx: OperationContext = {},
+	): Promise<RetriedExecution> {
 		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
@@ -290,6 +327,30 @@ export class ExecutionService {
 		// oxlint-disable-next-line typescript/no-deprecated
 		if (execution.finished) {
 			throw new ConflictError('The execution succeeded, so it cannot be retried.');
+		}
+
+		// A retry reuses the original run's identity, so its private credentials
+		// resolve as the user who started it. Only that user may retry it.
+		const runtimeData = execution.data.executionData.runtimeData;
+		const usesDynamicCredentials =
+			runtimeData?.usesDynamicCredentials === true ||
+			runDataUsedDynamicCredentials(execution.data.resultData?.runData);
+		if (usesDynamicCredentials && runtimeData?.executedByUserId !== user.id) {
+			this.logger.info('Attempt to retry an execution was blocked because it ran as another user', {
+				userId: user.id,
+				executionId,
+			});
+			throw new ForbiddenError(
+				"This execution ran with another user's credentials. Run the workflow yourself instead.",
+			);
+		}
+
+		// The saved workflow can reference private credentials that the original
+		// run did not. Keep the original identity and trigger secrets only for the
+		// user the run belongs to. Sub-workflows inherit this context, so this also covers them.
+		if (runtimeData && runtimeData.executedByUserId !== user.id) {
+			delete runtimeData.credentials;
+			delete runtimeData.secureArtifacts;
 		}
 
 		const executionMode = 'retry';
@@ -396,6 +457,7 @@ export class ExecutionService {
 			projectId,
 			projectName,
 			source: 'user-retry',
+			loginId: loginIdOf(ctx),
 		});
 
 		const summary: RetriedExecution = {
@@ -429,6 +491,7 @@ export class ExecutionService {
 		await this.executionRedactionServiceProxy.processExecution(response, {
 			user,
 			redactExecutionData: options.redactExecutionData,
+			ctx,
 		});
 
 		return response;

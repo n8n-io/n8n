@@ -23,7 +23,7 @@ describe('Test MicrosoftTeamsV2, chat => create a group chat', () => {
 	// The guest's mail differs from their principal name, so `/users/{id}` 404s and the mail
 	// filter is what finds them. The bind must carry the resolved id, not the address.
 	nock('https://graph.microsoft.com')
-		.get('/v1.0/users/guest%40other.com')
+		.get('/v1.0/users/guest@other.com')
 		.query({ $select: 'id,displayName,userPrincipalName' })
 		.reply(404, { error: { code: 'Request_ResourceNotFound', message: 'Resource not found' } });
 
@@ -53,7 +53,7 @@ describe('Test MicrosoftTeamsV2, chat => create a group chat', () => {
 		.reply(200, { id: BY_ID, displayName: 'Bob Jones', userPrincipalName: 'bob@contoso.com' });
 
 	nock('https://graph.microsoft.com')
-		.get('/v1.0/users/me%40contoso.com')
+		.get('/v1.0/users/me@contoso.com')
 		.query({ $select: 'id,displayName,userPrincipalName' })
 		.reply(200, { id: CALLER, displayName: 'Me', userPrincipalName: 'me@contoso.com' });
 

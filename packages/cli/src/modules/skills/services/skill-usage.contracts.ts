@@ -49,15 +49,8 @@ export abstract class SkillUsage {
 		ctx: OperationContext,
 	): Promise<void>;
 
-	/**
-	 * In the save transaction: the agents that follow the skill run the new version, so each
-	 * one gets a saved Agent version. Returns the ids of the following agents.
-	 */
-	abstract markFollowersChanged(
-		skillId: string,
-		ctx: OperationContext,
-		userId?: string | null,
-	): Promise<string[]>;
+	/** Return the following agents to refresh after the save commits. Write no agent data. */
+	abstract markFollowersChanged(skillId: string, ctx: OperationContext): Promise<string[]>;
 
 	/** After a save commits: the agents reload, except the tab of `excludePushRef`. */
 	abstract refreshAgents(agentIds: string[], excludePushRef?: string): Promise<void>;

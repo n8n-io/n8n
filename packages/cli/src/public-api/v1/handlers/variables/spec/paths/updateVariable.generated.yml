@@ -2,7 +2,10 @@ operationId: updateVariable
 tags:
   - Variables
 summary: Update a variable
-description: Update a variable from your instance.
+description: |-
+  Update a variable from your instance.
+
+  Requires the `variable:update` API key scope.
 x-required-scope: variable:update
 parameters:
   - schema:

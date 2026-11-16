@@ -7,14 +7,7 @@ import {
 	usersListSchema,
 } from '@n8n/api-types';
 import type { PublicUser } from '@n8n/db';
-import {
-	User,
-	UserRepository,
-	PersonRepository,
-	AuthenticatedRequest,
-	GLOBAL_ADMIN_ROLE,
-	GLOBAL_OWNER_ROLE,
-} from '@n8n/db';
+import { User, PersonRepository, AuthenticatedRequest, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import {
 	GlobalScope,
 	Delete,
@@ -45,7 +38,6 @@ const ownUserDetailSchema = userDetailSchema.omit({ disabled: true });
 @RestController('/users')
 export class UsersController {
 	constructor(
-		private readonly userRepository: UserRepository,
 		private readonly personRepository: PersonRepository,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
@@ -146,10 +138,10 @@ export class UsersController {
 		}
 
 		if (
-			req.user.role.slug === GLOBAL_ADMIN_ROLE.slug &&
-			person.role.slug === GLOBAL_OWNER_ROLE.slug
+			person.role.slug === GLOBAL_OWNER_ROLE.slug &&
+			req.user.role.slug !== GLOBAL_OWNER_ROLE.slug
 		) {
-			throw new ForbiddenError('Admin cannot reset password of global owner');
+			throw new ForbiddenError('Only the owner can reset the password of the global owner');
 		}
 
 		const link = this.authService.generatePasswordResetUrl(person);
@@ -193,15 +185,7 @@ export class UsersController {
 		@Body payload: SettingsUpdateRequestDto,
 		@Param('id') id: string,
 	) {
-		await this.userService.updateSettings(id, payload);
-
-		const user = await this.userRepository.findOneOrFail({
-			// TypeORM needs `id` here because `ServiceAccount.details` is an eager join.
-			select: ['id', 'settings'],
-			where: { id },
-		});
-
-		return user.settings;
+		return await this.userService.updateSettings(id, payload);
 	}
 
 	/**

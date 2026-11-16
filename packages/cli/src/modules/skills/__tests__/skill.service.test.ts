@@ -514,7 +514,7 @@ describe('SkillService', () => {
 				{ pushRef: 'push-ref-1' },
 			);
 
-			expect(markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX, user.id);
+			expect(markFollowersChanged).toHaveBeenCalledWith('skill_a', TX_CTX);
 			expect(result.followingAgentIds).toEqual(['agent-1', 'agent-2']);
 			expect(usage.refreshed).toEqual([
 				{ agentIds: ['agent-1', 'agent-2'], excludePushRef: 'push-ref-1' },
@@ -835,7 +835,12 @@ describe('SkillService', () => {
 				]),
 			);
 			skills.findProjects.mockResolvedValue(
-				new Map([[PROJECT, { name: 'Marketing', type: 'team' as const }]]),
+				new Map([
+					[
+						PROJECT,
+						{ name: 'Marketing', type: 'team' as const, icon: { type: 'emoji', value: '🚀' } },
+					],
+				]),
 			);
 			users.findManyByIds.mockResolvedValue([
 				Object.assign(new Person(), {
@@ -852,15 +857,27 @@ describe('SkillService', () => {
 			expect(users.findManyByIds).toHaveBeenCalledWith(['user-1']);
 			expect(skills.findProjects).toHaveBeenCalledWith([PROJECT, 'project-gone']);
 			expect(
-				data.map(({ id, scope, projectId, projectName, projectType, createdBy, usedByAgents }) => ({
-					id,
-					scope,
-					projectId,
-					projectName,
-					projectType,
-					createdBy,
-					usedByAgents,
-				})),
+				data.map(
+					({
+						id,
+						scope,
+						projectId,
+						projectName,
+						projectType,
+						projectIcon,
+						createdBy,
+						usedByAgents,
+					}) => ({
+						id,
+						scope,
+						projectId,
+						projectName,
+						projectType,
+						projectIcon,
+						createdBy,
+						usedByAgents,
+					}),
+				),
 			).toEqual([
 				{
 					id: 'skill_project',
@@ -868,6 +885,7 @@ describe('SkillService', () => {
 					projectId: PROJECT,
 					projectName: 'Marketing',
 					projectType: 'team',
+					projectIcon: { type: 'emoji', value: '🚀' },
 					createdBy: { id: 'user-1', email: null, firstName: null, lastName: null },
 					usedByAgents: 2,
 				},
@@ -877,6 +895,7 @@ describe('SkillService', () => {
 					projectId: 'project-gone',
 					projectName: null,
 					projectType: null,
+					projectIcon: null,
 					createdBy: null,
 					usedByAgents: 0,
 				},
@@ -886,6 +905,7 @@ describe('SkillService', () => {
 					projectId: null,
 					projectName: null,
 					projectType: null,
+					projectIcon: null,
 					createdBy: null,
 					usedByAgents: 0,
 				},

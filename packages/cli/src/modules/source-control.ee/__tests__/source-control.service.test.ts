@@ -684,6 +684,23 @@ describe('SourceControlService', () => {
 			});
 		});
 
+		it('passes the public API client to the pull status check', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			mockStatusService.getStatus.mockResolvedValueOnce([]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+
+			await sourceControlService.pullWorkfolder(
+				user,
+				{ force: true, autoPublish: 'none' },
+				'other',
+			);
+
+			expect(mockStatusService.getStatus).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ direction: 'pull', publicApi: 'other' }),
+			);
+		});
+
 		it('does not run the policy preview, because the import enforces on its own', async () => {
 			mockStatusService.getStatus.mockResolvedValueOnce([]);
 			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);

@@ -54,6 +54,7 @@ import {
 	getLifecycleHooksForRegularMain,
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
+	getPushRefUserId,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { toSaveSettings } from '@/execution-lifecycle/to-save-settings';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
@@ -720,10 +721,12 @@ export class WorkflowRunner {
 				executionId,
 			});
 
+			additionalData.pushRef = data.pushRef;
+			additionalData.pushRefUserId = getPushRefUserId(data);
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef: data.pushRef,
+				userId: additionalData.pushRefUserId,
 			});
-			additionalData.pushRef = data.pushRef;
 
 			if (data.configureAdditionalData) {
 				await data.configureAdditionalData(additionalData);
@@ -843,6 +846,7 @@ export class WorkflowRunner {
 				executionId,
 				loadStaticData: !!loadStaticData,
 				pushRef: data.pushRef,
+				pushRefUserId: getPushRefUserId(data),
 				streamingEnabled: data.streamingEnabled,
 				callerAwaitsOutcome: data.callerAwaitsOutcome,
 				restartExecutionId,

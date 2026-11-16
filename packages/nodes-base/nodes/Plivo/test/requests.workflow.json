@@ -1,0 +1,125 @@
+{
+	"name": "Plivo request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "sms",
+				"operation": "send",
+				"from": "+14155550100",
+				"to": "+14155550101",
+				"message": "Hello"
+			},
+			"id": "node-0",
+			"name": "SMS Send",
+			"type": "n8n-nodes-base.plivo",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"credentials": {
+				"plivoApi": {
+					"id": "1",
+					"name": "Plivo API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "mms",
+				"operation": "send",
+				"from": "+14155550100",
+				"to": "+14155550101",
+				"message": "Hello",
+				"media_urls": "https://example.com/a.png"
+			},
+			"id": "node-1",
+			"name": "MMS Send",
+			"type": "n8n-nodes-base.plivo",
+			"typeVersion": 1,
+			"position": [300, 150],
+			"credentials": {
+				"plivoApi": {
+					"id": "1",
+					"name": "Plivo API"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "call",
+				"operation": "make",
+				"from": "+14155550100",
+				"to": "+14155550101",
+				"answer_url": "https://example.com/answer",
+				"answer_method": "POST"
+			},
+			"id": "node-2",
+			"name": "Call Make",
+			"type": "n8n-nodes-base.plivo",
+			"typeVersion": 1,
+			"position": [300, 300],
+			"credentials": {
+				"plivoApi": {
+					"id": "1",
+					"name": "Plivo API"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"SMS Send": [
+			{
+				"json": {
+					"message_uuid": ["sms-1"]
+				}
+			}
+		],
+		"MMS Send": [
+			{
+				"json": {
+					"message_uuid": ["mms-1"]
+				}
+			}
+		],
+		"Call Make": [
+			{
+				"json": {
+					"request_uuid": "call-1"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "SMS Send",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "MMS Send",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Call Make",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

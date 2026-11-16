@@ -1,18 +1,11 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
-import type {
-	DeepPartial,
-	EntityManager,
-	FindOptionsWhere,
-	Repository,
-	SelectQueryBuilder,
-} from '@n8n/typeorm';
+import type { EntityManager, FindOptionsWhere, Repository, SelectQueryBuilder } from '@n8n/typeorm';
 import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
-import { GLOBAL_OWNER_ROLE } from '../constants';
-import { ApiKey, AuthIdentity, Project, ProjectRelation, User, type UserKind } from '../entities';
+import { ApiKey, AuthIdentity, Project, User, type UserKind } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 export type EligibleAccountsQuery = {
@@ -63,8 +56,7 @@ const DEACTIVATED_USER_PARAMETERS = { userListDeactivated: true };
  * its `kind` names (`Person` or `ServiceAccount`). Use `PersonRepository` or
  * `ServiceAccountRepository` when only one kind can appear.
  *
- * The query methods below predate service accounts. They stay here until their
- * callers move to `PersonRepository`, so that a caller sees no change.
+ * Person-only queries live in `PersonRepository`.
  *
  * The list and count methods take an optional `kind`. Without it, they return
  * accounts of both kinds.
@@ -145,13 +137,6 @@ export class UserRepository extends BaseRepository<User> {
 		});
 	}
 
-	async findByEmailWithRole(email: string): Promise<User | null> {
-		return await this.findOne({
-			where: { email },
-			relations: ['role'],
-		});
-	}
-
 	/** A member of the project, or null when the project has no members. */
 	async findOneByProjectId(projectId: string): Promise<User | null> {
 		return await this.findOneBy({
@@ -189,35 +174,12 @@ export class UserRepository extends BaseRepository<User> {
 		return await super.update(...args);
 	}
 
-	/**
-	 * True when a claimed instance owner exists. A claimed owner has logged in
-	 * (`lastActiveAt` is set) or has a password. Some setup paths set a password
-	 * before the first login, so the password check is required. The unclaimed
-	 * "shell" owner that first boot creates matches neither condition.
-	 */
-	async hasClaimedInstanceOwner(): Promise<boolean> {
-		return await this.exists({
-			where: [
-				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, lastActiveAt: Not(IsNull()) },
-				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, password: Not(IsNull()) },
-			],
-			relations: ['role'],
-		});
-	}
-
 	async deleteAllExcept(user: User) {
 		await this.delete({ id: Not(user.id) });
 	}
 
 	async getByIds(transaction: EntityManager, ids: string[]) {
 		return await transaction.find(User, { where: { id: In(ids) } });
-	}
-
-	async findManyByEmail(emails: string[]) {
-		return await this.find({
-			where: { email: In(emails) },
-			select: ['email', 'password', 'id'],
-		});
 	}
 
 	async deleteMany(userIds: string[]) {
@@ -248,49 +210,6 @@ export class UserRepository extends BaseRepository<User> {
 		);
 	}
 
-	async createUserWithProject(
-		user: DeepPartial<User>,
-		transactionManager?: EntityManager,
-	): Promise<{ user: User; project: Project }> {
-		const createInner = async (entityManager: EntityManager) => {
-			const newUser = entityManager.create(User, user);
-			const savedUser = await entityManager.save<User>(newUser);
-			const userWithRole = await entityManager.findOne(User, {
-				where: { id: savedUser.id },
-				relations: ['role'],
-			});
-			if (!userWithRole) throw new Error('Failed to create user!');
-			const savedProject = await entityManager.save<Project>(
-				entityManager.create(Project, {
-					type: 'personal',
-					name: userWithRole.createPersonalProjectName(),
-					creatorId: savedUser.id,
-				}),
-			);
-
-			await entityManager.save<ProjectRelation>(
-				entityManager.create(ProjectRelation, {
-					projectId: savedProject.id,
-					userId: savedUser.id,
-					role: {
-						slug:
-							userWithRole.role.slug !== 'global:chatUser'
-								? PROJECT_OWNER_ROLE_SLUG
-								: PROJECT_VIEWER_ROLE_SLUG,
-					},
-				}),
-			);
-
-			return { user: userWithRole, project: savedProject };
-		};
-		if (transactionManager) {
-			return await createInner(transactionManager);
-		}
-		// TODO: use a transactions
-		// This is blocked by TypeORM having concurrency issues with transactions
-		return await createInner(this.manager);
-	}
-
 	/**
 	 * Find enabled users whose global/project is in the given slug sets. Role slugs
 	 * are passed in so this package stays scope-agnostic.
@@ -303,10 +222,8 @@ export class UserRepository extends BaseRepository<User> {
 		const where = eligibleAccountsWhere(query);
 		if (!where) return [];
 
-		return await this.find({
-			where,
-			relations: { role: true, authIdentities: true },
-		});
+		// The string form reaches `authIdentities`, which only `Person` declares.
+		return await this.find({ where, relations: ['role', 'authIdentities'] });
 	}
 
 	/**
@@ -382,13 +299,15 @@ export class UserRepository extends BaseRepository<User> {
 
 	private applyUserListSelect(
 		queryBuilder: SelectQueryBuilder<User>,
-		select: Array<keyof User> | undefined,
+		select: UsersListFilterDto['select'],
 	): SelectQueryBuilder<User> {
 		if (select !== undefined) {
 			if (!select.includes('id')) {
 				select.unshift('id'); // Ensure id is always selected
 			}
-			queryBuilder.select(select.map((field) => `user.${field}`));
+			// TypeORM picks `Person` or `ServiceAccount` from `kind`. Without it, the
+			// row loads as a bare `User` and drops the person columns.
+			queryBuilder.select([...select.map((field) => `user.${field}`), 'user.kind']);
 		}
 		return queryBuilder;
 	}

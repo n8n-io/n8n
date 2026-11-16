@@ -1,4 +1,4 @@
-import { type User, WorkflowEntity } from '@n8n/db';
+import { type OperationContext, type User, WorkflowEntity } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import z from 'zod';
 
@@ -53,6 +53,7 @@ export const createRestoreWorkflowVersionTool = (
 	workflowService: WorkflowService,
 	telemetry: Telemetry,
 	collaborationService: CollaborationService,
+	ctx: OperationContext = {},
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'restore_workflow_version',
 	config: {
@@ -101,12 +102,19 @@ export const createRestoreWorkflowVersionTool = (
 
 			const versionMetadata = buildRestoreVersionMetadata(version);
 
-			const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
-				forceSave: true,
-				source: 'n8n-mcp',
-				versionName: versionMetadata.name,
-				versionDescription: versionMetadata.description,
-			});
+			const updatedWorkflow = await workflowService.update(
+				user,
+				workflowUpdateData,
+				workflowId,
+				{
+					forceSave: true,
+					source: 'n8n-mcp',
+					restoredVersionSettings: version.settings,
+					versionName: versionMetadata.name,
+					versionDescription: versionMetadata.description,
+				},
+				ctx,
+			);
 
 			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 

@@ -34,7 +34,7 @@ import {
 } from '@/executions/engine-v2-execution-reader.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
-import { isExecutionIdV2, type ExecutionIdV2 } from '@/executions/execution-id';
+import { isExecutionIdV1, isExecutionIdV2, type ExecutionIdV2 } from '@/executions/execution-id';
 import type { EngineV2ResumeRequest } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -256,6 +256,9 @@ export class WaitingWebhooks implements IWebhookManager {
 	}
 
 	protected async getExecution(executionId: string) {
+		// The v1 id column is an integer, so any other shape cannot match a row.
+		if (!isExecutionIdV1(executionId)) return undefined;
+
 		return await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,

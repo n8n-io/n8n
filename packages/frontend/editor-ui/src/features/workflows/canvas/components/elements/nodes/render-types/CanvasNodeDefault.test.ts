@@ -34,7 +34,6 @@ const renderNodeInputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>
 const renderNodeOutputsMap = new Map<string, ComputedRef<CanvasConnectionPort[]>>();
 const pinnedDataByNodeName: IPinData = {};
 const executionPinDataByNodeId = new Map<string, ComputedRef<IPinData[string] | undefined>>();
-let isExecutionDataDisplayed = false;
 
 vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
@@ -45,8 +44,8 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 				nodeInputsByNodeId: renderNodeInputsMap,
 				nodeOutputsByNodeId: renderNodeOutputsMap,
 				pinnedDataByNodeName,
-				executionPinDataByNodeId,
-				isExecutionDataDisplayed,
+				getDisplayedExecutionPinData: (nodeId: string) =>
+					executionPinDataByNodeId.get(nodeId)?.value,
 			}),
 		})),
 	};
@@ -87,7 +86,6 @@ beforeEach(() => {
 		delete pinnedDataByNodeName[key];
 	}
 	executionPinDataByNodeId.clear();
-	isExecutionDataDisplayed = false;
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -483,7 +481,6 @@ describe('CanvasNodeDefault', () => {
 				'node',
 				computed(() => [{ json: { ok: true } }]),
 			);
-			isExecutionDataDisplayed = true;
 
 			const { getByText } = renderComponent({
 				global: {
@@ -504,9 +501,8 @@ describe('CanvasNodeDefault', () => {
 			expect(nodeElement).not.toHaveClass('success');
 		});
 
-		it('should ignore workflow pin data when displaying an execution without pin data for the node', () => {
-			pinnedDataByNodeName['Test Node'] = [{ json: { stale: true } }];
-			isExecutionDataDisplayed = true;
+		it('should apply pinned styling for workflow pin data without execution pin data', () => {
+			pinnedDataByNodeName['Test Node'] = [{ json: { ok: true } }];
 
 			const { getByText } = renderComponent({
 				global: {
@@ -522,34 +518,7 @@ describe('CanvasNodeDefault', () => {
 				},
 			});
 
-			const nodeElement = getByText('Test Node').closest('.node');
-			expect(nodeElement).not.toHaveClass('pinned');
-			expect(nodeElement).toHaveClass('success');
-		});
-
-		it('should ignore execution pin data outside execution preview mode', () => {
-			executionPinDataByNodeId.set(
-				'node',
-				computed(() => [{ json: { ok: true } }]),
-			);
-
-			const { getByText } = renderComponent({
-				global: {
-					stubs,
-					provide: {
-						...createCanvasNodeProvide({
-							data: {
-								execution: { status: 'success', running: false },
-								runData: { outputMap: {}, iterations: 1, visible: true },
-							},
-						}),
-					},
-				},
-			});
-
-			const nodeElement = getByText('Test Node').closest('.node');
-			expect(nodeElement).not.toHaveClass('pinned');
-			expect(nodeElement).toHaveClass('success');
+			expect(getByText('Test Node').closest('.node')).toHaveClass('pinned');
 		});
 	});
 
