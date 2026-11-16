@@ -41,7 +41,17 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, type INode } from 'n8n-workflow';
 import assert from 'node:assert';
-import { mkdir, mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import {
+	mkdir,
+	mkdtemp,
+	readdir,
+	readFile,
+	rename,
+	rm,
+	stat,
+	utimes,
+	writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { SimpleGit } from 'simple-git';
@@ -103,6 +113,7 @@ import { PromotionWorkingDirectoryService } from '../promotion-working-directory
 import { PromotionsGitService } from '../promotions-git.service';
 import { PromotionEnvironmentLockService } from '../promotion-environment-lock.service';
 import { PromotionsService } from '../promotions.service';
+import { STALE_GIT_LOCK_AGE_MS } from '../constants';
 import { WorkingCopyUpdater } from '../working-copy-updater';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 
@@ -3990,6 +4001,9 @@ describe('Promote from a clean checkout', () => {
 			'index.lock',
 		);
 		await writeFile(indexLock, '');
+		// Only a lock file older than the stale age is removed, because a running Git command can hold a new one.
+		const modified = new Date(Date.now() - STALE_GIT_LOCK_AGE_MS - 60_000);
+		await utimes(indexLock, modified, modified);
 
 		const result = await service.promote(environments.promote.id, owner, {
 			canExportVariableValues: false,
