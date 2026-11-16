@@ -51,7 +51,9 @@ export function buildRequestHeaders(options: {
 	const minted = bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {};
 
 	const headers = new Headers();
-	[endpoint.gatewayHeaders, requestHeaders, getLoginHeader(endpoint.login), minted]
+	// The minted token sits under the login header, which the JSDoc says nothing overrides.
+	// OAuth2 is the only login that mints one, and its own header layer is empty.
+	[endpoint.gatewayHeaders, requestHeaders, minted, getLoginHeader(endpoint.login)]
 		.flatMap((layer) => Object.entries(layer))
 		.forEach(([name, value]) => {
 			try {
