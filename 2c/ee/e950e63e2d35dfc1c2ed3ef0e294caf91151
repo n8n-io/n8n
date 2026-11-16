@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/core/folders/components/MoveToFolderModal.test.ts
+  s_be017e370db0a5::t_1cb7f1e2d77f70 445-458
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2ceee950e63e2d35dfc1c2ed3ef0e294caf91151",
+  "prompts": {},
+  "sessions": {
+    "s_be017e370db0a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9480e85-fb81-400c-a4df-0ef2e0bb2c35",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

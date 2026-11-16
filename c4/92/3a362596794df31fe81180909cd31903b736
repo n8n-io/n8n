@@ -1,0 +1,22 @@
+docker/AGENTS.md
+  s_4c40d2b6e8f2b4::t_62ca9082bfafde 35-36
+docker/docker-bake.hcl
+  s_4c40d2b6e8f2b4::t_62ca9082bfafde 41-47,137-138
+  s_4c40d2b6e8f2b4::t_3fde25a65c2cc9 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4923a362596794df31fe81180909cd31903b736",
+  "prompts": {},
+  "sessions": {
+    "s_4c40d2b6e8f2b4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1b76f89cffeGsOF1KG811wC7H",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

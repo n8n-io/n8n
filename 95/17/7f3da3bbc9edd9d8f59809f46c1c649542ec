@@ -1,0 +1,45 @@
+packages/cli/src/modules/agents/approval/README.md
+  s_dfe3f914c8bb46::t_db688582be1507 24-25
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_ced88c9c774da2 40-63,144,196,321,808
+packages/cli/src/modules/agents/approval/agent-channel-hitl.service.ts
+  s_dfe3f914c8bb46::t_f58e294cd30ca7 26,154-158,163,166,192-197,232,239-241
+packages/cli/src/modules/agents/approval/agent-decision-workflow.service.ts
+  s_dfe3f914c8bb46::t_eeb50b86f83ccc 85,88,236,301,319,325,328,390,392,445
+packages/cli/src/modules/agents/integrations/channel-hitl.ts
+  s_dfe3f914c8bb46::t_514a7e7357306f 21-32
+packages/cli/src/modules/agents/integrations/platforms/discord/discord-hitl.ts
+  s_dfe3f914c8bb46::t_e8a15fee39899a 25,62
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-hitl.ts
+  s_dfe3f914c8bb46::t_049ad32beaac10 34,64
+packages/cli/src/modules/agents/integrations/platforms/telegram/telegram-hitl.ts
+  s_dfe3f914c8bb46::t_c4a3932df16456 5,25
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlConfigurationModal.test.ts
+  s_dfe3f914c8bb46::t_93d41edd336f56 201,320,365,384
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlDestinationPicker.test.ts
+  s_dfe3f914c8bb46::t_645a74dd7dbcba 16,102
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_d4a42f123643d5 634-635
+packages/frontend/editor-ui/src/features/agents/components/AgentFormSettingRow.vue
+  s_dfe3f914c8bb46::t_3f75a5fe11452d 5-7,14,23-26,40-49
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlConfigurationModal.vue
+  s_dfe3f914c8bb46::t_5b0826019d3d04 125-148,412,418,420-448,450,455,457-472,475,477-495,506,511,513-529,537,623-627,629-630,633,640
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlDestinationPicker.vue
+  s_dfe3f914c8bb46::t_719eaff65e7fa1 14-15,151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "95177f3da3bbc9edd9d8f59809f46c1c649542ec",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
