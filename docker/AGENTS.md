@@ -17,8 +17,8 @@ Read this before you change `docker/docker-bake.hcl` or a Dockerfile in
 
 n8n publishes `n8nio/base`, `n8nio/node-pc` and `n8nio/node-patched`, and the
 n8n images pin them. Master publishes `n8nio/node-patched` for the `1.x`
-branch, which has no bake file: the pin PR there edits the `ARG` defaults of
-its `docker/images/n8n/Dockerfile`.
+and release branches. On a branch without a bake file, the pin PR edits the
+`ARG` defaults of its `docker/images/n8n/Dockerfile`.
 
 1. **Inputs PR.** Change the inputs of the image. CI builds the image on the
    PR, but does not publish it. On merge, master publishes it with a tag that
@@ -36,13 +36,16 @@ its `docker/images/n8n/Dockerfile`.
 | `PC_BUILDER_IMAGE` | `n8nio/node-pc:<version>-<commit>-dev` |
 | `RUNTIME_IMAGE` (`1.x` Dockerfile) | `n8nio/node-patched:<version>-<commit>` |
 | `BUILDER_IMAGE` (`1.x` Dockerfile) | `n8nio/node-patched:<version>-<commit>-dev` |
+| `RUNTIME_IMAGE` (Node 26 release branch) | `n8nio/node-patched:<version>-<commit>` |
+| `BUILDER_IMAGE` (Node 26 release branch) | `n8nio/node-patched:<version>-<commit>-dev` |
 
 | Image | Inputs (PR 1) | Pins (PR 2) |
 |---|---|---|
 | `n8nio/base` | `DHI_REF`, `n8n-base/Dockerfile` | `RUNTIME_IMAGE` |
 | `n8nio/base:*-debian` | `DEBIAN_DHI_REF`, `ALPINE_IMAGE`, `n8n-base/Dockerfile.debian` | `DEBIAN_RUNTIME_IMAGE` |
 | `n8nio/node-pc` | `NODE_VERSION`, `RUNTIME_IMAGE`, `ALPINE_IMAGE`, `node-pc/Dockerfile`, `node-pc/patches/*`, `node-pc/check-v8-patches.js` | `PC_BUILDER_IMAGE`, `PC_RUNTIME_IMAGE` |
-| `n8nio/node-patched` | `NODE_24_VERSION`, `NODE_24_RUNTIME_IMAGE`, `ALPINE_IMAGE`, and the `node-pc` files | `BUILDER_IMAGE`, `RUNTIME_IMAGE` in `docker/images/n8n/Dockerfile` on the `1.x` branch |
+| `n8nio/node-patched` (Node 24) | `NODE_24_VERSION`, `NODE_24_RUNTIME_IMAGE`, `ALPINE_IMAGE`, and the `node-pc` files | `BUILDER_IMAGE`, `RUNTIME_IMAGE` in `docker/images/n8n/Dockerfile` on the `1.x` branch |
+| `n8nio/node-patched` (Node 26) | `NODE_VERSION`, `RUNTIME_IMAGE`, `ALPINE_IMAGE`, and the `node-pc` files | `BUILDER_IMAGE`, `RUNTIME_IMAGE` on the Node 26 release branches |
 
 - A push to master publishes an image only when its inputs changed. A pin PR
   changes no input of the image that it pins, so the tag stays on the pin.
@@ -53,6 +56,13 @@ its `docker/images/n8n/Dockerfile`.
 - A dispatch on master with `push` always publishes. Use it when a publish run
   failed, when only the workflow changed, or to get patched OS packages. Then
   pin the new digest.
+
+The `node-patched-26` target uses the same Node version and runtime base as
+`node-pc`, with pointer compression off. The workflow publishes runtime and
+`-dev` tags for Node 24 and Node 26. It builds each variant on native amd64
+and arm64 runners and creates a multi-arch manifest for each tag. After master
+publishes, pin the Node 26 runtime and `-dev` digests on the branches selected
+for stable and beta releases.
 
 ### Example: a new Node version
 

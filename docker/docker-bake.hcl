@@ -220,7 +220,7 @@ target "base-node-24" {
   tags     = ["n8nio/base:${dhi_node_version(NODE_24_DHI_REF)}"]
 }
 
-# build-node-pc-image.yml builds the runtime and dev stages of both Node
+# build-node-pc-image.yml builds the runtime and dev stages of all Node
 # source builds and sets the tags.
 target "node-pc" {
   inherits   = ["_context"]
@@ -244,6 +244,15 @@ target "node-patched-24" {
     ENABLE_POINTER_COMPRESSION = "false"
   }
   tags = ["n8nio/node-patched:${NODE_24_VERSION}"]
+}
+
+# Stock-configured Node 26 with the same V8 patches, for the release images.
+target "node-patched-26" {
+  inherits = ["node-pc"]
+  args = {
+    ENABLE_POINTER_COMPRESSION = "false"
+  }
+  tags = ["n8nio/node-patched:${NODE_VERSION}"]
 }
 
 group "default" { targets = ["n8n", "runners"] }
