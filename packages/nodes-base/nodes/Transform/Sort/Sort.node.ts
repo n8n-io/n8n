@@ -13,7 +13,7 @@ import {
 
 import { shuffleArray } from '@utils/utilities';
 
-import { sortByCode } from './utils';
+import { compareNumericStrings, isNumericString, sortByCode } from './utils';
 
 export class Sort implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,7 +23,7 @@ export class Sort implements INodeType {
 		iconColor: 'lavender',
 		group: ['transform'],
 		subtitle: '',
-		version: 1,
+		version: [1, 1.1],
 		description: 'Change items order',
 		defaults: {
 			name: 'Sort',
@@ -165,6 +165,7 @@ export class Sort implements INodeType {
 		const items = this.getInputData();
 		let returnData = [...items];
 		const type = this.getNodeParameter('type', 0) as string;
+		const nodeVersion = this.getNode().typeVersion;
 		const disableDotNotation = this.getNodeParameter(
 			'options.disableDotNotation',
 			0,
@@ -218,43 +219,75 @@ export class Sort implements INodeType {
 				}
 			}
 
+			const getFieldValue = (item: INodeExecutionData, fieldName: string) =>
+				disableDotNotation ? item.json[fieldName] : get(item.json, fieldName);
+
 			const sortFieldsWithDirection = sortFields.map((field) => ({
 				name: field.fieldName,
 				dir: field.order === 'ascending' ? 1 : -1,
+				// Only all-numeric-string fields compare by value, so mixed fields keep a consistent order
+				numeric:
+					nodeVersion >= 1.1 &&
+					items.every((item) => isNumericString(getFieldValue(item, field.fieldName))),
 			}));
-
-			const normalizeValue = (value: unknown) => {
-				if (typeof value !== 'string') return value;
-
-				const normalized = value.toLowerCase();
-				const numericValue = Number(normalized);
-
-				return Number.isNaN(numericValue) ? normalized : numericValue;
-			};
 
 			returnData.sort((a, b) => {
 				let result = 0;
 				for (const field of sortFieldsWithDirection) {
+					if (field.numeric) {
+						const comparison = compareNumericStrings(
+							getFieldValue(a, field.name) as string,
+							getFieldValue(b, field.name) as string,
+						);
+						if (comparison === 0) continue;
+						result = comparison * field.dir;
+						break;
+					}
+
 					let equal;
 					if (!disableDotNotation) {
-						const _a = normalizeValue(get(a.json, field.name));
-						const _b = normalizeValue(get(b.json, field.name));
+						const _a =
+							typeof get(a.json, field.name) === 'string'
+								? (get(a.json, field.name) as string).toLowerCase()
+								: get(a.json, field.name);
+						const _b =
+							typeof get(b.json, field.name) === 'string'
+								? (get(b.json, field.name) as string).toLowerCase()
+								: get(b.json, field.name);
 						equal = isEqual(_a, _b);
 					} else {
-						const _a = normalizeValue(a.json[field.name]);
-						const _b = normalizeValue(b.json[field.name]);
+						const _a =
+							typeof a.json[field.name] === 'string'
+								? (a.json[field.name] as string).toLowerCase()
+								: a.json[field.name];
+						const _b =
+							typeof b.json[field.name] === 'string'
+								? (b.json[field.name] as string).toLowerCase()
+								: b.json[field.name];
 						equal = isEqual(_a, _b);
 					}
 
 					if (!equal) {
 						let lessThan;
 						if (!disableDotNotation) {
-							const _a = normalizeValue(get(a.json, field.name));
-							const _b = normalizeValue(get(b.json, field.name));
+							const _a =
+								typeof get(a.json, field.name) === 'string'
+									? (get(a.json, field.name) as string).toLowerCase()
+									: get(a.json, field.name);
+							const _b =
+								typeof get(b.json, field.name) === 'string'
+									? (get(b.json, field.name) as string).toLowerCase()
+									: get(b.json, field.name);
 							lessThan = lt(_a, _b);
 						} else {
-							const _a = normalizeValue(a.json[field.name]);
-							const _b = normalizeValue(b.json[field.name]);
+							const _a =
+								typeof a.json[field.name] === 'string'
+									? (a.json[field.name] as string).toLowerCase()
+									: a.json[field.name];
+							const _b =
+								typeof b.json[field.name] === 'string'
+									? (b.json[field.name] as string).toLowerCase()
+									: b.json[field.name];
 							lessThan = lt(_a, _b);
 						}
 						if (lessThan) {
