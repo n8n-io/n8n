@@ -74,7 +74,12 @@ export class SimulationSessionService {
 		}
 		// Overlapping turns of a new chat share one open, so the chat gets one world.
 		const opening = this.opening.get(key);
-		if (opening) return await opening;
+		if (opening) {
+			const shared = await opening;
+			// A shared open that came back live never answers a caller that asked for a test run.
+			if (shared || !input.testRunRequested) return shared;
+			return await this.openForDraftRun(input);
+		}
 		const open = this.openNew(input).finally(() => this.opening.delete(key));
 		this.opening.set(key, open);
 		return await open;

@@ -482,6 +482,31 @@ describe('SimulationSessionService', () => {
 		expect(backend.openWorld).toHaveBeenCalledTimes(1);
 	});
 
+	it('never lets a live open that started first answer a test request for the same chat', async () => {
+		const backend = llmBackend();
+		const { service } = setup({ backend });
+
+		const [live, test] = await Promise.all([
+			service.openForDraftRun({ ...openInput, testRunRequested: false }),
+			service.openForDraftRun(openInput),
+		]);
+
+		expect(live).toBeUndefined();
+		expect(test?.worldId).toBe('world-1');
+	});
+
+	it('fails a test request that waited on a live open when the flag is off', async () => {
+		const { service } = setup({ flagOn: false, backend: llmBackend() });
+
+		const results = await Promise.allSettled([
+			service.openForDraftRun({ ...openInput, testRunRequested: false }),
+			service.openForDraftRun(openInput),
+		]);
+
+		expect(results[0]).toEqual({ status: 'fulfilled', value: undefined });
+		expect(results[1]).toMatchObject({ status: 'rejected' });
+	});
+
 	it('keeps the sessions of two agents apart when they share a chat ID', async () => {
 		const { service } = setup({ backend: llmBackend() });
 
