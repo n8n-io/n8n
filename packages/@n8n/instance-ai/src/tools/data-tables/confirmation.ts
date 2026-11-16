@@ -31,13 +31,3 @@ export interface ConfirmationToolContext {
 export function hasSessionGrant(context: InstanceAiContext, action: string): boolean {
 	return context.sessionApprovedToolKeys?.has(buildDataTablesSessionGrantKey(action)) === true;
 }
-
-export async function persistSessionGrantIfRequested(
-	context: InstanceAiContext,
-	action: string,
-	resumeData: ResumeData | undefined,
-): Promise<void> {
-	if (resumeData?.approved && resumeData.scope === 'session') {
-		await context.grantSessionToolApproval?.(buildDataTablesSessionGrantKey(action));
-	}
-}

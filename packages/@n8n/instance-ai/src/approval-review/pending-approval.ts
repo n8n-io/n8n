@@ -1,10 +1,15 @@
 import { APPROVAL_SUSPEND_SCHEMA } from '@n8n/agents';
 import type { BuiltTool } from '@n8n/agents';
 import {
+	DATA_TABLE_WRITE_TOOL_ACTIONS,
 	instanceAiApprovalDetailsSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
-import type { InstanceAiApprovalDetails, InstanceAiConfirmationSeverity } from '@n8n/api-types';
+import type {
+	DataTableWriteToolAction,
+	InstanceAiApprovalDetails,
+	InstanceAiConfirmationSeverity,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import { DOMAIN_TOOL_IDS } from '../tools/tool-ids';
@@ -55,8 +60,6 @@ const INPUT_CARD_FIELDS = [
 const ALWAYS_ASK_TOOLS: ReadonlySet<string> = new Set([
 	// A deleted credential breaks every workflow that uses it.
 	DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
-	// A deleted table takes all its rows.
-	DOMAIN_TOOL_IDS.DELETE_DATA_TABLE,
 	// Without a target folder, the folder's workflows are archived with it.
 	DOMAIN_TOOL_IDS.DELETE_FOLDER,
 	// These can be undone, but each one stops or replaces a workflow that the user
@@ -67,8 +70,6 @@ const ALWAYS_ASK_TOOLS: ReadonlySet<string> = new Set([
 ]);
 
 const LOW_RISK_TOOLS: ReadonlySet<string> = new Set([
-	DOMAIN_TOOL_IDS.CREATE_DATA_TABLE,
-	DOMAIN_TOOL_IDS.ADD_DATA_TABLE_COLUMN,
 	DOMAIN_TOOL_IDS.CREATE_FOLDER,
 	DOMAIN_TOOL_IDS.TAG_WORKFLOW,
 ]);
@@ -82,11 +83,42 @@ function isSkillDelete(approval: Pick<PendingApproval, 'toolName' | 'args'>): bo
 	);
 }
 
+const DATA_TABLE_CHANGE_ROUTES: Readonly<Record<DataTableWriteToolAction, ApprovalRoute>> = {
+	// A deleted table takes all its rows.
+	delete: 'always-ask',
+	create: 'low-risk',
+	'add-column': 'low-risk',
+	'delete-column': 'judge',
+	'rename-column': 'judge',
+	'insert-rows': 'judge',
+	'update-rows': 'judge',
+	'delete-rows': 'judge',
+};
+
+function isDataTableWriteAction(value: unknown): value is DataTableWriteToolAction {
+	return DATA_TABLE_WRITE_TOOL_ACTIONS.some((action) => action === value);
+}
+
+/** A batch takes the most careful route of its changes. A change it cannot read goes to the judge. */
+function routeDataTableChanges(args: unknown): ApprovalRoute {
+	const changes = isRecord(args) ? args.changes : undefined;
+	if (!Array.isArray(changes) || changes.length === 0) return 'judge';
+	const routes = changes.map((change: unknown) => {
+		const action = isRecord(change) ? change.action : undefined;
+		return isDataTableWriteAction(action) ? DATA_TABLE_CHANGE_ROUTES[action] : 'judge';
+	});
+	if (routes.includes('always-ask')) return 'always-ask';
+	return routes.every((route) => route === 'low-risk') ? 'low-risk' : 'judge';
+}
+
 export function routeApproval(
 	approval: Pick<PendingApproval, 'toolName' | 'args' | 'mcp'>,
 ): ApprovalRoute {
 	// An MCP tool can share a name with a built-in tool, so the rules never apply to it.
 	if (approval.mcp) return 'judge';
+	if (approval.toolName === DOMAIN_TOOL_IDS.CHANGE_DATA_TABLES) {
+		return routeDataTableChanges(approval.args);
+	}
 	if (ALWAYS_ASK_TOOLS.has(approval.toolName) || isSkillDelete(approval)) return 'always-ask';
 	if (LOW_RISK_TOOLS.has(approval.toolName)) return 'low-risk';
 	return 'judge';

@@ -51,12 +51,3 @@ export function previewRow(data: Record<string, unknown>) {
 		remainingColumns: Math.max(0, entries.length - MAX_DESCRIBED_COLUMNS),
 	};
 }
-
-export function describeRowChanges(data: Record<string, unknown>): string {
-	const { values, remainingColumns } = previewRow(data);
-	const described = values.map(({ column, value }) => `"${column}" to ${value ?? 'no value'}`);
-	if (remainingColumns > 0) {
-		described.push(`${remainingColumns} more ${pluralize(remainingColumns, 'column')}`);
-	}
-	return described.join(', ');
-}

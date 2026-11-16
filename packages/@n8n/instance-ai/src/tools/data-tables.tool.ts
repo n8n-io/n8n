@@ -1,42 +1,22 @@
 /**
- * Data table tools — one tool for each action of the former multi-action
- * `data_tables` tool. The handlers keep the action so session grant keys and
- * stored calls of the former tool still resolve.
+ * Data table read tools — one tool for each read action of the former
+ * multi-action `data_tables` tool. Writes go through `change_data_tables`.
  */
 import {
-	DATA_TABLE_TOOL_ACTIONS,
+	DATA_TABLE_READ_TOOL_ACTIONS,
 	DATA_TABLE_TOOL_NAME_BY_ACTION,
 	getLegacyBuilderToolActions,
 } from '@n8n/api-types';
-import type { DataTableToolAction, InstanceAiApprovalDetails } from '@n8n/api-types';
+import type { DataTableReadToolAction } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
-import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../types';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { filterDescribe, filterSchema } from './data-tables/schemas';
-import {
-	WRITE_ACTION_SCHEMAS,
-	dataTableNameDescribe,
-	projectIdDescribe,
-} from './data-tables/write-action-schemas';
-import {
-	confirmationResumeSchema,
-	confirmationSuspendSchema,
-	hasSessionGrant,
-	persistSessionGrantIfRequested,
-	type ConfirmationToolContext,
-} from './data-tables/confirmation';
-import { isNameConflictError } from './data-tables/name-conflict';
-import {
-	MAX_DESCRIBED_ROWS,
-	describeRowChanges,
-	describeRowFilter,
-	previewRow,
-} from './data-tables/preview';
+import { dataTableNameDescribe, projectIdDescribe } from './data-tables/write-action-schemas';
 
-// ── Action schemas ─────────────────────────────────────────────────────────
+// ── Input schemas ──────────────────────────────────────────────────────────
 
 /** Cells can hold arbitrarily large values (e.g. inline base64 images); cap what a
  *  query feeds back to the model so one broad query cannot flood the conversation. */
@@ -46,54 +26,24 @@ const MAX_CELL_CHARS = 1024;
  *  cells are useful; dozens re-create the flood truncation exists to prevent. */
 const MAX_FULL_VALUE_ROWS = 5;
 
-async function assertTableInThreadProject(
-	context: InstanceAiContext,
-	input: DataTableReferenceInput,
-): Promise<void> {
-	await context.assertInThreadProject?.({
-		kind: 'data-table',
-		id: input.dataTableId,
-		projectId: input.projectId,
-	});
-}
+const dataTableIdField = z
+	.string()
+	.describe(
+		'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
+	);
 
-/** Name shown in the approval card title. Falls back to the id when the agent passed no name. */
-function dataTableResourceName(input: DataTableReferenceInput): string {
-	return input.dataTableName ?? input.dataTableId;
-}
-
-const listAction = z.object({
-	action: z.literal('list').describe('List data tables in a project'),
+const listInputSchema = z.object({
 	projectId: z.string().optional().describe(projectIdDescribe),
 });
 
-const schemaAction = z.object({
-	action: z
-		.literal('schema')
-		.describe(
-			'Get column definitions for a data table. Call before using a table in workflow code — column names are normalized to snake_case.',
-		),
-	dataTableId: z
-		.string()
-		.describe(
-			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
-		),
+const schemaInputSchema = z.object({
+	dataTableId: dataTableIdField,
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 });
 
-const queryAction = z.object({
-	action: z
-		.literal('query')
-		.describe(
-			'Query rows from a data table. Prefer a column filter and a small limit over broad pulls; ' +
-				'results include the total matching `count`, so `limit: 1` is enough to check row existence.',
-		),
-	dataTableId: z
-		.string()
-		.describe(
-			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
-		),
+const queryInputSchema = z.object({
+	dataTableId: dataTableIdField,
 	dataTableName: z.string().optional().describe(dataTableNameDescribe),
 	projectId: z.string().optional().describe(projectIdDescribe),
 	filter: filterSchema.optional().describe(filterDescribe),
@@ -116,22 +66,7 @@ const queryAction = z.object({
 		),
 });
 
-const ACTION_SCHEMAS = {
-	list: listAction,
-	schema: schemaAction,
-	query: queryAction,
-	...WRITE_ACTION_SCHEMAS,
-} as const satisfies Record<DataTableToolAction, z.ZodDiscriminatedUnionOption<'action'>>;
-
-type FullInput = {
-	[A in DataTableToolAction]: z.infer<(typeof ACTION_SCHEMAS)[A]>;
-}[DataTableToolAction];
-
-type DataTableReferenceInput = {
-	dataTableId: string;
-	dataTableName?: string;
-	projectId?: string;
-};
+type DataTableReferenceInput = z.infer<typeof schemaInputSchema>;
 
 async function resolveDataTableReference(
 	context: InstanceAiContext,
@@ -156,10 +91,7 @@ async function resolveDataTableReference(
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 
-/**
- * Tell the host that the agent worked on a table, so it shows the table's tab.
- * Reads count too, because the frontend also previews a table the agent reads.
- */
+/** Tell the host that the agent read a table, so the frontend previews the table's tab. */
 async function reportDataTableAction(
 	context: InstanceAiContext,
 	table: { id: string; name?: string; projectId?: string },
@@ -172,36 +104,12 @@ async function reportDataTableAction(
 	});
 }
 
-/**
- * Report a table that a column action changed. The action accepts a table name
- * as `dataTableId`, so resolve it to the table's ID. A failed lookup must not
- * fail the change that already happened.
- */
-async function reportChangedDataTable(context: InstanceAiContext, input: DataTableReferenceInput) {
-	const table = await resolveDataTableReference(context, input, 'read').catch(() => ({
-		dataTableId: input.dataTableId,
-		dataTableName: input.dataTableName,
-		projectId: input.projectId,
-	}));
-	await reportDataTableAction(context, {
-		id: table.dataTableId,
-		name: table.dataTableName,
-		projectId: table.projectId,
-	});
-}
-
-async function handleList(
-	context: InstanceAiContext,
-	input: Extract<FullInput, { action: 'list' }>,
-) {
+async function handleList(context: InstanceAiContext, input: z.infer<typeof listInputSchema>) {
 	const tables = await context.dataTableService.list({ projectId: input.projectId });
 	return { tables };
 }
 
-async function handleSchema(
-	context: InstanceAiContext,
-	input: Extract<FullInput, { action: 'schema' }>,
-) {
+async function handleSchema(context: InstanceAiContext, input: z.infer<typeof schemaInputSchema>) {
 	const table = await resolveDataTableReference(context, input, 'read');
 	const columns = await context.dataTableService.getSchema(input.dataTableId, {
 		projectId: input.projectId,
@@ -237,10 +145,7 @@ function truncateOversizedCells(rows: Array<Record<string, unknown>>): {
 	return { rows: truncatedRows, truncatedColumns: [...truncatedColumns] };
 }
 
-async function handleQuery(
-	context: InstanceAiContext,
-	input: Extract<FullInput, { action: 'query' }>,
-) {
+async function handleQuery(context: InstanceAiContext, input: z.infer<typeof queryInputSchema>) {
 	const table = await resolveDataTableReference(context, input, 'readRow');
 	// Honor fullCellValues only for filtered queries, and bound how many intact
 	// rows one call can return — an unfiltered "give me everything untruncated"
@@ -286,519 +191,77 @@ async function handleQuery(
 	return hints.length > 0 ? { ...response, hint: hints.join(' ') } : response;
 }
 
-async function handleCreate(
-	context: InstanceAiContext,
-	input: Extract<FullInput, { action: 'create' }>,
-	ctx: ConfirmationToolContext,
-) {
-	const resumeData = ctx.resumeData;
-
-	if (context.permissions?.createDataTable === 'blocked') {
-		return { denied: true, reason: 'Action blocked by admin' };
-	}
-
-	const needsApproval =
-		context.permissions?.createDataTable !== 'always_allow' && !hasSessionGrant(context, 'create');
-
-	// State 1: First call — suspend for confirmation (unless always_allow)
-	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		return await ctx.suspend({
-			requestId: nanoid(),
-			message: `Create the table with ${input.columns.length} ${input.columns.length === 1 ? 'column' : 'columns'}: ${input.columns.map((column) => `"${column.name}"`).join(', ')}`,
-			resourceName: input.name,
-			severity: 'info' as const,
-		});
-	}
-
-	// State 2: Denied
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
-		return { denied: true, reason: 'User denied the action' };
-	}
-
-	await persistSessionGrantIfRequested(context, 'create', resumeData);
-
-	// State 3: Approved or always_allow — execute
-	try {
-		const table = await context.dataTableService.create(input.name, input.columns, {
-			projectId: input.projectId,
-		});
-		await reportDataTableAction(context, table);
-		return { table };
-	} catch (error) {
-		// If table already exists, guide the agent to use the existing one
-		// rather than throwing — which would cause the agent to waste iterations retrying
-		if (isNameConflictError(error)) {
-			return {
-				denied: true,
-				reason: `Table "${input.name}" already exists. Run list_data_tables through call_tool to find it, then run get_data_table_schema through call_tool to check its columns.`,
-			};
-		}
-		throw error;
-	}
-}
-
-async function handleDelete(
-	context: InstanceAiContext,
-	input: Extract<FullInput, { action: 'delete' }>,
-	ctx: ConfirmationToolContext,
-) {
-	const resumeData = ctx.resumeData;
-
-	if (context.permissions?.deleteDataTable === 'blocked') {
-		return { success: false, denied: true, reason: 'Action blocked by admin' };
-	}
-
-	const needsApproval =
-		context.permissions?.deleteDataTable !== 'always_allow' && !hasSessionGrant(context, 'delete');
-
-	// State 1: First call — suspend for confirmation (unless always_allow)
-	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await assertTableInThreadProject(context, input);
-		return await ctx.suspend({
-			requestId: nanoid(),
-			message: 'Permanently delete the table and all its rows',
-			approvalDetails: { action: 'delete-table' } satisfies InstanceAiApprovalDetails,
-			resourceName: dataTableResourceName(input),
-			severity: 'destructive' as const,
-		});
-	}
-
-	// State 2: Denied
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
-		return { success: false, denied: true, reason: 'User denied the action' };
-	}
-
-	await persistSessionGrantIfRequested(context, 'delete', resumeData);
-
-	// State 3: Approved or always_allow — execute
-	await context.dataTableService.delete(input.dataTableId, { projectId: input.projectId });
-	return { success: true };
-}
-
-async function handleAddColumn(
-	context: InstanceAiContext,
-	input: Extract<FullInput, { action: 'add-column' }>,
-	ctx: ConfirmationToolContext,
-) {
-	const resumeData = ctx.resumeData;
-
-	if (context.permissions?.mutateDataTableSchema === 'blocked') {
-		return { denied: true, reason: 'Action blocked by admin' };
-	}
-
-	const needsApproval =
-		context.permissions?.mutateDataTableSchema !== 'always_allow' &&
-		!hasSessionGrant(context, 'add-column');
-
-	// State 1: First call — suspend for confirmation (unless always_allow)
-	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await assertTableInThreadProject(context, input);
-		return await ctx.suspend({
-			requestId: nanoid(),
-			message: `Add column "${input.columnName}" (${input.type})`,
-			approvalDetails: {
-				action: 'add-column',
-				column: input.columnName,
-				columnType: input.type,
-			} satisfies InstanceAiApprovalDetails,
-			resourceName: dataTableResourceName(input),
-			severity: 'warning' as const,
-		});
-	}
-
-	// State 2: Denied
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
-		return { denied: true, reason: 'User denied the action' };
-	}
-
-	await persistSessionGrantIfRequested(context, 'add-column', resumeData);
-
-	// State 3: Approved or always_allow — execute
-	const column = await context.dataTableService.addColumn(
-		input.dataTableId,
-		{ name: input.columnName, type: input.type },
-		{ projectId: input.projectId },
-	);
-	await reportChangedDataTable(context, input);
-	return { column };
-}
-
-async function handleDeleteColumn(
-	context: InstanceAiContext,
-	input: Extract<FullInput, { action: 'delete-column' }>,
-	ctx: ConfirmationToolContext,
-) {
-	const resumeData = ctx.resumeData;
-
-	if (context.permissions?.mutateDataTableSchema === 'blocked') {
-		return { success: false, denied: true, reason: 'Action blocked by admin' };
-	}
-
-	const needsApproval =
-		context.permissions?.mutateDataTableSchema !== 'always_allow' &&
-		!hasSessionGrant(context, 'delete-column');
-
-	// State 1: First call — suspend for confirmation (unless always_allow)
-	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await assertTableInThreadProject(context, input);
-		return await ctx.suspend({
-			requestId: nanoid(),
-			message: `Delete column "${input.currentColumnName ?? input.columnId}" and its values`,
-			approvalDetails: {
-				action: 'delete-column',
-				column: input.currentColumnName ?? input.columnId,
-			} satisfies InstanceAiApprovalDetails,
-			resourceName: dataTableResourceName(input),
-			severity: 'destructive' as const,
-		});
-	}
-
-	// State 2: Denied
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
-		return { success: false, denied: true, reason: 'User denied the action' };
-	}
-
-	await persistSessionGrantIfRequested(context, 'delete-column', resumeData);
-
-	// State 3: Approved or always_allow — execute
-	await context.dataTableService.deleteColumn(input.dataTableId, input.columnId, {
-		projectId: input.projectId,
-	});
-	await reportChangedDataTable(context, input);
-	return { success: true };
-}
-
-async function handleRenameColumn(
-	context: InstanceAiContext,
-	input: Extract<FullInput, { action: 'rename-column' }>,
-	ctx: ConfirmationToolContext,
-) {
-	const resumeData = ctx.resumeData;
-
-	if (context.permissions?.mutateDataTableSchema === 'blocked') {
-		return { success: false, denied: true, reason: 'Action blocked by admin' };
-	}
-
-	const needsApproval =
-		context.permissions?.mutateDataTableSchema !== 'always_allow' &&
-		!hasSessionGrant(context, 'rename-column');
-
-	// State 1: First call — suspend for confirmation (unless always_allow)
-	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await assertTableInThreadProject(context, input);
-		return await ctx.suspend({
-			requestId: nanoid(),
-			message: `Rename column "${input.currentColumnName ?? input.columnId}" to "${input.newName}"`,
-			approvalDetails: {
-				action: 'rename-column',
-				column: input.currentColumnName ?? input.columnId,
-				newName: input.newName,
-			} satisfies InstanceAiApprovalDetails,
-			resourceName: dataTableResourceName(input),
-			severity: 'warning' as const,
-		});
-	}
-
-	// State 2: Denied
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
-		return { success: false, denied: true, reason: 'User denied the action' };
-	}
-
-	await persistSessionGrantIfRequested(context, 'rename-column', resumeData);
-
-	// State 3: Approved or always_allow — execute
-	await context.dataTableService.renameColumn(input.dataTableId, input.columnId, input.newName, {
-		projectId: input.projectId,
-	});
-	await reportChangedDataTable(context, input);
-	return { success: true };
-}
-
-async function handleInsertRows(
-	context: InstanceAiContext,
-	input: Extract<FullInput, { action: 'insert-rows' }>,
-	ctx: ConfirmationToolContext,
-) {
-	const resumeData = ctx.resumeData;
-
-	if (context.permissions?.mutateDataTableRows === 'blocked') {
-		return { denied: true, reason: 'Action blocked by admin' };
-	}
-
-	const needsApproval =
-		context.permissions?.mutateDataTableRows !== 'always_allow' &&
-		!hasSessionGrant(context, 'insert-rows');
-
-	// State 1: First call — suspend for confirmation (unless always_allow)
-	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await assertTableInThreadProject(context, input);
-		const rowDescriptions = input.rows.slice(0, MAX_DESCRIBED_ROWS).map((row, index) => {
-			const changes = describeRowChanges(row);
-			return `Row ${index + 1}: ${changes ? `set ${changes}` : 'no column values supplied'}`;
-		});
-		const remaining = input.rows.length - rowDescriptions.length;
-		if (remaining > 0) {
-			rowDescriptions.push(`${remaining} more ${remaining === 1 ? 'row' : 'rows'}`);
-		}
-		return await ctx.suspend({
-			requestId: nanoid(),
-			message: `Add ${input.rows.length} ${input.rows.length === 1 ? 'row' : 'rows'}\n\n${rowDescriptions.join('\n\n')}`,
-			approvalDetails: {
-				action: 'insert-rows',
-				count: input.rows.length,
-				rows: input.rows.slice(0, MAX_DESCRIBED_ROWS).map(previewRow),
-			} satisfies InstanceAiApprovalDetails,
-			resourceName: dataTableResourceName(input),
-			severity: 'warning' as const,
-		});
-	}
-
-	// State 2: Denied
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
-		return { denied: true, reason: 'User denied the action' };
-	}
-
-	await persistSessionGrantIfRequested(context, 'insert-rows', resumeData);
-
-	// State 3: Approved or always_allow — execute
-	const result = await context.dataTableService.insertRows(input.dataTableId, input.rows, {
-		projectId: input.projectId,
-	});
-	await reportDataTableAction(context, {
-		id: result.dataTableId,
-		name: result.tableName,
-		projectId: result.projectId,
-	});
-	return result;
-}
-
-async function handleUpdateRows(
-	context: InstanceAiContext,
-	input: Extract<FullInput, { action: 'update-rows' }>,
-	ctx: ConfirmationToolContext,
-) {
-	const resumeData = ctx.resumeData;
-
-	if (context.permissions?.mutateDataTableRows === 'blocked') {
-		return { denied: true, reason: 'Action blocked by admin' };
-	}
-
-	const needsApproval =
-		context.permissions?.mutateDataTableRows !== 'always_allow' &&
-		!hasSessionGrant(context, 'update-rows');
-
-	// State 1: First call — suspend for confirmation (unless always_allow)
-	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await assertTableInThreadProject(context, input);
-		return await ctx.suspend({
-			requestId: nanoid(),
-			message:
-				input.filter.filters.length === 0
-					? `Set ${describeRowChanges(input.data)} in all rows`
-					: `Set ${describeRowChanges(input.data)} in rows where ${describeRowFilter(input.filter)}`,
-			approvalDetails: {
-				action: 'update-rows',
-				changes: previewRow(input.data),
-				filter: input.filter,
-			} satisfies InstanceAiApprovalDetails,
-			resourceName: dataTableResourceName(input),
-			severity: 'warning' as const,
-		});
-	}
-
-	// State 2: Denied
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
-		return { denied: true, reason: 'User denied the action' };
-	}
-
-	await persistSessionGrantIfRequested(context, 'update-rows', resumeData);
-
-	// State 3: Approved or always_allow — execute
-	const result = await context.dataTableService.updateRows(
-		input.dataTableId,
-		input.filter,
-		input.data,
-		{ projectId: input.projectId },
-	);
-	await reportDataTableAction(context, {
-		id: result.dataTableId,
-		name: result.tableName,
-		projectId: result.projectId,
-	});
-	return result;
-}
-
-async function handleDeleteRows(
-	context: InstanceAiContext,
-	input: Extract<FullInput, { action: 'delete-rows' }>,
-	ctx: ConfirmationToolContext,
-) {
-	const resumeData = ctx.resumeData;
-
-	if (context.permissions?.mutateDataTableRows === 'blocked') {
-		return { success: false, denied: true, reason: 'Action blocked by admin' };
-	}
-
-	const needsApproval =
-		context.permissions?.mutateDataTableRows !== 'always_allow' &&
-		!hasSessionGrant(context, 'delete-rows');
-
-	// State 1: First call — suspend for confirmation (unless always_allow)
-	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await assertTableInThreadProject(context, input);
-		return await ctx.suspend({
-			requestId: nanoid(),
-			message: `Delete rows where ${describeRowFilter(input.filter)}`,
-			approvalDetails: {
-				action: 'delete-rows',
-				filter: input.filter,
-			} satisfies InstanceAiApprovalDetails,
-			resourceName: dataTableResourceName(input),
-			severity: 'destructive' as const,
-		});
-	}
-
-	// State 2: Denied
-	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
-		return { success: false, denied: true, reason: 'User denied the action' };
-	}
-
-	await persistSessionGrantIfRequested(context, 'delete-rows', resumeData);
-
-	// State 3: Approved or always_allow — execute
-	const result = await context.dataTableService.deleteRows(input.dataTableId, input.filter, {
-		projectId: input.projectId,
-	});
-	await reportDataTableAction(context, {
-		id: result.dataTableId,
-		name: result.tableName,
-		projectId: result.projectId,
-	});
-	return {
-		success: true,
-		deletedCount: result.deletedCount,
-		dataTableId: result.dataTableId,
-		tableName: result.tableName,
-		projectId: result.projectId,
-	};
-}
-
 // ── Tool factory ───────────────────────────────────────────────────────────
 
 export interface DataTablesToolOptions {
-	allowedActions?: readonly DataTableToolAction[];
+	allowedActions?: readonly DataTableReadToolAction[];
 	/** Set to false for agents without `load_skill`, so descriptions do not point to skills. */
 	skillGuidance?: boolean;
 }
 
-/** Actions whose extra guidance tells the model to load a skill. */
-const SKILL_GUIDANCE_ACTIONS = new Set<DataTableToolAction>(['list']);
+const LIST_SKILL_GUIDANCE =
+	'Load `data-table-manager` via `load_skill` before working with data tables, including ' +
+	'natural requests like "what data tables do I have?". For workflow builds that create or ' +
+	'write Data Tables, load `data-table-manager` then `workflow-builder` before ' +
+	'`workflow_builder_build_workflow`.';
 
-const READ_ACTIONS = new Set<DataTableToolAction>(['list', 'schema', 'query']);
-
-/** Guidance that the former single tool carried, placed on the tool where it applies. */
-const EXTRA_DESCRIPTIONS: Partial<Record<DataTableToolAction, string>> = {
-	list:
-		'Load `data-table-manager` via `load_skill` before working with data tables, including ' +
-		'natural requests like "what data tables do I have?". For workflow builds that create or ' +
-		'write Data Tables, load `data-table-manager` then `workflow-builder` before ' +
-		'`workflow_builder_build_workflow`.',
+const DESCRIPTIONS: Record<DataTableReadToolAction, string> = {
+	list: 'List data tables in a project',
+	schema:
+		'Get column definitions for a data table. Call before using a table in workflow code — column names are normalized to snake_case.',
 	query:
+		'Query rows from a data table. Prefer a column filter and a small limit over broad pulls; ' +
+		'results include the total matching `count`, so `limit: 1` is enough to check row existence. ' +
 		'Keep queries targeted (column filter and/or limit ≤ 5), especially when diagnosing. Never ' +
 		'pull a table unfiltered. After a failed or 0-row query, only retry strictly narrower.',
-	create:
-		'Run get_data_table_schema through call_tool before you reference the new table in SDK code.',
 };
 
-function getActionDescription(action: DataTableToolAction, skillGuidance: boolean): string {
-	const base = ACTION_SCHEMAS[action].shape.action.description ?? '';
-	const extra =
-		!skillGuidance && SKILL_GUIDANCE_ACTIONS.has(action) ? undefined : EXTRA_DESCRIPTIONS[action];
-	return extra ? `${base}. ${extra}` : base;
+function getDescription(action: DataTableReadToolAction, skillGuidance: boolean): string {
+	const base = DESCRIPTIONS[action];
+	return action === 'list' && skillGuidance ? `${base}. ${LIST_SKILL_GUIDANCE}` : base;
 }
 
-const NON_SUSPENDING_CONTEXT: ConfirmationToolContext = {
-	resumeData: undefined,
-	suspend: async () => {
-		throw new Error('This data table tool cannot suspend');
-	},
-};
-
-/**
- * Build the tool that owns one data table action. A suspended call of the
- * former multi-action tool resumes here through its legacy action mapping.
- */
-export function createDataTableTool(
-	context: InstanceAiContext,
-	action: DataTableToolAction,
-	{ skillGuidance = true }: Pick<DataTablesToolOptions, 'skillGuidance'> = {},
-) {
+function buildReadTool(context: InstanceAiContext, action: DataTableReadToolAction) {
 	const name = DATA_TABLE_TOOL_NAME_BY_ACTION[action];
-	const schema: z.ZodDiscriminatedUnionOption<'action'> = ACTION_SCHEMAS[action];
-	const tool = new Tool(name)
-		.description(getActionDescription(action, skillGuidance))
-		.input(sanitizeInputSchema(schema.omit({ action: true })));
+	const tool = new Tool(name);
 	for (const [legacyName, actions] of getLegacyBuilderToolActions(name)) {
 		tool.legacyActions(legacyName, ...actions);
 	}
-	// The input schema omits `action`, so restore it for the shared handlers.
-	const withAction = (input: unknown) =>
-		({ ...(typeof input === 'object' && input !== null ? input : {}), action }) as FullInput;
-
-	if (READ_ACTIONS.has(action)) {
-		return tool
-			.handler(
-				async (input) =>
-					await runDataTableAction(context, withAction(input), NON_SUSPENDING_CONTEXT),
-			)
-			.build();
+	switch (action) {
+		case 'list':
+			return tool
+				.input(sanitizeInputSchema(listInputSchema))
+				.handler(async (input) => await handleList(context, input));
+		case 'schema':
+			return tool
+				.input(sanitizeInputSchema(schemaInputSchema))
+				.handler(async (input) => await handleSchema(context, input));
+		case 'query':
+			return tool
+				.input(sanitizeInputSchema(queryInputSchema))
+				.handler(async (input) => await handleQuery(context, input));
 	}
-
-	return tool
-		.suspend(confirmationSuspendSchema)
-		.resume(confirmationResumeSchema)
-		.handler(async (input, ctx) => await runDataTableAction(context, withAction(input), ctx))
-		.build();
 }
 
-/** Build one tool for each data table action the caller allows. */
+/**
+ * Build the tool that owns one data table read action. A call of the former
+ * multi-action tool resolves here through its legacy action mapping.
+ */
+export function createDataTableTool(
+	context: InstanceAiContext,
+	action: DataTableReadToolAction,
+	{ skillGuidance = true }: Pick<DataTablesToolOptions, 'skillGuidance'> = {},
+) {
+	return buildReadTool(context, action).description(getDescription(action, skillGuidance)).build();
+}
+
+/** Build one tool for each data table read action the caller allows. */
 export function createDataTableTools(
 	context: InstanceAiContext,
 	options: DataTablesToolOptions = {},
 ) {
-	const allowed = new Set(options.allowedActions ?? DATA_TABLE_TOOL_ACTIONS);
-	return DATA_TABLE_TOOL_ACTIONS.filter((action) => allowed.has(action)).map((action) =>
+	const allowed = new Set(options.allowedActions ?? DATA_TABLE_READ_TOOL_ACTIONS);
+	return DATA_TABLE_READ_TOOL_ACTIONS.filter((action) => allowed.has(action)).map((action) =>
 		createDataTableTool(context, action, options),
 	);
-}
-
-async function runDataTableAction(
-	context: InstanceAiContext,
-	input: FullInput,
-	ctx: ConfirmationToolContext,
-) {
-	switch (input.action) {
-		case 'list':
-			return await handleList(context, input);
-		case 'schema':
-			return await handleSchema(context, input);
-		case 'query':
-			return await handleQuery(context, input);
-		case 'create':
-			return await handleCreate(context, input, ctx);
-		case 'delete':
-			return await handleDelete(context, input, ctx);
-		case 'add-column':
-			return await handleAddColumn(context, input, ctx);
-		case 'delete-column':
-			return await handleDeleteColumn(context, input, ctx);
-		case 'rename-column':
-			return await handleRenameColumn(context, input, ctx);
-		case 'insert-rows':
-			return await handleInsertRows(context, input, ctx);
-		case 'update-rows':
-			return await handleUpdateRows(context, input, ctx);
-		case 'delete-rows':
-			return await handleDeleteRows(context, input, ctx);
-	}
 }
