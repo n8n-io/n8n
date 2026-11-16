@@ -1479,12 +1479,22 @@ function onRemove() {
 					description: i18n.baseText('agents.builder.skills.picker.create.description'),
 					testId: 'agent-skill-picker-create',
 				}"
-				:connect-label="() => i18n.baseText('agents.builder.skills.picker.add')"
+				:connect-label="
+					(item) =>
+						i18n.baseText(
+							item.category === 'recommended'
+								? 'experiments.recommendedSkills.use'
+								: 'agents.builder.skills.picker.add',
+						)
+				"
 				:connect-aria-label="
 					(item) =>
-						i18n.baseText('agents.builder.skills.picker.addAriaLabel', {
-							interpolate: { name: item.title },
-						})
+						i18n.baseText(
+							item.category === 'recommended'
+								? 'experiments.recommendedSkills.useAriaLabel'
+								: 'agents.builder.skills.picker.addAriaLabel',
+							{ interpolate: { name: item.title } },
+						)
 				"
 				embedded
 				show-connect-actions

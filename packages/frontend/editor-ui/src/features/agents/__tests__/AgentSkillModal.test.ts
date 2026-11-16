@@ -902,6 +902,13 @@ describe('AgentSkillModal', () => {
 				expect(
 					getAllByTestId('agent-skill-picker-category').map((node) => node.textContent),
 				).toEqual(['project', 'recommended', 'recommended', 'recommended']);
+				const addButtons = getAllByTestId('agent-skill-picker-add');
+				expect(addButtons[0]).toHaveTextContent('agents.builder.skills.picker.add');
+				expect(addButtons[1]).toHaveTextContent('experiments.recommendedSkills.use');
+				expect(addButtons[1]).toHaveAttribute(
+					'aria-label',
+					'experiments.recommendedSkills.useAriaLabel humanizer',
+				);
 				expect(recommendedSkills.trackExposure).toHaveBeenCalledTimes(1);
 			});
 
