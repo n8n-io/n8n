@@ -282,6 +282,15 @@ export function getPendingAppTargetFromThreadMetadata(
 	return { appId: target.appId, projectId: target.projectId };
 }
 
+/** Whether the thread builds or edits an agent. Auto approval mode does not apply there. */
+export function threadTargetsAgent(metadata: Record<string, unknown> | undefined): boolean {
+	return (
+		getAgentBuilderTargetFromThreadMetadata(metadata) !== undefined ||
+		getAgentBuilderTargetsFromThreadMetadata(metadata).length > 0 ||
+		getPendingAgentTargetFromThreadMetadata(metadata) !== undefined
+	);
+}
+
 export function getAgentPreviewViewFromThreadMetadata(
 	metadata: Record<string, unknown> | undefined,
 ) {
