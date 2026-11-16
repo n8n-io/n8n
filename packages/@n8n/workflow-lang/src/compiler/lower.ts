@@ -2051,6 +2051,16 @@ class FnLowering {
 			fb.release(m);
 			return;
 		}
+		if (method === 'credentialFlag') {
+			// The runtime gives the flag of the slot, and no other value of the credential.
+			const m = fb.mark();
+			const base = fb.temps(2);
+			this.argsInto(e.arguments.slice(0, 2), base);
+			for (let i = e.arguments.length; i < 2; i++) fb.emit(Op.LOADUNDEF, base + i);
+			fb.emit(Op.CALLN, d, this.str('ctx.credentialFlag', e), base, 2);
+			fb.release(m);
+			return;
+		}
 		if (method === 'trace') {
 			// Glue: the runtime copies the items only when tracing is on.
 			const m = fb.mark();

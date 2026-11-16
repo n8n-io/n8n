@@ -409,6 +409,12 @@ export interface NodeCtx {
 	 * It has no step of its own and no result.
 	 */
 	wait(call: { duration: number }): Promise<void>;
+	/**
+	 * The outcome of one condition on the credential of the slot. n8n computes it where the
+	 * credential is stored; the module names it by `id`, a constant `f` and eight hex digits.
+	 * It gives no other value of the credential. It throws when the flag is not there. Glue.
+	 */
+	credentialFlag(slot: string | undefined, id: string): boolean;
 }
 
 /**
