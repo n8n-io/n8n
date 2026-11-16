@@ -34,6 +34,14 @@
 //! Memory is reserved at startup: the rows, a result buffer for each row,
 //! and the pool of blocks. A full table fails the step with a limit error.
 //!
+//! A stored file is also the body of a request, or a part of it (`sourceOpen`).
+//! The store reads it in pieces of one buffer, on demand: the consumer sees
+//! the bytes (`sourcePeek`), sends them, and says how many it sent
+//! (`sourceTake`). The next read starts when the buffer is empty. The buffers
+//! of the sources are reserved at startup (`Config.source_buffers`); a source
+//! without a free buffer waits. So a file of any size goes out with the
+//! memory of one buffer, and no read blocks the shard on the ring.
+//!
 //! Another backend (S3) is another set of phases behind `reserve`, `put`,
 //! `nextDone` and `take`: the callers see handles and results only.
 const std = @import("std");
@@ -60,6 +68,9 @@ pub const Config = struct {
     result_bytes: u32 = 16 << 10,
     /// The time that the file operations of one transfer may take.
     timeout_ms: u32 = 30_000,
+    /// Stored files that are read at the same time for the bodies of
+    /// requests. Each has one buffer of `block_bytes`.
+    source_buffers: u16 = 8,
 };
 
 pub const Counters = struct {
@@ -71,6 +82,31 @@ pub const Counters = struct {
     timed_out: u64 = 0,
     stale_completions: u64 = 0,
     ring_full: u64 = 0,
+    /// Stored files that were opened as the body of a request.
+    sources: u64 = 0,
+    /// Times a source found no free read buffer.
+    source_waits: u64 = 0,
+};
+
+/// The size of a stored file that a request sends (`sourceSize`).
+pub const Size = union(enum) {
+    /// The file is not open yet: ask again later.
+    wait,
+    size: u64,
+    /// The file cannot be read. The text is valid until `sourceClose`.
+    failed: []const u8,
+};
+
+/// The next bytes of a stored file that a request sends (`sourcePeek`).
+pub const Piece = union(enum) {
+    /// A file operation runs, or no read buffer is free: ask again later.
+    wait,
+    /// Valid until `sourceTake` or `sourceClose`.
+    bytes: []const u8,
+    /// Every byte of the file was taken.
+    end,
+    /// The file cannot be read. The text is valid until `sourceClose`.
+    failed: []const u8,
 };
 
 /// A reserved transfer: the row in the low half, its generation in the high half.
@@ -160,7 +196,7 @@ const refused: i32 = std.math.minInt(i32);
 const max_steps = 1 << 16;
 
 const State = enum(u8) { free, reserved, active, finished };
-const Job = enum(u8) { put, meta };
+const Job = enum(u8) { put, meta, source };
 const Have = enum(u8) { none, tmp, final };
 const Phase = enum(u8) {
     dir_make,
@@ -175,6 +211,10 @@ const Phase = enum(u8) {
     meta_read,
     unlink_file,
     unlink_meta,
+    /// A source: open the file, read a piece, and wait for the consumer.
+    src_open,
+    src_read,
+    src_hold,
     end,
 };
 
@@ -218,6 +258,10 @@ const Row = struct {
     block_tail: u32 = none,
     head_off: u32 = 0,
     tail_len: u32 = 0,
+    /// A source: its read buffer. `head_off`: the bytes of it that the
+    /// consumer took. `tail_len`: the bytes of it that are read. `written`:
+    /// the bytes of the file that are read.
+    src_buf: u32 = none,
     result_len: u32 = 0,
     head_len: u32 = 0,
     aux_len: u32 = 0,
@@ -271,6 +315,10 @@ pub const Store = struct {
     block_next: []u32,
     block_free: u32 = none,
     blocks_free: u32 = 0,
+    /// The read buffers of the sources, and the free ones.
+    src_mem: []u8,
+    src_free: []u16,
+    nsrc_free: u32,
     done_head: u32 = none,
     done_tail: u32 = none,
     active: u32 = 0,
@@ -300,7 +348,11 @@ pub const Store = struct {
             .results = try core_lib.arena.reserve(gpa, u8, @as(usize, cfg.result_bytes) * cfg.max_transfers),
             .blocks = try core_lib.arena.reserve(gpa, u8, @as(usize, cfg.block_bytes) * nblocks),
             .block_next = try gpa.alloc(u32, nblocks),
+            .src_mem = try core_lib.arena.reserve(gpa, u8, @as(usize, cfg.block_bytes) * cfg.source_buffers),
+            .src_free = try gpa.alloc(u16, cfg.source_buffers),
+            .nsrc_free = cfg.source_buffers,
         };
+        for (s.src_free, 0..) |*f, i| f.* = @intCast(i);
         for (s.rows, 0..) |*r, i| {
             r.* = .{};
             s.free[i] = @intCast(cfg.max_transfers - 1 - i);
@@ -368,7 +420,7 @@ pub const Store = struct {
     fn freeRow(s: *Store, ri: u16) void {
         const r = &s.rows[ri];
         std.debug.assert(r.state != .free and !r.in_flight and r.block_head == none and !r.open);
-        std.debug.assert(r.dir_fd < 0 and r.file_fd < 0);
+        std.debug.assert(r.dir_fd < 0 and r.file_fd < 0 and r.src_buf == none);
         r.state = .free;
         r.gen +%= 1;
         s.free[s.nfree] = ri;
@@ -763,20 +815,32 @@ pub const Store = struct {
             .meta_open => .{ .kind = .open, .fd = r.dir_fd, .name = a, .how = .read },
             .meta_read => .{ .kind = .read, .fd = r.file_fd, .into = r.aux[@intCast(r.written)..], .offset = r.written },
             .unlink_file, .unlink_meta => .{ .kind = .unlink, .fd = r.dir_fd, .name = a },
-            .end => null,
+            .src_open => .{ .kind = .open, .fd = r.dir_fd, .name = a, .how = .read },
+            .src_read => .{ .kind = .read, .fd = r.file_fd, .into = s.srcRoom(r), .offset = r.written },
+            // `advance` stops at a source that waits for its consumer.
+            .src_hold, .end => null,
         };
     }
 
     fn failOp(s: *Store, ri: u16, what: []const u8, res: i32) void {
         if (res == refused) {
             s.counters.ring_full += 1;
-            s.setError(ri, "http: the response could not be stored: the io_uring queue of the shard is full; the step can run again (limit)", .{});
+            s.setError(ri, "http: {s}: the io_uring queue of the shard is full; the step can run again (limit)", .{s.verb(ri)});
         } else {
             const why = if (res < 0) sys.errnoText(-res) else "no bytes were written";
-            const verb: []const u8 = if (s.rows[ri].job == .put) "the response could not be stored" else "the metadata of the binary data could not be read";
-            s.setError(ri, "http: {s}: {s}: {s}", .{ verb, what, why });
+            s.setError(ri, "http: {s}: {s}: {s}", .{ s.verb(ri), what, why });
         }
         s.clean(&s.rows[ri]);
+    }
+
+    /// What the row could not do, for the text of its failure.
+    fn verb(s: *const Store, ri: u16) []const u8 {
+        std.debug.assert(ri < s.rows.len);
+        return switch (s.rows[ri].job) {
+            .put => "the response could not be stored",
+            .meta => "the metadata of the binary data could not be read",
+            .source => "the stored file could not be read",
+        };
     }
 
     /// Remove what a failed transfer made, then end.
@@ -834,10 +898,11 @@ pub const Store = struct {
             .file_create, .file_write, .file_rename => s.onFile(ri, res),
             .meta_create, .meta_write, .meta_rename => s.onMeta(ri, res),
             .meta_open, .meta_read => s.onMetaRead(ri, res),
+            .src_open, .src_read => s.onSource(ri, res),
             // A file that stays is reported by n8n's pruning; the result of the step is set.
             .unlink_file => s.cleanMeta(r),
             .unlink_meta => r.phase = .end,
-            .end => unreachable, // `nextOp` gives no operation at the end.
+            .src_hold, .end => unreachable, // `nextOp` gives no operation for these phases.
         }
         // The time ran out while the operation ran: remove what there is.
         if (r.failed and !r.cleaning) s.clean(r);
@@ -858,12 +923,20 @@ pub const Store = struct {
             r.phase = if (r.job == .put) .dir_make else .dir_open;
             return s.setDirName(r);
         }
-        if (r.job == .put) {
-            r.phase = .file_create;
-            return s.setFileNames(r, "");
+        switch (r.job) {
+            .put => {
+                r.phase = .file_create;
+                s.setFileNames(r, "");
+            },
+            .meta => {
+                r.phase = .meta_open;
+                setName(&r.name_a, &.{ r.segment(levels), ".metadata" });
+            },
+            .source => {
+                r.phase = .src_open;
+                setName(&r.name_a, &.{r.segment(levels)});
+            },
         }
-        r.phase = .meta_open;
-        setName(&r.name_a, &.{ r.segment(levels), ".metadata" });
     }
 
     fn onFile(s: *Store, ri: u16, res: i32) void {
@@ -987,6 +1060,10 @@ pub const Store = struct {
         std.debug.assert(r.state == .active and !r.in_flight);
         var guard: u32 = 0;
         while (guard < max_steps) : (guard += 1) {
+            if (r.job == .source and r.phase != .end) {
+                // The consumer is gone: end. Else the piece waits for it.
+                if (!r.open) r.phase = .end else if (r.phase == .src_hold) return;
+            }
             if (r.phase == .file_write and s.chunk(r).len == 0) {
                 // Every byte that came is written: wait for more, or end the file.
                 if (!r.eof) return;
@@ -1006,7 +1083,7 @@ pub const Store = struct {
             s.onResult(ri, res);
         }
         // More operations than a file of the largest size needs: stop the row.
-        s.setError(ri, "http: the response could not be stored: too many file operations", .{});
+        s.setError(ri, "http: {s}: too many file operations", .{s.verb(ri)});
         s.closeFile(r);
         r.phase = .end;
         s.finish(ri);
@@ -1019,9 +1096,10 @@ pub const Store = struct {
         s.closeFile(r);
         s.closeDir(r);
         s.dropBlocks(r);
+        s.dropSourceBuf(r);
         r.state = .finished;
         s.active -= 1;
-        if (!r.failed) s.counters.stored += 1;
+        if (!r.failed and r.job != .source) s.counters.stored += 1;
         if (r.taken and !r.open) return s.freeRow(ri);
         if (!r.reported) s.report(ri);
     }
@@ -1056,10 +1134,13 @@ pub const Store = struct {
             // A transfer that waits for bytes of its response has no operation to end:
             // the time limits of the request apply.
             if (!r.in_flight and !r.eof and r.phase == .file_write) continue;
+            // A source that waits for its consumer: the time limits of the request apply.
+            if (r.phase == .src_hold) continue;
             const ri: u16 = @intCast(i);
             s.counters.timed_out += 1;
-            s.setError(ri, "http: the response could not be stored within {d} ms", .{s.cfg.timeout_ms});
-            s.report(ri);
+            s.setError(ri, "http: {s} within {d} ms", .{ s.verb(ri), s.cfg.timeout_ms });
+            // The consumer of a source asks for its state: it has no result to take.
+            if (!r.reported) s.report(ri);
             switch (s.driver) {
                 .ring => |ring| ring.cancel(s.token(ri)),
                 .blocking, .held => {},
@@ -1085,6 +1166,169 @@ pub const Store = struct {
         r.done_next = none;
         r.taken = true;
         if (r.state == .finished and !r.open) s.freeRow(d.row);
+    }
+
+    // ---- sources: a stored file as the body of a request --------------------------
+
+    fn srcBuf(s: *Store, r: *const Row) []u8 {
+        std.debug.assert(r.src_buf != none and r.src_buf < s.cfg.source_buffers);
+        return s.src_mem[@as(usize, r.src_buf) * s.cfg.block_bytes ..][0..s.cfg.block_bytes];
+    }
+
+    /// The part of the read buffer that the next read fills: free bytes, and
+    /// no more than the file has left.
+    fn srcRoom(s: *Store, r: *const Row) []u8 {
+        std.debug.assert(r.job == .source and r.written <= r.size);
+        const free = s.cfg.block_bytes - r.tail_len;
+        const n: usize = @intCast(@min(free, r.size - r.written));
+        return s.srcBuf(r)[r.tail_len..][0..n];
+    }
+
+    fn dropSourceBuf(s: *Store, r: *Row) void {
+        if (r.src_buf == none) return;
+        std.debug.assert(s.nsrc_free < s.src_free.len);
+        sys.poison(s.srcBuf(r));
+        s.src_free[s.nsrc_free] = @intCast(r.src_buf);
+        s.nsrc_free += 1;
+        r.src_buf = none;
+        r.head_off = 0;
+        r.tail_len = 0;
+    }
+
+    fn sourceRow(s: *Store, h: Handle) u16 {
+        const ri = s.rowOf(h);
+        std.debug.assert(s.rows[ri].job == .source and s.rows[ri].open);
+        return ri;
+    }
+
+    fn failure(s: *Store, ri: u16) []const u8 {
+        std.debug.assert(s.rows[ri].failed);
+        return s.resultBuf(ri)[0..s.rows[ri].result_len];
+    }
+
+    /// Open the stored file `id` to send its bytes. The caller asks for its
+    /// size and its pieces, and gives the handle back with `sourceClose`.
+    pub fn sourceOpen(s: *Store, id: []const u8, now_ms: i64) error{ Full, BadId }!Handle {
+        const fid = binary_store.fileId(id) orelse return error.BadId;
+        const ri = s.acquire() orelse return error.Full;
+        const r = &s.rows[ri];
+        @memcpy(r.id[0..fid.len], fid);
+        r.id_len = @intCast(fid.len);
+        r.state = .active;
+        r.job = .source;
+        r.open = true;
+        // The consumer asks for the state of the row: it never joins the results.
+        r.reported = true;
+        r.deadline_ms = now_ms + s.cfg.timeout_ms;
+        r.dir_fd = s.root_fd;
+        r.phase = .dir_open;
+        s.active += 1;
+        s.counters.sources += 1;
+        const h = Handle.of(ri, r.gen);
+        s.setDirName(r);
+        s.advance(ri);
+        return h;
+    }
+
+    /// The size of the file of `h`, when the file is open.
+    pub fn sourceSize(s: *Store, h: Handle) Size {
+        const ri = s.sourceRow(h);
+        const r = &s.rows[ri];
+        if (r.failed) return .{ .failed = s.failure(ri) };
+        return if (r.phase == .src_read or r.phase == .src_hold) .{ .size = r.size } else .wait;
+    }
+
+    /// The bytes of the file of `h` that the consumer did not take yet. A
+    /// call with an empty buffer starts the next read.
+    pub fn sourcePeek(s: *Store, h: Handle, now_ms: i64) Piece {
+        const ri = s.sourceRow(h);
+        const r = &s.rows[ri];
+        if (r.failed) return .{ .failed = s.failure(ri) };
+        if (r.phase != .src_hold) return .wait;
+        if (r.head_off == r.tail_len) {
+            if (r.written >= r.size) return .end;
+            if (!s.startRead(ri, now_ms)) return .wait;
+            // The driver that runs at once has the bytes, or the failure, now.
+            if (r.failed) return .{ .failed = s.failure(ri) };
+            if (r.phase != .src_hold or r.head_off == r.tail_len) return .wait;
+        }
+        std.debug.assert(r.head_off < r.tail_len and r.tail_len <= s.cfg.block_bytes);
+        return .{ .bytes = s.srcBuf(r)[r.head_off..r.tail_len] };
+    }
+
+    /// The consumer sent the first `n` bytes that `sourcePeek` gave. When
+    /// the buffer is empty, the next read starts: its bytes are ready when
+    /// the consumer can send again.
+    pub fn sourceTake(s: *Store, h: Handle, n: usize, now_ms: i64) void {
+        const ri = s.sourceRow(h);
+        const r = &s.rows[ri];
+        std.debug.assert(r.phase == .src_hold and n > 0 and n <= r.tail_len - r.head_off);
+        r.head_off += @intCast(n);
+        if (r.head_off < r.tail_len or r.written >= r.size or r.failed) return;
+        // Without a free buffer the read starts at the next `sourcePeek`.
+        if (!s.startRead(ri, now_ms)) std.debug.assert(r.phase == .src_hold);
+    }
+
+    /// Read the next piece of the file into the buffer of the row, which
+    /// is empty. False when no buffer is free.
+    fn startRead(s: *Store, ri: u16, now_ms: i64) bool {
+        const r = &s.rows[ri];
+        std.debug.assert(r.phase == .src_hold and !r.in_flight and r.head_off == r.tail_len and r.written < r.size);
+        if (r.src_buf == none) {
+            if (s.nsrc_free == 0) {
+                s.counters.source_waits += 1;
+                return false;
+            }
+            s.nsrc_free -= 1;
+            r.src_buf = s.src_free[s.nsrc_free];
+        }
+        r.head_off = 0;
+        r.tail_len = 0;
+        r.deadline_ms = now_ms + s.cfg.timeout_ms;
+        r.phase = .src_read;
+        s.advance(ri);
+        return true;
+    }
+
+    /// The consumer of `h` needs the file no more. The handle is not valid
+    /// afterwards. The row stays until its operation ends, because the
+    /// kernel may use its buffer.
+    pub fn sourceClose(s: *Store, h: Handle) void {
+        const ri = s.sourceRow(h);
+        const r = &s.rows[ri];
+        r.open = false;
+        r.taken = true;
+        if (r.state == .finished) return s.freeRow(ri);
+        // `advance` ends a source without a consumer, now or after its operation.
+        if (!r.in_flight) s.advance(ri);
+    }
+
+    fn onSource(s: *Store, ri: u16, res: i32) void {
+        const r = &s.rows[ri];
+        if (r.phase == .src_open) {
+            if (res < 0) return s.failOp(ri, "open the file", res);
+            r.file_fd = res;
+            s.closeDir(r);
+            r.size = sys.fileSize(res) orelse {
+                s.setError(ri, "http: {s}: the system does not give the size of the file", .{s.verb(ri)});
+                return s.clean(r);
+            };
+            r.written = 0;
+            r.phase = .src_hold;
+            return;
+        }
+        std.debug.assert(r.phase == .src_read);
+        if (res < 0) return s.failOp(ri, "read the file", res);
+        if (res == 0) {
+            // The request has the size of the file in its head already.
+            s.setError(ri, "http: {s}: the file is shorter than its size", .{s.verb(ri)});
+            return s.clean(r);
+        }
+        const n: u32 = @intCast(res);
+        std.debug.assert(n <= s.cfg.block_bytes - r.tail_len);
+        r.tail_len += n;
+        r.written += n;
+        r.phase = .src_hold;
     }
 
     // ---- metadata --------------------------------------------------------------
@@ -1482,6 +1726,179 @@ test "readMetadata gives the companion file of a stored file" {
     try t.expectError(error.BadId, s.readMetadata("filesystem-v2:workflows/../executions/1/binary_data/x", 9, 3, 0));
     try t.expectError(error.BadId, s.readMetadata("/etc/passwd", 9, 3, 0));
     try t.expectEqual(@as(u32, s.cfg.max_transfers), s.nfree);
+}
+
+/// Store `body` and give the id of its file in `ib`.
+fn storedId(f: *Fixture, body: []const u8, ib: *[binary_store.max_id]u8) ![]const u8 {
+    const s = &f.store;
+    s.put(try s.reserve("{}"), putOf(body));
+    const d = s.nextDone() orelse return error.TestExpectedEqual;
+    try t.expect(d.ok);
+    const id = try std.fmt.bufPrint(ib, "{s}", .{member(d.payload[d.head_len..], "id")});
+    s.take(d);
+    return id;
+}
+
+test "a source gives a stored file in pieces of one buffer, and each read waits for the consumer" {
+    var f: Fixture = undefined;
+    try f.init(.{ .root = "", .block_bytes = 4096, .max_transfers = 4, .source_buffers = 1 });
+    defer f.deinit();
+    const s = &f.store;
+    var body: [10_000]u8 = @splat(0);
+    for (&body, 0..) |*b, i| b.* = @intCast((i * 13 + i / 97) % 251);
+    var ib: [binary_store.max_id]u8 = @splat(0);
+    const id = try storedId(&f, &body, &ib);
+
+    // The operations complete later, as on the ring: nothing is known at once.
+    f.hold();
+    const h = try s.sourceOpen(id, 0);
+    try t.expect(s.sourceSize(h) == .wait and s.sourcePeek(h, 0) == .wait);
+    f.drain(h.index());
+    try t.expectEqual(@as(u64, body.len), s.sourceSize(h).size);
+    // The file is open, and no byte is read: the first peek starts the read.
+    try t.expectEqual(@as(u32, 1), s.nsrc_free);
+    try t.expect(s.sourcePeek(h, 0) == .wait);
+    try t.expectEqual(@as(u32, 0), s.nsrc_free);
+
+    var got: [10_000]u8 = @splat(0);
+    var at: usize = 0;
+    var rounds: u32 = 0;
+    var most: usize = 0;
+    while (rounds < 100) : (rounds += 1) {
+        switch (s.sourcePeek(h, 0)) {
+            .wait => f.runHeld(h.index()),
+            .bytes => |b| {
+                most = @max(most, b.len);
+                // The consumer sends a part: the rest of the piece stays.
+                const n = @min(b.len, 1500);
+                @memcpy(got[at..][0..n], b[0..n]);
+                at += n;
+                s.sourceTake(h, n, 0);
+            },
+            .end => break,
+            .failed => return error.TestUnexpectedResult,
+        }
+    }
+    try t.expectEqual(body.len, at);
+    try t.expectEqualSlices(u8, &body, &got);
+    // No piece is larger than one buffer.
+    try t.expectEqual(@as(usize, 4096), most);
+    s.sourceClose(h);
+    try t.expect(!s.busy());
+    try t.expectEqual(@as(u32, 4), s.nfree);
+    try t.expectEqual(@as(u32, 1), s.nsrc_free);
+    try t.expectEqual(@as(u64, 1), s.counters.sources);
+}
+
+test "sources: a file that is not there, one buffer for two files, and a close during a read" {
+    var f: Fixture = undefined;
+    try f.init(.{ .root = "", .block_bytes = 4096, .max_transfers = 4, .source_buffers = 1 });
+    defer f.deinit();
+    const s = &f.store;
+    var body: [6000]u8 = @splat('q');
+    body[5999] = 'z';
+    var ib: [binary_store.max_id]u8 = @splat(0);
+    const id = try storedId(&f, &body, &ib);
+
+    // With the driver that runs at once, the failure is known at the first question.
+    const gone = try s.sourceOpen("filesystem-v2:workflows/wf1/executions/wfrt-7/binary_data/none", 0);
+    const why = s.sourceSize(gone);
+    try t.expect(why == .failed and std.mem.indexOf(u8, why.failed, "the stored file could not be read: open the file") != null);
+    try t.expect(s.sourcePeek(gone, 0) == .failed);
+    s.sourceClose(gone);
+    try t.expectError(error.BadId, s.sourceOpen("filesystem-v2:workflows/../executions/1/binary_data/x", 0));
+    try t.expectEqual(@as(u32, 4), s.nfree);
+
+    // Two files and one buffer: the second waits until the first is closed.
+    const a = try s.sourceOpen(id, 0);
+    const b = try s.sourceOpen(id, 0);
+    try t.expectEqual(@as(usize, 4096), s.sourcePeek(a, 0).bytes.len);
+    try t.expect(s.sourcePeek(b, 0) == .wait);
+    try t.expectEqual(@as(u64, 1), s.counters.source_waits);
+    s.sourceTake(a, 4096, 0);
+    const tail = s.sourcePeek(a, 0).bytes;
+    try t.expectEqual(@as(usize, 6000 - 4096), tail.len);
+    try t.expectEqual(@as(u8, 'z'), tail[tail.len - 1]);
+    s.sourceTake(a, tail.len, 0);
+    try t.expect(s.sourcePeek(a, 0) == .end);
+    s.sourceClose(a);
+    try t.expectEqual(@as(usize, 4096), s.sourcePeek(b, 0).bytes.len);
+
+    // A close while a read runs: the row and the buffer are free when the read ends.
+    f.hold();
+    s.sourceTake(b, 4096, 0);
+    try t.expect(s.sourcePeek(b, 0) == .wait and f.held[b.index()] != null);
+    s.sourceClose(b);
+    try t.expect(s.busy());
+    try t.expectEqual(@as(u32, 0), s.nsrc_free);
+    f.runHeld(b.index());
+    try t.expect(!s.busy());
+    try t.expectEqual(@as(u32, 4), s.nfree);
+    try t.expectEqual(@as(u32, 1), s.nsrc_free);
+
+    // A read that does not end in time fails the source, and the consumer sees the reason.
+    const slow = try s.sourceOpen(id, 0);
+    f.drain(slow.index());
+    try t.expect(s.sourcePeek(slow, 1000) == .wait);
+    s.tick(1000 + s.cfg.timeout_ms);
+    const late = s.sourcePeek(slow, 0);
+    try t.expect(late == .failed and std.mem.indexOf(u8, late.failed, "the stored file could not be read within") != null);
+    try t.expect(s.nextDone() == null);
+    s.sourceClose(slow);
+    f.runHeld(slow.index());
+    try t.expect(!s.busy());
+    try t.expectEqual(@as(u32, 1), s.nsrc_free);
+}
+
+test "a source on the ring of a shard (Linux)" {
+    if (!uring.supported) return error.SkipZigTest;
+    var f: Fixture = undefined;
+    try f.init(.{ .root = "", .block_bytes = 4096, .buffer_bytes = 1 << 20, .max_transfers = 4, .source_buffers = 2 });
+    defer f.deinit();
+    const s = &f.store;
+    var body: [10_000]u8 = @splat(0);
+    for (&body, 0..) |*b, i| b.* = @intCast('a' + i % 26);
+    var ib: [binary_store.max_id]u8 = @splat(0);
+    const id = try storedId(&f, &body, &ib);
+
+    const ring_mem = try t.allocator.alloc(u8, 4 * (4096 + 4) + (64 << 10));
+    defer t.allocator.free(ring_mem);
+    var ring_fba: std.heap.FixedBufferAllocator = .init(ring_mem);
+    var ring: uring.Ring = undefined;
+    // A kernel or sandbox without io_uring: nothing to test here.
+    ring.init(ring_fba.allocator(), .{ .entries = 64, .buffers = 4, .buffer_size = 4096 }) catch return error.SkipZigTest;
+    defer ring.deinit(ring_fba.allocator());
+    s.useRing(&ring);
+
+    const h = try s.sourceOpen(id, 0);
+    var got: [10_000]u8 = @splat(0);
+    var at: usize = 0;
+    var rounds: u32 = 0;
+    while (rounds < 1000) : (rounds += 1) {
+        switch (s.sourcePeek(h, 0)) {
+            .wait => {
+                ring.enter(20);
+                var guard: u32 = 0;
+                while (guard < 64) : (guard += 1) {
+                    const c = ring.next() orelse break;
+                    if (c.user != uring.ignore) s.onCompletion(c.user, c.res);
+                }
+            },
+            .bytes => |b| {
+                @memcpy(got[at..][0..b.len], b);
+                at += b.len;
+                s.sourceTake(h, b.len, 0);
+            },
+            .end => break,
+            .failed => return error.TestUnexpectedResult,
+        }
+    }
+    try t.expectEqual(body.len, at);
+    try t.expectEqualSlices(u8, &body, &got);
+    s.sourceClose(h);
+    try t.expect(!s.busy());
+    try t.expectEqual(@as(u32, 4), s.nfree);
+    try t.expectEqual(@as(u32, 2), s.nsrc_free);
 }
 
 test "put on the ring of a shard (Linux)" {

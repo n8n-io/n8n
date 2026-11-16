@@ -205,6 +205,9 @@ pub const Config = struct {
     /// The binary data store of the shard, for `responseBinary`. Null: no
     /// storage path is set, and such a request fails at its start.
     blobs: ?*blob_store.Store = null,
+    /// Requests in flight whose body has stored files (`--binary-max-transfers`).
+    /// Without the store there is none.
+    max_uploads: u32 = 64,
     /// `--ca-file`: more trusted CA certificates.
     ca_file: ?[:0]const u8 = null,
     /// `--gym-env`: the ai-gym's name and address rules.
@@ -245,10 +248,10 @@ pub const Sink = struct {
     /// `url_path` is the path of the URL that answered. Null: such a request
     /// fails at its start.
     /// The body is not in `r`: it goes to the store in pieces afterwards
-    /// (`expected`: its size, when the response says it), or `whole` is set
-    /// and it follows at once. False: the sink gave `h` back, and has the
-    /// result of the step or sends the request again.
-    stored: ?*const fn (ctx: *anyopaque, exec_id: u64, seq: u32, h: blob_store.Handle, r: Response, url_path: []const u8, expected: ?u64, whole: bool) bool = null,
+    /// (`expected`: its size, when the response says it). False: the sink
+    /// gave `h` back, and has the result of the step or sends the request
+    /// again.
+    stored: ?*const fn (ctx: *anyopaque, exec_id: u64, seq: u32, h: blob_store.Handle, r: Response, url_path: []const u8, expected: ?u64) bool = null,
 };
 
 /// Counters for `--stats` and the tests.
@@ -263,6 +266,10 @@ pub const Counters = struct {
     h2_streams: u64 = 0,
     /// Times a stored response stopped reading because the store had no free block.
     stored_pauses: u64 = 0,
+    /// Requests whose body had stored files, and the times such a body
+    /// waited for bytes of a file.
+    uploads: u64 = 0,
+    upload_waits: u64 = 0,
     queue_full: u64 = 0,
     overload: u64 = 0,
     requeued: u64 = 0,
@@ -284,9 +291,47 @@ const aimd_cut_gap_ms = 100;
 
 const RState = enum { free, queued, active };
 
-/// Why an HTTP/2 response fails; the message is made when it does, with
-/// the same words as over HTTP/1.1.
-const RespFail = enum { none, body_limit, body_declared, no_big, window, headers_no_big, no_status, interim_end };
+/// Why an HTTP/2 response leaves the plain path. `storing`: its body goes
+/// to the binary data store in pieces. Every other value is a failure; the
+/// message is made when it fails, with the same words as over HTTP/1.1.
+/// A plain response pays one test of this value for each DATA frame, as
+/// before the store.
+const RespFail = enum { none, body_limit, body_declared, no_big, window, headers_no_big, no_status, interim_end, storing, stored };
+
+/// Where the stored files of a request body are. `sizing`: the files are
+/// opened for their sizes, and the request is not sent yet. `waiting`: the
+/// send waits for bytes of a file. Both are polled in `afterEvents`.
+const UpState = enum(u8) { free, sizing, ready, waiting };
+
+/// The stored files of the body of one request. Owner: `Client` (`upStart`,
+/// `upFree`). Lifetime: from the start of the request to `freeReq`.
+/// Capacity: `Config.max_uploads`.
+const Upload = struct {
+    state: UpState = .free,
+    req: u32 = none,
+    /// The file that is sized or sent now.
+    part: u8 = 0,
+    /// The open file of `part`, or `.none`.
+    src: blob_store.Handle = .none,
+    /// The body bytes in memory that went out.
+    mem_sent: u32 = 0,
+    /// The bytes of the file of `part` that went out.
+    file_sent: u64 = 0,
+    /// The bytes of the whole body, and those that went out.
+    total: u64 = 0,
+    sent: u64 = 0,
+    size: [request.max_files]u64 = @splat(0),
+    files: request.Files = .{},
+};
+
+/// The next bytes of a request body with stored files.
+const UpChunk = union(enum) {
+    bytes: []const u8,
+    /// The store reads the file: `upPoll` sends again when it has bytes.
+    wait,
+    done,
+    failed: []const u8,
+};
 
 const Req = struct {
     state: RState = .free,
@@ -356,6 +401,15 @@ const Req = struct {
     /// The store has the start of the response (`blob_store.begin`): the
     /// body goes to it in pieces, and the result of the step comes from it.
     storing: bool = false,
+    /// HTTP/2, `storing`: body bytes wait in the response area, because
+    /// the store had no free block (`body_len` bytes from `stored_off`).
+    /// The stream gets no window until they are in the store.
+    s_pending: bool = false,
+    stored_off: u32 = 0,
+    /// HTTP/2, `storing`: the stream ended, and bytes still wait.
+    stored_end: bool = false,
+    /// The row of `Client.ups` when the body has stored files.
+    up: u32 = none,
 };
 
 const Origin = struct {
@@ -575,6 +629,16 @@ pub const Client = struct {
     nread: u32 = 0,
     /// Connections in the state `paused`.
     npaused: u32 = 0,
+    /// HTTP/2 streams with `s_pending`.
+    nh2_pending: u32 = 0,
+    /// Request bodies with stored files: the rows, the free ones, and the
+    /// count of rows that `upPoll` must look at.
+    ups: []Upload = &.{},
+    up_free: []u32 = &.{},
+    nup_free: u32 = 0,
+    nup_poll: u32 = 0,
+    /// The files of the request that `build` makes now.
+    files_tmp: ?*request.Files = null,
     /// h2 connections with frames to write. They are written once per
     /// loop round, so the streams that a batch starts share one write
     /// (and one TLS record) per connection.
@@ -627,6 +691,17 @@ pub const Client = struct {
             .wheel = try gpa.alloc(u32, wheel_len),
         };
         @memset(c.wheel, none);
+        if (cfg.blobs != null and cfg.max_uploads > 0) {
+            c.ups = try gpa.alloc(Upload, cfg.max_uploads);
+            c.up_free = try gpa.alloc(u32, cfg.max_uploads);
+            c.files_tmp = try gpa.create(request.Files);
+            c.files_tmp.?.* = .{};
+            for (c.ups, 0..) |*u, i| {
+                u.* = .{};
+                c.up_free[i] = @intCast(cfg.max_uploads - 1 - i);
+            }
+            c.nup_free = cfg.max_uploads;
+        }
         try c.resolver.init(poller, kind_dns, cfg.dns_servers);
         c.big_mem = try core_lib.arena.reserve(gpa, u8, c.big_size * cfg.big_slots);
         for (c.conns, 0..) |*cn, i| {
@@ -713,12 +788,246 @@ pub const Client = struct {
         c.resetStream(ri);
         if (!c.build(ri, args, st, idem_key)) return;
         // The one branch that a request without `responseBinary` pays for it
-        // (HTTP/1.1; `h2Complete` has one more).
+        // at its start. Its response pays one more: the kind of the body
+        // over HTTP/1.1 (`startBody`), a test of the row over HTTP/2 (`onHeaders`).
         if (r.built.stores and !c.reserveStored(ri, args)) return;
         r.state = .active;
         c.active += 1;
         c.parseReqUrl(ri);
+        // A body with stored files: their sizes come first (`upStart`).
+        if (r.built.cl_at != 0) return c.upStart(ri);
         c.route(ri) catch {};
+    }
+
+    // ---- a request body with stored files (blob_store.zig sources) --------------------
+
+    /// The request `ri` has stored files in its body (`files_tmp`): take a
+    /// row for them and get their sizes. The request goes out when the
+    /// content-length is known.
+    fn upStart(c: *Client, ri: u32) void {
+        const r = &c.reqs[ri];
+        const files = c.files_tmp orelse unreachable; // `build` got the files from it.
+        std.debug.assert(r.up == none and files.n > 0 and r.state == .active);
+        if (c.nup_free == 0) return c.failReqFmt(ri, "http: too many requests send stored files ({d}, --binary-max-transfers); the step can run again (limit)", .{c.ups.len});
+        c.nup_free -= 1;
+        const ui = c.up_free[c.nup_free];
+        const u = &c.ups[ui];
+        std.debug.assert(u.state == .free and u.src == .none);
+        u.* = .{ .state = .sizing, .req = ri, .files = files.* };
+        r.up = ui;
+        c.nup_poll += 1;
+        c.counters.uploads += 1;
+        c.upSize(ui);
+    }
+
+    /// Open each file of the row for its size. When every size is known,
+    /// write the content-length and send the request.
+    fn upSize(c: *Client, ui: u32) void {
+        const u = &c.ups[ui];
+        const ri = u.req;
+        const blobs = c.cfg.blobs orelse unreachable; // Upload rows exist only with the store.
+        std.debug.assert(u.state == .sizing and c.reqs[ri].up == ui);
+        var guard: u32 = 0;
+        while (u.part < u.files.n and guard <= request.max_files) : (guard += 1) {
+            if (u.src == .none) u.src = blobs.sourceOpen(u.files.id(u.part), c.now_ms) catch |e| switch (e) {
+                error.Full => return c.failReqFmt(ri, "http: too many stored files are in use ({d}, --binary-max-transfers); the step can run again (limit)", .{blobs.cfg.max_transfers}),
+                // `request.build` checked the id.
+                error.BadId => unreachable,
+            };
+            switch (blobs.sourceSize(u.src)) {
+                .wait => return,
+                .failed => |msg| return c.failReq(ri, msg),
+                .size => |n| {
+                    u.size[u.part] = n;
+                    blobs.sourceClose(u.src);
+                    u.src = .none;
+                    u.part += 1;
+                },
+            }
+        }
+        const r = &c.reqs[ri];
+        var total: u64 = r.built.body_end - r.built.hdr_end;
+        for (u.size[0..u.files.n]) |n| total +|= n;
+        request.finishLength(c.reqData(ri), &r.built, total);
+        u.total = total;
+        u.part = 0;
+        u.state = .ready;
+        c.nup_poll -= 1;
+        // `route` gave the failure to the sink.
+        c.route(ri) catch |e| std.debug.assert(e == error.Failed);
+    }
+
+    /// Start the body again from its first byte (a new send of the request).
+    fn upRewind(c: *Client, ri: u32) void {
+        const u = &c.ups[c.reqs[ri].up];
+        std.debug.assert(u.req == ri and u.state != .free);
+        // The sizes are not known yet: `upSize` goes on.
+        if (u.state == .sizing) return;
+        c.upCloseSource(u);
+        if (u.state == .waiting) c.nup_poll -= 1;
+        u.state = .ready;
+        u.part = 0;
+        u.mem_sent = 0;
+        u.file_sent = 0;
+        u.sent = 0;
+    }
+
+    fn upCloseSource(c: *Client, u: *Upload) void {
+        if (u.src == .none) return;
+        const blobs = c.cfg.blobs orelse unreachable; // The handle came from it.
+        blobs.sourceClose(u.src);
+        u.src = .none;
+    }
+
+    /// The request is over: its row is free again.
+    fn upFree(c: *Client, ri: u32) void {
+        const r = &c.reqs[ri];
+        const ui = r.up;
+        const u = &c.ups[ui];
+        std.debug.assert(u.req == ri and u.state != .free and c.nup_free < c.ups.len);
+        c.upCloseSource(u);
+        if (u.state == .sizing or u.state == .waiting) c.nup_poll -= 1;
+        u.state = .free;
+        u.req = none;
+        r.up = none;
+        c.up_free[c.nup_free] = ui;
+        c.nup_free += 1;
+    }
+
+    /// The next bytes of the body of `ri`: bytes in memory up to the place
+    /// of the next file, then the bytes of that file from the store.
+    fn upNext(c: *Client, ri: u32) UpChunk {
+        const r = &c.reqs[ri];
+        const u = &c.ups[r.up];
+        const blobs = c.cfg.blobs orelse unreachable; // Upload rows exist only with the store.
+        const mem = c.reqData(ri)[r.built.hdr_end..r.built.body_end];
+        std.debug.assert(u.state == .ready or u.state == .waiting);
+        // Each pass gives bytes, or goes to the next file.
+        var guard: u32 = 0;
+        while (guard <= request.max_files) : (guard += 1) {
+            const stop: u32 = if (u.part < u.files.n) u.files.at[u.part] else @intCast(mem.len);
+            if (u.mem_sent < stop) return .{ .bytes = mem[u.mem_sent..stop] };
+            if (u.part == u.files.n) return .done;
+            const left = u.size[u.part] - u.file_sent;
+            if (left == 0) {
+                c.upCloseSource(u);
+                u.part += 1;
+                u.file_sent = 0;
+                continue;
+            }
+            if (u.src == .none) u.src = blobs.sourceOpen(u.files.id(u.part), c.now_ms) catch |e| switch (e) {
+                error.Full => return .{ .failed = "http: too many stored files are in use (--binary-max-transfers); the step can run again (limit)" },
+                // `request.build` checked the id.
+                error.BadId => unreachable,
+            };
+            return switch (blobs.sourcePeek(u.src, c.now_ms)) {
+                .wait => .wait,
+                .bytes => |b| .{ .bytes = b[0..@intCast(@min(b.len, left))] },
+                // The head of the request has the size of the file already.
+                .end => .{ .failed = "http: a stored file of the request body is shorter than when the request started" },
+                .failed => |msg| .{ .failed = msg },
+            };
+        }
+        unreachable; // Each pass but the last goes to the next file, and there are at most `max_files`.
+    }
+
+    /// The first `n` bytes that `upNext` gave went out.
+    fn upSent(c: *Client, ri: u32, n: usize) void {
+        const r = &c.reqs[ri];
+        const u = &c.ups[r.up];
+        const mem_len: u32 = r.built.body_end - r.built.hdr_end;
+        const stop: u32 = if (u.part < u.files.n) u.files.at[u.part] else mem_len;
+        std.debug.assert(n > 0 and u.sent + n <= u.total);
+        if (u.mem_sent < stop) {
+            u.mem_sent += @intCast(n);
+            std.debug.assert(u.mem_sent <= stop);
+        } else {
+            const blobs = c.cfg.blobs orelse unreachable; // The bytes came from it.
+            u.file_sent += n;
+            blobs.sourceTake(u.src, n, c.now_ms);
+        }
+        u.sent += n;
+    }
+
+    /// The send of `ri` waits for bytes of a file.
+    fn upWait(c: *Client, ri: u32) void {
+        const u = &c.ups[c.reqs[ri].up];
+        if (u.state == .waiting) return;
+        std.debug.assert(u.state == .ready);
+        u.state = .waiting;
+        c.nup_poll += 1;
+        c.counters.upload_waits += 1;
+    }
+
+    /// Once per loop round while a body waits for the store: the files that
+    /// are open now give their sizes, and the sends that waited go on.
+    fn upPoll(c: *Client) void {
+        std.debug.assert(c.nup_poll > 0 and c.nup_poll <= c.ups.len);
+        for (c.ups, 0..) |*u, i| {
+            switch (u.state) {
+                .free, .ready => {},
+                .sizing => c.upSize(@intCast(i)),
+                .waiting => {
+                    const ri = u.req;
+                    const r = &c.reqs[ri];
+                    u.state = .ready;
+                    c.nup_poll -= 1;
+                    if (r.conn != none) {
+                        c.h2QueueSend(r.conn, ri);
+                        c.h2Kick(r.conn);
+                    } else if (r.h1conn != none and c.conns[r.h1conn].req == ri and c.conns[r.h1conn].state == .sending) {
+                        c.doSend(r.h1conn);
+                    }
+                },
+            }
+        }
+    }
+
+    /// Send the body of the request of an HTTP/1.1 connection, after its
+    /// head. True when the whole body went out.
+    fn upSendH1(c: *Client, ci: u32) bool {
+        const cn = &c.conns[ci];
+        const ri = cn.req;
+        std.debug.assert(cn.state == .sending and c.reqs[ri].up != none);
+        // A bound for one call: other connections of the shard get their turn.
+        var pieces: u32 = 0;
+        while (pieces < 64) : (pieces += 1) {
+            const bytes = switch (c.upNext(ri)) {
+                .done => return true,
+                .bytes => |b| b,
+                .wait => {
+                    c.upWait(ri);
+                    c.disarmWrite(ci);
+                    return false;
+                },
+                .failed => |msg| {
+                    // A part of the request went out: the connection cannot be used again.
+                    cn.req = none;
+                    c.failReq(ri, msg);
+                    c.closeConn(ci);
+                    return false;
+                },
+            };
+            switch (c.write(ci, bytes)) {
+                .n => |k| c.upSent(ri, k),
+                .again => {
+                    c.armWrite(ci);
+                    return false;
+                },
+                .want_read => return false,
+                .closed => {
+                    c.lostConn(ci);
+                    return false;
+                },
+                .failed => {
+                    c.tlsFail(ci);
+                    return false;
+                },
+            }
+        }
+        // More goes out in the next round: the socket took bytes, so it is ready again.
+        c.armWrite(ci);
+        return false;
     }
 
     /// A row of the binary data store for the response of this request;
@@ -739,24 +1048,6 @@ pub const Client = struct {
             return false;
         };
         return true;
-    }
-
-    /// The whole response of a request with `responseBinary` (HTTP/2: the
-    /// body is in the response area). A 2xx status goes to the store;
-    /// another status has its usual body.
-    fn doneStored(c: *Client, ri: u32, resp: Response) void {
-        const r = &c.reqs[ri];
-        const h = r.stored;
-        r.stored = .none;
-        std.debug.assert(h != .none and !r.storing);
-        const stored = c.sink.stored orelse unreachable; // `reserveStored` needs the store, and the store comes with this sink.
-        const blobs = c.cfg.blobs orelse unreachable; // As above: the handle came from it.
-        if (resp.status < 200 or resp.status > 299) {
-            blobs.release(h);
-            return c.sink.done(c.sink.ctx, r.exec_id, r.seq, .{ .ok = resp });
-        }
-        if (!stored(c.sink.ctx, r.exec_id, r.seq, h, resp, c.urlPath(ri), resp.body.len, true)) return;
-        blobs.putBody(h, resp.body, c.now_ms);
     }
 
     /// The path of the URL of the request, without the query.
@@ -814,7 +1105,7 @@ pub const Client = struct {
             else => null,
         };
         const resp: Response = .{ .status = h.status, .header_lines = h.lines, .body = "", .json = h.json };
-        if (!stored(c.sink.ctx, r.exec_id, r.seq, r.stored, resp, c.urlPath(ri), expected, false)) {
+        if (!stored(c.sink.ctx, r.exec_id, r.seq, r.stored, resp, c.urlPath(ri), expected)) {
             r.stored = .none;
             cn.req = none;
             c.freeReq(ri);
@@ -971,7 +1262,7 @@ pub const Client = struct {
 
     fn buildWith(c: *Client, ri: u32, args: []const u8, st: ?*const creds.Store, idem_key: ?[]const u8, diag: *request.Diag) bool {
         const r = &c.reqs[ri];
-        r.built = request.build(args, st, idem_key, r.small, diag) catch |e| blk: {
+        r.built = request.buildFiles(args, st, idem_key, r.small, diag, c.files_tmp) catch |e| blk: {
             if (e == error.Invalid) {
                 c.failFree(ri, diag.text());
                 return false;
@@ -981,7 +1272,7 @@ pub const Client = struct {
                 c.failFree(ri, "http: the request is larger than the small buffer and all large buffers are in use");
                 return false;
             };
-            break :blk request.build(args, st, idem_key, c.bigSlice(r.big), diag) catch |e2| {
+            break :blk request.buildFiles(args, st, idem_key, c.bigSlice(r.big), diag, c.files_tmp) catch |e2| {
                 if (e2 == error.Invalid) c.failFree(ri, diag.text()) else c.failFreeFmt(ri, "http: the request is larger than {d} bytes", .{c.big_size});
                 return false;
             };
@@ -1042,6 +1333,8 @@ pub const Client = struct {
         std.mem.copyForwards(u32, c.read_list[0 .. c.nread - n], c.read_list[n..c.nread]);
         c.nread -= n;
         if (c.npaused > 0) c.resumeStored();
+        if (c.nh2_pending > 0) c.h2ResumeStored();
+        if (c.nup_poll > 0) c.upPoll();
         if (now_ms >= c.wake_ms) {
             c.wake_ms = std.math.maxInt(i64);
             c.pending_pump = true;
@@ -1727,7 +2020,9 @@ pub const Client = struct {
         const d = c.reqData(ri);
         const u = c.reqUrl(ri);
         var out: Out = .{ .buf = cn.wbuf };
-        const rest = d[r.built.url_len..r.built.body_end];
+        // A body with stored files follows its head in pieces (`upSendH1`).
+        const rest = d[r.built.url_len..if (r.up == none) r.built.body_end else r.built.hdr_end];
+        if (r.up != none) c.upRewind(ri);
         writeLine(&out, r.built.method(), u, c.origins[r.origin].authority()) catch return c.connFailFmt(ci, "the request line for {s} is too long", .{c.hostPort(ci)});
         if (out.len + rest.len <= cn.wbuf.len) {
             out.put(rest) catch unreachable;
@@ -1780,6 +2075,7 @@ pub const Client = struct {
                 .failed => return c.tlsFail(ci),
             }
         }
+        if (c.reqs[cn.req].up != none and !c.upSendH1(ci)) return;
         c.disarmWrite(ci);
         cn.state = .reading;
         cn.last_io_ms = c.now_ms;
@@ -2072,6 +2368,7 @@ pub const Client = struct {
                 r.retried = true;
                 const ri = cn.req;
                 cn.req = none;
+                if (r.up != none) c.upRewind(ri);
                 c.counters.requeued += 1;
                 c.enqueue(r.origin, ri, true);
                 c.pending_pump = true;
@@ -2498,14 +2795,23 @@ pub const Client = struct {
         const r = &c.reqs[ri];
         // No byte of a response outlives its stream (safe builds fill
         // it; the large buffer is filled on release).
-        if (r.resp_big == none and r.hdr_len + r.body_len > 0) {
+        const used = r.hdr_len + r.stored_off + r.body_len;
+        if (r.resp_big == none and used > 0) {
             const area = c.respArea(ri);
-            sys.poison(area[0..@min(area.len, r.hdr_len + r.body_len)]);
+            sys.poison(area[0..@min(area.len, used)]);
         }
         if (r.resp_big != none) {
-            c.bigRelease(r.resp_big, r.hdr_len + r.body_len);
+            c.bigRelease(r.resp_big, used);
             r.resp_big = none;
         }
+        if (r.s_pending) {
+            r.s_pending = false;
+            c.nh2_pending -= 1;
+        }
+        r.stored_off = 0;
+        r.stored_end = false;
+        // A body with stored files starts again from its first byte.
+        if (r.up != none) c.upRewind(ri);
         r.conn = none;
         r.sid = 0;
         r.s_prev = none;
@@ -2808,12 +3114,26 @@ pub const Client = struct {
                     continue;
                 };
                 const block_len = blen - len - http2.frame_header_len;
-                http2.frameHeaderBlock(out, &len, r.sid, block_len, h.peer.max_frame_size, body.len == 0) catch {
+                const no_body = if (r.up == none) body.len == 0 else c.ups[r.up].total == 0;
+                http2.frameHeaderBlock(out, &len, r.sid, block_len, h.peer.max_frame_size, no_body) catch {
                     len = frame_at;
                     return;
                 };
                 r.hdrs_sent = true;
                 r.last_io_ms = c.now_ms;
+            }
+            if (r.up != none) {
+                switch (c.h2FillUpload(ci, h, ri, &len)) {
+                    .full => return,
+                    .gone => {
+                        ri = next;
+                        continue;
+                    },
+                    .rest => {},
+                }
+                c.h2UnqueueSend(ci, ri);
+                ri = next;
+                continue;
             }
             var inner: u32 = 0;
             while (r.body_sent < body.len and inner < 1 << 16) : (inner += 1) {
@@ -2837,6 +3157,60 @@ pub const Client = struct {
         }
     }
 
+    /// `full`: the write buffer is full, and the stream stays in the send
+    /// list. `rest`: the stream leaves the list (all sent, or it waits for
+    /// a window or for the store). `gone`: the stream failed.
+    const UpFill = enum { full, rest, gone };
+
+    /// DATA frames for a body with stored files, as the windows, the write
+    /// buffer and the store allow.
+    fn h2FillUpload(c: *Client, ci: u32, h: *H2, ri: u32, len: *usize) UpFill {
+        const out = c.conns[ci].wbuf;
+        const r = &c.reqs[ri];
+        const u = &c.ups[r.up];
+        std.debug.assert(r.hdrs_sent and u.sent <= u.total);
+        var inner: u32 = 0;
+        while (u.sent < u.total and inner < 1 << 16) : (inner += 1) {
+            const room = out.len - len.*;
+            if (room <= http2.frame_header_len) return .full;
+            const win: i64 = @min(r.send_win, h.send_win);
+            if (win <= 0) return .rest;
+            const bytes = switch (c.upNext(ri)) {
+                .bytes => |b| b,
+                .wait => {
+                    c.upWait(ri);
+                    return .rest;
+                },
+                // `sent` is below `total`: the body has more bytes.
+                .done => unreachable,
+                .failed => |msg| {
+                    // The text belongs to the open file, which the failure closes.
+                    var mb: [256]u8 = @splat(0);
+                    const n = @min(msg.len, mb.len);
+                    @memcpy(mb[0..n], msg[0..n]);
+                    c.h2FailStream(ri, .cancel, mb[0..n]);
+                    return .gone;
+                },
+            };
+            const n: u32 = @intCast(@min(@as(i64, @intCast(bytes.len)), win, h.peer.max_frame_size, room - http2.frame_header_len));
+            http2.writeDataHeader(out, len, r.sid, n, u.sent + n == u.total) catch return .full;
+            @memcpy(out[len.*..][0..n], bytes[0..n]);
+            len.* += n;
+            c.upSent(ri, n);
+            r.send_win -= n;
+            h.send_win -= n;
+            r.last_io_ms = c.now_ms;
+        }
+        return .rest;
+    }
+
+    /// The stream has body bytes that did not go out.
+    fn h2BodyLeft(c: *Client, ri: u32) bool {
+        const r = &c.reqs[ri];
+        if (r.up != none) return c.ups[r.up].sent < c.ups[r.up].total;
+        return r.body_sent < r.built.body_end - r.built.hdr_end;
+    }
+
     fn h2EncodeHeaders(c: *Client, ri: u32, out: []u8, len: *usize) error{NoSpace}!void {
         const r = &c.reqs[ri];
         const d = c.reqData(ri);
@@ -2854,7 +3228,7 @@ pub const Client = struct {
         for (h.smap) |ri| {
             if (ri == none or ri == tomb) continue;
             const r = &c.reqs[ri];
-            if (r.hdrs_sent and r.body_sent < r.built.body_end - r.built.hdr_end and r.send_win > 0) c.h2QueueSend(ci, ri);
+            if (r.hdrs_sent and r.send_win > 0 and c.h2BodyLeft(ri)) c.h2QueueSend(ci, ri);
         }
     }
 
@@ -2872,7 +3246,7 @@ pub const Client = struct {
     /// buffer if needed. False when there is none.
     fn respRoom(c: *Client, ri: u32, more: usize) bool {
         const r = &c.reqs[ri];
-        const used = r.hdr_len + r.body_len;
+        const used = r.hdr_len + r.stored_off + r.body_len;
         const area = c.respArea(ri);
         if (area.len - used >= more) return true;
         if (r.resp_big != none) return false;
@@ -2890,18 +3264,154 @@ pub const Client = struct {
         const area = c.respArea(ri);
         const lines = area[0..r.hdr_len];
         c.feedback(oi, r.status, lines);
-        const method = r.built.method();
-        const is_redirect = (r.status == 301 or r.status == 302 or r.status == 303 or r.status == 307 or r.status == 308) and
-            (std.mem.eql(u8, method, "GET") or std.mem.eql(u8, method, "HEAD"));
-        if (is_redirect) if (headerValue(lines, "location")) |loc| {
+        if (c.h2Redirect(ri)) |loc| {
             c.offWire(ri);
             if (!c.redirect(ri, loc)) c.pending_pump = true;
             return;
-        };
+        }
         const trimmed = if (std.mem.endsWith(u8, lines, "\r\n")) lines[0 .. lines.len - 2] else lines;
         const resp: Response = .{ .status = r.status, .header_lines = trimmed, .body = area[r.hdr_len..][0..r.body_len], .json = r.json };
-        if (r.stored != .none) c.doneStored(ri, resp) else c.sink.done(c.sink.ctx, r.exec_id, r.seq, .{ .ok = resp });
+        // A request with a row of the store never comes here with it: `h2StoredHead` took the response, or gave the row back.
+        std.debug.assert(r.stored == .none);
+        c.sink.done(c.sink.ctx, r.exec_id, r.seq, .{ .ok = resp });
         c.freeReq(ri);
+    }
+
+    /// The Location of a response that sends the request to another URL, or null.
+    fn h2Redirect(c: *Client, ri: u32) ?[]const u8 {
+        const r = &c.reqs[ri];
+        const method = r.built.method();
+        const is_redirect = (r.status == 301 or r.status == 302 or r.status == 303 or r.status == 307 or r.status == 308) and
+            (std.mem.eql(u8, method, "GET") or std.mem.eql(u8, method, "HEAD"));
+        if (!is_redirect) return null;
+        return headerValue(c.respArea(ri)[0..r.hdr_len], "location");
+    }
+
+    // ---- a response that goes to the binary data store in pieces (HTTP/2) -------------
+
+    /// The head of the response to a request with `responseBinary`. A 2xx
+    /// response goes to the store from here on (`resp_fail` is `storing`).
+    /// Another status has its usual body, and the row of the store is free
+    /// again; a redirect keeps it for the response of the next request.
+    /// False when the sink did not take the response: the request is done.
+    fn h2StoredHead(c: *Client, ri: u32) bool {
+        const r = &c.reqs[ri];
+        std.debug.assert(r.stored != .none and !r.storing);
+        // A failure, or an interim response: the final head decides.
+        if (r.resp_fail != .none or r.status < 200) return true;
+        if (r.status > 299) {
+            if (c.h2Redirect(ri) == null) {
+                const reported = c.dropStored(ri, "");
+                std.debug.assert(!reported);
+            }
+            return true;
+        }
+        const stored = c.sink.stored orelse unreachable; // `reserveStored` needs the store, and the store comes with this sink.
+        const lines = c.respArea(ri)[0..r.hdr_len];
+        c.feedback(r.origin, r.status, lines);
+        const trimmed = if (std.mem.endsWith(u8, lines, "\r\n")) lines[0 .. lines.len - 2] else lines;
+        const resp: Response = .{ .status = r.status, .header_lines = trimmed, .body = "", .json = r.json };
+        if (!stored(c.sink.ctx, r.exec_id, r.seq, r.stored, resp, c.urlPath(ri), r.clen)) {
+            r.stored = .none;
+            c.h2Cancel(ri, .cancel);
+            c.resetStream(ri);
+            c.freeReq(ri);
+            return false;
+        }
+        r.storing = true;
+        r.resp_fail = .storing;
+        return true;
+    }
+
+    /// Body bytes of a stream that left the plain path. A stream that
+    /// failed drops them. A stored one gives them to the store; what the
+    /// store does not take (no free block) waits in the response area.
+    fn h2DataSlow(c: *Client, ri: u32, bytes: []const u8) void {
+        const r = &c.reqs[ri];
+        if (r.resp_fail != .storing or bytes.len == 0) return;
+        const blobs = c.cfg.blobs orelse unreachable; // The handle of the request came from it.
+        std.debug.assert(r.storing and r.stored != .none);
+        r.got_bytes = true;
+        var rest = bytes;
+        // Bytes that wait go first: the new ones join them.
+        if (!r.s_pending) switch (blobs.append(r.stored, bytes, c.now_ms)) {
+            .took => |k| rest = bytes[k..],
+            .failed => {
+                r.resp_fail = .stored;
+                return;
+            },
+        };
+        if (rest.len == 0) return;
+        if (!c.respRoom(ri, rest.len)) {
+            r.resp_fail = .no_big;
+            return;
+        }
+        const area = c.respArea(ri);
+        @memcpy(area[r.hdr_len + r.stored_off + r.body_len ..][0..rest.len], rest);
+        r.body_len += @intCast(rest.len);
+        if (r.s_pending) return;
+        r.s_pending = true;
+        c.nh2_pending += 1;
+        c.counters.stored_pauses += 1;
+    }
+
+    /// The end of a DATA frame, or of the stream, for a stream that left the plain path.
+    fn h2EndSlow(c: *Client, ri: u32, end_stream: bool) void {
+        const r = &c.reqs[ri];
+        std.debug.assert(r.resp_fail != .none);
+        if (r.resp_fail != .storing) return c.h2FailResp(ri);
+        if (!end_stream) return;
+        c.h2CloseStream(ri);
+        // The bytes that wait go to the store first (`h2ResumeStored`).
+        if (r.s_pending) r.stored_end = true else c.h2FinishStored(ri);
+    }
+
+    /// The store has every byte of the body: it writes the rest and gives the result.
+    fn h2FinishStored(c: *Client, ri: u32) void {
+        const r = &c.reqs[ri];
+        const blobs = c.cfg.blobs orelse unreachable; // The handle of the request came from it.
+        std.debug.assert(r.storing and r.stored != .none and !r.s_pending and r.conn == none);
+        blobs.complete(r.stored);
+        r.stored = .none;
+        r.storing = false;
+        c.freeReq(ri);
+    }
+
+    /// Once per loop round while bytes wait: give them to the store. A
+    /// stream whose bytes are all in the store gets its window again.
+    fn h2ResumeStored(c: *Client) void {
+        const blobs = c.cfg.blobs orelse unreachable; // A stream with bytes that wait has a handle of it.
+        std.debug.assert(c.nh2_pending > 0);
+        for (c.reqs, 0..) |*r, i| {
+            if (!r.s_pending) continue;
+            const ri: u32 = @intCast(i);
+            const pending = c.respArea(ri)[r.hdr_len + r.stored_off ..][0..r.body_len];
+            switch (blobs.append(r.stored, pending, c.now_ms)) {
+                .took => |k| {
+                    r.stored_off += @intCast(k);
+                    r.body_len -= @intCast(k);
+                },
+                .failed => {
+                    // The store has the reason, and gives it as the result of the step.
+                    if (r.conn != none) c.h2FailStream(ri, .cancel, "") else c.failReq(ri, "");
+                    continue;
+                },
+            }
+            if (r.body_len > 0) continue;
+            r.s_pending = false;
+            r.stored_off = 0;
+            c.nh2_pending -= 1;
+            if (r.stored_end) {
+                c.h2FinishStored(ri);
+                continue;
+            }
+            if (r.recv_used >= c.cfg.h2_stream_window / 2) {
+                r.wu_pending += r.recv_used;
+                r.recv_used = 0;
+                c.h2QueueSend(r.conn, ri);
+                c.h2Kick(r.conn);
+            }
+        }
     }
 
     fn h2FailResp(c: *Client, ri: u32) void {
@@ -2909,7 +3419,9 @@ pub const Client = struct {
         var b: [400]u8 = undefined;
         const hp = c.hostPort(r.conn);
         const msg = switch (r.resp_fail) {
-            .none => unreachable,
+            // `h2EndSlow` sends only failures here.
+            .none, .storing => unreachable,
+            .stored => std.fmt.bufPrint(&b, "http: the response from {s} could not be stored", .{hp}),
             .body_limit => std.fmt.bufPrint(&b, "http: the response body from {s} is larger than {d} bytes", .{ hp, c.cfg.max_body }),
             .body_declared => std.fmt.bufPrint(&b, "http: the response body from {s} is {d} bytes; the limit is {d}", .{ hp, r.body_len, c.cfg.max_body }),
             .no_big => std.fmt.bufPrint(&b, "http: the response from {s} needs a large buffer and all {d} are in use", .{ hp, c.cfg.big_slots }),
@@ -2966,7 +3478,8 @@ pub const Client = struct {
                 r.resp_fail = .window;
                 return;
             }
-            if (!end_stream and r.recv_used >= c.cfg.h2_stream_window / 2) {
+            // A stored stream whose bytes wait for the store gets no window (`h2ResumeStored`).
+            if (!end_stream and r.recv_used >= c.cfg.h2_stream_window / 2 and !r.s_pending) {
                 r.wu_pending += r.recv_used;
                 r.recv_used = 0;
                 c.h2QueueSend(self.ci, ri);
@@ -2977,7 +3490,7 @@ pub const Client = struct {
             const c = self.c;
             const ri = self.stream(sid) orelse return;
             const r = &c.reqs[ri];
-            if (r.resp_fail != .none) return;
+            if (r.resp_fail != .none) return c.h2DataSlow(ri, bytes);
             r.got_bytes = true;
             if (r.body_len + bytes.len > c.cfg.max_body) {
                 r.resp_fail = .body_limit;
@@ -2996,7 +3509,7 @@ pub const Client = struct {
             const c = self.c;
             const ri = self.stream(sid) orelse return;
             const r = &c.reqs[ri];
-            if (r.resp_fail != .none) return c.h2FailResp(ri);
+            if (r.resp_fail != .none) return c.h2EndSlow(ri, end_stream);
             if (end_stream) c.h2Complete(ri);
         }
 
@@ -3010,7 +3523,7 @@ pub const Client = struct {
                 var d: Discard = .{};
                 hh.dec.decode(block, &d) catch return self.connErr(.compression, "a response header block does not decode");
                 if (maybe) |ri| if (end_stream) {
-                    if (c.reqs[ri].resp_fail != .none) return c.h2FailResp(ri);
+                    if (c.reqs[ri].resp_fail != .none) return c.h2EndSlow(ri, true);
                     c.h2Complete(ri);
                 };
                 return;
@@ -3023,6 +3536,8 @@ pub const Client = struct {
             hh.dec.decode(block, &sink) catch return self.connErr(.compression, "a response header block does not decode");
             if (sink.overflow) r.resp_fail = .headers_no_big;
             if (r.status == 0 and r.resp_fail == .none) r.resp_fail = .no_status;
+            // The one test that the response of a request without `responseBinary` pays for the store.
+            if (r.stored != .none and !c.h2StoredHead(ri)) return;
             if (r.resp_fail == .none) if (r.clen) |n| {
                 if (n > c.cfg.max_body) {
                     r.resp_fail = .body_declared;
@@ -3040,8 +3555,10 @@ pub const Client = struct {
             } else {
                 r.headers_done = true;
             }
-            if (r.resp_fail == .body_declared or (end_stream and r.resp_fail != .none)) return c.h2FailResp(ri);
-            if (end_stream) c.h2Complete(ri);
+            if (r.resp_fail == .body_declared) return c.h2FailResp(ri);
+            if (!end_stream) return;
+            if (r.resp_fail != .none) return c.h2EndSlow(ri, true);
+            c.h2Complete(ri);
         }
 
         pub fn onRst(self: *H2Handler, sid: u32, code: http2.ErrorCode) Err!void {
@@ -3049,7 +3566,8 @@ pub const Client = struct {
             const ri = self.stream(sid) orelse return;
             const r = &c.reqs[ri];
             c.h2CloseStream(ri);
-            if (code == .refused_stream or (code == .no_error and !r.got_bytes)) {
+            // A response that the store began to take cannot start again.
+            if (!r.storing and (code == .refused_stream or (code == .no_error and !r.got_bytes))) {
                 // Not processed (RFC 9113 8.7): safe to send again.
                 c.resetStream(ri);
                 c.counters.requeued += 1;
@@ -3132,6 +3650,11 @@ pub const Client = struct {
                 const r = &c.reqs[ri];
                 c.h2CloseStream(ri);
                 c.resetStream(ri);
+                // A response that the store began to take cannot start again.
+                if (r.storing) {
+                    c.failReq(ri, "http: the server closed the connection before the response was complete");
+                    continue;
+                }
                 c.counters.requeued += 1;
                 c.enqueue(r.origin, ri, true);
                 c.pending_pump = true;
@@ -3153,7 +3676,7 @@ pub const Client = struct {
             if (inc == 0) return c.h2FailStream(ri, .protocol, "http: the server sent WINDOW_UPDATE of 0");
             r.send_win += inc;
             if (r.send_win > http2.max_window) return c.h2FailStream(ri, .flow_control, "http: the server made the stream window too large");
-            if (r.hdrs_sent and r.body_sent < r.built.body_end - r.built.hdr_end) c.h2QueueSend(self.ci, ri);
+            if (r.hdrs_sent and c.h2BodyLeft(ri)) c.h2QueueSend(self.ci, ri);
         }
     };
 
@@ -3271,6 +3794,7 @@ pub const Client = struct {
         c.wheelRemove(ri);
         r.h1conn = none;
         c.resetStream(ri);
+        if (r.up != none) c.upFree(ri);
         if (r.big != none) c.bigRelease(r.big, r.built.body_end);
         r.big = none;
         r.state = .free;
@@ -3423,6 +3947,9 @@ pub const Client = struct {
                     },
                     else => {},
                 }
+            } else if (r.stored_end and now >= r.deadline_ms) {
+                // The stream ended, and the store did not take the last bytes in time.
+                return c.failReqFmt(ri, "http: the request timed out after {d} ms", .{r.timeout_ms});
             },
         }
         c.wheelInsert(ri, c.nextCheck(ri));

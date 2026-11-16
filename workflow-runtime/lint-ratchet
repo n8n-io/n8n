@@ -12,7 +12,7 @@ empty-catch 15
 silent-catch 86
 anyerror 14
 inferred-error 16
-unreachable-comment 75
+unreachable-comment 74
 optional-unwrap 21
 switch-else 81
 unbounded-loop 24

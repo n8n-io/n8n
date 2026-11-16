@@ -26,6 +26,10 @@ pub const Built = struct {
     /// The args have `responseBinary`: the body of a 2xx response goes to
     /// the binary data store (`blob_store.zig`).
     stores: bool = false,
+    /// Not 0: the body has stored files (`Files`), so its length is not
+    /// known yet. The content-length line goes here (`finishLength`), and
+    /// `hdr_end` is the start of the body bytes in memory.
+    cl_at: u32 = 0,
 
     pub fn method(b: *const Built) []const u8 {
         return b.method_buf[0..b.method_len];
@@ -50,22 +54,69 @@ pub const Diag = struct {
 
 pub const Error = error{ NoSpace, Invalid };
 
+/// The most stored files of one body that go out in pieces. More files of
+/// the same body are read whole into the request buffer.
+pub const max_files = 8;
+
+/// The stored files of the body of a request (`data` is the marker of
+/// n8n's file store). The body bytes in memory do not hold them: the
+/// sender puts the bytes of file `i` at offset `at[i]` of those bytes.
+pub const Files = struct {
+    n: u8 = 0,
+    at: [max_files]u32 = @splat(0),
+    id_len: [max_files]u16 = @splat(0),
+    ids: [max_files][binary_store.max_id]u8 = @splat(@splat(0)),
+
+    pub fn id(f: *const Files, i: usize) []const u8 {
+        std.debug.assert(i < f.n);
+        return f.ids[i][0..f.id_len[i]];
+    }
+};
+
+/// "content-length: " + 20 digits + "\r\n\r\n".
+const length_gap = 42;
+
+/// The stored files of the body have their sizes: `total` is the length
+/// of the whole body. Write the content-length line, and move the body
+/// bytes in memory to follow it, as in every other request.
+pub fn finishLength(buf: []u8, b: *Built, total: u64) void {
+    std.debug.assert(b.cl_at > 0 and b.hdr_end == b.cl_at + length_gap and b.body_end >= b.hdr_end and b.body_end <= buf.len);
+    const n = b.body_end - b.hdr_end;
+    var lb: [length_gap]u8 = @splat(0);
+    // The gap holds the line with any u64.
+    const line = std.fmt.bufPrint(&lb, "content-length: {d}\r\n\r\n", .{total}) catch unreachable;
+    @memcpy(buf[b.cl_at..][0..line.len], line);
+    const hdr_end: u32 = b.cl_at + @as(u32, @intCast(line.len));
+    std.mem.copyForwards(u8, buf[hdr_end..][0..n], buf[b.hdr_end..b.body_end]);
+    b.hdr_end = hdr_end;
+    b.body_end = hdr_end + n;
+    b.cl_at = 0;
+}
+
 const Tmp = struct { buf: [max_url]u8 = undefined };
 
 /// Build the request into `out`. `error.NoSpace` means "try a larger
 /// buffer"; `error.Invalid` fills `diag`.
 pub fn build(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8, out_buf: []u8, diag: *Diag) Error!Built {
+    return buildFiles(args, store, idem_key, out_buf, diag, null);
+}
+
+/// `build` for a sender that sends stored files in pieces: the files of the
+/// body go to `files`, not into the buffer, and `Built.cl_at` is set when
+/// there is one. Null: a stored file is read whole into the buffer.
+pub fn buildFiles(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8, out_buf: []u8, diag: *Diag, files: ?*Files) Error!Built {
     @setRuntimeSafety(false);
     // Safe builds fill `undefined` memory with 0xAA; for this buffer (8 KB,
     // on every request) the fill cost more than the work. The callee keeps
     // its safety checks.
     var tmp: Tmp = undefined;
-    return buildWith(args, store, idem_key, out_buf, diag, &tmp);
+    return buildWith(args, store, idem_key, out_buf, diag, &tmp, files);
 }
 
-fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8, out_buf: []u8, diag: *Diag, tmp: *Tmp) Error!Built {
+fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8, out_buf: []u8, diag: *Diag, tmp: *Tmp, files: ?*Files) Error!Built {
     std.debug.assert(out_buf.len > 0);
     if (idem_key) |k| std.debug.assert(k.len > 0);
+    if (files) |f| f.n = 0;
     var b: Built = .{};
     var out: Out = .{ .buf = out_buf };
 
@@ -231,13 +282,13 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
         try out.put("content-type: multipart/form-data; boundary=");
         try out.put(boundary);
         try out.put("\r\n");
-        b.hdr_end = try deferredBody(&out, diag, MultipartBody{ .raw = mp, .boundary = boundary });
+        b.hdr_end = try deferredBody(&out, diag, MultipartBody{ .raw = mp, .boundary = boundary, .files = files }, files, &b.cl_at);
     } else if (special == .form) {
         // v1 `authenticate` adds body members to an object; how they join a form
         // differs for each request helper, so there is no single rule to apply.
         if (inject_body != null) return invalid(diag, "http: a credential that adds body members cannot go with a form body", .{});
         if (!have.ct) try out.put("content-type: application/x-www-form-urlencoded\r\n");
-        b.hdr_end = try deferredBody(&out, diag, FormBody{ .raw = special_ref, .slot = slot });
+        b.hdr_end = try deferredBody(&out, diag, FormBody{ .raw = special_ref, .slot = slot }, null, &b.cl_at);
     } else if (special == .binary) {
         const ref = special_ref;
         if (!have.ct) if (http.member(ref, "mimeType")) |mt| if (http.plainString(mt)) |ctv| {
@@ -246,7 +297,7 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
             try out.put(ctv);
             try out.put("\r\n");
         };
-        b.hdr_end = try deferredBody(&out, diag, BinaryBody{ .ref = ref });
+        b.hdr_end = try deferredBody(&out, diag, BinaryBody{ .ref = ref, .files = files }, files, &b.cl_at);
     } else if (body_raw) |br| {
         const is_string = br.len > 0 and br[0] == '"';
         if (!is_string and !have.ct) try out.put("content-type: application/json\r\n");
@@ -326,14 +377,21 @@ const FormState = struct { key: [max_qs_key]u8 = @splat(0), tmp: Tmp = .{} };
 
 /// Write a body whose length is known only once it is written, then put
 /// the content-length line and the blank line before it. Returns `hdr_end`.
-fn deferredBody(out: *Out, diag: *Diag, writer: anytype) Error!u32 {
-    // "content-length: " + 20 digits + "\r\n\r\n".
-    const gap = 42;
+/// A body with stored files in `files` has no length yet: the body bytes
+/// stay after the gap for the line, and `cl_at` gets the place of the line.
+fn deferredBody(out: *Out, diag: *Diag, writer: anytype, files: ?*const Files, cl_at: *u32) Error!u32 {
+    const gap = length_gap;
     if (out.buf.len - out.len < gap) return error.NoSpace;
     const at = out.len + gap;
     var body: Out = .{ .buf = out.buf[at..] };
     try writer.write(&body, diag);
     const n = body.len;
+    if (files) |f| if (f.n > 0) {
+        cl_at.* = @intCast(out.len);
+        out.len = at + n;
+        std.debug.assert(cl_at.* > 0 and f.at[f.n - 1] <= n);
+        return @intCast(at);
+    };
     var lb: [gap]u8 = undefined;
     const line = std.fmt.bufPrint(&lb, "content-length: {d}\r\n\r\n", .{n}) catch unreachable;
     std.debug.assert(line.len <= gap);
@@ -347,22 +405,33 @@ fn deferredBody(out: *Out, diag: *Diag, writer: anytype) Error!u32 {
 
 const BinaryBody = struct {
     ref: []const u8,
+    files: ?*Files,
     fn write(w: BinaryBody, out: *Out, diag: *Diag) Error!void {
-        return writeBinary(w.ref, out, diag);
+        return writeBinary(w.ref, out, diag, w.files);
     }
 };
 
 /// The bytes of a binary entry. When `data` is the marker of n8n's file
-/// store (`filesystem-v2`), the file of `id` is read straight into the
-/// free part of the request buffer, so its limit is the buffer's and there
-/// is no copy; too large gives `NoSpace` and a retry in a large buffer.
+/// store (`filesystem-v2`), the file of `id` goes to `files`: the sender
+/// reads it in pieces, so it has no limit. Without `files`, or when `files`
+/// is full, the file is read straight into the free part of the request
+/// buffer, so its limit is the buffer's and there is no copy; too large
+/// gives `NoSpace` and a retry in a large buffer. That read blocks.
 /// Otherwise `data` is base64.
-fn writeBinary(ref: []const u8, out: *Out, diag: *Diag) Error!void {
+fn writeBinary(ref: []const u8, out: *Out, diag: *Diag, files: ?*Files) Error!void {
     const data_raw = http.member(ref, "data") orelse return invalid(diag, "http: binary data has no data", .{});
     const data = http.plainString(data_raw) orelse return invalid(diag, "http: binary data must be a base64 string", .{});
     const room = out.buf[out.len..];
     if (binary_store.isStoredMarker(data)) {
         const id = (if (http.member(ref, "id")) |r| http.plainString(r) else null) orelse return invalid(diag, "http: binary data in the file store has no id", .{});
+        if (files) |f| if (f.n < max_files) {
+            if (binary_store.fileId(id) == null) return invalid(diag, "http: binary data id \"{s}\" is not a file store id", .{id[0..@min(id.len, 120)]});
+            f.at[f.n] = @intCast(out.len);
+            @memcpy(f.ids[f.n][0..id.len], id);
+            f.id_len[f.n] = @intCast(id.len);
+            f.n += 1;
+            return;
+        };
         const no_store = "http: binary data is in n8n's file store, and WFRT_BINARY_DATA_STORAGE_PATH is not set";
         const storage = binary_store.storagePath() orelse return invalid(diag, no_store, .{});
         var fba = std.heap.FixedBufferAllocator.init(room);
@@ -388,6 +457,7 @@ fn writeBinary(ref: []const u8, out: *Out, diag: *Diag) Error!void {
 const MultipartBody = struct {
     raw: []const u8,
     boundary: []const u8,
+    files: ?*Files,
 
     fn write(w: MultipartBody, out: *Out, diag: *Diag) Error!void {
         var it = http.Elements.init(w.raw) orelse return invalid(diag, "http: multipart must be an array", .{});
@@ -414,7 +484,7 @@ const MultipartBody = struct {
                     try out.put("\r\n");
                 };
                 try out.put("\r\n");
-                try writeBinary(bin, out, diag);
+                try writeBinary(bin, out, diag, w.files);
             } else {
                 try out.put("\r\n\r\n");
                 const v = http.member(part, "value") orelse "\"\"";
@@ -1207,6 +1277,57 @@ test "binary body: base64, the file store, multipart, and a retry in a larger bu
     var clb: [64]u8 = undefined;
     try std.testing.expect(std.mem.indexOf(u8, hdrs, try std.fmt.bufPrint(&clb, "content-length: {d}\r\n", .{body.len})) != null);
     try std.testing.expectError(error.Invalid, build("{\"url\":\"http://x.io/\",\"method\":\"POST\",\"body\":\"x\",\"multipart\":[]}", null, null, &buf, &diag));
+}
+
+test "stored files of a body go to the sender: their places, and the content-length when the sizes are known" {
+    const t = std.testing;
+    var buf: [4096]u8 = @splat(0);
+    var diag: Diag = .{};
+    var files: Files = .{};
+    const id1 = "filesystem-v2:workflows/wf1/executions/7/binary_data/f-1";
+    const id2 = "filesystem-v2:workflows/wf1/executions/7/binary_data/f-2";
+
+    // The whole body is one file: no body byte is in memory, and no file is read.
+    const one = "{\"method\":\"PUT\",\"url\":\"http://x.io/u\",\"body\":{\"$binary\":{\"data\":\"filesystem-v2\",\"id\":\"" ++ id1 ++ "\",\"mimeType\":\"image/png\"}}}";
+    var b = try buildFiles(one, null, null, &buf, &diag, &files);
+    try t.expectEqual(@as(u8, 1), files.n);
+    try t.expectEqualStrings(id1, files.id(0));
+    try t.expectEqual(@as(u32, 0), files.at[0]);
+    try t.expect(b.cl_at != 0 and b.hdr_end == b.body_end);
+    try t.expect(std.mem.indexOf(u8, buf[b.url_len..b.cl_at], "content-length") == null);
+    finishLength(&buf, &b, 5_000_000_000);
+    try t.expectEqual(@as(u32, 0), b.cl_at);
+    try t.expect(std.mem.endsWith(u8, buf[b.url_len..b.hdr_end], "content-type: image/png\r\ncontent-length: 5000000000\r\n\r\n"));
+    try t.expectEqual(b.hdr_end, b.body_end);
+
+    // Multipart: the bytes in memory are the parts without the files, and each file has its place.
+    const mp = "{\"method\":\"POST\",\"url\":\"http://x.io/up\",\"multipart\":[{\"name\":\"note\",\"value\":\"hi\"},{\"name\":\"a\",\"binary\":{\"data\":\"filesystem-v2\",\"id\":\"" ++ id1 ++ "\"}},{\"name\":\"b\",\"binary\":{\"data\":\"aGVsbG8=\"}},{\"name\":\"c\",\"binary\":{\"data\":\"filesystem-v2\",\"id\":\"" ++ id2 ++ "\"}}]}";
+    b = try buildFiles(mp, null, null, &buf, &diag, &files);
+    try t.expectEqual(@as(u8, 2), files.n);
+    try t.expectEqualStrings(id2, files.id(1));
+    const mem_len = b.body_end - b.hdr_end;
+    finishLength(&buf, &b, mem_len + 7 + 9);
+    const hdrs = buf[b.url_len..b.hdr_end];
+    const key = "content-type: multipart/form-data; boundary=";
+    const bline = hdrs[std.mem.indexOf(u8, hdrs, key).? + key.len ..];
+    const boundary = bline[0..std.mem.indexOf(u8, bline, "\r\n").?];
+    var lb: [64]u8 = @splat(0);
+    try t.expect(std.mem.endsWith(u8, hdrs, try std.fmt.bufPrint(&lb, "content-length: {d}\r\n\r\n", .{mem_len + 16})));
+    // The sender puts the bytes of each file at its place: the body is the one that a whole read gives.
+    const body = buf[b.hdr_end..b.body_end];
+    try t.expectEqual(mem_len, @as(u32, @intCast(body.len)));
+    var sent_buf: [1024]u8 = @splat(0);
+    const sent = try std.fmt.bufPrint(&sent_buf, "{s}{s}{s}{s}{s}", .{ body[0..files.at[0]], "1234567", body[files.at[0]..files.at[1]], "123456789", body[files.at[1]..] });
+    var want_buf: [1024]u8 = @splat(0);
+    const want = try std.fmt.bufPrint(&want_buf, "--{s}\r\ncontent-disposition: form-data; name=\"note\"\r\n\r\nhi\r\n--{s}\r\ncontent-disposition: form-data; name=\"a\"\r\n\r\n1234567\r\n--{s}\r\ncontent-disposition: form-data; name=\"b\"\r\n\r\nhello\r\n--{s}\r\ncontent-disposition: form-data; name=\"c\"\r\n\r\n123456789\r\n--{s}--\r\n", .{ boundary, boundary, boundary, boundary, boundary });
+    try t.expectEqualStrings(want, sent);
+
+    // An id outside the store fails here, before any file is opened. A body without a stored file is as before.
+    try t.expectError(error.Invalid, buildFiles("{\"url\":\"http://x.io/\",\"method\":\"POST\",\"body\":{\"$binary\":{\"data\":\"filesystem-v2\",\"id\":\"filesystem-v2:../../etc/passwd\"}}}", null, null, &buf, &diag, &files));
+    try t.expect(std.mem.indexOf(u8, diag.text(), "not a file store id") != null);
+    b = try buildFiles("{\"url\":\"http://x.io/\",\"method\":\"POST\",\"body\":{\"$binary\":{\"data\":\"aGVsbG8=\"}}}", null, null, &buf, &diag, &files);
+    try t.expect(files.n == 0 and b.cl_at == 0);
+    try t.expectEqualStrings("hello", buf[b.hdr_end..b.body_end]);
 }
 
 test "url: the WHATWG cleanup of n8n's URL parser (ends, tab, CR, LF)" {
