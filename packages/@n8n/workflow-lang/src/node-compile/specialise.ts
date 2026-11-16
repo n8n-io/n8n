@@ -256,6 +256,48 @@ const HELPERS: Record<string, string> = {
 	}
 	return current === undefined ? fallback : current;
 }`,
+	__caseWords: `function __caseWords(input: any): any {
+	if (typeof input !== 'string') throw new Error('change-case of a value that is not text has no compiled form');
+	const words: string[] = [];
+	let word: string = '';
+	for (let k = 0; k < input.length; k++) {
+		const code: number = input.charCodeAt(k);
+		if (code > 127) throw new Error('change-case of text outside ASCII has no compiled form');
+		const upper: boolean = code >= 65 && code <= 90;
+		const lower: boolean = code >= 97 && code <= 122;
+		const digit: boolean = code >= 48 && code <= 57;
+		if (!upper && !lower && !digit) {
+			if (word !== '') words.push(word);
+			word = '';
+			continue;
+		}
+		if (upper && word !== '') {
+			const before: number = input.charCodeAt(k - 1);
+			const after: number = k + 1 < input.length ? input.charCodeAt(k + 1) : 0;
+			if (before < 65 || before > 90 || (after >= 97 && after <= 122)) {
+				words.push(word);
+				word = '';
+			}
+		}
+		word += input.charAt(k);
+	}
+	if (word !== '') words.push(word);
+	return words;
+}`,
+	__changeCase: `function __changeCase(input: any, style: string, delimiter: string): string {
+	const words: any = __caseWords(input);
+	const out: string[] = [];
+	for (let k = 0; k < words.length; k++) {
+		const word: string = words[k];
+		const first: number = word.charCodeAt(0);
+		const rest: string = word.slice(1).toLowerCase();
+		if (style === 'lower' || (k === 0 && style === 'camel') || (k > 0 && style === 'sentence')) out.push(word.toLowerCase());
+		else if (style === 'upper') out.push(word.toUpperCase());
+		else if (k > 0 && (style === 'camel' || style === 'pascal') && first >= 48 && first <= 57) out.push('_' + word.charAt(0) + rest);
+		else out.push(word.charAt(0).toUpperCase() + rest);
+	}
+	return out.join(delimiter);
+}`,
 };
 
 const PURE_GLOBALS = new Set([
@@ -352,6 +394,21 @@ function packageHelper(imported: { from: string; name: string }): string | undef
 	const table = PACKAGE_HELPERS[pkg];
 	return table && Object.hasOwn(table, name) ? table[name] : undefined;
 }
+
+const CHANGE_CASE: Record<string, [style: string, delimiter: string]> = {
+	noCase: ['lower', ' '],
+	snakeCase: ['lower', '_'],
+	kebabCase: ['lower', '-'],
+	dotCase: ['lower', '.'],
+	pathCase: ['lower', '/'],
+	constantCase: ['upper', '_'],
+	capitalCase: ['capital', ' '],
+	trainCase: ['capital', '-'],
+	pascalSnakeCase: ['capital', '_'],
+	sentenceCase: ['sentence', ' '],
+	camelCase: ['camel', ''],
+	pascalCase: ['pascal', ''],
+};
 
 const PACKAGE_CONSTANTS: Record<string, string | number> = {
 	SEND_AND_WAIT_OPERATION: 'sendAndWait',
@@ -580,6 +637,7 @@ class Specialiser {
 	private helper(name: string, ...args: ts.Expression[]): ts.CallExpression {
 		this.helpers.add(name);
 		if (name === '__getPath') this.helpers.add('__get');
+		if (name === '__changeCase') this.helpers.add('__caseWords');
 		return call(name, ...args);
 	}
 
@@ -1005,6 +1063,19 @@ class Specialiser {
 			) {
 				const imported = unit.file.imports.get(node.expression.text);
 				const helper = imported ? packageHelper(imported) : undefined;
+				if (
+					imported?.from === 'change-case' &&
+					Object.hasOwn(CHANGE_CASE, imported.name) &&
+					node.arguments.length === 1
+				) {
+					const [style, delimiter] = CHANGE_CASE[imported.name];
+					return this.helper(
+						'__changeCase',
+						...args(node),
+						f.createStringLiteral(style),
+						f.createStringLiteral(delimiter),
+					);
+				}
 				if (helper === '__get') {
 					const path = node.arguments[1];
 					const text = path && ts.isStringLiteral(path) ? path.text : '';
