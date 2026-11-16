@@ -229,32 +229,6 @@ defineExpose({ onSetupTaskAction });
 			</div>
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
-					<AgentInfoPanel
-						ref="agentInfoPanel"
-						:config="localConfig"
-						:disabled="childrenDisabled"
-						:project-id="projectId"
-						@update:config="(changes, meta) => emit('update:config', changes, meta)"
-						@draft:config="emit('draft:config')"
-					/>
-
-					<AgentPanel
-						:header="i18n.baseText('agents.builder.skills.title')"
-						:description="i18n.baseText('agents.builder.skills.description')"
-						data-testid="agent-skills-panel"
-					>
-						<AgentSkillsSection
-							:skills="appliedSkills"
-							:disabled="childrenDisabled"
-							:show-label="false"
-							:validation-issues="configValidationIssues ?? []"
-							:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
-							@open-skill="emit('open-skill', $event)"
-							@add-skill="emit('add-skill')"
-							@remove-skill="emit('remove-skill', $event)"
-						/>
-					</AgentPanel>
-
 					<AgentPanel
 						:header="i18n.baseText('agents.builder.triggers.title')"
 						:description="i18n.baseText('agents.builder.triggers.description')"
@@ -294,6 +268,32 @@ defineExpose({ onSetupTaskAction });
 							@toggle-task="emit('toggle-task', $event)"
 							@tasks-changed="emit('tasks-changed')"
 							@preview-task="emit('preview-task', $event)"
+						/>
+					</AgentPanel>
+
+					<AgentInfoPanel
+						ref="agentInfoPanel"
+						:config="localConfig"
+						:disabled="childrenDisabled"
+						:project-id="projectId"
+						@update:config="(changes, meta) => emit('update:config', changes, meta)"
+						@draft:config="emit('draft:config')"
+					/>
+
+					<AgentPanel
+						:header="i18n.baseText('agents.builder.skills.title')"
+						:description="i18n.baseText('agents.builder.skills.description')"
+						data-testid="agent-skills-panel"
+					>
+						<AgentSkillsSection
+							:skills="appliedSkills"
+							:disabled="childrenDisabled"
+							:show-label="false"
+							:validation-issues="configValidationIssues ?? []"
+							:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
+							@open-skill="emit('open-skill', $event)"
+							@add-skill="emit('add-skill')"
+							@remove-skill="emit('remove-skill', $event)"
 						/>
 					</AgentPanel>
 
