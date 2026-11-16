@@ -29,6 +29,14 @@ export interface SpecialiseInput {
 	timezone?: string;
 
 	aliases?: Record<string, string>;
+
+	parameterKind?: (name: string) => ParameterKind | undefined;
+}
+
+export interface ParameterKind {
+	type: string;
+	extract: boolean;
+	modes?: Record<string, { pattern: string; flags: string } | null>;
 }
 
 export interface SpecialiseResult {
@@ -879,12 +887,28 @@ export function hasExpression(value: unknown): boolean {
 	return false;
 }
 
+const EXTRACT_INPUT_LIMIT = 4096;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function extractedBy(rule: { pattern: string; flags: string }, value: unknown): string | undefined {
+	if (typeof value !== 'string' || value.length > EXTRACT_INPUT_LIMIT) return undefined;
+	try {
+		const found = new RegExp(rule.pattern, rule.flags).exec(value);
+		return found && found.length === 2 && typeof found[1] === 'string' ? found[1] : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 function call(name: string, ...args: ts.Expression[]): ts.CallExpression {
 	return f.createCallExpression(f.createIdentifier(name), undefined, args);
 }
 
-function isThisCall(node: ts.Node, ...path: string[]): node is ts.CallExpression {
-	if (!ts.isCallExpression(node)) return false;
+function isThisCall(node: ts.Node | undefined, ...path: string[]): node is ts.CallExpression {
+	if (!node || !ts.isCallExpression(node)) return false;
 	let target: ts.Expression = node.expression;
 	for (let k = path.length - 1; k >= 0; k--) {
 		if (!ts.isPropertyAccessExpression(target) || target.name.text !== path[k]) return false;
@@ -1225,24 +1249,23 @@ class Specialiser {
 		this.queue.push(unit);
 	}
 
-	private parameter(node: ts.CallExpression): ts.Expression {
+	private parameter(node: ts.CallExpression, late = false): ts.Expression {
 		const [nameArg, , fallback, options] = node.arguments;
-		if (!nameArg || !ts.isStringLiteral(nameArg)) {
+		if (!nameArg || !(ts.isStringLiteral(nameArg) || ts.isNoSubstitutionTemplateLiteral(nameArg))) {
 			return node;
 		}
 
 		let extract = false;
-		if (options) {
-			const only =
-				ts.isObjectLiteralExpression(options) && options.properties.length === 1
-					? options.properties[0]
-					: undefined;
-			extract =
-				!!only &&
-				ts.isPropertyAssignment(only) &&
-				only.name.getText() === 'extractValue' &&
-				only.initializer.kind === ts.SyntaxKind.TrueKeyword;
-			if (!extract) return node;
+		if (options && literalOf(options)?.value !== undefined) return node;
+		if (options && !literalOf(options)) {
+			if (!ts.isObjectLiteralExpression(options)) return node;
+			for (const member of options.properties) {
+				if (!ts.isPropertyAssignment(member) || !ts.isIdentifier(member.name)) return node;
+				const flag = literalOf(member.initializer)?.value;
+				if (typeof flag !== 'boolean') return node;
+				if (member.name.text === 'extractValue') extract = flag;
+				else if (member.name.text !== 'skipValidation') return node;
+			}
 		}
 		const path = nameArg.text.split('.');
 		let value: unknown = this.input.parameters;
@@ -1253,14 +1276,43 @@ class Specialiser {
 					: undefined;
 		}
 		const top = this.input.parameters[path[0]];
-		if (hasExpression(top)) {
-			let read: ts.Expression = f.createIdentifier('parameters');
-			for (const key of path)
-				read = f.createPropertyAccessChain(
-					read,
-					f.createToken(ts.SyntaxKind.QuestionDotToken),
-					key,
-				);
+		const dynamic = hasExpression(top);
+		let read: ts.Expression = f.createIdentifier('parameters');
+		for (const key of path)
+			read = f.createPropertyAccessChain(read, f.createToken(ts.SyntaxKind.QuestionDotToken), key);
+		if (extract) {
+			const kind = this.input.parameterKind?.(nameArg.text);
+			if (kind?.type === 'filter' || kind?.extract) return node;
+			const locator =
+				isRecord(value) &&
+				'mode' in value &&
+				'value' in value &&
+				(value.__rl === true || kind?.type === 'resourceLocator')
+					? value
+					: undefined;
+			if (locator) {
+				if (typeof locator.mode !== 'string' || hasExpression(locator.mode)) return node;
+				const rule = kind?.modes ? (kind.modes[locator.mode] ?? null) : undefined;
+				if (rule === undefined && locator.mode !== 'id' && locator.mode !== 'list') return node;
+				if (rule) {
+					const extracted = dynamic ? undefined : extractedBy(rule, locator.value);
+					return extracted === undefined ? node : f.createStringLiteral(extracted);
+				}
+				if (dynamic) {
+					return this.helper(
+						'__deepCopy',
+						f.createPropertyAccessChain(
+							read,
+							f.createToken(ts.SyntaxKind.QuestionDotToken),
+							'value',
+						),
+					);
+				}
+				return expressionOf(locator.value);
+			}
+			if (dynamic && (kind === undefined || kind.type === 'resourceLocator')) return node;
+		}
+		if (dynamic) {
 			const or = fallback ?? (path.length === 1 ? this.defaultOf(path[0]) : undefined);
 
 			return this.helper(
@@ -1268,21 +1320,13 @@ class Specialiser {
 				or ? f.createBinaryExpression(read, ts.SyntaxKind.QuestionQuestionToken, or) : read,
 			);
 		}
-		if (extract) {
-			const locator =
-				typeof value === 'object' && value !== null
-					? (value as Record<string, unknown>)
-					: undefined;
-			if (hasExpression(top)) return node;
-			if (locator?.__rl === true) {
-				if (locator.mode !== 'id' && locator.mode !== 'list') return node;
-				return expressionOf(locator.value);
-			}
-		}
 		if (value !== undefined) return expressionOf(value);
 		if (path.length === 1 && this.input.defaults && path[0] in this.input.defaults) {
 			return expressionOf(this.input.defaults[path[0]]);
 		}
+		const absent =
+			!fallback || (literalOf(fallback) !== undefined && literalOf(fallback)?.value === undefined);
+		if (late && absent) return node;
 		return fallback ?? f.createIdentifier('undefined');
 	}
 
@@ -1789,6 +1833,7 @@ class Specialiser {
 			if (node.kind === ts.SyntaxKind.ThisKeyword) {
 				const parent = node.parent;
 				const member = parent && ts.isPropertyAccessExpression(parent) ? parent.name.text : '';
+				if (isThisCall(parent?.parent, 'getNodeParameter')) return;
 				const inner =
 					member === 'helpers' && ts.isPropertyAccessExpression(parent.parent)
 						? `.${parent.parent.name.text}`
@@ -1826,6 +1871,24 @@ class Specialiser {
 			ts.forEachChild(node, walk);
 		};
 		walk(root);
+	}
+
+	private checkParameters() {
+		for (const { name, node } of this.output) {
+			const walk = (n: ts.Node) => {
+				if (isThisCall(n, 'getNodeParameter')) {
+					const [parameter, , , options] = n.arguments;
+					this.error(
+						name,
+						parameter && literalOf(parameter) && options
+							? "the options of 'this.getNodeParameter' have no compiled form"
+							: "'this.getNodeParameter' has no compiled form: the parameter name is not a constant for this node",
+					);
+				}
+				ts.forEachChild(n, walk);
+			};
+			walk(node);
+		}
 	}
 
 	private checkCredentials() {
@@ -2823,6 +2886,14 @@ class Specialiser {
 				return value;
 			};
 			if (ts.isParenthesizedExpression(n) && literalOf(n.expression)) return done(n.expression);
+			if (isThisCall(n, 'getNodeParameter')) {
+				const bound = this.parameter(n, true);
+				if (bound !== n) return done(bound);
+			}
+			if (ts.isForOfStatement(n)) {
+				const unrolled = unrollParameterLoop(n);
+				if (unrolled) return done(unrolled);
+			}
 			if (ts.isBinaryExpression(n)) {
 				const op = n.operatorToken.kind;
 				const left = literalOf(n.left);
@@ -4223,6 +4294,7 @@ class Specialiser {
 		this.checkInstances();
 		this.optimise();
 		this.trimArguments();
+		this.checkParameters();
 		this.checkCredentials();
 		const linked = this.output.map((o) => o.name);
 		if (this.errors.length > 0) return { errors: this.errors, notes: this.notes, linked };
@@ -4418,6 +4490,58 @@ function isValueUse(n: ts.Identifier): boolean {
 	if (ts.isPropertyDeclaration(p) || ts.isImportSpecifier(p) || ts.isExportSpecifier(p))
 		return false;
 	return true;
+}
+
+const UNROLL_LIMIT = 16;
+
+function unrollParameterLoop(loop: ts.ForOfStatement): ts.Statement | undefined {
+	const list = loop.expression;
+	const declarations = loop.initializer;
+	if (
+		loop.awaitModifier ||
+		!ts.isArrayLiteralExpression(list) ||
+		list.elements.length > UNROLL_LIMIT ||
+		!ts.isVariableDeclarationList(declarations) ||
+		!(declarations.flags & ts.NodeFlags.Const) ||
+		declarations.declarations.length !== 1
+	)
+		return undefined;
+	const name = declarations.declarations[0].name;
+	if (!ts.isIdentifier(name)) return undefined;
+	const values: string[] = [];
+	for (const element of list.elements) {
+		const literal = literalOf(element);
+		if (!literal || typeof literal.value !== 'string') return undefined;
+		values.push(literal.value);
+	}
+	let names = false;
+	let jumps = false;
+	const walk = (n: ts.Node) => {
+		if (ts.isBreakStatement(n) || ts.isContinueStatement(n) || ts.isLabeledStatement(n))
+			jumps = true;
+		if (isThisCall(n, 'getNodeParameter')) {
+			const uses = (x: ts.Node): boolean =>
+				(ts.isIdentifier(x) && x.text === name.text) || (ts.forEachChild(x, uses) ?? false);
+			if (n.arguments[0] && uses(n.arguments[0])) names = true;
+		}
+		ts.forEachChild(n, walk);
+	};
+	walk(loop.statement);
+	if (!names || jumps || bindingsOf(loop.statement).has(name.text)) return undefined;
+	const withValue = (value: string) => {
+		const visit = (x: ts.Node): ts.Node => {
+			if (ts.isShorthandPropertyAssignment(x) && x.name.text === name.text)
+				return f.createPropertyAssignment(name.text, f.createStringLiteral(value));
+			if (ts.isIdentifier(x) && x.text === name.text && isValueUse(x))
+				return f.createStringLiteral(value);
+			return ts.visitEachChild(x, visit, undefined);
+		};
+		return ts.visitNode(loop.statement, visit) as ts.Statement;
+	};
+	return f.createBlock(
+		values.map((value) => f.createBlock([withValue(value)], true)),
+		true,
+	);
 }
 
 function containsBreak(n: ts.Node): boolean {
