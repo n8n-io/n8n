@@ -20,7 +20,7 @@ import {
 	CompiledEngineDispatcher,
 	effectSeqOf,
 	findTriggerNode,
-	isRuntimeTrigger,
+	runtimeRunsTrigger,
 	toResumeValue,
 } from '../compiled-engine.dispatcher';
 import type { CompiledArtifact, WfrtEvent } from '../compiled-engine.types';
@@ -739,18 +739,14 @@ describe('a run that a trigger of n8n starts', () => {
 		);
 	});
 
-	it('tells the triggers that wfrt runs from the triggers that n8n runs', () => {
-		expect(isRuntimeTrigger(findTriggerNode(workflowData))).toBe(true);
-		expect(
-			isRuntimeTrigger({
-				id: 'g1',
-				name: 'Gmail Trigger',
-				type: 'n8n-nodes-base.gmailTrigger',
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {},
-			}),
-		).toBe(false);
+	it('tells the trigger that wfrt runs from a trigger that n8n runs', () => {
+		const gmail = node('Gmail Trigger', 'n8n-nodes-base.gmailTrigger');
+		const schedule = node('Schedule Trigger', 'n8n-nodes-base.scheduleTrigger');
+		expect(runtimeRunsTrigger(artifact, findTriggerNode(workflowData))).toBe(true);
+		expect(runtimeRunsTrigger(artifact, gmail)).toBe(false);
+		// A Schedule Trigger with a stand-in webhook (a rule that v1 filters by the last run).
+		expect(runtimeRunsTrigger(artifact, schedule)).toBe(false);
+		expect(runtimeRunsTrigger({ ok: true, triggers: [{ kind: 'schedule' }] }, schedule)).toBe(true);
 	});
 });
 

@@ -276,6 +276,8 @@ export class CompiledWorkflowCompiler {
 			instance?: { baseUrl: string; id: string };
 		} = {
 			name: input.name,
+			// n8n runs every trigger that `wfrt` does not run itself (`n8nTriggerNodeIds`).
+			hostTriggers: true,
 			...(input.trigger === undefined ? {} : { trigger: input.trigger }),
 			resolveWorkflow: (id: string) => subWorkflows.get(id),
 			timezone: getGlobalState().defaultTimezone,

@@ -22,7 +22,7 @@ import { CompiledEngineConfig } from './compiled-engine.config';
 import {
 	CompiledEngineDispatcher,
 	findTriggerNode,
-	isRuntimeTrigger,
+	runtimeRunsTrigger,
 } from './compiled-engine.dispatcher';
 import type { WfrtAck, WfrtEvent, WfrtEventCursor } from './compiled-engine.types';
 import { isSequencedEvent } from './compiled-engine.types';
@@ -347,9 +347,10 @@ export class CompiledEngineService implements CompiledEngineProvider {
 		return await this.dispatcher.stop(executionId);
 	}
 
-	n8nTriggerNodeIds(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>): Set<string> {
+	async n8nTriggerNodeIds(workflow: IWorkflowBase): Promise<Set<string>> {
 		const kept = findTriggerNode(workflow);
-		const runtime = isRuntimeTrigger(kept) ? kept?.id : undefined;
+		const artifact = await this.sync.compile(workflow);
+		const runtime = runtimeRunsTrigger(artifact, kept) ? kept?.id : undefined;
 		return new Set(
 			workflow.nodes.filter((node) => !node.disabled && node.id !== runtime).map((node) => node.id),
 		);

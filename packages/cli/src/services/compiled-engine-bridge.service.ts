@@ -46,7 +46,7 @@ export interface CompiledEngineProvider {
 	 * one except the trigger that `wfrt` runs itself (a Webhook or a schedule). When such a
 	 * node fires, n8n starts the run in `wfrt` with the items of the node.
 	 */
-	n8nTriggerNodeIds(workflow: Pick<IWorkflowBase, 'nodes' | 'connections'>): Set<string>;
+	n8nTriggerNodeIds(workflow: IWorkflowBase): Promise<Set<string>>;
 
 	/**
 	 * True when `wfrt` serves the webhook of this node itself (a Webhook node). The webhook

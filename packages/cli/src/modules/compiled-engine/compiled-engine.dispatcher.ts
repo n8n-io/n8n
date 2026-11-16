@@ -100,8 +100,19 @@ const RUNTIME_TRIGGER_TYPES = new Set([
 	'n8n-nodes-base.interval',
 ]);
 
-export function isRuntimeTrigger(node: INode | undefined): boolean {
-	return node !== undefined && RUNTIME_TRIGGER_TYPES.has(node.type);
+/**
+ * True when `wfrt` runs the trigger of the module itself: a schedule, or the Webhook node.
+ * Else the module has a stand-in webhook, and n8n runs the trigger node (a poller, a trigger
+ * of an app, a Schedule Trigger whose rhythm depends on the last run).
+ */
+export function runtimeRunsTrigger(
+	artifact: Pick<CompiledArtifact, 'ok' | 'triggers'>,
+	node: INode | undefined,
+): boolean {
+	if (!node || !artifact.ok) return false;
+	const first: unknown = artifact.triggers[0];
+	const kind = isRecord(first) ? first.kind : undefined;
+	return kind === 'schedule' || (kind === 'webhook' && node.type === 'n8n-nodes-base.webhook');
 }
 
 function isTriggerType(type: string): boolean {
@@ -218,10 +229,7 @@ export class CompiledEngineDispatcher {
 		const triggerNode = this.manualTriggerNode(data);
 		// A run that a trigger of n8n started (a poller, a trigger of an app) begins at that
 		// trigger: the module is compiled with it as the start.
-		const startedBy =
-			triggerNode && isTriggerType(triggerNode.type) && !isRuntimeTrigger(triggerNode)
-				? triggerNode.name
-				: undefined;
+		const startedBy = triggerNode && isTriggerType(triggerNode.type) ? triggerNode.name : undefined;
 		const loaded = await this.sync.prepareManualRun(workflowData, startedBy);
 		const trigger = this.manualTriggerValue(data, loaded.artifact, triggerNode);
 
@@ -274,14 +282,22 @@ export class CompiledEngineDispatcher {
 		const stackItems = data.executionData?.executionData?.nodeExecutionStack[0]?.data.main[0];
 		// A trigger that n8n runs has a stand-in webhook in the module: the request body is the
 		// list of the items that the trigger gave.
-		if (triggerNode && !isRuntimeTrigger(triggerNode) && stackItems && stackItems.length > 0) {
+		if (
+			triggerNode &&
+			!runtimeRunsTrigger(artifact, triggerNode) &&
+			stackItems &&
+			stackItems.length > 0
+		) {
 			return {
 				method: 'POST',
 				path: '',
 				headers: {},
 				params: {},
 				query: {},
-				body: stackItems.map((item) => item.json),
+				// An item with files carries them under `$binary`, as items do in the runtime.
+				body: stackItems.map((item) =>
+					item.binary ? { ...item.json, $binary: item.binary } : item.json,
+				),
 			};
 		}
 		const fromStack = stackItems?.[0];

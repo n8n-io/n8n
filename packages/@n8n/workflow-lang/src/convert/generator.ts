@@ -113,6 +113,13 @@ export interface ConvertOptions {
 	 * when the source does not compile. The modules are in `ConvertResult.nodes`.
 	 */
 	nodeSources?: NodeSources;
+	/**
+	 * True when n8n runs the triggers that the runtime does not run itself. A trigger whose
+	 * times depend on the state of v1 (a Schedule Trigger rule with an interval above 1, the
+	 * Interval node) then stays a trigger of n8n: the converter puts the stand-in webhook in
+	 * its place.
+	 */
+	hostTriggers?: boolean;
 	/** Names of Code nodes that always run in the fallback host. */
 	hostCodeNodes?: string[];
 	/**
@@ -1670,6 +1677,7 @@ export class ModuleGenerator {
 				(d) => this.diag({ ...d, node: main.trigger?.name }),
 				this.options.scheduleItem,
 				typeof wf.id === 'string' && wf.id !== '' ? wf.id : undefined,
+				this.options.hostTriggers === true,
 			);
 		for (const h of plan.helpers ?? []) this.helpers.add(h);
 		for (const z of plan.zones ?? []) this.zones.add(z);

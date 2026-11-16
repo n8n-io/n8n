@@ -170,6 +170,20 @@ function v1Cron(rule: Record<string, unknown>, field: string, nodeKey: string): 
 	return null;
 }
 
+/** True for a rule that v1 runs with `recurrenceCheck` (`intervalToRecurrence`). */
+function filteredByLastRun(rule: Record<string, unknown>): boolean {
+	const field = fixedText(rule.field) ?? text(rule.field, 'days');
+	if (field === 'minutes') {
+		const minutes = num(rule.minutesInterval, 5);
+		return minutes > 0 && 60 % minutes !== 0;
+	}
+	if (field === 'hours') return num(rule.hoursInterval, 1) !== 1;
+	if (field === 'days') return num(rule.daysInterval, 1) !== 1;
+	if (field === 'weeks') return num(rule.weeksInterval, 1) !== 1;
+	if (field === 'months') return num(rule.monthsInterval, 1) !== 1;
+	return false;
+}
+
 function scheduleOf(
 	rule: Record<string, unknown>,
 	timezone: Code | null,
@@ -300,6 +314,7 @@ export function planTrigger(
 	diag: (d: Omit<ConvertDiagnostic, 'node'>) => void,
 	scheduleItem: 'native' | 'v1' = 'v1',
 	workflowId?: string,
+	hostTriggers = false,
 ): TriggerPlan {
 	const p = node.parameters ?? {};
 	const tz = timezone ? raw(str(timezone)) : null;
@@ -371,6 +386,13 @@ export function planTrigger(
 				isRecord(p.rule) && Array.isArray(p.rule.interval)
 					? p.rule.interval.filter(isRecord)
 					: [{}];
+			// v1 filters the fires of a rule with an interval above 1 by the time since the last
+			// run, which it keeps in the static data. When n8n runs the triggers that the runtime
+			// does not (`ConvertOptions.hostTriggers`), such a node stays a trigger of n8n, so
+			// its rhythm is the rhythm of v1.
+			if (hostTriggers && rule.some(filteredByLastRun)) {
+				return standIn('The v1 node filters the fires of a rule by the time since the last run.');
+			}
 			const triggers: string[] = [];
 			for (const r of rule.length > 0 ? rule : [{}]) {
 				// The key of v1: the workflow id and the node id (`ScheduleTrigger.node.ts`).
@@ -439,6 +461,8 @@ export function planTrigger(
 			};
 		}
 		case 'n8n-nodes-base.interval': {
+			// The v1 node counts from the moment of the activation, not from the clock.
+			if (hostTriggers) return standIn('The v1 Interval node counts from its activation.');
 			const unit = text(p.unit, 'seconds');
 			const triggers = [
 				call('schedule', {
