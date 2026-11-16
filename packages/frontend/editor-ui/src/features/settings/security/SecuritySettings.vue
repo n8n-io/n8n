@@ -33,10 +33,7 @@ import ApiKeyRateLimitsSection from './rateLimits/ApiKeyRateLimitsSection.vue';
 import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
-import {
-	INSTANCE_POLICY_VIEW,
-	usePolicyAdminAccess,
-} from '@n8n/frontend-module-type-availability-policies';
+import { usePolicyAdminAccess } from '@n8n/frontend-module-type-availability-policies';
 
 const router = useRouter();
 const rootStore = useRootStore();
@@ -47,10 +44,11 @@ const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { isWorkflowReviewsAvailable } = useWorkflowReviewsFeature();
 const posthogStore = usePostHog();
-const { canManagePolicies: canManageTypePolicies } = usePolicyAdminAccess();
+const { canManagePolicies: canManageTypePolicies, entryRouteName: typePoliciesRouteName } =
+	usePolicyAdminAccess();
 
 function openTypePolicies() {
-	void router.push({ name: INSTANCE_POLICY_VIEW });
+	void router.push({ name: typePoliciesRouteName.value });
 }
 
 const isRateLimitSettingsEnabled = computed(() =>

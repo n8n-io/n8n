@@ -8,6 +8,7 @@ import { fireEvent } from '@testing-library/vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import InstancePolicyView from './InstancePolicyView.vue';
+import { POLICIES_LANDING_VIEW } from '../type-availability-policies.constants';
 
 const { route, push, replace } = vi.hoisted(() => ({
 	route: { query: {} as Record<string, string> },
@@ -47,8 +48,16 @@ describe('InstancePolicyView', () => {
 		expect(getByTestId('instance-policy-node-table')).toBeEmptyDOMElement();
 	});
 
-	it('goes back to the Policies page', async () => {
+	it('goes back to the landing page', async () => {
 		const { getByText } = setup();
+
+		await fireEvent.click(getByText('Node and credential policies'));
+
+		expect(push).toHaveBeenCalledWith({ name: POLICIES_LANDING_VIEW });
+	});
+
+	it('goes back to the Policies page for a user who skips the landing page', async () => {
+		const { getByText } = setup(['nodeTypePolicy:manage']);
 
 		await fireEvent.click(getByText('Policies'));
 

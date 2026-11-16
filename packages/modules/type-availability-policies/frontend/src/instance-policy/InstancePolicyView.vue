@@ -8,6 +8,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { usePolicyAdminAccess } from '../composables/usePolicyAdminAccess';
 import {
+	POLICIES_LANDING_VIEW,
 	POLICY_TAB_LABEL_KEY,
 	type RestrictedTypeKind,
 } from '../type-availability-policies.constants';
@@ -16,7 +17,7 @@ const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
-const { manageableKinds } = usePolicyAdminAccess();
+const { manageableKinds, entryRouteName } = usePolicyAdminAccess();
 
 const tabOptions = computed(() =>
 	manageableKinds.value.map((kind) => ({
@@ -36,8 +37,21 @@ const activeTab = computed<RestrictedTypeKind | undefined>({
 	},
 });
 
+// A user who skips the landing page on the way in goes back to Policies.
+const back = computed(() =>
+	entryRouteName.value === POLICIES_LANDING_VIEW
+		? {
+				name: POLICIES_LANDING_VIEW,
+				label: i18n.baseText('typeAvailabilityPolicies.instancePolicy.back'),
+			}
+		: {
+				name: VIEWS.SECURITY_SETTINGS,
+				label: i18n.baseText('typeAvailabilityPolicies.landing.back'),
+			},
+);
+
 function onBack() {
-	void router.push({ name: VIEWS.SECURITY_SETTINGS });
+	void router.push({ name: back.value.name });
 }
 
 onMounted(() => {
@@ -49,7 +63,7 @@ onMounted(() => {
 	<N8nSettingsLayout
 		full-width
 		show-back
-		:back-label="i18n.baseText('typeAvailabilityPolicies.instancePolicy.back')"
+		:back-label="back.label"
 		:class="$style.layout"
 		data-test-id="instance-policy-view"
 		@back="onBack"

@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 
-import { INSTANCE_POLICY_VIEW } from './type-availability-policies.constants';
+import {
+	INSTANCE_POLICY_VIEW,
+	POLICIES_LANDING_VIEW,
+} from './type-availability-policies.constants';
 import { TypeAvailabilityPoliciesModule } from './type-availability-policies.module';
 
 describe('TypeAvailabilityPoliciesModule', () => {
@@ -10,12 +13,14 @@ describe('TypeAvailabilityPoliciesModule', () => {
 		expect(TypeAvailabilityPoliciesModule.id).toBe('type-availability-policies');
 	});
 
-	describe('instance policy route', () => {
-		const route = () =>
-			TypeAvailabilityPoliciesModule.routes?.find(({ name }) => name === INSTANCE_POLICY_VIEW);
+	describe.each([
+		['landing', POLICIES_LANDING_VIEW, 'security/node-and-credential-policies'],
+		['instance policy', INSTANCE_POLICY_VIEW, 'security/node-and-credential-policies/instance'],
+	])('%s route', (_label, name, path) => {
+		const route = () => TypeAvailabilityPoliciesModule.routes?.find((r) => r.name === name);
 
 		it('is a settings page, so the shell nests it under /settings', () => {
-			expect(route()?.path).toBe('security/node-and-credential-policies/instance');
+			expect(route()?.path).toBe(path);
 			expect(route()?.meta?.layout).toBe('settings');
 			expect(route()?.meta?.telemetry?.pageCategory).toBe('settings');
 		});

@@ -5,6 +5,10 @@ import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi } from 'vitest';
 
 import { usePolicyAdminAccess } from './usePolicyAdminAccess';
+import {
+	INSTANCE_POLICY_VIEW,
+	POLICIES_LANDING_VIEW,
+} from '../type-availability-policies.constants';
 
 const setup = ({
 	moduleActive = true,
@@ -65,5 +69,19 @@ describe('usePolicyAdminAccess', () => {
 		});
 
 		expect(canManagePolicies.value).toBe(false);
+	});
+
+	it('enters through the landing page with both scopes', () => {
+		const { entryRouteName } = setup({
+			globalScopes: ['nodeTypePolicy:manage', 'credentialTypePolicy:manage'],
+		});
+
+		expect(entryRouteName.value).toBe(POLICIES_LANDING_VIEW);
+	});
+
+	it('enters the instance policy page directly with one scope', () => {
+		const { entryRouteName } = setup({ globalScopes: ['credentialTypePolicy:manage'] });
+
+		expect(entryRouteName.value).toBe(INSTANCE_POLICY_VIEW);
 	});
 });

@@ -3,6 +3,8 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed } from 'vue';
 
 import {
+	INSTANCE_POLICY_VIEW,
+	POLICIES_LANDING_VIEW,
 	POLICY_KINDS,
 	POLICY_MANAGE_SCOPE,
 	TYPE_AVAILABILITY_POLICIES_MODULE_ID,
@@ -25,5 +27,10 @@ export function usePolicyAdminAccess() {
 
 	const canManagePolicies = computed(() => manageableKinds.value.length > 0);
 
-	return { manageableKinds, canManagePolicies };
+	// The landing page only leads to the instance policy for a user with one of the two scopes.
+	const entryRouteName = computed(() =>
+		manageableKinds.value.length === 1 ? INSTANCE_POLICY_VIEW : POLICIES_LANDING_VIEW,
+	);
+
+	return { manageableKinds, canManagePolicies, entryRouteName };
 }

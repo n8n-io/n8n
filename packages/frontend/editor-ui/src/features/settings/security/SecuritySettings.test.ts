@@ -9,7 +9,10 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';
-import { INSTANCE_POLICY_VIEW } from '@n8n/frontend-module-type-availability-policies';
+import {
+	INSTANCE_POLICY_VIEW,
+	POLICIES_LANDING_VIEW,
+} from '@n8n/frontend-module-type-availability-policies';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 
@@ -123,8 +126,17 @@ describe('SecuritySettings', () => {
 			);
 		});
 
-		it('opens the instance policy page from the row', async () => {
+		it('opens the landing page from the row', async () => {
 			enablePolicies(['nodeTypePolicy:manage', 'credentialTypePolicy:manage']);
+			const { findByTestId } = renderView();
+
+			await userEvent.click(await findByTestId('security-type-policies-row'));
+
+			expect(routerPush).toHaveBeenCalledWith({ name: POLICIES_LANDING_VIEW });
+		});
+
+		it('opens the instance policy page directly for a user with one policy scope', async () => {
+			enablePolicies(['nodeTypePolicy:manage']);
 			const { findByTestId } = renderView();
 
 			await userEvent.click(await findByTestId('security-type-policies-row'));
