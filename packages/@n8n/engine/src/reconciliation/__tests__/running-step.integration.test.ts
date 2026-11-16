@@ -68,11 +68,13 @@ describe('running step with no worker (integration)', () => {
 		return step;
 	}
 
-	it('fails a running step that no worker runs, and its execution', async () => {
+	/**
+	 * Creates an execution whose step of node A is `running` and that no worker
+	 * runs, as after a crash of the worker that claimed it.
+	 */
+	async function createExecutionWithOrphanStep(): Promise<string> {
 		const { executionStore, stepStore } = createStores(dataSource, staleness);
 		const executionId = generateId();
-		// The step is `running` and no worker runs it, as after a crash of the
-		// worker that claimed it.
 		await executionStore.createExecution({
 			id: executionId,
 			workflowId: 'wf-1',
@@ -91,6 +93,11 @@ describe('running step with no worker (integration)', () => {
 		]);
 		const stepId = created.find(({ nodeId }) => nodeId === 'node-a')?.id ?? '';
 		await stepStore.claimStep(stepId);
+		return executionId;
+	}
+
+	it('fails a running step that no worker runs, and its execution', async () => {
+		const executionId = await createExecutionWithOrphanStep();
 		const execute = vi.fn<IStepExecutor['execute']>();
 		const runtime = createRuntime({ execute });
 
@@ -108,6 +115,34 @@ describe('running step with no worker (integration)', () => {
 				name: STALE_RUNNING_STEP_ERROR_NAME,
 				message: expect.stringContaining('"A"') as string,
 			},
+		});
+	});
+
+	it('fails a running step of an execution that already ended, and leaves the execution as it is', async () => {
+		const { executionStore } = createStores(dataSource, staleness);
+		const executionId = await createExecutionWithOrphanStep();
+		const cancelled = await executionStore.cancelExecution(executionId);
+		const execute = vi.fn<IStepExecutor['execute']>();
+		const runtime = createRuntime({ execute });
+
+		runtime.start();
+		try {
+			await vi.waitFor(
+				async () => expect(await loadStepOfNodeA(executionId)).toMatchObject({ status: 'failed' }),
+				{ timeout: 5_000, interval: 20 },
+			);
+		} finally {
+			await runtime.stop();
+		}
+
+		expect(execute).not.toHaveBeenCalled();
+		expect(await loadStepOfNodeA(executionId)).toMatchObject({
+			status: 'failed',
+			error: { name: STALE_RUNNING_STEP_ERROR_NAME },
+		});
+		expect(await executionStore.loadExecution(executionId)).toMatchObject({
+			status: 'cancelled',
+			finishedAt: cancelled?.finishedAt,
 		});
 	});
 
