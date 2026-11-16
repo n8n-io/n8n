@@ -2,8 +2,6 @@ import { UserError } from '@n8n/errors';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
-	IDataObject,
-	IHttpRequestHelper,
 	IHttpRequestOptions,
 	INodeProperties,
 	Icon,
@@ -11,10 +9,7 @@ import type {
 
 import { readCustomModelEndpointCredential } from '../utils/custom-model-endpoint/credential-data';
 import { buildRequestHeaders, toHeaderRecord } from '../utils/custom-model-endpoint/headers';
-import {
-	accessTokenInResponse,
-	clientCredentialsTokenRequest,
-} from '../utils/custom-model-endpoint/oauth2';
+import {} from '../utils/custom-model-endpoint/oauth2';
 
 export class CustomModelEndpointApi implements ICredentialType {
 	name = 'customModelEndpointApi';
@@ -29,15 +24,6 @@ export class CustomModelEndpointApi implements ICredentialType {
 	};
 
 	properties: INodeProperties[] = [
-		{
-			// The engine only runs preAuthentication for a credential that declares one of these
-			displayName: 'Session Token',
-			name: 'sessionToken',
-			type: 'hidden',
-			typeOptions: { expirable: true, password: true },
-			default: '',
-			displayOptions: { show: { authentication: ['oauth2'] } },
-		},
 		{
 			displayName: 'Base URL',
 			name: 'url',
@@ -211,62 +197,24 @@ export class CustomModelEndpointApi implements ICredentialType {
 		},
 	];
 
-	/**
-	 * The node transport mints its token in memory, but this path is the generic one the
-	 * HTTP Request node takes, and n8n mints and caches the token for it here instead.
-	 */
-	async preAuthentication(
-		this: IHttpRequestHelper,
-		credentials: ICredentialDataDecryptedObject,
-	): Promise<IDataObject> {
-		const { login } = readCustomModelEndpointCredential(credentials);
-		if (login.type !== 'oauth2') return {};
-
-		const { method, headers, body, redirect, timeout } = clientCredentialsTokenRequest(login);
-
-		let response: unknown;
-		try {
-			response = await this.helpers.httpRequest({
-				method,
-				url: login.tokenUrl,
-				headers,
-				body,
-				timeout,
-				// Following one would re-POST the secret to wherever it pointed
-				disableFollowRedirect: redirect === 'manual',
-				// The refusal body states the reason; the error thrown in its place does not
-				ignoreHttpStatusErrors: true,
-				returnFullResponse: true,
-			});
-		} catch (error) {
-			// A refusal from the domain allowlist or the egress policy names the host
-			// it turned down and is worth keeping. Anything else carries the request
-			// that caused it, secret and all.
-			if (error instanceof UserError) throw error;
-
-			throw new UserError('Could not sign in to the gateway', {
-				description: 'Check the token URL, client ID, client secret and scope on the credential.',
-			});
-		}
-
-		return { sessionToken: accessTokenInResponse(response) };
-	}
-
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
 		const endpoint = readCustomModelEndpointCredential(credentials);
-		const { sessionToken } = credentials;
+
+		// Minting a token here would mean storing it on the credential, which this
+		// credential deliberately does not do. The nodes hold theirs in memory instead.
+		if (endpoint.login.type === 'oauth2') {
+			throw new UserError('OAuth2 works only in the Custom Model Endpoint nodes', {
+				description:
+					'This credential signs in for the Custom Model Endpoint and Custom Endpoint Chat Model nodes. To reach the gateway from another node, use an API key or a header.',
+			});
+		}
 
 		requestOptions.headers = buildRequestHeaders({
 			endpoint,
 			requestHeaders: toHeaderRecord(requestOptions.headers),
-			// A token left over from another login method would travel on every request
-			bearerToken:
-				endpoint.login.type === 'oauth2' && typeof sessionToken === 'string'
-					? sessionToken
-					: undefined,
 		});
 
 		return requestOptions;
