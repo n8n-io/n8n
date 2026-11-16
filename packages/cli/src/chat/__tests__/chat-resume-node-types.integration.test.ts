@@ -8,7 +8,7 @@ import { CHAT_NODE_TYPE, CHAT_TOOL_NODE_TYPE, RESPOND_TO_WEBHOOK_NODE_TYPE } fro
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { NodeTypes } from '../../node-types';
-import { CHAT_CANCELABLE_STATUSES, ChatExecutionManager } from '../chat-execution-manager';
+import { ChatExecutionManager } from '../chat-execution-manager';
 import type { ChatMessage } from '../chat-service.types';
 
 /**
@@ -172,7 +172,7 @@ describe('chat resume — real node-type onMessage mapping', () => {
 
 			expect(executionRepository.markAsCanceled).toHaveBeenCalledWith(
 				['1'],
-				CHAT_CANCELABLE_STATUSES,
+				['running', 'waiting', 'unknown'],
 			);
 		});
 

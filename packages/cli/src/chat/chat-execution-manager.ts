@@ -29,11 +29,7 @@ import { OwnershipService } from '../services/ownership.service';
 import { stripToolSuffix } from '../utils';
 
 /** A `new` run may still be queued to start, so an idle socket leaves it alone. */
-export const CHAT_CANCELABLE_STATUSES: readonly ExecutionStatus[] = [
-	'running',
-	'waiting',
-	'unknown',
-];
+const CHAT_CANCELABLE_STATUSES: readonly ExecutionStatus[] = ['running', 'waiting', 'unknown'];
 
 @Service()
 export class ChatExecutionManager {
