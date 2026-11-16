@@ -71,7 +71,7 @@ describe('PublicHttpService', () => {
 		});
 
 		const response = await request(createApp(service))
-			.post('/cloud/admin/users/42?tag=a&tag=b')
+			.post('/cloud/admin/users/42?tag=a&tag=b&page=2')
 			.send({ email: 'jane@example.com' });
 
 		expect(response.status).toBe(201);
@@ -81,7 +81,7 @@ describe('PublicHttpService', () => {
 				method: 'post',
 				path: '/cloud/admin/users/42',
 				params: { userId: '42' },
-				query: { tag: ['a', 'b'] },
+				query: { tag: ['a', 'b'], page: '2' },
 				body: { email: 'jane@example.com' },
 			}),
 		);
@@ -102,7 +102,8 @@ describe('PublicHttpService', () => {
 			.set('content-type', 'text/plain')
 			.send('hello');
 
-		expect(handler).toHaveBeenCalledWith(expect.objectContaining({ body: undefined }));
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(handler.mock.calls[0][0].body).toBeUndefined();
 	});
 
 	it('should omit the empty body the parser inserts when the request has no JSON', async () => {
@@ -112,7 +113,8 @@ describe('PublicHttpService', () => {
 
 		await request(createApp(service)).get('/cloud/admin/limits');
 
-		expect(handler).toHaveBeenCalledWith(expect.objectContaining({ body: undefined }));
+		expect(handler).toHaveBeenCalledTimes(1);
+		expect(handler.mock.calls[0][0].body).toBeUndefined();
 	});
 
 	it('should send status 500 if the handler throws', async () => {
@@ -127,6 +129,41 @@ describe('PublicHttpService', () => {
 		const response = await request(createApp(service)).get('/cloud/admin/limits');
 
 		expect(response.status).toBe(500);
+	});
+
+	it('should send the response headers', async () => {
+		const service = createService();
+		service.registerRoute({
+			method: 'get',
+			path: '/cloud/admin/limits',
+			middlewares: [],
+			handler: vi.fn().mockResolvedValue({
+				status: 200,
+				headers: { 'x-limits-version': '3' },
+				body: { limits: {} },
+			}),
+		});
+
+		const response = await request(createApp(service)).get('/cloud/admin/limits');
+
+		expect(response.status).toBe(200);
+		expect(response.headers['x-limits-version']).toBe('3');
+	});
+
+	it('should send no body and no content type when the response has no body', async () => {
+		const service = createService();
+		service.registerRoute({
+			method: 'get',
+			path: '/cloud/admin/limits',
+			middlewares: [],
+			handler: vi.fn().mockResolvedValue({ status: 404 }),
+		});
+
+		const response = await request(createApp(service)).get('/cloud/admin/limits');
+
+		expect(response.status).toBe(404);
+		expect(response.text).toBe('');
+		expect(response.headers['content-type']).toBeUndefined();
 	});
 
 	it('should send status 500 if the handler returns no response', async () => {
@@ -178,7 +215,7 @@ describe('PublicHttpService', () => {
 			expect(calls).toEqual(['first', 'auth', 'last', 'handler']);
 			expect(buildMiddlewares).toHaveBeenCalledWith(
 				expect.objectContaining({ skipAuth: false }),
-				expect.anything(),
+				[],
 			);
 		});
 
@@ -282,7 +319,7 @@ describe('PublicHttpService', () => {
 					skipAuth: true,
 					accessScope: { scope: 'workflow:list', globalOnly: true },
 				}),
-				expect.anything(),
+				[],
 			);
 		});
 
