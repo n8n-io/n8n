@@ -17,8 +17,10 @@ const TABLES = ['lease_kind', 'lease_session', 'lease'];
 const isSqlite = (process.env.DB_TYPE ?? 'sqlite') === 'sqlite';
 const zero = isSqlite ? '0' : "'0'";
 
+const newKind = () => `k-${randomUUID().slice(0, 8)}`;
+
 const REQUIRED_VALUES: Record<string, () => Record<string, unknown>> = {
-	lease_kind: () => ({ kind: `k-${randomUUID().slice(0, 8)}` }),
+	lease_kind: () => ({ kind: newKind() }),
 	lease_session: () => ({
 		id: randomUUID(),
 		hostId: 'host-1',
@@ -88,7 +90,7 @@ describe('CreateLeaseTables migration', () => {
 			'SELECT i.indisunique FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid WHERE c.relname = :name',
 			{ name },
 		);
-		return { columnNames: columns.map((c) => c.name), isUnique: unique[0]?.indisunique === true };
+		return { columnNames: columns.map((c) => c.name), isUnique: unique[0]?.indisunique ?? false };
 	}
 
 	async function insertRow(
@@ -107,7 +109,7 @@ describe('CreateLeaseTables migration', () => {
 	}
 
 	async function insertKind(context: TestMigrationContext) {
-		const { kind } = REQUIRED_VALUES.lease_kind();
+		const kind = newKind();
 		await insertRow(context, 'lease_kind', { kind });
 		return kind;
 	}
