@@ -180,6 +180,7 @@ export class CustomModelEndpointApi implements ICredentialType {
 				},
 			],
 			default: 'header',
+			hint: 'The header encodes the pair per RFC 6749, which escapes characters such as ~. If the login server rejects a secret you know is correct, send it in the request body.',
 			displayOptions: { show: { authentication: ['oauth2'] } },
 		},
 		{
