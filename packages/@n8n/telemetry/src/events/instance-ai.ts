@@ -9,7 +9,7 @@ import {
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
-import { assistantSurfaceSchema } from '../schemas';
+import { assistantRuntimeSchema as assistantRuntime, assistantSurfaceSchema } from '../schemas';
 import { setupItemProperties, setupTelemetryProperties } from '../setup-properties';
 
 /**
@@ -61,14 +61,7 @@ const currentTurnProps = {
 		),
 };
 
-/** The runtimes that run an n8n Assistant thread. */
-export const ASSISTANT_RUNTIMES = ['instance-ai', 'agents'] as const;
-export type AssistantRuntime = (typeof ASSISTANT_RUNTIMES)[number];
-const assistantRuntime = z
-	.enum(ASSISTANT_RUNTIMES)
-	.describe(
-		"The runtime that runs the thread: 'instance-ai' is the current Assistant runtime, 'agents' is the Assistant agent on the Agents runtime",
-	);
+export { ASSISTANT_RUNTIMES, type AssistantRuntime } from '../schemas';
 
 const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
