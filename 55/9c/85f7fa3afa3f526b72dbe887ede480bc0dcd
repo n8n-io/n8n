@@ -1,0 +1,76 @@
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-candidate.service.test.ts
+  ai_agent 279
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/reconcile-simulation-plan.test.ts
+  s_7a5063e5c8e411::t_b90396df099e4f 122,137,145
+packages/@n8n/instance-ai/src/tools/workflows/classify-node-destructiveness.service.ts
+  s_7a5063e5c8e411::t_b90396df099e4f 369,439
+  s_7a5063e5c8e411::t_a2aefe708af5be 28
+  s_7a5063e5c8e411::t_e859c415336c2a 49,352
+packages/cli/src/modules/instance-ai/turn-setup/assistant-agent.factory.ts
+  s_7a5063e5c8e411::t_1c1d76b80d6f91 326-331
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_7a5063e5c8e411::t_a03126d1989d65 675-680
+packages/@n8n/instance-ai/src/utils/__tests__/generate-validated-json.test.ts
+  s_7a5063e5c8e411::t_b90396df099e4f 143,150,153,175,183,189,191
+packages/@n8n/instance-ai/src/tools/workflows/apply-workflow-credentials.tool.ts
+  s_7a5063e5c8e411::t_b90396df099e4f 139
+packages/@n8n/instance-ai/src/tools/orchestration/verification/reconcile-plan.ts
+  s_7a5063e5c8e411::t_b90396df099e4f 54
+packages/cli/src/modules/instance-ai/self-healing/self-healing-agent.service.ts
+  s_7a5063e5c8e411::t_a2aefe708af5be 31
+  s_7a5063e5c8e411::t_e859c415336c2a 463
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.provider.test.ts
+  s_7a5063e5c8e411::t_43724da1bbe0da 639,643,661
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/plan-verification-simulation.test.ts
+  s_7a5063e5c8e411::t_b90396df099e4f 70,87,91,94
+packages/@n8n/instance-ai/src/tools/workflows/generate-simulation-fixtures.service.ts
+  s_7a5063e5c8e411::t_e859c415336c2a 74
+  s_7a5063e5c8e411::t_b90396df099e4f 465
+  s_7a5063e5c8e411::t_a2aefe708af5be 43
+packages/cli/src/modules/instance-ai/__tests__/credit-counting.test.ts
+  s_7a5063e5c8e411::t_938868d2a01d00 661-662,665,669,672,675-678,681-684,686-688,690-692,694-699,701-702,704-722,725-727,729-753
+packages/cli/src/modules/instance-ai/instance-ai-credit.service.ts
+  s_7a5063e5c8e411::t_d95bff3c5ee8db 100-102,104,107-108,115-116,121,123,130-131,135-144,149-150
+  s_7a5063e5c8e411::t_1801968a21c550 148
+  s_7a5063e5c8e411::t_a2aefe708af5be 9
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_7a5063e5c8e411::t_b90396df099e4f 1542
+packages/@n8n/instance-ai/src/index.ts
+  s_7a5063e5c8e411::t_e859c415336c2a 764
+packages/@n8n/instance-ai/src/types.ts
+  s_7a5063e5c8e411::t_e859c415336c2a 1760,2027-2028
+packages/@n8n/instance-ai/src/tools/workflows/reconcile-simulation-plan.ts
+  s_7a5063e5c8e411::t_a2aefe708af5be 27
+  s_7a5063e5c8e411::t_1f4aec8b636b3d 92-100,153
+  s_7a5063e5c8e411::t_e859c415336c2a 90
+packages/@n8n/instance-ai/src/tools/workflows/plan-verification-simulation.ts
+  s_7a5063e5c8e411::t_a2aefe708af5be 38
+  s_7a5063e5c8e411::t_b90396df099e4f 358,372,401
+  s_7a5063e5c8e411::t_e859c415336c2a 65
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/generate-simulation-fixtures.service.test.ts
+  s_7a5063e5c8e411::t_b90396df099e4f 139,143,148
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-agent.factory.test.ts
+  s_7a5063e5c8e411::t_43724da1bbe0da 54,62,210,218-219,223-225,227,231
+packages/@n8n/instance-ai/src/utils/generate-validated-json.ts
+  s_7a5063e5c8e411::t_e859c415336c2a 42
+  s_7a5063e5c8e411::t_b90396df099e4f 61,63
+  s_7a5063e5c8e411::t_a2aefe708af5be 19
+packages/cli/src/modules/instance-ai/self-healing/self-healing-candidate.service.ts
+  s_7a5063e5c8e411::t_b90396df099e4f 156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "559c85f7fa3afa3f526b72dbe887ede480bc0dcd",
+  "prompts": {},
+  "sessions": {
+    "s_7a5063e5c8e411": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "404b0521-1470-45af-af6e-913de8ba671d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

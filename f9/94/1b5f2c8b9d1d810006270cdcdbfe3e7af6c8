@@ -1,0 +1,20 @@
+packages/@n8n/code-task-protocol/README.md
+  h_8fb27e0cdf6d1e 10
+packages/@n8n/code-task-protocol/src/__tests__/parse.test.ts
+  h_8fb27e0cdf6d1e 85-92,170-196
+packages/@n8n/code-task-protocol/src/task-input.ts
+  h_8fb27e0cdf6d1e 96-97
+packages/@n8n/code-task-protocol/src/task-result.ts
+  h_8fb27e0cdf6d1e 30-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f9941b5f2c8b9d1d810006270cdcdbfe3e7af6c8",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
