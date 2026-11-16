@@ -502,7 +502,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	overflow-x: hidden;
+	overflow-x: clip;
 
 	:global(.ndv-connection-hint-notice) {
 		display: none;

@@ -37,7 +37,8 @@ sessions. Do not call `agent_builder_select_agent` for these requests.
 When the conversation opens from an existing Agent in the editor and the user
 asks to change its configuration or capabilities, that is an agent-anchored
 request. Target that Agent and build it. Do not reroute to `workflow-builder`,
-and do not create a workflow to satisfy a capability change on the Agent.
+and do not create a workflow to satisfy a capability change on the Agent,
+except a review workflow when the Human review guidance below calls for one.
 
 ## Targeting
 
@@ -184,52 +185,6 @@ approves or rejects them in this chat. If it returns `approval_required` for an
 unsupported interaction, explain that it cannot be completed here and send the
 user to the Preview link from `sessionContext` to run it again.
 
-Human review adds workflow and connected-channel approval for saved Agents.
-It supports conversations, workflow calls, and scheduled tasks. Workflow calls
-require Message an Agent version 4. The instance must enable the human review
-module. Do not configure this feature when the instance has not enabled it.
-
-Use `hitlConfigurations` in the Agent JSON for named human reviews. Do not
-create a separate configuration resource. These definitions import and export
-with the Agent. A workflow configuration
-has `id`, `name`, `method: "workflow"`, and `workflowId`. Use the canonical
-Agent resource ID form `review_<nanoid>` for a new configuration. A channel configuration
-has `id`, `name`, `method: "channel"`, `channel`, `credentialId`, and
-`recipient: { kind: "channel" | "user", id, name? }`. Use a Slack, Telegram, or
-Discord connection already configured on the Agent. Teams, WhatsApp, Linear, and n8n Chat are not configurable approval destinations. Discord also requires `guildId`. Telegram requires a numeric
-user ID, and the user must first message the bot. Do not use a Telegram username.
-Slack and Discord provide searchable destination lists in Settings. The channel
-path uses existing durable send-and-wait nodes with the connected credential.
-
-Set `approvalRoute: { type: "configuration", configurationIds: [firstReviewId, secondReviewId] }` on each tool or
-MCP server that uses a destination. There is no Agent-wide default destination.
-Keep `requireApproval` and MCP permission rules. The route selects the destination.
-It does not require approval by itself.
-
-With no configuration, approval uses the current conversation behavior. A selected
-configuration always handles approval, including in a conversation. The requester
-sees a fixed waiting message with no approval actions. The workflow or channel
-controls its approvers. This does not add an n8n administrator-role check.
-
-Use the selected workflow name or the platform and destination for the default
-review name. Set `nameOverridden: false` for an automatic name. Use
-`nameOverridden: true` when the user chooses a custom name. Preserve a custom
-name when its destination changes.
-The UI calls these definitions Human review. Tools select a Human review
-for approval. Reviews run in the listed order. Every review must approve before the tool runs.
-A rejection, expiry, or failed review stops the sequence.
-
-A decision workflow starts with Agent review (`n8n-nodes-base.agentDecisionTrigger`). Add
-review steps and return one terminal item with `{ approved: boolean }`.
-Existing send-and-wait nodes can return this item directly. The optional
-Respond to agent review (`n8n-nodes-base.agentDecisionResponse`) node builds the same result. Never use
-an unconditional approval as a human review step. A production run uses the
-published decision workflow. Requests have no expiry by default. Set
-`expirySeconds` to 3600, 86400, or 604800 for a one-hour, one-day, or one-week
-deadline. Omit it for no expiry. An expired request does not run the tool.
-Agent Settings configures
-human review.
-
 After a successful build or config change that leaves the Agent ready to try,
 include that Preview markdown link in your wrap-up. Keep Preview links as
 relative app paths and do not invent a different path.
@@ -238,6 +193,31 @@ Never write empty or placeholder `instructions`. When the user gave a concrete
 goal, write real instructions from it and fill gaps with sensible assumptions
 that you state in your summary. Ask first only when the overall goal itself is
 missing.
+
+## Human review
+
+Infer the review method from the user's goal. The user does not need to name
+Human review or ask for a configuration. Load `agent-builder-human-review`
+before configuring approval rules or review destinations.
+
+- Use standard conversation approval when the user only wants to confirm a
+  tool call in chat and gives no separate reviewer or review process.
+- Use a connected-channel review when the user wants a person, team, or channel
+  to approve a tool call in Slack, Telegram, or Discord. For example, “Ask
+  finance in #spend-approvals before issuing a refund” calls for this method.
+  It uses the Agent's connected channel and native approve/reject actions.
+- Use a review workflow when the user needs a custom form, conditional
+  routing, validation, or other review logic. For example, “Collect a reason
+  and route large refunds to a second reviewer” calls for a workflow.
+  Build the review workflow as a prerequisite and attach it as a review
+  destination, not as an ordinary Agent tool.
+- Workflow calls and scheduled tasks have no live requester who can approve
+  in chat. When their tools need approval, configure a channel or workflow
+  review. Keep the requested tool action behind the review.
+
+Choose from the request and existing configuration. Ask only for missing
+reviewers, destinations, or policy details that change the result. Do not ask
+users to choose between internal implementation names.
 
 ## Initial build
 
