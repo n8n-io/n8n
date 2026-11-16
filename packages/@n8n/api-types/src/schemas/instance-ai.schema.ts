@@ -1746,6 +1746,8 @@ export const instanceAiThreadArtifactSchema = z.object({
 	projectId: z.string().min(1).max(64).optional(),
 	pending: z.literal(true).optional(),
 	archived: z.literal(true).optional(),
+	/** Execution that the preview of a workflow tab shows. */
+	executionId: z.string().min(1).max(64).optional(),
 });
 export type InstanceAiThreadArtifact = z.infer<typeof instanceAiThreadArtifactSchema>;
 

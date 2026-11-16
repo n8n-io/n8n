@@ -69,7 +69,7 @@ async function loadHistory(memory: ThreadMemoryMock): Promise<AgentDbMessage[]> 
 
 describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 	type Context = {
-		artifacts: Array<{ type: 'workflow'; id: string; name?: string }>;
+		artifacts: Array<{ type: 'workflow'; id: string; name?: string; executionId?: string }>;
 		activeId?: string;
 	};
 	type Internals = {
@@ -141,6 +141,21 @@ describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 		expect(await resolve(service, { artifacts: [digest, report], activeId: 'wf-2' })).toContain(
 			'(id: `wf-2`) [current]',
 		);
+	});
+
+	it('sends the tabs when the preview of a tab shows a new run', async () => {
+		const service = createService();
+		const firstRun = { artifacts: [{ ...digest, executionId: 'exec-1' }], activeId: 'wf-1' };
+		const earlier = buildThreadArtifactsBlock(firstRun);
+		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(earlier)]);
+
+		expect(await resolve(service, firstRun)).toBe('');
+		expect(
+			await resolve(service, {
+				artifacts: [{ ...digest, executionId: 'exec-2' }],
+				activeId: 'wf-1',
+			}),
+		).toContain('currently viewing its execution `exec-2`');
 	});
 
 	it('says no tabs are open once, then not again while nothing changes', async () => {
