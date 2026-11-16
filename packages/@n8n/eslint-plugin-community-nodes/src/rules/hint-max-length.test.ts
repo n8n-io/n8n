@@ -1,19 +1,10 @@
+import { RuleTester } from '@typescript-eslint/rule-tester';
 import * as parser from '@typescript-eslint/typescript-estree';
 import { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
 
 import { configs, rules } from '../plugin.js';
-
-/**
- * The community node ruleset has no rule that limits the length of a node
- * property `hint`, so a submission can ship a hint long enough to degrade the
- * node parameter panel. Long text belongs in `description`, which renders as
- * the tooltip.
- *
- * These cases lint through the published configs instead of a single rule
- * module, so they do not depend on the name or the message id of the rule that
- * will implement the limit.
- */
+import { HintMaxLengthRule } from './hint-max-length.js';
 
 /**
  * Maximum allowed hint length. This is the 95th percentile of `hint` length in
@@ -27,6 +18,79 @@ const TOO_LONG_HINT =
 	'The query must be an array of operations with the required selection and the optional filtering, sorting and pagination fields';
 
 const SHORT_HINT = 'The name of the input field that holds the binary data';
+
+const ruleTester = new RuleTester();
+
+function createNodeDescriptionCode(body: string): string {
+	return `
+		export class TestNode implements INodeType {
+			description = { ${body} };
+		}
+	`;
+}
+
+ruleTester.run('hint-max-length', HintMaxLengthRule, {
+	valid: [
+		{
+			name: 'ignores files outside the node file scope',
+			filename: '/tmp/TestNode.credentials.ts',
+			code: createNodeCode(TOO_LONG_HINT),
+		},
+		{
+			name: 'ignores classes that do not implement INodeType',
+			filename: '/tmp/TestNode.node.ts',
+			code: `export class NotANode {
+				description = { properties: [{ hint: '${TOO_LONG_HINT}' }] };
+			}`,
+		},
+		{
+			name: 'accepts a node without an inline description',
+			filename: '/tmp/TestNode.node.ts',
+			code: 'export class TestNode implements INodeType { description = nodeDescription; }',
+		},
+		{
+			name: 'ignores dynamic hint values',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeDescriptionCode('properties: [{ hint: getHint() }]'),
+		},
+		{
+			name: 'allows long descriptions',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeDescriptionCode(`properties: [{ description: '${TOO_LONG_HINT}' }]`),
+		},
+	],
+	invalid: [
+		{
+			name: 'reports a quoted hint key and keeps the author text unchanged',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeDescriptionCode(`properties: [{ 'hint': '${TOO_LONG_HINT}' }]`),
+			errors: [
+				{
+					messageId: 'hintTooLong',
+					data: { length: TOO_LONG_HINT.length, max: MAX_HINT_LENGTH },
+				},
+			],
+			output: null,
+		},
+		{
+			name: 'reports a hint nested in a fixed collection with shared properties',
+			filename: '/tmp/TestNode.node.ts',
+			code: createNodeDescriptionCode(`
+				properties: [{
+					type: 'fixedCollection',
+					options: [{
+						name: 'values',
+						values: [
+							...sharedProperties,
+							{ hint: '${TOO_LONG_HINT}' },
+						],
+					}],
+				}]
+			`),
+			errors: [{ messageId: 'hintTooLong' }],
+		},
+	],
+});
 
 function createNodeCode(hint: string): string {
 	return `
@@ -141,7 +205,17 @@ describe('node property hint length', () => {
 
 	describe.each(configNames)('%s', (configName) => {
 		it('reports a hint over the limit', () => {
-			expect(hintReports(createNodeCode(TOO_LONG_HINT), configName)).toHaveLength(1);
+			const code = createNodeCode(TOO_LONG_HINT);
+			const reports = lintNodeCode(code, configName).filter(
+				(message) => message.line === hintLine(code),
+			);
+			expect(reports).toEqual([
+				expect.objectContaining({
+					ruleId: '@n8n/community-nodes/hint-max-length',
+					severity: 1,
+					message: `The "hint" is ${TOO_LONG_HINT.length} characters long, over the limit of ${MAX_HINT_LENGTH}. A hint is a short inline nudge. Move the longer text to "description", which renders as the tooltip.`,
+				}),
+			]);
 		});
 
 		it('reports a hint over the limit inside a collection', () => {
