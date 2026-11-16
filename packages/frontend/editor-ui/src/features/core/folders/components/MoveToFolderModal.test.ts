@@ -442,6 +442,20 @@ describe('MoveToFolderModal', () => {
 
 		await waitFor(() => expect(getByText(/can't be shared/)).toBeInTheDocument());
 		expect(queryByTestId('move-modal-share-credentials-checkbox')).not.toBeInTheDocument();
+
+		const submitButton = getByTestId('confirm-move-folder-button');
+		await waitFor(() => expect(submitButton).toBeEnabled());
+		await userEvent.click(submitButton);
+
+		await waitFor(() =>
+			expect(foldersStore.moveFolderToProject).toHaveBeenCalledWith(
+				personalProject.id,
+				TEST_FOLDER_RESOURCE.id,
+				teamProjects[0].id,
+				undefined,
+				undefined,
+			),
+		);
 	});
 
 	it('should select a folder with the picker', async () => {
