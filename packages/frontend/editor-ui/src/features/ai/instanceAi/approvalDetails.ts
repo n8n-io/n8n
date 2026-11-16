@@ -4,6 +4,7 @@ import {
 	getWorkspaceCallAction,
 	resolveBuilderToolName,
 	type InstanceAiApprovalDetails,
+	type InstanceAiDataTableChangeDetails,
 } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
@@ -75,6 +76,40 @@ export function formatApprovalDetails(details: InstanceAiApprovalDetails): strin
 		return join(visible);
 	};
 
+	const insertRowsLines = (
+		details: Extract<InstanceAiApprovalDetails, { action: 'insert-rows' }>,
+	) => {
+		const lines = [
+			t('instanceAi.approval.addRows', {
+				adjustToNumber: details.count,
+				interpolate: { count: details.count },
+			}),
+		];
+		details.rows.forEach((row, index) => {
+			const changes = preview(row);
+			lines.push(
+				t(changes ? 'instanceAi.approval.row' : 'instanceAi.approval.emptyRow', {
+					interpolate: { index: index + 1, changes },
+				}),
+			);
+		});
+		const remaining = details.count - details.rows.length;
+		if (remaining > 0)
+			lines.push(
+				t('instanceAi.approval.moreRows', {
+					adjustToNumber: remaining,
+					interpolate: { count: remaining },
+				}),
+			);
+		return lines;
+	};
+	// One batch change can take several lines: row previews get a line each.
+	const changeLines = (change: InstanceAiDataTableChangeDetails): string[] => {
+		if (change.action === 'create-table') return [createTableText(change.columns)];
+		if (change.action === 'insert-rows') return insertRowsLines(change);
+		return [formatApprovalDetails(change)];
+	};
+
 	switch (details.action) {
 		case 'edit-workflow':
 			return details.summary?.replace(/\s+/g, ' ').trim() || t('instanceAi.approval.editWorkflow');
@@ -93,31 +128,8 @@ export function formatApprovalDetails(details: InstanceAiApprovalDetails): strin
 			return t('instanceAi.approval.renameColumn', {
 				interpolate: { column: details.column, name: details.newName },
 			});
-		case 'insert-rows': {
-			const lines = [
-				t('instanceAi.approval.addRows', {
-					adjustToNumber: details.count,
-					interpolate: { count: details.count },
-				}),
-			];
-			details.rows.forEach((row, index) => {
-				const changes = preview(row);
-				lines.push(
-					t(changes ? 'instanceAi.approval.row' : 'instanceAi.approval.emptyRow', {
-						interpolate: { index: index + 1, changes },
-					}),
-				);
-			});
-			const remaining = details.count - details.rows.length;
-			if (remaining > 0)
-				lines.push(
-					t('instanceAi.approval.moreRows', {
-						adjustToNumber: remaining,
-						interpolate: { count: remaining },
-					}),
-				);
-			return lines.join('\n\n');
-		}
+		case 'insert-rows':
+			return insertRowsLines(details).join('\n\n');
 		case 'update-rows':
 			return t(
 				details.filter.filters.length > 1
@@ -254,9 +266,89 @@ export function formatApprovalDetails(details: InstanceAiApprovalDetails): strin
 			return lines.join('\n\n');
 		}
 		case 'data-table-changes':
-			// Plain-text fallback that names the affected tables.
-			return join([...new Set(details.changes.map(({ tableName }) => tableName))]);
+			return formatDataTableChanges(details.changes, changeLines);
 	}
+}
+
+type DataTableChanges = Extract<
+	InstanceAiApprovalDetails,
+	{ action: 'data-table-changes' }
+>['changes'];
+type CreateTableColumns = Extract<
+	InstanceAiDataTableChangeDetails,
+	{ action: 'create-table' }
+>['columns'];
+
+function createTableText(columns: CreateTableColumns): string {
+	const i18n = useI18n();
+	if (columns.length === 0) return i18n.baseText('instanceAi.approval.createTable.noColumns');
+	const columnList = columns
+		.map(({ name, columnType }) =>
+			i18n.baseText('instanceAi.approval.columnWithType', {
+				interpolate: {
+					column: name,
+					type: i18n.baseText(`instanceAi.approval.columnType.${columnType}`),
+				},
+			}),
+		)
+		.join(i18n.baseText('instanceAi.approval.listSeparator'));
+	return i18n.baseText('instanceAi.approval.createTable', {
+		interpolate: { columns: columnList },
+	});
+}
+
+/** Changes grouped by table name, in the order the batch first names each table. */
+function groupByTable(
+	changes: DataTableChanges,
+	describe: (details: InstanceAiDataTableChangeDetails) => string[],
+): Map<string, string[]> {
+	const groups = new Map<string, string[]>();
+	for (const { tableName, details } of changes) {
+		groups.set(tableName, [...(groups.get(tableName) ?? []), ...describe(details)]);
+	}
+	return groups;
+}
+
+/**
+ * One line for each change. With several tables, each table gets a block with
+ * a header. With one table, the card title already names it.
+ */
+function formatDataTableChanges(
+	changes: DataTableChanges,
+	describe: (details: InstanceAiDataTableChangeDetails) => string[],
+): string {
+	const i18n = useI18n();
+	const groups = [...groupByTable(changes, describe)];
+	if (groups.length === 1) return groups[0][1].join('\n');
+	return groups
+		.map(([name, lines]) =>
+			[i18n.baseText('instanceAi.approval.tableHeader', { interpolate: { name } }), ...lines].join(
+				'\n',
+			),
+		)
+		.join('\n\n');
+}
+
+/** Title of a batch card: the table name for one table, otherwise the number of tables. */
+function formatDataTableChangesTitle(changes: DataTableChanges): string {
+	const i18n = useI18n();
+	const tableNames = [...new Set(changes.map(({ tableName }) => tableName))];
+	if (tableNames.length === 1) {
+		return i18n.baseText('instanceAi.confirmation.resourcePrompt', {
+			interpolate: {
+				action: i18n.baseText('instanceAi.tools.change_data_tables.imperativeWithResource'),
+				name: tableNames[0],
+			},
+		});
+	}
+	return i18n.baseText('instanceAi.confirmation.allowPrompt', {
+		interpolate: {
+			action: i18n.baseText('instanceAi.tools.change_data_tables.imperativeWithCount', {
+				adjustToNumber: tableNames.length,
+				interpolate: { count: tableNames.length },
+			}),
+		},
+	});
 }
 
 /**
@@ -301,6 +393,8 @@ const approvalTitleKeys = new Map<string, BaseTextKey>(
 			'instanceAi.tools.data_tables.update-rows.imperativeWithResource',
 			'instanceAi.tools.data_tables.delete-rows.imperative',
 			'instanceAi.tools.data_tables.delete-rows.imperativeWithResource',
+			'instanceAi.tools.change_data_tables.imperative',
+			'instanceAi.tools.change_data_tables.imperativeWithResource',
 			'instanceAi.tools.skills.create.imperative',
 			'instanceAi.tools.skills.create.imperativeWithResource',
 			'instanceAi.tools.skills.update.imperative',
@@ -324,15 +418,20 @@ const approvalTitleKeys = new Map<string, BaseTextKey>(
  * tool name and its optional action, in "Allow n8n Assistant to {action}?".
  * When the tool names the resource it acts on, the title carries that name and
  * the phrase comes from the `.imperativeWithResource` key, which is written to
- * precede a name. A tool without a phrase gets its display label.
+ * precede a name. A tool without a phrase gets its display label. A batch of
+ * data table changes takes its title from the tables in its details.
  */
 export function formatApprovalTitle(params: {
 	toolName: string;
 	args?: Record<string, unknown>;
 	resourceName?: string;
+	approvalDetails?: InstanceAiApprovalDetails;
 }): string {
 	const i18n = useI18n();
-	const { args, resourceName } = params;
+	const { args, resourceName, approvalDetails } = params;
+	if (approvalDetails?.action === 'data-table-changes') {
+		return formatDataTableChangesTitle(approvalDetails.changes);
+	}
 	const toolName = resolveBuilderToolName(params.toolName, args?.action);
 	// A former multi-action tool resolves to a single-action tool, which takes no action suffix.
 	const actionSelectsTool = toolName !== resolveBuilderToolName(params.toolName);

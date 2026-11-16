@@ -8,7 +8,7 @@ import {
 	getLatestWorkflowSetupResult,
 	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
-	getLatestDeletedDataTableId,
+	getLatestDeletedDataTableIds,
 	getLatestAgentArtifactResult,
 	getLatestSkillArtifactResult,
 	getLatestAppArtifactResult,
@@ -595,12 +595,16 @@ export function useCanvasPreview({
 
 	// --- Close data table preview if the active table is deleted ---
 
-	const latestDeletedDataTableId = computed(
-		() => getLatestDeletedDataTableId(thread.artifactTurns) ?? null,
+	// A batch can delete several tables at once.
+	const latestDeletedDataTableIds = computed(() =>
+		getLatestDeletedDataTableIds(thread.artifactTurns),
 	);
 
-	watch(latestDeletedDataTableId, (deletedId) => {
-		if (deletedId && deletedId === activeTabId.value) {
+	watch(latestDeletedDataTableIds, (deletedIds, previousIds) => {
+		// The list is new on every recompute, so act only when the deletion changed.
+		if (deletedIds.join() === previousIds?.join()) return;
+		const deletedId = activeTabId.value;
+		if (deletedId && deletedIds.includes(deletedId)) {
 			const remaining = openTabs.value.filter((t) => t.id !== deletedId);
 			activeTabId.value = remaining.length > 0 ? remaining[0].id : undefined;
 			if (!activeTabId.value) {

@@ -7,6 +7,8 @@ import {
 	buildWorkflowActionSessionGrantKey,
 	buildCleanupTestExecutionsSessionGrantKey,
 	buildWorkspaceSessionGrantKey,
+	CHANGE_DATA_TABLES_TOOL_NAME,
+	DATA_TABLE_WRITE_TOOL_ACTIONS,
 	getDataTableCallAction,
 	getExecutionCallAction,
 	getWorkspaceCallAction,
@@ -16,6 +18,7 @@ import {
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	WORKFLOW_TOOL_NAME_BY_ACTION,
+	type DataTableWriteToolAction,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
@@ -62,10 +65,44 @@ function resolveAlwaysAllowWorkflowId(
 }
 
 /**
- * Returns null when an edit grant cannot be scoped to a workflow ID — storing a
- * generic `workflow_builder_build_workflow:` key would auto-approve later foreign edits.
+ * Batch actions that the backend never grants for the session. They match the
+ * destructive severity of the `change_data_tables` tool.
  */
-export function buildAlwaysAllowKey(
+const DESTRUCTIVE_DATA_TABLE_ACTIONS = new Set<DataTableWriteToolAction>([
+	'delete',
+	'delete-column',
+	'delete-rows',
+]);
+
+/** The distinct actions of a `change_data_tables` call that the backend grants for the session. */
+function grantableBatchActions(args: Record<string, unknown>): DataTableWriteToolAction[] {
+	const changes: unknown[] = Array.isArray(args.changes) ? args.changes : [];
+	const actions = new Set(changes.map((change) => (isRecord(change) ? change.action : undefined)));
+	return DATA_TABLE_WRITE_TOOL_ACTIONS.filter(
+		(action) => actions.has(action) && !DESTRUCTIVE_DATA_TABLE_ACTIONS.has(action),
+	);
+}
+
+/**
+ * The session keys that approving a call with "Always allow" grants. A batch of
+ * data table changes grants one key for each action, so it returns a list.
+ * Returns an empty list when the grant cannot be scoped, such as an edit
+ * without a workflow ID: a generic `workflow_builder_build_workflow:` key would
+ * auto-approve later foreign edits.
+ */
+export function buildAlwaysAllowKeys(
+	rawToolName: string,
+	args: Record<string, unknown>,
+	confirmationWorkflowId?: string,
+): string[] {
+	if (rawToolName === CHANGE_DATA_TABLES_TOOL_NAME) {
+		return grantableBatchActions(args).map(buildDataTablesSessionGrantKey);
+	}
+	const key = buildSingleAlwaysAllowKey(rawToolName, args, confirmationWorkflowId);
+	return key === null ? [] : [key];
+}
+
+function buildSingleAlwaysAllowKey(
 	rawToolName: string,
 	args: Record<string, unknown>,
 	confirmationWorkflowId?: string,

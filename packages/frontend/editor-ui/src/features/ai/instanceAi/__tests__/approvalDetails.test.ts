@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { i18nInstance, i18nVersion } from '@n8n/i18n';
-import type { InstanceAiApprovalDetails } from '@n8n/api-types';
-import { formatApprovalDetails } from '../approvalDetails';
+import { CHANGE_DATA_TABLES_TOOL_NAME, type InstanceAiApprovalDetails } from '@n8n/api-types';
+import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
 
 const originalLocale = i18nInstance.global.locale.value;
 afterEach(() => {
@@ -20,17 +20,119 @@ const rows: InstanceAiApprovalDetails = {
 };
 
 describe('approval details', () => {
-	it('names each affected table once for a batch of data table changes', () => {
-		expect(
-			formatApprovalDetails({
+	describe('data table changes', () => {
+		const addEmail = { action: 'add-column', column: 'email', columnType: 'string' } as const;
+		const renameNote = { action: 'rename-column', column: 'note', newName: 'comment' } as const;
+		const deleteTable = { action: 'delete-table' } as const;
+		const insertRow: Extract<InstanceAiApprovalDetails, { action: 'insert-rows' }> = {
+			action: 'insert-rows',
+			count: 2,
+			rows: [{ values: [{ column: 'email', value: '"a@example.com"' }], remainingColumns: 0 }],
+		};
+
+		it('groups changes by table in first-seen order with one line per change', () => {
+			const output = formatApprovalDetails({
 				action: 'data-table-changes',
 				changes: [
-					{ tableName: 'Leads', details: { action: 'create-table', columns: [] } },
-					{ tableName: 'Leads', details: { action: 'delete-table' } },
-					{ tableName: 'Orders', details: { action: 'delete-column', column: 'note' } },
+					{ tableName: 'Leads', details: addEmail },
+					{ tableName: 'Orders', details: deleteTable },
+					{ tableName: 'Leads', details: renameNote },
 				],
-			}),
-		).toBe('Leads, Orders');
+			});
+			const blocks = output.split('\n\n').map((block) => block.split('\n'));
+			expect(blocks).toHaveLength(2);
+			const [leads, orders] = blocks;
+			// A header that names the table, then the text of each single change.
+			expect(leads).toHaveLength(3);
+			expect(leads[0]).toContain('Leads');
+			expect(leads.slice(1)).toEqual([
+				formatApprovalDetails(addEmail),
+				formatApprovalDetails(renameNote),
+			]);
+			expect(orders).toHaveLength(2);
+			expect(orders[0]).toContain('Orders');
+			expect(orders[1]).toBe(formatApprovalDetails(deleteTable));
+		});
+
+		it('lists the changes of one table without a table header', () => {
+			const output = formatApprovalDetails({
+				action: 'data-table-changes',
+				changes: [
+					{ tableName: 'Leads', details: addEmail },
+					{ tableName: 'Leads', details: renameNote },
+				],
+			});
+			expect(output.split('\n')).toEqual([
+				formatApprovalDetails(addEmail),
+				formatApprovalDetails(renameNote),
+			]);
+		});
+
+		it('keeps row previews of a change inside its table block', () => {
+			const output = formatApprovalDetails({
+				action: 'data-table-changes',
+				changes: [
+					{ tableName: 'Leads', details: insertRow },
+					{ tableName: 'Orders', details: deleteTable },
+				],
+			});
+			const blocks = output.split('\n\n').map((block) => block.split('\n'));
+			expect(blocks).toHaveLength(2);
+			expect(blocks[0].slice(1)).toEqual(formatApprovalDetails(insertRow).split('\n\n'));
+		});
+
+		it('describes a table creation with each column and its type', () => {
+			const output = formatApprovalDetails({
+				action: 'data-table-changes',
+				changes: [
+					{
+						tableName: 'Leads',
+						details: {
+							action: 'create-table',
+							columns: [
+								{ name: 'email', columnType: 'string' },
+								{ name: 'score', columnType: 'number' },
+							],
+						},
+					},
+				],
+			});
+			expect(output.split('\n')).toHaveLength(1);
+			expect(output).toContain('email');
+			expect(output).toContain('score');
+			expect(output).not.toContain('instanceAi.');
+		});
+	});
+
+	describe('approval title', () => {
+		const batch = (...tableNames: string[]): InstanceAiApprovalDetails => ({
+			action: 'data-table-changes',
+			changes: tableNames.map((tableName) => ({
+				tableName,
+				details: { action: 'delete-table' },
+			})),
+		});
+
+		it('names the table when a batch changes one table', () => {
+			const title = formatApprovalTitle({
+				toolName: CHANGE_DATA_TABLES_TOOL_NAME,
+				resourceName: 'Leads',
+				approvalDetails: batch('Leads', 'Leads'),
+			});
+			expect(title).toContain('Leads');
+			expect(title).not.toContain('instanceAi.');
+		});
+
+		it('counts the tables when a batch changes several tables', () => {
+			const title = formatApprovalTitle({
+				toolName: CHANGE_DATA_TABLES_TOOL_NAME,
+				resourceName: '3 tables',
+				approvalDetails: batch('Leads', 'Orders', 'Leads', 'Users'),
+			});
+			expect(title).toContain('3');
+			expect(title).not.toContain('Leads');
+			expect(title).not.toContain('instanceAi.');
+		});
 	});
 
 	it('renders row values, empty values, omitted counts, and paragraph breaks', () => {
