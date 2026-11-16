@@ -7,7 +7,7 @@ import { useUsersStore } from '@n8n/stores/users.store';
 
 import * as api from './ui-extensions.api';
 import { BUILTIN_VIEWS } from './ui-extensions.builtin';
-import { BUILTIN_PAGE_SUMMARY_VIEW_ID } from './ui-extensions.constants';
+import { BUILTIN_RECENT_RUNS_VIEW_ID } from './ui-extensions.constants';
 import { useSidePanelStore } from './ui-extensions.store';
 
 vi.mock('./ui-extensions.api');
@@ -37,20 +37,16 @@ describe('useSidePanelStore', () => {
 		await store.fetchViews();
 
 		expect(store.views.map((v) => v.id)).toEqual([...BUILTIN_IDS, 'a', 'b']);
-		expect(store.views.map((v) => v.title).slice(0, 3)).toEqual([
-			'Page summary',
-			'Integrations',
-			'Checklist',
-		]);
-		expect(store.views.slice(0, 3).every((v) => v.builtin)).toBe(true);
-		expect(store.views[3].builtin).toBe(false);
+		expect(store.views.map((v) => v.title).slice(0, 2)).toEqual(['Recent runs', 'Service data']);
+		expect(store.views.slice(0, 2).every((v) => v.builtin)).toBe(true);
+		expect(store.views[2].builtin).toBe(false);
 	});
 
 	it('shows the built-in view before any fetch', () => {
 		const store = useSidePanelStore();
 
 		expect(store.views.map((v) => v.id)).toEqual(BUILTIN_IDS);
-		expect(store.activeView.id).toBe(BUILTIN_PAGE_SUMMARY_VIEW_ID);
+		expect(store.activeView.id).toBe(BUILTIN_RECENT_RUNS_VIEW_ID);
 	});
 
 	it('opens nothing on the first fetch', async () => {
@@ -60,7 +56,7 @@ describe('useSidePanelStore', () => {
 		await store.fetchViews();
 
 		expect(store.isOpen).toBe(false);
-		expect(store.activeViewId).toBe(BUILTIN_PAGE_SUMMARY_VIEW_ID);
+		expect(store.activeViewId).toBe(BUILTIN_RECENT_RUNS_VIEW_ID);
 	});
 
 	it('opens the panel on a view that appears after the first fetch', async () => {
@@ -108,7 +104,7 @@ describe('useSidePanelStore', () => {
 		respond([]);
 		await store.fetchViews();
 
-		expect(store.activeViewId).toBe(BUILTIN_PAGE_SUMMARY_VIEW_ID);
+		expect(store.activeViewId).toBe(BUILTIN_RECENT_RUNS_VIEW_ID);
 	});
 
 	it('treats a 403 as no views', async () => {

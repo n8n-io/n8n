@@ -5,7 +5,9 @@ import {
 	UI_EXTENSION_VIEW_FACTORY_GLOBAL,
 	uiExtensionConnectMessageSchema,
 	uiExtensionHostMessageSchema,
+	isUiExtensionOpenableUrl,
 	type UiExtensionPageContext,
+	type UiExtensionPanelData,
 } from '@n8n/api-types';
 import * as Vue from 'vue';
 import type { Component, ComputedRef } from 'vue';
@@ -17,6 +19,16 @@ export type TranslationParams = Record<string, string | number>;
 export type ViewApi = {
 	useContext: () => ComputedRef<UiExtensionPageContext>;
 	t: (key: string, params?: TranslationParams) => string;
+	/** Run and service data. `null` until the editor sends it, and always for views from MCP clients. */
+	useData: () => ComputedRef<UiExtensionPanelData | null>;
+	/** The editor's locale, such as "en", for `Intl` formatting. "en" until the first context. */
+	useLocale: () => ComputedRef<string>;
+	/** Asks the editor to fetch the data again. The editor acts on it for built-in views only. */
+	refresh: () => void;
+	/** Asks the editor to open a run. Built-in views only. */
+	openExecution: (workflowId: string, executionId: string) => void;
+	/** Asks the editor to open an http(s) URL in a new tab. Built-in views only. */
+	openUrl: (url: string) => void;
 };
 
 /** The part of the frame window that the runtime uses. */
@@ -25,6 +37,16 @@ export type RuntimeWindow = Pick<Window, 'addEventListener' | 'removeEventListen
 };
 
 type FrameMessage = { type: 'ready' } | { type: 'error'; message: string };
+
+/** Requests that go to the editor over the port only, never to the parent window. */
+type ActionMessage =
+	| { type: 'refresh' }
+	| {
+			type: 'open';
+			target:
+				| { kind: 'execution'; workflowId: string; executionId: string }
+				| { kind: 'url'; url: string };
+	  };
 
 export function errorMessage(error: unknown): string {
 	const message = error instanceof Error ? error.message : String(error);
@@ -46,10 +68,12 @@ export function interpolate(text: string, params: TranslationParams = {}): strin
 export function createViewBridge(target: RuntimeWindow) {
 	const context = Vue.shallowRef<UiExtensionPageContext | null>(null);
 	const strings = Vue.shallowRef<Record<string, string>>({});
+	const locale = Vue.shallowRef('en');
+	const data = Vue.shallowRef<UiExtensionPanelData | null>(null);
 	const contextListeners: Array<() => void> = [];
 	let port: MessagePort | null = null;
 
-	function envelope(message: FrameMessage) {
+	function envelope(message: FrameMessage | ActionMessage) {
 		return {
 			source: UI_EXTENSION_MESSAGE_SOURCE,
 			version: UI_EXTENSION_PROTOCOL_VERSION,
@@ -64,6 +88,8 @@ export function createViewBridge(target: RuntimeWindow) {
 		const isFirst = context.value === null;
 		context.value = parsed.data.context;
 		strings.value = parsed.data.strings;
+		locale.value = parsed.data.locale;
+		data.value = parsed.data.data ?? null;
 		if (isFirst) for (const listener of contextListeners.splice(0)) listener();
 	}
 
@@ -90,11 +116,33 @@ export function createViewBridge(target: RuntimeWindow) {
 		target.parent.postMessage(envelope(message), '*');
 	}
 
+	/** Actions do nothing before the port exists, and never go to the parent window. */
+	function postAction(message: ActionMessage) {
+		port?.postMessage(envelope(message));
+	}
+
 	const fallbackContext: UiExtensionPageContext = { page: 'other', routeName: null };
 	const api: ViewApi = {
 		useContext: () => Vue.computed(() => context.value ?? fallbackContext),
 		t: (key, params) =>
 			Object.hasOwn(strings.value, key) ? interpolate(strings.value[key], params) : key,
+		useData: () => Vue.computed(() => data.value),
+		useLocale: () => Vue.computed(() => locale.value),
+		refresh: () => postAction({ type: 'refresh' }),
+		openExecution: (workflowId, executionId) =>
+			postAction({
+				type: 'open',
+				target: {
+					kind: 'execution',
+					workflowId: String(workflowId),
+					executionId: String(executionId),
+				},
+			}),
+		openUrl: (url) => {
+			if (typeof url === 'string' && isUiExtensionOpenableUrl(url)) {
+				postAction({ type: 'open', target: { kind: 'url', url } });
+			}
+		},
 	};
 
 	return {

@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import type { UiExtensionPageContext } from '@n8n/api-types';
+import type { UiExtensionPageContext, UiExtensionPanelData } from '@n8n/api-types';
 import { N8nIconButton, N8nResizeWrapper, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onBeforeUnmount, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted, watchEffect } from 'vue';
 
+import { getBuiltinView } from '../ui-extensions.builtin';
 import {
 	SIDE_PANEL_MAX_WIDTH,
 	SIDE_PANEL_MIN_WIDTH,
 	SIDE_PANEL_RAIL_WIDTH,
 } from '../ui-extensions.constants';
 import { useSidePanelStore } from '../ui-extensions.store';
-import type { ViewRuntimeAssets } from '../ui-extensions.types';
+import type { ViewOpenTarget, ViewRuntimeAssets } from '../ui-extensions.types';
 import ViewFrame from './ViewFrame.vue';
 
 defineProps<{
@@ -18,7 +19,18 @@ defineProps<{
 	workflowAvailableInMcp: boolean;
 	/** `null` while the shell loads the runtime. */
 	runtime: ViewRuntimeAssets | null;
+	/** Run and service data for the built-in views. */
+	panelData: UiExtensionPanelData;
+	locale: string;
 }>();
+
+const emit = defineEmits<{
+	refresh: [];
+	open: [target: ViewOpenTarget];
+}>();
+
+/** True while the shell must fetch data: the panel is open on a built-in view that shows it. */
+const dataEnabled = defineModel<boolean>('dataEnabled', { default: false });
 
 const i18n = useI18n();
 const store = useSidePanelStore();
@@ -30,6 +42,11 @@ const tabs = computed(() =>
 const toggleLabel = computed(() =>
 	i18n.baseText(store.isOpen ? 'uiExtensions.sidePanel.close' : 'uiExtensions.sidePanel.open'),
 );
+
+watchEffect(() => {
+	const view = store.activeView;
+	dataEnabled.value = store.isOpen && view.builtin && (getBuiltinView(view.id)?.usesData ?? false);
+});
 
 function onResize({ width }: { width: number }) {
 	store.width = width;
@@ -82,6 +99,10 @@ onBeforeUnmount(() => window.removeEventListener('focus', onFocus));
 					:page-context="pageContext"
 					:workflow-available-in-mcp="workflowAvailableInMcp"
 					:runtime="runtime"
+					:panel-data="panelData"
+					:locale="locale"
+					@refresh="emit('refresh')"
+					@open="emit('open', $event)"
 				/>
 			</div>
 		</N8nResizeWrapper>

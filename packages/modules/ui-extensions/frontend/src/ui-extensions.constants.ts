@@ -1,4 +1,4 @@
-export const BUILTIN_PAGE_SUMMARY_VIEW_ID = 'builtin:page-summary';
+export const BUILTIN_RECENT_RUNS_VIEW_ID = 'builtin:recent-runs';
 
 /** Width of the toggle rail, which shows at all times. */
 export const SIDE_PANEL_RAIL_WIDTH = 40;

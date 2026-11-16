@@ -37,6 +37,7 @@ The view runs in a sandboxed iframe with no network access to n8n. It has two gl
   { page: 'other', routeName }
   "workflow" is null unless the open workflow is available in MCP.
 - n8n.t(key, params): returns the translated string for key with each {name} placeholder filled from params, or the key itself.
+- n8n.useLocale(): a read-only ref to the editor's locale, such as "en". Use it with Intl to format dates and numbers.
 
 These n8n design system components are registered: N8nText, N8nHeading, N8nCard, N8nButton, N8nBadge, N8nIcon, N8nCallout, N8nTag. Use them and the CSS variables of the design system (for example var(--spacing--sm)) so the view looks like n8n.
 

@@ -1,9 +1,8 @@
 import type { BaseTextKey } from '@n8n/i18n';
 
-import checklistSource from './examples/checklist.view.js?raw';
-import integrationsSource from './examples/integrations.view.js?raw';
-import pageSummarySource from './examples/pageSummary.view.js?raw';
-import { BUILTIN_PAGE_SUMMARY_VIEW_ID } from './ui-extensions.constants';
+import recentRunsSource from './examples/recentRuns.view.js?raw';
+import serviceDataSource from './examples/serviceData.view.js?raw';
+import { BUILTIN_RECENT_RUNS_VIEW_ID } from './ui-extensions.constants';
 
 /** A string that a built-in view reads with `n8n.t(key, params)`, and its placeholders. */
 export type BuiltinViewString = { key: BaseTextKey; params?: readonly string[] };
@@ -15,70 +14,75 @@ export type BuiltinViewDefinition = {
 	icon: string;
 	source: string;
 	strings: readonly BuiltinViewString[];
+	/** Whether the view shows run and service data, so the editor fetches it while the view is open. */
+	usesData: boolean;
 };
 
-const hiddenWorkflow: BuiltinViewString = { key: 'uiExtensions.view.hiddenWorkflow' };
+const loadStates: readonly BuiltinViewString[] = [
+	{ key: 'uiExtensions.view.refresh' },
+	{ key: 'uiExtensions.view.loading' },
+	{ key: 'uiExtensions.view.loadError' },
+	{ key: 'uiExtensions.view.retry' },
+];
+
+const runStatuses: readonly BuiltinViewString[] = [
+	{ key: 'uiExtensions.recentRuns.status.success' },
+	{ key: 'uiExtensions.recentRuns.status.error' },
+	{ key: 'uiExtensions.recentRuns.status.crashed' },
+	{ key: 'uiExtensions.recentRuns.status.canceled' },
+	{ key: 'uiExtensions.recentRuns.status.running' },
+	{ key: 'uiExtensions.recentRuns.status.waiting' },
+	{ key: 'uiExtensions.recentRuns.status.new' },
+	{ key: 'uiExtensions.recentRuns.status.unknown' },
+];
 
 export const BUILTIN_VIEWS: readonly BuiltinViewDefinition[] = [
 	{
-		id: BUILTIN_PAGE_SUMMARY_VIEW_ID,
-		titleKey: 'uiExtensions.pageSummary.title',
-		icon: 'file-text',
-		source: pageSummarySource,
+		id: BUILTIN_RECENT_RUNS_VIEW_ID,
+		titleKey: 'uiExtensions.recentRuns.title',
+		icon: 'history',
+		source: recentRunsSource,
+		usesData: true,
 		strings: [
-			hiddenWorkflow,
-			{ key: 'uiExtensions.pageSummary.workflow.active' },
-			{ key: 'uiExtensions.pageSummary.workflow.inactive' },
-			{ key: 'uiExtensions.pageSummary.stats.nodes' },
-			{ key: 'uiExtensions.pageSummary.stats.triggers' },
-			{ key: 'uiExtensions.pageSummary.stats.services' },
-			{ key: 'uiExtensions.pageSummary.stats.disabled' },
-			{ key: 'uiExtensions.pageSummary.triggers.heading' },
-			{ key: 'uiExtensions.pageSummary.triggers.empty' },
-			{ key: 'uiExtensions.pageSummary.workflows.heading' },
-			{ key: 'uiExtensions.pageSummary.workflows.total' },
-			{ key: 'uiExtensions.pageSummary.workflows.hint' },
-			{ key: 'uiExtensions.pageSummary.other.heading' },
-			{ key: 'uiExtensions.pageSummary.other.hint' },
+			...loadStates,
+			...runStatuses,
+			{ key: 'uiExtensions.recentRuns.title' },
+			{ key: 'uiExtensions.recentRuns.allWorkflows' },
+			{ key: 'uiExtensions.recentRuns.otherPage' },
+			{ key: 'uiExtensions.recentRuns.empty.workflow' },
+			{ key: 'uiExtensions.recentRuns.empty.all' },
+			{ key: 'uiExtensions.recentRuns.lastError', params: ['node'] },
+			{ key: 'uiExtensions.recentRuns.lastErrorNoNode' },
+			{ key: 'uiExtensions.recentRuns.openRun' },
+			{ key: 'uiExtensions.recentRuns.mode.manual' },
+			{ key: 'uiExtensions.recentRuns.mode.trigger' },
+			{ key: 'uiExtensions.recentRuns.mode.webhook' },
+			{ key: 'uiExtensions.recentRuns.mode.retry' },
+			{ key: 'uiExtensions.recentRuns.mode.error' },
+			{ key: 'uiExtensions.recentRuns.mode.integrated' },
+			{ key: 'uiExtensions.recentRuns.mode.chat' },
+			{ key: 'uiExtensions.recentRuns.mode.evaluation' },
 		],
 	},
 	{
-		id: 'builtin:integrations',
-		titleKey: 'uiExtensions.integrations.title',
-		icon: 'plug',
-		source: integrationsSource,
+		id: 'builtin:service-data',
+		titleKey: 'uiExtensions.serviceData.title',
+		icon: 'database',
+		source: serviceDataSource,
+		usesData: true,
 		strings: [
-			hiddenWorkflow,
-			{ key: 'uiExtensions.integrations.heading' },
-			{ key: 'uiExtensions.integrations.summary', params: ['services', 'nodes'] },
-			{ key: 'uiExtensions.integrations.trigger' },
-			{ key: 'uiExtensions.integrations.empty' },
-			{ key: 'uiExtensions.integrations.noServices' },
-			{ key: 'uiExtensions.integrations.builtinHeading' },
-			{ key: 'uiExtensions.integrations.openWorkflow' },
-		],
-	},
-	{
-		id: 'builtin:checklist',
-		titleKey: 'uiExtensions.checklist.title',
-		icon: 'list-checks',
-		source: checklistSource,
-		strings: [
-			hiddenWorkflow,
-			{ key: 'uiExtensions.checklist.heading' },
-			{ key: 'uiExtensions.checklist.score', params: ['passed', 'total'] },
-			{ key: 'uiExtensions.checklist.allPass' },
-			{ key: 'uiExtensions.checklist.openWorkflow' },
-			{ key: 'uiExtensions.checklist.trigger.title' },
-			{ key: 'uiExtensions.checklist.trigger.help' },
-			{ key: 'uiExtensions.checklist.errorWorkflow.title' },
-			{ key: 'uiExtensions.checklist.errorWorkflow.help' },
-			{ key: 'uiExtensions.checklist.disabled.title' },
-			{ key: 'uiExtensions.checklist.disabled.help', params: ['count'] },
-			{ key: 'uiExtensions.checklist.names.title' },
-			{ key: 'uiExtensions.checklist.names.help', params: ['count'] },
-			{ key: 'uiExtensions.checklist.notes.title' },
-			{ key: 'uiExtensions.checklist.notes.help' },
+			...loadStates,
+			...runStatuses,
+			{ key: 'uiExtensions.serviceData.title' },
+			{ key: 'uiExtensions.serviceData.openWorkflow' },
+			{ key: 'uiExtensions.serviceData.empty' },
+			{ key: 'uiExtensions.serviceData.action', params: ['resource', 'operation'] },
+			{ key: 'uiExtensions.serviceData.target', params: ['label', 'name'] },
+			{ key: 'uiExtensions.serviceData.openTarget', params: ['name'] },
+			{ key: 'uiExtensions.serviceData.account', params: ['name'] },
+			{ key: 'uiExtensions.serviceData.noRun' },
+			{ key: 'uiExtensions.serviceData.items', params: ['count'] },
+			{ key: 'uiExtensions.serviceData.noItems' },
 		],
 	},
 ];

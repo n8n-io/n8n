@@ -1,4 +1,4 @@
-import type { UiExtensionPageContext } from '@n8n/api-types';
+import type { UiExtensionPageContext, UiExtensionPanelData } from '@n8n/api-types';
 import { fireEvent, render } from '@testing-library/vue';
 import { nextTick } from 'vue';
 
@@ -19,6 +19,10 @@ const mcpView: SidePanelView = {
 	builtin: false,
 };
 
+const builtinView: SidePanelView = { ...mcpView, id: 'builtin:recent-runs', builtin: true };
+
+const panelData: UiExtensionPanelData = { state: 'ready', runs: null, services: [] };
+
 const runtime = { js: 'void 0', css: '' };
 const envelope = { source: 'n8n-ui-extension', version: 1 };
 const ready = { ...envelope, type: 'ready' };
@@ -33,6 +37,8 @@ function renderFrame(props: Partial<InstanceType<typeof ViewFrame>['$props']> = 
 			pageContext: workflowContext,
 			workflowAvailableInMcp: true,
 			runtime,
+			panelData,
+			locale: 'de',
 			...props,
 		},
 	});
@@ -79,7 +85,7 @@ describe('ViewFrame', () => {
 		]);
 		await vi.waitFor(() => expect(received).toHaveLength(1));
 		expect(received).toEqual([
-			{ ...envelope, type: 'context', context: workflowContext, strings: {} },
+			{ ...envelope, type: 'context', context: workflowContext, strings: {}, locale: 'de' },
 		]);
 	});
 
@@ -102,20 +108,102 @@ describe('ViewFrame', () => {
 		expect(received[0]).toMatchObject({ context: { page: 'workflow', workflow: null } });
 	});
 
-	it('sends the strings of the built-in view', async () => {
-		const { received, fromFrame } = renderFrame({
-			view: { ...mcpView, id: 'builtin:page-summary', builtin: true },
-		});
+	it('sends the strings, the locale and the data to a built-in view', async () => {
+		const { received, fromFrame } = renderFrame({ view: builtinView });
 
 		fromFrame(ready);
 		await vi.waitFor(() => expect(received).toHaveLength(1));
 
 		expect(received[0]).toMatchObject({
 			strings: {
-				'uiExtensions.pageSummary.workflows.heading': 'Workflows',
-				'uiExtensions.view.hiddenWorkflow': "This view can't see the open workflow.",
+				'uiExtensions.recentRuns.title': 'Recent runs',
+				'uiExtensions.recentRuns.lastError': 'The last run failed in {node}',
 			},
+			locale: 'de',
+			data: panelData,
 		});
+	});
+
+	it('sends the locale but no data to an MCP view', async () => {
+		const { received, fromFrame } = renderFrame();
+
+		fromFrame(ready);
+		await vi.waitFor(() => expect(received).toHaveLength(1));
+
+		expect(received[0]).toMatchObject({ locale: 'de' });
+		expect(received[0]).not.toHaveProperty('data');
+	});
+
+	it('sends the data again when it changes', async () => {
+		const { received, fromFrame, rerender } = renderFrame({ view: builtinView });
+		fromFrame(ready);
+		await vi.waitFor(() => expect(received).toHaveLength(1));
+
+		await rerender({ panelData: { ...panelData, state: 'error' } });
+		await vi.waitFor(() => expect(received).toHaveLength(2));
+
+		expect(received[1]).toMatchObject({ data: { state: 'error' } });
+	});
+
+	const executionTarget = { kind: 'execution', workflowId: 'wf-1', executionId: '7' };
+
+	it('passes on refresh and open from a built-in view', async () => {
+		const { emitted, fromFrame, fromFramePort } = renderFrame({ view: builtinView });
+		fromFrame(ready);
+		await flush();
+
+		fromFramePort({ ...envelope, type: 'refresh' });
+		fromFramePort({ ...envelope, type: 'open', target: executionTarget });
+		fromFramePort({ ...envelope, type: 'open', target: { kind: 'url', url: 'https://x.test/a' } });
+
+		await vi.waitFor(() => expect(emitted('open')).toHaveLength(2));
+		expect(emitted('refresh')).toHaveLength(1);
+		expect(emitted('open')).toEqual([
+			[executionTarget],
+			[{ kind: 'url', url: 'https://x.test/a' }],
+		]);
+	});
+
+	it('drops refresh and open from an MCP view', async () => {
+		const { emitted, fromFrame, fromFramePort, findByTestId } = renderFrame();
+		fromFrame(ready);
+		await flush();
+
+		fromFramePort({ ...envelope, type: 'refresh' });
+		fromFramePort({ ...envelope, type: 'open', target: executionTarget });
+		// A message after them shows that the port delivered them.
+		fromFramePort({ ...envelope, type: 'error', message: 'last' });
+		await findByTestId('ui-extensions-view-error');
+
+		expect(emitted('refresh')).toBeUndefined();
+		expect(emitted('open')).toBeUndefined();
+	});
+
+	it('drops an open message with a URL that is not http(s)', async () => {
+		const { emitted, fromFrame, fromFramePort, findByTestId } = renderFrame({ view: builtinView });
+		fromFrame(ready);
+		await flush();
+
+		fromFramePort({
+			...envelope,
+			type: 'open',
+			target: { kind: 'url', url: 'javascript:alert(1)' },
+		});
+		fromFramePort({ ...envelope, type: 'error', message: 'last' });
+		await findByTestId('ui-extensions-view-error');
+
+		expect(emitted('open')).toBeUndefined();
+	});
+
+	it('does not act on refresh or open sent to the window instead of the port', async () => {
+		const { emitted, fromFrame } = renderFrame({ view: builtinView });
+
+		fromFrame({ ...envelope, type: 'refresh' });
+		fromFrame({ ...envelope, type: 'open', target: executionTarget });
+		await flush();
+
+		expect(emitted('refresh')).toBeUndefined();
+		expect(emitted('open')).toBeUndefined();
 	});
 
 	it('sends the context again when it changes', async () => {
@@ -205,6 +293,8 @@ describe('ViewFrame', () => {
 				pageContext: workflowContext,
 				workflowAvailableInMcp: true,
 				runtime,
+				panelData,
+				locale: 'en',
 			},
 		});
 

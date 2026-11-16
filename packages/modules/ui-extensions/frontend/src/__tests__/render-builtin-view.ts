@@ -1,4 +1,9 @@
-import type { UiExtensionPageContext } from '@n8n/api-types';
+import type {
+	UiExtensionPageContext,
+	UiExtensionPanelData,
+	UiExtensionRun,
+	UiExtensionServiceNodeData,
+} from '@n8n/api-types';
 import {
 	N8nBadge,
 	N8nButton,
@@ -17,21 +22,36 @@ import * as Vue from 'vue';
 import { builtinViewStrings, getBuiltinView } from '../ui-extensions.builtin';
 import { viewSourceToScript } from '../ui-extensions.frame';
 
+/** A call that a view made to `refresh`, `openExecution` or `openUrl`. */
+export type ViewAction =
+	| { type: 'refresh' }
+	| { type: 'openExecution'; workflowId: string; executionId: string }
+	| { type: 'openUrl'; url: string };
+
 /**
  * Renders a built-in view the way the frame does: the view script with the two
  * globals, the English strings that the host sends, and the components that the
- * view runtime registers. `usedKeys` collects every key that the view translates.
+ * view runtime registers. `usedKeys` collects every key that the view translates,
+ * and `actions` collects the calls that the view makes to the editor.
  */
-export function renderBuiltinView(id: string, initial: UiExtensionPageContext) {
+export function renderBuiltinView(
+	id: string,
+	initial: UiExtensionPageContext,
+	initialData: UiExtensionPanelData | null = null,
+) {
 	const definition = getBuiltinView(id);
 	if (!definition) throw new Error(`No built-in view ${id}`);
 
 	const i18n = useI18n();
 	const strings = builtinViewStrings(definition, (key, options) => i18n.baseText(key, options));
 	const usedKeys = new Set<string>();
+	const actions: ViewAction[] = [];
 	const context = Vue.ref(initial);
+	const data = Vue.ref(initialData);
 	const n8n = {
 		useContext: () => Vue.computed(() => context.value),
+		useData: () => Vue.computed(() => data.value),
+		useLocale: () => Vue.computed(() => 'en'),
 		t: (key: string, params: Record<string, string | number> = {}) => {
 			usedKeys.add(key);
 			const text = strings[key] ?? key;
@@ -39,10 +59,15 @@ export function renderBuiltinView(id: string, initial: UiExtensionPageContext) {
 				name in params ? String(params[name]) : placeholder,
 			);
 		},
+		refresh: () => actions.push({ type: 'refresh' }),
+		openExecution: (workflowId: string, executionId: string) =>
+			actions.push({ type: 'openExecution', workflowId, executionId }),
+		openUrl: (url: string) => actions.push({ type: 'openUrl', url }),
 	};
 
 	const window: Record<string, unknown> = {};
-	runInNewContext(viewSourceToScript(definition.source), { window });
+	// The test's `Date` goes in, so fake timers reach the view.
+	runInNewContext(viewSourceToScript(definition.source), { window, Date });
 	const factory = window.__n8nUiExtensionView as (
 		vue: typeof Vue,
 		api: typeof n8n,
@@ -62,7 +87,7 @@ export function renderBuiltinView(id: string, initial: UiExtensionPageContext) {
 			},
 		},
 	});
-	return { ...result, context, usedKeys, strings };
+	return { ...result, context, data, usedKeys, strings, actions };
 }
 
 export const node = (
@@ -117,3 +142,43 @@ export const hiddenWorkflowPage: UiExtensionPageContext = {
 	routeName: 'NodeViewExisting',
 	workflow: null,
 };
+
+export const NOW = new Date('2026-11-16T12:00:00.000Z');
+
+export const run = (id: string, extra: Partial<UiExtensionRun> = {}): UiExtensionRun => ({
+	id,
+	workflowId: 'wf-1',
+	workflowName: 'Lead routing',
+	status: 'success',
+	mode: 'manual',
+	startedAt: '2026-11-16T11:55:00.000Z',
+	stoppedAt: '2026-11-16T11:55:01.500Z',
+	...extra,
+});
+
+export const serviceNode = (
+	extra: Partial<UiExtensionServiceNodeData> = {},
+): UiExtensionServiceNodeData => ({
+	nodeName: 'Notify sales',
+	nodeType: 'n8n-nodes-base.slack',
+	displayName: 'Slack',
+	resource: 'Message',
+	operation: 'Send',
+	targets: [{ label: 'Channel', name: '#alerts', url: 'https://example.slack.com/archives/C123' }],
+	credentialName: 'Sales Slack',
+	lastRun: {
+		executionId: '42',
+		status: 'success',
+		finishedAt: '2026-11-16T11:55:01.500Z',
+		itemCount: 5,
+		items: [{ ts: '1', text: 'hello' }],
+	},
+	...extra,
+});
+
+export const panelData = (extra: Partial<UiExtensionPanelData> = {}): UiExtensionPanelData => ({
+	state: 'ready',
+	runs: null,
+	services: null,
+	...extra,
+});

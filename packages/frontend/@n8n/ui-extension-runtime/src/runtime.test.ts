@@ -23,6 +23,7 @@ const contextMessage = (overrides: Record<string, unknown> = {}) => ({
 	type: 'context',
 	context: workflowContext,
 	strings: { 'greeting.hello': 'Hello', 'greeting.count': 'Nodes: {count}' },
+	locale: 'en',
 	...overrides,
 });
 
@@ -178,6 +179,98 @@ describe('createViewBridge', () => {
 		const message = received[0] as { type: string; message: string };
 		expect(message.type).toBe('error');
 		expect(message.message).toHaveLength(1000);
+	});
+
+	describe('data and actions', () => {
+		const panelData = {
+			state: 'ready',
+			runs: { scope: 'workflow', items: [] },
+			services: null,
+		};
+
+		it('passes data and locale to the view', async () => {
+			const { target, connect } = createFrameWindow();
+			const bridge = createViewBridge(target);
+			const data = bridge.api.useData();
+			const locale = bridge.api.useLocale();
+			expect(data.value).toBeNull();
+			expect(locale.value).toBe('en');
+
+			await connect().sendContext({ data: panelData, locale: 'de' });
+
+			expect(data.value).toEqual(panelData);
+			expect(locale.value).toBe('de');
+		});
+
+		it('sets the data back to null when a message has none', async () => {
+			const { target, connect } = createFrameWindow();
+			const bridge = createViewBridge(target);
+			const { sendContext } = connect();
+
+			await sendContext({ data: panelData });
+			await sendContext();
+
+			expect(bridge.api.useData().value).toBeNull();
+		});
+
+		it('ignores a message whose data is not valid', async () => {
+			const { target, connect } = createFrameWindow();
+			const bridge = createViewBridge(target);
+			const { sendContext } = connect();
+			await sendContext({ data: panelData, locale: 'de' });
+
+			await sendContext({ data: { state: 'nonsense' }, locale: 'fr' });
+
+			expect(bridge.api.useData().value).toEqual(panelData);
+			expect(bridge.api.useLocale().value).toBe('de');
+		});
+
+		it('posts refresh and open on the port, in the envelope', async () => {
+			const { target, parent, connect } = createFrameWindow();
+			const bridge = createViewBridge(target);
+			const { received } = connect();
+
+			bridge.api.refresh();
+			bridge.api.openExecution('w', 'e');
+			bridge.api.openUrl('https://x.test/a');
+			await flush();
+
+			expect(received).toEqual([
+				{ ...envelope, type: 'refresh' },
+				{
+					...envelope,
+					type: 'open',
+					target: { kind: 'execution', workflowId: 'w', executionId: 'e' },
+				},
+				{ ...envelope, type: 'open', target: { kind: 'url', url: 'https://x.test/a' } },
+			]);
+			expect(parent.postMessage).not.toHaveBeenCalled();
+		});
+
+		it.each(['javascript:alert(1)', 'data:text/html,x', 'not a url'])(
+			'does not post a URL like %s',
+			async (url) => {
+				const { target, connect } = createFrameWindow();
+				const bridge = createViewBridge(target);
+				const { received } = connect();
+
+				bridge.api.openUrl(url);
+				await flush();
+
+				expect(received).toEqual([]);
+			},
+		);
+
+		it('posts no action before the port exists', () => {
+			const { target, parent } = createFrameWindow();
+			const bridge = createViewBridge(target);
+
+			bridge.api.refresh();
+			bridge.api.openExecution('w', 'e');
+			bridge.api.openUrl('https://x.test');
+
+			expect(parent.postMessage).not.toHaveBeenCalled();
+		});
 	});
 
 	it('runs the context listeners once, on the first context', async () => {

@@ -100,7 +100,9 @@ describe('buildViewDocument', () => {
 		);
 
 		expect(doc.querySelector('script[src]')?.getAttribute('nonce')).toBe('abc"def');
-		expect(doc.body.getAttribute('data-theme')).toBe('dark');
+		// On the root element, so the color scheme of the whole frame document follows it.
+		expect(doc.documentElement.getAttribute('data-theme')).toBe('dark');
+		expect(doc.body.hasAttribute('data-theme')).toBe(false);
 	});
 
 	it('encodes a runtime with non-ASCII text', () => {

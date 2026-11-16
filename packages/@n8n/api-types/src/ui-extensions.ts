@@ -99,6 +99,115 @@ export const uiExtensionViewSchema = z.object({
 
 export type UiExtensionView = z.infer<typeof uiExtensionViewSchema>;
 
+/** Whether a URL is one that a view may ask the editor to open. */
+export function isUiExtensionOpenableUrl(url: string): boolean {
+	try {
+		const { protocol } = new URL(url);
+		return protocol === 'http:' || protocol === 'https:';
+	} catch {
+		return false;
+	}
+}
+
+/** Caps on the run and service data that the editor sends to a built-in view. */
+export const UI_EXTENSION_DATA_LIMITS = {
+	runs: 10,
+	serviceNodes: 30,
+	itemsPerNode: 3,
+	keysPerItem: 20,
+	valueLength: 200,
+	errorLength: 500,
+	targetsPerNode: 10,
+} as const;
+
+const limitedText = (max: number) => z.string().max(max);
+
+export const uiExtensionRunStatusSchema = z.enum([
+	'success',
+	'error',
+	'crashed',
+	'canceled',
+	'running',
+	'waiting',
+	'new',
+	'unknown',
+]);
+
+export const uiExtensionRunSchema = z.object({
+	id: z.string(),
+	workflowId: z.string(),
+	workflowName: z.string(),
+	status: uiExtensionRunStatusSchema,
+	/** How the run started, such as `manual`, `trigger` or `webhook`. */
+	mode: z.string(),
+	startedAt: z.string().nullable(),
+	stoppedAt: z.string().nullable(),
+});
+
+export type UiExtensionRun = z.infer<typeof uiExtensionRunSchema>;
+
+const uiExtensionItemSchema = z
+	.record(z.string(), limitedText(UI_EXTENSION_DATA_LIMITS.valueLength))
+	.refine((item) => Object.keys(item).length <= UI_EXTENSION_DATA_LIMITS.keysPerItem);
+
+export const uiExtensionServiceNodeDataSchema = z.object({
+	nodeName: z.string(),
+	nodeType: z.string(),
+	displayName: z.string(),
+	/** Display names of the selected resource and operation, such as "Message" and "Send". */
+	resource: z.string().optional(),
+	operation: z.string().optional(),
+	/** What the node works on, such as a channel or a sheet. `url` is http(s) only. */
+	targets: z
+		.array(
+			z.object({
+				label: z.string(),
+				name: z.string(),
+				url: z.string().refine(isUiExtensionOpenableUrl).optional(),
+			}),
+		)
+		.max(UI_EXTENSION_DATA_LIMITS.targetsPerNode),
+	credentialName: z.string().optional(),
+	/** What the node read or wrote in the latest finished run. `null` with no run. */
+	lastRun: z
+		.object({
+			executionId: z.string(),
+			status: uiExtensionRunStatusSchema,
+			finishedAt: z.string().nullable(),
+			itemCount: z.number().int().nonnegative(),
+			items: z.array(uiExtensionItemSchema).max(UI_EXTENSION_DATA_LIMITS.itemsPerNode),
+			error: limitedText(UI_EXTENSION_DATA_LIMITS.errorLength).optional(),
+		})
+		.nullable(),
+});
+
+export type UiExtensionServiceNodeData = z.infer<typeof uiExtensionServiceNodeDataSchema>;
+
+/** Run and service data. The editor sends it to built-in views only. */
+export const uiExtensionPanelDataSchema = z.object({
+	state: z.enum(['loading', 'ready', 'error']),
+	runs: z
+		.object({
+			scope: z.enum(['workflow', 'all']),
+			items: z.array(uiExtensionRunSchema).max(UI_EXTENSION_DATA_LIMITS.runs),
+			/** The failure of the newest run, when it failed. */
+			lastError: z
+				.object({
+					nodeName: z.string().optional(),
+					message: limitedText(UI_EXTENSION_DATA_LIMITS.errorLength),
+				})
+				.optional(),
+		})
+		.nullable(),
+	/** `null` off the workflow page. */
+	services: z
+		.array(uiExtensionServiceNodeDataSchema)
+		.max(UI_EXTENSION_DATA_LIMITS.serviceNodes)
+		.nullable(),
+});
+
+export type UiExtensionPanelData = z.infer<typeof uiExtensionPanelDataSchema>;
+
 const envelope = {
 	source: z.literal(UI_EXTENSION_MESSAGE_SOURCE),
 	version: z.literal(UI_EXTENSION_PROTOCOL_VERSION),
@@ -123,6 +232,10 @@ export const uiExtensionHostMessageSchema = z.object({
 	context: uiExtensionPageContextSchema,
 	/** Translated strings that the view reads with `n8n.t(key)`. */
 	strings: z.record(z.string(), z.string()),
+	/** The editor's locale, such as "en", for date and number formatting. */
+	locale: z.string(),
+	/** Run and service data. Only built-in views get it. */
+	data: uiExtensionPanelDataSchema.optional(),
 });
 
 export type UiExtensionHostMessage = z.infer<typeof uiExtensionHostMessageSchema>;
@@ -134,6 +247,17 @@ export const uiExtensionFrameMessageSchema = z.discriminatedUnion('type', [
 		...envelope,
 		type: z.literal('error'),
 		message: z.string().max(UI_EXTENSION_ERROR_MESSAGE_MAX_LENGTH),
+	}),
+	/** Asks the editor to fetch the data again. The editor acts on it for built-in views only. */
+	z.object({ ...envelope, type: z.literal('refresh') }),
+	/** Asks the editor to open a run or an http(s) URL. The editor acts on it for built-in views only. */
+	z.object({
+		...envelope,
+		type: z.literal('open'),
+		target: z.discriminatedUnion('kind', [
+			z.object({ kind: z.literal('execution'), workflowId: z.string(), executionId: z.string() }),
+			z.object({ kind: z.literal('url'), url: z.string().refine(isUiExtensionOpenableUrl) }),
+		]),
 	}),
 ]);
 

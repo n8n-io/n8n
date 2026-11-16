@@ -1,6 +1,6 @@
-import type { UiExtensionPageContext } from '@n8n/api-types';
+import type { UiExtensionPageContext, UiExtensionPanelData } from '@n8n/api-types';
 
-import { contextForView } from './ui-extensions.context';
+import { contextForView, dataForView } from './ui-extensions.context';
 
 const workflowContext: UiExtensionPageContext = {
 	page: 'workflow',
@@ -86,5 +86,46 @@ describe('contextForView', () => {
 		expect(result.page === 'workflow' && result.workflow?.nodes).toEqual([
 			{ name: 'Start', type: 't' },
 		]);
+	});
+});
+
+describe('dataForView', () => {
+	const data: UiExtensionPanelData = {
+		state: 'ready',
+		runs: {
+			scope: 'workflow',
+			items: [
+				{
+					id: '1',
+					workflowId: 'wf-1',
+					workflowName: 'Payroll',
+					status: 'success',
+					mode: 'manual',
+					startedAt: null,
+					stoppedAt: null,
+				},
+			],
+		},
+		services: [],
+	};
+
+	it('gives the data to a built-in view as a plain copy', () => {
+		const result = dataForView(builtin, data);
+
+		expect(result).toEqual(data);
+		expect(result).not.toBe(data);
+	});
+
+	it('gives no data to an MCP view', () => {
+		expect(dataForView(mcpView, data)).toBeUndefined();
+	});
+
+	it('sends an error state instead of data that breaks the caps', () => {
+		const tooMany = {
+			...data,
+			runs: { scope: 'workflow' as const, items: Array(11).fill(data.runs!.items[0]) },
+		};
+
+		expect(dataForView(builtin, tooMany)).toEqual({ state: 'error', runs: null, services: null });
 	});
 });

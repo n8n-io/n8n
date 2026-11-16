@@ -10,9 +10,18 @@ vi.mock('../ui-extensions.api');
 
 const pageContext: UiExtensionPageContext = { page: 'other', routeName: 'SettingsPersonalView' };
 
-function renderPanel() {
+const panelData = { state: 'loading', runs: null, services: null } as const;
+
+function renderPanel(props: Record<string, unknown> = {}) {
 	return render(SidePanel, {
-		props: { pageContext, workflowAvailableInMcp: false, runtime: { js: '', css: '' } },
+		props: {
+			pageContext,
+			workflowAvailableInMcp: false,
+			runtime: { js: '', css: '' },
+			panelData,
+			locale: 'en',
+			...props,
+		},
 	});
 }
 
@@ -39,9 +48,10 @@ describe('SidePanel', () => {
 		await fireEvent.click(getByTestId('ui-extensions-side-panel-toggle'));
 
 		expect(await findByTestId('ui-extensions-side-panel-content')).toBeTruthy();
-		expect(getByText('Page summary')).toBeTruthy();
+		expect(getByText('Recent runs')).toBeTruthy();
+		expect(getByText('Service data')).toBeTruthy();
 		expect(getByText('Stats')).toBeTruthy();
-		expect(getByTestId('ui-extensions-view-frame').getAttribute('title')).toBe('Page summary');
+		expect(getByTestId('ui-extensions-view-frame').getAttribute('title')).toBe('Recent runs');
 	});
 
 	it('loads the views on mount and again when the window gets focus', async () => {
@@ -68,11 +78,39 @@ describe('SidePanel', () => {
 
 	it('shows no frame until the runtime is loaded', async () => {
 		useSidePanelStore().isOpen = true;
-		const { queryByTestId, findByTestId } = render(SidePanel, {
-			props: { pageContext, workflowAvailableInMcp: false, runtime: null },
-		});
+		const { queryByTestId, findByTestId } = renderPanel({ runtime: null });
 
 		expect(await findByTestId('ui-extensions-side-panel-content')).toBeTruthy();
 		expect(queryByTestId('ui-extensions-view-frame')).toBeNull();
+	});
+
+	it('asks for data only while it is open on a built-in view that shows it', async () => {
+		vi.mocked(api.fetchUiExtensionViews).mockResolvedValue([
+			{ id: 'view-1', title: 'Stats', source: 'x', updatedAt: '2026-01-01T00:00:00.000Z' },
+		]);
+		const { emitted, getByTestId } = renderPanel();
+		await flushPromises();
+		const store = useSidePanelStore();
+		const dataEnabled = () => emitted<[boolean]>('update:dataEnabled')?.at(-1)?.[0] ?? false;
+
+		expect(dataEnabled()).toBe(false);
+
+		await fireEvent.click(getByTestId('ui-extensions-side-panel-toggle'));
+		expect(dataEnabled()).toBe(true);
+
+		store.activeViewId = 'builtin:service-data';
+		await flushPromises();
+		expect(dataEnabled()).toBe(true);
+
+		store.activeViewId = 'view-1';
+		await flushPromises();
+		expect(dataEnabled()).toBe(false);
+
+		store.activeViewId = 'builtin:recent-runs';
+		await flushPromises();
+		expect(dataEnabled()).toBe(true);
+
+		await fireEvent.click(getByTestId('ui-extensions-side-panel-toggle'));
+		expect(dataEnabled()).toBe(false);
 	});
 });

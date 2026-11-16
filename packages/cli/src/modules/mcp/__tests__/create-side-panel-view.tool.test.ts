@@ -43,6 +43,16 @@ describe('create_side_panel_view MCP tool', () => {
 		expect(tool.config.description).toContain('n8n.useContext()');
 	});
 
+	// Run data and the open actions work only in the views that ship with n8n.
+	it('does not document the members that do nothing in a view from an MCP client', () => {
+		const { tool } = setup();
+
+		expect(tool.config.description).toContain('n8n.useLocale()');
+		for (const name of ['data', 'useData', 'refresh', 'openExecution', 'openUrl']) {
+			expect(tool.config.description, name).not.toMatch(new RegExp(`\\b${name}\\b`, 'i'));
+		}
+	});
+
 	it('saves the view for the calling user and pushes the change to that user only', async () => {
 		const { viewsService, push, telemetry, tool } = setup();
 

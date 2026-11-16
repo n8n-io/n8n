@@ -5,7 +5,7 @@ import type { ApiHelpers } from '../../../services/api-helper';
 
 /**
  * The side panel at the right edge of the editor. Its tabs are views: the
- * built-in "Page summary", and views that an MCP client adds with the
+ * built-in "Recent runs" and "Service data", and views that an MCP client adds with the
  * `create_side_panel_view` tool. Each view runs in a sandboxed frame and gets the
  * page context.
  */
@@ -74,7 +74,10 @@ const INJECTING_VIEW_SOURCE = `export default {
 	template: '<p data-test-id="injector-state">{{ state }}</p>',
 };`;
 
-/** A view that shows its context and whether it can reach n8n over the network. */
+/**
+ * A view that shows its context, whether it can reach n8n over the network, and
+ * whether it gets the run data that only built-in views get.
+ */
 const PROBE_VIEW_SOURCE = `export default {
 	setup() {
 		const context = n8n.useContext();
@@ -84,12 +87,14 @@ const PROBE_VIEW_SOURCE = `export default {
 		request.onerror = () => { network.value = 'blocked'; };
 		request.open('GET', '/rest/login');
 		request.send();
-		return { context, network };
+		return { context, network, data: n8n.useData(), openExecutionType: typeof n8n.openExecution };
 	},
 	template: \`<div>
 		<p data-test-id="probe-page">{{ context.page }}</p>
 		<p data-test-id="probe-workflow">{{ context.workflow ? context.workflow.name : 'hidden' }}</p>
 		<p data-test-id="probe-network">{{ network }}</p>
+		<p data-test-id="probe-data">{{ data === null ? 'no-data' : 'has-data' }}</p>
+		<p data-test-id="probe-api">{{ openExecutionType }}</p>
 	</div>\`,
 };`;
 
@@ -101,26 +106,27 @@ test.describe(
 	() => {
 		test.describe.configure({ mode: 'serial' });
 
-		test('shows the panel with the Page summary tab on the main pages', async ({ n8n, api }) => {
+		test('shows the panel with the Recent runs tab on the main pages', async ({ n8n, api }) => {
 			const workflow = await createWorkflow(api);
 
 			await n8n.navigate.toWorkflow(workflow.id);
 			await n8n.sidePanel.open();
-			await expect(n8n.sidePanel.getTab('Page summary')).toBeVisible();
+			await expect(n8n.sidePanel.getTab('Recent runs')).toBeVisible();
+			await expect(n8n.sidePanel.getViewElement('recent-runs-subtitle')).toHaveText(workflow.name);
 
 			await n8n.navigate.toWorkflows();
 			await n8n.sidePanel.open();
-			await expect(n8n.sidePanel.getTab('Page summary')).toBeVisible();
+			await expect(n8n.sidePanel.getViewElement('recent-runs-subtitle')).toHaveText(
+				'All workflows',
+			);
 
 			await n8n.navigate.toPersonalSettings();
 			await n8n.sidePanel.open();
-			await expect(n8n.sidePanel.getTab('Page summary')).toBeVisible();
-			await expect(n8n.sidePanel.getViewElement('page-summary-route')).toHaveText(
-				'PersonalSettings',
-			);
+			await expect(n8n.sidePanel.getTab('Recent runs')).toBeVisible();
+			await expect(n8n.sidePanel.getViewElement('recent-runs-other-page')).toBeVisible();
 		});
 
-		test('changes the Page summary between the workflow page and the workflows list without a reload', async ({
+		test('changes Recent runs between the workflow page and the workflows list without a reload', async ({
 			n8n,
 			api,
 		}) => {
@@ -128,8 +134,10 @@ test.describe(
 
 			await n8n.navigate.toWorkflows();
 			await n8n.sidePanel.open();
-			await n8n.sidePanel.selectTab('Page summary');
-			await expect(n8n.sidePanel.getViewElement('page-summary-workflows-heading')).toBeVisible();
+			await n8n.sidePanel.selectTab('Recent runs');
+			await expect(n8n.sidePanel.getViewElement('recent-runs-subtitle')).toHaveText(
+				'All workflows',
+			);
 
 			// A marker on the window shows that the app did not reload.
 			await n8n.page.evaluate(() => {
@@ -137,17 +145,15 @@ test.describe(
 			});
 
 			await n8n.workflows.cards.clickWorkflowCard(workflow.name);
-			await expect(n8n.sidePanel.getViewElement('page-summary-workflow-name')).toHaveText(
-				workflow.name,
+			await expect(n8n.sidePanel.getViewElement('recent-runs-subtitle')).toHaveText(workflow.name);
+			await expect(n8n.sidePanel.getViewElement('recent-runs-empty')).toContainText(
+				'This workflow has no runs yet.',
 			);
-			await expect(n8n.sidePanel.getViewElement('page-summary-trigger')).toContainText(
-				'Start here',
-			);
-			await expect(n8n.sidePanel.getViewElement('page-summary-stat-nodes')).toHaveText('1');
 
 			await n8n.page.goBack();
-			await expect(n8n.sidePanel.getViewElement('page-summary-workflows-heading')).toBeVisible();
-			await expect(n8n.sidePanel.getViewElement('page-summary-workflow-name')).toBeHidden();
+			await expect(n8n.sidePanel.getViewElement('recent-runs-subtitle')).toHaveText(
+				'All workflows',
+			);
 
 			const marker = await n8n.page.evaluate(
 				() => (window as unknown as { sidePanelMarker?: string }).sidePanelMarker,
@@ -155,8 +161,14 @@ test.describe(
 			expect(marker).toBe('kept');
 		});
 
-		test('shows the services and the checklist of the open workflow', async ({ n8n, api }) => {
+		test('shows the data a service node read in its last run', async ({ n8n, api }) => {
+			const credential = await api.credentials.createCredential({
+				name: `Slack ${nanoid()}`,
+				type: 'slackApi',
+				data: { accessToken: 'xoxb-not-a-real-token' },
+			});
 			const name = `Side panel ${nanoid()}`;
+			// Pinned data means that the run never uses the credential or calls Slack.
 			const workflow = await api.workflows.createWorkflow({
 				name,
 				nodes: [
@@ -170,53 +182,75 @@ test.describe(
 					},
 					{
 						id: nanoid(),
-						name: 'No Operation, do nothing',
-						type: 'n8n-nodes-base.noOp',
-						typeVersion: 1,
+						name: 'Post alert',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2.3,
 						position: [200, 0],
-						parameters: {},
-					},
-					{
-						id: nanoid(),
-						name: 'Skipped step',
-						type: 'n8n-nodes-base.noOp',
-						typeVersion: 1,
-						position: [400, 0],
-						parameters: {},
-						disabled: true,
+						parameters: {
+							resource: 'message',
+							operation: 'post',
+							select: 'channel',
+							channelId: {
+								__rl: true,
+								mode: 'list',
+								value: 'C123',
+								cachedResultName: '#qa-alerts',
+								cachedResultUrl: 'https://example.slack.com/archives/C123',
+							},
+							text: 'hello',
+						},
+						credentials: { slackApi: { id: credential.id, name: credential.name } },
 					},
 				],
-				connections: {},
+				connections: {
+					'Start here': { main: [[{ node: 'Post alert', type: 'main', index: 0 }]] },
+				},
+				pinData: {
+					'Post alert': [
+						{ json: { ts: '1', text: 'hello from qa' } },
+						{ json: { ts: '2', text: 'second message' } },
+					],
+				},
 			});
+			const workflowId = String(workflow.id);
 
-			await n8n.navigate.toWorkflow(String(workflow.id));
+			await n8n.navigate.toWorkflow(workflowId);
 			await n8n.sidePanel.open();
+			await n8n.sidePanel.selectTab('Recent runs');
+			await expect(n8n.sidePanel.getViewElement('recent-runs-empty')).toBeVisible();
 
-			await n8n.sidePanel.selectTab('Integrations');
-			// A manual trigger and two No Operation nodes connect to no outside service.
-			await expect(n8n.sidePanel.getViewElement('integrations-summary')).toHaveText(
-				'Services: 0. Nodes: 3.',
-			);
-			await expect(n8n.sidePanel.getViewElement('integrations-no-services')).toBeVisible();
-			await expect(n8n.sidePanel.getViewElement('integrations-builtin-node')).toHaveText([
-				'No Operation, do nothing',
-				'Manual Trigger',
-			]);
+			await n8n.canvas.clickExecuteWorkflowButton();
+			await expect(
+				n8n.notifications.getNotificationByTitle('Workflow executed successfully'),
+			).toBeVisible();
 
-			await n8n.sidePanel.selectTab('Checklist');
-			// A manual trigger does not make the workflow start on its own.
-			await expect(n8n.sidePanel.getViewElement('checklist-score')).toHaveText(
-				'0 of 5 checks pass',
+			// The finished run reaches the panel over the push connection, with no reload.
+			const run = n8n.sidePanel.getViewElement('recent-runs-run');
+			await expect(run).toHaveCount(1);
+			await expect(run).toHaveAttribute('data-status', 'success');
+			await expect(run).toContainText('Succeeded');
+
+			await n8n.sidePanel.selectTab('Service data');
+			const card = n8n.sidePanel.getViewElement('service-data-card');
+			await expect(card).toHaveCount(1);
+			await expect(card).toContainText('Slack');
+			await expect(card).toContainText('Message › Send');
+			await expect(n8n.sidePanel.getViewElement('service-data-target')).toHaveText(
+				'Channel: #qa-alerts',
 			);
-			await expect(n8n.sidePanel.getViewElement('checklist-trigger')).toHaveAttribute(
-				'data-pass',
-				'false',
+			await expect(n8n.sidePanel.getViewElement('service-data-target-link')).toBeVisible();
+			await expect(n8n.sidePanel.getViewElement('service-data-account')).toHaveText(
+				`Account: ${credential.name}`,
 			);
-			await expect(n8n.sidePanel.getViewElement('checklist-disabled')).toContainText(
-				'Disabled nodes: 1.',
+			await expect(n8n.sidePanel.getViewElement('service-data-items')).toHaveText('Items: 2');
+			await expect(n8n.sidePanel.getViewElement('service-data-item').first()).toContainText(
+				'hello from qa',
 			);
-			await expect(n8n.sidePanel.getViewElement('checklist-names')).toContainText(
-				'Nodes with a default name: 1.',
+
+			await n8n.sidePanel.selectTab('Recent runs');
+			await n8n.sidePanel.getViewElement('recent-runs-run').click();
+			await expect(n8n.page).toHaveURL((url) =>
+				url.pathname.startsWith(`/workflow/${workflowId}/executions/`),
 			);
 		});
 
@@ -231,8 +265,10 @@ test.describe(
 
 			await n8n.navigate.toWorkflows();
 			await n8n.sidePanel.open();
-			// The built-in view has loaded, so the panel has fetched the views and holds its push connection.
-			await expect(n8n.sidePanel.getViewElement('page-summary-workflows-heading')).toBeVisible();
+			await n8n.sidePanel.selectTab('Recent runs');
+			// The built-in view has its data, so the panel has fetched the views and the run
+			// data, and it holds its push connection. The earlier test left a run.
+			await expect(n8n.sidePanel.getViewElement('recent-runs-run').first()).toBeVisible();
 
 			const title = `Probe ${nanoid(6)}`;
 			const result = await api.mcp.internalMcpCreateSidePanelView(apiKey, {
@@ -246,6 +282,9 @@ test.describe(
 			await expect(n8n.sidePanel.getViewElement('probe-page')).toHaveText('workflows');
 			await expect(n8n.sidePanel.getViewElement('probe-workflow')).toHaveText('hidden');
 			await expect(n8n.sidePanel.getViewElement('probe-network')).toHaveText('blocked');
+			// A view from an MCP client has the same API, but never gets the run data.
+			await expect(n8n.sidePanel.getViewElement('probe-data')).toHaveText('no-data');
+			await expect(n8n.sidePanel.getViewElement('probe-api')).toHaveText('function');
 
 			await n8n.workflows.cards.clickWorkflowCard(exposed.name);
 			await expect(n8n.sidePanel.getViewElement('probe-page')).toHaveText('workflow');
@@ -256,10 +295,8 @@ test.describe(
 			// not the empty context of the page load.
 			await n8n.navigate.toWorkflow(hidden.id);
 			await n8n.sidePanel.open();
-			await n8n.sidePanel.selectTab('Page summary');
-			await expect(n8n.sidePanel.getViewElement('page-summary-workflow-name')).toHaveText(
-				hidden.name,
-			);
+			await n8n.sidePanel.selectTab('Recent runs');
+			await expect(n8n.sidePanel.getViewElement('recent-runs-subtitle')).toHaveText(hidden.name);
 			await n8n.sidePanel.selectTab(title);
 			await expect(n8n.sidePanel.getViewElement('probe-page')).toHaveText('workflow');
 			await expect(n8n.sidePanel.getViewElement('probe-workflow')).toHaveText('hidden');
@@ -290,10 +327,8 @@ test.describe(
 
 			// While the frame is removed for another tab. Opening the view again waits
 			// long enough for a command from the removed frame to show.
-			await n8n.sidePanel.selectTab('Page summary');
-			await expect(n8n.sidePanel.getViewElement('page-summary-workflow-name')).toHaveText(
-				workflow.name,
-			);
+			await n8n.sidePanel.selectTab('Recent runs');
+			await expect(n8n.sidePanel.getViewElement('recent-runs-subtitle')).toHaveText(workflow.name);
 			await n8n.sidePanel.selectTab(title);
 			await expect(n8n.sidePanel.getViewElement('injector-state')).toHaveText('done');
 			await expect(n8n.canvas.nodeByName('Injected by view')).toHaveCount(0);

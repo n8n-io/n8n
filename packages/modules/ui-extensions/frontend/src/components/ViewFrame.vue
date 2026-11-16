@@ -5,6 +5,7 @@ import {
 	type UiExtensionConnectMessage,
 	type UiExtensionHostMessage,
 	type UiExtensionPageContext,
+	type UiExtensionPanelData,
 	uiExtensionFrameMessageSchema,
 } from '@n8n/api-types';
 import { N8nCallout } from '@n8n/design-system';
@@ -12,9 +13,9 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import { builtinViewStrings, getBuiltinView } from '../ui-extensions.builtin';
-import { contextForView } from '../ui-extensions.context';
+import { contextForView, dataForView } from '../ui-extensions.context';
 import { buildViewDocument, VIEW_FRAME_SANDBOX } from '../ui-extensions.frame';
-import type { SidePanelView, ViewRuntimeAssets } from '../ui-extensions.types';
+import type { SidePanelView, ViewOpenTarget, ViewRuntimeAssets } from '../ui-extensions.types';
 
 const props = defineProps<{
 	view: SidePanelView;
@@ -22,6 +23,15 @@ const props = defineProps<{
 	pageContext: UiExtensionPageContext;
 	workflowAvailableInMcp: boolean;
 	runtime: ViewRuntimeAssets;
+	/** Run and service data. The frame gets it only for a built-in view. */
+	panelData: UiExtensionPanelData;
+	/** The editor's locale, for date and number formatting in the view. */
+	locale: string;
+}>();
+
+const emit = defineEmits<{
+	refresh: [];
+	open: [target: ViewOpenTarget];
 }>();
 
 const i18n = useI18n();
@@ -43,6 +53,8 @@ try {
 const context = computed(() =>
 	contextForView(props.view, props.pageContext, props.workflowAvailableInMcp),
 );
+
+const data = computed(() => dataForView(props.view, props.panelData));
 
 // A built-in view fills each `{name}` placeholder itself, with `n8n.t(key, params)`.
 const strings = computed<Record<string, string>>(() => {
@@ -73,13 +85,24 @@ function sendContext() {
 		type: 'context',
 		context: context.value,
 		strings: { ...strings.value },
+		locale: props.locale,
+		...(data.value && { data: data.value }),
 	};
 	channel.port1.postMessage(message);
 }
 
-function onFrameMessage(data: unknown) {
-	const parsed = uiExtensionFrameMessageSchema.safeParse(data);
-	if (parsed.success && parsed.data.type === 'error') viewError.value = parsed.data.message;
+/** Only built-in views may ask the editor to fetch data or to open something. */
+function onFrameMessage(message: unknown) {
+	const parsed = uiExtensionFrameMessageSchema.safeParse(message);
+	if (!parsed.success) return;
+	const frameMessage = parsed.data;
+	if (frameMessage.type === 'error') {
+		viewError.value = frameMessage.message;
+		return;
+	}
+	if (!props.view.builtin || hasLeftFrame.value) return;
+	if (frameMessage.type === 'refresh') emit('refresh');
+	if (frameMessage.type === 'open') emit('open', frameMessage.target);
 }
 
 /**
@@ -123,7 +146,7 @@ function onLoad() {
 	channel?.port1.close();
 }
 
-watch([context, strings], sendContext, { deep: true });
+watch([context, strings, data, () => props.locale], sendContext, { deep: true });
 
 onMounted(() => window.addEventListener('message', onWindowMessage));
 onBeforeUnmount(() => {

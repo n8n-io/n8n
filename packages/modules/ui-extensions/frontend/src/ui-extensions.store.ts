@@ -10,7 +10,7 @@ import { computed, ref } from 'vue';
 import { fetchUiExtensionViews } from './ui-extensions.api';
 import { BUILTIN_VIEWS } from './ui-extensions.builtin';
 import {
-	BUILTIN_PAGE_SUMMARY_VIEW_ID,
+	BUILTIN_RECENT_RUNS_VIEW_ID,
 	SIDE_PANEL_DEFAULT_WIDTH,
 	SIDE_PANEL_MAX_WIDTH,
 	SIDE_PANEL_MIN_WIDTH,
@@ -36,7 +36,7 @@ export const useSidePanelStore = defineStore('uiExtensionsSidePanel', () => {
 	const storedWidth = useLocalStorage(SIDE_PANEL_STORAGE_KEYS.width, SIDE_PANEL_DEFAULT_WIDTH);
 	const storedActiveViewId = useLocalStorage(
 		SIDE_PANEL_STORAGE_KEYS.activeViewId,
-		BUILTIN_PAGE_SUMMARY_VIEW_ID,
+		BUILTIN_RECENT_RUNS_VIEW_ID,
 	);
 
 	const builtinViews = computed<SidePanelView[]>(() =>
@@ -62,7 +62,7 @@ export const useSidePanelStore = defineStore('uiExtensionsSidePanel', () => {
 		get: () =>
 			views.value.some((view) => view.id === storedActiveViewId.value)
 				? storedActiveViewId.value
-				: BUILTIN_PAGE_SUMMARY_VIEW_ID,
+				: BUILTIN_RECENT_RUNS_VIEW_ID,
 		set: (id: string) => {
 			storedActiveViewId.value = id;
 		},

@@ -5,7 +5,10 @@ import {
 	listPage,
 	node,
 	otherPage,
+	panelData,
 	renderBuiltinView,
+	run,
+	serviceNode,
 	workflowPage,
 } from './__tests__/render-builtin-view';
 import { BUILTIN_VIEWS, builtinViewStrings } from './ui-extensions.builtin';
@@ -42,18 +45,86 @@ describe('built-in views', () => {
 		},
 	);
 
+	it('all use data, and Recent runs is the first tab', () => {
+		expect(BUILTIN_VIEWS.map((view) => view.id)).toEqual([
+			'builtin:recent-runs',
+			'builtin:service-data',
+		]);
+		expect(BUILTIN_VIEWS.every((view) => view.usesData)).toBe(true);
+	});
+
 	it.each(BUILTIN_VIEWS.map((view) => [view.id]))(
 		'%s only translates keys that the host sends it',
 		(id) => {
-			const contexts = [
-				workflowPage([node('A', 'HTTP Request')]),
-				workflowPage([node('B', 'Webhook', { isTrigger: true })], { hasErrorWorkflow: true }),
-				hiddenWorkflowPage,
-				listPage,
-				otherPage,
+			const failedNode = serviceNode({
+				lastRun: {
+					executionId: '1',
+					status: 'error',
+					finishedAt: null,
+					itemCount: 0,
+					items: [],
+					error: 'Bad request',
+				},
+			});
+			const statuses = [
+				'success',
+				'error',
+				'crashed',
+				'canceled',
+				'running',
+				'waiting',
+				'new',
+				'unknown',
+			] as const;
+			const modes = [
+				'manual',
+				'trigger',
+				'webhook',
+				'retry',
+				'error',
+				'integrated',
+				'chat',
+				'evaluation',
+				'cli',
 			];
-			for (const context of contexts) {
-				const { usedKeys, strings, unmount } = renderBuiltinView(id, context);
+			const fullData = panelData({
+				runs: {
+					scope: 'workflow',
+					items: statuses.map((status, index) =>
+						run(String(index), { status, mode: modes[index] }),
+					),
+					lastError: { nodeName: 'A', message: 'Failed' },
+				},
+				services: [
+					serviceNode(),
+					failedNode,
+					serviceNode({
+						nodeName: 'B',
+						resource: undefined,
+						lastRun: null,
+						credentialName: undefined,
+					}),
+				],
+			});
+			const cases = [
+				[workflowPage([node('A', 'Slack', { isService: true })]), fullData],
+				[
+					workflowPage([]),
+					panelData({
+						runs: { scope: 'workflow', items: [], lastError: { message: 'x' } },
+						services: [],
+					}),
+				],
+				[workflowPage([]), panelData({ state: 'loading' })],
+				[workflowPage([]), panelData({ state: 'error' })],
+				[workflowPage([]), null],
+				[hiddenWorkflowPage, null],
+				[listPage, panelData({ runs: { scope: 'all', items: [run('1')] } })],
+				[listPage, panelData({ runs: { scope: 'all', items: [] } })],
+				[otherPage, panelData()],
+			] as const;
+			for (const [context, data] of cases) {
+				const { usedKeys, strings, unmount } = renderBuiltinView(id, context, data);
 				for (const key of usedKeys) expect(Object.keys(strings), key).toContain(key);
 				unmount();
 			}

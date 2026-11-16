@@ -1,4 +1,9 @@
-import type { UiExtensionNode, UiExtensionPageContext } from '@n8n/api-types';
+import {
+	type UiExtensionNode,
+	type UiExtensionPageContext,
+	type UiExtensionPanelData,
+	uiExtensionPanelDataSchema,
+} from '@n8n/api-types';
 
 import type { SidePanelView } from './ui-extensions.types';
 
@@ -56,4 +61,21 @@ export function contextForView(
 		case 'other':
 			return { page: 'other', routeName: context.routeName };
 	}
+}
+
+const UNAVAILABLE_DATA: UiExtensionPanelData = { state: 'error', runs: null, services: null };
+
+/**
+ * The run and service data that one view may see. Only built-in views get it,
+ * because the data holds what the workflow's services returned. The data is
+ * checked against the contract, so the frame never gets more than the caps
+ * allow, and the result is a plain object that can go through `postMessage`.
+ */
+export function dataForView(
+	view: Pick<SidePanelView, 'builtin'>,
+	data: UiExtensionPanelData,
+): UiExtensionPanelData | undefined {
+	if (!view.builtin) return undefined;
+	const parsed = uiExtensionPanelDataSchema.safeParse(data);
+	return parsed.success ? parsed.data : { ...UNAVAILABLE_DATA };
 }
