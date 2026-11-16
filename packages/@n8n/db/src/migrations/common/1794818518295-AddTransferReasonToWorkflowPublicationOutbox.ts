@@ -4,7 +4,7 @@ const tableName = 'workflow_publication_outbox';
 const columnName = 'reason';
 
 /** Allows `transfer`, the reason a move to another project enqueues to re-register every trigger. */
-export class AddTransferReasonToWorkflowPublicationOutbox1794495522674
+export class AddTransferReasonToWorkflowPublicationOutbox1794818518295
 	implements ReversibleMigration
 {
 	async up({ schemaBuilder: { dropEnumCheck, addEnumCheck } }: MigrationContext) {
