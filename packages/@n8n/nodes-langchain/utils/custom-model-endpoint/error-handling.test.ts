@@ -133,7 +133,7 @@ describe('a rejected login', () => {
 			gatewayHeaders: {},
 		};
 
-		const { fetch: authFetch } = createCustomModelEndpointAuthFetch(
+		const authFetch = createCustomModelEndpointAuthFetch(
 			ctx,
 			{},
 			{

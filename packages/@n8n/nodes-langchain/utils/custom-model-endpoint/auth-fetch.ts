@@ -14,10 +14,6 @@ import { buildRequestHeaders } from './headers';
 import { createClientCredentialsTokenSource } from './oauth2';
 import type { EndpointCredential } from './types';
 
-export interface CustomModelEndpointTransport {
-	fetch: typeof fetch;
-}
-
 export type CustomModelEndpointFetchContext =
 	| IExecuteFunctions
 	| ISupplyDataFunctions
@@ -47,7 +43,7 @@ export function createCustomModelEndpointAuthFetch(
 		baseFetch: typeof fetch;
 		requestHeaders?: Record<string, string>;
 	},
-): CustomModelEndpointTransport {
+): typeof fetch {
 	const { endpoint, egressFilter, baseFetch, requestHeaders } = options;
 	const node = ctx.getNode();
 	const allowedDomains = getCredentialAllowedDomains({
@@ -93,10 +89,8 @@ export function createCustomModelEndpointAuthFetch(
 		assertAllowedUrl,
 	});
 
-	return {
-		fetch: async (input, init) => {
-			const stripped = withoutInheritedAuthorization(input, init);
-			return await authFetch(stripped.input, stripped.init);
-		},
+	return async (input, init) => {
+		const stripped = withoutInheritedAuthorization(input, init);
+		return await authFetch(stripped.input, stripped.init);
 	};
 }
