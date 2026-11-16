@@ -1,3 +1,4 @@
+import type { UserError } from '@n8n/errors';
 import type {
 	ICredentialDataDecryptedObject,
 	INode,
@@ -174,6 +175,31 @@ describe('createCustomModelEndpointConfig', () => {
 				{ credentialType: CUSTOM_MODEL_ENDPOINT_CREDENTIAL },
 			),
 		).toThrow('no usable Base URL');
+	});
+
+	it.each([
+		['a user name and a password', 'https://tenant:s3cr3t@gateway.example.com/v1', 's3cr3t'],
+		['a user name alone', 'https://tenant@gateway.example.com/v1', 'tenant'],
+	])('refuses a base URL carrying %s, without repeating it', (_name, url, carried) => {
+		const build = () =>
+			createCustomModelEndpointConfig(
+				contextWith(filterFrom(vi.fn(async () => ({ ok: true })))),
+				{ url, authentication: 'none' },
+				{ credentialType: CUSTOM_MODEL_ENDPOINT_CREDENTIAL },
+			);
+
+		// The transport would otherwise refuse it and name the whole URL in the error
+		const error = (() => {
+			try {
+				build();
+				return undefined;
+			} catch (reason) {
+				return reason as UserError;
+			}
+		})();
+
+		expect(error?.message).toContain('carries a user name or a password');
+		expect(`${error?.message} ${error?.description ?? ''}`).not.toContain(carried);
 	});
 
 	it('checks the target against the egress filter before the request leaves', async () => {
