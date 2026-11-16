@@ -28,7 +28,7 @@ const nodeSources: NodeSources = {
 		NODE_DESCRIPTIONS[NODE_DESCRIPTION_VERSIONS[`${type}@${version}`]],
 	aliases: { '@utils/': `${join(nodesBase, 'utils')}/` },
 	verified: {
-		'n8n-nodes-base.telegram@1.2:message.sendChatAction': ['chatId', 'action', '@items=each'],
+		'n8n-nodes-base.telegram@1.2:message.sendChatAction': ['chatId', 'action', '@each=chatId'],
 	},
 };
 const instance = { baseUrl: 'https://n8n.example', id: 'a'.repeat(64) };
@@ -121,7 +121,7 @@ describe('node compiler in the converter', () => {
 		expect(result.nodes).toBeUndefined();
 	});
 
-	it('calls the node once with all items, and once for each item only when v1 agrees so', () => {
+	it('calls the node once with all items, also when a parameter reads the item', () => {
 		const key = 'n8n-nodes-base.telegram@1.2:message.sendChatAction';
 		const oneCall: NodeSources = { ...nodeSources, verified: { [key]: ['chatId', 'action'] } };
 		const fixed = {
@@ -140,7 +140,11 @@ describe('node compiler in the converter', () => {
 		expect(refused.fallbackNodes).toEqual(['Telegram']);
 		const each = convertWorkflow(workflowWith(perItem), { nodeSources, instance });
 		expect(each.fallbackNodes).toEqual([]);
-		expect(each.source).toContain('items: [$json],');
+		expect(each.source).toContain('for (const $json of webhookItems) {');
+		expect(each.source).toContain('telegramParameters.push({ chatId: ');
+		expect(each.source).toContain('parameters: { each: telegramParameters },');
+		expect(each.source).toContain('items: webhookItems,');
+		expect(each.source).not.toContain('items: [$json],');
 	});
 
 	it('compiles a node for its error setting only when v1 agrees under that setting', async () => {
@@ -158,7 +162,7 @@ describe('node compiler in the converter', () => {
 
 		const proven: NodeSources = {
 			...nodeSources,
-			verified: { [key]: ['chatId', 'action', '@onError=continueRegularOutput'] },
+			verified: { [key]: ['chatId', 'action', '@each=chatId', '@onError=continueRegularOutput'] },
 		};
 		const result = convertWorkflow(workflow, { nodeSources: proven, instance });
 		expect(result.fallbackNodes).toEqual([]);

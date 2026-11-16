@@ -26,6 +26,7 @@ import {
 	differenceFromV1,
 	flagKeyOf,
 	flagVariants,
+	itemFieldExpression,
 	MINTED_TOKEN_RESPONSE,
 } from '../src/node-compile/__tests__/verify.ts';
 import { COST } from '../src/node-compile/cost.generated.ts';
@@ -35,7 +36,9 @@ import {
 	CONTINUE_MODES,
 	CALL_FOR_EACH_ITEM,
 	ERROR_ITEMS_BY_POSITION,
+	ITEM_PARAMETER_PREFIX,
 	errorModeCondition,
+	itemParameterCondition,
 	verifiedKey,
 } from '../src/node-compile/convert.ts';
 import type { EquivalenceCase, NodeSettings } from '../src/nodes/__tests__/equivalence.ts';
@@ -129,6 +132,7 @@ const DOWNLOAD_ANSWER_TYPED = {
 	},
 };
 const MAX_BLOCKERS = 20;
+const MAX_EXPRESSIONS_ALONE = 4;
 
 if (!recorderAvailable() || !existsSync(join(base, 'dist/known/nodes.json'))) {
 	console.error('Build n8n-nodes-base and @n8n/workflow-fallback-host first.');
@@ -327,6 +331,52 @@ function withOptions(node: LoadedNode, version: number, start: Json): Json {
 	return out;
 }
 
+interface ExpressionForm {
+	name: string;
+	value: unknown;
+	fields: Record<string, unknown[]>;
+}
+
+function expressionForms(parameters: Json, fixed: Json): ExpressionForm[] {
+	const forms: ExpressionForm[] = [];
+	const fieldOf = (name: string) => name.replace(/\W/g, '_');
+	const texts = (text: string) => [text, `${text}b`, `${text}c`];
+	for (const [name, value] of Object.entries(parameters)) {
+		if (name in fixed) continue;
+		const field = fieldOf(name);
+		if (typeof value === 'string' && value !== '' && value !== '{}' && !value.startsWith('=')) {
+			forms.push({ name, value: itemFieldExpression(field), fields: { [field]: texts(value) } });
+		} else if (typeof value === 'number') {
+			forms.push({
+				name,
+				value: itemFieldExpression(field),
+				fields: { [field]: [value, value + 1, value + 2] },
+			});
+		} else if (isJson(value) && value.__rl === true && typeof value.value === 'string') {
+			forms.push({
+				name,
+				value: { ...value, value: itemFieldExpression(field) },
+				fields: { [field]: texts(value.value) },
+			});
+		} else if (isJson(value)) {
+			const members: Json = {};
+			const fields: Record<string, unknown[]> = {};
+			for (const [key, member] of Object.entries(value)) {
+				const inner = fieldOf(`${name}_${key}`);
+				if (typeof member === 'string' && member !== '' && !member.startsWith('=')) {
+					members[key] = itemFieldExpression(inner);
+					fields[inner] = texts(member);
+				} else if (typeof member === 'number') {
+					members[key] = itemFieldExpression(inner);
+					fields[inner] = [member, member + 1, member + 2];
+				} else members[key] = member;
+			}
+			if (Object.keys(fields).length > 0) forms.push({ name, value: members, fields });
+		}
+	}
+	return forms;
+}
+
 function operations(node: LoadedNode): Json[] {
 	const properties = node.description.properties as unknown as Property[];
 	const values = (p: Property) =>
@@ -359,6 +409,9 @@ const modeReasons: Record<string, number> = {};
 const manyItems: Record<string, number> = {};
 const manyItemReasons: Record<string, number> = {};
 const threeItemCost = { operations: 0, once: 0, each: 0 };
+const expressionCost: Record<string, number> = {};
+const expressions: Record<string, number> = {};
+const expressionReasons: Record<string, number> = {};
 const alone: Record<string, number> = {};
 const weighted: Record<string, number> = {};
 let tried = 0;
@@ -375,6 +428,9 @@ interface NodeResult {
 	manyItems?: Record<string, number>;
 	manyItemReasons?: Record<string, number>;
 	threeItemCost?: { operations: number; once: number; each: number };
+	expressionCost?: Record<string, number>;
+	expressions?: Record<string, number>;
+	expressionReasons?: Record<string, number>;
 	alone?: Record<string, number>;
 	weighted?: Record<string, number>;
 	tried: number;
@@ -439,6 +495,9 @@ if (one === undefined) {
 			add(manyItems, result.manyItems);
 			add(manyItemReasons, result.manyItemReasons);
 			add(threeItemCost, result.threeItemCost);
+			add(expressionCost, result.expressionCost);
+			add(expressions, result.expressions);
+			add(expressionReasons, result.expressionReasons);
 			add(alone, result.alone);
 			add(weighted, result.weighted);
 			for (const example of result.examples ?? [])
@@ -703,7 +762,86 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						}
 						whyMode(mode, byItem);
 					}
+					const provenEach: string[] = [];
+					const widerAgrees = names !== compiled.changed;
+					const forms = expressionForms(widerAgrees ? more : parameters, start);
+					const expressionCase = (label: string, chosen: ExpressionForm[], missing: boolean) =>
+						make(
+							label,
+							{
+								...(widerAgrees ? more : parameters),
+								...Object.fromEntries(chosen.map((form) => [form.name, form.value])),
+							},
+							ok,
+							[0, 1, 2].map((k) => ({
+								...first,
+								position: k + 1,
+								...(missing && k === 1
+									? {}
+									: Object.fromEntries(
+											chosen.flatMap((form) =>
+												Object.entries(form.fields).map(([field, values]) => [field, values[k]]),
+											),
+										)),
+							})),
+						);
+					const expressionDifference = async (chosen: ExpressionForm[]) => {
+						const label = `expressions ${chosen.map((form) => form.name).join(',')}`;
+						return (
+							(await differenceFromV1(
+								expressionCase(label, chosen, false),
+								sources,
+								registry,
+								checking,
+							)) ??
+							(await differenceFromV1(
+								expressionCase(`${label}, a field is missing`, chosen, true),
+								sources,
+								registry,
+								checking,
+							))
+						);
+					};
+					if (forms.length > 0 && !other)
+						expressions.operations = (expressions.operations ?? 0) + 1;
+					if (forms.length > 0) {
+						const together = await expressionDifference(forms);
+						if (together === undefined) provenEach.push(...forms.map((form) => form.name));
+						else {
+							let reason = together;
+							for (const form of forms.length > 1 ? forms.slice(0, MAX_EXPRESSIONS_ALONE) : []) {
+								const single = await expressionDifference([form]);
+								if (single === undefined) provenEach.push(form.name);
+								else reason = single;
+							}
+							const text = reason.slice(0, 110);
+							if (!other) expressionReasons[text] = (expressionReasons[text] ?? 0) + 1;
+							if (examples.length < 60)
+								examples.push(`${key} with expressions: ${reason.slice(0, 160)}`);
+						}
+						if (!other && provenEach.length > 0) expressions.proven = (expressions.proven ?? 0) + 1;
+						if (!other && provenEach.length === forms.length)
+							expressions.all = (expressions.all ?? 0) + 1;
+						if (SHOW_COST && !other && provenEach.length > 0) {
+							const chosen = forms.filter((form) => provenEach.includes(form.name));
+							const measured = expressionCase('expressions', chosen, false);
+							const once = costOfCase(measured, sources, registry);
+							const each = costOfCase(measured, sources, registry, true);
+							if (once && each) {
+								const node = type.slice(PREFIX.length);
+								add(expressionCost, {
+									[`${node} operations`]: 1,
+									[`${node} once`]: once.ops,
+									[`${node} each`]: each.ops,
+								});
+							}
+						}
+					}
+					const eachConditions = provenEach
+						.map(itemParameterCondition)
+						.filter((condition) => before === undefined || before.includes(condition));
 					const isMode = (name: string) =>
+						name.startsWith(ITEM_PARAMETER_PREFIX) ||
 						name.startsWith('@onError=') ||
 						name === ERROR_ITEMS_BY_POSITION ||
 						name === CALL_FOR_EACH_ITEM;
@@ -720,6 +858,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 							...names,
 							...flagKeys,
 							...modes,
+							...eachConditions,
 							...(eachItem === undefined &&
 							(before === undefined || before.includes(CALL_FOR_EACH_ITEM))
 								? [CALL_FOR_EACH_ITEM]
@@ -740,7 +879,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 }
 await disposeRecorder();
 if (one !== undefined) {
-	const line = `RESULT ${JSON.stringify({ verified, reasons, modeReasons, manyItems, manyItemReasons, threeItemCost, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified, costs })}\n`;
+	const line = `RESULT ${JSON.stringify({ verified, reasons, modeReasons, manyItems, manyItemReasons, threeItemCost, expressionCost, expressions, expressionReasons, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified, costs })}\n`;
 	await new Promise((written) => process.stdout.write(line, written));
 	process.exit(0);
 }
@@ -854,6 +993,21 @@ if (threeItemCost.operations > 0)
 	console.log(
 		`three items, ${threeItemCost.operations} operations: ${Math.round(threeItemCost.once / threeItemCost.operations / 3)} ops for each item in one call; ${Math.round(threeItemCost.each / threeItemCost.operations / 3)} ops for each item in a call for each item`,
 	);
+if ((expressions.operations ?? 0) > 0) {
+	console.log(
+		`a parameter as an expression for each item, one call for all items: operations tried ${expressions.operations}; with a parameter that agrees with v1 ${expressions.proven ?? 0}; with all tried parameters ${expressions.all ?? 0}`,
+	);
+	for (const [reason, count] of Object.entries(expressionReasons).sort((a, b) => b[1] - a[1]))
+		console.log(`${count}\t${reason}`);
+}
+for (const node of Object.keys(expressionCost)
+	.filter((name) => name.endsWith(' operations'))
+	.map((name) => name.slice(0, -' operations'.length))) {
+	const count = expressionCost[`${node} operations`];
+	console.log(
+		`three items with expressions, ${node}, ${count} operations: ${Math.round(expressionCost[`${node} once`] / count / 3)} ops for each item in one call; ${Math.round(expressionCost[`${node} each`] / count / 3)} ops for each item in a call for each item`,
+	);
+}
 for (const mode of CONTINUE_MODES) {
 	const [condition] = errorModeCondition(mode);
 	const count = Object.values(verified).filter((names) => names.includes(condition)).length;

@@ -12,21 +12,21 @@
  */
 import type { PublicCredential } from '../credentials/public.ts';
 import {
-	agreesForEachItem,
 	compileNodeInstance,
 	errorItemsByPosition,
 	flagGuard,
 	isVerified,
+	valueAtPath,
 	verifiedFlagKeys,
 } from '../node-compile/convert.ts';
 import { CORE_NODE_TYPES } from './core-types.ts';
 import type { Code } from './code.ts';
 import type { Writer } from './code.ts';
-import { literal, raw, str } from './code.ts';
+import { literal, print, raw, str } from './code.ts';
 import type { NodeContext } from './context.ts';
 import { NodeFailure } from './context.ts';
 import type { Failure, TranslatedValue } from './expression.ts';
-import { hostSafety, INDEX, isExpression, ITEM } from './expression.ts';
+import { hostSafety, INDEX, isExpression, ITEM, neverThrows } from './expression.ts';
 import { isRecord } from './types.ts';
 
 export interface StepCall {
@@ -382,26 +382,31 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		const found = c.nodeSources.publicCredential?.(type, bound?.id ?? null);
 		if (found) credentials[type] = found;
 	}
-	const compiled = compileNodeInstance(
-		c.nodeSources,
-		{ type: c.node.type, version: c.version, parameters: c.parameters },
-		c.instance?.id,
-		credentials,
-		c.scope.timezone,
-		{
-			// The facts that are constant when the workflow is published (`this.getWorkflow().id`,
-			// `this.getInstanceBaseUrl()`).
-			...(c.scope.workflowId === '' ? {} : { workflow: { id: c.scope.workflowId } }),
-			...(c.instance ? { instanceBaseUrl: c.instance.baseUrl } : {}),
-		},
-		onError,
-	);
+	const sources = c.nodeSources;
+	const compileWith = (deferred: string[]) =>
+		compileNodeInstance(
+			sources,
+			{ type: c.node.type, version: c.version, parameters: c.parameters },
+			c.instance?.id,
+			credentials,
+			c.scope.timezone,
+			{
+				// The facts that are constant when the workflow is published (`this.getWorkflow().id`,
+				// `this.getInstanceBaseUrl()`).
+				...(c.scope.workflowId === '' ? {} : { workflow: { id: c.scope.workflowId } }),
+				...(c.instance ? { instanceBaseUrl: c.instance.baseUrl } : {}),
+			},
+			onError,
+			deferred,
+		);
+	let compiled = compileWith([]);
 	if ('errors' in compiled) {
 		c.info('node-compile', `The node source does not compile: ${compiled.errors.join('; ')}`);
 		return false;
 	}
 	// The reference of a compiled node is the v1 node. An operation that was not compared with
-	// it runs in the host.
+	// it runs in the host. A parameter with an expression needs its own check: the v1 node
+	// with that parameter as an expression, for several items.
 	if (!isVerified(c.nodeSources, c.node.type, c.version, compiled)) {
 		c.info(
 			'node-compile',
@@ -418,26 +423,39 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		);
 		return false;
 	}
+	// The module reads a parameter with an expression from a list with one entry for each item
+	// (`parameters.each`). An entry has the value of each parameter path that the module reads.
+	const resolved = compiled.resolved;
+	const values = compiled.itemParameters.map((path) => ({
+		path,
+		value: c.compiled(valueAtPath(resolved, path), path, { flattenResourceLocators: false }),
+	}));
+	// v1 evaluates an expression when the node reads the parameter. The code here evaluates
+	// it for all items before the call. So an expression that can throw keeps its error in the
+	// entry, and the module throws it at the read (`deferredParameters`).
+	const throwing = values.filter((v) => !neverThrows(v.value.code)).map((v) => v.path);
+	if (throwing.length > 0) {
+		const checked = compileWith(throwing);
+		if ('errors' in checked) {
+			c.info('node-compile', `The node source does not compile: ${checked.errors.join('; ')}`);
+			return false;
+		}
+		compiled = checked;
+		c.helper('parameterOrError');
+	}
+	const entry: Code = {
+		kind: 'object',
+		entries: values.map(({ path, value }): [string, Code] => [
+			path,
+			throwing.includes(path)
+				? raw(`parameterOrError(() => (${print(value.code, '', 0, Number.POSITIVE_INFINITY)}))`)
+				: value.code,
+		]),
+	};
+	const readsItem = values.some((v) => v.value.usage.item);
+	const readsIndex = values.some((v) => v.value.usage.index);
 	// A node that asks for the bytes of a response needs a runtime that stores the body as
 	// binary data (`responseBinary`, spec 7.1). The caller says when its runtime does.
-	const dynamic: Record<string, unknown> = {};
-	for (const name of compiled.dynamic) dynamic[name] = c.parameters[name];
-	// As for a library node: v1 gives the node all items, and the module runs once for each item.
-	const parameters = c.compiled(dynamic, '', { flattenResourceLocators: false });
-	// One call for each item gives other requests than one run of the v1 node when the node
-	// does work once for a run (a lookup before the items, a batch). The check against v1
-	// records the operations for which the calls for each item agree with v1.
-	if (
-		onError === 'stopWorkflow' &&
-		(parameters.usage.item || parameters.usage.index) &&
-		!agreesForEachItem(c.nodeSources, c.node.type, c.version, compiled)
-	) {
-		c.info(
-			'node-compile',
-			'A parameter of the node reads the item, and a call of the compiled node for each item is not checked against the v1 node.',
-		);
-		return false;
-	}
 	if (compiled.storesResponses && c.nodeSources.storesResponses !== true) {
 		c.info(
 			'node-compile',
@@ -491,10 +509,41 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		'node-compiled',
 		`The node runs as code that is compiled from its source (${compiled.type}).`,
 	);
-	// v1 runs the node once with all items, and so does the module. The call runs once for
-	// each item only when a parameter reads the item (the converter evaluates it for each
-	// item), or under a "continue" setting (`emitCompiledContinue`).
-	const call = nodeCall(c, compiled.type, parameters, c.credential(), onError !== 'stopWorkflow');
+	// v1 runs the node once with all items, and so does the module: one call, also when a
+	// parameter reads the item. The call runs once for each item only under a "continue"
+	// setting (`emitCompiledContinue`), with a list of one entry.
+	const one = onError !== 'stopWorkflow';
+	let each: Code | null = null;
+	if (values.length > 0 && one) each = { kind: 'array', items: [entry] };
+	else if (values.length > 0) {
+		const list = c.local('Parameters');
+		c.w.line(`const ${list}: Json[] = [];`);
+		if (readsIndex) {
+			c.w.open(`for (let ${INDEX} = 0; ${INDEX} < ${c.input}.length; ${INDEX}++) {`);
+			if (readsItem) c.w.line(`const ${ITEM} = ${c.input}[${INDEX}];`);
+		} else if (readsItem) c.w.open(`for (const ${ITEM} of ${c.input}) {`);
+		else c.w.open(`for (let ${INDEX} = 0; ${INDEX} < ${c.input}.length; ${INDEX}++) {`);
+		const head = `${list}.push(`;
+		c.w.block(`${head}${c.print(entry, head)});`);
+		c.w.close();
+		each = raw(list);
+	}
+	const call = nodeCall(
+		c,
+		compiled.type,
+		{
+			code: { kind: 'object', entries: each ? [['each', each]] : [] },
+			usage: {
+				item: one && readsItem,
+				index: one && readsIndex,
+				approximate: false,
+				nodes: new Set(),
+			},
+			failures: [],
+		},
+		c.credential(),
+		one,
+	);
 	if (onError === 'stopWorkflow') emitStep(c, call);
 	else {
 		const byPosition = errorItemsByPosition(c.nodeSources, c.node.type, c.version, compiled);

@@ -32,6 +32,7 @@ function sources(pairErrors: boolean): NodeSources {
 				'strict',
 				'pairErrors',
 				'twice',
+				'@each=id',
 				REGULAR,
 				ERROR_OUTPUT,
 				...(pairErrors ? [] : [BY_POSITION]),

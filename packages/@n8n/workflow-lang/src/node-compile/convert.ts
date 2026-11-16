@@ -51,6 +51,8 @@ export function isVerified(
 ): boolean {
 	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
 	if (names === undefined || !compiled.changed.every((name) => names.includes(name))) return false;
+	if (!itemParameterNames(compiled).every((name) => names.includes(itemParameterCondition(name))))
+		return false;
 	return (
 		compiled.flags.length === 0 || verifiedFlagKeys(sources, type, version, compiled).length > 0
 	);
@@ -101,6 +103,22 @@ export const CONTINUE_MODES: ErrorMode[] = ['continueRegularOutput', 'continueEr
 export const ERROR_ITEMS_BY_POSITION = '@errorItems=position';
 
 export const CALL_FOR_EACH_ITEM = '@items=each';
+
+export const ITEM_PARAMETER_PREFIX = '@each=';
+
+export function itemParameterCondition(name: string): string {
+	return `${ITEM_PARAMETER_PREFIX}${name}`;
+}
+
+export function itemParameterNames(compiled: CompiledNode): string[] {
+	return [...new Set(compiled.itemParameters.map((path) => path.split('.')[0]))].sort();
+}
+
+export function valueAtPath(parameters: Record<string, unknown>, path: string): unknown {
+	let value: unknown = parameters;
+	for (const key of path.split('.')) value = isRecord(value) ? value[key] : undefined;
+	return value;
+}
 
 export function agreesForEachItem(
 	sources: NodeSources,
@@ -178,6 +196,10 @@ export interface CompiledNode {
 
 	dynamic: string[];
 
+	itemParameters: string[];
+
+	deferred: string[];
+
 	resolved: Record<string, unknown>;
 
 	derivations: CredentialDerivation[];
@@ -244,6 +266,7 @@ export function compileNodeInstance(
 	timezone?: string,
 	facts?: PublishFacts,
 	errorMode: ErrorMode = 'stopWorkflow',
+	deferred: string[] = [],
 ): CompiledNode | { errors: string[] } {
 	const entry = sources.entry(node.type, node.version);
 	const description = sources.description(node.type, node.version);
@@ -299,6 +322,7 @@ export function compileNodeInstance(
 		instanceId,
 		facts,
 		continueOnFail: errorMode !== 'stopWorkflow',
+		deferredParameters: deferred,
 		credentialFields: Object.fromEntries(
 			Object.entries(credentials).map(([type, c]) => [type, c.fields]),
 		),
@@ -315,6 +339,8 @@ export function compileNodeInstance(
 		file: `nodes/compiled-${type.slice(type.indexOf('#') + 1)}.ts`,
 		source,
 		dynamic: Object.keys(parameters).filter((name) => hasExpression(parameters[name])),
+		itemParameters: result.itemParameters ?? [],
+		deferred: (result.itemParameters ?? []).filter((path) => deferred.includes(path)),
 		resolved: parameters,
 		derivations: (result.derivations ?? []).filter((d) => d.kind === undefined),
 		flags: (result.derivations ?? []).filter((d) => d.kind === 'flag'),

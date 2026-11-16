@@ -216,7 +216,7 @@ describe('extractValue', () => {
 	it('reads the resolved value of an expression in a mode that has no rule', () => {
 		const result = compileWith(EXTRACT, locator('id', '={{ $json.id }}'), { boardId: LOCATOR });
 		expect(result.errors).toEqual([]);
-		expect(result.source).toContain('__deepCopy(parameters?.boardId?.value)');
+		expect(result.source).toContain('__deepCopy(__perItem[i]["boardId"]?.value)');
 	});
 
 	it('does not compile an expression in a mode that has a rule', () => {
