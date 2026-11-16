@@ -40,6 +40,7 @@ import {
 	MAX_ITEMS_PER_PAGE,
 	createLimitValidator,
 	offsetValidator,
+	publicApiPaginationSchema,
 } from '../dto/pagination/pagination.dto';
 import { booleanFromString } from '../schemas/boolean-from-string';
 import { nullableObjectGuardSchema } from '../schemas/object-guard.schema';
@@ -417,6 +418,35 @@ export class DeletedAgentPublicDto extends Z.class(deletedAgentPublicSchema.shap
 
 /** Response of the Public API `POST /agents`. Builder-only state stays off this shape. */
 export class CreatedAgentPublicDto extends AgentPublicDto {}
+
+/** Query of the Public API `GET /agents`. Pick `limit` off the schema: `offset` is the decoded cursor field, never a client-facing param. */
+export class ListAgentsPublicQueryDto extends Z.class({
+	cursor: z.string().optional(),
+	limit: publicApiPaginationSchema.limit,
+	/** Narrows the list to one project. */
+	projectId: z.string().min(1).optional(),
+}) {}
+
+/** Row of the Public API `GET /agents`. `config` stays off the row: a list row is not a full-replace body. */
+export const agentListPublicItemSchema = z.object(agentPublicShape).pick({
+	id: true,
+	name: true,
+	projectId: true,
+	availableInMCP: true,
+	isArchived: true,
+	versionId: true,
+	activeVersionId: true,
+	createdAt: true,
+	updatedAt: true,
+});
+
+export class AgentListPublicItemDto extends Z.class(agentListPublicItemSchema.shape) {}
+
+/** Response of the Public API `GET /agents`: one cursor page of agents. */
+export class AgentListPublicDto extends Z.class({
+	data: z.array(agentListPublicItemSchema),
+	nextCursor: z.string().nullable(),
+}) {}
 
 const agentListItemShape = {
 	id: z.string(),

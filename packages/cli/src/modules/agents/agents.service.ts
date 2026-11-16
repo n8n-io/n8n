@@ -569,8 +569,16 @@ export class AgentsService {
 		);
 	}
 
-	async findById(agentId: string, projectId: string): Promise<ProjectAgent | null> {
-		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+	/**
+	 * With `projectId`: scoped lookup (internal REST). Without it the agent is
+	 * resolved by ID alone — Public API, where `@ProjectScope` has already
+	 * authorized the user against the agent's project. Returns no instance
+	 * agent.
+	 */
+	async findById(agentId: string, projectId?: string): Promise<ProjectAgent | null> {
+		return projectId
+			? await this.agentRepository.findByIdAndProjectId(agentId, projectId)
+			: await this.agentRepository.findById(agentId);
 	}
 
 	/**
