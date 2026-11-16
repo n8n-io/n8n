@@ -29,9 +29,31 @@ accepts with no change to that compiler.
   constant objects, `{ extractValue: true }` for the modes `id` and `list`, destructured credentials,
   `this.logger`, the error classes of n8n-workflow, `jsonParse`, `deepCopy`, lodash `isEmpty` and `get`.
 
+### Rules adopted on 2026-11-16 (from the coding standards)
+
+- **The v1 node is the reference model.** A node runs compiled only when its operation is in
+  `src/node-compile/verified.generated.ts`. `scripts/verify-compiled-nodes.ts` makes that list: for each node
+  type, version and operation it makes cases from the node description, runs the compiled node and n8n's real
+  node code, and compares the requests, the output and the error message. A node instance must also set no
+  parameter that the cases did not set. Each node is checked in a process of its own.
+- **No approximation.** A form is exact or it is a compile error: `delete` is the `delete` of the subset; lodash
+  `get` takes a constant path of names; a parameter that is an expression is a copy at each read; an HTTP error
+  has the message of v1 for its status. A node with "continue on fail" or an error output stays in the host,
+  because v1 gives the description of the error to the next node.
+- **Credential fields.** The check follows a field through variables, members of objects, arguments and results
+  of all functions of the module.
+- **One translator.** The output of the node compiler goes through the translator of Code nodes
+  (`src/convert/code-native/`, with `nodeCode`), which gives regular expressions, `Set`, `Map`, `for...in`,
+  `var` and loose equality their subset forms.
+
+Result of the check over n8n-nodes-base (5,315 operations of all versions): 1,060 compile, and 734 of them
+agree with v1 (79 node types). 278 compile and send other requests than v1: the gate keeps them in the host.
+
 ### Measured on real workflows (2026-11-16)
 
-300 workflows of the corpus (3,702 nodes), converted with and without the node compiler:
+300 workflows of the corpus (3,702 nodes), converted with and without the node compiler, before the verified
+list was a gate. With the gate, 5 nodes compile from their source in these workflows: the node types that real
+workflows use most are the ones in the table of reasons below.
 
 | | Without | With |
 |---|---|---|

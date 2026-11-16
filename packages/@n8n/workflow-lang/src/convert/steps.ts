@@ -10,7 +10,7 @@
  * the same value (it reads only the item and built-in functions); else the
  * conversion of the node fails.
  */
-import { compileNodeInstance } from '../node-compile/convert.ts';
+import { compileNodeInstance, isVerified } from '../node-compile/convert.ts';
 import { CORE_NODE_TYPES } from './core-types.ts';
 import type { Code } from './code.ts';
 import { literal, raw, str } from './code.ts';
@@ -346,6 +346,11 @@ export function tryCompiledNode(c: NodeContext): boolean {
 	// A core node that has a native form reaches the host only when that form does not fit
 	// (an expression that does not translate). Its source is not a better form.
 	if (CORE_NODE_TYPES.has(c.node.type)) return false;
+	// "Continue on fail" and the error output give the description of a v1 error to the next
+	// node. A compiled node has the message of the error only.
+	const onError =
+		c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
+	if (onError !== 'stopWorkflow') return false;
 	const compiled = compileNodeInstance(
 		c.nodeSources,
 		{ type: c.node.type, version: c.version, parameters: c.parameters },
@@ -353,6 +358,15 @@ export function tryCompiledNode(c: NodeContext): boolean {
 	);
 	if ('errors' in compiled) {
 		c.info('node-compile', `The node source does not compile: ${compiled.errors.join('; ')}`);
+		return false;
+	}
+	// The reference of a compiled node is the v1 node. An operation that was not compared with
+	// it runs in the host.
+	if (!isVerified(c.nodeSources, c.node.type, c.version, compiled)) {
+		c.info(
+			'node-compile',
+			'The node source compiles, and this operation or one of its parameters is not checked against the v1 node.',
+		);
 		return false;
 	}
 	const dynamic: Record<string, unknown> = {};

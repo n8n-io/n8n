@@ -8,6 +8,7 @@ import { compile } from '../compiler/index.ts';
 import { getNodeParameters } from '../convert/node-parameters.ts';
 import type { NodeDescription } from '../convert/node-parameters.ts';
 import { hasExpression, specialiseNode } from './specialise.ts';
+import { VERIFIED } from './verified.generated.ts';
 
 /** Where the converter finds the source and the description of a node type (`ConvertOptions.nodeSources`). */
 export interface NodeSources {
@@ -18,6 +19,37 @@ export interface NodeSources {
 	description: (type: string, version: number) => NodeDescription | undefined;
 	/** Import prefixes that are folders, for example `{ '@utils/': '/repo/nodes-base/utils/' }`. */
 	aliases?: Record<string, string>;
+	/**
+	 * The operations that are checked against the v1 node, in place of the bundled list
+	 * (`verified.generated.ts`): `type@version:resource.operation` gives the parameter names
+	 * that the check set.
+	 */
+	verified?: Record<string, string[]>;
+}
+
+/** The key of an operation in the verified list. */
+export function verifiedKey(
+	type: string,
+	version: number,
+	parameters: Record<string, unknown>,
+): string {
+	const text = (v: unknown) => (typeof v === 'string' ? v : '');
+	return `${type}@${version}:${text(parameters.resource)}.${text(parameters.operation)}`;
+}
+
+/**
+ * True when the v1 node is the reference of this node instance: its operation is in the
+ * verified list, and it sets no parameter that the check did not set. A compiled node that
+ * was never compared with v1 does not run.
+ */
+export function isVerified(
+	sources: NodeSources,
+	type: string,
+	version: number,
+	compiled: CompiledNode,
+): boolean {
+	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
+	return names !== undefined && compiled.changed.every((name) => names.includes(name));
 }
 
 /** FNV-1a, as 8 hexadecimal digits: the name of a compiled module. */
@@ -68,13 +100,17 @@ export interface CompiledNode {
 	source: string;
 	/** Names of the parameters that are expressions: the call passes their values. */
 	dynamic: string[];
+	/** The parameters with the defaults of the description. */
+	resolved: Record<string, unknown>;
+	/** Names of the parameters whose value is not the default of the operation. */
+	changed: string[];
 }
 
 /** Compiles a node from its source, or gives the reasons why it does not compile. */
 export function compileNodeInstance(
 	sources: NodeSources,
 	node: { type: string; version: number; parameters: Record<string, unknown> },
-	instanceId: string | undefined,
+	instanceId: string | null | undefined,
 ): CompiledNode | { errors: string[] } {
 	const entry = sources.entry(node.type, node.version);
 	const description = sources.description(node.type, node.version);
@@ -93,6 +129,27 @@ export function compileNodeInstance(
 				node.version,
 				description,
 			) ?? {};
+	} catch (error) {
+		return { errors: [error instanceof Error ? error.message : String(error)] };
+	}
+	// The parameters that the node sets: those that differ from the defaults of its operation.
+	let changed: string[];
+	try {
+		const defaults =
+			getNodeParameters(
+				description.properties,
+				{ resource: parameters.resource, operation: parameters.operation },
+				true,
+				false,
+				node.version,
+				description,
+			) ?? {};
+		changed = Object.keys(parameters).filter(
+			(name) =>
+				name !== 'resource' &&
+				name !== 'operation' &&
+				JSON.stringify(parameters[name]) !== JSON.stringify(defaults[name]),
+		);
 	} catch (error) {
 		return { errors: [error instanceof Error ? error.message : String(error)] };
 	}
@@ -119,5 +176,7 @@ export function compileNodeInstance(
 		file: `nodes/compiled-${type.slice(type.indexOf('#') + 1)}.ts`,
 		source: result.source,
 		dynamic: Object.keys(parameters).filter((name) => hasExpression(parameters[name])),
+		resolved: parameters,
+		changed,
 	};
 }

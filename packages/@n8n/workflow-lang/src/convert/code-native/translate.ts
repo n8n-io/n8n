@@ -56,6 +56,12 @@ export interface CodeNativeInput {
 	 * America/New_York. `system` is the zone of the runtime (UTC).
 	 */
 	timezone?: string;
+	/**
+	 * The code is node code from the node compiler (`src/node-compile/`), not the code of a
+	 * Code node: `async` and `await` stay, because the code makes requests; `globals` are
+	 * names that the module defines; a catch block can read the error.
+	 */
+	nodeCode?: { globals: Set<string> };
 	/** The name of the node, for static data of type `node`. */
 	nodeName?: string;
 }
@@ -1365,10 +1371,12 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 		if (ts.isTryStatement(n) && n.catchClause && readsError(n.catchClause)) {
 			const plan = planCatch(n, checker, { dateVars });
 			if (typeof plan === 'string') {
-				block(
-					'catch reads the error',
-					`The catch block reads the error, and the try block has ${plan}.`,
-				);
+				// Node code: the node compiler checks the error text against v1 (the verified list).
+				if (!input.nodeCode)
+					block(
+						'catch reads the error',
+						`The catch block reads the error, and the try block has ${plan}.`,
+					);
 			} else {
 				plannedCatches.add(n.catchClause);
 				const name = n.catchClause.variableDeclaration?.name.getText(sf) ?? 'e';
@@ -1423,13 +1431,14 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				return;
 			}
 			annotateParameters(n);
-			annotateReturn(n);
 			const asyncMod = n.modifiers?.find((m) => m.kind === ts.SyntaxKind.AsyncKeyword);
+			// An async function of node code keeps `async`: its result type is a promise.
+			if (!(asyncMod && input.nodeCode)) annotateReturn(n);
 			// No value in native code is a promise, so an async function runs to its end at once.
-			if (asyncMod) replace(asyncMod.getStart(sf), asyncMod.getEnd() + 1, '');
+			if (asyncMod && !input.nodeCode) replace(asyncMod.getStart(sf), asyncMod.getEnd() + 1, '');
 		}
 
-		if (ts.isAwaitExpression(n)) {
+		if (ts.isAwaitExpression(n) && !input.nodeCode) {
 			const at = n.getStart(sf);
 			replace(at, n.expression.getStart(sf), '');
 		}
@@ -1494,7 +1503,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 				ts.forEachChild(x, find);
 			};
 			find(n.block);
-			if (used && !plannedCatches.has(n))
+			if (used && !plannedCatches.has(n) && !input.nodeCode)
 				block(
 					'catch reads the error',
 					'The catch block reads the error, whose message can differ.',
@@ -2247,7 +2256,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			block(host, `\`${name}\` has no native form.`);
 			return false;
 		}
-		if (!SUBSET_GLOBALS.has(name)) {
+		if (!SUBSET_GLOBALS.has(name) && !input.nodeCode?.globals.has(name)) {
 			block(
 				name.startsWith('$') ? name : `global ${name}`,
 				`\`${name}\` is not defined for native code.`,

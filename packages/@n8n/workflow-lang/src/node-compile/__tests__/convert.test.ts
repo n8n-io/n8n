@@ -31,6 +31,7 @@ const nodeSources: NodeSources = {
 	description: (type, version) =>
 		NODE_DESCRIPTIONS[NODE_DESCRIPTION_VERSIONS[`${type}@${version}`]],
 	aliases: { '@utils/': `${join(nodesBase, 'utils')}/` },
+	verified: { 'n8n-nodes-base.telegram@1.2:message.sendChatAction': ['chatId', 'action'] },
 };
 const instance = { baseUrl: 'https://n8n.example', id: 'a'.repeat(64) };
 
@@ -111,6 +112,15 @@ describe('node compiler in the converter', () => {
 		expect(result.fallbackNodes).toEqual(['Telegram']);
 		expect(result.nodes).toBeUndefined();
 		expect(result.diagnostics.some((d) => d.code === 'node-compile')).toBe(true);
+	});
+
+	it('runs an operation that is not checked against v1 in the fallback host', () => {
+		const result = convertWorkflow(
+			workflowWith({ resource: 'chat', operation: 'leave', chatId: '42' }),
+			{ nodeSources, instance },
+		);
+		expect(result.fallbackNodes).toEqual(['Telegram']);
+		expect(result.nodes).toBeUndefined();
 	});
 
 	it('does not compile a core node with a native lowering from its source', () => {

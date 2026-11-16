@@ -17,6 +17,9 @@
  */
 import ts from 'typescript';
 
+import { CODE_HELPERS } from '../convert/code-native/helpers.ts';
+import { translateCode } from '../convert/code-native/translate.ts';
+
 export interface SpecialiseInput {
 	type: string;
 	version: number;
@@ -51,6 +54,27 @@ export interface SpecialiseResult {
 
 const f = ts.factory;
 
+/**
+ * The request helper of n8n as node code (JavaScript: the translator of
+ * `code-native` types it). It is inside \`run\`, because the subset allows
+ * \`ctx.http\` only there.
+ */
+const REQUEST_SOURCE = `async function __request(options, wrapped) {
+	const response = await ctx.http({
+		method: options.method ?? 'GET',
+		url: options.uri ?? options.url,
+		headers: __plain(options.headers ?? {}),
+		qs: __plain(options.qs ?? {}),
+		body: __plain(options.body),
+		credential,
+	});
+	if (response.status >= 400) {
+		const failure = new Error('Request failed with status code ' + response.status);
+		throw wrapped ? __apiError(failure) : failure;
+	}
+	return response.body;
+}`;
+
 const GLOBALS = new Set([
 	'undefined',
 	'NaN',
@@ -80,9 +104,38 @@ const GLOBALS = new Set([
 	'parameters',
 	'credential',
 	'arguments',
+	'Set',
+	'Map',
+	'isFinite',
+	'console',
 ]);
 
 const HELPERS: Record<string, string> = {
+	__apiError: `function __apiError(cause: any): any {
+	const text: string = cause !== null && cause !== undefined && typeof cause.message === 'string' ? cause.message : String(cause);
+	const prefix = 'Request failed with status code ';
+	// NodeApiError of n8n-workflow: an HTTP status gives the message of the status (STATUS_CODE_MESSAGES).
+	if (!text.startsWith(prefix)) return new Error(text);
+	const code: string = text.slice(prefix.length);
+	const known: any = {
+		'400': 'Bad request - please check your parameters',
+		'401': 'Authorization failed - please check your credentials',
+		'402': 'Payment required - perhaps check your payment details?',
+		'403': 'Forbidden - perhaps check your credentials?',
+		'404': 'The resource you are requesting could not be found',
+		'405': 'Method not allowed - please check you are using the right HTTP method',
+		'429': 'The service is receiving too many requests from you',
+		'500': 'The service was not able to process your request',
+		'502': 'Bad gateway - the service failed to handle your request',
+		'503': 'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
+		'504': 'Gateway timed out - perhaps try again later?',
+	};
+	if (known[code] !== undefined) return new Error(known[code]);
+	if (code.charAt(0) === '4') return new Error('Your request is invalid or could not be processed by the service');
+	if (code.charAt(0) === '5') return new Error('The service failed to process your request');
+	return new Error(text);
+}`,
+	__plain: '',
 	__wrap: `function __wrap(items: any): any {
 	const out: any[] = [];
 	for (const json of items ?? [{}]) out.push({ json });
@@ -90,7 +143,7 @@ const HELPERS: Record<string, string> = {
 }`,
 	__out: `function __out(result: any): any {
 	const out: any[] = [];
-	for (const item of result[0] ?? []) out.push(item.json);
+	for (const item of result[0] ?? []) out.push(__plain(item.json));
 	return out;
 }`,
 	__jsonArray: `function __jsonArray(data: any): any {
@@ -105,13 +158,6 @@ const HELPERS: Record<string, string> = {
 	}
 	return target;
 }`,
-	__omit: `function __omit(value: any, name: string): any {
-	const out: any = {};
-	for (const [key, member] of Object.entries(value)) {
-		if (key !== name) out[key] = member;
-	}
-	return out;
-}`,
 	__error: `function __error(cause: any): any {
 	if (typeof cause === 'string') return new Error(cause);
 	return new Error(String(cause !== null && cause !== undefined && cause.message !== undefined ? cause.message : cause));
@@ -121,15 +167,6 @@ const HELPERS: Record<string, string> = {
 	if (typeof value === 'string' || Array.isArray(value)) return value.length === 0;
 	if (typeof value === 'object') return Object.keys(value).length === 0;
 	return true;
-}`,
-	__get: `function __get(value: any, path: any, fallback: any): any {
-	const keys: any = Array.isArray(path) ? path : String(path).split('.');
-	let current: any = value;
-	for (const key of keys) {
-		if (current === null || current === undefined) return fallback;
-		current = current[key];
-	}
-	return current === undefined ? fallback : current;
 }`,
 	__jsonParse: `function __jsonParse(text: any, options: any): any {
 	try {
@@ -142,17 +179,19 @@ const HELPERS: Record<string, string> = {
 	__deepCopy: `function __deepCopy(value: any): any {
 	return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
 }`,
-	__request: `async function __request(ctx: NodeCtx, credential: any, options: any): Promise<any> {
-	const response: any = await ctx.http({
-		method: options.method ?? 'GET',
-		url: options.uri ?? options.url,
-		headers: options.headers ?? {},
-		qs: options.qs ?? {},
-		body: options.body,
-		credential,
-	});
-	if (response.status >= 400) throw new Error(\`HTTP status \${response.status}\`);
-	return response.body;
+	__get: `function __get(value: any, keys: any, whole: string, fallback: any): any {
+	if (value === null || value === undefined) return fallback;
+	// lodash reads a key that holds dots as one key when the object has it.
+	if (keys.length > 1 && Object.keys(value).includes(whole)) {
+		const direct: any = value[whole];
+		return direct === undefined ? fallback : direct;
+	}
+	let current: any = value;
+	for (const key of keys) {
+		if (current === null || current === undefined) return fallback;
+		current = current[key];
+	}
+	return current === undefined ? fallback : current;
 }`,
 };
 
@@ -186,8 +225,12 @@ const PACKAGE_CONSTANTS: Record<string, string | number> = {
 	SEND_AND_WAIT_OPERATION: 'sendAndWait',
 };
 
-/** The leading parameters of a function that v1 calls with the n8n context as `this`. */
-const CONTEXT_PARAMS = ['ctx', 'parameters', 'credential', '__items'];
+/**
+ * The leading parameters of a function that v1 calls with the n8n context as `this`. There are
+ * none: the node code is inside `run`, so it reads `ctx`, `parameters`, `credential` and
+ * `__items` of `run`. The subset knows `ctx.http` only on the `ctx` of `run`.
+ */
+const CONTEXT_PARAMS: string[] = [];
 const REQUEST_HELPERS = new Set([
 	'request',
 	'httpRequest',
@@ -386,10 +429,6 @@ class Specialiser {
 		if (!this.errors.includes(text)) this.errors.push(text);
 	}
 
-	private note(message: string) {
-		if (!this.notes.includes(message)) this.notes.push(message);
-	}
-
 	private helper(name: string, ...args: ts.Expression[]): ts.CallExpression {
 		this.helpers.add(name);
 		return call(name, ...args);
@@ -562,11 +601,11 @@ class Specialiser {
 					key,
 				);
 			const or = fallback ?? (path.length === 1 ? this.defaultOf(path[0]) : undefined);
-			return or
-				? f.createParenthesizedExpression(
-						f.createBinaryExpression(read, ts.SyntaxKind.QuestionQuestionToken, or),
-					)
-				: read;
+			// v1 gives the node a copy of the value at each read: a change of one read does not show in the next.
+			return this.helper(
+				'__deepCopy',
+				or ? f.createBinaryExpression(read, ts.SyntaxKind.QuestionQuestionToken, or) : read,
+			);
 		}
 		if (extract) {
 			const locator =
@@ -595,26 +634,6 @@ class Specialiser {
 	/** Rewrites the calls on the n8n context and the forms that the subset does not have. */
 	private bind(root: ts.Node, unit: Unit, isExecute: boolean): ts.Node {
 		const localNames = bindingsOf(root);
-		const regexes = new Map<string, ts.RegularExpressionLiteral>();
-		const collect = (n: ts.Node) => {
-			if (
-				ts.isVariableDeclaration(n) &&
-				ts.isIdentifier(n.name) &&
-				n.initializer &&
-				ts.isRegularExpressionLiteral(n.initializer)
-			) {
-				if (localNames.get(n.name.text) === 1) regexes.set(n.name.text, n.initializer);
-			}
-			ts.forEachChild(n, collect);
-		};
-		collect(root);
-		const toLet = new Set<string>();
-		const declaredHere = new Set<string>();
-		const noteDeclared = (n: ts.Node) => {
-			if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name)) declaredHere.add(n.name.text);
-			ts.forEachChild(n, noteDeclared);
-		};
-		noteDeclared(root);
 		let depth = 0;
 
 		const visit = (node: ts.Node): ts.Node | ts.Node[] | undefined => {
@@ -708,15 +727,17 @@ class Specialiser {
 					target.expression.name.text === 'helpers';
 				if (direct || viaCall) {
 					const options = args(node, node.arguments.length - 1)[0];
-					this.note(
-						'An HTTP error status throws `HTTP status <n>`, not the NodeApiError text of v1.',
-					);
-					return this.helper(
-						'__request',
-						f.createIdentifier('ctx'),
-						f.createIdentifier('credential'),
-						options,
-					);
+					// n8n wraps the error of a helper with authentication in a NodeApiError.
+					const wrapped =
+						name.text !== 'request' &&
+						name.text !== 'httpRequest' &&
+						!(
+							viaCall &&
+							ts.isPropertyAccessExpression(target) &&
+							(target.name.text === 'request' || target.name.text === 'httpRequest')
+						);
+					this.helpers.add('__apiError');
+					return this.helper('__request', options, wrapped ? f.createTrue() : f.createFalse());
 				}
 				// helper.call(this, a, b): the helper gets the context as leading parameters.
 				// resource[operation].execute.call(this, a): the target is known after folding.
@@ -739,35 +760,6 @@ class Specialiser {
 						...args(node, 1),
 					);
 				}
-				// regex.test(text)
-				if (name.text === 'test' && node.arguments.length === 1) {
-					const re = ts.isRegularExpressionLiteral(target)
-						? target
-						: ts.isIdentifier(target)
-							? regexes.get(target.text)
-							: undefined;
-					if (re) {
-						const end = re.text.lastIndexOf('/');
-						const text = call('String', args(node)[0]);
-						const exec = f.createCallExpression(
-							f.createPropertyAccessExpression(f.createIdentifier('RegExp'), 'exec'),
-							undefined,
-							[
-								f.createStringLiteral(re.text.slice(1, end)),
-								f.createStringLiteral(re.text.slice(end + 1)),
-								text,
-								f.createNumericLiteral(0),
-							],
-						);
-						return f.createParenthesizedExpression(
-							f.createBinaryExpression(
-								exec,
-								ts.SyntaxKind.ExclamationEqualsEqualsToken,
-								f.createNull(),
-							),
-						);
-					}
-				}
 			}
 			if (
 				ts.isCallExpression(node) &&
@@ -776,20 +768,33 @@ class Specialiser {
 			) {
 				const imported = unit.file.imports.get(node.expression.text);
 				const helper = imported ? packageHelper(imported) : undefined;
-				if (helper) return this.helper(helper, ...args(node));
+				if (helper === '__get') {
+					const path = node.arguments[1];
+					const text = path && ts.isStringLiteral(path) ? path.text : '';
+					// Other paths (indexes, quotes, a computed path) have rules of lodash that are not here.
+					if (/^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$/.test(text)) {
+						const [value, , fallback] = args(node);
+						return this.helper(
+							'__get',
+							value,
+							expressionOf(text.split('.')),
+							f.createStringLiteral(text),
+							fallback ?? f.createIdentifier('undefined'),
+						);
+					}
+				} else if (helper) return this.helper(helper, ...args(node));
 			}
 			if (ts.isNewExpression(node) && ts.isIdentifier(node.expression)) {
 				const cls = node.expression.text;
-				if (GENERIC_ERRORS.has(cls)) {
-					this.note(`${cls} is an Error with its message: the other fields of v1 are not there.`);
+				if (GENERIC_ERRORS.has(cls))
 					return this.helper('__error', args(node)[0] ?? f.createStringLiteral(cls));
-				}
-				if (cls === 'NodeApiError' || cls === 'NodeOperationError') {
-					this.note(
-						`${cls} is an Error with the message of its cause: the description and the HTTP code of v1 are not there.`,
-					);
-					return this.helper('__error', args(node)[1] ?? f.createStringLiteral(cls));
-				}
+				// new NodeApiError(node, error): the message of v1 for an HTTP status (`__apiError`).
+				// With options (a message, a description) the rules of v1 are not here.
+				if (cls === 'NodeApiError' && node.arguments?.length === 2)
+					return this.helper('__apiError', args(node)[1]);
+				// new NodeOperationError(node, message or error, options): the options do not change the message.
+				if (cls === 'NodeOperationError' && (node.arguments?.length ?? 0) >= 2)
+					return this.helper('__error', args(node)[1]);
 			}
 			if (ts.isExpressionStatement(node)) {
 				const e = node.expression;
@@ -824,36 +829,29 @@ class Specialiser {
 						),
 					);
 				}
-				// delete local.name: the subset has no delete, so the local gets a copy without the key.
-				if (ts.isDeleteExpression(e)) {
-					const target = e.expression;
-					const key = ts.isPropertyAccessExpression(target)
-						? f.createStringLiteral(target.name.text)
-						: ts.isElementAccessExpression(target)
-							? target.argumentExpression
-							: undefined;
-					const owner =
-						ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target)
-							? target.expression
-							: undefined;
-					if (
-						key &&
-						owner &&
-						ts.isIdentifier(owner) &&
-						declaredHere.has(owner.text) &&
-						localNames.get(owner.text) === 1
-					) {
-						toLet.add(owner.text);
-						this.note(
-							'`delete` on a local object makes a copy without the key: another reference to the object keeps the key.',
-						);
-						return f.createExpressionStatement(
-							f.createAssignment(
-								f.createIdentifier(owner.text),
-								this.helper('__omit', f.createIdentifier(owner.text), key),
-							),
-						);
-					}
+				// list.push.apply(list, more): as list.push(...more).
+				if (
+					ts.isCallExpression(e) &&
+					ts.isPropertyAccessExpression(e.expression) &&
+					e.expression.name.text === 'apply' &&
+					ts.isPropertyAccessExpression(e.expression.expression) &&
+					e.expression.expression.name.text === 'push' &&
+					e.arguments.length === 2
+				) {
+					const [list, more] = args(e);
+					return f.createForOfStatement(
+						undefined,
+						f.createVariableDeclarationList(
+							[f.createVariableDeclaration('__more')],
+							ts.NodeFlags.Const,
+						),
+						more,
+						f.createExpressionStatement(
+							f.createCallExpression(f.createPropertyAccessExpression(list, 'push'), undefined, [
+								f.createIdentifier('__more'),
+							]),
+						),
+					);
 				}
 				// list.push(...more)
 				if (
@@ -896,23 +894,7 @@ class Specialiser {
 			}
 			return each(node);
 		};
-		let out = ts.visitNode(root, visit) as ts.Node;
-		if (toLet.size > 0) {
-			const relax = (n: ts.Node): ts.Node => {
-				if (
-					ts.isVariableDeclarationList(n) &&
-					n.declarations.some((d) => ts.isIdentifier(d.name) && toLet.has(d.name.text))
-				) {
-					return f.createVariableDeclarationList(
-						ts.visitNodes(n.declarations, relax) as ts.NodeArray<ts.VariableDeclaration>,
-						ts.NodeFlags.Let,
-					);
-				}
-				return ts.visitEachChild(n, relax, undefined);
-			};
-			out = relax(out);
-		}
-		return out;
+		return ts.visitNode(root, visit) as ts.Node;
 	}
 
 	/** Reports what is left after folding and has no compiled form. */
@@ -950,87 +932,142 @@ class Specialiser {
 					'the node reads the instance id, and the caller did not give the instance',
 				);
 			}
-			if (ts.isRegularExpressionLiteral(node))
-				this.error(where, 'a regular expression is supported only as `pattern.test(text)`');
-			if (ts.isDeleteExpression(node))
-				this.error(where, '`delete` is supported only as a statement on a local variable');
-			if (
-				ts.isNewExpression(node) &&
-				ts.isIdentifier(node.expression) &&
-				node.expression.text !== 'Error' &&
-				node.expression.text !== 'Date'
-			) {
-				this.error(where, `'new ${node.expression.text}' has no compiled form`);
-			}
 			ts.forEachChild(node, walk);
 		};
 		walk(root);
-		this.checkCredentialUse(root, where);
 	}
 
 	/**
 	 * A credential field is a template that the runtime fills: text for a
 	 * request. Code that compares it or branches on it would need the value, so
-	 * that is an error. The check follows a field through the variables of one
-	 * function. It does not follow it into another function.
+	 * that is an error. The check follows a field through variables, members of
+	 * objects, arguments and results of the functions of the module.
 	 */
-	private checkCredentialUse(root: ts.Node, where: string) {
-		const tainted = new Set<string>();
-		const holds = (e: ts.Node): boolean =>
-			(ts.isIdentifier(e) &&
-				(e.text === '__CREDFIELD' || (tainted.has(e.text) && isValueUse(e)))) ||
-			(ts.forEachChild(e, holds) ?? false);
-		for (let round = 0; round < 8; round++) {
-			const before = tainted.size;
-			const collect = (n: ts.Node) => {
-				if (
-					ts.isVariableDeclaration(n) &&
-					ts.isIdentifier(n.name) &&
-					n.initializer &&
-					holds(n.initializer)
-				)
-					tainted.add(n.name.text);
-				if (
-					ts.isBinaryExpression(n) &&
-					n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
-					ts.isIdentifier(n.left) &&
-					holds(n.right)
-				) {
-					tainted.add(n.left.text);
-				}
-				ts.forEachChild(n, collect);
-			};
-			collect(root);
-			if (tainted.size === before) break;
-		}
-		const find = (n: ts.Node) => {
-			const field =
-				ts.isCallExpression(n) &&
-				ts.isIdentifier(n.expression) &&
-				n.expression.text === '__CREDFIELD';
-			const variable = ts.isIdentifier(n) && tainted.has(n.text) && isValueUse(n);
-			const p = n.parent;
-			if ((field || variable) && p) {
-				const op = ts.isBinaryExpression(p) ? p.operatorToken.kind : undefined;
-				const decides =
-					(op !== undefined &&
-						op !== ts.SyntaxKind.PlusToken &&
-						op !== ts.SyntaxKind.EqualsToken &&
-						op !== ts.SyntaxKind.CommaToken) ||
-					ts.isPrefixUnaryExpression(p) ||
-					ts.isTypeOfExpression(p) ||
-					((ts.isIfStatement(p) || ts.isWhileStatement(p) || ts.isSwitchStatement(p)) &&
-						p.expression === n) ||
-					(ts.isConditionalExpression(p) && p.condition === n);
-				if (decides)
-					this.error(
-						where,
-						'the code compares or branches on a credential field: node code cannot read a credential value',
-					);
+	private checkCredentials() {
+		const params = new Map<string, Set<number>>();
+		const returns = new Set<string>();
+		const analyse = (name: string, node: ts.Node, report: boolean): boolean => {
+			let changed = false;
+			const fn = ts.isFunctionDeclaration(node) ? node : undefined;
+			const tainted = new Set<string>();
+			for (const k of params.get(name) ?? []) {
+				const p = fn?.parameters[k];
+				if (p && ts.isIdentifier(p.name)) tainted.add(p.name.text);
 			}
-			ts.forEachChild(n, find);
+			const holds = (e: ts.Node): boolean => {
+				if (
+					ts.isIdentifier(e) &&
+					(e.text === '__CREDFIELD' || (tainted.has(e.text) && isValueUse(e)))
+				)
+					return true;
+				if (
+					ts.isCallExpression(e) &&
+					ts.isIdentifier(e.expression) &&
+					returns.has(e.expression.text)
+				)
+					return true;
+				return ts.forEachChild(e, holds) ?? false;
+			};
+			const rootOf = (e: ts.Expression): string | undefined => {
+				let cur = e;
+				while (ts.isPropertyAccessExpression(cur) || ts.isElementAccessExpression(cur))
+					cur = cur.expression;
+				return ts.isIdentifier(cur) ? cur.text : undefined;
+			};
+			for (let round = 0; round < 8; round++) {
+				const before = tainted.size;
+				const collect = (n: ts.Node) => {
+					if (
+						ts.isVariableDeclaration(n) &&
+						ts.isIdentifier(n.name) &&
+						n.initializer &&
+						holds(n.initializer)
+					)
+						tainted.add(n.name.text);
+					// `a = field` and `a.b = field`: the variable holds the field from here.
+					if (
+						ts.isBinaryExpression(n) &&
+						n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+						holds(n.right)
+					) {
+						const target = rootOf(n.left);
+						if (target) tainted.add(target);
+					}
+					if (
+						ts.isCallExpression(n) &&
+						ts.isIdentifier(n.expression) &&
+						n.expression.text === '__assign' &&
+						n.arguments.length === 2 &&
+						holds(n.arguments[1])
+					) {
+						const target = rootOf(n.arguments[0]);
+						if (target) tainted.add(target);
+					}
+					ts.forEachChild(n, collect);
+				};
+				collect(node);
+				if (tainted.size === before) break;
+			}
+			const walk = (n: ts.Node) => {
+				if (ts.isCallExpression(n) && ts.isIdentifier(n.expression)) {
+					const callee = this.units.get(n.expression.text);
+					const offset = callee?.withContext ? CONTEXT_PARAMS.length : 0;
+					n.arguments.forEach((arg, k) => {
+						if (!callee || k < offset || !holds(arg)) return;
+						const set = params.get(callee.name) ?? new Set<number>();
+						if (!set.has(k - offset)) changed = true;
+						set.add(k - offset);
+						params.set(callee.name, set);
+					});
+				}
+				if (
+					ts.isReturnStatement(n) &&
+					n.expression &&
+					name !== 'execute' &&
+					holds(n.expression) &&
+					!returns.has(name)
+				) {
+					returns.add(name);
+					changed = true;
+				}
+				if (report) {
+					const field =
+						ts.isCallExpression(n) &&
+						ts.isIdentifier(n.expression) &&
+						n.expression.text === '__CREDFIELD';
+					const variable = ts.isIdentifier(n) && tainted.has(n.text) && isValueUse(n);
+					const p = n.parent;
+					if ((field || variable) && p) {
+						const op = ts.isBinaryExpression(p) ? p.operatorToken.kind : undefined;
+						const decides =
+							(op !== undefined &&
+								op !== ts.SyntaxKind.PlusToken &&
+								op !== ts.SyntaxKind.EqualsToken &&
+								op !== ts.SyntaxKind.CommaToken) ||
+							ts.isPrefixUnaryExpression(p) ||
+							ts.isTypeOfExpression(p) ||
+							((ts.isIfStatement(p) || ts.isWhileStatement(p) || ts.isSwitchStatement(p)) &&
+								p.expression === n) ||
+							(ts.isConditionalExpression(p) && p.condition === n);
+						if (decides)
+							this.error(
+								name,
+								'the code compares or branches on a credential field: node code cannot read a credential value',
+							);
+					}
+				}
+				ts.forEachChild(n, walk);
+			};
+			walk(node);
+			return changed;
 		};
-		find(root);
+		// A field goes into a function as an argument and comes out as its result: to a fixed point.
+		for (let round = 0; round < 16; round++) {
+			let changed = false;
+			for (const { name, node } of this.output) changed = analyse(name, node, false) || changed;
+			if (!changed) break;
+		}
+		for (const { name, node } of this.output) analyse(name, node, true);
 	}
 
 	// ----- fold -----
@@ -1659,60 +1696,111 @@ class Specialiser {
 			}
 			this.process(this.queue[k], false);
 		}
+		this.checkCredentials();
 		const linked = this.output.map((o) => o.name);
 		if (this.errors.length > 0) return { errors: this.errors, notes: this.notes, linked };
-		return { source: this.print(), errors: [], notes: this.notes, linked };
+		const source = this.print();
+		if (this.errors.length > 0) return { errors: this.errors, notes: this.notes, linked };
+		return { source, errors: [], notes: this.notes, linked };
 	}
 
 	// ----- print -----
 
 	private print(): string {
-		const parts: string[] = [];
-		// A function that makes requests must be inside `run`: the subset allows `ctx.http` only there (WL090).
-		const inner: string[] = [];
-		// The text is not indented again: a template literal can hold line breaks.
-		let body = '{}';
+		// All node code is inside `run`: the subset allows `ctx.http` only there (WL090), and the
+		// translator of `code-native` takes it as one text.
+		const code: string[] = [];
+		let body = '';
 		for (const { name, node, sf } of this.output) {
 			const unit = this.units.get(name);
-			const text = (n: ts.Node) => this.printer.printNode(ts.EmitHint.Unspecified, typed(n), sf);
+			const text = (n: ts.Node) => this.printer.printNode(ts.EmitHint.Unspecified, finish(n), sf);
 			if (!ts.isFunctionDeclaration(node)) {
 				if (unit?.withContext) this.error(name, 'a constant is called with the n8n context');
-				parts.push(text(node));
+				code.push(text(node));
 			} else if (name === 'execute') {
-				if (node.body) body = text(node.body);
+				body = (node.body?.statements ?? []).map(text).join('\n');
 			} else {
 				const lead = unit?.withContext
 					? CONTEXT_PARAMS.map((p) => f.createParameterDeclaration(undefined, undefined, p))
 					: [];
-				const fn = f.updateFunctionDeclaration(
-					node,
-					node.modifiers?.filter((m) => m.kind === ts.SyntaxKind.AsyncKeyword),
-					node.asteriskToken,
-					node.name,
-					undefined,
-					[...lead, ...node.parameters],
-					undefined,
-					node.body,
+				code.push(
+					text(
+						f.updateFunctionDeclaration(
+							node,
+							node.modifiers?.filter((m) => m.kind === ts.SyntaxKind.AsyncKeyword),
+							node.asteriskToken,
+							node.name,
+							undefined,
+							[...lead, ...node.parameters],
+							undefined,
+							node.body,
+						),
+					),
 				);
-				(unit?.withContext ? inner : parts).push(text(fn).replace('ctx: any', 'ctx: NodeCtx'));
 			}
 		}
-		this.helpers.add('__wrap');
-		const names = [...this.helpers].sort();
-		const helpers = names.filter((h) => h !== '__request').map((h) => HELPERS[h]);
-		if (this.helpers.has('__request')) inner.unshift(HELPERS.__request);
+		if (this.helpers.has('__request')) code.unshift(REQUEST_SOURCE);
+		this.helpers.delete('__request');
+		for (const always of ['__wrap', '__plain']) this.helpers.add(always);
+		// Regular expressions, Set, Map, `for...in`, `var`, loose equality and the string methods get
+		// their subset forms from the translator of Code nodes. What it cannot translate is an error.
+		const globals = new Set([
+			'ctx',
+			'parameters',
+			'credential',
+			'__items',
+			'__request',
+			...Object.keys(HELPERS),
+		]);
+		const translated = translateCode({
+			code: [...code, body].join('\n'),
+			mode: 'all',
+			kind: 'code',
+			hasNode: () => false,
+			nodeCode: { globals },
+		});
+		if (!translated.ok) {
+			for (const b of translated.blockers) this.error('code', `${b.feature}: ${b.message}`);
+			return '';
+		}
+		const t = translated.translation;
+		if (t.zones.size > 0)
+			this.error('code', 'dates in a time zone have no compiled form in node code yet');
+		if (t.usesMatchProps)
+			this.error(
+				'code',
+				'the `index` or `groups` of a match has no compiled form in node code yet',
+			);
+		// The helpers of the translation, with the helpers that they use.
+		const names: string[] = [];
+		const add = (name: string) => {
+			if (names.includes(name) || !Object.hasOwn(CODE_HELPERS, name)) return;
+			names.push(name);
+			for (const used of CODE_HELPERS[name].uses) add(used);
+		};
+		for (const name of t.helpers) add(name);
+		if (t.usesCollections) add('collPlain');
+		// A Set or a Map that reaches a request or the output goes as plain JSON, as in v1.
+		const plain = t.usesCollections
+			? 'function __plain(value: Json): Json {\n\treturn collPlain(value);\n}'
+			: 'function __plain(value: Json): Json {\n\treturn value;\n}';
+		const own = [...this.helpers].sort().map((h) => (h === '__plain' ? plain : HELPERS[h]));
 		return `// Generated by the node compiler from the source of ${this.input.type}. Do not edit.
-import { defineNode, type NodeCtx } from '@n8n/workflow-lang';
+import { defineNode } from '@n8n/workflow-lang';
 
-${[...helpers, ...parts].join('\n\n')}
+/** Node code has no static types. */
+// biome-ignore lint/suspicious/noExplicitAny: node code is untyped JSON.
+type Json = any;
 
-export default defineNode<any>({
+${[...names.map((n) => CODE_HELPERS[n].source), ...own].join('\n\n')}
+
+export default defineNode<Json>({
 	type: ${JSON.stringify(this.input.moduleType ?? this.input.type)},
 	version: ${this.input.version},
 	async run(ctx, parameters0, items0, credential) {
-		const parameters: any = parameters0 ?? {};
-		const __items: any = __wrap(items0);
-		${[...inner, body].join('\n')}
+		const parameters: Json = parameters0 ?? {};
+		const __items: Json = __wrap(items0);
+${t.body}
 	},
 });
 `;
@@ -1765,12 +1853,10 @@ function containsBreak(n: ts.Node): boolean {
 	return ts.forEachChild(n, containsBreak) ?? false;
 }
 
-/** Types every variable and parameter `any`: the source lost its types, and the subset checker is strict. */
-function typed(root: ts.Node): ts.Node {
-	const anyType = () => f.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword);
+/** The last step before the text: a credential field becomes the template that the runtime fills (spec section 7). */
+function finish(root: ts.Node): ts.Node {
 	const visit = (n: ts.Node): ts.Node => {
 		const out = ts.visitEachChild(n, visit, undefined);
-		// A credential field becomes the template that the runtime fills (spec section 7).
 		if (
 			ts.isCallExpression(out) &&
 			ts.isIdentifier(out.expression) &&
@@ -1781,36 +1867,6 @@ function typed(root: ts.Node): ts.Node {
 				`{{$credentials.${ts.isStringLiteral(field) ? field.text : ''}}}`,
 			);
 		}
-		if (ts.isParameter(out) && !out.type) {
-			return f.updateParameterDeclaration(
-				out,
-				out.modifiers,
-				out.dotDotDotToken,
-				out.name,
-				// v1 calls its helpers with fewer arguments than parameters: each one is optional.
-				out.questionToken ??
-					(n.pos >= 0 && !out.initializer && !out.dotDotDotToken
-						? f.createToken(ts.SyntaxKind.QuestionToken)
-						: undefined),
-				anyType(),
-				out.initializer,
-			);
-		}
-		if (ts.isVariableDeclaration(out) && !out.type) {
-			const list = n.parent;
-			const loopHead =
-				list &&
-				ts.isVariableDeclarationList(list) &&
-				(ts.isForOfStatement(list.parent) || ts.isForInStatement(list.parent));
-			if (!loopHead)
-				return f.updateVariableDeclaration(
-					out,
-					out.name,
-					out.exclamationToken,
-					anyType(),
-					out.initializer,
-				);
-		}
 		return out;
 	};
 	return ts.visitNode(root, visit);
@@ -1818,5 +1874,14 @@ function typed(root: ts.Node): ts.Node {
 
 /** Compiles the source of a node into a library module for one node of a workflow. */
 export function specialiseNode(input: SpecialiseInput): SpecialiseResult {
-	return new Specialiser(input).run();
+	try {
+		return new Specialiser(input).run();
+	} catch (error) {
+		// A value or a form that the compiler does not know: the node does not compile.
+		return {
+			errors: [error instanceof Error ? error.message : String(error)],
+			notes: [],
+			linked: [],
+		};
+	}
 }

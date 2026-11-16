@@ -110,7 +110,7 @@ describe.runIf(typesBuilt)('node compiler: n8n node source against v1', () => {
 
 		it('keeps only the code of the operation in use', () => {
 			// The Telegram node has 2,500 lines and 30 operations.
-			expect((result.source ?? '').split('\n').length).toBeLessThan(200);
+			expect(result.linked.length).toBeLessThan(10);
 			expect(result.source).not.toContain('this.');
 		});
 
