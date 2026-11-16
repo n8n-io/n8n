@@ -1137,9 +1137,12 @@ describe('Promote and Apply', () => {
 		);
 		assert(result.status === 'applied');
 
-		expect(deleteProject).toHaveBeenCalledWith(owner, removedProject.id, {
-			publicApi: 'editor_ui',
-		});
+		expect(deleteProject).toHaveBeenCalledWith(
+			owner,
+			removedProject.id,
+			{ publicApi: 'editor_ui' },
+			{},
+		);
 		deleteProject.mockRestore();
 		expect(await projectRepository.findOneBy({ id: removedProject.id })).toBeNull();
 		expect(await projectRepository.findOneBy({ id: targetProject.id })).toMatchObject({

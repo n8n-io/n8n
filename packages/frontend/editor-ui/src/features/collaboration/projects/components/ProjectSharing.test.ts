@@ -1,4 +1,4 @@
-import { within } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { getDropdownItems, getSelectedDropdownValue } from '@/__tests__/utils';
@@ -247,6 +247,26 @@ describe('ProjectSharing', () => {
 				}),
 			],
 		]);
+	});
+
+	it('should show a selected project that is not in the returned search page', async () => {
+		const selected = createProjectSharingData('team');
+		const { getByTestId } = renderComponent({
+			props: {
+				// The count includes the selected project, which is not on the returned page.
+				searchFn: createTestSearchFnWithCount(teamProjects, teamProjects.length + 1),
+				modelValue: selected,
+			},
+		});
+
+		const projectSelect = getByTestId('project-sharing-select');
+		await waitFor(() =>
+			expect(within(projectSelect).getByRole('combobox')).toHaveValue(selected.name),
+		);
+
+		const items = await getDropdownItems(projectSelect);
+		expect(items).toHaveLength(teamProjects.length + 1);
+		expect(await getSelectedDropdownValue(items)).toBe(selected.name);
 	});
 
 	it('should render home project as owner when defined', async () => {

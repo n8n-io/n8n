@@ -1,4 +1,5 @@
-import { WorkflowEntity, type User } from '@n8n/db';
+import { WorkflowEntity, type OperationContext, type User } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -34,8 +35,10 @@ const bindings: PackageImportBindings = {
 };
 
 const user = mock<User>({ id: 'user-1' });
+const ctx: OperationContext = { security: mock<SecurityContext>({ subIdentityId: 'login-1' }) };
 const context = {
 	user,
+	ctx,
 	projectId: 'project-1',
 	folderId: 'fallback-folder',
 	droppedTagIds: new Set<string>(),
@@ -123,6 +126,7 @@ describe('WorkflowImporter.apply', () => {
 			user,
 			expect.any(WorkflowEntity),
 			expect.objectContaining({ batchContext, publicApi: false }),
+			ctx,
 		);
 		expect(updateWorkflow).toHaveBeenCalledWith(
 			user,
@@ -134,6 +138,7 @@ describe('WorkflowImporter.apply', () => {
 				allowArchivedUpdate: false,
 				allowUnresolvedErrorWorkflow: true,
 			},
+			ctx,
 		);
 	});
 
@@ -301,12 +306,18 @@ describe('WorkflowImporter.apply', () => {
 
 		const result = await importer.apply(context, plan, bindings);
 
-		expect(update).toHaveBeenCalledWith(user, expect.any(WorkflowEntity), 'existing', {
-			publicApi: false,
-			source: 'import',
-			allowArchivedUpdate: true,
-			allowUnresolvedErrorWorkflow: true,
-		});
+		expect(update).toHaveBeenCalledWith(
+			user,
+			expect.any(WorkflowEntity),
+			'existing',
+			{
+				publicApi: false,
+				source: 'import',
+				allowArchivedUpdate: true,
+				allowUnresolvedErrorWorkflow: true,
+			},
+			ctx,
+		);
 		expect(archive).not.toHaveBeenCalled();
 		expect(unarchive).not.toHaveBeenCalled();
 		expect(result.outcomes[0]?.workflow).toBe(updated);
@@ -358,7 +369,7 @@ describe('WorkflowImporter.apply', () => {
 			expect(update.mock.invocationCallOrder[0]).toBeLessThan(
 				transitionArchive.mock.invocationCallOrder[0],
 			);
-			expect(transitionArchive).toHaveBeenCalledWith(user, 'existing', options);
+			expect(transitionArchive).toHaveBeenCalledWith(user, 'existing', options, ctx);
 			expect(result.outcomes[0]?.workflow).toBe(transitioned);
 		},
 	);

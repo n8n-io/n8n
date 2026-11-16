@@ -367,8 +367,15 @@ function toolCallToResultPart(
 	};
 }
 
-function replayableToolCallId(id: unknown, messageIndex: number, blockIndex: number): string {
-	if (typeof id === 'string' && /^[A-Za-z0-9_-]+$/.test(id)) return id;
+function replayableToolCallId(
+	id: unknown,
+	messageIndex: number,
+	blockIndex: number,
+	keepToolCallIds: boolean,
+): string {
+	if (typeof id === 'string' && id !== '' && (keepToolCallIds || /^[A-Za-z0-9_-]+$/.test(id))) {
+		return id;
+	}
 
 	// Keep stored IDs intact. Repair only the model request and its matching result.
 	const digest = createHash('sha256')
@@ -485,6 +492,7 @@ interface PositionedResult {
 function groupPositionedResults(
 	content: MessageContent[],
 	messageIndex: number,
+	keepToolCallIds: boolean,
 ): Map<number, ToolResultPart[]> {
 	const groups = new Map<number, PositionedResult[]>();
 	for (const [blockIndex, block] of content.entries()) {
@@ -492,7 +500,12 @@ function groupPositionedResults(
 		if (block.resultPosition === undefined) continue;
 
 		const slot = Math.min(Math.max(block.resultPosition, blockIndex + 1), content.length);
-		const toolCallId = replayableToolCallId(block.toolCallId, messageIndex, blockIndex);
+		const toolCallId = replayableToolCallId(
+			block.toolCallId,
+			messageIndex,
+			blockIndex,
+			keepToolCallIds,
+		);
 		const group = groups.get(slot) ?? [];
 		group.push({ part: toolCallToResultPart(block, toolCallId), order: block.resultOrder });
 		groups.set(slot, group);
@@ -533,10 +546,11 @@ function toAssistantAiMessages(
 	msg: Message,
 	messageIndex: number,
 	replayReasoningText: boolean,
+	keepToolCallIds: boolean,
 ): ModelMessage[] {
 	const assistantParts: AiContentPart[] = [];
 	const resultMessages: ModelMessage[] = [];
-	const positionedResults = groupPositionedResults(msg.content, messageIndex);
+	const positionedResults = groupPositionedResults(msg.content, messageIndex, keepToolCallIds);
 
 	for (const [blockIndex, block] of msg.content.entries()) {
 		assistantParts.push(...(positionedResults.get(blockIndex) ?? []));
@@ -548,7 +562,12 @@ function toAssistantAiMessages(
 		// Defense-in-depth: the strip step removes pending blocks first
 		if (!isSettledToolCall(block)) continue;
 
-		const toolCallId = replayableToolCallId(block.toolCallId, messageIndex, blockIndex);
+		const toolCallId = replayableToolCallId(
+			block.toolCallId,
+			messageIndex,
+			blockIndex,
+			keepToolCallIds,
+		);
 		assistantParts.push(toReplayedToolCallPart(block, toolCallId));
 		placeUnpositionedResult(block, toolCallId, assistantParts, resultMessages);
 	}
@@ -578,6 +597,7 @@ function toAiMessageList(
 	msg: Message,
 	messageIndex: number,
 	replayReasoningText = false,
+	keepToolCallIds: boolean,
 ): ModelMessage[] {
 	switch (msg.role) {
 		case 'system': {
@@ -598,7 +618,7 @@ function toAiMessageList(
 		}
 
 		case 'assistant':
-			return toAssistantAiMessages(msg, messageIndex, replayReasoningText);
+			return toAssistantAiMessages(msg, messageIndex, replayReasoningText, keepToolCallIds);
 
 		case 'tool': {
 			// Legacy role: 'tool' messages (from old DB rows). Don't emit them.
@@ -614,15 +634,17 @@ function toAiMessageList(
  * Convert n8n Messages to AI SDK ModelMessages for passing to stream/generateText.
  * `providerId` is the provider the request targets; it enables replay quirks
  * that cannot be derived from the blocks themselves (see
- * `PROVIDER_QUIRKS[provider].replayReasoningText`).
+ * `PROVIDER_QUIRKS[provider].replayReasoningText` and `keepsToolCallIds`).
  */
 export function toAiMessages(messages: Message[], providerId?: string): ModelMessage[] {
 	const replayReasoningText =
 		providerId !== undefined && (getProviderQuirks(providerId).replayReasoningText ?? false);
+	const keepToolCallIds =
+		providerId !== undefined && (getProviderQuirks(providerId).keepsToolCallIds ?? false);
 	// Text replay covers only the current tool chain: the messages after the last user message.
 	const lastUserIndex = messages.map((message) => message.role).lastIndexOf('user');
 	const modelMessages = messages.flatMap((message, index) =>
-		toAiMessageList(message, index, replayReasoningText && index > lastUserIndex),
+		toAiMessageList(message, index, replayReasoningText && index > lastUserIndex, keepToolCallIds),
 	);
 	const result: ModelMessage[] = [];
 

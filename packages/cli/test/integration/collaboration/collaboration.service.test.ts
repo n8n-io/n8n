@@ -17,9 +17,8 @@ import type {
 	WriteAccessReleaseRequestedMessage,
 } from '@/collaboration/collaboration.message';
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { CollaborationState } from '@/collaboration/collaboration.state';
 import { Push } from '@/push';
-import { CacheService } from '@n8n/backend-services';
+import { CacheService, CollaborationState } from '@n8n/backend-services';
 
 describe('CollaborationService', () => {
 	mockInstance(Push, new Push(mock(), mock(), mock(), mock(), mock()));

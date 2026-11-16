@@ -1,6 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { User } from '@n8n/db';
+import { type OperationContext, User } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { Telemetry } from '@/telemetry';
@@ -130,11 +132,35 @@ describe('unpublish-workflow MCP tool', () => {
 					workflowId: 'wf-1',
 				});
 
-				expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
-					source: 'n8n-mcp',
-				});
+				expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(
+					user,
+					'wf-1',
+					{ source: 'n8n-mcp' },
+					{},
+				);
 
 				expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
+			});
+
+			test('passes the operation context to the workflow service', async () => {
+				const workflow = createWorkflow({ settings: { availableInMCP: true } });
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+				(workflowService.deactivateWorkflow as Mock).mockResolvedValue(workflow);
+				const ctx: OperationContext = {
+					security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+				};
+
+				const tool = createUnpublishWorkflowTool(
+					user,
+					workflowFinderService,
+					workflowService,
+					telemetry,
+					collaborationService,
+					ctx,
+				);
+				await tool.handler({ workflowId: 'wf-1' }, {} as Parameters<typeof tool.handler>[1]);
+
+				expect((workflowService.deactivateWorkflow as Mock).mock.calls[0][3]).toBe(ctx);
 			});
 		});
 

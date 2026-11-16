@@ -466,7 +466,7 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		const finalization = await service.finishInvalidConfirmationRun({
 			threadId: 'thread-a',
 			runId: 'run-1',
-			promptVersion: 'progressive@1',
+			promptVersion: 'concise@1',
 			abortController,
 		});
 
@@ -477,7 +477,7 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 			'run-1',
 			'errored',
 			expect.any(String),
-			'progressive@1',
+			'concise@1',
 		);
 		expect(deps.runState.cancelThread).toHaveBeenCalledWith('thread-a');
 		expect(deps.suspendedThreads.dropPendingConfirmationsForThread).toHaveBeenCalledWith(
