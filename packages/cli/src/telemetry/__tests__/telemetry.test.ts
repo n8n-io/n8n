@@ -1137,7 +1137,7 @@ describe('Telemetry', () => {
 			expect(buffer['user1'].endpoints['POST /executions']).toBe(1);
 			expect(buffer['user1'].user_agents['n8n-cli/1.0']).toBe(2);
 			expect(buffer['user1'].user_agents['custom-app/2.0']).toBe(1);
-			expect(buffer['user1'].clients).toEqual({ editor_ui: 0, other: 3 });
+			expect(buffer['user1'].clients).toEqual({ editor_ui: 0, n8n_node: 0, other: 3 });
 		});
 
 		test('should count calls per route, result and caller', () => {
@@ -1215,52 +1215,72 @@ describe('Telemetry', () => {
 			expect(buffer['user2'].endpoints['POST /executions']).toBe(1);
 		});
 
-		test('should count calls for the editor_ui client in the same entry', () => {
-			telemetry.trackApiInvocation({
-				user_id: 'user1',
-				route: 'GET /workflows',
-				result: '2xx',
-				api_version: 'v1',
-				client: 'other',
-			});
-
-			telemetry.trackApiInvocation({
-				user_id: 'user1',
-				route: 'GET /workflows',
-				result: '2xx',
-				api_version: 'v1',
+		test.each([
+			{
 				client: 'editor_ui',
-			});
+				clients: { editor_ui: 1, n8n_node: 0, other: 2 },
+				endpointsByClient: { editor_ui: { 'GET /workflows': 1 }, n8n_node: {} },
+				routes: [
+					{ route: 'GET /workflows', result: '2xx', caller: 'other', calls: 1 },
+					{ route: 'GET /workflows', result: '2xx', caller: 'editor_ui', calls: 1 },
+					{ route: 'GET /executions', result: '2xx', caller: 'other', calls: 1 },
+				],
+			},
+			{
+				client: 'n8n_node',
+				clients: { editor_ui: 0, n8n_node: 1, other: 2 },
+				endpointsByClient: { editor_ui: {}, n8n_node: { 'GET /workflows': 1 } },
+				routes: [
+					{ route: 'GET /workflows', result: '2xx', caller: 'other', calls: 1 },
+					{ route: 'GET /workflows', result: '2xx', caller: 'n8n_node', calls: 1 },
+					{ route: 'GET /executions', result: '2xx', caller: 'other', calls: 1 },
+				],
+			},
+		] as const)(
+			'should count endpoints for the $client client in the same entry',
+			({ client, clients, endpointsByClient, routes }) => {
+				telemetry.trackApiInvocation({
+					user_id: 'user1',
+					route: 'GET /workflows',
+					result: '2xx',
+					api_version: 'v1',
+					client: 'other',
+				});
 
-			telemetry.trackApiInvocation({
-				user_id: 'user1',
-				route: 'GET /executions',
-				result: '2xx',
-				api_version: 'v1',
-				client: 'other',
-			});
+				telemetry.trackApiInvocation({
+					user_id: 'user1',
+					route: 'GET /workflows',
+					result: '2xx',
+					api_version: 'v1',
+					client,
+				});
 
-			const buffer = telemetry.getApiInvocationsBuffer();
+				telemetry.trackApiInvocation({
+					user_id: 'user1',
+					route: 'GET /executions',
+					result: '2xx',
+					api_version: 'v1',
+					client: 'other',
+				});
 
-			expect(buffer).toStrictEqual({
-				user1: {
-					clients: { editor_ui: 1, other: 2 },
-					total_calls: 3,
-					endpoints: {
-						'GET /workflows': 2,
-						'GET /executions': 1,
+				const buffer = telemetry.getApiInvocationsBuffer();
+
+				expect(buffer).toStrictEqual({
+					user1: {
+						clients,
+						total_calls: 3,
+						endpoints: {
+							'GET /workflows': 2,
+							'GET /executions': 1,
+						},
+						endpoints_by_client: endpointsByClient,
+						routes,
+						first: expect.any(Date),
+						user_agents: {},
 					},
-					endpoints_by_client: { editor_ui: { 'GET /workflows': 1 } },
-					routes: [
-						{ route: 'GET /workflows', result: '2xx', caller: 'other', calls: 1 },
-						{ route: 'GET /workflows', result: '2xx', caller: 'editor_ui', calls: 1 },
-						{ route: 'GET /executions', result: '2xx', caller: 'other', calls: 1 },
-					],
-					first: expect.any(Date),
-					user_agents: {},
-				},
-			});
-		});
+				});
+			},
+		);
 
 		test('should not buffer when rudderStack is not initialized', () => {
 			// @ts-expect-error Assigning to private property
@@ -1708,8 +1728,8 @@ describe('Telemetry', () => {
 				expect.objectContaining({
 					user_id: 'user1',
 					total_calls: 1,
-					clients: JSON.stringify({ editor_ui: 0, other: 1 }),
-					endpoints_by_client: JSON.stringify({ editor_ui: {} }),
+					clients: JSON.stringify({ editor_ui: 0, n8n_node: 0, other: 1 }),
+					endpoints_by_client: JSON.stringify({ editor_ui: {}, n8n_node: {} }),
 					routes: JSON.stringify([
 						{ route: 'GET /workflows', result: '2xx', caller: 'other', calls: 1 },
 					]),

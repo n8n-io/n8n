@@ -11,7 +11,7 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
-import { defineComponent, h, ref, type Ref } from 'vue';
+import { defineComponent, h, inject, ref, type Ref } from 'vue';
 
 import type { AgentChatComposerAttachment } from '@/features/agents/utils/composer-attachments';
 import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
@@ -244,6 +244,34 @@ vi.mock('../../components/InstanceAiAppPreview.vue', () => ({
 	}),
 }));
 
+// The real editor has its own tests. The stub keeps a local draft, so a remount loses it.
+vi.mock('../../components/InstanceAiSkillPreview.vue', () => ({
+	default: defineComponent({
+		inheritAttrs: false,
+		setup(_props, { attrs }) {
+			const draft = ref('');
+			return () =>
+				h(
+					'div',
+					{
+						'data-test-id': 'skill-preview-stub',
+						'data-skill-id': attrs['skill-id'],
+						'data-refresh-key': attrs['refresh-key'],
+					},
+					[
+						h('input', {
+							'data-test-id': 'skill-preview-draft',
+							value: draft.value,
+							onInput: (event: Event) => {
+								if (event.target instanceof HTMLInputElement) draft.value = event.target.value;
+							},
+						}),
+					],
+				);
+		},
+	}),
+}));
+
 // The tab that the `tab-bar-open-tab` button opens.
 const { tabBarTabToOpen } = vi.hoisted(() => ({
 	tabBarTabToOpen: { current: undefined as unknown },
@@ -286,6 +314,13 @@ vi.mock('../../components/InstanceAiInputMenu.vue', () => ({
 	}),
 }));
 
+// The real selector reads the settings store, which has its own tests.
+vi.mock('../../components/ApprovalModeSelector.vue', () => ({
+	default: defineComponent({
+		setup: () => () => h('div', { 'data-test-id': 'approval-mode-selector-stub' }),
+	}),
+}));
+
 // The real chips resolve the nodes from the workflow document, which has its own tests.
 vi.mock('../../components/NodesAttachmentChips.vue', () => ({
 	default: defineComponent({
@@ -314,7 +349,20 @@ vi.mock('../../components/NodesAttachmentChips.vue', () => ({
 
 vi.mock('../../components/InstanceAiArtifactsPanel.vue', () => ({
 	default: defineComponent({
-		setup: () => () => h('div', { 'data-test-id': 'artifacts-panel-stub' }),
+		setup() {
+			// The real panel opens a skill row through this injected opener.
+			const openSkillPreview = inject<((id: string) => boolean) | undefined>(
+				'openSkillPreview',
+				undefined,
+			);
+			return () =>
+				h('div', { 'data-test-id': 'artifacts-panel-stub' }, [
+					h('button', {
+						'data-test-id': 'artifacts-panel-open-skill',
+						onClick: () => openSkillPreview?.('skill-1'),
+					}),
+				]);
+		},
 	}),
 }));
 
@@ -360,6 +408,26 @@ function buildMessage(toolCallId: string): ChatMessage {
 				toolCallId,
 				input: {},
 				output: { success: true, workflowId: 'wf-1' },
+				state: 'done',
+			},
+		],
+	};
+}
+
+function skillMessage(toolCallId: string, action: 'create' | 'update'): ChatMessage {
+	return {
+		id: `a-${toolCallId}`,
+		role: 'assistant',
+		content: '',
+		toolCalls: [
+			{
+				tool: 'skills',
+				toolCallId,
+				input: { action, ...(action === 'update' ? { skillId: 'skill-1' } : {}) },
+				output:
+					action === 'create'
+						? { success: true, skill: { id: 'skill-1', name: 'Tone guide' } }
+						: { success: true, saved: { id: 'skill-1' } },
 				state: 'done',
 			},
 		],
@@ -417,6 +485,7 @@ describe('AssistantAgentThreadView', () => {
 		});
 		expect(panelProps.current['interaction-extensions']).toEqual([
 			expect.objectContaining({ key: 'assistant_confirmation' }),
+			expect.objectContaining({ key: 'assistant_auto_approval' }),
 			expect.objectContaining({ key: 'assistant_instance_context' }),
 			expect.objectContaining({ key: 'assistant_status' }),
 		]);
@@ -440,6 +509,15 @@ describe('AssistantAgentThreadView', () => {
 		await flushPromises();
 
 		expect(getByTestId('input-menu-attach')).toBeDisabled();
+	});
+
+	it('shows the approval mode selector right after the "+" menu', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(getByTestId('input-menu-attach').nextElementSibling).toBe(
+			getByTestId('approval-mode-selector-stub'),
+		);
 	});
 
 	it('adds a thread opened by URL to the lists right away', async () => {
@@ -546,6 +624,31 @@ describe('AssistantAgentThreadView', () => {
 		]);
 	});
 
+	it('reports the response to a sent message with the context of that message', async () => {
+		renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+		const onStreamEvent = panelProps.current.onStreamEvent as (event: unknown) => void;
+		onMessageSending({ text: 'Build a digest', files: [], isFirstMessage: true });
+		onStreamEvent({ type: 'message-queued', queueId: 'q-1', sessionId: 'thread-1' });
+		onStreamEvent({ type: 'execution-started', executionId: 'exec-1', sessionId: 'thread-1' });
+		onStreamEvent({ type: 'finish', finishReason: 'stop' });
+
+		await vi.waitFor(() =>
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_RECEIVED_AI_ASSISTANT_RESPONSE,
+				expect.objectContaining({
+					thread_id: 'thread-1',
+					run_id: 'exec-1',
+					is_first_user_message: true,
+					response_kind: 'completed',
+					runtime: 'agents',
+				}),
+			),
+		);
+	});
+
 	it('tracks the attached nodes of the first message once the server accepts it', async () => {
 		stashPendingAssistantAgentMessage({
 			threadId: 'thread-3',
@@ -636,6 +739,74 @@ describe('AssistantAgentThreadView', () => {
 		await flushPromises();
 
 		expect(appPreviewProps.current?.['refresh-key']).toBe(Number(firstKey) + 1);
+	});
+
+	describe('skill artifacts', () => {
+		async function renderWithSkill() {
+			const result = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+			chatMessages.value = [skillMessage('tc-1', 'create')];
+			await flushPromises();
+			return result;
+		}
+
+		it('opens the skill that the Assistant writes and reloads it on the next update', async () => {
+			const { getByTestId } = await renderWithSkill();
+
+			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+			const skillPreview = getByTestId('skill-preview-stub');
+			expect(skillPreview).toHaveAttribute('data-skill-id', 'skill-1');
+			const firstKey = Number(skillPreview.dataset.refreshKey);
+
+			chatMessages.value = [...chatMessages.value, skillMessage('tc-2', 'update')];
+			await flushPromises();
+
+			expect(getByTestId('skill-preview-stub')).toHaveAttribute(
+				'data-refresh-key',
+				String(firstKey + 1),
+			);
+		});
+
+		it.each([
+			{ destination: 'another skill', tab: { type: 'skill', id: 'skill-2', name: 'Other' } },
+			{ destination: 'a workflow', tab: { type: 'workflow', id: 'wf-1', name: 'Workflow' } },
+		])('keeps the unsaved skill draft after the user visits $destination', async ({ tab }) => {
+			const { getByTestId, queryByTestId } = await renderWithSkill();
+			await fireEvent.update(getByTestId('skill-preview-draft'), 'Unsaved instructions');
+
+			tabBarTabToOpen.current = tab;
+			await userEvent.click(getByTestId('tab-bar-open-tab'));
+			await flushPromises();
+			if (tab.type === 'skill') {
+				expect(getByTestId('skill-preview-stub')).toHaveAttribute('data-skill-id', 'skill-2');
+				expect(getByTestId('skill-preview-draft')).toHaveValue('');
+			} else {
+				expect(queryByTestId('skill-preview-stub')).not.toBeInTheDocument();
+			}
+
+			tabBarTabToOpen.current = { type: 'skill', id: 'skill-1', name: 'Tone guide' };
+			await userEvent.click(getByTestId('tab-bar-open-tab'));
+			await flushPromises();
+
+			expect(getByTestId('skill-preview-stub')).toHaveAttribute('data-skill-id', 'skill-1');
+			expect(getByTestId('skill-preview-draft')).toHaveValue('Unsaved instructions');
+		});
+
+		it('opens a skill from the artifacts panel', async () => {
+			if (threadArea.width) threadArea.width.value = 1200;
+			const { getByTestId, queryByTestId } = await renderWithSkill();
+			// The panel shows only while the preview is hidden.
+			await userEvent.click(getByTestId('tab-bar-preview-toggle'));
+			await flushPromises();
+			expect(queryByTestId('skill-preview-stub')).not.toBeInTheDocument();
+
+			await userEvent.click(getByTestId('artifacts-panel-open-skill'));
+			await flushPromises();
+
+			expect(getByTestId('skill-preview-stub')).toHaveAttribute('data-skill-id', 'skill-1');
+		});
 	});
 
 	it('does not open the preview for a workflow built before the thread loaded', async () => {

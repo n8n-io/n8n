@@ -604,7 +604,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				'Load `workflow-builder` via `load_skill` before calling this tool. ' +
 				'When the workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
 				'Use TypeScript SDK .workflow.ts source for new and existing workflows. ' +
-				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` then call this tool with filePath. This tool validates the source and returns the findings. ' +
+				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` (`workspace_edit_files` for several files in one call) then call this tool with filePath. This tool validates the source and returns the findings. ' +
 				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
 		)
 		.input(pickBuildWorkflowInputSchema(context))
@@ -1539,6 +1539,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							model: context.modelId,
 							utilityModel: context.utilityModelId,
 							modelFetch: context.modelFetch,
+							onHelperUsage: context.onHelperUsage,
 							logger: context.logger,
 						});
 					trackWaitGateVerificationPlan(context, {

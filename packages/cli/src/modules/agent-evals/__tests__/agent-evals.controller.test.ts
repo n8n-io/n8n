@@ -11,7 +11,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
-import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { AgentWriteLockService } from '@/modules/agents/agent-write-lock.service';
 
 import type { AgentEvalRatingService } from '../agent-eval-rating.service';
 import type { AgentEvalService } from '../agent-eval.service';
@@ -22,8 +22,8 @@ vi.mock('../agent-eval.service', () => ({ AgentEvalService: class AgentEvalServi
 vi.mock('../agent-eval-rating.service', () => ({
 	AgentEvalRatingService: class AgentEvalRatingService {},
 }));
-vi.mock('@/collaboration/collaboration.service', () => ({
-	CollaborationService: class CollaborationService {},
+vi.mock('@/modules/agents/agent-write-lock.service', () => ({
+	AgentWriteLockService: class AgentWriteLockService {},
 }));
 vi.mock('../agent-evals-flag-gate', () => ({ AgentEvalsFlagGate: class AgentEvalsFlagGate {} }));
 
@@ -40,7 +40,7 @@ describe('AgentEvalsController', () => {
 	let service: MockProxy<AgentEvalService>;
 	let ratingService: MockProxy<AgentEvalRatingService>;
 	let flagGate: MockProxy<AgentEvalsFlagGate>;
-	let collaborationService: MockProxy<CollaborationService>;
+	let agentWriteLockService: MockProxy<AgentWriteLockService>;
 	let controller: AgentEvalsController;
 
 	function makeReq<P extends Record<string, unknown>>(
@@ -61,8 +61,8 @@ describe('AgentEvalsController', () => {
 		ratingService = mock<AgentEvalRatingService>();
 		flagGate = mock<AgentEvalsFlagGate>();
 		flagGate.assertEnabled.mockResolvedValue(undefined);
-		collaborationService = mock<CollaborationService>();
-		controller = new AgentEvalsController(service, ratingService, flagGate, collaborationService);
+		agentWriteLockService = mock<AgentWriteLockService>();
+		controller = new AgentEvalsController(service, ratingService, flagGate, agentWriteLockService);
 	});
 
 	/**
@@ -350,7 +350,7 @@ describe('AgentEvalsController', () => {
 				{ 'push-ref': 'push-1' },
 			);
 			const callOrder: string[] = [];
-			collaborationService.validateAgentWriteLock.mockImplementation(async () => {
+			agentWriteLockService.validateAgentWriteLock.mockImplementation(async () => {
 				callOrder.push('lock');
 			});
 			service.applySuggestions.mockImplementation(async () => {
@@ -360,7 +360,7 @@ describe('AgentEvalsController', () => {
 
 			await controller.applySuggestions(req, undefined, { resultIds: ['res-1', 'res-2'] });
 
-			expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+			expect(agentWriteLockService.validateAgentWriteLock).toHaveBeenCalledWith(
 				'user-1',
 				'push-1',
 				PROJECT_ID,
@@ -385,7 +385,7 @@ describe('AgentEvalsController', () => {
 			);
 			const body = { input: 'hello', whatToCheck: 'Rule', suggestion: 'Fix it.' };
 			const callOrder: string[] = [];
-			collaborationService.validateAgentWriteLock.mockImplementation(async () => {
+			agentWriteLockService.validateAgentWriteLock.mockImplementation(async () => {
 				callOrder.push('lock');
 			});
 			service.applyPreviewSuggestion.mockImplementation(async () => {
@@ -395,7 +395,7 @@ describe('AgentEvalsController', () => {
 
 			await controller.applyPreviewSuggestion(req, undefined, body);
 
-			expect(collaborationService.validateAgentWriteLock).toHaveBeenCalledWith(
+			expect(agentWriteLockService.validateAgentWriteLock).toHaveBeenCalledWith(
 				'user-1',
 				'push-1',
 				PROJECT_ID,
@@ -413,7 +413,7 @@ describe('AgentEvalsController', () => {
 		});
 
 		it('does not apply a preview suggestion when the write lock rejects', async () => {
-			collaborationService.validateAgentWriteLock.mockRejectedValue(new BadRequestError('locked'));
+			agentWriteLockService.validateAgentWriteLock.mockRejectedValue(new BadRequestError('locked'));
 
 			await expect(
 				controller.applyPreviewSuggestion(agentReq(), undefined, {
@@ -426,7 +426,7 @@ describe('AgentEvalsController', () => {
 		});
 
 		it('does not apply suggestions when the write lock rejects', async () => {
-			collaborationService.validateAgentWriteLock.mockRejectedValue(new BadRequestError('locked'));
+			agentWriteLockService.validateAgentWriteLock.mockRejectedValue(new BadRequestError('locked'));
 
 			await expect(
 				controller.applySuggestions(agentReq(), undefined, { resultIds: ['res-1'] }),

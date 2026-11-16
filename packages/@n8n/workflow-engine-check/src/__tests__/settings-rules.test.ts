@@ -30,7 +30,7 @@ describe('settings rules', () => {
 	])('blocks $setting with code $code', ({ settings, code }) => {
 		expect(check(settings)).toEqual({
 			eligible: false,
-			reasons: [{ code, severity: 'blocking', message: expect.any(String) }],
+			reasons: [{ code, kind: 'temporary', severity: 'blocking', message: expect.any(String) }],
 		});
 	});
 
@@ -39,7 +39,14 @@ describe('settings rules', () => {
 		(redactionPolicy) => {
 			expect(check({ redactionPolicy })).toEqual({
 				eligible: true,
-				reasons: [{ code: 'REDACTION_POLICY', severity: 'warning', message: expect.any(String) }],
+				reasons: [
+					{
+						code: 'REDACTION_POLICY',
+						kind: 'temporary',
+						severity: 'warning',
+						message: expect.any(String),
+					},
+				],
 			});
 		},
 	);

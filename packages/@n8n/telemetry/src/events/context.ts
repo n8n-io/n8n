@@ -457,6 +457,21 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			...skillOrigin,
 		}),
 	},
+	USER_CHANGED_SKILL_SOURCE_SCOPE: {
+		name: 'User changed skill source scope',
+		description:
+			'A source scope move committed or failed. Read-only previews do not emit this event.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			from_scope_type: skillSourceScopeType,
+			to_scope_type: skillSourceScopeType,
+			skill_count: z.number(),
+			status: skillSourceStatus,
+			reason: z.enum([...SKILL_SOURCE_REASONS, 'agent_in_use', 'unexpected']).optional(),
+		}),
+	},
+
 	USER_CONNECTED_SKILL_SOURCE: {
 		name: 'User connected skill source',
 		description:
@@ -570,6 +585,21 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'True when the source was checked less than a minute ago, so n8n did not check it again',
 				),
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
+	USER_REVIEWED_SKILL_UPDATE: {
+		name: 'User reviewed skill update',
+		description:
+			'A user reviewed a pending skill update. Fires for each selected skill after the transaction succeeds or fails.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			kind: z.literal('update').describe('An update to an existing synced skill'),
+			action: z.enum(['accept', 'skip']),
+			verdict: z.enum(['pass', 'needs_review', 'blocked']),
+			bulk: z.boolean().describe('Whether the request selected more than one skill'),
 			status: skillSourceStatus,
 			reason: skillSourceReason,
 		}),

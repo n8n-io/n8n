@@ -12,6 +12,7 @@ import {
 	seedAgentBuilderTargetMetadata,
 	threadAuthorizesAgentAdoption,
 	withBoundAgentTarget,
+	threadTargetsAgent,
 } from '../agent-target-binding';
 
 /** In-memory thread store shared across "turns" (fresh contexts). */
@@ -548,5 +549,21 @@ describe('readAgentTargetsMetadata', () => {
 				instanceAiAgentBuilderTargets: [],
 			}),
 		).toEqual({ bound: undefined, pending: undefined, targets: [], previewSession: undefined });
+	});
+});
+
+describe('threadTargetsAgent', () => {
+	const target = { agentId: 'agent-1', projectId: 'project-1' };
+
+	it('is true for a bound, a pending or an earlier agent target', () => {
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTarget: target })).toBe(true);
+		expect(threadTargetsAgent({ instanceAiPendingAgentTarget: target })).toBe(true);
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTargets: { 'agent-1': target } })).toBe(true);
+	});
+
+	it('is false for a thread without an agent', () => {
+		expect(threadTargetsAgent(undefined)).toBe(false);
+		expect(threadTargetsAgent({})).toBe(false);
+		expect(threadTargetsAgent({ instanceAiAgentBuilderTargets: {} })).toBe(false);
 	});
 });
