@@ -1,5 +1,6 @@
 import type { EventService } from '@n8n/backend-services';
 import type { OperationContext, TransactionRunner } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import type { NodeLoader } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -1513,6 +1514,137 @@ describe('TypeAvailabilityPolicyService', () => {
 			expect(scopeRepository.updateDefaultAction).not.toHaveBeenCalled();
 			expect(scopeRepository.bumpVersion).toHaveBeenCalledTimes(1);
 		});
+	});
+
+	describe('login id on the audit events', () => {
+		type Case = {
+			write: string;
+			events: string[];
+			act: (ctx?: OperationContext) => Promise<unknown>;
+		};
+
+		const serviceAccountCtx: OperationContext = {
+			security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+		};
+
+		const arrangeFirstEffectiveWrite = () => {
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(null);
+			scopeRepository.createScopeIfAbsent.mockResolvedValue({
+				scope: makeScope({ version: 1 }),
+				created: true,
+			});
+			policyRepository.createPolicy.mockResolvedValue(makePolicy());
+			scopeRepository.findScopeById.mockResolvedValue(makeScope({ version: 1 }));
+		};
+
+		const arrangeExistingEffectiveWrite = () => {
+			const existingPolicy = makePolicy({ rules: [], version: 1 });
+			scopeRepository.findScopeByKindAndProject.mockResolvedValue(makeScope({ version: 1 }));
+			attachmentRepository.listAttachmentsForScope.mockResolvedValue([
+				{ policyId: existingPolicy.id, rules: [], priority: 0, isFloor: false },
+			]);
+			policyRepository.findByIdAndKind.mockResolvedValue(existingPolicy);
+			attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue(['scope-1']);
+			policyRepository.updateRules.mockResolvedValue(makePolicy({ rules: [RULE], version: 2 }));
+			scopeRepository.findScopeById.mockResolvedValue(makeScope({ version: 2 }));
+		};
+
+		const cases: Case[] = [
+			{
+				write: 'createPolicyDocument',
+				events: ['node-type-policy-document-created'],
+				act: async (ctx) => {
+					policyRepository.createPolicy.mockResolvedValue(makePolicy());
+					return await service.createPolicyDocument(KIND, [RULE], 'user-1', ctx);
+				},
+			},
+			{
+				write: 'updatePolicyDocument',
+				events: ['node-type-policy-document-updated'],
+				act: async (ctx) => {
+					policyRepository.findByIdAndKind.mockResolvedValue(makePolicy({ version: 1 }));
+					policyRepository.updateRules.mockResolvedValue(makePolicy({ version: 2 }));
+					attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([]);
+					scopeRepository.lockScopesByIds.mockResolvedValue([]);
+					return await service.updatePolicyDocument(KIND, 'policy-1', [RULE], 1, 'user-1', ctx);
+				},
+			},
+			{
+				write: 'deletePolicyDocument',
+				events: ['node-type-policy-document-deleted'],
+				act: async (ctx) => {
+					policyRepository.findByIdAndKind.mockResolvedValue(makePolicy());
+					attachmentRepository.listScopeIdsAttachedToPolicy.mockResolvedValue([]);
+					return await service.deletePolicyDocument(KIND, 'policy-1', 'user-1', ctx);
+				},
+			},
+			{
+				write: 'replaceAttachments',
+				events: ['node-type-policy-attachments-updated'],
+				act: async (ctx) => {
+					scopeRepository.findScopeByIdAndKind.mockResolvedValue(makeScope({ version: 1 }));
+					scopeRepository.findScopeById.mockResolvedValue(makeScope({ version: 2 }));
+					attachmentRepository.listAttachmentsForScope.mockResolvedValue([]);
+					return await service.replaceAttachments(KIND, 'scope-1', [], 1, 'user-1', ctx);
+				},
+			},
+			{
+				write: 'setEffectivePolicy on first write',
+				events: ['node-type-policy-scope-updated', 'node-type-policy-document-created'],
+				act: async (ctx) => {
+					arrangeFirstEffectiveWrite();
+					return await service.setEffectivePolicy(
+						KIND,
+						null,
+						{ rules: [RULE], defaultAction: 'allow' },
+						0,
+						'user-1',
+						ctx,
+					);
+				},
+			},
+			{
+				write: 'setEffectivePolicy on an existing scope',
+				events: ['node-type-policy-scope-updated', 'node-type-policy-document-updated'],
+				act: async (ctx) => {
+					arrangeExistingEffectiveWrite();
+					return await service.setEffectivePolicy(
+						KIND,
+						null,
+						{ rules: [RULE], defaultAction: 'allow' },
+						1,
+						'user-1',
+						ctx,
+					);
+				},
+			},
+		];
+
+		const payloadsOf = (events: string[]) =>
+			events.map((event) => eventService.emit.mock.calls.find(([name]) => name === event)?.[1]);
+
+		it.each(cases)(
+			'$write passes the login id of the operation context to $events',
+			async ({ act, events }) => {
+				await act(serviceAccountCtx);
+
+				for (const payload of payloadsOf(events)) {
+					expect(payload).toMatchObject({ loginId: 'login-1' });
+				}
+			},
+		);
+
+		it.each(cases)(
+			'$write emits no login id without an operation context',
+			async ({ act, events }) => {
+				await act();
+
+				for (const payload of payloadsOf(events)) {
+					expect(payload).toBeDefined();
+					expect(payload).toMatchObject({ loginId: undefined });
+				}
+			},
+		);
 	});
 
 	describe('evaluateComposedType', () => {

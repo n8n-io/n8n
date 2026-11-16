@@ -825,6 +825,11 @@ export function createThreadRuntime(
 
 	// Scoped to the active run's message (not all messages) so a stale
 	// confirmation left on an older message can't suppress stall detection.
+	/**
+	 * True while the active run is paused until the user resolves a confirmation of
+	 * any kind, including the ones that the timeline renders inline. Unlike
+	 * `isAwaitingConfirmation`, it is false once the run has ended.
+	 */
 	const isAwaitingUserInput = computed(() => {
 		const runId = activeRunId.value;
 		if (runId === null) return false;
@@ -1015,6 +1020,7 @@ export function createThreadRuntime(
 							input_thread_id: conf.inputThreadId ?? '',
 							instance_id: rootStore.instanceId,
 							type: 'approval',
+							runtime: 'instance-ai',
 							provided_inputs: [
 								{
 									label: conf.message,
@@ -1877,6 +1883,7 @@ export function createThreadRuntime(
 		contextualSuggestion,
 		pendingConfirmations,
 		isAwaitingConfirmation,
+		isAwaitingUserInput,
 
 		// actions
 		setPendingHandoff,

@@ -55,8 +55,10 @@ export interface PlanVerificationSimulationInput {
 	workflowId: string;
 	/** Node output `__schema__` lookup used to shape generated fixtures. */
 	outputSchemaLookup?: OutputSchemaLookup;
-	/** Host-resolved model used when no eval model API key is configured in the environment. */
-	fallbackModelConfig?: ModelConfig;
+	/** Host-resolved main model for the run. */
+	model?: ModelConfig;
+	/** Host-resolved utility model. Classification and fixture generation prefer it over `model`. */
+	utilityModel?: ModelConfig;
 	/** Transport for the helper's model call. */
 	modelFetch?: FetchFn;
 	logger?: Logger;
@@ -348,7 +350,8 @@ export async function planVerificationSimulation({
 	declaredOutputFixtures,
 	workflowId,
 	outputSchemaLookup,
-	fallbackModelConfig,
+	model,
+	utilityModel,
 	modelFetch,
 	logger,
 }: PlanVerificationSimulationInput): Promise<VerificationSimulationPlan> {
@@ -360,7 +363,8 @@ export async function planVerificationSimulation({
 		nodeSimulationPlan = await classifyNodesForSimulation({
 			workflow,
 			mockedNodeNames,
-			fallbackModelConfig,
+			model,
+			utilityModel,
 			modelFetch,
 			logger,
 		});
@@ -387,7 +391,8 @@ export async function planVerificationSimulation({
 							workflow,
 							plan: planNeedingGeneratedFixtures,
 							outputSchemaLookup,
-							fallbackModelConfig,
+							model,
+							utilityModel,
 							modelFetch,
 							logger,
 						})

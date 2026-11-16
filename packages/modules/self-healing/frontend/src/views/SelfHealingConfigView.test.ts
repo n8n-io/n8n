@@ -6,6 +6,7 @@ import {
 	PERSONAL_SELF_HEALING_VIEW,
 } from '@n8n/frontend-constants/self-healing';
 import { VIEWS } from '@n8n/frontend-constants/views';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { createMemoryHistory, createRouter, RouterView, type Router } from 'vue-router';
 
 import * as api from '../self-healing.api';
@@ -92,6 +93,24 @@ beforeEach(() => {
 	vi.spyOn(store, 'load').mockResolvedValue();
 	vi.mocked(api.fetchWorkflowDependencies).mockResolvedValue({});
 });
+
+it.each([
+	[true, 'Self-healing uses your Assistant credits each time it investigates a failed workflow.'],
+	[
+		false,
+		'Self-healing uses tokens from your AI provider each time it investigates a failed workflow.',
+	],
+])(
+	'explains the cost of investigations when the credit proxy is %s',
+	async (proxyEnabled, text) => {
+		const settingsStore = useSettingsStore();
+		settingsStore.moduleSettings = {
+			'instance-ai': { proxyEnabled },
+		} as typeof settingsStore.moduleSettings;
+		const view = await renderView('new');
+		expect(await view.findByTestId('self-healing-cost-note')).toHaveTextContent(text);
+	},
+);
 
 it('creates an enabled configuration with the creator as reviewer', async () => {
 	const store = useSelfHealingStore();
@@ -585,7 +604,7 @@ describe('personal project', () => {
 
 		expect(view.queryByText('Reviewers')).not.toBeInTheDocument();
 		expect(view.queryByTestId('self-healing-reviewers')).not.toBeInTheDocument();
-		expect(view.queryByText(/who hears about it/)).not.toBeInTheDocument();
+		expect(view.queryByText(/who reviews its fixes/)).not.toBeInTheDocument();
 		await fireEvent.click(button);
 		await waitFor(() =>
 			expect(save).toHaveBeenCalledWith(
@@ -646,6 +665,26 @@ describe('personal project', () => {
 			),
 		);
 	});
+});
+
+it('lists reviewer options alphabetically after the project member group', async () => {
+	const store = useSelfHealingStore();
+	store.options.project!.reviewers.push(
+		{ id: 'zoe', email: 'zoe@example.com', firstName: 'Zoe', lastName: 'Young' },
+		{ id: 'email-only', email: 'bob@example.com', firstName: null, lastName: null },
+		{ id: 'anna', email: 'anna@example.com', firstName: 'anna', lastName: 'Smith' },
+	);
+	const view = await renderView('new');
+	await view.findByRole('button', { name: 'Create configuration' });
+
+	await fireEvent.click(view.getByRole('button', { name: 'Show popup' }));
+	await view.findByRole('option', { name: 'People from Acme project' });
+	expect(view.getAllByRole('option').map((option) => option.textContent?.trim())).toEqual([
+		'People from Acme project',
+		expect.stringContaining('anna Smith'),
+		expect.stringContaining('bob@example.com'),
+		expect.stringContaining('Zoe Young'),
+	]);
 });
 
 it('shows an email-only reviewer once and allows removal', async () => {
