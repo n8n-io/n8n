@@ -3,6 +3,8 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { STOP_MANY_EXECUTIONS_MODAL_KEY } from '@/app/constants';
 import StopManyExecutionsModal from './StopManyExecutionsModal.vue';
+import { useToast } from '@n8n/composables/useToast';
+import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import type { RenderResult } from '@testing-library/vue';
 
 vi.mock('@n8n/composables/useToast', () => {
@@ -78,6 +80,34 @@ describe('StopManyExecutionsModal', () => {
 
 		const submitButton = getByTestId('sme-submit-button');
 		expect(submitButton).toBeEnabled();
+	});
+
+	it('should use the singular form for one stopped execution', async () => {
+		const { getByTestId } = renderModal();
+		const executionsStore = useExecutionsStore();
+		const showMessage = useToast().showMessage;
+		vi.mocked(executionsStore.stopManyExecutions).mockResolvedValue({ stopped: 1 });
+
+		await userEvent.click(getByTestId('sme-submit-button'));
+
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'Stopped 1 execution.',
+			type: 'success',
+		});
+	});
+
+	it('should use the plural form for multiple stopped executions', async () => {
+		const { getByTestId } = renderModal();
+		const executionsStore = useExecutionsStore();
+		const showMessage = useToast().showMessage;
+		vi.mocked(executionsStore.stopManyExecutions).mockResolvedValue({ stopped: 2 });
+
+		await userEvent.click(getByTestId('sme-submit-button'));
+
+		expect(showMessage).toHaveBeenCalledWith({
+			title: 'Stopped 2 executions.',
+			type: 'success',
+		});
 	});
 
 	it('should disable submit button if no boxes are checked', async () => {
