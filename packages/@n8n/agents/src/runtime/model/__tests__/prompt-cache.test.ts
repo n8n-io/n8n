@@ -147,6 +147,38 @@ describe('buildCallPromptCacheOptions — OpenAI', () => {
 		expect(typeof (result.openai as { promptCacheKey: string }).promptCacheKey).toBe('string');
 	});
 
+	it.each([
+		'openai/gpt-4.1',
+		'openai/gpt-5.1',
+		'openai/gpt-5.5',
+		'openai/gpt-5.6-luna',
+		'openai/my-finetune',
+	])('keeps the 24h default for %s', (modelId) => {
+		expect(buildCallPromptCacheOptions({ enabled: true }, modelId, context)?.openai).toMatchObject({
+			promptCacheRetention: '24h',
+		});
+	});
+
+	it.each(['openai/gpt-6-luna', 'openai/gpt-6-sol', 'openai/gpt-6.1-sol'])(
+		'sends no promptCacheRetention by default for %s, which rejects it',
+		(modelId) => {
+			const openai = buildCallPromptCacheOptions({ enabled: true }, modelId, context)?.openai;
+
+			expect(openai).not.toHaveProperty('promptCacheRetention');
+			expect(openai).toHaveProperty('promptCacheKey');
+		},
+	);
+
+	it('still sends an explicit promptCacheRetention for GPT-6', () => {
+		expect(
+			buildCallPromptCacheOptions(
+				{ openai: { promptCacheKey: 'assistant-v1', promptCacheRetention: '24h' } },
+				'openai/gpt-6.1-sol',
+				context,
+			),
+		).toEqual({ openai: { promptCacheKey: 'assistant-v1', promptCacheRetention: '24h' } });
+	});
+
 	it('passes through an explicit promptCacheKey and promptCacheRetention unchanged', () => {
 		expect(
 			buildCallPromptCacheOptions(
@@ -512,6 +544,17 @@ describe('getPromptCacheRetentionMs', () => {
 				'openai/gpt-5',
 			),
 		).toBe(HOUR);
+	});
+
+	it('assumes the in-memory default for GPT-6 and later, which take no retention', () => {
+		expect(getPromptCacheRetentionMs({ enabled: true }, 'openai/gpt-6.1-sol')).toBe(HOUR);
+		expect(getPromptCacheRetentionMs({ enabled: true }, 'openai/gpt-5.6-luna')).toBe(24 * HOUR);
+		expect(
+			getPromptCacheRetentionMs(
+				{ enabled: true, openai: { promptCacheRetention: '24h' } },
+				'openai/gpt-6.1-sol',
+			),
+		).toBe(24 * HOUR);
 	});
 
 	it('falls back to one hour for other providers', () => {
