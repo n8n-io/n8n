@@ -167,7 +167,9 @@ export class AiSdkStreamConverter {
 			// A block that does not continue the streamed text cannot replace what
 			// was sent. The streamed part ends as it is, and the block becomes a
 			// part of its own.
-			if (id !== undefined && sent !== undefined) parts.push(this.endPart(kind, id, undefined));
+			if (openId !== undefined && sent !== undefined) {
+				parts.push(this.endPart(kind, openId, undefined));
+			}
 			partId = id !== undefined && sent === undefined ? id : randomUUID();
 		}
 

@@ -597,6 +597,31 @@ describe('AiSdkLanguageModelAdapter', () => {
 			expect(model.calls[0].config?.abortSignal?.aborted).toBe(true);
 		});
 
+		it('leaves no abort listener behind after the stream ends', async () => {
+			const added = vi.spyOn(EventTarget.prototype, 'addEventListener');
+			const removed = vi.spyOn(EventTarget.prototype, 'removeEventListener');
+			const model = createFakeChatModel({
+				chunks: [
+					{ type: 'text-delta', id: 't1', delta: 'a' },
+					{ type: 'text-delta', id: 't1', delta: 'b' },
+					{ type: 'finish', finishReason: 'stop' },
+				],
+			});
+			const adapter = new AiSdkLanguageModelAdapter(model);
+
+			const { stream } = await adapter.doStream(callOptions());
+			await readAll(stream);
+
+			const signal = model.calls[0].config?.abortSignal;
+			const count = (spy: typeof added) =>
+				spy.mock.calls.filter(([type], i) => type === 'abort' && spy.mock.contexts[i] === signal)
+					.length;
+			expect(count(added)).toBeGreaterThan(0);
+			expect(count(added), 'every read removes its abort listener').toBe(count(removed));
+			added.mockRestore();
+			removed.mockRestore();
+		});
+
 		it('aborts a chat model call that waits for a chunk when the consumer cancels', async () => {
 			const model = createFakeChatModel();
 			model.stream = async function* (_messages, config) {
@@ -1120,6 +1145,32 @@ describe('AiSdkLanguageModelAdapter', () => {
 					chunks: [
 						{ type: 'text-delta', id: 't1', delta: 'Hel' },
 						{ type: 'content', id: 't1', content: { type: 'text', text: 'World' } },
+						{ type: 'finish', finishReason: 'stop' },
+					],
+				}),
+			);
+
+			const { stream } = await adapter.doStream(callOptions());
+			const parts = (await readAll(stream)).slice(2, -1);
+			const newId = parts[3]?.type === 'text-start' ? parts[3].id : undefined;
+
+			expect(newId).not.toBe('t1');
+			expect(parts).toEqual([
+				{ type: 'text-start', id: 't1' },
+				{ type: 'text-delta', id: 't1', delta: 'Hel' },
+				{ type: 'text-end', id: 't1' },
+				{ type: 'text-start', id: newId },
+				{ type: 'text-delta', id: newId, delta: 'World' },
+				{ type: 'text-end', id: newId },
+			]);
+		});
+
+		it('ends the only streamed part before a complete block without an id that does not continue it', async () => {
+			const adapter = new AiSdkLanguageModelAdapter(
+				createFakeChatModel({
+					chunks: [
+						{ type: 'text-delta', id: 't1', delta: 'Hel' },
+						{ type: 'content', content: { type: 'text', text: 'World' } },
 						{ type: 'finish', finishReason: 'stop' },
 					],
 				}),
