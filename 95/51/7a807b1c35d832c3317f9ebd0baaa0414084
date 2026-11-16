@@ -1,0 +1,39 @@
+packages/nodes-base/nodes/Postgres/test/v2/descriptions.test.ts
+  s_9b3403f33f27bc::t_d939ddb38017fe 75-77
+packages/nodes-base/nodes/Postgres/v2/actions/database/select.operation.ts
+  s_9b3403f33f27bc::t_9acbcdb2864247 127
+packages/nodes-base/nodes/Postgres/v2/actions/common.descriptions.ts
+  s_9b3403f33f27bc::t_8560f49ff6871e 407
+  s_9b3403f33f27bc::t_2bf5889baa8a81 377,379
+  s_9b3403f33f27bc::t_af8b039a651533 365
+packages/nodes-base/nodes/Postgres/test/v2/operations.test.ts
+  s_9b3403f33f27bc::t_360405a2f026a6 1744,1759,1793,1799,1803,1819
+  s_9b3403f33f27bc::t_c9d5a2922ec1ae 1259-1270
+  s_9b3403f33f27bc::t_af6f0f62da2ba3 1516,1534
+  s_9b3403f33f27bc::t_ec0cc43a9fc064 1324,1334-1335,1342-1358
+  s_9b3403f33f27bc::t_49ac628ff5435d 1634,1637,1641,1647,1653,1656-1670,1677
+  s_9b3403f33f27bc::t_3f9a6b53bb6605 1698-1707,1709-1715,1720,1725-1731
+  s_9b3403f33f27bc::t_101bf82e894afe 1802
+  s_9b3403f33f27bc::t_53e4b30da3ae24 1359-1360
+packages/nodes-base/nodes/Postgres/v2/helpers/utils.ts
+  s_9b3403f33f27bc::t_950db6ecf8bc8b 231
+  s_9b3403f33f27bc::t_8e759275bdf13c 720-722
+  s_9b3403f33f27bc::t_de82d3bde1c75b 27
+  s_9b3403f33f27bc::t_1610b79c478594 712-719,723-724,729-730,732-750,757-758,767,775-780,787,800,804,807
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "95517a807b1c35d832c3317f9ebd0baaa0414084",
+  "prompts": {},
+  "sessions": {
+    "s_9b3403f33f27bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b824e7d0-3e6b-453b-803b-35e874412684",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}
