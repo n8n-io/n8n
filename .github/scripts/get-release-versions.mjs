@@ -42,6 +42,9 @@ export function getSemverTagForTrack(track, tagToSha) {
 
 function main() {
 	const tagToSha = listRemoteTagsWithCommits();
+	if (tagToSha.size === 0) {
+		throw new Error('Could not read remote tags');
+	}
 	/** @type { Record<string, string> } */
 	const outputs = {};
 	for (const track of RELEASE_TRACKS) {
