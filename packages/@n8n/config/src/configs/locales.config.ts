@@ -37,8 +37,8 @@ export class LocalesConfig {
 
 	/**
 	 * Whether users can choose their own UI language in their personal settings.
-	 * Set to false to show every user the language from `N8N_DEFAULT_LOCALE`.
+	 * When false, every user sees the language from `N8N_DEFAULT_LOCALE`.
 	 */
 	@Env('N8N_LOCALE_USER_OVERRIDE')
-	userOverride: boolean = true;
+	userOverride: boolean = false;
 }

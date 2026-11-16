@@ -13,11 +13,11 @@ describe('LocalesConfig', () => {
 		vi.restoreAllMocks();
 	});
 
-	test('defaults to no extra locales and allows a user override', () => {
+	test('defaults to no extra locales and no user override', () => {
 		const config = Container.get(LocalesConfig);
 
 		expect(config.available).toEqual({});
-		expect(config.userOverride).toBe(true);
+		expect(config.userOverride).toBe(false);
 	});
 
 	test('parses a JSON map of locale definitions', () => {
@@ -54,8 +54,8 @@ describe('LocalesConfig', () => {
 	});
 
 	test('reads the user override switch', () => {
-		vi.stubEnv('N8N_LOCALE_USER_OVERRIDE', 'false');
+		vi.stubEnv('N8N_LOCALE_USER_OVERRIDE', 'true');
 
-		expect(Container.get(LocalesConfig).userOverride).toBe(false);
+		expect(Container.get(LocalesConfig).userOverride).toBe(true);
 	});
 });
