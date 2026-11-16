@@ -422,7 +422,7 @@ const sharingCountText = computed(() => {
 							</N8nText>
 							<N8nPreviewBadge data-test-id="security-type-policies-preview-badge" />
 						</span>
-						<N8nText :class="$style.twoLineDescription" size="small" color="text-light">
+						<N8nText size="small" color="text-light">
 							{{ i18n.baseText('settings.security.nodeAndCredentialPolicies.description') }}
 						</N8nText>
 					</template>
@@ -485,13 +485,5 @@ const sharingCountText = computed(() => {
 	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--spacing--3xs);
-}
-
-/* The `#info` slot replaces the row's own clamp, so the description keeps the same two lines here. */
-.twoLineDescription {
-	display: -webkit-box;
-	overflow: hidden;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
 }
 </style>
