@@ -10,7 +10,12 @@ import {
 } from '../../credentials/flags.ts';
 import { runReference } from '../../reference/runner.ts';
 import { runModule } from '../../testing/vm.ts';
-import { evaluateCredentialFlags, evaluateFlag, evaluateInSandbox } from '../evaluate-node.ts';
+import {
+	evaluateCredentialFlags,
+	evaluateFlag,
+	evaluateInSandbox,
+	unprovenFlagNodes,
+} from '../evaluate-node.ts';
 import { specialiseNode } from '../specialise.ts';
 
 const NODE = `
@@ -206,6 +211,18 @@ describe('the flags that n8n puts into the credentials document', () => {
 			withheld: [short.name, named.name],
 		});
 		expect(evaluateCredentialFlags([short], data)).toEqual({ flags: {}, withheld: [short.name] });
+	});
+
+	it('name the nodes that must run in the host when their values were not checked', () => {
+		const checked = '@flags=f00000001:1,f00000002:0';
+		const other = '@flags=f00000001:1,f00000002:1';
+		const proven = { ...guard([checked]), name: 'g1', node: 'Proven' };
+		const unproven = { ...guard([other]), name: 'g2', node: 'Unproven' };
+		const all = [short, named, proven, unproven];
+		expect(unprovenFlagNodes(all, data)).toEqual(['Unproven']);
+		expect(unprovenFlagNodes(all, { apiKey: 'sk-1', accountName: 'a' })).toEqual(['Proven']);
+		expect(unprovenFlagNodes(all, undefined)).toEqual(['Proven', 'Unproven']);
+		expect(unprovenFlagNodes([short, named, guard([other])], data)).toEqual([]);
 	});
 
 	it('are withheld when a condition gives no boolean, and never have another name', () => {

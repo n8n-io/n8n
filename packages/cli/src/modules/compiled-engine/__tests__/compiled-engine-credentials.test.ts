@@ -131,7 +131,10 @@ describe('CompiledEngineCredentials', () => {
 	describe('renewal', () => {
 		it('tells wfrt that an OAuth2 slot is renewed on 401', async () => {
 			const document = await credentials().buildDocument('wf1', [binding]);
-			expect(document.oauth).toMatchObject({ renewal: { status: [401] } });
+			// Without statuses of its own, a request can give those of its node (`statusDefault`).
+			expect(document.oauth).toMatchObject({
+				renewal: { status: [401], oauth2: true, statusDefault: true },
+			});
 		});
 
 		it('uses the expiry statuses of the credential, as n8n-core does', async () => {
@@ -142,7 +145,8 @@ describe('CompiledEngineCredentials', () => {
 				oauthTokenData: { access_token: 'old' },
 			});
 			const document = await credentials().buildDocument('wf1', [binding]);
-			expect(document.oauth).toMatchObject({ renewal: { status: [403, 419] } });
+			expect(document.oauth).toMatchObject({ renewal: { status: [403, 419], oauth2: true } });
+			expect(Reflect.get(Object(document.oauth), 'renewal')).not.toHaveProperty('statusDefault');
 		});
 
 		it('gives no renewal to a credential whose values do not expire', async () => {
@@ -260,6 +264,35 @@ describe('CompiledEngineCredentials', () => {
 			const logged = JSON.stringify(logger.warn.mock.calls);
 			expect(logged).not.toContain('f00000001');
 			expect(logged).not.toContain('sk-live-1');
+		});
+
+		it('names the nodes that must run in the fallback host, and nothing of the credential', async () => {
+			const checked = { ...guard(['@flags=f00000001:1']), name: 'g1', node: 'Checked' };
+			const unchecked = { ...guard(['@flags=f00000001:0']), name: 'g2', node: 'Unchecked' };
+			const derivations = { acme: [short, checked, unchecked] };
+
+			expect(await credentials().unprovenFlagNodes('wf1', [acme], derivations)).toEqual([
+				'Unchecked',
+			]);
+
+			// The credential changes: the other node has values that were not checked.
+			helper.getDecrypted.mockResolvedValue({ apiKey: 'k'.repeat(64), account: 'jo' });
+			expect(await credentials().unprovenFlagNodes('wf1', [acme], derivations)).toEqual([
+				'Checked',
+			]);
+
+			// A credential that n8n cannot read: no node is checked.
+			helper.getDecrypted.mockRejectedValue(new Error('sk-live-1 is not readable'));
+			expect(await credentials().unprovenFlagNodes('wf1', [acme], derivations)).toEqual([
+				'Checked',
+				'Unchecked',
+			]);
+			expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('f00000001');
+
+			// A slot without a guard needs no credential data.
+			helper.getDecrypted.mockClear();
+			expect(await credentials().unprovenFlagNodes('wf1', [acme], { acme: [text] })).toEqual([]);
+			expect(helper.getDecrypted).not.toHaveBeenCalled();
 		});
 
 		it('does not write text under the name of a flag', async () => {

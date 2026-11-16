@@ -88,8 +88,11 @@ export interface ConvertResult {
 	 *
 	 * An entry of kind `flag` is the outcome of one condition on the credential: a boolean
 	 * under the same key, which node code reads with `ctx.credentialFlag`. An entry of kind
-	 * `guard` lists the flags of one node instance and the values that were checked against
-	 * the v1 node. `evaluateCredentialFlags` gives the flags that the document can hold.
+	 * `guard` lists the flags of one node instance, the values that were checked against the
+	 * v1 node, and the name of the node. `evaluateCredentialFlags` gives the flags that the
+	 * document can hold. `unprovenFlagNodes` gives the nodes whose values were not checked: the
+	 * caller converts again with those nodes in the host (`NodeSources.runsInHost`), so a node
+	 * never fails for a credential that the v1 node accepts.
 	 */
 	credentialDerivations?: Record<string, CredentialDerivation[]>;
 	/**

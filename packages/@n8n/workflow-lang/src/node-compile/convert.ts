@@ -30,6 +30,8 @@ export interface NodeSources {
 	credentialEntry?: (type: string) => string | undefined;
 
 	storesResponses?: boolean;
+
+	runsInHost?: (nodeName: string) => boolean;
 }
 
 export function verifiedKey(
@@ -76,14 +78,19 @@ export function verifiedFlagKeys(
 	);
 }
 
-export function flagGuard(compiled: CompiledNode, allowed: string[]): CredentialDerivation {
+export function flagGuard(
+	compiled: CompiledNode,
+	allowed: string[],
+	node: string,
+): CredentialDerivation {
 	const flags = compiled.flags.map((flag) => flag.name).sort();
 	return {
-		name: `g${hashOf(JSON.stringify([flags, [...allowed].sort()]))}`,
+		name: `g${hashOf(JSON.stringify([flags, [...allowed].sort(), node]))}`,
 		code: '',
 		kind: 'guard',
 		flags,
 		allowed: [...allowed].sort(),
+		node,
 	};
 }
 
