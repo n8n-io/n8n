@@ -1,9 +1,8 @@
 import { ASSISTANT_SKILLS_FLAG, SKILL_SYNC_FLAG } from '@n8n/api-types';
+import type { PostHogClient } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
-
-import type { PostHogClient } from '@/posthog';
 
 import { AssistantSkillsFlagGate } from '../services/assistant-skills-flag-gate';
 import type { SkillUsage } from '../services/skill-usage.contracts';

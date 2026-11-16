@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestUrl } from 'n8n-workflow';
 
 import { lineApiRequest } from './GenericFunctions';
 import { notificationFields, notificationOperations } from './NotificationDescription';
@@ -127,7 +127,7 @@ export class Line implements INodeType {
 							'',
 							{},
 							{},
-							'https://notify-api.line.me/api/notify',
+							requestUrl`https://notify-api.line.me/api/notify`,
 							{ formData: body },
 						);
 					}

@@ -33,6 +33,19 @@ type ParsedFilter = { attribute: 'userName' | 'externalId'; value: string };
 /** The user fields the owner guard compares before and after a write. */
 type OwnerGuardSnapshot = Pick<Person, 'email' | 'disabled'>;
 
+/**
+ * Read a SCIM boolean. Entra ID sends `"True"` and `"False"` as strings when
+ * the tenant URL does not have the `aadOptscim062020` flag.
+ */
+function toScimBoolean(value: unknown): boolean | undefined {
+	if (typeof value === 'boolean') return value;
+	if (typeof value !== 'string') return undefined;
+	const normalized = value.toLowerCase();
+	if (normalized === 'true') return true;
+	if (normalized === 'false') return false;
+	return undefined;
+}
+
 @Service()
 export class ScimService {
 	constructor(
@@ -57,16 +70,22 @@ export class ScimService {
 			SSO_PROVIDER_TYPES.includes(identity.providerType),
 		)?.providerId;
 
+		// Entra ID maps `name.formatted` by default and sends it again on every
+		// sync cycle when the response does not contain it. Not `accountFullName`:
+		// SCIM and invited users can have empty or null name parts.
+		const fullName = [person.firstName, person.lastName].filter(Boolean).join(' ') || undefined;
+
 		const scimUser: ScimUser = {
 			schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],
 			id: person.id,
 			userName: person.email,
 			externalId,
 			name: {
+				formatted: fullName,
 				givenName: person.firstName || undefined,
 				familyName: person.lastName || undefined,
 			},
-			displayName: [person.firstName, person.lastName].filter(Boolean).join(' ') || person.email,
+			displayName: fullName ?? person.email,
 			emails: person.email
 				? [
 						{
@@ -275,9 +294,13 @@ export class ScimService {
 			case 'roles':
 				// SSO role mapping owns the instance role, so SCIM roles are ignored.
 				return;
-			case 'active':
-				if (typeof value === 'boolean') this.setField(person, 'disabled', !value, changes);
+			case 'active': {
+				// Deactivation must not fail silently: an unreadable value returns 400, as on POST and PUT.
+				const active = toScimBoolean(value);
+				if (active === undefined) throw new ScimInvalidValueError('"active" must be true or false');
+				this.setField(person, 'disabled', !active, changes);
 				return;
+			}
 			case 'userName':
 				if (typeof value === 'string') this.setField(person, 'email', value.toLowerCase(), changes);
 				return;
@@ -301,8 +324,8 @@ export class ScimService {
 			case 'emails':
 				if (Array.isArray(value)) {
 					const primary = value.find(
-						(email: { primary?: boolean; value?: unknown }) =>
-							email?.primary && typeof email.value === 'string',
+						(email: { primary?: unknown; value?: unknown }) =>
+							toScimBoolean(email?.primary) === true && typeof email.value === 'string',
 					) as { value: string } | undefined;
 					if (primary) this.setField(person, 'email', primary.value.toLowerCase(), changes);
 				}

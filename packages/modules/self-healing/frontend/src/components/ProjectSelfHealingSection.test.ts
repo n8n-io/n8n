@@ -61,6 +61,12 @@ async function renderSection(saved: Partial<SelfHealingConfigurationDto> = {}) {
 
 beforeEach(() => vi.clearAllMocks());
 
+it('shows the Preview badge next to the heading', async () => {
+	const { view } = await renderSection();
+	expect(view.getByTestId('self-healing-preview-badge')).toBeInTheDocument();
+	expect(view.queryByTestId('self-healing-enterprise-readiness-badge')).not.toBeInTheDocument();
+});
+
 it('keeps the active switch unchanged when saving fails and allows another attempt', async () => {
 	const { view, store } = await renderSection();
 	const pending = Promise.withResolvers<undefined>();
@@ -111,6 +117,38 @@ it('shows relative last activity and the prototype empty label', async () => {
 	store.configurations.project[0].lastActivity = new Date(Date.now() - 5 * 60_000).toISOString();
 	expect(await view.findByText('5 minutes ago')).toBeVisible();
 	expect(view.queryByText('No failures yet')).not.toBeInTheDocument();
+});
+
+it('names a single selected workflow and counts several', async () => {
+	const { view, store } = await renderSection();
+	store.options.project!.workflows = [
+		{ id: 'orders', name: 'Sync orders to CRM' },
+		{ id: 'digest', name: 'Daily digest' },
+	];
+	Object.assign(store.configurations.project[0], { scope: 'selected', workflowIds: ['orders'] });
+	const row = await view.findByText('Sync orders to CRM');
+	expect(row).toHaveAttribute('title', 'Sync orders to CRM');
+
+	store.configurations.project[0].workflowIds = ['orders', 'digest'];
+	expect(await view.findByText('2 workflows')).toBeVisible();
+
+	store.configurations.project[0].workflowIds = ['unknown'];
+	expect(await view.findByText('1 workflow')).toBeVisible();
+});
+
+it('labels the all-workflows configuration as the rest when another selects workflows', async () => {
+	const { view, store } = await renderSection();
+	store.configurations.project.push({
+		...configuration,
+		id: 2,
+		scope: 'selected',
+		workflowIds: ['orders'],
+	});
+	expect(await view.findByText('All other workflows')).toBeVisible();
+	expect(view.queryByText('All workflows')).not.toBeInTheDocument();
+
+	store.configurations.project.pop();
+	expect(await view.findByText('All workflows')).toBeVisible();
 });
 
 it('opens a new configuration in the current project', async () => {
@@ -187,6 +225,7 @@ describe('personal tab', () => {
 
 	it('shows the configurations table without the settings create button', async () => {
 		const { view } = await renderPersonalTab([{ ...configuration }]);
+		expect(view.queryByTestId('self-healing-preview-badge')).not.toBeInTheDocument();
 
 		expect(await view.findByText('All workflows')).toBeVisible();
 		expect(view.queryByText('People to notify')).not.toBeInTheDocument();
@@ -211,10 +250,10 @@ it('shows a one-line placeholder until the first load finishes', async () => {
 
 	expect(await view.findByTestId('self-healing-config-loading')).toBeInTheDocument();
 	expect(view.queryByText('Scope')).not.toBeInTheDocument();
-	expect(view.queryByText(/No self-healing configuration/)).not.toBeInTheDocument();
+	expect(view.queryByText(/investigate failed workflows in this project/)).not.toBeInTheDocument();
 
 	pending.resolve(undefined);
-	expect(await view.findByText(/No self-healing configuration/)).toBeVisible();
+	expect(await view.findByText(/investigate failed workflows in this project/)).toBeVisible();
 	expect(view.queryByTestId('self-healing-config-loading')).not.toBeInTheDocument();
 });
 

@@ -3,6 +3,7 @@ import {
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
 } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -25,7 +26,6 @@ import { GitHubSkillSourceClient } from '../../sources/github/github-skill-sourc
 import type { RemoteSkillRef } from '../../sources/skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
 import { linkSkill } from '../test-utils/skill-source-fixtures';
-import { PostHogClient } from '@/posthog';
 
 import { createAdmin, createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -306,6 +306,7 @@ describe('SkillSourceController', () => {
 				sourceId: data.sourceId,
 				type: 'github',
 				label: 'acme/skills',
+				ref: 'main',
 				webUrl: 'https://github.com/acme/skills/tree/main/skills/pdf',
 				canStopSyncing: true,
 			});
@@ -339,6 +340,39 @@ describe('SkillSourceController', () => {
 			expect(data.failed).toEqual([
 				{ key: expect.any(String), name: 'docx', reason: 'name_taken' },
 			]);
+		});
+
+		it('reports the skipped files of the imported skills by extension', async () => {
+			const importedFromSource = vi.spyOn(Container.get(SkillsTelemetry), 'importedFromSource');
+			github.push('acme/files', {
+				'tools/SKILL.md': skillMd('tools'),
+				'tools/scripts/run.py': 'print(1)\n',
+				'tools/scripts/Build.PY': 'print(2)\n',
+				'tools/scripts/setup.sh': 'echo 1\n',
+				'tools/assets/logo.png': 'png\n',
+				'tools/LICENSE': 'MIT\n',
+			});
+			const url = 'https://github.com/acme/files';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: keysOf(discovery, ['tools']),
+				reviewedSkillKeys: keysOf(discovery, ['tools']),
+			});
+
+			expect(importedFromSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					imported: 1,
+					skipped_files: 5,
+					skipped_file_extensions: { '.py': 2, '.png': 1, '.sh': 1, none: 1 },
+					skipped_script_files: 3,
+					status: 'success',
+				}),
+				ownerUser.id,
+			);
+			importedFromSource.mockRestore();
 		});
 
 		it('leaves out a skill that the security check blocks, and imports the others', async () => {
@@ -543,6 +577,9 @@ describe('SkillSourceController', () => {
 					selected: 1,
 					imported: 0,
 					name_taken: 1,
+					skipped_files: 0,
+					skipped_file_extensions: {},
+					skipped_script_files: 0,
 					status: 'failure',
 					reason: 'name_taken',
 				}),

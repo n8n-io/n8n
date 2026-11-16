@@ -141,6 +141,7 @@ test.describe(
 				{ nodeName: 'Manual', success: 'visible' },
 				{ nodeName: 'Wait', running: 'visible' },
 			]);
+			await expect(n8n.canvas.getWaitingNodes()).toContainText('Wait');
 
 			await n8n.canvas.stopExecutionButton().click();
 

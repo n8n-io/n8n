@@ -144,6 +144,7 @@ describe('Tools Agent V2 with a custom OpenAI-compatible endpoint', () => {
 		'provider/team/model',
 		'custom-alias',
 		'combo/codex-fallback',
+		'gpt-5-codex',
 	])('accepts the custom model ID %s with the default chat-model settings', async (modelId) => {
 		const { context } = await setup(modelId);
 		const gateway = gatewayRequest(modelId).reply(200, completionResponse(modelId));
@@ -161,6 +162,74 @@ describe('Tools Agent V2 with a custom OpenAI-compatible endpoint', () => {
 
 			await expect(toolsAgentExecute.call(context)).resolves.toEqual(expectedOutput);
 			expect(gateway.isDone()).toBe(true);
+		},
+	);
+
+	it.each<[number, boolean, INodeParameters]>([
+		[1.2, false, {}],
+		[1.3, false, { responsesApiEnabled: false }],
+		[1.2, true, {}],
+		[1.3, true, { responsesApiEnabled: false }],
+	])(
+		'keeps automatic Responses API routing with the option off on model node v%s (fallback: %s)',
+		async (version, needsFallback, parameters) => {
+			// AGENT-1569: Preserve LangChain's automatic API selection when the option is off.
+			const modelId = 'gpt-5-codex';
+			const { context, model } = await setup(
+				modelId,
+				{ ...parameters, options: { maxRetries: 0 } },
+				credentials,
+				version,
+			);
+			expect(model).toMatchObject({ useResponsesApi: false });
+			let primaryGateway: nock.Scope | undefined;
+			if (needsFallback) {
+				const primaryId = 'auto/balanced';
+				const { model: primary } = await setup(primaryId, { options: { maxRetries: 0 } });
+				context.getInputConnectionData.mockImplementation(async (type) =>
+					type === NodeConnectionTypes.AiLanguageModel ? [model, primary] : undefined,
+				);
+				context.getNodeParameter.mockImplementation((name, _index, fallback) => {
+					if (name === 'needsFallback') return true;
+					if (name === 'text') return 'Hello';
+					return fallback;
+				});
+				primaryGateway = gatewayRequest(primaryId).reply(404, {
+					error: { message: 'Model unavailable' },
+				});
+			}
+			const gateway = nock(credentials.url, {
+				reqheaders: { authorization: `Bearer ${credentials.apiKey}` },
+			})
+				.post('/responses', (body: unknown) => {
+					expect(body).toMatchObject({ model: modelId });
+					return true;
+				})
+				.twice()
+				.reply(200, {
+					id: 'resp-test',
+					object: 'response',
+					created_at: 1700000000,
+					model: modelId,
+					status: 'completed',
+					output: [
+						{
+							id: 'msg-test',
+							type: 'message',
+							role: 'assistant',
+							status: 'completed',
+							content: [{ type: 'output_text', text: 'Gateway response', annotations: [] }],
+						},
+					],
+					usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15 },
+				});
+
+			const response = await model.invoke('Hello');
+
+			expect(response.text).toBe('Gateway response');
+			await expect(toolsAgentExecute.call(context)).resolves.toEqual(expectedOutput);
+			expect(gateway.isDone()).toBe(true);
+			if (primaryGateway) expect(primaryGateway.isDone()).toBe(true);
 		},
 	);
 

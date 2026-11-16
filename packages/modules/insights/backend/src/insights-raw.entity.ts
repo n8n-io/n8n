@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { DateTimeColumn } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { isValidTypeNumber, NumberToType, TypeToNumber } from './insights-shared';
 

@@ -1,4 +1,5 @@
 import { ASSISTANT_SKILLS_FLAG } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -18,7 +19,6 @@ import { SkillRepository } from '../../database/repositories/skill.repository';
 import { SkillService } from '../../services/skill.service';
 import { createSkill } from '../../testing';
 import { linkSkill } from '../test-utils/skill-source-fixtures';
-import { PostHogClient } from '@/posthog';
 
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner, createUser } from '@test-integration/db/users';

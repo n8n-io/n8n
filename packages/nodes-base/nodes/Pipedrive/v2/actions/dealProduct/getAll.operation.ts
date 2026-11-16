@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveApiRequestAllItemsCursor } from '../../transport';
@@ -71,7 +72,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				responseData = await pipedriveApiRequestAllItemsCursor.call(
 					this,
 					'GET',
-					`/deals/${dealId}/products`,
+					requestPath`/deals/${dealId}/products`,
 					{},
 					qs,
 				);
@@ -79,7 +80,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				responseData = await pipedriveApiRequest.call(
 					this,
 					'GET',
-					`/deals/${dealId}/products`,
+					requestPath`/deals/${dealId}/products`,
 					{},
 					qs,
 				);

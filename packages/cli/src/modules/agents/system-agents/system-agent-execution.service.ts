@@ -1137,6 +1137,9 @@ export class SystemAgentExecutionService {
 				context: { projectId: thread.projectId, agentId: thread.agentId, threadId: thread.id },
 				chatSurface: 'system',
 				chatController: controller,
+				...(handle.onCompletingBoundary
+					? { onCompletingBoundary: handle.onCompletingBoundary }
+					: {}),
 				onExecutionStarted: (id, threadId, inputMessageIds) => {
 					executionId = id;
 					onExecutionStarted?.(id, threadId, inputMessageIds);

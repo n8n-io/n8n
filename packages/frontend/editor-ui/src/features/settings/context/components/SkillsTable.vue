@@ -25,7 +25,7 @@ import { useSkillDeleteRule } from '../skills.utils';
 
 type SkillAction = 'edit' | 'timeline' | 'download' | 'stopSyncing' | 'delete';
 
-type SourceAction = 'checkNow' | 'openInGitHub';
+type SourceAction = 'checkNow' | 'openInGitHub' | 'deleteSource';
 
 /** The fields of the action toggle item that this menu uses. */
 type SkillActionItem = {
@@ -60,6 +60,7 @@ const emit = defineEmits<{
 	download: [skill: SkillListItem];
 	toggleSource: [sourceId: string];
 	checkSource: [source: SkillSourceListItem];
+	deleteSource: [source: SkillSourceListItem];
 	stopSyncing: [skill: SkillListItem];
 	delete: [skill: SkillListItem];
 	'update:options': [payload: TableOptions];
@@ -179,7 +180,12 @@ function updateCount(source: SkillSourceListItem): number {
 }
 
 function sourceActions(source: SkillSourceListItem) {
-	const items: Array<{ value: SourceAction; label: string; icon: IconName }> = [];
+	const items: Array<{
+		value: SourceAction;
+		label: string;
+		icon: IconName;
+		destructive?: boolean;
+	}> = [];
 	if (source.canReview) {
 		items.push({
 			value: 'checkNow',
@@ -192,11 +198,20 @@ function sourceActions(source: SkillSourceListItem) {
 		label: i18n.baseText('settings.context.skills.sources.openInGitHub'),
 		icon: 'external-link',
 	});
+	if (source.canDelete) {
+		items.push({
+			value: 'deleteSource',
+			label: i18n.baseText('settings.context.skills.sources.delete.action'),
+			icon: 'trash-2',
+			destructive: true,
+		});
+	}
 	return items;
 }
 
 function onSourceAction(source: SkillSourceListItem, action: SourceAction) {
 	if (action === 'checkNow') emit('checkSource', source);
+	else if (action === 'deleteSource') emit('deleteSource', source);
 	else window.open(source.webUrl, '_blank', 'noopener,noreferrer');
 }
 

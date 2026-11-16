@@ -1,4 +1,4 @@
-import type { INodeListSearchItems, INodeListSearchResult } from 'n8n-workflow';
+import type { INodeListSearchItems, INodeListSearchResult, RequestPath } from 'n8n-workflow';
 
 import type { AuthContext, GraphListResponse, NamedGraphItem } from './interfaces';
 import { microsoftApiRequest } from '../transport';
@@ -27,7 +27,7 @@ export type ListSearchItemMapper<T extends NamedGraphItem = NamedGraphItem> = (
  */
 export async function listSearchPage<T extends NamedGraphItem = NamedGraphItem>(
 	this: AuthContext,
-	endpoint: string,
+	endpoint: RequestPath,
 	mapItem: ListSearchItemMapper<T>,
 	filter?: string,
 	paginationToken?: string,
@@ -37,7 +37,14 @@ export async function listSearchPage<T extends NamedGraphItem = NamedGraphItem>(
 
 	do {
 		const response = nextLink
-			? await (microsoftApiRequest<GraphListResponse<T>>).call(this, 'GET', '', {}, {}, nextLink)
+			? await (microsoftApiRequest<GraphListResponse<T>>).call(
+					this,
+					'GET',
+					endpoint,
+					{},
+					{},
+					nextLink,
+				)
 			: await (microsoftApiRequest<GraphListResponse<T>>).call(
 					this,
 					'GET',

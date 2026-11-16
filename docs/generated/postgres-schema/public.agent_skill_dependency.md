@@ -48,7 +48,9 @@ erDiagram
   boolean availableInMCP
   timestamp_3__with_time_zone createdAt
   varchar_36_ id
+  uuid identityId FK
   json integrations
+  boolean isArchived
   varchar_128_ name
   varchar_255_ projectId FK
   integer publicationRevision

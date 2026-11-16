@@ -2,7 +2,7 @@ import type { SkillScanResult, SkillSourceCheckResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { createHash } from 'node:crypto';
 import { validate as isUuid } from 'uuid';
-import { GLOBAL_OWNER_ROLE, UserRepository, type User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, TransactionRunner, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -81,6 +81,7 @@ export class SkillSyncService {
 		private readonly credentials: SkillSourceCredentialsProxy,
 		private readonly scanner: SkillSecurityScanner,
 		private readonly skillsTelemetry: SkillsTelemetry,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	/**
@@ -92,7 +93,12 @@ export class SkillSyncService {
 	async stopSyncing(user: User, skillId: string): Promise<void> {
 		const { link, source } = await this.requireSource(user, skillId, 'stopSyncing');
 		// A stop at the same time removed the link first. The skill is not synced either way.
-		if (!(await this.sourceRepository.deleteLink(skillId))) return;
+		const stopped = await this.txRunner.run({}, async (ctx) => {
+			// Source deletion takes the same lock before it reads which skills are still synced.
+			await this.skillRepository.lockForEdit([skillId], ctx);
+			return await this.sourceRepository.deleteLink(skillId, ctx);
+		});
+		if (!stopped) return;
 		await this.skillsTelemetry.stoppedSync(
 			{ provider: source.type, had_pending_update: link.pendingContentHash !== null },
 			user.id,

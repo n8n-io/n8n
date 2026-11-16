@@ -6,8 +6,10 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 import type { IContactUpdate } from './ContactInterface';
 import type { IFilterRules, ISearchConditions } from './FilterInterface';
@@ -15,14 +17,13 @@ import type { IFilterRules, ISearchConditions } from './FilterInterface';
 export async function agileCrmApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: any = {},
 	query: IDataObject = {},
-	uri?: string,
 	sendAsForm?: boolean,
 ): Promise<any> {
 	const credentials = await this.getCredentials('agileCrmApi');
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		headers: {
 			Accept: 'application/json',
@@ -32,7 +33,7 @@ export async function agileCrmApiRequest(
 			password: credentials.apiKey as string,
 		},
 		qs: query,
-		uri: uri || `https://${credentials.subdomain}.agilecrm.com/dev/${endpoint}`,
+		uri: requestUrl`https://${credentials.subdomain}.agilecrm.com/dev/${endpoint}`,
 		json: true,
 	};
 
@@ -56,10 +57,9 @@ export async function agileCrmApiRequest(
 export async function agileCrmApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
-	resource: string,
+	resource: RequestPath,
 	body: any = {},
 	query: IDataObject = {},
-	uri?: string,
 	sendAsForm?: boolean,
 ): Promise<any> {
 	// https://github.com/agilecrm/rest-api#11-listing-contacts-
@@ -67,15 +67,7 @@ export async function agileCrmApiRequestAllItems(
 	const returnData: IDataObject[] = [];
 	let responseData;
 	do {
-		responseData = await agileCrmApiRequest.call(
-			this,
-			method,
-			resource,
-			body,
-			query,
-			uri,
-			sendAsForm,
-		);
+		responseData = await agileCrmApiRequest.call(this, method, resource, body, query, sendAsForm);
 		if (responseData.length !== 0) {
 			returnData.push.apply(returnData, responseData as IDataObject[]);
 			if (sendAsForm) {
@@ -98,11 +90,10 @@ export async function agileCrmApiRequestUpdate(
 	_endpoint?: string,
 	body: any = {},
 	_query: IDataObject = {},
-	uri?: string,
 ): Promise<any> {
 	const credentials = await this.getCredentials('agileCrmApi');
-	const baseUri = `https://${credentials.subdomain}.agilecrm.com/dev/`;
-	const options: IRequestOptions = {
+	const baseUri = requestUrl`https://${credentials.subdomain}.agilecrm.com/dev/`;
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		headers: {
 			Accept: 'application/json',
@@ -112,7 +103,7 @@ export async function agileCrmApiRequestUpdate(
 			username: credentials.email as string,
 			password: credentials.apiKey as string,
 		},
-		uri: uri || baseUri,
+		uri: baseUri,
 		json: true,
 	};
 
@@ -124,7 +115,7 @@ export async function agileCrmApiRequestUpdate(
 		// Due to API, we must update each property separately. For user it looks like one seamless update
 		if (payload.properties) {
 			options.body.properties = payload.properties;
-			options.uri = baseUri + 'api/contacts/edit-properties';
+			options.uri = requestUrl`${baseUri}/api/contacts/edit-properties`;
 			lastSuccesfulUpdateReturn = await this.helpers.request(options);
 
 			// Iterate trough properties and show them as individial updates instead of only vague "properties"
@@ -136,7 +127,7 @@ export async function agileCrmApiRequestUpdate(
 		}
 		if (payload.lead_score) {
 			options.body.lead_score = payload.lead_score;
-			options.uri = baseUri + 'api/contacts/edit/lead-score';
+			options.uri = requestUrl`${baseUri}/api/contacts/edit/lead-score`;
 			lastSuccesfulUpdateReturn = await this.helpers.request(options);
 
 			successfulUpdates.push('lead_score');
@@ -145,7 +136,7 @@ export async function agileCrmApiRequestUpdate(
 		}
 		if (body.tags) {
 			options.body.tags = payload.tags;
-			options.uri = baseUri + 'api/contacts/edit/tags';
+			options.uri = requestUrl`${baseUri}/api/contacts/edit/tags`;
 			lastSuccesfulUpdateReturn = await this.helpers.request(options);
 
 			payload.tags?.map((tag: string) => {
@@ -156,7 +147,7 @@ export async function agileCrmApiRequestUpdate(
 		}
 		if (body.star_value) {
 			options.body.star_value = payload.star_value;
-			options.uri = baseUri + 'api/contacts/edit/add-star';
+			options.uri = requestUrl`${baseUri}/api/contacts/edit/add-star`;
 			lastSuccesfulUpdateReturn = await this.helpers.request(options);
 
 			successfulUpdates.push('star_value');

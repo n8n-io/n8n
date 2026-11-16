@@ -213,6 +213,7 @@ describe('ExportPackageRequestDto', () => {
 			});
 
 			expect(result.success).toBe(true);
+			if (result.success) expect(result.data.includeArchived).toBe(includeArchived);
 		});
 
 		it('defaults to false', () => {

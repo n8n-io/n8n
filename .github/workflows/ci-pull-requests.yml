@@ -443,14 +443,19 @@ jobs:
           ref: ${{ needs.install-and-build.outputs.commit_sha }}
           fetch-depth: 1
 
-      # Impact selection reads package.json at the merge base.
-      - name: Fetch merge base
+      # Impact selection reads package.json at the merge base, and pnpm-lock.yaml at
+      # the affected base: the merge commit's first parent, so lockfile changes that
+      # master made after the merge base do not count as the PR's.
+      - name: Fetch merge base and affected base
         env:
           MERGE_BASE: ${{ needs.install-and-build.outputs.merge_base }}
+          AFFECTED_BASE: ${{ needs.install-and-build.outputs.affected_base }}
         run: |
-          if [ -n "$MERGE_BASE" ] && ! git cat-file -e "$MERGE_BASE^{commit}" 2>/dev/null; then
-            git fetch --no-tags --depth=1 origin "$MERGE_BASE"
-          fi
+          for sha in "$MERGE_BASE" "$AFFECTED_BASE"; do
+            if [ -n "$sha" ] && ! git cat-file -e "$sha^{commit}" 2>/dev/null; then
+              git fetch --no-tags --depth=1 origin "$sha"
+            fi
+          done
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
@@ -466,6 +471,7 @@ jobs:
         env:
           CHANGED_FILES: ${{ needs.install-and-build.outputs.changed_files }}
           MERGE_BASE: ${{ needs.install-and-build.outputs.merge_base }}
+          LOCKFILE_BASE: ${{ needs.install-and-build.outputs.affected_base }}
           PLAYWRIGHT_GREP_INVERT: ${{ github.event.pull_request.head.repo.fork == true && '@licensed' || '' }}
           PLAYWRIGHT_PROJECT: ${{ github.event.pull_request.head.repo.fork == true && 'sqlite:e2e' || 'multi-main:e2e' }}
         run: |

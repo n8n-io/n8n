@@ -24,6 +24,7 @@ export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
 export {
 	AiGatewayConfigDto,
 	AiGatewayProviderConfigEntry,
+	type AiGatewayPromotion,
 } from './ai/ai-gateway-config-response.dto';
 export {
 	AiGatewayMcpServersResponse,
@@ -45,6 +46,7 @@ export {
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
+export { TrackPageHideEventRequestDto } from './telemetry/track-page-hide-event-request.dto';
 export { AssistantThreadTabsRequestDto } from './assistant/assistant-thread-tabs-request.dto';
 export { AssistantAgentTargetRequestDto } from './assistant/assistant-agent-target-request.dto';
 export {
@@ -255,6 +257,7 @@ export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
 export {
+	DEPENDENCY_PUBLIC_TYPES,
 	DependencyListPublicDto,
 	ListDependenciesQueryDto,
 	type DependencyPublicType,

@@ -1865,9 +1865,10 @@ describe('buildSteps', () => {
 				.__gemini_function_call_thought_signatures__ as Record<string, string>;
 			expect(sigMap).toEqual({ call_1: 'shared_gemini_sig' });
 
-			// Signatures array should have: ['', 'sig', ''] (text part, first func call, second func call)
+			// The model wrote no text, so no text part precedes the function calls
+			expect(firstMessage.content).toEqual([]);
 			const sigArray = firstMessage.additional_kwargs.signatures as string[];
-			expect(sigArray).toEqual(['', 'shared_gemini_sig', '']);
+			expect(sigArray).toEqual(['shared_gemini_sig', '']);
 
 			// Second step should have EMPTY messageLog (no duplicate AIMessage)
 			expect(result[1].action.messageLog).toEqual([]);
