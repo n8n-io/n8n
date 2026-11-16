@@ -46,6 +46,13 @@ import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAssistantSkillsExperiment } from '@/experiments/assistantSkills/useAssistantSkillsExperiment';
+import RecommendedSkillCards from '@/experiments/recommendedSkills/components/RecommendedSkillCards.vue';
+import RecommendedSkillsDialog from '@/experiments/recommendedSkills/components/RecommendedSkillsDialog.vue';
+import type { RecommendedSkillId } from '@/experiments/recommendedSkills/recommendedSkills';
+import {
+	type RecommendedSkillsEntryPoint,
+	useRecommendedSkillsExperiment,
+} from '@/experiments/recommendedSkills/useRecommendedSkillsExperiment';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import {
 	AgentSkillImportError,
@@ -116,8 +123,14 @@ const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
 const { failedSkillReason, reasonText } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
+const {
+	showRecommendedSkills,
+	trackExposure: trackRecommendedSkillsExposure,
+	trackSkillAdded: trackRecommendedSkillAdded,
+} = useRecommendedSkillsExperiment();
 const connectOpen = ref(false);
 const movingSource = ref<SkillSourceListItem | null>(null);
+const recommendedOpen = ref(false);
 const sourceToDelete = ref<SkillSourceListItem>();
 const sourceToReplaceCredential = ref<SkillSourceListItem>();
 
@@ -358,6 +371,7 @@ function openModal(data: AgentSkillModalData) {
  */
 function openCreateModal(
 	preset: Pick<AgentSkillModalData, 'initialStep' | 'skill' | 'initialMethod'> = {},
+	onCreated?: (skillId: string) => void,
 ) {
 	const options = scopeOptions.value;
 	if (options.length === 0) return;
@@ -373,11 +387,20 @@ function openCreateModal(
 				name: i18n.baseText('agents.builder.skills.defaultName'),
 			}),
 		onConfirm: async ({ skill, scope, method, availableToMCP }) =>
-			await onCreate(skill, scope ?? options[0].value, method, availableToMCP),
+			await onCreate(skill, scope ?? options[0].value, method, availableToMCP, onCreated),
 	});
 }
 
-type CreateAction = 'github' | 'uploadFolder' | 'uploadFile' | 'manual';
+function onRecommendedSkillSelect(
+	entryPoint: RecommendedSkillsEntryPoint,
+	recommended: { id: RecommendedSkillId; skill: AgentSkill },
+) {
+	openCreateModal({ skill: recommended.skill }, (skillId) =>
+		trackRecommendedSkillAdded(recommended.id, skillId, entryPoint),
+	);
+}
+
+type CreateAction = 'recommended' | 'github' | 'uploadFolder' | 'uploadFile' | 'manual';
 
 // One upload at a time. An upload is dropped when another skill action starts or the
 // user leaves the page, so its late result opens no modal and shows no toast.
@@ -391,8 +414,18 @@ function dropPendingUpload() {
 
 onBeforeUnmount(dropPendingUpload);
 
-// Only "Connect to GitHub" is behind the Skill Sync flag. The other items are for everyone.
+// "Add recommended skill" and "Connect to GitHub" are behind flags. The other items are for everyone.
 const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => [
+	...(showRecommendedSkills.value
+		? [
+				{
+					id: 'recommended' as const,
+					label: i18n.baseText('experiments.recommendedSkills.menuItem'),
+					icon: 'sparkles' as const,
+					testId: 'skills-create-recommended',
+				},
+			]
+		: []),
 	...(skillSyncEnabled.value
 		? [
 				{
@@ -425,6 +458,14 @@ const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => 
 	},
 ]);
 
+const showRecommendedEmptyState = computed(
+	() => showRecommendedSkills.value && scopeOptions.value.length > 0,
+);
+
+const emptyStateCreateMenuItems = computed(() =>
+	createMenuItems.value.filter(({ id }) => id !== 'recommended'),
+);
+
 const skillFolderInput = useTemplateRef<HTMLInputElement>('skillFolderInput');
 const skillFileInput = useTemplateRef<HTMLInputElement>('skillFileInput');
 const { importSkillFiles } = useAgentSkillImport();
@@ -433,6 +474,7 @@ function onCreateMenuSelect(action: CreateAction) {
 	if (action === 'uploadFolder') skillFolderInput.value?.click();
 	else if (action === 'uploadFile') skillFileInput.value?.click();
 	else if (action === 'manual') openCreateModal({ initialStep: 'manual' });
+	else if (action === 'recommended') recommendedOpen.value = true;
 	else {
 		dropPendingUpload();
 		connectOpen.value = true;
@@ -549,6 +591,7 @@ async function onCreate(
 	scopeValue: string,
 	method?: SkillCreateMethod,
 	availableToMCP?: boolean,
+	onCreated?: (skillId: string) => void,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let createdId: string;
 	try {
@@ -563,6 +606,7 @@ async function onCreate(
 	} catch (error) {
 		return saveFailed(error);
 	}
+	onCreated?.(createdId);
 	// The creator may be new to the list. The table does not wait for the filter options.
 	void loadCreators();
 	await load();
@@ -932,6 +976,9 @@ onMounted(async () => {
 	// here is an empty list and never a broken one.
 	if (!loadFailed.value) {
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILLS, { count: skillsStore.count });
+		if (emptyState.value === 'noSkills' && scopeOptions.value.length > 0) {
+			trackRecommendedSkillsExposure();
+		}
 	}
 	// Deep links: one skill to open, or a new one to start. The skill may be on another
 	// page, so it is read by id rather than from the list.
@@ -1112,15 +1159,30 @@ onMounted(async () => {
 					</N8nText>
 				</div>
 				<div v-else :class="$style.empty" data-test-id="skills-empty-state">
-					<N8nHeading tag="h2" size="medium" bold>
-						{{ i18n.baseText('settings.context.skills.empty.title') }}
-					</N8nHeading>
-					<N8nText color="text-light">
-						{{ i18n.baseText('settings.context.skills.empty.description') }}
-					</N8nText>
+					<template v-if="showRecommendedEmptyState">
+						<N8nHeading tag="h2" size="medium" bold>
+							{{ i18n.baseText('experiments.recommendedSkills.empty.title') }}
+						</N8nHeading>
+						<N8nText color="text-light">
+							{{ i18n.baseText('experiments.recommendedSkills.description') }}
+						</N8nText>
+						<RecommendedSkillCards
+							:class="$style.recommended"
+							entry-point="empty_state"
+							@select="onRecommendedSkillSelect('empty_state', $event)"
+						/>
+					</template>
+					<template v-else>
+						<N8nHeading tag="h2" size="medium" bold>
+							{{ i18n.baseText('settings.context.skills.empty.title') }}
+						</N8nHeading>
+						<N8nText color="text-light">
+							{{ i18n.baseText('settings.context.skills.empty.description') }}
+						</N8nText>
+					</template>
 					<N8nActionDropdown
 						v-if="scopeOptions.length > 0"
-						:items="createMenuItems"
+						:items="emptyStateCreateMenuItems"
 						placement="bottom"
 						data-test-id="skills-empty-create-menu"
 						@select="onCreateMenuSelect"
@@ -1149,6 +1211,11 @@ onMounted(async () => {
 			:source="reviewSource"
 			@close="reviewSource = null"
 			@changed="onSourceUpdatesChanged"
+		/>
+		<RecommendedSkillsDialog
+			v-if="showRecommendedSkills"
+			v-model:open="recommendedOpen"
+			@select="onRecommendedSkillSelect('create_menu', $event)"
 		/>
 		<SkillSourceConnectDialog
 			v-if="skillSyncEnabled"
@@ -1234,5 +1301,10 @@ onMounted(async () => {
 	gap: var(--spacing--xs);
 	padding: var(--spacing--2xl) var(--spacing--md);
 	text-align: center;
+}
+
+.recommended {
+	max-width: 48rem;
+	margin: var(--spacing--xs) 0;
 }
 </style>

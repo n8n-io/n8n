@@ -197,6 +197,8 @@ export const PREFERENCES_EMPTY_STATE_EXPERIMENT = createExperiment('127_preferen
 	assistant: 'assistant',
 });
 
+export const RECOMMENDED_SKILLS_EXPERIMENT = createExperiment('143_recommended_skills');
+
 export const AGENT_BUILDER_EXPERIMENT_COHORT = createExperiment(
 	'133_agent_builder_experiment_cohort',
 	{
@@ -259,6 +261,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name,
 	TRIAL_INTRO_MODAL_EXPERIMENT.name,
 	PREFERENCES_EMPTY_STATE_EXPERIMENT.name,
+	RECOMMENDED_SKILLS_EXPERIMENT.name,
 	INLINE_AGENTS_EXPERIMENT.name,
 	INSTANCE_AI_FREE_NUDGE_EXPERIMENT.name,
 	OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.name,

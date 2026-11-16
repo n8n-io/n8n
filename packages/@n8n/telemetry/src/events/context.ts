@@ -116,6 +116,18 @@ const preferenceExampleId = z
 		'The example card on the empty preferences page that filled the text (experiment 127). Absent when the text box opened empty',
 	);
 
+const recommendedSkillsVariant = z
+	.enum(['variant'])
+	.describe(
+		'Variant of the 143_recommended_skills feature flag. Only the treatment shows the cards',
+	);
+
+const recommendedSkillsEntryPoint = z
+	.enum(['empty_state', 'create_menu'])
+	.describe(
+		'`empty_state` is the Skills page with no skills. `create_menu` is the entry in the "Create skills" menu, which shows the cards in a dialog',
+	);
+
 export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_VIEWED_PREFERENCES: {
 		name: 'User viewed preferences',
@@ -428,6 +440,30 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			source: skillSource,
 			version: z.number().describe('The number of the version this save stored'),
 			scope_changed: z.boolean().describe('Whether the same save moved the skill to another scope'),
+		}),
+	},
+	USER_VIEWED_RECOMMENDED_SKILLS: {
+		name: 'User viewed recommended skills',
+		description:
+			'The recommended skill cards of experiment 143 appeared on the Skills settings page, in the empty state or in the dialog of the "Create skills" menu. Fires each time the cards appear.',
+		properties: z.object({
+			entry_point: recommendedSkillsEntryPoint,
+			variant: recommendedSkillsVariant,
+			'$feature/143_recommended_skills': recommendedSkillsVariant,
+		}),
+	},
+	USER_ADDED_RECOMMENDED_SKILL: {
+		name: 'User added recommended skill',
+		description:
+			'A user saved a skill that a recommended skill card of experiment 143 filled in. Fires once the create succeeds, so a card click that the user cancels reports nothing. The same save also fires `User created skill` with the method `manual`.',
+		properties: z.object({
+			recommended_skill_id: z
+				.enum(['humanizer', 'cold-email', 'research'])
+				.describe('The recommended skill that filled the create form'),
+			skill_id: skillId,
+			entry_point: recommendedSkillsEntryPoint,
+			variant: recommendedSkillsVariant,
+			'$feature/143_recommended_skills': recommendedSkillsVariant,
 		}),
 	},
 	MCP_LISTED_SKILLS: {

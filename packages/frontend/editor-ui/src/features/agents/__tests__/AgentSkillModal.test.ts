@@ -1575,6 +1575,42 @@ describe('AgentSkillModal from Settings', () => {
 		);
 	});
 
+	it('saves a preset skill with its reference files as a new manual skill', async () => {
+		const onConfirm = vi.fn();
+		const references = [{ path: 'references/frameworks.md', content: 'Use PAS by default.' }];
+		const { getByTestId, getByText } = renderModal({
+			onConfirm,
+			skill: {
+				name: 'cold-email',
+				description: 'Write cold emails',
+				instructions: 'Main',
+				references,
+			},
+			settings: {
+				scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' }],
+				initialScope: 'instance',
+			},
+		});
+
+		expect(getByTestId('agent-skill-name-input').querySelector('input')!).toHaveValue('cold-email');
+		expect(
+			getByTestId('agent-skill-reference-nav-item-references-frameworks-md'),
+		).toHaveTextContent('references/frameworks.md');
+		await waitFor(() => expect(getByTestId('agent-skill-viewer')).toBeInTheDocument());
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+		await waitFor(() =>
+			expect(onConfirm).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: undefined,
+					method: 'manual',
+					scope: 'instance',
+					skill: expect.objectContaining({ name: 'cold-email', references }),
+				}),
+			),
+		);
+	});
+
 	it('shows a read-only skill without edit controls', () => {
 		const { getByTestId, queryByTestId } = renderModal({
 			skillId: 's1',
