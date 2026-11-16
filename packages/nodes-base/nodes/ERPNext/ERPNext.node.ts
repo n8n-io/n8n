@@ -99,24 +99,6 @@ export class ERPNext implements INodeType {
 					this.getNode().typeVersion,
 					this.getCurrentNodeParameter('docType') as string,
 				);
-				if (this.getNode().typeVersion < 1.1) {
-					const { data } = await erpNextApiRequest.call(
-						this,
-						'GET',
-						requestPath`/api/resource/DocType/${docType}`,
-						{},
-					);
-
-					const docFields = data.fields.map(
-						({ label, fieldname }: { label: string; fieldname: string }) => ({
-							name: label,
-							value: fieldname,
-						}),
-					);
-
-					return processNames(docFields);
-				}
-
 				// https://github.com/frappe/frappe/blob/develop/frappe/desk/form/load.py
 				const response = await erpNextApiRequest.call(
 					this,

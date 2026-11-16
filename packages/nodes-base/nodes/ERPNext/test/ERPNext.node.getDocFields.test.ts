@@ -12,7 +12,10 @@ vi.mock('../GenericFunctions', async (importOriginal) => ({
 
 const getDocFields = new ERPNext().methods.loadOptions.getDocFields;
 
-const createContext = (typeVersion: number, docType = typeVersion < 1.1 ? 'Sales%20Invoice' : 'Sales Invoice') =>
+const createContext = (
+	typeVersion: number,
+	docType = typeVersion < 1.1 ? 'Sales%20Invoice' : 'Sales Invoice',
+) =>
 	({
 		getCurrentNodeParameter: vi.fn().mockReturnValue(docType),
 		getNode: vi.fn().mockReturnValue({ typeVersion }),
@@ -21,50 +24,30 @@ const createContext = (typeVersion: number, docType = typeVersion < 1.1 ? 'Sales
 describe('ERPNext getDocFields', () => {
 	beforeEach(() => vi.clearAllMocks());
 
-	it('preserves the resource endpoint for version 1', async () => {
-		vi.mocked(erpNextApiRequest).mockResolvedValue({
-			data: {
-				fields: [
-					{ label: 'Posting Date', fieldname: 'posting_date' },
-					{ label: 'Customer', fieldname: 'customer' },
+	it.each([1, 1.1])(
+		'loads parent and child fields from the desk form endpoint for version %s',
+		async (version) => {
+			vi.mocked(erpNextApiRequest).mockResolvedValue({
+				docs: [
+					{ fields: [{ label: 'Customer', fieldname: 'customer' }] },
+					{ fields: [{ label: 'Item Code', fieldname: 'item_code' }] },
 				],
-			},
-		});
+			});
 
-		const result = await getDocFields.call(createContext(1));
+			const result = await getDocFields.call(createContext(version));
 
-		expect(erpNextApiRequest).toHaveBeenCalledWith(
-			'GET',
-			requestPath`/api/resource/DocType/${"Sales Invoice"}`,
-			{},
-		);
-		expect(result).toEqual([
-			{ name: 'Customer', value: 'customer' },
-			{ name: 'Posting Date', value: 'posting_date' },
-		]);
-	});
-
-	it('loads parent and child fields from the desk form endpoint for version 1.1', async () => {
-		vi.mocked(erpNextApiRequest).mockResolvedValue({
-			docs: [
-				{ fields: [{ label: 'Customer', fieldname: 'customer' }] },
-				{ fields: [{ label: 'Item Code', fieldname: 'item_code' }] },
-			],
-		});
-
-		const result = await getDocFields.call(createContext(1.1));
-
-		expect(erpNextApiRequest).toHaveBeenCalledWith(
-			'GET',
-			requestPath`/api/method/frappe.desk.form.load.getdoctype`,
-			{},
-			{ doctype: 'Sales Invoice' },
-		);
-		expect(result).toEqual([
-			{ name: 'Customer', value: 'customer' },
-			{ name: 'Item Code', value: 'item_code' },
-		]);
-	});
+			expect(erpNextApiRequest).toHaveBeenCalledWith(
+				'GET',
+				requestPath`/api/method/frappe.desk.form.load.getdoctype`,
+				{},
+				{ doctype: 'Sales Invoice' },
+			);
+			expect(result).toEqual([
+				{ name: 'Customer', value: 'customer' },
+				{ name: 'Item Code', value: 'item_code' },
+			]);
+		},
+	);
 
 	it('preserves expression values with malformed percent sequences in version 1.1', async () => {
 		vi.mocked(erpNextApiRequest).mockResolvedValue({ docs: [] });
@@ -79,7 +62,7 @@ describe('ERPNext getDocFields', () => {
 		);
 	});
 
-	it('ignores malformed documents and fields in version 1.1 responses', async () => {
+	it('ignores malformed documents and fields in responses', async () => {
 		vi.mocked(erpNextApiRequest).mockResolvedValue({
 			docs: [
 				{},
@@ -95,7 +78,7 @@ describe('ERPNext getDocFields', () => {
 		]);
 	});
 
-	it('returns no options when version 1.1 receives no documents', async () => {
+	it('returns no options when the response has no documents', async () => {
 		vi.mocked(erpNextApiRequest).mockResolvedValue({});
 
 		await expect(getDocFields.call(createContext(1.1))).resolves.toEqual([]);
