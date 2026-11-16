@@ -12,7 +12,7 @@ describe('snapshot', () => {
 		try {
 			execFileSync(process.execPath, [join(__dirname, '../../esbuild.config.mts'), bundle]);
 			execFileSync(process.execPath, ['--snapshot-blob', blob, '--build-snapshot', bundle], {
-				stdio: 'ignore',
+				stdio: ['ignore', 'ignore', 'pipe'],
 			});
 
 			const result = spawnSync(process.execPath, ['--snapshot-blob', blob], { encoding: 'utf8' });
