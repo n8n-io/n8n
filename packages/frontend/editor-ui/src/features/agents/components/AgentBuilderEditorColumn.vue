@@ -233,6 +233,7 @@ defineExpose({ onSetupTaskAction });
 					<AgentPanel
 						:header="i18n.baseText('agents.builder.triggers.title')"
 						:description="i18n.baseText('agents.builder.triggers.description')"
+						data-testid="agent-triggers-panel"
 					>
 						<template #header-actions>
 							<AgentTestButton
@@ -301,6 +302,7 @@ defineExpose({ onSetupTaskAction });
 					<AgentPanel
 						:header="i18n.baseText('agents.builder.capabilities.title')"
 						:description="i18n.baseText('agents.builder.capabilities.description')"
+						data-testid="agent-capabilities-panel"
 					>
 						<AgentCapabilitiesSection
 							supports-activation

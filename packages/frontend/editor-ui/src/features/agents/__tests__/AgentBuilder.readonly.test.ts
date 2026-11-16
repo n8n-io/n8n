@@ -183,3 +183,60 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).props('disabled')).toBe(true);
 	});
 });
+
+const PANEL_TEST_IDS = [
+	'agent-triggers-panel',
+	'agent-info-panel',
+	'agent-skills-panel',
+	'agent-capabilities-panel',
+	'agent-memory-panel',
+];
+
+describe('AgentBuilderEditorColumn — Agent tab panel order', () => {
+	it('renders Triggers first, then Info, then the other panels', async () => {
+		const { default: AgentBuilderEditorColumn } = await import(
+			'../components/AgentBuilderEditorColumn.vue'
+		);
+
+		const wrapper = mount(AgentBuilderEditorColumn, {
+			props: {
+				activeMainTab: 'agent',
+				mainTabOptions: [{ label: 'Build', value: 'agent' }],
+				localConfig: {} as never,
+				agent: null,
+				projectId: 'p1',
+				agentId: 'a1',
+				agentFiles: [],
+				agentFilesLoading: false,
+				agentFilesUploading: false,
+				knowledgeBaseEnabled: true,
+				appliedSkills: [],
+				connectedTriggers: [],
+				canEditAgent: true,
+				executionsDescription: '',
+			},
+			global: {
+				plugins: [createTestingPinia({ createSpy: vi.fn })],
+				stubs: {
+					N8nTabs: { template: '<div />', props: ['modelValue', 'options'] },
+					AgentIdentityHeader: { template: '<div />' },
+					AgentTestButton: { template: '<div />' },
+					AgentInfoPanel: { template: '<div data-testid="agent-info-panel" />' },
+					AgentTriggersSection: { template: '<div />' },
+					AgentSkillsSection: { template: '<div />' },
+					AgentCapabilitiesSection: { template: '<div />' },
+					AgentMemoryPanel: { template: '<div data-testid="agent-memory-panel" />' },
+				},
+			},
+		});
+
+		const tabContent = wrapper.get('[data-testid="agent-tab-content"]');
+		const selector = PANEL_TEST_IDS.map((id) => `[data-testid="${id}"]`).join(',');
+		/** querySelectorAll returns matches in document (tree) order. */
+		const renderedOrder = Array.from(tabContent.element.querySelectorAll(selector)).map((el) =>
+			el.getAttribute('data-testid'),
+		);
+
+		expect(renderedOrder).toEqual(PANEL_TEST_IDS);
+	});
+});
