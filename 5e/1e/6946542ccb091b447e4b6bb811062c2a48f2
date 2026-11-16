@@ -1,0 +1,25 @@
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_b605b692be0ba9::t_390faede2a94e3 15
+  s_b605b692be0ba9::t_92974c27995fc5 8-12
+  s_b605b692be0ba9::t_cae0be56631619 1739
+  s_b605b692be0ba9::t_3f9a50d0f6ea41 1766
+  s_b605b692be0ba9::t_087ea1b511128e 1707,1722-1738,1740
+packages/cli/src/telemetry/index.ts
+  s_b605b692be0ba9::t_7acf8615763612 294,297-298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5e1e6946542ccb091b447e4b6bb811062c2a48f2",
+  "prompts": {},
+  "sessions": {
+    "s_b605b692be0ba9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73fef18a-e96c-41e0-9b79-5671c3ecbbed",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}
