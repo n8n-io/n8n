@@ -1,4 +1,4 @@
-import { UrlService } from '@n8n/backend-services';
+import { JwtService, UrlService } from '@n8n/backend-services';
 import { OAuth2FlowProxy } from '@n8n/backend-services/auth';
 import { ResourceAdmission, type ProtectedResource } from '@n8n/inbound-auth';
 import type { SecurityContext } from '@n8n/permissions';
@@ -44,6 +44,8 @@ function setup(visibility: App['visibility'] = 'project') {
 	}));
 	const admission = mock<ResourceAdmission>();
 	admission.admitBearer.mockResolvedValue({ ok: true, context: mock<SecurityContext>() });
+	const jwt = mock<JwtService>();
+	jwt.decodeUnverified.mockReturnValue({});
 	const service = new AppAuthService(
 		apps,
 		hosts,
@@ -51,6 +53,7 @@ function setup(visibility: App['visibility'] = 'project') {
 		flow,
 		admission,
 		mock<UrlService>({ getInstanceBaseUrl: () => issuer }),
+		jwt,
 	);
 	const req = mock<AppRequest>({
 		method: 'GET',
@@ -62,8 +65,10 @@ function setup(visibility: App['visibility'] = 'project') {
 	const res = mock<Response>();
 	res.set.mockReturnValue(res);
 	res.status.mockReturnValue(res);
-	return { service, app, apps, admission, flow, req, res };
+	return { service, app, apps, admission, flow, jwt, req, res };
 }
+
+const sessionCookie = { '__Host-n8n-app-session': 'app-token' };
 
 describe('AppAuthService', () => {
 	it('requires a published app', async () => {
@@ -131,6 +136,7 @@ describe('AppAuthService', () => {
 
 	it('denies insufficient permissions instead of restarting sign-in', async () => {
 		const { service, req, res, admission, flow } = setup();
+		req.cookies = sessionCookie;
 		admission.admitBearer.mockResolvedValue({
 			ok: false,
 			reason: 'insufficient_scope',
@@ -139,6 +145,111 @@ describe('AppAuthService', () => {
 		await service.authenticate(req, res, vi.fn());
 		expect(res.status).toHaveBeenCalledWith(403);
 		expect(flow.begin).not.toHaveBeenCalled();
+	});
+
+	describe('admission cache', () => {
+		let elapsed: number;
+		const advance = (ms: number) => {
+			elapsed += ms;
+			vi.advanceTimersByTime(ms);
+		};
+
+		beforeEach(() => {
+			elapsed = 1_000;
+			vi.useFakeTimers({ toFake: ['Date', 'setTimeout'] });
+			vi.spyOn(performance, 'now').mockImplementation(() => elapsed);
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+			vi.useRealTimers();
+		});
+
+		it('admits a repeated request without queries', async () => {
+			const { service, req, apps, admission } = setup();
+			req.cookies = sessionCookie;
+
+			const first = await service.admit(req);
+			const second = await service.admit(req);
+
+			expect(first.ok && second.ok).toBe(true);
+			expect(second).toEqual(first);
+			expect(apps.findByNamespace).toHaveBeenCalledOnce();
+			expect(admission.admitBearer).toHaveBeenCalledOnce();
+		});
+
+		it('admits again after the TTL', async () => {
+			const { service, req, admission } = setup();
+			req.cookies = sessionCookie;
+
+			await service.admit(req);
+			advance(30_001);
+			await service.admit(req);
+
+			expect(admission.admitBearer).toHaveBeenCalledTimes(2);
+		});
+
+		it('stops admitting a revoked token after the TTL', async () => {
+			const { service, req, admission } = setup();
+			req.cookies = sessionCookie;
+			await service.admit(req);
+			admission.admitBearer.mockResolvedValue({
+				ok: false,
+				reason: 'revoked',
+				advertised: mock(),
+			});
+
+			expect((await service.admit(req)).ok).toBe(true);
+			advance(30_001);
+			expect((await service.admit(req)).ok).toBe(false);
+		});
+
+		it('drops an entry when the token expires', async () => {
+			const { service, req, admission, jwt } = setup();
+			req.cookies = sessionCookie;
+			jwt.decodeUnverified.mockReturnValue({ exp: Date.now() / 1000 + 5 });
+
+			await service.admit(req);
+			advance(4_000);
+			await service.admit(req);
+			expect(admission.admitBearer).toHaveBeenCalledOnce();
+
+			advance(2_000);
+			await service.admit(req);
+			expect(admission.admitBearer).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not cache refusals', async () => {
+			const { service, req, admission } = setup();
+			req.cookies = sessionCookie;
+			admission.admitBearer.mockResolvedValue({
+				ok: false,
+				reason: 'insufficient_scope',
+				advertised: mock(),
+			});
+
+			await service.admit(req);
+			await service.admit(req);
+
+			expect(admission.admitBearer).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not share entries between tokens', async () => {
+			const { service, req, admission } = setup();
+			req.cookies = sessionCookie;
+			await service.admit(req);
+			req.cookies = { '__Host-n8n-app-session': 'other-token' };
+			await service.admit(req);
+
+			expect(admission.admitBearer).toHaveBeenCalledTimes(2);
+		});
+
+		it('refuses a request without a session cookie without running the admission', async () => {
+			const { service, req, admission } = setup();
+
+			expect(await service.admit(req)).toMatchObject({ ok: false, reason: 'unauthenticated' });
+			expect(admission.admitBearer).not.toHaveBeenCalled();
+		});
 	});
 
 	it('sets a host-only app cookie after a browser-bound exchange', async () => {

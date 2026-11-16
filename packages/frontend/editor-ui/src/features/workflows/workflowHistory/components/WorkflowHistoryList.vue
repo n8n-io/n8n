@@ -29,6 +29,7 @@ const props = defineProps<{
 	shouldUpgrade?: boolean;
 	isListLoading?: boolean;
 	publishedVersionId?: string;
+	pendingVersionId?: string | null;
 	isWorkflowDiffsEnabled?: boolean;
 }>();
 
@@ -193,12 +194,14 @@ const pruneTimeDisplay = computed(() => {
 				data-test-id="workflow-history-group-header"
 				@click="toggleGroup(entry.groupId)"
 			>
-				<N8nIcon
-					:class="[$style.groupTimelineColumn, $style.groupChevron]"
-					:icon="expandedGroups.has(entry.groupId) ? 'chevron-down' : 'chevron-right'"
-					size="small"
-				/>
-				<N8nText color="text-base" size="small">
+				<span :class="$style.groupTimelineColumn">
+					<N8nIcon
+						:class="$style.groupChevron"
+						:icon="expandedGroups.has(entry.groupId) ? 'chevron-down' : 'chevron-right'"
+						size="small"
+					/>
+				</span>
+				<N8nText color="text-base" size="small" :class="$style.groupLabel">
 					{{
 						i18n.baseText('workflowHistory.group.unnamedVersions', {
 							adjustToNumber: entry.count,
@@ -218,6 +221,7 @@ const pruneTimeDisplay = computed(() => {
 					:compare-with="getItemToCompareWith(versionEntry.item, versionEntry.originalIndex)"
 					:is-selected="versionEntry.item.versionId === props.selectedItem?.versionId"
 					:is-published="versionEntry.item.versionId === props.publishedVersionId"
+					:is-pending="versionEntry.item.versionId === props.pendingVersionId"
 					:actions="getActions(versionEntry.item, versionEntry.originalIndex)"
 					:is-workflow-diffs-enabled="props.isWorkflowDiffsEnabled"
 					:is-grouped="true"
@@ -236,6 +240,7 @@ const pruneTimeDisplay = computed(() => {
 				:compare-with="getItemToCompareWith(entry.item, entry.originalIndex)"
 				:is-selected="entry.item.versionId === props.selectedItem?.versionId"
 				:is-published="entry.item.versionId === props.publishedVersionId"
+				:is-pending="entry.item.versionId === props.pendingVersionId"
 				:actions="getActions(entry.item, entry.originalIndex)"
 				:is-workflow-diffs-enabled="props.isWorkflowDiffsEnabled"
 				@action="onAction"
@@ -296,19 +301,35 @@ const pruneTimeDisplay = computed(() => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--3xs);
+	padding: 0 var(--spacing--3xs);
 	margin-top: var(--spacing--lg);
 	cursor: pointer;
 	position: relative;
 
-	// Line segment in the gap above this item (not for first item)
-	&:not(:first-child)::before {
-		@include timeline-gap-line;
-	}
+	// The gap above the header. The timeline line spans it.
+	--timeline-gap: var(--spacing--lg);
 }
 
 .groupTimelineColumn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	align-self: stretch;
+	position: relative;
+	width: var(--spacing--lg);
 	min-width: var(--spacing--lg);
+
+	@include timeline-line;
+	--timeline-hole: var(--spacing--sm);
+
+	// Nothing is above the first header, so no line runs above its chevron.
+	.groupHeader:first-child &::before {
+		display: none;
+	}
+}
+
+.groupLabel {
+	padding: var(--spacing--2xs) 0;
 }
 
 .groupChevron {

@@ -11,11 +11,13 @@ import { UrlService } from '@n8n/backend-services';
 import {
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
+	type OperationContext,
 	User,
 	type WorkflowEntity,
 	type WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { SecurityContext } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -794,6 +796,7 @@ describe('migrate_workflow', () => {
 			'wf-1',
 			owner,
 			{ source: 'n8n-mcp' },
+			{},
 		);
 		expect(deps.collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
 			'wf-1',
@@ -811,6 +814,21 @@ describe('migrate_workflow', () => {
 				wontFixFindings: 0,
 			},
 		});
+	});
+
+	it('passes the operation context to the migration service', async () => {
+		const deps = readyToMigrate();
+		deps.queryService.getWorkflowFindings.mockResolvedValue([]);
+		const ctx: OperationContext = {
+			security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+		};
+
+		await createMigrateWorkflowTool(owner, deps, ctx).handler({
+			ruleId: 'ai-transform-deprecated',
+			workflowId: 'wf-1',
+		});
+
+		expect(deps.migrationService.migrateWorkflow.mock.calls[0][4]).toBe(ctx);
 	});
 
 	it('still reports the fix when the findings cannot be read', async () => {

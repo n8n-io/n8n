@@ -9,6 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { ConflictError, NotFoundError, UserError } from '@n8n/errors';
+import { loginIdOf } from '@/events/login-id';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 
@@ -311,6 +312,7 @@ export class TypeAvailabilityPolicyService {
 		kind: string,
 		rules: readonly PolicyRule[],
 		updatedBy: string,
+		ctx: OperationContext = {},
 	): Promise<PolicyDocumentWrite> {
 		const warnings = this.validateAndLintRules(kind, rules);
 
@@ -322,6 +324,7 @@ export class TypeAvailabilityPolicyService {
 			policyId: policy.id,
 			origin: 'document-api',
 			after: { rules: policy.rules, version: policy.version },
+			loginId: loginIdOf(ctx),
 		});
 
 		return { policy, warnings };
@@ -344,6 +347,7 @@ export class TypeAvailabilityPolicyService {
 		rules: readonly PolicyRule[],
 		expectedVersion: number,
 		updatedBy: string,
+		ctx: OperationContext = {},
 	): Promise<PolicyDocumentWrite> {
 		const warnings = this.validateAndLintRules(kind, rules);
 
@@ -416,6 +420,7 @@ export class TypeAvailabilityPolicyService {
 			origin: 'document-api',
 			before: { rules: result.existing.rules, version: result.existing.version },
 			after: { rules: result.updated.rules, version: result.updated.version },
+			loginId: loginIdOf(ctx),
 		});
 
 		return { policy: result.updated, warnings };
@@ -430,7 +435,12 @@ export class TypeAvailabilityPolicyService {
 	 * row lock. An attachment insert takes a key-share lock on the document it points at, so a
 	 * concurrent attach waits for this transaction rather than landing between the two.
 	 */
-	async deletePolicyDocument(kind: string, policyId: string, updatedBy: string): Promise<void> {
+	async deletePolicyDocument(
+		kind: string,
+		policyId: string,
+		updatedBy: string,
+		ctx: OperationContext = {},
+	): Promise<void> {
 		const existing = await this.transactionRunner.run({}, async (ctx) => {
 			const policy = await this.policyRepository.findByIdAndKind(policyId, kind, ctx, true);
 			if (!policy) {
@@ -457,6 +467,7 @@ export class TypeAvailabilityPolicyService {
 			kind: existing.kind,
 			policyId,
 			before: { rules: existing.rules, version: existing.version },
+			loginId: loginIdOf(ctx),
 		});
 	}
 
@@ -514,6 +525,7 @@ export class TypeAvailabilityPolicyService {
 		attachments: readonly AttachmentInput[],
 		expectedVersion: number,
 		updatedBy: string,
+		ctx: OperationContext = {},
 	): Promise<ScopeAttachments> {
 		assertNoDuplicateAttachmentSlots(attachments);
 
@@ -581,6 +593,7 @@ export class TypeAvailabilityPolicyService {
 			scopeId,
 			before: { attachments: result.before, version: result.versionBefore },
 			after: { attachments: result.after, version: result.versionAfter },
+			loginId: loginIdOf(ctx),
 		});
 
 		return { attachments: orderedAttachments(result.after), version: result.versionAfter };
@@ -601,6 +614,7 @@ export class TypeAvailabilityPolicyService {
 		input: { rules: readonly PolicyRule[]; defaultAction: PolicyAction },
 		expectedVersion: number,
 		updatedBy: string,
+		ctx: OperationContext = {},
 	): Promise<{
 		scopeId: string;
 		defaultAction: PolicyAction;
@@ -768,6 +782,7 @@ export class TypeAvailabilityPolicyService {
 			scopeId: result.scopeId,
 			before: result.scopeBefore,
 			after: result.scopeAfter,
+			loginId: loginIdOf(ctx),
 		});
 
 		if (result.documentCreated) {
@@ -777,6 +792,7 @@ export class TypeAvailabilityPolicyService {
 				policyId: result.policyId,
 				origin: 'composed-save',
 				after: result.documentAfter,
+				loginId: loginIdOf(ctx),
 			});
 		} else {
 			this.eventService.emit('node-type-policy-document-updated', {
@@ -786,6 +802,7 @@ export class TypeAvailabilityPolicyService {
 				origin: 'composed-save',
 				before: result.documentBefore ?? { rules: [], version: UNCONFIGURED_VERSION },
 				after: result.documentAfter,
+				loginId: loginIdOf(ctx),
 			});
 		}
 

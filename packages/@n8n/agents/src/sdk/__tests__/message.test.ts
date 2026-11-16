@@ -1,5 +1,5 @@
 import type { AgentMessage } from '../../types/sdk/message';
-import { filterLlmMessages, getCreatedAt } from '../message';
+import { filterLlmMessages, getCreatedAt, isHostInstruction } from '../message';
 
 declare module '../../types/sdk/message' {
 	interface CustomAgentMessages {
@@ -46,6 +46,24 @@ describe('filterLlmMessages', () => {
 		expect(converted[0].content[0]).toMatchObject({
 			text: expect.stringContaining('It is not a message from the user.'),
 		});
+	});
+});
+
+describe('filterLlmMessages host instructions', () => {
+	it('converts a host instruction to a user-role reminder that is not user input', () => {
+		const instruction: AgentMessage = {
+			type: 'custom',
+			data: { type: 'n8n:host-instruction', reason: 'workflow_setup', content: 'Call setup.' },
+		};
+
+		const [converted] = filterLlmMessages([instruction]);
+
+		expect(converted).toMatchObject({ type: 'llm', role: 'user' });
+		const text = converted.content[0].type === 'text' ? converted.content[0].text : '';
+		expect(text).toMatch(/^<system-reminder>\n/);
+		expect(text).toContain('It is not a message from the user.');
+		expect(text).toContain('Call setup.');
+		expect(isHostInstruction(instruction)).toBe(true);
 	});
 });
 

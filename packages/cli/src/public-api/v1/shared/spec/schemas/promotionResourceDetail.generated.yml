@@ -185,6 +185,9 @@ oneOf:
           name:
             type: string
             minLength: 1
+          description:
+            type: string
+            nullable: true
           nodes:
             type: array
             items:
@@ -327,6 +330,9 @@ oneOf:
           name:
             type: string
             minLength: 1
+          description:
+            type: string
+            nullable: true
           nodes:
             type: array
             items:
@@ -498,6 +504,10 @@ oneOf:
           type:
             type: string
             minLength: 1
+          description:
+            type: string
+            nullable: true
+            maxLength: 512
           data:
             type: object
             additionalProperties:
@@ -522,6 +532,10 @@ oneOf:
           type:
             type: string
             minLength: 1
+          description:
+            type: string
+            nullable: true
+            maxLength: 512
           data:
             type: object
             additionalProperties:
