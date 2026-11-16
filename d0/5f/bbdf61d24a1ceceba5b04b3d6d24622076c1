@@ -1,0 +1,22 @@
+packages/@n8n/telemetry/src/events/expressions.ts
+  s_e339623a708cfb::t_306ba619fbaf07 25-27,45-47
+  s_e339623a708cfb::t_c9f82c589c35f5 30-31,33,38,40,52,61
+packages/frontend/editor-ui/src/experiments/quickjsExpressionShadow/init.test.ts
+  ai_agent 249,374-375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d05fbbdf61d24a1ceceba5b04b3d6d24622076c1",
+  "prompts": {},
+  "sessions": {
+    "s_e339623a708cfb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d4ad-eab9-7780-a62b-1c257658c211",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

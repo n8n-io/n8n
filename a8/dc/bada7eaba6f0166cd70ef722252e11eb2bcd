@@ -1,0 +1,43 @@
+packages/@n8n/n8n-node-codegen/src/parse.ts
+  s_9baea89e7b81d2::t_72bce0cd71a787 1-8
+packages/@n8n/n8n-node-codegen/src/spec/read-spec.ts
+  s_9baea89e7b81d2::t_ae63153eaadc68 158
+  s_9baea89e7b81d2::t_eaee3c359809b3 3
+  s_9baea89e7b81d2::t_b6f2190f6eac88 48
+  s_9baea89e7b81d2::t_2bedd913a2f58f 212
+  s_9baea89e7b81d2::t_40d5bc2b26e173 111
+packages/@n8n/n8n-node-codegen/src/overrides.ts
+  s_9baea89e7b81d2::t_a8f0c37bc843e9 4-5,13-14
+packages/@n8n/n8n-node-codegen/src/__tests__/generate.test.ts
+  s_9baea89e7b81d2::t_068aa6dab1afbe 2,6
+packages/@n8n/n8n-node-codegen/src/__tests__/read-spec.test.ts
+  s_9baea89e7b81d2::t_d4fac4eab75e35 118-121,270-273
+  s_9baea89e7b81d2::t_068aa6dab1afbe 1,113,306,315,323
+packages/@n8n/n8n-node-codegen/src/cli.ts
+  s_9baea89e7b81d2::t_068aa6dab1afbe 2,5
+packages/@n8n/n8n-node-codegen/src/types.ts
+  s_9baea89e7b81d2::t_b63b260d9aa337 41
+packages/nodes-base/nodes/N8n/v2/overrides.ts
+  s_9baea89e7b81d2::t_50523d43cf8668 1-3,5,184
+packages/@n8n/n8n-node-codegen/src/n8n-node.config.ts
+  s_9baea89e7b81d2::t_70b32806c068ec 5,7-15
+packages/@n8n/n8n-node-codegen/src/report.ts
+  s_9baea89e7b81d2::t_af0a4ee3954a99 34
+  s_9baea89e7b81d2::t_a415d83550329e 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a8dcbada7eaba6f0166cd70ef722252e11eb2bcd",
+  "prompts": {},
+  "sessions": {
+    "s_9baea89e7b81d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88c8a28e-9bc2-46c2-84de-8e64cd7c3f92",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

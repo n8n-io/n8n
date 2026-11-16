@@ -1,0 +1,21 @@
+packages/cli/src/services/__tests__/password.utility.test.ts
+  s_252e1a6ea6d36e::t_9d1c203e7a84c6 44-47
+packages/cli/src/services/password.utility.ts
+  s_252e1a6ea6d36e::t_9d1c203e7a84c6 11-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "028061881b838f1c8ceea9a94f0b147067c01f0f",
+  "prompts": {},
+  "sessions": {
+    "s_252e1a6ea6d36e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1c65594-982b-472a-af46-ac1e4a4b6266",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
