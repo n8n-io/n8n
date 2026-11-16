@@ -222,15 +222,23 @@ describe('N8nAttachmentGroup', function describeComponent() {
 				],
 			},
 		});
+		const after = document.createElement('button');
+		document.body.append(after);
 
 		try {
 			const [first, second] = wrapper.findAll('.n8n-attachment');
-			const removeButton = wrapper.find('[data-test-id="attachment-remove"]')
-				.element as HTMLButtonElement;
+			const removeButtons = wrapper.findAll('[data-test-id="attachment-remove"]');
 			await user.tab();
 			expect(document.activeElement).toBe(first.element);
 			await user.tab();
-			expect(document.activeElement).toBe(removeButton);
+			expect(document.activeElement).toBe(after);
+			for (const button of removeButtons) {
+				expect(button.element).toHaveAttribute('tabindex', '-1');
+			}
+			origin.focus();
+			await user.tab();
+			expect(document.activeElement).toBe(first.element);
+			removeButtons[0].element.focus();
 			await user.keyboard('{Enter}');
 			await nextTick();
 
@@ -241,6 +249,7 @@ describe('N8nAttachmentGroup', function describeComponent() {
 		} finally {
 			wrapper.unmount();
 			origin.remove();
+			after.remove();
 		}
 	});
 
@@ -258,11 +267,10 @@ describe('N8nAttachmentGroup', function describeComponent() {
 
 		try {
 			const attachment = wrapper.get('.n8n-attachment').element;
-			const removeButton = wrapper.find('[data-test-id="attachment-remove"]')
-				.element as HTMLButtonElement;
+			const removeButton = wrapper.find('[data-test-id="attachment-remove"]');
 			await user.tab();
-			await user.tab();
-			expect(document.activeElement).toBe(removeButton);
+			expect(removeButton.element).toHaveAttribute('tabindex', '-1');
+			removeButton.element.focus();
 			await user.keyboard('{Enter}');
 			await nextTick();
 

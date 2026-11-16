@@ -236,7 +236,9 @@ describe('N8nAttachment', function describeComponent() {
 			props: { fileName: 'report.pdf', mimeType: 'application/pdf' },
 		});
 
-		expect(screen.getByRole('button', { name: 'Remove report.pdf' })).toBeVisible();
+		const removeButton = screen.getByRole('button', { name: 'Remove report.pdf' });
+		expect(removeButton).toBeVisible();
+		expect(removeButton.tabIndex).toBe(0);
 	});
 
 	it('emits the preview load event', async function testPreviewLoad() {

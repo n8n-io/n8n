@@ -259,6 +259,7 @@ const displayType = computed(() => {
 			<N8nTooltip :content="t('generic.remove')">
 				<N8nIconButton
 					v-bind="actionButtonProps"
+					:tabindex="attachmentGroup ? -1 : undefined"
 					:aria-label="t('attachment.remove', { fileName })"
 					data-test-id="attachment-remove"
 					icon="trash-2"
