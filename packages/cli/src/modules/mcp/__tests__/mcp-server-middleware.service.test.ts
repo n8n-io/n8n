@@ -293,14 +293,6 @@ describe('McpServerMiddlewareService', () => {
 				expect(clientUsage.recordUse).toHaveBeenCalledWith('user-123', 'client-abc', 'token-1');
 			});
 
-			it('records the use of a local grant without a token id when the token has no jti', async () => {
-				admission.admit.mockResolvedValue({ ok: true, context: localContext });
-
-				await run(`Bearer ${signIssuerToken('http://localhost:5678')}`);
-
-				expect(clientUsage.recordUse).toHaveBeenCalledWith('user-123', 'client-abc', undefined);
-			});
-
 			it('does not record local grant use for a token from an external trusted source', async () => {
 				const token = jwt.sign(
 					{ iss: 'https://idp.example', sub: 'idp-alice', jti: 'token-1' },

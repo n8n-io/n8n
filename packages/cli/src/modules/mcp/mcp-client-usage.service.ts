@@ -31,25 +31,22 @@ export class McpClientUsageService {
 
 	/**
 	 * Best-effort: never blocks or fails the MCP request. The database update
-	 * holds the throttle, so it applies across mains. Without a `tokenId` every
-	 * call reaches the database.
+	 * holds the throttle, so it applies across mains.
 	 */
-	recordUse(userId: string, clientId: string, tokenId?: string) {
+	recordUse(userId: string, clientId: string, tokenId: string) {
 		const now = Date.now();
-		const key = tokenId === undefined ? undefined : `${userId}:${clientId}:${tokenId}`;
+		const key = `${userId}:${clientId}:${tokenId}`;
 
-		if (key !== undefined) {
-			const previous = this.lastSent.get(key);
-			if (previous !== undefined && now - previous < LAST_USED_AT_THROTTLE_MS) return;
-			this.remember(key, now);
-		}
+		const previous = this.lastSent.get(key);
+		if (previous !== undefined && now - previous < LAST_USED_AT_THROTTLE_MS) return;
+		this.remember(key, now);
 
 		void this.userConsentRepository
 			.recordLastUsed(userId, clientId, new Date(now), LAST_USED_AT_THROTTLE_MS)
 			.catch((error: unknown) => {
 				// Allow a retry on the next request instead of waiting for the throttle.
 				// Keep the entry if a later request already replaced it.
-				if (key !== undefined && this.lastSent.get(key) === now) this.lastSent.delete(key);
+				if (this.lastSent.get(key) === now) this.lastSent.delete(key);
 				this.logger.warn('Failed to update lastUsedAt on MCP client grant', {
 					userId,
 					clientId,

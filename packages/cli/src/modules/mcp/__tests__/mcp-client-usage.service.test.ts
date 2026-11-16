@@ -54,13 +54,6 @@ describe('McpClientUsageService', () => {
 		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
 	});
 
-	it('leaves the throttle to the database when the token has no id', () => {
-		service.recordUse('user-1', 'client-1');
-		service.recordUse('user-1', 'client-1');
-
-		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
-	});
-
 	it('evicts only the oldest token when the fast path is full', () => {
 		for (let i = 0; i < 1001; i++) service.recordUse('user-1', 'client-1', `token-${i}`);
 		userConsentRepository.recordLastUsed.mockClear();

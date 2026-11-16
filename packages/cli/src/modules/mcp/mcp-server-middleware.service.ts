@@ -124,7 +124,8 @@ export class McpServerMiddlewareService {
 			}
 
 			const { token } = extracted.value.credential;
-			const urlIssuer = isUrlIssuer(this.issuerOf(token));
+			const claims = this.claimsOf(token);
+			const urlIssuer = isUrlIssuer(claims?.iss);
 			if (!urlIssuer) {
 				const result = await this.mcpServerApiKeyService.verifyApiKey(token);
 				if (result !== null) {
@@ -140,23 +141,11 @@ export class McpServerMiddlewareService {
 				return;
 			}
 			// The admission verified the token, so its `jti` is safe to read here.
-			const tokenId = this.claimsOf(token)?.jti;
-			await this.settleSecurityContext(
-				req,
-				res,
-				next,
-				inbound,
-				admitted.context,
-				typeof tokenId === 'string' ? tokenId : undefined,
-			);
+			await this.settleSecurityContext(req, res, next, inbound, admitted.context, claims?.jti);
 		};
 	}
 
 	/** Routing only, never a decision: the token is not verified yet. */
-	private issuerOf(token: string): unknown {
-		return this.claimsOf(token)?.iss;
-	}
-
 	private claimsOf(token: string): { iss?: unknown; jti?: unknown } | null | undefined {
 		try {
 			return this.jwtService.decodeUnverified<{ iss?: unknown; jti?: unknown } | null>(token);
@@ -172,7 +161,7 @@ export class McpServerMiddlewareService {
 		next: NextFunction,
 		inbound: Inbound,
 		context: SecurityContext,
-		tokenId: string | undefined,
+		tokenId: unknown,
 	) {
 		// RFC 9068 §2.2 requires `client_id`, and MCP attributes every OAuth call to a client.
 		if (context.clientId === undefined) {
@@ -196,7 +185,10 @@ export class McpServerMiddlewareService {
 		mcpReq.ctx = { ...mcpReq.ctx, security: context };
 		// Only n8n's own authorization server creates local consents. An external source can
 		// map its client ID to a local one, so its traffic must not set Last used.
-		if (context.subjectClaim?.sourceId === SYSTEM_TRUSTED_SOURCE_ID) {
+		if (
+			context.subjectClaim?.sourceId === SYSTEM_TRUSTED_SOURCE_ID &&
+			typeof tokenId === 'string'
+		) {
 			this.clientUsage.recordUse(user.id, context.clientId, tokenId);
 		}
 		next();
