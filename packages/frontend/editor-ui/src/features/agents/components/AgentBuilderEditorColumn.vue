@@ -237,7 +237,6 @@ defineExpose({ onSetupTaskAction });
 						<template #header-actions>
 							<AgentTestButton
 								:disabled-reason="props.previewDisabledReason"
-								:icon-only="true"
 								:is-runnable="props.agent?.isRunnable === true"
 								:validation-issues="props.configValidationIssues ?? []"
 								test-id="agent-triggers-preview-chat-button"

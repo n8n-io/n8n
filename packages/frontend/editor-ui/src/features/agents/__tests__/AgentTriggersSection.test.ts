@@ -66,6 +66,10 @@ vi.mock('vue-router', () => ({
 	useRouter: () => ({ replace: routerReplace }),
 }));
 
+const { openAddScheduleSpy } = vi.hoisted(function createScheduleSpy() {
+	return { openAddScheduleSpy: vi.fn() };
+});
+
 const { fetchStatusSpy, disconnectSpy, loadRuntimeSpy, showErrorSpy, showMessageSpy } = vi.hoisted(
 	function createStatusSpy() {
 		return {
@@ -171,12 +175,25 @@ function mountSection(
 				N8nText: { template: '<span><slot /></span>' },
 				AgentSchedulesRow: {
 					name: 'AgentSchedulesRow',
-					props: ['ensureAgentPersisted'],
+					props: ['ensureAgentPersisted', 'hideAdd'],
+					methods: { openAddSchedule: openAddScheduleSpy },
 					template: '<div />',
+				},
+				N8nDropdownMenu: {
+					name: 'N8nDropdownMenu',
+					props: ['items'],
+					emits: ['select'],
+					template:
+						'<div><slot name="trigger" /><button v-for="item in items" :key="item.id" :data-testid="\'add-trigger-item-\' + item.id" @click="$emit(\'select\', item.id)">{{ item.label }}</button></div>',
 				},
 			},
 		},
 	});
+}
+
+/** Selects "Add channel" in the add trigger menu. */
+async function openAddChannel(wrapper: ReturnType<typeof mountSection>) {
+	await wrapper.find('[data-testid="add-trigger-item-channel"]').trigger('click');
 }
 
 describe('AgentTriggersSection', () => {
@@ -496,11 +513,40 @@ describe('AgentTriggersSection', () => {
 		expect(fetchStatusSpy).toHaveBeenCalledExactlyOnceWith([]);
 	});
 
+	describe('add trigger menu', () => {
+		it('shows one add trigger button and hides the row add buttons', () => {
+			const wrapper = mountSection();
+
+			expect(wrapper.find('[data-testid="agent-triggers-add-trigger"]').exists()).toBe(true);
+			expect(wrapper.findComponent({ name: 'AgentSchedulesRow' }).props('hideAdd')).toBe(true);
+		});
+
+		it('opens the channel modal when "Add channel" is selected', async () => {
+			const wrapper = mountSection();
+
+			await openAddChannel(wrapper);
+			await flushPromises();
+
+			expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').exists()).toBe(true);
+			expect(openAddScheduleSpy).not.toHaveBeenCalled();
+		});
+
+		it('opens the schedule modal when "Add schedule" is selected', async () => {
+			const wrapper = mountSection();
+
+			await wrapper.find('[data-testid="add-trigger-item-schedule"]').trigger('click');
+			await flushPromises();
+
+			expect(openAddScheduleSpy).toHaveBeenCalledOnce();
+			expect(wrapper.find('[data-testid="agent-channel-modal-stub"]').exists()).toBe(false);
+		});
+	});
+
 	describe('simpleChannelSetup', () => {
 		it('does not force simple setup on the channel modal by default', async () => {
 			const wrapper = mountSection();
 
-			await wrapper.find('[data-testid="agent-channels-add-channel"]').trigger('click');
+			await openAddChannel(wrapper);
 			await flushPromises();
 
 			const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
@@ -511,7 +557,7 @@ describe('AgentTriggersSection', () => {
 		it('forwards simpleChannelSetup to the channel modal as simple-setup', async () => {
 			const wrapper = mountSection(true);
 
-			await wrapper.find('[data-testid="agent-channels-add-channel"]').trigger('click');
+			await openAddChannel(wrapper);
 			await flushPromises();
 
 			const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
@@ -523,7 +569,7 @@ describe('AgentTriggersSection', () => {
 	it('forwards publication state to the channel modal', async () => {
 		const wrapper = mountSection(undefined, true);
 
-		await wrapper.find('[data-testid="agent-channels-add-channel"]').trigger('click');
+		await openAddChannel(wrapper);
 		await flushPromises();
 
 		expect(
@@ -630,7 +676,7 @@ describe('AgentTriggersSection', () => {
 			});
 			await flushPromises();
 
-			await wrapper.find('[data-testid="agent-channels-add-channel"]').trigger('click');
+			await openAddChannel(wrapper);
 			await flushPromises();
 
 			expect(
