@@ -17,6 +17,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { ref, shallowRef } from 'vue';
 
+import { isLockedError } from '../promotionErrors';
 import { withFolderNotes } from '../promotionResult';
 import { applyPromotion } from '../promotionsSettings.api';
 import PromotionBindingsFlow from './PromotionBindingsFlow.vue';
@@ -136,9 +137,10 @@ async function submit() {
 		reportSourceChanged();
 		close();
 	} catch (error) {
-		// A 409 refuses the apply before any write. Other failures can come after some changes
-		// were saved, so the project list can be stale.
-		const refused = error instanceof ResponseError && error.httpStatusCode === 409;
+		// A 409, or a 423 for a busy environment, refuses the apply before any write. Other
+		// failures can come after some changes were saved, so the project list can be stale.
+		const refused =
+			isLockedError(error) || (error instanceof ResponseError && error.httpStatusCode === 409);
 		toast.showError(error, i18n.baseText('settings.promotions.apply.toast.error'), {
 			message: i18n.baseText(
 				refused

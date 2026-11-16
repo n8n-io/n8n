@@ -96,7 +96,7 @@ The backend half is a built workspace package at `packages/modules/<name>/backen
 its runtime dependency and lazy registration to `packages/cli`. It also adds the module id to the
 validated list in `@n8n/backend-common`.
 
-Read `scripts/backend-module/backend-module-guide.md` before you add backend behavior.
+Read `docs/backend/how-to/build-a-backend-module.md` before you add backend behavior.
 
 ## File structure
 
@@ -781,7 +781,7 @@ Keep `"license": "LicenseRef-n8n-sustainable-use"`. Do not add `private`.
 - **Do I need a backend module also?** Only if your feature needs a gate on the backend. If a
   backend twin exists, the two ids **must** be the same, because `isModuleActive` and
   `/rest/module-settings` use the same string. See
-  `scripts/backend-module/backend-module-guide.md`.
+  `docs/backend/how-to/build-a-backend-module.md`.
 - **Must every new feature be a module?** Yes, after the wave-1 pilots prove the pattern. Each new
   feature then starts as a package. The editor core — canvas, NDV and the node creator — stays in
   the shell for now. See the modularization roadmap on CAT-3680.

@@ -1,4 +1,4 @@
-import { OperationalError } from '@n8n/errors';
+import { OperationalError, type OperationalErrorOptions } from '@n8n/errors';
 
 /**
  * Lock namespaces. A `const` object rather than an `enum`: `const enum` erases
@@ -13,7 +13,23 @@ export const LockNamespace = {
 export type LockNamespace = (typeof LockNamespace)[keyof typeof LockNamespace];
 
 /** Thrown by `withLease` when the lease cannot be acquired within `waitTimeoutMs`. */
-export class LockAcquisitionTimeoutError extends OperationalError {}
+export class LockAcquisitionTimeoutError extends OperationalError {
+	/**
+	 * Whether an acquisition attempt saw the lease held by another holder. `false` means
+	 * every attempt failed with a lock-backend error (Redis backend only), so the lease
+	 * may not be held at all. Defaults to `true`, which is always the case in-process.
+	 */
+	readonly sawContention: boolean;
+
+	constructor(
+		message: string,
+		options: OperationalErrorOptions & { sawContention?: boolean } = {},
+	) {
+		const { sawContention = true, ...rest } = options;
+		super(message, rest);
+		this.sawContention = sawContention;
+	}
+}
 
 export interface ILockService {
 	/**

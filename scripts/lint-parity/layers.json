@@ -12,6 +12,7 @@
 		"packages/@n8n/extension-sdk",
 		"packages/@n8n/inbound-auth",
 		"packages/@n8n/json-schema-to-zod",
+		"packages/@n8n/leases",
 		"packages/@n8n/mcp-browser-extension",
 		"packages/@n8n/permissions",
 		"packages/@n8n/telemetry",

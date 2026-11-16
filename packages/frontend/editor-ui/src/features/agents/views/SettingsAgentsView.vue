@@ -89,6 +89,6 @@ onMounted(async () => {
 		<N8nButton v-else variant="outline" @click="loadSettings">
 			{{ i18n.baseText('generic.retry') }}
 		</N8nButton>
-		<AgentsSandboxSettings v-if="settings" />
+		<AgentsSandboxSettings v-if="settings?.enabled" />
 	</N8nSettingsLayout>
 </template>

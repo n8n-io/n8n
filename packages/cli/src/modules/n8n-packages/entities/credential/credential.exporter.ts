@@ -8,6 +8,7 @@ import isEqual from 'lodash/isEqual';
 import { CredentialsFinderService } from '@n8n/backend-services';
 
 import { CredentialTypes } from '@/credential-types';
+import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
 
 import {
 	findDisplayControllers,
@@ -49,11 +50,13 @@ export class CredentialExporter {
 		private readonly credentialsFinder: CredentialsFinderService,
 		private readonly credentialSerializer: CredentialSerializer,
 		private readonly credentialTypes: CredentialTypes,
+		private readonly credentialDescriptions: CredentialDescriptionsService,
 	) {}
 
 	async export(request: CredentialExportRequest): Promise<CredentialExportResult> {
 		const entries: ManifestEntry[] = [];
 		const requirements: PackageCredentialRequirement[] = [];
+		const includeDescription = await this.credentialDescriptions.isEnabled();
 
 		for (const [credentialId, { fallback, usedBy }] of this.groupByCredentialId(
 			request.requirements,
@@ -97,6 +100,7 @@ export class CredentialExporter {
 						{ id: credential.id, name: credential.name },
 						this.credentialSerializer.serialize(credential, {
 							data,
+							includeDescription,
 							...(data !== undefined ? { dataIsComplete: isEqual(data, decryptedData) } : {}),
 						}),
 					),

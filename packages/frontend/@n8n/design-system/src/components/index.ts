@@ -240,6 +240,7 @@ export * from './DateRangePicker';
 export { default as N8nCommandBar } from './N8nCommandBar';
 export type {
 	CommandBarItem,
+	CommandBarItemComponent,
 	CommandBarItemIcon,
 	CommandBarSection,
 	CommandBarSelectOptions,

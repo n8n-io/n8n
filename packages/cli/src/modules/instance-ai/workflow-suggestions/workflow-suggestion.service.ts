@@ -4,6 +4,7 @@ import type {
 	WorkflowSuggestionGraph,
 	WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import {
 	SharedWorkflowRepository,
 	TransactionRunner,
@@ -22,6 +23,7 @@ import { validateWorkflowStructure } from '@/workflow-helpers';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { afterCommit, runInTransaction } from '../after-commit';
 import { SelfHealingResultRepository } from '../self-healing/database/self-healing-result.repository';
 import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
 import type { WorkflowSuggestion } from './database/workflow-suggestion.entity';
@@ -67,6 +69,7 @@ export class WorkflowSuggestionService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly results: SelfHealingResultRepository,
+		private readonly events: EventService,
 	) {}
 
 	async requireEditor(userId: string, workflowId: string, ctx: OperationContext = {}) {
@@ -222,7 +225,7 @@ export class WorkflowSuggestionService {
 	) {
 		const { baseline, payload } = prepared;
 		const { workflowId } = baseline;
-		return await this.txRunner.run(ctx, async (ctx) => {
+		return await runInTransaction(this.txRunner, ctx, async (ctx) => {
 			const target = await this.readWorkflowTarget(workflowId, ctx);
 			if (
 				!target.workflow ||
@@ -267,7 +270,7 @@ export class WorkflowSuggestionService {
 		scope: { workflowId: string; projectId: string },
 		ctx: OperationContext = {},
 	) {
-		return await this.txRunner.run(ctx, async (ctx) => {
+		return await runInTransaction(this.txRunner, ctx, async (ctx) => {
 			const target = await this.readWorkflowTarget(scope.workflowId, ctx);
 			const suggestion = await this.suggestions.getSuggestion(suggestionId, scope, ctx);
 			return { suggestion: await this.closeIfOutdated(suggestion, target, ctx), target };
@@ -287,15 +290,22 @@ export class WorkflowSuggestionService {
 	}
 
 	private async closeOutdatedResult(selfHealingResultId: string, ctx: OperationContext) {
+		let closed = false;
 		for (const member of await this.suggestions.getForResult(selfHealingResultId, ctx)) {
-			await this.suggestions.closePending(
+			const memberClosed = await this.suggestions.closePending(
 				member,
 				'outdated',
 				{ author: 'system', actorId: null },
 				ctx,
 			);
+			closed ||= memberClosed;
 		}
-		await this.results.closeResult(selfHealingResultId, 'outdated', ctx);
+		const resultClosed = await this.results.closeResult(selfHealingResultId, 'outdated', ctx);
+		if (closed || resultClosed) {
+			afterCommit(ctx, () =>
+				this.events.emit('self-healing-result-outdated', { selfHealingResultId }),
+			);
+		}
 	}
 
 	async reconcileWorkflow(workflowId: string) {
@@ -309,7 +319,8 @@ export class WorkflowSuggestionService {
 	}
 
 	async closeResultAsOutdated(selfHealingResultId: string) {
-		await this.txRunner.run(
+		await runInTransaction(
+			this.txRunner,
 			{},
 			async (ctx) => await this.closeOutdatedResult(selfHealingResultId, ctx),
 		);

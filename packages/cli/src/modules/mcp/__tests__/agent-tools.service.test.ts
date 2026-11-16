@@ -11,7 +11,14 @@ import {
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp } from '@n8n/backend-network';
-import { GLOBAL_MEMBER_ROLE, User, type WorkflowRepository, type TransactionRunner } from '@n8n/db';
+import {
+	GLOBAL_MEMBER_ROLE,
+	type OperationContext,
+	User,
+	type WorkflowRepository,
+	type TransactionRunner,
+} from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
@@ -1894,6 +1901,123 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent).toMatchObject({ ok: false, code: 'execution_not_found' });
 		});
 
+		it('keeps long values truncated without pages by default', async () => {
+			const longReply = 'x'.repeat(10_000);
+			const longTurn = turn('execution-1');
+			longTurn.timeline = [{ type: 'text', content: longReply, timestamp: 1 }];
+			agentContextService.readSession.mockResolvedValue({
+				...sessionDetail,
+				executions: [longTurn],
+			});
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+			});
+
+			expect(result.structuredContent).toMatchObject({ ok: true });
+			expect(result.structuredContent).not.toHaveProperty('nextCursor');
+			expect(result.structuredContent.transcript).toContain('… [truncated]');
+			expect(result.structuredContent.transcript).not.toContain(longReply);
+		});
+
+		it('returns complete tool values in pages when maxToolValueLength is large', async () => {
+			const longOutput = 'o'.repeat(60_000);
+			const longTurn = turn('execution-1');
+			longTurn.timeline = [
+				{
+					type: 'tool-call',
+					kind: 'tool',
+					name: 'lookup_order',
+					toolCallId: 'call-1',
+					input: { orderId: 'BAD-1' },
+					output: longOutput,
+					startTime: 1,
+					endTime: 2,
+					success: true,
+				},
+			];
+			agentContextService.readSession.mockResolvedValue({
+				...sessionDetail,
+				executions: [longTurn, turn('execution-2')],
+			});
+			const args = { agentId: 'agent-1', sessionId: 'session-1', maxToolValueLength: 10_000_000 };
+
+			const first = await callTool('get_agent_session', args);
+			const second = await callTool('get_agent_session', {
+				...args,
+				cursor: first.structuredContent.nextCursor,
+			});
+
+			expect(first.structuredContent).toMatchObject({ ok: true, nextCursor: expect.any(String) });
+			expect(first.structuredContent.transcript).toHaveLength(40_000);
+			expect(second.structuredContent).toMatchObject({ ok: true, nextCursor: null });
+			const transcript = `${first.structuredContent.transcript}${second.structuredContent.transcript}`;
+			expect(transcript).toContain(`  Output: "${longOutput}"`);
+			expect(transcript).toContain('User: Message execution-2');
+			expect(transcript).not.toContain('… [truncated]');
+		});
+
+		it('leaves out tool values when maxToolValueLength is 0', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				maxToolValueLength: 0,
+			});
+
+			expect(result.structuredContent).toMatchObject({ ok: true, nextCursor: null });
+			expect(result.structuredContent.transcript).toContain(
+				'Tool call: lookup_order | kind=tool | failed | 1ms\n',
+			);
+			expect(result.structuredContent.transcript).not.toContain('Input:');
+			expect(result.structuredContent.transcript).not.toContain('Output:');
+		});
+
+		it('returns only the requested turn in pages', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				executionId: 'execution-2',
+				maxToolValueLength: 0,
+			});
+
+			expect(result.structuredContent).toMatchObject({ ok: true, nextCursor: null });
+			expect(result.structuredContent.transcript).toContain('scope: single turn, turns: 1');
+			expect(result.structuredContent.transcript).toContain('User: Message execution-2');
+			expect(result.structuredContent.transcript).not.toContain('Message execution-1');
+		});
+
+		it('reports an unknown turn in pages', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				executionId: 'execution-9',
+				maxToolValueLength: 0,
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({ ok: false, code: 'execution_not_found' });
+		});
+
+		it('reports a cursor that does not match the transcript', async () => {
+			agentContextService.readSession.mockResolvedValue(sessionDetail);
+
+			const result = await callTool('get_agent_session', {
+				agentId: 'agent-1',
+				sessionId: 'session-1',
+				cursor: 'not-a-cursor',
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({ ok: false, code: 'invalid_cursor' });
+		});
+
 		it('reports an unknown session', async () => {
 			agentContextService.readSession.mockResolvedValue(null);
 
@@ -3260,8 +3384,32 @@ describe('McpAgentToolsService', () => {
 				user,
 				undefined,
 				'mcp',
+				{},
 			);
 			expect(result.structuredContent).toEqual({ ok: true, archived: true, agentId: 'agent-1' });
+		});
+
+		it('passes the operation context to the archive', async () => {
+			const ctx: OperationContext = {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			};
+			const contextTools = new Map<string, RegisteredTool>();
+			const registerTool: RegisterToolFn = (tool) => {
+				contextTools.set(tool.name, {
+					config: tool.config,
+					handler: tool.handler as unknown as RegisteredTool['handler'],
+				});
+			};
+			service.registerTools(registerTool, vi.fn(), user, undefined, ctx);
+
+			await contextTools
+				.get('archive_agent')
+				?.handler(
+					{ projectId: 'project-1', agentId: 'agent-1' },
+					{ signal: new AbortController().signal },
+				);
+
+			expect(agentPublishService.archiveAgent.mock.calls[0][5]).toBe(ctx);
 		});
 
 		it('returns an error result for an archived agent', async () => {

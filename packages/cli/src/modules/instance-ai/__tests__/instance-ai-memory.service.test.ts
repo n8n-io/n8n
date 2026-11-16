@@ -1253,7 +1253,7 @@ describe('InstanceAiMemoryService.restoreThreadMessages', () => {
 		vi.clearAllMocks();
 	});
 
-	it('preserves message ids and content verbatim, coercing createdAt back to a Date', async () => {
+	it('keeps the message content, gives new ids and coerces createdAt back to a Date', async () => {
 		const service = createService();
 
 		const result = await service.restoreThreadMessages('user-1', 'thread-1', [
@@ -1288,8 +1288,11 @@ describe('InstanceAiMemoryService.restoreThreadMessages', () => {
 		expect(args.threadId).toBe('thread-1');
 		expect(args.resourceId).toBe('user-1');
 		expect(args.messages).toHaveLength(2);
-		// Verbatim restore: same ids and content blocks, createdAt as ascending Dates.
-		expect(args.messages[0].id).toBe('msg-user');
+		// Same content blocks under new ids, createdAt as ascending Dates.
+		expect(args.messages[0].id).not.toBe('msg-user');
+		expect(args.messages[0].content).toEqual([
+			{ type: 'text', text: 'Send a daily digest to #cosmic-otter-alerts' },
+		]);
 		expect(args.messages[1].content[1].toolCallId).toBe('tc-1');
 		expect(args.messages[0].createdAt).toEqual(new Date('2026-01-01T00:00:00.000Z'));
 		expect(args.messages[1].createdAt).toEqual(new Date('2026-01-01T00:00:01.000Z'));

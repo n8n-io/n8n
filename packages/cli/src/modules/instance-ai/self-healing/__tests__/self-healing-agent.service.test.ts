@@ -275,6 +275,24 @@ describe('SelfHealingAgentService', () => {
 		},
 	);
 
+	it('passes the resolved utility model to the context', async () => {
+		models.resolveUtilityModelConfig.mockResolvedValueOnce('anthropic/claude-haiku-5-5');
+
+		await service.execute(input, options);
+
+		expect(models.resolveUtilityModelConfig).toHaveBeenCalledWith(
+			user,
+			'test/model',
+			expect.objectContaining({
+				proxyContext: { runId: options.runId, threadId: options.threadId },
+			}),
+		);
+		expect(adapter.createContext).toHaveBeenCalledWith(
+			user,
+			expect.objectContaining({ utilityModelId: 'anthropic/claude-haiku-5-5' }),
+		);
+	});
+
 	it('names the triggering workflow and binds verification', async () => {
 		verifyFirst(baseline.workflowId);
 		const result = await service.execute(input, options);

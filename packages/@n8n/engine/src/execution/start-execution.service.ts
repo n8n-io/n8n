@@ -116,9 +116,9 @@ export class StartExecutionService {
 			lifecycleEventSubscription: request.lifecycleEventSubscription,
 		});
 
-		// TODO(CAT-2938): the persist above and this publish aren't atomic — a
-		// crash between them leaves the execution 'queued' until the
-		// reconciliation sweep (not yet built) re-dispatches it.
+		// The persist above and this publish aren't atomic. A crash between them
+		// leaves the execution 'queued' until the reconciliation sweeper
+		// publishes the event again.
 		await this.workQueue.publish({
 			type: 'execution:enqueued',
 			executionId,

@@ -1,5 +1,10 @@
 import { DeleteExecutionsDto } from '@n8n/api-types';
-import type { EventService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
+import type { ModuleName, ModuleRegistry } from '@n8n/backend-common';
+import {
+	type EventService,
+	type ExecutionRedactionServiceProxy,
+	WorkflowVersionedSettingsService,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -18,6 +23,7 @@ import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { IRun, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
+import type { SecurityContext } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -64,6 +70,8 @@ describe('ExecutionService', () => {
 	const engineV2ExecutionReader = mock<EngineV2ExecutionReader>();
 	const engineDataPlane = mock<EngineDataPlaneProxyService>();
 	const workflowRepository = mock<WorkflowRepository>();
+	const eligibleModules: ModuleName[] = [];
+	const moduleRegistry = mock<ModuleRegistry>({ eligibleModules });
 
 	const executionService = new ExecutionService(
 		globalConfig,
@@ -86,6 +94,7 @@ describe('ExecutionService', () => {
 		ownershipService,
 		engineV2ExecutionReader,
 		engineDataPlane,
+		new WorkflowVersionedSettingsService(moduleRegistry),
 	);
 
 	beforeEach(() => {
@@ -266,6 +275,7 @@ describe('ExecutionService', () => {
 				ownershipService,
 				mock(),
 				mock(),
+				new WorkflowVersionedSettingsService(moduleRegistry),
 			);
 
 			const mockUser = mock<User>({ id: 'user-1' });
@@ -343,12 +353,13 @@ describe('ExecutionService', () => {
 				workflowRunner,
 				concurrencyControl,
 				mock(),
-				mock(),
+				eventService,
 				redactionProxy,
 				mock(),
 				ownershipService,
 				mock(),
 				mock(),
+				new WorkflowVersionedSettingsService(moduleRegistry),
 			);
 
 			workflowRunner.run.mockResolvedValue('retried-123');
@@ -442,6 +453,34 @@ describe('ExecutionService', () => {
 			expect(retried).not.toHaveProperty('customData');
 			expect(retried).not.toHaveProperty('annotation');
 			expect(redactionProxy.processExecution).not.toHaveBeenCalled();
+		});
+
+		it('should pass the login id to the workflow-executed event', async () => {
+			const { service } = buildRetryService();
+			executionPersistence.findWithUnflattenedData.mockResolvedValue(
+				buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }),
+			);
+
+			await service.retry(retryArgs(), {
+				security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+			});
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-executed',
+				expect.objectContaining({ source: 'user-retry', loginId: 'login-1' }),
+			);
+		});
+
+		it('should emit no login id on the workflow-executed event without an operation context', async () => {
+			const { service } = buildRetryService();
+			executionPersistence.findWithUnflattenedData.mockResolvedValue(
+				buildCrashedExecution({ lastNodeExecuted: 'Some Node', runData: {} }),
+			);
+
+			await service.retry(retryArgs());
+
+			const call = eventService.emit.mock.calls.find(([name]) => name === 'workflow-executed');
+			expect(call?.[1]).toMatchObject({ loginId: undefined });
 		});
 
 		it('should mark the retry as awaited to completion', async () => {
@@ -647,10 +686,6 @@ describe('ExecutionService', () => {
 	});
 
 	describe('getLastSuccessfulExecution', () => {
-		beforeEach(() => {
-			workflowRepository.findSettings.mockResolvedValue({});
-		});
-
 		it('should return the redacted last successful execution for a workflow', async () => {
 			/**
 			 * Arrange
@@ -679,7 +714,15 @@ describe('ExecutionService', () => {
 			expect(result).toEqual(mockExecution);
 			expect(executionPersistence.findMultipleExecutions).toHaveBeenCalledWith(
 				{
-					select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId', 'jsonSizeBytes'],
+					select: [
+						'id',
+						'mode',
+						'createdAt',
+						'startedAt',
+						'stoppedAt',
+						'workflowId',
+						'jsonSizeBytes',
+					],
 					where: {
 						workflowId,
 						status: 'success',
@@ -735,40 +778,76 @@ describe('ExecutionService', () => {
 			expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
 		});
 
-		describe('for a workflow on engine v2', () => {
-			const workflowId = 'workflow-v2';
+		describe('with the engine-v2 module', () => {
+			const workflowId = 'workflow-123';
 			const mockUser = mock<User>();
-
-			beforeEach(() => {
-				workflowRepository.findSettings.mockResolvedValue({ engineType: 'v2' });
+			const v1Execution = mock<IExecutionResponse>({
+				id: 'v1-execution',
+				createdAt: new Date('2025-01-15T10:00:00Z'),
+				startedAt: new Date('2025-01-15T10:00:00Z'),
+			});
+			const v2Execution = mock<IExecutionResponse>({
+				id: V2_EXECUTION_ID,
+				createdAt: new Date('2025-01-15T11:00:00Z'),
+				startedAt: new Date('2025-01-15T11:00:00Z'),
 			});
 
-			it('should read the latest successful execution from the data plane', async () => {
-				const execution = mock<IExecutionResponse>({ id: V2_EXECUTION_ID, workflowId });
-				engineV2ExecutionReader.findLatest.mockResolvedValue(execution);
-				executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+			beforeEach(() => {
+				eligibleModules.push('engine-v2');
+				executionRedactionServiceProxy.processExecution.mockImplementation(
+					async (execution) => execution,
+				);
+			});
+
+			afterEach(() => {
+				eligibleModules.length = 0;
+			});
+
+			it('should return the newest success of both engines', async () => {
+				executionPersistence.findMultipleExecutions.mockResolvedValue([v1Execution]);
+				engineV2ExecutionReader.findLatest.mockResolvedValue(v2Execution);
 
 				const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
 
-				expect(result).toEqual(execution);
-				expect(engineV2ExecutionReader.findLatest).toHaveBeenCalledWith({ status: ['success'] }, [
-					workflowId,
-				]);
-				expect(executionPersistence.findMultipleExecutions).not.toHaveBeenCalled();
-				expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(execution, {
-					user: mockUser,
-					redactExecutionData: undefined,
-				});
+				expect(result).toBe(v2Execution);
 			});
 
-			it('should return undefined when the data plane has no successful execution', async () => {
+			it('should compare the engines by creation, as each engine picks its newest run', async () => {
+				const queuedV1Execution = mock<IExecutionResponse>({
+					id: 'queued-v1-execution',
+					createdAt: new Date('2025-01-15T10:00:00Z'),
+					startedAt: new Date('2025-01-15T12:00:00Z'),
+				});
+				executionPersistence.findMultipleExecutions.mockResolvedValue([queuedV1Execution]);
+				engineV2ExecutionReader.findLatest.mockResolvedValue(v2Execution);
+
+				const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
+
+				expect(result).toBe(v2Execution);
+			});
+
+			it('should return the success of the engine that has one', async () => {
+				executionPersistence.findMultipleExecutions.mockResolvedValue([v1Execution]);
 				engineV2ExecutionReader.findLatest.mockResolvedValue(undefined);
 
 				const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
 
-				expect(result).toBeUndefined();
-				expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
+				expect(result).toBe(v1Execution);
 			});
+		});
+
+		it('should read only engine v1 without the engine-v2 module', async () => {
+			const execution = mock<IExecutionResponse>({ id: 'v1-execution' });
+			executionPersistence.findMultipleExecutions.mockResolvedValue([execution]);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+
+			const result = await executionService.getLastSuccessfulExecution(
+				'workflow-123',
+				mock<User>(),
+			);
+
+			expect(result).toBe(execution);
+			expect(engineV2ExecutionReader.findLatest).not.toHaveBeenCalled();
 		});
 	});
 
