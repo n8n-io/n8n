@@ -1578,7 +1578,7 @@ describe('AgentSkillModal from Settings', () => {
 	it('saves a preset skill with its reference files as a new manual skill', async () => {
 		const onConfirm = vi.fn();
 		const references = [{ path: 'references/frameworks.md', content: 'Use PAS by default.' }];
-		const { getByTestId, getByText } = renderModal({
+		const { getByTestId } = renderModal({
 			onConfirm,
 			skill: {
 				name: 'cold-email',
