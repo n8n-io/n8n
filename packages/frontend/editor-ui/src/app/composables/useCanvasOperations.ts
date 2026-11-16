@@ -108,8 +108,8 @@ import {
 	PUSH_NODES_OFFSET,
 	HORIZONTAL_NODE_STEP,
 	NODE_X_SPACING,
-	doRectsOverlap,
 	getNodeSizeFromPorts,
+	isPositionBlocked,
 	snapToGrid,
 } from '@/app/utils/nodeViewUtils';
 import {
@@ -1314,13 +1314,15 @@ export function useCanvasOperations() {
 	): INodeUi {
 		checkMaxNodesOfTypeReached(nodeTypeDescription);
 
-		const nodeData = resolveNodeData(node, nodeTypeDescription, {
+		const { nodeData, isUnanchored } = resolveNodeData(node, nodeTypeDescription, {
 			viewport: options.viewport,
 		});
 		if (!nodeData) {
 			throw new Error(i18n.baseText('nodeViewV2.showError.failedToCreateNode'));
 		}
-		if (isAgentNodeV2(nodeData) && !options.keepPristine) {
+		// An unanchored card keeps its top-left and grows down when it is measured,
+		// so that re-centering cannot move it back onto the node it was pushed away from
+		if (isAgentNodeV2(nodeData) && !options.keepPristine && !isUnanchored) {
 			agentNodeCanvasGeometryStore.setPendingCenterY(
 				workflowDocumentStore.value.workflowId,
 				nodeData.id,
@@ -1618,13 +1620,14 @@ export function useCanvasOperations() {
 		}
 
 		// The size of the node can depend on its parameters, so resolve them first
-		nodeData.position = resolveNodePosition(
+		const { position, isUnanchored } = resolveNodePlacement(
 			{ ...nodeData, position: node.position },
 			nodeTypeDescription,
 			{ viewport: options.viewport },
 		);
+		nodeData.position = position;
 
-		return nodeData;
+		return { nodeData, isUnanchored };
 	}
 
 	async function loadNodeTypesProperties(
@@ -1674,7 +1677,19 @@ export function useCanvasOperations() {
 		node: Omit<INodeUi, 'position'> & { position?: INodeUi['position'] },
 		nodeTypeDescription: INodeTypeDescription,
 		options: { viewport?: ViewportBoundaries } = {},
-	) {
+	): XYPosition {
+		return resolveNodePlacement(node, nodeTypeDescription, options).position;
+	}
+
+	/**
+	 * Resolves the position of a new node. The placement is unanchored when no
+	 * position, connection or node anchors it, and it falls back to the last click.
+	 */
+	function resolveNodePlacement(
+		node: Omit<INodeUi, 'position'> & { position?: INodeUi['position'] },
+		nodeTypeDescription: INodeTypeDescription,
+		options: { viewport?: ViewportBoundaries } = {},
+	): { position: XYPosition; isUnanchored: boolean } {
 		// Available when
 		// - clicking the plus button of a node handle
 		// - dragging an edge / connection of a node handle
@@ -1692,14 +1707,26 @@ export function useCanvasOperations() {
 			connectionType === NodeConnectionTypes.Main ? DEFAULT_NODE_SIZE : CONFIGURATION_NODE_SIZE;
 		const pushOffsets: XYPosition = [nodeSize[0] / 2, nodeSize[1] / 2];
 
+		// Collision tests the rendered size of the new node and of each existing node
+		const getNewNodePosition = (initialPosition: XYPosition) =>
+			NodeViewUtils.getNewNodePosition(workflowDocumentStore.value.allNodes, initialPosition, {
+				offset: pushOffsets,
+				size: getNodePlacementSize({ ...node, position: initialPosition }, nodeTypeDescription),
+				viewport: options.viewport,
+				getNodeSize: getNodePlacementSize,
+			});
+
 		let position: XYPosition | undefined = node.position;
 		if (position) {
-			return NodeViewUtils.getNewNodePosition(workflowDocumentStore.value.allNodes, position, {
-				offset: pushOffsets,
-				size: nodeSize,
-				viewport: options.viewport,
-				normalize: false,
-			});
+			return {
+				position: NodeViewUtils.getNewNodePosition(workflowDocumentStore.value.allNodes, position, {
+					offset: pushOffsets,
+					size: nodeSize,
+					viewport: options.viewport,
+					normalize: false,
+				}),
+				isUnanchored: false,
+			};
 		}
 
 		if (lastInteractedWithNode.value) {
@@ -1770,15 +1797,7 @@ export function useCanvasOperations() {
 							);
 						}
 
-						return NodeViewUtils.getNewNodePosition(
-							workflowDocumentStore.value.allNodes,
-							position,
-							{
-								offset: pushOffsets,
-								size: nodeSize,
-								viewport: options.viewport,
-							},
-						);
+						return { position: getNewNodePosition(position), isUnanchored: false };
 					}
 				}
 
@@ -1949,7 +1968,9 @@ export function useCanvasOperations() {
 			}
 		}
 
+		let isUnanchored = false;
 		if (!position) {
+			isUnanchored = true;
 			if (nodeTypesStore.isTriggerNode(node.type) && triggerNodes.value.length === 0) {
 				// When added node is a trigger, and it's the first one added to the canvas
 				// we place it at root to replace the canvas add button
@@ -1962,11 +1983,7 @@ export function useCanvasOperations() {
 			}
 		}
 
-		return NodeViewUtils.getNewNodePosition(workflowDocumentStore.value.allNodes, position, {
-			offset: pushOffsets,
-			size: nodeSize,
-			viewport: options.viewport,
-		});
+		return { position: getNewNodePosition(position), isUnanchored };
 	}
 
 	function resolveNodeName(node: INodeUi) {
@@ -2038,31 +2055,23 @@ export function useCanvasOperations() {
 
 	/**
 	 * Check if there's enough space for a new node at the insertion position.
-	 * Uses a margin to account for nodes that are touching (edge-to-edge)
-	 * which should still be considered as blocking the insertion.
+	 * A node less than one grid cell away blocks the insertion, like in collision.
 	 */
 	function hasSpaceForInsertion(
 		insertPosition: XYPosition,
 		nodeSize: [number, number],
 		nodesToCheck: INodeUi[],
 	): boolean {
-		// Add a small margin to detect nodes that are touching (edge-to-edge)
-		const margin = GRID_SIZE;
 		const insertRect = {
 			x: insertPosition[0],
 			y: insertPosition[1],
-			width: nodeSize[0] + margin,
+			width: nodeSize[0],
 			height: nodeSize[1],
 		};
 
-		for (const node of nodesToCheck) {
-			if (node.type === STICKY_NODE_TYPE) continue;
-			const nodeRect = getNodeRect(node);
-			if (doRectsOverlap(insertRect, nodeRect)) {
-				return false;
-			}
-		}
-		return true;
+		return !nodesToCheck.some(
+			(node) => node.type !== STICKY_NODE_TYPE && isPositionBlocked(insertRect, getNodeRect(node)),
+		);
 	}
 
 	/**
@@ -3426,8 +3435,8 @@ export function useCanvasOperations() {
 			// and the pasted nodes would so not be directly visible to
 			// the user
 			const groupSize =
-				workflowData.nodes && workflowData.nodes.length > 1
-					? getNodesGroupSize(workflowData.nodes)
+				workflowData.nodes && workflowData.nodes.length > 0
+					? getNodesGroupSize(workflowData.nodes, getNodePlacementSize)
 					: DEFAULT_NODE_SIZE;
 			const pastePosition: XYPosition =
 				source === 'paste' && viewport
@@ -3441,6 +3450,7 @@ export function useCanvasOperations() {
 				NodeViewUtils.getNewNodePosition(workflowDocumentStore.value.allNodes, pastePosition, {
 					size: groupSize,
 					viewport,
+					getNodeSize: getNodePlacementSize,
 				}),
 			);
 
@@ -3934,6 +3944,24 @@ export function useCanvasOperations() {
 				trackBulk: false,
 				trackHistory,
 			});
+		}
+
+		// A new agent card keeps its main handle on the line of the node it replaces
+		// once it is measured
+		const { workflowId } = workflowDocumentStore.value;
+		if (
+			isAgentNodeV2(newNode) &&
+			agentNodeCanvasGeometryStore.getNodeHeight(workflowId, newId) === undefined
+		) {
+			const previousHeight = getNodePlacementSize(previousNode)[1];
+			const previousHandleOffset = isAgentNodeV2(previousNode)
+				? getAgentNodeHandleOffset(previousHeight)
+				: previousHeight / 2;
+			agentNodeCanvasGeometryStore.setPendingCenterY(
+				workflowId,
+				newId,
+				previousNode.position[1] + previousHandleOffset,
+			);
 		}
 
 		deleteNode(previousId, { trackHistory, trackBulk: false });
