@@ -294,7 +294,7 @@ describe('ToolHttpRequest', () => {
 		});
 
 		it.each(['genericCredentialType', 'predefinedCredentialType'])(
-			'should send both Multiple Headers Auth headers with %s',
+			'should send both Multiple Headers Auth headers and keep request headers with %s',
 			async (authentication) => {
 				const credentials = {
 					allowedHttpRequestDomains: 'domains',
@@ -313,7 +313,10 @@ describe('ToolHttpRequest', () => {
 						throw new Error('Expected a credential authenticator');
 					}
 					return await helpers.httpRequest(
-						await credentialType.authenticate(credentials, requestOptions),
+						await credentialType.authenticate(credentials, {
+							...requestOptions,
+							url: String(requestOptions.url),
+						}),
 					);
 				});
 				helpers.httpRequest.mockResolvedValue({ body: 'Hello World' });
@@ -329,6 +332,15 @@ describe('ToolHttpRequest', () => {
 						case 'genericAuthType':
 						case 'nodeCredentialType':
 							return 'httpMultipleHeadersAuth';
+						case 'sendHeaders':
+							return true;
+						case 'specifyHeaders':
+							return 'keypair';
+						case 'parametersHeaders.values':
+							return [
+								{ name: 'X-Request-ID', valueProvider: 'fieldValue', value: 'request-id' },
+								{ name: 'X-Service-Token', valueProvider: 'fieldValue', value: 'overridden-value' },
+							];
 						case 'options':
 							return {};
 						case 'placeholderDefinitions.values':
@@ -343,8 +355,10 @@ describe('ToolHttpRequest', () => {
 				expect(await (response as N8nTool).invoke({})).toBe('Hello World');
 				expect(helpers.httpRequest).toHaveBeenCalledWith(
 					expect.objectContaining({
+						url: 'https://api.example.com/data',
 						allowedDomains: 'api.example.com',
 						headers: {
+							'X-Request-ID': 'request-id',
 							'X-Service-Token': 'first-test-value',
 							'X-Account-Key': 'second-test-value',
 						},
