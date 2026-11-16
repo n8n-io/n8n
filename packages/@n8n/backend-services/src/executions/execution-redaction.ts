@@ -1,5 +1,5 @@
 import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
-import type { IExecutionBase, User } from '@n8n/db';
+import type { IExecutionBase, OperationContext, User } from '@n8n/db';
 import type { IRunExecutionData, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
 
 export type ExecutionRedactionOptions = {
@@ -8,8 +8,11 @@ export type ExecutionRedactionOptions = {
 	userAgent?: string;
 	/** When true, the original execution is never mutated. If redaction is needed,
 	 *  a structuredClone is created and returned. If no redaction is needed, the
-	 *  original is returned as-is (caller can check referential equality). */
+	 *  original is returned as-is (caller can check referential equality).
+	 *  The proxy still deletes the push session fields in place. */
 	keepOriginal?: boolean;
+	/** Operation context of the request, for the audit events. */
+	ctx?: OperationContext;
 } & Pick<ExecutionRedactionQueryDto, 'redactExecutionData'>;
 
 export interface ExecutionRedaction {
@@ -36,7 +39,10 @@ export type RedactableExecution = {
 	id?: string;
 	mode: WorkflowExecuteMode;
 	workflowId: string;
-	data: Pick<IRunExecutionData, 'resultData' | 'executionData' | 'redactionInfo'>;
+	data: Pick<
+		IRunExecutionData,
+		'resultData' | 'executionData' | 'redactionInfo' | 'pushRef' | 'pushRefUserId'
+	>;
 	workflowData: Pick<IWorkflowBase, 'settings' | 'nodes'>;
 };
 

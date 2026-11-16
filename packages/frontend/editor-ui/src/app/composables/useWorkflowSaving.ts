@@ -22,7 +22,7 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { ResponseError } from '@n8n/rest-api-client';
-import { isExpression, type IDataObject } from 'n8n-workflow';
+import { isExpression, omitVersionedSettings, type IDataObject } from 'n8n-workflow';
 import { useToast } from '@n8n/composables/useToast';
 import { useExternalHooks } from './useExternalHooks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -40,6 +40,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useDebounceFn } from '@vueuse/core';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { withoutNewWorkflowQuery } from '@/app/utils/workflowUtils';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -482,6 +483,12 @@ export function useWorkflowSaving({
 				const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
 
 				const workflowDataRequest: WorkflowDataUpdate = workflowDocumentStore.serialize();
+				// With engine v2, only the settings modal saves the version-scoped settings, such as the
+				// engine. The backend keeps the stored value when the key is absent, so a stale editor
+				// can't overwrite it.
+				if (workflowDataRequest.settings && settingsStore.isModuleActive('engine-v2')) {
+					workflowDataRequest.settings = omitVersionedSettings(workflowDataRequest.settings);
+				}
 				// This can happen if the user has another workflow in the browser history and navigates
 				// via the browser back button, encountering our warning dialog with the new route already set
 				if (workflowDataRequest.id !== currentWorkflow) {
@@ -767,7 +774,7 @@ export function useWorkflowSaving({
 				await router.replace({
 					name: route.name,
 					params: { ...route.params },
-					query: { ...route.query, new: undefined },
+					query: withoutNewWorkflowQuery(route.query),
 				});
 			}
 

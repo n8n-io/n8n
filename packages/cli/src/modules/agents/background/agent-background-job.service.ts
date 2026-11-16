@@ -9,7 +9,7 @@ import { isTerminalExecutionStatus, WorkflowOperationError } from 'n8n-workflow'
 import { createHash } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 import {
 	collectResultData,
 	collectResultItems,

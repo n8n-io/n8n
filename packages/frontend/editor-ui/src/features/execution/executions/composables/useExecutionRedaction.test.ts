@@ -14,6 +14,8 @@ import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.co
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { flushPromises } from '@vue/test-utils';
 import { effectScope } from 'vue';
+import { mock } from 'vitest-mock-extended';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 
 const showError = vi.fn();
 const confirm = vi.fn();
@@ -62,11 +64,11 @@ describe('useExecutionRedaction()', () => {
 	describe('computed properties', () => {
 		it('should return isRedacted=false when no execution', () => {
 			setActiveExecution(null);
-			const { isRedacted, canReveal, isDynamicCredentials } = useExecutionRedaction();
+			const { isRedacted, canReveal, reason } = useExecutionRedaction();
 
 			expect(isRedacted.value).toBe(false);
 			expect(canReveal.value).toBe(false);
-			expect(isDynamicCredentials.value).toBe(false);
+			expect(reason.value).toBeUndefined();
 		});
 
 		it('should return isRedacted=true when redactionInfo.isRedacted is true', () => {
@@ -76,11 +78,11 @@ describe('useExecutionRedaction()', () => {
 				},
 			} as never);
 
-			const { isRedacted, canReveal, isDynamicCredentials } = useExecutionRedaction();
+			const { isRedacted, canReveal, reason } = useExecutionRedaction();
 
 			expect(isRedacted.value).toBe(true);
 			expect(canReveal.value).toBe(true);
-			expect(isDynamicCredentials.value).toBe(false);
+			expect(reason.value).toBe('workflow_redaction_policy');
 		});
 
 		it('should detect dynamic credentials reason', () => {
@@ -94,9 +96,9 @@ describe('useExecutionRedaction()', () => {
 				},
 			} as never);
 
-			const { isDynamicCredentials, canReveal } = useExecutionRedaction();
+			const { reason, canReveal } = useExecutionRedaction();
 
-			expect(isDynamicCredentials.value).toBe(true);
+			expect(reason.value).toBe('dynamic_credentials');
 			expect(canReveal.value).toBe(false);
 		});
 
@@ -111,23 +113,24 @@ describe('useExecutionRedaction()', () => {
 				},
 			} as never);
 
-			const { isSubWorkflowRedaction, isDynamicCredentials, canReveal } = useExecutionRedaction();
+			const { reason, canReveal } = useExecutionRedaction();
 
-			expect(isSubWorkflowRedaction.value).toBe(true);
-			expect(isDynamicCredentials.value).toBe(false);
+			expect(reason.value).toBe('sub_workflow_redaction_policy');
 			expect(canReveal.value).toBe(true);
 		});
 
-		it('should not flag the sub-workflow redaction for another reason', () => {
+		it('updates the reason when the active execution changes', () => {
+			setActiveExecution(null);
+			const { reason } = useExecutionRedaction();
+			expect(reason.value).toBeUndefined();
+
 			setActiveExecution({
 				data: {
 					redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
 				},
 			} as never);
 
-			const { isSubWorkflowRedaction } = useExecutionRedaction();
-
-			expect(isSubWorkflowRedaction.value).toBe(false);
+			expect(reason.value).toBe('workflow_redaction_policy');
 		});
 	});
 
@@ -165,9 +168,25 @@ describe('useExecutionRedaction()', () => {
 			viewerWith([]);
 			setActiveExecution(redactedForCredential(['alice-gmail']));
 
-			const { credentialToShare } = useExecutionRedaction();
+			const { credentialToShare, reason, isRedacted, canReveal } = useExecutionRedaction();
 
 			expect(credentialToShare.value).toBeUndefined();
+			expect(reason.value).toBe('credential_inaccessible');
+			expect(isRedacted.value).toBe(true);
+			expect(canReveal.value).toBe(false);
+		});
+
+		it('offers the credential with a per-credential share scope and no global share scope', () => {
+			viewerWith([]);
+			mockedStore(useCredentialsStore).setCredentials([
+				mock<ICredentialsResponse>({ id: 'alice-gmail', scopes: ['credential:share'] }),
+			]);
+			setActiveExecution(redactedForCredential(['alice-gmail']));
+
+			const { credentialToShare, reason } = useExecutionRedaction();
+
+			expect(reason.value).toBe('credential_inaccessible');
+			expect(credentialToShare.value).toEqual({ id: 'alice-gmail', name: "Alice's Gmail" });
 		});
 
 		it('offers nothing for another redaction reason', () => {

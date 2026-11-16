@@ -1,12 +1,11 @@
 import { INLINE_SUB_AGENT_ID } from '@n8n/agents';
 import type { AgentSessionStopResponse } from '@n8n/api-types';
 import { ExecutionsConfig } from '@n8n/config';
-import { OnPubSubEvent } from '@n8n/decorators';
+import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { Publisher } from '@n8n/backend-services';
 
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { AgentExecutionService } from './agent-execution.service';

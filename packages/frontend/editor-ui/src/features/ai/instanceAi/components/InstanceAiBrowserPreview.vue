@@ -6,11 +6,10 @@
  * user, they already have control; otherwise the agent's calls wait from now on. "I'm done" gives
  * control back. After a takeover the agent did not ask for, it first asks what the user changed.
  */
-import { N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
+import { FocusScope, N8nButton, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { FocusScope } from 'reka-ui';
 import { computed, inject, ref, watch } from 'vue';
 
 import {

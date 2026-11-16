@@ -1,7 +1,10 @@
 import type { EpisodicScopeDecision, JSONObject, SerializableAgentState } from '@n8n/agents';
 import type { AgentMessageAuthor, AgentMessageIntegrationOrigin } from '@n8n/api-types';
 import type { Author } from 'chat';
-import type { BridgeExecutionContext } from '../integrations/agent-chat-integration';
+import type {
+	BridgeExecutionContext,
+	VerifiedSender,
+} from '../integrations/agent-chat-integration';
 
 import type {
 	IntegrationMessageContext,
@@ -52,11 +55,28 @@ export interface QueuedIntegrationMessage extends QueuedMessageInput {
 	/** The channel's episodic ownership for this turn. Absent on work queued before channels resolved it: that work has no episodic memory. */
 	episodicScope?: EpisodicScopeDecision;
 	sender: Author;
+	/**
+	 * The sender identity for the access check when the queued turn runs.
+	 * `null`: the event had no individual user as its sender.
+	 */
+	verifiedSender?: VerifiedSender | null;
 	messageContext: IntegrationMessageContext;
 	contextConversation: SessionBinding;
 	forceBuffered?: boolean;
 	slackThreadContext?: BridgeExecutionContext['slackThreadContext'];
 }
+
+/**
+ * The sender identity for the access check before a queued integration turn
+ * runs. Turns queued without `verifiedSender` (older queue items) fall back to
+ * the adapter user ID only, never to a name.
+ */
+export const queuedAccessSender = (
+	payload: Pick<QueuedIntegrationMessage, 'sender' | 'verifiedSender'>,
+): VerifiedSender | undefined =>
+	payload.verifiedSender === undefined
+		? { userId: payload.sender.userId }
+		: (payload.verifiedSender ?? undefined);
 
 export type AgentQueuedMessage = QueuedUserChatMessage | QueuedIntegrationMessage;
 

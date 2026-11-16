@@ -1,9 +1,12 @@
 import type { SkillAgentOption, SkillUsedBy } from '@n8n/api-types';
-import { UserRepository, type OperationContext } from '@n8n/db';
+import type { OperationContext } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { UserError } from '@n8n/errors';
-
-import { renameIntroducesClash, SkillRuntimeService, SkillUsage } from '@/modules/skills';
+import {
+	renameIntroducesClash,
+	SkillAgentNameTakenError,
+	SkillRuntimeService,
+	SkillUsage,
+} from '@/modules/skills';
 
 import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { AgentRepository } from './repositories/agent.repository';
@@ -20,7 +23,6 @@ export class AgentSkillUsage extends SkillUsage {
 		private readonly agentRepository: AgentRepository,
 		private readonly skillRuntime: SkillRuntimeService,
 		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
-		private readonly userRepository: UserRepository,
 	) {
 		super();
 	}
@@ -66,6 +68,10 @@ export class AgentSkillUsage extends SkillUsage {
 		return await this.agentSkillRepository.findUsingAgentIds(skillId, ctx);
 	}
 
+	async findUsingAgentIdsBySkill(skillIds: string[], ctx: OperationContext) {
+		return await this.agentSkillRepository.findUsingAgentIdsBySkill(skillIds, ctx);
+	}
+
 	async findSkillIdsUsedByAgent(agentId: string, ctx: OperationContext) {
 		return await this.agentSkillRepository.findSkillIdsUsedByAgent(agentId, ctx);
 	}
@@ -105,32 +111,15 @@ export class AgentSkillUsage extends SkillUsage {
 			),
 		);
 		if (clashing.length > 0) {
-			throw new UserError(
-				`Cannot rename to "${newName}": ${clashing.map((agent) => agent.name).join(', ')} already ${
-					clashing.length > 1 ? 'use' : 'uses'
-				} a skill with a name like that.`,
+			throw new SkillAgentNameTakenError(
+				newName,
+				clashing.map((agent) => agent.name),
 			);
 		}
 	}
 
-	async markFollowersChanged(
-		skillId: string,
-		ctx: OperationContext,
-		userId?: string | null,
-	): Promise<string[]> {
-		const followingIds = await this.agentSkillRepository.findFollowingAgentIds([skillId], ctx);
-		await this.agentRepository.markFollowerDraftsChanged(followingIds, ctx);
-		if (followingIds.length > 0) {
-			// Snapshot capture reads skill refs through this service, so resolve it after construction.
-			const { AgentDefinitionService } = await import('./agent-definition.service.js');
-			const definitions = Container.get(AgentDefinitionService);
-			const user = userId ? await this.userRepository.findByIdWithRole(userId, ctx) : null;
-			for (const id of followingIds) {
-				const agent = await this.agentRepository.findById(id, ctx);
-				if (agent) await definitions.captureVersion(agent, user ?? 'Unknown', ctx);
-			}
-		}
-		return followingIds;
+	async findFollowingAgentIds(skillId: string, ctx: OperationContext): Promise<string[]> {
+		return await this.agentSkillRepository.findFollowingAgentIds([skillId], ctx);
 	}
 
 	async refreshAgents(agentIds: string[], excludePushRef?: string): Promise<void> {

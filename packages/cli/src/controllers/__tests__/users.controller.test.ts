@@ -1,4 +1,4 @@
-import type { AuthenticatedRequest, PersonRepository, User, UserRepository } from '@n8n/db';
+import type { AuthenticatedRequest, Person, PersonRepository } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
@@ -10,14 +10,12 @@ import type { UserService } from '@/services/user.service';
 import { UsersController } from '../users.controller';
 
 describe('UsersController', () => {
-	const userRepository = mock<UserRepository>();
 	const personRepository = mock<PersonRepository>();
 	const userService = mock<UserService>();
 	const jwtService = mock<JwtService>();
 	const urlService = mock<UrlService>();
 
 	const controller = new UsersController(
-		userRepository,
 		personRepository,
 		mock(),
 		userService,
@@ -73,11 +71,11 @@ describe('UsersController', () => {
 				params: { id: inviteeId },
 			});
 
-			const targetUser = mock<User>({
+			const targetPerson = mock<Person>({
 				id: inviteeId,
 			});
 
-			personRepository.findById.mockResolvedValue(targetUser);
+			personRepository.findById.mockResolvedValue(targetPerson);
 			jwtService.sign.mockReturnValue(mockToken);
 			urlService.getInstanceBaseUrl.mockReturnValue(baseUrl);
 
@@ -135,7 +133,7 @@ describe('UsersController', () => {
 				params: { id: inviteeId },
 			});
 
-			personRepository.findById.mockResolvedValue(mock<User>({ id: inviteeId }));
+			personRepository.findById.mockResolvedValue(mock<Person>({ id: inviteeId }));
 			jwtService.sign.mockReturnValue(mockToken);
 			urlService.getInstanceBaseUrl.mockReturnValue(baseUrl);
 

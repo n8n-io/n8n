@@ -3,7 +3,7 @@ import { OutboundHttp } from '@n8n/backend-network';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { CredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
-import type { CredentialsEntity } from '@n8n/db';
+import type { CredentialsEntity, Project } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { RoutingNode } from 'n8n-core';
@@ -610,7 +610,6 @@ describe('DynamicNodeParametersService', () => {
 
 		beforeEach(() => {
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
-			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
 			// No end-user credentials unless a test says otherwise.
 			credentialsRepository.getManyByIds.mockResolvedValue([]);
 		});
@@ -845,6 +844,39 @@ describe('DynamicNodeParametersService', () => {
 				['credential:read'],
 				{ excludeSeeOnlyRoles: true },
 			);
+		});
+
+		it("should use the workflow's owning project instead of the supplied project", async () => {
+			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
+				mock<Project>({ id: 'owning-project' }),
+			);
+			const payload = { projectId: 'former-project', workflowId: 'workflow-1' };
+
+			await service.refineResourceIds(user, payload);
+
+			expect(payload.projectId).toBe('owning-project');
+		});
+
+		it('should not use the owning project when the user cannot edit the workflow', async () => {
+			vi.spyOn(checkAccess, 'userHasScopes').mockImplementation(
+				async (_user, scopes) =>
+					!scopes.includes('workflow:update') && !scopes.includes('dataTable:listProject'),
+			);
+			const payload = { projectId: 'project-1', workflowId: 'workflow-1' };
+
+			await service.refineResourceIds(user, payload);
+
+			expect(sharedWorkflowRepository.getWorkflowOwningProject).not.toHaveBeenCalled();
+			expect(payload.projectId).toBeUndefined();
+		});
+
+		it('should keep the supplied project when the workflow is not saved yet', async () => {
+			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
+			const payload = { projectId: 'project-1', workflowId: 'unsaved-workflow' };
+
+			await service.refineResourceIds(user, payload);
+
+			expect(payload.projectId).toBe('project-1');
 		});
 
 		it('should run credential check regardless of whether workflowId is present', async () => {

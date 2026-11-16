@@ -7,7 +7,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeConnectionTypes, requestPath } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { v4 as uuid } from 'uuid';
 
@@ -2068,9 +2068,15 @@ export class GoogleDriveV1 implements INodeType {
 
 						Object.assign(body, options);
 
-						const response = await googleApiRequest.call(this, 'POST', '/drive/v3/drives', body, {
-							requestId: uuid(),
-						});
+						const response = await googleApiRequest.call(
+							this,
+							'POST',
+							requestPath`/drive/v3/drives`,
+							body,
+							{
+								requestId: uuid(),
+							},
+						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(response as IDataObject[]),
@@ -2088,7 +2094,7 @@ export class GoogleDriveV1 implements INodeType {
 							extractValue: true,
 						}) as string;
 
-						await googleApiRequest.call(this, 'DELETE', `/drive/v3/drives/${driveId}`);
+						await googleApiRequest.call(this, 'DELETE', requestPath`/drive/v3/drives/${driveId}`);
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ success: true }),
@@ -2113,7 +2119,7 @@ export class GoogleDriveV1 implements INodeType {
 						const response = await googleApiRequest.call(
 							this,
 							'GET',
-							`/drive/v3/drives/${driveId}`,
+							requestPath`/drive/v3/drives/${driveId}`,
 							{},
 							qs,
 						);
@@ -2142,13 +2148,19 @@ export class GoogleDriveV1 implements INodeType {
 								this,
 								'drives',
 								'GET',
-								'/drive/v3/drives',
+								requestPath`/drive/v3/drives`,
 								{},
 								qs,
 							);
 						} else {
 							qs.pageSize = this.getNodeParameter('limit', i);
-							const data = await googleApiRequest.call(this, 'GET', '/drive/v3/drives', {}, qs);
+							const data = await googleApiRequest.call(
+								this,
+								'GET',
+								requestPath`/drive/v3/drives`,
+								{},
+								qs,
+							);
 							response = data.drives as IDataObject[];
 						}
 
@@ -2175,7 +2187,7 @@ export class GoogleDriveV1 implements INodeType {
 						const response = await googleApiRequest.call(
 							this,
 							'PATCH',
-							`/drive/v3/drives/${driveId}`,
+							requestPath`/drive/v3/drives/${driveId}`,
 							body,
 						);
 
@@ -2215,7 +2227,7 @@ export class GoogleDriveV1 implements INodeType {
 						const response = await googleApiRequest.call(
 							this,
 							'POST',
-							`/drive/v3/files/${fileId}/copy`,
+							requestPath`/drive/v3/files/${fileId}/copy`,
 							body,
 							qs,
 						);
@@ -2246,7 +2258,7 @@ export class GoogleDriveV1 implements INodeType {
 						const file = await googleApiRequest.call(
 							this,
 							'GET',
-							`/drive/v3/files/${fileId}`,
+							requestPath`/drive/v3/files/${fileId}`,
 							{},
 							{ fields: 'mimeType,name', supportsTeamDrives: true },
 						);
@@ -2284,7 +2296,7 @@ export class GoogleDriveV1 implements INodeType {
 							response = await googleApiRequest.call(
 								this,
 								'GET',
-								`/drive/v3/files/${fileId}/export`,
+								requestPath`/drive/v3/files/${fileId}/export`,
 								{},
 								{ mimeType: mime },
 								undefined,
@@ -2294,7 +2306,7 @@ export class GoogleDriveV1 implements INodeType {
 							response = await googleApiRequest.call(
 								this,
 								'GET',
-								`/drive/v3/files/${fileId}`,
+								requestPath`/drive/v3/files/${fileId}`,
 								{},
 								{ alt: 'media' },
 								undefined,
@@ -2410,7 +2422,13 @@ export class GoogleDriveV1 implements INodeType {
 							supportsAllDrives: queryCorpora !== '' || driveId !== '',
 						};
 
-						const response = await googleApiRequest.call(this, 'GET', '/drive/v3/files', {}, qs);
+						const response = await googleApiRequest.call(
+							this,
+							'GET',
+							requestPath`/drive/v3/files`,
+							{},
+							qs,
+						);
 
 						const files = response.files;
 
@@ -2467,7 +2485,7 @@ export class GoogleDriveV1 implements INodeType {
 							const response = await googleApiRequest.call(
 								this,
 								'POST',
-								'/upload/drive/v3/files',
+								requestPath`/upload/drive/v3/files`,
 								fileContent,
 								{
 									fields: queryFields,
@@ -2488,7 +2506,7 @@ export class GoogleDriveV1 implements INodeType {
 							const resumableUpload = await googleApiRequest.call(
 								this,
 								'POST',
-								'/upload/drive/v3/files',
+								requestPath`/upload/drive/v3/files`,
 								undefined,
 								{ uploadType: 'resumable' },
 								undefined,
@@ -2558,7 +2576,7 @@ export class GoogleDriveV1 implements INodeType {
 						let response = await googleApiRequest.call(
 							this,
 							'PATCH',
-							`/drive/v3/files/${uploadId}`,
+							requestPath`/drive/v3/files/${uploadId}`,
 							requestBody,
 							{
 								addParents: parents.join(','),
@@ -2571,7 +2589,7 @@ export class GoogleDriveV1 implements INodeType {
 							response = await googleApiRequest.call(
 								this,
 								'GET',
-								`/drive/v3/files/${response.id}`,
+								requestPath`/drive/v3/files/${response.id}`,
 								{},
 								{ fields: '*' },
 							);
@@ -2617,7 +2635,7 @@ export class GoogleDriveV1 implements INodeType {
 						const responseData = await googleApiRequest.call(
 							this,
 							'PATCH',
-							`/drive/v3/files/${id}`,
+							requestPath`/drive/v3/files/${id}`,
 							body,
 							qs,
 						);
@@ -2648,7 +2666,13 @@ export class GoogleDriveV1 implements INodeType {
 							supportsAllDrives: true,
 						};
 
-						const response = await googleApiRequest.call(this, 'POST', '/drive/v3/files', body, qs);
+						const response = await googleApiRequest.call(
+							this,
+							'POST',
+							requestPath`/drive/v3/files`,
+							body,
+							qs,
+						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(response as IDataObject[]),
@@ -2670,7 +2694,7 @@ export class GoogleDriveV1 implements INodeType {
 						await googleApiRequest.call(
 							this,
 							'DELETE',
-							`/drive/v3/files/${fileId}`,
+							requestPath`/drive/v3/files/${fileId}`,
 							{},
 							{ supportsTeamDrives: true },
 						);
@@ -2710,7 +2734,7 @@ export class GoogleDriveV1 implements INodeType {
 						const response = await googleApiRequest.call(
 							this,
 							'POST',
-							`/drive/v3/files/${fileId}/permissions`,
+							requestPath`/drive/v3/files/${fileId}/permissions`,
 							body,
 							qs,
 						);

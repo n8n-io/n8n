@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-services",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -47,12 +47,15 @@
     "@n8n/inbound-auth": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/utils": "workspace:*",
+    "@types/express": "catalog:",
     "cache-manager": "catalog:",
     "ioredis": "5.3.2",
     "jose": "^6.2.9",
     "jsonwebtoken": "catalog:",
+    "lodash": "catalog:",
     "n8n-core": "workspace:*",
-    "n8n-workflow": "workspace:*"
+    "n8n-workflow": "workspace:*",
+    "posthog-node": "catalog:"
   },
   "peerDependencies": {
     "zod": "catalog:"
@@ -68,7 +71,6 @@
     "@vitest/coverage-v8": "catalog:",
     "eslint": "catalog:",
     "ioredis-mock": "catalog:",
-    "lodash": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",

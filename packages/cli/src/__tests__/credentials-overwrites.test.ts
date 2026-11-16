@@ -345,7 +345,7 @@ describe('CredentialsOverwrites', () => {
 			});
 
 			// Mock Publisher service - need to import the class first
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			const { Publisher } = await import('@n8n/backend-services');
 			publisherMock = { publishCommand: vi.fn() };
 			mockInstance(Publisher, publisherMock);
 
@@ -610,7 +610,7 @@ describe('CredentialsOverwrites', () => {
 			});
 
 			// Mock Publisher service
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			const { Publisher } = await import('@n8n/backend-services');
 			publisherMock = { publishCommand: vi.fn() };
 			mockInstance(Publisher, publisherMock);
 
@@ -991,7 +991,7 @@ describe('CredentialsOverwrites', () => {
 			});
 
 			// Mock Publisher service
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			const { Publisher } = await import('@n8n/backend-services');
 			publisherMock = { publishCommand: vi.fn() };
 			mockInstance(Publisher, publisherMock);
 

@@ -853,6 +853,31 @@ describe('agent-run-reducer', () => {
 			expect(tc.renderHint).toBe('builder');
 		});
 
+		it('shows the tool that a tool catalog call_tool call runs', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, {
+				type: 'tool-input-start',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-catalog', toolName: 'call_tool' },
+			});
+			reduceEvent(state, {
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-catalog',
+					toolName: 'call_tool',
+					args: { tool: 'build-workflow', arguments: { name: 'Tickets' } },
+				},
+			});
+
+			const tc = state.toolCallsById['tc-catalog'];
+			expect(tc.toolName).toBe('workflow_builder_build_workflow');
+			expect(tc.args).toEqual({ name: 'Tickets' });
+			expect(tc.renderHint).toBe('builder');
+		});
+
 		it('applies rich render hints to background agent tools', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(
@@ -1476,6 +1501,48 @@ describe('agent-run-reducer', () => {
 			reduceEvent(state, makeSetupItems('run-1', 'root', '__proto__', 'slackApi'));
 
 			expect(state.agentsById['root'].setupItemsByWorkflowId).toBeUndefined();
+			expectStateMapsNotPolluted(state);
+		});
+	});
+
+	describe('auto-approval', () => {
+		it('folds the auto-approval onto its tool call', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'publish_workflow'));
+
+			reduceEvent(state, {
+				type: 'auto-approval',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-1',
+					message: 'Publish "Lead router"',
+					reason: 'The user asked to publish it.',
+					decidedBy: 'judge',
+				},
+			});
+
+			expect(state.toolCallsById['tc-1'].autoApproval).toEqual({
+				message: 'Publish "Lead router"',
+				reason: 'The user asked to publish it.',
+				decidedBy: 'judge',
+			});
+		});
+
+		it('ignores an auto-approval for an unknown or unsafe tool call', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			for (const toolCallId of ['missing', '__proto__']) {
+				reduceEvent(state, {
+					type: 'auto-approval',
+					runId: 'run-1',
+					agentId: 'root',
+					payload: { toolCallId, message: 'Publish', reason: 'Asked for.', decidedBy: 'rule' },
+				});
+			}
+
+			expect(Object.keys(state.toolCallsById)).toEqual([]);
+			expect('autoApproval' in Object.prototype).toBe(false);
 			expectStateMapsNotPolluted(state);
 		});
 	});

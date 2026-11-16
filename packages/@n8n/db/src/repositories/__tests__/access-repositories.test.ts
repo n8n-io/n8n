@@ -455,7 +455,9 @@ describe('access repositories', () => {
 		it('lists folder ids in a project', async () => {
 			manager.find.mockResolvedValue([{ id: 'folder-1' }]);
 
-			await expect(repository.findFolderIdsInProject('project-1')).resolves.toEqual(['folder-1']);
+			await expect(repository.findFolderIdsInProject('project-1', undefined)).resolves.toEqual([
+				'folder-1',
+			]);
 			expect(manager.find).toHaveBeenCalledWith(Folder, {
 				select: { id: true },
 				where: { homeProject: { id: 'project-1' } },
@@ -468,6 +470,7 @@ describe('access repositories', () => {
 			const query = mock<SelectQueryBuilder<Folder>>();
 			for (const builder of [baseQuery, recursiveQuery, query]) {
 				builder.select.mockReturnValue(builder);
+				builder.addSelect.mockReturnValue(builder);
 				builder.where.mockReturnValue(builder);
 				builder.innerJoin.mockReturnValue(builder);
 				builder.addCommonTableExpression.mockReturnValue(builder);

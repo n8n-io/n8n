@@ -1,5 +1,12 @@
 <script lang="ts" setup>
-import { N8nHoverCard, N8nIcon, N8nIconButton, N8nLoading } from '@n8n/design-system';
+import {
+	N8nHoverCard,
+	N8nIcon,
+	N8nIconButton,
+	N8nLoading,
+	N8nTabsList,
+	N8nTabsTrigger,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
 	ContextMenuContent,
@@ -7,17 +14,16 @@ import {
 	ContextMenuPortal,
 	ContextMenuRoot,
 	ContextMenuTrigger,
-	TabsList,
-	TabsTrigger,
 } from 'reka-ui';
 import { computed, nextTick, ref, shallowRef, watch } from 'vue';
 import { useTimeoutFn } from '@vueuse/core';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
+import { useSkillsStore } from '@/features/settings/context/skills.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { HOVER_DELAY } from '@/app/constants/durations';
 import { isArtifactTab, type ArtifactTab, type PreviewTab } from '../useCanvasPreview';
-import { appHref, skillsHubHref } from '../canvasPreview.utils';
+import { useArtifactLinks } from '../artifactLinks';
 import { hasTabSummary, useArtifactTabSummaries } from '../useArtifactTabSummaries';
 import { TAB_DRAG_IGNORE_ATTRIBUTE, useTabDragReorder } from '../composables/useTabDragReorder';
 import InstanceAiResourcePicker from './InstanceAiResourcePicker.vue';
@@ -53,7 +59,9 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const clipboard = useClipboard();
+const { artifactHref, artifactUrl, openArtifactInNewTab } = useArtifactLinks();
 const toast = useToast();
+const skillsStore = useSkillsStore();
 const tabListRef = ref<HTMLElement | null>(null);
 const sizeToggleLabel = computed(() =>
 	i18n.baseText(
@@ -114,35 +122,30 @@ watch(
 	},
 );
 
+/** A browser tab has no page of its own, so it has no link. */
 function tabHref(tab: PreviewTab): string | undefined {
-	if (tab.type === 'workflow') return `/workflow/${tab.id}`;
-	if (tab.type === 'data-table') {
-		return tab.projectId ? `/projects/${tab.projectId}/datatables/${tab.id}` : '/home/datatables';
-	}
-	if (tab.type === 'agent') {
-		return tab.projectId ? `/projects/${tab.projectId}/agents/${tab.id}` : '/home/agents';
-	}
-	if (tab.type === 'skill') return skillsHubHref(tab.id);
-	if (tab.type === 'app' && tab.projectId) return appHref(tab.projectId, tab.id);
-	return undefined;
+	return isArtifactTab(tab) ? artifactHref(tab.type, tab.id, tab.projectId) : undefined;
 }
 
 function handleOpenInEditor(tab: PreviewTab) {
-	const href = tabHref(tab);
-	if (!href) return;
-	window.open(href, '_blank', 'noopener');
+	if (!isArtifactTab(tab)) return;
+	openArtifactInNewTab(tab.type, tab.id, tab.projectId);
 }
 
 type HoverTarget = { tabId: string; reference: HTMLElement };
 
 const {
 	getSummary: getArtifactSummary,
-	displayName: artifactTabName,
+	displayName,
 	refresh: refreshSummaries,
 } = useArtifactTabSummaries(() => props.tabs.filter(isArtifactTab));
 // A browser tab has no stored resource behind it, so it has no summary.
 const getSummary = (tab: PreviewTab) => (isArtifactTab(tab) ? getArtifactSummary(tab) : undefined);
-const tabName = (tab: PreviewTab) => (isArtifactTab(tab) ? artifactTabName(tab) : tab.name);
+
+function tabName(tab: PreviewTab): string {
+	if (!isArtifactTab(tab)) return tab.name;
+	return tab.type === 'skill' ? (skillsStore.skillNames.get(tab.id) ?? tab.name) : displayName(tab);
+}
 const hoverTarget = shallowRef<HoverTarget | null>(null);
 // Read the tab from the current props, so a rename shows at once while the card is open.
 const hoveredTab = computed(() => {
@@ -252,9 +255,9 @@ const tabDrag = useTabDragReorder({
 });
 
 async function handleCopyLink(tab: PreviewTab) {
-	const href = tabHref(tab);
-	if (!href) return;
-	const url = new URL(href, window.location.origin).toString();
+	if (!isArtifactTab(tab)) return;
+	const url = artifactUrl(tab.type, tab.id, tab.projectId);
+	if (!url) return;
 	await clipboard.copy(url);
 	toast.showMessage({ title: i18n.baseText('generic.copiedToClipboard'), type: 'success' });
 }
@@ -273,7 +276,7 @@ async function handleCopyLink(tab: PreviewTab) {
 			data-test-id="instance-ai-artifacts-preview-toggle"
 			@click="emit('togglePreview')"
 		/>
-		<TabsList
+		<N8nTabsList
 			ref="tabListRef"
 			:aria-label="i18n.baseText('instanceAi.artifactsPanel.title')"
 			:class="$style.tabList"
@@ -297,7 +300,7 @@ async function handleCopyLink(tab: PreviewTab) {
 						@mousedown.middle.prevent
 						@auxclick.middle.prevent="emit('closeTab', tab.id)"
 					>
-						<TabsTrigger
+						<N8nTabsTrigger
 							:value="tab.id"
 							:data-tab-id="tab.id"
 							:class="$style.tabTrigger"
@@ -321,7 +324,7 @@ async function handleCopyLink(tab: PreviewTab) {
 								:aria-label="i18n.baseText('instanceAi.cloudBrowser.needsYou')"
 								data-test-id="instance-ai-tab-waiting"
 							/>
-						</TabsTrigger>
+						</N8nTabsTrigger>
 						<span :class="$style.closeSlot">
 							<N8nIconButton
 								icon="x"
@@ -348,7 +351,13 @@ async function handleCopyLink(tab: PreviewTab) {
 							@select="handleOpenInEditor(tab)"
 						>
 							<N8nIcon icon="external-link" size="small" />
-							<span>{{ i18n.baseText('instanceAi.previewTabBar.openInEditor') }}</span>
+							<span>{{
+								i18n.baseText(
+									tab.type === 'skill'
+										? 'instanceAi.previewTabBar.openInSkillHub'
+										: 'instanceAi.previewTabBar.openInEditor',
+								)
+							}}</span>
 						</ContextMenuItem>
 						<ContextMenuItem
 							:class="$style.contextMenuItem"
@@ -378,7 +387,7 @@ async function handleCopyLink(tab: PreviewTab) {
 					/>
 				</template>
 			</InstanceAiResourcePicker>
-		</TabsList>
+		</N8nTabsList>
 		<!-- One shared card follows the hovered tab, so each tab does not mount its own. -->
 		<N8nHoverCard
 			:open="!!hoveredTab"

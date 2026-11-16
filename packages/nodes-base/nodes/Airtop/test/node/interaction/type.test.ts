@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import nock from 'nock';
 
 import * as type from '../../../actions/interaction/type.operation';
@@ -53,7 +54,7 @@ describe('Test Airtop, type operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/type',
+			requestPath`/sessions/test-session-123/windows/win-123/type`,
 			{
 				configuration: {},
 				text: 'Hello World',
@@ -95,7 +96,7 @@ describe('Test Airtop, type operation', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/type',
+			requestPath`/sessions/test-session-123/windows/win-123/type`,
 			{
 				configuration: {},
 				text: 'Hello World',
@@ -115,7 +116,7 @@ describe('Test Airtop, type operation', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/type',
+			requestPath`/sessions/test-session-123/windows/win-123/type`,
 			{
 				configuration: {},
 				text: 'Hello World',
@@ -137,7 +138,7 @@ describe('Test Airtop, type operation', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/type',
+			requestPath`/sessions/test-session-123/windows/win-123/type`,
 			{
 				configuration: {
 					waitForNavigationConfig: {
@@ -164,7 +165,7 @@ describe('Test Airtop, type operation', () => {
 
 		expect(transport.apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/sessions/test-session-123/windows/win-123/type',
+			requestPath`/sessions/test-session-123/windows/win-123/type`,
 			{
 				configuration: {
 					visualAnalysis: {

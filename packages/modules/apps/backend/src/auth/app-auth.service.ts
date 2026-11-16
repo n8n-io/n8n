@@ -1,10 +1,11 @@
-import { UrlService } from '@n8n/backend-services';
+import { JwtService, UrlService } from '@n8n/backend-services';
 import { OAuth2FlowProxy } from '@n8n/backend-services/auth';
 import { Service } from '@n8n/di';
 import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
 import { ResourceAdmission } from '@n8n/inbound-auth';
 import type { SecurityContext } from '@n8n/permissions';
 import type { NextFunction, Request, Response } from 'express';
+import { LRUCache } from 'lru-cache';
 import { createHash, randomBytes } from 'node:crypto';
 
 import { appCookieName, appCookieOptions, readCookie } from './app-cookies';
@@ -27,8 +28,18 @@ export type AppAdmission =
 	| { ok: true; app: App; security: SecurityContext }
 	| { ok: false; app: App; reason: 'unauthenticated' | 'insufficient_scope' };
 
+type CachedAdmission = { app: App; security: SecurityContext };
+
+const ADMISSION_CACHE_TTL_MS = 30_000;
+const ADMISSION_CACHE_MAX_ENTRIES = 10_000;
+
 @Service()
 export class AppAuthService {
+	private readonly admitted = new LRUCache<string, CachedAdmission>({
+		max: ADMISSION_CACHE_MAX_ENTRIES,
+		ttl: ADMISSION_CACHE_TTL_MS,
+	});
+
 	constructor(
 		private readonly apps: AppRepository,
 		private readonly hosts: AppHostService,
@@ -36,6 +47,7 @@ export class AppAuthService {
 		private readonly flow: OAuth2FlowProxy,
 		private readonly admission: ResourceAdmission,
 		private readonly urls: UrlService,
+		private readonly jwt: JwtService,
 	) {}
 
 	async requireApp(req: Request, appId?: string): Promise<App> {
@@ -49,15 +61,25 @@ export class AppAuthService {
 
 	/** Resolves the published app of the request host and checks the visitor's session. */
 	async admit(req: Request): Promise<AppAdmission> {
+		const token = readCookie(req, appCookieName(this.hosts.baseUrl, 'session')) ?? '';
+		const cacheKey = `${this.hosts.namespace(req)}:${this.hash(token)}`;
+		const cached = token ? this.admitted.get(cacheKey) : undefined;
+		if (cached) return { ok: true, ...cached };
+
 		const app = await this.requireApp(req);
-		const resource = this.resources.forApp(app);
+		if (!token) return { ok: false, app, reason: 'unauthenticated' };
+
 		const request = { method: req.method, url: this.hosts.callbackUrl(app), ip: req.ip ?? '' };
 		const result = await this.admission.admitBearer(
-			resource,
+			this.resources.forApp(app, { revalidate: false }),
 			request,
-			readCookie(req, appCookieName(this.hosts.baseUrl, 'session')) ?? '',
+			token,
 		);
-		if (result.ok) return { ok: true, app, security: result.context };
+		if (result.ok) {
+			const admitted = { app, security: result.context };
+			this.admitted.set(cacheKey, admitted, { ttl: this.admissionTtl(token) });
+			return { ok: true, ...admitted };
+		}
 		return {
 			ok: false,
 			app,
@@ -182,6 +204,14 @@ export class AppAuthService {
 
 	private flowCookieName(state: string): string {
 		return appCookieName(this.hosts.baseUrl, `flow-${this.hash(state)}`);
+	}
+
+	/** A cache hit skips token verification, so an entry must not outlive the token. */
+	private admissionTtl(token: string): number {
+		const { exp } = this.jwt.decodeUnverified(token) ?? {};
+		return typeof exp === 'number'
+			? Math.max(1, Math.min(ADMISSION_CACHE_TTL_MS, exp * 1000 - Date.now()))
+			: ADMISSION_CACHE_TTL_MS;
 	}
 
 	private hash(value: string): string {

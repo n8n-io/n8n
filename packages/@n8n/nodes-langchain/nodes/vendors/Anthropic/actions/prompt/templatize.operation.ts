@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { requestPath, updateDisplayOptions } from 'n8n-workflow';
 
 import type { Message, TemplatizeResponse } from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
@@ -100,10 +100,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		messages,
 		system: options.system,
 	};
-	const response = (await apiRequest.call(this, 'POST', '/v1/experimental/templatize_prompt', {
-		body,
-		enableAnthropicBetas: { promptTools: true },
-	})) as TemplatizeResponse;
+	const response = (await apiRequest.call(
+		this,
+		'POST',
+		requestPath`/v1/experimental/templatize_prompt`,
+		{
+			body,
+			enableAnthropicBetas: { promptTools: true },
+		},
+	)) as TemplatizeResponse;
 
 	if (simplify) {
 		return [

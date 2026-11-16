@@ -6,21 +6,26 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { decodePathValue, NodeApiError, NodeOperationError, requestUrl } from 'n8n-workflow';
+
+export const toPathValue = (version: number, value: string) =>
+	version < 1.1 ? decodePathValue(value) : value;
 
 async function getMetadata(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	oauthTokenData: IDataObject,
 ) {
 	const credentials = await this.getCredentials('mailchimpOAuth2Api');
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions> = {
 		headers: {
 			Accept: 'application/json',
 			Authorization: `OAuth ${oauthTokenData.access_token}`,
 		},
 		method: 'GET',
-		url: credentials.metadataUrl as string,
+		url: requestUrl`${credentials.metadataUrl}`,
 		json: true,
 	};
 	return await this.helpers.request(options);
@@ -28,7 +33,7 @@ async function getMetadata(
 
 export async function mailchimpApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	method: IHttpRequestMethods,
 
 	body: any = {},
@@ -37,16 +42,13 @@ export async function mailchimpApiRequest(
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
-	const host = 'api.mailchimp.com/3.0';
-
-	const options: IRequestOptions = {
+	const options: Omit<IRequestOptions, 'url' | 'uri' | 'baseURL'> = {
 		headers: {
 			Accept: 'application/json',
 		},
 		method,
 		qs,
 		body,
-		url: '',
 		json: true,
 	};
 
@@ -61,8 +63,10 @@ export async function mailchimpApiRequest(
 				throw new NodeOperationError(this.getNode(), 'The API key is not valid!');
 			}
 			const datacenter = (credentials.apiKey as string).split('-').pop();
-			options.url = `https://${datacenter}.${host}${endpoint}`;
-			return await this.helpers.requestWithAuthentication.call(this, 'mailchimpApi', options);
+			return await this.helpers.requestWithAuthentication.call(this, 'mailchimpApi', {
+				...options,
+				url: requestUrl`https://${datacenter}.api.mailchimp.com/3.0${endpoint}`,
+			});
 		} else {
 			const credentials = await this.getCredentials('mailchimpOAuth2Api');
 
@@ -71,10 +75,12 @@ export async function mailchimpApiRequest(
 				credentials.oauthTokenData as IDataObject,
 			);
 
-			options.url = `${api_endpoint}/3.0${endpoint}`;
-			return await this.helpers.requestOAuth2.call(this, 'mailchimpOAuth2Api', options, {
-				tokenType: 'Bearer',
-			});
+			return await this.helpers.requestOAuth2.call(
+				this,
+				'mailchimpOAuth2Api',
+				{ ...options, url: requestUrl`${api_endpoint}/3.0${endpoint}` },
+				{ tokenType: 'Bearer' },
+			);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -83,7 +89,7 @@ export async function mailchimpApiRequest(
 
 export async function mailchimpApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	endpoint: string,
+	endpoint: RequestPath,
 	method: IHttpRequestMethods,
 	propertyName: string,
 

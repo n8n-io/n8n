@@ -47,7 +47,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'instanceAi.tools.data_tables.add-column.imperativeWithResource': 'add a column to',
 				'instanceAi.tools.workflow_builder_nodes.execute.imperativeWithResource': 'execute the',
 			};
-			if (key === 'agents.chat.approval.description') {
+			if (key === 'ai.shared.toolApproval.description') {
 				return `The agent wants to run the ${opts?.interpolate?.toolName ?? ''} tool.`;
 			}
 			const value = translations[key] ?? key;

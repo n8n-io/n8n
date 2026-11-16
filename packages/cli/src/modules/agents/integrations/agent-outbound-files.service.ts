@@ -1,13 +1,14 @@
 import { Service } from '@n8n/di';
 import type { Attachment, PostableCard, PostableMarkdown, PostableRaw, Thread } from 'chat';
-import { OperationalError } from '@n8n/errors';
+import { OperationalError, UserError } from '@n8n/errors';
+import { posix } from 'node:path';
 
-import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import { AgentChatAttachmentService, AgentFileLimitError } from '../agent-chat-attachment.service';
+import { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import {
 	type AgentChatIntegration,
 	ChatIntegrationRegistry,
-	MAX_CHANNEL_SEND_FILE_BYTES,
 	MAX_FILE_MESSAGES_PER_SEND,
 } from './agent-chat-integration';
 import { splitMessage } from './message-split';
@@ -48,14 +49,21 @@ export async function postWithFileGroups<T>(
 	post: (message: OutboundPostable) => Promise<T>,
 	message: OutboundPostable,
 	groups: OutboundFileGroup[],
-	limits: { maxCaptionLength?: number; maxMessageLength?: number } = {},
+	limits: {
+		maxCaptionLength?: number;
+		maxMessageLength?: number;
+		/** The platform escapes Markdown as Telegram MarkdownV2 before it cuts the caption. */
+		escapesMarkdownV2?: boolean;
+	} = {},
 ): Promise<T> {
 	const [loadFirstGroup, ...otherGroups] = groups;
 	if (!loadFirstGroup) return await post(message);
 	const text = postableText(message);
-	const { maxCaptionLength, maxMessageLength } = limits;
+	const { maxCaptionLength, maxMessageLength, escapesMarkdownV2 } = limits;
 	const captionLimit = Math.min(maxCaptionLength ?? Infinity, maxMessageLength ?? Infinity);
-	if (text !== undefined && text.length > captionLimit) {
+	const length =
+		text !== undefined && escapesMarkdownV2 ? markdownV2Length(message, text) : text?.length;
+	if (text !== undefined && length !== undefined && length > captionLimit) {
 		const parts = maxMessageLength === undefined ? [text] : splitMessage(text, maxMessageLength);
 		let first: T | undefined;
 		for (const part of parts) {
@@ -72,6 +80,19 @@ export async function postWithFileGroups<T>(
 	);
 	for (const loadGroup of otherGroups) await post({ raw: '', ...(await loadGroup()) });
 	return first;
+}
+
+// Telegram MarkdownV2 escapes each of these characters with a backslash.
+const MARKDOWN_V2_SPECIAL_CHARS = /[_*[\]()~`>#+\-=|{}.!\\]/g;
+
+/**
+ * The Telegram adapter cuts a caption after it renders Markdown, and escaping
+ * makes the text longer. Count each special character twice, so a caption that
+ * can grow past the limit is posted as its own message and nothing is cut.
+ */
+function markdownV2Length(message: OutboundPostable, text: string): number {
+	if (typeof message === 'string' || !('markdown' in message)) return text.length;
+	return text.length + (text.match(MARKDOWN_V2_SPECIAL_CHARS)?.length ?? 0);
 }
 
 function postableText(message: OutboundPostable): string | undefined {
@@ -103,6 +124,7 @@ export class AgentOutboundFiles {
 	constructor(
 		private readonly attachmentService: AgentChatAttachmentService,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
+		private readonly sandboxFiles: AgentSandboxFilesService,
 	) {}
 
 	/**
@@ -130,9 +152,21 @@ export class AgentOutboundFiles {
 			);
 		}
 
-		const maxFileBytes = Math.min(limits.maxFileBytes, MAX_CHANNEL_SEND_FILE_BYTES);
+		const maxFileBytes = limits.maxFileBytes;
+		let resolvedIds: string[];
+		try {
+			resolvedIds = await this.sandboxFiles.resolveFileRefs(fileIds, scope);
+		} catch (error) {
+			if (!(error instanceof UserError)) throw error;
+			// The file exists but is too large to store, so the model must not look for it again.
+			const code =
+				error instanceof AgentFileLimitError
+					? INTEGRATION_ERROR_CODES.FILE_UPLOAD_LIMIT_EXCEEDED
+					: INTEGRATION_ERROR_CODES.FILE_NOT_FOUND;
+			return integrationError(code, error.message);
+		}
 		const attachments: AgentChatAttachment[] = [];
-		for (const fileId of fileIds) {
+		for (const fileId of resolvedIds) {
 			const attachment = await this.attachmentService.getReadable(fileId, scope);
 			if (!attachment) {
 				return integrationError(
@@ -174,18 +208,19 @@ export class AgentOutboundFiles {
 	groups(platform: string, attachments: AgentChatAttachment[]): OutboundFileGroup[] {
 		const integration = this.integrationRegistry.get(platform);
 		return this.group(platform, attachments).map((group) => async () => {
-			// Each file is loaded into memory. MAX_CHANNEL_SEND_FILE_BYTES caps the size.
+			// Each file is loaded into memory. The storage caps limit its size.
 			const loaded = await Promise.all(
 				group.map(async (attachment) => ({
 					attachment,
 					data: await this.attachmentService.getBuffer(attachment),
 				})),
 			);
+			// A sandbox file name is a path in outputs/. The platform gets the base name.
 			if (!integration?.sendFilesAsAttachments) {
 				return {
 					files: loaded.map(({ attachment, data }) => ({
 						data,
-						filename: attachment.fileName,
+						filename: posix.basename(attachment.fileName),
 						mimeType: attachment.mimeType,
 					})),
 				};
@@ -195,7 +230,7 @@ export class AgentOutboundFiles {
 				attachments: loaded.map(({ attachment, data }) => ({
 					type: outboundAttachmentType(attachment, maxImageBytes),
 					data,
-					name: attachment.fileName,
+					name: posix.basename(attachment.fileName),
 					mimeType: attachment.mimeType,
 				})),
 			};
@@ -237,6 +272,7 @@ export function captionLimits(integration: AgentChatIntegration | undefined) {
 	return {
 		maxCaptionLength: integration?.fileUploadLimits?.maxCaptionLength,
 		maxMessageLength: integration?.maxMessageLength,
+		escapesMarkdownV2: integration?.type === 'telegram',
 	};
 }
 

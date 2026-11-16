@@ -344,6 +344,7 @@ export function isAuthProviderType(value: string): value is AuthProviderType {
 
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
 	workflowCount?: number;
+	agentCount?: number;
 	subFolderCount?: number;
 };
 

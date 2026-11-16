@@ -116,6 +116,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 					action: params.action,
 					input: params.input,
 					currentMessageContext: params.currentMessageContext,
+					files,
 				});
 				return result ?? unsupportedAction();
 			} catch (error) {
@@ -402,7 +403,9 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		params: { awaitResponse: boolean; runId?: string; toolCallId?: string },
 	) {
 		const cardPayload = message.card;
-		if (!cardPayload) return message.text ?? '';
+		// A raw string renders as plain text. `{ markdown }` lets the adapter
+		// convert the text to the platform format, like streamed replies do.
+		if (!cardPayload) return { markdown: message.text ?? '' };
 
 		if (params.awaitResponse && (!params.runId || !params.toolCallId)) {
 			throw new Error('Interactive integration actions require runId and toolCallId.');

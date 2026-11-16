@@ -21,7 +21,8 @@ import { createOwner } from '../shared/db/users';
 
 describe('Agent conversations on project deletion', () => {
 	beforeAll(async () => {
-		await testModules.loadModules(['agents']);
+		// The knowledge module owns the file entity that the cleanup reads.
+		await testModules.loadModules(['knowledge', 'agents']);
 		await testDb.init();
 	});
 
@@ -243,7 +244,7 @@ describe('Agent conversations on project deletion', () => {
 			name: 'Replacement project',
 		});
 		await expect(
-			Container.get(AgentProjectDeletionRepository).assertWritable(project.id),
+			Container.get(AgentProjectDeletionRepository).withWritableProject(project.id, async () => {}),
 		).resolves.toBeUndefined();
 		expect(await executions.findOneBy({ id: deletedLog.executionId })).toBeNull();
 		expect(await logs.read(deletedLog, 'fs')).toBeNull();

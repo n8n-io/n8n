@@ -16,17 +16,24 @@ import type {
 	IWorkflowBase,
 } from 'n8n-workflow';
 import {
-	UnexpectedError,
 	ExpressionError,
 	NodeConnectionTypes,
 	CONSOLE_OUTPUT_REDACTED_MESSAGE,
+	AI_EVENT_REDACTED_MESSAGE,
 	WAIT_INDEFINITELY,
 	WAIT_FOR_SUB_EXECUTION,
 	MAX_IN_PROCESS_WAIT_MS,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
+import { InstanceSettings } from '@/instance-settings';
+import {
+	parseHitlCallbackReference,
+	verifyHitlCallbackReference,
+} from '@/utils/hitl-callback-reference';
 
 import { describeCommonTests } from './shared-tests';
 import { ExecuteContext } from '../execute-context';
@@ -899,6 +906,31 @@ describe('ExecuteContext', () => {
 			expect(context.isConsoleOutputRedacted()).toBe(true);
 		});
 
+		describe('AI event payloads', () => {
+			it('replaces the payload with the marker when the channel redacts', () => {
+				const context = makeContext('trigger', runDataWith(true, false));
+				context.logAiEvent('ai-llm-generated-output', '{"messages":["secret prompt"]}');
+
+				expect(additionalData.logAiEvent).toHaveBeenCalledWith(
+					'ai-llm-generated-output',
+					expect.objectContaining({ nodeName: node.name, msg: AI_EVENT_REDACTED_MESSAGE }),
+				);
+				expect(JSON.stringify(vi.mocked(additionalData.logAiEvent).mock.calls)).not.toContain(
+					'secret prompt',
+				);
+			});
+
+			it('passes the payload through unchanged when no channel redacts', () => {
+				const context = makeContext('trigger', runDataWith(false, false));
+				context.logAiEvent('ai-llm-generated-output', '{"messages":["hello"]}');
+
+				expect(additionalData.logAiEvent).toHaveBeenCalledWith(
+					'ai-llm-generated-output',
+					expect.objectContaining({ msg: '{"messages":["hello"]}' }),
+				);
+			});
+		});
+
 		describe('production stdout gating', () => {
 			let logSpy: ReturnType<typeof vi.spyOn>;
 
@@ -1061,6 +1093,53 @@ describe('ExecuteContext', () => {
 
 			expect(vi.getTimerCount()).toBe(0);
 			expect(waitRunExecutionData.waitTill).toBeUndefined();
+		});
+	});
+
+	describe('getApprovalCallbackReference', () => {
+		const instanceSettings = Container.get(InstanceSettings);
+
+		const approvalContext = () =>
+			new ExecuteContext(
+				workflow,
+				node,
+				mock<IWorkflowExecuteAdditionalData>({ executionId: '123' }),
+				mode,
+				runExecutionData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[],
+			);
+
+		it.each([
+			['approve', 'a'],
+			['decline', 'd'],
+		] as const)(
+			'names the execution and the decision to %s, signed with the instance secret',
+			(decision, encoded) => {
+				const parsed = parseHitlCallbackReference(
+					approvalContext().getApprovalCallbackReference(decision),
+				);
+
+				expect(parsed).toMatchObject({ executionId: '123', decision: encoded });
+				expect(verifyHitlCallbackReference(parsed!, instanceSettings.hmacSignatureSecret)).toBe(
+					true,
+				);
+			},
+		);
+
+		it('rejects approval callbacks in the engine process', () => {
+			const previousInstanceType = instanceSettings.instanceType;
+			Object.assign(instanceSettings, { instanceType: 'engine' });
+			try {
+				expect(() => approvalContext().getApprovalCallbackReference('approve')).toThrow(
+					'Engine v2 does not support approval callbacks yet',
+				);
+			} finally {
+				Object.assign(instanceSettings, { instanceType: previousInstanceType });
+			}
 		});
 	});
 });
