@@ -5,6 +5,7 @@ import type {
 	LanguageModelV4StreamPart,
 	LanguageModelV4StreamResult,
 } from '@ai-sdk/provider';
+import { raceAbort } from '@n8n/utils/race-abort';
 
 import { AiSdkStreamConverter } from './ai-sdk-stream';
 import {
@@ -69,19 +70,12 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 		const abortSignal = options.abortSignal
 			? AbortSignal.any([options.abortSignal, cancellation.signal])
 			: cancellation.signal;
-		// A chat model can ignore the signal. Each read races it, so the stream
-		// still ends when the call is aborted.
-		const aborted = new Promise<never>((_resolve, reject) => {
-			const fail = () => {
-				const { reason } = abortSignal;
-				reject(
-					reason instanceof Error ? reason : new Error('The call was aborted', { cause: reason }),
-				);
-			};
-			if (abortSignal.aborted) fail();
-			else abortSignal.addEventListener('abort', fail, { once: true });
-		});
-		void aborted.catch(() => undefined);
+		const abortError = () => {
+			const { reason } = abortSignal;
+			return reason instanceof Error
+				? reason
+				: new Error('The call was aborted', { cause: reason });
+		};
 		const iterator = model.stream(messages, { ...config, abortSignal })[Symbol.asyncIterator]();
 		const modelId = this.modelId;
 		const converter = new AiSdkStreamConverter(this.provider, modelId);
@@ -99,7 +93,9 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 					let parts: LanguageModelV4StreamPart[];
 					reading = true;
 					try {
-						const next = await Promise.race([iterator.next(), aborted]);
+						// A chat model can ignore the signal. Each read races it, so the
+						// stream still ends when the call is aborted.
+						const next = await raceAbort(iterator.next(), abortSignal, abortError);
 						// After a cancel the stream is closed, so a late chunk is dropped.
 						if (cancellation.signal.aborted) return;
 						if (next.done) {
