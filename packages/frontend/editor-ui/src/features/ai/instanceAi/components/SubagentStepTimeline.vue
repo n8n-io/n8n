@@ -14,8 +14,10 @@ import type {
 } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { useNow } from '@vueuse/core';
 import { computed } from 'vue';
 import type { AgentTestTarget } from '@/features/agents/utils/agentTestUrl';
+import { useActiveToolLabel } from '../composables/useRunActivity';
 import { HIDDEN_TOOLS, isStreamingTimelineEntry } from '../agentTimeline.utils';
 import { getToolIcon, useToolLabel } from '../toolLabels';
 import AiReasoningBlock from '../../shared/components/AiReasoningBlock.vue';
@@ -38,6 +40,9 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
+const activeToolLabel = useActiveToolLabel();
+// A running source write rotates its label, so the label reads the clock.
+const now = useNow({ interval: 1000 });
 
 const CODE_BLOCK_PATTERN = /```/;
 
@@ -102,7 +107,9 @@ const steps = computed((): TimelineStep[] => {
 			result.push({
 				type: 'tool-call',
 				icon: tc.isLoading ? 'spinner' : getToolIcon(tc.toolName),
-				label: getToolLabel(tc.toolName, tc.args),
+				label: tc.isLoading
+					? activeToolLabel(tc, props.agentNode, now.value.getTime())
+					: getToolLabel(tc.toolName, tc.args),
 				isLoading: tc.isLoading,
 				toggleLabel: getToggleLabel(tc),
 				hideLabel: getHideLabel(tc),
