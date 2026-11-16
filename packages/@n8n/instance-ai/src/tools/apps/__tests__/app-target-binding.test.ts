@@ -7,7 +7,7 @@ import {
 	parseAppTargets,
 	parsePendingAppTarget,
 	withAppTarget,
-	withLaunchAppTarget,
+	withAttachedAppTarget,
 } from '../app-target-binding';
 
 const APP_A = { appId: '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f70', projectId: 'project-1' };
@@ -29,31 +29,38 @@ describe('withAppTarget', () => {
 	});
 });
 
-describe('withLaunchAppTarget', () => {
+describe('withAttachedAppTarget', () => {
+	const subject = (app: typeof APP_A, pending?: true) => ({
+		type: 'app' as const,
+		id: app.appId,
+		projectId: app.projectId,
+		...(pending ? { pending } : {}),
+	});
+
 	it('binds a saved app and keeps other metadata', () => {
-		expect(withLaunchAppTarget({ other: true }, APP_A)).toEqual({
+		expect(withAttachedAppTarget({ other: true }, { ...subject(APP_A), name: 'Portal' })).toEqual({
 			other: true,
-			[INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [APP_A],
+			[INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [{ ...APP_A, name: 'Portal' }],
 		});
 	});
 
-	it('marks a pending app without the pending flag in the stored target', () => {
-		const metadata = withLaunchAppTarget({}, { ...APP_A, pending: true });
-
-		expect(metadata).toEqual({ [INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: APP_A });
+	it('marks a pending app, so the first build creates it under its id', () => {
+		expect(withAttachedAppTarget({}, subject(APP_A, true))).toEqual({
+			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: APP_A,
+		});
 	});
 
 	it('changes nothing when the thread already has the app', () => {
 		const metadata = withAppTarget({}, APP_A);
 
-		expect(withLaunchAppTarget(metadata, APP_A)).toBeUndefined();
-		expect(withLaunchAppTarget(metadata, { ...APP_A, pending: true })).toBeUndefined();
+		expect(withAttachedAppTarget(metadata, subject(APP_A))).toBeUndefined();
+		expect(withAttachedAppTarget(metadata, subject(APP_A, true))).toBeUndefined();
 	});
 
 	it('keeps an earlier pending app', () => {
 		const metadata = { [INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: APP_A };
 
-		expect(withLaunchAppTarget(metadata, { ...APP_B, pending: true })).toBeUndefined();
+		expect(withAttachedAppTarget(metadata, subject(APP_B, true))).toBeUndefined();
 	});
 });
 

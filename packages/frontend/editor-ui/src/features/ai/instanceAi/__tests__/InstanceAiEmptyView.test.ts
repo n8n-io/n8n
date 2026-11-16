@@ -1505,7 +1505,7 @@ describe('InstanceAiEmptyView', () => {
 				'n8n-assistant-agent-launch:thread-placeholder',
 				JSON.stringify({
 					projectId: 'project-1',
-					appTarget: { appId, projectId: 'project-1', pending: true },
+					subject: { type: 'app', id: appId, projectId: 'project-1', pending: true },
 				}),
 			);
 			expect(telemetryTrack).toHaveBeenCalledWith(

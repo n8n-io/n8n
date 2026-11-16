@@ -213,8 +213,8 @@ function clientContext(): Record<string, unknown> {
 		browserUseAvailable: settingsStore.isBrowserUseAvailable,
 		...(pendingReferences.length > 0 ? { attachments: pendingReferences } : {}),
 		...(pendingHandoffContext ? { context: pendingHandoffContext } : {}),
-		// The server binds the app on the first turn. Until then, every send carries it.
-		...(launch?.appTarget && isNewSession.value ? { appTarget: launch.appTarget } : {}),
+		// The server binds the subject on the first turn. Until then, every send carries it.
+		...(launch?.subject && isNewSession.value ? { subject: launch.subject } : {}),
 		...threadArtifactsContext(),
 	};
 }
@@ -339,12 +339,11 @@ const appTargets = computed(() => {
 	const targets = getAppTargetsFromThreadMetadata(
 		threadsStore.threadsById.get(props.threadId)?.metadata,
 	);
-	const launched = launch?.appTarget;
-	if (!launched || launched.pending || targets.some(({ appId }) => appId === launched.appId)) {
-		return targets;
-	}
-	const { pending: _pending, ...target } = launched;
-	return [...targets, target];
+	const subject = launch?.subject;
+	if (subject?.type !== 'app' || subject.pending) return targets;
+	if (targets.some(({ appId }) => appId === subject.id)) return targets;
+	const { id: appId, projectId, name } = subject;
+	return [...targets, { appId, projectId, ...(name ? { name } : {}) }];
 });
 // An app page opens its chat with `?appId=`. Only an app of this thread opens.
 const requestedAppId = computed(() => {

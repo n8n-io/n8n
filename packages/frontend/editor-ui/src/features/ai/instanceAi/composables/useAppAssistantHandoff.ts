@@ -1,6 +1,6 @@
 import { useRouter } from 'vue-router';
-import { v4 as uuidv4 } from 'uuid';
 
+import type { InstanceAiThreadSubject } from '@n8n/api-types';
 import type { AppAssistantHandoff } from '@n8n/frontend-module-sdk';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -19,13 +19,10 @@ import {
 import { useInstanceAiStore } from '../instanceAi.store';
 import { fetchThreadHistory } from '../instanceAi.memory.api';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import {
-	ASSISTANT_AGENT_ID,
-	stashAssistantAgentLaunch,
-} from '../assistantAgent/assistantAgentThreads';
+import { ASSISTANT_AGENT_ID } from '../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
 import { useInstanceAiReady } from './useInstanceAiAvailability';
-import { provisionSubjectThread } from './useInstanceAiHandoff';
+import { provisionLaunchedSubjectThread } from './useInstanceAiHandoff';
 import { threadTargetsSubject, type InstanceAiEmbedSubject } from '../embed/instanceAiEmbed.types';
 
 const THREAD_PAGE_SIZE = 100;
@@ -97,30 +94,6 @@ export function useAppAssistantHandoff(): AppAssistantHandoff {
 		return existingThreadId;
 	}
 
-	/**
-	 * A new Assistant agent thread for the app. The server knows the thread only
-	 * after its first message, which binds the app.
-	 */
-	function launchAssistantAgentThread(input: {
-		appId: string;
-		projectId: string;
-		appName?: string;
-	}): string {
-		const threadId = uuidv4();
-		stashAssistantAgentLaunch(threadId, {
-			projectId: input.projectId,
-			source: 'app_builder_page',
-			origin: 'internal',
-			sourceContext: { appId: input.appId },
-			appTarget: {
-				appId: input.appId,
-				projectId: input.projectId,
-				...(input.appName ? { name: input.appName } : {}),
-			},
-		});
-		return threadId;
-	}
-
 	async function openApp(input: {
 		appId: string;
 		projectId: string;
@@ -128,7 +101,7 @@ export function useAppAssistantHandoff(): AppAssistantHandoff {
 	}): Promise<boolean> {
 		if (!available.value) return false;
 
-		const subject: InstanceAiEmbedSubject = {
+		const subject: InstanceAiThreadSubject = {
 			type: 'app',
 			id: input.appId,
 			projectId: input.projectId,
@@ -148,13 +121,11 @@ export function useAppAssistantHandoff(): AppAssistantHandoff {
 					: undefined) ?? (await findAssistantThread(subject, assertOriginRouteActive));
 			const threadId =
 				existingThreadId ??
-				(useAssistantAgent
-					? launchAssistantAgentThread(input)
-					: await provisionSubjectThread(subject, {
-							source: 'app_builder_page',
-							origin: 'internal',
-							sourceContext: { appId: input.appId },
-						}));
+				(await provisionLaunchedSubjectThread(subject, {
+					source: 'app_builder_page',
+					origin: 'internal',
+					sourceContext: { appId: input.appId },
+				}));
 			assertOriginRouteActive();
 			await router.replace({
 				name: INSTANCE_AI_THREAD_VIEW,

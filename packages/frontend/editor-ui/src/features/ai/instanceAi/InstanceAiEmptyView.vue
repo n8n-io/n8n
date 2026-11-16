@@ -12,6 +12,7 @@ import type {
 	InstanceAiAttachment,
 	InstanceAiFileAttachment,
 	InstanceAiThreadSource,
+	InstanceAiThreadSubject,
 } from '@n8n/api-types';
 import { acceptedMimeTypesFromCapabilities } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -158,6 +159,11 @@ const pendingAppId = computed(() => {
 	return typeof value === 'string' && value.length > 0 ? value : undefined;
 });
 const isCreatingApp = computed(() => pendingAppId.value !== undefined);
+/** The new app of the Apps page. The first build creates it under the id that the page minted. */
+function pendingAppSubject(projectId: string): InstanceAiThreadSubject | undefined {
+	if (!pendingAppId.value) return undefined;
+	return { type: 'app', id: pendingAppId.value, projectId, pending: true };
+}
 function resolveInitialProjectId(): string | undefined {
 	const queryProjectId = route.query[INSTANCE_AI_PROJECT_ID_QUERY];
 	if (typeof queryProjectId === 'string' && queryProjectId.length > 0) {
@@ -835,16 +841,9 @@ async function handleSubmit(
 	// follow-up `postMessage` would 404.
 	try {
 		const launch = { source: resolveLaunchSource(), origin: 'internal' as const };
-		if (pendingAppId.value) {
-			threadId = await provisionSubjectThread(
-				{
-					type: 'app',
-					id: pendingAppId.value,
-					projectId: selectedProject.value,
-					pending: true,
-				},
-				launch,
-			);
+		const subject = pendingAppSubject(selectedProject.value);
+		if (subject) {
+			threadId = await provisionSubjectThread(subject, launch);
 		} else {
 			threadId = uuidv4();
 			await store.syncThread(threadId, selectedProject.value, launch);
@@ -958,14 +957,12 @@ async function startAssistantAgentThread(
 		mentionCounts,
 	};
 	stashPendingAssistantAgentMessage(pendingMessage);
+	const subject = pendingAppSubject(projectId);
 	stashAssistantAgentLaunch(pendingMessage.threadId, {
 		projectId,
 		source: resolveLaunchSource(),
 		origin: 'internal',
-		// The first build creates the app under the id that the Apps page minted.
-		...(pendingAppId.value
-			? { appTarget: { appId: pendingAppId.value, projectId, pending: true } }
-			: {}),
+		...(subject ? { subject } : {}),
 	});
 	const failure = await router.push({
 		name: INSTANCE_AI_THREAD_VIEW,

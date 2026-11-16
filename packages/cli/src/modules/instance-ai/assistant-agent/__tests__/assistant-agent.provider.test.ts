@@ -632,15 +632,15 @@ describe('AssistantAgentProvider', () => {
 			});
 		});
 
-		describe('launched app', () => {
+		describe('thread subject', () => {
 			const APP_ID = '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f70';
 
 			function appTurn(
-				appTarget: Record<string, unknown>,
+				app: Record<string, unknown>,
 				metadata: Record<string, unknown> | undefined = undefined,
 			) {
 				return turnWithMetadata(
-					{ appTarget: { appId: APP_ID, projectId: 'project-1', ...appTarget } as never },
+					{ subject: { type: 'app', id: APP_ID, projectId: 'project-1', ...app } as never },
 					metadata,
 				);
 			}
@@ -673,6 +673,19 @@ describe('AssistantAgentProvider', () => {
 				expect(turn.memory.saveThread).not.toHaveBeenCalled();
 			});
 
+			it('binds an app next to the agent of the thread', async () => {
+				const { provider } = setup();
+				const agentTarget = { agentId: 'agent-1', projectId: 'project-1' };
+				const { turn, written } = appTurn({}, { instanceAiAgentBuilderTarget: agentTarget });
+
+				await provider.prepareTurn(turn);
+
+				expect(written.metadata).toEqual({
+					instanceAiAgentBuilderTarget: agentTarget,
+					instanceAiAppTargets: [{ appId: APP_ID, projectId: 'project-1' }],
+				});
+			});
+
 			it.each([
 				[
 					'the thread already has the app',
@@ -680,9 +693,9 @@ describe('AssistantAgentProvider', () => {
 					{ instanceAiAppTargets: [{ appId: APP_ID, projectId: 'project-1' }] },
 				],
 				['the app is in another project', { projectId: 'project-2' }, undefined],
-			])('keeps the thread metadata when %s', async (_case, appTarget, metadata) => {
+			])('keeps the thread metadata when %s', async (_case, app, metadata) => {
 				const { provider } = setup();
-				const { turn, written } = appTurn(appTarget, metadata);
+				const { turn, written } = appTurn(app, metadata);
 
 				await provider.prepareTurn(turn);
 

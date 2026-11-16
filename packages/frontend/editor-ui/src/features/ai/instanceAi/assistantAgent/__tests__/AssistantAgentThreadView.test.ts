@@ -827,7 +827,7 @@ describe('AssistantAgentThreadView', () => {
 				projectId: 'project-1',
 				source: 'app_builder_page',
 				origin: 'internal',
-				appTarget: { appId: APP_ID, projectId: 'project-1', name: 'Portal' },
+				subject: { type: 'app', id: APP_ID, projectId: 'project-1', name: 'Portal' },
 			});
 
 			const { getByTestId } = renderView({
@@ -840,17 +840,17 @@ describe('AssistantAgentThreadView', () => {
 				'project-id': 'project-1',
 				'app-id': APP_ID,
 			});
-			const appTarget = { appId: APP_ID, projectId: 'project-1', name: 'Portal' };
-			expect(clientContext()).toMatchObject({ appTarget });
+			const subject = { type: 'app', id: APP_ID, projectId: 'project-1', name: 'Portal' };
+			expect(clientContext()).toMatchObject({ subject });
 
 			// A refused send keeps the app for the retry.
 			const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
 			onMessageAccepted({ clientContext: clientContext() });
-			expect(clientContext()).toMatchObject({ appTarget });
+			expect(clientContext()).toMatchObject({ subject });
 
 			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
 			onSessionCreated();
-			expect(clientContext()).not.toHaveProperty('appTarget');
+			expect(clientContext()).not.toHaveProperty('subject');
 		});
 
 		it('sends a pending app without opening a preview', async () => {
@@ -858,7 +858,7 @@ describe('AssistantAgentThreadView', () => {
 				projectId: 'project-1',
 				source: 'app_builder_page',
 				origin: 'internal',
-				appTarget: { appId: APP_ID, projectId: 'project-1', pending: true },
+				subject: { type: 'app', id: APP_ID, projectId: 'project-1', pending: true },
 			});
 
 			renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
@@ -866,7 +866,7 @@ describe('AssistantAgentThreadView', () => {
 
 			expect(appPreviewProps.current).toBeUndefined();
 			expect(clientContext()).toMatchObject({
-				appTarget: { appId: APP_ID, projectId: 'project-1', pending: true },
+				subject: { type: 'app', id: APP_ID, projectId: 'project-1', pending: true },
 			});
 		});
 
@@ -891,7 +891,7 @@ describe('AssistantAgentThreadView', () => {
 			await flushPromises();
 
 			expect(appPreviewProps.current).toMatchObject({ 'app-id': OTHER_APP_ID });
-			expect(clientContext()).not.toHaveProperty('appTarget');
+			expect(clientContext()).not.toHaveProperty('subject');
 		});
 
 		it('ignores an app in the URL that the thread does not have', async () => {

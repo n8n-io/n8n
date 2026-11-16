@@ -3,7 +3,7 @@ import {
 	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 	instanceAiAppTargetSchema,
 	type InstanceAiAppTarget,
-	type InstanceAiLaunchAppTarget,
+	type InstanceAiAppSubject,
 } from '@n8n/api-types';
 
 import { getThread, patchThread } from '../../storage/thread-patch';
@@ -50,16 +50,17 @@ export function withAppTarget(
 }
 
 /**
- * The thread metadata for the app that a new thread opens on, like the editor
+ * The thread metadata that binds an app that a page handed off, like the editor
  * writes before it opens a thread on the current runtime. A pending app gets the
  * pending marker, so the first build creates the app under its id. Returns
  * `undefined` when the metadata already has the app or another pending app.
  */
-export function withLaunchAppTarget(
+export function withAttachedAppTarget(
 	metadata: Record<string, unknown>,
-	{ pending, ...target }: InstanceAiLaunchAppTarget,
+	{ id: appId, projectId, name, pending }: InstanceAiAppSubject,
 ): Record<string, unknown> | undefined {
-	if (parseAppTargets(metadata).some(({ appId }) => appId === target.appId)) return undefined;
+	if (parseAppTargets(metadata).some((target) => target.appId === appId)) return undefined;
+	const target = { appId, projectId, ...(name ? { name } : {}) };
 	if (!pending) return withAppTarget(metadata, target);
 	if (parsePendingAppTarget(metadata)) return undefined;
 	return { ...metadata, [INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: target };

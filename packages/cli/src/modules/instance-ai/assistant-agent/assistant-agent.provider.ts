@@ -6,9 +6,9 @@ import {
 	type InstanceAiApprovalMode,
 	type InstanceAiAttachment,
 	type InstanceAiElementAttachment,
-	type InstanceAiLaunchAppTarget,
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
+	type InstanceAiThreadSubject,
 	type InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -22,8 +22,7 @@ import {
 	patchThread,
 	snapshotAgent,
 	tokenUsageToBuilderUsageItems,
-	withAttachedAgentTarget,
-	withLaunchAppTarget,
+	withThreadSubject,
 	type InstanceAiWorkflowService,
 	type ModelConfig,
 } from '@n8n/instance-ai';
@@ -325,8 +324,12 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 
 		let turnInput: AssistantTurnInput | undefined;
 		if (turn.type === 'start') {
-			await this.bindAttachedAgent(turn, request.attachments);
-			await this.bindLaunchedApp(turn, request.appTarget);
+			// The Agent Builder panel attaches its agent instead of sending a subject.
+			const attachedAgent = request.attachments?.find(
+				(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
+			);
+			await this.bindThreadSubject(turn, request.subject);
+			await this.bindThreadSubject(turn, attachedAgent);
 			const buildInput = async () =>
 				await this.turnInput.buildInput(environment, runtime, {
 					user,
@@ -568,35 +571,17 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 	}
 
 	/**
-	 * Binds the agent that the Agent Builder panel attached, like the editor binds
-	 * a thread on the current runtime before its first message. The builder tools
-	 * then edit that agent, and the panel lists the thread under it.
+	 * Binds the resource that the thread starts on, like the editor binds a thread
+	 * on the current runtime before its first message. The tools then work on that
+	 * resource, and its page finds the thread by the binding.
 	 */
-	private async bindAttachedAgent(
+	private async bindThreadSubject(
 		turn: SystemAgentStartTurn<AssistantSandboxLease>,
-		attachments: InstanceAiAttachment[] | undefined,
+		subject: InstanceAiThreadSubject | undefined,
 	): Promise<void> {
-		const attached = attachments?.find(
-			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
-		);
-		if (attached?.projectId !== turn.thread.projectId) return;
-		await this.updateThreadMetadata(turn, (metadata) =>
-			withAttachedAgentTarget(metadata, attached),
-		);
-	}
-
-	/**
-	 * Binds the app that a new thread opens on, like the editor binds a thread on
-	 * the current runtime before its first message. The app tools then build or
-	 * edit that app, and the app page finds the thread by its app target.
-	 */
-	private async bindLaunchedApp(
-		turn: SystemAgentStartTurn<AssistantSandboxLease>,
-		appTarget: InstanceAiLaunchAppTarget | undefined,
-	): Promise<void> {
-		// The app tools act only in the project of the thread.
-		if (appTarget?.projectId !== turn.thread.projectId) return;
-		await this.updateThreadMetadata(turn, (metadata) => withLaunchAppTarget(metadata, appTarget));
+		// The tools act only in the project of the thread.
+		if (subject?.projectId !== turn.thread.projectId) return;
+		await this.updateThreadMetadata(turn, (metadata) => withThreadSubject(metadata, subject));
 	}
 
 	/** Applies `update` to the thread metadata. `update` returns `undefined` to change nothing. */
