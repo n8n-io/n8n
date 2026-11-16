@@ -98,6 +98,8 @@
       "@lezer/common": "^1.2.0",
       "@mistralai/mistralai": "^1.10.0",
       "@n8n/typeorm>@sentry/node": "catalog:",
+      "@opentelemetry/instrumentation-knex": "0.65.0",
+      "@opentelemetry/instrumentation-mongoose": "0.67.0",
       "@types/node": "^20.17.50",
       "chokidar": "4.0.3",
       "expr-eval@2.0.2": "npm:expr-eval-fork@3.0.0",
@@ -116,7 +118,7 @@
       "flatted": "3.4.2",
       "nodemailer": "10.1.4",
       "validator": "13.15.26",
-      "lodash": "4.18.0",
+      "lodash": "4.18.1",
       "body-parser": "2.4.0",
       "@vue/server-renderer": "3.5.42",
       "@vue/shared": "3.5.42",
@@ -201,7 +203,7 @@
       "z-vue-scan": "patches/z-vue-scan.patch",
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch",
-      "lodash@4.18.0": "patches/lodash@4.18.0.patch",
+      "lodash@4.18.1": "patches/lodash@4.18.1.patch",
       "weaviate-client@3.6.2": "patches/weaviate-client@3.6.2.patch",
       "@n8n/typeorm@0.3.20-15": "patches/@n8n__typeorm@0.3.20-15.patch"
     }
