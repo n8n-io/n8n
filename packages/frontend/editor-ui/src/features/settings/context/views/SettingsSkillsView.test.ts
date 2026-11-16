@@ -867,6 +867,9 @@ describe('SettingsSkillsView', () => {
 			mockedStore(usePostHog).getVariant.mockImplementation((flag) =>
 				String(flag) === RECOMMENDED_SKILLS_EXPERIMENT.name ? variant : undefined,
 			);
+			mockedStore(usePostHog).isVariantEnabled.mockImplementation(
+				(flag, expected) => flag === RECOMMENDED_SKILLS_EXPERIMENT.name && expected === variant,
+			);
 		}
 
 		function addedEvents() {

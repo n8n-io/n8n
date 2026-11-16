@@ -1,15 +1,14 @@
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue';
+import { onMounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 
 import {
 	RECOMMENDED_SKILLS,
 	type RecommendedSkill,
-	type RecommendedSkillId,
 	type RecommendedSkillSelection,
 } from '../recommendedSkills';
+import { useRecommendedSkillLoader } from '../useRecommendedSkillLoader';
 import {
 	type RecommendedSkillsEntryPoint,
 	useRecommendedSkillsExperiment,
@@ -22,20 +21,12 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { showError } = useToast();
 const { addedSkillIds, trackCardsShown } = useRecommendedSkillsExperiment();
-const loadingId = ref<RecommendedSkillId>();
+const { loadingId, loadRecommendedSkill } = useRecommendedSkillLoader();
 
 async function selectSkill(recommended: RecommendedSkill) {
-	if (loadingId.value) return;
-	loadingId.value = recommended.id;
-	try {
-		emit('select', { id: recommended.id, skill: await recommended.load() });
-	} catch (error) {
-		showError(error, i18n.baseText('experiments.recommendedSkills.loadError'));
-	} finally {
-		loadingId.value = undefined;
-	}
+	const skill = await loadRecommendedSkill(recommended);
+	if (skill) emit('select', { id: recommended.id, skill });
 }
 
 onMounted(() => {

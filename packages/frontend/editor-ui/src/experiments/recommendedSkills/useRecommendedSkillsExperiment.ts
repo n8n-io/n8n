@@ -10,18 +10,7 @@ import { getExperimentTelemetryPayload } from '@/experiments/utils';
 
 import type { RecommendedSkillId } from './recommendedSkills';
 
-const RECOMMENDED_SKILLS_VARIANTS = [
-	RECOMMENDED_SKILLS_EXPERIMENT.control,
-	RECOMMENDED_SKILLS_EXPERIMENT.variant,
-] as const;
-
-export type RecommendedSkillsVariant = (typeof RECOMMENDED_SKILLS_VARIANTS)[number];
-
 export type RecommendedSkillsEntryPoint = 'empty_state' | 'create_menu' | 'agent_skill_modal';
-
-function isRecommendedSkillsVariant(value: unknown): value is RecommendedSkillsVariant {
-	return RECOMMENDED_SKILLS_VARIANTS.some((variant) => variant === value);
-}
 
 export function useRecommendedSkillsExperiment() {
 	const posthogStore = usePostHog();
@@ -29,20 +18,17 @@ export function useRecommendedSkillsExperiment() {
 	const addedSkillIds = useLocalStorage<RecommendedSkillId[]>(
 		LOCAL_STORAGE_ADDED_RECOMMENDED_SKILLS,
 		[],
-		{ flush: 'sync', listenToStorageChanges: false },
+		{ flush: 'sync' },
 	);
 
-	const variant = computed<RecommendedSkillsVariant | undefined>(() => {
-		const assigned = posthogStore.getVariant(RECOMMENDED_SKILLS_EXPERIMENT.name);
-		return isRecommendedSkillsVariant(assigned) ? assigned : undefined;
-	});
-
-	const showRecommendedSkills = computed(
-		() => variant.value === RECOMMENDED_SKILLS_EXPERIMENT.variant,
+	const showRecommendedSkills = computed(() =>
+		posthogStore.isVariantEnabled(
+			RECOMMENDED_SKILLS_EXPERIMENT.name,
+			RECOMMENDED_SKILLS_EXPERIMENT.variant,
+		),
 	);
 
 	function trackExposure() {
-		if (!variant.value) return;
 		posthogStore.trackExposure(RECOMMENDED_SKILLS_EXPERIMENT.name);
 	}
 
@@ -82,7 +68,6 @@ export function useRecommendedSkillsExperiment() {
 	}
 
 	return {
-		variant,
 		showRecommendedSkills,
 		addedSkillIds,
 		trackExposure,

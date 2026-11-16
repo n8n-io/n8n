@@ -10,6 +10,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { configure, fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { flushPromises } from '@vue/test-utils';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
@@ -991,6 +992,29 @@ describe('AgentSkillModal', () => {
 					),
 				);
 				expect(researchLoad).not.toHaveBeenCalled();
+			});
+
+			it('keeps a manual draft when a recommended skill loads after the user leaves the picker', async () => {
+				listAttachableSkills.mockResolvedValue([]);
+				const humanizer = RECOMMENDED_SKILLS.find(({ id }) => id === 'humanizer')!;
+				const loaded = await humanizer.load();
+				const pending = Promise.withResolvers<AgentSkill>();
+				vi.spyOn(humanizer, 'load').mockReturnValueOnce(pending.promise);
+				const { findAllByTestId, getByTestId } = renderModal({
+					skillRefsEnabled: true,
+					onAttach: vi.fn(),
+				});
+
+				await fireEvent.click((await findAllByTestId('agent-skill-picker-row-open'))[0]);
+				await fireEvent.click(getByTestId('agent-skill-picker-create'));
+				await fireEvent.click(getByTestId('agent-skill-add-manually'));
+				const nameInput = getByTestId('agent-skill-name-input').querySelector('input')!;
+				await fireEvent.update(nameInput, 'my-draft');
+				pending.resolve(loaded);
+				await pending.promise;
+				await flushPromises();
+
+				expect(nameInput).toHaveValue('my-draft');
 			});
 
 			it('shows an error and stays on the picker when a recommended skill does not load', async () => {

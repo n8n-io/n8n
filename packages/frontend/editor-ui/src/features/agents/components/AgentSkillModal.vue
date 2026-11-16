@@ -52,6 +52,7 @@ import {
 	type RecommendedSkillId,
 } from '@/experiments/recommendedSkills/recommendedSkills';
 import { useRecommendedSkillsExperiment } from '@/experiments/recommendedSkills/useRecommendedSkillsExperiment';
+import { useRecommendedSkillLoader } from '@/experiments/recommendedSkills/useRecommendedSkillLoader';
 import type {
 	SkillConnectionItem,
 	ToolCategoryKey,
@@ -364,6 +365,7 @@ const {
 	trackSkillAdded: trackRecommendedSkillAdded,
 } = useRecommendedSkillsExperiment();
 const recommendedSkillId = ref<RecommendedSkillId>();
+const { loadRecommendedSkill } = useRecommendedSkillLoader();
 const pickerCategories = computed<ToolCategoryKey[]>(() =>
 	showRecommendedSkills.value
 		? ['all', 'project', 'global', 'recommended']
@@ -914,21 +916,14 @@ async function loadSkillAccess(skillId: string) {
 	}
 }
 
-let recommendedSkillLoading = false;
-
 async function selectRecommendedSkill(id: string) {
 	const recommended = RECOMMENDED_SKILLS.find((candidate) => candidate.id === id);
-	if (!recommended || recommendedSkillLoading) return;
-	recommendedSkillLoading = true;
-	try {
-		onSkillUploaded(await recommended.load());
-		createMethod.value = 'manual';
-		recommendedSkillId.value = recommended.id;
-	} catch (error) {
-		showError(error, i18n.baseText('experiments.recommendedSkills.loadError'));
-	} finally {
-		recommendedSkillLoading = false;
-	}
+	if (!recommended) return;
+	const loadedSkill = await loadRecommendedSkill(recommended);
+	if (!loadedSkill || step.value !== 'select') return;
+	onSkillUploaded(loadedSkill);
+	createMethod.value = 'manual';
+	recommendedSkillId.value = recommended.id;
 }
 
 function onPickerItemAttach(item: ToolConnectionItem) {

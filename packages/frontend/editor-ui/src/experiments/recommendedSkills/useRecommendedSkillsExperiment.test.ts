@@ -1,5 +1,6 @@
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { nextTick } from 'vue';
 
 import { EXPERIMENTS_TO_TRACK, RECOMMENDED_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
 import { LOCAL_STORAGE_ADDED_RECOMMENDED_SKILLS } from '@/app/constants/localStorage';
@@ -11,7 +12,10 @@ const trackExposure = vi.fn();
 const track = vi.fn();
 
 vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: vi.fn(() => ({ getVariant, trackExposure })),
+	usePostHog: vi.fn(() => ({
+		isVariantEnabled: (flag: string, variant: string) => getVariant(flag) === variant,
+		trackExposure,
+	})),
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -31,22 +35,6 @@ describe('useRecommendedSkillsExperiment', () => {
 		localStorage.clear();
 	});
 
-	it.each(['control', 'variant'])('returns the %s variant', (assigned) => {
-		getVariant.mockReturnValue(assigned);
-
-		expect(useRecommendedSkillsExperiment().variant.value).toBe(assigned);
-		expect(getVariant).toHaveBeenCalledWith(RECOMMENDED_SKILLS_EXPERIMENT.name);
-	});
-
-	it.each([undefined, false, true, 'unknown'])(
-		'returns no variant for the flag value %s',
-		(assigned) => {
-			getVariant.mockReturnValue(assigned);
-
-			expect(useRecommendedSkillsExperiment().variant.value).toBeUndefined();
-		},
-	);
-
 	it.each([
 		['variant', true],
 		['control', false],
@@ -57,20 +45,10 @@ describe('useRecommendedSkillsExperiment', () => {
 		expect(useRecommendedSkillsExperiment().showRecommendedSkills.value).toBe(expected);
 	});
 
-	it.each(['control', 'variant'])('tracks the exposure of the %s variant', (assigned) => {
-		getVariant.mockReturnValue(assigned);
-
+	it('tracks the exposure of the experiment', () => {
 		useRecommendedSkillsExperiment().trackExposure();
 
 		expect(trackExposure).toHaveBeenCalledWith(RECOMMENDED_SKILLS_EXPERIMENT.name);
-	});
-
-	it('tracks no exposure without a variant', () => {
-		getVariant.mockReturnValue(undefined);
-
-		useRecommendedSkillsExperiment().trackExposure();
-
-		expect(trackExposure).not.toHaveBeenCalled();
 	});
 
 	it('reports the cards shown with the entry point and the variant', () => {
@@ -103,13 +81,28 @@ describe('useRecommendedSkillsExperiment', () => {
 		});
 	});
 
-	it('remembers each added recommended skill once in local storage', () => {
+	it('remembers each added recommended skill once in local storage', async () => {
 		const { trackSkillAdded } = useRecommendedSkillsExperiment();
 		trackSkillAdded('research', 'skill-1', 'create_menu');
+		await nextTick();
 		trackSkillAdded('research', 'skill-2', 'create_menu');
+		await nextTick();
 		trackSkillAdded('humanizer', 'skill-3', 'empty_state');
 
 		expect(track).toHaveBeenCalledTimes(3);
+
+		expect(JSON.parse(localStorage.getItem(LOCAL_STORAGE_ADDED_RECOMMENDED_SKILLS)!)).toEqual([
+			'research',
+			'humanizer',
+		]);
+	});
+
+	it('keeps the skills that another instance added', async () => {
+		const first = useRecommendedSkillsExperiment();
+		const second = useRecommendedSkillsExperiment();
+		first.trackSkillAdded('research', 'skill-1', 'create_menu');
+		await nextTick();
+		second.trackSkillAdded('humanizer', 'skill-2', 'create_menu');
 
 		expect(JSON.parse(localStorage.getItem(LOCAL_STORAGE_ADDED_RECOMMENDED_SKILLS)!)).toEqual([
 			'research',
