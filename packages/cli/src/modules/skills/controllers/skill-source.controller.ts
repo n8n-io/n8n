@@ -1,4 +1,7 @@
 import {
+	AcceptSkillSourceUpdatesDto,
+	ReviewSkillSourceUpdateQueryDto,
+	SkillSourceCommitQueryDto,
 	ConnectSkillSourceDto,
 	DiscoverSkillSourceDto,
 	ListSkillSourceCredentialsQueryDto,
@@ -14,10 +17,9 @@ import { SkillSyncFlagGate } from '../services/skill-sync-flag-gate';
 import { SkillSyncService } from '../services/skill-sync.service';
 
 /**
- * Skill Sync: connect a source, import its skills, check a source for updates, and stop syncing
- * one skill. The services check
- * the per-user Skill Sync flag again, for callers other than this controller. No route scope: the
- * scope of the source decides who may change it, after the flag gate answers 404.
+ * Skill Sync: connect, import, check, review updates and stop syncing.
+ * The services also check the per-user flag for callers outside this controller.
+ * The source's scope decides access after the flag gate answers 404 when disabled.
  */
 @RestController('/skill-sources')
 export class SkillSourceController {
@@ -122,6 +124,42 @@ export class SkillSourceController {
 	@Post('/:sourceId/check')
 	async checkNow(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
 		return await this.skillSyncService.checkNow(req.user, sourceId);
+	}
+
+	@Get('/:sourceId/updates')
+	async updates(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
+		return await this.skillSyncService.listUpdates(req.user, sourceId);
+	}
+
+	@Get('/:sourceId/updates/:skillId')
+	async reviewUpdate(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Param('skillId') skillId: string,
+		@Query query: ReviewSkillSourceUpdateQueryDto,
+	) {
+		return await this.skillSyncService.reviewUpdate(req.user, sourceId, skillId, query);
+	}
+
+	@Get('/:sourceId/commit')
+	async commit(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Query query: SkillSourceCommitQueryDto,
+	) {
+		return await this.skillSyncService.describeUpdateCommit(req.user, sourceId, query.revision);
+	}
+
+	@Post('/:sourceId/updates/accept')
+	async acceptUpdates(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Body payload: AcceptSkillSourceUpdatesDto,
+	) {
+		return await this.skillSyncService.acceptUpdates(req.user, sourceId, payload);
 	}
 }
 
