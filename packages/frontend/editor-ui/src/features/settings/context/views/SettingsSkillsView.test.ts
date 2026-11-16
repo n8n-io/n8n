@@ -1019,7 +1019,7 @@ describe('SettingsSkillsView', () => {
 			expect(addedEvents()).toHaveLength(0);
 		});
 
-		it('offers "Add recommended skill" first in the menu and shows the cards in a dialog', async () => {
+		it('offers "Recommended skills" last in the menu and shows the cards in a dialog', async () => {
 			assignVariant('variant');
 			skillsStore.skills = [skill()];
 			skillsStore.count = 1;
@@ -1030,10 +1030,10 @@ describe('SettingsSkillsView', () => {
 			await userEvent.click(view.getByTestId('skills-create-menu-button'));
 			await view.findByTestId('skills-create-manual');
 			expect(createMenuLabels()).toEqual([
-				'Add recommended skill',
 				'Upload folder',
 				'Upload SKILL.md',
 				'Create manually',
+				'Recommended skills',
 			]);
 			await userEvent.click(view.getByTestId('skills-create-recommended'));
 
@@ -1061,6 +1061,16 @@ describe('SettingsSkillsView', () => {
 					},
 				],
 			]);
+
+			await userEvent.click(view.getByTestId('skills-create-menu-button'));
+			await userEvent.click(await view.findByTestId('skills-create-recommended'));
+			const reopened = await screen.findByTestId('recommended-skills-dialog');
+			expect(
+				within(within(reopened).getByTestId('recommended-skill-research')).getByTestId(
+					'recommended-skill-added',
+				),
+			).toHaveTextContent('Added');
+			expect(within(reopened).getAllByTestId('recommended-skill-added')).toHaveLength(1);
 		});
 	});
 

@@ -1,7 +1,9 @@
+import { nextTick } from 'vue';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EXPERIMENTS_TO_TRACK, RECOMMENDED_SKILLS_EXPERIMENT } from '@/app/constants/experiments';
+import { LOCAL_STORAGE_ADDED_RECOMMENDED_SKILLS } from '@/app/constants/localStorage';
 
 import { useRecommendedSkillsExperiment } from './useRecommendedSkillsExperiment';
 
@@ -27,6 +29,7 @@ describe('useRecommendedSkillsExperiment', () => {
 		getVariant.mockReset();
 		trackExposure.mockReset();
 		track.mockReset();
+		localStorage.clear();
 	});
 
 	it.each(['control', 'variant'])('returns the %s variant', (assigned) => {
@@ -89,6 +92,29 @@ describe('useRecommendedSkillsExperiment', () => {
 			entry_point: 'empty_state',
 			...experimentProperties,
 		});
+	});
+
+	it('reports the added skill without a skill id from the agent skill picker', () => {
+		useRecommendedSkillsExperiment().trackSkillAdded('humanizer', undefined, 'agent_skill_modal');
+
+		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_ADDED_RECOMMENDED_SKILL, {
+			recommended_skill_id: 'humanizer',
+			entry_point: 'agent_skill_modal',
+			...experimentProperties,
+		});
+	});
+
+	it('remembers each added recommended skill once in local storage', async () => {
+		const { trackSkillAdded } = useRecommendedSkillsExperiment();
+		trackSkillAdded('research', 'skill-1', 'create_menu');
+		trackSkillAdded('research', 'skill-2', 'create_menu');
+		trackSkillAdded('humanizer', 'skill-3', 'empty_state');
+		await nextTick();
+
+		expect(JSON.parse(localStorage.getItem(LOCAL_STORAGE_ADDED_RECOMMENDED_SKILLS)!)).toEqual([
+			'research',
+			'humanizer',
+		]);
 	});
 
 	it('registers the experiment for centralized enrollment tracking', () => {

@@ -5,6 +5,8 @@ import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { LOCAL_STORAGE_ADDED_RECOMMENDED_SKILLS } from '@/app/constants/localStorage';
+
 import { RECOMMENDED_SKILLS } from '../recommendedSkills';
 import RecommendedSkillCards from './RecommendedSkillCards.vue';
 
@@ -35,6 +37,7 @@ describe('RecommendedSkillCards', () => {
 	beforeEach(() => {
 		track.mockReset();
 		showError.mockReset();
+		localStorage.clear();
 		pinia = createTestingPinia();
 	});
 
@@ -51,6 +54,31 @@ describe('RecommendedSkillCards', () => {
 				/needs a web search tool or an HTTP Request tool/,
 			),
 		).toBeVisible();
+	});
+
+	it('labels the added skills in the dialog and keeps their button working', async () => {
+		localStorage.setItem(LOCAL_STORAGE_ADDED_RECOMMENDED_SKILLS, JSON.stringify(['research']));
+		const { getByTestId, getAllByTestId, emitted } = renderComponent({
+			pinia,
+			props: { entryPoint: 'create_menu' },
+		});
+
+		expect(getAllByTestId('recommended-skill-added')).toHaveLength(1);
+		expect(
+			within(getByTestId('recommended-skill-research')).getByTestId('recommended-skill-added'),
+		).toHaveTextContent('Added');
+		expect(within(getByTestId('recommended-skill-research')).getByText('Select')).toBeVisible();
+
+		await clickUse(getByTestId, 'research');
+
+		await waitFor(() => expect(emitted('select')).toHaveLength(1));
+	});
+
+	it('shows no added label on the empty state', () => {
+		localStorage.setItem(LOCAL_STORAGE_ADDED_RECOMMENDED_SKILLS, JSON.stringify(['research']));
+		const { queryByTestId } = renderComponent({ pinia });
+
+		expect(queryByTestId('recommended-skill-added')).not.toBeInTheDocument();
 	});
 
 	it('reports the cards shown once, with the entry point', () => {

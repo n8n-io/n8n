@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
-import { N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 
 import {
 	RECOMMENDED_SKILLS,
@@ -23,7 +23,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const { showError } = useToast();
-const { trackCardsShown } = useRecommendedSkillsExperiment();
+const { addedSkillIds, trackCardsShown } = useRecommendedSkillsExperiment();
 const loadingId = ref<RecommendedSkillId>();
 
 async function selectSkill(recommended: RecommendedSkill) {
@@ -54,6 +54,14 @@ onMounted(() => {
 						</span>
 						<N8nText bold color="text-dark">{{ recommended.name }}</N8nText>
 					</span>
+					<N8nBadge
+						v-if="entryPoint === 'create_menu' && addedSkillIds.includes(recommended.id)"
+						variant="success"
+						leading-icon="check"
+						data-test-id="recommended-skill-added"
+					>
+						{{ i18n.baseText('experiments.recommendedSkills.added') }}
+					</N8nBadge>
 				</template>
 				<N8nText tag="p" size="small" color="text-base" :class="$style.cardText">
 					{{ i18n.baseText(recommended.cardTextKey) }}

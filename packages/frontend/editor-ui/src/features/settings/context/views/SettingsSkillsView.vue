@@ -414,18 +414,8 @@ function dropPendingUpload() {
 
 onBeforeUnmount(dropPendingUpload);
 
-// "Add recommended skill" and "Connect to GitHub" are behind flags. The other items are for everyone.
+// "Recommended skills" and "Connect to GitHub" are behind flags. The other items are for everyone.
 const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => [
-	...(showRecommendedSkills.value
-		? [
-				{
-					id: 'recommended' as const,
-					label: i18n.baseText('experiments.recommendedSkills.menuItem'),
-					icon: 'sparkles' as const,
-					testId: 'skills-create-recommended',
-				},
-			]
-		: []),
 	...(skillSyncEnabled.value
 		? [
 				{
@@ -456,6 +446,16 @@ const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => 
 		icon: 'pen',
 		testId: 'skills-create-manual',
 	},
+	...(showRecommendedSkills.value
+		? [
+				{
+					id: 'recommended' as const,
+					label: i18n.baseText('experiments.recommendedSkills.menuItem'),
+					icon: 'sparkles' as const,
+					testId: 'skills-create-recommended',
+				},
+			]
+		: []),
 ]);
 
 const recommendedSkillsEligible = computed(

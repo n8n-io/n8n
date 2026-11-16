@@ -123,9 +123,9 @@ const recommendedSkillsVariant = z
 	);
 
 const recommendedSkillsEntryPoint = z
-	.enum(['empty_state', 'create_menu'])
+	.enum(['empty_state', 'create_menu', 'agent_skill_modal'])
 	.describe(
-		'`empty_state` is the Skills page with no skills. `create_menu` is the entry in the "Create skills" menu, which shows the cards in a dialog',
+		'`empty_state` is the Skills page with no skills. `create_menu` is the entry in the "Create skills" menu, which shows the cards in a dialog. `agent_skill_modal` is the "Recommended" tab of the skill picker of an agent',
 	);
 
 export const CONTEXT_TELEMETRY = defineTelemetryEvents({
@@ -455,12 +455,12 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_ADDED_RECOMMENDED_SKILL: {
 		name: 'User added recommended skill',
 		description:
-			'A user saved a skill that a recommended skill card of experiment 143 filled in. Fires once the create succeeds, so a card click that the user cancels reports nothing. The same save also fires `User created skill` with the method `manual`.',
+			'A user saved a skill that a recommended skill card of experiment 143 filled in. Fires once the create succeeds, so a card click that the user cancels reports nothing.',
 		properties: z.object({
 			recommended_skill_id: z
 				.enum(['humanizer', 'cold-email', 'research'])
 				.describe('The recommended skill that filled the create form'),
-			skill_id: skillId,
+			skill_id: skillId.optional().describe('Not set for the agent skill picker'),
 			entry_point: recommendedSkillsEntryPoint,
 			variant: recommendedSkillsVariant,
 			'$feature/143_recommended_skills': recommendedSkillsVariant,

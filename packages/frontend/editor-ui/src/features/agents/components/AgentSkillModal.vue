@@ -47,6 +47,11 @@ import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
+import {
+	RECOMMENDED_SKILLS,
+	type RecommendedSkillId,
+} from '@/experiments/recommendedSkills/recommendedSkills';
+import { useRecommendedSkillsExperiment } from '@/experiments/recommendedSkills/useRecommendedSkillsExperiment';
 import type {
 	SkillConnectionItem,
 	ToolCategoryKey,
@@ -351,6 +356,35 @@ const pickerItems = computed<SkillConnectionItem[]>(() =>
 			...(similarNameReason ? { disabledReason: similarNameReason } : {}),
 		};
 	}),
+);
+
+const {
+	showRecommendedSkills,
+	trackExposure: trackRecommendedSkillsExposure,
+	trackSkillAdded: trackRecommendedSkillAdded,
+} = useRecommendedSkillsExperiment();
+const recommendedSkillId = ref<RecommendedSkillId>();
+const pickerCategories = computed<ToolCategoryKey[]>(() =>
+	showRecommendedSkills.value
+		? ['all', 'project', 'global', 'recommended']
+		: ['all', 'project', 'global'],
+);
+const pickerItemsWithRecommended = computed<SkillConnectionItem[]>(() =>
+	showRecommendedSkills.value
+		? [
+				...pickerItems.value,
+				...RECOMMENDED_SKILLS.map((recommended) => ({
+					id: `recommended:${recommended.id}`,
+					kind: 'skill' as const,
+					skillId: recommended.id,
+					title: recommended.name,
+					description: i18n.baseText(recommended.cardTextKey),
+					category: 'recommended' as const,
+					status: 'none' as const,
+					attached: false,
+				})),
+			]
+		: pickerItems.value,
 );
 
 const previewSkill = ref<SkillDetail | null>(null);
@@ -880,13 +914,27 @@ async function loadSkillAccess(skillId: string) {
 	}
 }
 
+async function selectRecommendedSkill(id: string) {
+	const recommended = RECOMMENDED_SKILLS.find((candidate) => candidate.id === id);
+	if (!recommended) return;
+	try {
+		onSkillUploaded(await recommended.load());
+		createMethod.value = 'manual';
+		recommendedSkillId.value = recommended.id;
+	} catch (error) {
+		showError(error, i18n.baseText('experiments.recommendedSkills.loadError'));
+	}
+}
+
 function onPickerItemAttach(item: ToolConnectionItem) {
 	if (item.kind !== 'skill' || item.disabled || item.attached) return;
-	void attachLibrarySkill(item.skillId);
+	if (item.category === 'recommended') void selectRecommendedSkill(item.skillId);
+	else void attachLibrarySkill(item.skillId);
 }
 
 async function onPickerItemPreview(item: ToolConnectionItem) {
 	if (item.kind !== 'skill' || item.disabled) return;
+	if (item.category === 'recommended') return await selectRecommendedSkill(item.skillId);
 	previewLoading.value = true;
 	try {
 		previewSkill.value = await getSkillDetail(rootStore.restApiContext, item.skillId);
@@ -925,7 +973,10 @@ function onPreviewAdd() {
 
 onMounted(() => {
 	if (startsManual) void refreshDefaultName();
-	if (hasPicker) void loadLibrarySkills();
+	if (hasPicker) {
+		void loadLibrarySkills();
+		trackRecommendedSkillsExposure();
+	}
 	if (props.data.skillId && props.data.skillRefsEnabled) void loadSkillAccess(props.data.skillId);
 });
 
@@ -1208,6 +1259,9 @@ async function onSave() {
 		...(isEditing.value ? {} : { method: createMethod.value }),
 	});
 	if (saved) {
+		if (recommendedSkillId.value) {
+			trackRecommendedSkillAdded(recommendedSkillId.value, undefined, 'agent_skill_modal');
+		}
 		if (props.inline) showSavedSkill(payload);
 		else closeModal();
 	}
@@ -1404,8 +1458,8 @@ function onRemove() {
 		<div v-if="hasPicker" v-show="step === 'select'" :class="$style.picker">
 			<ToolsConnectionModal
 				:open="modalOpen && step === 'select'"
-				:items="pickerItems"
-				:categories="['all', 'project', 'global']"
+				:items="pickerItemsWithRecommended"
+				:categories="pickerCategories"
 				:category-labels="data.projectLabel ? { project: data.projectLabel } : undefined"
 				:detail-item="null"
 				:search-placeholder="i18n.baseText('agents.builder.skills.picker.search.placeholder')"
