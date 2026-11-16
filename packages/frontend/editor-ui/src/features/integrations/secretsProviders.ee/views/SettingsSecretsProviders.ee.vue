@@ -11,12 +11,17 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import type { SecretProviderConnection } from '@n8n/api-types';
 import {
-	N8nEmptyState,
 	N8nButton,
+	N8nEmptyState,
 	N8nHeading,
 	N8nIcon,
 	N8nLink,
 	N8nLoading,
+<<<<<<< HEAD
+=======
+	N8nSettingsEnableRow,
+	N8nSettingsRowGroup,
+>>>>>>> 795c59ac3cc35cf333330e87fc1926c3a66d2243
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -38,6 +43,56 @@ const uiStore = useUIStore();
 const secretsProviderConnection = useSecretsProviderConnection(projectsStore.currentProjectId);
 const hasActiveProviders = computed(() => secretsProviders.activeProviders.value.length > 0);
 
+<<<<<<< HEAD
+=======
+const externalSecretsModuleSettings = computed(
+	() => settingsStore.moduleSettings['external-secrets'],
+);
+const isRoleBasedAccessEnabled = computed(
+	() => externalSecretsModuleSettings.value?.roleBasedAccess ?? false,
+);
+const systemRolesEnabled = ref(false);
+const systemRolesToggleLoading = ref(false);
+
+async function onSystemRolesToggle(enabled: boolean) {
+	if (!enabled) {
+		const result = await message.confirm(
+			i18n.baseText('settings.externalSecrets.systemRoles.confirm.message'),
+			i18n.baseText('settings.externalSecrets.systemRoles.confirm.headline'),
+			{
+				confirmButtonText: i18n.baseText(
+					'settings.externalSecrets.systemRoles.confirm.confirmButtonText',
+				),
+				cancelButtonText: i18n.baseText(
+					'settings.externalSecrets.systemRoles.confirm.cancelButtonText',
+				),
+			},
+		);
+		if (result !== 'confirm') return;
+	}
+
+	systemRolesToggleLoading.value = true;
+	try {
+		const response = await externalSecretsApi.updateExternalSecretsSettings(
+			rootStore.restApiContext,
+			{ systemRolesEnabled: enabled },
+		);
+		systemRolesEnabled.value = response.systemRolesEnabled;
+		await settingsStore.getModuleSettings();
+		toast.showMessage({
+			title: enabled
+				? i18n.baseText('settings.externalSecrets.systemRoles.enabled.toast')
+				: i18n.baseText('settings.externalSecrets.systemRoles.disabled.toast'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.externalSecrets.systemRoles.error'));
+	} finally {
+		systemRolesToggleLoading.value = false;
+	}
+}
+
+>>>>>>> 795c59ac3cc35cf333330e87fc1926c3a66d2243
 const sortedProviders = computed(() => {
 	return [...secretsProviders.activeProviders.value].sort((a, b) => a.name.localeCompare(b.name));
 });
@@ -198,6 +253,23 @@ function goToUpgrade() {
 						</span>
 					</N8nLink>
 				</N8nText>
+<<<<<<< HEAD
+=======
+				<N8nSettingsRowGroup
+					v-if="isRoleBasedAccessEnabled"
+					class="mt-xl"
+					data-test-id="external-secrets-system-roles-toggle"
+				>
+					<N8nSettingsEnableRow
+						:title="i18n.baseText('settings.externalSecrets.systemRoles.title')"
+						:description="i18n.baseText('settings.externalSecrets.systemRoles.description')"
+						:enabled="systemRolesEnabled"
+						:disabled="systemRolesToggleLoading"
+						switch-test-id="external-secrets-system-roles-switch"
+						@update:enabled="onSystemRolesToggle"
+					/>
+				</N8nSettingsRowGroup>
+>>>>>>> 795c59ac3cc35cf333330e87fc1926c3a66d2243
 				<N8nButton
 					v-if="hasActiveProviders && secretsProviders.canCreate.value"
 					:class="$style.addButton"

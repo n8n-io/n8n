@@ -32,13 +32,19 @@
     "@typescript-eslint/typescript-estree": "catalog:",
     "@typescript-eslint/utils": "catalog:",
     "change-case": "catalog:",
+    "css-select": "^6.0.0",
+    "culori": "^4.0.2",
+    "domhandler": "^5.0.3",
     "fastest-levenshtein": "catalog:",
-    "pluralize": "^8.0.0"
+    "pluralize": "^8.0.0",
+    "postcss": "^8.4.38",
+    "saxes": "^6.0.0"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/node": "catalog:",
+    "@types/culori": "^4.0.1",
     "@types/pluralize": "^0.0.33",
     "n8n-workflow": "workspace:*",
     "@typescript-eslint/rule-tester": "catalog:",
