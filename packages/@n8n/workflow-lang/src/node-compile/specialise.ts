@@ -10,6 +10,8 @@ import {
 	COST_HELPERS,
 	foldTextMethod,
 	literalKeyCount,
+	lowerConstants,
+	namesOutsideRequest,
 	lowerCost,
 	PLAIN_LIST,
 	PLAIN_LIST_COLLECTIONS,
@@ -6674,11 +6676,13 @@ class Specialiser {
 			...Object.keys(HELPERS),
 			...COST_GLOBALS,
 		]);
-		const joined = [...code, body].join('\n');
+		const joined = lowerConstants([...code, body].join('\n'), this.input.evaluate);
 		const reachesBytes = reachableHelpers([joined], HELPERS);
 		const makesBytes =
-			holdsBytes && (this.storesResponses || HOLDS_BYTES.some((h) => reachesBytes.has(h)));
-		const lowered = lowerCost(joined, makesBytes);
+			holdsBytes &&
+			((this.storesResponses && namesOutsideRequest(joined, 'encoding')) ||
+				HOLDS_BYTES.some((h) => reachesBytes.has(h)));
+		const lowered = lowerCost(joined, makesBytes, this.input.evaluate);
 		for (const helper of lowered.helpers) this.helpers.add(helper);
 		const translated = translateCode({
 			code: lowered.code,

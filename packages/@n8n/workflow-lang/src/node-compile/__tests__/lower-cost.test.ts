@@ -33,7 +33,10 @@ return await api({});`,
 		expect(out.code).not.toContain('__request(');
 		expect(out.code).not.toContain('__formParts');
 		expect(out.code).not.toContain('options.auth');
-		expect(flat(out.code)).toContain('const headers = __plain(options.headers ?? {});');
+		expect(flat(out.code)).toContain("const headers = __plain({ a: 'b' });");
+		expect(flat(out.code)).toContain("method: 'POST',");
+		expect(flat(out.code)).toContain("url: 'https://x.test',");
+		expect(flat(out.code)).toContain('const options = { body };');
 		expect(flat(out.code)).toContain('throw __apiError(failure, undefined);');
 	});
 
@@ -71,7 +74,7 @@ async function api(key) {
 	options[key] = 1;
 	return await __request(options, true, true);
 }
-return await api('auth');`;
+return [await api('auth'), await api('form')];`;
 		expect(flat(lowerCost(code, false).code)).toContain('__request(options, true, true)');
 	});
 
@@ -264,6 +267,139 @@ if (paths["deal"] !== undefined) { await a(paths.deal); } else { await b(); }`,
 			false,
 		);
 		expect(flat(out.code)).toBe('await a("/dealFields");');
+	});
+});
+
+describe('lowerCost: request options and templates', () => {
+	const general = (extra: string) => `async function __request(options, wrapped, legacy, extra, nested) {
+	${extra}
+	return await ctx.http({ url: options.uri, inject: wrapped });
+}`;
+
+	it('lowers a request that gives no token options', () => {
+		const out = lowerCost(
+			`${general('')}
+async function api(query) {
+	const options = { uri: 'https://x.test', qs: query, json: true };
+	return await __request(options, true, true, undefined, true);
+}
+return [await api(a), await api(b)];`,
+			false,
+		);
+		expect(out.code).not.toContain('__request(');
+		expect(flat(out.code)).toContain(
+			'skipTokenRefresh: undefined, tokenExpiredStatusCode: undefined',
+		);
+		expect(flat(out.code)).toContain('const options = { qs: query };');
+	});
+
+	it('keeps the general request when the call gives token options', () => {
+		const out = lowerCost(
+			`${general('')}
+async function api(query, token) {
+	const options = { uri: 'https://x.test', qs: query };
+	return await __request(options, true, true, token, true);
+}
+return [await api(a, t), await api(b, u)];`,
+			false,
+		);
+		expect(flat(out.code)).toContain('__request(options, true, true, token, true)');
+	});
+
+	it('honours a full response and a lenient status in the lowered form', () => {
+		const out = lowerCost(
+			`${general('if (options.simple || options.resolveWithFullResponse || options.returnFullResponse) x();')}
+async function api(query) {
+	const options = { uri: 'https://x.test', qs: query };
+	options.returnFullResponse = true;
+	options.ignoreHttpStatusErrors = query.lenient;
+	return await __request(options, true, false);
+}
+return [await api(a), await api(b)];`,
+			false,
+		);
+		expect(flat(out.code)).toContain('response.status >= 400 && !(options.ignoreHttpStatusErrors)');
+		expect(flat(out.code)).toContain(
+			'return options.returnFullResponse ? { body: response.body, headers: response.headers, statusCode: response.status } : response.body;',
+		);
+	});
+
+	it('keeps a constant of the options that other code reads or writes', () => {
+		const out = lowerCost(
+			`${general('')}
+async function api(query) {
+	const options = { method: 'GET', uri: 'https://x.test', qs: query };
+	if (query.post) options.method = 'POST';
+	return await __request(options, true, true);
+}
+return [await api(a), await api(b)];`,
+			false,
+		);
+		expect(flat(out.code)).toContain("method: options.method ?? 'GET',");
+		expect(flat(out.code)).toContain("url: 'https://x.test',");
+		expect(flat(out.code)).toContain("const options = { method: 'GET', qs: query };");
+	});
+});
+
+describe('lowerCost: more constants', () => {
+	it('joins a first store with the declaration and folds a replace', () => {
+		const evaluate = (code: string): unknown => new Function(`return ${code};`)();
+		const out = lowerCost(
+			`let domain = '';
+domain = 'https://x.test//';
+domain = domain.replace(/[/]+$/, "");
+return await api(\`\${domain}/rest\`);`,
+			false,
+			evaluate,
+		);
+		expect(flat(out.code)).toBe('return await api("https://x.test/rest");');
+	});
+
+	it('does not fold a text of a credential', () => {
+		const out = lowerCost(
+			`const key = '{{$credentials.apiKey}}';
+if (key === 'a') { await one(); }
+return [key].includes('a');`,
+			false,
+		);
+		expect(flat(out.code)).toContain("=== 'a'");
+		expect(flat(out.code)).toContain('.includes(');
+	});
+
+	it('folds an argument that each call gives with the same value', () => {
+		const out = lowerCost(
+			`async function api(path, download) {
+	if (download === true) { return await bytes(path); }
+	return await json(path);
+}
+return [await api(a, false), await api(b, false)];`,
+			false,
+		);
+		expect(out.code).not.toContain('bytes(');
+		const kept = lowerCost(
+			`async function api(path, download) {
+	if (download === true) { return await bytes(path); }
+	return await json(path);
+}
+return [await api(a, false), await api(b, true)];`,
+			false,
+		);
+		expect(kept.code).toContain('bytes(');
+	});
+
+	it('knows an empty argument through a second function', () => {
+		const out = lowerCost(
+			`async function all(path, option = {}) {
+	return await api(path, option);
+}
+async function api(path, option = {}) {
+	if (option.download === true) { return await bytes(path); }
+	return await json(path);
+}
+return [await all(a), await api(b)];`,
+			false,
+		);
+		expect(out.code).not.toContain('bytes(');
 	});
 });
 
