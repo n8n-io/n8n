@@ -100,11 +100,10 @@ const GLOBALS = new Set([
 
 const HELPERS: Record<string, string> = {
 	__apiError: `function __apiError(cause: any, options: any): any {
-	if (options !== null && options !== undefined && typeof options.message === 'string' && options.message !== '') return new Error(options.message);
+	if (cause !== null && cause !== undefined && typeof cause === 'object' && cause.name === 'NodeApiError') return cause;
 	const text: string = cause !== null && cause !== undefined && typeof cause.message === 'string' ? cause.message : String(cause);
 	const prefix = 'Request failed with status code ';
-	if (!text.startsWith(prefix)) return new Error(text);
-	const code: string = text.slice(prefix.length);
+	const code: string = text.startsWith(prefix) ? text.slice(prefix.length) : '';
 	const known: any = {
 		'400': 'Bad request - please check your parameters',
 		'401': 'Authorization failed - please check your credentials',
@@ -118,10 +117,16 @@ const HELPERS: Record<string, string> = {
 		'503': 'Service unavailable - try again later or consider setting this node to retry automatically (in the node settings)',
 		'504': 'Gateway timed out - perhaps try again later?',
 	};
-	if (known[code] !== undefined) return new Error(known[code]);
-	if (code.charAt(0) === '4') return new Error('Your request is invalid or could not be processed by the service');
-	if (code.charAt(0) === '5') return new Error('The service failed to process your request');
-	return new Error(text);
+	let message: string = text;
+	if (options !== null && options !== undefined && typeof options.message === 'string' && options.message !== '') message = options.message;
+	else if (known[code] !== undefined) message = known[code];
+	else if (code.charAt(0) === '4') message = 'Your request is invalid or could not be processed by the service';
+	else if (code.charAt(0) === '5') message = 'The service failed to process your request';
+	const failure: any = new Error(message);
+	failure.name = 'NodeApiError';
+	if (code !== '') failure.httpCode = code;
+	if (options !== null && options !== undefined && options.description !== undefined) failure.description = options.description;
+	return failure;
 }`,
 	__formText: `function __formText(value: any): string {
 	return encodeURIComponent(String(value))
@@ -200,9 +205,18 @@ const HELPERS: Record<string, string> = {
 	}
 	return target;
 }`,
-	__error: `function __error(cause: any): any {
-	if (typeof cause === 'string') return new Error(cause);
-	return new Error(String(cause !== null && cause !== undefined && cause.message !== undefined ? cause.message : cause));
+	__error: `function __error(cause: any, name: string, options: any): any {
+	if (cause !== null && cause !== undefined && typeof cause === 'object' && cause.name === name) return cause;
+	let message: string = typeof cause === 'string' ? cause : String(cause !== null && cause !== undefined && cause.message !== undefined ? cause.message : cause);
+	if (options !== null && options !== undefined && typeof options.message === 'string' && options.message !== '') message = options.message;
+	const failure: any = new Error(message);
+	failure.name = name;
+	if (options !== null && options !== undefined && options.description !== undefined) failure.description = options.description;
+	return failure;
+}`,
+	__isNamed: `function __isNamed(value: any, names: any): boolean {
+	if (value === null || value === undefined || typeof value !== 'object') return false;
+	return names.includes(value.name);
 }`,
 	__isEmpty: `function __isEmpty(value: any): boolean {
 	if (value === null || value === undefined) return true;
@@ -265,6 +279,16 @@ const PURE_CALLS = new Set([
 	'parseInt',
 	'parseFloat',
 ]);
+
+const ERROR_CLASSES: Record<string, string[]> = {
+	NodeApiError: ['NodeApiError'],
+	NodeOperationError: ['NodeOperationError'],
+	NodeError: ['NodeApiError', 'NodeOperationError'],
+	UserError: ['UserError'],
+	ApplicationError: ['ApplicationError'],
+	OperationalError: ['OperationalError'],
+	UnexpectedError: ['UnexpectedError'],
+};
 
 const GENERIC_ERRORS = new Set([
 	'UserError',
@@ -980,18 +1004,44 @@ class Specialiser {
 					return this.helper('__omitKeys', value, f.createArrayLiteralExpression(keys));
 				} else if (helper) return this.helper(helper, ...args(node));
 			}
+			if (
+				ts.isBinaryExpression(node) &&
+				node.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword &&
+				ts.isIdentifier(node.right) &&
+				Object.hasOwn(ERROR_CLASSES, node.right.text) &&
+				unit.file.imports.has(node.right.text)
+			) {
+				return this.helper(
+					'__isNamed',
+					ts.visitNode(node.left, visit) as ts.Expression,
+					expressionOf(ERROR_CLASSES[node.right.text]),
+				);
+			}
 			if (ts.isNewExpression(node) && ts.isIdentifier(node.expression)) {
 				const cls = node.expression.text;
-				if (GENERIC_ERRORS.has(cls))
-					return this.helper('__error', args(node)[0] ?? f.createStringLiteral(cls));
+				if (GENERIC_ERRORS.has(cls)) {
+					return this.helper(
+						'__error',
+						args(node)[0] ?? f.createStringLiteral(cls),
+						f.createStringLiteral(cls),
+						f.createIdentifier('undefined'),
+					);
+				}
 
 				if (cls === 'NodeApiError' && (node.arguments?.length ?? 0) >= 2) {
 					const given = args(node);
 					return this.helper('__apiError', given[1], given[2] ?? f.createIdentifier('undefined'));
 				}
 
-				if (cls === 'NodeOperationError' && (node.arguments?.length ?? 0) >= 2)
-					return this.helper('__error', args(node)[1]);
+				if (cls === 'NodeOperationError' && (node.arguments?.length ?? 0) >= 2) {
+					const given = args(node);
+					return this.helper(
+						'__error',
+						given[1],
+						f.createStringLiteral(cls),
+						given[2] ?? f.createIdentifier('undefined'),
+					);
+				}
 			}
 			if (ts.isExpressionStatement(node)) {
 				const e = node.expression;
