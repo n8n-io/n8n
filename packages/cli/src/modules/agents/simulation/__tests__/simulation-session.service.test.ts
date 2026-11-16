@@ -148,11 +148,16 @@ describe('SimulationSessionService', () => {
 		expect(backend.openWorld).not.toHaveBeenCalled();
 	});
 
-	it('returns no session when the flag is off, so the draft run stays live', async () => {
+	it('fails a message that asks for a test run when the flag is off, instead of running it live', async () => {
 		const backend = llmBackend();
 		const { service } = setup({ flagOn: false, backend });
 
-		await expect(service.openForDraftRun(openInput)).resolves.toBeUndefined();
+		await expect(service.openForDraftRun(openInput)).rejects.toThrow(
+			'Test runs are not available, so this message did not run.',
+		);
+		await expect(
+			service.openForDraftRun({ ...openInput, testRunRequested: false }),
+		).resolves.toBeUndefined();
 		expect(backend.openWorld).not.toHaveBeenCalled();
 	});
 
@@ -441,7 +446,7 @@ describe('SimulationSessionService', () => {
 		await expect(service.openForDraftRun({ ...openInput, message: 'again' })).resolves.toBe(first);
 		await expect(
 			service.openForDraftRun({ ...openInput, testChatId: 'other-chat' }),
-		).resolves.toBeUndefined();
+		).rejects.toThrow('Test runs are not available');
 	});
 
 	it('opens a new world for a test chat after a restart', async () => {

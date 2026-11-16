@@ -84,7 +84,11 @@ export class SimulationSessionService {
 		// A test chat stays one, also with the flag off. A new chat is a test run only when asked for.
 		const thread = await this.threadRepository.findTestChatState(input.testChatId);
 		if (!thread?.testChat) {
-			if (!input.testRunRequested || !(await this.flagGate.isEnabled(input.user))) return undefined;
+			if (!input.testRunRequested) return undefined;
+			// A message that asked for a test run must never run live, so it fails instead.
+			if (!(await this.flagGate.isEnabled(input.user))) {
+				throw new UserError('Test runs are not available, so this message did not run.');
+			}
 			// The mode is fixed when the chat starts, so a live chat never turns into a test chat.
 			if (await this.executionRepository.hasFinishedByThread(input.testChatId)) {
 				throw new UserError('This chat runs live. Start a new chat to run a test.');
