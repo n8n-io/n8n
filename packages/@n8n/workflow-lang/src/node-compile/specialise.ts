@@ -10,6 +10,8 @@ import {
 	COST_HELPERS,
 	foldTextMethod,
 	literalKeyCount,
+	lowerConstants,
+	namesOutsideRequest,
 	lowerCost,
 	PLAIN_LIST,
 	PLAIN_LIST_COLLECTIONS,
@@ -811,7 +813,10 @@ const HELPERS: Record<string, string> = {
 	}
 }`,
 	__deepCopy: `function __deepCopy(value: any): any {
-	return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+	if (typeof value === 'string') return value;
+	if (value === undefined || value === null || typeof value === 'boolean') return value;
+	if (typeof value === 'number' && value - value === 0) return value === 0 ? 0 : value;
+	return JSON.parse(JSON.stringify(value));
 }`,
 	__parameterValue: `function __parameterValue(entry: any): any {
 	if (entry.error !== undefined) {
@@ -6723,11 +6728,13 @@ class Specialiser {
 			...Object.keys(HELPERS),
 			...COST_GLOBALS,
 		]);
-		const joined = [...code, body].join('\n');
+		const joined = lowerConstants([...code, body].join('\n'), this.input.evaluate);
 		const reachesBytes = reachableHelpers([joined], HELPERS);
 		const makesBytes =
-			holdsBytes && (this.storesResponses || HOLDS_BYTES.some((h) => reachesBytes.has(h)));
-		const lowered = lowerCost(joined, makesBytes);
+			holdsBytes &&
+			((this.storesResponses && namesOutsideRequest(joined, 'encoding')) ||
+				HOLDS_BYTES.some((h) => reachesBytes.has(h)));
+		const lowered = lowerCost(joined, makesBytes, this.input.evaluate);
 		for (const helper of lowered.helpers) this.helpers.add(helper);
 		const translated = translateCode({
 			code: lowered.code,

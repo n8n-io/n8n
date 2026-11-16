@@ -71,7 +71,8 @@ const base = join(here, '../../../nodes-base');
 const PREFIX = 'n8n-nodes-base.';
 const load = createRequire(join(base, 'package.json'));
 
-const VALUE_FLAGS = ['--one', '--weights'];
+const ACCEPT_RISE = '--accept-cost-rise';
+const VALUE_FLAGS = ['--one', '--weights', ACCEPT_RISE];
 const args = process.argv.slice(2);
 const valueOf = (flag: string) => (args.includes(flag) ? args[args.indexOf(flag) + 1] : undefined);
 const DIST = args.includes('--dist');
@@ -80,6 +81,7 @@ const CACHE = !args.includes('--no-cache');
 const ALL_BLOCKERS = args.includes('--all-blockers');
 const SHOW_COST = args.includes('--cost');
 const CHECK_COST = args.includes('--check-cost');
+const acceptedRises = new Set(args.filter((_arg, at) => at > 0 && args[at - 1] === ACCEPT_RISE));
 const one = valueOf('--one');
 const weightsFile = valueOf('--weights');
 const pattern = args.find((a, at) => !a.startsWith('--') && !VALUE_FLAGS.includes(args[at - 1]));
@@ -897,12 +899,17 @@ ${lines.join('\n')}
 	);
 }
 const costKeys = Object.keys(costs).sort();
-const risen = costKeys.filter((key) => COST[key] !== undefined && costs[key].ops > COST[key][0]);
-if (pattern === undefined && !DIST && risen.length === 0) {
+const higher = costKeys.filter((key) => COST[key] !== undefined && costs[key].ops > COST[key][0]);
+const risen = higher.filter((key) => !acceptedRises.has(key));
+const acceptedNow = higher.filter((key) => acceptedRises.has(key));
+const idleAccepts = [...acceptedRises].filter((key) => !higher.includes(key));
+const recordOf = (key: string): [number, number] =>
+	risen.includes(key) ? COST[key] : [costs[key].ops, costs[key].allocations];
+if (pattern === undefined && !DIST) {
 	writeFileSync(
 		join(here, '../src/node-compile/cost.generated.ts'),
 		`export const COST: Record<string, [ops: number, allocations: number]> = {
-${costKeys.map((key) => `\t${JSON.stringify(key)}: [${costs[key].ops}, ${costs[key].allocations}],`).join('\n')}
+${costKeys.map((key) => `\t${JSON.stringify(key)}: [${recordOf(key).join(', ')}],`).join('\n')}
 };
 `,
 	);
@@ -971,13 +978,19 @@ if (SHOW_COST) {
 		}
 	}
 }
-if (CHECK_COST || risen.length > 0) {
+if (CHECK_COST || higher.length > 0 || idleAccepts.length > 0) {
 	for (const key of risen)
 		console.log(`cost rose: ${key}: ${COST[key][0]} ops recorded, ${costs[key].ops} ops now`);
+	for (const key of acceptedNow)
+		console.log(
+			`cost rise accepted: ${key}: ${COST[key][0]} ops recorded, ${costs[key].ops} ops now`,
+		);
+	for (const key of idleAccepts)
+		console.log(`${ACCEPT_RISE} ${key}: this operation did not rise or was not measured`);
 	console.log(
 		risen.length === 0
 			? `cost check: no operation of ${costKeys.length} costs more ops than its record`
-			: `cost check: ${risen.length} operation(s) cost more ops than their record`,
+			: `cost check: ${risen.length} operation(s) cost more ops than their record; lower the cost, or give \`${ACCEPT_RISE} <key>\` for a rise that correctness needs`,
 	);
 	if (CHECK_COST && risen.length > 0) process.exitCode = 1;
 }

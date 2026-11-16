@@ -400,6 +400,46 @@ file name with an extension and a `Content-Type`, and a file name without an ext
    `getBinaryMetadata`. It must stay on v1 for stored files until the effect above exists.
 2. `length` comes from the length of the base64 text. Text that is not valid base64 fails later, in the runtime.
 
+## Proposal: fewer moves and undefined loads in the bytecode
+
+Measured with `scripts/verify-compiled-nodes.ts --cost` (the counters of `src/testing/vm.ts`; one instruction
+is one unit of fuel in `interp.zig`). GitHub `repository.get`, one item: 232 instructions. 53 are `MOV`, 27
+are `LOADUNDEF`, 13 are `JMP`. These three are 40% of the run. The node compiler cannot remove them: they
+come from `src/compiler/lower.ts`.
+
+Where they come from:
+
+1. **Call and inline staging.** An argument goes to a temporary, then to the argument window, then to the
+   parameter register of an inlined function (`MOV r27, r12; MOV r29, r27; MOV r17, r29`).
+2. **Results of inlined functions.** A `return` writes a result register, jumps to the end label and the
+   caller copies the result again (`MOV r39, r20; JMP @155; MOV r18, r39`).
+3. **Statement results and declarations.** Each statement and each `let` without a value emits `LOADUNDEF`,
+   also when no instruction reads the register before the next write.
+4. **Counter updates.** `i++` as a statement emits `MOV, TONUM, LOADI, ADD, MOV, MOV`: 6 instructions for 2.
+5. **Jumps to the next instruction** after an `if` branch or an inlined `return` in tail position.
+
+What the compiler must emit instead (the module format and the instruction set stay the same):
+
+1. Copy propagation in each function after lowering. Replace the uses of a register that holds a copy with
+   the source, when no write to the source or to the copy lies between. Then remove a `MOV` whose target is
+   dead. `src/compiler/liveness.ts` has the liveness data.
+2. Give an inlined parameter the register of its argument when the argument is a local that the callee does
+   not write. Give the result of an inlined function the register that the caller wants.
+3. Remove a `LOADUNDEF` when the register is dead, or when it is the first write to a register in a frame and
+   the instruction is not in a loop. The interpreter sets all registers of a new frame to `undefined`
+   (`interp.zig`, `@memset(... value.undef)`); the test VM does the same.
+4. Emit `LOADI; ADD` for `i++` and `i += 1` when the value of the expression is not used and the operand is
+   a number by its type.
+5. Remove a `JMP` to the next instruction, and thread a `JMP` to a `JMP`.
+
+Expected saving, from the same run: about 40 of 53 `MOV`, 22 of 27 `LOADUNDEF`, 5 of 13 `JMP` and 4 for each
+loop turn. That is 65 to 70 of 232 instructions (28% to 30%) for a simple HTTP operation, and about the same
+part for the hand-written library nodes, because the cause is in the lowering and not in the node code.
+
+The Zig interpreter needs no change. The gate is the cost ratchet (`--check-cost`), the equality of the
+reference runner and the bytecode in the existing tests, and the fuzz of the runtime. Item 3 needs one new
+test: a register that a loop body reads before it writes must still get its `LOADUNDEF`.
+
 ## Phases
 
 | Phase | Work | Done when |

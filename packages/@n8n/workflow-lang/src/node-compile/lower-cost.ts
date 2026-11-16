@@ -233,6 +233,9 @@ interface Shape {
 	headersAreObjects: boolean;
 	copies: ts.Statement[];
 	spares: ts.Statement[];
+	literal?: ts.ObjectLiteralExpression;
+	touched: Set<string>;
+	consumers: number;
 }
 
 function emptyCopy(
@@ -282,12 +285,18 @@ function shapeOf(name: ts.Identifier): Shape | undefined {
 		headersAreObjects: true,
 		copies: [],
 		spares: [],
+		literal: declared.initializer,
+		touched: new Set(),
+		consumers: 0,
 	};
 	const first = keys.get('headers');
 	if (first !== undefined && !ts.isObjectLiteralExpression(first)) shape.headersAreObjects = false;
 	for (const use of uses.references) {
 		const p = use.parent;
-		if (isCallOf(p, REQUEST) && p.arguments[0] === use) continue;
+		if (isCallOf(p, REQUEST) && p.arguments[0] === use) {
+			shape.consumers++;
+			continue;
+		}
 		const statement = ts.isBinaryExpression(p) ? p.parent : p.parent.parent;
 		const copy = statement ? emptyCopy(statement, name.text, scope) : undefined;
 		if (copy && ts.isStatement(statement)) {
@@ -306,6 +315,7 @@ function shapeOf(name: ts.Identifier): Shape | undefined {
 		)
 			key = p.argumentExpression.text;
 		if (key === undefined || key === '__proto__') return undefined;
+		shape.touched.add(key);
 		const around = p.parent;
 		if (ts.isCallExpression(around) && around.expression === p) return undefined;
 		if (ts.isTaggedTemplateExpression(around) && around.tag === p) return undefined;
@@ -331,6 +341,8 @@ function literalShape(literal: ts.ObjectLiteralExpression): Shape | undefined {
 		headersAreObjects: first === undefined || ts.isObjectLiteralExpression(first),
 		copies: [],
 		spares: [],
+		touched: new Set(),
+		consumers: 1,
 	};
 }
 
@@ -347,7 +359,12 @@ function requestForm(name: string, has: (key: RequestKey) => boolean, flags: Req
 	const form = has('form');
 	const lines: string[] = [];
 	if (has('auth')) lines.push('const auth = options.auth;');
-	const given = has('headers') ? '__plain(options.headers ?? {})' : '{}';
+	const given =
+		flags.constants.headers !== undefined
+			? `__plain(${flags.constants.headers})`
+			: has('headers')
+				? '__plain(options.headers ?? {})'
+				: '{}';
 	const copied = form || !flags.headersAreObjects;
 	lines.push(`const headers = ${copied ? `__assign({}, ${given})` : given};`);
 	if (parts) lines.push('const parts = __formParts(options, headers);');
@@ -360,17 +377,18 @@ function requestForm(name: string, has: (key: RequestKey) => boolean, flags: Req
 	const encoded = form
 		? `form !== undefined && form !== null ? __form(__plain(form)) : ${sent}`
 		: sent;
-	const url = has('uri')
-		? has('url')
-			? 'options.uri ?? options.url'
-			: 'options.uri'
-		: has('url')
-			? 'options.url'
-			: 'undefined';
+	const second = flags.constants.url ?? (has('url') ? 'options.url' : undefined);
+	const url =
+		flags.constants.uri ??
+		(has('uri')
+			? second === undefined
+				? 'options.uri'
+				: `options.uri ?? ${second}`
+			: (second ?? 'undefined'));
 	return `async function ${name}(options) {
 	${lines.join('\n\t')}
 	const response = await ctx.http({
-		method: ${has('method') ? "options.method ?? 'GET'" : "'GET'"},
+		method: ${flags.constants.method ?? (has('method') ? "options.method ?? 'GET'" : "'GET'")},
 		url: ${url},
 		headers,
 		qs: ${has('qs') ? '__plain(options.qs ?? {})' : '{}'},
@@ -379,15 +397,15 @@ function requestForm(name: string, has: (key: RequestKey) => boolean, flags: Req
 		responseBinary: undefined,
 		basicAuth: ${has('auth') ? "auth ? { user: auth.user ?? auth.username ?? '', password: auth.pass ?? auth.password ?? '' } : undefined" : 'undefined'},
 		inject: ${flags.wrapped},
-		credential,
+		credential,${flags.tokenOptions ? '\n\t\tskipTokenRefresh: undefined,\n\t\ttokenExpiredStatusCode: undefined,' : ''}
 	});
-	if (response.status >= 400) {
+	if (response.status >= 400${flags.lenient === '' ? '' : ` && !(${flags.lenient})`}) {
 		const failure = new Error('Request failed with status code ' + response.status);
 		failure.response = { status: response.status, data: response.body, headers: response.headers };
 		failure.statusCode = response.status;
 		throw ${flags.wrapped === 'true' ? '__apiError(failure, undefined)' : 'failure'};
 	}
-	return response.body;
+	return ${flags.full === '' ? '' : `${flags.full} ? { body: response.body, headers: response.headers, statusCode: response.status } : `}response.body;
 }`;
 }
 
@@ -395,21 +413,106 @@ interface RequestFlags {
 	wrapped: string;
 	legacy: boolean;
 	headersAreObjects: boolean;
+	tokenOptions: boolean;
+	lenient: string;
+	full: string;
+	constants: RequestConstants;
 }
 
-const GENERAL_REQUEST_KEYS = [
+type RequestConstants = Partial<Record<'method' | 'uri' | 'url' | 'headers', string>>;
+const FORM_READS = new Set<string>([
+	...REQUEST_KEYS,
 	'encoding',
-	'resolveWithFullResponse',
-	'returnFullResponse',
 	'simple',
+	'resolveWithFullResponse',
 	'ignoreHttpStatusErrors',
-];
+	'returnFullResponse',
+]);
+
+function isPlainLiteral(e: ts.Expression): boolean {
+	return (
+		ts.isStringLiteralLike(e) ||
+		ts.isNumericLiteral(e) ||
+		e.kind === ts.SyntaxKind.TrueKeyword ||
+		e.kind === ts.SyntaxKind.FalseKeyword ||
+		e.kind === ts.SyntaxKind.NullKeyword
+	);
+}
+
+function isConstantHeaders(e: ts.Expression): boolean {
+	return (
+		ts.isObjectLiteralExpression(e) &&
+		e.properties.every(
+			(p) =>
+				ts.isPropertyAssignment(p) &&
+				(ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) &&
+				p.name.text !== '__proto__' &&
+				(ts.isStringLiteralLike(p.initializer) || ts.isNumericLiteral(p.initializer)),
+		)
+	);
+}
+
+function requestTemplate(
+	shape: Shape,
+	sf: ts.SourceFile,
+): { constants: RequestConstants; dead: ts.Node[] } {
+	const constants: RequestConstants = {};
+	const dead: ts.Node[] = [];
+	const literal = shape.literal;
+	if (!literal || shape.consumers !== 1) return { constants, dead };
+	const count = new Map<string, number>();
+	for (const p of literal.properties) {
+		const key =
+			p.name && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) ? p.name.text : '';
+		count.set(key, (count.get(key) ?? 0) + 1);
+	}
+	for (const p of literal.properties) {
+		if (!ts.isPropertyAssignment(p)) continue;
+		if (!ts.isIdentifier(p.name) && !ts.isStringLiteral(p.name)) continue;
+		const key = p.name.text;
+		if (count.get(key) !== 1 || shape.touched.has(key)) continue;
+		const value = p.initializer;
+		const text = printer.printNode(ts.EmitHint.Unspecified, value, sf);
+		if ((key === 'method' || key === 'uri' || key === 'url') && ts.isStringLiteralLike(value)) {
+			constants[key] = text;
+			dead.push(p);
+		} else if (key === 'headers' && isConstantHeaders(value)) {
+			constants.headers = text;
+			dead.push(p);
+		} else if (!FORM_READS.has(key) && isPlainLiteral(value)) dead.push(p);
+	}
+	return { constants, dead };
+}
+
+function textHash(text: string): string {
+	let h = 0x811c9dc5;
+	for (let k = 0; k < text.length; k++) {
+		h ^= text.charCodeAt(k);
+		h = Math.imul(h, 0x01000193) >>> 0;
+	}
+	return h.toString(36);
+}
+
+const GENERAL_REQUEST_KEYS = ['encoding'];
 
 function lowerRequests(sf: ts.SourceFile): string | undefined {
 	const changes = new Map<ts.Node, Replacement>();
 	const forms = new Map<string, string>();
-	let general = 0;
+	let generalCalls = 0;
 	let declaration: ts.FunctionDeclaration | undefined;
+	const tokenOptions = sf.statements.some(
+		(st) => ts.isFunctionDeclaration(st) && st.name?.text === REQUEST && st.parameters.length > 3,
+	);
+	const general = sf.statements.find(
+		(st) => ts.isFunctionDeclaration(st) && st.name?.text === REQUEST,
+	);
+	const generalText = general ? general.getText(sf) : '';
+	const honoursLenient =
+		generalText.includes('options.ignoreHttpStatusErrors') ||
+		generalText.includes('options.simple');
+	const honoursFull =
+		generalText.includes('options.returnFullResponse') ||
+		generalText.includes('options.resolveWithFullResponse');
 	const visit = (n: ts.Node) => {
 		if (ts.isFunctionDeclaration(n) && n.name?.text === REQUEST) {
 			declaration = n;
@@ -418,15 +521,18 @@ function lowerRequests(sf: ts.SourceFile): string | undefined {
 		ts.forEachChild(n, visit);
 		if (ts.isIdentifier(n) && n.text === REQUEST && !isName(n)) {
 			const p = n.parent;
-			if (!ts.isCallExpression(p) || p.expression !== n) general++;
+			if (!ts.isCallExpression(p) || p.expression !== n) generalCalls++;
 		}
 		if (!isCallOf(n, REQUEST)) return;
-		general++;
-		const [options, wrapped, legacy] = n.arguments;
+		generalCalls++;
+		const [options, wrapped, legacy, extra] = n.arguments;
 		const isWrapped = flagOf(wrapped);
 		const isLegacy = flagOf(legacy);
 		if (options === undefined || isWrapped === undefined || isLegacy === undefined) return;
-		if (n.arguments.length > 3) return;
+		if (n.arguments.length > 5 || n.arguments.some(ts.isSpreadElement)) return;
+		const absent = extra === undefined ? undefined : primitiveOf(extra);
+		if (extra !== undefined && !(absent && (absent.value === undefined || absent.value === null)))
+			return;
 		const shape = ts.isIdentifier(options)
 			? shapeOf(options)
 			: ts.isObjectLiteralExpression(options)
@@ -435,10 +541,31 @@ function lowerRequests(sf: ts.SourceFile): string | undefined {
 		if (!shape || GENERAL_REQUEST_KEYS.some((key) => shape.maybe.has(key))) return;
 		const has = (key: RequestKey) => shape.maybe.has(key);
 		if (REQUEST_KEYS.every(has) && !shape.headersAreObjects) return;
+		const template = requestTemplate(shape, sf);
 		const flags = {
+			constants: template.constants,
 			wrapped: wrapped === undefined ? 'undefined' : String(isWrapped),
 			legacy: isLegacy,
 			headersAreObjects: shape.headersAreObjects,
+			tokenOptions,
+			lenient: !honoursLenient
+				? ''
+				: isLegacy
+					? shape.maybe.has('simple')
+						? 'options.simple === false'
+						: ''
+					: shape.maybe.has('ignoreHttpStatusErrors')
+						? 'options.ignoreHttpStatusErrors'
+						: '',
+			full: !honoursFull
+				? ''
+				: isLegacy
+					? shape.maybe.has('resolveWithFullResponse')
+						? 'options.resolveWithFullResponse'
+						: ''
+					: shape.maybe.has('returnFullResponse')
+						? 'options.returnFullResponse'
+						: '',
 		};
 		const bits = [
 			...REQUEST_KEYS.map(has),
@@ -446,18 +573,30 @@ function lowerRequests(sf: ts.SourceFile): string | undefined {
 			wrapped === undefined,
 			isLegacy,
 			shape.headersAreObjects,
+			tokenOptions,
+			flags.lenient !== '',
+			flags.full !== '',
 		];
 		const id = bits.reduce((sum, bit, k) => sum + (bit ? 2 ** k : 0), 0).toString(36);
-		const name = `${REQUEST}_${id}`;
-		if (!forms.has(name) && forms.size >= MAX_REQUEST_FORMS) return;
-		forms.set(name, requestForm(name, has, flags));
-		general--;
+		const fixed = JSON.stringify(template.constants);
+		let name = fixed === '{}' ? `${REQUEST}_${id}` : `${REQUEST}_${id}_${textHash(fixed)}`;
+		if (!forms.has(name) && forms.size >= MAX_REQUEST_FORMS) {
+			name = `${REQUEST}_${id}`;
+			flags.constants = {};
+			template.dead.length = 0;
+			if (!forms.has(name) && forms.size >= MAX_REQUEST_FORMS + 1) return;
+		}
+		const form = requestForm(name, has, flags);
+		if (forms.has(name) && forms.get(name) !== form) return;
+		forms.set(name, form);
+		for (const property of template.dead) changes.set(property, null);
+		generalCalls--;
 		changes.set(n, f.createCallExpression(f.createIdentifier(name), undefined, [options]));
 		for (const statement of [...shape.copies, ...shape.spares]) changes.set(statement, null);
 	};
 	visit(sf);
 	if (forms.size === 0) return undefined;
-	if (declaration && general === 0) changes.set(declaration, null);
+	if (declaration && generalCalls === 0) changes.set(declaration, null);
 	return rewrite(sf, changes, [...forms.values()]);
 }
 
@@ -678,6 +817,29 @@ function includedValue(
 	return value ? { call, value: value.value } : undefined;
 }
 
+function settleTopConstants(sf: ts.SourceFile, changes: Map<ts.Node, Replacement>): void {
+	let early = true;
+	for (const statement of sf.statements) {
+		if (ts.isFunctionDeclaration(statement)) continue;
+		const declared =
+			ts.isVariableStatement(statement) && statement.declarationList.declarations.length === 1
+				? statement.declarationList.declarations[0]
+				: undefined;
+		const value = declared?.initializer ? primitiveOf(declared.initializer) : undefined;
+		if (!ts.isVariableStatement(statement) || !declared || !value) {
+			early = false;
+			continue;
+		}
+		if (!early || !isConst(statement) || !ts.isIdentifier(declared.name)) continue;
+		if (typeof value.value === 'number' && !(value.value >= 0)) continue;
+		const uses = usesAnywhere(sf, declared.name.text);
+		if (uses.declarations.length !== 1 || uses.references.length === 0) continue;
+		if (uses.references.some((use) => isTarget(use) || isShorthand(use))) continue;
+		for (const use of uses.references) changes.set(use, primitiveNode(value.value));
+		changes.set(statement, null);
+	}
+}
+
 function isObjectSpread(n: ts.Node): boolean {
 	return ts.isSpreadAssignment(n) && ts.isObjectLiteralExpression(n.parent);
 }
@@ -717,7 +879,9 @@ function settleConstants(sf: ts.SourceFile, changes: Map<ts.Node, Replacement>):
 	for (const scope of scopesOf(sf)) {
 		for (const statement of ownStatements(scope)) {
 			const declared = statement.declarationList.declarations[0];
-			if (!ts.isIdentifier(declared.name) || !declared.initializer) continue;
+			if (!ts.isIdentifier(declared.name)) continue;
+			const isLet = (statement.declarationList.flags & ts.NodeFlags.Let) !== 0;
+			if (!declared.initializer && !isLet) continue;
 			const uses = usesIn(scope, declared.name.text);
 			if (!uses || uses.declarations.length !== 1) continue;
 			const block = statement.parent;
@@ -726,9 +890,9 @@ function settleConstants(sf: ts.SourceFile, changes: Map<ts.Node, Replacement>):
 				use.getStart() >= block.getStart() &&
 				use.getEnd() <= block.getEnd();
 			if (!uses.references.every(inReach)) continue;
-			const value = primitiveOf(declared.initializer);
-			if (value) {
-				if (typeof value.value === 'number' && !(value.value >= 0)) continue;
+			const value = declared.initializer ? primitiveOf(declared.initializer) : { value: undefined };
+			if (value || !declared.initializer) {
+				if (!value || (typeof value.value === 'number' && !(value.value >= 0))) continue;
 				if (uses.references.some((use) => isTarget(use) || isShorthand(use))) continue;
 				for (const use of uses.references) changes.set(use, primitiveNode(value.value));
 				changes.set(statement, null);
@@ -765,6 +929,58 @@ function settleConstants(sf: ts.SourceFile, changes: Map<ts.Node, Replacement>):
 	}
 }
 
+function joinFirstStores(sf: ts.SourceFile, changes: Map<ts.Node, Replacement>): void {
+	const visit = (n: ts.Node) => {
+		ts.forEachChild(n, visit);
+		if (!ts.isBlock(n) && !ts.isSourceFile(n)) return;
+		for (const [at, first] of n.statements.entries()) {
+			const next = n.statements[at + 1];
+			if (!next || !ts.isVariableStatement(first) || isConst(first)) continue;
+			if (first.declarationList.declarations.length !== 1) continue;
+			if ((first.declarationList.flags & ts.NodeFlags.Let) === 0) continue;
+			const declared = first.declarationList.declarations[0];
+			if (!ts.isIdentifier(declared.name) || !declared.initializer) continue;
+			const name = declared.name.text;
+			const start = primitiveOf(declared.initializer);
+			if (!start || !ts.isExpressionStatement(next)) continue;
+			const store = next.expression;
+			if (!ts.isBinaryExpression(store) || store.operatorToken.kind !== ts.SyntaxKind.EqualsToken)
+				continue;
+			if (!ts.isIdentifier(store.left) || store.left.text !== name) continue;
+			const reads: ts.Identifier[] = [];
+			let plain = true;
+			const scan = (e: ts.Node) => {
+				if (ts.isFunctionLike(e)) plain = false;
+				if (ts.isIdentifier(e) && e.text === name && !isName(e)) {
+					if (isTarget(e) || isShorthand(e) || isDeclarationName(e)) plain = false;
+					reads.push(e);
+				}
+				ts.forEachChild(e, scan);
+			};
+			scan(store.right);
+			if (!plain || changes.has(first) || changes.has(next)) continue;
+			if (!usesIn(scopeOf(first), name)) continue;
+			const value = ts.visitNode(store.right, function swap(e: ts.Node): ts.Node {
+				if (ts.isIdentifier(e) && reads.includes(e)) return primitiveNode(start.value);
+				return ts.visitEachChild(e, swap, undefined);
+			});
+			if (!ts.isExpression(value)) continue;
+			changes.set(
+				first,
+				f.createVariableStatement(
+					undefined,
+					f.createVariableDeclarationList(
+						[f.createVariableDeclaration(name, undefined, undefined, value)],
+						ts.NodeFlags.Let,
+					),
+				),
+			);
+			changes.set(next, null);
+		}
+	};
+	visit(sf);
+}
+
 function isObjectCall(call: ts.CallExpression, method: string): boolean {
 	const callee = call.expression;
 	return (
@@ -778,7 +994,11 @@ function isObjectCall(call: ts.CallExpression, method: string): boolean {
 function isReadOfEmpty(use: ts.Identifier): boolean {
 	const p = use.parent;
 	if (ts.isPropertyAccessExpression(p) && p.expression === use)
-		return !isTarget(p) && !ts.isDeleteExpression(p.parent) && !ts.isCallExpression(p.parent);
+		return (
+			!isTarget(p) &&
+			!ts.isDeleteExpression(p.parent) &&
+			!(ts.isCallExpression(p.parent) && p.parent.expression === p)
+		);
 	if (!ts.isCallExpression(p)) return false;
 	const at = p.arguments.findIndex((arg) => arg === use);
 	if (isCallOf(p, '__assign')) return at === 1;
@@ -805,30 +1025,155 @@ function usesAnywhere(sf: ts.SourceFile, name: string): Uses {
 	return out;
 }
 
-function settleAbsentArguments(sf: ts.SourceFile, changes: Map<ts.Node, Replacement>): void {
+interface EmptyParameter {
+	fn: ts.FunctionDeclaration;
+	index: number;
+	uses: ts.Identifier[];
+	needs: string[];
+}
+
+const MAX_EMPTY_PARAMETERS = 256;
+
+function calledFunction(
+	use: ts.Identifier,
+	functions: Map<string, ts.FunctionDeclaration>,
+): string | undefined {
+	const call = use.parent;
+	if (!ts.isCallExpression(call) || !ts.isIdentifier(call.expression)) return undefined;
+	const at = call.arguments.findIndex((arg) => arg === use);
+	const target = functions.get(call.expression.text);
+	if (at < 0 || !target || at >= target.parameters.length) return undefined;
+	return `${call.expression.text}:${at}`;
+}
+
+function enclosingFunction(n: ts.Node): ts.Node {
+	let at: ts.Node = n.parent;
+	while (!ts.isSourceFile(at) && !ts.isFunctionLike(at)) at = at.parent;
+	return at;
+}
+
+interface CallSites {
+	functions: Map<string, ts.FunctionDeclaration>;
+	sites: Map<string, ts.CallExpression[]>;
+}
+
+function callSitesOf(sf: ts.SourceFile): CallSites {
+	const functions = new Map<string, ts.FunctionDeclaration>();
+	const sites = new Map<string, ts.CallExpression[]>();
 	for (const fn of sf.statements) {
 		if (!ts.isFunctionDeclaration(fn) || !fn.name) continue;
 		const calls = usesAnywhere(sf, fn.name.text);
 		if (calls.declarations.length !== 1 || calls.references.length === 0) continue;
-		let known = true;
-		let most = 0;
+		const found: ts.CallExpression[] = [];
 		for (const use of calls.references) {
 			const call = use.parent;
-			if (!ts.isCallExpression(call) || call.expression !== use) known = false;
-			else if (call.arguments.some(ts.isSpreadElement)) known = false;
-			else most = Math.max(most, call.arguments.length);
+			if (
+				ts.isCallExpression(call) &&
+				call.expression === use &&
+				!call.arguments.some(ts.isSpreadElement)
+			)
+				found.push(call);
 		}
-		if (!known) continue;
+		if (found.length !== calls.references.length || fn.name.text === REQUEST) continue;
+		functions.set(fn.name.text, fn);
+		sites.set(fn.name.text, found);
+	}
+	return { functions, sites };
+}
+
+function settleSameArguments(sf: ts.SourceFile, changes: Map<ts.Node, Replacement>): void {
+	const { functions, sites } = callSitesOf(sf);
+	for (const [name, fn] of functions) {
 		for (const [index, parameter] of fn.parameters.entries()) {
-			if (index < most || !ts.isIdentifier(parameter.name) || parameter.dotDotDotToken) continue;
-			if (!isEmptyLiteral(parameter.initializer)) continue;
+			if (!ts.isIdentifier(parameter.name) || parameter.dotDotDotToken) continue;
+			const given = (sites.get(name) ?? []).map((call) =>
+				call.arguments[index] === undefined ? undefined : primitiveOf(call.arguments[index]),
+			);
+			const first = given[0];
+			if (!first || given.some((arg) => !arg || arg.value !== first.value)) continue;
+			if (first.value === undefined && parameter.initializer) continue;
+			if (typeof first.value === 'number' && !(first.value >= 0)) continue;
 			const uses = usesIn(fn, parameter.name.text);
-			if (!uses || uses.declarations.length !== 1 || !uses.references.every(isReadOfEmpty))
-				continue;
+			if (!uses || uses.declarations.length !== 1) continue;
+			if (uses.references.some((use) => isTarget(use) || isShorthand(use))) continue;
+			for (const use of uses.references) changes.set(use, primitiveNode(first.value));
+		}
+	}
+}
+
+function emptyParameters(sf: ts.SourceFile): EmptyParameter[] {
+	const { functions, sites } = callSitesOf(sf);
+	const candidates = new Map<string, EmptyParameter>();
+	for (const [name, fn] of functions) {
+		for (const [index, parameter] of fn.parameters.entries()) {
+			if (candidates.size >= MAX_EMPTY_PARAMETERS) break;
+			if (!ts.isIdentifier(parameter.name) || parameter.dotDotDotToken) continue;
+			const uses = usesIn(fn, parameter.name.text);
+			if (!uses || uses.declarations.length !== 1) continue;
+			const needs: string[] = [];
+			let ok = true;
 			for (const use of uses.references) {
-				const count = keyCountOf(use);
-				if (count) changes.set(count, primitiveNode(0));
+				if (isReadOfEmpty(use)) continue;
+				const passed = calledFunction(use, functions);
+				if (passed === undefined) ok = false;
+				else needs.push(passed);
 			}
+			for (const call of sites.get(name) ?? []) {
+				const given = call.arguments[index];
+				if (given === undefined) {
+					if (!isEmptyLiteral(parameter.initializer)) ok = false;
+				} else if (ts.isIdentifier(given)) {
+					const from = enclosingFunction(call);
+					const at =
+						ts.isFunctionDeclaration(from) && from.name && functions.get(from.name.text) === from
+							? from.parameters.findIndex(
+									(q) => ts.isIdentifier(q.name) && q.name.text === given.text,
+								)
+							: -1;
+					const own =
+						at >= 0 && ts.isFunctionDeclaration(from) ? usesIn(from, given.text) : undefined;
+					if (at < 0 || !own || own.declarations.length !== 1 || !ts.isFunctionDeclaration(from))
+						ok = false;
+					else needs.push(`${from.name?.text ?? ''}:${at}`);
+				} else if (!isEmptyLiteral(given)) ok = false;
+			}
+			if (ok) candidates.set(`${name}:${index}`, { fn, index, uses: uses.references, needs });
+		}
+	}
+	for (let round = 0; round <= candidates.size; round++) {
+		let removed = false;
+		for (const [key, candidate] of candidates) {
+			if (candidate.needs.every((need) => candidates.has(need))) continue;
+			candidates.delete(key);
+			removed = true;
+		}
+		if (!removed) break;
+	}
+	return [...candidates.values()];
+}
+
+function isTested(read: ts.Node): boolean {
+	const p = read.parent;
+	if (ts.isBinaryExpression(p)) return !isAssignmentOperator(p.operatorToken.kind);
+	if (ts.isPrefixUnaryExpression(p)) return p.operator === ts.SyntaxKind.ExclamationToken;
+	if (ts.isIfStatement(p)) return p.expression === read;
+	return ts.isConditionalExpression(p) && p.condition === read;
+}
+
+function settleAbsentArguments(sf: ts.SourceFile, changes: Map<ts.Node, Replacement>): void {
+	for (const parameter of emptyParameters(sf)) {
+		for (const use of parameter.uses) {
+			const count = keyCountOf(use);
+			if (count) changes.set(count, primitiveNode(0));
+			const read = use.parent;
+			if (
+				ts.isPropertyAccessExpression(read) &&
+				read.expression === use &&
+				!(read.name.text in Object.prototype) &&
+				isReadOfEmpty(use) &&
+				isTested(read)
+			)
+				changes.set(read, primitiveNode(undefined));
 		}
 	}
 }
@@ -902,7 +1247,83 @@ function settleStatements(statements: readonly ts.Statement[]): ts.Statement[] |
 	return changed ? out : undefined;
 }
 
-function simplify(sf: ts.SourceFile): string | undefined {
+const MARKER = '{{$credentials.';
+
+function isMarked(value: Primitive): boolean {
+	return typeof value === 'string' && value.includes(MARKER);
+}
+
+type Evaluate = (code: string) => unknown;
+
+function replacedText(n: ts.CallExpression, evaluate: Evaluate | undefined): string | undefined {
+	const callee = n.expression;
+	if (!evaluate || !ts.isPropertyAccessExpression(callee) || callee.questionDotToken)
+		return undefined;
+	if (callee.name.text !== 'replace' || n.arguments.length !== 2) return undefined;
+	const [pattern, value] = n.arguments;
+	const text = callee.expression;
+	if (!ts.isStringLiteralLike(text) || !ts.isStringLiteralLike(value)) return undefined;
+	if (!ts.isRegularExpressionLiteral(pattern) && !ts.isStringLiteralLike(pattern)) return undefined;
+	if (isMarked(text.text) || isMarked(value.text) || text.text.length > MAX_FOLDED_TEXT)
+		return undefined;
+	const given = ts.isRegularExpressionLiteral(pattern)
+		? pattern.text
+		: JSON.stringify(pattern.text);
+	try {
+		const out = evaluate(
+			`${JSON.stringify(text.text)}.replace(${given}, ${JSON.stringify(value.text)})`,
+		);
+		return typeof out === 'string' && out.length <= MAX_FOLDED_TEXT ? out : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function includedInList(n: ts.CallExpression): boolean | undefined {
+	const callee = n.expression;
+	if (!ts.isPropertyAccessExpression(callee) || callee.questionDotToken) return undefined;
+	if (callee.name.text !== 'includes' || n.arguments.length !== 1) return undefined;
+	const list = callee.expression;
+	const asked = primitiveOf(n.arguments[0]);
+	if (!asked || !ts.isArrayLiteralExpression(list)) return undefined;
+	const values: Primitive[] = [];
+	for (const element of list.elements) {
+		const value = primitiveOf(element);
+		if (!value) return undefined;
+		values.push(value.value);
+	}
+	return values.some(isMarked) || isMarked(asked.value) ? undefined : values.includes(asked.value);
+}
+
+function joinedTemplate(n: ts.TemplateExpression): ts.Expression | undefined {
+	let head = n.head.text;
+	const spans: Array<{ expression: ts.Expression; text: string }> = [];
+	let joined = false;
+	for (const span of n.templateSpans) {
+		const value = primitiveOf(span.expression);
+		if (value && value.value !== null && value.value !== undefined) {
+			joined = true;
+			const text = String(value.value) + span.literal.text;
+			if (spans.length === 0) head += text;
+			else spans[spans.length - 1].text += text;
+		} else spans.push({ expression: span.expression, text: span.literal.text });
+	}
+	if (!joined) return undefined;
+	if (spans.length === 0) return f.createStringLiteral(head);
+	return f.createTemplateExpression(
+		f.createTemplateHead(head),
+		spans.map((span, k) =>
+			f.createTemplateSpan(
+				span.expression,
+				k === spans.length - 1
+					? f.createTemplateTail(span.text)
+					: f.createTemplateMiddle(span.text),
+			),
+		),
+	);
+}
+
+function simplify(sf: ts.SourceFile, evaluate?: Evaluate): string | undefined {
 	let changed = false;
 	const done = <T>(value: T): T => {
 		changed = true;
@@ -921,14 +1342,26 @@ function simplify(sf: ts.SourceFile): string | undefined {
 			if (left && op === ts.SyntaxKind.BarBarToken) return done(left.value ? n.left : n.right);
 			if (left && op === ts.SyntaxKind.AmpersandAmpersandToken)
 				return done(left.value ? n.right : n.left);
+			if (left && op === ts.SyntaxKind.QuestionQuestionToken)
+				return done(left.value === null || left.value === undefined ? n.right : n.left);
 			const right = primitiveOf(n.right);
 			const same = EQUALITY.get(op);
-			if (left && right && same !== undefined)
+			if (left && right && same !== undefined && !isMarked(left.value) && !isMarked(right.value))
 				return done(primitiveNode((left.value === right.value) === same));
 		}
 		if (ts.isConditionalExpression(n)) {
 			const condition = primitiveOf(n.condition);
 			if (condition) return done(condition.value ? n.whenTrue : n.whenFalse);
+		}
+		if (ts.isCallExpression(n)) {
+			const included = includedInList(n);
+			if (included !== undefined) return done(primitiveNode(included));
+			const replaced = replacedText(n, evaluate);
+			if (replaced !== undefined) return done(f.createStringLiteral(replaced));
+		}
+		if (ts.isTemplateExpression(n)) {
+			const joined = joinedTemplate(n);
+			if (joined !== undefined) return done(joined);
 		}
 		if (ts.isIfStatement(n)) {
 			const condition = primitiveOf(n.expression);
@@ -957,24 +1390,104 @@ function simplify(sf: ts.SourceFile): string | undefined {
 
 const MAX_ROUNDS = 8;
 
-function lowerConstants(code: string): string {
+export function lowerConstants(code: string, evaluate?: Evaluate): string {
 	let text = code;
 	for (let round = 0; round < MAX_ROUNDS; round++) {
 		const sf = parse(text);
 		const changes = new Map<ts.Node, Replacement>();
 		settleConstants(sf, changes);
+		if (changes.size === 0) settleTopConstants(sf, changes);
+		if (changes.size === 0) joinFirstStores(sf, changes);
+		if (changes.size === 0) settleSameArguments(sf, changes);
 		if (changes.size === 0) settleAbsentArguments(sf, changes);
 		if (changes.size === 0) dropUnusedFunctions(sf, changes);
 		const settled = changes.size > 0 ? rewrite(sf, changes, []) : text;
-		const simple = simplify(parse(settled));
+		const simple = simplify(parse(settled), evaluate);
 		if (changes.size === 0 && simple === undefined) break;
 		text = simple ?? settled;
 	}
 	return text;
 }
 
-export function lowerCost(code: string, holdsBytes: boolean): LoweredCode {
-	let text = lowerConstants(code);
+const PATTERN = '__pattern';
+const MAX_PATTERNS = 16;
+const PATTERN_READERS = new Set(['replace', 'match', 'split', 'search']);
+
+function loopAround(n: ts.Node): ts.IterationStatement | undefined {
+	let found: ts.IterationStatement | undefined;
+	let at: ts.Node = n.parent;
+	while (!ts.isSourceFile(at) && !ts.isFunctionLike(at)) {
+		if (ts.isIterationStatement(at, false)) found = at;
+		at = at.parent;
+	}
+	if (!found) return undefined;
+	const holder = found.parent;
+	return ts.isBlock(holder) || ts.isSourceFile(holder) ? found : undefined;
+}
+
+function isPatternRead(n: ts.RegularExpressionLiteral): boolean {
+	const p = n.parent;
+	if (ts.isPropertyAccessExpression(p) && p.expression === n && p.name.text === 'test')
+		return ts.isCallExpression(p.parent) && p.parent.expression === p;
+	if (!ts.isCallExpression(p) || p.arguments[0] !== n) return false;
+	const callee = p.expression;
+	return ts.isPropertyAccessExpression(callee) && PATTERN_READERS.has(callee.name.text);
+}
+
+function hoistPatterns(sf: ts.SourceFile): string | undefined {
+	const made = new Map<ts.IterationStatement, Map<string, string>>();
+	const changes = new Map<ts.Node, ts.Identifier>();
+	let count = 0;
+	let taken = false;
+	const visit = (n: ts.Node) => {
+		if (ts.isIdentifier(n) && n.text.startsWith(PATTERN)) taken = true;
+		const loop = ts.isRegularExpressionLiteral(n) && isPatternRead(n) ? loopAround(n) : undefined;
+		if (ts.isRegularExpressionLiteral(n) && loop) {
+			const flags = n.text.slice(n.text.lastIndexOf('/') + 1);
+			if (!flags.includes('g') && !flags.includes('y')) {
+				const names = made.get(loop) ?? new Map<string, string>();
+				made.set(loop, names);
+				let name = names.get(n.text);
+				if (name === undefined && count < MAX_PATTERNS) {
+					name = `${PATTERN}${count++}`;
+					names.set(n.text, name);
+				}
+				if (name !== undefined) changes.set(n, f.createIdentifier(name));
+			}
+		}
+		ts.forEachChild(n, visit);
+	};
+	visit(sf);
+	if (taken || count === 0) return undefined;
+	const lifted = (loop: ts.IterationStatement, names: Map<string, string>): ts.Node[] => {
+		const body = ts.visitNode(loop, function swap(n: ts.Node): ts.Node {
+			return changes.get(n) ?? ts.visitEachChild(n, swap, undefined);
+		});
+		const declared = [...names].map(([text, name]) =>
+			f.createVariableStatement(
+				undefined,
+				f.createVariableDeclarationList(
+					[
+						f.createVariableDeclaration(
+							name,
+							undefined,
+							undefined,
+							f.createRegularExpressionLiteral(text),
+						),
+					],
+					ts.NodeFlags.Const,
+				),
+			),
+		);
+		return [...declared, body];
+	};
+	const outer = new Map<ts.Node, Replacement>();
+	for (const [loop, names] of made) outer.set(loop, lifted(loop, names));
+	return rewrite(sf, outer, []);
+}
+
+export function lowerCost(code: string, holdsBytes: boolean, evaluate?: Evaluate): LoweredCode {
+	let text = lowerConstants(code, evaluate);
 	const helpers = new Set<string>();
 	const requests = lowerRequests(parse(text));
 	if (requests !== undefined) text = requests;
@@ -985,6 +1498,8 @@ export function lowerCost(code: string, holdsBytes: boolean): LoweredCode {
 	}
 	const counted = lowerItems(parse(text));
 	if (counted !== undefined) text = counted;
+	const hoisted = hoistPatterns(parse(text));
+	if (hoisted !== undefined) text = hoisted;
 	return {
 		code: text,
 		items: counted === undefined ? ITEMS_WRAPPED : ITEMS_COUNTED,
@@ -1062,4 +1577,13 @@ export function literalKeyCount(e: ts.Expression): number | undefined {
 		names.add(p.name.text);
 	}
 	return names.size;
+}
+
+export function namesOutsideRequest(code: string, name: string): boolean {
+	const walk = (n: ts.Node): boolean => {
+		if (ts.isFunctionDeclaration(n) && n.name?.text === REQUEST) return false;
+		if ((ts.isIdentifier(n) || ts.isStringLiteralLike(n)) && n.text === name) return true;
+		return ts.forEachChild(n, walk) ?? false;
+	};
+	return walk(parse(code));
 }
