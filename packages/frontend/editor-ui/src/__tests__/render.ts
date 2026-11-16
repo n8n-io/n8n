@@ -30,17 +30,15 @@ export const { renderComponent, createComponentRenderer } = defineRenderer({
 	// keeps components that don't set up their own scope working (replicates the former
 	// workflowId-based fallback). Tests override it by passing their own `global.provide`.
 	//
-	// A thunk, not an object: `useWorkflowDocumentStore()` has to run per render, inside the pinia
-	// that render activated.
-	provide: () => {
-		const settingsStore = useSettingsStore();
-		return {
-			[WorkflowDocumentStoreKey as symbol]: computed(() =>
-				useWorkflowDocumentStore(createWorkflowDocumentId(useWorkflowsStore().workflowId)),
-			),
-			[FeatureMaturityKey as symbol]: computed(() =>
-				featureMaturityForPlan(featureMaturity, settingsStore.isEnterprisePlan),
-			),
-		};
-	},
+	// A thunk, not an object, and the store calls stay inside `computed`. The thunk runs
+	// while `render()` is still building options, before that render's pinia is active.
+	// A component that never reads these keys must not touch a store.
+	provide: () => ({
+		[WorkflowDocumentStoreKey as symbol]: computed(() =>
+			useWorkflowDocumentStore(createWorkflowDocumentId(useWorkflowsStore().workflowId)),
+		),
+		[FeatureMaturityKey as symbol]: computed(() =>
+			featureMaturityForPlan(featureMaturity, useSettingsStore().isEnterprisePlan),
+		),
+	}),
 });
