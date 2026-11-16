@@ -587,7 +587,7 @@ describe('node compiler: folds that keep the result of v1', () => {
 
 	it('folds an optional chain on a value that is not there', () => {
 		const result = run(
-			`const uri = this.getNodeParameter('uri', 0);
+			`const uri = undefined;
 			const page = uri?.includes('page_info') ? 1 : 2;
 			return [[{ json: { page } }]];`,
 			'',
