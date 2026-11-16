@@ -6,6 +6,7 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UnexpectedError } from '@n8n/errors';
 import { DataSource, In, IsNull, LessThan, LessThanOrEqual, Not, Or } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
@@ -165,6 +166,38 @@ export class SkillSourceRepository {
 
 	async findById(id: string, ctx: OperationContext = {}): Promise<SkillSourceConnection | null> {
 		return await this.sources.managerFor(ctx).findOneBy(SkillSourceConnection, { id });
+	}
+
+	async lockForMove(sourceId: string, ctx: OperationContext): Promise<void> {
+		if (!ctx.trx) throw new UnexpectedError('Source row locks need a transaction');
+		if (this.sources.manager.connection.options.type !== 'postgres') return;
+		await this.sources.managerFor(ctx).findOne(SkillSourceConnection, {
+			where: { id: sourceId },
+			lock: { mode: 'pessimistic_write' },
+		});
+	}
+
+	async moveScope(
+		sourceId: string,
+		projectId: string | null,
+		credentialId: string | null,
+		ctx: OperationContext,
+	): Promise<void> {
+		try {
+			await this.sources.managerFor(ctx).update(
+				SkillSourceConnection,
+				{ id: sourceId },
+				{
+					projectId,
+					credentialId,
+					credentialRequired: credentialId !== null,
+					probeCursor: null,
+				},
+			);
+		} catch (error) {
+			if (isUniqueConstraintError(error)) throw new DuplicateSkillSourceError();
+			throw error;
+		}
 	}
 
 	/** Replaces validated access only while the source still has the scope and credential read. */
@@ -422,6 +455,7 @@ export class SkillSourceRepository {
 			SkillSourceConnection,
 			{
 				id: source.id,
+				projectId: source.projectId ?? IsNull(),
 				credentialId: source.credentialId ?? IsNull(),
 				lastErrorReason: source.lastErrorReason ?? IsNull(),
 			},
@@ -441,6 +475,7 @@ export class SkillSourceRepository {
 		sourceId: string,
 		result: {
 			checkedAt: Date;
+			readScope?: Pick<SkillSourceConnection, 'projectId' | 'credentialId'>;
 			errorReason: string | null;
 			/** `to` null clears the cursor, so the next check reads every skill again. */
 			probeCursor?: { from: string | null; to: string | null };
@@ -449,27 +484,33 @@ export class SkillSourceRepository {
 		},
 	): Promise<boolean> {
 		const manager = this.sources.managerFor({});
-		const { checkedAt, errorReason, probeCursor } = result;
-		const written = await manager.update(
-			SkillSourceConnection,
-			{
-				id: sourceId,
-				lastCheckedAt: Or(IsNull(), LessThanOrEqual(checkedAt)),
-				...(result.credentialId !== undefined
-					? { credentialId: result.credentialId ?? IsNull() }
-					: {}),
-			},
-			{ lastCheckedAt: checkedAt, lastErrorReason: errorReason },
-		);
+		const { checkedAt, errorReason, probeCursor, readScope } = result;
+		const unchanged = {
+			id: sourceId,
+			lastCheckedAt: Or(IsNull(), LessThanOrEqual(checkedAt)),
+			...(result.credentialId !== undefined
+				? { credentialId: result.credentialId ?? IsNull() }
+				: {}),
+			...(readScope
+				? {
+						projectId: readScope.projectId ?? IsNull(),
+						credentialId: readScope.credentialId ?? IsNull(),
+					}
+				: {}),
+		};
+		const written = await manager.update(SkillSourceConnection, unchanged, {
+			lastCheckedAt: checkedAt,
+			lastErrorReason: errorReason,
+		});
 		if ((written.affected ?? 0) === 0) return false;
 		if (!probeCursor) return true;
 		const moved = await manager.update(
 			SkillSourceConnection,
-			{ id: sourceId, probeCursor: probeCursor.from ?? IsNull() },
+			{ ...unchanged, probeCursor: probeCursor.from ?? IsNull() },
 			{ probeCursor: probeCursor.to },
 		);
 		if ((moved.affected ?? 0) === 0) {
-			await manager.update(SkillSourceConnection, { id: sourceId }, { probeCursor: null });
+			await manager.update(SkillSourceConnection, unchanged, { probeCursor: null });
 		}
 		return true;
 	}

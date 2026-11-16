@@ -36,7 +36,7 @@ export class AgentCustomToolsService {
 		private readonly transactionRunner: TransactionRunner,
 	) {}
 
-	validateDescriptor(descriptor: ToolDescriptor): void {
+	validateDescriptor(descriptor: Pick<ToolDescriptor, 'name'>): void {
 		if (!CUSTOM_TOOL_ID_REGEX.test(descriptor.name)) {
 			throw new UserError(
 				`Custom tool name "${descriptor.name}" contains invalid characters. Only letters, numbers, and underscores are allowed.`,

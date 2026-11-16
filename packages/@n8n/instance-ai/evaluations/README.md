@@ -975,6 +975,8 @@ Each orchestrator build runs in its own empty project, named like the lane owner
 
 If the agent still reads a workflow that its build did not create or seed, the run fails as a harness fault: its rows and expectations fail with `framework_issue`. The pass rate shows the leak, builder analyses can filter it out by attribution, and the log names the workflow. A timeout still wins: if the build also timed out, the run stays neutral as `timeout`, like every timed-out run.
 
+A build that the sandbox service refused with `tenant sandbox quota exceeded` is a harness fault too. The harness does not grade its rows and expectations, so they stay out of the pass rate.
+
 ### Credentials
 
 By default a build sees **no credentials**: the harness pins every build thread's credential view to the case's declared set (empty unless declared), so concurrent cases — and whatever happens to live on the instance — can never leak into a build. Every node mocks during verification.

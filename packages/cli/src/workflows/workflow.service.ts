@@ -849,6 +849,7 @@ export class WorkflowService {
 					await this.folderRepository.findOneOrFailFolderInProject(
 						parentFolderId,
 						project?.id ?? '',
+						'workflow',
 					);
 				} catch (e) {
 					throw new FolderNotFoundError(parentFolderId);

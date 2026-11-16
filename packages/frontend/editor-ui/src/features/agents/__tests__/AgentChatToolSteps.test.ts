@@ -6,7 +6,12 @@ import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-avai
 import type { PolicyViolation } from '@n8n/api-types';
 import { createTestProject } from '@/features/collaboration/projects/__tests__/utils';
 import AgentChatToolSteps from '../components/AgentChatToolSteps.vue';
+import type { AgentsChatHostEventItem } from '@/features/ai/shared/agentsChat/interactionRegistry';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
+import {
+	TEST_HOST_EVENT,
+	TestHostEvent,
+} from '@/features/ai/shared/agentsChat/__tests__/fixtures/testInteractionExtension';
 import { TOOL_CALL_STATE } from '../constants';
 import { DELEGATE_SUB_AGENT_TOOL_NAME } from '../utils/delegate-tool';
 import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
@@ -1101,4 +1106,55 @@ describe('AgentChatToolSteps — output files', () => {
 
 		expect(JSON.parse(wrapper.get('[data-test-id="tool-output-files"]').text())).toEqual([file]);
 	});
+});
+
+describe('AgentChatToolSteps — host events', () => {
+	const item: AgentsChatHostEventItem = {
+		event: { id: 'approval-1', name: TEST_HOST_EVENT.TOOL_CALL, payload: { toolCallId: 'tc-2' } },
+		message: { id: 'assistant-1', role: 'assistant', content: '' },
+		component: TestHostEvent,
+		placement: 'tool-call',
+	};
+
+	/** The children of `element` in order: a host event as its placement, a step as its text. */
+	function order(element: Element): string[] {
+		return [...element.children]
+			.map(
+				(child) =>
+					child
+						.querySelector('[data-testid="agent-chat-host-event"]')
+						?.getAttribute('data-placement') ??
+					child.textContent?.trim() ??
+					'',
+			)
+			.filter(Boolean);
+	}
+
+	it.each([
+		{
+			name: 'in a group of steps',
+			toolCalls: [
+				{ tool: 'search_nodes', toolCallId: 'tc-1', state: TOOL_CALL_STATE.DONE },
+				{ tool: 'web_search', toolCallId: 'tc-2', state: TOOL_CALL_STATE.DONE },
+			],
+			container: '[data-test-id="n8n-ai-activity-step-group"]',
+			expected: ['Search nodes', 'tool-call', 'Web search'],
+		},
+		{
+			name: 'for a single step',
+			toolCalls: [{ tool: 'web_search', toolCallId: 'tc-2', state: TOOL_CALL_STATE.DONE }],
+			container: 'div',
+			expected: ['tool-call', 'Web search'],
+		},
+	])(
+		'renders the host events of a call right before its step, $name',
+		({ toolCalls, container, expected }) => {
+			const wrapper = mount(AgentChatToolSteps, {
+				props: { toolCalls, hostEvents: new Map([['tc-2', [item]]]) },
+			});
+
+			expect(order(wrapper.get(container).element)).toEqual(expected);
+			expect(wrapper.get('[data-testid="test-host-event"]').find('em').text()).toBe('assistant-1');
+		},
+	);
 });

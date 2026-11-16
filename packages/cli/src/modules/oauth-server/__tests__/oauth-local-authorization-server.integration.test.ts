@@ -29,6 +29,7 @@ import { OAuthClient } from '../database/entities/oauth-client.entity';
 import { OAuthServerLocalAuthorizationServer } from '../oauth-local-authorization-server';
 import { OAuthTokenService } from '../oauth-token.service';
 
+// Run with the integration suite so CI copies the migrated SQLite template.
 const testServer = setupTestServer({
 	modules: ['oauth-jwe', 'oauth-server', 'mcp', 'inbound-auth-core'],
 	endpointGroups: ['mcp', 'jwks'],
