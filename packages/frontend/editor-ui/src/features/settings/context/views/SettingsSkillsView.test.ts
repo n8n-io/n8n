@@ -170,6 +170,14 @@ describe('SettingsSkillsView', () => {
 		]);
 	});
 
+	async function sourceFilterItems(select: HTMLElement) {
+		const input = select.querySelector<HTMLInputElement>('input:not([readonly])')!;
+		await userEvent.click(input);
+		const dropdown = document.getElementById(input.getAttribute('aria-controls')!)!;
+		await waitFor(() => expect(dropdown).toBeVisible());
+		return within(dropdown).getAllByRole('option');
+	}
+
 	/** Opens the filters popover and picks an option of one filter. */
 	async function pickFilter(
 		view: ReturnType<typeof renderView>,
@@ -179,7 +187,11 @@ describe('SettingsSkillsView', () => {
 		if (!view.queryByTestId('resources-list-filters-dropdown')) {
 			await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
 		}
-		const items = await getDropdownItems(await view.findByTestId(testId));
+		const select = await view.findByTestId(testId);
+		const items =
+			testId === 'skills-filter-source'
+				? await sourceFilterItems(select)
+				: await getDropdownItems(select);
 		const option = [...items].find((item) => item.textContent?.trim() === optionText);
 		if (!option) throw new Error(`No option ${optionText}`);
 		await userEvent.click(option);
@@ -366,6 +378,17 @@ describe('SettingsSkillsView', () => {
 		const items = await getDropdownItems(await view.findByTestId('skills-filter-scope'));
 
 		expect([...items].map((item) => item.textContent?.trim())).toEqual(['Global', 'Projects']);
+	});
+
+	it('keeps source filtering and source search copy behind Skill Sync', async () => {
+		const view = renderView();
+		await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
+
+		expect(view.queryByTestId('skills-filter-source')).not.toBeInTheDocument();
+		expect(view.getByTestId('skills-search')).toHaveAttribute(
+			'placeholder',
+			'Search skills by name...',
+		);
 	});
 
 	it('combines the agent and creator filters with the search, from the first page', async () => {
@@ -1414,6 +1437,107 @@ describe('SettingsSkillsView', () => {
 				expect(view.getByTestId('skill-group-title')).toHaveTextContent('acme/skills · main');
 			});
 
+			it('selects multiple sources, combines filters, resets the page and clears the selection', async () => {
+				const view = await renderWithSource();
+				skillsStore.sources = [
+					source,
+					{
+						...source,
+						id: 'src-2',
+						projectId: 'team-1',
+						projectName: 'Marketing',
+						projectType: 'team',
+					},
+				];
+				skillsStore.count = 21;
+				skillsStore.pageCount = 3;
+				await userEvent.click(await view.findByTestId('pagination-next'));
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+						expect.objectContaining({ page: 1 }),
+					),
+				);
+				await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
+				const select = await view.findByTestId('skills-filter-source');
+				const items = await sourceFilterItems(select);
+				expect(items.map((item) => item.textContent?.trim())).toEqual([
+					'acme/skills · main · Global',
+					'acme/skills · main · Marketing',
+				]);
+				await userEvent.click(items[0]);
+				await userEvent.click(items[1]);
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+						expect.objectContaining({ sourceIds: 'src-1,src-2', page: 0, skip: 0 }),
+					),
+				);
+				expect(view.getByTestId('resources-list-filters-count')).toHaveTextContent('1');
+				await userEvent.click(select.querySelector('input:not([readonly])')!);
+				await pickFilter(view, 'skills-filter-scope', 'Projects');
+				await pickFilter(view, 'skills-filter-agent', 'Support bot');
+				await pickFilter(view, 'skills-filter-created-by', 'Ada Lovelace');
+				await userEvent.type(view.getByTestId('skills-search'), 'acme');
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+						expect.objectContaining({
+							sourceIds: 'src-1,src-2',
+							search: 'acme',
+							scope: 'project',
+							agentId: 'agent-1',
+							createdById: 'user-2',
+						}),
+					),
+				);
+				expect(view.getByTestId('skills-search')).toHaveAttribute(
+					'placeholder',
+					'Search skills or sources…',
+				);
+				if (!view.queryByTestId('resources-list-filters-dropdown')) {
+					await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
+				}
+				await userEvent.click(await view.findByText('Reset all'));
+				await waitFor(() =>
+					expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({
+						groupBy: 'source',
+						page: 0,
+						skip: 0,
+						take: 10,
+						sortBy: 'updatedAt:desc',
+						search: 'acme',
+					}),
+				);
+				expect(view.queryByTestId('resources-list-filters-count')).not.toBeInTheDocument();
+			});
+
+			it('shows a selected empty source instead of the no-results state', async () => {
+				const view = await renderWithSource();
+				skillsStore.fetchSkills.mockImplementation(async () => {
+					skillsStore.skills = [];
+					skillsStore.count = 1;
+					skillsStore.collapsedSources = [{ sourceId: source.id, index: 0, skillCount: 0 }];
+					return { data: [], count: 1, collapsedSources: skillsStore.collapsedSources };
+				});
+
+				await pickFilter(view, 'skills-filter-source', 'acme/skills · main · Global');
+
+				expect(await view.findByTestId('skill-group-empty')).toHaveTextContent('No synced skills');
+				expect(view.queryByTestId('skills-no-results')).not.toBeInTheDocument();
+			});
+
+			it('shows no results when a source selection matches nothing', async () => {
+				const view = await renderWithSource();
+				skillsStore.fetchSkills.mockImplementation(async () => {
+					skillsStore.skills = [];
+					skillsStore.count = 0;
+					return { data: [], count: 0 };
+				});
+
+				await pickFilter(view, 'skills-filter-source', 'acme/skills · main · Global');
+
+				expect(await view.findByTestId('skills-no-results')).toBeInTheDocument();
+				expect(view.queryByTestId('skills-empty-state')).not.toBeInTheDocument();
+			});
+
 			it('confirms source deletion and reloads the sources, skills, and creators', async () => {
 				const view = await renderWithSource();
 				await userEvent.click(view.getByTestId('skill-group-actions').querySelector('button')!);
@@ -1444,12 +1568,14 @@ describe('SettingsSkillsView', () => {
 					return { data: skillsStore.skills, count: 21, page: 2, pageCount: 3 };
 				});
 				const view = renderWithDialogStub();
+				await pickFilter(view, 'skills-filter-source', 'acme/skills · main · Global');
 				await userEvent.click(view.getByTestId('connect-dialog-open-source'));
 				await waitFor(() =>
 					expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
 						expect.objectContaining({ focusSourceId: 'src-1' }),
 					),
 				);
+				expect(skillsStore.fetchSkills.mock.lastCall?.[0]).not.toHaveProperty('sourceIds');
 				expect(
 					JSON.parse(localStorage.getItem('n8n-skills-collapsed-sources:anonymous') ?? '[]'),
 				).toEqual([]);

@@ -16,7 +16,10 @@ import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import nock from 'nock';
+import { randomUUID } from 'node:crypto';
 
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { createSkill, deleteAllSkills } from '../../testing';
 import { SkillSourceConnection } from '../../database/entities/skill-source-connection.entity';
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
@@ -306,6 +309,159 @@ describe('Sources in the skills table', () => {
 
 			expect(namesOf(page)).toEqual(['a2']);
 			expect(page.data[0].sourceId).toBe(alpha);
+		});
+
+		it.each(['ALPHA', 'AcMe/AlPhA'])('finds all skills of a source by %s', async (search) => {
+			await connect('acme/zeta');
+			const alpha = await connect('acme/alpha');
+
+			const page = await list(viewer, { groupBy: 'source', search, sortBy: 'name:asc' });
+
+			expect(namesOf(page)).toEqual(['a1', 'a2']);
+			expect(page.data.every(({ sourceId }) => sourceId === alpha)).toBe(true);
+			expect(page.count).toBe(2);
+		});
+
+		it('combines repository matches with skill name and description matches', async () => {
+			github.push('acme/zeta', {
+				...repo(['z1', 'z2']),
+				'skills/z1/SKILL.md': skillMd('z1', 'Follow the guide.', 'Use alpha conventions.'),
+			});
+			await connect('acme/zeta');
+			await connect('acme/alpha');
+			await createSkill({ projectId: team.id, content: { name: 'alpha-local' } });
+
+			const page = await list(editor, { groupBy: 'source', search: 'alpha', sortBy: 'name:asc' });
+
+			expect(namesOf(page)).toEqual(['a1', 'a2', 'z1', 'alpha-local']);
+			expect(page.count).toBe(4);
+			const plain = await list(editor, { search: 'alpha', sortBy: 'name:asc' });
+			expect(namesOf(plain)).toEqual(['alpha-local', 'z1']);
+		});
+
+		it('filters multiple sources before paging and keeps folded and large groups whole', async () => {
+			const zeta = await connect('acme/zeta');
+			const alpha = await connect('acme/alpha');
+			github.push('acme/other', repo(['other']));
+			await connect('acme/other');
+			await createSkill({ projectId: team.id, content: { name: 'local' } });
+			const query = {
+				groupBy: 'source',
+				sourceIds: `${alpha},${zeta}`,
+				search: 'ACME',
+				take: 2,
+				sortBy: 'name:asc',
+			};
+
+			const first = await list(editor, query);
+			const second = await list(editor, { ...query, page: 1 });
+			expect(namesOf(first)).toEqual(['a1', 'a2']);
+			expect(namesOf(second)).toEqual(['z1', 'z2', 'z3']);
+			expect(first).toMatchObject({ count: 5, pageCount: 2 });
+			expect(second).toMatchObject({ count: 5, pageCount: 2, page: 1 });
+
+			const folded = await list(editor, { ...query, collapsedSourceIds: zeta, page: 1 });
+			expect(folded).toMatchObject({ count: 3, pageCount: 2, data: [] });
+			expect(folded.collapsedSources).toEqual([{ sourceId: zeta, index: 0, skillCount: 3 }]);
+			const selected = await list(editor, { ...query, sourceIds: alpha, search: 'zeta' });
+			expect(selected).toMatchObject({ count: 0, data: [], collapsedSources: [] });
+		});
+
+		it('combines source search and selection with scope, agent and skill creator', async () => {
+			const alpha = await connect('acme/alpha');
+			const zeta = await connect('acme/zeta');
+			const { data } = await list(editor, { search: 'a1' });
+			const agents = Container.get(AgentRepository);
+			const agent = await agents.save(
+				agents.create({
+					id: randomUUID(),
+					name: 'Support bot',
+					projectId: team.id,
+					integrations: [],
+					tools: {},
+					versionId: randomUUID(),
+				}),
+			);
+			await Container.get(AgentSkillRepository).replaceDependencies(agent.id, [
+				{ skillId: data[0].id },
+			]);
+			const query = {
+				groupBy: 'source',
+				sourceIds: `${alpha},${zeta}`,
+				search: 'acme',
+				scope: 'project',
+				agentId: agent.id,
+				createdById: memberUser.id,
+			};
+
+			expect(namesOf(await list(editor, query))).toEqual(['a1']);
+			for (const filter of [{ scope: 'instance' }, { createdById: randomUUID() }]) {
+				expect(await list(editor, { ...query, ...filter })).toMatchObject({
+					count: 0,
+					data: [],
+					collapsedSources: [],
+				});
+			}
+			expect(await list(outsider, query)).toMatchObject({ count: 0, data: [] });
+		});
+
+		it('keeps matching empty sources while respecting scope and skill filters', async () => {
+			const alpha = await connect('acme/alpha');
+			await db().delete(SkillSourceLink, { sourceId: alpha });
+			const query = { groupBy: 'source' };
+
+			for (const filter of [{ search: 'alpha' }, { sourceIds: alpha }]) {
+				const page = await list(editor, { ...query, ...filter, scope: 'project' });
+				expect(page.collapsedSources).toEqual([{ sourceId: alpha, index: 0, skillCount: 0 }]);
+				expect(page).toMatchObject({ count: 1, pageCount: 1, data: [] });
+			}
+			for (const filter of [
+				{ scope: 'instance' },
+				{ createdById: memberUser.id },
+				{ search: 'unrelated' },
+				{ sourceIds: randomUUID() },
+			]) {
+				expect(await list(editor, { ...query, sourceIds: alpha, ...filter })).toMatchObject({
+					count: 0,
+					data: [],
+					collapsedSources: [],
+				});
+			}
+		});
+
+		it('hides inaccessible source matches and ignores unknown selected sources', async () => {
+			const alpha = await connect('acme/alpha');
+			const query = { groupBy: 'source', sourceIds: `${alpha},${randomUUID()}`, search: 'alpha' };
+			expect(await list(viewer, query)).toMatchObject({ count: 2 });
+			await createSkill({ content: { name: 'alpha-global' } });
+			for (const empty of [false, true]) {
+				if (empty) await db().delete(SkillSourceLink, { sourceId: alpha });
+				expect(await list(outsider, query)).toMatchObject({
+					count: 0,
+					data: [],
+					collapsedSources: [],
+				});
+				const search = await list(outsider, { groupBy: 'source', search: 'alpha' });
+				expect(namesOf(search)).toEqual(['alpha-global']);
+				expect(search.collapsedSources).toEqual([]);
+			}
+		});
+
+		it.each(['%', '_', 'github.com', 'main'])(
+			'does not match source metadata by %s',
+			async (search) => {
+				await connect('acme/alpha');
+				expect(await list(editor, { groupBy: 'source', search })).toMatchObject({
+					count: 0,
+					data: [],
+					collapsedSources: [],
+				});
+			},
+		);
+
+		it('requires Skill Sync for source filtering', async () => {
+			postHog.getFeatureFlags.mockResolvedValue({});
+			await editor.get('/skills').query({ sourceIds: randomUUID() }).expect(404);
 		});
 
 		it('refuses an id that is not a source id', async () => {

@@ -10,6 +10,18 @@ import {
 } from '../skills.schema';
 
 describe('ListSkillsQueryDto', () => {
+	it('parses multiple selected sources and treats a cleared selection as no filter', () => {
+		const ids = [randomUUID(), randomUUID()];
+		expect(ListSkillsQueryDto.parse({ sourceIds: ids.join(',') }).sourceIds).toEqual(ids);
+		expect(ListSkillsQueryDto.parse({ sourceIds: '' }).sourceIds).toBeUndefined();
+	});
+
+	it('rejects an invalid id in the source selection', () => {
+		expect(ListSkillsQueryDto.safeParse({ sourceIds: `${randomUUID()},not-a-uuid` }).success).toBe(
+			false,
+		);
+	});
+
 	it('accepts more collapsed sources than the maximum page size', () => {
 		const ids = Array.from({ length: 101 }, () => randomUUID());
 		expect(
