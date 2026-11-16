@@ -1,7 +1,6 @@
 /**
- * Version of the task input and result formats. n8n and the runtime come from
- * the same n8n release, so they always use the same version. Increase it on
- * every change that an older reader cannot read.
+ * Version of the task input and result formats. Increase it on every change
+ * that an older reader cannot read.
  */
 export const CODE_TASK_CONTRACT_VERSION = 1;
 

@@ -1,6 +1,6 @@
 import { UnexpectedError } from '@n8n/errors';
 
-/** n8n and the runtime come from the same release, so an invalid file is a bug. */
+/** Thrown when a task input or result file has another version, or does not match its schema. */
 export class InvalidCodeTaskFileError extends UnexpectedError {
 	constructor(
 		fileKind: string,

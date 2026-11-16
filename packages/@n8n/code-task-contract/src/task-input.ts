@@ -16,9 +16,8 @@ import { CODE_TASK_CONTRACT_VERSION } from './constants';
 import { CODE_EXECUTION_MODES, WORKFLOW_EXECUTE_MODES } from './execution-modes';
 
 /**
- * An object of an n8n type. Only the top level is checked: the shapes come
- * from n8n of the same release, and a full check would cost too much on large
- * execution data.
+ * An object of an n8n type. Only the top level is checked, because a full
+ * check costs too much on large execution data.
  */
 const objectOf = <T>() => z.custom<T>(isRecord, { error: 'Expected an object' });
 

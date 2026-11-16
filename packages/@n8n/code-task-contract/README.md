@@ -13,12 +13,6 @@ The sandbox service does not read the files. n8n gets the result file inline
 in the `done` event of the task. When the result file is too large, n8n
 downloads it through the outputs route.
 
-## Versions
-
-n8n and the runtime come from the same n8n release. Each file has a
-`version` field. Increase `CODE_TASK_CONTRACT_VERSION` on every change that an
-older reader cannot read. A reader rejects a file with another version.
-
 ## Usage
 
 ```ts
