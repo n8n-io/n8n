@@ -10376,6 +10376,8 @@
 	"agents.channels.whatsapp.meta.action.submitNewName": "Submit a new name ↗",
 	"agents.channels.whatsapp.meta.action.verifyBusiness": "Verify your business ↗",
 	"agents.channels.whatsapp.meta.action.setUpAgain": "Set up again",
+	"agents.channels.whatsapp.restart.confirmTitle": "Set up WhatsApp again?",
+	"agents.channels.whatsapp.restart.confirmMessage": "This removes the current WhatsApp connection and its settings, and starts the setup again. You’ll connect a credential, set up the webhook and verify it. The agent can’t send or receive WhatsApp messages until you finish the new setup.",
 	"agents.channels.whatsapp.remove.title": "Remove WhatsApp?",
 	"agents.channels.whatsapp.remove.description": "Your agent will be disconnected from WhatsApp. Messages already sent will remain in WhatsApp. To reconnect, you’ll need to set up WhatsApp again.",
 	"agents.channels.whatsapp.remove.confirm": "Yes, remove",
