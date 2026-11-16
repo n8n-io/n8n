@@ -20,6 +20,7 @@ import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 const MESSAGE_CONTEXT_METADATA_KEY = 'currentMessageContext';
 const CONTINUE_AS_METADATA_KEY = 'continueAs';
 const BOUND_THREADS_METADATA_KEY = 'boundThreads';
+const MESSAGED_RECIPIENTS_METADATA_KEY = 'messagedRecipients';
 const OUTBOUND_METADATA_KEY = 'outboundMessages';
 const MAX_OUTBOUND_MESSAGES = 5;
 const MAX_OUTBOUND_TEXT_LENGTH = 2000;
@@ -99,14 +100,12 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		// The first task to message a thread keeps the binding. Every task still
 		// records what it sent, so the reply turn sees all of it.
 		const existing = await this.resolveSession(derivedThreadId);
-		if (!existing) {
-			await this.appendBoundThread(
-				origin.threadId,
-				derivedThreadId,
-				options.recipientId ?? derivedThreadId,
-			);
-			await this.writeContinueAsIfAbsent(derivedThreadId, origin);
-		}
+		await this.recordRecipient(
+			origin.threadId,
+			options.recipientId ?? derivedThreadId,
+			existing ? undefined : derivedThreadId,
+		);
+		if (!existing) await this.writeContinueAsIfAbsent(derivedThreadId, origin);
 		if (options.outboundText) {
 			await this.appendOutboundMessage(derivedThreadId, options.outboundText);
 		}
@@ -117,15 +116,21 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		if (!binding) return null;
 		const derived = await this.threadRepository.findOneBy({ id: derivedThreadId });
 		const origin = await this.threadRepository.findOneBy({ id: binding.threadId });
-		const bound = this.readBoundThreads(
-			this.parseMetadata(origin?.metadata)[BOUND_THREADS_METADATA_KEY],
-		);
+		const originMetadata = this.parseMetadata(origin?.metadata);
+		const bound = this.readBoundThreads(originMetadata[BOUND_THREADS_METADATA_KEY]);
 		const recipient = bound[derivedThreadId] ?? derivedThreadId;
+		// Bound threads can be unbound, and a task that lost the binding race has
+		// no bound entry. Its memory still holds those messages, so the messaged
+		// recipients count too. Older rows only have the bound threads.
+		const recipients = [
+			...this.readStringArray(originMetadata[MESSAGED_RECIPIENTS_METADATA_KEY]),
+			...Object.values(bound),
+		];
 		return {
 			binding,
 			// The task messaged more than one recipient, so its memory holds other
 			// recipients' messages. Several threads of one recipient do not count.
-			sharedWithOtherRecipients: Object.values(bound).some((other) => other !== recipient),
+			sharedWithOtherRecipients: recipients.some((other) => other !== recipient),
 			outboundMessages: this.readStringArray(
 				this.parseMetadata(derived?.metadata)[OUTBOUND_METADATA_KEY],
 			),
@@ -288,18 +293,33 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		);
 	}
 
-	private async appendBoundThread(
+	/**
+	 * Adds the recipient to the append-only list of everyone the task messaged.
+	 * The list stays when a thread is unbound, because the task memory keeps the
+	 * message. With `boundThreadId`, it also maps that thread to the recipient.
+	 */
+	private async recordRecipient(
 		originThreadId: string,
-		derivedThreadId: string,
 		recipientId: string,
+		boundThreadId?: string,
 	): Promise<void> {
-		await this.updateMetadata(originThreadId, originThreadId, (metadata) => ({
-			...metadata,
-			[BOUND_THREADS_METADATA_KEY]: {
-				...this.readBoundThreads(metadata[BOUND_THREADS_METADATA_KEY]),
-				[derivedThreadId]: recipientId,
-			},
-		}));
+		await this.updateMetadata(originThreadId, originThreadId, (metadata) => {
+			const recipients = this.readStringArray(metadata[MESSAGED_RECIPIENTS_METADATA_KEY]);
+			const next = recipients.includes(recipientId) ? null : [...recipients, recipientId];
+			if (!next && !boundThreadId) return null;
+			return {
+				...metadata,
+				...(next ? { [MESSAGED_RECIPIENTS_METADATA_KEY]: next } : {}),
+				...(boundThreadId
+					? {
+							[BOUND_THREADS_METADATA_KEY]: {
+								...this.readBoundThreads(metadata[BOUND_THREADS_METADATA_KEY]),
+								[boundThreadId]: recipientId,
+							},
+						}
+					: {}),
+			};
+		});
 	}
 
 	/**

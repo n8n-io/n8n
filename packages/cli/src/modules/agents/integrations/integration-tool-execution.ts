@@ -3,6 +3,8 @@ import {
 	type InterruptibleToolContext,
 	type ToolContext,
 } from '@n8n/agents';
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
@@ -320,15 +322,23 @@ export async function executeActionToolOperation(params: {
 			messageContext.target.threadId &&
 			isTaskRunMemoryResourceId(persistence.resourceId)
 		) {
-			await messageContextStore.bindSession(
-				`${descriptor.agentId}:${messageContext.target.threadId}`,
-				{ threadId: persistence.threadId, resourceId: persistence.resourceId },
-				{
-					recipientId: getRecipientId(descriptor, messageContext.target),
-					outboundText:
-						getOutboundText(message) ??
-						(operation.action === 'send_template' ? getTemplateText(operation.input) : undefined),
-				},
+			// The send already worked. An error here must not tell the agent the send
+			// failed, or it can send the message again.
+			await logSessionWriteFailure(
+				'bind task session',
+				async () =>
+					await messageContextStore.bindSession(
+						`${descriptor.agentId}:${messageContext.target.threadId}`,
+						{ threadId: persistence.threadId, resourceId: persistence.resourceId },
+						{
+							recipientId: getRecipientId(descriptor, messageContext.target),
+							outboundText:
+								getOutboundText(message) ??
+								(operation.action === 'send_template'
+									? getTemplateText(operation.input)
+									: undefined),
+						},
+					),
 			);
 		}
 		// A delivery failure arrives later and names only the message. This lets
@@ -342,15 +352,15 @@ export async function executeActionToolOperation(params: {
 			messageContext.messageId &&
 			messageContext.target.threadId
 		) {
-			try {
+			const { messageId } = messageContext;
+			// Without the record, a delivery failure goes to the bound session.
+			await logSessionWriteFailure('record sent message', async () => {
 				await messageContextStore.recordSentMessage(
 					`${descriptor.agentId}:${messageContext.target.threadId}`,
-					messageContext.messageId,
+					messageId,
 					{ threadId: persistence.threadId, resourceId: persistence.resourceId },
 				);
-			} catch {
-				// The send worked. Without the record, a failure goes to the bound session.
-			}
+			});
 		}
 		actionResult = { ...result, messageContext };
 	}
@@ -369,6 +379,17 @@ export async function executeActionToolOperation(params: {
 		// `{ approved }`.
 		{ resumeSchema: INTEGRATION_ACTION_RESUME_SCHEMA },
 	);
+}
+
+/** Runs a session write that follows a successful send, and logs its error. */
+async function logSessionWriteFailure(step: string, write: () => Promise<void>): Promise<void> {
+	try {
+		await write();
+	} catch (error) {
+		Container.get(Logger).warn(`Failed to ${step} after an integration send`, {
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
 }
 
 /**

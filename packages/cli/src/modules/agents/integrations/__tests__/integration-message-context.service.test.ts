@@ -202,21 +202,39 @@ describe('IntegrationMessageContextService', () => {
 		);
 	});
 
-	it('does not record the derived id on a later origin when the thread is already bound', async () => {
-		const { service, threadRepository } = setup({
+	it('does not bind the derived id to a later origin when the thread is already bound', async () => {
+		const { service, threads } = setup({
 			'agent-1:slack:D123:1001': {
 				continueAs: { threadId: 'task', resourceId: 'task:task-1' },
 			},
 			'task-2': {},
 		});
 
-		await service.bindSession('agent-1:slack:D123:1001', {
-			threadId: 'task-2',
-			resourceId: 'task:task-2',
-		});
+		await service.bindSession(
+			'agent-1:slack:D123:1001',
+			{ threadId: 'task-2', resourceId: 'task:task-2' },
+			{ recipientId: 'user:alice' },
+		);
 
-		const saves = (threadRepository.save as unknown as ReturnType<typeof vi.fn>).mock.calls;
-		expect(saves.find((c) => (c[0] as { id: string }).id === 'task-2')).toBeUndefined();
+		const later = jsonParse<Record<string, unknown>>(threads.get('task-2')!.metadata!);
+		expect(later.boundThreads).toBeUndefined();
+		expect(later.messagedRecipients).toEqual(['user:alice']);
+	});
+
+	it('counts a recipient whose thread another task already holds', async () => {
+		const { service } = setup({ 'task-1': {}, 'task-2': {} });
+		const first = { threadId: 'task-1', resourceId: 'task:task-1' };
+		const second = { threadId: 'task-2', resourceId: 'task:task-2' };
+		await service.bindSession('agent-1:wa:alice', first, { recipientId: 'user:alice' });
+
+		await service.bindSession('agent-1:wa:alice', second, { recipientId: 'user:alice' });
+		await service.bindSession('agent-1:wa:bob', second, { recipientId: 'user:bob' });
+
+		// Task 2 memory holds the message to Alice, so Bob does not continue it.
+		await expect(service.resolveSessionReplyScope('agent-1:wa:bob')).resolves.toMatchObject({
+			binding: second,
+			sharedWithOtherRecipients: true,
+		});
 	});
 
 	it('records the derived id and its recipient on the origin thread', async () => {
@@ -354,7 +372,7 @@ describe('IntegrationMessageContextService', () => {
 	});
 
 	it('unbindSession clears the binding, the task messages and the origin entry', async () => {
-		const { service } = setup({ task: {} });
+		const { service, threads } = setup({ task: {} });
 		const origin = { threadId: 'task', resourceId: 'task:task-1' };
 		await service.bindSession('agent-1:slack:D1:1', origin, {
 			recipientId: 'user:alice',
@@ -365,8 +383,11 @@ describe('IntegrationMessageContextService', () => {
 		await service.unbindSession('agent-1:slack:D1:1');
 
 		await expect(service.resolveSession('agent-1:slack:D1:1')).resolves.toBeNull();
+		const task = jsonParse<Record<string, unknown>>(threads.get('task')!.metadata!);
+		expect(task.boundThreads).toEqual({ 'agent-1:slack:D2:2': 'user:bob' });
+		// The task memory still holds the message to Alice.
 		await expect(service.resolveSessionReplyScope('agent-1:slack:D2:2')).resolves.toMatchObject({
-			sharedWithOtherRecipients: false,
+			sharedWithOtherRecipients: true,
 		});
 		await service.bindSession('agent-1:slack:D1:1', origin, { recipientId: 'user:alice' });
 		await expect(service.resolveSessionReplyScope('agent-1:slack:D1:1')).resolves.toMatchObject({
