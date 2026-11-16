@@ -26,10 +26,7 @@ import { NotFoundError } from '@n8n/errors';
 import { CredentialTypes } from '@/credential-types';
 
 import { CREDENTIAL_TYPES_KIND } from './constants';
-import {
-	TypeAvailabilityPolicyService,
-	toInstanceTypeAccessResponse,
-} from './type-availability-policy.service';
+import { TypeAvailabilityPolicyService } from './type-availability-policy.service';
 
 /**
  * Instance-scope REST surface for credential type availability policies. Same shape as
@@ -62,12 +59,10 @@ export class CredentialTypePolicyInstanceController {
 	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@GlobalScope('credentialTypePolicy:manage')
 	async getInstanceAccess(): Promise<InstanceTypeAccessResponse> {
-		const access = await this.service.getInstanceAccess(
+		return await this.service.getInstanceAccess(
 			CREDENTIAL_TYPES_KIND,
 			Object.keys(this.credentialTypes.getKnownTypes()),
 		);
-
-		return toInstanceTypeAccessResponse(access);
 	}
 
 	@Put('/instance')

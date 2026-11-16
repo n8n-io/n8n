@@ -1680,9 +1680,9 @@ describe('TypeAvailabilityPolicyService', () => {
 				version: 7,
 				defaultAction: 'allow',
 				types: [
-					{ name: SLACK, action: 'deny', matchedRuleId: 'deny-slack' },
-					{ name: NOTION, action: 'delegate', matchedRuleId: 'delegate-notion' },
-					{ name: GMAIL, action: 'allow', matchedRuleId: null },
+					{ name: SLACK, access: 'deny', matchedRuleId: 'deny-slack' },
+					{ name: NOTION, access: 'delegate', matchedRuleId: 'delegate-notion' },
+					{ name: GMAIL, access: 'allow', matchedRuleId: null },
 				],
 			});
 		});
@@ -1696,7 +1696,7 @@ describe('TypeAvailabilityPolicyService', () => {
 				scopeId: null,
 				version: 0,
 				defaultAction: 'allow',
-				types: [{ name: SLACK, action: 'allow', matchedRuleId: null }],
+				types: [{ name: SLACK, access: 'allow', matchedRuleId: null }],
 			});
 		});
 
@@ -1705,7 +1705,7 @@ describe('TypeAvailabilityPolicyService', () => {
 
 			const result = await service.getInstanceAccess(KIND, [GMAIL]);
 
-			expect(result.types).toEqual([{ name: GMAIL, action: 'deny', matchedRuleId: null }]);
+			expect(result.types).toEqual([{ name: GMAIL, access: 'deny', matchedRuleId: null }]);
 		});
 
 		it('applies floor attachments before normal ones', async () => {
@@ -1734,7 +1734,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			const result = await service.getInstanceAccess(KIND, [SLACK]);
 
 			expect(result.types).toEqual([
-				{ name: SLACK, action: 'deny', matchedRuleId: 'deny-package' },
+				{ name: SLACK, access: 'deny', matchedRuleId: 'deny-package' },
 			]);
 		});
 
@@ -1751,7 +1751,7 @@ describe('TypeAvailabilityPolicyService', () => {
 			const result = await service.getInstanceAccess(KIND, [GMAIL_TOOL]);
 
 			expect(result.types).toEqual([
-				{ name: GMAIL_TOOL, action: 'deny', matchedRuleId: 'deny-gmail' },
+				{ name: GMAIL_TOOL, access: 'deny', matchedRuleId: 'deny-gmail' },
 			]);
 		});
 
@@ -1805,10 +1805,10 @@ describe('TypeAvailabilityPolicyService', () => {
 				]);
 
 				expect(result.types).toEqual([
-					{ name: 'oAuth2Api', action: 'deny', matchedRuleId: 'deny-oauth2' },
-					{ name: 'googleOAuth2Api', action: 'deny', matchedRuleId: 'deny-oauth2' },
-					{ name: 'googleSheetsOAuth2Api', action: 'deny', matchedRuleId: 'deny-oauth2' },
-					{ name: 'slackApi', action: 'allow', matchedRuleId: null },
+					{ name: 'oAuth2Api', access: 'deny', matchedRuleId: 'deny-oauth2' },
+					{ name: 'googleOAuth2Api', access: 'deny', matchedRuleId: 'deny-oauth2' },
+					{ name: 'googleSheetsOAuth2Api', access: 'deny', matchedRuleId: 'deny-oauth2' },
+					{ name: 'slackApi', access: 'allow', matchedRuleId: null },
 				]);
 			});
 
@@ -1835,8 +1835,8 @@ describe('TypeAvailabilityPolicyService', () => {
 				]);
 
 				expect(result.types).toEqual([
-					{ name: 'googleSheetsOAuth2Api', action: 'allow', matchedRuleId: 'allow-sheets' },
-					{ name: 'googleOAuth2Api', action: 'deny', matchedRuleId: 'deny-oauth2' },
+					{ name: 'googleSheetsOAuth2Api', access: 'allow', matchedRuleId: 'allow-sheets' },
+					{ name: 'googleOAuth2Api', access: 'deny', matchedRuleId: 'deny-oauth2' },
 				]);
 			});
 		});

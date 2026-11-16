@@ -4,14 +4,12 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { CredentialTypes } from '@/credential-types';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { createMember, createOwner } from '@test-integration/db/users';
 import * as utils from '@test-integration/utils';
 
 const nodeTypes = mockInstance(NodeTypes);
-const credentialTypes = mockInstance(CredentialTypes);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['type-availability-policies'],
@@ -55,7 +53,7 @@ beforeAll(async () => {
 	owner = await createOwner();
 	member = await createMember();
 
-	// The credential `extends` chain comes from the loader registry, not from `CredentialTypes`.
+	// Both the credential type list and the `extends` chain read this registry.
 	Object.defineProperty(Container.get(LoadNodesAndCredentials), 'knownCredentials', {
 		configurable: true,
 		value: KNOWN_CREDENTIALS,
@@ -73,7 +71,6 @@ beforeEach(() => {
 		baseName: name,
 		isSyntheticTool: false,
 	}));
-	credentialTypes.getKnownTypes.mockReturnValue(KNOWN_CREDENTIALS);
 });
 
 afterEach(async () => {

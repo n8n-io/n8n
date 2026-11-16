@@ -33,12 +33,7 @@ import {
 	orderedAttachments,
 	type ComposedVerdict,
 } from './policy-evaluator';
-import type {
-	PolicyAction,
-	PolicyAttachment,
-	PolicyRule,
-	PolicyVerdict,
-} from './policy-rule.types';
+import type { PolicyAction, PolicyAttachment, PolicyRule } from './policy-rule.types';
 import { lintPolicyRules, type PolicyRuleWarning } from './policy-rule-lint';
 import { TypeAvailabilityPolicySnapshot } from './type-availability-policy-snapshot';
 
@@ -69,27 +64,6 @@ export type ComposedTypeEvaluation = {
 	readonly verdicts: ComposedTypeVerdict[];
 	readonly versions: Array<{ scope: NodeTypeAvailabilityScope; version: number }>;
 };
-
-/** The instance scope's own verdict for every requested type, as `getInstanceAccess` reports it. */
-export type InstanceAccess = {
-	readonly scopeId: string | null;
-	readonly version: number;
-	readonly defaultAction: PolicyAction;
-	readonly types: Array<PolicyVerdict & { readonly name: string }>;
-};
-
-export function toInstanceTypeAccessResponse(access: InstanceAccess): InstanceTypeAccessResponse {
-	return {
-		scopeId: access.scopeId,
-		version: access.version,
-		defaultAction: access.defaultAction,
-		types: access.types.map(({ name, action, matchedRuleId }) => ({
-			name,
-			access: action,
-			matchedRuleId,
-		})),
-	};
-}
 
 type PolicyDocumentWrite = {
 	readonly policy: TypeAvailabilityPolicy;
@@ -863,7 +837,10 @@ export class TypeAvailabilityPolicyService {
 	 * What the instance policy alone decides for each type, evaluated against one read so that
 	 * `version` matches the verdicts. Uncached for the reason on `getEffectivePolicy`.
 	 */
-	async getInstanceAccess(kind: string, typeNames: readonly string[]): Promise<InstanceAccess> {
+	async getInstanceAccess(
+		kind: string,
+		typeNames: readonly string[],
+	): Promise<InstanceTypeAccessResponse> {
 		const effective = await this.getEffectivePolicy(kind, null);
 		const resolvePackage = packageResolverFor(kind, this.loadNodesAndCredentials);
 		const policedType = policedTypeFor(kind, this.nodeTypes, this.loadNodesAndCredentials);
@@ -872,15 +849,16 @@ export class TypeAvailabilityPolicyService {
 			scopeId: effective.scopeId,
 			version: effective.version,
 			defaultAction: effective.defaultAction,
-			types: typeNames.map((name) => ({
-				name,
-				...evaluateRules(
+			types: typeNames.map((name) => {
+				const { action, matchedRuleId } = evaluateRules(
 					effective.rules,
 					effective.defaultAction,
 					policedType(name),
 					resolvePackage,
-				),
-			})),
+				);
+
+				return { name, access: action, matchedRuleId };
+			}),
 		};
 	}
 
