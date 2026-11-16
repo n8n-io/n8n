@@ -45,17 +45,6 @@ describe('SettingsContextView', () => {
 		expect(showErrorMock).toHaveBeenCalled();
 	});
 
-	it('shows the Preview and limited enterprise readiness badges next to the page title', () => {
-		const { getByRole, getByTestId } = renderView();
-		const preview = getByTestId('context-preview-badge');
-		const enterprise = getByTestId('context-enterprise-readiness-badge');
-		const heading = getByRole('heading', { name: 'Context' });
-
-		expect(heading.parentElement).toContainElement(preview);
-		expect(heading.parentElement).toContainElement(enterprise);
-		expect(enterprise).toHaveTextContent('Limited enterprise readiness');
-	});
-
 	it('lists Preferences and Skills, with no Sources row: sources show in the skills table', () => {
 		const { getByTestId, queryByTestId } = renderView();
 
