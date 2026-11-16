@@ -1,7 +1,6 @@
 import {
 	MERGE_NODE_TYPE,
 	NodeConnectionTypes,
-	getChildNodes,
 	isTriggerNodeType,
 	type IConnections,
 	type INode,
@@ -15,49 +14,27 @@ const DEFAULT_BATCH_SIZE = 1;
 
 /**
  * Mirrors the node-level refusals of `V1WorkflowConverter` in
- * `@n8n/node-engine-compatibility`. Like the converter, the rules skip nodes that no
- * live trigger reaches over `main`, and the node rules skip disabled nodes. Unlike the
+ * `@n8n/node-engine-compatibility`. The node rules skip disabled nodes. Unlike the
  * converter, they report every refusal, not only the first.
  */
 export function findConverterReasons(nodes: INode[], connections: IConnections): EngineV2Reason[] {
-	const triggers = nodes.filter((node) => node.disabled !== true && isTriggerNodeType(node.type));
-	const reachable = reachableNodeNames(nodes, connections, triggers);
-
-	return nodes
-		.filter((node) => reachable.has(node.name))
-		.flatMap((node) => {
-			// The converter turns the fired trigger into a trigger step and skips its node rules.
-			const nodeReasons =
-				node.disabled === true || isTriggerNodeType(node.type) ? [] : findNodeReasons(node);
-			// The converter checks connection types before it removes disabled nodes.
-			const connectionType = findNonMainConnectionType(connections, node.name);
-			if (connectionType !== undefined) {
-				nodeReasons.push(
-					reason(
-						node,
-						'NON_MAIN_CONNECTION',
-						`has a "${connectionType}" connection. Engine v2 runs only "main" connections.`,
-					),
-				);
-			}
-			return nodeReasons;
-		});
-}
-
-/** With no live trigger the converter does not root the graph, so every node counts. */
-function reachableNodeNames(
-	nodes: INode[],
-	connections: IConnections,
-	triggers: INode[],
-): Set<string> {
-	if (triggers.length === 0) return new Set(nodes.map((node) => node.name));
-
-	return new Set(
-		triggers.flatMap((trigger) => [
-			trigger.name,
-			...getChildNodes(connections, trigger.name, NodeConnectionTypes.Main, -1),
-		]),
-	);
+	return nodes.flatMap((node) => {
+		// The converter turns the fired trigger into a trigger step and skips its node rules.
+		const nodeReasons =
+			node.disabled === true || isTriggerNodeType(node.type) ? [] : findNodeReasons(node);
+		// The converter checks connection types before it removes disabled nodes.
+		const connectionType = findNonMainConnectionType(connections, node.name);
+		if (connectionType !== undefined) {
+			nodeReasons.push(
+				reason(
+					node,
+					'NON_MAIN_CONNECTION',
+					`has a "${connectionType}" connection. Engine v2 runs only "main" connections.`,
+				),
+			);
+		}
+		return nodeReasons;
+	});
 }
 
 function findNodeReasons(node: INode): EngineV2Reason[] {
