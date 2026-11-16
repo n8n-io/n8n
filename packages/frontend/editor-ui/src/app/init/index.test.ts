@@ -49,6 +49,7 @@ vi.mock('@/app/moduleInitializer/moduleInitializer', async (importOriginal) => {
 		registerModulePushHandlers: vi.fn(actual.registerModulePushHandlers),
 		registerModuleCommands: vi.fn(actual.registerModuleCommands),
 		registerModuleParameterInputs: vi.fn(actual.registerModuleParameterInputs),
+		registerModuleRunDataDisplayModes: vi.fn(actual.registerModuleRunDataDisplayModes),
 	};
 });
 
@@ -251,6 +252,15 @@ describe('Init', () => {
 				versionCli: '1.102.0',
 				userRole: 'global:member',
 			});
+		});
+
+		// Preview mode shows run data to a visitor who is not logged in.
+		it('should register module display modes when no user is logged in', async () => {
+			usersStore.currentUser = null;
+
+			await initializeCore();
+
+			expect(moduleInitializer.registerModuleRunDataDisplayModes).toHaveBeenCalledTimes(1);
 		});
 
 		it('should start the expression engine from the settings payload', async () => {
