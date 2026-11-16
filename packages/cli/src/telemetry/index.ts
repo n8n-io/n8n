@@ -294,10 +294,10 @@ export class Telemetry {
 		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
 			const entry = this.apiInvocationsBuffer[userId];
 			if (entry.total_calls > 0) {
-				this.track('Public API usage', {
+				this.track(TELEMETRY_EVENT.PUBLIC_API.PUBLIC_API_USAGE, {
 					user_id: userId,
 					total_calls: entry.total_calls,
-					first: entry.first,
+					first: entry.first.toISOString(),
 					endpoints: JSON.stringify(entry.endpoints),
 					endpoints_by_client: JSON.stringify(entry.endpoints_by_client),
 					routes: JSON.stringify(entry.routes),

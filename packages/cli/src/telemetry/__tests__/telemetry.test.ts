@@ -5,9 +5,14 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { ProjectRelationRepository, ProjectRepository, UserRepository } from '@n8n/db';
 import type { WorkflowRepository } from '@n8n/db';
-import { defineTelemetryEvents, TELEMETRY_EVENT } from '@n8n/telemetry';
+import {
+	defineTelemetryEvents,
+	PUBLIC_API_USAGE_JSON_FIELDS,
+	TELEMETRY_EVENT,
+} from '@n8n/telemetry';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { InstanceSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod/v4';
@@ -1719,7 +1724,7 @@ describe('Telemetry', () => {
 			telemetry.flushBuffers();
 
 			expect(spyTrack).toHaveBeenCalledWith(
-				'Public API usage',
+				TELEMETRY_EVENT.PUBLIC_API.PUBLIC_API_USAGE,
 				expect.objectContaining({
 					user_id: 'user1',
 					total_calls: 1,
@@ -1732,6 +1737,27 @@ describe('Telemetry', () => {
 			);
 			expect(spyTrack).not.toHaveBeenCalledWith('pulse', expect.anything());
 			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
+		});
+
+		test('should send a Public API usage report that passes its registry schema', () => {
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				route: 'GET /workflows/{workflowId}',
+				result: '4xx',
+				api_version: 'v1',
+				user_agent: 'n8n-cli/1.0',
+				client: 'editor_ui',
+			});
+
+			telemetry.flushBuffers();
+
+			const [event, report] = spyTrack.mock.calls.find(
+				([e]) => e === TELEMETRY_EVENT.PUBLIC_API.PUBLIC_API_USAGE,
+			)!;
+			expect(event.getValidationError(report)).toBeNull();
+			for (const [field, schema] of Object.entries(PUBLIC_API_USAGE_JSON_FIELDS)) {
+				expect(schema.safeParse(jsonParse(report[field] as string)).success).toBe(true);
+			}
 		});
 
 		test('should send nothing when RudderStack is not initialized', () => {
@@ -1757,7 +1783,7 @@ describe('Telemetry', () => {
 			await telemetry.stopTracking();
 
 			expect(spyTrack).toHaveBeenCalledWith(
-				'Public API usage',
+				TELEMETRY_EVENT.PUBLIC_API.PUBLIC_API_USAGE,
 				expect.objectContaining({ user_id: 'user1', total_calls: 1 }),
 			);
 			expect(mockRudderStack.track.mock.invocationCallOrder.at(-1)).toBeLessThan(
