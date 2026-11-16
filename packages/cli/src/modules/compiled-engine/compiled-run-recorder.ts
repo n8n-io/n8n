@@ -200,6 +200,11 @@ export class CompiledRunRecorder {
 		return this.lastNode;
 	}
 
+	/** The last node whose step failed, with the error text of `wfrt`. */
+	get failed() {
+		return this.failedNode;
+	}
+
 	/** The run data of the runs that have ended. */
 	getRunData(): IRunData {
 		return this.runData;

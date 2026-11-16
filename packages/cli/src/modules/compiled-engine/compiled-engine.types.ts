@@ -363,3 +363,17 @@ export function parseWfrtEvent(line: string): WfrtEvent | undefined {
 			return undefined;
 	}
 }
+
+/**
+ * The end of the error text of `wfrt` for a limit that the v1 engine does not have. The
+ * fallback host runs the node code of v1, so the node runs there without the limit.
+ * `(limit: binary-max-file)`: a response is larger than `--binary-max-file-mb`.
+ */
+const HOST_LIMIT_MARKERS = ['(limit: binary-max-file)'];
+
+/** True when the error of a step says that the node must run in the fallback host. */
+export function needsFallbackHost(message: string | undefined): boolean {
+	if (!message) return false;
+	// A compiled node can put the text of `wfrt` into the error that it throws.
+	return HOST_LIMIT_MARKERS.some((marker) => message.includes(marker));
+}

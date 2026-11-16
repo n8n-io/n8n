@@ -36,7 +36,7 @@ import type {
 	WfrtStepEvent,
 	WfrtWaitingEvent,
 } from './compiled-engine.types';
-import { MANUAL_WORKFLOW_SUFFIX } from './compiled-engine.types';
+import { MANUAL_WORKFLOW_SUFFIX, needsFallbackHost } from './compiled-engine.types';
 import { CompiledExecutionStore, EFFECT_SEQ_KEY, WFRT_ID_KEY } from './compiled-execution.store';
 import { CompiledServiceCalls } from './compiled-service-calls';
 import type { NodeUpdate } from './compiled-run-recorder';
@@ -663,6 +663,7 @@ export class CompiledEngineDispatcher {
 		const { updates, error } = state.recorder.finish(event);
 		await this.send(state, updates);
 		if (error) state.runExecutionData.resultData.error = error;
+		if (error) this.moveToHostOnLimit(state, event);
 		if (state.runExecutionData.executionData) {
 			state.runExecutionData.executionData.nodeExecutionStack = [];
 		}
@@ -680,6 +681,23 @@ export class CompiledEngineDispatcher {
 		this.wfrtIds.delete(state.executionId);
 		this.rememberFinished(state.wfrtId);
 		this.stopWaiters.get(state.executionId)?.();
+	}
+
+	/**
+	 * A run that failed on a limit of `wfrt` that v1 does not have (a response larger than
+	 * `--binary-max-file-mb`): the node runs in the fallback host from the next run. This run
+	 * stays failed, because its node sent requests that n8n must not send twice.
+	 */
+	private moveToHostOnLimit(state: ExecutionState, event: WfrtFinishedEvent) {
+		const failed = state.recorder.failed;
+		const workflowId = state.data.workflowData.id;
+		if (!failed || !workflowId) return;
+		if (!needsFallbackHost(failed.message) && !needsFallbackHost(event.error)) return;
+		void this.sync.onRuntimeLimit(workflowId, failed.nodeName).catch((error) => {
+			this.logger.warn(`Could not move node "${failed.nodeName}" to the fallback host`, {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
 	}
 
 	/**

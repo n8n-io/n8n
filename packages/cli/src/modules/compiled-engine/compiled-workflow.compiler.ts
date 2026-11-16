@@ -193,6 +193,12 @@ interface CompileContext {
 	publicCredentials: Map<string, PublicCredential>;
 }
 
+/** The most workflows with nodes that moved to the host for a limit. The oldest one goes first. */
+const MAX_LIMIT_WORKFLOWS = 10_000;
+
+/** The most nodes of one workflow that moved to the host for a limit. */
+const MAX_LIMIT_NODES = 1_000;
+
 /**
  * Converts and compiles workflows with `@n8n/workflow-lang`. Results are kept
  * by a hash of the input, in memory and as files in the data folder, so a
@@ -203,6 +209,13 @@ export class CompiledWorkflowCompiler {
 	private readonly cache = new Map<string, CompiledArtifact>();
 
 	private readonly inFlight = new Map<string, Promise<CompiledArtifact>>();
+
+	/**
+	 * The nodes of each workflow that run in the fallback host, because a run reached a limit
+	 * of `wfrt` that v1 does not have. In memory only: after a restart of n8n, a node is here
+	 * again after one run that reaches the limit.
+	 */
+	private readonly limitNodes = new Map<string, Set<string>>();
 
 	/** `N8N_COMPILED_ENGINE_COMPILE_NODES`. */
 	private readonly compileNodes: boolean;
@@ -227,6 +240,26 @@ export class CompiledWorkflowCompiler {
 			join(this.processes.dataDir, 'artifacts'),
 			config.artifactCacheMb * 1024 * 1024,
 		);
+	}
+
+	/**
+	 * Keeps a node of a workflow in the fallback host from the next compile on. True when
+	 * the node is new in the list: the caller compiles and loads the workflow again.
+	 */
+	runInHost(workflowId: string, nodeName: string): boolean {
+		let nodes = this.limitNodes.get(workflowId);
+		if (nodes?.has(nodeName)) return false;
+		if (!nodes) {
+			if (this.limitNodes.size >= MAX_LIMIT_WORKFLOWS) {
+				const oldest = this.limitNodes.keys().next();
+				if (!oldest.done) this.limitNodes.delete(oldest.value);
+			}
+			nodes = new Set();
+			this.limitNodes.set(workflowId, nodes);
+		}
+		if (nodes.size >= MAX_LIMIT_NODES) return false;
+		nodes.add(nodeName);
+		return true;
 	}
 
 	async compile(input: CompileInput): Promise<CompiledArtifact> {
@@ -263,14 +296,17 @@ export class CompiledWorkflowCompiler {
 		// the conditions that were checked against the v1 node. For other values the node must
 		// not fail where v1 succeeds: it runs in the fallback host. The artifact above is the
 		// one to use again when the credential changes to checked values.
-		const hostNodes = await this.credentials.unprovenFlagNodes(
+		const flagNodes = await this.credentials.unprovenFlagNodes(
 			input.id,
 			full.slots,
 			full.derivations,
 		);
+		// A node that reached a limit of `wfrt` that v1 does not have runs in the host too.
+		const limitNodes = this.limitNodes.get(input.id);
+		const hostNodes = limitNodes ? [...new Set([...flagNodes, ...limitNodes])] : flagNodes;
 		if (hostNodes.length === 0) return full;
 		this.logger.debug(
-			`Workflow ${input.id}: ${hostNodes.length} node(s) run in the fallback host, because a credential gives their conditions values that are not checked`,
+			`Workflow ${input.id}: ${hostNodes.length} node(s) run in the fallback host, because a credential gives their conditions values that are not checked, or a run reached a limit of wfrt that v1 does not have`,
 			{ workflowId: input.id },
 		);
 		const hostKey = createHash('sha256')

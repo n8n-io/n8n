@@ -502,6 +502,49 @@ describe('CompiledEngineDispatcher', () => {
 		expect(run.data.resultData.error?.message).toBe('The remote answered 500');
 	});
 
+	it('moves a node to the fallback host when its step fails on a limit that v1 does not have', async () => {
+		const { dispatcher, sync } = setup();
+		sync.onRuntimeLimit.mockResolvedValue(undefined);
+		const limit =
+			'http: the response body is 20971520 bytes; a stored file can have 16777216 (--binary-max-file-mb); the fallback host can run the node (limit: binary-max-file)';
+		const executionId = await dispatcher.runManual({ executionMode: 'manual', workflowData });
+		void dispatcher.handleEvent({
+			type: 'step',
+			executionId,
+			step: 'HTTP Request',
+			status: 'failed',
+			error: limit,
+			at: 2,
+		});
+		void dispatcher.handleEvent({ type: 'finished', executionId, status: 'error', at: 3 });
+		await dispatcher.drain();
+
+		// The run that reached the limit is an error: n8n does not report a success.
+		const run = dispatcher.calls.at(-1)?.args[0] as IRun;
+		expect(run.status).toBe('error');
+		expect(run.data.resultData.error?.message).toBe(limit);
+		expect(sync.onRuntimeLimit).toHaveBeenCalledTimes(1);
+		expect(sync.onRuntimeLimit).toHaveBeenCalledWith('wf1', 'HTTP Request');
+	});
+
+	it('keeps a node compiled when its step fails for another reason', async () => {
+		const { dispatcher, sync } = setup();
+		const executionId = await dispatcher.runManual({ executionMode: 'manual', workflowData });
+		void dispatcher.handleEvent({
+			type: 'step',
+			executionId,
+			step: 'HTTP Request',
+			status: 'failed',
+			error:
+				'http: too many stored responses are in flight (64, --binary-max-transfers); the step can run again (limit)',
+			at: 2,
+		});
+		void dispatcher.handleEvent({ type: 'finished', executionId, status: 'error', at: 3 });
+		await dispatcher.drain();
+
+		expect(sync.onRuntimeLimit).not.toHaveBeenCalled();
+	});
+
 	it('saves a waiting approval and resumes it in wfrt', async () => {
 		const { dispatcher, activeExecutions, client } = setup();
 		const executionId = await dispatcher.runManual({ executionMode: 'manual', workflowData });

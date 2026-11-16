@@ -183,6 +183,58 @@ describe('CompiledEngineSync: minted tokens', () => {
 		});
 	});
 
+	describe('a node that reaches a limit of wfrt that v1 does not have', () => {
+		const withKey = (key: string) =>
+			mock<CompiledArtifact>({
+				ok: true,
+				key,
+				module: Buffer.from(key),
+				slots,
+				derivations: undefined,
+				mints: undefined,
+				diagnostics: [],
+			});
+
+		beforeEach(() => {
+			credentials.buildDocument.mockResolvedValue({});
+		});
+
+		it('compiles the workflow again with the node in the host, and loads that module', async () => {
+			compiler.compile.mockResolvedValue(withKey('compiled'));
+			await sync.activate(workflow);
+			compiler.runInHost.mockReturnValue(true);
+			compiler.compile.mockResolvedValue(withKey('host'));
+
+			await sync.onRuntimeLimit('wf1', 'Download');
+
+			expect(compiler.runInHost).toHaveBeenCalledWith('wf1', 'Download');
+			expect(client.putWorkflow).toHaveBeenCalledTimes(2);
+			expect(client.putWorkflow.mock.lastCall?.[1]).toMatchObject({ versionId: 'host' });
+		});
+
+		it('does nothing when the node is in the host already', async () => {
+			compiler.compile.mockResolvedValue(withKey('host'));
+			await sync.activate(workflow);
+			compiler.runInHost.mockReturnValue(false);
+
+			await sync.onRuntimeLimit('wf1', 'Download');
+
+			expect(compiler.compile).toHaveBeenCalledTimes(1);
+			expect(client.putWorkflow).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps the modules of other workflows', async () => {
+			compiler.compile.mockResolvedValue(withKey('compiled'));
+			await sync.activate(workflow);
+			compiler.runInHost.mockReturnValue(true);
+
+			await sync.onRuntimeLimit('wf2', 'Download');
+
+			expect(compiler.compile).toHaveBeenCalledTimes(1);
+			expect(client.putWorkflow).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('renewCredential', () => {
 		const other = mock<WorkflowEntity>({ id: 'wf2', activeVersion: null, settings: {} });
 
