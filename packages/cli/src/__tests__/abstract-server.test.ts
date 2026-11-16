@@ -1,5 +1,6 @@
 import { ModuleRegistry } from '@n8n/backend-common';
 import { AppsHostingService } from '@n8n/backend-module-apps/hosting';
+import { PathResolvingService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -240,6 +241,41 @@ describe('AbstractServer', () => {
 			await testServer.start();
 
 			expect(createWebhookHandlerFor).toHaveBeenCalledWith(waitingForms, undefined, 'form');
+		});
+	});
+
+	describe('route registration under a base path', () => {
+		afterEach(() => {
+			const globalConfig = Container.get(GlobalConfig);
+			globalConfig.basePath = '';
+			Container.set(PathResolvingService, new PathResolvingService(globalConfig));
+		});
+
+		it('should mount health and webhook routes under the base path', async () => {
+			const globalConfig = Container.get(GlobalConfig);
+			globalConfig.basePath = '/n8n';
+			Container.set(PathResolvingService, new PathResolvingService(globalConfig));
+			Container.set(WaitingForms, mock<WaitingForms>());
+
+			const server = new TestServer();
+			await server.init();
+			await server.start();
+
+			const getPaths = mockApp.get.mock.calls.map(([path]) => path);
+			expect(getPaths).toEqual(expect.arrayContaining(['/n8n/healthz', '/n8n/healthz/readiness']));
+			expect(getPaths).not.toContain('/healthz');
+
+			const allPaths = mockApp.all.mock.calls.map(([path]) => path);
+			expect(allPaths).toEqual(
+				expect.arrayContaining([
+					'/n8n/form/*path',
+					'/n8n/webhook/*path',
+					'/n8n/form-waiting/:path{/:suffix}',
+					'/n8n/webhook-waiting/:path{/:suffix}',
+					'/n8n/mcp/*path',
+				]),
+			);
+			expect(allPaths).not.toContain('/webhook/*path');
 		});
 	});
 

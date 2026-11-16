@@ -27,12 +27,12 @@ export async function initErrorReporting(): Promise<void> {
 		} = globalConfig.sentry;
 
 		const serverType = instanceTypeFromArgv(process.argv);
-		// Main process health routes are mounted under N8N_BASE_PATH; worker
-		// health routes stay bare because workers are reached directly.
+		// Main and webhook servers mount health routes under N8N_BASE_PATH. Worker
+		// and engine health routes stay bare because those processes are reached directly.
 		const healthEndpoint =
-			serverType === 'worker'
-				? resolveBackendHealthEndpointPath(globalConfig)
-				: resolveMainHealthEndpointPath(globalConfig);
+			serverType === 'main' || serverType === 'webhook'
+				? resolveMainHealthEndpointPath(globalConfig)
+				: resolveBackendHealthEndpointPath(globalConfig);
 
 		await Container.get(ErrorReporter).init({
 			serverType,

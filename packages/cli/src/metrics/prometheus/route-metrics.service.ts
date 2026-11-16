@@ -52,12 +52,9 @@ export class PrometheusRouteMetricsService implements PrometheusMetricsCollector
 
 		// Resolve paths through PathResolvingService so metrics also cover
 		// deployments hosted under a custom base path
-		const basePath = this.pathResolvingService.getBasePath();
-		const apiPath = basePath === '/' ? '/api/' : `${basePath}/api/`;
-
 		app.use(
 			[
-				apiPath,
+				`${this.pathResolvingService.resolvePublicApiEndpoint()}/`,
 				`${this.pathResolvingService.resolveRestEndpoint()}/`,
 				`${this.pathResolvingService.resolveWebhookEndpoint()}/`,
 				`${this.pathResolvingService.resolveWebhookWaitingEndpoint()}/`,

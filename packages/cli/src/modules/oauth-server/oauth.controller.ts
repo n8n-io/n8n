@@ -19,7 +19,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { Response, Request, RequestHandler, Router } from 'express';
 import { z } from 'zod/v4';
 
-import { UrlService } from '@n8n/backend-services';
+import { PathResolvingService, UrlService } from '@n8n/backend-services';
 import { type ProtectedResource, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
 import { OAuthServerLocalAuthorizationServer } from './oauth-local-authorization-server';
@@ -228,7 +228,18 @@ export class OAuthController {
 		private readonly resourceRegistry: ProtectedResourceRegistry,
 		private readonly localServer: OAuthServerLocalAuthorizationServer,
 		private readonly authenticationService: AuthenticationService,
+		private readonly pathResolvingService: PathResolvingService,
 	) {}
+
+	/**
+	 * Remove the mount base path from an origin-level resource path, or return
+	 * `undefined` when the path is not under the base path.
+	 */
+	private stripBasePath(resourcePath: string): string | undefined {
+		const basePath = this.pathResolvingService.getBasePath();
+		if (basePath === '/' || !resourcePath.startsWith(`${basePath}/`)) return undefined;
+		return resourcePath.slice(basePath.length);
+	}
 
 	// Add CORS headers for OAuth discovery endpoints
 	private setCorsHeaders(res: Response) {
@@ -291,9 +302,9 @@ export class OAuthController {
 		const { issuerPath } = req.params;
 		const requestedIssuerPath = (
 			'/' + (Array.isArray(issuerPath) ? issuerPath.join('/') : issuerPath)
-		).replace(/\/+$/, '');
+		).replace(/\/$/, '');
 		const metadata = await this.localServer.getMetadata();
-		if (new URL(metadata.issuer).pathname.replace(/\/+$/, '') === requestedIssuerPath) {
+		if (new URL(metadata.issuer).pathname.replace(/\/$/, '') === requestedIssuerPath) {
 			res.json(metadata);
 			return;
 		}
@@ -335,8 +346,14 @@ export class OAuthController {
 		const queryStart = req.originalUrl?.indexOf('?') ?? -1;
 		const search = queryStart === -1 ? '' : req.originalUrl.slice(queryStart);
 
+		// Static resources match the full pathname, which includes the base path. Trigger
+		// resolvers match paths relative to the mount point, so retry without the base path.
+		const mountRelativePath = this.stripBasePath(resourcePath);
 		const resource = await discoverableResource(
-			await this.resourceRegistry.getByResourcePath(resourcePath + search),
+			(await this.resourceRegistry.getByResourcePath(resourcePath + search)) ??
+				(mountRelativePath !== undefined
+					? await this.resourceRegistry.getByResourcePath(mountRelativePath + search)
+					: undefined),
 		);
 		if (!resource) {
 			res.status(404).json({ message: 'Unknown protected resource' });

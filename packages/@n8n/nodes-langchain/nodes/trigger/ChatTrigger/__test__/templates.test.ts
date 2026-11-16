@@ -1,6 +1,7 @@
 import {
 	createPage,
 	escapeForScriptContext,
+	getInstanceBasePath,
 	getSanitizedInitialMessages,
 	getSanitizedI18nConfig,
 } from '../templates';
@@ -530,36 +531,45 @@ describe('ChatTrigger Templates Security', () => {
 			expect(result).toContain(`fetch(${escapeForScriptContext('/custom/path/rest/login')}`);
 		});
 
-		it('should handle an absolute instanceBaseUrl without trailing slash', () => {
+		it('should use only the path of an absolute instanceBaseUrl', () => {
 			const result = createPage({
 				...defaultParams,
-				instanceBaseUrl: 'http://localhost:5678/custom-path',
+				instanceBaseUrl: 'http://localhost:5678/n8n',
 				authentication: 'n8nUserAuth',
 			});
 
 			expect(result).toContain(
-				`window.location.href = ${escapeForScriptContext(
-					'http://localhost:5678/custom-path/signin?redirect=',
-				)}`,
+				`window.location.href = ${escapeForScriptContext('/n8n/signin?redirect=')}`,
 			);
+			expect(result).toContain(`fetch(${escapeForScriptContext('/n8n/rest/login')}`);
+			expect(result).not.toContain('localhost:5678');
+		});
+
+		it('should use root paths for an absolute instanceBaseUrl without a path', () => {
+			const result = createPage({
+				...defaultParams,
+				instanceBaseUrl: 'http://localhost:5678',
+				authentication: 'n8nUserAuth',
+			});
+
 			expect(result).toContain(
-				`fetch(${escapeForScriptContext('http://localhost:5678/custom-path/rest/login')}`,
+				`window.location.href = ${escapeForScriptContext('/signin?redirect=')}`,
 			);
+			expect(result).toContain(`fetch(${escapeForScriptContext('/rest/login')}`);
 		});
 
 		it('should escape quote-containing instanceBaseUrl values inside scripts', () => {
-			const instanceBaseUrl = "http://localhost:5678/custom'path";
 			const result = createPage({
 				...defaultParams,
-				instanceBaseUrl,
+				instanceBaseUrl: "http://localhost:5678/custom'path",
 				authentication: 'n8nUserAuth',
 			});
 
-			expect(result).toContain(`fetch(${escapeForScriptContext(`${instanceBaseUrl}/rest/login`)}`);
+			expect(result).toContain(`fetch(${escapeForScriptContext("/custom'path/rest/login")}`);
 			expect(result).toContain(
-				`window.location.href = ${escapeForScriptContext(`${instanceBaseUrl}/signin?redirect=`)}`,
+				`window.location.href = ${escapeForScriptContext("/custom'path/signin?redirect=")}`,
 			);
-			expect(result).not.toContain(`fetch('${instanceBaseUrl}/rest/login'`);
+			expect(result).not.toContain("fetch('/custom'path/rest/login'");
 		});
 
 		it('should use default instanceBaseUrl when not provided', () => {
@@ -572,6 +582,22 @@ describe('ChatTrigger Templates Security', () => {
 			expect(result).toContain(
 				`window.location.href = ${escapeForScriptContext('/signin?redirect=')}`,
 			);
+		});
+
+		describe('getInstanceBasePath', () => {
+			it.each([
+				['/', '/'],
+				['', '/'],
+				['/n8n', '/n8n/'],
+				['/n8n/', '/n8n/'],
+				['http://localhost:5678', '/'],
+				['http://localhost:5678/', '/'],
+				['http://localhost:5678/n8n', '/n8n/'],
+				['https://example.com/a/b/', '/a/b/'],
+				['http://localhost:5678//evil.com', '/evil.com/'],
+			])('should return the path of %j as %j', (input, expected) => {
+				expect(getInstanceBasePath(input)).toBe(expected);
+			});
 		});
 
 		it('should properly encode redirect URL', () => {

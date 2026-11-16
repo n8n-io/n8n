@@ -44,14 +44,18 @@ export class PathResolvingService {
 	 * @returns The full path (e.g., '/custom-path/healthz')
 	 */
 	resolveEndpoint(endpoint: string): string {
+		return this.joinWithBasePath(this.basePath, endpoint);
+	}
+
+	private joinWithBasePath(basePath: string, endpoint: string): string {
 		const normalizedEndpoint = this.stripLeadingSlash(endpoint);
 		if (!normalizedEndpoint) {
-			return this.basePath;
+			return basePath;
 		}
-		if (this.basePath === '/') {
+		if (basePath === '/') {
 			return `/${normalizedEndpoint}`;
 		}
-		return `${this.basePath}/${normalizedEndpoint}`;
+		return `${basePath}/${normalizedEndpoint}`;
 	}
 
 	private stripLeadingSlash(path: string) {
@@ -169,6 +173,21 @@ export class PathResolvingService {
 	 */
 	resolvePublicApiEndpoint(path: string = ''): string {
 		return this.resolveConfiguredEndpoint(this.globalConfig.publicApi.path, path);
+	}
+
+	/**
+	 * Resolves the public API path that clients use, for links in API responses.
+	 * Unlike {@link resolvePublicApiEndpoint}, this also honors legacy N8N_PATH.
+	 * @param path - The API path
+	 * @returns The client-facing public API path (e.g., '/custom-path/api/v1')
+	 */
+	resolvePublicApiUrlPath(path: string = ''): string {
+		const normalizedPath = this.stripLeadingSlash(path);
+		const endpoint = this.trimSlashes(this.globalConfig.publicApi.path);
+		return this.joinWithBasePath(
+			this.urlBasePath,
+			normalizedPath ? `${endpoint}/${normalizedPath}` : endpoint,
+		);
 	}
 
 	// ==================== Static Assets ====================

@@ -41,7 +41,7 @@ export class DiscoverPublicController {
 				includeSchemas: query.include === 'schemas',
 				resource: query.resource,
 				operation: query.operation,
-				apiVersionPath: this.pathResolvingService.resolvePublicApiEndpoint('v1'),
+				apiVersionPath: this.pathResolvingService.resolvePublicApiUrlPath('v1'),
 			}),
 		};
 	}

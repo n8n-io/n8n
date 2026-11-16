@@ -31,7 +31,8 @@ export class ChatServer {
 			// oxlint-disable-next-line typescript/no-deprecated
 			const parsedUrl = parseUrl(req.url ?? '');
 
-			if (parsedUrl.pathname?.startsWith(chatPath)) {
+			const pathname = parsedUrl.pathname;
+			if (pathname === chatPath || pathname?.startsWith(`${chatPath}/`)) {
 				this.wsServer.handleUpgrade(req, socket, head, (ws) => {
 					this.attachToApp(req, ws, app as ExpressApplication);
 				});

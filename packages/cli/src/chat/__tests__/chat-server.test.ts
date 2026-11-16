@@ -107,6 +107,9 @@ describe('ChatServer', () => {
 		);
 		expect(mockWsServer.handleUpgrade).not.toHaveBeenCalled();
 
+		upgradeHandler({ url: '/n8n/chatty?sessionId=123', socket: {} } as ChatRequest, socket, head);
+		expect(mockWsServer.handleUpgrade).not.toHaveBeenCalled();
+
 		const req = { url: '/n8n/chat?sessionId=123&executionId=456', socket: {} } as ChatRequest;
 		upgradeHandler(req, socket, head);
 		expect(mockWsServer.handleUpgrade).toHaveBeenCalledWith(

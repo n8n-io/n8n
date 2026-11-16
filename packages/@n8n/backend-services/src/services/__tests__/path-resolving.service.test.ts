@@ -271,6 +271,29 @@ describe('PathResolvingService', () => {
 			const service = createService({ basePath: '/custom-path' });
 			expect(service.resolvePublicApiEndpoint()).toBe('/custom-path/api');
 		});
+
+		it('should ignore legacy N8N_PATH', () => {
+			const service = createService({ path: '/app' });
+			expect(service.resolvePublicApiEndpoint('v1')).toBe('/api/v1');
+		});
+	});
+
+	describe('resolvePublicApiUrlPath', () => {
+		it.each([
+			{ config: {}, expected: '/api/v1' },
+			{ config: { basePath: '/custom-path' }, expected: '/custom-path/api/v1' },
+			{ config: { path: '/app' }, expected: '/app/api/v1' },
+			{ config: { path: '/app/' }, expected: '/app/api/v1' },
+			{
+				config: { basePath: '/custom-path', publicApi: { path: '/public/' } },
+				expected: '/custom-path/public/v1',
+			},
+		] as Array<{ config: Partial<GlobalConfig>; expected: string }>)(
+			'should resolve to $expected',
+			({ config, expected }) => {
+				expect(createService(config).resolvePublicApiUrlPath('v1')).toBe(expected);
+			},
+		);
 	});
 
 	describe('resolveIconsEndpoint', () => {

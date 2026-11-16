@@ -58,15 +58,27 @@ function asPerson(user: User) {
 	return user;
 }
 
+/** Prepends the normalized base path to a path segment, or returns the bare base path. */
+function withBasePath(basePath: string, pathSegment = '') {
+	const normalizedBasePath = normalizeBasePath(basePath);
+	if (!pathSegment) return normalizedBasePath === '/' ? '' : normalizedBasePath;
+	return normalizedBasePath === '/' ? pathSegment : `${normalizedBasePath}/${pathSegment}`;
+}
+
 function createAgent(
 	target: express.Application | Server,
-	options?: { auth: boolean; user?: User; noRest?: boolean },
+	options?: { auth: boolean; user?: User; noRest?: boolean; basePath?: string },
 ) {
 	const agent = request.agent(target);
 
 	const withRestSegment = !options?.noRest;
+	const basePath = options?.basePath ?? '/';
 
-	if (withRestSegment) void agent.use(prefix(REST_PATH_SEGMENT));
+	if (withRestSegment) {
+		void agent.use(prefix(withBasePath(basePath, REST_PATH_SEGMENT)));
+	} else if (withBasePath(basePath)) {
+		void agent.use(prefix(withBasePath(basePath)));
+	}
 
 	if (options?.auth && options?.user) {
 		const person = asPerson(options.user);
@@ -100,11 +112,7 @@ const publicApiAgent = (
 	const agentApiKey = apiKey ?? (user && isPerson(user) ? user.apiKeys[0].apiKey : undefined);
 
 	const agent = request.agent(target);
-	const normalizedBasePath = normalizeBasePath(basePath);
-	const publicApiPath =
-		normalizedBasePath === '/'
-			? PUBLIC_API_REST_PATH_SEGMENT
-			: `${normalizedBasePath}/${PUBLIC_API_REST_PATH_SEGMENT}`;
+	const publicApiPath = withBasePath(basePath, PUBLIC_API_REST_PATH_SEGMENT);
 	void agent.use(prefix(`${publicApiPath}/v${version}`));
 	if (!user && !apiKey) return agent;
 	void agent.set({ 'X-N8N-API-KEY': agentApiKey });
@@ -118,11 +126,7 @@ const publicApiAgentWithCookie = (
 	basePath = '/',
 ) => {
 	const agent = request.agent(target);
-	const normalizedBasePath = normalizeBasePath(basePath);
-	const publicApiPath =
-		normalizedBasePath === '/'
-			? PUBLIC_API_REST_PATH_SEGMENT
-			: `${normalizedBasePath}/${PUBLIC_API_REST_PATH_SEGMENT}`;
+	const publicApiPath = withBasePath(basePath, PUBLIC_API_REST_PATH_SEGMENT);
 	void agent.use(prefix(`${publicApiPath}/v${version}`));
 	// browser-id is needed for session cookie auth
 	void agent.use(async (req: superagent.SuperAgentRequest) => {
@@ -169,9 +173,9 @@ export const setupTestServer = ({
 	const testServer: TestServer = {
 		app,
 		httpServer,
-		authAgentFor: (user: User) => createAgent(target, { auth: true, user }),
-		authlessAgent: createAgent(target),
-		restlessAgent: createAgent(target, { auth: false, noRest: true }),
+		authAgentFor: (user: User) => createAgent(target, { auth: true, user, basePath }),
+		authlessAgent: createAgent(target, { auth: false, basePath }),
+		restlessAgent: createAgent(target, { auth: false, noRest: true, basePath }),
 		publicApiAgentFor: (user) => publicApiAgent(target, { user, basePath }),
 		publicApiAgentWithApiKey: (apiKey) => publicApiAgent(target, { apiKey, basePath }),
 		publicApiAgentWithoutApiKey: () => publicApiAgent(target, { basePath }),

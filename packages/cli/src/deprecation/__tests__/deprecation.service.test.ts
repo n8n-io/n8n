@@ -99,6 +99,12 @@ describe('DeprecationService', () => {
 		['N8N_SCHEDULER_TRIGGER_NODE_MODE', 'legacy', true],
 		['N8N_SCHEDULER_TRIGGER_NODE_MODE', undefined, false],
 		['N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER', 'true', true],
+		['N8N_PATH', '/n8n', true],
+		['N8N_PATH', 'n8n/', true],
+		['N8N_PATH', '/', false],
+		['N8N_PATH', '', false],
+		['N8N_PATH', '//', false],
+		['N8N_PATH', undefined, false],
 	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
 	});

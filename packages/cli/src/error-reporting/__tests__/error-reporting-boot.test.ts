@@ -92,6 +92,27 @@ describe('initErrorReporting', () => {
 		},
 	);
 
+	it.each([
+		{ command: 'start', healthEndpoint: '/n8n/healthz' },
+		{ command: 'webhook', healthEndpoint: '/n8n/healthz' },
+		{ command: 'worker', healthEndpoint: '/healthz' },
+		{ command: 'engine', healthEndpoint: '/healthz' },
+	])(
+		'uses $healthEndpoint as the health endpoint for `$command` under a base path',
+		async ({ command, healthEndpoint }) => {
+			process.argv = ['node', 'n8n', command];
+			globalConfig.basePath = '/n8n';
+
+			try {
+				await initErrorReporting();
+			} finally {
+				globalConfig.basePath = '';
+			}
+
+			expect(errorReporter.init).toHaveBeenCalledWith(expect.objectContaining({ healthEndpoint }));
+		},
+	);
+
 	it('logs the error and does not throw when Sentry fails to start', async () => {
 		errorReporter.init.mockRejectedValueOnce(new Error('init failed'));
 

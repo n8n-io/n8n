@@ -24,7 +24,7 @@ describe('PrometheusRouteMetricsService', () => {
 		includeApiStatusCodeLabel: false,
 	});
 	const pathResolvingService = mock<PathResolvingService>({
-		getBasePath: () => '/',
+		resolvePublicApiEndpoint: () => '/api',
 		resolveRestEndpoint: () => '/rest',
 		resolveWebhookEndpoint: () => '/webhook',
 		resolveWebhookWaitingEndpoint: () => '/webhook-waiting',
@@ -152,7 +152,7 @@ describe('PrometheusRouteMetricsService', () => {
 
 		it('should register route paths with a non-root base path', () => {
 			const prefixedPathResolvingService = mock<PathResolvingService>({
-				getBasePath: () => '/my-n8n',
+				resolvePublicApiEndpoint: () => '/my-n8n/public-api',
 				resolveRestEndpoint: () => '/my-n8n/rest',
 				resolveWebhookEndpoint: () => '/my-n8n/webhook',
 				resolveWebhookWaitingEndpoint: () => '/my-n8n/webhook-waiting',
@@ -167,7 +167,7 @@ describe('PrometheusRouteMetricsService', () => {
 
 			expect(app.use).toHaveBeenCalledWith(
 				[
-					'/my-n8n/api/',
+					'/my-n8n/public-api/',
 					'/my-n8n/rest/',
 					'/my-n8n/webhook/',
 					'/my-n8n/webhook-waiting/',

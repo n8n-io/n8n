@@ -333,6 +333,23 @@ const innerBootstrapScript = `
 				})();
 			</script>`;
 
+/**
+ * Returns only the path of the instance base URL, with a trailing slash. The host of
+ * `getInstanceBaseUrl()` can be an internal address behind a reverse proxy, so the page
+ * must request URLs relative to its own origin.
+ */
+export function getInstanceBasePath(instanceBaseUrl: string): string {
+	let pathname: string;
+	try {
+		pathname = new URL(instanceBaseUrl, 'http://localhost').pathname;
+	} catch {
+		return '/';
+	}
+	// Collapse leading slashes so the result cannot become a protocol-relative URL.
+	pathname = pathname.replace(/^\/+/, '/');
+	return pathname.endsWith('/') ? pathname : `${pathname}/`;
+}
+
 export function createPage({
 	instanceId,
 	instanceBaseUrl = '/',
@@ -400,15 +417,9 @@ export function createPage({
 
 	const shellInner = frameIdentity !== undefined;
 
-	// `ctx.getInstanceBaseUrl()` strips the trailing slash, so normalise once
-	// here to avoid producing URLs like `http://host/basepathrest/login`.
-	const normalizedInstanceBaseUrl = instanceBaseUrl.endsWith('/')
-		? instanceBaseUrl
-		: `${instanceBaseUrl}/`;
-	const loginUrl = escapeForScriptContext(`${normalizedInstanceBaseUrl}rest/login`);
-	const signInRedirectBaseUrl = escapeForScriptContext(
-		`${normalizedInstanceBaseUrl}signin?redirect=`,
-	);
+	const instanceBasePath = getInstanceBasePath(instanceBaseUrl);
+	const loginUrl = escapeForScriptContext(`${instanceBasePath}rest/login`);
+	const signInRedirectBaseUrl = escapeForScriptContext(`${instanceBasePath}signin?redirect=`);
 
 	// How the page learns who the visitor is. The `/rest/login` bootstrap can only work on
 	// the real origin: from the frame's opaque origin the request carries no cookie, and the

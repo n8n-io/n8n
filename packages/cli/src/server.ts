@@ -301,7 +301,10 @@ export class Server extends AbstractServer {
 		Container.get(ControllerRegistry).activate(app);
 
 		// The agent webhook keeps the OpenAI error shape for unknown routes and unparsable bodies.
-		app.use(`/${this.globalConfig.endpoints.agentWebhook}`, ...responsesApiFallback);
+		app.use(
+			pathResolvingService.resolveEndpoint(this.globalConfig.endpoints.agentWebhook),
+			...responsesApiFallback,
+		);
 
 		// ----------------------------------------
 		// Options

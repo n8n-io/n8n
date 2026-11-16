@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
 import { setupDefaultInterceptors } from '../config/intercepts';
+import { withBasePathRequest } from '../fixtures/base-path';
 import type { n8nPage } from '../pages/n8nPage';
 import { ApiHelpers } from '../services/api-helper';
 import type { TestUser } from '../services/user-api-helper';
@@ -122,10 +123,18 @@ export class TestEntryComposer {
 	 * Uses the constructor from the current instance to avoid a circular import.
 	 */
 	private wrapPage(page: Page): n8nPage {
-		const n8nPageConstructor = this.n8n.constructor as new (page: Page, api: ApiHelpers) => n8nPage;
+		const n8nPageConstructor = this.n8n.constructor as new (
+			page: Page,
+			api: ApiHelpers,
+			basePath: string,
+		) => n8nPage;
 		return new n8nPageConstructor(
 			page,
-			new ApiHelpers(page.context().request, this.n8n.api.options),
+			new ApiHelpers(
+				withBasePathRequest(page.context().request, this.n8n.basePath),
+				this.n8n.api.options,
+			),
+			this.n8n.basePath,
 		);
 	}
 

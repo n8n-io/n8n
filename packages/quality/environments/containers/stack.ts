@@ -86,7 +86,9 @@ export interface N8NStack {
 	internalMainUrls: string[];
 	/**
 	 * Direct host-mapped URL of every n8n process (mains, workers, webhook procs),
-	 * for per-process diagnostics such as `/metrics` and `/rest/e2e/internals`.
+	 * for per-process diagnostics such as `/rest/e2e/internals`. Main and webhook
+	 * URLs include the base path; worker URLs do not. `/metrics` is always served
+	 * at the origin root, so do not append it to these URLs under a base path.
 	 */
 	processUrls: N8NProcessUrl[];
 	startupDiagnostics: N8NStartupDiagnostics;
@@ -517,7 +519,13 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			const name = container.getName().replace(/^\//, '');
 			const role = n8nProcessRole(name);
 			if (role) {
-				processUrls.push({ role, name, url: `http://localhost:${container.getMappedPort(5678)}` });
+				// Workers serve their routes at the root; mains and webhook processes mount under the base path.
+				const processBasePath = role === 'worker' ? '' : basePath;
+				processUrls.push({
+					role,
+					name,
+					url: `http://localhost:${container.getMappedPort(5678)}${processBasePath}`,
+				});
 			}
 		}
 
