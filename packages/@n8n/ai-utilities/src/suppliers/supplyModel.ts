@@ -87,42 +87,33 @@ function getOpenAiModel(ctx: ISupplyDataFunctions, model: OpenAiModel) {
 	return openAiModel;
 }
 
-// `Symbol.for` gives the ESM and CJS builds the same key, so either copy finds the source.
-const SUPPLIED_MODEL_SOURCE: unique symbol = Symbol.for('@n8n/ai-utilities.suppliedModelSource');
+// `Symbol.for` so the ESM and CJS copies of this package share the key.
+const SUPPLIED_MODEL_OPTIONS: unique symbol = Symbol.for('@n8n/ai-utilities.suppliedModelOptions');
 
-/**
- * A model returned by `supplyModel`. An interface, not a type alias, so that
- * TypeScript names it in declarations instead of the private symbol key.
- */
 export interface SuppliedModel {
-	[SUPPLIED_MODEL_SOURCE]: SupplyModelOptions;
+	[SUPPLIED_MODEL_OPTIONS]: SupplyModelOptions;
 }
 
-function hasSource(value: unknown): value is SuppliedModel {
-	return typeof value === 'object' && value !== null && Object.hasOwn(value, SUPPLIED_MODEL_SOURCE);
+function hasOptions(value: unknown): value is SuppliedModel {
+	return (
+		typeof value === 'object' && value !== null && Object.hasOwn(value, SUPPLIED_MODEL_OPTIONS)
+	);
 }
 
 /**
- * Returns what a node passed to `supplyModel`, read from the model that
- * `supplyModel` returned. This lets the first-class Agent build its own
- * model in place of the LangChain one.
- *
- * Returns `undefined` for anything else, including models derived from the
- * returned one, for example by `bindTools`.
- *
- * The result can contain an API key, so do not log or serialize it.
+ * Returns the options that `supplyModel` attached to this model, or `undefined`.
+ * The result can hold an API key, so do not log or serialize it.
  */
-export function getSuppliedModelSource(response: unknown): SupplyModelOptions | undefined {
-	return hasSource(response) ? response[SUPPLIED_MODEL_SOURCE] : undefined;
+export function getSuppliedModelOptions(response: unknown): SupplyModelOptions | undefined {
+	return hasOptions(response) ? response[SUPPLIED_MODEL_OPTIONS] : undefined;
 }
 
-function attachSource(
+function attachOptions(
 	response: object,
-	source: SupplyModelOptions,
+	options: SupplyModelOptions,
 ): asserts response is SuppliedModel {
-	// Attach the options to the model so `getSuppliedModelSource` can read back what the node passed in.
-	// Non-enumerable, so spread, `Object.assign` and `util.inspect` neither copy nor print it: it can hold an API key.
-	Object.defineProperty(response, SUPPLIED_MODEL_SOURCE, { value: source });
+	// Non-enumerable so the options, which can hold an API key, are not copied or printed.
+	Object.defineProperty(response, SUPPLIED_MODEL_OPTIONS, { value: options });
 }
 
 export function supplyModel(
@@ -132,6 +123,6 @@ export function supplyModel(
 	const response = isOpenAiModel(model)
 		? getOpenAiModel(ctx, model)
 		: new LangchainChatModelAdapter(model, ctx);
-	attachSource(response, model);
+	attachOptions(response, model);
 	return { response };
 }

@@ -11,7 +11,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { LangchainChatModelAdapter } from 'src/adapters/langchain-chat-model';
 import {
-	getSuppliedModelSource,
+	getSuppliedModelOptions,
 	supplyModel,
 	type OpenAiModel,
 	type SuppliedModel,
@@ -19,7 +19,7 @@ import {
 import type { ChatModel } from 'src/types/chat-model';
 
 const API_KEY = 'sk-test-6f1c2d9e-must-not-leak';
-const SOURCE_KEY = Symbol.for('@n8n/ai-utilities.suppliedModelSource');
+const OPTIONS_KEY = Symbol.for('@n8n/ai-utilities.suppliedModelOptions');
 
 function createChatModel(): ChatModel {
 	const chatModel: ChatModel = {
@@ -37,7 +37,7 @@ function createChatModel(): ChatModel {
 	return chatModel;
 }
 
-describe('getSuppliedModelSource', () => {
+describe('getSuppliedModelOptions', () => {
 	let server: Server;
 	let baseUrl: string;
 	let requestHeaders: IncomingHttpHeaders[];
@@ -122,7 +122,7 @@ describe('getSuppliedModelSource', () => {
 		const { response } = supplyModel(ctx, config);
 
 		expect(response).toBeInstanceOf(ChatOpenAI);
-		expect(getSuppliedModelSource(response)).toBe(config);
+		expect(getSuppliedModelOptions(response)).toBe(config);
 	});
 
 	it('returns the ChatModel for an n8n chat model', () => {
@@ -131,7 +131,7 @@ describe('getSuppliedModelSource', () => {
 		const { response } = supplyModel(ctx, chatModel);
 
 		expect(response).toBeInstanceOf(LangchainChatModelAdapter);
-		expect(getSuppliedModelSource(response)).toBe(chatModel);
+		expect(getSuppliedModelOptions(response)).toBe(chatModel);
 	});
 
 	it.each([
@@ -144,24 +144,24 @@ describe('getSuppliedModelSource', () => {
 			new ChatOpenAI({ apiKey: 'k', model: 'm' }),
 		],
 	])('returns undefined for %s', (_label, value) => {
-		expect(getSuppliedModelSource(value)).toBeUndefined();
+		expect(getSuppliedModelOptions(value)).toBeUndefined();
 	});
 
-	it('does not carry the source over to the model that bindTools returns', () => {
+	it('does not carry the options over to the model that bindTools returns', () => {
 		const { response } = supplyModel(ctx, createChatModel());
 		if (!(response instanceof LangchainChatModelAdapter)) throw new Error('Expected adapter');
 
-		expect(getSuppliedModelSource(response.bindTools([]))).toBeUndefined();
+		expect(getSuppliedModelOptions(response.bindTools([]))).toBeUndefined();
 	});
 
 	it('returns undefined for an object that inherits from a supplied model', () => {
 		const { response } = supplyModel(ctx, integratorConfig());
 		if (!(response instanceof ChatOpenAI)) throw new Error('Expected ChatOpenAI');
 
-		expect(getSuppliedModelSource(Object.create(response))).toBeUndefined();
+		expect(getSuppliedModelOptions(Object.create(response))).toBeUndefined();
 	});
 
-	it('keeps the source when a consumer replaces callbacks or patches methods', () => {
+	it('keeps the options when a consumer replaces callbacks or patches methods', () => {
 		const config = integratorConfig();
 		const { response } = supplyModel(ctx, config);
 		if (!(response instanceof ChatOpenAI)) throw new Error('Expected ChatOpenAI');
@@ -170,23 +170,23 @@ describe('getSuppliedModelSource', () => {
 		const invoke = response.invoke.bind(response);
 		response.invoke = async (...args) => await invoke(...args);
 
-		expect(getSuppliedModelSource(response)).toBe(config);
+		expect(getSuppliedModelOptions(response)).toBe(config);
 	});
 
-	it('keeps the source on a Proxy around the response', () => {
+	it('keeps the options on a Proxy around the response', () => {
 		const chatModel = createChatModel();
 		const { response } = supplyModel(ctx, chatModel);
 		if (!(response instanceof LangchainChatModelAdapter)) throw new Error('Expected adapter');
 
-		expect(getSuppliedModelSource(new Proxy(response, {}))).toBe(chatModel);
+		expect(getSuppliedModelOptions(new Proxy(response, {}))).toBe(chatModel);
 	});
 
 	describe.each([
 		['an OpenAI-compatible model', integratorConfig],
 		['an n8n chat model', () => Object.assign(createChatModel(), { apiKey: API_KEY })],
-	])('for %s, the recorded source', (_label, createSource) => {
+	])('for %s, the attached options', (_label, createOptions) => {
 		it('stays out of JSON, LangChain serialization, object spread and inspection', () => {
-			const { response } = supplyModel(ctx, createSource());
+			const { response } = supplyModel(ctx, createOptions());
 			if (!(response instanceof BaseChatModel)) throw new Error('Expected a chat model');
 
 			for (const output of [
@@ -195,14 +195,14 @@ describe('getSuppliedModelSource', () => {
 				JSON.stringify(response.lc_kwargs),
 				inspect(response, { depth: Infinity }),
 			]) {
-				expect(output).not.toContain('suppliedModelSource');
+				expect(output).not.toContain('suppliedModelOptions');
 			}
-			expect(Object.getOwnPropertySymbols({ ...response })).not.toContain(SOURCE_KEY);
-			expect(Object.getOwnPropertyDescriptor(response, SOURCE_KEY)?.enumerable).toBe(false);
+			expect(Object.getOwnPropertySymbols({ ...response })).not.toContain(OPTIONS_KEY);
+			expect(Object.getOwnPropertyDescriptor(response, OPTIONS_KEY)?.enumerable).toBe(false);
 		});
 
 		it('stays out of the execution data recorded for a model run', async () => {
-			const { response } = supplyModel(ctx, createSource());
+			const { response } = supplyModel(ctx, createOptions());
 			if (!(response instanceof BaseChatModel)) throw new Error('Expected a chat model');
 
 			await response.invoke([new HumanMessage('ping')]);
