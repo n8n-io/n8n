@@ -38,14 +38,14 @@ describe('InstancePolicyView', () => {
 		vi.clearAllMocks();
 	});
 
-	it('renders the page frame with an empty table area', () => {
-		const { getByText, getByTestId } = setup();
+	it('renders the page frame with the Nodes tab selected', () => {
+		const { getByText, getByRole } = setup();
 
 		expect(getByText('Global instance policy')).toBeInTheDocument();
 		expect(
 			getByText('Applies to every project. Projects can restrict it, not lift it.'),
 		).toBeInTheDocument();
-		expect(getByTestId('instance-policy-node-table')).toBeEmptyDOMElement();
+		expect(getByRole('radio', { checked: true })).toHaveTextContent('Nodes');
 	});
 
 	it('goes back to the landing page', async () => {
@@ -79,23 +79,22 @@ describe('InstancePolicyView', () => {
 	});
 
 	it('opens the Credentials tab for a user with only the credential scope', () => {
-		const { getByTestId, queryByTestId } = setup(['credentialTypePolicy:manage']);
+		const { getByTestId, getByRole } = setup(['credentialTypePolicy:manage']);
 
 		expect(getByTestId('instance-policy-tabs')).not.toHaveTextContent('Nodes');
-		expect(getByTestId('instance-policy-credential-table')).toBeInTheDocument();
-		expect(queryByTestId('instance-policy-node-table')).not.toBeInTheDocument();
+		expect(getByRole('radio', { checked: true })).toHaveTextContent('Credentials');
 	});
 
 	it('opens the tab named in the query', () => {
-		const { getByTestId } = setup(BOTH_SCOPES, { tab: 'credential' });
+		const { getByRole } = setup(BOTH_SCOPES, { tab: 'credential' });
 
-		expect(getByTestId('instance-policy-credential-table')).toBeInTheDocument();
+		expect(getByRole('radio', { checked: true })).toHaveTextContent('Credentials');
 	});
 
 	it('falls back to the first tab the user can manage when the query names another', () => {
-		const { getByTestId } = setup(['nodeTypePolicy:manage'], { tab: 'credential' });
+		const { getByRole } = setup(['nodeTypePolicy:manage'], { tab: 'credential' });
 
-		expect(getByTestId('instance-policy-node-table')).toBeInTheDocument();
+		expect(getByRole('radio', { checked: true })).toHaveTextContent('Nodes');
 	});
 
 	it('writes the selected tab to the query', async () => {

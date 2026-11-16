@@ -427,9 +427,7 @@ const sharingCountText = computed(() => {
 						</N8nText>
 					</template>
 					<template #action>
-						<N8nSettingsRowConfigure
-							:value="i18n.baseText('settings.security.nodeAndCredentialPolicies.configure')"
-						/>
+						<N8nSettingsRowConfigure :value="i18n.baseText('generic.configure')" />
 					</template>
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>

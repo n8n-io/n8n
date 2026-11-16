@@ -26,7 +26,7 @@ const tabOptions = computed(() =>
 	})),
 );
 
-// The tab lives in the query so that a link can open the Credential types tab directly.
+// The tab lives in the query so that a link can open the Credentials tab directly.
 const activeTab = computed<RestrictedTypeKind | undefined>({
 	get: () => {
 		const requested = route.query.tab;
@@ -61,7 +61,6 @@ onMounted(() => {
 
 <template>
 	<N8nSettingsLayout
-		full-width
 		show-back
 		:back-label="back.label"
 		:class="$style.layout"
@@ -79,31 +78,13 @@ onMounted(() => {
 			:options="tabOptions"
 			data-test-id="instance-policy-tabs"
 		/>
-		<div
-			v-if="activeTab"
-			:key="activeTab"
-			:class="$style.tableArea"
-			:data-test-id="`instance-policy-${activeTab}-table`"
-		/>
 	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
-/* Collapse the layout's own top inset; the settings shell already pads the page top. */
+@use '../settings-subpage';
+
 .layout {
-	padding-top: 0;
-}
-
-/* Pin the back action to the top-left of the settings area (the shell's
-   content container is position: relative), independent of the centered column. */
-.layout > div:first-child {
-	position: absolute;
-	top: var(--spacing--lg);
-	left: var(--spacing--lg);
-	width: auto;
-}
-
-.tableArea {
-	margin-top: var(--spacing--sm);
+	@include settings-subpage.layout;
 }
 </style>

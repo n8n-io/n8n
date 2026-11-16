@@ -27,7 +27,7 @@ export function usePolicyAdminAccess() {
 
 	const canManagePolicies = computed(() => manageableKinds.value.length > 0);
 
-	// The landing page only leads to the instance policy for a user with one of the two scopes.
+	// A user with one scope has nothing to choose on the landing page, so they skip it.
 	const entryRouteName = computed(() =>
 		manageableKinds.value.length === 1 ? INSTANCE_POLICY_VIEW : POLICIES_LANDING_VIEW,
 	);
