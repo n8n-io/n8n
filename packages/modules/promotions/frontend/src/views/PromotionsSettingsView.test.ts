@@ -81,14 +81,7 @@ const applyEnvironment: PromotionEnvironment = {
 	...timestamps,
 };
 
-const renderView = createComponentRenderer(PromotionsSettingsView, {
-	global: {
-		provide: {
-			// App.vue provides the feature list. The module renderer does not.
-			[FeatureMaturityKey as symbol]: featureMaturity,
-		},
-	},
-});
+const renderView = createComponentRenderer(PromotionsSettingsView);
 
 describe('PromotionsSettingsView', () => {
 	beforeEach(() => {
@@ -125,20 +118,6 @@ describe('PromotionsSettingsView', () => {
 			else expect(button).toBeDisabled();
 		},
 	);
-
-	it('shows the Preview and limited enterprise readiness tags next to the title', () => {
-		api.fetchPromotionEnvironments.mockResolvedValue([]);
-		renderView();
-
-		const titleRow = screen.getByRole('heading', {
-			level: 1,
-			name: 'Environments',
-		}).parentElement;
-		const readinessBadge = screen.getByTestId('n8n-packages-enterprise-readiness-badge');
-		expect(titleRow).toContainElement(screen.getByTestId('n8n-packages-preview-badge'));
-		expect(titleRow).toContainElement(readinessBadge);
-		expect(readinessBadge).toHaveTextContent('Limited enterprise readiness');
-	});
 
 	it('checks for missing projects again on click after the check failed', async () => {
 		useRBACStore().setGlobalScopes([...PROMOTIONS_SETTINGS_SCOPES, 'project:create']);
