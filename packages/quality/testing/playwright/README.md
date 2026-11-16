@@ -261,8 +261,10 @@ test('enterprise feature @licensed', ...)           // Requires enterprise licen
 
 The `engine-v2:e2e` project runs the regular `tests/e2e` specs against a stack
 that runs engine v2 in its own container (`containerConfig.engine:
-'container'`, Postgres, two mains in multi-main, no workers). Each main runs the
+'container'`, Postgres, two mains in multi-main, one worker). Each main runs the
 `engine-v2` module in remote mode and dials the engine over the stack network.
+The worker runs only what stays on the legacy engine, because the mains send
+manual runs to workers in multi-main.
 The engine container runs `n8n engine`, has no `DB_*` env and no encryption
 key, resolves credentials through the control plane server of main 1, and
 keeps its own `n8n_engine` database on the dedicated `engine-postgres`
@@ -299,7 +301,7 @@ pnpm --filter=n8n-playwright test:container:engine-v2:e2e tests/e2e/api/manual-r
 ```
 
 For a local stack with the engine: `pnpm --filter n8n-containers stack --engine`.
-Add `--mains 2` for the multi-main topology of the project.
+Add `--mains 2 --workers 1` for the topology of the project.
 
 ### Worker Isolation (Fresh Database)
 
