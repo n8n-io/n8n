@@ -28,6 +28,12 @@ describe('workflow publication blocker details', () => {
 		},
 	);
 
+	test('accepts the "review_required" reason with the version that needs a review', () => {
+		const details = { reason: 'review_required', versionId: 'version-2' };
+
+		expect(workflowPublishBlockedDetailsSchema.parse(details)).toEqual(details);
+	});
+
 	test.each(['insufficient_api_key_scope', 'insufficient_permissions'] as const)(
 		'accepts the "%s" reason on its own, and with the saved version',
 		(reason) => {

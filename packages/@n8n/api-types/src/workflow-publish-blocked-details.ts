@@ -1,11 +1,12 @@
 import { z } from 'zod';
 
 const REVIEW_REASONS = ['review_pending', 'changes_requested'] as const;
+const REQUIREMENT_REASONS = ['review_required'] as const;
 const PERMISSION_REASONS = ['insufficient_api_key_scope', 'insufficient_permissions'] as const;
 
 /** Exposed separately because the refined schema below is a `ZodEffects` and has no `shape`. */
 export const workflowPublishBlockedDetailsShape = {
-	reason: z.enum([...REVIEW_REASONS, ...PERMISSION_REASONS]),
+	reason: z.enum([...REVIEW_REASONS, ...REQUIREMENT_REASONS, ...PERMISSION_REASONS]),
 	workflowReviewRequestId: z.string().min(1).optional(),
 	/** The version that was saved as a draft but not published, when the caller wrote one. */
 	versionId: z.string().min(1).optional(),
@@ -30,11 +31,20 @@ export type WorkflowPublishBlockedDetails = z.infer<typeof workflowPublishBlocke
 export type WorkflowPublishBlockedReason = WorkflowPublishBlockedDetails['reason'];
 
 /** An open review blocks the publication. The draft stays saved and the review owns the next step. */
-export type WorkflowReviewBlockedReason = (typeof REVIEW_REASONS)[number];
-export type WorkflowReviewBlockedDetails = {
-	reason: WorkflowReviewBlockedReason;
+export type WorkflowOpenReviewBlockedDetails = {
+	reason: (typeof REVIEW_REASONS)[number];
 	workflowReviewRequestId: string;
 };
+
+/** The instance requires an approved review, and the version has none. */
+export type WorkflowReviewRequiredDetails = {
+	reason: (typeof REQUIREMENT_REASONS)[number];
+	versionId: string;
+};
+
+export type WorkflowReviewBlockedDetails =
+	| WorkflowOpenReviewBlockedDetails
+	| WorkflowReviewRequiredDetails;
 
 /** The caller may write the draft but not release it. Carries the draft it wrote. */
 export type WorkflowPublishForbiddenReason = (typeof PERMISSION_REASONS)[number];
