@@ -45,11 +45,28 @@ const MAX_LOGGED_ERROR_LENGTH = 500;
 const META_STATUS_CACHE_TTL_MS = 30_000;
 const META_STATUS_CACHE_SIZE = 200;
 
+/** The channel reads the account and sends messages, so the token needs both. */
+const REQUIRED_SCOPES = ['whatsapp_business_management', 'whatsapp_business_messaging'];
+
 interface TokenInfo {
 	expiresAt?: number;
 	appId?: string;
 	systemUserId?: string;
+	/** Absent when Meta does not list them. */
+	scopes?: string[];
 }
+
+/**
+ * How the business account answered a token that may not manage it.
+ * `notLoadable` is ambiguous: Meta gives it for a wrong ID and for missing access.
+ */
+type AccountAccess = 'allowed' | 'denied' | 'notLoadable';
+
+/**
+ * Whether the app of a credential holds this agent's callback URL. `unknown`
+ * means Meta did not answer.
+ */
+export type WhatsAppCallbackUrlMatch = 'match' | 'mismatch' | 'unknown';
 
 interface GraphResponse {
 	statusCode: number;
@@ -119,20 +136,30 @@ export class WhatsAppCredentialCheckService {
 			const token = await this.inspectToken(accessToken, proof);
 			const role = await this.lookUpSystemUserRole(token.systemUserId, accessToken, proof);
 			if (role === 'EMPLOYEE') return { status: 'failed', reason: 'employeeSystemUser' };
+			if (token.scopes && REQUIRED_SCOPES.some((scope) => !token.scopes?.includes(scope))) {
+				return { status: 'failed', reason: 'missingPermissions' };
+			}
 			// Meta did not give the role. The token can still lack access, which
 			// the account itself shows.
-			if (
-				role === undefined &&
-				token.systemUserId &&
-				(await this.cannotManageAccount(businessAccountId, accessToken, proof))
-			) {
-				return { status: 'failed', reason: 'insufficientAccess' };
-			}
+			const access: AccountAccess =
+				role === undefined && token.systemUserId
+					? await this.probeAccountAccess(businessAccountId, accessToken, proof)
+					: 'allowed';
+			if (access === 'denied') return { status: 'failed', reason: 'insufficientAccess' };
 
 			const phone = await get(`/${encodeURIComponent(phoneNumberId)}`, {
 				fields: 'display_phone_number,verified_name',
 			});
-			if (phone.statusCode !== 200) return this.refused('phone number', phone);
+			if (phone.statusCode !== 200) {
+				// Neither the number nor the account loads, so the token cannot see
+				// this business's assets.
+				if (access === 'notLoadable' && phone.statusCode < 500) {
+					return { status: 'failed', reason: 'insufficientAccess' };
+				}
+				return this.refused('phone number', phone);
+			}
+			// When only the account does not load, its ID is wrong. The account read
+			// below reports that as a mismatch.
 
 			const [accountNumbers, profile] = await Promise.all([
 				get(`/${encodeURIComponent(businessAccountId)}/phone_numbers`, {
@@ -294,7 +321,13 @@ export class WhatsAppCredentialCheckService {
 				...this.errorDetail(response),
 			});
 			const expiresAt = numberProperty(data, 'expires_at');
+			const scopes =
+				isRecord(data) && Array.isArray(data.scopes)
+					? data.scopes.filter((scope): scope is string => typeof scope === 'string')
+					: undefined;
 			return {
+				// An empty list says nothing about the token, so it is treated as absent.
+				scopes: scopes?.length ? scopes : undefined,
 				// Meta reports 0 for a token that never expires.
 				expiresAt: expiresAt ? expiresAt * 1000 : undefined,
 				appId: stringProperty(data, 'app_id'),
@@ -380,50 +413,49 @@ export class WhatsAppCredentialCheckService {
 	 * manage it. Only a permission refusal counts. An expired token, an outage or
 	 * no answer does not show that the token lacks access, so those pass.
 	 */
-	private async cannotManageAccount(
+	private async probeAccountAccess(
 		businessAccountId: string,
 		accessToken: string,
 		proof: string,
-	): Promise<boolean> {
+	): Promise<AccountAccess> {
 		try {
 			const response = await this.get(
 				`/${encodeURIComponent(businessAccountId)}/subscribed_apps`,
 				accessToken,
 				{ appsecret_proof: proof },
 			);
-			if (response.statusCode === 200) return false;
+			if (response.statusCode === 200) return 'allowed';
 			this.logger.debug('[WhatsAppCredentialCheck] Probed the business account access', {
 				statusCode: response.statusCode,
 				...this.errorDetail(response),
 			});
 			const error = isRecord(response.body) ? response.body.error : undefined;
 			const code = numberProperty(error, 'code');
-			// 10 and 200-299 are Meta's permission errors. 100 with subcode 33 is
-			// Meta's answer when the token cannot load the object, which is what an
-			// Employee system user gets. A wrong ID gets it too. 190 is a bad token.
-			return (
-				code !== undefined &&
-				(code === 10 ||
-					(code >= 200 && code <= 299) ||
-					(code === 100 && numberProperty(error, 'error_subcode') === 33))
-			);
+			// 10 and 200-299 are Meta's permission errors. 190 is a bad token.
+			if (code !== undefined && (code === 10 || (code >= 200 && code <= 299))) return 'denied';
+			// Meta cannot load the object for this token. An Employee system user
+			// and a wrong ID both get this, so the caller decides which it is.
+			if (code === 100 && numberProperty(error, 'error_subcode') === 33) return 'notLoadable';
+			return 'allowed';
 		} catch {
-			return false;
+			return 'allowed';
 		}
 	}
 
 	/**
-	 * Whether the callback URL Meta holds for the credential's app is not this
-	 * agent's. The handshake does not name the app that sent it, so a callback
-	 * URL pasted into another app also completes it. Fails open: when Meta does
-	 * not answer, the setup keeps the handshake result.
+	 * Whether the credential's app holds this agent's callback URL. The handshake
+	 * does not name the app that sent it, so a callback URL pasted into another
+	 * app also completes it. When the app holds no WhatsApp callback URL, the
+	 * result is `mismatch`: Meta saves the URL only after the handshake, so the
+	 * caller must allow for that delay. When Meta does not answer, the result is
+	 * `unknown`.
 	 */
-	async isCallbackInOtherApp(
+	async matchCallbackUrl(
 		user: User,
 		projectId: string,
 		credentialId: string,
 		agentId: string,
-	): Promise<boolean> {
+	): Promise<WhatsAppCallbackUrlMatch> {
 		try {
 			const data = await this.credentialLookup.decryptForUser(
 				user,
@@ -433,11 +465,11 @@ export class WhatsAppCredentialCheckService {
 			);
 			const accessToken = stringProperty(data, 'accessToken')?.trim();
 			const appSecret = stringProperty(data, 'appSecret')?.trim();
-			if (!accessToken || !appSecret) return false;
+			if (!accessToken || !appSecret) return 'unknown';
 
 			const proof = createHmac('sha256', appSecret).update(accessToken).digest('hex');
 			const { appId } = await this.inspectToken(accessToken, proof);
-			if (!appId) return false;
+			if (!appId) return 'unknown';
 
 			// An app access token, because the subscriptions belong to the app and not to a user.
 			const response = await this.get(
@@ -445,7 +477,7 @@ export class WhatsAppCredentialCheckService {
 				`${appId}|${appSecret}`,
 				{},
 			);
-			if (response.statusCode !== 200) return false;
+			if (response.statusCode !== 200) return 'unknown';
 
 			const subscriptions =
 				isRecord(response.body) && Array.isArray(response.body.data) ? response.body.data : [];
@@ -462,9 +494,9 @@ export class WhatsAppCredentialCheckService {
 				heldHost: hostOf(callbackUrl),
 				expectedHost: hostOf(expectedUrl),
 			});
-			return callbackUrl?.replace(/\/$/, '') !== expectedUrl;
+			return callbackUrl?.replace(/\/$/, '') === expectedUrl ? 'match' : 'mismatch';
 		} catch {
-			return false;
+			return 'unknown';
 		}
 	}
 

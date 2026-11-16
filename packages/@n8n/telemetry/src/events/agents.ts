@@ -1234,6 +1234,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 					'incomplete',
 					'temporary_token',
 					'employee_system_user',
+					'missing_permissions',
 					'insufficient_access',
 					'mismatch',
 					'unreachable',
@@ -1243,7 +1244,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				])
 				.optional()
 				.describe(
-					'Only when status is failed. employee_system_user: the token belongs to an Employee system user; insufficient_access: the token cannot manage the Messaging account; not_found: the user cannot use that credential; request_failed: the request to n8n failed, so Meta was never asked; save_failed: n8n could not save the new agent, so no check ran',
+					'Only when status is failed. employee_system_user: the token belongs to an Employee system user; missing_permissions: the token lacks a required WhatsApp permission; insufficient_access: the token cannot manage the Messaging account; not_found: the user cannot use that credential; request_failed: the request to n8n failed, so Meta was never asked; save_failed: n8n could not save the new agent, so no check ran',
 				),
 			push_ref: pushRef,
 		}),

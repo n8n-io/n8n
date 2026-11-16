@@ -21,6 +21,8 @@ export interface WhatsAppBusinessProfile {
  * - `temporaryToken`: the access token expires soon, like the one on API Setup.
  * - `employeeSystemUser`: the access token belongs to an Employee system user,
  *   not an Admin one.
+ * - `missingPermissions`: the token lacks the `whatsapp_business_management` or
+ *   `whatsapp_business_messaging` permission.
  * - `insufficientAccess`: the token cannot manage the WhatsApp account, and Meta
  *   does not say if the user is an Employee. The user may also lack the account.
  * - `mismatch`: Meta refuses the token, the IDs, or the app secret.
@@ -34,6 +36,7 @@ export type WhatsAppCredentialCheck =
 				| 'incomplete'
 				| 'temporaryToken'
 				| 'employeeSystemUser'
+				| 'missingPermissions'
 				| 'insufficientAccess'
 				| 'mismatch'
 				| 'unreachable';

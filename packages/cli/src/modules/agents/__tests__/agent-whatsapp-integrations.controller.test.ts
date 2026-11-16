@@ -102,54 +102,81 @@ describe('AgentWhatsAppIntegrationsController', () => {
 				id: 'agent-1',
 				projectId: 'project-1',
 			});
-			expect(webhookVerification.isVerified).not.toHaveBeenCalled();
+			expect(webhookVerification.verifiedAt).not.toHaveBeenCalled();
 		});
 
-		it.each([true, false])('returns verified %s from the verification store', async (verified) => {
+		it.each([
+			[true, 0],
+			[false, undefined],
+		])('returns verified %s from the verification store', async (verified, verifiedAt) => {
 			const { controller, agentRepository, webhookVerification } = makeController();
 			agentRepository.existsBy.mockResolvedValue(true);
-			webhookVerification.isVerified.mockResolvedValue(verified);
+			webhookVerification.verifiedAt.mockResolvedValue(verifiedAt);
 
 			const result = await controller.webhookStatus(request, undefined as never, 'agent-1', {});
 
-			expect(webhookVerification.isVerified).toHaveBeenCalledWith('agent-1');
+			expect(webhookVerification.verifiedAt).toHaveBeenCalledWith('agent-1');
 			expect(result).toEqual({ verified });
 		});
 
-		it.each([true, false])(
-			'reports appMismatch %s when the handshake is verified for a credential',
-			async (appMismatch) => {
+		describe('when the handshake is verified for a credential', () => {
+			const NOW = new Date('2026-01-01T12:00:00Z').getTime();
+
+			beforeEach(() => {
+				vi.useFakeTimers({ now: NOW });
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			const run = async (match: 'match' | 'mismatch' | 'unknown', handshakeAgoMs: number) => {
 				const { controller, agentRepository, webhookVerification, credentialCheckService } =
 					makeController();
 				agentRepository.existsBy.mockResolvedValue(true);
-				webhookVerification.isVerified.mockResolvedValue(true);
-				credentialCheckService.isCallbackInOtherApp.mockResolvedValue(appMismatch);
+				webhookVerification.verifiedAt.mockResolvedValue(NOW - handshakeAgoMs);
+				credentialCheckService.matchCallbackUrl.mockResolvedValue(match);
 
 				const result = await controller.webhookStatus(request, undefined as never, 'agent-1', {
 					credentialId: 'cred-1',
 				});
 
-				expect(credentialCheckService.isCallbackInOtherApp).toHaveBeenCalledWith(
+				expect(credentialCheckService.matchCallbackUrl).toHaveBeenCalledWith(
 					user,
 					'project-1',
 					'cred-1',
 					'agent-1',
 				);
-				expect(result).toEqual({ verified: true, appMismatch });
-			},
-		);
+				return result;
+			};
+
+			it.each(['match', 'unknown'] as const)(
+				'confirms the handshake when the callback URL check gives %s',
+				async (match) => {
+					expect(await run(match, 0)).toEqual({ verified: true, appMismatch: false });
+				},
+			);
+
+			it('keeps waiting while Meta may still be saving the callback URL', async () => {
+				expect(await run('mismatch', 5_000)).toEqual({ verified: false });
+			});
+
+			it('reports an app mismatch once Meta has had time to save the callback URL', async () => {
+				expect(await run('mismatch', 60_000)).toEqual({ verified: true, appMismatch: true });
+			});
+		});
 
 		it('skips the app check when the handshake is not verified', async () => {
 			const { controller, agentRepository, webhookVerification, credentialCheckService } =
 				makeController();
 			agentRepository.existsBy.mockResolvedValue(true);
-			webhookVerification.isVerified.mockResolvedValue(false);
+			webhookVerification.verifiedAt.mockResolvedValue(undefined);
 
 			const result = await controller.webhookStatus(request, undefined as never, 'agent-1', {
 				credentialId: 'cred-1',
 			});
 
-			expect(credentialCheckService.isCallbackInOtherApp).not.toHaveBeenCalled();
+			expect(credentialCheckService.matchCallbackUrl).not.toHaveBeenCalled();
 			expect(result).toEqual({ verified: false });
 		});
 	});

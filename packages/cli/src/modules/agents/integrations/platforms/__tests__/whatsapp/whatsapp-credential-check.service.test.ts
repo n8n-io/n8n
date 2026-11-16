@@ -176,13 +176,33 @@ describe('WhatsAppCredentialCheckService', () => {
 			expect(await check()).toEqual({ status: 'failed', reason: 'insufficientAccess' });
 		});
 
-		it('reports insufficient access when Meta cannot load the account for the token', async () => {
-			replies.subscribedApps = async () => ({
+		describe('when Meta cannot load the account for the token', () => {
+			const notLoadable = (): GraphReply => ({
 				statusCode: 400,
 				body: { error: { code: 100, error_subcode: 33 } },
 			});
 
-			expect(await check()).toEqual({ status: 'failed', reason: 'insufficientAccess' });
+			beforeEach(() => {
+				replies.subscribedApps = async () => notLoadable();
+			});
+
+			it('reports insufficient access when the phone number does not load either', async () => {
+				replies.phone = async () => notLoadable();
+
+				expect(await check()).toEqual({ status: 'failed', reason: 'insufficientAccess' });
+			});
+
+			it('reports a mismatch when the phone number loads, because the account ID is wrong', async () => {
+				replies.phoneNumbers = async () => notLoadable();
+
+				expect(await check()).toEqual({ status: 'failed', reason: 'mismatch' });
+			});
+
+			it('reports Meta as unreachable when the phone read hits an outage', async () => {
+				replies.phone = async () => ({ statusCode: 500, body: {} });
+
+				expect(await check()).toEqual({ status: 'failed', reason: 'unreachable' });
+			});
 		});
 
 		it.each([
@@ -217,6 +237,60 @@ describe('WhatsAppCredentialCheckService', () => {
 			await check();
 
 			expect(callsTo('subscribedApps')).toHaveLength(0);
+		});
+	});
+
+	describe('token permissions', () => {
+		it.each([['whatsapp_business_management'], ['whatsapp_business_messaging']])(
+			'reports missing permissions when the token lacks %s',
+			async (missing) => {
+				const scopes = ['whatsapp_business_management', 'whatsapp_business_messaging'].filter(
+					(scope) => scope !== missing,
+				);
+				replies.debugToken = async () => ok({ data: { expires_at: 0, scopes } });
+
+				expect(await check()).toEqual({ status: 'failed', reason: 'missingPermissions' });
+			},
+		);
+
+		it('accepts a token with both WhatsApp permissions', async () => {
+			replies.debugToken = async () =>
+				ok({
+					data: {
+						expires_at: 0,
+						scopes: [
+							'business_management',
+							'whatsapp_business_management',
+							'whatsapp_business_messaging',
+						],
+					},
+				});
+
+			expect((await check()).status).toBe('ok');
+		});
+
+		it.each([
+			['does not list them', { expires_at: 0 }],
+			['lists none', { expires_at: 0, scopes: [] }],
+		])('does not report missing permissions when Meta %s', async (_name, data) => {
+			replies.debugToken = async () => ok({ data });
+
+			expect((await check()).status).toBe('ok');
+		});
+
+		it('reports an Employee system user before missing permissions', async () => {
+			replies.debugToken = async () =>
+				ok({
+					data: {
+						expires_at: 0,
+						type: 'SYSTEM_USER',
+						user_id: 'sys-1',
+						scopes: ['whatsapp_business_messaging'],
+					},
+				});
+			replies.systemUsers = async () => ok({ data: [{ id: 'sys-1', role: 'EMPLOYEE' }] });
+
+			expect(await check()).toEqual({ status: 'failed', reason: 'employeeSystemUser' });
 		});
 	});
 
@@ -424,31 +498,37 @@ describe('WhatsAppCredentialCheckService', () => {
 		},
 	);
 
-	describe('isCallbackInOtherApp', () => {
+	describe('matchCallbackUrl', () => {
 		const AGENT_ID = 'agent-1';
 		const ownUrl = `https://n8n.example.com/rest/projects/${PROJECT_ID}/agents/v2/${AGENT_ID}/webhooks/whatsapp`;
 		const run = async () =>
-			await service.isCallbackInOtherApp(user, PROJECT_ID, CREDENTIAL_ID, AGENT_ID);
+			await service.matchCallbackUrl(user, PROJECT_ID, CREDENTIAL_ID, AGENT_ID);
 		const withSubscriptions = (data: unknown[]) => {
 			replies.debugToken = async () => ok({ data: { expires_at: 0, app_id: 'app-1' } });
 			replies.subscriptions = async () => ok({ data });
 		};
 
-		it('is false when the credential’s app holds this agent’s callback URL', async () => {
+		it('matches when the credential’s app holds this agent’s callback URL', async () => {
 			withSubscriptions([{ object: 'whatsapp_business_account', callback_url: ownUrl }]);
 
-			expect(await run()).toBe(false);
+			expect(await run()).toBe('match');
 		});
 
-		it('is true when the credential’s app holds another callback URL', async () => {
+		it('matches when the held callback URL ends with a slash', async () => {
+			withSubscriptions([{ object: 'whatsapp_business_account', callback_url: `${ownUrl}/` }]);
+
+			expect(await run()).toBe('match');
+		});
+
+		it('does not match when the credential’s app holds another callback URL', async () => {
 			withSubscriptions([
 				{ object: 'whatsapp_business_account', callback_url: 'https://other.example.com/hook' },
 			]);
 
-			expect(await run()).toBe(true);
+			expect(await run()).toBe('mismatch');
 		});
 
-		it('is true when the credential’s app holds this agent’s path on another host', async () => {
+		it('does not match when the credential’s app holds this agent’s path on another host', async () => {
 			withSubscriptions([
 				{
 					object: 'whatsapp_business_account',
@@ -456,20 +536,26 @@ describe('WhatsAppCredentialCheckService', () => {
 				},
 			]);
 
-			expect(await run()).toBe(true);
+			expect(await run()).toBe('mismatch');
 		});
 
-		it('is true when the credential’s app has no WhatsApp callback URL', async () => {
+		it('does not match when the credential’s app has no WhatsApp callback URL', async () => {
 			withSubscriptions([]);
 
-			expect(await run()).toBe(true);
+			expect(await run()).toBe('mismatch');
 		});
 
-		it('is false when Meta does not answer', async () => {
+		it('is unknown when Meta does not answer', async () => {
 			replies.debugToken = async () => ok({ data: { expires_at: 0, app_id: 'app-1' } });
 			replies.subscriptions = async () => ({ statusCode: 500, body: {} });
 
-			expect(await run()).toBe(false);
+			expect(await run()).toBe('unknown');
+		});
+
+		it('is unknown when the token does not name its app', async () => {
+			replies.debugToken = async () => ok({ data: { expires_at: 0 } });
+
+			expect(await run()).toBe('unknown');
 		});
 	});
 });

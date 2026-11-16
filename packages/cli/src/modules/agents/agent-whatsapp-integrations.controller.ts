@@ -13,6 +13,9 @@ import { WhatsAppCredentialCheckService } from './integrations/platforms/whatsap
 import { WhatsAppWebhookVerificationStore } from './integrations/platforms/whatsapp/whatsapp-webhook-verification.store';
 import { AgentRepository } from './repositories/agent.repository';
 
+/** How long Meta may take after the handshake to show the saved callback URL. */
+const CALLBACK_SAVE_GRACE_MS = 30_000;
+
 @RestController('/projects/:projectId/agents/v2')
 export class AgentWhatsAppIntegrationsController {
 	constructor(
@@ -65,16 +68,23 @@ export class AgentWhatsAppIntegrationsController {
 		@Query query: WhatsAppWebhookStatusQueryDto,
 	): Promise<WhatsAppWebhookStatus> {
 		await this.assertAgentExists(req.params.projectId, agentId);
-		const verified = await this.webhookVerification.isVerified(agentId);
-		if (!verified || !query.credentialId) return { verified };
+		const verifiedAt = await this.webhookVerification.verifiedAt(agentId);
+		if (verifiedAt === undefined || !query.credentialId) {
+			return { verified: verifiedAt !== undefined };
+		}
 
-		const appMismatch = await this.credentialCheckService.isCallbackInOtherApp(
+		const callbackUrl = await this.credentialCheckService.matchCallbackUrl(
 			req.user,
 			req.params.projectId,
 			query.credentialId,
 			agentId,
 		);
-		return { verified, appMismatch };
+		// Without an answer from Meta, the handshake result stands.
+		if (callbackUrl !== 'mismatch') return { verified: true, appMismatch: false };
+		// Meta saves the callback URL just after the handshake. Until then, the
+		// app can still hold no URL or an earlier one, so the setup keeps waiting.
+		if (Date.now() - verifiedAt < CALLBACK_SAVE_GRACE_MS) return { verified: false };
+		return { verified: true, appMismatch: true };
 	}
 
 	/**

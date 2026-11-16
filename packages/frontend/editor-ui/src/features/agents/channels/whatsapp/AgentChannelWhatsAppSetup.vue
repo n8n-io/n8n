@@ -151,6 +151,7 @@ const CHECK_FAILURE_REASON = {
 	incomplete: 'incomplete',
 	temporaryToken: 'temporary_token',
 	employeeSystemUser: 'employee_system_user',
+	missingPermissions: 'missing_permissions',
 	insufficientAccess: 'insufficient_access',
 	mismatch: 'mismatch',
 	unreachable: 'unreachable',
