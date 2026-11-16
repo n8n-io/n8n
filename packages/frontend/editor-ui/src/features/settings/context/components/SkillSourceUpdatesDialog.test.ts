@@ -184,7 +184,7 @@ it.each(['all', 'group'])(
 		const toggle =
 			selection === 'all'
 				? view.getByTestId('skill-source-select-all')
-				: view.getByRole('checkbox', { name: 'skills', exact: true });
+				: view.getByRole('checkbox', { name: 'skills' });
 		await userEvent.click(toggle);
 		await userEvent.click(toggle);
 		expect(view.getByRole('checkbox', { name: 'pdf' })).not.toBeChecked();
