@@ -111,6 +111,8 @@ describe('useRecommendedSkillsExperiment', () => {
 		trackSkillAdded('humanizer', 'skill-3', 'empty_state');
 		await nextTick();
 
+		expect(track).toHaveBeenCalledTimes(3);
+
 		expect(JSON.parse(localStorage.getItem(LOCAL_STORAGE_ADDED_RECOMMENDED_SKILLS)!)).toEqual([
 			'research',
 			'humanizer',

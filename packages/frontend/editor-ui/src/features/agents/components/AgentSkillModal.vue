@@ -914,15 +914,20 @@ async function loadSkillAccess(skillId: string) {
 	}
 }
 
+let recommendedSkillLoading = false;
+
 async function selectRecommendedSkill(id: string) {
 	const recommended = RECOMMENDED_SKILLS.find((candidate) => candidate.id === id);
-	if (!recommended) return;
+	if (!recommended || recommendedSkillLoading) return;
+	recommendedSkillLoading = true;
 	try {
 		onSkillUploaded(await recommended.load());
 		createMethod.value = 'manual';
 		recommendedSkillId.value = recommended.id;
 	} catch (error) {
 		showError(error, i18n.baseText('experiments.recommendedSkills.loadError'));
+	} finally {
+		recommendedSkillLoading = false;
 	}
 }
 

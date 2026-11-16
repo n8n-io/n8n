@@ -17,6 +17,8 @@ import {
 	type SkillListItem,
 } from '@n8n/api-types';
 
+import { RECOMMENDED_SKILLS } from '@/experiments/recommendedSkills/recommendedSkills';
+
 import AgentSkillModal, { type AgentSkillModalData } from '../components/AgentSkillModal.vue';
 import type { AgentSkill } from '../types';
 import { AgentModalTestStub } from './utils/AgentModalTestStub';
@@ -958,6 +960,50 @@ describe('AgentSkillModal', () => {
 					);
 				},
 			);
+
+			it('loads one recommended skill at a time', async () => {
+				listAttachableSkills.mockResolvedValue([]);
+				const humanizer = RECOMMENDED_SKILLS.find(({ id }) => id === 'humanizer')!;
+				const research = RECOMMENDED_SKILLS.find(({ id }) => id === 'research')!;
+				const loaded = await humanizer.load();
+				const pending = Promise.withResolvers<AgentSkill>();
+				vi.spyOn(humanizer, 'load').mockReturnValueOnce(pending.promise);
+				const researchLoad = vi.spyOn(research, 'load');
+				const { findAllByTestId, getAllByTestId, getByTestId } = renderModal({
+					skillRefsEnabled: true,
+					onAttach: vi.fn(),
+				});
+
+				await fireEvent.click((await findAllByTestId('agent-skill-picker-row-open'))[0]);
+				await fireEvent.click(getAllByTestId('agent-skill-picker-row-open')[2]);
+				pending.resolve(loaded);
+
+				await waitFor(() =>
+					expect(getByTestId('agent-skill-name-input').querySelector('input')!).toHaveValue(
+						'humanizer',
+					),
+				);
+				expect(researchLoad).not.toHaveBeenCalled();
+			});
+
+			it('shows an error and stays on the picker when a recommended skill does not load', async () => {
+				listAttachableSkills.mockResolvedValue([]);
+				const error = new Error('Failed to fetch dynamically imported module');
+				const research = RECOMMENDED_SKILLS.find(({ id }) => id === 'research')!;
+				vi.spyOn(research, 'load').mockRejectedValueOnce(error);
+				const { findAllByTestId, getByTestId, queryByTestId } = renderModal({
+					skillRefsEnabled: true,
+					onAttach: vi.fn(),
+				});
+
+				await fireEvent.click((await findAllByTestId('agent-skill-picker-row-open'))[2]);
+
+				await waitFor(() =>
+					expect(showError).toHaveBeenCalledWith(error, 'experiments.recommendedSkills.loadError'),
+				);
+				expect(getByTestId('agent-skill-picker')).toBeVisible();
+				expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+			});
 
 			it('reports no added skill when the save is refused', async () => {
 				listAttachableSkills.mockResolvedValue([]);
