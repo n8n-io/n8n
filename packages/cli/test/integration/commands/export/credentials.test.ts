@@ -1,6 +1,6 @@
 import { CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import { CredentialsEntity, CredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import fs from 'fs';
@@ -14,63 +14,59 @@ import { setupTestCommand } from '@test-integration/utils/test-command';
 import { createCredentials, encryptCredentialData } from '../../shared/db/credentials';
 
 mockInstance(LoadNodesAndCredentials);
+// Keep flag results independent of the live rollout and the PostHog cache.
+const postHogClient = mockInstance(PostHogClient);
 
 const command = setupTestCommand(ExportCredentialsCommand);
 
 let testOutputDir: string;
 
 beforeEach(async () => {
+	postHogClient.getFeatureFlagForInstance.mockResolvedValue(undefined);
 	await testDb.truncate(['CredentialsEntity', 'SharedCredentials']);
 	testOutputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'n8n-export-credentials-test-'));
 });
 
 afterEach(() => {
-	delete Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG];
 	if (fs.existsSync(testOutputDir)) {
 		fs.rmSync(testOutputDir, { recursive: true, force: true });
 	}
 });
 
 describe.each([true, false])('credential exports with decrypted=%s', (decrypted) => {
-	test.for([true, false, undefined])(
-		'gates descriptions when the flag is %s',
-		async (enabled, { skip }) => {
-			// Re-enable this case after the test mocks the live PostHog flag lookup.
-			if (enabled === undefined) skip();
+	test.each([true, false, undefined])('gates descriptions when the flag is %s', async (enabled) => {
+		postHogClient.getFeatureFlagForInstance.mockImplementation(async (flag) =>
+			flag === CREDENTIAL_DESCRIPTIONS_FLAG ? enabled : undefined,
+		);
+		const credential = await createCredentials({
+			...(await encryptCredentialData(
+				Object.assign(new CredentialsEntity(), {
+					name: 'Reporting account',
+					type: 'test',
+					data: { apiKey: 'test-key' },
+				}),
+			)),
+			description: 'Read-only reporting account',
+		});
+		const outputFile = path.join(testOutputDir, 'output.json');
 
-			if (enabled !== undefined) {
-				Container.get(GlobalConfig).featureFlags.override[CREDENTIAL_DESCRIPTIONS_FLAG] = enabled;
-			}
-			const credential = await createCredentials({
-				...(await encryptCredentialData(
-					Object.assign(new CredentialsEntity(), {
-						name: 'Reporting account',
-						type: 'test',
-						data: { apiKey: 'test-key' },
-					}),
-				)),
-				description: 'Read-only reporting account',
-			});
-			const outputFile = path.join(testOutputDir, 'output.json');
+		await command.run(['--all', `--output=${outputFile}`, ...(decrypted ? ['--decrypted'] : [])]);
 
-			await command.run(['--all', `--output=${outputFile}`, ...(decrypted ? ['--decrypted'] : [])]);
-
-			const exported: Array<{ id: string; description?: string }> = JSON.parse(
-				fs.readFileSync(outputFile, 'utf-8'),
-			);
-			expect(exported).toHaveLength(1);
-			expect(exported[0].id).toBe(credential.id);
-			if (enabled) {
-				expect(exported[0].description).toBe('Read-only reporting account');
-			} else {
-				expect(exported[0]).not.toHaveProperty('description');
-			}
-			const stored = await Container.get(CredentialsRepository).findOneByOrFail({
-				id: credential.id,
-			});
-			expect(stored.description).toBe('Read-only reporting account');
-		},
-	);
+		const exported: Array<{ id: string; description?: string }> = JSON.parse(
+			fs.readFileSync(outputFile, 'utf-8'),
+		);
+		expect(exported).toHaveLength(1);
+		expect(exported[0].id).toBe(credential.id);
+		if (enabled) {
+			expect(exported[0].description).toBe('Read-only reporting account');
+		} else {
+			expect(exported[0]).not.toHaveProperty('description');
+		}
+		const stored = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: credential.id,
+		});
+		expect(stored.description).toBe('Read-only reporting account');
+	});
 });
 
 test('should reject --all with --projectId', async () => {
