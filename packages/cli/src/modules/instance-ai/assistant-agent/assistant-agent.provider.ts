@@ -11,7 +11,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, type AiConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	MAX_STEPS,
@@ -21,6 +21,7 @@ import {
 	snapshotAgent,
 	tokenUsageToBuilderUsageItems,
 	withAttachedAgentTarget,
+	type InstanceAiWorkflowService,
 	type ModelConfig,
 } from '@n8n/instance-ai';
 import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
@@ -29,8 +30,10 @@ import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { nanoid } from 'nanoid';
 
 import type {
+	SystemAgentAfterThreadDeletion,
 	SystemAgentProvider,
 	SystemAgentStartTurn,
+	SystemAgentThreadDeletionScope,
 	SystemAgentTurn,
 	SystemAgentTurnHandle,
 	SystemAgentTurnOptions,
@@ -63,13 +66,17 @@ import {
 	AssistantTurnInputBuilder,
 	type AssistantTurnInput,
 } from '../turn-setup/assistant-turn-input.builder';
+import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
 import { AssistantTurnOverrides } from '../turn-setup/assistant-turn-overrides';
 import type {
 	AssistantTurnRuntime,
 	AssistantTurnState,
 } from '../turn-setup/assistant-turn-runtime';
 import { AssistantEventSink } from './assistant-event-sink';
-import { createThreadTemporaryWorkflowMarkers } from './assistant-temporary-workflow-markers';
+import {
+	createSnapshotTemporaryWorkflowMarkers,
+	createThreadTemporaryWorkflowMarkers,
+} from './assistant-temporary-workflow-markers';
 import { AssistantThreadTabsService } from './assistant-thread-tabs.service';
 import { AssistantTurnTracer, type AssistantTurnTrace } from './assistant-turn-trace';
 import {
@@ -157,6 +164,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly tracer: AssistantTurnTracer,
 		private readonly threadTabs: AssistantThreadTabsService,
 		private readonly errorReporter: InstanceAiErrorReporterService,
+		private readonly userRepository: UserRepository,
 		private readonly turnOverrides: AssistantTurnOverrides,
 		private readonly telemetry: Telemetry,
 	) {
@@ -185,6 +193,31 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 	normalizeResumeData(resumeData: unknown): unknown {
 		const parsed = InstanceAiConfirmRequestDto.safeParse(resumeData);
 		return parsed.success ? buildResumeData(toConfirmationData(parsed.data)) : resumeData;
+	}
+
+	/**
+	 * A suspended turn does not archive the temporary workflows of the thread,
+	 * so a thread deleted during the wait still marks them. The markers are in
+	 * the thread metadata, which the deletion removes: read them first, and
+	 * archive the workflows after the deletion commits.
+	 */
+	async onBeforeThreadDeletion({
+		threadId,
+		userId,
+		memory,
+	}: SystemAgentThreadDeletionScope): Promise<SystemAgentAfterThreadDeletion | undefined> {
+		const workflowIds = await createThreadTemporaryWorkflowMarkers(memory, threadId).list();
+		if (workflowIds.length === 0) return undefined;
+		return async () => {
+			const user = await this.userRepository.findByIdWithRole(userId);
+			if (!user) return;
+			const markers = createSnapshotTemporaryWorkflowMarkers(workflowIds);
+			const { workflowService } = this.adapterService.createContext(user, {
+				threadId,
+				temporaryWorkflowMarkers: markers,
+			});
+			await this.archiveTemporaryWorkflows(workflowService, markers, threadId);
+		};
 	}
 
 	/** A setup failure, such as the credit check before the run, gets the turn's error text. */
@@ -401,7 +434,11 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					await setupRoute.markSuspendedSetupsRouted();
 					// A suspended turn can still be building the workflows it marked.
 					if (outcome.status !== 'suspended') {
-						const archived = await this.archiveTemporaryWorkflows(environment, runtime, thread.id);
+						const archived = await this.archiveTemporaryWorkflows(
+							environment.context.workflowService,
+							runtime.temporaryWorkflowMarkers,
+							thread.id,
+						);
 						this.emitArchivedWorkflows(turn, thread.id, archived);
 					}
 				} finally {
@@ -624,11 +661,10 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 	 * attempts and scratch workflows that no build promoted. Best effort.
 	 */
 	private async archiveTemporaryWorkflows(
-		environment: AssistantTurnEnvironment,
-		runtime: AssistantTurnRuntime,
+		workflowService: Pick<InstanceAiWorkflowService, 'archiveIfAiTemporary'>,
+		markers: TemporaryWorkflowMarkers | undefined,
 		threadId: string,
 	): Promise<string[]> {
-		const markers = runtime.temporaryWorkflowMarkers;
 		if (!markers) return [];
 		let workflowIds: string[] = [];
 		try {
@@ -642,7 +678,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		const archived: string[] = [];
 		for (const workflowId of workflowIds) {
 			try {
-				if (await environment.context.workflowService.archiveIfAiTemporary(workflowId)) {
+				if (await workflowService.archiveIfAiTemporary(workflowId)) {
 					archived.push(workflowId);
 					continue;
 				}
