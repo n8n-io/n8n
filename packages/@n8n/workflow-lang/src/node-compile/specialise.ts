@@ -723,28 +723,19 @@ class Specialiser {
 	}
 
 	private need(name: string, file: FileModel, withContext: boolean, where: string) {
-		let home: FileModel | undefined = file;
-		let found = name;
-		for (let hops = 0; hops < 8 && home && !home.declarations.has(found); hops++) {
-			const imported: { from: string; name: string } | undefined = home.imports.get(found);
-			if (!imported) {
-				this.error(where, `the name '${name}' has no declaration that the compiler can read`);
-				return;
-			}
-			const next = this.resolveModule(home, imported.from);
-			if (!next) {
+		const found = this.member(file, name);
+		const home = found?.file;
+		const node = found?.node;
+		if (!home || !node) {
+			const imported = file.imports.get(name);
+			if (imported && !this.isLocal(imported.from)) {
 				this.error(
 					where,
 					`'${name}' comes from the package '${imported.from}', which has no compiled form`,
 				);
-				return;
+			} else {
+				this.error(where, `the name '${name}' has no declaration that the compiler can read`);
 			}
-			home = next;
-			found = imported.name;
-		}
-		const node = home?.declarations.get(found);
-		if (!home || !node) {
-			this.error(where, `the name '${name}' has no declaration that the compiler can read`);
 			return;
 		}
 		const known = this.units.get(name);
