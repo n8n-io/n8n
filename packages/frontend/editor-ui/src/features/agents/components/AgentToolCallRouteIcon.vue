@@ -46,11 +46,6 @@ const label = computed(() => (display.value ? i18n.baseText(display.value.labelK
 	color: var(--text-color--subtler);
 }
 
-.real_read {
-	color: var(--icon-color--info);
-	background-color: color-mix(in srgb, var(--background--info) 60%, transparent);
-}
-
 .simulated {
 	color: var(--text-color--subtler);
 	background-color: var(--background--subtle);

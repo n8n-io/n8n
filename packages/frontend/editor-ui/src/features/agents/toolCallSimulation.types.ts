@@ -3,20 +3,18 @@
 // Replace these local types with the `@n8n/api-types` import once that schema lands on master.
 
 /** How one tool call ran in a test run. */
-export type ToolCallRoute = 'real_read' | 'simulated' | 'simulated_made_up' | 'blocked';
+export type ToolCallRoute = 'simulated' | 'simulated_made_up' | 'blocked';
 
 /** Why a tool call took its route. */
 export type ToolCallReason =
 	| 'served_from_world'
 	| 'invented_by_llm'
-	| 'real_read_allowed'
 	/** A simulator gap (for example a 501), not an agent failure. */
 	| 'unsupported_by_simulator'
 	/** The simulator is down, timed out or failed. */
 	| 'simulator_unavailable'
 	/** No simulator can serve this kind of tool (custom code, file nodes...). */
-	| 'not_simulatable'
-	| 'blocked_by_policy';
+	| 'not_simulatable';
 
 export interface ToolCallSimulation {
 	route: ToolCallRoute;

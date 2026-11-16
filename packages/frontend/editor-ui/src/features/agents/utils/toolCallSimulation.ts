@@ -9,10 +9,6 @@ export interface ToolCallRouteDisplay {
 }
 
 export const TOOL_CALL_ROUTE_DISPLAY: Record<ToolCallRoute, ToolCallRouteDisplay> = {
-	real_read: {
-		labelKey: 'agents.testRun.toolCall.route.realRead',
-		icon: 'globe',
-	},
 	simulated: {
 		labelKey: 'agents.testRun.toolCall.route.simulated',
 		icon: 'flask-conical',
@@ -30,11 +26,9 @@ export const TOOL_CALL_ROUTE_DISPLAY: Record<ToolCallRoute, ToolCallRouteDisplay
 export const TOOL_CALL_REASON_KEYS: Record<ToolCallReason, BaseTextKey> = {
 	served_from_world: 'agents.testRun.toolCall.reason.servedFromWorld',
 	invented_by_llm: 'agents.testRun.toolCall.reason.inventedByLlm',
-	real_read_allowed: 'agents.testRun.toolCall.reason.realReadAllowed',
 	unsupported_by_simulator: 'agents.testRun.toolCall.reason.unsupportedBySimulator',
 	simulator_unavailable: 'agents.testRun.toolCall.reason.simulatorUnavailable',
 	not_simulatable: 'agents.testRun.toolCall.reason.notSimulatable',
-	blocked_by_policy: 'agents.testRun.toolCall.reason.blockedByPolicy',
 };
 
 /** What the user can do next when a call was blocked, by reason. */
@@ -42,7 +36,6 @@ export const TOOL_CALL_BLOCKED_NEXT_STEP_KEYS: Partial<Record<ToolCallReason, Ba
 	unsupported_by_simulator: 'agents.testRun.toolCall.blocked.next.unsupportedBySimulator',
 	simulator_unavailable: 'agents.testRun.toolCall.blocked.next.simulatorUnavailable',
 	not_simulatable: 'agents.testRun.toolCall.blocked.next.notSimulatable',
-	blocked_by_policy: 'agents.testRun.toolCall.blocked.next.blockedByPolicy',
 };
 
 const TOOL_CALL_BLOCKED_NEXT_STEP_FALLBACK_KEY: BaseTextKey =

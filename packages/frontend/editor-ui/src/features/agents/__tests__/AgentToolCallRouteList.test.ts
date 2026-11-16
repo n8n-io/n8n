@@ -17,7 +17,6 @@ const renderRow = createComponentRenderer(AgentToolCallRouteRow);
 const renderList = createComponentRenderer(AgentToolCallRouteList);
 
 const ROUTE_LABELS: Record<ToolCallRoute, string> = {
-	real_read: 'Real read',
 	simulated: 'Simulated',
 	simulated_made_up: 'Simulated (made up)',
 	blocked: 'Blocked',
@@ -26,23 +25,19 @@ const ROUTE_LABELS: Record<ToolCallRoute, string> = {
 const REASON_TEXT: Record<ToolCallReason, string> = {
 	served_from_world: 'The simulation answered from its test data and earlier calls in this test.',
 	invented_by_llm: "The simulation made up this reply. It isn't based on any real data.",
-	real_read_allowed: 'Read from the real service. Reads are allowed in tests.',
 	unsupported_by_simulator:
 		"The simulator can't handle this call yet. This is a gap in the simulator, not an error in your agent.",
 	simulator_unavailable: "The simulator didn't respond, so this call didn't run.",
 	not_simulatable: "This kind of tool can't be simulated yet, so this call didn't run.",
-	blocked_by_policy: 'A test rule stopped this call. Nothing was sent.',
 };
 
 /** Every route with each reason the backend pairs it with. */
 const ROUTE_REASON_PAIRS: Array<[ToolCallRoute, ToolCallReason]> = [
-	['real_read', 'real_read_allowed'],
 	['simulated', 'served_from_world'],
 	['simulated_made_up', 'invented_by_llm'],
 	['blocked', 'unsupported_by_simulator'],
 	['blocked', 'simulator_unavailable'],
 	['blocked', 'not_simulatable'],
-	['blocked', 'blocked_by_policy'],
 ];
 
 const BLOCKED_NEXT_STEPS = {
@@ -51,7 +46,6 @@ const BLOCKED_NEXT_STEPS = {
 	simulator_unavailable: 'Send your message again in a moment.',
 	not_simulatable:
 		"Check this tool's setup before you publish. It runs for real once the agent is published.",
-	blocked_by_policy: 'Ask an admin if this tool should run in tests.',
 } satisfies Partial<Record<ToolCallReason, string>>;
 
 const FALLBACK_NEXT_STEP = 'Nothing was sent. Keep testing the rest of your agent.';
@@ -169,7 +163,7 @@ describe('AgentToolCallRouteRow', () => {
 		},
 	);
 
-	it.each(['real_read', 'simulated', 'simulated_made_up'] as const)(
+	it.each(['simulated', 'simulated_made_up'] as const)(
 		'gives no next step for a %s call',
 		async (route) => {
 			const { container } = renderRow({
@@ -211,15 +205,15 @@ describe('AgentToolCallRouteRow', () => {
 		const { container } = renderRow({
 			props: callWith({
 				route: 'blocked',
-				reason: 'blocked_by_policy',
-				detail: '  Real reads are not available in test runs yet.  ',
+				reason: 'not_simulatable',
+				detail: '  Custom code tools cannot run in a test run yet.  ',
 			}),
 		});
 
 		const details = await expand(container);
 
 		expect(within(details).getByTestId('agent-tool-call-route-detail')).toHaveTextContent(
-			'Real reads are not available in test runs yet.',
+			'Custom code tools cannot run in a test run yet.',
 		);
 	});
 
@@ -377,7 +371,7 @@ describe('AgentToolCallRouteList', () => {
 		{
 			toolCallId: 'call-1',
 			toolName: 'Search the knowledge base',
-			simulation: { route: 'real_read', reason: 'real_read_allowed' },
+			simulation: { route: 'simulated', reason: 'served_from_world' },
 		},
 		{
 			toolCallId: 'call-2',
@@ -428,7 +422,7 @@ describe('AgentToolCallRouteList', () => {
 					within(item).queryByTestId('agent-tool-call-route-icon')?.getAttribute('data-route') ??
 					null,
 			),
-		).toEqual(['real_read', 'simulated', 'simulated_made_up', 'blocked', 'blocked', null]);
+		).toEqual(['simulated', 'simulated', 'simulated_made_up', 'blocked', 'blocked', null]);
 	});
 
 	it('starts with every call collapsed and no explanation shown', () => {
