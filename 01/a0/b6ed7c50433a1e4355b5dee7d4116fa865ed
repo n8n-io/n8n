@@ -1,0 +1,54 @@
+packages/@n8n/config/test/config.test.ts
+  s_3fcd2798627395::t_48d44e2cde56fd 71
+packages/frontend/editor-ui/src/app/App.vue
+  s_3fcd2798627395::t_efde86a02c6552 29,122-128
+packages/cli/src/services/__tests__/user.service.test.ts
+  s_3fcd2798627395::t_6b98f5ed154036 353
+packages/@n8n/config/src/configs/locales.config.ts
+  s_3fcd2798627395::t_3d12d01b255133 7,10-26,39,48-52,57-66
+  s_3fcd2798627395::t_2f9398078b902d 67
+packages/cli/src/controllers/__tests__/translation.controller.test.ts
+  s_3fcd2798627395::t_2495e4cf271417 2,72-76,80-95,98-103,105-106
+packages/cli/src/services/__tests__/locale.service.test.ts
+  s_3fcd2798627395::t_7956f6c3db4829 28
+  s_3fcd2798627395::t_49d6ec5b1be0ca 10-18,22,24-27,45,63,89,95-174,190,196,200-202
+  s_3fcd2798627395::t_daacd8d2eec555 30-33
+packages/cli/src/controllers/translation.controller.ts
+  s_3fcd2798627395::t_6f9ea0f37a71ac 4,17,68,70-80
+packages/cli/src/services/locale.service.ts
+  s_3fcd2798627395::t_a854af2107ce97 140
+  s_3fcd2798627395::t_2809b59376bc49 5-6,8-10,15-24,32-34,46-48,59-64,72-77,79-81,104-106,108,112-114,117-118,132-139,141-146,150-154
+  s_3fcd2798627395::t_4270e6a9c7e56a 78,84-85
+  s_3fcd2798627395::t_daacd8d2eec555 65-71,147-149
+packages/frontend/@n8n/rest-api-client/src/api/settings.ts
+  s_3fcd2798627395::t_5c5e2f99b2d61f 3,8-12,17-20,24-60,62-63
+packages/@n8n/config/src/configs/__tests__/locales.config.test.ts
+  s_3fcd2798627395::t_48d44e2cde56fd 49,52-57,62-110
+  s_3fcd2798627395::t_8e9883fc439bd1 111
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_3fcd2798627395::t_566259435822fa 152-157
+packages/frontend/@n8n/rest-api-client/src/api/settings.test.ts
+  s_3fcd2798627395::t_daacd8d2eec555 13
+  s_3fcd2798627395::t_8f709a1b8dc7b8 1-12,14-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "01a0b6ed7c50433a1e4355b5dee7d4116fa865ed",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3fcd2798627395": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "385f8a79-ffe5-46ae-a396-9600aa41e650",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
