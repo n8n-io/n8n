@@ -1094,13 +1094,13 @@ describe('Telemetry', () => {
 			vi.setSystemTime(testDateTime);
 		});
 
-		test('should count calls per user and endpoint', () => {
+		test('should count calls per user', () => {
 			const execTime1 = fakeTestSystemTime('2022-01-01 12:00:00');
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				user_agent: 'n8n-cli/1.0',
 				client: 'other',
@@ -1108,8 +1108,8 @@ describe('Telemetry', () => {
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				user_agent: 'n8n-cli/1.0',
 				client: 'other',
@@ -1117,8 +1117,8 @@ describe('Telemetry', () => {
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/executions',
-				method: 'POST',
+				route: 'POST /executions',
+				result: '2xx',
 				api_version: 'v1',
 				user_agent: 'custom-app/2.0',
 				client: 'other',
@@ -1135,11 +1135,44 @@ describe('Telemetry', () => {
 			expect(buffer['user1'].clients).toEqual({ editor_ui: 0, other: 3 });
 		});
 
+		test('should count calls per route, result and caller', () => {
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				route: 'GET /workflows/{workflowId}',
+				result: '2xx',
+				api_version: 'v1',
+				client: 'other',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				route: 'GET /workflows/{workflowId}',
+				result: '4xx',
+				api_version: 'v1',
+				client: 'editor_ui',
+			});
+
+			telemetry.trackApiInvocation({
+				user_id: 'user1',
+				route: 'GET /workflows/{workflowId}',
+				result: '2xx',
+				api_version: 'v1',
+				client: 'other',
+			});
+
+			const buffer = telemetry.getApiInvocationsBuffer();
+
+			expect(buffer['user1'].routes).toStrictEqual([
+				{ route: 'GET /workflows/{workflowId}', result: '2xx', caller: 'other', calls: 2 },
+				{ route: 'GET /workflows/{workflowId}', result: '4xx', caller: 'editor_ui', calls: 1 },
+			]);
+		});
+
 		test('should handle missing user_agent', () => {
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				client: 'other',
 			});
@@ -1153,8 +1186,8 @@ describe('Telemetry', () => {
 		test('should track multiple users independently', () => {
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				user_agent: 'n8n-cli/1.0',
 				client: 'other',
@@ -1162,8 +1195,8 @@ describe('Telemetry', () => {
 
 			telemetry.trackApiInvocation({
 				user_id: 'user2',
-				path: '/executions',
-				method: 'POST',
+				route: 'POST /executions',
+				result: '2xx',
 				api_version: 'v1',
 				user_agent: 'custom-app/2.0',
 				client: 'other',
@@ -1180,24 +1213,24 @@ describe('Telemetry', () => {
 		test('should count calls for the editor_ui client in the same entry', () => {
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				client: 'other',
 			});
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				client: 'editor_ui',
 			});
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/executions',
-				method: 'GET',
+				route: 'GET /executions',
+				result: '2xx',
 				api_version: 'v1',
 				client: 'other',
 			});
@@ -1213,6 +1246,11 @@ describe('Telemetry', () => {
 						'GET /executions': 1,
 					},
 					endpoints_by_client: { editor_ui: { 'GET /workflows': 1 } },
+					routes: [
+						{ route: 'GET /workflows', result: '2xx', caller: 'other', calls: 1 },
+						{ route: 'GET /workflows', result: '2xx', caller: 'editor_ui', calls: 1 },
+						{ route: 'GET /executions', result: '2xx', caller: 'other', calls: 1 },
+					],
 					first: expect.any(Date),
 					user_agents: {},
 				},
@@ -1225,8 +1263,8 @@ describe('Telemetry', () => {
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				client: 'other',
 			});
@@ -1652,8 +1690,8 @@ describe('Telemetry', () => {
 		test('should send the buffered events and empty the buffers', () => {
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				client: 'other',
 			});
@@ -1667,6 +1705,9 @@ describe('Telemetry', () => {
 					total_calls: 1,
 					clients: JSON.stringify({ editor_ui: 0, other: 1 }),
 					endpoints_by_client: JSON.stringify({ editor_ui: {} }),
+					routes: JSON.stringify([
+						{ route: 'GET /workflows', result: '2xx', caller: 'other', calls: 1 },
+					]),
 				}),
 			);
 			expect(spyTrack).not.toHaveBeenCalledWith('pulse', expect.anything());
@@ -1687,8 +1728,8 @@ describe('Telemetry', () => {
 		test('should send the buffered events before it drains the queue', async () => {
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
+				route: 'GET /workflows',
+				result: '2xx',
 				api_version: 'v1',
 				client: 'other',
 			});
