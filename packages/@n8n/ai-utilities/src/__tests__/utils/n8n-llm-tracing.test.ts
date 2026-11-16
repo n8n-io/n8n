@@ -1469,6 +1469,19 @@ describe('usageMetadataTokensUsageParser', () => {
 		).toEqual({ promptTokens: 15, completionTokens: 15, totalTokens: 30 });
 	});
 
+	it('counts one candidate for each prompt, so several candidates do not double the usage', () => {
+		const message = new AIMessage({
+			content: 'Hello',
+			usage_metadata: { input_tokens: 10, output_tokens: 10, total_tokens: 20 },
+		});
+
+		expect(
+			usageMetadataTokensUsageParser({
+				generations: [[generationOf(message, 'Hello'), generationOf(message, 'Hello')]],
+			}),
+		).toEqual({ promptTokens: 10, completionTokens: 10, totalTokens: 20 });
+	});
+
 	it('derives the total when the provider omits it', () => {
 		expect(
 			usageMetadataTokensUsageParser(

@@ -62,8 +62,11 @@ export function usageMetadataTokensUsageParser(result: LLMResult): TokenUsageRes
 	let completionTokens = 0;
 	let totalTokens = 0;
 
-	for (const generation of result.generations.flat()) {
-		const usage = readUsageMetadata(generation);
+	// One entry for each prompt, and only its first candidate. A provider asked for several
+	// candidates reports usage once for the request and repeats it on each, so summing the
+	// inner array would count the prompt tokens again for every candidate.
+	for (const [generation] of result.generations) {
+		const usage = generation && readUsageMetadata(generation);
 		if (!usage) continue;
 
 		promptTokens += usage.inputTokens;
