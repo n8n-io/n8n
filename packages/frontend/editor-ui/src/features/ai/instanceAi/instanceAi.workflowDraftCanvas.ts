@@ -112,9 +112,9 @@ function toCanvasGroups(draft: WorkflowDraft) {
 	}));
 }
 
-/** A stable key for a draft node: its id, else its name. */
+/** A stable key for a draft node. A compile can give new ids, so the key is the name. */
 export function draftNodeKey(node: DraftNode): string {
-	return node.id ?? node.name;
+	return node.name;
 }
 
 function keepConnections(connections: DraftConnections, names: Set<string>): DraftConnections {

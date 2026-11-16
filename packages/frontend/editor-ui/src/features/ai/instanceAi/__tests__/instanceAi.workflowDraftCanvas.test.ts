@@ -133,6 +133,16 @@ describe('withDraftNodes', () => {
 		expect(partial.revision).toBe(full.revision);
 	});
 
+	it('keeps the connections between the shown nodes', () => {
+		const full = draft();
+
+		const partial = withDraftNodes(full, full.workflow.nodes);
+
+		expect(partial.workflow.connections).toEqual({
+			Start: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+		});
+	});
+
 	it('keeps only the shown nodes in groups and drops empty groups', () => {
 		const full = draft({
 			nodeGroups: [
@@ -146,9 +156,9 @@ describe('withDraftNodes', () => {
 		expect(partial.workflow.nodeGroups).toEqual([{ id: 'g-1', name: 'Both', nodeIds: ['node-1'] }]);
 	});
 
-	it('keys a node by its id, else by its name', () => {
+	it('keys a node by its name, which stays the same when a compile gives new ids', () => {
 		const { nodes } = draft().workflow;
 
-		expect(nodes.map(draftNodeKey)).toEqual(['node-1', 'Set']);
+		expect(nodes.map(draftNodeKey)).toEqual(['Start', 'Set']);
 	});
 });
