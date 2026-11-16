@@ -242,9 +242,6 @@ export class SimulationSession {
 		if (capability.testability === 'blocked') {
 			return blocked(capability.reason ?? 'not_simulatable', capability.detail);
 		}
-		if (capability.testability === 'read_for_real') {
-			return blocked('blocked_by_policy', 'Real reads are not available in test runs yet.');
-		}
 		if (!this.world) return blocked('simulator_unavailable', this.unavailableDetail);
 		return undefined;
 	}

@@ -13,8 +13,6 @@ export type AgentChatMode = z.infer<typeof agentChatModeSchema>;
 
 /** How one tool call ran in a test run. */
 export const toolCallRouteSchema = z.enum([
-	// A read sent to the real service, on purpose.
-	'real_read',
 	// Answered by the simulation from seeded or earlier state.
 	'simulated',
 	// Answered with a reply that an LLM invented.
@@ -28,29 +26,20 @@ export type ToolCallRoute = z.infer<typeof toolCallRouteSchema>;
 export const toolCallReasonSchema = z.enum([
 	'served_from_world',
 	'invented_by_llm',
-	'real_read_allowed',
 	// A simulator gap (for example a 501), not an agent failure.
 	'unsupported_by_simulator',
 	// The simulator is down, timed out or failed.
 	'simulator_unavailable',
 	// No simulator can serve this kind of tool.
 	'not_simulatable',
-	// A rule blocked the call.
-	'blocked_by_policy',
 ]);
 export type ToolCallReason = z.infer<typeof toolCallReasonSchema>;
 
 /** The reasons that fit each route, so a payload cannot claim a blocked call was served. */
 const REASONS_BY_ROUTE: Record<ToolCallRoute, readonly ToolCallReason[]> = {
-	real_read: ['real_read_allowed'],
 	simulated: ['served_from_world'],
 	simulated_made_up: ['invented_by_llm'],
-	blocked: [
-		'unsupported_by_simulator',
-		'simulator_unavailable',
-		'not_simulatable',
-		'blocked_by_policy',
-	],
+	blocked: ['unsupported_by_simulator', 'simulator_unavailable', 'not_simulatable'],
 };
 
 export const toolCallSimulationSchema = z
@@ -67,7 +56,7 @@ export const toolCallSimulationSchema = z
 export type ToolCallSimulation = z.infer<typeof toolCallSimulationSchema>;
 
 /** Before a run: can this tool be tested, and how. */
-export const toolTestabilitySchema = z.enum(['simulated', 'read_for_real', 'blocked']);
+export const toolTestabilitySchema = z.enum(['simulated', 'blocked']);
 export type ToolTestability = z.infer<typeof toolTestabilitySchema>;
 
 export const toolTestKindSchema = z.enum([
