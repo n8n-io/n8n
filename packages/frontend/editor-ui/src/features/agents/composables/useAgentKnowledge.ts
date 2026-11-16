@@ -1,15 +1,16 @@
-import { ref, type ComputedRef, type Ref } from 'vue';
+import { computed, ref, type ComputedRef, type Ref } from 'vue';
 import {
 	MAX_AGENT_FILE_SIZE_BYTES,
-	MAX_AGENT_FILE_SIZE_MB,
 	MAX_AGENT_FILES_PER_UPLOAD,
 	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
-	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
 	type AgentFileDto,
+	type FrontendModuleSettings,
 } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useToast } from '@n8n/composables/useToast';
+import { formatMbOrGb, toMb } from '@n8n/utils/number/bytes';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useAgentConfirmationModal } from './useAgentConfirmationModal';
 import type { KnowledgeUploadClientFailureReason } from './useAgentTelemetry';
@@ -28,6 +29,19 @@ export interface AgentKnowledgeTelemetry {
 	trackStartedFileUpload: (fileCount: number) => void;
 	trackRejectedFileUpload: (reason: KnowledgeUploadClientFailureReason, fileCount: number) => void;
 }
+
+export type KnowledgeUploadLimits = NonNullable<FrontendModuleSettings['knowledge']>['limits'];
+
+/**
+ * The limits the backend enforces at default configuration. Used when the
+ * module settings carry no `knowledge` entry, which only happens while the
+ * knowledge module is off, so no upload reaches these checks then.
+ */
+const DEFAULT_UPLOAD_LIMITS: KnowledgeUploadLimits = {
+	maxFileSizeBytes: MAX_AGENT_FILE_SIZE_BYTES,
+	maxFilesPerUpload: MAX_AGENT_FILES_PER_UPLOAD,
+	maxTotalSizeBytes: MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+};
 
 export interface UseAgentKnowledgeDeps {
 	projectId: Ref<string> | ComputedRef<string>;
@@ -59,8 +73,14 @@ export interface UseAgentKnowledgeDeps {
 export function useAgentKnowledge(deps: UseAgentKnowledgeDeps) {
 	const locale = useI18n();
 	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
 	const { showError, showMessage } = useToast();
 	const { openAgentConfirmationModal } = useAgentConfirmationModal();
+
+	/** The upload limits the backend enforces, so the client rejects the same uploads first. */
+	const uploadLimits = computed<KnowledgeUploadLimits>(
+		() => settingsStore.moduleSettings.knowledge?.limits ?? DEFAULT_UPLOAD_LIMITS,
+	);
 
 	const agentFiles = ref<AgentFileDto[]>([]);
 	const agentFilesLoading = ref(false);
@@ -91,12 +111,13 @@ export function useAgentKnowledge(deps: UseAgentKnowledgeDeps) {
 		if (files.length === 0) return;
 		deps.telemetry.trackStartedFileUpload(files.length);
 
-		const oversizedFiles = files.filter((file) => file.size > MAX_AGENT_FILE_SIZE_BYTES);
+		const { maxFileSizeBytes, maxFilesPerUpload, maxTotalSizeBytes } = uploadLimits.value;
+		const oversizedFiles = files.filter((file) => file.size > maxFileSizeBytes);
 		if (oversizedFiles.length > 0) {
 			showError(
 				new Error(
 					locale.baseText('agents.builder.files.uploadFileTooLarge.message', {
-						interpolate: { name: oversizedFiles[0].name, size: String(MAX_AGENT_FILE_SIZE_MB) },
+						interpolate: { name: oversizedFiles[0].name, size: String(toMb(maxFileSizeBytes)) },
 					}),
 				),
 				locale.baseText('agents.builder.files.uploadFileTooLarge.title'),
@@ -104,18 +125,18 @@ export function useAgentKnowledge(deps: UseAgentKnowledgeDeps) {
 		}
 		// Make sure each upload reports one client rejection at most: report the oversized files
 		// only when no later check rejects the upload.
-		const filesWithinLimit = files.filter((file) => file.size <= MAX_AGENT_FILE_SIZE_BYTES);
+		const filesWithinLimit = files.filter((file) => file.size <= maxFileSizeBytes);
 		if (filesWithinLimit.length === 0) {
 			deps.telemetry.trackRejectedFileUpload('file_size', oversizedFiles.length);
 			return;
 		}
 
-		if (filesWithinLimit.length > MAX_AGENT_FILES_PER_UPLOAD) {
+		if (filesWithinLimit.length > maxFilesPerUpload) {
 			deps.telemetry.trackRejectedFileUpload('too_many_files', filesWithinLimit.length);
 			showError(
 				new Error(
 					locale.baseText('agents.builder.files.uploadTooManyFiles.message' as BaseTextKey, {
-						interpolate: { max: String(MAX_AGENT_FILES_PER_UPLOAD) },
+						interpolate: { max: String(maxFilesPerUpload) },
 					}),
 				),
 				locale.baseText('agents.builder.files.uploadTooManyFiles.title' as BaseTextKey),
@@ -128,12 +149,12 @@ export function useAgentKnowledge(deps: UseAgentKnowledgeDeps) {
 			0,
 		);
 		const uploadTotalSizeBytes = filesWithinLimit.reduce((total, file) => total + file.size, 0);
-		if (existingTotalSizeBytes + uploadTotalSizeBytes > MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES) {
+		if (existingTotalSizeBytes + uploadTotalSizeBytes > maxTotalSizeBytes) {
 			deps.telemetry.trackRejectedFileUpload('total_limit', filesWithinLimit.length);
 			showError(
 				new Error(
 					locale.baseText('agents.builder.files.uploadTotalTooLarge.message' as BaseTextKey, {
-						interpolate: { size: String(MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB) },
+						interpolate: { size: formatMbOrGb(maxTotalSizeBytes) },
 					}),
 				),
 				locale.baseText('agents.builder.files.uploadTotalTooLarge.title' as BaseTextKey),
@@ -241,6 +262,7 @@ export function useAgentKnowledge(deps: UseAgentKnowledgeDeps) {
 	}
 
 	return {
+		uploadLimits,
 		agentFiles,
 		agentFilesLoading,
 		agentFilesUploading,

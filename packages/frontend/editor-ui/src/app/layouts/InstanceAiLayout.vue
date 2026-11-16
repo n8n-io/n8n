@@ -23,8 +23,8 @@ const showSidebar = computed(
 );
 
 // The store still holds the editor value when the user comes from the editor.
-// Restore the artifact value and record each change. Runs open and collapse
-// the panel in useInstanceAiWorkflowPreviewExecution.
+// Restore the artifact value and record each change. Failed runs open the
+// panel in useInstanceAiWorkflowPreviewExecution.
 logsStore.toggleOpen(isLogsPanelOpenInArtifact);
 watch(
 	() => logsStore.isOpen,

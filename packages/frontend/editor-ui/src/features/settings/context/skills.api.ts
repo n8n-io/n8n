@@ -1,6 +1,12 @@
 import type {
 	MoveSkillSourceDto,
 	SkillSourceMovePreview,
+	AcceptSkillSourceUpdatesDto,
+	ReviewSkillSourceUpdateQueryDto,
+	SkillSourceUpdates,
+	SkillUpdateReview,
+	SkillUpdateCommit,
+	SkillSourceAcceptResponse,
 	ConnectSkillSourceDto,
 	CreateSkillDto,
 	DiscoverSkillSourceDto,
@@ -179,6 +185,31 @@ export async function deleteSkillSource(context: IRestApiContext, sourceId: stri
 	await makeRestApiRequest(context, 'DELETE', `${SOURCES_ENDPOINT}/${sourceId}`);
 }
 
+function sourceCredentialEndpoint(source: Pick<SkillSourceListItem, 'id' | 'projectId'>) {
+	return `${source.projectId ? `/projects/${source.projectId}` : ''}${SOURCES_ENDPOINT}/${source.id}`;
+}
+
+export async function getSkillSourceReplacementCredentials(
+	context: IRestApiContext,
+	source: Pick<SkillSourceListItem, 'id' | 'projectId'>,
+): Promise<SkillSourceCredentialOption[]> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`${sourceCredentialEndpoint(source)}/credentials`,
+	);
+}
+
+export async function replaceSkillSourceCredential(
+	context: IRestApiContext,
+	source: Pick<SkillSourceListItem, 'id' | 'projectId'>,
+	credentialId: string,
+): Promise<void> {
+	await makeRestApiRequest(context, 'POST', `${sourceCredentialEndpoint(source)}/credential`, {
+		credentialId,
+	});
+}
+
 /** Check for updates on one source. */
 export async function checkSkillSource(
 	context: IRestApiContext,
@@ -220,4 +251,52 @@ export async function moveSkillSource(
 	payload: MoveSkillSourceDto,
 ): Promise<void> {
 	await makeRestApiRequest(context, 'POST', `${SOURCES_ENDPOINT}/${sourceId}/move`, payload);
+}
+
+export async function getSkillSourceUpdates(context: IRestApiContext, sourceId: string) {
+	return await makeRestApiRequest<SkillSourceUpdates>(
+		context,
+		'GET',
+		`${SOURCES_ENDPOINT}/${sourceId}/updates`,
+	);
+}
+
+export async function getSkillSourceUpdate(
+	context: IRestApiContext,
+	sourceId: string,
+	skillId: string,
+	reviewed: ReviewSkillSourceUpdateQueryDto,
+) {
+	return await makeRestApiRequest<SkillUpdateReview>(
+		context,
+		'GET',
+		`${SOURCES_ENDPOINT}/${sourceId}/updates/${skillId}`,
+		{ ...reviewed },
+	);
+}
+
+export async function getSkillSourceCommit(
+	context: IRestApiContext,
+	sourceId: string,
+	revision: string,
+) {
+	return await makeRestApiRequest<SkillUpdateCommit>(
+		context,
+		'GET',
+		`${SOURCES_ENDPOINT}/${sourceId}/commit`,
+		{ revision },
+	);
+}
+
+export async function acceptSkillSourceUpdates(
+	context: IRestApiContext,
+	sourceId: string,
+	payload: AcceptSkillSourceUpdatesDto,
+) {
+	return await makeRestApiRequest<SkillSourceAcceptResponse>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/${sourceId}/updates/accept`,
+		payload,
+	);
 }

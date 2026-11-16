@@ -61,11 +61,13 @@ import type {
 } from '@/features/agents/components/AgentSkillModal.vue';
 
 import SkillSourceMoveDialog from '../components/SkillSourceMoveDialog.vue';
+import SkillSourceUpdatesDialog from '../components/SkillSourceUpdatesDialog.vue';
 import SkillSourceConnectDialog, {
 	type SkillSourceConnected,
 } from '../components/SkillSourceConnectDialog.vue';
 import SkillsTable from '../components/SkillsTable.vue';
 import SkillSourceDeleteDialog from '../components/SkillSourceDeleteDialog.vue';
+import SkillSourceCredentialDialog from '../components/SkillSourceCredentialDialog.vue';
 import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
 import { CONTEXT_DEFAULT_SORT_BY, SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
 import {
@@ -117,6 +119,7 @@ const skillSyncEnabled = useSkillSyncFlag();
 const connectOpen = ref(false);
 const movingSource = ref<SkillSourceListItem | null>(null);
 const sourceToDelete = ref<SkillSourceListItem>();
+const sourceToReplaceCredential = ref<SkillSourceListItem>();
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
@@ -795,6 +798,11 @@ const collapsedSourceIds = useLocalStorage<string[]>(
 
 /** The sources with a check that runs, so their rows show progress. */
 const checkingSourceIds = ref<string[]>([]);
+const reviewSource = ref<SkillSourceListItem | null>(null);
+
+async function onSourceUpdatesChanged() {
+	await Promise.all([load(), loadSources()]);
+}
 
 const tableSources = computed(() => (skillSyncEnabled.value ? skillsStore.sources : undefined));
 
@@ -803,6 +811,11 @@ async function onSourceDeleted() {
 	void loadCreators();
 	await loadSources();
 	await load();
+}
+
+async function onSourceCredentialReplaced() {
+	sourceToReplaceCredential.value = undefined;
+	await loadSources();
 }
 
 async function loadSources() {
@@ -836,7 +849,14 @@ async function onCheckSource(source: SkillSourceListItem) {
 		result = await skillsStore.checkSource(source.id);
 	} catch (error) {
 		const reason = error instanceof ResponseError ? error.meta?.reason : undefined;
-		// The user cannot pick another credential here, so that reason gets its own text.
+		if (reason === 'rate_limited') {
+			showMessage({
+				title: i18n.baseText('settings.context.skills.sources.health.delayed'),
+				message: i18n.baseText('settings.context.skills.sources.health.delayed.description'),
+				type: 'info',
+			});
+			return;
+		}
 		const text =
 			reason === 'credential_missing'
 				? i18n.baseText('settings.context.skills.checkForUpdates.error.credentialMissing')
@@ -1074,7 +1094,9 @@ onMounted(async () => {
 			@toggle-source="onToggleSource"
 			@check-source="onCheckSource"
 			@move-source="movingSource = $event"
+			@review-source="reviewSource = $event"
 			@delete-source="sourceToDelete = $event"
+			@replace-credential="sourceToReplaceCredential = $event"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
@@ -1122,6 +1144,12 @@ onMounted(async () => {
 			@update:open="!$event && (movingSource = null)"
 			@moved="onSourceMoved"
 		/>
+		<SkillSourceUpdatesDialog
+			v-if="skillSyncEnabled && reviewSource"
+			:source="reviewSource"
+			@close="reviewSource = null"
+			@changed="onSourceUpdatesChanged"
+		/>
 		<SkillSourceConnectDialog
 			v-if="skillSyncEnabled"
 			v-model:open="connectOpen"
@@ -1134,6 +1162,13 @@ onMounted(async () => {
 			:source="sourceToDelete"
 			@close="sourceToDelete = undefined"
 			@deleted="onSourceDeleted"
+		/>
+		<SkillSourceCredentialDialog
+			v-if="skillSyncEnabled && sourceToReplaceCredential"
+			:key="sourceToReplaceCredential.id"
+			:source="sourceToReplaceCredential"
+			@close="sourceToReplaceCredential = undefined"
+			@replaced="onSourceCredentialReplaced"
 		/>
 		<input
 			ref="skillFolderInput"

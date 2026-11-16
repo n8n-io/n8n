@@ -209,8 +209,8 @@ describe('AgentsController create', () => {
 		expect(result).not.toHaveProperty('schema');
 	});
 
-	it.each([undefined, { instructions: 'Help users' }])(
-		'fills an omitted model with the project default: %j',
+	it.each([undefined, { name: 'Support Agent', model: '', instructions: 'Help users' }])(
+		'seeds the default model only when the config is omitted: %j',
 		async (config) => {
 			const { controller, agentsService, agentDefaultModelResolverService } =
 				makeCreateController('server-minted');
@@ -228,8 +228,13 @@ describe('AgentsController create', () => {
 				pushRef: undefined,
 				config,
 				id: undefined,
-				defaultModel: { model: 'openai/gpt-5-mini', credential: 'managed' },
+				...(config === undefined
+					? { defaultModel: { model: 'openai/gpt-5-mini', credential: 'managed' } }
+					: {}),
 			});
+			expect(agentDefaultModelResolverService.resolve).toHaveBeenCalledTimes(
+				config === undefined ? 1 : 0,
+			);
 		},
 	);
 
@@ -309,8 +314,8 @@ describe('AgentsController list', () => {
 		const response = { count: 1, data: [{ id: 'agent-1' }] } as never;
 		const res = mock<Response>();
 		const query = {
-			skip: 0,
-			take: 10,
+			offset: 0,
+			limit: 10,
 		} as never;
 		agentsService.findByProjectIdPaginated.mockResolvedValue(response);
 
@@ -330,15 +335,15 @@ describe('AgentsController list', () => {
 		const response = { count: 1, data: [{ id: 'agent-1' }] } as never;
 		const res = mock<Response>();
 		const query = {
-			skip: 0,
-			take: 50,
+			offset: 0,
+			limit: 50,
 			sortBy: 'name:asc',
 			filter: { query: 'support' },
 		} as never;
 		agentsService.findByProjectIdPaginated.mockResolvedValue(response);
 		const listReq = {
 			params: { projectId: 'project-1' },
-			query: { skip: '0', take: '50', sortBy: 'name:asc', filter: '{"query":"support"}' },
+			query: { offset: '0', limit: '50', sortBy: 'name:asc', filter: '{"query":"support"}' },
 			user: { id: 'user-1' },
 		} as never;
 

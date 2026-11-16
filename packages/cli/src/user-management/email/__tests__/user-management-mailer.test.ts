@@ -1,13 +1,14 @@
-import type { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { ApiKey, User, PersonRepository } from '@n8n/db';
+import type { ApiKey, OperationContext, User, PersonRepository } from '@n8n/db';
 import { Person } from '@n8n/db';
 import { PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
+import type { SecurityContext } from '@n8n/permissions';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { UrlService } from '@n8n/backend-services';
+import type { EventService, UrlService } from '@n8n/backend-services';
 import type { InviteEmailData, PasswordResetData } from '@/user-management/email/interfaces';
 import { NodeMailer } from '@/user-management/email/node-mailer';
 import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
@@ -408,6 +409,53 @@ describe('UserManagementMailer', () => {
 				expect(callBody).toContain(
 					`You have been added to the <b>${project.name}</b> project as ${sharee.role.replace('project:', '')}`,
 				);
+			});
+		});
+
+		describe('login id on the email-failed event', () => {
+			const logger = mock<Logger>();
+			const eventService = mock<EventService>();
+			const failingMailer = new UserManagementMailer(
+				config,
+				logger,
+				personRepository,
+				urlService,
+				eventService,
+			);
+
+			const shareProject = async (ctx?: OperationContext) =>
+				await failingMailer
+					.notifyProjectShared({
+						sharer: Object.assign(new Person(), { firstName: 'Sharer' }),
+						newSharees: [{ userId: 'recipient1', role: PROJECT_EDITOR_ROLE_SLUG }],
+						project: { id: 'project1', name: 'Test Project' },
+						ctx,
+					})
+					.catch(() => undefined);
+
+			beforeEach(() => {
+				personRepository.getEmailsByIds.mockResolvedValue([
+					{ id: 'recipient1', email: 'recipient1@user.com' },
+				]);
+				logger.info.mockImplementation(() => {
+					throw new Error('Logging failed');
+				});
+			});
+
+			it('passes the login id to the email-failed event', async () => {
+				await shareProject({ security: mock<SecurityContext>({ subIdentityId: 'login-1' }) });
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'email-failed',
+					expect.objectContaining({ messageType: 'Project shared', loginId: 'login-1' }),
+				);
+			});
+
+			it('emits no login id without an operation context', async () => {
+				await shareProject();
+
+				const call = eventService.emit.mock.calls.find(([name]) => name === 'email-failed');
+				expect(call?.[1]).toMatchObject({ loginId: undefined });
 			});
 		});
 

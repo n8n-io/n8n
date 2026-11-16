@@ -85,6 +85,13 @@ const skillSourceStatus = z
 	.enum(['success', 'failure'])
 	.describe('Whether the action succeeded. A failure carries a reason code');
 
+const skillSourceHealth = z.enum([
+	'connected',
+	'credential_issue',
+	'source_unavailable',
+	'delayed',
+]);
+
 const skillSourceReason = z
 	.enum([...SKILL_SOURCE_REASONS, 'unexpected'])
 	.optional()
@@ -582,6 +589,21 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			reason: skillSourceReason,
 		}),
 	},
+	USER_REVIEWED_SKILL_UPDATE: {
+		name: 'User reviewed skill update',
+		description:
+			'A user reviewed a pending skill update. Fires for each selected skill after the transaction succeeds or fails.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			kind: z.literal('update').describe('An update to an existing synced skill'),
+			action: z.enum(['accept', 'skip']),
+			verdict: z.enum(['pass', 'needs_review', 'blocked']),
+			bulk: z.boolean().describe('Whether the request selected more than one skill'),
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
 	USER_DELETED_SKILL_SOURCE: {
 		name: 'User deleted skill source',
 		description:
@@ -591,6 +613,27 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			provider: skillSourceProvider,
 			status: skillSourceStatus,
 			reason: z.enum(['skills_in_use', 'unexpected']).optional(),
+		}),
+	},
+	USER_UPDATED_SKILL_SOURCE_CREDENTIAL: {
+		name: 'User updated skill source credential',
+		description:
+			'A user replaced the credential of a skill source. Fires after validation and the write succeed or fail. Contains no credential names, identifiers, or secrets.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
+	SKILL_SOURCE_HEALTH_CHANGED: {
+		name: 'Skill source health changed',
+		description:
+			'A source check or credential replacement changed the health of a skill source. Repeated results do not report. Carries no user id, so it reaches BigQuery and not PostHog.',
+		properties: z.object({
+			provider: skillSourceProvider,
+			previous_health: skillSourceHealth,
+			health: skillSourceHealth,
 		}),
 	},
 	USER_STOPPED_SKILL_SYNC: {

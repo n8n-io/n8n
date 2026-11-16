@@ -55,8 +55,8 @@ export abstract class SkillUsage {
 		ctx: OperationContext,
 	): Promise<void>;
 
-	/** Return the following agents to refresh after the save commits. Write no agent data. */
-	abstract markFollowersChanged(skillId: string, ctx: OperationContext): Promise<string[]>;
+	/** The agents whose drafts follow the latest skill version. Write no agent data. */
+	abstract findFollowingAgentIds(skillId: string, ctx: OperationContext): Promise<string[]>;
 
 	/** After a save commits: the agents reload, except the tab of `excludePushRef`. */
 	abstract refreshAgents(agentIds: string[], excludePushRef?: string): Promise<void>;

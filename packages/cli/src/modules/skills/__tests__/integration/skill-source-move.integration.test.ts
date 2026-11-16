@@ -280,9 +280,27 @@ describe('Skill source scope moves', () => {
 		expect(await sources().findById(sourceId)).toMatchObject({
 			projectId: to.id,
 			credentialId: destination.id,
+			credentialRequired: true,
 		});
 		expect(resolve).not.toHaveBeenCalled();
 		expect(remote).not.toHaveBeenCalled();
+	});
+
+	it('requires a destination credential when the previous credential was deleted', async () => {
+		const { sourceId, skills } = await sourceIn(from.id);
+		await db().update(
+			SkillSourceConnection,
+			{ id: sourceId },
+			{ credentialRequired: true, credentialId: null },
+		);
+		const payload = request(from.id, to.id);
+		expect((await preview(sourceId, payload)).credential).toEqual({
+			required: true,
+			reason: 'credential_missing',
+		});
+		await move(sourceId, payload, 409);
+		expect(await sources().findById(sourceId)).toMatchObject({ projectId: from.id });
+		for (const { id } of skills) expect(await findSkill(id)).toMatchObject({ projectId: from.id });
 	});
 
 	it('requires origin delete and destination create rights, and hides invisible sources', async () => {
@@ -291,6 +309,29 @@ describe('Skill source scope moves', () => {
 		await move(sourceId, request(from.id, to.id), 404, outsider);
 		await move(sourceId, request(from.id, null), 403, editor);
 		await move(sourceId, request(from.id, to.id), 200, editor);
+	});
+
+	describe.each(['move', 'move/preview'])('POST /skill-sources/:sourceId/%s', (route) => {
+		it.each(['non-member', 'viewer'] as const)(
+			'refuses an origin editor who is a destination %s',
+			async (membership) => {
+				const user = await createMember();
+				await linkUserToProject(user, from, 'project:editor');
+				if (membership === 'viewer') await linkUserToProject(user, to, 'project:viewer');
+				const { sourceId, skills } = await sourceIn(from.id);
+
+				await server
+					.authAgentFor(user)
+					.post(`/skill-sources/${sourceId}/${route}`)
+					.send(request(from.id, to.id))
+					.expect(403);
+
+				expect(await sources().findById(sourceId)).toMatchObject({ projectId: from.id });
+				for (const { id } of skills) {
+					expect(await findSkill(id)).toMatchObject({ projectId: from.id });
+				}
+			},
+		);
 	});
 
 	it('allows a write-only destination and hides its conflicting skill details', async () => {
