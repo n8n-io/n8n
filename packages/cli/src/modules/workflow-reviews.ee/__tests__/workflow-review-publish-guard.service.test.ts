@@ -15,11 +15,12 @@ describe('WorkflowReviewPublishGuard', () => {
 	const featureGate = mock<WorkflowReviewFeatureGate>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const policyService = mock<WorkflowReviewPolicyService>();
+	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const guard = new WorkflowReviewPublishGuard(
 		featureGate,
 		requestRepository,
 		policyService,
-		mock<SharedWorkflowRepository>(),
+		sharedWorkflowRepository,
 	);
 	const target = { versionId: 'version-1' };
 
@@ -70,6 +71,19 @@ describe('WorkflowReviewPublishGuard', () => {
 				reason: 'changes_requested',
 				workflowReviewRequestId: 'review-2',
 			},
+		});
+	});
+
+	test('requires an approved review when the owning project of the workflow is unknown', async () => {
+		featureGate.isAvailable.mockResolvedValue(true);
+		requestRepository.findOpenRequestForWorkflow.mockResolvedValue(null);
+		policyService.get.mockResolvedValue({ enabled: true, alwaysRequired: true });
+		sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
+		requestRepository.hasApprovedReviewForVersion.mockResolvedValue(false);
+
+		await expect(guard.assertCanPublish('workflow-1', target)).rejects.toMatchObject({
+			httpStatusCode: 409,
+			details: { reason: 'review_required', versionId: 'version-1' },
 		});
 	});
 

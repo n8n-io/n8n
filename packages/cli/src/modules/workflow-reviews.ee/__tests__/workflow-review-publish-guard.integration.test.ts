@@ -431,28 +431,33 @@ describe('changing the review settings', () => {
 		expect((await policyService.get()).alwaysRequired).toBe(false);
 	});
 
-	test('records one instance policy event when Require approval changes', async () => {
-		const eventService = Container.get(EventService);
-		const settingEvents: Array<{ settingName: string; value: unknown }> = [];
-		const listener = ({ settingName, value }: { settingName: string; value: unknown }) =>
-			settingEvents.push({ settingName, value });
-		eventService.on('instance-policies-updated', listener);
+	test.each([
+		[
+			{ alwaysRequired: true },
+			[{ settingName: 'workflow_reviews_approval_required', value: true }],
+		],
+		[{ enabled: false }, [{ settingName: 'workflow_reviews', value: false }]],
+	])(
+		'records one instance policy event when a review setting changes: %j',
+		async (workflowReviews, expectedEvents) => {
+			const eventService = Container.get(EventService);
+			const settingEvents: Array<{ settingName: string; value: unknown }> = [];
+			const listener = ({ settingName, value }: { settingName: string; value: unknown }) =>
+				settingEvents.push({ settingName, value });
+			eventService.on('instance-policies-updated', listener);
 
-		try {
-			for (let i = 0; i < 2; i++) {
-				const response = await saveSettings(ownerAgent, {
-					workflowReviews: { alwaysRequired: true },
-				});
-				expect(response.status).toBe(200);
+			try {
+				for (let i = 0; i < 2; i++) {
+					const response = await saveSettings(ownerAgent, { workflowReviews });
+					expect(response.status).toBe(200);
+				}
+			} finally {
+				eventService.off('instance-policies-updated', listener);
 			}
-		} finally {
-			eventService.off('instance-policies-updated', listener);
-		}
 
-		expect(settingEvents).toEqual([
-			{ settingName: 'workflow_reviews_approval_required', value: true },
-		]);
-	});
+			expect(settingEvents).toEqual(expectedEvents);
+		},
+	);
 
 	test('keeps Require approval when workflow reviews are turned off and on again', async () => {
 		for (const workflowReviews of [

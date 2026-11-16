@@ -66,14 +66,7 @@ export class SecuritySettingsController {
 		}
 
 		const updatedSettings: Partial<UpdateSecuritySettingsDto> =
-			await this.securitySettingsService.updateSecuritySettings(
-				{
-					personalSpacePublishing: dto.personalSpacePublishing,
-					personalSpaceSharing: dto.personalSpaceSharing,
-					redactionEnforcement: dto.redactionEnforcement,
-				},
-				req.user,
-			);
+			await this.securitySettingsService.updateSecuritySettings(otherFields, req.user);
 
 		if (workflowReviews !== undefined) {
 			const before = await this.workflowReviewPolicyService.get();

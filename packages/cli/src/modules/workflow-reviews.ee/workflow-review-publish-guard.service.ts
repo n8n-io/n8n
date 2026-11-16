@@ -17,6 +17,10 @@ export class WorkflowReviewPublishGuard implements WorkflowPublishGuard {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
+	/**
+	 * An open review blocks every publish. A source control pull is blocked only by an open review.
+	 * Under "Always required", a team project version also needs an approved review.
+	 */
 	async assertCanPublish(workflowId: string, target: WorkflowPublishTarget): Promise<void> {
 		if (!(await this.featureGate.isAvailable())) return;
 

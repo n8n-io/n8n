@@ -180,6 +180,13 @@ describe('SecuritySettingsController', () => {
 			expect(response.body.data).not.toHaveProperty('workflowReviews');
 		});
 
+		it('GET should return 403 with only the workflow reviews license when the module is not active', async () => {
+			testServer.license.disable('feat:personalSpacePolicy');
+			isModuleActive.mockReturnValue(false);
+
+			await ownerAgent.get('/settings/security').expect(403);
+		});
+
 		it('POST should reject workflowReviews when the workflow reviews module is not active', async () => {
 			isModuleActive.mockReturnValue(false);
 

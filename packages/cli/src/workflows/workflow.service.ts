@@ -1296,7 +1296,8 @@ export class WorkflowService {
 	}
 
 	/**
-	 * Publishes a version that a source control pull imported. Only an open review blocks it.
+	 * Publishes a version that a source control pull imported. A publish guard can relax its
+	 * checks for it.
 	 * `SourceControlImportService` is the single caller.
 	 */
 	async activateWorkflowFromSourceControlPull(

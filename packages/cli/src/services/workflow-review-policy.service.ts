@@ -33,11 +33,14 @@ export class WorkflowReviewPolicyService {
 	}
 
 	async update(patch: Partial<WorkflowReviewsPolicy>): Promise<WorkflowReviewsPolicy> {
-		const merged = { ...(await this.get()) };
-		if (patch.enabled !== undefined) merged.enabled = patch.enabled;
-		if (patch.alwaysRequired !== undefined) merged.alwaysRequired = patch.alwaysRequired;
+		const definedChanges = Object.fromEntries(
+			Object.entries(patch).filter(([, value]) => value !== undefined),
+		);
 
-		const parsed = workflowReviewsPolicySchema.safeParse(merged);
+		const parsed = workflowReviewsPolicySchema.safeParse({
+			...(await this.get()),
+			...definedChanges,
+		});
 		if (!parsed.success) {
 			throw new UserError('Invalid workflow reviews settings');
 		}

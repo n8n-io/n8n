@@ -11,7 +11,7 @@ export interface WorkflowPublishGuard {
 
 export interface WorkflowPublishTarget {
 	versionId: string;
-	/** A source control pull publishes what the repository holds, so only an open review blocks it. */
+	/** The publish comes from a source control pull. A provider can relax its checks for it. */
 	fromSourceControlPull?: boolean;
 }
 
