@@ -23,7 +23,7 @@ import { runReference } from '../../reference/runner.ts';
 import type { VmCost } from '../../testing/vm.ts';
 import { allocationsOf, emptyCost, runModule } from '../../testing/vm.ts';
 import type { ErrorMode, NodeSources } from '../convert.ts';
-import { compileNodeInstance } from '../convert.ts';
+import { compileNodeInstance, valueAtPath } from '../convert.ts';
 import { evaluateDerivation, evaluateFlag } from '../evaluate-node.ts';
 import type {
 	CredentialDerivation,
@@ -392,11 +392,57 @@ export type ErrorPairing = 'item' | 'position';
 
 const MAX_ANSWERS = 64;
 
+const ITEM_FIELD = /^=\{\{ \$json\.([A-Za-z_]\w*) \}\}$/;
+
+export function itemFieldExpression(field: string): string {
+	return `={{ $json.${field} }}`;
+}
+
+function valueForItem(value: unknown, item: Record<string, unknown>): unknown {
+	if (typeof value === 'string') {
+		const field = ITEM_FIELD.exec(value)?.[1];
+		if (field !== undefined) return item[field];
+		if (value.startsWith('='))
+			throw new Error(`the check has no value for the expression ${value}`);
+		return value;
+	}
+	if (Array.isArray(value)) return value.map((member: unknown) => valueForItem(member, item));
+	if (isRecord(value))
+		return Object.fromEntries(
+			Object.entries(value).map(([key, member]) => [key, valueForItem(member, item)]),
+		);
+	return value;
+}
+
+export function itemParameterEntries(
+	parameters: Record<string, unknown>,
+	paths: string[],
+	items: Array<Record<string, unknown>>,
+): Array<Record<string, unknown>> {
+	return items.map((item) =>
+		Object.fromEntries(
+			paths.map((path) => [path, valueForItem(valueAtPath(parameters, path), item)]),
+		),
+	);
+}
+
+type ItemEntries = Array<Record<string, unknown>> | undefined;
+
+function entriesOf(
+	c: EquivalenceCase,
+	compiled: Exclude<Compiled, { errors: string[] }>,
+): ItemEntries {
+	return compiled.itemParameters.length === 0
+		? undefined
+		: itemParameterEntries(compiled.resolved, compiled.itemParameters, c.items ?? [{}]);
+}
+
 function continueWorkflow(
 	type: string,
 	c: EquivalenceCase,
 	credentialType: string | undefined,
 	pairing: ErrorPairing,
+	each: ItemEntries,
 ): string {
 	const errorOutput = c.settings?.onError === 'continueErrorOutput';
 	const w = new Writer();
@@ -407,9 +453,9 @@ function continueWorkflow(
 		errors: errorOutput ? 'errors' : null,
 		input: 'items',
 		item: 'item',
-		index: null,
+		index: each ? 'k' : null,
 		call: () =>
-			`{ name: 'Node', type: ${JSON.stringify(type)}, typeVersion: ${c.typeVersion}, parameters: {}, items: [item]${credentialType ? ", credential: 'c'" : ''} }`,
+			`{ name: 'Node', type: ${JSON.stringify(type)}, typeVersion: ${c.typeVersion}, parameters: ${each ? '{ each: [each[k]] }' : '{}'}, items: [item]${credentialType ? ", credential: 'c'" : ''} }`,
 		retry: errorRetryOf(c.settings ?? {}),
 		byPosition: pairing === 'position',
 		trace: false,
@@ -423,6 +469,7 @@ export default workflow({
 	${credentialType ? `credentials: { c: { type: ${JSON.stringify(credentialType)} } },` : ''}
 	async run(ctx) {
 		const items: Json[] = ${JSON.stringify(c.items ?? [{}])};
+		${each ? `const each: Json[] = ${JSON.stringify(each)};` : ''}
 ${w.toString()}
 		return ${errorOutput ? '[out, errors]' : '[out]'};
 	},
@@ -467,8 +514,13 @@ export default workflow({
 `;
 }
 
-function eachItemSourceOf(c: EquivalenceCase, type: string): string {
+function eachItemSourceOf(c: EquivalenceCase, type: string, each: ItemEntries): string {
 	const credentialType = c.credential?.type;
+	const loop = each
+		? `const each: Json[] = ${JSON.stringify(each)};
+		for (let k = 0; k < items.length; k++) {
+			const item: Json = items[k];`
+		: 'for (const item of items) {';
 	return `import { webhook, workflow } from '@n8n/workflow-lang';
 
 type Json = any;
@@ -479,12 +531,12 @@ export default workflow({
 	async run(ctx) {
 		const items: Json[] = ${JSON.stringify(c.items ?? [{}])};
 		const out: Json[] = [];
-		for (const item of items) {
+		${loop}
 			const result: Json[] = await ctx.node({
 				name: 'Node',
 				type: ${JSON.stringify(type)},
 				typeVersion: ${c.typeVersion},
-				parameters: {},
+				parameters: ${each ? '{ each: [each[k]] }' : '{}'},
 				items: [item],
 				${credentialType ? "credential: 'c'," : ''}
 			});
@@ -556,8 +608,11 @@ export function costOfCase(
 	);
 	if ('errors' in compiled) return undefined;
 	const responses = c.responses.filter((r) => r !== MINTED_TOKEN_RESPONSE);
+	const each = entriesOf(c, compiled);
 	const mine = bytecodeCost(
-		eachItem ? eachItemSourceOf(c, compiled.type) : workflowSourceOf(c, compiled.type, {}),
+		eachItem
+			? eachItemSourceOf(c, compiled.type, each)
+			: workflowSourceOf(c, compiled.type, each ? { each } : {}),
 		{ [compiled.file]: compiled.source },
 		responses,
 	);
@@ -608,10 +663,11 @@ export async function differenceFromV1(
 	if ('errors' in compiled) return `does not compile: ${compiled.errors[0]}`;
 	const asked: EquivalenceCase = compiled.storesResponses ? { ...c, responseBytes: true } : c;
 	const credentialType = c.credential?.type;
+	const each = entriesOf(c, compiled);
 	const plainSource =
 		options.eachItem === true
-			? eachItemSourceOf(c, compiled.type)
-			: workflowSourceOf(c, compiled.type, {});
+			? eachItemSourceOf(c, compiled.type, each)
+			: workflowSourceOf(c, compiled.type, each ? { each } : {});
 	const recordPlain = async (testCase: EquivalenceCase) =>
 		await within(8000, options.cache === true ? recordV1Cached(testCase) : recordV1(testCase));
 	const record = async (testCase: EquivalenceCase) =>
@@ -626,7 +682,7 @@ export async function differenceFromV1(
 	const v1 = minted?.v1 ?? (await record(asked));
 	if (v1.error?.includes(V1_REQUEST_LIMIT)) return `v1 has no result: ${v1.error.slice(0, 90)}`;
 	const source = continues
-		? continueWorkflow(compiled.type, c, credentialType, options.pairing ?? 'item')
+		? continueWorkflow(compiled.type, c, credentialType, options.pairing ?? 'item', each)
 		: plainSource;
 	const given = minted
 		? minted.testCase.responses.filter((_response, k) => !minted.exchanges.has(k))

@@ -649,6 +649,83 @@ export function mayThrowTypeError(code: string): boolean {
 	return found;
 }
 
+/** The code without the marks of the source map (`ExpressionScope.mark`). */
+function withoutMarks(marked: string): string {
+	let code = '';
+	for (let k = 0; k < marked.length; k++) {
+		const ch = marked[k];
+		if (ch === '\u0001') {
+			const end = marked.indexOf('\u0002', k);
+			if (end < 0) return marked;
+			k = end;
+		} else if (ch !== '\u0003') code += ch;
+	}
+	return code;
+}
+
+function textNeverThrows(marked: string): boolean {
+	const code = withoutMarks(marked);
+	const sf = ts.createSourceFile('e.ts', `(${code})`, ts.ScriptTarget.ES2022, true);
+	const st = sf.statements[0];
+	if (sf.statements.length !== 1 || !st || !ts.isExpressionStatement(st)) return false;
+	let e: ts.Expression = st.expression;
+	while (ts.isParenthesizedExpression(e)) e = e.expression;
+	// `orNull` catches a TypeError and a SyntaxError. Code without a call throws nothing else.
+	let guarded = false;
+	if (
+		ts.isCallExpression(e) &&
+		ts.isIdentifier(e.expression) &&
+		e.expression.text === 'orNull' &&
+		e.arguments.length === 1
+	) {
+		const [value] = e.arguments;
+		if (ts.isArrowFunction(value) && !ts.isBlock(value.body)) {
+			guarded = true;
+			e = value.body;
+		}
+	}
+	let quiet = true;
+	const visit = (n: ts.Node): void => {
+		if (!quiet) return;
+		const typeCheck =
+			ts.isBinaryExpression(n) &&
+			(n.operatorToken.kind === ts.SyntaxKind.InKeyword ||
+				n.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword);
+		if (
+			ts.isCallExpression(n) ||
+			ts.isNewExpression(n) ||
+			ts.isTaggedTemplateExpression(n) ||
+			ts.isAwaitExpression(n) ||
+			ts.isYieldExpression(n) ||
+			ts.isDeleteExpression(n) ||
+			ts.isFunctionLike(n) ||
+			(typeCheck && !guarded)
+		) {
+			quiet = false;
+			return;
+		}
+		ts.forEachChild(n, visit);
+	};
+	visit(e);
+	return quiet && (guarded || !mayThrowTypeError(code));
+}
+
+/**
+ * True when the code of a translated value cannot throw: it has no call, and it reads a
+ * member of a value that can be undefined only inside `orNull`. The answer is on the safe
+ * side: code that this function does not know counts as code that can throw.
+ */
+export function neverThrows(code: Code): boolean {
+	switch (code.kind) {
+		case 'raw':
+			return textNeverThrows(code.text);
+		case 'array':
+			return code.items.every(neverThrows);
+		case 'object':
+			return code.entries.every(([, value]) => neverThrows(value));
+	}
+}
+
 /** True when the code cannot be `null` or `undefined`, so a template needs no `?? ''`. */
 function neverNullish(code: string): boolean {
 	const sf = ts.createSourceFile('e.ts', `(${code})`, ts.ScriptTarget.ES2022, true);

@@ -1189,6 +1189,21 @@ function retryError(item: Json): boolean {
 	return error !== undefined && error !== null && error !== false;
 }`,
 	},
+	parameterOrError: {
+		uses: [],
+		source: `/**
+ * The value of a parameter for one item, or the error of its expression. v1 evaluates the
+ * expression when the node reads the parameter, so the compiled node throws the error at
+ * that read, and not before the node runs.
+ */
+function parameterOrError(value: () => Json): Json {
+	try {
+		return { value: value() };
+	} catch (error) {
+		return { error: { message: error.message, description: error.description } };
+	}
+}`,
+	},
 	undefinedToNull: {
 		uses: [],
 		source: `/** undefined as null, so a parameter key that n8n gives as undefined reaches the host. */

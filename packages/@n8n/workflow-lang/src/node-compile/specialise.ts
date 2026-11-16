@@ -53,6 +53,8 @@ export interface SpecialiseInput {
 	parameterKind?: (name: string) => ParameterKind | undefined;
 
 	facts?: PublishFacts;
+
+	deferredParameters?: string[];
 }
 
 export interface PublishFacts {
@@ -91,6 +93,8 @@ export interface SpecialiseResult {
 	retyped?: (moduleType: string) => string;
 
 	zones?: string[];
+
+	itemParameters?: string[];
 }
 
 export interface CredentialDerivation {
@@ -812,6 +816,14 @@ const HELPERS: Record<string, string> = {
 }`,
 	__deepCopy: `function __deepCopy(value: any): any {
 	return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+}`,
+	__parameterValue: `function __parameterValue(entry: any): any {
+	if (entry.error !== undefined) {
+		const failure: any = new Error(entry.error.message);
+		failure.description = entry.error.description;
+		throw failure;
+	}
+	return entry.value;
 }`,
 	__isLocator: `function __isLocator(value: any): boolean {
 	if (value === null || value === undefined || typeof value !== 'object') return false;
@@ -2107,7 +2119,7 @@ class Specialiser {
 	}
 
 	private parameter(node: ts.CallExpression, late = false): ts.Expression {
-		const [nameArg, , fallback, options] = node.arguments;
+		const [nameArg, indexArg, fallback, options] = node.arguments;
 		if (!nameArg || !(ts.isStringLiteral(nameArg) || ts.isNoSubstitutionTemplateLiteral(nameArg))) {
 			return node;
 		}
@@ -2132,11 +2144,17 @@ class Specialiser {
 					? (value as Record<string, unknown>)[key]
 					: undefined;
 		}
-		const top = this.input.parameters[path[0]];
-		const dynamic = hasExpression(top);
-		let read: ts.Expression = f.createIdentifier('parameters');
-		for (const key of path)
-			read = f.createPropertyAccessChain(read, f.createToken(ts.SyntaxKind.QuestionDotToken), key);
+		const dynamic = hasExpression(value);
+		const entry = f.createElementAccessExpression(
+			f.createElementAccessExpression(
+				f.createIdentifier(ITEM_PARAMETERS),
+				indexArg ?? f.createIdentifier('undefined'),
+			),
+			f.createStringLiteral(nameArg.text),
+		);
+		const read = this.input.deferredParameters?.includes(nameArg.text)
+			? this.helper('__parameterValue', entry)
+			: entry;
 		if (extract) {
 			const kind = this.input.parameterKind?.(nameArg.text);
 			if (kind?.type === 'filter' || kind?.extract) return node;
@@ -2169,14 +2187,7 @@ class Specialiser {
 			}
 			if (dynamic && (kind === undefined || kind.type === 'resourceLocator')) return node;
 		}
-		if (dynamic) {
-			const or = fallback ?? (path.length === 1 ? this.defaultOf(path[0]) : undefined);
-
-			return this.helper(
-				'__deepCopy',
-				or ? f.createBinaryExpression(read, ts.SyntaxKind.QuestionQuestionToken, or) : read,
-			);
-		}
+		if (dynamic) return this.helper('__deepCopy', read);
 		if (value !== undefined) return expressionOf(value);
 		if (path.length === 1 && this.input.defaults && path[0] in this.input.defaults) {
 			return expressionOf(this.input.defaults[path[0]]);
@@ -2186,11 +2197,6 @@ class Specialiser {
 		if (late && absent) return node;
 		if (absent) return this.helper('__missing', f.createStringLiteral(nameArg.text));
 		return fallback;
-	}
-
-	private defaultOf(name: string): ts.Expression | undefined {
-		const defaults = this.input.defaults;
-		return defaults && name in defaults ? expressionOf(defaults[name]) : undefined;
 	}
 
 	private bind(root: ts.Node, unit: Unit, isExecute: boolean): ts.Node {
@@ -2978,6 +2984,51 @@ class Specialiser {
 				ts.forEachChild(n, walk);
 			};
 			walk(node);
+		}
+	}
+
+	private readonly itemParameters = new Set<string>();
+
+	private checkItemParameters() {
+		const uses = itemParameterUses(this.output);
+		for (const where of uses.loose)
+			this.error(where, 'the list of the parameters for each item is used as a value');
+		const bounded = (index: ts.Expression, frame: ItemFrame, hops: number): boolean => {
+			if (hops > MAX_INDEX_HOPS) return false;
+			if (
+				ts.isParenthesizedExpression(index) ||
+				ts.isAsExpression(index) ||
+				ts.isNonNullExpression(index)
+			)
+				return bounded(index.expression, frame, hops);
+			if (ts.isNumericLiteral(index)) return index.text === '0';
+			if (!ts.isIdentifier(index)) return false;
+			const found = itemBindingOf(index.text, frame);
+			if (found === undefined || found.kind === 'other') return false;
+			if (found.kind === 'loop') return true;
+			if (found.kind === 'value') return bounded(found.value, found.frame, hops + 1);
+			const sites = uses.calls.get(found.unit) ?? [];
+			return (
+				sites.length > 0 &&
+				uses.names.get(found.unit) === sites.length + 1 &&
+				sites.every((site) => {
+					const given = site.call.arguments[found.position];
+					return (
+						given !== undefined &&
+						!site.call.arguments.some(ts.isSpreadElement) &&
+						bounded(given, site.frame, hops + 1)
+					);
+				})
+			);
+		};
+		for (const read of uses.reads) {
+			this.itemParameters.add(read.parameter);
+			if (!bounded(read.index, read.frame, 0)) {
+				this.error(
+					read.where,
+					`the parameter '${read.parameter}' has an expression, and the compiler cannot prove that the item index of 'this.getNodeParameter' is the index of an input item`,
+				);
+			}
 		}
 	}
 
@@ -6375,6 +6426,7 @@ class Specialiser {
 		this.optimise();
 		this.trimArguments();
 		this.checkParameters();
+		this.checkItemParameters();
 		this.checkCredentials();
 		this.checkMints();
 		this.skipFailedOptionalUnits();
@@ -6413,6 +6465,7 @@ class Specialiser {
 			storesResponses: this.storesResponses,
 			retyped: this.retyped,
 			zones: [...this.zones].sort(),
+			itemParameters: [...this.itemParameters].sort(),
 		};
 	}
 
@@ -6667,6 +6720,7 @@ class Specialiser {
 		const globals = new Set([
 			'ctx',
 			'parameters',
+			ITEM_PARAMETERS,
 			'credential',
 			'__items',
 			'__request',
@@ -6746,7 +6800,7 @@ export default defineNode<Json>({
 	type: ${JSON.stringify(type)},
 	version: ${this.input.version},
 	async run(ctx, parameters0, items0, credential) {
-		const parameters: Json = parameters0 ?? {};
+		const parameters: Json = parameters0 ?? {};${this.itemParameters.size > 0 ? `\n\t\tconst ${ITEM_PARAMETERS}: Json = parameters.each;` : ''}
 		${lowered.items}
 ${t.body}
 	},
@@ -6760,6 +6814,229 @@ ${t.body}
 
 	private readonly zones = new Set<string>();
 	private randoms: RandomShape[] = [];
+}
+
+const ITEM_PARAMETERS = '__perItem';
+const MAX_INDEX_HOPS = 8;
+
+type ItemBinding =
+	| { kind: 'loop' }
+	| { kind: 'value'; value: ts.Expression; frame: ItemFrame }
+	| { kind: 'parameter'; position: number; unit: string }
+	| { kind: 'other' };
+
+interface ItemFrame {
+	names: Map<string, ItemBinding>;
+	outer: ItemFrame | undefined;
+}
+
+interface ItemParameterUses {
+	reads: Array<{ where: string; parameter: string; index: ts.Expression; frame: ItemFrame }>;
+	calls: Map<string, Array<{ call: ts.CallExpression; frame: ItemFrame }>>;
+	names: Map<string, number>;
+	loose: string[];
+}
+
+function itemBindingOf(name: string, frame: ItemFrame | undefined): ItemBinding | undefined {
+	for (let at = frame; at; at = at.outer) {
+		const found = at.names.get(name);
+		if (found) return found;
+	}
+	return undefined;
+}
+
+function isInputItems(e: ts.Expression, frame: ItemFrame, hops = 0): boolean {
+	if (hops > MAX_INDEX_HOPS) return false;
+	if (ts.isParenthesizedExpression(e) || ts.isAsExpression(e))
+		return isInputItems(e.expression, frame, hops);
+	if (!ts.isIdentifier(e)) return false;
+	const found = itemBindingOf(e.text, frame);
+	if (found === undefined) return e.text === '__items';
+	return found.kind === 'value' && isInputItems(found.value, found.frame, hops + 1);
+}
+
+function isInputCount(e: ts.Expression, frame: ItemFrame, hops = 0): boolean {
+	if (hops > MAX_INDEX_HOPS) return false;
+	if (ts.isParenthesizedExpression(e) || ts.isAsExpression(e))
+		return isInputCount(e.expression, frame, hops);
+	if (ts.isPropertyAccessExpression(e))
+		return e.name.text === 'length' && isInputItems(e.expression, frame);
+	if (!ts.isIdentifier(e)) return false;
+	const found = itemBindingOf(e.text, frame);
+	return found?.kind === 'value' && isInputCount(found.value, found.frame, hops + 1);
+}
+
+function stepsByOne(step: ts.Expression | undefined, name: string): boolean {
+	if (!step) return false;
+	if (ts.isPostfixUnaryExpression(step) || ts.isPrefixUnaryExpression(step))
+		return (
+			step.operator === ts.SyntaxKind.PlusPlusToken &&
+			ts.isIdentifier(step.operand) &&
+			step.operand.text === name
+		);
+	return (
+		ts.isBinaryExpression(step) &&
+		step.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken &&
+		ts.isIdentifier(step.left) &&
+		step.left.text === name &&
+		ts.isNumericLiteral(step.right) &&
+		step.right.text === '1'
+	);
+}
+
+function itemParameterUses(output: Array<{ name: string; node: ts.Node }>): ItemParameterUses {
+	const uses: ItemParameterUses = { reads: [], calls: new Map(), names: new Map(), loose: [] };
+	for (const { name: where, node: root } of output) {
+		const written = writtenNames(root);
+		const other = (frame: ItemFrame, name: ts.BindingName) => {
+			if (ts.isIdentifier(name)) frame.names.set(name.text, { kind: 'other' });
+			else for (const e of name.elements) if (!ts.isOmittedExpression(e)) other(frame, e.name);
+		};
+		const declare = (frame: ItemFrame, list: ts.VariableDeclarationList) => {
+			const fixed = (list.flags & ts.NodeFlags.Const) !== 0;
+			const scoped = fixed || (list.flags & ts.NodeFlags.Let) !== 0;
+			for (const d of list.declarations) {
+				if (
+					ts.isIdentifier(d.name) &&
+					d.initializer &&
+					scoped &&
+					(fixed || !written.has(d.name.text))
+				)
+					frame.names.set(d.name.text, { kind: 'value', value: d.initializer, frame });
+				else other(frame, d.name);
+			}
+		};
+		const declareAll = (frame: ItemFrame, statements: readonly ts.Statement[]) => {
+			for (const st of statements) {
+				if (ts.isVariableStatement(st)) declare(frame, st.declarationList);
+				if ((ts.isFunctionDeclaration(st) || ts.isClassDeclaration(st)) && st.name)
+					frame.names.set(st.name.text, { kind: 'other' });
+			}
+		};
+		const hoisted = (n: ts.Node, frame: ItemFrame) => {
+			if (ts.isFunctionLike(n)) return;
+			if (
+				ts.isVariableDeclarationList(n) &&
+				(n.flags & (ts.NodeFlags.Const | ts.NodeFlags.Let)) === 0
+			)
+				for (const d of n.declarations) other(frame, d.name);
+			ts.forEachChild(n, (child) => hoisted(child, frame));
+		};
+		const walk = (n: ts.Node, frame: ItemFrame) => {
+			if (
+				ts.isElementAccessExpression(n) &&
+				ts.isElementAccessExpression(n.expression) &&
+				ts.isIdentifier(n.expression.expression) &&
+				n.expression.expression.text === ITEM_PARAMETERS &&
+				ts.isStringLiteral(n.argumentExpression)
+			) {
+				uses.reads.push({
+					where,
+					parameter: n.argumentExpression.text,
+					index: n.expression.argumentExpression,
+					frame,
+				});
+				walk(n.expression.argumentExpression, frame);
+				return;
+			}
+			if (ts.isIdentifier(n)) {
+				if (n.text === ITEM_PARAMETERS) uses.loose.push(where);
+				uses.names.set(n.text, (uses.names.get(n.text) ?? 0) + 1);
+				return;
+			}
+			if (ts.isCallExpression(n) && ts.isIdentifier(n.expression)) {
+				const sites = uses.calls.get(n.expression.text) ?? [];
+				sites.push({ call: n, frame });
+				uses.calls.set(n.expression.text, sites);
+			}
+			if (ts.isFunctionLike(n)) {
+				const inner: ItemFrame = { names: new Map(), outer: frame };
+				n.parameters.forEach((parameter, position) => {
+					const plain =
+						n === root &&
+						ts.isFunctionDeclaration(n) &&
+						n.name !== undefined &&
+						ts.isIdentifier(parameter.name) &&
+						!parameter.initializer &&
+						!parameter.dotDotDotToken &&
+						!written.has(parameter.name.text);
+					if (plain && ts.isIdentifier(parameter.name) && n.name)
+						inner.names.set(parameter.name.text, {
+							kind: 'parameter',
+							position,
+							unit: n.name.text,
+						});
+					else other(inner, parameter.name);
+				});
+				const body = 'body' in n ? n.body : undefined;
+				if (body) hoisted(body, inner);
+				if (body && ts.isBlock(body)) declareAll(inner, body.statements);
+				ts.forEachChild(n, (child) => {
+					if (child === body && ts.isBlock(child))
+						child.statements.forEach((st) => walk(st, inner));
+					else walk(child, inner);
+				});
+				return;
+			}
+			if (ts.isBlock(n)) {
+				const inner: ItemFrame = { names: new Map(), outer: frame };
+				declareAll(inner, n.statements);
+				n.statements.forEach((st) => walk(st, inner));
+				return;
+			}
+			if (ts.isCaseBlock(n)) {
+				const inner: ItemFrame = { names: new Map(), outer: frame };
+				for (const clause of n.clauses) declareAll(inner, clause.statements);
+				ts.forEachChild(n, (child) => walk(child, inner));
+				return;
+			}
+			if (ts.isForStatement(n)) {
+				const inner: ItemFrame = { names: new Map(), outer: frame };
+				if (n.initializer && ts.isVariableDeclarationList(n.initializer)) {
+					declare(inner, n.initializer);
+					const [declared] = n.initializer.declarations;
+					const name = ts.isIdentifier(declared.name) ? declared.name.text : undefined;
+					const start = declared.initializer;
+					const test = n.condition;
+					if (
+						name !== undefined &&
+						n.initializer.declarations.length === 1 &&
+						(n.initializer.flags & ts.NodeFlags.Let) !== 0 &&
+						start &&
+						ts.isNumericLiteral(start) &&
+						start.text === '0' &&
+						test &&
+						ts.isBinaryExpression(test) &&
+						test.operatorToken.kind === ts.SyntaxKind.LessThanToken &&
+						ts.isIdentifier(test.left) &&
+						test.left.text === name &&
+						isInputCount(test.right, frame) &&
+						stepsByOne(n.incrementor, name) &&
+						!writtenNames(n.statement).has(name)
+					)
+						inner.names.set(name, { kind: 'loop' });
+				}
+				ts.forEachChild(n, (child) => walk(child, inner));
+				return;
+			}
+			if (ts.isForOfStatement(n) || ts.isForInStatement(n)) {
+				const inner: ItemFrame = { names: new Map(), outer: frame };
+				if (ts.isVariableDeclarationList(n.initializer))
+					for (const d of n.initializer.declarations) other(inner, d.name);
+				ts.forEachChild(n, (child) => walk(child, inner));
+				return;
+			}
+			if (ts.isCatchClause(n)) {
+				const inner: ItemFrame = { names: new Map(), outer: frame };
+				if (n.variableDeclaration) other(inner, n.variableDeclaration.name);
+				ts.forEachChild(n, (child) => walk(child, inner));
+				return;
+			}
+			ts.forEachChild(n, (child) => walk(child, frame));
+		};
+		walk(root, { names: new Map(), outer: undefined });
+	}
+	return uses;
 }
 
 function isMemberTarget(target: ts.Expression): boolean {
