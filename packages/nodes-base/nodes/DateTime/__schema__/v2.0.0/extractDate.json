@@ -1,0 +1,9 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"datePart": {
+			"type": "integer"
+		}
+	},
+	"type": "object"
+}

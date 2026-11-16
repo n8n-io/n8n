@@ -1,0 +1,14 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"timeDifference": {
+			"properties": {
+				"days": {
+					"type": ["integer", "number"]
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

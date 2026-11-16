@@ -15,7 +15,13 @@ function sourceDirsByName(pkg) {
 			.toLowerCase();
 		const source = nodePath.replace(/^dist\//, '').replace(/\.js$/, '.ts');
 		const folder = source.split('/').slice(0, -1).join('/');
-		if (name) byName.set(name, { dir: `${pkg.dir}/${folder}`, sourceFile: `${pkg.dir}/${source}` });
+		if (name) {
+			byName.set(name, {
+				dir: `${pkg.dir}/${folder}`,
+				sourceFile: `${pkg.dir}/${source}`,
+				pkgDir: pkg.dir,
+			});
+		}
 	}
 	return byName;
 }
@@ -30,16 +36,20 @@ function resolveNode(type, packages, lookups) {
 
 /**
  * @param {{ name: string, dir: string, nodes: string[] }[]} packages
- * @param {{ types: string[], noOperationTypes: string[] }} telemetry node types seen,
- *   and those seen without an operation
+ * @param {{ types: string[], noOperationTypes: string[], schemaPaths?: Map<string, string> }} telemetry
+ *   node types seen, those seen without an operation, and the `schemaPath` each node declares
  * @returns {Map<string, { dir: string, sourceFile: string, noOperationSiblings: string[] }>}
  */
-export function buildNodeIndex(packages, { types, noOperationTypes }) {
+export function buildNodeIndex(packages, { types, noOperationTypes, schemaPaths = new Map() }) {
 	const lookups = packages.map(sourceDirsByName);
 	const nodes = new Map();
 	for (const type of new Set([...types, ...noOperationTypes])) {
 		const node = resolveNode(type, packages, lookups);
-		if (node) nodes.set(type, node);
+		if (!node) continue;
+		// A declared schemaPath moves the node's schemas out of a shared folder.
+		const schemaPath = schemaPaths.get(type);
+		const { pkgDir, ...rest } = node;
+		nodes.set(type, schemaPath ? { ...rest, dir: `${pkgDir}/nodes/${schemaPath}` } : rest);
 	}
 
 	const index = new Map();

@@ -1,0 +1,159 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"AccountId": {
+			"type": "string"
+		},
+		"AgeInDays": {
+			"type": "integer"
+		},
+		"Amount": {
+			"type": ["integer", "number"]
+		},
+		"attributes": {
+			"properties": {
+				"type": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"CampaignId": {},
+		"CloseDate": {
+			"type": "string"
+		},
+		"ContactId": {
+			"type": "string"
+		},
+		"ContractId": {
+			"type": "string"
+		},
+		"CreatedById": {
+			"type": "string"
+		},
+		"CreatedDate": {
+			"type": "string"
+		},
+		"Description": {
+			"type": "string"
+		},
+		"ExpectedRevenue": {
+			"type": ["integer", "number"]
+		},
+		"Fiscal": {
+			"type": "string"
+		},
+		"FiscalQuarter": {
+			"type": "integer"
+		},
+		"FiscalYear": {
+			"type": "integer"
+		},
+		"ForecastCategory": {
+			"type": "string"
+		},
+		"ForecastCategoryName": {
+			"type": "string"
+		},
+		"HasOpenActivity": {
+			"type": "boolean"
+		},
+		"HasOpportunityLineItem": {
+			"type": "boolean"
+		},
+		"HasOverdueTask": {
+			"type": "boolean"
+		},
+		"Id": {
+			"type": "string"
+		},
+		"IsClosed": {
+			"type": "boolean"
+		},
+		"IsDeleted": {
+			"type": "boolean"
+		},
+		"IsPriorityRecord": {
+			"type": "boolean"
+		},
+		"IsPrivate": {
+			"type": "boolean"
+		},
+		"IsWon": {
+			"type": "boolean"
+		},
+		"LastActivityDate": {
+			"type": "string"
+		},
+		"LastActivityInDays": {
+			"type": "integer"
+		},
+		"LastAmountChangedHistoryId": {
+			"type": "string"
+		},
+		"LastCloseDateChangedHistoryId": {
+			"type": "string"
+		},
+		"LastModifiedById": {
+			"type": "string"
+		},
+		"LastModifiedDate": {
+			"type": "string"
+		},
+		"LastReferencedDate": {
+			"type": "string"
+		},
+		"LastStageChangeDate": {
+			"type": "string"
+		},
+		"LastStageChangeInDays": {
+			"type": "integer"
+		},
+		"LastViewedDate": {
+			"type": "string"
+		},
+		"LeadSource": {
+			"type": "string"
+		},
+		"Name": {
+			"type": "string"
+		},
+		"NextStep": {
+			"type": "string"
+		},
+		"OwnerId": {
+			"type": "string"
+		},
+		"Pricebook2Id": {
+			"type": "string"
+		},
+		"Probability": {
+			"type": "integer"
+		},
+		"PushCount": {
+			"type": "integer"
+		},
+		"RecordTypeId": {
+			"type": "string"
+		},
+		"StageName": {
+			"type": "string"
+		},
+		"SyncedQuoteId": {
+			"type": "string"
+		},
+		"SystemModstamp": {
+			"type": "string"
+		},
+		"TotalOpportunityQuantity": {
+			"type": "integer"
+		},
+		"Type": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

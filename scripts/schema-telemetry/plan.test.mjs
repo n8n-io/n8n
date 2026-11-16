@@ -83,7 +83,7 @@ describe('planSchemaFile', () => {
 		assert.equal(plan.file, 'nodes/Google/Gmail/__schema__/v2.2.0/message/get.json');
 	});
 
-	it('skips a variant of a parameter nested in a collection', () => {
+	it('writes a variant of a parameter nested in a collection', () => {
 		const plan = planSchemaFile(
 			group({
 				node_type: 'n8n-nodes-base.googleDrive',
@@ -97,7 +97,10 @@ describe('planSchemaFile', () => {
 			opts,
 		);
 
-		assert.match(plan.skip, /nested/);
+		assert.equal(
+			plan.file,
+			'nodes/Google/Drive/__schema__/v3.0.0/file/upload.options.simplifyOutput-false.json',
+		);
 	});
 
 	it('skips a simplify variant on a node without an operation', () => {

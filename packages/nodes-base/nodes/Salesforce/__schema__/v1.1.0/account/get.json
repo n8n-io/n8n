@@ -1,0 +1,235 @@
+{
+	"additionalProperties": true,
+	"properties": {
+		"AccountNumber": {},
+		"AccountSource": {
+			"type": "string"
+		},
+		"AnnualRevenue": {
+			"type": ["integer", "number"]
+		},
+		"attributes": {
+			"properties": {
+				"type": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"BillingAddress": {
+			"properties": {
+				"city": {
+					"type": "string"
+				},
+				"country": {
+					"type": "string"
+				},
+				"countryCode": {
+					"type": "string"
+				},
+				"geocodeAccuracy": {
+					"type": "string"
+				},
+				"latitude": {
+					"type": "number"
+				},
+				"longitude": {
+					"type": "number"
+				},
+				"postalCode": {
+					"type": "string"
+				},
+				"state": {
+					"type": "string"
+				},
+				"stateCode": {
+					"type": "string"
+				},
+				"street": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"BillingCity": {
+			"type": "string"
+		},
+		"BillingCountry": {
+			"type": "string"
+		},
+		"BillingCountryCode": {
+			"type": "string"
+		},
+		"BillingGeocodeAccuracy": {
+			"type": "string"
+		},
+		"BillingLatitude": {
+			"type": "number"
+		},
+		"BillingLongitude": {
+			"type": "number"
+		},
+		"BillingPostalCode": {
+			"type": "string"
+		},
+		"BillingState": {
+			"type": "string"
+		},
+		"BillingStateCode": {
+			"type": "string"
+		},
+		"BillingStreet": {
+			"type": "string"
+		},
+		"CreatedById": {
+			"type": "string"
+		},
+		"CreatedDate": {
+			"type": "string"
+		},
+		"CurrencyIsoCode": {
+			"type": "string"
+		},
+		"Description": {
+			"type": "string"
+		},
+		"Fax": {
+			"type": "string"
+		},
+		"Id": {
+			"type": "string"
+		},
+		"Industry": {
+			"type": "string"
+		},
+		"IsCustomerPortal": {
+			"type": "boolean"
+		},
+		"IsDeleted": {
+			"type": "boolean"
+		},
+		"Jigsaw": {},
+		"JigsawCompanyId": {},
+		"LastActivityDate": {
+			"type": "string"
+		},
+		"LastModifiedById": {
+			"type": "string"
+		},
+		"LastModifiedDate": {
+			"type": "string"
+		},
+		"LastReferencedDate": {
+			"type": "string"
+		},
+		"LastViewedDate": {
+			"type": "string"
+		},
+		"MasterRecordId": {},
+		"Name": {
+			"type": "string"
+		},
+		"NumberOfEmployees": {
+			"type": "integer"
+		},
+		"OwnerId": {
+			"type": "string"
+		},
+		"Ownership": {},
+		"ParentId": {
+			"type": "string"
+		},
+		"Phone": {
+			"type": "string"
+		},
+		"PhotoUrl": {
+			"type": "string"
+		},
+		"Rating": {},
+		"RecordTypeId": {
+			"type": "string"
+		},
+		"ShippingAddress": {
+			"properties": {
+				"city": {
+					"type": "string"
+				},
+				"country": {
+					"type": "string"
+				},
+				"countryCode": {
+					"type": "string"
+				},
+				"geocodeAccuracy": {
+					"type": "string"
+				},
+				"latitude": {
+					"type": "number"
+				},
+				"longitude": {
+					"type": "number"
+				},
+				"postalCode": {
+					"type": "string"
+				},
+				"state": {
+					"type": "string"
+				},
+				"stateCode": {
+					"type": "string"
+				},
+				"street": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"ShippingCity": {
+			"type": "string"
+		},
+		"ShippingCountry": {
+			"type": "string"
+		},
+		"ShippingGeocodeAccuracy": {
+			"type": "string"
+		},
+		"ShippingLatitude": {
+			"type": "number"
+		},
+		"ShippingLongitude": {
+			"type": "number"
+		},
+		"ShippingPostalCode": {
+			"type": "string"
+		},
+		"ShippingState": {
+			"type": "string"
+		},
+		"ShippingStreet": {
+			"type": "string"
+		},
+		"Sic": {
+			"type": "string"
+		},
+		"SicDesc": {},
+		"Site": {
+			"type": "string"
+		},
+		"SystemModstamp": {
+			"type": "string"
+		},
+		"TickerSymbol": {
+			"type": "string"
+		},
+		"Type": {
+			"type": "string"
+		},
+		"Website": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}
