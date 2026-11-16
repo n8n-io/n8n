@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.test.ts
+  s_d629cf4499d52d::t_715e2eb2fa0e95 23,354-377,490-500,732-733,735-736,739,748-754
+  s_d629cf4499d52d::t_85f9bf171d7f06 740-745
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.ts
+  s_d629cf4499d52d::t_4bd351ed2bdd0a 121,123-133,136,165-177,187,193,204-228,581
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_d629cf4499d52d::t_7b7b47bbb6332b 7871,8719-8720
+  s_d629cf4499d52d::t_fc5c1718357db8 475,791,815,6673,6701,6736,7862,7866,7868,7894,8704,8706,8713,8734,9849-9869
+  s_d629cf4499d52d::t_210f7d0dff21cd 6684-6689
+  s_e665c8e900c39a::t_626ccc9d8193fe 157-162,457-474,476,779-790,792-814,816,6647-6672,6674-6683,6690-6700,6702-6735,6737,7850-7861,7863-7865,7867,7869-7870,7872-7893,7895,8699-8703,8705,8707-8712,8714-8718,8721-8733,8735
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_d629cf4499d52d::t_9addcaf0372abb 112,1317,1323-1325,1623,1628,1630,1680-1692,1710-1712,1714,1716,1718-1729,1800,1971,1973,1986,2058,2068,2072-2074,3438-3439,3453,3949-3964
+  s_d629cf4499d52d::t_47bfc839bd6df1 3965-3966
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d78a0e0ecc93150385fe9aa22a3a71dde835d6e7",
+  "prompts": {},
+  "sessions": {
+    "s_d629cf4499d52d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b85d78d8-7770-46e5-bb4a-4b91ea0ac065",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    },
+    "s_e665c8e900c39a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94394284-28f4-4380-9cd7-c61db99d6dab",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

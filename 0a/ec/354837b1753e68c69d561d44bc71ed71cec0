@@ -1,0 +1,65 @@
+packages/@n8n/config/test/config.test.ts
+  s_6c7ae27dfe31b8::t_7e0111850b0dbd 68-71
+packages/workflow/src/interfaces.ts
+  s_6c7ae27dfe31b8::t_f102922df23aab 4709-4710
+packages/cli/src/services/frontend.service.ts
+  s_6c7ae27dfe31b8::t_f102922df23aab 17,152,275-276
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_6c7ae27dfe31b8::t_f63a525d75cd9c 22,61,214,255,702-714
+  s_6c7ae27dfe31b8::t_7c895c9bbaec9e 715-717
+packages/@n8n/config/src/configs/__tests__/locales.config.test.ts
+  s_6c7ae27dfe31b8::t_f8c98e514654c2 1-61
+packages/@n8n/api-types/src/dto/user/user-self-settings-update-request.dto.ts
+  s_6c7ae27dfe31b8::t_f102922df23aab 19-20
+packages/@n8n/config/src/configs/locales.config.ts
+  s_6c7ae27dfe31b8::t_913dedc756b804 1-12,15-44
+  s_6c7ae27dfe31b8::t_3015101e185334 13-14
+packages/cli/src/services/locale.service.ts
+  s_6c7ae27dfe31b8::t_8a1b1e4d77f76e 1-94
+packages/cli/src/modules/mcp/__tests__/mcp-preferences-note.service.test.ts
+  s_6c7ae27dfe31b8::t_3e9d1964dc0a0f 4,20
+packages/cli/src/controllers/__tests__/translation.controller.test.ts
+  s_6c7ae27dfe31b8::t_5fe0a205117089 7-8,41,45,69-84
+  s_6c7ae27dfe31b8::t_bed3e842bfd40b 85
+packages/cli/src/services/__tests__/user.service.test.ts
+  s_6c7ae27dfe31b8::t_b70724fa25e758 377-380
+  s_6c7ae27dfe31b8::t_e6f5ed81f051f6 40,80,101,350-376,381-401
+  s_6c7ae27dfe31b8::t_b95b4910d280d3 402
+packages/cli/src/services/user.service.ts
+  s_6c7ae27dfe31b8::t_d53d155f031e80 40,76-80,105,135-142,146-150,156-157,159-160,162
+  s_6c7ae27dfe31b8::t_b8f2719559ba43 158,161
+  s_6c7ae27dfe31b8::t_266acad3d9368c 163-164
+packages/cli/src/controllers/translation.controller.ts
+  s_6c7ae27dfe31b8::t_167e6e864eb205 10
+  s_6c7ae27dfe31b8::t_c1954fe4329ef1 9,17,25,65-72
+  s_6c7ae27dfe31b8::t_6a2e97e52fd4c6 73
+packages/cli/src/services/__tests__/locale.service.test.ts
+  s_6c7ae27dfe31b8::t_a53fbe288be8aa 1-13,15-119
+  s_6c7ae27dfe31b8::t_b70724fa25e758 14
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_6c7ae27dfe31b8::t_f102922df23aab 152-155
+packages/@n8n/config/src/index.ts
+  s_6c7ae27dfe31b8::t_7e0111850b0dbd 36,69-70,275-278,282-283
+  s_6c7ae27dfe31b8::t_3299f95d676e7a 284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0aec354837b1753e68c69d561d44bc71ed71cec0",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6c7ae27dfe31b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75cac949-6ada-416a-951d-cab98280c71f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

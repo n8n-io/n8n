@@ -1,0 +1,19 @@
+packages/cli/src/hooks-api/__tests__/public-http.service.test.ts
+  s_1b969b9b5a436a::t_f3cb5f433588f2 74,84,105-106,116-117,134-168,218,322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ad40da0de8805f13890f0f062a7c69e2a51e7dd",
+  "prompts": {},
+  "sessions": {
+    "s_1b969b9b5a436a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df204a89-3442-4ad4-b0c3-7f28e87f473f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
