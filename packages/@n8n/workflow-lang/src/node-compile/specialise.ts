@@ -94,6 +94,7 @@ export interface CredentialMint {
 }
 
 const MINT_GOOGLE = '__MINT_GOOGLE';
+const LATER_AUTHENTICATE = '__AUTHENTICATE';
 const GOOGLE_TOKEN_FUNCTION = 'getGoogleAccessToken';
 const GOOGLE_TOKEN_FILE = '/nodes/Google/GenericFunctions.ts';
 const MAX_MINTS = 16;
@@ -119,12 +120,16 @@ const REQUEST_SOURCE = `async function __request(options, wrapped, legacy) {
 		inject: wrapped,
 		credential,
 	});
-	if (response.status >= 400) {
+	const lenient = legacy ? options.simple === false : options.ignoreHttpStatusErrors;
+	if (response.status >= 400 && !lenient) {
 		const failure = new Error('Request failed with status code ' + response.status);
 		throw wrapped ? __apiError(failure, undefined) : failure;
 	}
-	return response.body;
+	const full = legacy ? options.resolveWithFullResponse : options.returnFullResponse;
+	return full ? { body: response.body, headers: response.headers, statusCode: response.status } : response.body;
 }`;
+const FULL_RESPONSE_OPTIONS = new Set(['resolveWithFullResponse', 'returnFullResponse']);
+const FULL_RESPONSE_GAPS = new Set(['statusMessage', 'request']);
 
 const MAX_TIMER_MS = 2147483647;
 const RANDOM_STEPS = 9007199254740992;
@@ -184,6 +189,7 @@ function contextHelper(
 		return count === 1 ? '__sleep' : undefined;
 	if (imported.from === 'n8n-workflow' && imported.name === 'randomInt')
 		return count === 1 || count === 2 ? '__randomIntOf' : undefined;
+	if (imported.from === 'uuid' && imported.name === 'v4' && count === 0) return '__randomUUID';
 	if (!CRYPTO_PACKAGES.has(imported.from)) return undefined;
 	if (imported.name === 'randomUUID' && count === 0) return '__randomUUID';
 	if (imported.name === 'randomInt' && (count === 1 || count === 2)) return '__randomInt';
@@ -542,17 +548,35 @@ const HELPERS: Record<string, string> = {
 	if (value === null || value === undefined || typeof value !== 'object') return false;
 	return names.includes(value.name);
 }`,
+	__isError: `function __isError(value: any): boolean {
+	return value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value) && typeof value.message === 'string';
+}`,
+	__uuidValid: `function __uuidValid(value: any): boolean {
+	if (typeof value !== 'string' || value.length !== 36) return false;
+	for (let k = 0; k < 36; k++) {
+		const c: string = value.charAt(k);
+		if (k === 8 || k === 13 || k === 18 || k === 23) {
+			if (c !== '-') return false;
+		} else if (!'0123456789abcdefABCDEF'.includes(c)) return false;
+	}
+	if ('12345678'.includes(value.charAt(14)) && '89abAB'.includes(value.charAt(19))) return true;
+	const lower: string = value.toLowerCase();
+	return lower === '00000000-0000-0000-0000-000000000000' || lower === 'ffffffff-ffff-ffff-ffff-ffffffffffff';
+}`,
 	__isEmpty: `function __isEmpty(value: any): boolean {
 	if (value === null || value === undefined) return true;
 	if (typeof value === 'string' || Array.isArray(value)) return value.length === 0;
 	if (typeof value === 'object') return Object.keys(value).length === 0;
 	return true;
 }`,
-	__jsonParse: `function __jsonParse(text: any, options: any): any {
+	__jsonParse: `function __jsonParse(text: any, options?: any): any {
 	try {
 		return JSON.parse(text);
 	} catch (error) {
-		if (options !== null && options !== undefined && options.fallbackValue !== undefined) return options.fallbackValue;
+		if (options === null || options === undefined) throw error;
+		if (options.acceptJSObject || options.repairJSON) throw new Error('jsonParse with a repair of the text has no compiled form');
+		if (options.fallbackValue !== undefined) return options.fallbackValue;
+		if (options.errorMessage) throw __error(options.errorMessage, 'UserError', undefined);
 		throw error;
 	}
 }`,
@@ -571,6 +595,53 @@ const HELPERS: Record<string, string> = {
 }`,
 	__assertParam: `function __assertParam(name: any, value: any, type: string): void {
 	if (typeof value !== type) throw __error('Parameter "' + name + '" is not ' + type, 'NodeOperationError', undefined);
+}`,
+	__assertParamTypes: `function __assertParamTypes(name: any, value: any, types: any): void {
+	for (const type of types) {
+		if (typeof value === type) return;
+	}
+	throw __error('Parameter "' + name + '" must be ' + types.join(' or '), 'NodeOperationError', undefined);
+}`,
+	__paramFits: `function __paramFits(value: any, type: any): boolean {
+	if (typeof type !== 'string') throw new Error('a parameter type that is not text has no compiled form');
+	const isObject: boolean = typeof value === 'object' && value !== null;
+	if (type === 'resource-locator') {
+		if (!isObject) return false;
+		if (!Array.isArray(value)) {
+			const keys: any = Object.keys(value);
+			return keys.includes('__rl') && keys.includes('mode') && keys.includes('value');
+		}
+		return false;
+	}
+	if (type === 'object') return isObject;
+	if (type.endsWith('[]')) {
+		if (!Array.isArray(value)) return false;
+		const base: string = type.slice(0, -2);
+		const element: string = base === 'string' || base === 'number' || base === 'boolean' ? base : 'string';
+		for (const member of value) {
+			if (typeof member !== element) return false;
+		}
+		return true;
+	}
+	return typeof value === type;
+}`,
+	__validateParams: `function __validateParams(value: any, parameters: any): void {
+	if (typeof value !== 'object' || value === null) throw __error('Value is not a valid object', 'NodeOperationError', undefined);
+	for (const key of Object.keys(parameters)) {
+		const param: any = parameters[key];
+		const paramValue: any = value[key];
+		if (param.required !== undefined && param.required !== null && typeof param.required !== 'boolean') throw new Error('a required mark that is not a boolean has no compiled form');
+		const required: boolean = param.required === true;
+		if (required && paramValue === undefined) throw __error('Required parameter "' + key + '" is missing', 'NodeOperationError', undefined);
+		if (required || paramValue !== undefined) {
+			const types: any = Array.isArray(param.type) ? param.type : [param.type];
+			let valid: boolean = false;
+			for (const type of types) {
+				if (!valid && __paramFits(paramValue, type)) valid = true;
+			}
+			if (!valid) throw __error('Parameter "' + key + '" does not match any of the expected types: ' + types.join(' or '), 'NodeOperationError', undefined);
+		}
+	}
 }`,
 	__toNumber: `function __toNumber(value: any): number {
 	if (value !== null && typeof value === 'object') throw new Error('a number from an object or an array has no compiled form');
@@ -938,6 +1009,7 @@ const GENERIC_ERRORS = new Set([
 
 const PACKAGE_HELPERS: Record<string, Record<string, string>> = {
 	lodash: { isEmpty: '__isEmpty', get: '__get', set: '__set', omit: '__omitKeys' },
+	uuid: { validate: '__uuidValid' },
 	'n8n-workflow': {
 		jsonParse: '__jsonParse',
 		deepCopy: '__deepCopy',
@@ -977,6 +1049,9 @@ const HELPER_USES: Record<string, string[]> = {
 	__urlParam: ['__urlDecode'],
 	__urlForm: ['__urlFormText'],
 	__assertParam: ['__error'],
+	__assertParamTypes: ['__error'],
+	__validateParams: ['__error', '__paramFits'],
+	__jsonParse: ['__error'],
 	__toNumber: ['__error'],
 	__missing: ['__error'],
 	__binaryOf: ['__error'],
@@ -1433,6 +1508,7 @@ interface Unit {
 	self?: string;
 	credentialType?: string;
 	isStatic?: boolean;
+	optional?: boolean;
 }
 
 type FieldShape = { cls: string } | { table: Map<string, string> };
@@ -1490,7 +1566,7 @@ class Specialiser {
 		return call(name, ...args);
 	}
 
-	private authenticateUnit(type: string): string | undefined {
+	private authenticateUnit(type: string, optional = false): string | undefined {
 		const path = this.input.credentialEntry?.(type);
 		const file = path === undefined ? undefined : this.load(path);
 		if (!file) return undefined;
@@ -1504,8 +1580,17 @@ class Specialiser {
 		});
 		if (!method || !/^[A-Za-z0-9_]+$/.test(type)) return undefined;
 		const name = `authenticate_${type}`;
-		if (!this.units.has(name)) {
-			const unit: Unit = { name, node: method, file, withContext: false, credentialType: type };
+		const known = this.units.get(name);
+		if (known && !optional) known.optional = false;
+		if (!known) {
+			const unit: Unit = {
+				name,
+				node: method,
+				file,
+				withContext: false,
+				credentialType: type,
+				optional,
+			};
 			this.units.set(name, unit);
 			this.queue.push(unit);
 		}
@@ -1990,9 +2075,22 @@ class Specialiser {
 						node.arguments.length >= 3
 							? this.authenticateUnit(typeArgument.text)
 							: undefined;
+					const later =
+						wrapped &&
+						typeArgument &&
+						!ts.isStringLiteral(typeArgument) &&
+						node.arguments.length >= 3
+							? call(
+									LATER_AUTHENTICATE,
+									ts.visitNode(typeArgument, visit) as ts.Expression,
+									options,
+								)
+							: undefined;
 					return this.helper(
 						'__request',
-						authenticate ? f.createAwaitExpression(call(authenticate, options)) : options,
+						authenticate
+							? f.createAwaitExpression(call(authenticate, options))
+							: (later ?? options),
 						wrapped ? f.createTrue() : f.createFalse(),
 						legacy ? f.createTrue() : f.createFalse(),
 					);
@@ -2205,6 +2303,22 @@ class Specialiser {
 						f.createStringLiteral(PARAMETER_ASSERTIONS[imported.name]),
 					);
 				}
+				if (
+					imported?.from === 'n8n-workflow' &&
+					imported.name === 'assertParamIsOfAnyTypes' &&
+					node.arguments.length === 4
+				) {
+					const [name, value, types] = args(node);
+					return this.helper('__assertParamTypes', name, value, types);
+				}
+				if (
+					imported?.from === 'n8n-workflow' &&
+					imported.name === 'validateNodeParameters' &&
+					node.arguments.length === 3
+				) {
+					const [value, parameters] = args(node);
+					return this.helper('__validateParams', value, parameters);
+				}
 				if (helper === '__get') {
 					const path = node.arguments[1];
 					const text = path && ts.isStringLiteral(path) ? path.text : '';
@@ -2252,6 +2366,23 @@ class Specialiser {
 					ts.visitNode(node.left, visit) as ts.Expression,
 					expressionOf(ERROR_CLASSES[node.right.text]),
 				);
+			}
+			if (
+				ts.isBinaryExpression(node) &&
+				node.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword &&
+				ts.isIdentifier(node.right) &&
+				!localNames.has(node.right.text) &&
+				!unit.file.imports.has(node.right.text) &&
+				!this.member(unit.file, node.right.text)
+			) {
+				if (node.right.text === 'Array')
+					return f.createCallExpression(
+						f.createPropertyAccessExpression(f.createIdentifier('Array'), 'isArray'),
+						undefined,
+						[ts.visitNode(node.left, visit) as ts.Expression],
+					);
+				if (node.right.text === 'Error' && ts.isIdentifier(node.left) && isCaught(node.left))
+					return this.helper('__isError', node.left);
 			}
 			if (ts.isNewExpression(node) && ts.isIdentifier(node.expression)) {
 				const cls = node.expression.text;
@@ -2367,6 +2498,30 @@ class Specialiser {
 			if (isExecute && depth === 0 && ts.isReturnStatement(node) && node.expression) {
 				return f.createReturnStatement(
 					this.helper('__out', each(node).expression as ts.Expression),
+				);
+			}
+			const named = ts.isIdentifier(node) ? unit.file.imports.get(node.text) : undefined;
+			if (
+				ts.isIdentifier(node) &&
+				isValueUse(node) &&
+				named?.from === 'change-case' &&
+				Object.hasOwn(CHANGE_CASE, named.name) &&
+				!localNames.has(node.text) &&
+				!(ts.isCallExpression(node.parent) && node.parent.expression === node)
+			) {
+				const [style, delimiter] = CHANGE_CASE[named.name];
+				return f.createArrowFunction(
+					undefined,
+					undefined,
+					[f.createParameterDeclaration(undefined, undefined, 'text')],
+					undefined,
+					undefined,
+					this.helper(
+						'__changeCase',
+						f.createIdentifier('text'),
+						f.createStringLiteral(style),
+						f.createStringLiteral(delimiter),
+					),
 				);
 			}
 			if (
@@ -2763,6 +2918,76 @@ class Specialiser {
 		return call('__CREDFIELD', f.createStringLiteral(`n8nMinted.${name}.access_token`));
 	}
 
+	private skipFailedOptionalUnits() {
+		for (const unit of this.units.values()) {
+			const prefix = `${unit.name}: `;
+			if (!unit.optional || !this.errors.some((text) => text.startsWith(prefix))) continue;
+			for (let at = this.errors.length - 1; at >= 0; at--) {
+				if (this.errors[at].startsWith(prefix)) this.errors.splice(at, 1);
+			}
+			const entry = this.output.find((o) => o.name === unit.name);
+			if (!entry) continue;
+			entry.node = f.createFunctionDeclaration(
+				[f.createModifier(ts.SyntaxKind.AsyncKeyword)],
+				undefined,
+				unit.name,
+				undefined,
+				[f.createParameterDeclaration(undefined, undefined, 'options')],
+				undefined,
+				f.createBlock([f.createReturnStatement(f.createIdentifier('options'))], true),
+			);
+		}
+	}
+
+	private checkResponses() {
+		const asks = (n: ts.Node): boolean =>
+			((ts.isIdentifier(n) || ts.isStringLiteral(n)) && FULL_RESPONSE_OPTIONS.has(n.text)) ||
+			(ts.forEachChild(n, asks) ?? false);
+		const keyOf = (n: ts.Node): ts.Node | undefined => {
+			if (ts.isPropertyAccessExpression(n)) return n.name;
+			if (ts.isElementAccessExpression(n))
+				return ts.isStringLiteral(n.argumentExpression) ? n.argumentExpression : undefined;
+			if (ts.isBindingElement(n)) return n.propertyName ?? n.name;
+			return undefined;
+		};
+		const reads = (n: ts.Node): boolean => {
+			const key = keyOf(n);
+			const gap =
+				key !== undefined &&
+				(ts.isIdentifier(key) || ts.isStringLiteral(key)) &&
+				FULL_RESPONSE_GAPS.has(key.text);
+			return gap || (ts.forEachChild(n, reads) ?? false);
+		};
+		if (!this.output.some(({ node }) => asks(node))) return;
+		for (const { name, node } of this.output) {
+			if (reads(node)) {
+				this.error(
+					name,
+					'the code asks for a full response and reads `statusMessage` or `request`: a full response has only its body, its headers and its status code',
+				);
+			}
+		}
+	}
+
+	private checkThrows() {
+		const tests = (n: ts.Node): boolean =>
+			(ts.isIdentifier(n) && n.text === '__isError') || (ts.forEachChild(n, tests) ?? false);
+		if (!this.output.some(({ node }) => tests(node))) return;
+		const flows = new Map<string, ErrorFlow>();
+		for (const { name, node } of this.output) flows.set(name, errorFlowOf(node));
+		for (const [name, flow] of flows) {
+			const loose = flow.throws.some(
+				(site) => !makesError(site.value, site.caught, flow, (unit) => flows.get(unit), 0),
+			);
+			if (loose) {
+				this.error(
+					name,
+					'the code tests a caught value with `instanceof Error`, and it throws a value that is not known to be an error',
+				);
+			}
+		}
+	}
+
 	private checkMints() {
 		for (const { name, node } of this.output) {
 			const walk = (n: ts.Node) => {
@@ -3070,6 +3295,11 @@ class Specialiser {
 
 	private propagate(root: ts.Node, where: string): ts.Node {
 		const counts = bindingsOf(root);
+		let written: Set<string> | undefined;
+		const isWrittenName = (name: string) => {
+			written ??= writtenNames(root);
+			return written.has(name);
+		};
 		const uses = new Map<string, number>();
 		const count = (n: ts.Node) => {
 			if (ts.isIdentifier(n) && isValueUse(n)) uses.set(n.text, (uses.get(n.text) ?? 0) + 1);
@@ -3132,7 +3362,7 @@ class Specialiser {
 					n.initializer.text.startsWith(CREDENTIAL_PREFIX)
 				) {
 					credentials.set(n.name.text, n.initializer.text.slice(CREDENTIAL_PREFIX.length));
-				} else if (isConst && lit) {
+				} else if (lit && (isConst || !isWrittenName(n.name.text))) {
 					constants.set(n.name.text, lit.value);
 				} else if (
 					isConst &&
@@ -3206,6 +3436,13 @@ class Specialiser {
 			ts.forEachChild(n, readsOnly);
 		};
 		readsOnly(root);
+		const readsMarkerField = (n: ts.Node): boolean =>
+			(ts.isPropertyAccessExpression(n) &&
+				isCredentialMarker(
+					ts.isParenthesizedExpression(n.expression) ? n.expression.expression : n.expression,
+				) &&
+				!(ts.isCallExpression(n.parent) && n.parent.expression === n)) ||
+			(ts.forEachChild(n, readsMarkerField) ?? false);
 		if (
 			constants.size +
 				credentials.size +
@@ -3213,7 +3450,8 @@ class Specialiser {
 				objects.size +
 				fieldTexts.size +
 				dead.size ===
-			0
+				0 &&
+			!readsMarkerField(root)
 		)
 			return root;
 		this.changed = true;
@@ -3835,6 +4073,32 @@ class Specialiser {
 					);
 				}
 			}
+			if (
+				ts.isCallExpression(n) &&
+				n.arguments.length === 1 &&
+				ts.isPropertyAccessExpression(n.expression) &&
+				ts.isIdentifier(n.expression.expression) &&
+				n.expression.expression.text === 'Array' &&
+				n.expression.name.text === 'isArray' &&
+				literalOf(n.arguments[0])
+			)
+				return done(f.createFalse());
+			if (
+				ts.isCallExpression(n) &&
+				ts.isIdentifier(n.expression) &&
+				n.expression.text === LATER_AUTHENTICATE &&
+				n.arguments.length === 2 &&
+				ts.isStringLiteral(n.arguments[0])
+			) {
+				const authenticate = this.authenticateUnit(n.arguments[0].text, true);
+				const options = ts.visitNode(n.arguments[1], visit) as ts.Expression;
+				return done(authenticate ? f.createAwaitExpression(call(authenticate, options)) : options);
+			}
+			if (ts.isTypeOfExpression(n)) {
+				const operand = literalOf(n.expression);
+				if (operand)
+					return done(expressionOf(operand.value === null ? 'object' : typeof operand.value));
+			}
 			if (ts.isPrefixUnaryExpression(n) && n.operator === ts.SyntaxKind.ExclamationToken) {
 				if (isWholeCredential(n.operand)) return done(f.createFalse());
 				const operand = literalOf(n.operand);
@@ -3921,12 +4185,17 @@ class Specialiser {
 							(c) => ts.isCaseClause(c) && literalOf(c.expression)?.value === on.value,
 						) ?? clauses.find((c) => ts.isDefaultClause(c));
 					if (!hit) return done(f.createEmptyStatement());
-					const body = [...hit.statements];
-					const last = body[body.length - 1];
-					const closed = last && (ts.isBreakStatement(last) || ends(last));
-					const inner = body.some((s) => s !== last && containsBreak(s));
-					if (closed && !inner) {
-						if (ts.isBreakStatement(last)) body.pop();
+					const body: ts.Statement[] = [];
+					const closes = (st: ts.Statement | undefined) =>
+						st !== undefined && (ts.isBreakStatement(st) || ends(st));
+					for (let at = clauses.indexOf(hit); at < clauses.length && !closes(body.at(-1)); at++)
+						body.push(...clauses[at].statements);
+					const last = body.at(-1);
+					const inner = body.some(
+						(s) => !(s === last && ts.isBreakStatement(s)) && containsBreak(s),
+					);
+					if (!inner) {
+						if (last && ts.isBreakStatement(last)) body.pop();
 						return done(f.createBlock(body, true));
 					}
 				}
@@ -5708,6 +5977,9 @@ class Specialiser {
 		this.checkParameters();
 		this.checkCredentials();
 		this.checkMints();
+		this.skipFailedOptionalUnits();
+		this.checkThrows();
+		this.checkResponses();
 		const linked = this.output.map((o) => o.name);
 		if (this.errors.length > 0) return { errors: this.errors, notes: this.notes, linked };
 		const source = this.print();
@@ -5989,6 +6261,183 @@ ${t.body}
 	private randoms: RandomShape[] = [];
 }
 
+function isMemberTarget(target: ts.Expression): boolean {
+	if (
+		ts.isParenthesizedExpression(target) ||
+		ts.isAsExpression(target) ||
+		ts.isNonNullExpression(target)
+	)
+		return isMemberTarget(target.expression);
+	return ts.isPropertyAccessExpression(target) || ts.isElementAccessExpression(target);
+}
+
+function writtenNames(root: ts.Node): Set<string> {
+	const names = new Set<string>();
+	const all = (n: ts.Node) => {
+		if (ts.isIdentifier(n)) names.add(n.text);
+		ts.forEachChild(n, all);
+	};
+	const walk = (n: ts.Node) => {
+		if (
+			ts.isBinaryExpression(n) &&
+			n.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+			n.operatorToken.kind <= ts.SyntaxKind.LastAssignment
+		) {
+			if (!isMemberTarget(n.left)) all(n.left);
+		}
+		if (
+			(ts.isPrefixUnaryExpression(n) || ts.isPostfixUnaryExpression(n)) &&
+			!isMemberTarget(n.operand)
+		)
+			all(n.operand);
+		if ((ts.isForInStatement(n) || ts.isForOfStatement(n)) && ts.isExpression(n.initializer))
+			all(n.initializer);
+		ts.forEachChild(n, walk);
+	};
+	walk(root);
+	return names;
+}
+
+function keepsCaught(clause: ts.CatchClause, name: string): boolean {
+	return !bindingsOf(clause.block).has(name) && !writtenNames(clause.block).has(name);
+}
+
+function isCaught(read: ts.Identifier): boolean {
+	for (let p: ts.Node | undefined = read.parent; p; p = p.parent) {
+		const declared = ts.isCatchClause(p) ? p.variableDeclaration?.name : undefined;
+		if (ts.isCatchClause(p) && declared && ts.isIdentifier(declared) && declared.text === read.text)
+			return keepsCaught(p, read.text);
+	}
+	return false;
+}
+
+const ERROR_MAKERS = new Set(['__error', '__apiError']);
+const NATIVE_ERRORS = new Set(['Error', 'TypeError', 'RangeError']);
+const MAX_ERROR_HOPS = 6;
+
+interface ValueSite {
+	value: ts.Expression | undefined;
+	caught: string[];
+}
+
+interface ErrorFlow {
+	throws: ValueSite[];
+	returns: ValueSite[];
+	writes: Map<string, ValueSite[] | undefined>;
+	closed: boolean;
+	isAsync: boolean;
+}
+
+function errorFlowOf(root: ts.Node): ErrorFlow {
+	const flow: ErrorFlow = {
+		throws: [],
+		returns: [],
+		writes: new Map(),
+		closed: false,
+		isAsync: false,
+	};
+	const unknown = (n: ts.Node) => {
+		if (ts.isIdentifier(n)) flow.writes.set(n.text, undefined);
+		ts.forEachChild(n, unknown);
+	};
+	const write = (name: string, site: ValueSite) => {
+		if (!flow.writes.has(name)) flow.writes.set(name, []);
+		flow.writes.get(name)?.push(site);
+	};
+	const walk = (n: ts.Node, caught: string[], nested: boolean) => {
+		if (ts.isThrowStatement(n)) flow.throws.push({ value: n.expression, caught });
+		if (ts.isReturnStatement(n) && !nested) flow.returns.push({ value: n.expression, caught });
+		if (ts.isParameter(n)) unknown(n.name);
+		if (ts.isForInStatement(n) || ts.isForOfStatement(n)) unknown(n.initializer);
+		if (
+			(ts.isPrefixUnaryExpression(n) || ts.isPostfixUnaryExpression(n)) &&
+			!isMemberTarget(n.operand)
+		)
+			unknown(n.operand);
+		if (ts.isVariableDeclaration(n) && !ts.isCatchClause(n.parent)) {
+			if (ts.isIdentifier(n.name)) write(n.name.text, { value: n.initializer, caught });
+			else unknown(n.name);
+		}
+		if (
+			ts.isBinaryExpression(n) &&
+			n.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+			n.operatorToken.kind <= ts.SyntaxKind.LastAssignment
+		) {
+			if (ts.isIdentifier(n.left) && n.operatorToken.kind === ts.SyntaxKind.EqualsToken)
+				write(n.left.text, { value: n.right, caught });
+			else if (!isMemberTarget(n.left)) unknown(n.left);
+		}
+		const declared = ts.isCatchClause(n) ? n.variableDeclaration?.name : undefined;
+		const kept =
+			ts.isCatchClause(n) && declared && ts.isIdentifier(declared) && keepsCaught(n, declared.text);
+		if (declared && !kept) unknown(declared);
+		const inner = kept && ts.isIdentifier(declared) ? [...caught, declared.text] : caught;
+		const deeper = nested || (n !== root && ts.isFunctionLike(n));
+		ts.forEachChild(n, (child) => {
+			if (child !== declared?.parent) walk(child, inner, deeper);
+		});
+	};
+	walk(root, [], false);
+	if (ts.isFunctionLike(root)) {
+		const body = 'body' in root ? root.body : undefined;
+		const last = body && ts.isBlock(body) ? body.statements.at(-1) : undefined;
+		flow.closed = last !== undefined && (ts.isReturnStatement(last) || ts.isThrowStatement(last));
+		flow.isAsync =
+			ts.canHaveModifiers(root) &&
+			(ts.getModifiers(root) ?? []).some((m) => m.kind === ts.SyntaxKind.AsyncKeyword);
+	}
+	return flow;
+}
+
+function makesError(
+	thrown: ts.Expression | undefined,
+	caught: string[],
+	flow: ErrorFlow,
+	flowOfUnit: (name: string) => ErrorFlow | undefined,
+	hops: number,
+	orNothing = false,
+): boolean {
+	if (thrown === undefined) return orNothing;
+	if (hops > MAX_ERROR_HOPS) return false;
+	const again = (e: ts.Expression | undefined, at = caught, nothing = orNothing) =>
+		makesError(e, at, flow, flowOfUnit, hops + 1, nothing);
+	if (ts.isParenthesizedExpression(thrown) || ts.isAsExpression(thrown))
+		return again(thrown.expression);
+	if (thrown.kind === ts.SyntaxKind.NullKeyword) return orNothing;
+	if (ts.isIdentifier(thrown)) {
+		if (thrown.text === 'undefined') return orNothing;
+		if (caught.includes(thrown.text)) return true;
+		const sites = flow.writes.get(thrown.text);
+		return (
+			sites !== undefined &&
+			sites.length > 0 &&
+			sites.every((site) => again(site.value, site.caught))
+		);
+	}
+	if (ts.isConditionalExpression(thrown)) return again(thrown.whenTrue) && again(thrown.whenFalse);
+	if (
+		ts.isBinaryExpression(thrown) &&
+		(thrown.operatorToken.kind === ts.SyntaxKind.BarBarToken ||
+			thrown.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken)
+	)
+		return again(thrown.left, caught, true) && again(thrown.right);
+	if (ts.isNewExpression(thrown))
+		return ts.isIdentifier(thrown.expression) && NATIVE_ERRORS.has(thrown.expression.text);
+	const awaited = ts.isAwaitExpression(thrown);
+	const made = awaited ? thrown.expression : thrown;
+	if (!ts.isCallExpression(made) || !ts.isIdentifier(made.expression)) return false;
+	if (ERROR_MAKERS.has(made.expression.text)) return true;
+	const callee = flowOfUnit(made.expression.text);
+	return (
+		callee !== undefined &&
+		callee.closed &&
+		callee.isAsync === awaited &&
+		callee.returns.every((site) =>
+			makesError(site.value, site.caught, callee, flowOfUnit, hops + 1),
+		)
+	);
+}
+
 function bindingsOf(root: ts.Node): Map<string, number> {
 	const counts = new Map<string, number>();
 	const add = (name: ts.BindingName) => {
@@ -6217,6 +6666,13 @@ function containsBreak(n: ts.Node): boolean {
 function finish(root: ts.Node): ts.Node {
 	const visit = (n: ts.Node): ts.Node => {
 		const out = ts.visitEachChild(n, visit, undefined);
+		if (
+			ts.isCallExpression(out) &&
+			ts.isIdentifier(out.expression) &&
+			out.expression.text === LATER_AUTHENTICATE &&
+			out.arguments.length === 2
+		)
+			return out.arguments[1];
 		if (
 			ts.isCallExpression(out) &&
 			ts.isIdentifier(out.expression) &&
