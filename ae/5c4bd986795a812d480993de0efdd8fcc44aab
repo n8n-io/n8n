@@ -1,60 +1,56 @@
-packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
-  s_f47d4602e7ba0b::t_e7615d60c5f7c3 31
-packages/@n8n/db/src/migrations/common/1794826383663-AddAgentFolderPlacement.ts
-  s_f47d4602e7ba0b::t_005079e9c4b692 5
-packages/cli/test/integration/environments/source-control-export.service.test.ts
-  s_f47d4602e7ba0b::t_aee789895a6dae 107
-packages/cli/src/modules/source-control.ee/__tests__/source-control-scoped.service.test.ts
-  s_f47d4602e7ba0b::t_1e3ec111622f63 82,84-92
-packages/cli/src/workflows/workflow-creation.service.ts
-  s_f47d4602e7ba0b::t_13fa5ed97f2804 444,447
-packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
-  s_f47d4602e7ba0b::t_13fa5ed97f2804 1326-1330
 packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
   s_f47d4602e7ba0b::t_13fa5ed97f2804 3846
-packages/cli/test/migration/1794826383663-add-agent-folder-placement.test.ts
-  s_f47d4602e7ba0b::t_e7615d60c5f7c3 12
-packages/@n8n/db/src/repositories/folder.repository.ts
-  s_f47d4602e7ba0b::t_13fa5ed97f2804 416,423
 packages/cli/test/integration/database/repositories/folder.repository.test.ts
   s_f47d4602e7ba0b::t_13fa5ed97f2804 18-40
-packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
-  s_f47d4602e7ba0b::t_13fa5ed97f2804 280
+packages/cli/test/migration/1794826383663-add-agent-folder-placement.test.ts
+  s_f47d4602e7ba0b::t_e7615d60c5f7c3 12
 docs/generated/sqlite-schema/agents.md
   ai_agent 9,45-46
-packages/@n8n/db/src/repositories/folder-access.repository.ts
-  s_f47d4602e7ba0b::t_13fa5ed97f2804 108
-packages/cli/src/services/__tests__/folder.service.test.ts
-  s_f47d4602e7ba0b::t_aee789895a6dae 8,39,44-54
-packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
-  s_f47d4602e7ba0b::t_9ad7519b807a92 145
-packages/@n8n/db/src/repositories/__tests__/access-repositories.test.ts
-  s_f47d4602e7ba0b::t_13fa5ed97f2804 458-460
-packages/@n8n/db/src/migrations/sqlite/1794826383663-AddAgentFolderPlacement.ts
-  s_f47d4602e7ba0b::t_e7615d60c5f7c3 1,3
-docs/generated/sqlite-schema/README.md
-  ai_agent 248
-packages/cli/src/modules/n8n-packages/entities/folder/folder.serializer.ts
-  s_f47d4602e7ba0b::t_e7615d60c5f7c3 12
-packages/@n8n/backend-services/src/services/folder-finder.service.ts
-  s_f47d4602e7ba0b::t_13fa5ed97f2804 154
-packages/cli/src/services/__tests__/folder-operations.test.ts
-  s_f47d4602e7ba0b::t_13fa5ed97f2804 115-128,133
-packages/cli/src/services/workflow-folder.service.ts
-  s_f47d4602e7ba0b::t_aee789895a6dae 3,44-45,49
-  s_f47d4602e7ba0b::t_4b82e0b23c4798 38-43,46-48
+packages/cli/src/modules/source-control.ee/__tests__/source-control-scoped.service.test.ts
+  s_f47d4602e7ba0b::t_1e3ec111622f63 82,84-92
 packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
-  s_f47d4602e7ba0b::t_13fa5ed97f2804 1553-1554,1560-1565
-  s_f47d4602e7ba0b::t_91d39af14a5f55 1559
-packages/cli/src/services/folder.service.ts
-  s_f47d4602e7ba0b::t_13fa5ed97f2804 19,55,104,159,169-174,176-181
+  s_f47d4602e7ba0b::t_a14a0e0f69f625 1553-1554,1559-1565
+packages/cli/src/workflows/workflow.service.ts
+  s_f47d4602e7ba0b::t_13fa5ed97f2804 849,852
 packages/cli/src/workflows/workflow.service.ee.ts
   s_f47d4602e7ba0b::t_13fa5ed97f2804 860,863,942-946,1060,1124,1127-1128
   s_f47d4602e7ba0b::t_91d39af14a5f55 1115-1122,1125-1126,1129-1130
-packages/cli/src/workflows/workflow.service.ts
-  s_f47d4602e7ba0b::t_13fa5ed97f2804 849,852
+packages/cli/src/services/__tests__/folder-operations.test.ts
+  s_f47d4602e7ba0b::t_a14a0e0f69f625 112-113
+  s_f47d4602e7ba0b::t_13fa5ed97f2804 125-126
+packages/cli/test/integration/environments/source-control-export.service.test.ts
+  s_f47d4602e7ba0b::t_aee789895a6dae 107
+packages/@n8n/db/src/migrations/common/1794826383663-AddAgentFolderPlacement.ts
+  s_f47d4602e7ba0b::t_005079e9c4b692 5
 packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
-  s_f47d4602e7ba0b::t_13fa5ed97f2804 70-80
+  s_f47d4602e7ba0b::t_a14a0e0f69f625 70-75,77-80
+packages/@n8n/db/src/repositories/folder-access.repository.ts
+  s_f47d4602e7ba0b::t_13fa5ed97f2804 108
+packages/@n8n/db/src/repositories/__tests__/access-repositories.test.ts
+  s_f47d4602e7ba0b::t_13fa5ed97f2804 458-460
+docs/generated/sqlite-schema/README.md
+  ai_agent 248
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_f47d4602e7ba0b::t_13fa5ed97f2804 280
+packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
+  s_f47d4602e7ba0b::t_e7615d60c5f7c3 31
+packages/cli/src/services/__tests__/folder.service.test.ts
+  s_f47d4602e7ba0b::t_aee789895a6dae 8,39,44-54
+packages/@n8n/db/src/migrations/sqlite/1794826383663-AddAgentFolderPlacement.ts
+  s_f47d4602e7ba0b::t_e7615d60c5f7c3 1,3
+packages/@n8n/backend-services/src/services/folder-finder.service.ts
+  s_f47d4602e7ba0b::t_13fa5ed97f2804 154
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_f47d4602e7ba0b::t_13fa5ed97f2804 1326-1330
+packages/cli/src/services/workflow-folder.service.ts
+  s_f47d4602e7ba0b::t_aee789895a6dae 3,44-45,49
+  s_f47d4602e7ba0b::t_4b82e0b23c4798 38-43,46-48
+packages/cli/src/services/folder.service.ts
+  s_f47d4602e7ba0b::t_13fa5ed97f2804 19,55,104,159,169-174,176-181
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_f47d4602e7ba0b::t_13fa5ed97f2804 444,447
+packages/@n8n/db/src/repositories/folder.repository.ts
+  s_f47d4602e7ba0b::t_13fa5ed97f2804 416,423
 ---
 {
   "schema_version": "authorship/3.0.0",
