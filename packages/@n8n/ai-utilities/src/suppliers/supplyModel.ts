@@ -114,7 +114,7 @@ export function supplyModel(ctx: ISupplyDataFunctions, model: SupplyModelOptions
 	const response = isOpenAiModel(model)
 		? getOpenAiModel(ctx, model)
 		: new LangchainChatModelAdapter(model, ctx);
-	// Kept on the model so `getSuppliedModelSource` can read back what the node passed in.
+	// Attach the options to the model so `getSuppliedModelSource` can read back what the node passed in.
 	// Non-enumerable, so spread, `Object.assign` and `util.inspect` neither copy nor print it: it can hold an API key.
 	Object.defineProperty(response, SUPPLIED_MODEL_SOURCE, { value: model });
 	return { response };
