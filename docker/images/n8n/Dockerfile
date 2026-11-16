@@ -1,9 +1,9 @@
 ARG NODE_VERSION=26.13.0
 ARG N8N_VERSION=snapshot
 
-# The digest pins node:26.13.0-alpine3.24 for amd64 and arm64. Change the tag and the digest together.
-ARG BUILDER_IMAGE=node:26.13.0-alpine3.24@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216
-ARG RUNTIME_IMAGE=n8nio/base:26.13.0@sha256:f4db5ffdbde188b568911640907797830033f2af2eb06b700a2c252bde960695
+# Pin matching Node builds for amd64 and arm64. Change each tag and digest together.
+ARG BUILDER_IMAGE=n8nio/node-patched:26.13.0-6484e2d8092f46c7ce7a4fbd97847ba3cb539e72-dev@sha256:2bb25015cc92814809410aaab21ad5696a901a2f58c9bce6ed5faeafe4fd5f15
+ARG RUNTIME_IMAGE=n8nio/node-patched:26.13.0-6484e2d8092f46c7ce7a4fbd97847ba3cb539e72@sha256:c1ae64f56f1e54ef84bcd9e6205a8d167a929ae1e0f057bc6b8949ccdaa2212c
 
 # The runtime base has no compiler, so this stage supplies one.
 FROM ${BUILDER_IMAGE} AS toolchain
@@ -73,7 +73,7 @@ COPY --from=native-builder /build/isolated-vm/build/Release/isolated_vm.node \
 # a patch hash. The shell must expand this destination.
 COPY --from=native-builder /build/node_modules/@confluentinc/kafka-javascript/build/Release/confluent-kafka-javascript.node /tmp/
 
-# The base image keeps node in /usr/bin and has no /usr/local/bin.
+# Keep the CLI path used by existing deployments.
 RUN set -e; \
     N8N=/usr/local/lib/node_modules/n8n; \
     for coder in msl mvg pcd svg url; do \
