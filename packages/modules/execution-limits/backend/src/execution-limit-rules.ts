@@ -1,0 +1,29 @@
+import type { ProjectLimit } from './execution-limits.types';
+
+/** The project ids that occur more than one time in `limits`. */
+export function findDuplicateProjectIds(limits: ProjectLimit[]): string[] {
+	const seen = new Set<string>();
+	const duplicates = new Set<string>();
+
+	for (const { projectId } of limits) {
+		if (seen.has(projectId)) duplicates.add(projectId);
+		seen.add(projectId);
+	}
+
+	return [...duplicates];
+}
+
+/**
+ * The project ids with a limit higher than the instance limit. A project limit equal to the
+ * instance limit is allowed. With no instance limit, no project limit is too high.
+ */
+export function findProjectLimitsAboveInstanceLimit(
+	limits: ProjectLimit[],
+	instanceMaxExecutions: number | null,
+): string[] {
+	if (instanceMaxExecutions === null) return [];
+
+	return limits
+		.filter(({ maxExecutions }) => maxExecutions > instanceMaxExecutions)
+		.map(({ projectId }) => projectId);
+}
