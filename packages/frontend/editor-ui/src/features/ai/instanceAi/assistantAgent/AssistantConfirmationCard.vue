@@ -48,9 +48,11 @@ import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vu
 import type {
 	WorkflowSetupApplyPayload,
 	WorkflowSetupOutcome,
+	WorkflowSetupSection,
 } from '../workflowSetup/workflowSetup.types';
 import { ASSISTANT_AGENT_PROJECT_ID, ASSISTANT_AGENT_THREAD_ID } from './assistantAgentThreads';
 import type { AssistantConfirmationInput } from './assistantConfirmation';
+import { ASSISTANT_AGENT_SETUP_SAVED } from './useAssistantAgentSetupSavedTelemetry';
 
 const props = defineProps<{
 	input: AssistantConfirmationInput;
@@ -67,6 +69,7 @@ const approvalLabels = useApprovalCardLabels();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
 const threadId = inject(ASSISTANT_AGENT_THREAD_ID, '');
+const expectSetupResult = inject(ASSISTANT_AGENT_SETUP_SAVED, undefined);
 // The shared cards inside track their own input. Every agents thread renders them here.
 provide(ASSISTANT_RUNTIME, 'agents');
 const submitted = ref(false);
@@ -92,6 +95,8 @@ watch(
 // A payload without a project uses the project of the thread.
 const threadProjectId = inject(ASSISTANT_AGENT_PROJECT_ID, undefined);
 const projectId = computed(() => props.input.projectId ?? threadProjectId);
+/** Joins the telemetry with the "Builder asked for input" event, which the backend sends with the request id. */
+const inputThreadId = computed(() => props.input.inputThreadId ?? props.input.requestId);
 
 /** The same order as the current Assistant confirmation panel. */
 const variant = computed(() => {
@@ -120,7 +125,7 @@ function trackAnswer(inputs: ConfirmationInputs) {
 		telemetry,
 		{
 			threadId,
-			inputThreadId: props.input.inputThreadId,
+			inputThreadId: inputThreadId.value,
 			instanceId: rootStore.instanceId,
 			// Assistant agent threads keep no launch source yet.
 			actionSource: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
@@ -133,12 +138,23 @@ function trackAnswer(inputs: ConfirmationInputs) {
 
 /**
  * `inputs` is the telemetry of the answer, sent once the server accepts it. A card
- * that the backend settles has none.
+ * that the backend settles has none. `onAccepted` also runs once the server accepts it.
  */
-function submit(body: InstanceAiConfirmRequest, inputs?: ConfirmationInputs) {
+function submit(
+	body: InstanceAiConfirmRequest,
+	inputs?: ConfirmationInputs,
+	onAccepted?: () => void,
+) {
 	if (isInactive.value) return;
 	submitted.value = true;
-	emit('submit', body, inputs ? () => trackAnswer(inputs) : undefined);
+	const accepted =
+		inputs || onAccepted
+			? () => {
+					if (inputs) trackAnswer(inputs);
+					onAccepted?.();
+				}
+			: undefined;
+	emit('submit', body, accepted);
 	// The chat removes a card as soon as it takes the answer. A busy chat refuses the
 	// answer and keeps the card, so the card takes the answer back. After a failed
 	// send, the chat renders the card again as a new instance.
@@ -149,8 +165,15 @@ function submit(body: InstanceAiConfirmRequest, inputs?: ConfirmationInputs) {
 // The chat shows the tool result, so the setup card settles as soon as the answer is sent.
 const workflowSetupOutcome = ref<WorkflowSetupOutcome>();
 
-function onWorkflowSetupApply(payload: WorkflowSetupApplyPayload) {
-	submit({ kind: 'setupWorkflowApply', ...payload });
+function onWorkflowSetupApply(
+	payload: WorkflowSetupApplyPayload,
+	sections: WorkflowSetupSection[],
+) {
+	const { requestId, workflowId } = props.input;
+	// The chat shows the tool result after this card unmounts, so the thread view sends the event.
+	submit({ kind: 'setupWorkflowApply', ...payload }, undefined, () =>
+		expectSetupResult?.({ requestId, workflowId, sections }),
+	);
 	workflowSetupOutcome.value = { state: 'applied' };
 }
 
@@ -366,7 +389,7 @@ function onApprovalSelect(key: string) {
 			:credential-flow="input.credentialFlow"
 			:workflow-id="input.workflowId"
 			:thread-id="threadId"
-			:input-thread-id="input.inputThreadId"
+			:input-thread-id="inputThreadId"
 			:outcome="workflowSetupOutcome"
 			@apply="onWorkflowSetupApply"
 			@defer="onWorkflowSetupDefer"
@@ -379,7 +402,7 @@ function onApprovalSelect(key: string) {
 			:credential-flow="input.credentialFlow"
 			:require-user-selection="input.requireUserSelection"
 			:thread-id="threadId"
-			:input-thread-id="input.inputThreadId"
+			:input-thread-id="inputThreadId"
 			@decide="(body) => submit(body)"
 		/>
 		<GatewayResourceDecision
@@ -388,7 +411,7 @@ function onApprovalSelect(key: string) {
 			:description="input.resourceDecision.description"
 			:options="input.resourceDecision.options"
 			:thread-id="threadId"
-			:input-thread-id="input.inputThreadId"
+			:input-thread-id="inputThreadId"
 			@decide="(decision) => submit({ kind: 'resourceDecision', resourceDecision: decision })"
 		/>
 		<InstanceAiChannelSetup

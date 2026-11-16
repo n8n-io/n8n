@@ -2,7 +2,7 @@ import { ModelStreamStallError } from '@n8n/agents';
 import { ASSISTANT_TRACE_EVENT, ASSISTANT_WORKFLOWS_ARCHIVED_EVENT } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { User, UserRepository } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
 import { UserError } from '@n8n/errors';
 import type { ErrorReporter } from 'n8n-core';
@@ -12,6 +12,7 @@ import type {
 	SystemAgentResumeTurn,
 	SystemAgentStartTurn,
 } from '@/modules/agents/system-agents/system-agent.types';
+import type { Telemetry } from '@/telemetry';
 
 import type { InstanceAiCreditService } from '../../instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from '../../instance-ai-error-reporter.service';
@@ -90,8 +91,14 @@ function setup() {
 	// The real reporter, so that the tests see its filters. Sentry is the mock.
 	const sentry = mock<ErrorReporter>();
 	const errorReporter = new InstanceAiErrorReporterService(logger, sentry);
+	const userRepository = mock<UserRepository>();
+	userRepository.findByIdWithRole.mockResolvedValue(user);
+	adapterService.createContext.mockReturnValue(
+		environment.context as ReturnType<InstanceAiAdapterService['createContext']>,
+	);
 	// The real default, so that the tests see "no override" unless a test sets one.
 	const turnOverrides = new AssistantTurnOverrides();
+	const telemetry = mock<Telemetry>();
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),
@@ -105,10 +112,14 @@ function setup() {
 		tracer,
 		threadTabs,
 		errorReporter,
+		userRepository,
 		turnOverrides,
+		telemetry,
 	);
 	return {
+		userRepository,
 		provider,
+		telemetry,
 		turnOverrides,
 		sentry,
 		errorReporter,
@@ -212,6 +223,78 @@ describe('AssistantAgentProvider', () => {
 			approved: true,
 		});
 		expect(provider.normalizeResumeData({ other: 'shape' })).toEqual({ other: 'shape' });
+	});
+
+	describe('onBeforeThreadDeletion', () => {
+		function deletionScope(workflowIds?: string[]) {
+			const memory = mock<SystemAgentStartTurn['memory']>({
+				getThread: vi.fn(async () => ({
+					id: 'thread-1',
+					resourceId: 'system-chat:user-1',
+					metadata: workflowIds ? { assistantTemporaryWorkflowIds: workflowIds } : {},
+				})) as never,
+			});
+			return {
+				agentId: 'assistant',
+				threadId: 'thread-1',
+				projectId: 'project-1',
+				userId: 'user-1',
+				memory,
+			};
+		}
+
+		it('has no cleanup when the thread marks no temporary workflows', async () => {
+			const { provider, adapterService } = setup();
+
+			await expect(provider.onBeforeThreadDeletion(deletionScope())).resolves.toBeUndefined();
+			expect(adapterService.createContext).not.toHaveBeenCalled();
+		});
+
+		it('archives the marked workflows only after the deletion', async () => {
+			const { provider, adapterService, archiveIfAiTemporary, userRepository } = setup();
+			const scope = deletionScope(['wf-1', 'wf-2']);
+
+			const afterDeletion = await provider.onBeforeThreadDeletion(scope);
+			expect(archiveIfAiTemporary).not.toHaveBeenCalled();
+
+			await afterDeletion?.();
+
+			expect(userRepository.findByIdWithRole).toHaveBeenCalledWith('user-1');
+			expect(adapterService.createContext).toHaveBeenCalledWith(
+				user,
+				expect.objectContaining({ threadId: 'thread-1' }),
+			);
+			expect(archiveIfAiTemporary).toHaveBeenCalledWith('wf-1');
+			expect(archiveIfAiTemporary).toHaveBeenCalledWith('wf-2');
+		});
+
+		it('gives the archive the markers it read before the deletion', async () => {
+			const { provider, adapterService, archiveIfAiTemporary } = setup();
+			archiveIfAiTemporary.mockResolvedValueOnce(false);
+			const scope = deletionScope(['wf-1', 'wf-2']);
+
+			const afterDeletion = await provider.onBeforeThreadDeletion(scope);
+			await afterDeletion?.();
+
+			const [, options] = adapterService.createContext.mock.calls[0];
+			const markers = options?.temporaryWorkflowMarkers;
+			await expect(markers?.has('wf-2')).resolves.toBe(true);
+			// The archive drops the marker of a workflow that it cannot archive.
+			await expect(markers?.list()).resolves.toEqual(['wf-2']);
+			// The thread is gone, so the archive does not write to its metadata.
+			const { patchThread } = scope.memory as unknown as { patchThread: ReturnType<typeof vi.fn> };
+			expect(patchThread).not.toHaveBeenCalled();
+		});
+
+		it('archives nothing when the user no longer exists', async () => {
+			const { provider, archiveIfAiTemporary, userRepository } = setup();
+			userRepository.findByIdWithRole.mockResolvedValue(null);
+
+			const afterDeletion = await provider.onBeforeThreadDeletion(deletionScope(['wf-1']));
+			await afterDeletion?.();
+
+			expect(archiveIfAiTemporary).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('prepareTurn', () => {
@@ -416,6 +499,7 @@ describe('AssistantAgentProvider', () => {
 				runId: 'agent-run-1',
 				toolCallId: 'tool-call-1',
 				checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
+				openSuspensions: [],
 				resumeData: { approved: true },
 			};
 
@@ -620,6 +704,125 @@ describe('AssistantAgentProvider', () => {
 			);
 		});
 
+		describe('"Builder asked for input" telemetry', () => {
+			function card(requestId: string, extra: Record<string, unknown> = {}) {
+				return { requestId, message: 'Delete the workflow?', severity: 'destructive', ...extra };
+			}
+
+			function suspended(toolCallId: string, suspendPayload: unknown) {
+				return {
+					type: 'tool-call-suspended',
+					runId: 'agent-run-1',
+					toolCallId,
+					toolName: 'workflows',
+					suspendPayload,
+				} as never;
+			}
+
+			function resumeTurn(
+				openSuspensions: SystemAgentResumeTurn['openSuspensions'],
+			): SystemAgentResumeTurn<AssistantSandboxLease> {
+				const start = startTurn();
+				const checkpointStore = mock<SystemAgentStartTurn['checkpointStore']>();
+				return {
+					type: 'resume',
+					user,
+					thread,
+					resourceId: start.resourceId,
+					abortSignal: start.abortSignal,
+					emitHostEvent: start.emitHostEvent,
+					memory: start.memory,
+					checkpointStore,
+					sessionGrants: start.sessionGrants,
+					readFile: vi.fn(async () => undefined),
+					runId: 'agent-run-1',
+					toolCallId: 'tc-1',
+					checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
+					openSuspensions,
+					resumeData: { approved: true },
+				};
+			}
+
+			function open(
+				toolCallId: string,
+				suspendPayload: unknown,
+			): SystemAgentResumeTurn['openSuspensions'][number] {
+				return { toolCallId, toolName: 'workflows', suspendPayload };
+			}
+
+			it('sends one event for each new Assistant card, with the request id as input id', async () => {
+				const { provider, telemetry } = setup();
+
+				const handle = await provider.prepareTurn(startTurn());
+				handle.onChunk?.(suspended('tc-1', card('req-1')));
+				handle.onChunk?.(
+					suspended('tc-2', card('req-2', { inputType: 'questions', questions: [{}, {}] })),
+				);
+
+				expect(telemetry.track).toHaveBeenCalledTimes(2);
+				expect(telemetry.track).toHaveBeenNthCalledWith(1, 'Builder asked for input', {
+					user_id: 'user-1',
+					thread_id: 'thread-1',
+					input_thread_id: 'req-1',
+					type: 'approval',
+					num_steps: 1,
+					contains_templated_cred: false,
+					runtime: 'agents',
+				});
+				expect(telemetry.track).toHaveBeenNthCalledWith(
+					2,
+					'Builder asked for input',
+					expect.objectContaining({ input_thread_id: 'req-2', type: 'questions', num_steps: 2 }),
+				);
+			});
+
+			it('sends no event for a suspension that is not an Assistant card', async () => {
+				const { provider, telemetry } = setup();
+
+				const handle = await provider.prepareTurn(startTurn());
+				handle.onChunk?.(suspended('tc-1', { toolName: 'notion_search', args: {} }));
+
+				expect(telemetry.track).not.toHaveBeenCalled();
+			});
+
+			it('does not count an open sibling card again when another card is answered', async () => {
+				const { provider, telemetry } = setup();
+				const turn = resumeTurn([open('tc-1', card('req-1')), open('tc-2', card('req-2'))]);
+
+				const handle = await provider.prepareTurn(turn);
+				// The runtime sends the open sibling again, with the same payload.
+				handle.onChunk?.(suspended('tc-2', card('req-2')));
+
+				expect(turn.checkpointStore.load).not.toHaveBeenCalled();
+				expect(telemetry.track).not.toHaveBeenCalled();
+			});
+
+			it('does not count the open cards again when a resume sends all of them back', async () => {
+				const { provider, telemetry } = setup();
+				const turn = resumeTurn([open('tc-1', card('req-1')), open('tc-2', card('req-2'))]);
+
+				const handle = await provider.prepareTurn(turn);
+				// A failed cancellation cleanup keeps every pending card, the answered one too.
+				handle.onChunk?.(suspended('tc-1', card('req-1')));
+				handle.onChunk?.(suspended('tc-2', card('req-2')));
+
+				expect(telemetry.track).not.toHaveBeenCalled();
+			});
+
+			it('counts a new card that the resumed tool shows', async () => {
+				const { provider, telemetry } = setup();
+				const turn = resumeTurn([open('tc-1', card('req-1'))]);
+
+				const handle = await provider.prepareTurn(turn);
+				handle.onChunk?.(suspended('tc-1', card('req-3')));
+
+				expect(telemetry.track).toHaveBeenCalledWith(
+					'Builder asked for input',
+					expect.objectContaining({ input_thread_id: 'req-3', runtime: 'agents' }),
+				);
+			});
+		});
+
 		describe('side-call usage', () => {
 			const usage = { promptTokens: 50, completionTokens: 5, totalTokens: 55 };
 
@@ -636,12 +839,11 @@ describe('AssistantAgentProvider', () => {
 						reportId: 'report-1',
 					});
 
-					expect(creditService.claimRunUsage).toHaveBeenCalledWith(
+					expect(creditService.claimSideCallUsage).toHaveBeenCalledWith(
 						user,
 						'thread-1',
 						`run-1:${task}:report-1`,
-						expect.arrayContaining([expect.anything()]),
-						'completed',
+						expect.objectContaining({ model: 'anthropic/claude-haiku-4-5', usage }),
 					);
 				},
 			);
@@ -659,25 +861,9 @@ describe('AssistantAgentProvider', () => {
 						reportId: 'report-1',
 					});
 
-					expect(creditService.claimRunUsage).not.toHaveBeenCalled();
+					expect(creditService.claimSideCallUsage).not.toHaveBeenCalled();
 				},
 			);
-
-			it('keeps the turn going when the claim fails', async () => {
-				const { provider, creditService } = setup();
-				creditService.claimRunUsage.mockRejectedValueOnce(new Error('billing down'));
-
-				const handle = await provider.prepareTurn(startTurn());
-
-				await expect(
-					handle.onSideCallUsage?.({
-						task: 'title',
-						model: 'anthropic/claude-haiku-4-5',
-						usage,
-						reportId: 'report-1',
-					}),
-				).resolves.toBeUndefined();
-			});
 		});
 
 		describe('workflow setup route', () => {
@@ -917,6 +1103,7 @@ describe('AssistantAgentProvider', () => {
 				runId: 'agent-run-1',
 				toolCallId: 'tool-call-1',
 				checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
+				openSuspensions: [],
 				resumeData: { approved: true },
 			};
 
@@ -1065,6 +1252,7 @@ describe('AssistantAgentProvider', () => {
 					runId: 'agent-run-1',
 					toolCallId: 'tool-call-1',
 					checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
+					openSuspensions: [],
 					resumeData: { approved: true },
 				};
 
@@ -1183,6 +1371,7 @@ describe('AssistantAgentProvider', () => {
 								request: { attachments: [agentAttachment] },
 							},
 						},
+						openSuspensions: [],
 						resumeData: { approved: true },
 					});
 

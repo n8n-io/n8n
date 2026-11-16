@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 
-import { CollaborationService } from '@/collaboration/collaboration.service';
+import { AgentWriteLockService } from '../agent-write-lock.service';
 import { LockedError } from '@n8n/errors';
 import { ProjectScopeService } from '@n8n/backend-services';
 
@@ -19,11 +19,11 @@ const candidate = (id: string, projectId: string, availableInMCP: boolean) => ({
 describe('AgentMcpAccessService', () => {
 	const agentRepository = mockInstance(AgentRepository);
 	const projectScopeService = mockInstance(ProjectScopeService);
-	const collaborationService = mockInstance(CollaborationService);
+	const agentWriteLockService = mockInstance(AgentWriteLockService);
 	const service = new AgentMcpAccessService(
 		agentRepository,
 		projectScopeService,
-		collaborationService,
+		agentWriteLockService,
 	);
 
 	beforeEach(() => {
@@ -278,7 +278,7 @@ describe('AgentMcpAccessService', () => {
 			agentRepository.findMcpAvailabilityCandidates.mockResolvedValue([
 				candidate('a1', 'p1', false),
 			]);
-			collaborationService.validateAgentWriteLocks.mockRejectedValue(
+			agentWriteLockService.validateAgentWriteLocks.mockRejectedValue(
 				new LockedError(
 					'Cannot toggle MCP availability for agent - another user currently has write access',
 				),
@@ -295,7 +295,7 @@ describe('AgentMcpAccessService', () => {
 				),
 			).rejects.toThrow(LockedError);
 
-			expect(collaborationService.validateAgentWriteLocks).toHaveBeenCalledWith(
+			expect(agentWriteLockService.validateAgentWriteLocks).toHaveBeenCalledWith(
 				'user-1',
 				'push-ref-1',
 				['a1'],
