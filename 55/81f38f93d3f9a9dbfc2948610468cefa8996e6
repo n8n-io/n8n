@@ -1,0 +1,20 @@
+packages/@n8n/permissions/src/__tests__/public-api-permissions.test.ts
+  s_06fc4a3eebd292::t_8b4329e9b2ae65 1
+  s_06fc4a3eebd292::t_260fb38324bdc2 4,6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5581f38f93d3f9a9dbfc2948610468cefa8996e6",
+  "prompts": {},
+  "sessions": {
+    "s_06fc4a3eebd292": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fbd68ab-5524-436f-933c-230ffa062c5b",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
