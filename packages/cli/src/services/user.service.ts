@@ -11,6 +11,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { AuthIdentity, OperationContext, Person, PublicUser } from '@n8n/db';
 import {
 	isPerson,
+	isServiceAccount,
 	TransactionRunner,
 	Project,
 	ProjectRelation,
@@ -40,6 +41,7 @@ import { validate as uuidValidate } from 'uuid';
 import { OwnershipService } from './ownership.service';
 import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
+import { ServiceAccountUsageProxy } from './service-account-usage-proxy.service';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import {
@@ -96,6 +98,7 @@ export class UserService {
 		private readonly personRepository: PersonRepository,
 		private readonly scimSwitchReader: ScimSwitchReader,
 		private readonly txRunner: TransactionRunner,
+		private readonly serviceAccountUsage: ServiceAccountUsageProxy,
 	) {}
 
 	/** Updates the profile or password of a person. A service account id is a no-op. */
@@ -635,9 +638,8 @@ export class UserService {
 	 * The actor is a user, or the system for a deletion that no user asked for,
 	 * such as a SCIM deletion from the identity provider.
 	 *
-	 * Rejects a user that a module still needs, such as the service account of
-	 * an agent. The agent deletion deletes that account with
-	 * {@link deleteServiceAccount}.
+	 * Rejects the service account of an agent. The agent deletion deletes that
+	 * account with {@link deleteServiceAccount}.
 	 */
 	async deleteUser(
 		actor: User | SystemDeletionActor,
@@ -647,13 +649,13 @@ export class UserService {
 		ctx: OperationContext = {},
 	) {
 		return await this.deleteAccount(actor, idToDelete, transferId, publicApi, ctx, {
-			checkDeletable: true,
+			allowAgentAccount: false,
 		});
 	}
 
 	/**
 	 * Deletes the service account of an agent that is being deleted, so it skips
-	 * the check that a module still needs the account. Only
+	 * the check that an agent acts as the account. Only
 	 * `ServiceAccountService.remove` calls this.
 	 */
 	async deleteServiceAccount(
@@ -662,7 +664,7 @@ export class UserService {
 		transferId?: string,
 	) {
 		return await this.deleteAccount(actor, idToDelete, transferId, false, {}, {
-			checkDeletable: false,
+			allowAgentAccount: true,
 		});
 	}
 
@@ -672,7 +674,7 @@ export class UserService {
 		transferId: string | undefined,
 		publicApi: PublicApiCaller,
 		ctx: OperationContext,
-		{ checkDeletable }: { checkDeletable: boolean },
+		{ allowAgentAccount }: { allowAgentAccount: boolean },
 	) {
 		// A user also has a `kind` (person or service), so test the value.
 		const systemActor = actor.kind === 'system' ? actor : null;
@@ -700,10 +702,13 @@ export class UserService {
 			throw new ForbiddenError('Instance owner cannot be deleted.');
 		}
 
-		const ownershipTransferService = await this.getOwnershipTransferService();
-
-		if (checkDeletable) {
-			await ownershipTransferService.assertUserDeletable(userToDelete.id);
+		if (!allowAgentAccount && isServiceAccount(userToDelete)) {
+			const agent = await this.serviceAccountUsage.findAgent(userToDelete.id);
+			if (agent) {
+				throw new BadRequestError(
+					`This service account belongs to the agent "${agent.name}". Delete the agent instead.`,
+				);
+			}
 		}
 
 		const personalProjectToDelete = await this.projectRepository.getPersonalProjectForUserOrFail(
@@ -718,6 +723,7 @@ export class UserService {
 
 		let transfereeId;
 		let transfereeProject: Project | null = null;
+		const ownershipTransferService = await this.getOwnershipTransferService();
 
 		if (transferId) {
 			transfereeProject = await this.projectService.findProject(transferId);

@@ -117,13 +117,6 @@ export class OwnershipTransferService {
 		}
 	}
 
-	/** Throws when a module still needs the user, before a user deletion changes anything. */
-	async assertUserDeletable(userId: string): Promise<void> {
-		for (const handler of this.transferHandlers.getAll()) {
-			await handler.assertUserDeletable?.(userId);
-		}
-	}
-
 	/**
 	 * Clean up user-owned module data before account deletion, with or without
 	 * a transferee. Each module decides which data it must keep for audit history.

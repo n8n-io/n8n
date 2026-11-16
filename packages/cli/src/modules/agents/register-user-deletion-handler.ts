@@ -1,14 +1,12 @@
 import { OwnershipTransferHandlerRegistry } from '@n8n/backend-services';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { BadRequestError } from '@n8n/errors';
 
 import { AgentProjectCleanupService } from './agent-project-cleanup.service';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
 import { AgentUserDeletionRepository } from './repositories/agent-user-deletion.repository';
 import { AgentProjectDeletionRepository } from './repositories/agent-project-deletion.repository';
 import { AgentMemoryEntryRepository } from './repositories/agent-memory-entry.repository';
-import { AgentRepository } from './repositories/agent.repository';
 import { SystemAgentExecutionService } from './system-agents/system-agent-execution.service';
 import {
 	draftChatMemoryResourceId,
@@ -22,14 +20,6 @@ export function registerUserDeletionHandler() {
 		resource: 'agent-user-memory',
 		transferAll: async () => {},
 		deleteAll: async () => {},
-		assertUserDeletable: async (userId) => {
-			const agent = await Container.get(AgentRepository).findByIdentityId(userId);
-			if (agent) {
-				throw new BadRequestError(
-					`This service account belongs to the agent "${agent.name}". Delete the agent instead.`,
-				);
-			}
-		},
 		finalizeUserDeletion: async (userId, personalProjectId, ctx) => {
 			await Container.get(AgentExecutionThreadRepository).shareUserSessionHistory(userId, ctx);
 			await Container.get(AgentUserDeletionRepository).completeDeletion(userId, ctx);

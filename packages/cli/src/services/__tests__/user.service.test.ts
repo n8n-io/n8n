@@ -41,6 +41,8 @@ import type { OwnershipTransferService } from '../ownership-transfer/ownership-t
 import type { OwnershipService } from '../ownership.service';
 import type { ProjectService } from '../project.service.ee';
 import type { PublicApiKeyService } from '../public-api-key.service';
+import type { ServiceAccountUsage } from '../service-account-usage.contracts';
+import { ServiceAccountUsageProxy } from '../service-account-usage-proxy.service';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
@@ -77,6 +79,9 @@ describe('UserService', () => {
 	const scimSwitchReader = mock<ScimSwitchReader>();
 	const transactions = mock<TransactionRunner>();
 	transactions.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+	const serviceAccountUsage = mock<ServiceAccountUsage>();
+	const serviceAccountUsageProxy = new ServiceAccountUsageProxy();
+	serviceAccountUsageProxy.register(serviceAccountUsage);
 	const userService = new UserService(
 		mock(),
 		userRepository,
@@ -97,6 +102,7 @@ describe('UserService', () => {
 		personRepository,
 		scimSwitchReader,
 		transactions,
+		serviceAccountUsageProxy,
 	);
 
 	const commonMockPerson = Object.assign(new Person(), {
@@ -1148,7 +1154,7 @@ describe('UserService', () => {
 			sharedCredentialsRepository.find.mockResolvedValue([]);
 			ownershipTransferService.enforceTransferPolicy.mockResolvedValue(undefined);
 			ownershipTransferService.transferAllResources.mockResolvedValue(undefined);
-			ownershipTransferService.assertUserDeletable.mockReset();
+			serviceAccountUsage.findAgent.mockResolvedValue(null);
 			vi.spyOn(
 				userService as unknown as { getOwnershipTransferService: () => unknown },
 				'getOwnershipTransferService',
@@ -1266,30 +1272,6 @@ describe('UserService', () => {
 			expect(call?.[1]).toMatchObject({ loginId: undefined });
 		});
 
-		it('checks that no module still needs the user before it changes anything', async () => {
-			await userService.deleteUser(actor, userToDelete.id, transfereeProject.id);
-
-			expect(ownershipTransferService.assertUserDeletable).toHaveBeenCalledExactlyOnceWith(
-				userToDelete.id,
-			);
-			expect(ownershipTransferService.assertUserDeletable.mock.invocationCallOrder[0]).toBeLessThan(
-				ownershipTransferService.transferAllResources.mock.invocationCallOrder[0],
-			);
-		});
-
-		it('rejects the deletion and changes nothing when a module still needs the user', async () => {
-			ownershipTransferService.assertUserDeletable.mockRejectedValueOnce(
-				new BadRequestError('Delete the agent instead.'),
-			);
-
-			await expect(userService.deleteUser(actor, userToDelete.id)).rejects.toThrow(
-				'Delete the agent instead.',
-			);
-
-			expect(ownershipTransferService.deleteUserOwnedModuleResources).not.toHaveBeenCalled();
-			expect(transactions.run).not.toHaveBeenCalled();
-		});
-
 		describe('of a service account', () => {
 			const serviceAccount = Object.assign(new ServiceAccount(), {
 				id: 'service-1',
@@ -1300,9 +1282,10 @@ describe('UserService', () => {
 				userRepository.findByIdWithRole.mockResolvedValue(serviceAccount);
 			});
 
-			it('deletes a service account that no module needs', async () => {
+			it('deletes a service account that no agent acts as', async () => {
 				await userService.deleteUser(actor, serviceAccount.id);
 
+				expect(serviceAccountUsage.findAgent).toHaveBeenCalledWith(serviceAccount.id);
 				expect(userRepository.deleteAccount).toHaveBeenCalledWith(
 					serviceAccount.id,
 					personalProject.id,
@@ -1310,14 +1293,23 @@ describe('UserService', () => {
 				);
 			});
 
-			it('skips the module check for the account of a deleted agent', async () => {
-				ownershipTransferService.assertUserDeletable.mockRejectedValue(
-					new BadRequestError('Delete the agent instead.'),
-				);
+			it('rejects the service account of an agent and changes nothing', async () => {
+				serviceAccountUsage.findAgent.mockResolvedValue({ id: 'agent-1', name: 'Support' });
+
+				const result = userService.deleteUser(actor, serviceAccount.id, transfereeProject.id);
+
+				await expect(result).rejects.toThrow(BadRequestError);
+				await expect(result).rejects.toThrow('belongs to the agent "Support"');
+				expect(ownershipTransferService.transferAllResources).not.toHaveBeenCalled();
+				expect(transactions.run).not.toHaveBeenCalled();
+			});
+
+			it('deletes the service account of an agent that is being deleted', async () => {
+				serviceAccountUsage.findAgent.mockResolvedValue({ id: 'agent-1', name: 'Support' });
 
 				await userService.deleteServiceAccount(actor, serviceAccount.id, transfereeProject.id);
 
-				expect(ownershipTransferService.assertUserDeletable).not.toHaveBeenCalled();
+				expect(serviceAccountUsage.findAgent).not.toHaveBeenCalled();
 				expect(ownershipTransferService.transferAllResources).toHaveBeenCalledWith(
 					[personalProject.id],
 					transfereeProject.id,
@@ -1332,6 +1324,12 @@ describe('UserService', () => {
 					expect.objectContaining({ user: actor, targetUserId: serviceAccount.id }),
 				);
 			});
+		});
+
+		it('does not ask about agents for a person', async () => {
+			await userService.deleteUser(actor, userToDelete.id);
+
+			expect(serviceAccountUsage.findAgent).not.toHaveBeenCalled();
 		});
 
 		describe('with a system actor', () => {

@@ -30,12 +30,6 @@ export interface ProjectOwnershipTransferHandler<TTransaction> {
 	deleteAll(projectId: string): Promise<void>;
 
 	/**
-	 * Throw when the module still needs the user, so the user cannot be deleted.
-	 * Runs before a user deletion changes anything. Optional.
-	 */
-	assertUserDeletable?(userId: string): Promise<void>;
-
-	/**
 	 * Remove the private rows of a user before the user is deleted, in every
 	 * project. It runs also when the user's projects are transferred, because
 	 * private rows do not move to the transferee. Optional: most resources

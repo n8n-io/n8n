@@ -27,6 +27,7 @@ import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaste
 import { AgentsService } from '@/modules/agents/agents.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
+import { registerServiceAccountUsage } from '@/modules/agents/register-service-account-usage';
 import { registerUserDeletionHandler } from '@/modules/agents/register-user-deletion-handler';
 import { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -60,6 +61,7 @@ describe('Agent service accounts', () => {
 		agentRepo = Container.get(AgentRepository);
 		agentsConfig = Container.get(AgentsConfig);
 		registerUserDeletionHandler();
+		registerServiceAccountUsage();
 	});
 
 	beforeEach(() => {
