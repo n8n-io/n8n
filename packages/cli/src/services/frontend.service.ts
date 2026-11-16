@@ -50,6 +50,9 @@ export type PublicFrontendSettings = {
 	/** Used to localize login page UI */
 	defaultLocale: FrontendSettings['defaultLocale'];
 
+	/** Tells the login page where to load the catalog of the default locale from */
+	availableLocales: FrontendSettings['availableLocales'];
+
 	/** Used to bypass authentication on the workflows/demo page */
 	previewMode: FrontendSettings['previewMode'];
 
@@ -734,6 +737,7 @@ export class FrontendService {
 		// Get full settings to ensure all required properties are initialized
 		const {
 			defaultLocale,
+			availableLocales,
 			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup, passwordMinLength },
 			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
 			authCookie,
@@ -747,6 +751,7 @@ export class FrontendService {
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
 			defaultLocale,
+			availableLocales,
 			userManagement: {
 				authenticationMethod,
 				showSetupOnFirstLoad,

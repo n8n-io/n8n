@@ -716,10 +716,29 @@ describe('FrontendService', () => {
 	});
 
 	describe('getPublicSettings', () => {
+		beforeEach(() => {
+			localeService.getAvailableLocales.mockReturnValue([{ code: 'en', name: 'English' }]);
+		});
+
+		it('should include the available locales, so the sign-in page can load its catalog', async () => {
+			const locales = [
+				{ code: 'en', name: 'English' },
+				{ code: 'de', name: 'Deutsch', url: 'https://translations.example.com/n8n/de/de_2.4.json' },
+				{ code: 'fr', name: 'Français', hash: 'abc123' },
+			];
+			localeService.getAvailableLocales.mockReturnValue(locales);
+
+			const { service } = createMockService();
+			const settings = await service.getPublicSettings(false);
+
+			expect(settings.availableLocales).toEqual(locales);
+		});
+
 		it('should return public settings', async () => {
 			const expectedPublicSettings: PublicFrontendSettings = {
 				settingsMode: 'public',
 				defaultLocale: 'en',
+				availableLocales: [{ code: 'en', name: 'English' }],
 				userManagement: {
 					smtpSetup: false,
 					showSetupOnFirstLoad: true,
@@ -752,6 +771,7 @@ describe('FrontendService', () => {
 			const expectedPublicSettings = {
 				settingsMode: 'public',
 				defaultLocale: 'en',
+				availableLocales: [{ code: 'en', name: 'English' }],
 				userManagement: {
 					smtpSetup: false,
 					showSetupOnFirstLoad: true,

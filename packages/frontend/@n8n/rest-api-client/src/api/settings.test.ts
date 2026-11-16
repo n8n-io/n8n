@@ -56,6 +56,12 @@ describe('locale catalogs', () => {
 			expect(await getRemoteLocaleCatalog(url)).toEqual({ 'generic.save': 'Speichern' });
 		});
 
+		it('should name the URL when the request fails', async () => {
+			vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+
+			await expect(getRemoteLocaleCatalog(url)).rejects.toThrow(url);
+		});
+
 		it('should throw on a non-2xx status', async () => {
 			mockFetch('Not found', { status: 404 });
 

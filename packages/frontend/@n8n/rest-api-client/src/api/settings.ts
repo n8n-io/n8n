@@ -36,7 +36,13 @@ export async function getLocaleCatalog(
  * credentials, because the server is not part of n8n.
  */
 export async function getRemoteLocaleCatalog(url: string): Promise<Partial<LocaleMessages>> {
-	const response = await fetch(url, { credentials: 'omit' });
+	let response: Response;
+	try {
+		response = await fetch(url, { credentials: 'omit' });
+	} catch (error) {
+		// A network or CORS error only says "Failed to fetch", so name the URL.
+		throw new Error(`Failed to load the locale catalog from ${url}`, { cause: error });
+	}
 	if (!response.ok) {
 		throw new Error(`Failed to load the locale catalog from ${url}: HTTP ${response.status}`);
 	}
