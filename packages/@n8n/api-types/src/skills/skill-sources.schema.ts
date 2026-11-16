@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { Z } from '../zod-class';
+import type { ProjectIcon } from '../schemas/project.schema';
 
 /**
  * Why a Skill Sync action failed, or why one skill could not come in. Telemetry and the
@@ -81,7 +82,7 @@ export type SkillSourceSummary = {
 
 /**
  * Whether the scope can take the source. `blocked`: the same source is in Global or in the
- * chosen scope. `sourceId` is set when the user may add more skills to that source.
+ * chosen scope. `sourceId` is set when the user may add skills to that source.
  * `warning`: the same source is in other projects that the user can see.
  */
 export type SkillSourceDuplicate =
@@ -214,6 +215,8 @@ export type SkillSyncedFrom = {
 	type: 'github';
 	/** Such as `owner/repository`. */
 	label: string;
+	/** The branch, or null for a source type without branches. */
+	ref: string | null;
 	/** The page of the skill in the source. */
 	webUrl: string;
 	/** Whether the user may stop syncing the skill, which makes it a normal skill. */
@@ -225,6 +228,20 @@ export class ListSkillSourceCredentialsQueryDto extends Z.class(skillSourceScope
 
 /** A credential that a source in the scope accepts and that the user can use. */
 export type SkillSourceCredentialOption = { id: string; name: string; type: string };
+
+/** The n8n credential types that read a private GitHub source. */
+export const GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES = [
+	'githubApi',
+	'githubAppApi',
+	'githubOAuth2Api',
+] as const;
+export type GitHubSkillSourceCredentialType = (typeof GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES)[number];
+
+export function isGitHubSkillSourceCredentialType(
+	type: string,
+): type is GitHubSkillSourceCredentialType {
+	return GITHUB_SKILL_SOURCE_CREDENTIAL_TYPES.some((known) => known === type);
+}
 
 /** The repositories that a credential can read, to pick one in place of a link. */
 export class ListSkillSourceRepositoriesQueryDto extends Z.class({
@@ -246,3 +263,58 @@ export type SkillSourceRepositoryList = {
 	/** True when the credential can read more repositories than n8n lists. */
 	truncated: boolean;
 };
+
+/** Health of a source, based on its latest check result. */
+export type SkillSourceHealth =
+	| 'connected'
+	| 'credential_issue'
+	| 'source_unavailable'
+	| 'unreachable'
+	| 'delayed'
+	| 'check_failed';
+
+/** One connected source, for its group row in the skills table. */
+export type SkillSourceListItem = {
+	id: string;
+	type: 'github';
+	/** Such as `owner/repository`. */
+	label: string;
+	/** The branch, or null for a source type without branches. */
+	ref: string | null;
+	/** The folder in the source that the source reads. Empty for the whole source. */
+	path: string;
+	webUrl: string;
+	/** Null for a Global source. */
+	projectId: string | null;
+	projectName: string | null;
+	projectType: 'personal' | 'team' | null;
+	projectIcon: ProjectIcon | null;
+	/** Synced skills of the source. */
+	skillCount: number;
+	/** Updates that wait for review and that the security check did not block. */
+	updatesAvailable: number;
+	/** Updates that the security check blocked. */
+	updatesBlocked: number;
+	health: SkillSourceHealth;
+	lastCheckedAt: string | null;
+	/** Whether the user may review updates and check the source now. */
+	canReview: boolean;
+	/** Whether the user may delete the source and its synced skills. */
+	canDelete: boolean;
+};
+
+/** A refused source delete names only the agents that the user may read. */
+export const skillSourceDeleteBlockSchema = z.object({
+	reason: z.literal('skills_in_use'),
+	agents: z.array(
+		z.object({
+			agentId: z.string(),
+			agentName: z.string(),
+			projectId: z.string(),
+			projectName: z.string(),
+		}),
+	),
+	hiddenAgents: z.number().int().nonnegative(),
+});
+
+export type SkillSourceDeleteBlock = z.infer<typeof skillSourceDeleteBlockSchema>;

@@ -1,4 +1,5 @@
 import { ASSISTANT_SKILLS_FLAG } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -18,7 +19,6 @@ import { SkillRepository } from '../../database/repositories/skill.repository';
 import { SkillService } from '../../services/skill.service';
 import { createSkill } from '../../testing';
 import { linkSkill } from '../test-utils/skill-source-fixtures';
-import { PostHogClient } from '@/posthog';
 
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMember, createOwner, createUser } from '@test-integration/db/users';
@@ -658,7 +658,7 @@ describe('SkillsController', () => {
 			);
 		});
 
-		it('marks a following agent that was in sync as changed, and leaves a pinned agent alone', async () => {
+		it('keeps the draft version of following and pinned agents when a skill is saved', async () => {
 			const { id, skillHash } = await create(editor, {
 				scope: 'project',
 				projectId: project.id,
@@ -677,7 +677,7 @@ describe('SkillsController', () => {
 				.expect(200);
 
 			expect(saved.body.data).toMatchObject({ version: 2, created: true });
-			expect(await draftVersionOf(following.id)).not.toBe(following.versionId);
+			expect(await draftVersionOf(following.id)).toBe(following.versionId);
 			expect(await draftVersionOf(pinned.id)).toBe(pinned.versionId);
 		});
 	});

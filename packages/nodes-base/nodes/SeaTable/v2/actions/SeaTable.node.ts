@@ -10,7 +10,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'seaTable',
 	icon: 'file:seaTable.svg',
 	group: ['output'],
-	version: 2,
+	version: [2, 2.1],
 	subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 	description: 'Consume the SeaTable API',
 	defaults: {

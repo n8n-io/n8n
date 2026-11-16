@@ -1,7 +1,7 @@
 import type { AcceptInvitationRequestDto } from '@n8n/api-types';
 import { InviteUsersRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, PostHogClient } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PersonRepository, UserRepository, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { Person, PublicUser, AuthenticatedRequest } from '@n8n/db';
@@ -12,7 +12,6 @@ import { mock } from 'vitest-mock-extended';
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
-import { PostHogClient } from '@/posthog';
 import type { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';

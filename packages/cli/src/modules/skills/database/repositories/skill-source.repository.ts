@@ -143,6 +143,22 @@ export class SkillSourceRepository {
 		return await this.sources.managerFor(ctx).findOneBy(SkillSourceConnection, { id });
 	}
 
+	/** Serializes source deletion with other changes to this source. */
+	async findForDelete(id: string, ctx: OperationContext): Promise<SkillSourceConnection | null> {
+		const manager = this.sources.managerFor(ctx);
+		return await manager.findOne(SkillSourceConnection, {
+			where: { id },
+			...(manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
+		});
+	}
+
+	/** Deletes the source. Its links go by cascade. Callers delete its skills first. */
+	async deleteSource(sourceId: string, ctx: OperationContext): Promise<void> {
+		await this.sources.managerFor(ctx).delete(SkillSourceConnection, { id: sourceId });
+	}
+
 	/** The source of a synced skill, in one query. Null for a skill without a source. */
 	async findSyncedFrom(skillId: string, ctx: OperationContext = {}): Promise<SyncedFromRow | null> {
 		const link = await this.links
@@ -200,21 +216,74 @@ export class SkillSourceRepository {
 		return sources.sort((a, b) => time(a) - time(b));
 	}
 
-	async findLinksBySource(sourceId: string): Promise<SkillSourceLink[]> {
-		return await this.links.managerFor({}).find(SkillSourceLink, { where: { sourceId } });
+	async findLinksBySource(
+		sourceId: string,
+		ctx: OperationContext = {},
+	): Promise<SkillSourceLink[]> {
+		return await this.links.managerFor(ctx).find(SkillSourceLink, { where: { sourceId } });
 	}
 
-	/** The sync state of each synced skill among `skillIds`. A skill without a link is absent. */
-	async findSyncStates(skillIds: string[]): Promise<Map<string, SkillSourceLinkState>> {
-		const states = new Map<string, SkillSourceLinkState>();
+	/**
+	 * The sync state and the source of each synced skill among `skillIds`. A skill without a
+	 * link is absent.
+	 */
+	async findSyncStates(
+		skillIds: string[],
+	): Promise<Map<string, { state: SkillSourceLinkState; sourceId: string }>> {
+		const states = new Map<string, { state: SkillSourceLinkState; sourceId: string }>();
 		for (const chunk of chunkIds(skillIds)) {
 			const links = await this.links.managerFor({}).find(SkillSourceLink, {
-				select: ['skillId', 'state'],
+				select: ['skillId', 'state', 'sourceId'],
 				where: { skillId: In(chunk) },
 			});
-			for (const { skillId, state } of links) states.set(skillId, state);
+			for (const { skillId, state, sourceId } of links) states.set(skillId, { state, sourceId });
 		}
 		return states;
+	}
+
+	/** The sources in Global and in these projects, for the skills table. `all` for every source. */
+	async findVisibleSources(projectIds: string[] | 'all'): Promise<SkillSourceConnection[]> {
+		const manager = this.sources.managerFor({});
+		if (projectIds === 'all') {
+			return await manager.find(SkillSourceConnection, { order: { createdAt: 'ASC' } });
+		}
+		const sources = [
+			...(await manager.find(SkillSourceConnection, { where: { projectId: IsNull() } })),
+		];
+		for (const chunk of chunkIds(projectIds)) {
+			sources.push(
+				...(await manager.find(SkillSourceConnection, { where: { projectId: In(chunk) } })),
+			);
+		}
+		return sources.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+	}
+
+	/** The synced skills of each source, and its updates by state, in one query. */
+	async countLinksBySource(
+		sourceIds: string[],
+	): Promise<Map<string, { skills: number; available: number; blocked: number }>> {
+		const counts = new Map<string, { skills: number; available: number; blocked: number }>();
+		for (const chunk of chunkIds(sourceIds)) {
+			const rows = await this.links
+				.managerFor({})
+				.createQueryBuilder(SkillSourceLink, 'link')
+				.select('link.sourceId', 'sourceId')
+				.addSelect('link.state', 'state')
+				.addSelect('COUNT(*)', 'count')
+				.where('link.sourceId IN (:...chunk)', { chunk })
+				.groupBy('link.sourceId')
+				.addGroupBy('link.state')
+				.getRawMany<{ sourceId: string; state: SkillSourceLinkState; count: string | number }>();
+			for (const { sourceId, state, count } of rows) {
+				const entry = counts.get(sourceId) ?? { skills: 0, available: 0, blocked: 0 };
+				const n = Number(count);
+				entry.skills += n;
+				if (state === 'update_available') entry.available += n;
+				if (state === 'update_blocked') entry.blocked += n;
+				counts.set(sourceId, entry);
+			}
+		}
+		return counts;
 	}
 
 	/** Synced skills of the source with an update that waits for review. */

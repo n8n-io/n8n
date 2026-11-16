@@ -15,6 +15,7 @@ import {
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nSwitch,
 	useMessage,
 	type ComboboxItem,
 	type ComboboxValue,
@@ -26,11 +27,14 @@ import {
 	PERSONAL_SELF_HEALING_VIEW,
 } from '@n8n/frontend-constants/self-healing';
 import { VIEWS } from '@n8n/frontend-constants/views';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, onMounted, ref, toRaw, watch } from 'vue';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 
 import ProjectMembersIcon from '../components/ProjectMembersIcon.vue';
+import SubWorkflowPill from '../components/SubWorkflowPill.vue';
+import { useSubWorkflowScope, type SubWorkflowCoverage } from '../composables/useSubWorkflowScope';
 import { useSelfHealingStore } from '../self-healing.store';
 
 const PROJECT_MEMBERS_OPTION = '__project-members__';
@@ -38,6 +42,7 @@ const PROJECT_MEMBERS_OPTION = '__project-members__';
 const props = defineProps<{ projectId: string; configurationId: string }>();
 const store = useSelfHealingStore();
 const users = useUsersStore();
+const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
@@ -45,6 +50,14 @@ const router = useRouter();
 const route = useRoute();
 
 const pageRef = ref<HTMLElement | null>(null);
+// With the proxy, the Assistant spends n8n credits. Without it, it calls the instance's own AI provider.
+const costNote = computed(() =>
+	i18n.baseText(
+		settingsStore.moduleSettings['instance-ai']?.proxyEnabled
+			? 'selfHealing.config.costCredits'
+			: 'selfHealing.config.costProvider',
+	),
+);
 const loading = ref(true);
 const saving = ref(false);
 const loadError = ref(false);
@@ -54,6 +67,7 @@ const form = ref<SaveSelfHealingConfigurationDto>({
 	workflowIds: [],
 	reviewerIds: [],
 	includeAllProjectMembers: false,
+	includeSubWorkflows: true,
 	enabled: true,
 });
 
@@ -90,14 +104,46 @@ const workflowPickerItems = computed<ComboboxItem[]>(() =>
 			disabled: reservedWorkflows.value.has(id),
 		})),
 );
+const projectWorkflowNames = computed(
+	() => new Map(choices.value?.workflows.map(({ id, name }) => [id, name])),
+);
+const subWorkflowScope = useSubWorkflowScope({
+	selectedIds: computed(() => form.value.workflowIds),
+	projectWorkflowNames,
+	includeSubWorkflows: computed(() => form.value.includeSubWorkflows),
+});
 const selectedWorkflows = computed(() =>
 	form.value.workflowIds.map((id) => ({
 		id,
 		name:
-			choices.value?.workflows.find((workflow) => workflow.id === id)?.name ??
-			i18n.baseText('selfHealing.config.unavailableWorkflow'),
+			projectWorkflowNames.value.get(id) ?? i18n.baseText('selfHealing.config.unavailableWorkflow'),
+		coverage: subWorkflowScope.coverage.value.get(id),
 	})),
 );
+
+function coverageNote(coverage: SubWorkflowCoverage | undefined) {
+	if (!coverage) return undefined;
+	if (coverage.checking) return i18n.baseText('selfHealing.config.subWorkflows.checking');
+
+	const notes = [];
+	if (coverage.uncoveredCount > 0) {
+		notes.push(
+			i18n.baseText('selfHealing.config.subWorkflows.uncovered', {
+				adjustToNumber: coverage.uncoveredCount,
+				interpolate: { count: String(coverage.uncoveredCount) },
+			}),
+		);
+	}
+	if (coverage.externalCount > 0) {
+		notes.push(
+			i18n.baseText('selfHealing.config.subWorkflows.externalUncovered', {
+				adjustToNumber: coverage.externalCount,
+				interpolate: { count: String(coverage.externalCount) },
+			}),
+		);
+	}
+	return notes.length > 0 ? notes.join(' ') : undefined;
+}
 const reviewersById = computed(
 	() => new Map(choices.value?.reviewers.map((reviewer) => [reviewer.id, reviewer])),
 );
@@ -135,12 +181,14 @@ const reviewerPickerItems = computed<ComboboxItem[]>(() => [
 			value: reviewer.id,
 			label: reviewerName(reviewer.id),
 			keywords: [reviewer.email],
-		})),
+		}))
+		.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })),
 ]);
 
 function addWorkflow(value: ComboboxValue | ComboboxValue[] | undefined) {
 	if (typeof value === 'string' && value && !form.value.workflowIds.includes(value)) {
 		form.value.workflowIds.push(value);
+		void subWorkflowScope.load([value]);
 	}
 }
 
@@ -211,6 +259,7 @@ async function load() {
 				workflowIds: [...configuration.workflowIds],
 				reviewerIds: [...configuration.reviewerIds],
 				includeAllProjectMembers: configuration.includeAllProjectMembers,
+				includeSubWorkflows: configuration.includeSubWorkflows,
 				enabled: configuration.enabled,
 			};
 		} else {
@@ -220,6 +269,7 @@ async function load() {
 				workflowIds: [],
 				reviewerIds: currentUserId && reviewersById.value.has(currentUserId) ? [currentUserId] : [],
 				includeAllProjectMembers: false,
+				includeSubWorkflows: true,
 				enabled: true,
 			};
 		}
@@ -230,6 +280,7 @@ async function load() {
 		}
 
 		savedForm.value = structuredClone(toRaw(form.value));
+		void subWorkflowScope.load(form.value.workflowIds, { refresh: true });
 	} catch (error) {
 		if (pendingLoad !== request) return;
 
@@ -332,17 +383,24 @@ onBeforeRouteUpdate(async (to, from) => {
 			</N8nButton>
 		</div>
 		<N8nSettingsLayout :class="$style.layout" data-test-id="self-healing-config-page">
-			<N8nSettingsPageHeader
-				:title="title"
-				:description="
-					i18n.baseText(
-						isPersonalTab
-							? 'selfHealing.config.personalDescription'
-							: 'selfHealing.config.description',
-					)
-				"
-				:show-docs-link="false"
-			/>
+			<N8nSettingsPageHeader :title="title" :show-docs-link="false">
+				<template #description>
+					<N8nText size="medium" color="text-base">{{
+						i18n.baseText(
+							isPersonalTab
+								? 'selfHealing.config.personalDescription'
+								: 'selfHealing.config.description',
+						)
+					}}</N8nText>
+					<N8nText
+						size="medium"
+						color="text-base"
+						:class="$style.costNote"
+						data-test-id="self-healing-cost-note"
+						>{{ costNote }}</N8nText
+					>
+				</template>
+			</N8nSettingsPageHeader>
 			<div v-if="loading" data-test-id="self-healing-config-loading">
 				<N8nSettingsSection :title="i18n.baseText('selfHealing.config.scope')">
 					<N8nSettingsRowGroup>
@@ -393,6 +451,19 @@ onBeforeRouteUpdate(async (to, from) => {
 								/>
 							</template>
 						</N8nSettingsRow>
+						<N8nSettingsRow
+							:title="i18n.baseText('selfHealing.config.subWorkflows.toggle')"
+							:description="i18n.baseText('selfHealing.config.subWorkflows.description')"
+						>
+							<template #action>
+								<N8nSwitch
+									v-model="form.includeSubWorkflows"
+									:disabled="saving"
+									:aria-label="i18n.baseText('selfHealing.config.subWorkflows.toggle')"
+									data-test-id="self-healing-include-sub-workflows"
+								/>
+							</template>
+						</N8nSettingsRow>
 					</N8nSettingsRowGroup>
 					<N8nSettingsRowGroup v-if="form.scope === 'selected'">
 						<N8nSettingsRow layout="custom">
@@ -420,11 +491,16 @@ onBeforeRouteUpdate(async (to, from) => {
 							v-for="workflow in selectedWorkflows"
 							:key="workflow.id"
 							:title="workflow.name"
+							:description="coverageNote(workflow.coverage)"
 							show-visual
 							data-test-id="self-healing-selected-workflow"
 						>
 							<template #visual><N8nIcon icon="workflow" size="large" /></template>
 							<template #action>
+								<SubWorkflowPill
+									v-if="workflow.coverage?.subWorkflows.length"
+									:sub-workflows="workflow.coverage.subWorkflows"
+								/>
 								<N8nIconButton
 									icon="x"
 									variant="ghost"
@@ -567,6 +643,11 @@ onBeforeRouteUpdate(async (to, from) => {
 </template>
 
 <style module lang="scss">
+.costNote {
+	display: block;
+	margin-top: var(--spacing--2xs);
+}
+
 .page {
 	width: 100%;
 }

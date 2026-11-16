@@ -1,6 +1,7 @@
 import type { Mock } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { createExecuteContext, meetingHeaders, setParams } from '../helpers';
 import { versionDescription } from '../../../../v2/actions/versionDescription';
@@ -17,7 +18,7 @@ vi.mock('../../../../v2/transport', async () => {
 });
 
 describe('Microsoft Teams V2 — onlineMeeting:createOrGet', () => {
-	const endpoint = '/v1.0/me/onlineMeetings/createOrGet';
+	const endpoint = requestPath`/v1.0/me/onlineMeetings/createOrGet`;
 	let node: MicrosoftTeamsV2;
 	let ctx: MockProxy<IExecuteFunctions>;
 

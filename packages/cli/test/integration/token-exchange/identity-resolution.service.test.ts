@@ -246,6 +246,12 @@ describe('IdentityResolutionService (integration)', () => {
 				errorMsg: 'Cannot provision global:owner role via token exchange',
 			},
 			{
+				scenario: 'global:agent role',
+				role: 'global:agent',
+				allowedRoles: undefined,
+				errorMsg: 'Cannot provision global:agent role via token exchange',
+			},
+			{
 				scenario: 'role not in allowedRoles',
 				role: 'global:admin',
 				allowedRoles: ['global:member'],

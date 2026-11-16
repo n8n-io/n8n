@@ -1,6 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { LifecycleEvent } from '@n8n/engine';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 

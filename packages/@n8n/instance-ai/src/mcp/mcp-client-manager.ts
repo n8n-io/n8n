@@ -12,7 +12,7 @@ import {
 	type McpToolPermissions,
 } from '@n8n/api-types';
 import type { Result } from '@n8n/utils/result';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import {
 	addSafeMcpTools,

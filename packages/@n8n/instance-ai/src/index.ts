@@ -280,6 +280,11 @@ export {
 	formatRedactedError,
 } from './errors';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
+export {
+	createSampleFile,
+	resolveSampleFileMarkers,
+	SAMPLE_FILE_MIME_TYPES,
+} from './tools/workflows/sample-files';
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export {
@@ -340,6 +345,9 @@ export { threadProvenanceMetadata } from './tracing/thread-provenance';
 
 export const createInstanceAiTraceContext: typeof LangsmithTracingMod.createInstanceAiTraceContext =
 	lazyFunction(() => loadLangsmithTracing().createInstanceAiTraceContext);
+
+export const isLangSmithTracingEnabled: typeof LangsmithTracingMod.isLangSmithTracingEnabled =
+	lazyFunction(() => loadLangsmithTracing().isLangSmithTracingEnabled);
 
 export const createInternalOperationTraceContext: typeof LangsmithTracingMod.createInternalOperationTraceContext =
 	lazyFunction(() => loadLangsmithTracing().createInternalOperationTraceContext);

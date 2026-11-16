@@ -18,6 +18,7 @@ export const SERVICE_NAMES = [
 	'tracing',
 	'proxy',
 	'taskRunner',
+	'engineTaskRunner',
 	'loadBalancer',
 	'cloudflared',
 	'kafka',

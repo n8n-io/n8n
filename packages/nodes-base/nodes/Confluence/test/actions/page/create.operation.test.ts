@@ -1,4 +1,4 @@
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { execute } from '../../../actions/page/create.operation';
@@ -32,7 +32,7 @@ describe('page:create', () => {
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/wiki/api/v2/pages',
+			requestPath`/wiki/api/v2/pages`,
 			{
 				spaceId: '111',
 				status: 'current',

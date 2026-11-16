@@ -17,6 +17,7 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -35,7 +36,7 @@ import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/
 
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import type { KnowledgeRetrievalService } from '@/modules/knowledge/retrieval/knowledge-retrieval.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
@@ -53,7 +54,6 @@ import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-
 import type * as IntegrationTools from '../integrations/integration-tools';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { BuildFromJsonOptions, ToolExecutor } from '../json-config/from-json-config';
-import type { KnowledgeFileRepository } from '@/modules/knowledge/repositories/knowledge-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
@@ -174,7 +174,6 @@ function makeService(overrides: {
 	const service = new AgentRuntimeReconstructionService(
 		mock<Logger>(),
 		mock<AgentRepository>(),
-		mock<KnowledgeFileRepository>(),
 		mock<ActiveExecutions>(),
 		workflowRepository,
 		mock<N8NCheckpointStorage>(),
@@ -187,7 +186,7 @@ function makeService(overrides: {
 		mock<AiService>(),
 		outboundHttp,
 		mock<AgentWorkspaceService>(),
-		mock<AgentKnowledgeMirrorService>(),
+		mock<KnowledgeRetrievalService>(),
 		credentialsFinderService,
 		workflowFinderService,
 		mock<AgentChatAttachmentService>(),
@@ -293,6 +292,14 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 			expect(config.skills).toEqual(usePublishedVersion ? publishedRefs : draftRefs);
 		},
 	);
+
+	it('rejects an archived agent with a user error', async () => {
+		const agent = { id: 'agent-1', isArchived: true } as unknown as ProjectAgent;
+
+		await expect(
+			resolveAgentRunSource(agent, false, createAgentSkillRefsService(), {}),
+		).rejects.toThrow(UserError);
+	});
 
 	it('does not filter tools when no user is supplied (published/integration runs)', async () => {
 		const { service } = makeService({});

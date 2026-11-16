@@ -4,7 +4,7 @@ import {
 	type SearchableNodeType,
 } from '@n8n/ai-utilities/node-catalog';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import type { Mock } from 'vitest';
 
 import { executeTool, parseToolInput } from '../../__tests__/tool-test-utils';

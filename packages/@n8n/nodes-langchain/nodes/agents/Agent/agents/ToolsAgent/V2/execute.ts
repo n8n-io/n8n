@@ -31,6 +31,7 @@ import {
 } from '@utils/output_parsers/N8nOutputParser';
 import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 
+import { resolveCustomEndpointChatModel } from '../../../../../llms/LMChatOpenAi/custom-endpoint-chat-openai';
 import { isExecuteFunctions } from '../../utils';
 import {
 	fixEmptyContentMessage,
@@ -287,9 +288,11 @@ export async function toolsAgentExecute(
 		) as number;
 		const needsFallback = this.getNodeParameter('needsFallback', 0, false) as boolean;
 		const memory = await getOptionalMemory(this);
-		const model = await getChatModel(this, 0);
+		const model = resolveCustomEndpointChatModel(await getChatModel(this, 0));
 		assert(model, 'Please connect a model to the Chat Model input');
-		const fallbackModel = needsFallback ? await getChatModel(this, 1) : null;
+		const fallbackModel = needsFallback
+			? resolveCustomEndpointChatModel(await getChatModel(this, 1))
+			: null;
 
 		// FIXME: remove when this is fixed: https://github.com/langchain-ai/langchainjs/pull/9082
 		// Responses API + tools is broken when using langchain default call handling. In V3 calls are handled differently, so it works.
