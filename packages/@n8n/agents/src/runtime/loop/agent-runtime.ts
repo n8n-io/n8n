@@ -1059,6 +1059,9 @@ export class AgentRuntime {
 			state.iterationCount,
 		);
 		if (settlement.suspended) return settlement;
+		// Save the resumed results before the next model call, so a reader of memory during
+		// the rest of the turn sees them settled, such as the user's answers in a question card.
+		await this.memory.persistTurnDelta(ctx.list, ctx.options);
 		// Resumed tool results form a new observation boundary before the next model call.
 		await this.memory.maybeObserveMidRun(ctx.list, ctx.options);
 		if (resumedTurnEnds(ctx.list.messages(), pendingResume.resumeToolCallId, toolMap)) {

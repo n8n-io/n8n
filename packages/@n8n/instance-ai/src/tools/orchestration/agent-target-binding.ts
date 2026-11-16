@@ -376,6 +376,12 @@ export function threadAuthorizesAgentAdoption(
 	return bound?.agentId === target.agentId && bound.projectId === target.projectId;
 }
 
+/** Whether the thread builds or edits an agent: it has a bound, a pending or an earlier agent target. */
+export function threadTargetsAgent(metadata: Record<string, unknown> | undefined): boolean {
+	const { bound, pending, targets } = readAgentTargetsMetadata(metadata);
+	return bound !== undefined || pending !== undefined || targets.length > 0;
+}
+
 /**
  * Persist the build target to thread metadata. A no-op (with a warning) when
  * thread persistence is unavailable — unreachable in practice, since every

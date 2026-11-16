@@ -1379,6 +1379,7 @@ describe('SettingsSkillsView', () => {
 				missingSkills: [],
 				canReplaceCredential: true,
 				canReview: true,
+				canMove: true,
 				canDelete: true,
 			};
 
@@ -1767,7 +1768,7 @@ describe('SettingsSkillsView', () => {
 				await openSynced();
 
 				expect(lastModalData().scopeLockedReason).toBe(
-					'Set by the source acme/skills. The skill moves only with its source. To move this skill on its own, stop syncing it first.',
+					'Set by the source acme/skills. To move all its skills, select Change scope in the source menu. To move only this skill, stop syncing it first.',
 				);
 			});
 
