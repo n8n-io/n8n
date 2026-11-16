@@ -15,18 +15,28 @@ function toBoundValue(value: unknown): unknown {
 // " inside a '...' string throws off the double-quote count and can mask a
 // real placeholder after it — so this tracks the one quote (if any) that's
 // currently open. '' and "" are the standard escaped-quote forms inside
-// their own string. This does not recognize SQL comments (-- or /* */); a
-// $N inside a comment is still treated as a placeholder reference.
-export function isInsideQuotes(text: string, index: number): boolean {
+// their own string. With `bracketIdentifiers`, a SQL Server [identifier] also
+// counts: `[` opens it, `]` closes it, and `]]` is an escaped `]`. This does
+// not recognize SQL comments (-- or /* */); a $N inside a comment is still
+// treated as a placeholder reference.
+export function isInsideQuotes(
+	text: string,
+	index: number,
+	options: { bracketIdentifiers?: boolean } = {},
+): boolean {
 	let quoteChar: string | null = null;
 
 	for (let i = 0; i < index; i++) {
 		const ch = text[i];
 		if (quoteChar === null) {
 			if (ch === "'" || ch === '"') quoteChar = ch;
-		} else if (ch === quoteChar) {
-			if (text[i + 1] === quoteChar) i++;
-			else quoteChar = null;
+			else if (ch === '[' && options.bracketIdentifiers) quoteChar = '[';
+		} else {
+			const closeChar = quoteChar === '[' ? ']' : quoteChar;
+			if (ch === closeChar) {
+				if (text[i + 1] === closeChar) i++;
+				else quoteChar = null;
+			}
 		}
 	}
 

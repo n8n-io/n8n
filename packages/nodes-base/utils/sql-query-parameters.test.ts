@@ -35,8 +35,49 @@ describe('isInsideQuotes', () => {
 			target: '$2',
 			expected: true,
 		},
-	])('$label', ({ text, target, expected }) => {
-		expect(isInsideQuotes(text, text.indexOf(target))).toBe(expected);
+		{
+			label: 'a [bracketed] identifier is not a quote unless bracketIdentifiers is set',
+			text: 'SELECT * FROM [Company$Table 1$123-456-789]',
+			target: '$123',
+			expected: false,
+		},
+		{
+			label: 'a position inside a [bracketed] identifier with bracketIdentifiers set',
+			text: 'SELECT * FROM [Company$Table 1$123-456-789]',
+			target: '$123',
+			options: { bracketIdentifiers: true },
+			expected: true,
+		},
+		{
+			label: 'an escaped closing bracket (]]) does not end the identifier early',
+			text: 'SELECT * FROM [a]]$1]',
+			target: '$1',
+			options: { bracketIdentifiers: true },
+			expected: true,
+		},
+		{
+			label: 'a position after a closed [bracketed] identifier',
+			text: 'SELECT [a] FROM t WHERE id = $1',
+			target: '$1',
+			options: { bracketIdentifiers: true },
+			expected: false,
+		},
+		{
+			label: 'a single quote inside a [bracketed] identifier does not open a string',
+			text: "SELECT [it's] FROM t WHERE id = $1",
+			target: '$1',
+			options: { bracketIdentifiers: true },
+			expected: false,
+		},
+		{
+			label: 'a [ inside a single-quoted string does not open an identifier',
+			text: "WHERE note = '[' AND id = $1",
+			target: '$1',
+			options: { bracketIdentifiers: true },
+			expected: false,
+		},
+	])('$label', ({ text, target, expected, options }) => {
+		expect(isInsideQuotes(text, text.indexOf(target), options)).toBe(expected);
 	});
 });
 
