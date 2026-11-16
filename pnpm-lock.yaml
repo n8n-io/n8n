@@ -1120,7 +1120,7 @@ patchedDependencies:
   '@chat-adapter/teams@4.37.0': af5fb1d38a2af55399bd8b6934e77348a9b061fec6177c101dd9d7a787ae8a6c
   '@chat-adapter/whatsapp@4.37.0': 950356dafb986b5cc9bd53069f7653b47b790a60b3590495cf53392ea4df2de4
   '@confluentinc/kafka-javascript@1.9.1': c597d3e3d9d6d0d33588b7dc1e88d55f270ba155721aad464bd7fb03e28f5003
-  '@google/generative-ai@0.24.0': 81ecf039d41dad42ab21d944df2ddb6726a70f915cfa7c16e17f56caca3622ad
+  '@google/generative-ai@0.24.0': a52d090b4f2f056a41a583fa659204daa4c4a57ee1f6d53346e1b3e7d75cee17
   '@icetee/ftp@0.3.15': 19c547038e6400d80f724f77c3fad97093f9233d7596bf2dba38d3e0adb7dab9
   '@langchain/google-common@2.1.24': b50436a6c7b0a82d54472dff331ba1b42ab8b816995f83295eef2ee4b482a87d
   '@langchain/google-genai@2.1.24': 30296ce7b3b93ff0d018303d33ea17b86653042ddfeabfbdac48b9633320a60e
@@ -3020,6 +3020,15 @@ importers:
       change-case:
         specifier: 'catalog:'
         version: 5.4.4
+      css-select:
+        specifier: ^6.0.0
+        version: 6.0.0
+      culori:
+        specifier: ^4.0.2
+        version: 4.0.2
+      domhandler:
+        specifier: ^5.0.3
+        version: 5.0.3
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
@@ -3029,6 +3038,12 @@ importers:
       pluralize:
         specifier: ^8.0.0
         version: 8.0.0
+      postcss:
+        specifier: 8.5.23
+        version: 8.5.23
+      saxes:
+        specifier: ^6.0.0
+        version: 6.0.0
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -3036,6 +3051,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@types/culori':
+        specifier: ^4.0.1
+        version: 4.0.1
       '@types/node':
         specifier: ^20.17.50
         version: 20.19.41
@@ -3880,7 +3898,7 @@ importers:
         version: 1.19.0(@modelcontextprotocol/sdk@1.32.0(supports-color@8.1.1)(zod@3.25.76))(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10)
       '@google/generative-ai':
         specifier: 0.24.0
-        version: 0.24.0(patch_hash=81ecf039d41dad42ab21d944df2ddb6726a70f915cfa7c16e17f56caca3622ad)
+        version: 0.24.0(patch_hash=a52d090b4f2f056a41a583fa659204daa4c4a57ee1f6d53346e1b3e7d75cee17)
       '@huggingface/inference':
         specifier: 4.0.5
         version: 4.0.5
@@ -16579,6 +16597,9 @@ packages:
   '@types/cookiejar@2.1.5':
     resolution: {integrity: sha512-he+DHOWReW0nghN24E1WUqM0efK4kI9oTqDm6XmK8ZPe2djZ90BSNdGnIyCLzCPw7/pogPlGbzI2wHGGmi4O/Q==}
 
+  '@types/culori@4.0.1':
+    resolution: {integrity: sha512-43M51r/22CjhbOXyGT361GZ9vncSVQ39u62x5eJdBQFviI8zWp2X5jzqg7k4M6PVgDQAClpy2bUe2dtwEgEDVQ==}
+
   '@types/d3-array@3.2.2':
     resolution: {integrity: sha512-hOLWVbm7uRza0BYXpIIW5pxfrKe0W+D5lrFiAEYR+pb6w3N2SwSMaJbXdUfSEv+dT4MfHBLtn5js0LAWaO6otw==}
 
@@ -19293,6 +19314,10 @@ packages:
 
   csv-parse@7.0.2:
     resolution: {integrity: sha512-uKZghv9UmPkMVLYy//KZ9HFAIJsl7wkhoEdIL0+rhuSY9pZQlhaeGEDPIe+/w7eh81MOql8Q/9+inAGWG6ZHYA==}
+
+  culori@4.0.2:
+    resolution: {integrity: sha512-1+BhOB8ahCn4O0cep0Sh2l9KCOfOdY+BXJnKMHFFzDEouSr/el18QwXEMRlOj9UY5nCeA8UN3a/82rUWRBeyBw==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
   curlconverter@4.12.0:
     resolution: {integrity: sha512-NcwPKJgu9DkCH4gQsnjnXuUtPrhLhoNwvIYTTS5rRrsCC/X2flUswtgmeCyV9ePGszXzFReXk5y/CdBxrsAQ8Q==}
@@ -30826,7 +30851,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@google/generative-ai@0.24.0(patch_hash=81ecf039d41dad42ab21d944df2ddb6726a70f915cfa7c16e17f56caca3622ad)': {}
+  '@google/generative-ai@0.24.0(patch_hash=a52d090b4f2f056a41a583fa659204daa4c4a57ee1f6d53346e1b3e7d75cee17)': {}
 
   '@graphql-typed-document-node/core@3.2.0(graphql@16.11.0)':
     dependencies:
@@ -31391,7 +31416,7 @@ snapshots:
 
   '@langchain/google-genai@2.1.24(patch_hash=30296ce7b3b93ff0d018303d33ea17b86653042ddfeabfbdac48b9633320a60e)(@langchain/core@1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))':
     dependencies:
-      '@google/generative-ai': 0.24.0(patch_hash=81ecf039d41dad42ab21d944df2ddb6726a70f915cfa7c16e17f56caca3622ad)
+      '@google/generative-ai': 0.24.0(patch_hash=a52d090b4f2f056a41a583fa659204daa4c4a57ee1f6d53346e1b3e7d75cee17)
       '@langchain/core': 1.2.8(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       uuid: 13.0.1
 
@@ -35192,6 +35217,8 @@ snapshots:
 
   '@types/cookiejar@2.1.5': {}
 
+  '@types/culori@4.0.1': {}
+
   '@types/d3-array@3.2.2': {}
 
   '@types/d3-axis@3.0.6':
@@ -38284,6 +38311,8 @@ snapshots:
   csstype@3.2.3: {}
 
   csv-parse@7.0.2: {}
+
+  culori@4.0.2: {}
 
   curlconverter@4.12.0:
     dependencies:

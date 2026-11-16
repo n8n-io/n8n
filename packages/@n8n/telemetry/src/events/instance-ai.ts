@@ -1,5 +1,7 @@
 import {
 	INSTANCE_AI_PREFILL_TYPES,
+	instanceAiAutoApprovalDeciderSchema,
+	instanceAiConfirmationSeveritySchema,
 	instanceContextAbsenceReasonSchema,
 	instanceContextSurfaceSchema,
 	INSTANCE_AI_PREFILL_TYPE_FALLBACK,
@@ -9,7 +11,7 @@ import {
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
-import { assistantSurfaceSchema } from '../schemas';
+import { assistantRuntimeSchema as assistantRuntime, assistantSurfaceSchema } from '../schemas';
 import { setupItemProperties, setupTelemetryProperties } from '../setup-properties';
 
 /**
@@ -61,14 +63,7 @@ const currentTurnProps = {
 		),
 };
 
-/** The runtimes that run an n8n Assistant thread. */
-export const ASSISTANT_RUNTIMES = ['instance-ai', 'agents'] as const;
-export type AssistantRuntime = (typeof ASSISTANT_RUNTIMES)[number];
-const assistantRuntime = z
-	.enum(ASSISTANT_RUNTIMES)
-	.describe(
-		"The runtime that runs the thread: 'instance-ai' is the current Assistant runtime, 'agents' is the Assistant agent on the Agents runtime",
-	);
+export { ASSISTANT_RUNTIMES, type AssistantRuntime } from '../schemas';
 
 const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
@@ -399,6 +394,29 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			method: z.enum(['got_it', 'never_show_again', 'close', 'settings_link']),
 			variant: openWorkflowInAssistantVariant,
 			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
+		}),
+	},
+	APPROVAL_DECIDED_IN_AUTO_MODE: {
+		name: 'AI Assistant decided approval in auto mode',
+		description:
+			'Auto mode reviewed an action set to Ask first before its approval card showed. Fires once per reviewed action, with whether the action ran without a card or the card showed.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string(),
+			run_id: z.string(),
+			tool_name: z.string(),
+			is_mcp_tool: z.boolean(),
+			severity: z.enum(instanceAiConfirmationSeveritySchema.options),
+			route: z
+				.enum(['always-ask', 'low-risk', 'judge'])
+				.describe(
+					'always-ask and low-risk are fixed rules. judge is every other action: the judge model decides, except for an MCP call that is too long to check, which a rule sends to the card (decided_by rule)',
+				),
+			decision: z.enum(['approve', 'ask']).describe('approve ran the action without a card'),
+			decided_by: z.enum(instanceAiAutoApprovalDeciderSchema.options),
+			judge_failed: z.boolean().describe('The judge model failed or timed out, so the card showed'),
+			judge_duration_ms: z.number().optional(),
+			judge_model: z.string().optional(),
 		}),
 	},
 	DEFAULT_EDITOR_PREFERENCE_CHANGED: {

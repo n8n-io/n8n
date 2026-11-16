@@ -95,6 +95,10 @@ import {
 	toNodesComposerAttachment,
 } from './assistantNodeAttachments';
 import { useAssistantAgentMessageTelemetry } from './useAssistantAgentMessageTelemetry';
+import {
+	ASSISTANT_AGENT_SETUP_SAVED,
+	useAssistantAgentSetupSavedTelemetry,
+} from './useAssistantAgentSetupSavedTelemetry';
 import { useAssistantAgentTargets } from './useAssistantAgentTargets';
 import { useAssistantAgentTrace } from './useAssistantAgentTrace';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
@@ -238,6 +242,12 @@ const trace = useAssistantAgentTrace({
 	threadId: props.threadId,
 	messages: () => panel.value?.messages ?? [],
 });
+
+const setupSavedTelemetry = useAssistantAgentSetupSavedTelemetry({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
+provide(ASSISTANT_AGENT_SETUP_SAVED, setupSavedTelemetry.expectResult);
 
 watch(panel, (current) => {
 	if (!current) return;
