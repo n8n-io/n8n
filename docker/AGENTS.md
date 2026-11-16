@@ -34,10 +34,17 @@ and release branches. On a branch without a bake file, the pin PR edits the
 | `DEBIAN_RUNTIME_IMAGE` | `n8nio/base:<version>-debian-<commit>` |
 | `PC_RUNTIME_IMAGE` | `n8nio/node-pc:<version>-<commit>` |
 | `PC_BUILDER_IMAGE` | `n8nio/node-pc:<version>-<commit>-dev` |
-| `RUNTIME_IMAGE` (`1.x` Dockerfile) | `n8nio/node-patched:<version>-<commit>` |
-| `BUILDER_IMAGE` (`1.x` Dockerfile) | `n8nio/node-patched:<version>-<commit>-dev` |
+| `NODE_24_RUNTIME_IMAGE` | `n8nio/base:<Node 24 version>-<commit>` |
+| `RUNTIME_IMAGE` (`1.x` Dockerfile, after the switch) | `n8nio/node-patched:<Node 24 version>-<commit>` |
+| `BUILDER_IMAGE` (`1.x` Dockerfile, after the switch) | `n8nio/node-patched:<Node 24 version>-<commit>-dev` |
 | `RUNTIME_IMAGE` (Node 26 release branch) | `n8nio/node-patched:<version>-<commit>` |
 | `BUILDER_IMAGE` (Node 26 release branch) | `n8nio/node-patched:<version>-<commit>-dev` |
+
+Before the switch, the `1.x` Dockerfile pins `RUNTIME_IMAGE` to `n8nio/base`
+and `BUILDER_IMAGE` to the official `node` image. After master publishes the
+patched Node 24 images, change both pins to `n8nio/node-patched`. Keep
+`NODE_24_RUNTIME_IMAGE` on the master-published `n8nio/base` Node 24 image.
+Do not copy the new `1.x` runtime pin into this input.
 
 | Image | Inputs (PR 1) | Pins (PR 2) |
 |---|---|---|
@@ -66,10 +73,17 @@ for stable and beta releases.
 
 ### Example: a new Node version
 
-1. Change `DHI_REF` and `DEBIAN_DHI_REF`.
+1. Change `DHI_REF` and `DEBIAN_DHI_REF`. Master publishes the new bases.
 2. Change `NODE_VERSION`, `BUILDER_IMAGE` and `DEBIAN_BUILDER_IMAGE`. Pin
-   `RUNTIME_IMAGE` and `DEBIAN_RUNTIME_IMAGE`.
-3. Pin `PC_BUILDER_IMAGE` and `PC_RUNTIME_IMAGE`.
+   `RUNTIME_IMAGE` and `DEBIAN_RUNTIME_IMAGE`. Master publishes `node-pc`
+   and `node-patched-26` from these inputs.
+3. Pin `PC_BUILDER_IMAGE` and `PC_RUNTIME_IMAGE`. Pin the Node 26
+   `n8nio/node-patched` runtime and `-dev` digests in the release branches.
+
+For a Node 24 update, change `NODE_24_DHI_REF` first. After master publishes
+the base, pin it in `NODE_24_RUNTIME_IMAGE` and change `NODE_24_VERSION`.
+After master publishes `node-patched-24`, pin its runtime and `-dev` digests
+in the `1.x` Dockerfile.
 
 Other third-party pins (`node`, `python`, `alpine`, distroless) change in one
 PR.

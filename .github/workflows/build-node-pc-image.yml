@@ -181,9 +181,8 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-dev-${{ matrix.platform.arch }}
             ghcr.io/${{ github.repository_owner }}/${{ env.REPO }}:${{ env.NODE_VERSION }}-${{ github.sha }}-dev-${{ matrix.platform.arch }}
 
-  # Runs even when a build leg failed, so one image's failure does not hold
-  # back the manifests of the others. A missing per-arch image fails only its
-  # own image's manifest.
+  # Each image checks all its runtime and dev inputs before it moves any tag.
+  # A failed build for another image does not block publication.
   create-multi-arch-manifest:
     needs: [prepare, build]
     if: always() && needs.prepare.outputs.changed == 'true' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.push == true))
@@ -207,10 +206,20 @@ jobs:
         env:
           NODE_VERSION: ${{ needs.prepare.outputs[format('node_version_{0}', matrix.image.key)] }}
         run: |
-          for REPO in \
-            "${{ secrets.DOCKER_USERNAME }}/${{ matrix.image.repo }}" \
-            "ghcr.io/${{ github.repository_owner }}/${{ matrix.image.repo }}" \
-          ; do
+          set -euo pipefail
+          REPOS=(
+            "${{ secrets.DOCKER_USERNAME }}/${{ matrix.image.repo }}"
+            "ghcr.io/${{ github.repository_owner }}/${{ matrix.image.repo }}"
+          )
+          # A dev build can fail after it pushed the runtime image.
+          for REPO in "${REPOS[@]}"; do
+            for DEV in "" "-dev"; do
+              for ARCH in amd64 arm64; do
+                docker buildx imagetools inspect "$REPO:$NODE_VERSION-${{ github.sha }}$DEV-$ARCH" > /dev/null
+              done
+            done
+          done
+          for REPO in "${REPOS[@]}"; do
             for DEV in "" "-dev"; do
               AMD64="$REPO:$NODE_VERSION-${{ github.sha }}$DEV-amd64"
               ARM64="$REPO:$NODE_VERSION-${{ github.sha }}$DEV-arm64"
