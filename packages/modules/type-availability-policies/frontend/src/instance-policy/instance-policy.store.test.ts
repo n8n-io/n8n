@@ -177,7 +177,7 @@ describe('useInstancePolicyStore', () => {
 			expect(result.status).toBe('saved');
 		});
 
-		it('loads the new policy and saves nothing when another admin saved first', async () => {
+		it('loads the new policy and saves nothing when the policy changed after the load', async () => {
 			mocks.saveInstancePolicy.mockRejectedValue(conflict());
 			const store = useInstancePolicyStore();
 			await store.load(['node']);

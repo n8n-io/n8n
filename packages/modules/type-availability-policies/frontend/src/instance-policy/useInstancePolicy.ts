@@ -8,7 +8,7 @@ import type { RestrictedTypeKind } from '../type-availability-policies.constants
 
 /**
  * Loads and saves the instance policy for the admin pages, and tells the admin when a load or a
- * save fails or when another admin saved first. It loads only the kinds the user can manage.
+ * save fails or when the policy changed after the load. It loads only the kinds the user can manage.
  */
 export function useInstancePolicy() {
 	const store = useInstancePolicyStore();
