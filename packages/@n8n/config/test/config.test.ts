@@ -549,6 +549,9 @@ describe('GlobalConfig', () => {
 			ownerQuarantineGraceSeconds: 86400,
 			ownerSettleSeconds: 300,
 		},
+		leases: {
+			enabled: false,
+		},
 		evaluation: {
 			collectionsEnabled: false,
 			configEvalsEnabled: false,
