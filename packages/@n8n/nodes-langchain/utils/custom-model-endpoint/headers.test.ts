@@ -104,6 +104,31 @@ describe('buildRequestHeaders', () => {
 			expect(headers.authorization).toBe('Bearer sk-test');
 		});
 
+		it('never lets a minted token override the login header either', () => {
+			const headers = buildRequestHeaders({
+				endpoint: endpoint(login),
+				bearerToken: 'minted',
+			});
+
+			expect(headers.authorization).toBe('Bearer sk-test');
+		});
+
+		it('sends the minted token for OAuth2, whose own login header is empty', () => {
+			const headers = buildRequestHeaders({
+				endpoint: endpoint({
+					type: 'oauth2',
+					tokenUrl: 'https://login.example.com/token',
+					clientId: 'id',
+					clientSecret: 'secret',
+					scope: '',
+					sendCredentialsIn: 'header',
+				}),
+				bearerToken: 'minted',
+			});
+
+			expect(headers.authorization).toBe('Bearer minted');
+		});
+
 		it('never lets another header override the key of "API key in header"', () => {
 			const headers = buildRequestHeaders({
 				endpoint: endpoint(
