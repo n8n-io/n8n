@@ -114,3 +114,42 @@ describe('buildNodeIndex schemaPath', () => {
 		assert.deepEqual(index.get('n8n-nodes-base.formTrigger')?.noOperationSiblings, []);
 	});
 });
+
+describe('buildNodeIndex known nodes', () => {
+	const withKnown = (known) => [{ ...packages[0], known }, packages[1]];
+
+	it('maps a node type whose file has another name through the known nodes list', () => {
+		const index = buildNodeIndex(
+			withKnown({ sendInBlue: { sourcePath: 'dist/nodes/Brevo/Brevo.node.js' } }),
+			{ types: ['n8n-nodes-base.sendInBlue'], noOperationTypes: [] },
+		);
+
+		assert.equal(index.get('n8n-nodes-base.sendInBlue')?.dir, 'packages/nodes-base/nodes/Brevo');
+	});
+
+	it('records the source file of an enterprise node from the known nodes list', () => {
+		const index = buildNodeIndex(
+			withKnown({
+				evaluation: { sourcePath: 'dist/nodes/Evaluation/Evaluation/Evaluation.node.ee.js' },
+			}),
+			{ types: ['n8n-nodes-base.evaluation'], noOperationTypes: [] },
+		);
+
+		assert.equal(
+			index.get('n8n-nodes-base.evaluation')?.sourceFile,
+			'packages/nodes-base/nodes/Evaluation/Evaluation/Evaluation.node.ee.ts',
+		);
+	});
+
+	it('falls back to the file name for a type that the known nodes list leaves out', () => {
+		const index = buildNodeIndex(withKnown({}), {
+			types: ['n8n-nodes-base.telegramTrigger'],
+			noOperationTypes: [],
+		});
+
+		assert.equal(
+			index.get('n8n-nodes-base.telegramTrigger')?.dir,
+			'packages/nodes-base/nodes/Telegram',
+		);
+	});
+});

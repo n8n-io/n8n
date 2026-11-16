@@ -12,6 +12,10 @@
  *
  * A group seen in fewer than --agree-below workflows is written only when its
  * samples agree on their top-level keys.
+ *
+ * --build-root <dir> reads `dist/known/nodes.json` from another checkout with a
+ * build, to map node types whose file has another name. It defaults to this
+ * checkout, and without a build the script matches node types by file name.
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -42,6 +46,7 @@ const { values: args } = parseArgs({
 		'min-share': { type: 'string', default: '0.5' },
 		'max-gb': { type: 'string', default: '120' },
 		from: { type: 'string' },
+		'build-root': { type: 'string', default: repoRoot },
 		write: { type: 'boolean', default: false },
 	},
 });
@@ -82,10 +87,22 @@ function fetchRows() {
 	return JSON.parse(output);
 }
 
+/** The package's built node list, without entries whose source is not in this checkout. */
+function loadKnownNodes(pkgDir) {
+	const file = join(resolve(args['build-root']), pkgDir, 'dist/known/nodes.json');
+	if (!existsSync(file)) return {};
+	const known = Object.entries(JSON.parse(readFileSync(file, 'utf8')));
+	return Object.fromEntries(
+		known.filter(([, { sourcePath }]) =>
+			existsSync(join(repoRoot, pkgDir, sourcePath.replace(/^dist\//, '').replace(/\.js$/, '.ts'))),
+		),
+	);
+}
+
 function loadPackages() {
 	return PACKAGES.map((pkg) => {
 		const json = JSON.parse(readFileSync(join(repoRoot, pkg.dir, 'package.json'), 'utf8'));
-		return { ...pkg, nodes: json.n8n?.nodes ?? [] };
+		return { ...pkg, nodes: json.n8n?.nodes ?? [], known: loadKnownNodes(pkg.dir) };
 	});
 }
 
