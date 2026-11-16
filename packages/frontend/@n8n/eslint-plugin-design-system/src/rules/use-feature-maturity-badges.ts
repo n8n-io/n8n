@@ -30,11 +30,6 @@ type VueParserServices = {
 	) => RuleListener;
 };
 
-const isAllowedFile = (filename: string) =>
-	filename.endsWith('FeatureMaturityBadges.vue') ||
-	filename.endsWith('PreviewBadge/PreviewBadge.vue') ||
-	filename.endsWith('EnterpriseReadinessBadge/EnterpriseReadinessBadge.vue');
-
 export const UseFeatureMaturityBadgesRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
 		type: 'problem',
@@ -50,8 +45,6 @@ export const UseFeatureMaturityBadgesRule = ESLintUtils.RuleCreator.withoutDocs(
 	},
 	defaultOptions: [],
 	create(context) {
-		if (isAllowedFile(context.filename)) return {};
-
 		const parserServices = context.sourceCode.parserServices as unknown as VueParserServices;
 		if (!parserServices.defineTemplateBodyVisitor) return {};
 

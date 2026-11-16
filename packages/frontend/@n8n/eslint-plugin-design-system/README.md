@@ -37,4 +37,4 @@ The `teleported` prop may be omitted because it defaults to `true`, or it may be
 
 Requires Preview and Limited enterprise support to render through `N8nFeatureMaturityBadges`. A Vue file must not render `N8nPreviewBadge` or `N8nEnterpriseReadinessBadge`, and it must not import those components.
 
-`N8nFeatureMaturityBadges` reads `featureMaturity`, the enterprise plan, and the badge size. The badge components themselves, and `N8nFeatureMaturityBadges`, may still render the individual badges.
+`N8nFeatureMaturityBadges` draws both badges. It reads `featureMaturity`, the enterprise plan, and the badge size.

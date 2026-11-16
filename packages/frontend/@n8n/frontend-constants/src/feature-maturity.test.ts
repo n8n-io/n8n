@@ -23,6 +23,7 @@ describe('featureMaturity', () => {
 			context: { preview: true, limitedEnterpriseSupport: true },
 			roles: { preview: false, limitedEnterpriseSupport: false },
 			nodePolicies: { preview: true, limitedEnterpriseSupport: false },
+			selfHealing: { preview: true, limitedEnterpriseSupport: true },
 			chat: {
 				preview: true,
 				limitedEnterpriseSupport: true,

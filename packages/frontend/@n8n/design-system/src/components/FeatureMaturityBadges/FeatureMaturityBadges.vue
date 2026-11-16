@@ -5,9 +5,10 @@ import {
 } from '@n8n/frontend-constants/feature-maturity';
 import { computed } from 'vue';
 
+import { useI18n } from '../../composables/useI18n';
+import N8nBadge from '../N8nBadge';
 import type { BadgeSize } from '../N8nBadge/Badge.type';
-import N8nEnterpriseReadinessBadge from '../EnterpriseReadinessBadge/EnterpriseReadinessBadge.vue';
-import N8nPreviewBadge from '../PreviewBadge/PreviewBadge.vue';
+import N8nTooltip from '../N8nTooltip';
 
 import {
 	featureMaturityTestId,
@@ -64,6 +65,7 @@ const props = withDefaults(
 	},
 );
 
+const { t } = useI18n();
 const providedEnterprisePlan = useEnterprisePlan();
 
 const entry = computed(() => (props.feature ? readFeatureMaturity(props.feature) : undefined));
@@ -98,25 +100,71 @@ const enterpriseTestId = computed(() =>
 
 <template>
 	<span v-if="visible" :class="$style.badges">
-		<N8nPreviewBadge
+		<N8nBadge
 			v-if="resolvedPreview"
+			variant="pink"
 			:size="resolvedSize"
-			:text="resolvedPreviewText"
-			v-bind="previewTestId ? { 'data-test-id': previewTestId } : {}"
-		/>
-		<N8nEnterpriseReadinessBadge
-			v-if="showEnterpriseBadge"
-			:size="resolvedSize"
-			:docs-url="resolvedDocsUrl"
-			v-bind="enterpriseTestId ? { 'data-test-id': enterpriseTestId } : {}"
-		/>
+			leading-icon="flask-conical"
+			:data-test-id="previewTestId"
+		>
+			{{ resolvedPreviewText ?? t('previewBadge.preview') }}
+		</N8nBadge>
+		<N8nTooltip v-if="showEnterpriseBadge" placement="top" as-child>
+			<N8nBadge
+				variant="pink"
+				:size="resolvedSize"
+				leading-icon="shield-half"
+				:class="$style.enterpriseBadge"
+				:data-test-id="enterpriseTestId"
+				tabindex="0"
+			>
+				{{ t('enterpriseReadinessBadge.limited') }}
+			</N8nBadge>
+			<template #content>
+				<!-- The tooltip content is a centered column. One paragraph keeps the link in the sentence. -->
+				<p :class="$style.tooltipCopy">
+					{{ t('enterpriseReadinessBadge.tooltip') }}
+					<a
+						v-if="resolvedDocsUrl"
+						:class="$style.docsLink"
+						:href="resolvedDocsUrl"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						{{ t('maturityBadge.docsLink') }}
+					</a>
+				</p>
+			</template>
+		</N8nTooltip>
 	</span>
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/focus';
+
 .badges {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.enterpriseBadge {
+	cursor: default;
+	outline: none;
+
+	&:focus-visible {
+		@include focus.focus-ring-with-border;
+	}
+}
+
+.tooltipCopy {
+	margin: 0;
+	align-self: stretch;
+	line-height: inherit;
+}
+
+.docsLink {
+	color: inherit;
+	text-decoration: underline;
 }
 </style>

@@ -6,10 +6,9 @@ import {
 	N8nButton,
 	N8nDataTableServer,
 	N8nEmptyState,
-	N8nEnterpriseReadinessBadge,
+	N8nFeatureMaturityBadges,
 	N8nIconButton,
 	N8nLoading,
-	N8nPreviewBadge,
 	N8nSwitch,
 	N8nText,
 	N8nTimeAgo,
@@ -23,7 +22,6 @@ import {
 	SELF_HEALING_CONFIGURATION_VIEW,
 	type SelfHealingLocation,
 } from '@n8n/frontend-constants/self-healing';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -37,7 +35,6 @@ const props = withDefaults(defineProps<{ projectId: string; variant?: SelfHealin
 const isPersonalTab = computed(() => props.variant === 'personalTab');
 const store = useSelfHealingStore();
 const rootStore = useRootStore();
-const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
@@ -227,12 +224,7 @@ async function onAction(configuration: SelfHealingConfigurationDto, action: stri
 		<!-- The personal tab shows the Preview badge on the tab itself. -->
 		<h3 v-if="!isPersonalTab" :class="$style.heading">
 			<label>{{ i18n.baseText('selfHealing.config.heading') }}</label>
-			<N8nPreviewBadge size="xsmall" data-test-id="self-healing-preview-badge" />
-			<N8nEnterpriseReadinessBadge
-				v-if="settingsStore.isEnterprisePlan"
-				size="xsmall"
-				data-test-id="self-healing-enterprise-readiness-badge"
-			/>
+			<N8nFeatureMaturityBadges feature="selfHealing" placement="title" />
 		</h3>
 		<slot v-if="isPersonalTab && loading" name="loading" />
 		<N8nButton v-else-if="failed" type="button" variant="outline" @click="load">{{

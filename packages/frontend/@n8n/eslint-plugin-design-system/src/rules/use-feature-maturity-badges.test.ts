@@ -26,23 +26,19 @@ ruleTester.run('use-feature-maturity-badges', UseFeatureMaturityBadgesRule, {
 			code: vue('<N8nFeatureMaturityBadges preview />'),
 		},
 		{
-			filename: 'src/components/FeatureMaturityBadges/FeatureMaturityBadges.vue',
-			code: vue('<N8nPreviewBadge /><N8nEnterpriseReadinessBadge />'),
-		},
-		{
-			filename: 'src/components/PreviewBadge/PreviewBadge.vue',
-			code: vue('<span />'),
-		},
-		{
-			filename: 'src/components/EnterpriseReadinessBadge/EnterpriseReadinessBadge.vue',
-			code: vue('<span />'),
-		},
-		{
 			filename: 'PromotionPreviewBadges.vue',
 			code: vue('<div data-test-id="promotion-preview-badges" />'),
 		},
 	],
 	invalid: [
+		{
+			filename: 'src/components/FeatureMaturityBadges/FeatureMaturityBadges.vue',
+			code: vue('<N8nPreviewBadge /><N8nEnterpriseReadinessBadge />'),
+			errors: [
+				{ messageId: 'useFeatureMaturityBadges' },
+				{ messageId: 'useFeatureMaturityBadges' },
+			],
+		},
 		{
 			filename: 'MenuItem.vue',
 			code: vue('<PreviewBadge />'),
