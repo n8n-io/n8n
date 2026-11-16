@@ -1,10 +1,6 @@
 import { createRunExecutionData } from 'n8n-workflow';
 
-import {
-	CODE_TASK_CONTRACT_VERSION,
-	MAX_CONSOLE_ENTRIES,
-	consoleTruncationEntry,
-} from '../constants';
+import { CODE_TASK_CONTRACT_VERSION, MAX_CONSOLE_ENTRIES } from '../constants';
 import { InvalidCodeTaskFileError } from '../errors/invalid-code-task-file.error';
 import { parseCodeTaskInput, parseCodeTaskResult } from '../parse';
 import type { CodeTaskInput } from '../task-input';
@@ -173,7 +169,7 @@ describe('parseCodeTaskResult', () => {
 			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'success',
 			result: [{ json: { a: 1 } }],
-			console: [["'hello'", '{"a":1}']],
+			console: { entries: [["'hello'", '{"a":1}']] },
 		};
 
 		const file = toFile(result);
@@ -188,7 +184,7 @@ describe('parseCodeTaskResult', () => {
 			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'success',
 			result: [],
-			console: [],
+			console: { entries: [] },
 			customData: { source: 'crm' },
 			staticData: { global: { cursor: 42 } },
 		};
@@ -205,7 +201,7 @@ describe('parseCodeTaskResult', () => {
 			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'success',
 			result: [],
-			console: [],
+			console: { entries: [] },
 			customData: { count: 1 },
 		});
 
@@ -217,7 +213,7 @@ describe('parseCodeTaskResult', () => {
 			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'success',
 			result: 'x',
-			console: [],
+			console: { entries: [] },
 		};
 
 		const parsed = parseCodeTaskResult(result);
@@ -239,7 +235,7 @@ describe('parseCodeTaskResult', () => {
 				context: { itemIndex: 0 },
 				code: 'E_CUSTOM',
 			},
-			console: [],
+			console: { entries: [] },
 		};
 
 		const file = toFile(result);
@@ -249,30 +245,38 @@ describe('parseCodeTaskResult', () => {
 		expect(parsed).toStrictEqual({ ok: true, result: file });
 	});
 
-	it('should accept a console with the max entries and the truncation entry', () => {
-		const console = [
-			...Array.from({ length: MAX_CONSOLE_ENTRIES }, (_, i) => [String(i)]),
-			consoleTruncationEntry(5),
-		];
+	it('should accept a truncated console with the max entries', () => {
+		const entries = Array.from({ length: MAX_CONSOLE_ENTRIES }, (_, i) => [String(i)]);
 
 		const parsed = parseCodeTaskResult({
 			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'success',
 			result: [],
-			console,
+			console: { entries, truncated: true },
 		});
 
 		expect(parsed.ok).toBe(true);
 	});
 
 	it('should reject a console with too many entries', () => {
-		const console = Array.from({ length: MAX_CONSOLE_ENTRIES + 2 }, (_, i) => [String(i)]);
+		const entries = Array.from({ length: MAX_CONSOLE_ENTRIES + 1 }, (_, i) => [String(i)]);
 
 		const parsed = parseCodeTaskResult({
 			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'success',
 			result: [],
-			console,
+			console: { entries },
+		});
+
+		expect(parsed.ok).toBe(false);
+	});
+
+	it('should reject a truncation flag that is not true', () => {
+		const parsed = parseCodeTaskResult({
+			version: CODE_TASK_CONTRACT_VERSION,
+			status: 'success',
+			result: [],
+			console: { entries: [], truncated: false },
 		});
 
 		expect(parsed.ok).toBe(false);
@@ -283,7 +287,7 @@ describe('parseCodeTaskResult', () => {
 			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'success',
 			result: [],
-			console: [[{ a: 1 }]],
+			console: { entries: [[{ a: 1 }]] },
 		});
 
 		expect(parsed.ok).toBe(false);
@@ -294,7 +298,7 @@ describe('parseCodeTaskResult', () => {
 			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'error',
 			error: { stack: 'x' },
-			console: [],
+			console: { entries: [] },
 		});
 
 		expect(parsed.ok).toBe(false);
@@ -304,7 +308,7 @@ describe('parseCodeTaskResult', () => {
 		const parsed = parseCodeTaskResult({
 			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'timeout',
-			console: [],
+			console: { entries: [] },
 		});
 
 		expect(parsed.ok).toBe(false);
@@ -315,7 +319,7 @@ describe('parseCodeTaskResult', () => {
 			version: CODE_TASK_CONTRACT_VERSION + 1,
 			status: 'success',
 			result: [],
-			console: [],
+			console: { entries: [] },
 		});
 
 		expect(parsed.ok).toBe(false);
@@ -323,11 +327,5 @@ describe('parseCodeTaskResult', () => {
 		expect(parsed.error.message).toBe(
 			`Invalid code task result file. Unsupported version ${CODE_TASK_CONTRACT_VERSION + 1}. Expected version ${CODE_TASK_CONTRACT_VERSION}.`,
 		);
-	});
-});
-
-describe('consoleTruncationEntry', () => {
-	it('should tell how many entries were dropped', () => {
-		expect(consoleTruncationEntry(3)).toEqual(['[Output truncated - 3 more entries]']);
 	});
 });

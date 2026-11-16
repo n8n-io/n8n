@@ -3,7 +3,6 @@ export {
 	MAX_CONSOLE_ENTRIES,
 	TASK_INPUT_PATH,
 	TASK_RESULT_PATH,
-	consoleTruncationEntry,
 } from './constants';
 export { InvalidCodeTaskFileError } from './errors/invalid-code-task-file.error';
 export { parseCodeTaskInput, parseCodeTaskResult } from './parse';
@@ -16,6 +15,7 @@ export {
 export {
 	codeTaskResultSchema,
 	type CodeTaskConsoleEntry,
+	type CodeTaskConsoleOutput,
 	type CodeTaskErrorResult,
 	type CodeTaskResult,
 	type CodeTaskSuccessResult,

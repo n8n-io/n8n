@@ -10,10 +10,5 @@ export const TASK_INPUT_PATH = 'task.json';
 /** Path of the task result file, relative to the output folder of the task. */
 export const TASK_RESULT_PATH = 'result.json';
 
-/** Max console entries in a result, before the entry that tells about the truncation. */
+/** Max console entries in a result. */
 export const MAX_CONSOLE_ENTRIES = 100;
-
-/** The last console entry of a result that has more than `MAX_CONSOLE_ENTRIES` entries. */
-export function consoleTruncationEntry(droppedEntries: number): string[] {
-	return [`[Output truncated - ${droppedEntries} more entries]`];
-}

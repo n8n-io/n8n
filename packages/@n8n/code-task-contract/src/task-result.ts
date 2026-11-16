@@ -5,8 +5,12 @@ import { CODE_TASK_CONTRACT_VERSION, MAX_CONSOLE_ENTRIES } from './constants';
 /** The formatted arguments of one `console.log` call. */
 const consoleEntrySchema = z.array(z.string());
 
-/** One more entry than the max, for the entry that tells about the truncation. */
-const consoleSchema = z.array(consoleEntrySchema).max(MAX_CONSOLE_ENTRIES + 1);
+/** The console output of the task. */
+const consoleOutputSchema = z.object({
+	entries: z.array(consoleEntrySchema).max(MAX_CONSOLE_ENTRIES),
+	/** Set when the runtime dropped entries after the first `MAX_CONSOLE_ENTRIES`. */
+	truncated: z.literal(true).optional(),
+});
 
 /**
  * An error that the user code threw, in the shape that the JS task runner
@@ -26,7 +30,7 @@ const successSchema = z.object({
 	status: z.literal('success'),
 	/** What the user code returned. n8n validates and normalizes it. */
 	result: z.unknown(),
-	console: consoleSchema,
+	console: consoleOutputSchema,
 	/** The values that the user code set with `$execution.customData`. */
 	customData: z.record(z.string(), z.string()).optional(),
 	/** The workflow static data. Present only when the user code changed it. */
@@ -37,7 +41,7 @@ const errorSchema = z.object({
 	version: z.literal(CODE_TASK_CONTRACT_VERSION),
 	status: z.literal('error'),
 	error: userErrorSchema,
-	console: consoleSchema,
+	console: consoleOutputSchema,
 });
 
 /**
@@ -50,4 +54,5 @@ export type CodeTaskResult = z.infer<typeof codeTaskResultSchema>;
 export type CodeTaskSuccessResult = z.infer<typeof successSchema>;
 export type CodeTaskErrorResult = z.infer<typeof errorSchema>;
 export type CodeTaskUserError = z.infer<typeof userErrorSchema>;
+export type CodeTaskConsoleOutput = z.infer<typeof consoleOutputSchema>;
 export type CodeTaskConsoleEntry = z.infer<typeof consoleEntrySchema>;
