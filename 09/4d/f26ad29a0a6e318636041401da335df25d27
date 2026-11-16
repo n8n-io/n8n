@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/WouldHaveHappenedFoundation.test.ts
+  s_901f582250d1d3::t_6544fa2c2f5947 1-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "094df26ad29a0a6e318636041401da335df25d27",
+  "prompts": {},
+  "sessions": {
+    "s_901f582250d1d3": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1d6bd-91e0-7468-b40f-e879d1d172c9",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/app/init/expressionEngine.ts
+  ai_agent 24-26,29-38
+packages/frontend/editor-ui/src/app/init/expressionEngine.test.ts
+  ai_agent 46-72
+packages/frontend/editor-ui/src/app/init/index.test.ts
+  s_76d3aa220fe632::t_1a0549391e667d 262-314
+packages/frontend/editor-ui/src/app/init/index.ts
+  ai_agent 109-112,114,131-138,335
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d4e3c66873d857da5989c39fe85795ee6860dd3e",
+  "prompts": {},
+  "sessions": {
+    "s_76d3aa220fe632": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c5ee64d-6b15-4f20-ad91-8203ecf6e8ee",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

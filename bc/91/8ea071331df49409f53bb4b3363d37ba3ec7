@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_3b17cd2e611439::t_b452735a84e8e5 4,1064,3456-3457
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_3b17cd2e611439::t_b452735a84e8e5 17,49-56,704,714,911,3408,3441-3485
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderEditorColumn.spec.ts
+  s_3b17cd2e611439::t_b452735a84e8e5 10-13,206,271
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_3b17cd2e611439::t_b452735a84e8e5 29-30,51,62,235-239
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_3b17cd2e611439::t_b452735a84e8e5 9,61
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_3b17cd2e611439::t_b452735a84e8e5 221-222,224
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_3b17cd2e611439::t_b452735a84e8e5 7-12,131-136,198-213
+packages/frontend/editor-ui/src/experiments/agentSetupHeader/useAgentSetupHeaderExperiment.ts
+  s_3b17cd2e611439::t_b452735a84e8e5 1-15
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_3b17cd2e611439::t_b452735a84e8e5 185-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc918ea071331df49409f53bb4b3363d37ba3ec7",
+  "prompts": {},
+  "sessions": {
+    "s_3b17cd2e611439": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1e3a2-d3aa-76c3-89c3-59dd528599c5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+packages/@n8n/api-types/src/agents/skill-trial.schema.ts
+  s_5f2cc24621ee6c::t_5cc665b7e305d7 27-28,30-43
+  s_5f2cc24621ee6c::t_6f760db81b2a5e 13-22,29,44
+spikes/skills-marketplace/validation.md
+  s_5f2cc24621ee6c::t_4373b31659f5a0 86-94
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5f2cc24621ee6c::t_71956376ed085d 3965,3969-3980
+spikes/skills-marketplace/implementation.md
+  s_5f2cc24621ee6c::t_56e39cf460e779 13-14,16,27,29,31,47,50-51,66,72
+packages/cli/src/modules/agents/__tests__/agent-skill-trial.service.test.ts
+  s_5f2cc24621ee6c::t_63e0043bf11d3d 139,145-146,168
+  s_5f2cc24621ee6c::t_5cc665b7e305d7 147-167,169-170
+packages/cli/src/modules/agents/agent-skill-trial.service.ts
+  s_5f2cc24621ee6c::t_5cc665b7e305d7 1-6
+  s_5f2cc24621ee6c::t_6f760db81b2a5e 7,26,108-109,127-134,136
+packages/cli/src/modules/agents/agent-skill-trial.controller.ts
+  s_5f2cc24621ee6c::t_0955075a28674b 22
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillTrialDialog.test.ts
+  s_5f2cc24621ee6c::t_5cc665b7e305d7 72-77,79-82,89,91-95,99,101-114,117-123,125,128-135,137-144,147,149-153,155-219,222,227
+packages/cli/src/modules/agents/__tests__/agent-skill-trial.controller.test.ts
+  s_5f2cc24621ee6c::t_5cc665b7e305d7 38-48,55-57
+  s_5f2cc24621ee6c::t_63e0043bf11d3d 36-37,49-54,58-61
+packages/frontend/editor-ui/src/features/agents/components/AgentSkillTrialDialog.vue
+  s_5f2cc24621ee6c::t_66f0cd687fff97 113-116,358
+  s_5f2cc24621ee6c::t_71956376ed085d 2,9,14-15,38,47-51,57,104,107,135,140-141,145,177,359-360,367,376,390,394-395,403-404,407-408,415-416
+  s_5f2cc24621ee6c::t_5cc665b7e305d7 4-8,88-94,99-101,105-106,146-147,150-152,154,157-158,162-165,168,170,172-173,178-185,196,198-201,205-232,234-249,262-263,267-268,270-283,285,287-346,348-350,352,363-364,369-370,372-374,377-379,381-388,392-393,396-397,399-401,405-406,409-414,417-418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4368747adb08635f82999e8fae3d1ec879298dd8",
+  "prompts": {},
+  "sessions": {
+    "s_5f2cc24621ee6c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cf4f-c86b-7391-a83e-4e05b1b47613",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

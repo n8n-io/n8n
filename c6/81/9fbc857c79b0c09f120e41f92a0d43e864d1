@@ -1,0 +1,24 @@
+packages/@n8n/nodes-langchain/utils/agent-execution/test/memoryManagement.test.ts
+  s_485adf09b09f1c::t_3435d62ce14cf2 20,63-105,265-289
+packages/@n8n/nodes-langchain/utils/agent-execution/memoryManagement.ts
+  s_485adf09b09f1c::t_1af216cb51e9ed 228
+  s_485adf09b09f1c::t_d9f2caa3eecef2 233-235
+  s_485adf09b09f1c::t_eb3c745ea26fff 291-292
+  s_485adf09b09f1c::t_601b1878b0a6bd 224-227,229-232,236-261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c6819fbc857c79b0c09f120e41f92a0d43e864d1",
+  "prompts": {},
+  "sessions": {
+    "s_485adf09b09f1c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b8c49ce-9766-4af6-8470-86072d84456c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
