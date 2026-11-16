@@ -105,6 +105,38 @@ describe('useInstancePolicyStore', () => {
 
 			expect(store.policies.node?.version).toBe(4);
 		});
+
+		it('keeps the newer load state and error when an older load fails late', async () => {
+			const older = createDeferredPromise<InstancePolicy<'node'>>();
+			mocks.fetchInstancePolicy.mockReturnValueOnce(older.promise);
+			const store = useInstancePolicyStore();
+
+			const olderLoad = store.load(['node']);
+			await store.load(['node']);
+			older.reject(new Error('Network'));
+
+			expect(await olderLoad).toEqual([]);
+			expect(store.loadStates.node).toBe('loaded');
+			expect(store.policies.node).toEqual(nodePolicy(3));
+		});
+
+		it('does not reload the builder restrictions on the first load', async () => {
+			const store = useInstancePolicyStore();
+
+			await store.load(['node']);
+
+			expect(useTypeAvailabilityPoliciesStore().reload).not.toHaveBeenCalled();
+		});
+
+		it('reloads the builder restrictions when a load finds a newer policy', async () => {
+			const store = useInstancePolicyStore();
+			await store.load(['node']);
+			mocks.fetchInstancePolicy.mockResolvedValue(nodePolicy(4));
+
+			await store.load(['node']);
+
+			expect(useTypeAvailabilityPoliciesStore().reload).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('save', () => {
@@ -188,6 +220,7 @@ describe('useInstancePolicyStore', () => {
 			expect(result).toEqual({ status: 'changed' });
 			expect(mocks.saveInstancePolicy).toHaveBeenCalledTimes(1);
 			expect(store.policies.node).toEqual(nodePolicy(4, [DENY_SLACK]));
+			expect(useTypeAvailabilityPoliciesStore().reload).toHaveBeenCalledTimes(1);
 		});
 
 		it('drops a save queued before the policy changed', async () => {

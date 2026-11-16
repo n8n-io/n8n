@@ -59,6 +59,7 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 	// A conflict increments it, so a save queued before the conflict does not apply a change that
 	// the admin made on the old policy.
 	const generations: Record<RestrictedTypeKind, number> = { node: 0, credential: 0 };
+	const loadRequests: Record<RestrictedTypeKind, number> = { node: 0, credential: 0 };
 
 	function accept<K extends RestrictedTypeKind>(kind: K, policy: InstancePolicy<K>): void {
 		const current = policies[kind];
@@ -66,15 +67,23 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 		if (current && policy.version < current.version) return;
 
 		policies[kind] = policy;
+		// The builder surfaces in this tab show the restrictions of the instance policy too.
+		if (current && policy.version > current.version) void typeAvailabilityStore.reload();
 	}
 
 	async function loadKind<K extends RestrictedTypeKind>(kind: K): Promise<unknown> {
+		// Only the latest load of a kind sets its state, so an older load that fails late does not
+		// mark a newer loaded policy as failed.
+		const request = ++loadRequests[kind];
 		loadStates[kind] = 'loading';
 		try {
-			accept(kind, await fetchInstancePolicy(rootStore.restApiContext, kind));
-			loadStates[kind] = 'loaded';
+			const policy = await fetchInstancePolicy(rootStore.restApiContext, kind);
+			accept(kind, policy);
+			if (request === loadRequests[kind]) loadStates[kind] = 'loaded';
 			return null;
 		} catch (error) {
+			if (request !== loadRequests[kind]) return null;
+
 			loadStates[kind] = 'failed';
 			return error;
 		}
@@ -118,8 +127,6 @@ export const useInstancePolicyStore = defineStore(INSTANCE_POLICY_STORE_ID, () =
 				version: current.version,
 			});
 			accept(kind, result);
-			// The builder surfaces in this tab show the restrictions of the instance policy too.
-			void typeAvailabilityStore.reload();
 			return { status: 'saved', warnings: result.warnings };
 		} catch (error) {
 			if (!isConflict(error)) return { status: 'failed', error };
