@@ -89,7 +89,7 @@ export class AgentsController {
 			{ projectId: string },
 			unknown,
 			unknown,
-			{ filter?: string; skip?: string; take?: string; sortBy?: string }
+			{ filter?: string; offset?: string; limit?: string; sortBy?: string }
 		>,
 		res: Response,
 		@Query query: ListAgentsQueryDto,

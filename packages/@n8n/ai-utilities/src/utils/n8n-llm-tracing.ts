@@ -95,6 +95,48 @@ export function anthropicTokensUsageParser(result: LLMResult): TokenUsageResult 
 	};
 }
 
+/** The reported OpenAI `tokenUsage` shape; a partial payload falls through to the message. */
+function isReportedTokenUsage(
+	usage: unknown,
+): usage is Partial<ProviderTokenUsageResult> & { promptTokens: number; completionTokens: number } {
+	if (typeof usage !== 'object' || usage === null) return false;
+	if (!('promptTokens' in usage) || typeof usage.promptTokens !== 'number') return false;
+	if (!('completionTokens' in usage) || typeof usage.completionTokens !== 'number') return false;
+	return true;
+}
+
+/**
+ * OpenAI Chat Model usage. Reads the reported `tokenUsage` first (Chat Completions),
+ * then the message's `usage_metadata` (Responses API, which reports only
+ * `estimatedTokenUsage`). Never reads `estimatedTokenUsage`, which mixes provider
+ * usage with local estimates. A provider-reported `total_tokens` on the message wins
+ * over recomputing input + output; the `tokenUsage` payload carries no total the
+ * default parser trusts, so that branch recomputes.
+ */
+export function openAiTokensUsageParser(result: LLMResult): TokenUsageResult {
+	const reportedUsage: unknown = result.llmOutput?.tokenUsage;
+	// Correct only because handleLLMEnd receives @langchain/openai's raw _generate
+	// output. If it ever receives a post-generate() LLMResult, _combineLLMOutput
+	// zeroes tokenUsage (it ignores estimatedTokenUsage) and this branch returns
+	// 0/0/0, regressing to estimate even though message.usage_metadata is populated.
+	if (isReportedTokenUsage(reportedUsage)) {
+		const promptTokens = reportedUsage.promptTokens;
+		const completionTokens = reportedUsage.completionTokens;
+		// totalTokens is recomputed here (unlike usage_metadata) to preserve the default parser's historical Completions contract.
+		return {
+			completionTokens,
+			promptTokens,
+			totalTokens: promptTokens + completionTokens,
+			cost: reportedUsage.cost ?? reportedUsage.totalCost,
+		};
+	}
+
+	// Responses reports usage on the message, the same place Bedrock Converse does, so the
+	// message branch is shared rather than written twice. A chat model returns one generation
+	// for one prompt, so summing and reading [0][0] agree on every response either path sees.
+	return usageMetadataTokensUsageParser(result);
+}
+
 type RunDetail = {
 	index: number;
 	messages: BaseMessage[] | string[] | string;
@@ -203,8 +245,8 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		// but just in case, we set the index to the length of the runsMap
 		const runDetails = this.runsMap[runId] ?? { index: Object.keys(this.runsMap).length };
 
-		// Parse usage before trimming: `toRunDataGeneration` drops the message that carries
-		// `usage_metadata`.
+		// Read usage before the generations are reduced to their run-data shape,
+		// so a parser can read fields the run-data shape drops (e.g. the message).
 		const tokenUsage = this.options.tokensUsageParser(output);
 
 		output.generations = output.generations.map((gen) => gen.map(toRunDataGeneration));

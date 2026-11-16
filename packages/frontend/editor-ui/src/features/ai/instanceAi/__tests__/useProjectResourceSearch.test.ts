@@ -113,7 +113,7 @@ describe('useProjectResourceSearch', () => {
 			'updatedAt:desc',
 		);
 		expect(mocks.listAgentsPage).toHaveBeenCalledWith({}, PROJECT_ID, {
-			take: 10,
+			limit: 10,
 			sortBy: 'updatedAt:desc',
 			filter: undefined,
 		});

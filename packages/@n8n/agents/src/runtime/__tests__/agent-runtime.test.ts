@@ -1014,6 +1014,39 @@ describe('AgentRuntime — additional input', () => {
 		expect(counter.incrementToolCallCount).toHaveBeenCalledTimes(1);
 	});
 
+	it('makes one more model call for a host instruction at the completing boundary', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('done'));
+		const instruction: AgentDbMessage = {
+			id: crypto.randomUUID(),
+			createdAt: new Date(Date.now() + 100),
+			type: 'custom',
+			data: { type: 'n8n:host-instruction', reason: 'test', content: 'Open the setup card.' },
+		};
+		let sent = false;
+		const onInputBoundary = vi.fn(async ({ completing }: { completing: boolean }) => {
+			if (!completing || sent) return [];
+			sent = true;
+			return [instruction];
+		});
+		const { runtime } = createRuntime();
+
+		const chunks = await collectChunks((await runtime.stream('A', { onInputBoundary })).stream);
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		const messages = streamText.mock.calls[1][0].messages as Array<{
+			role: string;
+			content: Array<{ type: string; text?: string }>;
+		}>;
+		expect(messages.at(-1)).toMatchObject({
+			role: 'user',
+			content: [
+				{ type: 'text', text: expect.stringContaining('It is not a message from the user.') },
+			],
+		});
+		expect(messages.at(-1)?.content[0].text).toContain('Open the setup card.');
+		expect(chunks.at(-1)).toMatchObject({ type: 'finish', finishReason: 'stop' });
+	});
+
 	it.each([
 		{ maxIterations: 1, finishReason: 'stop' },
 		{ maxIterations: 2, finishReason: 'stop' },
@@ -2991,6 +3024,49 @@ describe('AgentRuntime — eager input persistence', () => {
 
 		const afterResume = await memory.getMessages('t1', { resourceId: 'u1' });
 		expect(afterResume.filter((m) => hasToolCall(m, 'tc-1'))).toHaveLength(1);
+	});
+
+	it('saves the resumed tool result before the next model call of the turn', async () => {
+		const suspendTool = makeInterruptibleTool();
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [suspendTool],
+			checkpointStorage: 'memory',
+			memory,
+		});
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([
+				{ toolCallId: 'tc-1', toolName: 'approve', args: { question: 'continue?' } },
+			]),
+		);
+		const first = await runtime.generate('please build it', PERSIST);
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		// The model call after the resume reads memory, as a tool of the same turn can.
+		let storedState: unknown;
+		generateText.mockImplementationOnce(async () => {
+			const stored = await memory.getMessages('t1', { resourceId: 'u1' });
+			const content = stored.flatMap((m) => {
+				const parts = (m as { content?: unknown }).content;
+				return Array.isArray(parts) ? (parts as unknown[]) : [];
+			});
+			const part = content.find(
+				(c) =>
+					typeof c === 'object' &&
+					c !== null &&
+					Reflect.get(c, 'type') === 'tool-call' &&
+					Reflect.get(c, 'toolCallId') === 'tc-1',
+			);
+			storedState = part ? Reflect.get(part, 'state') : undefined;
+			return makeGenerateSuccess('done');
+		});
+		await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(storedState).toBe('resolved');
 	});
 
 	it("persists the turn's assistant output when an active turn is aborted (generate)", async () => {

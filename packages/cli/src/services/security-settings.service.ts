@@ -1,6 +1,7 @@
 import type { RedactionFloor } from '@n8n/api-types';
 import { EventService, RoleService } from '@n8n/backend-services';
 import {
+	type OperationContext,
 	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -13,6 +14,7 @@ import {
 } from '@n8n/permissions';
 import type { DistributiveOmit } from '@n8n/utils/types';
 
+import { loginIdOf } from '@/events/login-id';
 import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 
@@ -41,10 +43,13 @@ export interface SecurityPolicyReadResult {
 }
 
 /**
- * The `instance-policies-updated` payload without the `user` envelope. Kept as a
+ * The `instance-policies-updated` payload without the `user` and `loginId` envelope. Kept as a
  * distributed union so each `settingName` stays bound to its own `value` type.
  */
-type InstancePolicyUpdate = DistributiveOmit<RelayEventMap['instance-policies-updated'], 'user'>;
+type InstancePolicyUpdate = DistributiveOmit<
+	RelayEventMap['instance-policies-updated'],
+	'user' | 'loginId'
+>;
 
 @Service()
 export class SecuritySettingsService {
@@ -98,6 +103,7 @@ export class SecuritySettingsService {
 	async updateSecuritySettings(
 		securityPolicyUpdate: SecurityPolicyUpdate,
 		actor: UserLike,
+		ctx: OperationContext = {},
 	): Promise<SecurityPolicyUpdate> {
 		const updatedSettings: SecurityPolicyUpdate = {};
 
@@ -109,19 +115,27 @@ export class SecuritySettingsService {
 				personalSpacePublishing,
 			);
 			updatedSettings.personalSpacePublishing = personalSpacePublishing;
-			this.emitInstancePolicyUpdated(actor, {
-				settingName: 'workflow_publishing',
-				value: personalSpacePublishing,
-			});
+			this.emitInstancePolicyUpdated(
+				actor,
+				{
+					settingName: 'workflow_publishing',
+					value: personalSpacePublishing,
+				},
+				ctx,
+			);
 		}
 
 		if (personalSpaceSharing !== undefined) {
 			await this.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, personalSpaceSharing);
 			updatedSettings.personalSpaceSharing = personalSpaceSharing;
-			this.emitInstancePolicyUpdated(actor, {
-				settingName: 'workflow_sharing',
-				value: personalSpaceSharing,
-			});
+			this.emitInstancePolicyUpdated(
+				actor,
+				{
+					settingName: 'workflow_sharing',
+					value: personalSpaceSharing,
+				},
+				ctx,
+			);
 		}
 
 		if (redactionEnforcement !== undefined) {
@@ -131,25 +145,39 @@ export class SecuritySettingsService {
 			if (before !== after) {
 				await this.instanceRedactionEnforcementService.set(after);
 				const user = this.toEventUser(actor);
-				this.eventService.emit('redaction-enforcement-updated', { user, before, after });
+				this.eventService.emit('redaction-enforcement-updated', {
+					user,
+					before,
+					after,
+					loginId: loginIdOf(ctx),
+				});
 				// Report the redaction enforcement floor alongside the other instance
 				// policies. `'off' | 'production' | 'all'` captures both adoption
 				// (off vs not) and scope (production vs production+manual).
-				this.emitInstancePolicyUpdated(actor, {
-					settingName: 'data_redaction_enforcement_floor',
-					value: after,
-				});
+				this.emitInstancePolicyUpdated(
+					actor,
+					{
+						settingName: 'data_redaction_enforcement_floor',
+						value: after,
+					},
+					ctx,
+				);
 			}
 		}
 
 		return updatedSettings;
 	}
 
-	emitInstancePolicyUpdated(actor: UserLike, update: InstancePolicyUpdate) {
+	emitInstancePolicyUpdated(
+		actor: UserLike,
+		update: InstancePolicyUpdate,
+		ctx: OperationContext = {},
+	) {
 		const user = this.toEventUser(actor);
 		this.eventService.emit('instance-policies-updated', {
 			user,
 			...update,
+			loginId: loginIdOf(ctx),
 		});
 	}
 

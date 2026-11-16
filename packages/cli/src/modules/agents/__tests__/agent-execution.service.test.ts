@@ -2396,6 +2396,21 @@ describe('AgentExecutionService', () => {
 			]);
 		});
 
+		it('reports the deletion when the blob-stored logs fail to delete', async () => {
+			agentExecutionThreadRepository.deleteSession.mockResolvedValue({
+				status: 'deleted',
+				refs: {
+					attachmentBinaryDataIds: [],
+					executionLogs: [{ id: 'execution-1', storedAt: 'fs' }],
+				},
+			});
+			agentExecutionLogStore.delete.mockRejectedValue(new Error('store down'));
+
+			await expect(
+				service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1'),
+			).resolves.toBe(true);
+		});
+
 		it('does not clean SDK memory when the execution thread is not found', async () => {
 			agentExecutionThreadRepository.deleteSession.mockResolvedValue(null);
 
