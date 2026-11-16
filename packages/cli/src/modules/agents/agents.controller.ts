@@ -19,7 +19,7 @@ import {
 import type { Response } from 'express';
 
 import { NotFoundError } from '@n8n/errors';
-import { CollaborationService } from '@/collaboration/collaboration.service';
+import { AgentWriteLockService } from './agent-write-lock.service';
 
 import { AgentConfigService } from './agent-config.service';
 import { AgentDefaultModelResolverService } from './agent-default-model-resolver.service';
@@ -32,7 +32,7 @@ export class AgentsController {
 		private readonly agentsService: AgentsService,
 		private readonly agentResponseMapper: AgentResponseMapper,
 		private readonly agentDefaultModelResolverService: AgentDefaultModelResolverService,
-		private readonly collaborationService: CollaborationService,
+		private readonly agentWriteLockService: AgentWriteLockService,
 		private readonly agentConfigService: AgentConfigService,
 	) {}
 
@@ -111,7 +111,7 @@ export class AgentsController {
 	) {
 		const { projectId } = req.params;
 		const clientId = req.headers?.['push-ref'];
-		await this.collaborationService.validateAgentWriteLock(
+		await this.agentWriteLockService.validateAgentWriteLock(
 			req.user.id,
 			clientId,
 			projectId,
@@ -181,6 +181,6 @@ export class AgentsController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 	) {
-		return await this.collaborationService.getAgentWriteLock(req.params.projectId, agentId);
+		return await this.agentWriteLockService.getAgentWriteLock(req.params.projectId, agentId);
 	}
 }
