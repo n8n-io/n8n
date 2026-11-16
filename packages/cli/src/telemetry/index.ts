@@ -590,7 +590,7 @@ export class Telemetry {
 
 		entry.endpoints[route] = (entry.endpoints[route] ?? 0) + 1;
 
-		// Calls from unidentified clients are not counted per endpoint to keep event size down.
+		// other is left out here. The routes list already counts it.
 		if (client !== 'other') {
 			const clientEndpoints = entry.endpoints_by_client[client];
 			clientEndpoints[route] = (clientEndpoints[route] ?? 0) + 1;
