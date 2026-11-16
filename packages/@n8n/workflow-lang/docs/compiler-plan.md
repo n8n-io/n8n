@@ -1,0 +1,205 @@
+# Compiler plan: compile every workflow and every node at publish time
+
+Status: plan, 2026-11-16. The first part is built (see "Built so far"). Numbers come from the corpus (147,671 workflows), the node sources
+(3,803 files) and the runtime benchmarks of 2026-11-12 to 2026-11-16.
+
+## Built so far (2026-11-16)
+
+`src/node-compile/specialise.ts` is the first part of phases 1 and 2: the linker, the binding of `this`, the
+folding of parameters and the removal of dead code. It writes a library module that the subset compiler
+accepts with no change to that compiler.
+
+- Input: the n8n source file of a node and the parameters of one node of a workflow. Output: a `defineNode`
+  module for that node instance, or a list of the constructs that have no compiled form.
+- Telegram (2,566 lines, 30 operations) for `message.sendMessage` becomes about 60 lines in 5 functions. On the
+  three equivalence cases it sends the requests of v1, gives the output of v1, and the bytecode gives the result
+  of the reference runner (`src/node-compile/__tests__/specialise.test.ts`).
+- Compiled forms today: `getNodeParameter`, `getNode`, `getInputData`, `continueOnFail`, `getInstanceId`,
+  `getCredentials` (fields become credential templates; the value as a whole is an error), the request helpers,
+  `returnJsonArray`, `constructExecutionMetaData`, `helper.call(this, ...)`, `Object.assign` into an object,
+  `delete` on a local, `list.push(...more)`, `pattern.test(text)`, `NodeApiError` and `NodeOperationError`.
+- Weaker than v1, and listed in the `notes` of each result: the text of an HTTP error and of the two error
+  classes; `delete` copies the object.
+- Not built: the converter does not call it yet (the test gives the module to the compiler by hand); lodash,
+  dates, crypto, `Map` and `Set`, other regular expression uses, binary data, `extractValue`, and the
+  performance work of phase 3. A survey of all nodes needs the parameters of real workflows: with default
+  parameters a node can fold to its first `throw`.
+
+## Goals
+
+1. **Publish compiles everything.** When a user publishes a workflow, n8n compiles the workflow and each node
+   that it uses to one module. The runner loads the module and runs only compiled code.
+2. **New nodes compile when they are installed.** A node package goes through the same compiler. No node needs a
+   hand port.
+3. **100,000 workflows per second on one core** for `wfrt`.
+4. **The runtime keeps the coding standards** (`workflow-runtime/docs/zig-standards.md`): all memory reserved at
+   startup, data in tables, limits with counters, a deterministic core.
+
+## The budget that decides the design
+
+One core at 100,000 workflows per second gives 10 µs for each workflow.
+
+| Item | Cost today | Source |
+|---|---|---|
+| W3: webhook, one outbound HTTP call, reply, no durable record | 8.87 µs | `progress.md` |
+| The durable record on disk | about 2 µs (target with the ring: 1 µs) | `docs/ring-ingest.md` |
+| One interpreted instruction | about 15 ns | `docs/aot-design.md` |
+| Slack `message.post`, compiled into the binary | 14,000 cycles (about 3.5 µs) | `docs/aot-design.md` |
+| Google Sheets read, compiled into the binary | 48,700 cycles (about 12 µs) | `docs/aot-design.md` |
+| Google Sheets read, interpreted | 104,800 cycles (about 26 µs) | `docs/aot-design.md` |
+
+Conclusions:
+
+- The I/O of one HTTP call uses almost all of the 10 µs. The code of a node can use about 1 µs: about 70
+  interpreted instructions, or about 4,000 cycles.
+- Today's library nodes cost 4 to 25 times that, even when they are compiled into the binary.
+- A node that is compiled at publish time cannot be in the binary. It runs in the interpreter. So the plan
+  cannot depend on `wfrt aot-gen`.
+- A workflow with two or more outbound calls cannot reach 100,000 per second on one core, whatever the
+  compiler does. For those, the target is the I/O floor plus at most 1 µs for each node, and more shards.
+
+So the compiler must remove work, not only translate it. The method is **specialisation at publish time**.
+
+## Design
+
+```mermaid
+flowchart LR
+  subgraph install[Node install, once for each node version]
+    src[Node package: TypeScript or JavaScript] --> fe[Front end: check, link files]
+    fe --> ir[(Node IR in the cache)]
+  end
+  subgraph publish[Workflow publish]
+    wf[Workflow JSON] --> conv[Converter]
+    ir --> spec[Specialiser: fold parameters, drop dead code]
+    conv --> spec
+    spec --> opt[Templates, shapes, cost count]
+    opt --> wfm[(Module .wfm)]
+  end
+  wfm --> ver[wfrt: verify once at load]
+  ver --> run[Shard: run, no allocation]
+```
+
+### 1. Front end: accept node source as it is written
+
+- **Linker.** Follow relative imports (`GenericFunctions`, descriptions, `utils`) and keep only reachable code. A
+  library module can import only from `@n8n/workflow-lang` today.
+- **`this` is the context.** Compile `execute(this: IExecuteFunctions)` as a function with a context parameter.
+  The class wrapper goes away (864 class declarations; 127 use `extends`).
+- **Syntax to add:** `typeof` (1,446 uses), `delete` (991), `instanceof` (319), `Map` and `Set` (295), regular
+  expression literals and `new RegExp` (435), `for...in`, labels, loose equality, `var`, getters.
+- **Still rejected:** `eval`, `require`, dynamic `import`, `process`, file and network modules, timers, event
+  emitters, streams, generators. A node that needs one does not compile (see "Nodes that do not compile").
+
+### 2. Context calls become intrinsics
+
+| Call | Uses | Compiled form |
+|---|---|---|
+| `getNodeParameter` | 11,600 | A constant, or the translated expression, at publish time |
+| `getNode`, `getMode`, `getTimezone`, `continueOnFail` | about 3,200 | Constants at publish time |
+| `getInputData`, `returnJsonArray`, `constructExecutionMetaData` | about 2,900 | Item tables of the runtime, with paired items |
+| `helpers.request*`, `httpRequest*` | about 480 | The `http` effect |
+| `getCredentials` | 383 | A credential template. Node code never reads a secret (see "Security") |
+| `getWorkflowStaticData` | 246 | The static data table |
+| `NodeOperationError`, `NodeApiError` | 2,240 throws | Error values with the messages and fields of v1 |
+
+### 3. Specialiser: the step that makes 100,000 per second possible
+
+A node is general code: 20 resources, 100 operations, all options. One node instance in one workflow uses one
+operation with fixed parameters. At publish time the compiler knows the parameters, so it:
+
+- folds each `getNodeParameter` to its value and removes the branches of the other operations;
+- inlines the helpers that are left and runs constant folding again;
+- builds **request templates**: the method, the URL, the headers and the body become constant bytes with
+  numbered holes for the values that come from items. The runtime fills the holes. It builds no JSON tree;
+- builds **response projections**: the list of paths that the rest of the workflow reads. The runtime reads
+  only those paths from the response (`src/compiler/projection.ts` does this for workflow code today);
+- gives each object literal a **shape** (a fixed key list), so that a property read is an index, not a key
+  search.
+
+Acceptance: the code that is left for one HTTP node instance is at most 70 instructions on the item path, with
+no instruction that depends on the node's unused operations.
+
+### 4. Two stages, so that publish is fast
+
+- **Install time:** each node version compiles once to node IR (checked, linked, not yet specialised). The IR
+  goes to a cache with the key `hash(node source, compiler version)`.
+- **Publish time:** the converter and the specialiser read the IR. They parse no node source.
+- Budgets: publish at most 250 ms at p50 and 1 s at p99 (today: 242 ms and 2.3 s, with a maximum of 36 s).
+  Install at most 5 s for each node version. A compile over its budget fails with a message. It does not block
+  the publish queue.
+- The same input gives the same module bytes, so n8n can cache a module by the hash of the workflow version.
+
+### 5. What the module must give the runtime (coding standards)
+
+The runtime allocates nothing after startup. So the compiler computes the sizes, and the verifier checks them
+at load:
+
+| The compiler writes to the module | The runtime uses it to |
+|---|---|
+| Largest register window and call depth | Refuse a module that does not fit an execution region |
+| Shape table: key lists, a fixed count | Fill a table that is reserved at startup; refuse at the limit (507) |
+| Request templates and projections, with sizes | Write the request straight into the connection buffer |
+| Constant pool, deduplicated | Share it across the executions of a module |
+| A cost count for each step: instructions on the item path | Report it at publish; refuse or warn over the budget |
+| Fuel for each basic block | Bound every loop |
+
+- Every limit has a flag, a counter and a status at the limit, as the module table has today
+  (`--max-modules`, `--module-store-mb`).
+- The verifier stays the only trust point. It checks each template, shape and projection index. The
+  interpreter then has no failure path except a limit.
+- No new engine. The interpreter gets shape reads, template fills and projection reads as new instructions
+  (a module format version bump). `aot-gen` stays as an optional gain for the nodes that ship with n8n.
+- Item data moves towards columns: a projection gives the runtime a fixed set of fields for each item list, so
+  it can hold a list as one column for each field (`src/core/columns.zig`), not as one object for each item.
+
+### 6. Library that node code needs
+
+- lodash (143 files): `get`, `set`, `omit`, `isEmpty`, `unset`, `pick`, `merge`, `isEqual` as prelude code.
+- Dates (103 files use moment or Luxon): on the helpers of the native Code path.
+- Crypto (83 files): hashes, HMAC and signatures as natives.
+- Regular expressions: `test`, `match`, `replace` and `split` with a pattern, on the engine that exists.
+- `Buffer` (137 files): with binary data handles (a separate plan).
+
+### 7. Security
+
+- A compiled program has no API of the system. It has values and `ctx` effects.
+- Node code does not read credential values. The runtime puts them into requests.
+- The outbound address rules, the limits for each execution and the verifier are in the runtime, because a
+  module can be made by hand.
+
+### 8. Nodes that do not compile
+
+A node that uses a driver, a stream, a long-lived connection or an npm library does not compile. Publish then
+gives one of two results, by a setting of the instance:
+
+- **Native only:** the publish fails and names the node and the construct.
+- **With the host:** that node runs in the fallback host, as today, and the publish result says so.
+
+These nodes need runtime work, not compiler work: protocol clients (Postgres, SMTP first), binary data, poll
+and webhook triggers, and the AI agent loop.
+
+## Phases
+
+| Phase | Work | Done when |
+|---|---|---|
+| 0 | Cost count for each step; `wfrt bench-node` as an instruction-count gate | Publish prints the count; CI fails on a 2% rise |
+| 1 | Linker, `this` binding, `getNodeParameter` folding, dead-code removal | Slack, Airtable and Telegram compile from their n8n source and pass their equivalence cases |
+| 2 | Request helpers, error classes, item helpers, the cheap syntax, lodash prelude | 50 HTTP-only nodes compile from source; requests equal v1 on recorded cases |
+| 3 | Request templates, response projections, shapes; module format version 2 | One HTTP node instance costs at most 4,000 cycles in the interpreter |
+| 4 | Node IR cache and the install-time step; publish budgets | Publish p99 under 1 s on the corpus; a custom node package compiles at install |
+| 5 | Credential templates for `getCredentials` | No compiled node reads a secret; the 383 call sites compile or are listed |
+| 6 | Regular expression methods, `Map` and `Set`, crypto, dates | The 150 HTTP-only nodes and the local data nodes compile |
+| 7 | Column item lists from projections | Item path cost does not grow with the count of unused fields |
+
+Each phase keeps `./ci.sh merge` green, adds no lint finding, and replays the certified bundles with no bundle
+worse than before.
+
+## Risks
+
+- **v1 equivalence.** A specialised node must send the requests that v1 sends. The recorder
+  (`scripts/record-v1-requests.ts`) is the oracle; it needs cases for each operation, made by a tool, not by hand.
+- **Node versions.** A node has several versions with different behaviour. The IR is for one version each.
+- **Publish-time expressions.** A parameter that is an expression is not a constant. The specialiser folds
+  around it; a resource or an operation that is an expression keeps all its branches.
+- **The 100,000 target.** It holds for a workflow with one outbound call. The plan does not change the cost of
+  I/O; `docs/ring-ingest.md` and the egress work do that.
