@@ -11,7 +11,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'A settings row with a small switch. The switch matches the other switches on settings screens. Use it for a setting that turns one feature on or off, anywhere on a settings screen. Place it in an `N8nSettingsRowGroup`, alone or with other rows. Bind `:enabled` and `@update:enabled`. The parent owns the value. Set `showPreviewBadge` and `showEnterpriseReadinessBadge` to show the Preview badge and the Limited enterprise support badge beside the title.',
+					'A settings row with a small switch. The switch matches the other switches on settings screens. Use it for a setting that turns one feature on or off, anywhere on a settings screen. Place it in an `N8nSettingsRowGroup`, alone or with other rows. Bind `:enabled` and `@update:enabled`. The parent owns the value. Pass `feature` to show the feature badges beside the title. The feature list decides which badges render.',
 			},
 		},
 	},
@@ -60,7 +60,7 @@ export const WithBadges: Story = {
 						:enabled="preview"
 						title="With Preview"
 						description="Allow users to build and run agents on this instance."
-						show-preview-badge
+						feature="workflowReviews"
 						@update:enabled="preview = $event"
 					/>
 				</N8nSettingsRowGroup>
@@ -69,7 +69,7 @@ export const WithBadges: Story = {
 						:enabled="enterprise"
 						title="With Enterprise"
 						description="Allow users to build and run agents on this instance."
-						show-enterprise-readiness-badge
+						feature="assistant"
 						@update:enabled="enterprise = $event"
 					/>
 				</N8nSettingsRowGroup>
@@ -78,8 +78,7 @@ export const WithBadges: Story = {
 						:enabled="both"
 						title="With Both"
 						description="Allow users to build and run agents on this instance."
-						show-preview-badge
-						show-enterprise-readiness-badge
+						feature="agents"
 						@update:enabled="both = $event"
 					/>
 				</N8nSettingsRowGroup>

@@ -56,8 +56,8 @@ const enterpriseTestId = computed(() =>
 	<span v-if="visible" :class="$style.badges">
 		<N8nBadge
 			v-if="resolved.showPreview"
+			variant="filled"
 			size="xxsmall"
-			:class="$style.previewBadge"
 			:data-test-id="previewTestId"
 		>
 			{{ t('previewBadge.preview') }}
@@ -68,13 +68,7 @@ const enterpriseTestId = computed(() =>
 			as-child
 			:content="t('enterpriseReadinessBadge.tooltip')"
 		>
-			<N8nBadge
-				variant="outline"
-				size="xxsmall"
-				:class="$style.enterpriseBadge"
-				:data-test-id="enterpriseTestId"
-				tabindex="0"
-			>
+			<N8nBadge variant="filled" size="xxsmall" :data-test-id="enterpriseTestId" tabindex="0">
 				{{ t('enterpriseReadinessBadge.limited') }}
 			</N8nBadge>
 		</N8nTooltip>
@@ -82,26 +76,9 @@ const enterpriseTestId = computed(() =>
 </template>
 
 <style lang="scss" module>
-@use '../../css/mixins/focus';
-
 .badges {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-}
-
-.previewBadge {
-	border-style: dashed;
-	border-width: 1.5px;
-	--n8n-badge--text-color: var(--text-color--subtle);
-}
-
-.enterpriseBadge {
-	cursor: default;
-	outline: none;
-
-	&:focus-visible {
-		@include focus.focus-ring-with-border;
-	}
 }
 </style>

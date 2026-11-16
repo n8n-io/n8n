@@ -1,7 +1,21 @@
 import { fireEvent, render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
+import {
+	FeatureMaturityKey,
+	type FeatureMaturityCatalog,
+} from '../N8nFeatureMaturityBadges/featureMaturityState';
 import N8nSettingsEnableRow from './SettingsEnableRow.vue';
+
+const featureMaturity: FeatureMaturityCatalog = {
+	workflowReviews: { preview: true, limitedEnterpriseSupport: false },
+	assistant: { preview: false, limitedEnterpriseSupport: true },
+	agents: { preview: true, limitedEnterpriseSupport: true },
+};
+
+const featureList = {
+	global: { provide: { [FeatureMaturityKey as symbol]: featureMaturity } },
+};
 
 describe('N8nSettingsEnableRow', () => {
 	it('renders the title and the switch', () => {
@@ -30,25 +44,41 @@ describe('N8nSettingsEnableRow', () => {
 		expect(emitted()['update:enabled'][0]).toEqual([true]);
 	});
 
-	it('shows the status badges when the flags are on', () => {
+	it('shows the badges listed for the feature', () => {
 		const { getByTestId } = render(N8nSettingsEnableRow, {
+			...featureList,
 			props: {
-				title: 'Enable workflow reviews',
-				description: 'Allow users to submit workflow versions for approval.',
+				title: 'Enable Agents',
+				description: 'Allow users to build and run agents.',
 				enabled: true,
-				showPreviewBadge: true,
-				showEnterpriseReadinessBadge: true,
+				feature: 'agents',
 			},
 		});
 
-		expect(getByTestId('settings-enable-row-preview-badge')).toHaveTextContent('Preview');
-		expect(getByTestId('settings-enable-row-enterprise-readiness-badge')).toHaveTextContent(
+		expect(getByTestId('agents-preview-badge')).toHaveTextContent('Preview');
+		expect(getByTestId('agents-enterprise-readiness-badge')).toHaveTextContent(
 			'Limited enterprise readiness',
 		);
 	});
 
-	it('hides the status badges by default', () => {
-		const { queryByTestId } = render(N8nSettingsEnableRow, {
+	it('hides one badge when the row asks', () => {
+		const { getByTestId, queryByTestId } = render(N8nSettingsEnableRow, {
+			...featureList,
+			props: {
+				title: 'Enable Agents',
+				description: 'Allow users to build and run agents.',
+				feature: 'agents',
+				hideEnterprise: true,
+			},
+		});
+
+		expect(getByTestId('agents-preview-badge')).toBeInTheDocument();
+		expect(queryByTestId('agents-enterprise-readiness-badge')).not.toBeInTheDocument();
+	});
+
+	it('hides the badges by default', () => {
+		const { queryByText } = render(N8nSettingsEnableRow, {
+			...featureList,
 			props: {
 				title: 'Enable workflow reviews',
 				description: 'Allow users to submit workflow versions for approval.',
@@ -56,8 +86,8 @@ describe('N8nSettingsEnableRow', () => {
 			},
 		});
 
-		expect(queryByTestId('settings-enable-row-preview-badge')).not.toBeInTheDocument();
-		expect(queryByTestId('settings-enable-row-enterprise-readiness-badge')).not.toBeInTheDocument();
+		expect(queryByText('Preview')).not.toBeInTheDocument();
+		expect(queryByText('Limited enterprise readiness')).not.toBeInTheDocument();
 	});
 
 	it('uses the small settings switch', () => {
@@ -118,17 +148,18 @@ describe('N8nSettingsEnableRow', () => {
 		expect(emitted()['update:enabled']).toBeUndefined();
 	});
 
-	it('does not toggle from a status badge', async () => {
+	it('does not toggle from a feature badge', async () => {
 		const { getByTestId, emitted } = render(N8nSettingsEnableRow, {
+			...featureList,
 			props: {
 				title: 'Enable workflow reviews',
 				description: 'Allow users to submit workflow versions for approval.',
 				enabled: false,
-				showPreviewBadge: true,
+				feature: 'workflowReviews',
 			},
 		});
 
-		await userEvent.click(getByTestId('settings-enable-row-preview-badge'));
+		await userEvent.click(getByTestId('workflow-reviews-preview-badge'));
 
 		expect(emitted()['update:enabled']).toBeUndefined();
 	});

@@ -53,6 +53,7 @@ const featureMaturityStub: FeatureMaturityCatalog = {
 		limitedEnterpriseSupport: true,
 		docsUrl: 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant',
 	},
+	workflowReviews: { preview: true, limitedEnterpriseSupport: false },
 };
 
 setup((app) => {

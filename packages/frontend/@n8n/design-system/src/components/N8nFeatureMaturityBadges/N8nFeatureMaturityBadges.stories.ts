@@ -17,45 +17,34 @@ type Story = StoryObj<typeof meta>;
 const row = (inner: string) =>
 	`<div style="display: flex; gap: var(--spacing--2xs); align-items: center;">${inner}</div>`;
 
-export const Preview: Story = {
-	render: (args) => ({
+function renderBadges(args: Story['args']) {
+	return {
 		components: { N8nFeatureMaturityBadges },
 		setup: () => ({ args }),
 		template: row('<N8nFeatureMaturityBadges v-bind="args" />'),
-	}),
-};
+	};
+}
 
-export const Feature: Story = {
-	render: (args) => ({
-		components: { N8nFeatureMaturityBadges },
-		setup: () => ({ args }),
-		template: row('<N8nFeatureMaturityBadges v-bind="args" />'),
-	}),
+export const WithPreviewAndEnterprise: Story = {
+	name: 'With Preview and Enterprise',
+	render: renderBadges,
 	args: {
 		feature: 'agents',
 	},
 };
 
-export const HidePreview: Story = {
-	render: (args) => ({
-		components: { N8nFeatureMaturityBadges },
-		setup: () => ({ args }),
-		template: row('<N8nFeatureMaturityBadges v-bind="args" />'),
-	}),
+export const WithPreviewOnly: Story = {
+	name: 'With Preview only',
+	render: renderBadges,
 	args: {
-		feature: 'agents',
-		hidePreview: true,
+		feature: 'workflowReviews',
 	},
 };
 
-export const HideEnterprise: Story = {
-	render: (args) => ({
-		components: { N8nFeatureMaturityBadges },
-		setup: () => ({ args }),
-		template: row('<N8nFeatureMaturityBadges v-bind="args" />'),
-	}),
+export const WithEnterpriseOnly: Story = {
+	name: 'With Enterprise only',
+	render: renderBadges,
 	args: {
-		feature: 'agents',
-		hideEnterprise: true,
+		feature: 'assistant',
 	},
 };
