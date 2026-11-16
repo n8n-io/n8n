@@ -22,7 +22,7 @@ import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
-import { EnterprisePlanKey, FeatureMaturityKey, locale } from '@n8n/design-system';
+import { FeatureMaturityKey, locale } from '@n8n/design-system';
 import { featureMaturity } from '@n8n/frontend-constants/feature-maturity';
 import { registerTimeAgoLocale } from '@/app/utils/timeAgoLocale';
 import { setLanguage } from '@n8n/i18n';
@@ -51,10 +51,6 @@ const currentWorkflowDocumentStore = shallowRef<WorkflowDocumentStore | null>(nu
 
 provide(WorkflowIdKey, workflowId);
 provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
-provide(
-	EnterprisePlanKey,
-	computed(() => settingsStore.isEnterprisePlan),
-);
 provide(FeatureMaturityKey, featureMaturity);
 
 // App.vue provides WorkflowDocumentStoreKey, so it cannot inject it. Expose the

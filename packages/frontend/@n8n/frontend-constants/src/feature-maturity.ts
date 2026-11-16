@@ -11,7 +11,7 @@
 export type FeatureMaturity = {
 	/** Show the Preview badge. */
 	preview: boolean;
-	/** Show Limited enterprise support on an enterprise plan. */
+	/** Show the Limited enterprise readiness badge. */
 	limitedEnterpriseSupport: boolean;
 	/** Test id prefix when the feature id is not the prefix pages already use. */
 	testId?: string;
@@ -48,10 +48,7 @@ export const featureMaturity = {
 
 export type FeatureMaturityId = keyof typeof featureMaturity;
 
-/** True when the entry renders at least one badge for this plan. */
-export function showsFeatureMaturityBadges(
-	feature: FeatureMaturity,
-	enterprisePlan: boolean,
-): boolean {
-	return feature.preview || (feature.limitedEnterpriseSupport && enterprisePlan);
+/** True when the entry renders at least one badge. */
+export function showsFeatureMaturityBadges(feature: FeatureMaturity): boolean {
+	return feature.preview || feature.limitedEnterpriseSupport;
 }

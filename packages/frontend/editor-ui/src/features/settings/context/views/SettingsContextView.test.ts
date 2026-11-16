@@ -3,8 +3,6 @@ import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 
-import { useSettingsStore } from '@n8n/stores/settings.store';
-
 import SettingsContextView from './SettingsContextView.vue';
 import { useContextStore } from '../context.store';
 import { useSkillsStore } from '../skills.store';
@@ -47,24 +45,15 @@ describe('SettingsContextView', () => {
 		expect(showErrorMock).toHaveBeenCalled();
 	});
 
-	it('shows a Preview label next to the page title', () => {
-		const { getByRole, getByTestId, queryByTestId } = renderView();
-		const badge = getByTestId('settings-context-preview-badge');
+	it('shows the Preview and limited enterprise readiness badges next to the page title', () => {
+		const { getByRole, getByTestId } = renderView();
+		const preview = getByTestId('settings-context-preview-badge');
+		const enterprise = getByTestId('settings-context-enterprise-readiness-badge');
+		const heading = getByRole('heading', { name: 'Context' });
 
-		expect(getByRole('heading', { name: 'Context' }).parentElement).toContainElement(badge);
-		expect(queryByTestId('settings-context-enterprise-readiness-badge')).not.toBeInTheDocument();
-	});
-
-	it('shows limited enterprise support beside Preview on an enterprise plan', () => {
-		useSettingsStore().$patch({
-			settings: { license: { planName: 'Enterprise' } },
-		});
-
-		const { getByTestId, getByRole } = renderView();
-		const badge = getByTestId('settings-context-enterprise-readiness-badge');
-
-		expect(badge).toHaveTextContent('Limited enterprise readiness');
-		expect(getByRole('heading', { name: 'Context' }).parentElement).toContainElement(badge);
+		expect(heading.parentElement).toContainElement(preview);
+		expect(heading.parentElement).toContainElement(enterprise);
+		expect(enterprise).toHaveTextContent('Limited enterprise readiness');
 	});
 
 	it('lists Preferences and Skills, with no Sources row: sources show in the skills table', () => {

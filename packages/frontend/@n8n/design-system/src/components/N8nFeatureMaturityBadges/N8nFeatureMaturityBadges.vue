@@ -7,8 +7,8 @@ import N8nTooltip from '../N8nTooltip';
 
 import {
 	resolveFeatureMaturityBadges,
-	useEnterprisePlan,
 	useFeatureMaturityCatalog,
+	type FeatureMaturityId,
 } from './featureMaturityState';
 
 defineOptions({ name: 'N8nFeatureMaturityBadges' });
@@ -19,7 +19,7 @@ const props = withDefaults(
 		 * Feature id from the list the app provides.
 		 * The entry decides which badges render. Omit it to draw only the Preview badge.
 		 */
-		feature?: string;
+		feature?: FeatureMaturityId;
 		/** Hide the Preview badge at this callsite. */
 		hidePreview?: boolean;
 		/** Hide the Limited enterprise readiness badge at this callsite. */
@@ -40,7 +40,6 @@ const props = withDefaults(
 );
 
 const { t } = useI18n();
-const enterprisePlan = useEnterprisePlan();
 const catalog = useFeatureMaturityCatalog();
 
 const resolved = computed(() => {
@@ -53,7 +52,7 @@ const resolved = computed(() => {
 		};
 	}
 
-	const badges = resolveFeatureMaturityBadges(catalog, props.feature, enterprisePlan.value, {
+	const badges = resolveFeatureMaturityBadges(catalog, props.feature, {
 		preview: props.hidePreview,
 		enterprise: props.hideEnterprise,
 	});

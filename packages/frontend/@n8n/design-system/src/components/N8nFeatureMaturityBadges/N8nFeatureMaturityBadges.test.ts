@@ -1,20 +1,15 @@
 import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { mount } from '@vue/test-utils';
-import { computed } from 'vue';
 
 import N8nBadge from '../N8nBadge';
 
-import FeatureMaturityBadges from './FeatureMaturityBadges.vue';
-import { EnterprisePlanKey } from './featureMaturityState';
+import FeatureMaturityBadges from './N8nFeatureMaturityBadges.vue';
 import { provideFeatureMaturity } from './featureMaturityStub';
 
-const enterprisePlan = provideFeatureMaturity({
-	[EnterprisePlanKey as symbol]: computed(() => true),
-});
 const featureList = provideFeatureMaturity();
 
-describe('FeatureMaturityBadges', () => {
+describe('N8nFeatureMaturityBadges', () => {
 	it('draws the Preview badge when no feature id is set', () => {
 		const { getByText, queryByText } = render(FeatureMaturityBadges);
 
@@ -36,15 +31,16 @@ describe('FeatureMaturityBadges', () => {
 		).not.toBeInTheDocument();
 		previewOnly.unmount();
 
-		const hidden = render(FeatureMaturityBadges, {
+		const enterpriseOnly = render(FeatureMaturityBadges, {
 			...featureList,
 			props: { feature: 'assistant' },
 		});
-		expect(hidden.queryByTestId('n8n-agent-enterprise-readiness-badge')).not.toBeInTheDocument();
-		hidden.unmount();
+		expect(enterpriseOnly.getByTestId('n8n-agent-enterprise-readiness-badge')).toBeInTheDocument();
+		expect(enterpriseOnly.queryByTestId('n8n-agent-preview-badge')).not.toBeInTheDocument();
+		enterpriseOnly.unmount();
 
 		const shown = render(FeatureMaturityBadges, {
-			...enterprisePlan,
+			...featureList,
 			props: { feature: 'agents' },
 		});
 		expect(shown.getByTestId('agents-preview-badge')).toBeInTheDocument();
@@ -55,7 +51,7 @@ describe('FeatureMaturityBadges', () => {
 
 	it('hides either badge, or both, when the callsite asks', () => {
 		const preview = render(FeatureMaturityBadges, {
-			...enterprisePlan,
+			...featureList,
 			props: { feature: 'agents', hideEnterprise: true },
 		});
 		expect(preview.getByTestId('agents-preview-badge')).toBeInTheDocument();
@@ -63,7 +59,7 @@ describe('FeatureMaturityBadges', () => {
 		preview.unmount();
 
 		const enterprise = render(FeatureMaturityBadges, {
-			...enterprisePlan,
+			...featureList,
 			props: { feature: 'agents', hidePreview: true },
 		});
 		expect(enterprise.queryByTestId('agents-preview-badge')).not.toBeInTheDocument();
@@ -71,7 +67,7 @@ describe('FeatureMaturityBadges', () => {
 		enterprise.unmount();
 
 		const { container } = render(FeatureMaturityBadges, {
-			...enterprisePlan,
+			...featureList,
 			props: { feature: 'agents', hidePreview: true, hideEnterprise: true },
 		});
 		expect(container).toBeEmptyDOMElement();
@@ -90,7 +86,7 @@ describe('FeatureMaturityBadges', () => {
 		preview.unmount();
 
 		const enterprise = mount(FeatureMaturityBadges, {
-			...enterprisePlan,
+			...featureList,
 			props: { feature: 'assistant' },
 		});
 		expect(enterprise.getComponent(N8nBadge).props()).toMatchObject({
@@ -102,7 +98,7 @@ describe('FeatureMaturityBadges', () => {
 
 	it('shows the enterprise tooltip on keyboard focus', async () => {
 		const { getByText, findAllByText } = render(FeatureMaturityBadges, {
-			...enterprisePlan,
+			...featureList,
 			props: { feature: 'assistant' },
 		});
 

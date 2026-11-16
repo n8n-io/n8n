@@ -32,10 +32,10 @@ describe('featureMaturity', () => {
 		});
 	});
 
-	it('hides Limited enterprise support off an enterprise plan', () => {
-		expect(showsFeatureMaturityBadges(featureMaturity.assistant, false)).toBe(false);
-		expect(showsFeatureMaturityBadges(featureMaturity.assistant, true)).toBe(true);
-		expect(showsFeatureMaturityBadges(featureMaturity.agents, false)).toBe(true);
-		expect(showsFeatureMaturityBadges(featureMaturity.roles, true)).toBe(false);
+	it('shows a badge when the entry is preview or has limited enterprise support', () => {
+		expect(showsFeatureMaturityBadges(featureMaturity.assistant)).toBe(true);
+		expect(showsFeatureMaturityBadges(featureMaturity.agents)).toBe(true);
+		expect(showsFeatureMaturityBadges(featureMaturity.openTelemetry)).toBe(true);
+		expect(showsFeatureMaturityBadges(featureMaturity.roles)).toBe(false);
 	});
 });

@@ -1,10 +1,9 @@
-import { EnterprisePlanKey, FeatureMaturityKey } from '@n8n/design-system';
+import { FeatureMaturityKey } from '@n8n/design-system';
 import { featureMaturity } from '@n8n/frontend-constants/feature-maturity';
 import { capabilities, capabilityRegistry, type ProjectContext } from '@n8n/frontend-module-sdk';
 import { createComponentRenderer, mockedStore } from '@n8n/frontend-test-utils';
 import type { IUser } from '@n8n/rest-api-client';
 import { useRBACStore } from '@n8n/stores/rbac.store';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor, within } from '@testing-library/vue';
@@ -85,8 +84,7 @@ const applyEnvironment: PromotionEnvironment = {
 const renderView = createComponentRenderer(PromotionsSettingsView, {
 	global: {
 		provide: {
-			// App.vue provides this from the settings store. The module renderer does not.
-			[EnterprisePlanKey as symbol]: computed(() => useSettingsStore().isEnterprisePlan),
+			// App.vue provides the feature list. The module renderer does not.
 			[FeatureMaturityKey as symbol]: featureMaturity,
 		},
 	},
@@ -128,8 +126,7 @@ describe('PromotionsSettingsView', () => {
 		},
 	);
 
-	it('shows the Preview and limited enterprise readiness tags next to the title on enterprise', () => {
-		mockedStore(useSettingsStore).isEnterprisePlan = true;
+	it('shows the Preview and limited enterprise readiness tags next to the title', () => {
 		api.fetchPromotionEnvironments.mockResolvedValue([]);
 		renderView();
 
@@ -141,15 +138,6 @@ describe('PromotionsSettingsView', () => {
 		expect(titleRow).toContainElement(screen.getByTestId('n8n-packages-preview-badge'));
 		expect(titleRow).toContainElement(readinessBadge);
 		expect(readinessBadge).toHaveTextContent('Limited enterprise readiness');
-	});
-
-	it('shows only the Preview tag on other plans', () => {
-		mockedStore(useSettingsStore).isEnterprisePlan = false;
-		api.fetchPromotionEnvironments.mockResolvedValue([]);
-		renderView();
-
-		expect(screen.getByTestId('n8n-packages-preview-badge')).toBeInTheDocument();
-		expect(screen.queryByTestId('n8n-packages-enterprise-readiness-badge')).not.toBeInTheDocument();
 	});
 
 	it('checks for missing projects again on click after the check failed', async () => {

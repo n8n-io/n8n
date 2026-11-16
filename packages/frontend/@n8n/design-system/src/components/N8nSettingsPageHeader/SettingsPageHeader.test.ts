@@ -1,13 +1,8 @@
 import { render, screen } from '@testing-library/vue';
-import { computed } from 'vue';
 
-import { EnterprisePlanKey } from '../FeatureMaturityBadges/featureMaturityState';
-import { provideFeatureMaturity } from '../FeatureMaturityBadges/featureMaturityStub';
+import { provideFeatureMaturity } from '../N8nFeatureMaturityBadges/featureMaturityStub';
 import N8nSettingsPageHeader from './SettingsPageHeader.vue';
 
-const enterprisePlan = provideFeatureMaturity({
-	[EnterprisePlanKey as symbol]: computed(() => true),
-});
 const featureList = provideFeatureMaturity();
 
 describe('N8nSettingsPageHeader', () => {
@@ -26,16 +21,15 @@ describe('N8nSettingsPageHeader', () => {
 		});
 
 		const title = screen.getByRole('heading', { name: 'Context' });
-		const badge = screen.getByTestId('settings-context-preview-badge');
-		expect(title.parentElement).toContainElement(badge);
-		expect(
-			screen.queryByTestId('settings-context-enterprise-readiness-badge'),
-		).not.toBeInTheDocument();
+		const preview = screen.getByTestId('settings-context-preview-badge');
+		const enterprise = screen.getByTestId('settings-context-enterprise-readiness-badge');
+		expect(title.parentElement).toContainElement(preview);
+		expect(title.parentElement).toContainElement(enterprise);
 	});
 
 	it('hides one badge when the header asks', () => {
 		const preview = render(N8nSettingsPageHeader, {
-			...enterprisePlan,
+			...featureList,
 			props: {
 				title: 'Agents',
 				feature: 'agents',
@@ -48,7 +42,7 @@ describe('N8nSettingsPageHeader', () => {
 		preview.unmount();
 
 		const enterprise = render(N8nSettingsPageHeader, {
-			...enterprisePlan,
+			...featureList,
 			props: {
 				title: 'Agents',
 				feature: 'agents',

@@ -5,7 +5,7 @@ import { useI18n } from '../../composables/useI18n';
 import type { NodeCreatorTag } from '../../types/node-creator-node';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
-import N8nFeatureMaturityBadges from '../FeatureMaturityBadges/FeatureMaturityBadges.vue';
+import N8nFeatureMaturityBadges from '../N8nFeatureMaturityBadges';
 import N8nNewBadge from '../NewBadge/NewBadge.vue';
 
 export interface Props {

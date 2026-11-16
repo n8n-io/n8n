@@ -1,6 +1,6 @@
 import { FeatureMaturityKey, type FeatureMaturityCatalog } from './featureMaturityState';
 
-/** Design-system tests use this list. The app provides the real list. Storybook has its own stub. */
+/** Unit tests use this list. The app provides the real list. Storybook keeps its own list in preview. */
 export const featureMaturityStub: FeatureMaturityCatalog = {
 	workflowReviews: {
 		preview: true,

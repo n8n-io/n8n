@@ -147,13 +147,13 @@ export { default as N8nSettingsSaveBar } from './N8nSettingsSaveBar';
 export type { SettingsSaveBarProps } from './N8nSettingsSaveBar';
 export { default as N8nSettingsSection } from './N8nSettingsSection';
 export type { SettingsSectionProps } from './N8nSettingsSection';
-export { default as N8nFeatureMaturityBadges } from './FeatureMaturityBadges/FeatureMaturityBadges.vue';
+export { default as N8nFeatureMaturityBadges } from './N8nFeatureMaturityBadges';
 export {
-	EnterprisePlanKey,
 	FeatureMaturityKey,
 	type FeatureMaturityCatalog,
 	type FeatureMaturityEntry,
-} from './FeatureMaturityBadges/featureMaturityState';
+	type FeatureMaturityId,
+} from './N8nFeatureMaturityBadges/featureMaturityState';
 export { default as N8nNewBadge } from './NewBadge/NewBadge.vue';
 export { default as N8nPopover } from './N8nPopover';
 export { default as N8nPopoverReka } from './N8nPopover'; // Alias for backwards compatibility

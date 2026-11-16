@@ -3,12 +3,12 @@ import { computed, useSlots, watchEffect } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nExternalLink from '../N8nExternalLink';
-import N8nFeatureMaturityBadges from '../FeatureMaturityBadges/FeatureMaturityBadges.vue';
+import N8nFeatureMaturityBadges from '../N8nFeatureMaturityBadges';
 import {
 	resolveFeatureMaturityBadges,
-	useEnterprisePlan,
 	useFeatureMaturityCatalog,
-} from '../FeatureMaturityBadges/featureMaturityState';
+	type FeatureMaturityId,
+} from '../N8nFeatureMaturityBadges/featureMaturityState';
 import N8nHeading from '../N8nHeading';
 import N8nText from '../N8nText';
 
@@ -37,7 +37,7 @@ export interface SettingsPageHeaderProps {
 	 * Feature id from the list the app provides.
 	 * The entry decides which badges render beside the title.
 	 */
-	feature?: string;
+	feature?: FeatureMaturityId;
 	/** Hide the Preview badge at this callsite. */
 	hidePreview?: boolean;
 	/** Hide the Limited enterprise readiness badge at this callsite. */
@@ -68,10 +68,9 @@ const resolvedDocsLabel = computed(() => props.docsLabel ?? t('settingsPageHeade
 const resolvedDocsLeadingText = computed(
 	() => props.docsLeadingText ?? t('settingsPageHeader.docsLeadingText'),
 );
-const enterprisePlan = useEnterprisePlan();
 const catalog = useFeatureMaturityCatalog();
 const featureBadges = computed(() =>
-	resolveFeatureMaturityBadges(catalog, props.feature, enterprisePlan.value, {
+	resolveFeatureMaturityBadges(catalog, props.feature, {
 		preview: props.hidePreview,
 		enterprise: props.hideEnterprise,
 	}),

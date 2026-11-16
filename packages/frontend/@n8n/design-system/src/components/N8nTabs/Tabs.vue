@@ -9,7 +9,7 @@ import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
 import type { TabsProps } from './Tabs.types';
 import N8nTooltip from '../N8nTooltip';
-import N8nFeatureMaturityBadges from '../FeatureMaturityBadges/FeatureMaturityBadges.vue';
+import N8nFeatureMaturityBadges from '../N8nFeatureMaturityBadges';
 
 const props = withDefaults(defineProps<TabsProps<Value>>(), {
 	modelValue: undefined,

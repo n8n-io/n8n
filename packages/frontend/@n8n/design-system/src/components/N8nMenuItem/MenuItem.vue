@@ -10,7 +10,7 @@ import type { IconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
-import N8nFeatureMaturityBadges from '../FeatureMaturityBadges/FeatureMaturityBadges.vue';
+import N8nFeatureMaturityBadges from '../N8nFeatureMaturityBadges';
 import NewBadge from '../NewBadge/NewBadge.vue';
 
 const props = defineProps<{
