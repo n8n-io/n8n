@@ -1669,6 +1669,7 @@ export class ModuleGenerator {
 				zone,
 				(d) => this.diag({ ...d, node: main.trigger?.name }),
 				this.options.scheduleItem,
+				typeof wf.id === 'string' && wf.id !== '' ? wf.id : undefined,
 			);
 		for (const h of plan.helpers ?? []) this.helpers.add(h);
 		for (const z of plan.zones ?? []) this.zones.add(z);

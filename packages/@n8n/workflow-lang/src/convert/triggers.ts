@@ -6,6 +6,7 @@
  * stand-in webhook. Its item is the request body, so a caller can post the
  * event that the original trigger would give.
  */
+import { sha256 } from '../compiler/sha256.ts';
 import type { Code } from './code.ts';
 import { literal, raw, str } from './code.ts';
 import { camelIdentifier } from './naming.ts';
@@ -115,7 +116,65 @@ function num(value: unknown, fallback: number): number {
 	return Number.isFinite(n) ? n : fallback;
 }
 
-function scheduleOf(rule: Record<string, unknown>, timezone: Code | null): Code | string {
+/** `stableInt` of the v1 Schedule Trigger: a whole number in `[min, max)` from the node key and a label. */
+function stableInt(nodeKey: string, label: string, min: number, max: number): number {
+	const hash = sha256(new TextEncoder().encode(`${nodeKey}:${label}`));
+	const first = ((hash[0] << 24) | (hash[1] << 16) | (hash[2] << 8) | hash[3]) >>> 0;
+	return min + (first % (max - min));
+}
+
+/**
+ * The cron expression that the v1 Schedule Trigger makes for a rule (`toCronExpression`),
+ * when v1 runs the rule from the expression alone. v1 fills the second, and a minute, an
+ * hour or a day that the rule does not give, with `stableInt` of the workflow id and the
+ * node id, so the compiled schedule fires at the same times. Null when v1 also filters the
+ * fires by the time since the last run (an interval above 1): the rule then stays an
+ * `every` schedule.
+ */
+function v1Cron(rule: Record<string, unknown>, field: string, nodeKey: string): string | null {
+	const whole = (value: unknown, fallback: number) => {
+		const n = num(value, fallback);
+		return Number.isInteger(n) ? n : null;
+	};
+	if (field === 'seconds') {
+		const seconds = whole(rule.secondsInterval, 30);
+		return seconds !== null && seconds >= 1 && seconds <= 59 ? `*/${seconds} * * * * *` : null;
+	}
+	const second = stableInt(nodeKey, 'second', 0, 60);
+	if (field === 'minutes') {
+		const minutes = whole(rule.minutesInterval, 5);
+		return minutes !== null && minutes >= 1 && minutes <= 59 && 60 % minutes === 0
+			? `${second} */${minutes} * * * *`
+			: null;
+	}
+	const given = (value: unknown, label: string, min: number, max: number) =>
+		value === undefined || value === null ? stableInt(nodeKey, label, min, max) : whole(value, 0);
+	const minute = given(rule.triggerAtMinute, 'minute', 0, 60);
+	if (minute === null) return null;
+	if (field === 'hours')
+		return whole(rule.hoursInterval, 1) === 1 ? `${second} ${minute} */1 * * *` : null;
+	const hour = given(rule.triggerAtHour, 'hour', 0, 24);
+	if (hour === null) return null;
+	if (field === 'days')
+		return whole(rule.daysInterval, 1) === 1 ? `${second} ${minute} ${hour} * * *` : null;
+	if (field === 'weeks') {
+		if (whole(rule.weeksInterval, 1) !== 1) return null;
+		const days = Array.isArray(rule.triggerAtDay) ? rule.triggerAtDay.map((d) => num(d, 0)) : [0];
+		return `${second} ${minute} ${hour} * * ${days.length === 0 ? '*' : days.join(',')}`;
+	}
+	if (field === 'months') {
+		if (whole(rule.monthsInterval, 1) !== 1) return null;
+		const day = given(rule.triggerAtDayOfMonth, 'dayOfMonth', 1, 29);
+		return day === null ? null : `${second} ${minute} ${hour} ${day} */1 *`;
+	}
+	return null;
+}
+
+function scheduleOf(
+	rule: Record<string, unknown>,
+	timezone: Code | null,
+	nodeKey?: string,
+): Code | string {
 	// A fixed `=` value is the text after `=`, as n8n reads it (`=weeks`).
 	const field = fixedText(rule.field) ?? text(rule.field, 'days');
 	const entries: Array<[string, Code]> = [];
@@ -123,6 +182,8 @@ function scheduleOf(rule: Record<string, unknown>, timezone: Code | null): Code 
 		const cron = fixedText(rule.expression);
 		if (cron === null) return 'The cron expression is missing or is an expression.';
 		entries.push(['cron', raw(str(cron.trim()))]);
+	} else if (nodeKey !== undefined && v1Cron(rule, field, nodeKey) !== null) {
+		entries.push(['cron', raw(str(v1Cron(rule, field, nodeKey) ?? ''))]);
 	} else {
 		const every: Record<string, unknown> = { unit: field };
 		switch (field) {
@@ -237,7 +298,8 @@ export function planTrigger(
 	workflowName: string,
 	timezone: string | undefined,
 	diag: (d: Omit<ConvertDiagnostic, 'node'>) => void,
-	scheduleItem: 'native' | 'v1' = 'native',
+	scheduleItem: 'native' | 'v1' = 'v1',
+	workflowId?: string,
 ): TriggerPlan {
 	const p = node.parameters ?? {};
 	const tz = timezone ? raw(str(timezone)) : null;
@@ -311,7 +373,12 @@ export function planTrigger(
 					: [{}];
 			const triggers: string[] = [];
 			for (const r of rule.length > 0 ? rule : [{}]) {
-				const s = scheduleOf(r, tz);
+				// The key of v1: the workflow id and the node id (`ScheduleTrigger.node.ts`).
+				const nodeKey =
+					workflowId !== undefined && typeof node.id === 'string'
+						? `${workflowId}:${node.id}`
+						: undefined;
+				const s = scheduleOf(r, tz, nodeKey);
 				if (typeof s === 'string') return standIn(s);
 				triggers.push(call('schedule', s));
 			}
