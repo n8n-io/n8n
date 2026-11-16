@@ -5,6 +5,8 @@
 export const resolvablesRestriction = [
 	{
 		files: ['./nodes/**/*.ts'],
+		// Tests import the whole module to spy on its helpers
+		ignores: ['**/*.test.ts', '**/test/**', '**/__tests__/**'],
 		rules: {
 			'no-restricted-imports': [
 				'error',
