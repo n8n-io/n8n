@@ -112,7 +112,13 @@ export interface Failure {
 }
 
 export type BodyResult =
-	| { ok: true; code: string; usage: Usage }
+	| {
+			ok: true;
+			code: string;
+			usage: Usage;
+			/** Set for a text template: true when the whole value needs `orNull`. */
+			guard?: boolean;
+	  }
 	| { ok: false; issues: LegacyIssue[] };
 
 const HOST_UNSAFE =
@@ -145,6 +151,35 @@ export function segments(value: string): Segment[] {
 	}
 	if (i < value.length) out.push({ text: value.slice(i) });
 	return out;
+}
+
+/** The text of a `=` value that has no `{{ }}` part, or null. The text is the same in each run. */
+export function constantText(value: unknown): string | null {
+	if (typeof value !== 'string' || !value.startsWith('=')) return null;
+	const body = value.replace(/^=+/, '');
+	return segments(body).every((part) => part.expression === undefined) ? body : null;
+}
+
+/**
+ * The literal of JSON text that the converter can parse for the run, or null. The run
+ * parses text with a key that an object literal orders or reads in a different way.
+ */
+export function jsonLiteral(json: string): Code | null {
+	let value: unknown;
+	try {
+		value = JSON.parse(json);
+	} catch {
+		return null;
+	}
+	const plain = (v: unknown): boolean => {
+		if (typeof v === 'number') return Number.isFinite(v);
+		if (Array.isArray(v)) return v.every(plain);
+		if (!isRecord(v)) return true;
+		return Object.entries(v).every(
+			([k, x]) => k !== '__proto__' && k !== '...' && !/^(0|[1-9]\d*)$/.test(k) && plain(x),
+		);
+	};
+	return plain(value) ? literal(value) : null;
 }
 
 export function isExpression(value: unknown): value is string {
@@ -665,6 +700,7 @@ function withoutMarks(marked: string): string {
 
 function textNeverThrows(marked: string): boolean {
 	const code = withoutMarks(marked);
+	if (isChainGuard(code)) return true;
 	const sf = ts.createSourceFile('e.ts', `(${code})`, ts.ScriptTarget.ES2022, true);
 	const st = sf.statements[0];
 	if (sf.statements.length !== 1 || !st || !ts.isExpressionStatement(st)) return false;
@@ -752,6 +788,38 @@ function neverNullish(code: string): boolean {
 	);
 }
 
+/**
+ * The code of a chain of members (`a.b[0].c`) with each member optional (`a?.b?.[0]?.c`), or
+ * null when the code is not such a chain.
+ */
+function optionalChain(code: string): string | null {
+	const member = /\.[$A-Za-z_][\w$]*|\[(?:\d+|[$A-Za-z_][\w$]*|'[^'\\\n]*')\]/g;
+	const root = /^[$A-Za-z_][\w$]*/.exec(code);
+	if (!root) return null;
+	const rest = code.slice(root[0].length);
+	if (rest === '' || rest.replace(member, '') !== '') return null;
+	return root[0] + rest.replace(member, (m) => (m.startsWith('.') ? `?${m}` : `?.${m}`));
+}
+
+/**
+ * Code with the value of `orNull(() => chain)` for a chain of members, without a closure:
+ * the chain throws only when a value before its last member is null or undefined. Null
+ * when the code is not such a chain.
+ */
+function chainGuard(code: string): string | null {
+	const last = /(?:\.[$A-Za-z_][\w$]*|\[(?:\d+|[$A-Za-z_][\w$]*|'[^'\\\n]*')\])$/.exec(code);
+	if (!last || optionalChain(code) === null) return null;
+	const before = code.slice(0, last.index);
+	const guard = optionalChain(before);
+	return guard === null ? null : `(${guard} == null ? null : ${code})`;
+}
+
+/** True for code that `chainGuard` made. */
+function isChainGuard(code: string): boolean {
+	const parts = /^\(.* == null \? null : (.*)\)$/.exec(code);
+	return parts !== null && chainGuard(parts[1]) === code;
+}
+
 function isSimpleOperand(code: string): boolean {
 	return /^[$A-Za-z_][\w$]*(\??\.[$A-Za-z_][\w$]*|\[[^\][]*\])*$/.test(code);
 }
@@ -778,6 +846,8 @@ export interface TranslateOptions {
 	templatePart?: (code: string) => string;
 	/** Variables that the node binds (`ExpressionScope.locals`). */
 	locals?: Record<string, string>;
+	/** Keeps `orNull(() => …)` for each value that can throw, for a caller that rewrites it. */
+	guardCalls?: boolean;
 }
 
 /**
@@ -808,7 +878,10 @@ export function translateValue(
 			if (r.ok) {
 				merge(r.usage);
 				// v1 gives null when the expression throws a TypeError (`evaluateLegacy`).
-				const code = mayThrowTypeError(r.code) ? `orNull(() => ${r.code})` : r.code;
+				const code =
+					(r.guard ?? mayThrowTypeError(r.code))
+						? ((options.guardCalls ? null : chainGuard(r.code)) ?? `orNull(() => ${r.code})`)
+						: r.code;
 				return raw(scope.mark ? scope.mark(code, p, v) : code);
 			}
 			if (scope.hostValue) {
@@ -846,6 +919,9 @@ export function translateExpression(
 		return translateBody(parts[0].expression, scope);
 	}
 	let code = '`';
+	// The whole template needs `orNull` when one part has it and another part can throw.
+	let guarded = false;
+	let quiet = true;
 	for (const part of parts) {
 		if (part.text !== undefined) {
 			code += templateText(part.text);
@@ -858,7 +934,18 @@ export function translateExpression(
 		usage.approximate ||= r.usage.approximate;
 		for (const n of r.usage.nodes) usage.nodes.add(n);
 		// v1 gives undefined for a part that throws a TypeError; the other parts stay.
-		const piece = mayThrowTypeError(r.code) ? `orNull(() => ${r.code})` : r.code;
+		const throws = mayThrowTypeError(r.code);
+		if (throws) guarded = true;
+		else if (r.code !== 'undefined' && !textNeverThrows(r.code)) quiet = false;
+		const chain = throws && !templatePart ? optionalChain(r.code) : null;
+		if (chain !== null) {
+			// A chain of members throws only when a value before the last member is null or
+			// undefined. The optional chain then gives undefined, which the template renders as
+			// `orNull` renders its null.
+			code += `\${${chain} ?? ''}`;
+			continue;
+		}
+		const piece = throws ? `orNull(() => ${r.code})` : r.code;
 		// v1 renders null and undefined as an empty string in a template.
 		const inner = templatePart
 			? templatePart(piece)
@@ -870,5 +957,6 @@ export function translateExpression(
 		code += `\${${inner}}`;
 	}
 	code += '`';
-	return { ok: true, code, usage };
+	if (templatePart) return { ok: true, code, usage };
+	return { ok: true, code, usage, guard: guarded && !quiet };
 }

@@ -42,6 +42,27 @@ const wrap = (code: string) =>
 		: `(${code})`;
 
 /**
+ * The time in milliseconds of text that is a whole ISO 8601 instant (a date, a time and
+ * `Z` or an offset), or null. The helper `filterDate` gives the same number for this text
+ * in each time zone, so the converter can give the number.
+ */
+export function isoInstant(value: unknown): number | null {
+	if (typeof value !== 'string') return null;
+	const m =
+		/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{3})?(?:Z|[+-](\d{2}):(00|15|30|45))$/.exec(
+			value,
+		);
+	if (!m) return null;
+	const [year, month, day, hour, minute, second] = m.slice(1, 7).map(Number);
+	const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+	const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+	if (year < 1000 || month < 1 || month > 12 || day < 1 || day > days[month - 1]) return null;
+	if (hour > 23 || minute > 59 || second > 59 || Number(m[7] ?? 0) > 14) return null;
+	const time = Date.parse(value);
+	return Number.isNaN(time) ? null : time;
+}
+
+/**
  * The nullishness of an expression by its syntax, as TypeScript reads it
  * (`getSyntacticNullishnessSemantics`). TypeScript rejects `a ?? b` when `a`
  * is never nullish (TS2869, for example a string literal) or always nullish
@@ -382,7 +403,10 @@ function conditionCode(
 				`filterDate(${code}, ${lit(options.zone)}, ${String(!options.loose)}, ${index})`;
 			const r = rightOf();
 			const rightCode = r.literal ? lit(r.value) : wrap(r.code);
-			return `filterDateCompare(${lit(operation)}, ${date(wrap(left.code))}, ${date(rightCode)})`;
+			// A constant instant is the same number in each run: the converter reads it.
+			const instant = r.literal ? isoInstant(r.value) : null;
+			const rightDate = instant === null ? date(rightCode) : String(instant);
+			return `filterDateCompare(${lit(operation)}, ${date(wrap(left.code))}, ${rightDate})`;
 		}
 		case 'object': {
 			const o = left.literal

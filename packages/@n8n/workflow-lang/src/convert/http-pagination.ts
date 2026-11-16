@@ -60,7 +60,10 @@ export function readPaging(c: NodeContext, options: Record<string, unknown>): Pa
 	let usesItem = false;
 	let usesIndex = false;
 	const value = (v: unknown, path: string): string => {
-		const t: TranslatedValue = c.compiled(v, `options.pagination.pagination.${path}`, { locals });
+		const t: TranslatedValue = c.compiled(v, `options.pagination.pagination.${path}`, {
+			locals,
+			guardCalls: true,
+		});
 		usesItem ||= t.usage.item;
 		usesIndex ||= t.usage.index;
 		// n8n-core resolves a pagination value that throws a TypeError to no value, so
