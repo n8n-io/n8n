@@ -54,14 +54,16 @@ onMounted(() => {
 						</span>
 						<N8nText bold color="text-dark">{{ recommended.name }}</N8nText>
 					</span>
-					<span
+					<N8nText
 						v-if="entryPoint === 'create_menu' && addedSkillIds.includes(recommended.id)"
 						:class="$style.added"
+						size="small"
+						color="success"
 						data-test-id="recommended-skill-added"
 					>
-						<N8nIcon icon="check" :size="14" aria-hidden="true" />
+						<N8nIcon icon="check" size="small" />
 						{{ i18n.baseText('tools.connection.action.added') }}
-					</span>
+					</N8nText>
 				</template>
 				<N8nText tag="p" size="small" color="text-base" :class="$style.cardText">
 					{{ i18n.baseText(recommended.cardTextKey) }}
@@ -118,11 +120,9 @@ onMounted(() => {
 }
 
 .added {
-	display: inline-flex;
+	display: flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
-	color: var(--color--success);
-	font-size: var(--font-size--2xs);
+	gap: var(--spacing--4xs);
 	white-space: nowrap;
 }
 
