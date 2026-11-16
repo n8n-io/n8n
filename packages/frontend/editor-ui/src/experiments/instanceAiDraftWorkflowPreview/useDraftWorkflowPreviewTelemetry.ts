@@ -200,10 +200,17 @@ export function useDraftWorkflowPreviewTelemetry(thread: DraftWorkflowPreviewTel
 			sentAt = undefined;
 		},
 	);
-	watch(runTree, (tree) => {
-		checkExposure();
-		if (tree?.status === 'cancelled') trackAbandon('stopped');
-	});
+	// The reducer changes the live tree in place, so watch the values, not the tree.
+	watch(
+		[() => runTree.value && findWorkflowBuildStart(runTree.value) !== undefined, variant],
+		checkExposure,
+	);
+	watch(
+		() => runTree.value?.status,
+		(status) => {
+			if (status === 'cancelled') trackAbandon('stopped');
+		},
+	);
 	useEventListener(window, 'pagehide', leaveIfRunning);
 	onScopeDispose(leaveIfRunning);
 

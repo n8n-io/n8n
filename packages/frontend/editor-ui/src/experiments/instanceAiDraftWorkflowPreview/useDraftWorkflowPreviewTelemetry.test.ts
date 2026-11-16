@@ -2,7 +2,7 @@
 import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { effectScope, nextTick, reactive, type EffectScope } from 'vue';
+import { effectScope, nextTick, reactive, ref, type EffectScope } from 'vue';
 
 import {
 	EXPERIMENTS_TO_TRACK,
@@ -89,6 +89,39 @@ describe('useDraftWorkflowPreviewTelemetry', () => {
 
 	it('registers the experiment for enrollment tracking', () => {
 		expect(EXPERIMENTS_TO_TRACK).toContain(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name);
+	});
+
+	it('reports exposure when the live run tree changes in place', async () => {
+		const { startRun, thread } = setup();
+		await startRun();
+
+		thread.messages[0].agentTree!.toolCalls.push(buildCall());
+		await nextTick();
+
+		expect(tracked(TELEMETRY_EVENT.INSTANCE_AI.DRAFT_WORKFLOW_PREVIEW_EXPOSED)).toHaveLength(1);
+	});
+
+	it('reports a stop when the live run tree changes in place', async () => {
+		const { startRun, thread } = setup();
+		await startRun(agentTree({ toolCalls: [buildCall()] }));
+
+		thread.messages[0].agentTree!.status = 'cancelled';
+		await nextTick();
+
+		expect(tracked(TELEMETRY_EVENT.INSTANCE_AI.RUN_ABANDONED)).toHaveLength(1);
+	});
+
+	it('reports exposure once the flag value arrives after the build starts', async () => {
+		const assigned = ref<string>();
+		getVariant.mockImplementation(() => assigned.value);
+		const { startRun } = setup();
+		await startRun(agentTree({ toolCalls: [buildCall()] }));
+		expect(tracked(TELEMETRY_EVENT.INSTANCE_AI.DRAFT_WORKFLOW_PREVIEW_EXPOSED)).toHaveLength(0);
+
+		assigned.value = 'variant';
+		await nextTick();
+
+		expect(tracked(TELEMETRY_EVENT.INSTANCE_AI.DRAFT_WORKFLOW_PREVIEW_EXPOSED)).toHaveLength(1);
 	});
 
 	it('reports exposure once, when the run starts building a workflow', async () => {

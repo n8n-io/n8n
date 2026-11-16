@@ -162,10 +162,11 @@ function setup(options?: {
 	initialAgentId?: () => string | undefined;
 	initialAppId?: () => string | undefined;
 	tabsStorage?: ThreadTabsStorage;
+	staging?: WorkflowDraft;
 }) {
 	const thread = createMockThread();
 	const drafts = ref<WorkflowDraftsByFilePath>({});
-	const staging = ref<WorkflowDraft>();
+	const staging = ref<WorkflowDraft | undefined>(options?.staging);
 	const buildTarget = ref<BuildTarget>();
 	const dismissWorkflowDrafts = vi.fn();
 	if (options?.threadOverrides) Object.assign(thread, options.threadOverrides);
@@ -217,12 +218,21 @@ describe('useCanvasPreview', () => {
 
 		test('opens a building tab for the staging canvas and shows it', async () => {
 			const ctx = setup();
+			ctx.thread.isStreaming = true;
 
 			ctx.staging.value = stagingDraft();
 			await nextTick();
 
 			const tab = ctx.openTabs.value.find((t) => t.id === ctx.activeTabId.value);
 			expect(tab).toMatchObject({ name: 'New workflow', building: true, draft: true });
+			expect(ctx.activeWorkflowDraft.value?.filePath).toBe('staging:run-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('shows a staging canvas that is there when the view opens', async () => {
+			const ctx = setup({ staging: stagingDraft() });
+			await nextTick();
+
 			expect(ctx.activeWorkflowDraft.value?.filePath).toBe('staging:run-1');
 			expect(ctx.isPreviewVisible.value).toBe(true);
 		});

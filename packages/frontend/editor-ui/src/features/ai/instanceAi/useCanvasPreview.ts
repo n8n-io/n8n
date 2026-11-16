@@ -799,6 +799,8 @@ export function useCanvasPreview({
 			}
 			leaveStagingTab(stagingTabId, openTabs.value.at(-1)?.id, false);
 		},
+		// A view that opens during the run shows the staging canvas that is there.
+		{ immediate: true },
 	);
 
 	// --- Signal persisted builder config mutations onto the agents event bus ---

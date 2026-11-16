@@ -69,6 +69,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useDraftWorkflowPreviewEnabled } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewEnabled';
 import { useWorkflowStaging } from './composables/useWorkflowStaging';
 import { isStagingDraft, toStagingNodeTypeInfo } from './instanceAi.workflowStaging';
+import { getDraftWorkflowId } from './instanceAi.workflowDrafts';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
@@ -325,7 +326,11 @@ watch(
 
 // The saved canvas loaded under its draft, so the draft has nothing left to cover.
 function handleSavedWorkflowLoaded(workflowId: string) {
-	draftPreviewTelemetry.trackCanvasRendered('saved');
+	// Only the workflow that the build works on counts, not one the user opens.
+	const isBuiltWorkflow =
+		workflowStaging.buildTarget.value?.workflowId === workflowId ||
+		Object.values(thread.workflowDrafts).some((draft) => getDraftWorkflowId(draft) === workflowId);
+	if (isBuiltWorkflow) draftPreviewTelemetry.trackCanvasRendered('saved');
 	thread.dismissWorkflowDrafts(workflowId);
 }
 // The agent knows saved artifacts only. A draft tab has no id that the agent can use.

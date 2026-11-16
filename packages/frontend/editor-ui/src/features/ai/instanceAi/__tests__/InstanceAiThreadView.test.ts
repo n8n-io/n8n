@@ -2767,6 +2767,19 @@ describe('InstanceAiThreadView', () => {
 			expect(queryByTestId('instance-ai-workflow-draft-preview-stub')).toBeNull();
 		});
 
+		it('does not report a saved canvas render for a workflow that no build works on', async () => {
+			trackCanvasRendered.mockClear();
+			thread.producedArtifacts = new Map([
+				['wf-2', { type: 'workflow', id: 'wf-2', name: 'Other' }],
+			]) as typeof thread.producedArtifacts;
+			renderView({ props: { threadId: 'thread-1' } });
+
+			await vi.waitFor(() => expect(workflowLoadedEmit).not.toBeNull());
+			workflowLoadedEmit?.('workflow-loaded', 'wf-2');
+
+			expect(trackCanvasRendered).not.toHaveBeenCalledWith('saved');
+		});
+
 		it('reports the first draft and saved canvas renders', async () => {
 			trackCanvasRendered.mockClear();
 			thread.producedArtifacts = new Map([
