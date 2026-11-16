@@ -62,4 +62,18 @@ export const registerComponentSlots = () => {
 			async () => await import('@/app/components/layouts/ResourcesListLayout.vue'),
 		),
 	);
+
+	componentRegistry.register(
+		'promotion-review-settings',
+		defineAsyncComponent(
+			async () => await import('@/features/settings/security/PromotionReviewsSettingsSection.vue'),
+		),
+	);
+
+	componentRegistry.register(
+		'promotion-environment-review',
+		defineAsyncComponent(
+			async () => await import('@/features/settings/security/PromotionEnvironmentReviewRow.vue'),
+		),
+	);
 };

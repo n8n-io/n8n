@@ -31,6 +31,7 @@ import ApiKeyRateLimitsSection from './rateLimits/ApiKeyRateLimitsSection.vue';
 import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import { isNewVariant } from '@/features/workflow-reviews/reviewPrototype.state';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 
 const rootStore = useRootStore();
@@ -400,7 +401,13 @@ const sharingCountText = computed(() => {
 		<N8nSettingsSection
 			v-if="isSecuritySettingsSettled && isWorkflowReviewsAvailable && state !== undefined"
 			:title="i18n.baseText('settings.security.workflowReviews.title')"
-			:description="i18n.baseText('settings.security.workflowReviews.description')"
+			:description="
+				i18n.baseText(
+					isNewVariant
+						? 'settings.security.workflowReviews.description.publish'
+						: 'settings.security.workflowReviews.description',
+				)
+			"
 			data-test-id="security-workflow-reviews-section"
 		>
 			<WorkflowReviewsSection

@@ -57,7 +57,11 @@ import { PROMOTION_PREVIEW_VIEWS } from '@n8n/frontend-module-promotions';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 import WorkflowApprovalRequestDialog from '@/features/workflow-reviews/components/WorkflowApprovalRequestDialog.vue';
-import { reviewPrototypeState } from '@/features/workflow-reviews/reviewPrototype.state';
+import { useWorkflowHomeProjectId } from '@/features/workflow-reviews/composables/useWorkflowHomeProjectId';
+import {
+	projectApprovalLock,
+	reviewPrototypeState,
+} from '@/features/workflow-reviews/reviewPrototype.state';
 import WorkflowPublishChoiceDialog from '@/features/workflow-reviews/components/WorkflowPublishChoiceDialog.vue';
 import WorkflowSubmitForReviewDialog from '@/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue';
 import WorkflowReviewSubmittedDialog from '@/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue';
@@ -82,6 +86,7 @@ const uiStore = useUIStore();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(props.id)),
 );
+const homeProjectId = useWorkflowHomeProjectId(() => props.id);
 
 // Pass a getter so the composable re-syncs internally when the user navigates
 // to a different workflow without this component being remounted.
@@ -125,9 +130,8 @@ const publishingNeedsApproval = computed(
 	() =>
 		publishingReviewsOn.value &&
 		((reviewPrototypeState.initialized
-			? reviewPrototypeState.publishingNeedsApproval
+			? projectApprovalLock(homeProjectId.value, 'publishing') !== null
 			: settingsStore.settings.workflowReviews?.publishingNeedsApproval === true) ||
-			reviewPrototypeState.projectPublishing ||
 			reviewPrototypeState.workflowPublishing[props.id] === true),
 );
 const promotingNeedsApproval = computed(

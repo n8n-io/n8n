@@ -22,12 +22,12 @@ import {
 	N8nText,
 	useMessage,
 } from '@n8n/design-system';
-import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
+import { capabilities, capabilityRegistry, componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { nextTick, onMounted, reactive, ref, type ComponentPublicInstance } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, type ComponentPublicInstance } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
@@ -77,6 +77,7 @@ const loadError = ref(false);
 const busy = reactive(new Map<string, 'retry' | 'remove'>());
 const addButtons: Partial<Record<PromotionDirection, Element | ComponentPublicInstance | null>> =
 	{};
+const PromotionReviewSettings = computed(() => componentRegistry.get('promotion-review-settings'));
 
 async function load() {
 	const isLatestLoad = nextLoad();
@@ -251,6 +252,7 @@ async function remove(environment: PromotionEnvironment) {
 						<N8nSwitch
 							:model-value="isProtected"
 							:disabled="protectionBusy"
+							size="large"
 							:aria-label="i18n.baseText('settings.sourceControl.protected.bold')"
 							data-test-id="promotion-protected-instance-switch"
 							@update:model-value="setProtected"
@@ -259,6 +261,7 @@ async function remove(environment: PromotionEnvironment) {
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
 		</N8nSettingsSection>
+		<component :is="PromotionReviewSettings" v-if="PromotionReviewSettings" />
 		<N8nText
 			v-if="canSwitchBack"
 			tag="p"

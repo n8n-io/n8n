@@ -7,7 +7,11 @@ import type { ReviewRequirementLock } from '@n8n/api-types';
 
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
-import { reviewPrototypeState } from '@/features/workflow-reviews/reviewPrototype.state';
+import { useWorkflowHomeProjectId } from '@/features/workflow-reviews/composables/useWorkflowHomeProjectId';
+import {
+	projectApprovalLock,
+	reviewPrototypeState,
+} from '@/features/workflow-reviews/reviewPrototype.state';
 import { useWorkflowReviewPolicyStore } from '@/features/workflow-reviews/workflowReviewPolicy.store';
 
 const props = defineProps<{
@@ -17,6 +21,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const settingsStore = useSettingsStore();
+const homeProjectId = useWorkflowHomeProjectId(() => props.workflowId);
 const policyStore = useWorkflowReviewPolicyStore();
 const { isWorkflowReviewsEnabled, isPromotionReviewsEnabled } = useWorkflowReviewsFeature();
 const { isEnabled: environmentsConfigured } = usePromotionsEnabled();
@@ -45,9 +50,10 @@ const instancePromoting = computed(() =>
 		: settingsStore.settings.workflowReviews?.promotingNeedsApproval === true,
 );
 const publishingLockedBy = computed((): ReviewRequirementLock | null => {
-	if (instancePublishing.value) return 'instance';
-	if (reviewPrototypeState.projectPublishing) return 'project';
-	return null;
+	if (!reviewPrototypeState.initialized) {
+		return instancePublishing.value ? 'instance' : null;
+	}
+	return projectApprovalLock(homeProjectId.value, 'publishing');
 });
 const promotingLockedBy = computed((): ReviewRequirementLock | null => {
 	if (instancePromoting.value) return 'instance';

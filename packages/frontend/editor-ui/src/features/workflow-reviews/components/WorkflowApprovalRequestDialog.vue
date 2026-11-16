@@ -16,14 +16,15 @@ import {
 } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, ref, watch } from 'vue';
 
 import { VIEWS } from '@/app/constants';
 import { useDependencies } from '@/app/composables/useDependencies';
+import { useWorkflowHomeProjectId } from '@/features/workflow-reviews/composables/useWorkflowHomeProjectId';
 import { formatUserDisplayName } from '@/features/workflow-reviews/workflowReviews.utils';
 import {
+	projectReviewerChoice,
 	reviewPrototypeState,
 	reviewerPoolForTrack,
 	roleMatchesReviewerPool,
@@ -75,9 +76,9 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const toast = useToast();
-const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const { fetchDependencyCounts, getTotalCount } = useDependencies();
+const homeProjectId = useWorkflowHomeProjectId(() => props.workflowId);
 
 const reviewTitle = ref('');
 const description = ref('');
@@ -100,31 +101,17 @@ const dependencyLabel = computed(() =>
 	}),
 );
 
-function instanceRequiresApproval(): boolean {
-	if (props.intent === 'promote') {
-		return reviewPrototypeState.initialized
-			? reviewPrototypeState.promotingNeedsApproval
-			: settingsStore.settings.workflowReviews?.promotingNeedsApproval === true;
-	}
-	return reviewPrototypeState.initialized
-		? reviewPrototypeState.publishingNeedsApproval
-		: settingsStore.settings.workflowReviews?.publishingNeedsApproval === true;
-}
-
 const reviewerPool = computed(() => {
 	const promoting = props.intent === 'promote';
 	return reviewerPoolForTrack({
-		mode: reviewPrototypeState.mode,
-		instanceRequired: instanceRequiresApproval(),
-		projectRequired: promoting
-			? reviewPrototypeState.projectPromoting
-			: reviewPrototypeState.projectPublishing,
 		instancePool: promoting
 			? reviewPrototypeState.promotingReviewers
 			: reviewPrototypeState.publishingReviewers,
 		projectPool: promoting
 			? reviewPrototypeState.projectPromotingReviewers
-			: reviewPrototypeState.projectPublishingReviewers,
+			: homeProjectId.value
+				? projectReviewerChoice(homeProjectId.value, 'publishing')
+				: null,
 	});
 });
 

@@ -22,6 +22,7 @@ import {
 	N8nText,
 	useMessage,
 } from '@n8n/design-system';
+import { componentRegistry } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -111,6 +112,11 @@ const createBranchLabelKey = computed(() =>
 		? 'settings.promotions.environment.form.createBranch.gitlab'
 		: 'settings.promotions.environment.form.createBranch.git',
 );
+const PromotionEnvironmentReview = computed(() =>
+	componentRegistry.get('promotion-environment-review'),
+);
+/** True when New renders the approval sequence and owns the branch checkbox. */
+const reviewSequenceActive = ref(false);
 const needsRepositorySelection = computed(
 	() => hasHostApi.value && !!form.remoteUrl && !form.repositoryPath,
 );
@@ -486,8 +492,16 @@ onBeforeRouteLeave(() => {
 								@enter="save"
 							/>
 
+							<component
+								:is="PromotionEnvironmentReview"
+								v-if="direction === 'promote' && PromotionEnvironmentReview"
+								v-model:create-branch-on-promotion="form.createBranchOnPromotion"
+								:create-branch-label-key="createBranchLabelKey"
+								:disabled="isSaving"
+								@active="reviewSequenceActive = $event"
+							/>
 							<N8nCheckbox
-								v-if="direction === 'promote'"
+								v-if="direction === 'promote' && !reviewSequenceActive"
 								v-model="form.createBranchOnPromotion"
 								:disabled="isSaving"
 								data-test-id="promotion-environment-create-branch"

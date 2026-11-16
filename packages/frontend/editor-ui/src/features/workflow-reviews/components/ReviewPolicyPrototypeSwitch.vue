@@ -4,33 +4,33 @@ import { useI18n } from '@n8n/i18n';
 
 import {
 	reviewPrototypeState,
-	setReviewPrototypeMode,
-	type ReviewPolicyMode,
+	setReviewPrototypeVariant,
+	type ReviewPolicyVariant,
 } from '@/features/workflow-reviews/reviewPrototype.state';
 
 const i18n = useI18n();
 
-const mode = computed(() => reviewPrototypeState.mode);
+const variant = computed(() => reviewPrototypeState.variant);
 
 const options: Array<{
-	value: ReviewPolicyMode;
-	labelKey: 'workflowReviews.prototype.mode.basic' | 'workflowReviews.prototype.mode.custom';
+	value: ReviewPolicyVariant;
+	labelKey: 'workflowReviews.prototype.variant.old' | 'workflowReviews.prototype.variant.new';
 	testId: string;
 }> = [
 	{
-		value: 'basic',
-		labelKey: 'workflowReviews.prototype.mode.basic',
-		testId: 'review-policy-prototype-mode-basic',
+		value: 'current',
+		labelKey: 'workflowReviews.prototype.variant.old',
+		testId: 'review-policy-prototype-variant-current',
 	},
 	{
-		value: 'custom',
-		labelKey: 'workflowReviews.prototype.mode.custom',
-		testId: 'review-policy-prototype-mode-custom',
+		value: 'new',
+		labelKey: 'workflowReviews.prototype.variant.new',
+		testId: 'review-policy-prototype-variant-new',
 	},
 ];
 
-function select(value: ReviewPolicyMode) {
-	setReviewPrototypeMode(value);
+function select(value: ReviewPolicyVariant) {
+	setReviewPrototypeVariant(value);
 }
 </script>
 
@@ -38,8 +38,8 @@ function select(value: ReviewPolicyMode) {
 	<div
 		:class="$style.switch"
 		role="radiogroup"
-		:aria-label="i18n.baseText('workflowReviews.prototype.mode.label')"
-		data-test-id="review-policy-prototype-mode"
+		:aria-label="i18n.baseText('workflowReviews.prototype.variant.label')"
+		data-test-id="review-policy-prototype-variant"
 	>
 		<button
 			v-for="option in options"
@@ -47,7 +47,7 @@ function select(value: ReviewPolicyMode) {
 			type="button"
 			role="radio"
 			:class="$style.segment"
-			:aria-checked="mode === option.value"
+			:aria-checked="variant === option.value"
 			:data-test-id="option.testId"
 			@click="select(option.value)"
 		>

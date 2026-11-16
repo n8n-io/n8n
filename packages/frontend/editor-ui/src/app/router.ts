@@ -13,6 +13,10 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
+import {
+	PROMOTION_REVIEW_PROJECTS_VIEW,
+	PUBLISH_REVIEW_PROJECTS_VIEW,
+} from '@/features/workflow-reviews/reviewPrototype.state';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { middleware } from '@/app/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/app/types/router';
@@ -122,6 +126,8 @@ const ResourceCenterView = async () =>
 
 const SecuritySettingsView = async () =>
 	await import('@/features/settings/security/SecuritySettings.vue');
+const PublishReviewProjectsView = async () =>
+	await import('@/features/settings/security/PublishReviewProjectsView.vue');
 
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 
@@ -711,6 +717,58 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'security',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'security/publish-reviews',
+				name: PUBLISH_REVIEW_PROJECTS_VIEW,
+				component: PublishReviewProjectsView,
+				props: { track: 'publishing' },
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['securitySettings:manage'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'security',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'promotions/reviews',
+				name: PROMOTION_REVIEW_PROJECTS_VIEW,
+				component: PublishReviewProjectsView,
+				props: { track: 'promoting' },
+				beforeEnter: () => usePromotionsEnabled().isEnabled.value || { name: VIEWS.SOURCE_CONTROL },
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: [
+								'promotions:list',
+								'promotions:read',
+								'promotions:create',
+								'promotions:update',
+								'promotions:delete',
+							],
+							options: { mode: 'allOf' },
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'promotions',
 							};
 						},
 					},

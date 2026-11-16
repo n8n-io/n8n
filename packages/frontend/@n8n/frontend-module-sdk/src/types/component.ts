@@ -27,6 +27,11 @@ import type { IWorkflowSettings } from 'n8n-workflow';
  * itself and renders nothing when insights are not available to the user.
  * `resources-list-layout` is the shared resource list page (search, sort, pagination, empty
  * state). It takes the props and slots of the shell's `ResourcesListLayout`.
+ * `promotion-review-settings` is the instance promotion-reviews section. The shell
+ * owns the prototype state, so the Environments page renders the slot instead of
+ * importing it.
+ * `promotion-environment-review` is the read-only approval switch inside an
+ * environment form. The shell owns the prototype state.
  */
 export type ModuleComponentSlot =
 	| 'project-filter'
@@ -34,6 +39,8 @@ export type ModuleComponentSlot =
 	| 'workflow-diff-placeholder'
 	| 'code-diff'
 	| 'promotion-changes'
+	| 'promotion-review-settings'
+	| 'promotion-environment-review'
 	| 'project-header'
 	| 'insights-summary'
 	| 'resources-list-layout';
