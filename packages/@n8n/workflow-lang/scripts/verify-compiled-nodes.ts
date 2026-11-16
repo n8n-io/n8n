@@ -232,7 +232,8 @@ if (one === undefined) {
 	let lost = 0;
 	const worker = async () => {
 		while (next < names.length) {
-			const result = await checkInProcess(names[next++]);
+			const name = names[next++];
+			const result = await checkInProcess(name);
 			if (!result) {
 				lost++;
 				continue;
@@ -241,7 +242,7 @@ if (one === undefined) {
 			for (const [reason, count] of Object.entries(result.reasons))
 				reasons[reason] = (reasons[reason] ?? 0) + count;
 			for (const example of result.examples ?? [])
-				if (examples.length < 400) examples.push(`${names[next - 1] ?? ''}: ${example}`);
+				if (examples.length < 400) examples.push(`${name}: ${example}`);
 			tried += result.tried;
 			compiledCount += result.compiled;
 		}

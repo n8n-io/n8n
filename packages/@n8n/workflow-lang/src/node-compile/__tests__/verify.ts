@@ -140,7 +140,8 @@ export default workflow({
 	});
 	if (JSON.stringify(requests) !== JSON.stringify(expected)) {
 		if (requests.length !== expected.length) {
-			return `the requests differ: count ${requests.length} / ${expected.length}`;
+			const cause = v1.error === undefined ? '' : `; v1 fails: ${v1.error.slice(0, 90)}`;
+			return `the requests differ: count ${requests.length} / ${expected.length}${cause}`;
 		}
 		for (let k = 0; k < requests.length; k++) {
 			const mine: Record<string, unknown> = { ...requests[k] };

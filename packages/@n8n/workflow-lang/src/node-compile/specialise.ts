@@ -932,8 +932,6 @@ class Specialiser {
 					ts.isPropertyAccessExpression(target.expression) &&
 					target.expression.name.text === 'helpers';
 				if (direct || viaCall) {
-					const options = args(node, node.arguments.length - 1)[0];
-
 					const wrapped =
 						name.text !== 'request' &&
 						name.text !== 'httpRequest' &&
@@ -942,6 +940,11 @@ class Specialiser {
 							ts.isPropertyAccessExpression(target) &&
 							(target.name.text === 'request' || target.name.text === 'httpRequest')
 						);
+					const optionsAt = Math.min(
+						(viaCall ? 1 : 0) + (wrapped ? 1 : 0),
+						node.arguments.length - 1,
+					);
+					const options = args(node, optionsAt)[0];
 					for (const used of ['__apiError', '__assign', '__form', '__formText'])
 						this.helpers.add(used);
 					const typeArgument = viaCall ? node.arguments[1] : undefined;
