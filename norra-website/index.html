@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Norra</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%27-14 -14 128 128%27%3E%3Crect x=%27-14%27 y=%27-14%27 width=%27128%27 height=%27128%27 rx=%2728%27 fill=%27%2317402f%27/%3E%3Cg fill=%27%23fff%27%3E%3Cpath d=%27M37.5 0H45.5V33.5A12 12 0 0 1 33.5 45.5H0V37.5H33.5A4 4 0 0 0 37.5 33.5Z%27/%3E%3Cpath d=%27M54.5 0H62.5V37.5H100V45.5H54.5Z%27/%3E%3Cpath d=%27M0 54.5H45.5V100H37.5V62.5H0Z%27/%3E%3Cpath d=%27M54.5 100V66.5A12 12 0 0 1 66.5 54.5H100V62.5H66.5A4 4 0 0 0 62.5 66.5V100Z%27/%3E%3C/g%3E%3C/svg%3E">
+<script>(function(){var t="light";try{if(localStorage.getItem("norra-theme")==="dark")t="dark"}catch(e){}document.documentElement.setAttribute("data-theme",t)})();</script>
 <meta name="description" content="Norra richtet KI-Agenten für lokale Unternehmen ein: Voice Agent, Chatbot, Social Media AI und Website.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1981,6 +1982,63 @@
   .legal-hint { border-radius: 12px; padding: 12px 14px; background: hsl(var(--warning) / .1); color: hsl(var(--warning)) !important; font-size: 13px !important; }
   mark.ph { background: hsl(var(--warning) / .16); color: hsl(var(--foreground)); border-radius: 4px; padding: 0 4px; font-family: var(--font-mono); font-size: .9em; }
 
+  /* ---------- language and region switcher (nav, top right) ---------- */
+  .lsw { position: relative; display: inline-flex; }
+  .lsw-btn { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px 0 11px; border-radius: 999px; cursor: pointer;
+    border: 1px solid hsl(var(--border)); background: hsl(var(--card) / .7); color: hsl(var(--foreground));
+    font: 600 12px/1 var(--font-sans); letter-spacing: .04em; transition: border-color .2s, background .2s, color .2s; }
+  .lsw-btn:hover, .lsw-btn[aria-expanded="true"] { border-color: hsl(var(--primary) / .55); background: hsl(var(--accent)); }
+  .lsw-btn:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+  .lsw-btn > svg:first-child { width: 15px; height: 15px; color: hsl(var(--muted-foreground)); }
+  .lsw-btn-c { font-weight: 500; color: hsl(var(--muted-foreground)); padding-left: 6px; border-left: 1px solid hsl(var(--border)); }
+  .lsw-chev { width: 12px; height: 12px; color: hsl(var(--muted-foreground)); transition: transform .2s; }
+  .lsw-btn[aria-expanded="true"] .lsw-chev { transform: rotate(180deg); }
+  .nav.nav-over .lsw-btn { color: #fff; border-color: rgba(255,255,255,.35); background: rgba(255,255,255,.08); }
+  .nav.nav-over .lsw-btn > svg, .nav.nav-over .lsw-btn-c, .nav.nav-over .lsw-chev { color: rgba(255,255,255,.8); }
+  .nav.nav-over .lsw-btn-c { border-left-color: rgba(255,255,255,.3); }
+  .nav.nav-over .lsw-btn:hover, .nav.nav-over .lsw-btn[aria-expanded="true"] { background: rgba(255,255,255,.18); }
+  .lsw-pop { position: absolute; right: 0; top: 100%; margin-top: 12px; z-index: 60; width: 340px; max-height: calc(100vh - 96px); overflow-y: auto;
+    border: 1px solid hsl(var(--border)); background: hsl(var(--popover)); color: hsl(var(--foreground));
+    border-radius: 18px; padding: 14px; box-shadow: var(--shadow-pop); animation: lswIn .15s cubic-bezier(.22,1,.36,1) both; }
+  .lsw-pop[hidden] { display: none; }
+  @keyframes lswIn { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+  .lsw-h { font: 600 14px var(--font-sans); padding: 2px 4px 10px; }
+  .lsw-group { border: 0; margin: 0; padding: 0; min-width: 0; }
+  .lsw-group + .lsw-group { margin-top: 12px; padding-top: 12px; border-top: 1px solid hsl(var(--border) / .7); }
+  .lsw-group legend { padding: 0 4px 6px; font: 500 11px var(--font-sans); text-transform: uppercase; letter-spacing: .12em; color: hsl(var(--muted-foreground)); }
+  .lsw-opts { display: grid; gap: 2px; }
+  .lsw-langs .lsw-opts { grid-template-columns: 1fr 1fr; }
+  .lsw-regions .lsw-opts { grid-template-columns: 1fr 1fr; }
+  .lsw-opt { position: relative; display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 10px; border-radius: 10px; cursor: pointer; font-size: 14px; transition: background .15s; }
+  .lsw-opt:hover { background: hsl(var(--accent)); }
+  .lsw-opt input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+  .lsw-opt:has(input:focus-visible) { outline: 2px solid hsl(var(--ring)); outline-offset: -2px; }
+  .lsw-code { flex: none; display: grid; place-items: center; width: 28px; height: 22px; border-radius: 6px; font: 600 11px/1 var(--font-sans); letter-spacing: .04em;
+    background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); }
+  .lsw-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lsw-cur { flex: none; font: 500 11px var(--font-mono); color: hsl(var(--muted-foreground)); }
+  .lsw-tick { flex: none; display: none; color: hsl(var(--primary)); }
+  .lsw-tick svg { width: 14px; height: 14px; display: block; }
+  .lsw-opt:has(input:checked) { background: hsl(var(--primary) / .09); font-weight: 600; }
+  .lsw-opt:has(input:checked) .lsw-code { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+  .lsw-opt:has(input:checked) .lsw-tick { display: block; }
+  .lsw-regions .lsw-opt:has(input:checked) .lsw-cur { display: none; }
+  .lsw-note { margin-top: 10px; padding: 0 4px; font-size: 12px; line-height: 1.5; color: hsl(var(--muted-foreground)); }
+  @media (max-width: 640px) {
+    .lsw-pop { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px));
+      top: calc(64px + env(safe-area-inset-top, 0px) + 6px); width: auto; margin-top: 0; max-height: calc(100vh - 88px); }
+    .lsw-btn { height: 34px; padding: 0 8px; gap: 5px; }
+    .lsw-btn-c, .lsw-chev { display: none; }
+  }
+  @media (max-width: 380px) { .lsw-btn > svg:first-child { display: none; } .lsw-btn { padding: 0 9px; } }
+  /* mobile menu: the same two groups, full width */
+  .mnav .mnav-lsw { padding: 4px 0 0; }
+  .mnav .mnav-lsw .lsw-note { display: none; }
+  .mnav .mnav-lsw .lsw-group + .lsw-group { margin-top: 8px; padding-top: 8px; }
+  .mnav .mnav-lsw .lsw-opts { grid-template-columns: 1fr 1fr; }
+  @media (min-width: 520px) { .mnav .mnav-lsw .lsw-langs .lsw-opts { grid-template-columns: repeat(3, 1fr); } }
+  .price-note { margin-top: 14px; }
+
 /* ===== src/content/07-alle-funktionen.css ===== */
   /* ---------- Alle Funktionen im Überblick (end of every product page) ---------- */
   .af-grid { margin-top: 44px; columns: 1; column-gap: 16px; }
@@ -2212,6 +2270,10 @@
 .start-prow-pts li { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: hsl(var(--foreground) / .85); }
 .start-prow-pts svg { flex: none; color: hsl(var(--primary)); }
 .start-mail + .start-mail { margin-top: 10px; }
+
+/* home calculator: two quiet links instead of Norra prices */
+.start-calc-ctas { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.start-calc-ctas .btn { margin: 0; }
 
 /* ===== src/content/20-produkte.css ===== */
 /* Leistungen (#produkte): services stage + cards, compact comparison, catalogue explorer. Prefix lsx-. */
@@ -3825,6 +3887,7 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
       <a href="#kontakt" data-route="kontakt">Kontakt</a>
     </nav>
     <div class="nav-actions">
+      <div class="lsw" id="lsw"></div>
       <button type="button" class="btn btn-ghost btn-icon" id="theme-toggle" aria-label="Farbschema wechseln">
         <svg id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>
       </button>
@@ -3895,7 +3958,7 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
     </div>
   </div>
 </footer>
-<script>window.NORRA_ENV = 'hosting';</script>
+<script>window.NORRA_ENV = 'hosting'; window.NORRA_I18N_LAZY = true; window.NORRA_I18N_VER = '691b90461c';</script>
 <script>
 /* ===== src/core.js ===== */
 /* =========================================================================
@@ -3912,20 +3975,425 @@ NORRA.reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-moti
 /* One knob for the pace of every vignette and timer, as in the original. */
 NORRA.PACE = 1.6;
 NORRA.paced = function (ms) { return Math.round(ms * NORRA.PACE); };
-/* i18n removed: t() is the identity so ported code reads the same. */
-NORRA.t = function (text) { return text; };
 NORRA.esc = function (s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 };
-/* German number format: 82,6 · 1.204 (grouping only when asked). */
+
+/* =========================================================================
+   LANGUAGES, REGIONS AND PRICES
+   NORRA.lang ('de' = source language), NORRA.region (price region).
+   Dictionaries: NORRA.I18N[lang] = { '<exact German source>': '<translation>' }
+   (src/i18n/<lang>.js). Missing entries fall back to German.
+   ========================================================================= */
+NORRA.LANGS = [
+  { code: 'de', short: 'DE', name: 'Deutsch', locale: 'de-DE' },
+  { code: 'en', short: 'EN', name: 'English', locale: 'en-GB' },
+  { code: 'fr', short: 'FR', name: 'Français', locale: 'fr-FR' },
+  { code: 'es', short: 'ES', name: 'Español', locale: 'es-ES' },
+  { code: 'it', short: 'IT', name: 'Italiano', locale: 'it-IT' }
+];
+/* Price regions. All prices are net; tax is shown as a note. */
+NORRA.REGIONS = {
+  DE: { name: 'Deutschland', currency: 'EUR', vat: 19, tax: 'MwSt.' },
+  AT: { name: 'Österreich', currency: 'EUR', vat: 20, tax: 'USt.' },
+  CH: { name: 'Schweiz', currency: 'CHF', vat: 8.1, tax: 'MWST' },
+  FR: { name: 'France', currency: 'EUR', vat: 20, tax: 'TVA' },
+  IT: { name: 'Italia', currency: 'EUR', vat: 22, tax: 'IVA' },
+  ES: { name: 'España', currency: 'EUR', vat: 21, tax: 'IVA' },
+  GB: { name: 'United Kingdom', currency: 'GBP', vat: 20, tax: 'VAT' },
+  INT: { name: 'International', currency: 'EUR', vat: 0, reverse: true }
+};
+NORRA.REGION_ORDER = ['DE', 'AT', 'CH', 'FR', 'IT', 'ES', 'GB', 'INT'];
+NORRA.I18N = NORRA.I18N || {};
+NORRA.lang = 'de';
+NORRA.region = 'DE';
+
+/* THE price table (net, per currency). Every price on the site is read from here:
+   in copy through tokens ({{p:voice-agent.setup}}, {{p:chatbot.perUnit}}, {{p:voice-agent.perUnit*4}}),
+   in code through NORRA.P(slug) and NORRA.money(). Never write a price into a content file.
+   setupMin/setupMax: one-off setup · monthly: fixed monthly fee (0 = none) · perUnit: usage price per unit.
+   CHF = EUR amounts, voice minute 0.08 · GBP setup = EUR x 0.85 rounded to the nearest amount ending in 9. */
+NORRA.PRICE_TABLE = {
+  EUR: {
+    'voice-agent': { setupMin: 799, setupMax: 1799, monthly: 30, perUnit: 0.07, unit: 'minute' },
+    'chatbot': { setupMin: 599, setupMax: 1099, monthly: 0, perUnit: 0.002, unit: 'message' },
+    'social-media': { setupMin: 3299, setupMax: 6299, monthly: 0, perUnit: 0.002, unit: 'message' },
+    'website': { setupMin: 1799, setupMax: 4299, monthly: 29, perUnit: 0, unit: '' }
+  },
+  CHF: {
+    'voice-agent': { setupMin: 799, setupMax: 1799, monthly: 30, perUnit: 0.08, unit: 'minute' },
+    'chatbot': { setupMin: 599, setupMax: 1099, monthly: 0, perUnit: 0.002, unit: 'message' },
+    'social-media': { setupMin: 3299, setupMax: 6299, monthly: 0, perUnit: 0.002, unit: 'message' },
+    'website': { setupMin: 1799, setupMax: 4299, monthly: 29, perUnit: 0, unit: '' }
+  },
+  GBP: {
+    'voice-agent': { setupMin: 679, setupMax: 1529, monthly: 25, perUnit: 0.06, unit: 'minute' },
+    'chatbot': { setupMin: 509, setupMax: 939, monthly: 0, perUnit: 0.002, unit: 'message' },
+    'social-media': { setupMin: 2809, setupMax: 5359, monthly: 0, perUnit: 0.002, unit: 'message' },
+    'website': { setupMin: 1529, setupMax: 3659, monthly: 25, perUnit: 0, unit: '' }
+  }
+};
+NORRA.langInfo = function (code) { return NORRA.LANGS.filter(function (l) { return l.code === code; })[0] || null; };
+NORRA.regionInfo = function (code) { return NORRA.REGIONS[code || NORRA.region] || NORRA.REGIONS.DE; };
+NORRA.currency = function (region) { return NORRA.regionInfo(region).currency; };
+/* Number/currency locale: language decides, German in Switzerland uses de-CH. */
+NORRA.locale = function () {
+  if (NORRA.lang === 'de') return NORRA.region === 'CH' ? 'de-CH' : 'de-DE';
+  var l = NORRA.langInfo(NORRA.lang);
+  return l ? l.locale : 'de-DE';
+};
+NORRA._nf = {};
+NORRA._numFmt = function (opts, locale) {
+  locale = locale || NORRA.locale();
+  var key = locale + JSON.stringify(opts);
+  if (!NORRA._nf[key]) NORRA._nf[key] = new Intl.NumberFormat(locale, opts);
+  return NORRA._nf[key];
+};
+/* Number in the active locale: fmt(82.6,1) -> 82,6 (de) / 82.6 (en); grouping only when asked. */
 NORRA.fmt = function (value, dec, group) {
   dec = dec || 0;
   try {
-    return Number(value).toLocaleString('de-DE', { minimumFractionDigits: dec, maximumFractionDigits: dec, useGrouping: !!group });
+    return NORRA._numFmt({ minimumFractionDigits: dec, maximumFractionDigits: dec, useGrouping: !!group }).format(Number(value));
   } catch (e) {
-    return Number(value).toFixed(dec).replace('.', ',');
+    return Number(value).toFixed(dec).replace('.', NORRA.lang === 'en' ? '.' : ',');
   }
+};
+/* Decimals a price needs: 799 -> 0, 0.07 -> 2, 0.002 -> 3. */
+NORRA._dec = function (v) {
+  var a = Math.abs(Number(v) || 0);
+  if (Math.abs(a - Math.round(a)) < 1e-9) return 0;
+  if (Math.abs(a * 100 - Math.round(a * 100)) < 1e-6) return 2;
+  return 3;
+};
+/* Money in the region currency and active locale: 799 € · CHF 799 · £679. o = {dec, region} */
+NORRA.money = function (v, o) {
+  o = o || {};
+  var cur = NORRA.currency(o.region), dec = o.dec != null ? o.dec : NORRA._dec(v);
+  var opts = { style: 'currency', currency: cur, currencyDisplay: 'narrowSymbol', minimumFractionDigits: dec, maximumFractionDigits: dec };
+  try { return NORRA._numFmt(opts).format(v); } catch (e) { /* older engines: no narrowSymbol */ }
+  try { opts.currencyDisplay = 'symbol'; return NORRA._numFmt(opts).format(v); } catch (e2) { /* no Intl */ }
+  var n = NORRA.fmt(v, dec, true);
+  return cur === 'EUR' ? n + ' €' : cur === 'GBP' ? '£' + n : 'CHF ' + n;
+};
+/* Money range: 799–1.799 € · CHF 799–1’799 · £679–£1,529 */
+NORRA.moneyRange = function (a, b, o) {
+  o = o || {};
+  var opts = { style: 'currency', currency: NORRA.currency(o.region), currencyDisplay: 'narrowSymbol', minimumFractionDigits: 0, maximumFractionDigits: 0 };
+  try { var f = NORRA._numFmt(opts); if (typeof f.formatRange === 'function') return f.formatRange(a, b); } catch (e) { /* fall back */ }
+  return NORRA.money(a, o) + '–' + NORRA.money(b, o);
+};
+/* Currency symbol and its side in the active locale: {sym: '€', before: false} (de) · {sym: '£', before: true} (en).
+   For count-ups: before ? sym + number : number + ' ' + sym. */
+NORRA.curSym = function (region) {
+  var cur = NORRA.currency(region), out = { sym: cur === 'EUR' ? '€' : cur === 'GBP' ? '£' : 'CHF', before: cur !== 'EUR', space: cur === 'CHF' };
+  try {
+    var parts = NORRA._numFmt({ style: 'currency', currency: cur, currencyDisplay: 'narrowSymbol', maximumFractionDigits: 0 }).formatToParts(1);
+    var iSym = -1, iNum = -1;
+    parts.forEach(function (p, i) { if (p.type === 'currency') { iSym = i; out.sym = p.value; } if (p.type === 'integer') iNum = i; });
+    if (iSym > -1 && iNum > -1) {
+      out.before = iSym < iNum;
+      out.space = parts.some(function (p) { return p.type === 'literal' && /\s/.test(p.value); });
+    }
+  } catch (e) { /* defaults */ }
+  return out;
+};
+/* Wrap a formatted number with the currency symbol (for count-up markup). */
+NORRA.withSym = function (numHtml, symHtmlWrap) {
+  var c = NORRA.curSym(), sym = symHtmlWrap ? symHtmlWrap(c.sym) : c.sym, sp = c.space ? ' ' : '';
+  return c.before ? sym + sp + numHtml : numHtml + ' ' + sym;
+};
+/* Percent for tax notes (German keeps the comma in Switzerland too: 8,1 %). */
+NORRA.pct = function (v) {
+  var l = NORRA.langInfo(NORRA.lang);
+  try { return NORRA._numFmt({ style: 'percent', maximumFractionDigits: 1 }, l ? l.locale : 'de-DE').format(v / 100); } catch (e) { return String(v).replace('.', ',') + ' %'; }
+};
+/* Numbers of one product in the active region: {setupMin, setupMax, monthly, perUnit, unit, currency} */
+NORRA.P = function (slug, region) {
+  var cur = NORRA.currency(region), row = (NORRA.PRICE_TABLE[cur] || NORRA.PRICE_TABLE.EUR)[slug];
+  if (!row) return null;
+  var o = { currency: cur };
+  for (var k in row) o[k] = row[k];
+  return o;
+};
+/* Price tokens inside copy, resolved after translation:
+   {{p:slug.field}}            field of NORRA.P(slug): setup (range), setupMin, setupMax, monthly, perUnit
+   {{p:slug.field*4}}          multiplied (worked examples), optional ~dec: {{p:chatbot.perUnit*14~2}}
+   {{m:149}} / {{m:89~2}}      an illustrative amount in the region currency (same number, local symbol) */
+NORRA._TOK = /\{\{(p|m):([^}]*)\}\}/g;
+NORRA.resolveTokens = function (s) {
+  s = String(s);
+  if (s.indexOf('{{') < 0) return s;
+  return s.replace(NORRA._TOK, function (all, kind, arg) {
+    var m;
+    if (kind === 'm') {
+      m = /^\s*([\d.]+)(?:~(\d))?\s*$/.exec(arg);
+      return m ? NORRA.money(parseFloat(m[1]), m[2] ? { dec: +m[2] } : null) : all;
+    }
+    m = /^\s*([\w-]+)\.(\w+)(?:\*([\d.]+))?(?:~(\d))?\s*$/.exec(arg);
+    var p = m && NORRA.P(m[1]);
+    if (!p) return all;
+    if (m[2] === 'setup') return NORRA.moneyRange(p.setupMin, p.setupMax);
+    var v = p[m[2]];
+    if (typeof v !== 'number') return all;
+    if (m[3]) v = Math.round(v * parseFloat(m[3]) * 100000) / 100000;
+    if (m[4]) v = Math.round(v * Math.pow(10, +m[4])) / Math.pow(10, +m[4]);
+    return NORRA.money(v, m[4] ? { dec: +m[4] } : null);
+  });
+};
+/* Tax note for the active region: "zzgl. 19 % MwSt." (translated, tax name translated). */
+NORRA.vatLabel = function (region) {
+  var R = NORRA.regionInfo(region);
+  if (R.reverse) return NORRA.tr('EU-Unternehmen: Reverse-Charge');
+  return NORRA.trf('zzgl. {rate} {tax}', { rate: NORRA.pct(R.vat), tax: NORRA.tr(R.tax) });
+};
+/* "Alle Preise netto in EUR · zzgl. 19 % MwSt." */
+NORRA.priceNote = function () {
+  return NORRA.trf('Alle Preise netto in {currency}', { currency: NORRA.currency() }) + ' · ' + NORRA.vatLabel();
+};
+/* Same, as a finished paragraph (data-nt: already localized, the translator skips it). */
+NORRA.priceNoteHtml = function (cls) {
+  return '<p class="note price-note' + (cls ? ' ' + cls : '') + '" data-nt>' + NORRA.esc(NORRA.priceNote()) + '</p>';
+};
+
+/* =========================================================================
+   TRANSLATION
+   Keys are the exact German source (whitespace collapsed, trimmed):
+   - a text node: its text;  - an element whose content is a sentence with inline markup
+     (b, a, span, br …): its innerHTML;  - the attributes in NORRA.TR_ATTRS.
+   NORRA.translate(root) runs on every render (before wiring); a MutationObserver
+   translates anything inserted later (typing, calculators, form messages).
+   [data-nt] marks finished, already-localized content.
+   ========================================================================= */
+NORRA.TR_ATTRS = ['placeholder', 'aria-label', 'aria-roledescription', 'title', 'alt',
+  'data-reply', 'data-type', 'data-cap', 'data-label', 'data-what', 'data-how', 'data-pre', 'data-suf', 'data-post', 'data-tip', 'data-ws-text'];
+NORRA._TRA = {};
+NORRA.TR_ATTRS.forEach(function (a) { NORRA._TRA[a] = true; });
+NORRA._INLINE = { B: 1, STRONG: 1, EM: 1, I: 1, BR: 1, A: 1, SPAN: 1, SMALL: 1, MARK: 1, U: 1, SUP: 1, SUB: 1, CODE: 1, ABBR: 1, Q: 1, S: 1, WBR: 1, TIME: 1 };
+NORRA._NOTR = { SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, TEXTAREA: 1, TEMPLATE: 1 };
+NORRA._norm = function (s) { return String(s).replace(/\s+/g, ' ').trim(); };
+NORRA._collect = null; /* extraction mode: {key: count} */
+NORRA._collectKey = function (key) {
+  var bare = key.replace(/\{\{[^}]*\}\}/g, '').replace(/<[^>]*>/g, '').replace(/&[a-z]+;/g, '');
+  if (/[A-Za-zÀ-ÿ]{2,}/.test(bare)) NORRA._collect[key] = (NORRA._collect[key] || 0) + 1;
+};
+NORRA._lookup = function (key) {
+  if (!key) return null;
+  if (NORRA._collect) NORRA._collectKey(key);
+  var d = NORRA.lang !== 'de' ? NORRA.I18N[NORRA.lang] : null;
+  if (!d || !Object.prototype.hasOwnProperty.call(d, key)) return null;
+  var v = d[key];
+  return typeof v === 'string' && v ? v : null;
+};
+/* Translate one string (outer whitespace kept), then resolve price tokens. */
+NORRA._trStr = function (s, noLookup) {
+  s = String(s);
+  if (!/\S/.test(s)) return s;
+  var m = /^(\s*)([\s\S]*?)(\s*)$/.exec(s);
+  var hit = noLookup ? null : NORRA._lookup(NORRA._norm(m[2]));
+  return m[1] + NORRA.resolveTokens(hit != null ? hit : m[2]) + m[3];
+};
+/* For strings set from JS: NORRA.tr('Weniger zeigen'); templates: NORRA.trf('Alle {n} Bereiche zeigen', {n: 13}) */
+NORRA.tr = function (s) { return s == null ? '' : NORRA._trStr(s); };
+NORRA.t = NORRA.tr;
+NORRA.trf = function (tpl, vars) {
+  return NORRA.tr(tpl).replace(/\{(\w+)\}/g, function (a, k) { return vars && vars[k] != null ? vars[k] : a; });
+};
+NORRA._resolveHtml = function (h) {
+  return h.indexOf('{{') < 0 ? h : h.replace(NORRA._TOK, function (t) { return NORRA.esc(NORRA.resolveTokens(t)); });
+};
+NORRA._trText = function (node, noLookup) {
+  var cur = node.data;
+  var src = (node.__tr != null && cur === node.__tr) ? node.__de : cur;
+  if (!/\S/.test(src)) return;
+  var out = NORRA._trStr(src, noLookup);
+  node.__de = src; node.__tr = out;
+  if (out !== cur) node.data = out;
+};
+NORRA._trAttr = function (el, name) {
+  var cur = el.getAttribute(name);
+  if (cur == null) return;
+  var o = el.__trA || (el.__trA = {}), d = el.__deA || (el.__deA = {});
+  var src = (o[name] != null && cur === o[name]) ? d[name] : cur;
+  if (!/[A-Za-zÀ-ÿ{]/.test(src)) return;
+  var out = NORRA._trStr(src);
+  d[name] = src; o[name] = out;
+  if (out !== cur) el.setAttribute(name, out);
+};
+NORRA._trAttrs = function (el) {
+  var at = el.attributes;
+  if (!at || !at.length) return;
+  var names = [];
+  for (var i = 0; i < at.length; i++) if (NORRA._TRA[at[i].name]) names.push(at[i].name);
+  names.forEach(function (n) { NORRA._trAttr(el, n); });
+};
+/* wiring hooks that may sit inside a sentence without making it dynamic */
+NORRA._STATIC_DATA = { 'data-goto': 1, 'data-route': 1, 'data-prefill': 1, 'data-prefill-industry': 1 };
+NORRA._inlineOnly = function (el) {
+  for (var c = el.firstElementChild; c; c = c.nextElementSibling) {
+    if (!NORRA._INLINE[c.tagName] || c.hasAttribute('data-nt') || c.hasAttribute('data-nta')) return false;
+    if (c.tagName === 'SPAN' && c.className) return false; /* a styled span is a label or badge, not part of the sentence */
+    for (var i = 0; i < c.attributes.length; i++) {
+      var an = c.attributes[i].name;
+      if (an.indexOf('data-') === 0 && !NORRA._STATIC_DATA[an]) return false; /* counters, live values */
+    }
+    var tc = c.textContent;
+    if (/\S/.test(tc) && /^[\s\d.,:;%+\-–\/·'’]+$/.test(tc)) return false; /* a bare number inside: changes at runtime */
+    if (!NORRA._inlineOnly(c)) return false;
+  }
+  return true;
+};
+/* A sentence with inline markup: own text plus inline children, at least one of them with text (or a line break).
+   Empty decorations (<i class="dot">) do not make a sentence: the text nodes are translated on their own. */
+NORRA._isPhrase = function (el) {
+  if (!el.firstElementChild) return false;
+  var text = false;
+  for (var n = el.firstChild; n; n = n.nextSibling) { if (n.nodeType === 3 && /\S/.test(n.data)) { text = true; break; } }
+  if (!text || !NORRA._inlineOnly(el)) return false;
+  var all = el.getElementsByTagName('*');
+  for (var i = 0; i < all.length; i++) if (all[i].tagName === 'BR' || /\S/.test(all[i].textContent)) return true;
+  return false;
+};
+NORRA._trPhrase = function (el) {
+  var cur = el.innerHTML;
+  var src = (el.__trH != null && cur === el.__trH) ? el.__deH : cur;
+  var hit = NORRA._lookup(NORRA._norm(src));
+  var out = NORRA._resolveHtml(hit != null ? hit : src);
+  if (out !== cur) el.innerHTML = out;
+  var all = el.getElementsByTagName('*');
+  for (var i = 0; i < all.length; i++) if (!all[i].hasAttribute('data-nta')) NORRA._trAttrs(all[i]);
+  if (hit == null && NORRA.lang !== 'de') {
+    /* no entry for the whole sentence: try its text pieces (not recorded as keys) */
+    var keep = NORRA._collect;
+    NORRA._collect = null;
+    var tw = document.createTreeWalker(el, 4, null, false), n;
+    while ((n = tw.nextNode())) NORRA._trText(n);
+    NORRA._collect = keep;
+  }
+  el.__deH = src; el.__trH = el.innerHTML;
+};
+NORRA._walk = function (el) {
+  if (el.nodeType !== 1 || NORRA._NOTR[el.tagName] || el.hasAttribute('data-nt')) return;
+  if (!el.hasAttribute('data-nta')) NORRA._trAttrs(el); /* data-nta: attributes already localized at render */
+  /* count-ups own their text (number + data-pre/-suf): only tokens there */
+  var counter = el.hasAttribute('data-to') || el.hasAttribute('data-count');
+  if (!counter && NORRA._isPhrase(el)) { NORRA._trPhrase(el); return; }
+  for (var n = el.firstChild; n; n = n.nextSibling) {
+    if (n.nodeType === 3) NORRA._trText(n, counter);
+    else if (n.nodeType === 1) NORRA._walk(n);
+  }
+};
+NORRA._ntCtx = function (el) { return !!(el && el.closest && el.closest('[data-nt],script,style,textarea,head')); };
+NORRA._trBusy = false;
+NORRA._onMut = function (recs) {
+  if (NORRA._trBusy || !recs || !recs.length) return;
+  NORRA._trBusy = true;
+  try {
+    recs.forEach(function (r) {
+      var t = r.target;
+      if (r.type === 'attributes') { if (t.nodeType === 1 && !t.hasAttribute('data-nta') && !NORRA._ntCtx(t)) NORRA._trAttr(t, r.attributeName); return; }
+      if (r.type === 'characterData') {
+        var p = t.parentNode;
+        if (p && p.nodeType === 1 && !NORRA._ntCtx(p)) { if (NORRA._isPhrase(p)) NORRA._trPhrase(p); else NORRA._trText(t); }
+        return;
+      }
+      if (t.nodeType !== 1 || !t.isConnected || NORRA._ntCtx(t)) return;
+      if (NORRA._isPhrase(t)) { NORRA._walk(t); return; }
+      [].forEach.call(r.addedNodes, function (a) {
+        if (a.parentNode !== t) return;
+        if (a.nodeType === 3) NORRA._trText(a);
+        else if (a.nodeType === 1) NORRA._walk(a);
+      });
+    });
+  } catch (e) { if (window.console) console.error('[norra] i18n', e); }
+  if (NORRA._mo) NORRA._mo.takeRecords();
+  NORRA._trBusy = false;
+};
+/* Translate a subtree now (pending observer records first, then our own changes are dropped). */
+NORRA.translate = function (root) {
+  if (!root) return;
+  if (NORRA._mo) NORRA._onMut(NORRA._mo.takeRecords());
+  NORRA._trBusy = true;
+  try { if (root.nodeType === 3) NORRA._trText(root); else NORRA._walk(root); }
+  catch (e) { if (window.console) console.error('[norra] i18n', e); }
+  if (NORRA._mo) NORRA._mo.takeRecords();
+  NORRA._trBusy = false;
+};
+NORRA.observeI18n = function () {
+  if (NORRA._mo || !window.MutationObserver) return;
+  NORRA._mo = new MutationObserver(NORRA._onMut);
+  NORRA._mo.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: NORRA.TR_ATTRS });
+};
+
+/* ---------- language / region state ---------- */
+NORRA._store = function (k, v) {
+  try {
+    if (v === undefined) return window.localStorage.getItem(k);
+    window.localStorage.setItem(k, v);
+  } catch (e) { /* storage unavailable */ }
+  return null;
+};
+/* Region from the browser locale: de-CH -> CH, de-AT -> AT, en-GB -> GB, fr -> FR, en-US -> INT. */
+NORRA.detectRegion = function () {
+  var list = [];
+  try { list = (navigator.languages && navigator.languages.length) ? [].slice.call(navigator.languages) : [navigator.language || '']; } catch (e) { list = []; }
+  for (var i = 0; i < list.length; i++) {
+    var parts = String(list[i] || '').split(/[-_]/);
+    if (parts.length < 2) continue;
+    var cc = parts[parts.length - 1].toUpperCase();
+    if (cc === 'UK') cc = 'GB';
+    if (NORRA.REGIONS[cc] && cc !== 'INT') return cc;
+  }
+  var first = String(list[0] || '').slice(0, 2).toLowerCase();
+  return { de: 'DE', fr: 'FR', it: 'IT', es: 'ES' }[first] || 'INT';
+};
+NORRA.initLocale = function () {
+  var l = NORRA._store('norra-lang');
+  if (l && NORRA.langInfo(l)) NORRA.lang = l;
+  var r = NORRA._store('norra-region');
+  NORRA.region = (r && NORRA.REGIONS[r]) ? r : NORRA.detectRegion();
+};
+/* Dictionaries are inline in the artifact build; the hosted build loads i18n/<lang>.js on demand. */
+NORRA.loadLang = function (code, cb) {
+  if (code === 'de' || NORRA.I18N[code] || !window.NORRA_I18N_LAZY) { cb(); return; }
+  var done = false, fin = function () { if (!done) { done = true; cb(); } };
+  var s = document.createElement('script');
+  s.src = 'i18n/' + code + '.js' + (window.NORRA_I18N_VER ? '?v=' + window.NORRA_I18N_VER : '');
+  s.async = true; s.onload = fin; s.onerror = fin;
+  setTimeout(fin, 8000);
+  document.head.appendChild(s);
+};
+NORRA.setLang = function (code) {
+  if (!NORRA.langInfo(code)) return;
+  NORRA._wantLang = code;
+  NORRA._store('norra-lang', code);
+  NORRA.loadLang(code, function () {
+    if (NORRA._wantLang !== code) return;
+    NORRA.lang = code;
+    NORRA.applyLocale();
+  });
+};
+NORRA.setRegion = function (code) {
+  if (!NORRA.REGIONS[code] || code === NORRA.region) return;
+  NORRA.region = code;
+  NORRA._store('norra-region', code);
+  NORRA.applyLocale();
+};
+/* Re-render in place: chrome translated, current page rebuilt, scroll position kept. */
+NORRA.applyLocale = function () {
+  document.documentElement.setAttribute('lang', NORRA.lang);
+  NORRA._nf = {};
+  if (NORRA.syncSwitchers) NORRA.syncSwitchers();
+  ['nav', 'mnav'].forEach(function (id) { NORRA.translate(document.getElementById(id)); });
+  NORRA.translate(document.querySelector('footer'));
+  if (!NORRA.current) return;
+  var y = window.scrollY || window.pageYOffset || 0;
+  NORRA._rendered = {};
+  NORRA.render(NORRA.current, true);
+  NORRA.show(NORRA.current);
+  window.scrollTo(0, y);
+  if (window.requestAnimationFrame) requestAnimationFrame(function () { window.scrollTo(0, y); NORRA.syncNav(); });
+  try { document.dispatchEvent(new CustomEvent('norra:locale', { detail: { lang: NORRA.lang, region: NORRA.region } })); } catch (e) { /* old engines */ }
 };
 
 /* ---------- registries (filled by content files) ---------- */
@@ -3939,8 +4407,8 @@ NORRA.wireHooks = NORRA.wireHooks || [];  /* extra wiring: function (el) */
 NORRA.onWire = function (fn) { if (typeof fn === 'function') NORRA.wireHooks.push(fn); };
 
 NORRA.CONTACT = {
-  email: 'niklas.harles@klettpro.online',
-  web3formsKey: '__WEB3FORMS_KEY__',
+  email: 'norra.help@gmail.com',
+  web3formsKey: 'b7b852f2-f19e-4b73-a0e9-760865ece5d4',
   web3formsUrl: 'https://api.web3forms.com/submit'
 };
 /* True only on the hosted build with a real key: then a form may POST. */
@@ -4241,8 +4709,8 @@ NORRA._defineVignettes = function (V) {
   V.approval = function () {
     return '<div class="vcard"><p style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:500;' + MUTED + '">' +
       '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="hsl(var(--primary))" stroke-width="2">' + ICONS.check + '</svg>Wartet auf Freigabe</p>' +
-      '<p style="margin-top:10px;font-size:14px;font-weight:500">Gutschrift <span data-count="84" data-dec="2" data-post=" €">84,00 €</span> für Elena Fischer</p>' +
-      '<p style="margin-top:4px;font-size:12px;line-height:1.6;' + MUTED + '">Über Ihrem Limit von 50 € — eine Person gibt frei, bevor der Agent weitermacht.</p>' +
+      '<p style="margin-top:10px;font-size:14px;font-weight:500">Gutschrift <span data-count="84" data-dec="2" data-money>{{m:84~2}}</span> für Elena Fischer</p>' +
+      '<p style="margin-top:4px;font-size:12px;line-height:1.6;' + MUTED + '">Über Ihrem Limit von {{m:50}} — eine Person gibt frei, bevor der Agent weitermacht.</p>' +
       '<div class="approve-row"><span class="pill-solid">Freigeben</span><span class="pill-outline">Prüfen</span></div></div>';
   };
   V.roles = function () {
@@ -4574,7 +5042,7 @@ NORRA.quoteCarousel = function (quotes, o) {
         '<span class="who-role" style="display:block">' + q.role + '</span></span></figcaption></figure>';
     }).join('') + '</div>' +
     '<div class="quote-nav"><div class="dots" role="tablist" aria-label="Stimmen">' + quotes.map(function (q, i) {
-      return '<button type="button" role="tab" aria-selected="' + (i === 0) + '" aria-label="Stimme ' + (i + 1) + ' anzeigen"></button>';
+      return '<button type="button" role="tab" aria-selected="' + (i === 0) + '" data-nta aria-label="' + NORRA.esc(NORRA.trf('Stimme {n} anzeigen', { n: i + 1 })) + '"></button>';
     }).join('') + '</div><div class="arrows"><button type="button" data-prev aria-label="Vorherige Stimme">' + L + '</button>' +
     '<button type="button" data-next aria-label="Nächste Stimme">' + R + '</button></div></div>' +
     (o.note ? '<p class="note" style="margin-top:20px">' + o.note + '</p>' : '') + '</div></section>';
@@ -4594,7 +5062,7 @@ NORRA.relatedBlock = function (slugs, o) {
         '<a class="more" href="#' + p.slug + '">Mehr erfahren ' + NORRA.ico('arrow') + '</a></div></article>';
     }).join('') + '</div>' +
     '<div class="rail-nav"><div class="dots rail-dots">' +
-    items.map(function (p, i) { return '<button type="button" aria-label="' + NORRA.esc(p.name) + ' anzeigen" aria-selected="' + (i === 0) + '"></button>'; }).join('') +
+    items.map(function (p, i) { return '<button type="button" data-nta aria-label="' + NORRA.esc(NORRA.trf('{name} anzeigen', { name: NORRA.tr(p.name) })) + '" aria-selected="' + (i === 0) + '"></button>'; }).join('') +
     '</div><div class="arrows"><button type="button" data-rail-prev aria-label="Vorheriges Produkt">' + L + '</button>' +
     '<button type="button" data-rail-next aria-label="Nächstes Produkt">' + R + '</button></div></div></section>';
 };
@@ -4722,6 +5190,7 @@ NORRA.productChips = function (p, onVideo) {
   var c = [];
   var pr = NORRA.priceOf(p);
   if (pr && pr.setup) {
+    /* copy with price tokens: the key stays the same in every region, numbers come from NORRA.PRICE_TABLE */
     c.push(['zap', 'Einrichtung ' + pr.setup]);
     if (pr.usage) c.push(['euro', 'danach ' + pr.usage]);
     if (pr.liveDays) c.push(['clock', 'Live in ca. ' + pr.liveDays + ' Tagen']);
@@ -4739,7 +5208,7 @@ NORRA.priceOf = function (p) {
   if (p.price && p.price.setup) return p.price;
   return (NORRA.pricing && NORRA.pricing[p.slug]) || null;
 };
-/* One-line price: "Einrichtung 499–1.499 € · danach 0,07 € pro Gesprächsminute". */
+/* One-line price (with tokens): "Einrichtung 799–1.799 € · danach 30 € pro Monat + 0,07 € pro Gesprächsminute". */
 NORRA.priceLine = function (slug) {
   var pr = NORRA.priceOf(slug);
   if (!pr) return '';
@@ -5094,15 +5563,16 @@ NORRA.runCount = function (el, ms) {
   var dec = parseInt(el.getAttribute('data-dec') || '0', 10);
   var pre = el.getAttribute('data-pre') || '';
   var post = el.getAttribute('data-post') || '';
-  var group = el.hasAttribute('data-group');
+  var group = el.hasAttribute('data-group'), money = el.hasAttribute('data-money');
+  var f = function (v, d) { return money ? NORRA.money(v, { dec: dec }) : NORRA.fmt(v, d, group); };
   if (el.__frame) cancelAnimationFrame(el.__frame);
-  if (NORRA.reduced) { el.textContent = pre + NORRA.fmt(target, dec, group) + post; return; }
+  if (NORRA.reduced) { el.textContent = pre + f(target, dec) + post; return; }
   var started = 0;
   function frame(now) {
     if (!started) started = now;
     var t = Math.min((now - started) / (ms || 500), 1);
     var value = target * (1 - Math.pow(1 - t, 3));
-    el.textContent = pre + NORRA.fmt(group ? Math.round(value) : value, group ? 0 : dec, group) + post;
+    el.textContent = pre + f(group ? Math.round(value) : value, group ? 0 : dec) + post;
     if (t < 1) el.__frame = requestAnimationFrame(frame);
   }
   el.__frame = requestAnimationFrame(frame);
@@ -5257,9 +5727,10 @@ NORRA.wireKitBands = function (root) {
       links.forEach(function (l, i) { l.classList.toggle('on', at > i); });
       if (bubble) bubble.classList.toggle('on', at > last);
       var st = k.steps[live];
-      if (st && dt && db && db.textContent !== st.detail) {
-        dt.textContent = ('0' + (live + 1)).slice(-2) + ' · ' + st.label;
-        db.textContent = st.detail;
+      var stDetail = st ? NORRA.tr(st.detail) : '';
+      if (st && dt && db && db.textContent !== stDetail) {
+        dt.textContent = ('0' + (live + 1)).slice(-2) + ' · ' + NORRA.tr(st.label);
+        db.textContent = stDetail;
         db.style.animation = 'none';
         void db.offsetWidth;
         db.style.animation = '';
@@ -5297,8 +5768,9 @@ NORRA.wireCounters = function (root) {
     var dec = parseInt(el.getAttribute('data-dec') || '0', 10);
     var pre = el.getAttribute('data-pre') || '';
     var suf = el.getAttribute('data-suf') || '';
-    var group = el.hasAttribute('data-group');
-    function show(v) { el.textContent = pre + NORRA.fmt(v, dec, group) + suf; }
+    var group = el.hasAttribute('data-group'), money = el.hasAttribute('data-money');
+    /* data-money: the value is an amount in the region currency (symbol and side from the locale) */
+    function show(v) { el.textContent = pre + (money ? NORRA.money(v, { dec: dec }) : NORRA.fmt(v, dec, group)) + suf; }
     if (NORRA.reduced) { show(to); return; }
     var done = false, io = null;
     io = NORRA._io(el, function (visible) {
@@ -5738,7 +6210,7 @@ NORRA.copyText = function (text, btn) {
     if (!btn) return;
     var label = btn.querySelector('span') || btn;
     if (!btn.__label) btn.__label = label.textContent;
-    label.textContent = ok ? 'Kopiert' : 'Bitte markieren und kopieren';
+    label.textContent = NORRA.tr(ok ? 'Kopiert' : 'Bitte markieren und kopieren');
     btn.classList.toggle('ok', ok);
     clearTimeout(btn.__t);
     btn.__t = setTimeout(function () { label.textContent = btn.__label; btn.classList.remove('ok'); }, 1800);
@@ -5789,6 +6261,7 @@ NORRA.menuData = function () {
 };
 
 NORRA.closeMenus = function () {
+  if (NORRA.setSwitcher) { var lp = document.getElementById('lsw-pop'); if (lp && !lp.hidden) NORRA.setSwitcher(false); }
   document.querySelectorAll('.nav .menu.open').forEach(function (m) { m.classList.remove('open'); });
   document.querySelectorAll('.nav .menu-btn').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
 };
@@ -5798,7 +6271,7 @@ NORRA.setMobileNav = function (open) {
   if (!m || !b) return;
   m.hidden = !open;
   b.setAttribute('aria-expanded', String(open));
-  b.setAttribute('aria-label', open ? 'Menü schliessen' : 'Menü öffnen');
+  b.setAttribute('aria-label', NORRA.tr(open ? 'Menü schliessen' : 'Menü öffnen'));
   b.innerHTML = NORRA.ico(open ? 'x' : 'menu');
   document.body.classList.toggle('mnav-open', open);
   NORRA.syncNav();
@@ -5835,8 +6308,10 @@ NORRA.buildChrome = function () {
       '<h4>Mehr</h4><a href="#preise" data-route="preise"><span class="ico">' + NORRA.ico('euro') + '</span><span>Preise</span></a>' +
       '<a href="#kontakt" data-route="kontakt"><span class="ico">' + NORRA.ico('mail') + '</span><span>Kontakt</span></a>' +
       '<div class="mnav-cta">' + NORRA.btn({ label: 'Demo anfragen', href: '#kontakt', arrow: true }) + '</div>' +
+      '<h4>Sprache und Land</h4><div class="mnav-lsw">' + NORRA.switcherHtml('mlsw') + '</div>' +
       '<nav class="mnav-legal" aria-label="Rechtliches"><a href="#impressum" data-route="impressum">Impressum</a><a href="#datenschutz" data-route="datenschutz">Datenschutz</a></nav>';
   }
+  NORRA.buildSwitcher();
 
   var fp = document.getElementById('foot-products');
   if (fp) fp.innerHTML = NORRA.products.map(function (p) { return '<li><a href="#' + p.slug + '">' + p.name + '</a></li>'; }).join('') +
@@ -5848,6 +6323,68 @@ NORRA.buildChrome = function () {
   if (fm) fm.innerHTML = NORRA.copyLine(NORRA.CONTACT.email);
 };
 
+/* ---------- language and region switcher (nav, top right, and mobile menu) ---------- */
+NORRA.switcherHtml = function (pfx) {
+  var langs = NORRA.LANGS.map(function (l) {
+    return '<label class="lsw-opt"><input type="radio" name="' + pfx + '-lang" value="' + l.code + '"' + (l.code === NORRA.lang ? ' checked' : '') + '>' +
+      '<span class="lsw-code" aria-hidden="true">' + l.short + '</span><span class="lsw-name" data-nt lang="' + l.code + '">' + l.name + '</span>' +
+      '<span class="lsw-tick" aria-hidden="true">' + NORRA.ico('check', 14) + '</span></label>';
+  }).join('');
+  var regs = NORRA.REGION_ORDER.map(function (k) {
+    var R = NORRA.REGIONS[k];
+    return '<label class="lsw-opt"><input type="radio" name="' + pfx + '-region" value="' + k + '"' + (k === NORRA.region ? ' checked' : '') + '>' +
+      '<span class="lsw-name"' + (k === 'INT' ? '' : ' data-nt') + '>' + R.name + '</span><span class="lsw-cur" data-nt>' + R.currency + '</span>' +
+      '<span class="lsw-tick" aria-hidden="true">' + NORRA.ico('check', 14) + '</span></label>';
+  }).join('');
+  return '<fieldset class="lsw-group lsw-langs"><legend>Sprache</legend><div class="lsw-opts">' + langs + '</div></fieldset>' +
+    '<fieldset class="lsw-group lsw-regions"><legend>Land und Währung</legend><div class="lsw-opts">' + regs + '</div></fieldset>' +
+    '<p class="lsw-note">Preise netto, zuzüglich Mehrwertsteuer des Landes.</p>';
+};
+NORRA.buildSwitcher = function () {
+  var box = document.getElementById('lsw');
+  if (!box || box.__built) return;
+  box.__built = true;
+  box.innerHTML = '<button type="button" class="lsw-btn" id="lsw-btn" data-nt aria-haspopup="true" aria-expanded="false" aria-controls="lsw-pop">' +
+    NORRA.ico('globe', 16) + '<span class="lsw-btn-l" data-nt data-lsw-l></span><span class="lsw-btn-c" data-nt data-lsw-c></span>' +
+    '<svg class="lsw-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>' +
+    '<div class="lsw-pop" id="lsw-pop" role="dialog" aria-labelledby="lsw-h" hidden><p class="lsw-h" id="lsw-h">Sprache und Land</p>' + NORRA.switcherHtml('lsw') + '</div>';
+  var btn = box.querySelector('.lsw-btn'), pop = box.querySelector('.lsw-pop');
+  NORRA.setSwitcher = function (open, focusBtn) {
+    pop.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+    if (open) { var c = pop.querySelector('input:checked'); if (c) c.focus(); }
+    else if (focusBtn) btn.focus();
+  };
+  btn.addEventListener('click', function (e) { e.stopPropagation(); var open = pop.hidden; NORRA.closeMenus(); NORRA.setSwitcher(open); });
+  document.addEventListener('click', function (e) { if (!pop.hidden && !box.contains(e.target)) NORRA.setSwitcher(false); });
+  box.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !pop.hidden) { e.stopPropagation(); NORRA.setSwitcher(false, true); } });
+  box.addEventListener('focusout', function (e) { if (!pop.hidden && e.relatedTarget && !box.contains(e.relatedTarget)) NORRA.setSwitcher(false); });
+  /* one delegated listener for both switchers; arrow keys move through a radio group, so apply after a short pause */
+  if (!NORRA.__lswWired) {
+    NORRA.__lswWired = true;
+    var t = null;
+    document.addEventListener('change', function (e) {
+      var inp = e.target;
+      if (!inp || !inp.closest || !inp.closest('.lsw-opt')) return;
+      clearTimeout(t);
+      t = setTimeout(function () {
+        if (/-lang$/.test(inp.name)) NORRA.setLang(inp.value); else NORRA.setRegion(inp.value);
+      }, 160);
+    });
+  }
+  NORRA.syncSwitchers();
+};
+NORRA.syncSwitchers = function () {
+  document.querySelectorAll('.lsw-opt input').forEach(function (i) {
+    i.checked = /-lang$/.test(i.name) ? i.value === NORRA.lang : i.value === NORRA.region;
+  });
+  var l = NORRA.langInfo(NORRA.lang) || NORRA.LANGS[0], R = NORRA.regionInfo();
+  var bl = document.querySelector('[data-lsw-l]'), bc = document.querySelector('[data-lsw-c]'), btn = document.getElementById('lsw-btn');
+  if (bl) bl.textContent = l.short;
+  if (bc) bc.textContent = R.currency;
+  if (btn) btn.setAttribute('aria-label', NORRA.trf('Sprache und Land: {lang}, {region} ({currency})', { lang: l.name, region: NORRA.tr(R.name), currency: R.currency }));
+};
+
 NORRA.isDark = function () {
   var t = document.documentElement.getAttribute('data-theme');
   var prefers = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -5855,10 +6392,13 @@ NORRA.isDark = function () {
 };
 NORRA.wireTheme = function () {
   var btn = document.getElementById('theme-toggle'), icon = document.getElementById('theme-icon');
+  /* First visit is always light, whatever the system setting; dark only after the visitor chooses it. */
+  var chosen = 'light';
   try {
     var saved = window.localStorage.getItem('norra-theme');
-    if (saved === 'dark' || saved === 'light') document.documentElement.setAttribute('data-theme', saved);
+    if (saved === 'dark') chosen = 'dark';
   } catch (e) { /* storage unavailable */ }
+  document.documentElement.setAttribute('data-theme', chosen);
   function paint() { if (icon) icon.innerHTML = NORRA.isDark() ? NORRA.ICONS.moon : NORRA.ICONS.sun; }
   paint();
   if (btn) btn.addEventListener('click', function () {
@@ -5920,7 +6460,7 @@ NORRA.titleFor = function (name) {
   if (NORRA.titles[name]) return NORRA.titles[name];
   var ctx = NORRA.routeContext(name);
   if (ctx.product) return ctx.product.name + ' · Norra';
-  if (ctx.industry) return 'KI-Agenten für ' + ctx.industry.name + ' · Norra';
+  if (ctx.industry) return NORRA.trf('KI-Agenten für {name} · Norra', { name: NORRA.tr(ctx.industry.name) });
   var map = { start: 'Norra · KI-Agenten für lokale Unternehmen', produkte: 'Produkte und Funktionen · Norra', branchen: 'Branchen · Norra', preise: 'Preise · Norra', kontakt: 'Kontakt · Norra',
     website: 'Website · Norra', impressum: 'Impressum · Norra', datenschutz: 'Datenschutz · Norra' };
   return map[name] || 'Norra';
@@ -5931,6 +6471,15 @@ NORRA.render = function (name, force) {
   var el = NORRA.pageEl(name);
   if (!el) return null;
   if (NORRA._rendered[name] && !force) return el;
+  if (el.__filled && el.parentNode) {
+    /* re-render (language/region switch): a fresh container, so page-level wiring flags start clean */
+    var fresh = document.createElement('div');
+    fresh.className = el.className;
+    fresh.id = el.id;
+    el.parentNode.replaceChild(fresh, el);
+    el = fresh;
+  }
+  el.__filled = true;
   var fn = NORRA.pages[name] || NORRA.defaultPages[name];
   if (!fn && NORRA.PRODUCT_ROUTES.indexOf(name) > -1) fn = NORRA.defaultPages._product;
   if (!fn && name.indexOf('branche-') === 0) fn = NORRA.defaultPages._industry;
@@ -5947,6 +6496,7 @@ NORRA.render = function (name, force) {
       '<div class="cta-actions">' + NORRA.btn({ label: 'Zur Startseite', href: '#start' }) + '</div></section>';
   }
   NORRA._rendering = null;
+  NORRA.translate(el);
   NORRA.wire(el);
   if (fn && typeof fn.wire === 'function') { try { fn.wire(el, ctx); } catch (e2) { if (window.console) console.error(e2); } }
   return el;
@@ -5959,7 +6509,8 @@ NORRA.show = function (name) {
     if (el) el.classList.toggle('active', r === name);
   });
   NORRA.current = name;
-  document.title = NORRA.titleFor(name);
+  document.title = NORRA.tr(NORRA.titleFor(name));
+  document.documentElement.setAttribute('lang', NORRA.lang);
   /* active state in nav */
   var data = NORRA.menuData();
   data.forEach(function (m) {
@@ -6041,7 +6592,7 @@ NORRA.wireGlobal = function () {
         return;
       }
     }
-    var inMenu = t.closest && (t.closest('.menu') || t.closest('.menu-btn'));
+    var inMenu = t.closest && (t.closest('.menu') || t.closest('.menu-btn') || t.closest('.lsw'));
     if (!inMenu) NORRA.closeMenus();
   });
   document.addEventListener('keydown', function (e) {
@@ -6207,7 +6758,7 @@ NORRA.catalog.SCENES = {
     { who: 'agent', text: 'Ja, Freitag um 9:00 Uhr ist frei. Soll ich verschieben?' }] },
   wissen: { icon: 'msg', title: 'Salon Mira · Website-Chat', lines: [
     { who: 'user', text: 'Was kostet Balayage?' },
-    { who: 'agent', text: 'Balayage ab 149 €, etwa zweieinhalb Stunden. Soll ich einen Termin suchen?' },
+    { who: 'agent', text: 'Balayage ab {{m:149}}, etwa zweieinhalb Stunden. Soll ich einen Termin suchen?' },
     { who: 'note', text: 'Quelle: Preisliste' }] },
   aktionen: { icon: 'calendar', title: 'Salon Mira · Website-Chat', lines: [
     { who: 'user', text: 'Donnerstag 16:30 passt mir.' },
@@ -6329,12 +6880,13 @@ NORRA.stage = function (o) {
   var label = o.label || 'Animierte Beispielszenen';
   return '<div class="nst nst--' + tint + ' nst--' + (o.size || 'md') + (o.cls ? ' ' + o.cls : '') + '" data-nstage' +
     (o.id ? ' id="' + o.id + '"' : '') + (o.auto === false ? ' data-auto="off"' : '') + (o.dwell ? ' data-dwell="' + o.dwell + '"' : '') +
-    ' role="group" aria-roledescription="Animation" aria-label="' + NORRA.esc(label) + '">' +
+    ' role="group" data-nta aria-roledescription="' + NORRA.esc(NORRA.tr('Animation')) + '" aria-label="' + NORRA.esc(o.labelDone ? label : NORRA.tr(label)) + '">' +
     '<span class="nst-blob b1" aria-hidden="true"></span><span class="nst-blob b2" aria-hidden="true"></span><span class="nst-blob b3" aria-hidden="true"></span>' +
     (tiles ? tiles.map(function (k, i) { return '<span class="nst-tile t' + (i + 1) + '" data-icon="' + k + '" aria-hidden="true">' + NORRA.ico(k) + '</span>'; }).join('') : '') +
     '<div class="nst-stage"><div class="nst-card">' + scenes.map(function (s, i) { return NORRA.stageScene(s, i, o); }).join('') + '</div>' +
     (scenes.length > 1 ? '<div class="nst-dots">' + scenes.map(function (s, i) {
-      return '<button type="button" class="nst-dot' + (i === 0 ? ' on' : '') + '" data-i="' + i + '" aria-label="Szene ' + (i + 1) + ': ' + NORRA.esc(String(s.title || '').replace(/<[^>]+>/g, '')) + '"' +
+      return '<button type="button" class="nst-dot' + (i === 0 ? ' on' : '') + '" data-i="' + i + '" data-nta aria-label="' +
+        NORRA.esc(NORRA.trf('Szene {n}: {title}', { n: i + 1, title: NORRA.tr(String(s.title || '').replace(/<[^>]+>/g, '')) })) + '"' +
         (i === 0 ? ' aria-current="true"' : '') + '><i></i></button>';
     }).join('') + '</div>' : '') + '</div>' +
     (scenes.length > 1 || (scenes[0] && scenes[0].lines && scenes[0].lines.length > 1) ? '<button type="button" class="nst-pause" aria-label="Animation pausieren">' + NORRA.ico('pause') + '</button>' : '') +
@@ -6497,8 +7049,10 @@ NORRA.featureExplorer = function (o) {
   var scenes = items.map(function (it) {
     return it.scene || { icon: it.icon, title: it.name, lines: [{ who: 'note', text: it.explain }] };
   });
-  var stOpts = { scenes: scenes, tint: o.tint, label: (o.label || 'Beispielszenen') + ': ' + items.length + ' Funktionen', size: 'md' };
+  var stOpts = { scenes: scenes, tint: o.tint, size: 'md', labelDone: true,
+    label: NORRA.trf('{label}: {n} Funktionen', { label: NORRA.tr(o.label || 'Beispielszenen'), n: items.length }) };
   if (o.stage) for (var k in o.stage) stOpts[k] = o.stage[k];
+  if (o.stage && o.stage.label) stOpts.labelDone = false;
   var list = items.map(function (it, i) {
     var on = i === 0;
     return '<div class="fx-item' + (on ? ' on' : '') + '" data-i="' + i + '">' +
@@ -6674,7 +7228,7 @@ NORRA.integrationMatrix = function (data, o) {
     ['über MCP', 'MCP', 'Werkzeug-Schnittstelle für KI'], ['über Norra-Anbindung', 'Norra-Anbindung', 'von uns eingerichtet']].filter(function (k) { return used[k[0]]; })
     .map(function (k) { return '<span><b>' + (how[k[0]] || k[1]) + '</b> ' + k[2] + '</span>'; }).join('') + '</p>';
   var body = '<div class="imx reveal" data-imx="' + idx + '" data-filter="' + filter + '"' + (limit ? ' data-limit="' + limit + '"' : '') + (per ? ' data-per="' + per + '"' : '') + '>' +
-    '<div class="imx-bar">' + chips + '<p class="imx-count"><b data-imx-count>' + counts.p + '</b> Anbindungen in <b data-imx-groups>' + counts.g + '</b> Bereichen</p></div>' +
+    '<div class="imx-bar">' + chips + '<p class="imx-count"><b data-imx-count>' + counts.p + '</b> <span>Anbindungen in</span> <b data-imx-groups>' + counts.g + '</b> <span>Bereichen</span></p></div>' +
     '<div class="imx-rows">' + NORRA._imxRows(data, filter, uid, per) + '</div>' +
     (limit ? '<button type="button" class="imx-more" aria-expanded="false"><span>Alle Bereiche zeigen</span>' + NORRA.ico('chevron') + '</button>' : '') +
     legend + '</div>' + (o.note ? '<p class="note">' + o.note + '</p>' : '');
@@ -6703,7 +7257,7 @@ NORRA.wireMatrix = function (root) {
       if (more) {
         more.hidden = !limit || rows.length <= limit;
         more.setAttribute('aria-expanded', String(expanded));
-        more.querySelector('span').textContent = expanded ? 'Weniger zeigen' : 'Alle ' + rows.length + ' Bereiche zeigen';
+        more.querySelector('span').textContent = expanded ? NORRA.tr('Weniger zeigen') : NORRA.trf('Alle {n} Bereiche zeigen', { n: rows.length });
       }
     }
     function animate() {
@@ -6737,7 +7291,7 @@ NORRA.wireMatrix = function (root) {
         prow.classList.toggle('imx-all', all);
         plus.setAttribute('aria-expanded', String(all));
         plus.firstChild.textContent = all ? 'Weniger' : '+' + plus.getAttribute('data-n');
-        plus.lastChild.textContent = all ? '' : ' weitere anzeigen';
+        plus.lastChild.textContent = all ? '' : NORRA.tr(' weitere anzeigen');
         return;
       }
       var chip = e.target.closest && e.target.closest('.imx-chip');
@@ -6816,12 +7370,12 @@ NORRA.wireLlm = function (root) {
       if (!m) return;
       chips.forEach(function (c, k) { c.classList.toggle('on', k === i); c.setAttribute('aria-pressed', String(k === i)); });
       if (typer) clearTimeout(typer);
-      type(v.short, m.short);
-      if (v.provider) v.provider.textContent = m.provider || '';
-      if (v.best) v.best.textContent = m.best || '';
-      if (v.status) v.status.textContent = m.own ? 'Eigenes Modell verbunden' : 'Agent antwortet';
+      type(v.short, NORRA.tr(m.short));
+      if (v.provider) v.provider.textContent = NORRA.tr(m.provider || '');
+      if (v.best) v.best.textContent = NORRA.tr(m.best || '');
+      if (v.status) v.status.textContent = NORRA.tr(m.own ? 'Eigenes Modell verbunden' : 'Agent antwortet');
       if (cons) { cons.classList.toggle('own', !!m.own); cons.classList.remove('swap'); void cons.offsetWidth; cons.classList.add('swap'); }
-      if (what) what.textContent = m.what || '';
+      if (what) what.textContent = NORRA.tr(m.what || '');
     }
     chips.forEach(function (c, i) { c.addEventListener('click', function () { taken = true; show(i); }); });
     NORRA.ticker(b, 2200, function (t) { if (!taken && t > 0) show((at + 1) % chips.length); });
@@ -6867,7 +7421,7 @@ NORRA.capabilityIndex = function (o) {
      NORRA.catalog(filter)          capabilities, filtered
      NORRA.catalog.items(filter)    featureExplorer items (icon + scene)
      NORRA.integrationsFor(filter)  integration groups, filtered
-     NORRA.pricing[slug]            canonical prices (live site, authoritative)
+     NORRA.pricing[slug]            price copy with tokens; numbers in NORRA.PRICE_TABLE (core.js)
    Rules: never name the underlying platform; platform figures (55 Sprachen,
    ca. 0,6 s, > 99,9 %) are labelled as platform values; certifications
    belong to the platform, not to Norra.
@@ -7904,7 +8458,7 @@ NORRA.catalog.load({
    "id": "nutzungsbasiert",
    "name": "Abrechnung nach Nutzung",
    "explain": "Nach der einmaligen Einrichtung zahlen Sie nur, was tatsächlich genutzt wird.",
-   "detail": "Zum Beispiel Voice Agent 0,07 € pro Gesprächsminute, Chat und Social Media 0,002 € pro Nachricht, Website 29 € pro Monat.",
+   "detail": "Zum Beispiel Voice Agent {{p:voice-agent.monthly}} pro Monat plus {{p:voice-agent.perUnit}} pro Gesprächsminute, Chat und Social Media {{p:chatbot.perUnit}} pro Nachricht, Website {{p:website.monthly}} pro Monat.",
    "category": "Betrieb & Technik",
    "categoryId": "betrieb",
    "appliesTo": "both",
@@ -8869,22 +9423,28 @@ NORRA.integrations = [
 ];
 NORRA.HOW_LABELS = {"direkt": "Direkt", "per SIP": "SIP", "über Automation": "Automation", "über Schnittstelle": "API", "über MCP": "MCP", "über Norra-Anbindung": "Norra-Anbindung"};
 
-/* Canonical prices (research/live-site.md is authoritative). Setup once, then usage. */
+/* Product price copy. Numbers are NOT written here: tokens such as {{p:voice-agent.setup}} are filled from
+   NORRA.PRICE_TABLE (core.js) in the visitor's region and currency, after translation. Setup once, then usage. */
 NORRA.pricing = {
-  'voice-agent': { name: 'AI Voice Agent', icon: 'phone', setup: '499–1.499 €', setupNote: 'Einrichtung einmalig, je nach Anforderung',
-    usage: '0,07 € pro Gesprächsminute', usageLabel: 'Danach nur Verbrauch', live: 'ca. 7 Tage', liveDays: 7,
+  'voice-agent': { name: 'AI Voice Agent', icon: 'phone', setup: '{{p:voice-agent.setup}}', setupNote: 'Einrichtung einmalig, je nach Anforderung',
+    usage: '{{p:voice-agent.monthly}} pro Monat + {{p:voice-agent.perUnit}} pro Gesprächsminute',
+    usageHtml: '<b>{{p:voice-agent.monthly}}</b> pro Monat + <b>{{p:voice-agent.perUnit}}</b> pro Gesprächsminute',
+    usageLabel: 'Danach Grundgebühr und Verbrauch', live: 'ca. 7 Tage', liveDays: 7,
     points: ['Beantwortet verpasste Anrufe automatisch', 'Bucht Termine in Ihren Kalender', 'Gesprächsnotiz nach jedem Anruf'] },
-  'chatbot': { name: 'AI Chatbot', icon: 'msg', setup: '299–799 €', setupNote: 'Einrichtung einmalig, je nach Aufwand',
-    usage: '0,002 € pro Nachricht', usageLabel: 'Danach nur Verbrauch', live: 'ca. 5 Tage', liveDays: 5,
+  'chatbot': { name: 'AI Chatbot', icon: 'msg', setup: '{{p:chatbot.setup}}', setupNote: 'Einrichtung einmalig, je nach Aufwand',
+    usage: '{{p:chatbot.perUnit}} pro Nachricht', usageHtml: '<b>{{p:chatbot.perUnit}}</b> pro Nachricht',
+    usageLabel: 'Danach nur Verbrauch', live: 'ca. 5 Tage', liveDays: 5,
     points: ['Beantwortet Website-Chats rund um die Uhr', 'Trainiert auf Ihren Inhalten', 'Sammelt Kontaktdaten für Rückrufe'] },
-  'social-media': { name: 'Social Media AI', icon: 'camera', setup: '2.999–5.999 €', setupNote: 'Einrichtung einmalig, inkl. Redaktionsplan',
-    usage: '0,002 € pro Nachricht', usageLabel: 'Danach nur Verbrauch', live: 'ca. 10 Tage', liveDays: 10,
+  'social-media': { name: 'Social Media AI', icon: 'camera', setup: '{{p:social-media.setup}}', setupNote: 'Einrichtung einmalig, inkl. Redaktionsplan',
+    usage: '{{p:social-media.perUnit}} pro Nachricht', usageHtml: '<b>{{p:social-media.perUnit}}</b> pro Nachricht',
+    usageLabel: 'Danach nur Verbrauch', live: 'ca. 10 Tage', liveDays: 10,
     points: ['Beantwortet DMs und Kommentare', 'Plant Posts im Voraus', 'Monatlicher Inhaltsplan'] },
-  'website': { name: 'Website', icon: 'monitor', setup: '1.499–3.999 €', setupNote: 'Einrichtung einmalig, je nach Umfang',
-    usage: '29 € pro Monat', usageLabel: 'Danach Hosting und Pflege', live: 'ca. 14 Tage', liveDays: 14,
+  'website': { name: 'Website', icon: 'monitor', setup: '{{p:website.setup}}', setupNote: 'Einrichtung einmalig, je nach Umfang',
+    usage: '{{p:website.monthly}} pro Monat', usageHtml: '<b>{{p:website.monthly}}</b> pro Monat',
+    usageLabel: 'Danach Hosting und Pflege', live: 'ca. 14 Tage', liveDays: 14,
     points: ['Design, Aufbau und Texte von uns', 'Schnell auf dem Handy, auffindbar bei Google', 'Ihr Agent ist schon eingebaut'] }
 };
-NORRA.PRICING_TERMS = ['Kein Abo, keine Mindestlaufzeit', 'Monatlich kündbar, zum Monatsende', 'Kleine Änderungen nach der Einrichtung inklusive', 'Festpreis nach dem Erstgespräch'];
+NORRA.PRICING_TERMS = ['Keine Mindestlaufzeit', 'Monatlich kündbar, zum Monatsende', 'Kleine Änderungen nach der Einrichtung inklusive', 'Festpreis nach dem Erstgespräch'];
 </script>
 <script>
 /* ===== src/content/07-alle-funktionen.js ===== */
@@ -8928,8 +9488,8 @@ NORRA.allFeatures = function (p, o) {
    Order: hero (video + call demo) · stats · channels stage · four services ·
    USP strip · feature explorer · own LLMs · integrations teaser · video band ·
    Warum Norra · data protection · industries · savings teaser · steps ·
-   pricing overview · FAQ · contact CTA.
-   Prices only from NORRA.pricing (research/live-site.md). Everything lives on
+   pricing teaser (no figures: prices live on #preise and the product pages) · FAQ · contact CTA.
+   Client rule: no price figures on the home page. Everything lives on
    NORRA.start; the renderer is NORRA.pages.start.
    ========================================================================= */
 NORRA.start = NORRA.start || {};
@@ -9003,13 +9563,13 @@ NORRA.start.channels = function () {
           chip: 'Gebucht · Sa 10:30' },
         { icon: 'camera', title: '@salon.mira · Instagram', lines: [
           { who: 'user', text: 'Was kostet Balayage bei euch?' },
-          { who: 'agent', text: 'Ab 149 €. Ich schicke Ihnen gern den Buchungslink per DM.', label: 'Social Media AI' }],
+          { who: 'agent', text: 'Ab {{m:149}}. Ich schicke Ihnen gern den Buchungslink per DM.', label: 'Social Media AI' }],
           chip: { icon: 'send', text: 'Buchungslink gesendet' } }
       ]
     }) + '</div></section>';
 };
 
-/* ---------- 4. Four services (setup + usage from NORRA.pricing) ---------- */
+/* ---------- 4. Four services (no prices on the home page) ---------- */
 NORRA.start.SERVICES = {
   'voice-agent': { kicker: 'Telefon', tint: '--chart-1', text: 'Nimmt Anrufe an und bucht Termine.', meta: 'Terminbuchung · Deutsch & Englisch',
     feed: ['19:42 · Termin gebucht', '21:08 · Preis genannt', '07:14 · Rückruf notiert'] },
@@ -9030,7 +9590,6 @@ NORRA.start.services = function () {
       '<p class="start-feed" aria-hidden="true">' + s.feed.map(function (f, k) {
         return '<span' + (k === 0 ? ' class="on"' : '') + '>' + NORRA.ico('tick', 12) + f + '</span>';
       }).join('') + '</p>' +
-      '<p class="start-svc-price"><b>Einrichtung ' + pr.setup + '</b><span>danach ' + pr.usage + '</span></p>' +
       '<span class="start-svc-go" aria-hidden="true">' + NORRA.ico('arrow', 16) + '</span></a>';
   }).join('');
   return '<section class="wrap sect" id="leistungen">' +
@@ -9217,22 +9776,22 @@ NORRA.start.industries = function () {
 };
 
 /* ---------- 13. Savings teaser (live formulas, Voice + Chat) ---------- */
+/* [key, label, min, max, step, unit kind]: the home teaser shows time and value only, never Norra's prices */
 NORRA.start.calcFields = [
-  ['calls', 'Anrufe pro Woche', 0, 300, 5, ' / Woche'],
-  ['chats', 'Website-Anfragen pro Woche', 0, 300, 5, ' / Woche'],
-  ['rate', 'Ihr Stundensatz', 20, 150, 5, ' € / h']
+  ['calls', 'Anrufe pro Woche', 0, 300, 5, 'week'],
+  ['chats', 'Website-Anfragen pro Woche', 0, 300, 5, 'week'],
+  ['rate', 'Ihr Stundensatz', 20, 150, 5, 'rate']
 ];
-/* live formulas (research/live-site.md 3.10), Voice Agent + Chatbot */
+NORRA.start.unit = function (v, kind) {
+  return kind === 'rate' ? NORRA.money(v, { dec: 0 }) + NORRA.tr(' / h') : NORRA.fmt(v, 0, true) + NORRA.tr(' / Woche');
+};
+/* live formulas (research/live-site.md 3.10), Voice Agent + Chatbot: time saved and its value */
 NORRA.start.calc = function (calls, chats, rate, missed, deal) {
   var W = 4.33;
   var phone = calls * 4 / 60 * W, chat = chats * 5 / 60 * W;
   var saved = phone * 0.8 + chat * 0.85;
   var won = Math.min(missed || 0, calls) * W * 0.3 * (deal || 0);
-  var cost = calls * W * 4 * 0.07 + chats * W * 14 * 0.002;
-  var net = saved * rate + won - cost, setup = 499 + 299;
-  var months = net > 0 ? Math.ceil(setup / net) : 0;
-  return { before: phone + chat, after: phone * 0.2 + chat * 0.15, saved: saved, value: saved * rate, won: won, cost: cost,
-    amort: !net || net <= 0 ? 'über 12 Monate' : months <= 1 ? '1. Monat' : months > 12 ? 'über 12 Monate' : months + ' Monate' };
+  return { before: phone + chat, after: phone * 0.2 + chat * 0.15, saved: saved, value: saved * rate, won: won };
 };
 NORRA.start.lastPreset = 'salon';
 NORRA.start.savings = function () {
@@ -9240,7 +9799,7 @@ NORRA.start.savings = function () {
   var r = NORRA.start.calc(vals.calls, vals.chats, vals.rate, p[3], p[4]);
   var fields = NORRA.start.calcFields.map(function (f) {
     return '<div class="field"><div class="row"><label for="start-c-' + f[0] + '">' + f[1] + '</label>' +
-      '<span class="val" data-cv="' + f[0] + '">' + vals[f[0]] + f[5] + '</span></div>' +
+      '<span class="val" data-cv="' + f[0] + '" data-nt>' + NORRA.start.unit(vals[f[0]], f[5]) + '</span></div>' +
       '<input type="range" id="start-c-' + f[0] + '" data-cf="' + f[0] + '" min="' + f[2] + '" max="' + f[3] + '" step="' + f[4] + '" value="' + vals[f[0]] + '"></div>';
   }).join('');
   var max = Math.max(r.before, 1);
@@ -9250,16 +9809,16 @@ NORRA.start.savings = function () {
     '<p class="start-calc-preset">Beispiel: <span data-cpreset>Kosmetik &amp; Friseur</span></p></div>' +
     '<div class="start-calc-out" aria-live="polite">' +
     '<div class="result hi"><p class="k">Gesparte Stunden pro Monat</p><p class="v" data-co="saved">' + NORRA.fmt(r.saved, 1) + ' h</p></div>' +
-    '<div class="start-calc-row"><div class="result"><p class="k">Wert der Zeit</p><p class="v" data-co="value">' + NORRA.fmt(Math.round(r.value), 0, true) + ' €</p></div>' +
-    '<div class="result"><p class="k">Gerettete Aufträge</p><p class="v" data-co="won">' + NORRA.fmt(Math.round(r.won), 0, true) + ' €</p></div></div>' +
-    '<p class="start-calc-line"><span>Verbrauch <b data-co="cost">' + NORRA.fmt(Math.round(r.cost), 0, true) + ' €</b></span>' +
-    '<span>Amortisation <b data-co-amort>' + r.amort + '</b></span></p>' +
+    '<div class="start-calc-row"><div class="result"><p class="k">Wert der Zeit</p><p class="v" data-co="value">' + NORRA.money(Math.round(r.value), { dec: 0 }) + '</p></div>' +
+    '<div class="result"><p class="k">Gerettete Aufträge</p><p class="v" data-co="won">' + NORRA.money(Math.round(r.won), { dec: 0 }) + '</p></div></div>' +
     '<div class="start-calc-bars" aria-hidden="true"><p><span>Heute</span><i data-cb="before" style="width:100%"></i></p>' +
     '<p><span>Mit Norra</span><i data-cb="after" style="width:' + (r.after / max * 100).toFixed(1) + '%"></i></p></div>' +
     '<p class="assump">Richtwerte pro Monat, Voice Agent und Chatbot.</p>' +
-    NORRA.fold('<p class="assump">4 Min. pro Anruf, 5 Min. pro Anfrage, davon 80 bzw. 85 % automatisch. Verbrauch 0,07 € pro Minute, 0,002 € pro Nachricht (14 pro Chat). ' +
-      'Gerettete Aufträge: unbeantwortete Anrufe aus dem Branchenbeispiel, davon 30 % mit Abschluss. Amortisation mit der Einrichtung am unteren Ende (499 € und 299 €). Schätzung, keine Garantie.</p>', { summary: 'Annahmen', cls: 'nfold-sm' }) +
-    NORRA.btn({ label: 'Zum vollständigen Rechner', goto: 'preise:rechner', kind: 'outline', lg: false, arrow: true, attrs: ' data-start-full data-prefill-industry="salon"' }) + '</div></div></section>';
+    NORRA.fold('<p class="assump">4 Min. pro Anruf, 5 Min. pro Anfrage, davon 80 bzw. 85 % automatisch. ' +
+      'Gerettete Aufträge: unbeantwortete Anrufe aus dem Branchenbeispiel, davon 30 % mit Abschluss. Schätzung, keine Garantie.</p>', { summary: 'Annahmen', cls: 'nfold-sm' }) +
+    '<div class="start-calc-ctas">' +
+    NORRA.btn({ label: 'Zum vollständigen Rechner', goto: 'preise:rechner', kind: 'outline', lg: false, arrow: true, attrs: ' data-start-full data-prefill-industry="salon"' }) +
+    NORRA.btn({ label: 'Preise ansehen', href: '#preise', kind: 'ghost', lg: false }) + '</div></div></div></section>';
 };
 
 /* ---------- 14. How it works ---------- */
@@ -9279,22 +9838,12 @@ NORRA.start.steps = function () {
     }).join('') + '</ol></section>';
 };
 
-/* ---------- 15. Pricing overview (compact rows) ---------- */
+/* ---------- 15. Pricing teaser: no figures on the home page (client rule), the numbers live on #preise ---------- */
 NORRA.start.pricing = function () {
-  var rows = NORRA.start.ORDER.map(function (slug, i) {
-    var p = NORRA.pricing[slug] || {};
-    return '<li class="start-prow reveal" style="--i:' + i + '"><a href="#' + slug + '" class="start-prow-name">' + NORRA.ico(p.icon || 'spark', 16) + '<span>' + p.name + '</span></a>' +
-      '<p class="start-prow-c"><small>Einrichtung einmalig</small><b>' + p.setup + '</b></p>' +
-      '<p class="start-prow-c run"><small>' + (slug === 'website' ? 'Danach Hosting und Pflege' : 'Danach Verbrauch') + '</small><b>' + p.usage + '</b></p>' +
-      '<p class="start-prow-live">' + NORRA.ico('clock', 13) + 'Live in ' + (p.liveDays ? 'ca. ' + p.liveDays + ' Tagen' : p.live) + '</p>' +
-      '<div class="start-prow-more">' + NORRA.fold('<ul class="start-prow-pts">' + (p.points || []).map(function (t) { return '<li>' + NORRA.ico('tick', 14) + '<span>' + t + '</span></li>'; }).join('') + '</ul>' +
-        NORRA.btn({ label: 'Anfragen', href: '#kontakt', kind: 'outline', lg: false, arrow: true, attrs: ' data-prefill="' + slug + '"' }), { summary: 'Enthalten', cls: 'nfold-sm' }) + '</div></li>';
-  }).join('');
   return '<section class="wrap sect" id="preise-start">' +
-    NORRA.sectHead({ eyebrow: 'Preise', title: 'Einmal einrichten. Dann nach Verbrauch.', lede: 'Kein Abo, keine Mindestlaufzeit.' }) +
-    '<ul class="start-prows">' + rows + '</ul>' +
-    '<ul class="pills start-terms">' + ['Monatlich kündbar', 'Kleine Änderungen inklusive', 'Festpreis nach dem Erstgespräch'].map(function (t) { return '<li class="pill">' + NORRA.ico('tick') + '<span>' + t + '</span></li>'; }).join('') + '</ul>' +
-    '<div class="start-more reveal">' + NORRA.btn({ label: 'Alle Preise und Rechner', href: '#preise', kind: 'outline', arrow: true }) + '</div></section>';
+    NORRA.sectHead({ eyebrow: 'Preise', title: 'Fester Preis. Keine Mindestlaufzeit.', lede: 'Einmal einrichten, danach nach Nutzung. Alles Weitere auf der Preisseite.' }) +
+    '<ul class="pills start-terms">' + ['Festpreis nach dem Erstgespräch', 'Monatlich kündbar', 'Kleine Änderungen inklusive'].map(function (t) { return '<li class="pill">' + NORRA.ico('tick') + '<span>' + t + '</span></li>'; }).join('') + '</ul>' +
+    '<div class="start-more reveal">' + NORRA.btn({ label: 'Preise ansehen', href: '#preise', kind: 'outline', arrow: true }) + '</div></section>';
 };
 
 /* ---------- 16. FAQ ---------- */
@@ -9426,27 +9975,24 @@ NORRA.start.wireCalc = function (el) {
     F.forEach(function (f) {
       v[f[0]] = parseFloat(inp(f[0]).value) || 0;
       var out = box.querySelector('[data-cv="' + f[0] + '"]');
-      if (out) out.textContent = v[f[0]] + f[5];
+      if (out) out.textContent = NORRA.start.unit(v[f[0]], f[5]);
     });
     var pr = NORRA.start.PRESETS[NORRA.start.lastPreset] || NORRA.start.PRESETS.salon;
     var r = NORRA.start.calc(v.calls, v.chats, v.rate, pr[3], pr[4]);
-    var euro = function (x) { return NORRA.fmt(Math.round(x), 0, true) + ' €'; };
+    var euro = function (x) { return NORRA.money(Math.round(x), { dec: 0 }); };
     tween(box.querySelector('[data-co="saved"]'), r.saved, function (x) { return NORRA.fmt(x, 1) + ' h'; });
     tween(box.querySelector('[data-co="value"]'), r.value, euro);
     tween(box.querySelector('[data-co="won"]'), r.won, euro);
-    tween(box.querySelector('[data-co="cost"]'), r.cost, euro);
-    var am = box.querySelector('[data-co-amort]');
-    if (am) am.textContent = r.amort;
     var max = Math.max(r.before, 0.001);
     box.querySelector('[data-cb="before"]').style.width = (r.before > 0 ? 100 : 0) + '%';
     box.querySelector('[data-cb="after"]').style.width = (r.after / max * 100).toFixed(1) + '%';
   }
   var p0 = NORRA.start.PRESETS.salon, first = NORRA.start.calc(p0[0], p0[1], p0[2], p0[3], p0[4]);
-  shown = { saved: first.saved, value: first.value, won: first.won, cost: first.cost };
+  shown = { saved: first.saved, value: first.value, won: first.won };
   F.forEach(function (f) {
     inp(f[0]).addEventListener('input', function () {
       var p = box.querySelector('[data-cpreset]');
-      if (p) p.textContent = 'Ihre Werte';
+      if (p) p.textContent = NORRA.tr('Ihre Werte');
       update();
     });
   });
@@ -9522,7 +10068,7 @@ NORRA.produkte.SCENES = [
     chip: 'AI Chatbot' },
   { icon: 'camera', title: 'Salon Mira · Instagram',
     lines: [{ who: 'user', text: 'Was kostet bei euch Balayage?' },
-      { who: 'agent', text: 'Ab 149 €, rund zweieinhalb Stunden. Hier ist der Buchungslink.', label: 'Social Media AI' },
+      { who: 'agent', text: 'Ab {{m:149}}, rund zweieinhalb Stunden. Hier ist der Buchungslink.', label: 'Social Media AI' },
       { who: 'note', text: 'Plan · Mi Reel, Fr Story' }],
     chip: 'Social Media AI' },
   { icon: 'monitor', title: 'Praxis Sonnenweg · Website',
@@ -9578,7 +10124,7 @@ NORRA.produkte.INCL = [
   ['chart', 'Monatlicher Bericht', 'Anfragen, Buchungen und gesparte Zeit auf einer Seite.'],
   ['refresh', 'Änderungen inklusive', 'Kleine Anpassungen meist am selben Tag.'],
   ['smile', 'Keine Einarbeitung', 'Sie bekommen einen fertigen Agent, keine Software.'],
-  ['calendar', 'Monatlich kündbar', 'Kein Abo, keine Mindestlaufzeit.']
+  ['calendar', 'Monatlich kündbar', 'Keine Mindestlaufzeit.']
 ];
 
 NORRA.produkte.compare = function (list) {
@@ -9593,7 +10139,7 @@ NORRA.produkte.compare = function (list) {
       list.map(function (p, i) {
         var pr = p.price || {}, v = priceRow ? pr[row[1]] : row[1][i];
         if (priceRow && row[1] === 'setup' && v) v += ' <small>einmalig</small>';
-        if (priceRow && row[1] === 'usage' && v) v += ' <small>' + (p.slug === 'website' ? 'Hosting und Pflege' : 'nur Verbrauch') + '</small>';
+        if (priceRow && row[1] === 'usage' && v) v += ' <small>' + (p.slug === 'website' ? 'Hosting und Pflege' : p.slug === 'voice-agent' ? 'Grundgebühr und Verbrauch' : 'nur Verbrauch') + '</small>';
         return '<td data-c="' + i + '">' + (v || '<span class="lsx-cmp-no" aria-hidden="true">–</span><span class="sr-only">Nein</span>') + '</td>';
       }).join('') + '</tr>';
   }).join('');
@@ -9611,7 +10157,7 @@ NORRA.produkte.compare = function (list) {
     '<div class="lsx-cmp reveal" data-lsx-cmp data-col="0">' + pick +
     '<div class="lsx-cmp-scroll"><table class="lsx-cmp-t"><caption class="sr-only">Vergleich der vier Leistungen</caption>' + head + '<tbody>' + body + '</tbody></table></div>' +
     '<button type="button" class="lsx-cmp-tg" aria-expanded="false"><span>Alle Merkmale</span>' + ico('chevron', 15) + '</button></div>' +
-    '<p class="note lsx-center">Festpreis nach dem Erstgespräch.</p>' +
+    '<p class="note lsx-center">Festpreis nach dem Erstgespräch.</p>' + NORRA.priceNoteHtml('lsx-center') +
     inclHtml + '</div></section>';
 };
 
@@ -9626,7 +10172,7 @@ NORRA.produkte.HL_SCENES = {
     chip: { icon: 'calendarCheck', text: 'Termin gebucht' } },
   wissensdatenbank: { icon: 'book', title: 'Studio Belle · Website-Chat',
     lines: [{ who: 'user', text: 'Was kostet eine Gesichtsbehandlung?' },
-      { who: 'agent', text: 'Die klassische Behandlung kostet 95 € und dauert 60 Minuten.', label: 'Norra Chatbot' },
+      { who: 'agent', text: 'Die klassische Behandlung kostet {{m:95}} und dauert 60 Minuten.', label: 'Norra Chatbot' },
       { who: 'note', text: 'Quelle · Preisliste.pdf' }],
     chip: { icon: 'book', text: 'Aus Ihrer Preisliste' } },
   gedaechtnis: { icon: 'heart', kind: 'call', title: 'Salon Mira · Anruf', duration: '00:18',
@@ -9766,7 +10312,13 @@ NORRA.produkte.wireCatalogue = function (root) {
   var box = root.querySelector('[data-lsx-cat]');
   if (!box || box.__w) return;
   box.__w = true;
-  var caps = C('all');
+  /* search and highlight work on the text in the visitor's language */
+  var T = NORRA.tr;
+  var caps = C('all').map(function (c) {
+    var o = {}; for (var key in c) o[key] = c[key];
+    o.name = T(c.name); o.explain = T(c.explain); o.detail = c.detail ? T(c.detail) : ''; o.category = T(c.category);
+    return o;
+  });
   var hay = caps.map(function (c) { return P.norm(c.name + ' ' + c.explain + ' ' + (c.detail || '') + ' ' + c.category); });
   var $ = function (s) { return box.querySelector(s); };
   var $$ = function (s) { return [].slice.call(box.querySelectorAll(s)); };
@@ -9788,7 +10340,7 @@ NORRA.produkte.wireCatalogue = function (root) {
     }
     return true;
   }
-  function catName(id) { var c = C.category(id); return c ? c.name : 'Alle Bereiche'; }
+  function catName(id) { var c = C.category(id); return T(c ? c.name : 'Alle Bereiche'); }
 
   function apply(animate) {
     var all = state.cat === 'alle' || !!state.q, total = 0, perCat = {}, shown = 0;
@@ -9814,7 +10366,7 @@ NORRA.produkte.wireCatalogue = function (root) {
       g.querySelector('.lsx-grp-h b').textContent = n;
       var more = g.querySelector('.lsx-more');
       more.hidden = open || n <= limit;
-      more.querySelector('span').textContent = 'Alle ' + n + ' zeigen';
+      more.querySelector('span').textContent = NORRA.trf('Alle {n} zeigen', { n: n });
     });
     tabs.forEach(function (t) {
       var id = t.getAttribute('data-cat'), n = id === 'alle' ? total : (perCat[id] || 0);
@@ -9824,8 +10376,8 @@ NORRA.produkte.wireCatalogue = function (root) {
     });
     var inView = all ? total : (perCat[state.cat] || 0);
     P.tick(countN, inView);
-    countT.textContent = (inView === 1 ? 'Funktion' : 'Funktionen') +
-      (state.q ? ' zu «' + input.value.trim() + '»' : (all ? ' in allen Bereichen' : ' · ' + catName(state.cat)));
+    countT.textContent = T(inView === 1 ? 'Funktion' : 'Funktionen') +
+      (state.q ? NORRA.trf(' zu «{q}»', { q: input.value.trim() }) : (all ? T(' in allen Bereichen') : ' · ' + catName(state.cat)));
     empty.hidden = inView > 0;
     clearBtn.hidden = !input.value;
     if (animate && !NORRA.reduced) {
@@ -9846,13 +10398,13 @@ NORRA.produkte.wireCatalogue = function (root) {
     tabs.forEach(function (x) { if (x.getAttribute('data-cat') === state.cat) t = x; });
     if (state.cat === 'alle' || state.q || !t) {
       if (nst) { nst.setAuto(true); nst.go(nst.index()); }
-      sideN.textContent = state.q ? 'Suche' : 'Alle Bereiche';
-      sideC.textContent = 'Beispielszenen im Wechsel';
+      sideN.textContent = T(state.q ? 'Suche' : 'Alle Bereiche');
+      sideC.textContent = T('Beispielszenen im Wechsel');
       return;
     }
     if (nst) { nst.setAuto(false); nst.go(+t.getAttribute('data-si')); }
     sideN.textContent = catName(state.cat);
-    sideC.textContent = 'Beispielszene';
+    sideC.textContent = T('Beispielszene');
   }
 
   function selectTab(t, focus, fromStage) {
@@ -9860,7 +10412,7 @@ NORRA.produkte.wireCatalogue = function (root) {
     if (state.q) { input.value = ''; state.q = ''; }
     tabs.forEach(function (x) { x.tabIndex = x === t ? 0 : -1; });
     apply(true);
-    if (fromStage) { restoreChips(); sideN.textContent = catName(state.cat); sideC.textContent = 'Beispielszene'; }
+    if (fromStage) { restoreChips(); sideN.textContent = catName(state.cat); sideC.textContent = T('Beispielszene'); }
     else syncStage();
     if (focus) t.focus();
     var bar = t.parentNode;
@@ -9934,7 +10486,7 @@ NORRA.produkte.wireCatalogue = function (root) {
     st.__nst.setAuto(false);
     st.__nst.go(si);
     sideN.textContent = catName(cap.categoryId);
-    sideC.textContent = 'Beispielszene';
+    sideC.textContent = T('Beispielszene');
   }, true);
 
   /* A dot on the stage picks the matching category (only while a single category is shown). */
@@ -10024,7 +10576,7 @@ NORRA.pages.produkte.wire = function (el) {
     tg.addEventListener('click', function () {
       var open = tg.getAttribute('aria-expanded') !== 'true';
       tg.setAttribute('aria-expanded', String(open));
-      tg.querySelector('span').textContent = open ? 'Weniger Merkmale' : 'Alle Merkmale';
+      tg.querySelector('span').textContent = NORRA.tr(open ? 'Weniger Merkmale' : 'Alle Merkmale');
       cmp.classList.toggle('lsx-cmp-open', open);
     });
   }
@@ -10040,7 +10592,7 @@ NORRA.pages.produkte.wire = function (el) {
    ========================================================================= */
 NORRA.va = NORRA.va || {};
 /* Prices always from the shared data (research/live-site.md). */
-NORRA.va.PR = (NORRA.pricing && NORRA.pricing['voice-agent']) || { setup: '499–1.499 €', usage: '0,07 € pro Gesprächsminute' };
+NORRA.va.PR = (NORRA.pricing && NORRA.pricing['voice-agent']) || { setup: '{{p:voice-agent.setup}}', usage: '{{p:voice-agent.monthly}} pro Monat + {{p:voice-agent.perUnit}} pro Gesprächsminute' };
 
 /* ---------- scene shorthand: [icon, title, lines, call?]
    line prefixes: u: user · a: agent · +: action · #: note · $: code ---------- */
@@ -10065,13 +10617,13 @@ NORRA.va.SC = (function () {
     /* Gesprächsführung */
     'natuerlicher-sprecherwechsel': S('phone', A, ['u:Dienstag geht … mhm, nein, lieber Mittwoch.', 'a:Kein Problem. Mittwoch um 10:00 Uhr ist frei.', '#:Einwurf erkannt · Agent hört zu'], 1),
     'schnelle-antwort': S('phone', A, ['u:Haben Sie heute noch offen?', '#:Antwort nach ca. 0,6 s · Plattformwert', 'a:Ja, heute bis 19 Uhr.'], 1),
-    'ein-prompt-agent': S('pen', 'Eine Anweisung', ['$:Du bist der Empfang von Salon Mira. Buche Termine, nenne Preise.', 'u:Was kostet ein Herrenschnitt?', 'a:39 Euro. Soll ich einen Termin suchen?']),
+    'ein-prompt-agent': S('pen', 'Eine Anweisung', ['$:Du bist der Empfang von Salon Mira. Buche Termine, nenne Preise.', 'u:Was kostet ein Herrenschnitt?', 'a:{{m:39}}. Soll ich einen Termin suchen?']),
     'mehrstufiger-agent': S('layers', 'Drei Abschnitte', ['#:Begrüssung → Buchung → Abschluss', '+:Abschnitt «Buchung» aktiv', 'a:Für welche Behandlung darf ich Sie eintragen?']),
     'gespraechsablauf': S('blocks', 'Gesprächsablauf', ['+:Begrüssung', '+:Anliegen prüfen', '+:Termin buchen', '+:SMS senden']),
     'globale-fragen': S('phone', A, ['a:Für welchen Tag darf ich suchen?', 'u:Moment, wann haben Sie samstags offen?', 'a:Samstags von 9 bis 14 Uhr. Für welchen Tag darf ich suchen?'], 1),
     'bausteine': S('boxes', 'Baustein · Identitätsprüfung', ['#:Eingesetzt in drei Agenten', '+:Geburtsdatum abgefragt', '+:Kundin bestätigt']),
     'flexibler-ablauf': S('phone', A, ['u:Ich will verschieben und habe noch eine Preisfrage.', 'a:Gerne beides. Zuerst der Termin: Passt Freitag um 11 Uhr?'], 1),
-    'lernen-aus-beispielen': S('pen', 'Beispielgespräch', ['u:Ist das teuer?', '#:Vorher: ganze Preisliste vorgelesen', 'a:Ab 49 Euro, je nach Länge. Soll ich Details nennen?']),
+    'lernen-aus-beispielen': S('pen', 'Beispielgespräch', ['u:Ist das teuer?', '#:Vorher: ganze Preisliste vorgelesen', 'a:Ab {{m:49}}, je nach Länge. Soll ich Details nennen?']),
     'feste-und-freie-antworten': S('phone', A, ['a:Sie sprechen mit dem digitalen Assistenten von Salon Mira.', '#:Pflichttext · wortgetreu', 'a:Wie kann ich Ihnen helfen?'], 1),
     'verhaltensregeln': S('sliders', 'Verhaltensregeln', ['+:Ton: freundlich und kurz', '+:Beträge richtig vorlesen', '+:Stellt sich als digitaler Assistent vor']),
     'persoenliche-ansprache': S('phone', A, ['$:kundenname = Frau Keller', 'a:Guten Tag Frau Keller. Geht es um Ihren Termin am Donnerstag?'], 1),
@@ -10082,10 +10634,10 @@ NORRA.va.SC = (function () {
     'stimmauswahl': S('volume', 'Stimme wählen', ['+:Lea · warm, ruhig', '+:Jonas · klar, freundlich', '#:über 100 Stimmen · Plattformwert']),
     'eigene-stimme': S('mic', 'Ihre Stimme', ['#:Aufnahme · zwei Minuten', '+:Einwilligung bestätigt', 'a:Hallo, hier ist Mira. Wie kann ich helfen?']),
     'mehrsprachig': S('phone', A, ['u:Bonjour, vous avez de la place samedi ?', 'a:Oui, samedi à 10h30. Je vous inscris ?', '#:Sprache erkannt: Französisch'], 1),
-    'gespraechston': S('phone', A, ['u:Was empfehlen Sie bei trockenem Haar?', 'a:Ehrlich gesagt die Feuchtigkeitskur. Kurz, wirksam, 35 Euro.'], 1),
+    'gespraechston': S('phone', A, ['u:Was empfehlen Sie bei trockenem Haar?', 'a:Ehrlich gesagt die Feuchtigkeitskur. Kurz, wirksam, {{m:35}}.'], 1),
     'gefuehl-in-der-stimme': S('phone', A, ['u:Ich muss leider absagen, mir geht es nicht gut.', 'a:Das tut mir leid. Gute Besserung! Wir finden gern einen neuen Termin.'], 1),
     'sprechtempo-und-klang': S('sliders', 'Klang', ['$:tempo: 0,9× · kulisse: Café, leise', 'a:Gerne, ich nehme mir Zeit. Was darf ich für Sie tun?']),
-    'aussprache': S('phone', A, ['$:Balayage → «Ba-la-jahsch»', 'a:Balayage kostet bei uns ab 149 Euro.'], 1),
+    'aussprache': S('phone', A, ['$:Balayage → «Ba-la-jahsch»', 'a:Balayage kostet bei uns ab {{m:149}}.'], 1),
     'spracherkennung': S('phone', A, ['u:Ich hätte gern Olaplex zum Färben dazu.', '+:Fachbegriff erkannt: Olaplex', 'a:Gern, ich plane 15 Minuten mehr ein.'], 1),
     'laermfilter': S('phone', A, ['#:Strassenlärm herausgefiltert', 'u:Ich stehe an der Kreuzung … geht morgen?', 'a:Morgen um 15 Uhr ist frei. Passt das?'], 1),
     /* KI-Modelle */
@@ -10096,7 +10648,7 @@ NORRA.va.SC = (function () {
     'reden-und-arbeiten': S('phone', A, ['u:Können Sie mich für Freitag eintragen?', 'a:Sehr gern, ich schaue nach. Lieber vormittags?', '+:Parallel: Kalender geprüft'], 1),
     'ersatzmodell': S('phone', A, ['#:Hauptmodell langsam · Ersatz nach 1,2 s', 'a:Gerne, Ihr Termin ist bestätigt.'], 1),
     /* Wissen & Gedächtnis */
-    'wissensdatenbank': S('phone', A, ['u:Was kostet Balayage?', 'a:Ab 149 Euro, etwa zweieinhalb Stunden.', '#:Quelle: Preisliste.pdf'], 1),
+    'wissensdatenbank': S('phone', A, ['u:Was kostet Balayage?', 'a:Ab {{m:149}}, etwa zweieinhalb Stunden.', '#:Quelle: Preisliste.pdf'], 1),
     'wissen-aktuell': S('refresh', 'Wissensbasis', ['#:Website geändert · 06:00 Uhr', '+:Neue Öffnungszeiten übernommen']),
     'cloud-dokumente': S('file', 'Dokumente verbunden', ['+:Google Drive · Preisliste', '+:Notion · Hausregeln', '+:OneDrive · Behandlungen']),
     'gedaechtnis': S('phone', A, ['#:Bekannte Nummer · zuletzt: Farbberatung', 'a:Schön, dass Sie wieder anrufen. Bleibt es beim Kupferton?'], 1),
@@ -10105,7 +10657,7 @@ NORRA.va.SC = (function () {
     'terminbuchung': S('phone', A, ['u:Donnerstag um 16:30 passt mir.', 'a:Eingetragen: Donnerstag, 16:30 Uhr bei Mira.', '+:Kalender · Termin angelegt'], 1),
     'werte-erfassen': S('phone', A, ['u:Lena Huber, am liebsten Freitagnachmittag.', '$:name: Lena Huber · wunsch: Fr, Nachmittag'], 1),
     'eigene-systeme': S('phone', A, ['u:Ist mein Shampoo schon da?', '+:Bestellstatus abgefragt', 'a:Ja, es liegt seit heute für Sie bereit.'], 1),
-    'code-schritt': S('braces', 'Kleine Rechnung', ['$:3 × 39 € · 10 % Paketrabatt', 'a:Das Paket kostet Sie 105,30 Euro.']),
+    'code-schritt': S('braces', 'Kleine Rechnung', ['$:3 × {{m:39}} · 10 % Paketrabatt', 'a:Das Paket kostet Sie {{m:105.30~2}}.']),
     'mcp-werkzeuge': S('plug', 'Werkzeug über MCP', ['$:werkzeug: lager.verfuegbarkeit', '+:Antwort: vier Stück vorrätig']),
     'vor-und-nachher': S('zap', 'Vor und nach dem Anruf', ['#:Vorher: Kundin im CRM gefunden', '+:Nachher: Notiz eingetragen', '+:Aufgabe für Mira angelegt']),
     'crm': S('db', 'CRM', ['+:Kontakt gefunden', '+:Notiz: Termin Do 16:30', '+:Verkaufschance aktualisiert']),
@@ -10126,7 +10678,7 @@ NORRA.va.SC = (function () {
     /* Kanäle */
     'ein-wissen-alle-kanaele': S('boxes', 'Ein Wissen', ['+:Telefon · offen 9–18 Uhr', '+:Website-Chat · offen 9–18 Uhr', '+:WhatsApp · offen 9–18 Uhr']),
     'rueckruf-knopf': S('globe', 'Website · Rückruf', ['#:Lena hinterlässt ihre Nummer', '+:Rückruf gestartet', 'a:Hallo Lena, hier ist Salon Mira. Sie wollten zurückgerufen werden?']),
-    'sprechen-im-browser': S('globe', 'Website · Sprechen', ['#:Mikrofon an · kein Telefon nötig', 'u:Haben Sie Gutscheine?', 'a:Ja, ab 25 Euro. Soll ich Ihnen den Link schicken?']),
+    'sprechen-im-browser': S('globe', 'Website · Sprechen', ['#:Mikrofon an · kein Telefon nötig', 'u:Haben Sie Gutscheine?', 'a:Ja, ab {{m:25}}. Soll ich Ihnen den Link schicken?']),
     'in-ihrer-app': S('smartphone', 'Ihre App', ['u:Wann ist mein nächster Termin?', 'a:Am Donnerstag um 16:30 Uhr.']),
     'whatsapp': S('whatsapp', 'WhatsApp', ['+:Bestätigung gesendet: Do 16:30', '#:Werbung nur mit Einwilligung']),
     /* Ausgehende Kampagnen */
@@ -10173,7 +10725,7 @@ NORRA.va.SC = (function () {
 
 /* Corrections on top of the shared catalogue (shown text only). */
 NORRA.va.DETAIL = {
-  'nutzungsbasiert': 'Einrichtung ' + NORRA.va.PR.setup + ' einmalig, danach ' + NORRA.va.PR.usage + '. Kein Abo, monatlich kündbar.',
+  'nutzungsbasiert': 'Einrichtung ' + NORRA.va.PR.setup + ' einmalig, danach ' + NORRA.va.PR.usage + '. Keine Mindestlaufzeit, monatlich kündbar.',
   'vertraege-und-plattform': 'Die zugrunde liegende Plattform ist nach SOC 2 Typ I/II und ISO 27001 geprüft. Norra stellt den AVV, nutzt EU-Verarbeitung, wo verfügbar, und richtet Schwärzung und Aufbewahrung nach Ihrer Vorgabe ein.',
   'grosse-teams': 'Auf Anfrage: mehr gleichzeitige Gespräche, eine eigene Umgebung mit Ausfallsystem und Betreuung rund um die Uhr, bereitgestellt über die Plattform.'
 };
@@ -10367,14 +10919,17 @@ NORRA.va.buildSect = function () {
 
 /* pricing: setup once + per minute, with a live minute calculator */
 NORRA.va.MIN_PER_CALL = 4;
-NORRA.va.RATE = parseFloat(String(NORRA.va.PR.usage).replace(',', '.')) || 0.07;
-NORRA.va.monthly = function (callsPerWeek) { return callsPerWeek * 4.33 * NORRA.va.MIN_PER_CALL * NORRA.va.RATE; };
+/* one month = monthly base fee + minutes x price per minute (NORRA.PRICE_TABLE, region currency) */
+NORRA.va.monthly = function (callsPerWeek) {
+  var p = NORRA.P('voice-agent') || { monthly: 0, perUnit: 0 };
+  return p.monthly + callsPerWeek * 4.33 * NORRA.va.MIN_PER_CALL * p.perUnit;
+};
 NORRA.va.priceSect = function () {
   var pr = NORRA.priceOf('voice-agent') || NORRA.va.PR;
   var start = 60;
   var terms = NORRA.PRICING_TERMS || [];
   return '<section class="wrap sect va-price-sect" id="va-preise">' +
-    NORRA.sectHead({ eyebrow: 'Preise', title: 'Einmal einrichten. Dann pro Minute.' }) +
+    NORRA.sectHead({ eyebrow: 'Preise', title: 'Einmal einrichten. Dann Grundgebühr und Minuten.' }) +
     '<div class="va-price reveal">' +
     '<article class="va-pcard"><p class="va-pk">' + NORRA.ico('zap', 14) + '<span>Einrichtung, einmalig</span></p>' +
     '<p class="va-pamt">' + (pr.setup || '') + '</p><p class="va-psub">' + (pr.setupNote || '') + '</p>' +
@@ -10384,13 +10939,13 @@ NORRA.va.priceSect = function () {
     '<div class="va-pcta">' + NORRA.btn({ label: 'Anfragen', href: '#kontakt', arrow: true, attrs: ' data-prefill="voice-agent"' }) +
     '<span class="va-plive">' + NORRA.ico('clock', 14) + 'Live in ' + String(pr.live || 'ca. 7 Tage').replace(/Tage$/, 'Tagen') + '</span></div></article>' +
     '<div class="va-calc" data-va-calc><p class="va-pk">' + NORRA.ico('gauge', 14) + '<span>Was kostet ein Monat?</span></p>' +
-    '<label class="va-calc-l" for="va-calls"><span>Anrufe pro Woche</span><b data-va-calls>' + start + '</b></label>' +
+    '<label class="va-calc-l" for="va-calls"><span>Anrufe pro Woche</span><b data-va-calls data-nt>' + start + '</b></label>' +
     '<input type="range" id="va-calls" min="5" max="300" step="5" value="' + start + '" data-va-range>' +
-    '<p class="va-calc-out"><span class="va-calc-v" data-va-cost>' + NORRA.fmt(NORRA.va.monthly(start), 2) + '</span><span> € pro Monat</span></p>' +
-    '<p class="va-calc-min"><span data-va-min>' + NORRA.fmt(Math.round(start * 4.33 * NORRA.va.MIN_PER_CALL), 0, true) + '</span> Gesprächsminuten</p>' +
-    '<p class="note">Richtwert: ' + NORRA.va.MIN_PER_CALL + ' Minuten pro Anruf, ohne Einrichtung.</p></div>' +
+    '<p class="va-calc-out"><span class="va-calc-v" data-va-cost data-nt>' + NORRA.money(NORRA.va.monthly(start), { dec: 2 }) + '</span><span> pro Monat</span></p>' +
+    '<p class="va-calc-min"><span data-va-min data-nt>' + NORRA.fmt(Math.round(start * 4.33 * NORRA.va.MIN_PER_CALL), 0, true) + '</span> <span>Gesprächsminuten</span></p>' +
+    '<p class="note">Richtwert: ' + NORRA.va.MIN_PER_CALL + ' Minuten pro Anruf, inklusive {{p:voice-agent.monthly}} Grundgebühr, ohne Einrichtung.</p></div>' +
     '</div><ul class="pills va-terms reveal">' + terms.map(function (t) { return '<li class="pill">' + NORRA.ico('check') + '<span>' + t + '</span></li>'; }).join('') + '</ul>' +
-    '</section>';
+    NORRA.priceNoteHtml('center') + '</section>';
 };
 
 NORRA.va.FAQ = [
@@ -10545,17 +11100,17 @@ NORRA.pages['voice-agent'].wire = function (el) {
     var paint = function () {
       var n = parseFloat(range.value);
       var target = va.monthly(n);
-      callsEl.textContent = n;
+      callsEl.textContent = NORRA.fmt(n, 0, true);
       minEl.textContent = NORRA.fmt(Math.round(n * 4.33 * va.MIN_PER_CALL), 0, true);
       range.style.setProperty('--p', ((n - range.min) / (range.max - range.min) * 100).toFixed(1) + '%');
       if (tw) cancelAnimationFrame(tw);
-      if (NORRA.reduced) { shown = target; out.textContent = NORRA.fmt(target, 2); return; }
+      if (NORRA.reduced) { shown = target; out.textContent = NORRA.money(target, { dec: 2 }); return; }
       var from = shown, t0 = null;
       var step = function (now) {
         if (!t0) t0 = now;
         var p = Math.min(1, (now - t0) / 360);
         shown = from + (target - from) * (1 - Math.pow(1 - p, 3));
-        out.textContent = NORRA.fmt(shown, 2);
+        out.textContent = NORRA.money(shown, { dec: 2 });
         if (p < 1) tw = requestAnimationFrame(step);
       };
       tw = requestAnimationFrame(step);
@@ -10595,14 +11150,14 @@ NORRA.chatbot.GROUPS = [
    Lines: 'u:text' user · 'a:text' agent ('a|Label:text') · 'x:icon:text' action · 'n:text' note · 'c:text' code. */
 NORRA.chatbot.D = {
   'website-chat': ['Website-Chat', 'msg', 'Antwortet im Chatfenster Ihrer Website, in Ihrem Design.', 'Eine Codezeile genügt. Meldet sich auf Wunsch von selbst.', ['u:Haben Sie Samstag noch etwas frei?', 'a:Ja, um 10:30 oder 13:00 Uhr. Was passt Ihnen?'], 'In Ihrem Design', 0],
-  'ein-wissen-alle-kanaele': ['Ein Wissen, alle Kanäle', 'layers', 'Chat, SMS und Telefon antworten mit demselben Wissen.', '', ['u:Was kostet Balayage?', 'a:Ab 149 €, etwa zweieinhalb Stunden.', 'n:Gleiche Antwort wie am Telefon'], 0, 'Salon Mira · SMS'],
+  'ein-wissen-alle-kanaele': ['Ein Wissen, alle Kanäle', 'layers', 'Chat, SMS und Telefon antworten mit demselben Wissen.', '', ['u:Was kostet Balayage?', 'a:Ab {{m:149}}, etwa zweieinhalb Stunden.', 'n:Gleiche Antwort wie am Telefon'], 0, 'Salon Mira · SMS'],
   'sms-gespraeche': ['SMS', 'smartphone', 'Kunden schreiben per SMS und erhalten sofort Antwort.', 'Zwei-Wege-SMS, auch mit Bildern.', ['u:Geht morgen um 15 Uhr?', 'a:Ja, 15:00 ist frei. Ich trage Sie ein.'], 'Per SMS bestätigt', 'Salon Mira · SMS'],
   'whatsapp': ['WhatsApp', 'whatsapp', 'Beantwortet WhatsApp-Nachrichten mit demselben Wissen.', 'Auch Bestätigungen und Erinnerungen. Werbenachrichten nur mit Einwilligung.', ['u:Habt ihr am Sonntag offen?', 'a:Ja, sonntags von 10 bis 16 Uhr. Soll ich einen Termin suchen?'], 'Zwei-Wege-Chat', 'Salon Mira · WhatsApp'],
   'email-postfach': ['E-Mail-Postfach', 'mail', 'Beantwortet eingehende E-Mails mit demselben Wissen.', 'Unklares legt er Ihnen mit Antwortvorschlag hin.', ['u:Betreff: Gutschein · Gilt der auch für Massagen?', 'a:Ja, der Gutschein gilt für alle Behandlungen. Soll ich einen Termin vorschlagen?'], 'Antwort in Minuten', 'Salon Mira · E-Mail'],
   'mehrsprachig': ['Mehrsprachig', 'lang', 'Erkennt die Sprache und antwortet darin.', 'Plattformwert: 55 Sprachen.', ['u:Hi, anything free on Saturday?', 'a:Yes, at 10:30. Shall I book it?', 'n:Sprache erkannt: Englisch'], 0, 0],
   'rund-um-die-uhr': ['Rund um die Uhr', 'clock', 'Antwortet nachts, am Wochenende und bei Andrang.', 'Plattformwert: 20 Chats gleichzeitig, erweiterbar.', ['n:Sonntag, 23:12 Uhr', 'u:Haben Sie morgen früh Zeit?', 'a:Ja, um 8:30 Uhr. Soll ich reservieren?'], 0, 0],
 
-  'wissensdatenbank': ['Ihr Wissen', 'book', 'Antwortet aus Website, Preisliste und Dokumenten.', 'Plattformwerte: bis 500 Webseiten und 25 Dateien.', ['u:Machen Sie Hochsteckfrisuren?', 'a:Ja, ab 79 €, etwa eine Stunde.', 'n:Quelle: Leistungsliste'], 0, 0],
+  'wissensdatenbank': ['Ihr Wissen', 'book', 'Antwortet aus Website, Preisliste und Dokumenten.', 'Plattformwerte: bis 500 Webseiten und 25 Dateien.', ['u:Machen Sie Hochsteckfrisuren?', 'a:Ja, ab {{m:79}}, etwa eine Stunde.', 'n:Quelle: Leistungsliste'], 0, 0],
   'wissen-aktuell': ['Immer aktuell', 'refresh', 'Ändert sich Ihre Website, liest er sie neu ein.', 'Automatischer Abgleich alle 24 Stunden.', ['x:refresh:Website neu eingelesen', 'u:Haben Sie jetzt montags offen?', 'a:Ja, seit dieser Woche von 9 bis 18 Uhr.'], 0, 0],
   'cloud-dokumente': ['Drive, OneDrive, Notion', 'file', 'Nutzt Ihre Dokumente direkt als Wissen.', '', ['c:quelle: Preisliste.pdf', 'u:Gibt es Rabatt für Studierende?', 'a:Ja, 15 % mit gültigem Ausweis.'], 0, 0],
   'gedaechtnis': ['Gedächtnis', 'heart', 'Weiss, worum es beim letzten Mal ging.', 'Lässt sich abschalten.', ['u:Hallo, hier ist nochmal Lena.', 'a:Willkommen zurück! Wieder Schnitt und Farbe?'], 'Erinnert sich', 0],
@@ -10613,13 +11168,13 @@ NORRA.chatbot.D = {
   'links-im-gespraech': ['Links im Chat', 'link', 'Schickt Links, Bestätigungen oder Formulare.', '', ['a:Hier ist der Link für Ihre Anzahlung.', 'u:Erledigt, danke!'], 'Link gesendet', 0],
   'eigene-systeme': ['In Ihren Systemen', 'db', 'Sieht nach, etwa Lagerbestand oder Status.', '', ['u:Ist das Pflegeset vorrätig?', 'x:db:Warenwirtschaft · 4 an Lager', 'a:Ja, noch 4 Stück. Eins zurücklegen?'], 0, 0],
   'chat-nachfassen': ['Nachfassen nach Abbruch', 'refresh', 'Wer abspringt, bekommt auf Wunsch eine kurze Erinnerung.', 'Per E-Mail oder WhatsApp. Abstand und Anzahl legen Sie fest; Werbung nur mit Einwilligung.', ['n:14:03 · Besucherin weg, E-Mail hinterlassen', 'n:+ 2 Std.', 'a:Sie hatten nach der Komplettbehandlung gefragt. Freitag um 10 Uhr wäre frei.'], 'Einmal erinnert', 'Salon Mira · Erinnerung'],
-  'code-schritt': ['Kleine Berechnungen', 'braces', 'Rechnet Pakete und Preise selbst aus.', '', ['u:Was kosten drei Behandlungen im Paket?', 'c:3 × 89 € − 10 % = 240,30 €', 'a:Im Paket 240,30 €.'], 0, 0],
+  'code-schritt': ['Kleine Berechnungen', 'braces', 'Rechnet Pakete und Preise selbst aus.', '', ['u:Was kosten drei Behandlungen im Paket?', 'c:3 × {{m:89}} − 10 % = {{m:240.30~2}}', 'a:Im Paket {{m:240.30~2}}.'], 0, 0],
 
   'crm': ['CRM', 'db', 'Hält Kontakte und Ergebnisse im CRM aktuell.', 'HubSpot, Salesforce, Zoho und weitere.', ['u:Bitte ändern Sie meine E-Mail.', 'a:Erledigt, die neue Adresse ist gespeichert.', 'x:db:CRM · Kontakt aktualisiert'], 0, 0],
   'vor-und-nachher': ['Vor und nach dem Chat', 'layers', 'Schlägt vorher nach, trägt danach ein.', '', ['x:search:Vorher: Stammkundin erkannt', 'x:db:Nachher: Notiz und Aufgabe im CRM'], 0, 'Salon Mira · vor und nach dem Chat'],
   'tickets': ['Tickets', 'file', 'Legt Support-Tickets an oder ergänzt sie.', 'Zendesk direkt, weitere über Automation.', ['u:Mein Gutschein funktioniert nicht.', 'a:Das tut mir leid. Ich gebe es ans Team.', 'x:file:Ticket angelegt'], 0, 0],
   'automationen': ['Tausende Apps', 'zap', 'Verbindet sich über Zapier, Make oder n8n.', '', ['x:zap:Neue Buchung · Tabelle ergänzt', 'x:bell:Team-Chat benachrichtigt'], 0, 'Nach jeder Buchung'],
-  'mcp-werkzeuge': ['MCP-Werkzeuge', 'plug', 'Nutzt Werkzeuge weiterer Dienste über MCP.', '', ['c:werkzeug: gutschein.pruefen', 'u:Gilt mein Gutschein noch?', 'a:Ja, bis 31. Dezember. Restwert 40 €.'], 0, 0],
+  'mcp-werkzeuge': ['MCP-Werkzeuge', 'plug', 'Nutzt Werkzeuge weiterer Dienste über MCP.', '', ['c:werkzeug: gutschein.pruefen', 'u:Gilt mein Gutschein noch?', 'a:Ja, bis 31. Dezember. Restwert {{m:40}}.'], 0, 0],
 
   'bedarf-erfragen': ['Fragt nach, statt abzuwimmeln', 'search', 'Klärt Anlass, Zeitraum und Budget, dann schlägt er vor.', 'Aus einer Frage wird eine qualifizierte Anfrage.', ['u:Ich suche etwas für meine Hochzeit.', 'a:Wie schön! Für wann ist sie geplant, und mit Probetermin?', 'x:userCheck:Anlass, Datum, Wunsch erfasst'], 0, 0],
   'seitenbezug': ['Kennt die Seite', 'globe', 'Weiss, welche Leistung gerade angesehen wird.', 'Knüpft bei wiederkehrenden Besuchern ans letzte Gespräch an.', ['n:Besucherin liest: Balayage', 'u:Wie lange dauert das?', 'a:Balayage dauert etwa zweieinhalb Stunden.'], 0, 0],
@@ -10628,7 +11183,7 @@ NORRA.chatbot.D = {
   'flexibler-ablauf': ['Flexibler Ablauf', 'route', 'Mehrere Anliegen auf einmal? Er geht mit.', '', ['u:Verschieben, und ich brauche eine Rechnung.', 'a:Gerne, beides. Zuerst: Freitag um 10 Uhr?'], 0, 0],
   'persoenliche-ansprache': ['Persönliche Ansprache', 'smile', 'Spricht Kunden mit Namen und Termin an.', '', ['n:Name und Termin vorab bekannt', 'a:Guten Abend, Frau Keller! Es geht um Freitag?'], 0, 0],
   'feste-und-freie-antworten': ['Pflichttexte wortgetreu', 'scroll', 'Pflichthinweise wortgetreu, der Rest natürlich.', '', ['n:Pflichthinweis, wortgetreu', 'a:Sie schreiben mit dem digitalen Assistenten von Salon Mira.'], 0, 0],
-  'verhaltensregeln': ['Verhaltensregeln', 'sliders', 'Fertige Regeln für Ton, Zahlen und Sicherheit.', '', ['c:regeln: freundlich · kurz · Beträge exakt', 'u:Was kostet das genau?', 'a:Genau 89,00 €, inklusive Pflege.'], 0, 0],
+  'verhaltensregeln': ['Verhaltensregeln', 'sliders', 'Fertige Regeln für Ton, Zahlen und Sicherheit.', '', ['c:regeln: freundlich · kurz · Beträge exakt', 'u:Was kostet das genau?', 'a:Genau {{m:89.00~2}}, inklusive Pflege.'], 0, 0],
 
   'ein-prompt-agent': ['Eine Anweisung', 'pen', 'Für einfache Aufgaben genügt eine klare Anweisung.', '', ['c:anweisung: Empfang für Salon Mira', 'a:Hallo! Wie kann ich Ihnen helfen?'], 0, 'Aufbau · eine Anweisung'],
   'mehrstufiger-agent': ['Mehrstufig', 'layers', 'Längere Chats laufen in klaren Abschnitten.', '', ['x:tick:1 · Begrüssung', 'x:tick:2 · Beratung', 'x:tick:3 · Buchung'], 0, 'Aufbau · drei Abschnitte'],
@@ -10638,7 +11193,7 @@ NORRA.chatbot.D = {
   'modellwahl': ['Freie Modellwahl', 'spark', 'Wir wählen mit Ihnen das passende KI-Modell.', 'GPT, Claude, Gemini und weitere.', ['c:modell: Claude · ersatz: GPT', 'u:Geht auch Freitag?', 'a:Ja, Freitag um 9:00 Uhr ist frei.'], 0, 0],
   'modell-pro-schritt': ['Modell pro Schritt', 'cpu', 'Schnell, wo es reicht. Stark, wo es zählt.', '', ['c:begrüssung: schnell · beratung: stark', 'n:Spart Kosten bei einfachen Schritten'], 0, 'Aufbau · Modell pro Schritt'],
 
-  'vorab-testen': ['Testchat', 'test', 'Wir testen jeden Ablauf, bevor Kunden schreiben.', '', ['u:Was kostet Balayage?', 'a:Ab 149 €, etwa zweieinhalb Stunden.', 'x:tick:Antwort geprüft'], 0, 'Testchat'],
+  'vorab-testen': ['Testchat', 'test', 'Wir testen jeden Ablauf, bevor Kunden schreiben.', '', ['u:Was kostet Balayage?', 'a:Ab {{m:149}}, etwa zweieinhalb Stunden.', 'x:tick:Antwort geprüft'], 0, 'Testchat'],
   'simulationen': ['Simulierte Kunden', 'test', 'Eine KI spielt schwierige Kunden durch.', '', ['n:Simulierte Kundin: in Eile', 'x:tick:Termin gebucht · bestanden'], 0, 'Simulation'],
   'tests-vor-jeder-aenderung': ['Tests vor jedem Update', 'test', 'Jede neue Version besteht erst alle Tests.', '', ['c:version 13 · 48 Testfälle', 'x:tick:48 von 48 bestanden'], 'Erst dann live', 'Neue Version · Beispielwerte'],
   'ki-assistent': ['Verbesserungsvorschläge', 'wand', 'Ein KI-Assistent schlägt vor, wir prüfen jede Änderung.', '', ['n:3 Chats ohne gute Antwort', 'x:spark:Vorschlag: Parkplatz-Info ergänzen'], 0, 'Verbesserung'],
@@ -10663,7 +11218,7 @@ NORRA.chatbot.D = {
   'alles-aus-einer-hand': ['Aus einer Hand', 'layers', 'Chat, Telefon, Modell und Auswertung in einem System.', '', ['x:msg:Chat, SMS und Telefon', 'n:Ein System statt fünf'], 0, 'Ein System'],
   'verfuegbarkeit': ['Hohe Verfügbarkeit', 'gauge', 'Ausgelegt auf zuverlässigen Betrieb, mit Ersatzsystemen.', 'Plattformwert: über 99,9 % Verfügbarkeit.', ['n:Plattformwert: über 99,9 %', 'x:tick:Ersatzsystem bereit'], 0, 'Betrieb'],
   'schnelle-anpassungen': ['Schnelle Änderungen', 'refresh', 'Sie schicken die Änderung, wir pflegen sie ein.', '', ['n:Ihre Nachricht: ab Juni samstags bis 16 Uhr', 'x:tick:Eingepflegt, meist am selben Tag'], 0, 'Änderung an Norra'],
-  'nutzungsbasiert': ['Nach Nutzung', 'euro', 'Nach der Einrichtung zahlen Sie nur Nachrichten.', '0,002 € pro Nachricht, monatlich kündbar.', ['c:500 Chats × 14 × 0,002 €', 'x:euro:= 14 € im Monat'], 0, 'Beispielrechnung'],
+  'nutzungsbasiert': ['Nach Nutzung', 'euro', 'Nach der Einrichtung zahlen Sie nur Nachrichten.', '{{p:chatbot.perUnit}} pro Nachricht, monatlich kündbar.', ['c:500 Chats × 14 × {{p:chatbot.perUnit}}', 'x:euro:= {{p:chatbot.perUnit*7000}} im Monat'], 0, 'Beispielrechnung'],
   'schnittstellen': ['Schnittstellen', 'braces', 'Für Ihre IT: Schnittstellen und Webhooks.', '', ['c:webhook: chat.beendet', 'x:lock:Signatur geprüft'], 0, 'Für Ihre IT'],
   'verwaltung-per-ki': ['Per KI-Assistent', 'spark', 'Zahlen auch per KI-Assistent abfragen.', '', ['u:Wie viele Chats gab es gestern?', 'a|KI-Assistent:Gestern 31 Chats, davon 6 Buchungen.'], 0, 'KI-Assistent · Beispielwerte'],
   'grosse-teams': ['Grössere Betriebe', 'building', 'Mehr Kapazität und Betreuung auf Anfrage.', '', ['x:users:Mehr gleichzeitige Chats', 'x:userCheck:Persönliche Betreuung'], 0, 'Grössere Betriebe']
@@ -10846,13 +11401,14 @@ NORRA.chatbot.price = function () {
     '<div class="cb-plan-cta">' + NORRA.btn({ label: 'Anfragen', href: '#kontakt', arrow: true }) +
     NORRA.btn({ label: 'Alle Preise', href: '#preise', kind: 'outline' }) + '</div></div>' +
     '<div class="cb-calc" data-cb-calc><p class="cb-k">Beispielrechnung</p>' +
-    '<label class="cb-calc-l" for="cb-chats">Chats pro Monat <b data-cb-chats>400</b></label>' +
+    '<label class="cb-calc-l" for="cb-chats"><span>Chats pro Monat</span> <b data-cb-chats data-nt>' + NORRA.fmt(400, 0, true) + '</b></label>' +
     '<input type="range" id="cb-chats" min="50" max="3000" step="50" value="400">' +
     '<div class="cb-calc-msgs" aria-hidden="true" data-cb-dots></div>' +
-    '<div class="cb-calc-row"><span>Nachrichten</span><b data-cb-msgs>5.600</b></div>' +
-    '<div class="cb-calc-row hi"><span>Verbrauch im Monat</span><b data-cb-cost aria-live="polite">11,20 €</b></div>' +
-    '<p class="cb-sm">Richtwert: 14 Nachrichten pro Chat zu 0,002 €.</p></div></div>' +
+    '<div class="cb-calc-row"><span>Nachrichten</span><b data-cb-msgs data-nt>' + NORRA.fmt(5600, 0, true) + '</b></div>' +
+    '<div class="cb-calc-row hi"><span>Verbrauch im Monat</span><b data-cb-cost data-nt aria-live="polite">' + NORRA.money(400 * 14 * NORRA.P('chatbot').perUnit, { dec: 2 }) + '</b></div>' +
+    '<p class="cb-sm">Richtwert: 14 Nachrichten pro Chat zu {{p:chatbot.perUnit}}.</p></div></div>' +
     '<ul class="pills cb-terms">' + (NORRA.PRICING_TERMS || []).map(function (t) { return '<li class="pill">' + ico('check') + '<span>' + t + '</span></li>'; }).join('') + '</ul>' +
+    NORRA.priceNoteHtml('center') +
     '</div></section>';
 };
 
@@ -10938,9 +11494,9 @@ NORRA.pages.chatbot.wire = function (el) {
     var N = 20, shown = 0, raf = null;
     dots.innerHTML = new Array(N + 1).join('<i></i>');
     var dotEls = [].slice.call(dots.children);
-    var paint = function (cost) { costEl.textContent = NORRA.fmt(cost, 2) + ' €'; };
+    var paint = function (cost) { costEl.textContent = NORRA.money(cost, { dec: 2 }); };
     var update = function (animate) {
-      var chats = parseInt(input.value, 10) || 0, msgs = chats * 14, cost = msgs * 0.002;
+      var chats = parseInt(input.value, 10) || 0, msgs = chats * 14, cost = msgs * NORRA.P('chatbot').perUnit;
       var pct = (chats - input.min) / (input.max - input.min);
       chatsEl.textContent = NORRA.fmt(chats, 0, true);
       msgsEl.textContent = NORRA.fmt(msgs, 0, true);
@@ -11068,7 +11624,7 @@ NORRA.V.smComments = function () {
   return '<div class="vcard sm-v"><div class="sm-head"><p class="t">Kommentare · Reel</p><span class="sm-badge">Instagram</span></div>' +
     '<div class="sm-thread">' +
     c('LK', 'var(--chart-4)', 'lena.k', 'Was kostet das Lash Lifting?') +
-    r('69 €. Freie Termine schicke ich Ihnen per Nachricht.') +
+    r('{{m:69}}. Freie Termine schicke ich Ihnen per Nachricht.') +
     c('TM', 'var(--chart-2)', 'tom.m', 'Samstag noch etwas frei?') +
     r('Ja, 11:00 oder 14:30 Uhr.') +
     '</div><div class="sm-foot"><span class="sm-mono">Beispiel</span>' +
@@ -11190,7 +11746,7 @@ NORRA.sm.hero = function (p) {
 NORRA.sm.channelScenes = [
   { icon: 'camera', title: 'Salon Mira · Instagram',
     lines: [{ who: 'user', text: 'Wie viel kostet Balayage? 😍' },
-      { who: 'agent', text: 'Ab 149 €. Freie Termine schicke ich Ihnen per Nachricht.' }],
+      { who: 'agent', text: 'Ab {{m:149}}. Freie Termine schicke ich Ihnen per Nachricht.' }],
     chip: { icon: 'clock', text: '22:14 Uhr beantwortet' } },
   { icon: 'msg', title: 'Salon Mira · Messenger',
     lines: [{ who: 'user', text: 'Samstag noch etwas frei?' },
@@ -11223,7 +11779,7 @@ NORRA.sm.replyItems = [
     detail: 'Im 24-Stunden-Fenster von Meta.',
     scene: { icon: 'send', title: 'Studio Belle · Instagram',
       lines: [{ who: 'user', text: 'Machen Sie Wimpernlifting?' },
-        { who: 'agent', text: 'Ja, 45 Minuten für 69 €. Soll ich Termine schicken?' }],
+        { who: 'agent', text: 'Ja, 45 Minuten für {{m:69}}. Soll ich Termine schicken?' }],
       chip: { icon: 'clock', text: '21:48 Uhr beantwortet' } } },
   { icon: 'msg', name: 'Kommentare',
     explain: 'Unter jedem Beitrag, auch auf LinkedIn.',
@@ -11344,7 +11900,7 @@ NORRA.sm.content = function () {
       return '<div class="sm-cs-scene' + (i === 0 ? ' on' : '') + '" data-i="' + i + '"' + (i ? ' aria-hidden="true"' : '') + '>' + s.html + '</div>';
     }).join('') + '</div>' +
     '<div class="nst-dots">' + scenes.map(function (s, i) {
-      return '<button type="button" class="nst-dot' + (i === 0 ? ' on' : '') + '" data-i="' + i + '" aria-label="' + s.label + ' zeigen"' + (i === 0 ? ' aria-current="true"' : '') + '><i></i></button>';
+      return '<button type="button" class="nst-dot' + (i === 0 ? ' on' : '') + '" data-i="' + i + '" data-nta aria-label="' + NORRA.esc(NORRA.trf('{label} zeigen', { label: NORRA.tr(s.label) })) + '"' + (i === 0 ? ' aria-current="true"' : '') + '><i></i></button>';
     }).join('') + '</div></div></div></div></section>';
 };
 
@@ -11409,14 +11965,15 @@ NORRA.sm.pricing = function () {
     '<div class="sm-pgrid reveal">' +
     '<article class="plan featured sm-pcard"><div class="sm-pname"><span class="ic">' + ico('camera') + '</span>' + (pr.name || 'Social Media AI') + '</div>' +
     '<p class="sm-plabel">Einrichtung, einmalig</p><p class="plan-price">' + (pr.setup || '') + '</p>' +
-    '<p class="sm-psub">' + (pr.setupNote || '') + ' · live in ca. ' + (pr.liveDays || 10) + ' Tagen</p>' +
+    '<p class="sm-psub"><span>' + (pr.setupNote || '') + '</span> · <span>live in ca. ' + (pr.liveDays || 10) + ' Tagen</span></p>' +
     '<div class="sm-prun"><span>' + (pr.usageLabel || 'Danach nur Verbrauch') + '</span><b>' + (pr.usage || '') + '</b></div>' +
     '<ul class="sm-plist">' + (pr.points || []).map(function (x) { return '<li>' + ico('tick') + '<span>' + x + '</span></li>'; }).join('') + '</ul>' +
     '<div class="sm-pact">' + NORRA.btn({ label: 'Anfragen', href: '#kontakt', arrow: true, lg: false }) + '</div></article>' +
     '<div class="sm-pside"><div class="sm-calc"><p class="sm-plabel">Rechenbeispiel · Richtwert</p>' +
-    '<p class="sm-calc-row"><span class="sm-calc-n"><span data-to="1000" data-group>1.000</span></span><span>Nachrichten</span></p>' +
-    '<p class="sm-calc-eq">' + ico('arrow', 14) + '<span class="sm-calc-v"><span data-to="2" data-suf=" €">2 €</span></span><span>pro Monat</span></p></div>' +
-    '<ul class="sm-terms">' + terms.map(function (t) { return '<li>' + ico('check') + '<span>' + t + '</span></li>'; }).join('') + '</ul></div></div></section>';
+    '<p class="sm-calc-row"><span class="sm-calc-n"><span data-to="1000" data-group data-nt>' + NORRA.fmt(1000, 0, true) + '</span></span><span>Nachrichten</span></p>' +
+    '<p class="sm-calc-eq">' + ico('arrow', 14) + '<span class="sm-calc-v"><span data-to="' + (1000 * NORRA.P('social-media').perUnit) + '" data-money data-nt>' + NORRA.money(1000 * NORRA.P('social-media').perUnit) + '</span></span><span>pro Monat</span></p></div>' +
+    '<ul class="sm-terms">' + terms.map(function (t) { return '<li>' + ico('check') + '<span>' + t + '</span></li>'; }).join('') + '</ul></div></div>' +
+    NORRA.priceNoteHtml('center') + '</section>';
 };
 
 /* ---------- page renderer ---------- */
@@ -11659,7 +12216,7 @@ NORRA.website.buildStage = function () {
   var cap = '<div class="ws-cap"><p class="ws-capn">' + ('0' + N) + ' / ' + ('0' + N) + '</p>' +
     '<p class="ws-capt">' + last.t + '</p><p class="ws-capc">' + last.c + '</p></div>';
   var dots = '<div class="nst-dots">' + W.STEPS.map(function (s, i) {
-    return '<button type="button" class="nst-dot' + (i === N - 1 ? ' on' : '') + '" data-i="' + i + '" aria-label="Schritt ' + (i + 1) + ': ' + s.t + '"' +
+    return '<button type="button" class="nst-dot' + (i === N - 1 ? ' on' : '') + '" data-i="' + i + '" data-nta aria-label="' + NORRA.esc(NORRA.trf('Schritt {n}: {title}', { n: i + 1, title: NORRA.tr(s.t) })) + '"' +
       (i === N - 1 ? ' aria-current="true"' : '') + '><i></i></button>';
   }).join('') + '</div>';
   return '<div class="nst nst--sand nst--lg ws-build' + all + ' serp-hit chat c1 c2 c2t c3 done" data-wsbuild role="group" aria-roledescription="Animation"' +
@@ -11853,20 +12410,18 @@ NORRA.website.liveIn = function (pr) {
 };
 NORRA.website.priceSection = function () {
   var pr = NORRA.priceOf('website') || {};
-  var m = /^([\d.,]+)\s*€\s*(.*)$/.exec(pr.usage || '');
-  var usageNum = m ? parseFloat(m[1].replace(/\./g, '').replace(',', '.')) : null;
-  var usageVal = m
-    ? '<span data-to="' + usageNum + '" data-dec="0">' + m[1] + '</span> €<small> ' + m[2] + '</small>'
-    : (pr.usage || '');
+  /* monthly fee from NORRA.PRICE_TABLE, counted up, symbol on the locale's side */
+  var n = NORRA.P('website') || { monthly: 0 };
+  var usageVal = '<span data-nt>' + NORRA.withSym('<span data-to="' + n.monthly + '" data-dec="0">' + NORRA.fmt(n.monthly, 0) + '</span>') + '</span><small> pro Monat</small>';
   var incl = [
     ['shield', 'EU-Hosting, Sicherung, Updates'],
     ['pen', 'Kleine Änderungen inklusive'],
     ['chart', 'Monatsbericht']
   ];
-  /* "Kein Abo" would read as a contradiction next to 29 € per month: use the monthly-cancellable term */
+  /* "Kein Abo" would read as a contradiction next to a monthly fee: use the monthly-cancellable term */
   var terms = ['Keine Mindestlaufzeit, monatlich kündbar', 'Live in ' + NORRA.website.liveIn(pr)];
   return '<section class="wrap sect ws-price-sect" id="ws-preis">' +
-    NORRA.sectHead({ eyebrow: 'Preis', title: 'Einmal bauen. Dann ' + (m ? m[1] + ' €' : '') + ' im Monat.', lede: 'Festpreis nach dem Erstgespräch.' }) +
+    NORRA.sectHead({ eyebrow: 'Preis', title: 'Einmal bauen. Dann {{p:website.monthly}} im Monat.', lede: 'Festpreis nach dem Erstgespräch.' }) +
     '<div class="ws-price reveal"><div class="ws-prow">' +
       '<div class="ws-pcol"><p class="k">Einrichtung, einmalig</p><p class="v">' + (pr.setup || '') + '</p><p class="n">Je nach Umfang</p></div>' +
       '<span class="ws-plus" aria-hidden="true">+</span>' +
@@ -11877,7 +12432,7 @@ NORRA.website.priceSection = function () {
     }).join('') + '</ul>' +
     '<div class="ws-pfoot"><ul class="ws-terms">' + terms.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>' +
       NORRA.btn({ label: 'Anfragen', href: '#kontakt', arrow: true, lg: false }) + '</div></div>' +
-    '<p class="note ws-pnote">Preise in Euro.</p></section>';
+    NORRA.priceNoteHtml('ws-pnote') + '</section>';
 };
 
 /* ---------- page ---------- */
@@ -11982,7 +12537,7 @@ NORRA.branchen.build = function (S, CALL) {
       stageTitle: 'Ein Studio, drei Kanäle',
       scenes: [
         S('phone', 'Studio Belle · Anruf', ['u:Haben Sie diese Woche Zeit für eine Gesichtsbehandlung?', 'a:Gerne. Donnerstag 16:30 oder Freitag 10:00 Uhr?', '+:Do 16:30 gebucht|calendarCheck'], { icon: 'calendarCheck', text: 'Termin gebucht' }, CALL('00:31')),
-        S('camera', 'Studio Belle · Instagram', ['u:Was kostet das Peeling?|Kommentar unter einem Reel', 'a:Ab 89 €. Freie Zeiten schicke ich Ihnen per DM.|Norra Social Media AI'], { icon: 'send', text: 'DM mit Buchungslink' }),
+        S('camera', 'Studio Belle · Instagram', ['u:Was kostet das Peeling?|Kommentar unter einem Reel', 'a:Ab {{m:89}}. Freie Zeiten schicke ich Ihnen per DM.|Norra Social Media AI'], { icon: 'send', text: 'DM mit Buchungslink' }),
         S('msg', 'Studio Belle · Website-Chat', ['u:Wie lange hält ein Lash Lifting?', 'a:Meist sechs bis acht Wochen. Soll ich einen Termin vorschlagen?|Norra Chatbot', 'n:Quelle: Ihre Behandlungsseite'], 'Aus Ihren Inhalten')
       ],
       uses: [['voice-agent', 'Anrufe während der Behandlung', 'Angenommen und direkt gebucht.'],
@@ -12044,7 +12599,7 @@ NORRA.branchen.build = function (S, CALL) {
       scenes: [
         S('phone', 'Salon Mira · Anruf', ['u:Hätten Sie morgen Zeit für Schnitt und Farbe?', 'a:Ja, um 14:30 Uhr bei Mira, etwa zwei Stunden. Passt das?', '+:Gebucht · 2 h bei Mira|calendarCheck'], 'Termin gebucht', CALL('00:29')),
         S('camera', 'Salon Mira · Instagram', ['u:Habt ihr Samstag noch was frei?|Direktnachricht', 'a:Um 11:00 oder 14:30 Uhr. Der Buchungslink ist in Ihren DMs.|Norra Social Media AI'], { icon: 'link', text: 'Mit Buchungslink' }),
-        S('msg', 'Salon Mira · Website-Chat', ['u:Was kostet ein Herrenschnitt?', 'a:38 €, etwa 30 Minuten. Morgen um 9 Uhr wäre frei.|Norra Chatbot', 'n:Quelle: Ihre Preisliste'], 'Preis aus Ihrer Liste')
+        S('msg', 'Salon Mira · Website-Chat', ['u:Was kostet ein Herrenschnitt?', 'a:{{m:38}}, etwa 30 Minuten. Morgen um 9 Uhr wäre frei.|Norra Chatbot', 'n:Quelle: Ihre Preisliste'], 'Preis aus Ihrer Liste')
       ],
       uses: [['voice-agent', 'Buchen und verschieben', 'Mit der richtigen Dauer pro Leistung.'],
         ['social-media', 'DMs mit Buchungslink', 'Terminwünsche bekommen Zeiten und Link.'],
@@ -12158,18 +12713,20 @@ NORRA.branchen.recs = function (n) {
   return '<section class="wrap sect br-recs-sect" id="fit-' + n.slug + '">' +
     NORRA.sectHead({ eyebrow: 'Empfehlung', title: 'Das passt zu Ihnen', lede: 'Mit der ersten Wahl starten, später erweitern.' }) +
     '<div class="br-recs" data-usp>' + rows + '</div>' +
-    '<p class="note center">Einmalige Einrichtung, danach Verbrauch · ' + (NORRA.PRICING_TERMS || ['Monatlich kündbar'])[1] + '</p>' + imx + '</section>';
+    '<p class="note center"><span>Einmalige Einrichtung, danach Verbrauch</span> · <span>' + (NORRA.PRICING_TERMS || ['Monatlich kündbar'])[1] + '</span></p>' +
+    NORRA.priceNoteHtml('center') + imx + '</section>';
 };
 
 /* Results as Richtwerte. */
 NORRA.branchen.results = function (n) {
   var B = NORRA.branchen, h = n.save.hours, eur = h * n.save.rate;
   var first = B.product(n.recs[0][0]), days = first.price && first.price.liveDays;
-  var tiles = [['clock', h, ' h', false, 'Zeit zurück', 'pro Monat'], ['euro', eur, ' €', true, 'Wert Ihrer Zeit', 'pro Monat, bei ' + n.save.rate + ' € pro Stunde']];
+  var tiles = [['clock', h, ' h', false, 'Zeit zurück', 'pro Monat'], ['euro', eur, '', true, 'Wert Ihrer Zeit', 'pro Monat, bei {{m:' + n.save.rate + '}} pro Stunde', true]];
   if (days) tiles.push(['zap', days, ' Tage', false, 'Bis live', first.short]);
   var html = tiles.map(function (t, i) {
     return '<article class="usp-tile br-res" style="--i:' + i + '"><span class="usp-ico">' + NORRA.ico(t[0]) + '</span>' +
-      '<p class="usp-stat"><span data-to="' + t[1] + '" data-pre="ca. " data-suf="' + t[2] + '"' + (t[3] ? ' data-group' : '') + '>ca. ' + NORRA.fmt(t[1], 0, t[3]) + t[2] + '</span></p>' +
+      '<p class="usp-stat"><span data-to="' + t[1] + '" data-pre="ca. " data-suf="' + t[2] + '"' + (t[3] ? ' data-group' : '') + (t[6] ? ' data-money' : '') + '>ca. ' +
+        (t[6] ? NORRA.money(t[1], { dec: 0 }) : NORRA.fmt(t[1], 0, t[3]) + t[2]) + '</span></p>' +
       '<h3>' + t[4] + '</h3><p>' + t[5] + '</p></article>';
   }).join('');
   return '<section class="wrap sect br-res-sect">' +
@@ -12310,7 +12867,8 @@ NORRA.branchen.DATA.forEach(function (n) {
 /* ===== src/content/50-preise-kontakt.js ===== */
 /* =========================================================================
    50-preise-kontakt.js: routes #preise and #kontakt. Namespaces NORRA.preise, NORRA.kontakt. CSS prefix pk-.
-   Prices come only from NORRA.pricing (05-catalog.js = research/live-site.md): setup range + usage.
+   Prices: numbers only from NORRA.P(slug) / NORRA.PRICE_TABLE (core.js), copy from NORRA.pricing (tokens).
+   Setup range once, then usage (Voice Agent: plus a monthly base fee). Amounts in the visitor's region currency.
 
    Shared API for other authors:
    - NORRA.preise.model(values, on)  pure savings model of the live calculator
@@ -12339,15 +12897,21 @@ NORRA.preise.look = function (slug) {
   return { color: NORRA.preise.COLORS[slug] || (p && p.color) || 'var(--primary)', icon: pr.icon || (p && p.icon) || 'spark',
     name: pr.name || (p && p.name) || slug };
 };
-/* '499–1.499 €' -> [499, 1499];  '0,07 € pro …' -> 0.07 */
-NORRA.preise.range = function (s) {
-  return String(s || '').split(/[–-]/).map(function (x) { return parseInt(x.replace(/[^\d]/g, ''), 10) || 0; });
+/* numbers of one product in the visitor's region (NORRA.PRICE_TABLE) */
+NORRA.preise.nums = function (slug) { return NORRA.P(slug) || { setupMin: 0, setupMax: 0, monthly: 0, perUnit: 0 }; };
+NORRA.preise.eur = function (v) { return NORRA.money(Math.round(v), { dec: 0 }); };
+/* slider value with its unit, in the active language and currency */
+NORRA.preise.unit = function (f, v) {
+  var n = NORRA.fmt(v, f.dec && v % 1 ? 1 : 0, true);
+  if (f.kind === 'money') return NORRA.money(v, { dec: 0 });
+  if (f.kind === 'rate') return NORRA.money(v, { dec: 0 }) + NORRA.tr(' / h');
+  if (f.kind === 'hweek') return n + NORRA.tr(' h / Woche');
+  return n + NORRA.tr(' / Woche');
 };
-NORRA.preise.num = function (s) {
-  var m = String(s || '').match(/(\d[\d.]*(?:,\d+)?)/);
-  return m ? parseFloat(m[1].replace(/\./g, '').replace(',', '.')) : 0;
+NORRA.preise.amortText = function (months) {
+  if (months == null) return '—';
+  return months <= 1 ? NORRA.tr('1. Monat') : months > 12 ? NORRA.tr('> 12 Mon.') : NORRA.trf('{n} Monate', { n: months });
 };
-NORRA.preise.eur = function (v) { return NORRA.fmt(Math.round(v), 0, true) + ' €'; };
 
 /* ---------- calculator data (live site, authoritative) ---------- */
 NORRA.preise.WEEKS = 4.33;
@@ -12366,20 +12930,18 @@ NORRA.preise.PRESETS = {
 };
 NORRA.preise.INDUSTRY_PRESET = { kosmetik: 'salon', friseure: 'salon', coaches: 'coach', gastro: 'cafe', hotels: 'hotel' };
 NORRA.preise.FIELDS = [
-  { key: 'calls', label: 'Anrufe pro Woche', min: 0, max: 300, step: 5, unit: ' / Woche', color: 'var(--chart-1)', hint: 'je ca. 4 Min · 80 % automatisch' },
-  { key: 'chats', label: 'Website-Anfragen pro Woche', min: 0, max: 300, step: 5, unit: ' / Woche', color: 'var(--chart-2)', hint: 'je ca. 5 Min · 85 % automatisch' },
-  { key: 'social', label: 'Social-Media-Stunden pro Woche', min: 0, max: 20, step: 0.5, unit: ' h / Woche', dec: 1, color: 'var(--chart-4)', hint: '75 % automatisch' },
-  { key: 'missed', label: 'Davon heute unbeantwortet', min: 0, max: 60, step: 1, unit: ' / Woche', hint: 'Mailbox, besetzt, Feierabend' },
-  { key: 'deal', label: 'Durchschnittlicher Auftragswert', min: 20, max: 2000, step: 10, unit: ' €', hint: '30 % davon werden Kunde' },
-  { key: 'rate', label: 'Ihr Stundensatz', min: 20, max: 150, step: 5, unit: ' € / h', hint: 'eigene Zeit oder Lohnkosten' }
+  { key: 'calls', label: 'Anrufe pro Woche', min: 0, max: 300, step: 5, kind: 'week', color: 'var(--chart-1)', hint: 'je ca. 4 Min · 80 % automatisch' },
+  { key: 'chats', label: 'Website-Anfragen pro Woche', min: 0, max: 300, step: 5, kind: 'week', color: 'var(--chart-2)', hint: 'je ca. 5 Min · 85 % automatisch' },
+  { key: 'social', label: 'Social-Media-Stunden pro Woche', min: 0, max: 20, step: 0.5, kind: 'hweek', dec: 1, color: 'var(--chart-4)', hint: '75 % automatisch' },
+  { key: 'missed', label: 'Davon heute unbeantwortet', min: 0, max: 60, step: 1, kind: 'week', hint: 'Mailbox, besetzt, Feierabend' },
+  { key: 'deal', label: 'Durchschnittlicher Auftragswert', min: 20, max: 2000, step: 10, kind: 'money', hint: '30 % davon werden Kunde' },
+  { key: 'rate', label: 'Ihr Stundensatz', min: 20, max: 150, step: 5, kind: 'rate', hint: 'eigene Zeit oder Lohnkosten' }
 ];
 NORRA.preise.AGENTS = ['voice-agent', 'chatbot', 'social-media'];
 
-/* Pure model of the live calculator (setup = lower end of each range). */
+/* Pure model of the live calculator (setup = lower end of each range; running cost = monthly fee + usage). */
 NORRA.preise.model = function (v, on) {
-  var P = NORRA.preise, W = P.WEEKS, pr = function (s) { return P.price(s) || {}; };
-  var setupOf = function (s, d) { return P.range(pr(s).setup)[0] || d; };
-  var rateOf = function (s, d) { return P.num(pr(s).usage) || d; };
+  var P = NORRA.preise, W = P.WEEKS, N = P.nums;
   var rows = [
     { slug: 'voice-agent', label: 'Telefon', before: v.calls * 4 / 60 * W, share: 0.80 },
     { slug: 'chatbot', label: 'Website-Chat', before: v.chats * 5 / 60 * W, share: 0.85 },
@@ -12395,15 +12957,15 @@ NORRA.preise.model = function (v, on) {
   var value = saved * v.rate;
   var won = on['voice-agent'] ? v.missed * W * 0.30 * v.deal : 0;
   var benefit = value + won;
-  var usage = (on['voice-agent'] ? v.calls * W * 4 * rateOf('voice-agent', 0.07) : 0) +
-    (on.chatbot ? v.chats * W * 14 * rateOf('chatbot', 0.002) : 0) +
-    (on['social-media'] ? v.social * W * 40 * rateOf('social-media', 0.002) : 0);
-  var setup = (on['voice-agent'] ? setupOf('voice-agent', 499) : 0) + (on.chatbot ? setupOf('chatbot', 299) : 0) +
-    (on['social-media'] ? setupOf('social-media', 2999) : 0);
+  var usage = (on['voice-agent'] ? N('voice-agent').monthly + v.calls * W * 4 * N('voice-agent').perUnit : 0) +
+    (on.chatbot ? N('chatbot').monthly + v.chats * W * 14 * N('chatbot').perUnit : 0) +
+    (on['social-media'] ? N('social-media').monthly + v.social * W * 40 * N('social-media').perUnit : 0);
+  var setup = (on['voice-agent'] ? N('voice-agent').setupMin : 0) + (on.chatbot ? N('chatbot').setupMin : 0) +
+    (on['social-media'] ? N('social-media').setupMin : 0);
   var net = benefit - usage, months = null, amort = '—';
   if (any) {
     months = net > 0 ? Math.ceil(setup / net) : Infinity;
-    amort = months <= 1 ? '1. Monat' : months > 12 ? '> 12 Mon.' : months + ' Monate';
+    amort = P.amortText(months);
   }
   return { rows: rows, any: any, saved: saved, value: value, won: won, benefit: benefit, usage: usage, setup: setup, net: net, months: months, amort: amort };
 };
@@ -12455,20 +13017,21 @@ NORRA.preise.heroStage = function () {
     scenes: [
       { icon: 'phone', kind: 'call', title: 'Salon Mira · Anruf', duration: '04:00',
         lines: [{ who: 'user', text: 'Haben Sie am Samstag noch frei?' },
-          { who: 'agent', text: 'Ja, um 10:30 Uhr. Soll ich Sie eintragen?' }],
-        chip: { icon: 'euro', text: '4 Min × 0,07 € = 0,28 €' } },
+          { who: 'agent', text: 'Ja, um 10:30 Uhr. Soll ich Sie eintragen?' },
+          { who: 'note', text: 'Dazu {{p:voice-agent.monthly}} Grundgebühr pro Monat' }],
+        chip: { icon: 'euro', text: '4 Min × {{p:voice-agent.perUnit}} = {{p:voice-agent.perUnit*4}}' } },
       { icon: 'msg', title: 'Salon Mira · Website-Chat',
         lines: [{ who: 'user', text: 'Was kostet eine Gesichtsbehandlung?' },
-          { who: 'agent', text: 'Ab 89 €, mit Hautanalyse. Termin gewünscht?', label: 'Norra Chatbot' }],
-        chip: { icon: 'euro', text: '0,002 € pro Nachricht' } },
+          { who: 'agent', text: 'Ab {{m:89}}, mit Hautanalyse. Termin gewünscht?', label: 'Norra Chatbot' }],
+        chip: { icon: 'euro', text: '{{p:chatbot.perUnit}} pro Nachricht' } },
       { icon: 'camera', title: 'Salon Mira · Instagram',
         lines: [{ who: 'user', text: 'Wie lange hält ein Lash Lifting?' },
           { who: 'agent', text: 'Meist rund sechs Wochen. Hier direkt buchen.', label: 'Social Media AI' }],
-        chip: { icon: 'euro', text: '0,002 € pro Nachricht' } },
+        chip: { icon: 'euro', text: '{{p:social-media.perUnit}} pro Nachricht' } },
       { icon: 'monitor', title: 'Salon Mira · Website',
         lines: [{ who: 'action', text: 'Hosting und Pflege', icon: 'server' },
           { who: 'action', text: 'Agent eingebaut', icon: 'spark' }],
-        chip: { icon: 'calendar', text: '29 € pro Monat' } }
+        chip: { icon: 'calendar', text: '{{p:website.monthly}} pro Monat' } }
     ]
   });
 };
@@ -12477,7 +13040,7 @@ NORRA.preise.hero = function () {
   return '<section class="wrap phero pk-hero"><div class="pk-hero-grid">' +
     '<div class="pk-hero-copy reveal"><p class="eyebrow">Preise</p>' +
     '<h1>Einmal einrichten.<br><span>Dann nach Verbrauch.</span></h1>' +
-    '<p class="lede">Kein Abo, keine Mindestlaufzeit, monatlich kündbar.</p>' +
+    '<p class="lede">Keine Mindestlaufzeit, monatlich kündbar.</p>' +
     '<div class="cta-row">' + NORRA.btn({ label: 'Ersparnis berechnen', goto: 'rechner', arrow: true }) +
     NORRA.btn({ label: 'Demo anfragen', href: '#kontakt', kind: 'outline' }) + '</div></div>' +
     '<div class="pk-hero-vis">' + NORRA.preise.heroStage() + '</div></div></section>';
@@ -12486,12 +13049,11 @@ NORRA.preise.hero = function () {
 NORRA.preise.card = function (slug, i) {
   var P = NORRA.preise, pr = P.price(slug), look = P.look(slug), ico = NORRA.ico;
   if (!pr) return '';
-  var r = P.range(pr.setup);
-  var amount = r.length > 1 && r[1]
-    ? '<span data-to="' + r[0] + '" data-group>' + NORRA.fmt(r[0], 0, true) + '</span><span class="pk-dash">–</span><span data-to="' + r[1] + '" data-group>' + NORRA.fmt(r[1], 0, true) + '</span><small> €</small>'
-    : NORRA.esc(pr.setup);
-  var u = String(pr.usage || ''), cut = u.indexOf(' pro ');
-  var usage = cut > 0 ? '<b>' + u.slice(0, cut) + '</b> ' + u.slice(cut + 1) : '<b>' + u + '</b>';
+  var n = P.nums(slug), cs = NORRA.curSym();
+  var num = function (v) { return '<span data-to="' + v + '" data-group>' + NORRA.fmt(v, 0, true) + '</span>'; };
+  var sym = '<small>' + (cs.before ? '' : ' ') + NORRA.esc(cs.sym) + (cs.before && cs.space ? ' ' : '') + '</small>';
+  var amount = '<span data-nt>' + (cs.before ? sym : '') + num(n.setupMin) + '<span class="pk-dash">–</span>' + num(n.setupMax) + (cs.before ? '' : sym) + '</span>';
+  var usage = pr.usageHtml || ('<b>' + (pr.usage || '') + '</b>');
   var days = pr.liveDays || P.num(pr.live) || 7;
   return '<article class="pk-plan" style="--i:' + i + ';--c:' + look.color + ';--d:' + Math.min(1, days / 14).toFixed(3) + '">' +
     '<div class="pk-plan-top"><span class="pk-ico">' + ico(look.icon) + '</span><h3 class="pk-name">' + look.name + '</h3></div>' +
@@ -12509,7 +13071,8 @@ NORRA.preise.plans = function () {
   return '<section class="wrap sect pk-plans-sect" id="tarife">' +
     NORRA.sectHead({ eyebrow: 'Vier Leistungen', title: 'Klare Spannen, fester Preis' }) +
     '<div class="pk-plans" data-pk-stagger>' + P.SLUGS.map(P.card).join('') + '</div>' +
-    '<ul class="pills pk-terms" data-pk-stagger>' + terms.map(function (t, i) { return '<li class="pill" style="--i:' + i + '">' + NORRA.ico(icons[i] || 'check') + '<span>' + t + '</span></li>'; }).join('') + '</ul></section>';
+    '<ul class="pills pk-terms" data-pk-stagger>' + terms.map(function (t, i) { return '<li class="pill" style="--i:' + i + '">' + NORRA.ico(icons[i] || 'check') + '<span>' + t + '</span></li>'; }).join('') + '</ul>' +
+    NORRA.priceNoteHtml('center') + '</section>';
 };
 
 NORRA.preise.included = function () {
@@ -12556,7 +13119,7 @@ NORRA.preise.calc = function () {
   var fields = P.FIELDS.map(function (f) {
     return '<div class="pk-field"><div class="pk-frow"><label for="pk-r-' + f.key + '">' +
       (f.color ? '<i class="pk-sw" style="background:hsl(' + f.color + ')"></i>' : '') + f.label + '</label>' +
-      '<output class="pk-val" id="pk-v-' + f.key + '" for="pk-r-' + f.key + '"></output></div>' +
+      '<output class="pk-val" id="pk-v-' + f.key + '" for="pk-r-' + f.key + '" data-nt></output></div>' +
       '<input class="pk-range" type="range" id="pk-r-' + f.key + '" data-field="' + f.key + '" min="' + f.min + '" max="' + f.max + '" step="' + f.step + '" value="' + f.min + '" aria-describedby="pk-h-' + f.key + '"' +
       (f.color ? ' style="--c:' + f.color + '"' : '') + '>' +
       '<p class="pk-hint" id="pk-h-' + f.key + '">' + f.hint + '</p></div>';
@@ -12567,15 +13130,15 @@ NORRA.preise.calc = function () {
       '<span class="pk-tbx">' + ico('check', 12) + '</span><span>' + l.name + '</span></label>';
   }).join('');
   var kpi = function (k, label, hi) {
-    return '<div class="pk-kpi' + (hi ? ' hi' : '') + '"><p class="k">' + label + '</p><p class="v" data-kpi="' + k + '">–</p></div>';
+    return '<div class="pk-kpi' + (hi ? ' hi' : '') + '"><p class="k">' + label + '</p><p class="v" data-kpi="' + k + '" data-nt>–</p></div>';
   };
   var bars = [['Telefon', 'var(--chart-1)'], ['Website-Chat', 'var(--chart-2)'], ['Social Media', 'var(--chart-4)']].map(function (b, i) {
     return '<div class="pk-brow" data-row="' + i + '" style="--c:' + b[1] + ';--i:' + i + '">' +
-      '<div class="pk-bhead"><span>' + b[0] + '</span><span class="pk-bd" data-bd></span></div>' +
+      '<div class="pk-bhead"><span>' + b[0] + '</span><span class="pk-bd" data-bd data-nt></span></div>' +
       '<div class="pk-track"><span class="pk-bar before" data-bb></span><em data-bbv></em></div>' +
       '<div class="pk-track"><span class="pk-bar after" data-ba></span><em data-bav></em></div></div>';
   }).join('');
-  var assump = 'Annahmen: 4,33 Wochen pro Monat, 8-Stunden-Arbeitstag. Kosten mit der einmaligen Einrichtung am unteren Ende der Spanne (Voice 499 €, Chat 299 €, Social 2.999 €) plus Verbrauch: 4 Gesprächsminuten pro Anruf zu 0,07 €, 14 Nachrichten pro Chat und 40 Nachrichten pro Social-Media-Stunde zu je 0,002 €. ' +
+  var assump = 'Annahmen: 4,33 Wochen pro Monat, 8-Stunden-Arbeitstag. Kosten mit der einmaligen Einrichtung am unteren Ende der Spanne (Voice {{p:voice-agent.setupMin}}, Chat {{p:chatbot.setupMin}}, Social {{p:social-media.setupMin}}) plus laufende Kosten: beim Voice Agent {{p:voice-agent.monthly}} Grundgebühr pro Monat und 4 Gesprächsminuten pro Anruf zu {{p:voice-agent.perUnit}}, 14 Nachrichten pro Chat und 40 Nachrichten pro Social-Media-Stunde zu je {{p:chatbot.perUnit}}. ' +
     'Gerettete Aufträge rechnen wir vorsichtig: nur unbeantwortete Anrufe, davon 30 % mit Abschluss, und nur wenn der Voice Agent ausgewählt ist. Alle Werte sind Schätzungen und keine Garantie.';
   return '<section class="wrap sect pk-calc-sect" id="rechner">' +
     NORRA.sectHead({ eyebrow: 'Ersparnis-Rechner', title: 'Was Norra Ihnen zurückgibt', lede: 'Ihre Zahlen, live gerechnet.' }) +
@@ -12588,22 +13151,23 @@ NORRA.preise.calc = function () {
     '<div class="pk-out-col">' +
     '<div class="pk-kpis">' + kpi('hours', 'Gesparte Stunden / Monat', true) + kpi('value', 'Wert der Zeit / Monat') +
     kpi('won', 'Gerettete Aufträge / Monat') + kpi('amort', 'Amortisation') + '</div>' +
-    '<p class="pk-costline" data-costline></p>' +
-    '<p class="sr-only" aria-live="polite" data-pk-live></p>' +
+    '<p class="pk-costline" data-costline data-nt></p>' +
+    '<p class="sr-only" aria-live="polite" data-pk-live data-nt></p>' +
     '<div class="pk-chart"><h3>Arbeitsstunden pro Monat</h3>' +
     '<div class="pk-legend"><span><i class="before"></i>Heute (manuell)</span><span><i class="after"></i>Mit Norra</span></div>' +
     '<div class="pk-bars" role="img" aria-label="Arbeitsstunden pro Aufgabe, vorher und mit Norra" data-bars>' + bars + '</div></div>' +
     '<div class="pk-chart"><h3>Erstes Jahr, kumuliert</h3>' +
-    '<div class="pk-legend"><span><i class="ln val"></i>Zeitwert + gerettete Aufträge</span><span><i class="ln cost"></i>Einrichtung + Verbrauch</span></div>' +
+    '<div class="pk-legend"><span><i class="ln val"></i>Zeitwert + gerettete Aufträge</span><span><i class="ln cost"></i>Einrichtung + laufende Kosten</span></div>' +
     '<div class="pk-svgbox"><svg class="pk-svg" data-line role="img" aria-label="Kumulierter Nutzen und Kosten über 12 Monate"></svg></div>' +
-    '<p class="pk-sub" data-linesub></p></div>' +
+    '<p class="pk-sub" data-linesub data-nt></p></div>' +
     NORRA.fold('<p>' + assump + '</p>', { summary: 'Annahmen', cls: 'nfold-sm pk-assump' }) +
     '</div></div></section>';
 };
 
 NORRA.preise.FAQ = [
   ['Wovon hängt der Preis ab?', 'Von Anbindungen, Sprachen und Standorten. Nach dem Erstgespräch gilt ein Festpreis.'],
-  ['Was kostet der Verbrauch?', 'Ein Anruf von vier Minuten 0,28 €, ein Chat mit 14 Nachrichten rund 0,03 €.'],
+  ['Was kostet der Verbrauch?', 'Ein Anruf von vier Minuten {{p:voice-agent.perUnit*4}}, ein Chat mit 14 Nachrichten rund {{p:chatbot.perUnit*14~2}}.'],
+  ['Gibt es eine Grundgebühr?', 'Nur beim Voice Agent: {{p:voice-agent.monthly}} pro Monat für Rufnummer und Betrieb. Die Website kostet {{p:website.monthly}} pro Monat für Hosting und Pflege.'],
   ['Gibt es eine Mindestlaufzeit?', 'Nein. Kündbar zum Monatsende, ohne Restzahlung.'],
   ['Wie genau ist der Rechner?', 'Er zeigt Richtwerte. Die tatsächliche Wirkung kann abweichen.']
 ];
@@ -12634,7 +13198,7 @@ NORRA.preise.wire = function (el) {
     var box = exp.closest('.pk-tw'), open = !box.classList.contains('open');
     box.classList.toggle('open', open);
     exp.setAttribute('aria-expanded', String(open));
-    exp.querySelector('span').textContent = open ? 'Weniger' : 'Alle Unterschiede';
+    exp.querySelector('span').textContent = NORRA.tr(open ? 'Weniger' : 'Alle Unterschiede');
   });
 
   var calc = el.querySelector('.pk-calc');
@@ -12733,7 +13297,7 @@ NORRA.preise.update = function () {
   var inp = P.read(), v = inp.v, m = P.model(v, inp.on);
   P.FIELDS.forEach(function (f) {
     var r = el.querySelector('#pk-r-' + f.key), out = el.querySelector('#pk-v-' + f.key);
-    var txt = fmt(v[f.key], f.dec && v[f.key] % 1 ? 1 : 0, true) + f.unit;
+    var txt = P.unit(f, v[f.key]);
     if (out) out.textContent = txt;
     if (r) {
       r.setAttribute('aria-valuetext', txt);
@@ -12750,7 +13314,7 @@ NORRA.preise.update = function () {
     if (!NORRA.reduced) { am.classList.remove('pk-pop'); void am.offsetWidth; am.classList.add('pk-pop'); }
   }
   var cl = el.querySelector('[data-costline]');
-  if (cl) cl.innerHTML = m.any ? 'Verbrauch ca. <b>' + eur(m.usage) + '</b> / Monat · Einrichtung ab <b>' + eur(m.setup) + '</b>' : 'Kein Agent ausgewählt';
+  if (cl) cl.innerHTML = m.any ? NORRA.trf('Laufend ca. {usage} / Monat · Einrichtung ab {setup}', { usage: '<b>' + NORRA.esc(eur(m.usage)) + '</b>', setup: '<b>' + NORRA.esc(eur(m.setup)) + '</b>' }) : NORRA.esc(NORRA.tr('Kein Agent ausgewählt'));
   var max = Math.max.apply(null, m.rows.map(function (r) { return r.before; })) || 1;
   m.rows.forEach(function (r, i) {
     var row = el.querySelector('.pk-brow[data-row="' + i + '"]');
@@ -12760,15 +13324,15 @@ NORRA.preise.update = function () {
     row.querySelector('[data-ba]').style.setProperty('--w', (r.after / max).toFixed(4));
     row.querySelector('[data-bbv]').textContent = fmt(r.before, 1, true) + ' h';
     row.querySelector('[data-bav]').textContent = fmt(r.after, 1, true) + ' h';
-    row.querySelector('[data-bd]').textContent = r.on ? (r.before > 0 ? '−' + Math.round(r.share * 100) + ' %' : '0 h') : 'nicht gewählt';
+    row.querySelector('[data-bd]').textContent = r.on ? (r.before > 0 ? '−' + NORRA.pct(Math.round(r.share * 100)) : '0 h') : NORRA.tr('nicht gewählt');
   });
   P.last = m;
   P.drawLine();
   clearTimeout(P._srT);
   P._srT = setTimeout(function () {
     var live = el.querySelector('[data-pk-live]');
-    if (live) live.textContent = m.any ? 'Gesparte Stunden pro Monat ' + fmt(m.saved, 1, true) + ', Wert der Zeit ' + eur(m.value) +
-      ', gerettete Aufträge ' + eur(m.won) + ', Amortisation ' + m.amort + '.' : 'Wählen Sie mindestens einen Agent aus.';
+    if (live) live.textContent = m.any ? NORRA.trf('Gesparte Stunden pro Monat {h}, Wert der Zeit {value}, gerettete Aufträge {won}, Amortisation {amort}.',
+      { h: fmt(m.saved, 1, true), value: eur(m.value), won: eur(m.won), amort: m.amort }) : NORRA.tr('Wählen Sie mindestens einen Agent aus.');
   }, 700);
 };
 
@@ -12778,7 +13342,10 @@ NORRA.preise.niceMax = function (v) {
   return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
 };
 NORRA.preise.short = function (v) {
-  return v >= 10000 ? NORRA.fmt(v / 1000, v % 1000 ? 1 : 0) + ' Tsd. €' : NORRA.preise.eur(v);
+  if (v < 10000) return NORRA.preise.eur(v);
+  try {
+    return NORRA._numFmt({ style: 'currency', currency: NORRA.currency(), currencyDisplay: 'narrowSymbol', notation: 'compact', maximumFractionDigits: 1 }).format(v);
+  } catch (e) { return NORRA.preise.eur(v); }
 };
 
 /* Line chart: cumulative benefit vs. setup + usage over 12 months. Lines draw in on every change. */
@@ -12805,7 +13372,7 @@ NORRA.preise.drawLine = function () {
     s += '<text x="' + (pad.l - 8) + '" y="' + yy + '" text-anchor="end" dominant-baseline="central">' + P.short(top * t) + '</text>';
   });
   (W < 420 ? [0, 6, 12] : [0, 3, 6, 9, 12]).forEach(function (mm) {
-    s += '<text x="' + f1(x(mm)) + '" y="' + (H - 6) + '" text-anchor="' + (mm === 0 ? 'start' : mm === 12 ? 'end' : 'middle') + '">' + (mm === 0 ? 'Start' : 'Monat ' + mm) + '</text>';
+    s += '<text x="' + f1(x(mm)) + '" y="' + (H - 6) + '" text-anchor="' + (mm === 0 ? 'start' : mm === 12 ? 'end' : 'middle') + '">' + NORRA.esc(mm === 0 ? NORRA.tr('Start') : NORRA.trf('Monat {n}', { n: mm })) + '</text>';
   });
   s += '<path class="pk-area" d="' + path(ben) + ' L' + f1(x(12)) + ' ' + f1(y(0)) + ' L' + f1(x(0)) + ' ' + f1(y(0)) + ' Z"/>';
   if (m.any) s += '<path class="pk-ln cost" pathLength="1" d="' + path(cost) + '"/>';
@@ -12816,7 +13383,7 @@ NORRA.preise.drawLine = function () {
       var bx = x(be), by = y(m.benefit * be), right = bx < W * 0.62;
       s += '<g class="pk-be"><line x1="' + f1(bx) + '" x2="' + f1(bx) + '" y1="' + f1(by) + '" y2="' + f1(y(0)) + '"/>' +
         '<circle cx="' + f1(bx) + '" cy="' + f1(by) + '" r="4.5"/>' +
-        '<text x="' + f1(right ? bx + 9 : bx - 9) + '" y="' + f1(Math.max(pad.t, by - 12)) + '" text-anchor="' + (right ? 'start' : 'end') + '">Amortisiert</text></g>';
+        '<text x="' + f1(right ? bx + 9 : bx - 9) + '" y="' + f1(Math.max(pad.t, by - 12)) + '" text-anchor="' + (right ? 'start' : 'end') + '">' + NORRA.esc(NORRA.tr('Amortisiert')) + '</text></g>';
     }
   }
   s += '<g class="pk-endg"><circle class="pk-end" cx="' + f1(x(12)) + '" cy="' + f1(y(ben[12])) + '" r="4.5"/>' +
@@ -12826,9 +13393,9 @@ NORRA.preise.drawLine = function () {
   svg.innerHTML = s;
   if (sub) {
     var net12 = ben[12] - cost[12];
-    sub.textContent = !m.any ? 'Wählen Sie mindestens einen Agent aus.'
-      : 'Nach 12 Monaten: ' + P.eur(ben[12]) + ' Nutzen bei ' + P.eur(cost[12]) + ' Kosten inkl. Einrichtung. ' +
-        (net12 >= 0 ? 'Vorteil ' : 'Differenz ') + P.eur(Math.abs(net12)) + '.';
+    sub.textContent = !m.any ? NORRA.tr('Wählen Sie mindestens einen Agent aus.')
+      : NORRA.trf(net12 >= 0 ? 'Nach 12 Monaten: {benefit} Nutzen bei {cost} Kosten inkl. Einrichtung. Vorteil {diff}.'
+        : 'Nach 12 Monaten: {benefit} Nutzen bei {cost} Kosten inkl. Einrichtung. Differenz {diff}.', { benefit: P.eur(ben[12]), cost: P.eur(cost[12]), diff: P.eur(Math.abs(net12)) });
   }
 };
 
@@ -12876,7 +13443,7 @@ NORRA.kontakt.side = function () {
     NORRA.sectHead({ eyebrow: 'Kostenlose Demo', title: 'Erst hören, dann entscheiden', left: true }) +
     '<div class="pk-side-stage reveal">' + NORRA.kontakt.stage() + '</div>' +
     '<div class="pk-mailbox reveal"><p class="pk-label">Oder direkt per E-Mail</p>' + NORRA.copyLine(mail) +
-    '<a class="pk-mailto" href="mailto:' + NORRA.esc(mail) + '?subject=' + encodeURIComponent('Anfrage über die Norra-Website') + '">' + ico('mail', 14) + '<span>Im E-Mail-Programm öffnen</span></a>' +
+    '<a class="pk-mailto" href="mailto:' + NORRA.esc(mail) + '?subject=' + encodeURIComponent(NORRA.tr('Anfrage über die Norra-Website')) + '">' + ico('mail', 14) + '<span>Im E-Mail-Programm öffnen</span></a>' +
     NORRA.fold('<p>Wir schicken Ihnen den Fragebogen per E-Mail. Sie füllen ihn aus, wann es passt.</p>',
       { summary: 'Keine Zeit für ein Gespräch?', cls: 'nfold-sm' }) + '</div></div>';
 };
@@ -12962,7 +13529,7 @@ NORRA.kontakt.wire = function (root) {
     tried = true;
     var bad = K.validate(root);
     if (bad.length) {
-      summary.textContent = bad.length === 1 ? 'Bitte prüfen Sie das markierte Feld.' : 'Bitte prüfen Sie die ' + bad.length + ' markierten Felder.';
+      summary.textContent = bad.length === 1 ? NORRA.tr('Bitte prüfen Sie das markierte Feld.') : NORRA.trf('Bitte prüfen Sie die {n} markierten Felder.', { n: bad.length });
       var f = $('#pk-' + bad[0]);
       if (f) f.focus();
       return;
@@ -13055,9 +13622,11 @@ NORRA.kontakt.collect = function (root) {
   var products = [];
   root.querySelectorAll('#pk-form input[name="produkte"]:checked').forEach(function (c) { products.push(c.value); });
   var m = { name: v('name'), company: v('company'), email: v('email'), phone: v('phone'), branch: v('branch'), message: v('msg'), products: products };
-  m.subject = 'Norra Anfrage: ' + (m.company || m.name);
-  m.body = ['Name: ' + m.name, 'Unternehmen: ' + (m.company || '–'), 'E-Mail: ' + m.email, 'Telefon: ' + (m.phone || '–'),
-    'Branche: ' + (m.branch || '–'), 'Interesse: ' + (products.length ? products.join(', ') : '–'), '', m.message].join('\n');
+  var T = NORRA.tr;
+  m.subject = T('Norra Anfrage:') + ' ' + (m.company || m.name);
+  m.body = [T('Name:') + ' ' + m.name, T('Unternehmen:') + ' ' + (m.company || '–'), T('E-Mail:') + ' ' + m.email, T('Telefon:') + ' ' + (m.phone || '–'),
+    T('Branche:') + ' ' + (m.branch || '–'), T('Interesse:') + ' ' + (products.length ? products.join(', ') : '–'),
+    T('Sprache:') + ' ' + ((NORRA.langInfo(NORRA.lang) || {}).name || 'Deutsch') + ' · ' + NORRA.regionInfo().name, '', m.message].join('\n');
   return m;
 };
 
@@ -13075,8 +13644,8 @@ NORRA.kontakt.showSent = function (root, m) {
   var esc = NORRA.esc, mail = NORRA.CONTACT.email;
   NORRA.kontakt.showPanel(root, '<span class="pk-res-ico ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path class="pk-draw" d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>' +
     '<h2>Danke, Ihre Anfrage ist bei uns</h2>' +
-    '<p>Wir melden uns innerhalb von 24 Stunden bei <b>' + esc(m.email) + '</b>.</p>' +
-    '<p class="pk-res-meta">Keine Antwort erhalten? Schreiben Sie uns direkt: ' + esc(mail) + '</p>' +
+    '<p data-nt>' + NORRA.trf(NORRA.esc('Wir melden uns innerhalb von 24 Stunden bei {email}.'), { email: '<b>' + esc(m.email) + '</b>' }) + '</p>' +
+    '<p class="pk-res-meta">Keine Antwort erhalten? Schreiben Sie uns direkt: <span data-nt>' + esc(mail) + '</span></p>' +
     '<div class="pk-res-row">' + NORRA.btn({ label: 'Preise ansehen', href: '#preise', kind: 'outline', lg: false }) +
     '<button type="button" class="btn btn-ghost" data-pk-new><span>Weitere Anfrage</span></button></div>');
   root.querySelector('#pk-form').reset();
@@ -13086,12 +13655,12 @@ NORRA.kontakt.showSent = function (root, m) {
 
 NORRA.kontakt.showMail = function (root, m, lead) {
   var esc = NORRA.esc, ico = NORRA.ico, to = NORRA.CONTACT.email;
-  var text = 'An: ' + to + '\nBetreff: ' + m.subject + '\n\n' + m.body;
+  var text = NORRA.tr('An:') + ' ' + to + '\n' + NORRA.tr('Betreff:') + ' ' + m.subject + '\n\n' + m.body;
   var href = 'mailto:' + to + '?subject=' + encodeURIComponent(m.subject) + '&body=' + encodeURIComponent(m.body);
   root.querySelector('#pk-result').__text = text;
   NORRA.kontakt.showPanel(root, '<span class="pk-res-ico">' + ico('mail', 22) + '</span>' +
     '<h2>Fast geschafft</h2><p>' + esc(lead) + '</p>' +
-    '<pre class="pk-mailtext">' + esc(text) + '</pre>' +
+    '<pre class="pk-mailtext" data-nt>' + esc(text) + '</pre>' +
     '<div class="pk-res-row"><a class="btn btn-primary" href="' + esc(href) + '">' + ico('mail') + '<span>In E-Mail-Programm öffnen</span></a>' +
     '<button type="button" class="btn btn-outline" data-pk-copy>' + ico('copy') + '<span>Text kopieren</span></button>' +
     '<button type="button" class="btn btn-ghost" data-pk-back><span>Angaben ändern</span></button></div>');
@@ -13278,17 +13847,26 @@ NORRA.pages.datenschutz.wire = function (el) { NORRA.recht.wire(el); };
 /* =========================================================================
    Norra boot (boot.js): runs LAST, after core.js and every content file,
    so menus, mobile nav and footer read the filled registries.
+   Language and region come from localStorage (region default: browser locale);
+   on the hosted build a non-German dictionary is loaded before the first render.
    ========================================================================= */
 NORRA.boot = function () {
   if (NORRA.__booted) return;
   NORRA.__booted = true;
-  document.documentElement.setAttribute('lang', 'de');
-  try { NORRA.registerRoutes(); } catch (e) { if (window.console) console.error('[norra] routes', e); }
-  try { NORRA.buildChrome(); } catch (e) { if (window.console) console.error('[norra] chrome', e); }
-  try { NORRA.wireTheme(); } catch (e) { if (window.console) console.error('[norra] theme', e); }
-  NORRA.wireGlobal();
-  NORRA.wire(document.querySelector('footer'));
-  NORRA.route();
+  try { NORRA.initLocale(); } catch (e) { if (window.console) console.error('[norra] locale', e); }
+  NORRA.loadLang(NORRA.lang, function () {
+    if (NORRA.lang !== 'de' && !NORRA.I18N[NORRA.lang]) NORRA.lang = 'de';
+    document.documentElement.setAttribute('lang', NORRA.lang);
+    try { NORRA.registerRoutes(); } catch (e) { if (window.console) console.error('[norra] routes', e); }
+    try { NORRA.buildChrome(); } catch (e) { if (window.console) console.error('[norra] chrome', e); }
+    try { NORRA.wireTheme(); } catch (e) { if (window.console) console.error('[norra] theme', e); }
+    NORRA.wireGlobal();
+    ['nav', 'mnav'].forEach(function (id) { NORRA.translate(document.getElementById(id)); });
+    NORRA.translate(document.querySelector('footer'));
+    NORRA.observeI18n();
+    NORRA.wire(document.querySelector('footer'));
+    NORRA.route();
+  });
 };
 NORRA.boot();
 </script>

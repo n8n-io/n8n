@@ -14,6 +14,15 @@
       ]
     },
     {
+      "source": "/i18n/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=604800"
+        }
+      ]
+    },
+    {
       "source": "/index.html",
       "headers": [
         {
