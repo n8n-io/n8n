@@ -27,6 +27,10 @@ const successSchema = z.object({
 	/** What the user code returned. n8n validates and normalizes it. */
 	result: z.unknown(),
 	console: consoleSchema,
+	/** The values that the user code set with `$execution.customData`. */
+	customData: z.record(z.string(), z.string()).optional(),
+	/** The workflow static data. Present only when the user code changed it. */
+	staticData: z.record(z.string(), z.unknown()).optional(),
 });
 
 const errorSchema = z.object({

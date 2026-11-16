@@ -7,7 +7,7 @@ file. n8n reads the result file.
 | File | Written by | Read by | Content |
 | --- | --- | --- | --- |
 | `task.json` | n8n (task builder) | Runtime | Code, mode and the execution data of the task |
-| `result.json` | Runtime | n8n | The return value or the user error, and the console entries |
+| `result.json` | Runtime | n8n | The return value or the user error, the console entries, and the changes to the custom data and static data |
 
 The sandbox service does not read the files. n8n gets the result file inline
 in the `done` event of the task. When the result file is too large, n8n

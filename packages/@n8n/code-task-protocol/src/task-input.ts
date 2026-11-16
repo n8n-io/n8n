@@ -93,6 +93,8 @@ export const codeTaskInputSchema = z.object({
 	workflowMode: z.enum(WORKFLOW_EXECUTE_MODES),
 	continueOnFail: z.boolean(),
 	chunk: chunkSchema.optional(),
+	/** More globals for the user code, for example `query` of the Code Tool. */
+	additionalProperties: z.record(z.string(), z.unknown()).optional(),
 	data: taskDataSchema,
 });
 

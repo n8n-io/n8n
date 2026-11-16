@@ -82,6 +82,14 @@ describe('parseCodeTaskInput', () => {
 		expect(parsed).toEqual({ ok: true, result: input });
 	});
 
+	it('should keep the additional properties for the user code', () => {
+		const input = { ...createTaskInput(), additionalProperties: { query: { text: 'hello' } } };
+
+		const parsed = parseCodeTaskInput(roundTrip(input));
+
+		expect(parsed).toEqual({ ok: true, result: input });
+	});
+
 	it('should keep the nested n8n data as it is', () => {
 		const input = createTaskInput();
 		input.data.runExecutionData = createRunExecutionData({
@@ -157,6 +165,33 @@ describe('parseCodeTaskResult', () => {
 		const parsed = parseCodeTaskResult(roundTrip(result));
 
 		expect(parsed).toEqual({ ok: true, result });
+	});
+
+	it('should keep the custom data and the static data of a success result', () => {
+		const result = {
+			version: CODE_TASK_PROTOCOL_VERSION,
+			status: 'success',
+			result: [],
+			console: [],
+			customData: { source: 'crm' },
+			staticData: { global: { cursor: 42 } },
+		};
+
+		const parsed = parseCodeTaskResult(roundTrip(result));
+
+		expect(parsed).toEqual({ ok: true, result });
+	});
+
+	it('should reject custom data with values that are not strings', () => {
+		const parsed = parseCodeTaskResult({
+			version: CODE_TASK_PROTOCOL_VERSION,
+			status: 'success',
+			result: [],
+			console: [],
+			customData: { count: 1 },
+		});
+
+		expect(parsed.ok).toBe(false);
 	});
 
 	it('should accept a success result of any value', () => {
