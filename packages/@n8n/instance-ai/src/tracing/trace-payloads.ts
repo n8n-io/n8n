@@ -5,6 +5,7 @@ import {
 	type RuntimeSkillRegistry,
 } from '@n8n/agents';
 import {
+	DATA_TABLE_READ_TOOL_ACTIONS,
 	DATA_TABLE_TOOL_NAMES,
 	EXECUTION_TOOL_NAMES,
 	getDataTableToolAction,
@@ -1125,7 +1126,8 @@ function unprefixedToolName(name: string): string {
 	return name.replace(/^(workflow|agent)_builder_/, '');
 }
 
-function classifyToolCategory(name: string): string {
+/** Tool category in the trace tool manifest. */
+export function classifyToolCategory(name: string): string {
 	if (DATA_TABLE_TOOL_NAMES.includes(name)) return 'data-table';
 	if (
 		name === DOMAIN_TOOL_IDS.NODES ||
@@ -1150,7 +1152,8 @@ function classifyToolCategory(name: string): string {
 	return 'other';
 }
 
-function classifyToolSideEffect(name: string): string {
+/** Tool side effect in the trace tool manifest. */
+export function classifyToolSideEffect(name: string): string {
 	if (name === DOMAIN_TOOL_IDS.ASK_USER) return 'none';
 	const baseName = unprefixedToolName(name);
 	// Only run, run-step and stop change execution state; the other execution tools read.
@@ -1159,9 +1162,10 @@ function classifyToolSideEffect(name: string): string {
 		return ['run', 'run-step', 'stop'].includes(executionAction) ? 'execute' : 'read';
 	}
 	// Names like `insert_data_table_rows` match no keyword below, so classify by action.
-	const dataTableAction = getDataTableToolAction(baseName);
-	if (dataTableAction) {
-		return ['list', 'schema', 'query'].includes(dataTableAction) ? 'read' : 'write';
+	// The batch tool has no single action, and every change it makes is a write.
+	if (DATA_TABLE_TOOL_NAMES.includes(baseName)) {
+		const dataTableAction = getDataTableToolAction(baseName);
+		return DATA_TABLE_READ_TOOL_ACTIONS.some((read) => read === dataTableAction) ? 'read' : 'write';
 	}
 	if (baseName.includes('browser')) return 'browser';
 	if (baseName.includes('research')) return 'network';
