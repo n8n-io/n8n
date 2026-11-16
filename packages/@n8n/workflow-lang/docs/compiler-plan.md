@@ -290,7 +290,7 @@ and webhook triggers, and the AI agent loop.
 `{ data, mimeType, fileName?, fileExtension?, fileSize?, bytes?, id? }`. `data` is base64 text, or the name of
 the file store (`filesystem-v2`, `filesystem`) when `id` names a stored file. `ctx.http` sends files with
 `multipart` and with `body: { $binary }` (spec 7.1). The runtime reads a stored file into the request buffer.
-The language has no form for a response of bytes, and no call that writes a file to the store.
+`responseBinary` stores the body of a response and gives a handle: metadata and an id, never the bytes.
 
 **Built: uploads.** The compiler binds these calls. Each is exact, or stops with a `has no compiled form` error.
 
@@ -310,39 +310,82 @@ The language has no form for a response of bytes, and no call that writes a file
 - These stop at run time: a file name without a content type (form-data reads a MIME table), a stored file
   without both options (form-data reads the path of the stream), `filepath`, `header`, and other value types.
 - A handle as the whole `body` stops at run time. See "Raw bodies" below.
-- `items[i].binary` reads `$binary`. An output item with `binary` is a compile error, as before.
+- `items[i].binary` reads `$binary`.
 
 **Verification.** The v1 recorder gives an item its `$binary` as `binary`. For `formData` it calls the function
 of n8n that makes the form-data, and it records each part from the bytes: name, file name, content type and
 data. The check compares these with the `multipart` of the compiled node. An operation that reads a file gets
 three cases: a file and a good answer, a file and status 400, and no file. v1 must succeed in the first case.
 
-**Design for the rest (not built).**
+**Built: downloads (language, compiler and verifier).** `ctx.http` has `responseBinary` (spec 7.1): the
+runtime stores the body of a 2xx response, and the body of the result is `{ $binary: <handle> }`.
 
-- *Downloads.* Add `responseBinary: true` to `ctx.http`. The runtime streams the response body to the binary
-  store of n8n with a bounded buffer, and the result is `{ status, headers, body: <binary entry> }`. The entry
-  has `id`, `mimeType`, `fileName`, `fileExtension`, `fileSize` and `bytes`, as `BinaryDataService.store` makes
-  them. A body under a fixed limit can stay base64 text when n8n runs in the `default` mode.
-- *`prepareBinaryData(handle, fileName?, mimeType?)`.* For a handle from a response it sets the names on the
-  entry. v1 finds a missing MIME type from the bytes (`file-type`) and from the file name (`mime-types`). The
-  runtime must do the same, or the compiler must stop when the type is not given.
-- *`getBinaryMetadata(id)`.* Add `ctx.binary.metadata(id)`. The runtime reads the metadata file of the store.
-- *Raw bodies.* Bind a handle in `body` to `body: { $binary }`. First compare the content type that axios and
-  the runtime send when the node gives no header.
-- *Stores.* The runtime reads the file system stores only. S3 and database stores need a store interface.
-- *Bytes in code.* Hashes of a file, CSV and text reads need natives that take a handle. A program never holds
-  file bytes as JSON text that it makes itself.
-- *Verification of downloads.* The recorder answers with bytes, and it compares the output `binary` of each
-  item (metadata and a hash of the data) with the entry of the compiled node.
+| v1 | Compiled form |
+|---|---|
+| `encoding: null` (`request` helpers), `encoding: 'arraybuffer'` (`httpRequest` helpers) | `responseBinary: {}`. The result is a handle `{ $bytes, data, id, length }`, or `{ body, headers, statusCode }` with the full response |
+| `Buffer.from(x)`, `Buffer.from(x, 'utf8')`, `binaryToBuffer(x)` | The same handle, when `x` is a handle. Only as the bytes of `prepareBinaryData` |
+| `prepareBinaryData(bytes, fileName?, mimeType?)` | The entry of v1 for a Buffer: `mimeType`, `fileType`, `fileExtension`, `directory`, `fileName`, `fileSize`, `bytes`, with `id` and `data` of the handle |
+| `lookup` of `mime-types` | The table of the package |
+| An output item with `binary` | `$binary` in the JSON of the output item |
+
+- The node code gives the names after the response, so the program makes the entry, not the runtime. The
+  module holds the tables of `mime-types` (38 KB of text) only when it calls `prepareBinaryData` or `lookup`.
+- These stop at run time: no MIME type and no known file extension (v1 reads the type from the bytes), a
+  file name or a MIME type that is not text, a size of 1 TB or more (`pretty-bytes` rounds a logarithm
+  there), and a MIME type with a character outside printable ASCII.
+- `prepareBinaryData` of the bytes of an input item is a compile error. So is a `Buffer.from(x)` that does
+  not go into `prepareBinaryData`.
+- A request asks for bytes only in a module that makes binary data from a response (`prepareBinaryData`,
+  or a Buffer for it). In another module `encoding: null` changes nothing, as before this work: the body is
+  the JSON or the text that the runtime gives, and the verifier answers v1 in the same way.
+- A handle inside the JSON of a request body or of an output item stops at run time (`__noBytes`). Only a
+  module that holds file bytes has this check. A module without binary calls does not pay for it.
+- The response of the compiled form has no `statusMessage`. v1 has it.
+- The workflow setting `binaryMode: combined`: the converter keeps a node that uses binary data in the
+  host (`tryCompiledNode`).
+- A node that asks for response bytes stays in the host until the caller sets `NodeSources.storesResponses`.
+  The n8n module does not set it, because the runtime does not store responses yet.
+
+**Verification of downloads.** For a request that asks for bytes, the v1 recorder answers with a Buffer of
+the body of the case. The recorded output of an item has its `binary` as `$binary`. The check replaces the
+data of each entry with the SHA-256 of its bytes (v1: the base64 data; compiled: the hash in the `id`) and
+compares the rest of the entry as it is. An operation that calls `prepareBinaryData` gets two more cases: a
+file name with an extension and a `Content-Type`, and a file name without an extension.
+
+**Not built: the runtime.** The runtime ignores `responseBinary`, and it reads a stored file for an upload
+with a blocking read into the request buffer (`request.zig` `writeBinary`). The design:
+
+- *Store interface (shell).* `open(id) -> file`, `create(workflow, execution) -> id + file`,
+  `read(file, buffer)`, `write(file, bytes)`, `finish(file, metadata)`, `discard(file)`. The file system
+  backend builds each path from a validated id under one root (`binary_store.zig` `fileId` and `filePath`,
+  with their fuzz target) and writes the companion `<file>.metadata` of n8n
+  (`{"fileName","mimeType","fileSize"}`). A new file is
+  `workflows/<wf>/executions/wfrt-<id>/binary_data/<uuid>`: the n8n module moves it to the n8n execution
+  id when it saves the run (`compiled-binary-data.ts`). S3 is a second backend behind the same calls.
+- *No blocking.* `uring.zig` has accept, recv, send and poll only. It needs openat, read, write, fsync,
+  rename and close operations, and a completion route to the egress request. Systems without io_uring
+  need a second path (a small pool of file threads), because the shard thread must not block.
+- *Streaming.* Upload: the request writer of egress takes its body from a source (the buffer of today, or
+  a file that is read in chunks), for HTTP/1.1 and HTTP/2, with the size from the metadata for
+  `content-length`. Download: the response reader gives body bytes to a sink (the buffer of today, or a
+  file), after the transfer and content decoding. Both use a fixed pool of chunk buffers and a fixed table
+  of transfers, made at startup. A request without binary data takes the buffer branch that it takes today.
+- *Limits.* `--binary-max-file-mb`. Above it the step fails. The error shape of v1 for this case is not
+  confirmed yet.
+- *Names.* The rules of spec 7.1 in the core: the `Content-Disposition` parser (with a fuzz target), the
+  MIME tables as a generated `mime_tables.zig`, and the size text.
+- *Sidecar names.* The runtime writes the companion file at the end of the download, with the names of the
+  request. A compiled node gives its names later, in the program. Add an effect that writes the names of
+  an entry (`ctx.binary`), or the UI of n8n shows the names of the request for such a file.
+- *`getBinaryMetadata(id)`.* It stays a stop at run time. It needs a read of the companion file: an effect.
+- *Raw bodies.* A handle as the whole `body` of a request stays a stop at run time in a compiled node.
+  `ctx.http` has the form (`body: { $binary }`). First compare the content type that axios sends.
 
 **Decisions that are open.**
 
 1. Slack `file.upload` (2.2 and later) verifies with base64 data. With a stored file it stops at
-   `getBinaryMetadata`. Does the n8n side give the runtime base64 data, or stored ids? With ids, this operation
-   must stay on v1 until `ctx.binary.metadata` exists.
-2. The workflow setting `binaryMode: combined` changes `assertBinaryData`. The compiler assumes `separate`.
-   The publish step must refuse compiled binary operations for a `combined` workflow, or pass the mode in.
-3. `length` comes from the length of the base64 text. Text that is not valid base64 fails later, in the runtime.
+   `getBinaryMetadata`. It must stay on v1 for stored files until the effect above exists.
+2. `length` comes from the length of the base64 text. Text that is not valid base64 fails later, in the runtime.
 
 ## Phases
 

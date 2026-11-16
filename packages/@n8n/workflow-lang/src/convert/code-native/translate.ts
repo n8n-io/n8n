@@ -1599,6 +1599,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			}
 		}
 		if (
+			!input.nodeCode &&
 			(ts.isPropertyAssignment(n) || ts.isShorthandPropertyAssignment(n)) &&
 			ts.isIdentifier(n.name) &&
 			n.name.text === 'binary'
@@ -1607,6 +1608,7 @@ export function translateCode(input: CodeNativeInput): TranslateResult {
 			block('binary data', 'The code makes binary data.');
 		}
 		if (
+			!input.nodeCode &&
 			ts.isBinaryExpression(n) &&
 			n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
 			ts.isPropertyAccessExpression(n.left) &&

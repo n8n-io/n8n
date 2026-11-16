@@ -93,6 +93,26 @@ const FILE_ITEMS = [
 		},
 	},
 ];
+const DOWNLOAD_ANSWER = {
+	headers: { 'content-type': 'application/pdf' },
+	body: {
+		ok: true,
+		id: 'r1',
+		name: 'reports/summary.pdf',
+		result: { id: 'r1', file_path: 'documents/file_7.pdf' },
+		data: [{ id: 'r1' }],
+	},
+};
+const DOWNLOAD_ANSWER_TYPED = {
+	headers: { 'content-type': 'image/png; charset=binary' },
+	body: {
+		ok: true,
+		id: 'r1',
+		name: 'summary',
+		result: { id: 'r1', file_path: 'photos/file_8.jpg' },
+		data: [{ id: 'r1' }],
+	},
+};
 const MAX_BLOCKERS = 20;
 
 if (!recorderAvailable() || !existsSync(join(base, 'dist/known/nodes.json'))) {
@@ -476,8 +496,11 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					...(credential && data ? { credential: { type: credential, data } } : {}),
 					responses,
 				});
+				const makesFiles = compiled.source.includes('__prepareBinary(');
 				const plain = { ok: true, id: 'r1', result: { id: 'r1' }, data: [{ id: 'r1' }] };
-				const ok = [...token, { body: readsFiles ? { ...plain, ...UPLOAD_ANSWER } : plain }];
+				const ok = makesFiles
+					? [...token, DOWNLOAD_ANSWER]
+					: [...token, { body: readsFiles ? { ...plain, ...UPLOAD_ANSWER } : plain }];
 				const bad = [...token, { status: 400, body: { message: 'bad request' } }];
 				try {
 					const difference =
@@ -486,6 +509,18 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					if (difference !== undefined) {
 						why(`v1: ${difference}`, weight);
 						continue;
+					}
+					if (makesFiles) {
+						const unnamed = await differenceFromV1(
+							make('file without an extension', parameters, [...token, DOWNLOAD_ANSWER_TYPED]),
+							sources,
+							registry,
+							checking,
+						);
+						if (unnamed !== undefined) {
+							why(`v1: a file without an extension: ${unnamed}`, weight);
+							continue;
+						}
 					}
 					if (readsFiles) {
 						const withFile = await (CACHE ? recordV1Cached : recordV1)(make('ok', parameters, ok));

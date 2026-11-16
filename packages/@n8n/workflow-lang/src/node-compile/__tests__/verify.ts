@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { withDerivedValues } from '../../credentials/derived.ts';
 import { credentialFlagKey } from '../../credentials/flags.ts';
 import { deriveInject } from '../../credentials/inject.ts';
@@ -10,6 +12,7 @@ import type {
 } from '../../nodes/__tests__/equivalence.ts';
 import { applyCredential, normalizeRequest } from '../../nodes/__tests__/equivalence.ts';
 import { recordV1, recordV1Cached } from '../../nodes/__tests__/v1-recorder.ts';
+import { referenceHash } from '../../reference/binary-response.ts';
 import { runReference } from '../../reference/runner.ts';
 import type { NodeSources } from '../convert.ts';
 import { compileNodeInstance } from '../convert.ts';
@@ -158,6 +161,27 @@ export function flagVariants(
 		}
 	}
 	return variants;
+}
+
+function storedFile(entry: unknown): unknown {
+	if (!isRecord(entry) || typeof entry.data !== 'string') return entry;
+	const { id, ...rest } = entry;
+	const stored = referenceHash(id);
+	if (stored !== undefined) return { ...rest, data: stored };
+	if (id !== undefined) return entry;
+	const bytes = Buffer.from(entry.data, 'base64');
+	return { ...rest, data: createHash('sha256').update(bytes).digest('hex') };
+}
+
+export function comparableOutput(output: unknown): unknown {
+	if (!Array.isArray(output)) return output;
+	return output.map((item: unknown) => {
+		if (!isRecord(item) || !isRecord(item.$binary)) return item;
+		const { $binary: files, ...json } = item;
+		const compared: Record<string, unknown> = {};
+		for (const [name, entry] of Object.entries(files)) compared[name] = storedFile(entry);
+		return { ...json, $binary: compared };
+	});
 }
 
 type Compiled = ReturnType<typeof compileNodeInstance>;
@@ -351,6 +375,7 @@ export async function differenceFromV1(
 		credentialsOf(c, registry),
 	);
 	if ('errors' in compiled) return `does not compile: ${compiled.errors[0]}`;
+	const asked: EquivalenceCase = compiled.storesResponses ? { ...c, responseBytes: true } : c;
 	const credentialType = c.credential?.type;
 	const source = `import { webhook, workflow } from '@n8n/workflow-lang';
 
@@ -378,9 +403,9 @@ export default workflow({
 				)
 			: await recordPlain(testCase);
 	const minted =
-		compiled.mints.length > 0 ? await recordWithMints(c, compiled.mints, record) : undefined;
+		compiled.mints.length > 0 ? await recordWithMints(asked, compiled.mints, record) : undefined;
 	if (typeof minted === 'string') return minted;
-	const v1 = minted?.v1 ?? (await record(c));
+	const v1 = minted?.v1 ?? (await record(asked));
 	const responses = minted
 		? minted.testCase.responses.filter((_response, k) => !minted.exchanges.has(k))
 		: c.responses;
@@ -508,7 +533,8 @@ export default workflow({
 		others.map((other) => other.result),
 		compiled.randoms,
 	);
-	return JSON.stringify(results.mine) === JSON.stringify(results.theirs)
+	return JSON.stringify(comparableOutput(results.mine)) ===
+		JSON.stringify(comparableOutput(results.theirs))
 		? undefined
 		: 'the output differs';
 }
