@@ -9,9 +9,10 @@
  * - text whose name says that it is an address or a place (`baseUrl`,
  *   `subdomain`, `region`): node code builds the request URL from these.
  *
- * A field that n8n marks as a password, and a field whose name says that it
- * is a key, a token or a secret, is never public, whatever its type. Every
- * other field stays a credential template: the runtime puts it into the
+ * A field that n8n marks as a password is never public, whatever its type. A
+ * field whose name says that it is a key, a token or a secret is never public,
+ * unless it is a flag: a flag holds one bit (`allowUnauthorizedCerts`,
+ * `useCustomCertificate`), not the secret itself. Every other field stays a credential template: the runtime puts it into the
  * request, and node code cannot read it.
  */
 import type { CredentialTypeInfo } from './types.ts';
@@ -27,8 +28,10 @@ export function publicCredentialFields(
 ): Record<string, unknown> {
 	const out: Record<string, unknown> = {};
 	for (const [name, field] of Object.entries(info?.fields ?? {})) {
-		if (field.password || SECRET.test(name)) continue;
-		const choice = field.type === 'options' || field.type === 'boolean';
+		if (field.password) continue;
+		const flag = field.type === 'boolean';
+		if (!flag && SECRET.test(name)) continue;
+		const choice = field.type === 'options' || flag;
 		const place = (field.type === 'string' || field.type === 'hidden') && PLACE.test(name);
 		if (!choice && !place) continue;
 		const value = Object.hasOwn(data, name) ? data[name] : info?.defaults?.[name];
