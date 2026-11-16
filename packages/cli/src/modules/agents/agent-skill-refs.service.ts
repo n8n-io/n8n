@@ -412,6 +412,8 @@ export class AgentSkillRefsService {
 		const createdIds = new Map<string, string>();
 		if (creator !== null && toCreate.length > 0) {
 			await this.skillAccess.assertCanCreate(creator, target);
+			// Take existing skill locks before inline creates take the name lock.
+			await this.skillRuntime.lockForAttach([...found.keys()], ctx);
 			// A new name must also differ from the skills this draft keeps referring to.
 			const kept = await this.skillRuntime.resolveForAgentDraft(
 				[...found.keys()].map((id) => ({ id })),
@@ -578,6 +580,8 @@ export class AgentSkillRefsService {
 		if (newIds.length === 0 && repinned.length === 0) return kept;
 		// Shared lock until the attach commits, so `moveTrusted` cannot narrow a skill in between.
 		if (ctx.trx && newIds.length > 0) await this.skillRuntime.lockForAttach(newIds, ctx);
+		// A source move can finish while the attach waits for the lock.
+		const lockedTargets = ctx.trx ? await this.skillRuntime.findTargets(newIds, ctx) : found;
 
 		const keptExisting = kept.filter((ref) => existingIds.has(ref.id));
 		// The first ref of a new skill decides its pin, as `replaceDependencies` stores it.
@@ -591,8 +595,8 @@ export class AgentSkillRefsService {
 			ctx,
 		);
 		for (const id of newIds) {
-			const skill = found.get(id);
-			if (skill && !this.isAttachable(skill, agent)) {
+			const skill = lockedTargets.get(id);
+			if (!skill || !this.isAttachable(skill, agent)) {
 				throw new UserError(
 					`Skill "${nameOf({ id }) ?? id}" (${id}) is not available to this agent. An agent can use the skills of its own project and instance skills.`,
 				);
