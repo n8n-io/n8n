@@ -101,7 +101,22 @@ export default workflow({
 		return request;
 	});
 	const expected = v1.requests.map(({ qsFormat: _, ...r }) => r);
-	if (JSON.stringify(requests) !== JSON.stringify(expected)) return 'the requests differ';
+	if (JSON.stringify(requests) !== JSON.stringify(expected)) {
+		if (requests.length !== expected.length) {
+			return `the requests differ: count ${requests.length} / ${expected.length}`;
+		}
+		for (let k = 0; k < requests.length; k++) {
+			const mine: Record<string, unknown> = { ...requests[k] };
+			const theirs: Record<string, unknown> = { ...expected[k] };
+			for (const part of ['method', 'url', 'qs', 'headers', 'body', 'basicAuth']) {
+				const a = JSON.stringify(mine[part]);
+				const b = JSON.stringify(theirs[part]);
+				if (a !== b)
+					return `the requests differ: ${part} ${String(a).slice(0, 70)} / ${String(b).slice(0, 70)}`;
+			}
+		}
+		return 'the requests differ';
+	}
 	if (v1.error !== undefined) {
 		if (out.status !== 'error') return 'v1 fails and the compiled node does not';
 		const message = isRecord(out.result) ? out.result.message : out.result;

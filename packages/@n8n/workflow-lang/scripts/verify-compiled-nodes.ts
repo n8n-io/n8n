@@ -172,12 +172,14 @@ const verified: Record<string, string[]> = {};
 const reasons: Record<string, number> = {};
 let tried = 0;
 let compiledCount = 0;
+const examples: string[] = [];
 
 interface NodeResult {
 	verified: Record<string, string[]>;
 	reasons: Record<string, number>;
 	tried: number;
 	compiled: number;
+	examples?: string[];
 }
 
 async function checkInProcess(name: string): Promise<NodeResult | undefined> {
@@ -219,6 +221,8 @@ if (one === undefined) {
 			Object.assign(verified, result.verified);
 			for (const [reason, count] of Object.entries(result.reasons))
 				reasons[reason] = (reasons[reason] ?? 0) + count;
+			for (const example of result.examples ?? [])
+				if (examples.length < 400) examples.push(`${names[next - 1] ?? ''}: ${example}`);
 			tried += result.tried;
 			compiledCount += result.compiled;
 		}
@@ -228,7 +232,11 @@ if (one === undefined) {
 }
 
 const why = (reason: string) => {
-	const short = reason.replace(/'[^']*'/g, "'…'").slice(0, 90);
+	const part = /^v1: the requests differ: (\w+)/.exec(reason);
+	const short = part
+		? `v1: the requests differ: ${part[1]}`
+		: reason.replace(/'[^']*'/g, "'…'").slice(0, 90);
+	if (part && examples.length < 60) examples.push(reason.slice(0, 200));
 	reasons[short] = (reasons[short] ?? 0) + 1;
 };
 
@@ -311,7 +319,9 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 }
 await disposeRecorder();
 if (one !== undefined) {
-	console.log(`RESULT ${JSON.stringify({ verified, reasons, tried, compiled: compiledCount })}`);
+	console.log(
+		`RESULT ${JSON.stringify({ verified, reasons, tried, compiled: compiledCount, examples })}`,
+	);
 	process.exit(0);
 }
 
@@ -335,4 +345,5 @@ console.log(
 		.map(([reason, count]) => `${count}\t${reason}`)
 		.join('\n'),
 );
-if (pattern !== undefined) console.log(lines.join('\n'));
+if (process.argv.includes('--examples')) console.log(examples.join('\n'));
+if (pattern !== undefined && !process.argv.includes('--examples')) console.log(lines.join('\n'));

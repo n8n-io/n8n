@@ -2281,12 +2281,12 @@ class Specialiser {
 				let raw: unknown;
 				try {
 					raw = evaluate(
-						`${sources}\n;(() => { const r = ${text}; return r === undefined ? 'u' : JSON.stringify([r]); })()`,
+						`${sources}\n;(() => { const r = ${text}; return r === undefined ? 'u' : typeof r === 'number' && !Number.isFinite(r) ? 'n' : JSON.stringify([r]); })()`,
 					);
 				} catch {
 					return n;
 				}
-				if (typeof raw !== 'string') return n;
+				if (typeof raw !== 'string' || raw === 'n') return n;
 				const parsed: unknown = raw === 'u' ? [undefined] : JSON.parse(raw);
 				const value: unknown = Array.isArray(parsed) ? parsed[0] : n;
 				const simple =

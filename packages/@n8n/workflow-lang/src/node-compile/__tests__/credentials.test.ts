@@ -94,3 +94,28 @@ describe('credentials in the node compiler', () => {
 		expect(result.errors.join(' ')).toContain('compares or branches on a credential field');
 	});
 });
+
+describe('publish-time evaluation', () => {
+	it('does not fold a call whose result JSON cannot hold', () => {
+		const source = `
+export class Acme {
+	async execute() {
+		const id = parseInt('v1', 10);
+		const response = await this.helpers.request({ method: 'GET', uri: 'https://api.acme.test/items/' + id });
+		return [this.helpers.returnJsonArray(response)];
+	}
+}`;
+		const result = specialiseNode({
+			type: 'n8n-nodes-acme.acme',
+			version: 1,
+			entry: '/acme/Acme.node.ts',
+			readFile: (path) => (path === '/acme/Acme.node.ts' ? source : undefined),
+			parameters: {},
+			instanceId: null,
+			evaluate: (code) => new Function(`return ${code.slice(code.indexOf(';') + 1)}`)() as unknown,
+		});
+		expect(result.errors).toEqual([]);
+		expect(result.source).toContain("parseInt('v1', 10)");
+		expect(result.source).not.toContain('/items/null');
+	});
+});
