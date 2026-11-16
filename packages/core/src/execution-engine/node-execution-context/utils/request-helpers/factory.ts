@@ -21,6 +21,7 @@ import type {
 
 import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
 
+import { getNonWorkflowAdditionalKeys } from '../get-additional-keys';
 import { httpRequestWithAuthentication, requestWithAuthentication } from './authentication';
 import { proxyRequestToAxios } from './legacy-request-adapter';
 import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './oauth';
@@ -56,7 +57,7 @@ export const getRequestHelperFunctions = (
 				node.name,
 				connectionInputData,
 				mode,
-				additionalKeys ?? {},
+				{ ...getNonWorkflowAdditionalKeys(additionalData), ...additionalKeys },
 				executeData,
 				returnObjectAsString,
 			);
