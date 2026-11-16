@@ -8,6 +8,8 @@ import { commonJsToModule, isCommonJs } from './commonjs.ts';
 import {
 	COST_GLOBALS,
 	COST_HELPERS,
+	OUT_FAILED,
+	OUT_PAIRED,
 	foldTextMethod,
 	literalKeyCount,
 	lowerConstants,
@@ -57,6 +59,8 @@ export interface SpecialiseInput {
 	facts?: PublishFacts;
 
 	deferredParameters?: string[];
+
+	pairedOutput?: boolean;
 }
 
 export interface PublishFacts {
@@ -568,6 +572,71 @@ const HELPERS: Record<string, string> = {
 	__outChecked: `function __out(result: any): any {
 	const out: any[] = [];
 	for (const item of result[0] ?? []) out.push(__outItem(item, __noBytes(__plain(item.json))));
+	return out;
+}`,
+	__failedJson: `function __failedJson(error: any): any {
+	if (!error) throw new Error('an output item with an error that is not an error has no compiled form');
+	return { error: typeof error === 'object' ? error.message : undefined };
+}`,
+	__outFailedChecked: `function __outFailed(result: any): any {
+	const out: any[] = [];
+	for (const item of result[0] ?? []) out.push(__outItem(item, item.error === undefined ? __noBytes(__plain(item.json)) : __failedJson(item.error)));
+	return out;
+}`,
+	__outFailed: `function __outFailed(result: any): any {
+	const out: any[] = [];
+	for (const item of result[0] ?? []) out.push(__outItem(item, item.error === undefined ? __plain(item.json) : __failedJson(item.error)));
+	return out;
+}`,
+	__outPairedChecked: `function __outPaired(result: any): any {
+	const items: any[] = [];
+	const paired: any[] = [];
+	const failed: any[] = [];
+	let again: boolean = false;
+	for (const item of result[0] ?? []) {
+		if (items.length === 0) {
+			const error: any = item.json === null || item.json === undefined ? undefined : item.json.error;
+			again = error !== undefined && error !== null && error !== false;
+		}
+		if (item.pairedItem === null) throw new Error('an output item with the paired item null has no compiled form');
+		paired.push(item.pairedItem === undefined ? null : item.pairedItem);
+		if (item.error === undefined) items.push(__outItem(item, __noBytes(__plain(item.json))));
+		else {
+			failed.push(items.length);
+			items.push(__outItem(item, __failedJson(item.error)));
+		}
+	}
+	return { items, paired, failed, again };
+}`,
+	__outPaired: `function __outPaired(result: any): any {
+	const items: any[] = [];
+	const paired: any[] = [];
+	const failed: any[] = [];
+	let again: boolean = false;
+	for (const item of result[0] ?? []) {
+		if (items.length === 0) {
+			const error: any = item.json === null || item.json === undefined ? undefined : item.json.error;
+			again = error !== undefined && error !== null && error !== false;
+		}
+		if (item.pairedItem === null) throw new Error('an output item with the paired item null has no compiled form');
+		paired.push(item.pairedItem === undefined ? null : item.pairedItem);
+		if (item.error === undefined) items.push(__outItem(item, __plain(item.json)));
+		else {
+			failed.push(items.length);
+			items.push(__outItem(item, __failedJson(item.error)));
+		}
+	}
+	return { items, paired, failed, again };
+}`,
+	__withPaired: `function __withPaired(list: any, options: any): any {
+	const out: any[] = [];
+	for (const data of list) {
+		const item: any = { json: data.json, pairedItem: options.itemData };
+		for (const [key, value] of Object.entries(data)) {
+			if (key !== 'json') item[key] = value;
+		}
+		out.push(item);
+	}
 	return out;
 }`,
 	__outItem: `function __outItem(item: any, json: any): any {
@@ -1302,6 +1371,8 @@ const HELPER_USES: Record<string, string[]> = {
 	__inputBytes: ['__fileBytes', '__storedBytes'],
 	...MOMENT_HELPER_USES,
 	__out: ['__outItem', '__assign'],
+	__outPaired: ['__outItem', '__assign', '__failedJson'],
+	__outFailed: ['__outItem', '__assign', '__failedJson'],
 	__mimeLookup: ['__pathParts', '__extName', '__MIME'],
 	__prepareBinary: [
 		'__mimeLookup',
@@ -2366,7 +2437,10 @@ class Specialiser {
 				return this.helper('__hints', f.createArrayLiteralExpression(args(node)));
 			if (isThisCall(node, 'helpers', 'returnJsonArray'))
 				return this.helper('__jsonArray', ...args(node));
-			if (isThisCall(node, 'helpers', 'constructExecutionMetaData')) return args(node)[0];
+			if (isThisCall(node, 'helpers', 'constructExecutionMetaData'))
+				return this.input.pairedOutput && args(node).length === 2
+					? this.helper('__withPaired', ...args(node))
+					: args(node)[0];
 			const binaryCall = ts.isAwaitExpression(node) ? node.expression : node;
 			if (
 				isThisCall(binaryCall, 'helpers', 'assertBinaryData') &&
@@ -2882,7 +2956,10 @@ class Specialiser {
 			}
 			if (isExecute && depth === 0 && ts.isReturnStatement(node) && node.expression) {
 				return f.createReturnStatement(
-					this.helper('__out', each(node).expression as ts.Expression),
+					this.helper(
+						this.input.pairedOutput ? OUT_PAIRED : this.input.continueOnFail ? OUT_FAILED : '__out',
+						each(node).expression as ts.Expression,
+					),
 				);
 			}
 			const named = ts.isIdentifier(node) ? unit.file.imports.get(node.text) : undefined;
@@ -6782,7 +6859,14 @@ class Specialiser {
 			...COST_HELPERS,
 			__plain: plain,
 			[PLAIN_LIST]: t.usesCollections ? PLAIN_LIST_COLLECTIONS : PLAIN_LIST_SAME,
-			...(makesBytes ? { __sendBody: HELPERS.__sendBodyChecked, __out: HELPERS.__outChecked } : {}),
+			...(makesBytes
+				? {
+						__sendBody: HELPERS.__sendBodyChecked,
+						__out: HELPERS.__outChecked,
+						__outPaired: HELPERS.__outPairedChecked,
+						[OUT_FAILED]: HELPERS.__outFailedChecked,
+					}
+				: {}),
 		};
 		const reached = reachableHelpers(
 			[t.body, lowered.items, ...names.map((n) => CODE_HELPERS[n].source)],

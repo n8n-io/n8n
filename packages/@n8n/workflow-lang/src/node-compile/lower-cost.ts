@@ -10,6 +10,9 @@ export const PLAIN_LIST_COLLECTIONS = `function ${PLAIN_LIST}(list: any): any {
 	return out;
 }`;
 
+export const OUT_FAILED = '__outFailed';
+export const OUT_PAIRED = '__outPaired';
+const PAIRS = '__pairs';
 export const COST_HELPERS: Record<string, string> = {
 	[PLAIN_LIST]: '',
 	__pushJson: `function __pushJson(out: any, data: any): any {
@@ -18,6 +21,36 @@ export const COST_HELPERS: Record<string, string> = {
 		const list: any = given;
 		for (const json of list) out.push(json !== null && json !== undefined && json.json ? json.json : json);
 	} else out.push(given !== null && given !== undefined && given.json ? given.json : given);
+}`,
+	__pushPair: `function __pushPair(out: any, pairs: any, json: any, pair: any): any {
+	if (pair === null) throw new Error('an output item with the paired item null has no compiled form');
+	out.push(json);
+	pairs.push(pair === undefined ? null : pair);
+}`,
+	__pushPaired: `function __pushPaired(out: any, pairs: any, data: any, options: any): any {
+	const pair: any = options === undefined ? undefined : options.itemData;
+	if (pair === null) throw new Error('an output item with the paired item null has no compiled form');
+	const list: any = Array.isArray(data) ? data : [data];
+	for (const json of list) {
+		if (json === null || json === undefined || !json.json) out.push(json);
+		else if (json.error !== undefined || json.pairedItem !== undefined || json.binary !== undefined) throw new Error('an item of a response with the fields of an item has no compiled form');
+		else out.push(json.json);
+		pairs.push(pair === undefined ? null : pair);
+	}
+}`,
+	__pairedOut: `function __pairedOut(items: any, paired: any): any {
+	const first: any = items[0];
+	const error: any = first === null || first === undefined ? undefined : first.error;
+	return { items, paired, failed: [], again: error !== undefined && error !== null && error !== false };
+}`,
+	__pushJsonFailed: `function __pushJsonFailed(out: any, data: any): any {
+	const list: any = Array.isArray(data) ? data : [data];
+	for (const json of list) {
+		if (json === null || json === undefined || !json.json) out.push(json);
+		else if (json.error === undefined) out.push(json.json);
+		else if (!json.error) throw new Error('an output item with an error that is not an error has no compiled form');
+		else out.push({ error: typeof json.error === 'object' ? json.error.message : undefined });
+	}
 }`,
 };
 
@@ -618,8 +651,13 @@ function pushedValue(statement: ts.Statement | undefined, list: string): ts.Expr
 function lowerOutput(sf: ts.SourceFile): { code: string; helpers: string[] } | undefined {
 	const last = sf.statements[sf.statements.length - 1];
 	if (!last || !ts.isReturnStatement(last) || !last.expression) return undefined;
-	if (!isCallOf(last.expression, '__out') || last.expression.arguments.length !== 1)
+	const failed = isCallOf(last.expression, OUT_FAILED);
+	const paired = isCallOf(last.expression, OUT_PAIRED);
+	if (paired && usesIn(sf, PAIRS)?.references.length !== 0) return undefined;
+	if (!failed && !paired && !isCallOf(last.expression, '__out')) return undefined;
+	if (!ts.isCallExpression(last.expression) || last.expression.arguments.length !== 1)
 		return undefined;
+	const pushJson = failed ? '__pushJsonFailed' : '__pushJson';
 	const wrapped = last.expression.arguments[0];
 	if (!ts.isArrayLiteralExpression(wrapped) || wrapped.elements.length !== 1) return undefined;
 	const list = wrapped.elements[0];
@@ -641,6 +679,30 @@ function lowerOutput(sf: ts.SourceFile): { code: string; helpers: string[] } | u
 		if (!statement || !ts.isExpressionStatement(statement)) return undefined;
 		const value = pushedValue(statement, list.text);
 		if (!value) return undefined;
+		if (paired && ts.isObjectLiteralExpression(value)) {
+			const [json, pair, ...more] = value.properties.map((property) =>
+				ts.isPropertyAssignment(property) && ts.isIdentifier(property.name)
+					? { name: property.name.text, value: property.initializer }
+					: ts.isShorthandPropertyAssignment(property)
+						? { name: property.name.text, value: f.createIdentifier(property.name.text) }
+						: undefined,
+			);
+			if (json?.name !== 'json' || more.length > 0) return undefined;
+			if (value.properties.length === 2 && pair?.name !== 'pairedItem') return undefined;
+			helpers.add('__pushPair');
+			changes.set(
+				statement,
+				f.createExpressionStatement(
+					f.createCallExpression(f.createIdentifier('__pushPair'), undefined, [
+						f.createIdentifier(list.text),
+						f.createIdentifier(PAIRS),
+						json.value,
+						pair?.value ?? f.createIdentifier('undefined'),
+					]),
+				),
+			);
+			continue;
+		}
 		const single =
 			ts.isObjectLiteralExpression(value) && value.properties.length === 1
 				? value.properties[0]
@@ -671,30 +733,69 @@ function lowerOutput(sf: ts.SourceFile): { code: string; helpers: string[] } | u
 		if (!made || made.declarations.length !== 1 || made.references.length !== 1) return undefined;
 		const array = soleDeclaration(made.declarations[0]);
 		if (!array || !isConst(array)) return undefined;
-		const from = array.declarationList.declarations[0].initializer;
+		const given = array.declarationList.declarations[0].initializer;
+		const withPairs =
+			paired && given && isCallOf(given, '__withPaired') && given.arguments.length === 2
+				? given
+				: undefined;
+		const from = withPairs ? withPairs.arguments[0] : given;
 		if (!from || !isCallOf(from, '__jsonArray') || from.arguments.length !== 1) return undefined;
 		const block = loop.parent;
 		if (!ts.isBlock(block) && !ts.isSourceFile(block)) return undefined;
 		const at = block.statements.indexOf(loop);
 		if (at < 1 || block.statements[at - 1] !== array) return undefined;
-		helpers.add('__pushJson');
+		helpers.add(paired ? '__pushPaired' : pushJson);
 		changes.set(array, null);
 		changes.set(
 			loop,
 			f.createExpressionStatement(
-				f.createCallExpression(f.createIdentifier('__pushJson'), undefined, [
-					f.createIdentifier(list.text),
-					from.arguments[0],
-				]),
+				f.createCallExpression(
+					f.createIdentifier(paired ? '__pushPaired' : pushJson),
+					undefined,
+					paired
+						? [
+								f.createIdentifier(list.text),
+								f.createIdentifier(PAIRS),
+								from.arguments[0],
+								withPairs ? withPairs.arguments[1] : f.createIdentifier('undefined'),
+							]
+						: [f.createIdentifier(list.text), from.arguments[0]],
+				),
 			),
 		);
+	}
+	const plain = f.createCallExpression(f.createIdentifier(PLAIN_LIST), undefined, [
+		f.createIdentifier(list.text),
+	]);
+	if (paired) {
+		helpers.add('__pairedOut');
+		changes.set(declared, [
+			declared,
+			f.createVariableStatement(
+				undefined,
+				f.createVariableDeclarationList(
+					[
+						f.createVariableDeclaration(
+							PAIRS,
+							undefined,
+							undefined,
+							f.createArrayLiteralExpression([]),
+						),
+					],
+					ts.NodeFlags.Const,
+				),
+			),
+		]);
 	}
 	changes.set(
 		last,
 		f.createReturnStatement(
-			f.createCallExpression(f.createIdentifier(PLAIN_LIST), undefined, [
-				f.createIdentifier(list.text),
-			]),
+			paired
+				? f.createCallExpression(f.createIdentifier('__pairedOut'), undefined, [
+						plain,
+						f.createIdentifier(PAIRS),
+					])
+				: plain,
 		),
 	);
 	return { code: rewrite(sf, changes, []), helpers: [...helpers] };

@@ -13,6 +13,7 @@
 import type { PublicCredential } from '../credentials/public.ts';
 import {
 	compileNodeInstance,
+	callsOnce,
 	errorItemsByPosition,
 	flagGuard,
 	isVerified,
@@ -383,6 +384,7 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		if (found) credentials[type] = found;
 	}
 	const sources = c.nodeSources;
+	let paired = false;
 	const compileWith = (deferred: string[]) =>
 		compileNodeInstance(
 			sources,
@@ -398,11 +400,28 @@ export function tryCompiledNode(c: NodeContext): boolean {
 			},
 			onError,
 			deferred,
+			paired,
 		);
 	let compiled = compileWith([]);
 	if ('errors' in compiled) {
 		c.info('node-compile', `The node source does not compile: ${compiled.errors.join('; ')}`);
 		return false;
+	}
+	// v1 runs the node once with all items. Under a "continue" setting the module runs once
+	// too when the check against v1 proved that form (`emitContinueOnce`). With the error
+	// output, the module then gives the paired item of each output item.
+	const once = callsOnce(sources, c.node.type, c.version, compiled.resolved, onError);
+	if (
+		once &&
+		onError !== 'stopWorkflow' &&
+		pairedOutputOf(onError === 'continueErrorOutput', errorRetry(c))
+	) {
+		paired = true;
+		compiled = compileWith([]);
+		if ('errors' in compiled) {
+			c.info('node-compile', `The node source does not compile: ${compiled.errors.join('; ')}`);
+			return false;
+		}
 	}
 	// The reference of a compiled node is the v1 node. An operation that was not compared with
 	// it runs in the host. A parameter with an expression needs its own check: the v1 node
@@ -511,8 +530,8 @@ export function tryCompiledNode(c: NodeContext): boolean {
 	);
 	// v1 runs the node once with all items, and so does the module: one call, also when a
 	// parameter reads the item. The call runs once for each item only under a "continue"
-	// setting (`emitCompiledContinue`), with a list of one entry.
-	const one = onError !== 'stopWorkflow';
+	// setting that has no check of the one call (`emitCompiledContinue`), with a list of one entry.
+	const one = !once;
 	let each: Code | null = null;
 	if (values.length > 0 && one) each = { kind: 'array', items: [entry] };
 	else if (values.length > 0) {
@@ -545,7 +564,21 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		one,
 	);
 	if (onError === 'stopWorkflow') emitStep(c, call);
-	else {
+	else if (once) {
+		const retry = errorRetry(c);
+		const fields = retry ? call.fields.filter(([k]) => k !== 'retry') : call.fields;
+		const opts = options(c, { ...call, fields }, c.input);
+		const helpers = emitContinueOnce(c.w, {
+			node: c.node.name,
+			out: c.output(0),
+			errors: onError === 'continueErrorOutput' ? c.output(1, 'Errors') : null,
+			input: c.input,
+			call: (head) => c.print(opts, head),
+			retry,
+			trace: c.traceAll === true,
+		});
+		for (const helper of helpers) c.helper(helper);
+	} else {
 		const byPosition = errorItemsByPosition(c.nodeSources, c.node.type, c.version, compiled);
 		emitCompiledContinue(c, call, onError === 'continueErrorOutput', byPosition);
 	}
@@ -685,6 +718,90 @@ export function emitContinueLoop(w: Writer, loop: ContinueLoop): string[] {
 		w.line('if (!again) break;');
 		w.close();
 	}
+	return helpers;
+}
+
+/** The names and the settings of the code that `emitContinueOnce` writes. */
+export interface ContinueOnce {
+	/** The name of the n8n node. */
+	node: string;
+	/** The variable of output 0, and of the error output when the node has one. */
+	out: string;
+	errors: string | null;
+	/** The variable of the input items. */
+	input: string;
+	/** The options of the `ctx.node` call for all items, printed after `head`. */
+	call: (head: string) => string;
+	/** "Retry on fail" of the node (`errorRetry`). */
+	retry: { tries: number; delay: number } | null;
+	/** True when the code traces the error of a node that throws. */
+	trace: boolean;
+}
+
+/**
+ * True when the module of a node that runs once under a "continue" setting gives the paired
+ * item of each output item, the items with an `error` property, and if v1 runs the node
+ * again (`{ items, paired, failed, again }`): with the error output, and with "retry on fail".
+ */
+export function pairedOutputOf(errorOutput: boolean, retry: object | null): boolean {
+	return errorOutput || retry !== null;
+}
+
+/**
+ * Writes one call of a compiled node under a "continue" setting, as v1 runs the node: once
+ * with all items. Returns the names of the helpers that the code calls. The converter and
+ * the check against v1 (`node-compile/__tests__/verify.ts`) write the same code.
+ * - The module has the node's own handling of a failed item, so its result is the output
+ *   of the v1 node. With the error output, the module gives the paired item of each item
+ *   too, and `splitPairedErrorItems` moves the error items (`handleNodeErrorOutput`).
+ * - When the node throws, v1 passes all input items on output 0 (`handleNodeExecutionError`).
+ * - "Retry on fail" runs the node again when it throws, or when the first item that the
+ *   node gives has an `error` in its json (`again`). v1 does not run a node without input items.
+ */
+export function emitContinueOnce(w: Writer, once: ContinueOnce): string[] {
+	const { out, errors, input, retry } = once;
+	const helpers: string[] = [];
+	w.line(`let ${out}: Json[] = [];`);
+	if (errors) w.line(`let ${errors}: Json[] = [];`);
+	w.open(`if (${input}.length > 0) {`);
+	if (retry) {
+		w.open(`for (let tryIndex = 0; tryIndex < ${retry.tries}; tryIndex++) {`);
+		if (retry.delay > 0) {
+			w.line(
+				`if (tryIndex > 0) await ctx.wait({ name: ${str(`${once.node} (retry)`)}, duration: ${retry.delay} });`,
+			);
+		}
+	}
+	w.open('try {');
+	const paired = pairedOutputOf(errors !== null, retry);
+	const head = `${paired ? 'const result: Json' : out} = await ctx.node(`;
+	w.block(`${head}${once.call(head)});`);
+	if (retry) w.line(`if (tryIndex + 1 < ${retry.tries} && result.again) continue;`);
+	if (errors) {
+		helpers.push('splitPairedErrorItems');
+		w.line('const kept: Json[] = [];');
+		w.line('const moved: Json[] = [];');
+		w.line(`splitPairedErrorItems(result, ${input}, kept, moved);`);
+		w.line(`${out} = kept;`);
+		w.line(`${errors} = moved;`);
+	} else if (paired) {
+		w.line(`${out} = result.items;`);
+	}
+	if (retry) w.line('break;');
+	w.close('} catch (error) {');
+	w.depth++;
+	if (retry) w.open(`if (tryIndex + 1 >= ${retry.tries}) {`);
+	w.line(`${out} = [...${input}];`);
+	if (errors) w.line(`${errors} = [];`);
+	if (once.trace) {
+		w.line(
+			`ctx.trace(${str(once.node)}, { $error: { message: error.message, description: error.description ?? '' } });`,
+		);
+	}
+	if (retry) w.close();
+	w.close();
+	if (retry) w.close();
+	w.close();
 	return helpers;
 }
 

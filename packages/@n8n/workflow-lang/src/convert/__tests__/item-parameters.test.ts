@@ -101,7 +101,7 @@ async function run(
 	id: string,
 	list: Array<Record<string, unknown>>,
 	settings: Record<string, unknown> = {},
-	conditions = ['@each=id', REGULAR],
+	conditions = ['@each=id', '@each=id@continueRegularOutput', REGULAR],
 ) {
 	const result = convertWorkflow(workflowWith(id, settings), {
 		nodeSources: sources(conditions),

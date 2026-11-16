@@ -2,7 +2,12 @@ import { createHash } from 'node:crypto';
 
 import { Writer } from '../../convert/code.ts';
 import { helperSources } from '../../convert/helpers.ts';
-import { emitContinueLoop, errorRetryOf } from '../../convert/steps.ts';
+import {
+	emitContinueLoop,
+	emitContinueOnce,
+	errorRetryOf,
+	pairedOutputOf,
+} from '../../convert/steps.ts';
 import { withDerivedValues } from '../../credentials/derived.ts';
 import { credentialFlagKey } from '../../credentials/flags.ts';
 import { deriveInject } from '../../credentials/inject.ts';
@@ -201,6 +206,7 @@ export function compileForCheck(
 	instance: { type: string; version: number; parameters: Record<string, unknown> },
 	credentials: Record<string, PublicCredential>,
 	errorMode: ErrorMode = 'stopWorkflow',
+	pairedOutput = false,
 ): Compiled {
 	const key = JSON.stringify([
 		instance.type,
@@ -208,6 +214,7 @@ export function compileForCheck(
 		instance.parameters,
 		credentials,
 		errorMode,
+		pairedOutput,
 	]);
 	const found = recent.find((entry) => entry.sources === sources && entry.key === key);
 	if (found) return found.compiled;
@@ -219,6 +226,8 @@ export function compileForCheck(
 		V1_TIMEZONE,
 		V1_FACTS,
 		errorMode,
+		[],
+		pairedOutput,
 	);
 	recent.push({ sources, key, compiled });
 	if (recent.length > RECENT_COMPILES) recent.shift();
@@ -390,6 +399,8 @@ const V1_REQUEST_LIMIT = 'the node sent more than';
 
 export type ErrorPairing = 'item' | 'position';
 
+export type ContinueForm = ErrorPairing | 'once';
+
 const MAX_ANSWERS = 64;
 
 const ITEM_FIELD = /^=\{\{ \$json\.([A-Za-z_]\w*) \}\}$/;
@@ -441,25 +452,37 @@ function continueWorkflow(
 	type: string,
 	c: EquivalenceCase,
 	credentialType: string | undefined,
-	pairing: ErrorPairing,
+	pairing: ContinueForm,
 	each: ItemEntries,
 ): string {
 	const errorOutput = c.settings?.onError === 'continueErrorOutput';
 	const w = new Writer();
 	w.depth = 2;
-	const helpers = emitContinueLoop(w, {
-		node: 'Node',
-		out: 'out',
-		errors: errorOutput ? 'errors' : null,
-		input: 'items',
-		item: 'item',
-		index: each ? 'k' : null,
-		call: () =>
-			`{ name: 'Node', type: ${JSON.stringify(type)}, typeVersion: ${c.typeVersion}, parameters: ${each ? '{ each: [each[k]] }' : '{}'}, items: [item]${credentialType ? ", credential: 'c'" : ''} }`,
-		retry: errorRetryOf(c.settings ?? {}),
-		byPosition: pairing === 'position',
-		trace: false,
-	});
+	const head = `{ name: 'Node', type: ${JSON.stringify(type)}, typeVersion: ${c.typeVersion}, parameters: `;
+	const tail = credentialType ? ", credential: 'c' }" : ' }';
+	const helpers =
+		pairing === 'once'
+			? emitContinueOnce(w, {
+					node: 'Node',
+					out: 'out',
+					errors: errorOutput ? 'errors' : null,
+					input: 'items',
+					call: () => `${head}${each ? '{ each }' : '{}'}, items${tail}`,
+					retry: errorRetryOf(c.settings ?? {}),
+					trace: false,
+				})
+			: emitContinueLoop(w, {
+					node: 'Node',
+					out: 'out',
+					errors: errorOutput ? 'errors' : null,
+					input: 'items',
+					item: 'item',
+					index: each ? 'k' : null,
+					call: () => `${head}${each ? '{ each: [each[k]] }' : '{}'}, items: [item]${tail}`,
+					retry: errorRetryOf(c.settings ?? {}),
+					byPosition: pairing === 'position',
+					trace: false,
+				});
 	return `import { webhook, workflow } from '@n8n/workflow-lang';
 
 type Json = any;
@@ -600,19 +623,31 @@ export function costOfCase(
 	sources: NodeSources,
 	registry: Registry,
 	eachItem = false,
+	form?: ContinueForm,
 ): CaseCost | undefined {
+	const mode: ErrorMode = (form === undefined ? undefined : c.settings?.onError) ?? 'stopWorkflow';
 	const compiled = compileForCheck(
 		sources,
 		{ type: c.type, version: c.typeVersion, parameters: c.parameters },
 		credentialsOf(c, registry),
+		mode,
+		form === 'once' &&
+			mode !== 'stopWorkflow' &&
+			pairedOutputOf(mode === 'continueErrorOutput', errorRetryOf(c.settings ?? {})),
 	);
 	if ('errors' in compiled) return undefined;
-	const responses = c.responses.filter((r) => r !== MINTED_TOKEN_RESPONSE);
+	const given = c.responses.filter((r) => r !== MINTED_TOKEN_RESPONSE);
+	const responses =
+		form === undefined
+			? given
+			: Array.from({ length: MAX_ANSWERS }, (_, k) => given[Math.min(k, given.length - 1)]);
 	const each = entriesOf(c, compiled);
 	const mine = bytecodeCost(
-		eachItem
-			? eachItemSourceOf(c, compiled.type, each)
-			: workflowSourceOf(c, compiled.type, each ? { each } : {}),
+		form !== undefined && mode !== 'stopWorkflow'
+			? continueWorkflow(compiled.type, c, c.credential?.type, form, each)
+			: eachItem
+				? eachItemSourceOf(c, compiled.type, each)
+				: workflowSourceOf(c, compiled.type, each ? { each } : {}),
 		{ [compiled.file]: compiled.source },
 		responses,
 	);
@@ -644,7 +679,7 @@ export async function differenceFromV1(
 	registry: Registry,
 	options: {
 		cache?: boolean;
-		pairing?: ErrorPairing;
+		pairing?: ContinueForm;
 		pairings?: Set<ErrorPairing>;
 		eachItem?: boolean;
 	} = {},
@@ -659,6 +694,8 @@ export async function differenceFromV1(
 		{ type: c.type, version: c.typeVersion, parameters: c.parameters },
 		credentialsOf(c, registry),
 		mode,
+		options.pairing === 'once' &&
+			pairedOutputOf(mode === 'continueErrorOutput', errorRetryOf(c.settings ?? {})),
 	);
 	if ('errors' in compiled) return `does not compile: ${compiled.errors[0]}`;
 	const asked: EquivalenceCase = compiled.storesResponses ? { ...c, responseBytes: true } : c;

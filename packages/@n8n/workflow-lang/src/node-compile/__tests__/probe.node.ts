@@ -22,6 +22,7 @@ export class Probe implements INodeType {
 			{ displayName: 'Strict', name: 'strict', type: 'boolean', default: false },
 			{ displayName: 'Pair Error Items', name: 'pairErrors', type: 'boolean', default: true },
 			{ displayName: 'Twice', name: 'twice', type: 'boolean', default: false },
+			{ displayName: 'Whole', name: 'whole', type: 'boolean', default: false },
 		],
 	};
 
@@ -49,6 +50,8 @@ export class Probe implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const failure = error as NodeApiError;
+					const whole = this.getNodeParameter('whole', 0) as boolean;
+					if (whole) return [[{ json: this.getInputData(0)[0].json, error: failure }]];
 					const pairErrors = this.getNodeParameter('pairErrors', i) as boolean;
 					if (pairErrors) {
 						returnData.push({

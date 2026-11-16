@@ -1122,12 +1122,11 @@ function moveErrorItems(out: Json[], errors: Json[], input: Json[]): void {
  * message and details, and error is truthy.
  */
 function isErrorItem(item: Json): boolean {
-	if (item === null || item === undefined || typeof item !== 'object') return false;
-	const keys = Object.keys(item);
-	for (const key of keys) {
+	if (item === null || item === undefined || typeof item !== 'object' || !item.error) return false;
+	for (const key of Object.keys(item)) {
 		if (key !== 'error' && key !== 'message' && key !== 'details') return false;
 	}
-	return keys.length > 0 && Boolean(item.error);
+	return true;
 }`,
 	},
 	mergedErrorItem: {
@@ -1178,6 +1177,55 @@ function splitErrorItemsByPosition(result: Json[], input: Json[], out: Json[], e
 		if (input.length === 1 || result.length === 1) source = input[0];
 		else if (result.length === input.length) source = input[k];
 		errors.push(source === undefined ? item : mergedErrorItem(item, source));
+	}
+}`,
+	},
+	pairedInputIndex: {
+		uses: [],
+		source: `/**
+ * The index of the input item that v1 pairs with output item \`k\` of a node run: the paired
+ * item that the node gave (\`pair\`), or v1's own pairing by position when the node gave none
+ * (assignPairedItems). -1 when v1 finds no input item.
+ */
+function pairedInputIndex(pair: Json, k: number, inputCount: number, outputCount: number): number {
+	let found: Json = pair;
+	if (found === null || found === undefined) {
+		if (inputCount === 1 || outputCount === 1) return 0;
+		return outputCount === inputCount ? k : -1;
+	}
+	if (Array.isArray(found)) found = found[0];
+	if (found === null || found === undefined || typeof found !== 'object') return -1;
+	if (found.input) throw new Error('The paired item of an error item is on an input that is not there.');
+	const index: Json = found.item;
+	return typeof index === 'number' && index >= 0 && index < inputCount && Math.floor(index) === index ? index : -1;
+}`,
+	},
+	splitPairedErrorItems: {
+		uses: ['isErrorItem', 'mergedErrorItem', 'pairedInputIndex'],
+		source: `/**
+ * Moves the error items of one node run to the error output, as v1's handleNodeErrorOutput.
+ * \`result\` is what a compiled node gives for all input items: the items, the paired item
+ * of each item as the node gave it, and the positions of the items with an \`error\` property.
+ * An error item merges into its input item when v1 finds that item. An item with an \`error\`
+ * property has only the message of that error (normalizeNodeErrors), so it does not merge.
+ */
+function splitPairedErrorItems(result: Json, input: Json[], out: Json[], errors: Json[]): void {
+	const items: Json[] = result.items;
+	const failed: Json[] = result.failed;
+	const anyFailed = failed.length > 0;
+	for (let k = 0; k < items.length; k++) {
+		const item = items[k];
+		if (item === null || item === undefined) throw new Error('An item of the node has no json.');
+		if (anyFailed && failed.includes(k)) {
+			errors.push(item);
+			continue;
+		}
+		if (!isErrorItem(item)) {
+			out.push(item);
+			continue;
+		}
+		const index = pairedInputIndex(result.paired[k], k, input.length, items.length);
+		errors.push(index < 0 ? item : mergedErrorItem(item, input[index]));
 	}
 }`,
 	},
