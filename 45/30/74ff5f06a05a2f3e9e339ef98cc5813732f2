@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/experiments/quickjsExpressionShadow/shadowRunner.test.ts
+  s_a8c8682cc3ba60::t_0effdd031f4a78 14,18,244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "453074ff5f06a05a2f3e9e339ef98cc5813732f2",
+  "prompts": {},
+  "sessions": {
+    "s_a8c8682cc3ba60": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71490c56-20a0-41c8-b41e-b0763892ebdb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
