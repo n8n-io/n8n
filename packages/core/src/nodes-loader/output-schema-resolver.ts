@@ -104,8 +104,11 @@ function orderFallbackCandidates(dirNames: string[], target: number[]): string[]
 	].map((d) => d.name);
 }
 
-/** Variant names are file-name fragments: word characters and dashes only. */
-const VARIANT_NAME_PATTERN = /^[\w-]+$/;
+/**
+ * Variant names are file-name fragments: word characters, dashes, and dots
+ * that separate the path of a parameter inside a collection (`options.simplifyOutput`).
+ */
+const VARIANT_NAME_PATTERN = /^[\w.-]+$/;
 
 /** `simple-false` → parameter `simple`, value `false`. */
 function parseParameterVariant(variant: string): { param: string; value: string } | undefined {
@@ -115,17 +118,24 @@ function parseParameterVariant(variant: string): { param: string; value: string 
 }
 
 /**
- * The value a node parameter has: its own value, even when null, else its default.
- * Own-property checks keep names such as `constructor` from reading the prototype.
+ * The value at a dotted path such as `options.simplifyOutput`. Own-property
+ * checks keep names such as `constructor` from reading the prototype.
  */
-function effectiveParameterValue(ref: OutputSchemaRef, param: string): unknown {
-	const { parameters, parameterDefaults } = ref;
-	if (parameters && Object.hasOwn(parameters, param) && parameters[param] !== undefined) {
-		return parameters[param];
+function valueAtPath(source: Record<string, unknown> | undefined, path: string): unknown {
+	let current: unknown = source;
+	for (const key of path.split('.')) {
+		if (current === null || typeof current !== 'object' || !Object.hasOwn(current, key)) {
+			return undefined;
+		}
+		current = Reflect.get(current, key);
 	}
-	return parameterDefaults && Object.hasOwn(parameterDefaults, param)
-		? parameterDefaults[param]
-		: undefined;
+	return current;
+}
+
+/** The value a node parameter has: its own value, even when null, else its default. */
+function effectiveParameterValue(ref: OutputSchemaRef, param: string): unknown {
+	const own = valueAtPath(ref.parameters, param);
+	return own !== undefined ? own : valueAtPath(ref.parameterDefaults, param);
 }
 
 function variantMatchesParameters(variant: string, ref: OutputSchemaRef): boolean {

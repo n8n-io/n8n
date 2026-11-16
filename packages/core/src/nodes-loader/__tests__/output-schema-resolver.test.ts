@@ -281,14 +281,53 @@ describe('output-schema-resolver', () => {
 				expect(resolveOutputSchemaPath({ nodeDir, ...ref, parameters: {} })).toBe(plain);
 			});
 
-			it('ignores variant files whose name has characters outside word characters and dashes', () => {
+			it('ignores variant files whose name has characters outside word characters, dots and dashes', () => {
 				const plain = writeSchema('v2.0.0/message/get.json');
 				writeSchema('v2.0.0/message/get.a b-true.json');
-				writeSchema('v2.0.0/message/get.a.b-true.json');
+
+				expect(resolveOutputSchemaPath({ nodeDir, ...ref, parameters: { 'a b': true } })).toBe(
+					plain,
+				);
+			});
+
+			it('reads a dotted parameter name as a path into a collection', () => {
+				writeSchema('v2.0.0/message/get.json');
+				const raw = writeSchema('v2.0.0/message/get.options.simplifyOutput-false.json');
 
 				expect(
-					resolveOutputSchemaPath({ nodeDir, ...ref, parameters: { 'a b': true, 'a.b': true } }),
-				).toBe(plain);
+					resolveOutputSchemaPath({
+						nodeDir,
+						...ref,
+						parameters: { options: { simplifyOutput: false } },
+					}),
+				).toBe(raw);
+			});
+
+			it('uses the plain file when a collection does not set the dotted parameter', () => {
+				const plain = writeSchema('v2.0.0/message/get.json');
+				writeSchema('v2.0.0/message/get.options.simplifyOutput-false.json');
+
+				expect(resolveOutputSchemaPath({ nodeDir, ...ref, parameters: { options: {} } })).toBe(
+					plain,
+				);
+			});
+
+			it('does not read a flat parameter whose name contains a dot', () => {
+				const plain = writeSchema('v2.0.0/message/get.json');
+				writeSchema('v2.0.0/message/get.a.b-true.json');
+
+				expect(resolveOutputSchemaPath({ nodeDir, ...ref, parameters: { 'a.b': true } })).toBe(
+					plain,
+				);
+			});
+
+			it('ignores a dotted path through the object prototype', () => {
+				const plain = writeSchema('v2.0.0/message/get.json');
+				writeSchema('v2.0.0/message/get.options.constructor-true.json');
+
+				expect(resolveOutputSchemaPath({ nodeDir, ...ref, parameters: { options: {} } })).toBe(
+					plain,
+				);
 			});
 
 			it('checks each version directory for the variant before using an older version', () => {
