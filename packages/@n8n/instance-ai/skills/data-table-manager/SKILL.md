@@ -93,8 +93,9 @@ can target rows with narrow filters.
 - Do not create a table and then delete or re-add its columns. If the design
   must change after creation, say why in your reply. This rule is for
   planning. To repair a wrong schema, follow Fixing A Wrong Schema.
-- If the result has no `applied` list, no change ran. Fix the named change and
-  send the whole call again.
+- If the result has `denied: true`, stop and report that no data was changed.
+  If it has an `error` and no `applied` list, no change ran. Fix the named
+  change and send the whole call again.
 - Otherwise the call stopped at the first failed change. Earlier changes stay
   applied, and later ones are skipped. Read `applied`, `failed`, and
   `skipped`. Fix the cause of the failure first. Then send only the failed and
