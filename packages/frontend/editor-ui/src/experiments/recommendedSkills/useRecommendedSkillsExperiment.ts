@@ -29,6 +29,7 @@ export function useRecommendedSkillsExperiment() {
 	const addedSkillIds = useLocalStorage<RecommendedSkillId[]>(
 		LOCAL_STORAGE_ADDED_RECOMMENDED_SKILLS,
 		[],
+		{ flush: 'sync', listenToStorageChanges: false },
 	);
 
 	const variant = computed<RecommendedSkillsVariant | undefined>(() => {

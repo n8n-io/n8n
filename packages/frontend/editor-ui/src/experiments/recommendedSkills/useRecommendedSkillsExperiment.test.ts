@@ -1,4 +1,3 @@
-import { nextTick } from 'vue';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -104,12 +103,11 @@ describe('useRecommendedSkillsExperiment', () => {
 		});
 	});
 
-	it('remembers each added recommended skill once in local storage', async () => {
+	it('remembers each added recommended skill once in local storage', () => {
 		const { trackSkillAdded } = useRecommendedSkillsExperiment();
 		trackSkillAdded('research', 'skill-1', 'create_menu');
 		trackSkillAdded('research', 'skill-2', 'create_menu');
 		trackSkillAdded('humanizer', 'skill-3', 'empty_state');
-		await nextTick();
 
 		expect(track).toHaveBeenCalledTimes(3);
 
