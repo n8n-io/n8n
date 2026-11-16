@@ -374,7 +374,7 @@ describe('GlobalConfig', () => {
 			mcpServers: '',
 			browserUseEnabled: true,
 			observerMessageTokens: 30_000,
-			memoryModel: '',
+			utilityModel: '',
 			midRunObservation: true,
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
@@ -475,6 +475,14 @@ describe('GlobalConfig', () => {
 			grantTokenTtl: 30,
 			insecureMode: false,
 		},
+		codeExecution: {
+			backend: 'task-runners',
+			sandbox: {
+				url: '',
+				apiKey: '',
+				scope: 'execution',
+			},
+		},
 		sentry: {
 			backendDsn: '',
 			frontendDsn: '',
@@ -564,7 +572,7 @@ describe('GlobalConfig', () => {
 		security: {
 			restrictFileAccessTo: '~/.n8n-files',
 			blockFileAccessToN8nFiles: true,
-			blockFilePatterns: '^(?:[^/]*/)*\\.git(?:/.*)?$',
+			blockFilePatterns: '(?:^|/)\\.git(?:/|$)',
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: undefined,
 			contentSecurityPolicyReportOnly: DEFAULT_CONTENT_SECURITY_POLICY,
@@ -765,6 +773,7 @@ describe('GlobalConfig', () => {
 			tracingRecordOutputs: true,
 			modules: [],
 			backgroundTasksEnabled: false,
+			serviceAccountsEnabled: false,
 			sandboxEnabled: false,
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',

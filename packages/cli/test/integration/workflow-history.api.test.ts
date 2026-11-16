@@ -84,6 +84,7 @@ describe('GET /workflow-history/:workflowId', () => {
 			updatedAt: last.updatedAt.toISOString(),
 			autosaved: last.autosaved,
 			workflowPublishHistory: last.workflowPublishHistory,
+			settings: {},
 		};
 
 		const resp = await authOwnerAgent.get('/workflow-history/workflow/' + workflow.id);
@@ -120,12 +121,23 @@ describe('GET /workflow-history/:workflowId', () => {
 			updatedAt: last.updatedAt.toISOString(),
 			autosaved: last.autosaved,
 			workflowPublishHistory: last.workflowPublishHistory,
+			settings: {},
 		};
 
 		const resp = await authOwnerAgent.get('/workflow-history/workflow/' + workflow.id);
 		expect(resp.status).toBe(200);
 		expect(resp.body.data).toHaveLength(10);
 		expect(resp.body.data[0]).toEqual(expected);
+	});
+
+	test('should return the version-scoped settings of each version', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		await createWorkflowHistoryItem(workflow.id, { settings: { engineType: 'v2' } });
+
+		const resp = await authOwnerAgent.get('/workflow-history/workflow/' + workflow.id);
+
+		expect(resp.status).toBe(200);
+		expect(resp.body.data[0].settings).toEqual({ engineType: 'v2' });
 	});
 
 	test('should work with take parameter', async () => {
@@ -151,6 +163,7 @@ describe('GET /workflow-history/:workflowId', () => {
 			updatedAt: last.updatedAt.toISOString(),
 			autosaved: last.autosaved,
 			workflowPublishHistory: last.workflowPublishHistory,
+			settings: {},
 		};
 
 		const resp = await authOwnerAgent.get(`/workflow-history/workflow/${workflow.id}?take=5`);
@@ -235,6 +248,7 @@ describe('GET /workflow-history/:workflowId', () => {
 			updatedAt: last.updatedAt.toISOString(),
 			autosaved: last.autosaved,
 			workflowPublishHistory: last.workflowPublishHistory,
+			settings: {},
 		};
 
 		const resp = await authOwnerAgent.get(

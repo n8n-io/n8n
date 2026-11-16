@@ -114,6 +114,25 @@ describe('SkillsTelemetry', () => {
 		);
 	});
 
+	it('identifies credential changes and leaves health changes without a user for warehouse-only delivery', async () => {
+		await service.updatedSourceCredential({ provider: 'github', status: 'success' }, 'user-1');
+		await service.sourceHealthChanged({
+			provider: 'github',
+			previous_health: 'connected',
+			health: 'delayed',
+		});
+		expect(telemetry.track.mock.calls).toEqual([
+			[
+				TELEMETRY_EVENT.CONTEXT.USER_UPDATED_SKILL_SOURCE_CREDENTIAL,
+				{ user_id: 'user-1', provider: 'github', status: 'success' },
+			],
+			[
+				TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_HEALTH_CHANGED,
+				{ provider: 'github', previous_health: 'connected', health: 'delayed' },
+			],
+		]);
+	});
+
 	it('reports a flagged skill with the user at import, and without one in the background', async () => {
 		const props = {
 			provider: 'github' as const,
@@ -143,6 +162,8 @@ describe('SkillsTelemetry', () => {
 			blocked: 1,
 			needs_review: 1,
 			skipped_files: 4,
+			skipped_file_extensions: { '.py': 2, '.png': 1, none: 1 },
+			skipped_script_files: 2,
 			status: 'success' as const,
 		};
 

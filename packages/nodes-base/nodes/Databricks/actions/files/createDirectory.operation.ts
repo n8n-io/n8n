@@ -1,7 +1,7 @@
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestUrl } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { databricksApiRequest, getActiveCredentialType, getHost } from '../helpers';
+import { databricksApiRequest, getActiveCredentialType, getHost, toRequestPath } from '../helpers';
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const credentialType = getActiveCredentialType(this, i);
@@ -18,11 +18,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 	const [catalog, schema, volume] = parts;
 
-	await databricksApiRequest(this, credentialType, {
-		method: 'PUT',
-		url: `${host}/api/2.0/fs/directories/Volumes/${catalog}/${schema}/${volume}/${directoryPath}`,
-		json: true,
-	});
+	await databricksApiRequest(
+		this,
+		credentialType,
+		requestUrl`${host}/api/2.0/fs/directories/Volumes/${catalog}/${schema}/${volume}${toRequestPath(directoryPath, this.getNode().typeVersion)}`,
+		{
+			method: 'PUT',
+			json: true,
+		},
+	);
 
 	return [
 		{

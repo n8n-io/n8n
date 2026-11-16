@@ -12,10 +12,19 @@ describe('OpenWeatherMap', () => {
 				.reply(200, currentWeatherResponse)
 				.get('/data/2.5/weather')
 				.query({ units: 'metric', q: 'invalid', lang: 'en' })
-				.reply(404, { cod: '404', message: 'city not found' });
+				.reply(404, { cod: '404', message: 'city not found' })
+				.get('/data/2.5/forecast')
+				.query({ units: 'metric', q: 'berlin,de', lang: 'en' })
+				.reply(200, {
+					cod: '200',
+					cnt: 1,
+					list: [{ dt: 1732903200, main: { temp: 4.6 } }],
+					city: { id: 2950159, name: 'Berlin' },
+				});
 		});
 
 		new NodeTestHarness().setupTests({
+			customAssertions: () => expect(nock.pendingMocks()).toEqual([]),
 			workflowFiles: ['workflow.json'],
 			credentials: { openWeatherMapApi: { accessToken: 'test-key' } },
 		});
@@ -33,6 +42,7 @@ describe('OpenWeatherMap', () => {
 		});
 
 		new NodeTestHarness().setupTests({
+			customAssertions: () => expect(nock.pendingMocks()).toEqual([]),
 			workflowFiles: ['workflow-v1.1.json'],
 			credentials: {
 				openWeatherMapApi: {

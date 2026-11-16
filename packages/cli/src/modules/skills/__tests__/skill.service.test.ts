@@ -835,7 +835,12 @@ describe('SkillService', () => {
 				]),
 			);
 			skills.findProjects.mockResolvedValue(
-				new Map([[PROJECT, { name: 'Marketing', type: 'team' as const, icon: null }]]),
+				new Map([
+					[
+						PROJECT,
+						{ name: 'Marketing', type: 'team' as const, icon: { type: 'emoji', value: '🚀' } },
+					],
+				]),
 			);
 			users.findManyByIds.mockResolvedValue([
 				Object.assign(new Person(), {
@@ -852,15 +857,27 @@ describe('SkillService', () => {
 			expect(users.findManyByIds).toHaveBeenCalledWith(['user-1']);
 			expect(skills.findProjects).toHaveBeenCalledWith([PROJECT, 'project-gone']);
 			expect(
-				data.map(({ id, scope, projectId, projectName, projectType, createdBy, usedByAgents }) => ({
-					id,
-					scope,
-					projectId,
-					projectName,
-					projectType,
-					createdBy,
-					usedByAgents,
-				})),
+				data.map(
+					({
+						id,
+						scope,
+						projectId,
+						projectName,
+						projectType,
+						projectIcon,
+						createdBy,
+						usedByAgents,
+					}) => ({
+						id,
+						scope,
+						projectId,
+						projectName,
+						projectType,
+						projectIcon,
+						createdBy,
+						usedByAgents,
+					}),
+				),
 			).toEqual([
 				{
 					id: 'skill_project',
@@ -868,6 +885,7 @@ describe('SkillService', () => {
 					projectId: PROJECT,
 					projectName: 'Marketing',
 					projectType: 'team',
+					projectIcon: { type: 'emoji', value: '🚀' },
 					createdBy: { id: 'user-1', email: null, firstName: null, lastName: null },
 					usedByAgents: 2,
 				},
@@ -877,6 +895,7 @@ describe('SkillService', () => {
 					projectId: 'project-gone',
 					projectName: null,
 					projectType: null,
+					projectIcon: null,
 					createdBy: null,
 					usedByAgents: 0,
 				},
@@ -886,6 +905,7 @@ describe('SkillService', () => {
 					projectId: null,
 					projectName: null,
 					projectType: null,
+					projectIcon: null,
 					createdBy: null,
 					usedByAgents: 0,
 				},

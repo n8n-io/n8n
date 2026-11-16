@@ -569,6 +569,12 @@ const ndvAgentConfig = inject(NdvAgentConfigKey, null);
 const isAgentNode = computed(() => isAgentNodeV2(node.value));
 const showAgentNdvControls = computed(() => isAgentNode.value && ndvAgentConfig !== null);
 const agentNdvMode = computed(() => ndvAgentConfig?.mode?.value ?? 'referenced');
+// The inline agent controls read the usable-credentials slice for the agent scope.
+// The slice is last-writer-wins, so a workflow-scoped fetch here would leave the
+// model picker with no credentials and no models.
+const skipNodeCredentialsFetch = computed(
+	() => showAgentNdvControls.value && agentNdvMode.value === 'inline',
+);
 
 const onParameterBlur = (parameterName: string) => {
 	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
@@ -849,6 +855,7 @@ function handleSelectAction(params: INodeParameters) {
 						:node="node"
 						:readonly="readOnly || isDeprecated"
 						:show-all="true"
+						:skip-credentials-fetch="skipNodeCredentialsFetch"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
 						:hide-ask-assistant="hideCredentialHelp"
 						@credential-selected="credentialSelected"

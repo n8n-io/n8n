@@ -69,13 +69,17 @@ export class RedisLockService implements ILockService {
 		const lease = options?.leaseTtlMs ?? 30_000;
 
 		let acquireErrorLogged = false;
+		let sawContention = false;
+		let lastAcquireError: Error | undefined;
 		const acquireLock = async (): Promise<boolean> => {
 			try {
 				const result = await this.redisClient.set(lockKey, lockValue, 'PX', lease, 'NX');
+				if (result !== 'OK') sawContention = true;
 				return result === 'OK';
 			} catch (error) {
+				lastAcquireError = ensureError(error);
 				if (!acquireErrorLogged) {
-					this.logger.warn('Failed to acquire lock; retrying', { key, error: ensureError(error) });
+					this.logger.warn('Failed to acquire lock; retrying', { key, error: lastAcquireError });
 					acquireErrorLogged = true;
 				}
 				return false;
@@ -162,8 +166,11 @@ export class RedisLockService implements ILockService {
 			}
 
 			if (options?.waitTimeoutMs !== undefined && Date.now() - startTime > options.waitTimeoutMs) {
+				// `sawContention: false` means every attempt failed in Redis, so the lease
+				// may not be held at all. Callers that report "busy" must check the flag.
 				throw new LockAcquisitionTimeoutError(
 					`Timed out waiting for lock '${key}' in namespace '${ns}' after ${options.waitTimeoutMs}ms`,
+					{ sawContention, cause: sawContention ? undefined : lastAcquireError },
 				);
 			}
 

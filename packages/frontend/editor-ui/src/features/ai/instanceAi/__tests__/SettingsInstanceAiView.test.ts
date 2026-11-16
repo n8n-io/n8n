@@ -372,12 +372,12 @@ describe('SettingsInstanceAiView', () => {
 			expect(queryByTestId(modelSaveDialog)).toBeNull();
 		});
 
-		it('shows the switch off with dimmed sections when disabled but configured', () => {
+		it('hides the other sections when disabled but configured', () => {
 			disable({ modelCredentialId: 'openai-id', modelName: 'gpt-4o' });
 
-			const { getByTestId, getByText } = renderComponent();
+			const { getByTestId, queryByText } = renderComponent();
 			expect(getByTestId('n8n-agent-enable-toggle')).toHaveAttribute('aria-checked', 'false');
-			expect(getByText('settings.n8nAgent.permissions.title')).toBeVisible();
+			expect(queryByText('settings.n8nAgent.permissions.title')).toBeNull();
 		});
 
 		it('does not show the switch to members', () => {
@@ -579,32 +579,22 @@ describe('SettingsInstanceAiView', () => {
 	});
 
 	describe('off state', () => {
-		it('shows sub-feature switches as disabled and unchecked while off', () => {
+		it('hides the other settings while off', () => {
 			store.$patch({ settings: { ...store.settings!, enabled: false, ...fullyConfigured } });
 			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
 
-			settingsStore.settings.ai = { allowSendingParameterValues: true };
-
-			const { getByTestId } = renderComponent();
+			const { getByTestId, queryByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-enable-toggle')).toHaveAttribute('aria-checked', 'false');
 			for (const testId of [
 				'n8n-agent-browser-use-toggle',
 				'n8n-agent-mcp-access-toggle',
 				'n8n-agent-data-sharing-schema-toggle',
 				'n8n-agent-data-sharing-values-toggle',
+				'n8n-agent-model-row',
 			]) {
-				expect(getByTestId(testId)).toBeDisabled();
-				expect(getByTestId(testId)).toHaveAttribute('aria-checked', 'false');
+				expect(queryByTestId(testId)).toBeNull();
 			}
 			expect(store.settings?.mcpAccessEnabled).toBe(true);
-		});
-
-		it('hides the missing model warning while off', () => {
-			store.$patch({ settings: { ...store.settings!, enabled: false, searchDisabled: true } });
-			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
-
-			const { getByTestId, queryByText } = renderComponent();
-			expect(getByTestId('n8n-agent-model-row')).toBeVisible();
-			expect(queryByText('settings.n8nAgent.modelCredential.missing.description')).toBeNull();
 		});
 
 		it('shows the missing model warning while on', () => {
