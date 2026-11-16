@@ -50,17 +50,33 @@ describe('CreateLeaseTables migration', () => {
 		return table;
 	}
 
-	async function indexExists(context: TestMigrationContext, name: string) {
-		const rows = context.isSqlite
-			? await context.runQuery<unknown[]>(
-					"SELECT name FROM sqlite_master WHERE type = 'index' AND name = :name",
-					{ name },
-				)
-			: await context.runQuery<unknown[]>(
-					'SELECT indexname FROM pg_indexes WHERE indexname = :name',
-					{ name },
-				);
-		return rows.length === 1;
+	async function getIndex(context: TestMigrationContext, table: string, name: string) {
+		if (context.isSqlite) {
+			const columns = await context.runQuery<Array<{ name: string }>>(
+				'SELECT name FROM pragma_index_info(:name) ORDER BY seqno',
+				{ name },
+			);
+			const lists = await context.runQuery<Array<{ unique: number }>>(
+				'SELECT "unique" FROM pragma_index_list(:table) WHERE name = :name',
+				{ table: `${context.tablePrefix}${table}`, name },
+			);
+			return { columnNames: columns.map((c) => c.name), isUnique: lists[0]?.unique === 1 };
+		}
+		const columns = await context.runQuery<Array<{ name: string }>>(
+			`SELECT a.attname AS name
+			 FROM pg_index i
+			 JOIN pg_class c ON c.oid = i.indexrelid
+			 CROSS JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum, ord)
+			 JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum
+			 WHERE c.relname = :name
+			 ORDER BY k.ord`,
+			{ name },
+		);
+		const unique = await context.runQuery<Array<{ indisunique: boolean }>>(
+			`SELECT i.indisunique FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid WHERE c.relname = :name`,
+			{ name },
+		);
+		return { columnNames: columns.map((c) => c.name), isUnique: unique[0]?.indisunique === true };
 	}
 
 	async function insertKind(context: TestMigrationContext, values: Record<string, unknown> = {}) {
@@ -191,15 +207,15 @@ describe('CreateLeaseTables migration', () => {
 		});
 	});
 
-	it('creates the lookup indexes', async () => {
+	it.each([
+		['lease_session', 'lease_session_leaseKind_expiresAt', ['leaseKind', 'expiresAt']],
+		['lease', 'lease_leaseKind_leaseSessionId', ['leaseKind', 'leaseSessionId']],
+		['lease', 'lease_leaseKind_fanOutGroup', ['leaseKind', 'fanOutGroup']],
+	])('creates the non-unique index on %s named %s', async (name, suffix, expected) => {
 		await withContext(async (context) => {
-			for (const suffix of [
-				'lease_session_leaseKind_expiresAt',
-				'lease_leaseKind_leaseSessionId',
-				'lease_leaseKind_fanOutGroup',
-			]) {
-				expect(await indexExists(context, `IDX_${context.tablePrefix}${suffix}`)).toBe(true);
-			}
+			const index = await getIndex(context, name, `IDX_${context.tablePrefix}${suffix}`);
+			expect(index.columnNames).toEqual(expected);
+			expect(index.isUnique).toBe(false);
 		});
 	});
 
