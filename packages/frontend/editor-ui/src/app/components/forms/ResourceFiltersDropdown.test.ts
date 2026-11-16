@@ -45,8 +45,9 @@ describe('ResourceFiltersDropdown', () => {
 
 		const settingsStore = mockedStore(useSettingsStore);
 		settingsStore.isEnterpriseFeatureEnabled = {
+			...settingsStore.isEnterpriseFeatureEnabled,
 			[EnterpriseEditionFeature.Sharing]: true,
-		} as typeof settingsStore.isEnterpriseFeatureEnabled;
+		};
 
 		const projectsStore = mockedStore(useProjectsStore);
 		projectsStore.isProjectHome = true;

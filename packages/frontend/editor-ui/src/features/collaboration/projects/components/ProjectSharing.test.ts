@@ -288,6 +288,22 @@ describe('ProjectSharing', () => {
 			expect(items).toHaveLength(teamProjects.length + 1);
 			expect(await getSelectedDropdownValue(items)).toBe(selected.name);
 		});
+
+		it('should not count the selected project as a "more results" item', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					// The count includes the selected project, which is not on the returned page.
+					searchFn: createTestSearchFnWithCount(teamProjects, teamProjects.length + 1),
+					modelValue: selected,
+				},
+			});
+
+			const items = await getDropdownItems(getByTestId('project-sharing-select'));
+			expect(items).toHaveLength(teamProjects.length + 1);
+			for (const item of items) {
+				expect(item).not.toHaveTextContent('projects.sharing.moreResults');
+			}
+		});
 	});
 
 	it('should render home project as owner when defined', async () => {

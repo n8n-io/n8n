@@ -152,10 +152,8 @@ const selectedSingleProject = computed(() =>
 	Array.isArray(model.value) ? null : (model.value ?? null),
 );
 
-// The select shows a name only when an option matches its value. Search results
-// can miss the selected project (it is past the first page, or the request is in
-// flight), so list it while no search term is entered. Element Plus keeps the
-// label of a selected option after the option is removed, so it stays while typing.
+// The select shows a name only for a matching option, and search results can miss the
+// selected project. List it while the search is empty; Element Plus keeps its label after.
 const selectedProjectOption = computed((): ProjectSharingData[] => {
 	const selected = selectedSingleProject.value;
 	if (
@@ -179,7 +177,9 @@ const sortedProjects = computed((): ProjectSharingData[] => {
 });
 
 const moreResultsCount = computed(() => {
-	return Math.max(0, searchCount.value - searchResults.value.length);
+	// The selected option is part of the count, so it is not one of the "more" results.
+	const listed = searchResults.value.length + selectedProjectOption.value.length;
+	return Math.max(0, searchCount.value - listed);
 });
 const showSearchHint = computed(
 	() => filter.value === '' && sortedProjects.value.length === 0 && moreResultsCount.value > 0,
