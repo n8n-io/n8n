@@ -8841,9 +8841,15 @@ importers:
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../../../@n8n/api-types
+      '@n8n/composables':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/composables
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/design-system
+      '@n8n/frontend-constants':
+        specifier: workspace:*
+        version: link:../../../frontend/@n8n/frontend-constants
       '@n8n/frontend-module-sdk':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-module-sdk
@@ -8874,6 +8880,9 @@ importers:
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
+      vue-router:
+        specifier: catalog:frontend
+        version: 4.5.0(vue@3.5.26(typescript@6.0.2))
     devDependencies:
       '@iconify/json':
         specifier: 'catalog:'
