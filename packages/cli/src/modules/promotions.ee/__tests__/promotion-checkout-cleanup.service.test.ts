@@ -396,14 +396,20 @@ describe('PromotionCheckoutCleanupService', () => {
 				isMultiMain = true;
 				await createCheckout(LIVE_ID);
 				let lockFreeOnPublish: boolean | undefined;
+				let publishProbe: Promise<void> | undefined;
 				publisher.publishCommand.mockImplementation(async () => {
-					lockFreeOnPublish = await isLockFree(LIVE_ID);
+					publishProbe = isLockFree(LIVE_ID).then((free) => {
+						lockFreeOnPublish = free;
+					});
+					await publishProbe;
 				});
 				let lockFreeOnTrashDeletion: boolean | undefined;
 				const deleteTrash = workingDirectory.deleteTrash.bind(workingDirectory);
 				const deleteTrashSpy = vi
 					.spyOn(workingDirectory, 'deleteTrash')
 					.mockImplementation(async (folders) => {
+						// Each probe takes the lock, so a concurrent publish probe would make this one fail.
+						await publishProbe;
 						lockFreeOnTrashDeletion = await isLockFree(LIVE_ID);
 						await deleteTrash(folders);
 					});
