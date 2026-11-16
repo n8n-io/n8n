@@ -1616,6 +1616,11 @@ export class WorkflowService {
 			const transferredWorkflows = transferred
 				? workflows
 				: await this._ownedByProject(workflows, destinationProjectId);
+			await this._restoreTriggersOfUnmoved(
+				[...refusals.keys()].filter(
+					(workflowId) => !transferredWorkflows.some((workflow) => workflow.id === workflowId),
+				),
+			);
 			results = await this._finishTransfer(user, transferredWorkflows, refusals, publicApi);
 		}
 
@@ -1644,6 +1649,24 @@ export class WorkflowService {
 					});
 				}
 				throw error;
+			}
+		}
+	}
+
+	/** Never throws, so a transfer that failed half-way still reports its original error. */
+	private async _restoreTriggersOfUnmoved(workflowIds: string[]): Promise<void> {
+		if (workflowIds.length > 0) {
+			try {
+				await this.outboxRepository.enqueueByWorkflowIds(
+					workflowIds,
+					WorkflowPublicationReason.Reconcile,
+				);
+				this.workflowPublicationNotifier.requestDrain();
+			} catch (error) {
+				this.logger.error('Failed to restore the triggers after a failed transfer', {
+					workflowIds,
+					error,
+				});
 			}
 		}
 	}

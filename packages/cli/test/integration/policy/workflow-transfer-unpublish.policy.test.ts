@@ -45,6 +45,7 @@ import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { Telemetry } from '@/telemetry';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import { saveCredential } from '../shared/db/credentials';
 import { createFolder } from '../shared/db/folders';
@@ -332,7 +333,8 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 		await testServer
 			.publicApiAgentFor(owner)
 			.put(`/workflows/${workflow.id}/transfer`)
-			.send({ destinationProjectId: targetProject.id });
+			.send({ destinationProjectId: targetProject.id })
+			.expect(204);
 
 		expect(deactivatedEvents).toEqual([
 			expect.objectContaining({ workflowId: workflow.id, source: 'api', publicApi: true }),
@@ -423,6 +425,35 @@ describe('PUT /workflows/:workflowId/transfer', () => {
 			sharing: await getWorkflowSharing(workflow),
 			records: await outboxRecordsOf(workflow.id),
 		}).toEqual(AFTER_FAILED_MOVE);
+	});
+});
+
+describe('a move that fails before the ownership change', () => {
+	test('restores the triggers of a refused workflow that did not move', async () => {
+		const workflow = await createActiveWorkflow({}, sourceProject);
+		refusePublish(targetProject.id, workflow.id);
+		vi.spyOn(
+			Container.get(EnterpriseWorkflowService) as unknown as {
+				transferWorkflowOwnership: () => Promise<void>;
+			},
+			'transferWorkflowOwnership',
+		).mockRejectedValue(new Error('ownership is down'));
+
+		await authMemberAgent
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: targetProject.id })
+			.expect(500);
+
+		const NOT_MOVED_AND_RESTORED = {
+			sharing: [expect.objectContaining({ projectId: sourceProject.id, role: 'workflow:owner' })],
+			activeVersionId: workflow.versionId,
+			records: [{ status: 'pending', reason: 'reconcile', publishedVersionId: workflow.versionId }],
+		};
+		expect({
+			sharing: await getWorkflowSharing(workflow),
+			activeVersionId: await activeVersionIdOf(workflow.id),
+			records: await outboxRecordsOf(workflow.id),
+		}).toEqual(NOT_MOVED_AND_RESTORED);
 	});
 });
 
