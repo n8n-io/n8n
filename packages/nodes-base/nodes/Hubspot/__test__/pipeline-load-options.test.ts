@@ -1,5 +1,10 @@
 import { mock, mockDeep } from 'vitest-mock-extended';
-import type { ILoadOptionsFunctions, INode, INodeTypeBaseDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	INode,
+	INodeTypeBaseDescription,
+} from 'n8n-workflow';
 
 import { HubspotV1 } from '../V1/HubspotV1.node';
 import { HubspotV2 } from '../V2/HubspotV2.node';
@@ -82,6 +87,13 @@ describe.each([
 		]);
 	});
 
+	it('returns no deal stages when there are no pipelines', async () => {
+		const context = createContext();
+		context.helpers.requestOAuth2.mockResolvedValue({ results: [] });
+
+		await expect(loadOptions.getDealStages.call(context)).resolves.toEqual([]);
+	});
+
 	it('loads ticket pipelines with CRM v3 pipeline IDs', async () => {
 		const context = createContext();
 
@@ -100,6 +112,20 @@ describe.each([
 			{ name: 'Resolved', value: '12' },
 		]);
 	});
+
+	it('loads ticket stages from the pipeline selected in update fields', async () => {
+		const context = createContext();
+		const pipelines = await loadOptions.getTicketPipelines.call(context);
+		context.getCurrentNodeParameter.calledWith('pipelineId').mockReturnValue(undefined);
+		context.getNodeParameter
+			.calledWith('updateFields.pipelineId', '')
+			.mockReturnValue(pipelines[1].value);
+
+		await expect(loadOptions.getTicketStages.call(context)).resolves.toEqual([
+			{ name: 'Engineering Review', value: '11' },
+			{ name: 'Resolved', value: '12' },
+		]);
+	});
 });
 
 describe('HubSpot V2 deal pipeline loadOptions', () => {
@@ -112,3 +138,91 @@ describe('HubSpot V2 deal pipeline loadOptions', () => {
 		]);
 	});
 });
+
+describe.each([
+	['V1', hubspotV1],
+	['V2', hubspotV2],
+])('HubSpot %s execution with saved pipeline parameters', (_version, node) => {
+	it.each(['create', 'update'])('uses the saved deal stage ID for %s', async (operation) => {
+		const context = createExecuteContext('deal', operation);
+		context.getNodeParameter.calledWith('stage', 0).mockReturnValue('appointmentscheduled');
+		context.getNodeParameter
+			.calledWith('updateFields', 0)
+			.mockReturnValue({ stage: 'appointmentscheduled' });
+		context.getNodeParameter.calledWith('dealId', 0).mockReturnValue('123');
+		context.getNodeParameter
+			.calledWith('dealId', 0, {}, { extractValue: true })
+			.mockReturnValue('123');
+
+		await expect(node.execute.call(context)).resolves.toEqual([
+			[{ json: { id: '123' }, pairedItem: { item: 0 } }],
+		]);
+
+		expect(context.helpers.requestOAuth2).toHaveBeenCalledOnce();
+		const [, request] = context.helpers.requestOAuth2.mock.calls[0];
+		expect(request.method).toBe(operation === 'create' ? 'POST' : 'PUT');
+		expect(String(request.uri)).toBe(
+			operation === 'create'
+				? 'https://api.hubapi.com/deals/v1/deal'
+				: 'https://api.hubapi.com/deals/v1/deal/123',
+		);
+		expect(request.body).toMatchObject({
+			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+			properties: [{ name: 'dealstage', value: 'appointmentscheduled' }],
+		});
+	});
+
+	it.each(['create', 'update'])(
+		'uses the saved ticket pipeline and stage IDs for %s',
+		async (operation) => {
+			const context = createExecuteContext('ticket', operation);
+			context.getNodeParameter.calledWith('pipelineId', 0).mockReturnValue('0');
+			context.getNodeParameter.calledWith('stageId', 0).mockReturnValue('1');
+			context.getNodeParameter.calledWith('ticketName', 0).mockReturnValue('Support request');
+			context.getNodeParameter.calledWith('ticketId', 0).mockReturnValue('123');
+			context.getNodeParameter
+				.calledWith('ticketId', 0, undefined, { extractValue: true })
+				.mockReturnValue('123');
+			context.getNodeParameter
+				.calledWith('updateFields', 0)
+				.mockReturnValue({ pipelineId: '0', stageId: '1' });
+
+			await expect(node.execute.call(context)).resolves.toEqual([
+				[{ json: { id: '123' }, pairedItem: { item: 0 } }],
+			]);
+
+			expect(context.helpers.requestOAuth2).toHaveBeenCalledOnce();
+			const [, request] = context.helpers.requestOAuth2.mock.calls[0];
+			expect(request.method).toBe(operation === 'create' ? 'POST' : 'PUT');
+			expect(String(request.uri)).toBe(
+				operation === 'create'
+					? 'https://api.hubapi.com/crm-objects/v1/objects/tickets'
+					: 'https://api.hubapi.com/crm-objects/v1/objects/tickets/123',
+			);
+			expect(request.body).toEqual(
+				expect.arrayContaining([
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					{ name: 'hs_pipeline', value: '0' },
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					{ name: 'hs_pipeline_stage', value: '1' },
+				]),
+			);
+		},
+	);
+});
+
+function createExecuteContext(resource: string, operation: string) {
+	const context = mockDeep<IExecuteFunctions>();
+	context.getNode.mockReturnValue(mock<INode>({ type: 'n8n-nodes-base.hubspot' }));
+	context.getInputData.mockReturnValue([{ json: {} }]);
+	context.getNodeParameter.calledWith('authentication', 0).mockReturnValue('oAuth2');
+	context.getNodeParameter.calledWith('resource', 0).mockReturnValue(resource);
+	context.getNodeParameter.calledWith('operation', 0).mockReturnValue(operation);
+	context.getNodeParameter.calledWith('additionalFields', 0).mockReturnValue({});
+	context.helpers.requestOAuth2.mockResolvedValue({ id: '123' });
+	context.helpers.returnJsonArray.mockReturnValue([{ json: { id: '123' } }]);
+	context.helpers.constructExecutionMetaData.mockImplementation((data, { itemData }) =>
+		data.map((item) => ({ ...item, pairedItem: itemData })),
+	);
+	return context;
+}
