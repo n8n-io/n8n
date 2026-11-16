@@ -6,4 +6,6 @@ export const assistantSurfaceSchema = z
 
 export const publicApiClientSchema = z
 	.enum(['editor_ui', 'n8n_node', 'other'])
-	.describe('Set when public_api is true. other is the default catch-all value.');
+	.describe(
+		'Set when public_api is true. Identifies the client that made the request. "other" is the default catch-all value.',
+	);
