@@ -24,7 +24,7 @@ import type {
 	WhereClause,
 } from './interfaces';
 import { generatePairedItemData } from '../../../../utils/utilities';
-import { START_AFTER_MIN_VERSION, operatorOptions } from '../actions/common.descriptions';
+import { operatorOptions } from '../actions/common.descriptions';
 
 export function isJSON(str: string) {
 	try {
@@ -228,25 +228,9 @@ export function addStartAfterClause(
 	];
 }
 
-export function getStartAfter(
-	ctx: IExecuteFunctions,
-	itemIndex: number,
-	nodeVersion?: number,
-): StartAfter | undefined {
+export function getStartAfter(ctx: IExecuteFunctions, itemIndex: number): StartAfter | undefined {
 	const startAfter: unknown = ctx.getNodeParameter('startAfter.values', itemIndex, null);
 	if (!isRecord(startAfter)) return undefined;
-
-	// n8n removes Start After from older versions before a run, except when Return All is an expression
-	if (nodeVersion !== undefined && nodeVersion < START_AFTER_MIN_VERSION) {
-		throw new NodeOperationError(
-			ctx.getNode(),
-			`Start After needs version ${START_AFTER_MIN_VERSION} or later of the Postgres node`,
-			{
-				itemIndex,
-				description: `This node has version ${nodeVersion}. Add a new Postgres node to get the latest version.`,
-			},
-		);
-	}
 
 	const { column, value } = startAfter;
 	if (typeof column !== 'string' || column === '') {
@@ -725,35 +709,53 @@ export async function uniqueColumns(db: PgpDatabase, table: string, schema = 'pu
 	return unique as IDataObject[];
 }
 
-/** Whether a valid primary key or unique index covers this column alone, with no WHERE condition */
-export async function isUniqueColumn(
+type StartAfterColumnInfo = {
+	data_type: string;
+	not_null: boolean;
+	is_unique: boolean;
+	has_child_tables: boolean;
+};
+
+/**
+ * Reads what Start After needs about the column in one query, because the node checks it before each page.
+ * indnkeyatts leaves out INCLUDE columns. PostgreSQL 10 does not have it, so the query reads it through to_jsonb.
+ * A select also gets the rows of child tables, but a unique index covers one table. A partitioned table is safe.
+ */
+async function getStartAfterColumnInfo(
 	db: PgpDatabase,
 	schema: string,
 	table: string,
 	column: string,
-): Promise<boolean> {
-	const { is_unique } = await db.one<{ is_unique: boolean }>(
+): Promise<StartAfterColumnInfo | null> {
+	return await db.oneOrNone<StartAfterColumnInfo>(
 		`
-		SELECT EXISTS (
-			SELECT 1
-			FROM pg_index i
-			JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = i.indkey[0]
-			WHERE i.indrelid = (quote_ident($1) || '.' || quote_ident($2))::regclass
-				AND (i.indisprimary OR i.indisunique)
-				AND i.indisvalid
-				AND i.indpred IS NULL
-				AND i.indnatts = 1
-				AND a.attname = $3
-		) AS is_unique;
+		SELECT
+			format_type(COALESCE(NULLIF(t.typbasetype, 0), a.atttypid), NULL) AS data_type,
+			a.attnotnull AS not_null,
+			EXISTS (
+				SELECT 1
+				FROM pg_index i
+				WHERE i.indrelid = c.oid
+					AND i.indkey[0] = a.attnum
+					AND (i.indisprimary OR i.indisunique)
+					AND i.indisvalid
+					AND i.indpred IS NULL
+					AND COALESCE((to_jsonb(i) ->> 'indnkeyatts')::int, i.indnatts) = 1
+			) AS is_unique,
+			c.relkind <> 'p' AND EXISTS (SELECT 1 FROM pg_inherits WHERE inhparent = c.oid) AS has_child_tables
+		FROM pg_attribute a
+		JOIN pg_class c ON c.oid = a.attrelid
+		JOIN pg_namespace n ON n.oid = c.relnamespace
+		JOIN pg_type t ON t.oid = a.atttypid
+		WHERE n.nspname = $1 AND c.relname = $2 AND a.attname = $3 AND a.attnum > 0 AND NOT a.attisdropped;
 		`,
 		[schema, table, column],
 	);
-	return is_unique;
 }
 
 const TIMESTAMP_TYPES = ['timestamp without time zone', 'timestamp with time zone'];
-// n8n outputs values of these types as objects, so they cannot be a Start After value
-const OBJECT_TYPES = ['bytea', 'interval', 'json', 'jsonb', 'ARRAY'];
+// n8n outputs values of these types, and of arrays, as objects, so they cannot be a Start After value
+const OBJECT_TYPES = ['bytea', 'interval', 'json', 'jsonb'];
 
 async function getStartAfterColumnProblem(
 	db: PgpDatabase,
@@ -762,14 +764,18 @@ async function getStartAfterColumnProblem(
 	column: string,
 	largeNumbersOutput: PostgresNodeOptions['largeNumbersOutput'],
 ): Promise<{ message: string; description: string } | undefined> {
-	const columnInfo = (await getTableSchema(db, schema, table)).find(
-		({ column_name }) => column_name === column,
-	);
+	const columnInfo = await getStartAfterColumnInfo(db, schema, table, column);
 
 	if (!columnInfo) {
 		return {
 			message: `Cannot find column "${column}" in "${schema}.${table}"`,
 			description: 'Check that the table exists and has this column.',
+		};
+	}
+	if (columnInfo.has_child_tables) {
+		return {
+			message: `Start After does not support "${schema}.${table}" because other tables inherit from it`,
+			description: `The node also gets the rows of the child tables. The unique index of "${table}" does not cover these rows, so a value of "${column}" can repeat and a page can skip rows. Use a table that has no child tables.`,
 		};
 	}
 	if (TIMESTAMP_TYPES.includes(columnInfo.data_type)) {
@@ -778,7 +784,7 @@ async function getStartAfterColumnProblem(
 			description: `"${column}" has the type ${columnInfo.data_type}. n8n can change the time zone and the precision of these values in the output, so the next page can repeat or skip rows. Use another unique column, for example the primary key.`,
 		};
 	}
-	if (OBJECT_TYPES.includes(columnInfo.data_type)) {
+	if (OBJECT_TYPES.includes(columnInfo.data_type) || columnInfo.data_type.endsWith('[]')) {
 		return {
 			message: `Start After does not support the column "${column}" of type ${columnInfo.data_type}`,
 			description:
@@ -791,14 +797,14 @@ async function getStartAfterColumnProblem(
 			description: `"${column}" is a NUMERIC column. With Numbers, n8n can round its values in the output, so the next page can repeat or skip rows.`,
 		};
 	}
-	if (!(await isUniqueColumn(db, schema, table, column))) {
+	if (!columnInfo.is_unique) {
 		return {
 			message: `Column "${column}" has no unique index that Start After can use`,
 			description:
-				'Start After needs a primary key or a unique index on this column alone. These do not count: a unique index on more than one column, with INCLUDE columns, with a WHERE condition or on an expression. A view has no indexes. If values repeat, a page skips the rows that share the last value.',
+				'Start After needs a primary key or a unique index on this column alone. These do not count: a unique index on more than one column, with a WHERE condition or on an expression. A view has no indexes. If values repeat, a page skips the rows that share the last value.',
 		};
 	}
-	if (columnInfo.is_nullable === 'YES') {
+	if (!columnInfo.not_null) {
 		return {
 			message: `Column "${column}" can be null`,
 			description: `Start After needs a column that is never null. A null value never comes after another value, so no page returns the rows with null. Make "${column}" NOT NULL, or use another unique column, for example the primary key.`,

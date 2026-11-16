@@ -72,6 +72,9 @@ describe('PostgresV2, Start After', () => {
 		{ returnAll: true, typeVersion: 2.8, shown: false },
 		{ returnAll: false, typeVersion: 2.7, shown: true },
 		{ returnAll: false, typeVersion: 2.6, shown: false },
+		// n8n shows a field when a show value is an expression, so the version must be checked first
+		{ returnAll: '={{ false }}', typeVersion: 2.7, shown: true },
+		{ returnAll: '={{ false }}', typeVersion: 2.6, shown: false },
 	])(
 		'should show Start After: $shown when Return All is $returnAll at v$typeVersion',
 		({ returnAll, typeVersion, shown }) => {

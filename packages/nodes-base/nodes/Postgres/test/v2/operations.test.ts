@@ -1256,22 +1256,18 @@ describe('Test PostgresV2, select operation', () => {
 });
 
 describe('Test PostgresV2, select operation with Start After', () => {
-	const tableColumns: ColumnInfo[] = [
-		{ column_name: 'id', data_type: 'integer', is_nullable: 'NO' },
-		{ column_name: 'code', data_type: 'text', is_nullable: 'NO' },
-		{ column_name: 'amount', data_type: 'numeric', is_nullable: 'NO' },
-		{ column_name: 'created_on', data_type: 'date', is_nullable: 'NO' },
-		{ column_name: 'email', data_type: 'text', is_nullable: 'YES' },
-		{ column_name: 'happened_at', data_type: 'timestamp without time zone', is_nullable: 'NO' },
-		{ column_name: 'updated_at', data_type: 'timestamp with time zone', is_nullable: 'NO' },
-		{ column_name: 'raw', data_type: 'bytea', is_nullable: 'NO' },
-	];
-
-	/** `any` returns the columns of the table, `one` returns if a unique index covers the column */
-	const createColumnInfoDb = (isUnique = true) => {
-		const any = vi.fn().mockResolvedValue(tableColumns);
-		const one = vi.fn().mockResolvedValue({ is_unique: isUnique });
-		return { db: { any, one } as unknown as PgpDatabase, any, one };
+	/** `oneOrNone` returns what the node reads about the Start After column, or null for a missing column */
+	const createColumnInfoDb = (columnInfo: IDataObject | null = {}) => {
+		const oneOrNone = vi.fn().mockResolvedValue(
+			columnInfo && {
+				data_type: 'integer',
+				not_null: true,
+				is_unique: true,
+				has_child_tables: false,
+				...columnInfo,
+			},
+		);
+		return { db: { oneOrNone } as unknown as PgpDatabase, oneOrNone };
 	};
 
 	const selectParameters = (
@@ -1325,7 +1321,7 @@ describe('Test PostgresV2, select operation with Start After', () => {
 	});
 
 	it('should give the first page sorted by the column when the value is empty', async () => {
-		const { db, any, one } = createColumnInfoDb();
+		const { db, oneOrNone } = createColumnInfoDb();
 
 		await runSelect(selectParameters({ column: 'id', value: '' }), db);
 
@@ -1335,15 +1331,31 @@ describe('Test PostgresV2, select operation with Start After', () => {
 			'id',
 			100,
 		]);
-		expect(any).toHaveBeenCalledWith(expect.stringContaining('information_schema.columns'), [
-			'public',
-			'orders',
-		]);
-		expect(one).toHaveBeenCalledWith(expect.stringContaining('pg_index'), [
+		expect(oneOrNone).toHaveBeenCalledTimes(1);
+		expect(oneOrNone).toHaveBeenCalledWith(expect.stringContaining('FROM pg_attribute a'), [
 			'public',
 			'orders',
 			'id',
 		]);
+	});
+
+	// A unit test cannot run the column query. Each of these conditions stops a column whose pages can skip rows.
+	it.each([
+		'(i.indisprimary OR i.indisunique)',
+		'i.indkey[0] = a.attnum',
+		'i.indisvalid',
+		'i.indpred IS NULL',
+		"COALESCE((to_jsonb(i) ->> 'indnkeyatts')::int, i.indnatts) = 1",
+		"c.relkind <> 'p' AND EXISTS (SELECT 1 FROM pg_inherits WHERE inhparent = c.oid)",
+		'a.attnotnull AS not_null',
+		'a.attnum > 0 AND NOT a.attisdropped',
+	])('should keep the condition %s in the column query', async (condition) => {
+		const { db, oneOrNone } = createColumnInfoDb();
+
+		await runSelect(selectParameters({ column: 'id', value: '5' }), db);
+
+		const query = String(oneOrNone.mock.calls[0][0]).replace(/\s+/g, ' ');
+		expect(query).toContain(condition);
 	});
 
 	it('should give the first page when the value is null', async () => {
@@ -1501,7 +1513,7 @@ describe('Test PostgresV2, select operation with Start After', () => {
 	});
 
 	it('should throw when another sort rule comes before the column', async () => {
-		const { db, any, one } = createColumnInfoDb();
+		const { db, oneOrNone } = createColumnInfoDb();
 
 		await expect(
 			runSelect(
@@ -1519,8 +1531,7 @@ describe('Test PostgresV2, select operation with Start After', () => {
 				db,
 			),
 		).rejects.toThrow('Sort by "id" first');
-		expect(any).not.toHaveBeenCalled();
-		expect(one).not.toHaveBeenCalled();
+		expect(oneOrNone).not.toHaveBeenCalled();
 		expect(runQueries).not.toHaveBeenCalled();
 	});
 
@@ -1620,38 +1631,50 @@ describe('Test PostgresV2, select operation with Start After', () => {
 		[
 			'not unique',
 			'created_on',
-			false,
+			{ data_type: 'date', is_unique: false },
 			'Column "created_on" has no unique index that Start After can use',
 		],
-		['nullable', 'email', true, 'Column "email" can be null'],
+		['nullable', 'email', { data_type: 'text', not_null: false }, 'Column "email" can be null'],
 		[
 			'a timestamp',
 			'happened_at',
-			true,
+			{ data_type: 'timestamp without time zone' },
 			'Start After does not support the timestamp column "happened_at"',
 		],
 		[
 			'a timestamp with time zone',
 			'updated_at',
-			true,
+			{ data_type: 'timestamp with time zone' },
 			'Start After does not support the timestamp column "updated_at"',
 		],
 		[
 			'of a type that n8n outputs as an object',
 			'raw',
-			true,
+			{ data_type: 'bytea' },
 			'Start After does not support the column "raw" of type bytea',
 		],
-		['missing', 'nope', true, 'Cannot find column "nope" in "public.orders"'],
-	])('should throw when the column is %s', async (_, column, isUnique, message) => {
-		const { db } = createColumnInfoDb(isUnique);
+		[
+			'an array',
+			'tags',
+			{ data_type: 'text[]' },
+			'Start After does not support the column "tags" of type text[]',
+		],
+		[
+			'in a table that other tables inherit from',
+			'id',
+			{ has_child_tables: true },
+			'Start After does not support "public.orders" because other tables inherit from it',
+		],
+		['missing', 'nope', null, 'Cannot find column "nope" in "public.orders"'],
+	])('should throw when the column is %s', async (_, column, columnInfo, message) => {
+		const { db } = createColumnInfoDb(columnInfo);
 
 		await expect(runSelect(selectParameters({ column, value: '5' }), db)).rejects.toThrow(message);
 		expect(runQueries).not.toHaveBeenCalled();
 	});
 
 	it('should name the problem in the error description', async () => {
-		const { db } = createColumnInfoDb(false);
+		const { db } = createColumnInfoDb({ data_type: 'date', is_unique: false });
 
 		await expect(
 			runSelect(selectParameters({ column: 'created_on', value: '' }), db),
@@ -1672,76 +1695,40 @@ describe('Test PostgresV2, select operation with Start After', () => {
 		]);
 	});
 
-	it('should read the indexes once per run for the same column', async () => {
-		const { db, any, one } = createColumnInfoDb();
-
-		await runSelect(selectParameters({ column: 'id', value: '5' }), db, [
-			{ json: {} },
-			{ json: {} },
-			{ json: {} },
-		]);
-
-		expect(any).toHaveBeenCalledTimes(1);
-		expect(one).toHaveBeenCalledTimes(1);
-		expect(vi.mocked(runQueries).mock.calls[0][0]).toHaveLength(3);
-	});
-
-	it('should read the columns and the indexes for each table', async () => {
-		const { db, any, one } = createColumnInfoDb();
-		const tables = ['orders', 'orders', 'customers'];
-		const context = createMockExecuteFunction(selectParameters({ column: 'id', value: '5' }));
+	it('should read the column once per run for each schema, table and column', async () => {
+		const { db, oneOrNone } = createColumnInfoDb();
+		const itemColumns = [
+			['public', 'orders', 'id'],
+			['public', 'orders', 'id'],
+			['public', 'orders', 'order_number'],
+			['public', 'customers', 'id'],
+			['archive', 'orders', 'id'],
+		];
+		const context = createMockExecuteFunction(selectParameters({}));
 		const getNodeParameter = context.getNodeParameter.bind(context);
-		context.getNodeParameter = ((name: string, itemIndex: number, ...rest: unknown[]) =>
-			name === 'table'
-				? tables[itemIndex]
-				: getNodeParameter(
-						name,
-						itemIndex,
-						...(rest as []),
-					)) as IExecuteFunctions['getNodeParameter'];
+		context.getNodeParameter = ((name: string, itemIndex: number, ...rest: unknown[]) => {
+			const [schema, table, column] = itemColumns[itemIndex];
+			if (name === 'schema') return schema;
+			if (name === 'table') return table;
+			if (name === 'startAfter.values') return { column, value: '5' };
+			return getNodeParameter(name, itemIndex, ...(rest as []));
+		}) as IExecuteFunctions['getNodeParameter'];
 
 		await select.execute.call(
 			context,
 			runQueries,
-			[{ json: {} }, { json: {} }, { json: {} }],
+			itemColumns.map(() => ({ json: {} })),
 			{},
 			db,
 		);
 
-		expect(any).toHaveBeenCalledTimes(2);
-		expect(any.mock.calls[1][1]).toEqual(['public', 'customers']);
-		expect(one).toHaveBeenCalledTimes(2);
-		expect(one.mock.calls[1][1]).toEqual(['public', 'customers', 'id']);
-	});
-
-	it('should throw when the node version is older than 2.7', async () => {
-		const { db, any, one } = createColumnInfoDb();
-
-		await expect(
-			runSelect(
-				selectParameters({ column: 'id', value: '5' }, { options: { nodeVersion: 2.6 } }),
-				db,
-			),
-		).rejects.toThrow('Start After needs version 2.7 or later of the Postgres node');
-		expect(any).not.toHaveBeenCalled();
-		expect(one).not.toHaveBeenCalled();
-		expect(runQueries).not.toHaveBeenCalled();
-	});
-
-	it('should page from node version 2.7', async () => {
-		await runSelect(
-			selectParameters({ column: 'id', value: '5' }, { options: { nodeVersion: 2.7 } }),
-		);
-
-		expect(runQueries).toHaveBeenCalledWith(
-			[
-				{
-					query: 'SELECT * FROM $1:name.$2:name WHERE $3:name > $4 ORDER BY $5:name ASC LIMIT $6',
-					values: ['public', 'orders', 'id', '5', 'id', 100],
-				},
-			],
-			{ nodeVersion: 2.7 },
-		);
+		expect(oneOrNone.mock.calls.map(([, values]) => values)).toEqual([
+			['public', 'orders', 'id'],
+			['public', 'orders', 'order_number'],
+			['public', 'customers', 'id'],
+			['archive', 'orders', 'id'],
+		]);
+		expect(vi.mocked(runQueries).mock.calls[0][0]).toHaveLength(5);
 	});
 
 	it('should build the same SQL as before on an old node version without Start After', async () => {
@@ -1754,7 +1741,7 @@ describe('Test PostgresV2, select operation with Start After', () => {
 	});
 
 	it('should throw for a numeric column when large numbers come back as numbers', async () => {
-		const { db } = createColumnInfoDb();
+		const { db } = createColumnInfoDb({ data_type: 'numeric' });
 
 		await expect(
 			runSelect(
@@ -1769,7 +1756,7 @@ describe('Test PostgresV2, select operation with Start After', () => {
 	});
 
 	it('should page by a numeric column when large numbers come back as text', async () => {
-		const { db } = createColumnInfoDb();
+		const { db } = createColumnInfoDb({ data_type: 'numeric' });
 
 		await runSelect(
 			selectParameters(
@@ -1803,18 +1790,17 @@ describe('Test PostgresV2, select operation with Start After', () => {
 	});
 
 	it('should build the same SQL as before when the node has no Start After parameter', async () => {
-		const { db, any, one } = createColumnInfoDb();
+		const { db, oneOrNone } = createColumnInfoDb();
 		const { startAfter: _, ...parameters } = selectParameters({});
 
 		await runSelect({ ...parameters, limit: 5 }, db);
 
 		expectQuery('SELECT * FROM $1:name.$2:name LIMIT $3', ['public', 'orders', 5]);
-		expect(any).not.toHaveBeenCalled();
-		expect(one).not.toHaveBeenCalled();
+		expect(oneOrNone).not.toHaveBeenCalled();
 	});
 
-	it('should not read the indexes without Start After', async () => {
-		const { db, any, one } = createColumnInfoDb();
+	it('should not read the column without Start After', async () => {
+		const { db, oneOrNone } = createColumnInfoDb();
 
 		await runSelect(
 			selectParameters(
@@ -1830,8 +1816,7 @@ describe('Test PostgresV2, select operation with Start After', () => {
 			'id',
 			100,
 		]);
-		expect(any).not.toHaveBeenCalled();
-		expect(one).not.toHaveBeenCalled();
+		expect(oneOrNone).not.toHaveBeenCalled();
 	});
 });
 

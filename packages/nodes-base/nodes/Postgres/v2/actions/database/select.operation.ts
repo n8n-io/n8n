@@ -124,7 +124,7 @@ export async function execute(
 		let sortRules =
 			((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];
 
-		const startAfter = getStartAfter(this, i, nodeOptions.nodeVersion);
+		const startAfter = getStartAfter(this, i);
 
 		if (startAfter) {
 			const { column } = startAfter;
