@@ -812,7 +812,7 @@ async function handleSubmit(
 		return;
 	}
 
-	if (settingsStore.newThreadsUseAssistantAgent && !isCreatingApp.value) {
+	if (settingsStore.newThreadsUseAssistantAgent) {
 		await startAssistantAgentThread(
 			selectedProject.value,
 			message,
@@ -962,6 +962,10 @@ async function startAssistantAgentThread(
 		projectId,
 		source: resolveLaunchSource(),
 		origin: 'internal',
+		// The first build creates the app under the id that the Apps page minted.
+		...(pendingAppId.value
+			? { appTarget: { appId: pendingAppId.value, projectId, pending: true } }
+			: {}),
 	});
 	const failure = await router.push({
 		name: INSTANCE_AI_THREAD_VIEW,

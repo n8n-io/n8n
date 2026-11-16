@@ -8,6 +8,10 @@ import { useInstanceAiStore } from '../instanceAi.store';
 import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW } from '../constants';
 import { provisionSubjectThread } from '../composables/useInstanceAiHandoff';
 import { fetchThreadHistory } from '../instanceAi.memory.api';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { stashAssistantAgentLaunch } from '../assistantAgent/assistantAgentThreads';
+import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
+import { listSystemAgentThreads } from '@/features/agents/composables/useAgentApi';
 
 const { available, currentRoute, push, replace, showError } = vi.hoisted(() => ({
 	available: { value: true },
@@ -24,6 +28,14 @@ vi.mock('../composables/useInstanceAiAvailability', () => ({
 }));
 vi.mock('../composables/useInstanceAiHandoff', () => ({ provisionSubjectThread: vi.fn() }));
 vi.mock('../instanceAi.memory.api', () => ({ fetchThreadHistory: vi.fn() }));
+vi.mock('@/features/agents/composables/useAgentApi', () => ({ listSystemAgentThreads: vi.fn() }));
+vi.mock('../assistantAgent/assistantAgentThreads', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../assistantAgent/assistantAgentThreads')>()),
+	stashAssistantAgentLaunch: vi.fn(),
+}));
+
+const APP_ID = '019a4012-272c-7313-91af-5c94a3d819a9';
+const appMetadata = { instanceAiAppTargets: [{ appId: APP_ID, projectId: 'project-1' }] };
 
 describe('useAppAssistantHandoff', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
@@ -230,6 +242,106 @@ describe('useAppAssistantHandoff', () => {
 
 		await expect(result).resolves.toBe(true);
 		expect(showError).not.toHaveBeenCalled();
+	});
+
+	describe('with the Assistant agent', () => {
+		let threadsStore: ReturnType<typeof mockedStore<typeof useAssistantAgentThreadsStore>>;
+
+		beforeEach(() => {
+			mockedStore(useInstanceAiSettingsStore).newThreadsUseAssistantAgent = true;
+			threadsStore = mockedStore(useAssistantAgentThreadsStore);
+			threadsStore.knownThreads = [];
+			vi.mocked(listSystemAgentThreads).mockResolvedValue({ data: [], nextCursor: null });
+		});
+
+		it('opens an Assistant agent thread of the App from a later page', async () => {
+			const thread = {
+				id: 'agent-thread',
+				title: 'App chat',
+				updatedAt: '2026-11-02T10:00:00.000Z',
+				projectId: 'project-1',
+				metadata: appMetadata,
+			};
+			vi.mocked(listSystemAgentThreads)
+				.mockResolvedValueOnce({ data: [], nextCursor: 'next-page' })
+				.mockResolvedValueOnce({ data: [thread], nextCursor: null });
+
+			await useAppAssistantHandoff().openApp({ appId: APP_ID, projectId: 'project-1' });
+
+			expect(listSystemAgentThreads).toHaveBeenNthCalledWith(2, expect.anything(), 'assistant', {
+				limit: 100,
+				cursor: 'next-page',
+			});
+			expect(threadsStore.addOpenedThread).toHaveBeenCalledWith(thread);
+			expect(store.loadThreads).not.toHaveBeenCalled();
+			expect(stashAssistantAgentLaunch).not.toHaveBeenCalled();
+			expect(replace).toHaveBeenCalledWith({
+				name: INSTANCE_AI_THREAD_VIEW,
+				params: { threadId: 'agent-thread' },
+				query: { appId: APP_ID },
+			});
+		});
+
+		it('opens a thread of the App that the store already knows without a request', async () => {
+			threadsStore.knownThreads = [
+				{
+					id: 'known-thread',
+					title: 'App chat',
+					updatedAt: '2026-11-02T10:00:00.000Z',
+					projectId: 'project-1',
+					metadata: appMetadata,
+				},
+			];
+
+			await useAppAssistantHandoff().openApp({ appId: APP_ID, projectId: 'project-1' });
+
+			expect(listSystemAgentThreads).not.toHaveBeenCalled();
+			expect(replace).toHaveBeenCalledWith(
+				expect.objectContaining({ params: { threadId: 'known-thread' } }),
+			);
+		});
+
+		it('keeps a thread of the App from the current runtime', async () => {
+			store.threads = [
+				{
+					id: 'current-thread',
+					title: 'App chat',
+					createdAt: '2026-10-01T10:00:00.000Z',
+					updatedAt: '2026-10-01T10:00:00.000Z',
+					metadata: appMetadata,
+				},
+			];
+
+			await useAppAssistantHandoff().openApp({ appId: APP_ID, projectId: 'project-1' });
+
+			expect(stashAssistantAgentLaunch).not.toHaveBeenCalled();
+			expect(replace).toHaveBeenCalledWith(
+				expect.objectContaining({ params: { threadId: 'current-thread' } }),
+			);
+		});
+
+		it('starts an Assistant agent thread with the App when the App has no thread', async () => {
+			await useAppAssistantHandoff().openApp({
+				appId: APP_ID,
+				projectId: 'project-1',
+				appName: 'Portal',
+			});
+
+			expect(provisionSubjectThread).not.toHaveBeenCalled();
+			expect(stashAssistantAgentLaunch).toHaveBeenCalledWith(expect.any(String), {
+				projectId: 'project-1',
+				source: 'app_builder_page',
+				origin: 'internal',
+				sourceContext: { appId: APP_ID },
+				appTarget: { appId: APP_ID, projectId: 'project-1', name: 'Portal' },
+			});
+			const [threadId] = vi.mocked(stashAssistantAgentLaunch).mock.calls[0];
+			expect(replace).toHaveBeenCalledWith({
+				name: INSTANCE_AI_THREAD_VIEW,
+				params: { threadId },
+				query: { appId: APP_ID },
+			});
+		});
 	});
 
 	it('opens the wide empty state for a new App', async () => {

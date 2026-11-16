@@ -6,6 +6,7 @@ import {
 	type InstanceAiApprovalMode,
 	type InstanceAiAttachment,
 	type InstanceAiElementAttachment,
+	type InstanceAiLaunchAppTarget,
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
@@ -22,6 +23,7 @@ import {
 	snapshotAgent,
 	tokenUsageToBuilderUsageItems,
 	withAttachedAgentTarget,
+	withLaunchAppTarget,
 	type InstanceAiWorkflowService,
 	type ModelConfig,
 } from '@n8n/instance-ai';
@@ -324,6 +326,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		let turnInput: AssistantTurnInput | undefined;
 		if (turn.type === 'start') {
 			await this.bindAttachedAgent(turn, request.attachments);
+			await this.bindLaunchedApp(turn, request.appTarget);
 			const buildInput = async () =>
 				await this.turnInput.buildInput(environment, runtime, {
 					user,
@@ -577,18 +580,42 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
 		);
 		if (attached?.projectId !== turn.thread.projectId) return;
+		await this.updateThreadMetadata(turn, (metadata) =>
+			withAttachedAgentTarget(metadata, attached),
+		);
+	}
+
+	/**
+	 * Binds the app that a new thread opens on, like the editor binds a thread on
+	 * the current runtime before its first message. The app tools then build or
+	 * edit that app, and the app page finds the thread by its app target.
+	 */
+	private async bindLaunchedApp(
+		turn: SystemAgentStartTurn<AssistantSandboxLease>,
+		appTarget: InstanceAiLaunchAppTarget | undefined,
+	): Promise<void> {
+		// The app tools act only in the project of the thread.
+		if (appTarget?.projectId !== turn.thread.projectId) return;
+		await this.updateThreadMetadata(turn, (metadata) => withLaunchAppTarget(metadata, appTarget));
+	}
+
+	/** Applies `update` to the thread metadata. `update` returns `undefined` to change nothing. */
+	private async updateThreadMetadata(
+		turn: SystemAgentStartTurn<AssistantSandboxLease>,
+		update: (metadata: Record<string, unknown>) => Record<string, unknown> | undefined,
+	): Promise<void> {
 		// A patch replaces the metadata, so binding a saved agent drops its pending marker.
 		// `saveThread` merges, and a leftover marker makes a later build adopt this agent.
 		const patched = await patchThread(turn.memory, {
 			threadId: turn.thread.id,
 			update: ({ metadata }) => {
-				const next = withAttachedAgentTarget(metadata ?? {}, attached);
+				const next = update(metadata ?? {});
 				return next ? { metadata: next } : null;
 			},
 		});
 		if (patched) return;
 		// The first turn saves its messages after this, so the thread row can be missing here.
-		const metadata = withAttachedAgentTarget({}, attached);
+		const metadata = update({});
 		if (!metadata) return;
 		await turn.memory.saveThread({ id: turn.thread.id, resourceId: turn.resourceId, metadata });
 	}

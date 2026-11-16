@@ -1,6 +1,8 @@
 import {
 	acceptedMimeTypesFromCapabilities,
+	instanceAiLaunchAppTargetSchema,
 	type InstanceAiAttachment,
+	type InstanceAiLaunchAppTarget,
 	type InstanceAiThreadOrigin,
 	type InstanceAiThreadSource,
 } from '@n8n/api-types';
@@ -84,7 +86,10 @@ export function isKnownAssistantAgentThread(threadId: string): boolean {
 	return knownAgentThreads.has(threadId);
 }
 
-const launchMarkerSchema = z.object({ projectId: z.string().min(1) });
+const launchMarkerSchema = z.object({
+	projectId: z.string().min(1),
+	appTarget: instanceAiLaunchAppTargetSchema.optional(),
+});
 
 /** A new Assistant agent thread: its project, and where it came from for telemetry. */
 export interface AssistantAgentThreadLaunch {
@@ -94,6 +99,8 @@ export interface AssistantAgentThreadLaunch {
 	templateId?: string;
 	/** Hand-off context. Only the launch telemetry reads it. */
 	sourceContext?: Record<string, unknown>;
+	/** The app that the thread opens on. The first message binds it on the server. */
+	appTarget?: InstanceAiLaunchAppTarget;
 }
 
 /** Link a thread that starts from a self-healing result to that result. */
@@ -124,7 +131,13 @@ const launchKey = (threadId: string) => `n8n-assistant-agent-launch:${threadId}`
  */
 export function stashAssistantAgentLaunch(threadId: string, launch: AssistantAgentThreadLaunch) {
 	rememberAssistantAgentThread(threadId, launch.projectId);
-	localStorage.setItem(launchKey(threadId), JSON.stringify({ projectId: launch.projectId }));
+	localStorage.setItem(
+		launchKey(threadId),
+		JSON.stringify({
+			projectId: launch.projectId,
+			...(launch.appTarget ? { appTarget: launch.appTarget } : {}),
+		}),
+	);
 	useTelemetry().track('User launched Instance AI thread', {
 		thread_id: threadId,
 		instance_id: useRootStore().instanceId,
@@ -136,8 +149,10 @@ export function stashAssistantAgentLaunch(threadId: string, launch: AssistantAge
 	});
 }
 
-/** The project of a new thread that the server does not know yet. */
-export function getAssistantAgentLaunch(threadId: string): { projectId: string } | undefined {
+/** The project and the app of a new thread that the server does not know yet. */
+export function getAssistantAgentLaunch(
+	threadId: string,
+): { projectId: string; appTarget?: InstanceAiLaunchAppTarget } | undefined {
 	const raw = localStorage.getItem(launchKey(threadId));
 	if (!raw) return undefined;
 	const parsed = launchMarkerSchema.safeParse(jsonParse(raw, { fallbackValue: null }));

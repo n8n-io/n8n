@@ -1593,6 +1593,16 @@ export const instanceAiAppTargetSchema = z.object({
 });
 export type InstanceAiAppTarget = z.infer<typeof instanceAiAppTargetSchema>;
 
+/**
+ * The app that a new Assistant agent thread opens on. The thread exists on the
+ * server only after its first message, so the app target goes with that
+ * message. A pending app has no row yet: the first build creates it under this id.
+ */
+export const instanceAiLaunchAppTargetSchema = instanceAiAppTargetSchema.extend({
+	pending: z.literal(true).optional(),
+});
+export type InstanceAiLaunchAppTarget = z.infer<typeof instanceAiLaunchAppTargetSchema>;
+
 const instanceAiNodeRefSchema = z.object({
 	id: z.string().min(1).max(64),
 	name: z.string().max(255).optional(),
@@ -1797,6 +1807,8 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	 *  user. Its device support is only visible there. Omit to advertise none.
 	 *  The backend still applies the admin switch, so this can only narrow. */
 	browserUseAvailable: z.boolean().optional(),
+	/** The app of a new thread. Only the Assistant agent reads it, on its first turn. */
+	appTarget: instanceAiLaunchAppTargetSchema.optional(),
 	/** Pin a published prompt profile. Omit to use the backend experiment assignment. */
 	promptVersion: instanceAiPromptVersionSchema.optional(),
 	/** Eval override: observer threshold for THIS thread, so driving compaction

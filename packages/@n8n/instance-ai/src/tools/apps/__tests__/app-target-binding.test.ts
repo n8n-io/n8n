@@ -3,7 +3,12 @@ import {
 	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 } from '@n8n/api-types';
 
-import { parseAppTargets, parsePendingAppTarget, withAppTarget } from '../app-target-binding';
+import {
+	parseAppTargets,
+	parsePendingAppTarget,
+	withAppTarget,
+	withLaunchAppTarget,
+} from '../app-target-binding';
 
 const APP_A = { appId: '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f70', projectId: 'project-1' };
 const APP_B = { appId: '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f71', projectId: 'project-1' };
@@ -21,6 +26,34 @@ describe('withAppTarget', () => {
 
 		expect(parsePendingAppTarget(withAppTarget(metadata, APP_B))).toEqual(APP_A);
 		expect(parsePendingAppTarget(withAppTarget(metadata, APP_A))).toBeUndefined();
+	});
+});
+
+describe('withLaunchAppTarget', () => {
+	it('binds a saved app and keeps other metadata', () => {
+		expect(withLaunchAppTarget({ other: true }, APP_A)).toEqual({
+			other: true,
+			[INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [APP_A],
+		});
+	});
+
+	it('marks a pending app without the pending flag in the stored target', () => {
+		const metadata = withLaunchAppTarget({}, { ...APP_A, pending: true });
+
+		expect(metadata).toEqual({ [INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: APP_A });
+	});
+
+	it('changes nothing when the thread already has the app', () => {
+		const metadata = withAppTarget({}, APP_A);
+
+		expect(withLaunchAppTarget(metadata, APP_A)).toBeUndefined();
+		expect(withLaunchAppTarget(metadata, { ...APP_A, pending: true })).toBeUndefined();
+	});
+
+	it('keeps an earlier pending app', () => {
+		const metadata = { [INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: APP_A };
+
+		expect(withLaunchAppTarget(metadata, { ...APP_B, pending: true })).toBeUndefined();
 	});
 });
 
