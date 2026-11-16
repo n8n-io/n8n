@@ -1,0 +1,37 @@
+packages/@n8n/inbound-auth/src/__tests__/trusted-source-config.test.ts
+  s_8340704519ff52::t_658406b505b597 5,370-397,407-423
+  s_8340704519ff52::t_ddf29df8177de3 398-406
+  s_8340704519ff52::t_c474b0cea954d1 424
+packages/cli/test/integration/inbound-auth-core/system-trusted-source.seeder.integration.test.ts
+  s_8340704519ff52::t_c2f884f4ae1fc7 1,5,7,10,26,41-47,72,198-226,251-273
+  s_8340704519ff52::t_ccfe183e75a113 38-40
+  s_8340704519ff52::t_ddf29df8177de3 227-250
+packages/cli/src/modules/inbound-auth-core/trusted-source.store.ts
+  s_8340704519ff52::t_e31e6c3f50d75d 357-367,372-373,380-383
+  s_8340704519ff52::t_c923439d7b111e 5,11
+  s_8340704519ff52::t_4f6f3e485d4ddc 410
+  s_8340704519ff52::t_dc80748a6a5aa7 384-385
+packages/cli/test/integration/inbound-auth-core/trusted-source.store.integration.test.ts
+  s_8340704519ff52::t_c2f884f4ae1fc7 271-300
+packages/@n8n/inbound-auth/src/trusted-source-config.ts
+  s_8340704519ff52::t_2a16d208f38420 273-300
+packages/cli/src/modules/inbound-auth-core/__tests__/trusted-source.store.test.ts
+  s_8340704519ff52::t_ddf29df8177de3 57,63-95
+  s_8340704519ff52::t_db66e7a2a49087 96-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "730d315e0098c82902a9e2753d36fca427b9288f",
+  "prompts": {},
+  "sessions": {
+    "s_8340704519ff52": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1e6d307-a24c-4961-ae92-c92aee21b928",
+        "model": "claude-fable-5-2"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
