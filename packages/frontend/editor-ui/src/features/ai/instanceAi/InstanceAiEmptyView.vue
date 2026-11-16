@@ -94,6 +94,7 @@ import {
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_VERSION,
 	getPreviewWorkflow,
 } from '@/experiments/instanceAiWorkflowPreviewSuggestions';
+import ApprovalModeSelector from './components/ApprovalModeSelector.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
@@ -681,7 +682,7 @@ const composerAttachOnlyMimeTypes = computed(() =>
 
 // The Assistant agent accepts only the files it can read. Check them on drop, not at send.
 const composerAcceptedMimeTypes = computed(() =>
-	settingsStore.isAssistantAgentEnabled ? ASSISTANT_AGENT_ACCEPTED_MIME_TYPES : undefined,
+	settingsStore.newThreadsUseAssistantAgent ? ASSISTANT_AGENT_ACCEPTED_MIME_TYPES : undefined,
 );
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
@@ -811,7 +812,7 @@ async function handleSubmit(
 		return;
 	}
 
-	if (settingsStore.isAssistantAgentEnabled && !isCreatingApp.value) {
+	if (settingsStore.newThreadsUseAssistantAgent && !isCreatingApp.value) {
 		await startAssistantAgentThread(
 			selectedProject.value,
 			message,
@@ -1028,6 +1029,9 @@ async function handleWorkflowPreviewExampleUse(
 						@submit="handleSubmit"
 						@content-change="composerHasContent = $event"
 					>
+						<template #footer-after-menu>
+							<ApprovalModeSelector />
+						</template>
 						<template v-if="canSelectProject" #footer>
 							<div :class="$style.inputFooter">
 								<ProjectSelect v-model="selectedProject" />
@@ -1121,6 +1125,10 @@ async function handleWorkflowPreviewExampleUse(
 						@workflow-preview="handleWorkflowPreview"
 						@content-change="composerHasContent = $event"
 					>
+						<!-- Variant B can start an Agent chat, where Assistant approval modes don't apply. -->
+						<template v-if="!selectedChatAgent" #footer-after-menu>
+							<ApprovalModeSelector />
+						</template>
 						<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
 						<template v-if="showClaudeBeforeSuggestions" #before-suggestions>
 							<ClaudeEntryPoint :class="$style.claudeBeforeSuggestions" placement="footer" />

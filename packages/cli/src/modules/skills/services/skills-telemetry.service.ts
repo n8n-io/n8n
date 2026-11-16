@@ -198,6 +198,21 @@ export class SkillsTelemetry {
 		});
 	}
 
+	async reviewedUpdate(
+		props: Omit<
+			InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_REVIEWED_SKILL_UPDATE>,
+			'user_id'
+		>,
+		userId: string,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_REVIEWED_SKILL_UPDATE, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
 	async updatedSourceCredential(
 		props: Omit<
 			InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_UPDATED_SKILL_SOURCE_CREDENTIAL>,

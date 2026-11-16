@@ -96,7 +96,7 @@ const handleClick = (event: MouseEvent) => {
 		@click="handleClick"
 	>
 		<div v-if="loading" :class="$style['loading-container']">
-			<N8nSpinner type="grid" :size="computedIconSize" aria-hidden="true" />
+			<N8nSpinner type="dots" :size="computedIconSize" aria-hidden="true" />
 		</div>
 
 		<div :class="$style['button-inner']">

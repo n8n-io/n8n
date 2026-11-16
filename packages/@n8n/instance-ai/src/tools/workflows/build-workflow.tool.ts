@@ -1539,6 +1539,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							model: context.modelId,
 							utilityModel: context.utilityModelId,
 							modelFetch: context.modelFetch,
+							onHelperUsage: context.onHelperUsage,
 							logger: context.logger,
 						});
 					trackWaitGateVerificationPlan(context, {

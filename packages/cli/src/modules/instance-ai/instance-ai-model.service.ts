@@ -24,6 +24,13 @@ import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { modelNameForProvider, withModelName } from './model-config-name';
 
+/** The run that a side model (utility tasks, approval judge) serves. */
+interface SideModelRun {
+	proxyBaseUrl?: string;
+	tokenManager?: ProxyTokenManager;
+	proxyContext?: ProxyContext;
+}
+
 /**
  * Small model each provider uses for utility tasks when
  * `N8N_INSTANCE_AI_UTILITY_MODEL` is unset, with the origin of the provider's
@@ -149,7 +156,7 @@ export class InstanceAiModelService {
 	async resolveUtilityModelConfig(
 		user: User,
 		mainModel: ModelConfig,
-		run: { proxyBaseUrl?: string; tokenManager?: ProxyTokenManager; proxyContext?: ProxyContext },
+		run: SideModelRun,
 	): Promise<ModelConfig | undefined> {
 		let modelName: string | undefined;
 		try {
@@ -160,22 +167,7 @@ export class InstanceAiModelService {
 					? DEFAULT_UTILITY_MODELS[this.proxyMainProvider(user)]?.model
 					: directDefaultUtilityModel(mainModel));
 			if (!modelName) return undefined;
-			if (run.proxyBaseUrl && run.tokenManager) {
-				return await this.resolveProxyModel(
-					user,
-					run.proxyBaseUrl,
-					run.tokenManager,
-					run.proxyContext,
-					modelName,
-				);
-			}
-			// withModelName renames configs that carry a `provider/model` id. Outside the
-			// AI service proxy, the only main model without one is the pre-built Anthropic
-			// client used when HTTP(S)_PROXY is set, so build that client again with the utility model.
-			return (
-				withModelName(mainModel, modelName, { dropMainProviderPrefix: true }) ??
-				(await this.resolveHttpProxyModel(user, run.proxyContext, modelName))
-			);
+			return await this.resolveSideModel(user, mainModel, run, modelName);
 		} catch (error) {
 			// A utility model must never fail the user's run; the main model still works.
 			this.logger.warn('Failed to resolve the Instance AI utility model, using the main model', {
@@ -184,6 +176,57 @@ export class InstanceAiModelService {
 			});
 			return undefined;
 		}
+	}
+
+	/**
+	 * Model for the judge of Auto approval mode: the configured judge model name
+	 * on the main model's provider and credentials, else the utility model, else
+	 * the main model.
+	 */
+	async resolveApprovalJudgeModelConfig(
+		user: User,
+		mainModel: ModelConfig,
+		run: SideModelRun,
+	): Promise<ModelConfig> {
+		const modelName = this.settingsService.getConfiguredApprovalJudgeModelName();
+		if (modelName) {
+			try {
+				const judgeModel = await this.resolveSideModel(user, mainModel, run, modelName);
+				if (judgeModel) return judgeModel;
+			} catch (error) {
+				// The judge model must never fail the user's run; the fallbacks still work.
+				this.logger.warn(
+					'Failed to resolve the Instance AI approval judge model, using the utility or main model',
+					{ modelName, error: getErrorMessage(error) },
+				);
+			}
+		}
+		return (await this.resolveUtilityModelConfig(user, mainModel, run)) ?? mainModel;
+	}
+
+	/** Runs `modelName` on the main model's provider and credentials. */
+	private async resolveSideModel(
+		user: User,
+		mainModel: ModelConfig,
+		run: SideModelRun,
+		modelName: string,
+	): Promise<ModelConfig | undefined> {
+		if (run.proxyBaseUrl && run.tokenManager) {
+			return await this.resolveProxyModel(
+				user,
+				run.proxyBaseUrl,
+				run.tokenManager,
+				run.proxyContext,
+				modelName,
+			);
+		}
+		// withModelName renames configs that carry a `provider/model` id. Outside the
+		// AI service proxy, the only main model without one is the pre-built Anthropic
+		// client used when HTTP(S)_PROXY is set, so build that client again with the side model.
+		return (
+			withModelName(mainModel, modelName, { dropMainProviderPrefix: true }) ??
+			(await this.resolveHttpProxyModel(user, run.proxyContext, modelName))
+		);
 	}
 
 	/** Provider the proxy routes the user's main model to, matching `resolveProxyModel`. */
