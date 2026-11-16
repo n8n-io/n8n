@@ -43,6 +43,7 @@ import {
 import {
 	AGENTS_TRACER_NAME,
 	DAYTONA_TRACER_NAME,
+	ENGINE_TRACER_NAME,
 	EXPRESSION_TRACER_NAME,
 	MICROSOFT_AGENT_365_TRACER_NAME,
 	MICROSOFT_AGENTS_TRACER_NAME,
@@ -177,6 +178,8 @@ export class OtelSdk {
 				tracerNames: [WORKFLOW_TRACER_NAME, AGENTS_TRACER_NAME, EXPRESSION_TRACER_NAME],
 				enabled: true,
 			},
+			// Engine v2 starts its spans only when N8N_ENGINE_TRACING_ENABLED is true.
+			{ tracerNames: [ENGINE_TRACER_NAME], enabled: true },
 			{
 				tracerNames: [DAYTONA_TRACER_NAME],
 				enabled: this.tracingSourcesConfig.daytonaTracingEnabled,

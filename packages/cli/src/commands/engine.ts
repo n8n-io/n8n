@@ -9,6 +9,9 @@ import { UserError } from '@n8n/errors';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
+import { engineTracingEnabled } from '@/modules/engine-v2/engine-tracing';
+import { OtelConfig } from '@/modules/otel/otel.config';
+import type { OtelService } from '@/modules/otel/otel.service';
 
 import { BaseCommand } from './base-command';
 
@@ -18,6 +21,7 @@ import { BaseCommand } from './base-command';
 		'Starts the engine v2 data plane. Needs a control plane (`n8n start` with N8N_ENGINE_MODE=remote) to resolve credentials from, and Redis for its work queues and to send execution responses and lifecycle events over.',
 })
 export class Engine extends BaseCommand {
+	private stopping = false;
 	// The data plane has no control plane database. Its own database is the
 	// engine's, opened by the runtime from N8N_ENGINE_DATABASE_URL.
 	override needsDb = false;
@@ -34,6 +38,8 @@ export class Engine extends BaseCommand {
 	private channelPublisher?: ExecutionChannelPublisher;
 
 	private workQueues?: RedisWorkQueues;
+
+	private otelService?: OtelService;
 
 	async init() {
 		// The guards below run before `super.init()` wires the reporter, and the
@@ -54,19 +60,25 @@ export class Engine extends BaseCommand {
 
 		await this.initBinaryDataStore();
 
+		if (engineTracingEnabled()) {
+			const { OtelService } = await import('@/modules/otel/otel.service.js');
+			this.otelService = Container.get(OtelService);
+			await this.otelService.initFromConfig(Container.get(OtelConfig));
+		}
+
 		// The control plane runs in another process, so the execution channel uses Redis.
 		const logger = this.logger.scoped('engine-v2');
 		const { createRedisExecutionChannelPublisher } = await import(
 			'@/modules/engine-v2/execution-channel/redis-execution-channel.js'
-		);
-		const { ExecutionChannelSender } = await import(
-			'@/modules/engine-v2/execution-channel/execution-channel-sender.js'
 		);
 		const { createExecutionResponseCodec } = await import(
 			'@/modules/engine-v2/execution-channel/execution-response-frame.js'
 		);
 		const { LifecycleEventChannelSender } = await import(
 			'@/modules/engine-v2/execution-channel/lifecycle-event-sender.js'
+		);
+		const { createExecutionResponseSender } = await import(
+			'@/modules/engine-v2/execution-channel/execution-response-tracing.js'
 		);
 		const { RedisClientService } = await import('@n8n/backend-services');
 		// The work queues share this connection, so on one Redis node a response arrives before the queue message that follows it.
@@ -88,7 +100,10 @@ export class Engine extends BaseCommand {
 		const { EngineV2Runtime } = await import('@/modules/engine-v2/engine-v2.runtime.js');
 		this.runtime = Container.get(EngineV2Runtime);
 		await this.runtime.init({
-			responseSender: new ExecutionChannelSender(publisher, createExecutionResponseCodec(logger)),
+			responseSender: createExecutionResponseSender(
+				publisher,
+				createExecutionResponseCodec(logger),
+			),
 			lifecycleEventSender: new LifecycleEventChannelSender(publisher, logger),
 			queues: this.workQueues.queues,
 		});
@@ -142,6 +157,21 @@ export class Engine extends BaseCommand {
 		await this.exitWithCrash('Exiting due to an error.', error);
 	}
 
+	protected override onTerminationSignal(signal: string) {
+		return async () => {
+			if (this.stopping) return;
+			this.stopping = true;
+			this.logger.info(`Received ${signal}. Shutting down the engine data plane...`);
+			// The global registry includes CP services that this command must not construct.
+			const deadline = setTimeout(() => process.exit(1), this.gracefulShutdownTimeoutInS * 1000);
+			try {
+				await this.stopProcess();
+			} finally {
+				clearTimeout(deadline);
+			}
+		};
+	}
+
 	protected async stopProcess() {
 		this.logger.info('Stopping engine v2 data plane...');
 
@@ -152,6 +182,7 @@ export class Engine extends BaseCommand {
 			async () => this.workQueues?.close(),
 			// After the engine and the queues, so a final response still has somewhere to go.
 			async () => await this.channelPublisher?.stop(),
+			async () => await this.otelService?.shutdown(),
 			async () => await Expression.disposeExpressionEngine(),
 		];
 
@@ -166,6 +197,12 @@ export class Engine extends BaseCommand {
 				'There was an error shutting down the engine.',
 				new AggregateError(errors, 'The engine could not release every resource'),
 			);
+		}
+
+		try {
+			await this.errorReporter.shutdown();
+		} catch (error) {
+			await this.exitWithCrash('There was an error shutting down the engine.', error);
 		}
 
 		// No control plane database to close and no crash journal to clear, so

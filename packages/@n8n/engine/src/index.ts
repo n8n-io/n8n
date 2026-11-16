@@ -1,5 +1,5 @@
 export { createEngineRuntime } from './runtime';
-export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
+export type { EngineRuntime, EngineRuntimeInstrumentation, EngineRuntimeOptions } from './runtime';
 
 export type { EngineLogger } from './logging';
 

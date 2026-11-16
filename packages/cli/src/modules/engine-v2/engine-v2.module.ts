@@ -100,10 +100,15 @@ export class EngineV2Module implements ModuleInterface {
 			const { createLifecycleEventCodec } = await import(
 				'./execution-channel/lifecycle-event-frame.js'
 			);
+			const { traceExecutionResponseReceiver } = await import(
+				'./execution-channel/execution-response-tracing.js'
+			);
 			const subscriber = await startRedisExecutionChannelSubscriber(logger);
 			this.channelSubscriber = subscriber;
 			Container.get(EngineV2WebhookResponseRegistry).useReceiver(
-				new ExecutionChannelReceiver(subscriber, createExecutionResponseCodec(logger), logger),
+				traceExecutionResponseReceiver(
+					new ExecutionChannelReceiver(subscriber, createExecutionResponseCodec(logger), logger),
+				),
 			);
 			Container.get(EngineV2LifecycleSubscriptions).useReceiver(
 				new ExecutionChannelReceiver(subscriber, createLifecycleEventCodec(logger), logger),

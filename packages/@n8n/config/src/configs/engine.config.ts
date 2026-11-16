@@ -19,6 +19,14 @@ export type EngineDefaultType = z.infer<typeof engineDefaultTypeSchema>;
 
 @Config
 export class EngineConfig {
+	/** Enables engine trace boundaries when OpenTelemetry is enabled. */
+	@Env('N8N_ENGINE_TRACING_ENABLED')
+	tracingEnabled: boolean = false;
+
+	/** Allows only the static NoOp fixture in an explicit legacy benchmark. Keep this off outside the benchmark instance. */
+	@Env('N8N_ENGINE_BENCHMARK_LEGACY_NOOPS')
+	benchmarkLegacyNoops: boolean = false;
+
 	/**
 	 * Where the data plane runs. `in-process`: this main hosts it. `remote`:
 	 * another process hosts it (`n8n engine`), and this main runs only the
