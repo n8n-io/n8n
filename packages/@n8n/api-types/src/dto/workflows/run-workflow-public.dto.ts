@@ -1,25 +1,28 @@
 import '../../openapi-extend';
-import type { IRunData } from 'n8n-workflow';
+import type { IDestinationNode, IRunData } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { destinationNodeSchema } from './manual-run.dto';
 import { objectGuardSchema } from '../../schemas/object-guard.schema';
 import { Z } from '../../zod-class';
 
 const publicDestinationNodeSchema = z
 	.object({
-		nodeName: destinationNodeSchema.shape.nodeName.openapi({
+		nodeName: z.string().openapi({
 			description: 'Name of the node to run to.',
 		}),
-		mode: destinationNodeSchema.shape.mode.openapi({
+		mode: z.enum(['inclusive', 'exclusive']).openapi({
 			description:
 				'`inclusive` runs the destination node. `exclusive` stops before the destination node.',
 		}),
 	})
-	.strict();
+	.strict() satisfies z.ZodType<IDestinationNode>;
+
+const publicRunDataSchema = objectGuardSchema<IRunData>();
+
+const publicDirtyNodeNamesSchema = z.array(z.string()).optional();
 
 export const runWorkflowPublicSchema = z.object({
-	runData: objectGuardSchema<IRunData>().openapi({
+	runData: publicRunDataSchema.openapi({
 		type: 'object',
 		additionalProperties: true,
 		description:
@@ -32,14 +35,11 @@ export const runWorkflowPublicSchema = z.object({
 	destinationNode: publicDestinationNodeSchema.openapi({
 		description: 'The node where the run stops.',
 	}),
-	dirtyNodeNames: z
-		.array(z.string())
-		.optional()
-		.openapi({
-			description:
-				'Names of nodes that changed since the run data was made. n8n runs these nodes again ' +
-				'and does not reuse their run data.',
-		}),
+	dirtyNodeNames: publicDirtyNodeNamesSchema.openapi({
+		description:
+			'Names of nodes that changed since the run data was made. n8n runs these nodes again ' +
+			'and does not reuse their run data.',
+	}),
 });
 
 export class RunWorkflowPublicDto extends Z.class(runWorkflowPublicSchema.shape, {
