@@ -1,4 +1,4 @@
-import type { CrashedExecution } from '@n8n/db';
+import type { CanceledExecution, CrashedExecution } from '@n8n/db';
 import type { IRun, IWorkflowBase, WorkflowExecutionSource } from 'n8n-workflow';
 import { isTerminalExecutionStatus } from 'n8n-workflow';
 
@@ -42,20 +42,32 @@ export function toEndedFactsFromRun({
 	};
 }
 
-/** The `ended` facts of a row that a crash sweep claimed. A run that never started has no runtime. */
+/** The `ended` facts of a row that a crash sweep claimed. */
 export function toEndedFactsFromCrash(
 	execution: CrashedExecution,
 	stoppedAtOverride?: Date,
 ): ExecutionLedgerEndedFacts {
-	const stoppedAt = stoppedAtOverride ?? execution.stoppedAt;
+	return toEndedFactsFromRow(execution, 'crashed', stoppedAtOverride ?? execution.stoppedAt);
+}
 
+/** The `ended` facts of a row that a cancel write moved to `canceled`. */
+export function toEndedFactsFromCancel(execution: CanceledExecution): ExecutionLedgerEndedFacts {
+	return toEndedFactsFromRow(execution, 'canceled', execution.stoppedAt);
+}
+
+/** A run that never started has no runtime. The row stores no source, so it stays unset. */
+function toEndedFactsFromRow(
+	execution: CanceledExecution,
+	outcome: 'crashed' | 'canceled',
+	stoppedAt: Date,
+): ExecutionLedgerEndedFacts {
 	return {
 		executionId: execution.id,
 		workflowId: execution.workflowId,
 		workflowName: execution.workflowName ?? '',
 		mode: execution.mode,
 		occurredAt: stoppedAt,
-		outcome: 'crashed',
+		outcome,
 		runtimeMs: execution.startedAt ? stoppedAt.getTime() - execution.startedAt.getTime() : 0,
 		timeSavedMin: 0,
 	};

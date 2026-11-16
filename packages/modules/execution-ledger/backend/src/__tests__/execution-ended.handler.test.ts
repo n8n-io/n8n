@@ -98,10 +98,12 @@ describe('ExecutionEndedHandler', () => {
 		expect(ledger.recordEnded).not.toHaveBeenCalled();
 	});
 
-	it('records nothing for a canceled run', async () => {
+	it('records a canceled run', async () => {
 		await handler.handleWorkflowExecuteAfter(createContext({ status: 'canceled' }));
 
-		expect(ledger.recordEnded).not.toHaveBeenCalled();
+		expect(ledger.recordEnded).toHaveBeenCalledWith(
+			expect.objectContaining({ outcome: 'canceled', timeSavedMin: 0 }),
+		);
 	});
 
 	it('records nothing for a run that has not finished', async () => {
