@@ -105,8 +105,33 @@ describe('LangSmith export of LLM step spans', () => {
 
 		expect(readJson(span.attributes['gen_ai.completion'])).toEqual({
 			text: toolCalls,
+			assistant_text: 'Here is the plan.',
 			reasoning: 'Run the script.',
 		});
+	});
+
+	it('keeps the visible text of a tool-call step next to the tool calls', async () => {
+		const toolCalls = JSON.stringify([{ toolName: 'workspace_execute_command', input: {} }]);
+		const visibleText = "I'll check which limits the saved drafts read. ".repeat(20);
+
+		const span = await exportThroughLangSmith(
+			llmStepAttributes({ 'ai.response.text': visibleText, 'ai.response.toolCalls': toolCalls }),
+		);
+
+		expect(readJson(span.attributes['gen_ai.completion'])).toEqual({
+			text: toolCalls,
+			assistant_text: visibleText,
+		});
+	});
+
+	it('leaves the tool calls as the output text when a tool-call step has no visible text', async () => {
+		const toolCalls = JSON.stringify([{ toolName: 'workspace_execute_command', input: {} }]);
+
+		const span = await exportThroughLangSmith(
+			llmStepAttributes({ 'ai.response.text': '', 'ai.response.toolCalls': toolCalls }),
+		);
+
+		expect(span.attributes['gen_ai.completion']).toBe(toolCalls);
 	});
 
 	it('leaves the output text unchanged when a step has no reasoning text', async () => {

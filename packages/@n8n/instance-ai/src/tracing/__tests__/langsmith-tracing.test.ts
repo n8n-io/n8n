@@ -473,6 +473,24 @@ describe('createInstanceAiTraceContext', () => {
 		expect(traced).toMatch(/^a{100000}\[truncated 50000 chars\]$/);
 	});
 
+	it('keeps a long assistant response whole in the turn outputs', async () => {
+		const response = 'Here are the revised settings. '.repeat(300);
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'hi' },
+		});
+
+		await tracing!.finishRun(tracing!.rootRun, {
+			outputs: { status: 'completed', response, note: 'c'.repeat(5_000) },
+		});
+
+		expect(tracing?.rootRun.outputs?.response).toBe(response);
+		expect(tracing?.rootRun.outputs?.note).toBe(`${'c'.repeat(2_000)}...`);
+	});
+
 	it('keeps the capped user message stable when more inputs merge into the turn', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',

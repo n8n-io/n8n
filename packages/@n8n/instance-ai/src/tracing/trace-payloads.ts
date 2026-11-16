@@ -33,9 +33,9 @@ const MAX_TOOL_IO_TRACE_DEPTH = 8;
  *  beyond real workflow nesting; scrubbing still applies at every level. */
 const MAX_RAW_PAYLOAD_TRACE_DEPTH = 64;
 const MAX_TRACE_STRING_LENGTH = 2_000;
-/** The user's own text is the most useful trace field, so it gets a much higher cap. */
-const MAX_TRACE_USER_MESSAGE_LENGTH = 100_000;
-const TRACE_USER_MESSAGE_KEY = 'message';
+/** The user's message and the assistant's reply are the most useful trace fields, so they get a much higher cap. */
+const MAX_TRACE_CONVERSATION_TEXT_LENGTH = 100_000;
+const TRACE_CONVERSATION_TEXT_KEYS = new Set(['message', 'response']);
 const TRUNCATED_MARKER_PATTERN = /^\[truncated \d+ chars\]$/;
 const MAX_TOOL_ACTION_DISPLAY_LENGTH = 64;
 const MAX_TRACE_ARRAY_ITEMS = 20;
@@ -748,18 +748,36 @@ const LANGSMITH_COMPLETION_SOURCE_KEYS = [
 	'ai.response.text',
 ];
 
+function nonEmptyString(value: unknown): string | undefined {
+	return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
 /**
  * LangSmith keeps an attribute only as metadata, which it drops above ~500
- * characters. Put the reasoning in the completion so `outputs.reasoning` keeps it whole.
+ * characters. On a tool-call step `outputs.text` holds the tool calls, so the
+ * visible text is lost too. Add both to the completion so the outputs keep them whole.
  */
-function addReasoningToCompletion(attributes: Record<string, unknown>): void {
-	const reasoning = attributes['ai.response.reasoning'];
-	if (typeof reasoning !== 'string' || reasoning.length === 0 || GEN_AI_COMPLETION in attributes) {
-		return;
-	}
+function addLostTextToCompletion(attributes: Record<string, unknown>): void {
+	if (GEN_AI_COMPLETION in attributes) return;
 
 	const text = readStringAttribute(attributes, LANGSMITH_COMPLETION_SOURCE_KEYS);
-	attributes[GEN_AI_COMPLETION] = JSON.stringify({ ...(text ? { text } : {}), reasoning });
+	const lostText = readLostText(attributes, text);
+	if (Object.keys(lostText).length === 0) return;
+
+	attributes[GEN_AI_COMPLETION] = JSON.stringify({ ...(text ? { text } : {}), ...lostText });
+}
+
+/** Visible text that `outputs.text` does not already hold, and the reasoning text. */
+function readLostText(
+	attributes: Record<string, unknown>,
+	outputText: string | undefined,
+): { assistant_text?: string; reasoning?: string } {
+	const visibleText = nonEmptyString(attributes['ai.response.text']);
+	const reasoning = nonEmptyString(attributes['ai.response.reasoning']);
+	return {
+		...(visibleText && visibleText !== outputText ? { assistant_text: visibleText } : {}),
+		...(reasoning ? { reasoning } : {}),
+	};
 }
 
 function applyLangSmithUsageAttributes(
@@ -1067,7 +1085,7 @@ export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 	}
 	enrichLangSmithPromptAttribute(attributes);
 	normalizeUsageForLangSmith(attributes);
-	if (isLangSmithLlmSpan(attributes)) addReasoningToCompletion(attributes);
+	if (isLangSmithLlmSpan(attributes)) addLostTextToCompletion(attributes);
 	renameNativeLlmSpanForLangSmith(span, attributes);
 	renameNativeToolSpanForLangSmith(span, attributes);
 	moveNonLlmUsageAttributes(attributes);
@@ -1391,16 +1409,16 @@ export function sanitizeTraceValue(value: unknown, depth = 0): unknown {
 	return truncateString(Object.prototype.toString.call(value));
 }
 
-/** Idempotent: inputs are re-sanitized on every merge, so an already capped message must not change. */
-function truncateUserMessage(value: string): string {
-	if (value.length <= MAX_TRACE_USER_MESSAGE_LENGTH) {
+/** Idempotent: inputs are re-sanitized on every merge, so an already capped text must not change. */
+function truncateConversationText(value: string): string {
+	if (value.length <= MAX_TRACE_CONVERSATION_TEXT_LENGTH) {
 		return value;
 	}
-	const rest = value.slice(MAX_TRACE_USER_MESSAGE_LENGTH);
+	const rest = value.slice(MAX_TRACE_CONVERSATION_TEXT_LENGTH);
 	if (TRUNCATED_MARKER_PATTERN.test(rest)) {
 		return value;
 	}
-	return `${value.slice(0, MAX_TRACE_USER_MESSAGE_LENGTH)}[truncated ${rest.length} chars]`;
+	return `${value.slice(0, MAX_TRACE_CONVERSATION_TEXT_LENGTH)}[truncated ${rest.length} chars]`;
 }
 
 export function sanitizeTracePayload(value: unknown): Record<string, unknown> {
@@ -1408,8 +1426,8 @@ export function sanitizeTracePayload(value: unknown): Record<string, unknown> {
 		const sanitized: Record<string, unknown> = {};
 		for (const [key, entryValue] of Object.entries(value)) {
 			sanitized[key] =
-				key === TRACE_USER_MESSAGE_KEY && typeof entryValue === 'string'
-					? truncateUserMessage(entryValue)
+				TRACE_CONVERSATION_TEXT_KEYS.has(key) && typeof entryValue === 'string'
+					? truncateConversationText(entryValue)
 					: sanitizeTraceValue(entryValue);
 		}
 		return sanitized;
