@@ -1,3 +1,9 @@
+import type {
+	PackageManifest,
+	PackageCredentialRequirement,
+	PackageRequirementConsumer,
+} from '@n8n/api-types';
+
 import type { AgentImportOutcome } from '../entities/agent/agent-import.types';
 import type { CredentialApplyResult } from '../entities/credential/credential.types';
 import type { TagImportPlan } from '../entities/tag/tag.types';
@@ -25,11 +31,6 @@ import type {
 	ImportVariableSummary,
 	PackageImportBindings,
 } from '../n8n-packages.types';
-import type { PackageManifest } from '../spec/manifest.schema';
-import type {
-	PackageCredentialRequirement,
-	PackageRequirementConsumer,
-} from '../spec/requirements.schema';
 
 export function toPackageSummary(manifest: PackageManifest): ImportPackageSummary {
 	return {

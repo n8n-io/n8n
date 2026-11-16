@@ -1,10 +1,10 @@
 import type { Project } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { ManifestEntry } from '@n8n/api-types';
 
 import { ProjectSerializer } from './project.serializer';
 import { packageDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import type { ManifestEntry } from '../../spec/manifest.schema';
 
 export interface ProjectShellExportContext {
 	writer: PackageWriter;

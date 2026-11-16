@@ -1,5 +1,6 @@
+import type { PackageCredentialRequirement } from '@n8n/api-types';
+
 import type { ResolvedCredentialMatch, UsableCredential } from './credential-matcher';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 function selectBestCandidate(
 	candidates: UsableCredential[],

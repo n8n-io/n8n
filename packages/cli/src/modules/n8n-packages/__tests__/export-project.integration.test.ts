@@ -17,11 +17,11 @@ import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { createProjectVariable } from '@test-integration/db/variables';
+import { FORMAT_VERSION } from '@n8n/api-types';
 
 import { PackageEntityNotFoundError } from '../entities/package-export.errors';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { ExportDependencyPolicy } from '../n8n-packages.types';
-import { FORMAT_VERSION } from '../spec/constants';
 import { readExport } from './utils/tar-support';
 import {
 	buildVersionedWorkflow,

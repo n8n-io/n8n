@@ -5,6 +5,7 @@ import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import type { PackageWorkflowRequirement } from '@n8n/api-types';
 import type { PublicApiCaller } from '@/public-api/public-api-client';
 import { ProjectService } from '@/services/project.service.ee';
 import { WEBHOOK_CONFLICT_MESSAGE } from '@/webhooks/constants';
@@ -19,7 +20,6 @@ import {
 	type WorkflowPublishingBlockedReason,
 	type WorkflowPublishingOutcome,
 } from './workflow-publishing-policy.types';
-import type { PackageWorkflowRequirement } from '../../spec/requirements.schema';
 import { blockedPublishingOutcome } from '../publishing';
 
 export interface WorkflowPublishingResult {

@@ -1,5 +1,6 @@
 import type { User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
+import type { PackageCredentialRequirement } from '@n8n/api-types';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -10,7 +11,6 @@ import {
 	type CredentialResolutionFailure,
 } from './credential.types';
 import type { ImportBindingMap } from '../../n8n-packages.types';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 export interface CredentialMatcherContext {
 	projectId: string;

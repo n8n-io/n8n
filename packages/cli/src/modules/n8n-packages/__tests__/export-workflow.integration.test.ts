@@ -19,10 +19,10 @@ import { mock } from 'vitest-mock-extended';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { saveCredential } from '@test-integration/db/credentials';
+import { FORMAT_VERSION } from '@n8n/api-types';
 
 import { PackageExportBlockedError } from '../entities/package-export.errors';
 import { N8nPackagesService } from '../n8n-packages.service';
-import { FORMAT_VERSION } from '../spec/constants';
 import { readExport } from './utils/tar-support';
 import type { UnpackedEntry } from './utils/tar-support';
 import {

@@ -18,12 +18,12 @@ import { createMember, createOwner } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
 import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
+import type { PackageRequirementConsumer } from '@n8n/api-types';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import { importPackageRequest } from './fixtures/import-request';
 import { ImportOrchestrator, type ImportOrchestrationInput } from '../engine/import-orchestrator';
 import type { ImportPackageRequest } from '../n8n-packages.types';
-import type { PackageRequirementConsumer } from '../spec/requirements.schema';
 import { streamToBuffer } from './utils/tar-support';
 import { buildWorkflowReferencingVariables } from './utils/test-builders';
 

@@ -572,10 +572,13 @@ export {
 	importResultSchema,
 	type ImportedAgentChannel,
 } from './packages/import-result.dto';
+export * from './packages/constants';
 export * from './packages/credential.schema';
 export * from './packages/data-table.schema';
 export * from './packages/folder.schema';
+export * from './packages/manifest.schema';
 export * from './packages/project.schema';
+export * from './packages/requirements.schema';
 export * from './packages/tag.schema';
 export * from './packages/variable.schema';
 export * from './packages/workflow-metadata.schema';

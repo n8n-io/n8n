@@ -1,11 +1,10 @@
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { WorkflowManifestEntry, PackageWorkflowRequirement } from '@n8n/api-types';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { WorkflowDependencyRequirement } from './workflow.types';
-import type { WorkflowManifestEntry } from '../../spec/manifest.schema';
-import type { PackageWorkflowRequirement } from '../../spec/requirements.schema';
 import { groupRequirementUsage } from '../requirement-source';
 
 export interface WorkflowRequirementExportRequest {

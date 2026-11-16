@@ -1,10 +1,9 @@
 import { jsonParse } from 'n8n-workflow';
 
 import { BadRequestError } from '@n8n/errors';
+import { MANIFEST_FILE, type PackageManifest } from '@n8n/api-types';
 
 import type { PackageReader } from '@/modules/n8n-packages/io/package-reader';
-import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
-import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
 /**
  * Reads a package from the files of one commit, as `readTreeAtCommit` returns them. Git already

@@ -4,6 +4,7 @@ import {
 	type ApplyPackageResultDto,
 	type ContinueApplyPackageDto,
 	type PromotionProviderType,
+	packageManifestSchema,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
@@ -73,7 +74,6 @@ import {
 	ExportDependencyPolicy,
 	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
-import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { Publisher } from '@n8n/backend-services';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';

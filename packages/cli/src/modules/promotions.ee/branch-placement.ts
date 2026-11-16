@@ -1,4 +1,4 @@
-import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
+import type { PackageManifest } from '@n8n/api-types';
 
 /**
  * Where each project, folder and workflow lives on the branch, read from the

@@ -1,9 +1,9 @@
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { packageManifestSchema } from '@n8n/api-types';
 
 import { N8N_VERSION } from '@/constants';
-import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import { readLeftoverManifest, writeImportManifest } from '../import-manifest-bridge';
 

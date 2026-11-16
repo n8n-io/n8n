@@ -1,9 +1,6 @@
 import type { INode } from 'n8n-workflow';
 
-import type {
-	PackageNodeTypeRequirement,
-	PackageRequirementConsumer,
-} from '../../spec/requirements.schema';
+import type { PackageNodeTypeRequirement, PackageRequirementConsumer } from '@n8n/api-types';
 import type { RequirementSource } from '../requirement-source';
 
 export type NodeTypeSource = RequirementSource & {

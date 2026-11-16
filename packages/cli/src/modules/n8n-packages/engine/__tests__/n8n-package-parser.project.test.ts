@@ -1,13 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'vitest-mock-extended';
+import { FORMAT_VERSION, type PackageManifest } from '@n8n/api-types';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { NodeTypes } from '@/node-types';
 
 import type { WorkflowSerializer } from '../../entities/workflow/workflow.serializer';
 import type { PackageReader } from '../../io/package-reader';
-import { FORMAT_VERSION } from '../../spec/constants';
-import type { PackageManifest } from '../../spec/manifest.schema';
 import { N8nPackageParser } from '../n8n-package-parser';
 
 function makeReader(manifest: PackageManifest, files: Record<string, unknown>): PackageReader {

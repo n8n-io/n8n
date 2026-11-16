@@ -1,4 +1,4 @@
-import type { PackageRequirementConsumer } from '../spec/requirements.schema';
+import type { PackageRequirementConsumer } from '@n8n/api-types';
 
 export type AgentRequirementSource = { agentId: string; projectId: string };
 

@@ -2,6 +2,7 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import { ProjectScopeService } from '@n8n/backend-services';
 import type { Project } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import type { PackageAgentRequirement } from '@n8n/api-types';
 
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { ProjectService } from '@/services/project.service.ee';
@@ -15,7 +16,6 @@ import type {
 import { AgentRequirementsExtractor } from './agent-requirements.extractor';
 import type { AgentExporter } from './agent.exporter';
 import { ExportDependencyPolicy, ExportVersionPolicy } from '../../n8n-packages.types';
-import type { PackageAgentRequirement } from '../../spec/requirements.schema';
 import {
 	assertEveryRequestedEntityAccessible,
 	PackageExportBlockedError,

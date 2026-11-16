@@ -1,11 +1,11 @@
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { ManifestEntry } from '@n8n/api-types';
 
 import { SkillAccessService, SkillService, skillScopeOf, type LatestSkill } from '@/modules/skills';
 
 import { projectScopedDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
-import type { ManifestEntry } from '../../spec/manifest.schema';
 import { serializedSkillSchema, type SerializedSkill } from '../../spec/serialized/skill.schema';
 import { PackageExportBlockedError } from '../package-export.errors';
 

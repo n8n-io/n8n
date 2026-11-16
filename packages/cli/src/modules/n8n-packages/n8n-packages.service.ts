@@ -6,6 +6,13 @@ import { InstanceSettings } from 'n8n-core';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { loginIdOf } from '@/events/login-id';
+import {
+	FORMAT_VERSION,
+	packageManifestSchema,
+	type ManifestEntry,
+	type PackageManifest,
+	type PackageRequirements,
+} from '@n8n/api-types';
 
 import { buildImportResult, toPackageSummary } from './engine/import-result';
 import { assertPackageImportApiKeyScopes, packageImportScopes } from './engine/import-gates';
@@ -77,13 +84,6 @@ import {
 	type ResolvedImportRequest,
 	createBindings,
 } from './n8n-packages.types';
-import { FORMAT_VERSION } from './spec/constants';
-import {
-	packageManifestSchema,
-	type ManifestEntry,
-	type PackageManifest,
-} from './spec/manifest.schema';
-import type { PackageRequirements } from './spec/requirements.schema';
 
 interface WrittenExport {
 	manifest: PackageManifest;

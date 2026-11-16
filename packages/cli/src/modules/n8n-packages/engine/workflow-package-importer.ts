@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
+import type { PackageManifest } from '@n8n/api-types';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -37,7 +38,6 @@ import {
 	needsBundledVariableValues,
 	placeByPolicy,
 } from './package-layout';
-import type { PackageManifest } from '../spec/manifest.schema';
 
 /**
  * Imports loose top-level workflows, their folder shells, and credential & data table deps into a target project.

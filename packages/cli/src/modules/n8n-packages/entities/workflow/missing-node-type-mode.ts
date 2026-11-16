@@ -1,8 +1,9 @@
+import type { PackageRequirementConsumer } from '@n8n/api-types';
+
 import { collectNodeTypeUsage, type NodeTypeUsage, type NodeTypeSource } from './node-type-usage';
 import type { PreparedWorkflow } from './workflow-import.types';
 import type { MissingNodeTypeMode } from '../../n8n-packages.types';
 import { getRequirementConsumerIds } from '../../spec/requirement-consumers';
-import type { PackageRequirementConsumer } from '../../spec/requirements.schema';
 
 /** A `(type, typeVersion)` pair the target instance cannot resolve. Field names align with the manifest requirements shape. */
 export type MissingNodeTypeRequirement = NodeTypeUsage;

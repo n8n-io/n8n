@@ -1,13 +1,11 @@
-import type {
-	PromotionDirection,
-	PromotionPreview,
-	PromotionResource,
-	PromotionResourceDetail,
-	PromotionResourceDetails,
-	PromotionResourceDetailsRequestDto,
-	PromotionResourceType,
-} from '@n8n/api-types';
 import {
+	type PromotionDirection,
+	type PromotionPreview,
+	type PromotionResource,
+	type PromotionResourceDetail,
+	type PromotionResourceDetails,
+	type PromotionResourceDetailsRequestDto,
+	type PromotionResourceType,
 	serializedCredentialSchema,
 	serializedDataTableSchema,
 	serializedFolderSchema,
@@ -15,6 +13,9 @@ import {
 	serializedTagSchema,
 	serializedVariableSchema,
 	serializedWorkflowSchema,
+	MANIFEST_FILE,
+	packageManifestSchema,
+	type PackageManifest,
 } from '@n8n/api-types';
 import { SharedWorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -27,11 +28,6 @@ import { diffDataTableSchema } from '@/modules/n8n-packages/entities/data-table/
 import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
 import { PACKAGE_ENTITY_LAYOUT, entityIdOfSegment } from '@/modules/n8n-packages/io/manifest-entry';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
-import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
-import {
-	packageManifestSchema,
-	type PackageManifest,
-} from '@/modules/n8n-packages/spec/manifest.schema';
 
 import type { PackageFile } from './base-branch-files';
 import { projectHolding } from './branch-placement';

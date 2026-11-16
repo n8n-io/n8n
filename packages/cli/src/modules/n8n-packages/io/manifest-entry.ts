@@ -1,14 +1,15 @@
-import type { SerializedWorkflow, SerializedWorkflowMetadata } from '@n8n/api-types';
+import type {
+	SerializedWorkflow,
+	SerializedWorkflowMetadata,
+	ManifestEntry,
+	PackageManifest,
+	WorkflowManifestEntry,
+} from '@n8n/api-types';
 
 import { formatEntityFile } from './entity-file-format';
 import type { PackageWriter } from './package-writer';
 import { generateSlug } from './slug.utils';
 import { PackageExportBlockedError } from '../entities/package-export.errors';
-import type {
-	ManifestEntry,
-	PackageManifest,
-	WorkflowManifestEntry,
-} from '../spec/manifest.schema';
 import { skillIdSchema } from '../spec/serialized/skill.schema';
 
 /**

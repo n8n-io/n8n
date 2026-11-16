@@ -1,9 +1,8 @@
 import type { User } from '@n8n/db';
+import type { ManifestEntry, PackageAgentRequirement } from '@n8n/api-types';
 
 import type { PackageWriter } from '../../io/package-writer';
 import type { ExportDependencyPolicy, ExportVersionPolicy } from '../../n8n-packages.types';
-import type { ManifestEntry } from '../../spec/manifest.schema';
-import type { PackageAgentRequirement } from '../../spec/requirements.schema';
 import type { SerializedAgent, SerializedAgentMetadata } from '../../spec/serialized/agent.schema';
 import type { ExportRequirements } from '../requirements.types';
 import type { AgentWorkflowRequirement } from '../workflow/workflow.types';

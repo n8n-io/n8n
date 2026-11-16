@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import type { PackageCredentialRequirement } from '@n8n/api-types';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -8,7 +9,6 @@ import {
 	type ResolvedCredentialMatch,
 	type UsableCredential,
 } from './credential-matcher';
-import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
 @Service()
 export class IdBasedCredentialMatcher extends CredentialMatcher {
