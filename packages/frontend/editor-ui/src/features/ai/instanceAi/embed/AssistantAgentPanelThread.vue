@@ -29,6 +29,10 @@ import {
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
 import { assistantConfirmationExtension } from '../assistantAgent/assistantConfirmation';
 import { useAssistantAgentMessageTelemetry } from '../assistantAgent/useAssistantAgentMessageTelemetry';
+import {
+	ASSISTANT_AGENT_SETUP_SAVED,
+	useAssistantAgentSetupSavedTelemetry,
+} from '../assistantAgent/useAssistantAgentSetupSavedTelemetry';
 import { useAssistantArtifactThread } from '../assistantAgent/useAssistantArtifactThread';
 import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import InstanceAiResourceChip from '../components/InstanceAiResourceChip.vue';
@@ -95,7 +99,6 @@ const agentConfig = computed<AgentJsonConfig>(() => ({
 	name: identity.name.value,
 	model: '',
 	instructions: '',
-	personalisation: identity.personalisation,
 }));
 
 // The host stashes a starter message before it opens a new thread.
@@ -184,6 +187,12 @@ function onStreamingChange(streaming: boolean): void {
 	wasStreaming = streaming;
 }
 
+const setupSavedTelemetry = useAssistantAgentSetupSavedTelemetry({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
+provide(ASSISTANT_AGENT_SETUP_SAVED, setupSavedTelemetry.expectResult);
+
 const thread = useAssistantArtifactThread({
 	threadId: props.threadId,
 	projectId: props.subject.projectId,
@@ -246,6 +255,7 @@ defineExpose({
 		:continue-session-id="props.threadId"
 		:new-session="isNewSession"
 		:agent-config="agentConfig"
+		empty-state-icon="n8n-assistant"
 		:accepted-mime-types="ASSISTANT_AGENT_ACCEPTED_MIME_TYPES"
 		agent-status="production"
 		:connected-triggers="[]"

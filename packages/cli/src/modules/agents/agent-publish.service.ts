@@ -10,13 +10,19 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import { TransactionRunner, isUniqueConstraintError, type User } from '@n8n/db';
+import {
+	TransactionRunner,
+	isUniqueConstraintError,
+	type OperationContext,
+	type User,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import isEqual from 'lodash/isEqual';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { loginIdOf } from '@/events/login-id';
 import { BadRequestError, ConflictError, NotFoundError, UserError } from '@n8n/errors';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import {
@@ -308,18 +314,19 @@ export class AgentPublishService {
 		user: User,
 		pushRef?: string,
 		by: AgentActor = 'user',
+		ctx: OperationContext = {},
 	): Promise<ProjectAgent> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		if (agent.isArchived) throw new BadRequestError('Agent is already archived.');
 
 		let current = agent;
 		if (agent.activeVersionId) {
-			current = await this.unpublishAndArchive(agentId, projectId, user, by, pushRef);
+			current = await this.unpublishAndArchive(agentId, projectId, user, by, pushRef, ctx);
 		}
 		// A concurrent unpublication makes unpublishAgent skip the archive write.
 		if (!current.isArchived) await this.setArchived(agentId, projectId, true, pushRef, by);
 
-		this.reportArchived(agentId, projectId, user);
+		this.reportArchived(agentId, projectId, user, ctx);
 		return await getAgentOrThrow(this.agentRepository, agentId, projectId);
 	}
 
@@ -330,6 +337,7 @@ export class AgentPublishService {
 		user: User,
 		by: AgentActor,
 		pushRef?: string,
+		ctx: OperationContext = {},
 	): Promise<ProjectAgent> {
 		try {
 			return await this.unpublishAgent(agentId, projectId, user, by, pushRef, undefined, {
@@ -340,13 +348,23 @@ export class AgentPublishService {
 			const committed =
 				!(error instanceof ConflictError) &&
 				(await this.agentRepository.findById(agentId))?.isArchived;
-			if (committed) this.reportArchived(agentId, projectId, user);
+			if (committed) this.reportArchived(agentId, projectId, user, ctx);
 			throw error;
 		}
 	}
 
-	private reportArchived(agentId: string, projectId: string, user: User): void {
-		this.eventService.emit('agent-archived', { user, agentId, projectId });
+	private reportArchived(
+		agentId: string,
+		projectId: string,
+		user: User,
+		ctx: OperationContext = {},
+	): void {
+		this.eventService.emit('agent-archived', {
+			user,
+			agentId,
+			projectId,
+			loginId: loginIdOf(ctx),
+		});
 		this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_ARCHIVED_AGENT, {
 			agent_id: agentId,
 			project_id: projectId,
@@ -361,13 +379,19 @@ export class AgentPublishService {
 		projectId: string,
 		user: User,
 		pushRef?: string,
+		ctx: OperationContext = {},
 	): Promise<ProjectAgent> {
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		if (!agent.isArchived) throw new BadRequestError('Agent is not archived.');
 
 		await this.setArchived(agentId, projectId, false, pushRef);
 
-		this.eventService.emit('agent-unarchived', { user, agentId, projectId });
+		this.eventService.emit('agent-unarchived', {
+			user,
+			agentId,
+			projectId,
+			loginId: loginIdOf(ctx),
+		});
 		this.telemetry.track(TELEMETRY_EVENT.AGENTS.USER_UNARCHIVED_AGENT, {
 			agent_id: agentId,
 			project_id: projectId,

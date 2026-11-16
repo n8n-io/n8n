@@ -249,8 +249,8 @@ describe('AgentsListView — project page', () => {
 			{ baseUrl: '/rest', pushRef: 'push-ref' },
 			'project-1',
 			{
-				skip: 0,
-				take: 50,
+				offset: 0,
+				limit: 50,
 				sortBy: 'updatedAt:desc',
 				filter: undefined,
 			},
@@ -370,8 +370,8 @@ describe('AgentsListView — project page', () => {
 			expect.any(Object),
 			'project-1',
 			expect.objectContaining({
-				skip: 0,
-				take: 50,
+				offset: 0,
+				limit: 50,
 				sortBy: 'updatedAt:desc',
 				filter: { query: 'Support' },
 			}),
@@ -386,8 +386,8 @@ describe('AgentsListView — project page', () => {
 			expect.any(Object),
 			'project-1',
 			expect.objectContaining({
-				skip: 10,
-				take: 10,
+				offset: 10,
+				limit: 10,
 				sortBy: 'name:asc',
 				filter: { query: 'Support' },
 			}),
@@ -514,8 +514,8 @@ describe('AgentsListView — overview page', () => {
 		expect(mocks.listAgentsPageGlobal).toHaveBeenCalledWith(
 			{ baseUrl: '/rest', pushRef: 'push-ref' },
 			{
-				skip: 0,
-				take: 50,
+				offset: 0,
+				limit: 50,
 				sortBy: 'updatedAt:desc',
 				filter: undefined,
 			},

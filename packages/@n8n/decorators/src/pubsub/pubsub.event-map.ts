@@ -55,6 +55,11 @@ export type PubSubCommandMap = {
 	'self-healing-failure': {
 		workflowId: string;
 		executionId: string;
+		// Telemetry facts that only the executing process has. Optional for rolling upgrades.
+		workflowVersionId?: string;
+		failedAt?: string;
+		errorType?: string;
+		errorNodeType?: string;
 	};
 	'reload-agents-settings': never;
 

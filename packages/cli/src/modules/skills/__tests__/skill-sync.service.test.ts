@@ -33,6 +33,9 @@ describe('SkillSyncService', () => {
 		mock(),
 		mock(),
 		telemetry,
+		mock(),
+		mock(),
+		mock(),
 		txRunner,
 	);
 	const user = mock<User>({ id: 'user-1' });
@@ -132,6 +135,9 @@ describe('SkillSyncService', () => {
 				mock(),
 				mock(),
 				telemetry,
+				mock(),
+				mock(),
+				mock(),
 				txRunner,
 			);
 			const firstId = 'a6c11527-f2f8-4dc9-a0e2-d2804c5b219a';
@@ -141,6 +147,7 @@ describe('SkillSyncService', () => {
 					id,
 					type: 'github',
 					credentialId: null,
+					credentialRequired: false,
 					probeCursor: 'current',
 					lastCheckedAt: null,
 				}),
@@ -164,7 +171,7 @@ describe('SkillSyncService', () => {
 			await expect(sync.checkNow(user, secondId)).rejects.toThrow();
 
 			expect(probe).toHaveBeenCalledTimes(2);
-			expect(sources.recordDelayed).toHaveBeenCalledWith(secondId);
+			expect(sources.recordDelayed).toHaveBeenCalledWith(expect.objectContaining({ id: secondId }));
 		},
 	);
 });

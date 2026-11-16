@@ -1,9 +1,15 @@
 import isEqual from 'lodash/isEqual';
-import { N8N_CHAT_INTEGRATION_TYPE, isCredentialAgentIntegration } from '@n8n/api-types';
+import {
+	DEFAULT_AGENTS_LIST_LIMIT,
+	N8N_CHAT_INTEGRATION_TYPE,
+	isCredentialAgentIntegration,
+} from '@n8n/api-types';
 import type {
 	AgentIntegrationConfig,
+	AgentListFilter,
+	AgentsListSortBy,
 	AgentVectorStoreProvider,
-	ListAgentsQueryDto,
+	ListAgentsOptions,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -12,6 +18,7 @@ import {
 	chunkIds,
 	escapeLike,
 	LIKE_ESCAPE_CLAUSE,
+	ServiceAccountRepository,
 	TransactionRunner,
 	type OperationContext,
 } from '@n8n/db';
@@ -74,6 +81,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 		dataSource: DataSource,
 		transactionRunner: TransactionRunner,
 		private readonly globalConfig: GlobalConfig,
+		private readonly serviceAccountRepository: ServiceAccountRepository,
 	) {
 		super(Agent, dataSource.manager, transactionRunner);
 	}
@@ -268,7 +276,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	async findByProjectIdsPaginated(
 		projectIds: string[] | null,
-		options: ListAgentsQueryDto,
+		options: ListAgentsOptions,
 		{
 			withProject = false,
 			usageCounts,
@@ -297,7 +305,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 		}
 		this.applyFilters(query, options.filter);
 		this.applySorting(query, options.sortBy, usageCounts);
-		query.skip(options.skip).take(options.take);
+		// `offset`/`limit` are the HTTP-agnostic names; TypeORM's `skip`/`take`
+		// dedupe the joined tag rows. The default limit keeps a programmatic
+		// caller that omits `limit` from querying unboundedly.
+		query.skip(options.offset ?? 0).take(options.limit ?? DEFAULT_AGENTS_LIST_LIMIT);
 
 		const [data, count] = await query.getManyAndCount();
 		return { count, data: data.filter(isProjectAgent) };
@@ -311,7 +322,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 	async findN8nChatListPaginated(
 		reachableProjectIds: string[] | null,
 		ownedProjectIds: string[],
-		options: ListAgentsQueryDto,
+		options: ListAgentsOptions,
 		usageCounts?: Map<string, number>,
 	): Promise<AgentListResult> {
 		if (reachableProjectIds?.length === 0 && ownedProjectIds.length === 0) {
@@ -346,7 +357,8 @@ export class AgentRepository extends BaseRepository<Agent> {
 			includeArchived: false,
 		});
 		this.applySorting(query, options.sortBy, usageCounts);
-		query.skip(options.skip).take(options.take);
+		// The default limit keeps a caller that omits `limit` from querying unboundedly.
+		query.skip(options.offset ?? 0).take(options.limit ?? DEFAULT_AGENTS_LIST_LIMIT);
 
 		const [data, count] = await query.getManyAndCount();
 		return { count, data: data.filter(isProjectAgent) };
@@ -409,7 +421,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	private applyFilters(
 		query: SelectQueryBuilder<Agent>,
-		filter: ListAgentsQueryDto['filter'],
+		filter: AgentListFilter | undefined,
 	): void {
 		if (!filter?.includeArchived) {
 			query.andWhere('agent.isArchived = :isArchived', { isArchived: false });
@@ -433,6 +445,14 @@ export class AgentRepository extends BaseRepository<Agent> {
 			query.andWhere(filter.availableInChat ? carriesChannel : `NOT (${carriesChannel})`, {
 				n8nChatType: N8N_CHAT_INTEGRATION_TYPE,
 			});
+		}
+		if (filter?.active !== undefined) {
+			query.andWhere(
+				filter.active ? 'agent.activeVersionId IS NOT NULL' : 'agent.activeVersionId IS NULL',
+			);
+		}
+		if (filter?.projectId) {
+			query.andWhere('agent.projectId = :filterProjectId', { filterProjectId: filter.projectId });
 		}
 	}
 
@@ -488,7 +508,7 @@ export class AgentRepository extends BaseRepository<Agent> {
 
 	private applySorting(
 		query: SelectQueryBuilder<Agent>,
-		sortBy?: ListAgentsQueryDto['sortBy'],
+		sortBy?: AgentsListSortBy,
 		usageCounts?: Map<string, number>,
 	): void {
 		const [field = 'updatedAt', direction = 'desc'] = sortBy?.split(':') ?? [];
@@ -586,13 +606,35 @@ export class AgentRepository extends BaseRepository<Agent> {
 			.values({ id, name, scope: 'instance', projectId: null, schema: null })
 			.orIgnore()
 			.execute();
-		const existing = await this.findOneOrFail({ select: ['id', 'name', 'scope'], where: { id } });
+		const existing = await this.findOneOrFail({
+			select: ['id', 'name', 'scope', 'identityId'],
+			where: { id },
+		});
 		if (existing.scope !== 'instance') {
 			throw new UnexpectedError(`Agent "${id}" exists as a project agent`);
 		}
 		if (existing.name !== name) {
-			await this.update({ id, scope: 'instance' }, { name });
+			await this.runInTransaction({}, async (tx, ctx) => {
+				await tx.update(Agent, { id, scope: 'instance' }, { name });
+				await this.renameIdentity(existing, name, ctx);
+			});
 		}
+	}
+
+	async findIdentityId(id: string): Promise<string | null> {
+		const agent = await this.findOne({ select: ['identityId'], where: { id } });
+		return agent?.identityId ?? null;
+	}
+
+	/** Sets the identity only when the agent has none. Returns false when another write set it first. */
+	async linkIdentity(id: string, identityId: string, ctx: OperationContext): Promise<boolean> {
+		const result = await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(Agent)
+			.set({ identityId })
+			.where('id = :id AND "identityId" IS NULL', { id })
+			.execute();
+		return (result.affected ?? 0) > 0;
 	}
 
 	async findDependencyIndexAgentIdsBatch(
@@ -925,12 +967,25 @@ export class AgentRepository extends BaseRepository<Agent> {
 		agent: Agent,
 		ctx: OperationContext = {},
 		metadata: AgentDefinitionMetadata = {},
-		{ allowArchivedUpdate = false }: { allowArchivedUpdate?: boolean } = {},
+		options: { allowArchivedUpdate?: boolean } = {},
+	): Promise<boolean> {
+		// The agent name is also the name of its identity, so both writes share one transaction.
+		return await this.runInTransaction(
+			ctx,
+			async (_tx, txCtx) => await this.writeDraftFenced(agent, txCtx, metadata, options),
+		);
+	}
+
+	private async writeDraftFenced(
+		agent: Agent,
+		ctx: OperationContext,
+		metadata: AgentDefinitionMetadata,
+		{ allowArchivedUpdate = false }: { allowArchivedUpdate?: boolean },
 	): Promise<boolean> {
 		const expectedRevision = agent.revision;
 		const previous = await this.managerFor(ctx).findOne(Agent, {
 			where: { id: agent.id },
-			select: ['integrations'],
+			select: ['integrations', 'name', 'identityId'],
 		});
 		const connectionsChanged = !isEqual(
 			(previous?.integrations ?? []).filter(isCredentialAgentIntegration),
@@ -962,11 +1017,26 @@ export class AgentRepository extends BaseRepository<Agent> {
 		const result = await query.execute();
 		const won = (result.affected ?? 0) > 0;
 		if (won) {
+			// Before the in-memory fields change, so a failed rename leaves the caller's agent as stored.
+			await this.renameIdentity(previous, agent.name, ctx);
 			if (metadata.availableInMCP !== undefined) agent.availableInMCP = metadata.availableInMCP;
 			agent.revision = expectedRevision + 1;
 			agent.updatedAt = updatedAt;
 		}
 		return won;
+	}
+
+	/**
+	 * Keeps the identity and its personal project named after the agent, as a
+	 * person's personal project follows the person. A blank name keeps the last one.
+	 */
+	private async renameIdentity(
+		previous: Pick<Agent, 'name' | 'identityId'> | null,
+		name: string,
+		ctx: OperationContext,
+	) {
+		if (!previous?.identityId || previous.name === name || name.trim() === '') return;
+		await this.serviceAccountRepository.rename(previous.identityId, name, ctx);
 	}
 
 	/** The project of each agent, to send an update push to the right project. */
