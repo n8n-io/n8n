@@ -61,6 +61,7 @@ import type { ResolvedSkillSourceCredential } from './skill-source-credentials.c
 import { isNameTaken, nextFreeName } from './skill.policy';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillService } from './skill.service';
+import { SkillSyncService } from './skill-sync.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
 import { SkillUsageProxy } from './skill-usage-proxy.service';
 import { SkillsTelemetry, type SkillSourceTelemetryReason } from './skills-telemetry.service';
@@ -127,6 +128,7 @@ export class SkillSourceService {
 		private readonly credentials: SkillSourceCredentialsProxy,
 		private readonly skillUsage: SkillUsageProxy,
 		private readonly projectScopeService: ProjectScopeService,
+		private readonly sync: SkillSyncService,
 	) {}
 
 	/**
@@ -234,14 +236,24 @@ export class SkillSourceService {
 			const client = this.clients.get(source.type);
 			return client ? [{ source, client }] : [];
 		});
-		const [counts, projects, canReview, canDelete] = await Promise.all([
+		const [counts, projects, canReview, canDelete, missing] = await Promise.all([
 			this.sourceRepository.countLinksBySource(shown.map(({ source }) => source.id)),
 			this.skillRepository.findProjects(shown.flatMap(({ source }) => source.projectId ?? [])),
 			this.skillAccess.accessCheck(user, 'update'),
 			this.skillAccess.accessCheck(user, 'delete'),
+			this.sourceRepository.findMissingSkills(shown.map(({ source }) => source.id)),
 		]);
+		const missingVersions = await this.skillRepository.findLatestSummaries(
+			missing.map(({ skillId }) => skillId),
+		);
 		return shown.map(({ source, client }) => {
 			const project = source.projectId ? projects.get(source.projectId) : undefined;
+			const missingSkills = missing
+				.filter(({ sourceId }) => sourceId === source.id)
+				.flatMap(({ skillId }) => {
+					const skill = missingVersions.get(skillId);
+					return skill ? [skill.name] : [];
+				});
 			const count = counts.get(source.id) ?? { skills: 0, available: 0, blocked: 0 };
 			return {
 				id: source.id,
@@ -255,7 +267,13 @@ export class SkillSourceService {
 				skillCount: count.skills,
 				updatesAvailable: canReview(source) ? count.available : 0,
 				updatesBlocked: canReview(source) ? count.blocked : 0,
-				health: skillSourceHealth(source.lastErrorReason),
+				health: skillSourceHealth(
+					source.requiresCredential && !source.credentialId
+						? 'credential_missing'
+						: source.lastErrorReason,
+					missingSkills.length > 0,
+				),
+				missingSkills,
 				lastCheckedAt: source.lastCheckedAt?.toISOString() ?? null,
 				canReview: canReview(source),
 				canDelete: canDelete(source),
@@ -335,6 +353,59 @@ export class SkillSourceService {
 			throw error;
 		}
 		await this.skillsTelemetry.deletedSource({ provider: source.type, status: 'success' }, user.id);
+	}
+
+	/** Credential choices for an existing source use update access, not create access. */
+	async listReplacementCredentials(
+		user: User,
+		sourceId: string,
+	): Promise<SkillSourceCredentialOption[]> {
+		const { source, client } = await this.requireEditableSource(user, sourceId);
+		return await this.credentials.listUsable(user, source.projectId, client.credentialTypes);
+	}
+
+	async replaceCredential(user: User, sourceId: string, credentialId: string): Promise<void> {
+		const { source, client } = await this.requireEditableSource(user, sourceId);
+		try {
+			const eligible = await this.credentials.listUsable(
+				user,
+				source.projectId,
+				client.credentialTypes,
+			);
+			if (!eligible.some(({ id }) => id === credentialId)) {
+				throw new SkillSourceRequestError(
+					'credential_out_of_scope',
+					'This source cannot use that credential. Pick a credential available in its scope.',
+				);
+			}
+			if (!(await this.sourceRepository.replaceCredential(sourceId, credentialId)))
+				throw new NotFoundError('Source not found');
+		} catch (error) {
+			await this.skillsTelemetry.updatedSourceCredential({
+				user_id: user.id,
+				provider: source.type,
+				status: 'failure',
+				reason: telemetryReasonOf(error),
+			});
+			throw error;
+		}
+		await this.skillsTelemetry.updatedSourceCredential({
+			user_id: user.id,
+			provider: source.type,
+			status: 'success',
+		});
+		await this.sync.checkAfterCredentialReplacement(sourceId);
+	}
+
+	private async requireEditableSource(user: User, sourceId: string) {
+		await this.flagGate.assertEnabled(user);
+		const source = isUuid(sourceId) ? await this.sourceRepository.findById(sourceId) : null;
+		const client = source && this.clients.get(source.type);
+		if (!source || !client || !(await this.skillAccess.canOnSource(user, source, 'view')))
+			throw new NotFoundError('Source not found');
+		if (!(await this.skillAccess.canOnSource(user, source, 'replaceCredential')))
+			throw new ForbiddenError('You are not allowed to change this source.');
+		return { source, client };
 	}
 
 	// ---------------------------------------------------------------- steps

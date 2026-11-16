@@ -73,7 +73,7 @@ const skillSourceProvider = z.enum(['github']).describe('The type of the source,
 const skillSourceAccess = z
 	.enum(['public', 'credential'])
 	.describe(
-		'Whether n8n reads the source with a credential. `public` reads it without one, also after its credential is deleted. `credential` does not mean the source is private',
+		'Whether n8n reads the source with a credential. `public` reads it without one. `credential` does not mean the source is private',
 	);
 
 /** Where a source puts its skills. */
@@ -465,6 +465,42 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 					'Whether the same source is in another scope the user can see (`warning`), or in Global or this scope (`blocked`)',
 				),
 			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
+	USER_UPDATED_SKILL_SOURCE_CREDENTIAL: {
+		name: 'User updated skill source credential',
+		description:
+			'A user attempted to replace the credential of a skill source. Connection health is checked separately.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
+	SKILL_SOURCE_HEALTH_CHANGED: {
+		name: 'Skill source health changed',
+		description:
+			'A source check changed its health. Fires only on a stored transition. Carries no user id, so it reaches BigQuery and not PostHog.',
+		properties: z.object({
+			provider: skillSourceProvider,
+			from: z.enum([
+				'connected',
+				'credential_issue',
+				'source_unavailable',
+				'unreachable',
+				'delayed',
+				'check_failed',
+			]),
+			to: z.enum([
+				'connected',
+				'credential_issue',
+				'source_unavailable',
+				'unreachable',
+				'delayed',
+				'check_failed',
+			]),
 			reason: skillSourceReason,
 		}),
 	},

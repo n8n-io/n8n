@@ -198,6 +198,22 @@ export class SkillsTelemetry {
 		});
 	}
 
+	async updatedSourceCredential(
+		props: InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_UPDATED_SKILL_SOURCE_CREDENTIAL>,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_UPDATED_SKILL_SOURCE_CREDENTIAL, props);
+		});
+	}
+
+	async sourceHealthChanged(
+		props: InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_HEALTH_CHANGED>,
+	) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_HEALTH_CHANGED, props);
+		});
+	}
+
 	/** Reads back only the refs that came as a bare id, in one query. */
 	private async resolve(refs: SkillTelemetryRef[]): Promise<SkillTelemetryTarget[]> {
 		const ids = refs.filter((ref) => typeof ref === 'string');

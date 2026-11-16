@@ -1375,6 +1375,7 @@ describe('SettingsSkillsView', () => {
 				updatesAvailable: 0,
 				updatesBlocked: 0,
 				health: 'connected' as const,
+				missingSkills: [],
 				lastCheckedAt: null,
 				canReview: true,
 				canDelete: true,
@@ -1643,11 +1644,24 @@ describe('SettingsSkillsView', () => {
 				await waitFor(() => expect(view.queryByTestId('skill-group-checking')).toBeNull());
 			});
 
+			it('shows a delay instead of an error after a rate limit', async () => {
+				skillsStore.checkSource.mockRejectedValue(
+					new ResponseError('Server text', { meta: { reason: 'rate_limited' } }),
+				);
+				const view = await renderWithSource();
+				await clickCheck(view);
+				await waitFor(() =>
+					expect(showMessageMock).toHaveBeenCalledWith({
+						title: 'Checking delayed',
+						message: 'GitHub limits how often n8n can read it. Try again in a few minutes.',
+						type: 'warning',
+					}),
+				);
+				expect(showErrorMock).not.toHaveBeenCalled();
+				expect(skillsStore.fetchSources).toHaveBeenCalled();
+			});
+
 			it.each([
-				{
-					reason: 'rate_limited',
-					text: 'GitHub limits how often n8n can read it. Try again in a few minutes.',
-				},
 				{
 					reason: 'credential_missing',
 					text: 'The credential of this source no longer exists, or this scope can no longer use it.',
@@ -1678,7 +1692,7 @@ describe('SettingsSkillsView', () => {
 				await clickCheck(view);
 
 				await waitFor(() =>
-					expect(view.getByRole('button', { name: 'Unreachable' })).toBeInTheDocument(),
+					expect(view.getByRole('button', { name: 'Source unavailable' })).toBeInTheDocument(),
 				);
 				expect(view.queryByTestId('skill-group-checking')).toBeNull();
 			});

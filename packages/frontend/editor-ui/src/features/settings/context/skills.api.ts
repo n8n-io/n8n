@@ -197,3 +197,20 @@ export async function stopSyncingSkill(context: IRestApiContext, skillId: string
 		`${SOURCES_ENDPOINT}/skills/${skillId}/stop-syncing`,
 	);
 }
+
+export async function getReplacementSkillSourceCredentials(
+	context: IRestApiContext,
+	sourceId: string,
+): Promise<SkillSourceCredentialOption[]> {
+	return await makeRestApiRequest(context, 'GET', `${SOURCES_ENDPOINT}/${sourceId}/credentials`);
+}
+
+export async function replaceSkillSourceCredential(
+	context: IRestApiContext,
+	sourceId: string,
+	credentialId: string,
+): Promise<void> {
+	await makeRestApiRequest(context, 'POST', `${SOURCES_ENDPOINT}/${sourceId}/credential`, {
+		credentialId,
+	});
+}

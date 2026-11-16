@@ -41,6 +41,14 @@ export class SkillSourceConnection extends WithTimestamps {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	credentialId: string | null;
 
+	/** Keeps credential deletion distinct from public access. */
+	@Column({ default: false })
+	requiresCredential: boolean;
+
+	/** A replacement invalidates checks that started with an earlier selection. */
+	@Column({ type: 'int', default: 0 })
+	credentialVersion: number;
+
 	@Column({ type: 'varchar', length: 32, default: 'connected' })
 	status: SkillSourceStatus;
 

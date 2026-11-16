@@ -1,10 +1,13 @@
 import type { SkillSourceHealth } from '@n8n/api-types';
 
 /** Checks store reason codes. Derive health from them so existing check results also show it. */
-export function skillSourceHealth(errorReason: string | null): SkillSourceHealth {
+export function skillSourceHealth(
+	errorReason: string | null,
+	hasMissingSkills = false,
+): SkillSourceHealth {
 	switch (errorReason) {
 		case null:
-			return 'connected';
+			return hasMissingSkills ? 'source_unavailable' : 'connected';
 		case 'credential_invalid':
 		case 'credential_missing':
 		case 'credential_out_of_scope':

@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { SkillSourceListItem } from '@n8n/api-types';
-import { N8nBadge, N8nTooltip } from '@n8n/design-system';
+import { N8nBadge, N8nTooltip, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
-	source: Pick<SkillSourceListItem, 'health' | 'lastCheckedAt'>;
+	source: Pick<SkillSourceListItem, 'health' | 'lastCheckedAt'> &
+		Partial<Pick<SkillSourceListItem, 'missingSkills'>>;
 }>();
 const i18n = useI18n();
 const variant = computed(() => {
@@ -29,6 +30,11 @@ const details = computed(() =>
 		props.source.health !== 'connected'
 			? i18n.baseText(`settings.context.skills.sources.health.${props.source.health}.description`)
 			: null,
+		props.source.missingSkills?.length
+			? i18n.baseText('settings.context.skills.sources.health.missingSkills', {
+					interpolate: { names: props.source.missingSkills.join(', ') },
+				})
+			: null,
 		lastCheck.value,
 		i18n.baseText('settings.context.skills.sources.health.schedule'),
 	]
@@ -39,8 +45,19 @@ const details = computed(() =>
 
 <template>
 	<N8nTooltip as-child>
-		<button type="button" :class="$style.trigger" data-test-id="skill-source-health" @click.stop>
-			<N8nBadge :variant="variant">
+		<button
+			type="button"
+			:class="$style.trigger"
+			:aria-label="
+				source.health === 'connected'
+					? i18n.baseText('settings.context.skills.sources.health.details')
+					: undefined
+			"
+			data-test-id="skill-source-health"
+			@click.stop
+		>
+			<N8nIcon v-if="source.health === 'connected'" icon="info" />
+			<N8nBadge v-else :variant="variant">
 				{{ i18n.baseText(`settings.context.skills.sources.health.${source.health}`) }}
 			</N8nBadge>
 		</button>

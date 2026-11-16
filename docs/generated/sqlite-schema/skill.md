@@ -105,6 +105,7 @@ erDiagram
   varchar_64_ skippedContentHash
   TEXT skippedFiles
   varchar sourceId FK
+  BOOLEAN sourceUnavailable
   varchar_32_ state
   datetime_3_ updatedAt
 }
