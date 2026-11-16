@@ -4,6 +4,17 @@ import { CODE_HELPERS } from '../convert/code-native/helpers.ts';
 import { translateCode } from '../convert/code-native/translate.ts';
 import { commonJsToModule, isCommonJs } from './commonjs.ts';
 import {
+	COST_GLOBALS,
+	COST_HELPERS,
+	foldTextMethod,
+	literalKeyCount,
+	lowerCost,
+	PLAIN_LIST,
+	PLAIN_LIST_COLLECTIONS,
+	PLAIN_LIST_SAME,
+	reachableHelpers,
+} from './lower-cost.ts';
+import {
 	bindMoment,
 	MOMENT_HELPER_USES,
 	MOMENT_HELPERS,
@@ -3722,6 +3733,26 @@ class Specialiser {
 					}
 				}
 			}
+			if (
+				ts.isCallExpression(n) &&
+				ts.isPropertyAccessExpression(n.expression) &&
+				!n.expression.questionDotToken &&
+				ts.isStringLiteralLike(n.expression.expression)
+			) {
+				const given = n.arguments.map((arg) => literalOf(arg));
+				const folded = given.every((arg) => arg !== undefined)
+					? foldTextMethod(
+							n.expression.expression.text,
+							n.expression.name.text,
+							given.map((arg) => arg?.value),
+						)
+					: undefined;
+				if (folded) return done(expressionOf(folded.value));
+			}
+			if (ts.isPropertyAccessExpression(n) && input.parent && !isWritten(input)) {
+				const count = literalKeyCount(n);
+				if (count !== undefined) return done(expressionOf(count));
+			}
 			if (ts.isConditionalExpression(n)) {
 				const condition = literalOf(n.condition);
 				if (condition) return done(condition.value ? n.whenTrue : n.whenFalse);
@@ -5483,7 +5514,8 @@ class Specialiser {
 			KEPT_ITERABLE_CODE,
 			...this.output
 				.filter((o) => pure.has(o.name))
-				.map((o) => this.printer.printNode(ts.EmitHint.Unspecified, o.node, o.sf)),
+				.map((o) => this.printer.printNode(ts.EmitHint.Unspecified, o.node, o.sf))
+				.map((text) => text.replace(/^export\s+(default\s+)?/, '')),
 		].join('\n');
 		const literalJson = (e: ts.Expression): boolean =>
 			literalOf(e) !== undefined ||
@@ -5769,9 +5801,12 @@ class Specialiser {
 			'__request',
 			...Object.keys(CONTEXT_HELPERS),
 			...Object.keys(HELPERS),
+			...COST_GLOBALS,
 		]);
+		const lowered = lowerCost([...code, body].join('\n'));
+		for (const helper of lowered.helpers) this.helpers.add(helper);
 		const translated = translateCode({
-			code: [...code, body].join('\n'),
+			code: lowered.code,
 			mode: 'all',
 			kind: 'code',
 			hasNode: () => false,
@@ -5811,7 +5846,20 @@ class Specialiser {
 		const plain = t.usesCollections
 			? 'function __plain(value: Json): Json {\n\treturn collPlain(value);\n}'
 			: 'function __plain(value: Json): Json {\n\treturn value;\n}';
-		const own = [...this.helpers].sort().map((h) => (h === '__plain' ? plain : HELPERS[h]));
+		const texts: Record<string, string> = {
+			...HELPERS,
+			...COST_HELPERS,
+			__plain: plain,
+			[PLAIN_LIST]: t.usesCollections ? PLAIN_LIST_COLLECTIONS : PLAIN_LIST_SAME,
+		};
+		const reached = reachableHelpers(
+			[t.body, lowered.items, ...names.map((n) => CODE_HELPERS[n].source)],
+			texts,
+		);
+		const own = [...this.helpers]
+			.sort()
+			.filter((h) => reached.has(h))
+			.map((h) => texts[h]);
 		const typed = (type: string) => `import { defineNode } from '@n8n/workflow-lang';
 
 type Json = any;
@@ -5823,7 +5871,7 @@ export default defineNode<Json>({
 	version: ${this.input.version},
 	async run(ctx, parameters0, items0, credential) {
 		const parameters: Json = parameters0 ?? {};
-		const __items: Json = __wrap(items0);
+		${lowered.items}
 ${t.body}
 	},
 });
