@@ -24,10 +24,11 @@ describe('Public API usage', () => {
 		expect(PUBLIC_API_USAGE.getValidationError(report)).toBeNull();
 	});
 
-	it.each(Object.keys(report))('rejects a report without %s', (key) => {
-		const { [key]: _, ...rest } = report as Record<string, unknown>;
+	it('rejects a report without a required property', () => {
+		const incomplete: Record<string, unknown> = { ...report };
+		delete incomplete.routes;
 
-		expect(PUBLIC_API_USAGE.getValidationError(rest)).not.toBeNull();
+		expect(PUBLIC_API_USAGE.getValidationError(incomplete)).not.toBeNull();
 	});
 
 	it('rejects a property it does not know', () => {

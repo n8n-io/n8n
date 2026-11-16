@@ -4,10 +4,6 @@ import { defineTelemetryEvents } from '../define';
 
 const callCounts = z.record(z.string(), z.number().int().positive());
 
-/**
- * The report carries its breakdowns as JSON text, one string per property, so the
- * warehouse columns keep their type. These schemas describe the text in each one.
- */
 export const PUBLIC_API_USAGE_JSON_FIELDS = {
 	endpoints: callCounts,
 	endpoints_by_client: z.object({ editor_ui: callCounts }),
