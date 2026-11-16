@@ -239,6 +239,16 @@ describe('QuickJsExpressionShadow', () => {
 		expect(JSON.stringify(report)).not.toMatch(/secret/i);
 	});
 
+	it('reports where the QuickJS error started', () => {
+		const { shadow } = createShadow({ ...failed('Error'), errorOrigin: 'guest:TypeError' });
+
+		run(shadow, '{{ $json.a }}', ok(1));
+
+		expect(shadow.takeReport()?.mismatches).toEqual([
+			expect.objectContaining({ error_class: 'Error', error_origin: 'guest:TypeError' }),
+		]);
+	});
+
 	it('caps the number of distinct mismatch shapes', () => {
 		const { shadow } = createShadow(ok('quickjs'));
 
