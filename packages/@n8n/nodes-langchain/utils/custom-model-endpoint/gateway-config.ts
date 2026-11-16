@@ -65,7 +65,7 @@ export function createCustomModelEndpointConfig(
 	assertAbsoluteHttpUrl(endpoint.baseUrl);
 	const egressFilter = ctx.helpers.getSecureEgressFilter();
 
-	const transport = createCustomModelEndpointAuthFetch(ctx, credential, {
+	const authFetch = createCustomModelEndpointAuthFetch(ctx, credential, {
 		endpoint,
 		egressFilter,
 		baseFetch: createEndpointBaseFetch(egressFilter, options.timeout),
@@ -76,7 +76,7 @@ export function createCustomModelEndpointConfig(
 		endpoint,
 		configuration: {
 			baseURL: endpoint.baseUrl,
-			fetch: transport.fetch,
+			fetch: authFetch,
 		},
 	};
 }
