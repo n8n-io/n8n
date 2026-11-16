@@ -36,8 +36,13 @@ import type {
 	SystemAgentTurnOptions,
 	SystemAgentTurnOutcome,
 } from '@/modules/agents/system-agents/system-agent.types';
+import { Telemetry } from '@/telemetry';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 
+import {
+	readAssistantConfirmationPayload,
+	trackBuilderAskedForInput,
+} from '../builder-input-telemetry';
 import { InstanceAiCreditService } from '../instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
@@ -111,6 +116,20 @@ function contextAttachmentsOf(
 }
 
 /**
+ * The request ids of the cards that a resumed run still shows. Each tool
+ * suspension creates a new request id, so a card with one of these ids is a
+ * copy that the resume sends again.
+ */
+function openRequestIdsOf(turn: SystemAgentTurn<AssistantSandboxLease>): Set<string> {
+	if (turn.type !== 'resume') return new Set();
+	return new Set(
+		turn.openSuspensions.flatMap(
+			({ suspendPayload }) => readAssistantConfirmationPayload(suspendPayload)?.requestId ?? [],
+		),
+	);
+}
+
+/**
  * The n8n Assistant as a system agent on the Agents runtime. The runtime owns
  * the queue, steering, checkpoints, HITL resume and the chat stream. The
  * provider builds each turn with the shared Assistant turn setup.
@@ -139,6 +158,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly threadTabs: AssistantThreadTabsService,
 		private readonly errorReporter: InstanceAiErrorReporterService,
 		private readonly turnOverrides: AssistantTurnOverrides,
+		private readonly telemetry: Telemetry,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;
@@ -304,6 +324,8 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 
 		let usage: { model: string; usage: TokenUsage } | undefined;
 		let inputAccepted: Promise<void> | undefined;
+		// A resume sends the still-open cards again, so only the cards that are new count as asks.
+		const askedRequestIds = openRequestIdsOf(turn);
 		// The model stream reports these errors. Other errors of the turn were thrown.
 		const streamErrors = new Set<unknown>();
 		// `formatError` and the turn report share the credit check of one error.
@@ -349,6 +371,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				if (chunk.type === 'error') streamErrors.add(chunk.error);
 				if (chunk.type === 'tool-call-suspended') {
 					setupRoute.observeSuspension(chunk.toolName, chunk.suspendPayload);
+					this.trackAskedForInput(user.id, thread.id, chunk.suspendPayload, askedRequestIds);
 				}
 				// The SDK stores the input when it receives it, so the first chunk means it is accepted.
 				if (!inputAccepted && turnInput) {
@@ -401,6 +424,25 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				await this.claimSideCallUsage(user, thread.id, runId, report),
 			formatError: async (error) => toFormattedTurnError(await shownErrorOf(error)),
 		};
+	}
+
+	/** Sends "Builder asked for input" once for each new Assistant card. */
+	private trackAskedForInput(
+		userId: string,
+		threadId: string,
+		suspendPayload: unknown,
+		askedRequestIds: Set<string>,
+	): void {
+		const payload = readAssistantConfirmationPayload(suspendPayload);
+		if (!payload || askedRequestIds.has(payload.requestId)) return;
+		askedRequestIds.add(payload.requestId);
+		trackBuilderAskedForInput(this.telemetry, {
+			userId,
+			threadId,
+			inputThreadId: payload.requestId,
+			payload,
+			runtime: 'agents',
+		});
 	}
 
 	/** Binds the Agents runtime state of one turn for the shared turn setup. */

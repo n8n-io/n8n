@@ -1,9 +1,6 @@
 import { settleAbandonedToolCallsInMemory } from '@n8n/agents';
 import type { Message, ScopedMemoryTaskEvent } from '@n8n/agents';
 import {
-	mcpConnectRequestSchema,
-	credentialSetupHintSchema,
-	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
@@ -105,6 +102,7 @@ import {
 	UserError,
 } from '@n8n/errors';
 import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
+import { trackBuilderAskedForInput } from './builder-input-telemetry';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AiService } from '@/services/ai.service';
 import { Telemetry } from '@/telemetry';
@@ -227,10 +225,6 @@ function describeMemoryTaskOutcome(value: unknown): { outcome?: string; reason?:
 		outcome: value.status,
 		...(typeof value.reason === 'string' ? { reason: value.reason } : {}),
 	};
-}
-
-function toTelemetryInputType(inputType: string): string {
-	return inputType === 'app-blueprint' ? 'app_blueprint' : inputType;
 }
 
 const WORKFLOW_SETUP_ROUTING_CLAIM_TTL_MS = 15 * 60 * 1000;
@@ -4603,77 +4597,13 @@ export class InstanceAiService {
 		const payload = confirmationEvent.payload;
 		const inputThreadId = nanoid();
 		payload.inputThreadId = inputThreadId;
-
-		const inputType = payload.inputType as string | undefined;
-		const mcpConnectServers = mcpConnectRequestSchema.safeParse(payload.mcpConnectRequest).data
-			?.servers;
-		let type: string;
-		if (inputType) {
-			type = toTelemetryInputType(inputType);
-		} else if (Array.isArray(payload.setupRequests) && payload.setupRequests.length > 0) {
-			type = 'setup';
-		} else if (Array.isArray(payload.credentialRequests) && payload.credentialRequests.length > 0) {
-			type = 'credential-setup';
-		} else if (mcpConnectServers) {
-			type = 'mcp-connect';
-		} else {
-			type = 'approval';
-		}
-
-		let numSteps = 1;
-		if (Array.isArray(payload.questions)) {
-			numSteps = payload.questions.length;
-		} else if (Array.isArray(payload.setupRequests)) {
-			numSteps = payload.setupRequests.length;
-		} else if (Array.isArray(payload.credentialRequests)) {
-			numSteps = payload.credentialRequests.length;
-		} else if (mcpConnectServers) {
-			numSteps = mcpConnectServers.length;
-		}
-
-		const credentialRequests = (
-			Array.isArray(payload.credentialRequests) ? payload.credentialRequests : []
-		).filter(
-			(request): request is { credentialType?: unknown; setupHint?: unknown } =>
-				typeof request === 'object' && request !== null,
-		);
-
-		// Whether any requested credential is a recipe-driven Templated Custom Auth
-		// one (recipe-seeded modal), to compare completion against plain types.
-		const containsTemplatedCred = credentialRequests.some(
-			(request) =>
-				request.credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE ||
-				(request.setupHint !== null && request.setupHint !== undefined),
-		);
-
-		this.telemetry.track('Builder asked for input', {
-			user_id: userId,
-			thread_id: threadId,
-			input_thread_id: inputThreadId,
-			type,
-			num_steps: numSteps,
-			contains_templated_cred: containsTemplatedCred,
+		trackBuilderAskedForInput(this.telemetry, {
+			userId,
+			threadId,
+			inputThreadId,
+			payload,
+			runtime: 'instance-ai',
 		});
-
-		// Recipe content at spec time — production visibility into template and
-		// link quality (the offline eval suite grades the same fields). One event
-		// per recipe; secret-free by construction: recipes are agent-authored
-		// before any user input.
-		for (const request of credentialRequests) {
-			const parsedHint = credentialSetupHintSchema.safeParse(request.setupHint);
-			if (!parsedHint.success) continue;
-			const hint = parsedHint.data;
-			this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.BUILDER_SPECCED_TEMPLATED_CRED, {
-				thread_id: threadId,
-				input_thread_id: inputThreadId,
-				template: hint.template,
-				placeholders: hint.placeholders,
-				test_url: hint.testUrl,
-				docs_url: hint.docsUrl,
-				service_host: hint.serviceHost,
-				accepted_status_codes: hint.acceptedStatusCodes,
-			});
-		}
 	}
 
 	private async finalizeCancelledSuspendedRun(
