@@ -50,6 +50,7 @@ function queued(queueId: string): AgentSseEvent {
 
 function setup() {
 	const isStreaming = ref(false);
+	const isStreamAttached = ref(false);
 	const isSubmitting = ref(false);
 	const hasOpenInteraction = ref(false);
 	let telemetry!: ReturnType<typeof useAssistantAgentTurnTelemetry>;
@@ -59,6 +60,7 @@ function setup() {
 				telemetry = useAssistantAgentTurnTelemetry({
 					threadId: 'thread-1',
 					isStreaming: () => isStreaming.value,
+					isStreamAttached: () => isStreamAttached.value,
 					isSubmitting: () => isSubmitting.value,
 					hasOpenInteraction: () => hasOpenInteraction.value,
 				});
@@ -74,7 +76,15 @@ function setup() {
 		telemetry.handleStreamEvent(queued(`q-${++sends}`));
 		isSubmitting.value = false;
 	}
-	return { telemetry, send, isStreaming, isSubmitting, hasOpenInteraction, wrapper };
+	return {
+		telemetry,
+		send,
+		isStreaming,
+		isStreamAttached,
+		isSubmitting,
+		hasOpenInteraction,
+		wrapper,
+	};
 }
 
 /** Lets the render check of a settled response run. */
@@ -256,9 +266,9 @@ describe('useAssistantAgentTurnTelemetry', () => {
 
 	describe('Builder generation stalled', () => {
 		it('reports a run that sends nothing for a minute, once for each silent period', async () => {
-			const { telemetry, isStreaming } = setup();
+			const { telemetry, isStreamAttached } = setup();
 
-			isStreaming.value = true;
+			isStreamAttached.value = true;
 			await nextTick();
 			await vi.advanceTimersByTimeAsync(GENERATION_STALL_TIMEOUT_MS);
 			expect(stalledCalls()).toEqual([[STALLED, { thread_id: 'thread-1', runtime: 'agents' }]]);
@@ -272,9 +282,9 @@ describe('useAssistantAgentTurnTelemetry', () => {
 		});
 
 		it('restarts the countdown on each stream event', async () => {
-			const { telemetry, isStreaming } = setup();
+			const { telemetry, isStreamAttached } = setup();
 
-			isStreaming.value = true;
+			isStreamAttached.value = true;
 			await nextTick();
 			await vi.advanceTimersByTimeAsync(GENERATION_STALL_TIMEOUT_MS - 1_000);
 			telemetry.handleStreamEvent({ type: 'start-step' });
@@ -284,10 +294,34 @@ describe('useAssistantAgentTurnTelemetry', () => {
 		});
 
 		it('does not report a run that shows a card', async () => {
-			const { isStreaming, hasOpenInteraction } = setup();
+			const { isStreamAttached, hasOpenInteraction } = setup();
+
+			isStreamAttached.value = true;
+			hasOpenInteraction.value = true;
+			await nextTick();
+			await vi.advanceTimersByTimeAsync(GENERATION_STALL_TIMEOUT_MS * 2);
+
+			expect(stalledCalls()).toHaveLength(0);
+		});
+
+		it('does not report a run that the chat follows without a stream, such as after a reload', async () => {
+			const { isStreaming } = setup();
 
 			isStreaming.value = true;
-			hasOpenInteraction.value = true;
+			await nextTick();
+			await vi.advanceTimersByTimeAsync(GENERATION_STALL_TIMEOUT_MS * 2);
+
+			expect(stalledCalls()).toHaveLength(0);
+		});
+
+		it('stops the countdown when the stream drops', async () => {
+			const { isStreaming, isStreamAttached } = setup();
+
+			isStreaming.value = true;
+			isStreamAttached.value = true;
+			await nextTick();
+			// The run is still active, but the chat now recovers it through history.
+			isStreamAttached.value = false;
 			await nextTick();
 			await vi.advanceTimersByTimeAsync(GENERATION_STALL_TIMEOUT_MS * 2);
 
@@ -296,13 +330,13 @@ describe('useAssistantAgentTurnTelemetry', () => {
 
 		it('does not report after the run ends or the view unmounts', async () => {
 			const first = setup();
-			first.isStreaming.value = true;
+			first.isStreamAttached.value = true;
 			await nextTick();
-			first.isStreaming.value = false;
+			first.isStreamAttached.value = false;
 			await nextTick();
 
 			const second = setup();
-			second.isStreaming.value = true;
+			second.isStreamAttached.value = true;
 			await nextTick();
 			second.wrapper.unmount();
 

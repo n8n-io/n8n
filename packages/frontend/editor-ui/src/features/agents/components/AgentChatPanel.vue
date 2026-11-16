@@ -290,6 +290,7 @@ const {
 	isSubmitting,
 	isLoadingHistory,
 	isStreaming,
+	isStreamAttached,
 	refresh,
 	isCancelling,
 	messagingState,
@@ -1655,6 +1656,11 @@ defineExpose({
 	/** The chips staged with `addComposerAttachment`, until the message that sends them is accepted. */
 	composerAttachments: readonly(composerAttachments),
 	isStreaming: computed(() => isStreaming.value),
+	/**
+	 * A live stream delivers the events of the run. `isStreaming` is also true for a run
+	 * that the chat follows only through history, for example after a reload.
+	 */
+	isStreamAttached: computed(() => isStreamAttached.value),
 	/** A message is sent and the server has not started the reply yet. */
 	isSubmitting: computed(() => isSubmitting.value),
 	/** The chat waits for the user to answer a card, such as an approval or a question. A waiting card does not count, because the workflow resumes the run. */

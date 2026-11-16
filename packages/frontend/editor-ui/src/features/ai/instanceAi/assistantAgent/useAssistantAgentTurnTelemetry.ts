@@ -50,6 +50,8 @@ export function useAssistantAgentTurnTelemetry(options: {
 	threadId: string;
 	/** The chat streams a run. */
 	isStreaming: () => boolean;
+	/** A live stream delivers the events of the run. */
+	isStreamAttached: () => boolean;
 	/** The chat posts a message and the server has not accepted it yet. */
 	isSubmitting: () => boolean;
 	/** The chat shows a card that the run waits on. */
@@ -140,11 +142,13 @@ export function useAssistantAgentTurnTelemetry(options: {
 	// --- 'Builder generation stalled' ---
 	// Fires when the active run has sent nothing on the stream for a minute. A run
 	// that shows a card is not stalled. Each stream event restarts the countdown,
-	// so the event fires at most once for each silent period.
+	// so the event fires at most once for each silent period. A run that the chat
+	// follows only through history, after a reload or a dropped stream, sends no
+	// stream events, so it does not count.
 	let stallTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const isGenerationPending = computed(
-		() => options.isStreaming() && !options.hasOpenInteraction(),
+		() => options.isStreamAttached() && !options.hasOpenInteraction(),
 	);
 
 	function disarmStallWatchdog(): void {
