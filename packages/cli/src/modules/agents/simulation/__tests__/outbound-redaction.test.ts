@@ -89,6 +89,32 @@ describe('redactOutboundRequest', () => {
 		expect(urlEncoded.body).toEqual({ grant: 'x', client_secret: '[REDACTED]' });
 	});
 
+	it('redacts fields by name in a body that is already serialized', () => {
+		const json = redactHttp({
+			protocol: 'http',
+			method: 'POST',
+			url: 'https://api.example.com/login',
+			body: '{"password":"hunter22222","query":"open issues"}',
+		});
+		const form = redactHttp({
+			protocol: 'http',
+			method: 'POST',
+			url: 'https://api.example.com/token',
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+			body: 'grant_type=password&password=hunter22222&scope=read',
+		});
+
+		expect(JSON.parse(json.body as string)).toEqual({
+			password: '[REDACTED]',
+			query: 'open issues',
+		});
+		expect(Object.fromEntries(new URLSearchParams(form.body as string))).toEqual({
+			grant_type: 'password',
+			password: '[REDACTED]',
+			scope: 'read',
+		});
+	});
+
 	it('redacts an MCP request and a web search without a URL to keep', () => {
 		const mcp = redactOutboundRequest({
 			protocol: 'mcp',

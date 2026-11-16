@@ -18,7 +18,8 @@ export function redactOutboundRequest(request: OutboundRequest): OutboundRequest
 		return { ...request, args: { ...request.args, query: redactText(request.args.query).text } };
 	}
 	const headers = redactHeaders(request.headers);
-	const body = request.body === undefined ? {} : { body: redactBody(request.body) };
+	const body =
+		request.body === undefined ? {} : { body: redactBody(request.body, request.headers) };
 	if (request.protocol === 'mcp') return { ...request, headers, ...body };
 	return { ...request, url: redactUrl(request.url), headers, ...body };
 }
@@ -32,8 +33,44 @@ function redactHeaders(headers: Record<string, string> = {}): Record<string, str
 	return result;
 }
 
-function redactBody(body: unknown): unknown {
-	return redactDeep(toJsonBody(body), { redactSensitiveKeys: true }).value;
+function redactBody(body: unknown, headers: Record<string, string> = {}): unknown {
+	// A body that is already serialized keeps its form, with its fields redacted by name too.
+	if (typeof body === 'string') {
+		const json = parseJsonObject(body);
+		if (json !== undefined) return JSON.stringify(redactFields(json));
+		if (isFormEncoded(headers)) {
+			const fields = redactFields(Object.fromEntries(new URLSearchParams(body)));
+			return isRecord(fields) ? new URLSearchParams(stringValues(fields)).toString() : '';
+		}
+	}
+	return redactFields(toJsonBody(body));
+}
+
+function redactFields(value: unknown): unknown {
+	return redactDeep(value, { redactSensitiveKeys: true }).value;
+}
+
+function parseJsonObject(text: string): object | undefined {
+	const trimmed = text.trim();
+	if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return undefined;
+	try {
+		const parsed: unknown = JSON.parse(trimmed);
+		return typeof parsed === 'object' && parsed !== null ? parsed : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+function isFormEncoded(headers: Record<string, string>): boolean {
+	return Object.entries(headers).some(
+		([name, value]) =>
+			name.toLowerCase() === 'content-type' &&
+			value.toLowerCase().includes('application/x-www-form-urlencoded'),
+	);
+}
+
+function stringValues(fields: Record<string, unknown>): Record<string, string> {
+	return Object.fromEntries(Object.entries(fields).map(([name, value]) => [name, String(value)]));
 }
 
 /** Search terms and ids in the query stay, so the simulator can answer the request. */
