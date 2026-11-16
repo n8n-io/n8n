@@ -40,6 +40,8 @@ export interface SpecialiseResult {
 	linked: string[];
 
 	derivations?: CredentialDerivation[];
+
+	retyped?: (moduleType: string) => string;
 }
 
 export interface CredentialDerivation {
@@ -539,6 +541,12 @@ interface Unit {
 	credentialType?: string;
 }
 
+const MAX_PARSED = 256;
+
+const MAX_FOLD_ROUNDS = 40;
+
+const PARSED = new Map<string, { text: string; local: string; model: FileModel }>();
+
 class Specialiser {
 	readonly errors: string[] = [];
 	readonly notes: string[] = [];
@@ -616,6 +624,12 @@ class Specialiser {
 		if (known) return known;
 		const text = this.input.readFile(path);
 		if (text === undefined) return undefined;
+		const local = Object.keys(this.input.aliases ?? {}).join('\n');
+		const kept = PARSED.get(path);
+		if (kept && kept.text === text && kept.local === local) {
+			this.files.set(path, kept.model);
+			return kept.model;
+		}
 
 		let js = text;
 		if (path.endsWith('.ts')) {
@@ -684,6 +698,14 @@ class Specialiser {
 			}
 		}
 		this.files.set(path, model);
+		PARSED.delete(path);
+		if (PARSED.size >= MAX_PARSED) {
+			for (const oldest of PARSED.keys()) {
+				PARSED.delete(oldest);
+				break;
+			}
+		}
+		PARSED.set(path, { text, local, model });
 		return model;
 	}
 
@@ -1367,14 +1389,23 @@ class Specialiser {
 
 	private fold(start: { node: ts.Node; sf: ts.SourceFile }, where: string) {
 		let cur = start;
-		for (let round = 0; round < 40; round++) {
+		let settled = false;
+		for (let round = 0; round < MAX_FOLD_ROUNDS && !settled; round++) {
 			this.changed = false;
-			cur = this.reparse(this.propagate(cur.node, where), cur.sf);
-			cur = this.reparse(this.flow(cur.node), cur.sf);
-			cur = this.reparse(this.reduce(cur.node), cur.sf);
-			if (!this.changed) break;
+			cur = this.renew(cur, this.propagate(cur.node, where));
+			cur = this.renew(cur, this.flow(cur.node));
+			cur = this.renew(cur, this.reduce(cur.node));
+			settled = !this.changed;
 		}
-		return this.reparse(this.deriveCredentialValues(cur.node), cur.sf);
+		if (!settled) this.error(where, `the code still changes after ${MAX_FOLD_ROUNDS} fold rounds`);
+		return this.renew(cur, this.deriveCredentialValues(cur.node));
+	}
+
+	private renew(
+		cur: { node: ts.Node; sf: ts.SourceFile },
+		next: ts.Node,
+	): { node: ts.Node; sf: ts.SourceFile } {
+		return next === cur.node ? cur : this.reparse(next, cur.sf);
 	}
 
 	readonly derivations = new Map<string, string>();
@@ -2461,8 +2492,8 @@ class Specialiser {
 		let cur = this.reparse(this.withContextArguments(statement, unit), unit.file.sf);
 		cur = this.reparse(this.bind(cur.node, unit, isExecute), cur.sf);
 		cur = this.fold(cur, unit.name);
-		cur = this.reparse(this.resolveChains(cur.node, unit), cur.sf);
-		cur = this.reparse(this.markContextArguments(cur.node, unit.name), cur.sf);
+		cur = this.renew(cur, this.resolveChains(cur.node, unit));
+		cur = this.renew(cur, this.markContextArguments(cur.node, unit.name));
 		const node = cur.node;
 		this.check(node, unit.name);
 		const bound = bindingsOf(node);
@@ -2911,7 +2942,7 @@ class Specialiser {
 		const source = this.print();
 		if (this.errors.length > 0) return { errors: this.errors, notes: this.notes, linked };
 		const derivations = [...this.derivations].map(([name, code]) => ({ name, code }));
-		return { source, errors: [], notes: this.notes, linked, derivations };
+		return { source, errors: [], notes: this.notes, linked, derivations, retyped: this.retyped };
 	}
 
 	private print(): string {
@@ -2990,14 +3021,14 @@ class Specialiser {
 			? 'function __plain(value: Json): Json {\n\treturn collPlain(value);\n}'
 			: 'function __plain(value: Json): Json {\n\treturn value;\n}';
 		const own = [...this.helpers].sort().map((h) => (h === '__plain' ? plain : HELPERS[h]));
-		return `import { defineNode } from '@n8n/workflow-lang';
+		const typed = (type: string) => `import { defineNode } from '@n8n/workflow-lang';
 
 type Json = any;
 
 ${[...names.map((n) => CODE_HELPERS[n].source), ...own].join('\n\n')}
 
 export default defineNode<Json>({
-	type: ${JSON.stringify(this.input.moduleType ?? this.input.type)},
+	type: ${JSON.stringify(type)},
 	version: ${this.input.version},
 	async run(ctx, parameters0, items0, credential) {
 		const parameters: Json = parameters0 ?? {};
@@ -3006,7 +3037,11 @@ ${t.body}
 	},
 });
 `;
+		this.retyped = typed;
+		return typed(this.input.moduleType ?? this.input.type);
 	}
+
+	private retyped: ((type: string) => string) | undefined;
 }
 
 function bindingsOf(root: ts.Node): Map<string, number> {
