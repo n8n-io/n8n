@@ -376,6 +376,7 @@ function credentialTypeOf(e: ts.Expression | undefined): string {
 }
 
 const CONTEXT_PARAMS: string[] = [];
+const SELF = '__self';
 const REQUEST_HELPERS = new Set([
 	'request',
 	'httpRequest',
@@ -515,7 +516,7 @@ interface FileModel {
 	path: string;
 	sf: ts.SourceFile;
 
-	declarations: Map<string, ts.FunctionDeclaration | ts.VariableDeclaration>;
+	declarations: Map<string, ts.FunctionDeclaration | ts.VariableDeclaration | ts.ClassDeclaration>;
 
 	imports: Map<string, { from: string; name: string }>;
 
@@ -530,14 +531,19 @@ interface FileModel {
 
 interface Resolved {
 	file: FileModel;
-	node?: ts.FunctionDeclaration | ts.VariableDeclaration;
+	node?: ts.FunctionDeclaration | ts.VariableDeclaration | ts.ClassDeclaration;
 }
 
 interface Unit {
 	name: string;
-	node: ts.FunctionDeclaration | ts.VariableDeclaration | ts.MethodDeclaration;
+	node:
+		| ts.FunctionDeclaration
+		| ts.VariableDeclaration
+		| ts.MethodDeclaration
+		| ts.ClassDeclaration;
 	file: FileModel;
 	withContext: boolean;
+	self?: string;
 	credentialType?: string;
 }
 
@@ -656,6 +662,7 @@ class Specialiser {
 		};
 		for (const st of sf.statements) {
 			if (ts.isFunctionDeclaration(st) && st.name) model.declarations.set(st.name.text, st);
+			if (ts.isClassDeclaration(st) && st.name) model.declarations.set(st.name.text, st);
 			if (ts.isVariableStatement(st)) {
 				for (const d of st.declarationList.declarations) {
 					if (ts.isIdentifier(d.name)) model.declarations.set(d.name.text, d);
@@ -921,7 +928,11 @@ class Specialiser {
 				return this.input.continueOnFail ? f.createTrue() : f.createFalse();
 			if (node.kind === ts.SyntaxKind.ThisKeyword) {
 				const call = node.parent;
-				if (call && ts.isCallExpression(call) && call.arguments.some((a) => a === node))
+				if (
+					call &&
+					(ts.isCallExpression(call) || ts.isNewExpression(call)) &&
+					call.arguments?.some((a) => a === node)
+				)
 					return f.createIdentifier('__THIS');
 			}
 			if (isThisCall(node, 'getTimezone') && this.input.timezone !== undefined) {
@@ -1077,6 +1088,8 @@ class Specialiser {
 			}
 			if (ts.isNewExpression(node) && ts.isIdentifier(node.expression)) {
 				const cls = node.expression.text;
+				const declared = localNames.has(cls) ? undefined : this.member(unit.file, cls)?.node;
+				if (declared && ts.isClassDeclaration(declared)) return call(cls, ...args(node));
 				if (GENERIC_ERRORS.has(cls)) {
 					return this.helper(
 						'__error',
@@ -1906,6 +1919,13 @@ class Specialiser {
 						return expressionOf(value);
 					}
 				}
+				if (ts.isShorthandPropertyAssignment(n) && env.scalars.has(n.name.text)) {
+					const held = env.scalars.get(n.name.text);
+					if (typeof held !== 'object' || held === null) {
+						this.changed = true;
+						return f.createPropertyAssignment(n.name.text, expressionOf(held));
+					}
+				}
 				if (ts.isIdentifier(n) && env.scalars.has(n.text) && isValueUse(n)) {
 					const p = n.parent;
 					const written =
@@ -2044,7 +2064,15 @@ class Specialiser {
 					ts.isDoStatement(st)
 				) {
 					const body = branch(st.statement, empty());
-					out = ts.visitEachChild(st, (c) => (c === st.statement ? body : c), undefined);
+					const reading = copy(env);
+					for (const name of assigned) reading.scalars.delete(name);
+					const source = ts.isForOfStatement(st) ? st.expression : undefined;
+					const iterated = source ? substitute(source, reading) : undefined;
+					out = ts.visitEachChild(
+						st,
+						(c) => (c === st.statement ? body : iterated && c === source ? iterated : c),
+						undefined,
+					);
 					mentioned(st, env);
 				} else if (ts.isTryStatement(st)) {
 					const inside = copy(env);
@@ -2433,66 +2461,554 @@ class Specialiser {
 		);
 	}
 
+	private readonly instanceParameters = new Map<string, Map<number, string>>();
+
+	private readonly plainParameters = new Map<string, Set<number>>();
+
+	private readonly contextFields = new Map<string, Set<string>>();
+
+	private readonly fieldReads = new Map<string, string>();
+
+	private toSelf(root: ts.Node, where: string): ts.Node {
+		const refuse = (what: string) => this.error(where, `${what} has no compiled form`);
+		const usesThis = (n: ts.Node): boolean =>
+			n.kind === ts.SyntaxKind.ThisKeyword || (ts.forEachChild(n, usesThis) ?? false);
+		const visit = (n: ts.Node): ts.Node => {
+			if (n.kind === ts.SyntaxKind.ThisKeyword) return f.createIdentifier(SELF);
+			if (
+				n.kind === ts.SyntaxKind.SuperKeyword ||
+				ts.isMetaProperty(n) ||
+				(ts.isIdentifier(n) && n.text === 'arguments' && isValueUse(n))
+			)
+				refuse('`super`, `new.target` or `arguments` in a class');
+			if (ts.isFunctionExpression(n) || ts.isFunctionDeclaration(n) || ts.isClassLike(n)) {
+				if (usesThis(n)) refuse('`this` in a nested function of a class method');
+				return n;
+			}
+			return ts.visitEachChild(n, visit, undefined);
+		};
+		return ts.visitNode(root, visit);
+	}
+
+	private parsedFunction(
+		made: ts.FunctionDeclaration,
+		unit: Unit,
+	): { node: ts.FunctionDeclaration; sf: ts.SourceFile } {
+		const parsed = this.reparse(made, unit.file.sf);
+		return ts.isFunctionDeclaration(parsed.node)
+			? { node: parsed.node, sf: parsed.sf }
+			: { node: made, sf: unit.file.sf };
+	}
+
+	private lowerClass(source: ts.ClassDeclaration, unit: Unit) {
+		const refuse = (what: string) => this.error(unit.name, `${what} has no compiled form`);
+		if (source.heritageClauses?.length) refuse('a class that extends another class');
+		const returns = (n: ts.Node): boolean =>
+			ts.isReturnStatement(n) || (!ts.isFunctionLike(n) && (ts.forEachChild(n, returns) ?? false));
+		const fields: ts.Statement[] = [];
+		let parameters: readonly ts.ParameterDeclaration[] = [];
+		let body: ts.Statement[] = [];
+		for (const m of source.members) {
+			if (ts.isSemicolonClassElement(m) || ts.isMethodDeclaration(m)) continue;
+			if (ts.isConstructorDeclaration(m)) {
+				parameters = m.parameters;
+				if (m.body && returns(m.body)) refuse('a constructor with a `return`');
+				body = (m.body?.statements ?? []).map((st) => this.toSelf(st, unit.name) as ts.Statement);
+				continue;
+			}
+			if (!ts.isPropertyDeclaration(m)) {
+				refuse('a class accessor or static block');
+				continue;
+			}
+			if (ts.getModifiers(m)?.some((x) => x.kind === ts.SyntaxKind.StaticKeyword)) continue;
+			if (!ts.isIdentifier(m.name)) {
+				refuse('a computed or private-name class field');
+				continue;
+			}
+			fields.push(
+				f.createExpressionStatement(
+					f.createBinaryExpression(
+						f.createPropertyAccessExpression(f.createIdentifier(SELF), m.name.text),
+						ts.SyntaxKind.EqualsToken,
+						m.initializer
+							? (this.toSelf(m.initializer, unit.name) as ts.Expression)
+							: f.createIdentifier('undefined'),
+					),
+				),
+			);
+		}
+		return this.parsedFunction(
+			f.createFunctionDeclaration(
+				undefined,
+				undefined,
+				unit.name,
+				undefined,
+				parameters.map((p) => this.toSelf(p, unit.name) as ts.ParameterDeclaration),
+				undefined,
+				f.createBlock(
+					[
+						f.createVariableStatement(
+							undefined,
+							f.createVariableDeclarationList(
+								[
+									f.createVariableDeclaration(
+										SELF,
+										undefined,
+										undefined,
+										f.createObjectLiteralExpression(),
+									),
+								],
+								ts.NodeFlags.Const,
+							),
+						),
+						...fields,
+						...body,
+						f.createReturnStatement(f.createIdentifier(SELF)),
+					],
+					true,
+				),
+			),
+			unit,
+		);
+	}
+
+	private lowerMethod(source: ts.MethodDeclaration, unit: Unit) {
+		if (source.asteriskToken) this.error(unit.name, 'a generator method has no compiled form');
+		return this.parsedFunction(
+			f.createFunctionDeclaration(
+				ts.getModifiers(source)?.filter((x) => x.kind === ts.SyntaxKind.AsyncKeyword),
+				undefined,
+				unit.name,
+				undefined,
+				[
+					f.createParameterDeclaration(undefined, undefined, SELF),
+					...source.parameters.map((p) => this.toSelf(p, unit.name) as ts.ParameterDeclaration),
+				],
+				undefined,
+				source.body ? (this.toSelf(source.body, unit.name) as ts.Block) : f.createBlock([]),
+			),
+			unit,
+		);
+	}
+
+	private methodOf(cls: string, name: string): ts.MethodDeclaration | undefined {
+		const source = this.units.get(cls)?.node;
+		if (!source || !ts.isClassDeclaration(source)) return undefined;
+		return source.members.find(
+			(m): m is ts.MethodDeclaration =>
+				ts.isMethodDeclaration(m) &&
+				ts.isIdentifier(m.name) &&
+				m.name.text === name &&
+				!ts.getModifiers(m)?.some((x) => x.kind === ts.SyntaxKind.StaticKeyword),
+		);
+	}
+
+	private methodUnit(cls: string, name: string, where: string): string | undefined {
+		const method = this.methodOf(cls, name);
+		const owner = this.units.get(cls);
+		if (!method || !owner) return undefined;
+		const alias = `${cls}_${name}`;
+		const known = this.units.get(alias);
+		if (known) {
+			if (known.node !== method) this.error(where, `two declarations have the name '${alias}'`);
+			return alias;
+		}
+		const unit: Unit = {
+			name: alias,
+			node: method,
+			file: owner.file,
+			withContext: true,
+			self: cls,
+		};
+		this.units.set(alias, unit);
+		this.queue.push(unit);
+		return alias;
+	}
+
+	private withContextFields(statement: ts.Statement, unit: Unit): ts.Statement {
+		const source = unit.node;
+		const cls = ts.isClassDeclaration(source) ? unit.name : unit.self;
+		if (cls === undefined || !ts.isFunctionDeclaration(statement) || !statement.body)
+			return statement;
+		const isSelf = (n: ts.Node): boolean => ts.isIdentifier(n) && n.text === SELF;
+		const fieldOf = (n: ts.Node): string | undefined =>
+			ts.isPropertyAccessExpression(n) && isSelf(n.expression) ? n.name.text : undefined;
+		let statements = [...statement.body.statements];
+		if (ts.isClassDeclaration(source)) {
+			const assignment = (st: ts.Statement): ts.BinaryExpression | undefined =>
+				ts.isExpressionStatement(st) &&
+				ts.isBinaryExpression(st.expression) &&
+				st.expression.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+				fieldOf(st.expression.left) !== undefined
+					? st.expression
+					: undefined;
+			const stored = (st: ts.Statement): string | undefined => {
+				const a = assignment(st);
+				return a && a.right.kind === ts.SyntaxKind.ThisKeyword ? fieldOf(a.left) : undefined;
+			};
+			const found = new Set<string>();
+			let last = -1;
+			statements.forEach((st, k) => {
+				const name = stored(st);
+				if (name === undefined) return;
+				found.add(name);
+				last = k;
+			});
+			const mentionsSelf = (n: ts.Node): boolean =>
+				isSelf(n) || (ts.forEachChild(n, mentionsSelf) ?? false);
+			const quiet = statements.slice(0, Math.max(last, 0)).every((st, k) => {
+				const a = assignment(st);
+				return k === 0 || !mentionsSelf(a ? a.right : st);
+			});
+			if (!quiet)
+				this.error(unit.name, 'the constructor uses the object before it stores the n8n context');
+			const names = bindingsOf(statement);
+			const constructor = source.members.find(ts.isConstructorDeclaration);
+			for (const k of this.thisParameters.get(unit.name) ?? []) {
+				const p = constructor?.parameters[k];
+				if (p && ts.isIdentifier(p.name) && names.has(p.name.text))
+					this.error(
+						unit.name,
+						`the class binds the name '${p.name.text}' again, and the name holds the n8n context`,
+					);
+			}
+			statements = statements.filter((st, k) => {
+				const a = k <= last ? assignment(st) : undefined;
+				const name = a ? fieldOf(a.left) : undefined;
+				const cleared = !!a && ts.isIdentifier(a.right) && a.right.text === 'undefined';
+				return !(name !== undefined && found.has(name) && (cleared || stored(st) !== undefined));
+			});
+			this.contextFields.set(cls, found);
+		}
+		const fields = this.contextFields.get(cls);
+		if (!fields) {
+			this.error(unit.name, `the compiler reached a method before its class '${cls}'`);
+			return statement;
+		}
+		if (fields.size === 0) return statement;
+		const toContext = (n: ts.Node): ts.Node => {
+			const written =
+				ts.isBinaryExpression(n) &&
+				n.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+				n.operatorToken.kind <= ts.SyntaxKind.LastAssignment
+					? fieldOf(n.left)
+					: ts.isDeleteExpression(n)
+						? fieldOf(n.expression)
+						: undefined;
+			if (written !== undefined && fields.has(written))
+				this.error(unit.name, `the class writes the field '${written}' that holds the n8n context`);
+			const name = fieldOf(n);
+			if (name !== undefined && fields.has(name)) return f.createThis();
+			return ts.visitEachChild(n, toContext, undefined);
+		};
+		return f.updateFunctionDeclaration(
+			statement,
+			statement.modifiers,
+			statement.asteriskToken,
+			statement.name,
+			statement.typeParameters,
+			statement.parameters,
+			statement.type,
+			f.updateBlock(
+				statement.body,
+				statements.map((st) => ts.visitNode(st, toContext) as ts.Statement),
+			),
+		);
+	}
+
+	private resolveInstances(root: ts.Node, unit: Unit): ts.Node {
+		const bound = bindingsOf(root);
+		const classNamed = (name: string): boolean => {
+			if (bound.has(name)) return false;
+			const found = this.units.get(name)?.node ?? this.member(unit.file, name)?.node;
+			return !!found && ts.isClassDeclaration(found);
+		};
+		const instances = new Map<string, string>();
+		const own = ts.isClassDeclaration(unit.node) ? unit.name : unit.self;
+		if (own !== undefined) instances.set(SELF, own);
+		const given = this.instanceParameters.get(unit.name);
+		if (!ts.isFunctionDeclaration(root)) {
+			if (given)
+				this.error(
+					unit.name,
+					'a value that is not a function declaration gets an object of a class',
+				);
+		} else {
+			for (const [k, cls] of given ?? []) {
+				const p = root.parameters[k];
+				if (!p) continue;
+				if (ts.isIdentifier(p.name) && !p.dotDotDotToken) instances.set(p.name.text, cls);
+				else this.error(unit.name, 'a parameter that gets an object of a class is not a name');
+			}
+		}
+		const scan = (n: ts.Node) => {
+			if (
+				ts.isVariableDeclaration(n) &&
+				ts.isIdentifier(n.name) &&
+				n.initializer &&
+				ts.isCallExpression(n.initializer) &&
+				ts.isIdentifier(n.initializer.expression) &&
+				classNamed(n.initializer.expression.text) &&
+				(n.parent.flags & ts.NodeFlags.Const) !== 0
+			) {
+				const cls = n.initializer.expression.text;
+				instances.set(n.name.text, cls);
+				if (!this.units.has(cls)) this.need(cls, unit.file, false, unit.name);
+			}
+			ts.forEachChild(n, scan);
+		};
+		scan(root);
+		for (const name of instances.keys()) {
+			if (bound.get(name) !== 1)
+				this.error(
+					unit.name,
+					`the name '${name}' holds an object of a class and has more than one binding`,
+				);
+		}
+
+		const pass = (callee: string, given: readonly ts.Expression[]): ts.Expression[] =>
+			given.map((argument, k) => {
+				const cls = ts.isIdentifier(argument) ? instances.get(argument.text) : undefined;
+				const objects = this.instanceParameters.get(callee) ?? new Map<number, string>();
+				const plain = this.plainParameters.get(callee) ?? new Set<number>();
+				if (cls === undefined) {
+					if (objects.has(k))
+						this.error(
+							unit.name,
+							`'${callee}' gets an object of a class and a different value in one parameter`,
+						);
+					plain.add(k);
+					this.plainParameters.set(callee, plain);
+					return ts.visitNode(argument, visit) as ts.Expression;
+				}
+				const known = objects.get(k);
+				if (
+					known === undefined &&
+					(callee === unit.name || this.output.some((o) => o.name === callee))
+				)
+					this.error(
+						unit.name,
+						`'${callee}' gets an object of a class as an argument after it was compiled without it`,
+					);
+				if (plain.has(k) || (known !== undefined && known !== cls))
+					this.error(
+						unit.name,
+						`'${callee}' gets an object of a class and a different value in one parameter`,
+					);
+				objects.set(k, cls);
+				this.instanceParameters.set(callee, objects);
+				return argument;
+			});
+		const visit = (n: ts.Node): ts.Node => {
+			if (ts.isCallExpression(n)) {
+				const target = n.expression;
+				const receiver =
+					ts.isPropertyAccessExpression(target) && ts.isIdentifier(target.expression)
+						? target.expression
+						: undefined;
+				const cls = receiver ? instances.get(receiver.text) : undefined;
+				if (receiver && cls !== undefined && ts.isPropertyAccessExpression(target)) {
+					const method = this.methodUnit(cls, target.name.text, unit.name);
+					if (method !== undefined)
+						return call(method, ...pass(method, [receiver, ...n.arguments]));
+					this.error(unit.name, `'${target.name.text}' is not a method of the class '${cls}'`);
+					return n;
+				}
+				if (
+					ts.isIdentifier(target) &&
+					!target.text.startsWith('__') &&
+					!bound.has(target.text) &&
+					!GLOBALS.has(target.text)
+				) {
+					const made = n.parent;
+					if (
+						classNamed(target.text) &&
+						!(
+							ts.isVariableDeclaration(made) &&
+							ts.isIdentifier(made.name) &&
+							instances.get(made.name.text) === target.text
+						)
+					)
+						this.error(
+							unit.name,
+							`an object of the class '${target.text}' is made outside a \`const\` declaration`,
+						);
+					return f.updateCallExpression(n, target, undefined, pass(target.text, n.arguments));
+				}
+			}
+			if (ts.isPropertyAccessExpression(n) && ts.isIdentifier(n.expression)) {
+				const cls = instances.get(n.expression.text);
+				if (cls !== undefined) {
+					if (this.methodOf(cls, n.name.text))
+						this.error(
+							unit.name,
+							`the method '${n.name.text}' of the class '${cls}' is used as a value`,
+						);
+					const key = `${cls}.${n.name.text}`;
+					if (!this.fieldReads.has(key)) this.fieldReads.set(key, unit.name);
+					return n;
+				}
+			}
+			if (ts.isIdentifier(n) && isValueUse(n)) {
+				const cls = instances.get(n.text);
+				const result =
+					n.text === SELF && ts.isClassDeclaration(unit.node) && ts.isReturnStatement(n.parent);
+				if (cls !== undefined && !result)
+					this.error(unit.name, `an object of the class '${cls}' is used as a whole value`);
+				if (classNamed(n.text)) this.error(unit.name, `the class '${n.text}' is used as a value`);
+			}
+			return ts.visitEachChild(n, visit, undefined);
+		};
+		return ts.visitNode(root, visit);
+	}
+
+	private withoutIdleTry(root: ts.Node): ts.Node {
+		const variables = new Set<string>();
+		const collect = (n: ts.Node) => {
+			if (ts.isVariableDeclarationList(n) && (n.flags & ts.NodeFlags.Const) === 0) {
+				for (const d of n.declarations) if (ts.isIdentifier(d.name)) variables.add(d.name.text);
+			}
+			ts.forEachChild(n, collect);
+		};
+		collect(root);
+		const constant = (e: ts.Expression): boolean =>
+			ts.isStringLiteral(e) ||
+			ts.isNumericLiteral(e) ||
+			e.kind === ts.SyntaxKind.TrueKeyword ||
+			e.kind === ts.SyntaxKind.FalseKeyword ||
+			e.kind === ts.SyntaxKind.NullKeyword;
+		const idle = (st: ts.Statement): boolean =>
+			ts.isExpressionStatement(st) &&
+			ts.isBinaryExpression(st.expression) &&
+			st.expression.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+			ts.isIdentifier(st.expression.left) &&
+			variables.has(st.expression.left.text) &&
+			bindingsOf(root).get(st.expression.left.text) === 1 &&
+			constant(st.expression.right);
+		const visit = (input: ts.Node): ts.Node => {
+			const n = ts.visitEachChild(input, visit, undefined);
+			if (!ts.isTryStatement(n) || n.finallyBlock || !n.tryBlock.statements.every(idle)) return n;
+			return n.tryBlock;
+		};
+		return ts.visitNode(root, visit);
+	}
+
+	private trimArguments() {
+		const limits = new Map<string, number>();
+		for (const { name, node } of this.output) {
+			if (!ts.isFunctionDeclaration(node) || !node.body) continue;
+			const open = (n: ts.Node): boolean =>
+				(ts.isIdentifier(n) && n.text === 'arguments') || (ts.forEachChild(n, open) ?? false);
+			if (!node.parameters.some((p) => p.dotDotDotToken) && !open(node.body))
+				limits.set(name, node.parameters.length);
+		}
+		const inert = (e: ts.Expression): boolean =>
+			ts.isIdentifier(e) ||
+			ts.isStringLiteral(e) ||
+			ts.isNumericLiteral(e) ||
+			e.kind === ts.SyntaxKind.TrueKeyword ||
+			e.kind === ts.SyntaxKind.FalseKeyword ||
+			e.kind === ts.SyntaxKind.NullKeyword;
+		for (const entry of this.output) {
+			const visit = (input: ts.Node): ts.Node => {
+				const n = ts.visitEachChild(input, visit, undefined);
+				if (!ts.isCallExpression(n) || !ts.isIdentifier(n.expression)) return n;
+				const limit = limits.get(n.expression.text);
+				if (limit === undefined || n.arguments.length <= limit) return n;
+				if (!n.arguments.slice(limit).every(inert)) return n;
+				return f.updateCallExpression(n, n.expression, undefined, n.arguments.slice(0, limit));
+			};
+			const next = this.reparse(ts.visitNode(entry.node, visit), entry.sf);
+			entry.node = next.node;
+			entry.sf = next.sf;
+		}
+	}
+
+	private checkInstances() {
+		for (const [key, where] of this.fieldReads) {
+			const at = key.indexOf('.');
+			if (this.contextFields.get(key.slice(0, at))?.has(key.slice(at + 1)))
+				this.error(
+					where,
+					`code outside the class '${key.slice(0, at)}' reads the field '${key.slice(at + 1)}', and the field holds the n8n context`,
+				);
+		}
+	}
+
 	private process(unit: Unit, isExecute: boolean) {
 		const source = unit.node;
-		const statement = ts.isMethodDeclaration(source)
-			? f.createFunctionDeclaration(
-					[f.createModifier(ts.SyntaxKind.AsyncKeyword)],
-					undefined,
-					unit.name,
-					undefined,
-					unit.credentialType === undefined ? [] : source.parameters.slice(1),
-					undefined,
-					unit.credentialType === undefined || !source.body
-						? source.body
-						: f.updateBlock(source.body, [
-								f.createVariableStatement(
-									undefined,
-									f.createVariableDeclarationList(
-										[
-											f.createVariableDeclaration(
-												source.parameters[0]?.name.getText(unit.file.sf) ?? 'credentials',
-												undefined,
-												undefined,
-												f.createIdentifier(CREDENTIAL_PREFIX + unit.credentialType),
+		const lowered = ts.isClassDeclaration(source)
+			? this.lowerClass(source, unit)
+			: ts.isMethodDeclaration(source) && unit.self !== undefined
+				? this.lowerMethod(source, unit)
+				: undefined;
+		const statement = lowered
+			? lowered.node
+			: ts.isClassDeclaration(source)
+				? f.createEmptyStatement()
+				: ts.isMethodDeclaration(source)
+					? f.createFunctionDeclaration(
+							[f.createModifier(ts.SyntaxKind.AsyncKeyword)],
+							undefined,
+							unit.name,
+							undefined,
+							unit.credentialType === undefined ? [] : source.parameters.slice(1),
+							undefined,
+							unit.credentialType === undefined || !source.body
+								? source.body
+								: f.updateBlock(source.body, [
+										f.createVariableStatement(
+											undefined,
+											f.createVariableDeclarationList(
+												[
+													f.createVariableDeclaration(
+														source.parameters[0]?.name.getText(unit.file.sf) ?? 'credentials',
+														undefined,
+														undefined,
+														f.createIdentifier(CREDENTIAL_PREFIX + unit.credentialType),
+													),
+												],
+												ts.NodeFlags.Const,
 											),
-										],
-										ts.NodeFlags.Const,
-									),
+										),
+										...source.body.statements,
+									]),
+						)
+					: ts.isVariableDeclaration(source)
+						? f.createVariableStatement(
+								undefined,
+								f.createVariableDeclarationList(
+									[
+										f.updateVariableDeclaration(
+											source,
+											f.createIdentifier(unit.name),
+											source.exclamationToken,
+											source.type,
+											source.initializer,
+										),
+									],
+									ts.NodeFlags.Const,
 								),
-								...source.body.statements,
-							]),
-				)
-			: ts.isVariableDeclaration(source)
-				? f.createVariableStatement(
-						undefined,
-						f.createVariableDeclarationList(
-							[
-								f.updateVariableDeclaration(
-									source,
-									f.createIdentifier(unit.name),
-									source.exclamationToken,
-									source.type,
-									source.initializer,
-								),
-							],
-							ts.NodeFlags.Const,
-						),
-					)
-				: f.updateFunctionDeclaration(
-						source,
-						source.modifiers,
-						source.asteriskToken,
-						f.createIdentifier(unit.name),
-						source.typeParameters,
-						source.parameters,
-						source.type,
-						source.body,
-					);
-		let cur = this.reparse(this.withContextArguments(statement, unit), unit.file.sf);
+							)
+						: f.updateFunctionDeclaration(
+								source,
+								source.modifiers,
+								source.asteriskToken,
+								f.createIdentifier(unit.name),
+								source.typeParameters,
+								source.parameters,
+								source.type,
+								source.body,
+							);
+		let cur = this.reparse(
+			this.withContextFields(this.withContextArguments(statement, unit), unit),
+			lowered?.sf ?? unit.file.sf,
+		);
 		cur = this.reparse(this.bind(cur.node, unit, isExecute), cur.sf);
+		cur = this.reparse(this.withoutIdleTry(cur.node), cur.sf);
 		cur = this.fold(cur, unit.name);
 		cur = this.renew(cur, this.resolveChains(cur.node, unit));
+		cur = this.renew(cur, this.resolveInstances(cur.node, unit));
 		cur = this.renew(cur, this.markContextArguments(cur.node, unit.name));
 		const node = cur.node;
 		this.check(node, unit.name);
@@ -2935,7 +3451,9 @@ class Specialiser {
 			}
 			this.process(this.queue[k], false);
 		}
+		this.checkInstances();
 		this.optimise();
+		this.trimArguments();
 		this.checkCredentials();
 		const linked = this.output.map((o) => o.name);
 		if (this.errors.length > 0) return { errors: this.errors, notes: this.notes, linked };
