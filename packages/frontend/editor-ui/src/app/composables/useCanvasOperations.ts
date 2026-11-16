@@ -38,6 +38,8 @@ import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormalization';
 import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
 import {
+	DEFAULT_STICKY_HEIGHT,
+	DEFAULT_STICKY_WIDTH,
 	EnterpriseEditionFeature,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_NODE_TYPE,
@@ -107,9 +109,12 @@ import {
 	HORIZONTAL_NODE_STEP,
 	NODE_X_SPACING,
 	doRectsOverlap,
+	getNodeSizeFromPorts,
+	snapToGrid,
 } from '@/app/utils/nodeViewUtils';
 import {
-	AGENT_NODE_SIZE,
+	DEFAULT_AGENT_HEIGHT,
+	DEFAULT_AGENT_WIDTH,
 	getAgentNodeHandleOffset,
 	isAgentNodeV2,
 } from '@/features/agents/utils/agentNode';
@@ -215,33 +220,6 @@ type AddNodeOptions = AddNodesBaseOptions & {
 	isAutoAdd?: boolean;
 	actionName?: string;
 };
-
-/**
- * Rendered-width estimate for the multi-node sequential placement step, so a
- * bulk-added node doesn't overlap a wide neighbor. The agent card
- * (AGENT_NODE_SIZE) and default widths are exact; configurable nodes render at
- * a dynamic width (see calculateNodeSize) that no constant matches, so
- * CONFIGURABLE_NODE_SIZE is an overlap-safe estimate only — exact configurable
- * spacing needs the measured width and is tracked as a follow-up.
- */
-function getPlacementNodeWidth(node: INodeUi, nodeTypeDescription: INodeTypeDescription): number {
-	if (isAgentNodeV2(node)) {
-		return AGENT_NODE_SIZE[0];
-	}
-
-	// A dynamic-inputs expression (e.g. AI Agent) or any non-main input means the
-	// node renders at the wider configurable size.
-	const { inputs } = nodeTypeDescription;
-	const hasNonMainInput =
-		Array.isArray(inputs) &&
-		NodeHelpers.getConnectionTypes(inputs).some((input) => input !== NodeConnectionTypes.Main);
-
-	if (typeof inputs === 'string' || hasNonMainInput) {
-		return CONFIGURABLE_NODE_SIZE[0];
-	}
-
-	return DEFAULT_NODE_SIZE[0];
-}
 
 export function useCanvasOperations() {
 	const rootStore = useRootStore();
@@ -1260,11 +1238,11 @@ export function useCanvasOperations() {
 			}
 
 			// When we're adding multiple nodes, place the next one a constant
-			// NODE_X_SPACING gap past this node's right edge — using its actual width
+			// NODE_X_SPACING gap past this node's right edge — using its rendered width
 			// so the gap stays 128 even next to a wide agent/configurable node.
 			insertPosition = [
 				lastAddedNode.position[0] +
-					getPlacementNodeWidth(lastAddedNode, nodeTypeDescription) +
+					getNodePlacementSize(lastAddedNode, nodeTypeDescription)[0] +
 					NODE_X_SPACING,
 				lastAddedNode.position[1],
 			];
@@ -1346,7 +1324,7 @@ export function useCanvasOperations() {
 			agentNodeCanvasGeometryStore.setPendingCenterY(
 				workflowDocumentStore.value.workflowId,
 				nodeData.id,
-				nodeData.position[1] + AGENT_NODE_SIZE[1] / 2,
+				nodeData.position[1] + DEFAULT_AGENT_HEIGHT / 2,
 			);
 		}
 
@@ -1617,9 +1595,6 @@ export function useCanvasOperations() {
 			(nodeTypeDescription.defaults.name as string);
 		const type = node.type ?? nodeTypeDescription.name;
 		const typeVersion = node.typeVersion;
-		const position = resolveNodePosition(node as INodeUi, nodeTypeDescription, {
-			viewport: options.viewport,
-		});
 		const disabled = node.disabled ?? false;
 		const parameters = node.parameters ?? {};
 
@@ -1629,7 +1604,7 @@ export function useCanvasOperations() {
 			name,
 			type,
 			typeVersion,
-			position,
+			position: node.position ?? [0, 0],
 			disabled,
 			parameters,
 			placeholder: node.placeholder,
@@ -1641,6 +1616,13 @@ export function useCanvasOperations() {
 			resolveNodeParameters(nodeData, nodeTypeDescription);
 			resolveNodeWebhook(nodeData, nodeTypeDescription);
 		}
+
+		// The size of the node can depend on its parameters, so resolve them first
+		nodeData.position = resolveNodePosition(
+			{ ...nodeData, position: node.position },
+			nodeTypeDescription,
+			{ viewport: options.viewport },
+		);
 
 		return nodeData;
 	}
@@ -1934,7 +1916,7 @@ export function useCanvasOperations() {
 					if (isAgentNodeV2(lastInteractedWithNodeObject)) {
 						// The agent card is wider than a default node, so offset by its width
 						// to keep the standard gap to its right edge
-						pushOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
+						pushOffset += DEFAULT_AGENT_WIDTH - DEFAULT_NODE_SIZE[0];
 					} else if (
 						lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
 					) {
@@ -1947,11 +1929,11 @@ export function useCanvasOperations() {
 								agentNodeCanvasGeometryStore.getNodeHeight(
 									workflowDocumentStore.value.workflowId,
 									lastInteractedWithNodeObject.id,
-								) ?? AGENT_NODE_SIZE[1],
+								) ?? DEFAULT_AGENT_HEIGHT,
 							)
 						: DEFAULT_NODE_SIZE[1] / 2;
 					const targetHandleY = isAgentNodeV2(node)
-						? getAgentNodeHandleOffset(AGENT_NODE_SIZE[1])
+						? getAgentNodeHandleOffset(DEFAULT_AGENT_HEIGHT)
 						: nodeSize[1] / 2;
 					const centeredY =
 						lastInteractedWithNode.value.position[1] + sourceHandleY - targetHandleY;
@@ -1994,23 +1976,64 @@ export function useCanvasOperations() {
 	}
 
 	/**
+	 * Gets the size of a node as the canvas renders it, from its ports. Placement does
+	 * not read the Vue Flow size, because nodes that are not mounted yet have none.
+	 * An agent card uses its measured height when it has one, else DEFAULT_AGENT_HEIGHT.
+	 * A node that is not in the workflow yet evaluates its port expressions in a
+	 * workflow of its own, so `$parameter` cannot read another node with the same name.
+	 */
+	function getNodePlacementSize(
+		node: INodeUi,
+		nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion),
+	): [number, number] {
+		if (node.type === STICKY_NODE_TYPE) {
+			const { width, height } = node.parameters;
+			return [
+				typeof width === 'number' && width > 0 ? width : DEFAULT_STICKY_WIDTH,
+				typeof height === 'number' && height > 0 ? height : DEFAULT_STICKY_HEIGHT,
+			];
+		}
+
+		if (isAgentNodeV2(node)) {
+			return [
+				DEFAULT_AGENT_WIDTH,
+				agentNodeCanvasGeometryStore.getNodeHeight(
+					workflowDocumentStore.value.workflowId,
+					node.id,
+				) ?? DEFAULT_AGENT_HEIGHT,
+			];
+		}
+
+		if (!nodeTypeDescription) {
+			return [...DEFAULT_NODE_SIZE];
+		}
+
+		const hasPortExpressions =
+			typeof nodeTypeDescription.inputs === 'string' ||
+			typeof nodeTypeDescription.outputs === 'string';
+		const isNewNode = !workflowDocumentStore.value.getNodeById(node.id);
+		const workflow =
+			hasPortExpressions && isNewNode
+				? workflowDocumentStore.value.createWorkflowObject([{ ...node }], {})
+				: { expression: workflowDocumentStore.value.getExpressionHandler() };
+
+		const { width, height } = getNodeSizeFromPorts(
+			NodeHelpers.getConnectionTypes(
+				NodeHelpers.getNodeInputs(workflow, node, nodeTypeDescription),
+			),
+			NodeHelpers.getConnectionTypes(
+				NodeHelpers.getNodeOutputs(workflow, node, nodeTypeDescription),
+			),
+		);
+		return [width, height];
+	}
+
+	/**
 	 * Gets the bounding rectangle of a node including its size
 	 */
 	function getNodeRect(node: INodeUi): { x: number; y: number; width: number; height: number } {
-		if (node.type === STICKY_NODE_TYPE) {
-			return {
-				x: node.position[0],
-				y: node.position[1],
-				width: (node.parameters.width as number) || DEFAULT_NODE_SIZE[0],
-				height: (node.parameters.height as number) || DEFAULT_NODE_SIZE[1],
-			};
-		}
-		return {
-			x: node.position[0],
-			y: node.position[1],
-			width: DEFAULT_NODE_SIZE[0],
-			height: DEFAULT_NODE_SIZE[1],
-		};
+		const [width, height] = getNodePlacementSize(node);
+		return { x: node.position[0], y: node.position[1], width, height };
 	}
 
 	/**
@@ -2071,15 +2094,15 @@ export function useCanvasOperations() {
 		const insertY = insertPosition[1];
 		const yTolerance = DEFAULT_NODE_SIZE[1] * 2; // Nodes within ~2 node heights are considered "similar Y"
 
-		const getNodeCenter = (node: INodeUi) => ({
-			x: node.position[0] + DEFAULT_NODE_SIZE[0] / 2,
-			y: node.position[1] + DEFAULT_NODE_SIZE[1] / 2,
-		});
+		const getNodeCenter = (node: INodeUi) => {
+			const [width, height] = getNodePlacementSize(node);
+			return { x: node.position[0] + width / 2, y: node.position[1] + height / 2 };
+		};
 
 		const isSimilarY = (node: INodeUi) => Math.abs(node.position[1] - insertY) <= yTolerance;
 
 		const overlapsInsertX = (node: INodeUi) => {
-			const nodeRightEdge = node.position[0] + DEFAULT_NODE_SIZE[0];
+			const nodeRightEdge = node.position[0] + getNodePlacementSize(node)[0];
 			return nodeRightEdge > insertX || node.position[0] >= insertX;
 		};
 
@@ -2089,11 +2112,12 @@ export function useCanvasOperations() {
 			sticky: INodeUi,
 			stickyRect: ReturnType<typeof getNodeRect>,
 		) => {
+			const [width, height] = getNodePlacementSize(node);
 			return (
 				node.position[0] >= sticky.position[0] &&
-				node.position[0] + DEFAULT_NODE_SIZE[0] <= sticky.position[0] + stickyRect.width &&
+				node.position[0] + width <= sticky.position[0] + stickyRect.width &&
 				node.position[1] >= sticky.position[1] &&
-				node.position[1] + DEFAULT_NODE_SIZE[1] <= sticky.position[1] + stickyRect.height
+				node.position[1] + height <= sticky.position[1] + stickyRect.height
 			);
 		};
 
@@ -2199,7 +2223,7 @@ export function useCanvasOperations() {
 		const affectedMinY = Math.min(insertY, ...regularNodesToMove.map((n) => n.position[1]));
 		const affectedMaxY = Math.max(
 			insertY + nodeSize[1],
-			...regularNodesToMove.map((n) => n.position[1] + DEFAULT_NODE_SIZE[1]),
+			...regularNodesToMove.map((n) => n.position[1] + getNodePlacementSize(n)[1]),
 		);
 
 		const sourceNode = workflowDocumentStore.value.getNodeByName(sourceNodeName);
@@ -2307,7 +2331,7 @@ export function useCanvasOperations() {
 		associatedNodes: INodeUi[],
 		{ trackHistory = false }: { trackHistory?: boolean },
 	) {
-		const padding = 20;
+		const padding = GRID_SIZE * 2;
 		const stickyRect = getNodeRect(sticky);
 		const currentLeft = sticky.position[0];
 		const currentRight = currentLeft + stickyRect.width;
@@ -2321,13 +2345,14 @@ export function useCanvasOperations() {
 			const updatedNode = workflowDocumentStore.value.getNodeById(node.id);
 			if (!updatedNode) continue;
 			const nodeLeft = updatedNode.position[0] - padding;
-			const nodeRight = updatedNode.position[0] + DEFAULT_NODE_SIZE[0] + padding;
+			const nodeRight = updatedNode.position[0] + getNodePlacementSize(updatedNode)[0] + padding;
 			targetLeft = Math.min(targetLeft, nodeLeft);
 			targetRight = Math.max(targetRight, nodeRight);
 		}
 
-		const newLeft = Math.min(currentLeft, targetLeft);
-		const newRight = Math.max(currentRight, targetRight);
+		// Snap only the edges that grow, so that the stretched sticky ends on the grid
+		const newLeft = Math.min(currentLeft, snapToGrid(targetLeft));
+		const newRight = Math.max(currentRight, snapToGrid(targetRight));
 		const newWidth = newRight - newLeft;
 
 		const newParameters: INodeParameters = { ...sticky.parameters, width: newWidth };
@@ -2363,7 +2388,7 @@ export function useCanvasOperations() {
 		// including the wider agent card offset applied in resolveNodePosition
 		let insertOffset = HORIZONTAL_NODE_STEP;
 		if (isAgentNodeV2(sourceNode)) {
-			insertOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
+			insertOffset += DEFAULT_AGENT_WIDTH - DEFAULT_NODE_SIZE[0];
 		}
 		const insertPosition: XYPosition = [
 			sourceNode.position[0] + insertOffset,
@@ -4221,6 +4246,7 @@ export function useCanvasOperations() {
 		addNodes,
 		addNode,
 		resolveNodePosition,
+		getNodePlacementSize,
 		revertAddNode,
 		updateNodesPosition,
 		updateNodePosition,
