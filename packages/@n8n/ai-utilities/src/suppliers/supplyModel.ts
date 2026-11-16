@@ -87,8 +87,7 @@ function getOpenAiModel(ctx: ISupplyDataFunctions, model: OpenAiModel) {
 	return openAiModel;
 }
 
-// `Symbol.for` resolves to the same key from the ESM and the CJS build, so the
-// source is found even when both copies of this package are loaded.
+// `Symbol.for` gives the ESM and CJS builds the same key, so either copy finds the source.
 const SUPPLIED_MODEL_SOURCE: unique symbol = Symbol.for('@n8n/ai-utilities.suppliedModelSource');
 
 type WithSource = { [SUPPLIED_MODEL_SOURCE]: SupplyModelOptions };
@@ -98,9 +97,14 @@ function hasSource(value: unknown): value is WithSource {
 }
 
 /**
- * Returns the options that `supplyModel` received to create `response`.
- * Only the object that `supplyModel` returned carries the source: models
- * derived from it, for example by `bindTools`, return `undefined`.
+ * Returns what a node passed to `supplyModel`, read from the model that
+ * `supplyModel` returned. This lets the first-class Agent build its own
+ * model in place of the LangChain one.
+ *
+ * Returns `undefined` for anything else, including models derived from the
+ * returned one, for example by `bindTools`.
+ *
+ * The result can contain an API key, so do not log or serialize it.
  */
 export function getSuppliedModelSource(response: unknown): SupplyModelOptions | undefined {
 	return hasSource(response) ? response[SUPPLIED_MODEL_SOURCE] : undefined;
@@ -110,7 +114,8 @@ export function supplyModel(ctx: ISupplyDataFunctions, model: SupplyModelOptions
 	const response = isOpenAiModel(model)
 		? getOpenAiModel(ctx, model)
 		: new LangchainChatModelAdapter(model, ctx);
-	// Non-enumerable, so spread, `Object.assign` and `util.inspect` skip the source, which can hold an API key.
+	// Kept on the model so `getSuppliedModelSource` can read back what the node passed in.
+	// Non-enumerable, so spread, `Object.assign` and `util.inspect` neither copy nor print it: it can hold an API key.
 	Object.defineProperty(response, SUPPLIED_MODEL_SOURCE, { value: model });
 	return { response };
 }
