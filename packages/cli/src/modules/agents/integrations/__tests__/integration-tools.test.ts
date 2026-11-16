@@ -1708,7 +1708,11 @@ describe('integration tools', () => {
 		}
 
 		it('keeps the user after a reply in the same thread', async () => {
-			const stored = await sendTo({ type: 'dm', threadId: 'slack:C123:123.456' });
+			const stored = await sendTo({
+				type: 'dm',
+				userId: 'slack:U123',
+				threadId: 'slack:C123:123.456',
+			});
 			expect(stored).toEqual(expect.objectContaining({ interactingUserId: 'U_CUSTOMER' }));
 		});
 
