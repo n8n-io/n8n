@@ -188,13 +188,16 @@ downloads the `playwright` package in the container.
 A failed test writes the actual image and a diff image to
 `packages/frontend/@n8n/storybook/.vitest/visual/<story directory>/<story file>/`.
 
-Use `pnpm test:visual` only. `vitest.visual.config.ts` stops with an error when it runs
-without the container, for example from an IDE extension.
+Run the tests only with `pnpm --filter @n8n/storybook test:visual`. `vitest.visual.config.ts`
+stops with an error when it runs without the container, for example from an IDE extension.
 
 #### Update reference images
 
 The reference images are in Git, next to each stories file:
-`src/<story directory>/__screenshots__/<story file>/<story id>[-<state>]-<theme>-chromium-linux.png`.
+`src/<story directory>/__screenshots__/<story file>/<name>-chromium-linux.png`. The name is
+the story id, the state name if there is one, and the theme, with single hyphens: the `Default`
+story of `Core/Button` (id `core-button--default`) gives
+`core-button-default-light-chromium-linux.png` and `core-button-default-hover-light-chromium-linux.png`.
 Update them like snapshots:
 
 1. Run `pnpm --filter @n8n/storybook test:visual -u`. It writes each missing image, and
@@ -261,7 +264,7 @@ values. The tests turn off transitions, animations, and the text caret.
 | Field    | Value                                                                                                                                                                                                                                                                                                                         |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `target` | `'canvas'` (default) takes a screenshot of the story root. `'viewport'` takes a screenshot of the full 1200 × 900 page. Use `'viewport'` for overlays that render in `body`, such as dialogs, tooltips, and dropdowns.                                                                                                       |
-| `states` | One more screenshot for each entry: `{ name, action, selector }`. `action: 'hover'` moves the real pointer over the element. `action: 'focus'` moves the keyboard focus to the element with Tab, so `:focus-visible` applies. `selector` is a CSS selector in the story canvas. The screenshot name is `<story id>-<name>-<theme>`. |
+| `states` | One more screenshot for each entry: `{ name, action, selector }`. `action: 'hover'` moves the real pointer over the element. `action: 'focus'` moves the keyboard focus to the element with Tab, so `:focus-visible` applies. `selector` is a CSS selector in the story canvas. The screenshot name has the state name between the story id and the theme. |
 
 ```ts
 export const Default: Story = {

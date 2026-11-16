@@ -99,7 +99,8 @@ async function startBrowserServer(): Promise<string> {
 	const started = await run('docker', [
 		'run',
 		'--detach',
-		'--rm',
+		// No `--rm`: when the server fails to start, its logs must stay readable.
+		// `removeContainers()` removes the container at the end of every run.
 		'--init',
 		// Playwright's advice for Chromium in Docker, against out-of-memory crashes.
 		'--ipc=host',
@@ -127,10 +128,12 @@ async function startBrowserServer(): Promise<string> {
 	const deadline = Date.now() + SERVER_START_TIMEOUT_MS;
 	while (Date.now() < deadline) {
 		const logs = await run('docker', ['logs', containerId]);
-		if (logs.code !== 0) {
-			fail(`The Playwright container stopped:\n${logs.stderr}`);
+		const output = `${logs.stdout}${logs.stderr}`;
+		const state = await run('docker', ['inspect', '--format', '{{.State.Status}}', containerId]);
+		if (logs.code !== 0 || state.stdout.trim() !== 'running') {
+			fail(`The Playwright container stopped before its server started:\n${output}`);
 		}
-		if (`${logs.stdout}${logs.stderr}`.includes('Listening on')) {
+		if (output.includes('Listening on')) {
 			const port = await run('docker', ['port', containerId, String(SERVER_PORT)]);
 			const hostPort = /:(\d+)\s*$/m.exec(port.stdout)?.[1];
 			if (!hostPort) fail('Cannot read the published port of the Playwright container.');
