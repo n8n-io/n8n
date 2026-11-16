@@ -1,0 +1,20 @@
+packages/@n8n/instance-ai/scripts/build-snapshot.cjs
+  s_4fb79864cd9531::t_9303a6343a39a2 62-64,88-89,91-118,126-127,129-131,133-152,164-176
+  s_4fb79864cd9531::t_e816bef6c1937a 132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "76b405d790c8444f95b9dbf98a74cc3a4f907a1a",
+  "prompts": {},
+  "sessions": {
+    "s_4fb79864cd9531": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e1cc3823fffeudO7KQbvcbDGm3",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
