@@ -170,6 +170,7 @@ describe('node compiler in the converter', () => {
 			instance.id,
 			{},
 			undefined,
+			undefined,
 			'continueRegularOutput',
 		);
 		if ('errors' in stop || 'errors' in regular) throw new Error('the node does not compile');

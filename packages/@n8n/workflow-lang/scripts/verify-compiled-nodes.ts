@@ -22,6 +22,8 @@ import type { ErrorPairing } from '../src/node-compile/__tests__/verify.ts';
 import {
 	compileForCheck,
 	differenceFromV1,
+	flagKeyOf,
+	flagVariants,
 	MINTED_TOKEN_RESPONSE,
 } from '../src/node-compile/__tests__/verify.ts';
 import type { ErrorMode, NodeSources } from '../src/node-compile/convert.ts';
@@ -32,7 +34,7 @@ import {
 	errorModeCondition,
 	verifiedKey,
 } from '../src/node-compile/convert.ts';
-import type { EquivalenceCase } from '../src/nodes/__tests__/equivalence.ts';
+import type { EquivalenceCase, NodeSettings } from '../src/nodes/__tests__/equivalence.ts';
 import {
 	disposeRecorder,
 	recordV1,
@@ -77,6 +79,7 @@ const add = (into: Record<string, number>, from: Record<string, number> | undefi
 };
 const filter = new RegExp(one === undefined ? (pattern ?? '.') : `^${one}$`, 'i');
 const PARALLEL = 6;
+const NODE_TIMEOUT_MS = 900_000;
 const UPLOAD_ANSWER = {
 	upload_url: 'https://files.example.com/upload/v1/abc',
 	file_id: 'F1',
@@ -368,7 +371,7 @@ async function checkInProcess(name: string): Promise<NodeResult | undefined> {
 			out += chunk.toString();
 		});
 
-		const timer = setTimeout(() => child.kill('SIGKILL'), 300_000);
+		const timer = setTimeout(() => child.kill('SIGKILL'), NODE_TIMEOUT_MS);
 		child.on('close', () => {
 			clearTimeout(timer);
 			const line = out.split('\n').find((l) => l.startsWith('RESULT '));
@@ -405,7 +408,8 @@ if (one === undefined) {
 		}
 	};
 	await Promise.all(Array.from({ length: PARALLEL }, worker));
-	if (lost > 0) console.log(`${lost} node(s) gave no result (a crash or more than five minutes)`);
+	if (lost > 0)
+		console.log(`${lost} node(s) gave no result (a crash or more than fifteen minutes)`);
 }
 
 const requestPart = (reason: string) => /^v1: the requests differ: (\w+)/.exec(reason)?.[1];
@@ -478,15 +482,14 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					p: Json,
 					responses: EquivalenceCase['responses'],
 					items: EquivalenceCase['items'] = readsFiles ? FILE_ITEMS : undefined,
+					data: Json | undefined = credential ? fakeCredential(credential) : undefined,
 				): EquivalenceCase => ({
 					name: `${type}@${version} ${label}`,
 					type,
 					typeVersion: version,
 					parameters: p,
 					...(items ? { items } : {}),
-					...(credential
-						? { credential: { type: credential, data: fakeCredential(credential) } }
-						: {}),
+					...(credential && data ? { credential: { type: credential, data } } : {}),
 					responses,
 				});
 				const plain = { ok: true, id: 'r1', result: { id: 'r1' }, data: [{ id: 'r1' }] };
@@ -538,53 +541,85 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						why('v1: the other authentication agrees with v1 for fewer parameters', weight);
 						continue;
 					}
+					const flagKeys: string[] = [];
+					if (compiled.flags.length > 0) {
+						const usual = make('ok', parameters, ok);
+						const usualKey = flagKeyOf(usual, compiled.flags, registry);
+						if (usualKey !== undefined) flagKeys.push(usualKey);
+						for (const variant of flagVariants(usual, compiled.flags, registry)) {
+							const difference =
+								(await differenceFromV1(
+									make('ok', parameters, ok, undefined, variant.data),
+									sources,
+									registry,
+									checking,
+								)) ??
+								(await differenceFromV1(
+									make('error', parameters, bad, undefined, variant.data),
+									sources,
+									registry,
+									checking,
+								));
+							if (difference === undefined) flagKeys.push(variant.key);
+							else if (examples.length < 60)
+								examples.push(`${key} with ${variant.key}: ${difference.slice(0, 160)}`);
+						}
+					}
 					const first = readsFiles ? FILE_ITEMS[0] : {};
-					const two = [
-						{ ...first, position: 1 },
-						{ ...first, position: 2 },
-					];
+					const several = (count: number) =>
+						Array.from({ length: count }, (_, k) => ({ ...first, position: k + 1 }));
+					const [badAnswer] = bad.slice(-1);
+					const [okAnswer] = ok.slice(-1);
 					const proven: string[] = [];
 					for (const mode of CONTINUE_MODES) {
-						const pairings = new Set<ErrorPairing>();
-						const withPairings = { ...checking, pairings };
-						const under = (c: EquivalenceCase): EquivalenceCase => ({
+						const under = (c: EquivalenceCase, more: NodeSettings = {}): EquivalenceCase => ({
 							...c,
 							name: `${c.name} ${mode}`,
-							onError: mode,
+							settings: { onError: mode, ...more },
 						});
-						const difference =
-							(await differenceFromV1(
-								under(make('ok', parameters, ok)),
-								sources,
-								registry,
-								withPairings,
-							)) ??
-							(await differenceFromV1(
-								under(make('error', parameters, bad)),
-								sources,
-								registry,
-								withPairings,
-							)) ??
-							(await differenceFromV1(
-								under(make('two errors', parameters, bad, two)),
-								sources,
-								registry,
-								withPairings,
-							)) ??
-							(await differenceFromV1(
-								under(make('nested error', parameters, missing)),
-								sources,
-								registry,
-								withPairings,
-							));
-						if (difference === undefined && pairings.size > 1) {
-							whyMode(mode, 'v1 pairs its error items in two ways');
+						const cases = [
+							under(make('ok', parameters, ok)),
+							under(make('two errors', parameters, bad, several(2))),
+							under(make('nested error', parameters, missing)),
+							under(make('first fails', parameters, [...bad, okAnswer], several(3))),
+							under(make('first works', parameters, [...ok, badAnswer], several(3))),
+							under(make('retry', parameters, [...bad, okAnswer]), {
+								retryOnFail: true,
+								maxTries: 2,
+								waitBetweenTries: 1,
+							}),
+						];
+						const differenceWith = async (pairing: ErrorPairing) => {
+							const pairings = new Set<ErrorPairing>();
+							for (const testCase of cases) {
+								const difference = await differenceFromV1(testCase, sources, registry, {
+									...checking,
+									pairing,
+									pairings,
+								});
+								if (difference !== undefined)
+									return `${testCase.name.slice(testCase.name.indexOf(' ') + 1)}: ${difference}`;
+							}
+							if (
+								mode === 'continueErrorOutput' &&
+								[...pairings].some((found) => found !== pairing)
+							)
+								return `v1 does not pair its error items by ${pairing}`;
+							return undefined;
+						};
+						const byItem = await differenceWith('item');
+						if (byItem === undefined) {
+							proven.push(...errorModeCondition(mode));
 							continue;
 						}
-						if (difference === undefined && pairings.has('position'))
-							proven.push(ERROR_ITEMS_BY_POSITION);
-						if (difference === undefined) proven.push(...errorModeCondition(mode));
-						else whyMode(mode, difference);
+						if (
+							mode === 'continueErrorOutput' &&
+							(await differenceWith('position')) === undefined
+						) {
+							proven.push(...errorModeCondition(mode), ERROR_ITEMS_BY_POSITION);
+							continue;
+						}
+						whyMode(mode, byItem);
 					}
 					const isMode = (name: string) =>
 						name.startsWith('@onError=') || name === ERROR_ITEMS_BY_POSITION;
@@ -596,7 +631,12 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						before === undefined ? proven : proven.filter((m) => before.includes(m))
 					).filter((m) => samePairing || (m !== errorOutput && m !== ERROR_ITEMS_BY_POSITION));
 					verified[key] = [
-						...new Set([...(before ?? []).filter((name) => !isMode(name)), ...names, ...modes]),
+						...new Set([
+							...(before ?? []).filter((name) => !isMode(name)),
+							...names,
+							...flagKeys,
+							...modes,
+						]),
 					].sort();
 					if (compiled.mints.length > 0) mintedVerified++;
 				} catch (error) {
@@ -608,9 +648,8 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 }
 await disposeRecorder();
 if (one !== undefined) {
-	console.log(
-		`RESULT ${JSON.stringify({ verified, reasons, modeReasons, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified })}`,
-	);
+	const result = `RESULT ${JSON.stringify({ verified, reasons, modeReasons, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified })}\n`;
+	await new Promise<void>((written) => process.stdout.write(result, () => written()));
 	process.exit(0);
 }
 

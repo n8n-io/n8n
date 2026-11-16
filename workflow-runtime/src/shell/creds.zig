@@ -3,6 +3,11 @@
 //! messages name the slot and the path only.
 const std = @import("std");
 const http = @import("http.zig");
+const renew = @import("renew.zig");
+
+/// A value is renewed this long before it expires, so that it outlives
+/// the request that carries it.
+pub const renew_margin_ms: i64 = 60_000;
 
 pub const Store = struct {
     root: std.json.Value,
@@ -10,12 +15,60 @@ pub const Store = struct {
     text: []const u8 = "",
     /// A workflow's own store falls back to the global store (spec 9.1).
     next: ?*const Store = null,
+    /// A slot of this document has a `renewal` member (n8n can renew it).
+    renewable: bool = false,
+    /// The first time at which a value of this document needs a renewal:
+    /// the earliest `renewal.expiresAt` less the margin. maxInt when no
+    /// slot has an expiry. A request compares the clock with it once.
+    renew_at_ms: i64 = std.math.maxInt(i64),
 
     /// Parse the file. The memory stays for the life of the process.
     pub fn parse(gpa: std.mem.Allocator, text: []const u8) !Store {
         const root = try std.json.parseFromSliceLeaky(std.json.Value, gpa, text, .{ .parse_numbers = false });
         if (root != .object) return error.CredentialsNotAnObject;
-        return .{ .root = root, .text = text };
+        var s: Store = .{ .root = root, .text = text };
+        s.scanRenewals();
+        return s;
+    }
+
+    /// Set `renewable` and `renew_at_ms` from the `renewal` member of each
+    /// slot. It reads the text once, when the document arrives.
+    fn scanRenewals(s: *Store) void {
+        var it = http.Members.init(s.text) orelse return;
+        // Each step moves past one member, so the text length bounds the loop.
+        var left = s.text.len;
+        while (it.next()) |m| {
+            std.debug.assert(left > 0);
+            left -= 1;
+            const raw = rawMember(m.value, "renewal") orelse continue;
+            if (raw.len == 0 or raw[0] != '{') continue;
+            s.renewable = true;
+            const at = expiryOf(rawMember(raw, "expiresAt")) orelse continue;
+            s.renew_at_ms = @min(s.renew_at_ms, at -| renew_margin_ms);
+        }
+    }
+
+    /// The `renewal` member of a slot (own store first, then `next`): the
+    /// status codes that mean "expired" and the expiry. Null when n8n
+    /// cannot renew the slot.
+    pub fn renewal(s: *const Store, name: []const u8) ?renew.Info {
+        const v = s.entry(name) orelse return null;
+        if (v != .object) return null;
+        const r = v.object.get("renewal") orelse return null;
+        if (r != .object) return null;
+        var info: renew.Info = .{};
+        if (r.object.get("expiresAt")) |e| if (e == .number_string) {
+            info.expires_at_ms = expiryOf(e.number_string) orelse info.expires_at_ms;
+        };
+        if (r.object.get("status")) |st| if (st == .array) {
+            for (st.array.items) |code| {
+                if (info.nstatus == renew.max_statuses) break;
+                if (code != .number_string) continue;
+                info.statuses[info.nstatus] = std.fmt.parseInt(u16, code.number_string, 10) catch continue; // not a status: it matches nothing
+                info.nstatus += 1;
+            }
+        };
+        return info;
     }
 
     /// A slot as raw JSON of the document, for frames to the fallback host:
@@ -118,16 +171,39 @@ pub const Pool = struct {
         if (p.nfree == 0) return error.PoolFull;
         const i = p.free[p.nfree - 1];
         const slot = p.mem[@as(usize, i) * p.slot_bytes ..][0..p.slot_bytes];
-        var fba = std.heap.FixedBufferAllocator.init(slot);
-        const a = fba.allocator();
-        const copy = a.dupe(u8, text) catch return error.TooLarge;
-        p.stores[i] = Store.parse(a, copy) catch |e| switch (e) {
+        if (text.len > slot.len) return error.TooLarge;
+        @memcpy(slot[0..text.len], text);
+        return p.parseAt(i, text.len);
+    }
+
+    /// A credentials-only update: the slots of `patch` replace those of
+    /// `base` (or are added), and the other slots of `base` stay. The
+    /// result is a new store in a free slot; the caller releases the old one.
+    pub fn parseMerged(p: *Pool, base: []const u8, patch: []const u8) Error!*Store {
+        if (p.nfree == 0) return error.PoolFull;
+        const i = p.free[p.nfree - 1];
+        const slot = p.mem[@as(usize, i) * p.slot_bytes ..][0..p.slot_bytes];
+        var out: Out = .{ .buf = slot };
+        mergeSlots(base, patch, &out) catch |e| return switch (e) {
+            error.NoSpace => error.TooLarge,
+            error.NotAnObject => error.CredentialsNotAnObject,
+        };
+        return p.parseAt(i, out.len);
+    }
+
+    /// Parse the document in the first `len` bytes of free slot `i`; the
+    /// tree goes in the rest of the slot.
+    fn parseAt(p: *Pool, i: u32, len: usize) Error!*Store {
+        std.debug.assert(p.nfree > 0 and p.free[p.nfree - 1] == i);
+        const slot = p.mem[@as(usize, i) * p.slot_bytes ..][0..p.slot_bytes];
+        std.debug.assert(len <= slot.len);
+        var fba = std.heap.FixedBufferAllocator.init(slot[len..]);
+        p.stores[i] = Store.parse(fba.allocator(), slot[0..len]) catch |e| switch (e) {
             error.CredentialsNotAnObject => return error.CredentialsNotAnObject,
             error.OutOfMemory => return error.TooLarge,
             else => return error.CredentialsNotAnObject,
         };
         p.nfree -= 1;
-        std.debug.assert(fba.end_index <= slot.len);
         return &p.stores[i];
     }
 
@@ -297,6 +373,48 @@ pub fn writeJsonStringBody(out: *Out, s: []const u8) Out.Error!void {
 
 pub const RawSlot = struct { type_json: []const u8, data_json: []const u8 };
 
+/// The time of a raw `expiresAt` value: whole milliseconds since the epoch.
+fn expiryOf(raw: ?[]const u8) ?i64 {
+    const text = raw orelse return null;
+    const at = std.fmt.parseInt(i64, text, 10) catch return null;
+    return if (at > 0) at else null;
+}
+
+const MergeError = error{ NoSpace, NotAnObject };
+
+/// Write the object that has the members of `patch`, and the members of
+/// `base` that `patch` does not name. Both are raw JSON objects.
+fn mergeSlots(base: []const u8, patch: []const u8, out: *Out) MergeError!void {
+    var kept = http.Members.init(base) orelse return error.NotAnObject;
+    var added = http.Members.init(patch) orelse return error.NotAnObject;
+    try out.byte('{');
+    var first = true;
+    // Each step moves past one member, so the text lengths bound the loops.
+    var left = base.len;
+    while (kept.next()) |m| {
+        std.debug.assert(left > 0);
+        left -= 1;
+        if (m.key.len < 2 or rawMember(patch, m.key[1 .. m.key.len - 1]) != null) continue;
+        try mergeMember(out, &first, m);
+    }
+    left = patch.len;
+    while (added.next()) |m| {
+        std.debug.assert(left > 0);
+        left -= 1;
+        try mergeMember(out, &first, m);
+    }
+    try out.byte('}');
+}
+
+fn mergeMember(out: *Out, first: *bool, m: http.Members.Member) Out.Error!void {
+    std.debug.assert(m.key.len >= 2);
+    if (!first.*) try out.byte(',');
+    first.* = false;
+    try out.put(m.key);
+    try out.byte(':');
+    try out.put(m.value);
+}
+
 /// Stores in one lookup chain: a workflow store, then the global store.
 const max_chain = 4;
 
@@ -355,6 +473,53 @@ test "credential pool reuses slots" {
     var outside: Store = b.*;
     p.release(&outside);
     try std.testing.expectEqual(@as(u32, 1), p.nfree);
+}
+
+test "a store reads the renewal member of its slots" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const plain = try Store.parse(arena.allocator(), "{\"api\":{\"data\":{\"t\":\"1\"}}}");
+    try std.testing.expect(!plain.renewable);
+    try std.testing.expectEqual(@as(i64, std.math.maxInt(i64)), plain.renew_at_ms);
+    try std.testing.expect(plain.renewal("api") == null);
+    const store = try Store.parse(arena.allocator(),
+        \\{"oauth":{"data":{},"renewal":{"status":[401,403]}},
+        \\ "sa":{"data":{},"renewal":{"status":[401],"expiresAt":1700000300000}},
+        \\ "sa2":{"data":{},"renewal":{"status":[],"expiresAt":1700000200000}},
+        \\ "api":{"data":{}}}
+    );
+    try std.testing.expect(store.renewable);
+    try std.testing.expectEqual(@as(i64, 1700000200000 - renew_margin_ms), store.renew_at_ms);
+    const oauth = store.renewal("oauth").?;
+    try std.testing.expect(oauth.matches(401) and oauth.matches(403) and !oauth.matches(404));
+    try std.testing.expectEqual(@as(i64, std.math.maxInt(i64)), oauth.expires_at_ms);
+    const sa = store.renewal("sa").?;
+    try std.testing.expectEqual(@as(i64, 1700000300000), sa.expires_at_ms);
+    try std.testing.expect(!store.renewal("sa2").?.matches(401));
+    try std.testing.expect(store.renewal("api") == null and store.renewal("none") == null);
+}
+
+test "a credentials-only update replaces the slots it names and keeps the others" {
+    var p = try Pool.init(std.testing.allocator, 2, 8192);
+    defer p.deinit();
+    const old = try p.parse("{\"a\":{\"data\":{\"t\":\"old\"}},\"b\":{\"data\":{\"t\":\"keep\"}}}");
+    const new = try p.parseMerged(old.text, "{\"a\":{\"data\":{\"t\":\"new\"},\"renewal\":{\"status\":[401]}},\"c\":{\"data\":{\"t\":\"added\"}}}");
+    try std.testing.expectEqualStrings("new", new.slot("a").?.data.object.get("t").?.string);
+    try std.testing.expectEqualStrings("keep", new.slot("b").?.data.object.get("t").?.string);
+    try std.testing.expectEqualStrings("added", new.slot("c").?.data.object.get("t").?.string);
+    try std.testing.expect(new.renewable and new.renewal("a").?.matches(401));
+    // The old store is whole until the caller releases it.
+    try std.testing.expectEqualStrings("old", old.slot("a").?.data.object.get("t").?.string);
+    p.release(old);
+    try std.testing.expectError(error.CredentialsNotAnObject, p.parseMerged(new.text, "[1]"));
+    var big: [9000]u8 = @splat('x');
+    @memcpy(big[0..6], "{\"k\":\"");
+    @memcpy(big[big.len - 2 ..], "\"}");
+    try std.testing.expectError(error.TooLarge, p.parseMerged(new.text, &big));
+    try std.testing.expectEqual(@as(u32, 1), p.nfree);
+    const first = try p.parseMerged("{}", "{\"a\":{\"data\":{\"t\":\"1\"}}}");
+    try std.testing.expectEqualStrings("1", first.slot("a").?.data.object.get("t").?.string);
+    try std.testing.expectError(error.PoolFull, p.parseMerged("{}", "{}"));
 }
 
 test "credential templates" {

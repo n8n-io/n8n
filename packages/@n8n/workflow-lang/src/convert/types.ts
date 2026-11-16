@@ -4,6 +4,7 @@
  * The converter accepts plain JSON, so these types are local and loose. They
  * describe only the fields that the converter reads.
  */
+import type { CredentialDerivation } from '../node-compile/specialise.ts';
 
 export interface N8nCredentialRef {
 	id?: string | null;
@@ -84,8 +85,13 @@ export interface ConvertResult {
 	 * the credentials document evaluates each `code` on the data of the credential
 	 * (`evaluateDerivation`) and stores the text under `data.n8nDerived.<name>`. The module reads
 	 * it as a credential template, so node code never has the fields.
+	 *
+	 * An entry of kind `flag` is the outcome of one condition on the credential: a boolean
+	 * under the same key, which node code reads with `ctx.credentialFlag`. An entry of kind
+	 * `guard` lists the flags of one node instance and the values that were checked against
+	 * the v1 node. `evaluateCredentialFlags` gives the flags that the document can hold.
 	 */
-	credentialDerivations?: Record<string, Array<{ name: string; code: string }>>;
+	credentialDerivations?: Record<string, CredentialDerivation[]>;
 	/**
 	 * Tokens that compiled node code needs and that only n8n can make, by slot. The builder of the
 	 * credentials document signs and exchanges each one where the credential data is, and stores

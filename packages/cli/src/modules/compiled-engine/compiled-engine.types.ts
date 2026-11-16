@@ -15,6 +15,20 @@ export interface CredentialSlotBinding {
 	credentialName: string;
 }
 
+/**
+ * A value that compiled node code needs from the credential of a slot. Without a kind: text
+ * that n8n computes with `code`. Kind `flag`: the outcome of one condition, a boolean that
+ * node code reads. Kind `guard`: the flags of one node instance, and the values of them that
+ * were checked against the v1 node.
+ */
+export interface CredentialDerivationRequest {
+	name: string;
+	code: string;
+	kind?: 'flag' | 'guard';
+	flags?: string[];
+	allowed?: string[];
+}
+
 /** The result of converting and compiling one workflow version. */
 export interface CompiledArtifact {
 	/** Hash of the compiler input. It is the version id that `wfrt` gets. */
@@ -31,7 +45,7 @@ export interface CompiledArtifact {
 	 * Values that compiled node code needs from the credential of a slot, by slot: n8n computes
 	 * each one from the credential data when it builds the credentials document.
 	 */
-	derivations?: Record<string, Array<{ name: string; code: string }>>;
+	derivations?: Record<string, CredentialDerivationRequest[]>;
 	/**
 	 * Tokens that compiled node code needs and that only n8n can make, by slot: n8n makes each
 	 * one from the credential data when it builds the credentials document.

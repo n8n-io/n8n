@@ -110,6 +110,22 @@ describe('WfrtAdminClient', () => {
 		});
 	});
 
+	it('sends a credentials-only update to the credentials of the workflow', async () => {
+		const answer = {
+			ok: true,
+			status: 200,
+			text: async () => '{"ok":true}',
+		} as unknown as Response;
+		const { client, fetchMock } = setup([answer]);
+
+		await client.putWorkflowCredentials('wf1~manual', { sa: { data: { t: 'new' } } });
+
+		const call = callOf(fetchMock, 0);
+		expect(call.url).toBe('http://127.0.0.1:5690/_admin/workflows/wf1~manual/credentials');
+		expect(call.method).toBe('PUT');
+		expect(JSON.parse(String(call.body))).toEqual({ sa: { data: { t: 'new' } } });
+	});
+
 	it('sends no request for an empty list of acks', async () => {
 		const { client, fetchMock } = setup([]);
 		await client.ackEvents([]);

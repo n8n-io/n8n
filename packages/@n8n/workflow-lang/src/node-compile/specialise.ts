@@ -2,7 +2,15 @@ import ts from 'typescript';
 
 import { CODE_HELPERS } from '../convert/code-native/helpers.ts';
 import { translateCode } from '../convert/code-native/translate.ts';
+import { MAX_CREDENTIAL_FLAGS } from '../credentials/flags.ts';
 import { commonJsToModule, isCommonJs } from './commonjs.ts';
+import {
+	bindMoment,
+	MOMENT_HELPER_USES,
+	MOMENT_HELPERS,
+	MOMENT_PACKAGE,
+	momentZoneUse,
+} from './moment.ts';
 
 export interface SpecialiseInput {
 	type: string;
@@ -31,7 +39,19 @@ export interface SpecialiseInput {
 	aliases?: Record<string, string>;
 
 	parameterKind?: (name: string) => ParameterKind | undefined;
+
+	facts?: PublishFacts;
 }
+
+export interface PublishFacts {
+	workflow?: { id?: string; name?: string; active?: boolean };
+	instanceBaseUrl?: string;
+}
+
+export type RandomShape =
+	| { kind: 'uuid' }
+	| { kind: 'number' }
+	| { kind: 'integer'; min?: number; max?: number };
 
 export interface ParameterKind {
 	type: string;
@@ -51,12 +71,19 @@ export interface SpecialiseResult {
 
 	mints?: CredentialMint[];
 
+	randoms?: RandomShape[];
+
 	retyped?: (moduleType: string) => string;
+
+	zones?: string[];
 }
 
 export interface CredentialDerivation {
 	name: string;
 	code: string;
+	kind?: 'flag' | 'guard';
+	flags?: string[];
+	allowed?: string[];
 }
 
 export interface CredentialMint {
@@ -101,6 +128,110 @@ const REQUEST_SOURCE = `async function __request(options, wrapped, legacy) {
 	}
 	return response.body;
 }`;
+
+const MAX_TIMER_MS = 2147483647;
+const RANDOM_STEPS = 9007199254740992;
+const RANDOM_INTEGER_LIMIT = 4294967296;
+const MAX_RANDOM_SHAPES = 32;
+
+const CONTEXT_HELPERS: Record<string, string> = {
+	__sleep: `async function __sleep(ms) {
+	if (ms !== null && typeof ms === 'object') throw new Error('a pause for a value that is not a number or text has no compiled form');
+	const wanted = Number(ms);
+	await ctx.wait({ duration: wanted >= 1 && wanted <= ${MAX_TIMER_MS} ? Math.trunc(wanted) : 1 });
+}`,
+	__randomUUID: `function __randomUUID() {
+	const digits = '0123456789abcdef';
+	let out = '';
+	for (let k = 0; k < 16; k++) {
+		let byte = Math.floor(Math.random() * 256);
+		if (k === 6) byte = 64 + (byte % 16);
+		if (k === 8) byte = 128 + (byte % 64);
+		if (k === 4 || k === 6 || k === 8 || k === 10) out += '-';
+		out += digits.charAt(Math.floor(byte / 16)) + digits.charAt(byte % 16);
+	}
+	return out;
+}`,
+	__randomInt: `function __randomInt(first, second) {
+	const min = second === undefined ? 0 : first;
+	const max = second === undefined ? first : second;
+	if (typeof min !== 'number' || typeof max !== 'number' || Math.floor(min) !== min || Math.floor(max) !== max || Math.abs(min) > ${RANDOM_INTEGER_LIMIT} || Math.abs(max) > ${RANDOM_INTEGER_LIMIT})
+		throw new Error('a random integer with a limit that is not an integer between -2^32 and 2^32 has no compiled form');
+	if (max <= min) throw new RangeError('The value of "max" is out of range. It must be greater than the value of "min" (' + min + '). Received ' + max);
+	const range = max - min;
+	const bucket = Math.floor(${RANDOM_STEPS} / range);
+	const limit = bucket * range;
+	let draw = Math.floor(Math.random() * ${RANDOM_STEPS});
+	while (draw >= limit) draw = Math.floor(Math.random() * ${RANDOM_STEPS});
+	return min + Math.floor(draw / bucket);
+}`,
+	__randomIntOf: `function __randomIntOf(first, second) {
+	const min = second === undefined ? 0 : first;
+	const max = second === undefined ? first : second;
+	if (typeof min !== 'number' || typeof max !== 'number' || !(max > min) || max - min > ${RANDOM_INTEGER_LIMIT})
+		throw new Error('a random integer with limits that are not in order, or that are more than 2^32 apart, has no compiled form');
+	return __randomInt(first, second);
+}`,
+};
+
+const SLEEP_PACKAGES = new Set(['@n8n/utils/sleep', '@n8n/utils', 'n8n-workflow']);
+const CRYPTO_PACKAGES = new Set(['crypto', 'node:crypto']);
+
+function contextHelper(
+	imported: { from: string; name: string } | undefined,
+	call: ts.CallExpression,
+): string | undefined {
+	if (!imported || call.arguments.some(ts.isSpreadElement)) return undefined;
+	const count = call.arguments.length;
+	if (SLEEP_PACKAGES.has(imported.from) && imported.name === 'sleep')
+		return count === 1 ? '__sleep' : undefined;
+	if (imported.from === 'n8n-workflow' && imported.name === 'randomInt')
+		return count === 1 || count === 2 ? '__randomIntOf' : undefined;
+	if (!CRYPTO_PACKAGES.has(imported.from)) return undefined;
+	if (imported.name === 'randomUUID' && count === 0) return '__randomUUID';
+	if (imported.name === 'randomInt' && (count === 1 || count === 2)) return '__randomInt';
+	return undefined;
+}
+
+function isMathRandom(n: ts.Node): boolean {
+	return (
+		ts.isPropertyAccessExpression(n) &&
+		ts.isIdentifier(n.expression) &&
+		n.expression.text === 'Math' &&
+		n.name.text === 'random'
+	);
+}
+
+function randomShapes(roots: ts.Node[]): RandomShape[] {
+	const shapes = new Map<string, RandomShape>();
+	const add = (shape: RandomShape) => {
+		if (shapes.size < MAX_RANDOM_SHAPES) shapes.set(JSON.stringify(shape), shape);
+		else shapes.set('"number"', { kind: 'number' });
+	};
+	const bound = (e: ts.Expression | undefined): number | undefined => {
+		const value = e === undefined ? undefined : literalOf(e)?.value;
+		return typeof value === 'number' ? value : undefined;
+	};
+	const walk = (n: ts.Node) => {
+		if (isMathRandom(n)) add({ kind: 'number' });
+		if (ts.isCallExpression(n) && ts.isIdentifier(n.expression)) {
+			if (n.expression.text === '__randomUUID') add({ kind: 'uuid' });
+			if (n.expression.text === '__randomInt' || n.expression.text === '__randomIntOf') {
+				const [first, second] = n.arguments.map(bound);
+				const min = n.arguments.length === 1 ? 0 : first;
+				const max = n.arguments.length === 1 ? first : second;
+				add(
+					min === undefined || max === undefined || n.arguments.length > 2
+						? { kind: 'integer' }
+						: { kind: 'integer', min, max },
+				);
+			}
+		}
+		ts.forEachChild(n, walk);
+	};
+	for (const root of roots) walk(root);
+	return [...shapes.values()];
+}
 
 const GLOBALS = new Set([
 	'undefined',
@@ -385,8 +516,33 @@ const HELPERS: Record<string, string> = {
 	__jsonArray: `function __jsonArray(data: any): any {
 	const out: any[] = [];
 	const list: any = Array.isArray(data) ? data : [data];
-	for (const json of list) out.push({ json });
+	for (const json of list) {
+		if (json !== null && json !== undefined && json.json) {
+			const kept: any = {};
+			for (const [key, value] of Object.entries(json)) kept[key] = value;
+			out.push(kept);
+		} else out.push({ json });
+	}
 	return out;
+}`,
+	__spreadList: `function __spreadList(value: any, name: string): any {
+	if (Array.isArray(value) || typeof value === 'string') return value;
+	if (value !== null && value !== undefined) {
+		if (typeof value === 'object' && value.$coll !== undefined) return value;
+		throw new TypeError('Spread syntax requires ...iterable[Symbol.iterator] to be a function');
+	}
+	if (name === '') throw new Error('the spread of a value that is not there has no compiled form');
+	throw new TypeError(name + ' is not iterable (cannot read property ' + value + ')');
+}`,
+	__iterableOf: `function __iterableOf(value: any, name: string): any {
+	if (Array.isArray(value) || typeof value === 'string') return value;
+	if (value !== null && value !== undefined && typeof value === 'object' && value.$coll !== undefined) return value;
+	throw new TypeError(name + ' is not iterable');
+}`,
+	__applyList: `function __applyList(value: any): any {
+	if (Array.isArray(value)) return value;
+	if (value === null || value === undefined) return [];
+	throw new Error('a function call with a list of arguments that is not an array has no compiled form');
 }`,
 	__assign: `function __assign(target: any, source: any): any {
 	if (source !== null && source !== undefined) {
@@ -695,6 +851,7 @@ const HELPERS: Record<string, string> = {
 		.replaceAll(')', '%29')
 		.replaceAll('~', '%7E');
 }`,
+	...MOMENT_HELPERS,
 };
 
 const PURE_GLOBALS = new Set([
@@ -736,6 +893,35 @@ const DERIVED_OPERATORS = new Set<ts.SyntaxKind>([
 	ts.SyntaxKind.QuestionQuestionToken,
 ]);
 const DERIVED_FUNCTIONS = new Set(['String', 'encodeURIComponent', 'btoa']);
+const FLAG_OPERATORS = new Set<ts.SyntaxKind>([
+	ts.SyntaxKind.EqualsEqualsEqualsToken,
+	ts.SyntaxKind.ExclamationEqualsEqualsToken,
+	ts.SyntaxKind.EqualsEqualsToken,
+	ts.SyntaxKind.ExclamationEqualsToken,
+	ts.SyntaxKind.LessThanToken,
+	ts.SyntaxKind.LessThanEqualsToken,
+	ts.SyntaxKind.GreaterThanToken,
+	ts.SyntaxKind.GreaterThanEqualsToken,
+]);
+const FLAG_METHODS = new Set(['includes', 'startsWith', 'endsWith']);
+const FLAG_MARKER = '__CREDFLAG';
+
+function yieldsBoolean(e: ts.Node): boolean {
+	if (ts.isParenthesizedExpression(e)) return yieldsBoolean(e.expression);
+	if (ts.isPrefixUnaryExpression(e)) return e.operator === ts.SyntaxKind.ExclamationToken;
+	if (ts.isBinaryExpression(e)) {
+		const kind = e.operatorToken.kind;
+		if (FLAG_OPERATORS.has(kind)) return true;
+		const logical =
+			kind === ts.SyntaxKind.AmpersandAmpersandToken || kind === ts.SyntaxKind.BarBarToken;
+		return logical && yieldsBoolean(e.left) && yieldsBoolean(e.right);
+	}
+	return (
+		ts.isCallExpression(e) &&
+		ts.isPropertyAccessExpression(e.expression) &&
+		FLAG_METHODS.has(e.expression.name.text)
+	);
+}
 const DERIVED_METHODS = new Set([
 	'split',
 	'pop',
@@ -788,6 +974,9 @@ const PARAMETER_ASSERTIONS: Record<string, string> = {
 	assertParamIsNumber: 'number',
 	assertParamIsBoolean: 'boolean',
 };
+function isLuxon(imported: { from: string; name: string } | undefined): boolean {
+	return imported?.from === 'luxon' && imported.name === 'DateTime';
+}
 
 function packageHelper(imported: { from: string; name: string }): string | undefined {
 	const slash = imported.from.indexOf('/');
@@ -802,6 +991,7 @@ function packageHelper(imported: { from: string; name: string }): string | undef
 }
 
 const HELPER_USES: Record<string, string[]> = {
+	__randomIntOf: ['__randomInt'],
 	__changeCase: ['__caseWords'],
 	__url: ['__urlText'],
 	__urlCanParse: ['__url', '__urlText', '__isLimit'],
@@ -812,6 +1002,7 @@ const HELPER_USES: Record<string, string[]> = {
 	__missing: ['__error'],
 	__binaryOf: ['__error'],
 	__inputBytes: ['__fileBytes', '__storedBytes'],
+	...MOMENT_HELPER_USES,
 };
 
 const LIMIT_TEXT = 'has no compiled form';
@@ -864,7 +1055,14 @@ function mentionsBuffer(n: ts.Node): boolean {
 	return ts.forEachChild(n, mentionsBuffer) ?? false;
 }
 
-const TEXT_HELPERS = new Set(['__changeCase', '__url', '__urlCanParse', '__urlParam', '__urlForm']);
+const TEXT_HELPERS = new Set([
+	'__changeCase',
+	'__url',
+	'__urlCanParse',
+	'__urlParam',
+	'__urlForm',
+	...Object.keys(MOMENT_HELPERS),
+]);
 
 const URL_PROPERTIES = new Set([
 	'href',
@@ -1661,7 +1859,8 @@ class Specialiser {
 				return f.createIdentifier(CREDENTIAL_PREFIX + credentialTypeOf(node));
 			if (isThisCall(node, 'getNodeParameter'))
 				return this.parameter(f.updateCallExpression(node, node.expression, undefined, args(node)));
-			if (isThisCall(node, 'getInputData')) return f.createIdentifier('__items');
+			if (isThisCall(node, 'getInputData') && readsFirstInput(node))
+				return f.createIdentifier('__items');
 			if (
 				ts.isBinaryExpression(node) &&
 				node.operatorToken.kind === ts.SyntaxKind.InKeyword &&
@@ -1685,6 +1884,49 @@ class Specialiser {
 			if (isThisCall(node, 'getTimezone') && this.input.timezone !== undefined) {
 				return f.createStringLiteral(this.input.timezone);
 			}
+			const facts = this.input.facts;
+			const workflowFact = (
+				source: ts.Node | undefined,
+				key: ts.Node,
+			): ts.Expression | undefined => {
+				if (!isThisCall(source, 'getWorkflow') || source.arguments.length > 0) return undefined;
+				const known: Record<string, string | boolean | undefined> = { ...facts?.workflow };
+				return ts.isIdentifier(key) &&
+					Object.hasOwn(known, key.text) &&
+					known[key.text] !== undefined
+					? expressionOf(known[key.text])
+					: undefined;
+			};
+			if (ts.isPropertyAccessExpression(node)) {
+				const fact = workflowFact(node.expression, node.name);
+				if (fact) return fact;
+			}
+			if (
+				ts.isVariableDeclaration(node) &&
+				ts.isObjectBindingPattern(node.name) &&
+				node.name.elements.length > 0 &&
+				isThisCall(node.initializer, 'getWorkflow')
+			) {
+				const made: ts.VariableDeclaration[] = [];
+				for (const e of node.name.elements) {
+					const fact =
+						e.initializer || e.dotDotDotToken || !ts.isIdentifier(e.name)
+							? undefined
+							: workflowFact(node.initializer, e.propertyName ?? e.name);
+					if (fact && ts.isIdentifier(e.name))
+						made.push(f.createVariableDeclaration(e.name.text, undefined, undefined, fact));
+				}
+				if (made.length === node.name.elements.length) return made;
+			}
+			if (
+				isThisCall(node, 'getInstanceBaseUrl') &&
+				node.arguments.length === 0 &&
+				facts?.instanceBaseUrl !== undefined
+			) {
+				return f.createStringLiteral(facts.instanceBaseUrl);
+			}
+			if (isMathRandom(node) && unit.credentialType !== undefined)
+				this.error(unit.name, 'a random value in credential code has no compiled form');
 			if (isThisCall(node, 'getInstanceId')) {
 				const id = this.input.instanceId;
 				return id === undefined
@@ -1929,6 +2171,22 @@ class Specialiser {
 				['url', 'node:url'].includes(unit.file.imports.get('URLSearchParams')?.from ?? 'url')
 			)
 				return this.helper('__urlForm', ...args(node.expression.expression));
+			if (ts.isCallExpression(node)) {
+				const moment = bindMoment(node, {
+					isMoment: (name) => {
+						const imported = unit.file.imports.get(name.text);
+						return (
+							!localNames.has(name.text) &&
+							imported?.name === 'default' &&
+							imported.from === MOMENT_PACKAGE
+						);
+					},
+					visit: (e) => ts.visitNode(e, visit) as ts.Expression,
+					helper: (name, ...list) => this.helper(name, ...list),
+					error: (message) => this.error(unit.name, message),
+				});
+				if (moment) return moment;
+			}
 			if (
 				ts.isCallExpression(node) &&
 				ts.isIdentifier(node.expression) &&
@@ -1936,6 +2194,12 @@ class Specialiser {
 			) {
 				const imported = unit.file.imports.get(node.expression.text);
 				const helper = imported ? packageHelper(imported) : undefined;
+				const withContext = contextHelper(imported, node);
+				if (withContext !== undefined) {
+					if (withContext !== '__sleep' && unit.credentialType !== undefined)
+						this.error(unit.name, 'a random value in credential code has no compiled form');
+					return this.helper(withContext, ...args(node));
+				}
 				if (
 					imported?.from === 'change-case' &&
 					Object.hasOwn(CHANGE_CASE, imported.name) &&
@@ -2105,16 +2369,17 @@ class Specialiser {
 				) {
 					const list = each(e.expression).expression;
 					const more = each(e.arguments[0]).expression;
+					const item = spreadItem(e.arguments[0].expression);
 					return f.createForOfStatement(
 						undefined,
 						f.createVariableDeclarationList(
-							[f.createVariableDeclaration('__more')],
+							[f.createVariableDeclaration(item)],
 							ts.NodeFlags.Const,
 						),
 						more,
 						f.createExpressionStatement(
 							f.createCallExpression(f.createPropertyAccessExpression(list, 'push'), undefined, [
-								f.createIdentifier('__more'),
+								f.createIdentifier(item),
 							]),
 						),
 					);
@@ -2360,7 +2625,7 @@ class Specialiser {
 	}
 
 	private fold(start: { node: ts.Node; sf: ts.SourceFile }, where: string) {
-		let cur = start;
+		let cur = this.renew(start, nameIterables(start.node));
 		let settled = false;
 		for (let round = 0; round < MAX_FOLD_ROUNDS && !settled; round++) {
 			this.changed = false;
@@ -2372,7 +2637,37 @@ class Specialiser {
 			settled = !this.changed;
 		}
 		if (!settled) this.error(where, `the code still changes after ${MAX_FOLD_ROUNDS} fold rounds`);
+		cur = this.renew(cur, this.settleIterables(cur.node));
 		return this.renew(cur, this.deriveCredentialValues(cur.node));
+	}
+
+	private settleIterables(root: ts.Node): ts.Node {
+		const visit = (input: ts.Node): ts.Node => {
+			const n = ts.visitEachChild(input, visit, undefined);
+			if (!ts.isForOfStatement(n) || !isNamedIterable(n.expression)) return n;
+			const [value, name] = n.expression.arguments;
+			const literal = literalOf(value);
+			if (literal && typeof literal.value !== 'string' && ts.isStringLiteral(name)) {
+				return f.createThrowStatement(
+					this.helper(
+						'__error',
+						f.createStringLiteral(`${name.text} is not iterable`),
+						f.createStringLiteral('TypeError'),
+						f.createIdentifier('undefined'),
+					),
+				);
+			}
+			const same = ts.isStringLiteral(name) && iterableName(value) === name.text;
+			const list = ts.isArrayLiteralExpression(value) || literal !== undefined;
+			return f.updateForOfStatement(
+				n,
+				n.awaitModifier,
+				n.initializer,
+				same || list ? value : this.helper(KEPT_ITERABLE, value, name),
+				n.statement,
+			);
+		};
+		return ts.visitNode(root, visit);
 	}
 
 	private renew(
@@ -2562,7 +2857,17 @@ class Specialiser {
 			}
 			if (ts.isBinaryExpression(e)) {
 				if (e.operatorToken.kind !== ts.SyntaxKind.PlusToken) state.computes = true;
-				return DERIVED_OPERATORS.has(e.operatorToken.kind) && pure(e.left) && pure(e.right);
+				const known =
+					DERIVED_OPERATORS.has(e.operatorToken.kind) || FLAG_OPERATORS.has(e.operatorToken.kind);
+				return known && pure(e.left) && pure(e.right);
+			}
+			if (ts.isPrefixUnaryExpression(e) && e.operator === ts.SyntaxKind.ExclamationToken) {
+				state.computes = true;
+				return pure(e.operand);
+			}
+			if (ts.isTypeOfExpression(e)) {
+				state.computes = true;
+				return pure(e.expression);
 			}
 			if (ts.isPropertyAccessExpression(e)) {
 				state.computes = true;
@@ -2576,7 +2881,8 @@ class Specialiser {
 				if (!ts.isPropertyAccessExpression(callee)) return false;
 				if (ts.isIdentifier(callee.expression) && callee.expression.text === 'Buffer')
 					return callee.name.text === 'from';
-				return DERIVED_METHODS.has(callee.name.text) && pure(callee.expression);
+				const known = DERIVED_METHODS.has(callee.name.text) || FLAG_METHODS.has(callee.name.text);
+				return known && pure(callee.expression);
 			}
 			return false;
 		};
@@ -2584,11 +2890,103 @@ class Specialiser {
 		return { ok, marker: state.marker, computes: state.computes };
 	}
 
+	readonly flags = new Map<string, string>();
+
+	private credentialFlag(n: ts.Expression): ts.Expression {
+		const fields = (x: ts.Node): ts.Node => {
+			if (isCredentialMarker(x)) {
+				const path = x.arguments[0];
+				let read: ts.Expression = f.createIdentifier('c');
+				for (const key of (ts.isStringLiteral(path) ? path.text : '').split('.'))
+					read = f.createPropertyAccessExpression(read, key);
+				return read;
+			}
+			return ts.visitEachChild(x, fields, undefined);
+		};
+		const blank = ts.createSourceFile('d.js', '', ts.ScriptTarget.ES2022, false, ts.ScriptKind.JS);
+		const text = this.printer.printNode(
+			ts.EmitHint.Unspecified,
+			ts.visitNode(n, fields),
+			n.getSourceFile() ?? blank,
+		);
+		const code = yieldsBoolean(n) ? `(c) => (${text})` : `(c) => Boolean(${text})`;
+		let hash = 0x811c9dc5;
+		for (let k = 0; k < code.length; k++) {
+			hash ^= code.charCodeAt(k);
+			hash = Math.imul(hash, 0x01000193) >>> 0;
+		}
+		const name = `f${hash.toString(16).padStart(8, '0')}`;
+		this.flags.set(name, code);
+		return call(FLAG_MARKER, f.createStringLiteral(name));
+	}
+
+	private credentialTest(e: ts.Expression, visit: (n: ts.Node) => ts.Node): ts.Expression {
+		const found = this.credentialPure(e);
+		if (found.ok && found.marker) return this.credentialFlag(e);
+		const test = (x: ts.Expression) => this.credentialTest(x, visit);
+		if (ts.isParenthesizedExpression(e))
+			return f.updateParenthesizedExpression(e, test(e.expression));
+		if (ts.isPrefixUnaryExpression(e) && e.operator === ts.SyntaxKind.ExclamationToken)
+			return f.updatePrefixUnaryExpression(e, test(e.operand));
+		if (
+			ts.isBinaryExpression(e) &&
+			(e.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken ||
+				e.operatorToken.kind === ts.SyntaxKind.BarBarToken)
+		)
+			return f.updateBinaryExpression(e, test(e.left), e.operatorToken, test(e.right));
+		const out = visit(e);
+		return ts.isExpression(out) ? out : e;
+	}
+
+	private credentialTests(n: ts.Node, visit: (n: ts.Node) => ts.Node): ts.Node | undefined {
+		const holds = (e: ts.Node): boolean =>
+			isCredentialMarker(e) || (ts.forEachChild(e, holds) ?? false);
+		const statement = (x: ts.Statement): ts.Statement => {
+			const out = visit(x);
+			return ts.isStatement(out) ? out : x;
+		};
+		const expression = (x: ts.Expression): ts.Expression => {
+			const out = visit(x);
+			return ts.isExpression(out) ? out : x;
+		};
+		if (ts.isIfStatement(n) && holds(n.expression))
+			return f.updateIfStatement(
+				n,
+				this.credentialTest(n.expression, visit),
+				statement(n.thenStatement),
+				n.elseStatement && statement(n.elseStatement),
+			);
+		if (ts.isConditionalExpression(n) && holds(n.condition))
+			return f.updateConditionalExpression(
+				n,
+				this.credentialTest(n.condition, visit),
+				n.questionToken,
+				expression(n.whenTrue),
+				n.colonToken,
+				expression(n.whenFalse),
+			);
+		if (ts.isWhileStatement(n) && holds(n.expression))
+			return f.updateWhileStatement(
+				n,
+				this.credentialTest(n.expression, visit),
+				statement(n.statement),
+			);
+		if (ts.isDoStatement(n) && holds(n.expression))
+			return f.updateDoStatement(
+				n,
+				statement(n.statement),
+				this.credentialTest(n.expression, visit),
+			);
+		return undefined;
+	}
+
 	private deriveCredentialValues(root: ts.Node): ts.Node {
 		const isMarker = isCredentialMarker;
 		const visit = (n: ts.Node): ts.Node => {
 			if (ts.isExpression(n) && !isMarker(n)) {
 				const found = this.credentialPure(n);
+				if (found.ok && found.marker && found.computes && yieldsBoolean(n))
+					return this.credentialFlag(n);
 				if (found.ok && found.marker && found.computes) {
 					const fields = (x: ts.Node): ts.Node => {
 						if (isMarker(x)) {
@@ -2623,6 +3021,8 @@ class Specialiser {
 					return call('__CREDFIELD', f.createStringLiteral(`n8nDerived.${name}`));
 				}
 			}
+			const tested = this.credentialTests(n, visit);
+			if (tested) return tested;
 			return ts.visitEachChild(n, visit, undefined);
 		};
 		return ts.visitNode(root, visit);
@@ -3003,6 +3403,7 @@ class Specialiser {
 			ts.forEachChild(n, (c) => mark(c, inner || (c !== root && ts.isFunctionLike(c))));
 		};
 		mark(root, false);
+		for (const name of patternTargets(root)) fixed.add(name);
 		const assignedIn = (n: ts.Node, out = new Set<string>()): Set<string> => {
 			const name = targetOf(n);
 			if (name) out.add(name);
@@ -3252,13 +3653,17 @@ class Specialiser {
 				let out: ts.Statement;
 				if (ts.isBlock(st)) return f.updateBlock(st, block(st.statements, env));
 				if (ts.isIfStatement(st)) {
+					const condition = substitute(st.expression, env);
 					out = f.updateIfStatement(
 						st,
-						substitute(st.expression, env),
+						condition,
 						branch(st.thenStatement, copy(env)),
 						st.elseStatement ? branch(st.elseStatement, copy(env)) : undefined,
 					);
-					mentioned(st, env);
+					const decided = literalOf(condition);
+					if (decided === undefined) mentioned(st, env);
+					else if (decided.value) mentioned(st.thenStatement, env);
+					else if (st.elseStatement) mentioned(st.elseStatement, env);
 				} else if (
 					ts.isForStatement(st) ||
 					ts.isForOfStatement(st) ||
@@ -3354,16 +3759,37 @@ class Specialiser {
 
 	private reduce(root: ts.Node): ts.Node {
 		const visit = (input: ts.Node): ts.Node | ts.Node[] | undefined => {
+			if (
+				ts.isOptionalChain(input) &&
+				chainStartsAbsent(input) &&
+				!(input.parent && ts.isDeleteExpression(input.parent))
+			) {
+				this.changed = true;
+				return f.createIdentifier('undefined');
+			}
 			const n = ts.visitEachChild(input, visit, undefined);
 			const done = <T>(value: T): T => {
 				this.changed = true;
 				return value;
 			};
+			if (
+				ts.isPropertyAccessExpression(n) &&
+				!n.questionDotToken &&
+				isEmptyObject(n.expression) &&
+				!(n.name.text in Object.prototype) &&
+				input.parent &&
+				!isWritten(input) &&
+				!(ts.isCallExpression(input.parent) && input.parent.expression === input) &&
+				!(ts.isTaggedTemplateExpression(input.parent) && input.parent.tag === input)
+			)
+				return done(f.createIdentifier('undefined'));
 			if (ts.isParenthesizedExpression(n) && literalOf(n.expression)) return done(n.expression);
 			if (isThisCall(n, 'getNodeParameter')) {
 				const bound = this.parameter(n, true);
 				if (bound !== n) return done(bound);
 			}
+			if (isThisCall(n, 'getInputData') && readsFirstInput(n))
+				return done(f.createIdentifier('__items'));
 			if (ts.isForOfStatement(n)) {
 				const unrolled = unrollParameterLoop(n);
 				if (unrolled) return done(unrolled);
@@ -4660,16 +5086,47 @@ class Specialiser {
 			e.kind === ts.SyntaxKind.TrueKeyword ||
 			e.kind === ts.SyntaxKind.FalseKeyword ||
 			e.kind === ts.SyntaxKind.NullKeyword;
+		const wider = new Map<string, number>();
 		for (const entry of this.output) {
 			const visit = (input: ts.Node): ts.Node => {
 				const n = ts.visitEachChild(input, visit, undefined);
 				if (!ts.isCallExpression(n) || !ts.isIdentifier(n.expression)) return n;
 				const limit = limits.get(n.expression.text);
 				if (limit === undefined || n.arguments.length <= limit) return n;
-				if (!n.arguments.slice(limit).every(inert)) return n;
+				if (!n.arguments.slice(limit).every(inert)) {
+					if (!n.arguments.some(ts.isSpreadElement))
+						wider.set(
+							n.expression.text,
+							Math.max(wider.get(n.expression.text) ?? 0, n.arguments.length),
+						);
+					return n;
+				}
 				return f.updateCallExpression(n, n.expression, undefined, n.arguments.slice(0, limit));
 			};
 			const next = this.reparse(ts.visitNode(entry.node, visit), entry.sf);
+			entry.node = next.node;
+			entry.sf = next.sf;
+		}
+		for (const entry of this.output) {
+			const count = wider.get(entry.name);
+			const node = entry.node;
+			if (count === undefined || !ts.isFunctionDeclaration(node)) continue;
+			const unused = Array.from({ length: count - node.parameters.length }, (_, k) =>
+				f.createParameterDeclaration(undefined, undefined, `__unused${k}`),
+			);
+			const next = this.reparse(
+				f.updateFunctionDeclaration(
+					node,
+					node.modifiers,
+					node.asteriskToken,
+					node.name,
+					node.typeParameters,
+					[...node.parameters, ...unused],
+					node.type,
+					node.body,
+				),
+				entry.sf,
+			);
 			entry.node = next.node;
 			entry.sf = next.sf;
 		}
@@ -4773,7 +5230,8 @@ class Specialiser {
 				isValueUse(n) &&
 				!bound.has(n.text) &&
 				!GLOBALS.has(n.text) &&
-				!n.text.startsWith('__')
+				!n.text.startsWith('__') &&
+				!(n.text === 'DateTime' && isLuxon(unit.file.imports.get(n.text)))
 			) {
 				free.add(n.text);
 			}
@@ -5083,6 +5541,7 @@ class Specialiser {
 				ts.forEachChild(n, noteWrites);
 			};
 			noteWrites(fn.body);
+			for (const name of patternTargets(fn.body)) written.add(name);
 			const constants: ts.Statement[] = [];
 			const parameters = fn.parameters.map((p, k) => {
 				if (
@@ -5157,6 +5616,7 @@ class Specialiser {
 					!bound.has(n.text) &&
 					n.text !== name &&
 					!PURE_GLOBALS.has(n.text) &&
+					n.text !== KEPT_ITERABLE &&
 					!pure.has(n.text)
 				)
 					ok = false;
@@ -5178,10 +5638,12 @@ class Specialiser {
 			}
 			if (pure.size === before) break;
 		}
-		const sources = this.output
-			.filter((o) => pure.has(o.name))
-			.map((o) => this.printer.printNode(ts.EmitHint.Unspecified, o.node, o.sf))
-			.join('\n');
+		const sources = [
+			KEPT_ITERABLE_CODE,
+			...this.output
+				.filter((o) => pure.has(o.name))
+				.map((o) => this.printer.printNode(ts.EmitHint.Unspecified, o.node, o.sf)),
+		].join('\n');
 		const literalJson = (e: ts.Expression): boolean =>
 			literalOf(e) !== undefined ||
 			(ts.isArrayLiteralExpression(e) && e.elements.every(literalJson)) ||
@@ -5271,7 +5733,20 @@ class Specialiser {
 		if (this.errors.length > 0) return { errors: this.errors, notes: this.notes, linked };
 		const source = this.print();
 		if (this.errors.length > 0) return { errors: this.errors, notes: this.notes, linked };
-		const derivations = [...this.derivations].map(([name, code]) => ({ name, code }));
+		const flags = [...this.flags]
+			.filter(([name]) => source.includes(`"${name}"`))
+			.map(([name, code]): CredentialDerivation => ({ name, code, kind: 'flag' }));
+		if (flags.length > MAX_CREDENTIAL_FLAGS) {
+			this.error(
+				'execute',
+				`the node needs more than ${MAX_CREDENTIAL_FLAGS} conditions on its credential`,
+			);
+			return { errors: this.errors, notes: this.notes, linked };
+		}
+		const derivations: CredentialDerivation[] = [
+			...[...this.derivations].map(([name, code]) => ({ name, code })),
+			...flags,
+		];
 		const mints = [...this.mints.values()].filter((m) => source.includes(`n8nMinted.${m.name}.`));
 		return {
 			source,
@@ -5280,7 +5755,9 @@ class Specialiser {
 			linked,
 			derivations,
 			mints,
+			randoms: this.randoms,
 			retyped: this.retyped,
+			zones: [...this.zones].sort(),
 		};
 	}
 
@@ -5377,13 +5854,43 @@ class Specialiser {
 		check(root);
 	}
 
+	private listSources(root: ts.Node): ts.Node {
+		let found = false;
+		const visit = (input: ts.Node): ts.Node => {
+			const n = ts.visitEachChild(input, visit, undefined);
+			const item = ts.isForOfStatement(n) ? loopItem(n) : undefined;
+			if (!ts.isForOfStatement(n) || item === undefined) return n;
+			const spread = item.startsWith(SPREAD_ITEM);
+			if (!spread && item !== APPLY_ITEM) return n;
+			found = true;
+			const source = spread
+				? this.helper(
+						'__spreadList',
+						n.expression,
+						f.createStringLiteral(
+							item
+								.slice(SPREAD_ITEM.length + 1)
+								.split('$')
+								.join('.'),
+						),
+					)
+				: this.helper('__applyList', n.expression);
+			return f.updateForOfStatement(n, n.awaitModifier, n.initializer, source, n.statement);
+		};
+		const out = ts.visitNode(root, visit);
+		return found ? out : root;
+	}
+
 	private print(): string {
 		const code: string[] = [];
 		let body = '';
 		for (const { node } of this.output) this.bytesUses(node);
+		for (const entry of this.output) entry.node = this.listSources(entry.node);
 		const buffers = this.output.some((o) => mentionsBuffer(o.node));
 		if (buffers) this.helpers.add('__bufferText');
-		const guarded = [...this.helpers].some((h) => HELPERS[h]?.includes(LIMIT_TEXT));
+		const guarded = [...this.helpers].some((h) =>
+			(HELPERS[h] ?? CONTEXT_HELPERS[h])?.includes(LIMIT_TEXT),
+		);
 		if (guarded) this.helpers.add('__isLimit');
 		for (const { name, node, sf } of this.output) {
 			const unit = this.units.get(name);
@@ -5420,6 +5927,10 @@ class Specialiser {
 		}
 		if (this.helpers.has('__request')) code.unshift(REQUEST_SOURCE);
 		this.helpers.delete('__request');
+		for (const [name, source] of Object.entries(CONTEXT_HELPERS)) {
+			if (this.helpers.delete(name)) code.unshift(source);
+		}
+		this.randoms = randomShapes(this.output.map((o) => o.node));
 		for (const always of ['__wrap', '__plain']) this.helpers.add(always);
 		if (this.helpers.has('__apiError')) this.helpers.add('__apiDescription');
 
@@ -5429,6 +5940,7 @@ class Specialiser {
 			'credential',
 			'__items',
 			'__request',
+			...Object.keys(CONTEXT_HELPERS),
 			...Object.keys(HELPERS),
 		]);
 		const translated = translateCode({
@@ -5437,14 +5949,23 @@ class Specialiser {
 			kind: 'code',
 			hasNode: () => false,
 			nodeCode: { globals },
+			timezone: this.input.timezone,
 		});
 		if (!translated.ok) {
 			for (const b of translated.blockers) this.error('code', `${b.feature}: ${b.message}`);
 			return '';
 		}
 		const t = translated.translation;
-		if (t.zones.size > 0)
-			this.error('code', 'dates in a time zone have no compiled form in node code yet');
+		if (t.zones.size > 0 && this.input.timezone === undefined)
+			this.error('code', 'dates in a time zone need the time zone of the workflow');
+		for (const zone of t.zones) this.zones.add(zone);
+		const zonesOf = (n: ts.Node) => {
+			const use = momentZoneUse(n);
+			if (use?.error !== undefined) this.error('code', use.error);
+			if (use?.zone !== undefined) this.zones.add(use.zone);
+			ts.forEachChild(n, zonesOf);
+		};
+		for (const { node } of this.output) zonesOf(node);
 		if (t.usesMatchProps)
 			this.error(
 				'code',
@@ -5485,6 +6006,9 @@ ${t.body}
 	}
 
 	private retyped: ((type: string) => string) | undefined;
+
+	private readonly zones = new Set<string>();
+	private randoms: RandomShape[] = [];
 }
 
 function bindingsOf(root: ts.Node): Map<string, number> {
@@ -5575,6 +6099,129 @@ function unrollParameterLoop(loop: ts.ForOfStatement): ts.Statement | undefined 
 	);
 }
 
+function readsFirstInput(read: ts.CallExpression): boolean {
+	if (read.arguments.length === 0) return true;
+	return read.arguments.length === 1 && literalOf(read.arguments[0])?.value === 0;
+}
+
+function chainStartsAbsent(chain: ts.Node): boolean {
+	let link = chain;
+	while (
+		(ts.isPropertyAccessExpression(link) ||
+			ts.isElementAccessExpression(link) ||
+			ts.isCallExpression(link)) &&
+		!link.questionDotToken &&
+		ts.isOptionalChain(link)
+	)
+		link = link.expression;
+	if (
+		!ts.isPropertyAccessExpression(link) &&
+		!ts.isElementAccessExpression(link) &&
+		!ts.isCallExpression(link)
+	)
+		return false;
+	if (!link.questionDotToken) return false;
+	const base = literalOf(link.expression);
+	return base !== undefined && (base.value === undefined || base.value === null);
+}
+
+function isEmptyObject(e: ts.Expression): boolean {
+	if (ts.isParenthesizedExpression(e)) return isEmptyObject(e.expression);
+	return ts.isObjectLiteralExpression(e) && e.properties.length === 0;
+}
+
+function patternTargets(root: ts.Node): Set<string> {
+	const out = new Set<string>();
+	const names = (n: ts.Node) => {
+		if (ts.isIdentifier(n)) out.add(n.text);
+		ts.forEachChild(n, names);
+	};
+	const walk = (n: ts.Node) => {
+		if (
+			ts.isBinaryExpression(n) &&
+			n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+			!ts.isIdentifier(n.left)
+		) {
+			let target: ts.Expression = n.left;
+			while (ts.isParenthesizedExpression(target)) target = target.expression;
+			if (ts.isArrayLiteralExpression(target) || ts.isObjectLiteralExpression(target))
+				names(target);
+		}
+		if (
+			(ts.isForOfStatement(n) || ts.isForInStatement(n)) &&
+			!ts.isVariableDeclarationList(n.initializer)
+		)
+			names(n.initializer);
+		ts.forEachChild(n, walk);
+	};
+	walk(root);
+	return out;
+}
+
+const NAMED_ITERABLE = '__iterable';
+const KEPT_ITERABLE = '__iterableOf';
+const KEPT_ITERABLE_CODE = `function ${KEPT_ITERABLE}(value, name) {
+	if (Array.isArray(value) || typeof value === 'string') return value;
+	throw new TypeError(name + ' is not iterable');
+}`;
+const SPREAD_ITEM = '__each';
+const APPLY_ITEM = '__more';
+
+function spreadItem(source: ts.Expression): string {
+	const name = iterableName(source);
+	return name === undefined || name.includes('$')
+		? SPREAD_ITEM
+		: `${SPREAD_ITEM}$${name.replaceAll('.', '$')}`;
+}
+
+function loopItem(loop: ts.ForOfStatement): string | undefined {
+	const list = loop.initializer;
+	if (!ts.isVariableDeclarationList(list) || list.declarations.length !== 1) return undefined;
+	const name = list.declarations[0].name;
+	return ts.isIdentifier(name) ? name.text : undefined;
+}
+
+function isNamedIterable(e: ts.Expression): e is ts.CallExpression {
+	return (
+		ts.isCallExpression(e) &&
+		ts.isIdentifier(e.expression) &&
+		e.expression.text === NAMED_ITERABLE &&
+		e.arguments.length === 2
+	);
+}
+
+function iterableName(e: ts.Expression): string | undefined {
+	if (ts.isParenthesizedExpression(e) || ts.isAsExpression(e) || ts.isNonNullExpression(e))
+		return iterableName(e.expression);
+	if (ts.isIdentifier(e)) return e.text === 'undefined' ? undefined : e.text;
+	if (ts.isPropertyAccessExpression(e) && !e.questionDotToken) {
+		const head = iterableName(e.expression);
+		return head === undefined ? undefined : `${head}.${e.name.text}`;
+	}
+	return undefined;
+}
+
+function nameIterables(root: ts.Node): ts.Node {
+	let named = false;
+	const visit = (input: ts.Node): ts.Node => {
+		const n = ts.visitEachChild(input, visit, undefined);
+		if (!ts.isForOfStatement(n) || n.awaitModifier) return n;
+		const name = iterableName(n.expression);
+		const item = loopItem(n);
+		if (name === undefined || item === APPLY_ITEM || item?.startsWith(SPREAD_ITEM)) return n;
+		named = true;
+		return f.updateForOfStatement(
+			n,
+			n.awaitModifier,
+			n.initializer,
+			call(NAMED_ITERABLE, n.expression, f.createStringLiteral(name)),
+			n.statement,
+		);
+	};
+	const out = ts.visitNode(root, visit);
+	return named ? out : root;
+}
+
 function containsBreak(n: ts.Node): boolean {
 	if (ts.isBreakStatement(n)) return true;
 	if (
@@ -5602,6 +6249,16 @@ function finish(root: ts.Node): ts.Node {
 				`{{$credentials.${ts.isStringLiteral(field) ? field.text : ''}}}`,
 			);
 		}
+		if (
+			ts.isCallExpression(out) &&
+			ts.isIdentifier(out.expression) &&
+			out.expression.text === FLAG_MARKER
+		)
+			return f.createCallExpression(
+				f.createPropertyAccessExpression(f.createIdentifier('ctx'), 'credentialFlag'),
+				undefined,
+				[f.createIdentifier('credential'), ...out.arguments],
+			);
 		return out;
 	};
 	return ts.visitNode(root, visit);

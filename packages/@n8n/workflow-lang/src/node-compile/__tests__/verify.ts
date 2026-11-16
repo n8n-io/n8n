@@ -1,12 +1,14 @@
+import { Writer } from '../../convert/code.ts';
 import { helperSources } from '../../convert/helpers.ts';
+import { emitContinueLoop, errorRetryOf } from '../../convert/steps.ts';
 import { withDerivedValues } from '../../credentials/derived.ts';
+import { credentialFlagKey } from '../../credentials/flags.ts';
 import { deriveInject } from '../../credentials/inject.ts';
 import type { PublicCredential } from '../../credentials/public.ts';
 import { publicCredential } from '../../credentials/public.ts';
 import type {
 	EquivalenceCase,
 	NormalRequest,
-	RecordedItem,
 	Recording,
 } from '../../nodes/__tests__/equivalence.ts';
 import { applyCredential, normalizeRequest } from '../../nodes/__tests__/equivalence.ts';
@@ -14,10 +16,40 @@ import { recordV1, recordV1Cached } from '../../nodes/__tests__/v1-recorder.ts';
 import { runReference } from '../../reference/runner.ts';
 import type { ErrorMode, NodeSources } from '../convert.ts';
 import { compileNodeInstance } from '../convert.ts';
-import { evaluateDerivation } from '../evaluate-node.ts';
-import type { CredentialMint } from '../specialise.ts';
+import { evaluateDerivation, evaluateFlag } from '../evaluate-node.ts';
+import type {
+	CredentialDerivation,
+	CredentialMint,
+	PublishFacts,
+	RandomShape,
+} from '../specialise.ts';
 
 export const V1_TIMEZONE = 'America/New_York';
+export const V1_NOW = Date.UTC(2024, 0, 15, 17, 30, 0);
+const READS_CLOCK = /\bDate\.now\(\)|\bnew Date\(\)/;
+
+async function atFixedClock<T>(work: () => Promise<T>): Promise<T> {
+	const real = Date;
+	globalThis.Date = new Proxy(real, {
+		construct: (target, args: unknown[], newTarget) =>
+			Reflect.construct(target, args.length === 0 ? [V1_NOW] : args, newTarget),
+		apply: (target) => new target(V1_NOW).toString(),
+		get: (target, key) => (key === 'now' ? () => V1_NOW : Reflect.get(target, key)),
+	});
+	try {
+		return await work();
+	} finally {
+		globalThis.Date = real;
+	}
+}
+export const V1_FACTS: PublishFacts = {
+	workflow: { id: 'equivalence', active: false },
+	instanceBaseUrl: 'http://localhost:5678',
+};
+const OTHER_SEEDS = [2, 3, 5];
+const UUID_V4 = /[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/g;
+const UUID_MARK = '<random uuid>';
+const INTEGER_MARK = '<random integer>';
 
 type Registry = Parameters<typeof deriveInject>[0];
 
@@ -55,6 +87,82 @@ export function sentParts(multipart: unknown): unknown {
 	});
 }
 
+function credentialData(c: EquivalenceCase, registry: Registry): Record<string, unknown> {
+	const type = c.credential?.type ?? '';
+	return withDerivedValues(type, {
+		...(registry.get(type)?.defaults ?? {}),
+		...c.credential?.data,
+	});
+}
+
+function flagValues(
+	flags: CredentialDerivation[],
+	data: Record<string, unknown>,
+): Record<string, boolean> | undefined {
+	const values: Record<string, boolean> = {};
+	for (const { name, code } of flags) {
+		const value = evaluateFlag(code, data);
+		if (value === undefined) return undefined;
+		values[name] = value;
+	}
+	return values;
+}
+
+export function flagKeyOf(
+	c: EquivalenceCase,
+	flags: CredentialDerivation[],
+	registry: Registry,
+): string | undefined {
+	const values = flagValues(flags, credentialData(c, registry));
+	return values === undefined
+		? undefined
+		: credentialFlagKey(
+				flags.map((flag) => flag.name),
+				values,
+			);
+}
+
+const MAX_FLAG_VARIANTS = 8;
+const LONG_TEXT = 'x'.repeat(80);
+
+function otherValues(value: unknown, field: string): unknown[] {
+	if (typeof value === 'boolean') return [!value];
+	if (typeof value === 'string') return ['', LONG_TEXT, undefined];
+	if (typeof value === 'number') return [0, 1, undefined];
+	if (value === undefined) return [`fake-${field}`, true];
+	return [];
+}
+
+export function flagVariants(
+	c: EquivalenceCase,
+	flags: CredentialDerivation[],
+	registry: Registry,
+): Array<{ data: Record<string, unknown>; key: string }> {
+	const credential = c.credential;
+	const base = flagKeyOf(c, flags, registry);
+	if (!credential || base === undefined) return [];
+	const classes = JSON.stringify(credentialsOf(c, registry));
+	const fields = new Set<string>();
+	for (const { code } of flags)
+		for (const match of code.matchAll(/\bc\.([A-Za-z_$][\w$]*)/g)) fields.add(match[1]);
+	const seen = new Set([base]);
+	const variants: Array<{ data: Record<string, unknown>; key: string }> = [];
+	for (const field of [...fields].sort()) {
+		for (const value of otherValues(credentialData(c, registry)[field], field)) {
+			if (variants.length >= MAX_FLAG_VARIANTS) return variants;
+			const { [field]: _dropped, ...rest } = credential.data;
+			const data = value === undefined ? rest : { ...rest, [field]: value };
+			const changed = { ...c, credential: { ...credential, data } };
+			if (JSON.stringify(credentialsOf(changed, registry)) !== classes) continue;
+			const key = flagKeyOf(changed, flags, registry);
+			if (key === undefined || seen.has(key)) continue;
+			seen.add(key);
+			variants.push({ data, key });
+		}
+	}
+	return variants;
+}
+
 type Compiled = ReturnType<typeof compileNodeInstance>;
 const RECENT_COMPILES = 8;
 const recent: Array<{ sources: NodeSources; key: string; compiled: Compiled }> = [];
@@ -80,11 +188,90 @@ export function compileForCheck(
 		null,
 		credentials,
 		V1_TIMEZONE,
+		V1_FACTS,
 		errorMode,
 	);
 	recent.push({ sources, key, compiled });
 	if (recent.length > RECENT_COMPILES) recent.shift();
 	return compiled;
+}
+
+function randomMark(
+	mine: unknown,
+	theirs: unknown,
+	others: unknown[],
+	shapes: RandomShape[],
+): string | undefined {
+	const made = [mine, ...others];
+	if (typeof theirs === 'string' && made.every((value) => typeof value === 'string')) {
+		if (!shapes.some((shape) => shape.kind === 'uuid') || theirs.includes(UUID_MARK))
+			return undefined;
+		const masked = String(mine).replace(UUID_V4, UUID_MARK);
+		const count = (text: string) => text.match(UUID_V4)?.length ?? 0;
+		const same = [theirs, ...made].every(
+			(value) =>
+				String(value).replace(UUID_V4, UUID_MARK) === masked &&
+				count(String(value)) === count(String(mine)),
+		);
+		return same && count(String(mine)) > 0 ? masked : undefined;
+	}
+	const fits = (value: unknown, shape: RandomShape) =>
+		shape.kind === 'integer' &&
+		shape.min !== undefined &&
+		shape.max !== undefined &&
+		typeof value === 'number' &&
+		Number.isInteger(value) &&
+		value >= shape.min &&
+		value < shape.max;
+	const ranges = shapes.filter((shape) => made.every((value) => fits(value, shape)));
+	return ranges.length > 0 && ranges.every((shape) => fits(theirs, shape))
+		? INTEGER_MARK
+		: undefined;
+}
+
+export function withoutRandomValues(
+	mine: unknown,
+	theirs: unknown,
+	others: unknown[],
+	shapes: RandomShape[],
+): { mine: unknown; theirs: unknown } {
+	if (Array.isArray(mine)) {
+		const lists = [theirs, ...others];
+		if (!lists.every((list) => Array.isArray(list) && list.length === mine.length))
+			return { mine, theirs };
+		const pairs = mine.map((member, k) =>
+			withoutRandomValues(
+				member,
+				Array.isArray(theirs) ? theirs[k] : undefined,
+				others.map((other) => (Array.isArray(other) ? other[k] : undefined)),
+				shapes,
+			),
+		);
+		return { mine: pairs.map((pair) => pair.mine), theirs: pairs.map((pair) => pair.theirs) };
+	}
+	if (isRecord(mine)) {
+		const records = others.filter(isRecord);
+		if (!isRecord(theirs) || records.length !== others.length) return { mine, theirs };
+		const left: Record<string, unknown> = {};
+		const right: Record<string, unknown> = { ...theirs };
+		for (const [key, member] of Object.entries(mine)) {
+			const pair = Object.hasOwn(theirs, key)
+				? withoutRandomValues(
+						member,
+						theirs[key],
+						records.map((other) => other[key]),
+						shapes,
+					)
+				: { mine: member, theirs: undefined };
+			left[key] = pair.mine;
+			if (Object.hasOwn(theirs, key)) right[key] = pair.theirs;
+		}
+		return { mine: left, theirs: right };
+	}
+	const text = JSON.stringify(mine);
+	if (others.every((other) => JSON.stringify(other) === text)) return { mine, theirs };
+	const mark = randomMark(mine, theirs, others, shapes);
+	return mark === undefined ? { mine, theirs } : { mine: mark, theirs: mark };
 }
 
 async function within<T>(ms: number, work: Promise<T>): Promise<T> {
@@ -170,74 +357,32 @@ async function recordWithMints(
 	return 'the token requests of v1 do not settle';
 }
 
-function withoutFiles(item: Record<string, unknown>): Record<string, unknown> {
-	const { $binary: _files, ...json } = item;
-	return json;
-}
-
-function isErrorJson(json: unknown): boolean {
-	if (!isRecord(json) || !json.error) return false;
-	return Object.keys(json).every((key) => ['error', 'message', 'details'].includes(key));
-}
-
 export type ErrorPairing = 'item' | 'position';
 
-export function outputsOfV1Engine(
-	outputs: RecordedItem[][],
-	mode: ErrorMode,
-	inputs: Array<Record<string, unknown>>,
-): { outputs: unknown[][]; pairing?: ErrorPairing } | string {
-	if (outputs.length > 1) return 'the v1 node has more than one output';
-	const items = outputs[0] ?? [];
-	if (mode !== 'continueErrorOutput') {
-		return { outputs: [items.map((i) => (i.error === undefined ? i.json : { error: i.error }))] };
-	}
-	const main: unknown[] = [];
-	const errors: unknown[] = [];
-	let pairing: ErrorPairing | undefined;
-	for (const [k, item] of items.entries()) {
-		if (item.error !== undefined) {
-			errors.push({ error: item.error });
-			continue;
-		}
-		if (!isErrorJson(item.json)) {
-			main.push(item.json);
-			continue;
-		}
-		const found: ErrorPairing = item.paired === undefined ? 'position' : 'item';
-		if (pairing !== undefined && pairing !== found)
-			return 'v1 pairs some error items with their input items and not others';
-		pairing = found;
-		let at = item.paired;
-		if (found === 'position') {
-			if (inputs.length === 1 || items.length === 1) at = 0;
-			else if (items.length === inputs.length) at = k;
-		}
-		const input = at === undefined ? undefined : inputs[at];
-		if (found === 'item' && input === undefined)
-			return 'v1 pairs an error item with an input item that is not there';
-		errors.push(
-			input === undefined
-				? item.json
-				: { ...withoutFiles(input), ...(isRecord(item.json) ? item.json : {}) },
-		);
-	}
-	return { outputs: [main, errors], pairing };
-}
+const MAX_ANSWERS = 64;
 
 function continueWorkflow(
 	type: string,
 	c: EquivalenceCase,
 	credentialType: string | undefined,
-	errorOutput: boolean,
 	pairing: ErrorPairing,
 ): string {
-	const split = !errorOutput
-		? 'for (const r of result) out.push(r);'
-		: pairing === 'item'
-			? 'splitErrorItems(result, item, out, errors);'
-			: 'for (const r of result) all.push(r);';
-	const helper = pairing === 'item' ? 'splitErrorItems' : 'splitErrorItemsByPosition';
+	const errorOutput = c.settings?.onError === 'continueErrorOutput';
+	const w = new Writer();
+	w.depth = 2;
+	const helpers = emitContinueLoop(w, {
+		node: 'Node',
+		out: 'out',
+		errors: errorOutput ? 'errors' : null,
+		input: 'items',
+		item: 'item',
+		index: null,
+		call: () =>
+			`{ name: 'Node', type: ${JSON.stringify(type)}, typeVersion: ${c.typeVersion}, parameters: {}, items: [item]${credentialType ? ", credential: 'c'" : ''} }`,
+		retry: errorRetryOf(c.settings ?? {}),
+		byPosition: pairing === 'position',
+		trace: false,
+	});
 	return `import { webhook, workflow } from '@n8n/workflow-lang';
 
 type Json = any;
@@ -247,42 +392,36 @@ export default workflow({
 	${credentialType ? `credentials: { c: { type: ${JSON.stringify(credentialType)} } },` : ''}
 	async run(ctx) {
 		const items: Json[] = ${JSON.stringify(c.items ?? [{}])};
-		let out: Json[] = [];
-		let errors: Json[] = [];
-		try {
-			const all: Json[] = [];
-			for (const item of items) {
-				const result: Json[] = await ctx.node({
-					name: 'Node',
-					type: ${JSON.stringify(type)},
-					typeVersion: ${c.typeVersion},
-					parameters: {},
-					items: [item],
-					${credentialType ? "credential: 'c'," : ''}
-				});
-				${split}
-			}
-			${errorOutput && pairing === 'position' ? 'splitErrorItemsByPosition(all, items, out, errors);' : ''}
-		} catch (error) {
-			out = [...items];
-			errors = [];
-		}
+${w.toString()}
 		return ${errorOutput ? '[out, errors]' : '[out]'};
 	},
 });
 
-${errorOutput ? helperSources([helper]).join('\n\n') : ''}
+${helperSources(helpers).join('\n\n')}
 `;
+}
+
+export function errorPairingOfV1(recording: Recording): ErrorPairing | undefined {
+	const [main, errors] = recording.outputs ?? [];
+	const paired = recording.nodePaired ?? [];
+	if (main === undefined || main.length > 0 || errors === undefined || errors.length === 0)
+		return undefined;
+	if (paired.length !== errors.length) return undefined;
+	if (paired.every((p) => p)) return 'item';
+	return paired.some((p) => p) ? undefined : 'position';
 }
 
 export async function differenceFromV1(
 	c: EquivalenceCase,
 	sources: NodeSources,
 	registry: Registry,
-	options: { cache?: boolean; pairings?: Set<ErrorPairing> } = {},
+	options: { cache?: boolean; pairing?: ErrorPairing; pairings?: Set<ErrorPairing> } = {},
 ): Promise<string | undefined> {
-	const mode: ErrorMode = c.onError ?? 'stopWorkflow';
+	const mode: ErrorMode =
+		c.settings?.onError ?? (c.settings?.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
 	const continues = mode !== 'stopWorkflow';
+	if (c.settings !== undefined && !continues)
+		return 'node settings have a check only under a "continue" setting';
 	const compiled = compileForCheck(
 		sources,
 		{ type: c.type, version: c.typeVersion, parameters: c.parameters },
@@ -308,36 +447,44 @@ export default workflow({
 	},
 });
 `;
-	const record = async (testCase: EquivalenceCase) =>
+	const recordPlain = async (testCase: EquivalenceCase) =>
 		await within(8000, options.cache === true ? recordV1Cached(testCase) : recordV1(testCase));
+	const record = async (testCase: EquivalenceCase) =>
+		READS_CLOCK.test(compiled.source)
+			? await atFixedClock(
+					async () => await recordPlain({ ...testCase, name: `${testCase.name} at ${V1_NOW}` }),
+				)
+			: await recordPlain(testCase);
 	const minted =
 		compiled.mints.length > 0 ? await recordWithMints(c, compiled.mints, record) : undefined;
 	if (typeof minted === 'string') return minted;
 	const v1 = minted?.v1 ?? (await record(c));
-	const engine = continues ? outputsOfV1Engine(v1.outputs ?? [], mode, c.items ?? [{}]) : undefined;
-	if (typeof engine === 'string' && v1.error === undefined) return engine;
-	const pairing = typeof engine === 'object' ? engine.pairing : undefined;
 	const source = continues
-		? continueWorkflow(
-				compiled.type,
-				c,
-				credentialType,
-				mode === 'continueErrorOutput',
-				pairing ?? 'item',
-			)
+		? continueWorkflow(compiled.type, c, credentialType, options.pairing ?? 'item')
 		: plainSource;
-	const responses = minted
+	const given = minted
 		? minted.testCase.responses.filter((_response, k) => !minted.exchanges.has(k))
 		: c.responses;
+	const responses = continues
+		? Array.from({ length: MAX_ANSWERS }, (_, k) => given[Math.min(k, given.length - 1)])
+		: given;
+	const flags = flagValues(compiled.flags, credentialData(c, registry));
+	if (flags === undefined)
+		return 'a condition on the credential has no value for the test credential';
 	const fixture = {
 		trigger: { body: {}, headers: {}, query: {} },
-		now: 0,
+		now: V1_NOW,
 		seed: 1,
 		effects: { Node: responses.map((r) => ({ status: 200, headers: {}, ...r })) },
+		...(compiled.flags.length > 0 ? { credentialFlags: { c: flags } } : {}),
 	};
-	const out = await runReference(source, fixture, {
-		extraNodes: { [compiled.file]: compiled.source },
-	});
+	const runWith = async (seed: number) =>
+		await runReference(
+			source,
+			{ ...fixture, seed },
+			{ extraNodes: { [compiled.file]: compiled.source } },
+		);
+	const out = await runWith(fixture.seed);
 
 	const data: Record<string, unknown> = withDerivedValues(credentialType ?? '', {
 		...(registry.get(credentialType ?? '')?.defaults ?? {}),
@@ -363,7 +510,9 @@ export default workflow({
 		data.n8nMinted = minted.tokens;
 	}
 	const inject = credentialType ? deriveInject(registry, credentialType, data).inject : undefined;
-	const requests = out.effects.map((effect) => {
+	const requestsOf = (run: typeof out) =>
+		run.effects.filter((effect) => effect.kind !== 'wait').map(requestOf);
+	const requestOf = (effect: (typeof out.effects)[number]) => {
 		const args = isRecord(effect.args) ? effect.args : {};
 		const { qsFormat: _, ...request } = normalizeRequest(
 			applyCredential(
@@ -391,9 +540,10 @@ export default workflow({
 			};
 		}
 		return request;
-	});
+	};
+	const others = compiled.randoms.length > 0 ? await Promise.all(OTHER_SEEDS.map(runWith)) : [];
 	const sent = minted ? v1.requests.filter((_request, k) => !minted.exchanges.has(k)) : v1.requests;
-	const expected = sent.map(({ qsFormat: _, ...r }) => {
+	const sentPlain = sent.map(({ qsFormat: _, ...r }) => {
 		const form = isRecord(r.body) ? r.body.$form : undefined;
 		if (!isRecord(form)) return r;
 		const text: Record<string, string> = {};
@@ -404,6 +554,14 @@ export default workflow({
 		const { 'content-type': _type, ...headers } = r.headers;
 		return { ...r, headers, body: { $form: text } };
 	});
+	const requestPair = withoutRandomValues(
+		requestsOf(out),
+		sentPlain,
+		others.map(requestsOf),
+		compiled.randoms,
+	);
+	const requests = Array.isArray(requestPair.mine) ? requestPair.mine : [];
+	const expected = Array.isArray(requestPair.theirs) ? requestPair.theirs : [];
 	if (JSON.stringify(requests) !== JSON.stringify(expected)) {
 		if (requests.length !== expected.length) {
 			const cause = v1.error === undefined ? '' : `; v1 fails: ${v1.error.slice(0, 90)}`;
@@ -422,15 +580,19 @@ export default workflow({
 		return 'the requests differ';
 	}
 	if (continues) {
-		if (v1.error !== undefined) return `v1 fails outside the node: ${v1.error.slice(0, 90)}`;
+		if (v1.error !== undefined) return `the v1 run fails: ${v1.error.slice(0, 90)}`;
 		if (out.status !== 'ok')
 			return `the compiled node fails: ${JSON.stringify(out.result).slice(0, 120)}`;
-		if (typeof engine !== 'object') return 'v1 gives no outputs';
+		const theirs = v1.outputs ?? [];
+		if (theirs.length > (mode === 'continueErrorOutput' ? 2 : 1))
+			return 'the v1 node has more than one output';
 		const mine: unknown[] = Array.isArray(out.result) ? out.result : [];
-		for (const [k, expected] of engine.outputs.entries()) {
+		for (let k = 0; k < mine.length; k++) {
+			const expected = theirs[k] ?? [];
 			if (JSON.stringify(mine[k]) !== JSON.stringify(expected))
 				return `output ${k} differs: ${JSON.stringify(mine[k]).slice(0, 70)} / ${JSON.stringify(expected).slice(0, 70)}`;
 		}
+		const pairing = errorPairingOfV1(v1);
 		if (pairing !== undefined) options.pairings?.add(pairing);
 		return undefined;
 	}
@@ -441,7 +603,13 @@ export default workflow({
 	}
 	if (out.status !== 'ok')
 		return `the compiled node fails: ${JSON.stringify(out.result).slice(0, 120)}`;
-	return JSON.stringify(out.result) === JSON.stringify(v1.output)
+	const results = withoutRandomValues(
+		out.result,
+		v1.output,
+		others.map((other) => other.result),
+		compiled.randoms,
+	);
+	return JSON.stringify(results.mine) === JSON.stringify(results.theirs)
 		? undefined
 		: 'the output differs';
 }

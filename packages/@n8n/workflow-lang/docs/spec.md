@@ -355,6 +355,16 @@ to its `SUSPEND`s. `credential` is the name of a credential slot; the runtime
 applies the credential to the request (section 7). A library module can
 import only from `@n8n/workflow-lang`, so each module holds its own helpers.
 
+The node context has `ctx.http`, `ctx.service`, `ctx.staticData`,
+`ctx.random()` and `ctx.wait({ duration })`. Each other ctx call is error
+`WL012`. `ctx.random()` is the `RANDOM` instruction, as in a workflow.
+`await ctx.wait({ duration })` is a pause in milliseconds inside the step of
+the caller: a `SUSPEND` of kind `wait` (3) with the step index of the caller.
+The runtime sets a timer on the shard clock and suspends the execution, so
+no thread waits. The pause has no step of its own, no name and no result. In
+the reference runner it adds `duration` to the fixture clock, records a
+`wait` effect under the step of the caller and uses no result of `effects`.
+
 * Linking. `src/generated/sources.generated.ts` holds the module sources and
   an index from node type to module. The compiler and the reference runner
   load only the modules whose type the workflow source names in a string
@@ -1546,7 +1556,10 @@ await ctx.service({ name, service: 'dataTable', op: 'getManyRowsAndCount', args:
     `updateOauthTokenData` (`credentialId`, `oauthTokenData`) saves the token
     data that a v1 node in the fallback host refreshed. `refreshOAuth2`
     (`credentialId`) refreshes the token with n8n-core's OAuth2 code and saves
-    it. Both send the new credential document to `wfrt` before they answer.
+    it. `renew` (`credentialId`: the slot name) comes from `wfrt` itself, for a
+    request whose credential value expired (`docs/credentials-plan.md`,
+    "Renewal"). `renew` and `refreshOAuth2` send only the new credential
+    values (`PUT /_admin/workflows/<id>/credentials`) before they answer.
     n8n answers only for a credential that the workflow of the execution
     uses; else the answer is `ok: false` with
     `The workflow does not use this credential`. These calls need the service

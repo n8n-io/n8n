@@ -14,6 +14,7 @@ const http = @import("http.zig");
 const egress = @import("egress.zig");
 const creds = @import("creds.zig");
 const admin = @import("admin.zig");
+const renew = @import("renew.zig");
 const triggers = @import("triggers.zig");
 const binary_store = @import("binary_store.zig");
 const fbf = @import("fallback_frames.zig");
@@ -106,6 +107,10 @@ pub const Options = struct {
     max_service_calls: u32 = 256,
     service_call_kb: u32 = 1024,
     service_timeout_ms: i64 = 300_000,
+    /// Requests with a renewable credential that can be in flight with the
+    /// renewal protection, and the room for the args of each (`renew.zig`).
+    max_renewals: u32 = 256,
+    renewal_kb: u32 = 64,
     /// `--step-events-sample`: step events of unwatched executions for 1 in N
     /// executions (0: none, spec 9.2).
     step_event_sample: u32 = 0,
@@ -515,6 +520,8 @@ pub const Runner = struct {
     wf_creds: []WfCreds = &.{},
     wf_pool: ?creds.Pool = null,
     global_pool: ?creds.Pool = null,
+    /// Requests that can get a credential renewal (with the admin API).
+    renewals: ?renew.Table = null,
     /// Service calls that wait for the admin client's answer (spec 9.9).
     svc: ?admin.ServiceCalls = null,
 
@@ -682,6 +689,7 @@ pub const Runner = struct {
             r.wf_pool = try creds.Pool.init(gpa, opts.max_modules + 1, workflow_creds_bytes);
             r.global_pool = try creds.Pool.init(gpa, 2, global_creds_bytes);
             r.svc = try admin.ServiceCalls.init(gpa, opts.max_service_calls, @as(usize, opts.service_call_kb) << 10);
+            r.renewals = try renew.Table.init(gpa, opts.max_renewals, @as(usize, opts.renewal_kb) << 10);
         }
         r.last_sync_ms = sys.nowMs();
         try r.recoverAndConfigure(existing);
@@ -777,6 +785,7 @@ pub const Runner = struct {
         r.queue.deinit();
         if (r.ob) |*ob| ob.deinit();
         if (r.svc) |*t| t.deinit();
+        if (r.renewals) |*t| t.deinit();
         r.egress.deinit();
         if (r.ring) |ring| ring.deinit(r.ring_fba.allocator());
         r.poller.deinit();
@@ -795,7 +804,7 @@ pub const Runner = struct {
             var timeout: i32 = 50;
             if (has_ready or r.events.items.len > 0 or r.sh.wakes.items.len > 0 or r.nlost > 0 or r.egress.hasWork()) timeout = 0;
             // The stream has durable lines that one pass did not send.
-            if (r.stream_more) timeout = 0;
+            if (r.stream_more or r.renewalsPending()) timeout = 0;
             if (next_timer) |t| timeout = @min(timeout, @as(i32, @intCast(std.math.clamp(t - sys.nowMs(), 0, 50))));
             if (r.sh.unsynced) timeout = @min(timeout, @as(i32, @intCast(r.opts.batched_sync_ms)));
             // Outbound requests that wait for an origin's rate or Retry-After.
@@ -811,6 +820,7 @@ pub const Runner = struct {
             r.drainEgressLost();
             r.serviceFallback(now);
             r.expireServiceCalls(now);
+            r.resumeRenewed(now);
             const timer_due = if (next_timer) |t| t <= now else false;
             // A full outbox refuses new work: the shard skips due schedules
             // and the loop refuses webhooks and manual runs (spec 9.2).
@@ -1431,7 +1441,128 @@ pub const Runner = struct {
 
     fn startEgress(r: *Runner, a: core.Action) void {
         _ = r.stats.egress.fetchAdd(1, .monotonic);
-        r.egress.start(a.exec_id, a.seq, a.payload, if (a.idempotent) &a.key else null, r.credsFor(a.module), a.attempt, r.workflowKey(a.module), sys.nowMs());
+        const store = r.credsFor(a.module);
+        const now = sys.nowMs();
+        // A document that n8n can renew: keep the request for a renewal. It
+        // waits when its value is about to expire (`guardEgress`).
+        if (store) |s| if (s.renewable and r.guardEgress(a, s, now)) return;
+        r.egress.start(a.exec_id, a.seq, a.payload, if (a.idempotent) &a.key else null, store, a.attempt, r.workflowKey(a.module), now);
+    }
+
+    // ---- credential renewal (renew.zig) ---------------------------------------
+
+    /// Keep a request whose credential slot n8n can renew. True when the
+    /// request waits for a renewal first: its value expires within the
+    /// margin. False: the caller starts the request now.
+    fn guardEgress(r: *Runner, a: core.Action, s: *const creds.Store, now: i64) bool {
+        std.debug.assert(s.renewable);
+        const t = if (r.renewals) |*t| t else return false;
+        const raw = http.member(a.payload, "credential") orelse return false;
+        if (raw.len < 3 or raw[0] != '"' or raw[raw.len - 1] != '"') return false;
+        const name = raw[1 .. raw.len - 1];
+        const info = s.renewal(name) orelse return false;
+        const m = r.sh.st.moduleAt(a.module);
+        const multipart = http.member(a.payload, "multipart") orelse "null";
+        const i = t.add(.{
+            .exec_id = a.exec_id,
+            .seq = a.seq,
+            .attempt = a.attempt,
+            .pool_key = r.workflowKey(a.module),
+            .idempotent = a.idempotent,
+            .key = if (a.idempotent) a.key else @splat(0),
+            .single_use = !std.mem.eql(u8, multipart, "null"),
+        }, r.sh.st.modules[a.module].workflowId(), m.str(m.steps[a.step].name), a.payload, name, info) orelse return false;
+        // The one comparison of a request whose value is valid.
+        if (now < s.renew_at_ms) return false;
+        if (now < info.expires_at_ms -| creds.renew_margin_ms) return false;
+        r.askRenewal(t, i);
+        return true;
+    }
+
+    /// Row `i` needs a renewal: send the `credentials.renew` service call,
+    /// unless another request waits already for the same slot.
+    fn askRenewal(r: *Runner, t: *renew.Table, i: u32) void {
+        if (t.want(i) == .follow) return;
+        const req = t.entries[i].req;
+        const calls = if (r.svc) |*c| c else return t.answered(i, false, svc_no_admin);
+        var buf: [256]u8 = @splat(0);
+        const payload = std.fmt.bufPrint(&buf, "{{\"service\":\"credentials\",\"op\":\"renew\",\"args\":{{\"credentialId\":\"{s}\"}}}}", .{t.slot(i)}) catch
+            return t.answered(i, false, svc_big);
+        const deadline = sys.nowMs() + r.opts.service_timeout_ms;
+        const ci = calls.add(req.exec_id, req.seq, req.attempt, t.workflow(i), t.step(i), payload, deadline) catch |e| {
+            return t.answered(i, false, switch (e) {
+                error.Full => svc_full,
+                error.TooLarge => svc_big,
+            });
+        };
+        r.publish(.{ .service = .{ .line = calls.line(ci) } });
+    }
+
+    /// The result of a request that has a row: true when the step must not
+    /// see it, because the request goes again after a renewal.
+    fn renewOnResult(r: *Runner, exec_id: u64, seq: u32, res: egress.Result) bool {
+        const t = if (r.renewals) |*t| t else return false;
+        const i = t.find(exec_id, seq) orelse return false;
+        if (t.entries[i].state != .in_flight) return false;
+        const status: u32 = switch (res) {
+            .ok => |resp| resp.status,
+            .err => 0,
+        };
+        switch (t.onResponse(i, status)) {
+            .deliver => return false,
+            .renew => {
+                r.askRenewal(t, i);
+                return true;
+            },
+            .renew_detached => {
+                r.askRenewal(t, i);
+                return false;
+            },
+        }
+    }
+
+    fn renewalsPending(r: *const Runner) bool {
+        return if (r.renewals) |*t| t.pending > 0 else false;
+    }
+
+    /// The store of a workflow by its id, as `credsFor` gives it.
+    fn credsForId(r: *Runner, id: []const u8) ?*const creds.Store {
+        if (id.len > 0) if (r.findWorkflowCreds(id)) |w| return w.store;
+        return r.egress.cfg.credentials;
+    }
+
+    /// Requests whose renewal has an answer: send them again, or give the
+    /// step the failure, as room in the event list allows.
+    fn resumeRenewed(r: *Runner, now: i64) void {
+        const t = if (r.renewals) |*t| t else return;
+        var guard: usize = 0;
+        while (guard < t.entries.len and r.events.items.len + r.resultReserve() < r.events.capacity) : (guard += 1) {
+            const i = t.nextPending() orelse return;
+            const req = t.entries[i].req;
+            if (t.entries[i].state == .failed) {
+                const msg = r.batch.dupe(t.message(i)) catch @as([]const u8, renew.failed_text); // no room: the general text
+                r.events.appendAssumeCapacity(.{ .kind = .effect_err, .exec_id = req.exec_id, .seq = req.seq, .payload = msg });
+                t.release(i);
+                continue;
+            }
+            t.restart(i);
+            // A request that fails at once gives its row back in `egressDone`.
+            r.egress.start(req.exec_id, req.seq, t.args(i), if (req.idempotent) &t.entries[i].req.key else null, r.credsForId(t.workflow(i)), req.attempt, req.pool_key, now);
+        }
+    }
+
+    /// The answer of n8n to the renewal that row `i` leads. n8n sent the new
+    /// values (`PUT /_admin/workflows/<id>/credentials`) before the answer.
+    fn renewalAnswered(t: *renew.Table, i: u32, answer: admin.Answer) void {
+        switch (answer) {
+            .ok => t.answered(i, true, ""),
+            .err => |raw| {
+                var buf: [512]u8 = @splat(0);
+                var out: creds.Out = .{ .buf = &buf };
+                http.unescape(raw[0..@min(raw.len, buf.len)], &out) catch return t.answered(i, false, "");
+                t.answered(i, false, out.written());
+            },
+        }
     }
 
     /// The egress client's result. Responses arrive while events are read,
@@ -1439,6 +1570,9 @@ pub const Runner = struct {
     /// while actions run go to the carry arena for the next batch.
     fn egressDone(ctx: *anyopaque, exec_id: u64, seq: u32, res: egress.Result) void {
         const r: *Runner = @ptrCast(@alignCast(ctx));
+        // A status that means "the token expired": the request goes again
+        // after a renewal, and the step does not see this result.
+        if (r.renewOnResult(exec_id, seq, res)) return;
         // While events are read, the reserve covers every request in flight,
         // so there is room. While a batch acts, requests that fail at once
         // can outnumber the reserve, and what is added then must leave the
@@ -1693,6 +1827,7 @@ pub const Runner = struct {
                 // it after a missed event stream (spec 9.7).
                 r.adminReply(idx, 200, r.sh.st.statics.get(id) orelse "{}");
             },
+            .put_workflow_credentials => |id| r.putWorkflowCreds(idx, id, req.body),
             .list_workflows => {
                 const t = r.batch.begin();
                 defer t.end();
@@ -1807,6 +1942,29 @@ pub const Runner = struct {
             .answer_service => |text| r.answerService(idx, text, req.body),
             .not_found => r.adminReply(idx, 404, "{\"error\":\"not found\"}"),
         }
+    }
+
+    /// `PUT /_admin/workflows/<id>/credentials`: a credentials-only update.
+    /// The slots of the body replace those of the workflow's document; the
+    /// other slots and the module stay. Requests copy what they need when
+    /// they start, so the old store is free at once.
+    fn putWorkflowCreds(r: *Runner, idx: u32, id: []const u8, body: []const u8) void {
+        const pool = if (r.wf_pool) |*p| p else return r.adminReply(idx, 404, "{\"error\":\"not found\"}");
+        if (id.len > core.max_id) return r.adminReply(idx, 404, "{\"error\":\"unknown workflow\"}");
+        const known = r.findWorkflowCreds(id);
+        if (known == null and r.sh.st.liveWorkflow(id) == null) return r.adminReply(idx, 404, "{\"error\":\"unknown workflow\"}");
+        const base: []const u8 = if (known) |w| (if (w.store) |s| s.text else "{}") else "{}";
+        const store = pool.parseMerged(base, body) catch |e| return r.adminReply(idx, 400, switch (e) {
+            error.TooLarge => "{\"error\":\"the credentials of a workflow are larger than 256 KB\"}",
+            error.PoolFull => "{\"error\":\"too many workflows with credentials\"}",
+            error.CredentialsNotAnObject => "{\"error\":\"credentials must be a JSON object\"}",
+        });
+        store.next = r.egress.cfg.credentials;
+        if (!r.setWorkflowCreds(id, store)) {
+            pool.release(store);
+            return r.adminReply(idx, 503, "{\"error\":\"too many workflows with credentials\"}");
+        }
+        r.adminReply(idx, 200, "{\"ok\":true}");
     }
 
     fn findWorkflowCreds(r: *Runner, id: []const u8) ?*WfCreds {
@@ -2864,6 +3022,12 @@ pub const Runner = struct {
             t.remove(i);
             return r.adminReply(idx, 200, "{\"ok\":true}");
         }
+        // The call of a credential renewal: the requests that wait go again.
+        if (r.renewals) |*rt| if (rt.leaderAt(id.exec_id, id.seq)) |li| {
+            renewalAnswered(rt, li, answer);
+            t.remove(i);
+            return r.adminReply(idx, 200, "{\"ok\":true}");
+        };
         // `handleAdmin` checked that the event list has room.
         std.debug.assert(r.events.items.len < r.events.capacity);
         switch (answer) {
@@ -2893,6 +3057,8 @@ pub const Runner = struct {
             if (call.sub > 0) {
                 // The host step gets the error; it decides what the step does.
                 _ = r.hostServiceResult(call.conn, call.exec_id, call.seq, call.sub, false, "\"" ++ svc_timeout ++ "\"");
+            } else if (r.renewalLeader(call.exec_id, call.seq)) |li| {
+                if (r.renewals) |*rt| rt.answered(li, false, svc_timeout);
             } else {
                 r.events.appendAssumeCapacity(.{ .kind = .effect_err, .exec_id = call.exec_id, .seq = call.seq, .payload = svc_timeout });
             }
@@ -2961,10 +3127,19 @@ pub const Runner = struct {
     /// An execution ended: its calls need no answer.
     fn dropServiceCalls(r: *Runner, exec_id: u64) void {
         const t = if (r.svc) |*t| t else return;
+        if (r.renewals) |*rt| rt.dropExec(exec_id);
         if (t.count == 0) return;
         for (t.calls, 0..) |c, i| {
-            if (c.used and c.exec_id == exec_id) t.remove(i);
+            if (!c.used or c.exec_id != exec_id) continue;
+            // A renewal that other executions wait for keeps its call.
+            if (c.sub == 0 and r.renewalLeader(c.exec_id, c.seq) != null) continue;
+            t.remove(i);
         }
+    }
+
+    /// The row of the effect when its service call is a credential renewal.
+    fn renewalLeader(r: *const Runner, exec_id: u64, seq: u32) ?u32 {
+        return if (r.renewals) |*t| t.leaderAt(exec_id, seq) else null;
     }
 
     /// Room that inbound requests and host frames leave in the event queue
@@ -3153,6 +3328,75 @@ test "inbound requests leave room for the results of outbound requests" {
     for (0..r.resultReserve()) |i| Runner.egressDone(r, i + 1, 0, .{ .err = "http: test" });
     try std.testing.expectEqual(r.events.capacity, r.events.items.len);
     try std.testing.expectEqual(@as(usize, 0), r.nlost);
+}
+
+test "a 401 of a renewable credential asks n8n once, then the request goes again once" {
+    var t: TestRunner = .{ .arena = undefined };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    r.svc = try admin.ServiceCalls.init(t.arena.allocator(), 8, 1024);
+    r.renewals = try renew.Table.init(t.arena.allocator(), 8, 1024);
+    const rt = &r.renewals.?;
+    // No host: the resend fails at once, which shows that it was sent.
+    const args = "{\"url\":\"nowhere\",\"credential\":\"api\"}";
+    const info: renew.Info = .{ .statuses = .{ 401, 0, 0, 0, 0, 0, 0, 0 }, .nstatus = 1 };
+    const key: [32]u8 = @splat(0);
+    const slot = args[std.mem.indexOf(u8, args, "api").?..][0..3];
+    for ([_]u64{ 5, 6 }) |exec| {
+        const req: renew.Request = .{ .exec_id = exec, .seq = 2, .attempt = 0, .pool_key = 0, .idempotent = false, .key = key, .single_use = false };
+        try std.testing.expect(rt.add(req, "wf", "Step", args, slot, info) != null);
+    }
+    const unauthorized: egress.Result = .{ .ok = .{ .status = 401, .header_lines = "", .body = "", .json = false } };
+    Runner.egressDone(r, 5, 2, unauthorized);
+    Runner.egressDone(r, 6, 2, unauthorized);
+    // The steps see nothing, and one call serves both requests.
+    try std.testing.expectEqual(@as(usize, 0), r.events.items.len);
+    try std.testing.expectEqual(@as(u32, 1), r.svc.?.count);
+    const call = r.svc.?.find(5, 2).?;
+    try std.testing.expect(std.mem.indexOf(u8, r.svc.?.line(call), "\"service\":\"credentials\",\"op\":\"renew\",\"args\":{\"credentialId\":\"api\"}") != null);
+    Runner.renewalAnswered(rt, rt.leaderAt(5, 2).?, .{ .ok = "true" });
+    r.resumeRenewed(sys.nowMs());
+    try std.testing.expectEqual(@as(u64, 2), rt.counters.resent);
+    // A second 401 goes to the step: one renewal and one resend only.
+    var tries: u32 = 0;
+    while (rt.count > 0 and tries < 4) : (tries += 1) {
+        if (rt.find(5, 2) != null) Runner.egressDone(r, 5, 2, unauthorized);
+        if (rt.find(6, 2) != null) Runner.egressDone(r, 6, 2, unauthorized);
+    }
+    try std.testing.expectEqual(@as(u32, 0), rt.count);
+    try std.testing.expectEqual(@as(u64, 1), rt.counters.calls);
+    try std.testing.expectEqual(@as(usize, 2), r.events.items.len);
+}
+
+test "a renewal that n8n refuses fails the step with the message of n8n" {
+    var t: TestRunner = .{ .arena = undefined };
+    try t.start();
+    defer t.deinit();
+    const r = t.r;
+    r.svc = try admin.ServiceCalls.init(t.arena.allocator(), 8, 1024);
+    r.renewals = try renew.Table.init(t.arena.allocator(), 8, 1024);
+    const rt = &r.renewals.?;
+    const args = "{\"url\":\"nowhere\",\"credential\":\"api\"}";
+    const info: renew.Info = .{ .statuses = .{ 403, 0, 0, 0, 0, 0, 0, 0 }, .nstatus = 1 };
+    const req: renew.Request = .{ .exec_id = 5, .seq = 2, .attempt = 0, .pool_key = 0, .idempotent = false, .key = @splat(0), .single_use = false };
+    try std.testing.expect(rt.add(req, "wf", "Step", args, args[2..5], info) != null);
+    Runner.egressDone(r, 5, 2, .{ .ok = .{ .status = 403, .header_lines = "", .body = "", .json = false } });
+    try std.testing.expectEqual(@as(usize, 0), r.events.items.len);
+    Runner.renewalAnswered(rt, rt.leaderAt(5, 2).?, .{ .err = "\"Reconnect the \\\"x\\\" credential\"" });
+    r.resumeRenewed(sys.nowMs());
+    try std.testing.expectEqual(@as(usize, 1), r.events.items.len);
+    try std.testing.expect(r.events.items[0].kind == .effect_err);
+    try std.testing.expectEqualStrings("Reconnect the \"x\" credential", r.events.items[0].payload);
+    try std.testing.expectEqual(@as(u32, 0), rt.count);
+    // The execution ended: the call of a renewal that it led is dropped with it.
+    try std.testing.expect(rt.add(req, "wf", "Step", args, args[2..5], info) != null);
+    Runner.egressDone(r, 5, 2, .{ .ok = .{ .status = 403, .header_lines = "", .body = "", .json = false } });
+    r.dropServiceCalls(5);
+    try std.testing.expectEqual(@as(u32, 1), r.svc.?.count);
+    r.expireServiceCalls(std.math.maxInt(i64));
+    try std.testing.expectEqual(@as(u32, 0), r.svc.?.count);
+    try std.testing.expectEqual(@as(u32, 0), rt.count);
 }
 
 test "results raised while a batch acts wait for room, and none is lost" {

@@ -11,9 +11,16 @@
  * conversion of the node fails.
  */
 import type { PublicCredential } from '../credentials/public.ts';
-import { compileNodeInstance, errorItemsByPosition, isVerified } from '../node-compile/convert.ts';
+import {
+	compileNodeInstance,
+	errorItemsByPosition,
+	flagGuard,
+	isVerified,
+	verifiedFlagKeys,
+} from '../node-compile/convert.ts';
 import { CORE_NODE_TYPES } from './core-types.ts';
 import type { Code } from './code.ts';
+import type { Writer } from './code.ts';
 import { literal, raw, str } from './code.ts';
 import type { NodeContext } from './context.ts';
 import { NodeFailure } from './context.ts';
@@ -76,10 +83,19 @@ export function checkRawFailures(c: NodeContext, failures: Failure[], perItem: b
  * 1000) between them. A failure that throws is the retry policy of the step (`retry`).
  */
 export function errorRetry(c: NodeContext): { tries: number; delay: number } | null {
-	if (c.node.retryOnFail !== true) return null;
+	return errorRetryOf(c.node);
+}
+
+/** `errorRetry` for the settings of a node. */
+export function errorRetryOf(node: {
+	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
+}): { tries: number; delay: number } | null {
+	if (node.retryOnFail !== true) return null;
 	return {
-		tries: Math.min(5, Math.max(2, c.node.maxTries || 3)),
-		delay: Math.min(5000, Math.max(0, c.node.waitBetweenTries || 1000)),
+		tries: Math.min(5, Math.max(2, node.maxTries || 3)),
+		delay: Math.min(5000, Math.max(0, node.waitBetweenTries || 1000)),
 	};
 }
 
@@ -362,6 +378,12 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		c.instance?.id,
 		credentials,
 		c.scope.timezone,
+		{
+			// The facts that are constant when the workflow is published (`this.getWorkflow().id`,
+			// `this.getInstanceBaseUrl()`).
+			...(c.scope.workflowId === '' ? {} : { workflow: { id: c.scope.workflowId } }),
+			...(c.instance ? { instanceBaseUrl: c.instance.baseUrl } : {}),
+		},
 		onError,
 	);
 	if ('errors' in compiled) {
@@ -388,6 +410,20 @@ export function tryCompiledNode(c: NodeContext): boolean {
 		}
 		c.addCredentialDerivations(slot, compiled.derivations);
 	}
+	if (compiled.flags.length > 0) {
+		const slot = c.credential();
+		if (slot === undefined || !c.addCredentialDerivations) {
+			c.info(
+				'node-compile',
+				'The node source has conditions on its credential, and the caller does not compute them.',
+			);
+			return false;
+		}
+		// The guard holds the flag values that were checked against the v1 node together: n8n
+		// gives the flags to the module only for those.
+		const allowed = verifiedFlagKeys(c.nodeSources, c.node.type, c.version, compiled);
+		c.addCredentialDerivations(slot, [...compiled.flags, flagGuard(compiled, allowed)]);
+	}
 	if (compiled.mints.length > 0) {
 		const slot = c.credential();
 		if (slot === undefined || !c.addCredentialMints) {
@@ -404,6 +440,7 @@ export function tryCompiledNode(c: NodeContext): boolean {
 	// As for a library node: v1 gives the node all items, and the module runs once for each item.
 	const parameters = c.compiled(dynamic, '', { flattenResourceLocators: false });
 	c.addNode(compiled.file, compiled.source);
+	for (const zone of compiled.zones) c.scope.useZone?.(zone);
 	c.info(
 		'node-compiled',
 		`The node runs as code that is compiled from its source (${compiled.type}).`,
@@ -437,20 +474,61 @@ function emitCompiledContinue(
 	errorOutput: boolean,
 	byPosition: boolean,
 ): void {
-	const { w, input } = c;
-	const out = c.output(0);
-	const errors = errorOutput ? c.output(1, 'Errors') : null;
 	const retry = errorRetry(c);
 	const fields = retry ? call.fields.filter(([k]) => k !== 'retry') : call.fields;
 	const opts = options(c, { ...call, fields }, `[${ITEM}]`);
+	const helpers = emitContinueLoop(c.w, {
+		node: c.node.name,
+		out: c.output(0),
+		errors: errorOutput ? c.output(1, 'Errors') : null,
+		input: c.input,
+		item: ITEM,
+		index: call.usesIndex ? INDEX : null,
+		call: (head) => c.print(opts, head),
+		retry,
+		byPosition,
+		trace: c.traceAll === true,
+	});
+	for (const helper of helpers) c.helper(helper);
+}
+
+/** The names and the settings of the loop that `emitContinueLoop` writes. */
+export interface ContinueLoop {
+	/** The name of the n8n node. */
+	node: string;
+	/** The variable of output 0, and of the error output when the node has one. */
+	out: string;
+	errors: string | null;
+	/** The variable of the input items, of one input item, and of its index when the call reads it. */
+	input: string;
+	item: string;
+	index: string | null;
+	/** The options of the `ctx.node` call for one item, printed after `head`. */
+	call: (head: string) => string;
+	/** "Retry on fail" of the node (`errorRetry`). */
+	retry: { tries: number; delay: number } | null;
+	/** True when the v1 node does not pair its error items with their input items. */
+	byPosition: boolean;
+	/** True when the code traces the error of a node that throws. */
+	trace: boolean;
+}
+
+/**
+ * Writes the loop of a compiled node under a "continue" setting, and returns the names of
+ * the helpers that the loop calls. The converter and the check against v1
+ * (`node-compile/__tests__/verify.ts`) write the same loop.
+ */
+export function emitContinueLoop(w: Writer, loop: ContinueLoop): string[] {
+	const { out, errors, input, item, retry } = loop;
+	const helpers: string[] = [];
 	w.line(`let ${out}: Json[] = [];`);
 	if (errors) w.line(`let ${errors}: Json[] = [];`);
 	if (retry) {
-		c.helper('retryError');
+		helpers.push('retryError');
 		w.open(`for (let tryIndex = 0; tryIndex < ${retry.tries}; tryIndex++) {`);
 		if (retry.delay > 0) {
 			w.line(
-				`if (tryIndex > 0) await ctx.wait({ name: ${str(`${c.node.name} (retry)`)}, duration: ${retry.delay} });`,
+				`if (tryIndex > 0) await ctx.wait({ name: ${str(`${loop.node} (retry)`)}, duration: ${retry.delay} });`,
 			);
 		}
 		w.line(`${out} = [];`);
@@ -459,32 +537,36 @@ function emitCompiledContinue(
 		w.line('let count = 0;');
 	}
 	w.open('try {');
-	const collect = errors !== null && byPosition;
-	if (collect) w.line('const all: Json[] = [];');
-	if (call.usesIndex) {
-		w.open(`for (let ${INDEX} = 0; ${INDEX} < ${input}.length; ${INDEX}++) {`);
-		w.line(`const ${ITEM} = ${input}[${INDEX}];`);
+	if (errors) w.line('const all: Json[] = [];');
+	if (errors && !loop.byPosition) w.line('const sources: Json[] = [];');
+	if (loop.index !== null) {
+		w.open(`for (let ${loop.index} = 0; ${loop.index} < ${input}.length; ${loop.index}++) {`);
+		w.line(`const ${item} = ${input}[${loop.index}];`);
 	} else {
-		w.open(`for (const ${ITEM} of ${input}) {`);
+		w.open(`for (const ${item} of ${input}) {`);
 	}
 	const head = 'const result: Json[] = await ctx.node(';
-	w.block(`${head}${c.print(opts, head)});`);
+	w.block(`${head}${loop.call(head)});`);
 	if (retry) {
 		w.line('if (count === 0 && result.length > 0) again = retryError(result[0]);');
 		w.line('count += result.length;');
 	}
-	if (collect) {
-		w.line('for (const r of result) all.push(r);');
-	} else if (errors) {
-		c.helper('splitErrorItems');
-		w.line(`splitErrorItems(result, ${ITEM}, ${out}, ${errors});`);
+	if (errors) {
+		w.open('for (const r of result) {');
+		w.line('all.push(r);');
+		if (!loop.byPosition) w.line(`sources.push(${item});`);
+		w.close();
 	} else {
 		w.line(`for (const r of result) ${out}.push(r);`);
 	}
 	w.close();
-	if (collect) {
-		c.helper('splitErrorItemsByPosition');
+	// v1 moves the error items after the node ran for all items.
+	if (errors && loop.byPosition) {
+		helpers.push('splitErrorItemsByPosition');
 		w.line(`splitErrorItemsByPosition(all, ${input}, ${out}, ${errors});`);
+	} else if (errors) {
+		helpers.push('splitErrorItems');
+		w.line(`splitErrorItems(all, sources, ${out}, ${errors});`);
 	}
 	w.close('} catch (error) {');
 	w.depth++;
@@ -494,9 +576,9 @@ function emitCompiledContinue(
 	}
 	w.line(`${out} = [...${input}];`);
 	if (errors) w.line(`${errors} = [];`);
-	if (c.traceAll) {
+	if (loop.trace) {
 		w.line(
-			`ctx.trace(${str(c.node.name)}, { $error: { message: error.message, description: error.description ?? '' } });`,
+			`ctx.trace(${str(loop.node)}, { $error: { message: error.message, description: error.description ?? '' } });`,
 		);
 	}
 	if (retry) w.close();
@@ -505,6 +587,7 @@ function emitCompiledContinue(
 		w.line('if (!again) break;');
 		w.close();
 	}
+	return helpers;
 }
 
 /** A node that runs in the fallback host with its v1 parameters. */

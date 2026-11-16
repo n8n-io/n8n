@@ -45,6 +45,17 @@ accepts with no change to that compiler.
 - **One translator.** The output of the node compiler goes through the translator of Code nodes
   (`src/convert/code-native/`, with `nodeCode`), which gives regular expressions, `Set`, `Map`, `for...in`,
   `var` and loose equality their subset forms.
+- **Dates.** `DateTime` of Luxon uses the Luxon subset of the translator, with the workflow time zone as the
+  default zone. A moment call chain that starts at `moment(x)`, `moment.utc(x)` or `moment.tz(x, zone)` and ends
+  in `format`, `unix`, `valueOf`, `toISOString`, `isValid`, `isBefore`, `isAfter` or `isSame` becomes helper
+  calls (`src/node-compile/moment.ts`). The zone and the format must be literals at compile time. The module
+  gives its zones to the workflow option `zones`. The local zone of `moment(x)` is UTC, as for `Date`
+  (spec 4.5): v1 uses the zone of its process. A moment in a variable, and each other method, is a compile
+  error. At run time, a limit error stops a date that the helpers cannot prove equal: a date before 1970 in a
+  time zone, a week date, a day-of-year date, a date with a month name and a time, and a local time less than
+  two days after the first change of a zone offset in more than 400 days. The helpers agree with
+  moment-timezone only where its zone data and the zone data of the runtime agree. The check runs v1 with a
+  fixed clock when the compiled code reads the clock.
 
 Result of the check over n8n-nodes-base (5,315 operations of all versions): 1,060 compile, and 734 of them
 agree with v1 (79 node types). 278 compile and send other requests than v1: the gate keeps them in the host.

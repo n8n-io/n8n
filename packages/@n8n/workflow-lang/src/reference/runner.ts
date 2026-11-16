@@ -1,5 +1,6 @@
 import { findNodeDefinition, getProperty, stringLiteralValue } from '../compiler/analysis.ts';
 import { selectNodeSources } from '../library/node-sources.ts';
+import { CREDENTIAL_FLAG_MISSING, credentialFlagIn } from '../credentials/flags.ts';
 import * as sdk from '../sdk/index.ts';
 import ts from 'typescript';
 import { compileFunction } from 'node:vm';
@@ -25,6 +26,15 @@ export interface Fixture {
 	vars?: Record<string, string>;
 	/** The workflow static data at the start (spec 9.7). The output then has the document at the end. */
 	staticData?: Record<string, unknown>;
+	/** What `ctx.credentialFlag(slot, id)` gives, by slot and flag name. */
+	credentialFlags?: Record<string, Record<string, boolean>>;
+}
+
+/** The value of `ctx.credentialFlag(slot, id)` for a fixture: a declared boolean, or an error. */
+export function credentialFlagOf(fixture: Fixture, slot: unknown, id: unknown): boolean {
+	const value = credentialFlagIn(fixture.credentialFlags, slot, id);
+	if (value === undefined) throw new Error(CREDENTIAL_FLAG_MISSING);
+	return value;
 }
 
 export interface FixtureExecution {
@@ -234,6 +244,16 @@ export async function runReference(
 		});
 	};
 
+	/** The wait of a library node (spec 4.2): it uses no result of the fixture. */
+	const pause = async (step: string, args: unknown): Promise<void> => {
+		const fibre = current;
+		effects.push({ step, kind: 'wait', args: clone(args) });
+		await park<void>(fibre, (resolve) => {
+			if (isRecord(args) && typeof args.duration === 'number') clock += Math.max(0, args.duration);
+			resolve();
+		});
+	};
+
 	const retryOf = (opts: unknown) => {
 		const retry = isRecord(opts) ? opts.retry : undefined;
 		return isRecord(retry) && typeof retry.max === 'number' ? retry.max : 0;
@@ -317,6 +337,9 @@ export async function runReference(
 					http: async (req: unknown) => await effect(step, 'http', req, retryOf(opts)),
 					service: async (req: unknown) => await effect(step, 'service', req, retryOf(opts)),
 					staticData: (type: unknown, node: unknown) => statics.get(type, node),
+					random,
+					wait: async (call: unknown) => await pause(step, call),
+					credentialFlag: (slot: unknown, id: unknown) => credentialFlagOf(fixture, slot, id),
 				};
 				return await lib.run(nodeCtx, opts.parameters, opts.items, opts.credential);
 			}

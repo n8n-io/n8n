@@ -111,8 +111,8 @@ export class CompiledServiceCalls {
 	}
 
 	/**
-	 * Saves a token that a fallback-host node refreshed, or refreshes one for a
-	 * native request. Only a credential of the workflow that runs may change.
+	 * Saves a token that a fallback-host node refreshed, or renews a credential
+	 * for a native request. Only a credential of the workflow that runs may change.
 	 */
 	private async runCredentialCall(
 		event: WfrtServiceEvent,
@@ -142,9 +142,11 @@ export class CompiledServiceCalls {
 				await this.sync.onCredentialChanged(binding.credentialId);
 				return { ok: true, result: true };
 			}
-			if (event.op === 'refreshOAuth2') {
-				await this.credentials.refreshOAuth2(binding, workflowId);
-				await this.sync.onCredentialChanged(binding.credentialId);
+			// `renew` comes from `wfrt` itself, for any renewable slot. `refreshOAuth2` is the
+			// call of older modules. Both use one protocol: n8n renews the credential once for
+			// all requests that wait, and sends only the new credential values.
+			if (event.op === 'renew' || event.op === 'refreshOAuth2') {
+				await this.sync.renewCredential(binding.credentialId, event.workflowId);
 				return { ok: true, result: { ok: true } };
 			}
 			return { ok: false, error: { message: `Invalid credentials call "${event.op}"` } };

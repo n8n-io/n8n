@@ -1145,12 +1145,15 @@ function mergedErrorItem(item: Json, input: Json): Json {
 	splitErrorItems: {
 		uses: ['isErrorItem', 'mergedErrorItem'],
 		source: `/**
- * Moves the error items of one input item to the error output, as v1's handleNodeErrorOutput
- * for a node that pairs its error items with their input items.
+ * Moves the error items of a node run to the error output, as v1's handleNodeErrorOutput for
+ * a node that pairs its error items with their input items: \`sources[k]\` is the input item
+ * of \`result[k]\`. An item without json makes v1 fail there, as a node that throws.
  */
-function splitErrorItems(result: Json[], input: Json, out: Json[], errors: Json[]): void {
-	for (const item of result) {
-		if (isErrorItem(item)) errors.push(mergedErrorItem(item, input));
+function splitErrorItems(result: Json[], sources: Json[], out: Json[], errors: Json[]): void {
+	for (let k = 0; k < result.length; k++) {
+		const item = result[k];
+		if (item === null || item === undefined) throw new Error('An item of the node has no json.');
+		if (isErrorItem(item)) errors.push(mergedErrorItem(item, sources[k]));
 		else out.push(item);
 	}
 }`,
@@ -1166,6 +1169,7 @@ function splitErrorItems(result: Json[], input: Json, out: Json[], errors: Json[
 function splitErrorItemsByPosition(result: Json[], input: Json[], out: Json[], errors: Json[]): void {
 	for (let k = 0; k < result.length; k++) {
 		const item = result[k];
+		if (item === null || item === undefined) throw new Error('An item of the node has no json.');
 		if (!isErrorItem(item)) {
 			out.push(item);
 			continue;
