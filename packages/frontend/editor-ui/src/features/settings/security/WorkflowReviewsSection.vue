@@ -21,6 +21,14 @@ const enabled = ref(props.initialEnabled);
 const showDisableDialog = ref(false);
 const isSaving = ref(false);
 
+function onToggle(value: boolean) {
+	if (!value) {
+		showDisableDialog.value = true;
+		return;
+	}
+	void persist(true);
+}
+
 async function persist(value: boolean): Promise<void> {
 	const previousValue = enabled.value;
 	enabled.value = value;
@@ -52,14 +60,6 @@ async function persist(value: boolean): Promise<void> {
 function confirmDisable() {
 	showDisableDialog.value = false;
 	void persist(false);
-}
-
-function onToggle(value: boolean) {
-	if (!value) {
-		showDisableDialog.value = true;
-		return;
-	}
-	void persist(true);
 }
 </script>
 
