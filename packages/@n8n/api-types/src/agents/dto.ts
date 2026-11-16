@@ -1,6 +1,8 @@
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
+
 import '../openapi-extend';
 import {
 	MAX_AGENT_CHAT_ATTACHMENT_BASE64_LENGTH,
@@ -350,18 +352,53 @@ const agentProjectResponseSchema = z
 	})
 	.nullable();
 
+// OpenAPI metadata only: the runtime guard stays permissive, because stored
+// configs predate the current write schema. The metadata documents the fields
+// every integration carries, so generated clients can work with a channel.
+const agentIntegrationResponseMetadata: ZodOpenAPIMetadata = {
+	type: 'object',
+	description: 'A channel integration. `type` picks the platform.',
+	properties: {
+		type: {
+			type: 'string',
+			description: 'The integration type, for example `slack` or `webhook`.',
+		},
+		credentialId: { type: 'string' },
+		settings: { type: 'object', description: 'Platform-specific integration settings.' },
+		approval: {
+			type: 'object',
+			description: 'Channel actions that need approval before they run.',
+		},
+	},
+	required: ['type', 'credentialId'],
+};
+
 const agentActiveVersionResponseSchema = z
 	.object({
 		versionId: z.string(),
 		integrations: z.array(
-			z.custom<AgentIntegrationConfig>(isPlainObject).openapi({ type: 'object' }),
+			z.custom<AgentIntegrationConfig>(isPlainObject).openapi(agentIntegrationResponseMetadata),
 		),
 	})
 	.nullable();
 
 const agentToolEntrySchema = z
 	.custom<{ code: string; descriptor: { name: string } }>(isPlainObject)
-	.openapi({ type: 'object' });
+	.openapi({
+		type: 'object',
+		description: 'A custom tool: the code it runs and its descriptor.',
+		properties: {
+			code: { type: 'string' },
+			descriptor: {
+				type: 'object',
+				description: 'The tool descriptor. `name` is required; other fields pass through.',
+				properties: { name: { type: 'string' } },
+				required: ['name'],
+				additionalProperties: true,
+			},
+		},
+		required: ['code', 'descriptor'],
+	});
 
 const agentPublicShape = {
 	id: z.string(),
