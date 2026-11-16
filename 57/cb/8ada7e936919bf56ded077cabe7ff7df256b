@@ -1,0 +1,27 @@
+packages/@n8n/node-cli/src/template/templates/declarative/webhook-trigger/template/nodes/ExampleWebhookTrigger/ExampleWebhookTrigger.node.ts
+  s_db33480b8c9c64::t_cbf3022fa4fe06 115
+packages/@n8n/node-cli/src/template/templates/shared/default/AGENTS.md
+  s_db33480b8c9c64::t_cbf3022fa4fe06 69-71
+packages/@n8n/scan-community-package/src/scanner.ts
+  s_db33480b8c9c64::t_cbf3022fa4fe06 346
+packages/@n8n/node-cli/src/configs/eslint.ts
+  s_db33480b8c9c64::t_cbf3022fa4fe06 48
+packages/@n8n/node-cli/src/template/templates/declarative/polling-trigger/template/nodes/ExamplePollingTrigger/ExamplePollingTrigger.node.ts
+  s_db33480b8c9c64::t_22a8bb63d8b0a1 48-49,55-57,59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "57cb8ada7e936919bf56ded077cabe7ff7df256b",
+  "prompts": {},
+  "sessions": {
+    "s_db33480b8c9c64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a809806-fcd2-4a06-904e-42634dd34dd8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}

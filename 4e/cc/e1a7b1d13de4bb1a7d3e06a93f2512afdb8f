@@ -1,0 +1,33 @@
+packages/cli/src/modules/instance-ai/builder-input-telemetry.ts
+  s_982b30de7f872f::t_7ab99c9e9eb382 1-6,8-107,124
+  s_982b30de7f872f::t_6ae894aa2180f5 7,108-123
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.provider.test.ts
+  s_982b30de7f872f::t_0e5328b32c851b 15,95,110,114,632-770
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantConfirmationCard.vue
+  s_982b30de7f872f::t_7e5ff1b2efb85b 92-93,122,368,381,390
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_982b30de7f872f::t_b76f4e5bf05c7c 39,42-45,146,309-310,349-351,403-445
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_982b30de7f872f::t_bebefc0b8f9425 107
+  s_982b30de7f872f::t_41951f4ef8756f 4610-4615
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantConfirmationCard.test.ts
+  s_982b30de7f872f::t_00d93d20d4ba42 479-490
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.builderAskedForInput.test.ts
+  s_982b30de7f872f::t_c7c2251aadf359 61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4ecce1a7b1d13de4bb1a7d3e06a93f2512afdb8f",
+  "prompts": {},
+  "sessions": {
+    "s_982b30de7f872f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e7e89d80-1b42-41bf-b106-5dc571b30f2d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

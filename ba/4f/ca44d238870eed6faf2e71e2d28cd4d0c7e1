@@ -1,0 +1,25 @@
+packages/@n8n/ai-utilities/src/__tests__/utils/n8n-binary-loader.test.ts
+  s_6234b42c2fc645::t_6feff2fbb44606 324
+packages/@n8n/ai-utilities/src/utils/zip-size-limit.ts
+  s_6234b42c2fc645::t_de1cccd259c1ac 61-75,77-80,82-86,88,90-93,95-96,100-102,107-108,110-169,171-174,178,221-222,229-230
+packages/@n8n/ai-utilities/src/__tests__/utils/zip-size-limit.test.ts
+  s_6234b42c2fc645::t_3c4a97a7d9c85c 6,18,75,202-229,232-249
+packages/@n8n/instance-ai/src/parsers/__tests__/docx-parser.test.ts
+  s_6234b42c2fc645::t_6feff2fbb44606 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ba4fca44d238870eed6faf2e71e2d28cd4d0c7e1",
+  "prompts": {},
+  "sessions": {
+    "s_6234b42c2fc645": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36f9d3ea-868c-4826-8957-f00ec6dcf32e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

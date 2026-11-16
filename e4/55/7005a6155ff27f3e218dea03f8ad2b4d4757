@@ -1,0 +1,35 @@
+packages/cli/src/public-api/public-api-result.ts
+  s_1002c4e88ae523::t_fdd75316e48660 1
+  s_1002c4e88ae523::t_c57a566d3a6d0a 4-9
+packages/cli/src/events/maps/relay.event-map.ts
+  s_1002c4e88ae523::t_3e135bf4d4ad52 59
+packages/cli/src/telemetry/index.ts
+  s_1002c4e88ae523::t_4e3a7c3202e9ec 30
+packages/cli/src/public-api/types.ts
+  s_1002c4e88ae523::t_c498f7d4b18aec 28-29
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_1002c4e88ae523::t_1113e8854b76da 1104,1115,1126,1149,1159,1169,1190,1207,1218,1238,1248,1258,1293,1722,1750
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_1002c4e88ae523::t_a9381d364ca792 1999
+  s_1002c4e88ae523::t_24d04376f38d22 2012
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_1002c4e88ae523::t_6a5a3a544dd4b2 369-381
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_1002c4e88ae523::t_9b6b0571502ed1 297,312-313,315-320,322-323,325,327-329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e4557005a6155ff27f3e218dea03f8ad2b4d4757",
+  "prompts": {},
+  "sessions": {
+    "s_1002c4e88ae523": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fc1200c-7bf7-4cbf-886d-8c6a5681056f",
+        "model": "claude-haiku-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
