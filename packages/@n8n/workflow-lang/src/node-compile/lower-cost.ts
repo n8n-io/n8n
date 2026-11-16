@@ -383,6 +383,8 @@ function requestForm(name: string, has: (key: RequestKey) => boolean, flags: Req
 	});
 	if (response.status >= 400) {
 		const failure = new Error('Request failed with status code ' + response.status);
+		failure.response = { status: response.status, data: response.body };
+		failure.statusCode = response.status;
 		throw ${flags.wrapped === 'true' ? '__apiError(failure, undefined)' : 'failure'};
 	}
 	return response.body;

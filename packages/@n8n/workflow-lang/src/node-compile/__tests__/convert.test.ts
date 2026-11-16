@@ -12,6 +12,7 @@ import {
 } from '../../generated/node-descriptions.generated.ts';
 import { runReference } from '../../reference/runner.ts';
 import type { NodeSources } from '../convert.ts';
+import { compileNodeInstance, isVerified } from '../convert.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const nodesBase = join(here, '../../../../../nodes-base');
@@ -26,11 +27,13 @@ const nodeSources: NodeSources = {
 	description: (type, version) =>
 		NODE_DESCRIPTIONS[NODE_DESCRIPTION_VERSIONS[`${type}@${version}`]],
 	aliases: { '@utils/': `${join(nodesBase, 'utils')}/` },
-	verified: { 'n8n-nodes-base.telegram@1.2:message.sendChatAction': ['chatId', 'action'] },
+	verified: {
+		'n8n-nodes-base.telegram@1.2:message.sendChatAction': ['chatId', 'action', '@items=each'],
+	},
 };
 const instance = { baseUrl: 'https://n8n.example', id: 'a'.repeat(64) };
 
-function workflowWith(parameters: Record<string, unknown>) {
+function workflowWith(parameters: Record<string, unknown>, settings: Record<string, unknown> = {}) {
 	return {
 		name: 'Node compiler',
 		nodes: [
@@ -48,6 +51,7 @@ function workflowWith(parameters: Record<string, unknown>) {
 				position: [200, 0],
 				parameters,
 				credentials: { telegramApi: { id: '1', name: 'Telegram' } },
+				...settings,
 			},
 		],
 		connections: { Webhook: { main: [[{ node: 'Telegram', type: 'main', index: 0 }]] } },
@@ -115,6 +119,90 @@ describe('node compiler in the converter', () => {
 		);
 		expect(result.fallbackNodes).toEqual(['Telegram']);
 		expect(result.nodes).toBeUndefined();
+	});
+
+	it('calls the node once with all items, and once for each item only when v1 agrees so', () => {
+		const key = 'n8n-nodes-base.telegram@1.2:message.sendChatAction';
+		const oneCall: NodeSources = { ...nodeSources, verified: { [key]: ['chatId', 'action'] } };
+		const fixed = {
+			resource: 'message',
+			operation: 'sendChatAction',
+			chatId: '42',
+			action: 'typing',
+		};
+		const once = convertWorkflow(workflowWith(fixed), { nodeSources: oneCall, instance });
+		expect(once.fallbackNodes).toEqual([]);
+		expect(once.source).toContain('webhookItems.length > 0 ? await ctx.node(');
+		expect(once.source).toContain('items: webhookItems,');
+
+		const perItem = { ...fixed, chatId: '={{ $json.body.chat }}' };
+		const refused = convertWorkflow(workflowWith(perItem), { nodeSources: oneCall, instance });
+		expect(refused.fallbackNodes).toEqual(['Telegram']);
+		const each = convertWorkflow(workflowWith(perItem), { nodeSources, instance });
+		expect(each.fallbackNodes).toEqual([]);
+		expect(each.source).toContain('items: [$json],');
+	});
+
+	it('compiles a node for its error setting only when v1 agrees under that setting', async () => {
+		const parameters = {
+			resource: 'message',
+			operation: 'sendChatAction',
+			chatId: '={{ $json.body.chat }}',
+			action: 'typing',
+		};
+		const key = 'n8n-nodes-base.telegram@1.2:message.sendChatAction';
+		const workflow = workflowWith(parameters, { onError: 'continueRegularOutput' });
+		expect(convertWorkflow(workflow, { nodeSources, instance }).fallbackNodes).toEqual([
+			'Telegram',
+		]);
+
+		const proven: NodeSources = {
+			...nodeSources,
+			verified: { [key]: ['chatId', 'action', '@onError=continueRegularOutput'] },
+		};
+		const result = convertWorkflow(workflow, { nodeSources: proven, instance });
+		expect(result.fallbackNodes).toEqual([]);
+		expect(compile(result.source, { extraNodes: result.nodes }).diagnostics).toEqual([]);
+		const failing = {
+			...fixture,
+			effects: {
+				Telegram: [{ status: 400, headers: {}, body: { message: 'chat not found' } }],
+			},
+		};
+		const out = await runReference(result.source, failing, { extraNodes: result.nodes });
+		expect(out).toMatchObject({
+			status: 'ok',
+			result: { Telegram: [{ error: 'chat not found' }] },
+		});
+
+		const errorOutput = workflowWith(parameters, { onError: 'continueErrorOutput' });
+		expect(convertWorkflow(errorOutput, { nodeSources: proven, instance }).fallbackNodes).toEqual([
+			'Telegram',
+		]);
+	});
+
+	it('records the error setting of the instance as a condition of the check', () => {
+		const node = {
+			type: 'n8n-nodes-base.telegram',
+			version: 1.2,
+			parameters: { resource: 'message', operation: 'sendChatAction', chatId: '42' },
+		};
+		const stop = compileNodeInstance(nodeSources, node, instance.id);
+		const regular = compileNodeInstance(
+			nodeSources,
+			node,
+			instance.id,
+			{},
+			undefined,
+			undefined,
+			'continueRegularOutput',
+		);
+		if ('errors' in stop || 'errors' in regular) throw new Error('the node does not compile');
+		expect(stop.changed).toEqual(['chatId']);
+		expect(regular.changed).toEqual(['chatId', '@onError=continueRegularOutput']);
+		expect(regular.source).not.toEqual(stop.source);
+		expect(isVerified(nodeSources, node.type, node.version, stop)).toBe(true);
+		expect(isVerified(nodeSources, node.type, node.version, regular)).toBe(false);
 	});
 
 	it('keeps a node that makes binary data in the fallback host for the binary mode `combined`', () => {

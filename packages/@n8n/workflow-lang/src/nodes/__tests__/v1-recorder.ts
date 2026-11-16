@@ -98,6 +98,11 @@ function loadClass(packageDir: string, entry: KnownEntry): any {
 class NodeTypes {
 	private readonly cache = new Map<string, any>();
 
+	/** `extra`: node types that are not in a node package (a test node), by type name. */
+	constructor(extra: Record<string, unknown> = {}) {
+		for (const [type, instance] of Object.entries(extra)) this.cache.set(type, instance);
+	}
+
 	getByName(type: string): any {
 		const found = this.cache.get(type);
 		if (found) return found;
@@ -428,9 +433,166 @@ function recordingDataTables(results: unknown[], recorded: ServiceCallRecord[]) 
 	};
 }
 
+/** The members of n8n's `additionalData` that a node run needs. */
+function additionalDataOf(
+	testCase: EquivalenceCase,
+	helper: unknown,
+	services: ServiceCallRecord[],
+	executionId: string,
+): AnyRecord {
+	const unsupported = async () => {
+		throw new Error('not supported');
+	};
+	const base = 'http://localhost:5678';
+	return {
+		executionId,
+		credentialsHelper: helper,
+		externalSecretsProxy: new (load().core.ExternalSecretsProxy)(),
+		currentNodeExecutionIndex: 0,
+		restApiUrl: `${base}/rest`,
+		instanceBaseUrl: base,
+		formBaseUrl: `${base}/form`,
+		formWaitingBaseUrl: `${base}/form-waiting`,
+		formTestBaseUrl: `${base}/form-test`,
+		webhookBaseUrl: `${base}/webhook`,
+		webhookWaitingBaseUrl: `${base}/webhook-waiting`,
+		webhookTestBaseUrl: `${base}/webhook-test`,
+		mcpBaseUrl: `${base}/mcp`,
+		mcpTestBaseUrl: `${base}/mcp-test`,
+		variables: {},
+		executeWorkflow: unsupported,
+		getRunExecutionData: async () => undefined,
+		getRuntimeCredential: async () => undefined,
+		logAiEvent: () => {},
+		startRunnerTask: unsupported,
+		...(testCase.serviceResults
+			? {
+					'data-table': {
+						dataTableProxyProvider: recordingDataTables(testCase.serviceResults, services),
+					},
+				}
+			: {}),
+	};
+}
+
+const START_NODE = 'Start';
+const ENGINE_NODE = 'Node';
+
+/**
+ * Runs a case with node settings in n8n's engine: `WorkflowExecute` runs a workflow of a
+ * manual trigger with the input items as its pinned output, and the node after it. The
+ * engine makes the error items, the error output, the pass of the input after a failure,
+ * the retries, "always output data" and "execute once". The outputs come from its run data.
+ */
+async function recordInEngine(
+	testCase: EquivalenceCase,
+	nodeTypes: NodeTypes,
+	credentials: AnyRecord,
+	helper: unknown,
+): Promise<Recording> {
+	const { workflow, core } = load();
+	let nodePaired: boolean[] | undefined;
+	const observed = {
+		getByName: (type: string) => nodeTypes.getByName(type),
+		getByNameAndVersion: (type: string, version?: number) => {
+			const nodeType = nodeTypes.getByNameAndVersion(type, version);
+			if (type !== testCase.type || typeof nodeType.execute !== 'function') return nodeType;
+			const watched = Object.create(nodeType);
+			watched.execute = async function (this: unknown, ...args: unknown[]) {
+				const result = await nodeType.execute.apply(this, args);
+				if (Array.isArray(result)) {
+					nodePaired = result
+						.flat()
+						.map((item: AnyRecord | null) => item?.pairedItem !== undefined);
+				}
+				return result;
+			};
+			return watched;
+		},
+		getKnownTypes: () => ({}),
+	};
+	const graph = new workflow.Workflow({
+		id: 'equivalence',
+		name: 'Equivalence',
+		nodes: [
+			{
+				id: 'start',
+				name: START_NODE,
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				id: 'step',
+				name: ENGINE_NODE,
+				type: testCase.type,
+				typeVersion: testCase.typeVersion,
+				position: [200, 0],
+				parameters: structuredClone(testCase.parameters),
+				...(testCase.credential ? { credentials } : {}),
+				...testCase.settings,
+			},
+		],
+		connections: { [START_NODE]: { main: [[{ node: ENGINE_NODE, type: 'main', index: 0 }]] } },
+		nodeTypes: observed,
+		active: false,
+		settings: { executionOrder: 'v1' },
+	});
+	const services: ServiceCallRecord[] = [];
+	const hooks = new core.ExecutionLifecycleHooks('trigger', 'equivalence', {
+		id: 'equivalence',
+		nodes: [],
+		connections: {},
+	});
+	const additionalData = {
+		...additionalDataOf(testCase, helper, services, 'equivalence'),
+		hooks,
+		executionTimeoutTimestamp: Date.now() + 8000,
+	};
+	const runExecutionData = workflow.createRunExecutionData({
+		resultData: { pinData: { [START_NODE]: (testCase.items ?? [{}]).map(inputItem) } },
+		executionData: {
+			nodeExecutionStack: [
+				{ node: graph.getNode(START_NODE), data: { main: [[{ json: {} }]] }, source: null },
+			],
+		},
+	});
+	const recorded: RawRequest[] = [];
+	installFakeHttp(testCase.responses, recorded, testCase.responseBytes === true);
+	const engine = new core.WorkflowExecute(additionalData, 'trigger', runExecutionData);
+	// The check before the start refuses parameter values that are not real ids. The cases
+	// use made-up values, as the cases without settings do. The run itself is the engine's.
+	engine.checkReadyForExecution = () => null;
+	const run = await engine.processRunExecutionData(graph);
+	const result = run.data.resultData;
+	const outputs: unknown[][] = [];
+	const tasks: AnyRecord[] = result.runData[ENGINE_NODE] ?? [];
+	// After a node that throws under a "continue" setting, the engine passes the input on and
+	// keeps the error on the task and on the run. The run stopped only when the task has no data.
+	const stopped = tasks.every((task) => task.data === undefined);
+	const nodeError = tasks.find((task) => task.error !== undefined)?.error;
+	for (const task of tasks) {
+		(task.data?.main ?? []).forEach((list: AnyRecord[] | null, k: number) => {
+			outputs[k] = [...(outputs[k] ?? []), ...(list ?? []).map(outputItem)];
+		});
+	}
+	return {
+		requests: recorded.map(normalizeRequest),
+		...(testCase.serviceResults ? { services } : {}),
+		outputs: workflow.deepCopy(Array.from(outputs, (list) => list ?? [])),
+		...(nodePaired ? { nodePaired } : {}),
+		...(nodeError && !stopped ? { nodeError: String(nodeError.message) } : {}),
+		...(result.error && stopped ? { error: String(result.error.message) } : {}),
+	};
+}
+
 /** Runs one case through the v1 node and records its requests and output. */
-export async function recordV1(testCase: EquivalenceCase): Promise<Recording> {
-	const { workflow, core, engine, compat } = load();
+export async function recordV1(
+	testCase: EquivalenceCase,
+	extraNodes: Record<string, unknown> = {},
+): Promise<Recording> {
+	const { workflow, engine, compat } = load();
 	expressionEngine ??= workflow.Expression.initExpressionEngine({
 		engine: 'vm',
 		poolSize: 1,
@@ -440,7 +602,7 @@ export async function recordV1(testCase: EquivalenceCase): Promise<Recording> {
 	});
 	await expressionEngine;
 
-	const nodeTypes = new NodeTypes();
+	const nodeTypes = new NodeTypes(extraNodes);
 	const credentialTypes = new CredentialTypes();
 	const description = nodeTypes.getByNameAndVersion(
 		testCase.type,
@@ -466,42 +628,15 @@ export async function recordV1(testCase: EquivalenceCase): Promise<Recording> {
 		},
 	};
 	const helper = credentialsHelper(credentialTypes, testCase.credential?.data ?? {});
+	if (testCase.settings) return await recordInEngine(testCase, nodeTypes, credentials, helper);
 	const services: ServiceCallRecord[] = [];
 	const unsupported = async () => {
 		throw new Error('not supported');
 	};
-	const base = 'http://localhost:5678';
 	const executor = new compat.V1StepExecutor({
 		nodeTypes,
-		additionalDataFactory: async ({ executionId }: { executionId: string }) => ({
-			executionId,
-			credentialsHelper: helper,
-			externalSecretsProxy: new core.ExternalSecretsProxy(),
-			currentNodeExecutionIndex: 0,
-			restApiUrl: `${base}/rest`,
-			instanceBaseUrl: base,
-			formBaseUrl: `${base}/form`,
-			formWaitingBaseUrl: `${base}/form-waiting`,
-			formTestBaseUrl: `${base}/form-test`,
-			webhookBaseUrl: `${base}/webhook`,
-			webhookWaitingBaseUrl: `${base}/webhook-waiting`,
-			webhookTestBaseUrl: `${base}/webhook-test`,
-			mcpBaseUrl: `${base}/mcp`,
-			mcpTestBaseUrl: `${base}/mcp-test`,
-			variables: {},
-			executeWorkflow: unsupported,
-			getRunExecutionData: async () => undefined,
-			getRuntimeCredential: async () => undefined,
-			logAiEvent: () => {},
-			startRunnerTask: unsupported,
-			...(testCase.serviceResults
-				? {
-						'data-table': {
-							dataTableProxyProvider: recordingDataTables(testCase.serviceResults, services),
-						},
-					}
-				: {}),
-		}),
+		additionalDataFactory: async ({ executionId }: { executionId: string }) =>
+			additionalDataOf(testCase, helper, services, executionId),
 		loadStepData: async () => ({ graph: { nodes: [graphNode], edges: [] }, outputsByNode: {} }),
 		resolveSubWorkflow: unsupported,
 	});

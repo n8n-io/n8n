@@ -32,6 +32,23 @@ export interface EquivalenceCase {
 	 * up to the failure and the error, not the output. Without it, v1 must succeed.
 	 */
 	expectedError?: string;
+	/**
+	 * The settings of the node in the workflow. With settings, the recorder runs the node in
+	 * n8n's engine (`WorkflowExecute`) after a start node that gives the input items, and the
+	 * recording has `outputs`: the run data of the node.
+	 */
+	settings?: NodeSettings;
+}
+
+/** The settings of a v1 node that n8n's engine reads. */
+export interface NodeSettings {
+	onError?: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
+	continueOnFail?: boolean;
+	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
+	alwaysOutputData?: boolean;
+	executeOnce?: boolean;
 }
 
 /** One `ctx.service` call: the `service`, `op` and `args` of the effect. */
@@ -58,6 +75,18 @@ export interface Recording {
 	services?: ServiceCallRecord[];
 	/** The JSON of the output items of the v1 node. */
 	output?: unknown[];
+	/** The JSON of the items of every output of the node in the run data of n8n's engine (cases with `settings`). */
+	outputs?: unknown[][];
+	/**
+	 * For each item that the node itself gave in its last run (cases with `settings`): true
+	 * when the node paired the item with an input item.
+	 */
+	nodePaired?: boolean[];
+	/**
+	 * The message of the error of a node that threw under a "continue" setting (cases with
+	 * `settings`): the engine keeps it on the run data and passes the input items on.
+	 */
+	nodeError?: string;
 	/** The error message when the v1 node failed. */
 	error?: string;
 }

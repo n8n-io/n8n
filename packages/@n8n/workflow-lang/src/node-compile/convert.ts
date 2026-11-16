@@ -94,6 +94,38 @@ export function flagGuard(
 	};
 }
 
+export type ErrorMode = 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
+
+export const CONTINUE_MODES: ErrorMode[] = ['continueRegularOutput', 'continueErrorOutput'];
+
+export const ERROR_ITEMS_BY_POSITION = '@errorItems=position';
+
+export const CALL_FOR_EACH_ITEM = '@items=each';
+
+export function agreesForEachItem(
+	sources: NodeSources,
+	type: string,
+	version: number,
+	compiled: CompiledNode,
+): boolean {
+	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
+	return names?.includes(CALL_FOR_EACH_ITEM) === true;
+}
+
+export function errorItemsByPosition(
+	sources: NodeSources,
+	type: string,
+	version: number,
+	compiled: CompiledNode,
+): boolean {
+	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
+	return names?.includes(ERROR_ITEMS_BY_POSITION) === true;
+}
+
+export function errorModeCondition(mode: ErrorMode): string[] {
+	return mode === 'stopWorkflow' ? [] : [`@onError=${mode}`];
+}
+
 export function nodeDescriptionOf(value: unknown): NodeDescription | undefined {
 	if (typeof value !== 'object' || value === null) return undefined;
 	const name: unknown = Reflect.get(value, 'name');
@@ -211,6 +243,7 @@ export function compileNodeInstance(
 	credentials: Record<string, PublicCredential> = {},
 	timezone?: string,
 	facts?: PublishFacts,
+	errorMode: ErrorMode = 'stopWorkflow',
 ): CompiledNode | { errors: string[] } {
 	const entry = sources.entry(node.type, node.version);
 	const description = sources.description(node.type, node.version);
@@ -265,6 +298,7 @@ export function compileNodeInstance(
 		timezone,
 		instanceId,
 		facts,
+		continueOnFail: errorMode !== 'stopWorkflow',
 		credentialFields: Object.fromEntries(
 			Object.entries(credentials).map(([type, c]) => [type, c.fields]),
 		),
@@ -290,6 +324,10 @@ export function compileNodeInstance(
 		binary: result.binary === true,
 		storesResponses: result.storesResponses === true,
 
-		changed: [...changed, ...Object.values(credentials).flatMap((c) => c.classes)],
+		changed: [
+			...changed,
+			...Object.values(credentials).flatMap((c) => c.classes),
+			...errorModeCondition(errorMode),
+		],
 	};
 }

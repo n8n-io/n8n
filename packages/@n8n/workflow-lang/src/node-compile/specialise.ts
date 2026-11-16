@@ -138,7 +138,10 @@ const REQUEST_SOURCE = `async function __request(options, wrapped, legacy) {
 		credential,
 	});
 	if (response.status >= 400) {
-		const failure = new Error('Request failed with status code ' + response.status);
+		const failure = __assign(new Error('Request failed with status code ' + response.status), {
+			response: { status: response.status, data: response.body },
+			statusCode: response.status,
+		});
 		throw wrapped ? __apiError(failure, undefined) : failure;
 	}
 	if (bytes) {
@@ -357,8 +360,26 @@ const HELPERS: Record<string, string> = {
 	const failure: any = new Error(message);
 	failure.name = 'NodeApiError';
 	if (code !== '') failure.httpCode = code;
-	if (options !== null && options !== undefined && options.description !== undefined) failure.description = options.description;
+	const description: any = __apiDescription(cause, text, options);
+	if (description && description !== message) failure.description = description;
 	return failure;
+}`,
+	__apiDescription: `function __apiDescription(cause: any, text: string, options: any): any {
+	let description: any = options !== null && options !== undefined ? options.description : undefined;
+	const isObject = (value: any): boolean => value !== null && value !== undefined && typeof value === 'object' && !Array.isArray(value);
+	if (!isObject(cause)) return description;
+	const data: any = isObject(cause.response) ? cause.response.data : undefined;
+	if (isObject(data)) {
+		if (data.message) description = data.message;
+		else if (data.error && data.error.message) description = data.error.message;
+	}
+	if (description || cause.description || cause.reason || cause.cause || cause.error || typeof cause.message !== 'string') return description;
+	try {
+		const parsed: any = JSON.parse(text);
+		return typeof parsed === 'string' ? parsed : undefined;
+	} catch (error) {
+		return text;
+	}
 }`,
 	__formText: `function __formText(value: any): string {
 	return encodeURIComponent(String(value))
@@ -6328,6 +6349,7 @@ class Specialiser {
 		}
 		this.randoms = randomShapes(this.output.map((o) => o.node));
 		for (const always of ['__wrap', '__plain']) this.helpers.add(always);
+		if (this.helpers.has('__apiError')) this.helpers.add('__apiDescription');
 
 		const globals = new Set([
 			'ctx',
