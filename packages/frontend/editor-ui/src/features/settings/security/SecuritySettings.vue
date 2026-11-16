@@ -101,14 +101,14 @@ const { state, isReady, error } = useAsyncState(async () => {
 		sharedPersonalCredentialsCount: settings.sharedPersonalCredentialsCount,
 		managedByEnv: settings.managedByEnv,
 		initialRedactionFloor: (settings.redactionEnforcement?.floor ?? 'off') as RedactionFloor,
-		workflowReviewsEnabled: settings.workflowReviews?.enabled ?? false,
+		workflowReviews: settings.workflowReviews,
 	};
 }, undefined);
 
 const isManagedByEnv = computed(() => state.value?.managedByEnv ?? false);
 
-// The security settings endpoint is gated by an enterprise license and 403s on
-// unlicensed instances, leaving `state` undefined. The data redaction section
+// The security settings endpoint needs the personal space policy or the workflow reviews
+// license and 403s without either, leaving `state` undefined. The data redaction section
 // still needs to render so the licensed-feature upgrade prompt is reachable, so
 // we render once the request settles (resolved or failed) rather than waiting
 // for a defined `state`.
@@ -432,12 +432,13 @@ const sharingCountText = computed(() => {
 		</N8nSettingsSection>
 
 		<N8nSettingsSection
-			v-if="isSecuritySettingsSettled && isWorkflowReviewsAvailable && state !== undefined"
+			v-if="isSecuritySettingsSettled && isWorkflowReviewsAvailable && state?.workflowReviews"
 			:title="i18n.baseText('settings.security.workflowReviews.title')"
 			data-test-id="security-workflow-reviews-section"
 		>
 			<WorkflowReviewsSection
-				:initial-enabled="state.workflowReviewsEnabled"
+				:initial-enabled="state.workflowReviews.enabled"
+				:initial-always-required="state.workflowReviews.alwaysRequired === true"
 				:managed-by-env="isManagedByEnv"
 			/>
 		</N8nSettingsSection>

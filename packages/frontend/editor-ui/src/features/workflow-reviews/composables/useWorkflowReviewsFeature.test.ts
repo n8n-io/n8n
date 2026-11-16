@@ -65,6 +65,25 @@ describe('useWorkflowReviewsFeature', () => {
 	});
 
 	it.each([
+		{ enabled: true, homeProject: undefined, expected: true },
+		{ enabled: false, homeProject: { type: 'team' as const }, expected: false },
+	])(
+		'returns $expected for an always required policy when reviews enabled=$enabled and the home project is $homeProject',
+		({ enabled, homeProject, expected }) => {
+			const settingsStore = useSettingsStore();
+			setGates({ licensed: true, instanceEnabled: enabled });
+			settingsStore.settings = {
+				...settingsStore.settings,
+				workflowReviews: { enabled, alwaysRequired: true },
+			};
+
+			const { isReviewRequiredFor } = useWorkflowReviewsFeature();
+
+			expect(isReviewRequiredFor(homeProject)).toBe(expected);
+		},
+	);
+
+	it.each([
 		{ licensed: false, instanceEnabled: true },
 		{ licensed: true, instanceEnabled: false },
 		{ licensed: true, instanceEnabled: undefined },
