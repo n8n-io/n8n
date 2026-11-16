@@ -228,3 +228,26 @@ describe('planSchemaFile pass-through nodes', () => {
 		assert.match(plan.skip, /passes its input/);
 	});
 });
+
+describe('planSchemaFile evaluation node', () => {
+	it('skips the evaluation node, because it passes dataset rows and metrics through', () => {
+		const withEvaluation = new Map([
+			...index,
+			[
+				'n8n-nodes-base.evaluation',
+				{ dir: 'nodes/Evaluation/Evaluation', noOperationSiblings: [] },
+			],
+		]);
+		const plan = planSchemaFile(
+			group({
+				node_type: 'n8n-nodes-base.evaluation',
+				node_version: '4.8',
+				operation: 'setInputs',
+			}),
+			withEvaluation,
+			opts,
+		);
+
+		assert.match(plan.skip, /passes its input/);
+	});
+});

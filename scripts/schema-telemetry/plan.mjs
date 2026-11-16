@@ -6,8 +6,8 @@
  * `<operation>.<param>-<value>.json`, which the resolvers pick by parameter value.
  */
 
-/** Nodes whose output items are their input items, so no schema can describe them. */
-const PASS_THROUGH_NODES = new Set(['n8n-nodes-base.editImage']);
+/** Nodes whose output items are their input items (or user-named metrics), so no schema can describe them. */
+const PASS_THROUGH_NODES = new Set(['n8n-nodes-base.editImage', 'n8n-nodes-base.evaluation']);
 
 /** "1.2" → "v1.2.0", the on-disk version folder name. */
 function versionDir(version) {
