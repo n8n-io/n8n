@@ -723,6 +723,12 @@ function buildLangSmithUsageMetadata(
 		inputTokenDetails.ephemeral_5m_input_tokens = cacheCreationTokens;
 	}
 
+	const reasoningTokens =
+		firstNumberAttribute(attributes, [
+			'ai.usage.outputTokenDetails.reasoningTokens',
+			'ai.usage.reasoningTokens',
+		]) ?? 0;
+
 	return {
 		input_tokens: totalInputTokens,
 		output_tokens: outputTokens,
@@ -730,7 +736,30 @@ function buildLangSmithUsageMetadata(
 		...(Object.keys(inputTokenDetails).length > 0
 			? { input_token_details: inputTokenDetails }
 			: {}),
+		...(reasoningTokens > 0 ? { output_token_details: { reasoning: reasoningTokens } } : {}),
 	};
+}
+
+/** Same precedence as the LangSmith exporter, so `outputs.text` keeps its current value. */
+const LANGSMITH_COMPLETION_SOURCE_KEYS = [
+	'ai.response.toolCalls',
+	'ai.response.object',
+	'ai.response.choices',
+	'ai.response.text',
+];
+
+/**
+ * LangSmith keeps an attribute only as metadata, which it drops above ~500
+ * characters. Put the reasoning in the completion so `outputs.reasoning` keeps it whole.
+ */
+function addReasoningToCompletion(attributes: Record<string, unknown>): void {
+	const reasoning = attributes['ai.response.reasoning'];
+	if (typeof reasoning !== 'string' || reasoning.length === 0 || GEN_AI_COMPLETION in attributes) {
+		return;
+	}
+
+	const text = readStringAttribute(attributes, LANGSMITH_COMPLETION_SOURCE_KEYS);
+	attributes[GEN_AI_COMPLETION] = JSON.stringify({ ...(text ? { text } : {}), reasoning });
 }
 
 function applyLangSmithUsageAttributes(
@@ -1038,6 +1067,7 @@ export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 	}
 	enrichLangSmithPromptAttribute(attributes);
 	normalizeUsageForLangSmith(attributes);
+	if (isLangSmithLlmSpan(attributes)) addReasoningToCompletion(attributes);
 	renameNativeLlmSpanForLangSmith(span, attributes);
 	renameNativeToolSpanForLangSmith(span, attributes);
 	moveNonLlmUsageAttributes(attributes);
