@@ -267,6 +267,8 @@ export class Tool<
 
 	private legacyActionsValue?: Record<string, string[]>;
 
+	private legacyResumeOnlyValue = false;
+
 	constructor(name: string) {
 		this.name = name;
 	}
@@ -291,6 +293,15 @@ export class Tool<
 			...this.legacyActionsValue,
 			[legacyName]: [...current, ...actions],
 		};
+		return this;
+	}
+
+	/**
+	 * Resolve the former names and former actions only for a suspended call
+	 * that resumes. A new model call under a former name fails as an unknown tool.
+	 */
+	legacyForResumeOnly(): this {
+		this.legacyResumeOnlyValue = true;
 		return this;
 	}
 
@@ -477,6 +488,7 @@ export class Tool<
 			name: this.name,
 			...(this.legacyNamesValue?.length ? { legacyNames: this.legacyNamesValue } : {}),
 			...(this.legacyActionsValue ? { legacyActions: this.legacyActionsValue } : {}),
+			...(this.legacyResumeOnlyValue ? { legacyResumeOnly: true } : {}),
 			description: this.desc,
 			systemInstruction: this.systemInstructionText,
 			suspendSchema: this.suspendSchemaValue,

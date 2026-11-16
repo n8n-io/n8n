@@ -11,6 +11,7 @@ import {
 	type ToolSuspendOptions,
 	type ToolExecutionContext,
 	type ToolContext,
+	type ToolResolveOptions,
 } from '../../types';
 import type { JSONValue } from '../../types/utils/json';
 import { fixSchema } from '../../utils/json-schema';
@@ -243,6 +244,30 @@ export function buildToolMap(tools?: BuiltTool[]): Map<string, BuiltTool> {
 }
 
 /**
+ * Whether `tool`, found for a call to `toolName`, may run that call. A tool
+ * whose former names are for resume only runs a former name only on resume.
+ */
+export function mayResolveLegacyCall(
+	tool: BuiltTool,
+	toolName: string,
+	options: ToolResolveOptions = {},
+): boolean {
+	return tool.name === toolName || !tool.legacyResumeOnly || options.resume === true;
+}
+
+function lookupTool(
+	toolMap: Map<string, BuiltTool>,
+	toolName: string,
+	action: string | undefined,
+	options: ToolResolveOptions,
+): BuiltTool | undefined {
+	const byAction =
+		action === undefined ? undefined : toolMap.get(legacyActionKey(toolName, action));
+	const tool = byAction ?? toolMap.get(toolName);
+	return tool && mayResolveLegacyCall(tool, toolName, options) ? tool : undefined;
+}
+
+/**
  * The tool that runs a call. A call under a former name of a split tool
  * resolves by its `action` input to the tool that now owns that action.
  */
@@ -250,12 +275,10 @@ export function resolveToolForCall(
 	toolMap: Map<string, BuiltTool>,
 	toolName: string,
 	input: unknown,
+	options: ToolResolveOptions = {},
 ): BuiltTool | undefined {
-	const action = callAction(input);
-	const byAction =
-		action === undefined ? undefined : toolMap.get(legacyActionKey(toolName, action));
-	const tool = byAction ?? toolMap.get(toolName);
-	return tool?.dispatch?.resolve(input)?.tool ?? tool;
+	const tool = lookupTool(toolMap, toolName, callAction(input), options);
+	return tool?.dispatch?.resolve(input, options)?.tool ?? tool;
 }
 
 /**
@@ -266,18 +289,17 @@ export function resolveToolCallTarget(
 	toolMap: Map<string, BuiltTool>,
 	toolName: string,
 	input: unknown,
+	options: ToolResolveOptions = {},
 ): { tool: BuiltTool; input: unknown; dispatchedBy?: BuiltTool } | undefined {
 	const action = toolMap.has(toolName) ? undefined : callAction(input);
-	const byAction =
-		action === undefined ? undefined : toolMap.get(legacyActionKey(toolName, action));
-	const tool = byAction ?? toolMap.get(toolName);
+	const tool = lookupTool(toolMap, toolName, action, options);
 	if (!tool) {
 		// A direct call to a tool from the tool catalog, such as one an older conversation loaded.
-		const routed = findDispatcherForCall(toolMap, toolName, input);
-		const target = routed?.dispatcher.dispatch?.resolve(routed.input);
+		const routed = findDispatcherForCall(toolMap, toolName, input, options);
+		const target = routed?.dispatcher.dispatch?.resolve(routed.input, options);
 		return routed && target ? { ...target, dispatchedBy: routed.dispatcher } : undefined;
 	}
-	const dispatched = tool.dispatch?.resolve(input);
+	const dispatched = tool.dispatch?.resolve(input, options);
 	return dispatched ? { ...dispatched, dispatchedBy: tool } : { tool, input };
 }
 
@@ -300,9 +322,10 @@ export function findDispatcherForCall(
 	toolMap: Map<string, BuiltTool>,
 	toolName: string,
 	input: unknown,
+	options: ToolResolveOptions = {},
 ): { dispatcher: BuiltTool; input: Record<string, unknown> } | undefined {
 	for (const tool of new Set(toolMap.values())) {
-		const wrapped = tool.dispatch?.wrap(toolName, input);
+		const wrapped = tool.dispatch?.wrap(toolName, input, options);
 		if (wrapped) return { dispatcher: tool, input: wrapped };
 	}
 	return undefined;

@@ -605,7 +605,8 @@ export class AgentRuntime {
 				buildToolMap(this.context.getCurrentTools(state.persistence)),
 				toolCall.toolName,
 				toolCall.input,
-			) ?? this.toolCatalog?.getTool(toolCall.toolName, toolCall.input);
+				{ resume: true },
+			) ?? this.toolCatalog?.getTool(toolCall.toolName, toolCall.input, { resume: true });
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;

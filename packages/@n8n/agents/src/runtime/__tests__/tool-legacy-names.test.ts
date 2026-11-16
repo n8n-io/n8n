@@ -200,4 +200,66 @@ describe('tool legacy names', () => {
 			expect(resolveToolForCall(both, 'delete_item', {})).toBe(batch);
 		});
 	});
+
+	describe('former names for resume only', () => {
+		const resumeOnly = new Tool('change_items')
+			.description('change items')
+			.input(z.object({ id: z.string() }))
+			.legacyNames('create_item')
+			.legacyActions('items', 'create')
+			.legacyForResumeOnly()
+			.handler(async () => await Promise.resolve({ ok: true }))
+			.build();
+		const calls = [
+			{ toolName: 'create_item', input: { id: '1' } },
+			{ toolName: 'items', input: { action: 'create', id: '1' } },
+		];
+
+		it('marks the built tool', () => {
+			expect(resumeOnly.legacyResumeOnly).toBe(true);
+			expect(makeTool('plain').legacyResumeOnly).toBeUndefined();
+		});
+
+		it('resolves a former name only for a call that resumes', () => {
+			const map = buildToolMap([resumeOnly]);
+			for (const { toolName, input } of calls) {
+				expect(resolveToolForCall(map, toolName, input)).toBeUndefined();
+				expect(resolveToolCallTarget(map, toolName, input)).toBeUndefined();
+				expect(resolveToolForCall(map, toolName, input, { resume: true })).toBe(resumeOnly);
+				expect(resolveToolCallTarget(map, toolName, input, { resume: true })?.tool).toBe(
+					resumeOnly,
+				);
+			}
+		});
+
+		it('always resolves the current name', () => {
+			const map = buildToolMap([resumeOnly]);
+			expect(resolveToolForCall(map, 'change_items', { id: '1' })).toBe(resumeOnly);
+		});
+
+		it('resolves a former name in the tool catalog only for a call that resumes', () => {
+			const catalog = new ToolCatalog([resumeOnly]);
+			const map = buildToolMap(catalog.getControllerTools());
+			for (const { toolName, input } of calls) {
+				expect(catalog.getTool(toolName, input)).toBeUndefined();
+				expect(catalog.getTool(toolName, input, { resume: true })).toBe(resumeOnly);
+				const viaCallTool = { tool: toolName, arguments: input };
+				expect(resolveToolCallTarget(map, 'call_tool', viaCallTool)?.tool.name).toBe('call_tool');
+				expect(resolveToolCallTarget(map, 'call_tool', viaCallTool, { resume: true })?.tool).toBe(
+					resumeOnly,
+				);
+				expect(resolveToolCallTarget(map, toolName, input)).toBeUndefined();
+				expect(resolveToolCallTarget(map, toolName, input, { resume: true })?.tool).toBe(
+					resumeOnly,
+				);
+			}
+		});
+
+		it('does not change former names of other tools', () => {
+			const other = makeTool('new_name', ['old-name']);
+			const map = buildToolMap([resumeOnly, other]);
+			expect(resolveToolForCall(map, 'old-name', {})).toBe(other);
+			expect(new ToolCatalog([resumeOnly, other]).getTool('old-name')).toBe(other);
+		});
+	});
 });

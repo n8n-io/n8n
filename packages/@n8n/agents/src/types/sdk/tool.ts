@@ -155,6 +155,13 @@ export interface BuiltTool {
 	 * tool that now owns its action. Never exposed to the model.
 	 */
 	readonly legacyActions?: Readonly<Record<string, readonly string[]>>;
+	/**
+	 * Resolve `legacyNames` and `legacyActions` only for a suspended call that
+	 * resumes. A new model call under a former name then fails as an unknown
+	 * tool. Use it when the old input passed the old schema before it suspended,
+	 * but a new call in the old shape could be read as a different change.
+	 */
+	readonly legacyResumeOnly?: boolean;
 	readonly description: string;
 	/**
 	 * Behavioural directive paired with the tool, injected into the agent's
@@ -251,12 +258,24 @@ export interface ToolDispatch {
 	 * The tool that handles this call and the input to give it, or `undefined`
 	 * to run the dispatcher itself (for example, to report an unknown tool).
 	 */
-	resolve(input: unknown): { tool: BuiltTool; input: unknown } | undefined;
+	resolve(
+		input: unknown,
+		options?: ToolResolveOptions,
+	): { tool: BuiltTool; input: unknown } | undefined;
 	/**
 	 * The dispatcher input for a model call to `toolName` made directly, or
 	 * `undefined` when this dispatcher does not own that tool.
 	 */
-	wrap(toolName: string, input: unknown): Record<string, unknown> | undefined;
+	wrap(
+		toolName: string,
+		input: unknown,
+		options?: ToolResolveOptions,
+	): Record<string, unknown> | undefined;
+}
+
+export interface ToolResolveOptions {
+	/** The call suspended before and resumes now. Only then do resume-only former names resolve. */
+	resume?: boolean;
 }
 
 /**

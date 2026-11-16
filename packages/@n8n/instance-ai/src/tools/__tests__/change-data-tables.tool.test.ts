@@ -1260,6 +1260,36 @@ describe('change_data_tables tool', () => {
 			expect(context.grantSessionToolApproval).not.toHaveBeenCalled();
 		});
 
+		it('passes a stored project ID to the change', async () => {
+			const context = tableContext();
+			const result = await resumeStoredCall(
+				context,
+				{ name: 'A', projectId: 'proj-stored', columns: [{ name: 'email', type: 'string' }] },
+				true,
+			);
+
+			expect(result).toMatchObject({ success: true });
+			expect(context.dataTableService.create).toHaveBeenCalledWith(
+				'A',
+				[{ name: 'email', type: 'string' }],
+				{ projectId: 'proj-stored' },
+			);
+		});
+
+		it('passes a stored project ID to the table lookup', async () => {
+			const context = tableContext();
+			await resumeStoredCall(context, { dataTableId: 'T', projectId: 'proj-stored', rows }, true);
+
+			expect(context.dataTableService.resolveTableReference).toHaveBeenCalledWith(
+				'T',
+				expect.objectContaining({ projectId: 'proj-stored' }),
+			);
+		});
+
+		it('keeps the former names for resume only', () => {
+			expect(createChangeDataTablesTool(createMockContext()).legacyResumeOnly).toBe(true);
+		});
+
 		it('claims the former write tool names and their actions of the former multi-action tool', () => {
 			const tool = createChangeDataTablesTool(createMockContext());
 

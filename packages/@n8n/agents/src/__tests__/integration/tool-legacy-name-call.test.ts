@@ -127,4 +127,67 @@ describe('tool calls under a former tool name', () => {
 		expect(prompts[1]).toContain('Target workflow');
 		expect(chunksOfType(chunks, 'finish').at(-1)?.finishReason).toBe('stop');
 	});
+
+	describe('a tool whose former names are for resume only', () => {
+		function scriptedModel(toolName: string, args: Record<string, unknown>) {
+			const turns = [makeToolCallTurn('tc-1', toolName, args), makeTextTurn('Done.')];
+			let nextTurn = 0;
+			return new MockLanguageModelV3({
+				provider: 'mock',
+				modelId: 'scripted',
+				doStream: async () => turns[nextTurn++],
+			});
+		}
+
+		function resumeOnlyTool(inputs: unknown[]) {
+			return new Tool('change_items')
+				.description('Change items')
+				.input(z.object({ id: z.string().optional() }))
+				.legacyNames('create_item')
+				.legacyActions('items', 'create')
+				.legacyForResumeOnly()
+				.handler(async (input) => {
+					inputs.push(input);
+					return await Promise.resolve({ ok: true });
+				});
+		}
+
+		it.each([
+			{ name: 'a former name', toolName: 'create_item', args: { id: '1' } },
+			{ name: 'a former split tool action', toolName: 'items', args: { action: 'create' } },
+		])('does not run the tool when the model calls it by $name', async ({ toolName, args }) => {
+			const inputs: unknown[] = [];
+			const agent = new Agent('resume-only-agent')
+				.model(scriptedModel(toolName, args))
+				.instructions('Use the tools.')
+				.tool(resumeOnlyTool(inputs));
+
+			const chunks = await collectStreamChunks((await agent.stream('Go')).stream);
+
+			expect(inputs).toEqual([]);
+			expect(chunksOfType(chunks, 'tool-result').some((chunk) => chunk.isError !== true)).toBe(
+				false,
+			);
+		});
+
+		it.each([
+			{ name: 'directly by a former name', toolName: 'create_item', args: { id: '1' } },
+			{
+				name: 'through call_tool by a former name',
+				toolName: 'call_tool',
+				args: { tool: 'create_item', arguments: { id: '1' } },
+			},
+		])('does not run a tool from the tool catalog called $name', async ({ toolName, args }) => {
+			const inputs: unknown[] = [];
+			const agent = new Agent('resume-only-catalog-agent')
+				.model(scriptedModel(toolName, args))
+				.instructions('Use the tools.')
+				.toolDeferral({ mode: 'tool-catalog' })
+				.deferredTool(resumeOnlyTool(inputs), { group: 'items' });
+
+			await collectStreamChunks((await agent.stream('Go')).stream);
+
+			expect(inputs).toEqual([]);
+		});
+	});
 });
