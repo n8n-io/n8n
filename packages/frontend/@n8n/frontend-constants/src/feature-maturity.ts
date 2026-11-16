@@ -1,8 +1,8 @@
 /**
  * Which features show Preview and Limited enterprise support.
- * Pass an id to `N8nSettingsPageHeader` or `N8nSettingsEnableRow`.
+ * Pass an id to `N8nFeatureMaturityBadges`, `N8nSettingsPageHeader`, or `N8nSettingsEnableRow`.
+ * The entry decides which badges render. Pass `hide-preview` or `hide-enterprise` to hide one.
  * Set `show-badges` on the page title or on the enable row. The badges stay on that part.
- * Other surfaces pass `show-preview` and `show-enterprise` to `N8nFeatureMaturityBadges`.
  *
  * Some entries have no settings title yet: OAuth JWE, token exchange, node policies,
  * and the Microsoft Agent 365 trigger. Pass the id when that title exists.

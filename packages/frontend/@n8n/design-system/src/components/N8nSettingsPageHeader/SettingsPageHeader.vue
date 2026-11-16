@@ -72,7 +72,9 @@ const featureDocsUrl = computed(() =>
 );
 const resolvedDocsUrl = computed(() => props.docsUrl ?? featureDocsUrl.value);
 const featureBadges = computed(() =>
-	resolveFeatureMaturityBadges(props.feature, props.showBadges, enterprisePlan.value),
+	props.showBadges
+		? resolveFeatureMaturityBadges(props.feature, enterprisePlan.value)
+		: { showPreview: false, showEnterprise: false },
 );
 const showFeatureBadges = computed(
 	() => featureBadges.value.showPreview || featureBadges.value.showEnterprise,
@@ -101,12 +103,7 @@ if (import.meta.env.DEV) {
 			<N8nHeading :tag="headingTag" :class="$style.title" step="xl" color="text-dark">
 				{{ title }}
 			</N8nHeading>
-			<N8nFeatureMaturityBadges
-				v-if="showFeatureBadges"
-				:show-preview="featureBadges.showPreview"
-				:show-enterprise="featureBadges.showEnterprise"
-				:test-id="featureBadges.testId"
-			/>
+			<N8nFeatureMaturityBadges v-if="showFeatureBadges" :feature="feature" />
 			<slot name="titleTrailing" />
 		</div>
 		<N8nHeading v-else :tag="headingTag" :class="$style.title" step="xl" color="text-dark">

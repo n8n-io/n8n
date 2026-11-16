@@ -178,7 +178,7 @@ const tooltipPlacement = computed(() => {
 							{{ item.label }}
 						</N8nText>
 					</div>
-					<N8nFeatureMaturityBadges v-if="!compact && item.preview" show-preview />
+					<N8nFeatureMaturityBadges v-if="!compact && item.preview" />
 					<NewBadge v-if="!compact && item.new" :class="$style.newBadge" />
 					<N8nBadge v-if="!compact && item.creditsTag" size="xxsmall" variant="success">
 						{{ item.creditsTag }}

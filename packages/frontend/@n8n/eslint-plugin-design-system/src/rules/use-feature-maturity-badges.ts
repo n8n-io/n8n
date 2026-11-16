@@ -39,7 +39,7 @@ export const UseFeatureMaturityBadgesRule = ESLintUtils.RuleCreator.withoutDocs(
 		},
 		messages: {
 			useFeatureMaturityBadges:
-				'Use N8nFeatureMaturityBadges instead of {{name}}. Pass show-preview and show-enterprise.',
+				'Use N8nFeatureMaturityBadges instead of {{name}}. Pass a feature id. Use hide-preview or hide-enterprise to hide a badge.',
 		},
 		schema: [],
 	},

@@ -53,7 +53,9 @@ const slots = defineSlots<{
 const enabled = defineModel<boolean>({ default: false });
 const enterprisePlan = useEnterprisePlan();
 const featureBadges = computed(() =>
-	resolveFeatureMaturityBadges(props.feature, props.showBadges, enterprisePlan.value),
+	props.showBadges
+		? resolveFeatureMaturityBadges(props.feature, enterprisePlan.value)
+		: { showPreview: false, showEnterprise: false },
 );
 // The title and the description label this switch. A custom action keeps the text plain.
 const switchId = `settings-enable-switch-${useId()}`;
@@ -82,11 +84,7 @@ const renderBadges = computed(
 		:label-for="labelFor"
 	>
 		<template v-if="renderBadges" #titleTrailing>
-			<N8nFeatureMaturityBadges
-				:show-preview="featureBadges.showPreview"
-				:show-enterprise="featureBadges.showEnterprise"
-				:test-id="featureBadges.testId"
-			/>
+			<N8nFeatureMaturityBadges :feature="feature" />
 		</template>
 		<template #action>
 			<slot name="action">

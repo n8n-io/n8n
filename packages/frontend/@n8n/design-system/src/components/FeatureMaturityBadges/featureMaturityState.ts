@@ -32,20 +32,24 @@ export function readFeatureMaturity(id: FeatureMaturityId): FeatureMaturity {
 	return featureMaturity[id];
 }
 
-/** The badges a settings surface should pass to `N8nFeatureMaturityBadges`. */
+/**
+ * The badges a feature entry renders.
+ * `hidePreview` and `hideEnterprise` suppress a badge for one callsite.
+ * An unknown id renders nothing.
+ */
 export function resolveFeatureMaturityBadges(
 	id: FeatureMaturityId | undefined,
-	showBadges: boolean,
 	enterprisePlan: boolean,
+	hidden: { preview?: boolean; enterprise?: boolean } = {},
 ): { showPreview: boolean; showEnterprise: boolean; testId?: string } {
-	if (!showBadges || id === undefined) {
+	if (id === undefined) {
 		return { showPreview: false, showEnterprise: false };
 	}
 
 	const entry = readFeatureMaturity(id);
 	return {
-		showPreview: entry.preview,
-		showEnterprise: entry.limitedEnterpriseSupport && enterprisePlan,
+		showPreview: entry.preview && !hidden.preview,
+		showEnterprise: entry.limitedEnterpriseSupport && enterprisePlan && !hidden.enterprise,
 		testId: featureMaturityTestId(id),
 	};
 }
