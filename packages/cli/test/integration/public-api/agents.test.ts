@@ -625,6 +625,25 @@ describe('GET /agents', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	test('should return 400 for a forged cursor that bypasses the page limit', async () => {
+		const member = await createMemberWithApiKey();
+		// A cursor minted by hand, not by this API: its limit exceeds the cap.
+		const cursor = Buffer.from('{"offset":0,"limit":1000000}').toString('base64');
+
+		const response = await testServer.publicApiAgentFor(member).get('/agents').query({ cursor });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 400 for a forged cursor with a negative offset', async () => {
+		const member = await createMemberWithApiKey();
+		const cursor = Buffer.from('{"offset":-1,"limit":2}').toString('base64');
+
+		const response = await testServer.publicApiAgentFor(member).get('/agents').query({ cursor });
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should narrow the list to one project', async () => {
 		const owner = await createOwnerWithApiKey();
 		const member = await createMemberWithApiKey();
