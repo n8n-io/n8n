@@ -146,10 +146,7 @@ export function useCanvasMapping({
 
 	function getVisiblePinDataByNodeId(id: string) {
 		const rd = renderData.value;
-		if (rd.isExecutionDataDisplayed) {
-			return rd.executionPinDataByNodeId.get(id)?.value;
-		}
-		return rd.pinnedDataByNodeId.get(id)?.value;
+		return rd.pinnedDataByNodeId.get(id)?.value ?? rd.getDisplayedExecutionPinData(id);
 	}
 
 	const mappedNodes = computed<CanvasNode[]>(() => {

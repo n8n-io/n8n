@@ -19,6 +19,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	createWorkflowDocumentId,
 	injectWorkflowDocumentStore,
@@ -26,10 +27,17 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { getUsableCredentials } from '@/features/credentials/credentials.api';
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
 	return { ...actual, injectWorkflowDocumentStore: vi.fn() };
+});
+
+vi.mock('@/features/credentials/credentials.api', async () => {
+	const actual = await vi.importActual('@/features/credentials/credentials.api');
+	return { ...actual, getUsableCredentials: vi.fn().mockResolvedValue([]) };
 });
 
 vi.mock('vue-router', () => ({
@@ -118,6 +126,8 @@ interface RenderOptions {
 	canvasOnly?: boolean;
 	props?: Record<string, unknown>;
 	restrictedNodeTypes?: Record<string, NodeTypeAvailabilityScope>;
+	/** Runs with the test pinia active, before the component mounts. */
+	beforeMount?: () => void;
 }
 
 const renderNodeSettings = (options: RenderOptions = {}) => {
@@ -130,6 +140,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 		canvasOnly = false,
 		props = {},
 		restrictedNodeTypes = {},
+		beforeMount,
 	} = options;
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
@@ -172,6 +183,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 	vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
 		shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))),
 	);
+	beforeMount?.();
 
 	const renderResult = createComponentRenderer(NodeSettings, {
 		global: {
@@ -413,6 +425,92 @@ describe('NodeSettings', () => {
 
 			await findByTestId('tab-params');
 			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
+		});
+
+		describe('node credentials fetch', () => {
+			// Render the slot so the NodeCredentials inside the parameter list mounts.
+			const stubs = {
+				ParameterInputList: { template: '<div><slot /></div>' },
+				NodeCredentials: {
+					props: ['skipCredentialsFetch'],
+					template:
+						'<div data-test-id="node-credentials-stub" :data-skip-fetch="String(skipCredentialsFetch)" />',
+				},
+			};
+
+			it('skips the workflow-scoped fetch in inline mode', async () => {
+				const { findByTestId } = renderNodeSettings({
+					node: agentNode,
+					nodeType: agentNodeType,
+					provide: {
+						[NdvAgentConfigKey as symbol]: { mode: ref('inline') } as UseNdvAgentConfigReturn,
+					},
+					stubs,
+				});
+
+				expect((await findByTestId('node-credentials-stub')).dataset.skipFetch).toBe('true');
+			});
+
+			it('keeps the fetch in referenced mode and for other nodes', async () => {
+				const referenced = renderNodeSettings({
+					node: agentNode,
+					nodeType: agentNodeType,
+					provide,
+					stubs,
+				});
+				expect((await referenced.findByTestId('node-credentials-stub')).dataset.skipFetch).toBe(
+					'false',
+				);
+				referenced.unmount();
+
+				const other = renderNodeSettings({ provide, stubs });
+				expect((await other.findByTestId('node-credentials-stub')).dataset.skipFetch).toBe('false');
+			});
+
+			it.each([
+				{ mode: 'inline', keepsAgentScope: true },
+				{ mode: 'referenced', keepsAgentScope: false },
+			])(
+				'$mode mode: the agent scope is kept after NodeCredentials mounts: $keepsAgentScope',
+				async ({ mode, keepsAgentScope }) => {
+					const agentScope = { projectId: 'project-1', forAgent: true };
+					const { workflowDocumentStore } = renderNodeSettings({
+						node: agentNode,
+						nodeType: agentNodeType,
+						provide: {
+							[NdvAgentConfigKey as symbol]: { mode: ref(mode) } as UseNdvAgentConfigReturn,
+						},
+						stubs: {
+							ParameterInputList: { template: '<div><slot /></div>' },
+							NodeCredentials: false,
+						},
+						beforeMount: () => {
+							// A saved workflow, so NodeCredentials has a workflow scope to fetch.
+							const workflowId = useWorkflowsStore().workflowId;
+							useWorkflowsListStore().workflowsById = {
+								[workflowId]: { id: workflowId },
+							} as unknown as ReturnType<typeof useWorkflowsListStore>['workflowsById'];
+							// The inline agent controls fetch the agent scope before NodeCredentials mounts.
+							void useCredentialsStore().fetchUsableCredentials(agentScope);
+						},
+					});
+
+					await waitFor(() => {
+						expect(useCredentialsStore().hasFetchedUsableCredentials).toBe(true);
+					});
+					expect(useCredentialsStore().hasUsableCredentialsForScope(agentScope)).toBe(
+						keepsAgentScope,
+					);
+					expect(
+						vi
+							.mocked(getUsableCredentials)
+							.mock.calls.some(
+								([, scope]) =>
+									'workflowId' in scope && scope.workflowId === workflowDocumentStore.workflowId,
+							),
+					).toBe(!keepsAgentScope);
+				},
+			);
 		});
 
 		it('renders no agent surfaces for a non-agent node', async () => {

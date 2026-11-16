@@ -39,7 +39,7 @@ yet. Turbo builds them first; the bare pnpm form does not.
 - The no-cross-module rule is currently a convention: the shared tsconfig base
   omits sibling modules from `paths`, which blocks an accidental import but not
   a deliberate one (declaring the dependency makes it typecheck clean). No lint
-  rule enforces it yet, so reviewers do. CAT-3692 tracks the ESLint rule.
+  rule enforces it yet, so reviewers do. CAT-3692 tracks the Oxlint rule that will.
 
 ## Adding UI
 

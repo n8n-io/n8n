@@ -805,6 +805,13 @@ onMounted(async () => {
 						@validate="isDescriptionValid = $event"
 					/>
 				</fieldset>
+				<ProjectSelfHealingSection
+					v-if="
+						settingsStore.moduleSettings['instance-ai']?.workflowSuggestionsEnabled &&
+						projectsStore.currentProject
+					"
+					:project-id="projectsStore.currentProject.id"
+				/>
 			</template>
 
 			<ProjectExternalSecrets :class="$style.externalSecrets" />
@@ -895,14 +902,6 @@ onMounted(async () => {
 							onTextInput();
 						}
 					"
-				/>
-
-				<ProjectSelfHealingSection
-					v-if="
-						settingsStore.moduleSettings['instance-ai']?.workflowSuggestionsEnabled &&
-						projectsStore.currentProject
-					"
-					:project-id="projectsStore.currentProject.id"
 				/>
 
 				<fieldset>

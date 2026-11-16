@@ -118,6 +118,7 @@ describe('Engine', () => {
 			sentry: { backendDsn: '' },
 			cache: { backend: 'memory' },
 			taskRunners: {},
+			codeExecution: { backend: 'task-runners' },
 			outboundProxy: { mode: 'main-only' },
 			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 			generic: { gracefulShutdownTimeout: 30 },

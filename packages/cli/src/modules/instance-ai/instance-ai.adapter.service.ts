@@ -18,10 +18,8 @@ import {
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	ASSISTANT_SKILLS_FLAG,
@@ -205,9 +203,9 @@ import {
 	scopeCredentialProvider,
 	type AgentCredentialProvider,
 } from './eval/scoped-credential-provider';
-import type { EvalCredentialTestTarget } from './eval/thread-credential-allowlist.service';
 import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from './instance-ai-skills.adapter';
+import type { AssistantCredentialTestTarget } from './turn-setup/assistant-turn-overrides';
 import { DataTableRepository, DataTableService } from '@n8n/backend-module-data-table';
 
 import { SkillsGate } from '@/modules/skills';
@@ -425,8 +423,6 @@ export interface InstanceAiFeatureFlags {
 	configEvalsEnabled: boolean;
 	/** Past-conversation recall: tool, prompt section and first-turn hint. */
 	conversationHistoryEnabled: boolean;
-	/** Progressive workflow policy and planning-tool selection. */
-	progressiveBuildingEnabled: boolean;
 	/** Concise reply style. Applies only when the default build mode is selected. */
 	conciseStyleEnabled: boolean;
 	setupPanelEnabled: boolean;
@@ -564,7 +560,9 @@ export class InstanceAiAdapterService {
 			shouldBypassCredentialTest?: (credentialId: string) => boolean;
 			/** Eval-only: the provider stand-in for a credential type's connection test.
 			 *  A getter for the same reason as the bypass predicate. */
-			getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined;
+			getCredentialTestTarget?: (
+				credentialType: string,
+			) => AssistantCredentialTestTarget | undefined;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the agent_builder_build_agent tool. */
 			agentId?: string;
@@ -592,9 +590,10 @@ export class InstanceAiAdapterService {
 			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
 			assistantSkillsEnabled?: boolean;
-			/** Host-resolved model for the run — fallback for utility LLM calls
-			 *  (simulation fixtures, destructiveness classification). */
+			/** Host-resolved main model for the run. */
 			modelId?: ModelConfig;
+			/** Host-resolved utility model. Absent → utility calls use `modelId`. */
+			utilityModelId?: ModelConfig;
 			/** Transport for those utility LLM calls. */
 			modelFetch?: FetchFn;
 			/** Effective data-sharing setting for this run. Absent → the env value. */
@@ -621,6 +620,7 @@ export class InstanceAiAdapterService {
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
 			modelId,
+			utilityModelId,
 			modelFetch,
 			allowSendingParameterValues = this.allowSendingParameterValues,
 		} = options ?? {};
@@ -659,6 +659,7 @@ export class InstanceAiAdapterService {
 			...(onboardingThread ? { onboardingThread: true } : {}),
 			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
+			...(utilityModelId ? { utilityModelId } : {}),
 			modelFetch,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
@@ -842,9 +843,6 @@ export class InstanceAiAdapterService {
 			conversationHistoryEnabled:
 				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
 				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
-			progressiveBuildingEnabled:
-				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
-				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 			conciseStyleEnabled:
 				flags[INSTANCE_AI_CONCISE_STYLE_FLAG] === INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 			setupPanelEnabled: setupPanelVariant === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
@@ -2182,6 +2180,7 @@ export class InstanceAiAdapterService {
 
 				const updated = await workflowService.update(user, updateData, workflowId, {
 					source: 'n8n-ai',
+					restoredVersionSettings: version.settings,
 				});
 
 				await notifyWorkflowUpdated(workflowId);
@@ -3023,7 +3022,7 @@ export class InstanceAiAdapterService {
 		boundProjectId?: string,
 		getCredentialIdAllowlist?: () => string[] | undefined,
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
-		getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined,
+		getCredentialTestTarget?: (credentialType: string) => AssistantCredentialTestTarget | undefined,
 	): InstanceAiCredentialService {
 		const {
 			credentialsService,

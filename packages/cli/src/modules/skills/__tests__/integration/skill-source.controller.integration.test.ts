@@ -342,6 +342,39 @@ describe('SkillSourceController', () => {
 			]);
 		});
 
+		it('reports the skipped files of the imported skills by extension', async () => {
+			const importedFromSource = vi.spyOn(Container.get(SkillsTelemetry), 'importedFromSource');
+			github.push('acme/files', {
+				'tools/SKILL.md': skillMd('tools'),
+				'tools/scripts/run.py': 'print(1)\n',
+				'tools/scripts/Build.PY': 'print(2)\n',
+				'tools/scripts/setup.sh': 'echo 1\n',
+				'tools/assets/logo.png': 'png\n',
+				'tools/LICENSE': 'MIT\n',
+			});
+			const url = 'https://github.com/acme/files';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: keysOf(discovery, ['tools']),
+				reviewedSkillKeys: keysOf(discovery, ['tools']),
+			});
+
+			expect(importedFromSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					imported: 1,
+					skipped_files: 5,
+					skipped_file_extensions: { '.py': 2, '.png': 1, '.sh': 1, none: 1 },
+					skipped_script_files: 3,
+					status: 'success',
+				}),
+				ownerUser.id,
+			);
+			importedFromSource.mockRestore();
+		});
+
 		it('leaves out a skill that the security check blocks, and imports the others', async () => {
 			const importedFromSource = vi.spyOn(Container.get(SkillsTelemetry), 'importedFromSource');
 			const bigFrontmatter = `metadata: ${'x'.repeat(17_000)}\n`;
@@ -544,6 +577,9 @@ describe('SkillSourceController', () => {
 					selected: 1,
 					imported: 0,
 					name_taken: 1,
+					skipped_files: 0,
+					skipped_file_extensions: {},
+					skipped_script_files: 0,
 					status: 'failure',
 					reason: 'name_taken',
 				}),

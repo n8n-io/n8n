@@ -17,6 +17,8 @@ import type { AgentRequirementSource } from '../requirement-source';
 export type PlacedCredentialRequirement = PackageCredentialRequirement & {
 	packageData?: SerializedCredentialData;
 	packageDataIsComplete?: boolean;
+	/** Package description. `null` clears it. Absent when the source did not export descriptions. */
+	packageDescription?: string | null;
 };
 
 export interface CredentialReference {
@@ -92,6 +94,8 @@ export interface CredentialUpdateCandidate extends CredentialMatch {
 	name: string;
 	/** Package expression values. Absent when the package was exported without values. */
 	data?: SerializedCredentialData;
+	/** Package description. `null` clears it. Absent means the package does not decide it. */
+	description?: string | null;
 }
 
 export interface CredentialImportPlan extends CredentialResolution {

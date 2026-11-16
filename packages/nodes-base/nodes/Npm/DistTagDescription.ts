@@ -22,7 +22,7 @@ export const distTagOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/-/package/{{ encodeURIComponent($parameter.packageName) }}/dist-tags',
+						url: '=/-/package/{{ toPathSegment($parameter.packageName) }}/dist-tags',
 					},
 				},
 			},
@@ -34,7 +34,7 @@ export const distTagOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/-/package/{{ encodeURIComponent($parameter.packageName) }}/dist-tags/{{ encodeURIComponent($parameter.distTagName) }}',
+						url: '=/-/package/{{ toPathSegment($parameter.packageName) }}/dist-tags/{{ toPathSegment($parameter.distTagName) }}',
 					},
 					send: {
 						preSend: [

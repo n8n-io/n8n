@@ -672,6 +672,27 @@ describe('useInstanceAiHandoff', () => {
 		expect(mocks.showError).not.toHaveBeenCalled();
 	});
 
+	it('preserves a mounted draft runtime when its target metadata write fails', async () => {
+		mocks.updateThreadMetadata.mockRejectedValueOnce(new Error('Save failed'));
+
+		await expect(
+			provisionSubjectThread(
+				{ type: 'agent', id: 'agent-1', projectId: 'project-1' },
+				{ source: 'agent_builder_page', origin: 'internal' },
+				undefined,
+				'draft-thread',
+			),
+		).rejects.toThrow('Save failed');
+		expect(mocks.syncThread).toHaveBeenCalledWith('draft-thread', 'project-1', {
+			source: 'agent_builder_page',
+			origin: 'internal',
+		});
+		expect(mocks.deleteThread).toHaveBeenCalledWith('draft-thread', {
+			silent: true,
+			preserveRuntime: true,
+		});
+	});
+
 	it('opens a thread with a composer draft without sending it', async () => {
 		const { openThreadWithDraft } = useInstanceAiHandoff();
 
@@ -813,6 +834,31 @@ describe('useInstanceAiHandoff', () => {
 				runtime: 'agents',
 			});
 			expect(consumePendingFirstMessage('thread-1')?.message).toBe('Adjust template 42');
+		});
+
+		it('links a thread from a self-healing result to that result in the launch event', async () => {
+			await provisionLaunchedThread(
+				'project-1',
+				{
+					message: 'Continue this repair',
+					authorship: { kind: 'prefill', prefillType: 'handoff_self_healing_report' },
+				},
+				{
+					source: 'self_healing_result',
+					origin: 'internal',
+					sourceContext: { resultId: 'result-1', outcome: 'needs_you' },
+				},
+			);
+
+			expect(mocks.telemetryTrack).toHaveBeenCalledWith('User launched Instance AI thread', {
+				thread_id: 'thread-1',
+				instance_id: 'instance-1',
+				source: 'self_healing_result',
+				origin: 'internal',
+				result_id: 'result-1',
+				result_kind: 'needs_you',
+				runtime: 'agents',
+			});
 		});
 
 		it('opens a thread that a new tab finds on the Assistant agent', async () => {
