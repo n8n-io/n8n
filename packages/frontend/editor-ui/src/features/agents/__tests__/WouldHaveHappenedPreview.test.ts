@@ -8,14 +8,12 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { mockedStore } from '@/__tests__/utils';
 import WouldHaveHappenedPreview from '../components/testRun/WouldHaveHappenedPreview.vue';
-import WouldHaveHappenedSummary from '../components/testRun/WouldHaveHappenedSummary.vue';
 import type {
 	WouldHaveHappenedPreview as KnownPreview,
 	WouldHaveHappenedPreviewInput as Preview,
 } from '../components/testRun/wouldHaveHappened.types';
 
 const renderPreview = createComponentRenderer(WouldHaveHappenedPreview);
-const renderSummary = createComponentRenderer(WouldHaveHappenedSummary);
 
 function render(preview: Preview) {
 	return renderPreview({ props: { preview }, pinia: createTestingPinia() });
@@ -516,22 +514,5 @@ describe('WouldHaveHappenedPreview', () => {
 		});
 
 		expect(card(container).querySelector('header img')).not.toBeNull();
-	});
-});
-
-describe('WouldHaveHappenedSummary', () => {
-	it.each([
-		[1, '1 action, nothing was sent'],
-		[3, '3 actions, nothing was sent'],
-	])('summarizes %i actions', (count, text) => {
-		const { getByTestId } = renderSummary({ props: { count } });
-
-		expect(getByTestId('would-have-happened-summary')).toHaveTextContent(text);
-	});
-
-	it('renders nothing without actions', () => {
-		const { queryByTestId } = renderSummary({ props: { count: 0 } });
-
-		expect(queryByTestId('would-have-happened-summary')).toBeNull();
 	});
 });
