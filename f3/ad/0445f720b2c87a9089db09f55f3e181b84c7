@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_06b06b12289ec6::t_8860467ce6d6c0 250
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/useAssistantAgentTurnTelemetry.ts
+  s_06b06b12289ec6::t_8860467ce6d6c0 53-54,145-147,151
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_06b06b12289ec6::t_8860467ce6d6c0 293,1659-1663
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_06b06b12289ec6::t_8860467ce6d6c0 2078
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/useAssistantAgentTurnTelemetry.test.ts
+  s_06b06b12289ec6::t_8860467ce6d6c0 53,63,79-87,269,271,285,287,297,299,307-330,333,335,339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f3ad0445f720b2c87a9089db09f55f3e181b84c7",
+  "prompts": {},
+  "sessions": {
+    "s_06b06b12289ec6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc380d60-1b16-4440-830e-87923bc75b40",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
