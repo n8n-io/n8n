@@ -835,6 +835,10 @@ file at start (`wfrt serve --credentials <file>`,
   pool is empty the runtime does not read the socket until a block is free. Over HTTP/2 the
   body is complete in memory before it is stored, so its limit is the smaller of
   `--egress-max-body-mb` and `--binary-max-file-mb` (compiler-plan.md 9).
+  The service call `{ service: "binaryData", op: "metadata", args: { id } }` gives the JSON of
+  the companion file of a stored file (`{ fileName?, mimeType?, fileSize }`, the
+  `getBinaryMetadata` of n8n). A shard with the store reads the file itself, on its io_uring;
+  no call goes to n8n. The node compiler does not emit this call yet.
   A body over `--binary-max-file-mb` fails the step with an error that ends with
   `(limit: binary-max-file)`, and the part of the file is removed. v1 has no such limit, so the
   node can run in the fallback host. n8n does not act on the marker yet: the run fails with

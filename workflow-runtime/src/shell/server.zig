@@ -1833,7 +1833,7 @@ pub const Runner = struct {
             const arena = if (r.in_perform) &r.carry[r.carry_cur] else &r.batch;
             if (arena.dupe(d.payload)) |payload| {
                 const kind: core.EventKind = if (d.ok) .effect_ok else .effect_err;
-                r.events.appendAssumeCapacity(.{ .kind = kind, .exec_id = d.exec_id, .seq = d.seq, .aux = if (d.ok) core.raw_body_flag | d.head_len else 0, .payload = payload });
+                r.events.appendAssumeCapacity(.{ .kind = kind, .exec_id = d.exec_id, .seq = d.seq, .aux = if (d.ok and d.stored) core.raw_body_flag | d.head_len else 0, .payload = payload });
             } else |_| {
                 r.events.appendAssumeCapacity(.{ .kind = .effect_err, .exec_id = d.exec_id, .seq = d.seq, .payload = "http: the response does not fit in the batch memory" });
             }
@@ -3255,7 +3255,28 @@ pub const Runner = struct {
     const svc_timeout = "service: the call timed out (--service-timeout-ms)";
 
     /// Keep the call and send its event; the admin client answers it.
+    /// `{ service: "binaryData", op: "metadata", args: { id } }`: the
+    /// `getBinaryMetadata` of n8n for a file of the file system store. The
+    /// shard reads the companion file itself (`blob_store.readMetadata`): no
+    /// call goes to n8n. True when the call was this one, and it has a
+    /// result or will get one from the store.
+    fn startBinaryMetadata(r: *Runner, a: core.Action) bool {
+        const blobs = r.blobs orelse return false;
+        if (!isJson(http.member(a.payload, "service"), "\"binaryData\"") or !isJson(http.member(a.payload, "op"), "\"metadata\"")) return false;
+        const args = http.member(a.payload, "args") orelse "{}";
+        const id = (if (http.member(args, "id")) |raw| http.plainString(raw) else null) orelse {
+            r.effectError(a.exec_id, a.seq, "service: binaryData.metadata needs args.id, the id of a stored file");
+            return true;
+        };
+        blobs.readMetadata(id, a.exec_id, a.seq, sys.nowMs()) catch |e| r.effectError(a.exec_id, a.seq, switch (e) {
+            error.Full => "service: too many transfers of the binary data store are in flight (--binary-max-transfers); the step can run again (limit)",
+            error.BadId => "service: binaryData.metadata: the id is not an id of the file system store of n8n",
+        });
+        return true;
+    }
+
     fn startService(r: *Runner, a: core.Action) void {
+        if (r.startBinaryMetadata(a)) return;
         const t = if (r.svc) |*t| t else return r.effectError(a.exec_id, a.seq, svc_no_admin);
         const m = r.sh.st.moduleAt(a.module);
         const workflow = r.sh.st.modules[a.module].workflowId();
@@ -4358,4 +4379,29 @@ test "a stored response gives its step a result through the event list" {
     r.drainStored(sys.nowMs());
     try std.testing.expect(blobs.nextDone() == null);
     try std.testing.expectEqual(@as(u64, 6), r.events.items[r.events.items.len - 1].exec_id);
+
+    // `getBinaryMetadata`: the service call `binaryData.metadata` reads the companion
+    // file in the shard. The result is the JSON of that file, not a response.
+    r.events.items.len = before;
+    const h3 = try blobs.reserve("{\"fileName\":\"a.txt\"}");
+    blobs.put(h3, .{ .exec_id = 7, .seq = 1, .workflow = "wf1", .execution = "wfrt-7", .head = "{}", .content_disposition = "", .content_type = "text/plain", .url_path = "/a.txt", .body = "hello", .now_ms = sys.nowMs() });
+    const put = blobs.nextDone() orelse return error.TestExpectedEqual;
+    try std.testing.expect(put.ok and put.stored);
+    var call_buf: [512]u8 = @splat(0);
+    const handle = http.member(put.payload[put.head_len..], "$binary") orelse return error.TestExpectedEqual;
+    const call = try std.fmt.bufPrint(&call_buf, "{{\"name\":\"meta\",\"service\":\"binaryData\",\"op\":\"metadata\",\"args\":{{\"id\":{s}}}}}", .{http.member(handle, "id") orelse return error.TestExpectedEqual});
+    blobs.take(put);
+    r.startService(.{ .kind = .dispatch, .effect_kind = .service, .exec_id = 8, .seq = 4, .module = 0, .step = 0, .attempt = 0, .payload = call });
+    r.drainStored(sys.nowMs());
+    const meta = r.events.items[r.events.items.len - 1];
+    try std.testing.expectEqual(core.EventKind.effect_ok, meta.kind);
+    try std.testing.expectEqual(@as(u64, 8), meta.exec_id);
+    try std.testing.expectEqual(@as(u32, 0), meta.aux);
+    try std.testing.expectEqualStrings("{\"fileName\":\"a.txt\",\"mimeType\":\"text/plain\",\"fileSize\":5}", meta.payload);
+    // An id that is not of the file store is an error of the step, at once.
+    r.startService(.{ .kind = .dispatch, .effect_kind = .service, .exec_id = 9, .seq = 1, .module = 0, .step = 0, .attempt = 0, .payload = "{\"service\":\"binaryData\",\"op\":\"metadata\",\"args\":{\"id\":\"filesystem-v2:../x\"}}" });
+    const bad = r.events.items[r.events.items.len - 1];
+    try std.testing.expectEqual(core.EventKind.effect_err, bad.kind);
+    try std.testing.expect(std.mem.indexOf(u8, bad.payload, "not an id of the file system store") != null);
+    try std.testing.expect(!blobs.busy() and blobs.nextDone() == null);
 }

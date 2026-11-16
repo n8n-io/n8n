@@ -142,6 +142,9 @@ pub const Done = struct {
     exec_id: u64,
     seq: u32,
     ok: bool,
+    /// The result of a stored response: `payload` is the head, then the
+    /// body. False: `payload` is the whole result (`readMetadata`).
+    stored: bool,
     /// The bytes of `payload` before the body of the result.
     head_len: u32,
     payload: []const u8,
@@ -1070,7 +1073,7 @@ pub const Store = struct {
         const ri: u16 = @intCast(s.done_head);
         const r = &s.rows[ri];
         std.debug.assert(r.reported and !r.taken);
-        return .{ .row = ri, .exec_id = r.exec_id, .seq = r.seq, .ok = r.ok, .head_len = r.head_len, .payload = s.resultBuf(ri)[0..r.result_len] };
+        return .{ .row = ri, .exec_id = r.exec_id, .seq = r.seq, .ok = r.ok, .stored = r.job == .put, .head_len = r.head_len, .payload = s.resultBuf(ri)[0..r.result_len] };
     }
 
     /// The shell copied the result `d`: free its row when its operations are done.
@@ -1089,7 +1092,7 @@ pub const Store = struct {
     /// Read the companion file of the stored file `id` (`getBinaryMetadata`
     /// of n8n). The result, from `nextDone`, is its JSON:
     /// `{"fileName","mimeType","fileSize"}`.
-    fn readMetadata(s: *Store, id: []const u8, exec_id: u64, seq: u32, now_ms: i64) error{ Full, BadId }!void {
+    pub fn readMetadata(s: *Store, id: []const u8, exec_id: u64, seq: u32, now_ms: i64) error{ Full, BadId }!void {
         const fid = binary_store.fileId(id) orelse return error.BadId;
         const ri = s.acquire() orelse return error.Full;
         const r = &s.rows[ri];
