@@ -118,20 +118,24 @@ const reviewsApply = computed(
 	() => isWorkflowReviewsEnabled.value && (!isPersonalWorkflow.value || hasOpenReview.value),
 );
 
-const isReviewRequired = computed(() => isReviewRequiredFor(homeProject.value));
+const isApprovalAlwaysRequired = computed(() => isReviewRequiredFor(homeProject.value));
 
-/** Re-applying the live version needs no review, e.g. to retry a failed publication. */
-const savedVersionIsLive = computed(
+/** Whether the editor holds anything beyond the live version. */
+const hasUnpublishedChanges = computed(
 	() =>
-		!!activeVersion.value &&
-		workflowDocumentStore.value.versionId === activeVersion.value.versionId &&
-		!uiStore.hasUnsavedWorkflowChanges,
+		workflowDocumentStore.value.versionId !== activeVersion.value?.versionId ||
+		uiStore.hasUnsavedWorkflowChanges,
 );
 
-const mustSubmitForReview = computed(() => isReviewRequired.value && !savedVersionIsLive.value);
+/** Re-applying the live version needs no review, e.g. to retry a failed publication. */
+const savedVersionIsLive = computed(() => !!activeVersion.value && !hasUnpublishedChanges.value);
+
+const mustSubmitForReview = computed(
+	() => isApprovalAlwaysRequired.value && !savedVersionIsLive.value,
+);
 
 const effectiveReviewRequired = computed(() =>
-	isReviewRequired.value
+	isApprovalAlwaysRequired.value
 		? hasOpenReview.value || mustSubmitForReview.value
 		: hasOpenReview.value || reviewRequiredStore.isReviewRequired(props.id),
 );
@@ -255,9 +259,6 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 	}
 
 	const hasBeenPublished = !!activeVersion.value;
-	const hasChanges =
-		workflowDocumentStore.value.versionId !== activeVersion.value?.versionId ||
-		uiStore.hasUnsavedWorkflowChanges;
 
 	// Not published states
 	if (!hasBeenPublished) {
@@ -273,7 +274,7 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 		return 'published-node-issues';
 	}
 
-	return hasChanges ? 'published-with-changes' : 'published-no-changes';
+	return hasUnpublishedChanges.value ? 'published-with-changes' : 'published-no-changes';
 });
 
 const collaborationReadOnly = computed(() => collaborationStore.shouldBeReadOnly);
@@ -439,7 +440,7 @@ const onPublishButtonClick = async () => {
 		}
 
 		// TODO(LIGO-784): once the designed secondary affordance exists, revisit this gate
-		if (!isReviewRequired.value && !publishChoiceDismissed.value) {
+		if (!isApprovalAlwaysRequired.value && !publishChoiceDismissed.value) {
 			showPublishChoiceDialog.value = true;
 			return;
 		}
@@ -960,7 +961,7 @@ onBeforeUnmount(() => {
 					<template v-if="showWorkflowReviewControls" #footer>
 						<WorkflowReviewRequiredToggle
 							:workflow-id="props.id"
-							:locked-by-instance="isReviewRequired"
+							:locked-by-instance="isApprovalAlwaysRequired"
 						/>
 					</template>
 				</N8nActionDropdown>

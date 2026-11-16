@@ -1544,11 +1544,30 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(openModalSpy).not.toHaveBeenCalled();
 		});
 
+		it('offers Submit for review when the saved version is not the live version', async () => {
+			setWorkflowReviewGates({ alwaysRequired: true });
+			setHomeProjectType('team');
+			setupEnabledPublishButton();
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-0',
+				activeVersion: createMockActiveVersion('version-0'),
+			});
+
+			const { getByTestId, findByRole } = renderComponent();
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			expect(publishButton).toHaveTextContent('Submit for review');
+
+			await userEvent.click(publishButton);
+
+			expect(await findByRole('dialog', { name: 'Submit for review' })).toBeInTheDocument();
+		});
+
 		it('offers Publish to retry a live version whose publication failed', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 			setWorkflowReviewGates({ alwaysRequired: true });
 			setHomeProjectType('team');
 			setupEnabledPublishButton();
+			useReviewRequiredStore().setReviewRequired(defaultWorkflowProps.id, true);
 			useSettingsStore().$patch((state) => {
 				state.settings = { ...state.settings, useWorkflowPublicationService: true };
 			});
@@ -1587,26 +1606,32 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			).toBeInTheDocument();
 		});
 
-		it('offers Publish and no review controls for a personal space workflow', async () => {
-			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
-			setWorkflowReviewGates({ alwaysRequired: true });
-			setHomeProjectType('personal');
-			setupEnabledPublishButton();
+		it.each([
+			{ label: 'always required', alwaysRequired: true },
+			{ label: 'when configured', alwaysRequired: false },
+		])(
+			'offers Publish and no review controls for a personal space workflow ($label)',
+			async ({ alwaysRequired }) => {
+				const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+				setWorkflowReviewGates({ alwaysRequired });
+				setHomeProjectType('personal');
+				setupEnabledPublishButton();
 
-			const { getByTestId, queryByTestId, queryByRole } = renderComponent();
-			const publishButton = getByTestId('workflow-open-publish-modal-button');
-			expect(publishButton).toHaveTextContent('Publish');
+				const { getByTestId, queryByTestId, queryByRole } = renderComponent();
+				const publishButton = getByTestId('workflow-open-publish-modal-button');
+				expect(publishButton).toHaveTextContent('Publish');
 
-			await userEvent.click(getByTestId('version-menu-button'));
-			expect(queryByTestId('workflow-review-required-toggle')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-review-status-pill')).not.toBeInTheDocument();
-			await userEvent.keyboard('{Escape}');
+				await userEvent.click(getByTestId('version-menu-button'));
+				expect(queryByTestId('workflow-review-required-toggle')).not.toBeInTheDocument();
+				expect(queryByTestId('workflow-review-status-pill')).not.toBeInTheDocument();
+				await userEvent.keyboard('{Escape}');
 
-			await userEvent.click(publishButton);
+				await userEvent.click(publishButton);
 
-			expect(queryByRole('dialog', { name: choiceDialogName })).not.toBeInTheDocument();
-			expect(openModalSpy).toHaveBeenCalledWith({ name: WORKFLOW_PUBLISH_MODAL_KEY, data: {} });
-		});
+				expect(queryByRole('dialog', { name: choiceDialogName })).not.toBeInTheDocument();
+				expect(openModalSpy).toHaveBeenCalledWith({ name: WORKFLOW_PUBLISH_MODAL_KEY, data: {} });
+			},
+		);
 
 		it('keeps the review controls for a personal space workflow with an open review', async () => {
 			setWorkflowReviewGates({ alwaysRequired: true });

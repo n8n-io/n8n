@@ -983,14 +983,11 @@ describe('SecuritySettings', () => {
 			expect(queryByTestId('security-workflow-reviews-toggle')).not.toBeInTheDocument();
 		});
 
-		it('should not render workflow reviews section when license is off', async () => {
-			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] = false;
-			checkEnvFeatureFlag.mockReturnValue(true);
-			const { queryByTestId } = renderView();
+		it('should not render workflow reviews section when the settings carry no workflow reviews policy', async () => {
+			getSecuritySettings.mockResolvedValue(defaultSettings);
+			const { findByTestId, queryByTestId } = renderView();
 
-			await waitFor(() => {
-				expect(getSecuritySettings).toHaveBeenCalled();
-			});
+			await findByTestId('security-personal-space-sharing-toggle');
 
 			expect(queryByTestId('security-workflow-reviews-toggle')).not.toBeInTheDocument();
 		});

@@ -33,7 +33,6 @@ import WorkflowReviewsSection from './WorkflowReviewsSection.vue';
 import ApiKeyRateLimitsSection from './rateLimits/ApiKeyRateLimitsSection.vue';
 import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 import { usePolicyAdminAccess } from '@n8n/frontend-module-type-availability-policies';
 
 const router = useRouter();
@@ -43,7 +42,6 @@ const usersStore = useUsersStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
-const { isWorkflowReviewsAvailable } = useWorkflowReviewsFeature();
 const posthogStore = usePostHog();
 const { canManagePolicies: canManageTypePolicies, entryRouteName: typePoliciesRouteName } =
 	usePolicyAdminAccess();
@@ -432,7 +430,7 @@ const sharingCountText = computed(() => {
 		</N8nSettingsSection>
 
 		<N8nSettingsSection
-			v-if="isSecuritySettingsSettled && isWorkflowReviewsAvailable && state?.workflowReviews"
+			v-if="state?.workflowReviews"
 			:title="i18n.baseText('settings.security.workflowReviews.title')"
 			data-test-id="security-workflow-reviews-section"
 		>
