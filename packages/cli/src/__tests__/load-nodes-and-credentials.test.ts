@@ -444,6 +444,56 @@ describe('LoadNodesAndCredentials', () => {
 			});
 		});
 
+		describe('default resource and operation', () => {
+			const triggerSchema = { type: 'object', title: 'trigger output' };
+			const actionNode = {
+				description: {
+					properties: [
+						{ name: 'resource', type: 'options', default: 'account' },
+						{
+							name: 'operation',
+							type: 'options',
+							default: 'get',
+							displayOptions: { show: { resource: ['account'] } },
+						},
+					],
+				},
+			} as unknown as INodeType;
+
+			beforeEach(() => {
+				// A trigger that shares the folder stores its schema as output.json.
+				writeFileSync(
+					join(nodesDir, 'Test', '__schema__', 'v1.0.0', 'output.json'),
+					JSON.stringify(triggerSchema),
+				);
+				vi.spyOn(instance, 'getNode').mockReturnValue({
+					sourcePath: 'Test.node.js',
+					type: actionNode,
+				});
+			});
+
+			it('should use the default resource and operation when the node does not set them', () => {
+				expect(
+					instance.createOutputSchemaLookup()({
+						type: 'n8n-nodes-base.test',
+						typeVersion: 1,
+						parameters: {},
+					}),
+				).toEqual({ type: 'object' });
+			});
+
+			it('should use the default operation of the resource that the node sets', () => {
+				expect(
+					instance.createOutputSchemaLookup()({
+						type: 'n8n-nodes-base.test',
+						typeVersion: 1,
+						resource: 'account',
+						parameters: { resource: 'account' },
+					}),
+				).toEqual({ type: 'object' });
+			});
+		});
+
 		it('should load the schema from the schemaPath folder that the node declares', () => {
 			const packageNodes = join(nodesDir, 'pkg', 'dist', 'nodes');
 			const triggerSchemaDir = join(

@@ -46,7 +46,7 @@ import path from 'path';
 import picocolors from 'picocolors';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
-import { getParameterDefaults } from '@/output-schema-parameter-defaults';
+import { defaultDiscriminators, getParameterDefaults } from '@/output-schema-parameter-defaults';
 import { createAiTools, createHitlTools } from '@/tool-generation';
 
 @Service()
@@ -316,20 +316,17 @@ export class LoadNodesAndCredentials {
 			const nodeDir = this.outputSchemaNodeDir(type, typeVersion);
 			if (!nodeDir) return undefined;
 
-			const nodeType = this.tryGetVersionedNodeType(type, typeVersion);
+			const properties = this.tryGetVersionedNodeType(type, typeVersion)?.description.properties;
+			const discriminators = defaultDiscriminators(properties, { resource, operation });
 
 			return loadOutputSchema({
 				nodeDir,
 				version: typeVersion,
-				resource,
-				operation,
+				...discriminators,
 				versionFallback: true,
 				variant: hasOutputParser ? OUTPUT_PARSER_SCHEMA_VARIANT : undefined,
 				parameters,
-				parameterDefaults: getParameterDefaults(nodeType?.description.properties, {
-					resource,
-					operation,
-				}),
+				parameterDefaults: getParameterDefaults(properties, discriminators),
 			});
 		};
 	}
