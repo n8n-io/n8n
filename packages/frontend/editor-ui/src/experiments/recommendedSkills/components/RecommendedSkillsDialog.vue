@@ -2,20 +2,18 @@
 import { useI18n } from '@n8n/i18n';
 import { N8nDialog, N8nDialogBody, N8nText } from '@n8n/design-system';
 
-import type { AgentSkill } from '@/features/agents/types';
-
-import type { RecommendedSkillId } from '../recommendedSkills';
+import type { RecommendedSkillSelection } from '../recommendedSkills';
 import RecommendedSkillCards from './RecommendedSkillCards.vue';
 
 const open = defineModel<boolean>('open', { required: true });
 
 const emit = defineEmits<{
-	select: [recommended: { id: RecommendedSkillId; skill: AgentSkill }];
+	select: [recommended: RecommendedSkillSelection];
 }>();
 
 const i18n = useI18n();
 
-function onSelect(recommended: { id: RecommendedSkillId; skill: AgentSkill }) {
+function onSelect(recommended: RecommendedSkillSelection) {
 	open.value = false;
 	emit('select', recommended);
 }

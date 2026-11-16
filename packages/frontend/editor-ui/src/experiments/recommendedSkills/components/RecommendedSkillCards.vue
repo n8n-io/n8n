@@ -4,12 +4,11 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 
-import type { AgentSkill } from '@/features/agents/types';
-
 import {
 	RECOMMENDED_SKILLS,
 	type RecommendedSkill,
 	type RecommendedSkillId,
+	type RecommendedSkillSelection,
 } from '../recommendedSkills';
 import {
 	type RecommendedSkillsEntryPoint,
@@ -19,7 +18,7 @@ import {
 const props = defineProps<{ entryPoint: RecommendedSkillsEntryPoint }>();
 
 const emit = defineEmits<{
-	select: [recommended: { id: RecommendedSkillId; skill: AgentSkill }];
+	select: [recommended: RecommendedSkillSelection];
 }>();
 
 const i18n = useI18n();

@@ -13,6 +13,11 @@ export interface RecommendedSkill {
 	load: () => Promise<AgentSkill>;
 }
 
+export interface RecommendedSkillSelection {
+	id: RecommendedSkillId;
+	skill: AgentSkill;
+}
+
 export const RECOMMENDED_SKILLS: readonly RecommendedSkill[] = [
 	{
 		id: 'humanizer',

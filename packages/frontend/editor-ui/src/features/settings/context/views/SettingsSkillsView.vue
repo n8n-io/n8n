@@ -48,7 +48,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useAssistantSkillsExperiment } from '@/experiments/assistantSkills/useAssistantSkillsExperiment';
 import RecommendedSkillCards from '@/experiments/recommendedSkills/components/RecommendedSkillCards.vue';
 import RecommendedSkillsDialog from '@/experiments/recommendedSkills/components/RecommendedSkillsDialog.vue';
-import type { RecommendedSkillId } from '@/experiments/recommendedSkills/recommendedSkills';
+import type { RecommendedSkillSelection } from '@/experiments/recommendedSkills/recommendedSkills';
 import {
 	type RecommendedSkillsEntryPoint,
 	useRecommendedSkillsExperiment,
@@ -393,7 +393,7 @@ function openCreateModal(
 
 function onRecommendedSkillSelect(
 	entryPoint: RecommendedSkillsEntryPoint,
-	recommended: { id: RecommendedSkillId; skill: AgentSkill },
+	recommended: RecommendedSkillSelection,
 ) {
 	openCreateModal({ skill: recommended.skill }, (skillId) =>
 		trackRecommendedSkillAdded(recommended.id, skillId, entryPoint),
@@ -458,12 +458,15 @@ const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => 
 	},
 ]);
 
-const showRecommendedEmptyState = computed(
+const recommendedSkillsEligible = computed(
 	() =>
 		emptyState.value === 'noSkills' &&
 		skillsStore.collapsedSources.length === 0 &&
-		showRecommendedSkills.value &&
 		scopeOptions.value.length > 0,
+);
+
+const showRecommendedEmptyState = computed(
+	() => recommendedSkillsEligible.value && showRecommendedSkills.value,
 );
 
 const emptyStateCreateMenuItems = computed(() =>
@@ -478,10 +481,10 @@ function onCreateMenuSelect(action: CreateAction) {
 	if (action === 'uploadFolder') skillFolderInput.value?.click();
 	else if (action === 'uploadFile') skillFileInput.value?.click();
 	else if (action === 'manual') openCreateModal({ initialStep: 'manual' });
-	else if (action === 'recommended') recommendedOpen.value = true;
 	else {
 		dropPendingUpload();
-		connectOpen.value = true;
+		if (action === 'recommended') recommendedOpen.value = true;
+		else connectOpen.value = true;
 	}
 }
 
@@ -980,13 +983,7 @@ onMounted(async () => {
 	// here is an empty list and never a broken one.
 	if (!loadFailed.value) {
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILLS, { count: skillsStore.count });
-		if (
-			emptyState.value === 'noSkills' &&
-			skillsStore.collapsedSources.length === 0 &&
-			scopeOptions.value.length > 0
-		) {
-			trackRecommendedSkillsExposure();
-		}
+		if (recommendedSkillsEligible.value) trackRecommendedSkillsExposure();
 	}
 	// Deep links: one skill to open, or a new one to start. The skill may be on another
 	// page, so it is read by id rather than from the list.

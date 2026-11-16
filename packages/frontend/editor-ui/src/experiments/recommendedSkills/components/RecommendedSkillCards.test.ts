@@ -25,6 +25,12 @@ const renderComponent = createComponentRenderer(RecommendedSkillCards, {
 
 let pinia: ReturnType<typeof createTestingPinia>;
 
+async function clickUse(getByTestId: (id: string) => HTMLElement, id: string) {
+	await userEvent.click(
+		within(getByTestId(`recommended-skill-${id}`)).getByTestId('recommended-skill-use-button'),
+	);
+}
+
 describe('RecommendedSkillCards', () => {
 	beforeEach(() => {
 		track.mockReset();
@@ -60,11 +66,7 @@ describe('RecommendedSkillCards', () => {
 	it('emits the selected skill with its content and reference files', async () => {
 		const { getByTestId, emitted } = renderComponent({ pinia });
 
-		await userEvent.click(
-			within(getByTestId('recommended-skill-cold-email')).getByTestId(
-				'recommended-skill-use-button',
-			),
-		);
+		await clickUse(getByTestId, 'cold-email');
 
 		await waitFor(() => expect(emitted('select')).toHaveLength(1));
 		const [[selected]] =
@@ -74,15 +76,31 @@ describe('RecommendedSkillCards', () => {
 		expect(selected.skill.references).toHaveLength(4);
 	});
 
+	it('loads one skill at a time', async () => {
+		const humanizer = RECOMMENDED_SKILLS.find(({ id }) => id === 'humanizer')!;
+		const research = RECOMMENDED_SKILLS.find(({ id }) => id === 'research')!;
+		const pending = Promise.withResolvers<Awaited<ReturnType<typeof humanizer.load>>>();
+		const { getByTestId, emitted } = renderComponent({ pinia });
+		const loaded = await humanizer.load();
+		vi.spyOn(humanizer, 'load').mockReturnValueOnce(pending.promise);
+		const researchLoad = vi.spyOn(research, 'load');
+
+		await clickUse(getByTestId, 'humanizer');
+		await clickUse(getByTestId, 'research');
+		pending.resolve(loaded);
+
+		await waitFor(() => expect(emitted('select')).toHaveLength(1));
+		expect(emitted<[{ id: string }]>('select')[0][0].id).toBe('humanizer');
+		expect(researchLoad).not.toHaveBeenCalled();
+	});
+
 	it('shows an error and emits nothing when the skill content does not load', async () => {
 		const error = new Error('Failed to fetch dynamically imported module');
 		const research = RECOMMENDED_SKILLS.find(({ id }) => id === 'research')!;
 		const { getByTestId, emitted } = renderComponent({ pinia });
 		vi.spyOn(research, 'load').mockRejectedValueOnce(error);
 
-		await userEvent.click(
-			within(getByTestId('recommended-skill-research')).getByTestId('recommended-skill-use-button'),
-		);
+		await clickUse(getByTestId, 'research');
 
 		await waitFor(() =>
 			expect(showError).toHaveBeenCalledWith(
@@ -91,5 +109,8 @@ describe('RecommendedSkillCards', () => {
 			),
 		);
 		expect(emitted('select')).toBeUndefined();
+
+		await clickUse(getByTestId, 'research');
+		await waitFor(() => expect(emitted('select')).toHaveLength(1));
 	});
 });

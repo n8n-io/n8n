@@ -936,10 +936,34 @@ describe('SettingsSkillsView', () => {
 		it('tracks no exposure when a source with no synced skills replaces the empty state', async () => {
 			assignVariant('variant');
 			skillsStore.collapsedSources = [{ sourceId: 'src-1', index: 0, skillCount: 0 }];
-			renderView();
+			const view = renderView();
 			await new Promise(process.nextTick);
 
 			expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
+			expect(view.queryByTestId('recommended-skill-cards')).not.toBeInTheDocument();
+		});
+
+		it('drops an upload when the user opens the recommended skills before it finishes', async () => {
+			assignVariant('variant');
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			const view = renderView();
+			await new Promise(process.nextTick);
+			const read = Promise.withResolvers<string>();
+			const slow = skillFile();
+			Object.defineProperty(slow, 'text', { value: async () => await read.promise });
+
+			await fireEvent.change(view.getByTestId('skills-upload-file-input'), {
+				target: { files: [slow] },
+			});
+			await userEvent.click(view.getByTestId('skills-create-menu-button'));
+			await userEvent.click(await view.findByTestId('skills-create-recommended'));
+			await screen.findByTestId('recommended-skills-dialog');
+			read.resolve('---\nname: slow-skill\ndescription: d\n---\ni');
+			await new Promise(process.nextTick);
+			await new Promise(process.nextTick);
+
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 		});
 
 		it('opens the create modal filled in from a card and reports the saved skill', async () => {
