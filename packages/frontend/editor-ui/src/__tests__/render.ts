@@ -38,7 +38,6 @@ export const { renderComponent, createComponentRenderer } = defineRenderer({
 			[WorkflowDocumentStoreKey as symbol]: computed(() =>
 				useWorkflowDocumentStore(createWorkflowDocumentId(useWorkflowsStore().workflowId)),
 			),
-			// Match App.vue: only the Enterprise plan keeps Limited enterprise readiness.
 			[FeatureMaturityKey as symbol]: computed(() =>
 				featureMaturityForPlan(settingsStore.isEnterprisePlan),
 			),
