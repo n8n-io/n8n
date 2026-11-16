@@ -35,6 +35,11 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 		],
 		['the detail a FastAPI gateway sends', { detail: 'Not authenticated' }, 'Not authenticated'],
 		[
+			'the first field that actually says something, past the blank ones',
+			{ error_description: '', error: '   ', message: 'Subscription key is invalid' },
+			'Subscription key is invalid',
+		],
+		[
 			'a message ahead of the detail beside it',
 			{ message: 'Subscription key is invalid', detail: 'Not authenticated' },
 			'Subscription key is invalid',
@@ -71,6 +76,12 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 		['&nbsp;', 'Denied here'],
 	])('decodes %s out of an HTML error page', async (entity, expected) => {
 		expect(await surfaced(titled(`Denied ${entity} here`))).toBe(expected);
+	});
+
+	// `constructor` is the one Object.prototype key the entity pattern can reach:
+	// it matches `[a-z]+` and survives the lowercasing the lookup does
+	it('leaves &constructor; alone, rather than reading it off Object.prototype', async () => {
+		expect(await surfaced(titled('Denied &constructor; here'))).toBe('Denied &constructor; here');
 	});
 
 	it.each([
