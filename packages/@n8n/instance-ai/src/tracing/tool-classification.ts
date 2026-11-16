@@ -1,10 +1,10 @@
 /** Classifies tools by category and side effect for the trace tool manifest. */
 import {
-	DATA_TABLE_READ_TOOL_ACTIONS,
 	DATA_TABLE_TOOL_NAMES,
 	EXECUTION_TOOL_NAMES,
 	getDataTableToolAction,
 	getExecutionCallAction,
+	isDataTableWriteToolAction,
 } from '@n8n/api-types';
 
 import { DOMAIN_TOOL_IDS } from '../tools/tool-ids';
@@ -53,7 +53,7 @@ export function classifyToolSideEffect(name: string): string {
 	// The batch tool has no single action, and every change it makes is a write.
 	if (DATA_TABLE_TOOL_NAMES.includes(baseName)) {
 		const dataTableAction = getDataTableToolAction(baseName);
-		return DATA_TABLE_READ_TOOL_ACTIONS.some((read) => read === dataTableAction) ? 'read' : 'write';
+		return dataTableAction && !isDataTableWriteToolAction(dataTableAction) ? 'read' : 'write';
 	}
 	if (baseName.includes('browser')) return 'browser';
 	if (baseName.includes('research')) return 'network';

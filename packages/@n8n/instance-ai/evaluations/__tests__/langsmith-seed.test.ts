@@ -345,6 +345,46 @@ describe('reconstructSeedFromThread', () => {
 		]);
 	});
 
+	it('does not rebuild a table that the same change_data_tables batch created and deleted', async () => {
+		const batch: FakeRun = {
+			id: 'dt-batch-create-delete',
+			run_type: 'tool',
+			name: 'change_data_tables',
+			start_time: t(5),
+			inputs: { changes: [] },
+			outputs: {
+				success: true,
+				applied: [
+					{
+						index: 0,
+						action: 'create',
+						table: { id: 'dt-temp', name: 'Scratch' },
+						result: { columns: [{ name: 'note', type: 'string' }] },
+					},
+					{
+						index: 1,
+						action: 'create',
+						table: { id: 'dt-kept', name: 'Leads' },
+						result: { columns: [{ name: 'email', type: 'string' }] },
+					},
+					{ index: 2, action: 'delete', table: { id: 'dt-temp', name: 'Scratch' }, result: {} },
+				],
+				skipped: [],
+			},
+			extra: { metadata: { langsmith_root_run_id: 'r1' } },
+		};
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Make a leads table'), outputs: { response: 'Done.' } },
+			batch,
+			turn('r2', 30, 'Now change something'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		expect(result.seed.dataTables).toEqual([
+			{ id: 'dt-kept', name: 'Leads', columns: [{ name: 'email', type: 'string' }] },
+		]);
+	});
+
 	it('takes the latest successful build per workflow id before the boundary', async () => {
 		const earlyBuild: FakeRun = {
 			id: 'tool1',

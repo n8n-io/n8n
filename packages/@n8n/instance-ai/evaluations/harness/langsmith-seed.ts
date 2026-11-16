@@ -948,11 +948,17 @@ function buildSeedDataTables(toolRuns: Run[], boundaryMs: number): ConversationS
 		if (table) addSeedDataTable(created, table, table.columns);
 
 		// A batch: each applied `create` carries the table, with its columns in `result`.
+		// A later `delete` of that table removes it again.
 		const applied = Array.isArray(out.applied) ? out.applied : [];
 		for (const change of applied) {
-			if (!isRecord(change) || change.action !== 'create' || !isRecord(change.table)) continue;
-			const result = isRecord(change.result) ? change.result : {};
-			addSeedDataTable(created, change.table, result.columns);
+			if (!isRecord(change) || !isRecord(change.table)) continue;
+			if (change.action === 'create') {
+				const result = isRecord(change.result) ? change.result : {};
+				addSeedDataTable(created, change.table, result.columns);
+			} else if (change.action === 'delete') {
+				const deletedId = asString(change.table.id);
+				if (deletedId) created.delete(deletedId);
+			}
 		}
 	}
 
