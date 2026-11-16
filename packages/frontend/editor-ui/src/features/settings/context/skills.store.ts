@@ -1,4 +1,6 @@
 import type {
+	AcceptSkillSourceUpdatesDto,
+	ReviewSkillSourceUpdateQueryDto,
 	SkillListCollapsedSource,
 	SkillSourceListItem,
 	ConnectSkillSourceDto,
@@ -157,9 +159,39 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return response;
 	}
 
+	/** Deletes a source and its synced skills. The caller reloads the lists. */
+	async function deleteSource(sourceId: string): Promise<void> {
+		await api.deleteSkillSource(rootStore.restApiContext, sourceId);
+	}
+
+	async function fetchReplacementCredentials(source: SkillSourceListItem) {
+		return await api.getSkillSourceReplacementCredentials(rootStore.restApiContext, source);
+	}
+
+	async function replaceSourceCredential(source: SkillSourceListItem, credentialId: string) {
+		await api.replaceSkillSourceCredential(rootStore.restApiContext, source, credentialId);
+	}
+
 	/** Check for updates on one source. The caller reloads the lists. */
 	async function checkSource(sourceId: string) {
 		return await api.checkSkillSource(rootStore.restApiContext, sourceId);
+	}
+
+	async function fetchSourceUpdates(sourceId: string) {
+		return await api.getSkillSourceUpdates(rootStore.restApiContext, sourceId);
+	}
+	async function fetchSourceUpdate(
+		sourceId: string,
+		skillId: string,
+		reviewed: ReviewSkillSourceUpdateQueryDto,
+	) {
+		return await api.getSkillSourceUpdate(rootStore.restApiContext, sourceId, skillId, reviewed);
+	}
+	async function fetchSourceCommit(sourceId: string, revision: string) {
+		return await api.getSkillSourceCommit(rootStore.restApiContext, sourceId, revision);
+	}
+	async function acceptSourceUpdates(sourceId: string, payload: AcceptSkillSourceUpdatesDto) {
+		return await api.acceptSkillSourceUpdates(rootStore.restApiContext, sourceId, payload);
 	}
 
 	return {
@@ -188,5 +220,12 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		collapsedSources,
 		fetchSources,
 		checkSource,
+		fetchSourceUpdates,
+		fetchSourceUpdate,
+		fetchSourceCommit,
+		acceptSourceUpdates,
+		deleteSource,
+		fetchReplacementCredentials,
+		replaceSourceCredential,
 	};
 });

@@ -1,11 +1,15 @@
 import {
+	AcceptSkillSourceUpdatesDto,
+	ReviewSkillSourceUpdateQueryDto,
+	SkillSourceCommitQueryDto,
 	ConnectSkillSourceDto,
 	DiscoverSkillSourceDto,
 	ListSkillSourceCredentialsQueryDto,
 	ListSkillSourceRepositoriesQueryDto,
+	ReplaceSkillSourceCredentialDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Middleware, Param, Post, Query, RestController } from '@n8n/decorators';
+import { Body, Delete, Get, Middleware, Param, Post, Query, RestController } from '@n8n/decorators';
 import type { NextFunction, Response } from 'express';
 
 import { SkillSourceService } from '../services/skill-source.service';
@@ -13,10 +17,9 @@ import { SkillSyncFlagGate } from '../services/skill-sync-flag-gate';
 import { SkillSyncService } from '../services/skill-sync.service';
 
 /**
- * Skill Sync: connect a source, import its skills, check a source for updates, and stop syncing
- * one skill. The services check
- * the per-user Skill Sync flag again, for callers other than this controller. No route scope: the
- * scope of the source decides who may change it.
+ * Skill Sync: connect, import, check, review updates and stop syncing.
+ * The services also check the per-user flag for callers outside this controller.
+ * The source's scope decides access after the flag gate answers 404 when disabled.
  */
 @RestController('/skill-sources')
 export class SkillSourceController {
@@ -87,6 +90,33 @@ export class SkillSourceController {
 		return await this.skillSourceService.list(req.user);
 	}
 
+	/** The source's scope decides access. The service checks its delete permission. */
+	@Delete('/:sourceId')
+	async delete(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
+		await this.skillSourceService.delete(req.user, sourceId);
+		return { ok: true };
+	}
+
+	@Get('/:sourceId/credentials')
+	async replacementCredentials(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+	) {
+		return await this.skillSourceService.listReplacementCredentials(req.user, sourceId, null);
+	}
+
+	@Post('/:sourceId/credential')
+	async replaceCredential(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Body payload: ReplaceSkillSourceCredentialDto,
+	) {
+		await this.skillSourceService.replaceCredential(req.user, sourceId, payload.credentialId, null);
+		return { ok: true };
+	}
+
 	/**
 	 * Check for updates: checks the source, as the hourly check does. A source checked less
 	 * than a minute ago is not checked again.
@@ -94,5 +124,86 @@ export class SkillSourceController {
 	@Post('/:sourceId/check')
 	async checkNow(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
 		return await this.skillSyncService.checkNow(req.user, sourceId);
+	}
+
+	@Get('/:sourceId/updates')
+	async updates(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
+		return await this.skillSyncService.listUpdates(req.user, sourceId);
+	}
+
+	@Get('/:sourceId/updates/:skillId')
+	async reviewUpdate(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Param('skillId') skillId: string,
+		@Query query: ReviewSkillSourceUpdateQueryDto,
+	) {
+		return await this.skillSyncService.reviewUpdate(req.user, sourceId, skillId, query);
+	}
+
+	@Get('/:sourceId/commit')
+	async commit(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Query query: SkillSourceCommitQueryDto,
+	) {
+		return await this.skillSyncService.describeUpdateCommit(req.user, sourceId, query.revision);
+	}
+
+	@Post('/:sourceId/updates/accept')
+	async acceptUpdates(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Body payload: AcceptSkillSourceUpdatesDto,
+	) {
+		return await this.skillSyncService.acceptUpdates(req.user, sourceId, payload);
+	}
+}
+
+/** Project credential routes. The service checks that the source belongs to the project in the URL. */
+@RestController('/projects/:projectId/skill-sources')
+export class ProjectSkillSourceCredentialController {
+	constructor(
+		private readonly skillSourceService: SkillSourceService,
+		private readonly flagGate: SkillSyncFlagGate,
+	) {}
+
+	@Middleware()
+	async requireSkillSyncEnabled(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+		if (!(await this.flagGate.isEnabled(req.user))) {
+			res.status(404).send('Not found');
+			return;
+		}
+		next();
+	}
+
+	@Get('/:sourceId/credentials')
+	async credentials(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Param('projectId') projectId: string,
+	) {
+		return await this.skillSourceService.listReplacementCredentials(req.user, sourceId, projectId);
+	}
+
+	@Post('/:sourceId/credential')
+	async replace(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Param('projectId') projectId: string,
+		@Body payload: ReplaceSkillSourceCredentialDto,
+	) {
+		await this.skillSourceService.replaceCredential(
+			req.user,
+			sourceId,
+			payload.credentialId,
+			projectId,
+		);
+		return { ok: true };
 	}
 }

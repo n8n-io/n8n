@@ -3,7 +3,7 @@ import {
 	migrationFindingListedStatusSchema,
 } from '@n8n/api-types';
 import type { User } from '@n8n/db';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import z from 'zod';
 
 import { resolveReportScope } from '@/modules/breaking-changes/query/report-scope';

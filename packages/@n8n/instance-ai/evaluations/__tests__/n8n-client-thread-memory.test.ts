@@ -52,7 +52,6 @@ describe('N8nClient.sendMessage observer threshold', () => {
 			'thread-1',
 			'build',
 			undefined,
-			'default',
 			undefined,
 			undefined,
 			1000,

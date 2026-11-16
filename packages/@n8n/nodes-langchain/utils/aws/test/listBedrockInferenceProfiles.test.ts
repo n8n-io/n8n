@@ -20,8 +20,8 @@ describe('listBedrockInferenceProfiles', () => {
 		system: Promise<unknown> | unknown,
 		application: Promise<unknown> | unknown,
 	) =>
-		vi.fn().mockImplementation(async (_credentialsType: string, options: { url: string }) => {
-			return options.url.includes('type=APPLICATION') ? await application : await system;
+		vi.fn().mockImplementation(async (_credentialsType: string, options: { url: unknown }) => {
+			return String(options.url).includes('type=APPLICATION') ? await application : await system;
 		});
 
 	const contextFor = (httpMock: ReturnType<typeof vi.fn>) =>
@@ -43,17 +43,16 @@ describe('listBedrockInferenceProfiles', () => {
 		const profiles = await listBedrockInferenceProfiles(ctx, api);
 
 		expect(profiles).toEqual([systemProfile, applicationProfile]);
-		expect(httpMock).toHaveBeenCalledWith(
-			'aws',
-			expect.objectContaining({ baseURL, url: '/inference-profiles?maxResults=1000' }),
-		);
-		expect(httpMock).toHaveBeenCalledWith(
-			'aws',
-			expect.objectContaining({
-				baseURL,
-				url: '/inference-profiles?maxResults=1000&type=APPLICATION',
-			}),
-		);
+		expect(
+			httpMock.mock.calls.map(([credentialsType, options]) => [
+				credentialsType,
+				options.baseURL,
+				String(options.url),
+			]),
+		).toEqual([
+			['aws', baseURL, '/inference-profiles?maxResults=1000'],
+			['aws', baseURL, '/inference-profiles?maxResults=1000&type=APPLICATION'],
+		]);
 	});
 
 	it('returns application profiles and warns when the system-defined request fails', async () => {

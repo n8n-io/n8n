@@ -1,4 +1,5 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { theHiveApiRequest } from '../transport';
 
@@ -35,7 +36,7 @@ async function listResource(
 		to,
 	});
 
-	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', { query });
+	const response = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, { query });
 
 	if (response.length === 0) {
 		return {
@@ -173,7 +174,7 @@ export async function pageSearch(
 		to,
 	});
 
-	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', { query });
+	const response = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, { query });
 
 	if (response.length === 0) {
 		return {
@@ -252,7 +253,7 @@ export async function observableSearch(
 		to,
 	});
 
-	const response = await theHiveApiRequest.call(this, 'POST', '/v1/query', { query });
+	const response = await theHiveApiRequest.call(this, 'POST', requestPath`/v1/query`, { query });
 
 	if (response.length === 0) {
 		return {

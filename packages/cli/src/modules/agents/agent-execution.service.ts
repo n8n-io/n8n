@@ -745,20 +745,36 @@ export class AgentExecutionService {
 		if (result.status === 'busy') {
 			throw new ConflictError('The session has active work and cannot be deleted');
 		}
+		// The sessions are already deleted, so a failed blob delete only leaves orphaned bytes.
 		await Promise.all(
 			result.refs.flatMap(({ agentId, threadId, attachmentBinaryDataIds, executionLogs }) => [
 				this.agentChatAttachmentService.deleteStoredData(attachmentBinaryDataIds, { threadId }),
-				this.agentExecutionLogStore.delete(
-					this.toBlobRefs(executionLogs).map((ref) => ({
-						agentId,
-						threadId,
-						executionId: ref.id,
-						storedAt: ref.storedAt,
-					})),
-				),
+				this.deleteThreadExecutionLogs(agentId, threadId, executionLogs),
 			]),
 		);
 		return true;
+	}
+
+	private async deleteThreadExecutionLogs(
+		agentId: string,
+		threadId: string,
+		executionLogs: Array<Pick<AgentExecution, 'id' | 'storedAt'>>,
+	): Promise<void> {
+		try {
+			await this.agentExecutionLogStore.delete(
+				this.toBlobRefs(executionLogs).map((ref) => ({
+					agentId,
+					threadId,
+					executionId: ref.id,
+					storedAt: ref.storedAt,
+				})),
+			);
+		} catch (error) {
+			this.logger.warn('Failed to delete agent execution logs of a deleted thread', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	/**

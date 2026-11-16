@@ -2442,6 +2442,52 @@ describe('AgentExecutionService', () => {
 			]);
 		});
 
+		it.each(['thread-1', 'thread-2'])(
+			'reports session deletion when the logs for %s fail to delete',
+			async (failedThreadId) => {
+				agentExecutionThreadRepository.deleteSession.mockResolvedValue({
+					status: 'deleted',
+					refs: [
+						{
+							agentId: 'agent-1',
+							threadId: 'thread-1',
+							attachmentBinaryDataIds: ['binary-1'],
+							executionLogs: [{ id: 'execution-1', storedAt: 'fs' }],
+						},
+						{
+							agentId: 'agent-2',
+							threadId: 'thread-2',
+							attachmentBinaryDataIds: ['binary-2'],
+							executionLogs: [{ id: 'execution-2', storedAt: 's3' }],
+						},
+					],
+				});
+				agentExecutionLogStore.delete.mockImplementation(async (refs) => {
+					if (refs.some(({ threadId }) => threadId === failedThreadId)) {
+						throw new Error('store down');
+					}
+				});
+
+				await expect(
+					service.deleteThread('project-1', 'agent-1', 'thread-1', 'user-1'),
+				).resolves.toBe(true);
+				expect(agentExecutionLogStore.delete).toHaveBeenCalledTimes(2);
+				expect(agentExecutionLogStore.delete).toHaveBeenCalledWith([
+					{ agentId: 'agent-1', threadId: 'thread-1', executionId: 'execution-1', storedAt: 'fs' },
+				]);
+				expect(agentExecutionLogStore.delete).toHaveBeenCalledWith([
+					{ agentId: 'agent-2', threadId: 'thread-2', executionId: 'execution-2', storedAt: 's3' },
+				]);
+				expect(agentChatAttachmentService.deleteStoredData).toHaveBeenCalledTimes(2);
+				expect(agentChatAttachmentService.deleteStoredData).toHaveBeenCalledWith(['binary-1'], {
+					threadId: 'thread-1',
+				});
+				expect(agentChatAttachmentService.deleteStoredData).toHaveBeenCalledWith(['binary-2'], {
+					threadId: 'thread-2',
+				});
+			},
+		);
+
 		it('does not clean SDK memory when the execution thread is not found', async () => {
 			agentExecutionThreadRepository.deleteSession.mockResolvedValue(null);
 

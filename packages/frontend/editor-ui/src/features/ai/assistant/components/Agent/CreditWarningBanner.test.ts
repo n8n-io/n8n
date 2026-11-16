@@ -124,13 +124,13 @@ describe('CreditWarningBanner', () => {
 			props: {
 				creditsRemaining: 0,
 				creditsQuota: 800,
-				message: "You've run out of AI credits",
+				message: "You've run out of Assistant credits",
 				dismissible: false,
 			},
 		});
 
 		const text = wrapper.get('[data-test-id="credit-warning-banner"]').text();
-		expect(text).toContain("You've run out of AI credits");
+		expect(text).toContain("You've run out of Assistant credits");
 		expect(text).not.toContain('remaining');
 		expect(wrapper.find('[data-test-id="credit-banner-dismiss"]').exists()).toBe(false);
 		expect(wrapper.find('[data-test-id="credit-banner-renewal-info"]').exists()).toBe(false);

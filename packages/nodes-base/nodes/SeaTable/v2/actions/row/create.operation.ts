@@ -4,6 +4,7 @@ import {
 	type INodeProperties,
 	type IExecuteFunctions,
 	updateDisplayOptions,
+	requestPath,
 } from 'n8n-workflow';
 
 import {
@@ -193,7 +194,7 @@ export async function execute(
 			this,
 			{},
 			'POST',
-			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/add-archived-rows/',
+			(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/add-archived-rows/`,
 			body,
 		);
 		return this.helpers.returnJsonArray(responseData as IDataObject[]);
@@ -208,7 +209,7 @@ export async function execute(
 			this,
 			{},
 			'POST',
-			'/api-gateway/api/v2/dtables/{{dtable_uuid}}/rows/',
+			(dtableUuid) => requestPath`/api-gateway/api/v2/dtables/${dtableUuid}/rows/`,
 			body,
 		);
 		if (responseData.first_row) {

@@ -3,6 +3,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { WorkflowHistoryRepository } from '@n8n/db';
+import { SKIP_RULES } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowHistoryCompactionService } from '../workflow-history-compaction.service';
@@ -147,6 +148,18 @@ describe('WorkflowHistoryCompactionService', () => {
 				workflowHistoryRepository.getWorkflowIdsInRange.mock.calls;
 			expect(optimizeEnd).toEqual(new Date('2026-11-09T03:00:00.000Z'));
 			expect(trimEnd).toEqual(new Date('2026-11-02T23:00:00.000Z'));
+		});
+
+		it('should keep versions with different versioned settings apart', async () => {
+			const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
+			workflowHistoryRepository.getWorkflowIdsInRange.mockResolvedValue(['workflow-id']);
+			workflowHistoryRepository.pruneHistory.mockResolvedValue({ seen: 0, deleted: 0 });
+			const { compactingService } = createService(workflowHistoryRepository);
+
+			await compactingService['optimizeHistories'](new AbortController().signal);
+
+			const skipRules = workflowHistoryRepository.pruneHistory.mock.calls[0][4];
+			expect(skipRules).toContain(SKIP_RULES.skipDifferentVersionedSettings);
 		});
 
 		it('should not emit telemetry when no workflows are in range', async () => {

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import {
 	N8nIconButton,
 	N8nResizeWrapper,
+	N8nTabsRoot,
 	N8nText,
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
@@ -28,6 +29,8 @@ import {
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
+import { useAssistantAwayTelemetry } from './composables/useAssistantAwayTelemetry';
+import { getCurrentTurn } from './assistantTurn';
 import { fetchThreadTabs, saveThreadTabs } from './instanceAi.memory.api';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
 import { INSTANCE_AI_APP_ID_QUERY } from './constants';
@@ -62,7 +65,6 @@ import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
-import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
@@ -77,6 +79,14 @@ const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
 const appSettingsStore = useSettingsStore();
 const thread = provideThread(props.threadId);
+useAssistantAwayTelemetry({
+	threadId: () => props.threadId,
+	// A run that waits for the user is still active.
+	isRunning: () => thread.isStreaming || thread.isSendingMessage,
+	isAwaitingUser: () => thread.isAwaitingUserInput,
+	isReady: () => thread.hydrationStatus === 'ready',
+	turn: () => getCurrentTurn(thread.artifactTurns),
+});
 const rootStore = useRootStore();
 const i18n = useI18n();
 const router = useRouter();
@@ -985,7 +995,7 @@ function handleNewThreadClick() {
 					@resizestart="isResizingPreview = true"
 					@resizeend="isResizingPreview = false"
 				>
-					<TabsRoot
+					<N8nTabsRoot
 						:model-value="preview.activeTabId.value"
 						orientation="horizontal"
 						:class="$style.previewPanel"
@@ -1064,7 +1074,7 @@ function handleNewThreadClick() {
 								@deleted="preview.closeTab"
 							/>
 						</div>
-					</TabsRoot>
+					</N8nTabsRoot>
 				</N8nResizeWrapper>
 			</div>
 		</Transition>

@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { parseDiscordError, prepareErrorData, setupChannelGetter } from '../../helpers/utils';
@@ -130,7 +131,12 @@ export async function execute(
 				...options,
 			};
 
-			const response = await discordApiRequest.call(this, 'PATCH', `/channels/${channelId}`, body);
+			const response = await discordApiRequest.call(
+				this,
+				'PATCH',
+				requestPath`/channels/${channelId}`,
+				body,
+			);
 
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(response),

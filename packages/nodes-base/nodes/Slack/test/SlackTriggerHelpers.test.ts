@@ -217,7 +217,7 @@ describe('SlackTriggerHelpers', () => {
 					'slackApi',
 					expect.objectContaining({
 						url,
-						allowedDomains: '*.slack.com, *.slack-gov.com',
+						allowedDomains: 'files.slack.com, files.slack-gov.com',
 						sendCredentialsOnCrossOriginRedirect: false,
 					}),
 				);
@@ -230,6 +230,9 @@ describe('SlackTriggerHelpers', () => {
 			'http://files.slack.com/file',
 			'https://files.slack.com.example.com/file',
 			'https://example.com/?host=files.slack.com',
+			'https://acme.slack.com/files-pri/T1-F1/download/test.txt',
+			'https://files.slack.com/api/conversations.history?channel=C1',
+			'https://files.slack.com/files-pub/T1-F1/test.txt',
 		])('should reject a file URL outside the Slack hosts: %s', async (url) => {
 			await expect(downloadFile.call(mockWebhookFunctions, url)).rejects.toThrow(
 				'The file URL is not an HTTPS Slack file URL',

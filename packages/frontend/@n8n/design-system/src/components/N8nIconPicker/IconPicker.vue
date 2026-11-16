@@ -9,7 +9,7 @@ import type { IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';
 import N8nInput from '../N8nInput';
 import N8nPopover from '../N8nPopover';
-import N8nTabs from '../N8nTabs';
+import { N8nTabs } from '../N8nTabs';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 import type { EmojiSection } from './emojiData';
