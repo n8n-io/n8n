@@ -161,10 +161,12 @@ function listOperationVariants(dir: string, operation: string): string[] {
 
 /**
  * The `<operation>.<param>-<value>.json` file for this ref in one version dir:
- * the first file whose name matches the node parameters.
+ * the first file whose name matches the node parameters. A node without
+ * resource and operation uses `output.<param>-<value>.json` next to `output.json`.
  */
 function findOperationVariantFile(ref: OutputSchemaRef, versionPath: string): string | undefined {
-	const { operation, resource } = ref;
+	const { resource } = ref;
+	const operation = ref.operation ?? (resource ? undefined : 'output');
 	if (!operation) return undefined;
 	const dir = path.resolve(versionPath, resource ?? '');
 	const variants = listOperationVariants(dir, operation);

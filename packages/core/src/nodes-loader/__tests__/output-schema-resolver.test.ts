@@ -312,6 +312,35 @@ describe('output-schema-resolver', () => {
 				);
 			});
 
+			it('picks output.<param>-<value>.json for a node without an operation', () => {
+				writeSchema('v2.0.0/output.json');
+				const raw = writeSchema('v2.0.0/output.simple-false.json');
+
+				expect(
+					resolveOutputSchemaPath({
+						nodeDir,
+						version: 2,
+						versionFallback: true,
+						parameters: { simple: false },
+					}),
+				).toBe(raw);
+			});
+
+			it('uses output.json for a node without an operation when the parameter keeps its default', () => {
+				const plain = writeSchema('v2.0.0/output.json');
+				writeSchema('v2.0.0/output.simple-false.json');
+
+				expect(
+					resolveOutputSchemaPath({
+						nodeDir,
+						version: 2,
+						versionFallback: true,
+						parameters: {},
+						parameterDefaults: { simple: true },
+					}),
+				).toBe(plain);
+			});
+
 			it('does not read a flat parameter whose name contains a dot', () => {
 				const plain = writeSchema('v2.0.0/message/get.json');
 				writeSchema('v2.0.0/message/get.a.b-true.json');
