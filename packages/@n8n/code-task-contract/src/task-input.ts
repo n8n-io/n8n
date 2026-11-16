@@ -12,7 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod/v4';
 
-import { CODE_TASK_PROTOCOL_VERSION } from './constants';
+import { CODE_TASK_CONTRACT_VERSION } from './constants';
 import { CODE_EXECUTION_MODES, WORKFLOW_EXECUTE_MODES } from './execution-modes';
 
 /**
@@ -85,7 +85,7 @@ const chunkSchema = z.object({
 
 /** The content of the task input file (`task.json`). n8n writes it, the runtime reads it. */
 export const codeTaskInputSchema = z.object({
-	version: z.literal(CODE_TASK_PROTOCOL_VERSION),
+	version: z.literal(CODE_TASK_CONTRACT_VERSION),
 	taskId: z.string().min(1),
 	language: z.literal('javascript'),
 	code: z.string(),

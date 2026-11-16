@@ -1,6 +1,6 @@
 import { z } from 'zod/v4';
 
-import { CODE_TASK_PROTOCOL_VERSION, MAX_CONSOLE_ENTRIES } from './constants';
+import { CODE_TASK_CONTRACT_VERSION, MAX_CONSOLE_ENTRIES } from './constants';
 
 /** The formatted arguments of one `console.log` call. */
 const consoleEntrySchema = z.array(z.string());
@@ -22,7 +22,7 @@ const userErrorSchema = z.looseObject({
 });
 
 const successSchema = z.object({
-	version: z.literal(CODE_TASK_PROTOCOL_VERSION),
+	version: z.literal(CODE_TASK_CONTRACT_VERSION),
 	status: z.literal('success'),
 	/** What the user code returned. n8n validates and normalizes it. */
 	result: z.unknown(),
@@ -34,7 +34,7 @@ const successSchema = z.object({
 });
 
 const errorSchema = z.object({
-	version: z.literal(CODE_TASK_PROTOCOL_VERSION),
+	version: z.literal(CODE_TASK_CONTRACT_VERSION),
 	status: z.literal('error'),
 	error: userErrorSchema,
 	console: consoleSchema,

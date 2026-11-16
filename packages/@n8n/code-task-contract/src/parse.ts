@@ -2,7 +2,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import type { z } from 'zod/v4';
 
-import { CODE_TASK_PROTOCOL_VERSION } from './constants';
+import { CODE_TASK_CONTRACT_VERSION } from './constants';
 import { InvalidCodeTaskFileError } from './errors/invalid-code-task-file.error';
 import { codeTaskInputSchema, type CodeTaskInput } from './task-input';
 import { codeTaskResultSchema, type CodeTaskResult } from './task-result';
@@ -29,10 +29,10 @@ function parseFile<T>(
 	// Check the version first. A file of another version gets one clear error,
 	// not a list of unrelated field errors.
 	const version = isRecord(value) ? value.version : undefined;
-	if (version !== CODE_TASK_PROTOCOL_VERSION) {
+	if (version !== CODE_TASK_CONTRACT_VERSION) {
 		return createResultError(
 			new InvalidCodeTaskFileError(fileKind, [
-				`Unsupported version ${JSON.stringify(version)}. Expected version ${CODE_TASK_PROTOCOL_VERSION}.`,
+				`Unsupported version ${JSON.stringify(version)}. Expected version ${CODE_TASK_CONTRACT_VERSION}.`,
 			]),
 		);
 	}

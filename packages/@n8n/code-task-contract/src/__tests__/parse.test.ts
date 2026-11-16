@@ -1,7 +1,7 @@
 import { createRunExecutionData, deepCopy } from 'n8n-workflow';
 
 import {
-	CODE_TASK_PROTOCOL_VERSION,
+	CODE_TASK_CONTRACT_VERSION,
 	MAX_CONSOLE_ENTRIES,
 	consoleTruncationEntry,
 } from '../constants';
@@ -20,7 +20,7 @@ function createTaskInput(): CodeTaskInput {
 	};
 
 	return {
-		version: CODE_TASK_PROTOCOL_VERSION,
+		version: CODE_TASK_CONTRACT_VERSION,
 		taskId: 'task-1',
 		language: 'javascript',
 		code: 'return $input.all();',
@@ -156,7 +156,7 @@ describe('parseCodeTaskInput', () => {
 describe('parseCodeTaskResult', () => {
 	it('should accept a success result', () => {
 		const result = {
-			version: CODE_TASK_PROTOCOL_VERSION,
+			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'success',
 			result: [{ json: { a: 1 } }],
 			console: [["'hello'", '{"a":1}']],
@@ -169,7 +169,7 @@ describe('parseCodeTaskResult', () => {
 
 	it('should keep the custom data and the static data of a success result', () => {
 		const result = {
-			version: CODE_TASK_PROTOCOL_VERSION,
+			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'success',
 			result: [],
 			console: [],
@@ -184,7 +184,7 @@ describe('parseCodeTaskResult', () => {
 
 	it('should reject custom data with values that are not strings', () => {
 		const parsed = parseCodeTaskResult({
-			version: CODE_TASK_PROTOCOL_VERSION,
+			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'success',
 			result: [],
 			console: [],
@@ -196,7 +196,7 @@ describe('parseCodeTaskResult', () => {
 
 	it('should accept a success result of any value', () => {
 		const result = {
-			version: CODE_TASK_PROTOCOL_VERSION,
+			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'success',
 			result: 'x',
 			console: [],
@@ -209,7 +209,7 @@ describe('parseCodeTaskResult', () => {
 
 	it('should accept an error result and keep the extra error properties', () => {
 		const result = {
-			version: CODE_TASK_PROTOCOL_VERSION,
+			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'error',
 			error: {
 				message: 'x is not defined [line 2]',
@@ -236,7 +236,7 @@ describe('parseCodeTaskResult', () => {
 		];
 
 		const parsed = parseCodeTaskResult({
-			version: CODE_TASK_PROTOCOL_VERSION,
+			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'success',
 			result: [],
 			console,
@@ -249,7 +249,7 @@ describe('parseCodeTaskResult', () => {
 		const console = Array.from({ length: MAX_CONSOLE_ENTRIES + 2 }, (_, i) => [String(i)]);
 
 		const parsed = parseCodeTaskResult({
-			version: CODE_TASK_PROTOCOL_VERSION,
+			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'success',
 			result: [],
 			console,
@@ -260,7 +260,7 @@ describe('parseCodeTaskResult', () => {
 
 	it('should reject a console entry with arguments that are not strings', () => {
 		const parsed = parseCodeTaskResult({
-			version: CODE_TASK_PROTOCOL_VERSION,
+			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'success',
 			result: [],
 			console: [[{ a: 1 }]],
@@ -271,7 +271,7 @@ describe('parseCodeTaskResult', () => {
 
 	it('should reject an error result without a message', () => {
 		const parsed = parseCodeTaskResult({
-			version: CODE_TASK_PROTOCOL_VERSION,
+			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'error',
 			error: { stack: 'x' },
 			console: [],
@@ -282,7 +282,7 @@ describe('parseCodeTaskResult', () => {
 
 	it('should reject an unknown status', () => {
 		const parsed = parseCodeTaskResult({
-			version: CODE_TASK_PROTOCOL_VERSION,
+			version: CODE_TASK_CONTRACT_VERSION,
 			status: 'timeout',
 			console: [],
 		});
@@ -292,7 +292,7 @@ describe('parseCodeTaskResult', () => {
 
 	it('should reject another version', () => {
 		const parsed = parseCodeTaskResult({
-			version: CODE_TASK_PROTOCOL_VERSION + 1,
+			version: CODE_TASK_CONTRACT_VERSION + 1,
 			status: 'success',
 			result: [],
 			console: [],
@@ -301,7 +301,7 @@ describe('parseCodeTaskResult', () => {
 		expect(parsed.ok).toBe(false);
 		if (parsed.ok) return;
 		expect(parsed.error.message).toBe(
-			`Invalid code task result file. Unsupported version ${CODE_TASK_PROTOCOL_VERSION + 1}. Expected version ${CODE_TASK_PROTOCOL_VERSION}.`,
+			`Invalid code task result file. Unsupported version ${CODE_TASK_CONTRACT_VERSION + 1}. Expected version ${CODE_TASK_CONTRACT_VERSION}.`,
 		);
 	});
 });

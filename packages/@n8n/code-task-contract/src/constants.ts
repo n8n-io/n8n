@@ -3,7 +3,7 @@
  * the same n8n release, so they always use the same version. Increase it on
  * every change that an older reader cannot read.
  */
-export const CODE_TASK_PROTOCOL_VERSION = 1;
+export const CODE_TASK_CONTRACT_VERSION = 1;
 
 /** Path of the task input file, relative to the input folder of the task. */
 export const TASK_INPUT_PATH = 'task.json';

@@ -1,4 +1,4 @@
-# @n8n/code-task-protocol
+# @n8n/code-task-contract
 
 The format of the input and result files of a code task. n8n writes the
 input file. The code runtime in the sandbox reads it and writes the result
@@ -16,13 +16,13 @@ downloads it through the outputs route.
 ## Versions
 
 n8n and the runtime come from the same n8n release. Each file has a
-`version` field. Increase `CODE_TASK_PROTOCOL_VERSION` on every change that an
+`version` field. Increase `CODE_TASK_CONTRACT_VERSION` on every change that an
 older reader cannot read. A reader rejects a file with another version.
 
 ## Usage
 
 ```ts
-import { parseCodeTaskInput } from '@n8n/code-task-protocol';
+import { parseCodeTaskInput } from '@n8n/code-task-contract';
 
 const parsed = parseCodeTaskInput(JSON.parse(content));
 if (!parsed.ok) throw parsed.error;
