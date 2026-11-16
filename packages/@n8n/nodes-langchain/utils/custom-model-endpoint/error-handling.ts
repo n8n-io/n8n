@@ -68,10 +68,12 @@ export function messageFromBody(text: string): string | undefined {
 	if (parsed === UNPARSED) return text;
 	if (!isRecord(parsed)) return undefined;
 
+	// `||`, not `??`: an empty message is not a message, and taking it would hide
+	// both the fields beside it and the status the caller falls back to.
 	return (
-		clientShapedMessage(parsed) ??
+		clientShapedMessage(parsed) ||
 		[parsed.error_description, parsed.error, parsed.message, parsed.detail].find(
-			(value): value is string => typeof value === 'string',
+			(value): value is string => typeof value === 'string' && value.trim().length > 0,
 		)
 	);
 }
