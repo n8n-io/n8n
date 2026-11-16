@@ -10,6 +10,16 @@ const LAST_USED_AT_THROTTLE_MS = 1 * Time.minutes.toMilliseconds;
 /** Upper bound for the local fast path, so memory stays flat with many active tokens. */
 const MAX_TRACKED_TOKENS = 1000;
 
+/** One served MCP request from an OAuth client, with the access token that admitted it. */
+export type McpClientUse = {
+	userId: string;
+	clientId: string;
+	/** The token's `jti` claim. */
+	tokenId: string;
+	/** The bearer itself, so the write applies only while this token is still active. */
+	accessToken: string;
+};
+
 /**
  * Records when an OAuth client last used a user's grant on the instance MCP
  * server. The connected clients list shows this time as "Last used".
@@ -33,7 +43,7 @@ export class McpClientUsageService {
 	 * Best-effort: never blocks or fails the MCP request. The database update
 	 * holds the throttle, so it applies across mains.
 	 */
-	recordUse(userId: string, clientId: string, tokenId: string) {
+	recordUse({ userId, clientId, tokenId, accessToken }: McpClientUse) {
 		const now = Date.now();
 		const key = `${userId}:${clientId}:${tokenId}`;
 
@@ -42,7 +52,13 @@ export class McpClientUsageService {
 		this.remember(key, now);
 
 		void this.userConsentRepository
-			.recordLastUsed(userId, clientId, new Date(now), LAST_USED_AT_THROTTLE_MS)
+			.recordLastUsed({
+				userId,
+				clientId,
+				accessToken,
+				usedAt: new Date(now),
+				minIntervalMs: LAST_USED_AT_THROTTLE_MS,
+			})
 			.catch((error: unknown) => {
 				// Allow a retry on the next request instead of waiting for the throttle.
 				// Keep the entry if a later request already replaced it.

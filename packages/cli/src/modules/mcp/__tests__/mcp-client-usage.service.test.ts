@@ -3,9 +3,16 @@ import { mock } from 'vitest-mock-extended';
 
 import type { UserConsentRepository } from '@/modules/oauth-server/database/repositories/oauth-user-consent.repository';
 
-import { McpClientUsageService } from '../mcp-client-usage.service';
+import { McpClientUsageService, type McpClientUse } from '../mcp-client-usage.service';
 
 const NOW = new Date('2026-11-13T10:00:00.000Z');
+
+const use = (tokenId = 'token-1'): McpClientUse => ({
+	userId: 'user-1',
+	clientId: 'client-1',
+	tokenId,
+	accessToken: `bearer-${tokenId}`,
+});
 
 describe('McpClientUsageService', () => {
 	const userConsentRepository = mock<UserConsentRepository>();
@@ -23,43 +30,44 @@ describe('McpClientUsageService', () => {
 		vi.useRealTimers();
 	});
 
-	it('records the use with a one-minute throttle that the database enforces', () => {
-		service.recordUse('user-1', 'client-1', 'token-1');
+	it('records the use for the admitting token with a one-minute throttle that the database enforces', () => {
+		service.recordUse(use());
 
-		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledWith(
-			'user-1',
-			'client-1',
-			NOW,
-			60_000,
-		);
+		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledWith({
+			userId: 'user-1',
+			clientId: 'client-1',
+			accessToken: 'bearer-token-1',
+			usedAt: NOW,
+			minIntervalMs: 60_000,
+		});
 	});
 
 	it('skips the database for the same token inside the interval', () => {
-		service.recordUse('user-1', 'client-1', 'token-1');
+		service.recordUse(use());
 		vi.advanceTimersByTime(59_999);
-		service.recordUse('user-1', 'client-1', 'token-1');
+		service.recordUse(use());
 
 		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(1);
 
 		vi.advanceTimersByTime(1);
-		service.recordUse('user-1', 'client-1', 'token-1');
+		service.recordUse(use());
 
 		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
 	});
 
 	it('sends the first use of a new token, such as after the grant was created again', () => {
-		service.recordUse('user-1', 'client-1', 'token-1');
-		service.recordUse('user-1', 'client-1', 'token-2');
+		service.recordUse(use('token-1'));
+		service.recordUse(use('token-2'));
 
 		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
 	});
 
 	it('evicts only the oldest token when the fast path is full', () => {
-		for (let i = 0; i < 1001; i++) service.recordUse('user-1', 'client-1', `token-${i}`);
+		for (let i = 0; i < 1001; i++) service.recordUse(use(`token-${i}`));
 		userConsentRepository.recordLastUsed.mockClear();
 
-		service.recordUse('user-1', 'client-1', 'token-0');
-		service.recordUse('user-1', 'client-1', 'token-1000');
+		service.recordUse(use('token-0'));
+		service.recordUse(use('token-1000'));
 
 		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(1);
 	});
@@ -68,7 +76,7 @@ describe('McpClientUsageService', () => {
 		const error = new Error('db down');
 		userConsentRepository.recordLastUsed.mockRejectedValueOnce(error);
 
-		expect(() => service.recordUse('user-1', 'client-1', 'token-1')).not.toThrow();
+		expect(() => service.recordUse(use())).not.toThrow();
 		await vi.waitFor(() => expect(logger.warn).toHaveBeenCalled());
 
 		expect(logger.warn).toHaveBeenCalledWith('Failed to update lastUsedAt on MCP client grant', {
@@ -77,7 +85,7 @@ describe('McpClientUsageService', () => {
 			error,
 		});
 
-		service.recordUse('user-1', 'client-1', 'token-1');
+		service.recordUse(use());
 
 		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
 	});
@@ -90,15 +98,15 @@ describe('McpClientUsageService', () => {
 			}),
 		);
 
-		service.recordUse('user-1', 'client-1', 'token-1');
+		service.recordUse(use());
 		vi.advanceTimersByTime(60_000);
-		service.recordUse('user-1', 'client-1', 'token-1');
+		service.recordUse(use());
 		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
 
 		rejectFirst(new Error('db down'));
 		await vi.waitFor(() => expect(logger.warn).toHaveBeenCalled());
 
-		service.recordUse('user-1', 'client-1', 'token-1');
+		service.recordUse(use());
 
 		expect(userConsentRepository.recordLastUsed).toHaveBeenCalledTimes(2);
 	});

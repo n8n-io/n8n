@@ -8,6 +8,7 @@ import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthClient } from '../database/entities/oauth-client.entity';
+import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 
 const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['oauth-server', 'mcp'] });
@@ -25,7 +26,7 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-	await testDb.truncate(['OAuthClient', 'UserConsent']);
+	await testDb.truncate(['AccessToken', 'OAuthClient', 'UserConsent']);
 });
 
 describe('GET /rest/mcp/oauth-clients', () => {
@@ -107,7 +108,17 @@ describe('GET /rest/mcp/oauth-clients', () => {
 		});
 
 		const usedAt = new Date('2026-11-13T10:00:00.000Z');
-		await userConsentRepository.recordLastUsed(owner.id, client.id, usedAt, 60_000);
+		await Container.get(AccessTokenRepository).insertToken(
+			{ token: 'used-client-token', userId: owner.id, clientId: client.id },
+			{},
+		);
+		await userConsentRepository.recordLastUsed({
+			userId: owner.id,
+			clientId: client.id,
+			accessToken: 'used-client-token',
+			usedAt,
+			minIntervalMs: 60_000,
+		});
 
 		const mine = await testServer.authAgentFor(owner).get('/mcp/oauth-clients');
 

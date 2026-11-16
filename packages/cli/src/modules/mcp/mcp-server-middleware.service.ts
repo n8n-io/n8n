@@ -20,7 +20,7 @@ import type { AuthFailureReason, TelemetryAuthContext } from '@n8n/backend-servi
 import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService, type McpApiKeyResult } from './mcp-api-key.service';
-import { McpClientUsageService } from './mcp-client-usage.service';
+import { McpClientUsageService, type McpClientUse } from './mcp-client-usage.service';
 import { McpProtectedResource } from './mcp-protected-resource';
 import {
 	USER_CONNECTED_TO_MCP_EVENT,
@@ -141,7 +141,10 @@ export class McpServerMiddlewareService {
 				return;
 			}
 			// The admission verified the token, so its `jti` is safe to read here.
-			await this.settleSecurityContext(req, res, next, inbound, admitted.context, claims?.jti);
+			await this.settleSecurityContext(req, res, next, inbound, admitted.context, {
+				id: claims?.jti,
+				value: token,
+			});
 		};
 	}
 
@@ -161,7 +164,7 @@ export class McpServerMiddlewareService {
 		next: NextFunction,
 		inbound: Inbound,
 		context: SecurityContext,
-		tokenId: unknown,
+		accessToken: { id: unknown; value: string },
 	) {
 		// RFC 9068 §2.2 requires `client_id`, and MCP attributes every OAuth call to a client.
 		if (context.clientId === undefined) {
@@ -185,13 +188,29 @@ export class McpServerMiddlewareService {
 		mcpReq.ctx = { ...mcpReq.ctx, security: context };
 		// Only n8n's own authorization server creates local consents. An external source can
 		// map its client ID to a local one, so its traffic must not set Last used.
+		const tokenId = accessToken.id;
 		if (
 			context.subjectClaim?.sourceId === SYSTEM_TRUSTED_SOURCE_ID &&
 			typeof tokenId === 'string'
 		) {
-			this.clientUsage.recordUse(user.id, context.clientId, tokenId);
+			this.recordUseOnSuccess(res, {
+				userId: user.id,
+				clientId: context.clientId,
+				tokenId,
+				accessToken: accessToken.value,
+			});
 		}
 		next();
+	}
+
+	/**
+	 * Records Last used only when the endpoint served the request. An admitted request can
+	 * still fail, for example a GET listen probe always gets 405, and that is not a connection.
+	 */
+	private recordUseOnSuccess(res: Response, use: McpClientUse) {
+		res.once('finish', () => {
+			if (res.statusCode < 400) this.clientUsage.recordUse(use);
+		});
 	}
 
 	private async refuseAdmitted(

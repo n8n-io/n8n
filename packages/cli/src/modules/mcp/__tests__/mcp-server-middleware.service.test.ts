@@ -48,6 +48,13 @@ const mockRes = () => {
 	return res;
 };
 
+/** Ends the mocked response the way Express does, which runs the `finish` listeners. */
+const finishWith = (res: Response, statusCode: number) => {
+	res.statusCode = statusCode;
+	const calls = vi.mocked(res.once).mock.calls as Array<[string, () => void]>;
+	for (const [event, listener] of calls) if (event === 'finish') listener();
+};
+
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock(), mock());
 
@@ -281,17 +288,43 @@ describe('McpServerMiddlewareService', () => {
 				expect(logger.info).not.toHaveBeenCalled();
 			});
 
-			it('records the use of a local OAuth client grant with the token id', async () => {
+			it('records the use of a local OAuth client grant once the endpoint served the request', async () => {
 				admission.admit.mockResolvedValue({ ok: true, context: localContext });
 				const token = jwt.sign(
 					{ iss: 'http://localhost:5678', sub: 'user-123', jti: 'token-1' },
 					'any-secret',
 				);
 
-				await run(`Bearer ${token}`);
+				const { res } = await run(`Bearer ${token}`);
 
-				expect(clientUsage.recordUse).toHaveBeenCalledWith('user-123', 'client-abc', 'token-1');
+				expect(clientUsage.recordUse).not.toHaveBeenCalled();
+
+				finishWith(res, 200);
+
+				expect(clientUsage.recordUse).toHaveBeenCalledWith({
+					userId: 'user-123',
+					clientId: 'client-abc',
+					tokenId: 'token-1',
+					accessToken: token,
+				});
 			});
+
+			it.each([405, 400, 500])(
+				'does not record local grant use when the endpoint answers %i',
+				async (statusCode) => {
+					admission.admit.mockResolvedValue({ ok: true, context: localContext });
+					const token = jwt.sign(
+						{ iss: 'http://localhost:5678', sub: 'user-123', jti: 'token-1' },
+						'any-secret',
+					);
+
+					const { res, next } = await run(`Bearer ${token}`);
+					finishWith(res, statusCode);
+
+					expect(next).toHaveBeenCalled();
+					expect(clientUsage.recordUse).not.toHaveBeenCalled();
+				},
+			);
 
 			it('does not record local grant use for a token from an external trusted source', async () => {
 				const token = jwt.sign(
@@ -299,7 +332,8 @@ describe('McpServerMiddlewareService', () => {
 					'any-secret',
 				);
 
-				const { next } = await run(`Bearer ${token}`);
+				const { res, next } = await run(`Bearer ${token}`);
+				finishWith(res, 200);
 
 				expect(next).toHaveBeenCalled();
 				expect(clientUsage.recordUse).not.toHaveBeenCalled();

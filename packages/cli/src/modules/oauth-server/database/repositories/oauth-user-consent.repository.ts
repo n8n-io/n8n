@@ -3,6 +3,7 @@ import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/d
 import { Service } from '@n8n/di';
 import { DataSource, IsNull, LessThanOrEqual, Or } from '@n8n/typeorm';
 
+import { AccessToken } from '../entities/oauth-access-token.entity';
 import { UserConsent } from '../entities/oauth-user-consent.entity';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
@@ -70,18 +71,38 @@ export class UserConsentRepository extends BaseRepository<UserConsent> {
 	 * update. The write happens only when the stored time is missing or at least
 	 * `minIntervalMs` before `usedAt`, so all mains share the throttle and the time
 	 * never moves backwards. A missing grant is a no-op.
+	 *
+	 * The write also requires `accessToken` to still exist for this user and client.
+	 * Revocation deletes the grant's tokens, so a delayed use of an old grant cannot
+	 * stamp a grant that was created again after it.
 	 */
-	async recordLastUsed(
-		userId: string,
-		clientId: string,
-		usedAt: Date,
-		minIntervalMs: number,
-	): Promise<void> {
+	async recordLastUsed({
+		userId,
+		clientId,
+		accessToken,
+		usedAt,
+		minIntervalMs,
+	}: {
+		userId: string;
+		clientId: string;
+		accessToken: string;
+		usedAt: Date;
+		minIntervalMs: number;
+	}): Promise<void> {
 		const staleBefore = new Date(usedAt.getTime() - minIntervalMs);
-		await this.update(
-			{ userId, clientId, lastUsedAt: Or(IsNull(), LessThanOrEqual(staleBefore)) },
-			{ lastUsedAt: usedAt },
-		);
+		const activeToken = this.manager
+			.createQueryBuilder()
+			.select('1')
+			.from(AccessToken, 'active_token')
+			.where('active_token.token = :accessToken', { accessToken })
+			.andWhere('active_token.userId = :tokenUserId', { tokenUserId: userId })
+			.andWhere('active_token.clientId = :tokenClientId', { tokenClientId: clientId });
+		await this.createQueryBuilder()
+			.update(UserConsent)
+			.set({ lastUsedAt: usedAt })
+			.where({ userId, clientId, lastUsedAt: Or(IsNull(), LessThanOrEqual(staleBefore)) })
+			.andWhere(`EXISTS (${activeToken.getQuery()})`, activeToken.getParameters())
+			.execute();
 	}
 
 	/**
