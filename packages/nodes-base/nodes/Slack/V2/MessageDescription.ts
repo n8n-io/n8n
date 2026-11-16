@@ -1,4 +1,4 @@
-import { SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
+import { READ_ONLY_ANNOTATIONS, SEND_AND_WAIT_OPERATION, type INodeProperties } from 'n8n-workflow';
 import { slackChannelModes } from './utils';
 
 export const messageOperations: INodeProperties[] = [
@@ -16,46 +16,55 @@ export const messageOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 				action: 'Delete a message',
 			},
 			{
 				name: 'Delete Scheduled',
 				value: 'deleteScheduled',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 				action: 'Delete a scheduled message',
 			},
 			{
 				name: 'Get Many Scheduled',
 				value: 'getManyScheduled',
+				annotations: READ_ONLY_ANNOTATIONS,
 				action: 'Get many scheduled messages',
 			},
 			{
 				name: 'Get Permalink',
 				value: 'getPermalink',
+				annotations: READ_ONLY_ANNOTATIONS,
 				action: 'Get a message permalink',
 			},
 			{
 				name: 'Schedule',
 				value: 'schedule',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 				action: 'Schedule a message',
 			},
 			{
 				name: 'Search',
 				value: 'search',
+				annotations: READ_ONLY_ANNOTATIONS,
 				action: 'Search for messages',
 			},
 			{
 				name: 'Send',
 				value: 'post',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 				action: 'Send a message',
 			},
 			{
 				name: 'Send and Wait for Response',
 				value: SEND_AND_WAIT_OPERATION,
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 				action: 'Send message and wait for response',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 				action: 'Update a message',
 			},
 		],

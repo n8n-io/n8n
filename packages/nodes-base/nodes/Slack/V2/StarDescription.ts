@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { READ_ONLY_ANNOTATIONS } from 'n8n-workflow';
 import { slackChannelModes } from './utils';
 
 export const starOperations: INodeProperties[] = [
@@ -16,18 +17,21 @@ export const starOperations: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 				description: 'Add a star to an item',
 				action: 'Add a star',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 				description: 'Delete a star from an item',
 				action: 'Delete a star',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
+				annotations: READ_ONLY_ANNOTATIONS,
 				description: 'Get many stars of autenticated user',
 				action: 'Get many stars',
 			},

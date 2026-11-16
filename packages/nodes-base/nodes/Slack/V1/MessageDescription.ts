@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { READ_ONLY_ANNOTATIONS } from 'n8n-workflow';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -15,30 +16,35 @@ export const messageOperations: INodeProperties[] = [
 			{
 				name: 'Delete',
 				value: 'delete',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 				description: 'Deletes a message',
 				action: 'Delete a message',
 			},
 			{
 				name: 'Get Permalink',
 				value: 'getPermalink',
+				annotations: READ_ONLY_ANNOTATIONS,
 				description: 'Get Permanent Link of a message',
 				action: 'Get a message permalink',
 			},
 			{
 				name: 'Post',
 				value: 'post',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 				description: 'Post a message into a channel',
 				action: 'Post a message',
 			},
 			{
 				name: 'Post (Ephemeral)',
 				value: 'postEphemeral',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 				description: 'Post an ephemeral message to a user in channel',
 				action: 'Post an ephemeral message',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 				description: 'Updates a message',
 				action: 'Update a message',
 			},
