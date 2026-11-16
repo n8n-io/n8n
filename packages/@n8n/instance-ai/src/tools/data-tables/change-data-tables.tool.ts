@@ -36,9 +36,11 @@ import {
 } from './confirmation';
 
 const DESCRIPTION =
-	'Create, change, or delete data tables, their columns, and their rows. Send all the changes ' +
-	'for one request in `changes`, in the order they must run. The user approves the whole list ' +
-	'at once. A later change can use a table or column that an earlier change creates.';
+	'Create, change, or delete data tables, their columns, and their rows. Design the full ' +
+	'schema first, then send every create, column, and seed row for one request in `changes`, ' +
+	'in the order they must run. The user approves the whole list at once. A later change can ' +
+	'use a table or column that an earlier change creates. The run stops at the first failed ' +
+	'change; the result lists the `applied`, `failed`, and `skipped` changes.';
 
 function formatIssuePath(path: Array<string | number>): string {
 	return path
