@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import { ChatOpenAI, ChatOpenAICompletions, type ChatOpenAIFields } from '@langchain/openai';
 import {
 	getConnectionHintNoticeField,
@@ -65,6 +66,20 @@ function responsesKwargs(options: Options): Record<string, unknown> {
 		...(options.storeResponse === undefined ? {} : { store: options.storeResponse }),
 		...(options.truncation ? { truncation: options.truncation } : {}),
 	};
+}
+
+/**
+ * The OpenAI SDK reports every transport failure as "Connection error." and keeps the reason
+ * on `cause`. Without it the user cannot tell a refused port from a name that does not resolve.
+ */
+function nameTransportFault(error: unknown): void {
+	if (!isRecord(error) || typeof error.message !== 'string') return;
+	if (error.message !== 'Connection error.') return;
+
+	const code = isRecord(error.cause) ? error.cause.code : undefined;
+	if (typeof code !== 'string') return;
+
+	error.message = `Connection error (${code})`;
 }
 
 function modelKwargsFor(
@@ -214,6 +229,7 @@ export class LmChatCustomEndpoint implements INodeType {
 				// A connection error or a timeout carries no status, and the default
 				// handler already knows which of those are worth another attempt
 				if (status !== undefined && !shouldRetry(status)) throw error;
+				nameTransportFault(error);
 			}),
 			...(usesResponses
 				? {}

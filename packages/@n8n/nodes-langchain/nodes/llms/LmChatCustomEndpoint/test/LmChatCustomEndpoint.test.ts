@@ -282,3 +282,40 @@ describe('LmChatCustomEndpoint', () => {
 		});
 	});
 });
+
+describe('the retry rule', () => {
+	const onFailedAttempt = async () => {
+		await new LmChatCustomEndpoint().supplyData.call(contextWith(), 0);
+		const handler = constructorArgs().onFailedAttempt;
+		if (!handler) throw new Error('no onFailedAttempt handler was passed');
+		return handler;
+	};
+
+	it.each([408, 429, 500, 503])('tries %s again', async (status) => {
+		const handler = await onFailedAttempt();
+
+		expect(() => handler({ status } as never)).not.toThrow();
+	});
+
+	it.each([400, 401, 404, 422])('gives up on %s', async (status) => {
+		const handler = await onFailedAttempt();
+
+		expect(() => handler({ status } as never)).toThrow();
+	});
+
+	it('names the reason the OpenAI SDK hides behind "Connection error."', async () => {
+		const handler = await onFailedAttempt();
+		const error = Object.assign(new Error('Connection error.'), {
+			cause: { code: 'ECONNREFUSED' },
+		});
+
+		expect(() => handler(error as never)).not.toThrow();
+		expect(error.message).toBe('Connection error (ECONNREFUSED)');
+	});
+
+	it('does not reach the Responses API for a model name that asks for it', async () => {
+		await new LmChatCustomEndpoint().supplyData.call(contextWith({ model: 'codex-mini' }), 0);
+
+		expect(MockedChatOpenAICompletions).toHaveBeenCalled();
+	});
+});
