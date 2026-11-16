@@ -22,7 +22,7 @@ test.use({
 test.describe(
 	'Large Data Size Performance - Cloud Resources',
 	{
-		annotation: [{ type: 'owner', description: 'Catalysts' }],
+		annotation: [{ type: 'owner', description: 'Core Execution' }],
 	},
 	() => {
 		test('Code Node with 30000 items', async ({ n8n }, testInfo) => {

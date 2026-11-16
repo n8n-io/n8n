@@ -215,9 +215,9 @@ export class AiGatewayService {
 		projectId,
 		workflowId,
 	}: {
-		userId: string | undefined;
-		projectId: string | undefined;
-		workflowId: string | undefined;
+		userId?: string;
+		projectId?: string;
+		workflowId?: string;
 	}): Promise<string | undefined> {
 		if (userId) return userId;
 		const resolvedProjectId = await this.resolveProjectId({ projectId, workflowId });

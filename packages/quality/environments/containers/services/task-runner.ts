@@ -1,4 +1,4 @@
-import { GenericContainer, Wait } from 'testcontainers';
+import { GenericContainer, type StartedNetwork, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
@@ -16,7 +16,8 @@ export type TaskRunnerResult = ServiceResult<TaskRunnerMeta>;
 
 export const taskRunner: Service<TaskRunnerResult> = {
 	description: 'Task Runner',
-	shouldStart: (ctx) => ctx.mains > 0 || ctx.workers > 0,
+	shouldStart: (ctx) =>
+		(ctx.mains > 0 || ctx.workers > 0) && ctx.config.env?.N8N_RUNNERS_MODE !== 'internal',
 
 	getOptions(ctx) {
 		if (ctx.external) {
@@ -34,39 +35,54 @@ export const taskRunner: Service<TaskRunnerResult> = {
 
 	async start(network, projectName, config?: unknown): Promise<TaskRunnerResult> {
 		const { taskBrokerUri } = config as TaskRunnerConfig;
-		const { consumer, throwWithLogs } = createSilentLogConsumer();
-
-		try {
-			const container = await new GenericContainer(TEST_CONTAINER_IMAGES.taskRunner)
-				.withNetwork(network)
-				.withNetworkAliases(`${projectName}-task-runner`)
-				.withExposedPorts(5680)
-				.withEnvironment({
-					N8N_RUNNERS_AUTH_TOKEN: 'test',
-					N8N_RUNNERS_LAUNCHER_BROKER_READINESS_POLL_INTERVAL_MS: '500',
-					N8N_RUNNERS_LAUNCHER_LOG_LEVEL: 'debug', // Broker registration is logged at debug, and the stack waits on it
-					N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
-					N8N_RUNNERS_MAX_CONCURRENCY: '5',
-					N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT: '0', // Disabled in tests to prevent cold-start delays
-				})
-				.withWaitStrategy(Wait.forListeningPorts())
-				.withLabels({
-					'com.docker.compose.project': projectName,
-					'com.docker.compose.service': 'task-runner',
-				})
-				.withName(`${projectName}-task-runner`)
-				// Not reused: a launcher stays bound to the broker of the stack that started it
-				.withLogConsumer(consumer)
-				.start();
-
-			return {
-				container,
-				meta: {
-					taskBrokerUri,
-				},
-			};
-		} catch (error) {
-			return throwWithLogs(error);
-		}
+		return await startTaskRunnerContainer(network, projectName, { taskBrokerUri });
 	},
 };
+
+interface TaskRunnerContainerOptions {
+	taskBrokerUri: string;
+	/** Distinguishes a second runner in the same stack, e.g. `engine-task-runner`. */
+	serviceName?: string;
+}
+
+/** One launcher container, bound to the broker it is given. */
+export async function startTaskRunnerContainer(
+	network: StartedNetwork,
+	projectName: string,
+	{ taskBrokerUri, serviceName = 'task-runner' }: TaskRunnerContainerOptions,
+): Promise<TaskRunnerResult> {
+	const { consumer, throwWithLogs } = createSilentLogConsumer();
+
+	try {
+		const container = await new GenericContainer(TEST_CONTAINER_IMAGES.taskRunner)
+			.withNetwork(network)
+			.withNetworkAliases(`${projectName}-${serviceName}`)
+			.withExposedPorts(5680)
+			.withEnvironment({
+				N8N_RUNNERS_AUTH_TOKEN: 'test',
+				N8N_RUNNERS_LAUNCHER_BROKER_READINESS_POLL_INTERVAL_MS: '500',
+				N8N_RUNNERS_LAUNCHER_LOG_LEVEL: 'debug', // Broker registration is logged at debug, and the stack waits on it
+				N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
+				N8N_RUNNERS_MAX_CONCURRENCY: '5',
+				N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT: '0', // Disabled in tests to prevent cold-start delays
+			})
+			.withWaitStrategy(Wait.forListeningPorts())
+			.withLabels({
+				'com.docker.compose.project': projectName,
+				'com.docker.compose.service': serviceName,
+			})
+			.withName(`${projectName}-${serviceName}`)
+			// Not reused: a launcher stays bound to the broker of the stack that started it
+			.withLogConsumer(consumer)
+			.start();
+
+		return {
+			container,
+			meta: {
+				taskBrokerUri,
+			},
+		};
+	} catch (error) {
+		return throwWithLogs(error);
+	}
+}

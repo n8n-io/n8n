@@ -92,6 +92,15 @@ export class ProjectRelationRepository extends BaseRepository<ProjectRelation> {
 		return projectRelations.map((pr) => pr.projectId);
 	}
 
+	async hasAnyRoleInProject(
+		userId: string,
+		projectId: string,
+		roleSlugs: string[],
+	): Promise<boolean> {
+		if (roleSlugs.length === 0) return false;
+		return await this.existsBy({ userId, projectId, role: { slug: In(roleSlugs) } });
+	}
+
 	/**
 	 * Find the role of a user in a project.
 	 */

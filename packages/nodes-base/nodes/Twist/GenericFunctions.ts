@@ -5,22 +5,24 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function twistApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	option: IDataObject = {},
+	option: Pick<IRequestOptions, 'formData'> = {},
 ) {
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		body,
 		qs,
-		uri: `https://api.twist.com/api/v3${endpoint}`,
+		uri: requestUrl`https://api.twist.com/api/v3${endpoint}`,
 		json: true,
 	};
 

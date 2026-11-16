@@ -20,7 +20,7 @@ import { EventService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry, type ProtectedResource } from '@n8n/backend-services/auth';
 import { GlobalConfig } from '@n8n/config';
 import { INSTANCE_MCP_RESOURCE_ID } from '@n8n/constants';
-import type { User } from '@n8n/db';
+import { accountSummary, isPerson, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
@@ -29,7 +29,7 @@ import { AuthService } from '@/auth/auth.service';
 import { ForbiddenError } from '@n8n/errors';
 import { UserManagementMailer } from '@/user-management/email';
 
-import { OAuthClient } from './database/entities/oauth-client.entity';
+import type { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
@@ -121,6 +121,12 @@ function matchesTypeFilter(name: string, type: McpClientTypeFilter): boolean {
 }
 
 /** Sort owners by display name so the "Connected by" dropdown reads naturally. */
+/** The owner of a consent. */
+function ownerSummary(user: User): ConnectedOAuthClientOwner {
+	const { id, email, firstName, lastName } = accountSummary(user);
+	return { id, firstName, lastName, email: email ?? '' };
+}
+
 function sortOwners(owners: ConnectedOAuthClientOwner[]): ConnectedOAuthClientOwner[] {
 	return [...owners].sort((a, b) => {
 		const nameA = [a.firstName, a.lastName].filter(Boolean).join(' ') || a.email;
@@ -158,7 +164,7 @@ export class OAuthServerService implements OAuthServerProvider {
 	get clientsStore(): OAuthRegisteredClientsStore {
 		return {
 			getClient: async (clientId: string): Promise<OAuthClientInformationFull | undefined> => {
-				const client = await this.oauthClientRepository.findOneBy({ id: clientId });
+				const client = await this.oauthClientRepository.findById(clientId, {});
 				if (!client) {
 					return await this.resolveVirtualClient(clientId);
 				}
@@ -196,16 +202,19 @@ export class OAuthServerService implements OAuthServerProvider {
 			): Promise<OAuthClientInformationFull> => {
 				this.validateClientRegistration(client);
 
-				await this.oauthClientRepository.insert({
-					id: client.client_id,
-					name: client.client_name,
-					redirectUris: client.redirect_uris,
-					grantTypes: client.grant_types,
-					clientSecret: client.client_secret ?? null,
-					clientSecretExpiresAt: client.client_secret_expires_at ?? null,
-					tokenEndpointAuthMethod: client.token_endpoint_auth_method ?? 'none',
-					isFirstParty: false,
-				});
+				await this.oauthClientRepository.registerClient(
+					{
+						id: client.client_id,
+						name: client.client_name,
+						redirectUris: client.redirect_uris,
+						grantTypes: client.grant_types,
+						clientSecret: client.client_secret ?? null,
+						clientSecretExpiresAt: client.client_secret_expires_at ?? null,
+						tokenEndpointAuthMethod: client.token_endpoint_auth_method ?? 'none',
+						isFirstParty: false,
+					},
+					{},
+				);
 
 				await this.enforceClientLimit(client.client_id);
 
@@ -216,7 +225,7 @@ export class OAuthServerService implements OAuthServerProvider {
 
 	/** Returns true when the instance is already at or above the registered-client cap. */
 	async isClientLimitReached(): Promise<boolean> {
-		const clientCount = await this.oauthClientRepository.countBy({ isFirstParty: false });
+		const clientCount = await this.oauthClientRepository.countRegistered({});
 		return clientCount >= this.globalConfig.endpoints.mcpMaxRegisteredClients;
 	}
 
@@ -225,7 +234,7 @@ export class OAuthServerService implements OAuthServerProvider {
 		limit: number;
 		atCapacity: boolean;
 	}> {
-		const count = await this.oauthClientRepository.countBy({ isFirstParty: false });
+		const count = await this.oauthClientRepository.countRegistered({});
 		const limit = this.globalConfig.endpoints.mcpMaxRegisteredClients;
 		return { count, limit, atCapacity: count >= limit };
 	}
@@ -239,10 +248,10 @@ export class OAuthServerService implements OAuthServerProvider {
 	 * — matching the response shape of the pre-check guard at the route layer.
 	 */
 	private async enforceClientLimit(clientId: string): Promise<void> {
-		const clientCount = await this.oauthClientRepository.countBy({ isFirstParty: false });
+		const clientCount = await this.oauthClientRepository.countRegistered({});
 		const limit = this.globalConfig.endpoints.mcpMaxRegisteredClients;
 		if (clientCount > limit) {
-			await this.oauthClientRepository.delete({ id: clientId });
+			await this.oauthClientRepository.removeRegistration(clientId, {});
 			this.logger.warn(
 				'OAuth client registration rejected: instance limit reached (post-insert rollback)',
 				{ limit, clientCount },
@@ -284,7 +293,7 @@ export class OAuthServerService implements OAuthServerProvider {
 			return undefined;
 		}
 
-		await this.oauthClientRepository.upsert(
+		await this.oauthClientRepository.upsertVirtualClient(
 			{
 				id: clientId,
 				name: resource.displayName ?? clientId,
@@ -298,7 +307,7 @@ export class OAuthServerService implements OAuthServerProvider {
 				clientSecretExpiresAt: null,
 				isFirstParty: true,
 			},
-			['id'],
+			{},
 		);
 
 		return {
@@ -750,10 +759,7 @@ export class OAuthServerService implements OAuthServerProvider {
 		// not the (client × user) consent set — so filtering and paging stay in SQL.
 		let clientIds: string[] | undefined;
 		if (options.type) {
-			const registered = await this.oauthClientRepository.find({
-				select: { id: true, name: true },
-				where: { isFirstParty: false },
-			});
+			const registered = await this.oauthClientRepository.findRegisteredNames({});
 			clientIds = registered
 				.filter((client) => matchesTypeFilter(client.name, options.type!))
 				.map((client) => client.id);
@@ -783,12 +789,7 @@ export class OAuthServerService implements OAuthServerProvider {
 				scopes: consent.scope,
 				...(listAll
 					? {
-							owner: {
-								id: consent.user.id,
-								firstName: consent.user.firstName ?? null,
-								lastName: consent.user.lastName ?? null,
-								email: consent.user.email,
-							},
+							owner: ownerSummary(consent.user),
 						}
 					: {}),
 			};
@@ -826,9 +827,7 @@ export class OAuthServerService implements OAuthServerProvider {
 	 */
 	async deleteClient(clientId: string, userId: string, revoker?: User): Promise<void> {
 		// First check if the client exists
-		const client = await this.oauthClientRepository.findOne({
-			where: { id: clientId },
-		});
+		const client = await this.oauthClientRepository.findById(clientId, {});
 
 		if (!client) {
 			throw new Error(`OAuth client with ID ${clientId} not found`);
@@ -853,29 +852,15 @@ export class OAuthServerService implements OAuthServerProvider {
 			this.userConsentRepository.delete({ clientId, userId }),
 		]);
 
-		// Garbage-collect the client only when no consents remain. One conditional
-		// delete keeps it atomic: a concurrent authorization for the same client
-		// either commits its consent first (NOT EXISTS keeps the client) or fails
-		// cleanly on the FK instead of being silently cascade-deleted.
-		const consentsTable = this.userConsentRepository.metadata.tableName;
-		const result = await this.oauthClientRepository
-			.createQueryBuilder()
-			.delete()
-			.from(OAuthClient)
-			.where(
-				`id = :clientId AND NOT EXISTS (SELECT 1 FROM ${consentsTable} WHERE "clientId" = :clientId)`,
-				{ clientId },
-			)
-			.execute();
-
-		if (result.affected && result.affected > 0) {
+		if (await this.oauthClientRepository.deleteIfUnused(clientId, {})) {
 			this.logger.info('OAuth client deleted after last consent was revoked', {
 				clientId,
 				clientName: client.name,
 			});
 		}
 
-		if (revoker && revoker.id !== userId) {
+		// Only a person has an email to send to.
+		if (revoker && revoker.id !== userId && isPerson(consent.user)) {
 			this.mailer
 				.notifyMcpClientRevoked({ clientName: client.name, owner: consent.user, revoker })
 				.catch((e) => {

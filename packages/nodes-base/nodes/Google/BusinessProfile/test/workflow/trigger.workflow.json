@@ -1,0 +1,48 @@
+{
+	"name": "Google Business Profile Trigger request URLs",
+	"nodes": [
+		{
+			"parameters": {
+				"event": "reviewAdded",
+				"account": {
+					"__rl": true,
+					"value": "accounts/104578213969250394851",
+					"mode": "name"
+				},
+				"location": {
+					"__rl": true,
+					"value": "locations/7183021945602238911",
+					"mode": "name"
+				}
+			},
+			"type": "n8n-nodes-base.googleBusinessProfileTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "3e7b1c5d-2a4f-4b6e-8c9d-0f1a2b3c4d01",
+			"name": "Google Business Profile Trigger",
+			"credentials": {
+				"googleBusinessProfileOAuth2Api": {
+					"id": "gbp-cred-1",
+					"name": "Google Business Profile account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Google Business Profile Trigger": [
+			{
+				"json": {
+					"name": "accounts/104578213969250394851/locations/7183021945602238911/reviews/AbFvOqk3Lm9",
+					"reviewId": "AbFvOqk3Lm9",
+					"starRating": "FIVE",
+					"comment": "Friendly staff and quick service."
+				}
+			}
+		]
+	},
+	"connections": {},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

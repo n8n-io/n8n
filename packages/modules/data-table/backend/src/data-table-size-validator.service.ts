@@ -71,6 +71,14 @@ export class DataTableSizeValidator {
 		}
 	}
 
+	async getRemainingStorageBytes(
+		fetchSizeFn: () => Promise<DataTablesSizeData>,
+		now = new Date(),
+	): Promise<number> {
+		const size = await this.getCachedSizeData(fetchSizeFn, now);
+		return this.globalConfig.dataTable.maxSize - size.totalBytes;
+	}
+
 	sizeToState(sizeBytes: number): DataTableSizeStatus {
 		const warningThreshold =
 			this.globalConfig.dataTable.warningThreshold ??

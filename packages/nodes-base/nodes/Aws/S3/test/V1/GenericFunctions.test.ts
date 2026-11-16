@@ -1,5 +1,6 @@
 import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import {
 	awsApiRequest,
@@ -27,7 +28,7 @@ describe('AWS S3 V1 GenericFunctions', () => {
 				mockExecuteFunctions,
 				's3',
 				'GET',
-				'/bucket',
+				requestPath`/bucket`,
 				'',
 				{},
 				{},
@@ -60,7 +61,7 @@ describe('AWS S3 V1 GenericFunctions', () => {
 				mockExecuteFunctions,
 				's3',
 				'GET',
-				'/bucket',
+				requestPath`/bucket`,
 				'',
 				queryParams,
 				{},
@@ -94,7 +95,12 @@ describe('AWS S3 V1 GenericFunctions', () => {
 			const mockRequestWithAuth = mockExecuteFunctions.helpers.requestWithAuthentication as Mock;
 			mockRequestWithAuth.mockResolvedValue(jsonString);
 
-			const result = await awsApiRequestREST.call(mockExecuteFunctions, 's3', 'GET', '/bucket');
+			const result = await awsApiRequestREST.call(
+				mockExecuteFunctions,
+				's3',
+				'GET',
+				requestPath`/bucket`,
+			);
 
 			expect(result).toEqual({ id: '123', name: 'test' });
 		});
@@ -104,7 +110,12 @@ describe('AWS S3 V1 GenericFunctions', () => {
 			const mockRequestWithAuth = mockExecuteFunctions.helpers.requestWithAuthentication as Mock;
 			mockRequestWithAuth.mockResolvedValue(rawResponse);
 
-			const result = await awsApiRequestREST.call(mockExecuteFunctions, 's3', 'GET', '/bucket');
+			const result = await awsApiRequestREST.call(
+				mockExecuteFunctions,
+				's3',
+				'GET',
+				requestPath`/bucket`,
+			);
 
 			expect(result).toBe(rawResponse);
 		});
@@ -125,7 +136,12 @@ describe('AWS S3 V1 GenericFunctions', () => {
 			const mockRequestWithAuth = mockExecuteFunctions.helpers.requestWithAuthentication as Mock;
 			mockRequestWithAuth.mockResolvedValue(xmlResponse);
 
-			const result = await awsApiRequestSOAP.call(mockExecuteFunctions, 's3', 'GET', '/bucket');
+			const result = await awsApiRequestSOAP.call(
+				mockExecuteFunctions,
+				's3',
+				'GET',
+				requestPath`/bucket`,
+			);
 
 			expect(result).toHaveProperty('ListBucketResult.Name', 'test-bucket');
 		});
@@ -136,7 +152,12 @@ describe('AWS S3 V1 GenericFunctions', () => {
 			const mockRequestWithAuth = mockExecuteFunctions.helpers.requestWithAuthentication as Mock;
 			mockRequestWithAuth.mockResolvedValue(invalidXml);
 
-			const result = await awsApiRequestSOAP.call(mockExecuteFunctions, 's3', 'GET', '/bucket');
+			const result = await awsApiRequestSOAP.call(
+				mockExecuteFunctions,
+				's3',
+				'GET',
+				requestPath`/bucket`,
+			);
 
 			expect(result).toBeInstanceOf(Error);
 		});
@@ -162,7 +183,7 @@ describe('AWS S3 V1 GenericFunctions', () => {
 				'ListBucketResult.Contents',
 				's3',
 				'GET',
-				'/bucket',
+				requestPath`/bucket`,
 			);
 
 			expect(result).toHaveLength(2);
@@ -185,7 +206,7 @@ describe('AWS S3 V1 GenericFunctions', () => {
 				'ListBucketResult.Contents',
 				's3',
 				'GET',
-				'/bucket',
+				requestPath`/bucket`,
 			);
 
 			expect(result).toEqual([]);
@@ -209,7 +230,7 @@ describe('AWS S3 V1 GenericFunctions', () => {
 				'ListBucketResult.Contents',
 				's3',
 				'GET',
-				'/bucket',
+				requestPath`/bucket`,
 				'',
 				{},
 			);
@@ -250,7 +271,7 @@ describe('AWS S3 V1 GenericFunctions', () => {
 				'ListBucketResult.Contents',
 				's3',
 				'GET',
-				'/bucket',
+				requestPath`/bucket`,
 				'',
 				{ limit: 2 },
 			);
@@ -276,7 +297,7 @@ describe('AWS S3 V1 GenericFunctions', () => {
 				'ListBucketResult.Contents',
 				's3',
 				'GET',
-				'/bucket',
+				requestPath`/bucket`,
 			);
 
 			expect(result).toHaveLength(1);
@@ -295,7 +316,7 @@ describe('AWS S3 V1 GenericFunctions', () => {
 				'ListBucketResult.Contents',
 				's3',
 				'GET',
-				'/bucket',
+				requestPath`/bucket`,
 			);
 
 			// When XML parsing fails, awsApiRequestSOAP returns an Error object
@@ -318,7 +339,7 @@ describe('AWS S3 V1 GenericFunctions', () => {
 				'ListBucketResult.Contents',
 				's3',
 				'GET',
-				'/bucket',
+				requestPath`/bucket`,
 			);
 
 			expect(result).toEqual([{ Key: 'file1.txt' }]);

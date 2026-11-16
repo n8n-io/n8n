@@ -7,7 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import {
 	epicFields,
@@ -101,7 +101,7 @@ export class Taiga implements INodeType {
 				const epics = (await taigaApiRequest.call(
 					this,
 					'GET',
-					'/epics',
+					requestPath`/epics`,
 					{},
 					{ project },
 				)) as LoadedEpic[];
@@ -114,7 +114,7 @@ export class Taiga implements INodeType {
 				const milestones = (await taigaApiRequest.call(
 					this,
 					'GET',
-					'/milestones',
+					requestPath`/milestones`,
 					{},
 					{ project },
 				)) as LoadedResource[];
@@ -127,7 +127,7 @@ export class Taiga implements INodeType {
 				const priorities = (await taigaApiRequest.call(
 					this,
 					'GET',
-					'/priorities',
+					requestPath`/priorities`,
 					{},
 					{ project },
 				)) as LoadedResource[];
@@ -136,11 +136,13 @@ export class Taiga implements INodeType {
 			},
 
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const { id } = (await taigaApiRequest.call(this, 'GET', '/users/me')) as { id: string };
+				const { id } = (await taigaApiRequest.call(this, 'GET', requestPath`/users/me`)) as {
+					id: string;
+				};
 				const projects = (await taigaApiRequest.call(
 					this,
 					'GET',
-					'/projects',
+					requestPath`/projects`,
 					{},
 					{ member: id },
 				)) as LoadedResource[];
@@ -153,7 +155,7 @@ export class Taiga implements INodeType {
 				const roles = (await taigaApiRequest.call(
 					this,
 					'GET',
-					'/roles',
+					requestPath`/roles`,
 					{},
 					{ project },
 				)) as LoadedResource[];
@@ -166,7 +168,7 @@ export class Taiga implements INodeType {
 				const severities = (await taigaApiRequest.call(
 					this,
 					'GET',
-					'/severities',
+					requestPath`/severities`,
 					{},
 					{ project },
 				)) as LoadedResource[];
@@ -179,7 +181,7 @@ export class Taiga implements INodeType {
 				const tags = (await taigaApiRequest.call(
 					this,
 					'GET',
-					`/projects/${project}/tags_colors`,
+					requestPath`/projects/${project}/tags_colors`,
 				)) as LoadedTags;
 
 				return Object.keys(tags).map((tag) => ({ name: tag, value: tag }));
@@ -190,7 +192,7 @@ export class Taiga implements INodeType {
 				const types = (await taigaApiRequest.call(
 					this,
 					'GET',
-					'/issue-types',
+					requestPath`/issue-types`,
 					{},
 					{ project },
 				)) as LoadedResource[];
@@ -203,7 +205,7 @@ export class Taiga implements INodeType {
 				const users = (await taigaApiRequest.call(
 					this,
 					'GET',
-					'/users',
+					requestPath`/users`,
 					{},
 					{ project },
 				)) as LoadedUser[];
@@ -216,7 +218,7 @@ export class Taiga implements INodeType {
 				const userStories = (await taigaApiRequest.call(
 					this,
 					'GET',
-					'/userstories',
+					requestPath`/userstories`,
 					{},
 					{ project },
 				)) as LoadedUserStory[];
@@ -231,7 +233,7 @@ export class Taiga implements INodeType {
 				const statuses = (await taigaApiRequest.call(
 					this,
 					'GET',
-					'/issue-statuses',
+					requestPath`/issue-statuses`,
 					{},
 					{ project },
 				)) as LoadedResource[];
@@ -244,7 +246,7 @@ export class Taiga implements INodeType {
 				const statuses = (await taigaApiRequest.call(
 					this,
 					'GET',
-					'/task-statuses',
+					requestPath`/task-statuses`,
 					{},
 					{ project },
 				)) as LoadedResource[];
@@ -257,7 +259,7 @@ export class Taiga implements INodeType {
 				const statuses = (await taigaApiRequest.call(
 					this,
 					'GET',
-					'/userstory-statuses',
+					requestPath`/userstory-statuses`,
 					{},
 					{ project },
 				)) as LoadedResource[];
@@ -299,7 +301,7 @@ export class Taiga implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await taigaApiRequest.call(this, 'POST', '/epics', body);
+						responseData = await taigaApiRequest.call(this, 'POST', requestPath`/epics`, body);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//               epic: delete
@@ -307,7 +309,11 @@ export class Taiga implements INodeType {
 
 						const epicId = this.getNodeParameter('epicId', i);
 
-						responseData = await taigaApiRequest.call(this, 'DELETE', `/epics/${epicId}`);
+						responseData = await taigaApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/epics/${epicId}`,
+						);
 						responseData = { success: true };
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -316,7 +322,7 @@ export class Taiga implements INodeType {
 
 						const epicId = this.getNodeParameter('epicId', i);
 
-						responseData = await taigaApiRequest.call(this, 'GET', `/epics/${epicId}`);
+						responseData = await taigaApiRequest.call(this, 'GET', requestPath`/epics/${epicId}`);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//               epic: getAll
@@ -329,7 +335,7 @@ export class Taiga implements INodeType {
 							Object.assign(qs, filters);
 						}
 
-						responseData = await handleListing.call(this, 'GET', '/epics', {}, qs, i);
+						responseData = await handleListing.call(this, 'GET', requestPath`/epics`, {}, qs, i);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//               epic: update
@@ -345,9 +351,14 @@ export class Taiga implements INodeType {
 						}
 
 						const epicId = this.getNodeParameter('epicId', i);
-						body.version = await getVersionForUpdate.call(this, `/epics/${epicId}`);
+						body.version = await getVersionForUpdate.call(this, requestPath`/epics/${epicId}`);
 
-						responseData = await taigaApiRequest.call(this, 'PATCH', `/epics/${epicId}`, body);
+						responseData = await taigaApiRequest.call(
+							this,
+							'PATCH',
+							requestPath`/epics/${epicId}`,
+							body,
+						);
 					}
 				} else if (resource === 'issue') {
 					// **********************************************************************
@@ -370,7 +381,7 @@ export class Taiga implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await taigaApiRequest.call(this, 'POST', '/issues', body);
+						responseData = await taigaApiRequest.call(this, 'POST', requestPath`/issues`, body);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//              issue: delete
@@ -378,7 +389,11 @@ export class Taiga implements INodeType {
 
 						const issueId = this.getNodeParameter('issueId', i);
 
-						responseData = await taigaApiRequest.call(this, 'DELETE', `/issues/${issueId}`);
+						responseData = await taigaApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/issues/${issueId}`,
+						);
 						responseData = { success: true };
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -387,7 +402,7 @@ export class Taiga implements INodeType {
 
 						const issueId = this.getNodeParameter('issueId', i);
 
-						responseData = await taigaApiRequest.call(this, 'GET', `/issues/${issueId}`);
+						responseData = await taigaApiRequest.call(this, 'GET', requestPath`/issues/${issueId}`);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//              issue: getAll
@@ -400,7 +415,7 @@ export class Taiga implements INodeType {
 							Object.assign(qs, filters);
 						}
 
-						responseData = await handleListing.call(this, 'GET', '/issues', {}, qs, i);
+						responseData = await handleListing.call(this, 'GET', requestPath`/issues`, {}, qs, i);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//              issue: update
@@ -416,9 +431,14 @@ export class Taiga implements INodeType {
 						}
 
 						const issueId = this.getNodeParameter('issueId', i);
-						body.version = await getVersionForUpdate.call(this, `/issues/${issueId}`);
+						body.version = await getVersionForUpdate.call(this, requestPath`/issues/${issueId}`);
 
-						responseData = await taigaApiRequest.call(this, 'PATCH', `/issues/${issueId}`, body);
+						responseData = await taigaApiRequest.call(
+							this,
+							'PATCH',
+							requestPath`/issues/${issueId}`,
+							body,
+						);
 					}
 				} else if (resource === 'task') {
 					// **********************************************************************
@@ -441,7 +461,7 @@ export class Taiga implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await taigaApiRequest.call(this, 'POST', '/tasks', body);
+						responseData = await taigaApiRequest.call(this, 'POST', requestPath`/tasks`, body);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//               task: delete
@@ -449,7 +469,11 @@ export class Taiga implements INodeType {
 
 						const taskId = this.getNodeParameter('taskId', i);
 
-						responseData = await taigaApiRequest.call(this, 'DELETE', `/tasks/${taskId}`);
+						responseData = await taigaApiRequest.call(
+							this,
+							'DELETE',
+							requestPath`/tasks/${taskId}`,
+						);
 						responseData = { success: true };
 					} else if (operation === 'get') {
 						// ----------------------------------------
@@ -458,7 +482,7 @@ export class Taiga implements INodeType {
 
 						const taskId = this.getNodeParameter('taskId', i);
 
-						responseData = await taigaApiRequest.call(this, 'GET', `/tasks/${taskId}`);
+						responseData = await taigaApiRequest.call(this, 'GET', requestPath`/tasks/${taskId}`);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
 						//               task: getAll
@@ -471,7 +495,7 @@ export class Taiga implements INodeType {
 							Object.assign(qs, filters);
 						}
 
-						responseData = await handleListing.call(this, 'GET', '/tasks', {}, qs, i);
+						responseData = await handleListing.call(this, 'GET', requestPath`/tasks`, {}, qs, i);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//               task: update
@@ -487,9 +511,14 @@ export class Taiga implements INodeType {
 						}
 
 						const taskId = this.getNodeParameter('taskId', i);
-						body.version = await getVersionForUpdate.call(this, `/tasks/${taskId}`);
+						body.version = await getVersionForUpdate.call(this, requestPath`/tasks/${taskId}`);
 
-						responseData = await taigaApiRequest.call(this, 'PATCH', `/tasks/${taskId}`, body);
+						responseData = await taigaApiRequest.call(
+							this,
+							'PATCH',
+							requestPath`/tasks/${taskId}`,
+							body,
+						);
 					}
 				} else if (resource === 'userStory') {
 					// **********************************************************************
@@ -512,7 +541,12 @@ export class Taiga implements INodeType {
 							Object.assign(body, additionalFields);
 						}
 
-						responseData = await taigaApiRequest.call(this, 'POST', '/userstories', body);
+						responseData = await taigaApiRequest.call(
+							this,
+							'POST',
+							requestPath`/userstories`,
+							body,
+						);
 					} else if (operation === 'delete') {
 						// ----------------------------------------
 						//            userStory: delete
@@ -520,7 +554,7 @@ export class Taiga implements INodeType {
 
 						const userStoryId = this.getNodeParameter('userStoryId', i);
 
-						const endpoint = `/userstories/${userStoryId}`;
+						const endpoint = requestPath`/userstories/${userStoryId}`;
 						responseData = await taigaApiRequest.call(this, 'DELETE', endpoint);
 						responseData = { success: true };
 					} else if (operation === 'get') {
@@ -530,7 +564,7 @@ export class Taiga implements INodeType {
 
 						const userStoryId = this.getNodeParameter('userStoryId', i);
 
-						const endpoint = `/userstories/${userStoryId}`;
+						const endpoint = requestPath`/userstories/${userStoryId}`;
 						responseData = await taigaApiRequest.call(this, 'GET', endpoint);
 					} else if (operation === 'getAll') {
 						// ----------------------------------------
@@ -544,7 +578,14 @@ export class Taiga implements INodeType {
 							Object.assign(qs, filters);
 						}
 
-						responseData = await handleListing.call(this, 'GET', '/userstories', {}, qs, i);
+						responseData = await handleListing.call(
+							this,
+							'GET',
+							requestPath`/userstories`,
+							{},
+							qs,
+							i,
+						);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//            userStory: update
@@ -560,12 +601,15 @@ export class Taiga implements INodeType {
 						}
 
 						const userStoryId = this.getNodeParameter('userStoryId', i);
-						body.version = await getVersionForUpdate.call(this, `/userstories/${userStoryId}`);
+						body.version = await getVersionForUpdate.call(
+							this,
+							requestPath`/userstories/${userStoryId}`,
+						);
 
 						responseData = await taigaApiRequest.call(
 							this,
 							'PATCH',
-							`/userstories/${userStoryId}`,
+							requestPath`/userstories/${userStoryId}`,
 							body,
 						);
 					}

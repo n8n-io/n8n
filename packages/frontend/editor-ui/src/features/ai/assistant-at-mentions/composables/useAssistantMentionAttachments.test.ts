@@ -49,8 +49,6 @@ function setup(options: { reservedAttachmentCount?: number } = {}) {
 	const files = ref<File[]>([]);
 	const resources = ref<InstanceAiResourceAttachment[]>([]);
 	const projectId = ref('project-1');
-	const onReferenceAdded = vi.fn();
-	const onReferenceRemoved = vi.fn();
 	const onMentionRemoved = vi.fn();
 	const onCleared = vi.fn();
 	let mentions!: ReturnType<typeof useAssistantMentionAttachments>;
@@ -60,8 +58,6 @@ function setup(options: { reservedAttachmentCount?: number } = {}) {
 			resources,
 			projectId,
 			reservedAttachmentCount: options.reservedAttachmentCount ?? 0,
-			onReferenceAdded,
-			onReferenceRemoved,
 			onMentionRemoved,
 			onCleared,
 		});
@@ -71,8 +67,6 @@ function setup(options: { reservedAttachmentCount?: number } = {}) {
 		files,
 		resources,
 		projectId,
-		onReferenceAdded,
-		onReferenceRemoved,
 		onMentionRemoved,
 		onCleared,
 		mentions,
@@ -80,8 +74,8 @@ function setup(options: { reservedAttachmentCount?: number } = {}) {
 }
 
 describe('useAssistantMentionAttachments', () => {
-	it('adds a structured attachment and one transient reference per mention', () => {
-		const { mentions, resources, onReferenceAdded, scope } = setup();
+	it('adds a structured attachment once per mention', () => {
+		const { mentions, resources, scope } = setup();
 
 		expect(mentions.select(workflowSelection())).toEqual({ status: 'added', truncated: false });
 		expect(mentions.select(workflowSelection())).toEqual({
@@ -89,7 +83,6 @@ describe('useAssistantMentionAttachments', () => {
 			truncated: false,
 		});
 		expect(resources.value).toEqual([{ type: 'workflow', id: 'w1', name: 'Orders' }]);
-		expect(onReferenceAdded).toHaveBeenCalledOnce();
 		scope.stop();
 	});
 
@@ -103,15 +96,16 @@ describe('useAssistantMentionAttachments', () => {
 	});
 
 	it('keeps child context when the workflow attachment is removed', () => {
-		const { mentions, resources, onReferenceRemoved, onMentionRemoved, scope } = setup();
+		const { mentions, resources, onMentionRemoved, scope } = setup();
 		mentions.select(workflowSelection());
 		mentions.select(nodeSelection());
 
 		mentions.removeResource(0);
 
 		expect(resources.value).toEqual([nodeSelection().attachment]);
-		expect(onReferenceRemoved).toHaveBeenCalledTimes(1);
 		expect(onMentionRemoved).toHaveBeenCalledExactlyOnceWith('workflow');
+		// The removed mention is a draft again, not a duplicate.
+		expect(mentions.select(workflowSelection())).toEqual({ status: 'added', truncated: false });
 		scope.stop();
 	});
 
@@ -131,62 +125,79 @@ describe('useAssistantMentionAttachments', () => {
 		scope.stop();
 	});
 
-	it('restores submitted references after failure and releases them after acceptance', () => {
-		const { mentions, resources, onReferenceRemoved, scope } = setup();
+	it('lets a sent mention be picked again, and restores one after a refused send', () => {
+		const { mentions, resources, scope } = setup();
 		mentions.select(workflowSelection());
-		const failedSubmission = mentions.detachSubmission();
-		failedSubmission.restore();
-		failedSubmission.accept();
-		expect(onReferenceRemoved).not.toHaveBeenCalled();
 
-		const acceptedSubmission = mentions.detachSubmission();
-		acceptedSubmission.accept();
-		expect(onReferenceRemoved).toHaveBeenCalledTimes(1);
+		// The composer clears the attachments with the send and puts them back on a refusal.
+		const restoreRefused = mentions.detachSubmission();
+		resources.value = [];
+		expect(mentions.snapshotCounts().total).toBe(0);
+		resources.value = [workflowSelection().attachment];
+		restoreRefused();
+		expect(mentions.select(workflowSelection())).toEqual({
+			status: 'duplicate',
+			truncated: false,
+		});
+		expect(mentions.snapshotCounts().total).toBe(1);
+
+		mentions.detachSubmission();
+		resources.value = [];
+		expect(mentions.select(workflowSelection())).toEqual({ status: 'added', truncated: false });
 		expect(resources.value).toHaveLength(1);
 		scope.stop();
 	});
 
-	it('settles only references captured before submission work starts', () => {
-		const { mentions, onReferenceRemoved, scope } = setup();
+	it('does not restore a mention whose attachment is gone or picked again since', () => {
+		const { mentions, resources, scope } = setup();
+		mentions.select(workflowSelection());
+		mentions.select(nodeSelection());
+		const restore = mentions.detachSubmission();
+		resources.value = [];
+
+		// Picked again before the refusal came back: that pick is the live one.
+		mentions.select(workflowSelection());
+		restore();
+		restore();
+
+		expect(mentions.snapshotCounts()).toEqual({ total: 1, workflow: 1, node: 0, group: 0 });
+		expect(mentions.select(nodeSelection())).toEqual({ status: 'added', truncated: false });
+		scope.stop();
+	});
+
+	it('detaches only the mentions captured before submission work starts', () => {
+		const { mentions, scope } = setup();
 		mentions.select(workflowSelection());
 		const snapshot = mentions.snapshotSubmission();
 		mentions.select(nodeSelection());
 
-		mentions.detachSubmission(snapshot).accept();
+		mentions.detachSubmission(snapshot);
 
-		expect(onReferenceRemoved).toHaveBeenCalledTimes(1);
+		expect(mentions.snapshotCounts()).toEqual({ total: 1, workflow: 0, node: 1, group: 0 });
 		scope.stop();
 	});
 
 	it('clears mention context when the project changes', async () => {
-		const {
-			mentions,
-			resources,
-			projectId,
-			onReferenceRemoved,
-			onMentionRemoved,
-			onCleared,
-			scope,
-		} = setup();
+		const { mentions, resources, projectId, onMentionRemoved, onCleared, scope } = setup();
 		mentions.select(workflowSelection());
 		projectId.value = 'project-2';
 		await nextTick();
 
 		expect(resources.value).toEqual([]);
-		expect(onReferenceRemoved).toHaveBeenCalledOnce();
 		expect(onCleared).toHaveBeenCalledOnce();
 		expect(onMentionRemoved).not.toHaveBeenCalled();
+		expect(mentions.snapshotCounts().total).toBe(0);
 		scope.stop();
 	});
 
 	it('reserves host attachment slots when enforcing the message limit', () => {
-		const { mentions, resources, onReferenceAdded, scope } = setup({
+		const { mentions, resources, scope } = setup({
 			reservedAttachmentCount: 10,
 		});
 
 		expect(mentions.select(workflowSelection())).toEqual({ status: 'limit', truncated: false });
 		expect(resources.value).toEqual([]);
-		expect(onReferenceAdded).not.toHaveBeenCalled();
+		expect(mentions.snapshotCounts().total).toBe(0);
 		scope.stop();
 	});
 });

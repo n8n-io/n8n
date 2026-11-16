@@ -1,5 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 
 import { execute } from '../../../actions/page/getLabels.operation';
 import { confluenceApiRequest } from '../../../transport';
@@ -12,7 +12,7 @@ vi.mock('../../../transport', () => ({
 
 const apiRequest = vi.mocked(confluenceApiRequest);
 
-const ENDPOINT = '/wiki/api/v2/pages/123/labels';
+const ENDPOINT = requestPath`/wiki/api/v2/pages/123/labels`;
 
 const baseParams = {
 	page: { mode: 'id', value: '123' },

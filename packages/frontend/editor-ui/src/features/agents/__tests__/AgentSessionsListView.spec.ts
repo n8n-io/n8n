@@ -4,6 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { readFileSync } from 'node:fs';
 
 // Hoisted mock state so vi.mock factories (which run before any imports)
 // can reference these without hitting a temporal-dead-zone error.
@@ -75,6 +76,7 @@ vi.mock('@n8n/i18n', () => ({
 					'agentSessions.origin.schedule': 'Schedule',
 					'agentSessions.origin.workflow': 'Workflow',
 					'agentSessions.origin.n8nChat': 'n8n Chat',
+					'agentSessions.origin.webhook': 'API',
 					'agentSessions.empty': 'No agent sessions',
 					'agentSessions.emptyDescription':
 						'Sessions will appear here after you preview your agent.',
@@ -84,6 +86,7 @@ vi.mock('@n8n/i18n', () => ({
 					'agentSessions.status.error': 'Error',
 					'agentSessions.status.cancelled': 'Canceled',
 					'agentSessions.status.interrupted': 'Interrupted',
+					'agentSessions.status.awaiting': 'Awaiting',
 				}[key] ?? key
 			);
 		},
@@ -365,6 +368,7 @@ describe('AgentSessionsListView', () => {
 		['error', 'Error', 'danger', true],
 		['cancelled', 'Canceled', 'warning', true],
 		['interrupted', 'Interrupted', 'warning', true],
+		['awaiting', 'Awaiting', 'secondary', true],
 		['running', 'Running', 'text-base', false],
 	] as const)('renders the %s session state', async (status, label, color, showsDuration) => {
 		const wrapper = await mountView({
@@ -464,6 +468,19 @@ describe('AgentSessionsListView', () => {
 		expect(wrapper.get('[data-test-id="agent-sessions-empty-description"]').text()).toBe(
 			'Sessions will appear here after you preview your agent.',
 		);
+	});
+
+	it('lets the empty-state row grow in the narrow layout', async () => {
+		const wrapper = await mountView({ threads: [] });
+		const emptyRow = wrapper.get('[data-test-id="agent-sessions-empty"]').element.closest('tr');
+		expect(emptyRow?.className).toContain('lastRow');
+
+		// jsdom does not evaluate container queries, so check the rule itself.
+		// A block cell keeps a fixed `height` and clips the two-line empty state.
+		const source = readFileSync('src/features/agents/views/AgentSessionsListView.vue', 'utf8');
+		const narrowLayout = source.slice(source.indexOf('@container sessions (max-width: 44rem)'));
+		const lastRowCell = narrowLayout.match(/\.wrapper \.sessionsTable \.lastRow td \{([^}]*)\}/);
+		expect(lastRowCell?.[1]).toMatch(/height:\s*auto;/);
 	});
 
 	it('shows the filtered empty state when no sessions match', async () => {
@@ -579,6 +596,7 @@ describe('AgentSessionsListView', () => {
 		[{ source: 'n8n_chat' }, 'Preview', 'flask-conical'],
 		[{ source: 'n8n_chat_production' }, 'n8n Chat', 'message-square'],
 		[{ source: 'workflow' }, 'Workflow', 'workflow'],
+		[{ source: 'webhook' }, 'API', 'plug'],
 		[{ source: 'subagent' }, 'Sub-agent', 'bot'],
 		[{ parentThreadId: 'parent-1', source: 'slack' }, 'Sub-agent', 'bot'],
 		[{ source: 'task' }, 'Schedule', 'clock'],
