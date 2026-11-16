@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
 import { N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 
 import type { AgentSkill } from '@/features/agents/types';
@@ -22,6 +23,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const { showError } = useToast();
 const { trackCardsShown } = useRecommendedSkillsExperiment();
 const loadingId = ref<RecommendedSkillId>();
 
@@ -30,6 +32,8 @@ async function selectSkill(recommended: RecommendedSkill) {
 	loadingId.value = recommended.id;
 	try {
 		emit('select', { id: recommended.id, skill: await recommended.load() });
+	} catch (error) {
+		showError(error, i18n.baseText('experiments.recommendedSkills.loadError'));
 	} finally {
 		loadingId.value = undefined;
 	}

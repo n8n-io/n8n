@@ -930,6 +930,15 @@ describe('SettingsSkillsView', () => {
 			expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
 		});
 
+		it('tracks no exposure when a source with no synced skills replaces the empty state', async () => {
+			assignVariant('variant');
+			skillsStore.collapsedSources = [{ sourceId: 'src-1', index: 0, skillCount: 0 }];
+			renderView();
+			await new Promise(process.nextTick);
+
+			expect(mockedStore(usePostHog).trackExposure).not.toHaveBeenCalled();
+		});
+
 		it('opens the create modal filled in from a card and reports the saved skill', async () => {
 			assignVariant('variant');
 			skillsStore.createSkill.mockResolvedValue(detail({ id: 's-new' }));

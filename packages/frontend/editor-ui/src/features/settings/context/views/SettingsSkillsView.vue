@@ -976,7 +976,11 @@ onMounted(async () => {
 	// here is an empty list and never a broken one.
 	if (!loadFailed.value) {
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILLS, { count: skillsStore.count });
-		if (emptyState.value === 'noSkills' && scopeOptions.value.length > 0) {
+		if (
+			emptyState.value === 'noSkills' &&
+			skillsStore.collapsedSources.length === 0 &&
+			scopeOptions.value.length > 0
+		) {
 			trackRecommendedSkillsExposure();
 		}
 	}

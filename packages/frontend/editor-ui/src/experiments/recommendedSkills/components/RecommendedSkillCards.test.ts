@@ -5,12 +5,18 @@ import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { RECOMMENDED_SKILLS } from '../recommendedSkills';
 import RecommendedSkillCards from './RecommendedSkillCards.vue';
 
 const track = vi.fn();
+const showError = vi.fn();
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track }),
+}));
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError }),
 }));
 
 const renderComponent = createComponentRenderer(RecommendedSkillCards, {
@@ -22,6 +28,7 @@ let pinia: ReturnType<typeof createTestingPinia>;
 describe('RecommendedSkillCards', () => {
 	beforeEach(() => {
 		track.mockReset();
+		showError.mockReset();
 		pinia = createTestingPinia();
 	});
 
@@ -65,5 +72,24 @@ describe('RecommendedSkillCards', () => {
 		expect(selected.id).toBe('cold-email');
 		expect(selected.skill.name).toBe('cold-email');
 		expect(selected.skill.references).toHaveLength(4);
+	});
+
+	it('shows an error and emits nothing when the skill content does not load', async () => {
+		const error = new Error('Failed to fetch dynamically imported module');
+		const research = RECOMMENDED_SKILLS.find(({ id }) => id === 'research')!;
+		const { getByTestId, emitted } = renderComponent({ pinia });
+		vi.spyOn(research, 'load').mockRejectedValueOnce(error);
+
+		await userEvent.click(
+			within(getByTestId('recommended-skill-research')).getByTestId('recommended-skill-use-button'),
+		);
+
+		await waitFor(() =>
+			expect(showError).toHaveBeenCalledWith(
+				error,
+				"Couldn't load the skill. Reload the page and try again.",
+			),
+		);
+		expect(emitted('select')).toBeUndefined();
 	});
 });
