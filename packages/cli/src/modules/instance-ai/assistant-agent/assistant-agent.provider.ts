@@ -316,7 +316,9 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				proxyRunConfig,
 				experimentGates,
 				...(trace ? { tracing: trace.context } : {}),
-				// The subject is bound after this, so the first turn of an agent thread counts it here.
+				// Whether the turn can build or edit an agent, which keeps every approval card. The
+				// subject is bound after this, so the first turn of an agent thread counts it here. An
+				// attached or mentioned agent does not bind, but the turn can still edit it.
 				attachesAgent:
 					request.subject?.type === 'agent' ||
 					request.attachments?.some((attachment) => attachment.type === 'agent'),

@@ -1735,18 +1735,30 @@ describe('AssistantAgentThreadView', () => {
 			});
 		});
 
-		it('does not bind an agent through the server before the first message', async () => {
+		it('binds a change from the preview once the server accepts the first message', async () => {
 			launchWith({ name: 'Triage' });
 			await renderNewThread();
+			const renamed = { agentId: 'agent-1', projectId: 'project-1', name: 'Refund triage' };
 
 			expect(agentPreview.targets).toBeDefined();
-			await agentPreview.targets?.bind({
-				agentId: 'agent-2',
-				projectId: 'project-1',
-				name: 'Other',
-			});
-
+			await agentPreview.targets?.bind(renamed);
 			expect(bindTarget).not.toHaveBeenCalled();
+
+			// The first turn bound the subject under its old name.
+			fetchTargets.mockResolvedValue({
+				targets: {
+					bound: { agentId: 'agent-1', projectId: 'project-1', name: 'Triage' },
+					pending: null,
+					targets: [],
+					previewSession: null,
+				},
+			});
+			bindTarget.mockResolvedValue({ targets: noTargets() });
+			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
+			onSessionCreated();
+			await flushPromises();
+
+			expect(bindTarget).toHaveBeenCalledExactlyOnceWith(expect.anything(), 'thread-new', renamed);
 		});
 
 		it('sends a pending agent without a preview before the first message', async () => {
