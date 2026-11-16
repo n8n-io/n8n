@@ -138,18 +138,51 @@ const REQUEST_SOURCE = `async function __request(options, wrapped, legacy) {
 		inject: wrapped,
 		credential,
 	});
-	const lenient = legacy ? options.simple === false : options.ignoreHttpStatusErrors;
-	if (response.status >= 400 && !lenient) {
+	if (response.status >= 400) {
 		const failure = __assign(new Error('Request failed with status code ' + response.status), {
-			response: { status: response.status, data: response.body },
+			response: { status: response.status, data: response.body, headers: response.headers },
 			statusCode: response.status,
 		});
 		throw wrapped ? __apiError(failure, undefined) : failure;
 	}
-	const full = legacy ? options.resolveWithFullResponse : options.returnFullResponse;
-	const body = bytes ? __responseBytes(response.body) : response.body;
-	return full ? { body, headers: response.headers, statusCode: response.status } : body;
+	if (bytes) {
+		const body = __responseBytes(response.body);
+		const full = legacy ? options.resolveWithFullResponse === true : options.returnFullResponse === true;
+		return full ? { body, headers: response.headers, statusCode: response.status } : body;
+	}
+	return response.body;
 }`;
+const REQUEST_FAILS = 'if (response.status >= 400) {';
+const REQUEST_FAILS_UNLESS_LENIENT =
+	'if (response.status >= 400 && !(legacy ? options.simple === false : options.ignoreHttpStatusErrors)) {';
+const REQUEST_RESULT = '\treturn response.body;\n}';
+const REQUEST_RESULT_OR_FULL =
+	'\treturn (legacy ? options.resolveWithFullResponse : options.returnFullResponse) ? { body: response.body, headers: response.headers, statusCode: response.status } : response.body;\n}';
+const LENIENT_OPTIONS = new Set(['simple', 'ignoreHttpStatusErrors']);
+
+function setsOption(root: ts.Node, names: Set<string>, withoutBytes = false): boolean {
+	const keyOf = (n: ts.Node): ts.Node | undefined => {
+		if (ts.isPropertyAssignment(n) || ts.isShorthandPropertyAssignment(n)) return n.name;
+		if (ts.isPropertyAccessExpression(n) && isWritten(n)) return n.name;
+		if (ts.isElementAccessExpression(n)) return n.argumentExpression;
+		return undefined;
+	};
+	const asksForBytes = (n: ts.Node) =>
+		ts.isObjectLiteralExpression(n.parent) &&
+		n.parent.properties.some(
+			(p) => p.name !== undefined && ts.isIdentifier(p.name) && p.name.text === 'encoding',
+		);
+	const find = (n: ts.Node): boolean => {
+		const key = keyOf(n);
+		const named =
+			key !== undefined &&
+			(ts.isIdentifier(key) || ts.isStringLiteral(key)) &&
+			names.has(key.text) &&
+			!(withoutBytes && asksForBytes(n));
+		return named || (ts.forEachChild(n, find) ?? false);
+	};
+	return find(root);
+}
 const FULL_RESPONSE_OPTIONS = new Set(['resolveWithFullResponse', 'returnFullResponse']);
 const FULL_RESPONSE_GAPS = new Set(['statusMessage', 'request']);
 
@@ -6602,6 +6635,18 @@ class Specialiser {
 		if (this.helpers.has('__request'))
 			code.unshift(
 				(this.storesResponses ? REQUEST_SOURCE : REQUEST_SOURCE.replace(REQUEST_BYTES, 'false'))
+					.replace(
+						REQUEST_FAILS,
+						this.output.some((o) => setsOption(o.node, LENIENT_OPTIONS))
+							? REQUEST_FAILS_UNLESS_LENIENT
+							: REQUEST_FAILS,
+					)
+					.replace(
+						REQUEST_RESULT,
+						this.output.some((o) => setsOption(o.node, FULL_RESPONSE_OPTIONS, true))
+							? REQUEST_RESULT_OR_FULL
+							: REQUEST_RESULT,
+					)
 					.replace(
 						REQUEST_HEAD,
 						this.requestTokenOptions ? REQUEST_HEAD_WITH_TOKEN_OPTIONS : REQUEST_HEAD,

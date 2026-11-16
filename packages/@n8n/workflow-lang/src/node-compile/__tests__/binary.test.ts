@@ -411,8 +411,6 @@ describe('node compiler: binary data of a response', () => {
 			[PDF],
 		);
 		expect(requestOf(out).responseBinary).toBeUndefined();
-		expect(out.result).toEqual([
-			{ body: { body: 'hello bytes', headers: PDF.headers, statusCode: 200 } },
-		]);
+		expect(out.result).toEqual([{ body: 'hello bytes' }]);
 	});
 });

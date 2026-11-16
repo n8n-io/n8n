@@ -374,6 +374,12 @@ function installFakeHttp(
 				qsFormat: repeat ? 'repeat' : 'brackets',
 			});
 			const r = next();
+			// `simple: false`: the request library gives the answer of a failed request.
+			if ((r.status ?? 200) >= 400 && options.simple === false) {
+				return options.resolveWithFullResponse
+					? { statusCode: r.status, headers: r.headers ?? {}, body: r.body }
+					: r.body;
+			}
 			return answer(
 				r.status ?? 200,
 				r.body,
