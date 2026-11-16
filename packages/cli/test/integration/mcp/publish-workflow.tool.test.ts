@@ -39,6 +39,7 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowPublicationOutboxConsumer } from '@/workflows/publication/workflow-publication-outbox-consumer';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
+import { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -305,16 +306,20 @@ describe('publish_workflow trigger activation', () => {
 
 	test.each(
 		(['credentials', 'policy'] as const).flatMap((refusalSource) =>
-			(['live', 'failed', 'unregistered', 'partially_registered'] as const).map(
-				(previousState) => ({
-					refusalSource,
-					previousState,
-				}),
+			(['live', 'failed', 'unregistered', 'partially_registered'] as const).flatMap(
+				(previousState) =>
+					(previousState === 'live' || previousState === 'failed' ? [false, true] : [false]).map(
+						(registrationCheckFails) => ({
+							refusalSource,
+							previousState,
+							registrationCheckFails,
+						}),
+					),
 			),
 		),
 	)(
-		'reports the $previousState previous version after a queued $refusalSource refusal',
-		async ({ refusalSource, previousState }) => {
+		'reports the $previousState previous version after a queued $refusalSource refusal (registration check fails: $registrationCheckFails)',
+		async ({ refusalSource, previousState, registrationCheckFails }) => {
 			const trigger = scheduleNode('original', previousState === 'failed' ? 60 : 30);
 			const { workflow, owner } = await publishAndActivate([
 				trigger,
@@ -323,6 +328,9 @@ describe('publish_workflow trigger activation', () => {
 			const registeredTrigger = Container.get(ActiveWorkflowTriggers)
 				.get(workflow.id)
 				?.get(trigger.id);
+			const originalTriggerRows = await Container.get(
+				WorkflowPublicationTriggerStatusRepository,
+			).findByWorkflowId(workflow.id);
 			if (previousState === 'unregistered') {
 				await Container.get(ActiveWorkflowTriggers).remove(workflow.id);
 			} else if (previousState === 'partially_registered') {
@@ -368,14 +376,31 @@ describe('publish_workflow trigger activation', () => {
 					? vi.spyOn(Container.get(CredentialsPermissionChecker), 'check')
 					: vi.spyOn(policy, 'enforceWorkflowPublish');
 			refuse.mockRejectedValueOnce(error);
-			const expectedTriggers = previousLive
-				? [
-						{ nodeId: trigger.id, status: 'activated', errorMessage: null },
-						...(previousState === 'partially_registered'
-							? [{ nodeId: 'missing', status: 'failed', errorMessage: 'Trigger is not registered' }]
-							: []),
-					]
-				: [{ nodeId: 'replacement', status: 'failed', errorMessage: error.message }];
+			const registrationCheck = registrationCheckFails
+				? vi
+						.spyOn(Container.get(WorkflowTriggerActivator), 'getNodesWithUnregisteredWebhooks')
+						.mockRejectedValueOnce(new Error('Webhook lookup failed'))
+				: undefined;
+			const expectedTriggers = registrationCheckFails
+				? originalTriggerRows.map(({ nodeId, status, errorMessage }) => ({
+						nodeId,
+						status,
+						errorMessage,
+					}))
+				: previousLive
+					? [
+							{ nodeId: trigger.id, status: 'activated', errorMessage: null },
+							...(previousState === 'partially_registered'
+								? [
+										{
+											nodeId: 'missing',
+											status: 'failed',
+											errorMessage: 'Trigger is not registered',
+										},
+									]
+								: []),
+						]
+					: [{ nodeId: 'replacement', status: 'failed', errorMessage: error.message }];
 			const publicationStatus = {
 				status: 'failed',
 				versionId,
@@ -422,7 +447,16 @@ describe('publish_workflow trigger activation', () => {
 						WorkflowPublicationTriggerStatusRepository,
 					).findActivatedInMemoryTriggers(),
 				).toEqual(previousLive ? [{ workflowId: workflow.id, nodeId: trigger.id }] : []);
+				if (registrationCheck) {
+					expect(registrationCheck).toHaveBeenCalledOnce();
+					expect(
+						await Container.get(WorkflowPublicationTriggerStatusRepository).findByWorkflowId(
+							workflow.id,
+						),
+					).toEqual(originalTriggerRows);
+				}
 			} finally {
+				registrationCheck?.mockRestore();
 				refuse.mockRestore();
 				hasChecks.mockRestore();
 			}

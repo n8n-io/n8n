@@ -551,13 +551,13 @@ export class WorkflowPublicationApplier {
 				(node) => missingNonWebhooks.has(node.id) || missingWebhooks.has(node.id),
 			);
 		} catch (error) {
-			// The probe only enriches the refusal. If it fails, report the refusal as before.
+			// The refusal did not change registrations. Keep the stored trigger state if its check fails.
 			this.logger.warn('Could not check the triggers of the previous version after a refusal', {
 				workflowId: workflow.id,
 				versionId: oldVersion.versionId,
 				error: ensureError(error).message,
 			});
-			return result;
+			return { ...result, triggerStatuses: undefined };
 		}
 		if (missingTriggers.length === triggers.length) return result;
 

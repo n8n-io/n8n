@@ -576,7 +576,7 @@ describe('WorkflowPublicationApplier', () => {
 			});
 		});
 
-		test('reports the refusal without previous state when the registration probe fails', async () => {
+		test('keeps stored trigger state when the registration probe fails', async () => {
 			const version = { ...newVersion, nodes: [triggerNode('a')] };
 			const error = refuse(version);
 			workflowTriggerActivator.getNodesWithUnregisteredWebhooks.mockRejectedValueOnce(
@@ -587,6 +587,10 @@ describe('WorkflowPublicationApplier', () => {
 
 			expect(result).toMatchObject({ type: 'failed', error });
 			expect(result).not.toHaveProperty('previousTriggerState');
+			expect(result).not.toHaveProperty('triggerStatuses', expect.anything());
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
 		});
 	});
 
