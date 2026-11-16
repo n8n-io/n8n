@@ -1,5 +1,8 @@
 // Use subpath entries to avoid loading all components in the preview.
-import { FeatureMaturityKey, type FeatureMaturityCatalog } from '@n8n/design-system';
+import {
+	FeatureMaturityKey,
+	type FeatureMaturityCatalog,
+} from '@n8n/design-system/feature-maturity';
 import { IconBodyLoaderKey, loadLucideIconBody } from '@n8n/design-system/icons/lucide';
 import { N8nPlugin } from '@n8n/design-system/plugin';
 import { i18nInstance } from '@n8n/i18n';

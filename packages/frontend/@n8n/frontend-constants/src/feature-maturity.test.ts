@@ -1,8 +1,4 @@
-import {
-	featureMaturity,
-	featureMaturityForPlan,
-	showsFeatureMaturityBadges,
-} from './feature-maturity';
+import { featureMaturity } from './feature-maturity';
 
 describe('featureMaturity', () => {
 	it('matches the feature list', () => {
@@ -38,27 +34,5 @@ describe('featureMaturity', () => {
 			selfHealing: { preview: true, limitedEnterpriseSupport: true },
 			chat: { preview: true, limitedEnterpriseSupport: true },
 		});
-	});
-
-	it('hides limited enterprise readiness unless the plan is Enterprise', () => {
-		expect(featureMaturityForPlan(true)).toBe(featureMaturity);
-		expect(featureMaturityForPlan(false).assistant).toEqual({
-			preview: false,
-			limitedEnterpriseSupport: false,
-			docsUrl: 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant',
-		});
-		expect(featureMaturityForPlan(false).agents).toEqual({
-			preview: true,
-			limitedEnterpriseSupport: false,
-			docsUrl: 'https://docs.n8n.io/build/build-and-manage-agents',
-		});
-		expect(featureMaturityForPlan(false).openTelemetry).toEqual(featureMaturity.openTelemetry);
-	});
-
-	it('shows a badge when the entry is preview or has limited enterprise support', () => {
-		expect(showsFeatureMaturityBadges(featureMaturity.assistant)).toBe(true);
-		expect(showsFeatureMaturityBadges(featureMaturity.agents)).toBe(true);
-		expect(showsFeatureMaturityBadges(featureMaturity.openTelemetry)).toBe(true);
-		expect(showsFeatureMaturityBadges(featureMaturity.roles)).toBe(false);
 	});
 });

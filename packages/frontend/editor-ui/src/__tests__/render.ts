@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 import vueJsonPretty from 'vue-json-pretty';
-import { FeatureMaturityKey } from '@n8n/design-system';
-import { featureMaturityForPlan } from '@n8n/frontend-constants/feature-maturity';
+import { FeatureMaturityKey, featureMaturityForPlan } from '@n8n/design-system';
+import { featureMaturity } from '@n8n/frontend-constants/feature-maturity';
 import { defineRenderer, type RenderOptions } from '@n8n/frontend-test-utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { GlobalDirectivesPlugin } from '@/app/plugins/directives';
@@ -39,7 +39,7 @@ export const { renderComponent, createComponentRenderer } = defineRenderer({
 				useWorkflowDocumentStore(createWorkflowDocumentId(useWorkflowsStore().workflowId)),
 			),
 			[FeatureMaturityKey as symbol]: computed(() =>
-				featureMaturityForPlan(settingsStore.isEnterprisePlan),
+				featureMaturityForPlan(featureMaturity, settingsStore.isEnterprisePlan),
 			),
 		};
 	},

@@ -78,3 +78,32 @@ export function resolveFeatureMaturityBadges(
 		testId: featureMaturityTestId(id),
 	};
 }
+
+/**
+ * The catalog the app provides to the badges.
+ * Pass the feature list and whether the instance is on the Enterprise plan.
+ * An Enterprise plan keeps every entry.
+ * Any other plan keeps Preview and hides Limited enterprise readiness.
+ */
+export function featureMaturityForPlan(
+	catalog: FeatureMaturityCatalog,
+	isEnterprisePlan: boolean,
+): FeatureMaturityCatalog {
+	if (isEnterprisePlan) return catalog;
+
+	const visible: { [id: string]: FeatureMaturityEntry } = {};
+	for (const [id, entry] of Object.entries(catalog)) {
+		if (entry === undefined) continue;
+		visible[id] = {
+			preview: entry.preview,
+			limitedEnterpriseSupport: false,
+			...(entry.docsUrl === undefined ? {} : { docsUrl: entry.docsUrl }),
+		};
+	}
+	return visible;
+}
+
+/** True when the entry renders at least one badge. */
+export function showsFeatureMaturityBadges(feature: FeatureMaturityEntry): boolean {
+	return feature.preview || feature.limitedEnterpriseSupport;
+}

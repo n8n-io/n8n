@@ -80,6 +80,7 @@ onMounted(async () => {
 			feature="context"
 			:title="i18n.baseText('settings.context.title')"
 			:description="i18n.baseText('settings.context.description')"
+			:show-docs-link="false"
 		/>
 
 		<N8nSettingsRowGroup>

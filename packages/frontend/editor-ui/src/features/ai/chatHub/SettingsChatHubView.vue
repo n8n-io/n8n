@@ -126,7 +126,11 @@ onMounted(async () => {
 </script>
 <template>
 	<div :class="$style.container">
-		<N8nSettingsPageHeader feature="chat" :title="i18n.baseText('settings.chatHub')" />
+		<N8nSettingsPageHeader
+			feature="chat"
+			:title="i18n.baseText('settings.chatHub')"
+			:show-docs-link="false"
+		/>
 
 		<N8nSettingsRowGroup>
 			<N8nSettingsEnableRow

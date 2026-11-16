@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useSlots } from 'vue';
+import { computed, useSlots, watchEffect } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import N8nExternalLink from '../N8nExternalLink';
@@ -17,8 +17,13 @@ export interface SettingsPageHeaderProps {
 	/** Optional 1-2 sentence description. */
 	description?: string;
 	/**
+	 * Whether to render the inline documentation link at the end of the description.
+	 * On by default. Set `:show-docs-link="false"` to hide it, including when a URL is set.
+	 */
+	showDocsLink?: boolean;
+	/**
 	 * Documentation page for the inline link at the end of the description.
-	 * Overrides `docsUrl` on the feature entry. The header renders no link when both are unset.
+	 * Overrides `docsUrl` on the feature entry.
 	 */
 	docsUrl?: string;
 	/** The underlined link word. Defaults to the localized "documentation". */
@@ -48,6 +53,7 @@ defineOptions({ name: 'N8nSettingsPageHeader' });
 
 const props = withDefaults(defineProps<SettingsPageHeaderProps>(), {
 	description: undefined,
+	showDocsLink: true,
 	docsUrl: undefined,
 	docsLabel: undefined,
 	docsLeadingText: undefined,
@@ -73,6 +79,18 @@ const featureEntry = computed(() =>
 );
 // The page URL wins. Otherwise the feature entry supplies the documentation page.
 const resolvedDocsUrl = computed(() => props.docsUrl ?? featureEntry.value?.docsUrl);
+// Default-on means a missing URL still renders a placeholder and warns in development.
+// `:show-docs-link="false"` removes the link even when a URL is set.
+if (import.meta.env.DEV) {
+	watchEffect(() => {
+		if (props.showDocsLink && !resolvedDocsUrl.value) {
+			console.warn(
+				'[N8nSettingsPageHeader] The docs link is enabled but no `docsUrl` was provided. ' +
+					'Set `docs-url`, pass a feature whose entry has `docsUrl`, or pass `:show-docs-link="false"` to remove it.',
+			);
+		}
+	});
+}
 const featureBadges = computed(() =>
 	resolveFeatureMaturityBadges(catalog.value, props.feature, {
 		preview: props.hidePreview,
@@ -102,7 +120,7 @@ const showTitleRow = computed(() => showFeatureBadges.value || Boolean(slots.tit
 		<N8nHeading v-else :tag="headingTag" :class="$style.title" step="xl" color="text-dark">
 			{{ title }}
 		</N8nHeading>
-		<p v-if="hasDescription || resolvedDocsUrl" :class="$style.description">
+		<p v-if="hasDescription || showDocsLink" :class="$style.description">
 			<slot name="description">
 				<N8nText v-if="description" size="medium" color="text-base">{{ description }}</N8nText>
 			</slot>
@@ -111,14 +129,15 @@ const showTitleRow = computed(() => showFeatureBadges.value || Boolean(slots.tit
 				link + icon" can wrap to the next line as a single unit; only added after a description.
 				The link sits inside the N8nText so it inherits the description's font and line height.
 			-->
-			<template v-if="resolvedDocsUrl"
+			<template v-if="showDocsLink"
 				>{{ hasDescription ? ' ' : ''
 				}}<N8nText size="medium" color="text-base" :class="$style.docsPhrase"
 					>{{ resolvedDocsLeadingText
 					}}<N8nExternalLink
 						inline
 						size="small"
-						:href="resolvedDocsUrl"
+						:href="resolvedDocsUrl || undefined"
+						:disabled="resolvedDocsUrl ? undefined : true"
 						data-test-id="settings-page-header-docs"
 						>{{ resolvedDocsLabel }}</N8nExternalLink
 					></N8nText

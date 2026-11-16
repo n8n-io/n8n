@@ -150,6 +150,8 @@ export type { SettingsSectionProps } from './N8nSettingsSection';
 export { default as N8nFeatureMaturityBadges } from './N8nFeatureMaturityBadges';
 export {
 	FeatureMaturityKey,
+	featureMaturityForPlan,
+	showsFeatureMaturityBadges,
 	type FeatureMaturityCatalog,
 	type FeatureMaturityEntry,
 } from './N8nFeatureMaturityBadges/featureMaturityState';

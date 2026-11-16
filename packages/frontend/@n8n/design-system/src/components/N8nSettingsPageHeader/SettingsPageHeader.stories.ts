@@ -8,6 +8,7 @@ const meta = {
 	title: 'Areas/Settings/PageHeader',
 	component: N8nSettingsPageHeader,
 	argTypes: {
+		showDocsLink: { control: 'boolean' },
 		docsUrl: { control: 'text' },
 		docsLabel: { control: 'text' },
 		docsLeadingText: { control: 'text' },
@@ -16,7 +17,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'Page title with an optional 1-2 sentence description. Pass `docs-url` to add an inline documentation link at the end of the description. A feature entry `docsUrl` does the same when the page sets no `docs-url`. Omit both and the header renders no docs link. Its default copy ("Learn more in the documentation") comes from the design-system locale (`settingsPageHeader.*`); override it per page with `docs-leading-text` / `docs-label`. The header always caps itself at the content max-width (`--settings-content--max-width`, 45rem / 720px). The link is an inline `N8nExternalLink` at the end of the description, sized to the description text: the word is underlined, the trailing external-link icon is not, and hovering shows the component\'s pill without moving the surrounding copy. Pages that need several links in the description can use the `description` slot with the same `<N8nExternalLink inline size="small">` and get the identical treatment.',
+					'Page title with an optional 1-2 sentence description and an inline documentation link. The docs link is on by default (`show-docs-link`). Set `:show-docs-link="false"` to remove it, including when a URL is set. Provide `docs-url`, or a feature entry `docsUrl`, so the link points somewhere. A dev warning fires when the link is on and neither URL is set. Its default copy ("Learn more in the documentation") comes from the design-system locale (`settingsPageHeader.*`); override it per page with `docs-leading-text` / `docs-label`. The header always caps itself at the content max-width (`--settings-content--max-width`, 45rem / 720px). The link is an inline `N8nExternalLink` at the end of the description, sized to the description text: the word is underlined, the trailing external-link icon is not, and hovering shows the component\'s pill without moving the surrounding copy. Pages that need several links in the description can use the `description` slot with the same `<N8nExternalLink inline size="small">` and get the identical treatment.',
 			},
 		},
 	},
@@ -58,8 +59,8 @@ export const CustomLeadingCopy: Story = {
 };
 
 /**
- * A description that needs several links: omit `docs-url` and compose the sentence in the
- * `description` slot with the same inline `N8nExternalLink` the header uses.
+ * A description that needs several links: turn the built-in docs link off and compose the
+ * sentence in the `description` slot with the same inline `N8nExternalLink` the header uses.
  */
 export const DescriptionWithLinks: Story = {
 	render: (args) => ({
@@ -82,6 +83,7 @@ export const DescriptionWithLinks: Story = {
 	}),
 	args: {
 		title: 'API keys',
+		showDocsLink: false,
 	},
 };
 
@@ -94,6 +96,7 @@ export const WithoutDocsLink: Story = {
 	args: {
 		title: 'Members',
 		description: 'People with access to this instance.',
+		showDocsLink: false,
 	},
 };
 
@@ -107,6 +110,7 @@ export const WithFeatureBadges: Story = {
 		title: 'Context',
 		description: 'Preferences and skills the assistant can use.',
 		feature: 'context',
+		showDocsLink: false,
 	},
 };
 
@@ -118,6 +122,7 @@ export const TitleOnly: Story = {
 	}),
 	args: {
 		title: 'Members',
+		showDocsLink: false,
 	},
 };
 

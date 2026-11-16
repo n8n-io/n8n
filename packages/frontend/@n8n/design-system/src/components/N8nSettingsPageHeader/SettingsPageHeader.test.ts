@@ -107,15 +107,42 @@ describe('N8nSettingsPageHeader', () => {
 		expect(link).toHaveAttribute('href', 'https://docs.n8n.io');
 	});
 
-	it('does not render a docs link when no URL is set', () => {
+	it('hides the docs link when showDocsLink is false, even when a URL is set', () => {
 		render(N8nSettingsPageHeader, {
 			props: {
 				title: 'This instance',
 				description: 'Plan, usage and version.',
+				docsUrl: 'https://docs.n8n.io',
+				showDocsLink: false,
 			},
 		});
 
 		expect(screen.getByText('Plan, usage and version.')).toBeInTheDocument();
+		expect(screen.queryByRole('link')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('settings-page-header-docs')).not.toBeInTheDocument();
+	});
+
+	it('hides the feature documentation link when showDocsLink is false', () => {
+		render(N8nSettingsPageHeader, {
+			global: {
+				provide: {
+					[FeatureMaturityKey as symbol]: {
+						agents: {
+							preview: true,
+							limitedEnterpriseSupport: true,
+							docsUrl: 'https://docs.n8n.io/build/build-and-manage-agents',
+						},
+					} satisfies FeatureMaturityCatalog,
+				},
+			},
+			props: {
+				title: 'Agents',
+				description: 'Build agents.',
+				feature: 'agents',
+				showDocsLink: false,
+			},
+		});
+
 		expect(screen.queryByRole('link')).not.toBeInTheDocument();
 		expect(screen.queryByTestId('settings-page-header-docs')).not.toBeInTheDocument();
 	});
@@ -234,5 +261,22 @@ describe('N8nSettingsPageHeader', () => {
 		// The icon is decorative, so it is hidden from assistive tech and excluded from the link name.
 		expect(icon).toHaveAttribute('aria-hidden', 'true');
 		expect(link).toHaveAccessibleName('documentation');
+	});
+
+	it('warns and renders a non-navigational placeholder when shown without a docs URL', () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		render(N8nSettingsPageHeader, {
+			props: { title: 'This instance', description: 'Plan, usage and version.' },
+		});
+
+		const placeholder = screen.getByTestId('settings-page-header-docs');
+		expect(placeholder).toHaveTextContent('documentation');
+		expect(placeholder).not.toHaveAttribute('href');
+		expect(placeholder).toBeDisabled();
+		expect(screen.queryByRole('link')).not.toBeInTheDocument();
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining('docsUrl'));
+
+		warn.mockRestore();
 	});
 });

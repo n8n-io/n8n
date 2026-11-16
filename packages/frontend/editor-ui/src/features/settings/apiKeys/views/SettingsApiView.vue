@@ -301,8 +301,12 @@ function onOpenScopes(apiKey: ApiKey) {
 
 <template>
 	<N8nSettingsLayout :full-width="showKeyTable" :class="$style.layout">
-		<!-- Three links in one sentence, composed in the description slot. -->
-		<N8nSettingsPageHeader :title="i18n.baseText('settings.api')" data-test-id="api-keys-header">
+		<!-- Three links in one sentence, so the built-in docs link is off and the sentence is composed in the slot. -->
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.api')"
+			:show-docs-link="false"
+			data-test-id="api-keys-header"
+		>
 			<template #description>
 				<N8nText size="medium" color="text-base">
 					<I18nT keypath="settings.api.view.info" tag="span" scope="global">
