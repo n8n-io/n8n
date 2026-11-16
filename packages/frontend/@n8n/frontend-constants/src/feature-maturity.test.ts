@@ -43,6 +43,7 @@ describe('featureMaturity', () => {
 				limitedEnterpriseSupport: false,
 				docsUrl: 'https://docs.n8n.io/user-management/saml/',
 			},
+			scim: { preview: true, limitedEnterpriseSupport: false },
 			security: {
 				preview: false,
 				limitedEnterpriseSupport: false,

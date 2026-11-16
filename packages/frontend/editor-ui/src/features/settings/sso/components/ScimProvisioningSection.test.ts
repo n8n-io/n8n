@@ -157,7 +157,7 @@ describe('ScimProvisioningSection', () => {
 	it('shows the Preview badge next to the title', async () => {
 		const { findByTestId } = renderComponent({ props: { ssoEnabled: true } });
 
-		expect(await findByTestId('sso-scim-preview-badge')).toHaveTextContent('Preview');
+		expect(await findByTestId('scim-preview-badge')).toHaveTextContent('Preview');
 	});
 
 	it('names the select for assistive technology', async () => {

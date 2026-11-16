@@ -5,10 +5,10 @@ import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nAlertDialog,
 	N8nButton,
+	N8nFeatureMaturityBadges,
 	N8nHeading,
 	N8nInput,
 	N8nOption,
-	N8nPreviewBadge,
 	N8nSelect,
 	N8nSettingsSection,
 	N8nTooltip,
@@ -150,7 +150,7 @@ watch(
 				<N8nHeading tag="h2" step="md" color="text-dark">
 					{{ i18n.baseText('settings.sso.scim.title') }}
 				</N8nHeading>
-				<N8nPreviewBadge size="xsmall" data-test-id="sso-scim-preview-badge" />
+				<N8nFeatureMaturityBadges feature="scim" />
 			</div>
 		</template>
 		<!-- The same card and row containers as the SAML and OIDC settings above, so the sizes match. -->

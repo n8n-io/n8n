@@ -51,11 +51,6 @@ const config: KnipConfig = {
 			ignoreDependencies: [
 				// Invoked by path in the n8n-module-sdk script.
 				'@n8n/module-cli',
-				// scripts/mutation-health runs stryker through a resolved binary path.
-				'@stryker-mutator/core',
-				'@stryker-mutator/vitest-runner',
-				// Manual dev tool; CONTRIBUTING.md documents `pnpm exec dotenvx run`.
-				'@dotenvx/dotenvx',
 				// scripts/instance-seeding resolves it from packages/cli by path.
 				'flatted',
 				// scripts/generate-emoji-data.mjs is a manual generator; install emojibase-data ad hoc.
@@ -120,7 +115,6 @@ const config: KnipConfig = {
 			// The exported config names these plugins as strings.
 			ignoreDependencies: [
 				'@n8n/eslint-config',
-				'@n8n/eslint-plugin-design-system',
 				'@stylistic/eslint-plugin',
 				'eslint-plugin-lodash',
 				'eslint-plugin-n8n-nodes-base',
@@ -172,7 +166,7 @@ const config: KnipConfig = {
 		}),
 		'packages/core': pkg({
 			// bin/generate-node-defs and bin/copy-static-files have no extension, so knip does not parse them.
-			ignoreDependencies: ['@n8n/workflow-sdk', 'p-limit'],
+			ignoreDependencies: ['@n8n/workflow-sdk'],
 		}),
 		'packages/@n8n/node-cli': pkg({
 			// Scaffold templates carry their own package.json and are not workspaces.
