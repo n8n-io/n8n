@@ -2248,8 +2248,13 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 }
 
 // The disabled row keeps the editor's readable disabled color, as in the predefined type list.
-.restrictedOption:global(.is-disabled) .optionName {
-	color: var(--text-color--disabled);
+.restrictedOption:global(.is-disabled) {
+	.credentialOption,
+	.optionName,
+	.optionIcon,
+	.checkIcon {
+		color: var(--text-color--disabled);
+	}
 }
 
 .newCredentialLock {
