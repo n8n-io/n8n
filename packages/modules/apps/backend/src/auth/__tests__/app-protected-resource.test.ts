@@ -25,7 +25,7 @@ function setup(deploymentType = 'default') {
 	const apps = mock<AppRepository>();
 	apps.findById.mockResolvedValue(app);
 	const hosts = new AppHostService(
-		mock<AppsConfig>({ baseUrl: 'https://apps.example.com' }),
+		mock<AppsConfig>({ baseUrl: 'https://apps.example.com', hostHeader: '' }),
 		mock<GlobalConfig>({
 			host: 'foo.app.n8n.cloud',
 			deployment: mock<GlobalConfig['deployment']>({ type: deploymentType }),

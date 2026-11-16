@@ -29,7 +29,7 @@ function setup(baseUrl = 'https://apps.example.com') {
 		mock<AppVersion>({ id: versionId, appId, buildStatus: 'succeeded', bundleArtifactId: 1 }),
 	);
 	const hosts = new AppHostService(
-		mock<AppsConfig>({ baseUrl }),
+		mock<AppsConfig>({ baseUrl, hostHeader: '' }),
 		mock<GlobalConfig>({ deployment: mock<GlobalConfig['deployment']>({ type: 'default' }) }),
 		mock<UrlService>({
 			getInstanceBaseUrl: () => 'https://n8n.example.net',

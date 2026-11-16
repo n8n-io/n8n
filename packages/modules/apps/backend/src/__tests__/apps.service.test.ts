@@ -24,7 +24,7 @@ function createService({ deploymentType = 'default', host = 'n8n.example.net' } 
 	const logger = mock<Logger>();
 	const events = mock<EventService>();
 	const configuredHosts = new AppHostService(
-		mock<AppsConfig>({ baseUrl: 'https://apps.example.com' }),
+		mock<AppsConfig>({ baseUrl: 'https://apps.example.com', hostHeader: '' }),
 		mock<GlobalConfig>({
 			host,
 			deployment: mock<GlobalConfig['deployment']>({ type: deploymentType }),
