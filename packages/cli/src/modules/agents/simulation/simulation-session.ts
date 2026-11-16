@@ -240,7 +240,7 @@ export class SimulationSession {
 			return blocked('not_simulatable', 'This kind of tool cannot run in a test run yet.');
 		}
 		if (capability.testability === 'blocked') {
-			return blocked(capability.reason ?? 'not_simulatable', capability.detail);
+			return blocked(capability.reason, capability.detail);
 		}
 		if (!this.world) return blocked('simulator_unavailable', this.unavailableDetail);
 		return undefined;

@@ -947,6 +947,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 			{ disableProviderTools: true },
 		);
 
+		expect(getInjectedDelegateTool()).toBeDefined();
 		expect(getInjectedResolveInlineSubAgentProviderTools()).toBeUndefined();
 	});
 
