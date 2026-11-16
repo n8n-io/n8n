@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.test.ts
+  s_cbdf22199975d0::t_3ea820a5956257 22
+  s_cbdf22199975d0::t_49b9400751aae5 489-492
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "40607e7d275b15074ec2296a4c40888be5daea7b",
+  "prompts": {},
+  "sessions": {
+    "s_cbdf22199975d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6de8cc84-ca8b-4e4d-a144-7a35a928e451",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

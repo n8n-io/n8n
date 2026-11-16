@@ -1,0 +1,34 @@
+packages/frontend/editor-ui/src/features/core/folders/components/FolderCard.test.ts
+  s_f47d4602e7ba0b::t_e6006c5dcd3e57 161,179-180,192
+docs/generated/postgres-schema/public.agents.md
+  ai_agent 92,401-407
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderBrowser.test.ts
+  s_f47d4602e7ba0b::t_e6006c5dcd3e57 156,198,236,241,245,257
+docs/generated/postgres-schema/README.md
+  ai_agent 41
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentFolderToolbar.test.ts
+  s_f47d4602e7ba0b::t_e6006c5dcd3e57 17,43
+docs/generated/postgres-schema/public.folder.md
+  ai_agent 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ec54de37e95b5f7df87f88a1c052c7f84e44a1dc",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f47d4602e7ba0b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d536-382e-7c22-8084-f34bb0a03002",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

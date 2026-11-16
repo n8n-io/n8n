@@ -1,0 +1,43 @@
+packages/modules/ui-extensions/frontend/src/components/ViewFrame.vue
+  s_85c95d3931e97d::t_2f2c19096a4a5b 43-45
+packages/frontend/editor-ui/src/app/composables/useUiExtensionPanelData.test.ts
+  s_85c95d3931e97d::t_27d8ec4c63ea1c 481-485,488-490,493-504,510,516
+  s_85c95d3931e97d::t_c2e7a5e09eab8d 321,415-428
+  s_85c95d3931e97d::t_0cb5bc33349eb3 508-509,511-515
+  s_85c95d3931e97d::t_5d854ad2017fcb 486
+  s_85c95d3931e97d::t_54910425781f18 5,31-36,80
+  s_85c95d3931e97d::t_9c43845f221c71 30,289-320
+  s_85c95d3931e97d::t_89eb5f4c10d10e 64-71,77
+  s_85c95d3931e97d::t_d240f2af1ccac4 322
+packages/modules/ui-extensions/frontend/src/examples/recentRuns.view.js
+  s_85c95d3931e97d::t_e2e4c51e5656f7 131
+packages/quality/testing/playwright/tests/e2e/ui-extensions/side-panel.spec.ts
+  s_85c95d3931e97d::t_fc258d3787f108 251
+  s_85c95d3931e97d::t_e2e4c51e5656f7 252-254,256,269-275,280
+packages/modules/ui-extensions/frontend/src/ui-extensions.frame.test.ts
+  s_85c95d3931e97d::t_2f2c19096a4a5b 103-104,106-112
+packages/modules/ui-extensions/frontend/src/components/ViewFrame.test.ts
+  s_85c95d3931e97d::t_8f6b40acc25891 75-89
+packages/modules/ui-extensions/frontend/src/ui-extensions.frame.ts
+  s_85c95d3931e97d::t_2f2c19096a4a5b 106-107,114
+packages/frontend/editor-ui/src/app/composables/useUiExtensionPanelData.ts
+  s_85c95d3931e97d::t_9c43845f221c71 112-113,115,118,123-124,126-149,152,155-156,158-161,165,177,195-197,206
+  s_85c95d3931e97d::t_c2e7a5e09eab8d 249,266-267
+  s_85c95d3931e97d::t_89eb5f4c10d10e 114,116-117,119-122,125,150-151,173-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d17b58aed3e7bf0bc572a8f2ac8d8fc80a1d064a",
+  "prompts": {},
+  "sessions": {
+    "s_85c95d3931e97d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5414b146-7e78-4316-b391-228e75b753d9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
