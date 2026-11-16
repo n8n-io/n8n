@@ -1,3 +1,4 @@
+import { UserError } from '@n8n/errors';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	NodeApiError,
@@ -23,14 +24,17 @@ function idOf(entry: unknown): string | undefined {
 	return undefined;
 }
 
-/** OpenAI answers `{ data: [{ id }] }`; gateways that trim it answer a bare array. */
-function modelIdsIn(body: unknown): string[] {
+/**
+ * OpenAI answers `{ data: [{ id }] }`; gateways that trim it answer a bare array. Anything else
+ * is a shape this does not know, which is not the same as a gateway that lists no models.
+ */
+function modelIdsIn(body: unknown): string[] | undefined {
 	const entries = Array.isArray(body)
 		? body
 		: isRecord(body) && Array.isArray(body.data)
 			? body.data
-			: [];
-	return entries.flatMap((entry) => {
+			: undefined;
+	return entries?.flatMap((entry) => {
 		const id = idOf(entry);
 		return id ? [id] : [];
 	});
@@ -46,6 +50,9 @@ export async function listGatewayModels(
 		method: 'GET',
 		signal: deadline,
 	}).catch((error: unknown) => {
+		// The login has its own deadline and states which host refused. Relabelling it here
+		// would point the user at the gateway for a failure of the token endpoint.
+		if (error instanceof UserError) throw error;
 		if (!deadline.aborted) throw error;
 		throw new NodeApiError(
 			node,
@@ -83,8 +90,9 @@ export async function listGatewayModels(
 		);
 	}
 
+	let parsed: unknown;
 	try {
-		return modelIdsIn(JSON.parse(text));
+		parsed = JSON.parse(text);
 	} catch {
 		throw new NodeApiError(
 			node,
@@ -95,6 +103,20 @@ export async function listGatewayModels(
 			},
 		);
 	}
+
+	const ids = modelIdsIn(parsed);
+	if (!ids) {
+		throw new NodeApiError(
+			node,
+			{},
+			{
+				message: 'The gateway answered the model list in a shape this node does not read',
+				description: NO_LIST_HINT,
+			},
+		);
+	}
+
+	return ids;
 }
 
 /**
