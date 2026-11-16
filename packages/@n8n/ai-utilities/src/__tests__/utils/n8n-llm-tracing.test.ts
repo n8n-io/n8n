@@ -1380,6 +1380,15 @@ describe('openAiTokensUsageParser', () => {
 		).toEqual({ promptTokens: 100, completionTokens: 40, totalTokens: 140 });
 	});
 
+	it('keeps the reported cost from llmOutput.tokenUsage', () => {
+		expect(
+			openAiTokensUsageParser({
+				generations: [[textGeneration()]],
+				llmOutput: { tokenUsage: { promptTokens: 100, completionTokens: 40, totalCost: 0.5 } },
+			}),
+		).toEqual({ promptTokens: 100, completionTokens: 40, totalTokens: 140, cost: 0.5 });
+	});
+
 	it('reads message.usage_metadata when tokenUsage is absent (Responses API)', () => {
 		expect(
 			openAiTokensUsageParser({

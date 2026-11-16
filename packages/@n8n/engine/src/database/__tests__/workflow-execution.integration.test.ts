@@ -495,6 +495,64 @@ describe('workflow_execution table (integration)', () => {
 			expect(await loadStaleAfter(id)).toBeNull();
 		});
 
+		it('findStaleQueuedExecutions returns the queued executions whose time has passed, oldest first', async () => {
+			const repo = dataSource.getRepository(WorkflowExecution);
+			// The rows of the earlier tests share this table, so remove them from the search.
+			await repo.update({ status: 'queued' }, { staleAfter: null });
+			const store = stalenessStore();
+			const seed = async (status: ExecutionStatus, staleAfter: Date | null) => {
+				const row = await saveExecution(repo, { status, finishedAt: null });
+				await repo.update({ id: row.id }, { staleAfter });
+				return row.id;
+			};
+			const newer = await seed('queued', new Date('2020-01-01T00:02:00.000Z'));
+			const older = await seed('queued', new Date('2020-01-01T00:01:00.000Z'));
+			// not returned: the time has not passed, the status is not `queued`, or no time exists
+			await seed('queued', new Date('2020-01-01T00:04:00.000Z'));
+			await seed('running', new Date('2020-01-01T00:01:00.000Z'));
+			await seed('queued', null);
+			const at = new Date('2020-01-01T00:03:00.000Z');
+
+			expect(await store.findStaleQueuedExecutions(at, 10)).toEqual([
+				{ id: older, staleAfter: new Date('2020-01-01T00:01:00.000Z') },
+				{ id: newer, staleAfter: new Date('2020-01-01T00:02:00.000Z') },
+			]);
+			expect(await store.findStaleQueuedExecutions(at, 1)).toEqual([
+				{ id: older, staleAfter: new Date('2020-01-01T00:01:00.000Z') },
+			]);
+		});
+
+		it('renewQueuedExecution moves the time forward once for one observed value', async () => {
+			const store = stalenessStore();
+			const id = generateId();
+			await store.createExecution(newRecord(id));
+			const observed = await loadStaleAfter(id);
+			if (!observed) throw new Error('expected a stale_after value');
+
+			const before = Date.now();
+			expect(await store.renewQueuedExecution(id, observed)).toBe(true);
+			const after = Date.now();
+
+			const renewed = await loadStaleAfter(id);
+			expect(renewed?.getTime()).toBeGreaterThanOrEqual(before + staleness.queuedMs);
+			expect(renewed?.getTime()).toBeLessThanOrEqual(after + staleness.queuedMs);
+			// a second caller that read the same value changes nothing
+			expect(await store.renewQueuedExecution(id, observed)).toBe(false);
+			expect(await loadStaleAfter(id)).toEqual(renewed);
+		});
+
+		it('renewQueuedExecution changes nothing once the execution left queued', async () => {
+			const store = stalenessStore();
+			const id = generateId();
+			await store.createExecution(newRecord(id));
+			const observed = await loadStaleAfter(id);
+			if (!observed) throw new Error('expected a stale_after value');
+			await store.transitionStatus(id, 'queued', 'running');
+
+			expect(await store.renewQueuedExecution(id, observed)).toBe(false);
+			expect(await loadStaleAfter(id)).toBeNull();
+		});
+
 		it('has a partial index on the value for queued executions', async () => {
 			const [index]: Array<{ indexdef: string }> = await dataSource.query(
 				`SELECT indexdef FROM pg_indexes

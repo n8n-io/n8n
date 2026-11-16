@@ -11,8 +11,8 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import type { SecretProviderConnection } from '@n8n/api-types';
 import {
-	N8nEmptyState,
 	N8nButton,
+	N8nEmptyState,
 	N8nHeading,
 	N8nIcon,
 	N8nLink,
