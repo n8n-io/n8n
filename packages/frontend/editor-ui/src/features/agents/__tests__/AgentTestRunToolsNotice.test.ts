@@ -83,7 +83,6 @@ describe('AgentTestRunToolsNotice', () => {
 		expect(within(rows[2]).queryByTestId('agent-test-run-tool-detail')).not.toBeInTheDocument();
 	});
 
-
 	it('collapses a long list and expands it on request', async () => {
 		const tools = Array.from({ length: 12 }, (_, index) => blockedTool(index));
 		const { getAllByTestId, getByTestId } = renderNotice({ props: { tools } });
