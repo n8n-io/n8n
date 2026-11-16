@@ -4,17 +4,17 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| claimedAt | timestamp(3) with time zone |  | true |  |  |  |
+| claimedAt | timestamp(3) with time zone |  | true |  |  | The time at which the holder claimed the lease |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| data | text |  | false |  |  |  |
-| dataHash | varchar(64) |  | false |  |  |  |
-| fencingToken | bigint | 0 | false |  |  |  |
-| key | varchar(255) |  | false |  |  |  |
+| data | text |  | false |  |  | The canonical JSON of the lease spec data |
+| dataHash | varchar(64) |  | false |  |  | The SHA-256 of data, which sync compares to find changed leases |
+| fencingToken | bigint | 0 | false |  |  | The fencing token of the current or last holder |
+| key | varchar(255) |  | false |  |  | The key of the lease in its kind |
 | leaseKind | varchar(24) |  | false |  | [public.lease_kind](public.lease_kind.md) |  |
-| leaseSessionId | uuid |  | true |  |  |  |
-| readyAt | timestamp(3) with time zone |  | true |  |  |  |
-| revoked | boolean | false | false |  |  |  |
-| revokedAt | timestamp(3) with time zone |  | true |  |  |  |
+| leaseSessionId | uuid |  | true |  |  | The holder session, or null when the lease is free, with no foreign key or unique index so that updates stay no-key updates |
+| readyAt | timestamp(3) with time zone |  | true |  |  | The time at which the holder reported the lease as ready |
+| revoked | boolean | false | false |  |  | Sync sets this flag when a held lease changes or goes |
+| revokedAt | timestamp(3) with time zone |  | true |  |  | The time at which sync revoked the lease, from which the hand-over deadline counts |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints

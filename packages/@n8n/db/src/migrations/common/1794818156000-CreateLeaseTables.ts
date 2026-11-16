@@ -14,11 +14,21 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 
 		await createTable('lease_kind')
 			.withColumns(
-				column('kind').varchar(24).primary,
-				column('fencingTokenCounter').bigint.notNull.default(0),
-				column('syncLockRoundId').uuid,
-				column('syncLockExpiresAt').timestampTimezone(),
-				column('lastFullSyncAt').timestampTimezone(),
+				column('kind').varchar(24).primary.comment('The name of the lease kind'),
+				column('fencingTokenCounter')
+					.bigint.notNull.default(0)
+					.comment(
+						'The source of fencing tokens, never reset so that a recreated key gets a higher token',
+					),
+				column('syncLockRoundId').uuid.comment(
+					'The sync round that holds the sync lock, or null when the lock is free',
+				),
+				column('syncLockExpiresAt')
+					.timestampTimezone()
+					.comment('The time at which the sync lock expires'),
+				column('lastFullSyncAt')
+					.timestampTimezone()
+					.comment('The time at which a main last claimed the periodic full sync'),
 			)
 			.withTimestamps.withCheck(
 				`CHK_${tablePrefix}lease_kind_fencingTokenCounter`,
@@ -27,12 +37,22 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 
 		await createTable('lease_session')
 			.withColumns(
-				column('id').uuid.primary,
+				column('id').uuid.primary.comment(
+					'The session ID, new for each session, also after a main loses a session',
+				),
 				column('leaseKind').varchar(24).notNull,
-				column('hostId').varchar(255).notNull,
-				column('bootId').uuid.notNull,
-				column('leaseDurationSeconds').int.notNull,
-				column('expiresAt').timestampTimezone().notNull,
+				column('hostId').varchar(255).notNull.comment('The host that runs the main'),
+				column('bootId').uuid.notNull.comment(
+					'The process start of the main, used for same-host takeover',
+				),
+				column('leaseDurationSeconds').int.notNull.comment(
+					'The lease length of the session, in seconds',
+				),
+				column('expiresAt')
+					.timestampTimezone()
+					.notNull.comment(
+						'The database time until which the session and all its leases are valid',
+					),
 			)
 			.withCreatedAt.withForeignKey('leaseKind', {
 				tableName: 'lease_kind',
@@ -45,15 +65,31 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 		await createTable('lease')
 			.withColumns(
 				column('leaseKind').varchar(24).primary,
-				column('key').varchar(255).primary,
-				column('data').text.notNull,
-				column('dataHash').varchar(64).notNull,
-				column('leaseSessionId').uuid,
-				column('fencingToken').bigint.notNull.default(0),
-				column('claimedAt').timestampTimezone(),
-				column('readyAt').timestampTimezone(),
-				column('revoked').bool.notNull.default(false),
-				column('revokedAt').timestampTimezone(),
+				column('key').varchar(255).primary.comment('The key of the lease in its kind'),
+				column('data').text.notNull.comment('The canonical JSON of the lease spec data'),
+				column('dataHash')
+					.varchar(64)
+					.notNull.comment('The SHA-256 of data, which sync compares to find changed leases'),
+				column('leaseSessionId').uuid.comment(
+					'The holder session, or null when the lease is free, with no foreign key or unique index so that updates stay no-key updates',
+				),
+				column('fencingToken')
+					.bigint.notNull.default(0)
+					.comment('The fencing token of the current or last holder'),
+				column('claimedAt')
+					.timestampTimezone()
+					.comment('The time at which the holder claimed the lease'),
+				column('readyAt')
+					.timestampTimezone()
+					.comment('The time at which the holder reported the lease as ready'),
+				column('revoked')
+					.bool.notNull.default(false)
+					.comment('Sync sets this flag when a held lease changes or goes'),
+				column('revokedAt')
+					.timestampTimezone()
+					.comment(
+						'The time at which sync revoked the lease, from which the hand-over deadline counts',
+					),
 			)
 			.withTimestamps.withCheck(`CHK_${tablePrefix}lease_fencingToken`, `${fencingToken} >= 0`)
 			.withForeignKey('leaseKind', {
