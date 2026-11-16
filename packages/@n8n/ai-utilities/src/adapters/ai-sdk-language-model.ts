@@ -95,7 +95,11 @@ export class AiSdkLanguageModelAdapter implements LanguageModelV4 {
 					try {
 						// A chat model can ignore the signal. Each read races it, so the
 						// stream still ends when the call is aborted.
-						const next = await raceAbort(iterator.next(), abortSignal, abortError);
+						const read = iterator.next();
+						// An aborted race does not wait for the read, so its rejection is
+						// observed here.
+						void read.catch(() => undefined);
+						const next = await raceAbort(read, abortSignal, abortError);
 						// After a cancel the stream is closed, so a late chunk is dropped.
 						if (cancellation.signal.aborted) return;
 						if (next.done) {
