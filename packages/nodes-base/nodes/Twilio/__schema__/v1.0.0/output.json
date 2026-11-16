@@ -1,0 +1,65 @@
+{
+	"properties": {
+		"data": {
+			"properties": {
+				"accountSid": {
+					"type": "string"
+				},
+				"body": {
+					"type": "string"
+				},
+				"eventName": {
+					"type": "string"
+				},
+				"externalUserId": {
+					"type": "string"
+				},
+				"from": {
+					"type": "string"
+				},
+				"messageSid": {
+					"type": "string"
+				},
+				"numMedia": {
+					"type": "integer"
+				},
+				"numSegments": {
+					"type": "integer"
+				},
+				"recipients": {
+					"items": {},
+					"type": "array"
+				},
+				"timestamp": {
+					"type": "string"
+				},
+				"to": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"datacontenttype": {
+			"type": "string"
+		},
+		"dataschema": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"source": {
+			"type": "string"
+		},
+		"specversion": {
+			"type": "string"
+		},
+		"time": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

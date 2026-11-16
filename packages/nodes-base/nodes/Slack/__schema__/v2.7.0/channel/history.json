@@ -1,0 +1,68 @@
+{
+	"properties": {
+		"blocks": {
+			"items": {
+				"properties": {
+					"block_id": {
+						"type": "string"
+					},
+					"elements": {
+						"items": {
+							"properties": {
+								"elements": {
+									"items": {
+										"properties": {
+											"text": {
+												"type": "string"
+											},
+											"type": {
+												"type": "string"
+											},
+											"url": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"type": "array"
+								},
+								"type": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"bot_id": {
+			"type": "string"
+		},
+		"subtype": {
+			"type": "string"
+		},
+		"team": {
+			"type": "string"
+		},
+		"text": {
+			"type": "string"
+		},
+		"ts": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		},
+		"user": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

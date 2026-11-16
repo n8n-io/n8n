@@ -1,0 +1,101 @@
+{
+	"properties": {
+		"commentSettings": {
+			"properties": {
+				"commentingDisabled": {
+					"properties": {
+						"isDisabled": {
+							"type": "boolean"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"createdBy": {
+			"properties": {
+				"user": {
+					"properties": {
+						"displayName": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"createdDateTime": {
+			"type": "string"
+		},
+		"fileSystemInfo": {
+			"properties": {
+				"createdDateTime": {
+					"type": "string"
+				},
+				"lastModifiedDateTime": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"folder": {
+			"properties": {
+				"childCount": {
+					"type": "integer"
+				}
+			},
+			"type": "object"
+		},
+		"id": {
+			"type": "string"
+		},
+		"lastModifiedBy": {
+			"properties": {
+				"user": {
+					"properties": {
+						"displayName": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"lastModifiedDateTime": {
+			"type": "string"
+		},
+		"name": {
+			"type": "string"
+		},
+		"parentReference": {
+			"properties": {
+				"driveId": {
+					"type": "string"
+				},
+				"driveType": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"path": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"searchResult": {
+			"type": "object"
+		},
+		"size": {
+			"type": "integer"
+		},
+		"webUrl": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

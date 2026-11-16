@@ -1,0 +1,53 @@
+{
+	"properties": {
+		"message": {
+			"properties": {
+				"chat": {
+					"properties": {
+						"first_name": {
+							"type": "string"
+						},
+						"id": {
+							"type": "integer"
+						},
+						"type": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"date": {
+					"type": "integer"
+				},
+				"from": {
+					"properties": {
+						"first_name": {
+							"type": "string"
+						},
+						"id": {
+							"type": "integer"
+						},
+						"is_bot": {
+							"type": "boolean"
+						},
+						"language_code": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"message_id": {
+					"type": "integer"
+				},
+				"text": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"update_id": {
+			"type": "integer"
+		}
+	},
+	"type": "object"
+}

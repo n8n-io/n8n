@@ -1,0 +1,112 @@
+{
+	"properties": {
+		"accept_all": {
+			"type": "boolean"
+		},
+		"disposable": {
+			"type": "boolean"
+		},
+		"domain": {
+			"type": "string"
+		},
+		"emails": {
+			"items": {
+				"properties": {
+					"confidence": {
+						"type": "integer"
+					},
+					"decision_maker": {
+						"type": "boolean"
+					},
+					"department": {
+						"type": "string"
+					},
+					"first_name": {
+						"type": "string"
+					},
+					"last_name": {
+						"type": "string"
+					},
+					"linkedin": {
+						"type": "string"
+					},
+					"phone_number": {},
+					"position": {
+						"type": "string"
+					},
+					"position_raw": {
+						"type": "string"
+					},
+					"provenance": {
+						"type": "string"
+					},
+					"seniority": {
+						"type": "string"
+					},
+					"source_type": {
+						"type": "string"
+					},
+					"sources": {
+						"items": {
+							"properties": {
+								"domain": {
+									"type": "string"
+								},
+								"extracted_on": {
+									"type": "string"
+								},
+								"last_seen_on": {
+									"type": "string"
+								},
+								"still_on_page": {
+									"type": "boolean"
+								},
+								"uri": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"twitter": {},
+					"type": {
+						"type": "string"
+					},
+					"value": {
+						"type": "string"
+					},
+					"verification": {
+						"properties": {
+							"date": {
+								"type": "string"
+							},
+							"status": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"linked_domains": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"organization": {
+			"type": "string"
+		},
+		"pattern": {
+			"type": "string"
+		},
+		"webmail": {
+			"type": "boolean"
+		}
+	},
+	"type": "object"
+}

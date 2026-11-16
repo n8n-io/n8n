@@ -1,0 +1,164 @@
+{
+	"properties": {
+		"data": {
+			"properties": {
+				"add_time": {
+					"type": "string"
+				},
+				"archive_time": {},
+				"channel": {
+					"type": "integer"
+				},
+				"channel_id": {
+					"type": "string"
+				},
+				"close_time": {
+					"type": "string"
+				},
+				"creator_user_id": {
+					"type": "integer"
+				},
+				"currency": {
+					"type": "string"
+				},
+				"custom_fields": {
+					"type": "object"
+				},
+				"expected_close_date": {
+					"type": "string"
+				},
+				"first_won_time": {
+					"type": "string"
+				},
+				"id": {
+					"type": "integer"
+				},
+				"is_archived": {
+					"type": "boolean"
+				},
+				"label_ids": {
+					"items": {
+						"type": "integer"
+					},
+					"type": "array"
+				},
+				"lost_reason": {},
+				"lost_time": {},
+				"org_id": {
+					"type": "integer"
+				},
+				"origin": {
+					"type": "string"
+				},
+				"origin_id": {
+					"type": "string"
+				},
+				"owner_id": {
+					"type": "integer"
+				},
+				"person_id": {
+					"type": "integer"
+				},
+				"pipeline_id": {
+					"type": "integer"
+				},
+				"probability": {
+					"type": "integer"
+				},
+				"stage_change_time": {
+					"type": "string"
+				},
+				"stage_id": {
+					"type": "integer"
+				},
+				"status": {
+					"type": "string"
+				},
+				"title": {
+					"type": "string"
+				},
+				"update_time": {
+					"type": "string"
+				},
+				"value": {
+					"type": "integer"
+				},
+				"visible_to": {
+					"type": "string"
+				},
+				"won_time": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"meta": {
+			"properties": {
+				"action": {
+					"type": "string"
+				},
+				"attempt": {
+					"type": "integer"
+				},
+				"change_source": {
+					"type": "string"
+				},
+				"company_id": {
+					"type": "string"
+				},
+				"correlation_id": {
+					"type": "string"
+				},
+				"entity": {
+					"type": "string"
+				},
+				"entity_id": {
+					"type": "string"
+				},
+				"host": {
+					"type": "string"
+				},
+				"id": {
+					"type": "string"
+				},
+				"is_bulk_edit": {
+					"type": "boolean"
+				},
+				"permitted_user_ids": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"timestamp": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				},
+				"user_id": {
+					"type": "string"
+				},
+				"version": {
+					"type": "string"
+				},
+				"webhook_id": {
+					"type": "string"
+				},
+				"webhook_owner_id": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"previous": {
+			"properties": {
+				"custom_fields": {
+					"type": "object"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

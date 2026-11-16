@@ -1,0 +1,149 @@
+{
+	"properties": {
+		"app_id": {
+			"type": "string"
+		},
+		"blocks": {
+			"items": {
+				"properties": {
+					"block_id": {
+						"type": "string"
+					},
+					"elements": {
+						"items": {
+							"properties": {
+								"elements": {
+									"items": {
+										"properties": {
+											"name": {
+												"type": "string"
+											},
+											"style": {
+												"properties": {
+													"bold": {
+														"type": "boolean"
+													}
+												},
+												"type": "object"
+											},
+											"text": {
+												"type": "string"
+											},
+											"type": {
+												"type": "string"
+											},
+											"url": {
+												"type": "string"
+											}
+										},
+										"type": "object"
+									},
+									"type": "array"
+								},
+								"type": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"bot_id": {
+			"type": "string"
+		},
+		"bot_profile": {
+			"properties": {
+				"app_id": {
+					"type": "string"
+				},
+				"deleted": {
+					"type": "boolean"
+				},
+				"icons": {
+					"properties": {
+						"image_36": {
+							"type": "string"
+						},
+						"image_48": {
+							"type": "string"
+						},
+						"image_72": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"id": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"team_id": {
+					"type": "string"
+				},
+				"updated": {
+					"type": "integer"
+				},
+				"user_id": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"client_msg_id": {
+			"type": "string"
+		},
+		"is_locked": {
+			"type": "boolean"
+		},
+		"latest_reply": {
+			"type": "string"
+		},
+		"parent_user_id": {
+			"type": "string"
+		},
+		"reply_count": {
+			"type": "integer"
+		},
+		"reply_users": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"reply_users_count": {
+			"type": "integer"
+		},
+		"subscribed": {
+			"type": "boolean"
+		},
+		"team": {
+			"type": "string"
+		},
+		"text": {
+			"type": "string"
+		},
+		"thread_ts": {
+			"type": "string"
+		},
+		"ts": {
+			"type": "string"
+		},
+		"type": {
+			"type": "string"
+		},
+		"user": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

@@ -1,0 +1,115 @@
+{
+	"properties": {
+		"added_at": {
+			"type": "string"
+		},
+		"added_by_uid": {
+			"type": "string"
+		},
+		"assigned_by_uid": {
+			"type": "string"
+		},
+		"checked": {
+			"type": "boolean"
+		},
+		"child_order": {
+			"type": "integer"
+		},
+		"completed_at": {
+			"type": "string"
+		},
+		"completed_by_uid": {
+			"type": "string"
+		},
+		"completed_count": {
+			"type": "integer"
+		},
+		"content": {
+			"type": "string"
+		},
+		"day_order": {
+			"type": "integer"
+		},
+		"deadline": {
+			"properties": {
+				"date": {
+					"type": "string"
+				},
+				"lang": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"description": {
+			"type": "string"
+		},
+		"due": {
+			"properties": {
+				"date": {
+					"type": "string"
+				},
+				"is_recurring": {
+					"type": "boolean"
+				},
+				"lang": {
+					"type": "string"
+				},
+				"string": {
+					"type": "string"
+				},
+				"timezone": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"duration": {},
+		"id": {
+			"type": "string"
+		},
+		"is_collapsed": {
+			"type": "boolean"
+		},
+		"is_deleted": {
+			"type": "boolean"
+		},
+		"labels": {
+			"items": {
+				"type": "string"
+			},
+			"type": "array"
+		},
+		"note_count": {
+			"type": "integer"
+		},
+		"order_key": {
+			"type": "string"
+		},
+		"parent_id": {
+			"type": "string"
+		},
+		"postponed_count": {
+			"type": "integer"
+		},
+		"priority": {
+			"type": "integer"
+		},
+		"project_id": {
+			"type": "string"
+		},
+		"responsible_uid": {
+			"type": "string"
+		},
+		"section_id": {
+			"type": "string"
+		},
+		"updated_at": {
+			"type": "string"
+		},
+		"user_id": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

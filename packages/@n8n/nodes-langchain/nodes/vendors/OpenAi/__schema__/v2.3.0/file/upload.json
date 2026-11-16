@@ -1,0 +1,30 @@
+{
+	"properties": {
+		"bytes": {
+			"type": "integer"
+		},
+		"created_at": {
+			"type": "integer"
+		},
+		"expires_at": {
+			"type": "integer"
+		},
+		"filename": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"object": {
+			"type": "string"
+		},
+		"purpose": {
+			"type": "string"
+		},
+		"status": {
+			"type": "string"
+		},
+		"status_details": {}
+	},
+	"type": "object"
+}

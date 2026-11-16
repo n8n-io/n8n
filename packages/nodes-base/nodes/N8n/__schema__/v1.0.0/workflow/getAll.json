@@ -1,0 +1,506 @@
+{
+	"properties": {
+		"active": {
+			"type": "boolean"
+		},
+		"activeVersion": {
+			"properties": {
+				"authors": {
+					"type": "string"
+				},
+				"autosaved": {
+					"type": "boolean"
+				},
+				"connections": {
+					"type": "object"
+				},
+				"createdAt": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"name": {
+					"type": "string"
+				},
+				"nodeGroups": {
+					"items": {},
+					"type": "array"
+				},
+				"nodes": {
+					"items": {
+						"properties": {
+							"alwaysOutputData": {
+								"type": "boolean"
+							},
+							"credentials": {
+								"type": "object"
+							},
+							"executeOnce": {
+								"type": "boolean"
+							},
+							"id": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							},
+							"onError": {
+								"type": "string"
+							},
+							"parameters": {
+								"properties": {
+									"conditions": {
+										"properties": {
+											"combinator": {
+												"type": "string"
+											},
+											"conditions": {
+												"items": {
+													"properties": {
+														"id": {
+															"type": "string"
+														},
+														"leftValue": {
+															"type": "string"
+														},
+														"operator": {
+															"properties": {
+																"operation": {
+																	"type": "string"
+																},
+																"singleValue": {
+																	"type": "boolean"
+																},
+																"type": {
+																	"type": "string"
+																}
+															},
+															"type": "object"
+														},
+														"rightValue": {
+															"type": ["boolean", "string"]
+														}
+													},
+													"type": "object"
+												},
+												"type": "array"
+											},
+											"options": {
+												"properties": {
+													"caseSensitive": {
+														"type": "boolean"
+													},
+													"leftValue": {
+														"type": "string"
+													},
+													"typeValidation": {
+														"type": "string"
+													},
+													"version": {
+														"type": "integer"
+													}
+												},
+												"type": "object"
+											}
+										},
+										"type": "object"
+									},
+									"filters": {
+										"properties": {
+											"conditions": {
+												"items": {
+													"properties": {
+														"condition": {
+															"type": "string"
+														},
+														"keyName": {
+															"type": "string"
+														},
+														"keyValue": {
+															"type": "string"
+														}
+													},
+													"type": "object"
+												},
+												"type": "array"
+											}
+										},
+										"type": "object"
+									},
+									"jsCode": {
+										"type": "string"
+									},
+									"mode": {
+										"type": "string"
+									},
+									"operation": {
+										"type": "string"
+									},
+									"options": {
+										"type": "object"
+									},
+									"resource": {
+										"type": "string"
+									},
+									"returnAll": {
+										"type": "boolean"
+									}
+								},
+								"type": "object"
+							},
+							"position": {
+								"items": {
+									"type": "integer"
+								},
+								"type": "array"
+							},
+							"type": {
+								"type": "string"
+							},
+							"typeVersion": {
+								"type": "number"
+							},
+							"webhookId": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"updatedAt": {
+					"type": "string"
+				},
+				"versionId": {
+					"type": "string"
+				},
+				"workflowId": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"activeVersionId": {
+			"type": "string"
+		},
+		"connections": {
+			"type": "object"
+		},
+		"createdAt": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"isArchived": {
+			"type": "boolean"
+		},
+		"meta": {
+			"properties": {
+				"aiBuilderAssisted": {
+					"type": "boolean"
+				},
+				"builderVariant": {
+					"type": "string"
+				},
+				"templateCredsSetupCompleted": {
+					"type": "boolean"
+				}
+			},
+			"type": "object"
+		},
+		"name": {
+			"type": "string"
+		},
+		"nodeGroups": {
+			"items": {
+				"properties": {
+					"description": {
+						"type": "string"
+					},
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"nodeIds": {
+						"items": {
+							"type": "string"
+						},
+						"type": "array"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"nodes": {
+			"items": {
+				"properties": {
+					"alwaysOutputData": {
+						"type": "boolean"
+					},
+					"credentials": {
+						"type": "object"
+					},
+					"executeOnce": {
+						"type": "boolean"
+					},
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"onError": {
+						"type": "string"
+					},
+					"parameters": {
+						"properties": {
+							"assignments": {
+								"properties": {
+									"assignments": {
+										"items": {
+											"properties": {
+												"id": {
+													"type": "string"
+												},
+												"name": {
+													"type": "string"
+												},
+												"type": {
+													"type": "string"
+												},
+												"value": {
+													"type": ["boolean", "integer", "string"]
+												}
+											},
+											"type": "object"
+										},
+										"type": "array"
+									}
+								},
+								"type": "object"
+							},
+							"authentication": {
+								"type": "string"
+							},
+							"conditions": {
+								"properties": {
+									"combinator": {
+										"type": "string"
+									},
+									"conditions": {
+										"items": {
+											"properties": {
+												"id": {
+													"type": "string"
+												},
+												"leftValue": {
+													"type": "string"
+												},
+												"operator": {
+													"properties": {
+														"operation": {
+															"type": "string"
+														},
+														"singleValue": {
+															"type": "boolean"
+														},
+														"type": {
+															"type": "string"
+														}
+													},
+													"type": "object"
+												},
+												"rightValue": {
+													"type": ["boolean", "integer", "string"]
+												}
+											},
+											"type": "object"
+										},
+										"type": "array"
+									},
+									"options": {
+										"properties": {
+											"caseSensitive": {
+												"type": "boolean"
+											},
+											"leftValue": {
+												"type": "string"
+											},
+											"typeValidation": {
+												"type": "string"
+											},
+											"version": {
+												"type": "integer"
+											}
+										},
+										"type": "object"
+									}
+								},
+								"type": "object"
+							},
+							"contentType": {
+								"type": "string"
+							},
+							"filters": {
+								"type": "object"
+							},
+							"genericAuthType": {
+								"type": "string"
+							},
+							"jsCode": {
+								"type": "string"
+							},
+							"jsonBody": {
+								"type": ["object", "string"]
+							},
+							"method": {
+								"type": "string"
+							},
+							"mode": {
+								"type": "string"
+							},
+							"nodeCredentialType": {
+								"type": "string"
+							},
+							"operation": {
+								"type": "string"
+							},
+							"options": {
+								"properties": {
+									"response": {
+										"properties": {
+											"response": {
+												"properties": {
+													"fullResponse": {
+														"type": "boolean"
+													},
+													"neverError": {
+														"type": "boolean"
+													},
+													"responseFormat": {
+														"type": "string"
+													}
+												},
+												"type": "object"
+											}
+										},
+										"type": "object"
+									}
+								},
+								"type": "object"
+							},
+							"resource": {
+								"type": "string"
+							},
+							"returnAll": {
+								"type": "boolean"
+							},
+							"sendBody": {
+								"type": "boolean"
+							},
+							"specifyBody": {
+								"type": "string"
+							},
+							"url": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"position": {
+						"items": {
+							"type": "integer"
+						},
+						"type": "array"
+					},
+					"type": {
+						"type": "string"
+					},
+					"typeVersion": {
+						"type": "number"
+					},
+					"webhookId": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"pinData": {
+			"type": "object"
+		},
+		"settings": {
+			"properties": {
+				"availableInMCP": {
+					"type": "boolean"
+				},
+				"executionOrder": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"shared": {
+			"items": {
+				"properties": {
+					"createdAt": {
+						"type": "string"
+					},
+					"projectId": {
+						"type": "string"
+					},
+					"role": {
+						"type": "string"
+					},
+					"updatedAt": {
+						"type": "string"
+					},
+					"workflowId": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"staticData": {
+			"type": "object"
+		},
+		"tags": {
+			"items": {
+				"properties": {
+					"createdAt": {
+						"type": "string"
+					},
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					},
+					"updatedAt": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"triggerCount": {
+			"type": "integer"
+		},
+		"updatedAt": {
+			"type": "string"
+		},
+		"versionId": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

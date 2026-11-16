@@ -1,0 +1,15 @@
+{
+	"properties": {
+		"errors": {
+			"items": {},
+			"type": "array"
+		},
+		"id": {
+			"type": "string"
+		},
+		"success": {
+			"type": "boolean"
+		}
+	},
+	"type": "object"
+}

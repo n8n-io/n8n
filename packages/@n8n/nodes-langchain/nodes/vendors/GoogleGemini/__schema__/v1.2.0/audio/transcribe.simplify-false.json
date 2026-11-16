@@ -1,0 +1,78 @@
+{
+	"properties": {
+		"candidates": {
+			"items": {
+				"properties": {
+					"content": {
+						"properties": {
+							"parts": {
+								"items": {
+									"properties": {
+										"text": {
+											"type": "string"
+										},
+										"thoughtSignature": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"type": "array"
+							},
+							"role": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"finishReason": {
+						"type": "string"
+					},
+					"index": {
+						"type": "integer"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"modelVersion": {
+			"type": "string"
+		},
+		"responseId": {
+			"type": "string"
+		},
+		"usageMetadata": {
+			"properties": {
+				"candidatesTokenCount": {
+					"type": "integer"
+				},
+				"promptTokenCount": {
+					"type": "integer"
+				},
+				"promptTokensDetails": {
+					"items": {
+						"properties": {
+							"modality": {
+								"type": "string"
+							},
+							"tokenCount": {
+								"type": "integer"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"serviceTier": {
+					"type": "string"
+				},
+				"totalTokenCount": {
+					"type": "integer"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}
