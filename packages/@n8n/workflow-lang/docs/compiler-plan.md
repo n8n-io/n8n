@@ -49,6 +49,18 @@ accepts with no change to that compiler.
 Result of the check over n8n-nodes-base (5,315 operations of all versions): 1,060 compile, and 734 of them
 agree with v1 (79 node types). 278 compile and send other requests than v1: the gate keeps them in the host.
 
+### Shipped JavaScript and n8n (2026-11-16)
+
+- **The node compiler reads the JavaScript that ships.** n8n and node packages ship CommonJS (`dist/*.js`),
+  and a custom node package often has no TypeScript source. `src/node-compile/commonjs.ts` reads the forms
+  that `tsc` writes as a module. `scripts/verify-compiled-nodes.ts --dist` checks every node of
+  n8n-nodes-base from its `dist`: 844 operations agree with v1 (854 from the TypeScript source).
+- **n8n uses it behind a setting.** With `N8N_COMPILED_ENGINE_COMPILE_NODES=true`, the compiled-engine module
+  gives the converter the file of each node class (from the module cache of Node.js, so community and custom
+  packages count too), the node description and the public part of each credential, and gives the modules to
+  `compile`. The key of the compile cache holds the public credential fields. The default is `false`.
+- Not tested yet: a publish in a running n8n with the setting on. The unit tests of the module pass.
+
 ### Measured on real workflows (2026-11-16)
 
 300 workflows of the corpus (3,702 nodes), converted with and without the node compiler, before the verified

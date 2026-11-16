@@ -16,8 +16,11 @@ import { NodeTypes } from '@/node-types';
 
 import { ArtifactCache } from './compiled-engine-disk.service';
 import { CompiledEngineConfig } from './compiled-engine.config';
+import { CompiledEngineCredentials } from './compiled-engine-credentials';
 import { CompiledEngineProcesses } from './compiled-engine-processes';
 import type { CompiledArtifact, CredentialSlotBinding } from './compiled-engine.types';
+import type { PublicCredential } from './compiled-node-sources';
+import { nodeSourcesOf } from './compiled-node-sources';
 import { CompiledSubWorkflowResolver } from './compiled-sub-workflow.resolver';
 import { loadWorkflowLang } from './workflow-lang';
 
@@ -183,6 +186,9 @@ export class CompiledWorkflowCompiler {
 
 	private readonly inFlight = new Map<string, Promise<CompiledArtifact>>();
 
+	/** `N8N_COMPILED_ENGINE_COMPILE_NODES`. */
+	private readonly compileNodes: boolean;
+
 	/** The files of the cache, bounded by `N8N_COMPILED_ENGINE_ARTIFACT_CACHE_MB`. */
 	private readonly artifacts: ArtifactCache;
 
@@ -193,8 +199,10 @@ export class CompiledWorkflowCompiler {
 		private readonly nodeTypes: NodeTypes,
 		private readonly urlService: UrlService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly credentials: CompiledEngineCredentials,
 		config: CompiledEngineConfig,
 	) {
+		this.compileNodes = config.compileNodes;
 		this.logger = this.logger.scoped('compiled-engine');
 		this.artifacts = new ArtifactCache(
 			join(this.processes.dataDir, 'artifacts'),
@@ -205,6 +213,9 @@ export class CompiledWorkflowCompiler {
 	async compile(input: CompileInput): Promise<CompiledArtifact> {
 		const lang = await loadWorkflowLang();
 		const subWorkflows = await this.subWorkflows.preload(input.nodes);
+		const publicCredentials = this.compileNodes
+			? await this.credentials.publicCredentials(input.id, input.nodes)
+			: new Map<string, PublicCredential>();
 		const workflowJson = {
 			id: input.id,
 			name: input.name,
@@ -217,6 +228,8 @@ export class CompiledWorkflowCompiler {
 			.update(JSON.stringify(workflowJson))
 			.update(JSON.stringify([...subWorkflows.entries()]))
 			.update(getGlobalState().defaultTimezone)
+			// A module holds the public fields of its credentials: other fields give another module.
+			.update(JSON.stringify([this.compileNodes, ...publicCredentials.entries()]))
 			.digest('hex');
 
 		const inMemory = this.cache.get(key);
@@ -234,8 +247,8 @@ export class CompiledWorkflowCompiler {
 		const pending = this.inFlight.get(key);
 		if (pending) return await pending;
 
-		const work = this.run(lang, key, input, workflowJson, subWorkflows).finally(() =>
-			this.inFlight.delete(key),
+		const work = this.run(lang, key, input, workflowJson, subWorkflows, publicCredentials).finally(
+			() => this.inFlight.delete(key),
 		);
 		this.inFlight.set(key, work);
 		return await work;
@@ -247,6 +260,7 @@ export class CompiledWorkflowCompiler {
 		input: CompileInput,
 		workflowJson: Record<string, unknown>,
 		subWorkflows: Map<string, unknown>,
+		publicCredentials: Map<string, PublicCredential>,
 	): Promise<CompiledArtifact> {
 		const startedAt = Date.now();
 		// `resolveWorkflow` is read by converters that support Execute Workflow nodes.
@@ -265,6 +279,11 @@ export class CompiledWorkflowCompiler {
 				baseUrl: `${this.urlService.getInstanceBaseUrl()}/`,
 				id: this.instanceSettings.instanceId,
 			},
+			// A node without a built-in version is compiled from its own code
+			// (N8N_COMPILED_ENGINE_COMPILE_NODES).
+			...(this.compileNodes
+				? { nodeSources: nodeSourcesOf(lang, this.nodeTypes, publicCredentials) }
+				: {}),
 		};
 		const converted = lang.convertWorkflow(workflowJson, options);
 		const diagnostics: CompiledEngineDiagnostic[] = converted.diagnostics.map((d) => ({
@@ -292,7 +311,10 @@ export class CompiledWorkflowCompiler {
 		let moduleSlots: Array<{ slot: string; type: unknown }> = [];
 		let triggers: unknown[] = [];
 		if (converted.ok) {
-			const compiled = lang.compile(converted.source, { fileName: '/workflow.ts' });
+			const compiled = lang.compile(converted.source, {
+				fileName: '/workflow.ts',
+				extraNodes: converted.nodes,
+			});
 			for (const d of compiled.diagnostics) {
 				diagnostics.push({ severity: 'error', code: d.code, message: d.message });
 			}

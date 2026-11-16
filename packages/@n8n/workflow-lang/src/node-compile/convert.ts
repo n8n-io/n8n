@@ -59,6 +59,15 @@ export function isVerified(
 	return names !== undefined && compiled.changed.every((name) => names.includes(name));
 }
 
+/** The part of a node type description that the converter reads, from the description of n8n. */
+export function nodeDescriptionOf(value: unknown): NodeDescription | undefined {
+	if (typeof value !== 'object' || value === null) return undefined;
+	const name: unknown = Reflect.get(value, 'name');
+	const properties: unknown = Reflect.get(value, 'properties');
+	if (typeof name !== 'string' || !Array.isArray(properties)) return undefined;
+	return { name, properties };
+}
+
 /** FNV-1a, as 8 hexadecimal digits: the name of a compiled module. */
 function hashOf(text: string): string {
 	let h = 0x811c9dc5;

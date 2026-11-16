@@ -11,6 +11,7 @@ import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 import type { CredentialSlotBinding } from './compiled-engine.types';
+import type { PublicCredential } from './compiled-node-sources';
 import { loadWorkflowLang } from './workflow-lang';
 
 function toExecuteData(nodeType: string): IExecuteData {
@@ -86,6 +87,45 @@ export class CompiledEngineCredentials {
 			}
 		}
 		return document;
+	}
+
+	/**
+	 * The public part of each credential of the nodes, by `type:id`: the choices, the flags
+	 * and the addresses, which the node compiler reads at publish. The data is decrypted
+	 * here, and only the public part leaves this method: a secret never reaches the compiler.
+	 */
+	async publicCredentials(
+		workflowId: string,
+		nodes: INode[],
+	): Promise<Map<string, PublicCredential>> {
+		const lang = await loadWorkflowLang();
+		const out = new Map<string, PublicCredential>();
+		for (const node of nodes) {
+			for (const [type, ref] of Object.entries(node.credentials ?? {})) {
+				const key = `${type}:${ref.id ?? ''}`;
+				if (!ref.id || out.has(key) || !this.credentialTypes.recognizes(type)) continue;
+				try {
+					const additionalData = await WorkflowExecuteAdditionalData.getBase({ workflowId });
+					const data = await this.credentialsHelper.getDecrypted(
+						additionalData,
+						{ id: ref.id, name: ref.name },
+						type,
+						'internal',
+						toExecuteData(type),
+					);
+					const info = lang.describeCredentialType(this.credentialTypes.getByName(type));
+					out.set(key, lang.publicCredential(info, { ...data }));
+				} catch (error) {
+					// Without the public part, node code that reads a field of this credential does not compile.
+					this.logger.debug('Could not read the public fields of a credential', {
+						workflowId,
+						credentialType: type,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
+		}
+		return out;
 	}
 
 	/** Saves the OAuth token data that a v1 node refreshed, as `CredentialsHelper` does. */

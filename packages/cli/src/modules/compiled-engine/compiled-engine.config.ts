@@ -44,6 +44,17 @@ export class CompiledEngineConfig {
 	adminSecret: string = '';
 
 	/**
+	 * Whether n8n compiles a node from its own code when the compiled engine has
+	 * no built-in version of that node. This applies to community and custom
+	 * nodes too. n8n runs a compiled node only when it has checked that node
+	 * operation against the original node. Other nodes still run in the fallback
+	 * host. When `false`, every node without a built-in version runs in the
+	 * fallback host.
+	 */
+	@Env('N8N_COMPILED_ENGINE_COMPILE_NODES')
+	compileNodes: boolean = false;
+
+	/**
 	 * Whether n8n starts `wfrt` and the fallback host as child processes and
 	 * restarts them when they stop. Set to `false` to connect to a `wfrt` that
 	 * you start yourself.

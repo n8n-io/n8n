@@ -18,6 +18,10 @@ export type {
 	SlotReport,
 } from './credentials/build.ts';
 export { describeCredentialType, parentTypes, registryOf } from './credentials/types.ts';
+export { publicCredential } from './credentials/public.ts';
+export type { PublicCredential } from './credentials/public.ts';
+export { nodeDescriptionOf } from './node-compile/convert.ts';
+export type { NodeSources } from './node-compile/convert.ts';
 export type { CredentialTypeInfo, CredentialTypeRegistry } from './credentials/types.ts';
 export { runDataTableCall } from './services/data-table.ts';
 export type { DataTableBackend, ServiceAnswer, ServiceCallEvent } from './services/data-table.ts';

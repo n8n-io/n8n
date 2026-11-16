@@ -19,6 +19,7 @@ import ts from 'typescript';
 
 import { CODE_HELPERS } from '../convert/code-native/helpers.ts';
 import { translateCode } from '../convert/code-native/translate.ts';
+import { commonJsToModule, isCommonJs } from './commonjs.ts';
 
 export interface SpecialiseInput {
 	type: string;
@@ -471,14 +472,20 @@ class Specialiser {
 		if (known) return known;
 		const text = this.input.readFile(path);
 		if (text === undefined) return undefined;
-		// Types go first: the subset code is typed `any` at the end.
-		const js = ts.transpileModule(text, {
-			compilerOptions: {
-				target: ts.ScriptTarget.ES2022,
-				module: ts.ModuleKind.ESNext,
-				removeComments: true,
-			},
-		}).outputText;
+		// TypeScript source loses its types. JavaScript that `tsc` wrote as CommonJS (the `dist`
+		// of n8n and of a node package) is read as a module.
+		let js = text;
+		if (path.endsWith('.ts')) {
+			js = ts.transpileModule(text, {
+				compilerOptions: {
+					target: ts.ScriptTarget.ES2022,
+					module: ts.ModuleKind.ESNext,
+					removeComments: true,
+				},
+			}).outputText;
+		} else if (isCommonJs(text)) {
+			js = commonJsToModule(text, (spec) => this.isLocal(spec));
+		}
 		const sf = ts.createSourceFile(path, js, ts.ScriptTarget.ES2022, true, ts.ScriptKind.JS);
 		const model: FileModel = {
 			path,
@@ -537,6 +544,14 @@ class Specialiser {
 		return model;
 	}
 
+	/** True when a module name is a file of the node: a relative path or an alias of a folder. */
+	private isLocal(spec: string): boolean {
+		return (
+			spec.startsWith('.') ||
+			Object.keys(this.input.aliases ?? {}).some((prefix) => spec.startsWith(prefix))
+		);
+	}
+
 	private resolveModule(from: FileModel, spec: string): FileModel | undefined {
 		let base: string | undefined;
 		if (spec.startsWith('.')) {
@@ -552,7 +567,17 @@ class Specialiser {
 			}
 		}
 		if (base === undefined) return undefined;
-		return this.load(`${base}.ts`) ?? this.load(`${base}/index.ts`) ?? this.load(base);
+		for (const candidate of [
+			`${base}.ts`,
+			`${base}/index.ts`,
+			`${base}.js`,
+			`${base}/index.js`,
+			base,
+		]) {
+			const found = this.load(candidate);
+			if (found) return found;
+		}
+		return undefined;
 	}
 
 	/** Finds the declaration of a free name and queues it. */
