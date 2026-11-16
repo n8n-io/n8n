@@ -247,6 +247,8 @@ export class SkillSyncService {
 			newSkills: request.newSkills ?? [],
 			skippedNewSkills: request.skippedNewSkills ?? [],
 		};
+		const bulk =
+			payload.updates.length + payload.newSkills.length + payload.skippedNewSkills.length > 1;
 		const { source, client } = await this.requireReview(user, sourceId);
 		if (
 			payload.newSkills.length &&
@@ -352,7 +354,7 @@ export class SkillSyncService {
 						kind: 'update',
 						action: 'accept',
 						verdict: scan.verdict,
-						bulk: payload.updates.length > 1,
+						bulk,
 						status: 'failure',
 						reason: skillSourceReasonOf(error) ?? 'unexpected',
 					},
@@ -387,7 +389,7 @@ export class SkillSyncService {
 					kind: 'update',
 					action: 'accept',
 					verdict: scan.verdict,
-					bulk: payload.updates.length > 1,
+					bulk,
 					status: 'success',
 				},
 				user.id,

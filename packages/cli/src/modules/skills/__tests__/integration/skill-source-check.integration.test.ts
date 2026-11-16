@@ -353,6 +353,67 @@ describe('Skill source checks', () => {
 			expect((await sourceOf(sourceId)).unlinkedSkills).toEqual([]);
 		});
 
+		describe.each(['success', 'failure'] as const)('review telemetry on %s', (status) => {
+			it.each([
+				['one update', true, false, false, false],
+				['one hide', false, false, true, false],
+				['an update and an import', true, true, false, true],
+				['an update and a hide', true, false, true, true],
+				['an import and a hide', false, true, true, true],
+				['an update, an import, and a hide', true, true, true, true],
+			])(
+				'reports request-wide bulk for %s',
+				async (_selection, selectUpdate, selectImport, selectHide, bulk) => {
+					const { sourceId } = await importAll();
+					pushChange({
+						'skills/docx/SKILL.md': skillMd('docx', 'Updated docx.'),
+						'skills/pdf/SKILL.md': skillMd('pdf'),
+						'skills/csv/SKILL.md': skillMd('csv'),
+					});
+					await sync().checkAll();
+					const reviewed = await review(sourceId);
+					const updates = selectUpdate
+						? reviewed.updates.map(({ skillId, contentHash, baseVersionId }) => ({
+								skillId,
+								contentHash,
+								baseVersionId,
+							}))
+						: [];
+					const newSkills = selectImport ? [reviewed.newSkills![0]] : [];
+					const skippedNewSkills = selectHide ? [reviewed.newSkills![1]] : [];
+					if (status === 'failure') {
+						const [selected] = [...updates, ...newSkills, ...skippedNewSkills];
+						selected.contentHash = '0'.repeat(64);
+					}
+					const telemetry = vi.spyOn(Container.get(SkillsTelemetry), 'reviewedUpdate');
+
+					await editor
+						.post(`/skill-sources/${sourceId}/updates/accept`)
+						.send({ updates, newSkills, skippedNewSkills })
+						.expect(status === 'success' ? 200 : 409);
+
+					expect(telemetry).toHaveBeenCalledTimes(Number(selectUpdate) + Number(selectHide));
+					for (const kind of [
+						...(selectUpdate ? ['update'] : []),
+						...(selectHide ? ['new'] : []),
+					]) {
+						expect(telemetry).toHaveBeenCalledWith(
+							{
+								provider: 'github',
+								kind,
+								action: kind === 'update' ? 'accept' : 'skip',
+								verdict: 'pass',
+								bulk,
+								status,
+								...(status === 'failure' ? { reason: 'stale' } : {}),
+							},
+							memberUser.id,
+						);
+					}
+				},
+			);
+		});
+
 		it('rolls back updates when an import in the same review has a name clash', async () => {
 			const { sourceId, docx } = await importAll();
 			pushChange({

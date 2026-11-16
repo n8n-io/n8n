@@ -296,6 +296,8 @@ export class SkillSourceNewSkillsService {
 	) {
 		const status = error ? 'failure' : 'success';
 		const reason = error ? (skillSourceReasonOf(error) ?? 'unexpected') : undefined;
+		const bulk =
+			payload.updates.length + payload.newSkills.length + payload.skippedNewSkills.length > 1;
 		for (const { key } of payload.skippedNewSkills) {
 			const verdict =
 				reads.find((read) => read.key === key)?.check.verdict ??
@@ -307,7 +309,7 @@ export class SkillSourceNewSkillsService {
 						kind: 'new',
 						action: 'skip',
 						verdict,
-						bulk: payload.skippedNewSkills.length > 1,
+						bulk,
 						status,
 						...(reason ? { reason } : {}),
 					},
