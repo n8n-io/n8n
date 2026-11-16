@@ -205,6 +205,9 @@ export class LmChatCustomEndpoint implements INodeType {
 			maxRetries: options.maxRetries ?? 2,
 			modelKwargs: modelKwargsFor(this, options, extraBody, itemIndex),
 			callbacks: [new N8nLlmTracing(this)],
+			// The gateways this node exists for (vLLM, LM Studio and the rest) reject
+			// `strict: null` in a tool definition, so the OpenAI sub-node turns this off too
+			supportsStrictToolCalling: false,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, (error: unknown) => {
 				const { status } = error as { status?: number };
 				// A connection error or a timeout carries no status, and the default

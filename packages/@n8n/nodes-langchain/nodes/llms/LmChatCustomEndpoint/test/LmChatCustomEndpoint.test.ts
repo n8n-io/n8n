@@ -96,6 +96,12 @@ describe('LmChatCustomEndpoint', () => {
 		});
 	});
 
+	it('turns off strict tool calling, which the gateways this node targets reject', async () => {
+		await node.supplyData.call(contextWith({}), 0);
+
+		expect(constructorArgs()).toMatchObject({ supportsStrictToolCalling: false });
+	});
+
 	it('treats the -1 default of the token limit as unset rather than a real limit', async () => {
 		await node.supplyData.call(contextWith({ options: { maxTokens: -1 } }), 0);
 

@@ -60,6 +60,13 @@ describe('n8nContextHeaders', () => {
 		},
 	);
 
+	it('encodes a name holding a percent sign, so a decoding gateway reads it back', () => {
+		const headers = n8nContextHeaders(ctxWith({ id: 'wf-1', name: '100% uptime' }));
+
+		expect(headers['x-n8n-workflow-name']).toBe('100%25%20uptime');
+		expect(decodeURIComponent(headers['x-n8n-workflow-name'])).toBe('100% uptime');
+	});
+
 	it('leaves an ordinary name alone, spaces and all', () => {
 		const headers = n8nContextHeaders(ctxWith({ id: 'wf-1', name: 'Nightly sync' }));
 

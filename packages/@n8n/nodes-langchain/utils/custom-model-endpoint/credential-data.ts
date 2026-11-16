@@ -58,6 +58,9 @@ export type OpenAiCredentialData = {
 	headerValue?: string;
 };
 
+/** The credential's own field carries this, but a credential saved with it cleared has none. */
+const OPENAI_BASE_URL = 'https://api.openai.com/v1';
+
 /** So a workflow already reaching a gateway through the OpenAI node keeps its credential. */
 export function readOpenAiCredential(data: OpenAiCredentialData): EndpointCredential {
 	const custom: Record<string, string> =
@@ -69,7 +72,7 @@ export function readOpenAiCredential(data: OpenAiCredentialData): EndpointCreden
 		: {};
 
 	return {
-		baseUrl: normalizeEndpoint(data.url) ?? '',
+		baseUrl: normalizeEndpoint(data.url) || OPENAI_BASE_URL,
 		login: { type: 'bearer', token: data.apiKey?.trim() ?? '' },
 		gatewayHeaders: { ...organization, ...custom },
 	};
