@@ -39,11 +39,11 @@ describe('EnqueuedExecutionRecoveryService', () => {
 	const workflowRunner = mock<WorkflowRunner>();
 	const eventService = mock<EventService>();
 
-	const createService = (mode: 'regular' | 'queue' = 'regular') =>
+	const createService = (mode: 'regular' | 'queue' = 'regular', maxResumeAttempts = 2) =>
 		new EnqueuedExecutionRecoveryService(
 			logger,
 			errorReporter,
-			mock<ExecutionsConfig>({ mode }),
+			mock<ExecutionsConfig>({ mode, recovery: { maxResumeAttempts } }),
 			executionService,
 			executionPersistence,
 			executionCrashService,
@@ -235,15 +235,11 @@ describe('EnqueuedExecutionRecoveryService', () => {
 	test('keeps going when preparing an execution throws', async () => {
 		mockEnqueued([enqueuedExecution('1'), enqueuedExecution('2')]);
 		ownershipService.getWorkflowProjectCached.mockRejectedValueOnce(
-			new Error('workflow not found'),
+			new Error('database is locked'),
 		);
 
 		await createService().recoverEnqueuedExecutions();
 
-		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(
-			'1',
-			'start-failure',
-		);
 		expect(workflowRunner.run).toHaveBeenCalledExactlyOnceWith(
 			expect.anything(),
 			undefined,
@@ -253,6 +249,44 @@ describe('EnqueuedExecutionRecoveryService', () => {
 				expectedStatus: 'new',
 				storedAt: 'fs',
 			},
+		);
+	});
+
+	test('leaves an execution `new` and keeps its attempt when preparing it throws', async () => {
+		mockEnqueued([enqueuedExecution('1')]);
+		workflowPublisherService.findActingUserIdForRestart.mockRejectedValueOnce(
+			new Error('database is locked'),
+		);
+
+		await createService().recoverEnqueuedExecutions();
+
+		expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
+		expect(resumeAttemptService.release).not.toHaveBeenCalled();
+		expect(errorReporter.error).toHaveBeenCalledTimes(1);
+		expect(workflowRunner.run).not.toHaveBeenCalled();
+	});
+
+	test('leaves an execution `new` when its claim throws', async () => {
+		mockEnqueued([enqueuedExecution('1')]);
+		resumeAttemptService.claim.mockRejectedValueOnce(new Error('database is locked'));
+
+		await createService().recoverEnqueuedExecutions();
+
+		expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
+		expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
+	});
+
+	test('crashes an execution that cannot be prepared when the attempt limit is off', async () => {
+		mockEnqueued([enqueuedExecution('1')]);
+		ownershipService.getWorkflowProjectCached.mockRejectedValueOnce(
+			new Error('database is locked'),
+		);
+
+		await createService('regular', 0).recoverEnqueuedExecutions();
+
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(
+			'1',
+			'start-failure',
 		);
 	});
 });

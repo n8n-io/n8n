@@ -496,9 +496,17 @@ export class SkillRepository {
 		content: SkillContent,
 		createdById: string | null,
 		ctx: OperationContext = {},
+		sourceRevision: string | null = null,
 	): Promise<string> {
 		return await this.table.runInTransaction(ctx, async (manager) => {
-			const id = await insertVersion(manager, skillId, version, content, createdById, null);
+			const id = await insertVersion(
+				manager,
+				skillId,
+				version,
+				content,
+				createdById,
+				sourceRevision,
+			);
 			await manager.update(Skill, { id: skillId }, { updatedAt: new Date() });
 			return id;
 		});
@@ -642,6 +650,8 @@ export class SkillRepository {
 		await this.table.managerFor(ctx).find(Skill, {
 			select: ['id'],
 			where: { id: In(unique(skillIds)) },
+			// Attaches, publishes, and source deletes can lock overlapping sets of skills.
+			order: { id: 'ASC' },
 			lock: { mode },
 		});
 	}

@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 /**
  * A statement that restores the transaction after a failed step failed, so the fold

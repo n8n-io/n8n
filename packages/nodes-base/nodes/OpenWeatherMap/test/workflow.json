@@ -59,6 +59,24 @@
 			"position": [500, 220],
 			"id": "d0b80f33-3718-47a3-8be1-f7053281465b",
 			"name": "No Operation, do nothing1"
+		},
+		{
+			"parameters": {
+				"operation": "5DayForecast",
+				"cityName": "berlin,de",
+				"language": "en"
+			},
+			"type": "n8n-nodes-base.openWeatherMap",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "8f3b2a61-4c7d-4e2a-9b1f-6d5e4c3b2a10",
+			"name": "OpenWeatherMap - Forecast",
+			"credentials": {
+				"openWeatherMapApi": {
+					"id": "202",
+					"name": "OpenWeatherMap account"
+				}
+			}
 		}
 	],
 	"pinData": {
@@ -117,6 +135,16 @@
 					"error": "The resource you are requesting could not be found"
 				}
 			}
+		],
+		"OpenWeatherMap - Forecast": [
+			{
+				"json": {
+					"cod": "200",
+					"cnt": 1,
+					"list": [{ "dt": 1732903200, "main": { "temp": 4.6 } }],
+					"city": { "id": 2950159, "name": "Berlin" }
+				}
+			}
 		]
 	},
 	"connections": {
@@ -130,6 +158,11 @@
 					},
 					{
 						"node": "OpenWeatherMap - Error",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "OpenWeatherMap - Forecast",
 						"type": "main",
 						"index": 0
 					}

@@ -18,10 +18,9 @@ import {
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_CONVERSATION_HISTORY_FLAG,
 	INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 	INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
+	INSTANCE_AI_APPROVAL_MODES_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 	ASSISTANT_SKILLS_FLAG,
@@ -205,9 +204,9 @@ import {
 	scopeCredentialProvider,
 	type AgentCredentialProvider,
 } from './eval/scoped-credential-provider';
-import type { EvalCredentialTestTarget } from './eval/thread-credential-allowlist.service';
 import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from './instance-ai-skills.adapter';
+import type { AssistantCredentialTestTarget } from './turn-setup/assistant-turn-overrides';
 import { DataTableRepository, DataTableService } from '@n8n/backend-module-data-table';
 
 import { SkillsGate } from '@/modules/skills';
@@ -272,6 +271,7 @@ import {
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { skipTimeBasedWaits } from './skip-time-based-waits';
 import type { TemporaryWorkflowMarkers } from './temporary-workflow-markers';
 import {
 	buildToolAgentRequest,
@@ -424,8 +424,6 @@ export interface InstanceAiFeatureFlags {
 	configEvalsEnabled: boolean;
 	/** Past-conversation recall: tool, prompt section and first-turn hint. */
 	conversationHistoryEnabled: boolean;
-	/** Progressive workflow policy and planning-tool selection. */
-	progressiveBuildingEnabled: boolean;
 	/** Concise reply style. Applies only when the default build mode is selected. */
 	conciseStyleEnabled: boolean;
 	setupPanelEnabled: boolean;
@@ -439,6 +437,8 @@ export interface InstanceAiFeatureFlags {
 	 *  returns `{}` on a PostHog outage. */
 	folderExplorationEnabled: boolean;
 	credentialDescriptionsEnabled: boolean;
+	/** Approval modes: the Manual and Auto selector, and Auto for users without a saved choice. */
+	approvalModesEnabled: boolean;
 	/** Shared activity recording and retrieval use the same instance gate. */
 	instanceContextEnabled: boolean;
 	assistantSkillsEnabled: boolean;
@@ -563,7 +563,9 @@ export class InstanceAiAdapterService {
 			shouldBypassCredentialTest?: (credentialId: string) => boolean;
 			/** Eval-only: the provider stand-in for a credential type's connection test.
 			 *  A getter for the same reason as the bypass predicate. */
-			getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined;
+			getCredentialTestTarget?: (
+				credentialType: string,
+			) => AssistantCredentialTestTarget | undefined;
 			/** Pre-bound agent for the build-existing-agent flow. When omitted, the
 			 *  assistant can create one via the agent_builder_build_agent tool. */
 			agentId?: string;
@@ -591,9 +593,12 @@ export class InstanceAiAdapterService {
 			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
 			assistantSkillsEnabled?: boolean;
-			/** Host-resolved model for the run — fallback for utility LLM calls
-			 *  (simulation fixtures, destructiveness classification). */
+			/** Host-resolved main model for the run. */
 			modelId?: ModelConfig;
+			/** Host-resolved utility model. Absent → utility calls use `modelId`. */
+			utilityModelId?: ModelConfig;
+			/** Bills the token usage of helper LLM calls. */
+			onHelperUsage?: InstanceAiContext['onHelperUsage'];
 			/** Transport for those utility LLM calls. */
 			modelFetch?: FetchFn;
 			/** Effective data-sharing setting for this run. Absent → the env value. */
@@ -620,6 +625,8 @@ export class InstanceAiAdapterService {
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
 			modelId,
+			utilityModelId,
+			onHelperUsage,
 			modelFetch,
 			allowSendingParameterValues = this.allowSendingParameterValues,
 		} = options ?? {};
@@ -658,6 +665,8 @@ export class InstanceAiAdapterService {
 			...(onboardingThread ? { onboardingThread: true } : {}),
 			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
+			...(utilityModelId ? { utilityModelId } : {}),
+			...(onHelperUsage ? { onHelperUsage } : {}),
 			modelFetch,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
@@ -841,9 +850,6 @@ export class InstanceAiAdapterService {
 			conversationHistoryEnabled:
 				flags[INSTANCE_AI_CONVERSATION_HISTORY_FLAG] ===
 				INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT,
-			progressiveBuildingEnabled:
-				flags[INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG] ===
-				INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 			conciseStyleEnabled:
 				flags[INSTANCE_AI_CONCISE_STYLE_FLAG] === INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
 			setupPanelEnabled: setupPanelVariant === INSTANCE_AI_SETUP_PANEL_ENABLED_VARIANT,
@@ -856,6 +862,7 @@ export class InstanceAiAdapterService {
 			folderExplorationEnabled:
 				flags[INSTANCE_AI_FOLDER_EXPLORATION_FLAG] ===
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
+			approvalModesEnabled: flags[INSTANCE_AI_APPROVAL_MODES_FLAG] === true,
 			instanceContextEnabled,
 			assistantSkillsEnabled,
 		};
@@ -2181,6 +2188,7 @@ export class InstanceAiAdapterService {
 
 				const updated = await workflowService.update(user, updateData, workflowId, {
 					source: 'n8n-ai',
+					restoredVersionSettings: version.settings,
 				});
 
 				await notifyWorkflowUpdated(workflowId);
@@ -2367,6 +2375,12 @@ export class InstanceAiAdapterService {
 
 				const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
 
+				// A verification run tests the workflow logic, not the passage of time.
+				// Without this, each retry or throttle wait adds its real duration.
+				const waits = options?.isVerificationRun
+					? skipTimeBasedWaits(nodes)
+					: { nodes, skippedNodeNames: [] };
+
 				// Force-save AI-initiated executions so that follow-up
 				// `executions(list/get/debug)` calls can read the result, regardless of
 				// instance-wide or per-workflow save settings. Manual mode is gated by
@@ -2376,6 +2390,7 @@ export class InstanceAiAdapterService {
 					executionMode: triggerNode ? getExecutionModeForTrigger(triggerNode) : 'manual',
 					workflowData: {
 						...workflow,
+						nodes: waits.nodes,
 						connections,
 						settings: {
 							...workflow.settings,
@@ -2550,10 +2565,16 @@ export class InstanceAiAdapterService {
 							Object.hasOwn(pinDataPlan.verificationPinData, triggerNode.name))
 							? triggerNode.name
 							: undefined;
+					// Report only the waits this run reached; the rest never executed.
+					const reachedNodeNames = new Set(result.executedNodeNames);
+					const skippedWaitNodeNames = waits.skippedNodeNames.filter((name) =>
+						reachedNodeNames.has(name),
+					);
 					return {
 						...result,
 						...(workflowPinnedNodeNames.length > 0 ? { workflowPinnedNodeNames } : {}),
 						...(injectedTriggerNodeName ? { injectedTriggerNodeName } : {}),
+						...(skippedWaitNodeNames.length > 0 ? { skippedWaitNodeNames } : {}),
 					};
 				} catch (error) {
 					// A failure to launch (or any other unsettled error) is still an
@@ -3009,7 +3030,7 @@ export class InstanceAiAdapterService {
 		boundProjectId?: string,
 		getCredentialIdAllowlist?: () => string[] | undefined,
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
-		getCredentialTestTarget?: (credentialType: string) => EvalCredentialTestTarget | undefined,
+		getCredentialTestTarget?: (credentialType: string) => AssistantCredentialTestTarget | undefined,
 	): InstanceAiCredentialService {
 		const {
 			credentialsService,

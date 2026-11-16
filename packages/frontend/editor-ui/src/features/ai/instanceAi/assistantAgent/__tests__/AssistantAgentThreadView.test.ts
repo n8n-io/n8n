@@ -14,6 +14,7 @@ import { setActivePinia } from 'pinia';
 import { defineComponent, h, ref, type Ref } from 'vue';
 
 import type { AgentChatComposerAttachment } from '@/features/agents/utils/composer-attachments';
+import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
 import type { ArtifactAgentTargets } from '../../artifactAgentTargets';
@@ -285,6 +286,13 @@ vi.mock('../../components/InstanceAiInputMenu.vue', () => ({
 	}),
 }));
 
+// The real selector reads the settings store, which has its own tests.
+vi.mock('../../components/ApprovalModeSelector.vue', () => ({
+	default: defineComponent({
+		setup: () => () => h('div', { 'data-test-id': 'approval-mode-selector-stub' }),
+	}),
+}));
+
 // The real chips resolve the nodes from the workflow document, which has its own tests.
 vi.mock('../../components/NodesAttachmentChips.vue', () => ({
 	default: defineComponent({
@@ -330,7 +338,7 @@ vi.mock('../../components/InstanceAiViewHeader.vue', () => ({
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
-	useRouter: () => ({ push: routerPush }),
+	useRouter: () => ({ push: routerPush, currentRoute: { value: { params: {} } } }),
 }));
 
 const renderView = createComponentRenderer(AssistantAgentThreadView);
@@ -416,6 +424,7 @@ describe('AssistantAgentThreadView', () => {
 		});
 		expect(panelProps.current['interaction-extensions']).toEqual([
 			expect.objectContaining({ key: 'assistant_confirmation' }),
+			expect.objectContaining({ key: 'assistant_auto_approval' }),
 			expect.objectContaining({ key: 'assistant_instance_context' }),
 			expect.objectContaining({ key: 'assistant_status' }),
 		]);
@@ -441,6 +450,15 @@ describe('AssistantAgentThreadView', () => {
 		expect(getByTestId('input-menu-attach')).toBeDisabled();
 	});
 
+	it('shows the approval mode selector right after the "+" menu', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(getByTestId('input-menu-attach').nextElementSibling).toBe(
+			getByTestId('approval-mode-selector-stub'),
+		);
+	});
+
 	it('adds a thread opened by URL to the lists right away', async () => {
 		renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
 		await flushPromises();
@@ -454,6 +472,8 @@ describe('AssistantAgentThreadView', () => {
 			text: 'Build a digest',
 			files: [],
 			references: [],
+			authorship: USER_TYPED_MESSAGE,
+			mentionCounts: EMPTY_ASSISTANT_MENTION_COUNTS,
 		});
 		renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
 		await flushPromises();
@@ -475,6 +495,8 @@ describe('AssistantAgentThreadView', () => {
 			text: 'Build a digest',
 			files: [file],
 			references: [reference],
+			authorship: USER_TYPED_MESSAGE,
+			mentionCounts: EMPTY_ASSISTANT_MENTION_COUNTS,
 		});
 
 		renderView({ props: { threadId: 'thread-2', projectId: 'project-1' } });
@@ -497,6 +519,75 @@ describe('AssistantAgentThreadView', () => {
 		expect(telemetryTrack).not.toHaveBeenCalled();
 	});
 
+	it('reports who wrote each message on send, starting with the first message of the empty view', async () => {
+		const mentionCounts = { ...EMPTY_ASSISTANT_MENTION_COUNTS, workflow: 1, total: 1 };
+		stashPendingAssistantAgentMessage({
+			threadId: 'thread-4',
+			text: 'Build a digest',
+			files: [],
+			references: [],
+			authorship: { kind: 'prefill', prefillType: 'suggestion_catalog', prefillId: 's-1' },
+			mentionCounts,
+		});
+		renderView({ props: { threadId: 'thread-4', projectId: 'project-1' } });
+		await flushPromises();
+
+		const onMessageSending = panelProps.current.onMessageSending as (payload: {
+			text: string;
+			files: File[];
+			isFirstMessage: boolean;
+		}) => void;
+		onMessageSending({ text: 'Build a digest', files: [], isFirstMessage: true });
+		onMessageSending({ text: 'Add Slack', files: [], isFirstMessage: false });
+
+		expect(telemetryTrack.mock.calls).toEqual([
+			[
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({
+					thread_id: 'thread-4',
+					is_first_message: true,
+					prefill_type: 'suggestion_catalog',
+					prefill_id: 's-1',
+					mention_counts: mentionCounts,
+					runtime: 'agents',
+				}),
+			],
+			[
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({
+					is_first_message: false,
+					prefill_type: null,
+					mention_counts: EMPTY_ASSISTANT_MENTION_COUNTS,
+				}),
+			],
+		]);
+	});
+
+	it('reports the response to a sent message with the context of that message', async () => {
+		renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+		const onStreamEvent = panelProps.current.onStreamEvent as (event: unknown) => void;
+		onMessageSending({ text: 'Build a digest', files: [], isFirstMessage: true });
+		onStreamEvent({ type: 'message-queued', queueId: 'q-1', sessionId: 'thread-1' });
+		onStreamEvent({ type: 'execution-started', executionId: 'exec-1', sessionId: 'thread-1' });
+		onStreamEvent({ type: 'finish', finishReason: 'stop' });
+
+		await vi.waitFor(() =>
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_RECEIVED_AI_ASSISTANT_RESPONSE,
+				expect.objectContaining({
+					thread_id: 'thread-1',
+					run_id: 'exec-1',
+					is_first_user_message: true,
+					response_kind: 'completed',
+					runtime: 'agents',
+				}),
+			),
+		);
+	});
+
 	it('tracks the attached nodes of the first message once the server accepts it', async () => {
 		stashPendingAssistantAgentMessage({
 			threadId: 'thread-3',
@@ -516,6 +607,8 @@ describe('AssistantAgentThreadView', () => {
 					],
 				},
 			],
+			authorship: USER_TYPED_MESSAGE,
+			mentionCounts: EMPTY_ASSISTANT_MENTION_COUNTS,
 		});
 
 		renderView({ props: { threadId: 'thread-3', projectId: 'project-1' } });
@@ -648,11 +741,17 @@ describe('AssistantAgentThreadView', () => {
 
 		const context = { source: 'setup-panel-execute' as const, workflowId: 'wf-1' };
 		await previewThread.current?.sendMessage('Test the workflow', {
-			authorship: USER_TYPED_MESSAGE,
+			authorship: { kind: 'prefill', prefillType: 'handoff_setup_panel_execute' },
 			handoffContext: context,
 		});
 
 		expect(sendMessageFromOutside).toHaveBeenCalledWith('Test the workflow', [], { context });
+		const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+		onMessageSending({ text: 'Test the workflow', files: [], isFirstMessage: false });
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			expect.objectContaining({ prefill_type: 'handoff_setup_panel_execute' }),
+		);
 		const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
 		expect(clientContext()).not.toHaveProperty('context');
 	});
@@ -720,6 +819,12 @@ describe('AssistantAgentThreadView', () => {
 				attachments: [{ type: 'workflow', id: 'wf-1', name: 'Untitled', executionId: 'exec-1' }],
 			});
 			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+			const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+			onMessageSending({ text: prompt, files: [], isFirstMessage: false });
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ prefill_type: 'handoff_fix_with_ai', prompt_modified: false }),
+			);
 		});
 
 		it('offers the fix again when the chat refuses the send', async () => {
@@ -856,6 +961,8 @@ describe('AssistantAgentThreadView', () => {
 				text: 'Build a digest',
 				files: [],
 				references: [],
+				authorship: USER_TYPED_MESSAGE,
+				mentionCounts: EMPTY_ASSISTANT_MENTION_COUNTS,
 			});
 
 			renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
@@ -1247,6 +1354,19 @@ describe('AssistantAgentThreadView', () => {
 				attachments: [reference],
 				context: credentialContext,
 			});
+			const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+			onMessageSending({
+				text: 'Where do I find the Slack token?',
+				files: [],
+				isFirstMessage: true,
+			});
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({
+					is_first_message: true,
+					prefill_type: 'handoff_credential_setup',
+				}),
+			);
 
 			const onMessageAccepted = panelProps.current.onMessageAccepted as AcceptMessage;
 			onMessageAccepted({ clientContext: clientContext() });
@@ -1283,6 +1403,15 @@ describe('AssistantAgentThreadView', () => {
 
 			expect(setDraft).toHaveBeenCalledWith('Suggest my preferences');
 			expect(sendMessageFromOutside).not.toHaveBeenCalled();
+			const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+			onMessageSending({ text: 'Suggest my preferences', files: [], isFirstMessage: true });
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({
+					prefill_type: 'preferences_suggestion',
+					prompt_modified: false,
+				}),
+			);
 		});
 
 		it('adds handed-off canvas nodes to the composer', async () => {
@@ -1395,6 +1524,7 @@ describe('AssistantAgentThreadView', () => {
 				text: 'Build an agent',
 				files: [],
 				references: [],
+				authorship: USER_TYPED_MESSAGE,
 			});
 			renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
 			await flushPromises();
@@ -1510,6 +1640,20 @@ describe('AssistantAgentThreadView', () => {
 			]);
 			expect(setDraft).toHaveBeenCalledWith('Why did it refuse?');
 			expect(onAccepted).toHaveBeenCalled();
+			const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+			onMessageSending({ text: 'Why did it refuse? Be brief.', files: [], isFirstMessage: false });
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ prefill_type: 'agent_preview', prompt_modified: true }),
+			);
+			// A cleared composer drops the pre-fill, so the next message is the user's.
+			(panelProps.current.onDraftCleared as () => void)();
+			telemetryTrack.mockClear();
+			onMessageSending({ text: 'Thanks', files: [], isFirstMessage: false });
+			expect(telemetryTrack).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({ prefill_type: null }),
+			);
 			// The staged session is the one that the preview shows.
 			expect(agentPreview.props).toMatchObject({
 				'preview-open': false,

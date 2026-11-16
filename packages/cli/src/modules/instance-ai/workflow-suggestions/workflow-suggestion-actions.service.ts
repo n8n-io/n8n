@@ -20,6 +20,7 @@ import { WorkflowPublicationStatusService } from '@/workflows/publication/workfl
 import { sortSubWorkflowsFirst } from '@/workflows/sub-workflow-order';
 import { WorkflowService, type PreparedWorkflowUpdate } from '@/workflows/workflow.service';
 
+import { runInTransaction } from '../after-commit';
 import type { WorkflowSuggestion } from './database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from './workflow-suggestion.service';
@@ -90,7 +91,7 @@ export class WorkflowSuggestionActionsService {
 		group: SuggestionGroup,
 		ctx: OperationContext = {},
 	): Promise<'discarded' | 'outdated' | 'already_closed' | 'unavailable'> {
-		return await this.txRunner.run(ctx, async (ctx) => {
+		return await runInTransaction(this.txRunner, ctx, async (ctx) => {
 			const suggestions: WorkflowSuggestion[] = [];
 			for (const { id, workflowId } of group) {
 				await this.service.requireEditor(actor.id, workflowId, ctx);
@@ -170,7 +171,7 @@ export class WorkflowSuggestionActionsService {
 			prepared.push({ suggestion, update });
 		}
 
-		const saved = await this.txRunner.run({}, async (ctx) => {
+		const saved = await runInTransaction(this.txRunner, {}, async (ctx) => {
 			for (const { suggestion, update } of prepared) {
 				await this.validatePreparedWorkflow(suggestion, update.workflow, ctx);
 				await this.service.requireEditor(user.id, suggestion.workflowId, ctx);

@@ -3,6 +3,7 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ApplyPackageResultDto } from '@n8n/api-types';
+import { ResponseError } from '@n8n/rest-api-client';
 import PromotionBindingsDialog from './PromotionBindingsDialog.vue';
 import { continueApplyPromotion } from '../promotionsSettings.api';
 import {
@@ -336,6 +337,32 @@ it('shows recovery guidance after a request fails and keeps the saved row', asyn
 	await userEvent.click(getByRole('button', { name: 'Create Source credential' }));
 	await userEvent.click(getByRole('button', { name: 'Continue' }));
 	expect(getByText(/Check the destination before you try again/)).toBeInTheDocument();
+	expect(within(getByRole('table')).getByText('Resolved')).toBeInTheDocument();
+	expect(getByRole('button', { name: 'Continue' })).toBeEnabled();
+});
+
+it('says that nothing was applied when the environment is busy on Continue', async () => {
+	vi.mocked(continueApplyPromotion).mockRejectedValue(
+		new ResponseError(
+			'Another promotion operation is running for this environment. Try again when it finishes.',
+			{ httpStatusCode: 423 },
+		),
+	);
+	const { getByRole, getByText, queryByText } = await renderDialog({
+		props: {
+			open: true,
+			blockedResult: blocked({ missingBindings: [{ ...credential, consumers: [consumers[0]] }] }),
+			createBinding: vi.fn().mockResolvedValue(savedCredential),
+		},
+	});
+	await userEvent.click(getByRole('button', { name: 'Create Source credential' }));
+	await userEvent.click(getByRole('button', { name: 'Continue' }));
+	expect(
+		getByText(
+			'Nothing was applied. Another operation is running on this environment. Try again when it finishes.',
+		),
+	).toBeInTheDocument();
+	expect(queryByText(/Some changes may already have been applied/)).not.toBeInTheDocument();
 	expect(within(getByRole('table')).getByText('Resolved')).toBeInTheDocument();
 	expect(getByRole('button', { name: 'Continue' })).toBeEnabled();
 });

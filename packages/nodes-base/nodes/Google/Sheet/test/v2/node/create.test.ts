@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { execute } from '../../../v2/actions/sheet/create.operation';
 import type { GoogleSheet } from '../../../v2/helpers/GoogleSheet';
@@ -60,18 +61,22 @@ describe('Google Sheet - Create', () => {
 
 		expect(result).toEqual([{ json: responseData }]);
 		expect(getExistingSheetNames).toHaveBeenCalledWith(sheet);
-		expect(apiRequest).toHaveBeenCalledWith('POST', `/v4/spreadsheets/${sheetName}:batchUpdate`, {
-			requests: [
-				{
-					addSheet: {
-						properties: {
-							title: sheetTitle,
-							tabColor: { red: 10 / 255, green: 165 / 255, blue: 92 / 255 },
+		expect(apiRequest).toHaveBeenCalledWith(
+			'POST',
+			requestPath`/v4/spreadsheets/${sheetName}:batchUpdate`,
+			{
+				requests: [
+					{
+						addSheet: {
+							properties: {
+								title: sheetTitle,
+								tabColor: { red: 10 / 255, green: 165 / 255, blue: 92 / 255 },
+							},
 						},
 					},
-				},
-			],
-		});
+				],
+			},
+		);
 	});
 
 	test('should skip creating a sheet if the title already exists', async () => {

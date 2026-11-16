@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type {
 	AgentJsonConfig,
+	AgentSseEvent,
 	InstanceAiAttachment,
 	InstanceAiHandoffContext,
 	InstanceAiNodesAttachment,
@@ -8,6 +9,8 @@ import type {
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
+import { useAssistantAwayTelemetry } from '../composables/useAssistantAwayTelemetry';
+import { getCurrentTurn } from '../assistantTurn';
 import {
 	N8nActionDropdown,
 	N8nIconButton,
@@ -28,6 +31,7 @@ import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composabl
 
 import { provideArtifactAgentTargets } from '../artifactAgentTargets';
 import { provideArtifactThread } from '../artifactThread';
+import ApprovalModeSelector from '../components/ApprovalModeSelector.vue';
 import InstanceAiAgentPreview from '../components/InstanceAiAgentPreview.vue';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 import InstanceAiAppPreview from '../components/InstanceAiAppPreview.vue';
@@ -64,7 +68,7 @@ import { INSTANCE_AI_VIEW } from '../constants';
 import { buildFixWithAiPrompt } from '../fixWithAi';
 import { formatAgentPreviewContextLabel } from '../instanceAi.handoffContext';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { firstMessageTitle } from '../instanceAi.threadRuntime';
+import { firstMessageTitle, threadTargetsAgent } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { buildThreadArtifactsContext } from '../threadArtifacts';
 import { useCanvasPreview } from '../useCanvasPreview';
@@ -83,6 +87,7 @@ import {
 	getAssistantAgentLaunch,
 	type PendingAssistantAgentMessage,
 } from './assistantAgentThreads';
+import { assistantAutoApprovalExtension } from './assistantAutoApproval';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
@@ -92,6 +97,15 @@ import {
 	readNodesAttachment,
 	toNodesComposerAttachment,
 } from './assistantNodeAttachments';
+import {
+	useAssistantAgentMessageTelemetry,
+	type AssistantAgentSendingMessage,
+} from './useAssistantAgentMessageTelemetry';
+import { useAssistantAgentTurnTelemetry } from './useAssistantAgentTurnTelemetry';
+import {
+	ASSISTANT_AGENT_SETUP_SAVED,
+	useAssistantAgentSetupSavedTelemetry,
+} from './useAssistantAgentSetupSavedTelemetry';
 import { useAssistantAgentTargets } from './useAssistantAgentTargets';
 import { useAssistantAgentTrace } from './useAssistantAgentTrace';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
@@ -99,6 +113,13 @@ import { useAssistantArtifactThread } from './useAssistantArtifactThread';
 const props = defineProps<{ threadId: string; projectId: string }>();
 
 provide(ASSISTANT_AGENT_THREAD_ID, props.threadId);
+useAssistantAwayTelemetry({
+	threadId: () => props.threadId,
+	isRunning: () => (panel.value?.isStreaming || panel.value?.isSubmitting) ?? false,
+	isAwaitingUser: () => panel.value?.isAwaitingUserAnswer ?? false,
+	isReady: () => panel.value?.isLoadingHistory === false,
+	turn: () => getCurrentTurn(thread.artifactTurns),
+});
 provide(ASSISTANT_AGENT_PROJECT_ID, props.projectId);
 
 const telemetry = useTelemetry();
@@ -109,6 +130,7 @@ const settingsStore = useInstanceAiSettingsStore();
 const identity = useN8nAssistantIdentity();
 const threadsStore = useAssistantAgentThreadsStore();
 const toast = useToast();
+const messageTelemetry = useAssistantAgentMessageTelemetry(props.threadId);
 
 // A new thread has a launch marker until the server accepts its first message.
 // The server does not know the thread before then.
@@ -131,10 +153,15 @@ if (!isNewThread) {
 function firstMessageOf(
 	fromEmptyView: PendingAssistantAgentMessage | undefined,
 	fromHandoff: PendingFirstMessage | null,
-): { text: string; files: File[]; references: InstanceAiAttachment[] } | undefined {
+): Omit<PendingAssistantAgentMessage, 'threadId'> | undefined {
 	if (fromEmptyView) return fromEmptyView;
 	if (fromHandoff) {
-		return { text: fromHandoff.message, files: [], references: fromHandoff.attachments ?? [] };
+		return {
+			text: fromHandoff.message,
+			files: [],
+			references: fromHandoff.attachments ?? [],
+			authorship: fromHandoff.authorship,
+		};
 	}
 	return undefined;
 }
@@ -155,7 +182,7 @@ function readPendingHandoff() {
 	];
 	return {
 		firstMessage,
-		draft: draft?.text,
+		draft,
 		nodes,
 		context,
 		references,
@@ -170,7 +197,6 @@ const agentConfig = computed<AgentJsonConfig>(() => ({
 	name: identity.name.value,
 	model: '',
 	instructions: '',
-	personalisation: identity.personalisation,
 }));
 
 /** The Assistant reads the same request fields as from its current runtime. */
@@ -215,7 +241,11 @@ function onMessageAccepted({ clientContext }: { clientContext?: Record<string, u
 	pendingHandoffContext = undefined;
 }
 
-const interactionExtensions = [assistantConfirmationExtension, ...assistantHostEventExtensions];
+const interactionExtensions = [
+	assistantConfirmationExtension,
+	assistantAutoApprovalExtension,
+	...assistantHostEventExtensions,
+];
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
 
@@ -224,12 +254,37 @@ const trace = useAssistantAgentTrace({
 	messages: () => panel.value?.messages ?? [],
 });
 
+const turnTelemetry = useAssistantAgentTurnTelemetry({
+	threadId: props.threadId,
+	isStreaming: () => panel.value?.isStreaming ?? false,
+	isStreamAttached: () => panel.value?.isStreamAttached ?? false,
+	isSubmitting: () => panel.value?.isSubmitting ?? false,
+	hasOpenInteraction: () => panel.value?.hasOpenInteraction ?? false,
+});
+
+function onMessageSending(message: AssistantAgentSendingMessage): void {
+	turnTelemetry.trackSubmit(messageTelemetry.trackSend(message));
+}
+
+function onStreamEvent(event: AgentSseEvent): void {
+	trace.recordEvent(event);
+	turnTelemetry.handleStreamEvent(event);
+}
+
+const setupSavedTelemetry = useAssistantAgentSetupSavedTelemetry({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
+provide(ASSISTANT_AGENT_SETUP_SAVED, setupSavedTelemetry.expectResult);
+
 watch(panel, (current) => {
 	if (!current) return;
 	if (handoff.firstMessage) {
+		messageTelemetry.expectHostSend(handoff.firstMessage);
 		current.sendMessageFromOutside(handoff.firstMessage.text, handoff.firstMessage.files);
 	} else if (handoff.draft) {
-		current.setDraft(handoff.draft);
+		messageTelemetry.setPrefill(handoff.draft);
+		current.setDraft(handoff.draft.text);
 	}
 });
 
@@ -279,12 +334,14 @@ const thread = useAssistantArtifactThread({
 	// Until the chat mounts, its history is not known, so a past build does not open the preview.
 	isLoadingHistory: () => panel.value?.isLoadingHistory ?? true,
 	// The hand-off context, for example a credential to set up, goes with this message only.
-	sendMessage: (text, handoffContext) =>
+	sendMessage: (text, authorship, handoffContext) => {
+		messageTelemetry.expectHostSend({ text, authorship });
 		panel.value?.sendMessageFromOutside(
 			text,
 			[],
 			handoffContext ? { context: handoffContext } : undefined,
-		),
+		);
+	},
 	pendingWorkflowAttachment: handoff.workflow,
 	agentTargets: () => agentTargets.state.value,
 	activeArtifactId: () => activeArtifactId.value,
@@ -351,19 +408,21 @@ async function handleFixWithAiFromOffer(): Promise<void> {
 	// Sent past the composer, so the user's draft and staged chips stay. Names the
 	// failed run, so the agent reads that execution instead of guessing from the
 	// list. A run that n8n did not save has no list entry.
-	const result = await panel.value.sendHostMessage(
-		buildFixWithAiPrompt({ workflowName: offer.workflowName, errors: offer.errors }),
-		{
-			attachments: [
-				{
-					type: 'workflow',
-					id: offer.workflowId,
-					...(offer.workflowName ? { name: offer.workflowName } : {}),
-					executionId: offer.executionId,
-				},
-			],
-		},
-	);
+	const text = buildFixWithAiPrompt({ workflowName: offer.workflowName, errors: offer.errors });
+	messageTelemetry.expectHostSend({
+		text,
+		authorship: { kind: 'prefill', prefillType: 'handoff_fix_with_ai' },
+	});
+	const result = await panel.value.sendHostMessage(text, {
+		attachments: [
+			{
+				type: 'workflow',
+				id: offer.workflowId,
+				...(offer.workflowName ? { name: offer.workflowName } : {}),
+				executionId: offer.executionId,
+			},
+		],
+	});
 	// A refused send leaves the user nothing to retry with, so offer it again.
 	if (result !== 'sent' && dismissedExecutionId.value === offer.executionId) {
 		dismissedExecutionId.value = null;
@@ -443,7 +502,10 @@ function handleAgentPreviewAssistantHandoff(params: AgentTestHandoffParams): voi
 	lastHandoffSession.value = { agentId: context.agentId, threadId: context.threadId };
 	const { chip, clientContextPatch } = toAgentPreviewComposerAttachment(context, label);
 	current.addComposerAttachment(chip, clientContextPatch);
-	if (params.initialDraft) current.setDraft(params.initialDraft.text);
+	if (params.initialDraft) {
+		messageTelemetry.setPrefill(params.initialDraft);
+		current.setDraft(params.initialDraft.text);
+	}
 	current.focusInput();
 	params.onAccepted?.();
 }
@@ -689,6 +751,7 @@ function removeStagedNodes(chipId: string): void {
 						:continue-session-id="props.threadId"
 						:new-session="isNewSession"
 						:agent-config="agentConfig"
+						empty-state-icon="n8n-assistant"
 						:accepted-mime-types="ASSISTANT_AGENT_ACCEPTED_MIME_TYPES"
 						agent-status="production"
 						:connected-triggers="[]"
@@ -696,8 +759,10 @@ function removeStagedNodes(chipId: string): void {
 						:client-context="clientContext"
 						:interaction-extensions="interactionExtensions"
 						:show-attach-button="false"
-						@stream-event="trace.recordEvent"
+						@stream-event="onStreamEvent"
 						@session-created="onSessionCreated"
+						@message-sending="onMessageSending"
+						@draft-cleared="messageTelemetry.setPrefill(null)"
 						@message-accepted="onMessageAccepted"
 						@update:streaming="onStreamingChange"
 					>
@@ -727,6 +792,11 @@ function removeStagedNodes(chipId: string): void {
 								:disabled="disabled"
 								:project-id="props.projectId"
 								@attach-files="panel?.openFilePicker()"
+							/>
+							<!-- A thread that builds an agent always runs in Manual mode. -->
+							<ApprovalModeSelector
+								v-if="!threadTargetsAgent(threadsStore.threadsById.get(props.threadId)?.metadata)"
+								:thread-id="props.threadId"
 							/>
 						</template>
 					</AgentChatPanel>

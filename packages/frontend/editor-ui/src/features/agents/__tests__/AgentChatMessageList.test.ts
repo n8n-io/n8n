@@ -120,7 +120,7 @@ vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
 				endedAt: 1250
 			}])"
 		/>`,
-		props: ['toolCalls', 'projectId', 'canFixWithAssistant', 'executionId'],
+		props: ['toolCalls', 'projectId', 'canFixWithAssistant', 'executionId', 'hostEvents'],
 		emits: ['fixWithAssistant'],
 	},
 }));
@@ -2321,6 +2321,41 @@ describe('AgentChatMessageList', () => {
 			expect(rendered.find('em').text()).toBe('assistant-1');
 			wrapper.unmount();
 		});
+
+		it.each([
+			{ name: 'a message', content: 'Answer text', final: [] },
+			{
+				name: 'a tool run',
+				content: '',
+				final: [
+					{ id: 'assistant-2', role: 'assistant', content: 'Done', status: 'success' } as const,
+				],
+			},
+		])(
+			'passes tool-call events to the step of their call in $name, and shows the rest at the start',
+			({ content, final }) => {
+				const toolCallEvent = (id: string, toolCallId: string): AgentsChatHostEvent => ({
+					id,
+					name: TEST_HOST_EVENT.TOOL_CALL,
+					payload: { id, toolCallId },
+				});
+				const wrapper = mountList([
+					assistantMessage([toolCallEvent('approval', 'tc-1'), toolCallEvent('orphan', 'tc-9')], {
+						content,
+						toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done' }],
+					}),
+					...final,
+				]);
+
+				const hostEvents = wrapper
+					.findComponent({ name: 'AgentChatToolSteps' })
+					.props('hostEvents') as Map<string, Array<{ event: AgentsChatHostEvent }>>;
+				expect([...hostEvents.keys()]).toEqual(['tc-1']);
+				expect(hostEvents.get('tc-1')?.map(({ event }) => event.id)).toEqual(['approval']);
+				expect(renderOrder(wrapper)).toEqual(['start:orphan', 'text']);
+				wrapper.unmount();
+			},
+		);
 
 		it('renders start events before the tool steps of a tool run', () => {
 			const wrapper = mountList([

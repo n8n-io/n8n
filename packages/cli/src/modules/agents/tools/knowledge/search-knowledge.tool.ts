@@ -1,6 +1,8 @@
 import { Tool } from '@n8n/agents/tool';
 import { isRecord } from '@n8n/utils/is-record';
 
+import type { KnowledgeConsumerScope } from '@/modules/knowledge/knowledge-consumer-scope';
+import type { KnowledgeRetriever } from '@/modules/knowledge/knowledge-retriever';
 import {
 	globKnowledgeFilesInputSchema,
 	MAX_READ_RANGES,
@@ -11,7 +13,6 @@ import {
 	type SearchKnowledgeResult,
 } from '@/modules/knowledge/retrieval/retrieval-schemas';
 
-import type { AgentKnowledgeMirrorService } from '../../agent-knowledge-mirror.service';
 import type {
 	FinishKnowledgeToolCall,
 	KnowledgeToolCall,
@@ -293,14 +294,12 @@ function toReadKnowledgeModelOutput(output: unknown): unknown {
 }
 
 export function createKnowledgeRetrievalTools({
-	projectId,
-	agentId,
-	knowledgeMirrorService,
+	scope,
+	retriever,
 	startToolCall,
 }: {
-	projectId: string;
-	agentId: string;
-	knowledgeMirrorService: AgentKnowledgeMirrorService;
+	scope: KnowledgeConsumerScope;
+	retriever: KnowledgeRetriever;
 	/** Called when each call starts. The returned function gets the size of the output that the model gets. */
 	startToolCall: (runId: string | undefined, call: KnowledgeToolCall) => FinishKnowledgeToolCall;
 }) {
@@ -311,9 +310,7 @@ export function createKnowledgeRetrievalTools({
 		.input(globKnowledgeFilesInputSchema)
 		.handler(async (input, ctx) => {
 			const finishToolCall = startToolCall(ctx.runId, 'file_find');
-			const output = await runKnowledgeTool(
-				async () => await knowledgeMirrorService.globKnowledgeFiles(projectId, agentId, input),
-			);
+			const output = await runKnowledgeTool(async () => await retriever.findFiles(scope, input));
 			const result = toKnowledgeToolCallResult(output, toGlobKnowledgeModelOutput);
 			finishToolCall(result);
 			return output;
@@ -328,9 +325,7 @@ export function createKnowledgeRetrievalTools({
 		.handler(async (input, ctx) => {
 			const finishToolCall = startToolCall(ctx.runId, 'file_search');
 			const startedAt = Date.now();
-			const output = await runKnowledgeTool(
-				async () => await knowledgeMirrorService.searchKnowledge(projectId, agentId, input),
-			);
+			const output = await runKnowledgeTool(async () => await retriever.searchText(scope, input));
 			const durationMs = Date.now() - startedAt;
 			const result = toKnowledgeToolCallResult(output, toSearchKnowledgeModelOutput);
 			finishToolCall(withSearchStats(result, output, durationMs));
@@ -345,9 +340,7 @@ export function createKnowledgeRetrievalTools({
 		.input(readKnowledgeInputSchema)
 		.handler(async (input, ctx) => {
 			const finishToolCall = startToolCall(ctx.runId, 'file_read');
-			const output = await runKnowledgeTool(
-				async () => await knowledgeMirrorService.readKnowledge(projectId, agentId, input),
-			);
+			const output = await runKnowledgeTool(async () => await retriever.readFile(scope, input));
 			const result = toKnowledgeToolCallResult(output, toReadKnowledgeModelOutput);
 			finishToolCall(withFileUploadedAt(result, output));
 			return output;

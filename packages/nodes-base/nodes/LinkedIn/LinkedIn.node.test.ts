@@ -1,3 +1,4 @@
+import { requestPath } from 'n8n-workflow';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
@@ -44,7 +45,7 @@ describe('LinkedIn node', () => {
 
 		expect(linkedInApiRequest).toHaveBeenCalledWith(
 			'POST',
-			'/posts',
+			requestPath`/posts`,
 			expect.objectContaining({ commentary: 'Hello \\@world' }),
 		);
 	});
