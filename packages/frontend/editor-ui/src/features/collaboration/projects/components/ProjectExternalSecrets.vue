@@ -292,11 +292,9 @@ defineExpose({
 
 <template>
 	<fieldset v-if="showExternalSecretsSection" data-test-id="external-secrets-section">
-		<h3 class="mb-s">
-			<label for="projectExternalSecrets">{{
-				i18n.baseText('projects.settings.externalSecrets')
-			}}</label>
-		</h3>
+		<N8nText tag="h1" size="xlarge" class="pb-m">
+			{{ i18n.baseText('projects.settings.externalSecrets') }}
+		</N8nText>
 
 		<!-- Empty State: Consolidated view based on user role and current state -->
 		<N8nEmptyState
