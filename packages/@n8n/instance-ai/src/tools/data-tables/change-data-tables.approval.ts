@@ -20,7 +20,13 @@ import {
 	type PlannedChange,
 	type PlannedTable,
 } from './change-data-tables.validate';
-import { MAX_DESCRIBED_ROWS, describeRowFilter, previewRow } from './preview';
+import {
+	MAX_DESCRIBED_ROWS,
+	describeRowFilter,
+	pluralize,
+	previewRow,
+	type RowFilter,
+} from './preview';
 
 const CHANGE_SEVERITY = {
 	create: 'info',
@@ -58,6 +64,15 @@ function changeNeedsApproval(context: InstanceAiContext, { change, table }: Plan
 function isOwnedTable(context: InstanceAiContext, table: PlannedTable): boolean {
 	if (table.kind === 'created') return true;
 	return context.sessionApprovedToolKeys?.has(buildOwnedDataTableGrantKey(table.id)) === true;
+}
+
+/**
+ * Actions that an approval for the session may cover. The UI offers no session approval
+ * on a destructive card, so the backend never grants a destructive action either.
+ */
+export function sessionGrantableActions(plan: ChangePlan): DataTableWriteToolAction[] {
+	const actions = new Set(plan.changes.map(({ change }) => change.action));
+	return [...actions].filter((action) => CHANGE_SEVERITY[action] !== 'destructive');
 }
 
 // ── Card ───────────────────────────────────────────────────────────────────
@@ -98,7 +113,11 @@ function tableKey(table: PlannedTable): string {
 	return table.kind === 'existing' ? `existing:${table.id}` : `created:${table.name}`;
 }
 
-/** Card details use column names, not IDs, so the user can read them. */
+/**
+ * Card details use column names, not IDs, so the user can read them. `create` and
+ * `delete` map to `create-table` and `delete-table` on purpose: the batch card reuses
+ * the variants of the single-table cards.
+ */
 function buildDetails({ change, column }: PlannedChange): InstanceAiDataTableChangeDetails {
 	switch (change.action) {
 		case 'create':
@@ -140,7 +159,7 @@ function describeChange({ change, table, column }: PlannedChange): string {
 	const name = `"${table.name}"`;
 	switch (change.action) {
 		case 'create':
-			return `Create table ${name} with ${change.columns.length} columns`;
+			return `Create table ${name} with ${change.columns.length} ${pluralize(change.columns.length, 'column')}`;
 		case 'delete':
 			return `Delete table ${name} and all its rows`;
 		case 'add-column':
@@ -150,7 +169,7 @@ function describeChange({ change, table, column }: PlannedChange): string {
 		case 'rename-column':
 			return `Rename column "${column?.name ?? change.column}" in ${name} to "${change.newName}"`;
 		case 'insert-rows':
-			return `Add ${change.rows.length} rows to ${name}`;
+			return `Add ${change.rows.length} ${pluralize(change.rows.length, 'row')} to ${name}`;
 		case 'update-rows':
 			return `Update rows in ${name}${describeWhere(change.filter)}`;
 		case 'delete-rows':
@@ -162,6 +181,6 @@ function describeChange({ change, table, column }: PlannedChange): string {
 	}
 }
 
-function describeWhere(filter: Parameters<typeof describeRowFilter>[0]): string {
+function describeWhere(filter: RowFilter): string {
 	return filter.filters.length === 0 ? ' (all rows)' : ` where ${describeRowFilter(filter)}`;
 }

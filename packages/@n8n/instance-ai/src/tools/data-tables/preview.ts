@@ -6,7 +6,14 @@ import type { filterSchema } from './schemas';
 const MAX_DESCRIBED_COLUMNS = 5;
 export const MAX_DESCRIBED_ROWS = 3;
 
-export function describeRowFilter(filter: z.infer<typeof filterSchema>): string {
+export type RowFilter = z.infer<typeof filterSchema>;
+
+/** The noun in the singular for 1, otherwise in the plural ("row", "rows"). */
+export function pluralize(count: number, noun: string): string {
+	return count === 1 ? noun : `${noun}s`;
+}
+
+export function describeRowFilter(filter: RowFilter): string {
 	const conditions = {
 		eq: 'is',
 		neq: 'is not',
@@ -49,7 +56,7 @@ export function describeRowChanges(data: Record<string, unknown>): string {
 	const { values, remainingColumns } = previewRow(data);
 	const described = values.map(({ column, value }) => `"${column}" to ${value ?? 'no value'}`);
 	if (remainingColumns > 0) {
-		described.push(`${remainingColumns} more ${remainingColumns === 1 ? 'column' : 'columns'}`);
+		described.push(`${remainingColumns} more ${pluralize(remainingColumns, 'column')}`);
 	}
 	return described.join(', ');
 }

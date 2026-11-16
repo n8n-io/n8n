@@ -8,7 +8,11 @@ import type { z } from 'zod';
 
 import { sanitizeInputSchema } from '../../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../../types';
-import { batchNeedsApproval, buildApprovalRequest } from './change-data-tables.approval';
+import {
+	batchNeedsApproval,
+	buildApprovalRequest,
+	sessionGrantableActions,
+} from './change-data-tables.approval';
 import {
 	changeDataTablesInputSchema,
 	type ChangeDataTablesInput,
@@ -72,15 +76,19 @@ async function handleChanges(
 
 async function resumeChanges(context: InstanceAiContext, plan: ChangePlan, resumeData: ResumeData) {
 	if (!resumeData.approved) {
-		return { denied: true, reason: 'User denied the action', changes: plan.changes.length };
+		return {
+			success: false,
+			denied: true,
+			reason: 'User denied the action',
+			changes: plan.changes.length,
+		};
 	}
 	if (resumeData.scope === 'session') await grantBatchActions(context, plan);
 	return runChanges(plan);
 }
 
 async function grantBatchActions(context: InstanceAiContext, plan: ChangePlan) {
-	const actions = new Set(plan.changes.map(({ change }) => change.action));
-	for (const action of actions) {
+	for (const action of sessionGrantableActions(plan)) {
 		await context.grantSessionToolApproval?.(buildDataTablesSessionGrantKey(action));
 	}
 }

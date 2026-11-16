@@ -13,6 +13,7 @@ import { OutsideThreadProjectError } from '../../errors/outside-thread-project.e
 import type { DataTableColumnInfo, InstanceAiContext } from '../../types';
 import { changeDataTablesInputSchema } from '../data-tables/change-data-tables.schema';
 import { createChangeDataTablesTool } from '../data-tables/change-data-tables.tool';
+import { confirmationSuspendSchema } from '../data-tables/confirmation';
 import { createMockContext, resumeCtx, suspendCtx } from './data-table-tools-test-utils';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -67,27 +68,22 @@ const ALLOW_ALL = {
 	mutateDataTableRows: 'always_allow',
 } as const;
 
-async function resumeBatch(context: InstanceAiContext, input: unknown, approved: boolean) {
-	return await executeTool(
-		createChangeDataTablesTool(context),
-		input,
-		resumeCtx(approved, approved ? 'session' : undefined),
-	);
+async function resumeBatch(
+	context: InstanceAiContext,
+	input: unknown,
+	approved: boolean,
+	scope?: 'once' | 'session',
+) {
+	return await executeTool(createChangeDataTablesTool(context), input, resumeCtx(approved, scope));
 }
 
 /** The payload of the only card the tool showed. */
 function cardOf(suspend: ReturnType<typeof vi.fn>) {
 	expect(suspend).toHaveBeenCalledTimes(1);
-	return suspend.mock.calls[0][0] as {
-		requestId: string;
-		message: string;
-		resourceName?: string;
-		severity: string;
-		approvalDetails: {
-			action: string;
-			changes: Array<{ tableName: string; details: { action: string } }>;
-		};
-	};
+	const card = confirmationSuspendSchema.parse(suspend.mock.calls[0][0]);
+	const details = card.approvalDetails;
+	if (details?.action !== 'data-table-changes') throw new Error('Expected a batch card');
+	return { ...card, approvalDetails: details };
 }
 
 const createA = {
@@ -570,8 +566,9 @@ describe('change_data_tables tool', () => {
 			});
 
 			const [{ details }] = cardOf(suspend).approvalDetails.changes;
-			expect(details).toMatchObject({ action: 'insert-rows', count: 10 });
-			expect((details as unknown as { rows: unknown[] }).rows.length).toBeLessThan(10);
+			if (details.action !== 'insert-rows') throw new Error('Expected an insert-rows change');
+			expect(details.count).toBe(10);
+			expect(details.rows.length).toBeLessThan(10);
 		});
 
 		it('runs without a card when every change is always allowed', async () => {
@@ -680,7 +677,7 @@ describe('change_data_tables tool', () => {
 			const context = contextWithTables({}, { grantSessionToolApproval: vi.fn() });
 			const result = await resumeBatch(context, { changes: [createA, insertIntoA] }, false);
 
-			expect(result).toMatchObject({ denied: true });
+			expect(result).toMatchObject({ success: false, denied: true });
 			expect(context.grantSessionToolApproval).not.toHaveBeenCalled();
 			for (const method of WRITE_METHODS) {
 				expect(context.dataTableService[method]).not.toHaveBeenCalled();
@@ -694,6 +691,7 @@ describe('change_data_tables tool', () => {
 				context,
 				{ changes: [createA, insertIntoA, insertIntoA, addColumnToB] },
 				true,
+				'session',
 			);
 
 			expect(result).toMatchObject({ success: true });
@@ -703,9 +701,63 @@ describe('change_data_tables tool', () => {
 			);
 		});
 
+		it('grants nothing when the user approves only this batch', async () => {
+			const grantSessionToolApproval = vi.fn();
+			const context = contextWithTables({}, { grantSessionToolApproval });
+			const result = await resumeBatch(context, { changes: [createA, insertIntoA] }, true, 'once');
+
+			expect(result).toMatchObject({ success: true });
+			expect(grantSessionToolApproval).not.toHaveBeenCalled();
+		});
+
+		it('grants no destructive action for the session', async () => {
+			const grantSessionToolApproval = vi.fn();
+			const context = contextWithTables({ 'dt-T': [column('name')] }, { grantSessionToolApproval });
+			await resumeBatch(
+				context,
+				{
+					changes: [
+						{ action: 'insert-rows', table: 'T', rows: [{ name: 'a' }] },
+						{ action: 'delete-rows', table: 'T', filter: filterOnName },
+					],
+				},
+				true,
+				'session',
+			);
+
+			expect(grantSessionToolApproval.mock.calls).toEqual([
+				[buildDataTablesSessionGrantKey('insert-rows')],
+			]);
+		});
+
+		it('shows the card when a session grant covers only some actions', async () => {
+			const context = contextWithTables(
+				{ 'dt-B': [column('name')] },
+				{ sessionApprovedToolKeys: new Set([buildDataTablesSessionGrantKey('insert-rows')]) },
+			);
+			const { suspend } = await runBatch(context, {
+				changes: [{ action: 'insert-rows', table: 'B', rows: [{ name: 'a' }] }, addColumnToB],
+			});
+
+			expect(cardOf(suspend).approvalDetails.changes).toHaveLength(2);
+		});
+
+		it.each([
+			{ name: 'creating a table', change: createA },
+			{ name: 'deleting an owned table', change: { action: 'delete', table: 'dt-1' } },
+		])('shows the card for $name even when the thread owns the table', async ({ change }) => {
+			const context = contextWithTables(
+				{},
+				{ sessionApprovedToolKeys: new Set([buildOwnedDataTableGrantKey('dt-1')]) },
+			);
+			const { suspend } = await runBatch(context, { changes: [change] });
+
+			expect(cardOf(suspend).approvalDetails.changes).toHaveLength(1);
+		});
+
 		it('validates the batch again on resume and runs nothing when it fails', async () => {
 			const context = contextWithTables({}, { grantSessionToolApproval: vi.fn() });
-			const result = await resumeBatch(context, { changes: [createA, createA] }, true);
+			const result = await resumeBatch(context, { changes: [createA, createA] }, true, 'session');
 
 			expect(result).toMatchObject({ success: false, changeIndex: 1 });
 			expect(context.grantSessionToolApproval).not.toHaveBeenCalled();
