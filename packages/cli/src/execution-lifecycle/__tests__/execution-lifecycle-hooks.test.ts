@@ -219,13 +219,9 @@ describe('Execution Lifecycle Hooks', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-<<<<<<< HEAD
-=======
 		executionPersistence.saveExecutionOutcome.mockResolvedValue({ updated: true, ended: true });
 		executionPersistence.deleteInFlightExecution.mockResolvedValue({ ended: true });
 		executionPersistence.softDeleteWithOutcome.mockResolvedValue({ ended: true });
-		executionsConfig.preExecuteErrorCreatesExecution = false;
->>>>>>> cbee0e1bd7f18b962dfe280893a705b0e21ccb07
 		userRepository.findOne.mockResolvedValue(mock<User>());
 		redactionProxy.processExecution.mockImplementation(async (execution) => execution);
 		workflowData.settings = {};
