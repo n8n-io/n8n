@@ -2039,6 +2039,15 @@
   @media (min-width: 520px) { .mnav .mnav-lsw .lsw-langs .lsw-opts { grid-template-columns: repeat(3, 1fr); } }
   .price-note { margin-top: 14px; }
 
+  /* ---------- i18n fit (longer FR/ES/IT words) ---------- */
+  /* Narrow phones: the logo mark alone, so the language switcher and "Demo" button fit in every language. */
+  @media (max-width: 400px) { .nav .brand span { display: none; } }
+  /* Short labels wrap to a second line instead of being cut off with an ellipsis. */
+  .nst-title, .va-log-n,
+  #page-branchen .nst-title, [id^="page-branche-"] .nst-title {
+    white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.25; overflow-wrap: anywhere;
+  }
+
 /* ===== src/content/07-alle-funktionen.css ===== */
   /* ---------- Alle Funktionen im Überblick (end of every product page) ---------- */
   .af-grid { margin-top: 44px; columns: 1; column-gap: 16px; }
@@ -3858,6 +3867,12 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
   /* The source is a screen recording with a thin light edge; scaling past it hides the edge. */
   .logo-reel-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
     transform: scale(1.08); display: block; }
+
+/* ===== src/content/99-i18n-fit.css ===== */
+  /* ---------- i18n fit, loaded last: short labels wrap instead of being cut (FR/ES/IT run longer) ---------- */
+  .page .nst-title, .page .va-log-n {
+    white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.25; overflow-wrap: anywhere; min-width: 0;
+  }
 </style>
 </head>
 <body>
@@ -3958,7 +3973,7 @@ a.br-card:hover .br-mini .nst-tile { scale: 1.06; }
     </div>
   </div>
 </footer>
-<script>window.NORRA_ENV = 'hosting'; window.NORRA_I18N_LAZY = true; window.NORRA_I18N_VER = '691b90461c';</script>
+<script>window.NORRA_ENV = 'hosting'; window.NORRA_I18N_LAZY = true; window.NORRA_I18N_VER = '2ff49253ed';</script>
 <script>
 /* ===== src/core.js ===== */
 /* =========================================================================
@@ -4002,9 +4017,10 @@ NORRA.REGIONS = {
   IT: { name: 'Italia', currency: 'EUR', vat: 22, tax: 'IVA' },
   ES: { name: 'España', currency: 'EUR', vat: 21, tax: 'IVA' },
   GB: { name: 'United Kingdom', currency: 'GBP', vat: 20, tax: 'VAT' },
+  US: { name: 'USA', currency: 'USD', vat: 0, salesTax: true },
   INT: { name: 'International', currency: 'EUR', vat: 0, reverse: true }
 };
-NORRA.REGION_ORDER = ['DE', 'AT', 'CH', 'FR', 'IT', 'ES', 'GB', 'INT'];
+NORRA.REGION_ORDER = ['DE', 'AT', 'CH', 'FR', 'IT', 'ES', 'GB', 'US', 'INT'];
 NORRA.I18N = NORRA.I18N || {};
 NORRA.lang = 'de';
 NORRA.region = 'DE';
@@ -4032,6 +4048,13 @@ NORRA.PRICE_TABLE = {
     'chatbot': { setupMin: 509, setupMax: 939, monthly: 0, perUnit: 0.002, unit: 'message' },
     'social-media': { setupMin: 2809, setupMax: 5359, monthly: 0, perUnit: 0.002, unit: 'message' },
     'website': { setupMin: 1529, setupMax: 3659, monthly: 25, perUnit: 0, unit: '' }
+  },
+  /* USD setup = EUR x 1.08 rounded to the nearest amount ending in 9; monthly fees USD 35; minute USD 0.08. */
+  USD: {
+    'voice-agent': { setupMin: 859, setupMax: 1939, monthly: 35, perUnit: 0.08, unit: 'minute' },
+    'chatbot': { setupMin: 649, setupMax: 1189, monthly: 0, perUnit: 0.002, unit: 'message' },
+    'social-media': { setupMin: 3559, setupMax: 6799, monthly: 0, perUnit: 0.002, unit: 'message' },
+    'website': { setupMin: 1939, setupMax: 4639, monthly: 35, perUnit: 0, unit: '' }
   }
 };
 NORRA.langInfo = function (code) { return NORRA.LANGS.filter(function (l) { return l.code === code; })[0] || null; };
@@ -4040,6 +4063,7 @@ NORRA.currency = function (region) { return NORRA.regionInfo(region).currency; }
 /* Number/currency locale: language decides, German in Switzerland uses de-CH. */
 NORRA.locale = function () {
   if (NORRA.lang === 'de') return NORRA.region === 'CH' ? 'de-CH' : 'de-DE';
+  if (NORRA.lang === 'en' && NORRA.region === 'US') return 'en-US';
   var l = NORRA.langInfo(NORRA.lang);
   return l ? l.locale : 'de-DE';
 };
@@ -4074,7 +4098,7 @@ NORRA.money = function (v, o) {
   try { return NORRA._numFmt(opts).format(v); } catch (e) { /* older engines: no narrowSymbol */ }
   try { opts.currencyDisplay = 'symbol'; return NORRA._numFmt(opts).format(v); } catch (e2) { /* no Intl */ }
   var n = NORRA.fmt(v, dec, true);
-  return cur === 'EUR' ? n + ' €' : cur === 'GBP' ? '£' + n : 'CHF ' + n;
+  return cur === 'EUR' ? n + ' €' : cur === 'GBP' ? '£' + n : cur === 'USD' ? '$' + n : 'CHF ' + n;
 };
 /* Money range: 799–1.799 € · CHF 799–1’799 · £679–£1,529 */
 NORRA.moneyRange = function (a, b, o) {
@@ -4086,7 +4110,7 @@ NORRA.moneyRange = function (a, b, o) {
 /* Currency symbol and its side in the active locale: {sym: '€', before: false} (de) · {sym: '£', before: true} (en).
    For count-ups: before ? sym + number : number + ' ' + sym. */
 NORRA.curSym = function (region) {
-  var cur = NORRA.currency(region), out = { sym: cur === 'EUR' ? '€' : cur === 'GBP' ? '£' : 'CHF', before: cur !== 'EUR', space: cur === 'CHF' };
+  var cur = NORRA.currency(region), out = { sym: cur === 'EUR' ? '€' : cur === 'GBP' ? '£' : cur === 'USD' ? '$' : 'CHF', before: cur !== 'EUR', space: cur === 'CHF' };
   try {
     var parts = NORRA._numFmt({ style: 'currency', currency: cur, currencyDisplay: 'narrowSymbol', maximumFractionDigits: 0 }).formatToParts(1);
     var iSym = -1, iNum = -1;
@@ -4145,6 +4169,7 @@ NORRA.resolveTokens = function (s) {
 NORRA.vatLabel = function (region) {
   var R = NORRA.regionInfo(region);
   if (R.reverse) return NORRA.tr('EU-Unternehmen: Reverse-Charge');
+  if (R.salesTax) return NORRA.tr('zzgl. Sales Tax, wo anwendbar');
   return NORRA.trf('zzgl. {rate} {tax}', { rate: NORRA.pct(R.vat), tax: NORRA.tr(R.tax) });
 };
 /* "Alle Preise netto in EUR · zzgl. 19 % MwSt." */
