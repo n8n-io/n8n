@@ -9,6 +9,8 @@ import { runReference } from '../../reference/runner.ts';
 import type { NodeSources } from '../convert.ts';
 import { compileNodeInstance } from '../convert.ts';
 
+export const V1_TIMEZONE = 'America/New_York';
+
 type Registry = Parameters<typeof deriveInject>[0];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -47,6 +49,7 @@ export async function differenceFromV1(
 		{ type: c.type, version: c.typeVersion, parameters: c.parameters },
 		null,
 		credentialsOf(c, registry),
+		V1_TIMEZONE,
 	);
 	if ('errors' in compiled) return `does not compile: ${compiled.errors[0]}`;
 	const credentialType = c.credential?.type;

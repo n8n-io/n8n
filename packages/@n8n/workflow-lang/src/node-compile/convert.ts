@@ -104,6 +104,7 @@ export function compileNodeInstance(
 	instanceId: string | null | undefined,
 
 	credentials: Record<string, PublicCredential> = {},
+	timezone?: string,
 ): CompiledNode | { errors: string[] } {
 	const entry = sources.entry(node.type, node.version);
 	const description = sources.description(node.type, node.version);
@@ -154,6 +155,7 @@ export function compileNodeInstance(
 		aliases: sources.aliases,
 		evaluate: sources.evaluate,
 		credentialEntry: sources.credentialEntry,
+		timezone,
 		instanceId,
 		credentialFields: Object.fromEntries(
 			Object.entries(credentials).map(([type, c]) => [type, c.fields]),

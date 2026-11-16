@@ -245,8 +245,14 @@ export function applyCredential(
 	// The basic auth of the call (`HttpCall.basicAuth`) replaces the basic auth of the credential.
 	if (isRecord(request.basicAuth)) {
 		raw.auth = {
-			username: fill(String(request.basicAuth.user ?? ''), data),
-			password: fill(String(request.basicAuth.password ?? ''), data),
+			username: fill(
+				typeof request.basicAuth.user === 'string' ? request.basicAuth.user : '',
+				data,
+			),
+			password: fill(
+				typeof request.basicAuth.password === 'string' ? request.basicAuth.password : '',
+				data,
+			),
 		};
 	}
 	return raw;

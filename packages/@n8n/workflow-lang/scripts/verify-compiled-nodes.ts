@@ -8,7 +8,7 @@ import type { NodeDescription } from '../src/convert/node-parameters.ts';
 import { getNodeParameters } from '../src/convert/node-parameters.ts';
 import { publicCredential } from '../src/credentials/public.ts';
 import { loadCredentialTypes, registryOf } from '../src/credentials/types.ts';
-import { differenceFromV1 } from '../src/node-compile/__tests__/verify.ts';
+import { differenceFromV1, V1_TIMEZONE } from '../src/node-compile/__tests__/verify.ts';
 import type { NodeSources } from '../src/node-compile/convert.ts';
 import { evaluateInSandbox } from '../src/node-compile/evaluate-node.ts';
 import { compileNodeInstance, verifiedKey } from '../src/node-compile/convert.ts';
@@ -193,7 +193,13 @@ async function checkInProcess(name: string): Promise<NodeResult | undefined> {
 	return await new Promise((resolve) => {
 		const child = spawn(
 			process.execPath,
-			[fileURLToPath(import.meta.url), ...(DIST ? ['--dist'] : []), '--one', name],
+			[
+				fileURLToPath(import.meta.url),
+				...(DIST ? ['--dist'] : []),
+				...(process.argv.includes('--detail') ? ['--detail'] : []),
+				'--one',
+				name,
+			],
 			{
 				stdio: ['ignore', 'pipe', 'ignore'],
 			},
@@ -244,7 +250,8 @@ const why = (reason: string) => {
 		? `v1: the requests differ: ${part[1]}`
 		: reason.replace(/'[^']*'/g, "'…'").slice(0, 90);
 	if (part && examples.length < 60) examples.push(reason.slice(0, 200));
-	reasons[short] = (reasons[short] ?? 0) + 1;
+	reasons[process.argv.includes('--detail') ? reason.slice(0, 110) : short] =
+		(reasons[process.argv.includes('--detail') ? reason.slice(0, 110) : short] ?? 0) + 1;
 };
 
 for (const name of one === undefined ? [] : Object.keys(known).sort()) {
@@ -272,7 +279,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 						[credential]: publicCredential(registry.get(credential), fakeCredential(credential)),
 					}
 				: {};
-			const compiled = compileNodeInstance(sources, instance, null, fields);
+			const compiled = compileNodeInstance(sources, instance, null, fields, V1_TIMEZONE);
 			if ('errors' in compiled) {
 				why(compiled.errors[0].slice(compiled.errors[0].indexOf(': ') + 2));
 				continue;
@@ -310,6 +317,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					{ type, version, parameters: more },
 					null,
 					fields,
+					V1_TIMEZONE,
 				);
 				if (
 					!('errors' in wider) &&
@@ -348,7 +356,7 @@ console.log(`operations ${tried}; compiled ${compiledCount}; verified against v1
 console.log(
 	Object.entries(reasons)
 		.sort((a, b) => b[1] - a[1])
-		.slice(0, 40)
+		.slice(0, process.argv.includes('--detail') ? 70 : 40)
 		.map(([reason, count]) => `${count}\t${reason}`)
 		.join('\n'),
 );

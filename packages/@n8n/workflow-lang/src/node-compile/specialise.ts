@@ -26,6 +26,8 @@ export interface SpecialiseInput {
 
 	credentialEntry?: (type: string) => string | undefined;
 
+	timezone?: string;
+
 	aliases?: Record<string, string>;
 }
 
@@ -56,7 +58,7 @@ const REQUEST_SOURCE = `async function __request(options, wrapped) {
 	});
 	if (response.status >= 400) {
 		const failure = new Error('Request failed with status code ' + response.status);
-		throw wrapped ? __apiError(failure) : failure;
+		throw wrapped ? __apiError(failure, undefined) : failure;
 	}
 	return response.body;
 }`;
@@ -97,7 +99,8 @@ const GLOBALS = new Set([
 ]);
 
 const HELPERS: Record<string, string> = {
-	__apiError: `function __apiError(cause: any): any {
+	__apiError: `function __apiError(cause: any, options: any): any {
+	if (options !== null && options !== undefined && typeof options.message === 'string' && options.message !== '') return new Error(options.message);
 	const text: string = cause !== null && cause !== undefined && typeof cause.message === 'string' ? cause.message : String(cause);
 	const prefix = 'Request failed with status code ';
 	if (!text.startsWith(prefix)) return new Error(text);
@@ -136,6 +139,43 @@ const HELPERS: Record<string, string> = {
 		parts.push(__formText(key) + '=' + (member === null ? '' : __formText(member)));
 	}
 	return parts.join('&');
+}`,
+	__getPath: `function __getPath(value: any, path: any, fallback: any): any {
+	if (Array.isArray(path)) return __get(value, path, '', fallback);
+	const text: string = String(path);
+	if (text.includes('[') || text.includes(']') || text.includes('"')) throw new Error('a path with brackets has no compiled form');
+	return __get(value, text.split('.'), text, fallback);
+}`,
+	__set: `function __set(target: any, keys: any, value: any): any {
+	let current: any = target;
+	for (let k = 0; k < keys.length - 1; k++) {
+		const next: any = current[keys[k]];
+		if (next === null || next === undefined || typeof next !== 'object') current[keys[k]] = {};
+		current = current[keys[k]];
+	}
+	current[keys[keys.length - 1]] = value;
+	return target;
+}`,
+	__omitKeys: `function __omitKeys(value: any, keys: any): any {
+	const names: any[] = [];
+	for (const key of keys) {
+		for (const name of Array.isArray(key) ? key : [key]) {
+			if (String(name).includes('.') || String(name).includes('[')) throw new Error('omit with a path has no compiled form');
+			names.push(String(name));
+		}
+	}
+	const out: any = {};
+	if (value === null || value === undefined) return out;
+	for (const [key, member] of Object.entries(value)) {
+		if (!names.includes(key)) out[key] = member;
+	}
+	return out;
+}`,
+	__toPathSegment: `function __toPathSegment(id: any): string {
+	if (id === null || id === undefined) throw new Error('Invalid identifier: a value is required');
+	const value: string = String(id);
+	if (value === '' || value === '.' || value === '..') throw new Error('Invalid identifier: "' + value + '" is not allowed');
+	return encodeURIComponent(value);
 }`,
 	__plain: '',
 	__wrap: `function __wrap(items: any): any {
@@ -234,8 +274,12 @@ const GENERIC_ERRORS = new Set([
 ]);
 
 const PACKAGE_HELPERS: Record<string, Record<string, string>> = {
-	lodash: { isEmpty: '__isEmpty', get: '__get' },
-	'n8n-workflow': { jsonParse: '__jsonParse', deepCopy: '__deepCopy' },
+	lodash: { isEmpty: '__isEmpty', get: '__get', set: '__set', omit: '__omitKeys' },
+	'n8n-workflow': {
+		jsonParse: '__jsonParse',
+		deepCopy: '__deepCopy',
+		toPathSegment: '__toPathSegment',
+	},
 };
 
 function packageHelper(imported: { from: string; name: string }): string | undefined {
@@ -469,6 +513,7 @@ class Specialiser {
 
 	private helper(name: string, ...args: ts.Expression[]): ts.CallExpression {
 		this.helpers.add(name);
+		if (name === '__getPath') this.helpers.add('__get');
 		return call(name, ...args);
 	}
 
@@ -795,6 +840,14 @@ class Specialiser {
 			if (isThisCall(node, 'getInputData')) return f.createIdentifier('__items');
 			if (isThisCall(node, 'continueOnFail'))
 				return this.input.continueOnFail ? f.createTrue() : f.createFalse();
+			if (node.kind === ts.SyntaxKind.ThisKeyword) {
+				const call = node.parent;
+				if (call && ts.isCallExpression(call) && call.arguments.some((a) => a === node))
+					return f.createIdentifier('__THIS');
+			}
+			if (isThisCall(node, 'getTimezone') && this.input.timezone !== undefined) {
+				return f.createStringLiteral(this.input.timezone);
+			}
 			if (isThisCall(node, 'getInstanceId')) {
 				const id = this.input.instanceId;
 				return id === undefined
@@ -896,6 +949,15 @@ class Specialiser {
 					const path = node.arguments[1];
 					const text = path && ts.isStringLiteral(path) ? path.text : '';
 
+					if (text === '' && path) {
+						const [value, dynamic, fallback] = args(node);
+						return this.helper(
+							'__getPath',
+							value,
+							dynamic,
+							fallback ?? f.createIdentifier('undefined'),
+						);
+					}
 					if (/^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$/.test(text)) {
 						const [value, , fallback] = args(node);
 						return this.helper(
@@ -906,6 +968,16 @@ class Specialiser {
 							fallback ?? f.createIdentifier('undefined'),
 						);
 					}
+				} else if (helper === '__set') {
+					const path = node.arguments[1];
+					const text = path && ts.isStringLiteral(path) ? path.text : '';
+					if (/^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$/.test(text) && node.arguments.length === 3) {
+						const [target, , value] = args(node);
+						return this.helper('__set', target, expressionOf(text.split('.')), value);
+					}
+				} else if (helper === '__omitKeys') {
+					const [value, ...keys] = args(node);
+					return this.helper('__omitKeys', value, f.createArrayLiteralExpression(keys));
 				} else if (helper) return this.helper(helper, ...args(node));
 			}
 			if (ts.isNewExpression(node) && ts.isIdentifier(node.expression)) {
@@ -913,8 +985,10 @@ class Specialiser {
 				if (GENERIC_ERRORS.has(cls))
 					return this.helper('__error', args(node)[0] ?? f.createStringLiteral(cls));
 
-				if (cls === 'NodeApiError' && node.arguments?.length === 2)
-					return this.helper('__apiError', args(node)[1]);
+				if (cls === 'NodeApiError' && (node.arguments?.length ?? 0) >= 2) {
+					const given = args(node);
+					return this.helper('__apiError', given[1], given[2] ?? f.createIdentifier('undefined'));
+				}
 
 				if (cls === 'NodeOperationError' && (node.arguments?.length ?? 0) >= 2)
 					return this.helper('__error', args(node)[1]);
@@ -1041,6 +1115,9 @@ class Specialiser {
 					where,
 					'the credential is used as a whole value: only its fields can go into a request',
 				);
+			}
+			if (ts.isIdentifier(node) && node.text === '__THIS') {
+				this.error(where, '`this` as a value has no compiled form');
 			}
 			if (ts.isIdentifier(node) && node.text === '__CTXCALL') {
 				this.error(
@@ -1175,6 +1252,16 @@ class Specialiser {
 							this.error(
 								name,
 								'the code compares or branches on a credential field: node code cannot read a credential value',
+							);
+						const receiver =
+							ts.isPropertyAccessExpression(p) &&
+							p.expression === n &&
+							ts.isCallExpression(p.parent) &&
+							p.parent.expression === p;
+						if (receiver && field)
+							this.error(
+								name,
+								'the code calls a method on a credential field: node code cannot read a credential value',
 							);
 					}
 				}
@@ -1314,12 +1401,25 @@ class Specialiser {
 					);
 				}
 			}
-			if (
-				ts.isPropertyAccessExpression(n) &&
-				ts.isIdentifier(n.expression) &&
-				credentials.has(n.expression.text)
-			) {
-				return this.credentialField(credentials.get(n.expression.text) ?? '', n.name.text);
+			if (ts.isPropertyAccessExpression(n)) {
+				const names: string[] = [];
+				let cursor: ts.Expression = n;
+				while (ts.isPropertyAccessExpression(cursor)) {
+					names.unshift(cursor.name.text);
+					cursor = cursor.expression;
+				}
+				const up = n.parent;
+				const inner = up && ts.isPropertyAccessExpression(up) && up.expression === n;
+				const method = inner && ts.isCallExpression(up.parent) && up.parent.expression === up;
+				const callee = up && ts.isCallExpression(up) && up.expression === n;
+				if (
+					ts.isIdentifier(cursor) &&
+					credentials.has(cursor.text) &&
+					!callee &&
+					(!inner || method)
+				) {
+					return this.credentialField(credentials.get(cursor.text) ?? '', names.join('.'));
+				}
 			}
 			if (
 				ts.isPropertyAccessExpression(n) &&
@@ -1333,6 +1433,16 @@ class Specialiser {
 			}
 			if (ts.isIdentifier(n) && isValueUse(n)) {
 				if (constants.has(n.text)) return expressionOf(constants.get(n.text));
+				const call = n.parent;
+				const argument =
+					call &&
+					ts.isCallExpression(call) &&
+					call.arguments.includes(n) &&
+					ts.isIdentifier(call.expression) &&
+					!call.expression.text.startsWith('__');
+				if (credentials.has(n.text) && argument) {
+					return f.createIdentifier(CREDENTIAL_PREFIX + (credentials.get(n.text) ?? ''));
+				}
 				if (credentials.has(n.text)) {
 					this.error(
 						where,
@@ -1916,6 +2026,103 @@ class Specialiser {
 		return ts.visitNode(root, visit);
 	}
 
+	private readonly thisParameters = new Map<string, Set<number>>();
+
+	private readonly credentialParameters = new Map<string, Map<number, string>>();
+
+	private markContextArguments(root: ts.Node, where: string): ts.Node {
+		const visit = (input: ts.Node): ts.Node => {
+			const n = ts.visitEachChild(input, visit, undefined);
+			if (
+				!ts.isCallExpression(n) ||
+				!ts.isIdentifier(n.expression) ||
+				n.expression.text.startsWith('__')
+			)
+				return n;
+			const callee = n.expression.text;
+			let touched = false;
+			const next = n.arguments.map((argument, k) => {
+				if (!ts.isIdentifier(argument)) return argument;
+				if (argument.text === '__THIS') {
+					const set = this.thisParameters.get(callee) ?? new Set<number>();
+					if (!set.has(k) && this.output.some((o) => o.name === callee)) {
+						this.error(
+							where,
+							`'${callee}' gets the n8n context as an argument after it was compiled without it`,
+						);
+					}
+					set.add(k);
+					this.thisParameters.set(callee, set);
+				} else if (argument.text.startsWith(CREDENTIAL_PREFIX)) {
+					const map = this.credentialParameters.get(callee) ?? new Map<number, string>();
+					if (!map.has(k) && this.output.some((o) => o.name === callee)) {
+						this.error(
+							where,
+							`'${callee}' gets a credential as an argument after it was compiled without it`,
+						);
+					}
+					map.set(k, argument.text.slice(CREDENTIAL_PREFIX.length));
+					this.credentialParameters.set(callee, map);
+				} else return argument;
+				touched = true;
+				return f.createIdentifier('undefined');
+			});
+			return touched ? f.updateCallExpression(n, n.expression, undefined, next) : n;
+		};
+		return ts.visitNode(root, visit) as ts.Node;
+	}
+
+	private withContextArguments(statement: ts.Statement, unit: Unit): ts.Statement {
+		const asThis = this.thisParameters.get(unit.name);
+		const asCredential = this.credentialParameters.get(unit.name);
+		if (!ts.isFunctionDeclaration(statement) || !statement.body || (!asThis && !asCredential))
+			return statement;
+		const thisNames = new Set<string>();
+		const constants: ts.Statement[] = [];
+		const parameters = statement.parameters.map((p, k) => {
+			if (!ts.isIdentifier(p.name)) return p;
+			if (asThis?.has(k)) {
+				thisNames.add(p.name.text);
+				return f.createParameterDeclaration(undefined, undefined, `__t${k}`);
+			}
+			const type = asCredential?.get(k);
+			if (type === undefined) return p;
+			constants.push(
+				f.createVariableStatement(
+					undefined,
+					f.createVariableDeclarationList(
+						[
+							f.createVariableDeclaration(
+								p.name.text,
+								undefined,
+								undefined,
+								f.createIdentifier(CREDENTIAL_PREFIX + type),
+							),
+						],
+						ts.NodeFlags.Const,
+					),
+				),
+			);
+			return f.createParameterDeclaration(undefined, undefined, `__c${k}`);
+		});
+		const toThis = (n: ts.Node): ts.Node => {
+			if (ts.isIdentifier(n) && thisNames.has(n.text) && isValueUse(n)) return f.createThis();
+			return ts.visitEachChild(n, toThis, undefined);
+		};
+		const body =
+			thisNames.size > 0 ? (ts.visitNode(statement.body, toThis) as ts.Block) : statement.body;
+		return f.updateFunctionDeclaration(
+			statement,
+			statement.modifiers,
+			statement.asteriskToken,
+			statement.name,
+			statement.typeParameters,
+			parameters,
+			statement.type,
+			f.updateBlock(body, [...constants, ...body.statements]),
+		);
+	}
+
 	private process(unit: Unit, isExecute: boolean) {
 		const source = unit.node;
 		const statement = ts.isMethodDeclaration(source)
@@ -1972,10 +2179,11 @@ class Specialiser {
 						source.type,
 						source.body,
 					);
-		let cur = this.reparse(statement, unit.file.sf);
+		let cur = this.reparse(this.withContextArguments(statement, unit), unit.file.sf);
 		cur = this.reparse(this.bind(cur.node, unit, isExecute), cur.sf);
 		cur = this.fold(cur, unit.name);
 		cur = this.reparse(this.resolveChains(cur.node, unit), cur.sf);
+		cur = this.reparse(this.markContextArguments(cur.node, unit.name), cur.sf);
 		const node = cur.node;
 		this.check(node, unit.name);
 		const bound = bindingsOf(node);
