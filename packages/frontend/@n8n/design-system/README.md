@@ -211,10 +211,10 @@ images pass in CI. If an image passes on your computer but fails in CI, make it 
 `linux/amd64`:
 
 ```sh
-DOCKER_DEFAULT_PLATFORM=linux/amd64 pnpm --filter @n8n/storybook test:visual -u --no-file-parallelism
+DOCKER_DEFAULT_PLATFORM=linux/amd64 pnpm --filter @n8n/storybook test:visual -u
 ```
 
-`--no-file-parallelism` is necessary because the emulated browser needs much memory.
+On Apple silicon, Docker emulates `linux/amd64`, so this run is slower.
 
 When you update `playwright` in the catalog, set `PLAYWRIGHT_IMAGE` in
 `@n8n/storybook/scripts/run-visual-tests.ts` to the same version and digest. Then run

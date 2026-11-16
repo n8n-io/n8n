@@ -74,6 +74,10 @@ export default mergeConfig(
 			],
 		},
 		test: {
+			// Each worker is one page in the container's Chromium. Without a cap, Vitest
+			// sizes the pool from the host's CPUs, and on an 18-core host a run used
+			// 5.9 GiB in the container. Two workers use about 2 GiB and take the same time.
+			maxWorkers: 2,
 			projects: THEMES.map((theme) => ({
 				extends: true,
 				plugins: [
