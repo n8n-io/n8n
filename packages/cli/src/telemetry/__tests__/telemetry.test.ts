@@ -492,6 +492,22 @@ describe('Telemetry', () => {
 			expect(execBuffer['1'].prod_crashed).toBeUndefined();
 			expect(execBuffer['2'].manual_crashed).toBeUndefined();
 		});
+
+		test.each(['__proto__', 'constructor'])(
+			'should keep counts for workflow id "%s" as an own entry',
+			(workflowId) => {
+				telemetry.trackWorkflowExecution({
+					workflow_id: workflowId,
+					is_manual: true,
+					success: true,
+				});
+
+				const execBuffer = telemetry.getCountsBuffer();
+				expect(Object.hasOwn(execBuffer, workflowId)).toBe(true);
+				expect(execBuffer[workflowId].manual_success?.count).toBe(1);
+				expect(Object.hasOwn(Object.prototype, 'manual_success')).toBe(false);
+			},
+		);
 	});
 
 	describe('trackAgentExecution', () => {
@@ -530,6 +546,22 @@ describe('Telemetry', () => {
 				},
 			});
 		});
+
+		test.each(['__proto__', 'constructor'])(
+			'should keep counts for source "%s" as an own entry',
+			(source) => {
+				telemetry.trackAgentExecution({
+					agent_id: 'agent-1',
+					run_type: 'test',
+					source,
+					message_count: 1,
+				});
+
+				const [counts] = Object.values(telemetry.getAgentExecutionCountsBuffer());
+				expect(Object.hasOwn(counts.counts_by_source, source)).toBe(true);
+				expect(Object.hasOwn(Object.prototype, 'message_count')).toBe(false);
+			},
+		);
 
 		test('should flush source counters in one event and reset the buffer', () => {
 			const chatRun = { agent_id: 'agent-1', run_type: 'test' as const, source: 'chat' };
@@ -1068,6 +1100,50 @@ describe('Telemetry', () => {
 			expect(payload).not.toHaveProperty('thread_id');
 			expect(JSON.stringify(payload)).not.toContain('thread-1');
 		});
+
+		test.each(['__proto__', 'constructor'])(
+			'should keep session metrics for thread id "%s" as an own entry',
+			(threadId) => {
+				telemetry.trackAgentTurnFinished({
+					agent_id: 'agent-1',
+					thread_id: threadId,
+					run_type: 'test',
+					turn_status: 'succeeded',
+					configuration,
+					latency_ms: 100,
+					cost: 10,
+					token_count: 1000,
+					tool_call_count: 1,
+				});
+
+				const [bucket] = Object.values(telemetry.getAgentSessionMetricsBuffer());
+				expect(Object.hasOwn(bucket.sessions, threadId)).toBe(true);
+				expect(Object.hasOwn(bucket.sessions_by_source.unknown, threadId)).toBe(true);
+				expect(Object.hasOwn(Object.prototype, 'latency_ms')).toBe(false);
+			},
+		);
+
+		test.each(['__proto__', 'constructor'])(
+			'should keep session metrics for source "%s" as an own entry',
+			(source) => {
+				telemetry.trackAgentTurnFinished({
+					agent_id: 'agent-1',
+					thread_id: 'thread-1',
+					source,
+					run_type: 'test',
+					turn_status: 'succeeded',
+					configuration,
+					latency_ms: 100,
+					cost: 10,
+					token_count: 1000,
+					tool_call_count: 1,
+				});
+
+				const [bucket] = Object.values(telemetry.getAgentSessionMetricsBuffer());
+				expect(Object.hasOwn(bucket.sessions_by_source, source)).toBe(true);
+				expect(Object.hasOwn(Object.prototype, 'thread-1')).toBe(false);
+			},
+		);
 
 		test('should not buffer when rudderStack is not initialized', () => {
 			// @ts-expect-error Assigning to private property
