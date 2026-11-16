@@ -1,0 +1,30 @@
+packages/cli/src/services/__tests__/folder-operations.test.ts
+  s_f47d4602e7ba0b::t_a14a0e0f69f625 115-116
+  s_f47d4602e7ba0b::t_13fa5ed97f2804 142-143
+  s_f47d4602e7ba0b::t_34dc78b4eda79f 9,134,153-155
+  s_f47d4602e7ba0b::t_b0ebc7cdc2fc23 13-14,117-119,127,131,135,156,160-161
+  s_f47d4602e7ba0b::t_8d15b3384e0899 120-126,128-130,132-133,137,139-141,144,146,151,157-159
+  s_f47d4602e7ba0b::t_81a59b6a19ec69 136,138,145
+  s_f47d4602e7ba0b::t_46cb11515c5fcf 148-150
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_f47d4602e7ba0b::t_a14a0e0f69f625 70-75,80-83
+packages/cli/src/workflows/__tests__/workflow.service.ee.test.ts
+  s_f47d4602e7ba0b::t_a14a0e0f69f625 1553-1554,1559-1565
+  s_f47d4602e7ba0b::t_b0ebc7cdc2fc23 1552
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d1808e0f881fad4f5e22a4c537d868a59bf811b1",
+  "prompts": {},
+  "sessions": {
+    "s_f47d4602e7ba0b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d536-382e-7c22-8084-f34bb0a03002",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
