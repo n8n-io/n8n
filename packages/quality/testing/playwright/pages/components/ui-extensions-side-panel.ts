@@ -36,10 +36,6 @@ export class UiExtensionsSidePanel {
 		return this.getViewFrame().getByTestId(testId);
 	}
 
-	getViewText(text: string): Locator {
-		return this.getViewFrame().getByText(text);
-	}
-
 	async open(): Promise<void> {
 		await expect(this.getToggle()).toBeVisible();
 		if (!(await this.getContent().isVisible())) await this.getToggle().click();

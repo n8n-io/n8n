@@ -140,7 +140,10 @@ test.describe(
 			await expect(n8n.sidePanel.getViewElement('page-summary-workflow-name')).toHaveText(
 				workflow.name,
 			);
-			await expect(n8n.sidePanel.getViewText('n8n-nodes-base.manualTrigger')).toBeVisible();
+			await expect(n8n.sidePanel.getViewElement('page-summary-trigger')).toContainText(
+				'Start here',
+			);
+			await expect(n8n.sidePanel.getViewElement('page-summary-stat-nodes')).toHaveText('1');
 
 			await n8n.page.goBack();
 			await expect(n8n.sidePanel.getViewElement('page-summary-workflows-heading')).toBeVisible();
@@ -150,6 +153,67 @@ test.describe(
 				() => (window as unknown as { sidePanelMarker?: string }).sidePanelMarker,
 			);
 			expect(marker).toBe('kept');
+		});
+
+		test('shows the services and the checklist of the open workflow', async ({ n8n, api }) => {
+			const name = `Side panel ${nanoid()}`;
+			const workflow = await api.workflows.createWorkflow({
+				name,
+				nodes: [
+					{
+						id: nanoid(),
+						name: 'Start here',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: nanoid(),
+						name: 'No Operation, do nothing',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [200, 0],
+						parameters: {},
+					},
+					{
+						id: nanoid(),
+						name: 'Skipped step',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 0],
+						parameters: {},
+						disabled: true,
+					},
+				],
+				connections: {},
+			});
+
+			await n8n.navigate.toWorkflow(String(workflow.id));
+			await n8n.sidePanel.open();
+
+			await n8n.sidePanel.selectTab('Integrations');
+			await expect(n8n.sidePanel.getViewElement('integrations-summary')).toHaveText(
+				'Services: 2. Nodes: 3.',
+			);
+			await expect(n8n.sidePanel.getViewElement('integrations-service-name').first()).toHaveText(
+				'No Operation, do nothing',
+			);
+
+			await n8n.sidePanel.selectTab('Checklist');
+			await expect(n8n.sidePanel.getViewElement('checklist-score')).toHaveText(
+				'1 of 5 checks pass',
+			);
+			await expect(n8n.sidePanel.getViewElement('checklist-trigger')).toHaveAttribute(
+				'data-pass',
+				'true',
+			);
+			await expect(n8n.sidePanel.getViewElement('checklist-disabled')).toContainText(
+				'Disabled nodes: 1.',
+			);
+			await expect(n8n.sidePanel.getViewElement('checklist-names')).toContainText(
+				'Nodes with a default name: 1.',
+			);
 		});
 
 		test('adds a tab for a view from an MCP client, with the context it may see, and keeps it after a reload', async ({
