@@ -1344,31 +1344,6 @@ describe('workflow_step_execution table (integration)', () => {
 			]);
 		});
 
-		it('findStaleQueuedSteps does not return a step of an execution that has a failed step', async () => {
-			const repo = dataSource.getRepository(WorkflowStepExecution);
-			await repo.update({ status: 'queued' }, { staleAfter: null });
-			const store = stalenessStore();
-			const staleAfter = new Date('2020-01-01T00:01:00.000Z');
-			const seedQueued = async (executionId: string) => {
-				const { id } = await createStep(store, executionId, {
-					nodeId: 'queued',
-					iteration: 0,
-					status: 'queued',
-				});
-				await repo.update({ id }, { staleAfter });
-				return id;
-			};
-			const healthyExecutionId = await createExecution();
-			const healthy = await seedQueued(healthyExecutionId);
-			const failedExecutionId = await createExecution();
-			await seedQueued(failedExecutionId);
-			await seedStep({ executionId: failedExecutionId, nodeId: 'failed', status: 'failed' });
-
-			expect(await store.findStaleQueuedSteps(new Date('2020-01-01T00:03:00.000Z'), 10)).toEqual([
-				{ id: healthy, executionId: healthyExecutionId, staleAfter },
-			]);
-		});
-
 		it('renewQueuedStep moves the time forward once for one observed value', async () => {
 			const executionId = await createExecution();
 			const store = stalenessStore();

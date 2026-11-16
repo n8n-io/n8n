@@ -185,9 +185,6 @@ export interface StepStore {
 	/**
 	 * The steps that are `queued` and whose `stale_after` time is `at` or
 	 * earlier, oldest first, at most `limit`. A plain read: it locks no row.
-	 *
-	 * A step of an execution that has a failed step is not returned: `claimStep`
-	 * refuses such a step, so a new `step:ready` event for it has no effect.
 	 */
 	findStaleQueuedSteps(at: Date, limit: number): Promise<StaleQueuedStep[]>;
 

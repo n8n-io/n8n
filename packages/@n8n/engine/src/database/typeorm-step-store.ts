@@ -276,14 +276,6 @@ export class TypeOrmStepStore implements StepStore {
 			.select(['step.id', 'step.executionId', 'step.staleAfter'])
 			.where("step.status = 'queued'")
 			.andWhere('step.staleAfter <= :at', { at })
-			// `claimStep` refuses a step that has a failed sibling, so a new event
-			// for it has no effect. Served by the partial index on failed steps.
-			.andWhere(
-				`NOT EXISTS (
-					SELECT 1 FROM workflow_step_execution sibling
-					WHERE sibling.execution_id = step.execution_id AND sibling.status = 'failed'
-				)`,
-			)
 			.orderBy('step.staleAfter', 'ASC')
 			.limit(limit)
 			.getMany();
