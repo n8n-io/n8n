@@ -23,7 +23,12 @@ import {
 	type ParentLink,
 } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
-import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
+import {
+	createInMemoryWorkQueues,
+	type OrchestrationMessage,
+	type StepMessage,
+	type WorkQueue,
+} from '../../queue';
 import {
 	LifecycleEventPublisherFactory,
 	type LifecycleEventPublisher,
@@ -879,6 +884,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
 			responseSender: noopExecutionResponseSender,
+			queues: createInMemoryWorkQueues(),
 			externalDependencies: ({ executionStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
 				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
