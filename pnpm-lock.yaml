@@ -279,7 +279,7 @@ overrides:
   ws: 8.21.1
   axios: 1.20.0
   pg@<8.21.0: 8.21.0
-  hono@<=4.13.5: 4.13.5
+  hono@<=4.13.5: 4.13.16
   vue-i18n@<=11.4.4: 11.4.4
   '@intlify/shared@<=11.4.4': 11.4.4
   linkify-it@<=5.0.2: 5.0.2
@@ -290,6 +290,7 @@ overrides:
   sharp: 0.35.5
   jose@<6.2.9: 6.2.9
   browserslist@<4.28.7: 4.28.7
+  moment: 2.31.0
 
 patchedDependencies:
   '@lezer/highlight':
@@ -1251,8 +1252,8 @@ importers:
         specifier: 1.0.1
         version: 1.0.1(@langchain/core@1.1.49(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.21.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
       '@langchain/mongodb':
-        specifier: 1.0.1
-        version: 1.0.1(@aws-sdk/credential-providers@3.808.0)(@langchain/core@1.1.49(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.21.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(gcp-metadata@5.3.0)(socks@2.8.10)
+        specifier: 1.3.1
+        version: 1.3.1(@aws-sdk/credential-providers@3.808.0)(@langchain/core@1.1.49(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.21.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(gcp-metadata@5.3.0)(socks@2.8.10)
       '@langchain/ollama':
         specifier: 1.0.2
         version: 1.0.2(@langchain/core@1.1.49(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.21.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
@@ -5369,7 +5370,7 @@ packages:
     resolution: {integrity: sha512-Za2ai6TLdKjUvnur+eenO6nuYYipVAEhyCAdaV8IRvmU9kK8crOZUSYvIXn72E4f8fJqyAbpcJuTsYYmZp9Deg==}
     engines: {node: '>=18.14.1'}
     peerDependencies:
-      hono: 4.13.5
+      hono: 4.13.16
 
   '@huggingface/inference@4.0.5':
     resolution: {integrity: sha512-/Qc45BGrN+FBA3JfdeoHfafxfNShH/dxvOsXbBdcxyxIRIYOyefeiXSlShZGVCaiqYpm+10na28D0YtvjKPTlw==}
@@ -6308,8 +6309,8 @@ packages:
     peerDependencies:
       '@langchain/core': ^1.0.0
 
-  '@langchain/mongodb@1.0.1':
-    resolution: {integrity: sha512-7oftKzjlbJdIGCY6aTtDWO0uxVoMpDPhv+rM7HtNx6kymPa/Mk4WMnyWtiMlQnDDjyiYP8PgLsi8uniLhqrQHw==}
+  '@langchain/mongodb@1.3.1':
+    resolution: {integrity: sha512-I6CbPCtRCNdSEayOxuXU6GvfBY7dOtyrlMVJdSTcVmgVl4G2SeoLvHAngj/U4VyjLmT/RNOjH2yzGMDFaOdoqg==}
     engines: {node: '>=20'}
     peerDependencies:
       '@langchain/core': ^1.0.0
@@ -12370,8 +12371,8 @@ packages:
     resolution: {integrity: sha512-eSmmWE5bZTK2Nou4g0AI3zZ9rswp7GRKoKXS1BLUkvPviOqs4YTN1djQIqrXy9k5gEtdLPy86JjRwsNM9tnDcA==}
     engines: {node: '>=0.10.0'}
 
-  hono@4.13.5:
-    resolution: {integrity: sha512-O6+/eCYRkzzzy0rPWwKLiGBR1nFuUPZynnwjxN1MBA62NNqbT0wQEzQyK2gSO5yDIDB336sXQleAhOHrzlYyKw==}
+  hono@4.13.16:
+    resolution: {integrity: sha512-AOLOEhvrV+iH92xXCnFr/5+3KjPKcI3xP63XJtX5spAnkznPdHijlIsUTpi7/9EhWqrTCekw5c5zh1K+YsVw7A==}
     engines: {node: '>=16.9.0'}
 
   hookable@5.5.3:
@@ -14365,8 +14366,8 @@ packages:
   moment-timezone@0.5.48:
     resolution: {integrity: sha512-f22b8LV1gbTO2ms2j2z13MuPogNoh5UzxL3nzNAYKGraILnbGc9NEE6dyiiiLv46DGRb8A4kg8UKWLjPthxBHw==}
 
-  moment@2.30.1:
-    resolution: {integrity: sha512-uEmtNhbDOrWPFS+hdjFCBfy9f2YoyzRpwcl+DqpC6taX21FzsTLQVbMV/W7PzNSX6x/bhC1zA3c2UQ5NzH6how==}
+  moment@2.31.0:
+    resolution: {integrity: sha512-0acOTfMiWOheYS4eoWb80yYMb/JLvVv9SHbs2PehaDzfUG0Bw855SKyk0IKTnPGa5+U2bmi3W68l1+sGLX/pvw==}
 
   mongodb-connection-string-url@3.0.0:
     resolution: {integrity: sha512-t1Vf+m1I5hC2M5RJx/7AtxgABy1cZmIPQRMXw+gEIPn/cZNF3Oiy+l0UIypUwVB5trcWHq3crg2g3uAR9aAwsQ==}
@@ -21779,9 +21780,9 @@ snapshots:
       protobufjs: 7.6.5
       yargs: 17.7.2
 
-  '@hono/node-server@1.19.15(hono@4.13.5)':
+  '@hono/node-server@1.19.15(hono@4.13.16)':
     dependencies:
-      hono: 4.13.5
+      hono: 4.13.16
 
   '@huggingface/inference@4.0.5':
     dependencies:
@@ -22611,7 +22612,7 @@ snapshots:
       '@mistralai/mistralai': 1.10.0
       uuid: 11.1.1
 
-  '@langchain/mongodb@1.0.1(@aws-sdk/credential-providers@3.808.0)(@langchain/core@1.1.49(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.21.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(gcp-metadata@5.3.0)(socks@2.8.10)':
+  '@langchain/mongodb@1.3.1(@aws-sdk/credential-providers@3.808.0)(@langchain/core@1.1.49(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.21.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(gcp-metadata@5.3.0)(socks@2.8.10)':
     dependencies:
       '@langchain/core': 1.1.49(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.21.0(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       mongodb: 6.21.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.10)
@@ -22775,7 +22776,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.32.0(zod@3.25.67)':
     dependencies:
-      '@hono/node-server': 1.19.15(hono@4.13.5)
+      '@hono/node-server': 1.19.15(hono@4.13.16)
       ajv: 8.18.0
       ajv-formats: 3.0.1(ajv@8.18.0)
       content-type: 1.0.5
@@ -22785,7 +22786,7 @@ snapshots:
       eventsource-parser: 3.0.1
       express: 5.2.1
       express-rate-limit: 8.2.2(express@5.2.1)
-      hono: 4.13.5
+      hono: 4.13.16
       jose: 6.2.9
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.0(patch_hash=651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90)
@@ -30030,7 +30031,7 @@ snapshots:
     dependencies:
       parse-passwd: 1.0.0
 
-  hono@4.13.5: {}
+  hono@4.13.16: {}
 
   hookable@5.5.3: {}
 
@@ -32715,9 +32716,9 @@ snapshots:
 
   moment-timezone@0.5.48:
     dependencies:
-      moment: 2.30.1
+      moment: 2.31.0
 
-  moment@2.30.1: {}
+  moment@2.31.0: {}
 
   mongodb-connection-string-url@3.0.0:
     dependencies:
@@ -35211,7 +35212,7 @@ snapshots:
       https-proxy-agent: 7.0.6
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      moment: 2.30.1
+      moment: 2.31.0
       moment-timezone: 0.5.48
       oauth4webapi: 3.5.1
       open: 7.4.2
