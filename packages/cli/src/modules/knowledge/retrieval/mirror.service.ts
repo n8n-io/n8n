@@ -18,6 +18,7 @@ import {
 	storageFileNameForOriginalFileName,
 } from '../files/storage-naming';
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
+import type { KnowledgePreparationWait, KnowledgeRetrievalObserver } from '../knowledge-retriever';
 import type { KnowledgeSandboxHandle } from '../knowledge-sandbox-provider';
 import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-registry';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
@@ -139,6 +140,7 @@ export class KnowledgeMirrorService {
 	async searchKnowledge(
 		scope: KnowledgeConsumerScope,
 		request: SearchKnowledgeRequest,
+		observer?: KnowledgeRetrievalObserver,
 	): Promise<SearchKnowledgeResult> {
 		const validatedRequest = parseSearchKnowledgeRequest(request);
 		const references = await this.loadKnowledgeReferenceLookup(scope);
@@ -154,7 +156,7 @@ export class KnowledgeMirrorService {
 			validatedRequest,
 			scopedFiles.map((file) => file.file),
 		);
-		const result = await this.executeKnowledgeOperation(scope, command, references.files);
+		const result = await this.executeKnowledgeOperation(scope, command, references.files, observer);
 
 		assertKnowledgeFilesDirectoryAvailable('search', result);
 		if (result.exitCode === 1) {
@@ -193,12 +195,13 @@ export class KnowledgeMirrorService {
 	async readKnowledge(
 		scope: KnowledgeConsumerScope,
 		request: ReadKnowledgeRequest,
+		observer?: KnowledgeRetrievalObserver,
 	): Promise<ReadKnowledgeResult> {
 		const validatedRequest = parseReadKnowledgeRequest(request);
 		const references = await this.loadKnowledgeReferenceLookup(scope);
 		const file = this.resolveRequiredFile(validatedRequest, references);
 		const command = buildReadKnowledgeCommand(file.file, validatedRequest);
-		const result = await this.executeKnowledgeOperation(scope, command, references.files);
+		const result = await this.executeKnowledgeOperation(scope, command, references.files, observer);
 
 		assertKnowledgeFilesDirectoryAvailable('read', result);
 		if (result.exitCode !== 0) {
@@ -256,15 +259,39 @@ export class KnowledgeMirrorService {
 		scope: KnowledgeConsumerScope,
 		command: string,
 		files: AgentKnowledgeFileReference[],
+		observer?: KnowledgeRetrievalObserver,
 	): Promise<CommandResult> {
-		const runtime = await this.acquireKnowledgeRuntime(scope);
+		const runtime = await this.prepareKnowledgeRuntime(scope, files, observer);
 		const scopedCommand = buildScopedKnowledgeShellCommand(command, runtime.paths);
-		await this.ensureMirrorSynced(runtime, files);
 		return await this.sandboxProvider.executeCommand(
 			runtime.sandbox,
 			scopedCommand,
 			this.agentsConfig.sandboxTimeout,
 		);
+	}
+
+	/** Gets a running sandbox with a synced mirror, and reports how long each step waited. */
+	private async prepareKnowledgeRuntime(
+		scope: KnowledgeConsumerScope,
+		files: AgentKnowledgeFileReference[],
+		observer?: KnowledgeRetrievalObserver,
+	): Promise<KnowledgeMirrorRuntime> {
+		const wait: KnowledgePreparationWait = { sandboxWaitMs: 0, mirrorWaitMs: 0 };
+		const sandboxStartedAt = Date.now();
+
+		try {
+			const runtime = await this.acquireKnowledgeRuntime(scope).finally(() => {
+				wait.sandboxWaitMs = Date.now() - sandboxStartedAt;
+			});
+
+			await this.ensureMirrorSynced(runtime, files, (mirrorWaitMs) => {
+				wait.mirrorWaitMs = mirrorWaitMs;
+			});
+
+			return runtime;
+		} finally {
+			observer?.onPreparationWait?.(wait);
+		}
 	}
 
 	/**
@@ -275,17 +302,33 @@ export class KnowledgeMirrorService {
 	private async ensureMirrorSynced(
 		runtime: KnowledgeMirrorRuntime,
 		files: AgentKnowledgeFileReference[],
+		onWait?: (waitMs: number) => void,
 	): Promise<void> {
-		await runSerially(
-			this.pendingMirrorSyncs,
-			runtime.cacheKey,
-			async () => await this.syncMirror(runtime, files),
-		);
+		const startedAt = Date.now();
+		// Another sync for this sandbox is pending, so this call waits for it.
+		const waitsForOtherSync = this.pendingMirrorSyncs.has(runtime.cacheKey);
+		const sync = { copiesFiles: false };
+
+		try {
+			await runSerially(
+				this.pendingMirrorSyncs,
+				runtime.cacheKey,
+				async () =>
+					await this.syncMirror(runtime, files, () => {
+						sync.copiesFiles = true;
+					}),
+			);
+		} finally {
+			// The manifest check alone is not a wait.
+			const waited = waitsForOtherSync || sync.copiesFiles;
+			onWait?.(waited ? Date.now() - startedAt : 0);
+		}
 	}
 
 	private async syncMirror(
 		runtime: KnowledgeMirrorRuntime,
 		files: AgentKnowledgeFileReference[],
+		onCopyStart?: () => void,
 	): Promise<void> {
 		const manifestResult = await this.sandboxProvider.executeCommand(
 			runtime.sandbox,
@@ -300,6 +343,8 @@ export class KnowledgeMirrorService {
 		const toDelete = [...present.keys()].filter((name) => !expectedSet.has(name));
 
 		if (toCopy.length === 0 && toDelete.length === 0) return;
+
+		onCopyStart?.();
 
 		for (const name of [...expectedNames, ...toDelete]) {
 			assertKnowledgePathSegment(name, 'knowledge mirror file name');

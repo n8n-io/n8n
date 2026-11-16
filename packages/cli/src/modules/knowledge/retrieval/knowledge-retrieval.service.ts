@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 
 import type { KnowledgeConsumerScope } from '../knowledge-consumer-scope';
-import type { KnowledgeRetriever } from '../knowledge-retriever';
+import type { KnowledgeRetrievalObserver, KnowledgeRetriever } from '../knowledge-retriever';
 import { KnowledgeSandboxProviderRegistry } from '../knowledge-sandbox-provider-registry';
 import { KnowledgeFileRepository } from '../repositories/knowledge-file.repository';
 import { KnowledgeMirrorService } from './mirror.service';
@@ -56,14 +56,16 @@ export class KnowledgeRetrievalService implements KnowledgeRetriever {
 	async searchText(
 		scope: KnowledgeConsumerScope,
 		request: SearchKnowledgeRequest,
+		observer?: KnowledgeRetrievalObserver,
 	): Promise<SearchKnowledgeResult> {
-		return await this.mirrorService.searchKnowledge(scope, request);
+		return await this.mirrorService.searchKnowledge(scope, request, observer);
 	}
 
 	async readFile(
 		scope: KnowledgeConsumerScope,
 		request: ReadKnowledgeRequest,
+		observer?: KnowledgeRetrievalObserver,
 	): Promise<ReadKnowledgeResult> {
-		return await this.mirrorService.readKnowledge(scope, request);
+		return await this.mirrorService.readKnowledge(scope, request, observer);
 	}
 }

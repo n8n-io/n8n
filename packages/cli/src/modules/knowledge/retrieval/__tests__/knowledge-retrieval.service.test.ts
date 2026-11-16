@@ -67,7 +67,33 @@ describe('KnowledgeRetrievalService', () => {
 		await expect(service.readFile(scope, { file: 'notes.txt' })).resolves.toBe(read);
 
 		expect(mirrorService.globKnowledgeFiles).toHaveBeenCalledWith(scope, { pattern: '*' });
-		expect(mirrorService.searchKnowledge).toHaveBeenCalledWith(scope, { pattern: 'refund' });
-		expect(mirrorService.readKnowledge).toHaveBeenCalledWith(scope, { file: 'notes.txt' });
+		expect(mirrorService.searchKnowledge).toHaveBeenCalledWith(
+			scope,
+			{ pattern: 'refund' },
+			undefined,
+		);
+		expect(mirrorService.readKnowledge).toHaveBeenCalledWith(
+			scope,
+			{ file: 'notes.txt' },
+			undefined,
+		);
+	});
+
+	it('passes the observer of a search or read to the mirror', async () => {
+		const observer = { onPreparationWait: vi.fn() };
+
+		await service.searchText(scope, { pattern: 'refund' }, observer);
+		await service.readFile(scope, { file: 'notes.txt' }, observer);
+
+		expect(mirrorService.searchKnowledge).toHaveBeenCalledWith(
+			scope,
+			{ pattern: 'refund' },
+			observer,
+		);
+		expect(mirrorService.readKnowledge).toHaveBeenCalledWith(
+			scope,
+			{ file: 'notes.txt' },
+			observer,
+		);
 	});
 });
