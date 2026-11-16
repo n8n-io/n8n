@@ -8,7 +8,7 @@
 ```sql
 CREATE TABLE "lease_kind" (
 			"kind" VARCHAR(24) NOT NULL PRIMARY KEY,
-			"tokenCounter" INTEGER NOT NULL DEFAULT 0 CHECK ("tokenCounter" >= 0),
+			"tokenCounter" INTEGER NOT NULL DEFAULT 0 CONSTRAINT "CHK_lease_kind_tokenCounter" CHECK ("tokenCounter" >= 0),
 			"syncHolder" VARCHAR(36) NULL,
 			"syncExpiresAt" DATETIME NULL,
 			"fullPassAt" DATETIME NULL,

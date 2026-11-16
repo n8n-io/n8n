@@ -14,6 +14,9 @@ const MIGRATION_NAME = 'CreateLeaseTables1794818156000';
 
 const TABLES = ['lease_kind', 'lease_session', 'lease'];
 
+const isSqlite = (process.env.DB_TYPE ?? 'sqlite') === 'sqlite';
+const zero = isSqlite ? '0' : "'0'";
+
 describe('CreateLeaseTables migration', () => {
 	let dataSource: DataSource;
 
@@ -130,6 +133,43 @@ describe('CreateLeaseTables migration', () => {
 	});
 
 	it.each([
+		['lease_kind', ['kind', 'tokenCounter', 'createdAt', 'updatedAt']],
+		['lease_session', ['id', 'kind', 'hostId', 'bootId', 'leaseSeconds', 'expiresAt', 'createdAt']],
+		[
+			'lease',
+			[
+				'kind',
+				'key',
+				'data',
+				'dataHash',
+				'fencingToken',
+				'revoked',
+				'startAttempts',
+				'createdAt',
+				'updatedAt',
+			],
+		],
+	])('makes only the expected columns of %s NOT NULL', async (name, expected) => {
+		await withContext(async (context) => {
+			const table = await getTable(context, name);
+			const notNull = table.columns.filter((c) => !c.isNullable).map((c) => c.name);
+			expect(notNull.sort()).toEqual([...expected].sort());
+		});
+	});
+
+	it.each([
+		['lease_kind', 'tokenCounter', zero],
+		['lease', 'fencingToken', zero],
+		['lease', 'startAttempts', zero],
+		['lease', 'revoked', isSqlite ? '0' : 'false'],
+	])('sets the default of %s.%s to %s', async (name, column, expected) => {
+		await withContext(async (context) => {
+			const table = await getTable(context, name);
+			expect(table.findColumnByName(column)?.default).toBe(expected);
+		});
+	});
+
+	it.each([
 		['lease_kind', ['kind']],
 		['lease_session', ['id']],
 		['lease', ['kind', 'key']],
@@ -166,25 +206,29 @@ describe('CreateLeaseTables migration', () => {
 		});
 	});
 
-	it('rejects a negative token counter', async () => {
+	it('accepts a zero token counter and rejects a negative one', async () => {
 		await withContext(async (context) => {
-			await expect(insertKind(context, { tokenCounter: -1 })).rejects.toThrow();
+			await expect(insertKind(context, { tokenCounter: 0 })).resolves.not.toThrow();
+			await expect(insertKind(context, { tokenCounter: -1 })).rejects.toThrow(
+				`CHK_${context.tablePrefix}lease_kind_tokenCounter`,
+			);
 		});
 	});
 
-	it.each([
-		['fencing token', { fencingToken: -1 }],
-		['start attempt count', { startAttempts: -1 }],
-	])('rejects a negative %s', async (_, values) => {
-		await withContext(async (context) => {
-			await expect(insertLease(context, values)).rejects.toThrow();
-		});
-	});
+	it.each(['fencingToken', 'startAttempts'])(
+		'accepts a zero %s and rejects a negative one',
+		async (column) => {
+			await withContext(async (context) => {
+				await expect(insertLease(context, { [column]: 0 })).resolves.not.toThrow();
+				await expect(insertLease(context, { [column]: -1 })).rejects.toThrow(
+					`CHK_${context.tablePrefix}lease_${column}`,
+				);
+			});
+		},
+	);
 
-	it('sets fillfactor 90 on the lease table on Postgres', async () => {
+	it.skipIf(isSqlite)('sets fillfactor 90 on the lease table on Postgres', async () => {
 		await withContext(async (context) => {
-			if (!context.isPostgres) return;
-
 			const [{ reloptions }] = await context.runQuery<Array<{ reloptions: string[] }>>(
 				`SELECT reloptions FROM pg_class WHERE oid = to_regclass('${context.escape.tableName('lease')}')`,
 			);

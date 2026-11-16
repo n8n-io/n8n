@@ -26,16 +26,16 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_lease_fencingToken | CHECK | CHECK (("fencingToken" >= 0)) |
+| CHK_lease_startAttempts | CHECK | CHECK (("startAttempts" >= 0)) |
 | lease_createdAt_not_null | n | NOT NULL "createdAt" |
 | lease_dataHash_not_null | n | NOT NULL "dataHash" |
 | lease_data_not_null | n | NOT NULL data |
-| lease_fencingToken_check | CHECK | CHECK (("fencingToken" >= 0)) |
 | lease_fencingToken_not_null | n | NOT NULL "fencingToken" |
 | lease_key_not_null | n | NOT NULL key |
 | lease_kind_not_null | n | NOT NULL kind |
 | lease_pkey | PRIMARY KEY | PRIMARY KEY (kind, key) |
 | lease_revoked_not_null | n | NOT NULL revoked |
-| lease_startAttempts_check | CHECK | CHECK (("startAttempts" >= 0)) |
 | lease_startAttempts_not_null | n | NOT NULL "startAttempts" |
 | lease_updatedAt_not_null | n | NOT NULL "updatedAt" |
 

@@ -15,7 +15,7 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 
 		await runQuery(`CREATE TABLE ${kind} (
 			"kind" VARCHAR(24) NOT NULL PRIMARY KEY,
-			"tokenCounter" ${bigint} NOT NULL DEFAULT 0 CHECK ("tokenCounter" >= 0),
+			"tokenCounter" ${bigint} NOT NULL DEFAULT 0 CONSTRAINT "CHK_${tablePrefix}lease_kind_tokenCounter" CHECK ("tokenCounter" >= 0),
 			"syncHolder" VARCHAR(36) NULL,
 			"syncExpiresAt" ${ts} NULL,
 			"fullPassAt" ${ts} NULL,
@@ -33,7 +33,7 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 			"createdAt" ${ts} NOT NULL DEFAULT ${nowDefault}
 		)`);
 		await runQuery(
-			`CREATE INDEX "IDX_${tablePrefix}lease_session_kind_expiresAt" ON ${session} ("kind", "expiresAt")`,
+			`CREATE INDEX ${escape.indexName('lease_session_kind_expiresAt')} ON ${session} ("kind", "expiresAt")`,
 		);
 
 		await runQuery(`CREATE TABLE ${lease} (
@@ -43,12 +43,12 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 			"dataHash" VARCHAR(64) NOT NULL,
 			"group" VARCHAR(255) NULL,
 			"sessionId" VARCHAR(36) NULL,
-			"fencingToken" ${bigint} NOT NULL DEFAULT 0 CHECK ("fencingToken" >= 0),
+			"fencingToken" ${bigint} NOT NULL DEFAULT 0 CONSTRAINT "CHK_${tablePrefix}lease_fencingToken" CHECK ("fencingToken" >= 0),
 			"claimedAt" ${ts} NULL,
 			"readyAt" ${ts} NULL,
 			"revoked" BOOLEAN NOT NULL DEFAULT ${falseValue},
 			"revokedAt" ${ts} NULL,
-			"startAttempts" INTEGER NOT NULL DEFAULT 0 CHECK ("startAttempts" >= 0),
+			"startAttempts" INTEGER NOT NULL DEFAULT 0 CONSTRAINT "CHK_${tablePrefix}lease_startAttempts" CHECK ("startAttempts" >= 0),
 			"nextAttemptAt" ${ts} NULL,
 			"lastError" TEXT NULL,
 			"lastErrorAt" ${ts} NULL,
@@ -57,10 +57,10 @@ export class CreateLeaseTables1794818156000 implements ReversibleMigration {
 			PRIMARY KEY ("kind", "key")
 		)`);
 		await runQuery(
-			`CREATE INDEX "IDX_${tablePrefix}lease_kind_sessionId" ON ${lease} ("kind", "sessionId")`,
+			`CREATE INDEX ${escape.indexName('lease_kind_sessionId')} ON ${lease} ("kind", "sessionId")`,
 		);
 		await runQuery(
-			`CREATE INDEX "IDX_${tablePrefix}lease_kind_group" ON ${lease} ("kind", "group")`,
+			`CREATE INDEX ${escape.indexName('lease_kind_group')} ON ${lease} ("kind", "group")`,
 		);
 
 		if (isPostgres) {

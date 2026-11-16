@@ -1,6 +1,7 @@
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
 import { DateTimeColumn, WithTimestamps } from './abstract-entity';
+import { bigintStringToNumber } from '../utils/transformers';
 
 @Entity({ name: 'lease' })
 @Index(['kind', 'sessionId'])
@@ -24,8 +25,8 @@ export class Lease extends WithTimestamps {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	sessionId: string | null;
 
-	@Column({ type: 'bigint', default: 0 })
-	fencingToken: string;
+	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })
+	fencingToken: number;
 
 	@DateTimeColumn({ nullable: true })
 	claimedAt: Date | null;

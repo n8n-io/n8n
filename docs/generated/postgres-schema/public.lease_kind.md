@@ -16,10 +16,10 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_lease_kind_tokenCounter | CHECK | CHECK (("tokenCounter" >= 0)) |
 | lease_kind_createdAt_not_null | n | NOT NULL "createdAt" |
 | lease_kind_kind_not_null | n | NOT NULL kind |
 | lease_kind_pkey | PRIMARY KEY | PRIMARY KEY (kind) |
-| lease_kind_tokenCounter_check | CHECK | CHECK (("tokenCounter" >= 0)) |
 | lease_kind_tokenCounter_not_null | n | NOT NULL "tokenCounter" |
 | lease_kind_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
