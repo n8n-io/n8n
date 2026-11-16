@@ -216,8 +216,7 @@ export const engineRefusals: EngineRefusal[] = [
  * - A node type without an execute method, and a node that sends engine requests,
  *   such as an AI agent with sub-nodes: `v1-step-executor.ts`. Other node types run
  *   but miss a feature they need. Check rules: the entries of `node-type-denylist.ts`
- *   and COMMUNITY_NODE. Each entry names the ticket that removes it, and a test in
- *   @n8n/workflow-engine-check pins the list.
+ *   and COMMUNITY_NODE.
  * - A trigger that waits for its run to finish: `EngineV2ActiveTriggers` in cli.
  *   Check rule: TRIGGER_WAITS_FOR_RUN. It blocks when the trigger's settings make
  *   it wait, and warns when an expression decides.
