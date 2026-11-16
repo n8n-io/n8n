@@ -336,9 +336,7 @@ describe('MessageEventBusDestinationWebhook', () => {
 					outboundHttp,
 				);
 				const credentialsHelper = mock<CredentialsHelper>();
-				credentialsHelper.getDecrypted.mockRejectedValue(
-					new Error('Could not resolve credential'),
-				);
+				credentialsHelper.getDecrypted.mockRejectedValue(new Error('Could not resolve credential'));
 				destination.credentialsHelper = credentialsHelper;
 
 				await expect(
