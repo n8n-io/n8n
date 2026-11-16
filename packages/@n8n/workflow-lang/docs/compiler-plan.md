@@ -61,6 +61,30 @@ agree with v1 (79 node types). 278 compile and send other requests than v1: the 
   `compile`. The key of the compile cache holds the public credential fields. The default is `false`.
 - Not tested yet: a publish in a running n8n with the setting on. The unit tests of the module pass.
 
+### Cost of a compiled node (2026-11-16)
+
+`wfrt bench-node` on Telegram `message.sendMessage` with constant parameters, CPU for each execution on one
+core (M5 Pro), against the hand port in `src/nodes/telegram.ts`:
+
+| Module | CPU for each execution |
+|---|---|
+| Hand port | 1.5 to 2.0 µs |
+| Compiled from the n8n code, first form | 21.8 µs |
+| With constant arguments in helpers and pure calls evaluated at publish | 17.8 µs |
+| With helpers inlined, the contents of new objects followed, and regular expression tests on constants evaluated at publish | 3.05 µs |
+
+What the compiler does at publish, in `optimise` of `specialise.ts`:
+
+- gives a helper the constant arguments that all its calls pass;
+- evaluates a call of a pure function with constant arguments, and `pattern.test('text')`, in a sandbox that
+  the caller gives (`evaluateInSandbox`, 100 ms);
+- inlines a helper with one call, with new names for its variables;
+- follows the members of an object that the function makes, through straight-line code, until the object goes
+  to code that the compiler does not see.
+
+After these, the check against v1 passes for 887 operations of 95 node types (854 of 88 before): the gate is
+what makes an optimisation safe to add.
+
 ### Measured on real workflows (2026-11-16)
 
 300 workflows of the corpus (3,702 nodes), converted with and without the node compiler, before the verified

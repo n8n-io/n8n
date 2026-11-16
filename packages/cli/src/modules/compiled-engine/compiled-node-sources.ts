@@ -53,5 +53,6 @@ export function nodeSourcesOf(
 		},
 		description: (type, version) => lang.nodeDescriptionOf(nodeOf(type, version)?.description),
 		publicCredential: (type, id) => credentials.get(`${type}:${id ?? ''}`),
+		evaluate: lang.evaluateInSandbox,
 	};
 }

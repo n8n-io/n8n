@@ -373,6 +373,7 @@ function compare(op: ts.SyntaxKind, a: Literal, b: Literal): Literal | typeof NO
 	}
 }
 const NO_FOLD = Symbol('no fold');
+const UNKNOWN = Symbol('unknown');
 
 interface FileModel {
 	path: string;
@@ -666,6 +667,21 @@ class Specialiser {
 
 	private bind(root: ts.Node, unit: Unit, isExecute: boolean): ts.Node {
 		const localNames = bindingsOf(root);
+		const regexConstants = new Map<string, string>();
+		const collectRegex = (n: ts.Node) => {
+			if (
+				ts.isVariableDeclaration(n) &&
+				ts.isIdentifier(n.name) &&
+				n.initializer &&
+				ts.isRegularExpressionLiteral(n.initializer)
+			) {
+				const flags = n.initializer.text.slice(n.initializer.text.lastIndexOf('/') + 1);
+				if (localNames.get(n.name.text) === 1 && !/[gy]/.test(flags))
+					regexConstants.set(n.name.text, n.initializer.text);
+			}
+			ts.forEachChild(n, collectRegex);
+		};
+		collectRegex(root);
 		let depth = 0;
 
 		const visit = (node: ts.Node): ts.Node | ts.Node[] | undefined => {
@@ -790,6 +806,22 @@ class Specialiser {
 						target.text,
 						...CONTEXT_PARAMS.map((p) => f.createIdentifier(p)),
 						...args(node, 1),
+					);
+				}
+			}
+			if (
+				ts.isCallExpression(node) &&
+				ts.isPropertyAccessExpression(node.expression) &&
+				node.expression.name.text === 'test' &&
+				ts.isIdentifier(node.expression.expression)
+			) {
+				const pattern = regexConstants.get(node.expression.expression.text);
+				if (pattern !== undefined) {
+					return f.updateCallExpression(
+						node,
+						f.createPropertyAccessExpression(f.createRegularExpressionLiteral(pattern), 'test'),
+						undefined,
+						args(node),
 					);
 				}
 			}
@@ -1253,6 +1285,7 @@ class Specialiser {
 		const fixed = new Set<string>(
 			root.parameters.map((p) => (ts.isIdentifier(p.name) ? p.name.text : '')),
 		);
+		const captured = new Set<string>();
 		const targetOf = (n: ts.Node): string | undefined => {
 			if (
 				ts.isBinaryExpression(n) &&
@@ -1271,10 +1304,10 @@ class Specialiser {
 			}
 			return undefined;
 		};
-
 		const mark = (n: ts.Node, inner: boolean) => {
 			const name = targetOf(n);
 			if (name && inner) fixed.add(name);
+			if (inner && ts.isIdentifier(n)) captured.add(n.text);
 			ts.forEachChild(n, (c) => mark(c, inner || (c !== root && ts.isFunctionLike(c))));
 		};
 		mark(root, false);
@@ -1287,28 +1320,227 @@ class Specialiser {
 			return out;
 		};
 		const tracked = (name: string) => counts.get(name) === 1 && !fixed.has(name);
-		type Env = Map<string, Literal>;
+		const holdsObject = (name: string) =>
+			counts.get(name) === 1 && !fixed.has(name) && !captured.has(name);
+
+		interface Obj {
+			props: Map<string, Literal | typeof UNKNOWN>;
+		}
+		interface Env {
+			scalars: Map<string, Literal>;
+			vars: Map<string, Obj>;
+		}
+		const empty = (): Env => ({ scalars: new Map(), vars: new Map() });
+		const copy = (env: Env): Env => {
+			const copies = new Map<Obj, Obj>();
+			const vars = new Map<string, Obj>();
+			for (const [name, obj] of env.vars) {
+				const twin = copies.get(obj) ?? { props: new Map(obj.props) };
+				copies.set(obj, twin);
+				vars.set(name, twin);
+			}
+			return { scalars: new Map(env.scalars), vars };
+		};
+		const drop = (env: Env, obj: Obj) => {
+			for (const [name, held] of [...env.vars]) if (held === obj) env.vars.delete(name);
+		};
+		const isWritten = (access: ts.Node): boolean => {
+			const p = access.parent;
+			if (!p) return false;
+			if (
+				ts.isBinaryExpression(p) &&
+				p.left === access &&
+				p.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+				p.operatorToken.kind <= ts.SyntaxKind.LastAssignment
+			)
+				return true;
+			if (ts.isDeleteExpression(p)) return true;
+			if (
+				(ts.isPrefixUnaryExpression(p) || ts.isPostfixUnaryExpression(p)) &&
+				(p.operator === ts.SyntaxKind.PlusPlusToken || p.operator === ts.SyntaxKind.MinusMinusToken)
+			)
+				return true;
+			return ts.isCallExpression(p) && p.expression === access;
+		};
+		const keysArgument = (n: ts.Identifier): boolean => {
+			const p = n.parent;
+			return (
+				ts.isCallExpression(p) &&
+				ts.isPropertyAccessExpression(p.expression) &&
+				ts.isIdentifier(p.expression.expression) &&
+				p.expression.expression.text === 'Object' &&
+				['keys', 'values', 'entries'].includes(p.expression.name.text)
+			);
+		};
+		const escaping = (node: ts.Node, env: Env, exempt: Set<ts.Node>): Set<Obj> => {
+			const out = new Set<Obj>();
+			const walk = (n: ts.Node, inner: boolean) => {
+				if (ts.isIdentifier(n) && isValueUse(n) && !exempt.has(n)) {
+					const obj = env.vars.get(n.text);
+					const p = n.parent;
+					const member =
+						(ts.isPropertyAccessExpression(p) || ts.isElementAccessExpression(p)) &&
+						p.expression === n;
+					if (obj && (inner || !((member && !isWritten(p)) || keysArgument(n)))) out.add(obj);
+				}
+				ts.forEachChild(n, (c) => walk(c, inner || ts.isFunctionLike(c)));
+			};
+			walk(node, false);
+			return out;
+		};
+		const mentioned = (node: ts.Node, env: Env) => {
+			const walk = (n: ts.Node) => {
+				if (ts.isIdentifier(n)) {
+					const obj = env.vars.get(n.text);
+					if (obj) drop(env, obj);
+				}
+				ts.forEachChild(n, walk);
+			};
+			walk(node);
+		};
 		const substitute = <T extends ts.Node>(node: T, env: Env): T => {
-			if (env.size === 0) return node;
+			if (env.scalars.size === 0 && env.vars.size === 0) return node;
 			const visit = (n: ts.Node): ts.Node => {
 				if (ts.isFunctionLike(n)) return n;
-				if (ts.isIdentifier(n) && env.has(n.text) && isValueUse(n)) {
+				if (
+					ts.isPropertyAccessExpression(n) &&
+					n.name.text === 'length' &&
+					ts.isCallExpression(n.expression)
+				) {
+					const [only] = n.expression.arguments;
+					if (
+						only &&
+						ts.isIdentifier(only) &&
+						keysArgument(only) &&
+						n.expression.arguments.length === 1
+					) {
+						const obj = env.vars.get(only.text);
+						const callee = n.expression.expression;
+						if (obj && ts.isPropertyAccessExpression(callee) && callee.name.text === 'keys') {
+							this.changed = true;
+							return f.createNumericLiteral(obj.props.size);
+						}
+					}
+				}
+				if (ts.isPropertyAccessExpression(n) && ts.isIdentifier(n.expression) && !isWritten(n)) {
+					const obj = env.vars.get(n.expression.text);
+					const value = obj?.props.get(n.name.text);
+					if (obj && value !== UNKNOWN) {
+						this.changed = true;
+						return expressionOf(value);
+					}
+				}
+				if (ts.isIdentifier(n) && env.scalars.has(n.text) && isValueUse(n)) {
 					const p = n.parent;
 					const written =
 						p && targetOf(p) === n.text && (ts.isBinaryExpression(p) ? p.left === n : true);
 					if (!written && !(p && ts.isShorthandPropertyAssignment(p))) {
 						this.changed = true;
-						return expressionOf(env.get(n.text));
+						return expressionOf(env.scalars.get(n.text));
 					}
 				}
 				return ts.visitEachChild(n, visit, undefined);
 			};
 			return ts.visitNode(node, visit) as T;
 		};
-		const without = (env: Env, names: Set<string>): Env => {
-			const out: Env = new Map(env);
-			for (const name of names) out.delete(name);
-			return out;
+		const objectOf = (literal: ts.ObjectLiteralExpression): Obj | undefined => {
+			const props = new Map<string, Literal | typeof UNKNOWN>();
+			for (const p of literal.properties) {
+				if (ts.isShorthandPropertyAssignment(p)) {
+					props.set(p.name.text, UNKNOWN);
+					continue;
+				}
+				if (!ts.isPropertyAssignment(p) || !(ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)))
+					return undefined;
+				const value = literalOf(p.initializer);
+				props.set(p.name.text, value ? value.value : UNKNOWN);
+			}
+			return { props };
+		};
+		const bind = (env: Env, name: string, value: ts.Expression | undefined) => {
+			env.vars.delete(name);
+			if (!value || !holdsObject(name)) return;
+			if (ts.isObjectLiteralExpression(value)) {
+				const obj = objectOf(value);
+				if (obj) env.vars.set(name, obj);
+			} else if (ts.isIdentifier(value)) {
+				const obj = env.vars.get(value.text);
+				if (obj) env.vars.set(name, obj);
+			}
+		};
+		const effect = (original: ts.Statement, out: ts.Statement, env: Env) => {
+			const exempt = new Set<ts.Node>();
+			const expression = ts.isExpressionStatement(original) ? original.expression : undefined;
+			const after = ts.isExpressionStatement(out) ? out.expression : undefined;
+			const single =
+				ts.isVariableStatement(original) && original.declarationList.declarations.length === 1
+					? original.declarationList.declarations[0]
+					: undefined;
+			if (single?.initializer && ts.isIdentifier(single.initializer))
+				exempt.add(single.initializer);
+			if (
+				expression &&
+				ts.isBinaryExpression(expression) &&
+				expression.operatorToken.kind === ts.SyntaxKind.EqualsToken
+			) {
+				if (ts.isIdentifier(expression.right)) exempt.add(expression.right);
+				const left = expression.left;
+				if (
+					(ts.isPropertyAccessExpression(left) || ts.isElementAccessExpression(left)) &&
+					ts.isIdentifier(left.expression)
+				)
+					exempt.add(left.expression);
+			}
+			if (expression && ts.isDeleteExpression(expression)) {
+				const target = expression.expression;
+				if (ts.isPropertyAccessExpression(target) && ts.isIdentifier(target.expression))
+					exempt.add(target.expression);
+			}
+			const merge =
+				expression &&
+				ts.isCallExpression(expression) &&
+				ts.isIdentifier(expression.expression) &&
+				expression.expression.text === '__assign' &&
+				expression.arguments.length === 2
+					? expression
+					: undefined;
+			if (merge) for (const a of merge.arguments) if (ts.isIdentifier(a)) exempt.add(a);
+			for (const obj of escaping(original, env, exempt)) drop(env, obj);
+
+			if (single && ts.isIdentifier(single.name) && ts.isVariableStatement(out)) {
+				bind(env, single.name.text, out.declarationList.declarations[0]?.initializer);
+			} else if (
+				after &&
+				ts.isBinaryExpression(after) &&
+				after.operatorToken.kind === ts.SyntaxKind.EqualsToken
+			) {
+				const left = after.left;
+				if (ts.isIdentifier(left)) bind(env, left.text, after.right);
+				else if (ts.isPropertyAccessExpression(left) && ts.isIdentifier(left.expression)) {
+					const value = literalOf(after.right);
+					env.vars
+						.get(left.expression.text)
+						?.props.set(left.name.text, value ? value.value : UNKNOWN);
+				} else if (ts.isElementAccessExpression(left) && ts.isIdentifier(left.expression)) {
+					const obj = env.vars.get(left.expression.text);
+					const key = left.argumentExpression;
+					const value = literalOf(after.right);
+					if (obj && ts.isStringLiteral(key))
+						obj.props.set(key.text, value ? value.value : UNKNOWN);
+					else if (obj) drop(env, obj);
+				}
+			} else if (after && ts.isDeleteExpression(after)) {
+				const target = after.expression;
+				if (ts.isPropertyAccessExpression(target) && ts.isIdentifier(target.expression)) {
+					env.vars.get(target.expression.text)?.props.delete(target.name.text);
+				}
+			} else if (merge) {
+				const [to, from] = merge.arguments;
+				const target = ts.isIdentifier(to) ? env.vars.get(to.text) : undefined;
+				const source = ts.isIdentifier(from) ? env.vars.get(from.text) : undefined;
+				if (target && source) for (const [key, value] of source.props) target.props.set(key, value);
+				else if (target) drop(env, target);
+			}
 		};
 		const branch = (st: ts.Statement, env: Env): ts.Statement =>
 			ts.isBlock(st) ? f.updateBlock(st, block(st.statements, env)) : block([st], env)[0];
@@ -1316,15 +1548,15 @@ class Specialiser {
 			statements.map((st) => {
 				const assigned = assignedIn(st);
 				let out: ts.Statement;
-				if (ts.isBlock(st)) {
-					return f.updateBlock(st, block(st.statements, env));
-				} else if (ts.isIfStatement(st)) {
+				if (ts.isBlock(st)) return f.updateBlock(st, block(st.statements, env));
+				if (ts.isIfStatement(st)) {
 					out = f.updateIfStatement(
 						st,
 						substitute(st.expression, env),
-						branch(st.thenStatement, new Map(env)),
-						st.elseStatement ? branch(st.elseStatement, new Map(env)) : undefined,
+						branch(st.thenStatement, copy(env)),
+						st.elseStatement ? branch(st.elseStatement, copy(env)) : undefined,
 					);
+					mentioned(st, env);
 				} else if (
 					ts.isForStatement(st) ||
 					ts.isForOfStatement(st) ||
@@ -1332,32 +1564,35 @@ class Specialiser {
 					ts.isWhileStatement(st) ||
 					ts.isDoStatement(st)
 				) {
-					const body = branch(st.statement, new Map());
+					const body = branch(st.statement, empty());
 					out = ts.visitEachChild(st, (c) => (c === st.statement ? body : c), undefined);
+					mentioned(st, env);
 				} else if (ts.isTryStatement(st)) {
-					const tried = f.updateBlock(
-						st.tryBlock,
-						block(st.tryBlock.statements, without(env, assigned)),
-					);
+					const inside = copy(env);
+					for (const name of assigned) inside.scalars.delete(name);
+					const tried = f.updateBlock(st.tryBlock, block(st.tryBlock.statements, inside));
 					const caught = st.catchClause
 						? f.updateCatchClause(
 								st.catchClause,
 								st.catchClause.variableDeclaration,
 								f.updateBlock(
 									st.catchClause.block,
-									block(st.catchClause.block.statements, new Map()),
+									block(st.catchClause.block.statements, empty()),
 								),
 							)
 						: undefined;
 					const last = st.finallyBlock
-						? f.updateBlock(st.finallyBlock, block(st.finallyBlock.statements, new Map()))
+						? f.updateBlock(st.finallyBlock, block(st.finallyBlock.statements, empty()))
 						: undefined;
 					out = f.updateTryStatement(st, tried, caught, last);
+					mentioned(st, env);
 				} else {
-					out = substitute(st, without(env, assigned));
+					const reading = copy(env);
+					for (const name of assigned) reading.scalars.delete(name);
+					out = substitute(st, reading);
+					effect(st, out, env);
 				}
-				for (const name of assigned) env.delete(name);
-
+				for (const name of assigned) env.scalars.delete(name);
 				if (ts.isVariableStatement(out)) {
 					for (const d of out.declarationList.declarations) {
 						const lit = d.initializer ? literalOf(d.initializer) : undefined;
@@ -1367,7 +1602,7 @@ class Specialiser {
 							tracked(d.name.text) &&
 							!(out.declarationList.flags & ts.NodeFlags.Const)
 						) {
-							env.set(d.name.text, lit.value);
+							env.scalars.set(d.name.text, lit.value);
 						}
 					}
 				} else if (ts.isExpressionStatement(out)) {
@@ -1378,7 +1613,7 @@ class Specialiser {
 						ts.isIdentifier(e.left)
 					) {
 						const lit = literalOf(e.right);
-						if (lit && tracked(e.left.text)) env.set(e.left.text, lit.value);
+						if (lit && tracked(e.left.text)) env.scalars.set(e.left.text, lit.value);
 					}
 				}
 				return out;
@@ -1391,7 +1626,7 @@ class Specialiser {
 			root.typeParameters,
 			root.parameters,
 			root.type,
-			f.updateBlock(root.body, block(root.body.statements, new Map())),
+			f.updateBlock(root.body, block(root.body.statements, empty())),
 		);
 	}
 
@@ -1421,6 +1656,26 @@ class Specialiser {
 			if (ts.isPrefixUnaryExpression(n) && n.operator === ts.SyntaxKind.ExclamationToken) {
 				const operand = literalOf(n.operand);
 				if (operand) return done(expressionOf(!operand.value));
+			}
+			if (
+				this.input.evaluate &&
+				ts.isCallExpression(n) &&
+				n.arguments.length === 1 &&
+				ts.isPropertyAccessExpression(n.expression) &&
+				n.expression.name.text === 'test' &&
+				ts.isRegularExpressionLiteral(n.expression.expression)
+			) {
+				const subject = literalOf(n.arguments[0]);
+				if (subject && typeof subject.value === 'string') {
+					try {
+						const result = this.input.evaluate(
+							`${n.expression.expression.text}.test(${JSON.stringify(subject.value)})`,
+						);
+						if (typeof result === 'boolean') return done(expressionOf(result));
+					} catch {
+						return n;
+					}
+				}
 			}
 			if (ts.isConditionalExpression(n)) {
 				const condition = literalOf(n.condition);
@@ -1666,7 +1921,8 @@ class Specialiser {
 		for (let round = 0; round < 6; round++) {
 			const specialised = this.specialiseParameters();
 			const folded = this.foldPureCalls();
-			if (!specialised && !folded) break;
+			const inlined = this.inlineCalls();
+			if (!specialised && !folded && !inlined) break;
 		}
 		const reached = new Set<string>(['execute']);
 		for (let k = 0; k < this.output.length + 1; k++) {
@@ -1684,6 +1940,168 @@ class Specialiser {
 		for (let k = this.output.length - 1; k >= 0; k--) {
 			if (!reached.has(this.output[k].name)) this.output.splice(k, 1);
 		}
+	}
+
+	private inlineCount = 0;
+
+	private inlineCalls(): boolean {
+		const sites = new Map<string, number>();
+		for (const { node } of this.output) {
+			const walk = (n: ts.Node) => {
+				if (ts.isIdentifier(n) && this.units.has(n.text) && isValueUse(n)) {
+					const p = n.parent;
+					const called = ts.isCallExpression(p) && p.expression === n;
+					if (!ts.isFunctionDeclaration(p))
+						sites.set(n.text, (sites.get(n.text) ?? 0) + (called ? 1 : 2));
+				}
+				ts.forEachChild(n, walk);
+			};
+			walk(node);
+		}
+		const simple = (
+			callee: ts.FunctionDeclaration,
+			name: string,
+			callerBound: Map<string, number>,
+		): boolean => {
+			if (
+				callee.modifiers?.some((m) => m.kind === ts.SyntaxKind.AsyncKeyword) ||
+				callee.asteriskToken
+			)
+				return false;
+			if (!callee.parameters.every((p) => ts.isIdentifier(p.name) && !p.dotDotDotToken))
+				return false;
+			const bound = bindingsOf(callee);
+			let ok = true;
+			const walk = (n: ts.Node, inner: boolean) => {
+				if (ts.isReturnStatement(n) && !inner) ok = false;
+				if (n.kind === ts.SyntaxKind.ThisKeyword || ts.isAwaitExpression(n)) ok = false;
+				if (ts.isIdentifier(n) && isValueUse(n)) {
+					if (n.text === 'arguments' || n.text === name) ok = false;
+					if (!bound.has(n.text) && callerBound.has(n.text)) ok = false;
+				}
+				if (ok) ts.forEachChild(n, (c) => walk(c, inner || ts.isFunctionLike(c)));
+			};
+			if (callee.body) walk(callee.body, false);
+			return ok;
+		};
+		let changed = false;
+		for (const entry of this.output) {
+			for (let round = 0; round < 32; round++) {
+				const text = this.printer.printNode(ts.EmitHint.Unspecified, entry.node, entry.sf);
+				const sf = ts.createSourceFile(
+					'unit.js',
+					text,
+					ts.ScriptTarget.ES2022,
+					true,
+					ts.ScriptKind.JS,
+				);
+				const caller = sf.statements[0];
+				if (!caller || !ts.isFunctionDeclaration(caller)) break;
+				const callerBound = bindingsOf(caller);
+				let replacement: { pos: number; end: number; text: string } | undefined;
+				const find = (n: ts.Node) => {
+					if (replacement) return;
+					if (
+						ts.isExpressionStatement(n) &&
+						ts.isCallExpression(n.expression) &&
+						ts.isIdentifier(n.expression.expression)
+					) {
+						const name = n.expression.expression.text;
+						const unit = this.output.find((o) => o.name === name);
+						const callee = unit?.node;
+						const args = n.expression.arguments;
+						if (
+							unit &&
+							callee &&
+							ts.isFunctionDeclaration(callee) &&
+							callee.body &&
+							name !== entry.name &&
+							sites.get(name) === 1 &&
+							args.length <= callee.parameters.length &&
+							simple(callee, name, callerBound)
+						) {
+							const k = this.inlineCount++;
+							const print = (x: ts.Node) =>
+								this.printer.printNode(ts.EmitHint.Unspecified, x, unit.sf);
+							const written = new Set<string>();
+							const noteWrites = (x: ts.Node) => {
+								if (
+									ts.isBinaryExpression(x) &&
+									x.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+									x.operatorToken.kind <= ts.SyntaxKind.LastAssignment &&
+									ts.isIdentifier(x.left)
+								) {
+									written.add(x.left.text);
+								}
+								if (
+									(ts.isPrefixUnaryExpression(x) || ts.isPostfixUnaryExpression(x)) &&
+									ts.isIdentifier(x.operand)
+								)
+									written.add(x.operand.text);
+								ts.forEachChild(x, noteWrites);
+							};
+							noteWrites(callee.body);
+							const locals = bindingsOf(callee);
+							const fresh = (id: string) => `${id}_${k}`;
+							const rename = (x: ts.Node): ts.Node => {
+								if (ts.isShorthandPropertyAssignment(x) && locals.has(x.name.text)) {
+									return f.createPropertyAssignment(
+										x.name.text,
+										f.createIdentifier(fresh(x.name.text)),
+									);
+								}
+								if (ts.isIdentifier(x) && locals.has(x.text)) {
+									const parent = x.parent;
+									const declared =
+										parent &&
+										(ts.isVariableDeclaration(parent) ||
+											ts.isParameter(parent) ||
+											ts.isBindingElement(parent) ||
+											ts.isFunctionDeclaration(parent)) &&
+										parent.name === x;
+									if (declared || isValueUse(x)) return f.createIdentifier(fresh(x.text));
+								}
+								return ts.visitEachChild(x, rename, undefined);
+							};
+							const inner = callee.parameters.map((param, i) => {
+								const id = ts.isIdentifier(param.name)
+									? fresh(param.name.text)
+									: `__unused${k}_${i}`;
+								const given = args[i] ? args[i].getText(sf) : 'undefined';
+								const value = param.initializer
+									? `((v) => v === undefined ? ${print(ts.visitNode(param.initializer, rename))} : v)(${given})`
+									: given;
+								return `${written.has(ts.isIdentifier(param.name) ? param.name.text : '') ? 'let' : 'const'} ${id} = ${value};`;
+							});
+							const body = callee.body.statements.map((st) => print(ts.visitNode(st, rename)));
+							replacement = {
+								pos: n.getStart(sf),
+								end: n.getEnd(),
+								text: `{ ${inner.join(' ')}\n${body.join('\n')} }`,
+							};
+							return;
+						}
+					}
+					ts.forEachChild(n, find);
+				};
+				find(caller);
+				if (!replacement) break;
+				changed = true;
+				const next =
+					text.slice(0, replacement.pos) + replacement.text + text.slice(replacement.end);
+				const parsed = ts.createSourceFile(
+					'unit.js',
+					next,
+					ts.ScriptTarget.ES2022,
+					true,
+					ts.ScriptKind.JS,
+				);
+				const cur = this.fold({ node: parsed.statements[0], sf: parsed }, entry.name);
+				entry.node = cur.node;
+				entry.sf = cur.sf;
+			}
+		}
+		return changed;
 	}
 
 	private refold(entry: { name: string; node: ts.Node; sf: ts.SourceFile }, node: ts.Node) {
