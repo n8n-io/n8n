@@ -1,0 +1,18 @@
+packages/@n8n/code-task-contract/package.json
+  h_8fb27e0cdf6d1e 28-30,43-44
+packages/@n8n/code-task-contract/src/__tests__/parse.test.ts
+  h_8fb27e0cdf6d1e 1,65-72,78-80,82,88-90,92,98,100-102,114-116,118,179,181-183,196,198-200,245,247-249
+pnpm-lock.yaml
+  h_8fb27e0cdf6d1e 2388-2390
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "781a797998ba439fdff45420a7f278a16728455c",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
