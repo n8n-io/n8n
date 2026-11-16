@@ -45,6 +45,16 @@ describe('Data Transformation Functions', () => {
 
 				expect(hasField(proxy, ['test2'])).toBe(true);
 			});
+
+			test('should not treat Object.prototype names as fields', () => {
+				expect(evaluate('={{ ({}).hasField("toString") }}')).toBe(false);
+				expect(evaluate('={{ ({}).hasField("constructor") }}')).toBe(false);
+				expect(evaluate('={{ ({}).hasField("hasOwnProperty") }}')).toBe(false);
+			});
+
+			test('should return true for an own field named like a prototype property', () => {
+				expect(evaluate('={{ ({ toString: "custom" }).hasField("toString") }}')).toBe(true);
+			});
 		});
 
 		test('.removeField should work on an object', () => {

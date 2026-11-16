@@ -27,7 +27,7 @@ function values(value: object): unknown[] {
 
 function hasField(value: object, extraArgs: string[]): boolean {
 	const [name] = extraArgs;
-	return name in value;
+	return Object.hasOwn(value, name) || (name in value && !(name in Object.prototype));
 }
 
 function removeField(value: object, extraArgs: string[]): object {
