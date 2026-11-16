@@ -1,0 +1,83 @@
+{
+	"properties": {
+		"container": {},
+		"content": {
+			"items": {
+				"properties": {
+					"text": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"diagnostics": {},
+		"id": {
+			"type": "string"
+		},
+		"model": {
+			"type": "string"
+		},
+		"role": {
+			"type": "string"
+		},
+		"stop_details": {},
+		"stop_reason": {
+			"type": "string"
+		},
+		"stop_sequence": {},
+		"type": {
+			"type": "string"
+		},
+		"usage": {
+			"properties": {
+				"cache_creation": {
+					"properties": {
+						"ephemeral_1h_input_tokens": {
+							"type": "integer"
+						},
+						"ephemeral_5m_input_tokens": {
+							"type": "integer"
+						}
+					},
+					"type": "object"
+				},
+				"cache_creation_input_tokens": {
+					"type": "integer"
+				},
+				"cache_read_input_tokens": {
+					"type": "integer"
+				},
+				"inference_geo": {
+					"type": "string"
+				},
+				"input_tokens": {
+					"type": "integer"
+				},
+				"output_tokens": {
+					"type": "integer"
+				},
+				"output_tokens_details": {
+					"properties": {
+						"thinking_tokens": {
+							"type": "integer"
+						}
+					},
+					"type": "object"
+				},
+				"service_tier": {
+					"type": "string"
+				},
+				"speed": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

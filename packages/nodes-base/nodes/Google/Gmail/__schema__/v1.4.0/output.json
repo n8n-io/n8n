@@ -1,0 +1,54 @@
+{
+	"properties": {
+		"From": {
+			"type": "string"
+		},
+		"historyId": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"internalDate": {
+			"type": "string"
+		},
+		"labels": {
+			"items": {
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"name": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"payload": {
+			"properties": {
+				"mimeType": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"sizeEstimate": {
+			"type": "integer"
+		},
+		"snippet": {
+			"type": "string"
+		},
+		"Subject": {
+			"type": "string"
+		},
+		"threadId": {
+			"type": "string"
+		},
+		"To": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

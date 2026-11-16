@@ -1,0 +1,1512 @@
+{
+	"properties": {
+		"isDeleted": {
+			"type": "boolean"
+		},
+		"objectId": {
+			"type": "integer"
+		},
+		"objectType": {
+			"type": "string"
+		},
+		"portalId": {
+			"type": "integer"
+		},
+		"properties": {
+			"properties": {
+				"content": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"createdate": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_helpdesk_sort_timestamp": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_is_callback_request": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_is_closed": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_is_visible_in_help_desk": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_last_email_activity": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_last_message_from_visitor": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_lastmodifieddate": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_num_associated_companies": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_num_associated_conversations": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_num_times_contacted": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_object_id": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_object_source": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_object_source_id": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_object_source_label": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_pipeline": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_pipeline_stage": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_ticket_id": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_v2_date_entered_current_stage": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"hs_v2_time_in_current_stage": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"num_notes": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				},
+				"subject": {
+					"properties": {
+						"isEncrypted": {
+							"type": "boolean"
+						},
+						"maskedSubstrings": {},
+						"persistenceTimestamp": {},
+						"requestId": {
+							"type": "string"
+						},
+						"sensitivityLevel": {
+							"type": "string"
+						},
+						"source": {
+							"type": "string"
+						},
+						"sourceId": {
+							"type": "string"
+						},
+						"sourceUpstreamDeployable": {
+							"type": "string"
+						},
+						"timestamp": {
+							"type": "integer"
+						},
+						"updatedByUserId": {},
+						"value": {
+							"type": "string"
+						},
+						"versions": {
+							"items": {
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"requestId": {
+										"type": "string"
+									},
+									"source": {
+										"type": "string"
+									},
+									"sourceId": {
+										"type": "string"
+									},
+									"sourceUpstreamDeployable": {
+										"type": "string"
+									},
+									"sourceVid": {
+										"items": {},
+										"type": "array"
+									},
+									"timestamp": {
+										"type": "integer"
+									},
+									"value": {
+										"type": "string"
+									}
+								},
+								"type": "object"
+							},
+							"type": "array"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

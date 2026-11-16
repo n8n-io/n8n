@@ -1,0 +1,64 @@
+{
+	"properties": {
+		"info": {
+			"properties": {
+				"Author": {
+					"type": "string"
+				},
+				"CreationDate": {
+					"type": "string"
+				},
+				"Creator": {
+					"type": "string"
+				},
+				"EncryptFilterName": {
+					"type": "string"
+				},
+				"IsAcroFormPresent": {
+					"type": "boolean"
+				},
+				"IsCollectionPresent": {
+					"type": "boolean"
+				},
+				"IsLinearized": {
+					"type": "boolean"
+				},
+				"IsSignaturesPresent": {
+					"type": "boolean"
+				},
+				"IsXFAPresent": {
+					"type": "boolean"
+				},
+				"Language": {
+					"type": "string"
+				},
+				"ModDate": {
+					"type": "string"
+				},
+				"PDFFormatVersion": {
+					"type": "string"
+				},
+				"Producer": {
+					"type": "string"
+				},
+				"Title": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"numpages": {
+			"type": "integer"
+		},
+		"numrender": {
+			"type": "integer"
+		},
+		"text": {
+			"type": "string"
+		},
+		"version": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

@@ -1,0 +1,133 @@
+{
+	"properties": {
+		"channel": {
+			"type": "string"
+		},
+		"message": {
+			"properties": {
+				"app_id": {
+					"type": "string"
+				},
+				"blocks": {
+					"items": {
+						"properties": {
+							"block_id": {
+								"type": "string"
+							},
+							"elements": {
+								"items": {
+									"properties": {
+										"text": {
+											"type": ["object", "string"]
+										},
+										"type": {
+											"type": "string"
+										}
+									},
+									"type": "object"
+								},
+								"type": "array"
+							},
+							"text": {
+								"properties": {
+									"text": {
+										"type": "string"
+									},
+									"type": {
+										"type": "string"
+									},
+									"verbatim": {
+										"type": "boolean"
+									}
+								},
+								"type": "object"
+							},
+							"type": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					},
+					"type": "array"
+				},
+				"bot_id": {
+					"type": "string"
+				},
+				"bot_profile": {
+					"properties": {
+						"app_id": {
+							"type": "string"
+						},
+						"deleted": {
+							"type": "boolean"
+						},
+						"icons": {
+							"properties": {
+								"image_36": {
+									"type": "string"
+								},
+								"image_48": {
+									"type": "string"
+								},
+								"image_72": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"id": {
+							"type": "string"
+						},
+						"name": {
+							"type": "string"
+						},
+						"team_id": {
+							"type": "string"
+						},
+						"updated": {
+							"type": "integer"
+						},
+						"user_id": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"edited": {
+					"properties": {
+						"ts": {
+							"type": "string"
+						},
+						"user": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"team": {
+					"type": "string"
+				},
+				"text": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				},
+				"user": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"message_timestamp": {
+			"type": "string"
+		},
+		"ok": {
+			"type": "boolean"
+		},
+		"text": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

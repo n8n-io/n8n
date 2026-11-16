@@ -1,0 +1,80 @@
+{
+	"properties": {
+		"dimensionHeaders": {
+			"items": {
+				"properties": {
+					"name": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"kind": {
+			"type": "string"
+		},
+		"metadata": {
+			"properties": {
+				"currencyCode": {
+					"type": "string"
+				},
+				"schemaRestrictionResponse": {
+					"type": "object"
+				},
+				"timeZone": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"metricHeaders": {
+			"items": {
+				"properties": {
+					"name": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"rowCount": {
+			"type": "integer"
+		},
+		"rows": {
+			"items": {
+				"properties": {
+					"dimensionValues": {
+						"items": {
+							"properties": {
+								"value": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"metricValues": {
+						"items": {
+							"properties": {
+								"value": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		}
+	},
+	"type": "object"
+}

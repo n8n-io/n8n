@@ -1,0 +1,61 @@
+{
+	"properties": {
+		"binaryDataSizeBytes": {
+			"type": "integer"
+		},
+		"createdAt": {
+			"type": "string"
+		},
+		"deduplicationKey": {
+			"type": "string"
+		},
+		"deletedAt": {},
+		"finished": {
+			"type": "boolean"
+		},
+		"id": {
+			"type": "integer"
+		},
+		"jsonSizeBytes": {
+			"type": "integer"
+		},
+		"mode": {
+			"type": "string"
+		},
+		"retryOf": {},
+		"retrySuccessId": {},
+		"startedAt": {
+			"type": "string"
+		},
+		"status": {
+			"type": "string"
+		},
+		"stoppedAt": {
+			"type": "string"
+		},
+		"storedAt": {
+			"type": "string"
+		},
+		"tracingContext": {
+			"properties": {
+				"traceparent": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"usedPrivateCredentials": {
+			"type": "boolean"
+		},
+		"waitTill": {
+			"type": "string"
+		},
+		"workflowId": {
+			"type": "string"
+		},
+		"workflowVersionId": {
+			"type": "string"
+		}
+	},
+	"type": "object"
+}

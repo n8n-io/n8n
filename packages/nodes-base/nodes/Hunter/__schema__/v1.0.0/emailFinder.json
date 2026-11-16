@@ -1,0 +1,74 @@
+{
+	"properties": {
+		"accept_all": {
+			"type": "boolean"
+		},
+		"company": {
+			"type": "string"
+		},
+		"domain": {
+			"type": "string"
+		},
+		"email": {
+			"type": "string"
+		},
+		"first_name": {
+			"type": "string"
+		},
+		"last_name": {
+			"type": "string"
+		},
+		"linkedin_url": {
+			"type": "string"
+		},
+		"phone_number": {},
+		"position": {
+			"type": "string"
+		},
+		"provenance": {
+			"type": "string"
+		},
+		"score": {
+			"type": "integer"
+		},
+		"source_type": {
+			"type": "string"
+		},
+		"sources": {
+			"items": {
+				"properties": {
+					"domain": {
+						"type": "string"
+					},
+					"extracted_on": {
+						"type": "string"
+					},
+					"last_seen_on": {
+						"type": "string"
+					},
+					"still_on_page": {
+						"type": "boolean"
+					},
+					"uri": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"twitter": {},
+		"verification": {
+			"properties": {
+				"date": {
+					"type": "string"
+				},
+				"status": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

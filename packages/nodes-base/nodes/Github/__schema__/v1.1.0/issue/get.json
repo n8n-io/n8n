@@ -1,0 +1,556 @@
+{
+	"properties": {
+		"active_lock_reason": {},
+		"assignee": {
+			"properties": {
+				"avatar_url": {
+					"type": "string"
+				},
+				"events_url": {
+					"type": "string"
+				},
+				"followers_url": {
+					"type": "string"
+				},
+				"following_url": {
+					"type": "string"
+				},
+				"gists_url": {
+					"type": "string"
+				},
+				"gravatar_id": {
+					"type": "string"
+				},
+				"html_url": {
+					"type": "string"
+				},
+				"id": {
+					"type": "integer"
+				},
+				"login": {
+					"type": "string"
+				},
+				"node_id": {
+					"type": "string"
+				},
+				"organizations_url": {
+					"type": "string"
+				},
+				"received_events_url": {
+					"type": "string"
+				},
+				"repos_url": {
+					"type": "string"
+				},
+				"site_admin": {
+					"type": "boolean"
+				},
+				"starred_url": {
+					"type": "string"
+				},
+				"subscriptions_url": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string"
+				},
+				"user_view_type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"assignees": {
+			"items": {
+				"properties": {
+					"avatar_url": {
+						"type": "string"
+					},
+					"events_url": {
+						"type": "string"
+					},
+					"followers_url": {
+						"type": "string"
+					},
+					"following_url": {
+						"type": "string"
+					},
+					"gists_url": {
+						"type": "string"
+					},
+					"gravatar_id": {
+						"type": "string"
+					},
+					"html_url": {
+						"type": "string"
+					},
+					"id": {
+						"type": "integer"
+					},
+					"login": {
+						"type": "string"
+					},
+					"node_id": {
+						"type": "string"
+					},
+					"organizations_url": {
+						"type": "string"
+					},
+					"received_events_url": {
+						"type": "string"
+					},
+					"repos_url": {
+						"type": "string"
+					},
+					"site_admin": {
+						"type": "boolean"
+					},
+					"starred_url": {
+						"type": "string"
+					},
+					"subscriptions_url": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					},
+					"url": {
+						"type": "string"
+					},
+					"user_view_type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"author_association": {
+			"type": "string"
+		},
+		"body": {
+			"type": "string"
+		},
+		"closed_at": {
+			"type": "string"
+		},
+		"closed_by": {
+			"properties": {
+				"avatar_url": {
+					"type": "string"
+				},
+				"events_url": {
+					"type": "string"
+				},
+				"followers_url": {
+					"type": "string"
+				},
+				"following_url": {
+					"type": "string"
+				},
+				"gists_url": {
+					"type": "string"
+				},
+				"gravatar_id": {
+					"type": "string"
+				},
+				"html_url": {
+					"type": "string"
+				},
+				"id": {
+					"type": "integer"
+				},
+				"login": {
+					"type": "string"
+				},
+				"node_id": {
+					"type": "string"
+				},
+				"organizations_url": {
+					"type": "string"
+				},
+				"received_events_url": {
+					"type": "string"
+				},
+				"repos_url": {
+					"type": "string"
+				},
+				"site_admin": {
+					"type": "boolean"
+				},
+				"starred_url": {
+					"type": "string"
+				},
+				"subscriptions_url": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string"
+				},
+				"user_view_type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"comments": {
+			"type": "integer"
+		},
+		"comments_url": {
+			"type": "string"
+		},
+		"created_at": {
+			"type": "string"
+		},
+		"events_url": {
+			"type": "string"
+		},
+		"html_url": {
+			"type": "string"
+		},
+		"id": {
+			"type": "integer"
+		},
+		"issue_dependencies_summary": {
+			"properties": {
+				"blocked_by": {
+					"type": "integer"
+				},
+				"blocking": {
+					"type": "integer"
+				},
+				"total_blocked_by": {
+					"type": "integer"
+				},
+				"total_blocking": {
+					"type": "integer"
+				}
+			},
+			"type": "object"
+		},
+		"issue_field_values": {
+			"items": {},
+			"type": "array"
+		},
+		"labels": {
+			"items": {
+				"properties": {
+					"archived_at": {},
+					"archived_by": {},
+					"color": {
+						"type": "string"
+					},
+					"default": {
+						"type": "boolean"
+					},
+					"description": {
+						"type": "string"
+					},
+					"id": {
+						"type": "integer"
+					},
+					"name": {
+						"type": "string"
+					},
+					"node_id": {
+						"type": "string"
+					},
+					"url": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"labels_url": {
+			"type": "string"
+		},
+		"locked": {
+			"type": "boolean"
+		},
+		"milestone": {},
+		"node_id": {
+			"type": "string"
+		},
+		"number": {
+			"type": "integer"
+		},
+		"performed_via_github_app": {
+			"properties": {
+				"client_id": {
+					"type": "string"
+				},
+				"created_at": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"events": {
+					"items": {
+						"type": "string"
+					},
+					"type": "array"
+				},
+				"external_url": {
+					"type": "string"
+				},
+				"html_url": {
+					"type": "string"
+				},
+				"id": {
+					"type": "integer"
+				},
+				"name": {
+					"type": "string"
+				},
+				"node_id": {
+					"type": "string"
+				},
+				"owner": {
+					"properties": {
+						"avatar_url": {
+							"type": "string"
+						},
+						"events_url": {
+							"type": "string"
+						},
+						"followers_url": {
+							"type": "string"
+						},
+						"following_url": {
+							"type": "string"
+						},
+						"gists_url": {
+							"type": "string"
+						},
+						"gravatar_id": {
+							"type": "string"
+						},
+						"html_url": {
+							"type": "string"
+						},
+						"id": {
+							"type": "integer"
+						},
+						"login": {
+							"type": "string"
+						},
+						"node_id": {
+							"type": "string"
+						},
+						"organizations_url": {
+							"type": "string"
+						},
+						"received_events_url": {
+							"type": "string"
+						},
+						"repos_url": {
+							"type": "string"
+						},
+						"site_admin": {
+							"type": "boolean"
+						},
+						"starred_url": {
+							"type": "string"
+						},
+						"subscriptions_url": {
+							"type": "string"
+						},
+						"type": {
+							"type": "string"
+						},
+						"url": {
+							"type": "string"
+						},
+						"user_view_type": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"permissions": {
+					"properties": {
+						"actions": {
+							"type": "string"
+						},
+						"checks": {
+							"type": "string"
+						},
+						"contents": {
+							"type": "string"
+						},
+						"emails": {
+							"type": "string"
+						},
+						"issues": {
+							"type": "string"
+						},
+						"metadata": {
+							"type": "string"
+						},
+						"pull_requests": {
+							"type": "string"
+						},
+						"statuses": {
+							"type": "string"
+						},
+						"workflows": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				},
+				"slug": {
+					"type": "string"
+				},
+				"updated_at": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"pinned_comment": {},
+		"reactions": {
+			"properties": {
+				"-1": {
+					"type": "integer"
+				},
+				"+1": {
+					"type": "integer"
+				},
+				"confused": {
+					"type": "integer"
+				},
+				"eyes": {
+					"type": "integer"
+				},
+				"heart": {
+					"type": "integer"
+				},
+				"hooray": {
+					"type": "integer"
+				},
+				"laugh": {
+					"type": "integer"
+				},
+				"rocket": {
+					"type": "integer"
+				},
+				"total_count": {
+					"type": "integer"
+				},
+				"url": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"repository_url": {
+			"type": "string"
+		},
+		"state": {
+			"type": "string"
+		},
+		"state_reason": {
+			"type": "string"
+		},
+		"sub_issues_summary": {
+			"properties": {
+				"completed": {
+					"type": "integer"
+				},
+				"percent_completed": {
+					"type": "integer"
+				},
+				"total": {
+					"type": "integer"
+				}
+			},
+			"type": "object"
+		},
+		"timeline_url": {
+			"type": "string"
+		},
+		"title": {
+			"type": "string"
+		},
+		"type": {},
+		"updated_at": {
+			"type": "string"
+		},
+		"url": {
+			"type": "string"
+		},
+		"user": {
+			"properties": {
+				"avatar_url": {
+					"type": "string"
+				},
+				"events_url": {
+					"type": "string"
+				},
+				"followers_url": {
+					"type": "string"
+				},
+				"following_url": {
+					"type": "string"
+				},
+				"gists_url": {
+					"type": "string"
+				},
+				"gravatar_id": {
+					"type": "string"
+				},
+				"html_url": {
+					"type": "string"
+				},
+				"id": {
+					"type": "integer"
+				},
+				"login": {
+					"type": "string"
+				},
+				"node_id": {
+					"type": "string"
+				},
+				"organizations_url": {
+					"type": "string"
+				},
+				"received_events_url": {
+					"type": "string"
+				},
+				"repos_url": {
+					"type": "string"
+				},
+				"site_admin": {
+					"type": "boolean"
+				},
+				"starred_url": {
+					"type": "string"
+				},
+				"subscriptions_url": {
+					"type": "string"
+				},
+				"type": {
+					"type": "string"
+				},
+				"url": {
+					"type": "string"
+				},
+				"user_view_type": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}

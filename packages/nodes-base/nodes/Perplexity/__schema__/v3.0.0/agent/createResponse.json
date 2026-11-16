@@ -1,0 +1,206 @@
+{
+	"properties": {
+		"background": {
+			"type": "boolean"
+		},
+		"completed_at": {
+			"type": "integer"
+		},
+		"created_at": {
+			"type": "integer"
+		},
+		"error": {},
+		"frequency_penalty": {
+			"type": "integer"
+		},
+		"id": {
+			"type": "string"
+		},
+		"incomplete_details": {
+			"properties": {
+				"reason": {
+					"type": "string"
+				}
+			},
+			"type": "object"
+		},
+		"instructions": {
+			"type": "string"
+		},
+		"max_output_tokens": {
+			"type": "integer"
+		},
+		"max_tool_calls": {},
+		"metadata": {
+			"type": "object"
+		},
+		"model": {
+			"type": "string"
+		},
+		"object": {
+			"type": "string"
+		},
+		"output": {
+			"items": {
+				"properties": {
+					"content": {
+						"items": {
+							"properties": {
+								"annotations": {
+									"items": {},
+									"type": "array"
+								},
+								"text": {
+									"type": "string"
+								},
+								"type": {
+									"type": "string"
+								}
+							},
+							"type": "object"
+						},
+						"type": "array"
+					},
+					"id": {
+						"type": "string"
+					},
+					"role": {
+						"type": "string"
+					},
+					"status": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"parallel_tool_calls": {
+			"type": "boolean"
+		},
+		"presence_penalty": {
+			"type": "integer"
+		},
+		"previous_response_id": {},
+		"prompt_cache_key": {},
+		"reasoning": {
+			"properties": {
+				"effort": {
+					"type": "string"
+				},
+				"summary": {}
+			},
+			"type": "object"
+		},
+		"safety_identifier": {},
+		"service_tier": {
+			"type": "string"
+		},
+		"status": {
+			"type": "string"
+		},
+		"store": {
+			"type": "boolean"
+		},
+		"temperature": {
+			"type": "integer"
+		},
+		"text": {
+			"properties": {
+				"format": {
+					"properties": {
+						"type": {
+							"type": "string"
+						}
+					},
+					"type": "object"
+				}
+			},
+			"type": "object"
+		},
+		"tool_choice": {
+			"type": "string"
+		},
+		"tools": {
+			"items": {
+				"properties": {
+					"type": {
+						"type": "string"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"top_logprobs": {
+			"type": "integer"
+		},
+		"top_p": {
+			"type": "integer"
+		},
+		"truncation": {
+			"type": "string"
+		},
+		"usage": {
+			"properties": {
+				"cost": {
+					"properties": {
+						"cache_creation_cost": {
+							"type": "number"
+						},
+						"currency": {
+							"type": "string"
+						},
+						"input_cost": {
+							"type": ["integer", "number"]
+						},
+						"output_cost": {
+							"type": "number"
+						},
+						"total_cost": {
+							"type": "number"
+						}
+					},
+					"type": "object"
+				},
+				"input_tokens": {
+					"type": "integer"
+				},
+				"input_tokens_details": {
+					"properties": {
+						"cache_creation_input_tokens": {
+							"type": "integer"
+						},
+						"cache_read_input_tokens": {
+							"type": "integer"
+						},
+						"cached_tokens": {
+							"type": "integer"
+						}
+					},
+					"type": "object"
+				},
+				"output_tokens": {
+					"type": "integer"
+				},
+				"output_tokens_details": {
+					"properties": {
+						"reasoning_tokens": {
+							"type": "integer"
+						}
+					},
+					"type": "object"
+				},
+				"total_tokens": {
+					"type": "integer"
+				}
+			},
+			"type": "object"
+		},
+		"user": {}
+	},
+	"type": "object"
+}

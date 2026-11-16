@@ -1,0 +1,96 @@
+{
+	"properties": {
+		"choices": {
+			"items": {
+				"properties": {
+					"finish_reason": {
+						"type": "string"
+					},
+					"index": {
+						"type": "integer"
+					},
+					"logprobs": {},
+					"message": {
+						"properties": {
+							"annotations": {
+								"items": {},
+								"type": "array"
+							},
+							"content": {
+								"type": ["object", "string"]
+							},
+							"refusal": {},
+							"role": {
+								"type": "string"
+							}
+						},
+						"type": "object"
+					}
+				},
+				"type": "object"
+			},
+			"type": "array"
+		},
+		"created": {
+			"type": "integer"
+		},
+		"id": {
+			"type": "string"
+		},
+		"model": {
+			"type": "string"
+		},
+		"object": {
+			"type": "string"
+		},
+		"service_tier": {
+			"type": "string"
+		},
+		"system_fingerprint": {
+			"type": "string"
+		},
+		"usage": {
+			"properties": {
+				"completion_tokens": {
+					"type": "integer"
+				},
+				"completion_tokens_details": {
+					"properties": {
+						"accepted_prediction_tokens": {
+							"type": "integer"
+						},
+						"audio_tokens": {
+							"type": "integer"
+						},
+						"reasoning_tokens": {
+							"type": "integer"
+						},
+						"rejected_prediction_tokens": {
+							"type": "integer"
+						}
+					},
+					"type": "object"
+				},
+				"prompt_tokens": {
+					"type": "integer"
+				},
+				"prompt_tokens_details": {
+					"properties": {
+						"audio_tokens": {
+							"type": "integer"
+						},
+						"cached_tokens": {
+							"type": "integer"
+						}
+					},
+					"type": "object"
+				},
+				"total_tokens": {
+					"type": "integer"
+				}
+			},
+			"type": "object"
+		}
+	},
+	"type": "object"
+}
