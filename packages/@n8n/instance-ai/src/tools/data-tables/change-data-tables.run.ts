@@ -7,7 +7,7 @@ import { buildOwnedDataTableGrantKey } from '@n8n/api-types';
 import { UnexpectedError } from '@n8n/errors';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 
-import type { DataTableColumnInfo, DataTableSummary, InstanceAiContext } from '../../types';
+import type { InstanceAiContext } from '../../types';
 import type { DataTableChange } from './change-data-tables.schema';
 import type {
 	ChangePlan,
@@ -23,9 +23,9 @@ type TableChange = Exclude<DataTableChange, { action: 'create' }>;
 
 /** What each action returns to the model. Kept small on purpose. */
 interface ChangeSummaries {
-	create: { table: DataTableSummary };
+	create: { columns: Array<{ name: string; type: string }> };
 	delete: Record<string, never>;
-	'add-column': { column: DataTableColumnInfo };
+	'add-column': { column: string };
 	'delete-column': { column: string };
 	'rename-column': { column: string; newName: string };
 	'insert-rows': { insertedCount: number };
@@ -39,12 +39,15 @@ export interface RunTable {
 	projectId?: string;
 }
 
-export interface AppliedChange {
+type AppliedChangeOf<A extends Action> = {
 	index: number;
-	action: Action;
+	action: A;
 	table: RunTable;
-	result: ChangeSummaries[Action];
-}
+	result: ChangeSummaries[A];
+};
+
+/** Tied to `action`, so a reader of the result knows its shape. */
+export type AppliedChange = { [A in Action]: AppliedChangeOf<A> }[Action];
 
 export interface FailedChange {
 	index: number;
@@ -86,6 +89,7 @@ export async function runChanges(
 		try {
 			applied.push(await runChange(run, planned));
 		} catch (error) {
+			logIfBug(context, planned, error);
 			failed = toFailure(planned, error);
 			break;
 		}
@@ -104,6 +108,12 @@ function toResult(
 	return { success: false, applied, failed, skipped };
 }
 
+/** A service refusal is for the model. A bug is also for the logs. */
+function logIfBug(context: InstanceAiContext, { index, change }: PlannedChange, error: unknown) {
+	if (!(error instanceof UnexpectedError)) return;
+	context.logger.error('Data table change failed', { index, action: change.action, error });
+}
+
 function toFailure({ index, change }: PlannedChange, error: unknown): FailedChange {
 	const message =
 		change.action === 'create' && isNameConflictError(error)
@@ -114,17 +124,20 @@ function toFailure({ index, change }: PlannedChange, error: unknown): FailedChan
 
 async function runChange(run: Run, planned: PlannedChange): Promise<AppliedChange> {
 	const { index, change } = planned;
-	const { table, result } =
-		change.action === 'create'
-			? await createTable(run, index, change)
-			: await changeTable(run, planned, change);
+	if (change.action === 'create') return await createTable(run, index, change);
+	const table = tableOf(run, planned.table);
+	const applied = await runTableChange(run, table, planned, change);
 	run.changed.set(table.id, table);
-	return { index, action: change.action, table: toRunTable(table), result };
+	return applied;
 }
 
-async function changeTable(run: Run, planned: PlannedChange, change: TableChange) {
-	const table = tableOf(run, planned.table);
-	return { table, result: await runTableChange(run, table, change, planned.column) };
+function appliedChange<A extends Action>(
+	index: number,
+	action: A,
+	table: TableState,
+	result: ChangeSummaries[A],
+): AppliedChangeOf<A> {
+	return { index, action, table: toRunTable(table), result };
 }
 
 function toRunTable({ id, name, projectId }: TableState): RunTable {
@@ -149,8 +162,10 @@ async function createTable(run: Run, index: number, change: ChangeOf<'create'>) 
 		columns: new Map(summary.columns.map(({ name, id }) => [name, id])),
 	};
 	run.created.set(index, table);
+	run.changed.set(table.id, table);
 	await grantOwnership(context, table.id);
-	return { table, result: { table: summary } };
+	const columns = summary.columns.map(({ name, type }) => ({ name, type }));
+	return appliedChange(index, change.action, table, { columns });
 }
 
 /**
@@ -196,24 +211,26 @@ async function reportChangedTables({ context, changed }: Run) {
 async function runTableChange(
 	run: Run,
 	table: TableState,
+	{ index, column }: PlannedChange,
 	change: TableChange,
-	column: PlannedColumn | undefined,
-): Promise<ChangeSummaries[TableChange['action']]> {
+): Promise<AppliedChange> {
 	switch (change.action) {
 		case 'delete':
-			return await deleteTable(run, table);
+			return appliedChange(index, change.action, table, await deleteTable(run, table));
 		case 'add-column':
-			return await addColumn(run, table, change);
+			return appliedChange(index, change.action, table, await addColumn(run, table, change));
 		case 'delete-column':
-			return await deleteColumn(run, table, column);
-		case 'rename-column':
-			return await renameColumn(run, table, change, column);
+			return appliedChange(index, change.action, table, await deleteColumn(run, table, column));
+		case 'rename-column': {
+			const result = await renameColumn(run, table, change, column);
+			return appliedChange(index, change.action, table, result);
+		}
 		case 'insert-rows':
-			return await insertRows(run, table, change);
+			return appliedChange(index, change.action, table, await insertRows(run, table, change));
 		case 'update-rows':
-			return await updateRows(run, table, change);
+			return appliedChange(index, change.action, table, await updateRows(run, table, change));
 		case 'delete-rows':
-			return await deleteRows(run, table, change);
+			return appliedChange(index, change.action, table, await deleteRows(run, table, change));
 		default: {
 			const unhandled: never = change;
 			throw new UnexpectedError(`Unknown data table change: ${JSON.stringify(unhandled)}`);
@@ -235,7 +252,7 @@ async function addColumn(run: Run, table: TableState, change: ChangeOf<'add-colu
 	);
 	// Key by the requested name, because later changes in the batch use that name.
 	(table.columns ??= new Map()).set(change.column, column.id);
-	return { column };
+	return { column: change.column };
 }
 
 async function deleteColumn(run: Run, table: TableState, column: PlannedColumn | undefined) {
@@ -257,6 +274,7 @@ async function renameColumn(
 	const { newName } = change;
 	await run.context.dataTableService.renameColumn(table.id, columnId, newName, optionsFor(table));
 	table.columns?.delete(target.name);
+	// A new map holds only this column. A later miss on another column reads the schema.
 	(table.columns ??= new Map()).set(newName, columnId);
 	return { column: target.name, newName };
 }

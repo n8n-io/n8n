@@ -3,7 +3,7 @@ import {
 	buildDataTablesSessionGrantKey,
 	buildOwnedDataTableGrantKey,
 } from '@n8n/api-types';
-import { UserError } from '@n8n/errors';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { zodSchema } from 'ai';
 import { z } from 'zod';
 
@@ -841,7 +841,7 @@ describe('change_data_tables tool', () => {
 				success: true,
 				applied: [
 					{ index: 0, action: 'create' },
-					{ index: 1, action: 'add-column' },
+					{ index: 1, action: 'add-column', result: { column: 'x' } },
 					{ index: 2, action: 'insert-rows' },
 					{ index: 3, action: 'delete-rows' },
 				],
@@ -864,7 +864,11 @@ describe('change_data_tables tool', () => {
 			});
 			expect(result).toMatchObject({
 				applied: [
-					{ index: 0, table: { id: 'dt-new', name: 'A' }, result: { table: { id: 'dt-new' } } },
+					{
+						index: 0,
+						table: { id: 'dt-new', name: 'A', projectId: 'proj-1' },
+						result: { columns: [{ name: 'email', type: 'string' }] },
+					},
 					{ index: 1, table: { id: 'dt-new', name: 'A' } },
 				],
 			});
@@ -1028,14 +1032,51 @@ describe('change_data_tables tool', () => {
 
 		it('runs the batch on an approved resume without a second card', async () => {
 			const context = contextWithTables();
-			const result = await resumeBatch(context, { changes: [createA, insertIntoA] }, true);
+			const suspend = vi.fn();
+			const ctx = { resumeData: { approved: true }, suspend };
+			const tool = createChangeDataTablesTool(context);
+			const result = await executeTool(tool, { changes: [createA, insertIntoA] }, ctx);
 
+			expect(suspend).not.toHaveBeenCalled();
 			expect(result).toMatchObject({ success: true, applied: [{ index: 0 }, { index: 1 }] });
 			expect(context.dataTableService.insertRows).toHaveBeenCalledWith(
 				'dt-new',
 				insertIntoA.rows,
 				expect.anything(),
 			);
+		});
+
+		it('keeps a create applied when recording it as owned fails', async () => {
+			const grantSessionToolApproval = vi.fn().mockRejectedValue(new Error('grant failed'));
+			const context = allowAll({}, { grantSessionToolApproval });
+			const { result } = await runBatch(context, { changes: [createA, insertIntoA] });
+
+			expect(result).toMatchObject({ success: true, applied: [{ index: 0 }, { index: 1 }] });
+		});
+
+		it('does not report an existing table that the batch deletes', async () => {
+			const onArtifactChanged = vi.fn();
+			const context = allowAll({}, { onArtifactChanged });
+			const { result } = await runBatch(context, { changes: [{ action: 'delete', table: 'T' }] });
+
+			expect(result).toMatchObject({
+				success: true,
+				applied: [{ index: 0, action: 'delete', table: { id: 'dt-T' }, result: {} }],
+			});
+			expect(context.dataTableService.delete).toHaveBeenCalledWith('dt-T', {
+				projectId: 'proj-1',
+			});
+			expect(onArtifactChanged).not.toHaveBeenCalled();
+		});
+
+		it('logs a failure that is a bug, not a service refusal', async () => {
+			const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+			const context = allowAll({}, { logger });
+			vi.mocked(context.dataTableService.insertRows).mockRejectedValue(new UnexpectedError('bug'));
+			const { result } = await runBatch(context, { changes: [createA, insertIntoA] });
+
+			expect(result).toMatchObject({ success: false, failed: { index: 1 } });
+			expect(logger.error).toHaveBeenCalledTimes(1);
 		});
 	});
 });
