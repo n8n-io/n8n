@@ -338,12 +338,17 @@ export class WorkflowsPublicController {
 
 		await this.redactionEnforcementService.assertNewPolicyAllowed(body.settings.redactionPolicy);
 
-		const createdWorkflow = await this.workflowCreationService.createWorkflow(req.user, workflow, {
-			projectId,
-			parentFolderId: parentFolderId ?? undefined,
-			publicApi: req.publicApiClient,
-			source: 'api',
-		});
+		const createdWorkflow = await this.workflowCreationService.createWorkflow(
+			req.user,
+			workflow,
+			{
+				projectId,
+				parentFolderId: parentFolderId ?? undefined,
+				publicApi: req.publicApiClient,
+				source: 'api',
+			},
+			req.ctx,
+		);
 
 		return {
 			...this.toWorkflowPublicDto(createdWorkflow),
@@ -452,6 +457,7 @@ export class WorkflowsPublicController {
 					apiKeyScopes: req.tokenGrant?.apiKeyScopes ?? [],
 					source: 'api',
 				},
+				req.ctx,
 			);
 		} catch (error) {
 			if (error instanceof FolderNotFoundError) throw new NotFoundError(error.message);
@@ -482,6 +488,7 @@ export class WorkflowsPublicController {
 			req.user,
 			workflowId,
 			req.publicApiClient,
+			req.ctx,
 		);
 
 		if (!workflow) {
@@ -512,6 +519,7 @@ export class WorkflowsPublicController {
 			req.user,
 			workflowId,
 			req.publicApiClient,
+			req.ctx,
 		);
 
 		if (!workflow) {
@@ -539,6 +547,7 @@ export class WorkflowsPublicController {
 			req.user,
 			workflowId,
 			req.publicApiClient,
+			req.ctx,
 		);
 
 		if (!workflow) {
@@ -657,13 +666,18 @@ export class WorkflowsPublicController {
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Body body: PublishWorkflowPublicDto,
 	): Promise<WorkflowPublishPublicDto> {
-		const workflow = await this.workflowService.activateWorkflow(req.user, workflowId, {
-			versionId: body.versionId,
-			name: body.name,
-			description: body.description,
-			source: 'api',
-			publicApi: req.publicApiClient,
-		});
+		const workflow = await this.workflowService.activateWorkflow(
+			req.user,
+			workflowId,
+			{
+				versionId: body.versionId,
+				name: body.name,
+				description: body.description,
+				source: 'api',
+				publicApi: req.publicApiClient,
+			},
+			req.ctx,
+		);
 
 		return this.toWorkflowPublishPublicDto(workflow);
 	}
@@ -683,10 +697,12 @@ export class WorkflowsPublicController {
 		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 	): Promise<WorkflowPublicDto> {
-		const workflow = await this.workflowService.deactivateWorkflow(req.user, workflowId, {
-			source: 'api',
-			publicApi: req.publicApiClient,
-		});
+		const workflow = await this.workflowService.deactivateWorkflow(
+			req.user,
+			workflowId,
+			{ source: 'api', publicApi: req.publicApiClient },
+			req.ctx,
+		);
 
 		return this.toWorkflowPublicDto(workflow);
 	}

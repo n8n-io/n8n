@@ -124,8 +124,8 @@ export type ListAgentsSortBy =
 	| 'updatedAt:desc';
 
 export type ListAgentsOptions = {
-	skip?: number;
-	take?: number;
+	offset?: number;
+	limit?: number;
 	sortBy?: ListAgentsSortBy;
 	filter?: {
 		query?: string;
@@ -174,8 +174,8 @@ export type N8nChatAgentsSortBy = 'usage:desc';
 
 export type ListN8nChatAgentsOptions = {
 	query?: string;
-	skip?: number;
-	take?: number;
+	offset?: number;
+	limit?: number;
 	sortBy?: N8nChatAgentsSortBy;
 };
 
@@ -188,12 +188,12 @@ export const listN8nChatAgents = async (
 	context: IRestApiContext,
 	options: ListN8nChatAgentsOptions,
 ): Promise<AgentChatListResponse> => {
-	const { query, skip, take, sortBy } = options;
+	const { query, offset, limit, sortBy } = options;
 	const trimmedQuery = query?.trim();
 	return await getFullApiResponse<AgentChatListItem[]>(context, 'GET', '/agents/v2', {
 		filter: { availableInChat: true, ...(trimmedQuery ? { query: trimmedQuery } : {}) },
-		skip,
-		take,
+		offset,
+		limit,
 		sortBy,
 	});
 };
@@ -280,8 +280,8 @@ export const listAgents = async (
 
 	do {
 		const { count, data } = await listAgentsPage(context, projectId, {
-			skip: agents.length,
-			take: AGENTS_LIST_PAGE_SIZE,
+			offset: agents.length,
+			limit: AGENTS_LIST_PAGE_SIZE,
 		});
 		agents.push(...data);
 		total = count;

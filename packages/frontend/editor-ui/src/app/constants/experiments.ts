@@ -4,7 +4,6 @@ import {
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
 	INSTANCE_AI_SETUP_PANEL_FLAG,
 } from '@n8n/api-types';
 
@@ -132,20 +131,15 @@ export const OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT = createExperiment(
 	'108_open_workflow_in_assistant',
 );
 
-// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 export const INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT = createExperiment(
-	'129_aia_inspiration_from_taxonomy_v2',
+	'142_aia_inspiration_from_taxonomy_v3',
 	{
 		control: 'control',
 		variant: 'variant',
-		variantBis: 'variant-bis',
 	},
 );
 // EOF Experiment cleanup
-
-export const INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT = createExperiment(
-	INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG,
-);
 
 export const INSTANCE_AI_CONCISE_STYLE_EXPERIMENT = createExperiment(
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
@@ -232,7 +226,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	// EOF Experiment cleanup
 	INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name,
 	AI_ASSISTANT_AT_MENTIONS_EXPERIMENT.name,
-	INSTANCE_AI_PROGRESSIVE_BUILDING_EXPERIMENT.name,
 	INSTANCE_AI_CONCISE_STYLE_EXPERIMENT.name,
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -266,7 +259,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	INLINE_AGENTS_EXPERIMENT.name,
 	INSTANCE_AI_FREE_NUDGE_EXPERIMENT.name,
 	OPEN_WORKFLOW_IN_ASSISTANT_EXPERIMENT.name,
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name,
 	// EOF Experiment cleanup
 	CREDENTIAL_DESCRIPTIONS_EXPERIMENT.name,
