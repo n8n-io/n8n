@@ -900,13 +900,16 @@ describe('SettingsSkillsView', () => {
 			expect(createMenuLabels()).toEqual(['Upload folder', 'Upload SKILL.md', 'Create manually']);
 		});
 
-		it('shows the recommended skills in the empty state of the treatment', async () => {
+		it('shows the recommended skills instead of the table in the empty state of the treatment', async () => {
 			assignVariant('variant');
 			const view = renderView();
 
-			const emptyState = await view.findByTestId('skills-empty-state');
+			const emptyState = await view.findByTestId('skills-recommended-empty-state');
 			expect(within(emptyState).getByText('Start with a recommended skill')).toBeVisible();
 			expect(within(emptyState).getByTestId('recommended-skill-cards')).toBeVisible();
+			expect(view.queryByTestId('skills-search')).not.toBeInTheDocument();
+			expect(view.queryByTestId('skills-empty-state')).not.toBeInTheDocument();
+			expect(view.queryByRole('table')).not.toBeInTheDocument();
 			expect(mockedStore(usePostHog).trackExposure).toHaveBeenCalledWith(
 				RECOMMENDED_SKILLS_EXPERIMENT.name,
 			);
@@ -944,7 +947,7 @@ describe('SettingsSkillsView', () => {
 			skillsStore.createSkill.mockResolvedValue(detail({ id: 's-new' }));
 			const view = renderView();
 
-			await pickCard(await view.findByTestId('skills-empty-state'), 'cold-email');
+			await pickCard(await view.findByTestId('skills-recommended-empty-state'), 'cold-email');
 
 			const data = lastModalData();
 			expect(data.skill?.name).toBe('cold-email');
@@ -984,7 +987,7 @@ describe('SettingsSkillsView', () => {
 			skillsStore.createSkill.mockRejectedValue(new Error('Server down'));
 			const view = renderView();
 
-			await pickCard(await view.findByTestId('skills-empty-state'), 'humanizer');
+			await pickCard(await view.findByTestId('skills-recommended-empty-state'), 'humanizer');
 			const data = lastModalData();
 			const result = await data.onConfirm({ skill: data.skill!, scope: 'project:personal-1' });
 
