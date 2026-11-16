@@ -335,30 +335,33 @@ provideArtifactAgentTargets(agentTargets.agentTargets);
 // Set from the preview tabs below, which need the thread first.
 const activeArtifactId = ref<string>();
 
-// The saved agent of a new thread, from its subject. The server has the bindings only after the
-// first message. A pending agent shows after it: saving it from the preview needs the thread.
-const launchAgentTargets = ((): AssistantAgentTargetsState | null => {
-	const subject = launch?.subject;
-	if (subject?.type !== 'agent' || subject.pending) return null;
-	const { id: agentId, projectId, name } = subject;
-	return {
-		bound: { agentId, projectId, ...(name ? { name } : {}) },
-		pending: null,
-		targets: [],
-		previewSession: null,
-	};
-})();
+// The preview shows the subject of a new thread until the server has its bindings, which the
+// first message writes. Only a saved resource: a pending one needs a thread that the server knows.
+const launchSubject = launch?.subject?.pending ? undefined : launch?.subject;
+const projectAndName = ({ projectId, name }: { projectId: string; name?: string }) => ({
+	projectId,
+	...(name ? { name } : {}),
+});
 
-// The apps of the thread metadata, and the saved app of a new thread before the server has it.
+// The agent of the launch subject. The server state replaces it once it loads.
+const launchAgentTargets: AssistantAgentTargetsState | null =
+	launchSubject?.type === 'agent'
+		? {
+				bound: { agentId: launchSubject.id, ...projectAndName(launchSubject) },
+				pending: null,
+				targets: [],
+				previewSession: null,
+			}
+		: null;
+
+// The apps of the thread metadata, and the app of the launch subject.
 const appTargets = computed(() => {
 	const targets = getAppTargetsFromThreadMetadata(
 		threadsStore.threadsById.get(props.threadId)?.metadata,
 	);
-	const subject = launch?.subject;
-	if (subject?.type !== 'app' || subject.pending) return targets;
-	if (targets.some(({ appId }) => appId === subject.id)) return targets;
-	const { id: appId, projectId, name } = subject;
-	return [...targets, { appId, projectId, ...(name ? { name } : {}) }];
+	if (launchSubject?.type !== 'app') return targets;
+	if (targets.some(({ appId }) => appId === launchSubject.id)) return targets;
+	return [...targets, { appId: launchSubject.id, ...projectAndName(launchSubject) }];
 });
 // An app page opens its chat with `?appId=`. Only an app of this thread opens.
 const requestedAppId = computed(() => {

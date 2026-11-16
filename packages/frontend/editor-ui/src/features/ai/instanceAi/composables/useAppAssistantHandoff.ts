@@ -27,8 +27,28 @@ import { threadTargetsSubject, type InstanceAiEmbedSubject } from '../embed/inst
 
 const THREAD_PAGE_SIZE = 100;
 
-/** The navigation left the page that asked for the chat, so the result no longer matters. */
+/**
+ * The navigation left the page that asked for the chat, so the result no longer
+ * matters. It stops a lookup from inside its paging.
+ */
 class OriginRouteLeftError extends Error {}
+
+/** The first item that matches, from pages that the server returns newest first. */
+async function findInPages<T>(
+	fetchPage: (cursor: string | undefined) => Promise<{ items: T[]; nextCursor: string | null }>,
+	matches: (item: T) => boolean,
+	assertOriginRouteActive: () => void,
+): Promise<T | undefined> {
+	let cursor: string | undefined;
+	do {
+		const page = await fetchPage(cursor);
+		assertOriginRouteActive();
+		const match = page.items.find(matches);
+		if (match) return match;
+		cursor = page.nextCursor ?? undefined;
+	} while (cursor);
+	return undefined;
+}
 
 export function useAppAssistantHandoff(): AppAssistantHandoff {
 	const router = useRouter();
@@ -48,21 +68,19 @@ export function useAppAssistantHandoff(): AppAssistantHandoff {
 		subject: InstanceAiEmbedSubject,
 		assertOriginRouteActive: () => void,
 	): Promise<string | undefined> {
-		let cursor: string | undefined;
-		while (true) {
-			const page = await listSystemAgentThreads(rootStore.restApiContext, ASSISTANT_AGENT_ID, {
-				limit: THREAD_PAGE_SIZE,
-				cursor,
-			});
-			assertOriginRouteActive();
-			const match = page.data.find((thread) => threadTargetsSubject(thread.metadata, subject));
-			if (match) {
-				assistantAgentThreadsStore.addOpenedThread(match);
-				return match.id;
-			}
-			if (!page.nextCursor) return undefined;
-			cursor = page.nextCursor;
-		}
+		const match = await findInPages(
+			async (cursor) => {
+				const page = await listSystemAgentThreads(rootStore.restApiContext, ASSISTANT_AGENT_ID, {
+					limit: THREAD_PAGE_SIZE,
+					cursor,
+				});
+				return { items: page.data, nextCursor: page.nextCursor };
+			},
+			(thread) => threadTargetsSubject(thread.metadata, subject),
+			assertOriginRouteActive,
+		);
+		if (match) assistantAgentThreadsStore.addOpenedThread(match);
+		return match?.id;
 	}
 
 	/** The newest thread of the app on the current Assistant runtime. */
@@ -73,23 +91,22 @@ export function useAppAssistantHandoff(): AppAssistantHandoff {
 		const loaded = await store.loadThreads();
 		assertOriginRouteActive();
 		if (!loaded) throw new Error(i18n.baseText('instanceAi.handoff.openFailed.message'));
-		let existingThreadId: string | undefined = store.threads
+		const loadedThreadId = store.threads
 			.filter((thread) => threadTargetsSubject(thread.metadata, subject))
 			.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || b.id.localeCompare(a.id))[0]?.id;
-		let cursor: string | undefined;
-		while (!existingThreadId) {
-			const page = await fetchThreadHistory(rootStore.restApiContext, {
-				limit: THREAD_PAGE_SIZE,
-				cursor,
-			});
-			assertOriginRouteActive();
-			existingThreadId = page.threads.find((thread) =>
-				threadTargetsSubject(thread.metadata, subject),
-			)?.id;
-			if (existingThreadId || !page.hasMore || !page.nextCursor) break;
-			cursor = page.nextCursor;
-		}
-		return existingThreadId;
+		if (loadedThreadId) return loadedThreadId;
+		const match = await findInPages(
+			async (cursor) => {
+				const page = await fetchThreadHistory(rootStore.restApiContext, {
+					limit: THREAD_PAGE_SIZE,
+					cursor,
+				});
+				return { items: page.threads, nextCursor: page.hasMore ? page.nextCursor : null };
+			},
+			(thread) => threadTargetsSubject(thread.metadata, subject),
+			assertOriginRouteActive,
+		);
+		return match?.id;
 	}
 
 	async function openApp(input: {
