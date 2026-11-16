@@ -1,6 +1,6 @@
 ---
 name: cold-email
-description: "When the user wants to write or run B2B cold outbound, or asks whether an opener, reason to reach out, or email works or why nobody replies: cold emails, follow-ups, sending domains, deliverability, cadences. Send from secondary domains, verify lists first, turn off open tracking, stop every channel when a prospect replies. No AI tells like 'it's not X, it's Y'."
+description: "Write B2B cold emails, subject lines, and follow-up sequences that read like a person wrote them. Use when the user wants a cold outreach email or a follow-up, or asks why an opener, a reason to reach out, or an email gets no replies."
 metadata:
   version: 2.2.4
 ---
@@ -110,6 +110,7 @@ See [follow-up-sequences.md](references/follow-up-sequences.md) for cadence, ang
 ## Before You Send
 
 Copy only matters if it reaches the inbox. Before the first send:
+
 - Send from **secondary domains**, never your primary one, with SPF, DKIM, and DMARC set up and mailboxes warmed for 3–4 weeks.
 - **Verify every list** right before upload and keep bounces under 2%.
 - **Turn off open and click tracking.** Measure replies.
@@ -120,6 +121,8 @@ Copy only matters if it reaches the inbox. Before the first send:
 ## Beyond Email
 
 If the outreach also runs on LinkedIn, calls, or other channels, a reply on any channel stops all of them.
+
+---
 
 ## When They Reply
 
@@ -158,7 +161,7 @@ Before presenting, gut-check:
 
 ---
 
-## Data & Benchmarks
+## References
 
 The references contain performance data if you need to make informed choices:
 
@@ -168,5 +171,7 @@ The references contain performance data if you need to make informed choices:
 - [frameworks.md](references/frameworks.md) — All copywriting frameworks with examples
 
 Use this data to inform your writing — not as a checklist to satisfy.
+
+---
 
 Based on cold-email by Corey Haines, MIT License. Source: https://github.com/coreyhaines31/marketingskills/tree/main/skills/cold-email

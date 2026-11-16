@@ -41,7 +41,6 @@ async function selectSkill(recommended: RecommendedSkill) {
 
 onMounted(() => {
 	trackCardsShown(props.entryPoint);
-	for (const recommended of RECOMMENDED_SKILLS) void recommended.load();
 });
 </script>
 

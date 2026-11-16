@@ -52,11 +52,11 @@ Leverages loss aversion — removing pressure while creating scarcity through wi
 
 **Example:**
 
-> I haven't heard back, so I'll assume now isn't the right time. Before I close the loop: [1-sentence insight or resource]. If that changes things, feel free to reply. Otherwise, no hard feelings. Good luck with [their goal].
+> It looks like now isn't the right time, so this is my last note. Before I close the loop: [1-sentence insight or resource]. If that changes things, feel free to reply. Otherwise, no hard feelings. Good luck with [their goal].
 
 **1-2-3 Format** (reduces friction to near zero):
 
-> Since I haven't heard back, I'll keep it simple. Reply with a number:
+> One last note, and I'll keep it simple. Reply with a number:
 >
 > 1: Interested, let's talk
 > 2: Not now, check back in 3 months
