@@ -1228,6 +1228,29 @@ describe('AiSdkLanguageModelAdapter', () => {
 			]);
 		});
 
+		it('handles a failing read of a call that was aborted before the stream started', async () => {
+			const unhandled: unknown[] = [];
+			const onUnhandled = (reason: unknown) => unhandled.push(reason);
+			process.on('unhandledRejection', onUnhandled);
+			const model = createFakeChatModel();
+			// eslint-disable-next-line require-yield
+			model.stream = async function* () {
+				throw new Error('network');
+			};
+			const adapter = new AiSdkLanguageModelAdapter(model);
+			const caller = new AbortController();
+			const reason = new Error('stopped by the caller');
+			caller.abort(reason);
+
+			const { stream } = await adapter.doStream(callOptions({ abortSignal: caller.signal }));
+			const parts = (await readAll(stream)).slice(2);
+			await new Promise((resolve) => setImmediate(resolve));
+			process.off('unhandledRejection', onUnhandled);
+
+			expect(parts).toEqual([{ type: 'error', error: reason }]);
+			expect(unhandled).toEqual([]);
+		});
+
 		it('closes open parts and adds a finish when the chat model ends without one', async () => {
 			const adapter = new AiSdkLanguageModelAdapter(
 				createFakeChatModel({ chunks: [{ type: 'text-delta', delta: 'Hello' }] }),
