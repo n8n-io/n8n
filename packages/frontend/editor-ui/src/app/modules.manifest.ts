@@ -8,7 +8,7 @@ import { InboxModule } from '@n8n/frontend-module-inbox';
 import { InstanceRegistryModule } from '@n8n/frontend-module-instance-registry';
 import { OtelModule } from '@n8n/frontend-module-otel';
 import { InsightsModule } from '@n8n/frontend-module-insights/insights.module';
-import { PromotionsModule } from '@/features/integrations/promotions.ee/module.descriptor';
+import { PromotionsModule } from '@n8n/frontend-module-promotions/promotions.module';
 import { ContextModule } from '@/features/settings/context/module.descriptor';
 import { LogStreamingModule } from '@/features/integrations/logStreaming.ee/module.descriptor';
 import { TypeAvailabilityPoliciesModule } from '@n8n/frontend-module-type-availability-policies';

@@ -1,0 +1,329 @@
+{
+	"name": "[TEST] PagerDuty requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "02e7d699-db3b-573c-ae55-ed80d58887b8",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "incident",
+				"operation": "create",
+				"title": "Database is down",
+				"serviceId": "PIJ90N7",
+				"email": "nathan@example.com",
+				"additionalFields": {},
+				"conferenceBridgeUi": {}
+			},
+			"type": "n8n-nodes-base.pagerDuty",
+			"typeVersion": 1,
+			"position": [260, 0],
+			"id": "5cbf8606-f1e9-5bfc-9afe-01d1fff3b6ab",
+			"name": "Create Incident",
+			"credentials": {
+				"pagerDutyApi": {
+					"id": "1",
+					"name": "PagerDuty account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "incident",
+				"operation": "get",
+				"incidentId": "PT4KHLK"
+			},
+			"type": "n8n-nodes-base.pagerDuty",
+			"typeVersion": 1,
+			"position": [260, 200],
+			"id": "d714a1ac-74b9-5fbd-ba4a-65a3346d1c89",
+			"name": "Get Incident",
+			"credentials": {
+				"pagerDutyApi": {
+					"id": "1",
+					"name": "PagerDuty account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "incident",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 1,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.pagerDuty",
+			"typeVersion": 1,
+			"position": [260, 400],
+			"id": "37da1dad-f383-5b5d-a782-c687aeff8085",
+			"name": "Get Incidents",
+			"credentials": {
+				"pagerDutyApi": {
+					"id": "1",
+					"name": "PagerDuty account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "incident",
+				"operation": "update",
+				"incidentId": "PT4KHLK",
+				"email": "nathan@example.com",
+				"updateFields": {
+					"status": "resolved"
+				},
+				"conferenceBridgeUi": {}
+			},
+			"type": "n8n-nodes-base.pagerDuty",
+			"typeVersion": 1,
+			"position": [260, 600],
+			"id": "c251c2a0-5796-5df4-b882-a1c15d695cc3",
+			"name": "Update Incident",
+			"credentials": {
+				"pagerDutyApi": {
+					"id": "1",
+					"name": "PagerDuty account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "incidentNote",
+				"operation": "create",
+				"incidentId": "PT4KHLK",
+				"content": "Restarted the primary node",
+				"email": "nathan@example.com"
+			},
+			"type": "n8n-nodes-base.pagerDuty",
+			"typeVersion": 1,
+			"position": [260, 800],
+			"id": "927dedbd-e9be-56a9-b0a8-b9d548c62e55",
+			"name": "Create Note",
+			"credentials": {
+				"pagerDutyApi": {
+					"id": "1",
+					"name": "PagerDuty account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "incidentNote",
+				"operation": "getAll",
+				"incidentId": "PT4KHLK",
+				"returnAll": true
+			},
+			"type": "n8n-nodes-base.pagerDuty",
+			"typeVersion": 1,
+			"position": [260, 1000],
+			"id": "5531fa7b-ceed-5a76-b4b7-9b27fa034ea1",
+			"name": "Get Notes",
+			"credentials": {
+				"pagerDutyApi": {
+					"id": "1",
+					"name": "PagerDuty account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "logEntry",
+				"operation": "get",
+				"logEntryId": "R2XGXEI3W0FHMAK"
+			},
+			"type": "n8n-nodes-base.pagerDuty",
+			"typeVersion": 1,
+			"position": [260, 1200],
+			"id": "51237c41-e739-5d74-b840-e84aba3b5bf5",
+			"name": "Get Log Entry",
+			"credentials": {
+				"pagerDutyApi": {
+					"id": "1",
+					"name": "PagerDuty account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "logEntry",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 1,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.pagerDuty",
+			"typeVersion": 1,
+			"position": [260, 1400],
+			"id": "d839ec3e-8841-59ae-94de-b723c3b89917",
+			"name": "Get Log Entries",
+			"credentials": {
+				"pagerDutyApi": {
+					"id": "1",
+					"name": "PagerDuty account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "get",
+				"userId": "PXPGF42"
+			},
+			"type": "n8n-nodes-base.pagerDuty",
+			"typeVersion": 1,
+			"position": [260, 1600],
+			"id": "09897388-da95-5f95-990f-2f78b3c82c04",
+			"name": "Get User",
+			"credentials": {
+				"pagerDutyApi": {
+					"id": "1",
+					"name": "PagerDuty account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Incident": [
+			{
+				"json": {
+					"id": "PT4KHLK",
+					"type": "incident",
+					"title": "Database is down",
+					"status": "triggered"
+				}
+			}
+		],
+		"Get Incident": [
+			{
+				"json": {
+					"id": "PT4KHLK",
+					"type": "incident",
+					"title": "Database is down",
+					"status": "triggered"
+				}
+			}
+		],
+		"Get Incidents": [
+			{
+				"json": {
+					"id": "PT4KHLK",
+					"type": "incident",
+					"title": "Database is down",
+					"status": "triggered"
+				}
+			}
+		],
+		"Update Incident": [
+			{
+				"json": {
+					"id": "PT4KHLK",
+					"type": "incident",
+					"title": "Database is down",
+					"status": "triggered"
+				}
+			}
+		],
+		"Create Note": [
+			{
+				"json": {
+					"note": {
+						"id": "PWL7QXS",
+						"content": "Restarted the primary node"
+					}
+				}
+			}
+		],
+		"Get Notes": [
+			{
+				"json": {
+					"id": "PWL7QXS",
+					"content": "Restarted the primary node"
+				}
+			}
+		],
+		"Get Log Entry": [
+			{
+				"json": {
+					"id": "R2XGXEI3W0FHMAK",
+					"type": "trigger_log_entry"
+				}
+			}
+		],
+		"Get Log Entries": [
+			{
+				"json": {
+					"id": "R2XGXEI3W0FHMAK",
+					"type": "trigger_log_entry"
+				}
+			}
+		],
+		"Get User": [
+			{
+				"json": {
+					"id": "PXPGF42",
+					"name": "Nathan",
+					"email": "nathan@example.com"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Create Incident",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Incident",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Incidents",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Update Incident",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Create Note",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Notes",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Log Entry",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Log Entries",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get User",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

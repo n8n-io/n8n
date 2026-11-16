@@ -254,7 +254,58 @@ export function resolveToolForCall(
 	const action = callAction(input);
 	const byAction =
 		action === undefined ? undefined : toolMap.get(legacyActionKey(toolName, action));
-	return byAction ?? toolMap.get(toolName);
+	const tool = byAction ?? toolMap.get(toolName);
+	return tool?.dispatch?.resolve(input)?.tool ?? tool;
+}
+
+/**
+ * The tool that runs a call and the input it receives. A dispatcher such as
+ * `call_tool` hands the call to the tool it names, with that tool's arguments.
+ */
+export function resolveToolCallTarget(
+	toolMap: Map<string, BuiltTool>,
+	toolName: string,
+	input: unknown,
+): { tool: BuiltTool; input: unknown; dispatchedBy?: BuiltTool } | undefined {
+	const action = toolMap.has(toolName) ? undefined : callAction(input);
+	const byAction =
+		action === undefined ? undefined : toolMap.get(legacyActionKey(toolName, action));
+	const tool = byAction ?? toolMap.get(toolName);
+	if (!tool) {
+		// A direct call to a tool from the tool catalog, such as one an older conversation loaded.
+		const routed = findDispatcherForCall(toolMap, toolName, input);
+		const target = routed?.dispatcher.dispatch?.resolve(routed.input);
+		return routed && target ? { ...target, dispatchedBy: routed.dispatcher } : undefined;
+	}
+	const dispatched = tool.dispatch?.resolve(input);
+	return dispatched ? { ...dispatched, dispatchedBy: tool } : { tool, input };
+}
+
+/**
+ * A call as hosts see it: a dispatched call reports the tool it ran and that
+ * tool's input, not the dispatcher. The checkpoint keeps the dispatcher call,
+ * because resume runs the call again from it.
+ */
+export function reportedToolCall<T extends { toolName: string; input: JSONValue }>(
+	toolMap: Map<string, BuiltTool>,
+	call: T,
+): T {
+	const target = resolveToolCallTarget(toolMap, call.toolName, call.input);
+	if (!target?.dispatchedBy) return call;
+	return { ...call, toolName: target.tool.name, input: target.input as JSONValue };
+}
+
+/** The dispatcher that owns a tool the model called by its own name, with the wrapped call. */
+export function findDispatcherForCall(
+	toolMap: Map<string, BuiltTool>,
+	toolName: string,
+	input: unknown,
+): { dispatcher: BuiltTool; input: Record<string, unknown> } | undefined {
+	for (const tool of new Set(toolMap.values())) {
+		const wrapped = tool.dispatch?.wrap(toolName, input);
+		if (wrapped) return { dispatcher: tool, input: wrapped };
+	}
+	return undefined;
 }
 
 /** Whether `tool` resolved from a former name through `legacyActions`, not `legacyNames`. */

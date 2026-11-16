@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 
 import { validateAirtopApiResponse, validateSessionId } from '../../GenericFunctions';
 import { apiRequest } from '../../transport';
@@ -11,7 +12,12 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const sessionId = validateSessionId.call(this, index);
 
-	const response = await apiRequest.call(this, 'GET', `/sessions/${sessionId}/windows`, undefined);
+	const response = await apiRequest.call(
+		this,
+		'GET',
+		requestPath`/sessions/${sessionId}/windows`,
+		undefined,
+	);
 
 	validateAirtopApiResponse(this.getNode(), response);
 

@@ -10,7 +10,7 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
 	ENVIRONMENTS_UPGRADE_DOCS_URL,
 	PROMOTIONS_SETTINGS_VIEW,
-} from '@/features/integrations/promotions.ee/promotions.constants';
+} from '@n8n/frontend-module-promotions';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 /** Moves the instance between Environments (v1) and Environments v2 after a confirmation. */

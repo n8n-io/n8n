@@ -1,6 +1,7 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { requestPath } from 'n8n-workflow';
 import nock from 'nock';
 import { Readable } from 'stream';
 
@@ -189,7 +190,7 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/messages',
+				requestPath`/messages`,
 				0,
 				expect.objectContaining({
 					subject: 'Test Draft with Attachment',
@@ -250,7 +251,7 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/messages',
+				requestPath`/messages`,
 				2,
 				expect.objectContaining({
 					attachments: [
@@ -299,7 +300,7 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 
 			expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 				'POST',
-				'/messages',
+				requestPath`/messages`,
 				0,
 				expect.objectContaining({
 					attachments: expect.arrayContaining([

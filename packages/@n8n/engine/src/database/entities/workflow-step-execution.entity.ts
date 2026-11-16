@@ -28,6 +28,9 @@ import { generateId } from '../generate-id';
 @Index('idx_workflow_step_execution_unsettled', ['executionId', 'status'], {
 	where: "status IN ('queued', 'running', 'waiting')",
 })
+@Index('idx_workflow_step_execution_stale_after', ['status', 'staleAfter'], {
+	where: "status IN ('queued', 'running')",
+})
 export class WorkflowStepExecution {
 	@PrimaryColumn('uuid')
 	id!: string;
@@ -73,6 +76,14 @@ export class WorkflowStepExecution {
 	 */
 	@Column('jsonb', { name: 'resume_cause', nullable: true })
 	resumeCause!: ResumeCause | null;
+
+	/**
+	 * When the engine treats the step as stuck in `queued` or `running`. The
+	 * store writes it at each transition into those statuses, and clears it at
+	 * each transition out of them.
+	 */
+	@Column({ name: 'stale_after', type: 'timestamptz', precision: 3, nullable: true })
+	staleAfter!: Date | null;
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;

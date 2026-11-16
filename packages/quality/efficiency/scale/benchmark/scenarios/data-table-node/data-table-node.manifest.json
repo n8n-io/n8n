@@ -7,5 +7,5 @@
 		"dataTableFile": "data-table.json"
 	},
 	"scriptPath": "data-table-node.script.js",
-	"supportedEngines": ["v1"]
+	"supportedEngines": ["v1", "v2"]
 }

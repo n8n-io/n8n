@@ -10,7 +10,7 @@ import {
 	type InstanceAiCredentialSetupHint,
 	type InstanceAiSetupItem,
 } from '@n8n/api-types';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { isAiGatewayManagedCredential } from './credential-utils';
 import type { SetupRequest } from './setup-workflow.schema';

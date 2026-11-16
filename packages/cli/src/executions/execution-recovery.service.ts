@@ -80,7 +80,10 @@ export class ExecutionRecoveryService {
 						// Lazy resolution breaks the DI cycle: WorkflowService →
 						// ActiveWorkflowManager → MessageEventBus → this service
 						const { WorkflowService } = await import('@/workflows/workflow.service.js');
-						await Container.get(WorkflowService).deactivateWorkflowAsSystem(workflowId);
+						await Container.get(WorkflowService).deactivateWorkflowAsSystem(
+							workflowId,
+							'crash-recovery',
+						);
 						this.logger.warn(
 							`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
 						);

@@ -8,12 +8,7 @@ export function memorySkill(): RuntimeSkill {
 		name: 'Agent Builder Memory',
 		description:
 			'Use for explicit memory changes: Episodic/long-term/cross-session memory, observer/reflector worker models, threshold/budget tuning, or disabling memory. Not for ordinary fresh-agent creation: the server adds default memory to a fresh agent.',
-		recommendedTools: [
-			'agent_builder_resolve_llm',
-			'setup_credentials',
-			'agent-context',
-			'agent_builder_patch_config',
-		],
+		recommendedToolGroups: ['agents', 'credentials'],
 		allowedTools: [
 			'agent_builder_resolve_llm',
 			'setup_credentials',

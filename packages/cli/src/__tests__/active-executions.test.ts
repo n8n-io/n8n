@@ -206,6 +206,20 @@ describe('ActiveExecutions', () => {
 			expect.objectContaining({
 				deduplicationKey: 'wf-1:node-1:1700000000000',
 			}),
+			{},
+			{ source: undefined },
+		);
+	});
+
+	test('Should pass the run source to executionPersistence.create for the ledger', async () => {
+		await activeExecutions.add({ ...executionData, source: 'instance_ai' });
+
+		expect(executionPersistence.create).toHaveBeenCalledWith(
+			expect.anything(),
+			{},
+			{
+				source: 'instance_ai',
+			},
 		);
 	});
 

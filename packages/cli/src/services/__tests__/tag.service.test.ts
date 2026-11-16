@@ -23,6 +23,18 @@ describe('TagService', () => {
 		vi.resetAllMocks();
 	});
 
+	describe('getAllByAgentId', () => {
+		test('delegates to the tag repository', async () => {
+			const tags = [makeTag({ id: 'tag-1', name: 'production' })];
+			tagRepository.findAllByAgentId.mockResolvedValue(tags);
+
+			const result = await tagService.getAllByAgentId('agent-1');
+
+			expect(tagRepository.findAllByAgentId).toHaveBeenCalledWith('agent-1');
+			expect(result).toEqual(tags);
+		});
+	});
+
 	describe('listWithUsageCount', () => {
 		test('forwards limit and ordering, and returns data + totalCount in parallel', async () => {
 			tagRepository.findAllWithUsageCount.mockResolvedValue([makeTag() as never]);

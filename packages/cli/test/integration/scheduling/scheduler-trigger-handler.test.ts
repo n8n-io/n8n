@@ -5,6 +5,7 @@ import {
 	ScheduledJobRepository,
 	ScheduledTaskRepository,
 	WorkflowPublishedVersionRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createScheduler } from '@n8n/scheduler';
@@ -216,5 +217,26 @@ describe('schedule-trigger occurrence to a real execution', () => {
 		// execution for the occurrence.
 		const executions = await executionRepo.find({ where: { deduplicationKey } });
 		expect(executions).toHaveLength(1);
+	}, 30_000);
+
+	it('skips an occurrence of a workflow whose active version is cleared before main applies the unpublish', async () => {
+		const { workflow, triggerNodeId } = await createPublishedScheduleWorkflow();
+		await Container.get(WorkflowRepository).update(workflow.id, {
+			active: false,
+			activeVersionId: null,
+		});
+		const job = await createScheduleJob(workflow.id, triggerNodeId);
+
+		await scheduler.materialize();
+		await scheduler.execute();
+		await retryUntil(
+			async () => {
+				const task = await taskRepo.findOneByOrFail({ jobId: job.id });
+				expect(task.status).toBe('succeeded');
+			},
+			{ timeoutMs: 15_000 },
+		);
+
+		expect(await executionRepo.find({ where: { workflowId: workflow.id } })).toEqual([]);
 	}, 30_000);
 });

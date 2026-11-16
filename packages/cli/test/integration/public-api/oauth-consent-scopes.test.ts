@@ -9,6 +9,7 @@ import {
 import { testDb } from '@n8n/backend-test-utils';
 import { TagRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource } from '@n8n/typeorm';
 import { LocalAuthorizationServer } from '@n8n/inbound-auth';
 import { createHash, randomBytes } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
@@ -16,7 +17,7 @@ import { mock } from 'vitest-mock-extended';
 import { PublicApiProtectedResource } from '@/modules/inbound-auth-core/public-api-protected-resource';
 import { TrustedSourceDiscoveryService } from '@/modules/inbound-auth-core/trusted-source-discovery.service';
 import { TrustedSourceDbStore } from '@/modules/inbound-auth-core/trusted-source.store';
-import { OAuthClientRepository } from '@/modules/oauth-server/database/repositories/oauth-client.repository';
+import { OAuthClient } from '@/modules/oauth-server/database/entities/oauth-client.entity';
 import {
 	sessionCookieFor,
 	TEST_FLOW_ID,
@@ -81,7 +82,8 @@ afterEach(async () => {
 
 async function registerClient(): Promise<string> {
 	const id = `client-${randomBytes(6).toString('hex')}`;
-	await Container.get(OAuthClientRepository).save({
+	const clients = Container.get(DataSource).getRepository(OAuthClient);
+	await clients.save({
 		id,
 		name: 'scope test client',
 		redirectUris: [REDIRECT_URI],

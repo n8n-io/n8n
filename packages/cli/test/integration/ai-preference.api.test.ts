@@ -6,7 +6,7 @@ import {
 	linkUserToProject,
 	testDb,
 } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import type { Person, Project } from '@n8n/db';
 import { AiPreferenceRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -16,10 +16,10 @@ import { createAdmin, createMember, createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
-let owner: User;
-let admin: User;
-let member: User;
-let outsider: User;
+let owner: Person;
+let admin: Person;
+let member: Person;
+let outsider: Person;
 
 let ownerAgent: SuperAgentTest;
 let adminAgent: SuperAgentTest;
