@@ -28,7 +28,11 @@ import {
 } from '../assistantAgent/assistantAgentThreads';
 import { useAssistantAgentThreadsStore } from '../assistantAgent/assistantAgentThreads.store';
 import { assistantConfirmationExtension } from '../assistantAgent/assistantConfirmation';
-import { useAssistantAgentMessageTelemetry } from '../assistantAgent/useAssistantAgentMessageTelemetry';
+import {
+	useAssistantAgentMessageTelemetry,
+	type AssistantAgentSendingMessage,
+} from '../assistantAgent/useAssistantAgentMessageTelemetry';
+import { useAssistantAgentTurnTelemetry } from '../assistantAgent/useAssistantAgentTurnTelemetry';
 import { useAssistantArtifactThread } from '../assistantAgent/useAssistantArtifactThread';
 import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import InstanceAiResourceChip from '../components/InstanceAiResourceChip.vue';
@@ -153,6 +157,18 @@ const handoffChip = computed(() => {
 });
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
+
+const turnTelemetry = useAssistantAgentTurnTelemetry({
+	threadId: props.threadId,
+	isStreaming: () => panel.value?.isStreaming ?? false,
+	isStreamAttached: () => panel.value?.isStreamAttached ?? false,
+	isSubmitting: () => panel.value?.isSubmitting ?? false,
+	hasOpenInteraction: () => panel.value?.hasOpenInteraction ?? false,
+});
+
+function onMessageSending(message: AssistantAgentSendingMessage): void {
+	turnTelemetry.trackSubmit(messageTelemetry.trackSend(message));
+}
 watch(panel, (current, previous) => {
 	if (!current || previous) return;
 	if (starter) {
@@ -261,7 +277,8 @@ defineExpose({
 		data-test-id="instance-ai-embed-assistant-agent-thread"
 		@content-change="emit('content-change', $event)"
 		@session-created="onSessionCreated"
-		@message-sending="messageTelemetry.trackSend"
+		@message-sending="onMessageSending"
+		@stream-event="turnTelemetry.handleStreamEvent"
 		@draft-cleared="messageTelemetry.setPrefill(null)"
 		@message-accepted="onMessageAccepted"
 		@update:streaming="onStreamingChange"
