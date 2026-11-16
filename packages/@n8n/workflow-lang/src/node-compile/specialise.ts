@@ -36,6 +36,13 @@ export interface SpecialiseInput {
 	 * none. Absent: a node that reads the id does not compile.
 	 */
 	instanceId?: string | null;
+	/**
+	 * Fields of the node's credentials that are not secret, by credential type
+	 * (`publicCredentialFields`). The compiler folds them as constants, so node code can branch
+	 * on them. A field that is not here is a template that the runtime fills: the code can put it
+	 * into a request and cannot read it. Never pass a secret here: it would be in the module.
+	 */
+	credentialFields?: Record<string, Record<string, unknown>>;
 	/** The type that the module names itself. The default is `type`. */
 	moduleType?: string;
 	/** Import prefixes that are folders, for example `{ '@utils/': '/repo/nodes-base/utils/' }`. */
@@ -224,6 +231,17 @@ function packageHelper(imported: { from: string; name: string }): string | undef
 const PACKAGE_CONSTANTS: Record<string, string | number> = {
 	SEND_AND_WAIT_OPERATION: 'sendAndWait',
 };
+
+/** The start of the name that stands for `await this.getCredentials(type)`; the type follows. */
+const CREDENTIAL_PREFIX = '__CREDENTIAL_';
+
+/** The credential type of `this.getCredentials('type')`, awaited or not; `''` when it is not a constant. */
+function credentialTypeOf(e: ts.Expression | undefined): string {
+	const callExpression = e && ts.isAwaitExpression(e) ? e.expression : e;
+	const first =
+		callExpression && ts.isCallExpression(callExpression) ? callExpression.arguments[0] : undefined;
+	return first && ts.isStringLiteral(first) && /^[A-Za-z0-9_]+$/.test(first.text) ? first.text : '';
+}
 
 /**
  * The leading parameters of a function that v1 calls with the n8n context as `this`. There are
@@ -432,6 +450,18 @@ class Specialiser {
 	private helper(name: string, ...args: ts.Expression[]): ts.CallExpression {
 		this.helpers.add(name);
 		return call(name, ...args);
+	}
+
+	/**
+	 * A field of a credential in node code. A field that the caller gave as not secret is a
+	 * constant: the code can branch on it. Any other field is a marker for the template that the
+	 * runtime fills: the code can put it into a request, and `checkCredentials` refuses a
+	 * comparison or a condition on it.
+	 */
+	private credentialField(type: string, name: string): ts.Expression {
+		const fields = this.input.credentialFields?.[type];
+		if (fields && Object.hasOwn(fields, name)) return expressionOf(fields[name]);
+		return call('__CREDFIELD', f.createStringLiteral(name));
 	}
 
 	// ----- link -----
@@ -675,9 +705,9 @@ class Specialiser {
 							(e.name as ts.Identifier).text,
 							undefined,
 							undefined,
-							call(
-								'__CREDFIELD',
-								f.createStringLiteral(((e.propertyName ?? e.name) as ts.Identifier).text),
+							this.credentialField(
+								credentialTypeOf(node.initializer),
+								((e.propertyName ?? e.name) as ts.Identifier).text,
 							),
 						),
 					);
@@ -689,11 +719,13 @@ class Specialiser {
 					? node.expression.expression
 					: node.expression;
 				if (credentialCall(inner))
-					return call('__CREDFIELD', f.createStringLiteral(node.name.text));
+					return this.credentialField(credentialTypeOf(inner), node.name.text);
 			}
-			if (ts.isAwaitExpression(node) && isThisCall(node.expression, 'getCredentials'))
-				return f.createIdentifier('__CREDENTIAL');
-			if (isThisCall(node, 'getCredentials')) return f.createIdentifier('__CREDENTIAL');
+			if (ts.isAwaitExpression(node) && isThisCall(node.expression, 'getCredentials')) {
+				return f.createIdentifier(CREDENTIAL_PREFIX + credentialTypeOf(node));
+			}
+			if (isThisCall(node, 'getCredentials'))
+				return f.createIdentifier(CREDENTIAL_PREFIX + credentialTypeOf(node));
 			if (isThisCall(node, 'getNodeParameter'))
 				return this.parameter(f.updateCallExpression(node, node.expression, undefined, args(node)));
 			if (isThisCall(node, 'getInputData')) return f.createIdentifier('__items');
@@ -914,7 +946,7 @@ class Specialiser {
 						: '`this` as a value has no compiled form',
 				);
 			}
-			if (ts.isIdentifier(node) && node.text === '__CREDENTIAL') {
+			if (ts.isIdentifier(node) && node.text.startsWith(CREDENTIAL_PREFIX)) {
 				this.error(
 					where,
 					'the credential is used as a whole value: only its fields can go into a request',
@@ -1094,7 +1126,8 @@ class Specialiser {
 		};
 		count(root);
 		const constants = new Map<string, Literal>();
-		const credentials = new Set<string>();
+		/** Variables that hold a credential, with the credential type. */
+		const credentials = new Map<string, string>();
 		const unused = new Set<string>();
 		// A constant object of constants that the code only reads: `x.resource` is the constant.
 		const objects = new Map<string, Map<string, Literal>>();
@@ -1114,8 +1147,11 @@ class Specialiser {
 				const lit = literalOf(n.initializer);
 				if (inLoopHead) {
 					// The variable of a loop stays, and so does a constant that is the unit itself.
-				} else if (ts.isIdentifier(n.initializer) && n.initializer.text === '__CREDENTIAL') {
-					credentials.add(n.name.text);
+				} else if (
+					ts.isIdentifier(n.initializer) &&
+					n.initializer.text.startsWith(CREDENTIAL_PREFIX)
+				) {
+					credentials.set(n.name.text, n.initializer.text.slice(CREDENTIAL_PREFIX.length));
 				} else if (isConst && lit) {
 					constants.set(n.name.text, lit.value);
 				} else if (
@@ -1197,25 +1233,7 @@ class Specialiser {
 				ts.isIdentifier(n.expression) &&
 				credentials.has(n.expression.text)
 			) {
-				// A template is text for a request. A comparison or a condition on it would read the secret.
-				const p = n.parent;
-				const assigns =
-					ts.isBinaryExpression(p) && p.operatorToken.kind === ts.SyntaxKind.EqualsToken;
-				const decides =
-					(ts.isBinaryExpression(p) &&
-						p.operatorToken.kind !== ts.SyntaxKind.PlusToken &&
-						!assigns) ||
-					ts.isPrefixUnaryExpression(p) ||
-					ts.isTypeOfExpression(p) ||
-					(ts.isIfStatement(p) && p.expression === n) ||
-					(ts.isConditionalExpression(p) && p.condition === n);
-				if (decides) {
-					this.error(
-						where,
-						`the code decides on the credential field '${n.name.text}': node code cannot read a credential value`,
-					);
-				}
-				return call('__CREDFIELD', f.createStringLiteral(n.name.text));
+				return this.credentialField(credentials.get(n.expression.text) ?? '', n.name.text);
 			}
 			if (
 				ts.isPropertyAccessExpression(n) &&

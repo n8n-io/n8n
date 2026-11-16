@@ -6,6 +6,7 @@
  */
 import { compile } from '../compiler/index.ts';
 import { getNodeParameters } from '../convert/node-parameters.ts';
+import type { PublicCredential } from '../credentials/public.ts';
 import type { NodeDescription } from '../convert/node-parameters.ts';
 import { hasExpression, specialiseNode } from './specialise.ts';
 import { VERIFIED } from './verified.generated.ts';
@@ -25,6 +26,12 @@ export interface NodeSources {
 	 * that the check set.
 	 */
 	verified?: Record<string, string[]>;
+	/**
+	 * The public part of a credential (`publicCredential` of its decrypted data), by the
+	 * credential type and the id of the credential. Without it every credential field is a
+	 * template, and node code that branches on a field does not compile.
+	 */
+	publicCredential?: (type: string, id: string | null) => PublicCredential | undefined;
 }
 
 /** The key of an operation in the verified list. */
@@ -111,6 +118,8 @@ export function compileNodeInstance(
 	sources: NodeSources,
 	node: { type: string; version: number; parameters: Record<string, unknown> },
 	instanceId: string | null | undefined,
+	/** The public part of the node's credentials, by credential type (`publicCredential`). */
+	credentials: Record<string, PublicCredential> = {},
 ): CompiledNode | { errors: string[] } {
 	const entry = sources.entry(node.type, node.version);
 	const description = sources.description(node.type, node.version);
@@ -161,6 +170,9 @@ export function compileNodeInstance(
 		parameters,
 		aliases: sources.aliases,
 		instanceId,
+		credentialFields: Object.fromEntries(
+			Object.entries(credentials).map(([type, c]) => [type, c.fields]),
+		),
 	};
 	let result = specialiseNode(input);
 	if (result.source === undefined) return { errors: result.errors };
@@ -177,6 +189,8 @@ export function compileNodeInstance(
 		source: result.source,
 		dynamic: Object.keys(parameters).filter((name) => hasExpression(parameters[name])),
 		resolved: parameters,
-		changed,
+		// The classes of the credential fields count as set parameters: the branch that a field
+		// selects must be one that was checked against v1.
+		changed: [...changed, ...Object.values(credentials).flatMap((c) => c.classes)],
 	};
 }

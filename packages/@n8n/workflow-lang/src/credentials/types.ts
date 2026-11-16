@@ -21,6 +21,8 @@ export interface CredentialTypeInfo {
 	preAuthentication?: boolean;
 	/** Defaults of the credential fields. */
 	defaults?: Record<string, unknown>;
+	/** The type of each field, and if n8n marks it as a password (`typeOptions.password`). */
+	fields?: Record<string, { type: string; password: boolean }>;
 	/** The package that defines the type. */
 	source?: string;
 }
@@ -85,10 +87,15 @@ export function describeCredentialType(instance: unknown, source?: string): Cred
 		info.preAuthentication = true;
 	}
 	const defaults: Record<string, unknown> = {};
+	const fields: Record<string, { type: string; password: boolean }> = {};
 	const properties: unknown = instance.properties;
 	if (Array.isArray(properties)) {
 		for (const property of properties) {
 			if (!isRecord(property) || typeof property.name !== 'string') continue;
+			fields[property.name] = {
+				type: typeof property.type === 'string' ? property.type : '',
+				password: isRecord(property.typeOptions) && property.typeOptions.password === true,
+			};
 			const value = property.default;
 			// Expression defaults depend on other fields. n8n resolves them; the tool does not.
 			if (value === undefined || (typeof value === 'string' && value.startsWith('='))) continue;
@@ -96,6 +103,7 @@ export function describeCredentialType(instance: unknown, source?: string): Cred
 		}
 	}
 	info.defaults = defaults;
+	info.fields = fields;
 	return info;
 }
 

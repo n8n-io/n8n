@@ -5,6 +5,8 @@
  */
 import { withDerivedValues } from '../../credentials/derived.ts';
 import { deriveInject } from '../../credentials/inject.ts';
+import type { PublicCredential } from '../../credentials/public.ts';
+import { publicCredential } from '../../credentials/public.ts';
 import type { EquivalenceCase } from '../../nodes/__tests__/equivalence.ts';
 import { applyCredential, normalizeRequest } from '../../nodes/__tests__/equivalence.ts';
 import { recordV1 } from '../../nodes/__tests__/v1-recorder.ts';
@@ -16,6 +18,17 @@ type Registry = Parameters<typeof deriveInject>[0];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** The public fields of the credential of a case, as the converter gets them from n8n. */
+export function credentialsOf(
+	c: EquivalenceCase,
+	registry: Registry,
+): Record<string, PublicCredential> {
+	if (!c.credential) return {};
+	return {
+		[c.credential.type]: publicCredential(registry.get(c.credential.type), c.credential.data),
+	};
 }
 
 /** Fails after `ms`: a v1 node that waits for ever must not stop the check. */
@@ -41,6 +54,7 @@ export async function differenceFromV1(
 		sources,
 		{ type: c.type, version: c.typeVersion, parameters: c.parameters },
 		null,
+		credentialsOf(c, registry),
 	);
 	if ('errors' in compiled) return `does not compile: ${compiled.errors[0]}`;
 	const credentialType = c.credential?.type;

@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 
 import type { NodeDescription } from '../src/convert/node-parameters.ts';
 import { getNodeParameters } from '../src/convert/node-parameters.ts';
+import { publicCredential } from '../src/credentials/public.ts';
 import { loadCredentialTypes, registryOf } from '../src/credentials/types.ts';
 import { differenceFromV1 } from '../src/node-compile/__tests__/verify.ts';
 import type { NodeSources } from '../src/node-compile/convert.ts';
@@ -266,7 +267,12 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 			tried++;
 			const parameters = required(node, version, start);
 			const instance = { type, version, parameters };
-			const compiled = compileNodeInstance(sources, instance, null);
+			const fields = credential
+				? {
+						[credential]: publicCredential(registry.get(credential), fakeCredential(credential)),
+					}
+				: {};
+			const compiled = compileNodeInstance(sources, instance, null, fields);
 			if ('errors' in compiled) {
 				why(compiled.errors[0].slice(compiled.errors[0].indexOf(': ') + 2));
 				continue;
@@ -299,7 +305,12 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 				let names = compiled.changed;
 				// More parameters: the options of the collections. When they agree too, a node can set them.
 				const more = withOptions(node, version, parameters);
-				const wider = compileNodeInstance(sources, { type, version, parameters: more }, null);
+				const wider = compileNodeInstance(
+					sources,
+					{ type, version, parameters: more },
+					null,
+					fields,
+				);
 				if (
 					!('errors' in wider) &&
 					(await differenceFromV1(make('options', more, ok), sources, registry)) === undefined

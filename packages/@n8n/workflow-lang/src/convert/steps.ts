@@ -10,6 +10,7 @@
  * the same value (it reads only the item and built-in functions); else the
  * conversion of the node fails.
  */
+import type { PublicCredential } from '../credentials/public.ts';
 import { compileNodeInstance, isVerified } from '../node-compile/convert.ts';
 import { CORE_NODE_TYPES } from './core-types.ts';
 import type { Code } from './code.ts';
@@ -351,10 +352,16 @@ export function tryCompiledNode(c: NodeContext): boolean {
 	const onError =
 		c.node.onError ?? (c.node.continueOnFail ? 'continueRegularOutput' : 'stopWorkflow');
 	if (onError !== 'stopWorkflow') return false;
+	const credentials: Record<string, PublicCredential> = {};
+	for (const [type, bound] of Object.entries(c.node.credentials ?? {})) {
+		const found = c.nodeSources.publicCredential?.(type, bound?.id ?? null);
+		if (found) credentials[type] = found;
+	}
 	const compiled = compileNodeInstance(
 		c.nodeSources,
 		{ type: c.node.type, version: c.version, parameters: c.parameters },
 		c.instance?.id,
+		credentials,
 	);
 	if ('errors' in compiled) {
 		c.info('node-compile', `The node source does not compile: ${compiled.errors.join('; ')}`);
