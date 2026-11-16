@@ -23,9 +23,11 @@ import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registr
 
 import { OAuthClient } from '../database/entities/oauth-client.entity';
 
+// The OAuth server owns chat metadata. Loading instance MCP also loads its tool graph
+// in the setup hook and can exceed the hook timeout under CI load.
 const testServer = setupTestServer({
-	modules: ['oauth-server', 'mcp', 'inbound-auth-core'],
-	endpointGroups: ['mcp'],
+	modules: ['inbound-auth-core', 'oauth-server'],
+	endpointGroups: ['oauth-server'],
 });
 
 let owner: User;

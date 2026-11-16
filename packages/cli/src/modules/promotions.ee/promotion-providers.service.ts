@@ -17,12 +17,14 @@ import {
 	supportsPromotionAuthType,
 } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
-import type { User } from '@n8n/db';
+import type { OperationContext, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+
+import { loginIdOf } from '@/events/login-id';
 
 import type { PromotionProvider } from './database/entities/promotion-provider.entity';
 import { PromotionEnvironmentRepository } from './database/repositories/promotion-environment.repository';
@@ -58,6 +60,7 @@ export class PromotionProvidersService {
 	async create(
 		input: CreatePromotionProviderDto,
 		actor: User,
+		ctx: OperationContext = {},
 	): Promise<PromotionProviderCreatedPublicDto> {
 		return await observePromotion(
 			async () => await this.createProvider(input),
@@ -74,6 +77,7 @@ export class PromotionProvidersService {
 					outcome: observed.ok ? 'success' : 'failed',
 					...(!observed.ok && { failureKind: observed.failureKind }),
 					durationMs: observed.durationMs,
+					loginId: loginIdOf(ctx),
 				}),
 		);
 	}
@@ -150,6 +154,7 @@ export class PromotionProvidersService {
 		id: string,
 		input: UpdatePromotionProviderDto,
 		actor: User,
+		ctx: OperationContext = {},
 	): Promise<PromotionProviderPublicDto> {
 		if (Object.keys(input).length === 0) {
 			throw new BadRequestError('At least one field is required');
@@ -175,6 +180,7 @@ export class PromotionProvidersService {
 					outcome: observed.ok ? 'success' : 'failed',
 					...(!observed.ok && { failureKind: observed.failureKind }),
 					durationMs: observed.durationMs,
+					loginId: loginIdOf(ctx),
 				}),
 		);
 	}
@@ -225,7 +231,7 @@ export class PromotionProvidersService {
 	 * A provider in use cannot be deleted. The pre-check answers 409 for the normal
 	 * case; the foreign key is the final guard when an environment appears in between.
 	 */
-	async delete(id: string, actor: User): Promise<void> {
+	async delete(id: string, actor: User, ctx: OperationContext = {}): Promise<void> {
 		const provider = await this.getEntity(id);
 		if ((await this.environmentRepository.countByProviderId(id)) > 0) {
 			throw new ConflictError('This provider is used by a promotion environment');
@@ -241,6 +247,7 @@ export class PromotionProvidersService {
 			providerType: provider.type,
 			authType: provider.authType,
 			hostBaseUrl: gitHostBaseUrl(provider),
+			loginId: loginIdOf(ctx),
 		});
 	}
 
