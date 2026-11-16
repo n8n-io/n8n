@@ -85,6 +85,7 @@ import { compare } from './package-references';
 import { PromotionCheckoutCleanupService } from './promotion-checkout-cleanup.service';
 import {
 	PromotionEnvironmentLockService,
+	PromotionLockLostError,
 	throwIfLockLost,
 } from './promotion-environment-lock.service';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
@@ -314,12 +315,13 @@ export class PromotionsService {
 				{ targetDir: stagingFolder },
 			);
 
+			// The lease can expire during the long export. Check before the package changes,
+			// because another operation can own the folder after that.
+			throwIfLockLost(signal);
 			// Replace the managed package only after the new one is complete.
 			await rm(packageFolder, { recursive: true, force: true });
 			await rename(stagingFolder, packageFolder);
 
-			// Before the descriptor goes, so a stop here leaves the checkout usable.
-			throwIfLockLost(signal);
 			if (targetBranchName) {
 				// The commit moves the local base branch. Remove trust before it moves, and
 				// restore trust only after the base branch is back on its own commit.
@@ -517,6 +519,8 @@ export class PromotionsService {
 		const prePushBackup = `${packageFolder}.pre-selection`;
 		let backedUp = false;
 		let keepPrePushBackup = false;
+		let packageChanged = false;
+		let lockLost = false;
 
 		let pushed: PushedPromotion;
 		try {
@@ -546,6 +550,10 @@ export class PromotionsService {
 				{ targetDir: stagingFolder },
 			);
 
+			// The lease can expire during the long export. Check before the package changes,
+			// because another operation can own the folder after that.
+			throwIfLockLost(signal);
+			packageChanged = true;
 			await this.workingCopy.applySelection(
 				packageFolder,
 				stagingFolder,
@@ -554,9 +562,6 @@ export class PromotionsService {
 				branch,
 			);
 
-			// Before the descriptor goes, so a stop here leaves the checkout usable. The catch
-			// below restores the package.
-			throwIfLockLost(signal);
 			if (targetBranchName) {
 				// The commit moves the local base branch. Remove trust before it moves, and
 				// restore trust only after the base branch is back on its own commit.
@@ -586,34 +591,44 @@ export class PromotionsService {
 			});
 			pushed = { commitSha, counts, commitMessage };
 		} catch (error) {
-			if (backedUp) {
-				await rm(packageFolder, { recursive: true, force: true }).catch((restoreError: unknown) => {
-					this.logger.warn('Failed to remove the incomplete selection after a failed promote', {
-						packageFolder,
-						error: restoreError,
-					});
-				});
-				try {
-					await rename(prePushBackup, packageFolder);
-				} catch (restoreError: unknown) {
-					keepPrePushBackup = true;
-					this.logger.warn(
-						'Failed to restore the package from the pre-selection copy. The copy is at the backup path.',
-						{ packageFolder, backupFolder: prePushBackup, error: restoreError },
+			// After a lost lock, another operation can own the package and the backup. Leave them.
+			// The next Promote resets the package to the remote branch before it writes.
+			lockLost = error instanceof PromotionLockLostError;
+			if (packageChanged && !lockLost) {
+				if (backedUp) {
+					await rm(packageFolder, { recursive: true, force: true }).catch(
+						(restoreError: unknown) => {
+							this.logger.warn('Failed to remove the incomplete selection after a failed promote', {
+								packageFolder,
+								error: restoreError,
+							});
+						},
+					);
+					try {
+						await rename(prePushBackup, packageFolder);
+					} catch (restoreError: unknown) {
+						keepPrePushBackup = true;
+						this.logger.warn(
+							'Failed to restore the package from the pre-selection copy. The copy is at the backup path.',
+							{ packageFolder, backupFolder: prePushBackup, error: restoreError },
+						);
+					}
+				} else if (!packageExisted) {
+					await rm(packageFolder, { recursive: true, force: true }).catch(
+						(cleanupError: unknown) => {
+							this.logger.warn('Failed to remove the first selection after a failed promote', {
+								packageFolder,
+								error: cleanupError,
+							});
+						},
 					);
 				}
-			} else if (!packageExisted) {
-				await rm(packageFolder, { recursive: true, force: true }).catch((cleanupError: unknown) => {
-					this.logger.warn('Failed to remove the first selection after a failed promote', {
-						packageFolder,
-						error: cleanupError,
-					});
-				});
 			}
 			throw error;
 		} finally {
-			// A first push has no backup of its own. Keep any backup left by an earlier failure.
-			if (packageExisted && !keepPrePushBackup) {
+			// A first push has no backup of its own. Keep any backup left by an earlier failure,
+			// or after a lost lock.
+			if (packageExisted && !keepPrePushBackup && !lockLost) {
 				await rm(prePushBackup, { recursive: true, force: true }).catch((error: unknown) => {
 					this.logger.warn('Failed to remove the selection backup', { prePushBackup, error });
 				});

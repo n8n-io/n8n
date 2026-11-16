@@ -498,6 +498,34 @@ describe('PromotionsService', () => {
 			},
 		);
 
+		it('keeps the package folder when the lock is lost during the export', async () => {
+			const { repositoryFolder } = workingDirectory.paths(ENVIRONMENT_ID);
+			const packageFolder = path.join(repositoryFolder, 'n8n');
+			await mkdir(packageFolder, { recursive: true });
+			await writeFile(path.join(packageFolder, 'manifest.json'), '{"projects":["before"]}');
+			const controller = new AbortController();
+			vi.spyOn(environmentLock, 'run').mockImplementation(
+				async (_environmentId, fn) => await fn(controller.signal),
+			);
+			const exportPackage = n8nPackagesService.exportPackageToDirectory.getMockImplementation()!;
+			n8nPackagesService.exportPackageToDirectory.mockImplementation(async (...args) => {
+				const result = await exportPackage(...args);
+				// The lease expires while the export runs.
+				controller.abort();
+				return result;
+			});
+
+			await expect(
+				service.promote(ENVIRONMENT_ID, actor, { canExportVariableValues: true }),
+			).rejects.toThrow(PromotionLockLostError);
+
+			expect(await readFile(path.join(packageFolder, 'manifest.json'), 'utf-8')).toBe(
+				'{"projects":["before"]}',
+			);
+			await expect(stat(path.join(packageFolder, 'projects'))).rejects.toThrow();
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+		});
+
 		it('stops before the push when the lock is lost after the commit check', async () => {
 			const controller = new AbortController();
 			vi.spyOn(environmentLock, 'run').mockImplementation(
@@ -1932,35 +1960,69 @@ describe('PromotionsService', () => {
 			]);
 		});
 
-		it('stops before the commit and restores the package when the lock is lost', async () => {
-			await writeExportTree(packageFolder, {
-				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
-				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
-				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
-			});
-			mockExport({
-				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w2')] }),
-				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
-				'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
-			});
-			ownedByP1('w2');
-			loseLock();
+		describe('when the lock is lost', () => {
+			let controller: AbortController;
 
-			await expect(
-				service.promoteProjectSelection('p1', actor, {
+			beforeEach(async () => {
+				await writeExportTree(packageFolder, {
+					'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
+					'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+					'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+				});
+				mockExport({
+					'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w2')] }),
+					'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+					'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
+				});
+				ownedByP1('w2');
+				controller = new AbortController();
+				vi.spyOn(environmentLock, 'run').mockImplementation(
+					async (_environmentId, fn) => await fn(controller.signal),
+				);
+			});
+
+			const promoteW2 = async () =>
+				await service.promoteProjectSelection('p1', actor, {
 					workflowIds: ['w2'],
 					commitMessage: 'm',
 					canExportVariableValues: true,
-				}),
-			).rejects.toThrow(PromotionLockLostError);
+				});
 
-			expect(gitService.commitAndPush).not.toHaveBeenCalled();
-			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
-				workflowFile('w1'),
-			);
-			await expect(readExported('projects/alpha/workflows/w2/workflow.json')).rejects.toThrow();
-			await expect(stat(`${packageFolder}.pre-selection`)).rejects.toThrow();
-			await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.not.toBeNull();
+			it('stops before it changes the package and keeps the backup when the lock is lost during the export', async () => {
+				const exportPackage = n8nPackagesService.exportPackageToDirectory.getMockImplementation()!;
+				n8nPackagesService.exportPackageToDirectory.mockImplementation(async (...args) => {
+					const result = await exportPackage(...args);
+					// The lease expires while the export runs.
+					controller.abort();
+					return result;
+				});
+
+				await expect(promoteW2()).rejects.toThrow(PromotionLockLostError);
+
+				expect(gitService.commitAndPush).not.toHaveBeenCalled();
+				expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
+					workflowFile('w1'),
+				);
+				await expect(readExported('projects/alpha/workflows/w2/workflow.json')).rejects.toThrow();
+				await expect(stat(`${packageFolder}.pre-selection`)).resolves.toBeDefined();
+				await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.not.toBeNull();
+			});
+
+			it('does not restore the package or remove the backup when the lock is lost before the push', async () => {
+				gitService.commitAndPush.mockImplementation(async ({ beforePush }) => {
+					// The lease expires while Git stages and commits.
+					controller.abort();
+					beforePush?.();
+					return { commitSha: 'c'.repeat(40) };
+				});
+
+				await expect(promoteW2()).rejects.toThrow(PromotionLockLostError);
+
+				expect(await readExported('projects/alpha/workflows/w2/workflow.json')).toBe(
+					workflowFile('w2'),
+				);
+				await expect(stat(`${packageFolder}.pre-selection`)).resolves.toBeDefined();
+			});
 		});
 
 		it('restores the package and keeps the push error when staging cleanup fails', async () => {
