@@ -17,8 +17,6 @@ export function createNodeLabeler(graph: WorkflowGraph): (nodeId: string) => str
 
 /**
  * Ids of the nodes directly downstream of `nodeId`, de-duplicated, in edge order.
- *
- * TODO(CAT-3854): validate edge endpoints against `nodes`.
  */
 export function getSuccessorNodeIds(graph: WorkflowGraph, nodeId: string): string[] {
 	const successors: string[] = [];
@@ -53,8 +51,6 @@ export function getDescendantNodeIds(graph: WorkflowGraph, nodeId: string): stri
 
 /**
  * Ids of the nodes directly upstream of `nodeId`, de-duplicated, in edge order.
- *
- * TODO(CAT-3854): validate edge endpoints against `nodes`.
  */
 export function getPredecessorNodeIds(graph: WorkflowGraph, nodeId: string): string[] {
 	const predecessors: string[] = [];

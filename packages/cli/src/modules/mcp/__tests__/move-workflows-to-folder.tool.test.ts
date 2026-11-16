@@ -1,6 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { User } from '@n8n/db';
+import { type OperationContext, User } from '@n8n/db';
+import type { SecurityContext } from '@n8n/permissions';
 import { PROJECT_ROOT } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { FolderFinderService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
@@ -51,13 +53,14 @@ describe('move-workflows-to-folder MCP tool', () => {
 		return { workflowFinderService, workflowService, folderFinderService, telemetry };
 	};
 
-	const createTool = (mocks: ReturnType<typeof createMocks>) =>
+	const createTool = (mocks: ReturnType<typeof createMocks>, ctx?: OperationContext) =>
 		createMoveWorkflowsToFolderTool(
 			user,
 			mocks.workflowFinderService,
 			mocks.workflowService,
 			mocks.folderFinderService,
 			mocks.telemetry,
+			ctx,
 		);
 
 	test('creates tool correctly', () => {
@@ -86,15 +89,32 @@ describe('move-workflows-to-folder MCP tool', () => {
 			user,
 			['workflow:update'],
 		);
-		expect(mocks.workflowService.update).toHaveBeenCalledWith(user, expect.anything(), 'wf-1', {
-			parentFolderId: 'folder-1',
-			source: 'n8n-mcp',
-		});
+		expect(mocks.workflowService.update).toHaveBeenCalledWith(
+			user,
+			expect.anything(),
+			'wf-1',
+			{
+				parentFolderId: 'folder-1',
+				source: 'n8n-mcp',
+			},
+			{},
+		);
 		expect(result.isError).toBeUndefined();
 		expect(result.structuredContent).toEqual({
 			folder: { id: 'folder-1', name: 'Marketing' },
 			moved: [{ workflowId: 'wf-1', name: 'My workflow' }],
 		});
+	});
+
+	test('passes the operation context to the workflow service', async () => {
+		const mocks = createMocks();
+		const ctx: OperationContext = {
+			security: mock<SecurityContext>({ subIdentityId: 'login-1' }),
+		};
+
+		await createTool(mocks, ctx).handler({ workflowIds: ['wf-1'], folderId: 'folder-1' });
+
+		expect(mocks.workflowService.update.mock.calls[0][4]).toBe(ctx);
 	});
 
 	test('moves multiple workflows and reports partial failures', async () => {
@@ -135,10 +155,16 @@ describe('move-workflows-to-folder MCP tool', () => {
 		const result = await tool.handler({ workflowIds: ['wf-1'], folderId: PROJECT_ROOT });
 
 		expect(mocks.folderFinderService.findFoldersByIdsForUser).not.toHaveBeenCalled();
-		expect(mocks.workflowService.update).toHaveBeenCalledWith(user, expect.anything(), 'wf-1', {
-			parentFolderId: PROJECT_ROOT,
-			source: 'n8n-mcp',
-		});
+		expect(mocks.workflowService.update).toHaveBeenCalledWith(
+			user,
+			expect.anything(),
+			'wf-1',
+			{
+				parentFolderId: PROJECT_ROOT,
+				source: 'n8n-mcp',
+			},
+			{},
+		);
 		expect(result.structuredContent).toEqual({
 			moved: [{ workflowId: 'wf-1', name: 'My workflow' }],
 		});

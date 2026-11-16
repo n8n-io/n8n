@@ -1,5 +1,5 @@
 import type { JsonValue, StepExecutionResult, StepSlots, WorkflowGraph } from '@n8n/engine';
-import { mintApprovalCallback } from '@n8n/engine';
+import { mintApprovalCallback, stepErrorDetails } from '@n8n/engine';
 import {
 	parseHitlCallbackReference,
 	prepareUrlForSigning,
@@ -15,6 +15,7 @@ import {
 	CHAT_NODE_TYPE,
 	Expression,
 	ExpressionError,
+	NodeOperationError,
 	WAIT_FOR_SUB_EXECUTION,
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
@@ -236,6 +237,20 @@ describe('V1StepExecutor', () => {
 				itemIndex: 0,
 				timestamp: expect.any(Number),
 			},
+		});
+	});
+
+	it('hands the structured part of a node error to the engine', async () => {
+		const graph = graphWith('test.failsWithDescription');
+		const request = stepRequest(graph, 'n', []);
+
+		const error: unknown = await testStepExecutor(graph)
+			.execute(request)
+			.catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(NodeOperationError);
+		expect(stepErrorDetails(error as Error)).toMatchObject({
+			description: 'The service rejected the request',
 		});
 	});
 

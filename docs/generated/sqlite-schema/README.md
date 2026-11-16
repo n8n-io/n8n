@@ -38,7 +38,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_thread_grants](agent_thread_grants.md) | 4 |  | table |
 | [agent_version_skill_dependency](agent_version_skill_dependency.md) | 4 |  | table |
 | [agent_workflow_dependency](agent_workflow_dependency.md) | 3 |  | table |
-| [agents](agents.md) | 17 |  | table |
+| [agents](agents.md) | 18 |  | table |
 | [agents_memory_entries](agents_memory_entries.md) | 13 |  | table |
 | [agents_memory_entry_candidates](agents_memory_entry_candidates.md) | 14 |  | table |
 | [agents_memory_entry_locks](agents_memory_entry_locks.md) | 6 |  | table |
@@ -148,7 +148,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [shared_workflow](shared_workflow.md) | 5 |  | table |
 | [skill](skill.md) | 8 |  | table |
 | [skill_file](skill_file.md) | 5 |  | table |
-| [skill_source](skill_source.md) | 13 |  | table |
+| [skill_source](skill_source.md) | 14 |  | table |
 | [skill_source_link](skill_source_link.md) | 14 |  | table |
 | [skill_version](skill_version.md) | 12 |  | table |
 | [tag_entity](tag_entity.md) | 4 |  | table |
@@ -244,6 +244,7 @@ erDiagram
 "agent_version_skill_dependency" |o--|| "agent_history" : "FOREIGN KEY (agentVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_workflow_dependency" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_workflow_dependency" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agents" }o--o| "user" : "FOREIGN KEY (identityId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agents" }o--o| "agent_history" : "FOREIGN KEY (activeVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agents" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agents_memory_entries" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -823,6 +824,7 @@ erDiagram
   boolean availableInMCP
   datetime_3_ createdAt
   varchar_36_ id PK
+  varchar identityId FK
   TEXT integrations
   boolean isArchived
   varchar_128_ name
@@ -1897,6 +1899,7 @@ erDiagram
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ credentialId FK
+  boolean credentialRequired
   varchar id PK
   varchar_255_ identityKey
   datetime_3_ lastCheckedAt

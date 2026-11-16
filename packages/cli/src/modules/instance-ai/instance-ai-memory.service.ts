@@ -32,6 +32,7 @@ import {
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import type { InstanceAiCheckpoint } from './entities/instance-ai-checkpoint.entity';
+import { toRestorableMessages } from './restorable-messages';
 import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 import {
@@ -49,29 +50,6 @@ export interface InstanceAiThreadLaunchMetadata {
 	source: InstanceAiThreadSource;
 	origin: InstanceAiThreadOrigin;
 	sourceContext?: Record<string, unknown>;
-}
-
-function isRestorableMessage(
-	value: Record<string, unknown> & { createdAt: Date },
-): value is AgentDbMessage & Record<string, unknown> {
-	if (typeof value.id !== 'string' || value.id.length === 0) return false;
-	if (value.type === 'custom') return typeof value.data === 'object' && value.data !== null;
-	return typeof value.role === 'string' && Array.isArray(value.content);
-}
-
-/** Coerce a wire-format seed message (ISO `createdAt`) into a persistable
- *  AgentDbMessage, or undefined if it fails the structural contract. */
-function toRestorableMessage(value: Record<string, unknown>): AgentDbMessage | undefined {
-	const rawCreatedAt = value.createdAt;
-	const createdAt =
-		rawCreatedAt instanceof Date
-			? rawCreatedAt
-			: typeof rawCreatedAt === 'string'
-				? new Date(rawCreatedAt)
-				: undefined;
-	if (!createdAt || Number.isNaN(createdAt.getTime())) return undefined;
-	const candidate = { ...value, createdAt };
-	return isRestorableMessage(candidate) ? candidate : undefined;
 }
 
 function messageCreatedAtMs(message: AgentDbMessage): number {
@@ -466,17 +444,7 @@ export class InstanceAiMemoryService {
 		threadId: string,
 		messages: Array<Record<string, unknown>>,
 	): Promise<{ restored: number }> {
-		const restorable: AgentDbMessage[] = [];
-		for (const [index, raw] of messages.entries()) {
-			const message = toRestorableMessage(raw);
-			if (!message) {
-				throw new BadRequestError(
-					`Seed message at index ${index} is not a valid agent message (id, createdAt, and role+content or type:custom+data are required)`,
-				);
-			}
-			restorable.push(message);
-		}
-
+		const restorable = toRestorableMessages(messages);
 		await this.agentMemory.saveMessages({ threadId, resourceId: userId, messages: restorable });
 		return { restored: restorable.length };
 	}
