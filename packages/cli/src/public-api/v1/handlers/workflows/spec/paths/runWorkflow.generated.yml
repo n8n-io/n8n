@@ -24,7 +24,7 @@ requestBody:
         properties:
           runData:
             type: object
-            description: Run data to reuse, keyed by node name. Use `data.resultData.runData` from `GET /executions/{id}?includeData=true`. n8n reuses the output of these nodes and runs the other nodes up to the destination node. If the run data does not reach the destination node from a trigger, n8n runs the workflow from its trigger.
+            description: Run data to reuse, keyed by node name. Use `data.resultData.runData` from `GET /executions/{id}?includeData=true`. n8n reuses the output of these nodes and runs the other nodes up to the destination node. If the run data does not reach the destination node from a trigger, n8n runs the workflow from its trigger. If that trigger needs an external event to start, the API returns `409`.
             additionalProperties: true
           destinationNode:
             type: object

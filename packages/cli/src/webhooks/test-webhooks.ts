@@ -648,20 +648,21 @@ export class TestWebhooks implements IWebhookManager {
 			}
 
 			if (!foundWebhook) {
-				// As it removes all webhooks of the workflow execute only once
-				void (async () => {
+				// Await the removal, so callers can rely on the webhooks being gone.
+				// It removes all webhooks of the workflow, so run it only once.
+				try {
 					await workflow.expression.acquireIsolate();
 					try {
 						await this.deactivateWebhooks(workflow);
 					} finally {
 						await workflow.expression.releaseIsolate();
 					}
-				})().catch((error) => {
+				} catch (error) {
 					this.logger.error('Failed to deactivate test webhooks on cancel', {
 						error,
 						workflowId,
 					});
-				});
+				}
 			}
 
 			foundWebhook = true;

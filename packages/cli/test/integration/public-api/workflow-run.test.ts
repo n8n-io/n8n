@@ -14,6 +14,7 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { Telemetry } from '@/telemetry';
+import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 
 import { getAllExecutions } from '../shared/db/executions';
@@ -320,6 +321,10 @@ describe('POST /workflows/:workflowId/run', () => {
 
 			expect(response.statusCode).toBe(409);
 			expect(cancelWebhook).toHaveBeenCalledWith(webhookWorkflow.id);
+			const remainingRegistrations = (
+				await Container.get(TestWebhookRegistrationsService).getAllRegistrations()
+			).filter((registration) => registration.webhook.workflowId === webhookWorkflow.id);
+			expect(remainingRegistrations).toEqual([]);
 			expect(await executionsOf(webhookWorkflow.id)).toHaveLength(0);
 		});
 	});
