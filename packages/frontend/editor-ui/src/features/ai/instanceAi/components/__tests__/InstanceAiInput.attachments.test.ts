@@ -463,16 +463,16 @@ describe('InstanceAiInput — mention attachments', () => {
 		);
 	});
 
-	it('inserts quoted text, attaches the workflow, and registers a transient reference', async () => {
+	it('stages the workflow as a draft attachment without inserting text', async () => {
 		const { getByRole, getByTestId, emitted } = renderMentionsInput();
 		const textbox = getByRole('textbox');
 		await userEvent.type(textbox, 'Compare ');
 		await userEvent.click(getByTestId('mention-picker-select'));
 
-		expect(textbox).toHaveValue('Compare "Orders"');
+		expect(textbox).toHaveValue('Compare ');
 		expect(getByTestId('attachment-preview-resource')).toHaveTextContent('Orders');
-		expect(emitted()['mention-reference-added']).toHaveLength(1);
-		expect(emitted()['mention-workflow-open']?.[0]).toEqual(['w1']);
+		// The pick stays a draft: the workflow reaches the thread with the submit only.
+		expect(emitted().submit).toBeUndefined();
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
 			{
@@ -489,12 +489,12 @@ describe('InstanceAiInput — mention attachments', () => {
 	});
 
 	it('tracks a duplicate pick as a selection without staging it twice', async () => {
-		const { getByTestId, emitted } = renderMentionsInput();
+		const { getByTestId, getAllByTestId } = renderMentionsInput();
 
 		await userEvent.click(getByTestId('mention-picker-select'));
 		await userEvent.click(getByTestId('mention-picker-select'));
 
-		expect(emitted()['mention-reference-added']).toHaveLength(1);
+		expect(getAllByTestId('attachment-preview-resource')).toHaveLength(1);
 		expect(
 			telemetryTrack.mock.calls.filter(
 				([event]) => event === TELEMETRY_EVENT.INSTANCE_AI.USER_SELECTED_AI_ASSISTANT_MENTION,
@@ -502,8 +502,8 @@ describe('InstanceAiInput — mention attachments', () => {
 		).toHaveLength(2);
 	});
 
-	it('keeps mention context on failed send and releases it after an accepted send', async () => {
-		const { getByTestId, findByTestId, emitted } = renderMentionsInput();
+	it('submits the mention bookkeeping, and keeps a restored mention a duplicate', async () => {
+		const { getByTestId, getAllByTestId, findByTestId, emitted } = renderMentionsInput();
 		await userEvent.click(getByTestId('mention-picker-select'));
 		await userEvent.click(await findByTestId('instance-ai-send-button'));
 
@@ -513,37 +513,33 @@ describe('InstanceAiInput — mention attachments', () => {
 			() => boolean,
 			unknown,
 			number,
-			() => void,
 			unknown,
 			string[],
 		];
 		expect(firstSubmit[1]).toEqual([{ type: 'workflow', id: 'w1', name: 'Orders' }]);
-		expect(firstSubmit[6]).toEqual({
+		expect(firstSubmit[5]).toEqual({
 			total: 1,
 			workflow: 1,
 			node: 0,
 			group: 0,
 		});
-		expect(firstSubmit[7]).toEqual(['w1']);
+		expect(firstSubmit[6]).toEqual(['w1']);
+
+		// A refused send gives the draft back; picking the same workflow again stages nothing new.
 		expect(firstSubmit[2]()).toBe(true);
 		await findByTestId('attachment-preview-resource');
-		expect(emitted()['mention-reference-removed']).toBeUndefined();
-
-		await userEvent.click(await findByTestId('instance-ai-send-button'));
-		const secondSubmit = emitted().submit?.[1] as [
-			string,
-			unknown[],
-			() => boolean,
-			unknown,
-			number,
-			() => void,
-		];
-		secondSubmit[5]();
-		expect(emitted()['mention-reference-removed']).toHaveLength(1);
+		await userEvent.click(getByTestId('mention-picker-select'));
+		expect(getAllByTestId('attachment-preview-resource')).toHaveLength(1);
 		expect(telemetryTrack).not.toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_REMOVED_AI_ASSISTANT_MENTION,
-			{ thread_id: 'thread-1', kind: 'workflow' },
+			expect.anything(),
 		);
+
+		// Once sent, the same workflow can be mentioned again in the next message.
+		await userEvent.click(await findByTestId('instance-ai-send-button'));
+		await userEvent.click(getByTestId('mention-picker-select'));
+		expect(getAllByTestId('attachment-preview-resource')).toHaveLength(1);
+		expect(emitted().submit).toHaveLength(2);
 	});
 
 	it('adds node context with parent workflow metadata', async () => {
@@ -552,7 +548,7 @@ describe('InstanceAiInput — mention attachments', () => {
 		});
 		await userEvent.click(getByTestId('mention-picker-select-node'));
 
-		expect(getByRole('textbox')).toHaveValue('"Validate"');
+		expect(getByRole('textbox')).toHaveValue('');
 		await userEvent.click(getByTestId('instance-ai-send-button'));
 		const submit = emitted().submit?.[0] as [string, unknown[]];
 		expect(submit[1]).toEqual([
@@ -578,12 +574,12 @@ describe('InstanceAiInput — mention attachments', () => {
 		);
 	});
 
-	it('removes the transient reference with the workflow chip', async () => {
-		const { getByTestId, emitted } = renderMentionsInput();
+	it('tracks the removal of a mention with its workflow chip', async () => {
+		const { getByTestId, queryByTestId } = renderMentionsInput();
 		await userEvent.click(getByTestId('mention-picker-select'));
 		await userEvent.click(getByTestId('attachment-preview-remove-resource'));
 
-		expect(emitted()['mention-reference-removed']).toHaveLength(1);
+		expect(queryByTestId('attachment-preview-resource')).not.toBeInTheDocument();
 		expect(telemetryTrack).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_REMOVED_AI_ASSISTANT_MENTION,
 			{ thread_id: 'thread-1', kind: 'workflow' },

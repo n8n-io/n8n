@@ -5,16 +5,18 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, requestUrl } from 'n8n-workflow';
 
 export async function mindeeApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	path: string,
+	path: RequestPath,
 	body: any = {},
 	qs: IDataObject = {},
-	option = {},
+	option: Pick<IRequestOptions, 'formData'> = {},
 ): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0);
 
@@ -30,10 +32,10 @@ export async function mindeeApiRequest(
 	// V1 of mindee is deprecated, we are keeping it for now but now V3 is active
 	const url =
 		version === 1
-			? `https://api.mindee.net/products${path}`
-			: `https://api.mindee.net/v1/products/mindee${path}`;
+			? requestUrl`https://api.mindee.net/products${path}`
+			: requestUrl`https://api.mindee.net/v1/products/mindee${path}`;
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		headers: {},
 		method,
 		body,

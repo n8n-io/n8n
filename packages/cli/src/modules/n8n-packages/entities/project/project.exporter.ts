@@ -24,13 +24,15 @@ export interface ProjectExportRequest {
 	writer: PackageWriter;
 	includeTags: boolean;
 	versionPolicy: ExportVersionPolicy;
-	includeArchivedWorkflows: boolean;
+	includeArchived: boolean;
 	/**
 	 * Export only these workflows from the projects, with the folders on the
 	 * path to them. Omit to export whole projects. An empty array writes the
 	 * project shells only. Every id must belong to one of `projectIds`.
 	 */
 	workflowIds?: string[];
+	/** With `workflowIds`, also export these folders and the folders above them. */
+	folderIds?: string[];
 }
 
 interface ProjectExportResult {
@@ -59,7 +61,9 @@ export class ProjectExporter {
 			request.projectIds,
 		);
 
-		const selectedWorkflowIds = request.workflowIds ? new Set(request.workflowIds) : undefined;
+		// A selection of only folders still selects, so it must not export every workflow.
+		const selectedWorkflowIds =
+			request.workflowIds || request.folderIds ? new Set(request.workflowIds) : undefined;
 
 		if (request.workflowIds) {
 			await this.assertSelectionInProjects(request.workflowIds, projects, request.user);
@@ -153,9 +157,10 @@ export class ProjectExporter {
 			writer: request.writer,
 			includeTags: request.includeTags,
 			versionPolicy: request.versionPolicy,
-			includeArchivedWorkflows: request.includeArchivedWorkflows,
+			includeArchived: request.includeArchived,
 			basePrefix: target,
 			selectedWorkflowIds,
+			selectedFolderIds: request.folderIds ? new Set(request.folderIds) : undefined,
 		});
 	}
 
@@ -166,7 +171,7 @@ export class ProjectExporter {
 		selectedWorkflowIds: ReadonlySet<string> | undefined,
 	): Promise<WorkflowExportResult> {
 		const rootWorkflowIds = await this.workflowFinder.findRootWorkflowIdsInProject(projectId, {
-			includeArchived: request.includeArchivedWorkflows,
+			includeArchived: request.includeArchived,
 		});
 		// Filtering the source list keeps the manifest order stable.
 		const selected = selectedWorkflowIds

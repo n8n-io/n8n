@@ -20,10 +20,10 @@ import { agent as testAgent } from 'supertest';
 
 import { CacheService } from '@n8n/backend-services';
 import { ActiveExecutions } from '@/active-executions';
-import { createExecutionResponseCodec } from '@/modules/engine-v2/response-channel/execution-response-frame';
-import { ExecutionChannelReceiver } from '@/modules/engine-v2/response-channel/in-memory-execution-response-receiver';
-import { ExecutionChannelSender } from '@/modules/engine-v2/response-channel/in-memory-execution-response-sender';
-import { createInMemoryExecutionChannel } from '@/modules/engine-v2/response-channel/in-memory-execution-response-channel';
+import { createExecutionResponseCodec } from '@/modules/engine-v2/execution-channel/execution-response-frame';
+import { ExecutionChannelReceiver } from '@/modules/engine-v2/execution-channel/execution-channel-receiver';
+import { ExecutionChannelSender } from '@/modules/engine-v2/execution-channel/execution-channel-sender';
+import { createInMemoryExecutionChannel } from '@/modules/engine-v2/execution-channel/in-memory-execution-channel';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2WebhookResponseRegistry } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 import { Telemetry } from '@/telemetry';
@@ -83,8 +83,9 @@ beforeAll(async () => {
 		searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
 		findLatestExecution: vi.fn(),
 		cancelExecution: vi.fn(),
-		locateResumeTarget: vi.fn(),
+		locateResume: vi.fn(),
 		resolveStep: vi.fn(),
+		readApprovalCallback: vi.fn(),
 	});
 	// The host hands the response registry its receiver at boot (`EngineV2Module.init`).
 	// This test drives the webhook route directly, without the module, so it

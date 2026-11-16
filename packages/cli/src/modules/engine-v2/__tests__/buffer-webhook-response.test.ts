@@ -13,10 +13,10 @@ import { mock } from 'vitest-mock-extended';
 import { createExecutionIdV2 } from '@/executions/execution-id';
 import { EngineV2WebhookResponseRegistry } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 
-import { createExecutionResponseCodec } from '../response-channel/execution-response-frame';
-import { ExecutionChannelReceiver } from '../response-channel/in-memory-execution-response-receiver';
-import { ExecutionChannelSender } from '../response-channel/in-memory-execution-response-sender';
-import { createInMemoryExecutionChannel } from '../response-channel/in-memory-execution-response-channel';
+import { createExecutionResponseCodec } from '../execution-channel/execution-response-frame';
+import { ExecutionChannelReceiver } from '../execution-channel/execution-channel-receiver';
+import { ExecutionChannelSender } from '../execution-channel/execution-channel-sender';
+import { createInMemoryExecutionChannel } from '../execution-channel/in-memory-execution-channel';
 
 /**
  * Runs `sendResponse` through the real hook, sender, receiver and registry.

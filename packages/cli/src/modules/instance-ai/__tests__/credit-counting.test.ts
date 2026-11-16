@@ -220,6 +220,46 @@ describe('claimRunUsage', () => {
 		);
 	});
 
+	it('claims self-healing usage with the self-healing billing user ID', async () => {
+		const ai = createMockAiService();
+		const service = createService({
+			threadRepo: createMockThreadRepo({ id: 't1', metadata: {} }),
+			aiService: ai,
+			push: { sendToUsers: vi.fn() },
+			telemetry: { track: vi.fn() },
+		});
+
+		await callClaim(service, { source: 'self_healing' });
+
+		expect(ai.__getInstanceAiApiProxyToken).toHaveBeenCalledWith(
+			{ id: 'self_healing' },
+			expect.anything(),
+		);
+		expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledWith(
+			{ id: 'self_healing' },
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
+	it('claims chat usage with the ID of the user', async () => {
+		const ai = createMockAiService();
+		const service = createService({
+			threadRepo: createMockThreadRepo({ id: 't1', metadata: {} }),
+			aiService: ai,
+			push: { sendToUsers: vi.fn() },
+			telemetry: { track: vi.fn() },
+		});
+
+		await callClaim(service);
+
+		expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledWith(
+			{ id: 'user-1' },
+			expect.anything(),
+			expect.anything(),
+		);
+	});
+
 	it('bills on a cancelled run and records the status', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService();
@@ -564,5 +604,56 @@ describe('claimRunUsage', () => {
 			// The bad quota is surfaced before any best-effort display work runs.
 			expect(push.sendToUsers).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('claimRunUsage on a thread without a current Assistant thread row', () => {
+	function setup(agentTotal: number | undefined) {
+		const threadRepo = createMockThreadRepo(null);
+		const push = { sendToUsers: vi.fn() };
+		const service = createService({
+			threadRepo,
+			aiService: createMockAiService(),
+			push,
+			telemetry: { track: vi.fn() },
+		});
+		const logger = (service as unknown as { logger: { warn: Mock } }).logger;
+		const agentThreadCredits = {
+			addCredits: vi.fn(async () => agentTotal),
+		};
+		return { service, push, logger, agentThreadCredits };
+	}
+
+	it('adds the claim to the Assistant agent thread and pushes its total', async () => {
+		const { service, push, agentThreadCredits } = setup(3.5);
+		service.useAgentThreadCredits(agentThreadCredits);
+
+		expect(await callClaim(service, { threadId: 'agent-thread' })).toBe(0.5);
+		expect(agentThreadCredits.addCredits).toHaveBeenCalledWith(fakeUser, 'agent-thread', 0.5);
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'updateInstanceAiCredits',
+				data: {
+					creditsQuota: 100,
+					creditsClaimed: 5.5,
+					creditsPerThread: { threadId: 'agent-thread', totalCreditsUsed: 3.5 },
+				},
+			},
+			['user-1'],
+		);
+	});
+
+	it('logs when no thread takes the total', async () => {
+		const { service, push, logger, agentThreadCredits } = setup(undefined);
+		service.useAgentThreadCredits(agentThreadCredits);
+
+		expect(await callClaim(service, { threadId: 'missing' })).toBe(0.5);
+		expect(logger.warn).toHaveBeenCalledWith('No thread took the Instance AI credit total', {
+			threadId: 'missing',
+		});
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{ type: 'updateInstanceAiCredits', data: { creditsQuota: 100, creditsClaimed: 5.5 } },
+			['user-1'],
+		);
 	});
 });

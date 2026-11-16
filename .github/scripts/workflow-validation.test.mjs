@@ -140,6 +140,78 @@ describe('evaluateStepCondition', () => {
 	});
 });
 
+describe('automated release PR CI bypass', () => {
+	const releasePrConjunction = [
+		"github.event.pull_request.user.login == 'n8n-assistant[bot]'",
+		"startsWith(github.event.pull_request.head.ref, 'release-pr/')",
+		"startsWith(github.event.pull_request.base.ref, 'release/')",
+	].join(' && ');
+	const compact = (condition) =>
+		condition
+			.trim()
+			.replace(/^\$\{\{(.*)\}\}$/s, '$1')
+			.replaceAll(/\s/g, '');
+
+	const assertSkipsReleasePr = (condition) => {
+		assert.ok(compact(condition).includes(`!(${compact(releasePrConjunction)})`));
+	};
+	const assertPassesReleasePr = (condition) => {
+		assert.equal(
+			compact(condition),
+			compact(`github.event_name == 'pull_request' && ${releasePrConjunction}`),
+		);
+	};
+	const assertNeedsPrPolicy = (job) => {
+		assert.ok(job.needs === 'pr-policy' || job.needs.includes('pr-policy'));
+	};
+	const assertUsesPrPolicy = (job) => {
+		assertNeedsPrPolicy(job);
+		assert.match(job.if, /needs\.pr-policy\.outputs\.skip-ci != 'true'/);
+	};
+
+	it('skips the expensive PR jobs and keeps the aggregate checks', () => {
+		const policy = workflowFile('ci-pr-policy-reusable.yml');
+		assert.equal(policy.jobs.classify.outputs['skip-ci'], '${{ steps.policy.outputs.skip-ci }}');
+		assertPassesReleasePr(stepNamed(policy, 'classify', 'Evaluate PR policy').env.SKIP_CI);
+
+		const ci = workflowFile('ci-pull-requests.yml');
+		assert.equal(ci.jobs['pr-policy'].uses, './.github/workflows/ci-pr-policy-reusable.yml');
+		assertUsesPrPolicy(ci.jobs['install-and-build']);
+		assertUsesPrPolicy(ci.jobs['format-check']);
+		assert.equal(ci.jobs['required-checks'].if, 'always()');
+		assertNeedsPrPolicy(ci.jobs['required-checks']);
+		assert.equal(
+			stepNamed(ci, 'required-checks', 'Validate required checks').if,
+			"needs.pr-policy.outputs.skip-ci != 'true'",
+		);
+		assert.equal(
+			stepNamed(ci, 'required-checks', 'Pass automated release PR').if,
+			"needs.pr-policy.outputs.skip-ci == 'true'",
+		);
+
+		const quality = workflowFile('ci-pr-quality.yml');
+		assert.equal(quality.jobs['pr-policy'].uses, './.github/workflows/ci-pr-policy-reusable.yml');
+		assertUsesPrPolicy(quality.jobs.changes);
+		assertUsesPrPolicy(quality.jobs['check-knip']);
+		assertUsesPrPolicy(quality.jobs['check-do-not-merge']);
+		assert.equal(quality.jobs['required-pr-quality-checks'].if, 'always()');
+		assertNeedsPrPolicy(quality.jobs['required-pr-quality-checks']);
+		assert.equal(
+			stepNamed(quality, 'required-pr-quality-checks', 'Validate required checks').if,
+			"needs.pr-policy.outputs.skip-ci != 'true'",
+		);
+		assert.equal(
+			stepNamed(quality, 'required-pr-quality-checks', 'Pass automated release PR').if,
+			"needs.pr-policy.outputs.skip-ci == 'true'",
+		);
+	});
+
+	it('skips standalone workflows for automated release PRs', () => {
+		assertSkipsReleasePr(workflowFile('docker-build-smoke.yml').jobs.gate.if);
+		assertSkipsReleasePr(workflowFile('ci-owners-validation.yml').jobs.validate.if);
+	});
+});
+
 describe('release SBOM validation in PR CI', () => {
 	const workflow = workflowFile('ci-pull-requests.yml');
 	const filterStep = stepNamed(workflow, 'install-and-build', 'Check for relevant changes');
@@ -360,5 +432,76 @@ describe('test-e2e-reusable.yml', () => {
 				assert.equal(evaluateStepCondition(a11yUpload.if, { inputs, jobStatus: 'failure' }), true);
 			}
 		});
+	});
+});
+
+describe('trusted publishing setup workflows', () => {
+	const orchestrator = workflowFile('release-setup-trusted-publishing.yml');
+	const packageSetup = workflowFile('release-publish-new-package.yml');
+	const releasePublish = workflowFile('release-publish.yml');
+
+	it('exposes unpublished packages and processes them one at a time', () => {
+		assert.equal(
+			triggersOf(orchestrator).workflow_call.outputs.packages.value,
+			'${{ jobs.detect-new-packages.outputs.packages }}',
+		);
+		assert.equal(
+			orchestrator.jobs['detect-new-packages'].outputs.packages,
+			"${{ steps.detect.outputs.packages-json || '[]' }}",
+		);
+		assert.equal(orchestrator.jobs['setup-trusted-publishing'].strategy['max-parallel'], 1);
+		assert.equal(orchestrator.jobs['setup-trusted-publishing'].strategy['fail-fast'], false);
+		assert.equal(
+			orchestrator.jobs['setup-trusted-publishing'].strategy.matrix.package,
+			'${{ fromJSON(needs.detect-new-packages.outputs.packages) }}',
+		);
+		assert.equal(
+			orchestrator.jobs['setup-trusted-publishing'].uses,
+			'./.github/workflows/release-publish-new-package.yml',
+		);
+	});
+
+	it('publishes a throwaway version under the rc tag', () => {
+		const publish = stepNamed(packageSetup, 'publish-to-npm', 'Publish throwaway package version');
+		assert.match(publish.run, /npm pkg set version=0\.0\.0-tp/);
+		assert.match(publish.run, /pnpm publish --access public --tag rc --no-git-checks/);
+	});
+
+	it('configures the release workflow as a trusted publisher', () => {
+		const trust = stepNamed(packageSetup, 'publish-to-npm', 'Configure trusted publishing');
+		assert.match(
+			trust.run,
+			/npm trust github "\$PACKAGE_NAME" --repo n8n-io\/n8n --file release-publish\.yml --env npm --allow-publish --yes/,
+		);
+	});
+
+	it('finishes setup as a no-op outside minor releases and blocks publishing when setup fails', () => {
+		const setup = releasePublish.jobs['setup-trusted-publishing'];
+		const publish = releasePublish.jobs['publish-to-npm'];
+		const detectJob = orchestrator.jobs['detect-new-packages'];
+		const setupInputs = resolveInputs(orchestrator, { setup_required: false });
+		const skip = stepNamed(orchestrator, 'detect-new-packages', 'Skip setup for non-minor release');
+
+		assert.equal(setup.uses, './.github/workflows/release-setup-trusted-publishing.yml');
+		assert.equal(setup.if, 'github.event.pull_request.merged == true');
+		assert.equal(
+			setup.with.setup_required,
+			"${{ needs.determine-version-info.outputs.bump == 'minor' }}",
+		);
+		assert.equal(detectJob.outputs.packages, "${{ steps.detect.outputs.packages-json || '[]' }}");
+		assert.equal(evaluateStepCondition(skip.if, { inputs: setupInputs }), true);
+		for (const name of [
+			'Checkout',
+			'Setup Node.js',
+			'Find unpublished packages',
+			'Summarize unpublished packages',
+		]) {
+			const step = stepNamed(orchestrator, 'detect-new-packages', name);
+			assert.equal(evaluateStepCondition(step.if, { inputs: setupInputs }), false);
+		}
+		assert.ok(publish.needs.includes('setup-trusted-publishing'));
+		assert.match(publish.if, /always\(\)/);
+		assert.match(publish.if, /needs\.setup-trusted-publishing\.result != 'failure'/);
+		assert.match(publish.if, /needs\.setup-trusted-publishing\.result != 'cancelled'/);
 	});
 });

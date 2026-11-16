@@ -1,0 +1,60 @@
+{
+	"name": "ERPNext Self-Hosted Requests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "trigger",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "document",
+				"operation": "get",
+				"docType": "Sales Invoice",
+				"documentName": "ACC-SINV-2026-00001"
+			},
+			"id": "erpnext-0",
+			"name": "Get",
+			"type": "n8n-nodes-base.erpNext",
+			"typeVersion": 1.1,
+			"position": [300, 0],
+			"credentials": {
+				"erpNextApi": {
+					"id": "1",
+					"name": "ERPNext account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get": [
+			{
+				"json": {
+					"name": "ACC-SINV-2026-00001",
+					"customer": "Acme Corp",
+					"grand_total": 120
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Get",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

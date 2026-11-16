@@ -22,6 +22,7 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const model = defineModel<string | null>();
 const open = ref(false);
+const searchTerm = ref('');
 const isTooltipSuppressed = ref(false);
 let tooltipSuppressTimeout: ReturnType<typeof setTimeout> | undefined;
 
@@ -35,8 +36,17 @@ const selectedProjectName = computed(() =>
 		: i18n.baseText('instanceAi.projectSelect.placeholder'),
 );
 const selectedProjectIcon = computed(() => getProjectIcon(selectedProject.value));
+// N8nDropdownMenu only emits `search`, so the items are filtered here.
+const filteredProjects = computed(() => {
+	const term = searchTerm.value.trim().toLowerCase();
+	if (!term) return projectsStore.myProjects;
+
+	return projectsStore.myProjects.filter((project) =>
+		getProjectName(project).toLowerCase().includes(term),
+	);
+});
 const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() =>
-	projectsStore.myProjects.map((project) => ({
+	filteredProjects.value.map((project) => ({
 		id: project.id,
 		label: getProjectName(project),
 		icon: getProjectIcon(project),
@@ -50,6 +60,11 @@ watch(open, (isOpen, wasOpen) => {
 	if (!isOpen && wasOpen) {
 		suppressTooltip();
 	}
+});
+
+// The search field clears its term only when the menu closes, not when the field is removed.
+watch(showSearch, (isSearchShown) => {
+	if (!isSearchShown) searchTerm.value = '';
 });
 
 onBeforeUnmount(() => {
@@ -79,6 +94,10 @@ function suppressTooltip() {
 function selectProject(projectId: string) {
 	model.value = projectId;
 }
+
+function onSearch(term: string) {
+	searchTerm.value = term;
+}
 </script>
 
 <template>
@@ -93,6 +112,7 @@ function selectProject(projectId: string) {
 		max-height="320px"
 		width="320px"
 		@select="selectProject"
+		@search="onSearch"
 	>
 		<template #trigger>
 			<N8nTooltip

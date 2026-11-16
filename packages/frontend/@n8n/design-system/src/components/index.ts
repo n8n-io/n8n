@@ -5,7 +5,6 @@ export {
 	ThinkingMessage,
 	RestoreVersionConfirm,
 } from './AskAssistantChat';
-export { default as N8nAssistantIcon } from './AskAssistantIcon';
 export { default as N8nAssistantAvatar } from './AskAssistantAvatar';
 export { default as N8nAssistantText } from './AskAssistantText';
 export { default as N8nActionDropdown } from './N8nActionDropdown';
@@ -136,6 +135,8 @@ export { default as N8nSettingsPageHeader } from './N8nSettingsPageHeader';
 export type { SettingsPageHeaderProps } from './N8nSettingsPageHeader';
 export { default as N8nSettingsRow } from './N8nSettingsRow';
 export type { SettingsRowProps, SettingsRowLayout } from './N8nSettingsRow';
+export { default as N8nSettingsEnableRow } from './N8nSettingsEnableRow';
+export type { SettingsEnableRowEmits, SettingsEnableRowProps } from './N8nSettingsEnableRow';
 export { default as N8nSettingsRowButton } from './N8nSettingsRowButton';
 export type { SettingsRowButtonProps } from './N8nSettingsRowButton';
 export { default as N8nSettingsRowConfigure } from './N8nSettingsRowConfigure';
@@ -184,7 +185,20 @@ export { default as N8nSuggestedActions } from './N8nSuggestedActions';
 export { default as N8nSwitch } from './N8nSwitch';
 export { default as N8nSlider } from './N8nSlider';
 export type * from './N8nSlider/Slider.types';
-export { default as N8nTabs } from './N8nTabs';
+export {
+	N8nTabs,
+	N8nTabsContent,
+	N8nTabsList,
+	N8nTabsRoot,
+	N8nTabsTrigger,
+} from './N8nTabs';
+export type {
+	N8nTabsContentProps,
+	N8nTabsListProps,
+	N8nTabsRootEmits,
+	N8nTabsRootProps,
+	N8nTabsTriggerProps,
+} from './N8nTabs/Tabs.types';
 export { default as N8nTag } from './N8nTag';
 export { default as N8nTags } from './N8nTags';
 export { default as N8nText } from './N8nText';
@@ -222,6 +236,7 @@ export * from './DateRangePicker';
 export { default as N8nCommandBar } from './N8nCommandBar';
 export type {
 	CommandBarItem,
+	CommandBarItemComponent,
 	CommandBarItemIcon,
 	CommandBarSection,
 	CommandBarSelectOptions,
@@ -229,4 +244,6 @@ export type {
 } from './N8nCommandBar/types';
 export * from './N8nDialog';
 export * from './N8nAlertDialog';
+export { FocusScope } from './FocusScope';
+export type { FocusScopeEmits, FocusScopeProps } from './FocusScope';
 export { default as N8nVisuallyHidden } from './N8nVisuallyHidden';

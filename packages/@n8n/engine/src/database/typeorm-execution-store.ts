@@ -8,6 +8,7 @@ import {
 	type ExecutionStore,
 	type NewExecutionRecord,
 } from '../execution/execution-store';
+import { DEFAULT_STALENESS_THRESHOLDS, type StalenessThresholds } from '../execution/staleness';
 import {
 	LIVE_EXECUTION_STATUSES,
 	stepKeyId,
@@ -25,10 +26,23 @@ type InsertValues = Parameters<Repository<WorkflowExecution>['insert']>[0];
 
 /** TypeORM-backed `ExecutionStore` adapter. */
 export class TypeOrmExecutionStore implements ExecutionStore {
-	constructor(private readonly repo: Repository<WorkflowExecution>) {}
+	constructor(
+		private readonly repo: Repository<WorkflowExecution>,
+		private readonly staleness: StalenessThresholds = DEFAULT_STALENESS_THRESHOLDS,
+	) {}
+
+	/** The `stale_after` value of an execution that enters `status` now. */
+	private staleAfterFor(status: ExecutionStatus): Date | null {
+		return status === 'queued' ? new Date(Date.now() + this.staleness.queuedMs) : null;
+	}
 
 	async createExecution({ seededSteps, parent, ...record }: NewExecutionRecord): Promise<void> {
-		const execution = this.repo.create({ ...record, ...toParentColumns(parent), finishedAt: null });
+		const execution = this.repo.create({
+			...record,
+			...toParentColumns(parent),
+			finishedAt: null,
+			staleAfter: this.staleAfterFor(record.status),
+		});
 		const seeded = Object.entries(seededSteps ?? {}).flatMap(([nodeId, passes]) =>
 			passes.map((outputs, iteration) => ({ executionId: record.id, nodeId, iteration, outputs })),
 		);
@@ -92,7 +106,10 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	}
 
 	async transitionStatus(id: string, from: ExecutionStatus, to: ExecutionStatus): Promise<boolean> {
-		const result = await this.repo.update({ id, status: from }, { status: to });
+		const result = await this.repo.update(
+			{ id, status: from },
+			{ status: to, staleAfter: this.staleAfterFor(to) },
+		);
 		return result.affected === 1;
 	}
 
@@ -113,7 +130,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 		const finishedAt = new Date();
 		const result = await this.repo.update(
 			{ id, status: In(['queued', ...LIVE_EXECUTION_STATUSES] satisfies ExecutionStatus[]) },
-			{ status: 'cancelled', finishedAt },
+			{ status: 'cancelled', finishedAt, staleAfter: null },
 		);
 		return result.affected === 1 ? { finishedAt } : null;
 	}

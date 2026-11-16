@@ -1,4 +1,4 @@
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 const quote = (names: string[]) => names.map((name) => `"${name}"`).join(', ');
 
@@ -140,12 +140,6 @@ export class UnsupportedSubWorkflowCallerError extends UserError {
 		super(
 			`Node "${nodeName}" (${nodeType}) calls a sub-workflow. Engine v2 runs sub-workflows from the Execute Sub-workflow node only.`,
 		);
-	}
-}
-
-export class SubWorkflowsNotSupportedError extends UserError {
-	constructor(nodeName: string) {
-		super(`Node "${nodeName}" calls a sub-workflow. This host cannot run sub-workflows.`);
 	}
 }
 

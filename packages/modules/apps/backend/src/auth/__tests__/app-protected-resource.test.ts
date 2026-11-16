@@ -1,8 +1,7 @@
 import { Logger } from '@n8n/backend-common';
-import { RoleService, UrlService } from '@n8n/backend-services';
+import { ProjectScopeService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { GlobalConfig } from '@n8n/config';
-import { ProjectRelationRepository } from '@n8n/db';
 import type { ResourcePrincipal } from '@n8n/inbound-auth';
 import { mock } from 'vitest-mock-extended';
 
@@ -37,18 +36,15 @@ function setup(deploymentType = 'default') {
 			getWebhookBaseUrl: () => 'https://foo.app.n8n.cloud',
 		}),
 	);
-	const roles = mock<RoleService>();
-	roles.rolesWithScope.mockResolvedValue(['project:viewer']);
-	const projects = mock<ProjectRelationRepository>();
-	projects.getAccessibleProjectsByRoles.mockResolvedValue(['project']);
-	const resource = new AppProtectedResource(apps, hosts, roles, projects);
+	const projectScope = mock<ProjectScopeService>();
+	projectScope.hasScopes.mockResolvedValue(true);
+	const resource = new AppProtectedResource(apps, hosts, projectScope);
 	const registry = new ProtectedResourceRegistry(mock<Logger>());
 	registry.registerResolver(resource);
 	return {
 		app,
 		apps,
-		roles,
-		projects,
+		projectScope,
 		resource,
 		registry,
 	};
@@ -117,25 +113,22 @@ describe('AppProtectedResource', () => {
 	});
 
 	it('checks current project grants and visibility', async () => {
-		const { resource, app, roles, projects } = setup();
+		const { resource, app, projectScope } = setup();
 		const user = mock<ResourcePrincipal>({
 			id: 'user',
 			role: { slug: 'global:member', scopes: [] },
 		});
 		const descriptor = resource.forApp(app);
 		expect(await descriptor.authorize(user)).toBe(true);
-		expect(roles.rolesWithScope).toHaveBeenCalledExactlyOnceWith('project', ['app:read']);
-		expect(projects.getAccessibleProjectsByRoles).toHaveBeenCalledExactlyOnceWith('user', [
-			'project:viewer',
-		]);
-		projects.getAccessibleProjectsByRoles.mockResolvedValue([]);
+		expect(projectScope.hasScopes).toHaveBeenCalledExactlyOnceWith(user, 'project', ['app:read']);
+		projectScope.hasScopes.mockResolvedValue(false);
 		expect(await descriptor.authorize(user)).toBe(false);
 		app.visibility = 'instance';
 		expect(await descriptor.authorize(user)).toBe(true);
 	});
 
 	it('requires read access regardless of visibility', async () => {
-		const { resource, app, projects } = setup();
+		const { resource, app, projectScope } = setup();
 		const user = mock<ResourcePrincipal>({
 			id: 'user',
 			role: { slug: 'global:member', scopes: [] },
@@ -143,21 +136,8 @@ describe('AppProtectedResource', () => {
 		app.visibility = 'instance';
 
 		expect(await resource.canRead(app, user)).toBe(true);
-		projects.getAccessibleProjectsByRoles.mockResolvedValue([]);
+		projectScope.hasScopes.mockResolvedValue(false);
 		expect(await resource.canRead(app, user)).toBe(false);
-	});
-
-	it('grants global app read access without project membership', async () => {
-		const { resource, app, roles, projects } = setup();
-		const user = mock<ResourcePrincipal>({
-			id: 'user',
-			role: { slug: 'global:member', scopes: [{ slug: 'app:read' }] },
-		});
-		projects.getAccessibleProjectsByRoles.mockResolvedValue([]);
-
-		expect(await resource.forApp(app).authorize(user)).toBe(true);
-		expect(roles.rolesWithScope).not.toHaveBeenCalled();
-		expect(projects.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
 	});
 
 	it('makes old resources unavailable after unpublish or rename', async () => {

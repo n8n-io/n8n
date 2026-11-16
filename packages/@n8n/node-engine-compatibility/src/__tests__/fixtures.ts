@@ -9,6 +9,7 @@ import type {
 	CloseFunction,
 	IConnections,
 	IDataObject,
+	INode,
 	INodeCredentials,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -21,7 +22,7 @@ import type {
 } from 'n8n-workflow';
 import { Node, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import type { AdditionalDataContext } from '../types';
+import type { AdditionalDataContext, SubWorkflowResolver } from '../types';
 import { V1StepExecutor } from '../v1-step-executor';
 
 class EchoParam implements INodeType {
@@ -513,6 +514,7 @@ export const v1Workflow = (
 		typeVersion?: number;
 		parameters?: IDataObject;
 		credentials?: INodeCredentials;
+		onError?: INode['onError'];
 	}>,
 	connections: IConnections = {},
 ): IWorkflowBase =>
@@ -543,6 +545,10 @@ export const stepRequest = (
 	respond: noopResponseEmitter,
 });
 
+/** For a test that calls no sub-workflow: a call is a test bug, so it fails loudly. */
+export const noSubWorkflows: SubWorkflowResolver = async () =>
+	await Promise.reject(new Error('this test resolves no sub-workflows'));
+
 export const testStepExecutor = (
 	graph: WorkflowGraph,
 	outputsByNodeId: Record<string, StepSlots> = {},
@@ -550,6 +556,7 @@ export const testStepExecutor = (
 	new V1StepExecutor({
 		nodeTypes: testNodeTypes,
 		additionalDataFactory: testAdditionalDataFactory,
+		resolveSubWorkflow: noSubWorkflows,
 		// every fixture node runs once, so its outputs sit at iteration 0
 		loadStepData: async () =>
 			await Promise.resolve({

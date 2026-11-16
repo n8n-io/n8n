@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-import { OutboundHttp, removeEmptyBody } from '@n8n/backend-network';
-import { Container } from '@n8n/di';
+import { removeEmptyBody } from '@n8n/backend-network';
 import type {
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	ICredentialDataDecryptedObject,
 	IHttpRequestOptions,
 	INode,
-	IRequestOptions,
+	LegacyRequestOptions,
 	IWorkflowExecuteAdditionalData,
+	WithRequestTarget,
 	Workflow,
 } from 'n8n-workflow';
 import {
@@ -33,6 +33,8 @@ import {
 	requestOAuth1,
 	requestOAuth2,
 } from './oauth';
+import { sendHttpRequest } from './outbound-request';
+import { toHttpRequestOptions, toLegacyRequestOptions } from './request-target';
 
 /**
  * Whether a failed request earns the generic `preAuthentication` refresh-and-resend. Only the
@@ -59,12 +61,13 @@ function shouldRetryAfterPreAuthentication(
 export async function httpRequestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	requestOptions: IHttpRequestOptions,
+	requestOptions: IHttpRequestOptions | WithRequestTarget<IHttpRequestOptions>,
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 ) {
+	requestOptions = toHttpRequestOptions(requestOptions);
 	removeEmptyBody(requestOptions);
 
 	// Cancel this request on execution cancellation
@@ -141,7 +144,7 @@ export async function httpRequestWithAuthentication(
 			node,
 		);
 		requestSent = true;
-		return await Container.get(OutboundHttp).requests().request(requestOptions);
+		return await sendHttpRequest(requestOptions, additionalData, node);
 	} catch (error) {
 		// Keep the policy reason visible instead of reporting it as a failed API call.
 		if (hasPolicyRefusalMarker(error)) throw error;
@@ -190,7 +193,7 @@ export async function httpRequestWithAuthentication(
 					workflow,
 					node,
 				);
-				return await Container.get(OutboundHttp).requests().request(requestOptions);
+				return await sendHttpRequest(requestOptions, additionalData, node);
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
 			}
@@ -204,14 +207,14 @@ export async function httpRequestWithAuthentication(
 export async function requestWithAuthentication(
 	this: IAllExecuteFunctions,
 	credentialsType: string,
-	// oxlint-disable-next-line typescript/no-deprecated
-	requestOptions: IRequestOptions,
+	requestOptions: LegacyRequestOptions,
 	workflow: Workflow,
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
 	itemIndex?: number,
 ) {
+	requestOptions = toLegacyRequestOptions(requestOptions);
 	removeEmptyBody(requestOptions);
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;

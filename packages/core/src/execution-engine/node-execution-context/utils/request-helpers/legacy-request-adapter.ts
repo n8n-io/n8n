@@ -10,6 +10,8 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 
+import { addTraceHeaders } from './trace-headers';
+
 /** Keeps shipped node `request` calls on the legacy request transport. */
 export async function proxyRequestToAxios(
 	workflow: Workflow | undefined,
@@ -23,6 +25,8 @@ export async function proxyRequestToAxios(
 	// oxlint-disable-next-line typescript/no-deprecated
 	const configObject: IRequestOptions =
 		typeof uriOrObject === 'string' ? { uri: uriOrObject, ...options } : (uriOrObject ?? {});
+
+	if (additionalData && node) addTraceHeaders(configObject, additionalData, node);
 
 	const client = Container.get(OutboundHttp).requests();
 

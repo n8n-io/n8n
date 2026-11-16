@@ -1,8 +1,12 @@
 import { createScopedWorkspace } from '@n8n/agents';
 import type { Workspace } from '@n8n/agents';
-import { getPromptWorkspaceRoot, getWorkspaceRoot } from '@n8n/agents/sandbox';
+import {
+	DAYTONA_WORKSPACE_ROOT,
+	getWorkspaceRoot,
+	PORTABLE_WORKSPACE_ROOT,
+} from '@n8n/agents/sandbox';
 import { applyBranchReadOnlyOverrides, buildProxyHeaders } from '@n8n/api-types';
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { getN8nVersion, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig, type AiConfig, type InstanceAiConfig } from '@n8n/config';
 import { type User } from '@n8n/db';
@@ -18,6 +22,7 @@ import {
 	isSetupPanelEnabled,
 	orchestratorAgentId,
 	type InstanceAiContext,
+	type InstanceAiTraceContext,
 	type ModelConfig,
 	type OrchestrationContext,
 	type ServiceProxyConfig,
@@ -30,7 +35,6 @@ import { redactTelemetryProperties } from '@n8n/telemetry';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
-import { N8N_VERSION } from '@/constants';
 import { ForbiddenError, UnexpectedError } from '@n8n/errors';
 import { modelStreamStallOptions } from '@/utils/model-stream-stall-options';
 import { AiUsageService } from '@/services/ai-usage.service';
@@ -39,7 +43,6 @@ import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { Telemetry } from '@/telemetry';
 import { resolveBrowserUseState } from '../browser/browser-use-availability';
 import { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
-import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
 	InstanceAiConversationHistoryService,
 	type ScopedConversationHistory,
@@ -53,6 +56,7 @@ import {
 	InstanceAiAdapterService,
 	type InstanceAiFeatureFlags,
 } from '../instance-ai.adapter.service';
+import { AssistantTurnOverrides } from './assistant-turn-overrides';
 import type { AssistantTurnMemory, AssistantTurnRuntime } from './assistant-turn-runtime';
 import {
 	assistantCreditsExhaustedError,
@@ -85,7 +89,7 @@ export interface AssistantTurnEnvironment {
 	taskStorage: ThreadTaskStorage;
 	workflowTasks: WorkflowTaskService;
 	modelId: ModelConfig;
-	memoryModelId: ModelConfig | undefined;
+	utilityModelId: ModelConfig | undefined;
 	orchestrationContext: OrchestrationContext;
 	conversationHistory: ScopedConversationHistory | undefined;
 	instanceContextEnabled: boolean;
@@ -105,6 +109,7 @@ export interface AssistantTurnEnvironmentParams {
 	/** Resumed segments use the gates bound to the original turn. */
 	instanceContextGates?: InstanceContextGates;
 	experimentGates?: InstanceAiFeatureFlags;
+	tracing?: InstanceAiTraceContext;
 }
 
 export type AssistantProxyRunConfig = Awaited<
@@ -144,7 +149,7 @@ export class AssistantTurnEnvironmentFactory {
 		private readonly aiService: AiService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly telemetry: Telemetry,
-		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
+		private readonly turnOverrides: AssistantTurnOverrides,
 		private readonly modelService: InstanceAiModelService,
 		private readonly creditService: InstanceAiCreditService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
@@ -174,7 +179,7 @@ export class AssistantTurnEnvironmentFactory {
 		});
 		const featureHeaders = buildProxyHeaders({
 			feature: 'instance-ai',
-			n8nVersion: N8N_VERSION,
+			n8nVersion: getN8nVersion(),
 		});
 
 		return {
@@ -233,6 +238,7 @@ export class AssistantTurnEnvironmentFactory {
 			proxyRunConfig,
 			instanceContextGates,
 			experimentGates,
+			tracing,
 		} = params;
 		const { memory } = runtime;
 		const thread = await memory.getThread(threadId);
@@ -263,7 +269,7 @@ export class AssistantTurnEnvironmentFactory {
 			proxyBaseUrl && tokenManager
 				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext)
 				: await this.modelService.resolveAgentModelConfig(user, proxyContext);
-		const memoryModelId = await this.modelService.resolveMemoryModelConfig(user, modelId, {
+		const utilityModelId = await this.modelService.resolveUtilityModelConfig(user, modelId, {
 			proxyBaseUrl,
 			tokenManager,
 			proxyContext,
@@ -273,7 +279,6 @@ export class AssistantTurnEnvironmentFactory {
 		const {
 			configEvalsEnabled,
 			conversationHistoryEnabled,
-			progressiveBuildingEnabled,
 			conciseStyleEnabled,
 			setupPanelEnabled,
 			setupPanelVariant,
@@ -288,22 +293,14 @@ export class AssistantTurnEnvironmentFactory {
 		const conversationHistory = conversationHistoryEnabled
 			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
 			: undefined;
-		// Follow-ups and resumed runs retain the selected mode if flags change.
-		const mode =
-			runtime.turnState.getBuildMode() ?? (progressiveBuildingEnabled ? 'progressive' : 'default');
 		// The operator pin sits below the request pin and the thread's own selection,
 		// so evals and in-flight conversations keep the profile they started on.
-		// The concise experiment applies only in default mode, so a progressive
-		// thread or assignment keeps its own profile.
 		const selectedPrompt = resolvePromptProfile({
 			version:
 				runtime.turnState.getPromptVersion() ??
 				resolveOperatorPromptVersion(this.instanceAiConfig.promptVersion) ??
-				(conciseStyleEnabled && mode === 'default' ? CONCISE_PROMPT_VERSION : undefined),
-			mode,
+				(conciseStyleEnabled ? CONCISE_PROMPT_VERSION : undefined),
 		});
-		const buildMode = selectedPrompt.profile.mode;
-		runtime.turnState.setBuildMode(buildMode);
 		// Read per run so a settings change applies to the next message.
 		const allowSendingParameterValues = await this.aiUsageService.isParameterValueSharingAllowed();
 		// The frontend writes the exit to thread metadata when the agent calls `leave-onboarding` or
@@ -315,11 +312,12 @@ export class AssistantTurnEnvironmentFactory {
 			pushRef,
 			threadId,
 			projectId: boundProjectId,
-			getCredentialIdAllowlist: () => this.evalCredentialAllowlists.get(threadId),
+			// Read per call: the overrides can change while the run is in progress.
+			getCredentialIdAllowlist: () => this.turnOverrides.getCredentialIdAllowlist(threadId),
 			shouldBypassCredentialTest: (credentialId: string) =>
-				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
+				this.turnOverrides.shouldBypassCredentialTest(threadId, credentialId),
 			getCredentialTestTarget: (credentialType: string) =>
-				this.evalCredentialAllowlists.getTestTarget(threadId, credentialType),
+				this.turnOverrides.getCredentialTestTarget(threadId, credentialType),
 			configEvalsEnabled,
 			setupPanelVariant,
 			mcpConnectionsAvailable,
@@ -331,6 +329,7 @@ export class AssistantTurnEnvironmentFactory {
 			credentialDescriptionsEnabled,
 			assistantSkillsEnabled,
 			modelId,
+			utilityModelId,
 			modelFetch: this.modelService.getModelFetch(),
 			allowSendingParameterValues,
 			temporaryWorkflowMarkers: runtime.temporaryWorkflowMarkers,
@@ -440,16 +439,21 @@ export class AssistantTurnEnvironmentFactory {
 		const sandboxStatus = this.settingsService.getSandboxStatus();
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
+		let fallbackWorkspaceRoot: string | undefined;
 
 		if (sandboxStatus.workflowBuilderAvailable) {
 			const sandboxConfig = await this.instanceAiErrorReporter.withBoundary(
 				'instance-ai-sandbox-setup',
-				{ threadId, runId, userId: user.id, messageGroupId },
+				{ threadId, runId, userId: user.id, messageGroupId, tracing },
 				async () => await runtime.sandbox.resolveConfig(),
 			);
 
 			if (sandboxConfig.enabled) {
-				workspaceRoot = getPromptWorkspaceRoot(sandboxConfig.provider);
+				// The same text for every provider keeps the prompt independent of the provider.
+				// Older Daytona sandboxes link this root to the Daytona root, so the tools also
+				// accept paths under the Daytona root.
+				workspaceRoot = PORTABLE_WORKSPACE_ROOT;
+				fallbackWorkspaceRoot = DAYTONA_WORKSPACE_ROOT;
 
 				const scopeWorkspaceForAgent = async (
 					workspace: Workspace | undefined,
@@ -490,6 +494,7 @@ export class AssistantTurnEnvironmentFactory {
 
 		context.workspace = runtimeWorkspace;
 		context.workspaceRoot = workspaceRoot;
+		context.fallbackWorkspaceRoot = fallbackWorkspaceRoot;
 		context.threadId = threadId;
 		context.threadMemory = memory;
 		// Tool-emitted telemetry is an open-ended property bag (search queries,
@@ -509,6 +514,7 @@ export class AssistantTurnEnvironmentFactory {
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			orchestratorAgentId: orchestratorAgentId(runId),
 			modelId,
+			...(tracing ? { tracing } : {}),
 			modelFetch: this.modelService.getModelFetch(),
 			modelStreamStallOptions: modelStreamStallOptions(this.aiConfig),
 			eventBus: runtime.eventBus,
@@ -533,6 +539,7 @@ export class AssistantTurnEnvironmentFactory {
 						component: 'instance-ai-agent-builder-usage',
 						threadId,
 						runId,
+						tracing: orchestrationContext.tracing,
 						userId: user.id,
 						...(boundProjectId ? { projectId: boundProjectId } : {}),
 						...(messageGroupId ? { messageGroupId } : {}),
@@ -569,7 +576,7 @@ export class AssistantTurnEnvironmentFactory {
 			taskStorage,
 			workflowTasks,
 			modelId,
-			memoryModelId,
+			utilityModelId,
 			orchestrationContext,
 			conversationHistory,
 			// Reuse the gate results so a rollout change cannot split this turn.

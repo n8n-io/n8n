@@ -1,6 +1,6 @@
 import type { EventService, UrlService } from '@n8n/backend-services';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
-import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest, type User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, type AuthenticatedRequest, type Person } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { type Response } from 'express';
@@ -42,7 +42,7 @@ const controller = new SamlController(
 	instanceSettingsLoaderConfig,
 );
 
-const user = mock<User>({
+const person = mock<Person>({
 	id: '123',
 	password: 'password',
 	authIdentities: [],
@@ -81,7 +81,7 @@ describe('Test views', () => {
 		});
 
 		samlService.handleSamlLogin.mockResolvedValueOnce({
-			authenticatedUser: user,
+			authenticatedUser: person,
 			attributes,
 			rawAttributes,
 			onboardingRequired: false,
@@ -145,7 +145,7 @@ describe('Test views', () => {
 		(extractTestIdFromRelayState as Mock).mockReturnValue(testId);
 		samlService.consumePendingTestConfig.mockResolvedValueOnce(metadata);
 		samlService.handleSamlLogin.mockResolvedValueOnce({
-			authenticatedUser: user,
+			authenticatedUser: person,
 			attributes,
 			rawAttributes,
 			onboardingRequired: false,
@@ -169,7 +169,7 @@ describe('Test views', () => {
 		});
 
 		samlService.handleSamlLogin.mockResolvedValueOnce({
-			authenticatedUser: user,
+			authenticatedUser: person,
 			attributes,
 			rawAttributes,
 			onboardingRequired: false,
@@ -306,7 +306,7 @@ describe('SAML Login Flow', () => {
 		const res = mock<Response>();
 
 		samlService.handleSamlLogin.mockResolvedValueOnce({
-			authenticatedUser: user,
+			authenticatedUser: person,
 			attributes,
 			rawAttributes,
 			onboardingRequired: false,
@@ -315,9 +315,9 @@ describe('SAML Login Flow', () => {
 		await controller.acsPost(req, res, { RelayState: '/' });
 
 		// Verify that issueCookie was called with MFA flag set to true
-		expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, 'test-browser-id');
+		expect(authService.issueCookie).toHaveBeenCalledWith(res, person, true, 'test-browser-id');
 		expect(eventService.emit).toHaveBeenCalledWith('user-logged-in', {
-			user,
+			user: person,
 			authenticationMethod: 'saml',
 		});
 		expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/');
@@ -328,7 +328,7 @@ describe('SAML Login Flow', () => {
 		const res = mock<Response>();
 
 		samlService.handleSamlLogin.mockResolvedValueOnce({
-			authenticatedUser: user,
+			authenticatedUser: person,
 			attributes,
 			rawAttributes,
 			onboardingRequired: true,
@@ -337,7 +337,7 @@ describe('SAML Login Flow', () => {
 		await controller.acsPost(req, res, { RelayState: '/' });
 
 		// Verify that issueCookie was called with MFA flag set to true
-		expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, 'test-browser-id');
+		expect(authService.issueCookie).toHaveBeenCalledWith(res, person, true, 'test-browser-id');
 		expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/saml/onboarding');
 	});
 
@@ -347,7 +347,7 @@ describe('SAML Login Flow', () => {
 		const customRelayState = '/custom/redirect';
 
 		samlService.handleSamlLogin.mockResolvedValueOnce({
-			authenticatedUser: user,
+			authenticatedUser: person,
 			attributes,
 			rawAttributes,
 			onboardingRequired: false,
@@ -355,7 +355,7 @@ describe('SAML Login Flow', () => {
 
 		await controller.acsPost(req, res, { RelayState: customRelayState });
 
-		expect(authService.issueCookie).toHaveBeenCalledWith(res, user, true, 'test-browser-id');
+		expect(authService.issueCookie).toHaveBeenCalledWith(res, person, true, 'test-browser-id');
 		expect(res.redirect).toHaveBeenCalledWith('http://localhost:5678/custom/redirect');
 	});
 
@@ -408,7 +408,7 @@ describe('SAML Login Flow', () => {
 			const res = mock<Response>();
 
 			samlService.handleSamlLogin.mockResolvedValueOnce({
-				authenticatedUser: user,
+				authenticatedUser: person,
 				attributes,
 				rawAttributes,
 				onboardingRequired: false,
@@ -466,7 +466,7 @@ describe('SAML Login Flow', () => {
 			const res = mock<Response>();
 
 			samlService.handleSamlLogin.mockResolvedValueOnce({
-				authenticatedUser: user,
+				authenticatedUser: person,
 				attributes,
 				rawAttributes,
 				onboardingRequired: false,

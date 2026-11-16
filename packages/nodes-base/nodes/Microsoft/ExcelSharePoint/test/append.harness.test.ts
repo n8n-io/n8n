@@ -27,7 +27,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Append', () => {
 			mocks: [
 				{
 					method: 'get',
-					path: `/v1.0/shares/${shareId}/driveItem?%24select=id%2CparentReference`,
+					path: `/v1.0/shares/${shareId}/driveItem?%24select=id,parentReference`,
 					statusCode: 200,
 					responseBody: {
 						id: 'ITEM123',
@@ -39,7 +39,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Append', () => {
 				},
 				{
 					method: 'get',
-					path: '/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123/workbook/worksheets/Sheet1/usedRange',
+					path: '/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/ITEM123/workbook/worksheets/Sheet1/usedRange',
 					statusCode: 200,
 					responseBody: {
 						address: 'Sheet1!A1:B2',
@@ -51,7 +51,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Append', () => {
 				},
 				{
 					method: 'patch',
-					path: "/v1.0/sites/contoso.sharepoint.com%2Cg1%2Cg2/drives/b!drive1/items/ITEM123/workbook/worksheets/Sheet1/range(address='A3:B3')",
+					path: "/v1.0/sites/contoso.sharepoint.com,g1,g2/drives/b!drive1/items/ITEM123/workbook/worksheets/Sheet1/range(address='A3:B3')",
 					statusCode: 200,
 					responseBody: {
 						values: [['bob', '25']],

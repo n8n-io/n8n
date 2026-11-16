@@ -7,7 +7,7 @@ import { ForbiddenError } from '@n8n/errors';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@n8n/backend-services';
 
 import { AssistantController } from '../assistant.controller';
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';

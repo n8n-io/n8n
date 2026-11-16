@@ -2,6 +2,7 @@ import { isDraftIntegration } from '@n8n/api-types';
 import { sha256 } from '@n8n/utils/sha256';
 
 import type { AgentJsonConfig, AgentJsonToolRef, AgentResource } from '../types';
+import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
 
 export type AgentTelemetryStatus = 'draft' | 'production';
 
@@ -88,5 +89,5 @@ export async function buildAgentConfigFingerprint(
 
 export function deriveAgentStatus(agent: AgentResource | null): AgentTelemetryStatus {
 	if (!agent?.activeVersionId) return 'draft';
-	return agent.versionId === agent.activeVersionId ? 'production' : 'draft';
+	return hasAgentUnpublishedChanges(agent) ? 'draft' : 'production';
 }

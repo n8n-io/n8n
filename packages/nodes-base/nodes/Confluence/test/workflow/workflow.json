@@ -1,0 +1,627 @@
+{
+	"name": "Confluence request URLs",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "cda596e5-2571-5dbe-ac10-bd4f5f01ab6e",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "toText",
+				"sourceProperty": "content",
+				"options": {
+					"fileName": "notes.txt"
+				}
+			},
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
+			"position": [0, 200],
+			"id": "d4ebe3bb-02e7-5d51-bc73-49d158eee4a1",
+			"name": "Create File"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e1407479-3136-56c0-9908-bb02fb0339e2",
+							"name": "content",
+							"value": "Release notes",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [0, 100],
+			"id": "3eec90ea-fc8a-5eee-9cdf-b6e2dea0793e",
+			"name": "Set Content"
+		},
+		{
+			"parameters": {
+				"site": {
+					"__rl": true,
+					"mode": "list",
+					"value": "a1b2c3d4-1234-5678-9abc-def012345678"
+				},
+				"resource": "page",
+				"operation": "get",
+				"page": {
+					"__rl": true,
+					"mode": "id",
+					"value": "123456"
+				},
+				"includeDescendants": true
+			},
+			"type": "n8n-nodes-base.confluence",
+			"typeVersion": 1,
+			"position": [300, 0],
+			"id": "f2aa44a7-5a82-5dfb-8c38-d34e6a4a33d8",
+			"name": "Confluence > Get Page",
+			"credentials": {
+				"confluenceCloudOAuth2Api": {
+					"id": "ConfluenceCred01",
+					"name": "Confluence account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"site": {
+					"__rl": true,
+					"mode": "list",
+					"value": "a1b2c3d4-1234-5678-9abc-def012345678"
+				},
+				"resource": "page",
+				"operation": "update",
+				"page": {
+					"__rl": true,
+					"mode": "id",
+					"value": "123456"
+				},
+				"title": "Release plan v2"
+			},
+			"type": "n8n-nodes-base.confluence",
+			"typeVersion": 1,
+			"position": [300, 200],
+			"id": "aad82204-1642-5173-8e60-579921b5f936",
+			"name": "Confluence > Update Page",
+			"credentials": {
+				"confluenceCloudOAuth2Api": {
+					"id": "ConfluenceCred01",
+					"name": "Confluence account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"site": {
+					"__rl": true,
+					"mode": "list",
+					"value": "a1b2c3d4-1234-5678-9abc-def012345678"
+				},
+				"resource": "page",
+				"operation": "delete",
+				"page": {
+					"__rl": true,
+					"mode": "id",
+					"value": "123456"
+				}
+			},
+			"type": "n8n-nodes-base.confluence",
+			"typeVersion": 1,
+			"position": [300, 400],
+			"id": "52b91bce-f0cf-5250-bcdc-7cada6d970b7",
+			"name": "Confluence > Delete Page",
+			"credentials": {
+				"confluenceCloudOAuth2Api": {
+					"id": "ConfluenceCred01",
+					"name": "Confluence account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"site": {
+					"__rl": true,
+					"mode": "list",
+					"value": "a1b2c3d4-1234-5678-9abc-def012345678"
+				},
+				"resource": "page",
+				"operation": "addLabels",
+				"page": {
+					"__rl": true,
+					"mode": "id",
+					"value": "123456"
+				},
+				"labels": "release"
+			},
+			"type": "n8n-nodes-base.confluence",
+			"typeVersion": 1,
+			"position": [300, 600],
+			"id": "b0434b9e-cdfe-513a-b824-ac7aac6b01d1",
+			"name": "Confluence > Add Labels",
+			"credentials": {
+				"confluenceCloudOAuth2Api": {
+					"id": "ConfluenceCred01",
+					"name": "Confluence account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"site": {
+					"__rl": true,
+					"mode": "list",
+					"value": "a1b2c3d4-1234-5678-9abc-def012345678"
+				},
+				"resource": "page",
+				"operation": "removeLabel",
+				"page": {
+					"__rl": true,
+					"mode": "id",
+					"value": "123456"
+				},
+				"labelName": "release"
+			},
+			"type": "n8n-nodes-base.confluence",
+			"typeVersion": 1,
+			"position": [300, 800],
+			"id": "36554e18-0164-5be0-838c-f932951a8563",
+			"name": "Confluence > Remove Label",
+			"credentials": {
+				"confluenceCloudOAuth2Api": {
+					"id": "ConfluenceCred01",
+					"name": "Confluence account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"site": {
+					"__rl": true,
+					"mode": "list",
+					"value": "a1b2c3d4-1234-5678-9abc-def012345678"
+				},
+				"resource": "page",
+				"operation": "getLabels",
+				"page": {
+					"__rl": true,
+					"mode": "id",
+					"value": "123456"
+				}
+			},
+			"type": "n8n-nodes-base.confluence",
+			"typeVersion": 1,
+			"position": [300, 1000],
+			"id": "96c404d2-dc90-57ec-8858-7210595e2157",
+			"name": "Confluence > Get Labels",
+			"credentials": {
+				"confluenceCloudOAuth2Api": {
+					"id": "ConfluenceCred01",
+					"name": "Confluence account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"site": {
+					"__rl": true,
+					"mode": "list",
+					"value": "a1b2c3d4-1234-5678-9abc-def012345678"
+				},
+				"resource": "page",
+				"operation": "getComments",
+				"page": {
+					"__rl": true,
+					"mode": "id",
+					"value": "123456"
+				}
+			},
+			"type": "n8n-nodes-base.confluence",
+			"typeVersion": 1,
+			"position": [300, 1200],
+			"id": "fde110b7-1a94-5ed6-9d6d-d4cfb714cadd",
+			"name": "Confluence > Get Comments",
+			"credentials": {
+				"confluenceCloudOAuth2Api": {
+					"id": "ConfluenceCred01",
+					"name": "Confluence account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"site": {
+					"__rl": true,
+					"mode": "list",
+					"value": "a1b2c3d4-1234-5678-9abc-def012345678"
+				},
+				"resource": "page",
+				"operation": "deleteComment",
+				"commentId": "456789"
+			},
+			"type": "n8n-nodes-base.confluence",
+			"typeVersion": 1,
+			"position": [300, 1400],
+			"id": "fb678394-69e4-5d9a-b595-b96ee807a839",
+			"name": "Confluence > Delete Comment",
+			"credentials": {
+				"confluenceCloudOAuth2Api": {
+					"id": "ConfluenceCred01",
+					"name": "Confluence account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"site": {
+					"__rl": true,
+					"mode": "list",
+					"value": "a1b2c3d4-1234-5678-9abc-def012345678"
+				},
+				"resource": "page",
+				"operation": "getManyByLabel",
+				"label": {
+					"__rl": true,
+					"mode": "id",
+					"value": "789012"
+				}
+			},
+			"type": "n8n-nodes-base.confluence",
+			"typeVersion": 1,
+			"position": [300, 1600],
+			"id": "a2ccded4-9194-549c-93da-2dcb1a5a6fe1",
+			"name": "Confluence > Get Pages By Label",
+			"credentials": {
+				"confluenceCloudOAuth2Api": {
+					"id": "ConfluenceCred01",
+					"name": "Confluence account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"site": {
+					"__rl": true,
+					"mode": "list",
+					"value": "a1b2c3d4-1234-5678-9abc-def012345678"
+				},
+				"resource": "attachment",
+				"operation": "getMany",
+				"page": {
+					"__rl": true,
+					"mode": "id",
+					"value": "123456"
+				}
+			},
+			"type": "n8n-nodes-base.confluence",
+			"typeVersion": 1,
+			"position": [300, 1800],
+			"id": "9c71ee52-f9f2-5eb9-8a9e-2ea4ace054a5",
+			"name": "Confluence > Get Attachments",
+			"credentials": {
+				"confluenceCloudOAuth2Api": {
+					"id": "ConfluenceCred01",
+					"name": "Confluence account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"site": {
+					"__rl": true,
+					"mode": "list",
+					"value": "a1b2c3d4-1234-5678-9abc-def012345678"
+				},
+				"resource": "attachment",
+				"operation": "delete",
+				"attachmentId": "att345678"
+			},
+			"type": "n8n-nodes-base.confluence",
+			"typeVersion": 1,
+			"position": [300, 2000],
+			"id": "d195c109-006e-582b-9d6c-1788ea1b8cff",
+			"name": "Confluence > Delete Attachment",
+			"credentials": {
+				"confluenceCloudOAuth2Api": {
+					"id": "ConfluenceCred01",
+					"name": "Confluence account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"site": {
+					"__rl": true,
+					"mode": "list",
+					"value": "a1b2c3d4-1234-5678-9abc-def012345678"
+				},
+				"resource": "attachment",
+				"operation": "upload",
+				"page": {
+					"__rl": true,
+					"mode": "id",
+					"value": "123456"
+				}
+			},
+			"type": "n8n-nodes-base.confluence",
+			"typeVersion": 1,
+			"position": [300, 2200],
+			"id": "df891f21-86f3-5ea1-b40d-8418120be6a5",
+			"name": "Confluence > Upload Attachment",
+			"credentials": {
+				"confluenceCloudOAuth2Api": {
+					"id": "ConfluenceCred01",
+					"name": "Confluence account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"site": {
+					"__rl": true,
+					"mode": "list",
+					"value": "a1b2c3d4-1234-5678-9abc-def012345678"
+				},
+				"resource": "space",
+				"operation": "get",
+				"space": {
+					"__rl": true,
+					"mode": "id",
+					"value": "98765"
+				}
+			},
+			"type": "n8n-nodes-base.confluence",
+			"typeVersion": 1,
+			"position": [300, 2400],
+			"id": "68d5cefe-a4de-51b2-8584-956f0ac19368",
+			"name": "Confluence > Get Space",
+			"credentials": {
+				"confluenceCloudOAuth2Api": {
+					"id": "ConfluenceCred01",
+					"name": "Confluence account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Confluence > Get Page": [
+			{
+				"json": {
+					"id": "123456",
+					"title": "Release plan",
+					"status": "current",
+					"version": {
+						"number": 3
+					},
+					"body": {
+						"storage": {
+							"value": "<p>Plan</p>",
+							"representation": "storage"
+						}
+					}
+				}
+			}
+		],
+		"Confluence > Update Page": [
+			{
+				"json": {
+					"id": "123456",
+					"title": "Release plan v2",
+					"status": "current",
+					"version": {
+						"number": 4
+					}
+				}
+			}
+		],
+		"Confluence > Delete Page": [
+			{
+				"json": {
+					"deleted": true,
+					"pageId": "123456",
+					"purged": false
+				}
+			}
+		],
+		"Confluence > Add Labels": [
+			{
+				"json": {
+					"results": [
+						{
+							"id": "789012",
+							"name": "release",
+							"prefix": "global"
+						}
+					]
+				}
+			}
+		],
+		"Confluence > Remove Label": [
+			{
+				"json": {
+					"removed": true,
+					"pageId": "123456",
+					"label": "release"
+				}
+			}
+		],
+		"Confluence > Get Labels": [
+			{
+				"json": {
+					"id": "789012",
+					"name": "release",
+					"prefix": "global"
+				}
+			}
+		],
+		"Confluence > Get Comments": [
+			{
+				"json": {
+					"id": "456789",
+					"status": "current",
+					"title": "Re: Release plan"
+				}
+			}
+		],
+		"Confluence > Delete Comment": [
+			{
+				"json": {
+					"deleted": true,
+					"commentId": "456789"
+				}
+			}
+		],
+		"Confluence > Get Pages By Label": [
+			{
+				"json": {
+					"id": "123456",
+					"title": "Release plan",
+					"status": "current"
+				}
+			}
+		],
+		"Confluence > Get Attachments": [
+			{
+				"json": {
+					"id": "att345678",
+					"title": "notes.txt",
+					"mediaType": "text/plain"
+				}
+			}
+		],
+		"Confluence > Delete Attachment": [
+			{
+				"json": {
+					"deleted": true,
+					"attachmentId": "att345678",
+					"purged": false
+				}
+			}
+		],
+		"Confluence > Upload Attachment": [
+			{
+				"json": {
+					"id": "att345678",
+					"title": "notes.txt",
+					"mediaType": "text/plain"
+				}
+			}
+		],
+		"Confluence > Get Space": [
+			{
+				"json": {
+					"id": "98765",
+					"key": "DOCS",
+					"name": "Documentation"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Set Content",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Confluence > Get Page",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Confluence > Update Page",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Confluence > Delete Page",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Confluence > Add Labels",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Confluence > Remove Label",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Confluence > Get Labels",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Confluence > Get Comments",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Confluence > Delete Comment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Confluence > Get Pages By Label",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Confluence > Get Attachments",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Confluence > Delete Attachment",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Confluence > Get Space",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Content": {
+			"main": [
+				[
+					{
+						"node": "Create File",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create File": {
+			"main": [
+				[
+					{
+						"node": "Confluence > Upload Attachment",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

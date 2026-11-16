@@ -24,7 +24,7 @@ export const issueCommentDescription: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/repos/{{$parameter.owner}}/{{$parameter.repository}}/issues/comments',
+						url: '=/repos/{{ toPathSegment($parameter.owner) }}/{{ toPathSegment($parameter.repository) }}/issues/comments',
 					},
 				},
 			},

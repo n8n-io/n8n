@@ -318,6 +318,13 @@ export interface ExecutionOptions {
 	 */
 	stepCheckpoints?: boolean;
 	guardrails?: GuardrailsOptions;
+	/**
+	 * Map a model-call failure to a guardrail stop (e.g. a gateway `402`
+	 * depleted-credits rejection). The run then ends with `finishReason
+	 * 'guardrail'` and the returned code, instead of `finishReason 'error'`.
+	 * Return `undefined` to keep the default error finish.
+	 */
+	classifyModelError?: (error: unknown) => GuardrailStop | undefined;
 }
 
 export interface PersistedExecutionOptions {
@@ -327,6 +334,21 @@ export interface PersistedExecutionOptions {
 export interface NativeToolDeferralConfig {
 	/** Local tools that stay available without provider tool search. */
 	eagerToolNames: readonly string[];
+}
+
+/**
+ * How the runtime exposes tools added with `.deferredTool()`.
+ *
+ * - `provider` (default): the provider's own tool search (Anthropic, OpenAI).
+ *   When the model or endpoint does not support it, the runtime uses `tool-catalog`.
+ * - `tool-catalog`: the prompt lists deferred tool names by tool group. The model
+ *   reads schemas with `find_tools` and runs a tool with `call_tool`. The tool
+ *   list never changes, so the prompt cache stays valid.
+ */
+export type ToolDeferralMode = 'provider' | 'tool-catalog';
+
+export interface ToolDeferralConfig {
+	mode: ToolDeferralMode;
 }
 
 export interface AnthropicPromptCachingConfig {
@@ -547,4 +569,10 @@ export type AgentPersistenceOptions = {
 	 * exactly instead of guessing by recency.
 	 */
 	hostRunId?: string;
+	/**
+	 * Set only when the host starts a fresh run only after every suspension in the
+	 * thread has ended. The runtime then writes back the tool calls that it settles
+	 * as abandoned when it loads history. A stored pending call stops the Observer.
+	 */
+	persistSettledSuspensions?: true;
 };

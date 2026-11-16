@@ -1,12 +1,12 @@
 import { mock } from 'vitest-mock-extended';
 
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
+import type {
+	KnowledgeFileRepository,
+	AgentKnowledgeTotals,
+} from '@/modules/knowledge/repositories/knowledge-file.repository';
 
 import { AgentKnowledgeSnapshotService } from '../agent-knowledge-snapshot.service';
-import type {
-	AgentFileRepository,
-	AgentKnowledgeTotals,
-} from '../repositories/agent-file.repository';
 import type { AgentRepository, PublishedAgentVectorStores } from '../repositories/agent.repository';
 
 describe('AgentKnowledgeSnapshotService', () => {
@@ -16,7 +16,7 @@ describe('AgentKnowledgeSnapshotService', () => {
 		{ isKnowledgeActive = true } = {},
 	) {
 		const agentRepository = mock<AgentRepository>();
-		const agentFileRepository = mock<AgentFileRepository>();
+		const agentFileRepository = mock<KnowledgeFileRepository>();
 
 		for (const page of pages) {
 			agentRepository.findPublishedVectorStoreProvidersPage.mockResolvedValueOnce(page);
