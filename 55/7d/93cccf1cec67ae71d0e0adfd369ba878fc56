@@ -1,0 +1,68 @@
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_06fc4a3eebd292::t_3cbb878af6fb6d 15,17
+  s_06fc4a3eebd292::t_556b31eaa79611 44
+  s_06fc4a3eebd292::t_b398a1f53ee112 4462,4694,4704
+  s_06fc4a3eebd292::t_eecccc8c03ec5f 4525
+  s_06fc4a3eebd292::t_29f8f1bc0721db 4536-4539
+  s_06fc4a3eebd292::t_a36b31d645ccc6 2
+  s_06fc4a3eebd292::t_14a0adb87c10f4 33
+  s_06fc4a3eebd292::t_3dff198ccfe66f 29-30
+  s_06fc4a3eebd292::t_fe8c0ff06a6735 4463,4465-4469,4471,4473-4478,4480-4487,4491-4492,4494-4496,4500,4502-4512,4517-4523,4526-4527,4529-4535,4540-4541,4545-4547,4549-4551,4554-4555,4557-4559,4563-4566,4569,4571-4589,4593-4596,4600-4601,4603,4608-4609,4612-4614,4617-4618,4621,4623-4626,4628,4631-4632,4636,4641,4643,4655-4667,4670,4673-4678,4681-4693,4695-4700,4702-4703,4705-4712,4714-4723,4727-4730
+  s_06fc4a3eebd292::t_52e1fa9ee464e1 40-41
+  s_06fc4a3eebd292::t_4adf0d55daba44 4516,4544
+  s_06fc4a3eebd292::t_4554382d33d435 4459-4461
+  s_06fc4a3eebd292::t_5ff4075c258dbf 4464
+  s_06fc4a3eebd292::t_29c1cf03afe8c0 4470
+  s_06fc4a3eebd292::t_d81cfb93e9912d 4472
+  s_06fc4a3eebd292::t_2f5623b312b1de 4479
+  s_06fc4a3eebd292::t_7dbe99da2ab2a9 4488-4490
+  s_06fc4a3eebd292::t_f9cf4d3c219a51 4493
+  s_06fc4a3eebd292::t_bc045631618dcd 4497-4499
+  s_06fc4a3eebd292::t_2dc2bad0fbaee2 4501
+  s_06fc4a3eebd292::t_06d46e827d6dd5 4513-4515
+  s_06fc4a3eebd292::t_ade3d598bdf871 4524
+  s_06fc4a3eebd292::t_15046693099d2a 4528
+  s_06fc4a3eebd292::t_3b8c22347f0f40 4542-4543
+  s_06fc4a3eebd292::t_81d85a8b118577 4548
+  s_06fc4a3eebd292::t_1bb1e8d8f3d63e 4552-4553
+  s_06fc4a3eebd292::t_bbbddd43dcd507 4556
+  s_06fc4a3eebd292::t_03476cfa12c6ee 4560-4562
+  s_06fc4a3eebd292::t_9952ad5a4fdfe8 4567-4568
+  s_06fc4a3eebd292::t_409d4d78616e9b 4570
+  s_06fc4a3eebd292::t_71d08a7ad902ee 4590-4592
+  s_06fc4a3eebd292::t_eb5fb9816c1062 4597-4599
+  s_06fc4a3eebd292::t_5f39ea0ec762e5 4602
+  s_06fc4a3eebd292::t_e8493351862a6a 4604-4607
+  s_06fc4a3eebd292::t_78a847721c6789 4610-4611
+  s_06fc4a3eebd292::t_5d1c2ad1ea60ae 4615-4616
+  s_06fc4a3eebd292::t_9f809ed228049c 4619-4620
+  s_06fc4a3eebd292::t_d0c71fb4609243 4622
+  s_06fc4a3eebd292::t_b4fe7b37e993c9 4627
+  s_06fc4a3eebd292::t_5e43b38644af2b 4629-4630
+  s_06fc4a3eebd292::t_23bdcbef146cfa 4633-4635
+  s_06fc4a3eebd292::t_0a88bd3229de30 4637-4640
+  s_06fc4a3eebd292::t_d3bdb6c616d22c 4642
+  s_06fc4a3eebd292::t_de918d37e711dc 4644-4646,4652-4654
+  s_06fc4a3eebd292::t_12cb60a3c145de 4668-4669
+  s_06fc4a3eebd292::t_ff88b27a1503b6 4671-4672
+  s_06fc4a3eebd292::t_5a12aeed7811a4 4679-4680
+  s_06fc4a3eebd292::t_c06278f24a68b6 4701
+  s_06fc4a3eebd292::t_da9a2f3afedeab 4713
+  s_06fc4a3eebd292::t_4aa80607c5254d 4724-4726
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "557d93cccf1cec67ae71d0e0adfd369ba878fc56",
+  "prompts": {},
+  "sessions": {
+    "s_06fc4a3eebd292": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fbd68ab-5524-436f-933c-230ffa062c5b",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
