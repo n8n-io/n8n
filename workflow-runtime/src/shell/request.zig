@@ -92,6 +92,11 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
         }
     }
 
+    // `inject: false`: the credential fills templates only. The headers, the query, the
+    // body members and the basic auth that it injects are not added, as for a request that
+    // v1 sends without the authentication of the credential.
+    const adding: ?creds.Slot = if (fa.inject) |raw| (if (eq(raw, "false")) null else slot) else slot;
+
     if (fa.timeout_ms) |raw| if (!std.mem.eql(u8, raw, "null")) {
         const f = std.fmt.parseFloat(f64, raw) catch return invalid(diag, "http: timeoutMs must be a number", .{});
         if (!(f >= 1)) return invalid(diag, "http: timeoutMs must be at least 1", .{});
@@ -122,7 +127,7 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
             while (it.next()) |mem| try queryPair(&out, &has_query, mem.key, mem.value, slot, diag);
         }
     }
-    if (slot) |s| if (s.qs) |q| {
+    if (adding) |s| if (s.qs) |q| {
         var it = q.iterator();
         while (it.next()) |e| {
             const v = e.value_ptr.*;
@@ -152,7 +157,7 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
                 var no: Out = .{ .buf = &nb };
                 http.unescape(mem.key, &no) catch return invalid(diag, "http: a header name is longer than {d} bytes", .{max_header_name});
                 const name = no.written();
-                if (managed(name) or injected(slot, name)) continue;
+                if (managed(name) or injected(adding, name)) continue;
                 if (std.mem.eql(u8, mem.value, "null")) continue;
                 if (multipart != null and std.ascii.eqlIgnoreCase(name, "content-type")) continue;
                 if (std.ascii.eqlIgnoreCase(name, "content-type")) have.ct = true;
@@ -170,7 +175,7 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
             }
         }
     }
-    if (slot) |s| {
+    if (adding) |s| {
         if (s.headers) |hs| {
             var it = hs.iterator();
             while (it.next()) |e| {
@@ -206,7 +211,7 @@ fn buildWith(args: []const u8, store: ?*const creds.Store, idem_key: ?[]const u8
 
     // Body.
     var body_raw: ?[]const u8 = if (fa.body) |r| (if (std.mem.eql(u8, r, "null")) null else r) else null;
-    const inject_body: ?std.json.ObjectMap = if (slot) |s| s.body else null;
+    const inject_body: ?std.json.ObjectMap = if (adding) |s| s.body else null;
     // A credential that authenticates in the body needs one, except on
     // GET and HEAD.
     if (body_raw == null and inject_body != null and !eq(m, "GET") and !eq(m, "HEAD") and multipart == null) body_raw = "{}";
@@ -531,6 +536,7 @@ const Args = struct {
     multipart: ?[]const u8 = null,
     qs_format: ?[]const u8 = null,
     basic_auth: ?[]const u8 = null,
+    inject: ?[]const u8 = null,
 };
 
 fn readArgs(args: []const u8) Args {
@@ -540,7 +546,7 @@ fn readArgs(args: []const u8) Args {
     while (it.next()) |mem| : (guard += 1) {
         if (guard > args.len) break;
         const k = mem.key;
-        const slot: *?[]const u8 = if (eq(k, "\"method\"")) &a.method else if (eq(k, "\"credential\"")) &a.credential else if (eq(k, "\"timeoutMs\"")) &a.timeout_ms else if (eq(k, "\"url\"")) &a.url else if (eq(k, "\"qs\"")) &a.qs else if (eq(k, "\"headers\"")) &a.headers else if (eq(k, "\"body\"")) &a.body else if (eq(k, "\"multipart\"")) &a.multipart else if (eq(k, "\"qsFormat\"")) &a.qs_format else if (eq(k, "\"basicAuth\"")) &a.basic_auth else continue;
+        const slot: *?[]const u8 = if (eq(k, "\"method\"")) &a.method else if (eq(k, "\"credential\"")) &a.credential else if (eq(k, "\"timeoutMs\"")) &a.timeout_ms else if (eq(k, "\"url\"")) &a.url else if (eq(k, "\"qs\"")) &a.qs else if (eq(k, "\"headers\"")) &a.headers else if (eq(k, "\"body\"")) &a.body else if (eq(k, "\"multipart\"")) &a.multipart else if (eq(k, "\"qsFormat\"")) &a.qs_format else if (eq(k, "\"basicAuth\"")) &a.basic_auth else if (eq(k, "\"inject\"")) &a.inject else continue;
         if (slot.* == null) slot.* = mem.value;
     }
     return a;
@@ -1139,4 +1145,22 @@ test "basic auth of the call: templates from the credential, and plain values" {
     const headers = buf[c.url_len..c.hdr_end];
     try std.testing.expect(std.mem.indexOf(u8, headers, "authorization: Basic azo=\r\n") != null);
     try std.testing.expectEqual(@as(usize, 1), std.mem.count(u8, headers, "authorization: Basic"));
+}
+
+test "inject false: the credential fills templates and adds nothing" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const store = try creds.Store.parse(arena.allocator(),
+        \\{"api":{"data":{"token":"T","user":"u","pw":"p"},
+        \\ "inject":{"headers":{"X-Key":"{{$credentials.token}}"},"qs":{"key":"{{$credentials.token}}"},"basicAuth":{"user":"{{$credentials.user}}","password":"{{$credentials.pw}}"}}}}
+    );
+    var buf: [2048]u8 = undefined;
+    var diag: Diag = .{};
+    const a = try build("{\"url\":\"http://h/{{$credentials.user}}\",\"credential\":\"api\",\"inject\":false}", &store, null, &buf, &diag);
+    try std.testing.expectEqualStrings("http://h/u", buf[0..a.url_len]);
+    const headers = buf[a.url_len..a.hdr_end];
+    try std.testing.expect(std.mem.indexOf(u8, headers, "X-Key") == null);
+    try std.testing.expect(std.mem.indexOf(u8, headers, "authorization") == null);
+    const b = try build("{\"url\":\"http://h/\",\"credential\":\"api\"}", &store, null, &buf, &diag);
+    try std.testing.expectEqualStrings("http://h/?key=T", buf[0..b.url_len]);
 }

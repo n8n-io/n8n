@@ -33,7 +33,7 @@ const usage =
     \\        [--egress-origin "<host>[:port] conns=N inflight=N queue=N rate=R burst=B connect-ms=T read-ms=T timeout-ms=T h2=on|off|prior aimd=on|off"]...
     \\        (--module FILE.wfm --route "POST /path" [--rate R --burst B --concurrency C])...
     \\  load [--host IPv4] --port P [--conns C] [--seconds S] [--path /p] [--body BYTES] [--threads T] [--pipeline K]
-    \\  stub --port P [--delay-ms D] [--tls-cert CERT.pem --tls-key KEY.pem] [--h2] [--h2-streams N]
+    \\  stub [--host IPv4] --port P [--delay-ms D] [--tls-cert CERT.pem --tls-key KEY.pem] [--h2] [--h2-streams N]
     \\  bench-w1 [--seconds S] [--batch B] [--threads T]
     \\  bench-w5 [N]                      park N executions on an approval, then resume them
     \\  bench-counts
@@ -131,6 +131,7 @@ pub fn main(init: std.process.Init) !void {
             if (i + 1 >= args.len) break;
             if (std.mem.eql(u8, args[i], "--h2-streams")) so.h2_streams = try std.fmt.parseInt(u32, args[i + 1], 10);
             if (std.mem.eql(u8, args[i], "--port")) so.port = try std.fmt.parseInt(u16, args[i + 1], 10);
+            if (std.mem.eql(u8, args[i], "--host")) so.host = sys.parseIp4(args[i + 1]) orelse return error.InvalidHost;
             if (std.mem.eql(u8, args[i], "--delay-ms")) so.delay_ms = try std.fmt.parseInt(u32, args[i + 1], 10);
             if (std.mem.eql(u8, args[i], "--tls-cert")) so.tls_cert = args[i + 1];
             if (std.mem.eql(u8, args[i], "--tls-key")) so.tls_key = args[i + 1];

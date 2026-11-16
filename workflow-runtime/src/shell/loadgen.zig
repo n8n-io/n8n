@@ -249,6 +249,8 @@ fn percentile(hist: []const u32, p: f64) u64 {
 // ---- stub service -----------------------------------------------------------
 
 pub const StubOptions = struct {
+    /// The address to listen on. Another machine reaches the stub only on an address of this one.
+    host: [4]u8 = .{ 127, 0, 0, 1 },
     port: u16 = 9090,
     delay_ms: u32 = 0,
     /// With both set, the stub speaks TLS (for W3 over https).
@@ -389,7 +391,7 @@ pub fn runStub(o: StubOptions) !void {
         if (o.h2) ctx.?.serverAlpnH2();
     }
     var poller = try sys.Poller.init();
-    const lfd = try sys.listenTcp(.{ 127, 0, 0, 1 }, o.port, false);
+    const lfd = try sys.listenTcp(o.host, o.port, false);
     try poller.addRead(lfd, 0xFFFF_FFFF);
     const max = 65536;
     const conns = try backing.alloc(StubConn, max);
