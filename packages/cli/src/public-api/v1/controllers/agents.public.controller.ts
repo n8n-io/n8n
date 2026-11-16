@@ -28,7 +28,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentDefaultModelResolverService } from '@/modules/agents/agent-default-model-resolver.service';
@@ -155,7 +155,9 @@ export class AgentsPublicController {
 	@ApiSummary('Update an agent')
 	@ApiDescription(
 		'Replace the configuration of an agent. Send the configuration and the concurrency token you read from the retrieve endpoint: ' +
-			'a stale token returns a conflict. Fields the server manages are ignored, not rejected.',
+			'a stale token returns a conflict. Fields the server manages are ignored, not rejected. ' +
+			'The retrieved body of an agent without a configuration carries a null configuration: ' +
+			'sending it back changes nothing.',
 	)
 	@ApiTags(['Agent'])
 	@ApiResponse(200, AgentPublicDto)
@@ -170,6 +172,20 @@ export class AgentsPublicController {
 		const agent = await this.agentsService.findById(agentId);
 		if (!agent?.projectId) {
 			throw new NotFoundError('Not Found');
+		}
+
+		// A retrieved body carries `config: null` when the agent has no
+		// configuration. Writing that back is a no-op; removing a stored
+		// configuration is not an operation this endpoint offers.
+		if (body.config === null) {
+			if (agent.schema) {
+				throw new BadRequestError(
+					'Provide the configuration document: the update endpoint cannot remove it.',
+				);
+			}
+			return toAgentPublicDto(
+				await this.agentResponseMapper.toAgentDto(agent, agent.projectId, req.user),
+			);
 		}
 
 		// The Public API has no push channel, so no client write lock is

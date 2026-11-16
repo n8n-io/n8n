@@ -514,6 +514,57 @@ describe('AgentsPublicController updateAgent', () => {
 			}),
 		).rejects.toThrow(ConflictError);
 	});
+
+	it('treats a null config as a no-op for an agent without a configuration', async () => {
+		agentsService.findById.mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+			schema: null,
+		} as unknown as Awaited<ReturnType<AgentsService['findById']>>);
+		agentResponseMapper.toAgentDto.mockResolvedValue(fullAgentDto);
+
+		const result = await controller.updateAgent(req, res, 'agent-1', {
+			config: null,
+			baseConfigHash: null,
+		});
+
+		expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+		expect(agentResponseMapper.toAgentDto).toHaveBeenCalledWith(
+			{ id: 'agent-1', projectId: 'project-1', schema: null },
+			'project-1',
+			req.user,
+		);
+		expect(result).toEqual({
+			id: 'agent-1',
+			name: 'My Agent',
+			projectId: 'project-1',
+			project: null,
+			availableInMCP: false,
+			isArchived: false,
+			versionId: 'version-1',
+			activeVersionId: null,
+			createdAt: '2025-01-02T03:04:05.000Z',
+			updatedAt: '2025-06-07T08:09:10.000Z',
+			config: { name: 'My Agent', model: '', instructions: '' },
+			configHash: 'hash-1',
+			tools: {},
+			activeVersion: null,
+		});
+	});
+
+	it('rejects a null config when the agent has a configuration', async () => {
+		agentsService.findById.mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+			schema: { name: 'My Agent' },
+		} as unknown as Awaited<ReturnType<AgentsService['findById']>>);
+
+		await expect(
+			controller.updateAgent(req, res, 'agent-1', { config: null, baseConfigHash: 'hash-1' }),
+		).rejects.toThrow(BadRequestError);
+
+		expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+	});
 });
 
 describe('AgentsPublicController deleteAgent', () => {

@@ -52,6 +52,13 @@ describe('UpdateAgentPublicDto', () => {
 		});
 	});
 
+	it('accepts a null config: the retrieved body of an agent without one', () => {
+		expect(UpdateAgentPublicDto.parse({ config: null, baseConfigHash: null })).toEqual({
+			config: null,
+			baseConfigHash: null,
+		});
+	});
+
 	it('requires the concurrency token', () => {
 		expect(UpdateAgentPublicDto.safeParse({ config: validConfig }).success).toBe(false);
 		expect(() => UpdateAgentPublicDto.parse({ config: validConfig } as never)).toThrow();

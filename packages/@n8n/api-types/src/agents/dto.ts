@@ -606,7 +606,10 @@ export class UpdateAgentDto implements UpdateAgent {
 
 const updateAgentPublicObjectSchema = z
 	.object({
-		config: AgentJsonConfigSchema.openapi(alsoNullable({ type: 'object' })),
+		// `null` is the retrieved body of an agent that has no configuration
+		// yet, so the round-trip accepts it. The handler turns a null config
+		// into a no-op for such an agent and rejects it for one with a config.
+		config: AgentJsonConfigSchema.nullable().openapi(alsoNullable({ type: 'object' })),
 		baseConfigHash: z.string().nullable().optional(),
 		configHash: z.string().nullable().optional(),
 		id: strippedAgentField,

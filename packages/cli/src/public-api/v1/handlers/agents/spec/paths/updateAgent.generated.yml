@@ -3,7 +3,7 @@ tags:
   - Agent
 summary: Update an agent
 description: |-
-  Replace the configuration of an agent. Send the configuration and the concurrency token you read from the retrieve endpoint: a stale token returns a conflict. Fields the server manages are ignored, not rejected.
+  Replace the configuration of an agent. Send the configuration and the concurrency token you read from the retrieve endpoint: a stale token returns a conflict. Fields the server manages are ignored, not rejected. The retrieved body of an agent without a configuration carries a null configuration: sending it back changes nothing.
 
   Requires the `agent:update` API key scope.
 x-required-scope: agent:update

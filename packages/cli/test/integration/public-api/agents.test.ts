@@ -849,6 +849,55 @@ describe('PUT /agents/:agentId', () => {
 		expect(response.body.configHash).toBe(read.body.configHash);
 	});
 
+	test('should accept the retrieved body of an agent without a configuration', async () => {
+		const member: User = await createMemberWithApiKey();
+		const personalProject: Project = await Container.get(
+			ProjectRepository,
+		).getPersonalProjectForUserOrFail(member.id);
+		await agentRepository.save({
+			id: 'agent-empty',
+			name: 'Empty Agent',
+			projectId: personalProject.id,
+			schema: null,
+			integrations: [],
+			tools: {},
+			skills: {},
+			versionId: 'draft-version',
+		});
+
+		const read = await testServer.publicApiAgentFor(member).get('/agents/agent-empty');
+		expect(read.statusCode, JSON.stringify(read.body)).toBe(200);
+		expect(read.body.config).toBeNull();
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.put('/agents/agent-empty')
+			.send(read.body);
+
+		expect(response.statusCode, JSON.stringify(response.body)).toBe(200);
+		expect(response.body.config).toBeNull();
+		expect(response.body.configHash).toBeNull();
+	});
+
+	test('should return 400 for a null config when the agent has a configuration', async () => {
+		const member: User = await createMemberWithApiKey();
+
+		const created = await testServer
+			.publicApiAgentFor(member)
+			.post('/agents')
+			.send({
+				name: 'Configured',
+				config: { name: 'Configured', model: '', instructions: '' },
+			});
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.put(`/agents/${created.body.id}`)
+			.send({ config: null, baseConfigHash: created.body.configHash });
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should return 409 when the config hash is stale', async () => {
 		const member: User = await createMemberWithApiKey();
 
