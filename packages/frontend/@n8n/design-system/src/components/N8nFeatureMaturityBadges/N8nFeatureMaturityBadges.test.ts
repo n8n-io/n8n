@@ -1,3 +1,4 @@
+import { featureMaturity } from '@n8n/frontend-constants/feature-maturity';
 import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { mount } from '@vue/test-utils';
@@ -5,9 +6,11 @@ import { mount } from '@vue/test-utils';
 import N8nBadge from '../N8nBadge';
 
 import FeatureMaturityBadges from './N8nFeatureMaturityBadges.vue';
-import { provideFeatureMaturity } from './featureMaturityStub';
+import { FeatureMaturityKey } from './featureMaturityState';
 
-const featureList = provideFeatureMaturity();
+const featureList = {
+	global: { provide: { [FeatureMaturityKey as symbol]: featureMaturity } },
+};
 
 describe('N8nFeatureMaturityBadges', () => {
 	it('draws the Preview badge when no feature id is set', () => {
@@ -23,11 +26,9 @@ describe('N8nFeatureMaturityBadges', () => {
 			props: { feature: 'workflowReviews' },
 		});
 
-		expect(previewOnly.getByTestId('security-workflow-reviews-preview-badge')).toHaveTextContent(
-			'Preview',
-		);
+		expect(previewOnly.getByTestId('workflow-reviews-preview-badge')).toHaveTextContent('Preview');
 		expect(
-			previewOnly.queryByTestId('security-workflow-reviews-enterprise-readiness-badge'),
+			previewOnly.queryByTestId('workflow-reviews-enterprise-readiness-badge'),
 		).not.toBeInTheDocument();
 		previewOnly.unmount();
 
@@ -35,8 +36,8 @@ describe('N8nFeatureMaturityBadges', () => {
 			...featureList,
 			props: { feature: 'assistant' },
 		});
-		expect(enterpriseOnly.getByTestId('n8n-agent-enterprise-readiness-badge')).toBeInTheDocument();
-		expect(enterpriseOnly.queryByTestId('n8n-agent-preview-badge')).not.toBeInTheDocument();
+		expect(enterpriseOnly.getByTestId('assistant-enterprise-readiness-badge')).toBeInTheDocument();
+		expect(enterpriseOnly.queryByTestId('assistant-preview-badge')).not.toBeInTheDocument();
 		enterpriseOnly.unmount();
 
 		const shown = render(FeatureMaturityBadges, {

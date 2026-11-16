@@ -36,6 +36,8 @@ export interface SettingsPageHeaderProps {
 	/**
 	 * Feature id from the list the app provides.
 	 * The entry decides which badges render beside the title.
+	 * The id sets the badge test ids. A camelCase id becomes kebab-case.
+	 * `context` renders `context-preview-badge` and `context-enterprise-readiness-badge`.
 	 */
 	feature?: FeatureMaturityId;
 	/** Hide the Preview badge at this callsite. */

@@ -131,8 +131,8 @@ describe('SettingsChatHubView', () => {
 	it('does not toggle Chat from a maturity badge', async () => {
 		const { getByTestId } = renderComponent();
 
-		await fireEvent.click(getByTestId('chat-hub-preview-badge'));
-		await fireEvent.click(getByTestId('chat-hub-enterprise-readiness-badge'));
+		await fireEvent.click(getByTestId('chat-preview-badge'));
+		await fireEvent.click(getByTestId('chat-enterprise-readiness-badge'));
 
 		expect(setChatEnabledMock).not.toHaveBeenCalled();
 	});
@@ -154,12 +154,12 @@ describe('SettingsChatHubView', () => {
 
 		const titleRow = getByRole('heading', { name: 'Chat' }).parentElement;
 
-		expect(titleRow).toContainElement(getByTestId('chat-hub-preview-badge'));
-		expect(titleRow).toContainElement(getByTestId('chat-hub-enterprise-readiness-badge'));
+		expect(titleRow).toContainElement(getByTestId('chat-preview-badge'));
+		expect(titleRow).toContainElement(getByTestId('chat-enterprise-readiness-badge'));
 		expect(getByTestId('chat-hub-enabled-row')).not.toContainElement(
-			getByTestId('chat-hub-preview-badge'),
+			getByTestId('chat-preview-badge'),
 		);
-		expect(getByTestId('chat-hub-enterprise-readiness-badge')).toHaveTextContent(
+		expect(getByTestId('chat-enterprise-readiness-badge')).toHaveTextContent(
 			'Limited enterprise readiness',
 		);
 	});

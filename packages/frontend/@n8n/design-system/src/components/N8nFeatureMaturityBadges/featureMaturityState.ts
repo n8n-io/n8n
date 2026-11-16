@@ -9,8 +9,6 @@ export type FeatureMaturityEntry = {
 	preview: boolean;
 	/** Show the Limited enterprise readiness badge. */
 	limitedEnterpriseSupport: boolean;
-	/** Test id prefix when the feature id is not the prefix pages already use. */
-	testId?: string;
 };
 
 /** Feature id to badge flags. A missing id renders no feature badges. */
@@ -29,8 +27,13 @@ export function useFeatureMaturityCatalog(): FeatureMaturityCatalog {
 	return inject(FeatureMaturityKey, {});
 }
 
-function featureMaturityTestId(id: FeatureMaturityId, entry: FeatureMaturityEntry): string {
-	return entry.testId ?? id.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+/**
+ * Badge test id prefix for a feature id.
+ * A camelCase id becomes kebab-case. `endUserCredentials` becomes `end-user-credentials`.
+ * Badges append `-preview-badge` or `-enterprise-readiness-badge`.
+ */
+function featureMaturityTestId(id: FeatureMaturityId): string {
+	return id.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 }
 
 /**
@@ -55,6 +58,6 @@ export function resolveFeatureMaturityBadges(
 	return {
 		showPreview: entry.preview && !hidden.preview,
 		showEnterprise: entry.limitedEnterpriseSupport && !hidden.enterprise,
-		testId: featureMaturityTestId(id, entry),
+		testId: featureMaturityTestId(id),
 	};
 }

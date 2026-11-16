@@ -304,10 +304,10 @@ describe('SettingsInstanceAiView', () => {
 			const heading = getByRole('heading', { name: 'settings.n8nAgent' });
 
 			expect(heading.parentElement).toContainElement(
-				getByTestId('n8n-agent-enterprise-readiness-badge'),
+				getByTestId('assistant-enterprise-readiness-badge'),
 			);
 			expect(label.parentElement).not.toContainElement(
-				getByTestId('n8n-agent-enterprise-readiness-badge'),
+				getByTestId('assistant-enterprise-readiness-badge'),
 			);
 		});
 
@@ -641,7 +641,7 @@ describe('SettingsInstanceAiView', () => {
 			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
 
 			const { getByTestId } = renderComponent();
-			expect(getByTestId('n8n-agent-enterprise-readiness-badge')).toBeVisible();
+			expect(getByTestId('assistant-enterprise-readiness-badge')).toBeVisible();
 		});
 
 		it('hides content when disabled via moduleSettings fallback', () => {

@@ -17,25 +17,24 @@ const props = withDefaults(
 	defineProps<{
 		/**
 		 * Feature id from the list the app provides.
-		 * The entry decides which badges render. Omit it to draw only the Preview badge.
+		 * The entry decides which badges render.
+		 * Omit it to draw only the Preview badge. That badge has no test id.
+		 *
+		 * The id sets the badge test ids. A camelCase id becomes kebab-case.
+		 * `agents` renders `agents-preview-badge` and `agents-enterprise-readiness-badge`.
+		 * `endUserCredentials` renders `end-user-credentials-preview-badge`.
+		 * The enterprise badge uses the same prefix and `-enterprise-readiness-badge`.
 		 */
 		feature?: FeatureMaturityId;
 		/** Hide the Preview badge at this callsite. */
 		hidePreview?: boolean;
 		/** Hide the Limited enterprise readiness badge at this callsite. */
 		hideEnterprise?: boolean;
-		/**
-		 * Prefix for the badge test ids.
-		 * Produces `${testId}-preview-badge` and `${testId}-enterprise-readiness-badge`.
-		 * A `feature` id supplies this when the prop is omitted.
-		 */
-		testId?: string;
 	}>(),
 	{
 		feature: undefined,
 		hidePreview: false,
 		hideEnterprise: false,
-		testId: undefined,
 	},
 );
 
@@ -48,15 +47,14 @@ const resolved = computed(() => {
 		return {
 			showPreview: !props.hidePreview,
 			showEnterprise: false,
-			testId: props.testId,
+			testId: undefined,
 		};
 	}
 
-	const badges = resolveFeatureMaturityBadges(catalog, props.feature, {
+	return resolveFeatureMaturityBadges(catalog, props.feature, {
 		preview: props.hidePreview,
 		enterprise: props.hideEnterprise,
 	});
-	return { ...badges, testId: props.testId ?? badges.testId };
 });
 const visible = computed(() => resolved.value.showPreview || resolved.value.showEnterprise);
 const previewTestId = computed(() =>

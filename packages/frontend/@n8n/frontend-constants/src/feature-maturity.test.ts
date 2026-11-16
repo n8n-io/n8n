@@ -4,31 +4,19 @@ describe('featureMaturity', () => {
 	it('matches the feature list', () => {
 		expect(featureMaturity).toEqual({
 			endUserCredentials: { preview: true, limitedEnterpriseSupport: false },
-			assistant: {
-				preview: false,
-				limitedEnterpriseSupport: true,
-				testId: 'n8n-agent',
-			},
+			assistant: { preview: false, limitedEnterpriseSupport: true },
 			agents: { preview: true, limitedEnterpriseSupport: true },
 			n8nPackages: { preview: true, limitedEnterpriseSupport: true },
-			workflowReviews: {
-				preview: true,
-				limitedEnterpriseSupport: false,
-				testId: 'security-workflow-reviews',
-			},
+			workflowReviews: { preview: true, limitedEnterpriseSupport: false },
 			oauthJwe: { preview: true, limitedEnterpriseSupport: false },
 			tokenExchange: { preview: true, limitedEnterpriseSupport: false },
 			openTelemetry: { preview: true, limitedEnterpriseSupport: false },
 			microsoftAgent365: { preview: true, limitedEnterpriseSupport: false },
-			context: { preview: true, limitedEnterpriseSupport: true, testId: 'settings-context' },
+			context: { preview: true, limitedEnterpriseSupport: true },
 			roles: { preview: false, limitedEnterpriseSupport: false },
 			nodePolicies: { preview: true, limitedEnterpriseSupport: false },
 			selfHealing: { preview: true, limitedEnterpriseSupport: true },
-			chat: {
-				preview: true,
-				limitedEnterpriseSupport: true,
-				testId: 'chat-hub',
-			},
+			chat: { preview: true, limitedEnterpriseSupport: true },
 		});
 	});
 

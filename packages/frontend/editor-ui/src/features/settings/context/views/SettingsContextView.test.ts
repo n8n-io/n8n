@@ -47,8 +47,8 @@ describe('SettingsContextView', () => {
 
 	it('shows the Preview and limited enterprise readiness badges next to the page title', () => {
 		const { getByRole, getByTestId } = renderView();
-		const preview = getByTestId('settings-context-preview-badge');
-		const enterprise = getByTestId('settings-context-enterprise-readiness-badge');
+		const preview = getByTestId('context-preview-badge');
+		const enterprise = getByTestId('context-enterprise-readiness-badge');
 		const heading = getByRole('heading', { name: 'Context' });
 
 		expect(heading.parentElement).toContainElement(preview);

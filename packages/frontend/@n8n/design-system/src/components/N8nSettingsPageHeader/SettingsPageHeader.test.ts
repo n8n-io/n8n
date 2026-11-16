@@ -1,9 +1,12 @@
+import { featureMaturity } from '@n8n/frontend-constants/feature-maturity';
 import { render, screen } from '@testing-library/vue';
 
-import { provideFeatureMaturity } from '../N8nFeatureMaturityBadges/featureMaturityStub';
+import { FeatureMaturityKey } from '../N8nFeatureMaturityBadges/featureMaturityState';
 import N8nSettingsPageHeader from './SettingsPageHeader.vue';
 
-const featureList = provideFeatureMaturity();
+const featureList = {
+	global: { provide: { [FeatureMaturityKey as symbol]: featureMaturity } },
+};
 
 describe('N8nSettingsPageHeader', () => {
 	it('renders the title as an h1 by default', () => {
@@ -21,8 +24,8 @@ describe('N8nSettingsPageHeader', () => {
 		});
 
 		const title = screen.getByRole('heading', { name: 'Context' });
-		const preview = screen.getByTestId('settings-context-preview-badge');
-		const enterprise = screen.getByTestId('settings-context-enterprise-readiness-badge');
+		const preview = screen.getByTestId('context-preview-badge');
+		const enterprise = screen.getByTestId('context-enterprise-readiness-badge');
 		expect(title.parentElement).toContainElement(preview);
 		expect(title.parentElement).toContainElement(enterprise);
 	});
