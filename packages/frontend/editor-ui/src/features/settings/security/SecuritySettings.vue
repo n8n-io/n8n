@@ -7,6 +7,7 @@ import {
 	N8nAlertDialog,
 	N8nBadge,
 	N8nNotice,
+	N8nPreviewBadge,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
@@ -410,12 +411,21 @@ const sharingCountText = computed(() => {
 			<N8nSettingsRowGroup>
 				<N8nSettingsRow
 					clickable
-					:title="i18n.baseText('settings.security.nodeAndCredentialPolicies.title')"
-					:description="i18n.baseText('settings.security.nodeAndCredentialPolicies.description')"
 					data-test-id="security-type-policies-row"
 					data-attr="security-type-policies-row"
 					@click="openTypePolicies"
 				>
+					<template #info>
+						<span :class="$style.titleWithBadge">
+							<N8nText :bold="true" size="medium" color="text-dark">
+								{{ i18n.baseText('settings.security.nodeAndCredentialPolicies.title') }}
+							</N8nText>
+							<N8nPreviewBadge data-test-id="security-type-policies-preview-badge" />
+						</span>
+						<N8nText :class="$style.twoLineDescription" size="small" color="text-light">
+							{{ i18n.baseText('settings.security.nodeAndCredentialPolicies.description') }}
+						</N8nText>
+					</template>
 					<template #action>
 						<N8nSettingsRowConfigure
 							:value="i18n.baseText('settings.security.nodeAndCredentialPolicies.configure')"
@@ -470,5 +480,20 @@ const sharingCountText = computed(() => {
 <style lang="scss" module>
 .layout {
 	padding-top: 0;
+}
+
+.titleWithBadge {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+/* The `#info` slot replaces the row's own clamp, so the description keeps the same two lines here. */
+.twoLineDescription {
+	display: -webkit-box;
+	overflow: hidden;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
 }
 </style>

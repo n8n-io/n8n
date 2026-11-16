@@ -121,6 +121,7 @@ describe('SecuritySettings', () => {
 
 			expect(row).toHaveTextContent('Node and credential policies');
 			expect(row).toHaveTextContent('Configure');
+			expect(within(row).getByTestId('security-type-policies-preview-badge')).toBeInTheDocument();
 			expect(getByTestId('security-type-policies-section')).toHaveTextContent('Access control');
 		});
 
