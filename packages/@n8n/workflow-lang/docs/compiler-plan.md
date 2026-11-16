@@ -344,7 +344,8 @@ runtime stores the body of a 2xx response, and the body of the result is `{ $bin
 - The workflow setting `binaryMode: combined`: the converter keeps a node that uses binary data in the
   host (`tryCompiledNode`).
 - A node that asks for response bytes stays in the host until the caller sets `NodeSources.storesResponses`.
-  The n8n module does not set it, because the runtime does not store responses yet.
+  The n8n module sets it when the binary data mode is `filesystem`, the one store that the runtime has
+  (`compiled-node-sources.ts`). In the other modes such a node stays in the host.
 
 **Verification of downloads.** For a request that asks for bytes, the v1 recorder answers with a Buffer of
 the body of the case. The recorded output of an item has its `binary` as `$binary`. The check replaces the
@@ -352,32 +353,44 @@ data of each entry with the SHA-256 of its bytes (v1: the base64 data; compiled:
 compares the rest of the entry as it is. An operation that calls `prepareBinaryData` gets two more cases: a
 file name with an extension and a `Content-Type`, and a file name without an extension.
 
-**Not built: the runtime.** The runtime ignores `responseBinary`, and it reads a stored file for an upload
-with a blocking read into the request buffer (`request.zig` `writeBinary`). The design:
+**Built: the runtime stores a response (2026-11-16).** `workflow-runtime/src/shell/blob_store.zig`,
+`src/core/binary_names.zig`.
 
-- *Store interface (shell).* `open(id) -> file`, `create(workflow, execution) -> id + file`,
-  `read(file, buffer)`, `write(file, bytes)`, `finish(file, metadata)`, `discard(file)`. The file system
-  backend builds each path from a validated id under one root (`binary_store.zig` `fileId` and `filePath`,
-  with their fuzz target) and writes the companion `<file>.metadata` of n8n
-  (`{"fileName","mimeType","fileSize"}`). A new file is
-  `workflows/<wf>/executions/wfrt-<id>/binary_data/<uuid>`: the n8n module moves it to the n8n execution
-  id when it saves the run (`compiled-binary-data.ts`). S3 is a second backend behind the same calls.
-- *No blocking.* `uring.zig` has accept, recv, send and poll only. It needs openat, read, write, fsync,
-  rename and close operations, and a completion route to the egress request. Systems without io_uring
-  need a second path (a small pool of file threads), because the shard thread must not block.
-- *Streaming.* Upload: the request writer of egress takes its body from a source (the buffer of today, or
-  a file that is read in chunks), for HTTP/1.1 and HTTP/2, with the size from the metadata for
-  `content-length`. Download: the response reader gives body bytes to a sink (the buffer of today, or a
-  file), after the transfer and content decoding. Both use a fixed pool of chunk buffers and a fixed table
-  of transfers, made at startup. A request without binary data takes the buffer branch that it takes today.
-- *Limits.* `--binary-max-file-mb`. Above it the step fails. The error shape of v1 for this case is not
-  confirmed yet.
-- *Names.* The rules of spec 7.1 in the core: the `Content-Disposition` parser (with a fuzz target), the
-  MIME tables as a generated `mime_tables.zig`, and the size text.
+- *Layout.* The file system backend writes what n8n's `BinaryDataBlobManager` and `FsByteStore` write:
+  `workflows/<wf>/executions/<e>/binary_data/<uuid v4>`, written as `<uuid>.tmp.<pid>.<uuid>` and renamed,
+  with no sync, then the companion `<uuid>.metadata` (`{"fileName","mimeType","fileSize"}`) in the same
+  way. `<e>` is n8n's id for a manual run, else `wfrt-<runtime id>`, as the fallback host writes it: the
+  n8n module moves the files when it saves the run (`compiled-binary-data.ts`).
+  `compiled-binary-store-layout.test.ts` holds the texts of the real manager.
+- *Paths.* An id from workflow data passes `binary_store.fileId` (six segments of `[A-Za-z0-9._-]`, never
+  `.` or `..`). No operation takes a path: the store walks from the root one segment at a time with
+  `openat` and `O_NOFOLLOW`. So no id leaves the root and no step follows a symbolic link. The read for
+  an upload (`binary_store.read`) walks in the same way.
+- *No blocking.* A transfer is a row with a phase. Each phase gives one file operation as data
+  (`sys.FileOp`: mkdir, open, read, write, close, rename, unlink). On Linux the ring of the shard runs it
+  (`uring.zig` `fileOp`), and the completion moves the row on. Without a ring (macOS, `--io poll`, a kernel
+  that refuses the ring) `sys.fileOpNow` runs it at once: that path blocks the shard for the operation.
+- *Names.* The rules of spec 7.1 are in the core: `Content-Disposition`, the MIME tables
+  (`mime_tables.zig`, from the table of this package), the size text of `pretty-bytes`.
+- *Limits.* `--binary-max-file-mb` (16), `--binary-max-transfers` (64), `--binary-buffer-mb` (32, the
+  bodies that wait for their writes on the ring). Over a limit the step fails with an `http:` error. v1
+  has no limit for a file of the file system store, so there is no v1 error to match.
+- *A request without `responseBinary`* pays two branches that are never taken (at its start and at its
+  end) and no memory. Without a storage path the shard has no store at all.
+
+**Not built.**
+
+- *Streaming.* The body of a response is complete in the buffer of egress before the store gets it, so a
+  stored file is at most `--egress-max-body-mb`. An upload of a stored file is a blocking read into the
+  request buffer (`request.zig` `writeBinary`). The design: the request writer takes its body from a
+  source and the response reader gives body bytes to a sink, for HTTP/1.1 and HTTP/2, with the blocks of
+  the store.
+- *S3.* A second backend is another set of phases behind `reserve`, `put`, `nextDone` and `take`.
 - *Sidecar names.* The runtime writes the companion file at the end of the download, with the names of the
   request. A compiled node gives its names later, in the program. Add an effect that writes the names of
   an entry (`ctx.binary`), or the UI of n8n shows the names of the request for such a file.
-- *`getBinaryMetadata(id)`.* It stays a stop at run time. It needs a read of the companion file: an effect.
+- *`getBinaryMetadata(id)`.* It stays a stop at run time in the program. The store reads the companion
+  file by id (`blob_store.zig` `readMetadata`); no effect calls it yet.
 - *Raw bodies.* A handle as the whole `body` of a request stays a stop at run time in a compiled node.
   `ctx.http` has the form (`body: { $binary }`). First compare the content type that axios sends.
 

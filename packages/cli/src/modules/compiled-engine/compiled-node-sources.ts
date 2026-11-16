@@ -34,6 +34,7 @@ export function nodeSourcesOf(
 	nodeTypes: NodeTypes,
 	credentials: Map<string, PublicCredential>,
 	credentialTypes: CredentialTypes,
+	storesResponses: boolean,
 ): NodeSources {
 	const nodeOf = (type: string, version: number) => {
 		try {
@@ -60,5 +61,8 @@ export function nodeSourcesOf(
 			credentialTypes.recognizes(type)
 				? fileOf(credentialTypes.getByName(type).constructor)
 				: undefined,
+		// `wfrt` stores the body of a response as binary data only in n8n's file system store
+		// (`responseBinary`). In other modes a node that asks for response bytes stays in the host.
+		...(storesResponses ? { storesResponses: true } : {}),
 	};
 }

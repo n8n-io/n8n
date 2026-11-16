@@ -19,13 +19,16 @@ import { getNodeParameters } from '../src/convert/node-parameters.ts';
 import { publicCredential } from '../src/credentials/public.ts';
 import { loadCredentialTypes, registryOf } from '../src/credentials/types.ts';
 import type { ErrorPairing } from '../src/node-compile/__tests__/verify.ts';
+import type { CaseCost } from '../src/node-compile/__tests__/verify.ts';
 import {
 	compileForCheck,
+	costOfCase,
 	differenceFromV1,
 	flagKeyOf,
 	flagVariants,
 	MINTED_TOKEN_RESPONSE,
 } from '../src/node-compile/__tests__/verify.ts';
+import { COST } from '../src/node-compile/cost.generated.ts';
 import type { ErrorMode, NodeSources } from '../src/node-compile/convert.ts';
 import { evaluateInSandbox } from '../src/node-compile/evaluate-node.ts';
 import {
@@ -71,12 +74,16 @@ const DIST = args.includes('--dist');
 const DETAIL = args.includes('--detail');
 const CACHE = !args.includes('--no-cache');
 const ALL_BLOCKERS = args.includes('--all-blockers');
+const SHOW_COST = args.includes('--cost');
+const CHECK_COST = args.includes('--check-cost');
 const one = valueOf('--one');
 const weightsFile = valueOf('--weights');
 const pattern = args.find((a, at) => !a.startsWith('--') && !VALUE_FLAGS.includes(args[at - 1]));
 const add = (into: Record<string, number>, from: Record<string, number> | undefined) => {
 	for (const [key, count] of Object.entries(from ?? {})) into[key] = (into[key] ?? 0) + count;
 };
+const MEASURE_COST =
+	SHOW_COST || CHECK_COST || (one === undefined && pattern === undefined && !DIST);
 const filter = new RegExp(one === undefined ? (pattern ?? '.') : `^${one}$`, 'i');
 const PARALLEL = 6;
 const NODE_TIMEOUT_MS = 900_000;
@@ -354,6 +361,7 @@ let compiledCount = 0;
 let mintedTried = 0;
 let mintedVerified = 0;
 const examples: string[] = [];
+const costs: Record<string, CaseCost> = {};
 
 interface NodeResult {
 	verified: Record<string, string[]>;
@@ -366,6 +374,7 @@ interface NodeResult {
 	examples?: string[];
 	mintedTried?: number;
 	mintedVerified?: number;
+	costs?: Record<string, CaseCost>;
 }
 
 async function checkInProcess(name: string): Promise<NodeResult | undefined> {
@@ -378,6 +387,7 @@ async function checkInProcess(name: string): Promise<NodeResult | undefined> {
 				...(DETAIL ? ['--detail'] : []),
 				...(CACHE ? [] : ['--no-cache']),
 				...(ALL_BLOCKERS ? ['--all-blockers'] : []),
+				...(MEASURE_COST ? ['--cost'] : []),
 				...(weightsFile === undefined ? [] : ['--weights', weightsFile]),
 				'--one',
 				name,
@@ -415,6 +425,7 @@ if (one === undefined) {
 				continue;
 			}
 			Object.assign(verified, result.verified);
+			Object.assign(costs, result.costs);
 			add(reasons, result.reasons);
 			add(modeReasons, result.modeReasons);
 			add(alone, result.alone);
@@ -673,6 +684,10 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 							...modes,
 						]),
 					].sort();
+					if (MEASURE_COST && !other) {
+						const cost = costOfCase(make('ok', parameters, ok), sources, registry);
+						if (cost) costs[key] = cost;
+					}
 					if (compiled.mints.length > 0) mintedVerified++;
 				} catch (error) {
 					why(`check failed: ${error instanceof Error ? error.message : String(error)}`, weight);
@@ -683,8 +698,8 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 }
 await disposeRecorder();
 if (one !== undefined) {
-	const result = `RESULT ${JSON.stringify({ verified, reasons, modeReasons, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified })}\n`;
-	await new Promise<void>((written) => process.stdout.write(result, () => written()));
+	const line = `RESULT ${JSON.stringify({ verified, reasons, modeReasons, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified, costs })}\n`;
+	await new Promise((written) => process.stdout.write(line, written));
 	process.exit(0);
 }
 
@@ -699,6 +714,91 @@ ${lines.join('\n')}
 };
 `,
 	);
+}
+const costKeys = Object.keys(costs).sort();
+const risen = costKeys.filter((key) => COST[key] !== undefined && costs[key].ops > COST[key][0]);
+if (pattern === undefined && !DIST && risen.length === 0) {
+	writeFileSync(
+		join(here, '../src/node-compile/cost.generated.ts'),
+		`export const COST: Record<string, [ops: number, allocations: number]> = {
+${costKeys.map((key) => `\t${JSON.stringify(key)}: [${costs[key].ops}, ${costs[key].allocations}],`).join('\n')}
+};
+`,
+	);
+}
+const quantile = (sorted: number[], q: number) =>
+	sorted.length === 0 ? 0 : sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
+const spread = (values: number[]) => {
+	const sorted = [...values].sort((a, b) => a - b);
+	return `p50 ${quantile(sorted, 0.5)}; p90 ${quantile(sorted, 0.9)}; max ${sorted.at(-1) ?? 0}`;
+};
+const nodeOfKey = (key: string) => key.slice(PREFIX.length, key.indexOf('@'));
+if (SHOW_COST) {
+	const rows = costKeys.map((key) => costs[key]);
+	console.log(`cost of ${rows.length} verified operations, the 'ok' case, in bytecode`);
+	console.log(`ops: ${spread(rows.map((r) => r.ops))}`);
+	console.log(`allocations: ${spread(rows.map((r) => r.allocations))}`);
+	console.log('node\toperations\tops\tallocations');
+	for (const node of [...new Set(costKeys.map(nodeOfKey))]) {
+		const mine = costKeys.filter((key) => nodeOfKey(key) === node).map((key) => costs[key]);
+		console.log(
+			[
+				node,
+				mine.length,
+				spread(mine.map((r) => r.ops)),
+				spread(mine.map((r) => r.allocations)),
+			].join('\t'),
+		);
+	}
+	console.log('the 30 most expensive operations');
+	console.log('ops\tallocations\tcalls\treads\twrites\tbranches\tconcats\trequests\toperation');
+	for (const key of [...costKeys].sort((a, b) => costs[b].ops - costs[a].ops).slice(0, 30)) {
+		const r = costs[key];
+		console.log(
+			[
+				r.ops,
+				r.allocations,
+				r.calls,
+				r.reads,
+				r.writes,
+				r.branches,
+				r.concats,
+				r.effects,
+				key,
+			].join('\t'),
+		);
+	}
+	const paired = costKeys.filter((key) => costs[key].handWrittenOps !== undefined);
+	if (paired.length > 0) {
+		console.log('compiled / hand-written, same case');
+		console.log(
+			'ops ratio\tops\thand-written ops\tallocations\thand-written allocations\toperation',
+		);
+		for (const key of paired) {
+			const r = costs[key];
+			const theirs = r.handWrittenOps ?? 1;
+			console.log(
+				[
+					(r.ops / theirs).toFixed(2),
+					r.ops,
+					theirs,
+					r.allocations,
+					r.handWrittenAllocations ?? 0,
+					key,
+				].join('\t'),
+			);
+		}
+	}
+}
+if (CHECK_COST || risen.length > 0) {
+	for (const key of risen)
+		console.log(`cost rose: ${key}: ${COST[key][0]} ops recorded, ${costs[key].ops} ops now`);
+	console.log(
+		risen.length === 0
+			? `cost check: no operation of ${costKeys.length} costs more ops than its record`
+			: `cost check: ${risen.length} operation(s) cost more ops than their record`,
+	);
+	if (CHECK_COST && risen.length > 0) process.exitCode = 1;
 }
 console.log(`operations ${tried}; compiled ${compiledCount}; verified against v1 ${lines.length}`);
 for (const mode of CONTINUE_MODES) {
