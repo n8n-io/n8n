@@ -24,6 +24,7 @@ import type {
 	INodeTypeDescription,
 	IRunExecutionData,
 	ITaskDataConnections,
+	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	ICredentialsDecrypted,
 } from 'n8n-workflow';
@@ -2838,6 +2839,7 @@ describe('RoutingNode', () => {
 				routedUrl?: string;
 				nodeParameters?: INodeParameters;
 				propertyBaseURL?: string;
+				extraKeys?: IWorkflowDataProxyAdditionalKeys;
 			} = {},
 		) => {
 			const credentialData = data as unknown as ICredentialDataDecryptedObject;
@@ -2888,7 +2890,12 @@ describe('RoutingNode', () => {
 				data: credentialData,
 			});
 
-			const routingNode = new RoutingNode(executeFunctions, nodeType, mockCredentials);
+			const routingNode = new RoutingNode(
+				executeFunctions,
+				nodeType,
+				mockCredentials,
+				options.extraKeys,
+			);
 			return await routingNode.runNode();
 		};
 		const getRequestOptions = (result: Awaited<ReturnType<typeof runWithCredential>>) =>
@@ -3131,6 +3138,36 @@ describe('RoutingNode', () => {
 
 				const requestOptions = getRequestOptions(result);
 				expect(requestOptions.allowedDomains).toBe('api.example.com, other.example.com');
+			});
+		});
+
+		describe('when requestDefaults.baseURL reads an extra key', () => {
+			const storedBaseUrl = {
+				baseURL: '={{ $staticData.baseUrl }}',
+				extraKeys: { $staticData: { baseUrl: 'https://stored.example.com' } },
+			};
+
+			test("does not widen the 'domains' allowlist with a stored host", async () => {
+				const result = await runWithCredential(
+					{
+						apiKey: 'testApiKey',
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'api.example.com',
+					},
+					storedBaseUrl,
+				);
+
+				const requestOptions = getRequestOptions(result);
+				expect(requestOptions.allowedDomains).toBe('api.example.com');
+			});
+
+			test("blocks the request when mode is 'none'", async () => {
+				await expect(
+					runWithCredential(
+						{ apiKey: 'testApiKey', allowedHttpRequestDomains: 'none' },
+						storedBaseUrl,
+					),
+				).rejects.toThrow('This credential is configured to prevent use within an');
 			});
 		});
 
