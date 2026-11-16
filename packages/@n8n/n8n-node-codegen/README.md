@@ -14,7 +14,7 @@ public API endpoint gets into the node with no manual node code.
 | Command | What it does |
 |---------|--------------|
 | `pnpm --filter @n8n/n8n-node-codegen generate` | Prints the operations of the node and writes `properties.generated.ts`. When the file is up to date, it does not change the file. |
-| `pnpm --filter @n8n/n8n-node-codegen generate --check` | Fails when someone changed the openapi spec or `overrides.ts` and did not run `generate`. It does not write the file. |
+| `pnpm --filter @n8n/n8n-node-codegen generate --check` | Fails when `properties.generated.ts` is out of date. It does not write the file. |
 | `pnpm --filter @n8n/n8n-node-codegen test` | Runs the tests. |
 
 Both `generate` commands fail when the node has errors, and then they do not
@@ -54,7 +54,8 @@ The generator makes these parts of the node:
 | Successful response without a body | The node returns `{ "success": true }` |
 
 The schema of a parameter gives the type and the default of its field. A
-string enum becomes a dropdown, and an object or an array becomes a JSON field.
+string enum becomes a dropdown, except the enum `"true"`/`"false"`, which
+becomes a boolean. An object or an array becomes a JSON field.
 The tests in `src/__tests__/build-properties.test.ts` show each rule.
 
 ### Add an operation to the node
@@ -95,6 +96,10 @@ blocker:
 
 To continue, add the operation to `exclude` with a reason, or add support to
 the generator.
+
+The generator also stops when it cannot read the spec, for example when an
+operation has two tags or two operations have the same `operationId`.
+`exclude` does not help here. Correct the spec.
 
 ### Breaking changes
 
