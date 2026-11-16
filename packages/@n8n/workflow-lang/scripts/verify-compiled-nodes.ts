@@ -1,20 +1,3 @@
-/**
- * Makes `src/node-compile/verified.generated.ts`: the operations of n8n nodes
- * whose compiled form (the node compiler, `src/node-compile/`) agrees with
- * the v1 node.
- *
- * For each node type, version and operation it makes cases from the node
- * description (no customer data): the required parameters, then the options
- * of collections, then an HTTP error. It runs each case through the compiled
- * node and through n8n's real node code (`recordV1`) and compares the
- * requests, the output and the error message. An operation is in the list
- * only when every case agrees.
- *
- *   node scripts/verify-compiled-nodes.ts            all nodes of n8n-nodes-base
- *   node scripts/verify-compiled-nodes.ts telegram   node names that match
- *
- * Needs the builds of n8n-nodes-base and @n8n/workflow-fallback-host.
- */
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -27,6 +10,7 @@ import { publicCredential } from '../src/credentials/public.ts';
 import { loadCredentialTypes, registryOf } from '../src/credentials/types.ts';
 import { differenceFromV1 } from '../src/node-compile/__tests__/verify.ts';
 import type { NodeSources } from '../src/node-compile/convert.ts';
+import { evaluateInSandbox } from '../src/node-compile/evaluate-node.ts';
 import { compileNodeInstance, verifiedKey } from '../src/node-compile/convert.ts';
 import type { EquivalenceCase } from '../src/nodes/__tests__/equivalence.ts';
 import { disposeRecorder, recorderAvailable } from '../src/nodes/__tests__/v1-recorder.ts';
@@ -52,9 +36,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const base = join(here, '../../../nodes-base');
 const PREFIX = 'n8n-nodes-base.';
 const load = createRequire(join(base, 'package.json'));
-// `--one <name>` checks one node and prints its result as JSON. The run of all nodes starts
-// one process for each node: the memory of a check goes away with its process.
-// `--dist` reads the JavaScript that n8n ships (`dist`), as for a node package without sources.
+
 const DIST = process.argv.includes('--dist');
 const oneAt = process.argv.indexOf('--one');
 const one = oneAt >= 0 ? process.argv[oneAt + 1] : undefined;
@@ -67,7 +49,6 @@ if (!recorderAvailable() || !existsSync(join(base, 'dist/known/nodes.json'))) {
 	process.exit(1);
 }
 
-/** The source file of each node class. */
 const classFile = new Map<string, string>();
 function findClasses(dir: string): void {
 	for (const entry of readdirSync(dir)) {
@@ -110,6 +91,7 @@ const sources: NodeSources = {
 		existsSync(path) && statSync(path).isFile() ? readFileSync(path, 'utf8') : undefined,
 	description: (type, version) => nodeOf(type, version)?.description,
 	aliases: { '@utils/': `${base}/utils/` },
+	evaluate: evaluateInSandbox,
 };
 
 const registry = registryOf(loadCredentialTypes().types);
@@ -129,7 +111,6 @@ function resolve(node: LoadedNode, version: number, parameters: Json): Json {
 	return getNodeParameters(d.properties, parameters, true, false, version, d) ?? {};
 }
 
-/** The parameters of a case: a value for each text parameter that the operation shows. */
 function required(node: LoadedNode, version: number, start: Json): Json {
 	const properties = node.description.properties as unknown as Property[];
 	const out: Json = { ...start };
@@ -143,7 +124,6 @@ function required(node: LoadedNode, version: number, start: Json): Json {
 	return out;
 }
 
-/** The parameters of a case with the simple options of each collection set. */
 function withOptions(node: LoadedNode, version: number, start: Json): Json {
 	const properties = node.description.properties as unknown as Property[];
 	const out: Json = { ...start };
@@ -163,7 +143,6 @@ function withOptions(node: LoadedNode, version: number, start: Json): Json {
 	return out;
 }
 
-/** The `resource` and `operation` pairs of a description. */
 function operations(node: LoadedNode): Json[] {
 	const properties = node.description.properties as unknown as Property[];
 	const values = (p: Property) =>
@@ -201,7 +180,6 @@ interface NodeResult {
 	compiled: number;
 }
 
-/** Runs this script for one node in a process of its own. */
 async function checkInProcess(name: string): Promise<NodeResult | undefined> {
 	return await new Promise((resolve) => {
 		const child = spawn(
@@ -215,7 +193,7 @@ async function checkInProcess(name: string): Promise<NodeResult | undefined> {
 		child.stdout.on('data', (chunk: Buffer) => {
 			out += chunk.toString();
 		});
-		// A node that takes more than five minutes counts as not checked.
+
 		const timer = setTimeout(() => child.kill('SIGKILL'), 300_000);
 		child.on('close', () => {
 			clearTimeout(timer);
@@ -310,7 +288,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 					continue;
 				}
 				let names = compiled.changed;
-				// More parameters: the options of the collections. When they agree too, a node can set them.
+
 				const more = withOptions(node, version, parameters);
 				const wider = compileNodeInstance(
 					sources,
@@ -343,12 +321,7 @@ const lines = Object.keys(verified)
 if (pattern === undefined && !DIST) {
 	writeFileSync(
 		join(here, '../src/node-compile/verified.generated.ts'),
-		`// Generated by \`scripts/verify-compiled-nodes.ts\`. Do not edit.
-//
-// The operations whose compiled form sends the requests of the v1 node and gives its output
-// and its error, on generated cases. The value is the list of parameter names that the cases
-// set. The converter compiles a node from its source only when its operation is here.
-export const VERIFIED: Record<string, string[]> = {
+		`export const VERIFIED: Record<string, string[]> = {
 ${lines.join('\n')}
 };
 `,

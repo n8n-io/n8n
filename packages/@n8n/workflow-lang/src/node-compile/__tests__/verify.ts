@@ -1,8 +1,3 @@
-/**
- * Compares a compiled node with the v1 node on one case: the requests, and
- * the output or the error message. The v1 node is the reference model of a
- * compiled node (`recordV1` runs n8n's real node code with a fake HTTP client).
- */
 import { withDerivedValues } from '../../credentials/derived.ts';
 import { deriveInject } from '../../credentials/inject.ts';
 import type { PublicCredential } from '../../credentials/public.ts';
@@ -20,7 +15,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** The public fields of the credential of a case, as the converter gets them from n8n. */
 export function credentialsOf(
 	c: EquivalenceCase,
 	registry: Registry,
@@ -31,7 +25,6 @@ export function credentialsOf(
 	};
 }
 
-/** Fails after `ms`: a v1 node that waits for ever must not stop the check. */
 async function within<T>(ms: number, work: Promise<T>): Promise<T> {
 	let timer: NodeJS.Timeout | undefined;
 	const late = new Promise<never>((_resolve, reject) => {
@@ -44,7 +37,6 @@ async function within<T>(ms: number, work: Promise<T>): Promise<T> {
 	}
 }
 
-/** `undefined` when the compiled node and the v1 node agree, else the first difference. */
 export async function differenceFromV1(
 	c: EquivalenceCase,
 	sources: NodeSources,

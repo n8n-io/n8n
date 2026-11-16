@@ -1,7 +1,3 @@
-/**
- * The node compiler reads the CommonJS JavaScript that `tsc` writes: the form
- * in which n8n and node packages ship nodes.
- */
 import { commonJsToModule } from '../commonjs.ts';
 import { specialiseNode } from '../specialise.ts';
 
@@ -72,7 +68,7 @@ describe('CommonJS node code', () => {
 		expect(result.linked).toEqual(['execute', 'GenericFunctions_1_apiRequest']);
 		expect(result.source).toContain('https://api.acme.test/v1/');
 		expect(result.source).toContain('{{$credentials.apiKey}}');
-		// The other operation is not in the module.
+
 		expect(result.source).not.toContain('DELETE');
 	});
 });

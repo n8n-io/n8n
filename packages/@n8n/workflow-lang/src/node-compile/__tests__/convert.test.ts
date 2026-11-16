@@ -1,8 +1,3 @@
-/**
- * The node compiler in the converter: a native or library node comes first, a
- * node without one is compiled from its n8n source, and a node whose source
- * does not compile runs in the fallback host.
- */
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -88,7 +83,7 @@ describe('node compiler in the converter', () => {
 		expect(out.effects[0].args).toMatchObject({
 			method: 'POST',
 			url: '{{$credentials.baseUrl}}/bot{{$credentials.accessToken}}/sendChatAction',
-			// The chat id is an expression: the module reads it from the call for each item.
+
 			body: { chat_id: '42', action: 'typing' },
 		});
 	});
@@ -104,7 +99,6 @@ describe('node compiler in the converter', () => {
 	});
 
 	it('runs the node in the fallback host when its source does not compile', () => {
-		// A file download reads binary data, which has no compiled form.
 		const result = convertWorkflow(
 			workflowWith({ resource: 'file', operation: 'get', fileId: 'abc', download: true }),
 			{ nodeSources, instance },

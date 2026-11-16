@@ -9,17 +9,10 @@ export type NodeSources = NonNullable<
 >;
 export type PublicCredential = ReturnType<WorkflowLang['publicCredential']>;
 
-/** The largest node file that the node compiler reads. */
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
-/** The file of each node class that was looked up, so that the module cache is searched once. */
 const fileOfClass = new Map<unknown, string | undefined>();
 
-/**
- * The JavaScript file that defines a node class. n8n loads node packages
- * with `require`, so the module cache holds the file of each loaded class,
- * also of a class of a community or custom node package.
- */
 function fileOf(nodeClass: unknown): string | undefined {
 	if (fileOfClass.has(nodeClass)) return fileOfClass.get(nodeClass);
 	let found: string | undefined;
@@ -35,10 +28,6 @@ function fileOf(nodeClass: unknown): string | undefined {
 	return found;
 }
 
-/**
- * Where the node compiler finds the code and the description of a node type,
- * and the public part of a credential (`ConvertOptions.nodeSources`).
- */
 export function nodeSourcesOf(
 	lang: WorkflowLang,
 	nodeTypes: NodeTypes,

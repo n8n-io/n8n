@@ -1,20 +1,3 @@
-/**
- * The node compiler: it turns the source of an n8n node into a library module
- * in the workflow subset, specialised for one node of one workflow
- * (docs/compiler-plan.md).
- *
- * 1. Link: start at `execute`, follow each name to its declaration in the
- *    file or in an imported file, and keep only the code that is reached.
- * 2. Bind: a call on `this` (the n8n context) becomes a constant, a read of
- *    `parameters`, or a helper of the module. A parameter that the workflow
- *    gives as a literal is a constant; an expression is read at run time.
- * 3. Fold: constants spread, conditions on constants go away with the
- *    branches that they exclude, and unused values go away.
- *
- * A construct that has no compiled form is an error: the node then does not
- * compile. The node code never reads a credential value: a field of
- * `getCredentials` becomes a credential template that the runtime fills.
- */
 import ts from 'typescript';
 
 import { CODE_HELPERS } from '../convert/code-native/helpers.ts';
@@ -24,49 +7,37 @@ import { commonJsToModule, isCommonJs } from './commonjs.ts';
 export interface SpecialiseInput {
 	type: string;
 	version: number;
-	/** The path of the file that holds the node class. */
+
 	entry: string;
 	readFile: (path: string) => string | undefined;
-	/** The parameters of the node in the workflow. A string that starts with `=` is an expression. */
+
 	parameters: Record<string, unknown>;
-	/** Defaults of the node description, by parameter name. */
+
 	defaults?: Record<string, unknown>;
 	continueOnFail?: boolean;
-	/**
-	 * The id of the n8n instance (`getInstanceId`). `null`: the caller knows that there is
-	 * none. Absent: a node that reads the id does not compile.
-	 */
+
 	instanceId?: string | null;
-	/**
-	 * Fields of the node's credentials that are not secret, by credential type
-	 * (`publicCredentialFields`). The compiler folds them as constants, so node code can branch
-	 * on them. A field that is not here is a template that the runtime fills: the code can put it
-	 * into a request and cannot read it. Never pass a secret here: it would be in the module.
-	 */
+
 	credentialFields?: Record<string, Record<string, unknown>>;
-	/** The type that the module names itself. The default is `type`. */
+
 	moduleType?: string;
-	/** Import prefixes that are folders, for example `{ '@utils/': '/repo/nodes-base/utils/' }`. */
+
+	evaluate?: (code: string) => unknown;
+
 	aliases?: Record<string, string>;
 }
 
 export interface SpecialiseResult {
-	/** The library module. Absent when `errors` is not empty. */
 	source?: string;
 	errors: string[];
-	/** Places where the compiled form is weaker than v1 (for example the text of an error). */
+
 	notes: string[];
-	/** The functions and constants that the module holds, in link order. */
+
 	linked: string[];
 }
 
 const f = ts.factory;
 
-/**
- * The request helper of n8n as node code (JavaScript: the translator of
- * `code-native` types it). It is inside \`run\`, because the subset allows
- * \`ctx.http\` only there.
- */
 const REQUEST_SOURCE = `async function __request(options, wrapped) {
 	const response = await ctx.http({
 		method: options.method ?? 'GET',
@@ -122,7 +93,6 @@ const HELPERS: Record<string, string> = {
 	__apiError: `function __apiError(cause: any): any {
 	const text: string = cause !== null && cause !== undefined && typeof cause.message === 'string' ? cause.message : String(cause);
 	const prefix = 'Request failed with status code ';
-	// NodeApiError of n8n-workflow: an HTTP status gives the message of the status (STATUS_CODE_MESSAGES).
 	if (!text.startsWith(prefix)) return new Error(text);
 	const code: string = text.slice(prefix.length);
 	const known: any = {
@@ -189,7 +159,6 @@ const HELPERS: Record<string, string> = {
 }`,
 	__get: `function __get(value: any, keys: any, whole: string, fallback: any): any {
 	if (value === null || value === undefined) return fallback;
-	// lodash reads a key that holds dots as one key when the object has it.
 	if (keys.length > 1 && Object.keys(value).includes(whole)) {
 		const direct: any = value[whole];
 		return direct === undefined ? fallback : direct;
@@ -203,6 +172,36 @@ const HELPERS: Record<string, string> = {
 }`,
 };
 
+const PURE_GLOBALS = new Set([
+	'undefined',
+	'NaN',
+	'Infinity',
+	'Object',
+	'JSON',
+	'Math',
+	'Array',
+	'String',
+	'Number',
+	'Boolean',
+	'parseInt',
+	'parseFloat',
+	'isNaN',
+	'isFinite',
+	'encodeURIComponent',
+	'decodeURIComponent',
+	'encodeURI',
+]);
+const PURE_CALLS = new Set([
+	'encodeURIComponent',
+	'decodeURIComponent',
+	'encodeURI',
+	'String',
+	'Number',
+	'Boolean',
+	'parseInt',
+	'parseFloat',
+]);
+
 const GENERIC_ERRORS = new Set([
 	'UserError',
 	'ApplicationError',
@@ -210,7 +209,6 @@ const GENERIC_ERRORS = new Set([
 	'UnexpectedError',
 ]);
 
-/** Functions of packages that have a helper in the subset. */
 const PACKAGE_HELPERS: Record<string, Record<string, string>> = {
 	lodash: { isEmpty: '__isEmpty', get: '__get' },
 	'n8n-workflow': { jsonParse: '__jsonParse', deepCopy: '__deepCopy' },
@@ -228,15 +226,12 @@ function packageHelper(imported: { from: string; name: string }): string | undef
 	return table && Object.hasOwn(table, name) ? table[name] : undefined;
 }
 
-/** Constants of n8n packages that node code compares with. */
 const PACKAGE_CONSTANTS: Record<string, string | number> = {
 	SEND_AND_WAIT_OPERATION: 'sendAndWait',
 };
 
-/** The start of the name that stands for `await this.getCredentials(type)`; the type follows. */
 const CREDENTIAL_PREFIX = '__CREDENTIAL_';
 
-/** The credential type of `this.getCredentials('type')`, awaited or not; `''` when it is not a constant. */
 function credentialTypeOf(e: ts.Expression | undefined): string {
 	const callExpression = e && ts.isAwaitExpression(e) ? e.expression : e;
 	const first =
@@ -244,11 +239,6 @@ function credentialTypeOf(e: ts.Expression | undefined): string {
 	return first && ts.isStringLiteral(first) && /^[A-Za-z0-9_]+$/.test(first.text) ? first.text : '';
 }
 
-/**
- * The leading parameters of a function that v1 calls with the n8n context as `this`. There are
- * none: the node code is inside `run`, so it reads `ctx`, `parameters`, `credential` and
- * `__items` of `run`. The subset knows `ctx.http` only on the `ctx` of `run`.
- */
 const CONTEXT_PARAMS: string[] = [];
 const REQUEST_HELPERS = new Set([
 	'request',
@@ -277,7 +267,6 @@ function literalOf(node: ts.Expression): { value: Literal } | undefined {
 	return undefined;
 }
 
-/** The syntax of a JSON value. Fresh nodes each time: a node has one parent. */
 function expressionOf(value: unknown): ts.Expression {
 	if (value === undefined) return f.createIdentifier('undefined');
 	if (value === null) return f.createNull();
@@ -320,7 +309,6 @@ function isThisCall(node: ts.Node, ...path: string[]): node is ts.CallExpression
 	return target.kind === ts.SyntaxKind.ThisKeyword;
 }
 
-/** True for an expression that has no effect, so that an unused value of it can go. */
 function isPure(node: ts.Expression): boolean {
 	if (literalOf(node) || ts.isIdentifier(node) || ts.isRegularExpressionLiteral(node)) return true;
 	if (ts.isPropertyAccessExpression(node)) return isPure(node.expression);
@@ -346,20 +334,26 @@ function ends(node: ts.Statement): boolean {
 	return false;
 }
 
+function looseEquals(a: Literal, b: Literal): boolean {
+	const nullish = (v: Literal) => v === null || v === undefined;
+	if (nullish(a) || nullish(b)) return nullish(a) && nullish(b);
+	if (typeof a === typeof b) return a === b;
+	return Number(a) === Number(b);
+}
+
 function compare(op: ts.SyntaxKind, a: Literal, b: Literal): Literal | typeof NO_FOLD {
-	/* eslint-disable eqeqeq */
 	switch (op) {
 		case ts.SyntaxKind.EqualsEqualsEqualsToken:
 			return a === b;
 		case ts.SyntaxKind.ExclamationEqualsEqualsToken:
 			return a !== b;
 		case ts.SyntaxKind.EqualsEqualsToken:
-			return a == b;
+			return looseEquals(a, b);
 		case ts.SyntaxKind.ExclamationEqualsToken:
-			return a != b;
+			return !looseEquals(a, b);
 		default:
 	}
-	/* eslint-enable eqeqeq */
+
 	if (typeof a !== 'number' || typeof b !== 'number') {
 		if (op === ts.SyntaxKind.PlusToken && typeof a === 'string' && typeof b === 'string')
 			return a + b;
@@ -383,17 +377,17 @@ const NO_FOLD = Symbol('no fold');
 interface FileModel {
 	path: string;
 	sf: ts.SourceFile;
-	/** Top-level functions and constants by name. */
+
 	declarations: Map<string, ts.FunctionDeclaration | ts.VariableDeclaration>;
-	/** Imported names: the module text and the name in that module. */
+
 	imports: Map<string, { from: string; name: string }>;
-	/** `import * as name from 'module'`. */
+
 	namespaces: Map<string, string>;
-	/** `export { local as name }`. */
+
 	exportLocal: Map<string, string>;
-	/** `export { name } from 'module'`; `export * as name from 'module'` has the name `*`. */
+
 	exportFrom: Map<string, { from: string; name: string }>;
-	/** `export * from 'module'`. */
+
 	exportStar: string[];
 }
 
@@ -422,7 +416,7 @@ class Specialiser {
 	});
 	private readonly input: SpecialiseInput;
 	private readonly queue: Unit[] = [];
-	/** Functions that v1 calls as `helper.call(this, ...)`. */
+
 	private readonly contextCallees = new Set<string>();
 	private changed = false;
 
@@ -430,7 +424,6 @@ class Specialiser {
 		this.input = input;
 	}
 
-	/** Prints a tree and parses it again, so that every node has a parent and a position. */
 	private reparse(node: ts.Node, sf: ts.SourceFile): { node: ts.Node; sf: ts.SourceFile } {
 		const text = this.printer.printNode(ts.EmitHint.Unspecified, node, sf);
 		const next = ts.createSourceFile(
@@ -453,27 +446,18 @@ class Specialiser {
 		return call(name, ...args);
 	}
 
-	/**
-	 * A field of a credential in node code. A field that the caller gave as not secret is a
-	 * constant: the code can branch on it. Any other field is a marker for the template that the
-	 * runtime fills: the code can put it into a request, and `checkCredentials` refuses a
-	 * comparison or a condition on it.
-	 */
 	private credentialField(type: string, name: string): ts.Expression {
 		const fields = this.input.credentialFields?.[type];
 		if (fields && Object.hasOwn(fields, name)) return expressionOf(fields[name]);
 		return call('__CREDFIELD', f.createStringLiteral(name));
 	}
 
-	// ----- link -----
-
 	private load(path: string): FileModel | undefined {
 		const known = this.files.get(path);
 		if (known) return known;
 		const text = this.input.readFile(path);
 		if (text === undefined) return undefined;
-		// TypeScript source loses its types. JavaScript that `tsc` wrote as CommonJS (the `dist`
-		// of n8n and of a node package) is read as a module.
+
 		let js = text;
 		if (path.endsWith('.ts')) {
 			js = ts.transpileModule(text, {
@@ -544,7 +528,6 @@ class Specialiser {
 		return model;
 	}
 
-	/** True when a module name is a file of the node: a relative path or an alias of a folder. */
 	private isLocal(spec: string): boolean {
 		return (
 			spec.startsWith('.') ||
@@ -580,7 +563,6 @@ class Specialiser {
 		return undefined;
 	}
 
-	/** Finds the declaration of a free name and queues it. */
 	private need(name: string, file: FileModel, withContext: boolean, where: string) {
 		let home: FileModel | undefined = file;
 		let found = name;
@@ -616,14 +598,12 @@ class Specialiser {
 		this.queue.push(unit);
 	}
 
-	// ----- bind -----
-
 	private parameter(node: ts.CallExpression): ts.Expression {
 		const [nameArg, , fallback, options] = node.arguments;
 		if (!nameArg || !ts.isStringLiteral(nameArg)) {
-			return node; // `this` stays, and the check after folding reports it
+			return node;
 		}
-		// `{ extractValue: true }` on a resource locator: the value of the modes `id` and `list`.
+
 		let extract = false;
 		if (options) {
 			const only =
@@ -647,7 +627,6 @@ class Specialiser {
 		}
 		const top = this.input.parameters[path[0]];
 		if (hasExpression(top)) {
-			// The converter evaluates the expression for each item and passes the value.
 			let read: ts.Expression = f.createIdentifier('parameters');
 			for (const key of path)
 				read = f.createPropertyAccessChain(
@@ -656,7 +635,7 @@ class Specialiser {
 					key,
 				);
 			const or = fallback ?? (path.length === 1 ? this.defaultOf(path[0]) : undefined);
-			// v1 gives the node a copy of the value at each read: a change of one read does not show in the next.
+
 			return this.helper(
 				'__deepCopy',
 				or ? f.createBinaryExpression(read, ts.SyntaxKind.QuestionQuestionToken, or) : read,
@@ -669,7 +648,6 @@ class Specialiser {
 					: undefined;
 			if (hasExpression(top)) return node;
 			if (locator?.__rl === true) {
-				// The mode `url` takes the value out of a URL with a pattern of the description.
 				if (locator.mode !== 'id' && locator.mode !== 'list') return node;
 				return expressionOf(locator.value);
 			}
@@ -686,13 +664,11 @@ class Specialiser {
 		return defaults && name in defaults ? expressionOf(defaults[name]) : undefined;
 	}
 
-	/** Rewrites the calls on the n8n context and the forms that the subset does not have. */
 	private bind(root: ts.Node, unit: Unit, isExecute: boolean): ts.Node {
 		const localNames = bindingsOf(root);
 		let depth = 0;
 
 		const visit = (node: ts.Node): ts.Node | ts.Node[] | undefined => {
-			// A nested function declaration or expression has its own `this` and its own `return`.
 			const nested =
 				node !== root && (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node));
 			const arrow = node !== root && ts.isArrowFunction(node);
@@ -702,7 +678,7 @@ class Specialiser {
 			return out;
 		};
 		const each = <T extends ts.Node>(node: T): T => ts.visitEachChild(node, visit, undefined);
-		// The arguments only: the callee holds `this`, which has no compiled form of its own.
+
 		const args = (node: ts.CallExpression | ts.NewExpression, from = 0): ts.Expression[] =>
 			(node.arguments ?? []).slice(from).map((a) => ts.visitNode(a, visit) as ts.Expression);
 
@@ -710,7 +686,7 @@ class Specialiser {
 			const credentialCall = (e: ts.Expression) =>
 				isThisCall(e, 'getCredentials') ||
 				(ts.isAwaitExpression(e) && isThisCall(e.expression, 'getCredentials'));
-			// const { a, b: c } = await this.getCredentials(...): each name is one field.
+
 			if (
 				ts.isVariableDeclaration(node) &&
 				ts.isObjectBindingPattern(node.name) &&
@@ -738,7 +714,7 @@ class Specialiser {
 					);
 				}
 			}
-			// (await this.getCredentials(...)).field
+
 			if (ts.isPropertyAccessExpression(node)) {
 				const inner = ts.isParenthesizedExpression(node.expression)
 					? node.expression.expression
@@ -774,7 +750,7 @@ class Specialiser {
 			if (isThisCall(node, 'helpers', 'constructExecutionMetaData')) return args(node)[0];
 			if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
 				const { expression: target, name } = node.expression;
-				// this.helpers.request(options), and this.helpers.requestX.call(this, type, options).
+
 				const direct = isThisCall(node, 'helpers', name.text) && REQUEST_HELPERS.has(name.text);
 				const viaCall =
 					name.text === 'call' &&
@@ -784,7 +760,7 @@ class Specialiser {
 					target.expression.name.text === 'helpers';
 				if (direct || viaCall) {
 					const options = args(node, node.arguments.length - 1)[0];
-					// n8n wraps the error of a helper with authentication in a NodeApiError.
+
 					const wrapped =
 						name.text !== 'request' &&
 						name.text !== 'httpRequest' &&
@@ -796,8 +772,7 @@ class Specialiser {
 					this.helpers.add('__apiError');
 					return this.helper('__request', options, wrapped ? f.createTrue() : f.createFalse());
 				}
-				// helper.call(this, a, b): the helper gets the context as leading parameters.
-				// resource[operation].execute.call(this, a): the target is known after folding.
+
 				if (
 					name.text === 'call' &&
 					!ts.isIdentifier(target) &&
@@ -828,7 +803,7 @@ class Specialiser {
 				if (helper === '__get') {
 					const path = node.arguments[1];
 					const text = path && ts.isStringLiteral(path) ? path.text : '';
-					// Other paths (indexes, quotes, a computed path) have rules of lodash that are not here.
+
 					if (/^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$/.test(text)) {
 						const [value, , fallback] = args(node);
 						return this.helper(
@@ -845,17 +820,16 @@ class Specialiser {
 				const cls = node.expression.text;
 				if (GENERIC_ERRORS.has(cls))
 					return this.helper('__error', args(node)[0] ?? f.createStringLiteral(cls));
-				// new NodeApiError(node, error): the message of v1 for an HTTP status (`__apiError`).
-				// With options (a message, a description) the rules of v1 are not here.
+
 				if (cls === 'NodeApiError' && node.arguments?.length === 2)
 					return this.helper('__apiError', args(node)[1]);
-				// new NodeOperationError(node, message or error, options): the options do not change the message.
+
 				if (cls === 'NodeOperationError' && (node.arguments?.length ?? 0) >= 2)
 					return this.helper('__error', args(node)[1]);
 			}
 			if (ts.isExpressionStatement(node)) {
 				const e = node.expression;
-				// this.logger.debug(...): the compiled node writes no log.
+
 				if (
 					ts.isCallExpression(e) &&
 					ts.isPropertyAccessExpression(e.expression) &&
@@ -865,7 +839,7 @@ class Specialiser {
 				) {
 					return f.createEmptyStatement();
 				}
-				// Object.assign(target, source): the subset has it only into a new object.
+
 				if (
 					ts.isCallExpression(e) &&
 					ts.isPropertyAccessExpression(e.expression) &&
@@ -886,7 +860,7 @@ class Specialiser {
 						),
 					);
 				}
-				// list.push.apply(list, more): as list.push(...more).
+
 				if (
 					ts.isCallExpression(e) &&
 					ts.isPropertyAccessExpression(e.expression) &&
@@ -910,7 +884,7 @@ class Specialiser {
 						),
 					);
 				}
-				// list.push(...more)
+
 				if (
 					ts.isCallExpression(e) &&
 					ts.isPropertyAccessExpression(e.expression) &&
@@ -954,7 +928,6 @@ class Specialiser {
 		return ts.visitNode(root, visit) as ts.Node;
 	}
 
-	/** Reports what is left after folding and has no compiled form. */
 	private check(root: ts.Node, where: string) {
 		const walk = (node: ts.Node) => {
 			if (node.kind === ts.SyntaxKind.ThisKeyword) {
@@ -994,12 +967,6 @@ class Specialiser {
 		walk(root);
 	}
 
-	/**
-	 * A credential field is a template that the runtime fills: text for a
-	 * request. Code that compares it or branches on it would need the value, so
-	 * that is an error. The check follows a field through variables, members of
-	 * objects, arguments and results of the functions of the module.
-	 */
 	private checkCredentials() {
 		const params = new Map<string, Set<number>>();
 		const returns = new Set<string>();
@@ -1041,7 +1008,7 @@ class Specialiser {
 						holds(n.initializer)
 					)
 						tainted.add(n.name.text);
-					// `a = field` and `a.b = field`: the variable holds the field from here.
+
 					if (
 						ts.isBinaryExpression(n) &&
 						n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
@@ -1118,7 +1085,7 @@ class Specialiser {
 			walk(node);
 			return changed;
 		};
-		// A field goes into a function as an argument and comes out as its result: to a fixed point.
+
 		for (let round = 0; round < 16; round++) {
 			let changed = false;
 			for (const { name, node } of this.output) changed = analyse(name, node, false) || changed;
@@ -1126,8 +1093,6 @@ class Specialiser {
 		}
 		for (const { name, node } of this.output) analyse(name, node, true);
 	}
-
-	// ----- fold -----
 
 	private fold(start: { node: ts.Node; sf: ts.SourceFile }, where: string) {
 		let cur = start;
@@ -1141,7 +1106,6 @@ class Specialiser {
 		return cur;
 	}
 
-	/** Spreads constants, turns credential fields into templates, and drops unused values. */
 	private propagate(root: ts.Node, where: string): ts.Node {
 		const counts = bindingsOf(root);
 		const uses = new Map<string, number>();
@@ -1151,10 +1115,10 @@ class Specialiser {
 		};
 		count(root);
 		const constants = new Map<string, Literal>();
-		/** Variables that hold a credential, with the credential type. */
+
 		const credentials = new Map<string, string>();
 		const unused = new Set<string>();
-		// A constant object of constants that the code only reads: `x.resource` is the constant.
+
 		const objects = new Map<string, Map<string, Literal>>();
 		const scan = (n: ts.Node) => {
 			if (
@@ -1171,7 +1135,6 @@ class Specialiser {
 					(!ts.isVariableStatement(list.parent) || list.parent === root);
 				const lit = literalOf(n.initializer);
 				if (inLoopHead) {
-					// The variable of a loop stays, and so does a constant that is the unit itself.
 				} else if (
 					ts.isIdentifier(n.initializer) &&
 					n.initializer.text.startsWith(CREDENTIAL_PREFIX)
@@ -1284,10 +1247,6 @@ class Specialiser {
 		return ts.visitNode(root, visit) as ts.Node;
 	}
 
-	/**
-	 * Follows `let` variables through straight-line code: after `x = 'a'`, a read
-	 * of `x` is `'a'` until a statement that can assign `x` on some path.
-	 */
 	private flow(root: ts.Node): ts.Node {
 		if (!ts.isFunctionDeclaration(root) || !root.body) return root;
 		const counts = bindingsOf(root);
@@ -1312,7 +1271,7 @@ class Specialiser {
 			}
 			return undefined;
 		};
-		// A variable that a nested function assigns can change at any call.
+
 		const mark = (n: ts.Node, inner: boolean) => {
 			const name = targetOf(n);
 			if (name && inner) fixed.add(name);
@@ -1398,7 +1357,7 @@ class Specialiser {
 					out = substitute(st, without(env, assigned));
 				}
 				for (const name of assigned) env.delete(name);
-				// The statement itself can set a value: `let x = 'a'` and `x = 'a'`.
+
 				if (ts.isVariableStatement(out)) {
 					for (const d of out.declarationList.declarations) {
 						const lit = d.initializer ? literalOf(d.initializer) : undefined;
@@ -1436,7 +1395,6 @@ class Specialiser {
 		);
 	}
 
-	/** Computes operations on constants and removes the branches that a constant excludes. */
 	private reduce(root: ts.Node): ts.Node {
 		const visit = (input: ts.Node): ts.Node | ts.Node[] | undefined => {
 			const n = ts.visitEachChild(input, visit, undefined);
@@ -1469,7 +1427,6 @@ class Specialiser {
 				if (condition) return done(condition.value ? n.whenTrue : n.whenFalse);
 			}
 			if (ts.isTemplateExpression(n)) {
-				// Joins constant parts: a URL with credential templates becomes one string.
 				let head = n.head.text;
 				const spans: Array<{ expression: ts.Expression; text: string }> = [];
 				let joined = false;
@@ -1555,9 +1512,6 @@ class Specialiser {
 		return ts.visitNode(root, visit) as ts.Node;
 	}
 
-	// ----- drive -----
-
-	/** What a name of a file is: a declaration, or the namespace of a module (no `node`). */
 	private member(file: FileModel, name: string, hops = 0): Resolved | undefined {
 		if (hops > 12) return undefined;
 		const node = file.declarations.get(name);
@@ -1573,7 +1527,6 @@ class Specialiser {
 		return target ? this.exported(target, imported.name, hops + 1) : undefined;
 	}
 
-	/** What a module exports under a name. */
 	private exported(file: FileModel, name: string, hops = 0): Resolved | undefined {
 		if (hops > 12) return undefined;
 		const local = file.exportLocal.get(name);
@@ -1594,11 +1547,6 @@ class Specialiser {
 		return undefined;
 	}
 
-	/**
-	 * Calls through a namespace: `sheet.append.execute(...)` with
-	 * `import * as sheet`. After folding, the keys are constants, so the target
-	 * is one declaration. It becomes a unit with a name of its own.
-	 */
 	private resolveChains(root: ts.Node, unit: Unit): ts.Node {
 		const bound = bindingsOf(root);
 		const target = (e: ts.Expression, withContext: boolean): string | undefined => {
@@ -1714,6 +1662,234 @@ class Specialiser {
 		this.output.push({ name: unit.name, node, sf: cur.sf });
 	}
 
+	private optimise() {
+		for (let round = 0; round < 6; round++) {
+			const specialised = this.specialiseParameters();
+			const folded = this.foldPureCalls();
+			if (!specialised && !folded) break;
+		}
+		const reached = new Set<string>(['execute']);
+		for (let k = 0; k < this.output.length + 1; k++) {
+			const before = reached.size;
+			for (const { name, node } of this.output) {
+				if (!reached.has(name)) continue;
+				const walk = (n: ts.Node) => {
+					if (ts.isIdentifier(n) && this.units.has(n.text)) reached.add(n.text);
+					ts.forEachChild(n, walk);
+				};
+				walk(node);
+			}
+			if (reached.size === before) break;
+		}
+		for (let k = this.output.length - 1; k >= 0; k--) {
+			if (!reached.has(this.output[k].name)) this.output.splice(k, 1);
+		}
+	}
+
+	private refold(entry: { name: string; node: ts.Node; sf: ts.SourceFile }, node: ts.Node) {
+		const cur = this.fold(this.reparse(node, entry.sf), entry.name);
+		entry.node = cur.node;
+		entry.sf = cur.sf;
+	}
+
+	private specialiseParameters(): boolean {
+		const sites = new Map<string, ts.CallExpression[]>();
+		const escaped = new Set<string>();
+		for (const { node } of this.output) {
+			const walk = (n: ts.Node) => {
+				if (ts.isIdentifier(n) && this.units.has(n.text) && isValueUse(n)) {
+					const p = n.parent;
+					if (ts.isCallExpression(p) && p.expression === n)
+						sites.set(n.text, [...(sites.get(n.text) ?? []), p]);
+					else if (!ts.isFunctionDeclaration(p)) escaped.add(n.text);
+				}
+				ts.forEachChild(n, walk);
+			};
+			walk(node);
+		}
+		let changed = false;
+		for (const entry of this.output) {
+			const fn = entry.node;
+			const calls = sites.get(entry.name);
+			if (
+				!ts.isFunctionDeclaration(fn) ||
+				!fn.body ||
+				!calls ||
+				escaped.has(entry.name) ||
+				entry.name === 'execute'
+			)
+				continue;
+			const written = new Set<string>();
+			const noteWrites = (n: ts.Node) => {
+				if (
+					ts.isBinaryExpression(n) &&
+					n.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+					n.operatorToken.kind <= ts.SyntaxKind.LastAssignment &&
+					ts.isIdentifier(n.left)
+				) {
+					written.add(n.left.text);
+				}
+				if (
+					(ts.isPrefixUnaryExpression(n) || ts.isPostfixUnaryExpression(n)) &&
+					ts.isIdentifier(n.operand)
+				)
+					written.add(n.operand.text);
+				ts.forEachChild(n, noteWrites);
+			};
+			noteWrites(fn.body);
+			const constants: ts.Statement[] = [];
+			const parameters = fn.parameters.map((p, k) => {
+				if (
+					!ts.isIdentifier(p.name) ||
+					p.dotDotDotToken ||
+					p.name.text.startsWith('__p') ||
+					written.has(p.name.text)
+				)
+					return p;
+				const given = calls.map((c) => c.arguments[k]);
+				const values = given.map((a) => (a === undefined ? { value: undefined } : literalOf(a)));
+				const first = values[0];
+				if (!first || !values.every((v) => v !== undefined && v.value === first.value)) return p;
+				const value =
+					first.value === undefined && p.initializer ? p.initializer : expressionOf(first.value);
+				constants.push(
+					f.createVariableStatement(
+						undefined,
+						f.createVariableDeclarationList(
+							[f.createVariableDeclaration(p.name.text, undefined, undefined, value)],
+							ts.NodeFlags.Const,
+						),
+					),
+				);
+				return f.createParameterDeclaration(undefined, undefined, `__p${k}`);
+			});
+			if (constants.length === 0) continue;
+			changed = true;
+			this.refold(
+				entry,
+				f.updateFunctionDeclaration(
+					fn,
+					fn.modifiers,
+					fn.asteriskToken,
+					fn.name,
+					fn.typeParameters,
+					parameters,
+					fn.type,
+					f.updateBlock(fn.body, [...constants, ...fn.body.statements]),
+				),
+			);
+		}
+		return changed;
+	}
+
+	private foldPureCalls(): boolean {
+		const evaluate = this.input.evaluate;
+		if (!evaluate) return false;
+		const pure = new Set<string>();
+		const isPure = (name: string, fn: ts.FunctionDeclaration): boolean => {
+			if (fn.modifiers?.some((m) => m.kind === ts.SyntaxKind.AsyncKeyword) || fn.asteriskToken)
+				return false;
+			const bound = bindingsOf(fn);
+			let ok = true;
+			const walk = (n: ts.Node) => {
+				if (
+					n.kind === ts.SyntaxKind.ThisKeyword ||
+					ts.isAwaitExpression(n) ||
+					ts.isNewExpression(n)
+				)
+					ok = false;
+				if (
+					ts.isPropertyAccessExpression(n) &&
+					ts.isIdentifier(n.expression) &&
+					n.expression.text === 'Math' &&
+					n.name.text === 'random'
+				)
+					ok = false;
+				if (
+					ts.isIdentifier(n) &&
+					isValueUse(n) &&
+					!bound.has(n.text) &&
+					n.text !== name &&
+					!PURE_GLOBALS.has(n.text) &&
+					!pure.has(n.text)
+				)
+					ok = false;
+				if (ok) ts.forEachChild(n, walk);
+			};
+			walk(fn);
+			return ok;
+		};
+		for (let round = 0; round < this.output.length + 1; round++) {
+			const before = pure.size;
+			for (const { name, node } of this.output) {
+				if (
+					!pure.has(name) &&
+					name !== 'execute' &&
+					ts.isFunctionDeclaration(node) &&
+					isPure(name, node)
+				)
+					pure.add(name);
+			}
+			if (pure.size === before) break;
+		}
+		const sources = this.output
+			.filter((o) => pure.has(o.name))
+			.map((o) => this.printer.printNode(ts.EmitHint.Unspecified, o.node, o.sf))
+			.join('\n');
+		const literalJson = (e: ts.Expression): boolean =>
+			literalOf(e) !== undefined ||
+			(ts.isArrayLiteralExpression(e) && e.elements.every(literalJson)) ||
+			(ts.isObjectLiteralExpression(e) &&
+				e.properties.every(
+					(p) =>
+						ts.isPropertyAssignment(p) &&
+						(ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) &&
+						literalJson(p.initializer),
+				));
+		let changed = false;
+		for (const entry of this.output) {
+			let replaced = false;
+			const visit = (input: ts.Node): ts.Node => {
+				const n = ts.visitEachChild(input, visit, undefined);
+				if (!ts.isCallExpression(n) || !ts.isIdentifier(n.expression)) return n;
+				const callee = n.expression.text;
+				if (
+					!(pure.has(callee) || PURE_CALLS.has(callee)) ||
+					callee === entry.name ||
+					!n.arguments.every(literalJson)
+				)
+					return n;
+				const text = this.printer.printNode(ts.EmitHint.Unspecified, n, entry.sf);
+				let raw: unknown;
+				try {
+					raw = evaluate(
+						`${sources}\n;(() => { const r = ${text}; return r === undefined ? 'u' : JSON.stringify([r]); })()`,
+					);
+				} catch {
+					return n;
+				}
+				if (typeof raw !== 'string') return n;
+				const parsed: unknown = raw === 'u' ? [undefined] : JSON.parse(raw);
+				const value: unknown = Array.isArray(parsed) ? parsed[0] : n;
+				const simple =
+					value === undefined ||
+					value === null ||
+					typeof value === 'string' ||
+					typeof value === 'boolean' ||
+					(typeof value === 'number' && Number.isFinite(value));
+				if (!simple) return n;
+				replaced = true;
+				return expressionOf(value);
+			};
+			const next = ts.visitNode(entry.node, visit);
+			if (replaced) {
+				changed = true;
+				this.refold(entry, next);
+			}
+		}
+		return changed;
+	}
+
 	run(): SpecialiseResult {
 		const entry = this.load(this.input.entry);
 		let execute: ts.MethodDeclaration | undefined;
@@ -1739,6 +1915,7 @@ class Specialiser {
 			}
 			this.process(this.queue[k], false);
 		}
+		this.optimise();
 		this.checkCredentials();
 		const linked = this.output.map((o) => o.name);
 		if (this.errors.length > 0) return { errors: this.errors, notes: this.notes, linked };
@@ -1747,11 +1924,7 @@ class Specialiser {
 		return { source, errors: [], notes: this.notes, linked };
 	}
 
-	// ----- print -----
-
 	private print(): string {
-		// All node code is inside `run`: the subset allows `ctx.http` only there (WL090), and the
-		// translator of `code-native` takes it as one text.
 		const code: string[] = [];
 		let body = '';
 		for (const { name, node, sf } of this.output) {
@@ -1785,8 +1958,7 @@ class Specialiser {
 		if (this.helpers.has('__request')) code.unshift(REQUEST_SOURCE);
 		this.helpers.delete('__request');
 		for (const always of ['__wrap', '__plain']) this.helpers.add(always);
-		// Regular expressions, Set, Map, `for...in`, `var`, loose equality and the string methods get
-		// their subset forms from the translator of Code nodes. What it cannot translate is an error.
+
 		const globals = new Set([
 			'ctx',
 			'parameters',
@@ -1814,7 +1986,7 @@ class Specialiser {
 				'code',
 				'the `index` or `groups` of a match has no compiled form in node code yet',
 			);
-		// The helpers of the translation, with the helpers that they use.
+
 		const names: string[] = [];
 		const add = (name: string) => {
 			if (names.includes(name) || !Object.hasOwn(CODE_HELPERS, name)) return;
@@ -1823,16 +1995,13 @@ class Specialiser {
 		};
 		for (const name of t.helpers) add(name);
 		if (t.usesCollections) add('collPlain');
-		// A Set or a Map that reaches a request or the output goes as plain JSON, as in v1.
+
 		const plain = t.usesCollections
 			? 'function __plain(value: Json): Json {\n\treturn collPlain(value);\n}'
 			: 'function __plain(value: Json): Json {\n\treturn value;\n}';
 		const own = [...this.helpers].sort().map((h) => (h === '__plain' ? plain : HELPERS[h]));
-		return `// Generated by the node compiler from the source of ${this.input.type}. Do not edit.
-import { defineNode } from '@n8n/workflow-lang';
+		return `import { defineNode } from '@n8n/workflow-lang';
 
-/** Node code has no static types. */
-// biome-ignore lint/suspicious/noExplicitAny: node code is untyped JSON.
 type Json = any;
 
 ${[...names.map((n) => CODE_HELPERS[n].source), ...own].join('\n\n')}
@@ -1850,7 +2019,6 @@ ${t.body}
 	}
 }
 
-/** How many times each name is bound in a tree: variables, parameters, functions, catch variables. */
 function bindingsOf(root: ts.Node): Map<string, number> {
 	const counts = new Map<string, number>();
 	const add = (name: ts.BindingName) => {
@@ -1866,7 +2034,6 @@ function bindingsOf(root: ts.Node): Map<string, number> {
 	return counts;
 }
 
-/** True when an identifier reads a value: not a declared name, a member name or a key. */
 function isValueUse(n: ts.Identifier): boolean {
 	const p = n.parent;
 	if (!p) return true;
@@ -1896,7 +2063,6 @@ function containsBreak(n: ts.Node): boolean {
 	return ts.forEachChild(n, containsBreak) ?? false;
 }
 
-/** The last step before the text: a credential field becomes the template that the runtime fills (spec section 7). */
 function finish(root: ts.Node): ts.Node {
 	const visit = (n: ts.Node): ts.Node => {
 		const out = ts.visitEachChild(n, visit, undefined);
@@ -1915,12 +2081,10 @@ function finish(root: ts.Node): ts.Node {
 	return ts.visitNode(root, visit);
 }
 
-/** Compiles the source of a node into a library module for one node of a workflow. */
 export function specialiseNode(input: SpecialiseInput): SpecialiseResult {
 	try {
 		return new Specialiser(input).run();
 	} catch (error) {
-		// A value or a form that the compiler does not know: the node does not compile.
 		return {
 			errors: [error instanceof Error ? error.message : String(error)],
 			notes: [],

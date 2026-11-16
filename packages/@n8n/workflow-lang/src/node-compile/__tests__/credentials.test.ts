@@ -1,8 +1,3 @@
-/**
- * Credentials in the node compiler: a public field is a constant that node
- * code can branch on, and any other field is a template that node code can
- * only put into a request.
- */
 import { publicCredential } from '../../credentials/public.ts';
 import type { CredentialTypeInfo } from '../../credentials/types.ts';
 import { specialiseNode } from '../specialise.ts';
@@ -46,7 +41,7 @@ const info: CredentialTypeInfo = {
 		baseUrl: { type: 'string', password: false },
 		apiKey: { type: 'string', password: true },
 		accountName: { type: 'string', password: false },
-		// A secret that the credential type does not mark as a password.
+
 		webhookSecret: { type: 'string', password: false },
 		useProxy: { type: 'boolean', password: false },
 	},

@@ -1,19 +1,3 @@
-/**
- * Reads the CommonJS output of the TypeScript compiler as a module with
- * `import` and `export`, so that the node compiler takes the JavaScript that
- * n8n and node packages ship (`dist/*.js`), with no TypeScript source.
- *
- * It knows the forms that `tsc` writes:
- *
- * - `const a_1 = require("./a")`, with `__importStar` or `__importDefault`;
- * - `(0, a_1.name)(...)` for a call of an import;
- * - `exports.name = name`, `exports.name = <value>`, `exports.a = exports.b = void 0`;
- * - `Object.defineProperty(exports, "name", { get: function () { return a_1.other; } })`;
- * - `__exportStar(require("./a"), exports)`.
- *
- * A name of a package (`n8n_workflow_1.NodeApiError`) becomes a named import
- * (`NodeApiError`), which is how the node compiler knows the names of n8n.
- */
 import ts from 'typescript';
 
 const f = ts.factory;
@@ -23,7 +7,6 @@ interface Binding {
 	kind: 'star' | 'default';
 }
 
-/** `require("m")`, `__importStar(require("m"))` or `__importDefault(require("m"))`. */
 function requireOf(e: ts.Expression | undefined): Binding | undefined {
 	if (!e || !ts.isCallExpression(e) || !ts.isIdentifier(e.expression)) return undefined;
 	const [first] = e.arguments;
@@ -44,15 +27,10 @@ function isExports(e: ts.Expression): e is ts.PropertyAccessExpression {
 	);
 }
 
-/** True for text that has the forms of CommonJS. */
 export function isCommonJs(text: string): boolean {
 	return /\brequire\(|\bexports\.|\bmodule\.exports\b/.test(text);
 }
 
-/**
- * The module form of CommonJS text. `isLocal` tells if a module name is a
- * file of the node (a relative path), not a package.
- */
 export function commonJsToModule(text: string, isLocal: (spec: string) => boolean): string {
 	const sf = ts.createSourceFile('module.js', text, ts.ScriptTarget.ES2022, true, ts.ScriptKind.JS);
 	const printer = ts.createPrinter({ removeComments: true, newLine: ts.NewLineKind.LineFeed });
@@ -64,11 +42,10 @@ export function commonJsToModule(text: string, isLocal: (spec: string) => boolea
 			if (binding && ts.isIdentifier(d.name)) bindings.set(d.name.text, binding);
 		}
 	}
-	// Names of packages that the code uses: `import { name } from 'package'`.
+
 	const named = new Map<string, Set<string>>();
 	const defaults = new Map<string, string>();
 	const visit = (n: ts.Node): ts.Node => {
-		// (0, a_1.name)(...) is a call of `a_1.name` without `this`.
 		if (ts.isCallExpression(n) && ts.isParenthesizedExpression(n.expression)) {
 			const inner = n.expression.expression;
 			if (
@@ -97,7 +74,7 @@ export function commonJsToModule(text: string, isLocal: (spec: string) => boolea
 				named.set(binding.spec, names);
 				return f.createIdentifier(n.name.text);
 			}
-			// A use of an export of this file.
+
 			if (n.expression.text === 'exports') return f.createIdentifier(n.name.text);
 		}
 		return ts.visitEachChild(n, visit, undefined);
@@ -111,7 +88,7 @@ export function commonJsToModule(text: string, isLocal: (spec: string) => boolea
 			const kept: ts.VariableDeclaration[] = [];
 			for (const d of st.declarationList.declarations) {
 				const binding = ts.isIdentifier(d.name) ? bindings.get(d.name.text) : undefined;
-				// The helpers of tslib (`__importStar`, `__createBinding`) go: their forms are read above.
+
 				const helper = ts.isIdentifier(d.name) && d.name.text.startsWith('__');
 				if (binding && ts.isIdentifier(d.name)) {
 					if (isLocal(binding.spec))
@@ -133,7 +110,7 @@ export function commonJsToModule(text: string, isLocal: (spec: string) => boolea
 		}
 		if (ts.isExpressionStatement(st)) {
 			const e = st.expression;
-			if (ts.isStringLiteral(e)) continue; // "use strict"
+			if (ts.isStringLiteral(e)) continue;
 			if (
 				ts.isBinaryExpression(e) &&
 				e.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
@@ -143,7 +120,6 @@ export function commonJsToModule(text: string, isLocal: (spec: string) => boolea
 				const star = requireOf(e.right);
 				if (star) out.push(`export * as ${name} from ${JSON.stringify(star.spec)};`);
 				else if (ts.isIdentifier(e.right) && e.right.text === name) continue;
-				// exports.a = exports.b = void 0: the names that the file sets later.
 				else if (
 					ts.isVoidExpression(e.right) ||
 					(ts.isBinaryExpression(e.right) && isExports(e.right.left))
@@ -161,7 +137,7 @@ export function commonJsToModule(text: string, isLocal: (spec: string) => boolea
 				if (from) out.push(`export * from ${JSON.stringify(from.spec)};`);
 				continue;
 			}
-			// Object.defineProperty(exports, "name", { get: function () { return a_1.other; } })
+
 			if (
 				ts.isCallExpression(e) &&
 				e.expression.getText(sf) === 'Object.defineProperty' &&

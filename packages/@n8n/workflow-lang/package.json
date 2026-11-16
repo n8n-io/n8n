@@ -13,7 +13,7 @@
     "build": "tsc -p tsconfig.build.json",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "oxlint --quiet",
+    "lint": "node scripts/no-comments.ts src/node-compile scripts/verify-compiled-nodes.ts scripts/no-comments.ts && oxlint --quiet",
     "lint:fix": "oxlint --fix",
     "test": "vitest run",
     "test:unit": "vitest run",

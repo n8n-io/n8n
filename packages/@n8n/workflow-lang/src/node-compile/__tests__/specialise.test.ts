@@ -1,9 +1,3 @@
-/**
- * The node compiler against v1: it compiles the n8n source of a node for the
- * parameters of each equivalence case, runs the result in the reference
- * runner and in the bytecode VM, and compares the requests and the output
- * with the recording of the v1 node (`src/nodes/__tests__/v1-requests.json`).
- */
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,7 +26,6 @@ const recordings: Record<string, Recording> = JSON.parse(
 );
 const typesBuilt = existsSync(join(DEFAULT_NODE_PACKAGES[0], 'dist/known/credentials.json'));
 
-/** The n8n source file of each node type that the node compiler is tested on. */
 const ENTRIES: Record<string, string> = {
 	'n8n-nodes-base.telegram': 'nodes/Telegram/Telegram.node.ts',
 };
@@ -43,7 +36,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function specialise(c: EquivalenceCase) {
 	const description = NODE_DESCRIPTIONS[NODE_DESCRIPTION_VERSIONS[`${c.type}@${c.typeVersion}`]];
-	// The parameters as n8n gives them to the node: with the defaults of the description.
+
 	const parameters = getNodeParameters(
 		description.properties,
 		c.parameters,
@@ -59,7 +52,7 @@ function specialise(c: EquivalenceCase) {
 		readFile: (path) => (existsSync(path) ? readFileSync(path, 'utf8') : undefined),
 		parameters: isRecord(parameters) ? parameters : {},
 		aliases: { '@utils/': `${join(nodesBase, 'utils')}/` },
-		// The recordings of v1 have no instance id (`withoutInstanceId`).
+
 		instanceId: null,
 	});
 }
@@ -109,7 +102,6 @@ describe.runIf(typesBuilt)('node compiler: n8n node source against v1', () => {
 		});
 
 		it('keeps only the code of the operation in use', () => {
-			// The Telegram node has 2,500 lines and 30 operations.
 			expect(result.linked.length).toBeLessThan(10);
 			expect(result.source).not.toContain('this.');
 		});
