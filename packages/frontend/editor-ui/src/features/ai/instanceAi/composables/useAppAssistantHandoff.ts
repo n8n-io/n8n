@@ -40,16 +40,14 @@ export function useAppAssistantHandoff(): AppAssistantHandoff {
 	const i18n = useI18n();
 	const available = useInstanceAiReady();
 
-	/** The newest Assistant agent thread of the app. */
+	/**
+	 * The newest Assistant agent thread of the app. Only the server knows a thread
+	 * that another tab created, so the lookup does not read the threads of this tab.
+	 */
 	async function findAssistantAgentThread(
 		subject: InstanceAiEmbedSubject,
 		assertOriginRouteActive: () => void,
 	): Promise<string | undefined> {
-		// The store holds threads that are newer than the last page load, for example one started in this tab.
-		const known = assistantAgentThreadsStore.knownThreads.find((thread) =>
-			threadTargetsSubject(thread.metadata, subject),
-		);
-		if (known) return known.id;
 		let cursor: string | undefined;
 		while (true) {
 			const page = await listSystemAgentThreads(rootStore.restApiContext, ASSISTANT_AGENT_ID, {

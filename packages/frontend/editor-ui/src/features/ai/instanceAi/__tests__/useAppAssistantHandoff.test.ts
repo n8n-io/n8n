@@ -277,22 +277,27 @@ describe('useAppAssistantHandoff', () => {
 			});
 		});
 
-		it('opens a thread of the App that the store already knows without a request', async () => {
+		it('asks the server even when this tab knows an older thread of the App', async () => {
 			threadsStore.knownThreads = [
 				{
-					id: 'known-thread',
+					id: 'older-thread',
 					title: 'App chat',
-					updatedAt: '2026-11-02T10:00:00.000Z',
+					updatedAt: '2026-10-02T10:00:00.000Z',
 					projectId: 'project-1',
 					metadata: appMetadata,
 				},
 			];
+			const newer = {
+				...threadsStore.knownThreads[0],
+				id: 'newer-thread',
+				updatedAt: '2026-11-02T10:00:00.000Z',
+			};
+			vi.mocked(listSystemAgentThreads).mockResolvedValueOnce({ data: [newer], nextCursor: null });
 
 			await useAppAssistantHandoff().openApp({ appId: APP_ID, projectId: 'project-1' });
 
-			expect(listSystemAgentThreads).not.toHaveBeenCalled();
 			expect(replace).toHaveBeenCalledWith(
-				expect.objectContaining({ params: { threadId: 'known-thread' } }),
+				expect.objectContaining({ params: { threadId: 'newer-thread' } }),
 			);
 		});
 
