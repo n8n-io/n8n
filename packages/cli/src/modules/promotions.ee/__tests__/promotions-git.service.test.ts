@@ -1,13 +1,14 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
 
+import { STALE_GIT_LOCK_AGE_MS } from '../constants';
 import { PromotionGitError, PromotionLocalGitError } from '../promotions-git.error';
 import { PromotionsGitService } from '../promotions-git.service';
 
@@ -1133,17 +1134,29 @@ describe('PromotionsGitService (git operations)', () => {
 		});
 	});
 
-	describe('removeLeftoverLockFiles', () => {
+	describe('stale Git lock files', () => {
+		// Any operation runs inside the checkout lock. This one runs one local Git command.
 		const call = async () =>
-			await gitService.removeLeftoverLockFiles({ paths, branchName: 'main', environmentId });
+			await gitService.hasCommittedPath({
+				paths,
+				branchName: 'main',
+				environmentId,
+				pathspec: 'n8n/manifest.json',
+			});
 
 		const gitPath = (...segments: string[]) =>
 			path.join(paths.repositoryFolder, '.git', ...segments);
 
-		const writeGitFile = async (...segments: string[]) => {
+		const writeGitFile = async (ageMs: number, ...segments: string[]) => {
 			await mkdir(path.dirname(gitPath(...segments)), { recursive: true });
 			await writeFile(gitPath(...segments), 'content');
+			const modified = new Date(Date.now() - ageMs);
+			await utimes(gitPath(...segments), modified, modified);
 		};
+		const writeStale = async (...segments: string[]) =>
+			await writeGitFile(STALE_GIT_LOCK_AGE_MS + 60_000, ...segments);
+		const writeFresh = async (...segments: string[]) =>
+			await writeGitFile(STALE_GIT_LOCK_AGE_MS - 60_000, ...segments);
 
 		const exists = async (...segments: string[]) =>
 			await stat(gitPath(...segments)).then(
@@ -1151,62 +1164,164 @@ describe('PromotionsGitService (git operations)', () => {
 				() => false,
 			);
 
-		it('removes the index, HEAD, and local branch lock files, also in nested branch folders', async () => {
-			await writeGitFile('index.lock');
-			await writeGitFile('HEAD.lock');
-			await writeGitFile('refs', 'heads', 'main.lock');
-			await writeGitFile('refs', 'heads', 'team', 'feature.lock');
+		beforeEach(() => {
+			mockGit.raw.mockResolvedValue('');
+		});
+
+		it('removes old index, HEAD, packed-refs, branch, and remote-tracking lock files', async () => {
+			const lockFiles = [
+				['index.lock'],
+				['HEAD.lock'],
+				['packed-refs.lock'],
+				['refs', 'heads', 'main.lock'],
+				['refs', 'heads', 'team', 'feature.lock'],
+				['refs', 'remotes', 'origin', 'main.lock'],
+				['refs', 'remotes', 'origin', 'team', 'feature.lock'],
+			];
+			for (const lockFile of lockFiles) await writeStale(...lockFile);
 
 			await call();
 
-			expect(await exists('index.lock')).toBe(false);
-			expect(await exists('HEAD.lock')).toBe(false);
-			expect(await exists('refs', 'heads', 'main.lock')).toBe(false);
-			expect(await exists('refs', 'heads', 'team', 'feature.lock')).toBe(false);
-			expect(await exists('refs', 'heads', 'team')).toBe(true);
-			for (const lockFile of [
-				'index.lock',
-				'HEAD.lock',
-				path.join('refs', 'heads', 'main.lock'),
-				path.join('refs', 'heads', 'team', 'feature.lock'),
-			]) {
+			for (const lockFile of lockFiles) {
+				expect(await exists(...lockFile)).toBe(false);
 				expect(logger.debug).toHaveBeenCalledWith(
 					'Removed a leftover Git lock file from the promotion checkout',
-					{ environmentId, lockFile },
+					{ environmentId, lockFile: path.join(...lockFile) },
 				);
 			}
+			expect(await exists('refs', 'remotes', 'origin', 'team')).toBe(true);
 		});
 
-		it('keeps branch refs, remote-tracking lock files, and FETCH_HEAD', async () => {
-			await writeGitFile('refs', 'heads', 'main');
-			await writeGitFile('refs', 'remotes', 'origin', 'main.lock');
-			await writeGitFile('FETCH_HEAD');
-			await writeGitFile('index');
+		it('keeps lock files that a running Git command on another main can hold', async () => {
+			await writeFresh('index.lock');
+			await writeFresh('refs', 'remotes', 'origin', 'main.lock');
+
+			await call();
+
+			expect(await exists('index.lock')).toBe(true);
+			expect(await exists('refs', 'remotes', 'origin', 'main.lock')).toBe(true);
+			expect(logger.debug).not.toHaveBeenCalled();
+		});
+
+		it('keeps refs, FETCH_HEAD, the index, and other lock files', async () => {
+			for (const file of [
+				['refs', 'heads', 'main'],
+				['refs', 'remotes', 'origin', 'main'],
+				['FETCH_HEAD'],
+				['index'],
+				['config.lock'],
+			]) {
+				await writeStale(...file);
+			}
 
 			await call();
 
 			expect(await exists('refs', 'heads', 'main')).toBe(true);
-			expect(await exists('refs', 'remotes', 'origin', 'main.lock')).toBe(true);
+			expect(await exists('refs', 'remotes', 'origin', 'main')).toBe(true);
 			expect(await exists('FETCH_HEAD')).toBe(true);
 			expect(await exists('index')).toBe(true);
-			expect(logger.debug).not.toHaveBeenCalled();
+			expect(await exists('config.lock')).toBe(true);
 		});
 
-		it('does nothing when no lock file exists', async () => {
-			await mkdir(gitPath(), { recursive: true });
-
-			await expect(call()).resolves.toBeUndefined();
-
-			expect(await readdir(gitPath())).toEqual([]);
-			expect(logger.debug).not.toHaveBeenCalled();
-		});
-
-		it('runs no Git command', async () => {
-			await writeGitFile('index.lock');
+		it('removes the lock files before the operation runs Git', async () => {
+			await writeStale('refs', 'remotes', 'origin', 'main.lock');
+			const seenByGit: boolean[] = [];
+			mockGit.raw.mockImplementationOnce(async () => {
+				seenByGit.push(await exists('refs', 'remotes', 'origin', 'main.lock'));
+				return '';
+			});
 
 			await call();
 
-			expect(simpleGitMock).not.toHaveBeenCalled();
+			expect(seenByGit).toEqual([false]);
+		});
+
+		it('runs the operation when the checkout has no .git folder', async () => {
+			await expect(call()).resolves.toBe(false);
+
+			expect(mockGit.raw).toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
+
+		it('logs a failed removal and still runs the operation', async () => {
+			// A file where Git keeps the refs folder makes the listing fail.
+			await writeStale('refs');
+
+			await expect(call()).resolves.toBe(false);
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to remove leftover Git lock files from the promotion checkout',
+				{ environmentId, error: expect.stringContaining('ENOTDIR') },
+			);
+			expect(mockGit.raw).toHaveBeenCalled();
+		});
+	});
+
+	describe('failure log', () => {
+		const call = async () =>
+			await gitService.hasCommittedPath({
+				paths,
+				branchName: 'main',
+				environmentId,
+				pathspec: 'n8n/manifest.json',
+			});
+
+		it('names the lock file that Git found, and nothing else from its output', async () => {
+			const lockFile =
+				'/data/.n8n/promotions/environments/e/repository/.git/refs/remotes/origin/main.lock';
+			mockGit.raw.mockRejectedValueOnce(
+				new GitError(
+					{ commands: ['fetch', 'origin'] },
+					[
+						' ! abc..def  main -> origin/main  (unable to update local ref)',
+						`error: cannot lock ref 'refs/remotes/origin/main': Unable to create '${lockFile}': File exists.`,
+						'',
+						'Another git process seems to be running in this repository',
+					].join('\n'),
+				),
+			);
+
+			await expect(call()).rejects.toThrow(PromotionGitError);
+
+			expect(logger.warn).toHaveBeenCalledWith('Git operation failed', {
+				environmentId,
+				branchName: 'main',
+				lockFile,
+			});
+		});
+
+		it('names the index lock file', async () => {
+			const lockFile = '/data/repository/.git/index.lock';
+			mockGit.raw.mockRejectedValueOnce(
+				new GitError(
+					{ commands: ['reset', '--hard'] },
+					`fatal: Unable to create '${lockFile}': File exists.`,
+				),
+			);
+
+			await expect(call()).rejects.toThrow(PromotionLocalGitError);
+
+			expect(logger.warn).toHaveBeenCalledWith('Git operation failed', {
+				environmentId,
+				branchName: 'main',
+				lockFile,
+			});
+		});
+
+		it('ignores the same text from the remote', async () => {
+			mockGit.raw.mockRejectedValueOnce(
+				new GitError(
+					{ commands: ['fetch', 'origin'] },
+					"remote: fatal: Unable to create '/secret/x.lock': File exists.",
+				),
+			);
+
+			await expect(call()).rejects.toThrow(PromotionGitError);
+
+			expect(logger.warn).toHaveBeenCalledWith('Git operation failed', {
+				environmentId,
+				branchName: 'main',
+			});
 		});
 	});
 
