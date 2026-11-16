@@ -337,6 +337,7 @@ export class AssistantTurnEnvironmentFactory {
 			assistantSkillsEnabled,
 			modelId,
 			utilityModelId,
+			onHelperUsage: this.creditService.helperUsageClaimer(user, threadId, runId),
 			modelFetch: this.modelService.getModelFetch(),
 			allowSendingParameterValues,
 			temporaryWorkflowMarkers: runtime.temporaryWorkflowMarkers,
