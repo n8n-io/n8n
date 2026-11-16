@@ -10,6 +10,7 @@ const getMockedExecuteFunctions = ({
 	outputBuffer = Buffer.from('edited image'),
 	mimeType = 'image/png',
 	invalidApiResponse = false,
+	malformedCandidates = false,
 	blockedApiResponse = false,
 	emptyApiResponse = false,
 }: {
@@ -19,6 +20,7 @@ const getMockedExecuteFunctions = ({
 	outputBuffer?: Buffer<ArrayBuffer>;
 	mimeType?: string;
 	invalidApiResponse?: boolean;
+	malformedCandidates?: boolean;
 	blockedApiResponse?: boolean;
 	emptyApiResponse?: boolean;
 } = {}): IExecuteFunctions => {
@@ -83,8 +85,10 @@ const getMockedExecuteFunctions = ({
 					}
 				: emptyApiResponse
 					? {}
-					: invalidApiResponse
-						? { invalid: 'response' }
+					: malformedCandidates
+						? { candidates: 'invalid' }
+						: invalidApiResponse
+							? { invalid: 'response' }
 						: {
 								candidates: [
 									{
@@ -193,6 +197,14 @@ describe('Gemini Node image edit', () => {
 			images: { values: [{ binaryPropertyName: 'data' }] },
 			invalidApiResponse: true,
 		});
+
+		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
+			'Invalid response format from Gemini API',
+		);
+	});
+
+	it('should throw error for a non-array candidates field', async () => {
+		const executeFunctions = getMockedExecuteFunctions({ malformedCandidates: true });
 
 		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
 			'Invalid response format from Gemini API',
