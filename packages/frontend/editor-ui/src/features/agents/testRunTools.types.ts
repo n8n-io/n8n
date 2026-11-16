@@ -6,7 +6,7 @@
  * `@n8n/api-types` import once that schema lands.
  */
 
-export type ToolTestability = 'simulated' | 'read_for_real' | 'blocked';
+export type ToolTestability = 'simulated' | 'blocked';
 
 export type ToolTestKind =
 	| 'node'
@@ -20,18 +20,16 @@ export type ToolTestKind =
 export type ToolCallReason =
 	| 'served_from_world'
 	| 'invented_by_llm'
-	| 'real_read_allowed'
 	| 'unsupported_by_simulator'
 	| 'simulator_unavailable'
-	| 'not_simulatable'
-	| 'blocked_by_policy';
+	| 'not_simulatable';
 
 export interface ToolTestCapability {
 	/** The name the model calls. For an MCP server, the server name. */
 	toolName: string;
 	kind: ToolTestKind;
 	testability: ToolTestability;
-	/** Explains why the tool is blocked or reads real data. */
+	/** Explains why the tool is blocked. */
 	reason?: ToolCallReason;
 	/** Short and safe to show. */
 	detail?: string;

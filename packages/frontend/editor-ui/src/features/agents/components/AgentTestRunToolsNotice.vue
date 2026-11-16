@@ -43,8 +43,6 @@ const REASON_KEYS: Partial<Record<ToolCallReason, BaseTextKey>> = {
 	not_simulatable: 'agents.testRun.tools.reason.notSimulatable',
 	unsupported_by_simulator: 'agents.testRun.tools.reason.unsupportedBySimulator',
 	simulator_unavailable: 'agents.testRun.tools.reason.simulatorUnavailable',
-	blocked_by_policy: 'agents.testRun.tools.reason.blockedByPolicy',
-	real_read_allowed: 'agents.testRun.tools.reason.realReadAllowed',
 };
 
 const GROUPS: Array<{
@@ -61,18 +59,10 @@ const GROUPS: Array<{
 		description: 'agents.testRun.tools.blocked.description',
 		fallbackReason: 'agents.testRun.tools.reason.blocked',
 	},
-	{
-		testability: 'read_for_real',
-		icon: 'eye',
-		title: 'agents.testRun.tools.readForReal.title',
-		description: 'agents.testRun.tools.readForReal.description',
-		fallbackReason: 'agents.testRun.tools.reason.realReadAllowed',
-	},
 ];
 
 const expanded = reactive<Record<NoticeTestability, boolean>>({
 	blocked: false,
-	read_for_real: false,
 });
 
 const groups = computed(() =>
@@ -95,8 +85,7 @@ const groups = computed(() =>
  * blocked tools so the warning never disappears.
  */
 function noticeGroup(tool: ToolTestCapability): NoticeTestability | undefined {
-	if (tool.testability === 'simulated') return undefined;
-	return tool.testability === 'read_for_real' ? 'read_for_real' : 'blocked';
+	return tool.testability === 'simulated' ? undefined : 'blocked';
 }
 
 function reasonText(tool: ToolTestCapability, fallback: BaseTextKey): string {

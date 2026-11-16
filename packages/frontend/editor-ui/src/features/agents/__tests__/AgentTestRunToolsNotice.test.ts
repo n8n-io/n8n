@@ -42,7 +42,7 @@ describe('AgentTestRunToolsNotice', () => {
 						toolName: 'delete_records',
 						kind: 'mcp',
 						testability: 'blocked',
-						reason: 'blocked_by_policy',
+						reason: 'unsupported_by_simulator',
 					},
 					{
 						toolName: 'run_code',
@@ -68,7 +68,7 @@ describe('AgentTestRunToolsNotice', () => {
 		);
 		expect(rows[0]).toHaveTextContent('MCP server');
 		expect(within(rows[0]).getByTestId('agent-test-run-tool-reason')).toHaveTextContent(
-			'Blocked by a policy',
+			'Not supported in test runs yet',
 		);
 		expect(within(rows[1]).getByTestId('agent-test-run-tool-reason')).toHaveTextContent(
 			"Can't be simulated",
@@ -83,26 +83,6 @@ describe('AgentTestRunToolsNotice', () => {
 		expect(within(rows[2]).queryByTestId('agent-test-run-tool-detail')).not.toBeInTheDocument();
 	});
 
-	it('calls out tools that read real data in their own group', () => {
-		const { getByTestId, queryByTestId } = renderNotice({
-			props: {
-				tools: [
-					{
-						toolName: 'get_customer',
-						kind: 'integration',
-						testability: 'read_for_real',
-						reason: 'real_read_allowed',
-					},
-				],
-			},
-		});
-
-		expect(queryByTestId('agent-test-run-tools-blocked')).not.toBeInTheDocument();
-		const group = getByTestId('agent-test-run-tools-read_for_real');
-		expect(group).toHaveTextContent('Reads real data');
-		expect(group).toHaveTextContent('get_customer');
-		expect(group).toHaveTextContent('Reads real data and changes nothing');
-	});
 
 	it('collapses a long list and expands it on request', async () => {
 		const tools = Array.from({ length: 12 }, (_, index) => blockedTool(index));
