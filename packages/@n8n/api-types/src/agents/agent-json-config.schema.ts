@@ -618,11 +618,6 @@ export const ToolGuardrailConfigSchema = z.discriminatedUnion('kind', [
 		...toolGuardrailBaseShape,
 		...modelToolGuardrailShape,
 	}),
-	z.object({
-		kind: z.literal('customPrompt'),
-		...toolGuardrailBaseShape,
-		...modelToolGuardrailShape,
-	}),
 ]);
 
 /**
