@@ -51,7 +51,13 @@ function isGenerateContentResponse(response: unknown): response is GenerateConte
 	const responseObj = response as Record<string, unknown>;
 
 	if (!('candidates' in responseObj) || responseObj.candidates === undefined) {
-		return true;
+		const promptFeedback = responseObj.promptFeedback;
+		return (
+			Object.keys(responseObj).length === 0 ||
+			(typeof promptFeedback === 'object' &&
+				promptFeedback !== null &&
+				'blockReason' in promptFeedback)
+		);
 	}
 
 	if (!Array.isArray(responseObj.candidates)) {

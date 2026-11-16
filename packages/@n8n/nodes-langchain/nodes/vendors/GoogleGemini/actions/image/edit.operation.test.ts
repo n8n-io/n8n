@@ -84,7 +84,7 @@ const getMockedExecuteFunctions = ({
 				: emptyApiResponse
 					? {}
 					: invalidApiResponse
-						? { candidates: 'invalid' }
+						? { invalid: 'response' }
 						: {
 								candidates: [
 									{
