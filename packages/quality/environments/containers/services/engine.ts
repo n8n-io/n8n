@@ -170,11 +170,10 @@ export function assertEngineSupported({
 }: EngineTopology & { usePostgres: boolean }): void {
 	if (!engine) return;
 
-	// The `engine-v2` module runs on mains only.
-	if (workers > 0 || webhooks > 0) {
-		throw new Error(
-			`Engine v2 does not support workers or webhook processes: got workers: ${workers}, webhooks: ${webhooks}`,
-		);
+	// The `engine-v2` module runs on mains only, so a webhook process would not
+	// route a webhook to engine v2. A worker only runs the legacy engine.
+	if (webhooks > 0) {
+		throw new Error(`Engine v2 does not support webhook processes: got webhooks: ${webhooks}`);
 	}
 
 	// The engine reports to a main; without one it would be started as "main 1".
@@ -182,10 +181,11 @@ export function assertEngineSupported({
 		throw new Error(`Engine v2 needs at least one main: got mains: ${mains}`);
 	}
 
-	// More than one main runs queue mode, which the in-process engine cannot share.
-	if (mains > 1 && engine === 'in-process') {
+	// More than one main or a worker runs queue mode, which the in-process engine
+	// cannot share.
+	if (engine === 'in-process' && (mains > 1 || workers > 0)) {
 		throw new Error(
-			`Engine v2 in-process mode needs exactly one main: got mains: ${mains}. Use container mode.`,
+			`Engine v2 in-process mode needs exactly one main and no workers: got mains: ${mains}, workers: ${workers}. Use container mode.`,
 		);
 	}
 

@@ -462,6 +462,8 @@ export async function createN8NInstances(
 		registerContainer,
 		startupDeadline,
 		image,
+		// A worker gets the storage path of the mains, so it uses their store too.
+		binaryDataHostDir,
 		user,
 		startupTimeoutMs,
 	};

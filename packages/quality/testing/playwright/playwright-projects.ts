@@ -256,8 +256,9 @@ export function getProjects(): Project[] {
 			// engine, and the CI job asks for one worker anyway.
 			workers: 1,
 			// Two mains, so the execution channel runs over Redis in multi-main as
-			// it does in production.
-			use: { containerConfig: { postgres: true, engine: 'container', mains: 2 } },
+			// it does in production. The worker runs what stays on the legacy
+			// engine: in multi-main the mains send manual runs to workers.
+			use: { containerConfig: { postgres: true, engine: 'container', mains: 2, workers: 1 } },
 		});
 
 		projects.push({

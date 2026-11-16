@@ -229,18 +229,26 @@ describe('applyEngineEnv', () => {
 		);
 	});
 
-	test('rejects workers, since the engine-v2 module runs on mains only', () => {
+	test('accepts a worker with an engine container, which runs the legacy engine', () => {
+		const env = { ...postgresEnv };
+
+		applyEngineEnv(env, {
+			engine: 'container',
+			mains: 2,
+			workers: 1,
+			webhooks: 0,
+			...engineOptions,
+		});
+
+		expect(env.N8N_ENGINE_MODE).toBe('remote');
+	});
+
+	test('rejects a worker with an in-process engine, which it cannot share', () => {
 		const env = { ...postgresEnv };
 
 		expect(() =>
-			applyEngineEnv(env, {
-				engine: 'container',
-				mains: 1,
-				workers: 1,
-				webhooks: 0,
-				...engineOptions,
-			}),
-		).toThrow(/workers or webhook processes/);
+			applyEngineEnv(env, { engine: 'in-process', mains: 1, workers: 1, webhooks: 0, projectName }),
+		).toThrow(/in-process mode needs exactly one main and no workers/);
 	});
 
 	test('rejects webhook processes, since the engine-v2 module runs on mains only', () => {
@@ -254,7 +262,7 @@ describe('applyEngineEnv', () => {
 				webhooks: 1,
 				...engineOptions,
 			}),
-		).toThrow(/workers or webhook processes/);
+		).toThrow(/does not support webhook processes/);
 	});
 
 	test('rejects a stack without a main, since the engine would be started as one', () => {
@@ -290,7 +298,7 @@ describe('applyEngineEnv', () => {
 
 		expect(() =>
 			applyEngineEnv(env, { engine: 'in-process', mains: 2, workers: 0, webhooks: 0, projectName }),
-		).toThrow(/in-process mode needs exactly one main/);
+		).toThrow(/in-process mode needs exactly one main and no workers/);
 	});
 });
 
