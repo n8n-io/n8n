@@ -138,7 +138,7 @@ describe('ZendeskTrigger Node', () => {
 
 			expect(result).toBe(true);
 			const postTriggerCall = apiRequestSpy.mock.calls.find(
-				([method, path]) => method === 'POST' && path === '/triggers',
+				([method, path]) => method === 'POST' && String(path) === '/triggers',
 			);
 			expect(postTriggerCall).toBeDefined();
 			const bodyTrigger = postTriggerCall![2] as any;
@@ -244,8 +244,7 @@ describe('ZendeskTrigger Node', () => {
 
 			expect(result).toBe(true);
 			const deleteWebhookCalls = apiRequestSpy.mock.calls.filter(
-				([method, path]) =>
-					method === 'DELETE' && typeof path === 'string' && path.startsWith('/webhooks'),
+				([method, path]) => method === 'DELETE' && String(path).startsWith('/webhooks'),
 			);
 			expect(deleteWebhookCalls).toHaveLength(0);
 		});
@@ -265,8 +264,7 @@ describe('ZendeskTrigger Node', () => {
 
 			expect(result).toBe(true);
 			const deleteWebhookCalls = apiRequestSpy.mock.calls.filter(
-				([method, path]) =>
-					method === 'DELETE' && typeof path === 'string' && path.startsWith('/webhooks'),
+				([method, path]) => method === 'DELETE' && String(path).startsWith('/webhooks'),
 			);
 			expect(deleteWebhookCalls).toHaveLength(0);
 		});
