@@ -187,7 +187,6 @@ describe('AgentBuilderEditorColumn — childrenDisabled composes streaming and c
 const PANEL_TEST_IDS = [
 	'agent-triggers-panel',
 	'agent-info-panel',
-	'agent-skills-panel',
 	'agent-capabilities-panel',
 	'agent-memory-panel',
 ];

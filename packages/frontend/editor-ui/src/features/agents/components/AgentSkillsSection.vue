@@ -6,7 +6,7 @@ import { computed } from 'vue';
 import { useAgentCapabilityIssueMessages } from '../composables/useAgentCapabilityIssueMessages';
 import type { AgentSkill } from '../types';
 import AgentChipButton from './AgentChipButton.vue';
-import AgentChipRow from './AgentChipRow.vue';
+import AgentCapabilityGroup from './AgentCapabilityGroup.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
 
 const props = withDefaults(
@@ -14,13 +14,11 @@ const props = withDefaults(
 		/** In ref order. A skill has no on/off toggle: a ref is attached or it is not. */
 		skills: Array<{ id: string; skill: AgentSkill }>;
 		disabled?: boolean;
-		showLabel?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
 		outdatedSkillIds?: string[];
 	}>(),
 	{
 		disabled: false,
-		showLabel: true,
 		validationIssues: () => [],
 		outdatedSkillIds: () => [],
 	},
@@ -42,13 +40,13 @@ const outdatedWarning = computed(() => [i18n.baseText('agents.builder.skills.out
 </script>
 
 <template>
-	<AgentChipRow
-		:label="i18n.baseText('agents.builder.skills.title')"
+	<AgentCapabilityGroup
+		:title="i18n.baseText('agents.builder.skills.title')"
+		:description="i18n.baseText('agents.builder.skills.description')"
 		:item-count="skills.length"
 		:add-label="i18n.baseText('agents.builder.skills.add')"
 		add-button-test-id="agent-capabilities-add-skill"
 		:disabled="props.disabled"
-		:show-label="props.showLabel"
 		@add="emit('add-skill')"
 	>
 		<div v-for="{ id, skill } in skills" :key="id" :class="$style.chipGroup">
@@ -68,7 +66,7 @@ const outdatedWarning = computed(() => [i18n.baseText('agents.builder.skills.out
 				</AgentChipButton>
 			</AgentItemContextMenu>
 		</div>
-	</AgentChipRow>
+	</AgentCapabilityGroup>
 </template>
 
 <style module lang="scss">

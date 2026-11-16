@@ -547,7 +547,6 @@ describe('AgentBuilderEditorColumn', () => {
 				return panel.props('header');
 			}),
 		).toEqual([
-			'agents.builder.skills.title',
 			'agents.builder.triggers.title',
 			'agents.builder.capabilities.title',
 			'agents.builder.memory.title',
@@ -634,14 +633,12 @@ describe('AgentBuilderEditorColumn', () => {
 
 		const model = wrapper.find('[data-testid="agent-model-panel"]');
 		const instructions = wrapper.find('[data-testid="agent-instructions-panel"]');
-		const skills = wrapper.find('[data-testid="agent-skills-panel"]');
 		const triggers = wrapper.findComponent({ name: 'AgentTriggersSection' });
 		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
 		const memory = wrapper.getComponent({ name: 'AgentMemoryPanel' });
 
 		expect(model.exists()).toBe(true);
 		expect(instructions.exists()).toBe(true);
-		expect(skills.exists()).toBe(true);
 		expect(triggers.exists()).toBe(true);
 		expect(capabilities.exists()).toBe(true);
 		expect(
@@ -649,14 +646,10 @@ describe('AgentBuilderEditorColumn', () => {
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 		expect(
-			instructions.element.compareDocumentPosition(skills.element) &
-				Node.DOCUMENT_POSITION_FOLLOWING,
+			triggers.element.compareDocumentPosition(model.element) & Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 		expect(
-			skills.element.compareDocumentPosition(triggers.element) & Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
-		expect(
-			triggers.element.compareDocumentPosition(capabilities.element) &
+			instructions.element.compareDocumentPosition(capabilities.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 		expect(

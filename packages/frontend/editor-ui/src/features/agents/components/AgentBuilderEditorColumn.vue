@@ -34,7 +34,6 @@ import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
 import AgentTestButton from './AgentTestButton.vue';
-import AgentSkillsSection from './AgentSkillsSection.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -271,25 +270,9 @@ defineExpose({ onSetupTaskAction });
 					/>
 
 					<AgentPanel
-						:header="i18n.baseText('agents.builder.skills.title')"
-						:description="i18n.baseText('agents.builder.skills.description')"
-						data-testid="agent-skills-panel"
-					>
-						<AgentSkillsSection
-							:skills="appliedSkills"
-							:disabled="childrenDisabled"
-							:show-label="false"
-							:validation-issues="configValidationIssues ?? []"
-							:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
-							@open-skill="emit('open-skill', $event)"
-							@add-skill="emit('add-skill')"
-							@remove-skill="emit('remove-skill', $event)"
-						/>
-					</AgentPanel>
-
-					<AgentPanel
 						:header="i18n.baseText('agents.builder.capabilities.title')"
 						:description="i18n.baseText('agents.builder.capabilities.description')"
+						header-visibility="visually-hidden"
 						data-testid="agent-capabilities-panel"
 					>
 						<AgentCapabilitiesSection
@@ -298,14 +281,18 @@ defineExpose({ onSetupTaskAction });
 							:tools="localConfig?.tools ?? []"
 							:custom-tools="agent?.tools ?? {}"
 							:skills="appliedSkills"
+							:outdated-skill-ids="agent?.outdatedSkillIds ?? []"
 							:disabled="childrenDisabled"
 							:project-id="projectId"
 							:agent-id="agentId"
 							:is-published="Boolean(agent?.activeVersionId)"
 							:validation-issues="configValidationIssues ?? []"
 							:agent-unsaved="agentUnsaved"
-							:sections="['tools', 'subAgents', 'tasks']"
+							:sections="['tools', 'subAgents', 'skills', 'tasks']"
 							@open-tool="emit('open-tool', $event)"
+							@open-skill="emit('open-skill', $event)"
+							@add-skill="emit('add-skill')"
+							@remove-skill="emit('remove-skill', $event)"
 							@add-tool="emit('add-tool', $event)"
 							@update:config="emit('update:config', $event)"
 							@remove-tool="emit('remove-tool', $event)"

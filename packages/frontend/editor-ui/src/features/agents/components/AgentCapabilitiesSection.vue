@@ -45,7 +45,7 @@ import type {
 import { buildToolRows, chipRestrictionText } from './AgentCapabilitiesSection.utils';
 
 import AgentChipButton from './AgentChipButton.vue';
-import AgentChipRow from './AgentChipRow.vue';
+import AgentCapabilityGroup from './AgentCapabilityGroup.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
 import AgentSkillsSection from './AgentSkillsSection.vue';
 import AgentWebSearchSection from './AgentWebSearchSection.vue';
@@ -59,6 +59,8 @@ const props = withDefaults(
 		tools: AgentJsonToolRef[];
 		customTools?: Record<string, CustomToolEntry>;
 		skills: Array<{ id: string; skill: AgentSkill }>;
+		/** Skills that use an older version. Their chips show a warning. */
+		outdatedSkillIds?: string[];
 		supportsActivation?: boolean;
 		disabled?: boolean;
 		projectId: string;
@@ -79,10 +81,11 @@ const props = withDefaults(
 		disabled: false,
 		supportsActivation: false,
 		taskRefs: () => [],
+		outdatedSkillIds: () => [],
 
 		validationIssues: () => [],
 
-		sections: () => ['tools', 'skills', 'subAgents', 'tasks'],
+		sections: () => ['tools', 'subAgents', 'skills', 'tasks'],
 	},
 );
 
@@ -605,9 +608,10 @@ function openExistingSubAgentModal(subAgent: {
 	<div>
 		<div :class="$style.section" data-testid="agent-capabilities-section">
 			<template v-for="section in orderedCapabilityRows" :key="section">
-				<AgentChipRow
+				<AgentCapabilityGroup
 					v-if="section === 'tools'"
-					:label="i18n.baseText('agents.builder.tools.title')"
+					:title="i18n.baseText('agents.builder.tools.title')"
+					:description="i18n.baseText('agents.builder.capabilities.tools.description')"
 					:item-count="toolRows.length"
 					:add-label="i18n.baseText('agents.builder.tools.add')"
 					add-button-test-id="agent-capabilities-add-tool"
@@ -750,11 +754,12 @@ function openExistingSubAgentModal(subAgent: {
 							</AgentChipButton>
 						</AgentItemContextMenu>
 					</div>
-				</AgentChipRow>
+				</AgentCapabilityGroup>
 
-				<AgentChipRow
+				<AgentCapabilityGroup
 					v-else-if="section === 'workflows'"
-					:label="i18n.baseText('generic.workflows')"
+					:title="i18n.baseText('generic.workflows')"
+					:description="i18n.baseText('agents.builder.capabilities.workflows.description')"
 					:item-count="workflowRows.length"
 					:add-label="i18n.baseText('workflows.add')"
 					add-button-test-id="agent-capabilities-add-workflow"
@@ -788,21 +793,23 @@ function openExistingSubAgentModal(subAgent: {
 							</AgentChipButton>
 						</AgentItemContextMenu>
 					</div>
-				</AgentChipRow>
+				</AgentCapabilityGroup>
 
 				<AgentSkillsSection
 					v-else-if="section === 'skills'"
 					:skills="skills"
 					:disabled="props.disabled"
 					:validation-issues="props.validationIssues"
+					:outdated-skill-ids="props.outdatedSkillIds"
 					@open-skill="emit('open-skill', $event)"
 					@add-skill="emit('add-skill')"
 					@remove-skill="emit('remove-skill', $event)"
 				/>
 
-				<AgentChipRow
+				<AgentCapabilityGroup
 					v-else
-					:label="i18n.baseText('agents.builder.subAgents.title')"
+					:title="i18n.baseText('agents.builder.capabilities.subAgents.title')"
+					:description="i18n.baseText('agents.builder.capabilities.subAgents.description')"
 					:item-count="selectedSubAgents.length"
 					:add-label="i18n.baseText('agents.builder.subAgents.add')"
 					add-button-test-id="agent-capabilities-add-sub-agent"
@@ -838,9 +845,9 @@ function openExistingSubAgentModal(subAgent: {
 							</AgentChipButton>
 						</AgentItemContextMenu>
 					</div>
-				</AgentChipRow>
+				</AgentCapabilityGroup>
+				<div :class="$style.divider" aria-hidden="true" />
 			</template>
-			<div :class="$style.divider" aria-hidden="true" />
 			<AgentWebSearchSection
 				:config="props.config"
 				:disabled="props.disabled"
