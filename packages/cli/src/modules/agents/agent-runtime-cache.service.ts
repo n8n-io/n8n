@@ -2,13 +2,12 @@ import type { Agent as RuntimeAgent } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
-import { OnPubSubEvent } from '@n8n/decorators';
+import { OnPubSubEvent, type PubSubCommandMap } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { UserError } from '@n8n/errors';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { IAgentConfigurationTelemetryProperties } from '@/interfaces';
-import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { TtlMap } from '@/utils/ttl-map';
 
 import {

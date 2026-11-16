@@ -9,7 +9,7 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, requestPath } from 'n8n-workflow';
 
 import type { OperationType } from './Service';
 import { TodoistService } from './Service';
@@ -567,7 +567,7 @@ export class TodoistV1 implements INodeType {
 	methods = {
 		listSearch: {
 			async searchProjects(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-				const projects = await todoistApiRequest.call(this, 'GET', '/projects');
+				const projects = await todoistApiRequest.call(this, 'GET', requestPath`/projects`);
 				return {
 					results: projects.map((project: IDataObject) => ({
 						name: project.name,
@@ -576,7 +576,7 @@ export class TodoistV1 implements INodeType {
 				};
 			},
 			async searchLabels(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-				const labels = await todoistApiRequest.call(this, 'GET', '/labels');
+				const labels = await todoistApiRequest.call(this, 'GET', requestPath`/labels`);
 				return {
 					results: labels.map((label: IDataObject) => ({
 						name: label.name,
@@ -590,7 +590,7 @@ export class TodoistV1 implements INodeType {
 			// select them easily
 			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const projects = await todoistApiRequest.call(this, 'GET', '/projects');
+				const projects = await todoistApiRequest.call(this, 'GET', requestPath`/projects`);
 				for (const project of projects) {
 					const projectName = project.name;
 					const projectId = project.id;
@@ -620,7 +620,13 @@ export class TodoistV1 implements INodeType {
 					(this.getCurrentNodeParameter('project', { extractValue: true }) as number);
 				if (projectId) {
 					const qs: IDataObject = { project_id: projectId };
-					const sections = await todoistApiRequest.call(this, 'GET', '/sections', {}, qs);
+					const sections = await todoistApiRequest.call(
+						this,
+						'GET',
+						requestPath`/sections`,
+						{},
+						qs,
+					);
 					for (const section of sections) {
 						const sectionName = section.name;
 						const sectionId = section.id;
@@ -660,7 +666,7 @@ export class TodoistV1 implements INodeType {
 						? { project_id: projectId, section_id: sectionId }
 						: { project_id: projectId };
 
-					const items = await todoistApiRequest.call(this, 'GET', '/tasks', {}, qs);
+					const items = await todoistApiRequest.call(this, 'GET', requestPath`/tasks`, {}, qs);
 					for (const item of items) {
 						const itemContent = item.content;
 						const itemId = item.id;
@@ -679,7 +685,7 @@ export class TodoistV1 implements INodeType {
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const labels = await todoistApiRequest.call(this, 'GET', '/labels');
+				const labels = await todoistApiRequest.call(this, 'GET', requestPath`/labels`);
 
 				for (const label of labels) {
 					const labelName = label.name;

@@ -11,6 +11,7 @@ import {
 	GLOBAL_MEMBER_ROLE,
 	ProjectRelationRepository,
 	ProjectRepository,
+	RoleRepository,
 	ServiceAccountRepository,
 	TransactionRunner,
 	UserRepository,
@@ -21,14 +22,16 @@ import {
 	wrapMigration,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { DataSource } from '@n8n/typeorm';
-import { WorkflowMutationHooksProxy } from '@n8n/backend-services';
+import { RoleCacheService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { ControllerRegistry } from '@/controller.registry';
+import { Telemetry } from '@/telemetry';
 import { UserService } from '@/services/user.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { createFolder } from '@test-integration/db/folders';
@@ -43,6 +46,7 @@ import {
 } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
+import { runInTransaction } from '../../after-commit';
 import { InstanceAiService } from '../../instance-ai.service';
 import { SelfHealingConfigurationRepository } from '../database/self-healing-configuration.repository';
 import { SelfHealingConfigurationReviewer } from '../database/self-healing-configuration-reviewer.entity';
@@ -63,6 +67,7 @@ let repository: SelfHealingConfigurationRepository;
 
 beforeAll(async () => {
 	await import('../self-healing-configurations.controller.js');
+	await import('../self-healing-status.controller.js');
 	Container.get(ControllerRegistry).activate(server.app);
 	await Container.get(AuthHandlerRegistry).init();
 	configurations = Container.get(SelfHealingConfigurationService);
@@ -92,6 +97,7 @@ async function fixture() {
 		workflowIds: [workflow.id],
 		reviewerIds: [user.id],
 		includeAllProjectMembers: false,
+		includeSubWorkflows: false,
 	};
 	return {
 		user,
@@ -121,6 +127,33 @@ async function createInvestigation(
 	});
 }
 
+it('shares role reads on cache misses and reads them in the transaction', async () => {
+	const { user, project, input } = await fixture();
+	const configuration = await configurations.save(user, project.id, input);
+	const cache = Container.get(RoleCacheService);
+	const loadRoles = vi.spyOn(Container.get(RoleRepository), 'findAll');
+	try {
+		await cache.invalidateCache();
+		const choices = await configurations.getConfigurationChoices(project.id);
+		expect(loadRoles).toHaveBeenCalledExactlyOnceWith({});
+		loadRoles.mockClear();
+
+		expect(await configurations.getConfigurationChoices(project.id)).toEqual(choices);
+		expect(loadRoles).not.toHaveBeenCalled();
+
+		for (let attempt = 0; attempt < 2; attempt++) {
+			await cache.invalidateCache();
+			await configurations.setEnabled(user, project.id, configuration.id, true);
+			expect(loadRoles).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ trx: expect.anything() }),
+			);
+			loadRoles.mockClear();
+		}
+	} finally {
+		loadRoles.mockRestore();
+	}
+});
+
 it.each(['pause', 'remove'] as const)(
 	'requests cancellation of only unfinished investigations after %s commits',
 	async (action) => {
@@ -142,7 +175,7 @@ it.each(['pause', 'remove'] as const)(
 		if (action === 'pause') {
 			await configurations.setEnabled(first.user, first.project.id, configuration.id, false);
 		} else {
-			await configurations.remove(first.project.id, configuration.id);
+			await configurations.remove(first.user, first.project.id, configuration.id);
 		}
 
 		expect(runtime.routeCancelRun).toHaveBeenCalledExactlyOnceWith(active.threadId);
@@ -172,7 +205,7 @@ it.each(['pause', 'remove'] as const)(
 			).resolves.toMatchObject({ enabled: false });
 		} else {
 			await expect(
-				configurations.remove(first.project.id, configuration.id),
+				configurations.remove(first.user, first.project.id, configuration.id),
 			).resolves.toBeUndefined();
 			expect(await repository.findOneBy({ id: configuration.id })).toBeNull();
 		}
@@ -210,7 +243,7 @@ it.each(['pause', 'remove'] as const)(
 			await expect(
 				action === 'pause'
 					? configurations.setEnabled(first.user, first.project.id, configuration.id, false)
-					: configurations.remove(first.project.id, configuration.id),
+					: configurations.remove(first.user, first.project.id, configuration.id),
 			).rejects.toThrow(failure);
 			expect(runtime.routeCancelRun).not.toHaveBeenCalled();
 			expect(await repository.findOneBy({ id: configuration.id })).toMatchObject({ enabled: true });
@@ -362,6 +395,7 @@ it('requires existing project settings permission for every operation', async ()
 		workflowIds: [],
 		reviewerIds: [admin.id],
 		includeAllProjectMembers: false,
+		includeSubWorkflows: false,
 		enabled: false,
 	});
 	const agent = server.authAgentFor(editor);
@@ -395,6 +429,7 @@ it('lets a personal project owner manage self-healing in their personal project'
 			workflowIds: [workflow.id],
 			reviewerIds: [],
 			includeAllProjectMembers: true,
+			includeSubWorkflows: false,
 			enabled: true,
 		})
 		.expect(200);
@@ -404,6 +439,7 @@ it('lets a personal project owner manage self-healing in their personal project'
 		enabledById: owner.id,
 		reviewerIds: [],
 		includeAllProjectMembers: true,
+		includeSubWorkflows: false,
 	});
 	expect(await repository.isReviewer(id, owner.id, {})).toBe(true);
 	await Container.get(DataSource)
@@ -417,6 +453,7 @@ it('lets a personal project owner manage self-healing in their personal project'
 			workflowIds: [workflow.id],
 			reviewerIds: [admin.id],
 			includeAllProjectMembers: true,
+			includeSubWorkflows: false,
 		})
 		.expect(400);
 	const configuration = await repository.findOneByOrFail({ id });
@@ -434,6 +471,37 @@ it('lets a personal project owner manage self-healing in their personal project'
 	expect(await configurations.list(project.id)).toEqual([]);
 });
 
+it('reports whether a configuration sends results to the current user', async () => {
+	const { user, project, url, input } = await fixture();
+	const member = await createMember();
+	await linkUserToProject(member, project, 'project:editor');
+	const status = async (reviewer: User) =>
+		(await server.authAgentFor(reviewer).get('/self-healing/status').expect(200)).body.data;
+
+	const personalProjectId = (await getPersonalProject(user)).id;
+
+	expect(await status(user)).toEqual({ isReviewer: false, setupProjectId: personalProjectId });
+
+	await server.authAgentFor(user).post(url).send(input).expect(200);
+	expect(await status(user)).toMatchObject({ isReviewer: true });
+	expect(await status(member)).toMatchObject({ isReviewer: false });
+});
+
+it('does not report a reviewer who cannot edit a covered workflow', async () => {
+	const { user, project, url, input } = await fixture();
+	const viewer = await createMember();
+	await linkUserToProject(viewer, project, 'project:viewer');
+	await server
+		.authAgentFor(user)
+		.post(url)
+		.send({ ...input, includeAllProjectMembers: true })
+		.expect(200);
+
+	const { body } = await server.authAgentFor(viewer).get('/self-healing/status').expect(200);
+
+	expect(body.data).toMatchObject({ isReviewer: false });
+});
+
 async function expectNoConfigurationAccess(user: User, projectId: string, id: number) {
 	const agent = server.authAgentFor(user);
 	const url = `/projects/${projectId}/self-healing-configurations`;
@@ -442,6 +510,7 @@ async function expectNoConfigurationAccess(user: User, projectId: string, id: nu
 		workflowIds: [],
 		reviewerIds: [],
 		includeAllProjectMembers: true,
+		includeSubWorkflows: false,
 		enabled: false,
 	};
 	await agent.get(url).expect(403);
@@ -466,6 +535,7 @@ it.each([
 		workflowIds: [],
 		reviewerIds: [],
 		includeAllProjectMembers: true,
+		includeSubWorkflows: false,
 		enabled: false,
 	});
 
@@ -482,6 +552,7 @@ it('denies a chat user access to their personal project for every operation', as
 			projectId: project.id,
 			scope: 'all',
 			includeAllProjectMembers: true,
+			includeSubWorkflows: false,
 			enabled: false,
 		}),
 	);
@@ -497,6 +568,7 @@ it('denies a user downgraded to chat user access to their personal project', asy
 		workflowIds: [],
 		reviewerIds: [],
 		includeAllProjectMembers: true,
+		includeSubWorkflows: false,
 		enabled: false,
 	});
 	await server
@@ -534,7 +606,7 @@ it('reports the investigation time in UTC when the server uses another timezone'
 		);
 	} finally {
 		vi.unstubAllEnvs();
-		await configurations.remove(project.id, configuration.id);
+		await configurations.remove(user, project.id, configuration.id);
 	}
 });
 
@@ -549,7 +621,7 @@ it('keeps paused selections disjoint and releases them on removal', async () => 
 	const selected = await configurations.save(user, project.id, input);
 	expect((await repository.findForWorkflow(project.id, workflow.id))?.id).toBe(selected.id);
 	await expect(configurations.save(user, project.id, input)).rejects.toThrow('already belongs');
-	await configurations.remove(project.id, selected.id);
+	await configurations.remove(user, project.id, selected.id);
 	expect((await repository.findForWorkflow(project.id, workflow.id))?.id).toBe(all.id);
 	const replacement = await configurations.save(user, project.id, input);
 	expect(replacement.id).not.toBe(selected.id);
@@ -686,7 +758,7 @@ it('permits one all-workflows configuration, including paused ones', async () =>
 	const all = { ...input, scope: 'all' as const, workflowIds: [] };
 	const config = await configurations.save(user, project.id, all);
 	await expect(configurations.save(user, project.id, all)).rejects.toThrow('already has');
-	await configurations.remove(project.id, config.id);
+	await configurations.remove(user, project.id, config.id);
 	expect((await configurations.save(user, project.id, all)).id).not.toBe(config.id);
 });
 
@@ -998,10 +1070,11 @@ it('disables the configuration after access loss and records a new explicit enab
 		workflowIds: [],
 		reviewerIds: [user.id, replacement.id],
 		includeAllProjectMembers: false,
+		includeSubWorkflows: false,
 		enabled: true,
 	});
 	await linkUserToProject(user, project, 'project:viewer');
-	await Container.get(TransactionRunner).run({}, async (ctx) => {
+	await runInTransaction(Container.get(TransactionRunner), {}, async (ctx) => {
 		const current = await repository.findForUpdate(config.id, project.id, ctx);
 		if (!current) throw new Error('Configuration not found.');
 		expect(await configurations.resolveActorOrPause(current, workflow.id, ctx)).toBeNull();
@@ -1013,20 +1086,32 @@ it('disables the configuration after access loss and records a new explicit enab
 	});
 });
 
+function findMigration(name: string) {
+	[...postgresMigrations, ...sqliteMigrations].forEach(wrapMigration);
+	const migration = Container.get(DataSource).migrations.find(
+		({ constructor }) => constructor.name === name,
+	);
+	if (!migration) throw new Error(`${name} is not registered.`);
+	return migration;
+}
+
 it('reverts and reapplies the configuration schema', async () => {
 	const db = Container.get(DataSource);
-	[...postgresMigrations, ...sqliteMigrations].forEach(wrapMigration);
-	const findMigration = (name: string) => {
-		const migration = db.migrations.find(({ constructor }) => constructor.name === name);
-		if (!migration) throw new Error(`${name} is not registered.`);
-		return migration;
-	};
 	const migration = findMigration('CreateSelfHealingConfigurations1792742505678');
 	const projectMembers = findMigration(
 		'AddIncludeAllProjectMembersToSelfHealingConfiguration1793106080688',
 	);
+	const subWorkflows = findMigration(
+		'AddIncludeSubWorkflowsToSelfHealingConfiguration1794320824000',
+	);
+	const activityIndex = findMigration('IndexSelfHealingInvestigationActivity1794320826000');
 	const runner = db.createQueryRunner();
 	try {
+		await activityIndex.down(runner);
+		await subWorkflows.down(runner);
+		expect(await runner.hasColumn(repository.metadata.tablePath, 'includeSubWorkflows')).toBe(
+			false,
+		);
 		await projectMembers.down(runner);
 		expect(await runner.hasColumn(repository.metadata.tablePath, 'includeAllProjectMembers')).toBe(
 			false,
@@ -1037,16 +1122,56 @@ it('reverts and reapplies the configuration schema', async () => {
 		} finally {
 			await migration.up(runner);
 			await projectMembers.up(runner);
+			await subWorkflows.up(runner);
+			await activityIndex.up(runner);
 		}
 		expect(await runner.hasTable(repository.metadata.tablePath)).toBe(true);
 		expect(await runner.hasColumn(repository.metadata.tablePath, 'includeAllProjectMembers')).toBe(
 			true,
 		);
+		expect(await runner.hasColumn(repository.metadata.tablePath, 'includeSubWorkflows')).toBe(true);
 	} finally {
 		await runner.release();
 	}
 	const { user, project, input } = await fixture();
 	expect(await configurations.save(user, project.id, input)).toMatchObject(input);
+});
+
+describe('sub-workflows', () => {
+	it('saves the inclusion and keeps it off for existing and omitted values', async () => {
+		const { user, project, input, url } = await fixture();
+		const agent = server.authAgentFor(user);
+		const { scope, workflowIds, reviewerIds } = input;
+		const created = await agent
+			.post(url)
+			.send({ ...input, includeSubWorkflows: true })
+			.expect(200);
+		expect(created.body.data).toMatchObject({ includeSubWorkflows: true });
+
+		const edited = await agent
+			.patch(`${url}/${created.body.data.id}`)
+			.send({ scope, workflowIds, reviewerIds })
+			.expect(200);
+		expect(edited.body.data).toMatchObject({ includeSubWorkflows: false });
+
+		await agent
+			.patch(`${url}/${created.body.data.id}`)
+			.send({ ...input, includeSubWorkflows: true })
+			.expect(200);
+		const migration = findMigration(
+			'AddIncludeSubWorkflowsToSelfHealingConfiguration1794320824000',
+		);
+		const runner = Container.get(DataSource).createQueryRunner();
+		try {
+			await migration.down(runner);
+			await migration.up(runner);
+		} finally {
+			await runner.release();
+		}
+		expect(await configurations.get(project.id, created.body.data.id)).toMatchObject({
+			includeSubWorkflows: false,
+		});
+	});
 });
 
 describe('project member reviewers', () => {
@@ -1109,6 +1234,7 @@ describe('project member reviewers', () => {
 		expect(created.body.data).toMatchObject({
 			reviewerIds: [user.id],
 			includeAllProjectMembers: false,
+			includeSubWorkflows: false,
 		});
 	});
 
@@ -1173,6 +1299,7 @@ describe('project member reviewers', () => {
 
 		expect(await configurations.save(admin, project.id, input)).toMatchObject({
 			includeAllProjectMembers: true,
+			includeSubWorkflows: false,
 			reviewerIds: [],
 		});
 	});
@@ -1191,6 +1318,7 @@ describe('project member reviewers', () => {
 			...input,
 			reviewerIds: [admin.id, owner.id],
 			includeAllProjectMembers: false,
+			includeSubWorkflows: false,
 		});
 		expect([...saved.reviewerIds].sort()).toEqual([admin.id, owner.id].sort());
 		expect(await repository.isReviewer(saved.id, admin.id, {})).toBe(true);
@@ -1262,6 +1390,7 @@ describe('project member reviewers', () => {
 		expect(await configurations.get(project.id, configuration.id)).toMatchObject({
 			enabled: false,
 			includeAllProjectMembers: true,
+			includeSubWorkflows: false,
 		});
 		await expect(
 			configurations.setEnabled(user, project.id, configuration.id, true),
@@ -1291,6 +1420,7 @@ describe('project member reviewers', () => {
 		});
 		expect(await configurations.save(user, project.id, input, configuration.id)).toMatchObject({
 			includeAllProjectMembers: true,
+			includeSubWorkflows: false,
 			reviewerIds: [],
 		});
 	});
@@ -1304,6 +1434,7 @@ describe('project member reviewers', () => {
 			workflowIds: [selectedElsewhere.id],
 			reviewerIds: [user.id],
 			includeAllProjectMembers: false,
+			includeSubWorkflows: false,
 		});
 		await linkUserToProject(user, project, 'project:viewer');
 		const outsider = await createUser();
@@ -1363,6 +1494,28 @@ describe('project member reviewers', () => {
 			expect(
 				await configurations.setEnabled(user, project.id, configuration.id, true),
 			).toMatchObject({ enabled: true });
+		});
+
+		it('requires one reviewer who can edit every given workflow', async () => {
+			const { project, workflow, reviewer, configuration } = await sharedReviewerFixture();
+			const subWorkflow = await createWorkflow({}, project);
+			const canEditAll = async () =>
+				await configurations.hasReviewerWhoCanEditAll(configuration, [workflow.id, subWorkflow.id]);
+			await shareWithPersonalProject(workflow, reviewer);
+			expect(await canEditAll()).toBe(false);
+
+			await shareWithPersonalProject(subWorkflow, reviewer);
+			expect(await canEditAll()).toBe(true);
+		});
+
+		it('accepts a reviewer whose project role can edit every workflow', async () => {
+			const { project, workflow, reviewer, configuration } = await sharedReviewerFixture();
+			const subWorkflow = await createWorkflow({}, project);
+			await linkUserToProject(reviewer, project, 'project:editor');
+
+			expect(
+				await configurations.hasReviewerWhoCanEditAll(configuration, [workflow.id, subWorkflow.id]),
+			).toBe(true);
 		});
 
 		it('rejects a selected reviewer who lost edit access, also with the project group', async () => {
@@ -1430,6 +1583,117 @@ describe('project member reviewers', () => {
 					configuration.id,
 				),
 			).toMatchObject({ workflowIds: [uncovered.id] });
+		});
+	});
+});
+
+describe('configuration telemetry', () => {
+	const event = TELEMETRY_EVENT.SELF_HEALING.INSTANCE_CHANGED_SELF_HEALING_CONFIGURATION;
+
+	function trackChanges() {
+		// The test server replaces the telemetry service with a mock.
+		const track = vi.mocked(Container.get(Telemetry).track);
+		track.mockClear();
+		return () => {
+			const calls: unknown[][] = track.mock.calls;
+			return calls.filter(([sent]) => sent === event).map(([, properties]) => properties);
+		};
+	}
+
+	it('reports each change of a configuration', async () => {
+		const { user, project, input } = await fixture();
+		await linkUserToProject(user, project, 'project:admin');
+		const sent = trackChanges();
+
+		const { id } = await configurations.save(user, project.id, input);
+		await configurations.setEnabled(user, project.id, id, true);
+		// A repeated request changes nothing, so it sends no event.
+		await configurations.setEnabled(user, project.id, id, true);
+		await configurations.save(user, project.id, input, id);
+		await configurations.setEnabled(user, project.id, id, false);
+		await configurations.remove(user, project.id, id);
+
+		const base = {
+			configuration_id: id,
+			project_id: project.id,
+			reason: null,
+			user_id: user.id,
+			scope: 'selected',
+			enabled: true,
+			enabled_by_id: user.id,
+			include_sub_workflows: input.includeSubWorkflows,
+			include_all_project_members: input.includeAllProjectMembers,
+			reviewer_count: null,
+			selected_workflow_count: null,
+		};
+		// Only a save has the selections.
+		const selections = {
+			reviewer_count: input.reviewerIds.length,
+			selected_workflow_count: input.workflowIds.length,
+		};
+		const properties = [
+			{ ...base, ...selections, change: 'created', enabled: false, enabled_by_id: null },
+			{ ...base, change: 'enabled' },
+			{ ...base, ...selections, change: 'updated' },
+			{ ...base, change: 'disabled', enabled: false },
+			{ ...base, change: 'deleted', enabled: false },
+		];
+		expect(sent()).toEqual(properties);
+		for (const sentProperties of properties) {
+			expect(event.getValidationError(sentProperties)).toBeNull();
+		}
+	});
+
+	it('reports an automatic pause with the enabling user', async () => {
+		const user = await createUser();
+		const project = await createTeamProject(undefined, user);
+		const workflow = await createWorkflow({}, project);
+		const { id } = await configurations.save(user, project.id, {
+			scope: 'all',
+			workflowIds: [],
+			reviewerIds: [user.id],
+			includeAllProjectMembers: false,
+			includeSubWorkflows: false,
+			enabled: true,
+		});
+		await linkUserToProject(user, project, 'project:viewer');
+		const sent = trackChanges();
+
+		await configurations.recheckAccess(id, project.id, workflow.id);
+		// The configuration is paused now, so a second check sends no event.
+		await configurations.recheckAccess(id, project.id, workflow.id);
+
+		expect(sent()).toEqual([
+			expect.objectContaining({
+				configuration_id: id,
+				change: 'auto_paused',
+				reason: 'no_eligible_reviewer',
+				user_id: user.id,
+			}),
+		]);
+	});
+
+	it('counts adoption for the daily snapshot', async () => {
+		const before = await repository.getAdoptionCounts();
+		const { user, project, input } = await fixture();
+		await createWorkflow({}, project);
+		await linkUserToProject(user, project, 'project:admin');
+		// One enabled selection, and one paused all-workflows configuration in the same project.
+		await configurations.save(user, project.id, {
+			...input,
+			enabled: true,
+			includeSubWorkflows: true,
+		});
+		await configurations.save(user, project.id, { ...input, scope: 'all', workflowIds: [] });
+
+		expect(await repository.getAdoptionCounts()).toEqual({
+			configurationCount: before.configurationCount + 2,
+			enabledProjectCount: before.enabledProjectCount + 1,
+			allScopeCount: before.allScopeCount,
+			selectedScopeCount: before.selectedScopeCount + 1,
+			includeSubWorkflowsCount: before.includeSubWorkflowsCount + 1,
+			// The paused configuration covers the second workflow, so only one is watched.
+			watchedWorkflowCount: before.watchedWorkflowCount + 1,
 		});
 	});
 });

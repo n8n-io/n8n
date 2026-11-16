@@ -68,8 +68,8 @@ describe('N8nChatAgentSection', () => {
 
 		expect(listN8nChatAgentsMock).toHaveBeenCalledWith(expect.anything(), {
 			query: '',
-			skip: 0,
-			take: 6,
+			offset: 0,
+			limit: 6,
 			sortBy: 'usage:desc',
 		});
 	});

@@ -6,6 +6,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeConnectionTypes,
+	requestPath,
 } from 'n8n-workflow';
 
 import { triggerTargetDescription } from './descriptions/TargetDescription';
@@ -18,6 +19,21 @@ import {
 	resolveDriveScopeRoot,
 } from './GenericFunctions';
 import { triggerDescription } from './TriggerDescription';
+
+// Compare decoded pathnames so that encoding differences (e.g. `@` vs `%40`) keep the
+// link, but require the same origin first because the link is sent with the credential.
+function isInDeltaScope(link: string, deltaRoot: string): boolean {
+	try {
+		const linkUrl = new URL(link);
+		const rootUrl = new URL(deltaRoot);
+		return (
+			linkUrl.origin === rootUrl.origin &&
+			decodeURIComponent(linkUrl.pathname).startsWith(decodeURIComponent(rootUrl.pathname))
+		);
+	} catch {
+		return false;
+	}
+}
 
 export class MicrosoftOneDriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -112,12 +128,13 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 		// App-only Graph has no `/me`, so the delta feed is rooted at the chosen
 		// user/drive. `undefined` for OAuth2 → fall back to `/me/drive`.
 		const driveScopeRoot = resolveDriveScopeRoot.call(this, true);
-		const deltaRoot = `${baseUrl}/v1.0${driveScopeRoot ? driveEndpoint(driveScopeRoot) : '/me/drive'}/root/delta`;
+		const deltaRoot = `${baseUrl}/v1.0${driveScopeRoot ? driveEndpoint(driveScopeRoot).value : '/me/drive'}/root/delta`;
 
 		// Reset a persisted delta link that belongs to a different scope (auth switched,
 		// or the target id changed) so polling stays on the currently-configured drive.
 		const persistedLastLink = workflowData.LastLink as string | undefined;
-		const hasValidScope = persistedLastLink?.startsWith(deltaRoot) ?? false;
+		const hasValidScope =
+			persistedLastLink !== undefined && isInDeltaScope(persistedLastLink, deltaRoot);
 		const lastLink: string = hasValidScope
 			? (persistedLastLink as string)
 			: `${deltaRoot}?token=latest`;
@@ -140,8 +157,9 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 		}
 		try {
 			if (this.getMode() === 'manual') {
-				responseData = (await microsoftApiRequest.call(this, 'GET', '', {}, {}, deltaRoot))
-					.value as IDataObject[];
+				responseData = (
+					await microsoftApiRequest.call(this, 'GET', requestPath``, {}, {}, deltaRoot)
+				).value as IDataObject[];
 			} else {
 				const response: IDataObject = (await microsoftApiRequestAllItemsDelta.call(
 					this,

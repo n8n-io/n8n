@@ -1,6 +1,5 @@
 import { isObjectLiteral } from '@n8n/backend-common';
 import type { HttpRequestClient } from '@n8n/backend-network';
-import { OutboundHttp } from '@n8n/backend-network';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type {
@@ -12,14 +11,14 @@ import type {
 	FindLatestExecutionRequest,
 	ResolveStepRequest,
 	ResolveStepResponse,
-	ResumeTargetRequest,
+	ResumeLocateRequest,
 	ResumeTargetResponse,
 	StartExecutionRequest,
 	StartExecutionResult,
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
 } from '@n8n/engine';
-import { mintIdentityToken } from '@n8n/engine';
+import { mintIdentityToken, parseApprovalCallback } from '@n8n/engine';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from '@n8n/errors';
 import { z } from 'zod';
@@ -32,6 +31,8 @@ import {
 	type EngineDataPlaneProvider,
 	type ResumeOutcome,
 } from '@/services/engine-data-plane-proxy.service';
+
+import { EngineMtls } from './engine-mtls';
 
 /** Must match the engine's `ExecutionStatus`. */
 const notCancellableDetailsSchema = z.object({
@@ -52,10 +53,10 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
-		outboundHttp: OutboundHttp,
 		private readonly instanceSettings: InstanceSettings,
+		mtls: EngineMtls,
 	) {
-		this.http = outboundHttp.requests({
+		this.http = mtls.requests({
 			// Fixed, n8n-controlled host.
 			useDefaultSsrfPolicy: 'unsafe',
 			// `engineConfig.host` is a bind address, not a destination, so it is not
@@ -184,14 +185,12 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		return { cancelled: true, finishedAt: new Date(finishedAt) };
 	}
 
-	async locateResumeTarget(
-		id: ExecutionIdV2,
-		request: ResumeTargetRequest,
-	): Promise<ResumeOutcome<ResumeTargetResponse>> {
-		return await this.postResume<ResumeTargetResponse>(
-			`/api/workflow-executions/${encodeURIComponent(id)}/resume-target`,
-			request,
-		);
+	async locateResume(request: ResumeLocateRequest): Promise<ResumeOutcome<ResumeTargetResponse>> {
+		return await this.postResume<ResumeTargetResponse>('/api/resume-requests/locate', request);
+	}
+
+	readApprovalCallback(reference: string): string | undefined {
+		return parseApprovalCallback(reference)?.stepId;
 	}
 
 	async resolveStep(
@@ -206,7 +205,7 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 
 	private async postResume<T>(
 		url: string,
-		body: ResumeTargetRequest | ResolveStepRequest,
+		body: ResumeLocateRequest | ResolveStepRequest,
 	): Promise<ResumeOutcome<T>> {
 		const response = await this.http.request<T | EngineErrorResponse>({
 			url,

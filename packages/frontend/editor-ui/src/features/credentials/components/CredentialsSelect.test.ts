@@ -76,9 +76,9 @@ vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal
 	},
 	ContactAdminModal: {
 		name: 'ContactAdminModal',
-		props: ['open', 'nodeTypeName', 'kind', 'audience'],
+		props: ['open', 'typeName', 'kind', 'audience'],
 		emits: ['update:open'],
-		template: '<div v-if="open" data-test-id="contact-admin-modal">{{ nodeTypeName }}</div>',
+		template: '<div v-if="open" data-test-id="contact-admin-modal">{{ typeName }}</div>',
 	},
 }));
 
@@ -419,7 +419,7 @@ describe('CredentialsSelect — restricted credential types', () => {
 		const modal = wrapper.findComponent({ name: 'ContactAdminModal' });
 		expect(modal.props()).toMatchObject({
 			open: true,
-			nodeTypeName: 'Slack',
+			typeName: 'Slack',
 			kind: 'credential',
 			audience: 'project',
 		});
@@ -444,7 +444,7 @@ describe('CredentialsSelect — restricted credential types', () => {
 		// The dialog fades out after the close, so it must not fall back to an empty subject.
 		expect(modal.props()).toMatchObject({
 			open: false,
-			nodeTypeName: 'Slack',
+			typeName: 'Slack',
 			audience: 'project',
 		});
 	});
@@ -461,7 +461,7 @@ describe('CredentialsSelect — restricted credential types', () => {
 		expect(selectBlur).toHaveBeenCalled();
 		expect(wrapper.findComponent({ name: 'ContactAdminModal' }).props()).toMatchObject({
 			open: true,
-			nodeTypeName: 'Slack',
+			typeName: 'Slack',
 			kind: 'credential',
 			audience: 'project',
 		});

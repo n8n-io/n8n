@@ -3,14 +3,21 @@ import { getGlobalScopes } from '../get-global-scopes.ee';
 import { createAuthPrincipal } from './utils';
 
 describe('getGlobalScopes', () => {
-	test.each(['global:owner', 'global:admin', 'global:member', 'global:chatUser'] as const)(
-		'should return correct scopes for %s',
-		(role) => {
-			const scopes = getGlobalScopes(createAuthPrincipal(role));
+	test.each([
+		'global:owner',
+		'global:admin',
+		'global:member',
+		'global:chatUser',
+		'global:agent',
+	] as const)('should return correct scopes for %s', (role) => {
+		const scopes = getGlobalScopes(createAuthPrincipal(role));
 
-			expect(scopes).toEqual(GLOBAL_SCOPE_MAP[role]);
-		},
-	);
+		expect(scopes).toEqual(GLOBAL_SCOPE_MAP[role]);
+	});
+
+	test('should return no scopes for global:agent', () => {
+		expect(getGlobalScopes(createAuthPrincipal('global:agent'))).toEqual([]);
+	});
 
 	test('should return empty array for non-existent role', () => {
 		const scopes = getGlobalScopes(createAuthPrincipal('non:existent'));

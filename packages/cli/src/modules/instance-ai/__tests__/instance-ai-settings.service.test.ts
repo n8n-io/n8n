@@ -3,6 +3,7 @@ import type { InstanceAiPermissions } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { type EventService, type CredentialsFinderService } from '@n8n/backend-services';
 import type { InstanceAiConfig } from '@n8n/config';
+import { Person } from '@n8n/db';
 import type { CredentialsEntity, DbLockService, SettingsRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
@@ -1500,7 +1501,7 @@ describe('InstanceAiSettingsService', () => {
 				modelName: 'gpt-4.1',
 			});
 			const result = await service.resolveModelConfig(
-				mock<User>({
+				Object.assign(new Person(), {
 					settings: {
 						instanceAi: { credentialId: 'user-credential', modelName: 'gpt-4.1' },
 					},
@@ -1634,7 +1635,7 @@ describe('InstanceAiSettingsService', () => {
 
 			await expect(
 				service.resolveModelConfig(
-					mock<User>({
+					Object.assign(new Person(), {
 						settings: {
 							instanceAi: { credentialId: 'user-credential', modelName: 'gpt-user' },
 						},
@@ -1666,7 +1667,7 @@ describe('InstanceAiSettingsService', () => {
 
 			await expect(
 				service.resolveModelConfig(
-					mock<User>({
+					Object.assign(new Person(), {
 						settings: {
 							instanceAi: { credentialId: 'user-credential', modelName: 'gpt-user' },
 						},
@@ -1700,7 +1701,7 @@ describe('InstanceAiSettingsService', () => {
 
 			await expect(
 				service.resolveModelConfig(
-					mock<User>({
+					Object.assign(new Person(), {
 						settings: {
 							instanceAi: { credentialId: 'user-credential', modelName: 'gpt-user' },
 						},
@@ -1727,7 +1728,7 @@ describe('InstanceAiSettingsService', () => {
 
 			await expect(
 				service.resolveModelConfig(
-					mock<User>({
+					Object.assign(new Person(), {
 						settings: {
 							instanceAi: { credentialId: 'user-credential', modelName: 'gpt-user' },
 						},
@@ -1833,7 +1834,7 @@ describe('InstanceAiSettingsService', () => {
 
 			expect(
 				service.resolveModelName(
-					mock<User>({ settings: { instanceAi: { modelName: 'user-model' } } }),
+					Object.assign(new Person(), { settings: { instanceAi: { modelName: 'user-model' } } }),
 				),
 			).toBe('user-model');
 		});

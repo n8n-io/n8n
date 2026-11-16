@@ -2,7 +2,10 @@ operationId: listDataTables
 tags:
   - DataTable
 summary: List all data tables
-description: Retrieve a list of all data tables with optional filtering, sorting, and pagination. Each table includes `sizeBytes`, the value the `size` sort option orders by.
+description: |-
+  Retrieve a list of all data tables with optional filtering, sorting, and pagination. Each table includes `sizeBytes`, the value the `size` sort option orders by.
+
+  Requires the `dataTable:list` API key scope.
 x-required-scope: dataTable:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
