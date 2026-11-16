@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { UserError } from '@n8n/errors';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { ExecuteContext } from 'n8n-core';
 import type { IDataObject, IExecuteData, INode } from 'n8n-workflow';
 import { createRunExecutionData, Workflow } from 'n8n-workflow';
@@ -10,7 +10,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
-import type { CredentialSlotBinding } from './compiled-engine.types';
+import type { CredentialMintRequest, CredentialSlotBinding } from './compiled-engine.types';
 import type { PublicCredential } from './compiled-node-sources';
 import { loadWorkflowLang } from './workflow-lang';
 
@@ -20,6 +20,38 @@ function toExecuteData(nodeType: string): IExecuteData {
 		data: {},
 		source: null,
 	};
+}
+
+/** A token under `data.n8nMinted` in the credentials document. */
+interface MintedToken {
+	access_token: string;
+	/** When the token expires, in milliseconds since the epoch. */
+	expires_at: number;
+}
+
+const MINTED_KEY = 'n8nMinted';
+/** The lifetime that n8n assumes when the token endpoint gives none. */
+const UNKNOWN_LIFETIME_SECONDS = 300;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** The first expiry of the minted tokens in a credentials document, when it has one. */
+export function earliestMintExpiry(document: Record<string, unknown>): number | undefined {
+	let earliest: number | undefined;
+	for (const entry of Object.values(document)) {
+		const data = isRecord(entry) ? entry.data : undefined;
+		const minted = isRecord(data) ? data[MINTED_KEY] : undefined;
+		if (!isRecord(minted)) continue;
+		for (const token of Object.values(minted)) {
+			const expiresAt = isRecord(token) ? token.expires_at : undefined;
+			if (typeof expiresAt === 'number' && (earliest === undefined || expiresAt < earliest)) {
+				earliest = expiresAt;
+			}
+		}
+	}
+	return earliest;
 }
 
 /**
@@ -44,6 +76,7 @@ export class CompiledEngineCredentials {
 		workflowId: string,
 		slots: CredentialSlotBinding[],
 		derivations: Record<string, Array<{ name: string; code: string }>> = {},
+		mints: Record<string, CredentialMintRequest[]> = {},
 	): Promise<Record<string, unknown>> {
 		const lang = await loadWorkflowLang();
 		const registry: Parameters<typeof lang.buildCredentialsFile>[0]['registry'] = {
@@ -99,6 +132,18 @@ export class CompiledEngineCredentials {
 						derived[name] = value;
 					}
 					if (Object.keys(derived).length > 0) Reflect.set(entryData, 'n8nDerived', derived);
+				}
+				// Tokens that need the private key: made here, so the module holds only the token.
+				const requested = mints[use.slot] ?? [];
+				if (requested.length > 0) {
+					if (typeof entryData !== 'object' || entryData === null) {
+						throw new UnexpectedError('The credential slot has no data for a minted token');
+					}
+					const minted: Record<string, MintedToken> = {};
+					for (const mint of requested) {
+						minted[mint.name] = await this.mintToken(use, mint, { ...data }, workflowId);
+					}
+					Reflect.set(entryData, MINTED_KEY, minted);
 				}
 				Object.assign(document, file);
 			} catch (error) {
@@ -178,6 +223,42 @@ export class CompiledEngineCredentials {
 		}
 		const context = await this.refreshContext(binding, workflowId);
 		await context.helpers.refreshOAuth2Token.call(context, binding.type);
+	}
+
+	/**
+	 * Signs and exchanges a token with the function that the v1 Google nodes use, so the token
+	 * is the one a v1 node gets. The private key stays in this process.
+	 */
+	private async mintToken(
+		binding: CredentialSlotBinding,
+		mint: CredentialMintRequest,
+		data: IDataObject,
+		workflowId: string,
+	): Promise<MintedToken> {
+		const { getGoogleAccessToken, googleServiceAccountScopes } = await import(
+			'n8n-nodes-base/dist/nodes/Google/GenericFunctions'
+		);
+		const isService = (name: string): name is keyof typeof googleServiceAccountScopes =>
+			Object.hasOwn(googleServiceAccountScopes, name);
+		if (mint.kind !== 'google-service-account' || !isService(mint.service)) {
+			throw new UnexpectedError('The compiled module asks for a token that n8n cannot make');
+		}
+		// The module was compiled for these scopes: a different table means a different token.
+		if (googleServiceAccountScopes[mint.service].join(' ') !== mint.scopes.join(' ')) {
+			throw new UnexpectedError('The scopes of the compiled module are not the scopes of n8n');
+		}
+		const context = await this.refreshContext(binding, workflowId);
+		const requestedAt = Date.now();
+		const response = await getGoogleAccessToken.call(context, data, mint.service);
+		const token = response.access_token;
+		if (typeof token !== 'string' || token === '') {
+			throw new OperationalError('The token endpoint gave no access token');
+		}
+		const lifetime =
+			typeof response.expires_in === 'number' && response.expires_in > 0
+				? response.expires_in
+				: UNKNOWN_LIFETIME_SECONDS;
+		return { access_token: token, expires_at: requestedAt + lifetime * 1000 };
 	}
 
 	/**

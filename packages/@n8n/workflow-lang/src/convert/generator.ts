@@ -15,7 +15,7 @@
  *   node runs once for each parent that sends items, and loops run until no
  *   items are left. Lists of the latest run of each node are `let` variables.
  */
-import type { CredentialDerivation } from '../node-compile/specialise.ts';
+import type { CredentialDerivation, CredentialMint } from '../node-compile/specialise.ts';
 import type { NodeSources } from '../node-compile/convert.ts';
 import type { LegacyIssue } from '../legacy/index.ts';
 import type { Code } from './code.ts';
@@ -156,6 +156,8 @@ export interface Round {
 	nodes: Record<string, string>;
 	/** Values to compute from the fields of the credential of a slot, by slot. */
 	credentialDerivations: Record<string, CredentialDerivation[]>;
+	/** Tokens that n8n makes from the credential of a slot, by slot. */
+	credentialMints: Record<string, CredentialMint[]>;
 	/** Translated expressions by their range in the source. */
 	ranges: Array<{ start: number; end: number; node: string; path: string }>;
 	/** The lines (1-based, end exclusive) of the code of each node. */
@@ -371,6 +373,7 @@ export class ModuleGenerator {
 	private readonly fallback: string[] = [];
 	private readonly compiledNodes: Record<string, string> = {};
 	private readonly credentialDerivations: Record<string, CredentialDerivation[]> = {};
+	private readonly credentialMints: Record<string, CredentialMint[]> = {};
 
 	private readonly slots = new Map<string, string>();
 
@@ -713,6 +716,11 @@ export class ModuleGenerator {
 				const list = this.credentialDerivations[slot] ?? [];
 				for (const d of derivations) if (!list.some((x) => x.name === d.name)) list.push(d);
 				this.credentialDerivations[slot] = list;
+			},
+			addCredentialMints: (slot, mints) => {
+				const list = this.credentialMints[slot] ?? [];
+				for (const m of mints) if (!list.some((x) => x.name === m.name)) list.push(m);
+				this.credentialMints[slot] = list;
 			},
 			services: this.options.services,
 			codeNodes:
@@ -1926,6 +1934,7 @@ export class ModuleGenerator {
 			fallbackNodes: this.fallback,
 			nodes: this.compiledNodes,
 			credentialDerivations: this.credentialDerivations,
+			credentialMints: this.credentialMints,
 			ranges,
 			blocks,
 			credentials: this.credentialRefs(),

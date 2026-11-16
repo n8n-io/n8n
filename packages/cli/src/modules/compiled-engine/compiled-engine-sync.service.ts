@@ -10,12 +10,17 @@ import type { IDataObject, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { getVariables } from '@/workflow-helpers';
 
-import { CompiledEngineCredentials } from './compiled-engine-credentials';
+import { CompiledEngineCredentials, earliestMintExpiry } from './compiled-engine-credentials';
 import type { CompiledArtifact } from './compiled-engine.types';
 import { MANUAL_WORKFLOW_SUFFIX, WFRT_WEBHOOK_PREFIX } from './compiled-engine.types';
 import { CompiledWorkflowCompiler } from './compiled-workflow.compiler';
 import type { WfrtWorkflowStatus } from './wfrt-admin.client';
 import { WfrtAdminClient } from './wfrt-admin.client';
+
+/** n8n makes a minted token again this long before it expires. */
+const MINT_RENEWAL_MARGIN_MS = 5 * 60 * 1000;
+/** The shortest wait before n8n makes a minted token again, also after a failure. */
+const MINT_RENEWAL_MIN_DELAY_MS = 60 * 1000;
 
 /** A workflow version that n8n loaded into `wfrt`. */
 export interface LoadedWorkflow {
@@ -57,6 +62,9 @@ export class CompiledEngineSync {
 	private readonly loaded = new Map<string, LoadedWorkflow>();
 
 	private connected = false;
+
+	/** One timer for each published workflow with minted tokens: it loads the workflow again. */
+	private readonly mintRenewals = new Map<string, NodeJS.Timeout>();
 
 	/** The last static data save of each workflow, so saves stay in order. */
 	private readonly staticSaves = new Map<string, Promise<void>>();
@@ -110,6 +118,7 @@ export class CompiledEngineSync {
 
 	async deactivate(workflowId: string) {
 		const known = this.loaded.delete(workflowId);
+		this.cancelMintRenewal(workflowId);
 		// After a restart `wfrt` can hold a workflow that this process never loaded.
 		if (this.connected) await this.client.deleteWorkflow(workflowId);
 		else if (known) this.logger.debug(`Workflow ${workflowId} unloads when wfrt connects`);
@@ -199,6 +208,8 @@ export class CompiledEngineSync {
 
 	onDisconnected() {
 		this.connected = false;
+		// A connect loads everything again, with new tokens and new timers.
+		for (const wfrtId of [...this.mintRenewals.keys()]) this.cancelMintRenewal(wfrtId);
 	}
 
 	/**
@@ -286,13 +297,47 @@ export class CompiledEngineSync {
 		};
 	}
 
+	private cancelMintRenewal(wfrtId: string) {
+		clearTimeout(this.mintRenewals.get(wfrtId));
+		this.mintRenewals.delete(wfrtId);
+	}
+
+	/**
+	 * Minted tokens expire, and `wfrt` cannot make them: n8n loads the workflow again with new
+	 * tokens before the first one expires. Without an expiry the mint failed, so n8n tries again.
+	 * A manual run gets new tokens at each run, so it has no timer.
+	 */
+	private scheduleMintRenewal(entry: LoadedWorkflow, expiresAt: number | undefined) {
+		this.cancelMintRenewal(entry.wfrtId);
+		const minted = Object.values(entry.artifact.mints ?? {}).some((list) => list.length > 0);
+		if (!minted || !entry.active) return;
+		const delay =
+			expiresAt === undefined
+				? MINT_RENEWAL_MIN_DELAY_MS
+				: Math.max(MINT_RENEWAL_MIN_DELAY_MS, expiresAt - Date.now() - MINT_RENEWAL_MARGIN_MS);
+		const timer = setTimeout(() => {
+			this.mintRenewals.delete(entry.wfrtId);
+			if (!this.connected || this.loaded.get(entry.wfrtId) !== entry) return;
+			void this.push(entry).catch((error) => {
+				this.logger.warn(`Could not renew the tokens of workflow ${entry.wfrtId}`, {
+					error: error instanceof Error ? error.message : String(error),
+				});
+				this.scheduleMintRenewal(entry, undefined);
+			});
+		}, delay);
+		timer.unref();
+		this.mintRenewals.set(entry.wfrtId, timer);
+	}
+
 	private async push(entry: LoadedWorkflow) {
 		if (!entry.artifact.module) return;
 		const credentials = await this.credentials.buildDocument(
 			entry.workflowData.id,
 			entry.artifact.slots,
 			entry.artifact.derivations,
+			entry.artifact.mints,
 		);
+		this.scheduleMintRenewal(entry, earliestMintExpiry(credentials));
 		// n8n's copy of the static data; manual runs read it too (they keep nothing).
 		const staticData = await this.staticData.getStaticDataById(entry.workflowData.id);
 		await this.client.putWorkflow(entry.wfrtId, {

@@ -86,6 +86,17 @@ export interface ConvertResult {
 	 * it as a credential template, so node code never has the fields.
 	 */
 	credentialDerivations?: Record<string, Array<{ name: string; code: string }>>;
+	/**
+	 * Tokens that compiled node code needs and that only n8n can make, by slot. The builder of the
+	 * credentials document signs and exchanges each one where the credential data is, and stores
+	 * the token under `data.n8nMinted.<name>.access_token`. The module reads it as a credential
+	 * template, so node code never has the private key. The builder must make the token again
+	 * before it expires.
+	 */
+	credentialMints?: Record<
+		string,
+		Array<{ name: string; kind: 'google-service-account'; service: string; scopes: string[] }>
+	>;
 	/** The n8n credential behind each credential slot of the source. */
 	credentials?: Record<string, { id: string | null; name: string; type: string }>;
 }
