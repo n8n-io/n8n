@@ -5,7 +5,6 @@ import type { SqliteConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { In, LessThan, LessThanOrEqual, MoreThanOrEqual, And, Not } from '@n8n/typeorm';
-import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { ErrorReporter } from 'n8n-core';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -167,12 +166,8 @@ describe('ExecutionRepository', () => {
 		describe('with startedAfter and startedBefore filters', () => {
 			const startedAfter = '2024-01-01T00:00:00.000Z';
 			const startedBefore = '2024-12-31T23:59:59.999Z';
-			const startedAfterCondition = MoreThanOrEqual(
-				DateUtils.mixedDateToUtcDatetimeString(new Date(startedAfter)),
-			);
-			const startedBeforeCondition = LessThanOrEqual(
-				DateUtils.mixedDateToUtcDatetimeString(new Date(startedBefore)),
-			);
+			const startedAfterCondition = MoreThanOrEqual(new Date(startedAfter));
+			const startedBeforeCondition = LessThanOrEqual(new Date(startedBefore));
 
 			test('should filter executions started after a given time', async () => {
 				const limit = 10;

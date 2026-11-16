@@ -200,13 +200,13 @@ const startedAtCondition = ({
 
 	if (startedAfter) {
 		conditions.push(
-			MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedAfter))),
+			MoreThanOrEqual(new Date(startedAfter)),
 		);
 	}
 
 	if (startedBefore) {
 		conditions.push(
-			LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(new Date(startedBefore))),
+			LessThanOrEqual(new Date(startedBefore)),
 		);
 	}
 
@@ -760,7 +760,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return await this.find({
 			select: ['id'],
 			where: {
-				startedAt: MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
+				startedAt: MoreThanOrEqual(date),
 			},
 		}).then((executions) => executions.map(({ id }) => id));
 	}
@@ -1567,7 +1567,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		const result = await this.createQueryBuilder('execution')
 			.select('DISTINCT execution.workflowId', 'workflowId')
 			.where('execution.startedAt >= :date', {
-				date: DateUtils.mixedDateToUtcDatetimeString(date),
+				date,
 			})
 			.getRawMany<{ workflowId: string }>();
 
