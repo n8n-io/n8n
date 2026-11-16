@@ -362,7 +362,7 @@ pub const Source = struct {
 };
 
 /// The file name text: the option, else the header, else the URL path.
-fn namePath(src: Source, buf: *NameBuf) Error![]const u8 {
+pub fn namePath(src: Source, buf: *NameBuf) Error![]const u8 {
     if (src.file_name.len > 0) {
         if (src.file_name.len > buf.path.len) return error.TooLong;
         @memcpy(buf.path[0..src.file_name.len], src.file_name);

@@ -24,9 +24,15 @@
 //! macOS and of `--io poll`. Tests use a third driver that holds each
 //! operation until the test runs it.
 //!
+//! A body comes in pieces (`begin`, `append`, `complete`): the store never holds
+//! a whole file. With the ring, a piece waits in blocks of a pool until its
+//! write is done, and the block goes back to the pool. When the pool is
+//! empty, `append` takes fewer bytes than it was given, and the caller stops
+//! reading its socket until blocks are free (`hasRoom`). So the memory of
+//! the store does not depend on the size of a file.
+//!
 //! Memory is reserved at startup: the rows, a result buffer for each row,
-//! and a pool of blocks that hold a body while its writes are on the ring.
-//! A full table or pool fails the step with a limit error.
+//! and the pool of blocks. A full table fails the step with a limit error.
 //!
 //! Another backend (S3) is another set of phases behind `reserve`, `put`,
 //! `nextDone` and `take`: the callers see handles and results only.
@@ -83,7 +89,37 @@ pub const Handle = enum(u32) {
     }
 };
 
-/// What `put` stores.
+/// A response whose body comes with `append`.
+pub const Begin = struct {
+    exec_id: u64,
+    seq: u32,
+    workflow: []const u8,
+    /// The execution segment of the path: n8n's id, or `wfrt-<n>`.
+    execution: []const u8,
+    /// The start of the result, `{"status":N,"headers":{...}}`.
+    head: []const u8,
+    content_disposition: []const u8,
+    content_type: []const u8,
+    /// The path of the URL of the response, with its first `/`.
+    url_path: []const u8,
+    /// The size of the body, when the response says it.
+    expected: ?u64 = null,
+    /// The caller has the whole body and gives it next (`putBody`): with the
+    /// ring, it must fit in the free blocks now.
+    whole: bool = false,
+    now_ms: i64,
+};
+
+/// What `append` did with the bytes.
+pub const Append = union(enum) {
+    /// The count of bytes that the store has now. Fewer than given: the
+    /// pool is empty, and the rest goes again after `hasRoom`.
+    took: usize,
+    /// The transfer failed. Its result has the reason.
+    failed,
+};
+
+/// What `put` stores: a response with its whole body.
 pub const Put = struct {
     exec_id: u64,
     seq: u32,
@@ -106,6 +142,9 @@ pub const Done = struct {
     exec_id: u64,
     seq: u32,
     ok: bool,
+    /// The result of a stored response: `payload` is the head, then the
+    /// body. False: `payload` is the whole result (`readMetadata`).
+    stored: bool,
     /// The bytes of `payload` before the body of the result.
     head_len: u32,
     payload: []const u8,
@@ -157,16 +196,28 @@ const Row = struct {
     reported: bool = false,
     taken: bool = false,
     ok: bool = false,
+    /// The caller of `begin` holds the handle: the row stays until `complete` or `fail`.
+    open: bool = false,
+    /// No more bytes come.
+    eof: bool = false,
     done_next: u32 = none,
     dir_fd: c_int = -1,
     file_fd: c_int = -1,
     level: u8 = 0,
     file: Have = .none,
     meta: Have = .none,
+    /// The size of the file, known when the last byte is written.
     size: u64 = 0,
     written: u64 = 0,
+    /// The bytes that `append` took.
+    queued: u64 = 0,
+    /// The blocks that wait for their writes, oldest first. `head_off`:
+    /// the bytes of the first block that are written. `tail_len`: the
+    /// bytes of the last block that are filled.
     block_head: u32 = none,
-    block_cur: u32 = none,
+    block_tail: u32 = none,
+    head_off: u32 = 0,
+    tail_len: u32 = 0,
     result_len: u32 = 0,
     head_len: u32 = 0,
     aux_len: u32 = 0,
@@ -270,6 +321,29 @@ pub const Store = struct {
         s.driver = .{ .ring = ring };
     }
 
+    /// Tests of the callers of the store: the file operations wait in `ops`
+    /// (one place for each row) until `runHeldOps`, as completions of a ring do.
+    pub fn holdOps(s: *Store, ops: []?sys.FileOp) void {
+        std.debug.assert(s.active == 0 and ops.len >= s.rows.len);
+        s.driver = .{ .held = ops };
+    }
+
+    /// Run the operation that waits for each row. Returns their count.
+    pub fn runHeldOps(s: *Store) u32 {
+        const ops = switch (s.driver) {
+            .held => |o| o,
+            .blocking, .ring => return 0,
+        };
+        var ran: u32 = 0;
+        for (ops[0..s.rows.len], 0..) |*slot, i| {
+            const op = slot.* orelse continue;
+            slot.* = null;
+            s.onCompletion(s.token(@intCast(i)), sys.fileOpNow(op));
+            ran += 1;
+        }
+        return ran;
+    }
+
     /// Transfers whose file operations are not finished.
     pub fn busy(s: *const Store) bool {
         return s.active > 0;
@@ -293,7 +367,7 @@ pub const Store = struct {
 
     fn freeRow(s: *Store, ri: u16) void {
         const r = &s.rows[ri];
-        std.debug.assert(r.state != .free and !r.in_flight and r.block_head == none);
+        std.debug.assert(r.state != .free and !r.in_flight and r.block_head == none and !r.open);
         std.debug.assert(r.dir_fd < 0 and r.file_fd < 0);
         r.state = .free;
         r.gen +%= 1;
@@ -350,27 +424,41 @@ pub const Store = struct {
         return s.blocks[@as(usize, bi) * s.cfg.block_bytes ..][0..s.cfg.block_bytes];
     }
 
-    /// Copy `body` into blocks of the pool, for writes that end after this call.
-    fn keepBody(s: *Store, r: *Row, body: []const u8) error{NoBlocks}!void {
-        const need = (body.len + s.cfg.block_bytes - 1) / s.cfg.block_bytes;
-        if (need > s.blocks_free) {
-            s.counters.blocks_full += 1;
-            return error.NoBlocks;
-        }
-        var tail: u32 = none;
+    /// Copy the start of `bytes` into blocks of the pool, for writes that end
+    /// after this call. Returns the count of bytes copied: fewer than given
+    /// when the pool is empty.
+    fn enqueue(s: *Store, r: *Row, bytes: []const u8) usize {
+        const bb = s.cfg.block_bytes;
         var at: usize = 0;
-        while (at < body.len) : (at += s.cfg.block_bytes) {
-            const bi = s.block_free;
-            s.block_free = s.block_next[bi];
-            s.blocks_free -= 1;
-            s.block_next[bi] = none;
-            if (tail == none) r.block_head = bi else s.block_next[tail] = bi;
-            tail = bi;
-            const n = @min(body.len - at, s.cfg.block_bytes);
-            @memcpy(s.block(bi)[0..n], body[at..][0..n]);
+        // Each pass copies at least one byte, or stops.
+        while (at < bytes.len) {
+            if (r.block_tail == none or r.tail_len == bb) {
+                const bi = s.block_free;
+                if (bi == none) break;
+                s.block_free = s.block_next[bi];
+                s.blocks_free -= 1;
+                s.block_next[bi] = none;
+                if (r.block_tail == none) r.block_head = bi else s.block_next[r.block_tail] = bi;
+                r.block_tail = bi;
+                r.tail_len = 0;
+            }
+            const n: u32 = @intCast(@min(bytes.len - at, bb - r.tail_len));
+            @memcpy(s.block(r.block_tail)[r.tail_len..][0..n], bytes[at..][0..n]);
+            r.tail_len += n;
+            at += n;
         }
-        r.block_cur = r.block_head;
-        std.debug.assert(at >= body.len);
+        if (at < bytes.len) s.counters.blocks_full += 1;
+        std.debug.assert(at <= bytes.len and r.tail_len <= bb);
+        return at;
+    }
+
+    /// `append` for `h` can take bytes again, or has a failure to tell: a
+    /// caller that got fewer bytes than it gave can go on.
+    pub fn hasRoom(s: *Store, h: Handle) bool {
+        const r = &s.rows[s.rowOf(h)];
+        std.debug.assert(r.open);
+        if (r.failed or r.state != .active or s.driver == .blocking) return true;
+        return s.blocks_free > 0 or (r.block_tail != none and r.tail_len < s.cfg.block_bytes);
     }
 
     fn dropBlocks(s: *Store, r: *Row) void {
@@ -386,72 +474,203 @@ pub const Store = struct {
         }
         std.debug.assert(bi == none);
         r.block_head = none;
-        r.block_cur = none;
+        r.block_tail = none;
+        r.head_off = 0;
+        r.tail_len = 0;
     }
 
     // ---- put -------------------------------------------------------------------
 
     const PrepareError = error{ TooLarge, TooLong, NotText, BadId, NoRoom, NoBlocks };
 
-    /// Store the body of a response. The result comes from `nextDone`: at
-    /// once with the driver that blocks, after the completions with the ring.
-    pub fn put(s: *Store, h: Handle, p: Put) void {
+    /// Start to store a response. Its body comes with `append`, then `complete`
+    /// or `fail`. The result comes from `nextDone` when the files are written.
+    pub fn begin(s: *Store, h: Handle, b: Begin) void {
         const ri = s.rowOf(h);
         const r = &s.rows[ri];
         std.debug.assert(r.state == .reserved and s.borrowed.len == 0);
         r.state = .active;
         r.job = .put;
-        r.exec_id = p.exec_id;
-        r.seq = p.seq;
-        r.deadline_ms = p.now_ms + s.cfg.timeout_ms;
+        r.open = true;
+        r.exec_id = b.exec_id;
+        r.seq = b.seq;
+        r.deadline_ms = b.now_ms + s.cfg.timeout_ms;
         s.active += 1;
-        s.prepare(ri, p) catch |e| {
-            s.refuse(ri, e, p.body.len);
+        s.prepare(ri, b) catch |e| {
+            s.refuse(ri, e, b.expected orelse 0);
             return s.advance(ri);
         };
         r.dir_fd = s.root_fd;
         r.phase = .dir_make;
         s.setDirName(r);
-        if (s.driver == .blocking) s.borrowed = p.body;
         s.advance(ri);
-        s.borrowed = &.{};
     }
 
-    fn prepare(s: *Store, ri: u16, p: Put) PrepareError!void {
+    /// The next bytes of the body of `h`. `bytes` is not kept.
+    pub fn append(s: *Store, h: Handle, bytes: []const u8, now_ms: i64) Append {
+        const ri = s.rowOf(h);
         const r = &s.rows[ri];
-        if (p.body.len > s.cfg.max_file_bytes) return error.TooLarge;
-        var nb: names.NameBuf = .{};
-        const n = try names.handleNames(.{
-            .file_name = r.opt_name[0..r.opt_name_len],
-            .mime_type = r.opt_mime[0..r.opt_mime_len],
+        std.debug.assert(r.open and !r.eof and bytes.len > 0 and s.borrowed.len == 0);
+        if (r.failed or r.state != .active) return .failed;
+        r.deadline_ms = now_ms + s.cfg.timeout_ms;
+        if (r.queued + bytes.len > s.cfg.max_file_bytes) {
+            s.refuse(ri, error.TooLarge, r.queued + bytes.len);
+            s.stop(ri);
+            return .failed;
+        }
+        var took = bytes.len;
+        if (s.driver == .blocking) {
+            // `begin` ran to the write of the file: this write is done on return.
+            std.debug.assert(r.phase == .file_write and !r.in_flight);
+            s.borrowed = bytes;
+            s.advance(ri);
+            s.borrowed = &.{};
+        } else {
+            took = s.enqueue(r, bytes);
+            if (!r.in_flight and took > 0) s.advance(ri);
+        }
+        if (r.failed) return .failed;
+        r.queued += took;
+        return .{ .took = took };
+    }
+
+    /// The body of `h` is complete. The handle is not valid afterwards.
+    pub fn complete(s: *Store, h: Handle) void {
+        const ri = s.rowOf(h);
+        const r = &s.rows[ri];
+        std.debug.assert(r.open and !r.eof);
+        r.open = false;
+        r.eof = true;
+        if (r.state == .finished) {
+            if (r.taken) s.freeRow(ri);
+            return;
+        }
+        if (!r.in_flight) s.advance(ri);
+    }
+
+    /// The body of `h` does not come: the result of the step is `msg`,
+    /// unless the transfer has a failure already. What the transfer made
+    /// is removed. The handle is not valid afterwards.
+    pub fn fail(s: *Store, h: Handle, msg: []const u8) void {
+        const ri = s.rowOf(h);
+        const r = &s.rows[ri];
+        std.debug.assert(r.open and !r.eof);
+        r.open = false;
+        r.eof = true;
+        if (r.state == .finished) {
+            if (r.taken) s.freeRow(ri);
+            return;
+        }
+        s.setError(ri, "{s}", .{msg});
+        s.stop(ri);
+    }
+
+    /// A row with a failure: remove what it made. An operation in flight
+    /// ends first (`onResult` starts the removal then).
+    fn stop(s: *Store, ri: u16) void {
+        const r = &s.rows[ri];
+        std.debug.assert(r.failed and r.state == .active);
+        if (r.in_flight) return;
+        if (!r.cleaning) s.clean(r);
+        s.advance(ri);
+    }
+
+    /// Store a response that is whole in memory. With the ring, the body
+    /// must fit in the free blocks now.
+    pub fn put(s: *Store, h: Handle, p: Put) void {
+        s.begin(h, .{
+            .exec_id = p.exec_id,
+            .seq = p.seq,
+            .workflow = p.workflow,
+            .execution = p.execution,
+            .head = p.head,
             .content_disposition = p.content_disposition,
             .content_type = p.content_type,
             .url_path = p.url_path,
-        }, &nb);
-        var sb: [names.max_size_text]u8 = @splat(0);
-        const size_text = names.prettyBytes(p.body.len, &sb) orelse return error.TooLarge;
+            .expected = p.body.len,
+            .whole = true,
+            .now_ms = p.now_ms,
+        });
+        s.putBody(h, p.body, p.now_ms);
+    }
+
+    /// The whole body of a transfer that `begin` started, then its end.
+    pub fn putBody(s: *Store, h: Handle, body: []const u8, now_ms: i64) void {
+        const ri = s.rowOf(h);
+        const r = &s.rows[ri];
+        std.debug.assert(r.open and r.queued == 0);
+        if (!r.failed and body.len > 0) {
+            // `begin` saw the blocks for a whole body, so the store takes every byte or fails.
+            switch (s.append(h, body, now_ms)) {
+                .took => |k| std.debug.assert(k == body.len),
+                .failed => {},
+            }
+        }
+        s.complete(h);
+    }
+
+    fn prepare(s: *Store, ri: u16, b: Begin) PrepareError!void {
+        const r = &s.rows[ri];
+        if (b.expected) |size| if (size > s.cfg.max_file_bytes) return error.TooLarge;
+        var nb: names.NameBuf = .{};
+        const src: names.Source = .{
+            .file_name = r.opt_name[0..r.opt_name_len],
+            .mime_type = r.opt_mime[0..r.opt_mime_len],
+            .content_disposition = b.content_disposition,
+            .content_type = b.content_type,
+            .url_path = b.url_path,
+        };
+        const n = try names.handleNames(src, &nb);
+        // The handle and the companion file are written at the end, with the
+        // size. The row keeps the two texts that give the names again: the
+        // headers of the response are gone by then.
+        const path = try names.namePath(src, &nb);
+        if (n.mime_type.len > r.opt_mime.len) return error.TooLong;
+        @memcpy(r.opt_mime[0..n.mime_type.len], n.mime_type);
+        r.opt_mime_len = @intCast(n.mime_type.len);
+        std.mem.copyForwards(u8, r.opt_name[0..path.len], path);
+        r.opt_name_len = @intCast(path.len);
         var random: [32]u8 = @splat(0);
         sys.randomBytes(&random);
         r.tmp_tag = names.uuidText(random[0..16].*);
         const uuid = names.uuidText(random[16..32].*);
         var ib: [binary_store.max_id + 16]u8 = @splat(0);
-        const full = std.fmt.bufPrint(&ib, "{s}:workflows/{s}/executions/{s}/binary_data/{s}", .{ names.store_mode, p.workflow, p.execution, &uuid }) catch return error.BadId;
+        const full = std.fmt.bufPrint(&ib, "{s}:workflows/{s}/executions/{s}/binary_data/{s}", .{ names.store_mode, b.workflow, b.execution, &uuid }) catch return error.BadId;
         const fid = binary_store.fileId(full) orelse return error.BadId;
         @memcpy(r.id[0..fid.len], fid);
         r.id_len = @intCast(fid.len);
-        r.size = p.body.len;
         var res: names.Out = .{ .buf = s.resultBuf(ri) };
-        res.put(p.head) catch return error.NoRoom;
+        res.put(b.head) catch return error.NoRoom;
         r.head_len = @intCast(res.len);
+        r.result_len = r.head_len;
+        if (b.whole and s.driver != .blocking) {
+            const size: usize = @intCast(b.expected orelse 0);
+            if ((size + s.cfg.block_bytes - 1) / s.cfg.block_bytes > s.blocks_free) {
+                s.counters.blocks_full += 1;
+                return error.NoBlocks;
+            }
+        }
+    }
+
+    /// Every byte of the file is written: its size is known. Write the
+    /// result of the step and the text of the companion file.
+    fn seal(s: *Store, ri: u16) PrepareError!void {
+        const r = &s.rows[ri];
+        std.debug.assert(r.eof and r.phase == .file_write and r.written == r.queued);
+        r.size = r.written;
+        var nb: names.NameBuf = .{};
+        const n = try names.handleNames(.{ .file_name = r.opt_name[0..r.opt_name_len], .mime_type = r.opt_mime[0..r.opt_mime_len] }, &nb);
+        var sb: [names.max_size_text]u8 = @splat(0);
+        const size_text = names.prettyBytes(r.size, &sb) orelse return error.TooLarge;
+        var res: names.Out = .{ .buf = s.resultBuf(ri), .len = r.head_len };
         res.put("{\"$binary\":") catch return error.NoRoom;
-        names.writeHandle(&res, fid, n, r.size, size_text) catch return error.NoRoom;
+        names.writeHandle(&res, r.fileId(), n, r.size, size_text) catch return error.NoRoom;
         res.byte('}') catch return error.NoRoom;
         r.result_len = @intCast(res.len);
         r.ok = true;
         var aux: names.Out = .{ .buf = &r.aux };
         names.writeSidecar(&aux, n.file_name, n.mime_type, r.size) catch return error.TooLong;
         r.aux_len = @intCast(aux.len);
-        if (s.driver != .blocking) try s.keepBody(r, p.body);
     }
 
     /// A transfer that cannot start: its result is the reason.
@@ -460,7 +679,7 @@ pub const Store = struct {
         switch (e) {
             error.TooLarge => {
                 s.counters.too_large += 1;
-                s.setError(ri, "http: the response body is {d} bytes; a stored file can have {d} (--binary-max-file-mb)", .{ size, @min(s.cfg.max_file_bytes, names.max_size_bytes - 1) });
+                s.setError(ri, "http: the response body is {d} bytes; a stored file can have {d} (--binary-max-file-mb); the fallback host can run the node (limit: binary-max-file)", .{ size, @min(s.cfg.max_file_bytes, names.max_size_bytes - 1) });
             },
             error.TooLong => s.setError(ri, "http: the file name or the MIME type of the response is too long to store", .{}),
             error.NotText => s.setError(ri, "http: the file name or the MIME type of the response is not text", .{}),
@@ -468,7 +687,8 @@ pub const Store = struct {
             error.NoRoom => s.setError(ri, "http: the headers of the response are larger than the result of a stored response ({d} bytes)", .{s.cfg.result_bytes}),
             error.NoBlocks => s.setError(ri, "http: the buffers for stored responses are in use ({d} MB, --binary-buffer-mb); the step can run again (limit)", .{s.cfg.buffer_bytes / mb}),
         }
-        s.rows[ri].phase = .end;
+        // Nothing is made yet: there is nothing to remove.
+        if (s.rows[ri].dir_fd < 0) s.rows[ri].phase = .end;
     }
 
     /// The first failure of a row is its result.
@@ -521,13 +741,13 @@ pub const Store = struct {
 
     // ---- the state machine -----------------------------------------------------
 
-    /// The bytes of the next write of the file.
+    /// The bytes of the next write of the file: the rest of the first block,
+    /// or of the bytes that `append` holds now for the driver that runs at once.
     fn chunk(s: *Store, r: *const Row) []const u8 {
-        std.debug.assert(r.written < r.size);
-        if (r.block_cur == none) return s.borrowed[@intCast(r.written)..];
-        const in_block: usize = @intCast(r.written % s.cfg.block_bytes);
-        const left: usize = @intCast(r.size - r.written);
-        return s.block(r.block_cur)[in_block..@min(s.cfg.block_bytes, in_block + left)];
+        if (r.block_head == none) return s.borrowed;
+        const end = if (r.block_head == r.block_tail) r.tail_len else s.cfg.block_bytes;
+        std.debug.assert(r.head_off <= end);
+        return s.block(r.block_head)[r.head_off..end];
     }
 
     /// The one operation of the phase of the row. Null at the end.
@@ -654,12 +874,11 @@ pub const Store = struct {
                 r.file_fd = res;
                 r.file = .tmp;
                 r.written = 0;
-                r.phase = if (r.size > 0) .file_write else .file_rename;
+                r.phase = .file_write;
             },
             .file_write => {
                 if (res <= 0) return s.failOp(ri, "write the file", res);
                 s.wrote(r, @intCast(res));
-                if (r.written == r.size) r.phase = .file_rename;
             },
             .file_rename => {
                 if (res < 0) return s.failOp(ri, "rename the file", res);
@@ -671,16 +890,29 @@ pub const Store = struct {
             // `onResult` sends the three phases of the file here.
             else => unreachable,
         }
-        if (r.phase == .file_rename) s.closeFile(r);
     }
 
-    fn wrote(s: *Store, r: *Row, n: u64) void {
-        std.debug.assert(n > 0 and r.written + n <= r.size);
-        const before = r.written / s.cfg.block_bytes;
+    fn wrote(s: *Store, r: *Row, n: u32) void {
+        std.debug.assert(n > 0 and n <= s.chunk(r).len);
         r.written += n;
-        if (r.block_cur == none) return;
-        // A write is inside one block, so it crosses at most one end.
-        if (r.written / s.cfg.block_bytes != before) r.block_cur = s.block_next[r.block_cur];
+        if (r.block_head == none) {
+            s.borrowed = s.borrowed[n..];
+            return;
+        }
+        r.head_off += n;
+        // A block that is not full takes more bytes, or has bytes to write.
+        if (r.head_off < s.cfg.block_bytes) return;
+        const bi = r.block_head;
+        r.block_head = s.block_next[bi];
+        r.head_off = 0;
+        if (bi == r.block_tail) {
+            r.block_tail = none;
+            r.tail_len = 0;
+        }
+        sys.poison(s.block(bi));
+        s.block_next[bi] = s.block_free;
+        s.block_free = bi;
+        s.blocks_free += 1;
     }
 
     fn onMeta(s: *Store, ri: u16, res: i32) void {
@@ -755,6 +987,17 @@ pub const Store = struct {
         std.debug.assert(r.state == .active and !r.in_flight);
         var guard: u32 = 0;
         while (guard < max_steps) : (guard += 1) {
+            if (r.phase == .file_write and s.chunk(r).len == 0) {
+                // Every byte that came is written: wait for more, or end the file.
+                if (!r.eof) return;
+                if (s.seal(ri)) |_| {
+                    s.closeFile(r);
+                    r.phase = .file_rename;
+                } else |e| {
+                    s.refuse(ri, e, r.size);
+                    s.clean(r);
+                }
+            }
             const op = s.nextOp(r) orelse return s.finish(ri);
             const res = s.submit(ri, op) orelse {
                 r.in_flight = true;
@@ -779,7 +1022,7 @@ pub const Store = struct {
         r.state = .finished;
         s.active -= 1;
         if (!r.failed) s.counters.stored += 1;
-        if (r.taken) return s.freeRow(ri);
+        if (r.taken and !r.open) return s.freeRow(ri);
         if (!r.reported) s.report(ri);
     }
 
@@ -810,6 +1053,9 @@ pub const Store = struct {
         if (s.active == 0) return;
         for (s.rows, 0..) |*r, i| {
             if (r.state != .active or r.failed or now_ms < r.deadline_ms) continue;
+            // A transfer that waits for bytes of its response has no operation to end:
+            // the time limits of the request apply.
+            if (!r.in_flight and !r.eof and r.phase == .file_write) continue;
             const ri: u16 = @intCast(i);
             s.counters.timed_out += 1;
             s.setError(ri, "http: the response could not be stored within {d} ms", .{s.cfg.timeout_ms});
@@ -827,7 +1073,7 @@ pub const Store = struct {
         const ri: u16 = @intCast(s.done_head);
         const r = &s.rows[ri];
         std.debug.assert(r.reported and !r.taken);
-        return .{ .row = ri, .exec_id = r.exec_id, .seq = r.seq, .ok = r.ok, .head_len = r.head_len, .payload = s.resultBuf(ri)[0..r.result_len] };
+        return .{ .row = ri, .exec_id = r.exec_id, .seq = r.seq, .ok = r.ok, .stored = r.job == .put, .head_len = r.head_len, .payload = s.resultBuf(ri)[0..r.result_len] };
     }
 
     /// The shell copied the result `d`: free its row when its operations are done.
@@ -838,7 +1084,7 @@ pub const Store = struct {
         if (s.done_head == none) s.done_tail = none;
         r.done_next = none;
         r.taken = true;
-        if (r.state == .finished) s.freeRow(d.row);
+        if (r.state == .finished and !r.open) s.freeRow(d.row);
     }
 
     // ---- metadata --------------------------------------------------------------
@@ -846,7 +1092,7 @@ pub const Store = struct {
     /// Read the companion file of the stored file `id` (`getBinaryMetadata`
     /// of n8n). The result, from `nextDone`, is its JSON:
     /// `{"fileName","mimeType","fileSize"}`.
-    fn readMetadata(s: *Store, id: []const u8, exec_id: u64, seq: u32, now_ms: i64) error{ Full, BadId }!void {
+    pub fn readMetadata(s: *Store, id: []const u8, exec_id: u64, seq: u32, now_ms: i64) error{ Full, BadId }!void {
         const fid = binary_store.fileId(id) orelse return error.BadId;
         const ri = s.acquire() orelse return error.Full;
         const r = &s.rows[ri];
@@ -1047,7 +1293,7 @@ test "limits: the file size, the rows, and names that are too long" {
     s.put(h, putOf("123456789"));
     const d = s.nextDone() orelse return error.TestExpectedEqual;
     try t.expect(!d.ok);
-    try t.expectEqualStrings("http: the response body is 9 bytes; a stored file can have 8 (--binary-max-file-mb)", d.payload);
+    try t.expectEqualStrings("http: the response body is 9 bytes; a stored file can have 8 (--binary-max-file-mb); the fallback host can run the node (limit: binary-max-file)", d.payload);
     s.take(d);
     try t.expectEqual(@as(u64, 1), s.counters.too_large);
 
@@ -1111,6 +1357,104 @@ test "a symbolic link in the store is not followed, and a failure removes its fi
     var pb: [256]u8 = @splat(0);
     const rel = try std.fmt.bufPrint(&pb, "workflows/wf2/executions/wfrt-7/binary_data/{s}", .{s.rows[h2.index()].segment(levels)});
     try t.expectError(error.NotFound, f.read(rel, &fb));
+}
+
+fn beginOf(expected: ?u64) Begin {
+    const p = putOf("");
+    return .{ .exec_id = p.exec_id, .seq = p.seq, .workflow = p.workflow, .execution = p.execution, .head = p.head, .content_disposition = p.content_disposition, .content_type = p.content_type, .url_path = p.url_path, .expected = expected, .now_ms = p.now_ms };
+}
+
+test "a body in pieces: the pool bounds the bytes in memory, and the size comes at the end" {
+    var f: Fixture = undefined;
+    // Three blocks of 16 bytes for a body of 100.
+    try f.init(.{ .root = "", .block_bytes = 16, .buffer_bytes = 16 * 3, .max_transfers = 2 });
+    defer f.deinit();
+    f.hold();
+    const s = &f.store;
+    var body: [100]u8 = @splat(0);
+    for (&body, 0..) |*b, i| b.* = @intCast('a' + i % 26);
+    const h = try s.reserve("{}");
+    s.begin(h, beginOf(null));
+    var at: usize = 0;
+    var short: u32 = 0;
+    var guard: u32 = 0;
+    while (at < body.len and guard < 1000) : (guard += 1) {
+        // Pieces of 23 bytes, as a socket gives them: not the size of a block.
+        const piece = body[at..@min(body.len, at + 23)];
+        if (s.hasRoom(h)) switch (s.append(h, piece, 1000 + guard)) {
+            .took => |k| {
+                at += k;
+                if (k < piece.len) short += 1;
+            },
+            .failed => return error.TestExpectedEqual,
+        };
+        try t.expect(s.blocks_free <= 3);
+        f.runHeld(h.index());
+    }
+    try t.expectEqual(body.len, at);
+    // The pool was empty at times: the caller got fewer bytes and went on later.
+    try t.expect(short > 0 and s.counters.blocks_full == short);
+    // A transfer that waits for bytes is not late.
+    f.drain(h.index());
+    s.tick(1_000_000);
+    try t.expect(s.nextDone() == null);
+    s.complete(h);
+    f.drain(h.index());
+    const d = s.nextDone() orelse return error.TestExpectedEqual;
+    try expectStored(&f, d, &body, "{\"fileName\":\"report.pdf\",\"mimeType\":\"application/pdf\",\"fileSize\":100}");
+    try t.expectEqualStrings("100 B", member(d.payload[d.head_len..], "fileSize"));
+    s.take(d);
+    try t.expectEqual(@as(u32, 3), s.blocks_free);
+    try t.expectEqual(@as(u32, 2), s.nfree);
+}
+
+test "a body in pieces that fails: the caller's reason or the limit is the result, and the part of the file goes" {
+    var f: Fixture = undefined;
+    try f.init(.{ .root = "", .max_file_bytes = 40, .max_transfers = 2 });
+    defer f.deinit();
+    const s = &f.store;
+    var fb: [64]u8 = @splat(0);
+    var pb: [256]u8 = @splat(0);
+
+    // The response ends early: `fail` gives the reason of the caller.
+    const h = try s.reserve("{}");
+    s.begin(h, beginOf(null));
+    try t.expectEqual(Append{ .took = 10 }, s.append(h, "0123456789", 1000));
+    const r = &s.rows[h.index()];
+    const tmp_rel = try std.fmt.bufPrint(&pb, "workflows/wf1/executions/wfrt-7/binary_data/{s}.tmp.{d}.{s}", .{ r.segment(levels), s.pid, &r.tmp_tag });
+    try t.expectEqualStrings("0123456789", try f.read(tmp_rel, &fb));
+    s.fail(h, "http: the connection closed before the response was complete");
+    const d = s.nextDone() orelse return error.TestExpectedEqual;
+    try t.expect(!d.ok);
+    try t.expectEqualStrings("http: the connection closed before the response was complete", d.payload);
+    try t.expectError(error.NotFound, f.read(tmp_rel, &fb));
+    s.take(d);
+    try t.expectEqual(@as(u32, 2), s.nfree);
+
+    // More bytes than a file can have, with no length in the response: the limit is the
+    // result, the caller learns it from `append`, and its own reason does not replace it.
+    const h2 = try s.reserve("{}");
+    s.begin(h2, beginOf(null));
+    try t.expectEqual(Append{ .took = 30 }, s.append(h2, "012345678901234567890123456789", 1000));
+    try t.expectEqual(Append.failed, s.append(h2, "01234567890123456789", 1000));
+    try t.expectEqual(Append.failed, s.append(h2, "x", 1000));
+    s.fail(h2, "http: closed");
+    const big = s.nextDone() orelse return error.TestExpectedEqual;
+    try t.expect(!big.ok and std.mem.indexOf(u8, big.payload, "--binary-max-file-mb") != null);
+    s.take(big);
+    try t.expectEqual(@as(u64, 1), s.counters.too_large);
+
+    // A length above the limit fails before a file is made, and the caller can still end.
+    const h3 = try s.reserve("{}");
+    s.begin(h3, beginOf(41));
+    const early = s.nextDone() orelse return error.TestExpectedEqual;
+    try t.expect(!early.ok and std.mem.indexOf(u8, early.payload, "is 41 bytes") != null);
+    s.take(early);
+    try t.expectEqual(Append.failed, s.append(h3, "x", 1000));
+    s.complete(h3);
+    try t.expect(!s.busy() and s.nextDone() == null);
+    try t.expectEqual(@as(u32, 2), s.nfree);
+    try t.expectEqual(@as(u64, 0), s.counters.stored);
 }
 
 test "readMetadata gives the companion file of a stored file" {

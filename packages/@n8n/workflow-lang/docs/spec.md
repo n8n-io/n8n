@@ -772,7 +772,22 @@ file at start (`wfrt serve --credentials <file>`,
     `sort%5B0%5D%5Bfield%5D=name` (`sort[0][field]`, the key encoded too);
     `null` is `key=`; empty arrays and objects write nothing; every byte but
     `A-Z a-z 0-9 - . _ ~` is percent-encoded. At most 32 levels.
-* Binary bodies. `body: { $binary: { data, id?, mimeType? } }` sends the
+* Credential values and encoding. The runtime fills a template with the value as it is, then
+  encodes the whole text for the place it goes to, once: a `qs` value and a `$form` value are
+  percent-encoded, a string value of a JSON body is escaped as JSON, and a header value, the
+  URL text and a string body carry the value as it is (v1 does not encode them either). A
+  header value with a line break is refused. So a value with `&`, `=`, `+`, `%`, a space, a
+  quote or a backslash arrives as the same value.
+* Form bodies. `body: { $form: { name: text | number | boolean | null } }` sends
+  `application/x-www-form-urlencoded` (the content type is set unless a header sets one):
+  `name=value` joined by `&`, as the qs library's `stringify` writes a flat object, which is how
+  n8n's request helper sends `form` (`legacy.ts`): every byte but `A-Z a-z 0-9 - . _ ~` is
+  percent-encoded, and `null` is `name=`. A nested value is an error. `$form` must be the first
+  key of `body`. The compiled request helper sends `form` this way, so the values are encoded
+  only in the runtime. A credential that adds body members (`inject.body`) with a form body is
+  an error.
+* Binary bodies. `$binary` must be the first key of `body`: a body that does not start with
+  `{"$` is tested once. `body: { $binary: { data, id?, mimeType? } }` sends the
   bytes of a binary entry as the body, with `mimeType` as the content type
   unless a header sets one. `multipart: [ { name, value } | { name, binary:
   { data, id?, mimeType?, fileName? } } ]` sends `multipart/form-data` with a
@@ -813,8 +828,21 @@ file at start (`wfrt serve --credentials <file>`,
   its JSON text. The file part of the `id` is the SHA-256 of the bytes, so a test compares stored
   bytes without a store. The runtime writes the file and its `.metadata` companion in n8n's file
   system store (`blob_store.zig`): the storage path must be set, and the file part of the `id` is
-  a UUID. The body is complete in memory before it is stored, so its limit is the smaller of
+  a UUID. Over HTTP/1.1 the body goes from the socket to the file in pieces (a length, chunks,
+  or the end of the connection): the runtime never holds the whole body, `--egress-max-body-mb`
+  does not apply, and the only limit is `--binary-max-file-mb`. The pieces wait in a pool of
+  blocks (`--binary-buffer-mb`) while their writes are on the io_uring of the shard; when the
+  pool is empty the runtime does not read the socket until a block is free. Over HTTP/2 the
+  body is complete in memory before it is stored, so its limit is the smaller of
   `--egress-max-body-mb` and `--binary-max-file-mb` (compiler-plan.md 9).
+  The service call `{ service: "binaryData", op: "metadata", args: { id } }` gives the JSON of
+  the companion file of a stored file (`{ fileName?, mimeType?, fileSize }`, the
+  `getBinaryMetadata` of n8n). A shard with the store reads the file itself, on its io_uring;
+  no call goes to n8n. The node compiler does not emit this call yet.
+  A body over `--binary-max-file-mb` fails the step with an error that ends with
+  `(limit: binary-max-file)`, and the part of the file is removed. v1 has no such limit, so the
+  node can run in the fallback host. n8n does not act on the marker yet: the run fails with
+  that error.
 * The runtime limits outbound requests per origin (scheme, host, port):
   connections, requests on the wire, waiting requests, a request rate, and
   connect and read timeouts (`wfrt serve --egress-origin`, workflow-runtime

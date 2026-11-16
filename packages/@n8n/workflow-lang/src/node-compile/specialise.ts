@@ -396,10 +396,14 @@ const HELPERS: Record<string, string> = {
 	else if (known[code] !== undefined) message = known[code];
 	else if (code.charAt(0) === '4') message = 'Your request is invalid or could not be processed by the service';
 	else if (code.charAt(0) === '5') message = 'The service failed to process your request';
+	let description: any = __apiDescription(cause, text, options);
+	if (message === '' && code === '') {
+		message = description ? description : 'There was an unknown issue while executing the node';
+		if (!description) description = 'Double-check the node configuration and the service it connects to. Check the error details below and refer to the <a href="https://docs.n8n.io" target="_blank">n8n documentation</a> to troubleshoot the issue.';
+	}
 	const failure: any = new Error(message);
 	failure.name = 'NodeApiError';
 	if (code !== '') failure.httpCode = code;
-	const description: any = __apiDescription(cause, text, options);
 	if (description && description !== message) failure.description = description;
 	return failure;
 }`,
@@ -420,22 +424,14 @@ const HELPERS: Record<string, string> = {
 		return text;
 	}
 }`,
-	__formText: `function __formText(value: any): string {
-	return encodeURIComponent(String(value))
-		.replaceAll('!', '%21')
-		.replaceAll("'", '%27')
-		.replaceAll('(', '%28')
-		.replaceAll(')', '%29')
-		.replaceAll('*', '%2A');
-}`,
-	__form: `function __form(value: any): string {
-	const parts: string[] = [];
+	__form: `function __form(value: any): any {
+	const fields: any = {};
 	for (const [key, member] of Object.entries(value)) {
 		if (member === undefined) continue;
 		if (member !== null && typeof member === 'object') throw new Error('a form body with a nested value has no compiled form');
-		parts.push(__formText(key) + '=' + (member === null ? '' : __formText(member)));
+		fields[key] = member === null ? null : String(member);
 	}
-	return parts.join('&');
+	return { $form: fields };
 }`,
 	__sendBody: `function __sendBody(body: any): any {
 	if (body !== null && body !== undefined && typeof body === 'object' && body.$bytes === true) throw new Error('a request body of file bytes has no compiled form');
@@ -771,7 +767,7 @@ const HELPERS: Record<string, string> = {
 }`,
 	__error: `function __error(cause: any, name: string, options: any): any {
 	if (cause !== null && cause !== undefined && typeof cause === 'object' && cause.name === name) return cause;
-	let message: string = typeof cause === 'string' ? cause : String(cause !== null && cause !== undefined && cause.message !== undefined ? cause.message : cause);
+	let message: string = typeof cause === 'string' ? cause : cause !== null && cause !== undefined && cause.message !== undefined ? String(cause.message) : cause !== null && typeof cause === 'object' ? '' : String(cause);
 	if (options !== null && options !== undefined && typeof options.message === 'string' && options.message !== '') message = options.message;
 	const failure: any = new Error(message);
 	failure.name = name;
@@ -2430,7 +2426,6 @@ class Specialiser {
 						'__apiError',
 						'__assign',
 						'__form',
-						'__formText',
 						'__formParts',
 						'__formPart',
 						'__sendBody',

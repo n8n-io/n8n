@@ -754,6 +754,14 @@ export async function differenceFromV1(
 			),
 		);
 		const type = request.headers['content-type'] ?? '';
+		const fields = isRecord(request.body) ? request.body.$form : undefined;
+		if (type.startsWith('application/x-www-form-urlencoded') && isRecord(fields)) {
+			const { 'content-type': _type, ...headers } = request.headers;
+			const sentFields: Record<string, string> = {};
+			for (const [key, value] of Object.entries(fields))
+				sentFields[key] = value === null ? '' : String(value);
+			return { ...request, headers, body: { $form: sentFields } };
+		}
 		const text = request.body ?? '';
 		if (type.startsWith('application/x-www-form-urlencoded') && typeof text === 'string') {
 			const { 'content-type': _type, ...headers } = request.headers;

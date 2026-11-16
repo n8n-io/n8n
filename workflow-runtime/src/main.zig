@@ -41,7 +41,8 @@ const usage =
     \\  asm <glue|w2|w3|w4> <out.wfm> [durability]   write a hand-assembled benchmark module
     \\  cron-next <cases.json>           next slots of cron expressions (differential test)
     \\  aot-gen <out.zig> <module.wfm>... write the compiled functions of the library code in the modules
-    \\  bench-node <module.wfm> <fixture.json> N   run the fixture N times in one core (CPU per execution)
+    \\  bench-node [--arena-mb M] <module.wfm> <fixture.json> N   run the fixture N times in one core (CPU per execution);
+    \\                                    --arena-mb: all memory of the run is one block of M MB (for Valgrind)
     \\  aot-check <module.wfm>...        list the library functions that have no compiled form
     \\
 ;
@@ -169,12 +170,16 @@ pub fn main(init: std.process.Init) !void {
         return;
     }
     if (std.mem.eql(u8, cmd, "bench-node") and args.len >= 5) {
-        const mod = try cwd.readFileAlloc(io, args[2], gpa, .limited(64 << 20));
+        // `--arena-mb M`: the memory of the run is one block of M MB, mapped once. A tool
+        // that cannot map what the run reserves by default (Valgrind) can then run it.
+        const arena_mb: ?u32 = if (std.mem.eql(u8, args[2], "--arena-mb") and args.len >= 7) try std.fmt.parseInt(u32, args[3], 10) else null;
+        const at: usize = if (arena_mb != null) 4 else 2;
+        const mod = try cwd.readFileAlloc(io, args[at], gpa, .limited(64 << 20));
         defer gpa.free(mod);
-        const fx = try cwd.readFileAlloc(io, args[3], gpa, .limited(64 << 20));
+        const fx = try cwd.readFileAlloc(io, args[at + 1], gpa, .limited(64 << 20));
         defer gpa.free(fx);
-        const n = try std.fmt.parseInt(u32, args[4], 10);
-        const ok = try fixture.bench(gpa, mod, fx, n);
+        const n = try std.fmt.parseInt(u32, args[at + 2], 10);
+        const ok = if (arena_mb) |mb| try benchNodeIn(mb, mod, fx, n) else try fixture.bench(gpa, mod, fx, n);
         try out.print("{d} of {d} ok\n", .{ ok, n });
         return;
     }
@@ -193,6 +198,34 @@ pub fn main(init: std.process.Init) !void {
         return;
     }
     try out.writeAll(usage);
+}
+
+/// `bench-node --arena-mb`: every allocation of the run comes from one block of `mb` MB.
+/// The scratch space and the static data table take at most an eighth of the block each;
+/// the other tables keep the sizes of `fixture.bench`.
+fn benchNodeIn(mb: u32, mod: []const u8, fx: []const u8, n: u32) !u32 {
+    const min_mb = 128;
+    const max_mb = 1 << 20;
+    if (mb < min_mb or mb > max_mb) {
+        std.debug.print("bench-node: --arena-mb must be from {d} to {d}\n", .{ min_mb, max_mb });
+        std.process.exit(2);
+    }
+    const bytes = @as(usize, mb) << 20;
+    const core = core_lib.core;
+    const block = try core_lib.arena.reserve(std.heap.page_allocator, u8, bytes);
+    defer std.heap.page_allocator.free(block);
+    var fixed = std.heap.FixedBufferAllocator.init(block);
+    const defaults: core.Config = .{};
+    const sizes: fixture.BenchSizes = .{
+        .scratch_bytes = @min(32 << 20, bytes / 8),
+        .max_static_data = @intCast(@min(defaults.max_static_data, bytes / 8 / defaults.static_data_bytes)),
+    };
+    std.debug.assert(sizes.scratch_bytes >= 1 << 20 and sizes.max_static_data >= 1);
+    return fixture.benchIn(fixed.allocator(), mod, fx, n, sizes) catch |e| {
+        if (e != error.OutOfMemory) return e;
+        std.debug.print("bench-node: the run needs more than --arena-mb {d}\n", .{mb});
+        std.process.exit(2);
+    };
 }
 
 fn serve(process_gpa: std.mem.Allocator, io: std.Io, args: []const [:0]const u8) !void {
