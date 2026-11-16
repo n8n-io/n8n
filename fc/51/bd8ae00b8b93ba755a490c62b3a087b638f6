@@ -1,0 +1,19 @@
+packages/quality/testing/playwright/pages/AgentBuilderPage.ts
+  s_a4391183eb34f9::t_a245a2a48ec4e4 129-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fc51bd8ae00b8b93ba755a490c62b3a087b638f6",
+  "prompts": {},
+  "sessions": {
+    "s_a4391183eb34f9": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1d080-e24d-75f9-b82c-04f2b1539bfa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
