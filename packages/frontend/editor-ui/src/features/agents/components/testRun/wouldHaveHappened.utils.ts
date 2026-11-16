@@ -76,7 +76,7 @@ export function formatExplicitEmpty(value: unknown): string | undefined {
 	return undefined;
 }
 
-/** Key/value pairs in input order. Only keys whose value is `undefined` are left out. */
+/** Key/value pairs in input order. Omits values that cannot be formatted for display. */
 export function previewEntries(record: Record<string, unknown> | undefined): PreviewEntry[] {
 	if (!record || typeof record !== 'object') return [];
 	return Object.entries(record).flatMap(([key, value]) => {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
 	clampText,
@@ -46,10 +46,16 @@ describe('wouldHaveHappened utils', () => {
 		expect(formatPreviewValue(circular)).toBeUndefined();
 	});
 
-	it('keeps entry order and drops empty values', () => {
+	it('keeps entry order and explicit empty values but omits undefined', () => {
 		expect(previewEntries({ b: 'two', a: undefined, c: 3 })).toEqual([
 			{ key: 'b', value: 'two' },
 			{ key: 'c', value: '3' },
+		]);
+		expect(previewEntries({ a: null, b: '', c: [], d: {}, e: undefined })).toEqual([
+			{ key: 'a', value: 'null' },
+			{ key: 'b', value: '""' },
+			{ key: 'c', value: '[]' },
+			{ key: 'd', value: '{}' },
 		]);
 	});
 
@@ -60,13 +66,26 @@ describe('wouldHaveHappened utils', () => {
 		// Would otherwise roll over to March 2.
 		expect(formatPreviewDate('2026-02-30', 'en-US')).toBe('2026-02-30');
 		expect(formatPreviewDate('2026-02-30T10:00:00Z', 'en-US')).toBe('2026-02-30T10:00:00Z');
-		// The repeated hour when daylight saving ends stays two different times.
-		const first = formatPreviewDate('2026-11-01T01:30:00-04:00', 'en-US');
-		const second = formatPreviewDate('2026-11-01T01:30:00-05:00', 'en-US');
-		expect(first).not.toBe(second);
-		expect(first).toMatch(/[A-Z]{2,}|GMT/);
 		expect(formatPreviewDate('2028-02-29', 'en-US')).toBe('Feb 29, 2028');
 		expect(formatPreviewDate('   ')).toBeUndefined();
+	});
+
+	it('distinguishes the repeated hour in a daylight-saving time zone', () => {
+		const DateTimeFormat = Intl.DateTimeFormat;
+		const spy = vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(function (locales, options) {
+			return new DateTimeFormat(locales, { ...options, timeZone: 'America/New_York' });
+		});
+		try {
+			const first = formatPreviewDate('2026-11-01T01:30:00-04:00', 'en-US');
+			const second = formatPreviewDate('2026-11-01T01:30:00-05:00', 'en-US');
+			expect(first).toContain('1:30 AM');
+			expect(second).toContain('1:30 AM');
+			expect(first).toContain('EDT');
+			expect(second).toContain('EST');
+			expect(first).not.toBe(second);
+		} finally {
+			spy.mockRestore();
+		}
 	});
 
 	it('clamps by lines and characters', () => {

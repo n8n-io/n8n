@@ -108,7 +108,7 @@ const meta = computed(() =>
 
 .titleBlock {
 	display: flex;
-	flex: 1 1 8rem;
+	flex: 1 1 var(--spacing--4xl);
 	flex-wrap: wrap;
 	align-items: baseline;
 	column-gap: var(--spacing--3xs);
