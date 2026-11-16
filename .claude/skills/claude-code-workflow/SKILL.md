@@ -85,3 +85,6 @@ description: How to run Claude Code sessions well and how to set up a repository
 - Cloud sessions are ephemeral: only what is committed and pushed survives.
 - A skill copied from the internet is code and instructions you execute: read it, check
   its licence and scan it for hidden instructions before installing.
+- More tips: `references/boris-cherny-tips.md` holds 153 public tips from the creator of
+  Claude Code (MIT, copied 2026-11-16). Search it by theme; check a tip against the current
+  docs before you apply it, because some tips are older than the product.
