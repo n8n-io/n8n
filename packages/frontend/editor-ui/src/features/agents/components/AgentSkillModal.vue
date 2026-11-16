@@ -362,6 +362,7 @@ const pickerItems = computed<SkillConnectionItem[]>(() =>
 const {
 	showRecommendedSkills,
 	trackExposure: trackRecommendedSkillsExposure,
+	trackCardsShown: trackRecommendedSkillsShown,
 	trackSkillAdded: trackRecommendedSkillAdded,
 } = useRecommendedSkillsExperiment();
 const recommendedSkillId = ref<RecommendedSkillId>();
@@ -375,16 +376,21 @@ const pickerItemsWithRecommended = computed<SkillConnectionItem[]>(() =>
 	showRecommendedSkills.value
 		? [
 				...pickerItems.value,
-				...RECOMMENDED_SKILLS.map((recommended) => ({
-					id: `recommended:${recommended.id}`,
-					kind: 'skill' as const,
-					skillId: recommended.id,
-					title: recommended.name,
-					description: i18n.baseText(recommended.cardTextKey),
-					category: 'recommended' as const,
-					status: 'none' as const,
-					attached: false,
-				})),
+				...RECOMMENDED_SKILLS.map((recommended) => {
+					const similarNameReason = getSimilarNameReason(recommended.name);
+					return {
+						id: `recommended:${recommended.id}`,
+						kind: 'skill' as const,
+						skillId: recommended.id,
+						title: recommended.name,
+						description: i18n.baseText(recommended.cardTextKey),
+						category: 'recommended' as const,
+						status: 'none' as const,
+						attached: false,
+						disabled: similarNameReason !== undefined,
+						...(similarNameReason ? { disabledReason: similarNameReason } : {}),
+					};
+				}),
 			]
 		: pickerItems.value,
 );
@@ -976,6 +982,7 @@ onMounted(() => {
 	if (hasPicker) {
 		void loadLibrarySkills();
 		trackRecommendedSkillsExposure();
+		if (showRecommendedSkills.value) trackRecommendedSkillsShown('agent_skill_modal');
 	}
 	if (props.data.skillId && props.data.skillRefsEnabled) void loadSkillAccess(props.data.skillId);
 });

@@ -120,12 +120,14 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 const recommendedSkills = vi.hoisted(() => ({
 	show: { value: false },
 	trackExposure: vi.fn(),
+	trackCardsShown: vi.fn(),
 	trackSkillAdded: vi.fn(),
 }));
 vi.mock('@/experiments/recommendedSkills/useRecommendedSkillsExperiment', () => ({
 	useRecommendedSkillsExperiment: () => ({
 		showRecommendedSkills: recommendedSkills.show,
 		trackExposure: recommendedSkills.trackExposure,
+		trackCardsShown: recommendedSkills.trackCardsShown,
 		trackSkillAdded: recommendedSkills.trackSkillAdded,
 	}),
 }));
@@ -911,6 +913,28 @@ describe('AgentSkillModal', () => {
 					'experiments.recommendedSkills.useAriaLabel humanizer',
 				);
 				expect(recommendedSkills.trackExposure).toHaveBeenCalledTimes(1);
+				expect(recommendedSkills.trackCardsShown).toHaveBeenCalledExactlyOnceWith(
+					'agent_skill_modal',
+				);
+			});
+
+			it('refuses a recommended skill with the name of an attached skill', async () => {
+				listAttachableSkills.mockResolvedValue([]);
+				const humanizer = RECOMMENDED_SKILLS.find(({ id }) => id === 'humanizer')!;
+				const humanizerLoad = vi.spyOn(humanizer, 'load');
+				const { findAllByTestId, getByTestId } = renderModal({
+					skillRefsEnabled: true,
+					getAttachedSkills: () => [{ id: 'mine', name: 'Humanizer' }],
+					onAttach: vi.fn(),
+				});
+
+				await fireEvent.click((await findAllByTestId('agent-skill-picker-row-open'))[0]);
+
+				expect(getByTestId('agent-skill-picker-disabled')).toHaveTextContent(
+					'agents.builder.skills.picker.similarName',
+				);
+				expect(humanizerLoad).not.toHaveBeenCalled();
+				expect(getByTestId('agent-skill-picker')).toBeVisible();
 			});
 
 			it('shows no recommended tab in the control group and still tracks the exposure', async () => {
@@ -924,6 +948,7 @@ describe('AgentSkillModal', () => {
 				expect(await findAllByTestId('agent-skill-picker-row')).toHaveLength(1);
 				expect(getByTestId('agent-skill-picker-tabs')).toHaveTextContent('all,project,global');
 				expect(recommendedSkills.trackExposure).toHaveBeenCalledTimes(1);
+				expect(recommendedSkills.trackCardsShown).not.toHaveBeenCalled();
 			});
 
 			it.each(['agent-skill-picker-row-open', 'agent-skill-picker-add'])(
@@ -1061,6 +1086,7 @@ describe('AgentSkillModal', () => {
 				renderModal({ settings: { scopeOptions: [] } });
 
 				expect(recommendedSkills.trackExposure).not.toHaveBeenCalled();
+				expect(recommendedSkills.trackCardsShown).not.toHaveBeenCalled();
 			});
 		});
 

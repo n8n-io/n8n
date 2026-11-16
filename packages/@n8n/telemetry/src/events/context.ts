@@ -445,7 +445,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 	USER_VIEWED_RECOMMENDED_SKILLS: {
 		name: 'User viewed recommended skills',
 		description:
-			'The recommended skill cards of experiment 143 appeared on the Skills settings page, in the empty state or in the dialog of the "Create skills" menu. Fires each time the cards appear.',
+			'The recommended skills of experiment 143 appeared: as cards on the Skills settings page (in the empty state or in the dialog of the "Create skills" menu), or in the skill picker of an agent. Fires each time the cards appear, and each time the skill picker opens.',
 		properties: z.object({
 			entry_point: recommendedSkillsEntryPoint,
 			variant: recommendedSkillsVariant,
