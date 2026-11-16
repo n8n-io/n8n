@@ -4,9 +4,9 @@
  * a batch with one change. The runtime calls this only on resume.
  */
 import {
-	DATA_TABLE_WRITE_TOOL_ACTIONS,
 	SPLIT_BUILDER_TOOLS,
 	getDataTableCallAction,
+	isDataTableWriteToolAction,
 	isFormerDataTablesTool,
 	type DataTableWriteToolAction,
 } from '@n8n/api-types';
@@ -22,10 +22,6 @@ type LegacyWriteInput = z.infer<(typeof WRITE_ACTION_SCHEMAS)[DataTableWriteTool
 /** Former names of the multi-action tool. Its stored calls carry `action`. */
 export const FORMER_DATA_TABLES_TOOL_NAMES =
 	Object.keys(SPLIT_BUILDER_TOOLS).filter(isFormerDataTablesTool);
-
-function isWriteAction(action: unknown): action is DataTableWriteToolAction {
-	return DATA_TABLE_WRITE_TOOL_ACTIONS.some((known) => known === action);
-}
 
 function toChange(input: LegacyWriteInput): DataTableChange {
 	switch (input.action) {
@@ -74,7 +70,7 @@ function toChange(input: LegacyWriteInput): DataTableChange {
 export function convertFormerDataTableCall(formerName: string, input: JSONValue): JSONValue {
 	if (!isRecord(input)) return input;
 	const action = getDataTableCallAction(formerName, input.action);
-	if (!isWriteAction(action)) return input;
+	if (!isDataTableWriteToolAction(action)) return input;
 	const parsed = WRITE_ACTION_SCHEMAS[action].safeParse({ ...input, action });
 	if (!parsed.success) return input;
 	const batch: ChangeDataTablesInput = { changes: [toChange(parsed.data)] };
