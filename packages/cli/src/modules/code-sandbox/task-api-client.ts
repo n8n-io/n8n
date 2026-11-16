@@ -29,7 +29,7 @@ export interface CreateCodeSandboxOptions {
 	/** A create with the name of a current sandbox returns that sandbox. */
 	name?: string;
 	runtime: string;
-	slots: number;
+	maxConcurrency: number;
 	taskMemoryMb: number;
 	spareWorkers: boolean;
 	reuseWorkers: boolean;
@@ -45,7 +45,7 @@ export interface CodeSandbox {
 	created?: boolean;
 	runtime: string;
 	runtimeVersion: string;
-	slots: number;
+	maxConcurrency: number;
 	state: string;
 	/** Worker processes started since the sandbox started (GET only). */
 	workersStarted?: number;
@@ -83,7 +83,7 @@ export interface CodeTaskOutput {
 }
 
 export interface DaemonTimings {
-	slotWait?: number;
+	laneWait?: number;
 	inputWrite?: number;
 	handoff?: number;
 	run?: number;
@@ -137,7 +137,7 @@ export interface CodeTaskRpcEvent {
 }
 
 export type CodeTaskEvent =
-	| { type: 'accepted'; taskId: string; slot: number }
+	| { type: 'accepted'; taskId: string; lane: number }
 	| { type: 'stdout'; data: string }
 	| { type: 'stderr'; data: string }
 	| CodeTaskRpcEvent

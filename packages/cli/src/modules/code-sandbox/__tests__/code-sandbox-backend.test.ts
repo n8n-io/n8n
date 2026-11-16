@@ -133,7 +133,7 @@ function setup(runTask: RunTask, lang: Lang = JS) {
 describe('CodeSandboxBackend RPC over the task stream', () => {
 	it('answers an rpc event in the background and posts the result', async () => {
 		const t = setup(async (_s, _spec, _i, onEvent) => {
-			onEvent({ type: 'accepted', taskId: 't1', slot: 0 });
+			onEvent({ type: 'accepted', taskId: 't1', lane: 0 });
 			onEvent(rpcEvent);
 			// onEvent returned while the helper still runs.
 			expect(t.helperCalls).toHaveLength(1);
@@ -154,7 +154,7 @@ describe('CodeSandboxBackend RPC over the task stream', () => {
 
 	it('retries a failed result post one time', async () => {
 		const t = setup(async (_s, _spec, _i, onEvent) => {
-			onEvent({ type: 'accepted', taskId: 't1', slot: 0 });
+			onEvent({ type: 'accepted', taskId: 't1', lane: 0 });
 			onEvent(rpcEvent);
 			t.resolveHelper('ok');
 			await vi.waitFor(() => expect(t.posted).toHaveLength(1));
@@ -168,7 +168,7 @@ describe('CodeSandboxBackend RPC over the task stream', () => {
 
 	it('fails the task when the result cannot be sent, and keeps the cached sandbox on an HTTP error', async () => {
 		const t = setup(async (_s, _spec, _i, onEvent, signal) => {
-			onEvent({ type: 'accepted', taskId: 't1', slot: 0 });
+			onEvent({ type: 'accepted', taskId: 't1', lane: 0 });
 			onEvent(rpcEvent);
 			t.resolveHelper('ok');
 			return await untilAborted(signal);
@@ -184,7 +184,7 @@ describe('CodeSandboxBackend RPC over the task stream', () => {
 
 	it('forgets the cached sandbox when the result post has a transport error', async () => {
 		const t = setup(async (_s, _spec, _i, onEvent, signal) => {
-			onEvent({ type: 'accepted', taskId: 't1', slot: 0 });
+			onEvent({ type: 'accepted', taskId: 't1', lane: 0 });
 			onEvent(rpcEvent);
 			t.resolveHelper('ok');
 			return await untilAborted(signal);
@@ -199,7 +199,7 @@ describe('CodeSandboxBackend RPC over the task stream', () => {
 
 	it('does not retry a 4xx result post', async () => {
 		const t = setup(async (_s, _spec, _i, onEvent, signal) => {
-			onEvent({ type: 'accepted', taskId: 't1', slot: 0 });
+			onEvent({ type: 'accepted', taskId: 't1', lane: 0 });
 			onEvent(rpcEvent);
 			t.resolveHelper('ok');
 			return await untilAborted(signal);
@@ -212,7 +212,7 @@ describe('CodeSandboxBackend RPC over the task stream', () => {
 
 	it('does not answer an rpc event after a cancel', async () => {
 		const t = setup(async (_s, _spec, _i, onEvent) => {
-			onEvent({ type: 'accepted', taskId: 't1', slot: 0 });
+			onEvent({ type: 'accepted', taskId: 't1', lane: 0 });
 			t.cancel.abort();
 			onEvent(rpcEvent);
 			const ev: CodeTaskErrorEvent = { type: 'error', code: 'cancelled', message: 'cancelled' };
@@ -229,7 +229,7 @@ describe('CodeSandboxBackend RPC over the task stream', () => {
 	it('does not answer an rpc event before accepted', async () => {
 		const t = setup(async (_s, _spec, _i, onEvent) => {
 			onEvent(rpcEvent);
-			onEvent({ type: 'accepted', taskId: 't1', slot: 0 });
+			onEvent({ type: 'accepted', taskId: 't1', lane: 0 });
 			return doneEvent;
 		});
 
@@ -243,7 +243,7 @@ describe('CodeSandboxBackend rejections before accepted', () => {
 		let uploadSignal: AbortSignal | undefined;
 		const t = setup(async (_s, _spec, _i, _onEvent, signal) => {
 			uploadSignal = signal;
-			throw new TaskApiError('no free slot', 429);
+			throw new TaskApiError('no free lane', 429);
 		});
 		await expect(t.run()).rejects.toBeInstanceOf(SandboxFullError);
 		expect(uploadSignal?.aborted).toBe(true);
@@ -269,7 +269,7 @@ describe('CodeSandboxBackend rejections before accepted', () => {
 		vi.useFakeTimers();
 		try {
 			const t = setup(async (_s, _spec, _i, onEvent, signal) => {
-				onEvent({ type: 'accepted', taskId: 't1', slot: 0 });
+				onEvent({ type: 'accepted', taskId: 't1', lane: 0 });
 				t.cancel.abort();
 				return await untilAborted(signal);
 			});
@@ -292,7 +292,7 @@ describe('CodeSandboxBackend Python tasks', () => {
 
 	it('refuses RPC calls of a Python task', async () => {
 		const t = setup(async (_s, _spec, _i, onEvent) => {
-			onEvent({ type: 'accepted', taskId: 't1', slot: 0 });
+			onEvent({ type: 'accepted', taskId: 't1', lane: 0 });
 			onEvent(rpcEvent);
 			await vi.waitFor(() => expect(t.posted).toHaveLength(1));
 			return doneEvent;
@@ -305,7 +305,7 @@ describe('CodeSandboxBackend Python tasks', () => {
 
 	it('logs the print output of a failed Python task and keeps it out of the error', async () => {
 		const t = setup(async (_s, _spec, _i, onEvent) => {
-			onEvent({ type: 'accepted', taskId: 't1', slot: 0 });
+			onEvent({ type: 'accepted', taskId: 't1', lane: 0 });
 			return {
 				type: 'error',
 				code: 'user_error',
@@ -336,7 +336,7 @@ describe('CodeSandboxBackend Python tasks', () => {
 			outputs: [{ path: 'result.json', size: 10 }],
 		};
 		const t = setup(async (_s, _spec, _i, onEvent) => {
-			onEvent({ type: 'accepted', taskId: 't1', slot: 0 });
+			onEvent({ type: 'accepted', taskId: 't1', lane: 0 });
 			return done;
 		}, PY);
 

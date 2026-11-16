@@ -28,7 +28,7 @@ export interface TaskTimingRecord {
 	fullRejects?: number;
 	goneRetries?: number;
 	/** Time spent waiting after all shards of the scope were full. */
-	slotWaitMs?: number;
+	laneWaitMs?: number;
 	t_acquire?: number;
 	t_create?: number;
 	createTimings?: unknown;

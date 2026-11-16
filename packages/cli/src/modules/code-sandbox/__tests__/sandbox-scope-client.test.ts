@@ -60,7 +60,7 @@ class FakeService {
 function setup(scope: Scope = 'execution', overrides: Partial<CodeSandboxConfig> = {}) {
 	const config = {
 		scope,
-		slots: 2,
+		maxConcurrency: 2,
 		maxPerKey: 3,
 		maxQueueMs: 1_000,
 		idleTimeoutMs: 30_000,
@@ -88,7 +88,7 @@ describe('sandboxName', () => {
 	const options = {
 		runtime: 'n8n-js',
 		runtimeVersion: '2.0.0',
-		slots: 2,
+		maxConcurrency: 2,
 		taskMemoryMb: 512,
 		spareWorkers: true,
 		reuseWorkers: false,
@@ -103,7 +103,7 @@ describe('sandboxName', () => {
 		const base = sandboxName('w:1', options, 0);
 		expect(sandboxName('w:2', options, 0)).not.toBe(base);
 		expect(sandboxName('w:1', options, 1)).not.toBe(base);
-		expect(sandboxName('w:1', { ...options, slots: 4 }, 0)).not.toBe(base);
+		expect(sandboxName('w:1', { ...options, maxConcurrency: 4 }, 0)).not.toBe(base);
 		expect(sandboxName('w:1', { ...options, runtime: 'n8n-py' }, 0)).not.toBe(base);
 		expect(sandboxName('w:1', { ...options, runtimeVersion: '2.0.1' }, 0)).not.toBe(base);
 	});
@@ -120,7 +120,7 @@ describe('SandboxScopeClient', () => {
 		expect(service.requests[0]).toMatchObject({
 			name: seen[0].name,
 			runtime: 'n8n-js',
-			slots: 2,
+			maxConcurrency: 2,
 			idleTimeoutMs: 30_000,
 			labels: { scopeKey: 'e:1', scopeType: 'execution', n8nProcessId: 'worker-1' },
 		});

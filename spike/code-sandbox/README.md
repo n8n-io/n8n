@@ -24,7 +24,7 @@ in the `spike/code-task-api-opus` branch of `n8n-sandbox-service`.
 The backend follows step B of `design/HIGH-LEVEL-DESIGN-v2.md` (§5.5):
 
 - The sandbox of a scope shard has a name:
-  `c1-` + sha256(scope key, runtime, n8n version, slots, taskMemoryMb,
+  `c1-` + sha256(scope key, runtime, n8n version, maxConcurrency, taskMemoryMb,
   spareWorkers, reuseWorkers, shard). All n8n processes compute the same name,
   so they share the sandbox.
 - `SandboxScopeClient` caches name → sandbox id. Without a cached id it sends
@@ -102,7 +102,7 @@ $R fetch run5                           # to /tmp/n8n-spike/remote/run5
 
 The Firecracker runner restores code sandboxes from one golden code snapshot.
 The snapshot holds the code daemon with the `execution` + `shared` options
-(`n8n-js`, 2 slots, 512 MB, spare and reuse on) and its ready worker process.
+(`n8n-js`, max concurrency 2, 512 MB, spare and reuse on) and its ready worker process.
 The runner refuses other options. The API and the runner run as host processes
 (`scripts/fc-stack.sh`), not in Docker.
 
@@ -169,11 +169,11 @@ W10 (live console output) needs a manual run of the "W10" workflow in the editor
 | `N8N_CODE_SANDBOX_SCOPE` | `execution` | `node`, `execution` or `workflow` |
 | `N8N_CODE_SANDBOX_IDLE_TIMEOUT_MS` | `30000` | Sent as `idleTimeoutMs`: the service deletes an idle sandbox |
 | `N8N_CODE_SANDBOX_MAX_LIFETIME_MS` | `60000` | `workflow` scope: sent as `maxAgeMs`. The service drains the sandbox after this time |
-| `N8N_CODE_SANDBOX_SLOTS` | `1` / `2` / `4` | Slots per sandbox (node / execution / workflow) |
+| `N8N_CODE_SANDBOX_MAX_CONCURRENCY` | `1` / `2` / `4` | Tasks that run at the same time (lanes) per sandbox (node / execution / workflow) |
 | `N8N_CODE_SANDBOX_MAX_PER_KEY` | `4` | Sandboxes (shards) per scope key, for all n8n processes |
 | `N8N_CODE_SANDBOX_MAX_QUEUE_MS` | `60000` | How long a task retries when all shards of its scope are full |
-| `N8N_CODE_SANDBOX_SPARE_WORKERS` | `true` | Each slot keeps a started worker |
-| `N8N_CODE_SANDBOX_REUSE_WORKERS` | `false` | One shared worker process runs all tasks of a sandbox, at the same time up to the slot count. Each task has its own scope for the built-ins. The module cache, changes to built-in objects and globals that sloppy code creates are shared while tasks run. A timeout or cancel drops the task, and the process is replaced when no task runs in it. If the process does not respond, the daemon kills it at once and the other running tasks fail |
+| `N8N_CODE_SANDBOX_SPARE_WORKERS` | `true` | Each lane keeps a started worker |
+| `N8N_CODE_SANDBOX_REUSE_WORKERS` | `false` | One shared worker process runs all tasks of a sandbox, at the same time up to the max concurrency. Each task has its own scope for the built-ins. The module cache, changes to built-in objects and globals that sloppy code creates are shared while tasks run. A timeout or cancel drops the task, and the process is replaced when no task runs in it. If the process does not respond, the daemon kills it at once and the other running tasks fail |
 | `N8N_CODE_SANDBOX_TASK_MEMORY_MB` | `512` | Memory per task |
 | `N8N_CODE_SANDBOX_RUNTIME` | `n8n-js` | `n8n-js` (startup snapshot) or `n8n-js-nosnapshot` |
 | `N8N_CODE_SANDBOX_TIMINGS` | `true` | Write `code_sandbox_task` and `code_sandbox_event` records to stdout |

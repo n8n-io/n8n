@@ -4,7 +4,7 @@
  *
  * Two modes, set by the `start` message:
  *
- * - One task (default): the worker runs one task in its slot folder, writes
+ * - One task (default): the worker runs one task in its lane folder, writes
  *   `out/result.json`, sends `done` or `error` and exits. Console output goes
  *   to stdout and stderr, which the daemon streams to n8n.
  * - Shared (`shared: true`, reuse mode): the worker is the one process of the

@@ -11,7 +11,7 @@
  *   reuse            worker reuse, spare workers on
  *
  * Counts per sandbox (checked by TestWorkersStarted in the code daemon):
- *   per-task:         slots (first spares) + tasks (one new spare after each task)
+ *   per-task:         maxConcurrency (first spares, one per lane) + tasks (one new spare after each task)
  *   per-task-nospare: tasks
  *   reuse:            1 shared process + 1 per task that ended it (crash, out of memory, or a
  *                     timeout or cancel that the process did not confirm). The computed count
@@ -22,7 +22,7 @@
  */
 import { readFileSync } from 'node:fs';
 
-const DEFAULT_SLOTS = { node: 1, execution: 2, workflow: 4 };
+const DEFAULT_MAX_CONCURRENCY = { node: 1, execution: 2, workflow: 4 };
 const KILLING_OUTCOMES = new Set(['timeout', 'cancelled', 'oom', 'infra_error']);
 
 function workloadOf(workflowId = '') {
@@ -42,10 +42,10 @@ for (const arg of process.argv.slice(2)) {
 		.filter((l) => l.startsWith('{"type":"code_sandbox_'))
 		.map((l) => JSON.parse(l));
 	const tasks = records.filter((r) => r.type === 'code_sandbox_task' && r.sandboxId);
-	// Slots per sandbox from the lease records. A lease that n8n released at
+	// Max concurrency per sandbox from the lease records. A lease that n8n released at
 	// shutdown can miss its record, so fall back to the default of the scope.
-	const slotsBySandbox = new Map(
-		records.filter((r) => r.type === 'code_sandbox_lease').map((l) => [l.sandboxId, l.slots]),
+	const maxConcurrencyBySandbox = new Map(
+		records.filter((r) => r.type === 'code_sandbox_lease').map((l) => [l.sandboxId, l.maxConcurrency]),
 	);
 	const measuredBySandbox = new Map(
 		records
@@ -60,7 +60,7 @@ for (const arg of process.argv.slice(2)) {
 	}
 	for (const [sandboxId, own] of tasksBySandbox) {
 		const first = own[0];
-		const slots = slotsBySandbox.get(sandboxId) ?? DEFAULT_SLOTS[first.scopeMode];
+		const maxConcurrency = maxConcurrencyBySandbox.get(sandboxId) ?? DEFAULT_MAX_CONCURRENCY[first.scopeMode];
 		const key = `${workloadOf(first.workflowId)}|${first.scopeMode}|${mode}`;
 		const row = rows.get(key) ?? {
 			executions: new Set(),
@@ -76,7 +76,7 @@ for (const arg of process.argv.slice(2)) {
 		row.tasks += own.length;
 		for (const t of own) if (t.executionId) row.executions.add(t.executionId);
 		let computed;
-		if (mode === 'per-task') computed = slots + own.length;
+		if (mode === 'per-task') computed = maxConcurrency + own.length;
 		else if (mode === 'per-task-nospare') computed = own.length;
 		else computed = 1 + own.filter((t) => KILLING_OUTCOMES.has(t.outcome)).length;
 		row.started += computed;

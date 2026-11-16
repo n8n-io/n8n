@@ -78,7 +78,7 @@ restart_api() {
 		wait_pool "$pooled"
 	else
 		for i in $(seq 1 120); do
-			id=$(curl -sf -X POST -H "X-Api-Key: $KEY" -H "Content-Type: application/json" -d '{"slots":1}' "$API/v1/code/sandboxes" | node -e '
+			id=$(curl -sf -X POST -H "X-Api-Key: $KEY" -H "Content-Type: application/json" -d '{"maxConcurrency":1}' "$API/v1/code/sandboxes" | node -e '
 				let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => console.log(JSON.parse(s || "{}").id ?? ""));')
 			if [[ -n "$id" ]]; then
 				curl -s -o /dev/null -X DELETE -H "X-Api-Key: $KEY" "$API/v1/code/sandboxes/$id"
@@ -97,7 +97,7 @@ start_load_sampler "$AB/load-avg.txt"
 trap 'stop_n8n; stop_load_sampler; rmdir "$LOCK"' EXIT
 trap 'exit 143' INT TERM
 
-pool_json() { echo "[{\"runtime\":\"n8n-js\",\"slots\":$1,\"taskMemoryMb\":$2,\"spareWorkers\":true,\"reuseWorkers\":true,\"size\":$3}]"; }
+pool_json() { echo "[{\"runtime\":\"n8n-js\",\"maxConcurrency\":$1,\"taskMemoryMb\":$2,\"spareWorkers\":true,\"reuseWorkers\":true,\"size\":$3}]"; }
 
 # 1. Direct Task API benchmark: creates one at a time and in bursts.
 K6_POOL_SIZE="${K6_POOL_SIZE:-8}"
@@ -119,12 +119,12 @@ done
 
 # 2. Latency pass and n8n benchmark for each scope: reuse, then reuse + pool.
 for spec in "execution 2 ${POOL_EXECUTION:-8}" "node 1 ${POOL_NODE:-8}" "workflow 4 ${POOL_WORKFLOW:-4}"; do
-	read -r scope slots size <<<"$spec"
+	read -r scope max_concurrency size <<<"$spec"
 	for mode in nopool pool; do
 		suffix=""
 		if [[ "$mode" == "pool" ]]; then
 			suffix="-pool"
-			restart_api "$(pool_json "$slots" 512 "$size")" "$size"
+			restart_api "$(pool_json "$max_concurrency" 512 "$size")" "$size"
 		else
 			restart_api "" 0
 		fi

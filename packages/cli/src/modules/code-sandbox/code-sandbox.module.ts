@@ -20,7 +20,7 @@ export class CodeSandboxModule implements ModuleInterface {
 		Container.get(Logger).info('Code sandbox backend enabled for Code tasks', {
 			languages: config.pythonEnabled ? ['javascript', 'python'] : ['javascript'],
 			scope: config.scope,
-			slots: config.slots,
+			maxConcurrency: config.maxConcurrency,
 			idleTimeoutMs: config.idleTimeoutMs,
 			maxLifetimeMs: config.maxLifetimeMs,
 			maxPerKey: config.maxPerKey,

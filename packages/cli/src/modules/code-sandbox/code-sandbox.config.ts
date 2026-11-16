@@ -7,8 +7,12 @@ const scopeSchema = z.enum(['node', 'execution', 'workflow']);
 export type CodeExecutionBackend = z.infer<typeof backendSchema>;
 export type CodeSandboxScope = z.infer<typeof scopeSchema>;
 
-/** Default slots per sandbox for each scope mode. */
-const DEFAULT_SLOTS: Record<CodeSandboxScope, number> = { node: 1, execution: 2, workflow: 4 };
+/** Default max concurrency per sandbox for each scope mode. */
+const DEFAULT_MAX_CONCURRENCY: Record<CodeSandboxScope, number> = {
+	node: 1,
+	execution: 2,
+	workflow: 4,
+};
 
 /**
  * Configuration of the code sandbox backend (spike). With
@@ -35,9 +39,12 @@ export class CodeSandboxConfig {
 	@Env('N8N_CODE_SANDBOX_MAX_LIFETIME_MS')
 	maxLifetimeMs: number = 60_000;
 
-	/** Task slots per sandbox. 0 means the default of the scope mode. */
-	@Env('N8N_CODE_SANDBOX_SLOTS')
-	slotsOverride: number = 0;
+	/**
+	 * Tasks that run at the same time in one sandbox (lanes). 0 means the default
+	 * of the scope mode.
+	 */
+	@Env('N8N_CODE_SANDBOX_MAX_CONCURRENCY')
+	maxConcurrencyOverride: number = 0;
 
 	/**
 	 * Maximum sandboxes (shards) for one scope key, for all n8n processes
@@ -50,14 +57,14 @@ export class CodeSandboxConfig {
 	@Env('N8N_CODE_SANDBOX_MAX_QUEUE_MS')
 	maxQueueMs: number = 60_000;
 
-	/** Each slot keeps a started worker process. */
+	/** Each lane keeps a started worker process. */
 	@Env('N8N_CODE_SANDBOX_SPARE_WORKERS')
 	spareWorkers: boolean = true;
 
 	/**
-	 * Run all tasks of a sandbox in one shared worker process. The slots limit
-	 * how many tasks run at the same time. The process, its module cache and
-	 * changes to built-in objects stay between tasks.
+	 * Run all tasks of a sandbox in one shared worker process. The max
+	 * concurrency limits how many tasks run at the same time. The process, its
+	 * module cache and changes to built-in objects stay between tasks.
 	 */
 	@Env('N8N_CODE_SANDBOX_REUSE_WORKERS')
 	reuseWorkers: boolean = false;
@@ -108,7 +115,9 @@ export class CodeSandboxConfig {
 		return jobType === 'python' && this.pythonEnabled;
 	}
 
-	get slots() {
-		return this.slotsOverride > 0 ? this.slotsOverride : DEFAULT_SLOTS[this.scope];
+	get maxConcurrency() {
+		return this.maxConcurrencyOverride > 0
+			? this.maxConcurrencyOverride
+			: DEFAULT_MAX_CONCURRENCY[this.scope];
 	}
 }

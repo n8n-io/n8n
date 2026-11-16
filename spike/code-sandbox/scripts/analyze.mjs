@@ -72,7 +72,7 @@ const taskFields = [
 	't_run',
 	't_accept_to_done',
 	't_outputs',
-	'slotWaitMs',
+	'laneWaitMs',
 	'bytes_task_json',
 	'rpc_count',
 	't_rpc_post',

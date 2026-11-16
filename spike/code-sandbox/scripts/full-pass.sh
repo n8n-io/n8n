@@ -56,8 +56,8 @@ FC=false
 [[ "$RUNNER_BACKEND" == "firecracker" ]] && FC=true
 # The create that checks that a runner takes creates. A Firecracker runner
 # takes the options of its code snapshot only.
-PROBE_CREATE_OPTIONS='{"slots":1}'
-$FC && PROBE_CREATE_OPTIONS='{"runtime":"n8n-js","slots":2,"taskMemoryMb":512,"spareWorkers":true,"reuseWorkers":true}'
+PROBE_CREATE_OPTIONS='{"maxConcurrency":1}'
+$FC && PROBE_CREATE_OPTIONS='{"runtime":"n8n-js","maxConcurrency":2,"taskMemoryMb":512,"spareWorkers":true,"reuseWorkers":true}'
 AB="${AB_DIR:-$SPIKE_DIR/v2}"
 mkdir -p "$AB"
 S=spike/code-sandbox/scripts
@@ -154,16 +154,16 @@ restart_api() {
 	sleep 5
 }
 
-# pool_json SLOTS SIZE: one pool of SIZE per runtime of POOL_RUNTIMES.
+# pool_json MAX_CONCURRENCY SIZE: one pool of SIZE per runtime of POOL_RUNTIMES.
 pool_json() {
 	local rt out=""
 	for rt in $POOL_RUNTIMES; do
-		out+="${out:+,}{\"runtime\":\"$rt\",\"slots\":$1,\"taskMemoryMb\":512,\"spareWorkers\":true,\"reuseWorkers\":true,\"size\":$2}"
+		out+="${out:+,}{\"runtime\":\"$rt\",\"maxConcurrency\":$1,\"taskMemoryMb\":512,\"spareWorkers\":true,\"reuseWorkers\":true,\"size\":$2}"
 	done
 	echo "[$out]"
 }
 pool_count() { echo $(($1 * $(wc -w <<<"$POOL_RUNTIMES"))); }
-slots_of() { case "$1" in node) echo 1 ;; execution) echo 2 ;; workflow) echo 4 ;; esac; }
+max_concurrency_of() { case "$1" in node) echo 1 ;; execution) echo 2 ;; workflow) echo 4 ;; esac; }
 pool_size_of() { case "$1" in node) echo "${POOL_NODE:-8}" ;; execution) echo "${POOL_EXECUTION:-8}" ;; workflow) echo "${POOL_WORKFLOW:-4}" ;; esac; }
 
 POLL=""
@@ -258,7 +258,7 @@ if has modes; then
 			[[ "$opt" != "fresh-spare" ]] && reuse=true
 			if [[ "$opt" == "shared-pool" ]]; then
 				size="$(pool_size_of "$scope")"
-				restart_api "$(pool_json "$(slots_of "$scope")" "$size")" "$(pool_count "$size")"
+				restart_api "$(pool_json "$(max_concurrency_of "$scope")" "$size")" "$(pool_count "$size")"
 				suffix="-pool"
 			else
 				size=0

@@ -446,7 +446,7 @@ for (const m of MODES) for (const o of OPTIONS) {
 	const cur = stats(procs.map((x) => x.memoryCurrentBytes / MiB));
 	rows71.push([`\`${m}\``, OPTION_LABEL[o], { node: 1, execution: 2, workflow: 4 }[m], r(s.p50), r(s.p95), r(s.max), `${r(cur.p50)}`, r(stats(c.poll.map((x) => x.codeSandboxes)).max), pollMem(c.poll), s.n]);
 }
-table(['Mode', 'Option', 'Slots', 'Peak p50', 'Peak p95', 'Peak max', 'At delete p50', 'Concurrent sandboxes, max', 'Runner total, max (MiB)', 'sandboxes'], rows71);
+table(['Mode', 'Option', 'Max concurrency', 'Peak p50', 'Peak p95', 'Peak max', 'At delete p50', 'Concurrent sandboxes, max', 'Runner total, max (MiB)', 'sandboxes'], rows71);
 p('Idle sandboxes (direct pass, no task, read after 30 s):');
 const idleRows = [];
 for (const m of MODES) for (const o of ['fresh-spare', 'shared']) {

@@ -59,7 +59,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 /** The create options of the `shared` option in `execution` mode. The pool uses the same. */
 export const poolOptions = {
 	runtime: 'n8n-js',
-	slots: 2,
+	maxConcurrency: 2,
 	taskMemoryMb: 512,
 	spareWorkers: true,
 	reuseWorkers: true,
@@ -196,7 +196,7 @@ switch (step) {
 		// Without spare processes, each task starts its own process. The daemon
 		// hand-off time is the process start until it is ready.
 		for (const runtime of ['n8n-js', 'n8n-js-nosnapshot']) {
-			const { sb } = await create({ ...poolOptions, runtime, slots: 1, spareWorkers: false, reuseWorkers: false });
+			const { sb } = await create({ ...poolOptions, runtime, maxConcurrency: 1, spareWorkers: false, reuseWorkers: false });
 			try {
 				for (let i = 0; i < Number(args.tasks); i++) {
 					const { ms, timings } = await runTask(sb.id, 'return 1');
@@ -211,7 +211,7 @@ switch (step) {
 	case 'idle': {
 		// CPU and memory of a sandbox that runs no task, per mode and option.
 		const combos = [];
-		for (const [mode, slots] of [
+		for (const [mode, maxConcurrency] of [
 			['node', 1],
 			['execution', 2],
 			['workflow', 4],
@@ -220,7 +220,7 @@ switch (step) {
 				['fresh-spare', false],
 				['shared', true],
 			]) {
-				combos.push({ mode, option, opts: { ...poolOptions, slots, reuseWorkers } });
+				combos.push({ mode, option, opts: { ...poolOptions, maxConcurrency, reuseWorkers } });
 			}
 		}
 		if (args.combos) {
@@ -243,7 +243,7 @@ switch (step) {
 			record({
 				mode: c.mode,
 				option: c.option,
-				slots: c.opts.slots,
+				maxConcurrency: c.opts.maxConcurrency,
 				waitMs,
 				uptimeMs: st.uptimeMs,
 				cpuUsageUsec: st.cpuUsageUsec,

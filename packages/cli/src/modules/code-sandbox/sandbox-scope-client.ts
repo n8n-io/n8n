@@ -14,7 +14,7 @@ import { TaskApiClient, TaskApiError, type CodeSandbox } from './task-api-client
 export interface SandboxOptions {
 	runtime: string;
 	runtimeVersion: string;
-	slots: number;
+	maxConcurrency: number;
 	taskMemoryMb: number;
 	spareWorkers: boolean;
 	reuseWorkers: boolean;
@@ -45,7 +45,7 @@ export interface PlacementStats {
 	waitMs: number;
 }
 
-/** The sandbox has no free slot (429). The task did not start. */
+/** The sandbox has no free lane (429). The task did not start. */
 export class SandboxFullError extends Error {}
 
 /** The sandbox drains (410) or is gone (404). The task did not start. */
@@ -72,7 +72,7 @@ export function sandboxName(scopeKey: string, options: SandboxOptions, shard: nu
 		scopeKey,
 		options.runtime,
 		options.runtimeVersion,
-		options.slots,
+		options.maxConcurrency,
 		options.taskMemoryMb,
 		options.spareWorkers,
 		options.reuseWorkers,
@@ -98,7 +98,7 @@ class BoundedMap<K, V> extends Map<K, V> {
 /**
  * Places code tasks in sandboxes of the sandbox service (step B of the
  * design): the sandbox of a scope shard has a computed name, so all n8n
- * processes share it. This class keeps no slots and no queue. It caches
+ * processes share it. This class keeps no lanes and no queue. It caches
  * name → sandbox id, tries the next shard when a sandbox is full, and creates
  * the name again when the sandbox drains or is gone. The service runs the idle
  * timeout and the max age.
@@ -140,7 +140,7 @@ export class SandboxScopeClient {
 		return {
 			runtime,
 			runtimeVersion: N8N_VERSION,
-			slots: this.config.slots,
+			maxConcurrency: this.config.maxConcurrency,
 			taskMemoryMb: this.config.taskMemoryMb,
 			spareWorkers: this.config.spareWorkers,
 			reuseWorkers: this.config.reuseWorkers,
@@ -272,7 +272,7 @@ export class SandboxScopeClient {
 		const request = {
 			name,
 			runtime: options.runtime,
-			slots: options.slots,
+			maxConcurrency: options.maxConcurrency,
 			taskMemoryMb: options.taskMemoryMb,
 			spareWorkers: options.spareWorkers,
 			reuseWorkers: options.reuseWorkers,
@@ -350,7 +350,7 @@ export class SandboxScopeClient {
 					this.timings.event('processes', {
 						sandboxId,
 						runtime: sb.runtime,
-						slots: sb.slots,
+						maxConcurrency: sb.maxConcurrency,
 						workersStarted: sb.workersStarted,
 						cpuUsageUsec: sb.cpuUsageUsec,
 						memoryPeakBytes: sb.memoryPeakBytes,

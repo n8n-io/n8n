@@ -326,7 +326,7 @@ export class CodeSandboxBackend {
 			rec.attempts = stats.attempts;
 			rec.fullRejects = stats.fullRejects;
 			rec.goneRetries = stats.goneRetries;
-			rec.slotWaitMs = stats.waitMs;
+			rec.laneWaitMs = stats.waitMs;
 			// A random key is single-use.
 			if (random) this.scopes.closeScope(key, lang.runtime);
 		}
