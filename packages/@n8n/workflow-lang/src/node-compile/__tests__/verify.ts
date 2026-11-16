@@ -2,7 +2,12 @@ import { createHash } from 'node:crypto';
 
 import { Writer } from '../../convert/code.ts';
 import { helperSources } from '../../convert/helpers.ts';
-import { emitContinueLoop, errorRetryOf } from '../../convert/steps.ts';
+import {
+	emitContinueLoop,
+	emitContinueOnce,
+	errorRetryOf,
+	pairedOutputOf,
+} from '../../convert/steps.ts';
 import { withDerivedValues } from '../../credentials/derived.ts';
 import { credentialFlagKey } from '../../credentials/flags.ts';
 import { deriveInject } from '../../credentials/inject.ts';
@@ -201,6 +206,8 @@ export function compileForCheck(
 	instance: { type: string; version: number; parameters: Record<string, unknown> },
 	credentials: Record<string, PublicCredential>,
 	errorMode: ErrorMode = 'stopWorkflow',
+	pairedOutput = false,
+	deferred: string[] = [],
 ): Compiled {
 	const key = JSON.stringify([
 		instance.type,
@@ -208,6 +215,8 @@ export function compileForCheck(
 		instance.parameters,
 		credentials,
 		errorMode,
+		pairedOutput,
+		deferred,
 	]);
 	const found = recent.find((entry) => entry.sources === sources && entry.key === key);
 	if (found) return found.compiled;
@@ -219,6 +228,8 @@ export function compileForCheck(
 		V1_TIMEZONE,
 		V1_FACTS,
 		errorMode,
+		deferred,
+		pairedOutput,
 	);
 	recent.push({ sources, key, compiled });
 	if (recent.length > RECENT_COMPILES) recent.shift();
@@ -390,6 +401,8 @@ const V1_REQUEST_LIMIT = 'the node sent more than';
 
 export type ErrorPairing = 'item' | 'position';
 
+export type ContinueForm = ErrorPairing | 'once';
+
 const MAX_ANSWERS = 64;
 
 const ITEM_FIELD = /^=\{\{ \$json\.([A-Za-z_]\w*) \}\}$/;
@@ -398,8 +411,25 @@ export function itemFieldExpression(field: string): string {
 	return `={{ $json.${field} }}`;
 }
 
+const FAILS_FOR_ITEM =
+	/^=\{\{ \$json\.([A-Za-z_]\w*) === 'no' \? \$\('No such node'\)\.first\(\)\.json\.id : \$json\.\1 \}\}$/;
+const NO_NODE = "$('No such node')";
+const NO_NODE_MESSAGE = "Referenced node doesn't exist";
+export const FAILING_VALUE = 'no';
+
+export function itemFailureExpression(field: string): string {
+	return `={{ $json.${field} === '${FAILING_VALUE}' ? ${NO_NODE}.first().json.id : $json.${field} }}`;
+}
+
+class ExpressionFailure extends Error {}
+
 function valueForItem(value: unknown, item: Record<string, unknown>): unknown {
 	if (typeof value === 'string') {
+		const failing = FAILS_FOR_ITEM.exec(value)?.[1];
+		if (failing !== undefined) {
+			if (item[failing] === FAILING_VALUE) throw new ExpressionFailure(NO_NODE_MESSAGE);
+			return item[failing];
+		}
 		const field = ITEM_FIELD.exec(value)?.[1];
 		if (field !== undefined) return item[field];
 		if (value.startsWith('='))
@@ -418,11 +448,30 @@ export function itemParameterEntries(
 	parameters: Record<string, unknown>,
 	paths: string[],
 	items: Array<Record<string, unknown>>,
+	firstOnly: string[] = [],
+	deferred: string[] = [],
 ): Array<Record<string, unknown>> {
-	return items.map((item) =>
+	const entryOf = (path: string, item: Record<string, unknown>): unknown => {
+		if (!deferred.includes(path)) return valueForItem(valueAtPath(parameters, path), item);
+		try {
+			return { value: valueForItem(valueAtPath(parameters, path), item) };
+		} catch (error) {
+			if (!(error instanceof ExpressionFailure)) throw error;
+			return { error: { message: error.message } };
+		}
+	};
+	return items.map((item, k) =>
 		Object.fromEntries(
-			paths.map((path) => [path, valueForItem(valueAtPath(parameters, path), item)]),
+			paths
+				.filter((path) => k === 0 || !firstOnly.includes(path))
+				.map((path) => [path, entryOf(path, item)]),
 		),
+	);
+}
+
+function failingPaths(compiled: Exclude<Compiled, { errors: string[] }>): string[] {
+	return compiled.itemParameters.filter((path) =>
+		(JSON.stringify(valueAtPath(compiled.resolved, path)) ?? '').includes(NO_NODE),
 	);
 }
 
@@ -434,32 +483,50 @@ function entriesOf(
 ): ItemEntries {
 	return compiled.itemParameters.length === 0
 		? undefined
-		: itemParameterEntries(compiled.resolved, compiled.itemParameters, c.items ?? [{}]);
+		: itemParameterEntries(
+				compiled.resolved,
+				compiled.itemParameters,
+				c.items ?? [{}],
+				compiled.firstItemParameters,
+				compiled.deferred,
+			);
 }
 
 function continueWorkflow(
 	type: string,
 	c: EquivalenceCase,
 	credentialType: string | undefined,
-	pairing: ErrorPairing,
+	pairing: ContinueForm,
 	each: ItemEntries,
 ): string {
 	const errorOutput = c.settings?.onError === 'continueErrorOutput';
 	const w = new Writer();
 	w.depth = 2;
-	const helpers = emitContinueLoop(w, {
-		node: 'Node',
-		out: 'out',
-		errors: errorOutput ? 'errors' : null,
-		input: 'items',
-		item: 'item',
-		index: each ? 'k' : null,
-		call: () =>
-			`{ name: 'Node', type: ${JSON.stringify(type)}, typeVersion: ${c.typeVersion}, parameters: ${each ? '{ each: [each[k]] }' : '{}'}, items: [item]${credentialType ? ", credential: 'c'" : ''} }`,
-		retry: errorRetryOf(c.settings ?? {}),
-		byPosition: pairing === 'position',
-		trace: false,
-	});
+	const head = `{ name: 'Node', type: ${JSON.stringify(type)}, typeVersion: ${c.typeVersion}, parameters: `;
+	const tail = credentialType ? ", credential: 'c' }" : ' }';
+	const helpers =
+		pairing === 'once'
+			? emitContinueOnce(w, {
+					node: 'Node',
+					out: 'out',
+					errors: errorOutput ? 'errors' : null,
+					input: 'items',
+					call: () => `${head}${each ? '{ each }' : '{}'}, items${tail}`,
+					retry: errorRetryOf(c.settings ?? {}),
+					trace: false,
+				})
+			: emitContinueLoop(w, {
+					node: 'Node',
+					out: 'out',
+					errors: errorOutput ? 'errors' : null,
+					input: 'items',
+					item: 'item',
+					index: each ? 'k' : null,
+					call: () => `${head}${each ? '{ each: [each[k]] }' : '{}'}, items: [item]${tail}`,
+					retry: errorRetryOf(c.settings ?? {}),
+					byPosition: pairing === 'position',
+					trace: false,
+				});
 	return `import { webhook, workflow } from '@n8n/workflow-lang';
 
 type Json = any;
@@ -512,6 +579,45 @@ export default workflow({
 	},
 });
 `;
+}
+
+function pairedSourceOf(c: EquivalenceCase, type: string, each: ItemEntries): string {
+	const credentialType = c.credential?.type;
+	return `import { webhook, workflow } from '@n8n/workflow-lang';
+
+type Json = any;
+
+export default workflow({
+	triggers: [webhook({ path: 'verify' })],
+	${credentialType ? `credentials: { c: { type: ${JSON.stringify(credentialType)} } },` : ''}
+	async run(ctx) {
+		const items: Json[] = ${JSON.stringify(c.items ?? [{}])};
+		const run: Json = await ctx.node({
+			name: 'Node',
+			type: ${JSON.stringify(type)},
+			typeVersion: ${c.typeVersion},
+			parameters: ${JSON.stringify(each ? { each } : {})},
+			items,
+			${credentialType ? "credential: 'c'," : ''}
+		});
+		const lineage: Json[] = [];
+		for (let k = 0; k < run.items.length; k++) {
+			lineage.push(pairedSourceIndexes(run.paired[k], k, items.length, run.items.length));
+		}
+		return { items: run.items, lineage };
+	},
+});
+
+${helperSources(['pairedSourceIndexes']).join('\n\n')}
+`;
+}
+
+function lineageOfV1(paired: unknown[]): unknown[] {
+	return paired.map((pair) =>
+		(pair === null || pair === undefined ? [] : Array.isArray(pair) ? pair : [pair]).map(
+			(one: unknown) => (isRecord(one) ? one.item : one),
+		),
+	);
 }
 
 function eachItemSourceOf(c: EquivalenceCase, type: string, each: ItemEntries): string {
@@ -600,19 +706,31 @@ export function costOfCase(
 	sources: NodeSources,
 	registry: Registry,
 	eachItem = false,
+	form?: ContinueForm,
 ): CaseCost | undefined {
+	const mode: ErrorMode = (form === undefined ? undefined : c.settings?.onError) ?? 'stopWorkflow';
 	const compiled = compileForCheck(
 		sources,
 		{ type: c.type, version: c.typeVersion, parameters: c.parameters },
 		credentialsOf(c, registry),
+		mode,
+		form === 'once' &&
+			mode !== 'stopWorkflow' &&
+			pairedOutputOf(mode === 'continueErrorOutput', errorRetryOf(c.settings ?? {})),
 	);
 	if ('errors' in compiled) return undefined;
-	const responses = c.responses.filter((r) => r !== MINTED_TOKEN_RESPONSE);
+	const given = c.responses.filter((r) => r !== MINTED_TOKEN_RESPONSE);
+	const responses =
+		form === undefined
+			? given
+			: Array.from({ length: MAX_ANSWERS }, (_, k) => given[Math.min(k, given.length - 1)]);
 	const each = entriesOf(c, compiled);
 	const mine = bytecodeCost(
-		eachItem
-			? eachItemSourceOf(c, compiled.type, each)
-			: workflowSourceOf(c, compiled.type, each ? { each } : {}),
+		form !== undefined && mode !== 'stopWorkflow'
+			? continueWorkflow(compiled.type, c, c.credential?.type, form, each)
+			: eachItem
+				? eachItemSourceOf(c, compiled.type, each)
+				: workflowSourceOf(c, compiled.type, each ? { each } : {}),
 		{ [compiled.file]: compiled.source },
 		responses,
 	);
@@ -644,9 +762,10 @@ export async function differenceFromV1(
 	registry: Registry,
 	options: {
 		cache?: boolean;
-		pairing?: ErrorPairing;
+		pairing?: ContinueForm;
 		pairings?: Set<ErrorPairing>;
 		eachItem?: boolean;
+		paired?: boolean;
 	} = {},
 ): Promise<string | undefined> {
 	const mode: ErrorMode =
@@ -654,20 +773,36 @@ export async function differenceFromV1(
 	const continues = mode !== 'stopWorkflow';
 	if (c.settings !== undefined && !continues)
 		return 'node settings have a check only under a "continue" setting';
-	const compiled = compileForCheck(
-		sources,
-		{ type: c.type, version: c.typeVersion, parameters: c.parameters },
-		credentialsOf(c, registry),
-		mode,
-	);
+	if (options.paired === true && continues)
+		return 'the paired items have a check only when the node stops the workflow';
+	const pairedOutput =
+		options.paired === true ||
+		(options.pairing === 'once' &&
+			pairedOutputOf(mode === 'continueErrorOutput', errorRetryOf(c.settings ?? {})));
+	const instance = { type: c.type, version: c.typeVersion, parameters: c.parameters };
+	const plain = compileForCheck(sources, instance, credentialsOf(c, registry), mode, pairedOutput);
+	if ('errors' in plain) return `does not compile: ${plain.errors[0]}`;
+	const failing = failingPaths(plain);
+	const compiled =
+		failing.length === 0
+			? plain
+			: compileForCheck(sources, instance, credentialsOf(c, registry), mode, pairedOutput, failing);
 	if ('errors' in compiled) return `does not compile: ${compiled.errors[0]}`;
-	const asked: EquivalenceCase = compiled.storesResponses ? { ...c, responseBytes: true } : c;
+	const inEngine: EquivalenceCase =
+		options.paired === true
+			? { ...c, name: `${c.name} in the engine`, settings: { onError: 'stopWorkflow' } }
+			: c;
+	const asked: EquivalenceCase = compiled.storesResponses
+		? { ...inEngine, responseBytes: true }
+		: inEngine;
 	const credentialType = c.credential?.type;
 	const each = entriesOf(c, compiled);
 	const plainSource =
-		options.eachItem === true
-			? eachItemSourceOf(c, compiled.type, each)
-			: workflowSourceOf(c, compiled.type, each ? { each } : {});
+		options.paired === true
+			? pairedSourceOf(c, compiled.type, each)
+			: options.eachItem === true
+				? eachItemSourceOf(c, compiled.type, each)
+				: workflowSourceOf(c, compiled.type, each ? { each } : {});
 	const recordPlain = async (testCase: EquivalenceCase) =>
 		await within(8000, options.cache === true ? recordV1Cached(testCase) : recordV1(testCase));
 	const record = async (testCase: EquivalenceCase) =>
@@ -839,6 +974,25 @@ export async function differenceFromV1(
 	}
 	if (out.status !== 'ok')
 		return `the compiled node fails: ${JSON.stringify(out.result).slice(0, 120)}`;
+	if (options.paired === true) {
+		const mine = isRecord(out.result) ? out.result : {};
+		const items = withoutRandomValues(
+			mine.items,
+			v1.outputs?.[0] ?? [],
+			others.map((other) => (isRecord(other.result) ? other.result.items : undefined)),
+			compiled.randoms,
+		);
+		if (
+			JSON.stringify(comparableOutput(items.mine)) !==
+			JSON.stringify(comparableOutput(items.theirs))
+		)
+			return 'the output differs from the run data of the engine';
+		const lineage = JSON.stringify(mine.lineage);
+		const expected = JSON.stringify(lineageOfV1(v1.paired?.[0] ?? []));
+		return lineage === expected
+			? undefined
+			: `the paired items differ: ${lineage.slice(0, 60)} / ${expected.slice(0, 60)}`;
+	}
 	const results = withoutRandomValues(
 		out.result,
 		v1.output,

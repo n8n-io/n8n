@@ -21,7 +21,7 @@ const REGULAR = '@onError=continueRegularOutput';
 const ERROR_OUTPUT = '@onError=continueErrorOutput';
 const BY_POSITION = '@errorItems=position';
 
-function sources(pairErrors: boolean): NodeSources {
+function sources(pairErrors: boolean, once: boolean): NodeSources {
 	return {
 		entry: (type) => (type === TYPE ? ENTRY : undefined),
 		readFile: (path) => (path === ENTRY ? SOURCE : undefined),
@@ -32,9 +32,14 @@ function sources(pairErrors: boolean): NodeSources {
 				'strict',
 				'pairErrors',
 				'twice',
+				'whole',
+				'pairs',
 				'@each=id',
+				'@each=id@continueRegularOutput',
+				'@each=id@continueErrorOutput',
 				REGULAR,
 				ERROR_OUTPUT,
+				...(once ? ['@oneCall=continueRegularOutput', '@oneCall=continueErrorOutput'] : []),
 				...(pairErrors ? [] : [BY_POSITION]),
 			],
 		},
@@ -53,6 +58,7 @@ interface Scenario {
 	answers: Answer[];
 	ids?: string[];
 	parameters?: Record<string, unknown>;
+	onlyOnce?: boolean;
 }
 
 const RETRY = { retryOnFail: true, maxTries: 2, waitBetweenTries: 1 };
@@ -125,6 +131,37 @@ const SCENARIOS: Scenario[] = [
 		answers: [OK, BAD, OK],
 		parameters: { twice: true },
 	},
+	...['number', 'list', 'last', 'outside'].map(
+		(pairs): Scenario => ({
+			label: `paired item of an error item: ${pairs}`,
+			settings: {},
+			answers: [OK, BAD, OK],
+			parameters: { pairs },
+			onlyOnce: true,
+		}),
+	),
+	{
+		label: 'whole node: one error item for all items',
+		settings: {},
+		answers: [OK, BAD, OK],
+		parameters: { whole: true },
+		onlyOnce: true,
+	},
+	{
+		label: 'whole node: one error item for one item',
+		settings: {},
+		answers: [BAD],
+		ids: ['a'],
+		parameters: { whole: true },
+		onlyOnce: true,
+	},
+	{
+		label: 'whole node: retry',
+		settings: RETRY,
+		answers: [BAD, OK],
+		parameters: { whole: true },
+		onlyOnce: true,
+	},
 	{
 		label: 'always output data: all items fail',
 		settings: { alwaysOutputData: true },
@@ -188,15 +225,22 @@ function workflowWith(parameters: Record<string, unknown>, settings: NodeSetting
 	};
 }
 
-async function converted(scenario: Scenario, settings: NodeSettings, items: object[]) {
+async function converted(
+	scenario: Scenario,
+	settings: NodeSettings,
+	items: object[],
+	once: boolean,
+) {
 	const parameters = { id: '={{ $json.id }}', ...scenario.parameters };
 	const result = convertWorkflow(workflowWith(parameters, settings), {
-		nodeSources: sources(scenario.parameters?.pairErrors !== false),
+		nodeSources: sources(scenario.parameters?.pairErrors !== false, once),
 		instance: { baseUrl: 'https://n8n.example', id: 'a'.repeat(64) },
 	});
 	expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
 	expect(result.fallbackNodes).toEqual([]);
 	expect(compile(result.source, { extraNodes: result.nodes }).diagnostics).toEqual([]);
+	if (scenario.parameters?.strict !== true && scenario.parameters?.whole !== true)
+		expect(/each: \[\s*\{/.test(result.source)).toBe(!once);
 	const answers = Array.from({ length: MAX_ANSWERS }, (_, k) => ({
 		status: 200,
 		headers: {},
@@ -247,11 +291,13 @@ describe.skipIf(!recorderAvailable())(
 					expect(v1.nodeError).toBe(
 						scenario.parameters?.strict === true ? 'The strict setting stops the node' : undefined,
 					);
-					const mine = await converted(scenario, settings, items);
 					const theirs = v1.outputs ?? [];
-					expect(mine.outputs).toEqual(mine.outputs.map((_list, k) => theirs[k] ?? []));
-					expect(theirs.length).toBeLessThanOrEqual(mine.outputs.length);
-					expect(mine.requests).toBe(v1.requests.length);
+					for (const once of scenario.onlyOnce ? [true] : [true, false]) {
+						const mine = await converted(scenario, settings, items, once);
+						expect(mine.outputs).toEqual(mine.outputs.map((_list, k) => theirs[k] ?? []));
+						expect(theirs.length).toBeLessThanOrEqual(mine.outputs.length);
+						expect(mine.requests).toBe(v1.requests.length);
+					}
 				});
 			}
 		}

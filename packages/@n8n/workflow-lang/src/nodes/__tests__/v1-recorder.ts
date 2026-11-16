@@ -573,6 +573,7 @@ async function recordInEngine(
 	const run = await engine.processRunExecutionData(graph);
 	const result = run.data.resultData;
 	const outputs: unknown[][] = [];
+	const paired: unknown[][] = [];
 	const tasks: AnyRecord[] = result.runData[ENGINE_NODE] ?? [];
 	// After a node that throws under a "continue" setting, the engine passes the input on and
 	// keeps the error on the task and on the run. The run stopped only when the task has no data.
@@ -581,12 +582,14 @@ async function recordInEngine(
 	for (const task of tasks) {
 		(task.data?.main ?? []).forEach((list: AnyRecord[] | null, k: number) => {
 			outputs[k] = [...(outputs[k] ?? []), ...(list ?? []).map(outputItem)];
+			paired[k] = [...(paired[k] ?? []), ...(list ?? []).map((item) => item.pairedItem ?? null)];
 		});
 	}
 	return {
 		requests: recorded.map(normalizeRequest),
 		...(testCase.serviceResults ? { services } : {}),
 		outputs: workflow.deepCopy(Array.from(outputs, (list) => list ?? [])),
+		paired: workflow.deepCopy(Array.from(paired, (list) => list ?? [])),
 		...(nodePaired ? { nodePaired } : {}),
 		...(nodeError && !stopped ? { nodeError: String(nodeError.message) } : {}),
 		...(result.error && stopped ? { error: String(result.error.message) } : {}),

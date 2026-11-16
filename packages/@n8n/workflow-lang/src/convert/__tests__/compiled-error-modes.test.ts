@@ -78,7 +78,7 @@ const description = {
 	],
 };
 
-function sources(errorItem: string, conditions: string[], each = [EACH_ID]): NodeSources {
+function sources(errorItem: string, conditions: string[], each = EACH_ID): NodeSources {
 	const source = probeSource(errorItem);
 	return {
 		entry: (type) => (type === TYPE ? ENTRY : undefined),
@@ -91,7 +91,7 @@ function sources(errorItem: string, conditions: string[], each = [EACH_ID]): Nod
 const REGULAR = '@onError=continueRegularOutput';
 const ERROR_OUTPUT = '@onError=continueErrorOutput';
 const BY_POSITION = '@errorItems=position';
-const EACH_ID = '@each=id';
+const EACH_ID = ['@each=id', '@each=id@continueRegularOutput', '@each=id@continueErrorOutput'];
 
 function workflowWith(settings: Record<string, unknown>, strict = false) {
 	const errorOutput = settings.onError === 'continueErrorOutput';

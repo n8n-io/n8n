@@ -18,7 +18,7 @@ import type { NodeDescription } from '../src/convert/node-parameters.ts';
 import { getNodeParameters } from '../src/convert/node-parameters.ts';
 import { publicCredential } from '../src/credentials/public.ts';
 import { loadCredentialTypes, registryOf } from '../src/credentials/types.ts';
-import type { ErrorPairing } from '../src/node-compile/__tests__/verify.ts';
+import type { ContinueForm, ErrorPairing } from '../src/node-compile/__tests__/verify.ts';
 import type { CaseCost } from '../src/node-compile/__tests__/verify.ts';
 import {
 	compileForCheck,
@@ -26,6 +26,8 @@ import {
 	differenceFromV1,
 	flagKeyOf,
 	flagVariants,
+	FAILING_VALUE,
+	itemFailureExpression,
 	itemFieldExpression,
 	MINTED_TOKEN_RESPONSE,
 } from '../src/node-compile/__tests__/verify.ts';
@@ -37,8 +39,13 @@ import {
 	CALL_FOR_EACH_ITEM,
 	ERROR_ITEMS_BY_POSITION,
 	ITEM_PARAMETER_PREFIX,
+	ITEM_ERROR,
+	ONE_CALL_PREFIX,
+	PAIRED_ITEMS,
+	itemErrorCondition,
 	errorModeCondition,
 	itemParameterCondition,
+	oneCallCondition,
 	verifiedKey,
 } from '../src/node-compile/convert.ts';
 import type { EquivalenceCase, NodeSettings } from '../src/nodes/__tests__/equivalence.ts';
@@ -379,6 +386,44 @@ function expressionForms(parameters: Json, fixed: Json): ExpressionForm[] {
 	return forms;
 }
 
+const MAX_WIDER_FORMS = 6;
+const NOT_AN_EXPRESSION = new Set(['resource', 'operation', 'authentication']);
+
+function widerExpressionForms(
+	node: LoadedNode,
+	version: number,
+	parameters: Json,
+	fixed: Json,
+): ExpressionForm[] {
+	const properties = node.description.properties as unknown as Property[];
+	const forms: ExpressionForm[] = [];
+	const fieldOf = (name: string) => name.replace(/\W/g, '_');
+	for (const [name, value] of Object.entries(resolve(node, version, parameters))) {
+		if (name in fixed || NOT_AN_EXPRESSION.has(name) || forms.length >= MAX_WIDER_FORMS) continue;
+		const types = new Set(properties.filter((p) => p.name === name).map((p) => p.type));
+		if (types.size !== 1) continue;
+		const field = fieldOf(name);
+		const form = (values: unknown[]) =>
+			forms.push({ name, value: itemFieldExpression(field), fields: { [field]: values } });
+		if (types.has('boolean') && typeof value === 'boolean') form([value, !value, value]);
+		else if (types.has('json') && (value === '{}' || value === ''))
+			form(['{"a":1}', '{"a":2,"b":"c"}', '{}']);
+		else if (types.has('options') && typeof value === 'string' && !(name in parameters)) {
+			const choices = [
+				...new Set(
+					properties
+						.filter((p) => p.name === name)
+						.flatMap((p) => p.options ?? [])
+						.map((o) => o.value)
+						.filter((v): v is string => typeof v === 'string' && v !== value),
+				),
+			];
+			if (choices.length > 0) form([value, choices[0], choices[1] ?? value]);
+		}
+	}
+	return forms;
+}
+
 function operations(node: LoadedNode): Json[] {
 	const properties = node.description.properties as unknown as Property[];
 	const values = (p: Property) =>
@@ -412,6 +457,10 @@ const manyItems: Record<string, number> = {};
 const manyItemReasons: Record<string, number> = {};
 const threeItemCost = { operations: 0, once: 0, each: 0 };
 const expressionCost: Record<string, number> = {};
+const continueCost: Record<string, number> = {};
+const pairedReasons: Record<string, number> = {};
+const failureReasons: Record<string, number> = {};
+const widerReasons: Record<string, number> = {};
 const expressions: Record<string, number> = {};
 const expressionReasons: Record<string, number> = {};
 const alone: Record<string, number> = {};
@@ -431,6 +480,10 @@ interface NodeResult {
 	manyItemReasons?: Record<string, number>;
 	threeItemCost?: { operations: number; once: number; each: number };
 	expressionCost?: Record<string, number>;
+	continueCost?: Record<string, number>;
+	pairedReasons?: Record<string, number>;
+	failureReasons?: Record<string, number>;
+	widerReasons?: Record<string, number>;
 	expressions?: Record<string, number>;
 	expressionReasons?: Record<string, number>;
 	alone?: Record<string, number>;
@@ -498,6 +551,10 @@ if (one === undefined) {
 			add(manyItemReasons, result.manyItemReasons);
 			add(threeItemCost, result.threeItemCost);
 			add(expressionCost, result.expressionCost);
+			add(continueCost, result.continueCost);
+			add(pairedReasons, result.pairedReasons);
+			add(failureReasons, result.failureReasons);
+			add(widerReasons, result.widerReasons);
 			add(expressions, result.expressions);
 			add(expressionReasons, result.expressionReasons);
 			add(alone, result.alone);
@@ -711,9 +768,51 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 								examples.push(`${key} with ${variant.key}: ${difference.slice(0, 160)}`);
 						}
 					}
+					const list = [{ id: 'r1' }, { id: 'r2' }];
+					const severalResults = {
+						...plain,
+						result: list,
+						data: list,
+						items: list,
+						results: list,
+						records: list,
+						messages: list,
+						members: list,
+						channels: list,
+					};
+					let pairedReason: string | undefined;
+					for (const pairedCase of [
+						make('ok', parameters, ok),
+						three,
+						...(makesFiles || readsFiles
+							? []
+							: [
+									make(
+										'three items, several results',
+										parameters,
+										[...token, { body: severalResults }],
+										several(3),
+									),
+								]),
+					]) {
+						pairedReason = await differenceFromV1(pairedCase, sources, registry, {
+							...checking,
+							paired: true,
+						});
+						if (pairedReason !== undefined) {
+							pairedReason = `${pairedCase.name.slice(pairedCase.name.indexOf(' ') + 1)}: ${pairedReason}`;
+							break;
+						}
+					}
+					if (pairedReason !== undefined && !other) {
+						const text = pairedReason.slice(0, 110);
+						pairedReasons[text] = (pairedReasons[text] ?? 0) + 1;
+					}
 					const [badAnswer] = bad.slice(-1);
 					const [okAnswer] = ok.slice(-1);
 					const proven: string[] = [];
+					const formOf = new Map<ErrorMode, ContinueForm>();
+					const continueCases = new Map<ErrorMode, EquivalenceCase>();
 					for (const mode of CONTINUE_MODES) {
 						const under = (c: EquivalenceCase, more: NodeSettings = {}): EquivalenceCase => ({
 							...c,
@@ -732,7 +831,8 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 								waitBetweenTries: 1,
 							}),
 						];
-						const differenceWith = async (pairing: ErrorPairing) => {
+						continueCases.set(mode, under(three));
+						const differenceWith = async (pairing: ContinueForm) => {
 							const pairings = new Set<ErrorPairing>();
 							for (const testCase of cases) {
 								const difference = await differenceFromV1(testCase, sources, registry, {
@@ -744,15 +844,25 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 									return `${testCase.name.slice(testCase.name.indexOf(' ') + 1)}: ${difference}`;
 							}
 							if (
+								pairing !== 'once' &&
 								mode === 'continueErrorOutput' &&
 								[...pairings].some((found) => found !== pairing)
 							)
 								return `v1 does not pair its error items by ${pairing}`;
 							return undefined;
 						};
+						const once = await differenceWith('once');
+						if (once === undefined) {
+							proven.push(...errorModeCondition(mode), oneCallCondition(mode));
+							formOf.set(mode, 'once');
+							continue;
+						}
+						whyMode(mode, `one call: ${once}`);
+						continueCases.delete(mode);
 						const byItem = await differenceWith('item');
 						if (byItem === undefined) {
 							proven.push(...errorModeCondition(mode));
+							formOf.set(mode, 'item');
 							continue;
 						}
 						if (
@@ -760,16 +870,47 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 							(await differenceWith('position')) === undefined
 						) {
 							proven.push(...errorModeCondition(mode), ERROR_ITEMS_BY_POSITION);
+							formOf.set(mode, 'position');
 							continue;
 						}
 						whyMode(mode, byItem);
 					}
+					for (const [mode, measured] of SHOW_COST && !other ? continueCases : []) {
+						if (formOf.get(mode) !== 'once') continue;
+						const once = costOfCase(measured, sources, registry, false, 'once');
+						const each = costOfCase(measured, sources, registry, false, 'item');
+						if (once && each) {
+							const node = `${type.slice(PREFIX.length)} ${mode}`;
+							add(continueCost, {
+								[`${node} operations`]: 1,
+								[`${node} once`]: once.ops,
+								[`${node} each`]: each.ops,
+								...(once.ops > each.ops ? { [`${node} higher`]: 1 } : {}),
+							});
+							if (once.ops > each.ops && examples.length < 400)
+								examples.push(
+									`${verifiedKey(type, version, compiled.resolved)} ${mode}, three items: ${once.ops} ops in one call; ${each.ops} ops in a call for each item`,
+								);
+						}
+					}
 					const provenEach: string[] = [];
 					const widerAgrees = names !== compiled.changed;
 					const forms = expressionForms(widerAgrees ? more : parameters, start);
-					const expressionCase = (label: string, chosen: ExpressionForm[], missing: boolean) =>
-						make(
-							label,
+					const widerForms = widerExpressionForms(
+						node,
+						version,
+						widerAgrees ? more : parameters,
+						start,
+					);
+					const expressionCase = (
+						label: string,
+						chosen: ExpressionForm[],
+						missing: boolean,
+						mode?: ErrorMode,
+					): EquivalenceCase => ({
+						...(mode === undefined ? {} : { settings: { onError: mode } }),
+						...make(
+							mode === undefined ? label : `${label} ${mode}`,
 							{
 								...(widerAgrees ? more : parameters),
 								...Object.fromEntries(chosen.map((form) => [form.name, form.value])),
@@ -786,21 +927,23 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 											),
 										)),
 							})),
-						);
-					const expressionDifference = async (chosen: ExpressionForm[]) => {
+						),
+					});
+					const expressionDifference = async (chosen: ExpressionForm[], mode?: ErrorMode) => {
 						const label = `expressions ${chosen.map((form) => form.name).join(',')}`;
+						const how = { ...checking, pairing: mode === undefined ? undefined : formOf.get(mode) };
 						return (
 							(await differenceFromV1(
-								expressionCase(label, chosen, false),
+								expressionCase(label, chosen, false, mode),
 								sources,
 								registry,
-								checking,
+								how,
 							)) ??
 							(await differenceFromV1(
-								expressionCase(`${label}, a field is missing`, chosen, true),
+								expressionCase(`${label}, a field is missing`, chosen, true, mode),
 								sources,
 								registry,
-								checking,
+								how,
 							))
 						);
 					};
@@ -839,21 +982,136 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 							}
 						}
 					}
-					const eachConditions = provenEach
-						.map(itemParameterCondition)
-						.filter((condition) => before === undefined || before.includes(condition));
+					const widerUnder = async (mode?: ErrorMode) => {
+						if (widerForms.length === 0) return [];
+						if ((await expressionDifference(widerForms, mode)) === undefined)
+							return widerForms.map((form) => form.name);
+						const agreed: string[] = [];
+						for (const form of widerForms.length > 1 ? widerForms : []) {
+							const single = await expressionDifference([form], mode);
+							if (single === undefined) agreed.push(form.name);
+							else if (!other) {
+								const text = `${mode ?? 'stopWorkflow'}: ${single}`.slice(0, 110);
+								widerReasons[text] = (widerReasons[text] ?? 0) + 1;
+							}
+						}
+						return agreed;
+					};
+					const widerProven = await widerUnder();
+					provenEach.push(...widerProven);
+					if (!other) {
+						expressions['wider tried'] = (expressions['wider tried'] ?? 0) + widerForms.length;
+						expressions['wider proven'] = (expressions['wider proven'] ?? 0) + widerProven.length;
+					}
+					const provenUnder: string[] = [];
+					for (const [mode] of widerProven.length > 0 ? formOf : []) {
+						const agreed = (await widerUnder(mode)).filter((name) => widerProven.includes(name));
+						provenUnder.push(...agreed.map((name) => itemParameterCondition(name, mode)));
+					}
+					for (const [mode] of forms.length > 0 ? formOf : []) {
+						const together = await expressionDifference(forms, mode);
+						const agreed: string[] = [];
+						if (together === undefined) agreed.push(...forms.map((form) => form.name));
+						else {
+							let reason = together;
+							for (const form of forms.length > 1 ? forms.slice(0, MAX_EXPRESSIONS_ALONE) : []) {
+								const single = await expressionDifference([form], mode);
+								if (single === undefined) agreed.push(form.name);
+								else reason = single;
+							}
+							const text = `${mode}: ${reason}`.slice(0, 110);
+							if (!other) expressionReasons[text] = (expressionReasons[text] ?? 0) + 1;
+							if (examples.length < 60)
+								examples.push(`${key} with expressions, ${mode}: ${reason.slice(0, 160)}`);
+						}
+						if (!other) {
+							expressions[`${mode} operations`] = (expressions[`${mode} operations`] ?? 0) + 1;
+							if (agreed.length > 0)
+								expressions[`${mode} proven`] = (expressions[`${mode} proven`] ?? 0) + 1;
+							if (agreed.length === forms.length)
+								expressions[`${mode} all`] = (expressions[`${mode} all`] ?? 0) + 1;
+						}
+						provenUnder.push(...agreed.map((name) => itemParameterCondition(name, mode)));
+					}
+					const failingForm = forms.find(
+						(form) => provenEach.includes(form.name) && typeof form.value === 'string',
+					);
+					const failureCase = (form: ExpressionForm, at: number, mode?: ErrorMode) => {
+						const [field] = Object.keys(form.fields);
+						const failing: ExpressionForm = {
+							name: form.name,
+							value: itemFailureExpression(field),
+							fields: {
+								[field]: form.fields[field].map((value, k) =>
+									k === at ? FAILING_VALUE : String(value),
+								),
+							},
+						};
+						return expressionCase(
+							`the expression of ${form.name} fails for item ${at}`,
+							[failing],
+							false,
+							mode,
+						);
+					};
+					const failureDifference = async (form: ExpressionForm, mode?: ErrorMode) => {
+						const how = { ...checking, pairing: mode === undefined ? undefined : formOf.get(mode) };
+						return (
+							(await differenceFromV1(failureCase(form, 1, mode), sources, registry, how)) ??
+							(await differenceFromV1(failureCase(form, 0, mode), sources, registry, how))
+						);
+					};
+					const provenErrors: string[] = [];
+					for (const mode of failingForm ? [undefined, ...formOf.keys()] : []) {
+						if (!failingForm) break;
+						if (
+							mode !== undefined &&
+							!provenUnder.includes(itemParameterCondition(failingForm.name, mode))
+						)
+							continue;
+						const difference = await failureDifference(failingForm, mode);
+						if (difference === undefined) provenErrors.push(itemErrorCondition(mode));
+						else if (!other) {
+							const text = `${mode ?? 'stopWorkflow'}: ${difference}`.slice(0, 110);
+							failureReasons[text] = (failureReasons[text] ?? 0) + 1;
+						}
+					}
+					if (failingForm && !other) expressions.failing = (expressions.failing ?? 0) + 1;
+					const sameForm = (mode: ErrorMode) =>
+						before === undefined ||
+						(before.includes(oneCallCondition(mode)) === proven.includes(oneCallCondition(mode)) &&
+							(mode !== 'continueErrorOutput' ||
+								before.includes(ERROR_ITEMS_BY_POSITION) ===
+									proven.includes(ERROR_ITEMS_BY_POSITION)));
+					const keptModes = CONTINUE_MODES.filter(
+						(mode) =>
+							sameForm(mode) &&
+							errorModeCondition(mode).every(
+								(m) => proven.includes(m) && (before === undefined || before.includes(m)),
+							),
+					);
+					const ofKeptMode = (condition: string) =>
+						keptModes.some(
+							(mode) =>
+								condition.endsWith(`@${mode}`) ||
+								condition === oneCallCondition(mode) ||
+								errorModeCondition(mode).includes(condition),
+						) ||
+						(condition === ERROR_ITEMS_BY_POSITION && keptModes.includes('continueErrorOutput'));
+					const eachConditions = [
+						...provenEach.map((name) => itemParameterCondition(name)),
+						...provenUnder.filter(ofKeptMode),
+						...provenErrors.filter((name) => name === ITEM_ERROR || ofKeptMode(name)),
+					].filter((condition) => before === undefined || before.includes(condition));
 					const isMode = (name: string) =>
 						name.startsWith(ITEM_PARAMETER_PREFIX) ||
+						name.startsWith(ONE_CALL_PREFIX) ||
+						name === PAIRED_ITEMS ||
+						name.startsWith(ITEM_ERROR) ||
 						name.startsWith('@onError=') ||
 						name === ERROR_ITEMS_BY_POSITION ||
 						name === CALL_FOR_EACH_ITEM;
-					const samePairing =
-						before === undefined ||
-						before.includes(ERROR_ITEMS_BY_POSITION) === proven.includes(ERROR_ITEMS_BY_POSITION);
-					const errorOutput = errorModeCondition('continueErrorOutput')[0];
-					const modes = (
-						before === undefined ? proven : proven.filter((m) => before.includes(m))
-					).filter((m) => samePairing || (m !== errorOutput && m !== ERROR_ITEMS_BY_POSITION));
+					const modes = proven.filter(ofKeptMode);
 					verified[key] = [
 						...new Set([
 							...(before ?? []).filter((name) => !isMode(name)),
@@ -861,6 +1119,10 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 							...flagKeys,
 							...modes,
 							...eachConditions,
+							...(pairedReason === undefined &&
+							(before === undefined || before.includes(PAIRED_ITEMS))
+								? [PAIRED_ITEMS]
+								: []),
 							...(eachItem === undefined &&
 							(before === undefined || before.includes(CALL_FOR_EACH_ITEM))
 								? [CALL_FOR_EACH_ITEM]
@@ -881,7 +1143,7 @@ for (const name of one === undefined ? [] : Object.keys(known).sort()) {
 }
 await disposeRecorder();
 if (one !== undefined) {
-	const line = `RESULT ${JSON.stringify({ verified, reasons, modeReasons, manyItems, manyItemReasons, threeItemCost, expressionCost, expressions, expressionReasons, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified, costs })}\n`;
+	const line = `RESULT ${JSON.stringify({ verified, reasons, modeReasons, manyItems, manyItemReasons, threeItemCost, expressionCost, continueCost, pairedReasons, failureReasons, widerReasons, expressions, expressionReasons, alone, weighted, tried, compiled: compiledCount, examples, mintedTried, mintedVerified, costs })}\n`;
 	await new Promise((written) => process.stdout.write(line, written));
 	process.exit(0);
 }
@@ -1021,10 +1283,57 @@ for (const node of Object.keys(expressionCost)
 		`three items with expressions, ${node}, ${count} operations: ${Math.round(expressionCost[`${node} once`] / count / 3)} ops for each item in one call; ${Math.round(expressionCost[`${node} each`] / count / 3)} ops for each item in a call for each item`,
 	);
 }
+if ((expressions['wider tried'] ?? 0) > 0) {
+	console.log(
+		`a boolean, options or json parameter as an expression for each item: tried ${expressions['wider tried']}; agree with v1 ${expressions['wider proven'] ?? 0}`,
+	);
+	for (const [reason, count] of Object.entries(widerReasons).sort((a, b) => b[1] - a[1]))
+		console.log(`${count}\t${reason}`);
+}
+if ((expressions.failing ?? 0) > 0) {
+	const count = (condition: string) =>
+		Object.values(verified).filter((names) => names.includes(condition)).length;
+	console.log(
+		`an expression that fails for an item, operations tried ${expressions.failing}: agree with v1 ${count(ITEM_ERROR)}; ${CONTINUE_MODES.map((mode) => `under ${mode} ${count(itemErrorCondition(mode))}`).join('; ')}`,
+	);
+	for (const [reason, count] of Object.entries(failureReasons).sort((a, b) => b[1] - a[1]))
+		console.log(`${count}\t${reason}`);
+}
+const pairedCount = Object.values(verified).filter((names) => names.includes(PAIRED_ITEMS)).length;
+console.log(`the paired items of the output agree with the run data of v1: ${pairedCount}`);
+for (const [reason, count] of Object.entries(pairedReasons).sort((a, b) => b[1] - a[1]))
+	console.log(`${count}\t${reason}`);
+for (const node of Object.keys(continueCost)
+	.filter((name) => name.endsWith(' operations'))
+	.map((name) => name.slice(0, -' operations'.length))) {
+	const count = continueCost[`${node} operations`];
+	console.log(
+		`three items, ${node}, ${count} operations: ${Math.round(continueCost[`${node} once`] / count / 3)} ops for each item in one call; ${Math.round(continueCost[`${node} each`] / count / 3)} ops for each item in a call for each item; operations that cost more in one call: ${continueCost[`${node} higher`] ?? 0}`,
+	);
+}
 for (const mode of CONTINUE_MODES) {
 	const [condition] = errorModeCondition(mode);
-	const count = Object.values(verified).filter((names) => names.includes(condition)).length;
-	console.log(`verified against v1 under ${mode}: ${count}`);
+	const under = Object.entries(verified).filter(([, names]) => names.includes(condition));
+	const once = under.filter(([, names]) => names.includes(oneCallCondition(mode)));
+	const byNode: Record<string, [number, number]> = {};
+	for (const [key, names] of under) {
+		const node = key.slice(PREFIX.length, key.indexOf('@'));
+		const [all, one] = byNode[node] ?? [0, 0];
+		byNode[node] = [all + 1, one + (names.includes(oneCallCondition(mode)) ? 1 : 0)];
+	}
+	console.log(
+		`verified against v1 under ${mode}: ${under.length}; in one call for all items: ${once.length}${
+			DETAIL
+				? ` (${Object.entries(byNode)
+						.map(([node, [all, one]]) => `${node} ${one} of ${all}`)
+						.join(', ')})`
+				: ''
+		}`,
+	);
+	if ((expressions[`${mode} operations`] ?? 0) > 0)
+		console.log(
+			`a parameter as an expression for each item under ${mode}: operations tried ${expressions[`${mode} operations`]}; with a parameter that agrees with v1 ${expressions[`${mode} proven`] ?? 0}; with all tried parameters ${expressions[`${mode} all`] ?? 0}`,
+		);
 }
 const modeLines = Object.entries(modeReasons)
 	.sort((a, b) => b[1] - a[1])

@@ -8,6 +8,8 @@ import { commonJsToModule, isCommonJs } from './commonjs.ts';
 import {
 	COST_GLOBALS,
 	COST_HELPERS,
+	OUT_FAILED,
+	OUT_PAIRED,
 	foldTextMethod,
 	literalKeyCount,
 	lowerConstants,
@@ -57,6 +59,8 @@ export interface SpecialiseInput {
 	facts?: PublishFacts;
 
 	deferredParameters?: string[];
+
+	pairedOutput?: boolean;
 }
 
 export interface PublishFacts {
@@ -97,6 +101,8 @@ export interface SpecialiseResult {
 	zones?: string[];
 
 	itemParameters?: string[];
+
+	firstItemParameters?: string[];
 }
 
 export interface CredentialDerivation {
@@ -568,6 +574,83 @@ const HELPERS: Record<string, string> = {
 	__outChecked: `function __out(result: any): any {
 	const out: any[] = [];
 	for (const item of result[0] ?? []) out.push(__outItem(item, __noBytes(__plain(item.json))));
+	return out;
+}`,
+	__failedJson: `function __failedJson(error: any): any {
+	if (!error) throw new Error('an output item with an error that is not an error has no compiled form');
+	return { error: typeof error === 'object' ? error.message : undefined };
+}`,
+	__outFailedChecked: `function __outFailed(result: any): any {
+	const out: any[] = [];
+	for (const item of result[0] ?? []) out.push(__outItem(item, item.error === undefined ? __noBytes(__plain(item.json)) : __failedJson(item.error)));
+	return out;
+}`,
+	__outFailed: `function __outFailed(result: any): any {
+	const out: any[] = [];
+	for (const item of result[0] ?? []) out.push(__outItem(item, item.error === undefined ? __plain(item.json) : __failedJson(item.error)));
+	return out;
+}`,
+	__outPairedChecked: `function __outPaired(result: any): any {
+	const items: any[] = [];
+	const paired: any[] = [];
+	const failed: any[] = [];
+	let again: boolean = false;
+	for (const item of result[0] ?? []) {
+		if (items.length === 0) {
+			const error: any = item.json === null || item.json === undefined ? undefined : item.json.error;
+			again = error !== undefined && error !== null && error !== false;
+		}
+		paired.push(__pairOf(item.pairedItem));
+		if (item.error === undefined) items.push(__outItem(item, __noBytes(__plain(item.json))));
+		else {
+			failed.push(items.length);
+			items.push(__outItem(item, __failedJson(item.error)));
+		}
+	}
+	return { items, paired, failed, again };
+}`,
+	__outPaired: `function __outPaired(result: any): any {
+	const items: any[] = [];
+	const paired: any[] = [];
+	const failed: any[] = [];
+	let again: boolean = false;
+	for (const item of result[0] ?? []) {
+		if (items.length === 0) {
+			const error: any = item.json === null || item.json === undefined ? undefined : item.json.error;
+			again = error !== undefined && error !== null && error !== false;
+		}
+		paired.push(__pairOf(item.pairedItem));
+		if (item.error === undefined) items.push(__outItem(item, __plain(item.json)));
+		else {
+			failed.push(items.length);
+			items.push(__outItem(item, __failedJson(item.error)));
+		}
+	}
+	return { items, paired, failed, again };
+}`,
+	__entries: `function __entries(list: any): any {
+	if (!Array.isArray(list)) throw new Error('the entries of a value that is not an array have no compiled form');
+	const out: any[] = [];
+	for (let k = 0; k < list.length; k++) out.push([k, list[k]]);
+	return out;
+}`,
+	__pairOf: `function __pairOf(pair: any): any {
+	if (pair === undefined) return null;
+	if (pair === null) throw new Error('an output item with the paired item null has no compiled form');
+	return typeof pair === 'number' ? [pair] : pair;
+}`,
+	__pairAt: `function __pairAt(index: any): any {
+	return typeof index === 'number' ? index : { item: index };
+}`,
+	__withPaired: `function __withPaired(list: any, options: any): any {
+	const out: any[] = [];
+	for (const data of list) {
+		const item: any = { json: data.json, pairedItem: options.itemData };
+		for (const [key, value] of Object.entries(data)) {
+			if (key !== 'json') item[key] = value;
+		}
+		out.push(item);
+	}
 	return out;
 }`,
 	__outItem: `function __outItem(item: any, json: any): any {
@@ -1302,6 +1385,8 @@ const HELPER_USES: Record<string, string[]> = {
 	__inputBytes: ['__fileBytes', '__storedBytes'],
 	...MOMENT_HELPER_USES,
 	__out: ['__outItem', '__assign'],
+	__outPaired: ['__outItem', '__assign', '__failedJson', '__pairOf'],
+	__outFailed: ['__outItem', '__assign', '__failedJson'],
 	__mimeLookup: ['__pathParts', '__extName', '__MIME'],
 	__prepareBinary: [
 		'__mimeLookup',
@@ -2284,6 +2369,19 @@ class Specialiser {
 			if (isThisCall(node, 'getInputData') && readsFirstInput(node))
 				return f.createIdentifier('__items');
 			if (
+				ts.isCallExpression(node) &&
+				node.arguments.length === 0 &&
+				ts.isPropertyAccessExpression(node.expression) &&
+				node.expression.name.text === 'entries' &&
+				ts.isForOfStatement(node.parent) &&
+				node.parent.expression === node &&
+				isInputData(node.expression.expression)
+			)
+				return this.helper(
+					'__entries',
+					ts.visitNode(node.expression.expression, visit) as ts.Expression,
+				);
+			if (
 				ts.isBinaryExpression(node) &&
 				node.operatorToken.kind === ts.SyntaxKind.InKeyword &&
 				node.right.kind === ts.SyntaxKind.ThisKeyword &&
@@ -2366,7 +2464,10 @@ class Specialiser {
 				return this.helper('__hints', f.createArrayLiteralExpression(args(node)));
 			if (isThisCall(node, 'helpers', 'returnJsonArray'))
 				return this.helper('__jsonArray', ...args(node));
-			if (isThisCall(node, 'helpers', 'constructExecutionMetaData')) return args(node)[0];
+			if (isThisCall(node, 'helpers', 'constructExecutionMetaData'))
+				return this.input.pairedOutput && args(node).length === 2
+					? this.helper('__withPaired', ...args(node))
+					: args(node)[0];
 			const binaryCall = ts.isAwaitExpression(node) ? node.expression : node;
 			if (
 				isThisCall(binaryCall, 'helpers', 'assertBinaryData') &&
@@ -2885,7 +2986,10 @@ class Specialiser {
 			}
 			if (isExecute && depth === 0 && ts.isReturnStatement(node) && node.expression) {
 				return f.createReturnStatement(
-					this.helper('__out', each(node).expression as ts.Expression),
+					this.helper(
+						this.input.pairedOutput ? OUT_PAIRED : this.input.continueOnFail ? OUT_FAILED : '__out',
+						each(node).expression as ts.Expression,
+					),
 				);
 			}
 			const named = ts.isIdentifier(node) ? unit.file.imports.get(node.text) : undefined;
@@ -2992,24 +3096,31 @@ class Specialiser {
 
 	private readonly itemParameters = new Set<string>();
 
+	private readonly laterItemParameters = new Set<string>();
+
 	private checkItemParameters() {
 		const uses = itemParameterUses(this.output);
 		for (const where of uses.loose)
 			this.error(where, 'the list of the parameters for each item is used as a value');
-		const bounded = (index: ts.Expression, frame: ItemFrame, hops: number): boolean => {
+		const bounded = (
+			index: ts.Expression,
+			frame: ItemFrame,
+			hops: number,
+			first = false,
+		): boolean => {
 			if (hops > MAX_INDEX_HOPS) return false;
 			if (
 				ts.isParenthesizedExpression(index) ||
 				ts.isAsExpression(index) ||
 				ts.isNonNullExpression(index)
 			)
-				return bounded(index.expression, frame, hops);
+				return bounded(index.expression, frame, hops, first);
 			if (ts.isNumericLiteral(index)) return index.text === '0';
 			if (!ts.isIdentifier(index)) return false;
 			const found = itemBindingOf(index.text, frame);
 			if (found === undefined || found.kind === 'other') return false;
-			if (found.kind === 'loop') return true;
-			if (found.kind === 'value') return bounded(found.value, found.frame, hops + 1);
+			if (found.kind === 'loop') return !first;
+			if (found.kind === 'value') return bounded(found.value, found.frame, hops + 1, first);
 			const sites = uses.calls.get(found.unit) ?? [];
 			return (
 				sites.length > 0 &&
@@ -3019,13 +3130,14 @@ class Specialiser {
 					return (
 						given !== undefined &&
 						!site.call.arguments.some(ts.isSpreadElement) &&
-						bounded(given, site.frame, hops + 1)
+						bounded(given, site.frame, hops + 1, first)
 					);
 				})
 			);
 		};
 		for (const read of uses.reads) {
 			this.itemParameters.add(read.parameter);
+			if (!bounded(read.index, read.frame, 0, true)) this.laterItemParameters.add(read.parameter);
 			if (!bounded(read.index, read.frame, 0)) {
 				this.error(
 					read.where,
@@ -6470,6 +6582,9 @@ class Specialiser {
 			retyped: this.retyped,
 			zones: [...this.zones].sort(),
 			itemParameters: [...this.itemParameters].sort(),
+			firstItemParameters: [...this.itemParameters]
+				.filter((name) => !this.laterItemParameters.has(name))
+				.sort(),
 		};
 	}
 
@@ -6787,7 +6902,14 @@ class Specialiser {
 			...COST_HELPERS,
 			__plain: plain,
 			[PLAIN_LIST]: t.usesCollections ? PLAIN_LIST_COLLECTIONS : PLAIN_LIST_SAME,
-			...(makesBytes ? { __sendBody: HELPERS.__sendBodyChecked, __out: HELPERS.__outChecked } : {}),
+			...(makesBytes
+				? {
+						__sendBody: HELPERS.__sendBodyChecked,
+						__out: HELPERS.__outChecked,
+						__outPaired: HELPERS.__outPairedChecked,
+						[OUT_FAILED]: HELPERS.__outFailedChecked,
+					}
+				: {}),
 		};
 		const reached = reachableHelpers(
 			[t.body, lowered.items, ...names.map((n) => CODE_HELPERS[n].source)],
@@ -6871,6 +6993,37 @@ function isInputCount(e: ts.Expression, frame: ItemFrame, hops = 0): boolean {
 	if (!ts.isIdentifier(e)) return false;
 	const found = itemBindingOf(e.text, frame);
 	return found?.kind === 'value' && isInputCount(found.value, found.frame, hops + 1);
+}
+
+const INDEXED_CALLBACKS = new Set(['map', 'forEach', 'flatMap', 'filter', 'some', 'every']);
+
+function entriesIndexOf(loop: ts.ForOfStatement, frame: ItemFrame): string | undefined {
+	const list = loop.expression;
+	if (
+		!ts.isCallExpression(list) ||
+		list.arguments.length !== 1 ||
+		!ts.isIdentifier(list.expression) ||
+		list.expression.text !== '__entries' ||
+		!isInputItems(list.arguments[0], frame)
+	)
+		return undefined;
+	const declared = loop.initializer;
+	if (
+		!ts.isVariableDeclarationList(declared) ||
+		(declared.flags & ts.NodeFlags.Const) === 0 ||
+		declared.declarations.length !== 1
+	)
+		return undefined;
+	const pattern = declared.declarations[0].name;
+	if (!ts.isArrayBindingPattern(pattern)) return undefined;
+	const [first] = pattern.elements;
+	return first !== undefined &&
+		ts.isBindingElement(first) &&
+		ts.isIdentifier(first.name) &&
+		!first.initializer &&
+		!first.dotDotDotToken
+		? first.name.text
+		: undefined;
 }
 
 function stepsByOne(step: ts.Expression | undefined, name: string): boolean {
@@ -6958,7 +7111,25 @@ function itemParameterUses(output: Array<{ name: string; node: ts.Node }>): Item
 			}
 			if (ts.isFunctionLike(n)) {
 				const inner: ItemFrame = { names: new Map(), outer: frame };
+				const overItems =
+					(ts.isArrowFunction(n) || ts.isFunctionExpression(n)) &&
+					ts.isCallExpression(n.parent) &&
+					n.parent.arguments[0] === n &&
+					ts.isPropertyAccessExpression(n.parent.expression) &&
+					INDEXED_CALLBACKS.has(n.parent.expression.name.text) &&
+					isInputItems(n.parent.expression.expression, frame);
 				n.parameters.forEach((parameter, position) => {
+					if (
+						overItems &&
+						position === 1 &&
+						ts.isIdentifier(parameter.name) &&
+						!parameter.initializer &&
+						!parameter.dotDotDotToken &&
+						!written.has(parameter.name.text)
+					) {
+						inner.names.set(parameter.name.text, { kind: 'loop' });
+						return;
+					}
 					const plain =
 						n === root &&
 						ts.isFunctionDeclaration(n) &&
@@ -7030,6 +7201,8 @@ function itemParameterUses(output: Array<{ name: string; node: ts.Node }>): Item
 				const inner: ItemFrame = { names: new Map(), outer: frame };
 				if (ts.isVariableDeclarationList(n.initializer))
 					for (const d of n.initializer.declarations) other(inner, d.name);
+				const position = ts.isForOfStatement(n) ? entriesIndexOf(n, frame) : undefined;
+				if (position && !written.has(position)) inner.names.set(position, { kind: 'loop' });
 				ts.forEachChild(n, (child) => walk(child, inner));
 				return;
 			}
@@ -7309,6 +7482,36 @@ function unrollParameterLoop(loop: ts.ForOfStatement): ts.Statement | undefined 
 		values.map((value) => f.createBlock([withValue(value)], true)),
 		true,
 	);
+}
+
+function isInputData(e: ts.Expression): boolean {
+	if (ts.isParenthesizedExpression(e) || ts.isAsExpression(e) || ts.isNonNullExpression(e))
+		return isInputData(e.expression);
+	if (ts.isCallExpression(e)) return isThisCall(e, 'getInputData') && readsFirstInput(e);
+	if (!ts.isIdentifier(e)) return false;
+	for (let scope: ts.Node | undefined = e.parent; scope; scope = scope.parent) {
+		if (ts.isFunctionLike(scope) && scope.parameters.some((p) => bindsName(p.name, e.text)))
+			return false;
+		if (!ts.isBlock(scope) && !ts.isSourceFile(scope)) continue;
+		for (const statement of scope.statements) {
+			if (!ts.isVariableStatement(statement)) continue;
+			for (const declared of statement.declarationList.declarations) {
+				if (!bindsName(declared.name, e.text)) continue;
+				return (
+					ts.isIdentifier(declared.name) &&
+					(statement.declarationList.flags & ts.NodeFlags.Const) !== 0 &&
+					declared.initializer !== undefined &&
+					isInputData(declared.initializer)
+				);
+			}
+		}
+	}
+	return false;
+}
+
+function bindsName(name: ts.BindingName, text: string): boolean {
+	if (ts.isIdentifier(name)) return name.text === text;
+	return name.elements.some((e) => !ts.isOmittedExpression(e) && bindsName(e.name, text));
 }
 
 function readsFirstInput(read: ts.CallExpression): boolean {

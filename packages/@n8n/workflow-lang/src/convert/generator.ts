@@ -171,6 +171,9 @@ export function diagnosticKey(node: string, path: string): string {
 
 const START = 'Start';
 
+const NODE_REFERENCE =
+	/\$\(\s*(['"`])((?:(?!\1).)+)\1\s*\)|\$node\[\s*(['"`])((?:(?!\3).)+)\3\s*\]|\$node\.([A-Za-z_$][\w$]*)/g;
+
 /** One workflow of the module: the main workflow or a sub-workflow. */
 class Body {
 	readonly graph: Graph;
@@ -184,6 +187,15 @@ class Body {
 
 	/** Variables that keep the node context (`getContext('node')`) of a node. */
 	readonly states = new Map<string, string>();
+
+	/**
+	 * The compiled nodes that give the paired item of each output item: the code of the
+	 * result of the node (`{ items, paired }`) and of its input list.
+	 */
+	readonly pairs = new Map<string, { run: string; input: string }>();
+
+	/** The nodes between an expression with `$('Node')` and that node (see `lineageOf`). */
+	lineage: Set<string> | undefined;
 
 	/** The variable of the `n8n-compiled.context` step result, when expressions need it. */
 	instanceVar: string | null = null;
@@ -477,6 +489,7 @@ export class ModuleGenerator {
 		const list = this.outputVar(b, target, this.branchOf(b, current, target));
 		if (this.singleItem(b, target)) return { code: `${list}[0]`, usesIndex: false };
 		let cur = current;
+		const hops: Array<{ run: string; input: string; name: string }> = [];
 		for (let guard = 0; guard < b.graph.nodes.size; guard++) {
 			const inc = b.graph
 				.incoming(cur)
@@ -484,15 +497,68 @@ export class ModuleGenerator {
 			if (inc.length !== 1) break;
 			const e = inc[0];
 			if (e.from === target) {
-				return cur === current
-					? { code: ITEM, usesIndex: false }
-					: { code: `${this.outputVar(b, target, e.output)}[${INDEX}]`, usesIndex: true };
+				if (cur === current) return { code: ITEM, usesIndex: false };
+				// The items of the last compiled node before `target` are the items of `target`:
+				// two different paired items there are two items of `target`, as in v1.
+				let index = INDEX;
+				hops.forEach((hop, k) => {
+					index = `pairedSourceIndex(${hop.run}, ${index}, ${hop.input}.length, ${str(hop.name)}, ${k === hops.length - 1})`;
+				});
+				return { code: `${this.outputVar(b, target, e.output)}[${index}]`, usesIndex: true };
 			}
 			const parent = b.graph.nodes.get(e.from);
-			if (!parent || parent.executeOnce || !(ONE_TO_ONE.has(parent.type) || parent.disabled)) break;
+			if (!parent || parent.executeOnce) break;
+			if (!(ONE_TO_ONE.has(parent.type) || parent.disabled)) {
+				// A compiled node gives the paired item of each output item, as the v1 node does.
+				const pairs = e.output === 0 ? b.pairs.get(e.from) : undefined;
+				if (!pairs) break;
+				this.helpers.add('pairedSourceIndex');
+				hops.push({ ...pairs, name: b.short(e.from) });
+			}
 			cur = e.from;
 		}
 		return { code: `${list}[${INDEX}]`, usesIndex: true, approximate: true };
+	}
+
+	/**
+	 * The nodes whose paired items an expression needs: the nodes on the path between a node
+	 * with `$('Node')` or `$node["Node"]` in a parameter and that node, when the path has one
+	 * parent at each step (the walk of `pairedItem`).
+	 */
+	private lineageOf(b: Body): Set<string> {
+		if (b.lineage) return b.lineage;
+		const wanted = new Set<string>();
+		b.lineage = wanted;
+		const texts = (value: unknown, out: string[], depth: number): string[] => {
+			if (typeof value === 'string') out.push(value);
+			else if (depth < 16 && Array.isArray(value)) for (const v of value) texts(v, out, depth + 1);
+			else if (depth < 16 && isRecord(value))
+				for (const v of Object.values(value)) texts(v, out, depth + 1);
+			return out;
+		};
+		for (const node of b.graph.nodes.values()) {
+			const targets = new Set<string>();
+			for (const text of texts(node.parameters, [], 0)) {
+				for (const m of text.matchAll(NODE_REFERENCE))
+					targets.add(`${b.prefix}${m[2] ?? m[4] ?? m[5]}`);
+			}
+			for (const target of targets) {
+				const path: string[] = [];
+				let cur = node.name;
+				for (let guard = 0; guard < b.graph.nodes.size; guard++) {
+					const inc = b.graph.incoming(cur).filter((e) => e.input === 0);
+					if (inc.length !== 1) break;
+					const from = inc[0].from;
+					if (from === target) {
+						for (const name of path) wanted.add(name);
+						break;
+					}
+					path.push(from);
+					cur = from;
+				}
+			}
+		}
+		return wanted;
 	}
 
 	/**
@@ -705,6 +771,10 @@ export class ModuleGenerator {
 			},
 			markCompiled: () => {
 				this.compiledSteps.add(node.name);
+			},
+			pairsWanted: !b.engine && this.lineageOf(b).has(node.name),
+			setPairs: (run) => {
+				b.pairs.set(node.name, { run, input });
 			},
 			noOutputWhen: (condition) => {
 				// "Always output data" gives one empty item instead (ensureAlwaysOutputData of v1).

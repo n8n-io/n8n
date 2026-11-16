@@ -160,12 +160,32 @@ describe('node compiler in the converter', () => {
 			'Telegram',
 		]);
 
+		const conditions = ['chatId', 'action', '@each=chatId', '@onError=continueRegularOutput'];
+		const stopOnly: NodeSources = { ...nodeSources, verified: { [key]: conditions } };
+		expect(convertWorkflow(workflow, { nodeSources: stopOnly, instance }).fallbackNodes).toEqual([
+			'Telegram',
+		]);
 		const proven: NodeSources = {
 			...nodeSources,
-			verified: { [key]: ['chatId', 'action', '@each=chatId', '@onError=continueRegularOutput'] },
+			verified: { [key]: [...conditions, '@each=chatId@continueRegularOutput'] },
 		};
 		const result = convertWorkflow(workflow, { nodeSources: proven, instance });
 		expect(result.fallbackNodes).toEqual([]);
+		expect(result.source).toContain('items: [$json]');
+		const once: NodeSources = {
+			...nodeSources,
+			verified: {
+				[key]: [
+					...conditions,
+					'@each=chatId@continueRegularOutput',
+					'@oneCall=continueRegularOutput',
+				],
+			},
+		};
+		const inOneCall = convertWorkflow(workflow, { nodeSources: once, instance });
+		expect(inOneCall.fallbackNodes).toEqual([]);
+		expect(inOneCall.source).not.toContain('items: [$json]');
+		expect(compile(inOneCall.source, { extraNodes: inOneCall.nodes }).diagnostics).toEqual([]);
 		expect(compile(result.source, { extraNodes: result.nodes }).diagnostics).toEqual([]);
 		const failing = {
 			...fixture,

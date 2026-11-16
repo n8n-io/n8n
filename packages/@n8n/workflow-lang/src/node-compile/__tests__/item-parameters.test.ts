@@ -3,9 +3,15 @@ import { decodeModule } from '../../compiler/decode.ts';
 import { runReference } from '../../reference/runner.ts';
 import { runModule } from '../../testing/vm.ts';
 import type { NodeSources } from '../convert.ts';
-import { compileNodeInstance, isVerified, itemParameterNames, valueAtPath } from '../convert.ts';
+import {
+	compileNodeInstance,
+	deferredVerified,
+	isVerified,
+	itemParameterNames,
+	valueAtPath,
+} from '../convert.ts';
 import { specialiseNode } from '../specialise.ts';
-import { itemParameterEntries } from './verify.ts';
+import { FAILING_VALUE, itemFailureExpression, itemParameterEntries } from './verify.ts';
 
 const ENTRY = '/acme/Acme.node.ts';
 const TYPE = 'n8n-nodes-acme.acme';
@@ -202,6 +208,129 @@ async function run(source: string | undefined, inputs: unknown[], parameters: un
 	return reference;
 }
 
+const wholeNode = (body: string) => `
+export class Acme {
+	async execute(this: any) {
+		const items = this.getInputData();
+		const returnData: any[] = [];
+		${body}
+		return [returnData];
+	}
+}`;
+
+const compileNode = (source: string, parameters: Record<string, unknown>) =>
+	specialiseNode({
+		type: TYPE,
+		version: 1,
+		entry: ENTRY,
+		readFile: (path) => (path === ENTRY ? source : undefined),
+		parameters,
+		instanceId: null,
+	});
+
+describe('the index of an item in other loops over the items', () => {
+	const EACH = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+	const INPUTS = [{ n: 1 }, { n: 2 }, { n: 3 }];
+	const EXPECTED = [
+		{ id: 'a', n: 1 },
+		{ id: 'b', n: 2 },
+		{ id: 'c', n: 3 },
+	];
+
+	it.each([
+		[
+			'the entries of the items',
+			"for (const [index, item] of items.entries()) returnData.push({ json: { id: this.getNodeParameter('id', index), n: item.json.n } });",
+		],
+		[
+			'a map callback over the items',
+			"const made = items.map((item: any, index: number) => ({ json: { id: this.getNodeParameter('id', index), n: item.json.n } })); for (const one of made) returnData.push(one);",
+		],
+		[
+			'a forEach callback over the items',
+			"items.forEach((item: any, index: number) => { returnData.push({ json: { id: this.getNodeParameter('id', index), n: item.json.n } }); });",
+		],
+	])('proves the index of %s, and each item has its own value', async (_label, body) => {
+		const result = compileNode(wholeNode(body), BY_ITEM);
+		expect(result.errors).toEqual([]);
+		expect(result.itemParameters).toEqual(['id']);
+		expect(result.firstItemParameters).toEqual([]);
+		const out = await run(result.source, INPUTS, { each: EACH });
+		expect(out).toMatchObject({ status: 'ok', result: EXPECTED });
+	});
+
+	it.each([
+		[
+			'the entries of another list',
+			"const other = [1, 2]; for (const [index] of other.entries()) returnData.push({ json: { id: this.getNodeParameter('id', index) } });",
+		],
+		[
+			'the item of the entries, not the index',
+			"for (const [, index] of items.entries()) returnData.push({ json: { id: this.getNodeParameter('id', index) } });",
+		],
+		[
+			'a map callback over another list',
+			"const other = [1, 2]; other.map((_one: number, index: number) => returnData.push({ json: { id: this.getNodeParameter('id', index) } }));",
+		],
+		[
+			'the first parameter of a map callback',
+			"items.map((index: any) => returnData.push({ json: { id: this.getNodeParameter('id', index) } }));",
+		],
+		[
+			'the index of a reduce callback',
+			"items.reduce((_sum: number, _item: any, index: number) => returnData.push({ json: { id: this.getNodeParameter('id', index) } }), 0);",
+		],
+		[
+			'a for...of loop with a counter',
+			"let index = 0; for (const item of items) { returnData.push({ json: { id: this.getNodeParameter('id', index), n: item.json.n } }); index++; }",
+		],
+	])('refuses %s', (_label, body) => {
+		const result = compileNode(wholeNode(body), BY_ITEM);
+		expect(result.errors.join('\n')).toContain(NO_PROOF);
+		expect(result.source).toBeUndefined();
+	});
+});
+
+describe('a parameter that the node reads for the first item only', () => {
+	it('names the parameters with all reads at the index 0', () => {
+		const helpers =
+			'function idOf(this: any, index: number) { const at = index; return this.getNodeParameter("id", at) as string; }';
+		const result = compileWith(
+			"returnData.push({ json: { id: idOf.call(this, 0), mode: this.getNodeParameter('mode', 0), name: this.getNodeParameter('name', i) } });",
+			{ id: '={{ $json.id }}', mode: '={{ $json.mode }}', name: '={{ $json.name }}' },
+			{ helpers },
+		);
+		expect(result.errors).toEqual([]);
+		expect(result.itemParameters).toEqual(['id', 'mode', 'name']);
+		expect(result.firstItemParameters).toEqual(['id', 'mode']);
+	});
+
+	it('does not name a parameter with one read for each item', () => {
+		const result = compileWith(
+			"returnData.push({ json: { id: this.getNodeParameter('id', 0), own: this.getNodeParameter('id', i) } });",
+			BY_ITEM,
+		);
+		expect(result.firstItemParameters).toEqual([]);
+	});
+
+	it('runs with a value for the first item only', async () => {
+		const result = compileWith(
+			"returnData.push({ json: { mode: this.getNodeParameter('mode', 0), name: this.getNodeParameter('name', i) } });",
+			{ mode: '={{ $json.mode }}', name: '={{ $json.name }}' },
+		);
+		const out = await run(result.source, [{}, {}], {
+			each: [{ mode: 'm', name: 'a' }, { name: 'b' }],
+		});
+		expect(out).toMatchObject({
+			status: 'ok',
+			result: [
+				{ mode: 'm', name: 'a' },
+				{ mode: 'm', name: 'b' },
+			],
+		});
+	});
+});
+
 describe('a compiled node that runs once with a value for each item', () => {
 	const READ_WHEN_ASKED =
 		"returnData.push({ json: items[i].json.skip ? { skipped: true } : { id: this.getNodeParameter('id', i), first: this.getNodeParameter('id', 0) } });";
@@ -296,6 +425,67 @@ describe('the check of a parameter with an expression against v1', () => {
 		expect(isVerified(sources(['id', '@each=other']), TYPE, 1, byItem)).toBe(false);
 		expect(isVerified(sources(['id', '@each=id']), TYPE, 1, byItem)).toBe(true);
 		expect(isVerified(sources(['id']), TYPE, 1, compiledWith({ id: 'fixed' }))).toBe(true);
+	});
+
+	it('needs the condition of the parameter for the error setting of the instance', () => {
+		const regular = compileNodeInstance(
+			sources([]),
+			{ type: TYPE, version: 1, parameters: BY_ITEM },
+			null,
+			{},
+			undefined,
+			undefined,
+			'continueRegularOutput',
+		);
+		if ('errors' in regular) throw new Error(regular.errors.join('; '));
+		const mode = '@onError=continueRegularOutput';
+		expect(isVerified(sources(['id', mode, '@each=id']), TYPE, 1, regular)).toBe(false);
+		expect(
+			isVerified(sources(['id', mode, '@each=id@continueErrorOutput']), TYPE, 1, regular),
+		).toBe(false);
+		expect(
+			isVerified(sources(['id', mode, '@each=id@continueRegularOutput']), TYPE, 1, regular),
+		).toBe(true);
+	});
+
+	it('needs the check of a failed expression when the module defers the error of a parameter', () => {
+		const deferred = compileNodeInstance(
+			sources([]),
+			{ type: TYPE, version: 1, parameters: BY_ITEM },
+			null,
+			{},
+			undefined,
+			undefined,
+			'stopWorkflow',
+			['id'],
+		);
+		if ('errors' in deferred) throw new Error(deferred.errors.join('; '));
+		expect(deferred.deferred).toEqual(['id']);
+		expect(deferredVerified(sources(['id', '@each=id']), TYPE, 1, deferred)).toBe(false);
+		expect(deferredVerified(sources(['id', '@each=id', '@eachError']), TYPE, 1, deferred)).toBe(
+			true,
+		);
+		expect(deferredVerified(sources(['id', '@each=id']), TYPE, 1, compiledWith(BY_ITEM))).toBe(
+			true,
+		);
+	});
+
+	it('gives the entry of a failed expression as the error of the expression', () => {
+		const parameters = { id: itemFailureExpression('id'), name: '={{ $json.name }}' };
+		const entries = itemParameterEntries(
+			parameters,
+			['id', 'name'],
+			[
+				{ id: 'a', name: 'x' },
+				{ id: FAILING_VALUE, name: 'y' },
+			],
+			['name'],
+			['id'],
+		);
+		expect(entries).toEqual([
+			{ id: { value: 'a' }, name: 'x' },
+			{ id: { error: { message: "Referenced node doesn't exist" } } },
+		]);
 	});
 
 	it('makes the entries of the items as v1 resolves the expressions', () => {

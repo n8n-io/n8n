@@ -51,7 +51,11 @@ export function isVerified(
 ): boolean {
 	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
 	if (names === undefined || !compiled.changed.every((name) => names.includes(name))) return false;
-	if (!itemParameterNames(compiled).every((name) => names.includes(itemParameterCondition(name))))
+	if (
+		!itemParameterNames(compiled).every((name) =>
+			names.includes(itemParameterCondition(name, compiled.errorMode)),
+		)
+	)
 		return false;
 	return (
 		compiled.flags.length === 0 || verifiedFlagKeys(sources, type, version, compiled).length > 0
@@ -106,8 +110,57 @@ export const CALL_FOR_EACH_ITEM = '@items=each';
 
 export const ITEM_PARAMETER_PREFIX = '@each=';
 
-export function itemParameterCondition(name: string): string {
-	return `${ITEM_PARAMETER_PREFIX}${name}`;
+export const ONE_CALL_PREFIX = '@oneCall=';
+
+export const PAIRED_ITEMS = '@pairedItems';
+
+export function itemParameterCondition(name: string, mode: ErrorMode = 'stopWorkflow'): string {
+	return mode === 'stopWorkflow'
+		? `${ITEM_PARAMETER_PREFIX}${name}`
+		: `${ITEM_PARAMETER_PREFIX}${name}@${mode}`;
+}
+
+export const ITEM_ERROR = '@eachError';
+
+export function itemErrorCondition(mode: ErrorMode = 'stopWorkflow'): string {
+	return mode === 'stopWorkflow' ? ITEM_ERROR : `${ITEM_ERROR}@${mode}`;
+}
+
+export function deferredVerified(
+	sources: NodeSources,
+	type: string,
+	version: number,
+	compiled: CompiledNode,
+): boolean {
+	if (compiled.deferred.length === 0) return true;
+	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, compiled.resolved)];
+	return names?.includes(itemErrorCondition(compiled.errorMode)) === true;
+}
+
+export function oneCallCondition(mode: ErrorMode): string {
+	return `${ONE_CALL_PREFIX}${mode}`;
+}
+
+export function callsOnce(
+	sources: NodeSources,
+	type: string,
+	version: number,
+	resolved: Record<string, unknown>,
+	mode: ErrorMode,
+): boolean {
+	if (mode === 'stopWorkflow') return true;
+	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, resolved)];
+	return names?.includes(oneCallCondition(mode)) === true;
+}
+
+export function pairsAsV1(
+	sources: NodeSources,
+	type: string,
+	version: number,
+	resolved: Record<string, unknown>,
+): boolean {
+	const names = (sources.verified ?? VERIFIED)[verifiedKey(type, version, resolved)];
+	return names?.includes(PAIRED_ITEMS) === true;
 }
 
 export function itemParameterNames(compiled: CompiledNode): string[] {
@@ -198,7 +251,13 @@ export interface CompiledNode {
 
 	itemParameters: string[];
 
+	firstItemParameters: string[];
+
 	deferred: string[];
+
+	errorMode: ErrorMode;
+
+	pairedOutput: boolean;
 
 	resolved: Record<string, unknown>;
 
@@ -267,6 +326,7 @@ export function compileNodeInstance(
 	facts?: PublishFacts,
 	errorMode: ErrorMode = 'stopWorkflow',
 	deferred: string[] = [],
+	pairedOutput = false,
 ): CompiledNode | { errors: string[] } {
 	const entry = sources.entry(node.type, node.version);
 	const description = sources.description(node.type, node.version);
@@ -323,6 +383,7 @@ export function compileNodeInstance(
 		facts,
 		continueOnFail: errorMode !== 'stopWorkflow',
 		deferredParameters: deferred,
+		pairedOutput,
 		credentialFields: Object.fromEntries(
 			Object.entries(credentials).map(([type, c]) => [type, c.fields]),
 		),
@@ -340,7 +401,10 @@ export function compileNodeInstance(
 		source,
 		dynamic: Object.keys(parameters).filter((name) => hasExpression(parameters[name])),
 		itemParameters: result.itemParameters ?? [],
+		firstItemParameters: result.firstItemParameters ?? [],
 		deferred: (result.itemParameters ?? []).filter((path) => deferred.includes(path)),
+		errorMode,
+		pairedOutput,
 		resolved: parameters,
 		derivations: (result.derivations ?? []).filter((d) => d.kind === undefined),
 		flags: (result.derivations ?? []).filter((d) => d.kind === 'flag'),

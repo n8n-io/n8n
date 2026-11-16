@@ -22,6 +22,8 @@ export class Probe implements INodeType {
 			{ displayName: 'Strict', name: 'strict', type: 'boolean', default: false },
 			{ displayName: 'Pair Error Items', name: 'pairErrors', type: 'boolean', default: true },
 			{ displayName: 'Twice', name: 'twice', type: 'boolean', default: false },
+			{ displayName: 'Whole', name: 'whole', type: 'boolean', default: false },
+			{ displayName: 'Pairs', name: 'pairs', type: 'string', default: 'object' },
 		],
 	};
 
@@ -49,8 +51,17 @@ export class Probe implements INodeType {
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const failure = error as NodeApiError;
+					const whole = this.getNodeParameter('whole', 0) as boolean;
+					if (whole) return [[{ json: this.getInputData(0)[0].json, error: failure }]];
 					const pairErrors = this.getNodeParameter('pairErrors', i) as boolean;
-					if (pairErrors) {
+					const pairs = this.getNodeParameter('pairs', 0) as string;
+					const json = { error: failure.message, message: failure.description };
+					if (pairs === 'number') returnData.push({ json, pairedItem: i });
+					else if (pairs === 'list') returnData.push({ json, pairedItem: [{ item: i }] });
+					else if (pairs === 'last')
+						returnData.push({ json, pairedItem: { item: items.length - 1 } });
+					else if (pairs === 'outside') returnData.push({ json, pairedItem: { item: 7 } });
+					else if (pairErrors) {
 						returnData.push({
 							json: { error: failure.message, message: failure.description },
 							pairedItem: { item: i },
