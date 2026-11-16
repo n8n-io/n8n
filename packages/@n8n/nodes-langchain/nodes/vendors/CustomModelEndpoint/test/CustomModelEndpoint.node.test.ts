@@ -8,6 +8,25 @@ import { CustomModelEndpoint } from '../CustomModelEndpoint.node';
 
 import { createCustomModelEndpointConfig } from '@utils/custom-model-endpoint/gateway-config';
 
+// The real transport goes out through `proxyFetch`, whose dispatcher needs the instance
+// SSRF module. This stands in for the gateway so a unit test can read the wire headers.
+const { gateway } = vi.hoisted(() => ({
+	gateway: {
+		calls: [] as Array<{ url: string; headers: Headers }>,
+		reply: (_url: string, _headers: Headers) => new Response('{}', { status: 200 }),
+	},
+}));
+
+vi.mock('@n8n/ai-utilities', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/ai-utilities')>()),
+	getProxyAgent: () => undefined,
+	proxyFetch: async ({ input, init }: { input: RequestInfo | URL; init?: RequestInit }) => {
+		const headers = new Headers(init?.headers ?? {});
+		gateway.calls.push({ url: String(input), headers });
+		return gateway.reply(String(input), headers);
+	},
+}));
+
 vi.mock('openai');
 vi.mock('n8n-workflow', async (importOriginal) => ({
 	...(await importOriginal<typeof import('n8n-workflow')>()),
@@ -231,13 +250,7 @@ describe('CustomModelEndpoint', () => {
 		expect(accumulateTokenUsage).not.toHaveBeenCalled();
 	});
 
-	it('gives each item its own headers despite sharing one client', async () => {
-		// The transport reads this record per request, so snapshot it as each call lands
-		const seen: Array<Record<string, string>> = [];
-		create.mockImplementation(async () => {
-			seen.push({ ...(transportHeaders() ?? {}) });
-			return answer();
-		});
+	it('gives each item its own headers, on its own transport', async () => {
 		const ctx = contextWith({}, 2);
 		ctx.getNodeParameter = vi
 			.fn()
@@ -252,13 +265,20 @@ describe('CustomModelEndpoint', () => {
 
 		await new CustomModelEndpoint().execute.call(ctx);
 
-		expect(seen).toEqual([{ 'x-item': 'v0' }, { 'x-item': 'v1' }]);
+		// Each item gets its own transport, so the record it was built with is the record
+		// it sends. A shared one leaks: the refresh path layers over its own copy, so a
+		// header from an earlier item would survive into a later item's retry after a 401.
+		const records = vi
+			.mocked(createCustomModelEndpointConfig)
+			.mock.calls.map((call) => call[2].requestHeaders);
+
+		expect(records).toEqual([{ 'x-item': 'v0' }, { 'x-item': 'v1' }]);
 	});
 
-	it('builds one client for the whole run so connections are reused', async () => {
+	it('builds one transport for each item', async () => {
 		await run({}, 3);
 
-		expect(MockedOpenAI).toHaveBeenCalledTimes(1);
+		expect(MockedOpenAI).toHaveBeenCalledTimes(3);
 		expect(create).toHaveBeenCalledTimes(3);
 	});
 
@@ -272,5 +292,88 @@ describe('CustomModelEndpoint', () => {
 		expect(failed.json).toEqual({ error: 'gateway said no' });
 		expect(failed.pairedItem).toEqual({ item: 0 });
 		expect(succeeded.json).toMatchObject({ text: 'hello' });
+	});
+});
+
+const GATEWAY = 'https://gateway.example.com/v1';
+const TOKEN_URL = 'https://gateway.example.com/oauth2/token';
+const CHAT_URL = `${GATEWAY}/chat/completions`;
+
+/**
+ * Everything above mocks the transport away. This block runs the real one against a
+ * stubbed fetch, so the headers it asserts are the headers that would go on the wire.
+ */
+describe('CustomModelEndpoint, through the real transport', () => {
+	beforeEach(async () => {
+		vi.clearAllMocks();
+		gateway.calls.length = 0;
+
+		const actual = await vi.importActual<
+			typeof import('@utils/custom-model-endpoint/gateway-config')
+		>('@utils/custom-model-endpoint/gateway-config');
+		vi.mocked(createCustomModelEndpointConfig).mockImplementation(
+			actual.createCustomModelEndpointConfig,
+		);
+
+		const { OpenAI: RealOpenAI } = await vi.importActual<typeof import('openai')>('openai');
+		MockedOpenAI.mockImplementation(function (options?: ConstructorParameters<typeof OpenAI>[0]) {
+			return new RealOpenAI(options) as unknown as OpenAI;
+		});
+	});
+
+	const contextSignedInWithOAuth2 = (items: number) => {
+		const ctx = contextWith({}, items);
+
+		ctx.getCredentials = vi.fn().mockResolvedValue({
+			url: GATEWAY,
+			authentication: 'oauth2',
+			tokenUrl: TOKEN_URL,
+			clientId: 'id',
+			clientSecret: 'secret',
+		});
+		ctx.helpers = {
+			getSecureEgressFilter: () => ({ validateUrl: async () => ({ ok: true }) }),
+		} as unknown as IExecuteFunctions['helpers'];
+		ctx.getNodeParameter = vi
+			.fn()
+			.mockImplementation((name: string, itemIndex: number, fallback: unknown) => {
+				// A name of its own for each item, so a leak cannot hide behind an overwrite
+				if (name === 'headers.header') return [{ name: `x-item-${itemIndex}`, value: 'set' }];
+				if (name === 'model') return 'gpt-4o';
+				if (name === 'messages.message') return [{ role: 'user', content: 'hi' }];
+				if (name === 'sendContextHeaders') return false;
+				return fallback;
+			});
+
+		return ctx;
+	};
+
+	it("keeps an earlier item's header out of a later item's retry after a 401", async () => {
+		let minted = 0;
+		let attempts = 0;
+		gateway.reply = (url) => {
+			if (url === TOKEN_URL) {
+				return new Response(JSON.stringify({ access_token: `token-${++minted}` }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' },
+				});
+			}
+			// Every first attempt expires, so each item runs the refresh and retries
+			const expired = ++attempts % 2 === 1;
+			return new Response(JSON.stringify(expired ? { message: 'expired' } : answer()), {
+				status: expired ? 401 : 200,
+				headers: { 'content-type': 'application/json' },
+			});
+		};
+
+		await new CustomModelEndpoint().execute.call(contextSignedInWithOAuth2(2));
+
+		const chat = gateway.calls.filter((call) => call.url === CHAT_URL);
+		const retryOfLastItem = chat.at(-1)?.headers;
+
+		expect(chat).toHaveLength(4);
+		expect(retryOfLastItem?.get('x-item-1')).toBe('set');
+		expect(retryOfLastItem?.get('x-item-0')).toBeNull();
+		expect(retryOfLastItem?.get('authorization')).toBe(`Bearer token-${minted}`);
 	});
 });

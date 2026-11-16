@@ -182,12 +182,7 @@ export class CustomModelEndpoint implements INodeType {
 		const credentialType = pickCredentialType(this.getNode());
 		const credential = await this.getCredentials(credentialType);
 
-		/**
-		 * One client for the whole run, so its connections are reused across items. The
-		 * credential, the timeout and the context headers are node-level settings rather
-		 * than per-item data; only the user's own headers resolve per item, and those
-		 * travel on the request instead of the transport.
-		 */
+		// The timeout is a node-level setting, so it is read once and shared by every item
 		const runOptions = this.getNodeParameter('options', 0, {}) as Options;
 		const contextHeadersFor = (itemIndex: number) =>
 			(this.getNodeParameter('sendContextHeaders', itemIndex, true) as boolean)
@@ -195,25 +190,27 @@ export class CustomModelEndpoint implements INodeType {
 				: {};
 
 		/**
-		 * The transport resolves this record per request, so rewriting it between items
-		 * gives each item its own headers without a second client. It also puts them in
-		 * the layer that wins over the credential's gateway headers, which is where the
-		 * sub-node puts them. Safe because the loop below is sequential.
+		 * One transport for each item, because the headers belong to the item. Sharing one
+		 * and rewriting a record between items leaks: the refresh path keeps its own copy of
+		 * the resolved headers and layers each refresh over it, so a header an earlier item
+		 * set survives into a later item's retry after a 401. The headers also have to sit in
+		 * this layer rather than on the request, because `mergeHeaders` lets it win over the
+		 * credential's gateway headers, which is the precedence the sub-node has.
 		 */
-		const requestHeaders: Record<string, string> = { ...contextHeadersFor(0) };
+		const clientFor = (requestHeaders: Record<string, string>) => {
+			const { configuration } = createCustomModelEndpointConfig(this, credential, {
+				credentialType,
+				timeout: runOptions.timeout,
+				requestHeaders,
+			});
 
-		const { configuration } = createCustomModelEndpointConfig(this, credential, {
-			credentialType,
-			timeout: runOptions.timeout,
-			requestHeaders,
-		});
-
-		const client = new OpenAI({
-			...configuration,
-			// The fetch strips this: a gateway reading its key elsewhere must not see it
-			apiKey: 'custom-model-endpoint',
-			maxRetries: 0,
-		});
+			return new OpenAI({
+				...configuration,
+				// The fetch strips this: a gateway reading its key elsewhere must not see it
+				apiKey: 'custom-model-endpoint',
+				maxRetries: 0,
+			});
+		};
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
@@ -250,11 +247,9 @@ export class CustomModelEndpoint implements INodeType {
 					});
 				}
 
-				for (const key of Object.keys(requestHeaders)) delete requestHeaders[key];
-				Object.assign(
-					requestHeaders,
-					contextHeadersFor(itemIndex),
-					toHeaderRecord(
+				const requestHeaders: Record<string, string> = {
+					...contextHeadersFor(itemIndex),
+					...toHeaderRecord(
 						Object.fromEntries(
 							headerRows.flatMap(({ name, value }) => {
 								const headerName = String(name ?? '').trim();
@@ -262,7 +257,8 @@ export class CustomModelEndpoint implements INodeType {
 							}),
 						),
 					),
-				);
+				};
+				const client = clientFor(requestHeaders);
 
 				const response = await client.chat.completions.create(body, {
 					signal: this.getExecutionCancelSignal(),
