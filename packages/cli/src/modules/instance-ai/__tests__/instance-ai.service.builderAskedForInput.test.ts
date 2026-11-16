@@ -58,7 +58,7 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 
 		expect(service.telemetry.track).toHaveBeenCalledWith(
 			'Builder asked for input',
-			expect.objectContaining({ type: 'questions', num_steps: 2 }),
+			expect.objectContaining({ type: 'questions', num_steps: 2, runtime: 'instance-ai' }),
 		);
 	});
 

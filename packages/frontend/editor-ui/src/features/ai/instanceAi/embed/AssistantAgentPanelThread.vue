@@ -33,6 +33,10 @@ import {
 	type AssistantAgentSendingMessage,
 } from '../assistantAgent/useAssistantAgentMessageTelemetry';
 import { useAssistantAgentTurnTelemetry } from '../assistantAgent/useAssistantAgentTurnTelemetry';
+import {
+	ASSISTANT_AGENT_SETUP_SAVED,
+	useAssistantAgentSetupSavedTelemetry,
+} from '../assistantAgent/useAssistantAgentSetupSavedTelemetry';
 import { useAssistantArtifactThread } from '../assistantAgent/useAssistantArtifactThread';
 import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import InstanceAiResourceChip from '../components/InstanceAiResourceChip.vue';
@@ -198,6 +202,12 @@ function onStreamingChange(streaming: boolean): void {
 	if (wasStreaming && !streaming) void threadsStore.fetchRecent();
 	wasStreaming = streaming;
 }
+
+const setupSavedTelemetry = useAssistantAgentSetupSavedTelemetry({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
+provide(ASSISTANT_AGENT_SETUP_SAVED, setupSavedTelemetry.expectResult);
 
 const thread = useAssistantArtifactThread({
 	threadId: props.threadId,

@@ -100,6 +100,10 @@ import {
 	type AssistantAgentSendingMessage,
 } from './useAssistantAgentMessageTelemetry';
 import { useAssistantAgentTurnTelemetry } from './useAssistantAgentTurnTelemetry';
+import {
+	ASSISTANT_AGENT_SETUP_SAVED,
+	useAssistantAgentSetupSavedTelemetry,
+} from './useAssistantAgentSetupSavedTelemetry';
 import { useAssistantAgentTargets } from './useAssistantAgentTargets';
 import { useAssistantAgentTrace } from './useAssistantAgentTrace';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
@@ -260,6 +264,12 @@ function onStreamEvent(event: AgentSseEvent): void {
 	trace.recordEvent(event);
 	turnTelemetry.handleStreamEvent(event);
 }
+
+const setupSavedTelemetry = useAssistantAgentSetupSavedTelemetry({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
+provide(ASSISTANT_AGENT_SETUP_SAVED, setupSavedTelemetry.expectResult);
 
 watch(panel, (current) => {
 	if (!current) return;

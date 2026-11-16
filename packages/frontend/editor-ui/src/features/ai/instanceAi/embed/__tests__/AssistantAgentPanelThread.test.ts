@@ -7,7 +7,9 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises, mount } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h, inject, ref, type Ref } from 'vue';
+
+import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
 import {
 	clearPendingHandoffContext,
@@ -17,6 +19,10 @@ import {
 	stashPendingFirstMessage,
 	stashPendingHandoffContext,
 } from '../../composables/useInstanceAiHandoff';
+import {
+	ASSISTANT_AGENT_SETUP_SAVED,
+	type PendingSetupSave,
+} from '../../assistantAgent/useAssistantAgentSetupSavedTelemetry';
 import AssistantAgentPanelThread from '../AssistantAgentPanelThread.vue';
 
 const {
@@ -27,6 +33,8 @@ const {
 	stagedChips,
 	removeChip,
 	telemetryTrack,
+	chatMessages,
+	expectSetupResult,
 } = vi.hoisted(() => ({
 	panelProps: { current: {} as Record<string, unknown> },
 	sendMessageFromOutside: vi.fn(),
@@ -35,6 +43,8 @@ const {
 	stagedChips: { current: [] as Array<{ id: string; label: string }> },
 	removeChip: vi.fn(),
 	telemetryTrack: vi.fn(),
+	chatMessages: { current: undefined as Ref<ChatMessage[]> | undefined },
+	expectSetupResult: { current: undefined as ((save: PendingSetupSave) => void) | undefined },
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -45,13 +55,17 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 	default: defineComponent({
 		inheritAttrs: false,
 		setup(_props, { attrs, expose, slots }) {
+			// A setup card in the chat reads this to report an accepted apply.
+			expectSetupResult.current = inject(ASSISTANT_AGENT_SETUP_SAVED, undefined);
+			const messages = ref<ChatMessage[]>([]);
+			chatMessages.current = messages;
 			expose({
 				sendMessageFromOutside,
 				setDraft,
 				clearDraftIfMatches,
 				focusInput: vi.fn(),
 				isDirty: () => false,
-				messages: ref([]),
+				messages,
 				isStreaming: ref(false),
 				isLoadingHistory: ref(false),
 			});
@@ -337,5 +351,49 @@ describe('AssistantAgentPanelThread', () => {
 		acceptMessage(first);
 
 		expect(clientContext().attachments).toEqual([subject]);
+	});
+
+	it('sends the setup saved event when the chat shows the result of an accepted setup apply', async () => {
+		await render();
+		const node = { id: 'node-1', name: 'Slack', type: 'n8n-nodes-base.slack' };
+		expectSetupResult.current?.({
+			requestId: 'req-1',
+			workflowId: 'wf-1',
+			sections: [
+				{ credentialType: 'slackApi', credentialTargetNodes: [node], parameterNames: [], node },
+			],
+		});
+
+		chatMessages.current!.value = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{
+						tool: 'setup_workflow',
+						toolCallId: 'call-1',
+						state: 'done',
+						suspendPayload: { requestId: 'req-1' },
+						output: {
+							success: true,
+							completedNodes: [{ nodeName: 'Slack', credentialType: 'slackApi' }],
+						},
+					},
+				],
+			} as unknown as ChatMessage,
+		];
+		await flushPromises();
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.WORKFLOW.SETUP_SAVED,
+			expect.objectContaining({
+				thread_id: 'thread-1',
+				workflow_id: 'wf-1',
+				request_id: 'req-1',
+				setup_complete: true,
+				runtime: 'agents',
+			}),
+		);
 	});
 });
