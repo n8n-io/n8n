@@ -55,12 +55,8 @@ const {
 		workflowPreviewsAboveAssistantEnabled: { value: false },
 		workflowPreviewsAboveAssistantVariant: { value: null as 'control' | 'variant' | null },
 		// EOF Experiment cleanup
-<<<<<<< HEAD
 		splitBelowInputVariant: { value: false },
-		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
-=======
 		// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
->>>>>>> 99163e29 (feat: Implements v3 iteration of existing n8n Assistant taxonomy experiment (#43692))
 		inspirationFromTaxonomyVariant: { value: undefined as string | undefined },
 		inspirationFromTaxonomyTreatmentEnabled: { value: false },
 		// EOF Experiment cleanup
@@ -742,12 +738,8 @@ describe('InstanceAiEmptyView', () => {
 		experimentMocks.workflowPreviewsAboveAssistantEnabled.value = false;
 		experimentMocks.workflowPreviewsAboveAssistantVariant.value = null;
 		// EOF Experiment cleanup
-<<<<<<< HEAD
 		experimentMocks.splitBelowInputVariant.value = false;
-		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
-=======
 		// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
->>>>>>> 99163e29 (feat: Implements v3 iteration of existing n8n Assistant taxonomy experiment (#43692))
 		experimentMocks.inspirationFromTaxonomyVariant.value = undefined;
 		experimentMocks.inspirationFromTaxonomyTreatmentEnabled.value = false;
 		// EOF Experiment cleanup
