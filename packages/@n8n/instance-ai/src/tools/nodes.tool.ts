@@ -54,7 +54,7 @@ const METHOD_TYPE_DESCRIPTION =
 const CURRENT_NODE_PARAMETERS_DESCRIPTION =
 	'Current node parameters for dependent lookups — e.g. sheetsSearch needs documentId { __rl: true, mode: "id", value: "<spreadsheetId>" }. Check displayOptions in the type definition.';
 const NODE_TYPES_ARRAY_DESCRIPTION =
-	'Node type IDs for node-level lookups (max 10). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
+	'Node type IDs for node-level lookups. For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
 
 const nodeRequestObjectSchema = z.object({
 	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
@@ -672,7 +672,7 @@ export function createSearchNodesTool(context: InstanceAiContext) {
 }
 
 const getNodeTypesInputSchema = z.object({
-	nodeTypes: z.array(nodeRequestSchema).min(1).max(10).describe(NODE_TYPES_ARRAY_DESCRIPTION),
+	nodeTypes: z.array(nodeRequestSchema).min(1).describe(NODE_TYPES_ARRAY_DESCRIPTION),
 });
 
 export function createGetNodeTypesTool(context: InstanceAiContext) {
