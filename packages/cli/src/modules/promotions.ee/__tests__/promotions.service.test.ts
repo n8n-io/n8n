@@ -64,6 +64,7 @@ import { PromotionGitError } from '../promotions-git.error';
 import { PromotionsService } from '../promotions.service';
 import type { PromotionOperationInput, ResolvedPromotionConfig } from '../promotions.types';
 import { WorkingCopyUpdater } from '../working-copy-updater';
+import { holdEnvironmentLock } from './utils/environment-lock';
 
 // These dependencies are injected as mocks. Do not load their implementation graphs.
 vi.mock('@/modules/n8n-packages/n8n-packages.service', () => ({
@@ -177,21 +178,7 @@ describe('PromotionsService', () => {
 			return await fn(controller.signal);
 		});
 
-	/** Holds the environment lock until `release` is called. */
-	const holdLock = async () => {
-		let release!: () => void;
-		let acquired!: () => void;
-		const held = new Promise<void>((resolve) => (acquired = resolve));
-		const done = environmentLock.run(ENVIRONMENT_ID, async () => {
-			acquired();
-			await new Promise<void>((resolve) => (release = resolve));
-		});
-		await held;
-		return async () => {
-			release();
-			await done;
-		};
-	};
+	const holdLock = async () => await holdEnvironmentLock(environmentLock, ENVIRONMENT_ID);
 
 	beforeEach(async () => {
 		vi.clearAllMocks();

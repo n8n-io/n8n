@@ -18,6 +18,7 @@ import {
 	PromotionLockLostError,
 } from '../promotion-environment-lock.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
+import { holdEnvironmentLock } from './utils/environment-lock';
 
 describe('PromotionCheckoutCleanupService', () => {
 	const environmentRepository = mock<PromotionEnvironmentRepository>();
@@ -71,21 +72,8 @@ describe('PromotionCheckoutCleanupService', () => {
 			() => false,
 		);
 
-	/** Holds the environment lock until the returned function is called. */
-	const holdLock = async (environmentId: string) => {
-		let release!: () => void;
-		let acquired!: () => void;
-		const held = new Promise<void>((resolve) => (acquired = resolve));
-		const done = environmentLock.run(environmentId, async () => {
-			acquired();
-			await new Promise<void>((resolve) => (release = resolve));
-		});
-		await held;
-		return async () => {
-			release();
-			await done;
-		};
-	};
+	const holdLock = async (environmentId: string) =>
+		await holdEnvironmentLock(environmentLock, environmentId);
 
 	/** Whether another operation can take the lock now. */
 	const isLockFree = async (environmentId: string) =>

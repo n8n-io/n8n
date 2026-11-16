@@ -37,6 +37,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, type INode } from 'n8n-workflow';
 import assert from 'node:assert';
@@ -780,16 +781,14 @@ describe('Promote and Apply', () => {
 		await createTeamProject('Orders', owner);
 
 		// Pause the first Promote inside the lock, so the second one overlaps it.
-		let exportStarted!: () => void;
-		const started = new Promise<void>((resolve) => (exportStarted = resolve));
-		let resume!: () => void;
-		const paused = new Promise<void>((resolve) => (resume = resolve));
+		const started = createDeferredPromise();
+		const paused = createDeferredPromise();
 		const exportPackage = packagesService.exportPackageToDirectory.bind(packagesService);
 		const exportSpy = vi
 			.spyOn(packagesService, 'exportPackageToDirectory')
 			.mockImplementationOnce(async (...args) => {
-				exportStarted();
-				await paused;
+				started.resolve();
+				await paused.promise;
 				return await exportPackage(...args);
 			});
 
@@ -798,7 +797,7 @@ describe('Promote and Apply', () => {
 				canExportVariableValues: false,
 				commitMessage: 'First promote',
 			});
-			await started;
+			await started.promise;
 
 			const second = service.promote(environments.promote.id, owner, {
 				canExportVariableValues: false,
@@ -807,7 +806,7 @@ describe('Promote and Apply', () => {
 			await expect(second).rejects.toThrow(LockedError);
 			await expect(second).rejects.toMatchObject({ httpStatusCode: 423 });
 
-			resume();
+			paused.resolve();
 			const result = await first;
 
 			const remoteGit = createFixtureGit(remote.bareDir);
@@ -817,7 +816,7 @@ describe('Promote and Apply', () => {
 			);
 			expect(exportSpy).toHaveBeenCalledOnce();
 		} finally {
-			resume();
+			paused.resolve();
 			exportSpy.mockRestore();
 		}
 	});
@@ -3696,20 +3695,18 @@ describe('Promote a project selection', () => {
 describe('Promote from a clean checkout', () => {
 	/** Pauses the next export after it starts, then runs or fails it. */
 	const pauseNextExport = (outcome: 'run' | 'fail') => {
-		let exportStarted!: () => void;
-		const started = new Promise<void>((resolve) => (exportStarted = resolve));
-		let resume!: () => void;
-		const paused = new Promise<void>((resolve) => (resume = resolve));
+		const started = createDeferredPromise();
+		const paused = createDeferredPromise();
 		const exportPackage = packagesService.exportPackageToDirectory.bind(packagesService);
 		const spy = vi
 			.spyOn(packagesService, 'exportPackageToDirectory')
 			.mockImplementationOnce(async (...args) => {
-				exportStarted();
-				await paused;
+				started.resolve();
+				await paused.promise;
 				if (outcome === 'fail') throw new Error('The export failed');
 				return await exportPackage(...args);
 			});
-		return { started, resume, spy };
+		return { started: started.promise, resume: () => paused.resolve(), spy };
 	};
 
 	const promoteSelection = async (projectId: string, workflowId: string, commitMessage: string) =>
