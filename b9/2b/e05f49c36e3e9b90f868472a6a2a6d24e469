@@ -1,0 +1,22 @@
+packages/cli/src/hooks-api/__tests__/public-http.service.test.ts
+  s_1b969b9b5a436a::t_7868317b914866 61-65,287-304
+  s_1b969b9b5a436a::t_e603775278df16 305
+packages/cli/src/hooks-api/v1/public-http.service.ts
+  s_1b969b9b5a436a::t_7868317b914866 13,16,30-38,41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b92be05f49c36e3e9b90f868472a6a2a6d24e469",
+  "prompts": {},
+  "sessions": {
+    "s_1b969b9b5a436a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df204a89-3442-4ad4-b0c3-7f28e87f473f",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
