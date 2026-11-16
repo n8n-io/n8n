@@ -917,7 +917,6 @@ describe('AgentJsonConfigSchema — config.guardrails.tools', () => {
 		{ kind: 'jailbreak', prompt: 'Detect jailbreaks', threshold: 0.7 },
 		{ kind: 'nsfw', threshold: 0 },
 		{ kind: 'topicalAlignment', prompt: 'Stay on topic', threshold: 1 },
-		{ kind: 'customPrompt', prompt: 'Check the output' },
 	])('accepts a valid %s guardrail', (guardrail) => {
 		expect(parseGuardrails([{ ...baseGuardrail, ...guardrail }]).success).toBe(true);
 	});

@@ -359,6 +359,7 @@ export class AgentRuntimeCacheService {
 			userToolAccessSnapshot,
 			budget,
 			toolGuardrails,
+			guardrailModel,
 		} = await reconstruction;
 
 		return {
@@ -368,6 +369,7 @@ export class AgentRuntimeCacheService {
 			mcpServerAttributions,
 			...(budget !== undefined ? { budget } : {}),
 			...(toolGuardrails !== undefined ? { toolGuardrails } : {}),
+			...(guardrailModel !== undefined ? { guardrailModel } : {}),
 			projectId,
 			telemetryConfiguration: buildAgentConfigurationTelemetry(runSource),
 			...(userToolAccessSnapshot !== undefined ? { userToolAccessSnapshot } : {}),
