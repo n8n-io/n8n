@@ -4,6 +4,8 @@ import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
+import { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
+import { type ExecutionIdV2, isExecutionIdV2 } from '@/executions/execution-id';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -23,11 +25,12 @@ export async function loadExecutionForViewer(
 	executionId: string,
 	viewer: User,
 ): Promise<IExecutionResponse | undefined> {
-	const execution =
-		(await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		})) ?? (await loadUnsavedManualExecution(executionId, viewer));
+	const execution = isExecutionIdV2(executionId)
+		? await loadEngineV2Execution(executionId)
+		: ((await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			})) ?? (await loadUnsavedManualExecution(executionId, viewer)));
 	if (!execution) return undefined;
 
 	// Redacts in place. Never reveals: a reveal is an audited user action in the
@@ -36,6 +39,20 @@ export async function loadExecutionForViewer(
 		user: viewer,
 	});
 	return execution;
+}
+
+/**
+ * An engine v2 execution lives on the data plane only. The caller has already
+ * checked the viewer's access to the workflow, as for a v1 execution, so the
+ * read is scoped to the workflow the run belongs to.
+ */
+async function loadEngineV2Execution(
+	executionId: ExecutionIdV2,
+): Promise<IExecutionResponse | undefined> {
+	const reader = Container.get(EngineV2ExecutionReader);
+	const reference = await reader.findReference(executionId);
+	if (!reference) return undefined;
+	return await reader.findOne(executionId, [reference.workflowId]);
 }
 
 /**
