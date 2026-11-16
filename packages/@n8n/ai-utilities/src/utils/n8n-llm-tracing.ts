@@ -70,7 +70,7 @@ function hasUsageMetadata(message: unknown): message is {
 /** The reported OpenAI `tokenUsage` shape; a partial payload falls through to the message. */
 function isReportedTokenUsage(
 	usage: unknown,
-): usage is { promptTokens: number; completionTokens: number } {
+): usage is Partial<ProviderTokenUsageResult> & { promptTokens: number; completionTokens: number } {
 	if (typeof usage !== 'object' || usage === null) return false;
 	if (!('promptTokens' in usage) || typeof usage.promptTokens !== 'number') return false;
 	if (!('completionTokens' in usage) || typeof usage.completionTokens !== 'number') return false;
@@ -85,11 +85,7 @@ function isReportedTokenUsage(
  * over recomputing input + output; the `tokenUsage` payload carries no total the
  * default parser trusts, so that branch recomputes.
  */
-export function openAiTokensUsageParser(result: LLMResult): {
-	completionTokens: number;
-	promptTokens: number;
-	totalTokens: number;
-} {
+export function openAiTokensUsageParser(result: LLMResult): TokenUsageResult {
 	const reportedUsage: unknown = result.llmOutput?.tokenUsage;
 	// Correct only because handleLLMEnd receives @langchain/openai's raw _generate
 	// output. If it ever receives a post-generate() LLMResult, _combineLLMOutput
@@ -103,6 +99,7 @@ export function openAiTokensUsageParser(result: LLMResult): {
 			completionTokens,
 			promptTokens,
 			totalTokens: promptTokens + completionTokens,
+			cost: reportedUsage.cost ?? reportedUsage.totalCost,
 		};
 	}
 
