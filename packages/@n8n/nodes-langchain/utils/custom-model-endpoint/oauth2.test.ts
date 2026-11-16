@@ -1,5 +1,6 @@
 import { UserError } from '@n8n/errors';
 
+import { oauth2BasicCredentials } from './headers';
 import { clientCredentialsTokenRequest, createClientCredentialsTokenSource } from './oauth2';
 import type { OAuth2Login } from './types';
 
@@ -99,6 +100,17 @@ describe('createClientCredentialsTokenSource', () => {
 
 			expect(calls).toHaveLength(mints);
 		});
+
+		it('keeps a short-lived token for half its life, rather than retiring it on arrival', async () => {
+			const { calls, fetchImpl } = granting({ ...GRANT, expires_in: 20 });
+			const source = createClientCredentialsTokenSource(login(), fetchImpl);
+
+			await source.getToken();
+			vi.setSystemTime(Date.now() + 5_000);
+			await source.getToken();
+
+			expect(calls).toHaveLength(1);
+		});
 	});
 
 	it('asks again after the token is forgotten', async () => {
@@ -156,10 +168,41 @@ describe('createClientCredentialsTokenSource', () => {
 			['a plain text refusal', 'Unauthorized\n', 401, 'Unauthorized'],
 			['the status when the body states no reason', JSON.stringify({}), 503, 'answered 503'],
 			['the status when there is no body at all', '', 503, 'answered 503'],
+			[
+				'the status when the body carries an empty message',
+				JSON.stringify({ error: { message: '' } }),
+				503,
+				'answered 503',
+			],
+			[
+				'the field beside an empty message rather than the empty message',
+				JSON.stringify({ error: { message: '' }, detail: 'Not authenticated' }),
+				401,
+				'Not authenticated',
+			],
 		])('gives %s', async (_name, body, status, expected) => {
 			const source = createClientCredentialsTokenSource(login(), refusing(body, status));
 
 			await expect(source.getToken()).rejects.toThrow(expected);
+		});
+
+		it.each([
+			['the secret as it was sent', SECRET],
+			['the whole Basic value', oauth2BasicCredentials(login())],
+		])('keeps the credential out of the error when the server echoes %s', async (_name, sent) => {
+			const source = createClientCredentialsTokenSource(
+				login(),
+				refusing(JSON.stringify({ error_description: `Basic ${sent} is not valid` }), 401),
+			);
+
+			const error = await source.getToken().then(
+				() => undefined,
+				(reason: UserError) => reason,
+			);
+
+			expect(error).toBeInstanceOf(UserError);
+			expect(error?.message).toContain('is not valid');
+			expect(`${error?.message} ${error?.description ?? ''}`).not.toContain(sent);
 		});
 	});
 
