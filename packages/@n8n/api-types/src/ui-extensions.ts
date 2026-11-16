@@ -47,6 +47,11 @@ const uiExtensionNodeSchema = z.object({
 	/** The name that n8n gives a new node of this type, such as "Edit Fields". */
 	defaultName: z.string().optional(),
 	isTrigger: z.boolean().optional(),
+	/**
+	 * Whether the node connects to an outside service, such as Slack. n8n's own
+	 * logic and utility nodes, such as If or Edit Fields, are not services.
+	 */
+	isService: z.boolean().optional(),
 	disabled: z.boolean().optional(),
 });
 

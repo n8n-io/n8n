@@ -68,13 +68,20 @@ export function renderBuiltinView(id: string, initial: UiExtensionPageContext) {
 export const node = (
 	name: string,
 	displayName: string,
-	extra: { isTrigger?: boolean; disabled?: boolean; type?: string; defaultName?: string } = {},
+	extra: {
+		isTrigger?: boolean;
+		isService?: boolean;
+		disabled?: boolean;
+		type?: string;
+		defaultName?: string;
+	} = {},
 ) => ({
 	name,
 	...(extra.defaultName !== undefined && { defaultName: extra.defaultName }),
 	type: extra.type ?? `n8n-nodes-base.${displayName.replace(/\s/g, '').toLowerCase()}`,
 	displayName,
 	isTrigger: extra.isTrigger ?? false,
+	isService: extra.isService ?? false,
 	disabled: extra.disabled ?? false,
 });
 

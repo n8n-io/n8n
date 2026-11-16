@@ -1,6 +1,6 @@
 /* global Vue, n8n */
-// The built-in "Integrations" view: the apps and services that the open
-// workflow connects to, grouped by node type.
+// The built-in "Integrations" view: the outside services that the open workflow
+// connects to, grouped by node type, then n8n's own nodes that it uses.
 const { computed } = Vue;
 
 const STICKY_NOTE = 'n8n-nodes-base.stickyNote';
@@ -15,20 +15,22 @@ export default {
 		const nodes = computed(() =>
 			(workflow.value?.nodes ?? []).filter((node) => node.type !== STICKY_NOTE),
 		);
-		const services = computed(() => {
+		const group = (list) => {
 			const byName = new Map();
-			for (const node of nodes.value) {
+			for (const node of list) {
 				const name = node.displayName ?? node.type;
-				const service = byName.get(name) ?? { name, nodes: [], isTrigger: false };
-				service.nodes.push(node.name);
-				service.isTrigger = service.isTrigger || node.isTrigger === true;
-				byName.set(name, service);
+				const entry = byName.get(name) ?? { name, nodes: [], isTrigger: false };
+				entry.nodes.push(node.name);
+				entry.isTrigger = entry.isTrigger || node.isTrigger === true;
+				byName.set(name, entry);
 			}
 			return [...byName.values()].sort(
 				(a, b) => b.nodes.length - a.nodes.length || a.name.localeCompare(b.name),
 			);
-		});
-		return { context, workflow, nodes, services, row, t: n8n.t };
+		};
+		const services = computed(() => group(nodes.value.filter((node) => node.isService)));
+		const builtinNodes = computed(() => group(nodes.value.filter((node) => !node.isService)));
+		return { context, workflow, nodes, services, builtinNodes, row, t: n8n.t };
 	},
 	template: `
 		<section data-test-id="integrations" style="display: flex; flex-direction: column; gap: var(--spacing--sm)">
@@ -44,7 +46,8 @@ export default {
 					<N8nHeading tag="h2" size="medium" bold>{{ t('uiExtensions.integrations.heading') }}</N8nHeading>
 					<N8nText size="small" color="text-light" data-test-id="integrations-summary">{{ t('uiExtensions.integrations.summary', { services: services.length, nodes: nodes.length }) }}</N8nText>
 				</div>
-				<N8nCallout v-if="services.length === 0" theme="info">{{ t('uiExtensions.integrations.empty') }}</N8nCallout>
+				<N8nCallout v-if="nodes.length === 0" theme="info">{{ t('uiExtensions.integrations.empty') }}</N8nCallout>
+				<N8nCallout v-else-if="services.length === 0" theme="info" data-test-id="integrations-no-services">{{ t('uiExtensions.integrations.noServices') }}</N8nCallout>
 				<N8nCard v-for="service in services" :key="service.name" data-test-id="integrations-service">
 					<div style="display: flex; flex-direction: column; gap: var(--spacing--2xs)">
 						<div style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing--2xs)">
@@ -60,6 +63,12 @@ export default {
 						</span>
 					</div>
 				</N8nCard>
+				<div v-if="builtinNodes.length > 0" style="display: flex; flex-direction: column; gap: var(--spacing--2xs)" data-test-id="integrations-builtin">
+					<N8nHeading tag="h3" size="small" bold>{{ t('uiExtensions.integrations.builtinHeading') }}</N8nHeading>
+					<span style="display: flex; flex-wrap: wrap; gap: var(--spacing--4xs)">
+						<N8nTag v-for="entry in builtinNodes" :key="entry.name" :text="entry.name" :clickable="false" data-test-id="integrations-builtin-node" />
+					</span>
+				</div>
 			</template>
 		</section>
 	`,

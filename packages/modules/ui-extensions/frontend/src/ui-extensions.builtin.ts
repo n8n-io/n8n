@@ -53,6 +53,8 @@ export const BUILTIN_VIEWS: readonly BuiltinViewDefinition[] = [
 			{ key: 'uiExtensions.integrations.summary', params: ['services', 'nodes'] },
 			{ key: 'uiExtensions.integrations.trigger' },
 			{ key: 'uiExtensions.integrations.empty' },
+			{ key: 'uiExtensions.integrations.noServices' },
+			{ key: 'uiExtensions.integrations.builtinHeading' },
 			{ key: 'uiExtensions.integrations.openWorkflow' },
 		],
 	},

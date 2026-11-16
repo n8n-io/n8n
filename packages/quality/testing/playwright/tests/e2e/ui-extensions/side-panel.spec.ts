@@ -193,20 +193,24 @@ test.describe(
 			await n8n.sidePanel.open();
 
 			await n8n.sidePanel.selectTab('Integrations');
+			// A manual trigger and two No Operation nodes connect to no outside service.
 			await expect(n8n.sidePanel.getViewElement('integrations-summary')).toHaveText(
-				'Services: 2. Nodes: 3.',
+				'Services: 0. Nodes: 3.',
 			);
-			await expect(n8n.sidePanel.getViewElement('integrations-service-name').first()).toHaveText(
+			await expect(n8n.sidePanel.getViewElement('integrations-no-services')).toBeVisible();
+			await expect(n8n.sidePanel.getViewElement('integrations-builtin-node')).toHaveText([
 				'No Operation, do nothing',
-			);
+				'Manual Trigger',
+			]);
 
 			await n8n.sidePanel.selectTab('Checklist');
+			// A manual trigger does not make the workflow start on its own.
 			await expect(n8n.sidePanel.getViewElement('checklist-score')).toHaveText(
-				'1 of 5 checks pass',
+				'0 of 5 checks pass',
 			);
 			await expect(n8n.sidePanel.getViewElement('checklist-trigger')).toHaveAttribute(
 				'data-pass',
-				'true',
+				'false',
 			);
 			await expect(n8n.sidePanel.getViewElement('checklist-disabled')).toContainText(
 				'Disabled nodes: 1.',

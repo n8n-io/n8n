@@ -56,6 +56,21 @@ describe('Checklist view', () => {
 	});
 
 	it.each([
+		['a schedule trigger', 'n8n-nodes-base.scheduleTrigger', 'true'],
+		[
+			'a manual trigger, which runs only when someone starts it',
+			'n8n-nodes-base.manualTrigger',
+			'false',
+		],
+	])('checks that the workflow starts on its own with %s', (_case, type, pass) => {
+		const { getByTestId } = render(
+			workflowPage([node('Start', 'Some Trigger', { isTrigger: true, type })]),
+		);
+
+		expect(passOf(getByTestId('checklist-trigger'))).toBe(pass);
+	});
+
+	it.each([
 		['a name that only starts with the type name', 'HTTP Request leads'],
 		['a name with letters after the number', 'HTTP Request1b'],
 	])('does not count %s as a default name', (_case, name) => {

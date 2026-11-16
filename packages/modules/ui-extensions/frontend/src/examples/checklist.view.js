@@ -4,6 +4,7 @@
 const { computed } = Vue;
 
 const STICKY_NOTE = 'n8n-nodes-base.stickyNote';
+const MANUAL_TRIGGER = 'n8n-nodes-base.manualTrigger';
 
 /** A node keeps its default name when it is the name n8n gave it, maybe with a number. */
 function hasDefaultName(node) {
@@ -24,7 +25,12 @@ export default {
 			const disabled = nodes.filter((node) => node.disabled).length;
 			const defaultNames = nodes.filter(hasDefaultName).length;
 			return [
-				{ key: 'trigger', pass: nodes.some((node) => node.isTrigger), count: 0 },
+				{
+					key: 'trigger',
+					// A manual trigger runs only when someone starts it.
+					pass: nodes.some((node) => node.isTrigger && node.type !== MANUAL_TRIGGER),
+					count: 0,
+				},
 				{ key: 'errorWorkflow', pass: workflow.value?.hasErrorWorkflow === true, count: 0 },
 				{ key: 'disabled', pass: disabled === 0, count: disabled },
 				{ key: 'names', pass: defaultNames === 0, count: defaultNames },

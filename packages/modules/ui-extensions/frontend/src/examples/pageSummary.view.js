@@ -25,7 +25,9 @@ export default {
 			{
 				key: 'services',
 				icon: 'plug',
-				value: new Set(nodes.value.map((node) => node.displayName ?? node.type)).size,
+				value: new Set(
+					nodes.value.filter((node) => node.isService).map((node) => node.displayName ?? node.type),
+				).size,
 			},
 			{ key: 'disabled', icon: 'power-off', value: nodes.value.filter((n) => n.disabled).length },
 		]);

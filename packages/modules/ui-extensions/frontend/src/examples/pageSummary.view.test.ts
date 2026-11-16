@@ -14,8 +14,9 @@ describe('Page summary view', () => {
 	const nodes = [
 		node('Every morning', 'Schedule Trigger', { isTrigger: true }),
 		node('Get leads', 'HTTP Request'),
-		node('Notify sales', 'Slack'),
-		node('Notify support', 'Slack', { disabled: true }),
+		node('Notify sales', 'Slack', { isService: true }),
+		node('Notify support', 'Slack', { isService: true, disabled: true }),
+		node('Log row', 'Google Sheets', { isService: true }),
 		node('Note', 'Sticky Note', { type: 'n8n-nodes-base.stickyNote' }),
 	];
 
@@ -24,9 +25,9 @@ describe('Page summary view', () => {
 
 		expect(getByTestId('page-summary-workflow-name').textContent).toBe('Lead routing');
 		expect(getByTestId('page-summary-state').textContent?.trim()).toBe('Published');
-		expect(getByTestId('page-summary-stat-nodes').textContent).toBe('4');
+		expect(getByTestId('page-summary-stat-nodes').textContent).toBe('5');
 		expect(getByTestId('page-summary-stat-triggers').textContent).toBe('1');
-		expect(getByTestId('page-summary-stat-services').textContent).toBe('3');
+		expect(getByTestId('page-summary-stat-services').textContent).toBe('2');
 		expect(getByTestId('page-summary-stat-disabled').textContent).toBe('1');
 	});
 

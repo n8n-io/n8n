@@ -1,8 +1,9 @@
 import type { UiExtensionPageContext } from '@n8n/api-types';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { computed, type ShallowRef } from 'vue';
 import { useRoute } from 'vue-router';
 
-import { VIEWS } from '@/app/constants';
+import { CORE_NODES_CATEGORY, VIEWS } from '@/app/constants';
 import type { WorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -23,6 +24,17 @@ const WORKFLOWS_ROUTES = new Set<string>([
 	VIEWS.FOLDERS,
 	VIEWS.PROJECTS_FOLDERS,
 ]);
+
+/**
+ * A service node signs in to an outside app, such as Slack or Google Sheets. So it
+ * takes credentials and is not one of n8n's core nodes, such as HTTP Request or If.
+ */
+function isServiceNodeType(nodeType: INodeTypeDescription): boolean {
+	return (
+		(nodeType.credentials?.length ?? 0) > 0 &&
+		!(nodeType.codex?.categories?.includes(CORE_NODES_CATEGORY) ?? false)
+	);
+}
 
 /** `DEFAULT` and an empty value mean that the workflow has no error workflow. */
 function hasErrorWorkflow(errorWorkflow: string | undefined): boolean {
@@ -64,6 +76,7 @@ export function useUiExtensionPageContext(
 										displayName: nodeType.displayName,
 										defaultName: nodeType.defaults.name ?? nodeType.displayName,
 										isTrigger: nodeType.group.includes('trigger'),
+										isService: isServiceNodeType(nodeType),
 									}),
 									disabled: node.disabled === true,
 								};

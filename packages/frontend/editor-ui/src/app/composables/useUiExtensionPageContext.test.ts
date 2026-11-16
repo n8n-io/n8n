@@ -70,8 +70,18 @@ describe(useUiExtensionPageContext, () => {
 				group: ['trigger'],
 			}),
 			// The mock makes any `group` a trigger group, so a non-trigger passes none.
-			mockNodeTypeDescription({ name: 'n8n-nodes-base.slack', displayName: 'Slack' }),
+			mockNodeTypeDescription({
+				name: 'n8n-nodes-base.slack',
+				displayName: 'Slack',
+				credentials: [{ name: 'slackApi', required: true }],
+			}),
 			mockNodeTypeDescription({ name: 'n8n-nodes-base.set', displayName: 'Edit Fields (Set)' }),
+			mockNodeTypeDescription({
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+				credentials: [{ name: 'httpBasicAuth', required: false }],
+				codex: { categories: ['Development', 'Core Nodes'] },
+			}),
 		]);
 		const store = documentStore.value!;
 		store.setNodes([
@@ -79,6 +89,7 @@ describe(useUiExtensionPageContext, () => {
 			createTestNode({ name: 'Tell sales', type: 'n8n-nodes-base.slack', disabled: true }),
 			createTestNode({ name: 'Mystery', type: 'n8n-nodes-community.unknown' }),
 			createTestNode({ name: 'Edit Fields', type: 'n8n-nodes-base.set' }),
+			createTestNode({ name: 'Get leads', type: 'n8n-nodes-base.httpRequest' }),
 		]);
 		store.mergeSettings({ errorWorkflow: 'wf-errors' });
 
@@ -88,14 +99,29 @@ describe(useUiExtensionPageContext, () => {
 			workflow: {
 				hasErrorWorkflow: true,
 				nodes: [
-					{ name: 'Start', displayName: 'Manual Trigger', isTrigger: true, disabled: false },
-					{ name: 'Tell sales', displayName: 'Slack', isTrigger: false, disabled: true },
+					{
+						name: 'Start',
+						displayName: 'Manual Trigger',
+						isTrigger: true,
+						isService: false,
+						disabled: false,
+					},
+					{
+						name: 'Tell sales',
+						displayName: 'Slack',
+						isTrigger: false,
+						isService: true,
+						disabled: true,
+					},
 					{ name: 'Mystery', type: 'n8n-nodes-community.unknown', disabled: false },
 					{
 						name: 'Edit Fields',
 						displayName: 'Edit Fields (Set)',
 						defaultName: 'n8n-nodes-base.set',
+						isService: false,
 					},
+					// Takes credentials, but is a core node.
+					{ name: 'Get leads', displayName: 'HTTP Request', isService: false },
 				],
 			},
 		});

@@ -32,7 +32,7 @@ export default {
 The view runs in a sandboxed iframe with no network access to n8n. It has two globals:
 - Vue: the Vue 3 API (ref, computed, watch, h, ...).
 - n8n.useContext(): a read-only ref to the page context. It updates when the user opens another page or edits the workflow. Its shape is one of:
-  { page: 'workflow', routeName, workflow: { id, name, active, hasErrorWorkflow, nodes: [{ name, type, displayName, defaultName, isTrigger, disabled }] } | null }
+  { page: 'workflow', routeName, workflow: { id, name, active, hasErrorWorkflow, nodes: [{ name, type, displayName, defaultName, isTrigger, isService, disabled }] } | null }
   { page: 'workflows', routeName, projectId, totalWorkflows: null }
   { page: 'other', routeName }
   "workflow" is null unless the open workflow is available in MCP.

@@ -10,6 +10,7 @@ function copyNode(node: UiExtensionNode): UiExtensionNode {
 		...(node.displayName !== undefined && { displayName: node.displayName }),
 		...(node.defaultName !== undefined && { defaultName: node.defaultName }),
 		...(node.isTrigger !== undefined && { isTrigger: node.isTrigger }),
+		...(node.isService !== undefined && { isService: node.isService }),
 		...(node.disabled !== undefined && { disabled: node.disabled }),
 	};
 }
