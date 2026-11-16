@@ -87,6 +87,21 @@ describe('InstanceAiWorkflowDraftPreview', () => {
 		vi.unstubAllGlobals();
 	});
 
+	it('adds the nodes one at a time when motion is allowed', async () => {
+		mockReducedMotion(false);
+		vi.useFakeTimers();
+		renderComponent({
+			pinia: createTestingPinia({ stubActions: false }),
+			props: { draft: draft(['Start', 'Set']), building: true },
+		});
+
+		expect(canvasProps.current?.nodes ?? []).toHaveLength(0);
+		await vi.advanceTimersByTimeAsync(80);
+		expect(canvasProps.current?.nodes.map((n) => n.data?.name)).toEqual(['Start']);
+		await vi.advanceTimersByTimeAsync(80);
+		expect(canvasProps.current?.nodes.map((n) => n.data?.name)).toEqual(['Start', 'Set']);
+	});
+
 	it('shows the step of the agent while it works', () => {
 		const { getByTestId } = renderComponent({
 			pinia: createTestingPinia({ stubActions: false }),
