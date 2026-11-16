@@ -3,9 +3,9 @@ import { Container } from '@n8n/di';
 import { GlobalConfig } from '../../index';
 
 describe('LeasesConfig', () => {
-	beforeEach(() => {
-		Container.reset();
+	afterEach(() => {
 		vi.unstubAllEnvs();
+		Container.reset();
 	});
 
 	it('should enable via env', () => {
