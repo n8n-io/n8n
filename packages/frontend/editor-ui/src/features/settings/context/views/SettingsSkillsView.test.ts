@@ -1380,6 +1380,7 @@ describe('SettingsSkillsView', () => {
 				missingSkills: [],
 				canReplaceCredential: true,
 				canReview: true,
+				canImport: true,
 				canDelete: true,
 			};
 

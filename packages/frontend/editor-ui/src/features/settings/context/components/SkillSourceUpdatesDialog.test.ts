@@ -35,6 +35,7 @@ const source: SkillSourceListItem = {
 	projectType: null,
 	projectIcon: null,
 	canReview: true,
+	canImport: true,
 	canDelete: true,
 	canReplaceCredential: false,
 	missingSkills: [],
@@ -165,12 +166,64 @@ it('shows new skills unchecked and imports only the selected new skill', async (
 	});
 });
 
-it('hides a new skill from the count but keeps it available for a later import', async () => {
+it.each(['all', 'group'])(
+	'excludes new skills from %s selection without import permission',
+	async (selection) => {
+		const existing = update('docx');
+		const other = { ...update('xlsx'), location: 'other/xlsx' };
+		vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+			updates: [existing, other],
+			newSkills: [newSkill()],
+			commit: null,
+		});
+		const view = renderDialog({ props: { source: { ...source, canImport: false } }, pinia });
+		expect(await view.findByRole('checkbox', { name: 'pdf' })).toBeDisabled();
+		expect(view.getByRole('checkbox', { name: 'pdf' })).not.toBeChecked();
+		expect(view.getByRole('checkbox', { name: 'docx' })).toBeChecked();
+		const toggle =
+			selection === 'all'
+				? view.getByTestId('skill-source-select-all')
+				: view.getByRole('checkbox', { name: 'skills', exact: true });
+		await userEvent.click(toggle);
+		await userEvent.click(toggle);
+		expect(view.getByRole('checkbox', { name: 'pdf' })).not.toBeChecked();
+		await userEvent.click(view.getByTestId('skill-updates-accept'));
+		expect(store.acceptSourceUpdates).toHaveBeenCalledWith(source.id, {
+			updates: [existing, other].map(({ skillId, contentHash, baseVersionId }) => ({
+				skillId,
+				contentHash,
+				baseVersionId,
+			})),
+			newSkills: [],
+			skippedNewSkills: [],
+			reviewedWarnings: false,
+		});
+	},
+);
+
+it('keeps new skills reviewable without import permission', async () => {
+	vi.mocked(store.fetchSourceUpdates).mockResolvedValue({
+		updates: [],
+		newSkills: [newSkill()],
+		commit: null,
+	});
+	const view = renderDialog({ props: { source: { ...source, canImport: false } }, pinia });
+	expect(await view.findByRole('checkbox', { name: 'pdf' })).toBeDisabled();
+	expect(view.getByTestId('skill-source-select-all')).toBeDisabled();
+	expect(view.getByTestId('skill-updates-accept')).toBeDisabled();
+	expect(
+		view.getByText("You don't have permission to import skills into this scope"),
+	).toBeVisible();
+	expect(view.getByTestId('skill-source-file')).toHaveTextContent('SKILL.md');
+	expect(view.getByTestId('skill-new-hide')).toBeEnabled();
+});
+
+it.each([true, false])('hides a new skill from the count with canImport=%s', async (canImport) => {
 	const skill = newSkill();
 	vi.mocked(store.fetchSourceUpdates)
 		.mockResolvedValueOnce({ updates: [], newSkills: [skill], commit: null })
 		.mockResolvedValue({ updates: [], newSkills: [{ ...skill, skipped: true }], commit: null });
-	const view = render();
+	const view = renderDialog({ props: { source: { ...source, canImport } }, pinia });
 	await view.findByRole('checkbox', { name: 'pdf' });
 	await userEvent.click(view.getByTestId('skill-new-hide'));
 	await waitFor(() => expect(view.getByTestId('skill-new-hide')).toBeDisabled());
@@ -180,7 +233,8 @@ it('hides a new skill from the count but keeps it available for a later import',
 		skippedNewSkills: [{ key: skill.key, contentHash: skill.contentHash }],
 		reviewedWarnings: false,
 	});
-	expect(view.getByRole('checkbox', { name: 'pdf' })).toBeEnabled();
+	if (canImport) expect(view.getByRole('checkbox', { name: 'pdf' })).toBeEnabled();
+	else expect(view.getByRole('checkbox', { name: 'pdf' })).toBeDisabled();
 	expect(view.getByRole('checkbox', { name: 'pdf' })).not.toBeChecked();
 	expect(view.emitted().close).toBeUndefined();
 });

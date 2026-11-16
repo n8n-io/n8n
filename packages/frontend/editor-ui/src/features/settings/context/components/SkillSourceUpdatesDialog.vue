@@ -56,8 +56,15 @@ let listRequest = 0;
 let loaded = false;
 let closed = false;
 
-const acceptable = (update: SkillPendingUpdate) =>
-	update.check.verdict !== 'blocked' && !update.nameClash;
+const acceptable = (update: ReviewItem) =>
+	update.check.verdict !== 'blocked' &&
+	!update.nameClash &&
+	(!update.newSkill || props.source.canImport);
+const disabledImportKeys = computed(() =>
+	props.source.canImport
+		? []
+		: updates.value.filter((update) => update.newSkill).map(({ skillId }) => skillId),
+);
 const selectedUpdates = computed(() =>
 	updates.value.filter((update) => selected.value.includes(update.skillId) && acceptable(update)),
 );
@@ -401,6 +408,7 @@ void load();
 				:discovery="discovery"
 				:scope-label="scopeLabel"
 				:disabled="saving"
+				:disabled-skill-keys="disabledImportKeys"
 				@preview="previewKey = $event"
 			>
 				<template #row-details="{ skill }">
@@ -434,6 +442,9 @@ void load();
 							{{ i18n.baseText('settings.context.skills.updates.publishedUnchanged') }}</N8nText
 						>
 						<template v-if="focused?.newSkill">
+							<N8nText v-if="!source.canImport" size="small" color="text-light">{{
+								i18n.baseText('settings.context.skills.updates.importNotAllowed')
+							}}</N8nText>
 							<N8nText size="small" color="text-light">{{
 								i18n.baseText('settings.context.skills.updates.newHint')
 							}}</N8nText>

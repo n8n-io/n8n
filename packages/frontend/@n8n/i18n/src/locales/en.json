@@ -4142,6 +4142,7 @@
 	"settings.context.skills.updates.hiddenNew": "Hidden from new count",
 	"settings.context.skills.updates.newSkillsError": "n8n could not load the new skills of this source. You can still review the stored updates.",
 	"settings.context.skills.updates.newHint": "Hidden skills stay available in Review skills. They return to the new count when their content changes.",
+	"settings.context.skills.updates.importNotAllowed": "You don't have permission to import skills into this scope",
 	"settings.context.skills.updates.lines": "+{added} / −{removed} lines",
 	"settings.context.skills.updates.nextVersion": "{name} · v{version} after update",
 	"settings.context.skills.updates.noFollowers": "No agents follow these skills yet.",

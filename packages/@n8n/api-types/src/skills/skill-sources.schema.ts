@@ -308,6 +308,8 @@ export type SkillSourceListItem = {
 	canReplaceCredential: boolean;
 	/** Whether the user may review updates and check the source now. */
 	canReview: boolean;
+	/** Whether the user may import new skills into the source scope. */
+	canImport: boolean;
 	/** Whether the user may delete the source and its synced skills. */
 	canDelete: boolean;
 };

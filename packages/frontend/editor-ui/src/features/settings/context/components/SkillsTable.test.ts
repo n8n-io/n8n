@@ -393,6 +393,7 @@ describe('SkillsTable', () => {
 			missingSkills: [],
 			canReplaceCredential: false,
 			canReview: true,
+			canImport: true,
 			canDelete: true,
 			...overrides,
 		});

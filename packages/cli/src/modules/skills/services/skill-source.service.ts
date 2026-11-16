@@ -246,10 +246,11 @@ export class SkillSourceService {
 			const client = this.clients.get(source.type);
 			return client ? [{ source, client }] : [];
 		});
-		const [counts, projects, canReview, canDelete] = await Promise.all([
+		const [counts, projects, canReview, canImport, canDelete] = await Promise.all([
 			this.sourceRepository.countLinksBySource(shown.map(({ source }) => source.id)),
 			this.skillRepository.findProjects(shown.flatMap(({ source }) => source.projectId ?? [])),
 			this.skillAccess.accessCheck(user, 'update'),
+			this.skillAccess.accessCheck(user, 'create'),
 			this.skillAccess.accessCheck(user, 'delete'),
 		]);
 		const missingLinks = await this.sourceRepository.findMissingLinks(
@@ -287,6 +288,7 @@ export class SkillSourceService {
 					.flatMap(({ skillId }) => missingNames.get(skillId)?.name ?? []),
 				canReplaceCredential: canReview(source) && canTakeCredential(source),
 				canReview: canReview(source),
+				canImport: canImport(source),
 				canDelete: canDelete(source),
 			};
 		});
