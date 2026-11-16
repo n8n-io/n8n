@@ -223,6 +223,81 @@ describe('Skill source checks', () => {
 			);
 		});
 
+		it.each(['pdf', 'PDF'])(
+			'imports colliding new names with a free suffix for %s',
+			async (name) => {
+				const { sourceId, docx } = await importAll();
+				const existingId = await Container.get(SkillService).createTrusted({
+					target: { projectId: team.id },
+					skill: {
+						name: 'pdf_2',
+						description: 'Local PDF skill',
+						instructions: 'Read local PDFs.',
+					},
+					source: 'ui',
+					createdById: memberUser.id,
+				});
+				pushChange({
+					'skills/docx/SKILL.md': skillMd('docx', 'Updated docx.'),
+					'skills/pdf-a/SKILL.md': skillMd('pdf'),
+					'skills/pdf-b/SKILL.md': skillMd(name),
+				});
+				await sync().checkAll();
+				const reviewed = await review(sourceId);
+				expect(reviewed.newSkills).toEqual([
+					expect.objectContaining({
+						name: 'pdf',
+						nameTaken: false,
+						check: { verdict: 'pass', findings: [] },
+					}),
+					expect.objectContaining({
+						name,
+						nameTaken: false,
+						check: { verdict: 'pass', findings: [] },
+					}),
+				]);
+
+				const response = await editor
+					.post(`/skill-sources/${sourceId}/updates/accept`)
+					.send({
+						updates: reviewed.updates.map(({ skillId, contentHash, baseVersionId }) => ({
+							skillId,
+							contentHash,
+							baseVersionId,
+						})),
+						newSkills: reviewed.newSkills,
+					})
+					.expect(200);
+
+				expect(response.body.data).toMatchObject({ updatedCount: 1, importedCount: 2 });
+				expect(await findLatestSkillVersion(docx)).toMatchObject({
+					version: 2,
+					instructions: 'Updated docx.',
+				});
+				const links = await db().find(SkillSourceLink, { where: { sourceId } });
+				for (const [index, skill] of reviewed.newSkills!.entries()) {
+					const link = links.find(({ remoteRef }) => JSON.stringify(remoteRef) === skill.key)!;
+					expect(link).toMatchObject({
+						baseContentHash: skill.contentHash,
+						pendingContentHash: null,
+					});
+					expect(await findLatestSkillVersion(link.skillId)).toMatchObject({
+						name: index === 0 ? 'pdf' : `${name} 3`,
+						version: 1,
+					});
+				}
+				expect(await findLatestSkillVersion(existingId)).toMatchObject({
+					name: 'pdf_2',
+					version: 1,
+				});
+				expect((await sourceOf(sourceId)).unlinkedSkills).toEqual([]);
+
+				pushChange({ 'README.md': 'A source change without a skill change.' });
+				await sync().checkAll();
+				expect((await review(sourceId)).updates).toEqual([]);
+			},
+		);
+
 		it('keeps a hidden new skill reachable and counts it again only after its content changes', async () => {
 			const { sourceId } = await importAll();
 			pushChange({ 'skills/pdf/SKILL.md': skillMd('pdf') });

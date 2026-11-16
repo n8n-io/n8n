@@ -1,5 +1,6 @@
 import {
 	SKILL_SOURCE_MAX_SKILLS,
+	skillNameKey,
 	type SkillNewUpdate,
 	type SkillScanResult,
 	type AcceptSkillSourceUpdatesDto,
@@ -34,7 +35,7 @@ import { unreadableSkillHash } from '../utils/skill-unlinked';
 import { countSkippedFiles } from '../utils/skipped-files';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillService } from './skill.service';
-import { isNameTaken } from './skill.policy';
+import { isNameTaken, nextFreeName } from './skill.policy';
 import { SkillsTelemetry } from './skills-telemetry.service';
 
 type NewSkillRead = {
@@ -227,6 +228,9 @@ export class SkillSourceNewSkillsService {
 				JSON.stringify(remoteRef),
 			),
 		);
+		const target = { projectId: source.projectId };
+		const existing = await this.skills.findLatestNamesInTarget(target, ctx);
+		const takenNames = new Set(existing.map(({ name }) => skillNameKey(name)));
 		let unlinked = source.unlinkedSkills ?? [];
 		const imported = [];
 		for (const read of reads) {
@@ -253,9 +257,12 @@ export class SkillSourceNewSkillsService {
 			const skill = importableSkillSchema.parse(contentToAgentSkill(content));
 			let skillId: string;
 			try {
+				if (isNameTaken(skill.name, existing)) throw new SkillNameTakenError(skill.name);
+				// Match first import: add a number only for names taken by this selection.
+				skill.name = nextFreeName(skill.name, takenNames);
 				skillId = await this.skillService.createTrusted(
 					{
-						target: { projectId: source.projectId },
+						target,
 						skill,
 						source: source.type,
 						createdById: user.id,
@@ -273,6 +280,7 @@ export class SkillSourceNewSkillsService {
 					);
 				throw error;
 			}
+			takenNames.add(skillNameKey(skill.name));
 			await this.sources.insertImported(
 				{
 					skillId,
