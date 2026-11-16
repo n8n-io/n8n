@@ -81,10 +81,7 @@ export class AgentServiceAccountService implements ServiceAccountProjectSource {
 
 	/** The project of each agent, by the ID of its service account. */
 	async findProjectsOfAccounts(accountIds: string[]): Promise<Map<string, AccountProject>> {
-		const rows = await this.agentRepository.findProjectsByIdentityIds(accountIds);
-		return new Map(
-			rows.map((row) => [row.identityId, { id: row.projectId, name: row.projectName }]),
-		);
+		return await this.agentRepository.findProjectsByIdentityIds(accountIds);
 	}
 
 	/** The service accounts of the agents in these projects. */

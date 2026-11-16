@@ -708,23 +708,24 @@ export class AgentRepository extends BaseRepository<Agent> {
 		return await this.findOne({ select: ['id', 'name'], where: { identityId } });
 	}
 
-	/** The project of each agent that acts through one of these identities. Instance agents have none. */
+	/** Maps each of `identityIds` to the project of its agent. Instance agents have no project. */
 	async findProjectsByIdentityIds(
 		identityIds: string[],
-	): Promise<Array<{ identityId: string; projectId: string; projectName: string }>> {
-		const rows: Array<{ identityId: string; projectId: string; projectName: string }> = [];
+	): Promise<Map<string, { id: string; name: string }>> {
+		const projectByIdentity = new Map<string, { id: string; name: string }>();
 		for (const batch of chunkIds(identityIds)) {
-			rows.push(
-				...(await this.createQueryBuilder('agent')
-					.select('agent.identityId', 'identityId')
-					.addSelect('project.id', 'projectId')
-					.addSelect('project.name', 'projectName')
-					.innerJoin('agent.project', 'project')
-					.where('agent.identityId IN (:...batch)', { batch })
-					.getRawMany<{ identityId: string; projectId: string; projectName: string }>()),
-			);
+			const rows = await this.createQueryBuilder('agent')
+				.select('agent.identityId', 'identityId')
+				.addSelect('project.id', 'projectId')
+				.addSelect('project.name', 'projectName')
+				.innerJoin('agent.project', 'project')
+				.where('agent.identityId IN (:...batch)', { batch })
+				.getRawMany<{ identityId: string; projectId: string; projectName: string }>();
+			for (const { identityId, projectId, projectName } of rows) {
+				projectByIdentity.set(identityId, { id: projectId, name: projectName });
+			}
 		}
-		return rows;
+		return projectByIdentity;
 	}
 
 	/** The identities of the agents in these projects. */
@@ -735,7 +736,9 @@ export class AgentRepository extends BaseRepository<Agent> {
 				select: ['identityId'],
 				where: { projectId: In(batch), identityId: Not(IsNull()) },
 			});
-			identityIds.push(...agents.flatMap((agent) => (agent.identityId ? [agent.identityId] : [])));
+			for (const { identityId } of agents) {
+				if (identityId) identityIds.push(identityId);
+			}
 		}
 		return identityIds;
 	}

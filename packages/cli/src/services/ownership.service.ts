@@ -240,12 +240,8 @@ export class OwnershipService {
 		);
 		if (personalProjects.length === 0) return;
 
-		const accountByProject = new Map(
-			(
-				await this.projectRepository.findServiceAccountProjects(
-					personalProjects.map((project) => project.id),
-				)
-			).map((row) => [row.projectId, row.accountId]),
+		const accountByProject = await this.projectRepository.findServiceAccountIdsByProject(
+			personalProjects.map((project) => project.id),
 		);
 		const projectOfAccount = await this.serviceAccountProjects.findProjectsOfAccounts([
 			...new Set(accountByProject.values()),

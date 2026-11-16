@@ -426,24 +426,21 @@ export class ProjectRepository extends BaseRepository<Project> {
 		await this.delete({ id: In(ids) });
 	}
 
-	/** The personal projects of service accounts among `projectIds`, with the account of each. */
-	async findServiceAccountProjects(
-		projectIds: string[],
-	): Promise<Array<{ projectId: string; accountId: string }>> {
-		const rows: Array<{ projectId: string; accountId: string }> = [];
+	/** Maps each of `projectIds` that is the personal project of a service account to that account. */
+	async findServiceAccountIdsByProject(projectIds: string[]): Promise<Map<string, string>> {
+		const accountIdByProject = new Map<string, string>();
 		for (const batch of chunkIds(projectIds)) {
-			rows.push(
-				...(await this.createQueryBuilder('project')
-					.select('project.id', 'projectId')
-					.addSelect('creator.id', 'accountId')
-					.innerJoin('project.creator', 'creator')
-					.where('project.id IN (:...batch)', { batch })
-					.andWhere('project.type = :type', { type: 'personal' })
-					.andWhere('creator.kind = :kind', { kind: 'service' })
-					.getRawMany<{ projectId: string; accountId: string }>()),
-			);
+			const rows = await this.createQueryBuilder('project')
+				.select('project.id', 'projectId')
+				.addSelect('project.creatorId', 'accountId')
+				.innerJoin('project.creator', 'creator')
+				.where('project.id IN (:...batch)', { batch })
+				.andWhere('project.type = :type', { type: 'personal' })
+				.andWhere('creator.kind = :kind', { kind: 'service' })
+				.getRawMany<{ projectId: string; accountId: string }>();
+			for (const { projectId, accountId } of rows) accountIdByProject.set(projectId, accountId);
 		}
-		return rows;
+		return accountIdByProject;
 	}
 
 	async getProjectCounts() {
