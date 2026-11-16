@@ -1,11 +1,13 @@
-import type {
-	IAuthenticate,
-	ICredentialDataDecryptedObject,
-	ICredentialTestRequest,
-	ICredentialType,
-	IHttpRequestHelper,
-	IHttpRequestOptions,
-	INodeProperties,
+import {
+	requestUrl,
+	type IAuthenticate,
+	type ICredentialDataDecryptedObject,
+	type ICredentialTestRequest,
+	type ICredentialType,
+	type IHttpRequestHelper,
+	type IHttpRequestOptions,
+	type INodeProperties,
+	type WithRequestTarget,
 } from 'n8n-workflow';
 
 export class FormIoApi implements ICredentialType {
@@ -85,10 +87,10 @@ export class FormIoApi implements ICredentialType {
 					password: credentials.password,
 				},
 			},
-			url: `${base}/user/login`,
+			url: requestUrl`${base}/user/login`,
 			json: true,
 			returnFullResponse: true,
-		} satisfies IHttpRequestOptions;
+		} satisfies WithRequestTarget<IHttpRequestOptions>;
 
 		const responseObject = await this.helpers.httpRequest(options);
 		const token = responseObject.headers['x-jwt-token'];

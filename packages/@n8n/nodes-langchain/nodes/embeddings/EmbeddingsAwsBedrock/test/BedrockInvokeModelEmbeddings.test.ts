@@ -1,5 +1,5 @@
 import type { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { BedrockInvokeModelEmbeddings } from '../BedrockInvokeModelEmbeddings';
 

@@ -10,22 +10,18 @@ import {
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	MCP_DISCOVERY_EXPERIMENT,
 	// EOF Experiment cleanup
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT,
 	// EOF Experiment cleanup
 	ENABLE_POSTHOG_AUTOCAPTURE_EXPERIMENT,
 	EXPERIMENTS_TO_TRACK,
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
-	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
 } from '@/app/constants';
 // Experiment cleanup (133_agent_builder_experiment_cohort)
 import {
 	getAgentBuilderExperimentEnrollment,
 	isAgentBuilderExperiment,
 } from '@/experiments/agentBuilder/enrollment';
-// EOF Experiment cleanup
-// Experiment cleanup (119_surface_assistant_on_workflow_error)
-import { CLOUD_ONLY } from '@/experiments/surfaceAssistantOnWorkflowError/cloudOnly';
 // EOF Experiment cleanup
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useDebounce } from '@n8n/composables/useDebounce';
@@ -69,7 +65,7 @@ export const usePostHog = defineStore('posthog', () => {
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 	const mcpDiscoveryEligible = ref(false);
 	// EOF Experiment cleanup
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	// Sales and Marketing respondents only. Stays false until the survey answer is known.
 	const taxonomyInspirationEligible = ref(false);
 	// EOF Experiment cleanup
@@ -104,7 +100,7 @@ export const usePostHog = defineStore('posthog', () => {
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		mcpDiscoveryEligible.value = false;
 		// EOF Experiment cleanup
-		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 		taxonomyInspirationEligible.value = false;
 		// EOF Experiment cleanup
 		featureFlagPayloads.value = null;
@@ -219,20 +215,11 @@ export const usePostHog = defineStore('posthog', () => {
 		)
 			return;
 		// EOF Experiment cleanup
-		// Experiment cleanup (119_surface_assistant_on_workflow_error)
-		if (
-			CLOUD_ONLY &&
-			name === SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT.name &&
-			!settingsStore.isCloudDeployment
-		) {
-			return;
-		}
-		// EOF Experiment cleanup
 
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		if (name === MCP_DISCOVERY_EXPERIMENT.name && !mcpDiscoveryEligible.value) return;
 		// EOF Experiment cleanup
-		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 		if (
 			name === INSTANCE_AI_INSPIRATION_FROM_TAXONOMY_EXPERIMENT.name &&
 			!taxonomyInspirationEligible.value
@@ -260,7 +247,7 @@ export const usePostHog = defineStore('posthog', () => {
 		if (eligible) trackExperiment(featureFlags.value ?? {}, MCP_DISCOVERY_EXPERIMENT.name);
 	};
 	// EOF Experiment cleanup
-	// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+	// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 	const setTaxonomyInspirationEligible = (eligible: boolean) => {
 		taxonomyInspirationEligible.value = eligible;
 		if (eligible) {
@@ -431,7 +418,7 @@ export const usePostHog = defineStore('posthog', () => {
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		setMcpDiscoveryEligible,
 		// EOF Experiment cleanup
-		// Experiment cleanup (129_aia_inspiration_from_taxonomy_v2)
+		// Experiment cleanup (142_aia_inspiration_from_taxonomy_v3)
 		setTaxonomyInspirationEligible,
 		// EOF Experiment cleanup
 		isFeatureEnabled,

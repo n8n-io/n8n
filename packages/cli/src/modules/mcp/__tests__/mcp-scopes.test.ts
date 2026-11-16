@@ -13,6 +13,7 @@ import {
 	AiPreferenceService,
 	CredentialsFinderService,
 	NodeTypesProxy,
+	PostHogClient,
 } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -67,7 +68,6 @@ import {
 } from '../tools/get-instance-context.tool';
 import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
 import { NodeCatalogService } from '@/node-catalog';
-import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -82,6 +82,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 
 import { WorkflowService } from '@/workflows/workflow.service';
+import { McpPreferencesNoteService } from '../mcp-preferences-note.service';
 
 vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/mcp-apps/server')>()),
@@ -302,6 +303,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(McpConfig),
 			mockInstance(ExecutionRedactionServiceProxy),
 			mockInstance(InstanceWriteAccessService),
+			mockInstance(McpPreferencesNoteService),
 		);
 
 	beforeEach(() => {

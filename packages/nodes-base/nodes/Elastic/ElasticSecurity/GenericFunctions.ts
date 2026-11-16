@@ -5,21 +5,23 @@ import type {
 	JsonObject,
 	IRequestOptions,
 	IHttpRequestMethods,
+	RequestPath,
+	WithRequestTarget,
 } from 'n8n-workflow';
-import { toPathSegment, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, requestPath, requestUrl } from 'n8n-workflow';
 
 import { removeTrailingSlash } from '@utils/utilities';
 
 import type { Connector, ElasticSecurityApiCredentials } from './types';
 
-export function buildDeleteCasesEndpoint(caseId: unknown): string {
-	return `/cases?ids=${encodeURIComponent(JSON.stringify([String(caseId)]))}`;
+export function buildDeleteCasesQuery(caseId: unknown): IDataObject {
+	return { ids: JSON.stringify([String(caseId)]) };
 }
 
 export async function elasticSecurityApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
@@ -28,11 +30,11 @@ export async function elasticSecurityApiRequest(
 
 	const baseUrl = removeTrailingSlash(rawBaseUrl);
 
-	const options: IRequestOptions = {
+	const options: WithRequestTarget<IRequestOptions, 'uri'> = {
 		method,
 		body,
 		qs,
-		uri: `${baseUrl}/api${endpoint}`,
+		uri: requestUrl`${baseUrl}/api${endpoint}`,
 		json: true,
 	};
 
@@ -58,7 +60,7 @@ export async function elasticSecurityApiRequest(
 export async function elasticSecurityApiRequestAllItems(
 	this: IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
@@ -83,7 +85,7 @@ export async function elasticSecurityApiRequestAllItems(
 export async function handleListing(
 	this: IExecuteFunctions,
 	method: IHttpRequestMethods,
-	endpoint: string,
+	endpoint: RequestPath,
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
@@ -111,7 +113,7 @@ export async function handleListing(
  * https://www.elastic.co/guide/en/kibana/master/get-connector-api.html
  */
 export async function getConnector(this: IExecuteFunctions, connectorId: string) {
-	const endpoint = `/actions/connector/${toPathSegment(connectorId)}`;
+	const endpoint = requestPath`/actions/connector/${connectorId}`;
 	const {
 		id,
 		name,
@@ -128,7 +130,7 @@ export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: string) {
 	);
 }
 
-export async function getVersion(this: IExecuteFunctions, endpoint: string) {
+export async function getVersion(this: IExecuteFunctions, endpoint: RequestPath) {
 	const { version } = (await elasticSecurityApiRequest.call(this, 'GET', endpoint)) as {
 		version?: string;
 	};

@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import type { JWK } from 'jose';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 /**
  * A source of public keys for the instance JWKS. Keys from different

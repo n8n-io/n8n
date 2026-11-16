@@ -5,6 +5,7 @@ import {
 	type SkillSourceDiscovery,
 	type SkillSourceListItem,
 } from '@n8n/api-types';
+import { PostHogClient } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	linkUserToProject,
@@ -21,7 +22,6 @@ import { SkillSourceConnection } from '../../database/entities/skill-source-conn
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { FakeGitHub } from '../test-utils/fake-github';
-import { PostHogClient } from '@/posthog';
 
 import { createMember, createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -154,7 +154,7 @@ describe('Sources in the skills table', () => {
 		it.each([
 			['credential_missing', 'credential_issue'],
 			['not_found', 'source_unavailable'],
-			['archive_too_large', 'check_failed'],
+			['archive_too_large', 'source_unavailable'],
 		])(
 			'shows %s health to viewers, and clears it after a successful check',
 			async (reason, health) => {

@@ -13,6 +13,8 @@ import {
 	createClaimedToolNames,
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
+import { applyApprovalReview } from '../approval-review/approval-review';
+import { holdProbeTelemetry } from '../approval-review/probe-telemetry';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
 import { createInstanceAiContextCueProvider } from '../skills/context-cues';
@@ -102,6 +104,10 @@ export async function createInstanceAgent(
 	const domainContext: InstanceAiContext = {
 		...context,
 		tracing: orchestrationContext?.tracing,
+		// Auto mode holds the telemetry of its review probe until the card shows.
+		...(context.approvalReviewer && context.trackTelemetry
+			? { trackTelemetry: holdProbeTelemetry(context.trackTelemetry) }
+			: {}),
 	};
 	if (orchestrationContext) {
 		orchestrationContext.domainContext = domainContext;
@@ -112,7 +118,9 @@ export async function createInstanceAgent(
 	// with this call (not shared mutable state) — concurrent runs with different
 	// configs can't read each other's failures.
 	const { tools: mcpTools, connectionFailures: managerMcpFailures } =
-		await mcpManager.getRegularTools(mcpServers, context.logger, context.permissions);
+		await mcpManager.getRegularTools(mcpServers, context.logger, context.permissions, {
+			enforceAdminPermissions: context.enforceAdminMcpPermissions === true,
+		});
 	// Map manager-reported connection failures to the generic SDK event type so
 	// the runtime can inject a model-facing note into the orchestrator's system
 	// message. The adapter owns the n8n-specific server config → plain SDK event
@@ -185,11 +193,12 @@ export async function createInstanceAgent(
 	);
 	for (const name of orchestrationContext?.disabledToolNames ?? [])
 		allOrchestratorTools.delete(name);
+	const reviewedOrchestratorTools = applyApprovalReview(allOrchestratorTools, domainContext);
 	const tracedOrchestratorTools =
-		orchestrationContext?.tracing?.wrapTools(allOrchestratorTools, {
+		orchestrationContext?.tracing?.wrapTools(reviewedOrchestratorTools, {
 			agentRole: 'orchestrator',
 			tags: ['orchestrator'],
-		}) ?? allOrchestratorTools;
+		}) ?? reviewedOrchestratorTools;
 	const { coreTools, deferredTools } = splitDeferredTools(tracedOrchestratorTools);
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
 	const hasDeferredExternalMcpTools =

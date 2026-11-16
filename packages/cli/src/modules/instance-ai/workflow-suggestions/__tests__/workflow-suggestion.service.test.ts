@@ -1,4 +1,5 @@
 import type { WorkflowSuggestionBaseline, WorkflowSuggestionGraph } from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
 import {
 	WorkflowEntity,
 	type OperationContext,
@@ -42,6 +43,7 @@ const service = new WorkflowSuggestionService(
 	sharedWorkflowRepository,
 	workflowPublishHistoryRepository,
 	mock<SelfHealingResultRepository>(),
+	mock<EventService>(),
 );
 const user = mock<User>({ id: 'c22db9f1-8fc0-4a46-96e2-c3a0a592a851', disabled: false });
 const versionId = '2d97d917-00ae-4fce-98c0-9b4d708a6c94';

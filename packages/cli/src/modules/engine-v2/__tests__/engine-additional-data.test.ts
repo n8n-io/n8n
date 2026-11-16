@@ -1,5 +1,5 @@
 import type { SsrfProtectionService } from '@n8n/backend-network';
-import type { EventService, UrlService } from '@n8n/backend-services';
+import type { CodeExecutionBackend, EventService, UrlService } from '@n8n/backend-services';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { UnimplementedError } from '@n8n/engine';
 import type {
@@ -14,7 +14,6 @@ import type {
 import { mock } from 'vitest-mock-extended';
 
 import { EngineAdditionalDataBuilder } from '../engine-additional-data';
-import type { TaskRequester } from '@/task-runners/task-managers/task-requester';
 
 describe('EngineAdditionalDataBuilder', () => {
 	const urlService = mock<UrlService>({
@@ -39,7 +38,7 @@ describe('EngineAdditionalDataBuilder', () => {
 	const credentialsHelper = mock<ICredentialsHelper>();
 	const dataTableProxyProvider = mock<DataTableProxyProvider>();
 	const ssrfProtectionService = mock<SsrfProtectionService>();
-	const taskRequester = mock<TaskRequester>();
+	const codeExecutionBackend = mock<CodeExecutionBackend>();
 
 	const context = {
 		executionId: 'exec-1',
@@ -56,7 +55,7 @@ describe('EngineAdditionalDataBuilder', () => {
 			eventService,
 			mock<SsrfProtectionConfig>({ enabled: ssrfEnabled }),
 			ssrfProtectionService,
-			taskRequester,
+			codeExecutionBackend,
 		).build(context, credentialsHelper, dataTableProxyProvider);
 
 	beforeEach(() => {
@@ -142,16 +141,30 @@ describe('EngineAdditionalDataBuilder', () => {
 		);
 	});
 
-	describe('task runners', () => {
-		it('asks the task requester whether a runner is available', () => {
-			taskRequester.getRunnerStatus.mockReturnValue({ available: true });
-
-			expect(build().getRunnerStatus?.('python')).toEqual({ available: true });
-			expect(taskRequester.getRunnerStatus).toHaveBeenCalledWith('python');
+	describe('code tasks', () => {
+		it('fails to construct when no code execution backend is set', () => {
+			expect(
+				() =>
+					new EngineAdditionalDataBuilder(
+						urlService,
+						globalConfig,
+						eventService,
+						mock<SsrfProtectionConfig>(),
+						ssrfProtectionService,
+						undefined as unknown as CodeExecutionBackend,
+					),
+			).toThrow('Code execution backend is not set');
 		});
 
-		it('hands a runner task to the task requester with the execution context unchanged', async () => {
-			taskRequester.startTask.mockResolvedValue({ ok: true, result: [] });
+		it('asks the code execution backend whether it can run the task type', () => {
+			codeExecutionBackend.getStatus.mockReturnValue({ available: true });
+
+			expect(build().getRunnerStatus?.('python')).toEqual({ available: true });
+			expect(codeExecutionBackend.getStatus).toHaveBeenCalledWith('python');
+		});
+
+		it('hands a code task to the code execution backend with the execution context unchanged', async () => {
+			codeExecutionBackend.runTask.mockResolvedValue({ ok: true, result: [] });
 			const data = build();
 			const executeFunctions = mock<IExecuteFunctions>();
 			const node = mock<INode>();
@@ -178,23 +191,24 @@ describe('EngineAdditionalDataBuilder', () => {
 			);
 
 			expect(result).toEqual({ ok: true, result: [] });
-			expect(taskRequester.startTask).toHaveBeenCalledExactlyOnceWith(
-				data,
-				'javascript',
-				{},
+			expect(codeExecutionBackend.runTask).toHaveBeenCalledExactlyOnceWith({
+				additionalData: data,
+				taskType: 'javascript',
+				settings: {},
 				executeFunctions,
-				{ main: [] },
+				inputData: { main: [] },
 				node,
 				workflow,
 				runExecutionData,
-				0,
-				0,
-				'Code',
-				[],
-				{},
-				'manual',
+				runIndex: 0,
+				itemIndex: 0,
+				activeNodeName: 'Code',
+				connectionInputData: [],
+				siblingParameters: {},
+				mode: 'manual',
 				envProviderState,
-			);
+				executeData: undefined,
+			});
 		});
 	});
 

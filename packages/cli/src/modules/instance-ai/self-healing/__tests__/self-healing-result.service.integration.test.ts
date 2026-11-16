@@ -29,6 +29,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { DataSource } from '@n8n/typeorm';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { INode } from 'n8n-workflow';
@@ -38,8 +39,9 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { ControllerRegistry } from '@/controller.registry';
+import { Telemetry } from '@/telemetry';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
-import { WorkflowPublishGuardProxy } from '@n8n/backend-services';
+import { EventService, WorkflowPublishGuardProxy } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -64,6 +66,7 @@ import {
 	SelfHealingInvestigationService,
 } from '../self-healing-investigation.service';
 import { SelfHealingResultService } from '../self-healing-result.service';
+import { SelfHealingTelemetryEventRelay } from '../self-healing-telemetry.event-relay';
 import { SelfHealingConfigurationService } from '../self-healing-configuration.service';
 import { SelfHealingConfigurationRepository } from '../database/self-healing-configuration.repository';
 import { SelfHealingConfigurationReviewer } from '../database/self-healing-configuration-reviewer.entity';
@@ -659,7 +662,7 @@ describe('investigation eligibility after a result', () => {
 		expect(cooldown).toHaveBeenCalledTimes(2);
 		await expect(cooldown.mock.results[1].value).resolves.toBe(true);
 
-		await configurationService.remove(project.id, input.configurationId);
+		await configurationService.remove(user, project.id, input.configurationId);
 
 		await expect(producer.start(input)).resolves.toMatchObject({ kind: 'investigation' });
 		expect(await results.findOneBy({ id: result.id })).toBeNull();
@@ -2968,7 +2971,7 @@ describe('configuration lifecycle', () => {
 			if (action === 'pause') {
 				await configurations.setEnabled(user, project.id, investigation.configurationId, false);
 			} else {
-				await configurations.remove(project.id, investigation.configurationId);
+				await configurations.remove(user, project.id, investigation.configurationId);
 			}
 			resume.resolve();
 			expect(await completing).toBeNull();
@@ -2978,8 +2981,9 @@ describe('configuration lifecycle', () => {
 	);
 
 	it('deletes unfinished investigations and ignores late output', async () => {
-		const { project, original, investigation, completion } = await prepareInvestigation();
+		const { user, project, original, investigation, completion } = await prepareInvestigation();
 		await Container.get(SelfHealingConfigurationService).remove(
+			user,
 			project.id,
 			investigation.configurationId,
 		);
@@ -2996,7 +3000,7 @@ describe('configuration lifecycle', () => {
 		await configurations.setEnabled(user, project.id, result.configurationId, false);
 		expect(await service.countForInbox(user)).toEqual({ open: 1, closed: 0 });
 		await testServer.authAgentFor(user).get(url).expect(200);
-		await configurations.remove(project.id, result.configurationId);
+		await configurations.remove(user, project.id, result.configurationId);
 		expect(await results.findOneBy({ id: result.id })).toBeNull();
 		expect(await suggestions.getPendingForWorkflow(original.id)).toBeNull();
 		expect(await suggestions.findOneBy({ id: suggestionId! })).toBeNull();
@@ -3030,6 +3034,7 @@ describe('configuration lifecycle', () => {
 		const second = await fixture('fix_ready', true);
 
 		await Container.get(SelfHealingConfigurationService).remove(
+			first.user,
 			first.project.id,
 			first.result.configurationId,
 		);
@@ -3061,7 +3066,11 @@ describe('configuration lifecycle', () => {
 		const { user, project, original, result, suggestionId } = await fixture('fix_ready', true);
 		await service.act(user, project.id, original.id, result.id, 'apply');
 		const applied = await workflows.findOneByOrFail({ id: original.id });
-		await Container.get(SelfHealingConfigurationService).remove(project.id, result.configurationId);
+		await Container.get(SelfHealingConfigurationService).remove(
+			user,
+			project.id,
+			result.configurationId,
+		);
 		expect(await results.findOneBy({ id: result.id })).toBeNull();
 		expect(await suggestions.findOneBy({ id: suggestionId! })).toBeNull();
 		expect(await workflows.findOneByOrFail({ id: original.id })).toMatchObject({
@@ -3110,5 +3119,151 @@ describe('configuration lifecycle', () => {
 				id: investigation.configurationId,
 			}),
 		).toMatchObject({ enabled: true, enabledById: replacement.id });
+	});
+});
+
+describe('result state telemetry', () => {
+	const event = TELEMETRY_EVENT.SELF_HEALING.SELF_HEALING_CHANGED_RESULT_STATE;
+
+	beforeAll(() => {
+		// The module registers the relay only when the rollout flag is on at start.
+		if (Container.get(EventService).listenerCount('self-healing-result-outdated') === 0) {
+			Container.get(SelfHealingTelemetryEventRelay).init();
+		}
+	});
+
+	/** Collect the state changes that the code sends from now on. */
+	function trackStateChanges() {
+		// The test server replaces the telemetry service with a mock.
+		const track = vi.mocked(Container.get(Telemetry).track);
+		track.mockClear();
+		return () => {
+			const calls: unknown[][] = track.mock.calls;
+			return calls.filter(([sent]) => sent === event).map(([, properties]) => properties);
+		};
+	}
+
+	it.each([
+		['fix_ready', 'open', true],
+		['could_not_fix', 'closed', false],
+	] as const)('reports a new %s result as %s', async (outcome, state, withSuggestion) => {
+		const sent = trackStateChanges();
+		const { result, user, project, original } = await fixture(outcome, withSuggestion);
+
+		const properties = {
+			result_id: result.id,
+			workflow_id: original.id,
+			project_id: project.id,
+			result_kind: outcome,
+			new_state: state,
+			user_id: user.id,
+			original_action: null,
+			changed_workflow_count: withSuggestion ? 1 : 0,
+			published: null,
+		};
+		expect(sent()).toEqual([properties]);
+		expect(event.getValidationError(properties)).toBeNull();
+	});
+
+	it.each([
+		['apply', false],
+		['approve-and-publish', true],
+	] as const)('reports %s with published=%s', async (action, published) => {
+		const { user, result, url } = await fixture('fix_ready', true);
+		const sent = trackStateChanges();
+
+		const originalAction = published ? 'publish' : 'open_editor';
+		await testServer
+			.authAgentFor(user)
+			.post(`${url}/${action}`)
+			.send({ originalAction })
+			.expect(200);
+
+		expect(sent()).toEqual([
+			expect.objectContaining({
+				result_id: result.id,
+				new_state: 'applied',
+				user_id: user.id,
+				original_action: originalAction,
+				changed_workflow_count: 1,
+				published,
+			}),
+		]);
+	});
+
+	it('reports a publish request error as not published', async () => {
+		const { user, url } = await fixture('fix_ready', true);
+		vi.spyOn(Container.get(WorkflowPublishGuardProxy), 'assertCanPublish').mockRejectedValueOnce(
+			new Error('An open review blocks publication.'),
+		);
+		const sent = trackStateChanges();
+
+		await testServer.authAgentFor(user).post(`${url}/approve-and-publish`).expect(200);
+
+		expect(sent()).toEqual([expect.objectContaining({ new_state: 'applied', published: false })]);
+	});
+
+	it('reports one change for a result that changes two workflows', async () => {
+		const context = await fixture('fix_ready', true, { inTeamProject: true });
+		await addGroupMember(context);
+		const sent = trackStateChanges();
+
+		await testServer.authAgentFor(context.user).post(`${context.url}/dismiss`).expect(200);
+
+		expect(sent()).toEqual([
+			expect.objectContaining({
+				result_id: context.result.id,
+				new_state: 'dismissed',
+				user_id: context.user.id,
+				changed_workflow_count: 2,
+				published: null,
+			}),
+		]);
+	});
+
+	it('reports the button that closed a Needs you result', async () => {
+		const { user, url } = await fixture('needs_you', false);
+		const sent = trackStateChanges();
+
+		await testServer
+			.authAgentFor(user)
+			.post(`${url}/dismiss`)
+			.send({ originalAction: 'continue' })
+			.expect(200);
+
+		expect(sent()).toEqual([
+			expect.objectContaining({
+				new_state: 'dismissed',
+				original_action: 'continue',
+				changed_workflow_count: 0,
+			}),
+		]);
+	});
+
+	it('reports no change when a dismiss request closes nothing', async () => {
+		const { user, url } = await fixture('could_not_fix', false);
+		const sent = trackStateChanges();
+
+		await testServer.authAgentFor(user).post(`${url}/dismiss`).expect(200);
+
+		expect(sent()).toEqual([]);
+	});
+
+	it('reports a result as outdated when its workflow changed', async () => {
+		const { user, result, original, url } = await fixture('fix_ready', true);
+		await workflows.update(original.id, { settings: { executionTimeout: 60 } });
+		const sent = trackStateChanges();
+
+		await testServer.authAgentFor(user).post(`${url}/apply`).expect(200);
+
+		await vi.waitFor(() => expect(sent()).toHaveLength(1));
+		expect(sent()).toEqual([
+			expect.objectContaining({
+				result_id: result.id,
+				new_state: 'outdated',
+				user_id: result.backgroundUserId,
+				changed_workflow_count: 1,
+			}),
+		]);
 	});
 });

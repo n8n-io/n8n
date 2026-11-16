@@ -7,7 +7,7 @@ import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 	MIGRATION_REPORT_TARGET_VERSION,
 } from '@n8n/api-types';
-import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { getN8nVersion, LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	EventService,
 	UrlService,
@@ -19,9 +19,16 @@ import {
 	AiPreferenceService,
 	CredentialsFinderService,
 	NodeTypesProxy,
+	PostHogClient,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
+import {
+	ExecutionRepository,
+	type OperationContext,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	User,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
 	mcpAppToolMeta,
@@ -38,15 +45,14 @@ import type z from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { loginIdOf } from '@/events/login-id';
 import { ExecutionListService } from '@/executions/execution-list.service';
 
 import { ExecutionService } from '@/executions/execution.service';
 import { DataTableProxyService } from '@n8n/backend-module-data-table';
 import { SkillsGate } from '@/modules/skills';
 import { NodeCatalogService } from '@/node-catalog';
-import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -68,6 +74,7 @@ import {
 	INSTALL_COMMUNITY_NODE_TOOL,
 	MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE,
 	MCP_CREATE_AGENT_TOOL_NAME,
+	MCP_EMPTY_PREFERENCES_NOTE_FLAG,
 	MCP_GET_MIGRATION_REPORT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
@@ -113,6 +120,7 @@ import {
 } from './tools/get-instance-context.tool';
 import { createGetDependenciesTool } from './tools/get-dependencies.tool';
 import { createGetNodeUsageTool } from './tools/get-node-usage.tool';
+import { McpPreferencesNoteService } from './mcp-preferences-note.service';
 import { createGetUserPreferencesTool } from './tools/get-user-preferences.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
@@ -176,6 +184,7 @@ export type McpFeatureFlags = {
 	/** Enables context tools, the context resource, and the context instructions. */
 	instanceContextEnabled: boolean;
 	skillsExtensionEnabled?: boolean;
+	preferencesNoteVariant?: string;
 };
 
 type McpAppTelemetryResolution = {
@@ -290,6 +299,7 @@ export class McpService {
 		private readonly mcpConfig: McpConfig,
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
+		private readonly preferencesNoteService: McpPreferencesNoteService,
 	) {}
 
 	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
@@ -311,12 +321,15 @@ export class McpService {
 			this.postHogClient.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
 		]);
 		const flags = userFlags.status === 'fulfilled' ? userFlags.value : {};
+		const preferencesNoteFlag = flags[MCP_EMPTY_PREFERENCES_NOTE_FLAG];
 
 		return {
 			credentialDescriptionsEnabled: flags[CREDENTIAL_DESCRIPTIONS_FLAG] === true,
 			mcpApps: this.resolveMcpApps(mcpAppsEnabled, flags),
 			instanceContextEnabled: instanceFlag.status === 'fulfilled' && instanceFlag.value === true,
 			skillsExtensionEnabled: flags[MCP_SKILLS_EXTENSION_FLAG] === true,
+			preferencesNoteVariant:
+				typeof preferencesNoteFlag === 'string' ? preferencesNoteFlag : 'unassigned',
 		};
 	}
 
@@ -342,7 +355,7 @@ export class McpService {
 			dataPlaneUrl: '',
 			configUrl: '',
 			instanceId: this.instanceSettings.instanceId,
-			versionCli: N8N_VERSION,
+			versionCli: getN8nVersion(),
 		};
 
 		if (!enabled) return { telemetry: disabledTelemetry };
@@ -357,7 +370,7 @@ export class McpService {
 			dataPlaneUrl: `${instanceBaseUrl}/${restEndpoint}/telemetry/proxy`,
 			configUrl: `${instanceBaseUrl}/${restEndpoint}/telemetry/rudderstack`,
 			instanceId: this.instanceSettings.instanceId,
-			versionCli: N8N_VERSION,
+			versionCli: getN8nVersion(),
 		};
 
 		try {
@@ -387,6 +400,7 @@ export class McpService {
 		user: User,
 		clientInfo?: McpClientInfo,
 		auth?: McpAuthContext,
+		ctx: OperationContext = {},
 	) {
 		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
 		const caller = auth?.caller;
@@ -442,6 +456,7 @@ export class McpService {
 						// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore ...auth?.caller after removing apiKeyId from McpCallerAuth.
 						...telemetryCaller,
 						clientName: clientInfo?.name,
+						loginId: loginIdOf(ctx),
 					});
 					return result;
 				} catch (error) {
@@ -454,6 +469,7 @@ export class McpService {
 						// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore ...auth?.caller after removing apiKeyId from McpCallerAuth.
 						...telemetryCaller,
 						clientName: clientInfo?.name,
+						loginId: loginIdOf(ctx),
 					});
 					throw error;
 				}
@@ -497,12 +513,16 @@ export class McpService {
 	 * The rest of `auth` labels tool-call events: how the request authenticated
 	 * and, for OAuth, which registered client it authenticated as, so usage can
 	 * be attributed per client.
+	 *
+	 * `ctx` is the caller's operation context. Tools that write pass it to the
+	 * services they call, so the audit events name the login the caller used.
 	 */
 	async getServer(
 		user: User,
 		featureFlags: McpFeatureFlags,
 		clientInfo?: McpClientInfo,
 		auth?: McpAuthContext,
+		ctx: OperationContext = {},
 	) {
 		const { McpServer } = await lazyImport<typeof import('@modelcontextprotocol/server')>(
 			async () => await import('@modelcontextprotocol/server'),
@@ -560,7 +580,7 @@ export class McpService {
 			},
 		);
 
-		const registerTool = this.createToolRegistrar(server, user, clientInfo, auth);
+		const registerTool = this.createToolRegistrar(server, user, clientInfo, auth, ctx);
 		const registerResource = this.createResourceRegistrar(server);
 
 		const registerIfAllowed: RegisterToolFn = (tool) => {
@@ -656,6 +676,7 @@ export class McpService {
 			this.workflowService,
 			this.telemetry,
 			this.collaborationService,
+			ctx,
 		);
 		registerIfAllowed(publishWorkflowTool);
 
@@ -665,6 +686,7 @@ export class McpService {
 			this.workflowService,
 			this.telemetry,
 			this.collaborationService,
+			ctx,
 		);
 		registerIfAllowed(unpublishWorkflowTool);
 
@@ -706,7 +728,7 @@ export class McpService {
 		registerIfAllowed(listCredentialsTool);
 		if (featureFlags.credentialDescriptionsEnabled === true) {
 			registerIfAllowed(
-				createUpdateCredentialDescriptionTool(user, this.credentialsService, this.telemetry),
+				createUpdateCredentialDescriptionTool(user, this.credentialsService, this.telemetry, ctx),
 			);
 		}
 
@@ -861,7 +883,15 @@ export class McpService {
 
 		// Not builder-gated: preferences apply to Agents, data tables and folders as well as
 		// workflows, so a caller without the builder still has changes to apply them to.
-		registerIfAllowed(createGetUserPreferencesTool(user, this.aiPreferenceService, this.telemetry));
+		registerIfAllowed(
+			createGetUserPreferencesTool(
+				user,
+				this.aiPreferenceService,
+				this.telemetry,
+				this.preferencesNoteService,
+				featureFlags.preferencesNoteVariant,
+			),
+		);
 		// The write path. Gated by `aiPreference:write` at registration; the service applies the
 		// same rules as the settings area, and `source` is fixed to `mcp` inside the tools.
 		registerIfAllowed(
@@ -897,6 +927,7 @@ export class McpService {
 				registerIfAllowed,
 				user,
 				MIGRATION_REPORT_TARGET_VERSION,
+				ctx,
 			);
 			if (migrationReportInstructionsEnabled) readMigrationFindings = reader;
 		}
@@ -913,6 +944,7 @@ export class McpService {
 				allowedToolNames,
 				readMigrationFindings,
 				clientInfo,
+				ctx,
 			);
 		}
 
@@ -923,6 +955,7 @@ export class McpService {
 				registerResource,
 				user,
 				allowedToolNames,
+				ctx,
 			);
 		}
 
@@ -982,6 +1015,7 @@ export class McpService {
 		user: User,
 		registerIfAllowed: RegisterToolFn,
 		installToolAvailable: boolean,
+		ctx: OperationContext = {},
 	): Promise<void> {
 		if (!installToolAvailable) return;
 
@@ -1002,6 +1036,7 @@ export class McpService {
 				Container.get(CommunityPackagesLifecycleService),
 				this.nodeTypes,
 				this.telemetry,
+				ctx,
 			),
 		);
 	}
@@ -1016,6 +1051,7 @@ export class McpService {
 		allowedToolNames: Set<string> | undefined,
 		readMigrationFindings: ReadWorkflowMigrationFindings | undefined,
 		clientInfo?: McpClientInfo,
+		ctx: OperationContext = {},
 	) {
 		await this.nodeCatalogService.initialize();
 
@@ -1079,6 +1115,7 @@ export class McpService {
 			uninstalledNodeOptions,
 			this.logger,
 			this.postSaveMetrics,
+			ctx,
 		);
 
 		// The preview app only accompanies the create tool, so both are gated
@@ -1152,6 +1189,7 @@ export class McpService {
 				this.workflowService,
 				this.folderFinderService,
 				this.telemetry,
+				ctx,
 			);
 			registerIfAllowed(moveWorkflowsToFolderTool);
 		}
@@ -1162,6 +1200,7 @@ export class McpService {
 			this.workflowService,
 			this.telemetry,
 			this.collaborationService,
+			ctx,
 		);
 		registerIfAllowed(archiveTool);
 
@@ -1186,6 +1225,7 @@ export class McpService {
 			},
 			this.logger,
 			this.postSaveMetrics,
+			ctx,
 		);
 		registerIfAllowed(updateTool);
 
@@ -1196,10 +1236,11 @@ export class McpService {
 			this.workflowService,
 			this.telemetry,
 			this.collaborationService,
+			ctx,
 		);
 		registerIfAllowed(restoreVersionTool);
 
-		await this.registerInstallCommunityNodeTool(user, registerIfAllowed, installToolAvailable);
+		await this.registerInstallCommunityNodeTool(user, registerIfAllowed, installToolAvailable, ctx);
 
 		// SDK reference as MCP resource — for clients that support resources.
 		registerResource({

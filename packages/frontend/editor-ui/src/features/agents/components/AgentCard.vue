@@ -24,13 +24,14 @@ import { useAgentConfirmationModal } from '../composables/useAgentConfirmationMo
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
+import type { AgentListItem } from '../agent.types';
 import type { AgentResource } from '../types';
 import { hasAgentUnpublishedChanges } from '../utils/agentPublication';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import type { ActionToggleItem } from '@n8n/design-system/components/N8nActionToggle/ActionToggle.types';
 
 const props = defineProps<{
-	agent: AgentResource;
+	agent: AgentListItem;
 	projectId: string;
 }>();
 

@@ -7,56 +7,47 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
-function mountConfirmation(
-	props: { open: boolean; loading: boolean } = { open: true, loading: false },
-) {
+function mountConfirmation(props = { open: true, loading: false }) {
 	return mount(AgentChannelWebhookRemoveConfirmation, {
 		props,
 		global: {
 			stubs: {
-				Dialog: {
-					props: ['open', 'showCloseButton'],
-					emits: ['update:open'],
+				AgentChannelRemoveConfirmation: {
+					props: ['open', 'loading', 'title', 'description', 'confirmLabel', 'confirmTestId'],
+					emits: ['cancel', 'confirm'],
 					template: `
-						<div v-if="open" :data-show-close="showCloseButton">
-							<button data-testid="dialog-close" @click="$emit('update:open', false)" />
-							<slot />
+						<div :data-open="open" :data-loading="loading">
+							<h2>{{ title }}</h2>
+							<p>{{ description }}</p>
+							<button :data-testid="confirmTestId" @click="$emit('confirm')">{{ confirmLabel }}</button>
+							<button data-testid="cancel" @click="$emit('cancel')" />
 						</div>
 					`,
-				},
-				DialogHeader: { template: '<header><slot /></header>' },
-				DialogTitle: { template: '<h2><slot /></h2>' },
-				// The real one needs a dialog root. It describes the dialog to screen readers.
-				DialogDescription: {
-					props: ['asChild'],
-					template: '<div data-testid="dialog-description"><slot /></div>',
-				},
-				DialogFooter: { template: '<footer><slot /></footer>' },
-				N8nText: { template: '<span><slot /></span>' },
-				N8nButton: {
-					props: ['disabled', 'loading'],
-					emits: ['click'],
-					template: '<button :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
 				},
 			},
 		},
 	});
 }
 
-const cancelButton = (wrapper: ReturnType<typeof mountConfirmation>) =>
-	wrapper.findAll('button').find((button) => button.text() === 'generic.cancel');
-
 describe('AgentChannelWebhookRemoveConfirmation', () => {
-	it('shows the title and what removing does', () => {
+	it('shows the API removal copy', () => {
 		const wrapper = mountConfirmation();
 
 		expect(wrapper.get('h2').text()).toBe('agents.channels.webhook.remove.title');
-		expect(wrapper.get('[data-testid="dialog-description"]').text()).toBe(
-			'agents.channels.webhook.remove.description',
+		expect(wrapper.get('p').text()).toBe('agents.channels.webhook.remove.description');
+		expect(wrapper.get('[data-testid="webhook-remove-confirm"]').text()).toBe(
+			'agents.channels.webhook.remove.confirm',
 		);
 	});
 
-	it('confirms the removal', async () => {
+	it('passes on whether it is open and loading', () => {
+		const wrapper = mountConfirmation({ open: true, loading: true });
+
+		expect(wrapper.attributes('data-open')).toBe('true');
+		expect(wrapper.attributes('data-loading')).toBe('true');
+	});
+
+	it('confirms the removal without an external resource to delete', async () => {
 		const wrapper = mountConfirmation();
 
 		await wrapper.get('[data-testid="webhook-remove-confirm"]').trigger('click');
@@ -64,21 +55,11 @@ describe('AgentChannelWebhookRemoveConfirmation', () => {
 		expect(wrapper.emitted('confirm')).toEqual([[false]]);
 	});
 
-	it('cancels without confirming', async () => {
+	it('passes on a cancel', async () => {
 		const wrapper = mountConfirmation();
 
-		await cancelButton(wrapper)?.trigger('click');
+		await wrapper.get('[data-testid="cancel"]').trigger('click');
 
 		expect(wrapper.emitted('cancel')).toHaveLength(1);
-		expect(wrapper.emitted('confirm')).toBeUndefined();
-	});
-
-	it('does not cancel while the removal is under way', async () => {
-		const wrapper = mountConfirmation({ open: true, loading: true });
-
-		await wrapper.get('[data-testid="dialog-close"]').trigger('click');
-		await cancelButton(wrapper)?.trigger('click');
-
-		expect(wrapper.emitted('cancel')).toBeUndefined();
 	});
 });

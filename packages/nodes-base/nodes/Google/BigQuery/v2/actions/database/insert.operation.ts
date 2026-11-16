@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, requestPath } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
@@ -183,7 +183,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		await googleBigQueryApiRequest.call(
 			this,
 			'GET',
-			`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
+			requestPath`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
 			{},
 		)
 	).schema as TableSchema;
@@ -235,7 +235,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		const responseData = await googleBigQueryApiRequest.call(
 			this,
 			'POST',
-			`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/insertAll`,
+			requestPath`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/insertAll`,
 			body,
 		);
 
