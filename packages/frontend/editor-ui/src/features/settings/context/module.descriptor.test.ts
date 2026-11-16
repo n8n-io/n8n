@@ -73,7 +73,7 @@ describe('ContextModule routes', () => {
 			{ agentsActive: true, moduleSettings: {} },
 			{
 				agentsActive: false,
-				moduleSettings: { ...allConsumersOff, agents: { enabled: true } },
+				moduleSettings: { ...allConsumersOff, agents: { enabled: true } } as FrontendModuleSettings,
 			},
 		])(
 			'redirects to the homepage (agents module active: $agentsActive, settings: $moduleSettings)',
